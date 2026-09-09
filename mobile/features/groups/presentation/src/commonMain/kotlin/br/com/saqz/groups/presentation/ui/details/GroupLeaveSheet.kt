@@ -1,6 +1,8 @@
 package br.com.saqz.groups.presentation.ui.details
 
 import androidx.compose.material.Text
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -18,6 +20,12 @@ import br.com.saqz.groups.resources.group_leave_confirm
 import br.com.saqz.groups.resources.group_leave_cancel
 import org.jetbrains.compose.resources.stringResource
 
+object GroupLeaveTags {
+    const val Confirm = "group-leave-confirm"
+    const val Cancel = "group-leave-cancel"
+    const val Error = "group-leave-error"
+}
+
 @Composable
 internal fun GroupLeaveSheet(state: GroupDetailsState, onIntent: (GroupDetailsIntent) -> Unit) {
     SaqzBottomSheet(
@@ -26,21 +34,23 @@ internal fun GroupLeaveSheet(state: GroupDetailsState, onIntent: (GroupDetailsIn
         description = stringResource(Res.string.group_leave_description),
         onClose = { onIntent(GroupDetailsIntent.CancelLeave) },
         footer = {
-            SaqzButton(
-                label = stringResource(Res.string.group_leave_confirm),
-                onClick = { onIntent(GroupDetailsIntent.ConfirmLeave) },
-                loading = state.leaving,
-                fullWidth = true,
-                modifier = Modifier.testTag("group-leave-confirm"),
-            )
-            SaqzButton(
-                label = stringResource(Res.string.group_leave_cancel),
-                onClick = { onIntent(GroupDetailsIntent.CancelLeave) },
-                enabled = !state.leaving,
-                variant = SaqzButtonVariant.Ghost,
-                fullWidth = true,
-                modifier = Modifier.testTag("group-leave-cancel"),
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap)) {
+                SaqzButton(
+                    label = stringResource(Res.string.group_leave_confirm),
+                    onClick = { onIntent(GroupDetailsIntent.ConfirmLeave) },
+                    loading = state.leaving,
+                    fullWidth = true,
+                    modifier = Modifier.testTag(GroupLeaveTags.Confirm),
+                )
+                SaqzButton(
+                    label = stringResource(Res.string.group_leave_cancel),
+                    onClick = { onIntent(GroupDetailsIntent.CancelLeave) },
+                    enabled = !state.leaving,
+                    variant = SaqzButtonVariant.Ghost,
+                    fullWidth = true,
+                    modifier = Modifier.testTag(GroupLeaveTags.Cancel),
+                )
+            }
         },
     ) {
         if (state.leaveFailed) {
@@ -48,7 +58,7 @@ internal fun GroupLeaveSheet(state: GroupDetailsState, onIntent: (GroupDetailsIn
                 text = stringResource(Res.string.group_leave_failure),
                 color = SaqzTheme.colors.textPrimary,
                 style = SaqzTheme.typography.body,
-                modifier = Modifier.testTag("group-leave-error"),
+                modifier = Modifier.testTag(GroupLeaveTags.Error),
             )
         }
     }

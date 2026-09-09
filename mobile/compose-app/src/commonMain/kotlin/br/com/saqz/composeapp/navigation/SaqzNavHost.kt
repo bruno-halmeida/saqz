@@ -361,6 +361,8 @@ internal fun SaqzNavHost(
                             onOpenMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
                             onOpenAthleteProfile = { backStack.add(GroupsRoute.AthleteRegistration(it, fromProfile = true)) },
                             onOpenMonthlyPayments = { backStack.add(FinanceRoute.OwnMonthlyPayments) },
+                            onOpenSettings = { backStack.add(GroupsRoute.Notifications(settings = true)) },
+                            onOpenNotifications = { backStack.add(GroupsRoute.Notifications()) },
                             isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
                             refreshVersion = profileRefreshVersion,
                             // O shell já aplicou a status bar: sem isto o `SaqzTopAppBar`
@@ -530,14 +532,14 @@ internal fun SaqzNavHost(
                 GroupSetupDestination(
                     mode = GroupSetupMode.Create,
                     backStack = backStack,
-                    onGroupListChanged = { groupListRefreshVersion++ },
+                    onGroupListChange = { groupListRefreshVersion++ },
                 )
             }
             entry<GroupsRoute.Edit> { route ->
                 GroupSetupDestination(
                     mode = GroupSetupMode.Edit(route.groupId),
                     backStack = backStack,
-                    onGroupListChanged = {
+                    onGroupListChange = {
                         // Edit empilha sobre Details: a lista já recarregava; o detalhe
                         // ficava com foto e nome antigos porque a ViewModel sobrevive no
                         // fundo da pilha — o mesmo buraco do acerto (VUL-195).
@@ -641,6 +643,21 @@ internal fun SaqzNavHost(
             }
             entry<GroupsRoute.MemberProfile> { route ->
                 MemberProfileRoot(route.groupId, route.userId, onBack = pop)
+            }
+            entry<GroupsRoute.Thread> { route ->
+                br.com.saqz.groups.presentation.communication.GroupThreadRoot(route.groupId, route.notices, onBack = {
+                    groupDetailsRefreshVersion++
+                    pop()
+                })
+            }
+            entry<GroupsRoute.Notifications> { route ->
+                br.com.saqz.groups.presentation.communication.NotificationCenterRoot(route.settings, onBack = pop) { effect ->
+                    if (effect.gameId != null) backStack.add(GroupsRoute.GameDetail(effect.groupId, effect.gameId!!))
+                    else backStack.add(GroupsRoute.Thread(
+                        effect.groupId,
+                        effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.NOTICE,
+                    ))
+                }
             }
             entry<GroupsRoute.Members> { route ->
                 GroupMembersRoot(
@@ -850,24 +867,24 @@ private fun SessionAccessState.passwordChangedDestination(): NavKey = when (this
 private fun GroupSetupDestination(
     mode: GroupSetupMode,
     backStack: NavBackStack<NavKey>,
-    onGroupListChanged: () -> Unit,
+    onGroupListChange: () -> Unit,
 ) {
     val pop: () -> Unit = { backStack.removeLastOrNull() }
     GroupSetupRoot(
         mode = mode,
         // Criou: o formulário sai do stack e o grupo novo entra no lugar dele.
         onGroupCreate = { groupId, photoFailed ->
-            onGroupListChanged()
+            onGroupListChange()
             pop()
             backStack.add(GroupsRoute.Details(groupId, photoFailed))
         },
         onGroupSave = {
-            onGroupListChanged()
+            onGroupListChange()
             pop()
         },
         // Apagou: `Details` e `Edit` do grupo morto ficam para trás; volta para a lista.
         onGroupDelete = {
-            onGroupListChanged()
+            onGroupListChange()
             while (backStack.size > 1) backStack.removeLastOrNull()
         },
         onDraftSave = pop,
@@ -894,6 +911,7 @@ private fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop:
         is GroupDetailsEffect.OpenInviteLink -> add(GroupsRoute.Invite(effect.groupId))
         // O Root abre o endereço com o handler nativo e trata falha localmente.
         is GroupDetailsEffect.OpenMap -> Unit
+        is GroupDetailsEffect.OpenThread -> add(GroupsRoute.Thread(effect.groupId, effect.notices))
         // VUL-203: copiar o Pix é área de transferência e o `GroupDetailsRoot` já consome
         // o efeito antes daqui. O ramo existe porque o `when` é sobre o tipo inteiro —
         // não é `else`, e nenhum efeito de navegação cai nele.

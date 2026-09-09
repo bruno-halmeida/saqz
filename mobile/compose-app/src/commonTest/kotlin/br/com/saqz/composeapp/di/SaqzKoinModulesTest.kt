@@ -157,6 +157,7 @@ class SaqzKoinModulesTest {
                     state = FakeLocalGroupStatePort,
                     inviteUrlStore = FakeInviteUrlStorePort,
                     inviteShare = FakeInviteSharePort,
+                    map = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                     inviteClipboard = FakeInviteClipboardPort,
                 ),
             )
@@ -312,6 +313,10 @@ class SaqzKoinModulesTest {
         }
         koin.get<ResetCodeViewModel> { parametersOf("ana@exemplo.com") }
         koin.get<GroupDetailsViewModel> { parametersOf("ceret") }
+        koin.get<br.com.saqz.groups.presentation.memberprofile.MemberProfileViewModel> { parametersOf("ceret", "member") }
+        koin.get<br.com.saqz.groups.presentation.monthlypayments.OwnMonthlyPaymentsViewModel>()
+        koin.get<br.com.saqz.groups.presentation.communication.GroupThreadViewModel> { parametersOf("ceret", true, SavedStateHandle()) }
+        koin.get<br.com.saqz.groups.presentation.communication.NotificationCenterViewModel> { parametersOf(false) }
         koin.get<GroupMembersViewModel> { parametersOf("ceret") }
         // VUL-151: editor (criar/editar) e detalhe do jogo resolvem com os ids da rota.
         koin.get<GameEditorViewModel> { parametersOf("ceret", null, SavedStateHandle()) }

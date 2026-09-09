@@ -10,9 +10,10 @@ data class MemberProfileState(
     val name: String = "",
     val attributes: List<String> = emptyList(),
     val phone: String? = null,
-    val games: String = "",
+    val games: String? = null,
     val attendance: String? = null,
-    val absences: String = "",
+    val absences: String? = null,
+    val statsFailed: Boolean = false,
 )
 
 sealed interface MemberProfileIntent {

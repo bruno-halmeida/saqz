@@ -1,4 +1,5 @@
 <resources>
+    <string name="member_profile_stats_retry">Tentar carregar estatísticas novamente</string>
     <string name="member_profile_title">Perfil do atleta</string>
     <string name="member_profile_games">Jogos: %1$s</string>
     <string name="member_profile_attendance">Presença: %1$s</string>

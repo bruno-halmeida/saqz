@@ -45,6 +45,8 @@ import br.com.saqz.groups.resources.group_details_created_photo_failed_title
 import br.com.saqz.groups.resources.group_details_venue_edit
 import br.com.saqz.groups.resources.group_details_venue_map
 import br.com.saqz.groups.resources.group_details_map_failure
+import br.com.saqz.groups.resources.communication_failure
+import br.com.saqz.groups.resources.communication_reminded
 import org.jetbrains.compose.resources.stringResource
 
 internal object GroupDetailsTags {
@@ -128,6 +130,9 @@ internal fun GroupDetailsScreen(
                 state.attendance?.let {
                     GroupAttendanceStats(attendance = it, isAdmin = state.isAdmin, onIntent = onIntent)
                 }
+                if (state.notifying) SaqzSpinner()
+                if (state.notificationFailed) Text(stringResource(Res.string.communication_failure))
+                state.notifiedCount?.let { Text(stringResource(Res.string.communication_reminded, it)) }
                 if (state.isAdmin) {
                     state.cashbox?.let { GroupCashboxRow(cashbox = it, onIntent = onIntent) }
                 }
@@ -136,9 +141,7 @@ internal fun GroupDetailsScreen(
                 if (state.mapFailed) {
                     Text(stringResource(Res.string.group_details_map_failure), color = SaqzTheme.colors.textPrimary)
                 }
-                if (!state.isAdmin) {
-                    GroupShortcutTiles(onIntent = onIntent)
-                }
+                GroupShortcutTiles(onIntent = onIntent)
                 state.latestNotice?.let { GroupLatestNoticeCard(notice = it) }
                 if (state.memberPreview.isNotEmpty()) {
                     GroupMemberPreview(members = state.memberPreview, onIntent = onIntent)

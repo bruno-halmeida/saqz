@@ -15,18 +15,27 @@ import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.SaqzAvatar
 import br.com.saqz.designsystem.SaqzCard
+import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.connected_load_failure_title
 import br.com.saqz.groups.resources.member_profile_title
 import br.com.saqz.groups.resources.member_profile_games
 import br.com.saqz.groups.resources.member_profile_attendance
 import br.com.saqz.groups.resources.member_profile_absences
+import br.com.saqz.groups.resources.member_profile_stats_retry
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import androidx.compose.ui.tooling.preview.Preview
+
+object MemberProfileTags {
+    const val Screen = "member-profile"
+    const val Phone = "member-profile-phone"
+}
 
 @Composable
 fun MemberProfileRoot(groupId: String, userId: String, onBack: () -> Unit) {
@@ -39,7 +48,7 @@ fun MemberProfileRoot(groupId: String, userId: String, onBack: () -> Unit) {
 
 @Composable
 internal fun MemberProfileScreen(state: MemberProfileState, onBack: () -> Unit, onRetry: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag("member-profile")) {
+    Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(MemberProfileTags.Screen)) {
         SaqzTopAppBar(title = stringResource(Res.string.member_profile_title), onBack = onBack)
         Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(SaqzTheme.metrics.horizontalPadding),
@@ -47,21 +56,30 @@ internal fun MemberProfileScreen(state: MemberProfileState, onBack: () -> Unit, 
         ) {
             when {
                 state.loading -> SaqzSpinner()
-                state.error != null -> GroupLoadFailure(state.error, onRetry)
+                state.error != null -> GroupLoadFailure(
+                    state.error, onRetry, failureTitle = stringResource(Res.string.connected_load_failure_title),
+                )
                 else -> {
                     SaqzCard {
                         SaqzAvatar(name = state.name)
                         Text(state.name, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
                         state.attributes.forEach { Text(it, color = SaqzTheme.colors.textSecondary) }
-                        state.phone?.let { Text(it, modifier = Modifier.testTag("member-profile-phone")) }
+                        state.phone?.let { Text(it, modifier = Modifier.testTag(MemberProfileTags.Phone)) }
                     }
-                    SaqzCard {
+                    if (state.games != null) SaqzCard {
                         Text(stringResource(Res.string.member_profile_games, state.games))
                         state.attendance?.let { Text(stringResource(Res.string.member_profile_attendance, it)) }
-                        Text(stringResource(Res.string.member_profile_absences, state.absences))
+                        state.absences?.let { Text(stringResource(Res.string.member_profile_absences, it)) }
                     }
+                    if (state.statsFailed) SaqzButton(label = stringResource(Res.string.member_profile_stats_retry), onClick = onRetry)
                 }
             }
         }
     }
+}
+
+@Preview
+@Composable
+private fun MemberProfilePreview() = SaqzTheme {
+    MemberProfileScreen(MemberProfileState(loading = false, name = "Ana Souza", attributes = listOf("Ponteira")), {}, {})
 }

@@ -38,6 +38,12 @@ class OwnProfileViewModelTest {
         vm.onIntent(OwnProfileIntent.OpenMonthlyPayments)
         advanceUntilIdle()
         assertEquals(OwnProfileEffect.OpenMonthlyPayments, vm.effects.first())
+        vm.onIntent(OwnProfileIntent.OpenSettings)
+        advanceUntilIdle()
+        assertEquals(OwnProfileEffect.OpenSettings, vm.effects.first())
+        vm.onIntent(OwnProfileIntent.OpenNotifications)
+        advanceUntilIdle()
+        assertEquals(OwnProfileEffect.OpenNotifications, vm.effects.first())
     }
 
     @Test

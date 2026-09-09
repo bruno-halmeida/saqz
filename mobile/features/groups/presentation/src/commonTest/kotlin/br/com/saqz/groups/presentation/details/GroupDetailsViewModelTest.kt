@@ -71,6 +71,69 @@ class GroupDetailsViewModelTest {
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
     @Test
+    fun `late reminder response cannot describe a different game`() = runTest {
+        val response = CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.communication.CommunicationMessage, br.com.saqz.groups.domain.communication.CommunicationError>>()
+        val gateway = br.com.saqz.groups.presentation.FakeCommunicationGateway().apply { remindBlock = { response.await() } }
+        val games = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame())))
+        val vm = viewModel(gameGateway = games, communications = gateway)
+        vm.onIntent(GroupDetailsIntent.NotifyPending)
+        assertTrue(vm.state.value.notifying)
+        games.listResult = SaqzResult.Success(listOf(sampleGame().copy(id = "next-game")))
+        vm.onIntent(GroupDetailsIntent.Retry)
+        assertEquals("next-game", vm.state.value.nextGame?.gameId)
+        response.complete(SaqzResult.Success(br.com.saqz.groups.presentation.sampleCommunicationMessage().copy(recipientCount = 3)))
+        advanceUntilIdle()
+        assertNull(vm.state.value.notifiedCount)
+        assertFalse(vm.state.value.notifying)
+    }
+
+    @Test
+    fun `completed reminder feedback clears when the next game changes`() = runTest {
+        val gateway = br.com.saqz.groups.presentation.FakeCommunicationGateway().apply {
+            reminderResult = SaqzResult.Success(br.com.saqz.groups.presentation.sampleCommunicationMessage().copy(recipientCount = 3))
+        }
+        val games = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame())))
+        val vm = viewModel(gameGateway = games, communications = gateway)
+        vm.onIntent(GroupDetailsIntent.NotifyPending)
+        assertEquals("3", vm.state.value.notifiedCount)
+        games.listResult = SaqzResult.Success(listOf(sampleGame().copy(id = "next-game")))
+        vm.onIntent(GroupDetailsIntent.Retry)
+        assertEquals("next-game", vm.state.value.nextGame?.gameId)
+        assertNull(vm.state.value.notifiedCount)
+    }
+
+    @Test
+    fun `pending reminders retry same request and never claim delivery on failure`() = runTest {
+        val gateway = br.com.saqz.groups.presentation.FakeCommunicationGateway().apply {
+            reminderResult = SaqzResult.Failure(br.com.saqz.groups.domain.communication.CommunicationError(DataError.Timeout))
+        }
+        val vm = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            communications = gateway,
+        )
+        vm.onIntent(GroupDetailsIntent.NotifyPending)
+        assertTrue(vm.state.value.notificationFailed)
+        assertNull(vm.state.value.notifiedCount)
+        gateway.reminderResult = SaqzResult.Success(br.com.saqz.groups.presentation.sampleCommunicationMessage().copy(recipientCount = 3))
+        vm.onIntent(GroupDetailsIntent.NotifyPending)
+        assertEquals(2, gateway.reminders.size)
+        assertEquals(gateway.reminders[0], gateway.reminders[1])
+        assertEquals(GroupId(GROUP_ID), gateway.reminders[0].first)
+        assertEquals(sampleGame().id, gateway.reminders[0].second)
+        assertEquals("3", vm.state.value.notifiedCount)
+        assertFalse(vm.state.value.notificationFailed)
+    }
+
+    @Test
+    fun `communication shortcuts route to the same group with distinct channels`() = runTest {
+        val vm = viewModel()
+        vm.onIntent(GroupDetailsIntent.OpenNotices)
+        assertEquals(GroupDetailsEffect.OpenThread(GROUP_ID, true), vm.effects.first())
+        vm.onIntent(GroupDetailsIntent.OpenChat)
+        assertEquals(GroupDetailsEffect.OpenThread(GROUP_ID, false), vm.effects.first())
+    }
+
+    @Test
     fun `map effect carries actual group address and native failure is visible`() = runTest {
         val vm = viewModel()
         vm.onIntent(GroupDetailsIntent.OpenVenueMap)
@@ -112,11 +175,13 @@ class GroupDetailsViewModelTest {
     @Test
     fun `failed leave retains confirmation for retry and owner cannot request it`() = runTest {
         var calls = 0
+        val effects = mutableListOf<GroupDetailsEffect>()
         val gateway = GroupDepartureGateway {
             calls++
             SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Forbidden))
         }
         val vm = viewModel(departureGateway = gateway)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.effects.collect { effects += it } }
         vm.onIntent(GroupDetailsIntent.Leave)
         vm.onIntent(GroupDetailsIntent.ConfirmLeave)
         assertTrue(vm.state.value.leaveFailed)
@@ -124,6 +189,7 @@ class GroupDetailsViewModelTest {
         assertFalse(vm.state.value.leaving)
         vm.onIntent(GroupDetailsIntent.ConfirmLeave)
         assertEquals(2, calls)
+        assertTrue(effects.isEmpty(), "Failed departure must never navigate away")
 
         val owner = viewModel(
             groupGateway = FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = GroupRole.OWNER)))),
@@ -1011,6 +1077,7 @@ class GroupDetailsViewModelTest {
         athleteFinanceGateway: FakeAthleteFinanceGateway = FakeAthleteFinanceGateway(),
         now: GroupNowPort = GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") },
         departureGateway: GroupDepartureGateway = GroupDepartureGateway { SaqzResult.Success(Unit) },
+        communications: br.com.saqz.groups.presentation.FakeCommunicationGateway = br.com.saqz.groups.presentation.FakeCommunicationGateway(),
     ) = GroupDetailsViewModel(
         GROUP_ID,
         groupGateway,
@@ -1022,6 +1089,7 @@ class GroupDetailsViewModelTest {
         athleteFinanceGateway,
         now,
         departureGateway,
+        communications,
     )
 
     private fun athleteGroupGateway() = FakeGroupGateway(

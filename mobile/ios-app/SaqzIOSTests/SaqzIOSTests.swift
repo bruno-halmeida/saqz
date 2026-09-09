@@ -1,8 +1,30 @@
 import XCTest
+import SaqzMobile
 @testable import SaqzIOS
 
 @MainActor
 final class SaqzIOSTests: XCTestCase {
+    func testMapAdapterReportsTheNativeCompletionInsteadOfAssumingSuccess() {
+        var openedURL: URL?
+        var nativeCompletion: ((Bool) -> Void)?
+        let adapter = IOSMapAdapter { url, completion in
+            openedURL = url
+            nativeCompletion = completion
+        }
+        let callback = RecordingMapCallback()
+        adapter.open(url: "https://www.google.com/maps/search/?api=1&query=S%C3%A3o%20Paulo", done: callback)
+        XCTAssertEqual(openedURL?.absoluteString, "https://www.google.com/maps/search/?api=1&query=S%C3%A3o%20Paulo")
+        XCTAssertEqual(callback.values, [])
+        nativeCompletion?(false)
+        XCTAssertEqual(callback.values, [false])
+    }
+
+    func testMapAdapterRejectsAnUnsupportedURL() {
+        let callback = RecordingMapCallback()
+        IOSMapAdapter { _, _ in XCTFail("Must not open an unsupported scheme") }.open(url: "bad://map", done: callback)
+        XCTAssertEqual(callback.values, [false])
+    }
+
     func testLocalFirebaseOptionsEndpointAndInitializationOrder() {
         let client = RecordingFirebaseBootstrapClient()
 
@@ -58,6 +80,11 @@ final class SaqzIOSTests: XCTestCase {
             ]
         )
     }
+}
+
+private final class RecordingMapCallback: GroupMapCallback {
+    var values: [Bool] = []
+    func complete(opened: Bool) { values.append(opened) }
 }
 
 @MainActor

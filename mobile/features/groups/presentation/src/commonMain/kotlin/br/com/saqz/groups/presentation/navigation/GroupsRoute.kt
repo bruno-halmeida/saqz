@@ -50,6 +50,12 @@ sealed interface GroupsRoute : NavKey {
     @Serializable
     data class MemberProfile(val groupId: String, val userId: String) : GroupsRoute
 
+    @Serializable
+    data class Thread(val groupId: String, val notices: Boolean) : GroupsRoute
+
+    @Serializable
+    data class Notifications(val settings: Boolean = false) : GroupsRoute
+
     /** 3g: member editor. */
     @Serializable
     data class MemberEditor(val groupId: String, val userId: String) : GroupsRoute

@@ -26,6 +26,31 @@ import kotlin.test.assertNull
 @OptIn(ExperimentalTestApi::class)
 class GroupDetailsRootTest {
     @Test
+    fun nativeMapFailureIsShownAndUsesTheEncodedVenueAddress() = runComposeUiTest {
+        val vm = detailsViewModel()
+        val opened = mutableListOf<String>()
+        setContent {
+            SaqzTheme {
+                GroupDetailsRoot(
+                    groupId = GroupId,
+                    onBack = {},
+                    onEffect = {},
+                    viewModel = vm,
+                    mapPort = br.com.saqz.groups.domain.map.GroupMapPort { url, done ->
+                        opened += url
+                        done.complete(false)
+                    },
+                )
+            }
+        }
+        waitForIdle()
+        runOnIdle { vm.onIntent(br.com.saqz.groups.presentation.details.GroupDetailsIntent.OpenVenueMap) }
+        waitForIdle()
+        assertEquals(listOf(venueMapUrl(checkNotNull(vm.state.value.venue).address)), opened)
+        assertEquals(true, vm.state.value.mapFailed)
+    }
+
+    @Test
     fun `refresh version retries the details view model`() = runComposeUiTest {
         val gameGateway = FakeGameGateway()
         val viewModel = detailsViewModel(gameGateway = gameGateway)
@@ -34,6 +59,8 @@ class GroupDetailsRootTest {
         setContent {
             SaqzTheme {
                 GroupDetailsRoot(
+
+                    mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                     groupId = GroupId,
                     onBack = {},
                     onEffect = {},
@@ -68,6 +95,8 @@ class GroupDetailsRootTest {
         setContent {
             SaqzTheme {
                 GroupDetailsRoot(
+
+                    mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                     groupId = GroupId,
                     onBack = {},
                     onEffect = {},
@@ -106,6 +135,8 @@ class GroupDetailsRootTest {
                 if (onScreen) {
                     stateHolder.SaveableStateProvider(GroupId) {
                         GroupDetailsRoot(
+
+                            mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                             groupId = GroupId,
                             onBack = {},
                             onEffect = {},
@@ -144,6 +175,7 @@ class GroupDetailsRootTest {
         athleteFinanceGateway = FakeAthleteFinanceGateway(),
         now = GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") },
         departureGateway = br.com.saqz.groups.domain.membership.GroupDepartureGateway { SaqzResult.Success(Unit) },
+        communications = br.com.saqz.groups.presentation.FakeCommunicationGateway(),
     )
 
     private companion object {

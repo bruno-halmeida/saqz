@@ -42,6 +42,28 @@ class MemberProfileViewModelTest {
     }
 
     @Test
+    fun restrictedStatsDoNotHideTheAuthorizedProfileAndOtherFailuresCanRetry() = runTest {
+        val gateway = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("selected").copy(displayName = "Ana"))),
+            statsResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Forbidden)),
+        )
+        val vm = MemberProfileViewModel("group-1", "selected", gateway)
+        assertEquals("Ana", vm.state.value.name)
+        assertNull(vm.state.value.error)
+        assertNull(vm.state.value.games)
+        assertFalse(vm.state.value.statsFailed)
+        gateway.statsResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Connectivity))
+        vm.onIntent(MemberProfileIntent.Retry)
+        assertEquals("Ana", vm.state.value.name)
+        assertNull(vm.state.value.error)
+        assertEquals(true, vm.state.value.statsFailed)
+        gateway.statsResult = SaqzResult.Success(AthleteStats(8, 75, 2))
+        vm.onIntent(MemberProfileIntent.Retry)
+        assertEquals("8", vm.state.value.games)
+        assertFalse(vm.state.value.statsFailed)
+    }
+
+    @Test
     fun missingMemberDoesNotLoadAnotherProfileAndFailureCanRetry() = runTest {
         val gateway = FakeAthleteGateway()
         val vm = MemberProfileViewModel("group-1", "gone", gateway)

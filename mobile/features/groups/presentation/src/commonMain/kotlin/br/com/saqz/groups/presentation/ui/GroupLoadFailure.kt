@@ -20,11 +20,12 @@ internal fun GroupLoadFailure(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     testTag: String? = null,
+    failureTitle: String? = null,
 ) {
     val title = when (error) {
         GroupUiError.AccessDenied -> stringResource(Res.string.group_load_access_denied)
         GroupUiError.NotFound -> stringResource(Res.string.group_load_not_found)
-        else -> stringResource(Res.string.group_load_failure_title)
+        else -> failureTitle ?: stringResource(Res.string.group_load_failure_title)
     }
     SaqzEmptyState(
         title = title,

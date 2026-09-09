@@ -164,6 +164,7 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
     single<LocalGroupStatePort> { get<SaqzNativePorts>().groups.state }
     single<GroupInviteUrlStorePort> { get<SaqzNativePorts>().groups.inviteUrlStore }
     single<NativeInviteSharePort> { get<SaqzNativePorts>().groups.inviteShare }
+    single<br.com.saqz.groups.domain.map.GroupMapPort> { get<SaqzNativePorts>().groups.map }
     single<NativeInviteClipboardPort> { get<SaqzNativePorts>().groups.inviteClipboard }
     single<GroupSystemTimeZonePort> { DefaultGroupSystemTimeZonePort() }
     single<GroupNowPort> { DefaultGroupNowPort() }

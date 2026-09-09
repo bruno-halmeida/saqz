@@ -70,6 +70,7 @@ struct IOSAppComposition {
                 profilePhotoSelection: profilePhoto
             ),
             groups: GroupsRuntimeDependencies(
+                map: IOSMapAdapter(),
                 attendanceShare: attendanceShare,
                 photos: GroupPhotoRuntimeDependencies(
                     selection: photos.selection,

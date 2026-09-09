@@ -1,5 +1,26 @@
 import Foundation
 import SaqzMobile
+
+@MainActor
+final class IOSMapAdapter: @preconcurrency GroupMapPort {
+    private let openURL: (URL, @escaping (Bool) -> Void) -> Void
+
+    init(openURL: @escaping (URL, @escaping (Bool) -> Void) -> Void = { url, completion in
+        UIApplication.shared.open(url, options: [:], completionHandler: completion)
+    }) {
+        self.openURL = openURL
+    }
+
+    func open(url: String, done: any GroupMapCallback) {
+        guard let target = URL(string: url), target.scheme == "https" else {
+            done.complete(opened: false)
+            return
+        }
+        openURL(target) { opened in
+            done.complete(opened: opened)
+        }
+    }
+}
 import UIKit
 
 @MainActor

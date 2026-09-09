@@ -23,6 +23,8 @@ fun OwnProfileRoot(
     onOpenMyPlan: () -> Unit = {},
     onOpenAthleteProfile: (String) -> Unit = {},
     onOpenMonthlyPayments: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
     isPlanOwner: Boolean = false,
     refreshVersion: Int = 0,
     topBarWindowInsets: WindowInsets = WindowInsets.statusBars,
@@ -45,6 +47,8 @@ fun OwnProfileRoot(
             OwnProfileEffect.OpenMyPlan -> onOpenMyPlan()
             is OwnProfileEffect.OpenAthleteProfile -> onOpenAthleteProfile(effect.groupId)
             OwnProfileEffect.OpenMonthlyPayments -> onOpenMonthlyPayments()
+            OwnProfileEffect.OpenSettings -> onOpenSettings()
+            OwnProfileEffect.OpenNotifications -> onOpenNotifications()
             OwnProfileEffect.SignedOut -> onSignOut()
         }
     }

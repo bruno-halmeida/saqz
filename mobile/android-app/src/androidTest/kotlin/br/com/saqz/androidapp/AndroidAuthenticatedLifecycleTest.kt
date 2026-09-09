@@ -288,6 +288,7 @@ private class LifecycleCompositionFactory(
                 profilePhotoSelection = LifecycleProfilePhotoPort,
             ),
             groups = GroupsRuntimeDependencies(
+                map = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                 attendanceShare = LifecycleAttendanceSharePort,
                 photos = lifecycleGroupPhotos,
                 links = fixture.links,

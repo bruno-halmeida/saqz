@@ -33,6 +33,8 @@ import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfile
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.membership.GroupDepartureGateway
+import br.com.saqz.groups.domain.communication.CommunicationGateway
+import br.com.saqz.groups.domain.communication.CommunicationChannel
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.photo.groupPhotoUrl
 import br.com.saqz.groups.presentation.toUiError
@@ -81,6 +83,7 @@ class GroupDetailsViewModel(
     private val athleteFinanceGateway: AthleteFinanceGateway,
     private val now: GroupNowPort,
     private val departureGateway: GroupDepartureGateway,
+    private val communications: CommunicationGateway,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(GroupDetailsState()) {
 
     private var loadGeneration = 0
@@ -91,11 +94,14 @@ class GroupDetailsViewModel(
 
     /** O grupo da carga corrente: a seção de cobranças sozinha precisa do fuso e do Pix. */
     private var loadedGroup: Group? = null
+    private var reminderRequest: Pair<String, String>? = null
 
     init {
         load()
     }
 
+    // Dispatch exaustivo: regras e guardas ficam nos handlers de cada operação.
+    @Suppress("CyclomaticComplexMethod")
     override fun onIntent(intent: GroupDetailsIntent) {
         when (intent) {
             GroupDetailsIntent.Retry -> load()
@@ -112,36 +118,64 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.Invite,
             -> emit(GroupDetailsEffect.OpenInviteLink(groupId))
             GroupDetailsIntent.OpenCashbox -> emit(GroupDetailsEffect.OpenCashbox(groupId))
-            GroupDetailsIntent.OpenVenueMap -> {
-                val address = state.value.venue?.address?.takeIf(String::isNotBlank)
-                update { it.copy(mapFailed = address == null) }
-                if (address != null) emit(GroupDetailsEffect.OpenMap(address))
-            }
+            GroupDetailsIntent.OpenVenueMap -> openMap()
             GroupDetailsIntent.MapOpenFailed -> update { it.copy(mapFailed = true) }
-            GroupDetailsIntent.Leave -> if (!state.value.isOwner && !state.value.isLoading) {
-                update { it.copy(confirmingLeave = true, leaveFailed = false) }
-            }
-            GroupDetailsIntent.CancelLeave -> if (!state.value.leaving) {
-                update { it.copy(confirmingLeave = false, leaveFailed = false) }
-            }
+            GroupDetailsIntent.Leave -> confirmDeparture()
+            GroupDetailsIntent.CancelLeave -> cancelDeparture()
             GroupDetailsIntent.ConfirmLeave -> leave()
             GroupDetailsIntent.RetryRoster -> retryRoster()
             GroupDetailsIntent.RetryOwnCharges -> retryOwnCharges()
             GroupDetailsIntent.CopyPix -> copyPix()
             GroupDetailsIntent.ViewGame -> viewGame()
-            GroupDetailsIntent.ConfirmAttendance,
-            GroupDetailsIntent.NotifyPending,
-            GroupDetailsIntent.OpenNotices,
-            GroupDetailsIntent.OpenChat,
-            -> Unit
+            GroupDetailsIntent.ConfirmAttendance -> viewGame()
+            GroupDetailsIntent.NotifyPending -> notifyPending()
+            GroupDetailsIntent.OpenNotices -> emit(GroupDetailsEffect.OpenThread(groupId, notices = true))
+            GroupDetailsIntent.OpenChat -> emit(GroupDetailsEffect.OpenThread(groupId, notices = false))
             is GroupDetailsIntent.Respond -> respond(intent.intent)
             is GroupDetailsIntent.ToggleAutoConfirmation -> toggleAutoConfirmation(intent.enabled)
         }
     }
 
+    private fun openMap() {
+        val address = state.value.venue?.address?.takeIf(String::isNotBlank)
+        update { it.copy(mapFailed = address == null) }
+        if (address != null) emit(GroupDetailsEffect.OpenMap(address))
+    }
+
+    private fun confirmDeparture() {
+        if (state.value.isOwner || state.value.isLoading) return
+        update { it.copy(confirmingLeave = true, leaveFailed = false) }
+    }
+
+    private fun cancelDeparture() {
+        if (state.value.leaving) return
+        update { it.copy(confirmingLeave = false, leaveFailed = false) }
+    }
+
     private fun viewGame() {
         val game = state.value.nextGame ?: return
         emit(GroupDetailsEffect.OpenGame(groupId, game.gameId))
+    }
+
+    private fun notifyPending() {
+        val current = state.value
+        val game = current.nextGame ?: return
+        if (!current.isAdmin || current.notifying || !game.confirmationOpen) return
+        val request = reminderRequest?.takeIf { it.first == game.gameId }
+            ?: (game.gameId to Uuid.random().toString()).also { reminderRequest = it }
+        val generation = loadGeneration
+        update { it.copy(notifying = true, notificationFailed = false, notifiedCount = null) }
+        viewModelScope.launch {
+            val result = communications.remind(GroupId(groupId), game.gameId, request.second)
+            if (generation != loadGeneration || state.value.nextGame?.gameId != game.gameId) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    reminderRequest = null
+                    update { it.copy(notifying = false, notifiedCount = result.value.recipientCount.toString()) }
+                }
+                is SaqzResult.Failure -> update { it.copy(notifying = false, notificationFailed = true) }
+            }
+        }
     }
 
     private fun leave() {
@@ -172,7 +206,10 @@ class GroupDetailsViewModel(
         rosterGeneration++
         ownChargesGeneration++
         loadedGroup = null
-        update { it.copy(isLoading = true, loadFailed = false, error = null) }
+        update { it.copy(
+            isLoading = true, loadFailed = false, error = null,
+            notifying = false, notificationFailed = false, notifiedCount = null,
+        ) }
         viewModelScope.launch {
             when (val groupResult = groupGateway.read(GroupId(groupId))) {
                 is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError())
@@ -185,11 +222,24 @@ class GroupDetailsViewModel(
                             loadNextGame(generation, group, gamesResult.value)
                             loadAdminCashbox(generation, group)
                             loadOwnCharges(generation, group)
+                            loadLatestNotice(generation)
                         }
                     }
                 }
             }
         }
+    }
+
+    private suspend fun loadLatestNotice(generation: Int) {
+        val result = communications.messages(GroupId(groupId), CommunicationChannel.NOTICE)
+        if (generation != loadGeneration) return
+        val latest = (result as? SaqzResult.Success)?.value?.items?.firstOrNull()
+        update { it.copy(latestNotice = latest?.let { message ->
+            NoticeUi(
+                message.authorName, true, message.body,
+                br.com.saqz.groups.presentation.communication.communicationTime(message.createdAt),
+            )
+        }) }
     }
 
     private fun retryOwnCharges() {

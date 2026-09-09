@@ -44,6 +44,9 @@ data class GroupDetailsState(
     val leaving: Boolean = false,
     val leaveFailed: Boolean = false,
     val mapFailed: Boolean = false,
+    val notifying: Boolean = false,
+    val notificationFailed: Boolean = false,
+    val notifiedCount: String? = null,
 )
 
 /** Nome, linha de resumo e — só no 2e — os chips de bairro/modalidade/agenda. */
@@ -236,6 +239,8 @@ sealed interface GroupDetailsEffect {
     data class OpenInviteLink(val groupId: String) : GroupDetailsEffect
 
     data class OpenMap(val address: String) : GroupDetailsEffect
+
+    data class OpenThread(val groupId: String, val notices: Boolean) : GroupDetailsEffect
 
     data object Left : GroupDetailsEffect
 

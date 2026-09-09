@@ -38,9 +38,6 @@ class GroupDetailsScreenTest {
     // particular, é de quem joga — e dono e admin também jogam.
     private val memberOnly = listOf(
         GroupDetailsTags.ViewGame,
-        GroupDetailsTags.ShortcutNotices,
-        GroupDetailsTags.ShortcutSchedule,
-        GroupDetailsTags.ShortcutChat,
         GroupDetailsTags.Notice,
         GroupDetailsTags.ViewAllMembers,
         GroupDetailsTags.Invite,

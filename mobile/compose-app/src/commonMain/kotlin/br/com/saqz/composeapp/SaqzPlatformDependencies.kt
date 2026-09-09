@@ -32,7 +32,10 @@ class AccessRuntimeDependencies(
     val profilePhotoSelection: ProfilePhotoSelectionPort,
 )
 
+// Host-owned adapters are explicit constructor requirements, never silent no-op defaults.
+@Suppress("LongParameterList")
 class GroupsRuntimeDependencies(
+    val map: br.com.saqz.groups.domain.map.GroupMapPort,
     val attendanceShare: NativeAttendanceSharePort,
     val photos: GroupPhotoRuntimeDependencies,
     val links: NativeGroupLinkPort,

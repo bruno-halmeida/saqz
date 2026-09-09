@@ -92,6 +92,7 @@ class GameSettlementRootTest {
         )
         val detailsViewModel = GroupDetailsViewModel(
             departureGateway = br.com.saqz.groups.domain.membership.GroupDepartureGateway { SaqzResult.Success(Unit) },
+            communications = br.com.saqz.groups.presentation.FakeCommunicationGateway(),
             groupId = "group-1",
             groupGateway = FakeGroupGateway(),
             gameGateway = FakeGameGateway(),
@@ -138,6 +139,8 @@ class GameSettlementRootTest {
                 } else {
                     stateHolder.SaveableStateProvider("details") {
                         GroupDetailsRoot(
+
+                            mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                             groupId = "group-1",
                             onBack = {},
                             onEffect = {},

@@ -56,7 +56,8 @@ class OwnMonthlyPaymentsViewModel(
                         }
                         OwnChargesUi(
                             pending = monthly.filter { it.status == ChargeStatus.Pending }.sortedBy { it.dueDate }.map { it.toUi() },
-                            history = monthly.filterNot { it.status == ChargeStatus.Pending }.sortedByDescending { it.dueDate }.map { it.toUi() },
+                            history = monthly.filterNot { it.status == ChargeStatus.Pending }
+                                .sortedByDescending { it.dueDate }.map { it.toUi() },
                         )
                     }
                 }

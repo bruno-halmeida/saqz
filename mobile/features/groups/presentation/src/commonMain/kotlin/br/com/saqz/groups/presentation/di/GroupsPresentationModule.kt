@@ -63,7 +63,7 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> NewEntryViewModel(params.get(), params.get(), get(), get<GroupNowPort>()) }
     viewModel {
         params ->
-        GroupDetailsViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>(), get())
+        GroupDetailsViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>(), get(), get())
     }
     viewModel { params -> GroupCashboxViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>()) }
     viewModel {
@@ -73,6 +73,8 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> MemberProfileViewModel(params[0], params[1], get()) }
     viewModel { OwnMonthlyPaymentsViewModel(get(), get()) }
+    viewModel { params -> br.com.saqz.groups.presentation.communication.GroupThreadViewModel(params[0], params[1], get(), get(), get()) }
+    viewModel { params -> br.com.saqz.groups.presentation.communication.NotificationCenterViewModel(params.get(), get()) }
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
     viewModel { params ->
         val (groupId, gameId) = gameEditorRouteArguments(params)

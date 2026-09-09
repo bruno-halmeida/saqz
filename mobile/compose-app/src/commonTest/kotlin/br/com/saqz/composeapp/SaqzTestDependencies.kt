@@ -100,6 +100,7 @@ internal fun testSaqzPlatformDependencies() = SaqzPlatformDependencies(
         state = TestLocalGroupStatePort,
         inviteUrlStore = TestInviteUrlStorePort,
         inviteShare = TestInviteSharePort,
+        map = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
         inviteClipboard = TestInviteClipboardPort,
     ),
     drafts = SaqzDraftStores(

@@ -82,6 +82,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
                     profilePhotoSelection = profilePhoto,
                 ),
                 groups = GroupsRuntimeDependencies(
+                    map = br.com.saqz.androidapp.groups.AndroidMapAdapter(context.applicationContext),
                     attendanceShare = attendanceShare,
                     photos = GroupPhotoRuntimeDependencies(
                         selection = photos.selection,

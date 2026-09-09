@@ -58,6 +58,8 @@ sealed interface OwnProfileEffect {
     data object OpenMyPlan : OwnProfileEffect
     data class OpenAthleteProfile(val groupId: String) : OwnProfileEffect
     data object OpenMonthlyPayments : OwnProfileEffect
+    data object OpenSettings : OwnProfileEffect
+    data object OpenNotifications : OwnProfileEffect
     data object SignedOut : OwnProfileEffect
 }
 

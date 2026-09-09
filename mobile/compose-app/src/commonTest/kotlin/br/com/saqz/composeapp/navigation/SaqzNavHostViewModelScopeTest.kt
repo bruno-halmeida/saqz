@@ -3,6 +3,10 @@ package br.com.saqz.composeapp.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.DisposableEffect
+import coil3.ImageLoader
+import coil3.compose.LocalPlatformContext
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
@@ -12,12 +16,15 @@ import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.composeapp.startTestSaqzKoin
 import br.com.saqz.composeapp.stopTestSaqzKoin
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -40,6 +47,23 @@ import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.domain.group.UpdateGroupSettingsCommand
 import br.com.saqz.groups.domain.group.VersionedGroup
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.GroupVersionToken
+import br.com.saqz.groups.domain.group.GroupProfile
+import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.game.GameGateway
+import br.com.saqz.groups.domain.membership.GroupDepartureGateway
+import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.athlete.UpdateOwnAthleteProfileCommand
+import br.com.saqz.profile.domain.ProfileGateway
+import br.com.saqz.profile.domain.Profile
+import br.com.saqz.profile.domain.ProfileUser
+import br.com.saqz.profile.domain.PhoneVisibility
+import br.com.saqz.profile.domain.ProfileStats
+import br.com.saqz.profile.domain.AthleteProfile
+import br.com.saqz.profile.domain.AthleteMembership
+import org.koin.mp.KoinPlatform
 import br.com.saqz.groups.domain.home.HomeError
 import br.com.saqz.groups.domain.home.HomeGateway
 import br.com.saqz.groups.domain.home.HomeMemberReadModel
@@ -53,6 +77,7 @@ import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
+import kotlin.test.assertTrue
 import org.koin.compose.viewmodel.dsl.viewModel
 import org.koin.core.context.loadKoinModules
 import org.koin.dsl.module
@@ -159,6 +184,70 @@ class SaqzNavHostViewModelScopeTest {
         }
     }
 
+    @Test
+    fun confirmedDepartureClearsTheJourneyAndReloadsGroupsAndProfile() = withProbes { home, groups ->
+        val data = installConnectedJourney(groups)
+        home.gatewayOverride = object : HomeGateway {
+            override suspend fun read() = SaqzResult.Success(
+                if (data.member) homeOf(AnaCents)
+                else homeOf(AnaCents).copy(ownCharges = HomeOwnCharges(0, 0, emptyList())),
+            )
+        }
+        runComposeUiTest {
+            val backStack = NavBackStack<NavKey>(SaqzShellDestination.Home)
+            val intents = mutableListOf<AccessIntent>()
+            setContent { NavHostUnderTest(mutableStateOf(ready(ana)), backStack, intents::add) }
+            awaitText(AnaBanner)
+            tab("Grupos").performClick()
+            awaitText("Grupo integrado")
+            onNodeWithTag("group-list-group-grupo-a").performClick()
+            waitForIdle()
+            onNodeWithTag("group-details-leave").performScrollTo().performClick()
+            onNodeWithTag("group-leave-cancel").performClick()
+            assertTrue(data.member)
+            assertTrue(data.departures.isEmpty())
+            onNodeWithTag("group-details-leave").performScrollTo().performClick()
+            onNodeWithTag("group-leave-confirm").performClick()
+            waitForIdle()
+
+            assertEquals(listOf<NavKey>(SaqzShellDestination.Groups), backStack.toList())
+            assertEquals(listOf(GroupId("grupo-a")), data.departures)
+            assertTrue(intents.contains(AccessIntent.Session(SessionIntent.MembershipRemoved("grupo-a"))))
+            onNodeWithTag("group-list-empty").assertIsDisplayed()
+            onNodeWithTag("group-list-group-grupo-a").assertDoesNotExist()
+            tab("Perfil").performClick()
+            waitForIdle()
+            onNodeWithTag("own-profile-groups-empty").performScrollTo().assertIsDisplayed()
+            onNodeWithTag("own-profile-group-grupo-a").assertDoesNotExist()
+            tab("Início").performClick()
+            waitForIdle()
+            onNodeWithText(AnaBanner, substring = true).assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun editingOwnAthleteReturnsToProfileWithTheSavedPosition() = withProbes { _, groups ->
+        val data = installConnectedJourney(groups)
+        runComposeUiTest {
+            val profileDestination = SaqzShellDestination.Home
+            val backStack = NavBackStack<NavKey>(profileDestination)
+            setContent { NavHostUnderTest(mutableStateOf(ready(ana)), backStack) }
+            awaitText(AnaBanner)
+            tab("Perfil").performClick()
+            awaitText("Grupo integrado")
+            onNodeWithTag("own-profile-group-grupo-a").performScrollTo().performClick()
+            waitForIdle()
+            assertEquals(GroupsRoute.AthleteRegistration("grupo-a", fromProfile = true), backStack.last())
+            onNodeWithTag("athlete-registration-position-CENTRAL").performScrollTo().performClick()
+            onNodeWithTag("athlete-registration-save").performScrollTo().performClick()
+            waitForIdle()
+            assertEquals(AthletePosition.CENTRAL, data.position)
+            assertEquals(listOf<NavKey>(profileDestination), backStack.toList())
+            onNodeWithTag("own-profile-group-grupo-a").performScrollTo().assertIsDisplayed()
+            onNodeWithText("Central", substring = true).assertIsDisplayed()
+        }
+    }
+
     // -- fixtures --------------------------------------------------------------------
 
     /**
@@ -237,8 +326,16 @@ private fun ComposeUiTest.awaitText(text: String) = waitUntil(timeoutMillis = 10
 private fun NavHostUnderTest(
     session: MutableState<AccessUiState>,
     backStack: NavBackStack<NavKey> = NavBackStack(SaqzShellDestination.Home),
+    onIntent: (AccessIntent) -> Unit = {},
 ) = SaqzTheme {
-    SaqzNavHost(state = session.value, onIntent = {}, backStack = backStack)
+    val context = LocalPlatformContext.current
+    val loader = remember(context) {
+        ImageLoader.Builder(context).build().also { imageLoader ->
+            loadKoinModules(module { single<ImageLoader> { imageLoader } })
+        }
+    }
+    DisposableEffect(loader) { onDispose { loader.shutdown() } }
+    SaqzNavHost(state = session.value, onIntent = onIntent, backStack = backStack)
 }
 
 /**
@@ -248,10 +345,11 @@ private fun NavHostUnderTest(
 private class HomeProbe(vararg payloads: HomeReadModel) {
     private val payloads = payloads.toList()
     val instances = mutableListOf<HomeViewModel>()
+    var gatewayOverride: HomeGateway? = null
 
     fun newViewModel(attendance: AttendanceGateway, now: GroupNowPort): HomeViewModel {
         val payload = payloads.getOrElse(instances.size) { payloads.last() }
-        return HomeViewModel(FixedHomeGateway(payload), FixedAthleteGateway, attendance, now)
+        return HomeViewModel(gatewayOverride ?: FixedHomeGateway(payload), FixedAthleteGateway, attendance, now)
             .also { instances += it }
     }
 }
@@ -291,9 +389,11 @@ private object FixedAthleteGateway : AthleteGateway {
  */
 private class RecordingGroupGateway : GroupGateway {
     val reads = mutableListOf<String>()
+    var payload: Group? = null
 
     override suspend fun read(groupId: GroupId): SaqzResult<VersionedGroup, GroupProfileError> {
         reads += groupId.value
+        payload?.let { return SaqzResult.Success(VersionedGroup(it, GroupVersionToken("v1"))) }
         return offline()
     }
 
@@ -307,4 +407,59 @@ private class RecordingGroupGateway : GroupGateway {
 
     private fun <T> offline(): SaqzResult<T, GroupProfileError> =
         SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Connectivity))
+}
+
+/** Shared persistence fake: each real destination reads the values changed by the previous one. */
+private class ConnectedJourneyData {
+    var member = true
+    var position = AthletePosition.PONTA
+    val departures = mutableListOf<GroupId>()
+}
+
+private fun installConnectedJourney(groups: RecordingGroupGateway): ConnectedJourneyData {
+    val data = ConnectedJourneyData()
+    groups.payload = Group("grupo-a", "Grupo integrado", "UTC", 1, GroupRole.ATHLETE).copy(
+        profile = GroupProfile(
+            GroupModality.COURT_VOLLEYBALL, null, null, null, null, null, null, null, null, emptyList(), null, null,
+        ),
+    )
+    val originalGames = KoinPlatform.getKoin().get<GameGateway>()
+    val originalProfile = KoinPlatform.getKoin().get<ProfileGateway>()
+    val athletes = object : AthleteGateway by FixedAthleteGateway {
+        override suspend fun ownProfile() = SaqzResult.Success(OwnAthleteProfile("ana", "Ana", null,
+            if (data.member) listOf(OwnAthleteMembership(
+                GroupId("grupo-a"), "Grupo integrado", GroupRole.ATHLETE, data.position, AthleteMembershipType.AVULSO, true,
+            )) else emptyList(),
+        ))
+        override suspend fun updateOwnProfile(command: UpdateOwnAthleteProfileCommand): SaqzResult<Athlete, AthleteError> {
+            assertEquals(GroupId("grupo-a"), command.groupId)
+            data.position = requireNotNull(command.position)
+            return SaqzResult.Success(Athlete("ana", "Ana", GroupRole.ATHLETE, data.position, AthleteMembershipType.AVULSO, true))
+        }
+    }
+    val profile = object : ProfileGateway by originalProfile {
+        override suspend fun bootstrap() = SaqzResult.Success(Profile(
+            ProfileUser("ana", "ana@exemplo.com", "Ana", null, null, false, PhoneVisibility.NOBODY, null, true, null),
+            emptyList(),
+        ))
+        override suspend fun stats() = SaqzResult.Success(ProfileStats(0, null, if (data.member) 1 else 0))
+        override suspend fun athleteProfile() = SaqzResult.Success(AthleteProfile("ana", "Ana", null,
+            if (data.member) listOf(AthleteMembership(
+                GroupId("grupo-a"), "Grupo integrado", "ATHLETE", data.position.name, "AVULSO", true,
+            )) else emptyList(),
+        ))
+    }
+    loadKoinModules(module {
+        single<AthleteGateway> { athletes }
+        single<ProfileGateway> { profile }
+        single<GameGateway> { object : GameGateway by originalGames {
+            override suspend fun list(groupId: GroupId) = SaqzResult.Success(emptyList<br.com.saqz.groups.domain.game.Game>())
+        } }
+        single<GroupDepartureGateway> { GroupDepartureGateway { groupId ->
+            data.departures += groupId
+            data.member = false
+            SaqzResult.Success(Unit)
+        } }
+    })
+    return data
 }
