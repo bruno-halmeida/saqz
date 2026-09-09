@@ -28,9 +28,12 @@ import br.com.saqz.groups.domain.membership.GroupDepartureGateway
 import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import br.com.saqz.groups.domain.communication.CommunicationGateway
+import br.com.saqz.groups.data.communication.KtorCommunicationGateway
 
 /** Bindings da camada remota da feature de grupos. */
 fun groupsDataModule(): Module = module {
+    single<CommunicationGateway> { KtorCommunicationGateway(get()) }
     single<KtorGroupGateway> { KtorGroupGateway(get()) }
     single<GroupGateway> { get<KtorGroupGateway>() }
     single<GroupProfileGateway> { get<KtorGroupGateway>() }
