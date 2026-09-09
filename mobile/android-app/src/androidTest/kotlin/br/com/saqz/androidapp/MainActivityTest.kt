@@ -1,6 +1,7 @@
 package br.com.saqz.androidapp
 
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -9,7 +10,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -17,8 +17,8 @@ import org.junit.rules.RuleChain
 import org.junit.rules.TestRule
 import org.junit.runner.RunWith
 
-// Restoration and accessibility measured on the real launcher: insets, IME and rotation
-// with a closed overlay preserved.
+// Restoration and accessibility measured on the portrait-only launcher: insets, IME
+// and activity recreation.
 @RunWith(AndroidJUnit4::class)
 class MainActivityTest {
     private val signedOut = SignedOutAccessRule()
@@ -27,22 +27,16 @@ class MainActivityTest {
     @get:Rule
     val rules: TestRule = RuleChain.outerRule(signedOut).around(composeRule)
 
-    @After
-    fun resetOrientation() {
-        composeRule.activityRule.scenario.onActivity {
-            it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
-    }
-
     @Test
     fun displaysTheSharedSaqzPlaceholder() {
         composeRule.onNodeWithText("Organize seu grupo.", substring = true).assertIsDisplayed()
     }
 
     @Test
-    fun landscapeInsets() {
+    fun portraitInsets() {
         composeRule.activityRule.scenario.onActivity {
-            it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            assertEquals(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, it.requestedOrientation)
+            assertEquals(Configuration.ORIENTATION_PORTRAIT, it.resources.configuration.orientation)
         }
         composeRule.waitForIdle()
         // EDGE-07: both authentication actions remain reachable around system insets.
@@ -62,14 +56,12 @@ class MainActivityTest {
     }
 
     @Test
-    fun rotationKeepsSingleLoginDestination() {
+    fun recreationKeepsSingleLoginDestination() {
         assertEquals(
             1,
             composeRule.onAllNodesWithTag("authenticated-access-destination").fetchSemanticsNodes().size,
         )
-        composeRule.activityRule.scenario.onActivity {
-            it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        }
+        composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
         // AUTH-06 + EDGE-06/EDGE-07: restoration preserves one signed-out
         // destination and never resurrects protected catalog content.

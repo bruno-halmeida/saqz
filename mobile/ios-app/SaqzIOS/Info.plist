@@ -43,6 +43,16 @@
 	<string>$(SAQZ_API_BASE_URL)</string>
 	<key>SaqzEnvironment</key>
 	<string>$(SAQZ_ENVIRONMENT)</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

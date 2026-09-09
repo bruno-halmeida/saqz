@@ -1,6 +1,7 @@
 package br.com.saqz.androidapp
 
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -19,7 +20,7 @@ import org.junit.runner.RunWith
 import java.io.FileInputStream
 
 // Self-contained subset meant to also run standalone against API 35: the behaviors most
-// likely to regress on a newer platform — cold start, font scale, rotation and insets —
+// likely to regress on a newer platform — cold start, font scale, recreation and insets —
 // measured on the real MainActivity launcher.
 @RunWith(AndroidJUnit4::class)
 class ModernAndroidBehaviorTest {
@@ -32,9 +33,6 @@ class ModernAndroidBehaviorTest {
     @After
     fun resetConfiguration() {
         shell("settings put system font_scale 1.0")
-        composeRule.activityRule.scenario.onActivity {
-            it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
     }
 
     private fun shell(command: String) {
@@ -65,16 +63,14 @@ class ModernAndroidBehaviorTest {
     }
 
     @Test
-    fun rotationKeepsSingleLoginDestination() {
+    fun recreationKeepsSingleLoginDestination() {
         assertEquals(
             1,
             composeRule.onAllNodesWithTag("authenticated-access-destination").fetchSemanticsNodes().size,
         )
-        composeRule.activityRule.scenario.onActivity {
-            it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        }
+        composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
-        // AUTH-06 + EDGE-06/EDGE-07: rotation restores exactly one login
+        // AUTH-06 + EDGE-06/EDGE-07: recreation restores exactly one login
         // destination, with no protected content in the semantics tree.
         assertEquals(
             1,
@@ -87,7 +83,8 @@ class ModernAndroidBehaviorTest {
     @Test
     fun portraitInsets() {
         composeRule.activityRule.scenario.onActivity {
-            it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            assertEquals(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, it.requestedOrientation)
+            assertEquals(Configuration.ORIENTATION_PORTRAIT, it.resources.configuration.orientation)
         }
         composeRule.waitForIdle()
         // EDGE-07: edge-to-edge keeps both authentication actions reachable.

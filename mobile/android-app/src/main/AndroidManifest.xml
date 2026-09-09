@@ -31,7 +31,12 @@
             android:name="br.com.saqz.androidapp.MainActivity"
             android:theme="@style/Theme.Saqz.Starting"
             android:launchMode="singleTask"
+            android:screenOrientation="portrait"
             android:exported="true">
+            <!-- Keep the portrait restriction on large screens when targeting API 36. -->
+            <property
+                android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
+                android:value="true" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
