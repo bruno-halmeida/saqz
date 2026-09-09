@@ -388,6 +388,7 @@ class AthleteEndpointIntegrationTest {
             assertEquals(204, delete("/api/groups/$groupId/memberships/me").statusCode())
             assertEquals(204, delete("/api/groups/$groupId/memberships/me").statusCode())
             assertEquals(listOf(actorId), athletes.removals)
+            assertEquals(listOf(groupId to actorId), athletes.removedMemberships)
             assertTrue(athletes.find(groupId, actorId) == null)
             assertEquals(memberId, athletes.find(groupId, memberId)?.userId)
         }
@@ -568,12 +569,14 @@ class AthleteEndpointIntegrationTest {
         val positionUpdates = mutableListOf<Pair<UUID, AthletePosition?>>()
         val updates = mutableListOf<UpdateAthleteCommand>()
         val removals = mutableListOf<UUID>()
+        val removedMemberships = mutableListOf<Pair<UUID, UUID>>()
         fun reset(values: List<AthleteMembership>) {
             members.clear()
             values.associateByTo(members, AthleteMembership::userId)
             positionUpdates.clear()
             updates.clear()
             removals.clear()
+            removedMemberships.clear()
         }
         override fun find(groupId: UUID, userId: UUID) = members[userId]
         override fun updateOwn(command: UpdateOwnAthleteProfileCommand): AthleteMembership {
@@ -614,6 +617,7 @@ class AthleteEndpointIntegrationTest {
             return changed
         }
         override fun remove(groupId: UUID, userId: UUID) {
+            removedMemberships += groupId to userId
             removals += userId
             members.remove(userId)
         }

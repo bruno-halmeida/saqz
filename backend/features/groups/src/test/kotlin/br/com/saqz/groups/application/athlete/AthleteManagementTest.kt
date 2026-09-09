@@ -41,6 +41,7 @@ class AthleteManagementTest {
             assertEquals(member, fixture.athletes.find(groupId, member.userId))
             assertEquals(owner, fixture.athletes.find(groupId, owner.userId))
             assertEquals(listOf(actor), fixture.athletes.removedUserIds)
+            assertEquals(listOf(groupId to actor), fixture.athletes.removedMemberships)
         }
     }
 
@@ -375,6 +376,7 @@ class AthleteManagementTest {
         val positionUpdates = mutableListOf<Pair<UUID, AthletePosition?>>()
         val updateCommands = mutableListOf<UpdateAthleteCommand>()
         val removedUserIds = mutableListOf<UUID>()
+        val removedMemberships = mutableListOf<Pair<UUID, UUID>>()
 
         override fun find(groupId: UUID, userId: UUID): AthleteMembership? = rows[userId]
 
@@ -428,6 +430,7 @@ class AthleteManagementTest {
         }
 
         override fun remove(groupId: UUID, userId: UUID) {
+            removedMemberships += groupId to userId
             removedUserIds += userId
             rows.remove(userId)
         }

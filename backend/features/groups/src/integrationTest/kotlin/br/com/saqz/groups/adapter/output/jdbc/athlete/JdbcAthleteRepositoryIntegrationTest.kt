@@ -218,11 +218,14 @@ class JdbcAthleteRepositoryIntegrationTest {
         val group = insertGroup(owner)
         val member = insertUser("remove-member", "Member Person")
         insertMembership(group, member)
+        val otherGroup = insertGroup(owner)
+        insertMembership(otherGroup, member)
 
         repository.remove(group, member)
 
         assertEquals(0, number("SELECT count(*) FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
         assertEquals(1, number("SELECT count(*) FROM group_membership_removals WHERE group_id = '$group' AND user_id = '$member'"))
+        assertEquals(1, number("SELECT count(*) FROM group_memberships WHERE group_id = '$otherGroup' AND user_id = '$member'"))
     }
 
     @Test
