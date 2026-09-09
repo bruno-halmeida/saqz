@@ -24,6 +24,7 @@ import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.domain.home.HomeGateway
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
+import br.com.saqz.groups.domain.membership.GroupDepartureGateway
 import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -37,7 +38,9 @@ fun groupsDataModule(): Module = module {
     single<GameGateway> { KtorGameGateway(get()) }
     single<KtorHomeGateway> { KtorHomeGateway(get()) }
     single<HomeGateway> { get<KtorHomeGateway>() }
-    single<GroupMembershipGateway> { KtorGroupMembershipGateway(get()) }
+    single<KtorGroupMembershipGateway> { KtorGroupMembershipGateway(get()) }
+    single<GroupMembershipGateway> { get<KtorGroupMembershipGateway>() }
+    single<GroupDepartureGateway> { get<KtorGroupMembershipGateway>() }
     single<AthleteFinanceGateway> { KtorAthleteFinanceGateway(get()) }
     single<OrganizerFinanceGateway> { KtorOrganizerFinanceGateway(get()) }
     single<FinanceStatementGateway> { KtorFinanceStatementGateway(get()) }

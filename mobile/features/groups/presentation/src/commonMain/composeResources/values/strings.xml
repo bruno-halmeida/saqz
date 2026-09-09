@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_details_map_failure">Não foi possível abrir o mapa. Consulte o endereço acima ou tente novamente.</string>
+    <string name="group_leave_title">Sair do grupo?</string>
+    <string name="group_leave_description">Você perderá o acesso a este grupo. Seu histórico e as cobranças existentes serão mantidos. Para voltar, será necessário entrar novamente por convite.</string>
+    <string name="group_leave_confirm">Sair do grupo</string>
+    <string name="group_leave_cancel">Continuar no grupo</string>
+    <string name="group_leave_failure">Não foi possível confirmar sua saída. Verifique sua conexão e tente novamente.</string>
     <!-- 2n · Lista de grupos; 2o · primeiro acesso -->
     <string name="groups_title">Grupos</string>
     <string name="groups_summary">%1$d grupos · %2$d pedindo confirmação</string>

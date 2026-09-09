@@ -1,0 +1,5 @@
+<resources>
+    <string name="monthly_payments_title">Minhas mensalidades</string>
+    <string name="monthly_payments_empty">Nenhuma mensalidade registrada.</string>
+    <string name="monthly_payments_open_group">Ver grupo e dados para pagamento</string>
+</resources>

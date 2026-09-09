@@ -414,7 +414,7 @@ private fun AthleteRegistrationLoadFailure(onRetry: () -> Unit, modifier: Modifi
     )
 }
 
-private fun positionLabel(
+internal fun positionLabel(
     position: AthletePosition,
     composition: GroupComposition?,
 ): StringResource = when (position) {
@@ -437,13 +437,13 @@ private fun positionLabel(
     AthletePosition.LIBERO -> Res.string.athlete_registration_position_libero
 }
 
-private fun levelLabel(level: AthleteLevel): StringResource = when (level) {
+internal fun levelLabel(level: AthleteLevel): StringResource = when (level) {
     AthleteLevel.INICIANTE -> Res.string.athlete_registration_level_beginner
     AthleteLevel.INTERMEDIARIO -> Res.string.athlete_registration_level_intermediate
     AthleteLevel.AVANCADO -> Res.string.athlete_registration_level_advanced
 }
 
-private fun sideLabel(side: AthletePreferredSide): StringResource = when (side) {
+internal fun sideLabel(side: AthletePreferredSide): StringResource = when (side) {
     AthletePreferredSide.DIREITA -> Res.string.athlete_registration_side_right
     AthletePreferredSide.ESQUERDA -> Res.string.athlete_registration_side_left
     AthletePreferredSide.TANTO_FAZ -> Res.string.athlete_registration_side_both

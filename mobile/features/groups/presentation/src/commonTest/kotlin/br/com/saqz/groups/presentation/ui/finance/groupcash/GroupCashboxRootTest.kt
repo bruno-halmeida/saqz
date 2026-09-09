@@ -91,6 +91,7 @@ class GroupCashboxRootTest {
             now = now,
         )
         val detailsViewModel = GroupDetailsViewModel(
+            departureGateway = br.com.saqz.groups.domain.membership.GroupDepartureGateway { SaqzResult.Success(Unit) },
             groupId = "group-1",
             groupGateway = FakeGroupGateway(),
             gameGateway = FakeGameGateway(),

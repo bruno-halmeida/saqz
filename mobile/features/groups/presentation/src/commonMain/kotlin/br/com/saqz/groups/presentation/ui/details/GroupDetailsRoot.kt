@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
@@ -43,6 +44,7 @@ fun GroupDetailsRoot(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
+    val uriHandler = LocalUriHandler.current
     // VUL-205: só recarrega se o contador mudou desde que esta ViewModel nasceu. O contador é
     // do host e sobrevive ao pop da entrada (`SaqzNavHost`), então `> 0` fazia a entrada
     // reempilhada somar o `Retry` ao `init { load() }` da ViewModel nova — duas cargas no
@@ -56,6 +58,13 @@ fun GroupDetailsRoot(
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             is GroupDetailsEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
+            is GroupDetailsEffect.OpenMap -> {
+                try {
+                    uriHandler.openUri(venueMapUrl(effect.address))
+                } catch (_: IllegalArgumentException) {
+                    viewModel.onIntent(GroupDetailsIntent.MapOpenFailed)
+                }
+            }
             else -> onEffect(effect)
         }
     }
@@ -65,4 +74,22 @@ fun GroupDetailsRoot(
         onIntent = viewModel::onIntent,
         photoFailed = photoFailed,
     )
+}
+
+internal fun venueMapUrl(address: String): String {
+    val query = buildString {
+        address.encodeToByteArray().forEach { byte ->
+            val value = byte.toInt() and 255
+            if (value.toChar() in 'a'..'z' || value.toChar() in 'A'..'Z' ||
+                value.toChar() in '0'..'9' || value.toChar() in "-._~"
+            ) {
+                append(value.toChar())
+            } else {
+                append('%')
+                append("0123456789ABCDEF"[value ushr 4])
+                append("0123456789ABCDEF"[value and 15])
+            }
+        }
+    }
+    return "https://www.google.com/maps/search/?api=1&query=$query"
 }

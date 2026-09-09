@@ -36,6 +36,8 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.http.HttpStatus
 import java.time.Instant
 import java.util.UUID
 
@@ -216,6 +218,21 @@ class AthleteController(
             UpdateAthleteResult.AccessForbidden -> throw AccessForbiddenException()
             is UpdateAthleteResult.Invalid -> throw InvalidGroupRequestException(result.fieldErrors, status = 422)
             is UpdateAthleteResult.Success -> result.athlete.toResponse()
+        }
+    }
+
+    @DeleteMapping("/api/groups/{groupId}/memberships/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun leave(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @PathVariable("groupId") groupId: String,
+    ) {
+        when (removeAthlete.leave(actor(identity), parseId(groupId))) {
+            RemoveAthleteResult.Success -> Unit
+            RemoveAthleteResult.GroupNotFound -> throw GroupNotFoundException()
+            RemoveAthleteResult.AccessForbidden,
+            RemoveAthleteResult.OwnerImmutable,
+            -> throw AccessForbiddenException()
         }
     }
 

@@ -30,6 +30,17 @@ class OwnProfileViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     @Test
+    fun `athlete profile and monthly payments open their real destinations`() = runTest(dispatcher) {
+        val vm = OwnProfileViewModel(FakeProfileGateway())
+        vm.onIntent(OwnProfileIntent.OpenGroup("my-group"))
+        advanceUntilIdle()
+        assertEquals(OwnProfileEffect.OpenAthleteProfile("my-group"), vm.effects.first())
+        vm.onIntent(OwnProfileIntent.OpenMonthlyPayments)
+        advanceUntilIdle()
+        assertEquals(OwnProfileEffect.OpenMonthlyPayments, vm.effects.first())
+    }
+
+    @Test
     fun `null attendance hides the attendance stat`() = runTest(dispatcher) {
         val gateway = FakeProfileGateway().apply { stats = stats.copy(attendanceRate = null) }
         val viewModel = OwnProfileViewModel(gateway)

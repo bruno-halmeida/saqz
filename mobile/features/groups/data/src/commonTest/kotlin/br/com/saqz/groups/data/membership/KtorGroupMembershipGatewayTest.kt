@@ -40,6 +40,25 @@ import kotlin.test.assertTrue
 
 class KtorGroupMembershipGatewayTest {
     @Test
+    fun `leave deletes authenticated membership without selecting another user`() = runTest {
+        val result = fixture { request ->
+            assertEquals(HttpMethod.Delete, request.method)
+            assertEquals("/api/groups/$GROUP_ID/memberships/me", request.url.encodedPath)
+            assertEquals(0, request.body.contentLength ?: 0)
+            respond("", HttpStatusCode.NoContent)
+        }.gateway.leave(GroupId(GROUP_ID))
+        assertEquals(SaqzResult.Success(Unit), result)
+    }
+
+    @Test
+    fun `leave maps forbidden owner and transport failure without success`() = runTest {
+        val forbidden = fixture { respond("", HttpStatusCode.Forbidden) }.gateway.leave(GroupId(GROUP_ID))
+        assertEquals(SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Forbidden)), forbidden)
+        val offline = fixture { throw UnresolvedAddressException() }.gateway.leave(GroupId(GROUP_ID))
+        assertIs<SaqzResult.Failure<*>>(offline)
+    }
+
+    @Test
     fun `list uses exact route and method`() = runTest {
         fixture { request ->
             assertEquals(HttpMethod.Get, request.method)

@@ -40,6 +40,10 @@ data class GroupDetailsState(
     val autoConfirmationEnabled: Boolean = false,
     val autoConfirmationUpdating: Boolean = false,
     val autoConfirmationFailed: Boolean = false,
+    val confirmingLeave: Boolean = false,
+    val leaving: Boolean = false,
+    val leaveFailed: Boolean = false,
+    val mapFailed: Boolean = false,
 )
 
 /** Nome, linha de resumo e — só no 2e — os chips de bairro/modalidade/agenda. */
@@ -177,6 +181,8 @@ sealed interface GroupDetailsIntent {
 
     data object OpenVenueMap : GroupDetailsIntent
 
+    data object MapOpenFailed : GroupDetailsIntent
+
     data object OpenNotices : GroupDetailsIntent
 
     data object OpenChat : GroupDetailsIntent
@@ -191,6 +197,10 @@ sealed interface GroupDetailsIntent {
     data object OpenCashbox : GroupDetailsIntent
 
     data object Leave : GroupDetailsIntent
+
+    data object ConfirmLeave : GroupDetailsIntent
+
+    data object CancelLeave : GroupDetailsIntent
 
     data object RetryRoster : GroupDetailsIntent
 
@@ -225,7 +235,7 @@ sealed interface GroupDetailsEffect {
 
     data class OpenInviteLink(val groupId: String) : GroupDetailsEffect
 
-    data object OpenMap : GroupDetailsEffect
+    data class OpenMap(val address: String) : GroupDetailsEffect
 
     data object Left : GroupDetailsEffect
 

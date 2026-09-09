@@ -15,6 +15,15 @@ class RemoveAthlete(
     private val athleteRepository: AthleteRepository,
     private val accessPolicy: GroupAccessPolicy,
 ) {
+    /** Self-service departure never grants the management permission to remove another athlete. */
+    fun leave(actor: UUID, groupId: UUID): RemoveAthleteResult = transactionRunner.inTransaction {
+        val membership = athleteRepository.find(groupId, actor)
+            ?: return@inTransaction RemoveAthleteResult.Success
+        if (membership.role == GroupRole.OWNER) return@inTransaction RemoveAthleteResult.OwnerImmutable
+        athleteRepository.remove(groupId, actor)
+        RemoveAthleteResult.Success
+    }
+
     fun execute(actor: UUID, groupId: UUID, userId: UUID): RemoveAthleteResult = transactionRunner.inTransaction {
         val group = groupReadRepository.find(GroupReadKey(actor, groupId))
             ?: return@inTransaction RemoveAthleteResult.GroupNotFound

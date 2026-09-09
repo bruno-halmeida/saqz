@@ -31,17 +31,13 @@ class OwnProfileViewModel(
                 // TODO(Fluxo 7 · 7c): abrir a tela de notificações quando ela existir.
             }
 
-            OwnProfileIntent.OpenMonthlyPayments -> {
-                // TODO(Fluxo 5): abrir mensalidades quando o fluxo de cobrança existir.
-            }
+            OwnProfileIntent.OpenMonthlyPayments -> emit(OwnProfileEffect.OpenMonthlyPayments)
 
             OwnProfileIntent.OpenNotifications -> {
                 // TODO(Fluxo 7 · 7c): abrir notificações quando a tela existir.
             }
 
-            is OwnProfileIntent.OpenGroup -> {
-                // Integração futura (Fluxo 3 · 3j): abrir o perfil do atleta no grupo.
-            }
+            is OwnProfileIntent.OpenGroup -> emit(OwnProfileEffect.OpenAthleteProfile(intent.groupId))
         }
     }
 

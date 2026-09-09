@@ -28,6 +28,31 @@ class AthleteManagementTest {
     private val admin = athlete(UUID.randomUUID(), "Admin Person", GroupRole.ADMIN, AthleteMembershipType.AVULSO)
     private val member = athlete(UUID.randomUUID(), "Athlete Person", GroupRole.ATHLETE, AthleteMembershipType.AVULSO)
 
+    @Test
+    fun `athlete and admin can leave only their own membership and retry safely`() {
+        for (role in listOf(GroupRole.ATHLETE, GroupRole.ADMIN)) {
+            val self = member.copy(userId = actor, role = role)
+            val fixture = fixture(role, listOf(owner, member, self))
+
+            assertSame(RemoveAthleteResult.Success, fixture.remove.leave(actor, groupId))
+            assertSame(RemoveAthleteResult.Success, fixture.remove.leave(actor, groupId))
+
+            assertNull(fixture.athletes.find(groupId, actor))
+            assertEquals(member, fixture.athletes.find(groupId, member.userId))
+            assertEquals(owner, fixture.athletes.find(groupId, owner.userId))
+            assertEquals(listOf(actor), fixture.athletes.removedUserIds)
+        }
+    }
+
+    @Test
+    fun `owner cannot leave and absent membership is a no-op`() {
+        val fixture = fixture(GroupRole.OWNER)
+        assertSame(RemoveAthleteResult.OwnerImmutable, fixture.remove.leave(owner.userId, groupId))
+        assertSame(RemoveAthleteResult.Success, fixture.remove.leave(UUID.randomUUID(), groupId))
+        assertEquals(owner, fixture.athletes.find(groupId, owner.userId))
+        assertTrue(fixture.athletes.removedUserIds.isEmpty())
+    }
+
     // UpdateOwnAthleteProfile
 
     @Test

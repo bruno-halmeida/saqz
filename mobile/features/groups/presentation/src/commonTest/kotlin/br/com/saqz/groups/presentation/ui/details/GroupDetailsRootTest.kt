@@ -143,6 +143,7 @@ class GroupDetailsRootTest {
         organizerFinanceGateway = FakeOrganizerFinanceGateway(),
         athleteFinanceGateway = FakeAthleteFinanceGateway(),
         now = GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") },
+        departureGateway = br.com.saqz.groups.domain.membership.GroupDepartureGateway { SaqzResult.Success(Unit) },
     )
 
     private companion object {

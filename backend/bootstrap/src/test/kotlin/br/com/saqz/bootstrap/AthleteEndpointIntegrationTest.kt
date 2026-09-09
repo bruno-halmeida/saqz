@@ -380,6 +380,27 @@ class AthleteEndpointIntegrationTest {
     }
 
     @Test
+    fun `self departure is bodyless authenticated and idempotent for athlete and admin`() {
+        for (role in listOf(GroupRole.ATHLETE, GroupRole.ADMIN)) {
+            read.role = role
+            athletes.reset(listOf(athlete(actorId, "Self Person", role), athlete(memberId, "Other Person", GroupRole.ATHLETE)))
+
+            assertEquals(204, delete("/api/groups/$groupId/memberships/me").statusCode())
+            assertEquals(204, delete("/api/groups/$groupId/memberships/me").statusCode())
+            assertEquals(listOf(actorId), athletes.removals)
+            assertTrue(athletes.find(groupId, actorId) == null)
+            assertEquals(memberId, athletes.find(groupId, memberId)?.userId)
+        }
+    }
+
+    @Test
+    fun `owner departure is forbidden without removing membership`() {
+        assertProblem(delete("/api/groups/$groupId/memberships/me"), 403, "ACCESS_FORBIDDEN")
+        assertTrue(athletes.removals.isEmpty())
+        assertEquals(GroupRole.OWNER, athletes.find(groupId, actorId)?.role)
+    }
+
+    @Test
     fun `removing the owner is forbidden`() {
         assertProblem(delete("/api/groups/$groupId/athletes/$actorId"), 403, "ACCESS_FORBIDDEN")
         assertTrue(athletes.removals.isEmpty())

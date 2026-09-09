@@ -44,6 +44,7 @@ import br.com.saqz.groups.resources.group_details_created_photo_failed
 import br.com.saqz.groups.resources.group_details_created_photo_failed_title
 import br.com.saqz.groups.resources.group_details_venue_edit
 import br.com.saqz.groups.resources.group_details_venue_map
+import br.com.saqz.groups.resources.group_details_map_failure
 import org.jetbrains.compose.resources.stringResource
 
 internal object GroupDetailsTags {
@@ -132,6 +133,9 @@ internal fun GroupDetailsScreen(
                 }
                 state.ownCharges?.let { GroupOwnChargesSection(ownCharges = it, onIntent = onIntent) }
                 state.venue?.let { GroupVenueCard(venue = it, isAdmin = state.isAdmin, onIntent = onIntent) }
+                if (state.mapFailed) {
+                    Text(stringResource(Res.string.group_details_map_failure), color = SaqzTheme.colors.textPrimary)
+                }
                 if (!state.isAdmin) {
                     GroupShortcutTiles(onIntent = onIntent)
                 }
@@ -149,12 +153,13 @@ internal fun GroupDetailsScreen(
                         onIntent = onIntent,
                     )
                 }
-                if (!state.isAdmin) {
+                if (!state.isOwner) {
                     GroupLeaveButton(onIntent = onIntent)
                 }
             }
         }
     }
+    GroupLeaveSheet(state = state, onIntent = onIntent)
 }
 
 @Composable

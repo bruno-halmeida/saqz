@@ -71,6 +71,8 @@ import br.com.saqz.groups.presentation.ui.gameeditor.GameEditorRoot
 import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailRoot
 import br.com.saqz.groups.presentation.ui.home.HomeOwnChargesBannerRoot
 import br.com.saqz.groups.presentation.ui.home.HomeRoot
+import br.com.saqz.groups.presentation.memberprofile.MemberProfileRoot
+import br.com.saqz.groups.presentation.monthlypayments.OwnMonthlyPaymentsRoot
 import br.com.saqz.groups.presentation.ui.invite.GroupInviteRoot
 import br.com.saqz.groups.presentation.ui.invite.InviteLandingRoot
 import br.com.saqz.groups.presentation.ui.invite.InvitePreviewMessageRoot
@@ -357,6 +359,8 @@ internal fun SaqzNavHost(
                             onOpenPasswordRecovery = { backStack.add(AccessRoute.ForgotPassword) },
                             onSignOut = { backStack.add(ProfileRoute.Exit) },
                             onOpenMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
+                            onOpenAthleteProfile = { backStack.add(GroupsRoute.AthleteRegistration(it, fromProfile = true)) },
+                            onOpenMonthlyPayments = { backStack.add(FinanceRoute.OwnMonthlyPayments) },
                             isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
                             refreshVersion = profileRefreshVersion,
                             // O shell já aplicou a status bar: sem isto o `SaqzTopAppBar`
@@ -548,8 +552,14 @@ internal fun SaqzNavHost(
                     photoFailed = route.photoFailed,
                     onBack = pop,
                     onEffect = { effect ->
-                        if (effect is GroupDetailsEffect.Left) groupListRefreshVersion++
-                        backStack.onDetailsEffect(effect, pop)
+                        if (effect is GroupDetailsEffect.Left) {
+                            onIntent(AccessIntent.Session(SessionIntent.MembershipRemoved(route.groupId)))
+                            groupListRefreshVersion++
+                            profileRefreshVersion++
+                            backStack.resetTo(SaqzShellDestination.Groups)
+                        } else {
+                            backStack.onDetailsEffect(effect, pop)
+                        }
                     },
                     refreshVersion = groupDetailsRefreshVersion,
                 )
@@ -610,8 +620,10 @@ internal fun SaqzNavHost(
                 AthleteRegistrationRoot(
                     groupId = route.groupId,
                     onSave = {
+                        profileRefreshVersion++
+                        groupDetailsRefreshVersion++
                         pop()
-                        backStack.add(GroupsRoute.Details(route.groupId))
+                        if (!route.fromProfile) backStack.add(GroupsRoute.Details(route.groupId))
                     },
                     onBack = pop,
                 )
@@ -624,12 +636,17 @@ internal fun SaqzNavHost(
                     onRemove = pop,
                 )
             }
+            entry<FinanceRoute.OwnMonthlyPayments> {
+                OwnMonthlyPaymentsRoot(onBack = pop, onOpenGroup = { backStack.add(GroupsRoute.Details(it)) })
+            }
+            entry<GroupsRoute.MemberProfile> { route ->
+                MemberProfileRoot(route.groupId, route.userId, onBack = pop)
+            }
             entry<GroupsRoute.Members> { route ->
                 GroupMembersRoot(
                     groupId = route.groupId,
                     onBack = pop,
-                    // TODO(Fluxo 7 · Perfil): ver perfil do membro.
-                    onOpenProfile = {},
+                    onOpenProfile = { userId -> backStack.add(GroupsRoute.MemberProfile(route.groupId, userId)) },
                     onOpenMemberEditor = { userId ->
                         backStack.add(GroupsRoute.MemberEditor(route.groupId, userId))
                     },
@@ -875,8 +892,8 @@ private fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop:
         is GroupDetailsEffect.OpenGame -> add(GroupsRoute.GameDetail(effect.groupId, effect.gameId))
         is GroupDetailsEffect.OpenCashbox -> add(FinanceRoute.GroupCashbox(effect.groupId))
         is GroupDetailsEffect.OpenInviteLink -> add(GroupsRoute.Invite(effect.groupId))
-        // TODO(Fluxo 9 · Quadra): abrir a quadra no mapa é port nativo, não rota.
-        GroupDetailsEffect.OpenMap -> Unit
+        // O Root abre o endereço com o handler nativo e trata falha localmente.
+        is GroupDetailsEffect.OpenMap -> Unit
         // VUL-203: copiar o Pix é área de transferência e o `GroupDetailsRoot` já consome
         // o efeito antes daqui. O ramo existe porque o `when` é sobre o tipo inteiro —
         // não é `else`, e nenhum efeito de navegação cai nele.

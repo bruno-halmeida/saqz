@@ -21,6 +21,9 @@ import br.com.saqz.groups.domain.finance.FinanceError
 import br.com.saqz.groups.domain.finance.FinanceStatementPage
 import br.com.saqz.groups.domain.finance.FinanceStatementSummary
 import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.membership.GroupDepartureGateway
+import br.com.saqz.groups.domain.membership.GroupMembershipError
+import kotlinx.coroutines.launch
 import br.com.saqz.groups.domain.group.GroupGameConfig
 import br.com.saqz.groups.domain.group.GroupTimeZone
 import br.com.saqz.groups.presentation.FakeAthleteFinanceGateway
@@ -66,6 +69,71 @@ class GroupDetailsViewModelTest {
     @BeforeTest fun setUp() = Dispatchers.setMain(dispatcher)
 
     @AfterTest fun tearDown() = Dispatchers.resetMain()
+
+    @Test
+    fun `map effect carries actual group address and native failure is visible`() = runTest {
+        val vm = viewModel()
+        vm.onIntent(GroupDetailsIntent.OpenVenueMap)
+        assertEquals(GroupDetailsEffect.OpenMap(checkNotNull(vm.state.value.venue).address), vm.effects.first())
+        vm.onIntent(GroupDetailsIntent.MapOpenFailed)
+        assertTrue(vm.state.value.mapFailed)
+    }
+
+    @Test
+    fun `leave requires confirmation and emits success only after server removes membership`() = runTest {
+        val pending = CompletableDeferred<SaqzResult<Unit, GroupMembershipError>>()
+        val calls = mutableListOf<GroupId>()
+        val effects = mutableListOf<GroupDetailsEffect>()
+        val vm = viewModel(departureGateway = GroupDepartureGateway { calls += it; pending.await() })
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.effects.collect { effects += it } }
+
+        vm.onIntent(GroupDetailsIntent.ConfirmLeave)
+        assertTrue(calls.isEmpty())
+        vm.onIntent(GroupDetailsIntent.Leave)
+        assertTrue(vm.state.value.confirmingLeave)
+        vm.onIntent(GroupDetailsIntent.CancelLeave)
+        assertFalse(vm.state.value.confirmingLeave)
+        assertTrue(calls.isEmpty())
+        vm.onIntent(GroupDetailsIntent.Leave)
+        vm.onIntent(GroupDetailsIntent.ConfirmLeave)
+        vm.onIntent(GroupDetailsIntent.ConfirmLeave)
+        vm.onIntent(GroupDetailsIntent.CancelLeave)
+        assertTrue(vm.state.value.leaving)
+        assertTrue(vm.state.value.confirmingLeave)
+        assertTrue(effects.isEmpty())
+        assertEquals(listOf(GroupId(GROUP_ID)), calls)
+
+        pending.complete(SaqzResult.Success(Unit))
+        advanceUntilIdle()
+        assertEquals(listOf<GroupDetailsEffect>(GroupDetailsEffect.Left), effects)
+        assertFalse(vm.state.value.confirmingLeave)
+    }
+
+    @Test
+    fun `failed leave retains confirmation for retry and owner cannot request it`() = runTest {
+        var calls = 0
+        val gateway = GroupDepartureGateway {
+            calls++
+            SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Forbidden))
+        }
+        val vm = viewModel(departureGateway = gateway)
+        vm.onIntent(GroupDetailsIntent.Leave)
+        vm.onIntent(GroupDetailsIntent.ConfirmLeave)
+        assertTrue(vm.state.value.leaveFailed)
+        assertTrue(vm.state.value.confirmingLeave)
+        assertFalse(vm.state.value.leaving)
+        vm.onIntent(GroupDetailsIntent.ConfirmLeave)
+        assertEquals(2, calls)
+
+        val owner = viewModel(
+            groupGateway = FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = GroupRole.OWNER)))),
+            departureGateway = gateway,
+        )
+        owner.onIntent(GroupDetailsIntent.Leave)
+        owner.onIntent(GroupDetailsIntent.ConfirmLeave)
+        assertFalse(owner.state.value.confirmingLeave)
+        assertEquals(2, calls)
+    }
 
     @Test
     fun `success loads the group header and profile details`() = runTest {
@@ -942,6 +1010,7 @@ class GroupDetailsViewModelTest {
         organizerFinanceGateway: FakeOrganizerFinanceGateway = FakeOrganizerFinanceGateway(),
         athleteFinanceGateway: FakeAthleteFinanceGateway = FakeAthleteFinanceGateway(),
         now: GroupNowPort = GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") },
+        departureGateway: GroupDepartureGateway = GroupDepartureGateway { SaqzResult.Success(Unit) },
     ) = GroupDetailsViewModel(
         GROUP_ID,
         groupGateway,
@@ -952,6 +1021,7 @@ class GroupDetailsViewModelTest {
         organizerFinanceGateway,
         athleteFinanceGateway,
         now,
+        departureGateway,
     )
 
     private fun athleteGroupGateway() = FakeGroupGateway(

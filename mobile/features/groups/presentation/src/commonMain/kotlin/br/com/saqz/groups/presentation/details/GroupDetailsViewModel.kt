@@ -32,6 +32,7 @@ import br.com.saqz.groups.domain.group.Group
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfile
 import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.membership.GroupDepartureGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.photo.groupPhotoUrl
 import br.com.saqz.groups.presentation.toUiError
@@ -79,6 +80,7 @@ class GroupDetailsViewModel(
     private val organizerFinanceGateway: OrganizerFinanceGateway,
     private val athleteFinanceGateway: AthleteFinanceGateway,
     private val now: GroupNowPort,
+    private val departureGateway: GroupDepartureGateway,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(GroupDetailsState()) {
 
     private var loadGeneration = 0
@@ -110,8 +112,19 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.Invite,
             -> emit(GroupDetailsEffect.OpenInviteLink(groupId))
             GroupDetailsIntent.OpenCashbox -> emit(GroupDetailsEffect.OpenCashbox(groupId))
-            GroupDetailsIntent.OpenVenueMap -> emit(GroupDetailsEffect.OpenMap)
-            GroupDetailsIntent.Leave -> emit(GroupDetailsEffect.Left)
+            GroupDetailsIntent.OpenVenueMap -> {
+                val address = state.value.venue?.address?.takeIf(String::isNotBlank)
+                update { it.copy(mapFailed = address == null) }
+                if (address != null) emit(GroupDetailsEffect.OpenMap(address))
+            }
+            GroupDetailsIntent.MapOpenFailed -> update { it.copy(mapFailed = true) }
+            GroupDetailsIntent.Leave -> if (!state.value.isOwner && !state.value.isLoading) {
+                update { it.copy(confirmingLeave = true, leaveFailed = false) }
+            }
+            GroupDetailsIntent.CancelLeave -> if (!state.value.leaving) {
+                update { it.copy(confirmingLeave = false, leaveFailed = false) }
+            }
+            GroupDetailsIntent.ConfirmLeave -> leave()
             GroupDetailsIntent.RetryRoster -> retryRoster()
             GroupDetailsIntent.RetryOwnCharges -> retryOwnCharges()
             GroupDetailsIntent.CopyPix -> copyPix()
@@ -129,6 +142,22 @@ class GroupDetailsViewModel(
     private fun viewGame() {
         val game = state.value.nextGame ?: return
         emit(GroupDetailsEffect.OpenGame(groupId, game.gameId))
+    }
+
+    private fun leave() {
+        val current = state.value
+        if (!current.confirmingLeave || current.leaving || current.isOwner) return
+        update { it.copy(leaving = true, leaveFailed = false) }
+        viewModelScope.launch {
+            when (departureGateway.leave(GroupId(groupId))) {
+                is SaqzResult.Success -> {
+                    loadGeneration++
+                    update { it.copy(leaving = false, confirmingLeave = false) }
+                    emit(GroupDetailsEffect.Left)
+                }
+                is SaqzResult.Failure -> update { it.copy(leaving = false, leaveFailed = true) }
+            }
+        }
     }
 
     private fun copyPix() {

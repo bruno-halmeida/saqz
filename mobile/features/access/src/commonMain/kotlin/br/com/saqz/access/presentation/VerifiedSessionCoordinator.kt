@@ -93,6 +93,9 @@ sealed interface SessionIntent {
 
     data object RetryBootstrap : SessionIntent
 
+    /** Sent only after the backend confirms the authenticated user's departure. */
+    data class MembershipRemoved(val groupId: String) : SessionIntent
+
     /**
      * Volta do plano de fundo (VUL-91): é quando a pessoa acabou de tocar no link do
      * e-mail. O provedor só atualiza `emailVerified` ao recarregar o usuário, então é aqui
@@ -258,6 +261,12 @@ class SessionAccessStateMachine(
             }
             SessionIntent.CompleteIdentity -> completeIdentity()
             SessionIntent.RetryBootstrap -> retryBootstrap()
+            is SessionIntent.MembershipRemoved -> begin { ctx ->
+                val ready = ctx.state as? SessionAccessState.Ready ?: return@begin null
+                ctx.copy(state = SessionAccessState.Ready(ready.session.copy(
+                    memberships = ready.session.memberships.filterNot { it.groupId.value == intent.groupId },
+                )))
+            }
             SessionIntent.RefreshEmailVerification -> refreshEmailVerification()
             is SessionIntent.StageRegistrationIdentity -> stageRegistrationIdentity(intent.name, intent.phone)
             SessionIntent.ClearRegistrationIdentity -> clearRegistrationIdentity()

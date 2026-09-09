@@ -44,7 +44,6 @@ class GroupDetailsScreenTest {
         GroupDetailsTags.Notice,
         GroupDetailsTags.ViewAllMembers,
         GroupDetailsTags.Invite,
-        GroupDetailsTags.Leave,
     )
 
     @Test
@@ -53,6 +52,20 @@ class GroupDetailsScreenTest {
 
         adminOnly.forEach { onNodeWithTag(it).assertExists() }
         memberOnly.forEach { onAllNodesWithTag(it).assertCountEquals(0) }
+    }
+
+    @Test
+    fun ownerCannotLeaveButAdminAndAthleteCan() = runComposeUiTest {
+        setScreen(GroupDetailsPreviewData.admin.copy(isOwner = true))
+        onAllNodesWithTag(GroupDetailsTags.Leave).assertCountEquals(0)
+    }
+
+    @Test
+    fun adminCanRequestDeparture() = runComposeUiTest {
+        val intents = mutableListOf<GroupDetailsIntent>()
+        setScreen(GroupDetailsPreviewData.admin.copy(isOwner = false)) { intents += it }
+        onNodeWithTag(GroupDetailsTags.Leave).performScrollTo().performClick()
+        assertEquals(listOf<GroupDetailsIntent>(GroupDetailsIntent.Leave), intents)
     }
 
     @Test
@@ -255,8 +268,8 @@ class GroupDetailsScreenTest {
 
     private fun ComposeUiTest.setScreen(
         state: GroupDetailsState,
-        onIntent: (GroupDetailsIntent) -> Unit = {},
         photoFailed: Boolean = false,
+        onIntent: (GroupDetailsIntent) -> Unit = {},
     ) = setContent {
         SaqzTheme {
             GroupDetailsScreen(

@@ -50,6 +50,7 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(GroupsRoute.InviteLanding::class, GroupsRoute.InviteLanding.serializer())
             subclass(GroupsRoute.AthleteRegistration::class, GroupsRoute.AthleteRegistration.serializer())
             subclass(GroupsRoute.MemberEditor::class, GroupsRoute.MemberEditor.serializer())
+            subclass(GroupsRoute.MemberProfile::class, GroupsRoute.MemberProfile.serializer())
             // VUL-151: rotas de jogo — registro incondicional para sobreviver à rotação.
             subclass(GroupsRoute.GameEditor::class, GroupsRoute.GameEditor.serializer())
             subclass(GroupsRoute.GameDetail::class, GroupsRoute.GameDetail.serializer())
@@ -60,6 +61,7 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(ProfileRoute.Edit::class, ProfileRoute.Edit.serializer())
             subclass(ProfileRoute.Exit::class, ProfileRoute.Exit.serializer())
             subclass(FinanceRoute.GroupCashbox::class, FinanceRoute.GroupCashbox.serializer())
+            subclass(FinanceRoute.OwnMonthlyPayments::class, FinanceRoute.OwnMonthlyPayments.serializer())
             subclass(FinanceRoute.Statement::class, FinanceRoute.Statement.serializer())
             subclass(FinanceRoute.NewEntry::class, FinanceRoute.NewEntry.serializer())
             subclass(FinanceRoute.GameSettlement::class, FinanceRoute.GameSettlement.serializer())

@@ -11,6 +11,7 @@ import br.com.saqz.groups.domain.membership.GroupInviteMetadata
 import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
+import br.com.saqz.groups.domain.membership.GroupDepartureGateway
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkRequest
@@ -64,7 +65,12 @@ class KtorGroupMembershipGateway(
     private val network: AuthenticatedNetworkClient,
     private val json: Json = Json { explicitNulls = false },
     private val retryDelay: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
-) : GroupMembershipGateway {
+) : GroupMembershipGateway, GroupDepartureGateway {
+    override suspend fun leave(groupId: GroupId) = network.executeNoContent(
+        HttpMethod.Delete,
+        "api/groups/${groupId.value}/memberships/me",
+    ).toEmptyResult()
+
     override suspend fun listMemberships(
         groupId: GroupId,
     ): SaqzResult<List<GroupMembership>, GroupMembershipError> =

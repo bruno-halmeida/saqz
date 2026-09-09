@@ -18,6 +18,8 @@ import br.com.saqz.groups.presentation.gameeditor.GameEditorViewModel
 import br.com.saqz.groups.presentation.home.HomeViewModel
 import br.com.saqz.groups.presentation.list.GroupListViewModel
 import br.com.saqz.groups.presentation.members.GroupMembersViewModel
+import br.com.saqz.groups.presentation.memberprofile.MemberProfileViewModel
+import br.com.saqz.groups.presentation.monthlypayments.OwnMonthlyPaymentsViewModel
 import br.com.saqz.groups.presentation.newentry.NewEntryViewModel
 import br.com.saqz.groups.presentation.photo.GroupPhotoViewModel
 import br.com.saqz.groups.presentation.schedule.GroupScheduleViewModel
@@ -61,7 +63,7 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> NewEntryViewModel(params.get(), params.get(), get(), get<GroupNowPort>()) }
     viewModel {
         params ->
-        GroupDetailsViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>())
+        GroupDetailsViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>(), get())
     }
     viewModel { params -> GroupCashboxViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>()) }
     viewModel {
@@ -69,6 +71,8 @@ fun groupsPresentationModule(): Module = module {
         GameSettlementViewModel(params.get(), params.get(), get(), get(), get(), get(), get())
     }
     viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get()) }
+    viewModel { params -> MemberProfileViewModel(params[0], params[1], get()) }
+    viewModel { OwnMonthlyPaymentsViewModel(get(), get()) }
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
     viewModel { params ->
         val (groupId, gameId) = gameEditorRouteArguments(params)

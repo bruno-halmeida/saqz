@@ -35,6 +35,23 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionAccessStateMachineTest {
+    @Test
+    fun `confirmed departure removes only that membership from the current session`() = runTest {
+        val first = br.com.saqz.access.domain.session.AccessMembership(
+            br.com.saqz.domain.GroupId("group-a"), "Grupo A", br.com.saqz.access.domain.session.AccessMembershipRole("ATHLETE"),
+        )
+        val second = first.copy(groupId = br.com.saqz.domain.GroupId("group-b"))
+        val initial = session.copy(memberships = listOf(first, second))
+        val fixture = fixture(this, SaqzResult.Success(initial))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        fixture.machine.onIntent(SessionIntent.MembershipRemoved("group-a"))
+        fixture.machine.onIntent(SessionIntent.MembershipRemoved("group-a"))
+
+        assertEquals(initial.copy(memberships = listOf(second)), assertIs<SessionAccessState.Ready>(fixture.machine.state.value).session)
+    }
+
 
     // ---- a trava de e-mail saiu (VUL-76 no backend, VUL-84 aqui) ----
 
