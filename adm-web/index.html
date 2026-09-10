@@ -825,7 +825,7 @@ class Component extends DCLogic {
     const atual = () => this._usersReq === req;
     this.setState({ usersPage: null, usersPageNumber: page });
     this.api("/admin/users?" + q.join("&"))
-      .then((usersPage) => { if (atual()) this.setState({ usersPage }); })
+      .then((usersPage) => { if (atual()) this.aplicarPagina("users", usersPage, "carregarUsuarios"); })
       .catch(() => { if (atual()) this.setState({ usersPage: { erro: true, items: [], total: 0 } }); });
   }
 
@@ -857,7 +857,7 @@ class Component extends DCLogic {
     const atual = () => this._groupsReq === req;
     this.setState({ groupsPage: null, groupsPageNumber: page });
     this.api("/admin/groups?" + q.join("&"))
-      .then((groupsPage) => { if (atual()) this.setState({ groupsPage }); })
+      .then((groupsPage) => { if (atual()) this.aplicarPagina("groups", groupsPage, "carregarGrupos"); })
       .catch(() => { if (atual()) this.setState({ groupsPage: { erro: true, items: [], total: 0 } }); });
   }
 
@@ -874,8 +874,18 @@ class Component extends DCLogic {
     const atual = () => this._subsReq === req;
     this.setState({ subsPage: null, subsPageNumber: page });
     this.api(`/admin/subscriptions?page=${page}&size=25`)
-      .then((subsPage) => { if (atual()) this.setState({ subsPage }); })
+      .then((subsPage) => { if (atual()) this.aplicarPagina("subs", subsPage, "carregarAssinaturas"); })
       .catch(() => { if (atual()) this.setState({ subsPage: { erro: true, items: [], total: 0 } }); });
+  }
+
+  aplicarPagina(key, data, method) {
+    const lastPage = Math.max(1, Math.ceil(data.total / 25));
+    if (this.state[key + "PageNumber"] > lastPage) {
+      // O total pode cair entre cliques (remoção, suspensão ou cancelamento em outro cliente).
+      this[method](lastPage);
+      return;
+    }
+    this.setState({ [key + "Page"]: data });
   }
 
   paginacao(key) {

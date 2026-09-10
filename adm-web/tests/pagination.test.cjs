@@ -11,28 +11,49 @@ const configs = [
   ['groups', 'carregarGrupos', '/admin/groups', 'grupos'],
   ['subs', 'carregarAssinaturas', '/admin/subscriptions', 'receita'],
 ];
-function setup() {
-  let session;
+function setup(realApi = false) {
+    let session;
+  const requests = [];
   const timers = new Map();
   const context = vm.createContext({
     DCLogic: class {
       props = {};
       setState(patch, done) { Object.assign(this.state, patch); done?.(); }
     },
-    window: { saqzAdmin: { me: {}, onSession(fn) { session = fn; } } },
+    window: { saqzAdmin: {
+      me: {}, onSession(fn) { session = fn; },
+      fetchAdmin(path) { return new Promise((resolve, reject) => requests.push({ path, resolve, reject })); },
+    } },
     setTimeout(fn) { const id = Symbol(); timers.set(id, fn); return id; },
     clearTimeout(id) { timers.delete(id); },
   });
   const Component = vm.runInContext(`${source}\nComponent`, context);
   const app = new Component();
-  const requests = [];
-  app.api = (path) => new Promise((resolve, reject) => requests.push({ path, resolve, reject }));
-  return { app, requests, timers, logout() { session(null); } };
+  if (!realApi) app.api = (path) => new Promise((resolve, reject) => requests.push({ path, resolve, reject }));
+  return { app, requests, timers, logout() { context.window.saqzAdmin.me = null; session(null); } };
 }
 const flush = () => new Promise(setImmediate);
 const result = (page, total = 51) => ({ page, size: 25, total, items: [{ id: `page-${page}` }] });
 
 for (const [key, load, endpoint, route] of configs) {
+  test(`${key}: shrinking total relocates to last valid page`, async () => {
+    const { app, requests } = setup(); app[load](3);
+    requests[0].resolve({ ...result(3, 20), items: [] }); await flush();
+    assert.equal(requests[1].path, `${endpoint}?page=1&size=25`);
+    assert.equal(app.state[`${key}PageNumber`], 1);
+    assert.equal(app.state[`${key}Page`], null);
+    requests[1].resolve(result(1, 20)); await flush();
+    assert.equal(app.paginacao(key).rodape, 'Mostrando 1–1 de 20 · página 1 de 1');
+    assert.equal(app.paginacao(key).proximaDesabilitada, true);
+  });
+
+  test(`${key}: reload while busy does not send another request`, () => {
+    const { app, requests } = setup(); app[load]();
+    app.paginacao(key).onRecarregar();
+    assert.equal(app.paginacao(key).carregando, true);
+    assert.equal(requests.length, 1);
+  });
+
   test(`${key}: pages 1/2/3, bounds, busy guard and return from detail`, async () => {
     const { app, requests } = setup();
     app[load]();
@@ -90,6 +111,68 @@ for (const [key, load, endpoint, route] of configs) {
     assert.equal(app.state[`${key}Page`].items[0].id, 'page-1');
   });
 }
+
+for (const [key, load, endpoint, filters] of [
+  ['users', 'carregarUsuarios', '/admin/users', { uBusca: 'Ana & Silva', uPlano: 'ORGANIZADOR', uStatus: 'suspended' }],
+  ['groups', 'carregarGrupos', '/admin/groups', { gBusca: 'Praia & Sol', gStatus: 'deleted' }],
+]) {
+  test(`${key}: all filters survive next, refresh and retry`, async () => {
+    const { app, requests } = setup(); Object.assign(app.state, filters); app[load](2);
+    const expectedQuery = key === 'users'
+      ? 'query=Ana%20%26%20Silva&plan=ORGANIZADOR&status=suspended'
+      : 'query=Praia%20%26%20Sol&status=deleted';
+    assert.equal(requests[0].path, `${endpoint}?${expectedQuery}&page=2&size=25`);
+    requests[0].resolve(result(2)); await flush();
+    app.paginacao(key).onProxima();
+    assert.equal(requests[1].path, `${endpoint}?${expectedQuery}&page=3&size=25`);
+    requests[1].reject(new Error('offline')); await flush();
+    app.paginacao(key).onRecarregar();
+    assert.equal(requests[2].path, `${endpoint}?${expectedQuery}&page=3&size=25`);
+    requests[2].resolve(result(3)); await flush();
+    app.paginacao(key).onRecarregar();
+    assert.equal(requests[3].path, `${endpoint}?${expectedQuery}&page=1&size=25`);
+    for (const [field, value] of Object.entries(filters)) assert.equal(app.state[field], value);
+  });
+}
+
+for (const [key, load, rows, back, detail] of [
+  ['users', 'carregarUsuarios', 'usuariosRows', 'goUsu', 'usuario'],
+  ['groups', 'carregarGrupos', 'gruposRows', 'goGru', 'grupo'],
+  ['subs', 'carregarAssinaturas', 'assinRows', 'goRec', 'assinatura'],
+]) {
+  test(`${key}: row opens detail and actual back callback restores cached page`, async () => {
+    const { app, requests } = setup(); app[load](2);
+    const item = { id: 'record-26', userId: 'u26', groupId: 'g26', ownerUserId: 's26', displayName: 'Ana', name: 'Praia' };
+    requests[0].resolve({ ...result(2), items: [item] }); await flush();
+    app.renderVals()[rows][0].onOpen();
+    assert.equal(app.state.page, detail);
+    const requestsBeforeBack = requests.length;
+    app.renderVals()[back]();
+    assert.equal(requests.length, requestsBeforeBack);
+    assert.equal(app.state[`${key}PageNumber`], 2);
+    assert.equal(app.state[`${key}Page`].items[0].id, 'record-26');
+  });
+}
+
+test('logout purges populated pages and rejects responses from the old session epoch', async () => {
+  const { app, requests, logout } = setup(true);
+  app.componentDidMount();
+  for (const [, load] of configs) app[load](3);
+  for (const request of requests) request.resolve({ ok: true, json: async () => result(3) });
+  await flush();
+  for (const [key] of configs) {
+    assert.equal(app.state[`${key}PageNumber`], 3);
+    assert.equal(app.state[`${key}Page`].items[0].id, 'page-3');
+  }
+  app.carregarUsuarios(2);
+  const late = requests.at(-1);
+  logout();
+  late.resolve({ ok: true, json: async () => result(2) }); await flush();
+  for (const [key] of configs) {
+    assert.equal(app.state[`${key}PageNumber`], 1);
+    assert.equal(app.state[`${key}Page`], null);
+  }
+});
 
 for (const [key, load, filter, field, query] of [
   ['users', 'carregarUsuarios', 'filtroUsuarios', 'uBusca', 'nome & e-mail'],
