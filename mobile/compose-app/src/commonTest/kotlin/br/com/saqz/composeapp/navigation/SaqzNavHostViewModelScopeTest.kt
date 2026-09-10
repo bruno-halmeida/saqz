@@ -1,12 +1,15 @@
 package br.com.saqz.composeapp.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.DisposableEffect
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.backhandler.LocalCompatNavigationEventDispatcherOwner
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
@@ -21,6 +24,10 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import androidx.navigationevent.NavigationEventDispatcher
+import androidx.navigationevent.NavigationEventDispatcherOwner
+import androidx.navigationevent.NavigationEventInput
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.access.presentation.SessionAccessState
@@ -91,6 +98,7 @@ import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.group.GroupFinanceDefaults
 import br.com.saqz.groups.domain.athlete.AthleteFinancialStatus
 import kotlin.time.Instant
+import kotlinx.coroutines.CompletableDeferred
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
@@ -297,6 +305,85 @@ class SaqzNavHostViewModelScopeTest {
             assertEquals(8000L, finance.charges.single().amountCents)
             onNodeWithTag("group-cashbox-debtors").assertExists()
             onNodeWithText("Ana").assertExists()
+        }
+    }
+
+    @OptIn(InternalComposeUiApi::class)
+    @Test
+    fun systemBackCannotLeaveWhileMonthlyConfirmationIsPendingAndSuccessRefreshesCashbox() = withProbes { _, groups ->
+        val finance = installMonthlyJourney(groups).apply {
+            fail = false
+            pendingResponse = CompletableDeferred()
+        }
+        val dispatcher = NavigationEventDispatcher()
+        val input = MonthlyBackInput().also(dispatcher::addInput)
+        val owner = object : NavigationEventDispatcherOwner { override val navigationEventDispatcher = dispatcher }
+        runComposeUiTest {
+            val backStack = NavBackStack<NavKey>(SaqzShellDestination.Home)
+            setContent {
+                CompositionLocalProvider(
+                    LocalNavigationEventDispatcherOwner provides owner,
+                    LocalCompatNavigationEventDispatcherOwner provides owner,
+                ) { NavHostUnderTest(mutableStateOf(ready(ana)), backStack) }
+            }
+            awaitText(AnaBanner)
+            backStack.add(FinanceRoute.GroupCashbox("grupo-mensal"))
+            waitForIdle()
+            onNodeWithTag("group-cashbox-generate-monthly").performScrollTo().performClick()
+            onNodeWithTag("monthly-generation-member-ana").performScrollTo().performClick()
+            onNodeWithTag("monthly-generation-review").performScrollTo().performClick()
+            onNodeWithTag("monthly-generation-confirm").performScrollTo().performClick()
+            waitUntil { finance.charges.size == 1 }
+            runOnIdle { input.pressBack() }
+            waitForIdle()
+            assertEquals(FinanceRoute.MonthlyGeneration("grupo-mensal"), backStack.last())
+            assertEquals(1, finance.reads)
+            assertEquals(1, finance.commands.size)
+            runOnIdle { finance.pendingResponse?.complete(Unit) }
+            waitForIdle()
+            assertEquals(FinanceRoute.GroupCashbox("grupo-mensal"), backStack.last())
+            assertEquals(2, finance.reads)
+            onNodeWithText("Ana").assertExists()
+            runOnIdle { input.pressBack() }
+            waitForIdle()
+            assertEquals(listOf<NavKey>(SaqzShellDestination.Home), backStack.toList())
+        }
+    }
+
+    @OptIn(InternalComposeUiApi::class)
+    @Test
+    fun systemBackRemainsAvailableBeforeMonthlyConfirmationAndAfterFailure() = withProbes { _, groups ->
+        val finance = installMonthlyJourney(groups)
+        val dispatcher = NavigationEventDispatcher()
+        val input = MonthlyBackInput().also(dispatcher::addInput)
+        val owner = object : NavigationEventDispatcherOwner { override val navigationEventDispatcher = dispatcher }
+        runComposeUiTest {
+            val backStack = NavBackStack<NavKey>(SaqzShellDestination.Home, FinanceRoute.GroupCashbox("grupo-mensal"))
+            setContent {
+                CompositionLocalProvider(
+                    LocalNavigationEventDispatcherOwner provides owner,
+                    LocalCompatNavigationEventDispatcherOwner provides owner,
+                ) { NavHostUnderTest(mutableStateOf(ready(ana)), backStack) }
+            }
+            waitForIdle()
+            onNodeWithTag("group-cashbox-generate-monthly").performScrollTo().performClick()
+            waitForIdle()
+            runOnIdle { input.pressBack() }
+            waitForIdle()
+            assertEquals(FinanceRoute.GroupCashbox("grupo-mensal"), backStack.last())
+            assertTrue(finance.commands.isEmpty())
+            onNodeWithTag("group-cashbox-generate-monthly").performScrollTo().performClick()
+            onNodeWithTag("monthly-generation-member-ana").performScrollTo().performClick()
+            onNodeWithTag("monthly-generation-review").performScrollTo().performClick()
+            onNodeWithTag("monthly-generation-confirm").performScrollTo().performClick()
+            waitForIdle()
+            assertEquals(FinanceRoute.MonthlyGeneration("grupo-mensal"), backStack.last())
+            assertEquals(1, finance.commands.size)
+            runOnIdle { input.pressBack() }
+            waitForIdle()
+            assertEquals(FinanceRoute.GroupCashbox("grupo-mensal"), backStack.last())
+            assertTrue(finance.charges.isEmpty())
+            assertEquals(1, finance.reads)
         }
     }
 
@@ -514,9 +601,14 @@ private fun installConnectedJourney(groups: RecordingGroupGateway): ConnectedJou
     return data
 }
 
+private class MonthlyBackInput : NavigationEventInput() {
+    fun pressBack() = dispatchOnBackCompleted()
+}
+
 private class MonthlyJourneyFinance(delegate: OrganizerFinanceGateway) : OrganizerFinanceGateway by delegate {
     var fail = true
     var reads = 0
+    var pendingResponse: CompletableDeferred<Unit>? = null
     val charges = mutableListOf<Charge>()
     val commands = mutableListOf<MonthlyChargeCommand>()
     override suspend fun charges(groupId: GroupId): SaqzResult<ChargeList, FinanceError> {
@@ -533,6 +625,7 @@ private class MonthlyJourneyFinance(delegate: OrganizerFinanceGateway) : Organiz
             amountCents = command.amountCents, dueDate = command.dueDate,
             status = ChargeStatus.Pending, version = 1, audit = emptyList(),
         )
+        pendingResponse?.await()
         return SaqzResult.Success(ChargeList(charges.toList()))
     }
 }

@@ -25,6 +25,7 @@ kotlin {
             implementation(project(":features:groups"))
             implementation(project(":core:common"))
             implementation(libs.bundles.compose)
+            implementation(libs.compose.ui.backhandler)
             implementation(libs.coil.compose.core)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
