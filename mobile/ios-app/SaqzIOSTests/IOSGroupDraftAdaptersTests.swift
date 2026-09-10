@@ -105,11 +105,11 @@ final class IOSGroupDraftAdaptersTests: XCTestCase {
     private func setupKey() -> GroupDraftKey { GroupDraftKey(resource: .updateGroup, groupId: group) }
     private func setup() -> GroupSetupDraft {
         GroupSetupDraft(schemaVersion: 1, resource: .updateGroup, groupId: group, groupVersion: KotlinLong(value: 7), etag: "\"7\"", commandKey: commandKey,
-            form: GroupSetupForm_(name: "Vôlei", modality: .courtVolleyball, composition: .mixed, description: nil, city: "Recife", level: .custom, customLevel: "Intermediário +", playStyle: .fiveOne, customPlayStyle: nil, defaultVenue: nil, regularSlots: [], defaultCapacity: KotlinInt(value: 24), defaultConfirmationLeadMinutes: nil, defaultGameFeeCents: nil, monthlyFeeCents: KotlinLong(value: 7000), monthlyDueDay: KotlinInt(value: 10)))
+            form: GroupSetupForm_(name: "Vôlei", modality: .courtVolleyball, composition: .mixed, description: nil, city: "Recife", level: .custom, customLevel: "Intermediário +", playStyle: .fiveOne, customPlayStyle: nil, defaultVenue: nil, regularSlots: [], defaultCapacity: KotlinInt(value: 24), defaultConfirmationLeadMinutes: nil, defaultGameFeeCents: nil, monthlyFeeCents: KotlinLong(value: 7000), monthlyDueDay: KotlinInt(value: 10), mensalistaPriority: true, promotionMode: .fifo, autoConfirmEnabled: false))
     }
     private func gameDraft() -> GameEditorDraft {
         GameEditorDraft(schemaVersion: 1, groupId: group, gameId: game, seriesId: nil, commandKey: commandKey, version: GameVersionToken(value: "\"4\""), mode: .oneTime,
-            form: GameEditorForm(title: "Treino", venue: GameVenue(venueId: nil, name: "Arena", address: "Rua 1", court: nil), localDate: "2026-08-12", localTime: "19:30:00", zoneId: "America/Sao_Paulo", startsAt: "2026-08-12T22:30:00Z", durationMinutes: "90", capacity: "24", confirmationDeadline: "2026-08-12T19:00:00Z", gameFeeBrl: "25,00", notes: "Notas", localEndDate: "", slots: []), scope: nil)
+            form: GameEditorForm(title: "Treino", venue: GameVenue(venueId: nil, name: "Arena", address: "Rua 1", court: nil), localDate: "2026-08-12", localTime: "19:30:00", zoneId: "America/Sao_Paulo", startsAt: "2026-08-12T22:30:00Z", durationMinutes: "90", capacity: "24", confirmationDeadline: "2026-08-12T19:00:00Z", gameFeeBrl: "25,00", notes: "Notas", localEndDate: "", slots: [], gameFeeCents: nil), scope: nil)
     }
     private func monthly(schema: Int32 = 1, amount: String = "70,00") -> MonthlyChargeDraft {
         MonthlyChargeDraft(schemaVersion: schema, groupId: group, commandKey: commandKey, month: "2026-08", amountBrl: amount, dueDate: "2026-08-10", selectedMemberIds: Set(["member-1", "member-2"]), reviewed: true)

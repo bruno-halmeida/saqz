@@ -212,7 +212,7 @@ final class IOSProfilePhotoAdapterTests: XCTestCase {
     private final class SelectionRecordingCallback: NSObject, ProfilePhotoSelectionCallback {
         private(set) var result: ProfilePhotoSelectionResult?
 
-        func complete(result_______ result: ProfilePhotoSelectionResult) {
+        func complete(result_________ result: ProfilePhotoSelectionResult) {
             self.result = result
         }
     }

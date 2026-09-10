@@ -239,8 +239,8 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertEqual(IOSAuthFailureMapper.map(code: 17020), .networkUnavailable)
     }
 
-    // 17010 ù `AuthErrorCode.tooManyRequests` ù o ùnico bloqueio real do login, jù que
-    // quem conta tentativa ù o Firebase e nùo o nosso backend. Sem o caso prùprio ele
+    // 17010 √© `AuthErrorCode.tooManyRequests`, o bloqueio do login contado pelo Firebase,
+    // n√£o pelo nosso backend. Sem o caso pr√≥prio ele
     // cairia em `.unknown` e a 1a perderia a mensagem de conta bloqueada.
     func testFirebaseErrorMapperSeparatesTooManyRequestsFromUnknown() {
         XCTAssertEqual(IOSAuthFailureMapper.map(code: 17010), .tooManyRequests)

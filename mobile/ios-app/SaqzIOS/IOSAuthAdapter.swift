@@ -86,7 +86,8 @@ enum IOSAuthFailureMapper {
              AuthErrorCode.userDisabled.rawValue:
             .userNotFound
         case AuthErrorCode.invalidUserToken.rawValue,
-             AuthErrorCode.userTokenExpired.rawValue:
+             AuthErrorCode.userTokenExpired.rawValue,
+             AuthErrorCode.requiresRecentLogin.rawValue:
             .sessionExpired
         // O único bloqueio real do login: quem conta tentativa é o Firebase, não o
         // backend. Sem este caso a recusa chegaria como `.unknown` e a 1a não teria
