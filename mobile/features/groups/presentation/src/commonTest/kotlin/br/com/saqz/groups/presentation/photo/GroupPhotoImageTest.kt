@@ -10,6 +10,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -21,8 +23,13 @@ import coil3.intercept.Interceptor
 import coil3.request.ErrorResult
 import coil3.request.SuccessResult
 import kotlinx.coroutines.CompletableDeferred
+import org.koin.core.context.startKoin
+import org.koin.core.context.stopKoin
+import org.koin.dsl.module
+import org.koin.mp.KoinPlatformTools
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 @OptIn(ExperimentalTestApi::class)
 class GroupPhotoImageTest {
@@ -97,5 +104,53 @@ class GroupPhotoImageTest {
             GroupRemotePhoto("/api/groups/g1/photo?v=1", null) { BasicText("sem foto") }
         }
         onNodeWithText("sem foto").assertExists()
+    }
+
+    @Test
+    fun `root resolves the registered loader and preserves rendered dimensions`() {
+        assertNull(KoinPlatformTools.defaultContext().getOrNull())
+        val requested = mutableListOf<String>()
+        try {
+            runComposeUiTest {
+                setContent {
+                    val context = LocalPlatformContext.current
+                    val loader = remember(context) {
+                        ImageLoader.Builder(context).components {
+                            add(Interceptor { chain ->
+                                requested += chain.request.data.toString()
+                                SuccessResult(ColorImage(), chain.request)
+                            })
+                        }.build().also { registeredLoader ->
+                            startKoin { modules(module { single<ImageLoader> { registeredLoader } }) }
+                        }
+                    }
+                    DisposableEffect(loader) { onDispose { loader.shutdown() } }
+                    GroupRemotePhotoRoot(
+                        "/api/groups/root/photo?v=42",
+                        Modifier.size(width = 137.dp, height = 89.dp).testTag("root-photo"),
+                    ) { BasicText("fallback do root") }
+                }
+                waitUntil(timeoutMillis = 5_000) { requested.isNotEmpty() }
+                waitForIdle()
+                assertEquals(listOf("/api/groups/root/photo?v=42"), requested)
+                onNodeWithTag("root-photo")
+                    .assertWidthIsEqualTo(137.dp)
+                    .assertHeightIsEqualTo(89.dp)
+                onNodeWithText("fallback do root").assertDoesNotExist()
+            }
+        } finally {
+            stopKoin()
+        }
+        assertNull(KoinPlatformTools.defaultContext().getOrNull())
+    }
+
+    @Test
+    fun `root without a container renders fallback without creating a container`() = runComposeUiTest {
+        assertNull(KoinPlatformTools.defaultContext().getOrNull())
+        setContent {
+            GroupRemotePhotoRoot("/api/groups/root/photo?v=42") { BasicText("sem loader no root") }
+        }
+        onNodeWithText("sem loader no root").assertExists()
+        assertNull(KoinPlatformTools.defaultContext().getOrNull())
     }
 }
