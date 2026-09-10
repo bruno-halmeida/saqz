@@ -44,7 +44,7 @@ import br.com.saqz.groups.presentation.list.GroupCardAttendance
 import br.com.saqz.groups.presentation.list.GroupCardGameUi
 import br.com.saqz.groups.presentation.list.GroupCardUi
 import br.com.saqz.groups.presentation.list.GroupInviteUi
-import br.com.saqz.groups.presentation.photo.GroupRemotePhoto
+import br.com.saqz.groups.presentation.photo.GroupRemotePhotoRoot
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_member_attendance_maybe
@@ -253,7 +253,7 @@ private fun GroupCardAvatar(modality: GroupModality, photoUrl: String?) {
             .clip(RoundedCornerShape(AvatarRadius)),
         contentAlignment = Alignment.Center,
     ) {
-        GroupRemotePhoto(photoUrl = photoUrl, modifier = Modifier.fillMaxSize()) {
+        GroupRemotePhotoRoot(photoUrl = photoUrl, modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

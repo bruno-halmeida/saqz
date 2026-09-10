@@ -63,7 +63,7 @@ import br.com.saqz.groups.presentation.details.MemberPreviewUi
 import br.com.saqz.groups.presentation.details.MemberStatusUi
 import br.com.saqz.groups.presentation.details.NextGameUi
 import br.com.saqz.groups.presentation.details.NoticeUi
-import br.com.saqz.groups.presentation.photo.GroupRemotePhoto
+import br.com.saqz.groups.presentation.photo.GroupRemotePhotoRoot
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_details_admin
 import br.com.saqz.groups.resources.group_details_cash
@@ -161,7 +161,7 @@ private fun GroupEmblem(photoUrl: String?) {
             .clip(RoundedCornerShape(metrics.cardRadius)),
         contentAlignment = Alignment.Center,
     ) {
-        GroupRemotePhoto(photoUrl = photoUrl, modifier = Modifier.fillMaxSize()) {
+        GroupRemotePhotoRoot(photoUrl = photoUrl, modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
