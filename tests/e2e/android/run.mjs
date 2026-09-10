@@ -115,15 +115,17 @@ try {
   });
   await until(() => healthy('http://127.0.0.1:18080/actuator/health'), 'Spring/Flyway');
   console.log('Seeding disposable preconditions...');
-  const fixture = await seed(sql => command('docker', ['exec', '-i', database, 'psql', '-v', 'ON_ERROR_STOP=1', '-U', 'saqz', '-d', 'saqz_e2e'], { input: sql }), ['access']);
+  const fixture = await seed(sql => command('docker', ['exec', '-i', database, 'psql', '-v', 'ON_ERROR_STOP=1', '-U', 'saqz', '-d', 'saqz_e2e'], { input: sql }), ['access', 'leave', 'attendance', 'attendance-order', 'communication']);
   const assetDir = path.join(root, 'mobile/android-app/build/e2e-assets');
   await mkdir(assetDir, { recursive: true });
   await writeFile(path.join(assetDir, 'e2e-fixture.json'), JSON.stringify(fixture));
   console.log('Running installed Android journeys...');
   const started = Date.now();
   testStarted = true;
+  const classes = ['AccessE2eTest', 'GroupLeaveE2eTest', 'AttendanceE2eTest', 'AttendanceOrderE2eTest', 'CommunicationE2eTest']
+    .map(name => `br.com.saqz.androidapp.${name}`).join(',');
   await command('./mobile/gradlew', ['-p', 'mobile', ':android-app:connectedDevDebugAndroidTest',
-    '-Psaqz.e2e=true', '-Pandroid.testInstrumentationRunnerArguments.class=br.com.saqz.androidapp.AccessE2eTest',
+    '-Psaqz.e2e=true', `-Pandroid.testInstrumentationRunnerArguments.class=${classes}`,
     '--console=plain'], { stdio: 'inherit', env: { ...process.env, ANDROID_SERIAL: serial } });
   const entries = await readdir(reports, { recursive: true });
   const fresh = [];
@@ -131,7 +133,7 @@ try {
     const file = path.join(reports, entry);
     if ((await stat(file)).mtimeMs >= started) fresh.push(await readFile(file, 'utf8'));
   }
-  verifyReport(fresh.join('\n'), 2);
+  verifyReport(fresh.join('\n'), 6);
   console.log('PASS: installed journeys. JUnit/HTML: mobile/android-app/build/reports/androidTests/connected/');
 } catch (error) {
   console.error(error.message);

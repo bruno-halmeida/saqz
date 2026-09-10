@@ -961,7 +961,10 @@ internal fun reconcileAccessStack(
 ) {
     val destination = session.toDestination()
     if (session is SessionAccessState.Ready || restoring) {
-        if (stack.firstOrNull() != destination) {
+        // Ready can be re-emitted after leaving a group. Groups and Home are both
+        // authenticated shell roots; the selected destination must not be reset by that update.
+        val authenticatedShell = session is SessionAccessState.Ready && stack.firstOrNull() is SaqzShellDestination
+        if (!authenticatedShell && stack.firstOrNull() != destination) {
             stack.clear()
             stack.add(destination)
         }

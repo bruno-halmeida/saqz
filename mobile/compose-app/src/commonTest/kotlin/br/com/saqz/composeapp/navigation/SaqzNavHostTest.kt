@@ -123,6 +123,32 @@ class SaqzNavHostTest {
     }
 
     @Test
+    fun membershipUpdateAndRestorationKeepTheExplicitGroupsDestination() {
+        val stack = mutableListOf<NavKey>(SaqzShellDestination.Groups)
+        val afterDeparture = SessionAccessState.Ready(session.copy(memberships = emptyList()))
+
+        reconcileAccessStack(stack, afterDeparture)
+        assertEquals(listOf<NavKey>(SaqzShellDestination.Groups), stack)
+        reconcileAccessStack(stack, afterDeparture, restoring = true)
+        assertEquals(listOf<NavKey>(SaqzShellDestination.Groups), stack)
+    }
+
+    @Test
+    fun groupsDestinationNeverSurvivesLossOfAuthenticatedSession() {
+        val states = listOf(
+            SessionAccessState.SignedOut to AccessRoute.Login,
+            SessionAccessState.CompletingIdentity(session) to AccessRoute.IdentityCompletion,
+            SessionAccessState.Bootstrapping to AccessRoute.Bootstrap,
+            SessionAccessState.BootstrapError to AccessRoute.Bootstrap,
+        )
+        for ((state, expected) in states) for (restoring in listOf(false, true)) {
+            val stack = mutableListOf<NavKey>(SaqzShellDestination.Groups, GroupsRoute.Details("remaining-group"))
+            reconcileAccessStack(stack, state, restoring)
+            assertEquals(listOf<NavKey>(expected), stack)
+        }
+    }
+
+    @Test
     fun pendingInviteStorageFailureRoutesToVisibleLandingError() {
         assertEquals(
             GroupsRoute.InviteLanding(

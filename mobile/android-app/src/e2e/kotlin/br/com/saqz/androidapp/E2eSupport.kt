@@ -44,16 +44,29 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
         ui.waitUntil(20_000) { ui.onAllNodesWithTag(tag).fetchSemanticsNodes().size == 1 }
     }
 
+    protected fun waitText(text: String) {
+        // A message still in the editable draft is not evidence that it was sent.
+        val displayedText = hasText(text) and !hasSetTextAction() and !hasAnyAncestor(hasSetTextAction())
+        try {
+            ui.waitUntil(20_000) { ui.onAllNodes(displayedText).fetchSemanticsNodes().size == 1 }
+        } catch (failure: ComposeTimeoutException) {
+            ui.onRoot(useUnmergedTree = true).printToLog("E2eFailure")
+            throw failure
+        }
+    }
+
     protected fun click(tag: String, scroll: Boolean = false) {
         waitTag(tag)
         val node = ui.onNodeWithTag(tag)
         if (scroll) node.performScrollTo()
-        node.assertIsDisplayed().performClick()
+        // Text replacement can precede collection/recomposition of the enabled state.
+        ui.waitUntil(20_000) { ui.onAllNodes(hasTestTag(tag) and isEnabled()).fetchSemanticsNodes().size == 1 }
+        node.assertIsDisplayed().assertIsEnabled().performClick()
     }
 
-    protected fun input(tag: String, text: String) {
+    protected fun input(tag: String, text: String, scroll: Boolean = true) {
         waitTag(tag)
-        ui.onNodeWithTag(tag).performScrollTo()
+        if (scroll) ui.onNodeWithTag(tag).performScrollTo()
         ui.onNode(
             hasSetTextAction() and (hasTestTag(tag) or hasAnyAncestor(hasTestTag(tag))),
             useUnmergedTree = true,
