@@ -7,6 +7,9 @@ const scenarios = {
   'attendance-order': ['AttendanceOrderE2eTest', 1],
   communication: ['CommunicationE2eTest', 1],
   finance: ['MonthlyGenerationE2eTest', 1],
+  'notification-settings': ['NotificationsE2eTest', 1],
+  'message-pagination': ['MessagePaginationE2eTest', 1],
+  reminders: ['ReminderE2eTest', 1],
 };
 
 export function selectScenarios(name) {
