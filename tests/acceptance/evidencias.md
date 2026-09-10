@@ -81,3 +81,49 @@ xcodebuild -project mobile/ios-app/SaqzIOS.xcodeproj -scheme SaqzDev -configurat
 ```
 
 Na rodada anterior também passaram Groups/data 249, Profile/presentation 35, Android DevDebug 171 e comunicação JDBC 7; esses resultados são históricos, não uma nova execução ampla desta rodada. Os comandos acima executam suítes independentes, não os arquivos `.feature`.
+
+## Rodada adicional — app Android instalado (10/09/2026)
+
+Foi acrescentado um [runner E2E local](../e2e/android/README.md), com APK separado `app.saqz.e2e`,
+Firebase Auth Emulator, Spring e PostgreSQL descartável. As ações são feitas no app; consultas
+autenticadas independentes verificam persistência e permissões. Não usa gateways falsos.
+
+| Execução | Casos | Resultado |
+| --- | ---: | --- |
+| Acesso, saída, capacidade, FIFO, comunicação e geração mensal — lote conjunto final | 7 | PASS, sem falhas ou skips |
+| Geração manual, repetição e mensalidade própria — execução focal anterior | 1 | PASS, sem skips; também incluído no lote de sete |
+| Proteções Node do runner, incluindo seleção explícita de cenário | 5 | PASS |
+| Compose-app/commonTest no simulador iOS, incluindo duas regressões de navegação | 124 | PASS |
+| Groups/data — suíte completa no simulador iOS após corrigir URL | 250 | PASS; inclui 11 de KtorAthleteGatewayTest |
+| Firebase Android na configuração dev padrão | 3 | PASS |
+| Detekt global após correção do gateway | — | PASS |
+
+Os sete casos passaram juntos após a última correção, com dados novos, em 4min24s de Gradle.
+A revisão independente final deste lote ainda está pendente. O runner focal anuncia o recorte
+executado; não anuncia sucesso da suíte completa.
+
+Defeitos reproduzidos:
+
+- Ao sair do grupo, a atualização da sessão substituía a lista de grupos pela tela Início.
+  Corrigido preservando a raiz autenticada escolhida, com logout/sessão inválida ainda removendo
+  telas protegidas. Lote de seis passou após a correção, commit local `3b8cdfe6`.
+- A consulta de mensalistas enviava `athletes%3Ftype=MENSALISTA` como caminho, sem query, e recebia
+  erro 500. A URL correta retornava 200. O gateway agora usa `NetworkRequest.query`; a regressão
+  específica falhou antes e passou depois, assim como a jornada financeira instalada.
+
+Uma instabilidade do teste de avisos foi resolvida aguardando o botão habilitado antes do toque.
+O teste financeiro também teve seu localizador corrigido para o cartão Caixa existente. Não houve
+alteração das verificações de mensagens, valores, vínculo ou persistência para contornar falhas.
+
+O teste antigo dos filtros comparava a URL inteira e exigia `%20` para espaços. O encoder normal
+do Ktor usa `+`; os valores decodificados são equivalentes. Com aprovação do usuário, o teste passou
+a conferir caminho e os cinco parâmetros decodificados exatos, preservando método GET e sucesso
+da chamada. Acrescentar a verificação de sucesso revelou que a falha da assertion no MockEngine
+antes era convertida em resultado de erro, que o teste não conferia. Os 11 casos agora passam.
+
+Evidências locais desta rodada: `/tmp/saqz-critical-e2e.Dq3Cs5/`, logs `seven-final.log`,
+`nav-green.log`, `athlete-query-red.log`, `athlete-query-approved.log`, `groups-data-final.log`,
+`finance-fixed.log` e `approved-final-gates.log`.
+O runner também retém JUnit/logcat em pasta temporária anunciada na saída; esses artefatos são
+locais e podem expirar. Não houve push ou deploy nesta rodada. O escopo não inclui ADM da
+plataforma, iOS instalado, WhatsApp, denúncias/moderação ou provedores de pagamento.

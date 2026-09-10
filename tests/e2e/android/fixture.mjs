@@ -56,6 +56,10 @@ export async function seed(sql, scenarioNames) {
       COMMIT;`);
     const actors = Object.fromEntries(Object.entries({ owner, athlete, other }).map(([key, { token, ...safe }]) => [key, safe]));
     result.scenarios[name] = { ...actors, group, secondGroup };
+    if (name === 'finance') {
+      await sql(`INSERT INTO group_memberships (group_id,user_id,role,membership_type,created_at,updated_at)
+        VALUES ('${group}','${other.id}','ATHLETE','MENSALISTA',now(),now());`);
+    }
     if (name === 'leave' || name.startsWith('attendance')) {
       const game = await publishedGame(group, owner.token);
       result.scenarios[name].game = game.id;

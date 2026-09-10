@@ -7,6 +7,7 @@ Catálogo inicial dos fluxos críticos, com passos reproduzíveis e resultados o
 - [Geração manual e encerramento do acerto](financeiro-final.feature)
 - [Painel administrativo e checkout](adm.feature)
 - [Evidências técnicas desta entrega](evidencias.md)
+- [E2E Android instalado: cenários automatizados e execução local](../e2e/android/README.md)
 
 ## Preparação segura
 
@@ -60,7 +61,7 @@ Os IDs dos cenários devem ser preservados nos nomes/tags dos testes. Cada linha
 | UI com gateways controlados | Controles, estados, layout, rotas e recarga no retorno |
 | E2E real | App/navegador + API + banco + autenticação do ambiente; duas contas e integrações nativas |
 
-Não substituir um E2E real por respostas mockadas e manter a etiqueta E2E. Os testes Compose atuais usam gateways controlados; as integrações JDBC/HTTP usam Postgres, mas não dirigem o aplicativo.
+Não substituir um E2E real por respostas mockadas e manter a etiqueta E2E. Os testes Compose de componentes usam gateways controlados; as integrações JDBC/HTTP usam Postgres, mas não dirigem o aplicativo. A suíte opt-in em `mobile/android-app/src/e2e` dirige o app instalado com Firebase Auth Emulator, API e Postgres locais reais; seus recortes e limites estão no guia acima.
 
 Seletores novos estáveis: `GroupLeaveTags`, `MemberProfileTags`, `OwnMonthlyPaymentsTags`, `GroupThreadTags`, `NotificationCenterTags`, `MonthlyGenerationTags` e `GroupCashboxTags.GenerateMonthly`. Priorize papel/nome acessível no painel, com os controles sob `Paginação de usuários/grupos/assinaturas`. IDs de mensagem/grupo entram nas tags dinâmicas; não dependa da posição do item. Para iOS nativo, confirme a exposição dos seletores no driver escolhido antes de implementar o runner.
 

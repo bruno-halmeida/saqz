@@ -5,11 +5,14 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { emulatorSerial, requireFreePort, verifyReport } from './guard.mjs';
+import { emulatorSerial, requireFreePort, verifyReport, selectScenarios } from './guard.mjs';
 import { seed } from './fixture.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const serial = emulatorSerial(process.argv[process.argv.indexOf('--serial') + 1]);
+const scenarioIndex = process.argv.indexOf('--scenario');
+const selected = selectScenarios(scenarioIndex < 0 ? undefined : process.argv[scenarioIndex + 1] ?? '');
+const expectedCount = selected.reduce((sum, scenario) => sum + scenario.count, 0);
 const artifacts = await mkdtemp(path.join(tmpdir(), 'saqz-e2e-'));
 const services = [];
 const cancellation = new AbortController();
@@ -115,15 +118,14 @@ try {
   });
   await until(() => healthy('http://127.0.0.1:18080/actuator/health'), 'Spring/Flyway');
   console.log('Seeding disposable preconditions...');
-  const fixture = await seed(sql => command('docker', ['exec', '-i', database, 'psql', '-v', 'ON_ERROR_STOP=1', '-U', 'saqz', '-d', 'saqz_e2e'], { input: sql }), ['access', 'leave', 'attendance', 'attendance-order', 'communication']);
+  const fixture = await seed(sql => command('docker', ['exec', '-i', database, 'psql', '-v', 'ON_ERROR_STOP=1', '-U', 'saqz', '-d', 'saqz_e2e'], { input: sql }), selected.map(scenario => scenario.name));
   const assetDir = path.join(root, 'mobile/android-app/build/e2e-assets');
   await mkdir(assetDir, { recursive: true });
   await writeFile(path.join(assetDir, 'e2e-fixture.json'), JSON.stringify(fixture));
   console.log('Running installed Android journeys...');
   const started = Date.now();
   testStarted = true;
-  const classes = ['AccessE2eTest', 'GroupLeaveE2eTest', 'AttendanceE2eTest', 'AttendanceOrderE2eTest', 'CommunicationE2eTest']
-    .map(name => `br.com.saqz.androidapp.${name}`).join(',');
+  const classes = selected.map(scenario => `br.com.saqz.androidapp.${scenario.testClass}`).join(',');
   await command('./mobile/gradlew', ['-p', 'mobile', ':android-app:connectedDevDebugAndroidTest',
     '-Psaqz.e2e=true', `-Pandroid.testInstrumentationRunnerArguments.class=${classes}`,
     '--console=plain'], { stdio: 'inherit', env: { ...process.env, ANDROID_SERIAL: serial } });
@@ -133,8 +135,8 @@ try {
     const file = path.join(reports, entry);
     if ((await stat(file)).mtimeMs >= started) fresh.push(await readFile(file, 'utf8'));
   }
-  verifyReport(fresh.join('\n'), 6);
-  console.log('PASS: installed journeys. JUnit/HTML: mobile/android-app/build/reports/androidTests/connected/');
+  verifyReport(fresh.join('\n'), expectedCount);
+  console.log(`PASS: ${selected.map(scenario => scenario.name).join(', ')} (${expectedCount} installed tests). JUnit/HTML: mobile/android-app/build/reports/androidTests/connected/`);
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

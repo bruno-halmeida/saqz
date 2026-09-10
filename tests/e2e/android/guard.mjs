@@ -1,5 +1,20 @@
 import net from 'node:net';
 
+const scenarios = {
+  access: ['AccessE2eTest', 2],
+  leave: ['GroupLeaveE2eTest', 1],
+  attendance: ['AttendanceE2eTest', 1],
+  'attendance-order': ['AttendanceOrderE2eTest', 1],
+  communication: ['CommunicationE2eTest', 1],
+  finance: ['MonthlyGenerationE2eTest', 1],
+};
+
+export function selectScenarios(name) {
+  if (name !== undefined && !Object.hasOwn(scenarios, name)) throw new Error(`Unknown E2E scenario: ${name}`);
+  return Object.entries(scenarios).filter(([key]) => name === undefined || key === name)
+    .map(([key, [testClass, count]]) => ({ name: key, testClass, count }));
+}
+
 export function emulatorSerial(value) {
   if (!/^emulator-\d+$/.test(value ?? '')) throw new Error('Use --serial emulator-NNNN (dedicated Android emulator).');
   return value;

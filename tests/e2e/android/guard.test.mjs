@@ -1,7 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
-import { emulatorSerial, localUrl, requireFreePort, verifyReport } from './guard.mjs';
+import { emulatorSerial, localUrl, requireFreePort, verifyReport, selectScenarios } from './guard.mjs';
+
+test('ENV: explicit scenario selection has exact classes/counts and rejects unknown or empty names', () => {
+  assert.deepEqual(selectScenarios('finance'), [{ name: 'finance', testClass: 'MonthlyGenerationE2eTest', count: 1 }]);
+  const all = selectScenarios();
+  assert.deepEqual(all.map(item => item.name), ['access', 'leave', 'attendance', 'attendance-order', 'communication', 'finance']);
+  assert.equal(all.reduce((sum, item) => sum + item.count, 0), 7);
+  assert.equal(selectScenarios('access')[0].count, 2);
+  for (const input of ['', 'missing', '__proto__']) assert.throws(() => selectScenarios(input), /Unknown E2E scenario/);
+});
 
 test('ENV: only an explicit emulator may receive the isolated APK', () => {
   assert.equal(emulatorSerial('emulator-5554'), 'emulator-5554');
