@@ -27,7 +27,6 @@ import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.RetrySafety
 import br.com.saqz.network.retryTransport
 import io.ktor.http.HttpMethod
-import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -141,8 +140,9 @@ class KtorAthleteGateway(
         retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
             network.execute(
                 HttpMethod.Get,
-                "api/groups/${groupId.value}/athletes${filter.toQuery()}",
+                "api/groups/${groupId.value}/athletes",
                 RosterDto.serializer(),
+                NetworkRequest(query = filter.toQuery()),
             )
         }.mapResult { dto -> dto.athletes.mapNotNullOrInvalid(RosterEntryDto::toDomain) }
 
@@ -230,15 +230,12 @@ class KtorAthleteGateway(
         }.mapResult { it.toDomain() ?: return@mapResult null }
 }
 
-private fun AthleteRosterFilter.toQuery(): String {
-    val params = buildList {
-        search?.takeIf(String::isNotBlank)?.let { add("search=${it.encodeURLParameter()}") }
-        membershipType?.let { add("type=${it.name}") }
-        position?.let { add("position=${it.name}") }
-        financialStatus?.let { add("financialStatus=${it.name}") }
-        if (includeInactive) add("includeInactive=true")
-    }
-    return if (params.isEmpty()) "" else "?${params.joinToString("&")}"
+private fun AthleteRosterFilter.toQuery(): Map<String, String> = buildMap {
+    search?.takeIf(String::isNotBlank)?.let { put("search", it) }
+    membershipType?.let { put("type", it.name) }
+    position?.let { put("position", it.name) }
+    financialStatus?.let { put("financialStatus", it.name) }
+    if (includeInactive) put("includeInactive", "true")
 }
 
 private inline fun <T, R> NetworkResult<T>.mapResult(

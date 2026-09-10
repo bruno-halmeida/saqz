@@ -43,6 +43,20 @@ import kotlin.test.assertIs
 
 class KtorAthleteGatewayTest {
     @Test
+    fun `monthly generation sends type as query parameter and returns monthly candidates`() = runTest {
+        val candidates = fixture { request ->
+            assertEquals("/api/groups/$GROUP_ID/athletes", request.url.encodedPath)
+            assertEquals("MENSALISTA", request.url.parameters["type"])
+            assertEquals(setOf("type"), request.url.parameters.names())
+            roster()
+        }.gateway.roster(GroupId(GROUP_ID), AthleteRosterFilter(membershipType = AthleteMembershipType.MENSALISTA))
+            .success<List<AthleteRosterEntry>>()
+
+        assertEquals(listOf("member-1"), candidates.map { it.userId })
+        assertEquals(AthleteMembershipType.MENSALISTA, candidates.single().membershipType)
+    }
+
+    @Test
     fun `roster maps expanded member attributes and nullable financial fields`() = runTest {
         val athlete = fixture { roster() }.gateway.roster(GroupId(GROUP_ID), AthleteRosterFilter())
             .success<List<AthleteRosterEntry>>()
@@ -65,9 +79,16 @@ class KtorAthleteGatewayTest {
     fun `roster sends existing filters and include inactive`() = runTest {
         fixture { request ->
             assertEquals(HttpMethod.Get, request.method)
+            assertEquals("/api/groups/$GROUP_ID/athletes", request.url.encodedPath)
             assertEquals(
-                "/api/groups/$GROUP_ID/athletes?search=Ana%20%26%20Bia&type=MENSALISTA&position=PONTA&financialStatus=PENDENTE&includeInactive=true",
-                request.url.encodedPath + "?" + request.url.encodedQuery,
+                mapOf(
+                    "search" to listOf("Ana & Bia"),
+                    "type" to listOf("MENSALISTA"),
+                    "position" to listOf("PONTA"),
+                    "financialStatus" to listOf("PENDENTE"),
+                    "includeInactive" to listOf("true"),
+                ),
+                request.url.parameters.entries().associate { it.key to it.value },
             )
             roster()
         }.gateway.roster(
@@ -79,7 +100,7 @@ class KtorAthleteGatewayTest {
                 financialStatus = br.com.saqz.groups.domain.athlete.AthleteFinancialStatus.PENDENTE,
                 includeInactive = true,
             ),
-        )
+        ).success<List<AthleteRosterEntry>>()
     }
 
     @Test
