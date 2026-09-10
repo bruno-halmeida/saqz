@@ -107,6 +107,58 @@ class GameSettlementViewModelTest {
     }
 
     @Test
+    fun `failed remote reload cannot conclude an earlier confirmed summary`() = runTest {
+        val finance = SettlementFinanceGateway(emptyList(), emptyList())
+        val viewModel = viewModel(finance)
+        val effects = mutableListOf<GameSettlementEffect>()
+        backgroundScope.launch(dispatcher) { viewModel.effects.collect { effects += it } }
+        finance.readFailure = FinanceError.Data(br.com.saqz.domain.DataError.Connectivity)
+
+        viewModel.onIntent(GameSettlementIntent.Retry)
+        assertTrue(viewModel.state.value.loadFailed)
+        assertFalse(viewModel.state.value.isSummary)
+        viewModel.onIntent(GameSettlementIntent.EndSettlement)
+        assertEquals(emptyList(), effects)
+    }
+
+    @Test
+    fun `failed last receipt restores debt and cannot conclude`() = runTest {
+        val finance = SettlementFinanceGateway(
+            charges(), expenses(),
+            updateResult = SaqzResult.Failure(FinanceError.Data(br.com.saqz.domain.DataError.Connectivity)),
+        )
+        val viewModel = viewModel(finance)
+        val effects = mutableListOf<GameSettlementEffect>()
+        backgroundScope.launch(dispatcher) { viewModel.effects.collect { effects += it } }
+
+        viewModel.onIntent(GameSettlementIntent.MarkReceived("game-pending", PaidMethod.Pix))
+        val failed = viewModel.state.value
+        assertTrue(failed.operationFailed)
+        assertFalse(failed.isSummary)
+        assertEquals(1, failed.pendingDiaristCount)
+        assertEquals(7_000L, failed.pendingDiaristCents)
+        assertEquals(listOf("game-pending"), failed.debtors.map { it.chargeId })
+        assertEquals(ChargeStatus.Pending, failed.diarists.first { it.chargeId == "game-pending" }.status)
+        viewModel.onIntent(GameSettlementIntent.EndSettlement)
+        assertEquals(emptyList(), effects)
+    }
+
+    @Test
+    fun `cashbox carries this group and reopening reflects changed remote debt`() = runTest {
+        val finance = SettlementFinanceGateway(emptyList(), emptyList())
+        val closed = viewModel(finance)
+        closed.onIntent(GameSettlementIntent.OpenCashbox)
+        assertEquals(GameSettlementEffect.OpenCashbox("group-1"), closed.effects.first())
+        closed.onIntent(GameSettlementIntent.EndSettlement)
+        assertEquals(GameSettlementEffect.Closed, closed.effects.first())
+
+        finance.currentCharges = charges()
+        val reopened = viewModel(finance)
+        assertFalse(reopened.state.value.isSummary)
+        assertEquals(listOf("game-pending"), reopened.state.value.debtors.map { it.chargeId })
+    }
+
+    @Test
     fun `loads only this game charges and derives progress monthly members local time and cost`() = runTest {
         val finance = SettlementFinanceGateway(charges = charges(), expenses = expenses())
         val viewModel = viewModel(finance)
@@ -345,15 +397,17 @@ private class SettlementFinanceGateway(
     expenses: List<Expense>,
     private val updateResult: SaqzResult<VersionedCharge, FinanceError>? = null,
 ) : OrganizerFinanceGateway {
-    private var currentCharges = charges
+    var currentCharges = charges
     private val currentExpenses = expenses
     var lastVersion: FinanceVersionToken? = null
     var lastCommand: ChargeStatusCommand? = null
     var chargeReads = 0
     var beforeUpdate: suspend () -> Unit = {}
+    var readFailure: FinanceError? = null
 
     override suspend fun charges(groupId: GroupId): SaqzResult<ChargeList, FinanceError> {
         chargeReads++
+        readFailure?.let { return SaqzResult.Failure(it) }
         return SaqzResult.Success(ChargeList(currentCharges, ChargeTotals(0L, 0L, 0L, 0L)))
     }
 

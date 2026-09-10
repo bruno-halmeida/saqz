@@ -56,6 +56,31 @@ import kotlin.time.Instant
 @OptIn(ExperimentalTestApi::class)
 class GameSettlementRootTest {
     @Test
+    fun `cashbox navigation preserves group identifier`() = runComposeUiTest {
+        val finance = object : OrganizerFinanceGateway by FakeOrganizerFinanceGateway() {
+            override suspend fun expenses(groupId: GroupId) = SaqzResult.Success(ExpenseList(emptyList(), 0L))
+        }
+        val viewModel = GameSettlementViewModel(
+            "selected-group", "game-1", FakeGameGateway(), FakeGroupGateway(),
+            FakeAttendanceGateway(), FakeAthleteGateway(), finance,
+        )
+        val navigation = mutableListOf<String>()
+        setContent {
+            SaqzTheme {
+                GameSettlementRoot(
+                    groupId = "selected-group", gameId = "game-1",
+                    onBack = { navigation += "back" }, onOpenNewEntry = { _, _ -> },
+                    onOpenCashbox = { navigation += it }, viewModel = viewModel,
+                )
+            }
+        }
+        waitForIdle()
+        onNodeWithTag(GameSettlementTags.Cashbox).performScrollTo().performClick()
+        waitForIdle()
+        assertEquals(listOf("selected-group"), navigation)
+    }
+
+    @Test
     fun `end action returns to previous screen without announcing another financial mutation`() = runComposeUiTest {
         val finance = object : OrganizerFinanceGateway by FakeOrganizerFinanceGateway() {
             override suspend fun expenses(groupId: GroupId) = SaqzResult.Success(ExpenseList(emptyList(), 0L))

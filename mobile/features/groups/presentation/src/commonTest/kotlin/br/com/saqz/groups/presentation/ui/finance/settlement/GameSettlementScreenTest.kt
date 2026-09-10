@@ -19,6 +19,15 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class GameSettlementScreenTest {
     @Test
+    fun `load failure replaces settlement actions with retry`() = runComposeUiTest {
+        setScreen(summaryState.copy(loadFailed = true), {})
+        onNodeWithTag(GameSettlementTags.Failure).assertExists()
+        onNodeWithTag(GameSettlementTags.End).assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.Summary).assertDoesNotExist()
+        onNodeWithText("ENCERRADO").assertDoesNotExist()
+    }
+
+    @Test
     fun `confirmed summary exposes an enabled end action`() = runComposeUiTest {
         val intents = mutableListOf<GameSettlementIntent>()
         setScreen(summaryState, intents::add)
