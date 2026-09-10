@@ -48,12 +48,7 @@ class MemberEditorViewModel(
                 savedState[KEY_NICKNAME] = intent.value
                 update { it.copy(nickname = intent.value, error = null) }
             }
-            is MemberEditorIntent.PositionSelected -> {
-                val secondary = state.value.secondaryPosition.takeUnless { it == intent.value }
-                savedState[KEY_POSITION] = intent.value?.name
-                savedState[KEY_SECONDARY_POSITION] = secondary?.name
-                update { it.copy(position = intent.value, secondaryPosition = secondary, error = null) }
-            }
+            is MemberEditorIntent.PositionSelected -> selectPosition(intent)
             is MemberEditorIntent.SecondaryPositionSelected -> {
                 savedState[KEY_SECONDARY_POSITION] = intent.value?.name
                 update { it.copy(secondaryPosition = intent.value, error = null) }
@@ -84,10 +79,21 @@ class MemberEditorViewModel(
             MemberEditorIntent.SaveBilling -> saveBilling()
             is MemberEditorIntent.AdminChanged -> changeRole(intent.value)
             MemberEditorIntent.Save -> save()
-            MemberEditorIntent.OpenRemove -> if (!state.value.isOwner) update { it.copy(removeSheetOpen = true) }
+            MemberEditorIntent.OpenRemove -> openRemove()
             MemberEditorIntent.DismissRemove -> update { it.copy(removeSheetOpen = false) }
             MemberEditorIntent.ConfirmRemove -> remove()
         }
+    }
+
+    private fun selectPosition(intent: MemberEditorIntent.PositionSelected) {
+        val secondary = state.value.secondaryPosition.takeUnless { it == intent.value }
+        savedState[KEY_POSITION] = intent.value?.name
+        savedState[KEY_SECONDARY_POSITION] = secondary?.name
+        update { it.copy(position = intent.value, secondaryPosition = secondary, error = null) }
+    }
+
+    private fun openRemove() {
+        if (!state.value.isOwner) update { it.copy(removeSheetOpen = true) }
     }
 
     private fun load() {
@@ -126,43 +132,52 @@ class MemberEditorViewModel(
             if (requestGeneration != generation) return@launch
             val role = listedRole ?: entry.role
 
-            member = entry
-            val defaultFee = group.financeDefaults?.monthlyFeeCents
-            val defaultDueDay = group.financeDefaults?.monthlyDueDay
-            val currentFee = entry.monthlyFeeCents ?: defaultFee
-            val currentDueDay = entry.monthlyDueDay ?: defaultDueDay ?: DEFAULT_DUE_DAY
-            update {
-                it.copy(
-                    isLoading = false,
-                    loadFailed = false,
-                    error = null,
-                    name = entry.nickname?.takeIf(String::isNotBlank) ?: entry.displayName,
-                    displayName = entry.displayName,
-                    nickname = entry.nickname.orEmpty(),
-                    joinedAtLabel = joinedAtMonth(entry.joinedAt),
-                    games = stats.games,
-                    attendanceRate = stats.attendanceRate,
-                    absences = stats.absences,
-                    modality = group.profile?.modality,
-                    composition = group.profile?.composition,
-                    position = entry.position,
-                    secondaryPosition = entry.secondaryPosition,
-                    level = entry.level,
-                    preferredSide = entry.preferredSide,
-                    heightCm = entry.heightCm,
-                    heightText = entry.heightCm?.toString().orEmpty(),
-                    membershipType = entry.membershipType,
-                    active = entry.active,
-                    monthlyFeeOverrideCents = entry.monthlyFeeCents,
-                    monthlyDueDayOverride = entry.monthlyDueDay,
-                    defaultMonthlyFeeCents = defaultFee,
-                    defaultMonthlyDueDay = defaultDueDay,
-                    billingAmountText = formatCents(currentFee),
-                    billingDueDay = currentDueDay,
-                    role = role,
-                    canManageRoles = group.role == GroupRole.OWNER,
-                ).restoreDraft(savedState)
-            }
+            applyLoadedMember(group, entry, stats, role)
+        }
+    }
+
+    private fun applyLoadedMember(
+        group: br.com.saqz.groups.domain.group.Group,
+        entry: AthleteRosterEntry,
+        stats: br.com.saqz.groups.domain.athlete.AthleteStats,
+        role: GroupRole,
+    ) {
+        member = entry
+        val defaultFee = group.financeDefaults?.monthlyFeeCents
+        val defaultDueDay = group.financeDefaults?.monthlyDueDay
+        val currentFee = entry.monthlyFeeCents ?: defaultFee
+        val currentDueDay = entry.monthlyDueDay ?: defaultDueDay ?: DEFAULT_DUE_DAY
+        update {
+            it.copy(
+                isLoading = false,
+                loadFailed = false,
+                error = null,
+                name = entry.nickname?.takeIf(String::isNotBlank) ?: entry.displayName,
+                displayName = entry.displayName,
+                nickname = entry.nickname.orEmpty(),
+                joinedAtLabel = joinedAtMonth(entry.joinedAt),
+                games = stats.games,
+                attendanceRate = stats.attendanceRate,
+                absences = stats.absences,
+                modality = group.profile?.modality,
+                composition = group.profile?.composition,
+                position = entry.position,
+                secondaryPosition = entry.secondaryPosition,
+                level = entry.level,
+                preferredSide = entry.preferredSide,
+                heightCm = entry.heightCm,
+                heightText = entry.heightCm?.toString().orEmpty(),
+                membershipType = entry.membershipType,
+                active = entry.active,
+                monthlyFeeOverrideCents = entry.monthlyFeeCents,
+                monthlyDueDayOverride = entry.monthlyDueDay,
+                defaultMonthlyFeeCents = defaultFee,
+                defaultMonthlyDueDay = defaultDueDay,
+                billingAmountText = formatCents(currentFee),
+                billingDueDay = currentDueDay,
+                role = role,
+                canManageRoles = group.role == GroupRole.OWNER,
+            ).restoreDraft(savedState)
         }
     }
 
