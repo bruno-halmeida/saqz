@@ -74,6 +74,23 @@ import br.com.saqz.groups.domain.home.HomeReadModel
 import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.presentation.home.HomeViewModel
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
+import br.com.saqz.groups.presentation.navigation.FinanceRoute
+import br.com.saqz.groups.domain.finance.Charge
+import br.com.saqz.groups.domain.finance.ChargeKind
+import br.com.saqz.groups.domain.finance.ChargeStatus
+import br.com.saqz.groups.domain.finance.ChargeList
+import br.com.saqz.groups.domain.finance.MonthlyChargeCommand
+import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
+import br.com.saqz.groups.domain.finance.FinanceError
+import br.com.saqz.groups.domain.finance.FinanceStatementGateway
+import br.com.saqz.groups.domain.finance.FinanceStatementQuery
+import br.com.saqz.groups.domain.finance.FinanceStatementPage
+import br.com.saqz.groups.domain.finance.FinanceStatementSummary
+import br.com.saqz.groups.domain.membership.GroupMembershipGateway
+import br.com.saqz.groups.domain.membership.GroupMembership
+import br.com.saqz.groups.domain.group.GroupFinanceDefaults
+import br.com.saqz.groups.domain.athlete.AthleteFinancialStatus
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
@@ -249,6 +266,39 @@ class SaqzNavHostViewModelScopeTest {
     }
 
     // -- fixtures --------------------------------------------------------------------
+
+    @Test
+    fun monthlyGenerationUsesRealNavigationAndReloadsCashboxOnlyAfterConfirmedSuccess() = withProbes { _, groups ->
+        val finance = installMonthlyJourney(groups)
+        runComposeUiTest {
+            val backStack = NavBackStack<NavKey>(SaqzShellDestination.Home)
+            setContent { NavHostUnderTest(mutableStateOf(ready(ana)), backStack) }
+            awaitText(AnaBanner)
+            backStack.add(FinanceRoute.GroupCashbox("grupo-mensal"))
+            waitForIdle()
+            assertEquals(1, finance.reads)
+            onNodeWithTag("group-cashbox-generate-monthly").performScrollTo().performClick()
+            waitForIdle()
+            assertEquals(FinanceRoute.MonthlyGeneration("grupo-mensal"), backStack.last())
+            onNodeWithTag("monthly-generation-member-ana").performScrollTo().performClick()
+            onNodeWithTag("monthly-generation-review").performScrollTo().performClick()
+            onNodeWithTag("monthly-generation-confirm").performScrollTo().performClick()
+            waitForIdle()
+            assertEquals(FinanceRoute.MonthlyGeneration("grupo-mensal"), backStack.last())
+            assertEquals(1, finance.reads)
+            assertTrue(finance.charges.isEmpty())
+            finance.fail = false
+            onNodeWithTag("monthly-generation-confirm").performScrollTo().performClick()
+            waitForIdle()
+            assertEquals(listOf<NavKey>(SaqzShellDestination.Home, FinanceRoute.GroupCashbox("grupo-mensal")), backStack.toList())
+            assertEquals(2, finance.reads)
+            assertEquals(finance.commands[0], finance.commands[1])
+            assertEquals(GroupId("grupo-mensal"), finance.charges.single().groupId)
+            assertEquals(8000L, finance.charges.single().amountCents)
+            onNodeWithTag("group-cashbox-debtors").assertExists()
+            onNodeWithText("Ana").assertExists()
+        }
+    }
 
     /**
      * Sobe o Koin do app e sobrescreve **duas** definições: a da [HomeViewModel], para
@@ -462,4 +512,53 @@ private fun installConnectedJourney(groups: RecordingGroupGateway): ConnectedJou
         } }
     })
     return data
+}
+
+private class MonthlyJourneyFinance(delegate: OrganizerFinanceGateway) : OrganizerFinanceGateway by delegate {
+    var fail = true
+    var reads = 0
+    val charges = mutableListOf<Charge>()
+    val commands = mutableListOf<MonthlyChargeCommand>()
+    override suspend fun charges(groupId: GroupId): SaqzResult<ChargeList, FinanceError> {
+        assertEquals(GroupId("grupo-mensal"), groupId)
+        reads++
+        return SaqzResult.Success(ChargeList(charges.toList()))
+    }
+    override suspend fun generateMonthly(groupId: GroupId, command: MonthlyChargeCommand): SaqzResult<ChargeList, FinanceError> {
+        assertEquals(GroupId("grupo-mensal"), groupId)
+        commands += command
+        if (fail) return SaqzResult.Failure(FinanceError.Data(DataError.Connectivity))
+        charges += Charge(
+            "new-monthly", groupId, "ana", ChargeKind.Monthly, month = command.month,
+            amountCents = command.amountCents, dueDate = command.dueDate,
+            status = ChargeStatus.Pending, version = 1, audit = emptyList(),
+        )
+        return SaqzResult.Success(ChargeList(charges.toList()))
+    }
+}
+
+private fun installMonthlyJourney(groups: RecordingGroupGateway): MonthlyJourneyFinance {
+    groups.payload = Group("grupo-mensal", "Grupo mensal", "UTC", 1, GroupRole.OWNER)
+        .copy(financeDefaults = GroupFinanceDefaults(null, 8000, 12))
+    val koin = KoinPlatform.getKoin()
+    val finance = MonthlyJourneyFinance(koin.get())
+    val originalMemberships = koin.get<GroupMembershipGateway>()
+    loadKoinModules(module {
+        single<OrganizerFinanceGateway> { finance }
+        single<GroupNowPort> { GroupNowPort { Instant.parse("2026-08-12T12:00:00Z") } }
+        single<AthleteGateway> { object : AthleteGateway by FixedAthleteGateway {
+            override suspend fun roster(groupId: GroupId, filter: AthleteRosterFilter) = SaqzResult.Success(listOf(
+                AthleteRosterEntry("ana", "Ana", null, null, AthleteMembershipType.MENSALISTA, true, AthleteFinancialStatus.EM_DIA),
+            ))
+        } }
+        single<GroupMembershipGateway> { object : GroupMembershipGateway by originalMemberships {
+            override suspend fun listMemberships(groupId: GroupId) = SaqzResult.Success(listOf(GroupMembership("ana", "Ana", GroupRole.OWNER)))
+        } }
+        single<FinanceStatementGateway> { object : FinanceStatementGateway {
+            override suspend fun statement(groupId: GroupId, query: FinanceStatementQuery) = SaqzResult.Success(
+                FinanceStatementPage("2026-08", emptyList(), FinanceStatementSummary(0, 0, 0, 0), 20, 0, false),
+            )
+        } }
+    })
+    return finance
 }

@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
@@ -168,4 +169,17 @@ private fun MonthlyReview(state: MonthlyGenerationState, onIntent: (MonthlyGener
             modifier = Modifier.testTag(MonthlyGenerationTags.Edit),
         )
     }
+}
+
+@Preview
+@Composable
+private fun MonthlyGenerationPreview() = SaqzTheme {
+    MonthlyGenerationScreen(
+        state = MonthlyGenerationState(
+            isLoading = false,
+            members = listOf(MonthlyMemberUi("ana", "Ana Souza"), MonthlyMemberUi("bia", "Bia Santos")),
+            form = MonthlyForm("2026-08", "80,00", "12/08/2026"),
+        ),
+        onBack = {}, onIntent = {},
+    )
 }

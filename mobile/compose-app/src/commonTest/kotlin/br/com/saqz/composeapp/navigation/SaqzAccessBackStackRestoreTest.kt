@@ -113,6 +113,15 @@ class SaqzAccessBackStackRestoreTest {
     }
 
     @Test
+    fun `monthly generation preserves group through the real navigation serializer`() {
+        val route = br.com.saqz.groups.presentation.navigation.FinanceRoute.MonthlyGeneration("selected-group")
+        val saved = encodeToSavedState(
+            saqzAccessBackStackSerializer, NavBackStack<NavKey>(route), saqzLocalNavConfiguration,
+        )
+        assertEquals(listOf<NavKey>(route), restore(saved))
+    }
+
+    @Test
     fun `change plan route round-trips through the real registered configuration`() {
         val saved = encodeToSavedState(
             saqzAccessBackStackSerializer,

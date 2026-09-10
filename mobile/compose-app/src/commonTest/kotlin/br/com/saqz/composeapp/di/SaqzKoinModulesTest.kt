@@ -315,6 +315,9 @@ class SaqzKoinModulesTest {
         koin.get<GroupDetailsViewModel> { parametersOf("ceret") }
         koin.get<br.com.saqz.groups.presentation.memberprofile.MemberProfileViewModel> { parametersOf("ceret", "member") }
         koin.get<br.com.saqz.groups.presentation.monthlypayments.OwnMonthlyPaymentsViewModel>()
+        koin.get<br.com.saqz.groups.presentation.monthlygeneration.MonthlyGenerationViewModel> {
+            parametersOf("ceret", SavedStateHandle())
+        }
         koin.get<br.com.saqz.groups.presentation.communication.GroupThreadViewModel> { parametersOf("ceret", true, SavedStateHandle()) }
         koin.get<br.com.saqz.groups.presentation.communication.NotificationCenterViewModel> { parametersOf(false) }
         koin.get<GroupMembersViewModel> { parametersOf("ceret") }
