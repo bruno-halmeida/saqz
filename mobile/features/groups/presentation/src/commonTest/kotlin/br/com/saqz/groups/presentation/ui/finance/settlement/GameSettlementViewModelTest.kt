@@ -36,8 +36,10 @@ import br.com.saqz.groups.presentation.sampleRosterEntry
 import br.com.saqz.groups.presentation.sampleVersionedGame
 import br.com.saqz.groups.presentation.sampleVersionedGroup
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -58,6 +60,51 @@ class GameSettlementViewModelTest {
 
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
+
+    @Test
+    fun `ending a confirmed settlement closes once without reloading or financial mutations`() = runTest {
+        val finance = SettlementFinanceGateway(emptyList(), emptyList())
+        val viewModel = viewModel(finance)
+        val effects = mutableListOf<GameSettlementEffect>()
+        backgroundScope.launch(dispatcher) { viewModel.effects.collect { effects += it } }
+        val confirmed = viewModel.state.value
+
+        viewModel.onIntent(GameSettlementIntent.EndSettlement)
+        viewModel.onIntent(GameSettlementIntent.EndSettlement)
+
+        assertEquals(listOf<GameSettlementEffect>(GameSettlementEffect.Closed), effects)
+        assertEquals(confirmed, viewModel.state.value)
+        assertEquals(1, finance.chargeReads)
+        assertEquals(null, finance.lastCommand)
+    }
+
+    @Test
+    fun `ending with a pending receipt or while its write is in flight never closes`() = runTest {
+        val finance = SettlementFinanceGateway(charges(), expenses())
+        val reply = CompletableDeferred<Unit>()
+        finance.beforeUpdate = { reply.await() }
+        val viewModel = viewModel(finance)
+        val effects = mutableListOf<GameSettlementEffect>()
+        backgroundScope.launch(dispatcher) { viewModel.effects.collect { effects += it } }
+
+        viewModel.onIntent(GameSettlementIntent.EndSettlement)
+        assertEquals(emptyList(), effects)
+        viewModel.onIntent(GameSettlementIntent.MarkReceived("game-pending", PaidMethod.Pix))
+        assertEquals("game-pending", viewModel.state.value.updatingChargeId)
+        assertFalse(viewModel.state.value.isSummary)
+        viewModel.onIntent(GameSettlementIntent.EndSettlement)
+        assertEquals(emptyList(), effects)
+
+        reply.complete(Unit)
+        assertTrue(viewModel.state.value.isSummary)
+        viewModel.onIntent(GameSettlementIntent.EndSettlement)
+        assertEquals(listOf(GameSettlementEffect.MutationSucceeded, GameSettlementEffect.Closed), effects)
+    }
+
+    @Test
+    fun `load error with zero cached pending charges is not a closed settlement`() {
+        assertFalse(GameSettlementState(isLoading = false, loadFailed = true).isSummary)
+    }
 
     @Test
     fun `loads only this game charges and derives progress monthly members local time and cost`() = runTest {
@@ -302,10 +349,13 @@ private class SettlementFinanceGateway(
     private val currentExpenses = expenses
     var lastVersion: FinanceVersionToken? = null
     var lastCommand: ChargeStatusCommand? = null
+    var chargeReads = 0
+    var beforeUpdate: suspend () -> Unit = {}
 
-    override suspend fun charges(groupId: GroupId) = SaqzResult.Success(
-        ChargeList(currentCharges, ChargeTotals(0L, 0L, 0L, 0L)),
-    )
+    override suspend fun charges(groupId: GroupId): SaqzResult<ChargeList, FinanceError> {
+        chargeReads++
+        return SaqzResult.Success(ChargeList(currentCharges, ChargeTotals(0L, 0L, 0L, 0L)))
+    }
 
     override suspend fun updateChargeStatus(
         groupId: GroupId,
@@ -315,6 +365,7 @@ private class SettlementFinanceGateway(
     ): SaqzResult<VersionedCharge, FinanceError> {
         lastVersion = version
         lastCommand = command
+        beforeUpdate()
         updateResult?.let { return it }
         currentCharges = currentCharges.map { charge ->
             if (charge.id == chargeId) charge.copy(status = command.status) else charge

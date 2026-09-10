@@ -35,6 +35,7 @@ fun GameSettlementRoot(
     }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
+            GameSettlementEffect.Closed -> onBack()
             is GameSettlementEffect.OpenNewEntry -> onOpenNewEntry(effect.groupId, effect.localDate)
             is GameSettlementEffect.OpenCashbox -> onOpenCashbox(effect.groupId)
             is GameSettlementEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))

@@ -49,6 +49,7 @@ class GameSettlementViewModel(
 
     private var loadGeneration = 0L
     private var mutationGeneration = 0L
+    private var closeEmitted = false
 
     init {
         load()
@@ -71,9 +72,16 @@ class GameSettlementViewModel(
             GameSettlementIntent.OpenCourtExpense -> if (!state.value.isLoading) {
                 emit(GameSettlementEffect.OpenNewEntry(groupId, state.value.gameLocalDate))
             }
-            GameSettlementIntent.EndSettlement -> if (state.value.isSummary) load()
+            GameSettlementIntent.EndSettlement -> endSettlement()
             GameSettlementIntent.OpenCashbox -> emit(GameSettlementEffect.OpenCashbox(groupId))
         }
+    }
+
+    private fun endSettlement() {
+        if (!state.value.isSummary || closeEmitted) return
+        // VUL-184: fechamento é derivado das cobranças confirmadas; só conclui a navegação.
+        closeEmitted = true
+        emit(GameSettlementEffect.Closed)
     }
 
     private fun openChargeSheet(chargeId: String? = null) {

@@ -19,6 +19,25 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class GameSettlementScreenTest {
     @Test
+    fun `confirmed summary exposes an enabled end action`() = runComposeUiTest {
+        val intents = mutableListOf<GameSettlementIntent>()
+        setScreen(summaryState, intents::add)
+
+        onNodeWithTag(GameSettlementTags.End).performScrollTo().assertIsEnabled().performClick()
+
+        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.EndSettlement), intents)
+    }
+
+    @Test
+    fun `last optimistic receipt does not announce a closed settlement`() = runComposeUiTest {
+        setScreen(summaryState.copy(updatingChargeId = "paid-2"), {})
+
+        onNodeWithText("ENCERRADO").assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.Summary).assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.End).performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test
     fun `5g shows progress monthly coverage manual copy and enabled charge`() = runComposeUiTest {
         val intents = mutableListOf<GameSettlementIntent>()
         setScreen(progressState, intents::add)

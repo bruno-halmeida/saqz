@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollTo
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -38,6 +40,28 @@ class GameSettlementScreenshotTest {
     @Test
     fun `5i settlement`() = capture("acerto-5i") {
         GameSettlementScreen(summaryState, {}, {})
+    }
+
+    @Test
+    fun `end enabled after confirmed settlement`() = captureEnd("end-enabled", summaryState)
+
+    @Test
+    fun `end disabled with pending charges`() = captureEnd("end-pending", progressState)
+
+    @Test
+    fun `end disabled during last receipt`() = captureEnd(
+        "end-saving", summaryState.copy(updatingChargeId = "paid-2"),
+    )
+
+    @Test
+    fun `end disabled after receipt failure`() = captureEnd(
+        "end-failure", progressState.copy(operationFailed = true),
+    )
+
+    private fun captureEnd(name: String, state: GameSettlementState) {
+        compose.setContent { SaqzTheme { GameSettlementScreen(state, {}, {}) } }
+        compose.onNodeWithTag(GameSettlementTags.End).performScrollTo()
+        compose.onRoot().captureRoboImage("screenshots/final-adjustments/$name.png")
     }
 
     private fun capture(name: String, content: @Composable () -> Unit) {

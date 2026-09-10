@@ -36,7 +36,7 @@ data class GameSettlementState(
     val receiptSheetChargeId: String? = null,
 ) {
     val isSummary: Boolean
-        get() = !isLoading && pendingDiaristCount == 0
+        get() = !isLoading && !loadFailed && updatingChargeId == null && pendingDiaristCount == 0
 }
 
 @Immutable
@@ -76,6 +76,7 @@ sealed interface GameSettlementIntent {
 }
 
 sealed interface GameSettlementEffect {
+    data object Closed : GameSettlementEffect
     data class OpenNewEntry(val groupId: String, val localDate: String) : GameSettlementEffect
     data class OpenCashbox(val groupId: String) : GameSettlementEffect
     data class CopyPix(val key: String) : GameSettlementEffect

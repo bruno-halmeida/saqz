@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.domain.GroupId
@@ -54,6 +55,37 @@ import kotlin.time.Instant
  */
 @OptIn(ExperimentalTestApi::class)
 class GameSettlementRootTest {
+    @Test
+    fun `end action returns to previous screen without announcing another financial mutation`() = runComposeUiTest {
+        val finance = object : OrganizerFinanceGateway by FakeOrganizerFinanceGateway() {
+            override suspend fun expenses(groupId: GroupId) = SaqzResult.Success(ExpenseList(emptyList(), 0L))
+        }
+        val viewModel = GameSettlementViewModel(
+            "group-1", "game-1", FakeGameGateway(), FakeGroupGateway(),
+            FakeAttendanceGateway(), FakeAthleteGateway(), finance,
+        )
+        val navigation = mutableListOf<String>()
+        var mutations = 0
+        setContent {
+            SaqzTheme {
+                GameSettlementRoot(
+                    groupId = "group-1", gameId = "game-1",
+                    onBack = { navigation += "back" },
+                    onOpenNewEntry = { _, _ -> navigation += "new-entry" },
+                    onOpenCashbox = { navigation += "cashbox/$it" },
+                    onMutationSuccess = { mutations++ },
+                    viewModel = viewModel,
+                )
+            }
+        }
+        waitForIdle()
+        onNodeWithTag(GameSettlementTags.End).performScrollTo().performClick()
+        waitForIdle()
+
+        assertEquals(listOf("back"), navigation)
+        assertEquals(0, mutations)
+    }
+
     @Test
     fun `recebi diarist then back reloads the group details cashbox summary`() = runComposeUiTest {
         val charge = Charge(

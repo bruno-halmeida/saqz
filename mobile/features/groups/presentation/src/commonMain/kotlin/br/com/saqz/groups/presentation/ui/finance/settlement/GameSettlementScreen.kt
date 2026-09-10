@@ -191,14 +191,14 @@ private fun LoadedContent(state: GameSettlementState, onIntent: (GameSettlementI
             enabled = canCharge,
             modifier = Modifier.testTag(GameSettlementTags.ChargeMissing),
         )
+        SaqzButton(
+            label = stringResource(Res.string.game_settlement_end),
+            onClick = { onIntent(GameSettlementIntent.EndSettlement) },
+            fullWidth = true,
+            enabled = state.isSummary,
+            modifier = Modifier.testTag(GameSettlementTags.End),
+        )
         if (!state.isSummary) {
-            SaqzButton(
-                label = stringResource(Res.string.game_settlement_end),
-                onClick = { onIntent(GameSettlementIntent.EndSettlement) },
-                fullWidth = true,
-                enabled = state.isSummary,
-                modifier = Modifier.testTag(GameSettlementTags.End),
-            )
             Text(
                 text = stringResource(Res.string.game_settlement_end_helper),
                 style = SaqzTheme.typography.support,
