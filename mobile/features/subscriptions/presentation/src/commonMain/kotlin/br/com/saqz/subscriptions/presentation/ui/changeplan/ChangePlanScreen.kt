@@ -69,103 +69,104 @@ fun ChangePlanScreen(
     onOpenInvoice: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val metrics = SaqzTheme.metrics
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(SaqzTheme.colors.background)
-            .testTag(ChangePlanTags.Screen),
+    Box(
+        modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(ChangePlanTags.Screen),
     ) {
-        SaqzTopAppBar(title = stringResource(Res.string.changeplan_title), onBack = onBack)
-        when {
-            state.isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                SaqzSpinner()
-            }
-            state.loadError != null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                SaqzEmptyState(
-                    title = state.loadError.asString(),
-                    icon = SaqzIcons.CircleAlert,
-                    action = stringResource(Res.string.changeplan_retry),
-                    onAction = { onIntent(ChangePlanIntent.Retry) },
-                )
-            }
-            state.phase == ChangePlanPhase.Pix && state.pix != null -> ChangePlanPixBody(
-                pix = state.pix,
-                isSubmitting = state.isSubmitting,
-                error = state.submitError,
-                onIntent = onIntent,
-                onCopyPix = onCopyPix,
-                onOpenInvoice = onOpenInvoice,
-            )
-            state.phase == ChangePlanPhase.Scheduled && state.scheduled != null -> ChangePlanResultBody(
-                title = state.scheduled.title.asString(),
-                subtitle = state.scheduled.subtitle.asString(),
-                onBackToCatalog = { onIntent(ChangePlanIntent.BackToCatalog) },
-            )
-            state.phase == ChangePlanPhase.Upgraded -> ChangePlanResultBody(
-                title = stringResource(Res.string.changeplan_upgraded_title),
-                subtitle = stringResource(Res.string.changeplan_upgraded_sub),
-                onBackToCatalog = { onIntent(ChangePlanIntent.BackToCatalog) },
-            )
-            else -> Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
-                verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
-            ) {
-                Text(
-                    text = stringResource(Res.string.changeplan_sub),
-                    style = SaqzTheme.typography.support,
-                    color = SaqzTheme.colors.textSecondary,
-                )
-                state.pendingNote?.let { note ->
-                    Text(
-                        text = note.asString(),
-                        style = SaqzTheme.typography.support,
-                        color = SaqzTheme.colors.primary,
+        val metrics = SaqzTheme.metrics
+        Column(
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            SaqzTopAppBar(title = stringResource(Res.string.changeplan_title), onBack = onBack)
+            when {
+                state.isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    SaqzSpinner()
+                }
+                state.loadError != null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    SaqzEmptyState(
+                        title = state.loadError.asString(),
+                        icon = SaqzIcons.CircleAlert,
+                        action = stringResource(Res.string.changeplan_retry),
+                        onAction = { onIntent(ChangePlanIntent.Retry) },
                     )
                 }
-                state.plans.forEach { card ->
-                    ChangePlanCard(
-                        card = card,
-                        enabled = !state.isSubmitting,
-                        onSelect = { onIntent(ChangePlanIntent.SelectPlan(card.plan)) },
-                    )
-                }
-                state.submitError?.let { error ->
+                state.phase == ChangePlanPhase.Pix && state.pix != null -> ChangePlanPixBody(
+                    pix = state.pix,
+                    isSubmitting = state.isSubmitting,
+                    error = state.submitError,
+                    onIntent = onIntent,
+                    onCopyPix = onCopyPix,
+                    onOpenInvoice = onOpenInvoice,
+                )
+                state.phase == ChangePlanPhase.Scheduled && state.scheduled != null -> ChangePlanResultBody(
+                    title = state.scheduled.title.asString(),
+                    subtitle = state.scheduled.subtitle.asString(),
+                    onBackToCatalog = { onIntent(ChangePlanIntent.BackToCatalog) },
+                )
+                state.phase == ChangePlanPhase.Upgraded -> ChangePlanResultBody(
+                    title = stringResource(Res.string.changeplan_upgraded_title),
+                    subtitle = stringResource(Res.string.changeplan_upgraded_sub),
+                    onBackToCatalog = { onIntent(ChangePlanIntent.BackToCatalog) },
+                )
+                else -> Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+                    verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
+                ) {
                     Text(
-                        text = error.asString(),
+                        text = stringResource(Res.string.changeplan_sub),
                         style = SaqzTheme.typography.support,
-                        color = SaqzTheme.colors.errorForeground,
+                        color = SaqzTheme.colors.textSecondary,
                     )
+                    state.pendingNote?.let { note ->
+                        Text(
+                            text = note.asString(),
+                            style = SaqzTheme.typography.support,
+                            color = SaqzTheme.colors.primary,
+                        )
+                    }
+                    state.plans.forEach { card ->
+                        ChangePlanCard(
+                            card = card,
+                            enabled = !state.isSubmitting,
+                            onSelect = { onIntent(ChangePlanIntent.SelectPlan(card.plan)) },
+                        )
+                    }
+                    state.submitError?.let { error ->
+                        Text(
+                            text = error.asString(),
+                            style = SaqzTheme.typography.support,
+                            color = SaqzTheme.colors.errorForeground,
+                        )
+                    }
                 }
             }
         }
-    }
-    val confirm = state.confirmTarget
-    SaqzBottomSheet(
-        open = confirm != null,
-        onClose = { onIntent(ChangePlanIntent.DismissConfirm) },
-        modifier = Modifier.testTag(ChangePlanTags.ConfirmSheet),
-        title = confirm?.let { stringResource(Res.string.changeplan_confirm_title, it.name) }.orEmpty(),
-    ) {
-        SaqzButton(
-            label = stringResource(Res.string.changeplan_confirm),
-            onClick = { onIntent(ChangePlanIntent.ConfirmChange) },
-            loading = state.isSubmitting,
-        )
-        SaqzButton(
-            label = stringResource(Res.string.changeplan_keep),
-            onClick = { onIntent(ChangePlanIntent.DismissConfirm) },
-            variant = SaqzButtonVariant.Secondary,
-        )
-        state.submitError?.let { error ->
-            Text(
-                text = error.asString(),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.errorForeground,
+        val confirm = state.confirmTarget
+        SaqzBottomSheet(
+            open = confirm != null,
+            onClose = { onIntent(ChangePlanIntent.DismissConfirm) },
+            modifier = Modifier.testTag(ChangePlanTags.ConfirmSheet),
+            title = confirm?.let { stringResource(Res.string.changeplan_confirm_title, it.name) }.orEmpty(),
+        ) {
+            SaqzButton(
+                label = stringResource(Res.string.changeplan_confirm),
+                onClick = { onIntent(ChangePlanIntent.ConfirmChange) },
+                loading = state.isSubmitting,
             )
+            SaqzButton(
+                label = stringResource(Res.string.changeplan_keep),
+                onClick = { onIntent(ChangePlanIntent.DismissConfirm) },
+                variant = SaqzButtonVariant.Secondary,
+            )
+            state.submitError?.let { error ->
+                Text(
+                    text = error.asString(),
+                    style = SaqzTheme.typography.support,
+                    color = SaqzTheme.colors.errorForeground,
+                )
+            }
         }
     }
 }
@@ -238,7 +239,11 @@ private fun ChangePlanPixBody(
             .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
         verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
     ) {
-        Text(text = stringResource(Res.string.changeplan_pix_title), style = SaqzTheme.typography.title, color = SaqzTheme.colors.textPrimary)
+        Text(
+            text = stringResource(Res.string.changeplan_pix_title),
+            style = SaqzTheme.typography.title,
+            color = SaqzTheme.colors.textPrimary,
+        )
         Text(text = pix.summary.asString(), style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
         SaqzCard {
             Text(text = pix.copyPaste, style = SaqzTheme.typography.support, color = SaqzTheme.colors.textPrimary)
