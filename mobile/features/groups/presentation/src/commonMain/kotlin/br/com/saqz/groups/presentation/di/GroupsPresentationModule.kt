@@ -21,6 +21,7 @@ import br.com.saqz.groups.presentation.members.GroupMembersViewModel
 import br.com.saqz.groups.presentation.memberprofile.MemberProfileViewModel
 import br.com.saqz.groups.presentation.monthlypayments.OwnMonthlyPaymentsViewModel
 import br.com.saqz.groups.presentation.newentry.NewEntryViewModel
+import br.com.saqz.groups.presentation.monthlygeneration.MonthlyGenerationViewModel
 import br.com.saqz.groups.presentation.photo.GroupPhotoViewModel
 import br.com.saqz.groups.presentation.schedule.GroupScheduleViewModel
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
@@ -61,6 +62,7 @@ fun groupsPresentationModule(): Module = module {
     }
     viewModel { params -> StatementViewModel(params.get(), get()) }
     viewModel { params -> NewEntryViewModel(params.get(), params.get(), get(), get<GroupNowPort>()) }
+    viewModel { params -> MonthlyGenerationViewModel(params.get(), params.get(), get(), get(), get(), get<GroupNowPort>()) }
     viewModel {
         params ->
         GroupDetailsViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>(), get(), get())

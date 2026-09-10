@@ -125,6 +125,7 @@ class GroupCashboxRootTest {
                                 refreshVersion++
                             },
                             onOpenStatement = {},
+                            onOpenMonthlyGeneration = {},
                             viewModel = cashboxViewModel,
                         )
                     }
@@ -201,6 +202,7 @@ class GroupCashboxRootTest {
                     groupId = "group-1",
                     onBack = {},
                     onOpenStatement = {},
+                    onOpenMonthlyGeneration = {},
                     refreshVersion = refreshVersion,
                     viewModel = cashboxViewModel,
                 )

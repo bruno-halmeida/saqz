@@ -17,6 +17,9 @@ sealed interface FinanceRoute : NavKey {
     data class Statement(val groupId: String) : FinanceRoute
 
     @Serializable
+    data class MonthlyGeneration(val groupId: String) : FinanceRoute
+
+    @Serializable
     data class NewEntry(val groupId: String, val prefill: NewEntryPrefill? = null) : FinanceRoute
 
     @Serializable

@@ -59,6 +59,7 @@ import br.com.saqz.groups.presentation.membereditor.MemberEditorRoot
 import br.com.saqz.groups.presentation.newentry.NewEntryPrefill
 import br.com.saqz.groups.presentation.newentry.NewEntryEffect
 import br.com.saqz.groups.presentation.newentry.NewEntryRoot
+import br.com.saqz.groups.presentation.monthlygeneration.MonthlyGenerationRoot
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.statement.StatementEffect
 import br.com.saqz.groups.presentation.statement.StatementRoot
@@ -452,6 +453,7 @@ internal fun SaqzNavHost(
                     onBack = pop,
                     onMutationSuccess = { groupDetailsRefreshVersion++ },
                     refreshVersion = groupCashboxRefreshVersion,
+                    onOpenMonthlyGeneration = { backStack.add(FinanceRoute.MonthlyGeneration(it)) },
                     onOpenNewEntry = { groupId ->
                         backStack.add(FinanceRoute.NewEntry(groupId))
                     },
@@ -489,6 +491,17 @@ internal fun SaqzNavHost(
                                 groupDetailsRefreshVersion++
                             }
                         }
+                    },
+                )
+            }
+            entry<FinanceRoute.MonthlyGeneration> { route ->
+                MonthlyGenerationRoot(
+                    groupId = route.groupId,
+                    onBack = pop,
+                    onGenerationSuccess = {
+                        pop()
+                        groupCashboxRefreshVersion++
+                        groupDetailsRefreshVersion++
                     },
                 )
             }

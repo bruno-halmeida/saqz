@@ -63,6 +63,7 @@ import br.com.saqz.groups.resources.group_cashbox_retry
 import br.com.saqz.groups.resources.group_cashbox_statement
 import br.com.saqz.groups.resources.group_cashbox_received_monthly_suffix
 import br.com.saqz.groups.resources.group_cashbox_title
+import br.com.saqz.groups.resources.monthly_generation_title
 import br.com.saqz.groups.resources.sheet_charge_missing_pix
 import br.com.saqz.groups.presentation.ui.finance.PixCard
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
@@ -74,6 +75,7 @@ internal object GroupCashboxTags {
     const val Screen = "group-cashbox"
     const val ChargeMissing = "group-cashbox-charge-missing"
     const val Register = "group-cashbox-register"
+    const val GenerateMonthly = "group-cashbox-generate-monthly"
     const val Monthly = "group-cashbox-monthly"
     const val Overdue = "group-cashbox-overdue"
     const val OverdueCharge = "group-cashbox-overdue-charge"
@@ -180,6 +182,12 @@ private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxInten
         }
         state.overdueBanner?.let { OverdueBanner(it, canCharge, onIntent) }
         MonthlySection(state)
+        SaqzButton(
+            label = stringResource(Res.string.monthly_generation_title),
+            onClick = { onIntent(GroupCashboxIntent.GenerateMonthly) },
+            variant = SaqzButtonVariant.Secondary, fullWidth = true,
+            modifier = Modifier.testTag(GroupCashboxTags.GenerateMonthly),
+        )
         if (state.debtors.isNotEmpty()) {
             DebtorsSection(state = state, canCharge = canCharge, onIntent = onIntent)
         }
@@ -413,4 +421,3 @@ private fun DebtorRow(
         }
     }
 }
-

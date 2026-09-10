@@ -67,6 +67,7 @@ sealed interface GroupCashboxIntent {
     data object ChargeMissing : GroupCashboxIntent
     data class ChargeIndividual(val chargeId: String) : GroupCashboxIntent
     data object Register : GroupCashboxIntent
+    data object GenerateMonthly : GroupCashboxIntent
     data object ViewFullStatement : GroupCashboxIntent
     data class OpenReceipt(val chargeId: String) : GroupCashboxIntent
     data class MarkReceived(
@@ -81,6 +82,7 @@ sealed interface GroupCashboxIntent {
 sealed interface GroupCashboxEffect {
     data class OpenStatement(val groupId: String) : GroupCashboxEffect
     data class OpenNewEntry(val groupId: String) : GroupCashboxEffect
+    data class OpenMonthlyGeneration(val groupId: String) : GroupCashboxEffect
     data class CopyPix(val key: String) : GroupCashboxEffect
     data object MutationSucceeded : GroupCashboxEffect
 }

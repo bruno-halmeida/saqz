@@ -1,0 +1,16 @@
+<resources>
+    <string name="monthly_generation_title">Gerar mensalidades</string>
+    <string name="monthly_generation_note">O valor informado vale para cada pessoa selecionada. Esta ação cria cobranças pendentes: não registra recebimento, não envia mensagens e não altera a geração automática. Cobranças existentes no mês serão mantidas.</string>
+    <string name="monthly_generation_month">Mês (AAAA-MM)</string>
+    <string name="monthly_generation_due">Vencimento (DD/MM/AAAA)</string>
+    <string name="monthly_generation_amount">Valor por pessoa (R$)</string>
+    <string name="monthly_generation_members">Selecione os mensalistas ativos</string>
+    <string name="monthly_generation_empty">Não há mensalistas ativos neste grupo.</string>
+    <string name="monthly_generation_review">Revisar mensalidades</string>
+    <string name="monthly_generation_summary">Mês %1$s · Vencimento %2$s\n%3$s por pessoa · Pessoas selecionadas: %4$d</string>
+    <string name="monthly_generation_confirm">Confirmar geração</string>
+    <string name="monthly_generation_edit">Voltar e editar</string>
+    <string name="monthly_generation_failed">Não foi possível confirmar a geração. Seus dados foram mantidos; tente novamente.</string>
+    <string name="monthly_generation_validation">Confira o mês, o vencimento dentro do mês, o valor positivo e selecione ao menos uma pessoa.</string>
+    <string name="monthly_generation_denied">Você não tem permissão para gerar mensalidades neste grupo.</string>
+</resources>

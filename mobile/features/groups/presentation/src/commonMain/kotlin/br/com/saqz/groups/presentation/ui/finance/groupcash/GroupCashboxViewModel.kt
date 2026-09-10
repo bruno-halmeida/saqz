@@ -46,6 +46,9 @@ class GroupCashboxViewModel(
             GroupCashboxIntent.ChargeMissing -> openChargeSheet()
             is GroupCashboxIntent.ChargeIndividual -> openChargeSheet(intent.chargeId)
             GroupCashboxIntent.Register -> emit(GroupCashboxEffect.OpenNewEntry(groupId))
+            GroupCashboxIntent.GenerateMonthly -> if (!state.value.isLoading && !state.value.loadFailed) {
+                emit(GroupCashboxEffect.OpenMonthlyGeneration(groupId))
+            }
             GroupCashboxIntent.ViewFullStatement -> emit(GroupCashboxEffect.OpenStatement(groupId))
             is GroupCashboxIntent.OpenReceipt -> openReceiptSheet(intent.chargeId)
             GroupCashboxIntent.DismissChargeSheet -> update {
