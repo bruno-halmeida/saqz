@@ -98,9 +98,13 @@ autenticadas independentes verificam persistência e permissões. Não usa gatew
 | Firebase Android na configuração dev padrão | 3 | PASS |
 | Detekt global após correção do gateway | — | PASS |
 
-Os sete casos passaram juntos após a última correção, com dados novos, em 4min24s de Gradle.
-A revisão independente final deste lote ainda está pendente. O runner focal anuncia o recorte
-executado; não anuncia sucesso da suíte completa.
+Os sete casos passaram juntos na execução do autor após a última correção, com dados novos,
+em 4min24s de Gradle. **A repetição independente reprovou: seis PASS e uma falha no teste FIFO**,
+que leu `WAITLISTED` quando esperava `CONFIRMED`. O texto da desistência é atualizado de forma
+otimista, antes de terminar a gravação; aguardar somente esse texto não comprova a conclusão.
+Uma reprodução focal inalterada passou, mas não anula a falha do lote. O ajuste de sincronização
+nos testes de presença aguarda aprovação; a revisão e os testes de mutação não estão concluídos.
+O runner focal anuncia o recorte executado; não anuncia sucesso da suíte completa.
 
 Defeitos reproduzidos:
 
@@ -123,7 +127,7 @@ antes era convertida em resultado de erro, que o teste não conferia. Os 11 caso
 
 Evidências locais desta rodada: `/tmp/saqz-critical-e2e.Dq3Cs5/`, logs `seven-final.log`,
 `nav-green.log`, `athlete-query-red.log`, `athlete-query-approved.log`, `groups-data-final.log`,
-`finance-fixed.log` e `approved-final-gates.log`.
+`finance-fixed.log`, `approved-final-gates.log`, `verifier-full-e2e.log` e `verifier-fifo-repro.log`.
 O runner também retém JUnit/logcat em pasta temporária anunciada na saída; esses artefatos são
 locais e podem expirar. Não houve push ou deploy nesta rodada. O escopo não inclui ADM da
 plataforma, iOS instalado, WhatsApp, denúncias/moderação ou provedores de pagamento.
