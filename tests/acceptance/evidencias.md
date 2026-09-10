@@ -90,7 +90,7 @@ autenticadas independentes verificam persistência e permissões. Não usa gatew
 
 | Execução | Casos | Resultado |
 | --- | ---: | --- |
-| Acesso, saída, capacidade, FIFO, comunicação e geração mensal — lote conjunto final | 7 | PASS, sem falhas ou skips |
+| Acesso, saída, capacidade, FIFO, comunicação e geração mensal — repetição independente após sincronização | 7 | PASS, sem falhas ou skips |
 | Geração manual, repetição e mensalidade própria — execução focal anterior | 1 | PASS, sem skips; também incluído no lote de sete |
 | Proteções Node do runner, incluindo seleção explícita de cenário | 5 | PASS |
 | Compose-app/commonTest no simulador iOS, incluindo duas regressões de navegação | 124 | PASS |
@@ -98,16 +98,38 @@ autenticadas independentes verificam persistência e permissões. Não usa gatew
 | Firebase Android na configuração dev padrão | 3 | PASS |
 | Detekt global após correção do gateway | — | PASS |
 
-Os sete casos passaram juntos na execução do autor após a última correção, com dados novos,
-em 4min24s de Gradle. **A repetição independente reprovou: seis PASS e uma falha no teste FIFO**,
+Os sete casos passaram juntos na primeira execução completa do autor, com dados novos,
+em 4min24s de Gradle. **A primeira repetição independente reprovou: seis PASS e uma falha no teste FIFO**,
 que leu `WAITLISTED` quando esperava `CONFIRMED`. O texto da desistência é atualizado de forma
 otimista, antes de terminar a gravação; aguardar somente esse texto não comprova a conclusão.
 Uma reprodução focal inalterada passou, mas não anula a falha do lote. Com aprovação do usuário,
 os dois testes de presença agora aguardam o botão novamente habilitado e reconferem o texto final
 antes de consultar a API. Todas as verificações de status, capacidade, identidade e ordem foram
 mantidas. Ambos passaram isoladamente após a correção, sem falhas ou skips. O novo lote conjunto
-também passou: sete testes, zero falhas/skips, em 43s de Gradle. A revisão independente e os testes
-de mutação ainda não estão concluídos.
+também passou: sete testes, zero falhas/skips, em 43s de Gradle. A repetição independente confirmou
+esse resultado, também em 43s. Foram reexecutados independentemente 389 testes: sete instalados,
+cinco Node, 250 de dados, 124 de composição/navegação e três de Firebase; todos sem falhas/skips,
+com lint aprovado.
+
+Cinco mutações de produto em cópia temporária foram detectadas: preservar tela protegida sem
+sessão, perder a aba Grupos na atualização de sessão, omitir filtro de mensalistas, não encerrar
+a sessão Firebase e acrescentar um centavo à cobrança. As três primeiras atingem código de produto
+alterado nesta rodada; as duas últimas atingem código preexistente exercitado pelos novos E2E.
+O teste FIFO corrigido também passou com resposta de desistência artificialmente atrasada.
+Ao fim, o APK E2E original foi reinstalado por uma execução financeira da árvore real, aprovada.
+
+**O aceite final do runner permanece pendente por dois achados ENV:**
+
+- Se o emulador desconectar durante cancelamento, a falha no `adb force-stop` impede a tentativa
+  de encerrar Spring/Firebase e remover o banco descartável. Reproduzido com processos inertes;
+  nenhuma base real foi deixada aberta pelo diagnóstico.
+- `command()` mistura stdout e stderr no valor retornado. Um diagnóstico inerte comprovou que
+  avisos contaminam o metadado; isso pode corromper o ID retornado por `docker create` ao baixar uma
+  imagem ausente. O impacto no Docker sem cache é inferido desse fluxo e do pull padrão documentado
+  pelo CLI instalado; não houve remoção de imagem nem pull real para o diagnóstico.
+
+Esses ajustes de infraestrutura aguardam aprovação. Eles não invalidam os resultados dos sete
+cenários executados, mas impedem declarar o runner finalizado. Fontes reais não foram mutadas.
 
 Uma tentativa anterior desse lote foi interrompida após três casos concluídos, com o emulador
 sem progresso e comandos ADB excedendo seus limites. Ela não conta como aprovação. O reinício
@@ -141,6 +163,9 @@ Evidências locais desta rodada: `/tmp/saqz-critical-e2e.Dq3Cs5/`, logs `seven-f
 Correção de sincronização: `attendance-sync-fixed.log`, `attendance-order-sync-fixed.log`,
 `attendance-sync-lint.log` e `seven-after-emulator-restart.log`. Tentativa incompleta:
 `seven-attendance-sync-fixed.log`; reinício: `emulator-cold-restart.log`.
+Revisão: `validation.md`, `verifier-full-after-sync.log`, `verifier-native-default-lint.log`,
+`verifier-gate-counts.log`, logs `mutant-M1` a `mutant-M5`, `timing-H2-delayed-withdrawal.log`,
+`verifier-original-apk-restored.log`, `cleanup-diagnostic.log` e `command-metadata-diagnostic.log`.
 O runner também retém JUnit/logcat em pasta temporária anunciada na saída; esses artefatos são
 locais e podem expirar. Não houve push ou deploy nesta rodada. O escopo não inclui ADM da
 plataforma, iOS instalado, WhatsApp, denúncias/moderação ou provedores de pagamento.
