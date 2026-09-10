@@ -60,8 +60,15 @@ final class IOSLinkAdapterTests: XCTestCase {
 
     func testNonHTTPSDirectURLIsRejected() {
         let fixture = Fixture(); fixture.start()
-        fixture.adapter.onOpenURL(URL(string: "saqz://invite?saqz_invite=\(Self.codeA)")!)
+        fixture.adapter.onOpenURL(URL(string: "http://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)")!)
+        fixture.adapter.onOpenURL(URL(string: "otherapp://invite?saqz_invite=\(Self.codeA)")!)
         XCTAssertTrue(fixture.received.isEmpty)
+    }
+
+    func testRegisteredAppSchemeDeliversInviteCode() {
+        let fixture = Fixture(); fixture.start()
+        let handled = fixture.adapter.onOpenURL(URL(string: "saqz://invite?saqz_invite=\(Self.codeA)")!)
+        XCTAssertTrue(handled); XCTAssertEqual(fixture.received, [Self.codeA])
     }
 
     func testDirectAndBranchCopiesAreDeliveredOnce() {
@@ -112,6 +119,7 @@ final class IOSLinkAdapterTests: XCTestCase {
         let entitlements = try String(contentsOf: sourceRoot.appendingPathComponent("SaqzIOS/SaqzIOS.entitlements"), encoding: .utf8)
         XCTAssertTrue(info.contains("<key>branch_key</key>")); XCTAssertTrue(info.contains("$(BRANCH_TEST_KEY)"))
         XCTAssertTrue(info.contains("$(BRANCH_LIVE_KEY)")); XCTAssertFalse(info.contains("saqz_invite"))
+        XCTAssertTrue(info.contains("<key>CFBundleURLSchemes</key>")); XCTAssertTrue(info.contains("<string>saqz</string>"))
         XCTAssertTrue(entitlements.contains("applinks:$(BRANCH_DOMAIN)"))
     }
 

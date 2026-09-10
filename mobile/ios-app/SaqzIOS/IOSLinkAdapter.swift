@@ -73,10 +73,10 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort {
     }
 
     static func directEvent(_ url: URL?) -> GroupLinkEvent? {
-        guard let url, url.scheme?.lowercased() == "https",
+        guard let url, isDirectLinkScheme(url.scheme),
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
-        let inviteValues = components.queryItems?.filter { $0.name == inviteParameter }.compactMap(\ .value).filter(isValidInviteCode) ?? []
-        let attendanceValues = components.queryItems?.filter { $0.name == attendanceParameter }.compactMap(\ .value).filter(isValidInviteCode) ?? []
+        let inviteValues = components.queryItems?.filter { $0.name == inviteParameter }.compactMap(\.value).filter(isValidInviteCode) ?? []
+        let attendanceValues = components.queryItems?.filter { $0.name == attendanceParameter }.compactMap(\.value).filter(isValidInviteCode) ?? []
         if !inviteValues.isEmpty && !attendanceValues.isEmpty { return nil }
         if let invite = inviteValues.last { return GroupLinkEventInvite(code: invite) }
         if let attendance = attendanceValues.last { return GroupLinkEventAttendance(code: attendance) }
@@ -102,6 +102,15 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort {
             return false
         }
         return true
+    }
+
+    // HTTPS is the public Branch invite. `saqz` is the registered app scheme so
+    // `simctl openurl` can launch the app; iOS sends https to Safari without AASA.
+    private static func isDirectLinkScheme(_ scheme: String?) -> Bool {
+        switch scheme?.lowercased() {
+        case "https", "saqz": return true
+        default: return false
+        }
     }
 }
 
