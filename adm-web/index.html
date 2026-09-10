@@ -291,6 +291,10 @@ body{margin:0;background:#F5F5F7}
 .msr{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;line-height:1;letter-spacing:normal;display:inline-block;white-space:nowrap;user-select:none;font-variation-settings:'FILL' 0,'wght' 400,'opsz' 24}
 a{color:#0638DF}a:hover{color:#052BB3}
 select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px rgba(6,56,223,.11)}
+.pagination{display:flex;align-items:center;gap:10px;padding:12px 20px;flex-wrap:wrap;font-size:12.5px;color:var(--saqz-muted)}
+.pagination span{margin-right:auto}
+.pagination button{font:600 13px var(--font-ui);padding:8px 14px;border-radius:999px;border:1px solid var(--saqz-border);background:var(--saqz-white);color:var(--saqz-blue);cursor:pointer}
+.pagination button:disabled{background:var(--saqz-disabled-bg);color:var(--saqz-disabled-fg);cursor:default}
 </style>
 </helmet>
 <div style="width:100vw;height:100vh;min-height:740px;display:grid;grid-template-columns:64px 1fr;background:var(--saqz-canvas);font-family:var(--font-ui);color:var(--saqz-navy);box-sizing:border-box;overflow:hidden">
@@ -383,7 +387,12 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
             <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
           </button>
         </sc-for>
-        <span style="display:block;padding:12px 20px;font-size:12.5px;color:var(--saqz-muted)">{{ uRodape }}</span>
+        <nav class="pagination" aria-label="Paginação de usuários">
+          <span aria-live="polite">{{ uPager.rodape }}</span>
+          <button type="button" disabled="{{ uPager.carregando }}" sc-camel-on-click="{{ uPager.onRecarregar }}">{{ uPager.recarregarLabel }}</button>
+          <button type="button" disabled="{{ uPager.anteriorDesabilitado }}" sc-camel-on-click="{{ uPager.onAnterior }}">Anterior</button>
+          <button type="button" disabled="{{ uPager.proximaDesabilitada }}" sc-camel-on-click="{{ uPager.onProxima }}">Próxima</button>
+        </nav>
       </div>
     </div>
   </div>
@@ -467,7 +476,12 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
             <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
           </button>
         </sc-for>
-        <span style="display:block;padding:12px 20px;font-size:12.5px;color:var(--saqz-muted)">{{ gRodape }}</span>
+        <nav class="pagination" aria-label="Paginação de grupos">
+          <span aria-live="polite">{{ gPager.rodape }}</span>
+          <button type="button" disabled="{{ gPager.carregando }}" sc-camel-on-click="{{ gPager.onRecarregar }}">{{ gPager.recarregarLabel }}</button>
+          <button type="button" disabled="{{ gPager.anteriorDesabilitado }}" sc-camel-on-click="{{ gPager.onAnterior }}">Anterior</button>
+          <button type="button" disabled="{{ gPager.proximaDesabilitada }}" sc-camel-on-click="{{ gPager.onProxima }}">Próxima</button>
+        </nav>
       </div>
     </div>
   </div>
@@ -529,7 +543,12 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
             <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
           </button>
         </sc-for>
-        <span style="display:block;padding:12px 20px;font-size:12.5px;color:var(--saqz-muted)">{{ recRodape }}</span>
+        <nav class="pagination" aria-label="Paginação de assinaturas">
+          <span aria-live="polite">{{ sPager.rodape }}</span>
+          <button type="button" disabled="{{ sPager.carregando }}" sc-camel-on-click="{{ sPager.onRecarregar }}">{{ sPager.recarregarLabel }}</button>
+          <button type="button" disabled="{{ sPager.anteriorDesabilitado }}" sc-camel-on-click="{{ sPager.onAnterior }}">Anterior</button>
+          <button type="button" disabled="{{ sPager.proximaDesabilitada }}" sc-camel-on-click="{{ sPager.onProxima }}">Próxima</button>
+        </nav>
       </div>
       </sc-if>
       
@@ -692,6 +711,7 @@ class Component extends DCLogic {
     usersPage: null, userDetail: null, userReceipts: null,
     groupsPage: null, groupDetail: null,
     subsPage: null, subDetail: null, couponsData: null,
+    usersPageNumber: 1, groupsPageNumber: 1, subsPageNumber: 1,
     // Suporte segue mockado até o VUL-171
     resolvidas: {},
     cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "" },
@@ -723,6 +743,7 @@ class Component extends DCLogic {
             usersPage: null, userDetail: null, userReceipts: null,
             groupsPage: null, groupDetail: null,
             subsPage: null, subDetail: null, couponsData: null,
+            usersPageNumber: 1, groupsPageNumber: 1, subsPageNumber: 1,
             // Modais e toasts carregam closures destrutivas da sessão velha;
             // rascunho, filtros digitados e navegação também não pertencem
             // ao próximo admin.
@@ -793,16 +814,16 @@ class Component extends DCLogic {
       .catch(() => this.setState({ atrasadas: null }));
   }
 
-  carregarUsuarios() {
+  carregarUsuarios(page = this.state.usersPageNumber) {
     const st = this.state;
     const q = [];
     if (st.uBusca.trim()) q.push("query=" + encodeURIComponent(st.uBusca.trim()));
     if (st.uPlano !== "todos") q.push("plan=" + st.uPlano);
     if (st.uStatus !== "todos") q.push("status=" + st.uStatus);
-    q.push("page=1", "size=25");
+    q.push("page=" + page, "size=25");
     const req = (this._usersReq = (this._usersReq || 0) + 1);
     const atual = () => this._usersReq === req;
-    this.setState({ usersPage: null });
+    this.setState({ usersPage: null, usersPageNumber: page });
     this.api("/admin/users?" + q.join("&"))
       .then((usersPage) => { if (atual()) this.setState({ usersPage }); })
       .catch(() => { if (atual()) this.setState({ usersPage: { erro: true, items: [], total: 0 } }); });
@@ -826,15 +847,15 @@ class Component extends DCLogic {
       .catch(() => { if (atual()) this.setState({ userDetail: { erro: true } }); });
   }
 
-  carregarGrupos() {
+  carregarGrupos(page = this.state.groupsPageNumber) {
     const st = this.state;
     const q = [];
     if (st.gBusca.trim()) q.push("query=" + encodeURIComponent(st.gBusca.trim()));
     if (st.gStatus !== "todos") q.push("status=" + st.gStatus);
-    q.push("page=1", "size=25");
+    q.push("page=" + page, "size=25");
     const req = (this._groupsReq = (this._groupsReq || 0) + 1);
     const atual = () => this._groupsReq === req;
-    this.setState({ groupsPage: null });
+    this.setState({ groupsPage: null, groupsPageNumber: page });
     this.api("/admin/groups?" + q.join("&"))
       .then((groupsPage) => { if (atual()) this.setState({ groupsPage }); })
       .catch(() => { if (atual()) this.setState({ groupsPage: { erro: true, items: [], total: 0 } }); });
@@ -848,11 +869,45 @@ class Component extends DCLogic {
       .catch(() => { if (atual()) this.setState({ groupDetail: { erro: true } }); });
   }
 
-  carregarAssinaturas() {
-    this.setState({ subsPage: null });
-    this.api("/admin/subscriptions?page=1&size=25")
-      .then((subsPage) => this.setState({ subsPage }))
-      .catch(() => this.setState({ subsPage: { erro: true, items: [], total: 0 } }));
+  carregarAssinaturas(page = this.state.subsPageNumber) {
+    const req = (this._subsReq = (this._subsReq || 0) + 1);
+    const atual = () => this._subsReq === req;
+    this.setState({ subsPage: null, subsPageNumber: page });
+    this.api(`/admin/subscriptions?page=${page}&size=25`)
+      .then((subsPage) => { if (atual()) this.setState({ subsPage }); })
+      .catch(() => { if (atual()) this.setState({ subsPage: { erro: true, items: [], total: 0 } }); });
+  }
+
+  paginacao(key) {
+    const data = this.state[key + "Page"];
+    const page = this.state[key + "PageNumber"];
+    const carregando = data == null;
+    const erro = !!data?.erro;
+    const pages = Math.max(1, Math.ceil((data?.total || 0) / 25));
+    const anteriorDesabilitado = carregando || page <= 1;
+    const proximaDesabilitada = carregando || erro || page >= pages;
+    const methods = { users: "carregarUsuarios", groups: "carregarGrupos", subs: "carregarAssinaturas" };
+    // Reconsulta o estado no clique: duas ações antes de um render não disparam duas cargas.
+    const mover = (delta) => {
+      const atual = this.paginacao(key);
+      if (delta < 0 ? atual.anteriorDesabilitado : atual.proximaDesabilitada) return;
+      this[methods[key]](this.state[key + "PageNumber"] + delta);
+    };
+    const start = (page - 1) * 25 + 1;
+    const rodape = carregando ? `Carregando página ${page}…` : erro
+      ? `Não foi possível carregar a página ${page}. Tente novamente.`
+      : data.items.length === 0 ? `Nenhum resultado · página ${page} de ${pages}`
+      : `Mostrando ${start}–${start + data.items.length - 1} de ${data.total} · página ${page} de ${pages}`;
+    return {
+      rodape, carregando, anteriorDesabilitado, proximaDesabilitada,
+      recarregarLabel: erro ? "Tentar novamente" : "Atualizar",
+      onAnterior: () => mover(-1), onProxima: () => mover(1),
+      onRecarregar: () => {
+        const current = this.state[key + "Page"];
+        if (current == null) return;
+        this[methods[key]](current.erro ? this.state[key + "PageNumber"] : 1);
+      },
+    };
   }
 
   carregarAssinatura(ownerId) {
@@ -943,7 +998,8 @@ class Component extends DCLogic {
 
   filtroUsuarios(k) {
     return (e) => {
-      this.setState({ [k]: e.target.value }, () => {
+      this._usersReq = (this._usersReq || 0) + 1;
+      this.setState({ [k]: e.target.value, usersPageNumber: 1, usersPage: null }, () => {
         clearTimeout(this._ud);
         this._ud = setTimeout(() => this.carregarUsuarios(), k === "uBusca" ? 350 : 0);
       });
@@ -952,7 +1008,8 @@ class Component extends DCLogic {
 
   filtroGrupos(k) {
     return (e) => {
-      this.setState({ [k]: e.target.value }, () => {
+      this._groupsReq = (this._groupsReq || 0) + 1;
+      this.setState({ [k]: e.target.value, groupsPageNumber: 1, groupsPage: null }, () => {
         clearTimeout(this._gd);
         this._gd = setTimeout(() => this.carregarGrupos(), k === "gBusca" ? 350 : 0);
       });
@@ -1028,7 +1085,6 @@ class Component extends DCLogic {
       return { ini: ini(u.displayName), nome: u.displayName || "—", email: u.email || "—", cidade: u.city || "—", grupos: String(u.memberships), plano: u.plan || "Grátis", planoStyle: this.chipPlano(u.plan), statusTxt: cs.txt, statusStyle: cs.style, acesso: this.dataBr(u.lastSeenAt), onOpen: () => this.go("usuario", { selU: u.userId }) };
     }) : [];
     const uCount = up ? (up.erro ? "erro ao carregar" : `${up.total} usuário${up.total === 1 ? "" : "s"}`) : "carregando…";
-    const uRodape = up ? (up.erro ? "Não deu para carregar a lista. Ajuste o filtro ou tente de novo." : `Mostrando ${up.items.length} de ${up.total} · página 1 (paginação completa na próxima fase).`) : "Carregando…";
 
     const det = st.userDetail && !st.userDetail.erro ? st.userDetail : null;
     const udStatus = this.chipStatus(det && det.suspendedAt ? "suspenso" : "ativo");
@@ -1052,7 +1108,6 @@ class Component extends DCLogic {
       return { nome: g.name, sub: `desde ${this.dataBr(g.createdAt)}`, organizador: g.ownerName || "—", planoOrg: g.ownerPlan || "Sem plano", planoOrgStyle: this.chipPlano(g.ownerPlan), membros: String(g.members), jogos: String(g.gamesPlayed), statusTxt: cs.txt, statusStyle: cs.style, onOpen: () => this.go("grupo", { selG: g.groupId }) };
     }) : [];
     const gCount = gp ? (gp.erro ? "erro ao carregar" : `${gp.total} grupo${gp.total === 1 ? "" : "s"}`) : "carregando…";
-    const gRodape = gp ? (gp.erro ? "Não deu para carregar a lista. Ajuste o filtro ou tente de novo." : `Mostrando ${gp.items.length} de ${gp.total} · página 1 (paginação completa na próxima fase).`) : "Carregando…";
 
     const gdet = st.groupDetail && !st.groupDetail.erro ? st.groupDetail : null;
     const gdStatus = this.chipStatus(gdet && gdet.deletedAt ? "apagado" : "ativo");
@@ -1070,7 +1125,6 @@ class Component extends DCLogic {
       return { nome: a.ownerName || a.ownerEmail || "—", plano: a.plan, planoStyle: this.chipPlano(a.plan), ciclo: a.cycle === "ANNUAL" ? "anual" : "mensal", valor: `${this.money(a.priceCents)}/${a.cycle === "ANNUAL" ? "ano" : "mês"}`, cupom: a.couponCode || "—", statusTxt: cs.txt, statusStyle: cs.style, desde: this.dataBr(a.createdAt), onOpen: () => this.go("assinatura", { selA: a.ownerUserId }) };
     }) : [];
     const recResumo = sp ? (sp.erro ? "erro ao carregar" : `${sp.total} assinatura${sp.total === 1 ? "" : "s"}`) : "carregando…";
-    const recRodape = sp ? (sp.erro ? "Não deu para carregar as assinaturas." : `Mostrando ${sp.items.length} de ${sp.total} · página 1 (paginação completa na próxima fase).`) : "Carregando…";
 
     const sd = st.subDetail && !st.subDetail.erro ? st.subDetail : null;
     const sds = sd ? sd.summary : null;
@@ -1116,7 +1170,7 @@ class Component extends DCLogic {
       perNota, atualizadoEm,
       kpis, cohort, planoBars, pendAtraso,
       uBusca: st.uBusca, onUBusca: this.filtroUsuarios("uBusca"), uPlano: st.uPlano, onUPlano: this.filtroUsuarios("uPlano"), uStatus: st.uStatus, onUStatus: this.filtroUsuarios("uStatus"),
-      usuariosRows, uCount, uRodape,
+      usuariosRows, uCount, uPager: this.paginacao("users"),
       ud, udStatusTxt: udStatus.txt, udStatusStyle: udStatus.style, udGrupos, udPagtos, udTemAssin: !!sub,
       udBtnLabel: suspenso ? "Reativar usuário" : "Suspender usuário",
       onSuspender: !det ? () => {} : suspenso
@@ -1133,10 +1187,10 @@ class Component extends DCLogic {
         } } }),
       onVerAssin: () => det && sub && this.go("assinatura", { selA: det.userId }),
       gBusca: st.gBusca, onGBusca: this.filtroGrupos("gBusca"), gStatus: st.gStatus, onGStatus: this.filtroGrupos("gStatus"),
-      gruposRows, gCount, gRodape,
+      gruposRows, gCount, gPager: this.paginacao("groups"),
       gd, gdStatusTxt: gdStatus.txt, gdStatusStyle: gdStatus.style, gdJogos,
       isTabAss: true,
-      assinRows, recResumo, recRodape,
+      assinRows, recResumo, sPager: this.paginacao("subs"),
       ad, adStatusTxt: adStatus.txt, adStatusStyle: adStatus.style, adHist, adAtiva: !!sds && !adCancelada,
       onCancelar: !sds || adCancelada ? () => {} : () => this.setState({ modal: { titulo: `Cancelar o plano de ${sds.ownerName}?`, texto: "A assinatura para de renovar no Asaas e vale até o fim do período já pago.", confirm: "Cancelar plano", danger: true, acao: () => {
         this.mutacao(`/admin/subscriptions/${sds.ownerUserId}/cancel`, { method: "POST" }).then((r) => {
