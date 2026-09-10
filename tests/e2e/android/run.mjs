@@ -7,6 +7,7 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { emulatorSerial, requireFreePort, verifyReport, selectScenarios } from './guard.mjs';
 import { seed } from './fixture.mjs';
+import { runCommand, finishCleanup } from './process.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const serial = emulatorSerial(process.argv[process.argv.indexOf('--serial') + 1]);
@@ -23,16 +24,8 @@ let testStarted = false;
 console.log(`E2E artifacts: ${artifacts}`);
 
 function command(binary, args, options = {}) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(binary, args, {
-      cwd: root, env: process.env, signal: cancellation.signal, timeout: 900000, ...options,
-    });
-    let output = '';
-    child.stdout?.on('data', chunk => { output += chunk; });
-    child.stderr?.on('data', chunk => { output += chunk; });
-    child.on('error', reject);
-    child.on('close', code => code === 0 ? resolve(output.trim()) : reject(new Error(`${binary} exited ${code}: ${output.slice(-3000)}`)));
-    if (options.input) child.stdin.end(options.input);
+  return runCommand(binary, args, {
+    cwd: root, env: process.env, signal: cancellation.signal, timeout: 900000, ...options,
   });
 }
 
@@ -62,21 +55,6 @@ async function healthy(url) {
   catch { return false; }
 }
 
-async function stop() {
-  if (testStarted && cancellation.signal.aborted) {
-    await command('adb', ['-s', serial, 'shell', 'am', 'force-stop', 'app.saqz.e2e'], { signal: undefined, timeout: 10000 });
-  }
-  for (const child of services.reverse()) {
-    if (child.exitCode === null) {
-      child.kill('SIGTERM');
-      await Promise.race([new Promise(resolve => child.once('close', resolve)), delay(5000)]);
-      if (child.exitCode === null) child.kill('SIGKILL');
-    }
-  }
-  // Exact id returned by docker create, never an existing dev database or named volume.
-  if (database) await command('docker', ['rm', '-f', database], { signal: undefined, timeout: 15000 });
-}
-
 try {
   for (const port of [18080, 9099, 4400, 4500]) await requireFreePort(port);
   const booted = await command('adb', ['-s', serial, 'shell', 'getprop', 'sys.boot_completed']);
@@ -87,7 +65,7 @@ try {
   const firebaseVersion = await command('node', [firebaseBin, '--version']);
   if (firebaseVersion !== '15.25.1') throw new Error('This runner requires firebase-tools 15.25.1.');
   await command('docker', ['info', '--format', '{{.ServerVersion}}']);
-  await command('node', ['--test', 'tests/e2e/android/guard.test.mjs']);
+  await command('node', ['--test', 'tests/e2e/android/guard.test.mjs', 'tests/e2e/android/process.test.mjs']);
   console.log('Building real backend...');
   await command('./backend/gradlew', ['-p', 'backend', ':bootstrap:bootJar', '--console=plain'], { stdio: 'inherit' });
   database = await command('docker', ['create', '--label', 'saqz.e2e=disposable',
@@ -143,6 +121,5 @@ try {
 } finally {
   // Keep diagnostics even when instrumentation fails; the next Gradle run replaces its reports.
   if (testStarted) await cp(reports, path.join(artifacts, 'junit'), { recursive: true }).catch(error => console.warn(error.message));
-  await stop();
-  console.log(`Only this run's temporary services/data were removed. Logs retained: ${artifacts}`);
+  await finishCleanup({ testStarted, cancelled: cancellation.signal.aborted, serial, services, database, command }, artifacts);
 }
