@@ -1,5 +1,8 @@
 package br.com.saqz.androidapp
 
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -20,6 +23,8 @@ internal class AttendanceOrderE2eTest : InstalledE2e("attendance-order") {
         openGroup()
         click("group-game-response-not-going", scroll = true)
         waitText("Você não vai jogar.")
+        waitEnabled("group-game-response-not-going")
+        ui.onNodeWithText("Você não vai jogar.").performScrollTo().assertIsDisplayed()
 
         assertEquals("CONFIRMED", api("athlete", path).getJSONObject("ownAttendance").getString("status"))
         assertEquals("WAITLISTED", api("reserve", path).getJSONObject("ownAttendance").getString("status"))

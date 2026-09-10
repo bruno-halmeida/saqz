@@ -102,8 +102,18 @@ Os sete casos passaram juntos na execução do autor após a última correção,
 em 4min24s de Gradle. **A repetição independente reprovou: seis PASS e uma falha no teste FIFO**,
 que leu `WAITLISTED` quando esperava `CONFIRMED`. O texto da desistência é atualizado de forma
 otimista, antes de terminar a gravação; aguardar somente esse texto não comprova a conclusão.
-Uma reprodução focal inalterada passou, mas não anula a falha do lote. O ajuste de sincronização
-nos testes de presença aguarda aprovação; a revisão e os testes de mutação não estão concluídos.
+Uma reprodução focal inalterada passou, mas não anula a falha do lote. Com aprovação do usuário,
+os dois testes de presença agora aguardam o botão novamente habilitado e reconferem o texto final
+antes de consultar a API. Todas as verificações de status, capacidade, identidade e ordem foram
+mantidas. Ambos passaram isoladamente após a correção, sem falhas ou skips. O novo lote conjunto
+também passou: sete testes, zero falhas/skips, em 43s de Gradle. A revisão independente e os testes
+de mutação ainda não estão concluídos.
+
+Uma tentativa anterior desse lote foi interrompida após três casos concluídos, com o emulador
+sem progresso e comandos ADB excedendo seus limites. Ela não conta como aprovação. O reinício
+do Android ficou offline; reiniciar o processo do AVD, sem apagar dados, recuperou o ambiente.
+A suíte de 43s usou o mesmo código e novas fixtures. Os registros da tentativa incompleta foram
+preservados; nenhum resultado esperado foi alterado para passar.
 O runner focal anuncia o recorte executado; não anuncia sucesso da suíte completa.
 
 Defeitos reproduzidos:
@@ -128,6 +138,9 @@ antes era convertida em resultado de erro, que o teste não conferia. Os 11 caso
 Evidências locais desta rodada: `/tmp/saqz-critical-e2e.Dq3Cs5/`, logs `seven-final.log`,
 `nav-green.log`, `athlete-query-red.log`, `athlete-query-approved.log`, `groups-data-final.log`,
 `finance-fixed.log`, `approved-final-gates.log`, `verifier-full-e2e.log` e `verifier-fifo-repro.log`.
+Correção de sincronização: `attendance-sync-fixed.log`, `attendance-order-sync-fixed.log`,
+`attendance-sync-lint.log` e `seven-after-emulator-restart.log`. Tentativa incompleta:
+`seven-attendance-sync-fixed.log`; reinício: `emulator-cold-restart.log`.
 O runner também retém JUnit/logcat em pasta temporária anunciada na saída; esses artefatos são
 locais e podem expirar. Não houve push ou deploy nesta rodada. O escopo não inclui ADM da
 plataforma, iOS instalado, WhatsApp, denúncias/moderação ou provedores de pagamento.

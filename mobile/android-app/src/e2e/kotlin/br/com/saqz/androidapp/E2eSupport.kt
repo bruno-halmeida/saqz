@@ -60,8 +60,13 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
         val node = ui.onNodeWithTag(tag)
         if (scroll) node.performScrollTo()
         // Text replacement can precede collection/recomposition of the enabled state.
-        ui.waitUntil(20_000) { ui.onAllNodes(hasTestTag(tag) and isEnabled()).fetchSemanticsNodes().size == 1 }
+        waitEnabled(tag)
         node.assertIsDisplayed().assertIsEnabled().performClick()
+    }
+
+    protected fun waitEnabled(tag: String) {
+        ui.waitUntil(20_000) { ui.onAllNodes(hasTestTag(tag) and isEnabled()).fetchSemanticsNodes().size == 1 }
+        ui.onNodeWithTag(tag).assertIsEnabled()
     }
 
     protected fun input(tag: String, text: String, scroll: Boolean = true) {
