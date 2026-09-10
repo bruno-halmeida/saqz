@@ -25,6 +25,12 @@ val localFirebaseAndroidConfig = FirebaseAndroidConfig(
     googleServerClientId = "fake-saqz-local-web-client-id.apps.googleusercontent.com",
 )
 
+// Installed E2E uses the real app composition, but never a developer's cloud project/data.
+val installedE2e = providers.gradleProperty("saqz.e2e").orNull == "true"
+check(!installedE2e || gradle.startParameter.taskNames.none {
+    it.contains("Prod", ignoreCase = true) || it.contains("Release", ignoreCase = true)
+}) { "Installed E2E is restricted to devDebug" }
+
 val missingReleaseFirebaseAndroidConfig = FirebaseAndroidConfig(
     projectId = "missing-release-firebase-config",
     apiKey = "missing-release-firebase-config",
@@ -89,6 +95,10 @@ android {
     }
 
     sourceSets {
+        if (installedE2e) {
+            getByName("androidTest").kotlin.srcDir("src/e2e/kotlin")
+            getByName("androidTest").assets.srcDir(layout.buildDirectory.dir("e2e-assets").get().asFile)
+        }
         // Package the pinned Inter OFL license into the test APK so the
         // instrumented checksum test verifies the same file kept for attribution.
         getByName("androidTest").assets.srcDir(
@@ -100,8 +110,9 @@ android {
     productFlavors {
         create("dev") {
             dimension = "environment"
+            if (installedE2e) applicationIdSuffix = ".e2e"
             val firebaseConfigFile = layout.projectDirectory.file("src/dev/google-services.json").asFile
-            val firebaseConfig = firebaseAndroidConfig(
+            val firebaseConfig = if (installedE2e) localFirebaseAndroidConfig else firebaseAndroidConfig(
                 file = firebaseConfigFile,
                 required = false,
                 fallback = localFirebaseAndroidConfig,
@@ -111,9 +122,9 @@ android {
             buildConfigField("String", "FIREBASE_MESSAGING_SENDER_ID", firebaseConfig.messagingSenderId.toBuildConfigString())
             buildConfigField("String", "FIREBASE_APPLICATION_ID", firebaseConfig.applicationId.toBuildConfigString())
             buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", firebaseConfig.googleServerClientId.toBuildConfigString())
-            buildConfigField("boolean", "FIREBASE_USE_EMULATOR", (!firebaseConfigFile.isFile).toString())
+            buildConfigField("boolean", "FIREBASE_USE_EMULATOR", (installedE2e || !firebaseConfigFile.isFile).toString())
             buildConfigField("String", "ENVIRONMENT", "dev".toBuildConfigString())
-            buildConfigField("String", "API_BASE_URL", devApiBaseUrl.toBuildConfigString())
+            buildConfigField("String", "API_BASE_URL", (if (installedE2e) "http://10.0.2.2:18080" else devApiBaseUrl).toBuildConfigString())
             manifestPlaceholders["branchLiveKey"] = branchLiveKey
             manifestPlaceholders["branchTestKey"] = branchTestKey
             manifestPlaceholders["branchTestMode"] = "true"
