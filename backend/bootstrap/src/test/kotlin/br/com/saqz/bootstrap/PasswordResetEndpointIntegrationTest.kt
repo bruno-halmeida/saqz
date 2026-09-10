@@ -22,7 +22,6 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import tools.jackson.databind.ObjectMapper
-import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -276,9 +275,9 @@ class PasswordResetEndpointIntegrationTest {
 
     private fun deliveredCode(expected: Int = 1): String {
         assertTrue(smtp.waitForIncomingEmail(5_000, expected), "e-mail não chegou no GreenMail")
-        val raw = ByteArrayOutputStream().also { smtp.receivedMessages.last().writeTo(it) }.toString(Charsets.UTF_8)
-        return Regex("Seu código de acesso é (\\d{4})").find(raw)?.groupValues?.get(1)
-            ?: error("corpo sem código de quatro dígitos: $raw")
+        val body = smtp.receivedMessages.last().plainTextBody() ?: error("e-mail sem corpo text/plain")
+        return Regex("Seu código de acesso é (\\d{4})").find(body)?.groupValues?.get(1)
+            ?: error("corpo sem código de quatro dígitos")
     }
 
     private fun wrong(code: String): String = if (code == "0000") "1111" else "0000"
