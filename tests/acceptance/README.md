@@ -4,6 +4,7 @@ Catálogo inicial dos fluxos críticos, com passos reproduzíveis e resultados o
 
 - [Ligações do app: saída, perfil, mensalidades, mapa e comunicação](app-ligacoes.feature)
 - [Regressão crítica: acesso, grupos, jogos e financeiro](app-regressao.feature)
+- [Geração manual e encerramento do acerto](financeiro-final.feature)
 - [Painel administrativo e checkout](adm.feature)
 - [Evidências técnicas desta entrega](evidencias.md)
 
@@ -61,7 +62,7 @@ Os IDs dos cenários devem ser preservados nos nomes/tags dos testes. Cada linha
 
 Não substituir um E2E real por respostas mockadas e manter a etiqueta E2E. Os testes Compose atuais usam gateways controlados; as integrações JDBC/HTTP usam Postgres, mas não dirigem o aplicativo.
 
-Seletores novos estáveis: `GroupLeaveTags`, `MemberProfileTags`, `OwnMonthlyPaymentsTags`, `GroupThreadTags`, `NotificationCenterTags`. Priorize papel/nome acessível no painel. IDs de mensagem/grupo entram nas tags dinâmicas; não dependa da posição do item. Para iOS nativo, confirme a exposição dos seletores no driver escolhido antes de implementar o runner.
+Seletores novos estáveis: `GroupLeaveTags`, `MemberProfileTags`, `OwnMonthlyPaymentsTags`, `GroupThreadTags`, `NotificationCenterTags`, `MonthlyGenerationTags` e `GroupCashboxTags.GenerateMonthly`. Priorize papel/nome acessível no painel, com os controles sob `Paginação de usuários/grupos/assinaturas`. IDs de mensagem/grupo entram nas tags dinâmicas; não dependa da posição do item. Para iOS nativo, confirme a exposição dos seletores no driver escolhido antes de implementar o runner.
 
 ## Limites conhecidos
 
@@ -69,5 +70,5 @@ Seletores novos estáveis: `GroupLeaveTags`, `MemberProfileTags`, `OwnMonthlyPay
 - Desabilitar uma categoria afeta notificações futuras, não apaga as antigas nem impede consultar o conteúdo do grupo.
 - O dono não pode sair do próprio grupo; saída não é exclusão de conta/grupo nem perdão de dívida.
 - O painel ainda usa dados demonstrativos em **Suporte e moderação** (`VUL-171`). Não aprovar esse fluxo como integrado; cenário correspondente está bloqueado por implementação.
-- Listas do painel carregam a primeira página de até 25 registros; não há navegação de páginas na interface. Registre esse limite ao testar bases maiores.
+- As três listas paginadas do painel exigem massa de pelo menos 51 registros e filtros com mais de 25 resultados para testar todas as transições; não use dados reais de clientes como fixture.
 - Este catálogo é a primeira bateria crítica, não uma alegação de cobertura exaustiva de todas as combinações do produto.

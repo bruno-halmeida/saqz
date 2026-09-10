@@ -1,122 +1,44 @@
-# adm-web — Dashboard administrativo do Saqz
+# adm-web — Painel administrativo do Saqz
 
-Painel interno de administração da plataforma (back-office). Hoje é um protótipo
-funcional com **dados mockados no cliente**: todo o visual e a navegação estão
-prontos, nada está ligado ao backend ainda.
+Painel estático conectado à API administrativa. Autenticação de administrador da plataforma é verificada em `/admin/me`; ser administrador de um grupo não concede acesso ao painel.
 
-Origem: artifact do Claude Design
-(https://claude.ai/code/artifact/df70dae6-72c1-4753-8ad7-e8ddc7676b0c),
-extraído do bundle e convertido em página estática auto-contida.
-Projeto no Linear: Adm-web · Dashboard administrativo (VUL-161..172).
+## Rodar localmente
 
-## Como rodar
-
-Sem build. Qualquer servidor estático serve:
-
-```bash
-cd adm-web && python3 -m http.server 8123
-# http://127.0.0.1:8123
+```sh
+cd adm-web
+python3 -m http.server 8123 --bind 127.0.0.1
 ```
 
-Stack: HTML + React 18 UMD + `dc-runtime.js` (runtime do Claude Design) +
-`saqz-design-system.js` (componentes do DS calibrados pelo export oficial).
-Tokens de cor/tipo/espaçamento no `<style>` do `index.html` — mesmos nomes do
-design system do mobile (`--saqz-blue`, `--saqz-lime`, `--saqz-navy`…).
+Abra http://127.0.0.1:8123. Configure `assets/firebase-config.js` para o ambiente de teste, incluindo a base da API, e libere essa origem no backend. Não use contas ou pagamentos de produção para homologação.
 
-## Funcionalidades
+HTML + React UMD + `dc-runtime.js` + `saqz-design-system.js`; não há etapa de build.
 
-Navegação por sidebar fixa com 6 seções. Ícone de Suporte ganha um ponto
-vermelho quando há denúncia aberta.
+## Fluxos conectados
 
-### 1. Visão geral (`visao`)
-- Seletor de período: últimos 30 dias · últimos 90 dias · desde o início.
-- 6 KPIs com sparkline e delta vs período anterior: **Receita total, Novos
-  usuários, Usuários ativos (30d), Grupos ativos, Jogos realizados, Churn de
-  assinaturas**.
-- Cohort semanal (5 semanas): cadastros → ativados → criou grupo → virou pagante.
-- Split de receita: **planos** vs **taxa de 4% sobre mensalidades**, com volume
-  transacionado no período.
-- Receita por plano: Organizador, Quadra Cheia, taxa sobre mensalidades.
-- Grupos por cidade.
-- Card de pendências com atalho para a denúncia aberta.
+- Visão geral: métricas e período consultados na API.
+- Usuários: busca/filtros, detalhe, suspensão e reativação.
+- Grupos: busca/filtros e detalhe.
+- Assinaturas: lista, detalhe e cancelamento.
+- Cupons: consulta, criação e desativação.
+- Usuários, grupos e assinaturas: páginas de 25, Anterior/Próxima, atualização e retentativa; controles bloqueados durante carga. Filtros são preservados na navegação, e o índice volta a 1 quando mudam. Se o total encolher, consulta a última página válida.
+- Expiração/logout limpa dados administrativos e impede que respostas da sessão antiga repovoem a tela.
 
-### 2. Usuários (`usuarios` → `usuario`)
-- Lista com busca (nome/e-mail) e filtros: plano (Amador · Organizador ·
-  Quadra Cheia), status (ativo · inativo · suspenso), cidade.
-- Colunas: iniciais/avatar, nome, e-mail, cidade, nº de grupos, chip de plano,
-  chip de status, último acesso.
-- **Detalhe do usuário**: dados cadastrais, plano e situação da assinatura
-  (atalho para o detalhe da assinatura), grupos em que participa/organiza
-  (navega para o grupo), histórico de pagamentos.
-- Ações: **suspender** (modal de confirmação — perde acesso na hora, grupos
-  ficam sem organizador) e **reativar**.
+**Suporte e moderação continuam demonstrativos e sem persistência.** A definição de origem das denúncias, privacidade e efeitos da resolução está pendente no VUL-171. Não tratar as ações dessa seção como atendimento real.
 
-### 3. Grupos (`grupos` → `grupo`)
-- Lista com busca (nome/organizador) e filtros: cidade, modalidade (quadra ·
-  praia · futevôlei).
-- Colunas: nome, modalidade, organizador, cidade, membros, mensalidades
-  (R$/mês), **taxa Saqz de 4%**, chip de status.
-- Estados especiais: **em análise** (suspeita de cobrança fora do app) e
-  **sem plano** (organizador cancelou a assinatura).
-- **Detalhe do grupo**: local, rotina, mensalidade por membro, presença média,
-  jogos realizados, criado em, e lista dos últimos jogos com confirmados.
+Não inferir recursos de cobrança, reembolso ou percentuais a partir do desenho original: somente ações ligadas aos endpoints atuais são funcionais.
 
-### 4. Receita (`receita` → `assinatura`)
-Duas abas:
-- **Assinaturas**: nome, plano, ciclo (mensal/anual), valor, cupom aplicado,
-  status (ativa · atrasada · cancelada), assinante desde.
-- **Cobranças**: data, nome, tipo (plano ou taxa de 4% do grupo), valor,
-  status (paga · falhou · reembolsada). Ações por linha: **Tentar de novo**
-  (falhou) e **Reembolsar** (paga).
-- **Detalhe da assinatura**: forma de pagamento, próxima cobrança, histórico.
-  Ações: **cancelar plano** (vale até o fim do período pago) e **reembolsar
-  última cobrança** — ambas com modal de confirmação.
+## Testes
 
-### 5. Cupons (`cupons`)
-- Lista: código, desconto/duração, validade, usos, MRR impactado, status
-  (ativo · vencido).
-- **Criar cupom** (modal): código, % de desconto, duração em meses, validade.
-
-### 6. Suporte (`suporte` → `denuncia`)
-- Lista de denúncias: grupo, motivo, data, status (aberta · resolvida) e
-  resumo do backlog.
-- **Detalhe da denúncia**: grupo, organizador, quem denunciou, denúncias
-  anteriores, descrição completa.
-- Ações: **marcar como resolvida** e **ver grupo**.
-
-### Padrões transversais
-- Modais de confirmação para toda ação destrutiva (suspender, cancelar,
-  reembolsar), com variante `danger`.
-- Toast de feedback após cada ação.
-- Chips de status com semântica de cor única em todo o app
-  (verde/âmbar/vermelho/cinza).
-
-## O que falta para virar produto (fora do protótipo)
-
-1. **Autenticação de admin** — login restrito (e-mail interno / role `ADMIN`
-   no backend). Nada disso existe hoje; a página é aberta.
-2. **API administrativa no backend** — endpoints agregados (KPIs, cohort,
-   split de receita) e CRUD/ações: listar usuários/grupos/assinaturas/
-   cobranças, suspender usuário, cancelar assinatura, reembolsar, retry de
-   cobrança, cupons, denúncias.
-3. **Paginação e busca server-side** — o mock mostra 12 usuários / 8 grupos.
-4. **Dados reais nos detalhes** — jogos do grupo e sparklines são gerados no
-   cliente hoje.
-5. **Deploy** — estático (Firebase Hosting cai bem com o resto do repo).
-
-## Deploy (Firebase Hosting)
-
-O `firebase.json` da raiz já tem o target `adm-web` apontando para esta pasta
-(`assets/` com cache de 7 dias, `index.html` sem cache, `robots.txt` bloqueando
-indexação). Para publicar:
-
-```bash
-# 1. Preencher assets/firebase-config.js com os valores do console
-#    (apiKey/authDomain/projectId reais, apiBaseUrl da API, SEM authEmulatorUrl)
-# 2. Liberar a origem publicada no backend: SAQZ_ADMINWEB_ORIGINS=https://<site>
-firebase target:apply hosting adm-web <site-do-projeto> --project prod
-firebase deploy --only hosting:adm-web --project prod
+```sh
+node --test adm-web/tests/pagination.test.cjs
 ```
 
-O acesso é protegido por login (papel de admin no backend); o hosting não
-precisa de proteção extra.
+A suíte executa a lógica de produção extraída do HTML com API controlada. Cobre três listas, filtros, limites, redução do total, erros, respostas fora de ordem, logout e retorno de detalhe. Não é E2E contra backend.
+
+Roteiros manuais e insumos de automação: [tests/acceptance](../tests/acceptance/README.md). Resultados executados e limites: [evidencias.md](../tests/acceptance/evidencias.md). Não existe runner dos arquivos Gherkin instalado.
+
+## Publicação
+
+O target `adm-web` de Firebase Hosting está configurado no `firebase.json` da raiz. A publicação exige configuração Firebase/API do ambiente, origem autorizada no backend e autorização operacional. Nenhum deploy é feito pelos testes acima.
+
+O hosting serve arquivos públicos; dados e operações administrativas dependem da autorização do backend.

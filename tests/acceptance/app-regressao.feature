@@ -98,7 +98,7 @@ Funcionalidade: Regressão crítica do aplicativo
   @p0 @APP-R10
   Cenário: Gerar mensalidades e registrar pagamento não duplica lançamentos
     Dado que o harness selecionou uma competência sem cobrança gerada em G1
-    Quando o harness solicita geração pela API ou executa o job de teste para os mensalistas elegíveis
+    Quando o harness executa o job de teste para os mensalistas elegíveis
     Então o valor e vencimento de cada cobrança correspondem à configuração do atleta
     E repetir a mesma geração pelo harness não cria uma segunda cobrança da mesma competência
     Quando DONO abre as cobranças no app e registra o pagamento de M1

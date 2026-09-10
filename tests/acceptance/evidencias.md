@@ -1,52 +1,83 @@
-# Evidências e limites — 09/09/2026
+# Evidências e limites — 10/09/2026
 
-Esta entrega conecta saída do grupo, cadastro esportivo próprio, perfil de outro membro, mensalidades próprias, mapa e comunicação interna. **Não equivale a homologação E2E de todo o produto.** Os 49 cenários do catálogo continuam `NÃO EXECUTADOS` manualmente, exceto Suporte do painel, explicitamente bloqueado por implementação.
+As ligações anteriores de saída, cadastro esportivo, perfis, mensalidades próprias, mapa e comunicação foram complementadas por encerramento do acerto, paginação do ADM e geração manual de mensalidades. **Isso não equivale a homologação E2E de todo o produto.**
 
-## Resultados técnicos
+O catálogo tem **58 declarações de cenários** (21 ligações, 13 regressão, 18 ADM, 6 financeiro final), além das variações em Exemplos. Continuam `NÃO EXECUTADOS` manualmente; Suporte está bloqueado por definição/implementação. O runner Gherkin não está instalado.
 
-Os números abaixo vêm dos relatórios XML dos gates locais; incluem testes existentes, não apenas os adicionados nesta entrega. As tarefas podem reutilizar cache Gradle. Nenhum teste ignorado foi contado como aprovado.
+## Verificação desta rodada
 
-| Gate | Casos | Falhas | Evidência principal |
-| --- | ---: | ---: | --- |
-| Groups/data — iOS simulator | 249 | 0 | Rotas, query separada do path, payload, autenticação e erros tipados |
-| Groups/presentation — iOS simulator | 489 | 0 | VM/UI, envio/retry, privacidade, lembretes por geração, saída e confirmação sem sobreposição |
-| Profile/presentation — iOS simulator | 35 | 0 | Efeitos para cadastro, mensalidades, configurações e notificações |
-| Compose-app — iOS simulator | 118 | 0 | Grafo e jornadas reais do host com gateways controlados; saída recarrega lista/perfil/Início, edição retorna ao perfil |
-| Android unit — DevDebug | 171 | 0 | Inclui adaptador de mapas: URL e falha nativa |
-| Comunicação — Postgres | 7 | 0 | Permissões, isolamento, preferências, paginação, saída e oito retries concorrentes |
-| Comunicação/saída — HTTP + Postgres | 4 | 0 | API autenticada real com verificador de identidade de teste; DELETE seguido de leitura negada no elenco/mensagens e perfil sem vínculo |
+Os números vêm dos relatórios locais e incluem testes existentes. Não somar execuções focais e amplas como casos únicos; tarefas podem usar cache. Nenhum teste ignorado foi contado como aprovado.
 
-Também passaram os gates direcionados de serviço/endpoint de atletas e persistência de desvinculação, incluindo manutenção de histórico financeiro e remoção somente no grupo solicitado. A revisão independente da primeira fase executou 676 casos backend relevantes; isso é uma execução anterior distinta, não deve ser somada à tabela como novos casos únicos.
+| Gate | Casos | Resultado |
+| --- | ---: | --- |
+| Groups/presentation — Kotlin iOS simulator, suíte completa | 516 | PASS |
+| Compose-app — Kotlin iOS simulator, suíte completa | 122 | PASS |
+| Acerto — VM/Screen/Root (subconjunto dos 516) | 22 | PASS |
+| Geração manual — VM/Screen/Root (subconjunto dos 516) | 11 | PASS |
+| Foto + editor de membro (subconjunto dos 516) | 25 | PASS |
+| KtorFinanceGateways — contrato financeiro mobile | 45 | PASS |
+| Transações de cobrança e geração automática — Postgres | 33 | PASS |
+| Paginação ADM — Node, lógica real com rede controlada | 27 | PASS |
+| PasswordResetEndpointIntegrationTest — HTTP, SMTP e Postgres | 17 | PASS |
+| Decodificação MIME — quoted-printable, multipart e ausência de texto | 3 | PASS |
+| Comunicação/saída — HTTP com Postgres | 5 | PASS |
+| XCTest Swift — suíte nativa, simulador iPhone | 119 | PASS |
+| ChangePlanScreen + ViewModel | 12 | PASS; mapper anual pendente abaixo |
+| Detekt global | — | PASS, sem regenerar baseline |
 
-Foram geradas e inspecionadas **30 capturas novas** de estados, incluindo confirmação/carregamento/erro de saída, perfil privado/autorizado, quatro estados de mensalidade, avisos somente leitura, chat vazio/enviando/falha, inbox e preferências. A inspeção encontrou sobreposição nos botões de saída; o layout foi corrigido e agora existe assertion de separação geométrica. Capturas ficam em `mobile/features/groups/presentation/screenshots/connected-flows/` (ignoradas pelo Git), reproduzíveis pelo teste `ConnectedFlowsScreenshotTest`.
+A sequência HTTP de saída agora prepara um jogo persistido, comprova acesso antes do DELETE, nega lista e detalhe depois do DELETE e mantém ambos disponíveis ao dono. O verificador de identidade é de teste; a API HTTP e o banco são reais.
 
-Build nativo `SaqzDev`, Debug, simulador iOS: **BUILD SUCCEEDED** após as últimas mudanças. O build usou o worktree local, preservando as quatro alterações iOS que já existiam; essas alterações preexistentes não entraram nos commits desta entrega.
+A geração manual também atravessa o NavHost e a injeção de dependências reais: caixa de G1 → geração → falha → retry com o mesmo conteúdo → retorno ao caixa de G1 com nova consulta e cobrança visível. Há resolução da VM pelo módulo real e restauração serializada da rota. Dois testes adicionais disparam o evento de voltar no dispatcher real: não saem enquanto a resposta está pendente e comprovam que voltar funciona antes de confirmar e depois de falha. O teste reproduziu o defeito antes de acrescentar a proteção no Root. Os gateways desses testes são controlados; não substituem a jornada com autenticação e API de homologação nem gestos físicos em aparelhos.
 
-## Revisão independente
+No reset de senha, o helper passou a ler o texto MIME decodificado, inclusive multipart/quoted-printable. Foram mantidas as verificações de comportamento dos 17 cenários. As dez falhas anteriores dessa suíte foram resolvidas; isso não é uma execução de todo o backend.
 
-O verificador não escreveu código de produção. Revisou contratos, permissões, persistência e rotas, e injetou defeitos comportamentais somente em cópia temporária. Na rodada final, **7/7 mutações foram detectadas**: alvo errado na saída, emissão falsa de sucesso, publicação indevida de aviso, inbox alheio, preferência ignorada, lembrete a quem já respondeu e remoção da serialização de retries concorrentes.
+O XCTest foi recuperado corrigindo UTF-8 de comentários e fixtures incompatíveis com os modelos/callbacks Kotlin atuais. A execução ampla também encontrou e corrigiu reautenticação Firebase caindo em erro genérico e ausência do entitlement de Universal Links. Os 119 testes passaram também com a configuração padrão dos módulos Swift, sem o override usado no diagnóstico. As quatro alterações iOS que já estavam no worktree foram preservadas e não entraram nos commits desta rodada. Universal Links em dispositivo ainda dependem de AASA, domínio e provisioning corretos do ambiente.
 
-Defeitos encontrados e corrigidos: estatísticas privadas derrubando perfil básico; falha de mapa silenciosa no iOS; feedback de lembrete do jogo anterior aparecendo no próximo; sobreposição visual na confirmação. Foram reforçados testes que antes deixavam passar grupo errado e navegação de sucesso em falha.
+## Interface e revisão
 
-## O que permanece sem aprovação
+Capturas executadas: 30 estados dos fluxos conectados, 6 do acerto, 2 de troca de plano e 8 de geração mensal/caixa. Foram inspecionadas as imagens novas e alteradas. Os PNGs são ignorados pelo Git e reproduzíveis pelos testes de captura; não representam dados de clientes.
 
-- **XCTest dos adaptadores Swift:** tentado, mas o sistema de build do Xcode encerrou com `unexpected service error: The Xcode build system has crashed`, inclusive com DerivedData novo. O build do aplicativo passou, porém os novos XCTest não foram executados com sucesso. Não confundir com os testes Kotlin no simulador, que passaram.
-- **Detekt global:** falha em código intocado de `ChangePlanScreen`, `GroupPhotoImage` e `MemberEditorViewModel`. Os apontamentos introduzidos nesta entrega foram corrigidos sem regenerar baseline. O gate global não está verde.
-- **Backend global:** revisão identificou 10 falhas preexistentes em `PasswordResetEndpointIntegrationTest`, no helper que extrai código de email MIME quoted-printable. O gate global não está verde; isso não foi mascarado nem corrigido como parte das ligações do app.
-- **E2E/aceitação real:** não foram executadas as jornadas em aparelhos Android/iOS contra autenticação e API de homologação, nem os roteiros do painel/checkout. Capturas e gateways controlados não substituem essa etapa.
-- A sequência HTTP pós-DELETE cobre elenco, perfil e comunicação; **não há assertion específica de GET de jogos depois do mesmo DELETE**. Existem testes de autorização de jogos separados, mas isso não constitui a sequência inteira.
-- Comunicação não possui push, atualização em tempo real ou nova integração WhatsApp. A migration V45 ainda precisa ser aplicada pelo processo normal de deploy no ambiente onde o app será homologado.
+O smoke do ADM dirigiu navegador visível nas três listas, com API controlada: primeira/última página, query, retorno, erro/retry e bloqueio de controles durante resposta retida. Não é E2E com a API de homologação.
 
-## Como reproduzir os gates
+Revisão independente, conforme o processo `tlc-spec-driven`, encontrou e fechou lacunas que uma contagem verde de testes não mostrava:
 
-Use JDK 21 e as dependências locais descritas no projeto. Na raiz:
+- Acerto: 22 testes e três mutações detectadas.
+- Paginação: 27 testes, smoke e duas mutações detectadas na rodada final, incluindo limpeza indevida dos filtros. Foram corrigidos total reduzido deixando página inválida e lacunas dos testes de logout/retorno/bloqueio.
+- MIME/editor/saída: 25 testes backend e 20 do editor reexecutados; mutações de MIME e posição duplicada detectadas. As 30 capturas reorganizadas permaneceram idênticas às referências.
+- Foto: cinco testes aprovados, incluindo Root com Koin real e dimensões efetivas. Foram detectadas as duas mutações que removem o loader ou descartam o tamanho; a primeira sobrevivia antes de acrescentar a cobertura do Root.
+- Geração manual: revisão final aprovada, 20 testes focais reexecutados e quatro mutações detectadas (valor, chave de retry, recarga do caixa e proteção do voltar). A revisão encontrou a saída sistêmica durante confirmação; corrigida e comprovada pelo dispatcher real, com saída normal preservada fora da escrita.
+- Layout da troca de plano: 12 testes e lint focal reexecutados, duas capturas inspecionadas e mutação do callback de confirmação detectada. Aprovação restrita ao layout; não inclui o mapper anual pendente abaixo nem o checkout real.
+- Swift: inspeção das correções e reexecução independente dos 119 casos com `test-without-building`. Usa o bundle do build padrão do autor e inclui as alterações iOS preexistentes do worktree; não é um segundo build limpo nem validação de links em infraestrutura live.
+
+## O que ainda não está aprovado
+
+- **Suporte/moderação:** permanece demonstrativo. VUL-171 exige definição de origem, privacidade e consequência da resolução; não foi inventada uma regra de sanção nem persistência fictícia.
+- **Um teste antigo de preço anual:** `ChangePlanMappersTest` espera R$89,90, mas a fixture define 89.900 centavos (R$899,00), que é o valor formatado pelo aplicativo. A suíte ChangePlan ampla teve 16 aprovações e essa falha. A expectativa não foi alterada, aguardando confirmação do usuário; preços e regra de cobrança do aplicativo também não foram alterados.
+- **E2E real/manual:** aparelhos Android/iOS com autenticação e API de homologação, painel e checkout sandbox ainda precisam da execução dos roteiros. Gateways controlados, testes HTTP isolados e capturas não substituem isso.
+- **Deploy/configuração:** nada foi publicado; migration V45 e configurações nativas/serviços devem seguir o processo normal do ambiente. A rodada não cria integração WhatsApp, push ou WebSocket.
+
+## Reproduzir
+
+Use JDK 21. Na raiz:
 
 ```sh
-mobile/gradlew -p mobile :features:groups:data:iosSimulatorArm64Test :features:groups:presentation:iosSimulatorArm64Test :features:profile:presentation:iosSimulatorArm64Test :compose-app:iosSimulatorArm64Test :android-app:testDevDebugUnitTest
-backend/gradlew -p backend :features:groups:integrationTest --tests '*GroupCommunicationIntegrationTest'
-backend/gradlew -p backend :bootstrap:test --tests '*GroupCommunicationEndpointIntegrationTest'
-mobile/gradlew -p mobile :features:groups:presentation:recordRoborazziAndroidHostTest --tests '*ConnectedFlowsScreenshotTest*'
+node --test adm-web/tests/pagination.test.cjs
+mobile/gradlew -p mobile :features:groups:presentation:iosSimulatorArm64Test :compose-app:iosSimulatorArm64Test
+mobile/gradlew -p mobile :features:groups:data:iosSimulatorArm64Test --tests '*KtorFinanceGatewaysTest'
+backend/gradlew -p backend :bootstrap:test --tests '*PasswordResetEndpointIntegrationTest' --tests '*MailTestBodiesTest' --tests '*GroupCommunicationEndpointIntegrationTest'
+backend/gradlew -p backend :features:groups:integrationTest --tests '*JdbcChargeTransactionRepositoryIntegrationTest' --tests '*MonthlyChargeScheduleIntegrationTest'
+mobile/gradlew -p mobile :features:subscriptions:presentation:iosSimulatorArm64Test --tests '*ChangePlanScreenTest' --tests '*ChangePlanViewModelTest'
 mobile/gradlew -p mobile detektAll
+mobile/gradlew -p mobile :features:groups:presentation:recordRoborazziAndroidHostTest --tests '*Connected*FlowsScreenshotTest' --tests '*GameSettlementScreenshotTest' --tests '*MonthlyGenerationScreenshotTest' --tests '*GroupCashboxScreenshotTest'
 ```
 
-Os limites globais acima devem ser investigados separadamente antes de exigir um gate geral inteiramente verde. O catálogo não tem runner Gherkin instalado: os comandos acima executam suítes Kotlin independentes, não os arquivos `.feature`.
+XCTest, ajustando o destino para um simulador disponível:
+
+```sh
+xcodebuild -project mobile/ios-app/SaqzIOS.xcodeproj -scheme SaqzDev -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -jobs 1 \
+  CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES \
+  -only-testing:SaqzIOSTests test
+```
+
+Na rodada anterior também passaram Groups/data 249, Profile/presentation 35, Android DevDebug 171 e comunicação JDBC 7; esses resultados são históricos, não uma nova execução ampla desta rodada. Os comandos acima executam suítes independentes, não os arquivos `.feature`.

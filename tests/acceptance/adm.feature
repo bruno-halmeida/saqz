@@ -71,7 +71,7 @@ Funcionalidade: Administração da plataforma e checkout
     Então dono, membros, dados do grupo e status correspondem ao ID de G1
     E voltar mantém a pesquisa sem abrir o detalhe de outro grupo
     E falha da API não conserva um detalhe de grupo anteriormente selecionado
-    E registro como limitação que a interface não navega além da primeira página de até 25 resultados
+    E a paginação permite consultar registros além dos primeiros 25
 
   @p0 @ADM-S01
   Cenário: Cancelamento de assinatura reflete a confirmação do provedor
@@ -83,6 +83,56 @@ Funcionalidade: Administração da plataforma e checkout
     E após sucesso a consulta mostra o estado efetivo atualizado
     E o app desse dono mostra a autorização de plano coerente após recarga
     E a operação não cancela assinatura de outro dono
+
+  @p0 @ADM-PG01
+  Esquema do Cenário: Paginar além de 25 registros preservando filtros e detalhe
+    Dado que a lista <lista> possui exatamente 51 registros da massa de teste em ordem conhecida
+    E para usuários e grupos configurei filtros com 51 resultados conhecidos
+    Quando abro a lista
+    Então vejo os registros 1 a 25, Anterior desabilitado e Próxima habilitado
+    Quando avanço duas vezes
+    Então vejo somente o registro 51, página 3 de 3 e Próxima desabilitado
+    Quando volto uma página e abro o registro 26, depois volto pelo controle do detalhe
+    Então vejo a página 2 preservada e os mesmos filtros e registros
+    Quando aciono Atualizar
+    Então consulto a página 1 com os mesmos filtros
+    E nenhum registro de outra página ou filtro é confundido com o selecionado
+    Exemplos:
+      | lista        |
+      | usuários     |
+      | grupos       |
+      | assinaturas  |
+
+  @p1 @ADM-PG02
+  Esquema do Cenário: Paginação falha e responde fora de ordem sem dados falsos
+    Dado que abri <lista> com mais de 25 resultados
+    Quando o harness retém a resposta da página 2
+    Então Anterior, Próxima e Atualizar ficam desabilitados durante a consulta
+    Quando a resposta retida falha com 503
+    Então vejo erro e Tentar novamente sem apresentar a página 1 como página 2
+    Quando aciono Tentar novamente e a API retorna sucesso
+    Então a consulta repete a página 2 e os filtros originais
+    Quando inicio uma consulta, faço logout e libero a resposta antiga pelo harness
+    Então nenhum dado antigo reaparece na tela nem após nova autenticação
+    Exemplos:
+      | lista        |
+      | usuários     |
+      | grupos       |
+      | assinaturas  |
+
+  @p1 @ADM-PG03
+  Esquema do Cenário: Total reduzido e busca vazia não deixam página inválida
+    Dado que <lista> tinha 51 resultados e estou na página 2
+    Quando avanço para a página 3 e o harness retorna total 10 nessa resposta
+    Então o painel consulta a página 1 e mostra página 1 de 1
+    E Anterior e Próxima ficam desabilitados
+    Quando uma nova consulta retorna total zero e lista vazia
+    Então vejo estado vazio sem registros anteriores e sem avançar para página 2
+    Exemplos:
+      | lista        |
+      | usuários     |
+      | grupos       |
+      | assinaturas  |
 
   @p0 @ADM-S02
   Esquema do Cenário: Cancelamento recusado não vira sucesso visual
