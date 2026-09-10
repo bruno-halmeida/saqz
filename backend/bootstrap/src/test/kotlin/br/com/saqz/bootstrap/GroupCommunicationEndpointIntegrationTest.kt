@@ -2,6 +2,15 @@ package br.com.saqz.bootstrap
 
 import br.com.saqz.groups.adapter.input.http.GroupCommunicationController
 import br.com.saqz.groups.adapter.input.http.AthleteController
+import br.com.saqz.groups.adapter.input.http.GameController
+import br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameOccurrenceRepository
+import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAttendanceCommandRepository
+import br.com.saqz.groups.application.game.CreateGame
+import br.com.saqz.groups.application.game.EditGame
+import br.com.saqz.groups.application.game.ChangeGameLifecycle
+import br.com.saqz.groups.application.game.ListGames
+import br.com.saqz.groups.application.game.GetGame
+import br.com.saqz.groups.application.game.GameSideEffectPort
 import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteRepository
 import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteRosterRepository
 import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteStatsRepository
@@ -131,6 +140,26 @@ class GroupCommunicationEndpointIntegrationTest {
         assertEquals(1, count)
     }
 
+    @Test fun `leaving revokes game list and detail while owner retains the persisted game`() {
+        val games = "/api/groups/$group/games"
+        val gameId = UUID.randomUUID()
+        val payload = """{"requestId":"$gameId","title":"Treino de saída","venue":{"name":"Arena","address":"Rua Teste 10"},"localDate":"2026-10-12","localTime":"19:00","zoneId":"UTC","startsAt":"2026-10-12T19:00:00Z","durationMinutes":90,"capacity":12,"confirmationDeadline":"2026-10-12T17:00:00Z","useDefaultGameFee":true}"""
+        val created = request("POST", games, payload)
+        assertEquals(201, created.statusCode(), created.body())
+        // Fixture publicada no banco; todos os checks de leitura e saída passam por HTTP real.
+        JdbcClient.create(dataSource).sql("UPDATE games SET status='PUBLISHED' WHERE id=:id")
+            .param("id", gameId).update()
+        assertEquals(401, request("GET", games, actor = null).statusCode())
+        assertEquals(404, request("GET", games, actor = stranger).statusCode())
+        assertEquals(gameId.toString(), json.readTree(request("GET", games, actor = member).body())[0]["id"].stringValue())
+        assertEquals(200, request("GET", "$games/$gameId", actor = member).statusCode())
+        assertEquals(204, request("DELETE", "/api/groups/$group/memberships/me", actor = member).statusCode())
+        assertEquals(404, request("GET", games, actor = member).statusCode())
+        assertEquals(404, request("GET", "$games/$gameId", actor = member).statusCode())
+        assertEquals(gameId.toString(), json.readTree(request("GET", games).body())[0]["id"].stringValue())
+        assertEquals(200, request("GET", "$games/$gameId").statusCode())
+    }
+
     private fun request(method: String, path: String, body: String? = null, actor: UUID? = owner): HttpResponse<String> {
         val builder = HttpRequest.newBuilder(URI("http://127.0.0.1:$port$path"))
         if (actor != null) builder.header("Authorization", "Bearer $actor")
@@ -139,6 +168,18 @@ class GroupCommunicationEndpointIntegrationTest {
     }
     @TestConfiguration(proxyBeanMethods = false)
     class Configuration {
+        @Bean fun departureGameController(dataSource: DataSource): GameController {
+            val transaction = JdbcTransactionRunner(dataSource)
+            val repository = JdbcGameOccurrenceRepository(dataSource)
+            val attendance = JdbcAttendanceCommandRepository(dataSource)
+            val unusedEffects = GameSideEffectPort { _, _, _ -> error("Lifecycle mutations are outside this read test") }
+            return GameController(
+                VerifiedGroupActorResolver { UUID.fromString(it.subject) },
+                CreateGame(transaction, repository), EditGame(transaction, repository, unusedEffects),
+                ChangeGameLifecycle(transaction, repository, unusedEffects),
+                ListGames(repository, attendance), GetGame(repository, attendance),
+            )
+        }
         @Bean fun departureTestController(dataSource: DataSource): AthleteController {
             val transaction = JdbcTransactionRunner(dataSource)
             val groups = JdbcGroupReadRepository(dataSource)
