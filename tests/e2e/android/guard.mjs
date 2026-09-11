@@ -10,6 +10,12 @@ const scenarios = {
   'notification-settings': ['NotificationsE2eTest', 1],
   'message-pagination': ['MessagePaginationE2eTest', 1],
   reminders: ['ReminderE2eTest', 1],
+  'sports-profile': ['SportsProfileE2eTest', 1],
+  'member-privacy': ['MemberPrivacyE2eTest', 1],
+  'monthly-history': ['MonthlyHistoryE2eTest', 1],
+  payments: ['PaymentE2eTest', 1],
+  'charge-lifecycle': ['ChargeLifecycleE2eTest', 1],
+  settlement: ['SettlementE2eTest', 1],
 };
 
 export function selectScenarios(name) {

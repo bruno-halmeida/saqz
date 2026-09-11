@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { localUrl } from './guard.mjs';
 import { seedExtra as seedCommunication } from './fixtures/communication-details.mjs';
+import { seedExtra as seedProfile } from './fixtures/profile-flows.mjs';
+import { seedExtra as seedFinance } from './fixtures/financial-flows.mjs';
 
 const api = 'http://127.0.0.1:18080';
 const auth = 'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1';
@@ -87,9 +89,10 @@ export async function seed(sql, scenarioNames) {
         }
       }
     }
-    Object.assign(result.scenarios[name], await seedCommunication({
-      name, sql, request, user, publishedGame, api, runId, owner, athlete, other, group, secondGroup,
-    }));
+    const context = { name, sql, request, user, publishedGame, api, runId, owner, athlete, other, group, secondGroup };
+    for (const extend of [seedCommunication, seedProfile, seedFinance]) {
+      Object.assign(result.scenarios[name], await extend(context));
+    }
   }
   return result;
 }
