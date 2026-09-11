@@ -68,8 +68,8 @@ data class GroupMembersState(
 val GroupMembersState.memberCount: Int get() = totalCount - adminCount
 
 /**
- * A diferença entre o sheet do 2k e o do 2l. Admin troca "Editar jogador" por
- * "Ver perfil" e "Tornar admin" por "Remover admin"; remover do grupo fecha os dois.
+ * Todo membro consultável oferece "Ver perfil". Para alvo admin, não há "Editar jogador"
+ * e "Tornar admin" vira "Remover admin"; remover do grupo fecha os dois sheets.
  * O dono do grupo é imutável: ninguém rebaixa nem remove. Admin promovido edita e
  * remove elenco, mas não promove — isso fica com o OWNER.
  */
@@ -82,7 +82,8 @@ fun MemberUi.sheetActions(): List<GroupMemberAction> = when {
         if (canManageAthletes) add(GroupMemberAction.Remove)
     }
     else -> buildList {
-        add(if (canManageAthletes) GroupMemberAction.EditMember else GroupMemberAction.ViewProfile)
+        add(GroupMemberAction.ViewProfile)
+        if (canManageAthletes) add(GroupMemberAction.EditMember)
         if (canManageRoles) add(GroupMemberAction.Promote)
         if (canManageAthletes) add(GroupMemberAction.Remove)
     }

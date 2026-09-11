@@ -15,6 +15,7 @@ import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleRosterEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -184,7 +185,7 @@ class GroupMembersViewModelTest {
 
         val member = viewModel.state.value.members.single()
         assertEquals(
-            listOf(GroupMemberAction.EditMember, GroupMemberAction.Remove),
+            listOf(GroupMemberAction.ViewProfile, GroupMemberAction.EditMember, GroupMemberAction.Remove),
             member.sheetActions(),
         )
         viewModel.onIntent(GroupMembersIntent.OpenMember(member.id))
@@ -194,6 +195,27 @@ class GroupMembersViewModelTest {
         viewModel.onIntent(GroupMembersIntent.OpenMember(member.id))
         viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
         assertEquals("member-1", athlete.lastRemovedUserId)
+    }
+
+    @Test
+    fun ownerCanOpenProfileAndEditorOfSelectedAthlete() = runTest {
+        assertProfileAndEditorNavigation(
+            GroupRole.OWNER,
+            listOf(
+                GroupMemberAction.ViewProfile,
+                GroupMemberAction.EditMember,
+                GroupMemberAction.Promote,
+                GroupMemberAction.Remove,
+            ),
+        )
+    }
+
+    @Test
+    fun adminCanOpenProfileAndEditorOfSelectedAthlete() = runTest {
+        assertProfileAndEditorNavigation(
+            GroupRole.ADMIN,
+            listOf(GroupMemberAction.ViewProfile, GroupMemberAction.EditMember, GroupMemberAction.Remove),
+        )
     }
 
     @Test
@@ -282,6 +304,29 @@ class GroupMembersViewModelTest {
 
         assertEquals(listOf("one"), viewModel.state.value.admins.map { it.id })
         assertTrue(viewModel.state.value.members.isEmpty())
+    }
+
+    private suspend fun assertProfileAndEditorNavigation(role: GroupRole, actions: List<GroupMemberAction>) {
+        val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("member-1"))))
+        val membership = FakeGroupMembershipGateway()
+        val viewModel = GroupMembersViewModel("group-1", athlete, membership, groupAs(role))
+        assertEquals(actions, viewModel.state.value.members.single().sheetActions())
+
+        viewModel.onIntent(GroupMembersIntent.OpenMember("member-1"))
+        assertEquals("member-1", viewModel.state.value.selected?.id)
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.ViewProfile))
+        assertEquals(GroupMembersEffect.OpenMemberProfile("member-1"), viewModel.effects.first())
+        assertEquals(null, viewModel.state.value.selected)
+
+        viewModel.onIntent(GroupMembersIntent.OpenMember("member-1"))
+        assertEquals("member-1", viewModel.state.value.selected?.id)
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.EditMember))
+        assertEquals(GroupMembersEffect.OpenMemberEditor("member-1"), viewModel.effects.first())
+        assertEquals(null, viewModel.state.value.selected)
+        assertEquals(null, athlete.lastUpdateCommand)
+        assertEquals(null, athlete.lastUpdateOwnProfileCommand)
+        assertEquals(null, athlete.lastRemovedUserId)
+        assertEquals(null, membership.lastRoleCommand)
     }
 
     private fun groupAs(role: GroupRole) = FakeGroupGateway(

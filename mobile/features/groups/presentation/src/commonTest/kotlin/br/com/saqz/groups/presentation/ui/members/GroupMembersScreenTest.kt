@@ -46,7 +46,7 @@ class GroupMembersScreenTest {
         onNodeWithText("Editar jogador").assertExists()
         onNodeWithText("Tornar admin").assertExists()
         onNodeWithText("Remover do grupo").assertExists()
-        onNodeWithText("Ver perfil").assertDoesNotExist()
+        onNodeWithText("Ver perfil").assertExists()
         onNodeWithText("Remover admin").assertDoesNotExist()
     }
 
@@ -63,10 +63,27 @@ class GroupMembersScreenTest {
     @Test fun `the sheet of an admin viewer removes a member without promoting`() = runComposeUiTest {
         content(state = state.copy(selected = thiago.copy(canManageRoles = false)))
 
+        onNodeWithText("Ver perfil").assertExists()
         onNodeWithText("Editar jogador").assertExists()
         onNodeWithText("Remover do grupo").assertExists()
         onNodeWithText("Tornar admin").assertDoesNotExist()
         onNodeWithText("Remover admin").assertDoesNotExist()
+    }
+
+    @Test fun profileActionDispatchesWithoutRemovingEditAction() = runComposeUiTest {
+        val intents = mutableListOf<GroupMembersIntent>()
+        content(state = state.copy(selected = thiago), onIntent = { intents += it })
+
+        onNodeWithTag(GroupMembersTags.action(GroupMemberAction.ViewProfile)).performClick()
+        onNodeWithTag(GroupMembersTags.action(GroupMemberAction.EditMember)).performClick()
+
+        assertEquals(
+            listOf<GroupMembersIntent>(
+                GroupMembersIntent.PerformAction(GroupMemberAction.ViewProfile),
+                GroupMembersIntent.PerformAction(GroupMemberAction.EditMember),
+            ),
+            intents,
+        )
     }
 
     @Test fun `the sheet of the group owner offers only the profile`() = runComposeUiTest {

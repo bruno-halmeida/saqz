@@ -197,6 +197,7 @@ class SaqzNavHostTest {
         reconcileAccessStack(stack, ready)
         stack += GroupsRoute.Details("ceret")
         stack += GroupsRoute.Members("ceret")
+        stack += GroupsRoute.MemberProfile("ceret", "selected")
         stack += ProfileRoute.Edit
         stack += ProfileRoute.Exit
 
@@ -208,6 +209,7 @@ class SaqzNavHostTest {
                 SaqzShellDestination.Home,
                 GroupsRoute.Details("ceret"),
                 GroupsRoute.Members("ceret"),
+                GroupsRoute.MemberProfile("ceret", "selected"),
                 ProfileRoute.Edit,
                 ProfileRoute.Exit,
             ),
@@ -246,6 +248,8 @@ class SaqzNavHostTest {
             SaqzShellDestination.Home,
             GroupsRoute.Details("ceret"),
             GroupsRoute.Schedule("ceret"),
+            GroupsRoute.Members("ceret"),
+            GroupsRoute.MemberProfile("ceret", "selected"),
             ProfileRoute.Exit,
         )
         reconcileAccessStack(stack, SessionAccessState.SignedOut)

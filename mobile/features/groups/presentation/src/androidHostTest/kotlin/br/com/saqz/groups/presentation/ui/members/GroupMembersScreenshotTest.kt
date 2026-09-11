@@ -41,6 +41,15 @@ class GroupMembersScreenshotTest {
     }
 
     @Test
+    fun adminViewerMemberSheet() = capture("group-members-sheet-member-admin-viewer") {
+        GroupMembersScreen(
+            sampleState.copy(selected = sampleMembers.first().copy(canManageRoles = false)),
+            {},
+            {},
+        )
+    }
+
+    @Test
     fun adminSheet() = capture("group-members-sheet-admin") {
         GroupMembersScreen(sampleState.copy(selected = sampleAdmins.last()), {}, {})
     }

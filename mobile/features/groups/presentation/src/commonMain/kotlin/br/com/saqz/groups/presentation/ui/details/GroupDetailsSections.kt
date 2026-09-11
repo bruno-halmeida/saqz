@@ -519,16 +519,18 @@ internal fun GroupMemberPreview(
         onAction = { onIntent(GroupDetailsIntent.ViewAllMembers) },
         modifier = Modifier.testTag(GroupDetailsTags.ViewAllMembers),
     )
-    SaqzCard(padded = false) {
-        members.forEachIndexed { index, member ->
-            if (index > 0) {
-                SaqzDivider()
+    if (members.isNotEmpty()) {
+        SaqzCard(padded = false) {
+            members.forEachIndexed { index, member ->
+                if (index > 0) {
+                    SaqzDivider()
+                }
+                SaqzMemberRow(
+                    name = member.name,
+                    meta = member.meta,
+                    trailing = { member.status?.let { GroupMemberStatusChip(it) } },
+                )
             }
-            SaqzMemberRow(
-                name = member.name,
-                meta = member.meta,
-                trailing = { member.status?.let { GroupMemberStatusChip(it) } },
-            )
         }
     }
 }

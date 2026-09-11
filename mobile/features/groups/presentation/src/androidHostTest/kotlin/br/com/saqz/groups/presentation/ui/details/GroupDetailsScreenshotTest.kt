@@ -42,6 +42,13 @@ class GroupDetailsScreenshotTest {
 
     @Test
     @Config(qualifiers = "+h2000dp")
+    fun memberWithoutPreview() = capture(
+        "group-details-member-without-preview",
+        GroupDetailsPreviewData.member.copy(memberPreview = emptyList()),
+    )
+
+    @Test
+    @Config(qualifiers = "+h2000dp")
     fun memberResponse() = capture(
         "group-details-response-confirmed-auto",
         GroupDetailsPreviewData.member,

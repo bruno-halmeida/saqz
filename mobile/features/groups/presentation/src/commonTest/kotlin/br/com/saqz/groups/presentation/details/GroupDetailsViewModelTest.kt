@@ -406,6 +406,9 @@ class GroupDetailsViewModelTest {
         viewModel.onIntent(GroupDetailsIntent.ManageMembers)
         assertEquals(GroupDetailsEffect.OpenMembers(GROUP_ID), viewModel.effects.first())
 
+        viewModel.onIntent(GroupDetailsIntent.ViewAllMembers)
+        assertEquals(GroupDetailsEffect.OpenMembers(GROUP_ID), viewModel.effects.first())
+
         viewModel.onIntent(GroupDetailsIntent.OpenSchedule)
         assertEquals(GroupDetailsEffect.OpenSchedule(GROUP_ID), viewModel.effects.first())
     }

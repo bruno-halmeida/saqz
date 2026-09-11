@@ -143,7 +143,7 @@ internal fun GroupDetailsScreen(
                 }
                 GroupShortcutTiles(onIntent = onIntent)
                 state.latestNotice?.let { GroupLatestNoticeCard(notice = it) }
-                if (state.memberPreview.isNotEmpty()) {
+                if (!state.isAdmin) {
                     GroupMemberPreview(members = state.memberPreview, onIntent = onIntent)
                 }
                 if (!state.isAdmin) {

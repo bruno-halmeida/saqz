@@ -3,6 +3,9 @@ package br.com.saqz.groups.presentation.ui.details
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -82,6 +85,30 @@ class GroupDetailsScreenTest {
 
         memberOnly.forEach { onNodeWithTag(it).assertExists() }
         adminOnly.forEach { onAllNodesWithTag(it).assertCountEquals(0) }
+    }
+
+    @Test
+    fun memberWithoutPreviewStillOpensMembers() = runComposeUiTest {
+        val intents = mutableListOf<GroupDetailsIntent>()
+        setScreen(GroupDetailsPreviewData.member.copy(memberPreview = emptyList())) { intents += it }
+
+        onNode(
+            hasClickAction() and hasAnyAncestor(hasTestTag(GroupDetailsTags.ViewAllMembers)),
+        ).performScrollTo().performClick()
+
+        assertEquals(listOf<GroupDetailsIntent>(GroupDetailsIntent.ViewAllMembers), intents)
+        adminOnly.forEach { onAllNodesWithTag(it).assertCountEquals(0) }
+    }
+
+    @Test
+    fun adminWithoutPreviewStillOpensManageMembers() = runComposeUiTest {
+        val intents = mutableListOf<GroupDetailsIntent>()
+        setScreen(GroupDetailsPreviewData.admin.copy(memberPreview = emptyList())) { intents += it }
+
+        onNodeWithTag(GroupDetailsTags.ManageMembers).performScrollTo().performClick()
+
+        assertEquals(listOf<GroupDetailsIntent>(GroupDetailsIntent.ManageMembers), intents)
+        onAllNodesWithTag(GroupDetailsTags.ViewAllMembers).assertCountEquals(0)
     }
 
     @Test
