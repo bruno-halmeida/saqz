@@ -169,3 +169,75 @@ Revisão: `validation.md`, `verifier-full-after-sync.log`, `verifier-native-defa
 O runner também retém JUnit/logcat em pasta temporária anunciada na saída; esses artefatos são
 locais e podem expirar. Não houve push ou deploy nesta rodada. O escopo não inclui ADM da
 plataforma, iOS instalado, WhatsApp, denúncias/moderação ou provedores de pagamento.
+
+## Rodada paralela supervisionada — 11/09/2026 (em andamento)
+
+As frentes de comunicação, perfil e financeiro foram distribuídas pelo Orca. O coordenador
+executa cada entrega no Android instalado antes de aceitá-la. Os **16 casos passaram juntos**,
+sem falhas, erros ou skips; **o verificador independente desta rodada ainda está pendente**.
+Os resultados históricos acima não são novas execuções desta rodada.
+O novo agente foi criado pelo Orca, mas a inicialização parou no aviso de atualização do Codex;
+o CLI recusou a seleção automática de Skip. Nenhuma revisão ou mutação desse verificador foi
+executada. Essa etapa depende de selecionar Skip no terminal e retomar o dispatch.
+
+| Gate observado pelo coordenador | Casos únicos | Resultado |
+| --- | ---: | --- |
+| Regressão dos sete E2E anteriores | 7 | PASS em conjunto, zero falhas/erros/skips |
+| Preferências/notificações, paginação e lembretes | 3 | PASS em execuções focais |
+| Cadastro esportivo e histórico mensal longo | 2 | PASS em execuções focais |
+| Recusa de isenção/cancelamento ao atleta | 1 | PASS; somente autorização negativa |
+| Privacidade e acesso ao perfil de membro | 1 | PASS após correção das ligações e sincronização da rolagem |
+| Recebimento e despesa de quadra | 1 | PASS após ajuste de interação; zero falhas/erros/skips |
+| Acerto final do jogo | 1 | PASS após selecionar a linha exata de Resultado; zero falhas/erros/skips |
+| Regressões de perfil e navegação (commonTest no iOS) | 123 | PASS após correção; 96 grupos + 27 navegação |
+| Guardas e processos do runner (Node) | 16 | PASS, zero falhas/skips; repetido após últimos ajustes |
+| Regressão conjunta dos 16 instalados | 16 | PASS, zero falhas/erros/skips; Gradle 8m8s; não somar como casos adicionais |
+
+Os dois achados ENV da rodada anterior receberam correção em `626d3bd9`: stdout de metadados
+separado de stderr; limpeza tenta todos os recursos próprios mesmo após uma falha e informa
+saída não zero se incompleta. Os 11 testes novos dos processos e os cinco guardas passaram.
+As execuções instaladas também encerraram seus serviços/bancos descartáveis. A revisão
+independente final dessas correções ainda não foi concluída.
+
+O teste de privacidade encontrou duas ligações ausentes: a lista de membros do atleta dependia
+de uma prévia não carregada; o menu do gestor oferecia editar o atleta, mas não ver seu perfil.
+A correção foi autorizada sem alterar permissões de gestão ou privacidade. Papéis, dados e
+verificações foram preservados.
+Antes da correção, 47 testes focais executaram com sete falhas comportamentais nas ligações
+ausentes. Após o ajuste, passaram os 96 testes de grupos e 27 de navegação selecionados.
+Na primeira reexecução instalada, a etapa do atleta passou, mas a do dono parou no botão de
+membros existente e fora da área visível após a rolagem. A interação passou a rolar até o botão
+estar visível, dentro dos mesmos 20 segundos, mantendo visibilidade/habilitação como exigências.
+O cenário inteiro então passou, para atleta e dono, sem mudar nenhuma verificação de privacidade.
+
+Foram geradas 15 capturas (10 de detalhe e cinco de membros), com inspeção das novas entradas e
+menus do dono/admin; não há card vazio de prévia, e as ações preservadas continuam visíveis.
+O lint global passou novamente depois dos ajustes. Capturas são locais, ignoradas pelo Git.
+
+No recebimento, a primeira tentativa teve timeout de resposta e saltos de relógio do ambiente.
+A repetição recebeu HTTP 200 em 167 ms e comprovou cobrança paga e receita única, mas falhou ao
+esperar o detalhe: a árvore ainda mostrava o caixa, com o saldo atualizado. Isso ainda não prova
+defeito no resumo do detalhe. Despesa e visão posterior do atleta não foram alcançadas.
+Após esperar a saída do conteúdo de confirmação e tocar o botão Voltar real do caixa, o cenário
+inteiro passou, incluindo despesa, saldo de R$3,45 e mensalidade paga para o atleta. Nenhuma regra
+financeira foi alterada. Essa execução não comprova o comportamento do botão Voltar sistêmico
+durante o fechamento da folha. As duas primeiras tentativas de R11 falharam na preparação (Auth/Spring), antes de executar
+testes; a repetição estável passou. Falhas e artefatos foram preservados.
+
+No acerto, o primeiro teste encontrou dois valores de R$70,00 como irmãos de “Resultado”.
+O localizador passou a exigir o valor à direita do rótulo, na mesma linha do card de resumo.
+Com as verificações financeiras preservadas, passou toda a jornada: pendência bloqueia,
+recebimento habilita, reabertura mostra encerrado e não há novas cobranças, despesas ou eventos.
+
+Isenção/cancelamento com sucesso pela UI continua sem cobertura porque as ações não existem
+no app. Não foi criada essa feature neste lote. Demais limites por cenário estão no
+[inventário do runner](../e2e/android/README.md); 16 testes não equivalem a todas as features.
+
+Evidências locais: `/tmp/saqz-parallel-e2e.ie8AD7/results.md`, `baseline-seven.log`,
+`notification-settings.log`, `message-pagination-sdk.log`, `reminders.log`,
+`sports-profile-ready.log`, `monthly-history.log`, `member-privacy.log`, `payments.log`,
+`payments-stable.log`, `payments-interaction.log`, `charge-lifecycle-stable.log`,
+`settlement-result-row.log`, `member-privacy-visible.log`, `p02-red-typed.log`,
+`p02-green.log`, `p02-captures-lint.log`, `pre-full-node.log`, `pre-full-lint.log` e
+`full-sixteen.log` (JUnit novo em `saqz-e2e-N5rMlb/junit`, saída 0 após limpeza).
+JUnit e logcat de cada execução ficam na pasta `saqz-e2e-*` anunciada no respectivo log.
