@@ -117,13 +117,13 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
         ui.onNodeWithTag("saqz-shell-content").assertDoesNotExist()
     }
 
-    protected fun api(role: String, path: String, method: String = "GET", body: JSONObject? = null, status: Int = 200): JSONObject {
+    protected fun api(role: String, path: String, method: String = "GET", body: JSONObject? = null, status: Int = 200, headers: Map<String, String> = emptyMap()): JSONObject {
         val identity = http(
             "http://10.0.2.2:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-saqz-local-api-key",
             "POST", JSONObject().put("email", actor(role).getString("email"))
                 .put("password", fixture.getString("password")).put("returnSecureToken", true),
         )
-        return http("${BuildConfig.API_BASE_URL}$path", method, body, identity.getString("idToken"), status)
+        return http("${BuildConfig.API_BASE_URL}$path", method, body, identity.getString("idToken"), status, headers)
     }
 
     protected fun membershipIds(role: String): Set<String> {
@@ -133,7 +133,7 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
 }
 
 /** Independent HTTP oracle: validates persisted server state, never invokes app gateways. */
-private fun http(url: String, method: String, body: JSONObject?, token: String? = null, status: Int = 200): JSONObject {
+private fun http(url: String, method: String, body: JSONObject?, token: String? = null, status: Int = 200, headers: Map<String, String> = emptyMap()): JSONObject {
     val connection = URL(url).openConnection() as HttpURLConnection
     try {
         connection.requestMethod = method
@@ -141,6 +141,7 @@ private fun http(url: String, method: String, body: JSONObject?, token: String? 
         connection.readTimeout = 15_000
         connection.setRequestProperty("Content-Type", "application/json")
         token?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
+        headers.forEach { (name, value) -> connection.setRequestProperty(name, value) }
         body?.let {
             connection.doOutput = true
             connection.outputStream.use { stream -> stream.write(it.toString().toByteArray()) }
