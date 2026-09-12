@@ -74,6 +74,15 @@ class CreateSubscriptionTest {
     )
 
     @Test
+    fun `annual checkout sends nine monthly payments as the annual total`() {
+        val result = useCase.execute(baseCommand().copy(plan = Plan.ILIMITADO, cycle = SubscriptionCycle.ANNUAL))
+
+        assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals(80_910, gateway.lastSubscriptionValueCents)
+        assertEquals(SubscriptionCycle.ANNUAL, subscriptions.findByOwnerUserId(ownerId)?.cycle)
+    }
+
+    @Test
     fun `creates subscription with credit card and persists the returned token`() {
         gateway.creditCardResult = AsaasCreditCardInfo(token = "card_tok_1", lastFourDigits = "1111", brand = "VISA")
 

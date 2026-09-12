@@ -325,12 +325,12 @@ class HttpAsaasGatewayTest {
         server.enqueue(json(200, """{"id":"sub_YEAR"}"""))
 
         gateway.createSubscription(
-            "cus_1", Plan.ILIMITADO, SubscriptionCycle.ANNUAL, 89_900, AsaasBillingType.PIX, "sub-annual-1",
+            "cus_1", Plan.ILIMITADO, SubscriptionCycle.ANNUAL, 80_910, AsaasBillingType.PIX, "sub-annual-1",
         )
 
         val body = server.takeRequest().body.readUtf8()
         assertTrue(body.contains("\"cycle\":\"YEARLY\""))
-        assertTrue(body.contains("\"value\":899.00"))
+        assertTrue(body.contains("\"value\":809.10"))
     }
 
     @Test
