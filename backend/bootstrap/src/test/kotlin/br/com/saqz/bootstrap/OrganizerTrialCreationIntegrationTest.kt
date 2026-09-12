@@ -30,6 +30,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class OrganizerTrialCreationIntegrationTest {
     private lateinit var ds: DataSource
@@ -105,4 +107,37 @@ class OrganizerTrialCreationIntegrationTest {
     }
 
     private fun count(table: String) = jdbc.sql("SELECT count(*)::int FROM $table").query(Int::class.java).single()
+
+    @Test
+    fun `paid history survives checkout reactivation while an unpaid checkout alone remains eligible`() {
+        jdbc.sql("""INSERT INTO subscriptions (owner_user_id,plan,cycle,status,asaas_customer_id,asaas_subscription_id,current_period_end,created_at,updated_at)
+            VALUES (:owner,'TITULAR','MONTHLY','PAST_DUE','customer',:subscription,now()+interval '30 days',now(),now())""")
+            .param("owner", owner).param("subscription", UUID.randomUUID().toString()).update()
+        assertTrue(start.isEligible(owner))
+        jdbc.sql("UPDATE subscriptions SET status='ACTIVE' WHERE owner_user_id=:owner").param("owner", owner).update()
+        assertFalse(start.isEligible(owner))
+        jdbc.sql("UPDATE subscriptions SET status='CANCELED', first_confirmed_at=now() WHERE owner_user_id=:owner").param("owner", owner).update()
+        assertFalse(start.isEligible(owner))
+        jdbc.sql("UPDATE subscriptions SET status='PAST_DUE', first_confirmed_at=NULL WHERE owner_user_id=:owner").param("owner", owner).update()
+        jdbc.sql("INSERT INTO subscription_events (id,asaas_event_id,type,payload,processed_at,created_at,owner_user_id) VALUES (:id,:event,'PAYMENT_CONFIRMED','{}',now(),now(),:owner)")
+            .param("id", UUID.randomUUID()).param("event", UUID.randomUUID().toString()).param("owner", owner).update()
+        assertFalse(start.isEligible(owner))
+        assertNull(trials.find(owner))
+    }
+
+    @Test
+    fun `concurrent same request returns one group and leaves one original trial`() {
+        val key = UUID.randomUUID()
+        val latch = CountDownLatch(1)
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val requests = (1..2).map { executor.submit(Callable { latch.await(); create().execute(owner, key, profile, "UTC") }) }
+            latch.countDown()
+            val first = assertIs<CreateGroupResult.Success>(requests[0].get())
+            assertEquals(first, requests[1].get())
+            assertEquals(1, count("access_groups"))
+            assertEquals(1, count("organizer_trials"))
+            assertEquals(now.plus(Duration.ofDays(14)), trials.find(owner)?.endsAt)
+        } finally { executor.shutdownNow() }
+    }
 }

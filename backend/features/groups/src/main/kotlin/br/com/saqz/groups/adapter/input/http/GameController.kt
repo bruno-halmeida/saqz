@@ -46,7 +46,7 @@ data class GameWriteRequest @JsonCreator constructor(
     @JsonProperty("capacity") val capacity: Int? = null,
     @JsonProperty("confirmationDeadline") val confirmationDeadline: Instant? = null,
     @JsonProperty("gameFeeCents") val gameFeeCents: Long? = null,
-    @JsonProperty("useDefaultGameFee") val useDefaultGameFee: Boolean = true,
+    @JsonProperty("useDefaultGameFee") val useDefaultGameFee: Boolean? = true,
     @JsonProperty("notes") val notes: String? = null,
 )
 
@@ -133,7 +133,7 @@ class GameController(
     private fun invalid(field: String, message: String): Nothing = throw InvalidGroupRequestException(mapOf(field to listOf(message)))
 }
 
-private fun GameWriteRequest.toCreate() = CreateGameInput(title, venue?.toInput(), localDate, localTime, zoneId, startsAt, durationMinutes, capacity, confirmationDeadline, if (useDefaultGameFee) NullableGameFeeOverride.UseDefault else NullableGameFeeOverride.Value(gameFeeCents), notes)
+private fun GameWriteRequest.toCreate() = CreateGameInput(title, venue?.toInput(), localDate, localTime, zoneId, startsAt, durationMinutes, capacity, confirmationDeadline, if (useDefaultGameFee != false) NullableGameFeeOverride.UseDefault else NullableGameFeeOverride.Value(gameFeeCents), notes)
 private fun GameWriteRequest.toDraft() = GameDraftInput(title, venue?.toInput(), localDate, localTime, zoneId, startsAt, durationMinutes, capacity, confirmationDeadline, gameFeeCents, notes)
 private fun GameVenueRequest.toInput() = GameVenueInput(venueId, name, address, court)
 private fun br.com.saqz.groups.domain.game.Game.toView() = GameView(this, 0, snapshot.capacity, 0)

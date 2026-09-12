@@ -35,6 +35,18 @@ import kotlin.test.assertNull
     ],
 )
 class AdminWebCorsIntegrationTest {
+    @Test
+    fun `onboarding permits only explicit session writes from configured web origin`() {
+        listOf("/api/session" to "PUT", "/api/session/profile" to "PATCH", "/subscriptions/trial" to "GET").forEach { (path, method) ->
+            val response = options(path, "http://127.0.0.1:8123", method)
+            assertEquals(200, response.statusCode(), "$method $path")
+            assertEquals("http://127.0.0.1:8123", response.headers().firstValue("Access-Control-Allow-Origin").orElse(""))
+            assertEquals(403, options(path, "https://malicioso.example", method).statusCode())
+        }
+        assertEquals(403, options("/api/session", "http://127.0.0.1:8123", "DELETE").statusCode())
+        assertEquals("", options("/api/groups", "http://127.0.0.1:8123", "POST").headers().firstValue("Access-Control-Allow-Origin").orElse(""))
+    }
+
     @LocalServerPort
     private var port: Int = 0
 

@@ -183,6 +183,96 @@ class OrganizerTrialEndpointIntegrationTest {
     private fun jdbc() = JdbcClient.create(ds)
 
     @Test
+    fun `replacing a deleted trial group uses remaining time instead of a new fourteen days`() {
+        val group = createGroup()
+        val original = mapper.readTree(request("GET", "/subscriptions/trial").body())
+        clock.now = now.plus(Duration.ofDays(2))
+        assertEquals(204, request("DELETE", "/api/groups/$group").statusCode())
+        val replacement = createGroup()
+        assertFalse(group == replacement)
+        val current = mapper.readTree(request("GET", "/api/groups/$replacement/trial").body())
+        assertEquals(original["startedAt"], current["startedAt"])
+        assertEquals(original["endsAt"], current["endsAt"])
+        assertEquals("ACTIVE", current["status"].stringValue())
+        assertEquals(1, jdbc().sql("SELECT count(*)::int FROM organizer_trials t JOIN access_users u ON t.owner_user_id=u.id WHERE firebase_subject=:subject")
+            .param("subject", token).query(Int::class.java).single())
+    }
+
+    @Test
+    fun `future game works during trial freezes attendance at expiry and resumes only after paid confirmation`() {
+        val group = createGroup()
+        val game = UUID.randomUUID()
+        val gamePayload = """{
+            "requestId":"$game","title":"Jogo depois do teste","venue":{"name":"Arena Central","address":"Rua Central 100"},
+            "localDate":"2026-09-27","localTime":"12:00:00","zoneId":"UTC","startsAt":"2026-09-27T12:00:00Z",
+            "durationMinutes":90,"capacity":25,"confirmationDeadline":"2026-09-27T11:00:00Z"}"""
+        val created = request("POST", "/api/groups/$group/games", gamePayload)
+        assertEquals(201, created.statusCode(), created.body())
+        assertEquals("2026-09-27T12:00:00Z", mapper.readTree(created.body())["startsAt"].stringValue())
+        assertEquals("2026-09-26T12:00:00Z", mapper.readTree(request("GET", "/api/groups/$group/trial").body())["endsAt"].stringValue())
+        val published = request("POST", "/api/groups/$group/games/$game/publish", ifMatch = "\"1\"")
+        assertEquals(200, published.statusCode(), published.body())
+        jdbc().sql("UPDATE group_memberships SET membership_type='MENSALISTA' WHERE group_id=:group").param("group", group).update()
+        val confirmed = request("PUT", "/api/groups/$group/games/$game/attendance", """{"requestId":"${UUID.randomUUID()}","intent":"CONFIRM"}""")
+        assertEquals(200, confirmed.statusCode(), confirmed.body())
+        val state = jdbc().sql("SELECT status::text FROM game_attendance WHERE game_id=:game").param("game", game).query(String::class.java).single()
+        assertEquals("CONFIRMED", state)
+        clock.now = now.plus(Duration.ofDays(14))
+        val declined = request("PUT", "/api/groups/$group/games/$game/attendance", """{"requestId":"${UUID.randomUUID()}","intent":"DECLINE"}""")
+        assertEquals(403, declined.statusCode(), declined.body())
+        assertEquals("SUBSCRIPTION_REQUIRED", mapper.readTree(declined.body())["code"].stringValue())
+        assertEquals("CONFIRMED", jdbc().sql("SELECT status::text FROM game_attendance WHERE game_id=:game").param("game", game).query(String::class.java).single())
+        assertEquals(1, jdbc().sql("SELECT count(*)::int FROM attendance_events WHERE game_id=:game").param("game", game).query(Int::class.java).single())
+        assertEquals(200, request("GET", "/api/groups/$group/games/$game/attendance").statusCode())
+        // Explicit checkout exists but no confirmed payment: still expired, never implicitly paid.
+        jdbc().sql("""INSERT INTO subscriptions (owner_user_id,plan,cycle,status,asaas_customer_id,asaas_subscription_id,current_period_end,created_at,updated_at)
+            SELECT id,'TITULAR','MONTHLY','PAST_DUE','customer',:sub,now()+interval '30 days',now(),now() FROM access_users WHERE firebase_subject=:subject""")
+            .param("sub", UUID.randomUUID().toString()).param("subject", token).update()
+        assertEquals("EXPIRED", mapper.readTree(request("GET", "/api/groups/$group/trial").body())["status"].stringValue())
+        assertEquals(403, request("PUT", "/api/groups/$group/games/$game/attendance", """{"requestId":"${UUID.randomUUID()}","intent":"DECLINE"}""").statusCode())
+        // Mirror the persisted state emitted by the existing verified PAYMENT_CONFIRMED processor.
+        jdbc().sql("UPDATE subscriptions SET status='ACTIVE', first_confirmed_at=now() WHERE owner_user_id=(SELECT id FROM access_users WHERE firebase_subject=:subject)")
+            .param("subject", token).update()
+        assertEquals("SUBSCRIBED", mapper.readTree(request("GET", "/api/groups/$group/trial").body())["status"].stringValue())
+        val paidResponse = request("PUT", "/api/groups/$group/games/$game/attendance", """{"requestId":"${UUID.randomUUID()}","intent":"DECLINE"}""")
+        assertEquals(200, paidResponse.statusCode(), paidResponse.body())
+        assertEquals("DECLINED", jdbc().sql("SELECT status::text FROM game_attendance WHERE game_id=:game").param("game", game).query(String::class.java).single())
+        assertEquals(2, jdbc().sql("SELECT count(*)::int FROM attendance_events WHERE game_id=:game").param("game", game).query(Int::class.java).single())
+    }
+
+    @Test
+    fun `game fee transport keeps absent and true as default and honors explicit false override`() {
+        val group = createGroup()
+        jdbc().sql("UPDATE access_groups SET default_game_fee_cents=2500 WHERE id=:group").param("group", group).update()
+        fun createGame(id: UUID, date: String, extra: String) = request(
+            "POST", "/api/groups/$group/games", """{
+                "requestId":"$id","title":"Fee $id","venue":{"name":"Arena","address":"Rua Central 100"},
+                "localDate":"$date","localTime":"12:00:00","zoneId":"UTC","startsAt":"${date}T12:00:00Z",
+                "durationMinutes":90,"capacity":25,"confirmationDeadline":"${date}T11:00:00Z"$extra}"""
+        )
+        val absent = createGame(UUID.randomUUID(), "2026-09-20", "")
+        assertEquals(201, absent.statusCode(), absent.body())
+        assertEquals(2500, mapper.readTree(absent.body())["gameFeeCents"].intValue())
+        val explicitTrue = createGame(UUID.randomUUID(), "2026-09-21", ",\"useDefaultGameFee\":true")
+        assertEquals(201, explicitTrue.statusCode(), explicitTrue.body())
+        assertEquals(2500, mapper.readTree(explicitTrue.body())["gameFeeCents"].intValue())
+        val explicitFalse = createGame(UUID.randomUUID(), "2026-09-22", ",\"useDefaultGameFee\":false,\"gameFeeCents\":4100")
+        assertEquals(201, explicitFalse.statusCode(), explicitFalse.body())
+        assertEquals(4100, mapper.readTree(explicitFalse.body())["gameFeeCents"].intValue())
+    }
+
+    @Test
+    fun `expired trial refuses multipart group photo uploads`() {
+        val group = createGroup()
+        clock.now = now.plus(Duration.ofDays(14))
+        val body = "--trial-boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"photo.png\"\r\nContent-Type: image/png\r\n\r\nimage\r\n--trial-boundary--\r\n"
+        val result = request("PUT", "/api/groups/$group/photo", body, contentType = "multipart/form-data; boundary=trial-boundary")
+        assertEquals(403, result.statusCode(), result.body())
+        assertEquals("SUBSCRIPTION_REQUIRED", mapper.readTree(result.body())["code"].stringValue())
+        assertEquals(1L, jdbc().sql("SELECT version FROM access_groups WHERE id=:group").param("group", group).query(Long::class.java).single())
+    }
+
+    @Test
     fun `monthly scheduler cannot generate charges for an expired trial`() {
         val group = createGroup()
         jdbc().sql("UPDATE access_groups SET monthly_fee_cents=2000, monthly_due_day=1 WHERE id=:group").param("group", group).update()
@@ -216,11 +306,12 @@ class OrganizerTrialEndpointIntegrationTest {
         assertEquals(1, jdbc().sql("SELECT count(*)::int FROM group_memberships WHERE group_id=:group").param("group", group).query(Int::class.java).single())
     }
 
-    private fun request(method: String, path: String, body: String? = null, actor: String? = token): HttpResponse<String> {
+    private fun request(method: String, path: String, body: String? = null, actor: String? = token, ifMatch: String? = null, contentType: String = "application/json"): HttpResponse<String> {
         val builder = HttpRequest.newBuilder(URI("http://127.0.0.1:$port$path"))
-            .header("Content-Type", "application/json")
+            .header("Content-Type", contentType)
             .method(method, body?.let(HttpRequest.BodyPublishers::ofString) ?: HttpRequest.BodyPublishers.noBody())
         actor?.let { builder.header("Authorization", "Bearer $it") }
+        ifMatch?.let { builder.header("If-Match", it) }
         return client.send(builder.build(), HttpResponse.BodyHandlers.ofString())
     }
 

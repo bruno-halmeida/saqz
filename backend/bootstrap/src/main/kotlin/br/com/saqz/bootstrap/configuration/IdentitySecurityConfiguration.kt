@@ -86,6 +86,12 @@ class IdentitySecurityConfiguration {
                 allowedHeaders = listOf("Authorization", "Content-Type")
             }
             WEB_PATHS.forEach { path -> source.registerCorsConfiguration(path, configuration) }
+            source.registerCorsConfiguration("/api/session", CorsConfiguration(configuration).apply {
+                allowedMethods = listOf("PUT", "OPTIONS")
+            })
+            source.registerCorsConfiguration("/api/session/profile", CorsConfiguration(configuration).apply {
+                allowedMethods = listOf("PATCH", "OPTIONS")
+            })
         }
         return source
     }
