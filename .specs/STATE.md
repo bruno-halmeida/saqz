@@ -14,7 +14,7 @@
 - Base atualizada para origin/main 6f86f8f6, incluindo trial central.
 - V48 resolve colisão preexistente do trial com V46 de grupos; V49 cria recebimentos; V50 adiciona data remota.
 - Criação do PR recusada pelo GitHub: `must be a collaborator (createPullRequest)`.
-  A branch core foi publicada. Não houve merge remoto nem deploy.
+  Restrição de PR superada pela autorização explícita do usuário para merge direto na main.
 
 ## Progresso e pendências
 
@@ -34,3 +34,10 @@
 - `feat/receivables-quotes`: terceira entrega dependente com catálogo vigente e simulação HTTP; três testes PostgreSQL/HTTP novos passaram.
 
 - `feat/receivables-conditions`: publicação administrativa idempotente de termos/tarifas e preview; V51 adiciona auditoria imutável (18 tabelas financeiras). Painel visual ainda pendente.
+
+## Integração em main
+
+- Usuário autorizou merge direto das quatro entregas. Merge local realizado sem conflitos,
+  sobre origin/main 6f86f8f6; publicação remota será verificada ao concluir a operação.
+- Não há bloqueio de informação para continuar a implementação. Antes de liberar o piloto,
+  serão necessárias habilitação BaaS, condições comerciais reais, termos e homologação Asaas.
