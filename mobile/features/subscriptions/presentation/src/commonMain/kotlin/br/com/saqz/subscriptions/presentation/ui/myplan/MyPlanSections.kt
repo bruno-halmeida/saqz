@@ -40,6 +40,12 @@ import br.com.saqz.subscriptions.resources.myplan_trial_active
 import br.com.saqz.subscriptions.resources.myplan_trial_expired
 import br.com.saqz.subscriptions.resources.myplan_trial_subscribe
 import br.com.saqz.subscriptions.resources.myplan_trial_organizer
+import br.com.saqz.subscriptions.resources.myplan_trial_available
+import br.com.saqz.subscriptions.resources.myplan_trial_ineligible
+import br.com.saqz.subscriptions.resources.myplan_trial_readonly
+import br.com.saqz.subscriptions.resources.myplan_trial_date_unavailable
+import br.com.saqz.subscriptions.domain.trial.TrialStatus
+import br.com.saqz.core.common.formatting.formatInstantDateTimePtBr
 import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.myplan_access_until
 import br.com.saqz.subscriptions.resources.myplan_cancel_button
@@ -119,23 +125,34 @@ internal fun MyPlanCurrentCard(plan: MyPlanCardUi, modifier: Modifier = Modifier
 
 @Composable
 internal fun MyPlanTrialCard(trial: MyPlanTrialUi, onSubscribe: () -> Unit, modifier: Modifier = Modifier) {
-    SaqzCard(modifier = modifier.testTag("myplan-trial-card"), tone = SaqzCardTone.Soft) {
+    if (trial.status == TrialStatus.Subscribed) return
+    SaqzCard(modifier = modifier.testTag(MyPlanTags.TrialCard), tone = SaqzCardTone.Soft) {
         Text(
             text = stringResource(
                 when (trial.status) {
-                    br.com.saqz.subscriptions.domain.trial.TrialStatus.Expired -> Res.string.myplan_trial_expired
-                    else -> Res.string.myplan_trial_active
+                    TrialStatus.Expired -> Res.string.myplan_trial_expired
+                    TrialStatus.Active -> Res.string.myplan_trial_active
+                    TrialStatus.Available -> Res.string.myplan_trial_available
+                    TrialStatus.Ineligible, TrialStatus.Subscribed -> Res.string.myplan_trial_ineligible
                 },
-                trial.endsAt ?: "",
+                formatInstantDateTimePtBr(trial.endsAt) ?: stringResource(Res.string.myplan_trial_date_unavailable),
             ),
             style = SaqzTheme.typography.subtitle,
             color = SaqzTheme.colors.textPrimary,
         )
+        if (trial.status == TrialStatus.Expired) {
+            Text(
+                text = stringResource(Res.string.myplan_trial_readonly),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+        }
         if (trial.canSubscribe) {
             SaqzButton(
                 label = stringResource(Res.string.myplan_trial_subscribe),
                 onClick = onSubscribe,
                 fullWidth = true,
+                modifier = Modifier.testTag(MyPlanTags.Subscribe),
             )
         } else if (!trial.isOwner) {
             Text(

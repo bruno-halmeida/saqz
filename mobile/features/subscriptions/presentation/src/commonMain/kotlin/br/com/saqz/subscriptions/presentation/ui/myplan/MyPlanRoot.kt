@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanEffect
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanIntent
@@ -15,10 +16,15 @@ import org.koin.compose.viewmodel.koinViewModel
 fun MyPlanRoot(
     onBack: () -> Unit,
     onOpenChangePlan: () -> Unit = {},
+    onOpenSubscribe: () -> Unit = {},
     refreshVersion: Int = 0,
     viewModel: MyPlanViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(viewModel) {
+        viewModel.onIntent(MyPlanIntent.Refresh)
+        onPauseOrDispose { }
+    }
     val loadedVersion = rememberSaveable(viewModel) { refreshVersion }
     LaunchedEffect(viewModel, refreshVersion) {
         if (refreshVersion != loadedVersion) viewModel.onIntent(MyPlanIntent.Refresh)
@@ -26,6 +32,7 @@ fun MyPlanRoot(
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             MyPlanEffect.OpenChangePlan -> onOpenChangePlan()
+            MyPlanEffect.OpenSubscribe -> onOpenSubscribe()
         }
     }
     MyPlanScreen(

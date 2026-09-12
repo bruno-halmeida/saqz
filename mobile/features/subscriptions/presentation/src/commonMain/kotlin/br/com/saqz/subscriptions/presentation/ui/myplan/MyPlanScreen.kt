@@ -43,6 +43,8 @@ internal object MyPlanTags {
     const val CancelButton = "myplan-cancel-button"
     const val ReceiptsSheet = "myplan-receipts-sheet"
     const val CancelSheet = "myplan-cancel-sheet"
+    const val TrialCard = "myplan-trial-card"
+    const val Subscribe = "myplan-trial-subscribe"
 }
 
 /** 8e — plano atual, uso, recibos e o menu Gerenciar. A tela só empilha; cada bloco é uma
@@ -83,16 +85,13 @@ fun MyPlanScreen(
             ) {
                 state.plan?.let { MyPlanCurrentCard(it) }
                 state.trial?.let { trial ->
-                    MyPlanTrialCard(trial, onSubscribe = { onIntent(MyPlanIntent.OpenChangePlan) })
+                    MyPlanTrialCard(trial, onSubscribe = { onIntent(MyPlanIntent.OpenSubscribe) })
                 }
                 state.usage?.let { MyPlanUsageCard(it) }
-                MyPlanManageSection(
-                    state = state,
-                    onIntent = onIntent,
-                )
+                if (state.plan != null) MyPlanManageSection(state = state, onIntent = onIntent)
                 // Assinatura já efetivamente cancelada (achado do Codex no PR #93) não tem
                 // o que cancelar de novo — o backend já rejeita com AlreadyCanceled.
-                if (state.plan?.statusTone != MyPlanStatusTone.Canceled) {
+                if (state.plan != null && state.plan.statusTone != MyPlanStatusTone.Canceled) {
                     MyPlanCancelSection(onIntent = onIntent)
                 }
             }

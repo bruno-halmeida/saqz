@@ -10,6 +10,8 @@ import br.com.saqz.subscriptions.presentation.myplan.MyPlanReceiptUi
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanState
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanStatusTone
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanUsageUi
+import br.com.saqz.subscriptions.presentation.myplan.MyPlanTrialUi
+import br.com.saqz.subscriptions.domain.trial.TrialStatus
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanScreen
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -59,6 +61,29 @@ class MyPlan8eScreenshotTest {
     @Test
     fun myPlan8eAtivo() = capture("8e-myplan-ativo") {
         MyPlanScreen(state = ACTIVE, onBack = {}, onIntent = {})
+    }
+
+    @Test
+    fun trialActive() = trialCapture(TrialStatus.Active)
+
+    @Test
+    fun trialExpired() = trialCapture(TrialStatus.Expired)
+
+    @Test
+    fun trialAvailable() = trialCapture(TrialStatus.Available)
+
+    @Test
+    fun trialIneligible() = trialCapture(TrialStatus.Ineligible)
+
+    private fun trialCapture(status: TrialStatus) = capture("trial/myplan-${status.name}") {
+        MyPlanScreen(
+            state = MyPlanState(
+                isLoading = false,
+                trial = MyPlanTrialUi(status, "2026-09-12T12:30:00Z", true, true),
+            ),
+            onBack = {},
+            onIntent = {},
+        )
     }
 
     @Test

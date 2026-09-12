@@ -1,6 +1,9 @@
 package br.com.saqz.composeapp.di
 
 import br.com.saqz.groups.domain.group.GroupCreationEntitlement
+import br.com.saqz.groups.domain.group.GroupTrialAccessInfo
+import br.com.saqz.groups.domain.group.GroupTrialAccessPort
+import br.com.saqz.domain.GroupId
 import br.com.saqz.subscriptions.domain.trial.TrialGateway
 import org.koin.dsl.module
 
@@ -18,5 +21,15 @@ import org.koin.dsl.module
 internal val groupCreationEntitlementModule = module {
     single<GroupCreationEntitlement> {
         TrialGroupCreationEntitlement(get())
+    }
+    single<GroupTrialAccessPort> {
+        val gateway = get<TrialGateway>()
+        GroupTrialAccessPort { groupId: GroupId ->
+            when (val result = gateway.groupTrial(groupId)) {
+                is br.com.saqz.domain.SaqzResult.Success ->
+                    GroupTrialAccessInfo(result.value.endsAt, result.value.readOnly, result.value.isOwner)
+                is br.com.saqz.domain.SaqzResult.Failure -> null
+            }
+        }
     }
 }

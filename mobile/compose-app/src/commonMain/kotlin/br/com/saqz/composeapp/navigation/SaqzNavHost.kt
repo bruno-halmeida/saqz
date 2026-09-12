@@ -544,6 +544,7 @@ internal fun SaqzNavHost(
                 MyPlanRoot(
                     onBack = pop,
                     onOpenChangePlan = { backStack.add(SubscriptionsRoute.ChangePlan) },
+                    onOpenSubscribe = { backStack.add(SubscribeForAccess) },
                     refreshVersion = myPlanRefreshVersion,
                 )
             }
@@ -561,6 +562,20 @@ internal fun SaqzNavHost(
                     onAuthorizationSuccess = {
                         backStack.replaceSubscriptionRequiredWithGroupCreation()
                     },
+                )
+            }
+            entry<SubscribeForAccess> {
+                SubscriptionRequiredDestination(
+                    onBack = pop,
+                    onAuthorizationSuccess = {
+                        myPlanRefreshVersion++
+                        groupDetailsRefreshVersion++
+                        onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                        backStack.returnFromAccessSubscription()
+                    },
+                    viewModel = org.koin.compose.viewmodel.koinViewModel(
+                        qualifier = br.com.saqz.composeapp.subscriptiongate.paidSubscriptionGateQualifier,
+                    ),
                 )
             }
             entry<GroupsRoute.Create> {

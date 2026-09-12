@@ -80,7 +80,7 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
     viewModel { params ->
         val (groupId, gameId) = gameEditorRouteArguments(params)
-        GameEditorViewModel(groupId, gameId, params.get(), get(), get())
+        GameEditorViewModel(groupId, gameId, params.get(), get(), get(), getOrNull())
     }
     viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get(), get(), get()) }
     viewModel {

@@ -18,6 +18,14 @@ import org.koin.compose.viewmodel.koinViewModel
 @Serializable
 data object SubscriptionRequired : NavKey
 
+/** Payment for current access returns to the caller, never to a new group form. */
+@Serializable
+data object SubscribeForAccess : NavKey
+
+internal fun MutableList<NavKey>.returnFromAccessSubscription() {
+    if (lastOrNull() == SubscribeForAccess) removeLastOrNull()
+}
+
 /**
  * The gate is composed inside its Navigation3 entry so the ViewModel store belongs to this
  * route and is cleared when the entry is removed. The screen remains feature UI owned by the

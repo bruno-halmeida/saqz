@@ -79,8 +79,10 @@ sealed interface MyPlanIntent {
     data object DismissCancel : MyPlanIntent
     data object ConfirmCancel : MyPlanIntent
     data object OpenChangePlan : MyPlanIntent
+    data object OpenSubscribe : MyPlanIntent
 }
 
 sealed interface MyPlanEffect {
     data object OpenChangePlan : MyPlanEffect
+    data object OpenSubscribe : MyPlanEffect
 }

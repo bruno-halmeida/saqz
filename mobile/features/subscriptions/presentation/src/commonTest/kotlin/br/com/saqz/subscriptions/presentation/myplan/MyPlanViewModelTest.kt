@@ -289,6 +289,62 @@ class MyPlanViewModelTest {
         assertEquals(true, viewModel.state.value.trial?.canSubscribe)
         assertEquals(emptyList(), viewModel.state.value.receipts)
     }
+
+    @Test
+    fun `trial never invokes paid management even through stale intents`() = runTest {
+        val gateway = FakeSubscriptionGateway(subscriptionResult = SaqzResult.Failure(SubscriptionError.NotFound))
+        val viewModel = MyPlanViewModel(gateway, trialGateway = trialGateway(TrialStatus.Expired))
+        listOf(MyPlanIntent.OpenCancel, MyPlanIntent.ConfirmCancel, MyPlanIntent.OpenReceipts,
+            MyPlanIntent.RetryReceipts, MyPlanIntent.LoadMoreReceipts, MyPlanIntent.RetryLoadMore,
+            MyPlanIntent.OpenChangePlan).forEach(viewModel::onIntent)
+        assertEquals(false, viewModel.state.value.isCancelSheetOpen)
+        assertEquals(false, viewModel.state.value.isReceiptsSheetOpen)
+        assertEquals(0, gateway.cancelCalls)
+        assertEquals(emptyList(), gateway.receiptRequests)
+        viewModel.onIntent(MyPlanIntent.OpenSubscribe)
+        assertEquals(MyPlanEffect.OpenSubscribe, viewModel.effects.first())
+    }
+
+    @Test
+    fun `trial cannot mask network authorization or conflicting subscription failures`() = runTest {
+        for (error in listOf(SubscriptionError.Conflict,
+            SubscriptionError.Data(br.com.saqz.domain.DataError.Connectivity),
+            SubscriptionError.Data(br.com.saqz.domain.DataError.Unauthenticated))) {
+            val gateway = FakeSubscriptionGateway(subscriptionResult = SaqzResult.Failure(error))
+            val viewModel = MyPlanViewModel(gateway, trialGateway = trialGateway(TrialStatus.Active))
+            assertNotNull(viewModel.state.value.loadError)
+            assertNull(viewModel.state.value.trial)
+            assertEquals(emptyList(), gateway.receiptRequests)
+        }
+    }
+
+    @Test
+    fun `subscribed read model cannot substitute a missing paid subscription`() = runTest {
+        val gateway = FakeSubscriptionGateway(subscriptionResult = SaqzResult.Failure(SubscriptionError.NotFound))
+        val viewModel = MyPlanViewModel(gateway, trialGateway = trialGateway(TrialStatus.Subscribed))
+        assertNotNull(viewModel.state.value.loadError)
+        assertNull(viewModel.state.value.trial)
+    }
+
+    @Test
+    fun `confirmed payment refresh replaces expired trial with real plan and receipts`() = runTest {
+        val gateway = FakeSubscriptionGateway(subscriptionResult = SaqzResult.Failure(SubscriptionError.NotFound))
+        val viewModel = MyPlanViewModel(gateway, trialGateway = trialGateway(TrialStatus.Expired))
+        assertEquals(TrialStatus.Expired, viewModel.state.value.trial?.status)
+        gateway.subscriptionResult = SaqzResult.Success(ACTIVE_SUBSCRIPTION)
+        viewModel.onIntent(MyPlanIntent.Refresh)
+        assertNull(viewModel.state.value.trial)
+        assertEquals(MyPlanStatusTone.Active, viewModel.state.value.plan?.statusTone)
+        assertEquals(listOf(ReceiptRequest(20, 0)), gateway.receiptRequests)
+    }
+
+    private fun trialGateway(status: TrialStatus) = object : TrialGateway {
+        override suspend fun ownerTrial() = SaqzResult.Success(TrialAccess(
+            status, "2026-09-01T12:00:00Z", "2026-09-15T12:00:00Z", "2026-09-16T12:00:00Z",
+            status == TrialStatus.Expired, false, 1, 25, true, null,
+        ))
+        override suspend fun groupTrial(groupId: br.com.saqz.domain.GroupId) = SaqzResult.Failure(TrialError.NotFound)
+    }
 }
 
 private val ACTIVE_SUBSCRIPTION = MySubscription(

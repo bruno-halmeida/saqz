@@ -36,4 +36,8 @@
     <string name="myplan_trial_expired">Teste encerrado em %1$s</string>
     <string name="myplan_trial_subscribe">Assinar para continuar</string>
     <string name="myplan_trial_organizer">Fale com o organizador para continuar.</string>
+    <string name="myplan_trial_available">Seus 14 dias grátis começam ao criar o primeiro grupo.</string>
+    <string name="myplan_trial_ineligible">Esta conta não tem um teste gratuito disponível.</string>
+    <string name="myplan_trial_readonly">Seu histórico está preservado. Assine para criar jogos, receber novas respostas de presença e voltar a alterar o financeiro.</string>
+    <string name="myplan_trial_date_unavailable">data indisponível</string>
 </resources>
