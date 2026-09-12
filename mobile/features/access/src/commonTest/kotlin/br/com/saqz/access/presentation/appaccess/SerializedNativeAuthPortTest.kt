@@ -33,7 +33,7 @@ class SerializedNativeAuthPortTest {
         firebase.emit(AuthState.SignedIn(user("firebase-a")))
         firebase.completeCustom(AuthResult.Success(user("firebase-a")))
         assertEquals(listOf("custom:token-a", "signOut"), firebase.operations)
-        assertEquals(0, oldCallback)
+        assertEquals(1, oldCallback)
         assertEquals(0, newCallback)
         firebase.completeSignOut()
         assertEquals(listOf("custom:token-a", "signOut", "password:b@example.test"), firebase.operations)
@@ -41,7 +41,7 @@ class SerializedNativeAuthPortTest {
         firebase.completePassword(AuthResult.Success(user("firebase-b")))
         firebase.emit(AuthState.SignedIn(user("firebase-a")))
 
-        assertEquals(0, oldCallback)
+        assertEquals(1, oldCallback)
         assertEquals(1, newCallback)
         assertTrue(observed.none { it is AuthState.SignedIn && it.user.subject == "firebase-a" })
         assertTrue(observed.any { it is AuthState.SignedIn && it.user.subject == "firebase-b" })
@@ -93,6 +93,186 @@ class SerializedNativeAuthPortTest {
         assertEquals("firebase-b", firebase.currentUser?.subject)
         assertTrue(observed.any { it is AuthState.SignedIn && it.user.subject == "firebase-b" })
         assertTrue(observed.none { it is AuthState.SignedIn && it.user.subject == "firebase-a" })
+    }
+
+    @Test
+    fun `explicit same uid relogin reauthorizes a previously canceled provider subject`() {
+        val firebase = FakeAuth()
+        val auth = SerializedNativeAuthPort(firebase)
+        val observed = mutableListOf<AuthState>()
+        auth.observe(object : AuthStateListener {
+            override fun onStateChanged(state: AuthState) { observed += state }
+        })
+        var canceled = 0
+        var relogin = 0
+
+        auth.signInWithCustomToken("token-a", callback { canceled++ })
+        auth.signInWithPassword("b@example.test", "password", callback {})
+        firebase.completeCustom(AuthResult.Success(user("firebase-a")))
+        firebase.completeSignOut()
+        firebase.completePassword(AuthResult.Success(user("firebase-b")))
+        firebase.emit(AuthState.SignedIn(user("firebase-a")))
+        val staleCount = observed.count { it is AuthState.SignedIn && it.user.subject == "firebase-a" }
+        if (staleCount != 0) error("stale observed=$observed")
+
+        auth.signInWithCustomToken("token-a-reauthorize", callback { relogin++ })
+        assertEquals(listOf("custom:token-a", "signOut", "password:b@example.test", "signOut"), firebase.operations)
+        firebase.completeSignOut()
+        assertEquals("custom:token-a-reauthorize", firebase.operations.last())
+        firebase.completeCustom(AuthResult.Success(user("firebase-a")))
+        firebase.emit(AuthState.SignedIn(user("firebase-a")))
+
+        assertEquals(1, canceled)
+        assertEquals(1, relogin)
+        assertEquals("firebase-a", firebase.currentUser?.subject)
+        assertEquals(1, observed.count { it is AuthState.SignedIn && it.user.subject == "firebase-a" })
+    }
+
+    @Test
+    fun `cleanup failure settles canceled and queued callers without starting replacement`() {
+        val firebase = FakeAuth()
+        val auth = SerializedNativeAuthPort(firebase)
+        var oldResult: AuthResult? = null
+        var newResult: AuthResult? = null
+
+        auth.signInWithCustomToken("token-a", callback { oldResult = AuthResult.Cancelled })
+        auth.signInWithPassword("b@example.test", "password", callback { newResult = AuthResult.Cancelled })
+        firebase.completeCustom(AuthResult.Success(user("firebase-a")))
+        firebase.completeSignOut(OperationResult.Failure(br.com.saqz.access.domain.port.NativeFailureCode.UNKNOWN))
+
+        assertEquals(AuthResult.Cancelled, oldResult)
+        assertEquals(AuthResult.Cancelled, newResult)
+        assertEquals(listOf("custom:token-a", "signOut"), firebase.operations)
+        assertEquals("firebase-a", firebase.currentUser?.subject)
+    }
+
+    @Test
+    fun `replacement arriving during cleanup starts after successful barrier`() {
+        val firebase = FakeAuth()
+        val auth = SerializedNativeAuthPort(firebase)
+        var firstResult: AuthResult? = null
+        var secondResult: AuthResult? = null
+        var thirdResult: AuthResult? = null
+
+        auth.signInWithCustomToken("token-a", callback { firstResult = AuthResult.Cancelled })
+        auth.signInWithPassword("b@example.test", "password", callback { secondResult = AuthResult.Cancelled })
+        firebase.completeCustom(AuthResult.Success(user("firebase-a")))
+        auth.signInWithCustomToken("token-c", object : AuthCallback {
+            override fun complete(result: AuthResult) { thirdResult = result }
+        })
+
+        assertEquals(AuthResult.Cancelled, secondResult)
+        assertEquals(listOf("custom:token-a", "signOut"), firebase.operations)
+        firebase.completeSignOut()
+        assertEquals(listOf("custom:token-a", "signOut", "custom:token-c"), firebase.operations)
+        firebase.completeCustom(AuthResult.Success(user("firebase-c")))
+
+        assertEquals(AuthResult.Cancelled, firstResult)
+        assertEquals(AuthResult.Success(user("firebase-c")), thirdResult)
+    }
+
+    @Test
+    fun `replacement arriving during failed cleanup is canceled without SDK mutation`() {
+        val firebase = FakeAuth()
+        val auth = SerializedNativeAuthPort(firebase)
+        var secondResult: AuthResult? = null
+        var thirdResult: AuthResult? = null
+
+        auth.signInWithCustomToken("token-a", callback {})
+        auth.signInWithPassword("b@example.test", "password", callback { secondResult = AuthResult.Cancelled })
+        firebase.completeCustom(AuthResult.Success(user("firebase-a")))
+        auth.signInWithCustomToken("token-c", callback { thirdResult = AuthResult.Cancelled })
+        firebase.completeSignOut(OperationResult.Failure(br.com.saqz.access.domain.port.NativeFailureCode.UNKNOWN))
+
+        assertEquals(AuthResult.Cancelled, secondResult)
+        assertEquals(AuthResult.Cancelled, thirdResult)
+        assertEquals(listOf("custom:token-a", "signOut"), firebase.operations)
+    }
+
+    @Test
+    fun `canceled callback may enqueue a newer login without being erased by queue cleanup`() {
+        val firebase = FakeAuth()
+        val auth = SerializedNativeAuthPort(firebase)
+        var oldCanceled = 0
+        var queuedCanceled = 0
+
+        auth.signInWithCustomToken("token-a", callback {
+            oldCanceled++
+            auth.signInWithPassword("reentrant@example.test", "password", callback {})
+        })
+        auth.signInWithPassword("queued@example.test", "password", callback { queuedCanceled++ })
+        firebase.completeCustom(AuthResult.Success(user("firebase-a")))
+        firebase.completeSignOut()
+        assertEquals(listOf("custom:token-a", "signOut", "password:reentrant@example.test"), firebase.operations)
+        firebase.emit(AuthState.SignedIn(user("firebase-c")))
+        firebase.completePassword(AuthResult.Success(user("firebase-c")))
+
+        assertEquals(1, oldCanceled)
+        assertEquals(1, queuedCanceled)
+        assertEquals("firebase-c", firebase.currentUser?.subject)
+    }
+
+    @Test
+    fun `observer callback can synchronously request logout and settles on signed out`() {
+        val firebase = FakeAuth()
+        val auth = SerializedNativeAuthPort(firebase)
+        var logoutResult: OperationResult? = null
+        val observed = mutableListOf<AuthState>()
+        auth.observe(object : AuthStateListener {
+            override fun onStateChanged(state: AuthState) {
+                observed += state
+                if (state is AuthState.SignedIn) {
+                    auth.signOut(object : ResultCallback {
+                        override fun complete(result: OperationResult) { logoutResult = result }
+                    })
+                }
+            }
+        })
+
+        firebase.emit(AuthState.SignedIn(user("firebase-a")))
+        assertEquals(listOf("signOut"), firebase.operations)
+        firebase.completeSignOut()
+
+        assertEquals(OperationResult.Success, logoutResult)
+        assertEquals(null, firebase.currentUser)
+        assertEquals(listOf(AuthState.SignedIn(user("firebase-a")), AuthState.SignedOut), observed)
+    }
+
+    @Test
+    fun `duplicate provider completion settles caller exactly once`() {
+        val firebase = FakeAuth()
+        val auth = SerializedNativeAuthPort(firebase)
+        var callbacks = 0
+
+        auth.signInWithCustomToken("token-a", callback { callbacks++ })
+        firebase.completeCustomTwice(AuthResult.Success(user("firebase-a")))
+
+        assertEquals(1, callbacks)
+        assertEquals("firebase-a", firebase.currentUser?.subject)
+    }
+
+    @Test
+    fun `observer reentrancy does not suppress settled auth callback`() {
+        val firebase = FakeAuth()
+        val auth = SerializedNativeAuthPort(firebase)
+        var result: AuthResult? = null
+        auth.observe(object : AuthStateListener {
+            override fun onStateChanged(state: AuthState) {
+                if (state is AuthState.SignedIn) {
+                    auth.signOut(object : ResultCallback {
+                        override fun complete(result: OperationResult) = Unit
+                    })
+                }
+            }
+        })
+
+        auth.signInWithCustomToken("token-a", object : AuthCallback {
+            override fun complete(value: AuthResult) { result = value }
+        })
+        firebase.completeCustomWithPendingObserver(AuthResult.Success(user("firebase-a")))
+
+        assertEquals(AuthResult.Cancelled, result)
+        assertEquals(listOf("custom:token-a", "signOut"), firebase.operations)
     }
 
     @Test
@@ -166,6 +346,14 @@ class SerializedNativeAuthPortTest {
             callback.complete(result)
         }
 
+        fun completeCustomTwice(result: AuthResult) {
+            val callback = custom ?: error("custom sign in was not started")
+            custom = null
+            if (result is AuthResult.Success) currentUser = result.user
+            callback.complete(result)
+            callback.complete(result)
+        }
+
         fun completeCustomThenObserver(result: AuthResult) {
             val callback = custom ?: error("custom sign in was not started")
             custom = null
@@ -175,6 +363,15 @@ class SerializedNativeAuthPortTest {
             observer?.onStateChanged(AuthState.SignedIn(user))
         }
 
+        fun completeCustomWithPendingObserver(result: AuthResult) {
+            val callback = custom ?: error("custom sign in was not started")
+            custom = null
+            val user = (result as? AuthResult.Success)?.user ?: error("expected success")
+            currentUser = user
+            observer?.onStateChanged(AuthState.SignedIn(user))
+            callback.complete(result)
+        }
+
         fun completePassword(result: AuthResult) {
             val callback = password ?: error("password sign in was not started")
             password = null
@@ -182,13 +379,15 @@ class SerializedNativeAuthPortTest {
             callback.complete(result)
         }
 
-        fun completeSignOut(observerBeforeCallback: Boolean = true) {
+        fun completeSignOut(result: OperationResult = OperationResult.Success, observerBeforeCallback: Boolean = true) {
             val callback = signOut ?: error("sign out was not started")
             signOut = null
-            currentUser = null
-            if (observerBeforeCallback) observer?.onStateChanged(AuthState.SignedOut)
-            callback.complete(OperationResult.Success)
-            if (!observerBeforeCallback) observer?.onStateChanged(AuthState.SignedOut)
+            if (result == OperationResult.Success) {
+                currentUser = null
+                if (observerBeforeCallback) observer?.onStateChanged(AuthState.SignedOut)
+            }
+            callback.complete(result)
+            if (result == OperationResult.Success && !observerBeforeCallback) observer?.onStateChanged(AuthState.SignedOut)
         }
 
         fun emit(state: AuthState) = observer?.onStateChanged(state)

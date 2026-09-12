@@ -5,6 +5,7 @@ import br.com.saqz.access.domain.appaccess.AppAccessGateway
 import br.com.saqz.access.domain.appaccess.AppAccessSession
 import br.com.saqz.access.domain.port.AuthCallback
 import br.com.saqz.access.domain.port.AuthResult
+import br.com.saqz.access.domain.port.AuthState
 import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.domain.SaqzResult
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.collections.LinkedHashSet
 
 sealed interface AppOnboardingAuthState {
     data object Idle : AppOnboardingAuthState
@@ -42,9 +44,12 @@ class AppOnboardingAuthCoordinator(
     private var pending: AppAccessSession? = null
     private var pendingOnboardingCompleted = false
     private var expectedOwnerUserId: String? = null
+    private var confirmationCurrentOwnerId: String? = null
+    private var authObserved = false
+    private val attemptedCodes = LinkedHashSet<String>()
 
     fun redeem(code: String) {
-        if (code.isBlank() || mutableState.value !is AppOnboardingAuthState.Idle) return
+        if (code.isBlank() || mutableState.value !is AppOnboardingAuthState.Idle || !attemptedCodes.add(code)) return
         val token = ++generation
         pending = null
         pendingOnboardingCompleted = false
@@ -62,8 +67,18 @@ class AppOnboardingAuthCoordinator(
     fun confirmAccountReplacement() {
         val session = pending ?: return
         if (mutableState.value !is AppOnboardingAuthState.NeedsAccountConfirmation) return
+        val currentOwner = confirmationCurrentOwnerId
+        val current = currentSession()
+        if (currentOwner != null && current?.user?.id != currentOwner) {
+            pending = null
+            expectedOwnerUserId = null
+            confirmationCurrentOwnerId = null
+            mutableState.value = AppOnboardingAuthState.Failed(AppAccessError.IdentityMismatch)
+            return
+        }
         pending = null
-        signIn(session, generation)
+        confirmationCurrentOwnerId = null
+        signIn(session, generation, currentOwner)
     }
 
     /**
@@ -78,6 +93,7 @@ class AppOnboardingAuthCoordinator(
         pending = null
         pendingOnboardingCompleted = false
         expectedOwnerUserId = null
+        confirmationCurrentOwnerId = null
         mutableState.value = AppOnboardingAuthState.Idle
     }
 
@@ -85,7 +101,18 @@ class AppOnboardingAuthCoordinator(
         generation++
         pending = null
         expectedOwnerUserId = null
+        confirmationCurrentOwnerId = null
         mutableState.value = AppOnboardingAuthState.Idle
+    }
+
+    /**
+     * Marks the single native observer as resolved. A signed-out observation is enough to
+     * authorize the handoff; a signed-in observation still waits for the session machine to
+     * verify the backend owner before touching Firebase again.
+     */
+    fun onAuthObservation(state: AuthState) {
+        authObserved = true
+        if (state is AuthState.SignedOut) onSessionResolution(null, resolving = sessionResolving())
     }
 
     /**
@@ -95,20 +122,24 @@ class AppOnboardingAuthCoordinator(
      */
     fun onSessionResolution(session: AccessSession?, resolving: Boolean) {
         if (mutableState.value !is AppOnboardingAuthState.WaitingForSessionResolution) return
-        if (resolving) return
+        if (!authObserved || resolving) return
         val redeemed = pending ?: return
-        if (session == null) {
-            pending = null
-            signIn(redeemed, generation)
-            return
+        when {
+            session == null -> {
+                pending = null
+                signIn(redeemed, generation)
+            }
+            session.user.id != redeemed.ownerUserId -> {
+                confirmationCurrentOwnerId = session.user.id
+                mutableState.value = AppOnboardingAuthState.NeedsAccountConfirmation(redeemed.ownerUserId)
+            }
+            else -> {
+                pending = null
+                expectedOwnerUserId = null
+                confirmationCurrentOwnerId = null
+                mutableState.value = AppOnboardingAuthState.Completed(pendingOnboardingCompleted)
+            }
         }
-        if (session.user.id != redeemed.ownerUserId) {
-            mutableState.value = AppOnboardingAuthState.NeedsAccountConfirmation(redeemed.ownerUserId)
-            return
-        }
-        pending = null
-        expectedOwnerUserId = null
-        mutableState.value = AppOnboardingAuthState.Completed(pendingOnboardingCompleted)
     }
 
     fun onAuthenticatedSession(session: AccessSession) {
@@ -116,10 +147,12 @@ class AppOnboardingAuthCoordinator(
         if (mutableState.value !is AppOnboardingAuthState.SigningIn) return
         if (session.user.id != expected) {
             expectedOwnerUserId = null
+            confirmationCurrentOwnerId = null
             mutableState.value = AppOnboardingAuthState.Failed(AppAccessError.IdentityMismatch)
             return
         }
         expectedOwnerUserId = null
+        confirmationCurrentOwnerId = null
         mutableState.value = AppOnboardingAuthState.Completed(pendingOnboardingCompleted)
     }
 
@@ -128,27 +161,41 @@ class AppOnboardingAuthCoordinator(
         expectedOwnerUserId = session.ownerUserId
         pendingOnboardingCompleted = session.onboardingCompleted
         val current = currentSession()
-        if (sessionResolving() && current == null) {
+        if (!authObserved || sessionResolving() && current == null) {
             pending = session
             mutableState.value = AppOnboardingAuthState.WaitingForSessionResolution
             return
         }
         if (current != null && current.user.id != session.ownerUserId) {
             pending = session
+            confirmationCurrentOwnerId = current.user.id
             mutableState.value = AppOnboardingAuthState.NeedsAccountConfirmation(session.ownerUserId)
             return
         }
         if (current != null) {
             pending = null
             expectedOwnerUserId = null
+            confirmationCurrentOwnerId = null
             mutableState.value = AppOnboardingAuthState.Completed(session.onboardingCompleted)
             return
         }
         signIn(session, token)
     }
 
-    private fun signIn(session: AppAccessSession, token: Int) {
+    private fun signIn(session: AppAccessSession, token: Int, confirmedCurrentOwnerId: String? = null) {
         if (token != generation) return
+        val current = currentSession()
+        if (confirmedCurrentOwnerId != null && current?.user?.id != confirmedCurrentOwnerId) {
+            expectedOwnerUserId = null
+            mutableState.value = AppOnboardingAuthState.Failed(AppAccessError.IdentityMismatch)
+            return
+        }
+        if (confirmedCurrentOwnerId == null && current != null && current.user.id != session.ownerUserId) {
+            pending = session
+            confirmationCurrentOwnerId = current.user.id
+            mutableState.value = AppOnboardingAuthState.NeedsAccountConfirmation(session.ownerUserId)
+            return
+        }
         expectedOwnerUserId = session.ownerUserId
         pendingOnboardingCompleted = session.onboardingCompleted
         mutableState.value = AppOnboardingAuthState.SigningIn

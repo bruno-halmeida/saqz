@@ -28,6 +28,7 @@ import br.com.saqz.access.domain.session.SessionInvalidator as AccessSessionInva
 import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
+import br.com.saqz.access.presentation.appaccess.AppOnboardingAuthCoordinator
 import br.com.saqz.access.presentation.login.LoginViewModel
 import br.com.saqz.access.presentation.newpassword.NewPasswordViewModel
 import br.com.saqz.access.presentation.register.RegisterViewModel
@@ -257,6 +258,7 @@ class SaqzKoinModulesTest {
         // C1: the whole app graph is the session gate plus the access screens — the
         // orchestrator resolves as the runtime contract and the gate resolves on top of it.
         koin.get<AccessRuntimeContract>()
+        koin.get<AppOnboardingAuthCoordinator>()
         koin.get<AccessViewModel>()
         koin.get<LoginViewModel>()
         // O handle entra pelo `parametersOf` como no `GroupSetupViewModel`: sem

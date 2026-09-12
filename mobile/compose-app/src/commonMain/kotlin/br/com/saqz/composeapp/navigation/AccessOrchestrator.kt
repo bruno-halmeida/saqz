@@ -78,6 +78,7 @@ internal class AccessOrchestrator(
         authSubscription = auth.observe(object : AuthStateListener {
             override fun onStateChanged(state: AuthState) {
                 mutableAuthObservedState.value = true
+                appOnboarding.onAuthObservation(state)
                 // Signed out needs no fan-out: Login is the only signed-out destination
                 // and it already renders the authentication machine's own state.
                 if (state is AuthState.SignedIn) {

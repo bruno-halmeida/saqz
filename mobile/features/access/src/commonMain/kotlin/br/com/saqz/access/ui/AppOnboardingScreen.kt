@@ -32,9 +32,9 @@ fun AppOnboardingScreen(
     state: AppOnboardingState,
     onIntent: (AppOnboardingIntent) -> Unit,
     onCreateGroup: () -> Unit,
+    modifier: Modifier = Modifier,
     accountConfirmationRequired: Boolean = false,
     onConfirmAccount: () -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
     AccessScaffold(modifier = modifier.testTag(AppOnboardingTags.Content), spacious = true) {
         AccessBrandMark()
