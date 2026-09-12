@@ -2,6 +2,7 @@ package br.com.saqz.bootstrap
 
 import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
+import br.com.saqz.access.application.session.AppOnboardingIdentitySessions
 import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.sharedkernel.RequestIdentity
 import org.junit.jupiter.api.BeforeEach
@@ -19,6 +20,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import tools.jackson.databind.ObjectMapper
 import java.net.URI
+import java.net.URLDecoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -91,6 +93,33 @@ class OrganizerTrialEndpointIntegrationTest {
                 .query(Int::class.java)
                 .single(),
         )
+    }
+
+    @Test
+    fun `anonymous redeem returns custom token in body once and never accepts replay`() {
+        clock.now = Instant.now()
+        assertEquals(200, request("PUT", "/api/session").statusCode())
+        val issue = mapper.readTree(request("POST", "/api/session/app-link").body())
+        val code = URI(issue["url"].stringValue()).rawQuery.orEmpty()
+            .split('&')
+            .first { it.startsWith("saqz_onboarding=") }
+            .substringAfter('=')
+            .let { URLDecoder.decode(it, Charsets.UTF_8) }
+        assertEquals(43, code.length, issue.toString())
+
+        val first = request("POST", "/api/session/app-link/redeem", "{\"code\":\"$code\"}", actor = null)
+        val second = request("POST", "/api/session/app-link/redeem", "{\"code\":\"$code\"}", actor = null)
+        val body = mapper.readTree(first.body())
+
+        assertEquals(200, first.statusCode(), "code=$code issue=$issue response=${first.body()}")
+        assertEquals("custom-token-$token", body["customToken"].stringValue())
+        assertEquals("Trial User", body["displayName"].stringValue())
+        assertFalse(body["ownerUserId"].isNull)
+        assertFalse(first.body().contains(code))
+        assertEquals("no-store", first.headers().firstValue("Cache-Control").orElse(""))
+        assertEquals(400, second.statusCode())
+        assertEquals("APP_ONBOARDING_CODE_INVALID", mapper.readTree(second.body())["code"].stringValue())
+        assertEquals("no-store, max-age=0", second.headers().firstValue("Cache-Control").orElse(""))
     }
 
     @Test
@@ -353,6 +382,8 @@ class OrganizerTrialEndpointIntegrationTest {
         @Bean @Primary fun verifier() = VerifyRequestIdentity {
             TokenVerification.Verified(RequestIdentity(it.value, "${it.value}@example.test", true, "Trial User"))
         }
+        @Bean @Primary fun fakeAppOnboardingIdentitySessions(): AppOnboardingIdentitySessions =
+            AppOnboardingIdentitySessions { owner -> "custom-token-${owner.firebaseSubject}" }
     }
 
     companion object {

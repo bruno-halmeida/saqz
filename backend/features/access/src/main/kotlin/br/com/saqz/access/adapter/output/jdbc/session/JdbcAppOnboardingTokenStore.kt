@@ -89,7 +89,7 @@ class JdbcAppOnboardingTokenStore(
               AND tokens.expires_at > :now
               AND users.deleted_at IS NULL
               AND users.suspended_at IS NULL
-            RETURNING users.id, users.firebase_subject, users.display_name
+            RETURNING users.id, users.firebase_subject, users.display_name, users.onboarding_completed_at
             """.trimIndent(),
         )
             .param("tokenDigest", digest.toByteArray())
@@ -99,6 +99,7 @@ class JdbcAppOnboardingTokenStore(
                     ownerUserId = result.getObject("id", UUID::class.java),
                     firebaseSubject = result.getString("firebase_subject"),
                     displayName = AccessName.from(result.getString("display_name")),
+                    onboardingCompleted = result.getTimestamp("onboarding_completed_at") != null,
                 )
             }
             .optional()

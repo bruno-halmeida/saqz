@@ -9,6 +9,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.Callable
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
@@ -93,6 +96,29 @@ class JdbcAppOnboardingTokenStoreIntegrationTest {
         assertEquals("consume-subject", consumed!!.firebaseSubject)
         assertEquals("Consume Person", consumed.displayName.value)
         assertTrue(repository.consumeOpen(issued.code, now.plusSeconds(2)) == null)
+        assertEquals(1, count("SELECT count(*) FROM app_onboarding_login_tokens WHERE consumed_at IS NOT NULL"))
+    }
+
+    @Test
+    fun `two concurrent redeems have exactly one winner`() {
+        insertUser("concurrent-subject")
+        val issued = repository.issue("concurrent-subject", now)!!
+        val ready = CountDownLatch(2)
+        val start = CountDownLatch(1)
+        val pool = Executors.newFixedThreadPool(2)
+        val futures = List(2) {
+            pool.submit(Callable {
+                ready.countDown()
+                assertTrue(start.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                repository.consumeOpen(issued.code, now.plusSeconds(1))
+            })
+        }
+        assertTrue(ready.await(10, java.util.concurrent.TimeUnit.SECONDS))
+        start.countDown()
+        val results = futures.map { it.get() }
+        pool.shutdownNow()
+
+        assertEquals(1, results.count { it != null })
         assertEquals(1, count("SELECT count(*) FROM app_onboarding_login_tokens WHERE consumed_at IS NOT NULL"))
     }
 

@@ -140,6 +140,7 @@ import br.com.saqz.groups.application.home.HomeQuery
 import br.com.saqz.groups.application.finance.statement.FinanceStatementService
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.IssueAppOnboardingLink
+import br.com.saqz.access.application.session.RedeemAppOnboardingLink
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.access.application.session.AccountGroupCleanup
@@ -308,8 +309,19 @@ class AccessSessionConfiguration {
     @Bean
     fun appOnboardingController(
         issue: IssueAppOnboardingLink,
+        redeem: RedeemAppOnboardingLink,
         factory: AppOnboardingLinkFactory,
-    ) = AppOnboardingController(issue, factory::create)
+    ) = AppOnboardingController(issue, redeem, factory::create)
+
+    @Bean
+    fun redeemAppOnboardingLink(
+        tokenStore: JdbcAppOnboardingTokenStore,
+        identitySessions: br.com.saqz.access.application.session.AppOnboardingIdentitySessions,
+        clock: Clock,
+    ) = RedeemAppOnboardingLink(tokenStore, identitySessions, clock)
+
+    @Bean
+    fun appOnboardingIdentitySessions(firebaseApp: FirebaseApp) = FirebaseAppOnboardingSessions(firebaseApp)
 
     @Bean fun userPhotoRepository(dataSource: DataSource) = JdbcUserPhotoRepository(dataSource)
     @Bean fun userPhotoConverter() = UserPhotoConverter()

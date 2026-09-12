@@ -94,6 +94,60 @@ interface AppOnboardingTokenStore {
     fun onboardingCompleted(ownerUserId: UUID): Boolean
 
     fun completeOnboarding(ownerUserId: UUID): Boolean
+
+    fun onboardingStatus(subject: String): AppOnboardingAccount = AppOnboardingAccount.Missing
+
+    fun completeOnboardingFor(subject: String): AppOnboardingAccount = AppOnboardingAccount.Missing
+}
+
+sealed interface AppOnboardingAccount {
+    data class Active(val completed: Boolean) : AppOnboardingAccount
+
+    data object Suspended : AppOnboardingAccount
+
+    data object Missing : AppOnboardingAccount
+}
+
+class GetAppOnboarding(private val tokens: AppOnboardingTokenStore) {
+    fun execute(subject: String): AppOnboardingAccount = tokens.onboardingStatus(subject)
+}
+
+class CompleteAppOnboarding(private val tokens: AppOnboardingTokenStore) {
+    fun execute(subject: String): AppOnboardingAccount = tokens.completeOnboardingFor(subject)
+}
+
+fun interface AppOnboardingIdentitySessions {
+    /** Null means the Firebase identity is missing/disabled; exceptions mean provider outage. */
+    fun customTokenFor(owner: AppOnboardingOwner): String?
+}
+
+class AppOnboardingIdentityUnavailable : RuntimeException()
+
+sealed interface RedeemAppOnboardingResult {
+    data class Success(val customToken: String, val owner: AppOnboardingOwner) : RedeemAppOnboardingResult
+
+    data object Invalid : RedeemAppOnboardingResult
+
+    data object ProviderUnavailable : RedeemAppOnboardingResult
+}
+
+class RedeemAppOnboardingLink(
+    private val tokens: AppOnboardingTokenStore,
+    private val sessions: AppOnboardingIdentitySessions,
+    private val clock: Clock = Clock.systemUTC(),
+) {
+    fun execute(rawCode: String): RedeemAppOnboardingResult {
+        val code = AppOnboardingCode.from(rawCode) ?: return RedeemAppOnboardingResult.Invalid
+        val owner = tokens.consumeOpen(code, clock.instant()) ?: return RedeemAppOnboardingResult.Invalid
+        return try {
+            val customToken = sessions.customTokenFor(owner) ?: return RedeemAppOnboardingResult.Invalid
+            RedeemAppOnboardingResult.Success(customToken, owner)
+        } catch (_: AppOnboardingIdentityUnavailable) {
+            RedeemAppOnboardingResult.ProviderUnavailable
+        } catch (failure: Exception) {
+            RedeemAppOnboardingResult.ProviderUnavailable
+        }
+    }
 }
 
 class IssueAppOnboardingLink(

@@ -7,6 +7,8 @@ import br.com.saqz.access.adapter.input.http.InvalidPhoneException
 import br.com.saqz.access.adapter.input.http.InvalidSessionProfileFieldException
 import br.com.saqz.access.adapter.input.http.AccountNotFoundException
 import br.com.saqz.access.adapter.input.http.AccountSuspendedException
+import br.com.saqz.access.adapter.input.http.AppOnboardingCodeInvalidException
+import br.com.saqz.access.adapter.input.http.AppOnboardingIdentityUnavailableException
 import br.com.saqz.access.adapter.input.http.EmailVerificationRateLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetAttemptLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetCodeExpiredException
@@ -234,6 +236,16 @@ class SafeExceptionHandler(
     @ExceptionHandler(AccountSuspendedException::class)
     fun accountSuspended(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 403, ErrorCode.ACCOUNT_SUSPENDED)
+    }
+
+    @ExceptionHandler(AppOnboardingCodeInvalidException::class)
+    fun appOnboardingCodeInvalid(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 400, ErrorCode.APP_ONBOARDING_CODE_INVALID)
+    }
+
+    @ExceptionHandler(AppOnboardingIdentityUnavailableException::class)
+    fun appOnboardingIdentityUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 503, ErrorCode.IDENTITY_PROVIDER_UNAVAILABLE)
     }
 
     @ExceptionHandler(EntryRequestNotFoundException::class)

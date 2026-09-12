@@ -9,8 +9,6 @@ import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class AppOnboardingLoginTest {
@@ -63,6 +61,82 @@ class AppOnboardingLoginTest {
         assertEquals("AppOnboardingSecret([REDACTED])", secret.toString())
     }
 
+    @Test
+    fun `redeem consumes before mint and returns owner payload`() {
+        val owner = AppOnboardingOwner(
+            UUID.randomUUID(),
+            "firebase-owner",
+            AccessName.from("Owner Person"),
+            onboardingCompleted = true,
+        )
+        val store = RedeemingTokenStore(owner)
+        val result = RedeemAppOnboardingLink(store, AppOnboardingIdentitySessions { "custom-token" }, fixedClock())
+            .execute("a".repeat(43))
+
+        assertEquals(RedeemAppOnboardingResult.Success("custom-token", owner), result)
+        assertEquals(now, store.consumedAt)
+    }
+
+    @Test
+    fun `malformed redeem code is rejected before token store access`() {
+        val store = RedeemingTokenStore(null)
+
+        assertEquals(
+            RedeemAppOnboardingResult.Invalid,
+            RedeemAppOnboardingLink(store, AppOnboardingIdentitySessions { "never" }, fixedClock()).execute("too-short"),
+        )
+        assertNull(store.consumedAt)
+    }
+
+    @Test
+    fun `mint failure leaves redemption invalid and cannot be replayed`() {
+        val owner = AppOnboardingOwner(UUID.randomUUID(), "firebase-owner", AccessName.from("Owner Person"))
+        val store = RedeemingTokenStore(owner)
+        val result = RedeemAppOnboardingLink(
+            store,
+            AppOnboardingIdentitySessions { throw AppOnboardingIdentityUnavailable() },
+            fixedClock(),
+        ).execute("a".repeat(43))
+
+        assertEquals(RedeemAppOnboardingResult.ProviderUnavailable, result)
+        assertEquals(now, store.consumedAt)
+        assertEquals(RedeemAppOnboardingResult.Invalid, store.nextResult)
+    }
+
+    @Test
+    fun `missing provider identity is invalid after one-time consumption`() {
+        val owner = AppOnboardingOwner(UUID.randomUUID(), "firebase-owner", AccessName.from("Owner Person"))
+        val store = RedeemingTokenStore(owner)
+
+        val result = RedeemAppOnboardingLink(store, AppOnboardingIdentitySessions { null }, fixedClock())
+            .execute("a".repeat(43))
+
+        assertEquals(RedeemAppOnboardingResult.Invalid, result)
+        assertEquals(now, store.consumedAt)
+    }
+
+    @Test
+    fun `onboarding completion is account scoped and idempotent`() {
+        val store = StatusTokenStore()
+        val get = GetAppOnboarding(store)
+        val complete = CompleteAppOnboarding(store)
+
+        assertEquals(AppOnboardingAccount.Active(false), get.execute("firebase-owner"))
+        assertEquals(AppOnboardingAccount.Active(true), complete.execute("firebase-owner"))
+        assertEquals(AppOnboardingAccount.Active(true), complete.execute("firebase-owner"))
+        assertEquals(AppOnboardingAccount.Active(true), get.execute("firebase-owner"))
+        assertEquals(2, store.completions)
+    }
+
+    @Test
+    fun `onboarding account status distinguishes suspended and missing accounts`() {
+        val store = StatusTokenStore()
+        store.status = AppOnboardingAccount.Suspended
+        assertEquals(AppOnboardingAccount.Suspended, GetAppOnboarding(store).execute("firebase-owner"))
+        store.status = AppOnboardingAccount.Missing
+        assertEquals(AppOnboardingAccount.Missing, GetAppOnboarding(store).execute("firebase-owner"))
+    }
+
     private fun fixedClock(): Clock = Clock.fixed(now, ZoneOffset.UTC)
 
     private class RecordingAppOnboardingTokenStore(
@@ -82,5 +156,38 @@ class AppOnboardingLoginTest {
         override fun onboardingCompleted(ownerUserId: UUID): Boolean = false
 
         override fun completeOnboarding(ownerUserId: UUID): Boolean = true
+    }
+
+    private class RedeemingTokenStore(private val owner: AppOnboardingOwner?) : AppOnboardingTokenStore {
+        var consumedAt: Instant? = null
+        var nextResult: RedeemAppOnboardingResult = RedeemAppOnboardingResult.Invalid
+
+        override fun issue(subject: String, now: Instant): AppOnboardingIssuedCode? = null
+
+        override fun consumeOpen(code: AppOnboardingCode, now: Instant): AppOnboardingOwner? {
+            if (consumedAt != null) return null
+            consumedAt = now
+            return owner
+        }
+
+        override fun onboardingCompleted(ownerUserId: UUID): Boolean = owner?.onboardingCompleted == true
+
+        override fun completeOnboarding(ownerUserId: UUID): Boolean = true
+    }
+
+    private class StatusTokenStore : AppOnboardingTokenStore {
+        var status: AppOnboardingAccount = AppOnboardingAccount.Active(false)
+        var completions = 0
+
+        override fun issue(subject: String, now: Instant): AppOnboardingIssuedCode? = null
+        override fun consumeOpen(code: AppOnboardingCode, now: Instant): AppOnboardingOwner? = null
+        override fun onboardingCompleted(ownerUserId: UUID): Boolean = false
+        override fun completeOnboarding(ownerUserId: UUID): Boolean = true
+        override fun onboardingStatus(subject: String): AppOnboardingAccount = status
+        override fun completeOnboardingFor(subject: String): AppOnboardingAccount {
+            completions += 1
+            status = AppOnboardingAccount.Active(true)
+            return status
+        }
     }
 }
