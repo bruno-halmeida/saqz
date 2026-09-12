@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
@@ -16,6 +17,26 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class GroupSetupScreenTest {
+    @Test
+    fun newGroupKeepsPhotoAndBasicsButDefersAdvancedSettings() = runComposeUiTest {
+        setContent { SaqzTheme { GroupSetupScreen(GroupSetupState(mode = GroupSetupMode.Create), {}, {}) } }
+        onNodeWithTag(GroupSetupTags.Photo).assertExists()
+        onNodeWithTag(GroupSetupTags.Name).assertExists()
+        onNodeWithTag(GroupSetupTags.Modality).assertExists()
+        onNodeWithTag(GroupSetupTags.Composition).assertExists()
+        onNodeWithTag(GroupSetupTags.Level).assertDoesNotExist()
+        onNodeWithTag(GroupSetupTags.Advanced).performScrollTo().performClick()
+        onNodeWithTag(GroupSetupTags.Level).assertExists()
+        onNodeWithTag(GroupSetupTags.Capacity).assertExists()
+    }
+
+    @Test
+    fun editingAndValidationKeepAdvancedFieldsAccessible() = runComposeUiTest {
+        setContent { SaqzTheme { GroupSetupScreen(PreviewErrorState, {}, {}) } }
+        onNodeWithTag(GroupSetupTags.CustomLevel).assertExists()
+        onNodeWithTag(GroupSetupTags.VenueAddress).assertExists()
+    }
+
     @Test
     fun firstTrialGroupExplainsStartWithoutPayment() = runComposeUiTest {
         setContent {

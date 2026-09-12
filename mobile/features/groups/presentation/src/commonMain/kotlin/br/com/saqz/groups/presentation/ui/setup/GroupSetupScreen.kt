@@ -11,12 +11,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.material.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzButton
+import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIconButton
@@ -48,6 +53,8 @@ import br.com.saqz.groups.resources.group_pix_error_label
 import br.com.saqz.groups.resources.group_setup_create_action
 import br.com.saqz.groups.resources.group_setup_create_title
 import br.com.saqz.groups.resources.group_setup_trial_offer
+import br.com.saqz.groups.resources.onboarding_setup_advanced
+import br.com.saqz.groups.resources.onboarding_setup_simple
 import br.com.saqz.groups.resources.group_setup_delete_action
 import br.com.saqz.groups.resources.group_setup_edit_title
 import br.com.saqz.groups.resources.group_setup_error_composition
@@ -64,6 +71,7 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object GroupSetupTags {
+    const val Advanced = "group-setup-advanced"
     const val TrialOffer = "group-setup-trial-offer"
     const val Photo = "group-setup-photo"
     const val Name = "group-setup-name"
@@ -182,35 +190,59 @@ private fun GroupSetupNotices(state: GroupSetupState, onIntent: (GroupSetupInten
 
 @Composable
 private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap)) {
+        val form = state.form
+        var advancedExpanded by rememberSaveable { mutableStateOf(false) }
+        GroupPhotoSection(
+            photoUrl = state.photoUrl,
+            photo = state.photo,
+            groupName = form.name,
+            isEditing = state.isEditing,
+            onPick = { onIntent(GroupSetupIntent.PickPhoto) },
+        )
+        GroupNameSection(
+            name = form.name,
+            errorText = state.errorText(GroupSetupError.NameRequired, Res.string.group_setup_error_name),
+            onChange = { onIntent(GroupSetupIntent.UpdateName(it)) },
+        )
+        GroupModalitySection(
+            modality = form.modality,
+            errorText = state.errorText(
+                GroupSetupError.ModalityRequired,
+                Res.string.group_setup_error_modality,
+            ),
+            onOpen = { onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Modality)) },
+        )
+        GroupCompositionSection(
+            composition = form.composition,
+            errorText = state.errorText(
+                GroupSetupError.CompositionRequired,
+                Res.string.group_setup_error_composition,
+            ),
+            onSelect = { onIntent(GroupSetupIntent.SelectComposition(it)) },
+        )
+        if (!state.isEditing && state.errors.isEmpty()) {
+            Text(
+                stringResource(Res.string.onboarding_setup_simple),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+            SaqzButton(
+                label = stringResource(Res.string.onboarding_setup_advanced),
+                onClick = { advancedExpanded = !advancedExpanded },
+                variant = SaqzButtonVariant.Secondary,
+                fullWidth = true,
+                modifier = Modifier.testTag(GroupSetupTags.Advanced),
+            )
+            if (!advancedExpanded) return@Column
+        }
+        GroupSetupAdvancedCards(state, onIntent)
+    }
+}
+
+@Composable
+private fun GroupSetupAdvancedCards(state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit) {
     val form = state.form
-    GroupPhotoSection(
-        photoUrl = state.photoUrl,
-        photo = state.photo,
-        groupName = form.name,
-        isEditing = state.isEditing,
-        onPick = { onIntent(GroupSetupIntent.PickPhoto) },
-    )
-    GroupNameSection(
-        name = form.name,
-        errorText = state.errorText(GroupSetupError.NameRequired, Res.string.group_setup_error_name),
-        onChange = { onIntent(GroupSetupIntent.UpdateName(it)) },
-    )
-    GroupModalitySection(
-        modality = form.modality,
-        errorText = state.errorText(
-            GroupSetupError.ModalityRequired,
-            Res.string.group_setup_error_modality,
-        ),
-        onOpen = { onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Modality)) },
-    )
-    GroupCompositionSection(
-        composition = form.composition,
-        errorText = state.errorText(
-            GroupSetupError.CompositionRequired,
-            Res.string.group_setup_error_composition,
-        ),
-        onSelect = { onIntent(GroupSetupIntent.SelectComposition(it)) },
-    )
     GroupLevelSection(
         levelLabel = form.level?.label(),
         customLevel = form.customLevel,

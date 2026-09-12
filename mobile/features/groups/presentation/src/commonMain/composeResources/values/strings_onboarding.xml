@@ -1,0 +1,4 @@
+<resources>
+    <string name="onboarding_setup_simple">A foto é opcional. Depois de criar o grupo, marque o primeiro jogo e convide a galera. Você pode ajustar os outros detalhes depois.</string>
+    <string name="onboarding_setup_advanced">Outras configurações (opcional)</string>
+</resources>
