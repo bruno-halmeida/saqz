@@ -18,7 +18,7 @@ e direcionamento.md. Nenhuma tarefa abaixo está implementada.
 ### Fase 1 — domínio e ativação (lote 1)
 
 - [x] T01 Criar módulo receivables, contratos financeiros e interfaces de elegibilidade/grupos; atualizar arquitetura. Gate: domínio e arquitetura.
-- [ ] T02 Adicionar migrações de contas, vínculos, delegações, termos, tarifas, ordens, instrumentos, recorrências, operações, eventos e movimentos. Gate: PostgreSQL, unicidade e preservação das cobranças manuais.
+- [x] T02 Adicionar migrações de contas, vínculos, delegações, termos, tarifas, ordens, instrumentos, recorrências, operações, eventos e movimentos. Gate: PostgreSQL, unicidade e preservação das cobranças manuais.
 - [ ] T03 Implementar armazenamento cifrado de credenciais e operações persistidas recuperáveis. Gate: sigilo, concorrência, idempotência e timeout.
 - [ ] T04 Integrar criação/recuperação voluntária de subconta, aceite versionado, onboarding e documentos. Gate: API simulada e contratos HTTP.
 - [ ] T05 Implementar autorização financeira, delegações e revogação por remoção de administrador. Gate: sessão aberta, troca de titular do grupo e isolamento entre contas.

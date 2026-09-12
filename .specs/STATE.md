@@ -14,5 +14,6 @@
 - Branch: feat/receivables-foundation.
 - T01 concluída: módulo, contratos e política de autorização; 5 testes de domínio e 20 de arquitetura passam.
 - Corrigida dependência preexistente de exceções Asaas em subscriptions; suíte subscriptions passa.
-- Próximo: T02, persistência aditiva e testes PostgreSQL.
+- T02 concluída: migração V47, 17 tabelas; seis testes PostgreSQL e migração do bootstrap passam.
+- Próximo: T03, cifragem e operações persistidas recuperáveis.
 - Trial central ainda ausente neste checkout; não foi reimplementado.

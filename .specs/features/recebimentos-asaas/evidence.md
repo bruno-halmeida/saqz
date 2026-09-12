@@ -20,3 +20,21 @@ Arquivo das asserções: `backend/features/receivables/src/test/kotlin/br/com/sa
 Todas as asserções novas correspondem a critérios acima; sem testes especulativos.
 A política recebe fatos atualizados: verificação HTTP/JDBC de autenticação e revogação pertence às tarefas seguintes.
 A matriz trial/planos depende da composição T06; T01 fornece apenas a porta e não afirma implementar o trial.
+
+## T02 — schema financeiro aditivo
+
+Gate: JDK 21, `:features:receivables:check :architecture-tests:test :bootstrap:test --tests '*SubscriptionsMigrationOnBootstrapClasspathIntegrationTest'`, exit 0.
+6 testes PostgreSQL reais, 5 de domínio, 20 de arquitetura e migração integrada do bootstrap passam.
+
+Asserções em `ReceivablesSchemaIntegrationTest.kt`; cada linha abaixo também é o mapeamento reverso para B1/B2/B4/B5/B6:
+
+| Critério | Linha / asserção | Resultado |
+|---|---|---|
+| B1 migração aditiva | 25–29 `assertEquals(1/0/2300/17, ...)` | migra uma vez; preserva cobrança manual; cria 17 tabelas financeiras |
+| B2 identidade única | 37–39 `assertEquals("23505", ...sqlState)` / contagem 1 | titular e CPF/CNPJ não duplicam conta |
+| B4 deduplicação por conta | 51–53 SQLSTATE 23505 / contagem 2 | evento duplicado rejeitado só na mesma conta |
+| B5 competência única | 69–71 SQLSTATE 23505 / contagem 1 | mesma competência não reaparece após troca de conta |
+| B4/B6 ledger imutável | 82–85 SQLSTATE 23505/P0001 / soma 10000 | recebimento e histórico não duplicam nem são apagados |
+| B2 isolamento de saque | 101–107 SQLSTATE 23503 / contagem 0 | destino de outra conta rejeitado pelo banco |
+
+Sem alterações em testes existentes. Valores comerciais não populados. Testes de concorrência de operações pertencem a T03.
