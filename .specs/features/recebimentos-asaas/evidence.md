@@ -189,3 +189,18 @@ Asserções localizadas (mapeamento reverso nos critérios acima):
 - `FinancialAccountsHttpIntegrationTest.kt:93` — `assertNotNull(store.findOwned(owner))`
 
 T04 NÃO concluída integralmente; lacunas estão em tasks.md e STATE.md. Não houve homologação externa.
+
+## T07a — núcleo independente de tarifas
+
+Adiantado por ser domínio puro independente da ativação T06. Não há nova cobrança nem exposição HTTP.
+Gate `:features:receivables:test :architecture-tests:test`, JDK21, exit 0: 12 unitários (4 novos) e 20 arquitetura.
+
+`FeeCalculatorTest.kt` mapeia exclusivamente B3:
+- 15–24: base=10000, comissão=300, provedor=358, taxas=658, total=10658, líquido=10000; ID, termos e meio preservados; split fixo=3.00.
+- 30–38: comissão arredondada=60, processamento=125, total mínimo=2184 e microvalor sem centavo desnecessário.
+- 44–47: custos fixos sem percentuais e tabela explicitamente zerada sem tarifa inventada.
+- 53–60: meio centavo, configuração inválida, valor inválido e overflow não geram cobrança inválida.
+
+Todos os números são fixtures de teste. HALF_UP é a política explícita do núcleo; a tabela operacional
+precisará corresponder às condições reais do provedor, com divergências conciliadas em T09.
+Publicação versionada, seleção da tabela vigente, simulação HTTP e snapshot da emissão seguem pendentes em T07.

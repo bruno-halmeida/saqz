@@ -22,5 +22,7 @@
 - Gate atual: 8 unitários, 17 PostgreSQL/HTTP, 20 arquitetura passam. Bootstrap agregado migra V47.
 - T04 pendente: correção dos dados cadastrais, recuperação operacional da chave perdida e caminhos HTTP restantes; não marcar completo.
 - Próximo: concluir T04, depois T05 delegações e T06 ativação/contrato de elegibilidade.
-- T05–T21 ainda não implementados; nenhuma mudança mobile ou adm-web.
+- T07 parcial: núcleo independente de tarifas e split fixo implementado; quatro testes passam.
+- T05–T06 e T08–T21 ainda não implementados; nenhuma mudança mobile ou adm-web.
+- Suíte geral bootstrap: 337/338 na execução ampla; único EOF de health passou no rerun isolado.
 - Trial central ainda ausente neste checkout; não foi reimplementado.
