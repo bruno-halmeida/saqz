@@ -148,6 +148,29 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
+    fun `legacy server deadline cannot validate cache that already has a revision`() = runTest {
+        val store = FakeUrlStore(
+            "https://saqz.app/invite/unmatched",
+            expiresAt = DEFAULT_EXPIRES_AT,
+            revision = "cached-revision",
+        )
+        val clipboard = FakeClipboard()
+        val viewModel = groupViewModel(
+            urlStore = store,
+            clipboard = clipboard,
+            metadata = SaqzResult.Success(GroupInviteMetadata(true, expiresAt = DEFAULT_EXPIRES_AT)),
+        )
+        advanceUntilIdle()
+
+        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
+        assertNull(viewModel.state.value.inviteUrl)
+        assertNull(store.value)
+        assertNull(store.revision)
+        viewModel.onIntent(GroupInviteIntent.CopyLink)
+        assertNull(clipboard.value)
+    }
+
+    @Test
     fun `inactive permanent metadata clears cache even when revision matches`() = runTest {
         val store = FakeUrlStore("https://saqz.app/invite/revoked", expiresAt = null, revision = "revision-1")
         val viewModel = groupViewModel(
