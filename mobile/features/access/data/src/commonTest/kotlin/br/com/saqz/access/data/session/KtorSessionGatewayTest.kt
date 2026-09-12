@@ -180,12 +180,26 @@ class KtorSessionGatewayTest {
     @Test fun `token unavailability maps to unknown without an HTTP call`() = runTest {
         var calls = 0
         val fixture = fixture(
-            tokens = RecordingTokenProvider(current = TokenResult.Unavailable),
+            tokens = RecordingTokenProvider(
+                current = TokenResult.Unavailable,
+                refresh = TokenResult.Unavailable,
+            ),
             response = { calls += 1; sessionResponse() },
         )
 
         assertEquals(DataError.Unknown, fixture.gateway.bootstrap().dataFailure())
         assertEquals(0, calls)
+        assertEquals(listOf(false, true), fixture.tokens.forceRefreshCalls)
+    }
+
+    @Test fun `token unavailability falls back to a refresh token`() = runTest {
+        val fixture = fixture(
+            tokens = RecordingTokenProvider(current = TokenResult.Unavailable),
+            response = { sessionResponse() },
+        )
+
+        assertEquals("user-1", fixture.gateway.bootstrap().success().user.id)
+        assertEquals(listOf(false, true), fixture.tokens.forceRefreshCalls)
     }
 
     @Test fun `cancellation propagates without a failure value`() = runTest {
