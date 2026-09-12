@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.recurrence.ResolvedWeeklyOccurrence
 import java.time.Instant
 import java.util.UUID
+import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 
 data class AutoConfirmationGame(
     val groupId: UUID,
@@ -47,9 +48,13 @@ class AutoConfirmAttendance(
     private val repository: AutoConfirmationRepository,
     private val now: () -> Instant,
     private val ids: () -> UUID = UUID::randomUUID,
+    private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
 ) : br.com.saqz.groups.application.game.GameSideEffectPort {
     fun updateOwnOptIn(groupId: UUID, memberId: UUID, enabled: Boolean): AutoConfirmationOptInUpdate =
-        transaction.inTransaction { repository.updateOwnOptIn(groupId, memberId, enabled) }
+        transaction.inTransaction {
+            writeAccess.requireWrite(groupId)
+            repository.updateOwnOptIn(groupId, memberId, enabled)
+        }
 
     override fun apply(game: Game, actorId: UUID, effects: Set<GameSideEffect>) {
         if (GameSideEffect.ATTENDANCE_OPENED in effects) {
@@ -84,6 +89,7 @@ class AutoConfirmAttendance(
     }
 
     private fun confirm(game: AutoConfirmationGame, actorId: UUID): Int {
+        if (!writeAccess.canWrite(game.groupId)) return 0
         val assignments = AutoConfirmationPolicy.decide(
             repository.candidates(game.gameId),
             game.capacity,

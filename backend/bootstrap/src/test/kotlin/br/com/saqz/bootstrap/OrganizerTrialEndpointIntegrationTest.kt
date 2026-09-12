@@ -41,6 +41,7 @@ class OrganizerTrialEndpointIntegrationTest {
     @Autowired private lateinit var ds: DataSource
     @Autowired private lateinit var mapper: ObjectMapper
     @Autowired private lateinit var clock: TrialClock
+    @Autowired private lateinit var monthlySchedule: br.com.saqz.groups.application.finance.charge.MonthlyChargeSchedule
     private val now = Instant.parse("2026-09-12T12:00:00Z")
     private lateinit var token: String
     private val client = HttpClient.newHttpClient()
@@ -180,6 +181,41 @@ class OrganizerTrialEndpointIntegrationTest {
     }
 
     private fun jdbc() = JdbcClient.create(ds)
+
+    @Test
+    fun `monthly scheduler cannot generate charges for an expired trial`() {
+        val group = createGroup()
+        jdbc().sql("UPDATE access_groups SET monthly_fee_cents=2000, monthly_due_day=1 WHERE id=:group").param("group", group).update()
+        jdbc().sql("UPDATE group_memberships SET membership_type='MENSALISTA' WHERE group_id=:group").param("group", group).update()
+        clock.now = now.plus(Duration.ofDays(14))
+        monthlySchedule.run()
+        assertEquals(0, jdbc().sql("SELECT count(*)::int FROM group_charges WHERE group_id=:group").param("group", group).query(Int::class.java).single())
+        assertEquals(0, jdbc().sql("SELECT count(*)::int FROM group_charge_events WHERE group_id=:group").param("group", group).query(Int::class.java).single())
+    }
+
+    @Test
+    fun `pending invite request cannot be renewed after trial expiration`() {
+        val group = createGroup()
+        jdbc().sql("UPDATE access_groups SET entry_requires_approval=true WHERE id=:group").param("group", group).update()
+        val invite = request("POST", "/api/groups/$group/invite")
+        assertEquals(200, invite.statusCode(), invite.body())
+        val url = URI(mapper.readTree(invite.body())["inviteUrl"].stringValue())
+        val code = url.rawQuery.split('&').first { it.startsWith("saqz_invite=") }.substringAfter('=')
+        val member = UUID.randomUUID().toString()
+        val pending = request("POST", "/api/invites/redeem", """{"code":"$code"}""", actor = member)
+        assertEquals(200, pending.statusCode(), pending.body())
+        assertEquals("PENDING", mapper.readTree(pending.body())["status"].stringValue())
+        val original = jdbc().sql("SELECT requested_at FROM group_entry_requests WHERE group_id=:group").param("group", group).query(java.sql.Timestamp::class.java).single()
+        // Keep the invitation valid to isolate the trial guard, rather than the link's own expiry.
+        jdbc().sql("UPDATE group_invites SET expires_at=:end WHERE group_id=:group").param("end", java.sql.Timestamp.from(now.plus(Duration.ofDays(30)))).param("group", group).update()
+        clock.now = now.plus(Duration.ofDays(14))
+        val retry = request("POST", "/api/invites/redeem", """{"code":"$code"}""", actor = member)
+        assertEquals(403, retry.statusCode(), retry.body())
+        assertEquals("SUBSCRIPTION_REQUIRED", mapper.readTree(retry.body())["code"].stringValue())
+        assertEquals(original, jdbc().sql("SELECT requested_at FROM group_entry_requests WHERE group_id=:group").param("group", group).query(java.sql.Timestamp::class.java).single())
+        assertEquals(1, jdbc().sql("SELECT count(*)::int FROM group_memberships WHERE group_id=:group").param("group", group).query(Int::class.java).single())
+    }
+
     private fun request(method: String, path: String, body: String? = null, actor: String? = token): HttpResponse<String> {
         val builder = HttpRequest.newBuilder(URI("http://127.0.0.1:$port$path"))
             .header("Content-Type", "application/json")

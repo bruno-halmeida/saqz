@@ -18,6 +18,14 @@ import javax.sql.DataSource
 @ConditionalOnProperty("spring.datasource.url")
 class OrganizerTrialConfiguration {
     @Bean
+    fun trialGroupWriteAccess(
+        groups: br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup,
+        trials: br.com.saqz.sharedkernel.subscription.OrganizerTrialAccessLookup,
+    ) = br.com.saqz.sharedkernel.subscription.GroupWriteAccess { groupId ->
+        groups.ownerOf(groupId)?.let { !trials.forOwner(it).readOnly } ?: false
+    }
+
+    @Bean
     fun trialGroupWebGuard(
         actors: br.com.saqz.sharedkernel.actor.AuthenticatedActorResolver,
         groups: br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup,

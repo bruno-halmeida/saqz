@@ -6,6 +6,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.util.UUID
+import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 
 enum class AttendanceBillingOutcome { CONFIRMED, PROMOTED, WAITLISTED, DECLINED, NO_RESPONSE, WITHDRAWN }
 data class GameChargeInput(val groupId:UUID,val gameId:UUID,val memberId:UUID,val gameFeeCents:Long?,val dueDate:LocalDate,val outcome:AttendanceBillingOutcome)
@@ -18,13 +19,16 @@ interface ChargeTransactionRepository{
     fun members(groupId:UUID):GroupMembers?
     fun createMonthlyCharge(command:MonthlyGenerationCommand,memberId:UUID,now:Instant):Charge
 }
-class ChargeTransactions(private val transaction:TransactionRunner,private val repository:ChargeTransactionRepository,private val now:()->Instant){
+class ChargeTransactions(private val transaction:TransactionRunner,private val repository:ChargeTransactionRepository,private val now:()->Instant,private val writeAccess:GroupWriteAccess){
+    constructor(transaction:TransactionRunner,repository:ChargeTransactionRepository,now:()->Instant):this(transaction,repository,now,GroupWriteAccess.Unrestricted)
     fun attendance(input:GameChargeInput,actorId:UUID):Charge?=transaction.inTransaction{
+        writeAccess.requireWrite(input.groupId)
         if(input.outcome !in setOf(AttendanceBillingOutcome.CONFIRMED,AttendanceBillingOutcome.PROMOTED)||input.gameFeeCents==null)return@inTransaction null
         repository.createGameCharge(input,actorId,now())
     }
-    fun cancelGame(groupId:UUID,gameId:UUID,actorId:UUID)=transaction.inTransaction{repository.reconcileGameCancellation(groupId,gameId,actorId,now())}
+    fun cancelGame(groupId:UUID,gameId:UUID,actorId:UUID)=transaction.inTransaction{writeAccess.requireWrite(groupId);repository.reconcileGameCancellation(groupId,gameId,actorId,now())}
     fun generate(command:MonthlyGenerationCommand):MonthlyGenerationResult=transaction.inTransaction{
+        writeAccess.requireWrite(command.groupId)
         val fields=buildSet{if(command.amountCents !in 1..99_999_999)add("amountCents");if(command.dueDate.month!=command.month.month||command.dueDate.year!=command.month.year)add("dueDate");if(command.selectedMemberIds.isEmpty())add("memberIds")}
         if(fields.isNotEmpty())return@inTransaction MonthlyGenerationResult.Invalid(fields)
         val members=repository.members(command.groupId)?:return@inTransaction MonthlyGenerationResult.Hidden

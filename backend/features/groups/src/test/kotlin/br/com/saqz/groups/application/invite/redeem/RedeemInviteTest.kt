@@ -18,6 +18,32 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class RedeemInviteTest {
+    @Test
+    fun `expired trial refuses pending athlete even if their occupied slot would bypass the limit`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = true))
+        fixture.repository.openWaitlist += actor
+        val original = now.minusSeconds(30)
+        fixture.repository.persistedRequestAt[actor] = original
+        val service = RedeemInvite(fixture.transaction, fixture.repository, FixedSubscriptionLimits(athleteLimit = 0), fixture.clock,
+            br.com.saqz.sharedkernel.subscription.GroupWriteAccess { false })
+        kotlin.test.assertFailsWith<br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException> { service.execute(actor, code.value) }
+        assertEquals(original, fixture.repository.persistedRequestAt[actor])
+        assertTrue(fixture.repository.entryRequests.isEmpty())
+        assertTrue(fixture.repository.roles.isEmpty())
+        assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
+    @Test
+    fun `expired trial lets an existing member resolve their group without a new membership`() {
+        val fixture = fixture()
+        fixture.repository.roles[actor] = GroupRole.ATHLETE
+        val service = RedeemInvite(fixture.transaction, fixture.repository, FixedSubscriptionLimits(athleteLimit = 0), fixture.clock,
+            br.com.saqz.sharedkernel.subscription.GroupWriteAccess { false })
+        assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ATHLETE), service.execute(actor, code.value))
+        assertEquals(mapOf(actor to GroupRole.ATHLETE), fixture.repository.roles)
+        assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
     private val now = Instant.parse("2026-07-16T18:00:00Z")
     private val actor = UUID.randomUUID()
     private val ownerId = UUID.randomUUID()

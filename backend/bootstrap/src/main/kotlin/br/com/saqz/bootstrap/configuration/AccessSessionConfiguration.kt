@@ -604,7 +604,8 @@ class AccessSessionConfiguration {
         repository: JdbcInviteRedemptionRepository,
         subscriptionLimits: SubscriptionLimits,
         clock: Clock,
-    ) = RedeemInvite(transaction, repository, subscriptionLimits, clock)
+        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
+    ) = RedeemInvite(transaction, repository, subscriptionLimits, clock, writeAccess)
 
     @Bean
     fun accessInviteRedemptionController(
@@ -704,23 +705,27 @@ class AccessSessionConfiguration {
         repository: JdbcOccurrenceMaterializationRepository,
         ids: GameIdFactory,
         autoConfirm: AutoConfirmAttendance,
+        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
     ) = MaterializeWeeklySeries(
         transaction,
         repository,
         ids,
         Clock.systemUTC(),
         AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
+        writeAccess,
     )
     @Bean fun weeklySeriesRepository(dataSource: DataSource) = JdbcWeeklySeriesRepository(dataSource)
     @Bean fun weeklySeriesService(
         repository: JdbcWeeklySeriesRepository,
         ids: GameIdFactory,
         autoConfirm: AutoConfirmAttendance,
+        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
     ) = WeeklySeriesService(
         repository,
         ids,
         Clock.systemUTC(),
         AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
+        writeAccess,
     )
     @Bean fun seriesBoundaryRepository(dataSource: DataSource) = JdbcSeriesBoundaryRepository(dataSource)
     @Bean fun applySeriesBoundary(
@@ -735,12 +740,13 @@ class AccessSessionConfiguration {
     )
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
     @Bean fun chargeTransactionRepository(dataSource: DataSource) = JdbcChargeTransactionRepository(dataSource)
-    @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository) = ChargeTransactions(transaction, repository, Instant::now)
+    @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository, writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess) = ChargeTransactions(transaction, repository, Instant::now, writeAccess)
     @Bean fun autoConfirmationRepository(dataSource: DataSource) = JdbcAutoConfirmationRepository(dataSource)
     @Bean fun autoConfirmAttendance(
         transaction: JdbcTransactionRunner,
         repository: JdbcAutoConfirmationRepository,
-    ) = AutoConfirmAttendance(transaction, repository, Instant::now)
+        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
+    ) = AutoConfirmAttendance(transaction, repository, Instant::now, writeAccess = writeAccess)
     /**
      * AutoConfirmAttendance também é GameSideEffectPort; sem @Primary o autowire por tipo
      * de editGame/changeGameLifecycle fica ambíguo e o boot com datasource falha.

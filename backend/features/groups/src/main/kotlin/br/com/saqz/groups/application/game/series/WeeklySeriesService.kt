@@ -11,6 +11,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
+import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 
 data class SeriesOccurrenceView(val id: UUID, val localDate: LocalDate, val localTime: LocalTime, val startsAt: Instant, val status: GameStatus, val version: Long)
 data class WeeklySeriesView(val rule: WeeklySeriesRule, val revisionNumber: Int, val version: Long, val occurrences: List<SeriesOccurrenceView>)
@@ -34,6 +35,7 @@ class WeeklySeriesService(
     private val ids: GameIdFactory,
     private val clock: Clock,
     private val autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { },
+    private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
 ) {
     fun authorizeOrganizer(actor: UUID, groupId: UUID): WeeklySeriesResult? = when (repository.role(actor, groupId)) {
         null -> WeeklySeriesResult.NotFound
@@ -43,6 +45,7 @@ class WeeklySeriesService(
     fun create(actor: UUID, rule: WeeklySeriesRule): WeeklySeriesResult {
         val role = repository.role(actor, rule.groupId) ?: return WeeklySeriesResult.NotFound
         if (role !in setOf(GroupRole.OWNER, GroupRole.ADMIN)) return WeeklySeriesResult.Forbidden
+        writeAccess.requireWrite(rule.groupId)
         val resolved = when (val result = WeeklyRecurrenceResolver.resolve(rule, rule.localStartDate)) {
             is WeeklyRecurrenceResult.Invalid -> return WeeklySeriesResult.Invalid(result.errors)
             is WeeklyRecurrenceResult.Valid -> result.occurrences
