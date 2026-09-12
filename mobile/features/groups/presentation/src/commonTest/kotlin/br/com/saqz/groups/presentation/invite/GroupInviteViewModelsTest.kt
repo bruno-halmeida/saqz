@@ -498,6 +498,26 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
+    fun `longest emoji group name preserves the complete pricing explanation and shared link`() = runTest {
+        val name = "🏐".repeat(80)
+        val share = FakeShare()
+        val vm = InvitePreviewMessageViewModel(name, "https://saqz.app/invite/1", share)
+        advanceUntilIdle()
+        val expected = "Entre no $name pelo Saqz para responder presença. Abra o link, baixe o app e entre na sua conta. Atletas não precisam assinar o Saqz; os valores dos jogos são combinados com o grupo."
+        assertEquals(expected, vm.state.value.message)
+        vm.onIntent(InvitePreviewIntent.Share)
+        assertEquals("$expected\n\nhttps://saqz.app/invite/1", share.text)
+    }
+
+    @Test
+    fun `custom message limit counts Unicode code points without splitting emoji`() = runTest {
+        val vm = InvitePreviewMessageViewModel("CERET", "url", FakeShare())
+        vm.onIntent(InvitePreviewIntent.MessageChanged("a" + "🏐".repeat(400)))
+        assertEquals("a" + "🏐".repeat(299), vm.state.value.message)
+        assertEquals("a" + "🏐".repeat(299) + "\n\nurl", vm.state.value.composedText)
+    }
+
+    @Test
     fun `preview share success and failure are distinct`() = runTest {
         val successShare = FakeShare()
         val success = InvitePreviewMessageViewModel("CERET", "url", successShare)

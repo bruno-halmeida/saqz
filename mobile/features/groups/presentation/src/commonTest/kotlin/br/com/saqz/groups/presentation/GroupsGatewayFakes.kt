@@ -222,6 +222,7 @@ class FakeGameGateway(
     private val lifecycleResults: ArrayDeque<SaqzResult<VersionedGame, GameError>>? = null,
     private val lifecycleDeferreds: ArrayDeque<CompletableDeferred<SaqzResult<VersionedGame, GameError>>>? = null,
 ) : GameGateway {
+    var listDeferred: CompletableDeferred<SaqzResult<List<Game>, GameError>>? = null
     var readCalls = 0
     var createCalls = 0
     var editCalls = 0
@@ -233,7 +234,7 @@ class FakeGameGateway(
     val lifecycleGameIds = mutableListOf<String>()
     val lifecycleVersions = mutableListOf<GameVersionToken>()
 
-    override suspend fun list(groupId: GroupId): SaqzResult<List<Game>, GameError> = listResult
+    override suspend fun list(groupId: GroupId): SaqzResult<List<Game>, GameError> = listDeferred?.await() ?: listResult
 
     override suspend fun read(groupId: GroupId, gameId: String): SaqzResult<VersionedGame, GameError> {
         readCalls += 1

@@ -97,6 +97,22 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `reload hides athlete introduction and does not reset its once per screen guard`() = runTest {
+        val vm = viewModel(groupGateway = athleteGroupGateway(),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))))
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        assertTrue(vm.state.value.athleteIntroVisible)
+        vm.onIntent(GroupDetailsIntent.Retry)
+        advanceUntilIdle()
+        assertFalse(vm.state.value.loadFailed)
+        assertFalse(vm.state.value.athleteIntroVisible)
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+        assertFalse(vm.state.value.responseFailed)
+        assertFalse(vm.state.value.athleteIntroVisible)
+    }
+
+    @Test
     fun `a failed later response cannot keep the saved response introduction visible`() = runTest {
         val attendance = FakeAttendanceGateway()
         val vm = viewModel(groupGateway = athleteGroupGateway(), attendanceGateway = attendance,
@@ -140,6 +156,21 @@ class GroupDetailsViewModelTest {
         assertEquals(GroupOnboarding.ReviewFinances(sampleGame().id), vm.state.value.onboarding)
         vm.onIntent(GroupDetailsIntent.OnboardingAction)
         assertEquals(GroupDetailsEffect.OpenSettlement(GROUP_ID, sampleGame().id), vm.effects.first())
+    }
+
+    @Test
+    fun `pending reload clears the prior organizer step until games arrive`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
+        val vm = viewModel(gameGateway = games)
+        assertEquals(GroupOnboarding.CreateGame, vm.state.value.onboarding)
+        games.listDeferred = CompletableDeferred()
+        vm.onIntent(GroupDetailsIntent.Retry)
+        assertTrue(vm.state.value.isLoading)
+        assertNull(vm.state.value.onboarding)
+        games.listDeferred!!.complete(SaqzResult.Success(listOf(sampleGame())))
+        advanceUntilIdle()
+        assertFalse(vm.state.value.isLoading)
+        assertEquals(GroupOnboarding.InviteAthletes(sampleGame().id), vm.state.value.onboarding)
     }
 
     @Test

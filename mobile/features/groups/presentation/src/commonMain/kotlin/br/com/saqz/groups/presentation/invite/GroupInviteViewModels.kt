@@ -23,6 +23,7 @@ import br.com.saqz.groups.port.InviteShareImage
 import br.com.saqz.groups.port.NativeInviteClipboardPort
 import br.com.saqz.groups.port.NativeInviteSharePort
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.presentation.setup.takeCodePoints
 import br.com.saqz.groups.resources.onboarding_invite_message
 import org.jetbrains.compose.resources.getString
 import kotlinx.coroutines.CompletableDeferred
@@ -399,7 +400,7 @@ class InvitePreviewMessageViewModel(
     }
 
     private fun updateMessage(value: String) {
-        val message = value.take(MAX_MESSAGE_LENGTH)
+        val message = value.takeCodePoints(MAX_MESSAGE_LENGTH)
         update { it.copy(message = message, composedText = message.withLink(state.value.inviteUrl)) }
     }
 

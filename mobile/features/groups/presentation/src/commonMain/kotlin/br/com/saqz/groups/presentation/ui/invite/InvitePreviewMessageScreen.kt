@@ -21,6 +21,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.invite.InvitePreviewError
 import br.com.saqz.groups.presentation.invite.InvitePreviewIntent
 import br.com.saqz.groups.presentation.invite.InvitePreviewState
+import br.com.saqz.groups.presentation.setup.codePointLength
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.invite_preview_back
 import br.com.saqz.groups.resources.invite_preview_counter
@@ -63,7 +64,7 @@ internal fun InvitePreviewMessageScreen(
                 modifier = Modifier.fillMaxWidth().testTag(InvitePreviewTags.Message),
             )
             Text(
-                text = stringResource(Res.string.invite_preview_counter, state.message.length),
+                text = stringResource(Res.string.invite_preview_counter, state.message.codePointLength()),
                 style = SaqzTheme.typography.support,
                 color = SaqzTheme.colors.textSecondary,
             )

@@ -38,6 +38,16 @@ class GroupSetupScreenTest {
     }
 
     @Test
+    fun editingWithoutErrorsKeepsAdvancedFieldsExpanded() = runComposeUiTest {
+        setContent {
+            SaqzTheme { GroupSetupScreen(GroupSetupState(mode = GroupSetupMode.Edit("existing")), {}, {}) }
+        }
+        onNodeWithTag(GroupSetupTags.Advanced).assertDoesNotExist()
+        onNodeWithTag(GroupSetupTags.Level).assertExists()
+        onNodeWithTag(GroupSetupTags.Capacity).assertExists()
+    }
+
+    @Test
     fun firstTrialGroupExplainsStartWithoutPayment() = runComposeUiTest {
         setContent {
             SaqzTheme {

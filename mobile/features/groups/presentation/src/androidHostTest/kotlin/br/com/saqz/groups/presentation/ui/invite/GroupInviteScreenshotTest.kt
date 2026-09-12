@@ -4,12 +4,17 @@ import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.semantics.SemanticsActions
@@ -18,9 +23,11 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.onboarding_invite_message
 import org.jetbrains.compose.resources.stringResource
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.invite.GroupInviteState
 import br.com.saqz.groups.presentation.invite.InvitePreviewState
+import br.com.saqz.groups.presentation.invite.InvitePreviewIntent
 import br.com.saqz.groups.presentation.invite.InviteQrState
 import br.com.saqz.groups.presentation.invite.InviteStatus
 import br.com.saqz.groups.presentation.invite.JoinedAtUnit
@@ -106,6 +113,25 @@ class GroupInviteScreenshotTest {
         compose.onNode(hasSetTextAction()).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
         assertTrue("The invitation must wrap instead of hiding text in one horizontal line", layouts.single().lineCount > 1)
         compose.onNodeWithText("Enviar no WhatsApp").assertIsDisplayed()
+    }
+
+    @Test
+    fun restrictedHeightAllowsScrollingToShareAndCountsEmojiConsistently() {
+        val intents = mutableListOf<InvitePreviewIntent>()
+        compose.setContent {
+            SaqzTheme {
+                Box(Modifier.height(300.dp)) {
+                    InvitePreviewMessageScreen(
+                        state = InvitePreviewState("CERET", "https://saqz.app/invite/ceret", "🏐".repeat(300)),
+                        onIntent = intents::add, onBack = {},
+                    )
+                }
+            }
+        }
+        compose.onNodeWithText("Enviar no WhatsApp").assertIsNotDisplayed()
+        compose.onNodeWithText("300/300").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Enviar no WhatsApp").performScrollTo().assertIsDisplayed().performClick()
+        assertEquals(listOf(InvitePreviewIntent.Share), intents)
     }
 
     @Test
