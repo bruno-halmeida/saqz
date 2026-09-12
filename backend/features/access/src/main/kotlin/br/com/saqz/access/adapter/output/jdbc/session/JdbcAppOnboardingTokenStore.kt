@@ -1,6 +1,7 @@
 package br.com.saqz.access.adapter.output.jdbc.session
 
 import br.com.saqz.access.application.session.AppOnboardingCode
+import br.com.saqz.access.application.session.AppOnboardingAccount
 import br.com.saqz.access.application.session.AppOnboardingDigest
 import br.com.saqz.access.application.session.AppOnboardingIssuedCode
 import br.com.saqz.access.application.session.AppOnboardingOwner
@@ -123,6 +124,36 @@ class JdbcAppOnboardingTokenStore(
     )
         .param("ownerUserId", ownerUserId)
         .update() == 1
+
+    override fun onboardingStatus(subject: String): AppOnboardingAccount = jdbc.sql(
+        "SELECT deleted_at IS NULL AS active, suspended_at IS NOT NULL AS suspended, onboarding_completed_at IS NOT NULL AS completed FROM access_users WHERE firebase_subject = :subject",
+    )
+        .param("subject", subject)
+        .query { result, _ ->
+            when {
+                !result.getBoolean("active") -> AppOnboardingAccount.Missing
+                result.getBoolean("suspended") -> AppOnboardingAccount.Suspended
+                else -> AppOnboardingAccount.Active(result.getBoolean("completed"))
+            }
+        }
+        .optional()
+        .orElse(AppOnboardingAccount.Missing)
+
+    override fun completeOnboardingFor(subject: String): AppOnboardingAccount {
+        jdbc.sql(
+            """
+            UPDATE access_users
+            SET onboarding_completed_at = now(), updated_at = now()
+            WHERE firebase_subject = :subject
+              AND deleted_at IS NULL
+              AND suspended_at IS NULL
+              AND onboarding_completed_at IS NULL
+            """.trimIndent(),
+        )
+            .param("subject", subject)
+            .update()
+        return onboardingStatus(subject)
+    }
 
     private fun timestamp(instant: Instant): Timestamp = Timestamp.from(instant)
 }

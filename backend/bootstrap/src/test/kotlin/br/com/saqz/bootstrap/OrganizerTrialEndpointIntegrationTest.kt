@@ -123,6 +123,27 @@ class OrganizerTrialEndpointIntegrationTest {
     }
 
     @Test
+    fun `onboarding completion is idempotent per account and does not start trial`() {
+        assertEquals(200, request("PUT", "/api/session").statusCode())
+
+        val initial = request("GET", "/api/session/onboarding")
+        val completed = request("PUT", "/api/session/onboarding")
+        val repeated = request("PUT", "/api/session/onboarding")
+
+        assertEquals(200, initial.statusCode())
+        assertEquals(false, mapper.readTree(initial.body())["onboardingCompleted"].booleanValue())
+        assertEquals(true, mapper.readTree(completed.body())["onboardingCompleted"].booleanValue())
+        assertEquals(true, mapper.readTree(repeated.body())["onboardingCompleted"].booleanValue())
+        assertEquals(
+            0,
+            jdbc().sql("SELECT count(*)::int FROM organizer_trials t JOIN access_users u ON t.owner_user_id=u.id WHERE u.firebase_subject=:token")
+                .param("token", token)
+                .query(Int::class.java)
+                .single(),
+        )
+    }
+
+    @Test
     fun `group access exposes owner trial to members but never outsiders or anonymous`() {
         val group = createGroup()
         val body = mapper.readTree(request("GET", "/api/groups/$group/trial").body())

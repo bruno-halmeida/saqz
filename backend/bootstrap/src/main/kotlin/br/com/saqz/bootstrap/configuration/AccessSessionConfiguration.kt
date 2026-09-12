@@ -141,6 +141,8 @@ import br.com.saqz.groups.application.finance.statement.FinanceStatementService
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.IssueAppOnboardingLink
 import br.com.saqz.access.application.session.RedeemAppOnboardingLink
+import br.com.saqz.access.application.session.GetAppOnboarding
+import br.com.saqz.access.application.session.CompleteAppOnboarding
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.access.application.session.AccountGroupCleanup
@@ -310,8 +312,10 @@ class AccessSessionConfiguration {
     fun appOnboardingController(
         issue: IssueAppOnboardingLink,
         redeem: RedeemAppOnboardingLink,
+        getOnboarding: GetAppOnboarding,
+        completeOnboarding: CompleteAppOnboarding,
         factory: AppOnboardingLinkFactory,
-    ) = AppOnboardingController(issue, redeem, factory::create)
+    ) = AppOnboardingController(issue, redeem, getOnboarding, completeOnboarding, factory::create)
 
     @Bean
     fun redeemAppOnboardingLink(
@@ -322,6 +326,12 @@ class AccessSessionConfiguration {
 
     @Bean
     fun appOnboardingIdentitySessions(firebaseApp: FirebaseApp) = FirebaseAppOnboardingSessions(firebaseApp)
+
+    @Bean
+    fun getAppOnboarding(tokenStore: JdbcAppOnboardingTokenStore) = GetAppOnboarding(tokenStore)
+
+    @Bean
+    fun completeAppOnboarding(tokenStore: JdbcAppOnboardingTokenStore) = CompleteAppOnboarding(tokenStore)
 
     @Bean fun userPhotoRepository(dataSource: DataSource) = JdbcUserPhotoRepository(dataSource)
     @Bean fun userPhotoConverter() = UserPhotoConverter()

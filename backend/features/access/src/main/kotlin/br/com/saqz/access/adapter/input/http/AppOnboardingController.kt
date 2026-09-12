@@ -1,6 +1,9 @@
 package br.com.saqz.access.adapter.input.http
 
 import br.com.saqz.access.application.session.AppOnboardingIssuedCode
+import br.com.saqz.access.application.session.AppOnboardingAccount
+import br.com.saqz.access.application.session.CompleteAppOnboarding
+import br.com.saqz.access.application.session.GetAppOnboarding
 import br.com.saqz.access.application.session.RedeemAppOnboardingLink
 import br.com.saqz.access.application.session.RedeemAppOnboardingResult
 import br.com.saqz.access.application.session.IssueAppOnboardingLink
@@ -8,6 +11,8 @@ import br.com.saqz.sharedkernel.RequestIdentity
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.web.bind.annotation.RestController
@@ -27,6 +32,8 @@ data class RedeemAppOnboardingLinkResponse(
     val onboardingCompleted: Boolean,
 )
 
+data class AppOnboardingCompletionResponse(val onboardingCompleted: Boolean)
+
 class AppOnboardingCodeInvalidException : RuntimeException()
 class AppOnboardingIdentityUnavailableException : RuntimeException()
 
@@ -34,6 +41,8 @@ class AppOnboardingIdentityUnavailableException : RuntimeException()
 class AppOnboardingController(
     private val issue: IssueAppOnboardingLink,
     private val redeem: RedeemAppOnboardingLink,
+    private val getOnboarding: GetAppOnboarding,
+    private val completeOnboarding: CompleteAppOnboarding,
     private val linkFactory: (br.com.saqz.access.application.session.AppOnboardingCode) -> java.net.URI,
 ) {
     @PostMapping("/api/session/app-link")
@@ -60,6 +69,20 @@ class AppOnboardingController(
                     onboardingCompleted = result.owner.onboardingCompleted,
                 ),
             )
+    }
+
+    @GetMapping("/api/session/onboarding")
+    fun onboarding(@AuthenticationPrincipal identity: RequestIdentity): AppOnboardingCompletionResponse =
+        onboardingResponse(getOnboarding.execute(identity.subject))
+
+    @PutMapping("/api/session/onboarding")
+    fun completeOnboarding(@AuthenticationPrincipal identity: RequestIdentity): AppOnboardingCompletionResponse =
+        onboardingResponse(completeOnboarding.execute(identity.subject))
+
+    private fun onboardingResponse(account: AppOnboardingAccount): AppOnboardingCompletionResponse = when (account) {
+        is AppOnboardingAccount.Active -> AppOnboardingCompletionResponse(account.completed)
+        AppOnboardingAccount.Missing -> throw AccountNotFoundException()
+        AppOnboardingAccount.Suspended -> throw AccountSuspendedException()
     }
 }
 

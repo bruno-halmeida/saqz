@@ -69,6 +69,19 @@ class AdminWebCorsIntegrationTest {
         assertEquals("no-cache", response.headers().firstValue("Pragma").orElse(""))
     }
 
+    @Test
+    fun `onboarding completion routes require bearer`() {
+        listOf("GET", "PUT").forEach { method ->
+            val response = client.send(
+                HttpRequest.newBuilder(URI.create("http://localhost:$port/api/session/onboarding"))
+                    .method(method, HttpRequest.BodyPublishers.noBody())
+                    .build(),
+                HttpResponse.BodyHandlers.ofString(),
+            )
+            assertEquals(401, response.statusCode(), method)
+        }
+    }
+
     @LocalServerPort
     private var port: Int = 0
 
