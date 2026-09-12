@@ -426,6 +426,7 @@ internal fun SaqzNavHost(
                                     EmailVerificationBanner(
                                         onRefresh = {
                                             onIntent(AccessIntent.Session(SessionIntent.RefreshEmailVerification))
+                                            onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
                                         },
                                         onDismiss = { emailBannerDismissed = true },
                                     )
@@ -566,7 +567,11 @@ internal fun SaqzNavHost(
                 GroupSetupDestination(
                     mode = GroupSetupMode.Create,
                     backStack = backStack,
-                    onGroupListChange = { groupListRefreshVersion++ },
+                    showTrialOffer = (state.session as? SessionAccessState.Ready)?.session?.planOwner == false,
+                    onGroupListChange = {
+                        groupListRefreshVersion++
+                        onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                    },
                 )
             }
             entry<GroupsRoute.Edit> { route ->
@@ -902,10 +907,12 @@ private fun GroupSetupDestination(
     mode: GroupSetupMode,
     backStack: NavBackStack<NavKey>,
     onGroupListChange: () -> Unit,
+    showTrialOffer: Boolean = false,
 ) {
     val pop: () -> Unit = { backStack.removeLastOrNull() }
     GroupSetupRoot(
         mode = mode,
+        showTrialOffer = showTrialOffer,
         // Criou: o formulário sai do stack e o grupo novo entra no lugar dele.
         onGroupCreate = { groupId, photoFailed ->
             onGroupListChange()

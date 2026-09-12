@@ -1,9 +1,7 @@
 package br.com.saqz.composeapp.di
 
-import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.subscriptions.domain.trial.TrialGateway
-import br.com.saqz.subscriptions.domain.trial.TrialStatus
 import org.koin.dsl.module
 
 /**
@@ -19,13 +17,6 @@ import org.koin.dsl.module
  */
 internal val groupCreationEntitlementModule = module {
     single<GroupCreationEntitlement> {
-        val gateway = get<TrialGateway>()
-        GroupCreationEntitlement {
-            var can = false
-            gateway.ownerTrial().onSuccess { trial ->
-                can = trial.canCreateGroup && trial.status in setOf(TrialStatus.Available, TrialStatus.Active)
-            }
-            can
-        }
+        TrialGroupCreationEntitlement(get())
     }
 }

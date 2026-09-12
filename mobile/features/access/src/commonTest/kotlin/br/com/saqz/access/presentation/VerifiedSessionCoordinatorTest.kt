@@ -36,6 +36,55 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionAccessStateMachineTest {
     @Test
+    fun `access refresh adds organizer access without leaving Ready`() = runTest {
+        val fixture = fixture(this)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        val original = assertIs<SessionAccessState.Ready>(fixture.machine.state.value).session
+        val gate = CompletableDeferred<Unit>()
+        fixture.session.bootstrapGate = gate
+        fixture.session.result = SaqzResult.Success(original.copy(planOwner = true))
+        fixture.machine.onIntent(SessionIntent.RefreshAccess)
+        runCurrent()
+        assertEquals(original, assertIs<SessionAccessState.Ready>(fixture.machine.state.value).session)
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals(original.copy(planOwner = true), assertIs<SessionAccessState.Ready>(fixture.machine.state.value).session)
+        assertEquals(0, fixture.auth.reloadCalls)
+    }
+
+    @Test
+    fun `access refresh never restores an account after logout`() = runTest {
+        val fixture = fixture(this)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        val gate = CompletableDeferred<Unit>()
+        fixture.session.bootstrapGate = gate
+        fixture.machine.onIntent(SessionIntent.RefreshAccess)
+        runCurrent()
+        fixture.machine.onIntent(SessionIntent.Logout)
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals(SessionAccessState.SignedOut, fixture.machine.state.value)
+    }
+
+    @Test
+    fun `access refresh preserves last session on network error and respects phone gate`() = runTest {
+        val fixture = fixture(this)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        val original = fixture.machine.state.value
+        fixture.session.result = SaqzResult.Failure(AccessError.DataFailure(DataError.InvalidResponse))
+        fixture.machine.onIntent(SessionIntent.RefreshAccess)
+        runCurrent()
+        assertEquals(original, fixture.machine.state.value)
+        fixture.session.result = SaqzResult.Success(session.copy(user = session.user.copy(phoneRequired = true)))
+        fixture.machine.onIntent(SessionIntent.RefreshAccess)
+        runCurrent()
+        assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+    }
+
+    @Test
     fun `confirmed departure removes only that membership from the current session`() = runTest {
         val first = br.com.saqz.access.domain.session.AccessMembership(
             br.com.saqz.domain.GroupId("group-a"), "Grupo A", br.com.saqz.access.domain.session.AccessMembershipRole("ATHLETE"),
