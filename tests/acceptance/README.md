@@ -4,6 +4,7 @@ Catálogo inicial dos fluxos críticos, com passos reproduzíveis e resultados o
 
 - [Ligações do app: saída, perfil, mensalidades, mapa e comunicação](app-ligacoes.feature)
 - [Regressão crítica: acesso, grupos, jogos e financeiro](app-regressao.feature)
+- [Convites permanentes: criação, recarga, substituição e desativação](app-convites.feature)
 - [Geração manual e encerramento do acerto](financeiro-final.feature)
 - [Painel administrativo e checkout](adm.feature)
 - [Evidências técnicas desta entrega](evidencias.md)
@@ -12,6 +13,10 @@ Catálogo inicial dos fluxos críticos, com passos reproduzíveis e resultados o
 ## Preparação segura
 
 Use backend e aplicativos da **mesma versão**, com migrações aplicadas em banco de teste. A comunicação interna exige a migration `V45__add_group_communications.sql`. Não a execute diretamente em produção para testar. Para checkout, use exclusivamente credenciais e pagamentos sandbox. Os scripts de seed existentes podem apontar para Firebase de desenvolvimento; confira o destino antes de executá-los.
+
+Convites permanentes exigem `V46__allow_permanent_group_invites.sql` e app atualizado. Novos links não expiram; links antigos mantêm o prazo original até serem substituídos. A migração não reativa links expirados. A resposta da criação tem `expiresAt: null` e `revision`; a consulta de metadados omite `expiresAt` quando não há prazo. Aplicativos antigos podem rejeitar essa resposta: coordene a atualização do app e backend antes de usar novos convites.
+
+O roteiro `APP-I01`–`APP-I07` tem **9 execuções**, considerando os exemplos. `APP-I03` usa relógio controlado do backend, não a data do celular. A cobertura automática desta mudança é por unidade, gateway, banco, HTTP, tela e adapters nativos; não foi acrescentado um E2E de app instalado para convites. Registre o teste físico do deeplink separadamente, inclusive no iOS.
 
 Prepare contas descartáveis distintas; não reutilize dados pessoais nem contas de produção:
 
@@ -70,6 +75,7 @@ Seletores novos estáveis: `GroupLeaveTags`, `MemberProfileTags`, `OwnMonthlyPay
 - Comunicação atual é texto persistido dentro do app, com Atualizar/Carregar anteriores. Não há WebSocket, push, anexos, edição/exclusão de mensagem ou nova integração WhatsApp.
 - Desabilitar uma categoria afeta notificações futuras, não apaga as antigas nem impede consultar o conteúdo do grupo.
 - O dono não pode sair do próprio grupo; saída não é exclusão de conta/grupo nem perdão de dívida.
+- A prévia de convite ainda ignora o prazo legado e a configuração de aprovação no adapter JDBC; a entrada efetiva valida ambos. Pendência anterior a esta mudança, não homologada pelos novos cenários de convite permanente.
 - O painel ainda usa dados demonstrativos em **Suporte e moderação** (`VUL-171`). Não aprovar esse fluxo como integrado; cenário correspondente está bloqueado por implementação.
 - As três listas paginadas do painel exigem massa de pelo menos 51 registros e filtros com mais de 25 resultados para testar todas as transições; não use dados reais de clientes como fixture.
 - Este catálogo é a primeira bateria crítica, não uma alegação de cobertura exaustiva de todas as combinações do produto.
