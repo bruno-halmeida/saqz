@@ -26,7 +26,7 @@
 - T06 parcial: composição com trial e assinatura centrais, inclusive corte efetivo de downgrade.
   Ativação por grupo ainda pendente.
 - T07 parcial: núcleo decimal, gross-up, split fixo, simulação HTTP e consulta de termos; publicação administrativa implementada; emissão pendente.
-- T08–T20 pendentes. Sem pagamentos, carteira, recorrência, mobile ou adm-web implementados.
+- T08–T17 e T19–T20 pendentes. T18 parcial: APIs de publicação/preview administrativo implementadas; interface adm-web pendente. Sem pagamentos, carteira, recorrência ou mobile implementados.
 - T21 parcial: revisão individual e sete mutações detectadas em cópia temporária.
 - 51 testes novos: 12 domínio/cifra/tarifas, 24 PostgreSQL/HTTP, 8 delegação, 4 elegibilidade, 3 HTTP administrativo.
 - Homologação real Asaas e liberação do piloto não realizadas.

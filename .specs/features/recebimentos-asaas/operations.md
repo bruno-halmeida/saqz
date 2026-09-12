@@ -24,7 +24,7 @@ A biblioteca de cifragem aceita um keyring para leitura de chaves antigas. O boo
 atual injeta uma chave; rotação operacional com múltiplas chaves ainda precisa ser
 conectada antes de substituir a chave de um ambiente com dados.
 
-Publicação de termos e liberação por titular serão feitas pelo painel nas próximas tarefas.
+A interface de publicação de termos e liberação por titular será feita pelo painel nas próximas tarefas.
 Nenhum termo ou valor comercial foi inventado ou semeado na migração.
 
 ## Recuperação de cadastro incerto
@@ -72,7 +72,7 @@ termos/tarifas, sem gerar aceite ou dívida. Sem configuração aplicável retor
 CONFIGURATION_UNAVAILABLE. `GET /api/receivables/terms/{version}` consulta versões
 publicadas, incluindo históricas e condições futuras já anunciadas. Ambas as rotas
 usam a autenticação normal da API e independem de BaaS, subconta ou plano elegível.
-A página pública de termos e a publicação administrativa continuam pendentes.
+A página pública de termos continua pendente; a publicação administrativa por API está descrita abaixo.
 
 ## Publicação administrativa
 
