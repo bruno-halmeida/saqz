@@ -19,6 +19,30 @@ backend/gradlew -p backend check      # build + testes do backend
 mobile/gradlew -p mobile detektAll    # lint do mobile
 ```
 
+### iOS no iPhone com equipe pessoal
+
+Abra `mobile/ios-app/SaqzIOS.xcodeproj`, selecione o scheme **SaqzDev** e o
+iPhone conectado. Em **SaqzIOS → Signing & Capabilities → Debug**, mantenha
+**Automatically manage signing** e selecione sua **Personal Team**. Execute
+com **⌘R**; se solicitado pelo iPhone, habilite o Modo de Desenvolvedor e
+confie no certificado de desenvolvimento.
+
+**Debug não solicita Associated Domains**, capacidade indisponível para
+Personal Team. O esquema nativo `saqz://` continua registrado para testes de
+convites. Essa configuração não testa Universal Links HTTPS.
+
+**SaqzProd/Release mantém Associated Domains**. Para testar Universal Links,
+use uma equipe do Apple Developer Program, configure o domínio e seu arquivo
+`apple-app-site-association` e, caso use Debug, associe novamente
+`SaqzIOS/SaqzIOS.entitlements` em **Code Signing Entitlements** nessa configuração.
+Não remova a capacidade de Release para contornar erros da equipe pessoal.
+
+Regressão da configuração de assinatura (macOS com Xcode):
+
+```bash
+node --test mobile/ios-app/tests/signing-config.test.cjs
+```
+
 ## Browser
 
 [Lightpanda](https://lightpanda.io/docs/quickstart) é o browser padrão do

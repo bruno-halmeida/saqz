@@ -484,7 +484,9 @@
 				BRANCH_LIVE_KEY = "missing-branch-live-key";
 				BRANCH_TEST_KEY = key_test_saqz_local_fixture;
 				BRANCH_TEST_MODE = YES;
-				CODE_SIGN_ENTITLEMENTS = SaqzIOS/SaqzIOS.entitlements;
+				// Personal Team supports native saqz:// links, but not Associated Domains.
+				// Keep the HTTPS Universal Links entitlement in Release only.
+				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
