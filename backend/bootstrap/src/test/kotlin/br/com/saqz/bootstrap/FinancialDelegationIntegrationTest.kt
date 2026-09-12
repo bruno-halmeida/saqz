@@ -110,6 +110,27 @@ class FinancialDelegationIntegrationTest {
     }
 
     @Test
+    fun `owner removal also revokes administrator delegation`() = fixture { f ->
+        f.grant()
+        val remove = RemoveAthlete(f.transaction, f.read, JdbcAthleteRepository(f.dataSource), GroupAccessPolicy(), f.revocation)
+        remove.execute(f.owner, f.group, f.admin)
+        assertNotNull(f.accounts.findDelegation(f.account, f.admin)!!.revokedAt)
+        assertEquals(FinancialError.NOT_FOUND, (f.service.list(f.account,
+            FinancialRequest(UUID.randomUUID(), f.admin)) as FinancialResult.Failure).error)
+    }
+
+    @Test
+    fun `changing group owner never transfers historical financial ownership`() = fixture { f ->
+        f.grant()
+        f.execute("UPDATE access_groups SET owner_user_id='${f.admin}' WHERE id='${f.group}'")
+        assertEquals(f.owner, f.accounts.findById(f.account)!!.ownerUserId)
+        assertEquals(emptyList(), (f.service.accounts(FinancialRequest(UUID.randomUUID(), f.admin)) as FinancialResult.Success).value)
+        assertEquals(listOf(f.account), (f.service.accounts(FinancialRequest(UUID.randomUUID(), f.owner)) as FinancialResult.Success).value.map { it.id })
+        assertEquals(FinancialError.NOT_FOUND, (f.service.revoke(f.account, FinancialRequest(UUID.randomUUID(), f.admin),
+            f.owner, now) as FinancialResult.Failure).error)
+    }
+
+    @Test
     fun `delegation controller exposes typed errors and request IDs without granting platform admin powers`() = fixture { f ->
         val controller = FinancialDelegationsController(FinancialActorResolver { UUID.fromString(it.subject) }, f.service,
             Clock.fixed(now, ZoneOffset.UTC))

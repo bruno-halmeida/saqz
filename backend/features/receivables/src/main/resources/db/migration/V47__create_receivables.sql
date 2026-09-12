@@ -8,7 +8,6 @@ CREATE TABLE receivable_accounts (
     provider_account_id varchar(128) UNIQUE,
     provider_wallet_id varchar(128) UNIQUE,
     credentials_encrypted text,
-    provider_created_at timestamptz,
     registration varchar(24) NOT NULL CHECK (registration IN ('INCOMPLETE','UNDER_REVIEW','CORRECTION_REQUIRED','APPROVED','REJECTED')),
     new_operations_enabled boolean NOT NULL DEFAULT false,
     created_at timestamptz NOT NULL,

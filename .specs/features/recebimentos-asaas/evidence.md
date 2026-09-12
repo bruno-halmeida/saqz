@@ -30,7 +30,7 @@ Asserções em `ReceivablesSchemaIntegrationTest.kt`; cada linha abaixo também 
 
 | Critério | Linha / asserção | Resultado |
 |---|---|---|
-| B1 migração aditiva | 25–29 `assertEquals(1/0/2300/17, ...)` | migra uma vez; preserva cobrança manual; cria 17 tabelas financeiras |
+| B1 migração aditiva | 25–29 `assertEquals(2/0/2300/17, ...)` (V47 + V48 após a entrega de onboarding) | aplica a base e preserva cobrança manual; cria 17 tabelas financeiras |
 | B2 identidade única | 37–39 `assertEquals("23505", ...sqlState)` / contagem 1 | titular e CPF/CNPJ não duplicam conta |
 | B4 deduplicação por conta | 51–53 SQLSTATE 23505 / contagem 2 | evento duplicado rejeitado só na mesma conta |
 | B5 competência única | 69–71 SQLSTATE 23505 / contagem 1 | mesma competência não reaparece após troca de conta |
@@ -95,7 +95,7 @@ modificação é detectada, rotação mantém leitura, falha não expõe causa o
 B4: resultado persistido retorna mesmo ID, mudança de conteúdo/ator conflita, uma execução concorrente,
 conta alheia rejeitada, lease abandonado só recupera, worker obsoleto não sobrescreve,
 timeout/consulta inconclusiva mantêm UNKNOWN; recuperação encontra exatamente um pagamento remoto.
-Nenhum teste existente alterado; sem teste de biblioteca isolado ou asserção somente de número de chamadas.
+Nenhuma asserção de comportamento existente enfraquecida; sem teste de biblioteca isolado ou asserção somente de número de chamadas.
 
 ## T04 — entrega parcial de onboarding
 
@@ -271,3 +271,12 @@ Asserções localizadas, todas vinculadas aos critérios acima:
 - `FinancialDelegationIntegrationTest.kt:169` — `assertFalse(mvc.perform(get("/api/receivables/accounts")).andReturn().response.contentAsString.contains(f.account.toString()))`
 
 Permissões nas futuras rotas de cobrança/saque/reembolso serão verificadas nas tarefas que criam essas rotas; não existem ainda.
+
+## Separação das entregas e casos adicionais de delegação
+
+Para permitir merge/deploy da base antes do onboarding sem alterar checksum de migração,
+provider_created_at foi movido para V48. O teste de migração passou a esperar duas
+migrações após baseline46; a preservação de dados e a reaplicação sem alterações permanecem verificadas.
+
+Foram adicionados dois cenários B2 à suíte de delegação: remoção pelo titular (além da saída voluntária)
+e troca do dono do grupo sem transferência de conta/histórico. Oito testes de delegação passam.

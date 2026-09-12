@@ -22,7 +22,7 @@ class ReceivablesSchemaIntegrationTest {
         }
         val migration = Flyway.configure().dataSource(database.dataSource).locations(location)
             .baselineOnMigrate(true).baselineVersion("46").load()
-        assertEquals(1, migration.migrate().migrationsExecuted)
+        assertEquals(2, migration.migrate().migrationsExecuted)
         assertEquals(0, migration.migrate().migrationsExecuted)
         database.dataSource.connection.use {
             assertEquals(2300, it.number("SELECT amount_cents FROM group_charges"))

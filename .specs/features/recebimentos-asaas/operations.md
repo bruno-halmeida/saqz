@@ -1,6 +1,6 @@
 # Estado operacional — implementação em andamento
 
-Não liberar o piloto com esta base isoladamente. Pagamentos, carteira, delegações,
+Não liberar o piloto com esta base isoladamente. Pagamentos, carteira, ativação por grupo,
 recorrência, mobile e painel ainda dependem das próximas tarefas.
 
 ## Cadastro financeiro
@@ -56,5 +56,5 @@ a aprovação é obtida pelo `general` de `/myAccount/status`.
 
 Testes locais usam PostgreSQL real e HTTP Asaas simulado. Não houve chamada a uma
 subconta real, envio de documento real, cobrança, saque ou publicação em produção.
-As migrações ainda são alterações locais de uma feature inédita, não publicadas;
-V47 foi complementada durante o desenvolvimento da mesma entrega.
+V47 contém a base financeira; V48 adiciona a data de criação remota necessária
+ao onboarding. A separação preserva o checksum de V47 entre as entregas.
