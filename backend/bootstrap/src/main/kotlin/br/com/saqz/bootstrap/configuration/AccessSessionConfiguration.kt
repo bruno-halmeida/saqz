@@ -405,7 +405,8 @@ class AccessSessionConfiguration {
         transaction: JdbcTransactionRunner,
         repository: JdbcGroupCreationRepository,
         subscriptionLimits: SubscriptionLimits,
-    ) = CreateGroup(transaction, repository, subscriptionLimits)
+        trial: br.com.saqz.sharedkernel.subscription.GroupCreationTrial,
+    ) = CreateGroup(transaction, repository, subscriptionLimits, trial)
 
     @Bean
     fun groupDeletionRepository(dataSource: DataSource) = JdbcGroupDeletionRepository(dataSource)

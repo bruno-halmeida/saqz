@@ -8,6 +8,7 @@ import br.com.saqz.groups.domain.group.GroupProfileDefaultsValidator
 import br.com.saqz.groups.domain.group.GroupValidationError
 import br.com.saqz.groups.domain.plan.PlanLimitPolicy
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
+import br.com.saqz.sharedkernel.subscription.GroupCreationTrial
 import java.util.UUID
 
 private const val MAX_TIME_ZONE_LENGTH = 64
@@ -16,6 +17,7 @@ class CreateGroup(
     private val transactionRunner: TransactionRunner,
     private val repository: GroupCreationRepository,
     private val subscriptionLimits: SubscriptionLimits,
+    private val trial: GroupCreationTrial = GroupCreationTrial.None,
 ) {
     fun execute(
         actor: UUID,
@@ -47,7 +49,8 @@ class CreateGroup(
             repository.lockOwnerForGroupLimit(actor)
             repository.findByCreationKey(actor, requestId)?.let { return@inTransaction it }
 
-            val groupLimit = subscriptionLimits.groupLimitFor(actor)
+            val eligibleForTrial = trial.isEligible(actor)
+            val groupLimit = if (eligibleForTrial) 1 else subscriptionLimits.groupLimitFor(actor)
             val ownedCount = repository.countOwnedGroups(actor)
             if (!PlanLimitPolicy.canCreateGroup(ownedCount, groupLimit)) {
                 return@inTransaction null
@@ -60,7 +63,7 @@ class CreateGroup(
                     timeZone = requireNotNull(validTimeZone),
                     profile = (profileValidation as GroupProfileDefaultsValidation.Valid).value,
                 ),
-            )
+            ).also { if (eligibleForTrial) trial.start(actor) }
         } ?: return CreateGroupResult.GroupLimitExceeded
 
         return CreateGroupResult.Success(
