@@ -15,5 +15,7 @@
 - T01 concluída: módulo, contratos e política de autorização; 5 testes de domínio e 20 de arquitetura passam.
 - Corrigida dependência preexistente de exceções Asaas em subscriptions; suíte subscriptions passa.
 - T02 concluída: migração V47, 17 tabelas; seis testes PostgreSQL e migração do bootstrap passam.
-- Próximo: T03, cifragem e operações persistidas recuperáveis.
+- T03 concluída: AES-GCM com contexto de conta/finalidade, HMAC para identidade; operações com leases e fencing.
+- Gate: 8 testes unitários, 10 PostgreSQL, 20 arquitetura passam.
+- Próximo: T04 onboarding e integração Asaas, ainda sem endpoints ou liberação operacional.
 - Trial central ainda ausente neste checkout; não foi reimplementado.
