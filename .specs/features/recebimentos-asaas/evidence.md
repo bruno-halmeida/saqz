@@ -316,3 +316,5 @@ Gate JDK 21: receivables check (12 unitários + 20 integração), architecture-t
 (20 casos) e bootstrap compileKotlin, exit 0. Sem tarifa padrão ou publicação real.
 A simulação não garante autorização de emissão: aprovação, plano e grupo serão validados
 na emissão. A disponibilidade desta consulta é intencional mesmo antes do cadastro.
+
+Gate amplo após T07 simulação: 381 testes bootstrap passaram, exit 0, sem testes ignorados.
