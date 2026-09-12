@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -41,11 +44,13 @@ internal fun InvitePreviewMessageScreen(
         modifier = modifier
             .fillMaxSize()
             .background(SaqzTheme.colors.background)
+            .imePadding()
             .testTag(InvitePreviewTags.Screen),
     ) {
         SaqzTopAppBar(title = stringResource(Res.string.invite_preview_title, state.groupName), onBack = onBack)
         Column(
-            modifier = Modifier.fillMaxWidth().padding(SaqzTheme.metrics.horizontalPadding),
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(SaqzTheme.metrics.horizontalPadding),
             verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
         ) {
             SaqzInput(
@@ -53,6 +58,8 @@ internal fun InvitePreviewMessageScreen(
                 onValueChange = { onIntent(InvitePreviewIntent.MessageChanged(it)) },
                 label = stringResource(Res.string.invite_preview_message_label),
                 placeholder = stringResource(Res.string.invite_preview_message_hint),
+                singleLine = false,
+                minLines = 4,
                 modifier = Modifier.fillMaxWidth().testTag(InvitePreviewTags.Message),
             )
             Text(

@@ -10,6 +10,14 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
+import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.onboarding_invite_message
+import org.jetbrains.compose.resources.stringResource
+import org.junit.Assert.assertTrue
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.invite.GroupInviteState
 import br.com.saqz.groups.presentation.invite.InvitePreviewState
@@ -83,6 +91,21 @@ class GroupInviteScreenshotTest {
             onIntent = {},
             onBack = {},
         )
+    }
+
+    @Test
+    fun defaultOnboardingMessageIsReadableAcrossMultipleLines() {
+        capture("invite-onboarding-message") {
+            InvitePreviewMessageScreen(
+                state = InvitePreviewState("Vôlei do CERET", "https://saqz.app/invite/ceret",
+                    stringResource(Res.string.onboarding_invite_message, "Vôlei do CERET")),
+                onIntent = {}, onBack = {},
+            )
+        }
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNode(hasSetTextAction()).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertTrue("The invitation must wrap instead of hiding text in one horizontal line", layouts.single().lineCount > 1)
+        compose.onNodeWithText("Enviar no WhatsApp").assertIsDisplayed()
     }
 
     @Test
