@@ -70,6 +70,7 @@ import br.com.saqz.groups.application.invite.preview.PreviewInvite
 import br.com.saqz.sharedkernel.subscription.OwnedGroupCounter
 import br.com.saqz.sharedkernel.subscription.PlanOwnerLookup
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
+import br.com.saqz.sharedkernel.group.GroupAdministrationRevocation
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionPlanLookup
 import br.com.saqz.subscriptions.application.SubscriptionLimitsAdapter
 import br.com.saqz.subscriptions.application.SubscriptionPlanLookup
@@ -534,7 +535,8 @@ class AccessSessionConfiguration {
         transaction: JdbcTransactionRunner,
         readRepository: JdbcGroupReadRepository,
         membershipRepository: JdbcMembershipRepository,
-    ) = ChangeMemberRole(transaction, readRepository, membershipRepository, GroupAccessPolicy())
+        administrationRevocation: GroupAdministrationRevocation,
+    ) = ChangeMemberRole(transaction, readRepository, membershipRepository, GroupAccessPolicy(), administrationRevocation)
 
     @Bean
     fun accessMembershipController(
@@ -844,7 +846,7 @@ class AccessSessionConfiguration {
     @Bean fun athleteStatsRepository(dataSource: DataSource) = JdbcAthleteStatsRepository(dataSource)
     @Bean fun updateOwnAthleteProfile(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository) = UpdateOwnAthleteProfile(transaction, readRepository, athletes)
     @Bean fun updateAthlete(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository) = UpdateAthlete(transaction, readRepository, athletes, GroupAccessPolicy())
-    @Bean fun removeAthlete(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository) = RemoveAthlete(transaction, readRepository, athletes, GroupAccessPolicy())
+    @Bean fun removeAthlete(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository, administrationRevocation: GroupAdministrationRevocation) = RemoveAthlete(transaction, readRepository, athletes, GroupAccessPolicy(), administrationRevocation)
     @Bean fun listAthletes(readRepository: JdbcGroupReadRepository, roster: JdbcAthleteRosterRepository) = ListAthletes(readRepository, roster, GroupAccessPolicy())
     @Bean fun getOwnAthleteProfile(roster: JdbcAthleteRosterRepository) = GetOwnAthleteProfile(roster)
     @Bean fun getAthleteStats(readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository, stats: JdbcAthleteStatsRepository) = GetAthleteStats(readRepository, athletes, stats)

@@ -8,6 +8,7 @@ import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.GroupAction
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.PersistedMembershipRole
+import br.com.saqz.sharedkernel.group.GroupAdministrationRevocation
 import java.util.UUID
 
 class ChangeMemberRole(
@@ -15,6 +16,7 @@ class ChangeMemberRole(
     private val groupReadRepository: GroupReadRepository,
     private val membershipRepository: MembershipRepository,
     private val accessPolicy: GroupAccessPolicy,
+    private val administrationRevocation: GroupAdministrationRevocation = GroupAdministrationRevocation { _, _ -> },
 ) {
     fun execute(
         actor: UUID,
@@ -34,8 +36,8 @@ class ChangeMemberRole(
         if (target.role == GroupRole.OWNER) return@inTransaction ChangeMemberRoleResult.OwnerImmutable
         val requestedRole = GroupRole.valueOf(role.name)
         if (target.role == requestedRole) return@inTransaction ChangeMemberRoleResult.Success(target)
-        ChangeMemberRoleResult.Success(
-            membershipRepository.change(ChangeMemberRoleCommand(groupId, userId, role)),
-        )
+        val changed = membershipRepository.change(ChangeMemberRoleCommand(groupId, userId, role))
+        if (target.role == GroupRole.ADMIN) administrationRevocation.revoked(groupId, userId)
+        ChangeMemberRoleResult.Success(changed)
     }
 }
