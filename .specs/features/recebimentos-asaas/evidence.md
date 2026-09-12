@@ -301,3 +301,18 @@ calcular comissão com taxa do provedor; remover callback transacional de revoga
 Nenhuma dessas mutações foi aplicada à árvore de trabalho.
 
 Gate amplo final após integração: 381 bootstrap + 12 unitários receivables + 17 integração receivables + 20 arquitetura, zero falhas/erros/ignorados; exit 0.
+
+## T07 — catálogo e simulação HTTP
+
+FinancialConditionsIntegrationTest adiciona três testes derivados de B3/A2:
+- `simulation has no fallback fee and creates no account acceptance or debt`: ausência de
+  configuração retorna CONFIGURATION_UNAVAILABLE, quote em centavos e nenhuma escrita financeira.
+- `new quotes use effective published fees and keep historical terms accessible`: limite exato
+  de vigência, publicação de tarifa/termos e consulta de condições históricas.
+- `HTTP rejects fractional missing and overflowing cents and returns the request identifier`:
+  contrato HTTP real, rejeição de frações e overflow, requestId, quote e termos publicados.
+
+Gate JDK 21: receivables check (12 unitários + 20 integração), architecture-tests test
+(20 casos) e bootstrap compileKotlin, exit 0. Sem tarifa padrão ou publicação real.
+A simulação não garante autorização de emissão: aprovação, plano e grupo serão validados
+na emissão. A disponibilidade desta consulta é intencional mesmo antes do cadastro.

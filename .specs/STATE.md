@@ -25,8 +25,10 @@
   Permissões nas futuras operações serão aplicadas quando essas rotas existirem.
 - T06 parcial: composição com trial e assinatura centrais, inclusive corte efetivo de downgrade.
   Ativação por grupo ainda pendente.
-- T07 parcial: núcleo decimal, gross-up e split fixo; publicação, simulação HTTP e emissão pendentes.
+- T07 parcial: núcleo decimal, gross-up, split fixo, simulação HTTP e consulta de termos; publicação e emissão pendentes.
 - T08–T20 pendentes. Sem pagamentos, carteira, recorrência, mobile ou adm-web implementados.
 - T21 parcial: revisão individual e sete mutações detectadas em cópia temporária.
 - 41 testes novos: 12 domínio/cifra/tarifas, 17 PostgreSQL/HTTP, 8 delegação, 4 elegibilidade.
 - Homologação real Asaas e liberação do piloto não realizadas.
+
+- `feat/receivables-quotes`: terceira entrega dependente com catálogo vigente e simulação HTTP; três testes PostgreSQL/HTTP novos passaram.

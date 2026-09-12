@@ -63,3 +63,13 @@ A migração do trial central foi renumerada para V48, resolvendo a colisão ant
 com V46 de convites permanentes. O conteúdo SQL do trial foi preservado.
 A elegibilidade usa OrganizerTrialAccessLookup e Subscription.isEntitlingAt;
 o corte de downgrade usa pendingPlanEffectiveAt, sem recalcular o trial.
+
+## Simulação de condições
+
+`POST /api/receivables/charges/simulate` recebe requestId, baseCents inteiro e methods
+(PIX e/ou CARD). Retorna quotes com base, taxas, total, líquido previsto e versão dos
+termos/tarifas, sem gerar aceite ou dívida. Sem configuração aplicável retorna 503 com
+CONFIGURATION_UNAVAILABLE. `GET /api/receivables/terms/{version}` consulta versões
+publicadas, incluindo históricas e condições futuras já anunciadas. Ambas as rotas
+usam a autenticação normal da API e independem de BaaS, subconta ou plano elegível.
+A página pública de termos e a publicação administrativa continuam pendentes.

@@ -26,7 +26,7 @@ e direcionamento.md. O estado de cada tarefa está indicado abaixo; itens parcia
 
 ### Fase 2 — cobrança e dinheiro (lote 2; depende da fase 1)
 
-- [ ] T07 (parcial: núcleo decimal e split fixo verificados; falta publicação/simulação HTTP e emissão) Implementar tarifas versionadas e cálculo decimal em centavos com split fixo. Gate: casos fixos/percentuais, arredondamento e snapshot aceito.
+- [ ] T07 (parcial: núcleo decimal e split fixo verificados; simulação HTTP e consulta de termos verificadas; faltam publicação e emissão) Implementar tarifas versionadas e cálculo decimal em centavos com split fixo. Gate: casos fixos/percentuais, arredondamento e snapshot aceito.
 - [ ] T08 Implementar ordens e instrumentos Pix/cartão hospedado com recuperação de resultado incerto. Gate: pagamento simulado, renovação após corte e timeout sem duplicação.
 - [ ] T09 Persistir/processar webhooks e conciliar pagamento, liquidação, split e caixa. Gate: duplicados, fora de ordem, outra conta, evento perdido e divergência.
 - [ ] T10 Integrar cobranças manuais, cancelamento e seleção de pendências antigas. Gate: corrida entre baixa manual, cancelamento e pagamento.
