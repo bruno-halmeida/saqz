@@ -37,7 +37,7 @@ class ChangePlanMappersTest {
 
         assertEquals("Ilimitado", card.name)
         assertFalse(card.isCurrent)
-        assertEquals(UiText.Res(Res.string.changeplan_price_year, listOf("R$ 89,90")), card.priceLabel)
+        assertEquals(UiText.Res(Res.string.changeplan_price_year, listOf("R$ 899,00")), card.priceLabel)
         assertEquals(UiText.Res(Res.string.changeplan_benefit_groups_unlimited), card.benefits.first())
     }
 
