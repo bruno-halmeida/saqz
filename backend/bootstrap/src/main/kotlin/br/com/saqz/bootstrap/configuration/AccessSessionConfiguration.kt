@@ -193,8 +193,8 @@ class AccessSessionConfiguration {
     fun sessionRepository(dataSource: DataSource) = JdbcSessionRepository(dataSource)
 
     @Bean
-    fun planOwnerLookup(lookup: SubscriptionPlanLookup) =
-        PlanOwnerLookup { lookup.findEntitlingPlan(it) != null }
+    fun planOwnerLookup(lookup: SubscriptionPlanLookup, trials: br.com.saqz.subscriptions.application.OrganizerTrialRepository) =
+        PlanOwnerLookup { lookup.findEntitlingPlan(it) != null || trials.find(it) != null }
 
     @Bean
     fun bootstrapSession(repository: JdbcSessionRepository, planOwners: PlanOwnerLookup) =
@@ -397,8 +397,8 @@ class AccessSessionConfiguration {
         JdbcSubscriptionPlanLookup(dataSource)
 
     @Bean
-    fun subscriptionLimits(lookup: SubscriptionPlanLookup): SubscriptionLimits =
-        SubscriptionLimitsAdapter(lookup)
+    fun subscriptionLimits(lookup: SubscriptionPlanLookup, trials: br.com.saqz.subscriptions.application.OrganizerTrialRepository, clock: Clock): SubscriptionLimits =
+        SubscriptionLimitsAdapter(lookup, trials, clock)
 
     @Bean
     fun createGroup(
