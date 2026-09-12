@@ -41,6 +41,7 @@ import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.onboarding_athlete_share_message
 import br.com.saqz.groups.resources.finance_overview_month_april
 import br.com.saqz.groups.resources.finance_overview_month_august
 import br.com.saqz.groups.resources.finance_overview_month_december
@@ -91,6 +92,7 @@ class GroupDetailsViewModel(
     private var autoConfirmationGeneration = 0L
     private var rosterGeneration = 0L
     private var ownChargesGeneration = 0L
+    private var athleteIntroShown = false
 
     /** O grupo da carga corrente: a seção de cobranças sozinha precisa do fuso e do Pix. */
     private var loadedGroup: Group? = null
@@ -104,6 +106,11 @@ class GroupDetailsViewModel(
     @Suppress("CyclomaticComplexMethod")
     override fun onIntent(intent: GroupDetailsIntent) {
         when (intent) {
+            GroupDetailsIntent.DismissAthleteIntro -> update { it.copy(athleteIntroVisible = false, athleteShareFailed = false) }
+            GroupDetailsIntent.ShareSaqz -> shareSaqz()
+            GroupDetailsIntent.AthleteShareFailed -> {
+                if (state.value.athleteIntroVisible) update { it.copy(athleteShareFailed = true) }
+            }
             GroupDetailsIntent.OnboardingAction -> onboardingAction()
             GroupDetailsIntent.Retry -> load()
             GroupDetailsIntent.CreateNextGame -> emit(GroupDetailsEffect.OpenCreateGame(groupId))
@@ -151,6 +158,18 @@ class GroupDetailsViewModel(
             is GroupOnboarding.InviteAthletes -> emit(GroupDetailsEffect.OpenInviteLink(groupId))
             is GroupOnboarding.ReviewFinances -> emit(GroupDetailsEffect.OpenSettlement(groupId, guide.gameId))
             null -> Unit
+        }
+    }
+
+    private fun shareSaqz() {
+        if (!state.value.athleteIntroVisible || state.value.isAdmin) return
+        val generation = loadGeneration
+        update { it.copy(athleteShareFailed = false) }
+        viewModelScope.launch {
+            val message = getString(Res.string.onboarding_athlete_share_message)
+            if (generation == loadGeneration && state.value.athleteIntroVisible) {
+                emit(GroupDetailsEffect.ShareSaqz(message))
+            }
         }
     }
 
@@ -221,6 +240,7 @@ class GroupDetailsViewModel(
         update { it.copy(
             isLoading = true, loadFailed = false, error = null,
             onboarding = null,
+            athleteIntroVisible = false, athleteShareFailed = false,
             notifying = false, notificationFailed = false, notifiedCount = null,
         ) }
         viewModelScope.launch {
@@ -464,6 +484,7 @@ class GroupDetailsViewModel(
             it.copy(
                 memberResponse = GroupDetailsResponseUi(intent.toResponseStatus()),
                 responding = true,
+                athleteIntroVisible = false,
                 responseFailed = false,
             )
         }
@@ -481,12 +502,15 @@ class GroupDetailsViewModel(
                     val roster = (rosterResult as? SaqzResult.Success)?.value
                     val detail = result.value.value.detail
                     val response = result.value.value.attendance.toResponse(roster)
+                    val showIntroduction = !state.value.isAdmin && !athleteIntroShown
+                    if (showIntroduction) athleteIntroShown = true
                     update {
                         it.copy(
                             nextGame = it.nextGame?.reconcile(detail, roster),
                             attendance = detail.toAttendance(),
                             memberResponse = if (roster != null) response.reconcileRoster(roster) else response,
                             responding = false,
+                            athleteIntroVisible = it.athleteIntroVisible || showIntroduction,
                             responseFailed = false,
                             rosterStale = rosterResult is SaqzResult.Failure,
                             rosterRefreshing = false,

@@ -12,6 +12,8 @@ import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.groups.presentation.details.GroupDetailsEffect
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
+import br.com.saqz.groups.port.NativeInviteSharePort
+import br.com.saqz.groups.port.InviteNativeOperationResult
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
@@ -43,6 +45,7 @@ fun GroupDetailsRoot(
     refreshVersion: Int = 0,
     photoFailed: Boolean = false,
     mapPort: GroupMapPort = koinInject(),
+    sharePort: NativeInviteSharePort = koinInject(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
@@ -58,6 +61,11 @@ fun GroupDetailsRoot(
     // subir para o `NavDisplay` como um efeito de navegação que ninguém navega.
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
+            is GroupDetailsEffect.ShareSaqz -> sharePort.shareText(effect.message) { result ->
+                if (result is InviteNativeOperationResult.Failure) {
+                    viewModel.onIntent(GroupDetailsIntent.AthleteShareFailed)
+                }
+            }
             is GroupDetailsEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
             is GroupDetailsEffect.OpenMap -> {
                 mapPort.open(venueMapUrl(effect.address)) { opened ->

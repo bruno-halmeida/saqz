@@ -39,6 +39,7 @@ import br.com.saqz.groups.presentation.invite.InviteLandingState
 import br.com.saqz.groups.presentation.invite.InviteNextGameUi
 import br.com.saqz.groups.presentation.invite.InvitePreviewUi
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.onboarding_athlete_entry
 import br.com.saqz.groups.resources.invite_error_expired_body
 import br.com.saqz.groups.resources.invite_error_expired_title
 import br.com.saqz.groups.resources.invite_error_invalid_body
@@ -172,6 +173,8 @@ private fun InvitePreviewScreen(
         Text(stringResource(Res.string.invite_landing_eyebrow), style = SaqzTheme.typography.eyebrow, color = SaqzTheme.colors.primary)
         Text(preview.groupName, style = SaqzTheme.typography.headline, color = SaqzTheme.colors.textPrimary)
         InviteGroupCard(preview)
+        Text(stringResource(Res.string.onboarding_athlete_entry),
+            style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
         preview.nextGame?.let { nextGame ->
             SaqzGameSummaryCard(
                 eyebrow = stringResource(Res.string.invite_landing_next_game),

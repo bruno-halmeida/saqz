@@ -973,6 +973,7 @@ internal fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop
         // o efeito antes daqui. O ramo existe porque o `when` é sobre o tipo inteiro —
         // não é `else`, e nenhum efeito de navegação cai nele.
         is GroupDetailsEffect.CopyPix -> Unit
+        is GroupDetailsEffect.ShareSaqz -> Unit // Native sharing is consumed by GroupDetailsRoot.
     }
 }
 

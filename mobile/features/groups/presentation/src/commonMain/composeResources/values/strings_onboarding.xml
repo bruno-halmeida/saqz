@@ -11,4 +11,12 @@
     <string name="onboarding_finance_title">Primeiro jogo encerrado. E o acerto?</string>
     <string name="onboarding_finance_body">Veja quem ainda precisa pagar e registre os recebimentos do jogo. O caixa reúne entradas e saídas para você acompanhar o saldo do grupo.</string>
     <string name="onboarding_finance_action">Ver acerto do primeiro jogo</string>
+    <string name="onboarding_invite_message">Entre no %1$s pelo Saqz para responder presença. Abra o link, baixe o app e entre na sua conta. Atletas não precisam assinar o Saqz; os valores dos jogos são combinados com o grupo.</string>
+    <string name="onboarding_athlete_title">Sua resposta foi salva. Conheça o Saqz.</string>
+    <string name="onboarding_athlete_body">Acompanhe os próximos jogos, a lista de presença e suas cobranças pelo app. Joga em outros grupos? Você pode participar deles com esta mesma conta, sem assinar o Saqz. Os valores dos jogos são combinados com cada grupo.</string>
+    <string name="onboarding_athlete_share">Indicar o Saqz a outro grupo</string>
+    <string name="onboarding_athlete_dismiss">Agora não</string>
+    <string name="onboarding_athlete_share_message">Nosso grupo usa o Saqz para organizar jogos, presenças e o caixa. Que tal levar para o seu grupo também? https://saqz.app/</string>
+    <string name="onboarding_athlete_share_failed">Não foi possível abrir o compartilhamento. Tente novamente.</string>
+    <string name="onboarding_athlete_entry">Você participa pelo app sem assinar o Saqz. Os valores dos jogos são combinados com o grupo.</string>
 </resources>

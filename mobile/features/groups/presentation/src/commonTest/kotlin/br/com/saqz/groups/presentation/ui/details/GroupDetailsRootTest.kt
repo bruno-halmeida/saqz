@@ -26,12 +26,45 @@ import kotlin.test.assertNull
 @OptIn(ExperimentalTestApi::class)
 class GroupDetailsRootTest {
     @Test
+    fun athleteReferralUsesNativeShareAndKeepsItsFailureInTheCard() = runComposeUiTest {
+        val vm = detailsViewModel(
+            groupGateway = FakeGroupGateway(readResult = SaqzResult.Success(
+                br.com.saqz.groups.presentation.sampleVersionedGroup(
+                    br.com.saqz.groups.presentation.sampleGroup(role = br.com.saqz.groups.domain.group.GroupRole.ATHLETE),
+                ),
+            )),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+        )
+        val share = br.com.saqz.groups.presentation.FakeInviteSharePort().apply {
+            result = br.com.saqz.groups.port.InviteNativeOperationResult.Failure(
+                br.com.saqz.groups.port.InviteNativeFailureCode.PROVIDER_UNAVAILABLE,
+            )
+        }
+        setContent {
+            SaqzTheme {
+                GroupDetailsRoot(GroupId, {}, {}, viewModel = vm, sharePort = share,
+                    mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) })
+            }
+        }
+        runOnIdle { vm.onIntent(br.com.saqz.groups.presentation.details.GroupDetailsIntent.Respond(
+            br.com.saqz.groups.domain.attendance.AttendanceIntent.Confirm,
+        )) }
+        waitForIdle()
+        runOnIdle { vm.onIntent(br.com.saqz.groups.presentation.details.GroupDetailsIntent.ShareSaqz) }
+        waitForIdle()
+        assertEquals("Nosso grupo usa o Saqz para organizar jogos, presenças e o caixa. Que tal levar para o seu grupo também? https://saqz.app/", share.sharedText)
+        assertEquals(true, vm.state.value.athleteShareFailed)
+        assertEquals(true, vm.state.value.athleteIntroVisible)
+    }
+
+    @Test
     fun nativeMapFailureIsShownAndUsesTheEncodedVenueAddress() = runComposeUiTest {
         val vm = detailsViewModel()
         val opened = mutableListOf<String>()
         setContent {
             SaqzTheme {
                 GroupDetailsRoot(
+                    sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
                     groupId = GroupId,
                     onBack = {},
                     onEffect = {},
@@ -59,6 +92,7 @@ class GroupDetailsRootTest {
         setContent {
             SaqzTheme {
                 GroupDetailsRoot(
+                    sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
 
                     mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                     groupId = GroupId,
@@ -95,6 +129,7 @@ class GroupDetailsRootTest {
         setContent {
             SaqzTheme {
                 GroupDetailsRoot(
+                    sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
 
                     mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                     groupId = GroupId,
@@ -135,6 +170,7 @@ class GroupDetailsRootTest {
                 if (onScreen) {
                     stateHolder.SaveableStateProvider(GroupId) {
                         GroupDetailsRoot(
+                            sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
 
                             mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                             groupId = GroupId,

@@ -128,6 +128,9 @@ internal fun GroupDetailsScreen(
                 if (state.nextGame != null) {
                     GroupGameResponseSection(state = state, onIntent = onIntent)
                 }
+                if (state.athleteIntroVisible && !state.isAdmin && !state.responding) {
+                    AthleteOnboardingCard(state.athleteShareFailed, onIntent)
+                }
                 state.attendance?.let {
                     GroupAttendanceStats(attendance = it, isAdmin = state.isAdmin, onIntent = onIntent)
                 }

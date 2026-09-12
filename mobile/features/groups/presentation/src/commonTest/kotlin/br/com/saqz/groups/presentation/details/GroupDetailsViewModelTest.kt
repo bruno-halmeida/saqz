@@ -71,6 +71,57 @@ class GroupDetailsViewModelTest {
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
     @Test
+    fun `athlete introduction waits for server success and can be dismissed without changing attendance`() = runTest {
+        val attendance = FakeAttendanceGateway().apply { respondDeferred = CompletableDeferred() }
+        val vm = viewModel(groupGateway = athleteGroupGateway(), attendanceGateway = attendance,
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))))
+        assertFalse(vm.state.value.athleteIntroVisible)
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        assertTrue(vm.state.value.responding)
+        assertFalse(vm.state.value.athleteIntroVisible)
+        attendance.respondDeferred!!.complete(SaqzResult.Success(sampleVersionedAttendanceMutation()))
+        advanceUntilIdle()
+        assertTrue(vm.state.value.athleteIntroVisible)
+        vm.onIntent(GroupDetailsIntent.ShareSaqz)
+        advanceUntilIdle()
+        assertEquals(GroupDetailsEffect.ShareSaqz(
+            "Nosso grupo usa o Saqz para organizar jogos, presenças e o caixa. Que tal levar para o seu grupo também? https://saqz.app/"
+        ), vm.effects.first())
+        val savedResponse = vm.state.value.memberResponse
+        vm.onIntent(GroupDetailsIntent.DismissAthleteIntro)
+        assertFalse(vm.state.value.athleteIntroVisible)
+        assertEquals(savedResponse, vm.state.value.memberResponse)
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+        assertFalse(vm.state.value.athleteIntroVisible)
+    }
+
+    @Test
+    fun `a failed later response cannot keep the saved response introduction visible`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val vm = viewModel(groupGateway = athleteGroupGateway(), attendanceGateway = attendance,
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))))
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        assertTrue(vm.state.value.athleteIntroVisible)
+        attendance.respondResult = SaqzResult.Failure(AttendanceError.Data(DataError.Connectivity))
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Decline))
+        assertTrue(vm.state.value.responseFailed)
+        assertFalse(vm.state.value.athleteIntroVisible)
+    }
+
+    @Test
+    fun `failed response and organizer response never show athlete introduction`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame())))
+        val vm = viewModel(groupGateway = athleteGroupGateway(), gameGateway = games,
+            attendanceGateway = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.Frozen)))
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        assertFalse(vm.state.value.athleteIntroVisible)
+        val organizer = viewModel(gameGateway = games)
+        organizer.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        assertFalse(organizer.state.value.athleteIntroVisible)
+    }
+
+    @Test
     fun `starter guide advances from creating to sharing and to the completed game settlement`() = runTest {
         val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
         val vm = viewModel(gameGateway = games)

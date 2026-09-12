@@ -22,6 +22,9 @@ import br.com.saqz.groups.port.InviteNativeOperationResult
 import br.com.saqz.groups.port.InviteShareImage
 import br.com.saqz.groups.port.NativeInviteClipboardPort
 import br.com.saqz.groups.port.NativeInviteSharePort
+import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.onboarding_invite_message
+import org.jetbrains.compose.resources.getString
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
@@ -378,10 +381,18 @@ class InvitePreviewMessageViewModel(
     InvitePreviewState(groupName, inviteUrl),
 ) {
     private var shareGeneration = 0L
+    private var messageEdited = false
+    private val prepareMessage = viewModelScope.launch {
+        val message = getString(Res.string.onboarding_invite_message, groupName)
+        if (!messageEdited) updateMessage(message)
+    }
 
     override fun onIntent(intent: InvitePreviewIntent) {
         when (intent) {
-            is InvitePreviewIntent.MessageChanged -> updateMessage(intent.value)
+            is InvitePreviewIntent.MessageChanged -> {
+                messageEdited = true
+                updateMessage(intent.value)
+            }
             InvitePreviewIntent.Share -> share()
             InvitePreviewIntent.Back -> emit(InvitePreviewEffect.Back)
         }
@@ -396,16 +407,19 @@ class InvitePreviewMessageViewModel(
         if (state.value.isSharing) return
         val requestGeneration = ++shareGeneration
         update { it.copy(isSharing = true, error = null) }
-        sharePort.shareText(state.value.composedText) { result ->
-            if (requestGeneration != shareGeneration) return@shareText
-            when (result) {
-                InviteNativeOperationResult.Success -> {
-                    update { it.copy(isSharing = false) }
-                    emit(InvitePreviewEffect.Shared)
+        viewModelScope.launch {
+            prepareMessage.join()
+            sharePort.shareText(state.value.composedText) { result ->
+                if (requestGeneration != shareGeneration) return@shareText
+                when (result) {
+                    InviteNativeOperationResult.Success -> {
+                        update { it.copy(isSharing = false) }
+                        emit(InvitePreviewEffect.Shared)
+                    }
+                    InviteNativeOperationResult.Cancelled,
+                    is InviteNativeOperationResult.Failure,
+                    -> update { it.copy(isSharing = false, error = InvitePreviewError.Share) }
                 }
-                InviteNativeOperationResult.Cancelled,
-                is InviteNativeOperationResult.Failure,
-                -> update { it.copy(isSharing = false, error = InvitePreviewError.Share) }
             }
         }
     }

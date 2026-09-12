@@ -487,9 +487,21 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
+    fun `default invitation names group and explains native app and athlete pricing before sharing`() = runTest {
+        val share = FakeShare()
+        val vm = InvitePreviewMessageViewModel("CERET", "https://saqz.app/invite/1", share)
+        advanceUntilIdle()
+        val expected = "Entre no CERET pelo Saqz para responder presença. Abra o link, baixe o app e entre na sua conta. Atletas não precisam assinar o Saqz; os valores dos jogos são combinados com o grupo."
+        assertEquals(expected, vm.state.value.message)
+        vm.onIntent(InvitePreviewIntent.Share)
+        assertEquals("$expected\n\nhttps://saqz.app/invite/1", share.text)
+    }
+
+    @Test
     fun `preview share success and failure are distinct`() = runTest {
         val successShare = FakeShare()
         val success = InvitePreviewMessageViewModel("CERET", "url", successShare)
+        success.onIntent(InvitePreviewIntent.MessageChanged("")) // Organizer may choose to share only the link.
         success.onIntent(InvitePreviewIntent.Share)
         assertEquals(InvitePreviewEffect.Shared, success.effects.first())
         assertEquals("url", successShare.text)

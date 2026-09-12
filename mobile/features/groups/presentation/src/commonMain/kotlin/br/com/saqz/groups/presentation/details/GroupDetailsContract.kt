@@ -48,6 +48,8 @@ data class GroupDetailsState(
     val notificationFailed: Boolean = false,
     val notifiedCount: String? = null,
     val onboarding: GroupOnboarding? = null,
+    val athleteIntroVisible: Boolean = false,
+    val athleteShareFailed: Boolean = false,
 )
 
 /** Nome, linha de resumo e — só no 2e — os chips de bairro/modalidade/agenda. */
@@ -161,6 +163,9 @@ data class MemberPreviewUi(
 enum class MemberStatusUi { Admin, Going, Maybe }
 
 sealed interface GroupDetailsIntent {
+    data object DismissAthleteIntro : GroupDetailsIntent
+    data object ShareSaqz : GroupDetailsIntent
+    data object AthleteShareFailed : GroupDetailsIntent
     data object OnboardingAction : GroupDetailsIntent
     data object Retry : GroupDetailsIntent
 
@@ -226,6 +231,7 @@ sealed interface GroupDetailsIntent {
  * onde ele vai.
  */
 sealed interface GroupDetailsEffect {
+    data class ShareSaqz(val message: String) : GroupDetailsEffect
     data class OpenSettlement(val groupId: String, val gameId: String) : GroupDetailsEffect
     data class OpenEdit(val groupId: String) : GroupDetailsEffect
 
