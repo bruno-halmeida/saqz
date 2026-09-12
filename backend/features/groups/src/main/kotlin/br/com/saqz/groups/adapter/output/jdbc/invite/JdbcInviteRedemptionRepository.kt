@@ -64,7 +64,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         .query { result, _ ->
             RedeemableInvite(
                 groupId = result.getObject("group_id", UUID::class.java),
-                expiresAt = result.getTimestamp("expires_at").toInstant(),
+                expiresAt = result.getTimestamp("expires_at")?.toInstant(),
                 groupDeleted = result.getBoolean("group_deleted"),
                 entryRequiresApproval = result.getBoolean("entry_requires_approval"),
             )

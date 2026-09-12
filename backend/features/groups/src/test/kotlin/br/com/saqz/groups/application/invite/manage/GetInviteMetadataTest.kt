@@ -33,11 +33,24 @@ class GetInviteMetadataTest {
 
         assertEquals(
             GetInviteMetadataResult.Success(
-                InviteMetadataView(true, metadata.expiresAt, metadata.createdAt, metadata.createdByName),
+                InviteMetadataView(true, metadata.expiresAt, metadata.createdAt, metadata.createdByName, metadata.revision),
             ),
             result,
         )
         assertEquals(listOf(groupId), fixture.repository.lookups)
+    }
+
+    @Test
+    fun `permanent invite remains active decades after creation`() {
+        val metadata = InviteMetadata(null, Instant.parse("2000-01-01T00:00:00Z"), createdByName)
+        val fixture = fixture(GroupRole.OWNER, metadata)
+
+        assertEquals(
+            GetInviteMetadataResult.Success(
+                InviteMetadataView(true, null, metadata.createdAt, createdByName, metadata.revision),
+            ),
+            fixture.useCase.execute(actor, groupId),
+        )
     }
 
     @Test

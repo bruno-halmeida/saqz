@@ -27,6 +27,30 @@ class RedeemInviteTest {
     )
 
     @Test
+    fun `permanent invite is reusable decades later without duplicate memberships`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, null))
+        fixture.clock.current = Instant.parse("2099-01-01T00:00:00Z")
+        val secondActor = UUID.randomUUID()
+
+        assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ATHLETE), fixture.useCase.execute(actor, code.value))
+        assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ATHLETE), fixture.useCase.execute(actor, code.value))
+        assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ATHLETE), fixture.useCase.execute(secondActor, code.value))
+        assertEquals(mapOf(actor to GroupRole.ATHLETE, secondActor to GroupRole.ATHLETE), fixture.repository.roles)
+        assertTrue(fixture.repository.invalidAttempts.isEmpty())
+    }
+
+    @Test
+    fun `permanent invite still requires approval decades later`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, null, entryRequiresApproval = true))
+        val future = Instant.parse("2099-01-01T00:00:00Z")
+        fixture.clock.current = future
+
+        assertEquals(RedeemInviteResult.Pending(groupId), fixture.useCase.execute(actor, code.value))
+        assertEquals(listOf(CreateEntryRequestCommand(groupId, actor, future)), fixture.repository.entryRequests)
+        assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
+    @Test
     fun `valid invite creates athlete membership once`() {
         val fixture = fixture()
 

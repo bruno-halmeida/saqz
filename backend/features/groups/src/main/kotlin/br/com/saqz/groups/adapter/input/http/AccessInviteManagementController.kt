@@ -20,7 +20,7 @@ import java.net.URI
 import java.time.Instant
 import java.util.UUID
 
-data class InviteUrlResponse(val inviteUrl: URI, val expiresAt: Instant)
+data class InviteUrlResponse(val inviteUrl: URI, val expiresAt: Instant?, val revision: UUID)
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class InviteMetadataResponse(
@@ -28,6 +28,7 @@ data class InviteMetadataResponse(
     val expiresAt: Instant?,
     val createdAt: Instant?,
     val createdByName: String?,
+    val revision: UUID?,
 )
 
 @RestController
@@ -44,7 +45,7 @@ class AccessInviteManagementController(
     ): InviteUrlResponse = when (val result = rotateInvite.execute(actor(identity), parseId(groupId))) {
         RotateInviteResult.GroupNotFound -> throw GroupNotFoundException()
         RotateInviteResult.AccessForbidden -> throw AccessForbiddenException()
-        is RotateInviteResult.Success -> InviteUrlResponse(result.inviteUrl, result.expiresAt)
+        is RotateInviteResult.Success -> InviteUrlResponse(result.inviteUrl, result.expiresAt, result.revision)
     }
 
     @GetMapping("/api/groups/{groupId}/invite")
@@ -78,4 +79,5 @@ private fun InviteMetadataView.toResponse() = InviteMetadataResponse(
     expiresAt = expiresAt,
     createdAt = createdAt,
     createdByName = createdByName,
+    revision = revision,
 )

@@ -79,20 +79,18 @@ class InviteManagementEndpointIntegrationTest {
     }
 
     @Test
-    fun `owner rotates invite and receives URL with expiration`() {
+    fun `owner rotates invite and receives permanent URL with revision`() {
         val response = rotate(groupId)
         val body = json(response)
 
         assertEquals(200, response.statusCode())
-        assertEquals(setOf("inviteUrl", "expiresAt"), body.propertyNames().asSequence().toSet())
+        assertEquals(setOf("inviteUrl", "expiresAt", "revision"), body.propertyNames().asSequence().toSet())
         assertEquals(InviteTestConfiguration.INVITE_URL.toString(), body["inviteUrl"].stringValue())
-        assertEquals(
-            InviteTestConfiguration.NOW.plus(Duration.ofDays(7)).toString(),
-            body["expiresAt"].stringValue(),
-        )
+        assertTrue(body["expiresAt"].isNull)
+        assertEquals(repository.rotations.single().revision.toString(), body["revision"].stringValue())
         assertEquals(groupId, repository.rotations.single().groupId)
         assertEquals(InviteTestConfiguration.USER_ID, repository.rotations.single().createdByUserId)
-        assertEquals(InviteTestConfiguration.NOW.plus(Duration.ofDays(7)), repository.rotations.single().expiresAt)
+        assertEquals(null, repository.rotations.single().expiresAt)
     }
 
     @Test
@@ -124,14 +122,30 @@ class InviteManagementEndpointIntegrationTest {
 
         assertEquals(200, response.statusCode())
         assertEquals(
-            setOf("active", "expiresAt", "createdAt", "createdByName"),
+            setOf("active", "expiresAt", "createdAt", "createdByName", "revision"),
             body.propertyNames().asSequence().toSet(),
         )
         assertEquals(true, body["active"].booleanValue())
         assertEquals(InviteTestConfiguration.NOW.plus(Duration.ofDays(7)).toString(), body["expiresAt"].stringValue())
         assertEquals(InviteTestConfiguration.NOW.minusSeconds(3_600).toString(), body["createdAt"].stringValue())
         assertEquals("Lucas Prado", body["createdByName"].stringValue())
+        assertEquals(repository.metadata!!.revision.toString(), body["revision"].stringValue())
         assertFalse(response.body().contains("inviteUrl"))
+    }
+
+    @Test
+    fun `permanent invite metadata is active without a deadline`() {
+        repository.metadata = InviteMetadata(null, Instant.parse("2000-01-01T00:00:00Z"), "Lucas Prado")
+
+        val response = get(groupId)
+        val body = json(response)
+
+        assertEquals(200, response.statusCode())
+        assertEquals(setOf("active", "createdAt", "createdByName", "revision"), body.propertyNames().asSequence().toSet())
+        assertEquals(true, body["active"].booleanValue())
+        assertEquals("2000-01-01T00:00:00Z", body["createdAt"].stringValue())
+        assertEquals("Lucas Prado", body["createdByName"].stringValue())
+        assertEquals(repository.metadata!!.revision.toString(), body["revision"].stringValue())
     }
 
     @Test
@@ -302,8 +316,7 @@ class InviteManagementEndpointIntegrationTest {
             repository: RecordingHttpInviteRepository,
             generator: SecureTokenGenerator,
             links: ConfigurableHttpInviteLinkFactory,
-            clock: Clock,
-        ) = RotateInvite(transaction, read, repository, GroupAccessPolicy(), generator, links, clock)
+        ) = RotateInvite(transaction, read, repository, GroupAccessPolicy(), generator, links)
         @Bean fun expireInvite(
             transaction: TransactionRunner,
             read: RecordingInviteGroupReadRepository,

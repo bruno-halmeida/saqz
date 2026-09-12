@@ -24,6 +24,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -48,6 +50,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
         )
         Flyway.configure().dataSource(dataSource).locations(*allGroupFeatureMigrationLocations()).load().migrate()
         assertEquals(legacyCreatedAt.plus(Duration.ofDays(7)), invite(legacy.group)?.expiresAt)
+        assertNotNull(invite(legacy.group)?.revision)
         repository = JdbcInviteManagementRepository(dataSource)
         transaction = JdbcTransactionRunner(dataSource)
     }
@@ -55,6 +58,36 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     @BeforeEach
     fun clearData() {
         execute("TRUNCATE group_invites, group_memberships, access_groups, invite_redemption_limits, access_users CASCADE")
+    }
+
+    @Test
+    fun `permanent invite round trips with its revision and replacement invalidates old digest`() {
+        val fixture = fixture("permanent")
+        val first = command(fixture, digest(1), null)
+        transaction.inTransaction { repository.rotate(first) }
+
+        assertNull(invite(fixture.group)!!.expiresAt)
+        assertEquals(first.revision, invite(fixture.group)!!.revision)
+        val metadata = assertNotNull(repository.findMetadata(fixture.group))
+        assertNull(metadata.expiresAt)
+        assertEquals(first.revision, metadata.revision)
+        assertEquals("Owner Person", metadata.createdByName)
+        val redemption = JdbcInviteRedemptionRepository(dataSource)
+        val redeemable = assertNotNull(redemption.findInvite(first.digest))
+        assertEquals(fixture.group, redeemable.groupId)
+        assertNull(redeemable.expiresAt)
+
+        val second = command(fixture, digest(2), null)
+        transaction.inTransaction { repository.rotate(second) }
+        assertNotEquals(first.revision, second.revision)
+        assertEquals(second.revision, repository.findMetadata(fixture.group)!!.revision)
+        assertEquals(1, inviteCount(fixture.group))
+        assertNull(redemption.findInvite(first.digest))
+        assertNull(assertNotNull(redemption.findInvite(second.digest)).expiresAt)
+
+        transaction.inTransaction { repository.expire(fixture.group) }
+        assertNull(redemption.findInvite(second.digest))
+        assertNull(repository.findMetadata(fixture.group))
     }
 
     @Test
@@ -239,7 +272,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     }
 
     private data class Fixture(val owner: UUID, val group: UUID)
-    private data class StoredInvite(val digest: ByteArray, val creator: UUID, val expiresAt: Instant)
+    private data class StoredInvite(val digest: ByteArray, val creator: UUID, val expiresAt: Instant?, val revision: UUID)
 
     private fun fixture(prefix: String): Fixture {
         val owner = insertUser("$prefix-owner")
@@ -257,7 +290,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     private fun command(
         fixture: Fixture,
         digest: InviteTokenDigest,
-        expiresAt: Instant = futureExpiry(),
+        expiresAt: Instant? = futureExpiry(),
     ) = RotateInviteCommand(
         groupId = fixture.group,
         digest = digest,
@@ -290,7 +323,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
 
     private fun invite(group: UUID): StoredInvite? = connection().use { connection ->
         connection.prepareStatement(
-            "SELECT token_digest, created_by_user_id, expires_at FROM group_invites WHERE group_id = ?",
+            "SELECT token_digest, created_by_user_id, expires_at, revision FROM group_invites WHERE group_id = ?",
         ).use { statement ->
             statement.setObject(1, group)
             statement.executeQuery().use { result ->
@@ -298,7 +331,8 @@ class JdbcInviteManagementRepositoryIntegrationTest {
                     StoredInvite(
                         result.getBytes(1),
                         result.getObject(2, UUID::class.java),
-                        result.getTimestamp(3).toInstant(),
+                        result.getTimestamp(3)?.toInstant(),
+                        result.getObject(4, UUID::class.java),
                     )
                 } else null
             }

@@ -8,8 +8,6 @@ import br.com.saqz.groups.application.invite.SecureTokenGenerator
 import br.com.saqz.groups.domain.GroupAccessDecision
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.GroupAction
-import java.time.Clock
-import java.time.Duration
 import java.util.UUID
 
 class RotateInvite(
@@ -19,7 +17,6 @@ class RotateInvite(
     private val accessPolicy: GroupAccessPolicy,
     private val tokenGenerator: SecureTokenGenerator,
     private val linkFactory: InviteLinkFactory,
-    private val clock: Clock,
 ) {
     fun execute(actor: UUID, groupId: UUID): RotateInviteResult = transactionRunner.inTransaction {
         val group = readRepository.find(GroupReadKey(actor, groupId))
@@ -32,12 +29,8 @@ class RotateInvite(
 
         val token = tokenGenerator.generate()
         val inviteUrl = linkFactory.create(token.code)
-        val expiresAt = clock.instant().plus(INVITE_VALIDITY)
-        inviteRepository.rotate(RotateInviteCommand(groupId, token.digest, actor, expiresAt))
-        RotateInviteResult.Success(inviteUrl, expiresAt)
-    }
-
-    private companion object {
-        val INVITE_VALIDITY: Duration = Duration.ofDays(7)
+        val command = RotateInviteCommand(groupId, token.digest, actor, expiresAt = null)
+        inviteRepository.rotate(command)
+        RotateInviteResult.Success(inviteUrl, command.expiresAt, command.revision)
     }
 }

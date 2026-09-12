@@ -16,27 +16,29 @@ class JdbcInviteManagementRepository(dataSource: DataSource) : InviteManagementR
         jdbc.sql(
             """
             INSERT INTO group_invites (
-                group_id, token_digest, created_by_user_id, created_at, expires_at
+                group_id, token_digest, created_by_user_id, created_at, expires_at, revision
             ) VALUES (
-                :groupId, :tokenDigest, :createdByUserId, now(), :expiresAt
+                :groupId, :tokenDigest, :createdByUserId, now(), :expiresAt, :revision
             )
             ON CONFLICT (group_id) DO UPDATE SET
                 token_digest = EXCLUDED.token_digest,
                 created_by_user_id = EXCLUDED.created_by_user_id,
                 created_at = EXCLUDED.created_at,
-                expires_at = EXCLUDED.expires_at
+                expires_at = EXCLUDED.expires_at,
+                revision = EXCLUDED.revision
             """.trimIndent(),
         )
             .param("groupId", command.groupId)
             .param("tokenDigest", command.digest.toByteArray())
             .param("createdByUserId", command.createdByUserId)
-            .param("expiresAt", Timestamp.from(command.expiresAt))
+            .param("expiresAt", command.expiresAt?.let(Timestamp::from))
+            .param("revision", command.revision)
             .update()
     }
 
     override fun findMetadata(groupId: UUID): InviteMetadata? = jdbc.sql(
         """
-        SELECT invites.expires_at, invites.created_at, users.display_name
+        SELECT invites.expires_at, invites.created_at, invites.revision, users.display_name
         FROM group_invites invites
         JOIN access_users users ON users.id = invites.created_by_user_id
         WHERE invites.group_id = :groupId
@@ -45,9 +47,10 @@ class JdbcInviteManagementRepository(dataSource: DataSource) : InviteManagementR
         .param("groupId", groupId)
         .query { result, _ ->
             InviteMetadata(
-                expiresAt = result.getTimestamp("expires_at").toInstant(),
+                expiresAt = result.getTimestamp("expires_at")?.toInstant(),
                 createdAt = result.getTimestamp("created_at").toInstant(),
                 createdByName = result.getString("display_name"),
+                revision = result.getObject("revision", UUID::class.java),
             )
         }
         .optional()

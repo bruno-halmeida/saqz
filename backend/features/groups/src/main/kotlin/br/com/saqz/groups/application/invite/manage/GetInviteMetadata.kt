@@ -31,7 +31,7 @@ class GetInviteMetadata(
 
     private fun InviteMetadata?.toView(now: java.time.Instant): InviteMetadataView {
         if (this == null) return InviteMetadataView(false, null, null, null)
-        if (now.isAfter(expiresAt)) return InviteMetadataView(false, expiresAt, null, null)
-        return InviteMetadataView(true, expiresAt, createdAt, createdByName)
+        if (expiresAt?.let(now::isAfter) == true) return InviteMetadataView(false, expiresAt, null, null)
+        return InviteMetadataView(true, expiresAt, createdAt, createdByName, revision)
     }
 }

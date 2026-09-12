@@ -24,6 +24,8 @@ import java.util.Base64
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -38,11 +40,11 @@ class ManageInviteTest {
     fun `owner rotates invite with digest-only persistence command`() {
         val fixture = fixture(GroupRole.OWNER)
 
-        val result = fixture.rotate.execute(actor, groupId)
+        val result = assertIs<RotateInviteResult.Success>(fixture.rotate.execute(actor, groupId))
 
-        assertEquals(RotateInviteResult.Success(inviteUri(firstToken.code), now.plus(Duration.ofDays(7))), result)
+        assertEquals(RotateInviteResult.Success(inviteUri(firstToken.code), null, result.revision), result)
         assertEquals(
-            listOf(RotateInviteCommand(groupId, firstToken.digest, actor, now.plus(Duration.ofDays(7)))),
+            listOf(RotateInviteCommand(groupId, firstToken.digest, actor, null, result.revision)),
             fixture.repository.rotations,
         )
         assertEquals(listOf(firstToken.code), fixture.links.codes)
@@ -52,10 +54,11 @@ class ManageInviteTest {
     @Test
     fun `admin rotates invite`() {
         val fixture = fixture(GroupRole.ADMIN)
+        val result = assertIs<RotateInviteResult.Success>(fixture.rotate.execute(actor, groupId))
 
         assertEquals(
-            RotateInviteResult.Success(inviteUri(firstToken.code), now.plus(Duration.ofDays(7))),
-            fixture.rotate.execute(actor, groupId),
+            RotateInviteResult.Success(inviteUri(firstToken.code), null, fixture.repository.rotations.single().revision),
+            result,
         )
         assertEquals(1, fixture.repository.rotations.size)
     }
@@ -96,17 +99,17 @@ class ManageInviteTest {
     }
 
     @Test
-    fun `new rotation renews expiration from the current clock`() {
+    fun `each rotation is permanent with a distinct revision even without elapsed time`() {
         val fixture = fixture(GroupRole.OWNER, tokens = listOf(firstToken, secondToken))
 
         fixture.rotate.execute(actor, groupId)
-        fixture.clock.current = now.plus(Duration.ofDays(1))
         fixture.rotate.execute(actor, groupId)
 
         assertEquals(
-            listOf(now.plus(Duration.ofDays(7)), now.plus(Duration.ofDays(8))),
+            listOf(null, null),
             fixture.repository.rotations.map { it.expiresAt },
         )
+        assertNotEquals(fixture.repository.rotations[0].revision, fixture.repository.rotations[1].revision)
     }
 
     @Test
@@ -169,7 +172,7 @@ class ManageInviteTest {
         val read = FixedGroupReadRepository(if (groupExists) role else null, groupExists)
         val generator = QueuedTokenGenerator(tokens)
         return Fixture(
-            RotateInvite(transaction, read, repository, policy, generator, links, clock),
+            RotateInvite(transaction, read, repository, policy, generator, links),
             ExpireInvite(transaction, read, repository, policy),
             transaction,
             repository,

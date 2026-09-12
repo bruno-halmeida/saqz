@@ -9,11 +9,12 @@ data class RotateInviteCommand(
     val groupId: UUID,
     val digest: InviteTokenDigest,
     val createdByUserId: UUID,
-    val expiresAt: Instant,
+    val expiresAt: Instant?,
+    val revision: UUID = UUID.randomUUID(),
 )
 
 sealed interface RotateInviteResult {
-    data class Success(val inviteUrl: URI, val expiresAt: Instant) : RotateInviteResult
+    data class Success(val inviteUrl: URI, val expiresAt: Instant?, val revision: UUID) : RotateInviteResult
 
     data object GroupNotFound : RotateInviteResult
 
@@ -21,9 +22,10 @@ sealed interface RotateInviteResult {
 }
 
 data class InviteMetadata(
-    val expiresAt: Instant,
+    val expiresAt: Instant?,
     val createdAt: Instant,
     val createdByName: String,
+    val revision: UUID = UUID.randomUUID(),
 )
 
 data class InviteMetadataView(
@@ -31,6 +33,7 @@ data class InviteMetadataView(
     val expiresAt: Instant?,
     val createdAt: Instant?,
     val createdByName: String?,
+    val revision: UUID? = null,
 )
 
 sealed interface GetInviteMetadataResult {
