@@ -24,8 +24,9 @@ internal class AccessViewModel(
             runtime.authObservedState,
             runtime.authenticationState,
             runtime.sessionState,
-        ) { authObserved, authentication, session ->
-            AccessUiState(authObserved = authObserved, authentication = authentication, session = session)
+            runtime.appOnboardingState,
+        ) { authObserved, authentication, session, appOnboarding ->
+            AccessUiState(authObserved = authObserved, authentication = authentication, session = session, appOnboarding = appOnboarding)
         }.onEach { projected -> update { projected } }.launchIn(viewModelScope)
         runtime.onIntent(AccessRuntimeIntent.Start)
     }
@@ -46,6 +47,7 @@ internal class AccessViewModel(
         authObserved = runtime.authObservedState.value,
         authentication = runtime.authenticationState.value,
         session = runtime.sessionState.value,
+        appOnboarding = runtime.appOnboardingState.value,
     )
 
     private fun confirmLogout() {

@@ -136,6 +136,11 @@
     <string name="group_timezone_invalid">Informe uma timezone IANA</string>
     <string name="group_create_submit">Criar grupo</string>
     <string name="action_back">Voltar</string>
+    <string name="app_onboarding_title">Comece sua jornada</string>
+    <string name="app_onboarding_body">Crie seu primeiro grupo e reúna sua galera em poucos passos.</string>
+    <string name="app_onboarding_continue">Criar meu grupo</string>
+    <string name="app_onboarding_skip">Agora não</string>
+    <string name="app_onboarding_confirm_account">Continuar com esta conta</string>
     <string name="group_switch">Trocar grupo</string>
     <string name="group_settings">Configuracoes</string>
     <string name="group_roles">Gerenciar acessos</string>

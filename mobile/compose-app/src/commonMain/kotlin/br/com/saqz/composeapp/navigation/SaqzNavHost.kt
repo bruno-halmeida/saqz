@@ -35,6 +35,7 @@ import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.emailVerified
 import br.com.saqz.access.presentation.register.RegisterInviteContext
 import br.com.saqz.access.ui.BootstrapAccessScreen
+import br.com.saqz.access.ui.AppOnboardingRoot
 import br.com.saqz.access.ui.ForgotPasswordRoot
 import br.com.saqz.access.ui.IdentityCompletionRoot
 import br.com.saqz.access.ui.LoginRoot
@@ -177,6 +178,14 @@ internal fun SaqzNavHost(
         } else if (state.session !is SessionAccessState.Ready && coordinatorAuthenticated) {
             coordinatorAuthenticated = false
             inviteCoordinator.onSignedOut()
+        }
+    }
+    LaunchedEffect(state.appOnboarding, state.session) {
+        val handoff = state.appOnboarding
+        val shouldPresent = handoff is br.com.saqz.access.presentation.appaccess.AppOnboardingAuthState.NeedsAccountConfirmation ||
+            handoff is br.com.saqz.access.presentation.appaccess.AppOnboardingAuthState.Completed && !handoff.onboardingCompleted
+        if (state.session is SessionAccessState.Ready && shouldPresent && backStack.none { it == AccessRoute.AppOnboarding }) {
+            backStack.add(AccessRoute.AppOnboarding)
         }
     }
     LaunchedEffect(inviteCoordinator, state.session) {
@@ -329,6 +338,9 @@ internal fun SaqzNavHost(
                     state = state.session,
                     onIntent = { onIntent(AccessIntent.Session(it)) },
                 )
+            }
+            entry<AccessRoute.AppOnboarding> {
+                AppOnboardingRoot(onCreateGroup = { backStack.add(GroupsRoute.Create) })
             }
             entry<SaqzShellDestination> { route ->
                 SaqzAppShell(

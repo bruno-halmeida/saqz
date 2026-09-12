@@ -35,6 +35,7 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(AccessRoute.NewPassword::class, AccessRoute.NewPassword.serializer())
             subclass(AccessRoute.PasswordChanged::class, AccessRoute.PasswordChanged.serializer())
             subclass(AccessRoute.Bootstrap::class, AccessRoute.Bootstrap.serializer())
+            subclass(AccessRoute.AppOnboarding::class, AccessRoute.AppOnboarding.serializer())
             subclass(SaqzShellDestination::class, SaqzShellDestination.serializer())
             subclass(SubscriptionRequired::class, SubscriptionRequired.serializer())
             // As rotas de grupo entram no VUL-72: agora que o stack tem profundidade, é

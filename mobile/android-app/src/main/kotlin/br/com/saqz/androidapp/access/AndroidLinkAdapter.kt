@@ -3,6 +3,7 @@ package br.com.saqz.androidapp.access
 import android.app.Activity
 import android.net.Uri
 import br.com.saqz.access.domain.port.Cancelable
+import br.com.saqz.access.domain.port.AppOnboardingCodeListener
 import br.com.saqz.access.domain.port.InviteCodeListener
 import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.groups.port.GroupCancelable
@@ -28,10 +29,13 @@ internal interface AndroidIntentLinkPort : NativeLinkPort {
 
 internal class AndroidLinkAdapter(
     private val branch: AndroidBranchSessionClient,
+    private val allowedHosts: Set<String> = setOf("saqz.test-app.link"),
 ) : AndroidIntentLinkPort, NativeGroupLinkPort {
     private var accessListener: InviteCodeListener? = null
+    private var onboardingListener: AppOnboardingCodeListener? = null
     private val groupListeners = mutableSetOf<GroupLinkEventListener>()
     private var pendingAccessCode: String? = null
+    private var pendingOnboardingCode: String? = null
     private var pendingGroupEvent: GroupLinkEvent? = null
     private var lastAcceptedEventKey: String? = null
 
@@ -48,6 +52,19 @@ internal class AndroidLinkAdapter(
         }
     }
 
+    override fun startAppOnboarding(listener: AppOnboardingCodeListener): Cancelable {
+        onboardingListener = listener
+        pendingOnboardingCode?.let(listener::onAppOnboardingCode)
+        pendingOnboardingCode = null
+        return object : Cancelable {
+            override fun cancel() {
+                if (this@AndroidLinkAdapter.onboardingListener === listener) {
+                    this@AndroidLinkAdapter.onboardingListener = null
+                }
+            }
+        }
+    }
+
     override fun start(listener: GroupLinkEventListener): GroupCancelable {
         groupListeners += listener
         pendingGroupEvent?.let(listener::onEvent)
@@ -59,17 +76,29 @@ internal class AndroidLinkAdapter(
     }
 
     override fun onColdStart(url: String?) {
-        accept(directEvent(url))
+        acceptOnboarding(directOnboardingCode(url, allowedHosts))
+        accept(directEvent(url, allowedHosts))
         branch.initialize(url, ::acceptBranchParameters)
     }
 
     override fun onWarmIntent(url: String?) {
-        accept(directEvent(url))
+        acceptOnboarding(directOnboardingCode(url, allowedHosts))
+        accept(directEvent(url, allowedHosts))
         branch.reinitialize(url, ::acceptBranchParameters)
     }
 
     private fun acceptBranchParameters(parameters: Map<String, String?>) {
+        acceptOnboarding(branchOnboardingCode(parameters))
         accept(branchEvent(parameters))
+    }
+
+    private fun acceptOnboarding(code: String?) {
+        val accepted = code ?: return
+        val key = "onboarding:$accepted"
+        if (key == lastAcceptedEventKey) return
+        lastAcceptedEventKey = key
+        val current = onboardingListener
+        if (current == null) pendingOnboardingCode = accepted else current.onAppOnboardingCode(accepted)
     }
 
     private fun accept(event: GroupLinkEvent?) {
@@ -95,11 +124,14 @@ internal class AndroidLinkAdapter(
     private companion object {
         const val INVITE_PARAMETER = "saqz_invite"
         const val ATTENDANCE_PARAMETER = "saqz_attendance"
+        const val ONBOARDING_PARAMETER = "saqz_onboarding"
         const val ATTENDANCE_PATH_SEGMENT = "attendance"
 
-        fun directEvent(url: String?): GroupLinkEvent? = runCatching {
+        fun directEvent(url: String?, allowedHosts: Set<String>): GroupLinkEvent? = runCatching {
             val uri = URI(url ?: return null)
             if (!uri.scheme.equals("https", ignoreCase = true)) return null
+            if (uri.host?.lowercase() !in allowedHosts.map(String::lowercase)) return null
+            if (uri.userInfo != null || uri.port != -1) return null
             val queryEntries = uri.rawQuery
                 ?.split('&')
                 ?.mapNotNull { entry ->
@@ -110,20 +142,58 @@ internal class AndroidLinkAdapter(
                     key to value
                 }
                 .orEmpty()
-            val inviteCodes = queryEntries.filter { it.first == INVITE_PARAMETER }.map { it.second }.filter(::isValidInviteCode).distinct()
-            val attendanceCodes = queryEntries.filter { it.first == ATTENDANCE_PARAMETER }
-                .map { it.second }.filter(::isValidInviteCode).distinct()
+            val pathSegments = uri.path.trim('/').split('/').filter(String::isNotBlank)
+            val hasAttendancePath = pathSegments.size == 2 && pathSegments[0] == ATTENDANCE_PATH_SEGMENT &&
+                isValidInviteCode(pathSegments[1])
+            if (hasAttendancePath && queryEntries.any { it.first in setOf(INVITE_PARAMETER, ATTENDANCE_PARAMETER, ONBOARDING_PARAMETER) }) {
+                return null
+            }
+            val inviteEntries = queryEntries.filter { it.first == INVITE_PARAMETER }
+            val attendanceEntries = queryEntries.filter { it.first == ATTENDANCE_PARAMETER }
+            if (inviteEntries.size > 1 || attendanceEntries.size > 1) return null
+            val inviteCodes = inviteEntries.map { it.second }.filter(::isValidInviteCode)
+            val attendanceCodes = attendanceEntries.map { it.second }.filter(::isValidInviteCode)
+            if (queryEntries.any { it.first == ONBOARDING_PARAMETER }) return null
             if (inviteCodes.isNotEmpty() && attendanceCodes.isNotEmpty()) return null
             if (inviteCodes.size == 1) return GroupLinkEvent.Invite(inviteCodes.single())
             if (attendanceCodes.size == 1) return GroupLinkEvent.Attendance(attendanceCodes.single())
-            val pathSegments = uri.path.trim('/').split('/').filter(String::isNotBlank)
-            if (pathSegments.size == 2 && pathSegments[0] == ATTENDANCE_PATH_SEGMENT && isValidInviteCode(pathSegments[1])) {
+            if (hasAttendancePath) {
                 return GroupLinkEvent.Attendance(pathSegments[1])
             }
             null
         }.getOrNull()
 
+        fun directOnboardingCode(url: String?, allowedHosts: Set<String>): String? = runCatching {
+            val uri = URI(url ?: return null)
+            if (!uri.scheme.equals("https", ignoreCase = true)) return null
+            if (uri.host?.lowercase() !in allowedHosts.map(String::lowercase)) return null
+            if (uri.userInfo != null || uri.port != -1) return null
+            val entries = uri.rawQuery
+                ?.split('&')
+                ?.mapNotNull { entry ->
+                    val separator = entry.indexOf('=')
+                    if (separator < 0) return@mapNotNull null
+                    val key = URLDecoder.decode(entry.substring(0, separator), StandardCharsets.UTF_8.name())
+                    val value = URLDecoder.decode(entry.substring(separator + 1), StandardCharsets.UTF_8.name())
+                    key to value
+                }
+                .orEmpty()
+            val pathSegments = uri.path.trim('/').split('/').filter(String::isNotBlank)
+            val hasAttendancePath = pathSegments.size == 2 && pathSegments[0] == ATTENDANCE_PATH_SEGMENT &&
+                isValidInviteCode(pathSegments[1])
+            if (hasAttendancePath && entries.any { it.first in setOf(INVITE_PARAMETER, ATTENDANCE_PARAMETER, ONBOARDING_PARAMETER) }) {
+                return null
+            }
+            val onboardingEntries = entries.filter { it.first == ONBOARDING_PARAMETER }
+            if (onboardingEntries.size != 1) return null
+            val onboarding = onboardingEntries.map { it.second }.filter(::isValidInviteCode)
+            val invite = entries.any { it.first == INVITE_PARAMETER }
+            val attendance = entries.any { it.first == ATTENDANCE_PARAMETER }
+            if (invite || attendance || onboarding.size != 1) null else onboarding.single()
+        }.getOrNull()
+
         fun branchEvent(parameters: Map<String, String?>): GroupLinkEvent? {
+            if (parameters.containsKey(ONBOARDING_PARAMETER)) return null
             val invite = parameters[INVITE_PARAMETER]?.takeIf(::isValidInviteCode)
             val attendance = parameters[ATTENDANCE_PARAMETER]?.takeIf(::isValidInviteCode)
             return when {
@@ -132,6 +202,13 @@ internal class AndroidLinkAdapter(
                 attendance != null -> GroupLinkEvent.Attendance(attendance)
                 else -> null
             }
+        }
+
+        fun branchOnboardingCode(parameters: Map<String, String?>): String? {
+            val onboarding = parameters[ONBOARDING_PARAMETER]?.takeIf(::isValidInviteCode) ?: return null
+            val invite = parameters[INVITE_PARAMETER]
+            val attendance = parameters[ATTENDANCE_PARAMETER]
+            return if (invite == null && attendance == null) onboarding else null
         }
 
         fun isValidInviteCode(value: String?): Boolean =
@@ -164,6 +241,7 @@ internal class BranchSdkSessionClient(
                 val result = mutableMapOf<String, String?>()
                 if (parameters.has(INVITE_PARAMETER)) result[INVITE_PARAMETER] = parameters.opt(INVITE_PARAMETER) as? String
                 if (parameters.has(ATTENDANCE_PARAMETER)) result[ATTENDANCE_PARAMETER] = parameters.opt(ATTENDANCE_PARAMETER) as? String
+                if (parameters.has(ONBOARDING_PARAMETER)) result[ONBOARDING_PARAMETER] = parameters.opt(ONBOARDING_PARAMETER) as? String
                 callback(result)
             }
         }
@@ -171,5 +249,6 @@ internal class BranchSdkSessionClient(
     private companion object {
         const val INVITE_PARAMETER = "saqz_invite"
         const val ATTENDANCE_PARAMETER = "saqz_attendance"
+        const val ONBOARDING_PARAMETER = "saqz_onboarding"
     }
 }

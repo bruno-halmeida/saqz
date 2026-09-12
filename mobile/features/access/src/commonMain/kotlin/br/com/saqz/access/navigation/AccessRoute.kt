@@ -57,4 +57,8 @@ sealed interface AccessRoute : NavKey {
     /** Carregando a sessão, ou o erro com repetir: sem tela do export. */
     @Serializable
     data object Bootstrap : AccessRoute
+
+    /** TR-10 short, skippable first-access presentation; its secret never enters the route. */
+    @Serializable
+    data object AppOnboarding : AccessRoute
 }

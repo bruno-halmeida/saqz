@@ -4,6 +4,7 @@ package br.com.saqz.composeapp.di
 
 import br.com.saqz.access.domain.port.LocalAccessStatePort
 import br.com.saqz.access.domain.port.NativeAuthPort
+import br.com.saqz.access.presentation.appaccess.SerializedNativeAuthPort
 import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.access.domain.port.NativeProfilePhotoPort
 import br.com.saqz.access.domain.port.NativeSharePort
@@ -48,6 +49,7 @@ import org.koin.core.context.stopKoin
 import org.koin.core.context.unloadKoinModules
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import org.koin.core.qualifier.named
 import org.koin.mp.KoinPlatformTools
 import kotlin.native.HiddenFromObjC
 
@@ -146,12 +148,13 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
         )
     }
     single { SaqzNativePorts(access = dependencies.access, groups = dependencies.groups) }
-    single<NativeAuthPort> {
+    single<NativeAuthPort>(named("raw-native-auth")) {
         BackendEmailVerificationAuth(
             auth = get<SaqzNativePorts>().access.auth,
             gateway = { get<EmailVerificationGateway>() },
         )
     }
+    single<NativeAuthPort> { SerializedNativeAuthPort(get(named("raw-native-auth"))) }
     single<NativeLinkPort> { get<SaqzNativePorts>().access.links }
     single<LocalAccessStatePort> { get<SaqzNativePorts>().access.localState }
     single<NativeSharePort> { get<SaqzNativePorts>().access.share }

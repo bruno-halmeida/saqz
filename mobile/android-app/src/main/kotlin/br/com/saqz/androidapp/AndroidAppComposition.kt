@@ -56,7 +56,10 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
         activity: () -> Activity,
     ): AndroidAppComposition {
         val firebase = AndroidFirebaseBootstrap.initialize(context)
-        val links = AndroidLinkAdapter(ActivityBranchSessionClient(activity))
+        val links = AndroidLinkAdapter(
+            branch = ActivityBranchSessionClient(activity),
+            allowedHosts = setOf(BuildConfig.BRANCH_DOMAIN),
+        )
         val auth = AndroidAuthAdapter(
             firebase = FirebaseSdkAuthClient(firebase),
             google = ActivityGoogleCredentialClient(activity, scope),

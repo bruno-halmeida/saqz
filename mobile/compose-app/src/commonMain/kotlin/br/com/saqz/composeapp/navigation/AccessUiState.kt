@@ -3,6 +3,7 @@ package br.com.saqz.composeapp.navigation
 import androidx.compose.runtime.Immutable
 import br.com.saqz.access.presentation.AuthenticationState
 import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.appaccess.AppOnboardingAuthState
 
 /**
  * Core orchestrator projection (T24, sliced for C1): auth/authentication/session only.
@@ -13,4 +14,5 @@ internal data class AccessUiState(
     val authObserved: Boolean = false,
     val authentication: AuthenticationState = AuthenticationState(),
     val session: SessionAccessState = SessionAccessState.SignedOut,
+    val appOnboarding: AppOnboardingAuthState = AppOnboardingAuthState.Idle,
 )

@@ -45,12 +45,19 @@ protocol IOSFirebaseAuthClient: AnyObject {
     func removeObservation(_ observation: IOSAuthObservation)
     func createAccount(email: String, password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func signInWithPassword(email: String, password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
+    func signInWithCustomToken(_ customToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func signInWithGoogle(idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func sendVerification(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void)
     func reloadUser(completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func updateDisplayName(_ name: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func idToken(forceRefresh: Bool, completion: @escaping (Result<String, IOSAuthFailure>) -> Void)
     func signOut(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void)
+}
+
+extension IOSFirebaseAuthClient {
+    func signInWithCustomToken(_ customToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        completion(.failure(.providerUnavailable))
+    }
 }
 
 @MainActor
@@ -139,6 +146,10 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
         firebase.signInWithPassword(email: email, password: password) { done.complete(result: $0.authResult) }
     }
 
+    func signInWithCustomToken(_ customToken: String, done: AuthCallback) {
+        firebase.signInWithCustomToken(customToken) { done.complete(result: $0.authResult) }
+    }
+
     func signInWithGoogle(done: AuthCallback) {
         google.signIn { [weak firebase] result in
             switch result {
@@ -209,8 +220,8 @@ final class LiveFirebaseAuthClient: IOSFirebaseAuthClient {
 
     func observe(_ listener: @escaping (IOSAuthUser?) -> Void) -> IOSAuthObservation {
         nextObservationID += 1
-        let handle = auth.addStateDidChangeListener { _, user in
-            Task { @MainActor in listener(user.map(IOSAuthUser.init)) }
+        let handle = auth.addStateDidChangeListener { [weak auth] _, _ in
+            Task { @MainActor in listener(auth?.currentUser.map(IOSAuthUser.init)) }
         }
         return IOSAuthObservation(id: nextObservationID, firebaseHandle: handle)
     }
@@ -227,6 +238,12 @@ final class LiveFirebaseAuthClient: IOSFirebaseAuthClient {
 
     func signInWithPassword(email: String, password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
         auth.signIn(withEmail: email, password: password) { result, error in
+            Self.complete(user: result?.user, error: error, completion: completion)
+        }
+    }
+
+    func signInWithCustomToken(_ customToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        auth.signIn(withCustomToken: customToken) { result, error in
             Self.complete(user: result?.user, error: error, completion: completion)
         }
     }

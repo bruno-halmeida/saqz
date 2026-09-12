@@ -77,11 +77,17 @@ interface InviteCodeListener {
     fun onInviteCode(code: String)
 }
 
+interface AppOnboardingCodeListener {
+    fun onAppOnboardingCode(code: String)
+}
+
 interface NativeAuthPort {
     fun observe(listener: AuthStateListener): Cancelable
     fun createAccount(name: String, email: String, password: String, done: AuthCallback)
     fun signInWithPassword(email: String, password: String, done: AuthCallback)
     fun signInWithGoogle(done: AuthCallback)
+    fun signInWithCustomToken(customToken: String, done: AuthCallback) =
+        done.complete(AuthResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))
     fun sendVerification(done: ResultCallback)
     fun reloadUser(done: AuthCallback)
     fun updateDisplayName(name: String, done: AuthCallback)
@@ -91,6 +97,11 @@ interface NativeAuthPort {
 
 interface NativeLinkPort {
     fun start(listener: InviteCodeListener): Cancelable
+
+    /** Separate from invite storage so an onboarding secret can never be redeemed as an invite. */
+    fun startAppOnboarding(listener: AppOnboardingCodeListener): Cancelable = object : Cancelable {
+        override fun cancel() = Unit
+    }
 }
 
 interface LocalAccessStatePort {
