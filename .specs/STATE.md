@@ -17,5 +17,10 @@
 - T02 concluída: migração V47, 17 tabelas; seis testes PostgreSQL e migração do bootstrap passam.
 - T03 concluída: AES-GCM com contexto de conta/finalidade, HMAC para identidade; operações com leases e fencing.
 - Gate: 8 testes unitários, 10 PostgreSQL, 20 arquitetura passam.
-- Próximo: T04 onboarding e integração Asaas, ainda sem endpoints ou liberação operacional.
+- T04 parcial: cadastro voluntário, aceite atômico, PF/PJ, credenciais, retomada, documentos e endpoints HTTP implementados e testados.
+- Endpoints só registrados quando proteção financeira configurada; BaaS criação desligado por padrão.
+- Gate atual: 8 unitários, 17 PostgreSQL/HTTP, 20 arquitetura passam. Bootstrap agregado migra V47.
+- T04 pendente: correção dos dados cadastrais, recuperação operacional da chave perdida e caminhos HTTP restantes; não marcar completo.
+- Próximo: concluir T04, depois T05 delegações e T06 ativação/contrato de elegibilidade.
+- T05–T21 ainda não implementados; nenhuma mudança mobile ou adm-web.
 - Trial central ainda ausente neste checkout; não foi reimplementado.
