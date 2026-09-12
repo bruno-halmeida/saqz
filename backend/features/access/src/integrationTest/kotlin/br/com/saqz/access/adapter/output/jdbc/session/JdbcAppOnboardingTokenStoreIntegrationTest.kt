@@ -1,6 +1,9 @@
 package br.com.saqz.access.adapter.output.jdbc.session
 
 import br.com.saqz.access.application.session.AppOnboardingCode
+import br.com.saqz.access.application.session.AppOnboardingIdentitySessions
+import br.com.saqz.access.application.session.RedeemAppOnboardingLink
+import br.com.saqz.access.application.session.RedeemAppOnboardingResult
 import br.com.saqz.access.application.session.SecureAppOnboardingSecrets
 import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeAll
@@ -120,6 +123,27 @@ class JdbcAppOnboardingTokenStoreIntegrationTest {
 
         assertEquals(1, results.count { it != null })
         assertEquals(1, count("SELECT count(*) FROM app_onboarding_login_tokens WHERE consumed_at IS NOT NULL"))
+    }
+
+    @Test
+    fun `real jdbc consumption stays committed when mint fails and replay is invalid`() {
+        val ownerId = insertUser("mint-failure-subject", "Mint Failure Person")
+        val issued = repository.issue("mint-failure-subject", now)!!
+        val redeem = RedeemAppOnboardingLink(
+            repository,
+            AppOnboardingIdentitySessions { throw br.com.saqz.access.application.session.AppOnboardingIdentityUnavailable() },
+            java.time.Clock.fixed(now, java.time.ZoneOffset.UTC),
+        )
+
+        assertEquals(
+            RedeemAppOnboardingResult.ProviderUnavailable,
+            redeem.execute(issued.code.value),
+        )
+        assertEquals(
+            1,
+            count("SELECT count(*) FROM app_onboarding_login_tokens WHERE owner_user_id = '$ownerId' AND consumed_at IS NOT NULL"),
+        )
+        assertEquals(RedeemAppOnboardingResult.Invalid, redeem.execute(issued.code.value))
     }
 
     private fun insertUser(subject: String, displayName: String = "Consume Person"): UUID {

@@ -105,13 +105,13 @@ class OrganizerTrialEndpointIntegrationTest {
             .first { it.startsWith("saqz_onboarding=") }
             .substringAfter('=')
             .let { URLDecoder.decode(it, Charsets.UTF_8) }
-        assertEquals(43, code.length, issue.toString())
+        assertEquals(43, code.length)
 
         val first = request("POST", "/api/session/app-link/redeem", "{\"code\":\"$code\"}", actor = null)
         val second = request("POST", "/api/session/app-link/redeem", "{\"code\":\"$code\"}", actor = null)
         val body = mapper.readTree(first.body())
 
-        assertEquals(200, first.statusCode(), "code=$code issue=$issue response=${first.body()}")
+        assertEquals(200, first.statusCode())
         assertEquals("custom-token-$token", body["customToken"].stringValue())
         assertEquals("Trial User", body["displayName"].stringValue())
         assertFalse(body["ownerUserId"].isNull)
@@ -120,6 +120,27 @@ class OrganizerTrialEndpointIntegrationTest {
         assertEquals(400, second.statusCode())
         assertEquals("APP_ONBOARDING_CODE_INVALID", mapper.readTree(second.body())["code"].stringValue())
         assertEquals("no-store, max-age=0", second.headers().firstValue("Cache-Control").orElse(""))
+    }
+
+    @Test
+    fun `redeem rejects missing null and malformed code bodies with documented safe error`() {
+        listOf(null, "{}", "{\"code\":null}", "{\"code\":1}", "{\"code\":").forEach { body ->
+            val response = request("POST", "/api/session/app-link/redeem", body, actor = null)
+            assertEquals(400, response.statusCode(), "unexpected status for body=$body")
+            assertEquals("APP_ONBOARDING_CODE_INVALID", mapper.readTree(response.body())["code"].stringValue())
+            assertEquals("no-store, max-age=0", response.headers().firstValue("Cache-Control").orElse(""))
+        }
+    }
+
+    @Test
+    fun `only exact redeem path is anonymous while issue and onboarding remain authenticated`() {
+        val exact = request("POST", "/api/session/app-link/redeem", "{}", actor = null)
+        assertEquals(400, exact.statusCode())
+        assertEquals("APP_ONBOARDING_CODE_INVALID", mapper.readTree(exact.body())["code"].stringValue())
+        assertEquals(401, request("POST", "/api/session/app-link/redeem/nested", "{}", actor = null).statusCode())
+        assertEquals(401, request("POST", "/api/session/app-link", actor = null).statusCode())
+        assertEquals(401, request("GET", "/api/session/onboarding", actor = null).statusCode())
+        assertEquals(401, request("PUT", "/api/session/onboarding", actor = null).statusCode())
     }
 
     @Test

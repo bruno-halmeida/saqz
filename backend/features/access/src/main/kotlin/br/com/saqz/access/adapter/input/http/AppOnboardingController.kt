@@ -21,16 +21,23 @@ import java.time.Instant
 data class AppOnboardingLinkResponse(
     val url: String,
     val expiresAt: Instant,
-)
+) {
+    override fun toString(): String = "AppOnboardingLinkResponse(url=[REDACTED], expiresAt=$expiresAt)"
+}
 
-data class RedeemAppOnboardingLinkRequest(@JsonProperty("code") val code: String)
+data class RedeemAppOnboardingLinkRequest(@JsonProperty("code") val code: String) {
+    override fun toString(): String = "RedeemAppOnboardingLinkRequest(code=[REDACTED])"
+}
 
 data class RedeemAppOnboardingLinkResponse(
     val customToken: String,
     val ownerUserId: java.util.UUID,
     val displayName: String,
     val onboardingCompleted: Boolean,
-)
+) {
+    override fun toString(): String =
+        "RedeemAppOnboardingLinkResponse(customToken=[REDACTED], ownerUserId=$ownerUserId, displayName=$displayName, onboardingCompleted=$onboardingCompleted)"
+}
 
 data class AppOnboardingCompletionResponse(val onboardingCompleted: Boolean)
 

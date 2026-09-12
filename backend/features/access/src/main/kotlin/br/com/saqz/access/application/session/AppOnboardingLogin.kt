@@ -124,7 +124,10 @@ fun interface AppOnboardingIdentitySessions {
 class AppOnboardingIdentityUnavailable : RuntimeException()
 
 sealed interface RedeemAppOnboardingResult {
-    data class Success(val customToken: String, val owner: AppOnboardingOwner) : RedeemAppOnboardingResult
+    data class Success(val customToken: String, val owner: AppOnboardingOwner) : RedeemAppOnboardingResult {
+        override fun toString(): String =
+            "RedeemAppOnboardingResult.Success(customToken=[REDACTED], ownerUserId=${owner.ownerUserId})"
+    }
 
     data object Invalid : RedeemAppOnboardingResult
 

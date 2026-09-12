@@ -67,6 +67,7 @@ import jakarta.servlet.http.HttpServletResponse
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.HttpRequestMethodNotSupportedException
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.multipart.MaxUploadSizeExceededException
 import org.springframework.web.multipart.MultipartException
 import org.springframework.web.multipart.support.MissingServletRequestPartException
@@ -475,6 +476,15 @@ class SafeExceptionHandler(
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
     fun methodArgumentTypeMismatch(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 400, ErrorCode.VALIDATION_FAILED)
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun messageNotReadable(request: HttpServletRequest, response: HttpServletResponse) {
+        if (request.requestURI == "/api/session/app-link/redeem") {
+            problemWriter.write(request, response, 400, ErrorCode.APP_ONBOARDING_CODE_INVALID)
+        } else {
+            problemWriter.write(request, response, 500)
+        }
     }
 
     @ExceptionHandler(SubscriptionNotFoundException::class)
