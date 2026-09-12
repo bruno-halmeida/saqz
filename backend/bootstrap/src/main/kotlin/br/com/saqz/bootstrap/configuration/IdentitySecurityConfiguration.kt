@@ -44,6 +44,7 @@ class IdentitySecurityConfiguration {
         verifyRequestIdentity,
         ANONYMOUS_PATHS,
         OPTIONAL_AUTHENTICATION_PATHS,
+        EXACT_ANONYMOUS_PATHS,
     ) { request, response, status, code ->
         problemWriter.write(request, response, status, code)
     }
@@ -92,6 +93,15 @@ class IdentitySecurityConfiguration {
             source.registerCorsConfiguration("/api/session/profile", CorsConfiguration(configuration).apply {
                 allowedMethods = listOf("PATCH", "OPTIONS")
             })
+            source.registerCorsConfiguration("/api/session/app-link", CorsConfiguration(configuration).apply {
+                allowedMethods = listOf("POST", "OPTIONS")
+            })
+            source.registerCorsConfiguration("/api/session/app-link/redeem", CorsConfiguration(configuration).apply {
+                allowedMethods = listOf("POST", "OPTIONS")
+            })
+            source.registerCorsConfiguration("/api/session/onboarding", CorsConfiguration(configuration).apply {
+                allowedMethods = listOf("GET", "PUT", "OPTIONS")
+            })
         }
         return source
     }
@@ -113,6 +123,7 @@ class IdentitySecurityConfiguration {
                 .requestMatchers("/api/password-reset/**").permitAll()
                 .requestMatchers("/api/invites/preview").permitAll()
                 .requestMatchers("/subscriptions/checkout-login").permitAll()
+                .requestMatchers("/api/session/app-link/redeem").permitAll()
                 .requestMatchers("/webhooks/asaas").permitAll()
                 .anyRequest().authenticated()
         }
@@ -138,6 +149,7 @@ class IdentitySecurityConfiguration {
             "/subscriptions/checkout-login",
             "/webhooks/asaas",
         )
+        val EXACT_ANONYMOUS_PATHS = setOf("/api/session/app-link/redeem")
         val OPTIONAL_AUTHENTICATION_PATHS = setOf("/api/invites/preview")
 
         /**

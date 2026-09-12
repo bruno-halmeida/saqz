@@ -68,6 +68,32 @@ class OrganizerTrialEndpointIntegrationTest {
     }
 
     @Test
+    fun `authenticated first access issues opaque onboarding Branch URL without starting trial`() {
+        assertEquals(200, request("PUT", "/api/session").statusCode())
+
+        val response = request("POST", "/api/session/app-link")
+        val body = mapper.readTree(response.body())
+        val url = body["url"].stringValue()
+
+        assertEquals(200, response.statusCode(), response.body())
+        assertTrue(url.startsWith("https://join.test/"))
+        assertTrue(url.contains("%24deeplink_path=onboarding"))
+        assertTrue(url.contains("saqz_onboarding="))
+        assertTrue(url.contains("%24ios_nativelink=true"))
+        assertFalse(response.body().contains("customToken"))
+        assertFalse(response.body().contains("firebaseSubject"))
+        assertEquals("no-store", response.headers().firstValue("Cache-Control").orElse(""), response.headers().toString())
+        assertEquals(1, jdbc().sql("SELECT count(*)::int FROM app_onboarding_login_tokens").query(Int::class.java).single())
+        assertEquals(
+            0,
+            jdbc().sql("SELECT count(*)::int FROM organizer_trials t JOIN access_users u ON t.owner_user_id=u.id WHERE u.firebase_subject=:token")
+                .param("token", token)
+                .query(Int::class.java)
+                .single(),
+        )
+    }
+
+    @Test
     fun `group access exposes owner trial to members but never outsiders or anonymous`() {
         val group = createGroup()
         val body = mapper.readTree(request("GET", "/api/groups/$group/trial").body())

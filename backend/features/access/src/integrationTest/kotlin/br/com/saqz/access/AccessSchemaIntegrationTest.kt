@@ -25,7 +25,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(database.jdbcUrl, database.username, database.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(14, flyway.migrate().migrationsExecuted)
+        assertEquals(15, flyway.migrate().migrationsExecuted)
     }
 
     @BeforeEach
@@ -33,7 +33,7 @@ class AccessSchemaIntegrationTest {
         execute(
             "TRUNCATE group_regular_slots, group_venues, group_invites, group_memberships, access_groups, " +
                 "invite_redemption_limits, password_reset_codes, password_reset_rate_limits, " +
-                "access_user_photos, access_users CASCADE",
+                "access_user_photos, app_onboarding_login_tokens, access_users CASCADE",
         )
     }
 
@@ -52,6 +52,7 @@ class AccessSchemaIntegrationTest {
                 "password_reset_codes",
                 "password_reset_rate_limits",
                 "access_user_photos",
+                "app_onboarding_login_tokens",
             ),
             queryStrings(
                 "SELECT table_name FROM information_schema.tables " +

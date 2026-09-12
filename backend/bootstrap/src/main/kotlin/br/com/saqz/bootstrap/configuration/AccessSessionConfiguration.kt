@@ -12,6 +12,7 @@ import br.com.saqz.groups.adapter.input.http.AccessMembershipController
 import br.com.saqz.groups.adapter.input.http.AccessEntryRequestController
 import br.com.saqz.groups.adapter.input.http.AttendanceShareController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
+import br.com.saqz.access.adapter.input.http.AppOnboardingController
 import br.com.saqz.access.adapter.input.http.EmailVerificationController
 import br.com.saqz.access.adapter.input.http.PasswordResetController
 import br.com.saqz.access.adapter.output.jdbc.passwordreset.JdbcPasswordResetRepository
@@ -45,6 +46,7 @@ import br.com.saqz.access.adapter.output.jdbc.photo.JdbcUserPhotoRepository
 import br.com.saqz.access.adapter.output.media.UserPhotoConverter
 import br.com.saqz.access.application.photo.UserPhotoService
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
+import br.com.saqz.access.adapter.output.jdbc.session.JdbcAppOnboardingTokenStore
 import br.com.saqz.access.adapter.output.mail.EmailVerificationMailer
 import br.com.saqz.access.adapter.output.mail.VerificationCodeMailer
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
@@ -137,6 +139,7 @@ import br.com.saqz.groups.application.finance.overview.FinanceOverviewQuery
 import br.com.saqz.groups.application.home.HomeQuery
 import br.com.saqz.groups.application.finance.statement.FinanceStatementService
 import br.com.saqz.access.application.session.BootstrapSession
+import br.com.saqz.access.application.session.IssueAppOnboardingLink
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.access.application.session.AccountGroupCleanup
@@ -290,6 +293,23 @@ class AccessSessionConfiguration {
         profile: CompleteSessionProfile,
         deleteAccount: DeleteAccount,
     ) = AccessSessionController(useCase, profile, deleteAccount)
+
+    @Bean
+    fun appOnboardingTokenStore(dataSource: DataSource) = JdbcAppOnboardingTokenStore(dataSource)
+
+    @Bean
+    fun issueAppOnboardingLink(tokenStore: JdbcAppOnboardingTokenStore, clock: Clock) =
+        IssueAppOnboardingLink(tokenStore, clock)
+
+    @Bean
+    fun appOnboardingLinkFactory(@Value("\${saqz.branch.domain}") branchDomain: String) =
+        AppOnboardingLinkFactory(URI(branchDomain))
+
+    @Bean
+    fun appOnboardingController(
+        issue: IssueAppOnboardingLink,
+        factory: AppOnboardingLinkFactory,
+    ) = AppOnboardingController(issue, factory::create)
 
     @Bean fun userPhotoRepository(dataSource: DataSource) = JdbcUserPhotoRepository(dataSource)
     @Bean fun userPhotoConverter() = UserPhotoConverter()

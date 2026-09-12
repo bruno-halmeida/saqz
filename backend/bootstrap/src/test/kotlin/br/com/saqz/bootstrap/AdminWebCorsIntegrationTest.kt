@@ -37,7 +37,15 @@ import kotlin.test.assertNull
 class AdminWebCorsIntegrationTest {
     @Test
     fun `onboarding permits only explicit session writes from configured web origin`() {
-        listOf("/api/session" to "PUT", "/api/session/profile" to "PATCH", "/subscriptions/trial" to "GET").forEach { (path, method) ->
+        listOf(
+            "/api/session" to "PUT",
+            "/api/session/profile" to "PATCH",
+            "/api/session/app-link" to "POST",
+            "/api/session/app-link/redeem" to "POST",
+            "/api/session/onboarding" to "GET",
+            "/api/session/onboarding" to "PUT",
+            "/subscriptions/trial" to "GET",
+        ).forEach { (path, method) ->
             val response = options(path, "http://127.0.0.1:8123", method)
             assertEquals(200, response.statusCode(), "$method $path")
             assertEquals("http://127.0.0.1:8123", response.headers().firstValue("Access-Control-Allow-Origin").orElse(""))
@@ -45,6 +53,20 @@ class AdminWebCorsIntegrationTest {
         }
         assertEquals(403, options("/api/session", "http://127.0.0.1:8123", "DELETE").statusCode())
         assertEquals("", options("/api/groups", "http://127.0.0.1:8123", "POST").headers().firstValue("Access-Control-Allow-Origin").orElse(""))
+    }
+
+    @Test
+    fun `app link issue requires bearer and marks secret response as non cacheable`() {
+        val response = client.send(
+            HttpRequest.newBuilder(URI.create("http://localhost:$port/api/session/app-link"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build(),
+            HttpResponse.BodyHandlers.ofString(),
+        )
+
+        assertEquals(401, response.statusCode())
+        assertEquals("no-store, max-age=0", response.headers().firstValue("Cache-Control").orElse(""))
+        assertEquals("no-cache", response.headers().firstValue("Pragma").orElse(""))
     }
 
     @LocalServerPort
