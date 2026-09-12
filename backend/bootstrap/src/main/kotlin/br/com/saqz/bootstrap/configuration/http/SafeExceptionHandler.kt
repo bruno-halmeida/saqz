@@ -74,6 +74,11 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 class SafeExceptionHandler(
     private val problemWriter: ApiProblemWriter,
 ) {
+    @ExceptionHandler(br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException::class)
+    fun subscriptionRequired(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 403, ErrorCode.SUBSCRIPTION_REQUIRED)
+    }
+
     @ExceptionHandler(InvalidDisplayNameException::class, AccessInvalidDisplayNameException::class)
     fun invalidDisplayName(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(

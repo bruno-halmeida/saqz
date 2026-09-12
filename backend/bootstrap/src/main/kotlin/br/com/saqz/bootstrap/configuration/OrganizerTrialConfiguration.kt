@@ -18,6 +18,19 @@ import javax.sql.DataSource
 @ConditionalOnProperty("spring.datasource.url")
 class OrganizerTrialConfiguration {
     @Bean
+    fun trialGroupWebGuard(
+        actors: br.com.saqz.sharedkernel.actor.AuthenticatedActorResolver,
+        groups: br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup,
+        trials: br.com.saqz.sharedkernel.subscription.OrganizerTrialAccessLookup,
+    ): org.springframework.web.servlet.config.annotation.WebMvcConfigurer =
+        object : org.springframework.web.servlet.config.annotation.WebMvcConfigurer {
+            override fun addInterceptors(registry: org.springframework.web.servlet.config.annotation.InterceptorRegistry) {
+                registry.addInterceptor(br.com.saqz.trials.http.TrialGroupWriteInterceptor(actors, groups, trials))
+                    .addPathPatterns("/api/groups/**")
+            }
+        }
+
+    @Bean
     fun groupPlanOwnerLookup(dataSource: DataSource): br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup =
         br.com.saqz.groups.adapter.output.jdbc.plan.JdbcGroupPlanOwnerLookup(dataSource)
 

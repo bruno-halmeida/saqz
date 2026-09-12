@@ -115,6 +115,70 @@ class OrganizerTrialEndpointIntegrationTest {
         return UUID.fromString(mapper.readTree(response.body())["id"].stringValue())
     }
 
+    @Test
+    fun `expired trial blocks every group mutation category and preserves readable history`() {
+        val group = createGroup()
+        val id = UUID.randomUUID()
+        clock.now = now.plus(Duration.ofDays(14))
+        val base = "/api/groups/$group"
+        val mutations = listOf(
+            "PUT" to base, "DELETE" to base, "PUT" to "$base/settings",
+            "DELETE" to "$base/photo", "POST" to "$base/invite", "DELETE" to "$base/invite",
+            "PUT" to "$base/memberships/$id/role", "PATCH" to "$base/athletes/me",
+            "PATCH" to "$base/athletes/$id", "DELETE" to "$base/athletes/$id",
+            "PUT" to "$base/athletes/me/auto-confirmation",
+            "POST" to "$base/entry-requests/$id/approve", "DELETE" to "$base/entry-requests/$id",
+            "POST" to "$base/games", "PUT" to "$base/games/$id",
+            "POST" to "$base/games/$id/publish", "POST" to "$base/games/$id/cancel", "POST" to "$base/games/$id/complete",
+            "PUT" to "$base/games/$id/attendance", "POST" to "$base/games/$id/attendance/override",
+            "POST" to "$base/games/$id/attendance/promote", "PUT" to "$base/games/$id/capacity",
+            "POST" to "$base/games/$id/attendance-link", "POST" to "$base/games/$id/notify-pending",
+            "POST" to "$base/game-series", "POST" to "$base/game-series/$id/boundaries",
+            "POST" to "$base/charges/monthly", "POST" to "$base/charges/$id/status",
+            "POST" to "$base/expenses", "PUT" to "$base/expenses/$id", "POST" to "$base/expenses/$id/void",
+            "POST" to "$base/messages",
+        )
+        for ((method, path) in mutations) {
+            val result = request(method, path, "{}")
+            assertEquals(403, result.statusCode(), "$method $path: ${result.body()}")
+            assertEquals("SUBSCRIPTION_REQUIRED", mapper.readTree(result.body())["code"].stringValue())
+        }
+        for (path in listOf(base, "$base/games", "$base/expenses", "$base/memberships", "$base/trial")) {
+            assertEquals(200, request("GET", path).statusCode(), path)
+        }
+        assertEquals(1L, jdbc().sql("SELECT version FROM access_groups WHERE id=:group").param("group", group).query(Long::class.java).single())
+        assertEquals(0, jdbc().sql("SELECT count(*)::int FROM games WHERE group_id=:group").param("group", group).query(Int::class.java).single())
+    }
+
+    @Test
+    fun `athlete can leave an expired group without reopening management`() {
+        val group = createGroup()
+        val member = UUID.randomUUID().toString()
+        request("GET", "/subscriptions/trial", actor = member)
+        jdbc().sql("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at) SELECT :group,id,'ATHLETE',now(),now() FROM access_users WHERE firebase_subject=:subject")
+            .param("group", group).param("subject", member).update()
+        clock.now = now.plus(Duration.ofDays(14))
+        assertEquals(204, request("DELETE", "/api/groups/$group/memberships/me", actor = member).statusCode())
+        assertEquals(0, jdbc().sql("SELECT count(*)::int FROM group_memberships m JOIN access_users u ON m.user_id=u.id WHERE group_id=:group AND firebase_subject=:subject")
+            .param("group", group).param("subject", member).query(Int::class.java).single())
+        assertEquals("EXPIRED", mapper.readTree(request("GET", "/api/groups/$group/trial").body())["status"].stringValue())
+    }
+
+    @Test
+    fun `active trial cannot grant an additional administrator`() {
+        val group = createGroup()
+        val member = UUID.randomUUID().toString()
+        request("GET", "/subscriptions/trial", actor = member)
+        jdbc().sql("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at) SELECT :group,id,'ATHLETE',now(),now() FROM access_users WHERE firebase_subject=:subject")
+            .param("group", group).param("subject", member).update()
+        val user = jdbc().sql("SELECT id FROM access_users WHERE firebase_subject=:subject").param("subject", member).query(UUID::class.java).single()
+        val result = request("PUT", "/api/groups/$group/memberships/$user/role", """{"role":"ADMIN"}""")
+        assertEquals(403, result.statusCode())
+        assertEquals("SUBSCRIPTION_REQUIRED", mapper.readTree(result.body())["code"].stringValue())
+        assertEquals("ATHLETE", jdbc().sql("SELECT role::text FROM group_memberships WHERE group_id=:group AND user_id=:user")
+            .param("group", group).param("user", user).query(String::class.java).single())
+    }
+
     private fun jdbc() = JdbcClient.create(ds)
     private fun request(method: String, path: String, body: String? = null, actor: String? = token): HttpResponse<String> {
         val builder = HttpRequest.newBuilder(URI("http://127.0.0.1:$port$path"))
