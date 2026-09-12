@@ -90,8 +90,8 @@ internal data class ReceiptListTransport(val receipts: List<ReceiptTransport>)
 
 class KtorSubscriptionGateway(
     private val network: AuthenticatedNetworkClient,
-    private val retryDelay: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
     private val json: Json = Json { explicitNulls = false; ignoreUnknownKeys = true },
+    private val retryDelay: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
 ) : SubscriptionGateway {
     override suspend fun mySubscription() = retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
         network.execute(HttpMethod.Get, "subscriptions/me", MySubscriptionTransport.serializer())

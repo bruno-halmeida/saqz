@@ -53,8 +53,8 @@ class ValidateCouponTest {
 
         val applied = assertIs<ValidateCouponResult.Applied>(result)
         assertEquals(SubscriptionCycle.ANNUAL, applied.cycle)
-        assertEquals(59_900, applied.listPriceCents)
-        assertEquals(47_920, applied.finalPriceCents)
+        assertEquals(53_910, applied.listPriceCents)
+        assertEquals(43_128, applied.finalPriceCents)
     }
 
     @Test

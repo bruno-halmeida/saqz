@@ -35,6 +35,7 @@ import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.emailVerified
 import br.com.saqz.access.presentation.register.RegisterInviteContext
 import br.com.saqz.access.ui.BootstrapAccessScreen
+import br.com.saqz.access.ui.AppOnboardingRoot
 import br.com.saqz.access.ui.ForgotPasswordRoot
 import br.com.saqz.access.ui.IdentityCompletionRoot
 import br.com.saqz.access.ui.LoginRoot
@@ -168,8 +169,9 @@ internal fun SaqzNavHost(
             pendingInviteCode = inviteCoordinator.readPendingInviteCode()
         }
     }
-    LaunchedEffect(state.session) {
+    LaunchedEffect(state.session, state.appOnboarding) {
         reconcileAccessStack(backStack, state.session, restoring = restoring[0])
+        reconcileAppOnboardingStack(backStack, state.session, state.appOnboarding)
         restoring[0] = false
         if (state.session is SessionAccessState.Ready && !coordinatorAuthenticated) {
             coordinatorAuthenticated = true
@@ -230,7 +232,15 @@ internal fun SaqzNavHost(
             else -> RegisterInviteContext.Generic
         }
     }
-    val pop: () -> Unit = { backStack.removeLastOrNull() }
+    val onboardingCoordinator = koinInject<br.com.saqz.access.presentation.appaccess.AppOnboardingAuthCoordinator>()
+    val pop: () -> Unit = {
+        if (backStack.lastOrNull() != AccessRoute.AppOnboarding) {
+            backStack.removeLastOrNull()
+        } else if (!state.appOnboarding.isNativeHandoffBusy()) {
+            onboardingCoordinator.cancel()
+            backStack.removeLastOrNull()
+        }
+    }
     NavDisplay(
         backStack = backStack,
         // O `NavDisplay` só habilita o back quando há entrada anterior
@@ -330,6 +340,17 @@ internal fun SaqzNavHost(
                     onIntent = { onIntent(AccessIntent.Session(it)) },
                 )
             }
+            entry<AccessRoute.AppOnboarding> {
+                AppOnboardingRoot(
+                    session = state.session,
+                    onClose = { backStack.removeAll { it == AccessRoute.AppOnboarding } },
+                    onOpenLogin = { backStack.resetTo(AccessRoute.Login) },
+                    onCreateGroup = {
+                        backStack.removeAll { it == AccessRoute.AppOnboarding }
+                        backStack.add(GroupsRoute.Create)
+                    },
+                )
+            }
             entry<SaqzShellDestination> { route ->
                 SaqzAppShell(
                     catalogEnabled = catalogEnabled,
@@ -405,6 +426,7 @@ internal fun SaqzNavHost(
                                     EmailVerificationBanner(
                                         onRefresh = {
                                             onIntent(AccessIntent.Session(SessionIntent.RefreshEmailVerification))
+                                            onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
                                         },
                                         onDismiss = { emailBannerDismissed = true },
                                     )
@@ -522,6 +544,7 @@ internal fun SaqzNavHost(
                 MyPlanRoot(
                     onBack = pop,
                     onOpenChangePlan = { backStack.add(SubscriptionsRoute.ChangePlan) },
+                    onOpenSubscribe = { backStack.add(SubscribeForAccess) },
                     refreshVersion = myPlanRefreshVersion,
                 )
             }
@@ -541,11 +564,29 @@ internal fun SaqzNavHost(
                     },
                 )
             }
+            entry<SubscribeForAccess> {
+                SubscriptionRequiredDestination(
+                    onBack = pop,
+                    onAuthorizationSuccess = {
+                        myPlanRefreshVersion++
+                        groupDetailsRefreshVersion++
+                        onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                        backStack.returnFromAccessSubscription()
+                    },
+                    viewModel = org.koin.compose.viewmodel.koinViewModel(
+                        qualifier = br.com.saqz.composeapp.subscriptiongate.paidSubscriptionGateQualifier,
+                    ),
+                )
+            }
             entry<GroupsRoute.Create> {
                 GroupSetupDestination(
                     mode = GroupSetupMode.Create,
                     backStack = backStack,
-                    onGroupListChange = { groupListRefreshVersion++ },
+                    showTrialOffer = (state.session as? SessionAccessState.Ready)?.session?.planOwner == false,
+                    onGroupListChange = {
+                        groupListRefreshVersion++
+                        onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                    },
                 )
             }
             entry<GroupsRoute.Edit> { route ->
@@ -881,10 +922,12 @@ private fun GroupSetupDestination(
     mode: GroupSetupMode,
     backStack: NavBackStack<NavKey>,
     onGroupListChange: () -> Unit,
+    showTrialOffer: Boolean = false,
 ) {
     val pop: () -> Unit = { backStack.removeLastOrNull() }
     GroupSetupRoot(
         mode = mode,
+        showTrialOffer = showTrialOffer,
         // Criou: o formulário sai do stack e o grupo novo entra no lugar dele.
         onGroupCreate = { groupId, photoFailed ->
             onGroupListChange()

@@ -6,6 +6,9 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.onFailure
 import br.com.saqz.domain.onSuccess
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
+import br.com.saqz.subscriptions.domain.subscription.SubscriptionError
+import br.com.saqz.subscriptions.domain.trial.TrialGateway
+import br.com.saqz.subscriptions.domain.trial.TrialStatus
 import kotlinx.coroutines.launch
 
 private const val RECEIPTS_PAGE_SIZE = 20
@@ -17,6 +20,7 @@ private const val RECEIPTS_PAGE_SIZE = 20
 class MyPlanViewModel(
     private val gateway: SubscriptionGateway,
     initialState: MyPlanState = MyPlanState(),
+    private val trialGateway: TrialGateway? = null,
 ) : MviViewModel<MyPlanState, MyPlanIntent, MyPlanEffect>(initialState) {
 
     // Guarda de geração (AGENTS.md §4): um cancelamento bem-sucedido recarrega tudo, e essa
@@ -36,15 +40,18 @@ class MyPlanViewModel(
         when (intent) {
             MyPlanIntent.Retry -> load()
             MyPlanIntent.Refresh -> load()
-            MyPlanIntent.OpenReceipts -> update { it.copy(isReceiptsSheetOpen = true) }
+            MyPlanIntent.OpenReceipts -> if (canManagePaidPlan()) update { it.copy(isReceiptsSheetOpen = true) }
             MyPlanIntent.DismissReceipts -> update { it.copy(isReceiptsSheetOpen = false) }
             MyPlanIntent.RetryReceipts -> loadReceipts()
             MyPlanIntent.LoadMoreReceipts -> loadMoreReceipts()
             MyPlanIntent.RetryLoadMore -> loadMoreReceipts()
-            MyPlanIntent.OpenCancel -> update { it.copy(isCancelSheetOpen = true, cancelError = null) }
+            MyPlanIntent.OpenCancel -> if (canManagePaidPlan()) update { it.copy(isCancelSheetOpen = true, cancelError = null) }
             MyPlanIntent.DismissCancel -> update { it.copy(isCancelSheetOpen = false, cancelError = null) }
             MyPlanIntent.ConfirmCancel -> cancel()
-            MyPlanIntent.OpenChangePlan -> emit(MyPlanEffect.OpenChangePlan)
+            MyPlanIntent.OpenChangePlan -> if (canManagePaidPlan()) emit(MyPlanEffect.OpenChangePlan)
+            MyPlanIntent.OpenSubscribe -> if (!state.value.isLoading && state.value.trial?.canSubscribe == true) {
+                emit(MyPlanEffect.OpenSubscribe)
+            }
         }
     }
 
@@ -58,14 +65,35 @@ class MyPlanViewModel(
                 receiptsError = null,
                 loadMoreReceiptsError = null,
                 isLoadingMoreReceipts = false,
+                isCancelSheetOpen = false,
+                isReceiptsSheetOpen = false,
             )
         }
         viewModelScope.launch {
             val subscriptionResult = gateway.mySubscription()
             if (generation != loadGeneration) return@launch
 
+            val trialResult = if (subscriptionResult is SaqzResult.Failure &&
+                subscriptionResult.error == SubscriptionError.NotFound
+            ) trialGateway?.ownerTrial() else null
+            if (generation != loadGeneration) return@launch
+
             if (subscriptionResult is SaqzResult.Failure) {
-                update { it.copy(isLoading = false, loadError = subscriptionResult.error.toUiText()) }
+                if (trialResult !is SaqzResult.Success || trialResult.value.status == TrialStatus.Subscribed) {
+                    update { it.copy(isLoading = false, loadError = subscriptionResult.error.toUiText()) }
+                    return@launch
+                }
+                update {
+                    it.copy(
+                        isLoading = false,
+                        loadError = null,
+                        plan = null,
+                        usage = null,
+                        trial = trialResult.value.toUi(),
+                        receipts = emptyList(),
+                        hasMoreReceipts = false,
+                    )
+                }
                 return@launch
             }
 
@@ -79,6 +107,7 @@ class MyPlanViewModel(
                     loadError = null,
                     plan = loadedSubscription.toCardUi(),
                     usage = loadedSubscription.toUsageUi(),
+                    trial = null,
                     // Falha aqui não pode virar "nenhum recibo ainda" (achado do Codex no
                     // PR #93): mantém a última lista boa e guarda o erro à parte.
                     receipts = (receiptsResult as? SaqzResult.Success)?.value?.map { r -> r.toUi() } ?: it.receipts,
@@ -95,6 +124,7 @@ class MyPlanViewModel(
     }
 
     private fun loadReceipts() {
+        if (!canManagePaidPlan()) return
         val generation = ++receiptsGeneration
         update {
             it.copy(
@@ -123,6 +153,7 @@ class MyPlanViewModel(
     }
 
     private fun loadMoreReceipts() {
+        if (!canManagePaidPlan()) return
         val currentState = state.value
         if (!currentState.hasMoreReceipts || currentState.isLoadingMoreReceipts) return
 
@@ -154,7 +185,7 @@ class MyPlanViewModel(
     }
 
     private fun cancel() {
-        if (state.value.isCanceling) return
+        if (!canManagePaidPlan() || state.value.isCanceling || state.value.plan?.statusTone == MyPlanStatusTone.Canceled) return
         update { it.copy(isCanceling = true, cancelError = null) }
         viewModelScope.launch {
             gateway.cancel()
@@ -165,4 +196,14 @@ class MyPlanViewModel(
                 .onFailure { error -> update { it.copy(isCanceling = false, cancelError = error.toUiText()) } }
         }
     }
+
+    private fun canManagePaidPlan(): Boolean =
+        !state.value.isLoading && state.value.loadError == null && state.value.plan != null && state.value.trial == null
 }
+
+private fun br.com.saqz.subscriptions.domain.trial.TrialAccess.toUi() = MyPlanTrialUi(
+    status = status,
+    endsAt = endsAt,
+    isOwner = isOwner,
+    canSubscribe = isOwner && status != TrialStatus.Subscribed,
+)

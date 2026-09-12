@@ -1,0 +1,100 @@
+package br.com.saqz.access.adapter.input.http
+
+import br.com.saqz.access.application.session.AppOnboardingIssuedCode
+import br.com.saqz.access.application.session.AppOnboardingAccount
+import br.com.saqz.access.application.session.CompleteAppOnboarding
+import br.com.saqz.access.application.session.GetAppOnboarding
+import br.com.saqz.access.application.session.RedeemAppOnboardingLink
+import br.com.saqz.access.application.session.RedeemAppOnboardingResult
+import br.com.saqz.access.application.session.IssueAppOnboardingLink
+import br.com.saqz.sharedkernel.RequestIdentity
+import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import com.fasterxml.jackson.annotation.JsonProperty
+import org.springframework.web.bind.annotation.RestController
+import java.time.Instant
+
+data class AppOnboardingLinkResponse(
+    val url: String,
+    val expiresAt: Instant,
+) {
+    override fun toString(): String = "AppOnboardingLinkResponse(url=[REDACTED], expiresAt=$expiresAt)"
+}
+
+data class RedeemAppOnboardingLinkRequest(@JsonProperty("code") val code: String) {
+    override fun toString(): String = "RedeemAppOnboardingLinkRequest(code=[REDACTED])"
+}
+
+data class RedeemAppOnboardingLinkResponse(
+    val customToken: String,
+    val ownerUserId: java.util.UUID,
+    val displayName: String,
+    val onboardingCompleted: Boolean,
+) {
+    override fun toString(): String =
+        "RedeemAppOnboardingLinkResponse(customToken=[REDACTED], ownerUserId=$ownerUserId, displayName=$displayName, onboardingCompleted=$onboardingCompleted)"
+}
+
+data class AppOnboardingCompletionResponse(val onboardingCompleted: Boolean)
+
+class AppOnboardingCodeInvalidException : RuntimeException()
+class AppOnboardingIdentityUnavailableException : RuntimeException()
+
+@RestController
+class AppOnboardingController(
+    private val issue: IssueAppOnboardingLink,
+    private val redeem: RedeemAppOnboardingLink,
+    private val getOnboarding: GetAppOnboarding,
+    private val completeOnboarding: CompleteAppOnboarding,
+    private val linkFactory: (br.com.saqz.access.application.session.AppOnboardingCode) -> java.net.URI,
+) {
+    @PostMapping("/api/session/app-link")
+    fun issue(@AuthenticationPrincipal identity: RequestIdentity): ResponseEntity<AppOnboardingLinkResponse> {
+        val issued = issue.execute(identity) ?: throw AccountNotFoundException()
+        return issued.noStoreResponse(linkFactory(issued.code).toString())
+    }
+
+    @PostMapping("/api/session/app-link/redeem")
+    fun redeem(@RequestBody request: RedeemAppOnboardingLinkRequest): ResponseEntity<RedeemAppOnboardingLinkResponse> {
+        val result = when (val outcome = redeem.execute(request.code)) {
+            RedeemAppOnboardingResult.Invalid -> throw AppOnboardingCodeInvalidException()
+            RedeemAppOnboardingResult.ProviderUnavailable -> throw AppOnboardingIdentityUnavailableException()
+            is RedeemAppOnboardingResult.Success -> outcome
+        }
+        return ResponseEntity.ok()
+            .header("Cache-Control", "no-store")
+            .header("Pragma", "no-cache")
+            .body(
+                RedeemAppOnboardingLinkResponse(
+                    customToken = result.customToken,
+                    ownerUserId = result.owner.ownerUserId,
+                    displayName = result.owner.displayName.value,
+                    onboardingCompleted = result.owner.onboardingCompleted,
+                ),
+            )
+    }
+
+    @GetMapping("/api/session/onboarding")
+    fun onboarding(@AuthenticationPrincipal identity: RequestIdentity): AppOnboardingCompletionResponse =
+        onboardingResponse(getOnboarding.execute(identity.subject))
+
+    @PutMapping("/api/session/onboarding")
+    fun completeOnboarding(@AuthenticationPrincipal identity: RequestIdentity): AppOnboardingCompletionResponse =
+        onboardingResponse(completeOnboarding.execute(identity.subject))
+
+    private fun onboardingResponse(account: AppOnboardingAccount): AppOnboardingCompletionResponse = when (account) {
+        is AppOnboardingAccount.Active -> AppOnboardingCompletionResponse(account.completed)
+        AppOnboardingAccount.Missing -> throw AccountNotFoundException()
+        AppOnboardingAccount.Suspended -> throw AccountSuspendedException()
+    }
+}
+
+private fun AppOnboardingIssuedCode.noStoreResponse(url: String): ResponseEntity<AppOnboardingLinkResponse> =
+    ResponseEntity.ok()
+        .header("Cache-Control", "no-store")
+        .header("Pragma", "no-cache")
+        .body(AppOnboardingLinkResponse(url, expiresAt))

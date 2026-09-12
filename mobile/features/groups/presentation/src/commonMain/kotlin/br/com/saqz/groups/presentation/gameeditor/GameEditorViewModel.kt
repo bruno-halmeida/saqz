@@ -16,6 +16,7 @@ import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.GameWriteCommand
 import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.group.GroupGateway
+import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.group.GroupVenue
 import br.com.saqz.groups.model.GameEditorDraft
 import br.com.saqz.groups.model.GameEditorForm
@@ -36,6 +37,7 @@ class GameEditorViewModel(
     private val savedState: SavedStateHandle,
     private val gameGateway: GameGateway,
     private val groupGateway: GroupGateway,
+    private val trialAccess: GroupTrialAccessPort? = null,
 ) : MviViewModel<GameEditorState, GameEditorIntent, GameEditorEffect>(
     initialState = GameEditorState(isLoading = true),
 ) {
@@ -93,6 +95,7 @@ class GameEditorViewModel(
                 return@launch
             }
             val group = (groupResult as SaqzResult.Success).value.group
+            val trial = trialAccess?.read(GroupId(groupId))
             val profile = group.profile
             val defaultForm = GameEditorFields(
                 title = if (gameId == null) DEFAULT_TITLE else "",
@@ -107,6 +110,7 @@ class GameEditorViewModel(
                         isLoading = false,
                         groupName = group.name,
                         zoneId = group.timeZone.id,
+                        trialEndsAt = trial?.endsAt,
                         form = restoreForm(defaultForm),
                     )
                 }
@@ -136,9 +140,10 @@ class GameEditorViewModel(
                         it.copy(
                             isLoading = false,
                             loadFailed = false,
-                            groupName = group.name,
-                            zoneId = group.timeZone.id,
-                            form = restoreForm(serverForm),
+                        groupName = group.name,
+                        zoneId = group.timeZone.id,
+                        trialEndsAt = trial?.endsAt,
+                        form = restoreForm(serverForm),
                             versionToken = gameResult.value.version.value,
                         )
                     }
@@ -383,8 +388,18 @@ class GameEditorViewModel(
                 savedState.remove<String>(KeyCommand)
             }
             persistForm(form)
-            state.copy(form = form, validationErrors = emptySet())
+            state.copy(
+                form = form,
+                validationErrors = emptySet(),
+                trialWarningVisible = trialWarning(form, state.trialEndsAt, state.zoneId),
+            )
         }
+    }
+
+    private fun trialWarning(form: GameEditorFields, endsAt: String?, zoneId: String): Boolean {
+        if (endsAt.isNullOrBlank() || !form.hasDateTime || zoneId.isBlank()) return false
+        val starts = localStart(form.localDate, form.localTime, zoneId) ?: return false
+        return runCatching { Instant.parse(starts) >= Instant.parse(endsAt) }.getOrDefault(false)
     }
 
     private fun persistForm(form: GameEditorFields) {

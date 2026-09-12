@@ -122,6 +122,17 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertEqual((callback.result as? AuthResultSuccess)?.user.subject, "firebase-user-1")
     }
 
+    func testCustomTokenSignInUsesFirebaseSdkBinding() {
+        let fixture = makeFixture()
+        fixture.firebase.customTokenResult = .success(user)
+        let callback = RecordingAuthCallback()
+
+        fixture.adapter.signInWithCustomToken(customToken: "custom-token", done: callback)
+
+        XCTAssertEqual(fixture.firebase.events, [.customToken("custom-token")])
+        XCTAssertEqual((callback.result as? AuthResultSuccess)?.user.subject, "firebase-user-1")
+    }
+
     func testPasswordSignInMapsInvalidCredentials() {
         let fixture = makeFixture()
         fixture.firebase.passwordResult = .failure(.invalidCredentials)
@@ -317,6 +328,7 @@ private final class FakeFirebaseAuthClient: IOSFirebaseAuthClient {
         case create(email: String, password: String)
         case updateDisplayName(String)
         case password(email: String, password: String)
+        case customToken(String)
         case google(idToken: String, accessToken: String)
         case token(forceRefresh: Bool)
         case signOut
@@ -326,6 +338,7 @@ private final class FakeFirebaseAuthClient: IOSFirebaseAuthClient {
     var createResult: Result<IOSAuthUser, IOSAuthFailure> = .failure(.unknown)
     var updateNameResult: Result<IOSAuthUser, IOSAuthFailure> = .failure(.unknown)
     var passwordResult: Result<IOSAuthUser, IOSAuthFailure> = .failure(.unknown)
+    var customTokenResult: Result<IOSAuthUser, IOSAuthFailure> = .failure(.unknown)
     var googleResult: Result<IOSAuthUser, IOSAuthFailure> = .failure(.unknown)
     var verificationResult: Result<Void, IOSAuthFailure> = .failure(.unknown)
     var reloadResult: Result<IOSAuthUser, IOSAuthFailure> = .failure(.unknown)
@@ -352,6 +365,10 @@ private final class FakeFirebaseAuthClient: IOSFirebaseAuthClient {
 
     func signInWithPassword(email: String, password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
         events.append(.password(email: email, password: password)); completion(passwordResult)
+    }
+
+    func signInWithCustomToken(_ customToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        events.append(.customToken(customToken)); completion(customTokenResult)
     }
 
     func signInWithGoogle(idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {

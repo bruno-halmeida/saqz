@@ -3,6 +3,8 @@ package br.com.saqz.composeapp.di
 import br.com.saqz.access.presentation.AuthenticationStateMachine
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.SessionIntent
+import br.com.saqz.access.presentation.appaccess.AppOnboardingAuthCoordinator
+import br.com.saqz.access.presentation.appaccess.AppOnboardingViewModel
 import br.com.saqz.access.presentation.forgotpassword.ForgotPasswordViewModel
 import br.com.saqz.access.presentation.identitycompletion.IdentityCompletionViewModel
 import br.com.saqz.access.presentation.login.LoginViewModel
@@ -45,8 +47,39 @@ internal val accessPresentationModule = module {
             get<SessionAccessStateMachine>().onIntent(SessionIntent.Accept(transition))
         }
     }
+    single {
+        AppOnboardingAuthCoordinator(
+            auth = get(),
+            gateway = get(),
+            scope = get(),
+            currentSession = {
+                when (val state = get<SessionAccessStateMachine>().state.value) {
+                    is br.com.saqz.access.presentation.SessionAccessState.Ready -> state.session
+                    is br.com.saqz.access.presentation.SessionAccessState.CompletingIdentity -> state.session
+                    else -> null
+                }
+            },
+            sessionResolving = {
+                when (val state = get<SessionAccessStateMachine>().state.value) {
+                    br.com.saqz.access.presentation.SessionAccessState.Bootstrapping,
+                    br.com.saqz.access.presentation.SessionAccessState.BootstrapError,
+                    -> true
+                    is br.com.saqz.access.presentation.SessionAccessState.CompletingIdentity -> state.session == null
+                    else -> false
+                }
+            },
+        )
+    }
 
     viewModelOf(::LoginViewModel)
+    viewModel {
+        AppOnboardingViewModel(get()) {
+            when (val state = get<SessionAccessStateMachine>().state.value) {
+                is br.com.saqz.access.presentation.SessionAccessState.Ready -> state.session.user.id
+                else -> null
+            }
+        }
+    }
     viewModelOf(::ForgotPasswordViewModel)
     viewModelOf(::IdentityCompletionViewModel)
     // A 1b entrega a sessão pelo mesmo caminho que o `AuthenticationStateMachine` acima —

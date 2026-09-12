@@ -18,6 +18,26 @@ import kotlin.test.assertTrue
 
 class AutoConfirmAttendanceTest {
     @Test
+    fun `expired trial creates neither automatic responses nor attendance events`() {
+        val repository = RecordingRepository(GameStatus.PUBLISHED)
+        val service = AutoConfirmAttendance(
+            object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() },
+            repository, { NOW }, writeAccess = br.com.saqz.sharedkernel.subscription.GroupWriteAccess { false },
+        )
+        val occurrence = ResolvedWeeklyOccurrence(
+            GROUP, SERIES, REVISION,
+            WeeklySlotRule(SLOT, java.time.DayOfWeek.WEDNESDAY, LocalTime.of(19, 30), 90, VENUE, 2, 180, null, "Treino"),
+            LocalDate.of(2026, 8, 5), LocalTime.of(19, 30), IanaTimeZone.from("America/Sao_Paulo"), Instant.parse("2026-08-05T22:30:00Z"),
+        )
+        service.applyMaterialized(listOf(MaterializedGameOccurrence(GAME, occurrence, GameStatus.PUBLISHED, NOW)))
+        assertTrue(repository.saved.isEmpty())
+        assertTrue(repository.events.isEmpty())
+        kotlin.test.assertFailsWith<br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException> {
+            service.updateOwnOptIn(GROUP, MEMBER, true)
+        }
+    }
+
+    @Test
     fun `materialization ignores cancelled occurrences`() {
         val repository = RecordingRepository()
         val service = AutoConfirmAttendance(
@@ -42,13 +62,13 @@ class AutoConfirmAttendanceTest {
         assertTrue(repository.events.isEmpty())
     }
 
-    private class RecordingRepository : AutoConfirmationRepository {
+    private class RecordingRepository(private val status: GameStatus = GameStatus.CANCELLED) : AutoConfirmationRepository {
         val saved = mutableListOf<AttendanceRecord>()
         val events = mutableListOf<AttendanceEvent>()
         override fun updateOwnOptIn(groupId: UUID, memberId: UUID, enabled: Boolean) = AutoConfirmationOptInUpdate.GroupNotFound
         override fun lockGame(groupId: UUID, gameId: UUID): AutoConfirmationGame? = null
         override fun lockOccurrence(groupId: UUID, seriesId: UUID, localDate: LocalDate, slotKey: UUID) =
-            AutoConfirmationGame(GROUP, GAME, OWNER, GameStatus.CANCELLED, 2, 0, true)
+            AutoConfirmationGame(GROUP, GAME, OWNER, status, 2, 0, true)
         override fun candidates(gameId: UUID) = listOf(AutoConfirmationCandidate(MEMBER, AthleteMembershipType.MENSALISTA, true, NOW))
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = 1L
         override fun save(record: AttendanceRecord) { saved += record }

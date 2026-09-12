@@ -56,8 +56,8 @@ class CouponControllerTest {
 
         assertEquals("APPLIED", response.status)
         assertEquals(SubscriptionCycle.ANNUAL, response.cycle)
-        assertEquals(39_900, response.listPriceCents)
-        assertEquals(35_910, response.finalPriceCents)
+        assertEquals(35_910, response.listPriceCents)
+        assertEquals(32_319, response.finalPriceCents)
     }
 
     @Test

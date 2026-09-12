@@ -5,6 +5,7 @@ import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.domain.plan.PlanLimitPolicy
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
+import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -15,6 +16,7 @@ class RedeemInvite(
     private val repository: InviteRedemptionRepository,
     private val subscriptionLimits: SubscriptionLimits,
     private val clock: Clock,
+    private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
 ) {
     fun execute(actor: UUID, rawCode: String): RedeemInviteResult = transactionRunner.inTransaction {
         val now = clock.instant()
@@ -44,6 +46,9 @@ class RedeemInvite(
         if (existingRole != null) {
             return@inTransaction RedeemInviteResult.Success(invite.groupId, existingRole)
         }
+
+        // Pending requests already occupy a slot; the quota check alone would allow them through.
+        writeAccess.requireWrite(invite.groupId)
 
         val occupancy = repository.loadAthleteOccupancy(invite.groupId)
             ?: return@inTransaction RedeemInviteResult.InvalidOrExpired

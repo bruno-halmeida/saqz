@@ -51,6 +51,7 @@ fun GroupSetupRoot(
     onDraftSave: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    showTrialOffer: Boolean = false,
     viewModel: GroupSetupViewModel = koinViewModel(
         key = "group-setup/$mode",
         parameters = { parametersOf(mode) },
@@ -135,6 +136,7 @@ fun GroupSetupRoot(
         when (state.step) {
             GroupSetupStep.Form -> GroupSetupScreen(
                 state = screenState,
+                showTrialOffer = showTrialOffer,
                 onIntent = viewModel::onIntent,
                 onBack = onBack,
             )

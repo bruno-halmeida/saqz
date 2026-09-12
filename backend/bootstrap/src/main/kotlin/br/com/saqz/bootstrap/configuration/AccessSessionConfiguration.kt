@@ -12,6 +12,7 @@ import br.com.saqz.groups.adapter.input.http.AccessMembershipController
 import br.com.saqz.groups.adapter.input.http.AccessEntryRequestController
 import br.com.saqz.groups.adapter.input.http.AttendanceShareController
 import br.com.saqz.access.adapter.input.http.AccessSessionController
+import br.com.saqz.access.adapter.input.http.AppOnboardingController
 import br.com.saqz.access.adapter.input.http.EmailVerificationController
 import br.com.saqz.access.adapter.input.http.PasswordResetController
 import br.com.saqz.access.adapter.output.jdbc.passwordreset.JdbcPasswordResetRepository
@@ -45,6 +46,7 @@ import br.com.saqz.access.adapter.output.jdbc.photo.JdbcUserPhotoRepository
 import br.com.saqz.access.adapter.output.media.UserPhotoConverter
 import br.com.saqz.access.application.photo.UserPhotoService
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
+import br.com.saqz.access.adapter.output.jdbc.session.JdbcAppOnboardingTokenStore
 import br.com.saqz.access.adapter.output.mail.EmailVerificationMailer
 import br.com.saqz.access.adapter.output.mail.VerificationCodeMailer
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
@@ -137,6 +139,10 @@ import br.com.saqz.groups.application.finance.overview.FinanceOverviewQuery
 import br.com.saqz.groups.application.home.HomeQuery
 import br.com.saqz.groups.application.finance.statement.FinanceStatementService
 import br.com.saqz.access.application.session.BootstrapSession
+import br.com.saqz.access.application.session.IssueAppOnboardingLink
+import br.com.saqz.access.application.session.RedeemAppOnboardingLink
+import br.com.saqz.access.application.session.GetAppOnboarding
+import br.com.saqz.access.application.session.CompleteAppOnboarding
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.access.application.session.AccountGroupCleanup
@@ -193,8 +199,8 @@ class AccessSessionConfiguration {
     fun sessionRepository(dataSource: DataSource) = JdbcSessionRepository(dataSource)
 
     @Bean
-    fun planOwnerLookup(lookup: SubscriptionPlanLookup) =
-        PlanOwnerLookup { lookup.findEntitlingPlan(it) != null }
+    fun planOwnerLookup(lookup: SubscriptionPlanLookup, trials: br.com.saqz.subscriptions.application.OrganizerTrialRepository) =
+        PlanOwnerLookup { lookup.findEntitlingPlan(it) != null || trials.find(it) != null }
 
     @Bean
     fun bootstrapSession(repository: JdbcSessionRepository, planOwners: PlanOwnerLookup) =
@@ -290,6 +296,42 @@ class AccessSessionConfiguration {
         profile: CompleteSessionProfile,
         deleteAccount: DeleteAccount,
     ) = AccessSessionController(useCase, profile, deleteAccount)
+
+    @Bean
+    fun appOnboardingTokenStore(dataSource: DataSource) = JdbcAppOnboardingTokenStore(dataSource)
+
+    @Bean
+    fun issueAppOnboardingLink(tokenStore: JdbcAppOnboardingTokenStore, clock: Clock) =
+        IssueAppOnboardingLink(tokenStore, clock)
+
+    @Bean
+    fun appOnboardingLinkFactory(@Value("\${saqz.branch.domain}") branchDomain: String) =
+        AppOnboardingLinkFactory(URI(branchDomain))
+
+    @Bean
+    fun appOnboardingController(
+        issue: IssueAppOnboardingLink,
+        redeem: RedeemAppOnboardingLink,
+        getOnboarding: GetAppOnboarding,
+        completeOnboarding: CompleteAppOnboarding,
+        factory: AppOnboardingLinkFactory,
+    ) = AppOnboardingController(issue, redeem, getOnboarding, completeOnboarding, factory::create)
+
+    @Bean
+    fun redeemAppOnboardingLink(
+        tokenStore: JdbcAppOnboardingTokenStore,
+        identitySessions: br.com.saqz.access.application.session.AppOnboardingIdentitySessions,
+        clock: Clock,
+    ) = RedeemAppOnboardingLink(tokenStore, identitySessions, clock)
+
+    @Bean
+    fun appOnboardingIdentitySessions(firebaseApp: FirebaseApp) = FirebaseAppOnboardingSessions(firebaseApp)
+
+    @Bean
+    fun getAppOnboarding(tokenStore: JdbcAppOnboardingTokenStore) = GetAppOnboarding(tokenStore)
+
+    @Bean
+    fun completeAppOnboarding(tokenStore: JdbcAppOnboardingTokenStore) = CompleteAppOnboarding(tokenStore)
 
     @Bean fun userPhotoRepository(dataSource: DataSource) = JdbcUserPhotoRepository(dataSource)
     @Bean fun userPhotoConverter() = UserPhotoConverter()
@@ -397,15 +439,16 @@ class AccessSessionConfiguration {
         JdbcSubscriptionPlanLookup(dataSource)
 
     @Bean
-    fun subscriptionLimits(lookup: SubscriptionPlanLookup): SubscriptionLimits =
-        SubscriptionLimitsAdapter(lookup)
+    fun subscriptionLimits(lookup: SubscriptionPlanLookup, trials: br.com.saqz.subscriptions.application.OrganizerTrialRepository, clock: Clock): SubscriptionLimits =
+        SubscriptionLimitsAdapter(lookup, trials, clock)
 
     @Bean
     fun createGroup(
         transaction: JdbcTransactionRunner,
         repository: JdbcGroupCreationRepository,
         subscriptionLimits: SubscriptionLimits,
-    ) = CreateGroup(transaction, repository, subscriptionLimits)
+        trial: br.com.saqz.sharedkernel.subscription.GroupCreationTrial,
+    ) = CreateGroup(transaction, repository, subscriptionLimits, trial)
 
     @Bean
     fun groupDeletionRepository(dataSource: DataSource) = JdbcGroupDeletionRepository(dataSource)
@@ -601,7 +644,8 @@ class AccessSessionConfiguration {
         repository: JdbcInviteRedemptionRepository,
         subscriptionLimits: SubscriptionLimits,
         clock: Clock,
-    ) = RedeemInvite(transaction, repository, subscriptionLimits, clock)
+        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
+    ) = RedeemInvite(transaction, repository, subscriptionLimits, clock, writeAccess)
 
     @Bean
     fun accessInviteRedemptionController(
@@ -701,23 +745,27 @@ class AccessSessionConfiguration {
         repository: JdbcOccurrenceMaterializationRepository,
         ids: GameIdFactory,
         autoConfirm: AutoConfirmAttendance,
+        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
     ) = MaterializeWeeklySeries(
         transaction,
         repository,
         ids,
         Clock.systemUTC(),
         AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
+        writeAccess,
     )
     @Bean fun weeklySeriesRepository(dataSource: DataSource) = JdbcWeeklySeriesRepository(dataSource)
     @Bean fun weeklySeriesService(
         repository: JdbcWeeklySeriesRepository,
         ids: GameIdFactory,
         autoConfirm: AutoConfirmAttendance,
+        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
     ) = WeeklySeriesService(
         repository,
         ids,
         Clock.systemUTC(),
         AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
+        writeAccess,
     )
     @Bean fun seriesBoundaryRepository(dataSource: DataSource) = JdbcSeriesBoundaryRepository(dataSource)
     @Bean fun applySeriesBoundary(
@@ -732,12 +780,13 @@ class AccessSessionConfiguration {
     )
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
     @Bean fun chargeTransactionRepository(dataSource: DataSource) = JdbcChargeTransactionRepository(dataSource)
-    @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository) = ChargeTransactions(transaction, repository, Instant::now)
+    @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository, writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess) = ChargeTransactions(transaction, repository, Instant::now, writeAccess)
     @Bean fun autoConfirmationRepository(dataSource: DataSource) = JdbcAutoConfirmationRepository(dataSource)
     @Bean fun autoConfirmAttendance(
         transaction: JdbcTransactionRunner,
         repository: JdbcAutoConfirmationRepository,
-    ) = AutoConfirmAttendance(transaction, repository, Instant::now)
+        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
+    ) = AutoConfirmAttendance(transaction, repository, Instant::now, writeAccess = writeAccess)
     /**
      * AutoConfirmAttendance também é GameSideEffectPort; sem @Primary o autowire por tipo
      * de editGame/changeGameLifecycle fica ambíguo e o boot com datasource falha.

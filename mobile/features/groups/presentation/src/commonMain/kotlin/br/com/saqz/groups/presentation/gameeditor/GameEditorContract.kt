@@ -16,6 +16,8 @@ data class GameEditorState(
     val error: GroupUiError? = null,
     val groupName: String = "",
     val zoneId: String = "",
+    val trialEndsAt: String? = null,
+    val trialWarningVisible: Boolean = false,
     val form: GameEditorFields = GameEditorFields(),
     val validationErrors: Set<GameEditorFieldError> = emptySet(),
     val versionToken: String? = null,

@@ -73,6 +73,10 @@ internal interface AndroidFirebaseAuthClient {
     fun observe(listener: (AndroidProviderUser?) -> Unit): Cancelable
     fun createAccount(name: String, email: String, password: String, done: (AndroidProviderResult<AndroidProviderUser>) -> Unit)
     fun signInWithPassword(email: String, password: String, done: (AndroidProviderResult<AndroidProviderUser>) -> Unit)
+    fun signInWithCustomToken(
+        customToken: String,
+        done: (AndroidProviderResult<AndroidProviderUser>) -> Unit,
+    ) = done(AndroidProviderResult.Failure(AndroidProviderFailure.UNAVAILABLE))
     fun signInWithGoogle(idToken: String, done: (AndroidProviderResult<AndroidProviderUser>) -> Unit)
     fun sendVerification(done: (AndroidProviderResult<Unit>) -> Unit)
     fun reloadUser(done: (AndroidProviderResult<AndroidProviderUser>) -> Unit)
@@ -101,6 +105,9 @@ internal class AndroidAuthAdapter(
 
     override fun signInWithPassword(email: String, password: String, done: AuthCallback) =
         firebase.signInWithPassword(email, password) { done.complete(it.toAuthResult()) }
+
+    override fun signInWithCustomToken(customToken: String, done: AuthCallback) =
+        firebase.signInWithCustomToken(customToken) { done.complete(it.toAuthResult()) }
 
     override fun signInWithGoogle(done: AuthCallback) {
         google.requestIdToken { credential ->
@@ -190,6 +197,13 @@ internal class FirebaseSdkAuthClient(
         done: (AndroidProviderResult<AndroidProviderUser>) -> Unit,
     ) {
         auth.signInWithEmailAndPassword(email, password).completeWithUser(done)
+    }
+
+    override fun signInWithCustomToken(
+        customToken: String,
+        done: (AndroidProviderResult<AndroidProviderUser>) -> Unit,
+    ) {
+        auth.signInWithCustomToken(customToken).completeWithUser(done)
     }
 
     override fun signInWithGoogle(

@@ -104,8 +104,8 @@ class JdbcAdminRevenueStatsRepositoryIntegrationTest {
             listOf(
                 // 3591 = 3990 com 10%; 3990 = cupom esgotado (remaining NULL, duração finita) volta ao cheio
                 PlanSplitEntry(Plan.TITULAR, subscribers = 2, mrrCents = 3_591 + 3_990),
-                // 5990 mensal + 59900/12 = 4991 do anual mensalizado
-                PlanSplitEntry(Plan.ORGANIZADOR, subscribers = 2, mrrCents = 5_990 + 4_991),
+                // 5990 mensal + 53910/12 = 4492 do anual mensalizado
+                PlanSplitEntry(Plan.ORGANIZADOR, subscribers = 2, mrrCents = 5_990 + 4_492),
             ),
             split,
         )

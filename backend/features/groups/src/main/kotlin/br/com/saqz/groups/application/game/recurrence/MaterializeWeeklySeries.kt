@@ -11,6 +11,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 
 data class MaterializedGameOccurrence(
     val id: UUID,
@@ -36,6 +37,7 @@ class MaterializeWeeklySeries(
     private val ids: GameIdFactory,
     private val clock: Clock,
     private val autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { },
+    private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
 ) {
     fun execute(rule: WeeklySeriesRule, from: LocalDate): MaterializeWeeklySeriesResult {
         val resolved = when (val result = WeeklyRecurrenceResolver.resolve(rule, from)) {
@@ -45,6 +47,7 @@ class MaterializeWeeklySeries(
         val createdAt = clock.instant()
         val materialized = resolved.map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, createdAt) }
         return transactionRunner.inTransaction {
+            if (!writeAccess.canWrite(rule.groupId)) return@inTransaction MaterializeWeeklySeriesResult.Success(0, 0)
             val inserted = repository.insertIfAbsent(materialized)
             autoConfirmation.apply(materialized)
             MaterializeWeeklySeriesResult.Success(materialized.size, inserted)

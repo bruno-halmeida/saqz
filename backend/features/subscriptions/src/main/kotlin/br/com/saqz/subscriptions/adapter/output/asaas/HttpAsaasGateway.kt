@@ -7,6 +7,7 @@ import br.com.saqz.subscriptions.application.AsaasGateway
 import br.com.saqz.subscriptions.application.AsaasIdempotencyStore
 import br.com.saqz.subscriptions.application.AsaasPaymentSnapshot
 import br.com.saqz.subscriptions.application.AsaasSubscriptionCreation
+import br.com.saqz.subscriptions.application.CardDeclinedException
 import br.com.saqz.subscriptions.application.CreditCardDetails
 import br.com.saqz.subscriptions.application.CreditCardHolderInfo
 import br.com.saqz.subscriptions.application.PixCode
@@ -338,7 +339,7 @@ class HttpAsaasGateway(
     }
 
     private fun isDefinitiveClientRejection(ex: Exception): Boolean =
-        ex is AsaasException && ex.statusCode in 400..499
+        (ex is AsaasException && ex.statusCode in 400..499) || ex is CardDeclinedException
 
     private fun customerIdempotencyKey(ownerUserId: UUID): String = "customer:$ownerUserId"
 

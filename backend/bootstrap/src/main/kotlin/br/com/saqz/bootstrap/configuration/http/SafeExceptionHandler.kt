@@ -7,6 +7,8 @@ import br.com.saqz.access.adapter.input.http.InvalidPhoneException
 import br.com.saqz.access.adapter.input.http.InvalidSessionProfileFieldException
 import br.com.saqz.access.adapter.input.http.AccountNotFoundException
 import br.com.saqz.access.adapter.input.http.AccountSuspendedException
+import br.com.saqz.access.adapter.input.http.AppOnboardingCodeInvalidException
+import br.com.saqz.access.adapter.input.http.AppOnboardingIdentityUnavailableException
 import br.com.saqz.access.adapter.input.http.EmailVerificationRateLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetAttemptLimitException
 import br.com.saqz.access.adapter.input.http.PasswordResetCodeExpiredException
@@ -65,6 +67,7 @@ import jakarta.servlet.http.HttpServletResponse
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.HttpRequestMethodNotSupportedException
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.multipart.MaxUploadSizeExceededException
 import org.springframework.web.multipart.MultipartException
 import org.springframework.web.multipart.support.MissingServletRequestPartException
@@ -74,6 +77,11 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 class SafeExceptionHandler(
     private val problemWriter: ApiProblemWriter,
 ) {
+    @ExceptionHandler(br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException::class)
+    fun subscriptionRequired(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 403, ErrorCode.SUBSCRIPTION_REQUIRED)
+    }
+
     @ExceptionHandler(InvalidDisplayNameException::class, AccessInvalidDisplayNameException::class)
     fun invalidDisplayName(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(
@@ -229,6 +237,16 @@ class SafeExceptionHandler(
     @ExceptionHandler(AccountSuspendedException::class)
     fun accountSuspended(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 403, ErrorCode.ACCOUNT_SUSPENDED)
+    }
+
+    @ExceptionHandler(AppOnboardingCodeInvalidException::class)
+    fun appOnboardingCodeInvalid(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 400, ErrorCode.APP_ONBOARDING_CODE_INVALID)
+    }
+
+    @ExceptionHandler(AppOnboardingIdentityUnavailableException::class)
+    fun appOnboardingIdentityUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 503, ErrorCode.IDENTITY_PROVIDER_UNAVAILABLE)
     }
 
     @ExceptionHandler(EntryRequestNotFoundException::class)
@@ -458,6 +476,15 @@ class SafeExceptionHandler(
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
     fun methodArgumentTypeMismatch(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 400, ErrorCode.VALIDATION_FAILED)
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun messageNotReadable(request: HttpServletRequest, response: HttpServletResponse) {
+        if (request.requestURI == "/api/session/app-link/redeem") {
+            problemWriter.write(request, response, 400, ErrorCode.APP_ONBOARDING_CODE_INVALID)
+        } else {
+            problemWriter.write(request, response, 500)
+        }
     }
 
     @ExceptionHandler(SubscriptionNotFoundException::class)

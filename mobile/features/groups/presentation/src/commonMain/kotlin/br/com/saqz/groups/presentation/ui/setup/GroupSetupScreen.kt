@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.material.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -46,6 +47,7 @@ import br.com.saqz.groups.resources.group_pix_error_key
 import br.com.saqz.groups.resources.group_pix_error_label
 import br.com.saqz.groups.resources.group_setup_create_action
 import br.com.saqz.groups.resources.group_setup_create_title
+import br.com.saqz.groups.resources.group_setup_trial_offer
 import br.com.saqz.groups.resources.group_setup_delete_action
 import br.com.saqz.groups.resources.group_setup_edit_title
 import br.com.saqz.groups.resources.group_setup_error_composition
@@ -62,6 +64,7 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object GroupSetupTags {
+    const val TrialOffer = "group-setup-trial-offer"
     const val Photo = "group-setup-photo"
     const val Name = "group-setup-name"
     const val Modality = "group-setup-modality"
@@ -107,6 +110,7 @@ fun GroupSetupScreen(
     onIntent: (GroupSetupIntent) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    showTrialOffer: Boolean = false,
 ) {
     val metrics = SaqzTheme.metrics
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
@@ -142,6 +146,14 @@ fun GroupSetupScreen(
                     .padding(horizontal = metrics.horizontalPadding, vertical = metrics.grid),
                 verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
             ) {
+                if (showTrialOffer && !state.isEditing) {
+                    Text(
+                        text = stringResource(Res.string.group_setup_trial_offer),
+                        style = SaqzTheme.typography.support,
+                        color = SaqzTheme.colors.textSecondary,
+                        modifier = Modifier.testTag(GroupSetupTags.TrialOffer),
+                    )
+                }
                 GroupSetupNotices(state, onIntent)
                 GroupSetupCards(state, onIntent)
             }

@@ -24,6 +24,12 @@ class ApiProblemWriter(
         val correlationId = requestCorrelationId(request).value
         response.status = status
         response.contentType = MediaType.APPLICATION_PROBLEM_JSON_VALUE
+        if (request.requestURI == "/api/session/app-link" ||
+            request.requestURI == "/api/session/app-link/redeem"
+        ) {
+            response.setHeader("Cache-Control", "no-store, max-age=0")
+            response.setHeader("Pragma", "no-cache")
+        }
         if (retryAfterSeconds != null) response.setHeader("Retry-After", retryAfterSeconds.toString())
         objectMapper.writeValue(
             response.outputStream,

@@ -44,7 +44,7 @@ class JdbcAdminSubscriptionDirectoryRepositoryIntegrationTest {
         assertEquals(2, todos.total)
         assertEquals(listOf("Bianca Souza", "Thiago Melo"), todos.items.map { it.ownerName })
         assertEquals(5_990, todos.items[0].priceCents)
-        assertEquals(89_900, todos.items[1].priceCents)
+        assertEquals(80_910, todos.items[1].priceCents)
         assertEquals(listOf("Bianca Souza"), soPastDue.items.map { it.ownerName })
         assertEquals(listOf("ILIMITADO"), porNome.items.map { it.plan })
     }

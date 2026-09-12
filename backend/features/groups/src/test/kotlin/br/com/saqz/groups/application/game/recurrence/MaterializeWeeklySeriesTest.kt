@@ -17,6 +17,37 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class MaterializeWeeklySeriesTest {
+    @Test fun `expired trial cannot create a recurring series through an internal entry point`() {
+        val persisted = mutableListOf<MaterializedGameOccurrence>()
+        val repository = object : br.com.saqz.groups.application.game.series.WeeklySeriesRepository {
+            override fun role(actor: UUID, groupId: UUID) = br.com.saqz.groups.domain.GroupRole.OWNER
+            override fun create(rule: WeeklySeriesRule, occurrences: List<MaterializedGameOccurrence>): Boolean {
+                persisted += occurrences
+                return true
+            }
+            override fun find(groupId: UUID, lineageId: UUID): br.com.saqz.groups.application.game.series.WeeklySeriesView? = null
+        }
+        val service = br.com.saqz.groups.application.game.series.WeeklySeriesService(
+            repository, RecordingIds(), Clock.systemUTC(), writeAccess = br.com.saqz.sharedkernel.subscription.GroupWriteAccess { false },
+        )
+        kotlin.test.assertFailsWith<br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException> { service.create(UUID.randomUUID(), rule()) }
+        assertTrue(persisted.isEmpty())
+    }
+
+    @Test fun `expired trial materializes no occurrences or automatic responses`() {
+        val repository = IdentityRepository()
+        val responses = mutableListOf<MaterializedGameOccurrence>()
+        val service = MaterializeWeeklySeries(
+            RecordingTransaction(), repository, RecordingIds(),
+            Clock.fixed(Instant.parse("2026-01-01T12:00:00Z"), ZoneOffset.UTC),
+            br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort { responses += it },
+            br.com.saqz.sharedkernel.subscription.GroupWriteAccess { false },
+        )
+        assertEquals(MaterializeWeeklySeriesResult.Success(0, 0), service.execute(rule(), DATE))
+        assertTrue(repository.identities.isEmpty())
+        assertTrue(responses.isEmpty())
+    }
+
     @Test fun `create materializes one bounded occurrence per identity`() {
         val fixture = fixture()
         val result = assertIs<MaterializeWeeklySeriesResult.Success>(fixture.useCase.execute(fixture.rule, DATE))

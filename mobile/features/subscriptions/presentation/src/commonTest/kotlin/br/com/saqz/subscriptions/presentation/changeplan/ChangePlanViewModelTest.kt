@@ -224,9 +224,9 @@ private val ACTIVE = MySubscription(
 )
 
 private val CATALOG = listOf(
-    PlanCatalogItem(Plan.Titular, 3_990, 39_900, 1, 25, multiAdmin = false, reports = false, whatsappSla = false),
-    PlanCatalogItem(Plan.Organizador, 5_990, 59_900, 3, null, multiAdmin = false, reports = false, whatsappSla = false),
-    PlanCatalogItem(Plan.Ilimitado, 8_990, 89_900, null, null, multiAdmin = true, reports = true, whatsappSla = true),
+    PlanCatalogItem(Plan.Titular, 3_990, 35_910, 1, 25, multiAdmin = false, reports = false, whatsappSla = false),
+    PlanCatalogItem(Plan.Organizador, 5_990, 53_910, 3, null, multiAdmin = false, reports = false, whatsappSla = false),
+    PlanCatalogItem(Plan.Ilimitado, 8_990, 80_910, null, null, multiAdmin = true, reports = true, whatsappSla = true),
 )
 
 private fun changed(

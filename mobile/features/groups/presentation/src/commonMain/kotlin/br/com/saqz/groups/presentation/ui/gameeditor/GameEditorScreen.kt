@@ -31,6 +31,7 @@ import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
+import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChoiceChip
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzInput
@@ -103,6 +104,7 @@ import br.com.saqz.groups.resources.game_editor_saving
 import br.com.saqz.groups.resources.game_editor_subtitle
 import br.com.saqz.groups.resources.game_editor_time_label
 import br.com.saqz.groups.resources.game_editor_time_placeholder
+import br.com.saqz.groups.resources.game_editor_trial_warning
 import br.com.saqz.groups.resources.game_editor_venue_address_hint
 import br.com.saqz.groups.resources.game_editor_venue_address_label
 import br.com.saqz.groups.resources.game_editor_venue_helper
@@ -240,6 +242,15 @@ private fun FormScroll(
             errors = errors,
             onOpenPicker = onOpenPicker,
         )
+        if (state.trialWarningVisible) {
+            SaqzCard(modifier = Modifier.testTag("game-editor-trial-warning"), tone = SaqzCardTone.Soft) {
+                Text(
+                    text = stringResource(Res.string.game_editor_trial_warning, state.trialEndsAt ?: ""),
+                    style = SaqzTheme.typography.support,
+                    color = SaqzTheme.colors.textPrimary,
+                )
+            }
+        }
         DurationChips(
             selected = state.form.durationMinutes,
             onSelect = { onIntent(GameEditorIntent.SelectDuration(it)) },

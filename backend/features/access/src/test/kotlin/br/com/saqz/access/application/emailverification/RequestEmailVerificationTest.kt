@@ -113,7 +113,10 @@ class RequestEmailVerificationTest {
             )
         }
 
-        val result = useCase.request(unverified(), "10.0.0.1")
+        val result = useCase.request(
+            RequestIdentity("subject-final", "final@saqz.test", emailVerified = false),
+            "10.0.0.1",
+        )
 
         assertEquals(RequestVerificationResult.RateLimited(600), result)
         assertEquals(RequestEmailVerification.MAX_PER_IP, mailer.sent.size)

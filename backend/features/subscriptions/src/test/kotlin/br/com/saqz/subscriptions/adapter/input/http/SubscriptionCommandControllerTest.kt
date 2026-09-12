@@ -3,10 +3,10 @@ package br.com.saqz.subscriptions.adapter.input.http
 import br.com.saqz.sharedkernel.RequestIdentity
 import br.com.saqz.sharedkernel.subscription.OwnerPlanUsageLookup
 import br.com.saqz.subscriptions.adapter.output.asaas.AsaasException
-import br.com.saqz.subscriptions.adapter.output.asaas.CardDeclinedException
 import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.application.AsaasGateway
 import br.com.saqz.subscriptions.application.AsaasSubscriptionCreation
+import br.com.saqz.subscriptions.application.CardDeclinedException
 import br.com.saqz.subscriptions.application.CancelSubscription
 import br.com.saqz.subscriptions.application.ChangePlan
 import br.com.saqz.subscriptions.application.CouponRepository

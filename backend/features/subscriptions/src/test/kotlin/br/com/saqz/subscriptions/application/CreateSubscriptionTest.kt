@@ -1,7 +1,6 @@
 package br.com.saqz.subscriptions.application
 
 import br.com.saqz.subscriptions.adapter.output.asaas.AsaasException
-import br.com.saqz.subscriptions.adapter.output.asaas.CardDeclinedException
 import br.com.saqz.subscriptions.domain.Coupon
 import br.com.saqz.subscriptions.domain.CouponRedemption
 import br.com.saqz.subscriptions.domain.Plan
@@ -73,6 +72,15 @@ class CreateSubscriptionTest {
         creditCardHolderInfo = validCreditCardHolderInfo(),
         remoteIp = "203.0.113.5",
     )
+
+    @Test
+    fun `annual checkout sends nine monthly payments as the annual total`() {
+        val result = useCase.execute(baseCommand().copy(plan = Plan.ILIMITADO, cycle = SubscriptionCycle.ANNUAL))
+
+        assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals(80_910, gateway.lastSubscriptionValueCents)
+        assertEquals(SubscriptionCycle.ANNUAL, subscriptions.findByOwnerUserId(ownerId)?.cycle)
+    }
 
     @Test
     fun `creates subscription with credit card and persists the returned token`() {

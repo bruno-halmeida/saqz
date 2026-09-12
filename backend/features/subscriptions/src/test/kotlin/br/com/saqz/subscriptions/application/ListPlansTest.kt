@@ -19,7 +19,7 @@ class ListPlansTest {
 
         val titular = plans.first { it.id == Plan.TITULAR }
         assertEquals(3_990, titular.monthlyPriceCents)
-        assertEquals(39_900, titular.annualPriceCents)
+        assertEquals(35_910, titular.annualPriceCents)
         assertEquals(1, titular.maxGroups)
         assertEquals(25, titular.maxAthletes)
         assertEquals(false, titular.multiAdmin)

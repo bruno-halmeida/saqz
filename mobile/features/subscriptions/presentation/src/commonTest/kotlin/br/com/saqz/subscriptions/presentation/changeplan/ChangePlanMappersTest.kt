@@ -37,7 +37,7 @@ class ChangePlanMappersTest {
 
         assertEquals("Ilimitado", card.name)
         assertFalse(card.isCurrent)
-        assertEquals(UiText.Res(Res.string.changeplan_price_year, listOf("R$ 89,90")), card.priceLabel)
+        assertEquals(UiText.Res(Res.string.changeplan_price_year, listOf("R$ 809,10")), card.priceLabel)
         assertEquals(UiText.Res(Res.string.changeplan_benefit_groups_unlimited), card.benefits.first())
     }
 
@@ -46,7 +46,7 @@ class ChangePlanMappersTest {
         val titular = PlanCatalogItem(
             id = Plan.Titular,
             monthlyPriceCents = 3_990,
-            annualPriceCents = 39_900,
+            annualPriceCents = 35_910,
             maxGroups = 1,
             maxAthletes = 25,
             multiAdmin = false,
@@ -107,7 +107,7 @@ class ChangePlanMappersTest {
 private val ORGANIZADOR = PlanCatalogItem(
     id = Plan.Organizador,
     monthlyPriceCents = 5_990,
-    annualPriceCents = 59_900,
+    annualPriceCents = 53_910,
     maxGroups = 3,
     maxAthletes = null,
     multiAdmin = false,
@@ -118,7 +118,7 @@ private val ORGANIZADOR = PlanCatalogItem(
 private val ILIMITADO = PlanCatalogItem(
     id = Plan.Ilimitado,
     monthlyPriceCents = 8_990,
-    annualPriceCents = 89_900,
+    annualPriceCents = 80_910,
     maxGroups = null,
     maxAthletes = null,
     multiAdmin = true,

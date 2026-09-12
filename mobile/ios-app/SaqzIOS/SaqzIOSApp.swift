@@ -63,7 +63,7 @@ struct IOSAppComposition {
             apiBaseUrl: configuration.apiBaseURL,
             access: AccessRuntimeDependencies(
                 auth: auth,
-                links: IOSNoOpAccessLinkPort(),
+                links: links,
                 localState: localState,
                 share: share,
                 profilePhoto: profilePhoto,
@@ -92,14 +92,6 @@ struct IOSAppComposition {
         )
         return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, photos: photos, drafts: drafts, dependencies: dependencies)
     }
-}
-
-private final class IOSNoOpAccessLinkPort: NativeLinkPort {
-    func start(listener: InviteCodeListener) -> Cancelable { IOSNoOpAccessLinkCancellation() }
-}
-
-private final class IOSNoOpAccessLinkCancellation: Cancelable {
-    func cancel() {}
 }
 
 @MainActor

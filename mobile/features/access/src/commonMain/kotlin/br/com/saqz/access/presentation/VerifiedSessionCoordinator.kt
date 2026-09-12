@@ -93,6 +93,9 @@ sealed interface SessionIntent {
 
     data object RetryBootstrap : SessionIntent
 
+    /** Refresh memberships and organizer access after group creation or returning from checkout. */
+    data object RefreshAccess : SessionIntent
+
     /** Sent only after the backend confirms the authenticated user's departure. */
     data class MembershipRemoved(val groupId: String) : SessionIntent
 
@@ -261,6 +264,7 @@ class SessionAccessStateMachine(
             }
             SessionIntent.CompleteIdentity -> completeIdentity()
             SessionIntent.RetryBootstrap -> retryBootstrap()
+            SessionIntent.RefreshAccess -> refreshAccess()
             is SessionIntent.MembershipRemoved -> begin { ctx ->
                 val ready = ctx.state as? SessionAccessState.Ready ?: return@begin null
                 ctx.copy(state = SessionAccessState.Ready(ready.session.copy(
@@ -500,6 +504,26 @@ class SessionAccessStateMachine(
         // acabou, ela não entra e o envio do perfil também não acontece.
         turn.publish(next) ?: return PhotoOutcome.ContextLost
         return if (sent) PhotoOutcome.Sent(next) else PhotoOutcome.Refused(next)
+    }
+
+    private var accessRefreshGeneration = 0
+
+    private fun refreshAccess() {
+        val snapshot = context.value
+        val ready = snapshot.state as? SessionAccessState.Ready ?: return
+        if (snapshot.loggingOut) return
+        val refresh = ++accessRefreshGeneration
+        val turn = snapshot.turn()
+        scope.launch {
+            val result = turn.emit { session.bootstrap() } ?: return@launch
+            if (!turn.current() || refresh != accessRefreshGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> if (result.value.user.id == ready.session.user.id) {
+                    turn.publish(readyOrIdentityGate(result.value))
+                }
+                is SaqzResult.Failure -> if (result.error == AccessError.Unauthenticated) logout()
+            }
+        }
     }
 
     private fun retryBootstrap() {

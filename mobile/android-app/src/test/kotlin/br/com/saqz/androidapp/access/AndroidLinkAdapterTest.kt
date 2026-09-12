@@ -1,6 +1,7 @@
 package br.com.saqz.androidapp.access
 
 import br.com.saqz.access.domain.port.InviteCodeListener
+import br.com.saqz.access.domain.port.AppOnboardingCodeListener
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -179,14 +180,65 @@ class AndroidLinkAdapterTest {
         assertTrue(events.isEmpty())
     }
 
-    private class Fixture {
+    @Test
+    fun onboardingCodeUsesSeparateListenerAndDeduplicatesDirectAndBranch() {
+        val fixture = Fixture()
+        fixture.startOnboarding()
+
+        fixture.adapter.onColdStart("https://saqz.test-app.link/?%24deeplink_path=onboarding&saqz_onboarding=$CODE_A")
+        fixture.branch.complete(mapOf("saqz_onboarding" to CODE_A))
+
+        assertEquals(listOf(CODE_A), fixture.onboardingReceived)
+        assertTrue(fixture.received.isEmpty())
+    }
+
+    @Test
+    fun onboardingRejectsMixedParamsAndUntrustedHost() {
+        val fixture = Fixture()
+        fixture.startOnboarding()
+
+        fixture.adapter.onWarmIntent("https://saqz.test-app.link/?saqz_onboarding=$CODE_A&saqz_invite=$CODE_B")
+        fixture.adapter.onWarmIntent("https://evil.example/?saqz_onboarding=$CODE_A")
+
+        assertTrue(fixture.onboardingReceived.isEmpty())
+    }
+
+    @Test
+    fun deferredOnboardingBeforeListenerAndNewWarmCodeAreDelivered() {
+        val fixture = Fixture()
+        fixture.adapter.onColdStart(null)
+        fixture.branch.complete(mapOf("saqz_onboarding" to CODE_A))
+        fixture.startOnboarding()
+        fixture.adapter.onWarmIntent("https://saqz.test-app.link/?saqz_onboarding=$CODE_B")
+        assertEquals(listOf(CODE_A, CODE_B), fixture.onboardingReceived)
+    }
+
+    @Test
+    fun onboardingUsesConfiguredHostAndRejectsDuplicateParameters() {
+        val fixture = Fixture(setOf("configured.app.link"))
+        fixture.startOnboarding()
+        fixture.adapter.onWarmIntent("https://saqz.test-app.link/?saqz_onboarding=$CODE_A")
+        fixture.adapter.onWarmIntent("https://configured.app.link/?saqz_onboarding=$CODE_A&saqz_onboarding=$CODE_A")
+        assertTrue(fixture.onboardingReceived.isEmpty())
+        fixture.adapter.onWarmIntent("https://configured.app.link/?saqz_onboarding=$CODE_A")
+        assertEquals(listOf(CODE_A), fixture.onboardingReceived)
+    }
+
+    private class Fixture(allowedHosts: Set<String> = setOf("saqz.test-app.link")) {
         val branch = FakeBranchSessionClient()
-        val adapter = AndroidLinkAdapter(branch)
+        val adapter = AndroidLinkAdapter(branch, allowedHosts)
         val received = mutableListOf<String>()
+        val onboardingReceived = mutableListOf<String>()
 
         fun start() = adapter.start(object : InviteCodeListener {
             override fun onInviteCode(code: String) {
                 received += code
+            }
+        })
+
+        fun startOnboarding() = adapter.startAppOnboarding(object : AppOnboardingCodeListener {
+            override fun onAppOnboardingCode(code: String) {
+                onboardingReceived += code
             }
         })
     }

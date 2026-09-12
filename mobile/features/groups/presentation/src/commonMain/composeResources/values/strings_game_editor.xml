@@ -62,5 +62,6 @@
     <string name="game_editor_error_save_title">Não foi possível criar o jogo</string>
     <string name="game_editor_error_save_body">Tente novamente.</string>
     <string name="game_editor_error_retry">Tentar</string>
+    <string name="game_editor_trial_warning">Este jogo começa em %1$s, depois do fim do teste. Assine para continuar usando o grupo nessa data.</string>
 
 </resources>

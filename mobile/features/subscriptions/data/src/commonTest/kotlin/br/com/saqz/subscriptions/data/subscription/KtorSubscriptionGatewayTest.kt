@@ -48,6 +48,7 @@ class KtorSubscriptionGatewayTest {
         assertEquals(3, value.size)
         assertEquals(Plan.Titular, value.first().id)
         assertEquals(3_990L, value.first().monthlyPriceCents)
+        assertEquals(listOf(35_910L, 53_910L, 80_910L), value.map { it.annualPriceCents })
         assertEquals(1, value.first().maxGroups)
         assertNull(value.last().maxGroups)
         assertTrue(value.last().multiAdmin)
@@ -255,7 +256,7 @@ class KtorSubscriptionGatewayTest {
         const val MY_SUBSCRIPTION = """{"status":"ACTIVE","entitled":true,"plan":"ORGANIZADOR","cycle":"MONTHLY","pendingPlan":"ILIMITADO","pendingPlanEffectiveAt":"2026-09-01T00:00:00Z","currentPeriodEnd":"2026-08-30T00:00:00Z","paymentMethod":"PIX","usage":{"groupsUsed":2,"groupsLimit":3},"readOnly":false,"pastDueSince":null,"cardLast4":"4242","cardBrand":"visa","canceledAt":null}"""
         const val CANCELED = """{"status":"CANCELED","canceledAt":"2026-08-01T00:00:00Z","currentPeriodEnd":"2026-08-30T00:00:00Z"}"""
         const val RECEIPTS = """{"receipts":[{"asaasEventId":"evt-1","asaasPaymentId":"pay-1","valueCents":4990,"confirmedAt":"2026-07-01T00:00:00Z","processedAt":"2026-07-01T00:05:00Z"}]}"""
-        const val PLANS = """[{"id":"TITULAR","name":"TITULAR","monthlyPriceCents":3990,"annualPriceCents":39900,"maxGroups":1,"maxAthletes":25,"multiAdmin":false,"reports":false,"whatsappSla":false},{"id":"ORGANIZADOR","name":"ORGANIZADOR","monthlyPriceCents":5990,"annualPriceCents":59900,"maxGroups":3,"maxAthletes":null,"multiAdmin":false,"reports":false,"whatsappSla":false},{"id":"ILIMITADO","name":"ILIMITADO","monthlyPriceCents":8990,"annualPriceCents":89900,"maxGroups":null,"maxAthletes":null,"multiAdmin":true,"reports":true,"whatsappSla":true}]"""
+        const val PLANS = """[{"id":"TITULAR","name":"TITULAR","monthlyPriceCents":3990,"annualPriceCents":35910,"maxGroups":1,"maxAthletes":25,"multiAdmin":false,"reports":false,"whatsappSla":false},{"id":"ORGANIZADOR","name":"ORGANIZADOR","monthlyPriceCents":5990,"annualPriceCents":53910,"maxGroups":3,"maxAthletes":null,"multiAdmin":false,"reports":false,"whatsappSla":false},{"id":"ILIMITADO","name":"ILIMITADO","monthlyPriceCents":8990,"annualPriceCents":80910,"maxGroups":null,"maxAthletes":null,"multiAdmin":true,"reports":true,"whatsappSla":true}]"""
         const val CHANGE_PLAN_UPGRADE = """{"planId":"ORGANIZADOR","pendingPlanId":null,"pendingPlanEffectiveAt":null,"pendingUpgradePlanId":"ILIMITADO","status":"ACTIVE","chargedCents":1500,"pixCopyPaste":"000201PIX","invoiceUrl":"https://pay.example/inv","pixQrCodeBase64":"QR"}"""
     }
 }

@@ -15,10 +15,12 @@ class BearerAuthenticationFilter(
     private val verifyRequestIdentity: VerifyRequestIdentity,
     private val anonymousPaths: Set<String> = setOf("/actuator/health"),
     private val optionalAuthenticationPaths: Set<String> = emptySet(),
+    private val exactAnonymousPaths: Set<String> = emptySet(),
     private val writeProblem: (HttpServletRequest, HttpServletResponse, Int, ErrorCode?) -> Unit,
 ) : OncePerRequestFilter() {
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        anonymousPaths.any { request.requestURI == it || request.requestURI.startsWith("$it/") }
+        exactAnonymousPaths.contains(request.requestURI) ||
+            anonymousPaths.any { request.requestURI == it || request.requestURI.startsWith("$it/") }
 
     override fun doFilterInternal(
         request: HttpServletRequest,

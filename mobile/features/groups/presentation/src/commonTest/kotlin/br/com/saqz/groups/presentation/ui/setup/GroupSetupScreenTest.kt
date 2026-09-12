@@ -16,6 +16,35 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class GroupSetupScreenTest {
+    @Test
+    fun firstTrialGroupExplainsStartWithoutPayment() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GroupSetupScreen(GroupSetupState(mode = GroupSetupMode.Create), {}, {}, showTrialOffer = true)
+            }
+        }
+        onNodeWithTag(GroupSetupTags.TrialOffer).assertExists()
+        onNodeWithText("O teste de 14 dias começa ao criar seu primeiro grupo, para quem nunca teve grupo ou assinatura. Até 25 atletas, sem cartão e sem cobrança automática.").assertExists()
+    }
+
+    @Test
+    fun editingDoesNotPromiseANewTrial() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GroupSetupScreen(GroupSetupState(mode = GroupSetupMode.Edit("existing")), {}, {}, showTrialOffer = true)
+            }
+        }
+        onNodeWithTag(GroupSetupTags.TrialOffer).assertDoesNotExist()
+    }
+    @Test
+    fun paidGroupDoesNotPromiseANewTrial() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GroupSetupScreen(GroupSetupState(mode = GroupSetupMode.Create), {}, {}, showTrialOffer = false)
+            }
+        }
+        onNodeWithTag(GroupSetupTags.TrialOffer).assertDoesNotExist()
+    }
 
     @Test
     fun savingDisablesCreateAndIgnoresNewClicks() = runComposeUiTest {
