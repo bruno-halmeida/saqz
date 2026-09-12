@@ -12,6 +12,10 @@ import br.com.saqz.subscriptions.domain.subscription.SubscriptionError
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionStatus
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionUsage
+import br.com.saqz.subscriptions.domain.trial.TrialAccess
+import br.com.saqz.subscriptions.domain.trial.TrialError
+import br.com.saqz.subscriptions.domain.trial.TrialGateway
+import br.com.saqz.subscriptions.domain.trial.TrialStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -256,6 +260,34 @@ class MyPlanViewModelTest {
         assertEquals(false, viewModel.state.value.isLoading)
         assertNull(viewModel.state.value.plan)
         assertNotNull(viewModel.state.value.loadError)
+    }
+
+    @Test
+    fun `trial account is shown without inventing a paid plan or receipts`() = runTest {
+        val trial = TrialAccess(
+            status = TrialStatus.Active,
+            startedAt = "2026-08-01T10:00:00Z",
+            endsAt = "2026-08-15T10:00:00Z",
+            serverTime = "2026-08-02T10:00:00Z",
+            readOnly = false,
+            canCreateGroup = false,
+            maxGroups = 1,
+            maxAthletes = 25,
+            isOwner = true,
+            appUrl = null,
+        )
+        val viewModel = MyPlanViewModel(
+            gateway = FakeSubscriptionGateway(subscriptionResult = SaqzResult.Failure(SubscriptionError.NotFound)),
+            trialGateway = object : TrialGateway {
+                override suspend fun ownerTrial() = SaqzResult.Success(trial)
+                override suspend fun groupTrial(groupId: br.com.saqz.domain.GroupId) = SaqzResult.Failure(TrialError.NotFound)
+            },
+        )
+
+        assertNull(viewModel.state.value.plan)
+        assertEquals(trial.endsAt, viewModel.state.value.trial?.endsAt)
+        assertEquals(true, viewModel.state.value.trial?.canSubscribe)
+        assertEquals(emptyList(), viewModel.state.value.receipts)
     }
 }
 

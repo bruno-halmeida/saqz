@@ -35,6 +35,11 @@ import br.com.saqz.subscriptions.presentation.myplan.MyPlanIntent
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanState
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanStatusTone
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanUsageUi
+import br.com.saqz.subscriptions.presentation.myplan.MyPlanTrialUi
+import br.com.saqz.subscriptions.resources.myplan_trial_active
+import br.com.saqz.subscriptions.resources.myplan_trial_expired
+import br.com.saqz.subscriptions.resources.myplan_trial_subscribe
+import br.com.saqz.subscriptions.resources.myplan_trial_organizer
 import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.myplan_access_until
 import br.com.saqz.subscriptions.resources.myplan_cancel_button
@@ -108,6 +113,36 @@ internal fun MyPlanCurrentCard(plan: MyPlanCardUi, modifier: Modifier = Modifier
                     color = colors.textSecondary,
                 )
             }
+        }
+    }
+}
+
+@Composable
+internal fun MyPlanTrialCard(trial: MyPlanTrialUi, onSubscribe: () -> Unit, modifier: Modifier = Modifier) {
+    SaqzCard(modifier = modifier.testTag("myplan-trial-card"), tone = SaqzCardTone.Soft) {
+        Text(
+            text = stringResource(
+                when (trial.status) {
+                    br.com.saqz.subscriptions.domain.trial.TrialStatus.Expired -> Res.string.myplan_trial_expired
+                    else -> Res.string.myplan_trial_active
+                },
+                trial.endsAt ?: "",
+            ),
+            style = SaqzTheme.typography.subtitle,
+            color = SaqzTheme.colors.textPrimary,
+        )
+        if (trial.canSubscribe) {
+            SaqzButton(
+                label = stringResource(Res.string.myplan_trial_subscribe),
+                onClick = onSubscribe,
+                fullWidth = true,
+            )
+        } else if (!trial.isOwner) {
+            Text(
+                text = stringResource(Res.string.myplan_trial_organizer),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
         }
     }
 }

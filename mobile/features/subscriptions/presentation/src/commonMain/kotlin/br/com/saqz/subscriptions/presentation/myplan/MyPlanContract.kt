@@ -2,6 +2,7 @@ package br.com.saqz.subscriptions.presentation.myplan
 
 import androidx.compose.runtime.Immutable
 import br.com.saqz.designsystem.UiText
+import br.com.saqz.subscriptions.domain.trial.TrialStatus
 
 /**
  * 8e — plano atual, uso, recibos e o menu Gerenciar. Todo texto composto (modelo + valor
@@ -15,6 +16,7 @@ data class MyPlanState(
     val loadError: UiText? = null,
     val plan: MyPlanCardUi? = null,
     val usage: MyPlanUsageUi? = null,
+    val trial: MyPlanTrialUi? = null,
     val receipts: List<MyPlanReceiptUi> = emptyList(),
     val receiptsError: UiText? = null,
     val loadMoreReceiptsError: UiText? = null,
@@ -26,6 +28,14 @@ data class MyPlanState(
     val isCancelSheetOpen: Boolean = false,
     val isCanceling: Boolean = false,
     val cancelError: UiText? = null,
+)
+
+@Immutable
+data class MyPlanTrialUi(
+    val status: TrialStatus,
+    val endsAt: String?,
+    val isOwner: Boolean,
+    val canSubscribe: Boolean,
 )
 
 enum class MyPlanStatusTone { Active, PastDue, Canceled }

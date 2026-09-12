@@ -32,4 +32,8 @@
     <string name="myplan_retry">Tentar de novo</string>
     <string name="myplan_generic_error">Algo deu errado. Tente de novo.</string>
     <string name="myplan_network_error">Sem conexão. Confira sua internet e tente de novo.</string>
+    <string name="myplan_trial_active">Teste ativo até %1$s</string>
+    <string name="myplan_trial_expired">Teste encerrado em %1$s</string>
+    <string name="myplan_trial_subscribe">Assinar para continuar</string>
+    <string name="myplan_trial_organizer">Fale com o organizador para continuar.</string>
 </resources>

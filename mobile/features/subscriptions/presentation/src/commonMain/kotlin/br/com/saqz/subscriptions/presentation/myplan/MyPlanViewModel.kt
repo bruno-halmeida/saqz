@@ -6,6 +6,8 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.onFailure
 import br.com.saqz.domain.onSuccess
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
+import br.com.saqz.subscriptions.domain.trial.TrialGateway
+import br.com.saqz.subscriptions.domain.trial.TrialStatus
 import kotlinx.coroutines.launch
 
 private const val RECEIPTS_PAGE_SIZE = 20
@@ -17,6 +19,7 @@ private const val RECEIPTS_PAGE_SIZE = 20
 class MyPlanViewModel(
     private val gateway: SubscriptionGateway,
     initialState: MyPlanState = MyPlanState(),
+    private val trialGateway: TrialGateway? = null,
 ) : MviViewModel<MyPlanState, MyPlanIntent, MyPlanEffect>(initialState) {
 
     // Guarda de geração (AGENTS.md §4): um cancelamento bem-sucedido recarrega tudo, e essa
@@ -64,8 +67,25 @@ class MyPlanViewModel(
             val subscriptionResult = gateway.mySubscription()
             if (generation != loadGeneration) return@launch
 
+            val trialResult = trialGateway?.ownerTrial()
+            if (generation != loadGeneration) return@launch
+
             if (subscriptionResult is SaqzResult.Failure) {
-                update { it.copy(isLoading = false, loadError = subscriptionResult.error.toUiText()) }
+                if (trialResult !is SaqzResult.Success) {
+                    update { it.copy(isLoading = false, loadError = subscriptionResult.error.toUiText()) }
+                    return@launch
+                }
+                update {
+                    it.copy(
+                        isLoading = false,
+                        loadError = null,
+                        plan = null,
+                        usage = null,
+                        trial = trialResult.value.toUi(),
+                        receipts = emptyList(),
+                        hasMoreReceipts = false,
+                    )
+                }
                 return@launch
             }
 
@@ -79,6 +99,7 @@ class MyPlanViewModel(
                     loadError = null,
                     plan = loadedSubscription.toCardUi(),
                     usage = loadedSubscription.toUsageUi(),
+                    trial = (trialResult as? SaqzResult.Success)?.value?.toUi(),
                     // Falha aqui não pode virar "nenhum recibo ainda" (achado do Codex no
                     // PR #93): mantém a última lista boa e guarda o erro à parte.
                     receipts = (receiptsResult as? SaqzResult.Success)?.value?.map { r -> r.toUi() } ?: it.receipts,
@@ -166,3 +187,10 @@ class MyPlanViewModel(
         }
     }
 }
+
+private fun br.com.saqz.subscriptions.domain.trial.TrialAccess.toUi() = MyPlanTrialUi(
+    status = status,
+    endsAt = endsAt,
+    isOwner = isOwner,
+    canSubscribe = isOwner && status != TrialStatus.Subscribed,
+)

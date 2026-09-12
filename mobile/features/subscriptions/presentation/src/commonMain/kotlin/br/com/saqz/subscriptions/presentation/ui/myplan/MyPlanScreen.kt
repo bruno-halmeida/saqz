@@ -27,6 +27,7 @@ import br.com.saqz.subscriptions.presentation.myplan.MyPlanReceiptUi
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanState
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanStatusTone
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanUsageUi
+import br.com.saqz.subscriptions.presentation.myplan.MyPlanTrialUi
 import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.myplan_retry
 import br.com.saqz.subscriptions.resources.myplan_title
@@ -81,6 +82,9 @@ fun MyPlanScreen(
                 verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
             ) {
                 state.plan?.let { MyPlanCurrentCard(it) }
+                state.trial?.let { trial ->
+                    MyPlanTrialCard(trial, onSubscribe = { onIntent(MyPlanIntent.OpenChangePlan) })
+                }
                 state.usage?.let { MyPlanUsageCard(it) }
                 MyPlanManageSection(
                     state = state,
