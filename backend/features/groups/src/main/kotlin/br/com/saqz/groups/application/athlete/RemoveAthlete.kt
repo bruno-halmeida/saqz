@@ -7,6 +7,7 @@ import br.com.saqz.groups.domain.GroupAccessDecision
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.GroupAction
 import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.sharedkernel.group.GroupAdministrationRevocation
 import java.util.UUID
 
 class RemoveAthlete(
@@ -14,6 +15,7 @@ class RemoveAthlete(
     private val groupReadRepository: GroupReadRepository,
     private val athleteRepository: AthleteRepository,
     private val accessPolicy: GroupAccessPolicy,
+    private val administrationRevocation: GroupAdministrationRevocation = GroupAdministrationRevocation { _, _ -> },
 ) {
     /** Self-service departure never grants the management permission to remove another athlete. */
     fun leave(actor: UUID, groupId: UUID): RemoveAthleteResult = transactionRunner.inTransaction {
@@ -21,6 +23,7 @@ class RemoveAthlete(
             ?: return@inTransaction RemoveAthleteResult.Success
         if (membership.role == GroupRole.OWNER) return@inTransaction RemoveAthleteResult.OwnerImmutable
         athleteRepository.remove(groupId, actor)
+        if (membership.role == GroupRole.ADMIN) administrationRevocation.revoked(groupId, actor)
         RemoveAthleteResult.Success
     }
 
@@ -36,6 +39,7 @@ class RemoveAthlete(
             ?: return@inTransaction RemoveAthleteResult.Success
         if (target.role == GroupRole.OWNER) return@inTransaction RemoveAthleteResult.OwnerImmutable
         athleteRepository.remove(groupId, userId)
+        if (target.role == GroupRole.ADMIN) administrationRevocation.revoked(groupId, userId)
         RemoveAthleteResult.Success
     }
 }

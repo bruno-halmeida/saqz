@@ -545,6 +545,12 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 405)
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException::class,
+        org.springframework.web.servlet.NoHandlerFoundException::class)
+    fun routeNotFound(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404)
+    }
+
     @ExceptionHandler(Exception::class)
     fun unexpected(
         request: HttpServletRequest,
