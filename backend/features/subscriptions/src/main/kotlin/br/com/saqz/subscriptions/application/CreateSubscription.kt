@@ -1,6 +1,5 @@
 package br.com.saqz.subscriptions.application
 
-import br.com.saqz.subscriptions.adapter.output.asaas.CardDeclinedException
 import br.com.saqz.subscriptions.application.SubscriptionPricing.discountedPriceCents
 import br.com.saqz.subscriptions.application.SubscriptionPricing.initialPeriodEnd
 import br.com.saqz.subscriptions.domain.Coupon

@@ -9,8 +9,8 @@ interface AsaasGateway {
 
     /**
      * [creditCard]/[creditCardHolderInfo]/[remoteIp] only apply when [billingType] is
-     * `CREDIT_CARD` — null otherwise. Throws [br.com.saqz.subscriptions.adapter.output.asaas.CardDeclinedException]
-     * (not a generic Asaas error) when Asaas rejects the card itself.
+     * `CREDIT_CARD` — null otherwise. Throws [CardDeclinedException] (not a generic Asaas error) when
+     * Asaas rejects the card itself.
      */
     fun createSubscription(
         asaasCustomerId: String,

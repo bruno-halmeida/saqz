@@ -3,6 +3,7 @@ package br.com.saqz.subscriptions.adapter.output.asaas
 import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.application.AsaasConcurrentOperationException
 import br.com.saqz.subscriptions.application.AsaasGateway
+import br.com.saqz.subscriptions.application.CardDeclinedException
 import br.com.saqz.subscriptions.application.CreditCardDetails
 import br.com.saqz.subscriptions.application.CreditCardHolderInfo
 import br.com.saqz.subscriptions.domain.Plan
@@ -219,7 +220,7 @@ class HttpAsaasGatewayTest {
             json(401, """{"errors":[{"code":"invalid_access_token","description":"Chave de API inválida."}]}"""),
         )
 
-        val error = assertThrows<AsaasException> {
+        val error = assertThrows<RuntimeException> {
             gateway.createSubscription(
                 asaasCustomerId = "cus_CARD",
                 plan = Plan.TITULAR,
@@ -233,8 +234,9 @@ class HttpAsaasGatewayTest {
             )
         }
 
-        assertEquals(401, error.statusCode)
-        assertFalse(error is CardDeclinedException)
+        val asaasError = error as AsaasException
+        assertEquals(401, asaasError.statusCode)
+        assertFalse(CardDeclinedException::class.java.isInstance(error))
     }
 
     @Test

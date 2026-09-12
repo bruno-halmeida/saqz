@@ -1,7 +1,6 @@
 package br.com.saqz.subscriptions.application
 
 import br.com.saqz.subscriptions.adapter.output.asaas.AsaasException
-import br.com.saqz.subscriptions.adapter.output.asaas.CardDeclinedException
 import br.com.saqz.subscriptions.domain.Coupon
 import br.com.saqz.subscriptions.domain.CouponRedemption
 import br.com.saqz.subscriptions.domain.Plan
