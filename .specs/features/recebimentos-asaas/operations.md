@@ -56,5 +56,10 @@ a aprovação é obtida pelo `general` de `/myAccount/status`.
 
 Testes locais usam PostgreSQL real e HTTP Asaas simulado. Não houve chamada a uma
 subconta real, envio de documento real, cobrança, saque ou publicação em produção.
-V47 contém a base financeira; V48 adiciona a data de criação remota necessária
-ao onboarding. A separação preserva o checksum de V47 entre as entregas.
+V49 contém a base financeira; V50 adiciona a data de criação remota necessária
+ao onboarding. A separação preserva o checksum de V49 entre as entregas.
+
+A migração do trial central foi renumerada para V48, resolvendo a colisão anterior
+com V46 de convites permanentes. O conteúdo SQL do trial foi preservado.
+A elegibilidade usa OrganizerTrialAccessLookup e Subscription.isEntitlingAt;
+o corte de downgrade usa pendingPlanEffectiveAt, sem recalcular o trial.

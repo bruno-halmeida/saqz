@@ -1,31 +1,32 @@
 # Estado de implementação
 
-## Decisions
+## Decisões
 
-- 2026-09-12: o plano fornecido pelo usuário é a fonte vigente para recebimentos Asaas.
-  Propostas antigas de absorção opcional das tarifas ou continuidade de recorrências
-  após perda de elegibilidade foram substituídas pelo plano.
-- Preservar o contrato central de trial em desenvolvimento paralelo; não recriar sua regra temporal.
-- Separar receivables de subscriptions e preservar manutenção financeira após corte comercial.
+- O plano do usuário de 2026-09-12 prevalece sobre context.md e direcionamento.md.
+- Execução e verificação individuais autorizadas pelo usuário.
+- Receivables permanece separado de subscriptions; manutenção financeira independe de plano/grupo.
+- Nenhuma tarifa ou condição comercial real foi inventada.
 
-## Handoff
+## Entregas
 
-- Execução individual autorizada pelo usuário; verificação final também individual conforme preferência.
-- Branch: feat/receivables-foundation.
-- T01 concluída: módulo, contratos e política de autorização; 5 testes de domínio e 20 de arquitetura passam.
-- Corrigida dependência preexistente de exceções Asaas em subscriptions; suíte subscriptions passa.
-- T02 concluída: migração V47, 17 tabelas; seis testes PostgreSQL e migração do bootstrap passam.
-- T03 concluída: AES-GCM com contexto de conta/finalidade, HMAC para identidade; operações com leases e fencing.
-- Gate: 8 testes unitários, 10 PostgreSQL, 20 arquitetura passam.
-- T04 parcial: cadastro voluntário, aceite atômico, PF/PJ, credenciais, retomada, documentos e endpoints HTTP implementados e testados.
-- Endpoints só registrados quando proteção financeira configurada; BaaS criação desligado por padrão.
-- Gate atual: 8 unitários, 17 PostgreSQL/HTTP, 20 arquitetura passam. Bootstrap agregado migra V47.
-- T04 pendente: correção dos dados cadastrais, recuperação operacional da chave perdida e caminhos HTTP restantes; não marcar completo.
-- Próximo: concluir T04, depois T05 delegações e T06 ativação/contrato de elegibilidade.
-- T07 parcial: núcleo independente de tarifas e split fixo implementado; quatro testes passam.
-- T05 parcial: delegações com aceite de conta inteira, diretório financeiro, revogação idempotente e observer transacional de grupos implementados.
-- 6 testes de integração PostgreSQL/HTTP de delegação passam; 639 testes de grupos sem regressão.
-- O titular mantém diretório após exclusão de grupo; rebaixar/remover administrador revoga também em sessão aberta e reingresso não restaura a delegação.
-- T06 e T08–T21 ainda não implementados; nenhuma mudança mobile ou adm-web.
-- Suíte geral bootstrap: 337/338 na execução ampla; único EOF de health passou no rerun isolado.
-- Trial central ainda ausente neste checkout; não foi reimplementado.
+- `feat/receivables-core`: domínio, schema, cifra, operações persistidas e cálculo de tarifas.
+- `feat/receivables-foundation`: entrega dependente com onboarding, delegação e elegibilidade central.
+- Base atualizada para origin/main 6f86f8f6, incluindo trial central.
+- V48 resolve colisão preexistente do trial com V46 de grupos; V49 cria recebimentos; V50 adiciona data remota.
+- Criação do PR recusada pelo GitHub: `must be a collaborator (createPullRequest)`.
+  A branch core foi publicada. Não houve merge remoto nem deploy.
+
+## Progresso e pendências
+
+- T01–T03 implementadas e verificadas.
+- T04 parcial: cadastro voluntário PF/PJ, aceite, cifra, retomada sem duplicação, documentos e HTTP.
+  Pendentes correção cadastral e recuperação operacional de chave perdida.
+- T05 parcial: concessão/revogação/diretório, revogação transacional ao remover/rebaixar admin.
+  Permissões nas futuras operações serão aplicadas quando essas rotas existirem.
+- T06 parcial: composição com trial e assinatura centrais, inclusive corte efetivo de downgrade.
+  Ativação por grupo ainda pendente.
+- T07 parcial: núcleo decimal, gross-up e split fixo; publicação, simulação HTTP e emissão pendentes.
+- T08–T20 pendentes. Sem pagamentos, carteira, recorrência, mobile ou adm-web implementados.
+- T21 parcial: revisão individual e sete mutações detectadas em cópia temporária.
+- 41 testes novos: 12 domínio/cifra/tarifas, 17 PostgreSQL/HTTP, 8 delegação, 4 elegibilidade.
+- Homologação real Asaas e liberação do piloto não realizadas.

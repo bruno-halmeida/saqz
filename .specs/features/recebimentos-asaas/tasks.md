@@ -2,7 +2,7 @@
 
 Fonte de intenção: plano de implementação fornecido pelo usuário em 2026-09-12.
 O plano substitui as decisões ainda pendentes e propostas conflitantes de context.md
-e direcionamento.md. Nenhuma tarefa abaixo está implementada.
+e direcionamento.md. O estado de cada tarefa está indicado abaixo; itens parciais permanecem abertos.
 
 ## Regras vinculantes
 
@@ -22,7 +22,7 @@ e direcionamento.md. Nenhuma tarefa abaixo está implementada.
 - [x] T03 Implementar armazenamento cifrado de credenciais e operações persistidas recuperáveis. Gate: sigilo, concorrência, idempotência e timeout.
 - [ ] T04 (parcial: cadastro, documentos e HTTP verificados; correção cadastral e recuperação operacional ainda pendentes) Integrar criação/recuperação voluntária de subconta, aceite versionado, onboarding e documentos. Gate: API simulada e contratos HTTP.
 - [ ] T05 (parcial: concessão/revogação/diretório e integração transacional com grupos verificados; faltam permissões aplicadas às operações futuras) Implementar autorização financeira, delegações e revogação por remoção de administrador. Gate: sessão aberta, troca de titular do grupo e isolamento entre contas.
-- [ ] T06 Implementar ativação por grupo e composição com elegibilidade central. Gate: matriz trial/planos, aprovação e ativação explícita.
+- [ ] T06 (parcial: elegibilidade central e limites temporais verificados; ativação por grupo pendente) Implementar ativação por grupo e composição com elegibilidade central. Gate: matriz trial/planos, aprovação e ativação explícita.
 
 ### Fase 2 — cobrança e dinheiro (lote 2; depende da fase 1)
 
@@ -43,7 +43,7 @@ e direcionamento.md. Nenhuma tarefa abaixo está implementada.
 - [ ] T18 Implementar painel operacional, tarifas/termos/piloto e recuperação auditada. Gate: testes Node e navegador/API; admin sem poder de saque.
 - [ ] T19 Implementar termos públicos, retorno do checkout, avisos de plano e notificações operacionais. Gate: callback sem confirmação e ausência de dados financeiros no endereço.
 - [ ] T20 Executar homologação integrada e documentar liberação/reversão e monitoramento. Gate: todos os cenários obrigatórios do plano; BaaS, termos e condições reais são pré-requisitos de produção.
-- [ ] T21 Executar verificação independente, corrigir lacunas e registrar evidências por critério. Gate: relatório do verificador, incluindo teste de discriminação em cópia temporária.
+- [ ] T21 Executar verificação individual, conforme escolha do usuário,, corrigir lacunas e registrar evidências por critério. Gate: relatório do verificador, incluindo teste de discriminação em cópia temporária.
 
 ## Critérios de entrega
 

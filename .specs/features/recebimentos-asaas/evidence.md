@@ -30,7 +30,7 @@ Asserções em `ReceivablesSchemaIntegrationTest.kt`; cada linha abaixo também 
 
 | Critério | Linha / asserção | Resultado |
 |---|---|---|
-| B1 migração aditiva | 25–29 `assertEquals(2/0/2300/17, ...)` (V47 + V48 após a entrega de onboarding) | aplica a base e preserva cobrança manual; cria 17 tabelas financeiras |
+| B1 migração aditiva | 25–29 `assertEquals(2/0/2300/17, ...)` (V49 + V50 após a entrega de onboarding) | aplica a base e preserva cobrança manual; cria 17 tabelas financeiras |
 | B2 identidade única | 37–39 `assertEquals("23505", ...sqlState)` / contagem 1 | titular e CPF/CNPJ não duplicam conta |
 | B4 deduplicação por conta | 51–53 SQLSTATE 23505 / contagem 2 | evento duplicado rejeitado só na mesma conta |
 | B5 competência única | 69–71 SQLSTATE 23505 / contagem 1 | mesma competência não reaparece após troca de conta |
@@ -275,8 +275,29 @@ Permissões nas futuras rotas de cobrança/saque/reembolso serão verificadas na
 ## Separação das entregas e casos adicionais de delegação
 
 Para permitir merge/deploy da base antes do onboarding sem alterar checksum de migração,
-provider_created_at foi movido para V48. O teste de migração passou a esperar duas
+provider_created_at foi movido para V50. O teste de migração passou a esperar duas
 migrações após baseline46; a preservação de dados e a reaplicação sem alterações permanecem verificadas.
 
 Foram adicionados dois cenários B2 à suíte de delegação: remoção pelo titular (além da saída voluntária)
 e troca do dono do grupo sem transferência de conta/histórico. Oito testes de delegação passam.
+
+## Integração com a main e contrato central
+
+Rebase sobre 6f86f8f6 incorporou o trial desenvolvido em paralelo e sua correção
+preexistente da fronteira de exceções de subscriptions. V48 passou a ser trial,
+V49 base financeira, V50 data de criação remota. O teste agregado valida o conjunto.
+
+ReceivablesEligibilityTest tem quatro testes: trial ativo/expirado, Titular/Organizador/
+Ilimitado, corte exato de downgrade e limites de cancelamento/inadimplência. O adapter
+não inicia trial nem calcula sua duração. Ativação e execução do corte continuam pendentes.
+
+Gate após rebase: receivables check, subscriptions test/integrationTest, groups test,
+architecture-tests test e bootstrap (delegação, migração agregada, criação e endpoint
+de trial) passaram. O gate isolado de elegibilidade também passou.
+
+Sete mutações foram detectadas em cópia temporária: ignorar corte comercial; aceitar
+delegado revogado; remover conta do AAD; reexecutar operação incerta; ignorar consentimento;
+calcular comissão com taxa do provedor; remover callback transacional de revogação.
+Nenhuma dessas mutações foi aplicada à árvore de trabalho.
+
+Gate amplo final após integração: 381 bootstrap + 12 unitários receivables + 17 integração receivables + 20 arquitetura, zero falhas/erros/ignorados; exit 0.
