@@ -18,6 +18,37 @@ import javax.sql.DataSource
 @ConditionalOnProperty("spring.datasource.url")
 class OrganizerTrialConfiguration {
     @Bean
+    fun groupPlanOwnerLookup(dataSource: DataSource): br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup =
+        br.com.saqz.groups.adapter.output.jdbc.plan.JdbcGroupPlanOwnerLookup(dataSource)
+
+    @Bean
+    fun organizerTrialAccess(
+        trials: OrganizerTrialRepository,
+        paid: br.com.saqz.subscriptions.application.SubscriptionPlanLookup,
+        eligibility: GroupCreationTrial,
+        groups: br.com.saqz.sharedkernel.subscription.OwnedGroupCounter,
+        limits: br.com.saqz.sharedkernel.subscription.SubscriptionLimits,
+        clock: Clock,
+    ): br.com.saqz.sharedkernel.subscription.OrganizerTrialAccessLookup =
+        br.com.saqz.subscriptions.application.GetOrganizerTrial(trials, paid, eligibility, groups, limits, clock)
+
+    @Bean
+    fun organizerTrialController(
+        actors: br.com.saqz.sharedkernel.actor.AuthenticatedActorResolver,
+        trials: br.com.saqz.sharedkernel.subscription.OrganizerTrialAccessLookup,
+        groups: br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup,
+        @org.springframework.beans.factory.annotation.Value("\${saqz.branch.domain}") branchDomain: String,
+    ): br.com.saqz.trials.http.OrganizerTrialController {
+        val domain = java.net.URI(branchDomain)
+        require(domain.scheme == "https" && !domain.host.isNullOrBlank() && domain.userInfo == null && domain.port == -1)
+        require(domain.path.isNullOrEmpty() || domain.path == "/")
+        require(domain.query == null && domain.fragment == null)
+        return br.com.saqz.trials.http.OrganizerTrialController(
+            actors, trials, groups, domain.toString().trimEnd('/') + "/?%24ios_nativelink=true",
+        )
+    }
+
+    @Bean
     fun organizerTrialRepository(dataSource: DataSource): OrganizerTrialRepository = JdbcOrganizerTrialRepository(dataSource)
 
     @Bean
