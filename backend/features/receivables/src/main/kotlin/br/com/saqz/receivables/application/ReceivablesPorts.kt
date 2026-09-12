@@ -18,6 +18,7 @@ interface ReceivablesGroups {
 }
 
 interface FinancialAccountRepository {
+    fun listForUser(userId: UUID): List<FinancialAccount>
     fun findById(accountId: UUID): FinancialAccount?
     fun findByOwner(ownerUserId: UUID): FinancialAccount?
     fun findDelegation(accountId: UUID, userId: UUID): FinancialDelegation?

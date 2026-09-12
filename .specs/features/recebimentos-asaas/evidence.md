@@ -204,3 +204,70 @@ Gate `:features:receivables:test :architecture-tests:test`, JDK21, exit 0: 12 un
 Todos os números são fixtures de teste. HALF_UP é a política explícita do núcleo; a tabela operacional
 precisará corresponder às condições reais do provedor, com divergências conciliadas em T09.
 Publicação versionada, seleção da tabela vigente, simulação HTTP e snapshot da emissão seguem pendentes em T07.
+
+## T05a — delegações e revogação transacional
+
+Gate JDK 21: `:features:receivables:check :features:groups:test :architecture-tests:test :bootstrap:test --tests '*FinancialDelegationIntegrationTest'`, exit 0.
+12 unitários e 17 integrações de recebimentos, 639 testes de grupos, 20 arquitetura, 6 integrações novas de delegação.
+
+B2 ↔ `FinancialDelegationIntegrationTest.kt`:
+- Concessão exige titular, administrador atual, termos publicados e aviso de alcance integral.
+- Delegado pode listar conta/autorizações, nunca conceder ou revogar autoridade.
+- Replay de concessão anterior à revogação não a restaura; conteúdo divergente conflita.
+- Rebaixamento de papel e saída persistem revoked_at na transação de grupos.
+- Rollback desfaz tanto papel quanto revogação; promoção posterior não restaura autorização.
+- Diretório continua para titular após exclusão do grupo, e exclui delegado revogado na sessão já aberta.
+- Rotas MVC reais de lista/grant/revoke/diretório cobrem consentimento, termos inexistentes, conflito, sucesso e ausência de autorização.
+
+Asserções localizadas, todas vinculadas aos critérios acima:
+- `FinancialDelegationIntegrationTest.kt:51` — `assertEquals(FinancialError.INVALID_INPUT, (f.service.grant(f.account, request, f.admin, "v1", false, now) as FinancialResult.Failure).error)`
+- `FinancialDelegationIntegrationTest.kt:52` — `assertNull(f.accounts.findDelegation(f.account, f.admin))`
+- `FinancialDelegationIntegrationTest.kt:53` — `assertEquals(FinancialError.INVALID_INPUT, (f.service.grant(f.account, request, UUID.randomUUID(), "v1", true, now) as FinancialResult.Failure).error)`
+- `FinancialDelegationIntegrationTest.kt:55` — `assertEquals(f.admin, granted.value.userId)`
+- `FinancialDelegationIntegrationTest.kt:56` — `assertEquals(f.account, granted.value.accountId)`
+- `FinancialDelegationIntegrationTest.kt:57` — `assertNull(granted.value.revokedAt)`
+- `FinancialDelegationIntegrationTest.kt:59` — `assertEquals(1, (f.service.list(f.account, delegatedRequest) as FinancialResult.Success).value.size)`
+- `FinancialDelegationIntegrationTest.kt:60` — `assertEquals(listOf(f.account), (f.service.accounts(delegatedRequest) as FinancialResult.Success).value.map { it.id })`
+- `FinancialDelegationIntegrationTest.kt:61` — `assertEquals(FinancialError.NOT_FOUND, (f.service.grant(f.account, delegatedRequest, f.owner, "v1", true, now) as FinancialResult.Failure).error)`
+- `FinancialDelegationIntegrationTest.kt:62` — `assertEquals(FinancialError.NOT_FOUND, (f.service.revoke(f.account, delegatedRequest, f.admin, now) as FinancialResult.Failure).error)`
+- `FinancialDelegationIntegrationTest.kt:63` — `assertIs<FinancialResult.Success<Unit>>(f.service.revoke(f.account, request.copy(requestId = UUID.randomUUID()), f.admin, now.plusSeconds(5)))`
+- `FinancialDelegationIntegrationTest.kt:65` — `assertEquals(now.plusSeconds(5), replay.value.revokedAt)`
+- `FinancialDelegationIntegrationTest.kt:66` — `assertEquals(FinancialError.NOT_FOUND, (f.service.list(f.account, delegatedRequest) as FinancialResult.Failure).error)`
+- `FinancialDelegationIntegrationTest.kt:67` — `assertEquals(emptyList(), (f.service.accounts(delegatedRequest) as FinancialResult.Success).value)`
+- `FinancialDelegationIntegrationTest.kt:68` — `assertEquals(1, (f.service.list(f.account, request) as FinancialResult.Success).value.size)`
+- `FinancialDelegationIntegrationTest.kt:76` — `assertEquals("ATHLETE", f.role())`
+- `FinancialDelegationIntegrationTest.kt:77` — `assertNotNull(f.accounts.findDelegation(f.account, f.admin)!!.revokedAt)`
+- `FinancialDelegationIntegrationTest.kt:79` — `assertEquals("ADMIN", f.role())`
+- `FinancialDelegationIntegrationTest.kt:80` — `assertEquals(FinancialError.NOT_FOUND, (f.service.list(f.account,`
+- `FinancialDelegationIntegrationTest.kt:88` — `assertIs<FinancialResult.Success<*>>(f.service.list(f.account, existingSession))`
+- `FinancialDelegationIntegrationTest.kt:91` — `assertNotNull(f.accounts.findDelegation(f.account, f.admin)!!.revokedAt)`
+- `FinancialDelegationIntegrationTest.kt:92` — `assertEquals(FinancialError.NOT_FOUND, (f.service.list(f.account, existingSession) as FinancialResult.Failure).error)`
+- `FinancialDelegationIntegrationTest.kt:94` — `assertIs<FinancialResult.Success<*>>(f.service.list(f.account, FinancialRequest(UUID.randomUUID(), f.owner)))`
+- `FinancialDelegationIntegrationTest.kt:95` — `assertEquals(f.owner, f.accounts.findById(f.account)!!.ownerUserId)`
+- `FinancialDelegationIntegrationTest.kt:96` — `assertEquals(listOf(f.account), (f.service.accounts(FinancialRequest(UUID.randomUUID(), f.owner)) as FinancialResult.Success).value.map { it.id })`
+- `FinancialDelegationIntegrationTest.kt:106` — `assertFailsWith<IllegalStateException> { f.change(failure).execute(f.owner, f.group, f.admin, PersistedMembershipRole.ATHLETE) }`
+- `FinancialDelegationIntegrationTest.kt:107` — `assertEquals("ADMIN", f.role())`
+- `FinancialDelegationIntegrationTest.kt:108` — `assertNull(f.accounts.findDelegation(f.account, f.admin)!!.revokedAt)`
+- `FinancialDelegationIntegrationTest.kt:109` — `assertIs<FinancialResult.Success<*>>(f.service.list(f.account, FinancialRequest(UUID.randomUUID(), f.admin)))`
+- `FinancialDelegationIntegrationTest.kt:120` — `assertEquals(404, controller.grant(stranger, f.account, body).statusCode.value())`
+- `FinancialDelegationIntegrationTest.kt:122` — `assertEquals(200, grant.statusCode.value())`
+- `FinancialDelegationIntegrationTest.kt:123` — `assertEquals(requestId, (grant.body as FinancialResult.Success<*>).requestId)`
+- `FinancialDelegationIntegrationTest.kt:124` — `assertEquals(200, controller.list(RequestIdentity(f.admin.toString()), f.account).statusCode.value())`
+- `FinancialDelegationIntegrationTest.kt:125` — `assertEquals(404, controller.revoke(stranger, f.account, f.admin, UUID.randomUUID()).statusCode.value())`
+- `FinancialDelegationIntegrationTest.kt:126` — `assertEquals(200, controller.revoke(owner, f.account, f.admin, UUID.randomUUID()).statusCode.value())`
+- `FinancialDelegationIntegrationTest.kt:127` — `assertEquals(404, controller.list(RequestIdentity(f.admin.toString()), f.account).statusCode.value())`
+- `FinancialDelegationIntegrationTest.kt:152` — `assertEquals(400, grant(false).status)`
+- `FinancialDelegationIntegrationTest.kt:153` — `assertEquals(400, grant(true, "unknown").status)`
+- `FinancialDelegationIntegrationTest.kt:155` — `assertEquals(200, granted.status)`
+- `FinancialDelegationIntegrationTest.kt:156` — `assertTrue(granted.contentAsString.contains(requestId.toString()))`
+- `FinancialDelegationIntegrationTest.kt:157` — `assertEquals(409, grant(true, "changed-terms").status)`
+- `FinancialDelegationIntegrationTest.kt:159` — `assertEquals(200, mvc.perform(get(url)).andReturn().response.status)`
+- `FinancialDelegationIntegrationTest.kt:160` — `assertEquals(404, grant(true).status)`
+- `FinancialDelegationIntegrationTest.kt:161` — `assertEquals(404, mvc.perform(delete("$url/${f.admin}").param("requestId", UUID.randomUUID().toString())).andReturn().response.status)`
+- `FinancialDelegationIntegrationTest.kt:163` — `assertEquals(200, directory.status)`
+- `FinancialDelegationIntegrationTest.kt:164` — `assertTrue(directory.contentAsString.contains(f.account.toString()))`
+- `FinancialDelegationIntegrationTest.kt:166` — `assertEquals(200, mvc.perform(delete("$url/${f.admin}").param("requestId", UUID.randomUUID().toString())).andReturn().response.status)`
+- `FinancialDelegationIntegrationTest.kt:168` — `assertEquals(404, mvc.perform(get(url)).andReturn().response.status)`
+- `FinancialDelegationIntegrationTest.kt:169` — `assertFalse(mvc.perform(get("/api/receivables/accounts")).andReturn().response.contentAsString.contains(f.account.toString()))`
+
+Permissões nas futuras rotas de cobrança/saque/reembolso serão verificadas nas tarefas que criam essas rotas; não existem ainda.
