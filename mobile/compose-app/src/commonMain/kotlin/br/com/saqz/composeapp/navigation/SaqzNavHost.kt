@@ -169,8 +169,9 @@ internal fun SaqzNavHost(
             pendingInviteCode = inviteCoordinator.readPendingInviteCode()
         }
     }
-    LaunchedEffect(state.session) {
+    LaunchedEffect(state.session, state.appOnboarding) {
         reconcileAccessStack(backStack, state.session, restoring = restoring[0])
+        reconcileAppOnboardingStack(backStack, state.session, state.appOnboarding)
         restoring[0] = false
         if (state.session is SessionAccessState.Ready && !coordinatorAuthenticated) {
             coordinatorAuthenticated = true
@@ -178,14 +179,6 @@ internal fun SaqzNavHost(
         } else if (state.session !is SessionAccessState.Ready && coordinatorAuthenticated) {
             coordinatorAuthenticated = false
             inviteCoordinator.onSignedOut()
-        }
-    }
-    LaunchedEffect(state.appOnboarding, state.session) {
-        val handoff = state.appOnboarding
-        val shouldPresent = handoff is br.com.saqz.access.presentation.appaccess.AppOnboardingAuthState.NeedsAccountConfirmation ||
-            handoff is br.com.saqz.access.presentation.appaccess.AppOnboardingAuthState.Completed && !handoff.onboardingCompleted
-        if (state.session is SessionAccessState.Ready && shouldPresent && backStack.none { it == AccessRoute.AppOnboarding }) {
-            backStack.add(AccessRoute.AppOnboarding)
         }
     }
     LaunchedEffect(inviteCoordinator, state.session) {
@@ -239,7 +232,15 @@ internal fun SaqzNavHost(
             else -> RegisterInviteContext.Generic
         }
     }
-    val pop: () -> Unit = { backStack.removeLastOrNull() }
+    val onboardingCoordinator = koinInject<br.com.saqz.access.presentation.appaccess.AppOnboardingAuthCoordinator>()
+    val pop: () -> Unit = {
+        if (backStack.lastOrNull() != AccessRoute.AppOnboarding) {
+            backStack.removeLastOrNull()
+        } else if (!state.appOnboarding.isNativeHandoffBusy()) {
+            onboardingCoordinator.cancel()
+            backStack.removeLastOrNull()
+        }
+    }
     NavDisplay(
         backStack = backStack,
         // O `NavDisplay` só habilita o back quando há entrada anterior
@@ -340,7 +341,15 @@ internal fun SaqzNavHost(
                 )
             }
             entry<AccessRoute.AppOnboarding> {
-                AppOnboardingRoot(onCreateGroup = { backStack.add(GroupsRoute.Create) })
+                AppOnboardingRoot(
+                    session = state.session,
+                    onClose = { backStack.removeAll { it == AccessRoute.AppOnboarding } },
+                    onOpenLogin = { backStack.resetTo(AccessRoute.Login) },
+                    onCreateGroup = {
+                        backStack.removeAll { it == AccessRoute.AppOnboarding }
+                        backStack.add(GroupsRoute.Create)
+                    },
+                )
             }
             entry<SaqzShellDestination> { route ->
                 SaqzAppShell(

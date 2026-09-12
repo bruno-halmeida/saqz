@@ -113,6 +113,18 @@ class AndroidAuthAdapterTest {
     }
 
     @Test
+    fun customTokenSignInUsesFirebaseSdkBinding() {
+        val fixture = Fixture()
+        var result: AuthResult? = null
+
+        fixture.adapter.signInWithCustomToken("custom-token", authCallback { result = it })
+        fixture.firebase.completeAuth(AndroidProviderResult.Success(providerUser()))
+
+        assertEquals(listOf("custom-token:custom-token"), fixture.firebase.calls)
+        assertEquals(nativeUser(), (result as AuthResult.Success).user)
+    }
+
+    @Test
     fun googleCredentialIsExchangedForFirebaseCredential() {
         val fixture = Fixture()
         var result: AuthResult? = null
@@ -337,6 +349,11 @@ class AndroidAuthAdapterTest {
 
         override fun signInWithPassword(email: String, password: String, done: (AndroidProviderResult<AndroidProviderUser>) -> Unit) {
             calls += "password:$email:$password"
+            authDone = done
+        }
+
+        override fun signInWithCustomToken(customToken: String, done: (AndroidProviderResult<AndroidProviderUser>) -> Unit) {
+            calls += "custom-token:$customToken"
             authDone = done
         }
 

@@ -49,7 +49,10 @@ class AppOnboardingAuthCoordinator(
     private val attemptedCodes = LinkedHashSet<String>()
 
     fun redeem(code: String) {
-        if (code.isBlank() || mutableState.value !is AppOnboardingAuthState.Idle || !attemptedCodes.add(code)) return
+        if (code.isBlank() || code in attemptedCodes) return
+        // A newly issued link is an explicit new attempt; never replay a consumed code.
+        reset()
+        if (mutableState.value !is AppOnboardingAuthState.Idle || !attemptedCodes.add(code)) return
         val token = ++generation
         pending = null
         pendingOnboardingCompleted = false

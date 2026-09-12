@@ -72,7 +72,14 @@ internal val accessPresentationModule = module {
     }
 
     viewModelOf(::LoginViewModel)
-    viewModelOf(::AppOnboardingViewModel)
+    viewModel {
+        AppOnboardingViewModel(get()) {
+            when (val state = get<SessionAccessStateMachine>().state.value) {
+                is br.com.saqz.access.presentation.SessionAccessState.Ready -> state.session.user.id
+                else -> null
+            }
+        }
+    }
     viewModelOf(::ForgotPasswordViewModel)
     viewModelOf(::IdentityCompletionViewModel)
     // A 1b entrega a sessão pelo mesmo caminho que o `AuthenticationStateMachine` acima —

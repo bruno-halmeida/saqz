@@ -10,7 +10,7 @@ protocol IOSBranchSessionClient: AnyObject {
 }
 
 @MainActor
-final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, NativeLinkPort {
+final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency NativeLinkPort {
     private static let inviteParameter = "saqz_invite"
     private static let attendanceParameter = "saqz_attendance"
     private static let onboardingParameter = "saqz_onboarding"
@@ -247,7 +247,7 @@ enum IOSLinkComposition {
     }
 }
 
-private final class IOSLinkCancellation: GroupCancelable {
+private final class IOSLinkCancellation: GroupCancelable, Cancelable {
     private var action: (() -> Void)?
     init(_ action: @escaping () -> Void) { self.action = action }
     func cancel() { action?(); action = nil }

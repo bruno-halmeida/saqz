@@ -146,7 +146,7 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
         firebase.signInWithPassword(email: email, password: password) { done.complete(result: $0.authResult) }
     }
 
-    func signInWithCustomToken(_ customToken: String, done: AuthCallback) {
+    func signInWithCustomToken(customToken: String, done: AuthCallback) {
         firebase.signInWithCustomToken(customToken) { done.complete(result: $0.authResult) }
     }
 

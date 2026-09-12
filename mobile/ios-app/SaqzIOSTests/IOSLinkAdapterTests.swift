@@ -5,6 +5,48 @@ import XCTest
 
 @MainActor
 final class IOSLinkAdapterTests: XCTestCase {
+    func testOnboardingColdAndDeferredCopiesUseOnlyAccessListenerOnce() {
+        let fixture = Fixture(); fixture.start(); fixture.startOnboarding()
+        fixture.adapter.onColdStart(url: URL(string: "https://saqz.test-app.link/?saqz_onboarding=\(Self.codeA)"))
+        fixture.branch.complete(["saqz_onboarding": Self.codeA])
+        XCTAssertEqual(fixture.onboardingReceived, [Self.codeA])
+        XCTAssertTrue(fixture.received.isEmpty)
+        XCTAssertTrue(fixture.attendanceReceived.isEmpty)
+    }
+
+    func testDeferredOnboardingBeforeListenerAndNewWarmCode() {
+        let fixture = Fixture()
+        fixture.adapter.onColdStart(url: nil)
+        fixture.branch.complete(["saqz_onboarding": Self.codeA])
+        fixture.startOnboarding()
+        fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/?saqz_onboarding=\(Self.codeB)")!)
+        XCTAssertEqual(fixture.onboardingReceived, [Self.codeA, Self.codeB])
+    }
+
+    func testOnboardingRejectsUntrustedDuplicateAndMixedLinks() {
+        let fixture = Fixture(); fixture.startOnboarding(); fixture.adapter.onColdStart(url: nil)
+        for raw in [
+            "https://evil.example/?saqz_onboarding=\(Self.codeA)",
+            "https://saqz.test-app.link/?saqz_onboarding=\(Self.codeA)&saqz_onboarding=\(Self.codeA)",
+            "https://saqz.test-app.link/?saqz_onboarding=\(Self.codeA)&saqz_invite=\(Self.codeB)",
+            "https://saqz.test-app.link/attendance/\(Self.codeB)?saqz_onboarding=\(Self.codeA)"
+        ] { fixture.adapter.onOpenURL(URL(string: raw)!) }
+        fixture.branch.complete(["saqz_onboarding": Self.codeA, "saqz_attendance": Self.codeB])
+        XCTAssertTrue(fixture.onboardingReceived.isEmpty)
+    }
+
+    func testOnboardingUsesConfiguredHost() {
+        let branch = FakeBranchSessionClient()
+        let adapter = IOSLinkAdapter(branch: branch, allowedHosts: ["configured.app.link"])
+        var received: [String] = []
+        let subscription = adapter.startAppOnboarding(listener: RecordingOnboardingListener { received.append($0) })
+        adapter.onOpenURL(URL(string: "https://saqz.test-app.link/?saqz_onboarding=\(Self.codeA)")!)
+        XCTAssertTrue(received.isEmpty)
+        adapter.onOpenURL(URL(string: "https://configured.app.link/?saqz_onboarding=\(Self.codeA)")!)
+        XCTAssertEqual(received, [Self.codeA])
+        subscription.cancel()
+    }
+
     func testColdAppLinkDeliversOnlyOpaqueInviteCode() {
         let fixture = Fixture(); fixture.start()
         let url = URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)&groupId=secret")!
@@ -128,11 +170,22 @@ final class IOSLinkAdapterTests: XCTestCase {
         let branch = FakeBranchSessionClient(); lazy var adapter = IOSLinkAdapter(branch: branch)
         var received: [String] = []
         var attendanceReceived: [String] = []
+        var onboardingReceived: [String] = []
+        func startOnboarding() {
+            _ = adapter.startAppOnboarding(listener: RecordingOnboardingListener { self.onboardingReceived.append($0) })
+        }
         func start() -> GroupCancelable { adapter.start(listener_: RecordingLinkEventListener(invite: { self.received.append($0) }, attendance: { self.attendanceReceived.append($0) })) }
     }
 
     private static let codeA = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
     private static let codeB = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBE"
+}
+
+@MainActor
+private final class RecordingOnboardingListener: @preconcurrency AppOnboardingCodeListener {
+    private let receive: (String) -> Void
+    init(_ receive: @escaping (String) -> Void) { self.receive = receive }
+    func onAppOnboardingCode(code: String) { receive(code) }
 }
 
 @MainActor

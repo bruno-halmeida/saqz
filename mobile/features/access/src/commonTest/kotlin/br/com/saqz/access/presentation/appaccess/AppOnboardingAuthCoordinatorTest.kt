@@ -27,6 +27,24 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalCoroutinesApi::class)
 class AppOnboardingAuthCoordinatorTest {
     @Test
+    fun `opening a newly issued link renews failure without an extra reset action`() = runTest {
+        val fixture = fixture(this, current = { null }, resolving = { false })
+        fixture.gateway.result = SaqzResult.Failure(AppAccessError.CodeInvalid)
+        fixture.coordinator.onAuthObservation(AuthState.SignedOut)
+        fixture.coordinator.redeem("expired-code")
+        runCurrent()
+        fixture.coordinator.redeem("expired-code")
+        assertEquals(AppOnboardingAuthState.Failed(AppAccessError.CodeInvalid), fixture.coordinator.state.value)
+        assertEquals(1, fixture.gateway.redeemCalls)
+        fixture.gateway.result = SaqzResult.Success(AppAccessSession("custom-token", "owner-a", "owner-a", false))
+        fixture.coordinator.redeem("new-web-code")
+        runCurrent()
+        assertEquals(AppOnboardingAuthState.SigningIn, fixture.coordinator.state.value)
+        assertEquals(2, fixture.gateway.redeemCalls)
+        assertEquals(1, fixture.auth.customTokenCalls)
+    }
+
+    @Test
     fun `redeem waits for first signed out observation before custom signin`() = runTest {
         val fixture = fixture(this, current = { null }, resolving = { false })
         fixture.coordinator.redeem("code-a")

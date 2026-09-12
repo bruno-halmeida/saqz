@@ -203,9 +203,30 @@ class AndroidLinkAdapterTest {
         assertTrue(fixture.onboardingReceived.isEmpty())
     }
 
-    private class Fixture {
+    @Test
+    fun deferredOnboardingBeforeListenerAndNewWarmCodeAreDelivered() {
+        val fixture = Fixture()
+        fixture.adapter.onColdStart(null)
+        fixture.branch.complete(mapOf("saqz_onboarding" to CODE_A))
+        fixture.startOnboarding()
+        fixture.adapter.onWarmIntent("https://saqz.test-app.link/?saqz_onboarding=$CODE_B")
+        assertEquals(listOf(CODE_A, CODE_B), fixture.onboardingReceived)
+    }
+
+    @Test
+    fun onboardingUsesConfiguredHostAndRejectsDuplicateParameters() {
+        val fixture = Fixture(setOf("configured.app.link"))
+        fixture.startOnboarding()
+        fixture.adapter.onWarmIntent("https://saqz.test-app.link/?saqz_onboarding=$CODE_A")
+        fixture.adapter.onWarmIntent("https://configured.app.link/?saqz_onboarding=$CODE_A&saqz_onboarding=$CODE_A")
+        assertTrue(fixture.onboardingReceived.isEmpty())
+        fixture.adapter.onWarmIntent("https://configured.app.link/?saqz_onboarding=$CODE_A")
+        assertEquals(listOf(CODE_A), fixture.onboardingReceived)
+    }
+
+    private class Fixture(allowedHosts: Set<String> = setOf("saqz.test-app.link")) {
         val branch = FakeBranchSessionClient()
-        val adapter = AndroidLinkAdapter(branch)
+        val adapter = AndroidLinkAdapter(branch, allowedHosts)
         val received = mutableListOf<String>()
         val onboardingReceived = mutableListOf<String>()
 
