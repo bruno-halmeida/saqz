@@ -48,6 +48,7 @@ private data class MembershipDto(
 private data class InviteUrlDto(
     val inviteUrl: String = "",
     val expiresAt: String? = null,
+    val revision: String? = null,
 )
 
 @Serializable
@@ -56,6 +57,7 @@ private data class InviteMetadataDto(
     val expiresAt: String? = null,
     val createdAt: String? = null,
     val createdByName: String? = null,
+    val revision: String? = null,
 )
 
 @Serializable
@@ -141,7 +143,7 @@ private fun NetworkResult<InviteUrlDto>.toInviteUrlResult() = when (this) {
     is NetworkResult.Failure -> SaqzResult.Failure(error.toDomainError())
     is NetworkResult.Success -> value.inviteUrl
         .takeIf(String::isNotBlank)
-        ?.let { GroupInviteUrl(it, value.expiresAt) }
+        ?.let { GroupInviteUrl(it, value.expiresAt, value.revision) }
         ?.let { SaqzResult.Success(it) }
         ?: invalidResponse()
 }
@@ -163,9 +165,10 @@ private fun MembershipDto.toDomain(): GroupMembership? {
 }
 
 private fun InviteMetadataDto.toDomain(): GroupInviteMetadata? {
-    if (active && expiresAt.isNullOrBlank()) return null
+    if (active && expiresAt.isNullOrBlank() && revision.isNullOrBlank()) return null
+    if (revision != null && revision.isBlank()) return null
     if (!active && listOf(createdAt, createdByName).any { it != null && it.isBlank() }) return null
-    return GroupInviteMetadata(active, expiresAt, createdAt, createdByName)
+    return GroupInviteMetadata(active, expiresAt, createdAt, createdByName, revision)
 }
 
 private fun NetworkError.toDomainError(): GroupMembershipError = when (this) {

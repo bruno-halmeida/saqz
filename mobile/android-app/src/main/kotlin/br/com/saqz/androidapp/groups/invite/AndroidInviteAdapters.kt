@@ -30,7 +30,11 @@ internal class AndroidInviteUrlStore(context: Context) : GroupInviteUrlStorePort
     override fun read(groupId: String, done: GroupInviteUrlReadCallback) {
         runCatching {
             preferences.getString(urlKey(groupId), null)?.let { inviteUrl ->
-                GroupInviteUrlCache(inviteUrl, preferences.getString(expiresAtKey(groupId), null))
+                GroupInviteUrlCache(
+                    inviteUrl,
+                    preferences.getString(expiresAtKey(groupId), null),
+                    preferences.getString(revisionKey(groupId), null),
+                )
             }
         }
             .fold(
@@ -43,11 +47,13 @@ internal class AndroidInviteUrlStore(context: Context) : GroupInviteUrlStorePort
         val committed = runCatching {
             val editor = preferences.edit()
             if (cache == null) {
-                editor.remove(urlKey(groupId)).remove(expiresAtKey(groupId))
+                editor.remove(urlKey(groupId)).remove(expiresAtKey(groupId)).remove(revisionKey(groupId))
             } else {
                 editor.putString(urlKey(groupId), cache.inviteUrl)
                 cache.expiresAt?.let { editor.putString(expiresAtKey(groupId), it) }
                     ?: editor.remove(expiresAtKey(groupId))
+                cache.revision?.let { editor.putString(revisionKey(groupId), it) }
+                    ?: editor.remove(revisionKey(groupId))
             }
             editor.commit()
         }.getOrDefault(false)
@@ -56,6 +62,7 @@ internal class AndroidInviteUrlStore(context: Context) : GroupInviteUrlStorePort
 
     private fun urlKey(groupId: String) = "$KEY_PREFIX$groupId"
     private fun expiresAtKey(groupId: String) = "$EXPIRES_AT_PREFIX$groupId"
+    private fun revisionKey(groupId: String) = "invite-revision:$groupId"
 
     private companion object {
         const val NAME = "saqz_group_invites_v1"

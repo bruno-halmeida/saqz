@@ -25,11 +25,13 @@ data class GroupInviteMetadata(
     val expiresAt: String? = null,
     val createdAt: String? = null,
     val createdByName: String? = null,
+    val revision: String? = null,
 )
 
 data class GroupInviteUrl(
     val value: String,
     val expiresAt: String? = null,
+    val revision: String? = null,
 )
 
 data class ChangeMembershipRoleCommand(

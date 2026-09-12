@@ -37,6 +37,7 @@ import br.com.saqz.groups.presentation.invite.PendingEntryRequestUi
 import br.com.saqz.groups.presentation.invite.RecentMemberUi
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_invite_active_expires
+import br.com.saqz.groups.resources.group_invite_never_expires
 import br.com.saqz.groups.resources.group_invite_approve
 import br.com.saqz.groups.resources.group_invite_approval
 import br.com.saqz.groups.resources.group_invite_copy_link
@@ -177,12 +178,11 @@ internal fun GroupInviteScreen(
 @Composable
 private fun InviteActiveCard(state: GroupInviteState, onIntent: (GroupInviteIntent) -> Unit) {
     SaqzCard {
-        state.expiresLabel?.let {
-            Text(
-                stringResource(Res.string.group_invite_active_expires, it),
-                style = SaqzTheme.typography.subtitle,
-            )
-        }
+        Text(
+            state.expiresLabel?.let { stringResource(Res.string.group_invite_active_expires, it) }
+                ?: stringResource(Res.string.group_invite_never_expires),
+            style = SaqzTheme.typography.subtitle,
+        )
         state.inviteUrl?.let {
             Text(
                 it,

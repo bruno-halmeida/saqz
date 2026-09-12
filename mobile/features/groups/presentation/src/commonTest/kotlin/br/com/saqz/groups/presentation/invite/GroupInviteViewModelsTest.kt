@@ -89,6 +89,78 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
+    fun `permanent rotation persists revision and reopening restores the same shareable URL`() = runTest {
+        val url = "https://saqz.app/invite/permanent"
+        val store = FakeUrlStore()
+        val viewModel = groupViewModel(
+            urlStore = store,
+            membership = FakeMembershipGateway(rotateResult = SaqzResult.Success(GroupInviteUrl(url, null, "new-revision"))),
+        )
+        advanceUntilIdle()
+        viewModel.onIntent(GroupInviteIntent.GenerateInvite)
+        advanceUntilIdle()
+        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
+        assertNull(viewModel.state.value.expiresLabel)
+        assertEquals("new-revision", store.revision)
+
+        val clipboard = FakeClipboard()
+        val reopened = groupViewModel(
+            urlStore = store, clipboard = clipboard,
+            metadata = SaqzResult.Success(GroupInviteMetadata(true, revision = "new-revision")),
+        )
+        advanceUntilIdle()
+        assertEquals(InviteStatus.Active, reopened.state.value.inviteStatus)
+        assertEquals(url, reopened.state.value.inviteUrl)
+        assertNull(reopened.state.value.expiresLabel)
+        reopened.onIntent(GroupInviteIntent.CopyLink)
+        assertEquals(url, clipboard.value)
+    }
+
+    @Test
+    fun `remote permanent rotation clears the previous URL and prevents copying it`() = runTest {
+        val store = FakeUrlStore("https://saqz.app/invite/old", expiresAt = null, revision = "old-revision")
+        val clipboard = FakeClipboard()
+        val viewModel = groupViewModel(
+            urlStore = store, clipboard = clipboard,
+            metadata = SaqzResult.Success(GroupInviteMetadata(true, revision = "new-revision")),
+        )
+        advanceUntilIdle()
+        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
+        assertNull(viewModel.state.value.inviteUrl)
+        assertNull(store.value)
+        assertNull(store.revision)
+        viewModel.onIntent(GroupInviteIntent.CopyLink)
+        assertNull(clipboard.value)
+    }
+
+    @Test
+    fun `missing permanent cache revision never matches even when both expirations are null`() = runTest {
+        for (revision in listOf(null, "new-revision")) {
+            val store = FakeUrlStore("https://saqz.app/invite/unknown", expiresAt = null)
+            val viewModel = groupViewModel(
+                urlStore = store,
+                metadata = SaqzResult.Success(GroupInviteMetadata(true, revision = revision)),
+            )
+            advanceUntilIdle()
+            assertNull(viewModel.state.value.inviteUrl)
+            assertNull(store.value)
+        }
+    }
+
+    @Test
+    fun `inactive permanent metadata clears cache even when revision matches`() = runTest {
+        val store = FakeUrlStore("https://saqz.app/invite/revoked", expiresAt = null, revision = "revision-1")
+        val viewModel = groupViewModel(
+            urlStore = store,
+            metadata = SaqzResult.Success(GroupInviteMetadata(false, revision = "revision-1")),
+        )
+        advanceUntilIdle()
+        assertEquals(InviteStatus.Empty, viewModel.state.value.inviteStatus)
+        assertNull(viewModel.state.value.inviteUrl)
+        assertNull(store.value)
+    }
+
+    @Test
     fun `load discards cached link when metadata expiration changed`() = runTest {
         val store = FakeUrlStore(
             initial = "https://saqz.app/invite/old",
@@ -578,18 +650,20 @@ class GroupInviteViewModelsTest {
     private class FakeUrlStore(
         initial: String? = null,
         private var expiresAt: String? = DEFAULT_EXPIRES_AT,
+        var revision: String? = null,
     ) : GroupInviteUrlStorePort {
         var value: String? = initial
         override fun read(groupId: String, done: GroupInviteUrlReadCallback) {
             done.complete(
                 GroupInviteUrlReadResult.Success(
-                    value?.let { GroupInviteUrlCache(it, expiresAt) },
+                    value?.let { GroupInviteUrlCache(it, expiresAt, revision) },
                 ),
             )
         }
         override fun write(groupId: String, cache: GroupInviteUrlCache?, done: GroupInviteUrlWriteCallback) {
             value = cache?.inviteUrl
             expiresAt = cache?.expiresAt
+            revision = cache?.revision
             done.complete(GroupInviteUrlWriteResult.Success)
         }
     }

@@ -1,6 +1,7 @@
 <resources>
     <string name="group_invite_title">Convidar</string>
     <string name="group_invite_active_expires">Link expira em %1$s</string>
+    <string name="group_invite_never_expires">Link não expira</string>
     <string name="group_invite_generate_link">Gerar novo link</string>
     <string name="group_invite_generate_code">Gerar novo código</string>
     <string name="group_invite_rotate_warning">O antigo para de valer</string>
@@ -25,5 +26,5 @@
     <string name="group_invite_operation_error">Não foi possível concluir essa ação</string>
     <string name="group_invite_retry">Tentar novamente</string>
     <string name="group_invite_empty_title">Crie um link para convidar a galera</string>
-    <string name="group_invite_empty_description">O convite fica ativo por 7 dias.</string>
+    <string name="group_invite_empty_description">O convite não expira. Você pode desativá-lo quando quiser.</string>
 </resources>

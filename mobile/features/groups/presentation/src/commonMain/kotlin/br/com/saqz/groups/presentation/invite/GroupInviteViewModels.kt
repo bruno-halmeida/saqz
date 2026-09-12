@@ -96,7 +96,7 @@ class GroupInviteViewModel(
                 is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration)
             }
             val cachedInvite = readCachedInvite()
-            val validCachedInvite = cachedInvite?.takeIf { it.expiresAt == metadata.expiresAt } ?: run {
+            val validCachedInvite = cachedInvite?.takeIf { metadata.isActiveNow() && it.matches(metadata) } ?: run {
                 if (cachedInvite != null) clearCachedInvite()
                 null
             }
@@ -164,7 +164,7 @@ class GroupInviteViewModel(
                 }
                 is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
                     val url = result.value.value
-                    urlStore.write(groupId, GroupInviteUrlCache(url, result.value.expiresAt)) { writeResult ->
+                    urlStore.write(groupId, GroupInviteUrlCache(url, result.value.expiresAt, result.value.revision)) { writeResult ->
                         if (!isCurrent(operation, requestGeneration)) return@write
                         update {
                             it.copy(
@@ -476,6 +476,13 @@ private fun String.withLink(inviteUrl: String): String = if (isBlank()) inviteUr
 
 private fun GroupInviteMetadata.isActiveNow(): Boolean = active &&
     (expiresAt?.let { runCatching { Instant.parse(it) > Clock.System.now() }.getOrDefault(false) } ?: true)
+
+private fun GroupInviteUrlCache.matches(metadata: GroupInviteMetadata): Boolean = when {
+    !metadata.revision.isNullOrBlank() -> revision == metadata.revision
+    // Compatibility with a legacy server/cache: only a real deadline identifies the old link.
+    metadata.revision == null && revision == null -> expiresAt != null && expiresAt == metadata.expiresAt
+    else -> false
+}
 
 private fun GroupEntryRequest.toUi() = PendingEntryRequestUi(userId, displayName, requestedAt.formatDateTime())
 

@@ -30,7 +30,8 @@ final class IOSInviteUrlStore: @preconcurrency GroupInviteUrlStorePort {
 
     func read(groupId: String, done: GroupInviteUrlReadCallback) {
         let cache = defaults.string(forKey: urlKey(groupId)).map {
-            GroupInviteUrlCache(inviteUrl: $0, expiresAt: defaults.string(forKey: expiresAtKey(groupId)))
+            GroupInviteUrlCache(inviteUrl: $0, expiresAt: defaults.string(forKey: expiresAtKey(groupId)),
+                               revision: defaults.string(forKey: revisionKey(groupId)))
         }
         done.complete(result_____: GroupInviteUrlReadResultSuccess(cache: cache))
     }
@@ -40,15 +41,19 @@ final class IOSInviteUrlStore: @preconcurrency GroupInviteUrlStorePort {
             defaults.set(cache.inviteUrl, forKey: urlKey(groupId))
             if let expiresAt = cache.expiresAt { defaults.set(expiresAt, forKey: expiresAtKey(groupId)) }
             else { defaults.removeObject(forKey: expiresAtKey(groupId)) }
+            if let revision = cache.revision { defaults.set(revision, forKey: revisionKey(groupId)) }
+            else { defaults.removeObject(forKey: revisionKey(groupId)) }
         } else {
             defaults.removeObject(forKey: urlKey(groupId))
             defaults.removeObject(forKey: expiresAtKey(groupId))
+            defaults.removeObject(forKey: revisionKey(groupId))
         }
         done.complete(result______: GroupInviteUrlWriteResultSuccess.shared)
     }
 
     private func urlKey(_ groupId: String) -> String { "invite-url:\(groupId)" }
     private func expiresAtKey(_ groupId: String) -> String { "invite-expires-at:\(groupId)" }
+    private func revisionKey(_ groupId: String) -> String { "invite-revision:\(groupId)" }
 }
 
 @MainActor

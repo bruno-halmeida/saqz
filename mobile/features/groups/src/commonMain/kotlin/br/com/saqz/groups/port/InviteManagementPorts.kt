@@ -3,6 +3,7 @@ package br.com.saqz.groups.port
 data class GroupInviteUrlCache(
     val inviteUrl: String,
     val expiresAt: String?,
+    val revision: String? = null,
 )
 
 sealed interface GroupInviteUrlReadResult {

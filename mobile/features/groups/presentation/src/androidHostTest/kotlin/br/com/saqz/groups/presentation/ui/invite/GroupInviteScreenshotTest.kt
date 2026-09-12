@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsDisplayed
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.invite.GroupInviteState
 import br.com.saqz.groups.presentation.invite.InvitePreviewState
@@ -49,6 +51,29 @@ class GroupInviteScreenshotTest {
             onBack = {},
             onIntent = {},
         )
+    }
+
+    @Test
+    fun permanentInvite() {
+        capture("invite-permanent") {
+            GroupInviteScreen(
+                state = GroupInviteState(isLoading = false, groupName = "Vôlei do CERET", inviteStatus = InviteStatus.Active,
+                    inviteUrl = "https://saqz.app/invite/ceret"),
+                onBack = {}, onIntent = {},
+            )
+        }
+        compose.onNodeWithText("Link não expira").assertIsDisplayed()
+    }
+
+    @Test
+    fun emptyPermanentInvite() {
+        capture("invite-empty-permanent") {
+            GroupInviteScreen(
+                state = GroupInviteState(isLoading = false, groupName = "Vôlei do CERET", inviteStatus = InviteStatus.Empty),
+                onBack = {}, onIntent = {},
+            )
+        }
+        compose.onNodeWithText("O convite não expira. Você pode desativá-lo quando quiser.").assertIsDisplayed()
     }
 
     @Test

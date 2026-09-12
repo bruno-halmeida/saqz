@@ -35,6 +35,7 @@
 		D80000000000000000000001 /* IOSProfilePhotoAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000011 /* IOSProfilePhotoAdapter.swift */; };
 		D80000000000000000000002 /* IOSProfilePhotoAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000012 /* IOSProfilePhotoAdapterTests.swift */; };
 		E90000000000000000000001 /* GroupsInvite/IOSInviteAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = E90000000000000000000011 /* GroupsInvite/IOSInviteAdapters.swift */; };
+		E90000000000000000000002 /* IOSInviteUrlStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E90000000000000000000012 /* IOSInviteUrlStoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,6 +82,7 @@
 		B60000000000000000000013 /* IOSGroupPhotoLifecycleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSGroupPhotoLifecycleUITests.swift; sourceTree = "<group>"; };
 		C70000000000000000000011 /* GroupsDraft/IOSGroupDraftAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsDraft/IOSGroupDraftAdapters.swift; sourceTree = "<group>"; };
 		C70000000000000000000012 /* IOSGroupDraftAdaptersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSGroupDraftAdaptersTests.swift; sourceTree = "<group>"; };
+		E90000000000000000000012 /* IOSInviteUrlStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSInviteUrlStoreTests.swift; sourceTree = "<group>"; };
 		D80000000000000000000011 /* IOSProfilePhotoAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSProfilePhotoAdapter.swift; sourceTree = "<group>"; };
 		D80000000000000000000012 /* IOSProfilePhotoAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSProfilePhotoAdapterTests.swift; sourceTree = "<group>"; };
 		E90000000000000000000011 /* GroupsInvite/IOSInviteAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsInvite/IOSInviteAdapters.swift; sourceTree = "<group>"; };
@@ -185,6 +187,7 @@
 				A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */,
 				B60000000000000000000012 /* IOSGroupPhotoAdaptersTests.swift */,
 				C70000000000000000000012 /* IOSGroupDraftAdaptersTests.swift */,
+				E90000000000000000000012 /* IOSInviteUrlStoreTests.swift */,
 				D80000000000000000000012 /* IOSProfilePhotoAdapterTests.swift */,
 			);
 			path = SaqzIOSTests;
@@ -414,6 +417,7 @@
 				A10000000000000000000009 /* AccessibilityPreferencesObserverTests.swift in Sources */,
 				B60000000000000000000002 /* IOSGroupPhotoAdaptersTests.swift in Sources */,
 				C70000000000000000000002 /* IOSGroupDraftAdaptersTests.swift in Sources */,
+				E90000000000000000000002 /* IOSInviteUrlStoreTests.swift in Sources */,
 				D80000000000000000000002 /* IOSProfilePhotoAdapterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

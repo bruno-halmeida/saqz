@@ -118,6 +118,43 @@ class KtorGroupMembershipGatewayTest {
     }
 
     @Test
+    fun `permanent rotation maps URL null expiry and revision`() = runTest {
+        val invite = fixture {
+            respond("""{"inviteUrl":"$INVITE_URL","expiresAt":null,"revision":"revision-1"}""", headers = jsonHeaders())
+        }.gateway.rotateInvite(GroupId(GROUP_ID)).success()
+
+        assertEquals(INVITE_URL, invite.value)
+        assertEquals(null, invite.expiresAt)
+        assertEquals("revision-1", invite.revision)
+    }
+
+    @Test
+    fun `permanent metadata accepts omitted and null expiry with revision`() = runTest {
+        for (expiry in listOf("", "\"expiresAt\":null,")) {
+            val metadata = fixture {
+                respond("""{"active":true,${expiry}"revision":"revision-1","createdAt":"2026-09-12T12:00:00Z","createdByName":"Owner"}""", headers = jsonHeaders())
+            }.gateway.readInviteMetadata(GroupId(GROUP_ID)).success()
+
+            assertTrue(metadata.active)
+            assertEquals(null, metadata.expiresAt)
+            assertEquals("revision-1", metadata.revision)
+            assertEquals("2026-09-12T12:00:00Z", metadata.createdAt)
+            assertEquals("Owner", metadata.createdByName)
+        }
+    }
+
+    @Test
+    fun `permanent active metadata without usable identity is invalid`() = runTest {
+        for (revision in listOf("", "\"revision\":null,", "\"revision\":\"\",")) {
+            assertEquals(
+                DataError.InvalidResponse,
+                fixture { respond("""{${revision}"active":true}""", headers = jsonHeaders()) }
+                    .gateway.readInviteMetadata(GroupId(GROUP_ID)).dataError(),
+            )
+        }
+    }
+
+    @Test
     fun `rotate maps invite URL and expiration`() = runTest {
         val invite = fixture { inviteUrl() }.gateway.rotateInvite(GroupId(GROUP_ID)).success()
 
