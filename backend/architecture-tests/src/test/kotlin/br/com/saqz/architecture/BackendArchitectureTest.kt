@@ -35,6 +35,7 @@ class BackendArchitectureTest {
                 ":features:groups",
                 ":features:identity",
                 ":features:subscriptions",
+                ":features:receivables",
                 ":bootstrap",
                 ":architecture-tests",
             ),
@@ -120,7 +121,7 @@ class BackendArchitectureTest {
             paths.filter(Path::isDirectory).map(Path::name).sorted().toList()
         }
 
-        assertEquals(listOf("access", "groups", "identity", "subscriptions"), featureDirectories)
+        assertEquals(listOf("access", "groups", "identity", "receivables", "subscriptions"), featureDirectories)
     }
 
     @Test
@@ -149,7 +150,7 @@ class BackendArchitectureTest {
             .findAll(settings)
             .map { it.groupValues[1] }
             .toList()
-        val allowedProjects = setOf(":shared-kernel", ":postgres-testing", ":features:access", ":features:groups", ":features:identity", ":features:subscriptions", ":bootstrap")
+        val allowedProjects = setOf(":shared-kernel", ":postgres-testing", ":features:access", ":features:groups", ":features:identity", ":features:subscriptions", ":features:receivables", ":bootstrap")
         val projectDependencies = Regex("project\\(\\s*\"([^\"]+)\"\\s*\\)")
             .findAll(configuration)
             .map { it.groupValues[1] }
@@ -198,7 +199,7 @@ class BackendArchitectureTest {
 
     @Test
     fun `ARCH-11 exposes exactly access groups and identity backend features`() {
-        assertEquals(listOf("access", "groups", "identity", "subscriptions"), featureDirectories().map(Path::name))
+        assertEquals(listOf("access", "groups", "identity", "receivables", "subscriptions"), featureDirectories().map(Path::name))
     }
 
     @Test
