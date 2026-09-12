@@ -121,6 +121,7 @@ internal fun GroupDetailsScreen(
             ) {
                 if (photoFailed) GroupCreatedPhotoFailedBanner()
                 state.header?.let { GroupHeaderCard(header = it, isAdmin = state.isAdmin, onIntent = onIntent) }
+                if (state.isAdmin) state.onboarding?.let { GroupOnboardingCard(it, onIntent) }
                 state.nextGame?.let { GroupNextGameCard(nextGame = it, onIntent = onIntent) }
                 // Dono e admin respondem presença no mesmo lugar que o atleta: o papel
                 // administrativo muda o que ele gerencia, não o fato de que ele joga.

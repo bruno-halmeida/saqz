@@ -1,4 +1,14 @@
 <resources>
     <string name="onboarding_setup_simple">A foto é opcional. Depois de criar o grupo, marque o primeiro jogo e convide a galera. Você pode ajustar os outros detalhes depois.</string>
     <string name="onboarding_setup_advanced">Outras configurações (opcional)</string>
+    <string name="onboarding_create_title">Grupo criado. Vamos marcar o primeiro jogo?</string>
+    <string name="onboarding_create_body">Defina data, local e vagas. Depois, compartilhe o convite no WhatsApp para a galera responder pelo app.</string>
+    <string name="onboarding_create_action">Marcar primeiro jogo</string>
+    <string name="onboarding_invite_title">Jogo marcado. Chame a galera.</string>
+    <string name="onboarding_invite_body">Envie o convite no grupo do WhatsApp. Os atletas entram pelo Saqz e você acompanha as confirmações e a lista de espera.</string>
+    <string name="onboarding_invite_action">Preparar convite para WhatsApp</string>
+    <string name="onboarding_responses_action">Acompanhar respostas</string>
+    <string name="onboarding_finance_title">Primeiro jogo encerrado. E o acerto?</string>
+    <string name="onboarding_finance_body">Veja quem ainda precisa pagar e registre os recebimentos do jogo. O caixa reúne entradas e saídas para você acompanhar o saldo do grupo.</string>
+    <string name="onboarding_finance_action">Ver acerto do primeiro jogo</string>
 </resources>

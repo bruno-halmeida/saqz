@@ -71,6 +71,38 @@ class GroupDetailsViewModelTest {
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
     @Test
+    fun `starter guide advances from creating to sharing and to the completed game settlement`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
+        val vm = viewModel(gameGateway = games)
+        assertEquals(GroupOnboarding.CreateGame, vm.state.value.onboarding)
+        vm.onIntent(GroupDetailsIntent.OnboardingAction)
+        assertEquals(GroupDetailsEffect.OpenCreateGame(GROUP_ID), vm.effects.first())
+        games.listResult = SaqzResult.Success(listOf(sampleGame()))
+        vm.onIntent(GroupDetailsIntent.Retry)
+        assertEquals(GroupOnboarding.InviteAthletes(sampleGame().id), vm.state.value.onboarding)
+        vm.onIntent(GroupDetailsIntent.OnboardingAction)
+        assertEquals(GroupDetailsEffect.OpenInviteLink(GROUP_ID), vm.effects.first())
+        vm.onIntent(GroupDetailsIntent.ViewGame)
+        assertEquals(GroupDetailsEffect.OpenGame(GROUP_ID, sampleGame().id), vm.effects.first())
+        games.listResult = SaqzResult.Success(listOf(sampleGame().copy(status = br.com.saqz.groups.domain.game.GameStatus.Completed)))
+        vm.onIntent(GroupDetailsIntent.Retry)
+        assertEquals(GroupOnboarding.ReviewFinances(sampleGame().id), vm.state.value.onboarding)
+        vm.onIntent(GroupDetailsIntent.OnboardingAction)
+        assertEquals(GroupDetailsEffect.OpenSettlement(GROUP_ID, sampleGame().id), vm.effects.first())
+    }
+
+    @Test
+    fun `failed reload clears guide and athletes never receive organizer guidance`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
+        val vm = viewModel(gameGateway = games)
+        games.listResult = SaqzResult.Failure(br.com.saqz.groups.domain.game.GameError.HiddenResource)
+        vm.onIntent(GroupDetailsIntent.Retry)
+        assertTrue(vm.state.value.loadFailed)
+        assertNull(vm.state.value.onboarding)
+        assertNull(viewModel(groupGateway = athleteGroupGateway()).state.value.onboarding)
+    }
+
+    @Test
     fun `late reminder response cannot describe a different game`() = runTest {
         val response = CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.communication.CommunicationMessage, br.com.saqz.groups.domain.communication.CommunicationError>>()
         val gateway = br.com.saqz.groups.presentation.FakeCommunicationGateway().apply { remindBlock = { response.await() } }

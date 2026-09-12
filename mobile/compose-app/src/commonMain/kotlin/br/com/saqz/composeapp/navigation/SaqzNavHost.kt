@@ -952,7 +952,7 @@ private fun GroupSetupDestination(
  * O 2e/2f manda **um** efeito para fora, e cada um dos oito é tratado aqui — nada de
  * `else -> {}`: a tela antiga de detalhe usava isso e escondeu bug (VUL-72).
  */
-private fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop: () -> Unit) {
+internal fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop: () -> Unit) {
     when (effect) {
         is GroupDetailsEffect.OpenEdit -> add(GroupsRoute.Edit(effect.groupId))
         is GroupDetailsEffect.OpenMembers -> add(GroupsRoute.Members(effect.groupId))
@@ -964,6 +964,7 @@ private fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop:
         // 4c · O card do próximo jogo e a agenda abrem o mesmo detalhe.
         is GroupDetailsEffect.OpenGame -> add(GroupsRoute.GameDetail(effect.groupId, effect.gameId))
         is GroupDetailsEffect.OpenCashbox -> add(FinanceRoute.GroupCashbox(effect.groupId))
+        is GroupDetailsEffect.OpenSettlement -> add(FinanceRoute.GameSettlement(effect.groupId, effect.gameId))
         is GroupDetailsEffect.OpenInviteLink -> add(GroupsRoute.Invite(effect.groupId))
         // O Root abre o endereço com o handler nativo e trata falha localmente.
         is GroupDetailsEffect.OpenMap -> Unit

@@ -47,6 +47,7 @@ data class GroupDetailsState(
     val notifying: Boolean = false,
     val notificationFailed: Boolean = false,
     val notifiedCount: String? = null,
+    val onboarding: GroupOnboarding? = null,
 )
 
 /** Nome, linha de resumo e — só no 2e — os chips de bairro/modalidade/agenda. */
@@ -160,6 +161,7 @@ data class MemberPreviewUi(
 enum class MemberStatusUi { Admin, Going, Maybe }
 
 sealed interface GroupDetailsIntent {
+    data object OnboardingAction : GroupDetailsIntent
     data object Retry : GroupDetailsIntent
 
     // 2f — cabeçalho e gerenciamento
@@ -224,6 +226,7 @@ sealed interface GroupDetailsIntent {
  * onde ele vai.
  */
 sealed interface GroupDetailsEffect {
+    data class OpenSettlement(val groupId: String, val gameId: String) : GroupDetailsEffect
     data class OpenEdit(val groupId: String) : GroupDetailsEffect
 
     data class OpenMembers(val groupId: String) : GroupDetailsEffect

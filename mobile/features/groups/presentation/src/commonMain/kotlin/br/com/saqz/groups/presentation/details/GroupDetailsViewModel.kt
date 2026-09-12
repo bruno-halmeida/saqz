@@ -104,6 +104,7 @@ class GroupDetailsViewModel(
     @Suppress("CyclomaticComplexMethod")
     override fun onIntent(intent: GroupDetailsIntent) {
         when (intent) {
+            GroupDetailsIntent.OnboardingAction -> onboardingAction()
             GroupDetailsIntent.Retry -> load()
             GroupDetailsIntent.CreateNextGame -> emit(GroupDetailsEffect.OpenCreateGame(groupId))
             GroupDetailsIntent.EditGroup -> emit(GroupDetailsEffect.OpenEdit(groupId))
@@ -140,6 +141,17 @@ class GroupDetailsViewModel(
         val address = state.value.venue?.address?.takeIf(String::isNotBlank)
         update { it.copy(mapFailed = address == null) }
         if (address != null) emit(GroupDetailsEffect.OpenMap(address))
+    }
+
+    private fun onboardingAction() {
+        val current = state.value
+        if (current.isLoading || current.loadFailed || !current.isAdmin) return
+        when (val guide = current.onboarding) {
+            GroupOnboarding.CreateGame -> emit(GroupDetailsEffect.OpenCreateGame(groupId))
+            is GroupOnboarding.InviteAthletes -> emit(GroupDetailsEffect.OpenInviteLink(groupId))
+            is GroupOnboarding.ReviewFinances -> emit(GroupDetailsEffect.OpenSettlement(groupId, guide.gameId))
+            null -> Unit
+        }
     }
 
     private fun confirmDeparture() {
@@ -208,6 +220,7 @@ class GroupDetailsViewModel(
         loadedGroup = null
         update { it.copy(
             isLoading = true, loadFailed = false, error = null,
+            onboarding = null,
             notifying = false, notificationFailed = false, notifiedCount = null,
         ) }
         viewModelScope.launch {
@@ -374,6 +387,7 @@ class GroupDetailsViewModel(
     private suspend fun loadNextGame(generation: Int, group: Group, games: List<Game>) {
         if (generation != loadGeneration) return
         val game = games.nextPublishedGame(now.now())
+        val onboarding = groupOnboarding(group.role, games, game?.id)
         if (game == null) {
             update {
                 it.copy(
@@ -381,6 +395,7 @@ class GroupDetailsViewModel(
                     loadFailed = false,
                     error = null,
                     nextGame = null,
+                    onboarding = onboarding,
                     attendance = null,
                     memberResponse = null,
                     membershipType = null,
@@ -412,6 +427,7 @@ class GroupDetailsViewModel(
                         loadFailed = false,
                         error = null,
                         nextGame = game.toNextGame(detail, roster),
+                        onboarding = onboarding,
                         attendance = detail.toAttendance(),
                         memberResponse = detail.ownAttendance?.toResponse(roster),
                         responding = false,
