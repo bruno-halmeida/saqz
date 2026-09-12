@@ -10,6 +10,9 @@
   var busy = false;
   var providerSettling = false;
   var activeAuthRequest = null;
+  var signOutPending = false;
+  var signOutFailed = false;
+  var signOutPromise = null;
   var profileReady = false;
   var profileRetry = false;
   var session = null;
@@ -56,6 +59,37 @@
     error.safeMessage = message;
     return error;
   }
+  function startSignOutCleanup() {
+    if (signOutPending && !signOutFailed) return signOutPromise;
+    signOutPending = true;
+    signOutFailed = false;
+    providerSettling = true;
+    setMessage("auth-error", "Encerrando a sessão anterior. Aguarde um instante.");
+    setBusy(true);
+    signOutPromise = Promise.resolve().then(function () { return auth.signOut(); }).then(function () {
+      signOutPending = false;
+      signOutFailed = false;
+      signOutPromise = null;
+      providerSettling = false;
+      $("cancel-auth").textContent = "Cancelar";
+      setMessage("auth-error", "");
+      setBusy(false);
+    }, function () {
+      signOutFailed = true;
+      signOutPromise = null;
+      providerSettling = true;
+      $("cancel-auth").textContent = "Tentar novamente";
+      setBusy(true);
+      setMessage("auth-error", "Não foi possível encerrar a sessão. Toque em Tentar novamente.", "error");
+    });
+    return signOutPromise;
+  }
+  function invalidateSessionAndSignOut() {
+    if (signOutPending && !signOutFailed) return signOutPromise;
+    generation += 1;
+    resetForLogout();
+    return startSignOutCleanup();
+  }
   function api(path, user, expectedGeneration, options) {
     if (!validGeneration(user, expectedGeneration)) return Promise.reject({ stale: true });
     return user.getIdToken().then(function (token) {
@@ -63,7 +97,7 @@
       var request = Object.assign({}, options || {});
       request.headers = Object.assign({ Authorization: "Bearer " + token }, request.headers || {});
       return fetch(String(config.apiBaseUrl || "").replace(/\/$/, "") + path, request).then(function (response) {
-        if (response.status === 401 && validGeneration(user, expectedGeneration)) auth.signOut();
+        if (response.status === 401 && validGeneration(user, expectedGeneration)) invalidateSessionAndSignOut();
         return response;
       });
     });
@@ -383,6 +417,11 @@
     $("profile-form").addEventListener("submit", saveProfile);
     $("request-app-link").addEventListener("click", requestAppLink);
     $("cancel-auth").addEventListener("click", function () {
+      if (signOutPending && signOutFailed) {
+        setMessage("auth-error", "Tentando encerrar a sessão anterior…");
+        startSignOutCleanup();
+        return;
+      }
       if (providerSettling && activeAuthRequest && activeAuthRequest.cleanupFailed) {
         activeAuthRequest.cleanupFailed = false;
         setMessage("auth-error", "Tentando encerrar a tentativa anterior…");
@@ -416,7 +455,7 @@
       setMessage("auth-error", "Encerrando a tentativa anterior. Aguarde um instante para tentar novamente.");
       activeAuthRequest.cancelCleanup = Promise.resolve().then(function () { return auth.signOut(); });
     });
-    $("logout").addEventListener("click", function () { generation += 1; resetForLogout(); auth.signOut(); });
+    $("logout").addEventListener("click", function () { invalidateSessionAndSignOut(); });
     auth.onAuthStateChanged(function (user) {
       if (observedUser && (!user || observedUser.uid !== user.uid)) generation += 1;
       if (observedUser && user && observedUser.uid !== user.uid) {
