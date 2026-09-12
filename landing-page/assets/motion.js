@@ -7,18 +7,6 @@
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   var finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
 
-  // Preencha o número (só dígitos, DDI+DDD) para o CTA final abrir o WhatsApp.
-  var WHATSAPP_NUMBER = '5534999576016';
-  var WHATSAPP_MESSAGE = 'Oi! Quero uma vaga para meu grupo no pré-lançamento do Saqz.';
-  if (WHATSAPP_NUMBER) {
-    var waUrl = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(WHATSAPP_MESSAGE);
-    Array.prototype.forEach.call(document.querySelectorAll('.final .primary'), function (link) {
-      link.href = waUrl;
-      link.target = '_blank';
-      link.rel = 'noopener';
-    });
-  }
-
   // Header ganha sombra ao rolar.
   var header = document.querySelector('header');
   function elevateHeader() { header.classList.toggle('is-scrolled', window.scrollY > 12); }

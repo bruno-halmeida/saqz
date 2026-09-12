@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Saqz | Aplicativo para organizar grupos de vôlei</title>
-  <meta name="description" content="Organize jogos, confirmações e pagamentos do seu grupo de vôlei com o Saqz. Entre na lista de interesse do pré-lançamento.">
+  <meta name="description" content="Organize jogos, confirmações e financeiro do seu grupo de vôlei com o Saqz. Crie sua conta e teste grátis por 14 dias, sem cartão.">
   <meta name="theme-color" content="#f5f5f7">
   <meta name="facebook-domain-verification" content="w55hdvxjvblt4f6c0gy5dwvb6soyyj">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
@@ -14,7 +14,7 @@
   <meta property="og:locale" content="pt_BR">
   <meta property="og:url" content="https://saqz.app/">
   <meta property="og:title" content="Saqz | Organize seu grupo de vôlei">
-  <meta property="og:description" content="Jogos, confirmações e pagamentos do seu grupo de vôlei em um só lugar. Pré-lançamento com vagas limitadas.">
+  <meta property="og:description" content="Jogos, confirmações e financeiro do seu grupo de vôlei em um só lugar. Teste grátis por 14 dias, sem cartão.">
   <meta property="og:image" content="https://images.pexels.com/photos/6203713/pexels-photo-6203713.jpeg?auto=compress&cs=tinysrgb&w=1200">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -51,57 +51,6 @@
     .device::after { content:""; position:absolute; inset:8px; pointer-events:none; border-radius:35px; background:linear-gradient(115deg,rgba(255,255,255,.09),transparent 22%); }
     .screen { height:100%; overflow:hidden; position:relative; border-radius:35px; background:#0a1430; }
     .island { position:absolute; z-index:4; top:12px; left:50%; width:86px; height:25px; border-radius:20px; background:#020510; transform:translateX(-50%); }
-    .app { height:100%; padding:54px 17px 72px; }
-    .app-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; }
-    .app-brand { display:block; width:113px; height:auto; }
-    .avatar { width:39px; height:39px; border:2px solid var(--lime); border-radius:50%; background-color:#3154d8; background-image:url('https://images.pexels.com/photos/30446985/pexels-photo-30446985.jpeg?auto=compress&cs=tinysrgb&w=200'); background-position:center 24%; background-size:cover; box-shadow:0 3px 10px rgba(0,0,0,.28); }
-    .welcome { margin:0 0 3px; color:#7f8ba6; font-size:9px; }
-    .group-name { margin:0 0 18px; color:#fff; font-size:17px; font-weight:750; letter-spacing:-.03em; }
-    .page-window { overflow:hidden; }
-    .page-track { display:flex; transition:transform 420ms var(--ease); will-change:transform; }
-    .app-page { flex:0 0 100%; min-width:0; }
-    .page-kicker { margin:0 0 4px; color:var(--lime); font-size:8px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
-    .page-title { margin:0 0 15px; color:#fff; font-size:19px; letter-spacing:-.04em; }
-    .game { padding:15px; border:1px solid rgba(255,255,255,.1); border-radius:16px; background:#151f3b; box-shadow:0 15px 35px rgba(0,0,0,.18); }
-    .game-label { color:var(--lime); font-size:8px; font-weight:800; letter-spacing:.12em; }
-    .game h2 { margin:7px 0 2px; color:#fff; font-size:16px; letter-spacing:-.03em; }
-    .game p { margin:0 0 14px; color:#8290ac; font-size:9px; }
-    .bar { display:flex; justify-content:space-between; margin-top:7px; padding:9px 10px; border-radius:9px; background:#202b49; color:#fff; font-size:9px; }
-    .bar b { color:var(--lime); }
-    .mini-title { display:flex; justify-content:space-between; margin:20px 2px 9px; color:#fff; font-size:10px; font-weight:700; }
-    .mini-title span { color:#74819d; font-size:8px; font-weight:500; }
-    .finance { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
-    .metric { padding:11px; border-radius:11px; background:#111b35; color:#8490aa; font-size:8px; }
-    .metric b { display:block; margin-top:5px; color:#fff; font-size:13px; }
-    .metric:last-child b { color:var(--lime); }
-    .schedule { display:grid; gap:8px; }
-    .schedule-card { display:grid; grid-template-columns:42px 1fr auto; align-items:center; gap:10px; padding:11px; border:1px solid rgba(255,255,255,.08); border-radius:12px; background:#111b35; }
-    .schedule-date { display:grid; height:42px; place-items:center; border-radius:9px; background:#202b49; color:#fff; font-size:13px; font-weight:800; line-height:1; }
-    .schedule-date small { color:var(--lime); font-size:6px; letter-spacing:.08em; }
-    .schedule-card h4 { margin:0 0 3px; color:#fff; font-size:10px; }.schedule-card p { margin:0; color:#7986a2; font-size:7px; }
-    .spots { color:var(--lime); font-size:8px; font-weight:800; }
-    .athlete-list { display:grid; gap:7px; }
-    .athlete-row { display:grid; grid-template-columns:34px 1fr auto; align-items:center; gap:9px; padding:9px 10px; border-radius:11px; background:#111b35; }
-    .athlete-photo { width:34px; height:34px; border-radius:50%; background-position:center 20%; background-size:cover; }
-    .athlete-row:nth-child(1) .athlete-photo { background-image:url('https://images.pexels.com/photos/30446985/pexels-photo-30446985.jpeg?auto=compress&cs=tinysrgb&w=100'); }
-    .athlete-row:nth-child(2) .athlete-photo { background-image:url('https://images.pexels.com/photos/10350338/pexels-photo-10350338.jpeg?auto=compress&cs=tinysrgb&w=100'); }
-    .athlete-row:nth-child(3) .athlete-photo { background-image:url('https://images.pexels.com/photos/36866635/pexels-photo-36866635.jpeg?auto=compress&cs=tinysrgb&w=100'); }
-    .athlete-row h4 { margin:0 0 2px; color:#fff; font-size:9px; }.athlete-row p { margin:0; color:#7885a0; font-size:7px; }
-    .athlete-status { padding:5px 7px; border-radius:999px; background:rgba(199,243,0,.11); color:var(--lime); font-size:6px; font-weight:800; text-transform:uppercase; }
-    .finance-overview { padding:14px; border:1px solid rgba(255,255,255,.09); border-radius:15px; background:linear-gradient(135deg,#17223e,#101a33); }
-    .finance-overview > span { color:#8290aa; font-size:7px; }
-    .finance-overview > strong { display:block; margin:5px 0 12px; color:#fff; font-size:24px; letter-spacing:-.04em; }
-    .finance-split { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
-    .finance-split span { padding:8px; border-radius:8px; background:rgba(255,255,255,.05); color:#8490aa; font-size:6px; }.finance-split b { display:block; margin-top:3px; color:#fff; font-size:10px; }.finance-split span:last-child b { color:var(--lime); }
-    .transaction-title { display:flex; justify-content:space-between; margin:15px 2px 7px; color:#fff; font-size:9px; font-weight:700; }.transaction-title span { color:#75819b; font-size:7px; font-weight:500; }
-    .transaction-list { display:grid; gap:6px; }
-    .transaction { display:grid; grid-template-columns:26px 1fr auto; align-items:center; gap:8px; padding:8px; border-radius:9px; background:#111b35; }
-    .transaction i { display:grid; width:26px; height:26px; place-items:center; border-radius:8px; background:rgba(199,243,0,.12); color:var(--lime); font-size:8px; font-style:normal; font-weight:800; }.transaction h4 { margin:0 0 2px; color:#fff; font-size:8px; }.transaction p { margin:0; color:#76839e; font-size:6px; }.transaction strong { color:#fff; font-size:8px; }
-    .tabbar { position:absolute; z-index:5; left:11px; right:11px; bottom:10px; display:flex; justify-content:space-around; padding:7px 8px; border:1px solid rgba(255,255,255,.08); border-radius:18px; background:rgba(9,18,42,.93); backdrop-filter:blur(14px); }
-    .tabbar button { display:grid; width:48px; height:34px; place-items:center; border:0; border-radius:11px; background:transparent; color:#697691; cursor:pointer; transition:transform 140ms var(--ease),color 180ms ease,background-color 180ms ease; }
-    .tabbar button:active { transform:scale(.9); }
-    .tabbar button.is-active { background:rgba(199,243,0,.1); color:var(--lime); }
-    .tabbar svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.8; }
     .float-card { position:absolute; z-index:4; display:flex; align-items:center; gap:9px; padding:11px 13px; border:1px solid rgba(255,255,255,.25); border-radius:12px; background:rgba(7,16,37,.82); color:#fff; font-size:9px; box-shadow:0 16px 35px rgba(0,0,0,.3); backdrop-filter:blur(12px); }
     .float-card i { display:grid; width:27px; height:27px; place-items:center; border-radius:8px; background:var(--lime); color:var(--ink); font-style:normal; font-weight:900; }
     .float-card strong { display:block; margin-bottom:2px; font-size:10px; }
@@ -369,47 +318,29 @@
       .final-logo { width:112px; margin-bottom:20px; }
       .final .primary { padding:12px 18px; font-size:14px; }
     }
-    /* Phone mockup: light product theme aligned with the page. */
-    .screen { background:#f5f5f7; }
-    .app { color:#1d1d1f; }
-    .welcome { color:#85858a; }
-    .group-name,.page-title { color:#1d1d1f; }
-    .page-kicker,.game-label { color:var(--blue); }
-    .game { border:1px solid #e2e2e5; background:#fff; box-shadow:none; }
-    .game h2 { color:#1d1d1f; }
-    .game p { color:#707075; }
-    .bar { border:1px solid #ececf0; background:#f5f5f7; color:#47474c; }
-    .bar b { color:var(--blue); }
-    .mini-title { color:#1d1d1f; }
-    .mini-title span { color:#85858a; }
-    .metric { border:1px solid #e2e2e5; background:#fff; color:#707075; }
-    .metric b { color:#1d1d1f; }
-    .metric:last-child b { color:var(--blue); }
-    .schedule-card { border:1px solid #e2e2e5; background:#fff; }
-    .schedule-date { background:var(--blue); color:#fff; }
-    .schedule-date small { color:var(--lime); }
-    .schedule-card h4 { color:#1d1d1f; }
-    .schedule-card p { color:#707075; }
-    .spots { color:var(--blue); }
-    .athlete-row { border:1px solid #e2e2e5; background:#fff; }
-    .athlete-row h4 { color:#1d1d1f; }
-    .athlete-row p { color:#707075; }
-    .athlete-status { background:rgba(199,243,0,.26); color:#354300; }
-    .finance-overview { border:1px solid #e2e2e5; background:#fff; }
-    .finance-overview > span { color:#707075; }
-    .finance-overview > strong { color:#1d1d1f; }
-    .finance-split span { background:#f5f5f7; color:#707075; }
-    .finance-split b { color:#1d1d1f; }
-    .finance-split span:last-child b { color:var(--blue); }
-    .transaction-title { color:#1d1d1f; }
-    .transaction-title span { color:#85858a; }
-    .transaction { border:1px solid #e8e8ec; background:#fff; }
-    .transaction i { background:rgba(6,56,223,.08); color:var(--blue); }
-    .transaction h4,.transaction strong { color:#1d1d1f; }
-    .transaction p { color:#707075; }
-    .tabbar { border-color:rgba(0,0,0,.08); background:rgba(255,255,255,.88); box-shadow:0 -8px 24px rgba(0,0,0,.035); }
-    .tabbar button { color:#85858a; }
-    .tabbar button.is-active { background:rgba(6,56,223,.08); color:var(--blue); }
+
+    /* Trial offer and paid plan comparison: conditions stay visible beside the CTA. */
+    .pricing { padding:112px 0; background:#fff; }
+    .pricing-head { max-width:760px; margin:0 auto; text-align:center; }
+    .pricing-head h2 { margin:12px 0 16px; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif; font-size:clamp(40px,5vw,56px); font-weight:600; line-height:1.07; letter-spacing:-.04em; }
+    .pricing-head p { margin:0; color:#6e6e73; font-size:18px; line-height:1.5; }
+    .pricing-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:54px; }
+    .plan-card { display:flex; flex-direction:column; padding:30px; border:1px solid #d2d2d7; border-radius:8px; background:#f5f5f7; }
+    .plan-card--featured { border:2px solid var(--blue); padding:29px; background:#fff; }
+    .plan-card h3 { margin:0; color:#1d1d1f; font-size:22px; font-weight:600; letter-spacing:-.025em; }
+    .plan-card > p { min-height:45px; margin:10px 0 22px; color:#6e6e73; font-size:14px; line-height:1.45; }
+    .plan-price { display:flex; align-items:baseline; gap:5px; color:#1d1d1f; }
+    .plan-price strong { font-size:30px; font-weight:600; letter-spacing:-.04em; }
+    .plan-price span { color:#6e6e73; font-size:13px; }
+    .plan-annual { margin:6px 0 24px; color:#6e6e73; font-size:13px; }
+    .plan-annual strong { color:#1d1d1f; font-weight:600; }
+    .plan-limit { padding:14px 0; border-top:1px solid #d2d2d7; color:#1d1d1f; font-size:14px; line-height:1.45; }
+    .plan-card .primary { width:100%; margin-top:auto; padding:11px 15px; font-size:13px; box-shadow:none; }
+    .plan-card .secondary { display:inline-flex; align-items:center; justify-content:center; margin-top:10px; padding:11px 15px; border:1px solid #c8c8cc; border-radius:980px; color:#1d1d1f; font-size:13px; text-decoration:none; }
+    .plan-card--featured .secondary { border-color:var(--blue); color:var(--blue); }
+    .pricing-note { max-width:760px; margin:24px auto 0; color:#6e6e73; font-size:13px; line-height:1.5; text-align:center; }
+    @media (max-width:900px) { .pricing-grid { grid-template-columns:1fr; max-width:520px; margin-left:auto; margin-right:auto; } }
+    @media (max-width:520px) { .pricing { padding:88px 0; } .pricing-head p { font-size:17px; } .plan-card,.plan-card--featured { padding:25px; } }
 
     /* Camada de movimento e encantamento — quase tudo condicionado à classe .js (adicionada por assets/motion.js). */
     html { scroll-padding-top:96px; }
@@ -536,9 +467,10 @@
       .final .click-trigger { width:auto; max-width:100%; flex-wrap:wrap; justify-content:center; }
     }
   </style>
+  <link rel="stylesheet" href="assets/app-preview.css">
 </head>
 <body>
-  <header><nav class="shell"><img class="logo" src="assets/saqz-logo.svg" alt="Saqz"><div class="nav-links"><a href="#painel">Como funciona</a><a href="#faq">Perguntas</a></div><a class="nav-cta" href="#interesse">EU QUERO UMA VAGA</a></nav></header>
+  <header><nav class="shell"><img class="logo" src="assets/saqz-logo.svg" alt="Saqz"><div class="nav-links"><a href="#painel">Como funciona</a><a href="#precos">Planos</a><a href="#faq">Perguntas</a></div><a class="nav-cta" href="https://saqzweb.brunoalmeida.dev/comecar/">Testar grátis por 14 dias</a></nav></header>
   <main>
     <section class="hero">
       <div class="photo"><div class="photo-img"></div></div>
@@ -546,9 +478,9 @@
         <div class="copy">
           <div class="kicker">Para quem organiza grupos de vôlei de quadra</div>
           <h1>Organize seu vôlei sem mensagens e planilhas espalhadas.</h1>
-          <p class="lead">O Saqz reúne jogos, confirmações e pagamentos do seu grupo de vôlei em um só lugar. Estamos no pré-lançamento e abrindo poucas vagas.</p>
-          <a class="primary" href="#interesse">EU QUERO UMA VAGA <span class="arrow" aria-hidden="true">→</span></a>
-          <span class="click-trigger" style="color:rgba(255,255,255,.72)">Entre na lista pelo WhatsApp · chamamos os grupos pela ordem de interesse</span>
+          <p class="lead">Jogos, confirmações de presença e financeiro do seu grupo em um só lugar. Crie sua conta e experimente o Saqz por 14 dias.</p>
+          <a class="primary" href="https://saqzweb.brunoalmeida.dev/comecar/">Testar grátis por 14 dias <span class="arrow" aria-hidden="true">→</span></a>
+          <span class="click-trigger" style="color:rgba(255,255,255,.72)">Sem cartão · 1 grupo com até 25 atletas · O teste começa ao criar seu grupo.</span>
         </div>
         <div class="visual">
           <div class="halo"></div>
@@ -556,45 +488,87 @@
            <div class="device">
             <div class="screen">
               <div class="island"></div>
-              <div class="app" data-phone-carousel>
-                <div class="app-head"><img class="app-brand" src="assets/saqz-logo.svg" alt="Saqz"><i class="avatar"></i></div>
+              <div class="preview-status" aria-hidden="true"><span>9:41</span><svg viewBox="0 0 54 14" fill="currentColor"><path d="M1 10h3v3H1zm5-3h3v6H6zm5-3h3v9h-3zm5-3h3v12h-3z"/><path d="M23 4q6-6 12 0l-2 2q-4-4-8 0zm3 3q3-3 6 0l-3 4z"/><rect x="39" y="2" width="12" height="10" rx="2" fill="none" stroke="currentColor"/><rect x="41" y="4" width="8" height="6" rx="1"/><path d="M52 5h2v4h-2z"/></svg></div>
+              <div class="app-preview" data-phone-carousel>
+                <svg class="preview-symbols" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+                  <symbol id="preview-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-8H9v8H4a1 1 0 0 1-1-1z"/></symbol>
+                  <symbol id="preview-users" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2m4 0v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+                  <symbol id="preview-user" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/></symbol>
+                  <symbol id="preview-card" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/></symbol>
+                  <symbol id="preview-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4m8-4v4M3 10h18"/></symbol>
+                  <symbol id="preview-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+                  <symbol id="preview-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+                  <symbol id="preview-x" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+                  <symbol id="preview-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol>
+                  <symbol id="preview-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 5 10 8L22 5"/></symbol>
+                  <symbol id="preview-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
+                  <symbol id="preview-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="12" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></symbol>
+                  <symbol id="preview-exit" viewBox="0 0 24 24"><path d="M4 12h16m-7-7 7 7-7 7"/></symbol>
+                  <symbol id="preview-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 1v4m0 14v4M1 12h4m14 0h4M4 4l3 3m10 10 3 3M4 20l3-3M17 7l3-3"/></symbol>
+                  <symbol id="preview-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 2 5 8-5 9-10-1m20-6-5-2-10 1L2 8m10 11 6 1M7 11 7 3"/></symbol>
+                </defs></svg>
                 <div class="page-window"><div class="page-track" data-phone-track>
-                  <section class="app-page" aria-label="Home">
-                    <p class="welcome">Boa noite, Ana</p><p class="group-name">Vôlei de Quinta</p>
-                    <div class="game"><span class="game-label">PRÓXIMO JOGO</span><h2>Quinta na Arena</h2><p>18 jul · 20h30 · Quadra 2</p><div class="bar"><span>Confirmados</span><b>10 / 12</b></div><div class="bar"><span>Prazo</span><span>amanhã, 18h</span></div></div>
-                    <div class="mini-title">Resumo financeiro <span>ver tudo</span></div>
-                    <div class="finance"><div class="metric">Recebido<b>R$ 840</b></div><div class="metric">Pendente<b>R$ 120</b></div></div>
+                  <section class="app-page" id="preview-panel-0" role="tabpanel" aria-labelledby="preview-tab-0" tabindex="0">
+                    <h2>Fala, Bruna! 👋</h2>
+                    <p class="preview-subtitle">2 grupos · 3 coisas esperando você</p>
+                    <article class="preview-card preview-card--soft preview-game preview-section">
+                      <svg class="preview-icon preview-ball" aria-hidden="true"><use href="#preview-ball"></use></svg>
+                      <div class="preview-eyebrow"><span>PRÓXIMO JOGO</span><span>Encerra 28/07 · 18h</span></div>
+                      <h3>Ter, 28/07 · 19h30</h3><p>Vôlei do CERET · Quadra 2 · Tatuapé</p>
+                      <div class="preview-scores"><div><strong class="preview-success">9</strong><small>Vão</small></div><div><strong class="preview-muted">1</strong><small>Não vão</small></div><div><strong class="preview-warning">2</strong><small>Pendentes</small></div></div>
+                      <div class="preview-response"><span><svg class="preview-icon " aria-hidden="true"><use href="#preview-check"></use></svg>Vou</span><span><svg class="preview-icon " aria-hidden="true"><use href="#preview-x"></use></svg>Não vou</span></div>
+                      <p class="preview-response-hint">Responda para a galera saber se conta com você.</p>
+                    </article>
+                    <article class="preview-card preview-section"><h3>Da última vez</h3><div class="preview-history"><span class="preview-date"><b>21</b><small>JUL</small></span><div><h4>Vôlei do CERET · 19h30</h4><p>Você jogou · 12 confirmados</p></div></div></article>
+                    <div class="preview-section"><h3>Esperando você</h3><div class="preview-card preview-list">
+                      <div class="preview-row"><span class="preview-round-icon"><svg class="preview-icon " aria-hidden="true"><use href="#preview-users"></use></svg></span><div><h4>3 pedidos para entrar</h4><p>Vôlei do CERET</p></div><span class="preview-chip preview-chip--warning">● 3</span></div>
+                      <div class="preview-row"><span class="preview-round-icon"><svg class="preview-icon " aria-hidden="true"><use href="#preview-card"></use></svg></span><div><h4>2 mensalidades em aberto</h4><p>R$ 160,00 · JUL</p></div><svg class="preview-icon preview-chevron" aria-hidden="true"><use href="#preview-chevron"></use></svg></div>
+                      <div class="preview-row"><span class="preview-round-icon"><svg class="preview-icon " aria-hidden="true"><use href="#preview-calendar"></use></svg></span><div><h4>Acertar o jogo de 28/07</h4><p>4 diárias · R$ 80,00 a receber</p></div><svg class="preview-icon preview-chevron" aria-hidden="true"><use href="#preview-chevron"></use></svg></div>
+                    </div></div>
+                    <div class="preview-shortcuts preview-section"><div><svg class="preview-icon " aria-hidden="true"><use href="#preview-plus"></use></svg>Criar jogo</div><div><svg class="preview-icon " aria-hidden="true"><use href="#preview-mail"></use></svg>Convidar</div><div><svg class="preview-icon " aria-hidden="true"><use href="#preview-card"></use></svg>Caixa</div><div><svg class="preview-icon " aria-hidden="true"><use href="#preview-users"></use></svg>Grupos</div></div>
+                    <div class="preview-section"><h3>Seus grupos</h3><div class="preview-card preview-list"><div class="preview-row"><span class="preview-round-icon"><svg class="preview-icon " aria-hidden="true"><use href="#preview-users"></use></svg></span><div><h4>Vôlei do CERET</h4><p>24 pessoas · 18 jogos</p></div><svg class="preview-icon preview-chevron" aria-hidden="true"><use href="#preview-chevron"></use></svg></div><div class="preview-row"><span class="preview-round-icon"><svg class="preview-icon " aria-hidden="true"><use href="#preview-users"></use></svg></span><div><h4>Vôlei Pacaembu</h4><p>14 pessoas · 6 jogos</p></div><svg class="preview-icon preview-chevron" aria-hidden="true"><use href="#preview-chevron"></use></svg></div></div></div>
                   </section>
-                  <section class="app-page" aria-label="Jogos">
-                    <p class="page-kicker">Agenda do grupo</p><h3 class="page-title">Próximos jogos</h3>
-                    <div class="schedule"><article class="schedule-card"><span class="schedule-date">18<small>JUL</small></span><div><h4>Quinta na Arena</h4><p>20h30 · Quadra 2</p></div><span class="spots">10/12</span></article><article class="schedule-card"><span class="schedule-date">25<small>JUL</small></span><div><h4>Treino de sábado</h4><p>09h00 · Ginásio Sul</p></div><span class="spots">8/12</span></article><article class="schedule-card"><span class="schedule-date">01<small>AGO</small></span><div><h4>Quinta na Arena</h4><p>20h30 · Quadra 2</p></div><span class="spots">ABRE EM 2D</span></article></div>
+                  <section class="app-page" id="preview-panel-1" role="tabpanel" aria-labelledby="preview-tab-1" tabindex="0" aria-hidden="true" inert>
+                    <div class="preview-heading"><div><h2>Grupos</h2><p class="preview-subtitle">2 grupos · 1 pedindo confirmação</p></div><span class="preview-add"><svg class="preview-icon " aria-hidden="true"><use href="#preview-plus"></use></svg></span></div>
+                    <article class="preview-card preview-group"><div class="preview-group-head"><span class="preview-group-icon preview-group-icon--primary"><svg class="preview-icon " aria-hidden="true"><use href="#preview-users"></use></svg></span><div><h4>Vôlei do CERET</h4><p>Quadra · Tatuapé · 24 membros</p></div><span class="preview-chip">Admin</span></div><div class="preview-group-footer"><svg class="preview-icon " aria-hidden="true"><use href="#preview-calendar"></use></svg><span>Ter, 28/07 · 19h30 · 9 de 12</span><span class="preview-chip">Confirme</span></div></article>
+                    <article class="preview-card preview-group"><div class="preview-group-head"><span class="preview-group-icon preview-group-icon--primary"><svg class="preview-icon " aria-hidden="true"><use href="#preview-users"></use></svg></span><div><h4>Vôlei Pacaembu</h4><p>Quadra · Pacaembu · 14 membros</p></div><span class="preview-chip">Admin</span></div><div class="preview-group-footer"><svg class="preview-icon " aria-hidden="true"><use href="#preview-calendar"></use></svg><span>Sáb, 01/08 · 09h00</span><span class="preview-chip preview-chip--success">● Vou</span></div></article>
+                    <div class="preview-section"><h3>Convite recebido</h3><article class="preview-card preview-card--soft"><div class="preview-group-head"><span class="preview-round-icon">MF</span><div><h4>Vôlei da firma</h4><p>Marina Freitas te convidou</p></div></div><div class="preview-periods"><span class="is-current">Entrar</span><span>Recusar</span></div></article></div>
                   </section>
-                  <section class="app-page" aria-label="Atletas">
-                    <p class="page-kicker">12 cadastrados</p><h3 class="page-title">Atletas</h3>
-                    <div class="athlete-list"><article class="athlete-row"><i class="athlete-photo"></i><div><h4>Marina Costa</h4><p>Ponteira · Mensalista</p></div><span class="athlete-status">Em dia</span></article><article class="athlete-row"><i class="athlete-photo"></i><div><h4>Rafael Lima</h4><p>Levantador · Mensalista</p></div><span class="athlete-status">Em dia</span></article><article class="athlete-row"><i class="athlete-photo"></i><div><h4>Ana Souza</h4><p>Líbero · Avulsa</p></div><span class="athlete-status">Confirmada</span></article></div>
+                  <section class="app-page" id="preview-panel-2" role="tabpanel" aria-labelledby="preview-tab-2" tabindex="0" aria-hidden="true" inert>
+                    <h2 class="preview-large-title">Caixa geral</h2>
+                    <div class="preview-periods"><span class="is-current">Julho</span><span>Junho</span><span>2026</span></div>
+                    <div class="preview-card preview-card--soft preview-balance"><span>SALDO DOS SEUS GRUPOS</span><strong>R$ 840,00</strong><p>2 grupos · Julho</p></div>
+                    <div class="preview-card preview-finance-scores"><div class="preview-scores"><div><strong>R$ 1.280,00</strong><small>Entrou</small></div><div><strong>R$ 440,00</strong><small>Saiu</small></div><div><strong>R$ 240,00</strong><small>A receber</small></div></div></div>
+                    <div class="preview-section"><h3>Seus grupos</h3><div class="preview-card preview-list">
+                      <div class="preview-row"><div><h4>Vôlei do CERET</h4><p>2 mensalidades em aberto</p></div><strong class="preview-amount">R$ 520,00</strong></div>
+                      <div class="preview-row"><div><h4>Vôlei Pacaembu</h4><p>Tudo em dia</p></div><strong class="preview-amount">R$ 320,00</strong></div>
+                    </div></div>
+                    <div class="preview-section"><h3>Últimos lançamentos</h3><div class="preview-card preview-list">
+                      <div class="preview-row"><div><h4>Mensalidade de julho</h4><p>Vôlei do CERET · 02/07</p></div><strong class="preview-amount preview-success">+R$ 80,00</strong></div>
+                      <div class="preview-row"><div><h4>Aluguel da quadra</h4><p>Vôlei Pacaembu · 01/07</p></div><strong class="preview-amount preview-danger">−R$ 240,00</strong></div>
+                    </div></div>
                   </section>
-                  <section class="app-page" aria-label="Financeiro">
-                    <p class="page-kicker">Caixa do grupo</p><h3 class="page-title">Financeiro</h3>
-                    <div class="finance-overview"><span>Recebido em julho</span><strong>R$ 840</strong><div class="finance-split"><span>Pagos<b>8 atletas</b></span><span>Pendentes<b>2 atletas</b></span></div></div>
-                    <div class="transaction-title">Movimentações <span>ver todas</span></div>
-                    <div class="transaction-list"><article class="transaction"><i>+</i><div><h4>Marina Costa</h4><p>Mensalidade · julho</p></div><strong>R$ 80</strong></article><article class="transaction"><i>+</i><div><h4>Rafael Lima</h4><p>Mensalidade · julho</p></div><strong>R$ 80</strong></article><article class="transaction"><i>−</i><div><h4>Aluguel da quadra</h4><p>18 de julho</p></div><strong>R$ 240</strong></article></div>
+                  <section class="app-page" id="preview-panel-3" role="tabpanel" aria-labelledby="preview-tab-3" tabindex="0" aria-hidden="true" inert>
+                    <div class="preview-heading"><h2>Perfil</h2><svg class="preview-icon " aria-hidden="true"><use href="#preview-settings"></use></svg></div>
+                    <article class="preview-card preview-profile-card"><span class="preview-avatar">BL</span><h3>Bruna Lima</h3><p>Bruna · São Paulo, SP</p><div class="preview-scores"><div><strong>18</strong><small>Jogos</small></div><div><strong class="preview-success">89%</strong><small>Presença</small></div><div><strong>2</strong><small>Grupos</small></div></div><span class="preview-outline">Editar dados</span></article>
+                    <div class="preview-section"><h3>Como você joga</h3><div class="preview-group-head"><span class="preview-round-icon">VC</span><div><h4>Vôlei do CERET</h4><p>Ponta · Admin</p></div><span class="preview-chip">Mensalista</span></div></div>
+                    <div class="preview-section"><h3>Organização</h3><div class="preview-card preview-list"><div class="preview-row"><span class="preview-round-icon"><svg class="preview-icon " aria-hidden="true"><use href="#preview-card"></use></svg></span><div><h4>Meu plano</h4></div><svg class="preview-icon preview-chevron" aria-hidden="true"><use href="#preview-chevron"></use></svg></div></div></div>
+                    <div class="preview-section"><h3>Conta</h3><div class="preview-card preview-list"><div class="preview-row"><span class="preview-round-icon"><svg class="preview-icon " aria-hidden="true"><use href="#preview-card"></use></svg></span><div><h4>Minhas mensalidades</h4></div><svg class="preview-icon preview-chevron" aria-hidden="true"><use href="#preview-chevron"></use></svg></div><div class="preview-row"><span class="preview-round-icon"><svg class="preview-icon " aria-hidden="true"><use href="#preview-bell"></use></svg></span><div><h4>Notificações</h4></div><svg class="preview-icon preview-chevron" aria-hidden="true"><use href="#preview-chevron"></use></svg></div><div class="preview-row"><span class="preview-round-icon"><svg class="preview-icon " aria-hidden="true"><use href="#preview-lock"></use></svg></span><div><h4>Trocar senha</h4></div><svg class="preview-icon preview-chevron" aria-hidden="true"><use href="#preview-chevron"></use></svg></div><div class="preview-row"><span class="preview-round-icon"><svg class="preview-icon " aria-hidden="true"><use href="#preview-exit"></use></svg></span><div><h4>Sair da conta</h4></div><svg class="preview-icon preview-chevron" aria-hidden="true"><use href="#preview-chevron"></use></svg></div></div></div>
                   </section>
                 </div></div>
               </div>
-              <div class="tabbar" role="tablist" aria-label="Navegação do aplicativo">
-                <button class="is-active" type="button" role="tab" aria-label="Home" aria-selected="true" data-phone-tab="0"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8v9.7a.5.5 0 0 1-.5.5H15v-6H9v6H3.5a.5.5 0 0 1-.5-.5z"/></svg></button>
-                <button type="button" role="tab" aria-label="Jogos" aria-selected="false" data-phone-tab="1"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4m8-4v4M3 10h18"/></svg></button>
-                <button type="button" role="tab" aria-label="Atletas" aria-selected="false" data-phone-tab="2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
-                <button type="button" role="tab" aria-label="Financeiro" aria-selected="false" data-phone-tab="3"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/></svg></button>
+              <div class="preview-nav" role="tablist" aria-label="Explore as telas do app">
+                <button class="is-active" type="button" role="tab" id="preview-tab-0" aria-controls="preview-panel-0" aria-selected="true" tabindex="0" data-phone-tab="0"><svg class="preview-icon " aria-hidden="true"><use href="#preview-home"></use></svg><span>Início</span></button>
+                <button type="button" role="tab" id="preview-tab-1" aria-controls="preview-panel-1" aria-selected="false" tabindex="-1" data-phone-tab="1"><svg class="preview-icon " aria-hidden="true"><use href="#preview-users"></use></svg><span>Grupos</span></button>
+                <button type="button" role="tab" id="preview-tab-2" aria-controls="preview-panel-2" aria-selected="false" tabindex="-1" data-phone-tab="2"><svg class="preview-icon " aria-hidden="true"><use href="#preview-card"></use></svg><span>Financeiro</span></button>
+                <button type="button" role="tab" id="preview-tab-3" aria-controls="preview-panel-3" aria-selected="false" tabindex="-1" data-phone-tab="3"><svg class="preview-icon " aria-hidden="true"><use href="#preview-user"></use></svg><span>Perfil</span></button>
               </div>
             </div>
            </div>
-           <div class="float-card one"><i>✓</i><span><strong>10 confirmados</strong>faltam só 2 atletas</span></div>
-           <div class="float-card two"><i>R$</i><span><strong>Caixa atualizado</strong>sem abrir planilha</span></div>
           </div>
         </div>
       </div>
-      <span class="caption">Prévia conceitual do aplicativo · fotos provisórias</span>
+      <p class="caption">Explore as abas e role as telas · layout do app com dados ilustrativos</p>
     </section>
     <section class="below shell" id="painel">
       <div class="below-head" data-reveal><div><span class="eyebrow">O painel do organizador</span><h2>Quem vai? Onde é? Quem pagou?</h2></div><p class="section-lead">No Saqz, as respostas ficam reunidas em uma só tela, em vez de espalhadas entre conversas e planilhas.</p></div>
@@ -604,11 +578,12 @@
         <article class="board-panel money-panel" data-reveal data-reveal-delay="160"><span class="panel-label">Quem pagou?</span><div class="payment-story"><h3><strong><span data-count="8">8</span> de 10</strong> atletas já pagaram.</h3><p>Veja rapidamente quem está em dia e quem ainda precisa acertar.</p><div class="payment-people" aria-label="Status dos pagamentos"><i class="payment-face"></i><i class="payment-face"></i><i class="payment-face"></i><i class="payment-face is-pending"></i><i class="payment-face is-pending"></i><i class="payment-more">+5</i></div><div class="payment-totals"><div class="payment-total"><span>Recebido em julho</span><strong>R$ <span data-count="840">840</span></strong></div><div class="payment-total"><span>A receber</span><strong>R$ <span data-count="120">120</span></strong></div></div></div></article>
       </div>
     </section>
-    <section class="truth"><div class="truth-row shell"><div class="truth-copy" data-reveal><span class="eyebrow">Pré-lançamento</span><h2>Seu grupo pode usar o Saqz antes do lançamento.</h2><p>Estamos começando com poucos grupos para manter tudo funcionando bem. As vagas são preenchidas pela ordem de entrada na lista.</p><a class="primary" href="#interesse">EU QUERO UMA VAGA <span class="arrow" aria-hidden="true">→</span></a><span class="click-trigger">O botão leva ao WhatsApp</span></div><div class="access-card" data-glow><div class="access-top" data-reveal data-reveal-delay="120"><span>Como participar</span><b>Vagas limitadas</b></div><div class="access-step" data-reveal data-reveal-delay="200"><i>1</i><div><strong>Entre na lista</strong><p>Envie uma mensagem pelo WhatsApp.</p></div></div><div class="access-step" data-reveal data-reveal-delay="280"><i>2</i><div><strong>Aguarde sua vez</strong><p>Seguimos a ordem em que cada grupo demonstrou interesse.</p></div></div><div class="access-step" data-reveal data-reveal-delay="360"><i>3</i><div><strong>Receba o convite</strong><p>Chamamos você quando uma nova vaga estiver disponível.</p></div></div></div></div></section>
-    <section class="faq shell" id="faq"><div class="faq-grid"><div data-reveal><span class="eyebrow">Perguntas frequentes</span><h2>Antes de entrar na lista.</h2></div><div class="questions"><details class="question" open data-reveal><summary><span class="question-index">01</span><h3>O que é o Saqz?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Um aplicativo para organizar jogos, presenças e pagamentos de grupos de vôlei de quadra.</p></details><details class="question" data-reveal data-reveal-delay="80"><summary><span class="question-index">02</span><h3>O Saqz já pode ser usado?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Estamos no pré-lançamento. Abrimos poucas vagas por vez e chamamos os grupos pela ordem da lista.</p></details><details class="question" data-reveal data-reveal-delay="150"><summary><span class="question-index">03</span><h3>Como consigo uma vaga?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Clique em “Eu quero uma vaga” e envie a mensagem pelo WhatsApp. Entraremos em contato quando chegar a vez do seu grupo.</p></details><details class="question" data-reveal data-reveal-delay="220"><summary><span class="question-index">04</span><h3>Preciso pagar para entrar na lista?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Não. Entrar na lista não gera contratação nem cobrança.</p></details></div></div></section>
-    <section class="final shell" id="interesse"><img class="final-logo" src="assets/saqz-logo.svg" alt="Saqz" data-reveal><span class="eyebrow" data-reveal data-reveal-delay="80">Lista de interesse</span><h2 data-reveal data-reveal-delay="150">Quer organizar seu grupo com o Saqz?</h2><p data-reveal data-reveal-delay="220">Entre na lista para receber um convite quando abrirmos uma nova vaga durante o pré-lançamento.</p><div data-reveal data-reveal-delay="300"><a class="primary" href="#interesse">EU QUERO UMA VAGA <span class="arrow" aria-hidden="true">→</span></a><span class="click-trigger">WhatsApp (34) 99957-6016 · entrar na lista é gratuito</span></div></section>
+    <section class="truth"><div class="truth-row shell"><div class="truth-copy" data-reveal><span class="eyebrow">Teste do Saqz</span><h2>Comece pelo seu grupo, sem compromisso de cobrança.</h2><p>O teste é para um organizador autenticado que ainda não criou um grupo e não tem histórico de assinatura paga. Ele pode ser usado uma vez, por 14 dias, para experimentar jogos, presenças, convites e financeiro com 1 grupo e até 25 atletas.</p><a class="primary" href="https://saqzweb.brunoalmeida.dev/comecar/">Testar grátis por 14 dias <span class="arrow" aria-hidden="true">→</span></a><span class="click-trigger">Sem cartão e sem cobrança automática.</span></div><div class="access-card" data-glow><div class="access-top" data-reveal data-reveal-delay="120"><span>Como começar</span><b>14 dias para testar</b></div><div class="access-step" data-reveal data-reveal-delay="200"><i>1</i><div><strong>Crie sua conta</strong><p>Cadastre-se com seu nome, e-mail e senha.</p></div></div><div class="access-step" data-reveal data-reveal-delay="280"><i>2</i><div><strong>Abra o app e crie seu grupo</strong><p>Os 14 dias começam somente após a criação bem-sucedida do primeiro grupo.</p></div></div><div class="access-step" data-reveal data-reveal-delay="360"><i>3</i><div><strong>Convide a galera e marque um jogo</strong><p>Organize presenças e pagamentos na rotina do seu grupo.</p></div></div></div></div></section>
+    <section class="pricing" id="precos"><div class="shell"><div class="pricing-head"><span class="eyebrow">Planos pagos</span><h2>Depois do teste, escolha o plano do seu grupo.</h2><p>Os planos abaixo são assinaturas pagas separadas do teste. O checkout só acontece quando você decidir assinar.</p></div><div class="pricing-grid"><article class="plan-card plan-card--featured"><h3>Titular</h3><p>Para organizar um grupo.</p><div class="plan-price"><strong>R$ 39,90</strong><span>/mês</span></div><div class="plan-annual">ou <strong>R$ 399/ano</strong> no total</div><div class="plan-limit">1 grupo · até 25 atletas</div><a class="primary" href="https://saqzweb.brunoalmeida.dev/comecar/">Testar grátis por 14 dias</a><a class="secondary" href="https://saqzweb.brunoalmeida.dev/assinar/">Já decidiu? Assinar</a></article><article class="plan-card"><h3>Organizador</h3><p>Para quem cuida de mais grupos.</p><div class="plan-price"><strong>R$ 59,90</strong><span>/mês</span></div><div class="plan-annual">ou <strong>R$ 599/ano</strong> no total</div><div class="plan-limit">Até 3 grupos · atletas ilimitados</div><a class="primary" href="https://saqzweb.brunoalmeida.dev/comecar/">Testar grátis por 14 dias</a><a class="secondary" href="https://saqzweb.brunoalmeida.dev/assinar/">Já decidiu? Assinar</a></article><article class="plan-card"><h3>Ilimitado</h3><p>Para organizar grupos sem limite de quantidade.</p><div class="plan-price"><strong>R$ 89,90</strong><span>/mês</span></div><div class="plan-annual">ou <strong>R$ 899/ano</strong> no total</div><div class="plan-limit">Grupos e atletas ilimitados</div><a class="primary" href="https://saqzweb.brunoalmeida.dev/comecar/">Testar grátis por 14 dias</a><a class="secondary" href="https://saqzweb.brunoalmeida.dev/assinar/">Já decidiu? Assinar</a></article></div><p class="pricing-note">Durante o teste, todos começam com a mesma condição: 1 grupo e até 25 atletas. O teste não herda os limites dos planos maiores.</p></div></section>
+    <section class="faq shell" id="faq"><div class="faq-grid"><div data-reveal><span class="eyebrow">Perguntas frequentes</span><h2>O que acontece no teste?</h2></div><div class="questions"><details class="question" open data-reveal><summary><span class="question-index">01</span><h3>Quando começam os 14 dias?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>O teste começa somente quando você cria com sucesso o primeiro grupo no app. Criar a conta ou abrir o app não inicia o prazo.</p></details><details class="question" data-reveal data-reveal-delay="80"><summary><span class="question-index">02</span><h3>Preciso cadastrar cartão?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Não. O teste não exige cartão e não gera cobrança ou assinatura automática.</p></details><details class="question" data-reveal data-reveal-delay="150"><summary><span class="question-index">03</span><h3>O que posso testar?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>O teste é para um organizador autenticado que ainda não criou um grupo e não tem histórico de assinatura paga. Ele pode ser usado uma vez, para testar 1 grupo com até 25 atletas, incluindo jogos, convites, confirmações de presença e financeiro.</p></details><details class="question" data-reveal data-reveal-delay="220"><summary><span class="question-index">04</span><h3>O que acontece ao terminar?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Seu histórico continua disponível para leitura. Criar novos jogos, alterar o financeiro e criar ou alterar respostas de presença ficam bloqueados até o organizador assinar um plano.</p></details><details class="question" data-reveal data-reveal-delay="290"><summary><span class="question-index">05</span><h3>Posso marcar um jogo depois do teste?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Você pode marcar jogos durante o teste. Se a data do jogo for igual ou posterior ao fim do teste, o app avisa com antecedência que será preciso assinar para o grupo continuar funcionando. Agendar o jogo não estende o prazo gratuito.</p></details><details class="question" data-reveal data-reveal-delay="360"><summary><span class="question-index">06</span><h3>Os atletas também precisam assinar?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Não. O organizador assina o plano do Saqz. Mensalidades e diárias do grupo são cobranças separadas, definidas pelo organizador.</p></details><details class="question" data-reveal data-reveal-delay="430"><summary><span class="question-index">07</span><h3>Como continuo usando?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Escolha um plano e faça o pagamento no checkout quando decidir assinar. O teste não inicia pagamento por conta própria.</p></details></div></div></section>
+    <section class="final shell" id="comecar"><img class="final-logo" src="assets/saqz-logo.svg" alt="Saqz" data-reveal><span class="eyebrow" data-reveal data-reveal-delay="80">Pronto para começar?</span><h2 data-reveal data-reveal-delay="150">Organize o próximo jogo do seu grupo.</h2><p data-reveal data-reveal-delay="220">Crie sua conta e abra o app para criar seu primeiro grupo. Você escolhe se quer assinar depois do teste.</p><div data-reveal data-reveal-delay="300"><a class="primary" href="https://saqzweb.brunoalmeida.dev/comecar/">Testar grátis por 14 dias <span class="arrow" aria-hidden="true">→</span></a><span class="click-trigger">Sem cartão · 1 grupo com até 25 atletas · 14 dias após criar o grupo.</span></div></section>
   </main>
-  <footer class="site-footer"><div class="shell footer-inner" data-reveal><div class="footer-row"><img class="footer-logo" src="assets/saqz-logo.svg" alt="Saqz"><p>© 2026 Saqz · Feito para quem organiza vôlei de quadra</p><nav class="footer-nav" aria-label="Rodapé"><a href="#painel">Como funciona</a><a href="#faq">Perguntas</a><a href="#interesse">Lista de interesse</a></nav></div><p class="footer-contact">Contato: <a href="tel:+5534999576016">(34) 99957-6016</a></p><p class="footer-legal">Empresa responsável: BRUNO HENRIQUE DE ALMEIDA TECNOLOGIA DA INFORMACAO LTDA</p></div></footer>
+  <footer class="site-footer"><div class="shell footer-inner" data-reveal><div class="footer-row"><img class="footer-logo" src="assets/saqz-logo.svg" alt="Saqz"><p>© 2026 Saqz · Feito para quem organiza vôlei de quadra</p><nav class="footer-nav" aria-label="Rodapé"><a href="#painel">Como funciona</a><a href="#precos">Planos</a><a href="#faq">Perguntas</a></nav></div><p class="footer-contact">Suporte: <a href="https://wa.me/5534999576016" aria-label="Suporte pelo WhatsApp">WhatsApp (34) 99957-6016</a></p><p class="footer-legal">Empresa responsável: BRUNO HENRIQUE DE ALMEIDA TECNOLOGIA DA INFORMACAO LTDA</p></div></footer>
   <script src="assets/motion.js"></script>
   <script src="assets/phone-carousel.js"></script>
   <script>
@@ -618,19 +593,6 @@
       const track = root.querySelector('[data-phone-track]');
       const pages = Array.from(track.children);
       const tabs = Array.from(device.querySelectorAll('[data-phone-tab]'));
-      const floatCards = { 0: document.querySelector('.float-card.one'), 3: document.querySelector('.float-card.two') };
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      let timer;
-
-      function highlight(index) {
-        pages.forEach(function (page) { page.classList.remove('page-live'); });
-        const card = floatCards[index];
-        if (card) card.classList.remove('is-hot');
-        void track.offsetWidth;
-        pages[index].classList.add('page-live');
-        if (card) card.classList.add('is-hot');
-      }
-
       const carousel = PhoneCarousel.createPhoneCarousel({
         count: tabs.length,
         onChange: function (index) {
@@ -639,30 +601,28 @@
             const active = tabIndex === index;
             tab.classList.toggle('is-active', active);
             tab.setAttribute('aria-selected', String(active));
+            tab.tabIndex = active ? 0 : -1;
+            pages[tabIndex].setAttribute('aria-hidden', String(!active));
+            pages[tabIndex].inert = !active;
           });
-          highlight(index);
         },
       });
 
-      function stop() { window.clearInterval(timer); }
-      function start() {
-        stop();
-        if (!reduceMotion && !document.hidden) timer = window.setInterval(carousel.next, 3800);
-      }
-
-      tabs.forEach(function (tab) {
-        tab.addEventListener('click', function () {
-          carousel.select(Number(tab.dataset.phoneTab));
-          start();
+      // Keep the preview on the screen being read or scrolled.
+      tabs.forEach(function (tab, index) {
+        tab.addEventListener('click', function () { carousel.select(index); });
+        tab.addEventListener('keydown', function (event) {
+          let next;
+          if (event.key === 'ArrowRight') next = index + 1;
+          else if (event.key === 'ArrowLeft') next = index - 1;
+          else if (event.key === 'Home') next = 0;
+          else if (event.key === 'End') next = tabs.length - 1;
+          else return;
+          event.preventDefault();
+          tabs[carousel.select(next)].focus({ preventScroll: true });
         });
       });
-      device.addEventListener('mouseenter', stop);
-      device.addEventListener('mouseleave', start);
-      device.addEventListener('focusin', stop);
-      device.addEventListener('focusout', start);
-      document.addEventListener('visibilitychange', start);
-      window.setTimeout(function () { highlight(carousel.getIndex()); }, 2000);
-      start();
+      carousel.select(0);
     })();
   </script>
 </body>
