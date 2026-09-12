@@ -25,7 +25,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(database.jdbcUrl, database.username, database.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(13, flyway.migrate().migrationsExecuted)
+        assertEquals(14, flyway.migrate().migrationsExecuted)
     }
 
     @BeforeEach
