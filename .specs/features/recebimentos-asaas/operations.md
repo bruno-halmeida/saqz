@@ -73,3 +73,18 @@ CONFIGURATION_UNAVAILABLE. `GET /api/receivables/terms/{version}` consulta vers�
 publicadas, incluindo históricas e condições futuras já anunciadas. Ambas as rotas
 usam a autenticação normal da API e independem de BaaS, subconta ou plano elegível.
 A página pública de termos e a publicação administrativa continuam pendentes.
+
+## Publicação administrativa
+
+Rotas sob `/admin/receivables`, protegidas pelo cadastro de administrador da plataforma:
+- `POST /terms`: requestId, version, content, effectiveAt.
+- `POST /fees`: requestId, method, providerRate, providerFixedCents, commissionRate,
+  commissionFixedCents, termsVersion, effectiveAt. O requestId também identifica a tabela.
+- `POST /fees/simulate`: mesmos campos de tarifas e baseCents; não publica.
+
+Taxas percentuais usam frações decimais (0.01 significa 1%). Valores fixos e base usam
+centavos inteiros. Todas as condições devem ser fornecidas; não há defaults comerciais.
+Publicação exige vigência presente/futura e termos já publicados aplicáveis nessa data.
+Retries com o mesmo ator e conteúdo preservam a primeira resposta; mudança conflita.
+V51 guarda auditoria imutável junto da versão, na mesma transação. Não há edição destrutiva.
+A interface visual, listagem operacional e liberação do piloto continuam pendentes.

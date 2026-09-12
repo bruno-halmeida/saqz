@@ -6,9 +6,9 @@ Verificação individual conforme autorização do usuário.
 ## Evidência executável
 
 JDK 21: `backend/gradlew -p backend :features:receivables:check :architecture-tests:test :bootstrap:test`.
-Resultado final: exit 0, 12 testes unitários de recebimentos, 20 de integração PostgreSQL/HTTP,
-20 de arquitetura e 381 do bootstrap, sem falhas, erros ou testes ignorados.
-Entre eles estão 44 testes novos específicos da entrega. O bootstrap valida também as
+Resultado final: exit 0, 12 testes unitários de recebimentos, 24 de integração PostgreSQL/HTTP,
+20 de arquitetura e 384 do bootstrap, sem falhas, erros ou testes ignorados.
+Entre eles estão 51 testes novos específicos da entrega. O bootstrap valida também as
 migrações combinadas e a composição com o trial incorporado de origin/main 6f86f8f6.
 A branch core isolada passou 22 testes financeiros, 20 de arquitetura e a migração agregada.
 
@@ -33,3 +33,7 @@ Branches separadas preservam entregas revisáveis; nenhuma alteração foi mescl
 
 O gate amplo foi repetido após a simulação HTTP: 381 bootstrap, exit 0. A branch
 feat/receivables-quotes contém a entrega dependente de catálogo e simulação.
+
+Após publicação administrativa e correção de 404, gate amplo: 384 bootstrap e
+20 arquitetura passaram. Receivables tem 12 unitários e 24 PostgreSQL/HTTP sem falhas.
+V51 registra auditoria das condições. A interface visual administrativa ainda não foi implementada.

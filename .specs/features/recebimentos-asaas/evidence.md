@@ -318,3 +318,24 @@ A simulação não garante autorização de emissão: aprovação, plano e grupo
 na emissão. A disponibilidade desta consulta é intencional mesmo antes do cadastro.
 
 Gate amplo após T07 simulação: 381 testes bootstrap passaram, exit 0, sem testes ignorados.
+
+## T07/A2 — publicação administrativa auditada
+
+V51 adiciona receivable_condition_publications. O teste de schema passa de duas para
+três migrações e de 17 para 18 tabelas, mantendo as verificações de preservação de dados.
+Nenhuma migração financeira anterior mudou.
+
+FinancialConditionsPublicationIntegrationTest: quatro testes PostgreSQL cobrem publicação
+concorrente idempotente, atribuição ao ator, versão/conteúdo conflitante, vigência exata,
+termos aplicáveis, rejeição de taxa que sofreria arredondamento e rollback sem auditoria órfã.
+AdminReceivableConditionsEndpointIntegrationTest: três testes HTTP com cadeia real de segurança
+cobrem 401/403, atribuição ao administrador autenticado, precisão monetária e preview sem publicação.
+
+Gate receivables check: 12 unitários + 24 integração; arquitetura 20; bootstrap HTTP administrativo
+(3) e migração agregada (1), exit 0. A primeira execução HTTP encontrou 500 para rota inexistente;
+SafeExceptionHandler recebeu mapeamento explícito de NoResourceFoundException/NoHandlerFoundException
+para 404. A asserção foi preservada e o rerun passou.
+
+Sem interface visual do painel nesta entrega e sem publicação de condições reais.
+
+Gate amplo após publicação: 384 bootstrap e 20 arquitetura passaram, sem falhas, erros ou ignorados.
