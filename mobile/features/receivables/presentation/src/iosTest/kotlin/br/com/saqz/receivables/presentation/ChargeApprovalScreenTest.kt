@@ -15,6 +15,9 @@ class ChargeApprovalScreenTest {
         val intents = mutableListOf<ChargeApprovalIntent>()
         setContent { SaqzTheme { ChargeApprovalScreen(state.value, intents::add, {}) } }
         onNodeWithTag(ChargeApprovalTags.Submit).performScrollTo().assertIsNotEnabled()
+        runOnIdle { state.value = state.value.copy(accepted = true) }
+        onNodeWithTag(ChargeApprovalTags.Submit).assertIsNotEnabled()
+        onNodeWithTag(ChargeApprovalTags.Accept).assertIsNotEnabled()
         runOnIdle { state.value = state.value.copy(terms = state.value.terms + ReceiptTerms("v2", "Termos cartão"), accepted = true) }
         onNodeWithTag(ChargeApprovalTags.Submit).assertIsEnabled().performClick()
         assertEquals(listOf<ChargeApprovalIntent>(ChargeApprovalIntent.Approve), intents)

@@ -50,6 +50,14 @@ class BearerSecurityIntegrationTest {
     }
 
     @Test
+    fun `charge order lookup rejects absent credentials before financial lookup`() {
+        val id = "00000000-0000-0000-0000-000000000001"
+        assertUnauthorized(HttpRequest.newBuilder()
+            .uri(URI("http://127.0.0.1:$port/api/receivables/charges/$id/order?accountId=$id")).GET().build())
+        assertTrue(verifier.tokens.isEmpty())
+    }
+
+    @Test
     fun `empty malformed and non-Bearer credentials return exact unauthorized problem without verification`() {
         listOf("Bearer", "Bearer ", "Basic abc", "not-a-scheme").forEach { authorization ->
             assertUnauthorized(request(authorization))

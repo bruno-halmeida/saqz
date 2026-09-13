@@ -30,6 +30,10 @@ class ChargeApprovalScreenshotTest {
         compose.onNodeWithTag(ChargeApprovalTags.account("account")).performClick()
         assertEquals(listOf(ChargeApprovalIntent.Account("account")), intents); capture("contas")
         compose.runOnIdle { state.value = reviewed }
+        compose.onAllNodesWithText("Base: R$\u00a0100,00").assertCountEquals(2)
+        compose.onNodeWithText("Vencimento: 20/09/2026").assertExists()
+        compose.onNodeWithText("Termos · versão v1").assertExists()
+        compose.onNodeWithText("Termos · versão v2").assertExists()
         compose.onNodeWithText("Taxas de serviço e pagamento: R$\u00a06,58").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Total para o pagador: R$\u00a0106,58").assertIsDisplayed()
         compose.onNodeWithText("Taxas de serviço e pagamento: R$\u00a09,00").performScrollTo().assertIsDisplayed()
@@ -76,6 +80,25 @@ class ChargeApprovalScreenshotTest {
             compose.onNodeWithText(label).assertIsDisplayed()
             compose.onNodeWithTag(ChargeApprovalTags.Cancel).assertDoesNotExist(); capture(status.lowercase())
         }
+    }
+    @Test fun priorAcceptanceCannotAuthorizeMissingMismatchedOrBlankTerms() {
+        val state = mutableStateOf(reviewed.copy(accepted = true))
+        compose.setContent { SaqzTheme { ChargeApprovalScreen(state.value, {}, {}) } }
+        compose.onNodeWithTag(ChargeApprovalTags.Submit).performScrollTo().assertIsEnabled()
+        for (terms in listOf(reviewed.terms.take(1), listOf(reviewed.terms.first(), ReceiptTerms("v3", "Outro")),
+            listOf(reviewed.terms.first(), ReceiptTerms("v2", " ")))) {
+            compose.runOnIdle { state.value = reviewed.copy(accepted = true, terms = terms) }
+            compose.onNodeWithTag(ChargeApprovalTags.Submit).performScrollTo().assertIsNotEnabled()
+            compose.onNodeWithTag(ChargeApprovalTags.Accept).assertIsNotEnabled()
+        }
+    }
+    @Test fun headerBackPreservesPendingCommandUntilResolution() {
+        val state = mutableStateOf(reviewed.copy(attempt = attempt)); var exits = 0
+        compose.setContent { SaqzTheme { ChargeApprovalScreen(state.value, {}, { exits++ }) } }
+        compose.onNodeWithContentDescription("Voltar").performClick()
+        assertEquals(0, exits); assertEquals(attempt, state.value.attempt)
+        compose.runOnIdle { state.value = reviewed }
+        compose.onNodeWithContentDescription("Voltar").performClick(); assertEquals(1, exits)
     }
     private fun capture(name: String) {
         compose.mainClock.advanceTimeBy(400); compose.waitForIdle()

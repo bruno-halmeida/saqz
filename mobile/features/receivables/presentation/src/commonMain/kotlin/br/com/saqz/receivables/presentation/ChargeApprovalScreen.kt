@@ -5,6 +5,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -28,18 +29,21 @@ object ChargeApprovalTags {
     const val Replay = "charge-approval-replay"
     fun account(id: String) = "charge-approval-account-$id"
 }
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun ChargeApprovalRoot(groupId: String, chargeId: String, onBack: () -> Unit, onMutationSuccess: () -> Unit,
     viewModel: ChargeApprovalViewModel = koinViewModel(key = "approval/$groupId/$chargeId",
         parameters = { parametersOf(groupId, chargeId) })) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    BackHandler(enabled = state.attempt != null) { /* Preserve the unresolved command for recovery. */ }
     LifecycleResumeEffect(viewModel) { viewModel.onIntent(ChargeApprovalIntent.Refresh); onPauseOrDispose { } }
     ObserveAsEvents(viewModel.effects) { if (viewModel.validEffect(it)) onMutationSuccess() }
     ChargeApprovalScreen(state, viewModel::onIntent, onBack)
 }
 @Composable
 fun ChargeApprovalScreen(state: ChargeApprovalState, onIntent: (ChargeApprovalIntent) -> Unit, onBack: () -> Unit,
-    modifier: Modifier = Modifier) = PaymentPage(stringResource(Res.string.approval_title), ChargeApprovalTags.Screen, onBack, modifier) {
+    modifier: Modifier = Modifier) = PaymentPage(stringResource(Res.string.approval_title), ChargeApprovalTags.Screen,
+        { if (state.attempt == null) onBack() }, modifier) {
     if (state.loading) SaqzSpinner()
     state.error?.let { PaymentError(it) }
     if (state.accountId == null) {

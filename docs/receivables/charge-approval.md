@@ -32,8 +32,9 @@ original, recuperar resultado incerto e cancelar ordem existente. Não libera pr
 - CA4: antes de approve/cancel salva marker não sensível por usuário/grupo/cobrança/conta/comando.
   Resultado incerto trava edição/novo comando; recuperação consulta primeiro e permite replay explícito
   idêntico, também após process death. Consulta sem ordem preserva aprovação incerta; erro preserva marker.
-  Aprovação encontrada encerra pendência e mostra status; cancelamento só é concluído com CANCELLED,
-  CANCEL_PENDING mantém reserva/acompanhar. Cancelar requer confirmação explícita, não indica reembolso.
+  Aprovação encontrada encerra pendência e mostra status. Apenas CANCELLED confirma cancelamento;
+  PAID/REFUNDED/CHARGEBACK encerram a tentativa exibindo o estado real, sem anunciar cancelamento.
+  CANCEL_PENDING mantém reserva/acompanhar. Voltar fica bloqueado durante tentativa não resolvida. Cancelar requer confirmação explícita, não indica reembolso.
 - CA5: geração e chave de sessão descartam respostas/efeitos antigos; logout limpa dados/marker,
   restauração de outro usuário é descartada. Ação em fila revalida o contexto no consumo.
 - CA6: telas acessíveis usam DS/strings/tags/previews, empty/loading/erro/retry e cobrança liberada,
@@ -88,3 +89,22 @@ IT = mobile/features/receivables/presentation/src/iosTest/kotlin/br/com/saqz/rec
 Todos os testes novos mapeiam aos critérios acima: VT10→CA3/4/5; ST3+IT1+entrada1+rotas/DI→CA6;
 gateway8→CA2; backend4→CA1. Verificação independente ainda pendente. Nenhum teste existente
 foi removido, ignorado ou teve asserções enfraquecidas. UAT humano e sandbox real não executados.
+
+## Correções da revisão — rodada 1
+
+Recuperar tentativa consulta primeiro: resultado existente encerra aprovação sem POST; erro mantém
+marker; ausência permite somente replay explícito do comando original. Cancelamento resolve com
+estado terminal real. Voltar preserva tentativa pendente, e retorno ao caixa sempre recarrega.
+Gates /tmp/saqz-charge-review-fixes-{mobile,backend}.log: 43 backend (36 pagamentos +7 segurança),
+55 presentation Android +58 iOS +5 UI Android, todos sem falhas/erros/skips; detekt e builds aprovados.
+
+| AC e teste adicionado/reforçado | Evidência literal | Resultado |
+|---|---|---|
+| CA1 segurança/UUID | BearerSecurityIntegrationTest:57 `assertUnauthorized(...)`, helper `assertEquals(401, response.statusCode())`; OneOffPaymentsIntegrationTest:619 `assertEquals(400, ...)` | sem sessão 401, path inválido 400 |
+| CA3 base/termos | ST:33 `onAllNodesWithText("Base: R$\u00a0100,00").assertCountEquals(2)`; ST:91/92 submit/switch `assertIsNotEnabled()` com aceite prévio | ambos preços exatos, todas versões não vazias obrigatórias |
+| CA4 consulta antes de retry | VT:88 marker igual/1 aprovação; :92 ordem exata/1 aprovação; :93 marker nulo | erro preserva comando, resultado encontrado não repete POST |
+| CA4 terminais | VT:103 status exato/1 cancelamento; :104 marker nulo; :105 ações indisponíveis | PAID/REFUNDED/CHARGEBACK não são apresentados como CANCELLED |
+| CA4 saída | ST:99 `assertEquals(0, exits)` e attempt exato; :101 `assertEquals(1, exits)` após resolução | não perde marker ao voltar |
+
+Todos os reforços acima derivam de CA1/3/4/6, preservam os testes anteriores e cobrem os dois
+mutantes sobreviventes identificados pelo revisor. Revalidação independente ainda em andamento.

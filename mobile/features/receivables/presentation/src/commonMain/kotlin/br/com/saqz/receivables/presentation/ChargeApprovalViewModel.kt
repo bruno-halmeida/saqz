@@ -38,7 +38,7 @@ class ChargeApprovalViewModel(private val groupId: String, private val chargeId:
             is ChargeApprovalIntent.Account -> select(intent.id)
             is ChargeApprovalIntent.Accept -> if (current.canAccept) update { it.copy(accepted = intent.value) }
             ChargeApprovalIntent.Approve -> if (current.canApprove) begin(null)
-            ChargeApprovalIntent.Replay -> current.attempt?.let(::write)
+            ChargeApprovalIntent.Replay -> current.attempt?.let(::recover)
             ChargeApprovalIntent.RequestCancel -> if (current.canCancel) update { it.copy(confirmCancel = true) }
             ChargeApprovalIntent.DismissCancel -> update { it.copy(confirmCancel = false) }
             ChargeApprovalIntent.ConfirmCancel -> if (current.canCancel && current.confirmCancel) begin(current.detail!!.order.id)
@@ -119,6 +119,24 @@ class ChargeApprovalViewModel(private val groupId: String, private val chargeId:
         saved["approval.attempt"] = Json.encodeToString(attempt)
         update { it.copy(attempt = attempt, confirmCancel = false) }
         write(attempt)
+    }
+    private fun recover(attempt: ApprovalAttempt) {
+        val expected = ++generation
+        update { it.copy(loading = true, error = null) }
+        viewModelScope.launch {
+            when (val result = gateway.lookup(attempt.target)) {
+                is SaqzResult.Failure -> if (current(expected)) failed(result.error)
+                is SaqzResult.Success -> {
+                    if (!current(expected)) return@launch
+                    update { it.copy(detail = result.value) }
+                    result.value?.let(::resolveAttempt)
+                    if (state.value.attempt == null) {
+                        update { it.copy(loading = false, review = null, terms = emptyList()) }
+                        emit(ChargeApprovalEffect(generation))
+                    } else write(attempt)
+                }
+            }
+        }
     }
     private fun write(attempt: ApprovalAttempt) {
         val expected = ++generation

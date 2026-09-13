@@ -485,7 +485,8 @@ internal fun SaqzNavHost(
             }
             entry<MemberPaymentRoute> { route -> MemberPaymentRoot(route.orderId, onBack = pop) }
             entry<ChargeApprovalRoute> { route ->
-                ChargeApprovalRoot(route.groupId, route.chargeId, onBack = pop,
+                ChargeApprovalRoot(route.groupId, route.chargeId,
+                    onBack = { groupCashboxRefreshVersion++; groupDetailsRefreshVersion++; pop() },
                     onMutationSuccess = { groupCashboxRefreshVersion++; groupDetailsRefreshVersion++ })
             }
             entry<ReceiptConfigurationRoute> { route ->

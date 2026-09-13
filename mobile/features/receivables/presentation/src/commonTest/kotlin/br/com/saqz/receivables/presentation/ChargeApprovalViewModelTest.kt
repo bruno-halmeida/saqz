@@ -80,6 +80,31 @@ class ChargeApprovalViewModelTest {
         assertNull(vm.state.value.attempt); assertEquals(1, f.approvals.size)
         assertNull(saved.get<String>("approval.attempt")); assertEquals(approvalOrder, vm.state.value.detail?.order)
     }
+    @Test fun explicitReplayConsultsFirstAndLookupFailurePreservesExactCommand() = runTest {
+        val saved = SavedStateHandle(); val f = ApprovalFake().apply { writeError = ReceiptError.UNCERTAIN }
+        val vm = review(f, saved); vm.onIntent(ChargeApprovalIntent.Accept(true)); vm.onIntent(ChargeApprovalIntent.Approve)
+        val marker = saved.get<String>("approval.attempt")
+        f.lookupError = ReceiptError.NETWORK; vm.onIntent(ChargeApprovalIntent.Replay)
+        assertEquals(1, f.approvals.size); assertEquals(marker, saved.get<String>("approval.attempt"))
+        assertEquals(ReceiptError.NETWORK, vm.state.value.error)
+        f.lookupError = null; f.detail = MemberPaymentDetail(approvalOrder, emptyList())
+        vm.onIntent(ChargeApprovalIntent.Replay)
+        assertEquals(1, f.approvals.size); assertEquals(approvalOrder, vm.state.value.detail?.order)
+        assertNull(vm.state.value.attempt); assertNull(saved.get<String>("approval.attempt"))
+    }
+    @Test fun paidOrRefundedDuringPendingCancellationStopsReplayAndPreservesActualStatus() = runTest {
+        for (status in listOf("PAID", "REFUNDED", "CHARGEBACK", "CANCELLED")) {
+            val saved = SavedStateHandle()
+            val f = ApprovalFake().apply { detail = MemberPaymentDetail(approvalOrder, emptyList()) }
+            val vm = review(f, saved); vm.onIntent(ChargeApprovalIntent.RequestCancel); vm.onIntent(ChargeApprovalIntent.ConfirmCancel)
+            assertNotNull(vm.state.value.attempt)
+            f.detail = MemberPaymentDetail(approvalOrder.copy(status = status), emptyList())
+            vm.onIntent(ChargeApprovalIntent.Replay)
+            assertEquals(status, vm.state.value.detail?.order?.status); assertEquals(1, f.cancels.size)
+            assertNull(vm.state.value.attempt); assertNull(saved.get<String>("approval.attempt"))
+            assertFalse(vm.state.value.canCancel); assertFalse(vm.state.value.canApprove)
+        }
+    }
     @Test fun cancellationRequiresConfirmationAndKeepsPendingUntilRemoteOutcome() = runTest {
         val saved = SavedStateHandle(); val f = ApprovalFake().apply { detail = MemberPaymentDetail(approvalOrder, emptyList()) }
         val vm = review(f, saved); vm.onIntent(ChargeApprovalIntent.ConfirmCancel); assertTrue(f.cancels.isEmpty())

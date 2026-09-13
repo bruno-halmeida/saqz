@@ -616,6 +616,7 @@ class OneOffPaymentsIntegrationTest {
         assertNotNull(UUID.fromString(mapper.readTree(found.contentAsString)["requestId"].asText()))
         assertEquals(400, mvc.perform(get(path)).andReturn().response.status)
         assertEquals(400, mvc.perform(get(path).param("accountId", "bad")).andReturn().response.status)
+        assertEquals(400, mvc.perform(get("/api/receivables/charges/bad/order").param("accountId", f.account.toString())).andReturn().response.status)
         actor = f.payer
         assertEquals(404, mvc.perform(get(path).param("accountId", f.account.toString()).param("actor", f.owner.toString())).andReturn().response.status)
     }
