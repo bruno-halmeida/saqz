@@ -1,5 +1,12 @@
 package br.com.saqz.composeapp.di
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.resetMain
+import kotlin.test.BeforeTest
+import kotlin.test.AfterTest
+
 import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.access.data.passwordreset.KtorPasswordResetGateway
 import br.com.saqz.access.data.session.KtorSessionGateway
@@ -122,6 +129,14 @@ import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 
 class SaqzKoinModulesTest {
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @BeforeTest
+    fun setMainDispatcher() = Dispatchers.setMain(UnconfinedTestDispatcher())
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @AfterTest
+    fun resetMainDispatcher() = Dispatchers.resetMain()
+
     private val configFixturesModule = module {
         single { NetworkConfig(environment = NetworkEnvironment.Test, baseUrl = "https://api.invalid") }
         single {
@@ -382,8 +397,10 @@ class SaqzKoinModulesTest {
 
         // The invalidator deliberately owns a callback chain on the app scope, not the
         // caller's test dispatcher; wait for that callback before asserting its effects.
-        withTimeout(1_000) {
-            while (auth.signOutCalls == 0) delay(1)
+        kotlinx.coroutines.withContext(Dispatchers.Default) {
+            withTimeout(1_000) {
+                while (auth.signOutCalls == 0) delay(1)
+            }
         }
 
         assertEquals(SessionAccessState.SignedOut, session.state.value)

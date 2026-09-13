@@ -1,8 +1,5 @@
 package br.com.saqz.composeapp.receivables
 
-import br.com.saqz.access.domain.session.AccessSession
-import br.com.saqz.access.domain.session.AccessUser
-import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.receivables.domain.ReceivablesAvailability
 import br.com.saqz.receivables.domain.ReceivablesAvailabilityGateway
@@ -20,16 +17,16 @@ import kotlin.test.assertTrue
 class ReceivablesSessionBindingTest {
     @Test
     fun loginAccountSwitchLogoutAndResumeDriveAvailability() = runTest {
-        val session = MutableStateFlow<SessionAccessState>(SessionAccessState.SignedOut)
+        val session = MutableStateFlow<String?>(null)
         val gateway = FakeGateway()
         val coordinator = ReceivablesCoordinator(gateway, backgroundScope, ReceivablesSessionContext {
-            (session.value as? SessionAccessState.Ready)?.session?.user?.id
+            session.value
         })
         val binding = ReceivablesSessionBinding(session, coordinator, backgroundScope)
         binding.onResume()
         runCurrent()
         assertEquals(0, gateway.calls)
-        session.value = ready("user-a")
+        session.value = "1:user-a"
         runCurrent()
         assertEquals(1, gateway.calls)
         assertTrue(coordinator.state.value.discoveryAvailable)
@@ -38,10 +35,10 @@ class ReceivablesSessionBindingTest {
         binding.onResume()
         runCurrent()
         assertEquals(2, gateway.calls)
-        session.value = ready("user-b")
+        session.value = "2:user-b"
         runCurrent()
         assertEquals(3, gateway.calls)
-        session.value = SessionAccessState.SignedOut
+        session.value = null
         runCurrent()
         assertFalse(coordinator.state.value.discoveryAvailable)
         assertFalse(coordinator.state.value.maintenanceAvailable)
@@ -49,10 +46,6 @@ class ReceivablesSessionBindingTest {
         runCurrent()
         assertEquals(3, gateway.calls)
     }
-
-    private fun ready(id: String) = SessionAccessState.Ready(
-        AccessSession(AccessUser(id, null, "Pessoa"), emptyList()),
-    )
 
     private class FakeGateway : ReceivablesAvailabilityGateway {
         var calls = 0

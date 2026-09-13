@@ -1,5 +1,12 @@
 package br.com.saqz.composeapp
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.resetMain
+import kotlin.test.BeforeTest
+import kotlin.test.AfterTest
+
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.composeapp.di.startSaqzKoin
 import br.com.saqz.composeapp.di.stopSaqzKoin
@@ -17,6 +24,14 @@ import kotlin.test.assertNotSame
 import org.koin.mp.KoinPlatformTools
 
 class SaqzKoinBootstrapTest {
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @BeforeTest
+    fun setMainDispatcher() = Dispatchers.setMain(UnconfinedTestDispatcher())
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @AfterTest
+    fun resetMainDispatcher() = Dispatchers.resetMain()
+
     @Test
     fun bootstrapRegistersThePlatformDependencyGraph() {
         stopSaqzKoin()

@@ -162,7 +162,13 @@ class SessionAccessStateMachine(
     private val scope: CoroutineScope,
 ) : SessionInvalidator {
     private val context = MutableStateFlow(SessionContext())
-    val state: StateFlow<SessionAccessState> = SessionStateView(context)
+    val state: StateFlow<SessionAccessState> = SessionStateView(context) { it.state }
+
+    /** Opaque lifecycle key; revoked synchronously at logout, even while the UI remains Ready. */
+    val activeSessionKey: StateFlow<String?> = SessionStateView(context) {
+        val ready = it.state as? SessionAccessState.Ready
+        if (it.loggingOut || ready == null) null else "${it.generation}:${ready.session.user.id}"
+    }
 
     /**
      * Verificação e escrita numa operação só: [edit] recebe um instantâneo do contexto e o
@@ -771,7 +777,7 @@ private data class PendingIdentity(
 )
 
 /**
- * O [SessionAccessState] visto de fora, sem expor a contabilidade que anda com ele.
+ * Projeções do contexto autoritativo, sem copiar a contabilidade que anda com ele.
  *
  * Uma vista, e não um segundo `MutableStateFlow` espelhado: dois flows voltariam a ser dois
  * valores para manter em acordo, que é exatamente o problema que juntá-los resolveu — e um
@@ -786,17 +792,18 @@ private data class PendingIdentity(
  * os três membros só encaminham para o flow de baixo.
  */
 @OptIn(ExperimentalForInheritanceCoroutinesApi::class)
-private class SessionStateView(
+private class SessionStateView<T>(
     private val source: StateFlow<SessionContext>,
-) : StateFlow<SessionAccessState> {
-    override val value: SessionAccessState get() = source.value.state
+    private val project: (SessionContext) -> T,
+) : StateFlow<T> {
+    override val value: T get() = project(source.value)
 
-    override val replayCache: List<SessionAccessState> get() = listOf(value)
+    override val replayCache: List<T> get() = listOf(value)
 
-    override suspend fun collect(collector: FlowCollector<SessionAccessState>): Nothing {
-        // `distinctUntilChanged` porque mudança só de contabilidade — a geração subindo, a
-        // pendência caindo — não é mudança de tela.
-        source.map { it.state }.distinctUntilChanged().collect(collector)
+    override suspend fun collect(collector: FlowCollector<T>): Nothing {
+        // Emite só quando a projeção muda: contabilidade não redesenha a tela, mas uma
+        // troca de geração revoga a chave ativa mesmo se o estado de tela ainda for Ready.
+        source.map(project).distinctUntilChanged().collect(collector)
         awaitCancellation()
     }
 }

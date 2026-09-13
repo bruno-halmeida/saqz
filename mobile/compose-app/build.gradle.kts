@@ -13,6 +13,7 @@ plugins {
 kotlin {
     android {
         namespace = "br.com.saqz.composeapp"
+        withHostTest { }
     }
 
     // Os targets iOS vêm do saqz.kmp-library; aqui só o framework que eles publicam.
@@ -80,6 +81,19 @@ kotlin {
             implementation(libs.compose.ui.test)
             implementation(libs.koin.test)
         }
+    }
+}
+
+// JVM coverage for session wiring and DI. Compose UI common tests remain on the iOS runner.
+// Restrict compilation after KGP adds commonTest, as in groups:presentation's host suite.
+afterEvaluate {
+    tasks.named("compileAndroidHostTest", org.jetbrains.kotlin.gradle.tasks.KotlinCompileTool::class) {
+        setSource(fileTree("src/commonTest/kotlin") {
+            include("**/receivables/**")
+            include("**/SaqzTestDependencies.kt")
+            include("**/SaqzKoinModulesTest.kt")
+            include("**/SaqzKoinBootstrapTest.kt")
+        })
     }
 }
 

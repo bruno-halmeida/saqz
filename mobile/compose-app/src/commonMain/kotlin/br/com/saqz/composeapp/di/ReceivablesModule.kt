@@ -1,6 +1,5 @@
 package br.com.saqz.composeapp.di
 
-import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.receivables.domain.ReceivablesSessionContext
 import br.com.saqz.composeapp.receivables.ReceivablesSessionBinding
@@ -15,8 +14,8 @@ internal val receivablesModule = module {
     singleOf(::KtorReceivablesAvailabilityGateway) bind ReceivablesAvailabilityGateway::class
     single<ReceivablesSessionContext> {
         val session = get<SessionAccessStateMachine>()
-        ReceivablesSessionContext { (session.state.value as? SessionAccessState.Ready)?.session?.user?.id }
+        ReceivablesSessionContext { session.activeSessionKey.value }
     }
     singleOf(::ReceivablesCoordinator)
-    single { ReceivablesSessionBinding(get<SessionAccessStateMachine>().state, get(), get()) }
+    single { ReceivablesSessionBinding(get<SessionAccessStateMachine>().activeSessionKey, get(), get()) }
 }
