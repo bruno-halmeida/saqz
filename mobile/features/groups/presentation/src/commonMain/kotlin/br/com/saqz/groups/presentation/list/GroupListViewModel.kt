@@ -47,7 +47,7 @@ class GroupListViewModel(
         viewModelScope.launch {
             try {
                 emit(
-                    if (entitlement.canCreateGroup()) GroupListEffect.OpenCreateGroup
+                    if (entitlement.canOpenCreationFlow()) GroupListEffect.OpenCreateGroup
                     else GroupListEffect.OpenPlans,
                 )
             } finally {

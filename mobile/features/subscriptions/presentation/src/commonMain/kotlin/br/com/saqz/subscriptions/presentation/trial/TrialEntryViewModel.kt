@@ -3,28 +3,10 @@ package br.com.saqz.subscriptions.presentation.trial
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.SaqzResult
-import br.com.saqz.subscriptions.domain.trial.TrialAccess
 import br.com.saqz.subscriptions.domain.trial.TrialError
 import br.com.saqz.subscriptions.domain.trial.TrialGateway
 import br.com.saqz.subscriptions.domain.trial.TrialStatus
 import kotlinx.coroutines.launch
-
-enum class TrialEntryFailure { Load, Coupon, Offer, Apply }
-data class TrialEntryState(
-    val loading: Boolean = true,
-    val access: TrialAccess? = null,
-    val code: String = "",
-    val failure: TrialEntryFailure? = null,
-    val ready: Boolean = false,
-) {
-    val canContinue: Boolean get() = !loading && failure == null && access?.canCreateGroup == true
-}
-sealed interface TrialEntryIntent {
-    data object Refresh : TrialEntryIntent
-    data class EditCode(val value: String) : TrialEntryIntent
-    data object Apply : TrialEntryIntent
-    data object Continue : TrialEntryIntent
-}
 
 class TrialEntryViewModel(private val gateway: TrialGateway) :
     MviViewModel<TrialEntryState, TrialEntryIntent, Nothing>(TrialEntryState()) {

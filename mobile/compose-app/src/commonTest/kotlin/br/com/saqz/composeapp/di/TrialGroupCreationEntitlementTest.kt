@@ -6,8 +6,17 @@ import br.com.saqz.subscriptions.domain.trial.TrialAccess
 import br.com.saqz.subscriptions.domain.trial.TrialError
 import br.com.saqz.subscriptions.domain.trial.TrialGateway
 import br.com.saqz.subscriptions.domain.trial.TrialStatus
+import br.com.saqz.subscriptions.presentation.trial.TrialEntryFailure
+import br.com.saqz.subscriptions.presentation.trial.TrialEntryIntent
+import br.com.saqz.subscriptions.presentation.trial.TrialEntryViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -34,6 +43,49 @@ class TrialGroupCreationEntitlementTest {
     fun couponEligibleOrganizerCanReachCouponEntryWithoutGroupPermission() = runTest {
         val trial = access(TrialStatus.Ineligible, false).copy(canRedeemCoupon = true, offerMode = "COUPON_ONLY")
         assertTrue(TrialGroupCreationEntitlement(FakeTrialGateway(SaqzResult.Success(trial))).canCreateGroup())
+    }
+
+    @Test
+    fun failedLookupReachesRetryEntryButDoesNotAuthorizeCreation() = runTest {
+        val entitlement = TrialGroupCreationEntitlement(FakeTrialGateway(SaqzResult.Failure(TrialError.NotFound)))
+        assertTrue(entitlement.canOpenCreationFlow())
+        assertFalse(entitlement.canCreateGroup())
+    }
+
+    @Test
+    fun creationEntryRespectsKnownDenialAndCouponEligibility() = runTest {
+        val gateway = FakeTrialGateway(SaqzResult.Success(access(TrialStatus.Ineligible, false)))
+        val entitlement = TrialGroupCreationEntitlement(gateway)
+        assertFalse(entitlement.canOpenCreationFlow())
+        gateway.result = SaqzResult.Success(access(TrialStatus.Ineligible, false).copy(canRedeemCoupon = true))
+        assertTrue(entitlement.canOpenCreationFlow())
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun initialFailureReachesGuardedEntryAndRetryHonorsCouponOnlyAndOff() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val gateway = FakeTrialGateway(SaqzResult.Failure(TrialError.NotFound))
+            assertTrue(TrialGroupCreationEntitlement(gateway).canOpenCreationFlow())
+            val entry = TrialEntryViewModel(gateway)
+            assertEquals(TrialEntryFailure.Load, entry.state.value.failure)
+            assertFalse(entry.state.value.ready)
+            gateway.result = SaqzResult.Success(access(TrialStatus.Ineligible, false).copy(
+                offerMode = "COUPON_ONLY", canRedeemCoupon = true,
+            ))
+            entry.onIntent(TrialEntryIntent.Refresh)
+            assertTrue(entry.state.value.access?.canRedeemCoupon == true)
+            assertFalse(entry.state.value.canContinue)
+            assertFalse(entry.state.value.ready)
+            gateway.result = SaqzResult.Success(access(TrialStatus.Ineligible, false).copy(offerMode = "OFF"))
+            entry.onIntent(TrialEntryIntent.Refresh)
+            assertEquals("OFF", entry.state.value.access?.offerMode)
+            assertFalse(entry.state.value.canContinue)
+            assertFalse(entry.state.value.ready)
+        } finally {
+            Dispatchers.resetMain()
+        }
     }
 
     private fun access(status: TrialStatus, canCreate: Boolean) = TrialAccess(

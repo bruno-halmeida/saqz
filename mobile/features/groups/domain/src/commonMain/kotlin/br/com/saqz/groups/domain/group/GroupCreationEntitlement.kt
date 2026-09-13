@@ -7,4 +7,7 @@ package br.com.saqz.groups.domain.group
  */
 fun interface GroupCreationEntitlement {
     suspend fun canCreateGroup(): Boolean
+
+    /** Permite abrir a entrada, que revalida o acesso e oferece retry quando a consulta falha. */
+    suspend fun canOpenCreationFlow(): Boolean = canCreateGroup()
 }
