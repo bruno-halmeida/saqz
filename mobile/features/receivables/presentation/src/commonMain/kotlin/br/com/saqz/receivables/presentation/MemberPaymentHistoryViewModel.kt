@@ -7,7 +7,7 @@ import br.com.saqz.receivables.domain.*
 import kotlinx.coroutines.launch
 
 class MemberPaymentHistoryViewModel(private val gateway: MemberPaymentsGateway, private val session: ReceivablesSessionContext) :
-    MviViewModel<MemberPaymentHistoryState, MemberPaymentHistoryIntent, String>(MemberPaymentHistoryState()) {
+    MviViewModel<MemberPaymentHistoryState, MemberPaymentHistoryIntent, MemberPaymentHistoryEffect>(MemberPaymentHistoryState()) {
     private val key = session.currentKey()
     private var generation = 0
     init { load(false) }
@@ -16,7 +16,9 @@ class MemberPaymentHistoryViewModel(private val gateway: MemberPaymentsGateway, 
         when (intent) {
             MemberPaymentHistoryIntent.Refresh -> load(false)
             MemberPaymentHistoryIntent.More -> if (!state.value.loading && state.value.nextCursor != null) load(true)
-            is MemberPaymentHistoryIntent.Open -> if (state.value.orders.any { it.id == intent.id }) emit(intent.id)
+            is MemberPaymentHistoryIntent.Open -> if (state.value.orders.any { it.id == intent.id }) {
+                emit(MemberPaymentHistoryEffect(intent.id, generation))
+            }
         }
     }
     private fun load(more: Boolean) {
@@ -41,4 +43,6 @@ class MemberPaymentHistoryViewModel(private val gateway: MemberPaymentsGateway, 
         update { MemberPaymentHistoryState(loading = false, error = ReceiptError.SIGNED_OUT) }
         return false
     }
+    fun validEffect(effect: MemberPaymentHistoryEffect) = valid() && effect.generation == generation &&
+        state.value.orders.any { it.id == effect.orderId }
 }

@@ -43,15 +43,20 @@ class MemberPaymentViewModel(private val orderId: String, private val gateway: M
             is MemberPaymentIntent.Name -> if (current.canReview) update { it.copy(name = intent.value) }
             is MemberPaymentIntent.Document -> if (current.canReview) update { it.copy(document = intent.value.filter(Char::isDigit)) }
             is MemberPaymentIntent.Accept -> if (current.canAccept) update { it.copy(accepted = intent.value) }
-            MemberPaymentIntent.Pay -> if (current.canPay) create()
-            MemberPaymentIntent.Replay -> if (canReplay()) create()
+            MemberPaymentIntent.Pay, MemberPaymentIntent.Replay -> submit(intent)
             MemberPaymentIntent.CopyPix -> useInstrument(copy = true)
+            MemberPaymentIntent.Copied -> acknowledgeCopy()
             MemberPaymentIntent.OpenCard -> useInstrument(copy = false)
             MemberPaymentIntent.OpenFailed -> update { it.copy(openFailed = true) }
         }
     }
     private fun refresh() { if (!(state.value.loading && state.value.pending)) load(true) }
-    private fun canReplay() = state.value.pending && state.value.canReplay && command != null
+    private fun acknowledgeCopy() { if (state.value.canUseInstrument) update { it.copy(copied = true) } }
+    private fun submit(intent: MemberPaymentIntent) {
+        val canSubmit = if (intent == MemberPaymentIntent.Pay) state.value.canPay
+            else state.value.pending && state.value.canReplay && command != null
+        if (canSubmit) create()
+    }
     private fun selectMethod(method: ReceiptMethod) {
         if (state.value.canReview && state.value.detail?.order?.quotes?.any { it.method == method } == true) choose(method)
     }
@@ -135,11 +140,10 @@ class MemberPaymentViewModel(private val orderId: String, private val gateway: M
         if (i.expired(clock.now())) { update { it.copy(pixExpired = true) }; return }
         if (!state.value.canUseInstrument) return
         if (copy && i.quote.method == ReceiptMethod.PIX && !i.pixPayload.isNullOrBlank()) {
-            emit(MemberPaymentEffect.Copy(requireNotNull(i.pixPayload)))
-            update { it.copy(copied = true) }
+            emit(MemberPaymentEffect.Copy(requireNotNull(i.pixPayload), generation))
         } else if (!copy && i.quote.method == ReceiptMethod.CARD) {
             val url = i.checkoutUrl
-            if (url != null && hostedPaymentUrl(url)) emit(MemberPaymentEffect.Open(url))
+            if (url != null && hostedPaymentUrl(url)) emit(MemberPaymentEffect.Open(url, generation))
             else update { it.copy(openFailed = true) }
         }
     }
@@ -161,6 +165,12 @@ class MemberPaymentViewModel(private val orderId: String, private val gateway: M
     }
     private fun clearMarker() { saved.keys().filter { it.startsWith("payment.") }.forEach { saved.remove<Any?>(it) } }
     private fun current(expected: Int) = validSession() && expected == generation
+    fun validEffect(effect: MemberPaymentEffect): Boolean {
+        if (!current(effect.generation)) return false
+        val instrument = state.value.instrument ?: return false
+        if (instrument.expired(clock.now())) update { it.copy(pixExpired = true) }
+        return state.value.canUseInstrument
+    }
     fun validSession(): Boolean {
         if (key != null && key == session.currentKey() && actor != null && actor == identity.currentUserId()) return true
         generation++; expiryJob?.cancel(); clearMarker(); command = null

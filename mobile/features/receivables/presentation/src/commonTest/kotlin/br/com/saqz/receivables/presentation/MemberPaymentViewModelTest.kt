@@ -6,6 +6,7 @@ import br.com.saqz.receivables.domain.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlin.test.*
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -163,13 +164,57 @@ class MemberPaymentViewModelTest {
             val vm = model(f); val effects = mutableListOf<MemberPaymentEffect>()
             val job = launch(UnconfinedTestDispatcher(testScheduler)) { vm.effects.collect { effects += it } }
             vm.onIntent(MemberPaymentIntent.CopyPix); vm.onIntent(MemberPaymentIntent.OpenCard)
-            val expected = if (method == ReceiptMethod.PIX) MemberPaymentEffect.Copy("pix-copy")
-                else MemberPaymentEffect.Open("https://asaas.com/i/payment")
+            val expected = if (method == ReceiptMethod.PIX) MemberPaymentEffect.Copy("pix-copy", 1)
+                else MemberPaymentEffect.Open("https://asaas.com/i/payment", 1)
             assertEquals(listOf(expected), effects)
+            assertTrue(vm.validEffect(effects.single())); assertFalse(vm.state.value.copied)
+            if (method == ReceiptMethod.PIX) {
+                vm.onIntent(MemberPaymentIntent.Copied); assertTrue(vm.state.value.copied)
+            }
             vm.onIntent(MemberPaymentIntent.Refresh)
             assertEquals("ACTIVE", vm.state.value.instrument?.status); assertTrue(f.commands.isEmpty())
             job.cancel()
         }
+    }
+
+    @Test fun queuedInstrumentActionsAreRevalidatedAfterRefreshRefundExpiryAndSessionChange() = runTest {
+        for (method in ReceiptMethod.entries) for (change in listOf("refresh", "refund", "expiry", "session")) {
+            var now = clock.now(); var key = "session"
+            val f = MemberPaymentFake().apply { detail = detail.copy(instruments = listOf(paymentInstrument().copy(
+                quote = paymentQuote.copy(method = method), expiresAt = "2026-09-13T12:01:00Z"))) }
+            val vm = MemberPaymentViewModel("order", f, f, ReceivablesSessionContext { key }, SavedStateHandle(),
+                ReceivablesRecoveryIdentity { "payer" }, object : Clock { override fun now() = now })
+            vm.onIntent(if (method == ReceiptMethod.PIX) MemberPaymentIntent.CopyPix else MemberPaymentIntent.OpenCard)
+            when (change) {
+                "refresh" -> vm.onIntent(MemberPaymentIntent.Refresh)
+                "refund" -> {
+                    f.detail = f.detail.copy(order = paymentOrder.copy(status = "REFUNDED"))
+                    vm.onIntent(MemberPaymentIntent.Refresh)
+                }
+                "expiry" -> if (method == ReceiptMethod.PIX) now = Instant.parse("2026-09-13T12:02:00Z") else {
+                    f.detail = f.detail.copy(instruments = listOf(f.detail.instruments.single().copy(status = "CANCELLED")))
+                    vm.onIntent(MemberPaymentIntent.Refresh)
+                }
+                "session" -> key = "next-session"
+            }
+            assertFalse(vm.validEffect(vm.effects.first()), "$method/$change must discard the queued action")
+            assertFalse(vm.state.value.copied)
+        }
+    }
+
+    @Test fun copyRechecksClockBeforeEmittingEvenIfExpiryTimerHasNotRun() = runTest {
+        var now = clock.now()
+        val f = MemberPaymentFake().apply { detail = detail.copy(instruments = listOf(paymentInstrument().copy(
+            expiresAt = "2026-09-13T12:01:00Z"))) }
+        val vm = MemberPaymentViewModel("order", f, f, ReceivablesSessionContext { "session" }, SavedStateHandle(),
+            ReceivablesRecoveryIdentity { "payer" }, object : Clock { override fun now() = now })
+        val effects = mutableListOf<MemberPaymentEffect>()
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) { vm.effects.collect { effects += it } }
+        assertTrue(vm.state.value.canUseInstrument)
+        now = Instant.parse("2026-09-13T12:01:00Z")
+        vm.onIntent(MemberPaymentIntent.CopyPix)
+        assertTrue(effects.isEmpty()); assertTrue(vm.state.value.pixExpired); assertFalse(vm.state.value.copied)
+        job.cancel()
     }
 
     @Test fun hostedLinksAndExpiryFailClosed() {

@@ -17,7 +17,7 @@ fun MemberPaymentHistoryRoot(onBack: () -> Unit, onOpen: (String) -> Unit,
     viewModel: MemberPaymentHistoryViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LifecycleResumeEffect(viewModel) { viewModel.onIntent(MemberPaymentHistoryIntent.Refresh); onPauseOrDispose { } }
-    ObserveAsEvents(viewModel.effects) { if (viewModel.valid()) onOpen(it) }
+    ObserveAsEvents(viewModel.effects) { if (viewModel.validEffect(it)) onOpen(it.orderId) }
     MemberPaymentHistoryScreen(state, viewModel::onIntent, onBack)
 }
 
@@ -31,8 +31,11 @@ fun MemberPaymentRoot(orderId: String, onBack: () -> Unit,
     BackHandler(enabled = state.pending) { /* Keep the unresolved command available for recovery. */ }
     LifecycleResumeEffect(viewModel) { viewModel.onIntent(MemberPaymentIntent.Refresh); onPauseOrDispose { } }
     ObserveAsEvents(viewModel.effects) { effect ->
-        if (viewModel.validSession()) when (effect) {
-            is MemberPaymentEffect.Copy -> clipboard.setText(AnnotatedString(effect.payload))
+        if (viewModel.validEffect(effect)) when (effect) {
+            is MemberPaymentEffect.Copy -> {
+                clipboard.setText(AnnotatedString(effect.payload))
+                viewModel.onIntent(MemberPaymentIntent.Copied)
+            }
             is MemberPaymentEffect.Open -> runCatching { uri.openUri(effect.url) }
                 .onFailure { viewModel.onIntent(MemberPaymentIntent.OpenFailed) }
         }

@@ -3,6 +3,7 @@ package br.com.saqz.receivables.presentation
 import br.com.saqz.receivables.domain.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import br.com.saqz.domain.SaqzResult
 import kotlinx.coroutines.test.*
 import kotlin.test.*
@@ -30,7 +31,9 @@ class MemberPaymentHistoryViewModelTest {
         f.pageError = false; vm.onIntent(MemberPaymentHistoryIntent.Refresh)
         assertNull(vm.state.value.error)
         val opened = mutableListOf<String>()
-        val job = launch(UnconfinedTestDispatcher(testScheduler)) { vm.effects.collect { opened += it } }
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.effects.collect { if (vm.validEffect(it)) opened += it.orderId }
+        }
         vm.onIntent(MemberPaymentHistoryIntent.Open("foreign")); vm.onIntent(MemberPaymentHistoryIntent.Open("order"))
         assertEquals(listOf("order"), opened); job.cancel()
     }
@@ -49,5 +52,17 @@ class MemberPaymentHistoryViewModelTest {
         key = "next-session"; vm.onIntent(MemberPaymentHistoryIntent.Refresh)
         assertTrue(vm.state.value.orders.isEmpty()); assertEquals(ReceiptError.SIGNED_OUT, vm.state.value.error)
         assertEquals(1, f.cursors.size)
+    }
+    @Test fun queuedNavigationCannotOutliveHistoryRefreshOrSession() = runTest {
+        for (change in listOf("same-list", "empty-list", "session")) {
+            var key = "session"; val f = MemberPaymentFake()
+            val vm = MemberPaymentHistoryViewModel(f, ReceivablesSessionContext { key })
+            vm.onIntent(MemberPaymentHistoryIntent.Open("order"))
+            if (change == "session") key = "next-session" else {
+                if (change == "empty-list") f.page = MemberPaymentPage(emptyList(), null)
+                vm.onIntent(MemberPaymentHistoryIntent.Refresh)
+            }
+            assertFalse(vm.validEffect(vm.effects.first()), change)
+        }
     }
 }

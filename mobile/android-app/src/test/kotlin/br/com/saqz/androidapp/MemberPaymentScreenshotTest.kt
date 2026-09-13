@@ -46,6 +46,16 @@ class MemberPaymentScreenshotTest {
         compose.runOnIdle { state.value = review.copy(terms = null, error = ReceiptError.UNAVAILABLE) }
         compose.onNodeWithTag(MemberPaymentTags.Accept).performScrollTo().assertIsNotEnabled(); capture("termos-indisponiveis")
         compose.runOnIdle { state.value = review }
+        compose.onNodeWithText("Base: R$\u00a0100,00").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Taxas de serviço e pagamento: R$\u00a06,58").assertIsDisplayed()
+        compose.onNodeWithText("Total para o pagador: R$\u00a0106,58").assertIsDisplayed()
+        compose.onNodeWithText("Pagar R$\u00a0106,58").assertExists()
+        compose.runOnIdle { state.value = review.copy(method = ReceiptMethod.CARD) }
+        compose.onNodeWithText("Taxas de serviço e pagamento: R$\u00a09,00").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Total para o pagador: R$\u00a0109,00").assertIsDisplayed()
+        compose.onNodeWithTag(MemberPaymentTags.Pay).assertTextEquals("Pagar R$\u00a0109,00").assertIsNotEnabled()
+        capture("revisao-cartao")
+        compose.runOnIdle { state.value = review }
         compose.onNodeWithTag(MemberPaymentTags.Pay).performScrollTo().assertIsNotEnabled(); capture("revisao-sem-aceite")
         compose.runOnIdle { state.value = review.copy(accepted = true) }
         compose.onNodeWithTag(MemberPaymentTags.Pay).performScrollTo().assertIsEnabled()
@@ -111,7 +121,7 @@ class MemberPaymentScreenshotTest {
     }
     private val quote = MemberPaymentQuote("schedule", "v1", ReceiptMethod.PIX, 10000, 658, 10658, 10000, 300, 358)
     private val order = MemberPaymentOrder("00000000-0000-4000-8000-000000001234", "account", "charge", "group", "payer",
-        "2026-09-20", "ISSUED", listOf(quote, quote.copy(method = ReceiptMethod.CARD)), "a".repeat(64))
+        "2026-09-20", "ISSUED", listOf(quote, quote.copy(method = ReceiptMethod.CARD, feesCents = 900, totalCents = 10900, providerFeeCents = 600)), "a".repeat(64))
     private val instrument = MemberPaymentInstrument("instrument", "account", order.id, quote, "ACTIVE", "pay_demo123", null,
         "PIX DE TESTE SEM VALIDADE FINANCEIRA", Base64.getEncoder().encodeToString(qrcode.QRCode.ofSquares().withSize(10)
             .build("SAQZ TESTE SEM VALIDADE FINANCEIRA").renderToBytes()), "https://asaas.com/i/demo", false, false, false, false, "2026-09-20T23:00:00Z")

@@ -79,3 +79,19 @@ só resolve a incerteza ao observar um instrumento novo ou uma ordem terminal. M
 sem baseline permanecem conservadores diante de instrumentos cancelados/expirados.
 Dois testes novos cobrem execução ao vivo, restauração, erro de leitura, replay idêntico e ordem terminal.
 Gate presentation Android40 + iOS42 e detekt aprovado em /tmp/saqz-member-ui-recovery-fix.log.
+
+## Correção UI1/UI4/UI6 e reforço UI2 — efeitos e evidência financeira
+
+A revisão reproduziu uma ação de copiar já enfileirada sendo aceita após consulta de reembolso.
+Efeitos de pagamento e navegação agora carregam a geração e são revalidados pelo Root no consumo.
+Pagamento exige instrumento ainda utilizável e prazo atual; histórico exige ID ainda listado.
+O feedback de cópia só é aplicado após gravar o clipboard. Três testes novos cobrem fila/retorno,
+reembolso, troca de sessão, relógio no prazo exato e navegação após atualização da lista.
+As mutações sobreviventes de prazo e total exibido motivaram asserções adicionais: nenhum efeito
+no vencimento, valores literais de base/taxas/total e botão para Pix e cartão com tarifas diferentes.
+
+Gate do snapshot corrigido: presentation Android43 + iOS45, quatro testes de UI Android,
+compilações app Android/iOS e detekt presentation aprovados em /tmp/saqz-member-ui-effects-fix.log.
+Os demais gates de integração anteriores seguem válidos; total agregado do autor: 106 execuções.
+Captura revisao-cartao inspecionada com total R$ 109,00 e taxas R$ 9,00 (fixtures de teste).
+Revisão independente final ainda em andamento; não representa homologação Asaas nem UAT humano.

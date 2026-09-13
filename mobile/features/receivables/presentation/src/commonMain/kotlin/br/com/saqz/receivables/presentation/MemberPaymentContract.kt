@@ -15,6 +15,7 @@ sealed interface MemberPaymentHistoryIntent {
     data object More : MemberPaymentHistoryIntent
     data class Open(val id: String) : MemberPaymentHistoryIntent
 }
+data class MemberPaymentHistoryEffect(val orderId: String, val generation: Int)
 
 data class MemberPaymentState(val loading: Boolean = true, val detail: MemberPaymentDetail? = null,
     val method: ReceiptMethod? = null, val terms: ReceiptTerms? = null, val accepted: Boolean = false,
@@ -39,12 +40,14 @@ sealed interface MemberPaymentIntent {
     data object Pay : MemberPaymentIntent
     data object Replay : MemberPaymentIntent
     data object CopyPix : MemberPaymentIntent
+    data object Copied : MemberPaymentIntent
     data object OpenCard : MemberPaymentIntent
     data object OpenFailed : MemberPaymentIntent
 }
 sealed interface MemberPaymentEffect {
-    data class Copy(val payload: String) : MemberPaymentEffect
-    data class Open(val url: String) : MemberPaymentEffect
+    val generation: Int
+    data class Copy(val payload: String, override val generation: Int) : MemberPaymentEffect
+    data class Open(val url: String, override val generation: Int) : MemberPaymentEffect
 }
 internal fun MemberPaymentInstrument.expired(now: Instant): Boolean = status == "EXPIRED" ||
     (quote.method == ReceiptMethod.PIX && expiresAt?.let { runCatching { Instant.parse(it) <= now }.getOrDefault(true) } == true)
