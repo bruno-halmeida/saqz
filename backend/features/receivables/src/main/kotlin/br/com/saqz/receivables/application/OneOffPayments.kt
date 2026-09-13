@@ -24,12 +24,14 @@ data class PaymentInstrument(val id: UUID, val accountId: UUID, val orderId: UUI
     val confirmed: Boolean = false, val settled: Boolean = false, val available: Boolean = false,
     val splitSettled: Boolean = false, val expiresAt: Instant? = null)
 data class PaymentOrderDetail(val order: PaymentOrder, val instruments: List<PaymentInstrument>)
+data class PaymentOrderPage(val orders: List<PaymentOrder>, val nextCursor: UUID?)
 
 interface PaymentStore {
     fun <T> transaction(block: () -> T): T
     fun webhookReady(accountId: UUID): Boolean
     fun order(id: UUID): PaymentOrder?
     fun orderForCharge(chargeId: UUID): PaymentOrder?
+    fun ordersForPayer(payerId: UUID, after: UUID?): List<PaymentOrder>
     fun insertOrder(id: UUID, review: ChargePaymentReview, request: FinancialRequest, at: Instant): PaymentOrder
     fun instruments(orderId: UUID): List<PaymentInstrument>
     fun insertInstrument(order: PaymentOrder, quote: FeeQuote, request: FinancialRequest, digest: String, payer: PaymentPayer, at: Instant): PaymentInstrument
@@ -51,6 +53,14 @@ class OneOffPayments(private val store: PaymentStore, private val groupCharges: 
     private val administrators: GroupAdministrationDirectory, private val conditions: FinancialConditions,
     private val eligibility: ReceivablesEligibility, private val rollout: ReceivablesRolloutAccess,
     private val execution: PaymentExecution, private val clock: Clock) {
+
+    fun ownOrders(request: FinancialRequest, after: UUID?): FinancialResult<PaymentOrderPage> = safely(request) {
+        store.transaction {
+            val rows = store.ordersForPayer(request.actorUserId, after)
+            val page = rows.take(50)
+            PaymentOrderPage(page, if (rows.size > page.size) page.last().id else null)
+        }
+    }
 
     fun preview(chargeId: UUID, accountId: UUID, request: FinancialRequest): FinancialResult<ChargePaymentReview> = safely(request) {
         store.transaction {

@@ -472,6 +472,78 @@ class OneOffPaymentsIntegrationTest {
         assertEquals(2, f.remote.webhookPosts)
     }
 
+    @Test fun `payer history survives cutoff exit and deletion without exposing other payers or changing money`() = fixture { f ->
+        val order = f.approve()
+        f.sql("UPDATE receivable_orders SET status='REFUNDED'")
+        f.sql("UPDATE receivable_group_links SET enabled=false")
+        f.sql("UPDATE receivable_rollout SET backend_mode='OFF'")
+        f.eligible = false
+        f.sql("DELETE FROM group_memberships WHERE user_id='${f.payer}'")
+        f.sql("UPDATE access_groups SET deleted_at=now()")
+        val page = assertIs<FinancialResult.Success<PaymentOrderPage>>(f.service.ownOrders(f.payerRequest(), null)).value
+        assertEquals(listOf(order.copy(status = "REFUNDED")), page.orders)
+        assertNull(page.nextCursor)
+        for (actor in listOf(f.owner, UUID.randomUUID())) {
+            assertEquals(PaymentOrderPage(emptyList(), null),
+                assertIs<FinancialResult.Success<PaymentOrderPage>>(f.service.ownOrders(FinancialRequest(UUID.randomUUID(), actor), null)).value)
+        }
+        assertEquals(0, f.remote.customerPosts)
+        assertEquals(0, f.remote.paymentPosts)
+        assertEquals(0, f.count("receivable_instruments"))
+        assertEquals(0, f.count("group_charge_payment_effects"))
+        assertEquals("PENDING", f.string("SELECT status::text FROM group_charges"))
+    }
+
+    @Test fun `payer history pages fifty newest orders with isolated cursors and no duplicate or missing orders`() = fixture { f ->
+        val original = f.approve()
+        val ids = (1..51).map { UUID.fromString("00000000-0000-0000-0000-" + it.toString().padStart(12, '0')) }
+        ids.forEach { id ->
+            f.sql("""INSERT INTO receivable_orders(id,account_id,group_id,member_user_id,group_charge_id,due_date,status,base_cents,request_id,issued_at,approval_fingerprint)
+                SELECT '$id',account_id,group_id,member_user_id,'${UUID.randomUUID()}',due_date,'ISSUED',base_cents,'${UUID.randomUUID()}',issued_at - interval '1 second',approval_fingerprint
+                FROM receivable_orders WHERE id='${original.id}'""")
+            f.sql("INSERT INTO receivable_order_quotes SELECT '$id',method,quote FROM receivable_order_quotes WHERE order_id='${original.id}'")
+        }
+        val first = assertIs<FinancialResult.Success<PaymentOrderPage>>(f.service.ownOrders(f.payerRequest(), null)).value
+        assertEquals(listOf(original.id) + ids.reversed().take(49), first.orders.map { it.id })
+        assertEquals(ids[2], first.nextCursor)
+        val second = assertIs<FinancialResult.Success<PaymentOrderPage>>(f.service.ownOrders(f.payerRequest(), first.nextCursor)).value
+        assertEquals(listOf(ids[1], ids[0]), second.orders.map { it.id })
+        assertNull(second.nextCursor)
+        assertEquals(52, (first.orders + second.orders).map { it.id }.toSet().size)
+        assertEquals(PaymentOrderPage(emptyList(), null),
+            assertIs<FinancialResult.Success<PaymentOrderPage>>(f.service.ownOrders(f.request(), first.nextCursor)).value)
+        assertEquals(PaymentOrderPage(emptyList(), null),
+            assertIs<FinancialResult.Success<PaymentOrderPage>>(f.service.ownOrders(f.payerRequest(), UUID.randomUUID())).value)
+    }
+
+    @Test fun `payer history HTTP uses authenticated actor and returns no-store envelope with validated cursor`() = fixture { f ->
+        val order = f.approve()
+        var actor = f.payer
+        val resolver = object : HandlerMethodArgumentResolver {
+            override fun supportsParameter(parameter: MethodParameter) = parameter.parameterType == RequestIdentity::class.java
+            override fun resolveArgument(parameter: MethodParameter, container: ModelAndViewContainer?, request: NativeWebRequest,
+                binder: WebDataBinderFactory?) = RequestIdentity("subject", "request")
+        }
+        val mvc = MockMvcBuilders.standaloneSetup(OneOffPaymentsController(FinancialActorResolver { actor }, f.service))
+            .setCustomArgumentResolvers(resolver).build()
+        val response = mvc.perform(get("/api/receivables/orders").param("payerId", f.owner.toString())).andReturn().response
+        assertEquals(200, response.status)
+        assertEquals("no-store", response.getHeader("Cache-Control"))
+        val body = mapper.readTree(response.contentAsString)
+        assertNotNull(UUID.fromString(body["requestId"].asText()))
+        assertEquals(order.id.toString(), body["value"]["orders"][0]["id"].asText())
+        assertEquals(f.payer.toString(), body["value"]["orders"][0]["payerId"].asText())
+        assertEquals(1, body["value"]["orders"].size())
+        assertTrue(body["value"]["nextCursor"].isNull)
+        assertFalse(response.contentAsString.contains("cpfCnpj"))
+        assertFalse(response.contentAsString.contains("pixPayload"))
+        assertEquals(400, mvc.perform(get("/api/receivables/orders").param("after", "invalid")).andReturn().response.status)
+        actor = f.owner
+        val empty = mvc.perform(get("/api/receivables/orders").param("payerId", f.payer.toString())).andReturn().response
+        assertEquals(200, empty.status)
+        assertEquals(0, mapper.readTree(empty.contentAsString)["value"]["orders"].size())
+    }
+
     private fun fixture(methods: Set<PaymentMethod> = PaymentMethod.entries.toSet(), block: (Fixture) -> Unit) {
         Remote().use { remote -> block(Fixture(remote, methods)) }
     }

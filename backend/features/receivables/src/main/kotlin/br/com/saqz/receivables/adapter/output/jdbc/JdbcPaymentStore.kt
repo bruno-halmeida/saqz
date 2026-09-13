@@ -29,6 +29,14 @@ class JdbcPaymentStore(dataSource: DataSource, private val secrets: FinancialSec
         .param("id", id).query(::orderRow).optional().orElse(null)
     override fun orderForCharge(chargeId: UUID): PaymentOrder? = jdbc.sql("SELECT * FROM receivable_orders WHERE group_charge_id=:id")
         .param("id", chargeId).query(::orderRow).optional().orElse(null)
+    override fun ordersForPayer(payerId: UUID, after: UUID?): List<PaymentOrder> {
+        val cursor = if (after == null) "" else """AND (issued_at,id) <
+            (SELECT issued_at,id FROM receivable_orders WHERE id=:after AND member_user_id=:payer)"""
+        val query = jdbc.sql("""SELECT * FROM receivable_orders WHERE member_user_id=:payer $cursor
+            ORDER BY issued_at DESC,id DESC LIMIT 51""").param("payer", payerId)
+        if (after != null) query.param("after", after)
+        return query.query(::orderRow).list()
+    }
     private fun orderRow(r: ResultSet, ignored: Int): PaymentOrder {
         val id = r.getObject("id", UUID::class.java)
         return PaymentOrder(id, r.getObject("account_id", UUID::class.java), r.getObject("group_charge_id", UUID::class.java),
