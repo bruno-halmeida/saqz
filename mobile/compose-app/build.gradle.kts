@@ -27,12 +27,13 @@ kotlin {
             export(project(":features:groups"))
             export(project(":features:groups:domain"))
             export(project(":features:profile:domain"))
+            export(project(":features:receivables:domain"))
         }
     }
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":features:receivables:domain"))
+            api(project(":features:receivables:domain"))
             implementation(project(":features:receivables:data"))
             implementation(project(":features:receivables:presentation"))
 

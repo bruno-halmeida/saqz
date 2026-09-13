@@ -81,3 +81,21 @@ inválido; :23 ausência404 vs :24 rede; :31 termo completo; :33 vazio inválido
 MIME e parâmetros exatos; :102–107 pending/malformed/perda => UNCERTAIN e chamada única;
 :115–123 comandos e arquivos inválidos não enviam; :130–133 erros400/401/403/404/409 tipados.
 Cada um dos nove testes deriva FO3/FO6, sem casos removidos/ignorados nem asserções enfraquecidas.
+
+## Gate tarefa 3
+
+Android OpenDocument e iOS UIDocumentPicker registrados explicitamente no composition root;
+port exportado no framework Swift. Bytes limitados a 5 MiB, sem gravação de rascunho de documento.
+
+| Critério | Evidência exata | Resultado esperado |
+|---|---|---|
+| FO6 limites e MIME | `mobile/android-app/src/test/kotlin/br/com/saqz/androidapp/ReceiptDocumentPickerTest.kt:28` — `assertEquals(mime, file.contentType); assertArrayEquals(bytes, file.bytes)`; :32 `assertThrows(IllegalArgumentException::class.java)` | preserva bytes/MIME no limite; rejeita vazio, excesso e tipo inválido |
+| FO6 cancelamento | mesmo arquivo :43 `assertEquals("android.intent.action.OPEN_DOCUMENT", launched.intent.action)`; :49 `assertEquals(listOf(ReceiptFileSelection.Invalid), results)`; :53 `assertEquals(listOf(ReceiptFileSelection.Invalid, ReceiptFileSelection.Cancelled), results)` | seleção explícita, callback cancelado não recebe resultado antigo |
+| FO7 DI real | `mobile/compose-app/src/commonTest/kotlin/br/com/saqz/composeapp/SaqzKoinBootstrapTest.kt` — `assertSame(dependencies.financialDocuments, koin.get<ReceiptDocumentPicker>())` (tipo qualificado no código) | porta da plataforma é a instância resolvida |
+
+Cada teste deriva FO6/FO7. Gates: `/tmp/saqz-onboarding-native-final.log` (2 picker +7 DI/rotas
+solicitados no Android, 6 DI efetivamente executados; rota é iOS), `/tmp/saqz-onboarding-full-ui.log`
+(2 bootstrap +6 DI Android), `/tmp/saqz-onboarding-visual.log` (9 DI/rota iOS), todos exit0.
+Swift6 typecheck do adapter exit0 em `/tmp/saqz-onboarding-swift.log`; app SaqzDev compilado
+no Xcode para arm64 simulator, `BUILD SUCCEEDED` em `/tmp/saqz-onboarding-xcode.log`.
+Compilação não equivale a walkthrough do seletor nativo iOS; esse limite não é homologação Asaas.

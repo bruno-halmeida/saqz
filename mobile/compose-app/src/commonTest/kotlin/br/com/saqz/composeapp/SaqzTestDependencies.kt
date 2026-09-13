@@ -79,6 +79,12 @@ internal fun startTestSaqzKoin(
 internal fun stopTestSaqzKoin() = stopSaqzKoin()
 
 internal fun testSaqzPlatformDependencies() = SaqzPlatformDependencies(
+    financialDocuments = object : br.com.saqz.receivables.domain.port.ReceiptDocumentPicker {
+        override fun choose(done: br.com.saqz.receivables.domain.port.ReceiptFileCallback): br.com.saqz.receivables.domain.port.ReceiptFileCancellation {
+            done.onFileSelected(br.com.saqz.receivables.domain.port.ReceiptFileSelection.Cancelled)
+            return br.com.saqz.receivables.domain.port.ReceiptFileCancellation {}
+        }
+    },
     environment = "test",
     apiBaseUrl = "https://api.invalid",
     access = AccessRuntimeDependencies(

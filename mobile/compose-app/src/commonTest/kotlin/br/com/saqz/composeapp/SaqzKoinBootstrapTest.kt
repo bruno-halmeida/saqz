@@ -36,7 +36,8 @@ class SaqzKoinBootstrapTest {
     fun bootstrapRegistersThePlatformDependencyGraph() {
         stopSaqzKoin()
         try {
-            startSaqzKoin(testSaqzPlatformDependencies())
+            val dependencies = testSaqzPlatformDependencies()
+            startSaqzKoin(dependencies)
 
             val koin = KoinPlatformTools.defaultContext().get()
             assertNotNull(koin.get<AuthenticatedNetworkClient>())
@@ -47,6 +48,7 @@ class SaqzKoinBootstrapTest {
             assertNotNull(koin.get<SubscriptionGateViewModel>())
             assertNotNull(koin.get<ProfileGateway>())
             assertNotNull(koin.get<ProfilePhotoSelectionPort>())
+            kotlin.test.assertSame(dependencies.financialDocuments, koin.get<br.com.saqz.receivables.domain.port.ReceiptDocumentPicker>())
             assertNotNull(koin.get<OwnProfileViewModel>())
         } finally {
             stopSaqzKoin()

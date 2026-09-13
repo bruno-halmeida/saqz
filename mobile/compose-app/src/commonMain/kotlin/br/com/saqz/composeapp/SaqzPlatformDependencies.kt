@@ -51,6 +51,7 @@ class SaqzPlatformDependencies(
     val access: AccessRuntimeDependencies,
     val groups: GroupsRuntimeDependencies,
     val drafts: SaqzDraftStores,
+    val financialDocuments: br.com.saqz.receivables.domain.port.ReceiptDocumentPicker,
 ) {
     init {
         require(environment.isNotBlank()) { "environment must not be blank" }

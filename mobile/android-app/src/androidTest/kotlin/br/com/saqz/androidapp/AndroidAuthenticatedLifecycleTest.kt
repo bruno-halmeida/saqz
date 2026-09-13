@@ -277,6 +277,12 @@ private class LifecycleCompositionFactory(
     ): AndroidAppComposition {
         fixture.compositions++
         val dependencies = SaqzPlatformDependencies(
+    financialDocuments = object : br.com.saqz.receivables.domain.port.ReceiptDocumentPicker {
+        override fun choose(done: br.com.saqz.receivables.domain.port.ReceiptFileCallback): br.com.saqz.receivables.domain.port.ReceiptFileCancellation {
+            done.onFileSelected(br.com.saqz.receivables.domain.port.ReceiptFileSelection.Cancelled)
+            return br.com.saqz.receivables.domain.port.ReceiptFileCancellation {}
+        }
+    },
             environment = "dev",
             apiBaseUrl = "http://127.0.0.1:1",
             access = AccessRuntimeDependencies(

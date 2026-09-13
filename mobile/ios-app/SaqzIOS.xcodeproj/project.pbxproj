@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        F09000000000000000000001 /* IOSReceiptDocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09000000000000000000002 /* IOSReceiptDocumentPicker.swift */; };
 		A10000000000000000000001 /* SaqzIOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* SaqzIOSApp.swift */; };
 		A10000000000000000000002 /* ../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* ../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework */; };
 		A10000000000000000000003 /* SaqzIOSUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* SaqzIOSUITests.swift */; };
@@ -56,6 +57,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+        F09000000000000000000002 /* IOSReceiptDocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSReceiptDocumentPicker.swift; sourceTree = "<group>"; };
 		A10000000000000000000011 /* SaqzIOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzIOSApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000012 /* ../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = "../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework"; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000013 /* SaqzIOSUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzIOSUITests.swift; sourceTree = "<group>"; };
@@ -139,6 +141,7 @@
 				B60000000000000000000011 /* GroupsPhoto/IOSGroupPhotoAdapters.swift */,
 				C70000000000000000000011 /* GroupsDraft/IOSGroupDraftAdapters.swift */,
 				D80000000000000000000011 /* IOSProfilePhotoAdapter.swift */,
+                F09000000000000000000002 /* IOSReceiptDocumentPicker.swift */,
 				E90000000000000000000011 /* GroupsInvite/IOSInviteAdapters.swift */,
 				A30000000000000000000013 /* SaqzIOS.entitlements */,
 				A10000000000000000000018 /* Assets.xcassets */,
@@ -389,6 +392,7 @@
 				B60000000000000000000001 /* GroupsPhoto/IOSGroupPhotoAdapters.swift in Sources */,
 				C70000000000000000000001 /* GroupsDraft/IOSGroupDraftAdapters.swift in Sources */,
 				D80000000000000000000001 /* IOSProfilePhotoAdapter.swift in Sources */,
+                F09000000000000000000001 /* IOSReceiptDocumentPicker.swift in Sources */,
 				E90000000000000000000001 /* GroupsInvite/IOSInviteAdapters.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

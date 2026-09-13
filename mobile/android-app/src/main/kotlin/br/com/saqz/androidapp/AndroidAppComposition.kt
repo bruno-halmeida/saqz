@@ -32,6 +32,7 @@ internal data class AndroidAppComposition(
     val dependencies: SaqzPlatformDependencies,
     val links: AndroidIntentLinkPort,
     val photos: AndroidGroupPhotoAdapters? = null,
+    val documents: br.com.saqz.androidapp.receivables.AndroidReceiptDocumentPicker? = null,
 )
 
 internal fun interface AndroidAppCompositionFactory {
@@ -73,7 +74,9 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
         val photos = AndroidGroupPhotoAdapters.create(context.applicationContext, scope)
         val drafts = AndroidGroupDraftAdapters.create(context.applicationContext)
         val profilePhoto = AndroidProfilePhotoAdapter(photos.selection, photos.encoder, scope)
+        val documents = br.com.saqz.androidapp.receivables.AndroidReceiptDocumentPicker(context.applicationContext, scope)
         val dependencies = SaqzPlatformDependencies(
+                financialDocuments = documents,
                 environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,
                 access = AccessRuntimeDependencies(
@@ -109,6 +112,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
             dependencies = dependencies,
             links = links,
             photos = photos,
+            documents = documents,
         )
     }
 }

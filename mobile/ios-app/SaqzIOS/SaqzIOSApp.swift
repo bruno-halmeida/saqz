@@ -88,7 +88,8 @@ struct IOSAppComposition {
                 gameDrafts: drafts.game,
                 monthlyChargeDrafts: drafts.monthly,
                 expenseDrafts: drafts.expense
-            )
+            ),
+            financialDocuments: IOSReceiptDocumentPicker(presenter: { IOSPresentationRoot.current })
         )
         return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, photos: photos, drafts: drafts, dependencies: dependencies)
     }
