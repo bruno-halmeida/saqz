@@ -83,6 +83,39 @@ class MemberPaymentViewModelTest {
         assertNull(saved.get<String>("payment.request")); assertNull(vm.state.value.detail)
         assertEquals(ReceiptError.DENIED, vm.state.value.error); assertFalse(vm.state.value.canPay)
     }
+    @Test fun oldCancelledAttemptCannotResolveCurrentUncertaintyEvenAfterRestoration() = runTest {
+        val saved = SavedStateHandle()
+        val old = paymentInstrument().copy(id = "previous", status = "CANCELLED")
+        val f = MemberPaymentFake().apply { uncertain = true; detail = detail.copy(instruments = listOf(old)) }
+        f.beforeCreate = { assertEquals(listOf("previous"), saved.get<List<String>>("payment.previous")) }
+        val vm = ready(f, saved); vm.onIntent(MemberPaymentIntent.Pay)
+        val request = saved.get<String>("payment.request")
+        vm.onIntent(MemberPaymentIntent.Refresh)
+        assertTrue(vm.state.value.pending); assertFalse(vm.state.value.canReview)
+        assertEquals(request, saved.get<String>("payment.request"))
+        f.reconcileError = ReceiptError.NETWORK; vm.onIntent(MemberPaymentIntent.Refresh)
+        assertTrue(vm.state.value.pending); assertEquals(ReceiptError.NETWORK, vm.state.value.error)
+        assertEquals(request, saved.get<String>("payment.request")); f.reconcileError = null
+        vm.onIntent(MemberPaymentIntent.Replay); assertEquals(f.commands[0], f.commands[1])
+        val restored = model(f, SavedStateHandle(saved.keys().associateWith { saved.get<Any?>(it) }))
+        restored.onIntent(MemberPaymentIntent.Pay); restored.onIntent(MemberPaymentIntent.Replay)
+        assertTrue(restored.state.value.pending); assertFalse(restored.state.value.canReplay)
+        assertEquals(2, f.commands.size)
+        f.detail = f.detail.copy(instruments = listOf(old, paymentInstrument().copy(status = "CANCELLED")))
+        restored.onIntent(MemberPaymentIntent.Refresh)
+        assertFalse(restored.state.value.pending); assertTrue(restored.state.value.canReview)
+        assertFalse(restored.state.value.accepted)
+    }
+    @Test fun legacyRecoveryMarkerDoesNotTreatOldCancelledInstrumentAsCurrentResult() = runTest {
+        val saved = SavedStateHandle(mapOf("payment.user" to "payer", "payment.order" to "order", "payment.request" to "old"))
+        val f = MemberPaymentFake().apply { detail = detail.copy(instruments = listOf(paymentInstrument().copy(status = "CANCELLED"))) }
+        val vm = model(f, saved)
+        assertTrue(vm.state.value.pending); assertEquals("old", saved.get<String>("payment.request"))
+        f.detail = f.detail.copy(order = paymentOrder.copy(status = "REFUNDED"))
+        vm.onIntent(MemberPaymentIntent.Refresh)
+        assertFalse(vm.state.value.pending); assertFalse(vm.state.value.canPay)
+        assertNull(saved.get<String>("payment.request")); assertTrue(f.commands.isEmpty())
+    }
     @Test fun delayedDetailFromOldGenerationAndSessionCannotWin() = runTest {
         val f = MemberPaymentFake(); val first = CompletableDeferred<SaqzResult<MemberPaymentDetail, ReceiptError>>()
         f.delayed = first; var key: String? = "session"; val vm = model(f, key = { key })
@@ -159,6 +192,7 @@ internal class MemberPaymentFake : MemberPaymentsGateway, GroupReceivablesGatewa
     var delayed: CompletableDeferred<SaqzResult<MemberPaymentDetail, ReceiptError>>? = null
     var createDelayed: CompletableDeferred<SaqzResult<MemberPaymentInstrument, ReceiptError>>? = null
     var uncertain = false; var rejected = false; var reconciles = 0
+    var reconcileError: ReceiptError? = null
     var beforeCreate: () -> Unit = {}
     val commands = mutableListOf<MemberPaymentCommand>()
     var page = MemberPaymentPage(listOf(paymentOrder), null)
@@ -170,7 +204,9 @@ internal class MemberPaymentFake : MemberPaymentsGateway, GroupReceivablesGatewa
         return delayedPage?.await() ?: if (pageError) SaqzResult.Failure(ReceiptError.NETWORK) else SaqzResult.Success(page)
     }
     override suspend fun detail(orderId: String) = delayed?.await() ?: SaqzResult.Success(detail)
-    override suspend fun reconcile(orderId: String, requestId: String): SaqzResult<MemberPaymentDetail, ReceiptError> { reconciles++; return SaqzResult.Success(detail) }
+    override suspend fun reconcile(orderId: String, requestId: String): SaqzResult<MemberPaymentDetail, ReceiptError> {
+        reconciles++; return reconcileError?.let { SaqzResult.Failure(it) } ?: SaqzResult.Success(detail)
+    }
     override suspend fun instrument(order: MemberPaymentOrder, command: MemberPaymentCommand): SaqzResult<MemberPaymentInstrument, ReceiptError> {
         beforeCreate(); commands += command
         return createDelayed?.await() ?: when {

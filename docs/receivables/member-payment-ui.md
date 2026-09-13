@@ -23,8 +23,8 @@ Base: gateway e listagem aprovados em 0a2cf201. T16 parcial: implementar histór
   Nome 2–120 sem controles e CPF/CNPJ com 11/14 dígitos são obrigatórios; dados ficam apenas em memória.
 - UI3: criação exige aceite e nova revisão válida, trava cliques concorrentes. Resultado incerto
   conserva comando/requestId para replay explícito; refresh/retorno consulta/concilia, nunca cria.
-  Marker não sensível request/user/order é gravado antes da rede; process death recupera por consulta,
-  nunca recria automaticamente. Se instrumento ainda não aparece, continua pendente. Voltar fica
+  Marker não sensível request/user/order e IDs dos instrumentos anteriores é gravado antes da rede; process death recupera por consulta,
+  nunca recria automaticamente. Se instrumento novo ainda não aparece, continua pendente; instrumentos antigos cancelados não resolvem a tentativa atual. Voltar fica
   bloqueado apenas enquanto uma emissão não tem resultado conhecido, para preservar a recuperação.
 - UI4: Pix ACTIVE mostra QR/copia e cola, expiração e feedback ao copiar. Expirado (prazo vencido ou
   status EXPIRED) não copia/exibe QR ativo nem permite nova emissão; orienta atualização. Falha de
@@ -70,3 +70,12 @@ As capturas Roborazzi estão em mobile/build/reports/member-payment-ui/ e member
 inspecionadas revisão/aceite, Pix/QR, cartão, incerteza, reembolso e entrada com erro de rede.
 A captura usa o nó da tela; o cabeçalho permanece visível ao rolar a revisão. Fixtures de QR e termos
 são apenas de teste. Homologação real e UAT humano permanecem pendentes.
+
+## Correção UI3/UI6 — recuperação com histórico cancelado
+
+A revisão independente reproduziu em ff870197 o descarte prematuro do marker ao receber somente
+um instrumento CANCELLED anterior. A criação agora salva os IDs anteriores antes da rede; consulta
+só resolve a incerteza ao observar um instrumento novo ou uma ordem terminal. Marcadores legados
+sem baseline permanecem conservadores diante de instrumentos cancelados/expirados.
+Dois testes novos cobrem execução ao vivo, restauração, erro de leitura, replay idêntico e ordem terminal.
+Gate presentation Android40 + iOS42 e detekt aprovado em /tmp/saqz-member-ui-recovery-fix.log.

@@ -70,8 +70,13 @@ class MemberPaymentViewModel(private val orderId: String, private val gateway: M
                         update { MemberPaymentState(loading = false, error = ReceiptError.DENIED, pending = it.pending) }
                         return@launch
                     }
-                    // Absence after an uncertain POST is not evidence that the POST failed.
-                    if (detail.instruments.isNotEmpty() || detail.order.status != "ISSUED") clearPending()
+                    // Historical attempts cannot resolve an uncertain new POST.
+                    val previous = saved.get<List<String>>("payment.previous")
+                    val observed = detail.instruments.any { instrument ->
+                        if (previous != null) instrument.id !in previous
+                        else instrument.status !in setOf("CANCELLED", "EXPIRED")
+                    }
+                    if (observed || detail.order.status != "ISSUED") clearPending()
                     update { it.copy(loading = false, detail = detail, method = null) }
                     scheduleExpiry()
                 }
@@ -98,7 +103,10 @@ class MemberPaymentViewModel(private val orderId: String, private val gateway: M
     private fun create() {
         val order = state.value.detail?.order ?: return
         val next = command ?: MemberPaymentCommand(Uuid.random().toString(), state.value.method ?: return,
-            order.fingerprint, true, MemberPaymentPayer(state.value.name.trim(), state.value.document)).also { command = it }
+            order.fingerprint, true, MemberPaymentPayer(state.value.name.trim(), state.value.document)).also {
+            command = it
+            saved["payment.previous"] = state.value.detail!!.instruments.map { instrument -> instrument.id }
+        }
         saved["payment.user"] = actor; saved["payment.order"] = orderId; saved["payment.request"] = next.requestId
         val expected = ++generation
         update { it.copy(loading = true, pending = true, canReplay = false, error = null) }
