@@ -144,3 +144,15 @@ Gates finais do autor:
 Adequação do autor: resultados e payloads exatos, limites, consentimento, recuperação e sessão
 cobertos nos contratos desta onda. Revisão independente ainda deve confirmar discriminação.
 As duas falhas gerais Android instrumentadas anteriores não fazem parte destes resultados.
+
+## Fechamento da onda
+
+Revisão independente `verify_financial_onboarding` aprovada no delta24fd5bc4..19fba8f4:
+FO1–FO7 com evidências, dez falhas comportamentais distintas injetadas em scratch e detectadas,
+nenhuma sobrevivente/inconclusiva. Relatório `docs/receivables/evidence/financial-onboarding-mobile-review.md`.
+Sem defeito novo que exija registrar lição; nenhuma regra candidata promovida automaticamente.
+Compilação final Android/framework e detekt em `/tmp/saqz-onboarding-final-compile.log`; Xcode
+com framework final em `/tmp/saqz-onboarding-xcode-final.log`, ambos aprovados no HEAD03e6f2e3.
+As duas falhas instrumentadas antigas foram corrigidas separadamente em03e6f2e3; o gate geral
+Android passou44/44, com inspeção independente no apêndice do relatório. Os limites externos
+e as demais tarefas da iniciativa continuam como descritos acima; esta onda está concluída.

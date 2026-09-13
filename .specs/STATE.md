@@ -164,3 +164,33 @@
   a chave remota é desconhecida. Nenhuma implementação dessa próxima etapa foi iniciada.
 - Carteira/saque, reembolso solicitado, recorrência, operação/comunicação e homologação integrada
   permanecem abertos conforme tasks.md. Não são pendências apenas de deploy.
+
+## Cadastro financeiro no mobile — continuação de 2026-09-13
+
+- Backend 16427b58: termos publicados/vigentes e recuperação da conta própria, com sessão,
+  requestId e no-store. Não repete criação remota UNKNOWN quando falta credencial.
+- Gateway e multipart tipado em 16746aa0: PF/PJ, centavos exatos, aceite e envelopes validados,
+  consulta por ator, documentos e upload sem retry cego. Cadastro/documentos pessoais só em memória.
+- Ports Android OpenDocument e iOS UIDocumentPicker em 84ade378. Compilação Swift6 e Xcode
+  arm64 simulator aprovada; limites/cancelamento testados no Android, DI em ambas as plataformas.
+- Jornada shared 19fba8f4: Perfil → Recebimentos permanente, formulário voluntário, termos e aceite,
+  situação real, documentos por link Asaas ou seleção/confirmar envio. Resultado incerto conserva
+  marker não sensível e impede duplicação; recuperação lê antes de replay de criação em memória.
+  Restauração não persiste formulário/arquivo; logout descarta callbacks e efeitos antigos.
+- T04/T14/T15/T17 continuam parciais no plano maior: correção cadastral remota, delegação mobile,
+  carteira/saque e solicitação de reembolso não foram implementados nesta onda.
+- Testes instrumentados antigos corrigidos em 03e6f2e3: seletores/formulário atual e expectativa
+  coerente com retirada do bloqueio de e-mail (VUL-84). Gate completo no AVD Saqz_API_30:
+  44 testes, 0 falhas/erros/skips. Evidência docs/receivables/evidence/android-legacy-lifecycle-fix.md.
+  Esta dívida antiga deixa de ficar aberta; não alterar os registros históricos dos gates anteriores.
+- Sem push, deploy, termos/tarifas inventados ou chamadas Asaas reais. Nenhum provider session
+  antigo retomado. context.md/direcionamento.md continuam não rastreados e preservados.
+- Carteira/saque, reembolso solicitado, recorrência/corte, renovação Pix, operação/comunicação e
+  homologação integrada seguem abertos. A implementação completa do plano ainda não terminou.
+- Revisão independente fresca verify_financial_onboarding aprovada em 19fba8f4: FO1–FO7,
+  10 falhas comportamentais injetadas e detectadas em cópia temporária, nenhuma sobrevivente
+  ou inconclusiva. Relatório docs/receivables/evidence/financial-onboarding-mobile-review.md;
+  inclui apêndice independente de inspeção de 03e6f2e3 e do XML Android44.
+- Compilação final Android/framework iOS e detekt Android aprovados no HEAD 03e6f2e3;
+  Xcode SaqzDev com o framework final também BUILD SUCCEEDED. Sem walkthrough do picker
+  nativo iOS, sem UAT humano e sem homologação financeira real.
