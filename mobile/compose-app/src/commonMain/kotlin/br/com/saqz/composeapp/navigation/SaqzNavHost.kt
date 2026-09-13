@@ -92,6 +92,8 @@ import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.presentation.ui.changeplan.ChangePlanRoot
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
+import br.com.saqz.receivables.presentation.ChargeApprovalRoute
+import br.com.saqz.receivables.presentation.ChargeApprovalRoot
 import br.com.saqz.receivables.presentation.MemberPaymentRoute
 import br.com.saqz.receivables.presentation.MemberPaymentHistoryRoute
 import br.com.saqz.receivables.presentation.MemberPaymentRoot
@@ -482,6 +484,10 @@ internal fun SaqzNavHost(
                 MemberPaymentHistoryRoot(onBack = pop, onOpen = { backStack.add(MemberPaymentRoute(it)) })
             }
             entry<MemberPaymentRoute> { route -> MemberPaymentRoot(route.orderId, onBack = pop) }
+            entry<ChargeApprovalRoute> { route ->
+                ChargeApprovalRoot(route.groupId, route.chargeId, onBack = pop,
+                    onMutationSuccess = { groupCashboxRefreshVersion++; groupDetailsRefreshVersion++ })
+            }
             entry<ReceiptConfigurationRoute> { route ->
                 ReceiptConfigurationRoot(route.groupId, onBack = pop)
             }
@@ -494,6 +500,7 @@ internal fun SaqzNavHost(
                         { backStack.add(ReceiptConfigurationRoute(route.groupId)) }
                     } else null,
                     refreshVersion = groupCashboxRefreshVersion,
+                    onOpenChargePayment = { chargeId -> backStack.add(ChargeApprovalRoute(route.groupId, chargeId)) },
                     onOpenMonthlyGeneration = { backStack.add(FinanceRoute.MonthlyGeneration(it)) },
                     onOpenNewEntry = { groupId ->
                         backStack.add(FinanceRoute.NewEntry(groupId))

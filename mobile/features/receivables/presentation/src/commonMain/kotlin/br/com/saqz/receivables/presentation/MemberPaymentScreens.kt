@@ -147,7 +147,7 @@ private fun OrderHeading(order: MemberPaymentOrder) {
     }
 }
 @Composable
-private fun QuoteSummary(quote: MemberPaymentQuote) = SaqzCard {
+internal fun QuoteSummary(quote: MemberPaymentQuote) = SaqzCard {
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
         Text(stringResource(Res.string.receipt_base, formatBrl(quote.baseCents)))
         Text(stringResource(Res.string.receipt_fees, formatBrl(quote.feesCents)))
@@ -155,7 +155,7 @@ private fun QuoteSummary(quote: MemberPaymentQuote) = SaqzCard {
     }
 }
 @Composable
-private fun PaymentPage(title: String, tag: String, onBack: () -> Unit, modifier: Modifier = Modifier,
+internal fun PaymentPage(title: String, tag: String, onBack: () -> Unit, modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit) {
     Column(modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(tag)) {
         SaqzTopAppBar(title = title, onBack = onBack, modifier = Modifier.zIndex(1f))
@@ -164,7 +164,7 @@ private fun PaymentPage(title: String, tag: String, onBack: () -> Unit, modifier
     }
 }
 @Composable
-private fun PaymentError(error: ReceiptError) = Text(stringResource(when (error) {
+internal fun PaymentError(error: ReceiptError) = Text(stringResource(when (error) {
     ReceiptError.DENIED -> Res.string.receipt_error_DENIED
     ReceiptError.STALE -> Res.string.receipt_error_STALE
     ReceiptError.INVALID -> Res.string.receipt_error_INVALID
@@ -181,7 +181,7 @@ internal fun displayPaymentStatus(state: MemberPaymentState): String {
     if (state.pixExpired && state.instrument?.status in setOf("ACTIVE", "EXPIRED")) return "EXPIRED"
     return state.instrument?.status ?: order.orEmpty()
 }
-private fun paymentStatusText(status: String) = when (status) {
+internal fun paymentStatusText(status: String) = when (status) {
     "ISSUED" -> Res.string.payment_status_issued
     "ACTIVE" -> Res.string.payment_status_active
     "PAID", "CONFIRMED", "SETTLED", "AVAILABLE" -> Res.string.payment_status_confirmed

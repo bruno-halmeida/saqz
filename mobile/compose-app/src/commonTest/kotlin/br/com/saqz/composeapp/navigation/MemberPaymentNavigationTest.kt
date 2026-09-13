@@ -15,7 +15,8 @@ import kotlin.test.assertEquals
 class MemberPaymentNavigationTest {
     @Test fun memberPaymentRoutesRestoreIdsAndLogoutRemovesTheWholeJourney() {
         val stack = NavBackStack<NavKey>(SaqzShellDestination(initialTab = br.com.saqz.composeapp.shell.SaqzShellProfileTab), FinanceRoute.OwnMonthlyPayments,
-            MemberPaymentHistoryRoute, MemberPaymentRoute("order"))
+            MemberPaymentHistoryRoute, MemberPaymentRoute("order"),
+            br.com.saqz.receivables.presentation.ChargeApprovalRoute("group", "charge"))
         val encoded = encodeToSavedState(saqzAccessBackStackSerializer, stack, saqzLocalNavConfiguration)
         val restored = decodeFromSavedState(saqzAccessBackStackSerializer, encoded, saqzLocalNavConfiguration)
         assertEquals(stack.toList(), restored.toList())

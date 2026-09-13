@@ -281,6 +281,7 @@ class SaqzKoinModulesTest {
         koin.get<br.com.saqz.receivables.domain.GroupReceivablesGateway>()
         koin.get<br.com.saqz.receivables.presentation.MemberPaymentHistoryViewModel>()
         koin.get<br.com.saqz.receivables.presentation.MemberPaymentViewModel> { parametersOf("order", SavedStateHandle()) }
+        koin.get<br.com.saqz.receivables.presentation.ChargeApprovalViewModel> { parametersOf("group", "charge", SavedStateHandle()) }
         koin.get<br.com.saqz.receivables.presentation.ReceiptConfigurationViewModel> { parametersOf("group", SavedStateHandle()) }
         koin.get<br.com.saqz.composeapp.receivables.ReceivablesSessionBinding>()
         koin.get<AccessRuntimeContract>()

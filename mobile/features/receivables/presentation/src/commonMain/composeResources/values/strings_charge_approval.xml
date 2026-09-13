@@ -1,0 +1,18 @@
+<resources>
+    <string name="approval_title">Pagamento da cobrança</string>
+    <string name="approval_choose_account">Selecione a conta que receberá este pagamento.</string>
+    <string name="approval_account">Conta %1$s</string>
+    <string name="approval_empty">Ainda não há conta financeira disponível para você.</string>
+    <string name="approval_review">Confira os valores que serão apresentados ao membro. As taxas são incluídas no total pago por ele.</string>
+    <string name="approval_accept">Revisei os termos e os valores de todos os meios e quero liberar esta cobrança para pagamento pelo app.</string>
+    <string name="approval_submit">Liberar cobrança</string>
+    <string name="approval_existing">Cobrança liberada. Acompanhe a situação abaixo.</string>
+    <string name="approval_pending">Estamos verificando sua solicitação. Atualize para consultar o resultado ou recupere a mesma tentativa.</string>
+    <string name="approval_refresh">Atualizar cobrança</string>
+    <string name="approval_replay">Recuperar tentativa</string>
+    <string name="approval_cancel">Cancelar pagamento pelo app</string>
+    <string name="approval_cancel_confirm">Quer cancelar esta ordem? A cobrança só será liberada para recebimento manual após a confirmação do cancelamento. Esta ação não solicita reembolso.</string>
+    <string name="approval_cancel_yes">Confirmar cancelamento</string>
+    <string name="approval_cancel_no">Manter ordem</string>
+    <string name="approval_change_account">Escolher outra conta</string>
+</resources>

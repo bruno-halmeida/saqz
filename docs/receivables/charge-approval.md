@@ -57,7 +57,34 @@ final independent matrix will preserve exact expressions and line numbers.
 ## Gate CA2
 
 Oito casos novos KtorChargeApprovalGatewayTest aprovados nas duas plataformas, junto da regressão
-de gateways existente. Assertions :18–20 autenticam/isolam lookup; :23 preserva detalhe/vazio;
-:30–35 payload e revisão; :39–49 corpo exato e retry; :54–61 cancelamento pendente; :70–83 identidades/
-fingerprint/centavos; :90–101 erros; :107–109 envelope incerto; :115–119 comandos inválidos não enviam.
+de gateways existente. Assertions KtorChargeApprovalGatewayTest :17–21 autenticam/isolam lookup; :27–31 payload/revisão;
+:41–44 ordem/corpo exato/retry; :54–55 cancelamento pendente; :66–76 identidades/fingerprint/centavos;
+:82–89 erros; :94–95 envelope incerto; :100–104 comandos inválidos não enviam.
 Android/iOS data + detekt domain/data, exit 0 em /tmp/saqz-charge-gateway.log.
+
+## Gate UI e matriz do autor
+
+53 testes presentation Android + 56 iOS (10 VMs novos e 1 UI iOS nova), DI6 Android +6 iOS,
+navegação1 iOS, UI3 Android, entrada1 Android passaram. Compilações Android/iOS e detekt dos
+módulos alterados passaram; logs /tmp/saqz-charge-ui-build.log e /tmp/saqz-charge-ios-final.log.
+Somando backend56 e data60, são 242 execuções no escopo (não são 242 casos novos).
+Capturas em mobile/build/reports/charge-approval: revisão com dois preços/termos, aceite,
+incerteza, confirmação/cancelamento e caixa inspecionados. Dados e nomes nas capturas são fixtures.
+
+VT = mobile/features/receivables/presentation/src/commonTest/kotlin/br/com/saqz/receivables/presentation/ChargeApprovalViewModelTest.kt.
+ST = mobile/android-app/src/test/kotlin/br/com/saqz/androidapp/ChargeApprovalScreenshotTest.kt.
+IT = mobile/features/receivables/presentation/src/iosTest/kotlin/br/com/saqz/receivables/presentation/ChargeApprovalScreenTest.kt.
+
+| Critério | Asserção e resultado esperado |
+|---|---|
+| CA3 escolha, termos, aceite | VT:24 `assertNull(accountId)`, :27 `assertEquals(listOf("v1", "v2"), termRequests)`, :28 revisão inteira/sem aceite, :32–35 target/fingerprint/accepted e ordem exatos; :41 sem termos não libera; :45–47 refresh/troca invalidam |
+| CA3 ordem existente | VT:51 ordem exata e `assertEquals(0, previews)`; :52 `approvals.isEmpty()` |
+| CA4 restauração/replay | VT:57 marker antes da rede; :60 objeto inteiro; :65/67 marker igual após ausência/erro; :70 não escreve ao restaurar; :71 comando inteiro igual; :73 marker removido ao confirmar; :80 consulta resolve sem novo write |
+| CA4 cancelamento | VT:85 `cancels.isEmpty()` sem confirmar; :89 orderId salvo antes da rede; :91 status `CANCEL_PENDING` e attempt presente; :94 replay igual; :96–97 marker ausente somente após `CANCELLED` |
+| CA4 terminais/conflito | VT:104 não cancela/libera terminais; :110–113 STALE remove revisão/aceite e obriga revisar |
+| CA5 contexto | VT:121 `REFUNDED` vence resposta antiga; :123 sessão limpa; :127 efeito obsoleto inválido; :133 marker estrangeiro descartado; :137–140 duplicata bloqueada e logout descarta criação |
+| CA6 interface | ST verifica valores literais Pix100/6,58/106,58 e cartão100/9/109, versões e ações; IT:17 submit desabilitado, :20 ação Approve, :22 ausência de confirmação inicial, :24/27 ações exatas e :29 cancelamento pendente |
+
+Todos os testes novos mapeiam aos critérios acima: VT10→CA3/4/5; ST3+IT1+entrada1+rotas/DI→CA6;
+gateway8→CA2; backend4→CA1. Verificação independente ainda pendente. Nenhum teste existente
+foi removido, ignorado ou teve asserções enfraquecidas. UAT humano e sandbox real não executados.

@@ -41,6 +41,8 @@ import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.O
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.Register
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.Retry
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.ViewFullStatement
+import br.com.saqz.groups.resources.group_cashbox_note_with_app
+import br.com.saqz.groups.resources.group_cashbox_payment_app
 import br.com.saqz.groups.resources.group_cashbox_receivables
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_cashbox_charge
@@ -88,6 +90,7 @@ internal object GroupCashboxTags {
     const val Retry = "group-cashbox-retry"
     const val Statement = "group-cashbox-statement"
 
+    fun chargePayment(chargeId: String) = "group-cashbox-payment-$chargeId"
     fun chargeIndividual(chargeId: String) = "group-cashbox-charge-$chargeId"
 }
 
@@ -98,6 +101,7 @@ internal fun GroupCashboxScreen(
     onIntent: (GroupCashboxIntent) -> Unit,
     modifier: Modifier = Modifier,
     onOpenReceivables: (() -> Unit)? = null,
+    onOpenChargePayment: ((String) -> Unit)? = null,
 ) {
     val uriHandler = LocalUriHandler.current
     val receiptDebtor = state.debtors.firstOrNull { it.chargeId == state.receiptSheetChargeId }
@@ -115,7 +119,7 @@ internal fun GroupCashboxScreen(
             when {
                 state.isLoading -> LoadingContent()
                 state.loadFailed -> LoadFailure(onRetry = { onIntent(Retry) })
-                else -> LoadedContent(state = state, onIntent = onIntent)
+                else -> LoadedContent(state = state, onIntent = onIntent, onOpenChargePayment = onOpenChargePayment)
             }
         }
         ChargeSheet(
@@ -167,7 +171,8 @@ private fun LoadFailure(onRetry: () -> Unit) = Column(
 }
 
 @Composable
-private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxIntent) -> Unit) {
+private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxIntent) -> Unit,
+    onOpenChargePayment: ((String) -> Unit)? = null) {
     val metrics = SaqzTheme.metrics
     val hasPix = state.pix?.key?.isNotBlank() == true
     val canCharge = hasPix && state.debtors.isNotEmpty()
@@ -180,7 +185,8 @@ private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxInten
     ) {
         CashboxHeader(state = state, canCharge = canCharge, hasPix = hasPix, onIntent = onIntent)
         Text(
-            text = stringResource(Res.string.group_cashbox_note),
+            text = stringResource(if (onOpenChargePayment != null) Res.string.group_cashbox_note_with_app
+                else Res.string.group_cashbox_note),
             style = SaqzTheme.typography.support,
             color = SaqzTheme.colors.textSecondary,
         )
@@ -196,7 +202,7 @@ private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxInten
             modifier = Modifier.testTag(GroupCashboxTags.GenerateMonthly),
         )
         if (state.debtors.isNotEmpty()) {
-            DebtorsSection(state = state, canCharge = canCharge, onIntent = onIntent)
+            DebtorsSection(state = state, canCharge = canCharge, onIntent = onIntent, onOpenChargePayment = onOpenChargePayment)
         }
         state.pix?.let {
             PixCard(
@@ -370,6 +376,7 @@ private fun DebtorsSection(
     state: GroupCashboxState,
     canCharge: Boolean,
     onIntent: (GroupCashboxIntent) -> Unit,
+    onOpenChargePayment: ((String) -> Unit)? = null,
 ) = Column(
     modifier = Modifier.testTag(GroupCashboxTags.Debtors),
     verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
@@ -377,7 +384,7 @@ private fun DebtorsSection(
     SaqzSectionHeader(title = stringResource(Res.string.group_cashbox_debtors_title))
     SaqzCard(padded = false) {
         state.debtors.forEachIndexed { index, debtor ->
-            DebtorRow(debtor = debtor, canCharge = canCharge, onIntent = onIntent)
+            DebtorRow(debtor = debtor, canCharge = canCharge, onIntent = onIntent, onOpenChargePayment = onOpenChargePayment)
             if (index < state.debtors.lastIndex) {
                 br.com.saqz.designsystem.SaqzDivider()
             }
@@ -390,8 +397,10 @@ private fun DebtorRow(
     debtor: DebtorUi,
     canCharge: Boolean,
     onIntent: (GroupCashboxIntent) -> Unit,
+    onOpenChargePayment: ((String) -> Unit)? = null,
 ) {
     val metrics = SaqzTheme.metrics
+    Column {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
         verticalAlignment = Alignment.CenterVertically,
@@ -427,4 +436,12 @@ private fun DebtorRow(
             )
         }
     }
+    onOpenChargePayment?.let { open ->
+        SaqzButton(stringResource(Res.string.group_cashbox_payment_app), { open(debtor.chargeId) },
+            enabled = !debtor.isUpdating, size = SaqzButtonSize.Sm, variant = SaqzButtonVariant.Secondary, fullWidth = true,
+            modifier = Modifier.padding(horizontal = metrics.horizontalPadding, vertical = metrics.subGrid)
+                .testTag(GroupCashboxTags.chargePayment(debtor.chargeId)))
+    }
+    }
+
 }

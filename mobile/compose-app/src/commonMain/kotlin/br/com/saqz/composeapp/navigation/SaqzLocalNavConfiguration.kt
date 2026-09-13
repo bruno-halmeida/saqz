@@ -9,6 +9,7 @@ import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.navigation.FinanceRoute
 import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
+import br.com.saqz.receivables.presentation.ChargeApprovalRoute
 import br.com.saqz.receivables.presentation.MemberPaymentRoute
 import br.com.saqz.receivables.presentation.MemberPaymentHistoryRoute
 import br.com.saqz.receivables.presentation.ReceiptConfigurationRoute
@@ -31,6 +32,7 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
         polymorphic(NavKey::class) {
             subclass(MemberPaymentHistoryRoute::class, MemberPaymentHistoryRoute.serializer())
             subclass(MemberPaymentRoute::class, MemberPaymentRoute.serializer())
+            subclass(ChargeApprovalRoute::class, ChargeApprovalRoute.serializer())
             subclass(ReceiptConfigurationRoute::class, ReceiptConfigurationRoute.serializer())
             subclass(AccessRoute.Starting::class, AccessRoute.Starting.serializer())
             subclass(AccessRoute.Login::class, AccessRoute.Login.serializer())

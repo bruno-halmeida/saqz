@@ -1,3 +1,5 @@
 <resources>
     <string name="group_cashbox_receivables">Configurar recebimentos</string>
+    <string name="group_cashbox_payment_app">Pagamento pelo app</string>
+    <string name="group_cashbox_note_with_app">Para pagamento pelo app, libere a cobrança abaixo. Use 'Recebi' apenas para valores recebidos fora do app.</string>
 </resources>
