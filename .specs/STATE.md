@@ -93,3 +93,11 @@
 - Spec e evidências: `.specs/features/trial-coupons/`. Operação: `docs/trials/operation.md`.
 - Gates backend, administrativo, iOS, Android e detekt passaram. Verificação independente PASS no commit funcional 208cd905: AC1–AC7, 1.770 testes sem falhas/ignorados e 5/5 mutações detectadas.
 - Entrega integrada e publicada por fast-forward em origin/main 6761baea. Checkout local main preservado porque contém trabalho concorrente em andamento. Nenhum deploy de produção executado.
+
+## Painel de conversão de cupons — 2026-09-13
+
+- Pedido: rastrear todos os cupons, incluindo trials e descontos, no administrativo.
+- Implementados endpoint administrativo somente leitura e painel em Cupons → Conversão de cupons, com busca/tipo, resumo deduplicado, usos, pagantes, conversão, receita bruta, maturidade dos trials e dados incompletos sinalizados.
+- Decisões: atribuição por participação após uso; resumo não soma linhas; receita não desconta taxas/estornos; sem estimativas pelo preço do plano nem escrita em pagamentos. Histórico sem fatos suficientes permanece incompleto.
+- Commits funcionais f0ec5c0b/fd6412fc e evidências visuais/guia 3b0d281f. Gates locais: 44 bootstrap, 247 subscriptions e 57 admin; Chromium desktop/tablet, loading/error/empty PASS.
+- Spec/validação: `.specs/features/coupon-analytics/`. Guia: `docs/coupons/analytics.md`. Revisão independente PASS em 3b0d281f: AC1–8, 348 testes e 6/6 mutações detectadas. Pronto para integração final. Checkout main local preservado por trabalho mobile concorrente.
