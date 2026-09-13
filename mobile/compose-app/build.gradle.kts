@@ -31,6 +31,10 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(project(":features:receivables:domain"))
+            implementation(project(":features:receivables:data"))
+            implementation(project(":features:receivables:presentation"))
+
             api(project(":core:design-system"))
             api(project(":features:access"))
             api(project(":features:access:domain"))

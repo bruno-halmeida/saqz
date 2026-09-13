@@ -9,6 +9,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import br.com.saqz.composeapp.receivables.ReceivablesSessionBinding
 import androidx.compose.ui.Modifier
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.composeapp.navigation.AccessUiState
@@ -64,6 +66,11 @@ private fun AccessGate(
     viewModel: AccessViewModel = koinViewModel(),
     config: NetworkConfig = koinInject(),
 ) {
+    val receivables = koinInject<ReceivablesSessionBinding>()
+    LifecycleResumeEffect(receivables) {
+        receivables.onResume()
+        onPauseOrDispose { receivables.onPause() }
+    }
     val state by viewModel.state.collectAsState()
     // Latch, e não uma condição lida a cada quadro: depois que a sessão decidiu uma vez, um
     // `Bootstrapping` posterior — o que vem logo depois do login — é carregamento de dentro

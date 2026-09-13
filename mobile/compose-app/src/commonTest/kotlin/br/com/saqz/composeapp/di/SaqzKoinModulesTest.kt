@@ -241,6 +241,7 @@ class SaqzKoinModulesTest {
                 accessInvalidationModule,
                 accessPresentationModule,
                 composePresentationModule,
+                receivablesModule,
             )
         }
         val koin = app.koin
@@ -257,6 +258,11 @@ class SaqzKoinModulesTest {
 
         // C1: the whole app graph is the session gate plus the access screens — the
         // orchestrator resolves as the runtime contract and the gate resolves on top of it.
+        assertIs<br.com.saqz.receivables.data.KtorReceivablesAvailabilityGateway>(
+            koin.get<br.com.saqz.receivables.domain.ReceivablesAvailabilityGateway>(),
+        )
+        koin.get<br.com.saqz.receivables.presentation.ReceivablesCoordinator>()
+        koin.get<br.com.saqz.composeapp.receivables.ReceivablesSessionBinding>()
         koin.get<AccessRuntimeContract>()
         koin.get<AppOnboardingAuthCoordinator>()
         koin.get<AccessViewModel>()
@@ -299,6 +305,7 @@ class SaqzKoinModulesTest {
                 accessInvalidationModule,
                 accessPresentationModule,
                 composePresentationModule,
+                receivablesModule,
                 groupsDataModule(),
                 groupsPresentationModule(),
                 // Quem provê a porta no app real é o groupCreationEntitlementModule, que

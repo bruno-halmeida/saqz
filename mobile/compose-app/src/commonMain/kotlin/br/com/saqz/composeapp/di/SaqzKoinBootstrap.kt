@@ -65,6 +65,7 @@ private val commonModules = listOf(
     accessPresentationModule,
     composePresentationModule,
     subscriptionsDataModule,
+    receivablesModule,
     myPlanPresentationModule(),
     subscriptionsCustomerInfoModule,
     groupCreationEntitlementModule,
