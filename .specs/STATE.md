@@ -43,6 +43,7 @@
 
 - Quatro entregas anteriores integradas e publicadas em main (30691c5e; documentação 4bfe4666).
 - Entrega T06 integrada e publicada em main e55fa717, baseada em c3d1802d.
+- Controles backend/mobile por sistema e usuário integrados e publicados em main 00dd7b35, com revisão independente final aprovada.
 - Gate T06: 391 bootstrap, 645 grupos, 12 + 24 receivables e 20 arquitetura, sem falhas.
 - V52 registra revisão imutável por grupo; V53 adiciona rollout e auditoria (23 tabelas financeiras).
 - Próximo: liberação auditada do piloto e ordens/instrumentos de pagamento; depois conciliação.
@@ -52,10 +53,10 @@
 ## Handoff
 
 - 2026-09-13: lote de toggles implementado em paralelo via Orca, conforme docs/receivables/rollout-contract.md.
-- Branch feat/receivables-rollout, base e55fa717. Commits: 3954c2a1 contrato, e887b298 adm, 23bd2252 mobile, b8c97387 backend; 11b56e33 correção de logout.
+- Branch de entrega feat/receivables-rollout integrada em main, base e55fa717. Commits: 3954c2a1 contrato, e887b298 adm, 23bd2252 mobile, b8c97387 backend; 11b56e33 correção de logout.
 - Run run_f38959a437de: três workers concluídos e liberados. A primeira revisão independente encontrou corrida no logout mobile; correção implementada por outro worker e verificação final task_e65069bc7c44 / ctx_3a30b079f00e aprovada: 106 testes executados, incluindo probe independente anteriormente falho.
 - Gates reportados: backend 393 bootstrap + 15 domínio + 28 PostgreSQL + 20 arquitetura; rodada final 22 bootstrap focados. Adm 35 Node + Chromium com API simulada. Mobile 24 testes feature Android/iOS + 7 DI/sessão iOS + 266 Android; compilação e detekt aprovados.
 - Evidências em docs/receivables/evidence/ e adm-web/tests/receivables-evidence.md. Nenhuma alteração visual mobile nesta entrega (913 linhas incluindo a correção).
 - Correção: chave autoritativa de sessão revogada no início do logout, incluindo geração para novo login da mesma pessoa. Gates: 67 testes de sessão iOS; 12 binding/logout/DI em cada plataforma; gateway/coordinator Android/iOS; 186 testes Android integrados, compilações e detekt. Relatório em docs/receivables/evidence/mobile-logout-fix.md.
-- Revisão final aceita para integração em main: nenhum bloqueio confirmado restante no lote de controles. Relatório docs/receivables/evidence/verification-final.md. Próximo lote: pagamentos avulsos e conciliação; preparação em docs/receivables/payment-next-wave.md.
+- Revisão final aprovada e main publicada: nenhum bloqueio confirmado restante no lote de controles. Relatório docs/receivables/evidence/verification-final.md. Próximo lote: pagamentos avulsos e conciliação; preparação em docs/receivables/payment-next-wave.md.
 - Preservados context.md/direcionamento.md não rastreados. Produção permanece sem liberação automática.
