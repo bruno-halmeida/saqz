@@ -5,4 +5,5 @@ data class RequestIdentity(
     val email: String? = null,
     val emailVerified: Boolean? = null,
     val displayName: String? = null,
+    val authenticatedAtEpochSeconds: Long? = null,
 )

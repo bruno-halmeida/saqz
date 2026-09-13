@@ -20,7 +20,13 @@ class FirebaseAdminTokenVerifier internal constructor(
         try {
             val decoded = decode(token.value)
             TokenVerification.Verified(
-                RequestIdentity(decoded.subject, decoded.email, decoded.emailVerified, decoded.displayName),
+                RequestIdentity(
+                    subject = decoded.subject,
+                    email = decoded.email,
+                    emailVerified = decoded.emailVerified,
+                    displayName = decoded.displayName,
+                    authenticatedAtEpochSeconds = decoded.authenticatedAtEpochSeconds,
+                ),
             )
         } catch (_: InvalidFirebaseToken) {
             TokenVerification.Rejected
@@ -38,6 +44,7 @@ internal data class DecodedFirebaseToken(
     val email: String?,
     val emailVerified: Boolean?,
     val displayName: String? = null,
+    val authenticatedAtEpochSeconds: Long? = null,
 )
 
 internal class InvalidFirebaseToken(cause: Throwable? = null) : Exception(cause)
@@ -55,6 +62,7 @@ internal fun firebaseTokenDecoder(firebaseApp: FirebaseApp): (String) -> Decoded
                 email = token.email,
                 emailVerified = token.claims["email_verified"] as? Boolean,
                 displayName = token.name,
+                authenticatedAtEpochSeconds = authenticationTimeClaim(token.claims["auth_time"]),
             )
         } catch (failure: FirebaseAuthException) {
             throw classify(failure)
@@ -82,3 +90,9 @@ internal fun mapAuthErrorCode(code: AuthErrorCode?, cause: Exception? = null): E
     -> InvalidFirebaseToken(cause)
     else -> FirebaseProviderFailure(cause)
 }
+
+internal fun authenticationTimeClaim(value: Any?): Long? = when (value) {
+    is Long -> value
+    is Int -> value.toLong()
+    else -> null
+}?.takeIf { it > 0 }

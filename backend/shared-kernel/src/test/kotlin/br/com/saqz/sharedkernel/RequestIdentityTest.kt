@@ -12,12 +12,14 @@ class RequestIdentityTest {
             email = "person@example.test",
             emailVerified = true,
             displayName = "Person Name",
+            authenticatedAtEpochSeconds = 1789336800L,
         )
 
         assertEquals("firebase-uid", identity.subject)
         assertEquals("person@example.test", identity.email)
         assertEquals(true, identity.emailVerified)
         assertEquals("Person Name", identity.displayName)
+        assertEquals(1789336800L, identity.authenticatedAtEpochSeconds)
     }
 
     @Test
@@ -27,5 +29,6 @@ class RequestIdentityTest {
         assertNull(identity.email)
         assertNull(identity.emailVerified)
         assertNull(identity.displayName)
+        assertNull(identity.authenticatedAtEpochSeconds)
     }
 }
