@@ -85,3 +85,11 @@
 - Gate final backend aprovado por task_ee5379abb0fb / ctx_6c88acb67d7c, autor diferente do corretor: 40 testes (11 probes originais intactos, 28 integração, 1 fatos) passaram no snapshot completo 564028ab. F1/F2 resolvidos, worker liberado. Evidência permanente em docs/receivables/evidence/payments/backend-review-final.md. Lote pronto para integração; piloto completo permanece pendente conforme tasks.md e payment-operation.md.
 
 - Integração concluída: main remota publicada em b377e853, incluindo backend de4707ef/564028ab e evidências finais. Todos os nove tasks do run Orca run_f939f361277e concluídos e respectivos workers liberados; checkout retornou à main. Nenhuma liberação de produção realizada. Próxima entrega funcional: pagamento do membro no mobile e jornada web; carteira/saques/reembolsos solicitados e recorrência continuam no plano. Dois testes Android gerais preexistentes permanecem falhos e documentados.
+
+## Trial e cupons — 2026-09-13
+
+- Pedido autorizado: criar cupons de trial, modos ligado/desligado/somente cupom, dias configuráveis por cupom e integração final na main.
+- Implementados backend transacional, administrativo e entrada mobile. Oferta pública permanece em 14 dias; cupons de 1 a 365 dias; prazo inicia no primeiro grupo e benefícios já concedidos são preservados.
+- Spec e evidências: `.specs/features/trial-coupons/`. Operação: `docs/trials/operation.md`.
+- Gates backend, administrativo, iOS, Android e detekt passaram. Verificação independente PASS no commit funcional 208cd905: AC1–AC7, 1.770 testes sem falhas/ignorados e 5/5 mutações detectadas.
+- Entrega integrada e publicada por fast-forward em origin/main 6761baea. Checkout local main preservado porque contém trabalho concorrente em andamento. Nenhum deploy de produção executado.
