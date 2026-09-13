@@ -56,3 +56,9 @@ Gates JDK21: subscriptions:data:iosSimulatorArm64Test (38), subscriptions:presen
 | Prazo em Meu plano | MyPlanTrialScreenTest.kt:54 `onNodeWithText("Seus 45 dias grátis começam ao criar o primeiro grupo.").assertExists()` | Sem anúncio incorreto de 14 dias |
 
 Cópia da apresentação inicial do app e cadastro web ajustada para não prometer automaticamente trial quando a oferta está desligada ou exige cupom. Sem mudanças nas regras de cadastro.
+
+## Correções da revisão independente
+G1: a lista consulta `canOpenCreationFlow` e pode abrir a entrada com retry quando a rede falha, sem conceder permissão para o formulário. Testes de entitlement exercitam falha → entrada bloqueada → retry em COUPON_ONLY/OFF; GroupListViewModelTest verifica o efeito correto, e os testes anteriores de negação/concorrência permanecem intactos.
+G2: State/Intent/Failure movidos sem alteração para TrialEntryContract.kt, conforme mobile/AGENTS.md.
+
+Gate final G1/G2 (JDK21), `/tmp/trial-routing-fix.log`: `:features:groups:presentation:iosSimulatorArm64Test` (556), `:compose-app:iosSimulatorArm64Test` (144), `:features:subscriptions:presentation:iosSimulatorArm64Test` (51), `detektAll`, `:android-app:compileDevDebugKotlin`: PASS, zero falhas/erros/ignorados. Confirmação do novo teste de composição em `/tmp/trial-routing-confirm.log`: PASS.
