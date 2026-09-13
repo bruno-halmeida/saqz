@@ -43,7 +43,7 @@ class FinancialOnboardingBackTest {
                 override suspend fun get(): Nothing = error("Maintenance does not require new business availability")
             }, ReceivablesSessionContext { "session" }, ReceivablesRecoveryIdentity { "owner" }, picker, saved)
         }
-        compose.setContent { SaqzTheme { FinancialOnboardingRoot({ returned++ }, { changed++ }, vm) } }
+        compose.setContent { SaqzTheme { FinancialOnboardingRoot({ returned++ }, { changed++ }, onOpenWallet = {}, viewModel = vm) } }
         compose.waitForIdle()
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.runOnIdle {

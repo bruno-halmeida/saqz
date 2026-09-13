@@ -1,0 +1,26 @@
+<resources>
+    <string name="recurrence_title">Mensalidade recorrente</string>
+    <string name="recurrence_intro">Revise o valor, o meio de pagamento e os termos antes de autorizar.</string>
+    <string name="recurrence_pix_manual">No Pix, uma nova cobrança é gerada a cada mês para você pagar manualmente.</string>
+    <string name="recurrence_pending">A operação ainda está sendo confirmada. Atualize para recuperar a mesma tentativa; não faça outra.</string>
+    <string name="recurrence_reference">Recorrência ••••%1$s</string>
+    <string name="recurrence_method">Meio: %1$s</string>
+    <string name="recurrence_cutoff">Cancelamento solicitado em %1$s</string>
+    <string name="recurrence_due_date">Primeiro vencimento</string>
+    <string name="recurrence_due_date_help">Use o formato AAAA-MM-DD.</string>
+    <string name="recurrence_review">Revisar valores e termos</string>
+    <string name="recurrence_cycle_monthly">Ciclo: mensal</string>
+    <string name="recurrence_commission">Comissão Saqz: %1$s</string>
+    <string name="recurrence_provider_fee">Tarifa estimada do provedor: %1$s</string>
+    <string name="recurrence_net">Líquido esperado: %1$s</string>
+    <string name="recurrence_accept">Aceito os termos %1$s, o meio escolhido e o total de %2$s por mês.</string>
+    <string name="recurrence_authorize">Autorizar mensalidade</string>
+    <string name="recurrence_resume">Retomar com novo aceite</string>
+    <string name="recurrence_resume_requires_acceptance">A recorrência anterior continua encerrada. Para retomar, faça uma nova revisão e um novo aceite.</string>
+    <string name="recurrence_cancel">Cancelar recorrência</string>
+    <string name="recurrence_checkout">Abrir checkout seguro do Asaas</string>
+    <string name="recurrence_status_authorizing">Aguardando autorização no checkout</string>
+    <string name="recurrence_status_active">Recorrência ativa</string>
+    <string name="recurrence_status_stop_pending">Cancelamento em confirmação</string>
+    <string name="recurrence_status_stopped">Recorrência encerrada</string>
+</resources>

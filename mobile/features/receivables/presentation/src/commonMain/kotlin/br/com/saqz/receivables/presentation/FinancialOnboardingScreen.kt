@@ -28,12 +28,14 @@ object FinancialOnboardingTags {
     const val Recover = "financial-onboarding-recover"
     const val Upload = "financial-onboarding-upload"
     const val Company = "financial-onboarding-company"
+    const val Management = "financial-onboarding-management"
     fun field(field: OnboardingField) = "financial-onboarding-${field.name}"
     fun document(id: String) = "financial-onboarding-document-$id"
 }
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-fun FinancialOnboardingRoot(onBack: () -> Unit, onChange: () -> Unit,
+fun FinancialOnboardingRoot(onBack: () -> Unit, onChange: () -> Unit, onOpenWallet: () -> Unit,
+    onOpenManagement: () -> Unit = {},
     viewModel: FinancialOnboardingViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val uri = LocalUriHandler.current
@@ -44,12 +46,17 @@ fun FinancialOnboardingRoot(onBack: () -> Unit, onChange: () -> Unit,
         is FinancialOnboardingEffect.Open -> runCatching { uri.openUri(effect.url) }
             .onFailure { viewModel.onIntent(FinancialOnboardingIntent.OpenFailed) }
     } }
-    FinancialOnboardingScreen(state, viewModel::onIntent, onBack)
+    FinancialOnboardingScreen(state, viewModel::onIntent, onBack, onOpenWallet = onOpenWallet,
+        onOpenManagement = onOpenManagement)
 }
 @Composable
 fun FinancialOnboardingScreen(state: FinancialOnboardingState, onIntent: (FinancialOnboardingIntent) -> Unit,
-    onBack: () -> Unit, modifier: Modifier = Modifier) = PaymentPage(stringResource(Res.string.onboarding_title),
+    onBack: () -> Unit, modifier: Modifier = Modifier, onOpenWallet: () -> Unit = {},
+    onOpenManagement: () -> Unit = {}) = PaymentPage(stringResource(Res.string.onboarding_title),
     FinancialOnboardingTags.Screen, { if (!state.pending) onBack() }, modifier) {
+    SaqzButton(stringResource(Res.string.wallet_title), onOpenWallet, fullWidth = true,
+        enabled = !state.pending && state.error != ReceiptError.SIGNED_OUT, variant = SaqzButtonVariant.Secondary,
+        modifier = Modifier.testTag("financial-onboarding-wallet"))
     if (state.loading || state.picking) SaqzSpinner()
     state.error?.let { PaymentError(it) }
     if (state.pending) {
@@ -63,6 +70,10 @@ fun FinancialOnboardingScreen(state: FinancialOnboardingState, onIntent: (Financ
         if (state.available) OnboardingRegistration(state, onIntent)
     }
     state.account?.let { account ->
+        SaqzButton(stringResource(Res.string.management_open), onOpenManagement, fullWidth = true,
+            enabled = !state.pending && state.error != ReceiptError.SIGNED_OUT,
+            variant = SaqzButtonVariant.Secondary,
+            modifier = Modifier.testTag(FinancialOnboardingTags.Management))
         Text(stringResource(registrationLabel(account.registration)), style = SaqzTheme.typography.body)
         Text(stringResource(Res.string.onboarding_account_help))
         if (account.registration == AccountRegistration.INCOMPLETE && !state.pending) {

@@ -23,7 +23,7 @@ fun MemberPaymentHistoryRoot(onBack: () -> Unit, onOpen: (String) -> Unit,
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-fun MemberPaymentRoot(orderId: String, onBack: () -> Unit,
+fun MemberPaymentRoot(orderId: String, onBack: () -> Unit, onOpenRecurrence: (String, String) -> Unit = { _, _ -> },
     viewModel: MemberPaymentViewModel = koinViewModel(key = "payment/$orderId", parameters = { parametersOf(orderId) })) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
@@ -40,5 +40,5 @@ fun MemberPaymentRoot(orderId: String, onBack: () -> Unit,
                 .onFailure { viewModel.onIntent(MemberPaymentIntent.OpenFailed) }
         }
     }
-    MemberPaymentScreen(state, viewModel::onIntent, onBack)
+    MemberPaymentScreen(state, viewModel::onIntent, onBack, onOpenRecurrence = onOpenRecurrence)
 }

@@ -92,6 +92,14 @@ import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.presentation.ui.changeplan.ChangePlanRoot
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
+import br.com.saqz.receivables.presentation.ReceiptFinanceHomeRoute
+import br.com.saqz.receivables.presentation.ReceiptFinanceHomeRoot
+import br.com.saqz.receivables.presentation.RecurrenceRoute
+import br.com.saqz.receivables.presentation.RecurrenceRoot
+import br.com.saqz.receivables.presentation.FinancialManagementRoute
+import br.com.saqz.receivables.presentation.FinancialManagementRoot
+import br.com.saqz.receivables.presentation.ReceiptWalletRoute
+import br.com.saqz.receivables.presentation.ReceiptWalletRoot
 import br.com.saqz.receivables.presentation.FinancialOnboardingRoute
 import br.com.saqz.receivables.presentation.FinancialOnboardingRoot
 import br.com.saqz.receivables.presentation.ChargeApprovalRoute
@@ -397,7 +405,7 @@ internal fun SaqzNavHost(
                             onOpenMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
                             onOpenAthleteProfile = { backStack.add(GroupsRoute.AthleteRegistration(it, fromProfile = true)) },
                             onOpenMonthlyPayments = { backStack.add(FinanceRoute.OwnMonthlyPayments) },
-                            onOpenReceipts = { backStack.add(FinancialOnboardingRoute) },
+                            onOpenReceipts = { backStack.add(ReceiptFinanceHomeRoute) },
                             onOpenSettings = { backStack.add(GroupsRoute.Notifications(settings = true)) },
                             onOpenNotifications = { backStack.add(GroupsRoute.Notifications()) },
                             isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
@@ -484,14 +492,33 @@ internal fun SaqzNavHost(
                     onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                 )
             }
+            entry<ReceiptFinanceHomeRoute> {
+                ReceiptFinanceHomeRoot(onBack = pop, onWallet = { backStack.add(ReceiptWalletRoute) },
+                    onRegistration = { backStack.add(FinancialOnboardingRoute) })
+            }
             entry<FinancialOnboardingRoute> {
                 FinancialOnboardingRoot(onBack = { receiptsCoordinator.refresh(); profileRefreshVersion++; pop() },
-                    onChange = { receiptsCoordinator.refresh(); profileRefreshVersion++ })
+                    onChange = { receiptsCoordinator.refresh(); profileRefreshVersion++ },
+                    onOpenWallet = { backStack.add(ReceiptWalletRoute) },
+                    onOpenManagement = { backStack.add(FinancialManagementRoute) })
             }
+            entry<FinancialManagementRoute> {
+                FinancialManagementRoot(onBack = pop, onChange = {
+                    receiptsCoordinator.refresh(); profileRefreshVersion++
+                })
+            }
+            entry<RecurrenceRoute> { route ->
+                RecurrenceRoot(route.accountId, route.groupId, onBack = pop)
+            }
+            entry<ReceiptWalletRoute> { ReceiptWalletRoot(onBack = pop) }
             entry<MemberPaymentHistoryRoute> {
                 MemberPaymentHistoryRoot(onBack = pop, onOpen = { backStack.add(MemberPaymentRoute(it)) })
             }
-            entry<MemberPaymentRoute> { route -> MemberPaymentRoot(route.orderId, onBack = pop) }
+            entry<MemberPaymentRoute> { route ->
+                MemberPaymentRoot(route.orderId, onBack = pop, onOpenRecurrence = { accountId, groupId ->
+                    backStack.add(RecurrenceRoute(accountId, groupId))
+                })
+            }
             entry<ChargeApprovalRoute> { route ->
                 ChargeApprovalRoot(route.groupId, route.chargeId,
                     onBack = { groupCashboxRefreshVersion++; groupDetailsRefreshVersion++; pop() },

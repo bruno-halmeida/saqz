@@ -22,7 +22,13 @@
     <string name="payment_qr">QR Code para pagar com Pix</string>
     <string name="payment_qr_failed">Não foi possível exibir o QR Code. Use o código Pix copia e cola.</string>
     <string name="payment_expires">Pix válido até %1$s</string>
-    <string name="payment_expired_help">Este Pix expirou. Atualize o pagamento para conferir a situação. A renovação pelo app ainda não está disponível.</string>
+    <string name="payment_expired_help">Este Pix expirou. Renove abaixo sem criar outra cobrança.</string>
+    <string name="payment_renewal_date">Novo vencimento</string>
+    <string name="payment_renew_pix">Renovar este Pix</string>
+    <string name="payment_recurrence">Mensalidade recorrente</string>
+    <string name="payment_export_receipt">Compartilhar comprovante</string>
+    <string name="payment_export_shared">Compartilhamento aberto.</string>
+    <string name="payment_export_failed">Não foi possível compartilhar o comprovante.</string>
     <string name="payment_card_open">Abrir pagamento com cartão</string>
     <string name="payment_card_help">Os dados do cartão serão informados na página de pagamento do Asaas.</string>
     <string name="payment_open_failed">Não foi possível abrir o pagamento. Tente novamente.</string>

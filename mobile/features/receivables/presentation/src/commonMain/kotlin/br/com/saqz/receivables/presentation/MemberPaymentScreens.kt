@@ -33,6 +33,10 @@ object MemberPaymentTags {
     const val Document = "member-payment-document"
     const val Status = "member-payment-status"
     const val Terms = "member-payment-terms"
+    const val Recurrence = "member-payment-recurrence"
+    const val RenewalDate = "member-payment-renewal-date"
+    const val Renew = "member-payment-renew"
+    const val Export = "member-payment-export"
     fun method(method: ReceiptMethod) = "member-payment-method-${method.name}"
     fun order(id: String) = "member-payment-order-$id"
 }
@@ -64,7 +68,7 @@ fun MemberPaymentHistoryScreen(state: MemberPaymentHistoryState, onIntent: (Memb
 
 @Composable
 fun MemberPaymentScreen(state: MemberPaymentState, onIntent: (MemberPaymentIntent) -> Unit, onBack: () -> Unit,
-    modifier: Modifier = Modifier) =
+    modifier: Modifier = Modifier, onOpenRecurrence: (String, String) -> Unit = { _, _ -> }) =
     PaymentPage(stringResource(Res.string.payment_title), MemberPaymentTags.Screen, { if (!state.pending) onBack() }, modifier) {
         if (state.loading) SaqzSpinner()
         state.error?.let { PaymentError(it) }
@@ -76,6 +80,9 @@ fun MemberPaymentScreen(state: MemberPaymentState, onIntent: (MemberPaymentInten
         }
         state.detail?.let { detail ->
             OrderHeading(detail.order)
+            SaqzButton(stringResource(Res.string.payment_recurrence),
+                { onOpenRecurrence(detail.order.accountId, detail.order.groupId) }, fullWidth = true,
+                variant = SaqzButtonVariant.Secondary, modifier = Modifier.testTag(MemberPaymentTags.Recurrence))
             Text(stringResource(paymentStatusText(displayPaymentStatus(state))), Modifier.testTag(MemberPaymentTags.Status),
                 style = SaqzTheme.typography.body)
             if (state.canReview || state.method != null) PaymentReview(state, onIntent)
@@ -84,7 +91,19 @@ fun MemberPaymentScreen(state: MemberPaymentState, onIntent: (MemberPaymentInten
                 instrument.paymentId?.let { Text(stringResource(Res.string.payment_id, it)) }
                 if (state.pixExpired) Text(stringResource(Res.string.payment_expired_help))
                 if (state.canUseInstrument) PaymentInstrumentContent(state, instrument, onIntent)
+                if (state.pixExpired && detail.order.canRenew(instrument, expired = true)) {
+                    SaqzInput(state.renewalDueDate, { onIntent(MemberPaymentIntent.RenewalDueDate(it)) },
+                        stringResource(Res.string.payment_renewal_date), helperText = stringResource(Res.string.recurrence_due_date_help),
+                        modifier = Modifier.testTag(MemberPaymentTags.RenewalDate))
+                    SaqzButton(stringResource(Res.string.payment_renew_pix), { onIntent(MemberPaymentIntent.RenewPix) },
+                        enabled = state.canRenew, fullWidth = true, modifier = Modifier.testTag(MemberPaymentTags.Renew))
+                }
             }
+            if (state.canExportReceipt || state.receiptSharing) SaqzButton(stringResource(Res.string.payment_export_receipt),
+                { onIntent(MemberPaymentIntent.ExportReceipt) }, enabled = state.canExportReceipt,
+                fullWidth = true, modifier = Modifier.testTag(MemberPaymentTags.Export))
+            if (state.receiptShared) Text(stringResource(Res.string.payment_export_shared))
+            if (state.receiptShareFailed) Text(stringResource(Res.string.payment_export_failed))
         }
         if (state.openFailed) Text(stringResource(Res.string.payment_open_failed))
         SaqzButton(stringResource(Res.string.payment_refresh), { onIntent(MemberPaymentIntent.Refresh) },

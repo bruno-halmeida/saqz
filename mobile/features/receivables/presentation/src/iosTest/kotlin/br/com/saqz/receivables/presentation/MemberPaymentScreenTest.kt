@@ -27,4 +27,24 @@ class MemberPaymentScreenTest {
         onNodeWithTag(MemberPaymentTags.Status).performScrollTo().assertTextEquals("Pagamento reembolsado")
         onNodeWithTag(MemberPaymentTags.Copy).assertDoesNotExist()
     }
+
+    @Test fun expiredPixRenewalReceiptAndRecurrenceEntryExposeExactIntentsOnIos() = runComposeUiTest {
+        val expired = paymentInstrument().copy(status = "EXPIRED", expiresAt = "2026-09-12T12:00:00Z")
+        val state = mutableStateOf(MemberPaymentState(loading = false,
+            detail = MemberPaymentDetail(paymentOrder, listOf(expired)), pixExpired = true, renewalDueDate = "2026-09-20"))
+        val intents = mutableListOf<MemberPaymentIntent>()
+        val recurrences = mutableListOf<Pair<String, String>>()
+        setContent { SaqzTheme { MemberPaymentScreen(state.value, intents::add, {},
+            onOpenRecurrence = { account, group -> recurrences += account to group }) } }
+        onNodeWithTag(MemberPaymentTags.Renew).performScrollTo().assertIsEnabled().performClick()
+        assertEquals(MemberPaymentIntent.RenewPix, intents.last())
+        onNodeWithTag(MemberPaymentTags.Recurrence).performScrollTo().performClick()
+        assertEquals(listOf("account" to "group"), recurrences)
+        runOnIdle { state.value = state.value.copy(pixExpired = false,
+            detail = MemberPaymentDetail(paymentOrder, listOf(expired.copy(status = "CONFIRMED")))) }
+        onNodeWithTag(MemberPaymentTags.Export).performScrollTo().assertIsEnabled().performClick()
+        assertEquals(MemberPaymentIntent.ExportReceipt, intents.last())
+        runOnIdle { state.value = state.value.copy(receiptShared = true) }
+        onNodeWithText("Compartilhamento aberto.").performScrollTo().assertIsDisplayed()
+    }
 }

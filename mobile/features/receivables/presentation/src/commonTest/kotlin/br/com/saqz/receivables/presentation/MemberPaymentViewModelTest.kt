@@ -17,7 +17,8 @@ class MemberPaymentViewModelTest {
     @AfterTest fun teardown() { Dispatchers.resetMain() }
     private val clock = object : Clock { override fun now() = Instant.parse("2026-09-13T12:00:00Z") }
     private fun model(f: MemberPaymentFake, saved: SavedStateHandle = SavedStateHandle(), key: () -> String? = { "session" }) =
-        MemberPaymentViewModel("order", f, f, ReceivablesSessionContext(key), saved, ReceivablesRecoveryIdentity { "payer" }, clock)
+        MemberPaymentViewModel("order", f, f, f, f, saved,
+            MemberPaymentRuntime(ReceivablesSessionContext(key), ReceivablesRecoveryIdentity { "payer" }, clock))
     private fun ready(f: MemberPaymentFake, saved: SavedStateHandle = SavedStateHandle()): MemberPaymentViewModel = model(f, saved).also {
         it.onIntent(MemberPaymentIntent.Method(ReceiptMethod.PIX))
         it.onIntent(MemberPaymentIntent.Name("Pessoa Teste"))
@@ -182,8 +183,9 @@ class MemberPaymentViewModelTest {
             var now = clock.now(); var key = "session"
             val f = MemberPaymentFake().apply { detail = detail.copy(instruments = listOf(paymentInstrument().copy(
                 quote = paymentQuote.copy(method = method), expiresAt = "2026-09-13T12:01:00Z"))) }
-            val vm = MemberPaymentViewModel("order", f, f, ReceivablesSessionContext { key }, SavedStateHandle(),
-                ReceivablesRecoveryIdentity { "payer" }, object : Clock { override fun now() = now })
+            val vm = MemberPaymentViewModel("order", f, f, f, f, SavedStateHandle(), MemberPaymentRuntime(
+                ReceivablesSessionContext { key }, ReceivablesRecoveryIdentity { "payer" },
+                object : Clock { override fun now() = now }))
             vm.onIntent(if (method == ReceiptMethod.PIX) MemberPaymentIntent.CopyPix else MemberPaymentIntent.OpenCard)
             when (change) {
                 "refresh" -> vm.onIntent(MemberPaymentIntent.Refresh)
@@ -206,8 +208,9 @@ class MemberPaymentViewModelTest {
         var now = clock.now()
         val f = MemberPaymentFake().apply { detail = detail.copy(instruments = listOf(paymentInstrument().copy(
             expiresAt = "2026-09-13T12:01:00Z"))) }
-        val vm = MemberPaymentViewModel("order", f, f, ReceivablesSessionContext { "session" }, SavedStateHandle(),
-            ReceivablesRecoveryIdentity { "payer" }, object : Clock { override fun now() = now })
+        val vm = MemberPaymentViewModel("order", f, f, f, f, SavedStateHandle(), MemberPaymentRuntime(
+            ReceivablesSessionContext { "session" }, ReceivablesRecoveryIdentity { "payer" },
+            object : Clock { override fun now() = now }))
         val effects = mutableListOf<MemberPaymentEffect>()
         val job = launch(UnconfinedTestDispatcher(testScheduler)) { vm.effects.collect { effects += it } }
         assertTrue(vm.state.value.canUseInstrument)
@@ -217,6 +220,82 @@ class MemberPaymentViewModelTest {
         job.cancel()
     }
 
+    @Test fun expiredPixRenewalPersistsNonSensitiveAttemptBeforeNetworkAndPreservesIdentityAndMoney() = runTest {
+        val saved = SavedStateHandle(); val expired = paymentInstrument().copy(status = "EXPIRED",
+            expiresAt = "2026-09-12T23:59:59Z")
+        val f = MemberPaymentFake().apply { detail = detail.copy(instruments = listOf(expired)) }
+        f.beforeRenewal = {
+            assertEquals("payer", saved.get<String>("renewal.user"))
+            assertEquals("account", saved.get<String>("renewal.account"))
+            assertEquals("group", saved.get<String>("renewal.group"))
+            assertEquals("order", saved.get<String>("renewal.order"))
+            assertEquals("instrument", saved.get<String>("renewal.instrument"))
+            assertNotNull(saved.get<String>("renewal.request"))
+            assertFalse(saved.keys().any { it.contains("name") || it.contains("document") || it.contains("cpf") })
+        }
+        val vm = model(f, saved)
+        vm.onIntent(MemberPaymentIntent.RenewalDueDate("2026-09-20")); vm.onIntent(MemberPaymentIntent.RenewPix)
+        assertEquals(listOf(PixRenewalCommand(f.renewalCommands.single().requestId, "2026-09-20")), f.renewalCommands)
+        assertEquals("instrument", vm.state.value.instrument?.id)
+        assertEquals("payment", vm.state.value.instrument?.paymentId)
+        assertEquals(paymentQuote, vm.state.value.instrument?.quote)
+        assertEquals("new-pix", vm.state.value.instrument?.pixPayload)
+        assertEquals("2026-09-20", vm.state.value.detail?.order?.dueDate)
+        assertNull(saved.get<String>("renewal.request"))
+    }
+
+    @Test fun uncertainPixRenewalRestoresByRequestAndNeverPostsAnotherRenewal() = runTest {
+        val saved = SavedStateHandle(); val expired = paymentInstrument().copy(status = "EXPIRED",
+            expiresAt = "2026-09-12T23:59:59Z")
+        val f = MemberPaymentFake().apply { detail = detail.copy(instruments = listOf(expired)); renewalUncertain = true }
+        val vm = model(f, saved)
+        vm.onIntent(MemberPaymentIntent.RenewalDueDate("2026-09-20")); vm.onIntent(MemberPaymentIntent.RenewPix)
+        val request = saved.get<String>("renewal.request")
+        assertNotNull(request); assertTrue(vm.state.value.renewalPending); assertEquals(1, f.renewalCommands.size)
+        val restored = model(f, SavedStateHandle(saved.keys().associateWith { saved.get<Any?>(it) }))
+        assertEquals(1, f.renewalCommands.size); assertEquals(listOf(request), f.renewalRecoveries)
+        assertTrue(restored.state.value.renewalPending)
+        f.recoveredRenewal = renewalResult
+        restored.onIntent(MemberPaymentIntent.Refresh)
+        assertEquals(1, f.renewalCommands.size); assertEquals("new-pix", restored.state.value.instrument?.pixPayload)
+    }
+
+    @Test fun receiptExportsOnlyObservedFinalRemoteStateAndReportsActualShareCallback() = runTest {
+        val confirmed = paymentInstrument().copy(status = "CONFIRMED")
+        val f = MemberPaymentFake().apply { detail = detail.copy(instruments = listOf(confirmed)); shareResult = ReceiptExportResult.Failed }
+        val vm = model(f)
+        assertTrue(vm.state.value.canExportReceipt)
+        vm.onIntent(MemberPaymentIntent.ExportReceipt)
+        assertTrue(vm.state.value.receiptShareFailed); assertFalse(vm.state.value.receiptShared)
+        val text = requireNotNull(f.sharedText)
+        assertTrue(text.contains("Referência: order")); assertTrue(text.contains("Cobrança: payment"))
+        assertTrue(text.contains("Total: R$\u00a010,61")); assertTrue(text.contains("Status: Pagamento confirmado"))
+        assertFalse(text.contains("payer")); assertFalse(text.contains("cpf", ignoreCase = true))
+        f.shareResult = ReceiptExportResult.Shared; vm.onIntent(MemberPaymentIntent.ExportReceipt)
+        assertTrue(vm.state.value.receiptShared); assertFalse(vm.state.value.receiptShareFailed)
+        f.detail = f.detail.copy(order = paymentOrder.copy(status = "REFUNDED")); vm.onIntent(MemberPaymentIntent.Refresh)
+        vm.onIntent(MemberPaymentIntent.ExportReceipt)
+        assertFalse(vm.state.value.canExportReceipt); assertEquals(2, f.shareCalls)
+    }
+
+    @Test fun restoredInstrumentCreationUsesPersistedRequestInsteadOfRandomRecoveryId() = runTest {
+        val saved = SavedStateHandle(mapOf("payment.user" to "payer", "payment.order" to "order", "payment.request" to "stable"))
+        val f = MemberPaymentFake(); model(f, saved)
+        assertEquals(listOf("stable"), f.reconcileRequests)
+        assertTrue(f.commands.isEmpty())
+    }
+
+    @Test fun verifierQueuedRenewalAfterSessionChangeCannotReachNetwork() = runTest {
+        var key: String? = "session"
+        val f = MemberPaymentFake().apply { detail = detail.copy(instruments = listOf(paymentInstrument().copy(status = "EXPIRED"))) }
+        val vm = model(f, key = { key })
+        vm.onIntent(MemberPaymentIntent.RenewalDueDate("2026-09-20"))
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        vm.onIntent(MemberPaymentIntent.RenewPix)
+        key = null
+        runCurrent()
+        assertTrue(f.renewalCommands.isEmpty(), "old session queued renewal must not reach network")
+    }
     @Test fun hostedLinksAndExpiryFailClosed() {
         assertTrue(hostedPaymentUrl("https://www.asaas.com/i/pay_123"))
         assertTrue(hostedPaymentUrl("https://sandbox.asaas.com/i/pay_123"))
@@ -231,26 +310,36 @@ internal val paymentOrder = MemberPaymentOrder("order", "account", "charge", "gr
     listOf(paymentQuote, paymentQuote.copy(method = ReceiptMethod.CARD)), "a".repeat(64))
 internal fun paymentInstrument() = MemberPaymentInstrument("instrument", "account", "order", paymentQuote, "ACTIVE", "payment", null,
     "pix-copy", null, "https://asaas.com/i/payment", false, false, false, false, null)
-internal class MemberPaymentFake : MemberPaymentsGateway, GroupReceivablesGateway {
+internal class MemberPaymentFake : MemberPaymentsGateway, GroupReceivablesGateway, PixRenewalGateway, ReceiptExportPort {
     var detail = MemberPaymentDetail(paymentOrder, emptyList())
     var document: ReceiptTerms? = ReceiptTerms("v1", "Termos publicados")
     var delayed: CompletableDeferred<SaqzResult<MemberPaymentDetail, ReceiptError>>? = null
     var createDelayed: CompletableDeferred<SaqzResult<MemberPaymentInstrument, ReceiptError>>? = null
     var uncertain = false; var rejected = false; var reconciles = 0
     var reconcileError: ReceiptError? = null
+    val reconcileRequests = mutableListOf<String>()
     var beforeCreate: () -> Unit = {}
     val commands = mutableListOf<MemberPaymentCommand>()
     var page = MemberPaymentPage(listOf(paymentOrder), null)
     var pageError = false
     var delayedPage: CompletableDeferred<SaqzResult<MemberPaymentPage, ReceiptError>>? = null
     val cursors = mutableListOf<String?>()
+    var beforeRenewal: () -> Unit = {}
+    var renewalUncertain = false
+    var recoveredRenewal: PixRenewal? = null
+    val renewalCommands = mutableListOf<PixRenewalCommand>()
+    val renewalRecoveries = mutableListOf<String>()
+    var shareResult: ReceiptExportResult = ReceiptExportResult.Shared
+    var sharedText: String? = null
+    var shareCalls = 0
     override suspend fun orders(after: String?): SaqzResult<MemberPaymentPage, ReceiptError> {
         cursors += after
         return delayedPage?.await() ?: if (pageError) SaqzResult.Failure(ReceiptError.NETWORK) else SaqzResult.Success(page)
     }
     override suspend fun detail(orderId: String) = delayed?.await() ?: SaqzResult.Success(detail)
     override suspend fun reconcile(orderId: String, requestId: String): SaqzResult<MemberPaymentDetail, ReceiptError> {
-        reconciles++; return reconcileError?.let { SaqzResult.Failure(it) } ?: SaqzResult.Success(detail)
+        reconciles++; reconcileRequests += requestId
+        return reconcileError?.let { SaqzResult.Failure(it) } ?: SaqzResult.Success(detail)
     }
     override suspend fun instrument(order: MemberPaymentOrder, command: MemberPaymentCommand): SaqzResult<MemberPaymentInstrument, ReceiptError> {
         beforeCreate(); commands += command
@@ -266,4 +355,20 @@ internal class MemberPaymentFake : MemberPaymentsGateway, GroupReceivablesGatewa
     override suspend fun preview(groupId: String, command: ReceiptCommand) = error("Not used by payer")
     override suspend fun activate(groupId: String, command: ReceiptCommand) = error("Not used by payer")
     override suspend fun deactivate(groupId: String, command: ReceiptCommand) = error("Not used by payer")
+    override suspend fun renew(order: MemberPaymentOrder, instrument: MemberPaymentInstrument, command: PixRenewalCommand):
+        SaqzResult<PixRenewal, ReceiptError> {
+        beforeRenewal(); renewalCommands += command
+        return if (renewalUncertain) SaqzResult.Failure(ReceiptError.UNCERTAIN) else SaqzResult.Success(renewalResult)
+    }
+    override suspend fun recover(order: MemberPaymentOrder, instrument: MemberPaymentInstrument, requestId: String):
+        SaqzResult<PixRenewal?, ReceiptError> {
+        renewalRecoveries += requestId
+        return SaqzResult.Success(recoveredRenewal)
+    }
+    override fun export(text: String, done: (ReceiptExportResult) -> Unit) {
+        shareCalls++; sharedText = text; done(shareResult)
+    }
 }
+
+private val renewalResult = PixRenewal("order", "instrument", "payment", ReceiptMethod.PIX, "ACTIVE", 1000, 61, 1061,
+    "2026-09-20", "new-pix", "new-image", "2026-09-20T23:59:59Z")

@@ -92,7 +92,14 @@ class MemberPaymentScreenshotTest {
             capture("status-${status.lowercase()}")
         }
         compose.runOnIdle { state.value = active.copy(pixExpired = true) }
-        compose.onNodeWithTag(MemberPaymentTags.Copy).assertDoesNotExist(); capture("prazo-pix-vencido")
+        compose.onNodeWithTag(MemberPaymentTags.Copy).assertDoesNotExist()
+        compose.runOnIdle { state.value = state.value.copy(renewalDueDate = "2026-09-21") }
+        compose.onNodeWithTag(MemberPaymentTags.Renew).performScrollTo().assertIsEnabled(); capture("prazo-pix-vencido-renovacao")
+        compose.runOnIdle { state.value = active.copy(detail = MemberPaymentDetail(order,
+            listOf(instrument.copy(status = "CONFIRMED"))), receiptShared = true) }
+        compose.onNodeWithTag(MemberPaymentTags.Export).performScrollTo().assertIsEnabled(); capture("comprovante-compartilhado")
+        compose.runOnIdle { state.value = state.value.copy(receiptShared = false, receiptShareFailed = true) }
+        capture("comprovante-falha")
         compose.runOnIdle { state.value = active.copy(detail = MemberPaymentDetail(order.copy(status = "REFUNDED"),
             listOf(instrument.copy(status = "AVAILABLE")))) }
         compose.onNodeWithTag(MemberPaymentTags.Status).performScrollTo().assertTextEquals("Pagamento reembolsado")

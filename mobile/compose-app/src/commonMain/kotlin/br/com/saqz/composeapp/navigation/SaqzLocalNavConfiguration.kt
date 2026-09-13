@@ -9,6 +9,10 @@ import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.navigation.FinanceRoute
 import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
+import br.com.saqz.receivables.presentation.ReceiptFinanceHomeRoute
+import br.com.saqz.receivables.presentation.ReceiptWalletRoute
+import br.com.saqz.receivables.presentation.FinancialManagementRoute
+import br.com.saqz.receivables.presentation.RecurrenceRoute
 import br.com.saqz.receivables.presentation.FinancialOnboardingRoute
 import br.com.saqz.receivables.presentation.ChargeApprovalRoute
 import br.com.saqz.receivables.presentation.MemberPaymentRoute
@@ -31,6 +35,10 @@ import kotlinx.serialization.modules.polymorphic
 val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration {
     serializersModule = SerializersModule {
         polymorphic(NavKey::class) {
+            subclass(ReceiptFinanceHomeRoute::class, ReceiptFinanceHomeRoute.serializer())
+            subclass(ReceiptWalletRoute::class, ReceiptWalletRoute.serializer())
+            subclass(FinancialManagementRoute::class, FinancialManagementRoute.serializer())
+            subclass(RecurrenceRoute::class, RecurrenceRoute.serializer())
             subclass(MemberPaymentHistoryRoute::class, MemberPaymentHistoryRoute.serializer())
             subclass(MemberPaymentRoute::class, MemberPaymentRoute.serializer())
             subclass(ChargeApprovalRoute::class, ChargeApprovalRoute.serializer())

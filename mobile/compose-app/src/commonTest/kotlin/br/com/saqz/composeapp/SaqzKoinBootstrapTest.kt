@@ -50,6 +50,19 @@ class SaqzKoinBootstrapTest {
             assertNotNull(koin.get<ProfilePhotoSelectionPort>())
             kotlin.test.assertSame(dependencies.financialDocuments, koin.get<br.com.saqz.receivables.domain.port.ReceiptDocumentPicker>())
             assertNotNull(koin.get<OwnProfileViewModel>())
+            assertNotNull(koin.get<br.com.saqz.receivables.presentation.ReceiptFinanceHomeViewModel>())
+            assertNotNull(koin.get<br.com.saqz.receivables.presentation.ReceiptWalletViewModel> {
+                org.koin.core.parameter.parametersOf(androidx.lifecycle.SavedStateHandle())
+            })
+            assertNotNull(koin.get<br.com.saqz.receivables.presentation.FinancialManagementViewModel> {
+                org.koin.core.parameter.parametersOf(androidx.lifecycle.SavedStateHandle())
+            })
+            assertNotNull(koin.get<br.com.saqz.receivables.presentation.MemberPaymentViewModel> {
+                org.koin.core.parameter.parametersOf("order", androidx.lifecycle.SavedStateHandle())
+            })
+            assertNotNull(koin.get<br.com.saqz.receivables.presentation.RecurrenceViewModel> {
+                org.koin.core.parameter.parametersOf("account", "group", androidx.lifecycle.SavedStateHandle())
+            })
         } finally {
             stopSaqzKoin()
         }

@@ -16,7 +16,11 @@ class MemberPaymentNavigationTest {
     @Test fun memberPaymentRoutesRestoreIdsAndLogoutRemovesTheWholeJourney() {
         val stack = NavBackStack<NavKey>(SaqzShellDestination(initialTab = br.com.saqz.composeapp.shell.SaqzShellProfileTab), FinanceRoute.OwnMonthlyPayments,
             br.com.saqz.receivables.presentation.FinancialOnboardingRoute, MemberPaymentHistoryRoute, MemberPaymentRoute("order"),
-            br.com.saqz.receivables.presentation.ChargeApprovalRoute("group", "charge"))
+            br.com.saqz.receivables.presentation.ChargeApprovalRoute("group", "charge"),
+            br.com.saqz.receivables.presentation.ReceiptFinanceHomeRoute,
+            br.com.saqz.receivables.presentation.ReceiptWalletRoute,
+            br.com.saqz.receivables.presentation.FinancialManagementRoute,
+            br.com.saqz.receivables.presentation.RecurrenceRoute("account", "group"))
         val encoded = encodeToSavedState(saqzAccessBackStackSerializer, stack, saqzLocalNavConfiguration)
         val restored = decodeFromSavedState(saqzAccessBackStackSerializer, encoded, saqzLocalNavConfiguration)
         assertEquals(stack.toList(), restored.toList())
