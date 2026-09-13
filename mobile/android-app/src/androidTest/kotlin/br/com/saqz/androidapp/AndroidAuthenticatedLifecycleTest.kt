@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -171,21 +173,27 @@ class AndroidAuthenticatedLifecycleTest {
 
     @Test
     fun registrationSubmitRemainsSingleFlightAcrossRecreation() {
-        compose.onNodeWithText("Criar conta").performClick()
-        compose.onAllNodes(hasSetTextAction(), useUnmergedTree = true)[0]
+        compose.onNodeWithTag("login-create-account").performScrollTo().performClick()
+        compose.onNodeWithTag("register-name").performScrollTo()
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("register-name")), useUnmergedTree = true)
             .performTextInput("Athlete")
-        compose.onAllNodes(hasSetTextAction(), useUnmergedTree = true)[1]
+        compose.onNodeWithTag("register-email").performScrollTo()
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("register-email")), useUnmergedTree = true)
             .performTextInput("athlete@example.test")
-        compose.onAllNodes(hasSetTextAction(), useUnmergedTree = true)[2]
+        compose.onNodeWithTag("register-phone").performScrollTo()
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("register-phone")), useUnmergedTree = true)
+            .performTextInput("11999999999")
+        compose.onNodeWithTag("register-password").performScrollTo()
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("register-password")), useUnmergedTree = true)
             .performTextInput("password")
-        compose.onNodeWithTag("registration-submit").performClick()
+        compose.onNodeWithTag("register-submit").performScrollTo().performClick()
         assertEquals(1, state.auth.registrationCalls)
 
         compose.activityRule.scenario.recreate()
         compose.waitForIdle()
 
         assertEquals(1, state.auth.registrationCalls)
-        compose.onNodeWithTag("registration-submit").assertIsDisplayed()
+        compose.onNodeWithTag("register-submit").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -195,14 +203,24 @@ class AndroidAuthenticatedLifecycleTest {
                 NativeUser("subject-1", "athlete@example.test", false, "Athlete"),
             ),
         )
-        compose.waitForIdle()
-        compose.onNodeWithTag("identity-verify").assertIsDisplayed()
+        // VUL-84 retirou o bloqueio por e-mail: esta identidade deve alcançar o bootstrap.
+        // A porta desta fixture recusa o token, então o resultado esperado é BootstrapError,
+        // sem voltar ao login e sem reinstalar a antiga tela identity-verify.
+        val session = org.koin.mp.KoinPlatformTools.defaultContext().get()
+            .get<br.com.saqz.access.presentation.SessionAccessStateMachine>()
+        compose.waitUntil(5_000) {
+            session.state.value == br.com.saqz.access.presentation.SessionAccessState.BootstrapError
+        }
+        compose.onNodeWithText("Nao foi possivel carregar sua conta").assertIsDisplayed()
         compose.onNodeWithTag("login-submit").assertDoesNotExist()
 
         compose.activityRule.scenario.recreate()
         compose.waitForIdle()
 
-        compose.onNodeWithTag("identity-verify").assertIsDisplayed()
+        assertEquals(br.com.saqz.access.presentation.SessionAccessState.BootstrapError, session.state.value)
+        compose.onNodeWithText("Nao foi possivel carregar sua conta").assertIsDisplayed()
+        assertEquals(1, state.compositions)
+        assertEquals(1, state.auth.observeCalls)
         compose.onNodeWithTag("login-submit").assertDoesNotExist()
     }
 
