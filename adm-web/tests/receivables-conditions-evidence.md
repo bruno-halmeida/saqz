@@ -22,3 +22,12 @@ Inspecionadas capturas reais em desktop (1440×1100) e tablet (800×1000). Ajust
 ## Limites do gate
 
 Mocks não homologam persistência/JDBC, autorização, Firebase ou provedor real. Valores financeiros de entrada são strings decimais exatas (BigDecimal no controller); nenhuma operação financeira usa ponto flutuante e não existe gross-up local. Respostas JSON numéricas acima do inteiro seguro do JavaScript são recusadas, sem mostrar valor arredondado; para exibir tais montantes seria necessário transporte decimal textual pelo backend ou parser JSON lossless. Vigência e vínculo dos termos continuam validados pelo servidor; a tela não inventa uma consulta administrativa inexistente. Sem defaults comerciais, deploy, staging, branch, commit ou push.
+
+## Gate final do coordenador
+
+Após revisão independente aprovada, rótulos ajustados para Pix/Cartão, Simular tarifas e
+Taxas de serviço e pagamento. 45 testes Node passaram novamente. Chromium visível reexecutado
+com o mesmo mock e asserts de jornada, sem erros JavaScript, usando
+`/tmp/playwright-test-payment-adm-final.js`; imagens finais copiadas para
+`docs/receivables/evidence/payments/adm-*.png`. Revisão independente e probe HTTP real
+registrados em `docs/receivables/evidence/payments/adm-review.md`.
