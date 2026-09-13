@@ -8,13 +8,15 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.Timestamp
 import java.time.Clock
+import java.time.LocalDate
 import java.util.UUID
 import javax.sql.DataSource
 
 /** Durable provider execution adapter. Network calls are never made with a group/account transaction open. */
 class JdbcPaymentExecution(dataSource: DataSource, private val store: JdbcPaymentStore,
     private val charges: GroupChargePayments, private val operations: JdbcFinancialOperationStore,
-    private val provider: OneOffPaymentProvider, private val secrets: FinancialSecrets, private val clock: Clock) : PaymentExecution {
+    private val provider: OneOffPaymentProvider, private val secrets: FinancialSecrets, private val clock: Clock,
+    private val residualCosts: ReconcileExternalResidualCost) : PaymentExecution {
     private val jdbc = JdbcClient.create(dataSource)
     private val mapper = jacksonObjectMapper()
     override fun create(instrumentId: UUID) {
@@ -58,8 +60,8 @@ class JdbcPaymentExecution(dataSource: DataSource, private val store: JdbcPaymen
             if (!cancel && !claim.recoveryOnly) { rejectCreation(context.instrument.id, claim); return }
             null
         } catch (_: Exception) { null }
-        store.transaction {
-            val i = lock(context.instrument.id) ?: return@transaction
+        val applied = store.transaction {
+            val i = lock(context.instrument.id) ?: return@transaction false
             // Fence stale workers before applying their result. A query/webhook can still recover it later.
             val succeeded = observed != null && (!cancel || observed.status !in setOf("ACTIVE", "UNKNOWN", "DISPUTED", "RECOVERY_PENDING"))
             val finished = jdbc.sql("""UPDATE receivable_operations SET status=:status,provider_reference=:ref,updated_at=:at,
@@ -67,9 +69,10 @@ class JdbcPaymentExecution(dataSource: DataSource, private val store: JdbcPaymen
                 .param("status", if (succeeded) "SUCCEEDED" else "UNKNOWN").param("ref", observed?.paymentId)
                 .param("at", Timestamp.from(clock.instant())).param("retry", Timestamp.from(clock.instant().plusSeconds(60)))
                 .param("id", claim.operation.id).param("token", claim.token).update()
-            if (finished != 1) return@transaction
-            if (observed != null) apply(i, observed) else unknown(i.id)
+            if (finished != 1) return@transaction false
+            if (observed != null) apply(i, observed) else { unknown(i.id); false }
         }
+        if (applied && observed != null) reconcileResidualCosts(context.instrument, observed)
     }
     override fun reconcile(instrumentId: UUID): Boolean {
         var context = context(instrumentId) ?: return false
@@ -89,6 +92,7 @@ class JdbcPaymentExecution(dataSource: DataSource, private val store: JdbcPaymen
         val observed = try { provider.recover(context) } catch (_: Exception) { null } ?: return false
         val applied = store.transaction { lock(instrumentId)?.let { apply(it, observed) } ?: false }
         if (!applied) return false
+        reconcileResidualCosts(context.instrument, observed)
         val order = store.order(context.instrument.orderId) ?: return false
         if (order.status == "CANCEL_PENDING") {
             val actor = jdbc.sql("SELECT approved_by FROM receivable_orders WHERE id=:id").param("id", order.id)
@@ -96,6 +100,105 @@ class JdbcPaymentExecution(dataSource: DataSource, private val store: JdbcPaymen
             cancel(instrumentId, FinancialRequest(UUID.nameUUIDFromBytes("cancel-reconcile:$instrumentId".toByteArray()), actor))
         }
         return true
+    }
+    /** Administrative recovery probe: provider reads and correlated fact application only. */
+    fun reconcileObserved(instrumentId: UUID): Boolean {
+        val context = context(instrumentId) ?: return false
+        val observed = try { provider.recover(context) } catch (_: Exception) { null } ?: return false
+        val applied = store.transaction {
+            val instrument = lock(instrumentId) ?: return@transaction false
+            if (!apply(instrument, observed)) return@transaction false
+            completeObservedOperations(instrument, observed)
+            true
+        }
+        if (applied) reconcileResidualCosts(context.instrument, observed)
+        return applied
+    }
+    private fun completeObservedOperations(instrument: PaymentInstrument, observed: ProviderPaymentObservation) {
+        val exists = observed.paymentId != null || observed.checkoutId != null
+        if (!exists || observed.status in setOf("UNKNOWN", "CREATING")) return
+        completeObservedOperation(instrument, "CREATE_INSTRUMENT", "SUCCEEDED", observed.paymentId)
+        when (observed.status) {
+            "CANCELLED", "EXPIRED" -> completeObservedOperation(instrument, "CANCEL_INSTRUMENT", "SUCCEEDED", observed.paymentId)
+            "CONFIRMED", "SETTLED", "AVAILABLE", "REFUNDED", "CHARGEBACK" ->
+                completeObservedOperation(instrument, "CANCEL_INSTRUMENT", "REJECTED", observed.paymentId)
+        }
+    }
+    private fun completeObservedOperation(instrument: PaymentInstrument, kind: String, status: String, reference: String?) {
+        // Preserve a live execution lease. Only a proved existing resource can resolve uncertain work.
+        jdbc.sql("""UPDATE receivable_operations SET status=:status, provider_reference=coalesce(:reference,provider_reference),
+            updated_at=:at,lease_token=NULL,lease_until=NULL,failure_code=NULL
+            WHERE account_id=:account AND resource_id=:resource AND kind=:kind
+            AND (status='UNKNOWN' OR (status='RUNNING' AND lease_until<=:at))""")
+            .param("status", status).param("reference", reference, java.sql.Types.VARCHAR)
+            .param("at", Timestamp.from(clock.instant())).param("account", instrument.accountId)
+            .param("resource", instrument.id).param("kind", kind).update()
+    }
+    private fun reconcileResidualCosts(instrument: PaymentInstrument, observed: ProviderPaymentObservation) {
+        if (observed.status !in setOf("REFUNDED", "CHARGEBACK")) return
+        observed.residualCosts.forEach { cost ->
+            residualCosts.execute(ObservedResidualCost(instrument.accountId, instrument.id,
+                cost.providerReference, cost.amountCents), clock.instant())
+        }
+    }
+    override fun renewPix(instrumentId: UUID, dueDate: LocalDate, request: FinancialRequest) {
+        val renewalId = jdbc.sql("""SELECT id FROM receivable_pix_renewals WHERE instrument_id=:instrument
+            AND request_id=:request AND actor_user_id=:actor AND due_date=:due""").param("instrument", instrumentId)
+            .param("request", request.requestId).param("actor", request.actorUserId).param("due", dueDate)
+            .query(UUID::class.java).optional().orElse(null) ?: return
+        executePixRenewal(renewalId)
+    }
+    fun recoverPixRenewals() {
+        jdbc.sql("""SELECT id FROM receivable_pix_renewals WHERE status IN ('READY','UNKNOWN') AND next_attempt_at<=:at
+            ORDER BY next_attempt_at,id LIMIT 100""").param("at", Timestamp.from(clock.instant())).query(UUID::class.java).list()
+            .filterNotNull().forEach(::executePixRenewal)
+    }
+    private fun executePixRenewal(renewalId: UUID) {
+        data class Renewal(val instrumentId: UUID, val dueDate: LocalDate, val token: UUID, val recoveryOnly: Boolean)
+        val renewal = store.transaction {
+            val row = jdbc.sql("""SELECT instrument_id,due_date,status FROM receivable_pix_renewals WHERE id=:id AND
+                ((status IN ('READY','UNKNOWN') AND next_attempt_at<=:at) OR (status='RUNNING' AND lease_until<=:at))
+                FOR UPDATE SKIP LOCKED""").param("id", renewalId).param("at", Timestamp.from(clock.instant()))
+                .query { r, _ -> Triple(r.getObject("instrument_id", UUID::class.java), r.getObject("due_date", LocalDate::class.java), r.getString("status")) }
+                .optional().orElse(null) ?: return@transaction null
+            val token = UUID.randomUUID()
+            jdbc.sql("""UPDATE receivable_pix_renewals SET status='RUNNING',attempts=attempts+1,lease_token=:token,
+                lease_until=:lease,updated_at=:at WHERE id=:id""").param("token", token)
+                .param("lease", Timestamp.from(clock.instant().plusSeconds(90))).param("at", Timestamp.from(clock.instant()))
+                .param("id", renewalId).update()
+            Renewal(row.first, row.second, token, row.third != "READY")
+        } ?: return
+        val context = context(renewal.instrumentId)
+        val observed = if (context == null) null else try {
+            if (!renewal.recoveryOnly) provider.renewPix(context, renewal.dueDate)
+            else {
+                val current = provider.recover(context)
+                when {
+                    current == null -> null
+                    current.dueDate == renewal.dueDate -> current
+                    current.status == "ACTIVE" -> provider.renewPix(context, renewal.dueDate)
+                    else -> null
+                }
+            }
+        } catch (_: Exception) { null }
+        store.transaction {
+            val instrument = context?.let { lock(renewal.instrumentId) }
+            val valid = observed != null && instrument != null && observed.dueDate == renewal.dueDate && observed.status == "ACTIVE"
+            val changed = jdbc.sql("""UPDATE receivable_pix_renewals SET status=:status,next_attempt_at=:next,
+                lease_token=NULL,lease_until=NULL,updated_at=:at WHERE id=:id AND status='RUNNING' AND lease_token=:token""")
+                .param("status", if (valid) "SUCCEEDED" else "UNKNOWN")
+                .param("next", Timestamp.from(clock.instant().plusSeconds(60))).param("at", Timestamp.from(clock.instant()))
+                .param("id", renewalId).param("token", renewal.token).update()
+            if (changed == 1 && valid) {
+                apply(instrument!!, observed!!)
+                jdbc.sql("UPDATE receivable_instruments SET status='ACTIVE' WHERE id=:id AND status='EXPIRED'")
+                    .param("id", instrument.id).update()
+                val order = store.order(instrument.orderId)!!
+                jdbc.sql("UPDATE receivable_orders SET due_date=:due WHERE id=:id").param("due", renewal.dueDate).param("id", order.id).update()
+                jdbc.sql("UPDATE group_charges SET due_date=:due,updated_at=:at WHERE id=:id AND status='PENDING'")
+                    .param("due", renewal.dueDate).param("at", Timestamp.from(clock.instant())).param("id", order.chargeId).update()
+            }
+        }
     }
     private fun context(id: UUID): ProviderPaymentContext? {
         val i = store.instrument(id) ?: return null; val order = store.order(i.orderId) ?: return null

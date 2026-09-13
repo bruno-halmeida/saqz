@@ -5,12 +5,14 @@ import java.time.LocalDate
 import java.util.UUID
 
 data class ProviderPaymentContext(val instrument: PaymentInstrument, val payerId: UUID, val dueDate: LocalDate)
+data class ProviderResidualCost(val providerReference: String, val amountCents: Long)
 data class ProviderPaymentObservation(val paymentId: String? = null, val checkoutId: String? = null,
     val reference: String?, val method: PaymentMethod, val totalCents: Long, val status: String,
     val providerFeeCents: Long? = null, val splitCents: Long? = null, val splitId: String? = null,
     val splitSettled: Boolean = false, val available: Boolean = false,
     val pixPayload: String? = null, val pixImage: String? = null, val checkoutUrl: String? = null,
-    val expiresAt: java.time.Instant? = null, val returnedCommissionCents: Long? = null)
+    val expiresAt: java.time.Instant? = null, val returnedCommissionCents: Long? = null,
+    val dueDate: LocalDate? = null, val residualCosts: List<ProviderResidualCost> = emptyList())
 
 interface OneOffPaymentProvider {
     /** Customer creation has a separate durable recovery fence, before payment execution is claimed. */
@@ -18,6 +20,8 @@ interface OneOffPaymentProvider {
     fun create(context: ProviderPaymentContext): ProviderPaymentObservation?
     fun recover(context: ProviderPaymentContext): ProviderPaymentObservation?
     fun cancel(context: ProviderPaymentContext): ProviderPaymentObservation?
+    fun renewPix(context: ProviderPaymentContext, dueDate: LocalDate): ProviderPaymentObservation? =
+        throw UnsupportedOperationException("Pix renewal is not configured")
 }
 
 data class PaymentCustomer(val reference: UUID, val providerId: String?, val canCreate: Boolean, val payer: PaymentPayer)

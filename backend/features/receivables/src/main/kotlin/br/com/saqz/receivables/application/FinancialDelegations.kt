@@ -25,6 +25,13 @@ class ManageFinancialDelegations(
         }, request.requestId,
     )
 
+    fun candidates(accountId: UUID, request: FinancialRequest):
+        FinancialResult<List<br.com.saqz.sharedkernel.group.GroupAdministrator>> {
+        val account = accounts.findById(accountId) ?: return denied(request)
+        if (account.ownerUserId != request.actorUserId) return denied(request)
+        return FinancialResult.Success(groups.administrators(account.ownerUserId), request.requestId)
+    }
+
     fun list(accountId: UUID, request: FinancialRequest): FinancialResult<List<FinancialDelegation>> {
         val account = accounts.findById(accountId) ?: return denied(request)
         if (account.ownerUserId != request.actorUserId) {

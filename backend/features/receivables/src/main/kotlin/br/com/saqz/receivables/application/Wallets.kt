@@ -37,6 +37,7 @@ data class BankDestinationDetails(
     val account: String,
     val accountDigit: String,
 ) {
+    override fun toString() = "BankDestinationDetails(redacted)"
     fun isValid(): Boolean = bankCode.matches(Regex("[0-9]{3}")) && ownerName.trim().length in 2..120 &&
         cpfCnpj.filter(Char::isDigit).matches(Regex("[0-9]{11}|[0-9]{14}")) &&
         agency.matches(Regex("[0-9A-Za-z-]{1,12}")) && account.matches(Regex("[0-9A-Za-z-]{1,20}")) &&
@@ -152,6 +153,7 @@ class ManageWallet(
         if (!explicitlyAuthorized || amountCents <= 0) return@safely invalid(request)
         val credentials = onboarding.credentials(account.id) ?: return@safely unavailable(request)
         val available = provider.balance(credentials.apiKey).first
+        if (authorized(accountId, request.actorUserId) == null) return@safely hidden(request)
         val withdrawal = store.prepareWithdrawal(accountId, request, destinationId, amountCents, available, now)
         execute(credentials.apiKey, withdrawal, now, request)
     }
@@ -185,6 +187,12 @@ class ManageWallet(
                     FinancialResult.Failure(FinancialError.RESULT_PENDING, request.requestId)
                 else FinancialResult.Success(it, request.requestId)
             } ?: hidden(request)
+        if (authorized(withdrawal.accountId, request.actorUserId) == null) {
+            val result = if (claim.recoveryOnly) ProviderWithdrawalResult.Unknown
+                else ProviderWithdrawalResult.Rejected("AUTHORIZATION_REVOKED")
+            store.finishWithdrawal(claim, result, now)
+            return hidden(request)
+        }
         val result = try {
             if (claim.recoveryOnly) provider.recoverWithdrawal(apiKey, claim.withdrawal.operationId)
             else provider.withdraw(apiKey, claim.withdrawal.operationId, claim.withdrawal.amountCents,

@@ -33,8 +33,9 @@ class OneOffPaymentsConfiguration {
     @Bean fun paymentWebhookSetupController(actors: SubscriptionActorResolver, registration: JdbcPaymentWebhookRegistration) =
         PaymentWebhookSetupController(FinancialActorResolver { actors.resolve(it) }, registration)
     @Bean fun paymentExecution(dataSource: DataSource, store: JdbcPaymentStore, charges: GroupChargePayments,
-        operations: JdbcFinancialOperationStore, provider: OneOffPaymentProvider, secrets: FinancialSecrets, clock: Clock) =
-        JdbcPaymentExecution(dataSource, store, charges, operations, provider, secrets, clock)
+        operations: JdbcFinancialOperationStore, provider: OneOffPaymentProvider, secrets: FinancialSecrets, clock: Clock,
+        reconciler: ReconcileExternalResidualCost) =
+        JdbcPaymentExecution(dataSource, store, charges, operations, provider, secrets, clock, reconciler)
     @Bean fun oneOffPayments(store: JdbcPaymentStore, charges: GroupChargePayments, accounts: FinancialAccountRepository,
         groups: GroupReceivablesStore, admins: GroupAdministrationDirectory, conditions: FinancialConditions,
         eligibility: ReceivablesEligibility, rollout: ReceivablesRollout, execution: JdbcPaymentExecution, clock: Clock) =

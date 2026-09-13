@@ -45,6 +45,14 @@ class IdentitySecurityConfiguration {
         ANONYMOUS_PATHS,
         OPTIONAL_AUTHENTICATION_PATHS,
         EXACT_ANONYMOUS_PATHS,
+        additionalAnonymousRequest = { request ->
+            request.method == "GET" && (
+                request.requestURI == "/public/receivables/checkout-return" ||
+                    request.requestURI.startsWith("/public/receivables/terms/") &&
+                    request.requestURI.removePrefix("/public/receivables/terms/")
+                        .let { it.isNotBlank() && '/' !in it }
+                )
+        },
     ) { request, response, status, code ->
         problemWriter.write(request, response, status, code)
     }
@@ -79,6 +87,12 @@ class IdentitySecurityConfiguration {
         @Value("\${saqz.adminweb.origins:}") origins: String,
     ): CorsConfigurationSource {
         val source = UrlBasedCorsConfigurationSource()
+        source.registerCorsConfiguration("/public/receivables/**", CorsConfiguration().apply {
+            allowedOrigins = listOf("*")
+            allowedMethods = listOf("GET", "OPTIONS")
+            allowedHeaders = listOf("Accept")
+            allowCredentials = false
+        })
         val allowed = origins.split(',').map(String::trim).filter(String::isNotEmpty)
         if (allowed.isNotEmpty()) {
             val configuration = CorsConfiguration().apply {
@@ -119,7 +133,11 @@ class IdentitySecurityConfiguration {
         .csrf { it.disable() }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authorizeHttpRequests {
-            it.requestMatchers("/actuator/health").permitAll()
+            it.requestMatchers(
+                org.springframework.http.HttpMethod.GET,
+                "/public/receivables/terms/*", "/public/receivables/checkout-return",
+            ).permitAll()
+                .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/api/password-reset/**").permitAll()
                 .requestMatchers("/api/invites/preview").permitAll()
                 .requestMatchers("/subscriptions/checkout-login").permitAll()

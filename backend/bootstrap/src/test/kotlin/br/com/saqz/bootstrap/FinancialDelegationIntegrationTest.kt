@@ -190,6 +190,22 @@ class FinancialDelegationIntegrationTest {
         assertFalse(mvc.perform(get("/api/receivables/accounts")).andReturn().response.contentAsString.contains(f.account.toString()))
     }
 
+    @Test
+    fun `only owner discovers currently eligible administrators by display name`() = fixture { f ->
+        val result = assertIs<FinancialResult.Success<*>>(f.service.candidates(f.account,
+            FinancialRequest(UUID.randomUUID(), f.owner)))
+        val candidates = result.value as List<*>
+        val candidate = candidates.single() as br.com.saqz.sharedkernel.group.GroupAdministrator
+        assertEquals(f.admin, candidate.userId)
+        assertEquals("Test User", candidate.displayName)
+        assertEquals(listOf("Test group"), candidate.groupNames)
+        f.grant()
+        assertIs<FinancialResult.Failure>(f.service.candidates(f.account, FinancialRequest(UUID.randomUUID(), f.admin)))
+        f.execute("UPDATE group_memberships SET role='ATHLETE' WHERE user_id='${f.admin}'")
+        assertEquals(emptyList(), (f.service.candidates(f.account,
+            FinancialRequest(UUID.randomUUID(), f.owner)) as FinancialResult.Success).value)
+    }
+
     private inner class Fixture(val dataSource: javax.sql.DataSource) {
         val owner = UUID.randomUUID()
         val admin = UUID.randomUUID()

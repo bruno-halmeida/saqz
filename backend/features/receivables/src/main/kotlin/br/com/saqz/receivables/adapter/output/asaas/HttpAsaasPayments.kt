@@ -98,6 +98,18 @@ class HttpAsaasPayments(private val baseUrl: URI, private val walletId: String,
         if (!response.path("deleted").asBoolean(false) || response.path("id").asText() != id) return null
         return observed.copy(status = "CANCELLED")
     }
+    override fun renewPix(context: ProviderPaymentContext, dueDate: java.time.LocalDate): ProviderPaymentObservation? {
+        val instrument = context.instrument
+        require(instrument.quote.method == PaymentMethod.PIX)
+        val id = safeId(requireNotNull(instrument.paymentId))
+        val node = send(credentials.apiKey(instrument.accountId), "PUT", "/payments/$id", mapOf(
+            "billingType" to "PIX", "value" to BigDecimal.valueOf(instrument.quote.totalCents, 2),
+            "dueDate" to dueDate.toString(), "description" to "Pagamento Saqz",
+            "externalReference" to instrument.id.toString(), "interest" to mapOf("value" to 0),
+            "fine" to mapOf("value" to 0), "split" to if (instrument.quote.commissionCents == 0L) emptyList<Any>()
+                else listOf(mapOf("walletId" to walletId, "fixedValue" to instrument.quote.fixedSplitValue()))))
+        return observation(context, node).also { require(it.dueDate == dueDate) }
+    }
     private fun observation(context: ProviderPaymentContext, node: JsonNode, includeVisuals: Boolean = true): ProviderPaymentObservation {
         val instrument = context.instrument
         val reference = node.path("externalReference").asText()
@@ -107,7 +119,8 @@ class HttpAsaasPayments(private val baseUrl: URI, private val walletId: String,
         }
         val id = identifier(node, "id")
         val total = cents(node, "value")
-        val status = if (node.path("deleted").asBoolean(false)) "CANCELLED" else when (node.path("status").asText()) {
+        val providerStatus = node.path("status").asText()
+        var status = if (node.path("deleted").asBoolean(false)) "CANCELLED" else when (providerStatus) {
             "PENDING", "OVERDUE" -> "ACTIVE"
             "AWAITING_RISK_ANALYSIS" -> "UNKNOWN"
             "CONFIRMED" -> "CONFIRMED"
@@ -116,6 +129,15 @@ class HttpAsaasPayments(private val baseUrl: URI, private val walletId: String,
             "CHARGEBACK_REQUESTED", "CHARGEBACK_DISPUTE" -> "DISPUTED"
             "AWAITING_CHARGEBACK_REVERSAL" -> "RECOVERY_PENDING"
             else -> error("Unsupported payment status")
+        }
+        val statement = if (providerStatus in setOf("REFUNDED", "CHARGEBACK_REQUESTED", "CHARGEBACK_DISPUTE", "AWAITING_CHARGEBACK_REVERSAL"))
+            try { financialTransactions(credentials.apiKey(instrument.accountId), id) } catch (_: Exception) { emptyList() }
+        else emptyList()
+        if (status in setOf("DISPUTED", "RECOVERY_PENDING") && statement.any { it.path("type").asText() == "CHARGEBACK" && debitCents(it) != null })
+            status = "CHARGEBACK"
+        val residualCosts = statement.mapNotNull { transaction ->
+            if (transaction.path("type").asText() != "REFUND_REQUEST_FEE") return@mapNotNull null
+            debitCents(transaction)?.let { ProviderResidualCost(identifier(transaction, "id"), it) }
         }
         val splits = node.path("split").filter { it.path("walletId").asText() == walletId }
         require(splits.size <= 1)
@@ -129,7 +151,8 @@ class HttpAsaasPayments(private val baseUrl: URI, private val walletId: String,
                 val returned = node.path("refunds").filter { it.path("status").asText() == "DONE" }
                     .flatMap { it.path("refundedSplits").toList() }.filter { it.path("id").asText() == splitId && it.path("done").asBoolean() }
                 if (returned.isEmpty()) null else returned.sumOf { cents(it, "value") }
-            })
+            }, dueDate = node.get("dueDate")?.takeIf { it.isTextual }?.asText()?.let(java.time.LocalDate::parse),
+            residualCosts = residualCosts)
         return if (includeVisuals) enrichVisuals(context, node, facts) else facts
     }
     /** Display artifacts are optional; a QR outage must not discard authenticated payment facts. */
@@ -157,10 +180,24 @@ class HttpAsaasPayments(private val baseUrl: URI, private val walletId: String,
         require(node.path("data").size() <= 1)
         return node.path("data").firstOrNull()
     }
+    private fun financialTransactions(key: String, paymentId: String): List<JsonNode> {
+        val matches = mutableListOf<JsonNode>()
+        var offset = 0
+        repeat(100) {
+            val page = send(key, "GET", "/financialTransactions?limit=100&offset=$offset&order=desc")
+            require(page.path("data").isArray)
+            page.path("data").filterTo(matches) { it.path("paymentId").asText() == paymentId }
+            if (!page.path("hasMore").asBoolean(false)) return matches.distinctBy { identifier(it, "id") }
+            offset += 100
+        }
+        error("Financial transaction pagination exceeded")
+    }
     private fun cents(node: JsonNode, key: String): Long {
         require(node.path(key).isNumber)
         return node.path(key).decimalValue().movePointRight(2).longValueExact()
     }
+    private fun debitCents(node: JsonNode): Long? = try { cents(node, "value").takeIf { it < 0 }?.let(Math::negateExact) }
+        catch (_: Exception) { null }
     private fun identifier(node: JsonNode, key: String) = safeId(required(node, key))
     private fun safeId(id: String): String { require(id.matches(Regex("[A-Za-z0-9_-]{1,128}"))); return id }
     private fun required(node: JsonNode, key: String): String = node.path(key).takeIf { it.isTextual }?.asText()

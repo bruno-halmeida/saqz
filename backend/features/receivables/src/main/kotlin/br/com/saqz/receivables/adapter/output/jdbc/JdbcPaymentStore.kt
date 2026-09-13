@@ -122,4 +122,29 @@ class JdbcPaymentStore(dataSource: DataSource, private val secrets: FinancialSec
             .param("kind", kind).param("resource", resource).param("digest", digest).param("at", Timestamp.from(at)).update()
         return resource
     }
+    override fun pixRenewalRequest(accountId: UUID, instrumentId: UUID, dueDate: LocalDate,
+                                   request: FinancialRequest, digest: String): Boolean {
+        val previous = jdbc.sql("""SELECT actor_user_id,request_digest,instrument_id,due_date FROM receivable_pix_renewals
+            WHERE account_id=:account AND request_id=:request""").param("account", accountId).param("request", request.requestId)
+            .query { r, _ -> listOf(r.getObject("actor_user_id", UUID::class.java), r.getString("request_digest"),
+                r.getObject("instrument_id", UUID::class.java), r.getObject("due_date", LocalDate::class.java)) }.optional().orElse(null)
+        if (previous == null) return false
+        if (previous[0] != request.actorUserId || previous[1] != digest || previous[2] != instrumentId || previous[3] != dueDate)
+            throw FinancialRequestConflict()
+        return true
+    }
+    override fun registerPixRenewal(instrumentId: UUID, dueDate: LocalDate, request: FinancialRequest, digest: String, at: Instant) {
+        val instrument = instrument(instrumentId) ?: throw IllegalArgumentException()
+        jdbc.sql("""INSERT INTO receivable_pix_renewals(id,account_id,order_id,instrument_id,request_id,actor_user_id,
+            request_digest,due_date,status,next_attempt_at,created_at,updated_at)
+            VALUES (:id,:account,:order,:instrument,:request,:actor,:digest,:due,'READY',:at,:at,:at)""")
+            .param("id", UUID.randomUUID()).param("account", instrument.accountId).param("order", instrument.orderId)
+            .param("instrument", instrumentId).param("request", request.requestId).param("actor", request.actorUserId)
+            .param("digest", digest).param("due", dueDate).param("at", Timestamp.from(at)).update()
+    }
+    override fun pixRenewal(orderId: UUID, requestId: UUID, actorUserId: UUID): StoredPixRenewal? = jdbc.sql("""SELECT instrument_id,due_date,status
+        FROM receivable_pix_renewals WHERE order_id=:order AND request_id=:request AND actor_user_id=:actor""")
+        .param("order", orderId).param("request", requestId).param("actor", actorUserId)
+        .query { r, _ -> StoredPixRenewal(r.getObject("instrument_id", UUID::class.java),
+            r.getObject("due_date", LocalDate::class.java), r.getString("status")) }.optional().orElse(null)
 }

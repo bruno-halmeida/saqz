@@ -92,7 +92,40 @@ class ManageWalletTest {
         assertEquals(FinancialError.INSUFFICIENT_BALANCE, assertIs<FinancialResult.Failure>(second).error)
     }
 
+    @Test
+    fun `revocation during balance read prevents reservation and provider post`() {
+        val f = fixture()
+        f.provider.afterBalance = f.revoke
+        val result = f.service.withdraw(account.id, request(delegate), destination.id, 12345, true, true, now)
+        assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(result).error)
+        assertEquals(0, f.store.created)
+        assertEquals(0, f.provider.posts)
+    }
+
+    @Test
+    fun `revocation during claim releases unsubmitted withdrawal without provider post`() {
+        val f = fixture()
+        f.store.afterClaim = f.revoke
+        val result = f.service.withdraw(account.id, request(delegate), destination.id, 12345, true, true, now)
+        assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(result).error)
+        assertEquals(12345, f.store.onlyWithdrawal().amountCents)
+        assertEquals(WithdrawalStatus.REJECTED, f.store.onlyWithdrawal().status)
+        assertEquals(0, f.provider.posts)
+    }
+
+    @Test
+    fun `bank destination requires recent authentication before persistence or provider IO`() {
+        val f = fixture()
+        val result = f.service.saveDestination(account.id, request(owner), details(), false, now)
+        assertEquals(FinancialError.RECENT_AUTHENTICATION_REQUIRED, assertIs<FinancialResult.Failure>(result).error)
+        assertEquals(0, f.store.destinationSaves)
+        assertEquals(0, f.provider.posts)
+        assertEquals(0, f.provider.balanceReads)
+        assertEquals(0, f.provider.recoveries)
+    }
+
     private fun fixture(admin: Boolean = true): Fixture {
+        var currentAdmin = admin
         val accounts = object : FinancialAccountRepository {
             override fun listForUser(userId: UUID) = listOf(account)
             override fun findById(accountId: UUID) = account.takeIf { it.id == accountId }
@@ -102,7 +135,7 @@ class ManageWalletTest {
         }
         val groups = object : ReceivablesGroups {
             override fun isOwner(groupId: UUID, userId: UUID) = false
-            override fun isCurrentAdministratorOfOwner(userId: UUID, ownerUserId: UUID) = admin
+            override fun isCurrentAdministratorOfOwner(userId: UUID, ownerUserId: UUID) = currentAdmin
         }
         val onboarding = object : FinancialOnboardingStore {
             override fun begin(request: FinancialRequest, termsVersion: String, registration: LegalRegistration, now: Instant) = account
@@ -115,19 +148,20 @@ class ManageWalletTest {
         }
         val store = MemoryWalletStore(destination)
         val provider = FakeWalletProvider()
-        return Fixture(ManageWallet(accounts, groups, onboarding, store, provider), store, provider)
+        return Fixture(ManageWallet(accounts, groups, onboarding, store, provider), store, provider) { currentAdmin = false }
     }
 
     private fun request(actor: UUID) = FinancialRequest(UUID.randomUUID(), actor)
     private fun details() = BankDestinationDetails("001", BankAccountType.CHECKING, "Maria Silva",
         "12345678901", "1234", "98765", "0")
-    private data class Fixture(val service: ManageWallet, val store: MemoryWalletStore, val provider: FakeWalletProvider)
+    private data class Fixture(val service: ManageWallet, val store: MemoryWalletStore, val provider: FakeWalletProvider, val revoke: () -> Unit)
 
     private class FakeWalletProvider : WalletProvider {
+        var afterBalance: () -> Unit = {}
         var posts = 0; var recoveries = 0; var balanceReads = 0
         var withdrawal: ProviderWithdrawalResult = ProviderWithdrawalResult.Known("transfer", WithdrawalStatus.PROCESSING, 0)
         var recovery: ProviderWithdrawalResult = ProviderWithdrawalResult.Unknown
-        override fun balance(apiKey: String) = (12_345L to 6_789L).also { balanceReads++ }
+        override fun balance(apiKey: String) = (12_345L to 6_789L).also { balanceReads++; afterBalance() }
         override fun statement(apiKey: String, offset: Int, limit: Int) = WalletStatementPage(emptyList(), null)
         override fun withdraw(apiKey: String, operationId: UUID, amountCents: Long, destination: BankDestinationDetails) = withdrawal.also { posts++ }
         override fun recoverWithdrawal(apiKey: String, operationId: UUID) = recovery.also { recoveries++ }
@@ -137,9 +171,11 @@ class ManageWalletTest {
         private val withdrawals = mutableMapOf<UUID, Withdrawal>()
         private val requests = mutableMapOf<UUID, Withdrawal>()
         var created = 0
+        var destinationSaves = 0
+        var afterClaim: () -> Unit = {}
         override fun listDestinations(accountId: UUID) = listOf(destination)
         override fun findDestinationByRequest(accountId: UUID, requestId: UUID) = destination.takeIf { it.accountId == accountId }
-        override fun saveDestination(accountId: UUID, request: FinancialRequest, details: BankDestinationDetails, now: Instant) = destination
+        override fun saveDestination(accountId: UUID, request: FinancialRequest, details: BankDestinationDetails, now: Instant) = destination.also { destinationSaves++ }
         override fun prepareWithdrawal(accountId: UUID, request: FinancialRequest, destinationId: UUID, amountCents: Long,
             availableBalanceCents: Long, now: Instant): Withdrawal {
             requests[request.requestId]?.let { if (it.amountCents != amountCents || it.destinationId != destinationId) throw FinancialRequestConflict(); return it }
@@ -150,7 +186,7 @@ class ManageWalletTest {
         }
         override fun claimWithdrawal(accountId: UUID, withdrawalId: UUID, now: Instant): WithdrawalClaim? = withdrawals[withdrawalId]?.let {
             if (it.status !in setOf(WithdrawalStatus.REQUESTED, WithdrawalStatus.UNKNOWN, WithdrawalStatus.PROCESSING)) null
-            else WithdrawalClaim(it, UUID.randomUUID(), it.status != WithdrawalStatus.REQUESTED, destination)
+            else WithdrawalClaim(it, UUID.randomUUID(), it.status != WithdrawalStatus.REQUESTED, destination).also { afterClaim() }
         }
         override fun finishWithdrawal(claim: WithdrawalClaim, result: ProviderWithdrawalResult, now: Instant): Withdrawal {
             val value = when (result) {

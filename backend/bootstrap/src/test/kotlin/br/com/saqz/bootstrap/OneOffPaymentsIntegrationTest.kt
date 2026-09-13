@@ -435,6 +435,7 @@ class OneOffPaymentsIntegrationTest {
                 "groupAdministrators" to JdbcGroupAdministrationDirectory(f.ds), "conditions" to JdbcFinancialConditions(f.ds),
                 "eligibility" to ReceivablesEligibility { _, _ -> ReceivablesEntitlement(true, null) },
                 "rollout" to JdbcReceivablesRollout(f.ds, { true }, f.clock),
+                "residualCostReconciler" to ReconcileExternalResidualCost(JdbcExternalResidualCostLedger(f.ds)),
                 "clock" to f.clock, "actors" to br.com.saqz.subscriptions.adapter.input.http.SubscriptionActorResolver { f.owner })
             beans.forEach { (name, bean) -> context.beanFactory.registerSingleton(name, bean) }
             context.register(br.com.saqz.bootstrap.configuration.OneOffPaymentsConfiguration::class.java)
@@ -635,7 +636,8 @@ class OneOffPaymentsIntegrationTest {
         val store = JdbcPaymentStore(ds, secrets)
         val charges = JdbcGroupChargePayments(ds)
         val provider = HttpAsaasPayments(URI("http://127.0.0.1:${remote.server.address.port}/v3"), "wallet-platform", JdbcPaymentProviderCredentials(ds, secrets), "https://saqz.test", "ops@saqz.test")
-        val execution = JdbcPaymentExecution(ds, store, charges, JdbcFinancialOperationStore(ds), provider, secrets, clock)
+        val execution = JdbcPaymentExecution(ds, store, charges, JdbcFinancialOperationStore(ds), provider, secrets, clock,
+            ReconcileExternalResidualCost(JdbcExternalResidualCostLedger(ds)))
         val events = JdbcPaymentEvents(ds, secrets, execution, clock)
         var eligible = true
         val service = OneOffPayments(store, charges, accounts, JdbcGroupReceivablesStore(ds), JdbcGroupAdministrationDirectory(ds),

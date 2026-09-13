@@ -105,6 +105,33 @@ class BearerSecurityIntegrationTest {
         assertFalse(response.body().contains("Firebase"))
     }
 
+    @Test
+    fun `public financial read allowlist does not permit mutation or sibling paths`() {
+        listOf(
+            "POST" to "/public/receivables/terms/current",
+            "DELETE" to "/public/receivables/terms/2026-09",
+            "POST" to "/public/receivables/checkout-return",
+            "GET" to "/public/receivables/terms/current/private",
+            "GET" to "/public/receivables/other",
+        ).forEach { (method, path) ->
+            assertUnauthorized(HttpRequest.newBuilder().uri(URI("http://127.0.0.1:$port$path"))
+                .method(method, HttpRequest.BodyPublishers.noBody()).build())
+        }
+        assertTrue(verifier.tokens.isEmpty())
+    }
+
+    @Test
+    fun `public terms permit cross-origin reads without exposing authenticated mutations`() {
+        val response = send(HttpRequest.newBuilder().uri(URI("http://127.0.0.1:$port/public/receivables/terms/current"))
+            .header("Origin", "https://site.example.test")
+            .header("Access-Control-Request-Method", "GET")
+            .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build())
+        assertEquals(200, response.statusCode())
+        assertEquals("*", response.headers().firstValue("Access-Control-Allow-Origin").orElse(null))
+        assertFalse(response.headers().firstValue("Access-Control-Allow-Credentials").isPresent)
+        assertTrue(verifier.tokens.isEmpty())
+    }
+
     private fun request(authorization: String? = null): HttpRequest {
         val builder = HttpRequest.newBuilder().uri(URI("http://127.0.0.1:$port/test/principal")).GET()
         if (authorization != null) builder.header("Authorization", authorization)

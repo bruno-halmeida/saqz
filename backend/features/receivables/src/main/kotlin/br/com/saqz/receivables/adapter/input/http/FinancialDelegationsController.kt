@@ -28,6 +28,10 @@ class FinancialDelegationsController(private val actors: FinancialActorResolver,
     fun list(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable accountId: UUID): ResponseEntity<*> =
         response(service.list(accountId, FinancialRequest(UUID.randomUUID(), actors.resolve(identity))))
 
+    @GetMapping("/candidates")
+    fun candidates(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable accountId: UUID): ResponseEntity<*> =
+        response(service.candidates(accountId, FinancialRequest(UUID.randomUUID(), actors.resolve(identity))))
+
     @PostMapping
     fun grant(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable accountId: UUID,
               @RequestBody body: GrantFinancialDelegationRequest): ResponseEntity<*> = response(service.grant(accountId,
@@ -46,5 +50,5 @@ class FinancialDelegationsController(private val actors: FinancialActorResolver,
             FinancialError.CONFLICT -> 409
             else -> 400
         }
-    }).body(result)
+    }).header("Cache-Control", "no-store").body(result)
 }

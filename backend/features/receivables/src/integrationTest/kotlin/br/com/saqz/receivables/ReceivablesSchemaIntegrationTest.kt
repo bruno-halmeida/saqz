@@ -22,11 +22,11 @@ class ReceivablesSchemaIntegrationTest {
         }
         val migration = Flyway.configure().dataSource(database.dataSource).locations(location)
             .baselineOnMigrate(true).baselineVersion("46").load()
-        assertEquals(6, migration.migrate().migrationsExecuted)
+        assertEquals(13, migration.migrate().migrationsExecuted)
         assertEquals(0, migration.migrate().migrationsExecuted)
         database.dataSource.connection.use {
             assertEquals(2300, it.number("SELECT amount_cents FROM group_charges"))
-            assertEquals(27, it.number("SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'receivable_%'"))
+            assertEquals(32, it.number("SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'receivable_%'"))
         }
     }
 
@@ -100,8 +100,8 @@ class ReceivablesSchemaIntegrationTest {
         """)
         assertEquals("23503", assertFailsWith<SQLException> {
             connection.execute("""
-                INSERT INTO receivable_transfers(id,account_id,destination_id,operation_id,amount_cents,fee_cents,status,created_at)
-                VALUES ('${UUID.randomUUID()}','$a','$destination','$operation',10000,0,'REQUESTED',now())
+                INSERT INTO receivable_transfers(id,account_id,destination_id,operation_id,amount_cents,fee_cents,status,created_at,updated_at)
+                VALUES ('${UUID.randomUUID()}','$a','$destination','$operation',10000,0,'REQUESTED',now(),now())
             """)
         }.sqlState)
         assertEquals(0, connection.number("SELECT count(*) FROM receivable_transfers"))

@@ -39,6 +39,10 @@ interface PaymentStore {
     fun instrumentRequest(accountId: UUID, request: FinancialRequest, digest: String): PaymentInstrument?
     fun changeOrder(id: UUID, status: String)
     fun registerLocal(accountId: UUID, resource: UUID, kind: String, request: FinancialRequest, digest: String, at: Instant): UUID
+    fun pixRenewalRequest(accountId: UUID, instrumentId: UUID, dueDate: LocalDate,
+                          request: FinancialRequest, digest: String): Boolean = false
+    fun registerPixRenewal(instrumentId: UUID, dueDate: LocalDate, request: FinancialRequest, digest: String, at: Instant) {}
+    fun pixRenewal(orderId: UUID, requestId: UUID, actorUserId: UUID): StoredPixRenewal? = null
     fun liveInstrument(orderId: UUID): PaymentInstrument? = instruments(orderId).firstOrNull { it.status !in setOf("CANCELLED", "EXPIRED") }
 }
 
@@ -47,7 +51,14 @@ interface PaymentExecution {
     fun create(instrumentId: UUID)
     fun cancel(instrumentId: UUID, request: FinancialRequest)
     fun reconcile(instrumentId: UUID): Boolean
+    fun renewPix(instrumentId: UUID, dueDate: LocalDate, request: FinancialRequest) {}
 }
+
+data class PixRenewal(val orderId: UUID, val instrumentId: UUID, val providerPaymentId: String,
+    val method: PaymentMethod, val status: String, val baseCents: Long, val feesCents: Long,
+    val totalCents: Long, val dueDate: LocalDate, val pixPayload: String?, val pixImage: String?,
+    val expiresAt: Instant?)
+data class StoredPixRenewal(val instrumentId: UUID, val dueDate: LocalDate, val status: String)
 
 class OneOffPayments(private val store: PaymentStore, private val groupCharges: GroupChargePayments,
     private val accounts: FinancialAccountRepository, private val groups: GroupReceivablesStore,
@@ -138,6 +149,43 @@ class OneOffPayments(private val store: PaymentStore, private val groupCharges: 
         }
         ids.forEach { execution.reconcile(it) }
         store.transaction { detail(orderId) }
+    }
+    fun renewPix(orderId: UUID, dueDate: LocalDate, request: FinancialRequest): FinancialResult<PixRenewal> = safely(request) {
+        val instrument = store.transaction {
+            val order = lockedOrder(orderId)
+            if (order.payerId != request.actorUserId) fail(FinancialError.NOT_FOUND)
+            if (order.status != "ISSUED" || dueDate < LocalDate.now(clock)) fail(FinancialError.CONFLICT)
+            val current = store.instruments(orderId).singleOrNull() ?: fail(FinancialError.CONFLICT)
+            val digest = paymentDigest("PIX_RENEWAL:$orderId:${current.id}:$dueDate")
+            val replay = store.pixRenewalRequest(current.accountId, current.id, dueDate, request, digest)
+            if (!replay) {
+                if (current.quote.method != PaymentMethod.PIX || current.paymentId == null ||
+                    (current.status != "EXPIRED" && (current.expiresAt == null || current.expiresAt > clock.instant()))) fail(FinancialError.CONFLICT)
+                store.registerPixRenewal(current.id, dueDate, request, digest, clock.instant())
+            }
+            current
+        }
+        execution.renewPix(instrument.id, dueDate, request)
+        store.transaction {
+            val renewed = store.instruments(orderId).single { it.id == instrument.id }
+            if (renewed.status != "ACTIVE" || renewed.paymentId == null) fail(FinancialError.RESULT_PENDING)
+            PixRenewal(orderId, renewed.id, renewed.paymentId!!, renewed.quote.method, renewed.status,
+                renewed.quote.baseCents, renewed.quote.feesCents, renewed.quote.totalCents, dueDate,
+                renewed.pixPayload, renewed.pixImage, renewed.expiresAt)
+        }
+    }
+    fun pixRenewal(orderId: UUID, request: FinancialRequest): FinancialResult<PixRenewal> = safely(request) {
+        store.transaction {
+            val renewal = store.pixRenewal(orderId, request.requestId, request.actorUserId) ?: fail(FinancialError.NOT_FOUND)
+            val order = store.order(orderId)?.takeIf { it.payerId == request.actorUserId } ?: fail(FinancialError.NOT_FOUND)
+            val instrument = store.instruments(orderId).singleOrNull { it.id == renewal.instrumentId }
+                ?: fail(FinancialError.NOT_FOUND)
+            if (renewal.status != "SUCCEEDED" || instrument.status != "ACTIVE" || instrument.paymentId == null)
+                fail(FinancialError.RESULT_PENDING)
+            PixRenewal(order.id, instrument.id, instrument.paymentId!!, instrument.quote.method, instrument.status,
+                instrument.quote.baseCents, instrument.quote.feesCents, instrument.quote.totalCents, renewal.dueDate,
+                instrument.pixPayload, instrument.pixImage, instrument.expiresAt)
+        }
     }
     fun cancel(orderId: UUID, request: FinancialRequest): FinancialResult<PaymentOrderDetail> = safely(request) {
         val live = store.transaction {
