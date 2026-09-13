@@ -36,7 +36,7 @@ e direcionamento.md. O estado de cada tarefa está indicado abaixo; itens parcia
 
 ### Fase 3 — clientes e operação (lote 3; depende da fase 2)
 
-- [ ] T14 (parcial: módulos KMP, gateway de disponibilidade e controle conectado à sessão/app verificados; gateways de contas/configuração/preview/termos/ativação concluídos; pagamento e carteira pendentes) Criar módulos KMP domain/data/presentation e gateways tipados. Gate: gateways Ktor, erros, requestId e fronteiras.
+- [ ] T14 (parcial: módulos KMP, gateway de disponibilidade e controle conectado à sessão/app verificados; gateways de contas/configuração/preview/termos/ativação concluídos; gateway de ordens próprias/detalhe/instrumento/conciliação implementado em 8c3e939a, cobertura reforçada em 97855e20 e revisão independente aprovada; carteira pendente) Criar módulos KMP domain/data/presentation e gateways tipados. Gate: gateways Ktor, erros, requestId e fronteiras.
 - [ ] T15 (parcial: configuração de meios, revisão/aceite, ativação/desativação e recuperação de resultado incerto aprovadas no mobile; cadastro/delegação pendentes) Implementar descoberta, cadastro, ativação e delegações no mobile. Gate: ViewModels, navegação, rascunhos não sensíveis e evidências visuais.
 - [ ] T16 Implementar pagamento avulso, recorrência e histórico do membro. Gate: Pix expirado, cartão recusado, retorno pendente, abandono e cancelamento.
 - [ ] T17 Implementar Perfil → Recebimentos, carteira, saque e reembolso permanentes. Gate: novo login, perda de vínculo/plano, Android e simulador iOS.

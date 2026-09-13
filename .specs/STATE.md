@@ -85,3 +85,26 @@
 - Gate final backend aprovado por task_ee5379abb0fb / ctx_6c88acb67d7c, autor diferente do corretor: 40 testes (11 probes originais intactos, 28 integração, 1 fatos) passaram no snapshot completo 564028ab. F1/F2 resolvidos, worker liberado. Evidência permanente em docs/receivables/evidence/payments/backend-review-final.md. Lote pronto para integração; piloto completo permanece pendente conforme tasks.md e payment-operation.md.
 
 - Integração concluída: main remota publicada em b377e853, incluindo backend de4707ef/564028ab e evidências finais. Todos os nove tasks do run Orca run_f939f361277e concluídos e respectivos workers liberados; checkout retornou à main. Nenhuma liberação de produção realizada. Próxima entrega funcional: pagamento do membro no mobile e jornada web; carteira/saques/reembolsos solicitados e recorrência continuam no plano. Dois testes Android gerais preexistentes permanecem falhos e documentados.
+
+## Continuação em nova sessão — 2026-09-13
+
+- A sessão anterior permaneceu somente leitura. Base autoritativa encontrada: main 702f3fe7,
+  com context.md/direcionamento.md não rastreados preservados.
+- Descoberta necessária para a jornada do membro implementada em 658649a5 e 095044d6:
+  GET /api/receivables/orders, paginação 50, ator da sessão e cursor isolados por pagador;
+  consulta local continua após corte/saída/exclusão e inclui estados terminais.
+- Gateway KMP MemberPaymentsGateway implementado em 8c3e939a: lista, detalhe, instrumento Pix/cartão
+  e conciliação, snapshots em centavos, erros tipados, reenvio idempotente e validação da resposta.
+  Registrado no Koin. Nenhuma tela foi alterada; T16 ainda não é uma jornada disponível no app.
+- Gates do autor: 32 testes backend pagamentos + 20 arquitetura; 22 gateway Android e 22 iOS (após reforço de cobertura 97855e20);
+  6 testes DI em cada plataforma; compilação Android/iOS e detekt dos módulos tocados passaram.
+  Evidências e critérios em docs/receivables/member-payment-foundation.md.
+- Revisão independente do delta 702f3fe7..97855e20 aprovada; commits locais, sem push/liberação
+  ou chamadas Asaas reais. Próximo: UI do membro com aceite, CPF/nome, Pix/cartão e recuperação;
+  seleção/aprovação pelo gestor e renovação Pix continuam pendentes.
+- Verificador novo e independente verify_member_payment_foundation: 10 mutações distintas,
+  todas detectadas após reforço dos fixtures em 97855e20. Nenhum defeito de produção encontrado;
+  gaps de teste de identidade/snapshot corrigidos com três casos novos. Relatório em
+  docs/receivables/evidence/member-payment-foundation-review.md. Não foram retomados workers
+  nem provider session anteriores. O gate Android instrumentado geral não foi reexecutado:
+  suas duas falhas preexistentes continuam registradas no lote anterior.

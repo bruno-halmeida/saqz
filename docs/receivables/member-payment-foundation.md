@@ -122,4 +122,6 @@ Acrescentados três testes, sem enfraquecer ou remover os anteriores:
 
 Os três testes mapeiam diretamente a AC6; gate Android+iOS repetido com exit 0,
 22 testes data por plataforma (13 novos e 9 anteriores), log /tmp/saqz-member-snapshot-test.log.
-Sensor de confirmação da correção permanece com o verificador independente.
+Sensor de confirmação aprovado pelo verificador independente: as quatro sobreviventes passaram a
+ser detectadas por asserção; total final 10/10 mutações distintas detectadas. Relatório em
+evidence/member-payment-foundation-review.md.
