@@ -132,3 +132,35 @@
 - Limites: testes automatizados e leitura de código não substituem o walkthrough nativo de navegador,
   clipboard/voltar nem a jornada completa em sandbox. Os dois testes gerais Android preexistentes
   continuam fora deste gate e pendentes no projeto.
+
+
+## Liberação e cancelamento pelo gestor — 2026-09-13
+
+- Continuação autorizada por “Siga pra finalizar”. Base f765e19d; consulta local de ordem por cobrança
+  em 01044670, gateway KMP em 6812cd11, caixa→revisão/termos/aceite/liberação e cancelamento em
+  5419b961. Correções de recuperação e cobertura 47bf3b0b; retorno nativo 6001480d.
+- Gestor escolhe cobrança e conta autorizada; vê valores por meio e todas as versões de termos;
+  libera expressamente. Consulta/manutenção permanece após corte, rollout OFF e exclusão/transferência.
+- Tentativas incertas persistem comando não sensível por ator/grupo/cobrança/conta. Recuperação consulta
+  antes de repetir exatamente o comando. Voltar preserva pendência e recarrega caixa após resolução.
+  PAID/REFUNDED/CHARGEBACK encerram retry de cancelamento exibindo estado real; somente CANCELLED
+  confirma cancelamento. Sem mudança nas regras de reserva/reembolso do backend.
+- Revisão independente verify_charge_approval: 256 execuções sem falhas/erros/skips, 14 falhas distintas
+  injetadas em scratch e detectadas, nenhuma sobrevivente; 17 tentativas totais de mutação.
+  Relatório docs/receivables/evidence/charge-approval-review.md; contrato docs/receivables/charge-approval.md.
+- T10 concluído. T14/T16/T21 continuam parciais no plano maior. Nenhuma chamada Asaas real,
+  publicação remota ou liberação de produção nesta continuação. Capturas locais em
+  mobile/build/reports/charge-approval/. Teste do Voltar usa Root/VM reais em ComponentActivity
+  Robolectric; não equivale a walkthrough no AVD. Os dois testes gerais Android antigos continuam abertos.
+- Lições registradas via script: L005–L010 candidatas; L003 (valores literais na UI financeira)
+  confirmado por recorrência independente na UI do membro e do gestor. Candidatas não viram regras.
+- Investigação Pix: HttpAsaasPayments.recover consulta o QR do mesmo paymentId; não há renovação
+  remota automática. Documentação oficial distingue validade do QR e vencimento da dívida; para o
+  fallback sem chave, a atualização da cobrança exige validação própria. Não afirmar que GET QR renova.
+- Próxima dependência para um titular novo: cadastro financeiro no mobile. FinancialAccountsController
+  possui me/create/documents/upload; faltam descoberta de termos vigentes (só GET terms/{version}),
+  recuperação do provisionamento pela conta existente sem reenviar dados pessoais e telas/port de
+  documentos. OnboardFinancialAccount.provision preserva criação UNKNOWN sem repetir POST quando
+  a chave remota é desconhecida. Nenhuma implementação dessa próxima etapa foi iniciada.
+- Carteira/saque, reembolso solicitado, recorrência, operação/comunicação e homologação integrada
+  permanecem abertos conforme tasks.md. Não são pendências apenas de deploy.

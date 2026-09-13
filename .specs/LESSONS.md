@@ -8,7 +8,11 @@
 
 Corroborated across multiple features. Safe to apply as guidance.
 
-_none_
+### L-003 — Assert exact base, fees and total amounts in payment UI tests even when recording screenshots.
+- signal: `surviving_mutant` · recurrence: 2 feature(s) · scope: `mobile/receivables` · harmful: 0
+- features: member-payment-ui, charge-approval
+- evidence: docs/receivables/evidence/member-payment-ui-review.md:69 (mobile/receivables) (+1 more)
+- last seen: 2026-09-13T20:39:42Z
 
 ## Candidates (under observation — do NOT load as guidance yet)
 
@@ -26,17 +30,47 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: docs/receivables/evidence/member-payment-ui-review.md:76 (mobile/presentation)
 - last seen: 2026-09-13T19:25:13Z
 
-### L-003 — Assert exact base, fees and total amounts in payment UI tests even when recording screenshots.
-- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `mobile/receivables` · harmful: 0
-- features: member-payment-ui
-- evidence: docs/receivables/evidence/member-payment-ui-review.md:69 (mobile/receivables)
-- last seen: 2026-09-13T19:25:13Z
-
 ### L-004 — Advance the injected clock past payment expiry without running timers to test user-action freshness.
 - signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `mobile/receivables` · harmful: 0
 - features: member-payment-ui
 - evidence: docs/receivables/evidence/member-payment-ui-review.md:68 (mobile/receivables)
 - last seen: 2026-09-13T19:25:13Z
+
+### L-005 — Make explicit financial recovery consult authoritative state before replaying the saved command.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `mobile/receivables` · harmful: 0
+- features: charge-approval
+- evidence: docs/receivables/evidence/charge-approval-review.md CA4 recovery-first (mobile/receivables)
+- last seen: 2026-09-13T20:39:42Z
+
+### L-006 — Preserve entry-owned financial recovery markers across every allowed navigation exit.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `mobile/receivables` · harmful: 0
+- features: charge-approval
+- evidence: docs/receivables/evidence/charge-approval-review.md CA4 route exit (mobile/receivables)
+- last seen: 2026-09-13T20:39:42Z
+
+### L-007 — Test each conjunctive payment permission with every other guard satisfied.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `mobile/receivables` · harmful: 0
+- features: charge-approval
+- evidence: docs/receivables/evidence/charge-approval-review.md all_terms (mobile/receivables)
+- last seen: 2026-09-13T20:39:42Z
+
+### L-008 — Exercise new authenticated financial routes through the real security chain for exact unauthorized outcomes.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `mobile/receivables` · harmful: 0
+- features: charge-approval
+- evidence: docs/receivables/evidence/charge-approval-review.md CA1 security coverage (mobile/receivables)
+- last seen: 2026-09-13T20:39:42Z
+
+### L-009 — Route native and header Back through the same financial parent refresh callback.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `mobile/receivables` · harmful: 0
+- features: charge-approval
+- evidence: docs/receivables/evidence/charge-approval-review.md CA6 native return (mobile/receivables)
+- last seen: 2026-09-13T20:39:42Z
+
+### L-010 — Distinguish ending a cancellation attempt from confirming cancellation when an authoritative terminal payment arrives.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `mobile/receivables` · harmful: 0
+- features: charge-approval
+- evidence: docs/receivables/evidence/charge-approval-review.md CA4 terminal outcomes (mobile/receivables)
+- last seen: 2026-09-13T20:39:42Z
 
 ## Quarantined (failed when applied — ignore)
 

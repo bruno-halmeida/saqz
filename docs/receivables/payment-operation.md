@@ -46,9 +46,9 @@ Nunca copiar API keys, tokens, documentos ou dados bancários para logs, screens
 
 ## Limites a conferir antes do piloto
 
-Este lote não entrega a jornada completa de pagamento do membro no mobile, carteira/saque,
-reembolso solicitado, recorrência ou corte remoto de ciclos. A configuração do grupo no mobile
-é uma entrega separada do checkout do pagador. A renovação de instrumento Pix expirado exige
+A jornada avulsa do membro e a seleção/liberação/cancelamento pelo gestor estão conectadas no
+mobile e passaram em testes locais. Cadastro financeiro mobile, carteira/saque, reembolso solicitado,
+recorrência e corte remoto de ciclos ainda não estão concluídos. A renovação de instrumento Pix expirado exige
 validação específica; o GET do QR não é uma implementação automática dessa renovação.
 
 Uma consulta simulada ao provedor e testes PostgreSQL locais não substituem o teste integral

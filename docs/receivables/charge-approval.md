@@ -1,5 +1,8 @@
 # Liberação de cobranças pelo gestor no mobile
 
+**Estado final:** revisão independente aprovada em 6001480d, 256 execuções sem falhas e
+14 falhas comportamentais distintas detectadas. [Evidência](evidence/charge-approval-review.md).
+
 Base f765e19d. Continuação autorizada para fechar recebimentos. Primeiro grupo: T10/T14/T16,
 selecionar uma cobrança existente no caixa, revisar todos os meios configurados, liberar ao pagador
 original, recuperar resultado incerto e cancelar ordem existente. Não libera produção.
@@ -87,7 +90,7 @@ IT = mobile/features/receivables/presentation/src/iosTest/kotlin/br/com/saqz/rec
 | CA6 interface | ST verifica valores literais Pix100/6,58/106,58 e cartão100/9/109, versões e ações; IT:17 submit desabilitado, :20 ação Approve, :22 ausência de confirmação inicial, :24/27 ações exatas e :29 cancelamento pendente |
 
 Todos os testes novos mapeiam aos critérios acima: VT10→CA3/4/5; ST3+IT1+entrada1+rotas/DI→CA6;
-gateway8→CA2; backend4→CA1. Verificação independente ainda pendente. Nenhum teste existente
+gateway8→CA2; backend4→CA1. Verificação independente concluída conforme relatório final acima. Nenhum teste existente
 foi removido, ignorado ou teve asserções enfraquecidas. UAT humano e sandbox real não executados.
 
 ## Correções da revisão — rodada 1
@@ -107,7 +110,7 @@ Gates /tmp/saqz-charge-review-fixes-{mobile,backend}.log: 43 backend (36 pagamen
 | CA4 saída | ST:99 `assertEquals(0, exits)` e attempt exato; :101 `assertEquals(1, exits)` após resolução | não perde marker ao voltar |
 
 Todos os reforços acima derivam de CA1/3/4/6, preservam os testes anteriores e cobrem os dois
-mutantes sobreviventes identificados pelo revisor. Revalidação independente ainda em andamento.
+mutantes sobreviventes identificados pelo revisor. Revalidação independente aprovada no snapshot 6001480d.
 
 ## Retorno nativo — ajuste complementar
 
