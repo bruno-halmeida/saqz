@@ -12,7 +12,7 @@ Ao criar um cupom, defina código alfanumérico (até 32 caracteres) e **dias de
 
 No app, **Criar grupo** abre as opções do organizador. Aplicar cupom consulta o prazo; continuar leva ao formulário do grupo. A seleção fica salva por conta, mas não reserva uso nem inicia contagem. Na criação do primeiro grupo, o servidor revalida oferta, elegibilidade, validade e limite; trial, grupo e uso são gravados na mesma transação. Se o cupom ficar indisponível, o modo somente com cupom bloqueia; o modo ligado ainda pode conceder os 14 dias públicos sem atribuir essa concessão ao cupom.
 
-O contador **Usos** representa trials iniciados. ID do cupom e snapshot de código/campanha permanecem ligados ao trial para acompanhamento futuro. Cupons de desconto de assinatura continuam na seção própria. Relatórios de receita, conversão e retenção ainda não fazem parte desta entrega.
+O contador **Usos** representa trials iniciados. ID do cupom e snapshot de código/campanha permanecem ligados ao trial para acompanhamento futuro. Cupons de desconto de assinatura continuam na seção própria. O painel **Cupons → Conversão de cupons** acompanha conversão e receita bruta de trials e descontos. Definições e limites em `docs/coupons/analytics.md`. Retenção ainda não faz parte do painel.
 
 ## API
 

@@ -32,3 +32,6 @@ Arquivo `adm-web/tests/coupon-analytics.test.cjs`, seis testes novos necessário
 | Troca direta de administrador | :54 duas consultas; :56 busy false e catálogo novo vazio | Nova sessão não fica presa nem herda relatório |
 
 Gate `node --test adm-web/tests/*.test.cjs`: 57 PASS, 0 falhas/ignorados. Log /tmp/coupon-analytics-admin.log. Nenhum teste anterior modificado; proteção de sessão do painel cobre também troca direta entre contas.
+
+## T3 navegador e operação
+Playwright/Chromium visível, `/tmp/playwright-test-coupon-analytics.js` (fixtures locais, nenhuma chamada a campanhas reais). `/tmp/coupon-analytics-browser.log`: PASS. DOM verifica ambos os tipos com mesmo código, totais, filtro tipo e busca campanha, nenhum resultado, maturidade, loading desabilitado, falha sem tabela, retry e vazio. Capturas desktop1440/tablet800/loading/erro/vazio em `docs/coupons/evidence/`; desktop/tablet/erro/vazio inspecionados. A tabela permite rolagem horizontal no tablet. Ajuste visual por classes explícitas preserva destaque dos números no runtime DC, que normaliza strong em span. Gate Node repetido após ajuste:57 PASS. Guia: docs/coupons/analytics.md.

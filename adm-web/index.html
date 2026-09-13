@@ -24,8 +24,8 @@
 .analytics-note:empty { display:none; }
 .analytics-cards { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px; }
 .analytics-cards > div { background:var(--saqz-ice);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px; }
-.analytics-cards span { color:var(--saqz-muted);font-size:12px; }
-.analytics-cards strong { font-size:24px;letter-spacing:-.03em;overflow-wrap:anywhere; }
+.analytics-label { color:var(--saqz-muted);font-size:12px; }
+.analytics-number { font-size:24px;letter-spacing:-.03em;overflow-wrap:anywhere; }
 .analytics-filters { display:flex;flex-wrap:wrap;gap:16px; }
 .analytics-filters label { display:flex;flex-direction:column;gap:6px;font-size:12px;min-width:180px; }
 .analytics-filters input,.analytics-filters select { box-sizing:border-box;width:100%;padding:10px 12px;border:1px solid var(--saqz-border);border-radius:8px;background:var(--saqz-white);color:var(--saqz-navy);font:inherit; }
@@ -633,10 +633,10 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
         <sc-if value="{{ analytics.ready }}">
           <div><strong style="font-size:13px">Resumo de todos os cupons · sem duplicar pessoas ou pagamentos</strong><p class="analytics-note">{{ analytics.asOf }}</p></div>
           <div class="analytics-cards">
-            <div><span>Organizadores que usaram</span><strong>{{ analytics.users }}</strong></div>
-            <div><span>Pagantes confirmados</span><strong>{{ analytics.payers }}</strong></div>
-            <div><span>Conversão em pagamento</span><strong>{{ analytics.rate }}</strong></div>
-            <div><span>Receita confirmada bruta</span><strong>{{ analytics.revenue }}</strong></div>
+            <div><span class="analytics-label">Organizadores que usaram</span><strong class="analytics-number">{{ analytics.users }}</strong></div>
+            <div><span class="analytics-label">Pagantes confirmados</span><strong class="analytics-number">{{ analytics.payers }}</strong></div>
+            <div><span class="analytics-label">Conversão em pagamento</span><strong class="analytics-number">{{ analytics.rate }}</strong></div>
+            <div><span class="analytics-label">Receita confirmada bruta</span><strong class="analytics-number">{{ analytics.revenue }}</strong></div>
           </div>
           <p class="analytics-note">{{ analytics.incomplete }}</p>
           <div class="analytics-filters">
@@ -1243,7 +1243,7 @@ class Component extends DCLogic {
     const st=this.state, data=st.analyticsData, summary=data?.summary;
     const rate=n=>n==null ? "—" : Number(n).toLocaleString("pt-BR",{maximumFractionDigits:2})+"%";
     const money=n=>(Number(n)/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-    const missing=n=>n ? n+" organizador(es) com confirmação incompleta. Receita e conversão podem estar subestimadas." : "";
+    const missing=n=>n ? n+(n===1 ? " organizador com confirmação incompleta. " : " organizadores com confirmação incompleta. ")+"Receita e conversão podem estar subestimadas." : "";
     const query=st.analyticsSearch.trim().toLocaleLowerCase("pt-BR");
     const rows=(data?.coupons || []).filter(c=>(st.analyticsType==="ALL" || c.type===st.analyticsType) &&
       (!query || (c.code+" "+(c.campaign || "")).toLocaleLowerCase("pt-BR").includes(query)));
@@ -1260,7 +1260,7 @@ class Component extends DCLogic {
       analyticsRows:rows.map(c=>({key:c.type+":"+c.id,code:c.code,campaign:c.campaign || "",status:names[c.status] || c.status,
         benefit:c.type==="TRIAL" ? "Trial · "+c.trialDays+" dias" : "Desconto · "+c.discountPercent+"%",
         users:c.metrics.users,payers:c.metrics.payingUsers,rate:rate(c.metrics.conversionPercent),revenue:money(c.metrics.revenueCents),
-        payments:c.metrics.payments+" pagamento(s)",incomplete:missing(c.metrics.incompleteUsers),
+        payments:c.metrics.payments+(c.metrics.payments===1 ? " pagamento" : " pagamentos"),incomplete:missing(c.metrics.incompleteUsers),
         maturity:c.type==="TRIAL" ? c.ongoingTrials+" em andamento · "+c.endedTrials+" encerrados" : "Não se aplica",
         matureRate:c.type==="TRIAL" ? "Conversão dos encerrados: "+rate(c.endedConversionPercent) : ""}))};
   }
