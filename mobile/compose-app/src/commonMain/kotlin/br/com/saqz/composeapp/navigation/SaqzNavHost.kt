@@ -22,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import br.com.saqz.receivables.presentation.ReceivablesCoordinator
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntryDecorator
@@ -90,6 +92,8 @@ import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.presentation.ui.changeplan.ChangePlanRoot
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
+import br.com.saqz.receivables.presentation.ReceiptConfigurationRoot
+import br.com.saqz.receivables.presentation.ReceiptConfigurationRoute
 import org.koin.compose.koinInject
 
 // Legacy observable contract carried over from the product host: exactly one active
@@ -162,6 +166,7 @@ internal fun SaqzNavHost(
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
     val inviteCoordinator = koinInject<GroupInviteCoordinator>()
+    val receipts = koinInject<ReceivablesCoordinator>().state.collectAsStateWithLifecycle().value
     LaunchedEffect(inviteCoordinator) {
         if (pendingInviteCode == null) {
             // This must run before the session gate as well: a signed-out relaunch needs the
@@ -469,11 +474,17 @@ internal fun SaqzNavHost(
                     onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                 )
             }
+            entry<ReceiptConfigurationRoute> { route ->
+                ReceiptConfigurationRoot(route.groupId, onBack = pop)
+            }
             entry<FinanceRoute.GroupCashbox> { route ->
                 GroupCashboxRoot(
                     groupId = route.groupId,
                     onBack = pop,
                     onMutationSuccess = { groupDetailsRefreshVersion++ },
+                    onOpenReceivables = if (receipts.configurationEntryAvailable) {
+                        { backStack.add(ReceiptConfigurationRoute(route.groupId)) }
+                    } else null,
                     refreshVersion = groupCashboxRefreshVersion,
                     onOpenMonthlyGeneration = { backStack.add(FinanceRoute.MonthlyGeneration(it)) },
                     onOpenNewEntry = { groupId ->

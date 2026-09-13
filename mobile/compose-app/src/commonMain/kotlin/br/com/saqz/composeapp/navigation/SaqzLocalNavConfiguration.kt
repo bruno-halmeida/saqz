@@ -9,6 +9,7 @@ import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import br.com.saqz.groups.presentation.navigation.FinanceRoute
 import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
+import br.com.saqz.receivables.presentation.ReceiptConfigurationRoute
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -26,6 +27,7 @@ import kotlinx.serialization.modules.polymorphic
 val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration {
     serializersModule = SerializersModule {
         polymorphic(NavKey::class) {
+            subclass(ReceiptConfigurationRoute::class, ReceiptConfigurationRoute.serializer())
             subclass(AccessRoute.Starting::class, AccessRoute.Starting.serializer())
             subclass(AccessRoute.Login::class, AccessRoute.Login.serializer())
             subclass(AccessRoute.Register::class, AccessRoute.Register.serializer())

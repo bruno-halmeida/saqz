@@ -41,6 +41,7 @@ import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.O
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.Register
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.Retry
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.ViewFullStatement
+import br.com.saqz.groups.resources.group_cashbox_receivables
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_cashbox_charge
 import br.com.saqz.groups.resources.group_cashbox_charge_missing
@@ -96,6 +97,7 @@ internal fun GroupCashboxScreen(
     onBack: () -> Unit,
     onIntent: (GroupCashboxIntent) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenReceivables: (() -> Unit)? = null,
 ) {
     val uriHandler = LocalUriHandler.current
     val receiptDebtor = state.debtors.firstOrNull { it.chargeId == state.receiptSheetChargeId }
@@ -105,6 +107,11 @@ internal fun GroupCashboxScreen(
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(GroupCashboxTags.Screen)) {
         Column(modifier = Modifier.fillMaxSize()) {
             SaqzTopAppBar(title = state.groupName.ifBlank { null }, onBack = onBack)
+            onOpenReceivables?.let { open ->
+                SaqzButton(stringResource(Res.string.group_cashbox_receivables), open,
+                    modifier = Modifier.padding(horizontal = SaqzTheme.metrics.horizontalPadding),
+                    variant = SaqzButtonVariant.Secondary, fullWidth = true)
+            }
             when {
                 state.isLoading -> LoadingContent()
                 state.loadFailed -> LoadFailure(onRetry = { onIntent(Retry) })

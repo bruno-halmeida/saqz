@@ -175,6 +175,8 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.kotlinx.serialization.json)
 
+    testImplementation(project(":features:receivables:presentation"))
+    testImplementation(project(":features:receivables:domain"))
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)

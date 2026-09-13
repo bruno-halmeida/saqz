@@ -277,6 +277,8 @@ class SaqzKoinModulesTest {
             koin.get<br.com.saqz.receivables.domain.ReceivablesAvailabilityGateway>(),
         )
         koin.get<br.com.saqz.receivables.presentation.ReceivablesCoordinator>()
+        koin.get<br.com.saqz.receivables.domain.GroupReceivablesGateway>()
+        koin.get<br.com.saqz.receivables.presentation.ReceiptConfigurationViewModel> { parametersOf("group", SavedStateHandle()) }
         koin.get<br.com.saqz.composeapp.receivables.ReceivablesSessionBinding>()
         koin.get<AccessRuntimeContract>()
         koin.get<AppOnboardingAuthCoordinator>()

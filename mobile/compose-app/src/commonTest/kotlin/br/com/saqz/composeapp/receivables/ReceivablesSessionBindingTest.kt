@@ -1,6 +1,7 @@
 package br.com.saqz.composeapp.receivables
 
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.receivables.domain.ReceiptAccountDirectory
 import br.com.saqz.receivables.domain.ReceivablesAvailability
 import br.com.saqz.receivables.domain.ReceivablesAvailabilityGateway
 import br.com.saqz.receivables.domain.ReceivablesSessionContext
@@ -21,7 +22,7 @@ class ReceivablesSessionBindingTest {
         val gateway = FakeGateway()
         val coordinator = ReceivablesCoordinator(gateway, backgroundScope, ReceivablesSessionContext {
             session.value
-        })
+        }, ReceiptAccountDirectory { SaqzResult.Success(emptyList()) })
         val binding = ReceivablesSessionBinding(session, coordinator, backgroundScope)
         binding.onResume()
         runCurrent()

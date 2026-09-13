@@ -13,6 +13,7 @@ import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.composeapp.testSaqzPlatformDependencies
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.receivables.domain.ReceiptAccountDirectory
 import br.com.saqz.receivables.domain.ReceivablesAvailability
 import br.com.saqz.receivables.domain.ReceivablesAvailabilityGateway
 import br.com.saqz.receivables.domain.ReceivablesSessionContext
@@ -111,6 +112,7 @@ class ReceivablesLogoutTest {
         val availability = DelayedAvailability()
         val receivables = ReceivablesCoordinator(
             availability, immediateScope, ReceivablesSessionContext { machine.activeSessionKey.value },
+            ReceiptAccountDirectory { SaqzResult.Success(emptyList()) },
         )
         val binding = ReceivablesSessionBinding(machine.activeSessionKey, receivables, backgroundScope)
         return Fixture(machine, auth, availability, receivables, binding)

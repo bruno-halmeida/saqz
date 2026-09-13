@@ -20,6 +20,7 @@ fun GroupCashboxRoot(
     onOpenNewEntry: (String) -> Unit = {},
     onMutationSuccess: () -> Unit = {},
     refreshVersion: Int = 0,
+    onOpenReceivables: (() -> Unit)? = null,
     viewModel: GroupCashboxViewModel = koinViewModel(
         key = "cashbox/$groupId",
         parameters = { parametersOf(groupId) },
@@ -44,5 +45,5 @@ fun GroupCashboxRoot(
             GroupCashboxEffect.MutationSucceeded -> onMutationSuccess()
         }
     }
-    GroupCashboxScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)
+    GroupCashboxScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent, onOpenReceivables = onOpenReceivables)
 }

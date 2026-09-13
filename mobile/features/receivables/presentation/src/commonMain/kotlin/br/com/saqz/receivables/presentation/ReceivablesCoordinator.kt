@@ -2,6 +2,7 @@ package br.com.saqz.receivables.presentation
 
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.receivables.domain.ReceivablesSessionContext
+import br.com.saqz.receivables.domain.ReceiptAccountDirectory
 import br.com.saqz.receivables.domain.ReceivablesAvailabilityGateway
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -14,12 +15,14 @@ class ReceivablesCoordinator(
     private val gateway: ReceivablesAvailabilityGateway,
     private val scope: CoroutineScope,
     private val sessionContext: ReceivablesSessionContext,
+    private val directory: ReceiptAccountDirectory,
 ) {
     private val mutableState = MutableStateFlow(ReceivablesState())
     val state = mutableState.asStateFlow()
     private var sessionKey: String? = null
     private var generation = 0L
     private var request: Job? = null
+    private var accountRequest: Job? = null
 
     fun onSessionChanged(key: String?) {
         if (key == sessionKey) return
@@ -41,7 +44,7 @@ class ReceivablesCoordinator(
     /** Revoke discovery while backgrounded and discard pending callbacks before resuming. */
     fun onBackground() {
         invalidate()
-        mutableState.value = ReceivablesState(signedIn = sessionKey != null)
+        mutableState.value = mutableState.value.copy(signedIn = sessionKey != null, loading = false, discoveryAvailable = false)
     }
 
     private fun query(onAvailable: (() -> Unit)?) {
@@ -52,7 +55,8 @@ class ReceivablesCoordinator(
         }
         invalidate()
         val expectedGeneration = generation
-        mutableState.value = ReceivablesState(signedIn = true, loading = true)
+        mutableState.value = mutableState.value.copy(signedIn = true, loading = true, discoveryAvailable = false, error = null)
+        queryAccounts(expectedGeneration)
         request = scope.launch {
             val result = gateway.get()
             if (generation != expectedGeneration) return@launch
@@ -63,12 +67,24 @@ class ReceivablesCoordinator(
             when (result) {
                 is SaqzResult.Success -> {
                     val available = result.value.newJourneysAvailable
-                    mutableState.value = ReceivablesState(signedIn = true, discoveryAvailable = available)
+                    mutableState.value = mutableState.value.copy(loading = false, discoveryAvailable = available)
                     if (available) onAvailable?.invoke()
                 }
                 is SaqzResult.Failure -> {
-                    mutableState.value = ReceivablesState(signedIn = true, error = result.error)
+                    mutableState.value = mutableState.value.copy(loading = false, error = result.error)
                 }
+            }
+        }
+    }
+
+    private fun queryAccounts(expectedGeneration: Long) {
+        accountRequest = scope.launch {
+            val result = directory.accounts()
+            if (generation != expectedGeneration) return@launch
+            if (sessionContext.currentKey() != sessionKey) { onSessionChanged(null); return@launch }
+            mutableState.value = when (result) {
+                is SaqzResult.Success -> mutableState.value.copy(hasAccount = result.value.isNotEmpty(), accountLookupFailed = false)
+                is SaqzResult.Failure -> mutableState.value.copy(accountLookupFailed = true)
             }
         }
     }
@@ -77,5 +93,7 @@ class ReceivablesCoordinator(
         generation++
         request?.cancel()
         request = null
+        accountRequest?.cancel()
+        accountRequest = null
     }
 }

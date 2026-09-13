@@ -2,6 +2,7 @@ package br.com.saqz.receivables.presentation
 
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.receivables.domain.ReceiptAccountDirectory
 import br.com.saqz.receivables.domain.ReceivablesAvailability
 import br.com.saqz.receivables.domain.ReceivablesAvailabilityGateway
 import br.com.saqz.receivables.domain.ReceivablesError
@@ -22,7 +23,8 @@ class ReceivablesCoordinatorTest {
     fun initialAndSignedOutStatesCannotStartAJourney() = runTest {
         val fake = FakeGateway()
         var currentKey: String? = null
-        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey })
+        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey },
+            ReceiptAccountDirectory { SaqzResult.Success(emptyList()) })
         coordinator.prepareNewJourney { error("must not navigate") }
         runCurrent()
         assertEquals(0, fake.requests.size)
@@ -33,7 +35,8 @@ class ReceivablesCoordinatorTest {
     fun loginLoadsAndMaintenanceSurvivesOffAndFailure() = runTest {
         val fake = FakeGateway()
         var currentKey: String? = null
-        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey })
+        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey },
+            ReceiptAccountDirectory { SaqzResult.Success(emptyList()) })
         currentKey = "user-a"
         coordinator.onSessionChanged("user-a")
         assertTrue(coordinator.state.value.loading)
@@ -56,7 +59,8 @@ class ReceivablesCoordinatorTest {
     fun everyNewJourneyRechecksAndRevocationPreventsCallback() = runTest {
         val fake = FakeGateway()
         var currentKey: String? = null
-        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey })
+        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey },
+            ReceiptAccountDirectory { SaqzResult.Success(emptyList()) })
         currentKey = "user-a"
         coordinator.onSessionChanged("user-a")
         runCurrent()
@@ -81,7 +85,8 @@ class ReceivablesCoordinatorTest {
     fun previousSessionResponseAndCallbackAreDiscardedEvenIfCancellationIsIgnored() = runTest {
         val fake = FakeGateway()
         var currentKey: String? = null
-        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey })
+        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey },
+            ReceiptAccountDirectory { SaqzResult.Success(emptyList()) })
         currentKey = "user-a"
         coordinator.onSessionChanged("user-a")
         runCurrent()
@@ -106,7 +111,8 @@ class ReceivablesCoordinatorTest {
     fun backgroundInvalidatesAndResumeRefreshesWithoutReusingDiscovery() = runTest {
         val fake = FakeGateway()
         var currentKey: String? = null
-        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey })
+        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey },
+            ReceiptAccountDirectory { SaqzResult.Success(emptyList()) })
         currentKey = "user-a"
         coordinator.onSessionChanged("user-a")
         runCurrent()
@@ -129,7 +135,8 @@ class ReceivablesCoordinatorTest {
     fun newerRefreshWinsOverOlderResponse() = runTest {
         val fake = FakeGateway()
         var currentKey: String? = null
-        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey })
+        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey },
+            ReceiptAccountDirectory { SaqzResult.Success(emptyList()) })
         currentKey = "user-a"
         coordinator.onSessionChanged("user-a")
         runCurrent()
@@ -146,7 +153,8 @@ class ReceivablesCoordinatorTest {
     fun sessionChangeBeforeObserverRunsStillRejectsPendingNavigation() = runTest {
         val fake = FakeGateway()
         var currentKey: String? = "user-a"
-        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey })
+        val coordinator = ReceivablesCoordinator(fake, backgroundScope, ReceivablesSessionContext { currentKey },
+            ReceiptAccountDirectory { SaqzResult.Success(emptyList()) })
         coordinator.onSessionChanged(currentKey)
         runCurrent()
         fake.requests[0].complete(success(true))

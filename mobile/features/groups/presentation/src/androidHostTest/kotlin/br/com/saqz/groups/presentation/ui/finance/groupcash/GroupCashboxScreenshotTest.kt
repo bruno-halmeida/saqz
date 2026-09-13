@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import br.com.saqz.designsystem.theme.SaqzTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -28,6 +30,24 @@ import org.robolectric.annotation.GraphicsMode
 class GroupCashboxScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @Test
+    fun receiptConfigurationEntryHiddenWhenCallbackAbsent() {
+        compose.setContent { SaqzTheme { GroupCashboxScreen(loadedState, {}, {}) } }
+        compose.onNodeWithText("Configurar recebimentos").assertDoesNotExist()
+        compose.onRoot().captureRoboImage("../../../build/reports/receivables-configuration/entrada-oculta-sem-conta-off.png")
+    }
+
+    @Test
+    fun receiptConfigurationEntryCallsCompositionCallback() {
+        var opened = false
+        compose.setContent { SaqzTheme {
+            GroupCashboxScreen(loadedState, {}, {}, onOpenReceivables = { opened = true })
+        } }
+        compose.onNodeWithText("Configurar recebimentos").performClick()
+        org.junit.Assert.assertTrue(opened)
+        compose.onRoot().captureRoboImage("../../../build/reports/receivables-configuration/entrada-caixa.png")
+    }
 
     @Test
     fun loaded() = capture("caixa-carregado") { GroupCashboxScreen(loadedState, {}, {}) }
