@@ -25,14 +25,22 @@ data class TrialAccess(
     val maxAthletes: Int,
     val isOwner: Boolean,
     val appUrl: String?,
+    val offerMode: String = "ON",
+    val canRedeemCoupon: Boolean = false,
+    val selectedCouponCode: String? = null,
+    val trialDays: Int = 14,
 )
 
 sealed interface TrialError : SaqzError {
+    data object CouponUnavailable : TrialError
+    data object OfferUnavailable : TrialError
     data object NotFound : TrialError
     data class Data(val error: DataError) : TrialError
 }
 
 interface TrialGateway {
+    suspend fun applyCoupon(code: String): SaqzResult<TrialAccess, TrialError> = SaqzResult.Failure(TrialError.OfferUnavailable)
+
     suspend fun ownerTrial(): SaqzResult<TrialAccess, TrialError>
 
     suspend fun groupTrial(groupId: GroupId): SaqzResult<TrialAccess, TrialError>

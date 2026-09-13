@@ -135,7 +135,8 @@ internal fun MyPlanTrialCard(trial: MyPlanTrialUi, onSubscribe: () -> Unit, modi
                     TrialStatus.Available -> Res.string.myplan_trial_available
                     TrialStatus.Ineligible, TrialStatus.Subscribed -> Res.string.myplan_trial_ineligible
                 },
-                formatInstantDateTimePtBr(trial.endsAt) ?: stringResource(Res.string.myplan_trial_date_unavailable),
+                if (trial.status == TrialStatus.Available) trial.trialDays.toString()
+                else formatInstantDateTimePtBr(trial.endsAt) ?: stringResource(Res.string.myplan_trial_date_unavailable),
             ),
             style = SaqzTheme.typography.subtitle,
             color = SaqzTheme.colors.textPrimary,

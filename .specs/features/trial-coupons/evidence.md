@@ -41,3 +41,18 @@ Todos os testes novos são necessários para AC6. Ajustados bindings HTML para o
 
 ## Integração HTTP do prazo concedido
 `bootstrap:test --tests '*TrialCampaign*'`: 10 testes PASS. TrialCampaignEndpointIntegrationTest, teste `applied coupon creates group...`: `assertEquals(201,group.statusCode())`, `assertEquals(45,trial["trialDays"].intValue())`, fim = início + 45×86400, mesmo endsAt após OFF e novo resgate 409. AC3/AC5 exigem prazo correto tanto na oferta quanto no trial já concedido; resposta passou a derivar os dias concedidos das datas imutáveis.
+
+## T4
+Gates JDK21: subscriptions:data:iosSimulatorArm64Test (38), subscriptions:presentation:iosSimulatorArm64Test (51), compose-app:iosSimulatorArm64Test (141), Android compileDevDebugKotlin, detektAll e recordRoborazziDevDebug --tests '*TrialEntryScreenshotTest': PASS. Nenhum teste ignorado. Capturas reais em mobile/build/reports/trial-entry: 8 estados. Conferidos cupom aplicado de 45 dias, oferta pública de 14 dias, cupom obrigatório, desativado, carregando, envio pendente e erros. Layout usa métricas e componentes existentes.
+
+| AC / mapeamento reverso | Evidência | Resultado |
+|---|---|---|
+| AC7 bloqueio/autorização atualizada | TrialEntryViewModelTest.kt:23 `assertFalse(vm.state.value.ready)` após OFF; :42 `assertTrue(vm.state.value.ready)` após nova consulta | Backend consultado ao continuar |
+| AC7 prazo/aplicação | :32–40 `assertEquals(45,vm.state.value.access?.trialDays)` e código ARENA | Código enviado e benefício exibido |
+| AC7 pendência/retry/geração | :69–90 asserts aplica uma vez, descarta retorno antigo, erro de consulta e retry | Sem duplicata, sem avanço obsoleto |
+| AC7 transporte | KtorTrialGatewayTest.kt:166+ `assertEquals(45,result.trialDays)` e payload code ARENA; erros tipados | POST e mapeamento corretos |
+| AC7 descoberta | TrialGroupCreationEntitlementTest.kt:38+ `assertTrue(...canCreateGroup())` para canRedeemCoupon | Acesso à entrada de cupom antes do formulário |
+| AC7 UI | TrialEntryScreenshotTest.kt:33–71 assertions texto, botões, callbacks e estados | 45 dias, OFF sem formulário, erros bloqueiam continuar |
+| Prazo em Meu plano | MyPlanTrialScreenTest.kt:54 `onNodeWithText("Seus 45 dias grátis começam ao criar o primeiro grupo.").assertExists()` | Sem anúncio incorreto de 14 dias |
+
+Cópia da apresentação inicial do app e cadastro web ajustada para não prometer automaticamente trial quando a oferta está desligada ou exige cupom. Sem mudanças nas regras de cadastro.

@@ -157,6 +157,29 @@ class KtorTrialGatewayTest {
         override fun invalidate() = Unit
     }
 
+    @Test
+    fun couponApplicationPostsCodeAndMapsCustomDuration() = runTest {
+        val gateway = gateway { request ->
+            assertEquals(io.ktor.http.HttpMethod.Post, request.method)
+            assertEquals("/subscriptions/trial/coupon", request.url.encodedPath)
+            assertEquals("{\"code\":\"ARENA\"}", (request.body as io.ktor.http.content.TextContent).text)
+            json(AVAILABLE.trim().dropLast(1) + ",\"offerMode\":\"COUPON_ONLY\",\"canRedeemCoupon\":true,\"trialDays\":45,\"selectedCouponCode\":\"ARENA\"}")
+        }
+        val result = success(gateway.applyCoupon("ARENA"))
+        assertEquals(45, result.trialDays)
+        assertEquals("COUPON_ONLY", result.offerMode)
+        assertEquals("ARENA", result.selectedCouponCode)
+        assertEquals(true, result.canRedeemCoupon)
+    }
+
+    @Test
+    fun couponRejectionAndChangedOfferHaveTypedErrors() = runTest {
+        val invalid = gateway { problemResponse(HttpStatusCode.BadRequest, "INVALID") }.applyCoupon("INVALID")
+        assertEquals(SaqzResult.Failure(TrialError.CouponUnavailable), invalid)
+        val changed = gateway { problemResponse(HttpStatusCode.Conflict, "UNAVAILABLE") }.applyCoupon("ARENA")
+        assertEquals(SaqzResult.Failure(TrialError.OfferUnavailable), changed)
+    }
+
     private companion object {
         const val AVAILABLE = """
             {"status":"AVAILABLE","startedAt":null,"endsAt":null,"serverTime":"2026-09-12T16:00:00Z","readOnly":false,"canCreateGroup":true,"maxGroups":1,"maxAthletes":25,"isOwner":true,"appUrl":"https://branch.example.test/?%24ios_nativelink=true"}

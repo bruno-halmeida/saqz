@@ -30,6 +30,12 @@ class TrialGroupCreationEntitlementTest {
         assertFalse(TrialGroupCreationEntitlement(FakeTrialGateway(SaqzResult.Failure(TrialError.NotFound))).canCreateGroup())
     }
 
+    @Test
+    fun couponEligibleOrganizerCanReachCouponEntryWithoutGroupPermission() = runTest {
+        val trial = access(TrialStatus.Ineligible, false).copy(canRedeemCoupon = true, offerMode = "COUPON_ONLY")
+        assertTrue(TrialGroupCreationEntitlement(FakeTrialGateway(SaqzResult.Success(trial))).canCreateGroup())
+    }
+
     private fun access(status: TrialStatus, canCreate: Boolean) = TrialAccess(
         status, null, null, "2026-09-12T12:00:00Z", false, canCreate, 1, 25, true, null,
     )

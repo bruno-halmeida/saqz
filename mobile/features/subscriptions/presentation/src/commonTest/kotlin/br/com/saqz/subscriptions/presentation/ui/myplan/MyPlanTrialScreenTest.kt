@@ -47,6 +47,13 @@ class MyPlanTrialScreenTest {
         onNodeWithTag(MyPlanTags.TrialCard).assertDoesNotExist()
     }
 
+    @Test
+    fun customTrialOfferDisplaysConfiguredDays() = runComposeUiTest {
+        val state = MyPlanState(isLoading = false, trial = MyPlanTrialUi(TrialStatus.Available, null, true, true, 45))
+        setContent { SaqzTheme { MyPlanScreen(state, {}, {}) } }
+        onNodeWithText("Seus 45 dias grátis começam ao criar o primeiro grupo.").assertExists()
+    }
+
     private fun trialState(status: TrialStatus) = MyPlanState(
         isLoading = false,
         trial = MyPlanTrialUi(status, "2026-09-12T12:30:00Z", true, true),

@@ -36,6 +36,7 @@ data class MyPlanTrialUi(
     val endsAt: String?,
     val isOwner: Boolean,
     val canSubscribe: Boolean,
+    val trialDays: Int = 14,
 )
 
 enum class MyPlanStatusTone { Active, PastDue, Canceled }
