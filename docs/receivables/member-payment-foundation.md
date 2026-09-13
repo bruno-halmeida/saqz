@@ -36,6 +36,7 @@ em payment-http-contract.md continua autoritativo. Nenhuma chamada ao Asaas real
   Falha de transporte/5xx/JSON inválido/envelope incompatível em escrita→UNCERTAIN;
   leitura sem resposta válida falha sem produzir dados. IDs de ordem/instrumento, fingerprint,
   valores e meio precisam corresponder ao recurso/comando antes de aceitar resposta de escrita.
+  A coleção de instrumentos tem IDs únicos (precisão explicitada durante a revisão independente).
   Nenhum retorno do checkout é interpretado como confirmação; status REFUNDED permanece REFUNDED
   mesmo com confirmed/available históricos true.
 
@@ -81,9 +82,44 @@ Compilação do app Android e compose-app iOS e detekt data/domain passaram. Log
 | AC5 recuperação | :71–79 caminho reconcile, body só requestId, resultado UNKNOWN | nunca criação como efeito da recuperação |
 | AC6 HTTP | :86–91 `assertEquals(SaqzResult.Failure(expected), ...)`, 503 write UNCERTAIN | erros tipados, escrita incerta preservada |
 | AC6 envelope/identidade/quote | :102 `assertEquals(SaqzResult.Failure(ReceiptError.UNCERTAIN), ...)`; :110–114 leitura INVALID e reconcile UNCERTAIN | resposta incompatível não aceita |
-| AC6 transporte | :125–129 NETWORK em leitura, UNCERTAIN em escrita, 4 corpos idênticos e requestId request | timeout/conexão não gera novo comando |
-| AC5 aceite/snapshot | :135–137 INVALID antes da rede para fingerprint/meio/aceite incompatíveis | sem envio fora da revisão aprovada |
+| AC6 transporte | :151–155 NETWORK em leitura, UNCERTAIN em escrita, 4 corpos idênticos e requestId request | timeout/conexão não gera novo comando |
+| AC5 aceite/snapshot | :161–163 INVALID antes da rede para fingerprint/meio/aceite incompatíveis | sem envio fora da revisão aprovada |
 
-Mapeamento reverso dos dez testes: :14/:25/:33→AC4; :49/:68→AC5; :82/:94/:106/:117→AC6;
-:133→AC5/AC6. DI em SaqzKoinModulesTest.kt:280 resolve MemberPaymentsGateway como
+Mapeamento reverso dos dez testes: :14/:25/:33→AC4; :49/:68→AC5; :82/:94/:106/:143→AC6;
+:159→AC5/AC6. DI em SaqzKoinModulesTest.kt:280 resolve MemberPaymentsGateway como
 KtorMemberPaymentsGateway. Adequação aprovada para o passo 2; revisão independente final pendente.
+
+## Continuação da apresentação (ainda pendente)
+
+- Entrada permanente para ordens próprias; não depender da lista dos grupos atuais ou da toggle
+  de novas jornadas. Consumir nextCursor para o restante do histórico.
+- Antes da emissão, carregar os termos das versões presentes nas quotes e mostrar base, taxas e
+  total do meio escolhido. Nome e CPF/CNPJ exigem entrada explícita; nenhum cartão é coletado pelo app.
+- ViewModel com guarda de sessão/geração e trava durante escrita. Preservar requestId e orderId
+  antes da chamada; nome/CPF somente na memória do formulário. Ao restaurar o processo, consultar
+  ordem e conciliar antes de permitir qualquer nova emissão. Não persistir o documento em SavedStateHandle.
+- Pix: QR, copia e cola e expiresAt. Cartão: abrir checkoutUrl do instrumento. Retorno/retomada
+  de navegador só solicita atualização; UNKNOWN/CREATING são recuperação, não nova tentativa financeira.
+- Mostrar status atual antes dos marcos históricos: REFUNDED/DISPUTED não viram “pago” ou “saldo
+  disponível” porque confirmed/available permaneceram true.
+- A renovação Pix depende de fechar T08: expiresAt já é exposto, mas ausência de renovação automática
+  foi confirmada no backend. Não oferecer geração cega de novo Pix quando o instrumento ainda está vivo.
+- Aprovação das pendências pelo gestor continua separada: a lista do pagador exibe apenas ordens já
+  aprovadas; não converte cobrança manual em pagamento eletrônico automaticamente.
+
+
+## Reforço de cobertura após sensor independente
+
+Produção permanece igual a 8c3e939a. A revisão identificou falsos negativos: o fixture de ordem
+estrangeira invalidava a chave raiz do JSON, e o de quote divergente também invalidava a soma.
+Acrescentados três testes, sem enfraquecer ou remover os anteriores:
+
+| AC6 | KtorMemberPaymentsGatewayTest.kt | Assert / resultado esperado |
+|---|---|---|
+| Snapshot/conta | :122 e :123 | `assertEquals(SaqzResult.Failure(ReceiptError.INVALID), gateway.detail("order"))` e `UNCERTAIN` em reconcile, com quote/conta divergente mas JSON e aritmética válidos |
+| Ordem esperada | :132 e :133 | mesmos erros para ordem estrangeira internamente consistente |
+| Identidades únicas | :139 e :140 | mesmos erros para IDs de instrumentos duplicados; precisão do contrato explicitada |
+
+Os três testes mapeiam diretamente a AC6; gate Android+iOS repetido com exit 0,
+22 testes data por plataforma (13 novos e 9 anteriores), log /tmp/saqz-member-snapshot-test.log.
+Sensor de confirmação da correção permanece com o verificador independente.

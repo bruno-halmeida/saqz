@@ -114,6 +114,32 @@ class KtorMemberPaymentsGatewayTest {
         assertEquals(SaqzResult.Failure(ReceiptError.INVALID), gateway.orders())
     }
 
+    @Test fun detailAndReconcileRejectValidInstrumentSnapshotsThatDifferFromApprovedOrder() = runTest {
+        for (changed in listOf(instrumentJson.replace("terms-v1", "terms-v2"),
+            instrumentJson.replace("PIX", "CARD"), instrumentJson.replace("\"account\"", "\"foreign\""))) {
+            val response = """{"order":$orderJson,"instruments":[$changed]}"""
+            val gateway = gateway(MockEngine { respond(envelope(response, "request"), HttpStatusCode.OK, headers) })
+            assertEquals(SaqzResult.Failure(ReceiptError.INVALID), gateway.detail("order"))
+            assertEquals(SaqzResult.Failure(ReceiptError.UNCERTAIN), gateway.reconcile("order", "request"))
+        }
+    }
+
+    @Test fun detailAndReconcileRejectAnotherOrderEvenWithInternallyConsistentInstruments() = runTest {
+        val foreignOrder = orderJson.replace("\"id\":\"order\"", "\"id\":\"foreign\"")
+        val foreignInstrument = instrumentJson.replace("\"orderId\":\"order\"", "\"orderId\":\"foreign\"")
+        val response = """{"order":$foreignOrder,"instruments":[$foreignInstrument]}"""
+        val gateway = gateway(MockEngine { respond(envelope(response, "request"), HttpStatusCode.OK, headers) })
+        assertEquals(SaqzResult.Failure(ReceiptError.INVALID), gateway.detail("order"))
+        assertEquals(SaqzResult.Failure(ReceiptError.UNCERTAIN), gateway.reconcile("order", "request"))
+    }
+
+    @Test fun detailAndReconcileRejectDuplicateInstrumentIdentities() = runTest {
+        val response = """{"order":$orderJson,"instruments":[$instrumentJson,$instrumentJson]}"""
+        val gateway = gateway(MockEngine { respond(envelope(response, "request"), HttpStatusCode.OK, headers) })
+        assertEquals(SaqzResult.Failure(ReceiptError.INVALID), gateway.detail("order"))
+        assertEquals(SaqzResult.Failure(ReceiptError.UNCERTAIN), gateway.reconcile("order", "request"))
+    }
+
     @Test fun timeoutAndConnectionLossRemainUncertainForWritesWithoutChangingTheCommand() = runTest {
         for (timeout in listOf(true, false)) {
             val bodies = mutableListOf<String>()
