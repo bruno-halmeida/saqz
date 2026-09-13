@@ -367,3 +367,27 @@ A criação direta de subconta de homologação retornou HTTP 200 após a conta 
 (e correção do telefone sintético rejeitado). Consulta autenticada de situação retornou APPROVED.
 Esse cadastro está somente no Asaas; não valida a jornada integrada no Saqz, pagamentos, split,
 saques ou reembolsos. Credenciais e respostas privadas permanecem cifradas fora do repositório.
+
+
+## Rollout por sistema e usuário — 2026-09-13
+
+Três implementadores coordenados pelo Orca no run `run_f38959a437de`, com propriedade exclusiva
+de backend, adm e mobile. Contrato comum: `docs/receivables/rollout-contract.md`; operação:
+`docs/receivables/rollout-operation.md`.
+
+- Backend: V53 com OFF inicial, versões, replay, auditoria imutável, exceções por usuário,
+  aplicação do rollout do titular somente em negócios novos; relatório `docs/receivables/evidence/backend-rollout.md`.
+- Adm: modos globais, exceções no detalhe de usuário, operação da conta, conflitos e reenvio
+  da mesma tentativa, histórico. 35 testes Node passaram; Chromium com API/auth simuladas,
+  conforme `adm-web/tests/receivables-evidence.md`; imagens em `docs/receivables/evidence/adm-*.png`.
+- Mobile: disponibilidade KMP ligada à sessão e retorno do app, falha fechada para novas jornadas.
+  Nenhuma tela de pagamento criada neste lote. Relatórios `mobile-rollout.md` e `mobile-logout-fix.md`
+  em `docs/receivables/evidence/`.
+- Revisão independente inicial reproduziu callback após intento de logout, usando a máquina real
+  e native signOut atrasado. O fix `11b56e33` usa geração autoritativa da sessão, invalidada no início
+  do logout, com três regressões reais Android/iOS. A primeira revisão está preservada em
+  `docs/receivables/evidence/verification-first-pass.md`. Reverificação aprovada: 106 testes reais
+  sem falhas, incluindo o probe anterior, conforme `docs/receivables/evidence/verification-final.md`.
+
+Esses gates não homologam emissão, conciliação, saque ou reembolso. As telas do adm foram testadas
+com API simulada; a API backend foi testada separadamente via HTTP real e PostgreSQL local.

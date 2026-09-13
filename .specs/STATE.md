@@ -3,7 +3,7 @@
 ## Decisões
 
 - O plano do usuário de 2026-09-12 prevalece sobre context.md e direcionamento.md.
-- Execução e verificação individuais autorizadas pelo usuário.
+- Execução inicialmente individual; em 2026-09-13 o usuário autorizou três frentes paralelas e supervisão pelo Orca.
 - Receivables permanece separado de subscriptions; manutenção financeira independe de plano/grupo.
 - Nenhuma tarifa ou condição comercial real foi inventada.
 
@@ -26,9 +26,11 @@
 - T06 implementada: elegibilidade central, revisão de preços/tarifas, aceite explícito,
   ativação idempotente e desativação independente de plano/grupo. Interrupção remota permanece em T13.
 - T07 parcial: núcleo decimal, gross-up, split fixo, simulação HTTP e consulta de termos; publicação administrativa implementada; emissão pendente.
-- T08–T17 e T19–T20 pendentes. T18 parcial: APIs de publicação/preview administrativo implementadas; interface adm-web pendente. Sem pagamentos, carteira, recorrência ou mobile implementados.
+- T08–T13, T15–T17 e T19–T20 pendentes. T14 parcial: módulos KMP de recebimentos e disponibilidade conectada à sessão/app.
+- T18 parcial: APIs de publicação/preview e controles de rollout por sistema/usuário com tela no adm; operação de pagamentos e painel de tarifas ainda pendentes.
+- Sem pagamentos, carteira ou recorrência implementados.
 - T21 parcial: revisão individual e sete mutações detectadas em cópia temporária.
-- 58 testes novos: 12 domínio/cifra/tarifas, 24 PostgreSQL/HTTP, 8 delegação, 4 elegibilidade, 3 HTTP administrativo e 7 ativação de grupos.
+- Gate histórico anterior ao rollout: 58 testes novos: 12 domínio/cifra/tarifas, 24 PostgreSQL/HTTP, 8 delegação, 4 elegibilidade, 3 HTTP administrativo e 7 ativação de grupos.
 - Subconta sandbox criada diretamente no Asaas após alteração da conta principal para PJ;
   consulta cadastral retornou APPROVED. Credenciais cifradas no servidor, sem vínculo no banco Saqz.
   Homologação de pagamentos e liberação do piloto ainda não realizadas.
@@ -40,18 +42,20 @@
 ## Integração em main
 
 - Quatro entregas anteriores integradas e publicadas em main (30691c5e; documentação 4bfe4666).
-- Entrega T06 em feat/receivables-group-activation, baseada em c3d1802d.
+- Entrega T06 integrada e publicada em main e55fa717, baseada em c3d1802d.
 - Gate T06: 391 bootstrap, 645 grupos, 12 + 24 receivables e 20 arquitetura, sem falhas.
-- V52 registra revisão imutável por grupo; 19 tabelas financeiras.
+- V52 registra revisão imutável por grupo; V53 adiciona rollout e auditoria (23 tabelas financeiras).
 - Próximo: liberação auditada do piloto e ordens/instrumentos de pagamento; depois conciliação.
 - Não há bloqueio de informação para continuar a implementação. Antes de liberar o piloto,
   serão necessárias confirmação das condições BaaS de produção, tarifas reais, termos e homologação financeira Asaas.
 
 ## Handoff
 
-- 2026-09-13: usuário autorizou execução paralela supervisionada pelo Orca, substituindo escolha anterior de execução individual.
-- Branch feat/receivables-rollout, base e55fa717. Contrato compartilhado docs/receivables/rollout-contract.md.
-- Run Orca run_f38959a437de. Backend task_1d78b9588c74 / ctx_881a9eb5ff87; adm task_a131c1593f7e / ctx_0e41da9d0325; mobile task_c3bdfb520b73 / ctx_0253116c4152.
-- Workers na árvore atual, propriedade exclusiva backend/**, adm-web/** e mobile/** respectivamente. Coordenador faz commits e integração; workers não mudam branch/staging.
-- Primeiro lote: toggles e segmentação ponta a ponta. Próximo lote: pagamentos avulsos e conciliação, após gates e contrato financeiro.
-- Não tocar context.md/direcionamento.md não rastreados. Nenhuma liberação de produção autorizada nesta etapa.
+- 2026-09-13: lote de toggles implementado em paralelo via Orca, conforme docs/receivables/rollout-contract.md.
+- Branch feat/receivables-rollout, base e55fa717. Commits: 3954c2a1 contrato, e887b298 adm, 23bd2252 mobile, b8c97387 backend; 11b56e33 correção de logout.
+- Run run_f38959a437de: três workers concluídos e liberados. A primeira revisão independente encontrou corrida no logout mobile; correção implementada por outro worker e verificação final task_e65069bc7c44 / ctx_3a30b079f00e aprovada: 106 testes executados, incluindo probe independente anteriormente falho.
+- Gates reportados: backend 393 bootstrap + 15 domínio + 28 PostgreSQL + 20 arquitetura; rodada final 22 bootstrap focados. Adm 35 Node + Chromium com API simulada. Mobile 24 testes feature Android/iOS + 7 DI/sessão iOS + 266 Android; compilação e detekt aprovados.
+- Evidências em docs/receivables/evidence/ e adm-web/tests/receivables-evidence.md. Nenhuma alteração visual mobile nesta entrega (913 linhas incluindo a correção).
+- Correção: chave autoritativa de sessão revogada no início do logout, incluindo geração para novo login da mesma pessoa. Gates: 67 testes de sessão iOS; 12 binding/logout/DI em cada plataforma; gateway/coordinator Android/iOS; 186 testes Android integrados, compilações e detekt. Relatório em docs/receivables/evidence/mobile-logout-fix.md.
+- Revisão final aceita para integração em main: nenhum bloqueio confirmado restante no lote de controles. Relatório docs/receivables/evidence/verification-final.md. Próximo lote: pagamentos avulsos e conciliação; preparação em docs/receivables/payment-next-wave.md.
+- Preservados context.md/direcionamento.md não rastreados. Produção permanece sem liberação automática.

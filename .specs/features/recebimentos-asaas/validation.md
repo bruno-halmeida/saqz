@@ -1,4 +1,7 @@
-# Validação parcial — 2026-09-12
+# Validação histórica da base — 2026-09-12
+
+Este registro descreve o gate de 2026-09-12. Para o estado atual e as entregas posteriores,
+consultar `.specs/STATE.md` e `docs/receivables/evidence/`.
 
 Resultado: base backend verificada; plano completo e piloto ainda não aprovados.
 Verificação individual conforme autorização do usuário.

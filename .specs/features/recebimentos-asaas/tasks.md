@@ -36,14 +36,14 @@ e direcionamento.md. O estado de cada tarefa está indicado abaixo; itens parcia
 
 ### Fase 3 — clientes e operação (lote 3; depende da fase 2)
 
-- [ ] T14 Criar módulos KMP domain/data/presentation e gateways tipados. Gate: gateways Ktor, erros, requestId e fronteiras.
+- [ ] T14 (parcial: módulos KMP, gateway de disponibilidade e controle conectado à sessão/app verificados; gateways financeiros pendentes) Criar módulos KMP domain/data/presentation e gateways tipados. Gate: gateways Ktor, erros, requestId e fronteiras.
 - [ ] T15 Implementar descoberta, cadastro, ativação e delegações no mobile. Gate: ViewModels, navegação, rascunhos não sensíveis e evidências visuais.
 - [ ] T16 Implementar pagamento avulso, recorrência e histórico do membro. Gate: Pix expirado, cartão recusado, retorno pendente, abandono e cancelamento.
 - [ ] T17 Implementar Perfil → Recebimentos, carteira, saque e reembolso permanentes. Gate: novo login, perda de vínculo/plano, Android e simulador iOS.
-- [ ] T18 (parcial: APIs administrativas de publicação/preview verificadas; painel visual e operação pendentes) Implementar painel operacional, tarifas/termos/piloto e recuperação auditada. Gate: testes Node e navegador/API; admin sem poder de saque.
+- [ ] T18 (parcial: APIs administrativas de publicação/preview e painel de rollout por sistema/usuário verificados; tarifas visuais e operação financeira pendentes) Implementar painel operacional, tarifas/termos/piloto e recuperação auditada. Gate: testes Node e navegador/API; admin sem poder de saque.
 - [ ] T19 Implementar termos públicos, retorno do checkout, avisos de plano e notificações operacionais. Gate: callback sem confirmação e ausência de dados financeiros no endereço.
 - [ ] T20 Executar homologação integrada e documentar liberação/reversão e monitoramento. Gate: todos os cenários obrigatórios do plano; BaaS, termos e condições reais são pré-requisitos de produção.
-- [ ] T21 Executar verificação individual, conforme escolha do usuário, corrigir lacunas e registrar evidências por critério. Gate: relatório do verificador, incluindo teste de discriminação em cópia temporária.
+- [ ] T21 (parcial: lote de controles verificado por dois revisores Orca; corrida de logout corrigida e probe independente aprovado; demais lotes pendentes) Executar verificação independente via Orca, conforme nova escolha do usuário, corrigir lacunas e registrar evidências por critério. Gate: relatório do verificador, incluindo teste de discriminação em cópia temporária.
 
 ## Critérios de entrega
 
