@@ -38,3 +38,6 @@ Necessários: todos os testes novos mapeiam AC2/AC5. Nenhum teste removido. Cont
 | AC6 desativação/logout | :52–60 assertions active/uses/form/data/requests | Histórico mantido e sessão isolada |
 
 Todos os testes novos são necessários para AC6. Ajustados bindings HTML para o runtime DC existente e linhas de cupom fora de tbody para evitar reparação automática do DOM pelo navegador.
+
+## Integração HTTP do prazo concedido
+`bootstrap:test --tests '*TrialCampaign*'`: 10 testes PASS. TrialCampaignEndpointIntegrationTest, teste `applied coupon creates group...`: `assertEquals(201,group.statusCode())`, `assertEquals(45,trial["trialDays"].intValue())`, fim = início + 45×86400, mesmo endsAt após OFF e novo resgate 409. AC3/AC5 exigem prazo correto tanto na oferta quanto no trial já concedido; resposta passou a derivar os dias concedidos das datas imutáveis.

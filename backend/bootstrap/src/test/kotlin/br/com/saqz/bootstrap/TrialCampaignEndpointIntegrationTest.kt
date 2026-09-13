@@ -105,6 +105,25 @@ class TrialCampaignEndpointIntegrationTest {
         assertEquals(201, create(days=1).statusCode())
         assertEquals(201, create(days=365).statusCode())
     }
+    @Test fun `applied coupon creates group with configured duration and keeps it after switching off`() {
+        val c=code();create(c,45)
+        request("PUT","/admin/trial-offer", """{"mode":"COUPON_ONLY"}""")
+        assertEquals(200, request("POST","/subscriptions/trial/coupon", """{"code":"$c"}""",user).statusCode())
+        val body="""{"requestId":"${UUID.randomUUID()}","name":"Campaign Group","modality":"COURT_VOLLEYBALL","composition":"MIXED","timeZone":"America/Sao_Paulo"}"""
+        val group=request("POST","/api/groups",body,user)
+        assertEquals(201,group.statusCode(),group.body())
+        val trial=mapper.readTree(request("GET","/subscriptions/trial",token=user).body())
+        assertEquals("ACTIVE",trial["status"].stringValue())
+        assertEquals(45,trial["trialDays"].intValue())
+        val start=java.time.Instant.parse(trial["startedAt"].stringValue())
+        assertEquals(start.plusSeconds(45 * 86400L),java.time.Instant.parse(trial["endsAt"].stringValue()))
+        assertEquals(200,request("PUT","/admin/trial-offer", """{"mode":"OFF"}""").statusCode())
+        val preserved=mapper.readTree(request("GET","/subscriptions/trial",token=user).body())
+        assertEquals(trial["endsAt"].stringValue(),preserved["endsAt"].stringValue())
+        assertEquals(45,preserved["trialDays"].intValue())
+        assertEquals(409,request("POST","/subscriptions/trial/coupon", """{"code":"$c"}""",user).statusCode())
+    }
+
     @TestConfiguration(proxyBeanMethods=false) class Fixture {
         @Bean @Primary fun verifier() = VerifyRequestIdentity {
             TokenVerification.Verified(RequestIdentity(it.value, "${it.value}@example.test", true, "Trial User"))

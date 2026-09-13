@@ -59,7 +59,7 @@ class OrganizerTrialController(
         val canApply = mode != TrialOfferMode.OFF && eligibility?.isFirstTrialEligible(owner) == true
         val selected = if (canApply) campaigns?.selected(owner) else null
         return access.copy(offerMode = mode, canRedeemCoupon = canApply, selectedCouponCode = selected?.code,
-            trialDays = selected?.trialDays ?: 14)
+            trialDays = selected?.trialDays ?: access.trialDays)
     }
 
     @org.springframework.web.bind.annotation.ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException::class)
@@ -85,5 +85,6 @@ class OrganizerTrialController(
     }
 
     private fun OrganizerTrialAccess.response(isOwner: Boolean) =
-        TrialAccessResponse(status, startedAt, endsAt, serverTime, readOnly, isOwner && canCreateGroup, isOwner, appUrl)
+        TrialAccessResponse(status, startedAt, endsAt, serverTime, readOnly, isOwner && canCreateGroup, isOwner, appUrl,
+            trialDays = if (startedAt != null && endsAt != null) java.time.Duration.between(startedAt, endsAt).toDays().toInt() else 14)
 }
