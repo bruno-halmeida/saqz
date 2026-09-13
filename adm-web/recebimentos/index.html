@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Operação de recebimentos · Saqz Admin</title>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="../assets/firebase-config.js"></script>
+  <script src="../assets/admin-session.js"></script>
+  <style>
+    :root{font-family:Inter,system-ui,sans-serif;color:#0e1738;background:#f5f5f7}body{margin:0}.shell{max-width:1100px;margin:auto;padding:32px 20px}header{display:flex;justify-content:space-between;align-items:center;gap:16px}a{color:#0638df}.card{background:white;border:1px solid #d8dde8;border-radius:16px;padding:20px;margin:20px 0}.filters,.actions{display:flex;gap:12px;flex-wrap:wrap;align-items:end}label{display:grid;gap:6px}input,select,textarea,button{font:inherit;padding:9px 12px;border:1px solid #d8dde8;border-radius:9px;background:white}button{cursor:pointer;color:#0638df;font-weight:650}button[disabled]{opacity:.45;cursor:default}.operation{display:grid;grid-template-columns:1fr auto;gap:12px;padding:16px 0;border-top:1px solid #e7e9ef}.operation:first-child{border-top:0}.meta{color:#667085;font-size:13px;line-height:1.55;overflow-wrap:anywhere}.status{font-weight:700}.error{color:#b42318}.success{color:#067647}.pager{display:flex;gap:12px;align-items:center;margin-top:16px}textarea{min-height:72px;min-width:min(440px,80vw)}@media(max-width:650px){header{display:block}header>a{display:inline-block;margin-top:4px}.operation{grid-template-columns:1fr}.shell{padding:20px 14px}}
+  </style>
+</head>
+<body>
+<main class="shell">
+  <header><div><h1>Falhas financeiras</h1><p>Consulta e recuperação auditada. Este painel não permite saques ou reembolsos.</p></div><a href="../index.html">Voltar ao painel</a></header>
+  <section class="card" aria-labelledby="queue-title">
+    <h2 id="queue-title">Fila operacional</h2>
+    <form id="filters" class="filters">
+      <label>Estado<select id="status"><option value="">Todos</option><option>UNKNOWN</option><option>RUNNING</option><option>READY</option><option>REJECTED</option></select></label>
+      <label>Itens por página<select id="size"><option>25</option><option>50</option><option>100</option></select></label>
+      <button type="submit">Atualizar</button>
+    </form>
+    <p id="queue-status" role="status">Aguardando sessão administrativa…</p>
+    <div id="operations"></div>
+    <nav class="pager" aria-label="Paginação"><button id="previous" type="button">Anterior</button><span id="page"></span><button id="next" type="button">Próxima</button></nav>
+  </section>
+  <section class="card" aria-labelledby="notice-title">
+    <h2 id="notice-title">Publicar aviso persistente</h2>
+    <p>O aviso fica disponível no produto; nenhum e-mail, push ou SMS será enviado.</p>
+    <form id="notice-form">
+      <div class="filters"><label>Público<select id="audience"><option value="OPERATIONS">Operação</option><option value="PLAN_OWNERS">Titulares de plano</option></select></label><label>Início (UTC)<input id="starts" type="datetime-local" required></label><label>Fim (UTC, opcional)<input id="ends" type="datetime-local"></label></div>
+      <label>Título<input id="title" minlength="3" maxlength="120" required></label>
+      <label>Mensagem<textarea id="message" minlength="3" maxlength="2000" required></textarea></label>
+      <button type="submit">Publicar aviso</button> <span id="notice-status" role="status"></span>
+    </form>
+  </section>
+</main>
+<script src="operations.js"></script>
+</body>
+</html>
