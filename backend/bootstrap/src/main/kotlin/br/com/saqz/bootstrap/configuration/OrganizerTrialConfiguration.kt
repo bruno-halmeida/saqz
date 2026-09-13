@@ -8,6 +8,8 @@ import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcPaidSubscriptionHistory
 import br.com.saqz.subscriptions.application.OrganizerTrialRepository
 import br.com.saqz.subscriptions.application.PaidSubscriptionHistory
 import br.com.saqz.subscriptions.application.StartOrganizerTrial
+import br.com.saqz.subscriptions.application.TrialCampaignStore
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcTrialCampaignStore
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -58,6 +60,8 @@ class OrganizerTrialConfiguration {
         actors: br.com.saqz.sharedkernel.actor.AuthenticatedActorResolver,
         trials: br.com.saqz.sharedkernel.subscription.OrganizerTrialAccessLookup,
         groups: br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup,
+        campaigns: TrialCampaignStore,
+        eligibility: StartOrganizerTrial,
         @org.springframework.beans.factory.annotation.Value("\${saqz.branch.domain}") branchDomain: String,
     ): br.com.saqz.trials.http.OrganizerTrialController {
         val domain = java.net.URI(branchDomain)
@@ -65,7 +69,7 @@ class OrganizerTrialConfiguration {
         require(domain.path.isNullOrEmpty() || domain.path == "/")
         require(domain.query == null && domain.fragment == null)
         return br.com.saqz.trials.http.OrganizerTrialController(
-            actors, trials, groups, domain.toString().trimEnd('/') + "/?%24ios_nativelink=true",
+            actors, trials, groups, domain.toString().trimEnd('/') + "/?%24ios_nativelink=true", campaigns, eligibility,
         )
     }
 
@@ -79,6 +83,13 @@ class OrganizerTrialConfiguration {
     fun paidSubscriptionHistory(dataSource: DataSource): PaidSubscriptionHistory = JdbcPaidSubscriptionHistory(dataSource)
 
     @Bean
-    fun groupCreationTrial(trials: OrganizerTrialRepository, history: OwnerGroupHistory, paid: PaidSubscriptionHistory, clock: Clock): GroupCreationTrial =
-        StartOrganizerTrial(trials, history, paid, clock)
+    fun groupCreationTrial(trials: OrganizerTrialRepository, history: OwnerGroupHistory, paid: PaidSubscriptionHistory, clock: Clock, campaigns: TrialCampaignStore): StartOrganizerTrial =
+        StartOrganizerTrial(trials, history, paid, clock, campaigns)
+
+    @Bean
+    fun trialCampaignStore(dataSource: DataSource, clock: Clock): TrialCampaignStore = JdbcTrialCampaignStore(dataSource, clock)
+
+    @Bean
+    fun adminTrialCampaigns(store: TrialCampaignStore, clock: Clock) =
+        br.com.saqz.adminweb.http.AdminTrialCampaignsController(store, clock)
 }

@@ -14,3 +14,15 @@ backend/bootstrap: 29 testes, 0 falhas, 0 ignorados
 | AC3 elegibilidade | StartOrganizerTrialTest.kt e OrganizerTrialCreationIntegrationTest.kt (gate passou) | Histórico anterior impede novo trial |
 
 Nenhum teste removido/ignorado; testes com PostgreSQL real conforme padrão bootstrap.
+
+## T2
+Gate bootstrap:test --tests '*Trial*' --tests '*AdminCoupons*': PASS (JDK21).
+
+| AC / mapeamento reverso | Evidência (TrialCampaignEndpointIntegrationTest.kt) | Resultado |
+|---|---|---|
+| AC2 dias/código/campanha/limite | :54–60 assertions dos campos + :61 `assertEquals(409, create(c).statusCode())` | 45 dias, normalização e duplicidade |
+| AC5 oferta e seleção | :66 `assertTrue(before["canRedeemCoupon"].booleanValue())`; :71–76 valores de AVAILABLE/dias/código e startedAt null | Seleção sem início |
+| AC1, AC5 OFF/autorização | :86–95 assertFalse e status exatos 401/403/409 | OFF e fronteiras de sessão/admin |
+| AC2, AC5 inválidos | :98–106 assertEquals 400/404/201 | Validação e dias limites 1/365 |
+
+Necessários: todos os testes novos mapeiam AC2/AC5. Nenhum teste removido. Controller trata corpo inválido como 400 (incluindo enum inválido), sem cair no handler global 500.
