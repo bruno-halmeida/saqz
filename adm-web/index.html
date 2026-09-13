@@ -15,7 +15,7 @@
 <body>
 <x-dc>
 <helmet>
-<style>.recebimentos{overflow:auto;padding:24px 28px;font-size:14px}.recebimentos h1{margin-top:0}.recebimentos h2{font-size:18px}.recebimentos section{background:white;border:1px solid var(--saqz-border);border-radius:16px;padding:20px;margin:18px 0}.rec-fields{display:flex;gap:16px;flex-wrap:wrap}.recebimentos label{display:grid;gap:8px;margin:12px 0;flex:1;min-width:180px}.recebimentos select,.recebimentos textarea{font:inherit;padding:10px;border:1px solid var(--saqz-border);border-radius:8px;background:white}.recebimentos textarea{min-height:70px;resize:vertical}.rec-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.recebimentos button{font:600 13px Inter,sans-serif;padding:9px 14px;border:1px solid var(--saqz-border);border-radius:20px;background:white;color:var(--saqz-blue);cursor:pointer}.recebimentos button:disabled{opacity:.5;cursor:default}.recebimentos article{border-top:1px solid var(--saqz-border);padding:16px 0;overflow-wrap:anywhere}.recebimentos pre{white-space:pre-wrap;overflow-wrap:anywhere}.recebimentos p{line-height:1.5;color:var(--saqz-muted)}</style><style>/* Saqz uses Inter across product and communication.
+<style>.recebimentos{overflow:auto;padding:24px 28px;font-size:14px}.recebimentos h1{margin-top:0}.recebimentos h2{font-size:18px}.recebimentos section{background:white;border:1px solid var(--saqz-border);border-radius:16px;padding:20px;margin:18px 0}.rec-fields{display:flex;gap:16px;flex-wrap:wrap}.recebimentos label{display:grid;gap:8px;margin:12px 0;flex:1;min-width:180px}.recebimentos input,.recebimentos select,.recebimentos textarea{font:inherit;padding:10px;border:1px solid var(--saqz-border);border-radius:8px;background:white}.recebimentos textarea{min-height:70px;resize:vertical}.rec-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.recebimentos button{font:600 13px Inter,sans-serif;padding:9px 14px;border:1px solid var(--saqz-border);border-radius:20px;background:white;color:var(--saqz-blue);cursor:pointer}.recebimentos button:disabled{opacity:.5;cursor:default}.recebimentos article{border-top:1px solid var(--saqz-border);padding:16px 0;overflow-wrap:anywhere}.recebimentos pre{white-space:pre-wrap;overflow-wrap:anywhere}.recebimentos p{line-height:1.5;color:var(--saqz-muted)}.condition-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 20px}.condition-fields label{min-width:0;align-content:start}.condition-fields input,.condition-fields select,.condition-fields textarea{width:100%;box-sizing:border-box;color:var(--saqz-navy)}.condition-fields .condition-content{grid-column:1 / -1;order:1}.condition-content textarea{min-height:150px}.recebimentos p{overflow-wrap:anywhere}@media(max-width:650px){.condition-fields{grid-template-columns:1fr}.recebimentos{padding:20px 16px}}</style><style>/* Saqz uses Inter across product and communication.
    Variable font: opsz 14–32, wght 100–900. */
 @font-face {
   font-family: "Inter";
@@ -364,6 +364,8 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
 <sc-if value="{{ isRecebimentos }}"><div class="recebimentos"><h1>Recebimentos</h1>
 <p>Controle de novas operações e descoberta. Backend desligado bloqueia também o mobile. Aprovação cadastral, elegibilidade comercial e ativação do grupo continuam obrigatórias.</p>
 <p>Estes controles não bloqueiam manutenção nem pagamentos de ordens já emitidas. A flag da conta é separada e nenhuma alteração cria uma conta.</p>
+<section><h2>Condições comerciais</h2><p>Publique termos e uma tabela imutável por meio de pagamento. PIX e CARD aqui configuram custos globais; o titular escolhe os meios aceitos em cada grupo.</p><p>Preencha todos os valores, inclusive zeros. A vigência usa o horário local deste navegador. Termos precisam estar publicados e vigentes até a vigência da tabela.</p></section>
+<section><h2>Publicar termos</h2><div class="rec-fields condition-fields"><label>Versão dos termos<input type="text" aria-label="Versão dos termos" disabled="{{ cterms.locked }}" value="{{ cterms.version }}" sc-camel-on-change="{{ cterms.onversion }}"></label><label class="condition-content">Conteúdo integral dos termos<textarea aria-label="Conteúdo integral dos termos" disabled="{{ cterms.locked }}" value="{{ cterms.content }}" sc-camel-on-change="{{ cterms.oncontent }}" maxlength="200000"></textarea></label><label>Vigência dos termos<input type="datetime-local" aria-label="Vigência dos termos" disabled="{{ cterms.locked }}" value="{{ cterms.effectiveAt }}" sc-camel-on-change="{{ cterms.oneffectiveAt }}"></label></div><div class="rec-actions"><button disabled="{{ cterms.busy }}" sc-camel-on-click="{{ cterms.publish }}">{{ cterms.publishLabel }}</button></div><p role="status">{{ cterms.status }}</p><pre>{{ cterms.resultText }}</pre></section><section><h2>Publicar tabela de tarifas</h2><div class="rec-fields condition-fields"><label>Meio de pagamento<sc-raw-select aria-label="Meio de pagamento" disabled="{{ cfees.locked }}" value="{{ cfees.method }}" sc-camel-on-change="{{ cfees.onmethod }}"><option value="">Selecione o meio</option><option value="PIX">PIX</option><option value="CARD">CARD</option></sc-raw-select></label><label>Versão dos termos vinculados<input type="text" aria-label="Versão dos termos vinculados" disabled="{{ cfees.locked }}" value="{{ cfees.termsVersion }}" sc-camel-on-change="{{ cfees.ontermsVersion }}"></label><label>Vigência da tabela<input type="datetime-local" aria-label="Vigência da tabela" disabled="{{ cfees.locked }}" value="{{ cfees.effectiveAt }}" sc-camel-on-change="{{ cfees.oneffectiveAt }}"></label><label>Custo do provedor (%)<input type="text" aria-label="Custo do provedor (%)" disabled="{{ cfees.locked }}" value="{{ cfees.providerRate }}" sc-camel-on-change="{{ cfees.onproviderRate }}"></label><label>Custo fixo do provedor (R$)<input type="text" aria-label="Custo fixo do provedor (R$)" disabled="{{ cfees.locked }}" value="{{ cfees.providerFixedCents }}" sc-camel-on-change="{{ cfees.onproviderFixedCents }}"></label><label>Comissão da plataforma (%)<input type="text" aria-label="Comissão da plataforma (%)" disabled="{{ cfees.locked }}" value="{{ cfees.commissionRate }}" sc-camel-on-change="{{ cfees.oncommissionRate }}"></label><label>Comissão fixa da plataforma (R$)<input type="text" aria-label="Comissão fixa da plataforma (R$)" disabled="{{ cfees.locked }}" value="{{ cfees.commissionFixedCents }}" sc-camel-on-change="{{ cfees.oncommissionFixedCents }}"></label><label>Base para simulação (R$)<input type="text" aria-label="Base para simulação (R$)" disabled="{{ cfees.locked }}" value="{{ cfees.baseCents }}" sc-camel-on-change="{{ cfees.onbaseCents }}"></label></div><div class="rec-actions"><button disabled="{{ cfees.busy }}" sc-camel-on-click="{{ cfees.publish }}">{{ cfees.publishLabel }}</button><button disabled="{{ cfees.locked }}" sc-camel-on-click="{{ cfees.simulate }}">Simular no backend</button></div><p role="status">{{ cfees.status }}</p><pre>{{ cfees.resultText }}</pre></section><sc-if value="{{ conditionQuote }}"><section><h2>Simulação do backend</h2><p>Prévia do rascunho; simular não publica uma tabela.</p><pre>{{ conditionQuote }}</pre></section></sc-if>
 <section><h2>Liberação por sistema</h2><div class="rec-fields"><label>Backend<sc-raw-select aria-label="Liberação por sistema Backend" disabled="{{ recG.locked }}" value="{{ recG.BACKEND }}" sc-camel-on-change="{{ recG.onBackend }}"><option value="OFF">Desligado</option><option value="SELECTED_USERS">Usuários selecionados</option><option value="ALL_USERS">Todos os usuários</option></sc-raw-select></label><label>Mobile<sc-raw-select aria-label="Liberação por sistema Mobile" disabled="{{ recG.locked }}" value="{{ recG.MOBILE }}" sc-camel-on-change="{{ recG.onMobile }}"><option value="OFF">Desligado</option><option value="SELECTED_USERS">Usuários selecionados</option><option value="ALL_USERS">Todos os usuários</option></sc-raw-select></label></div><label>Motivo obrigatório (3–500 caracteres)<textarea aria-label="Motivo global" maxlength="500" disabled="{{ recG.locked }}" value="{{ recG.reason }}" sc-camel-on-change="{{ recG.onReason }}"></textarea></label><div class="rec-actions"><button type="button" disabled="{{ recG.saveDisabled }}" sc-camel-on-click="{{ recG.onSave }}">{{ recG.saveLabel }}</button><button type="button" disabled="{{ recG.reloadDisabled }}" sc-camel-on-click="{{ recG.onReload }}">Recarregar</button><span>{{ recG.version }}</span></div><p role="status">{{ recG.status }}</p></section><section><h2>Selecionar usuário</h2><p>Abra um usuário na listagem e escolha “Controles de recebimentos”.</p><button type="button" disabled="{{ recChooseDisabled }}" sc-camel-on-click="{{ goUsu }}">Buscar na lista de usuários</button></section><sc-if value="{{ recHasUser }}"><section><h2>Exceções do usuário</h2><strong>{{ recUserName }}</strong><p>{{ recEffective }}</p><p>{{ recAccount }}</p><p>Estado efetivo confirmado pelo servidor; as edições abaixo só valem após salvar.</p><div class="rec-fields"><label>Backend<sc-raw-select aria-label="Exceções do usuário Backend" disabled="{{ recU.locked }}" value="{{ recU.BACKEND }}" sc-camel-on-change="{{ recU.onBackend }}"><option value="INHERIT">Herdar regra geral</option><option value="ALLOW">Permitir</option><option value="DENY">Negar</option></sc-raw-select></label><label>Mobile<sc-raw-select aria-label="Exceções do usuário Mobile" disabled="{{ recU.locked }}" value="{{ recU.MOBILE }}" sc-camel-on-change="{{ recU.onMobile }}"><option value="INHERIT">Herdar regra geral</option><option value="ALLOW">Permitir</option><option value="DENY">Negar</option></sc-raw-select></label><label>Operações da conta<sc-raw-select aria-label="Operações da conta" disabled="{{ recAccountDisabled }}" value="{{ recU.account }}" sc-camel-on-change="{{ recU.onAccount }}"><option value="keep">Manter estado atual</option><option value="true">Liberar operações</option><option value="false">Restringir operações</option></sc-raw-select></label></div><label>Motivo obrigatório (3–500 caracteres)<textarea aria-label="Motivo do usuário" maxlength="500" disabled="{{ recU.locked }}" value="{{ recU.reason }}" sc-camel-on-change="{{ recU.onReason }}"></textarea></label><div class="rec-actions"><button type="button" disabled="{{ recU.saveDisabled }}" sc-camel-on-click="{{ recU.onSave }}">{{ recU.saveLabel }}</button><button type="button" disabled="{{ recU.reloadDisabled }}" sc-camel-on-click="{{ recU.onReload }}">Recarregar</button><span>{{ recU.version }}</span></div><p role="status">{{ recU.status }}</p></section></sc-if><section><h2>Histórico de alterações</h2><nav class="pagination" aria-label="Paginação do histórico"><span role="status">{{ recHistoryStatus }}</span><button disabled="{{ recHistoryBusy }}" sc-camel-on-click="{{ recHistoryReload }}">Atualizar histórico</button><button disabled="{{ recHistoryPrevDisabled }}" sc-camel-on-click="{{ recHistoryPrev }}">Anterior</button><button disabled="{{ recHistoryNextDisabled }}" sc-camel-on-click="{{ recHistoryNext }}">Próxima</button></nav><sc-for list="{{ recHistoryRows }}" as="entry"><article><strong>{{ entry.reason }}</strong><p>{{ entry.date }} · Ator: {{ entry.actorUserId }} · Alvo: {{ entry.target }}</p><p>Request ID: {{ entry.requestId }}</p><details><summary>Ver antes e depois</summary><div class="rec-fields"><div>Antes<pre>{{ entry.beforeText }}</pre></div><div>Depois<pre>{{ entry.afterText }}</pre></div></div></details></article></sc-for></section></div></sc-if>
   <sc-if value="{{ isUsu }}" hint-placeholder-val="{{ false }}">
   <div style="flex:1;min-height:0;display:flex;flex-direction:column">
@@ -736,6 +738,8 @@ class Component extends DCLogic {
         // Qualquer transição de sessão invalida respostas em voo da época anterior.
         this._epoca = (this._epoca || 0) + 1;
         this._recebimentosPending = {};
+        this._conditionsPending = {};
+        this.setState(this.conditionsInitial());
         // Timers pendentes não disparam depois da transição de sessão.
         clearTimeout(this._ud);
         clearTimeout(this._gd);
@@ -768,11 +772,90 @@ class Component extends DCLogic {
   }
 
   recebimentosInitial() {
-    return { recGlobal: null, recUser: null, recUserId: null, recUserName: "", recHistoryData: null, recHistoryPage: 1,
+    return { ...this.conditionsInitial(), recGlobal: null, recUser: null, recUserId: null, recUserName: "", recHistoryData: null, recHistoryPage: 1,
       recGlobalDraft: { BACKEND: "OFF", MOBILE: "OFF", reason: "" }, recUserDraft: { BACKEND: "INHERIT", MOBILE: "INHERIT", account: "keep", reason: "" },
       recGlobalBusy: false, recUserBusy: false, recGlobalPending: false, recUserPending: false,
       recGlobalError: "", recUserError: "", recGlobalConflict: false, recUserConflict: false };
   }
+
+  conditionsInitial() {
+    const form = draft => ({draft, busy:false, pending:false, status:"", resultText:""});
+    return {conditions: {terms:form({version:"",content:"",effectiveAt:""}), fees:form({method:"",termsVersion:"",effectiveAt:"",providerRate:"",providerFixedCents:"",commissionRate:"",commissionFixedCents:"",baseCents:""})}, conditionQuote:""};
+  }
+  conditionSet(kind, patch) { this.setState({conditions:{...this.state.conditions,[kind]:{...this.state.conditions[kind],...patch}}}); }
+  conditionEdit(kind, field, value) {
+    const f=this.state.conditions[kind]; if(f.busy || f.pending)return;
+    this.conditionSet(kind,{draft:{...f.draft,[field]:value},status:"",resultText:""});
+    if(kind==='fees')this.setState({conditionQuote:""});
+  }
+  // Financial values remain decimal strings/BigInt through validation and JSON transport.
+  conditionDecimal(value, scale) {
+    const raw=String(value).trim().replace(',', '.');
+    if(!/^\d+(\.\d+)?$/.test(raw))throw Error('Use um decimal não negativo, sem separador de milhar.');
+    const [whole, fraction='']=raw.split('.'), digits=fraction.replace(/0+$/, '');
+    if(digits.length>scale)throw Error('Precisão excedida: reais aceitam 2 casas e percentuais 8 casas decimais.');
+    return BigInt(whole)*10n**BigInt(scale)+BigInt(digits.padEnd(scale,'0')||'0');
+  }
+  conditionBody(kind, simulate) {
+    const d=this.state.conditions[kind].draft;
+    const version=kind==='terms'?d.version:d.termsVersion;
+    if(!/^[A-Za-z0-9._-]{1,64}$/.test(version))throw Error('Informe uma versão com 1–64 letras, números, ponto, hífen ou sublinhado.');
+    const body={requestId:window.crypto.randomUUID()};
+    if(!simulate){const date=new Date(d.effectiveAt);if(!d.effectiveAt || !Number.isFinite(date.getTime()) || date.getTime()<=Date.now())throw Error('Informe uma vigência futura.');body.effectiveAt=date.toISOString();}
+    if(kind==='terms'){
+      if(!d.content.trim() || d.content.length>200000)throw Error('Informe o conteúdo dos termos (até 200.000 caracteres).');
+      return {...body,version,content:d.content};
+    }
+    if(!['PIX','CARD'].includes(d.method))throw Error('Selecione PIX ou CARD.');
+    body.method=d.method;body.termsVersion=version;
+    for(const field of ['providerRate','commissionRate']){
+      const units=this.conditionDecimal(d[field],8);
+      if(units>10000000000n || (field==='providerRate' && units===10000000000n))throw Error('Custo percentual deve ser menor que 100%; comissão deve ser até 100%.');
+      body[field]=(units/10000000000n).toString()+'.'+(units%10000000000n).toString().padStart(10,'0');
+    }
+    for(const field of ['providerFixedCents','commissionFixedCents',...(simulate?['baseCents']:[])]){
+      const cents=this.conditionDecimal(d[field],2);
+      if(cents>9223372036854775807n || (field==='baseCents' && cents===0n))throw Error('Valor fora do limite; a base deve ser positiva.');
+      body[field]=cents.toString();
+    }
+    return body;
+  }
+  conditionMoney(value) {
+    if(typeof value==='number' && !Number.isSafeInteger(value))throw Error('Resposta monetária fora da precisão segura.');
+    if(!/^\d+$/.test(String(value)))throw Error('Resposta monetária inválida.');
+    const n=BigInt(value);return 'R$ '+(n/100n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+(n%100n).toString().padStart(2,'0');
+  }
+  async conditionSend(kind, simulate=false) {
+    const f=this.state.conditions[kind];if(f.busy || (simulate && f.pending))return;
+    this._conditionsPending=this._conditionsPending||{};
+    let pending=this._conditionsPending[kind];
+    if(!pending){try {const body=this.conditionBody(kind,simulate);pending={path:'/admin/receivables/'+kind+(simulate?'/simulate':''),body:JSON.stringify(body),requestId:body.requestId};}catch(e){this.conditionSet(kind,{status:e.message});return;}}
+    if(!simulate)this._conditionsPending[kind]=pending;
+    const epoch=this._epoca, seq=this['_condition'+kind]=(this['_condition'+kind]||0)+1;
+    const current=()=>this._epoca===epoch && this['_condition'+kind]===seq;
+    this.conditionSet(kind,{busy:true,pending:!simulate,status:simulate?'Simulando…':'Publicando…',resultText:''});
+    if(kind==='fees')this.setState({conditionQuote:''});
+    let timer;
+    try {
+      const r=await Promise.race([this.mutacao(pending.path,{method:'POST',headers:{'Content-Type':'application/json'},body:pending.body}).then(async r=>({ok:r.ok,status:r.status,data:await r.json()})),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('timeout')),15000);})]);
+      if(!current())return;
+      if(r.status>=500 || r.status===408)throw Error('server');
+      if(!r.ok){delete this._conditionsPending[kind];this.conditionSet(kind,{pending:false,status:(r.status===409?'Conflito: versão ou requestId já utilizado. Revise o rascunho antes de publicar novamente.':(simulate?'Simulação não realizada: ':'Publicação não realizada: ')+(r.data?.error||'erro HTTP '+r.status)+'. Revise valores, termos vinculados e vigência.')+' Request ID: '+pending.requestId});return;}
+      if(!r.data?.value || r.data.requestId!==pending.requestId)throw Error('envelope');
+      const v=r.data.value;
+      if(!simulate && (!v.resourceId || !v.effectiveAt || !v.publishedAt))throw Error('publication envelope');
+      if(simulate){this.setState({conditionQuote:[['Base','baseCents'],['Taxas agregadas','feesCents'],['Total a pagar','totalCents'],['Líquido esperado','expectedNetCents'],['Comissão da plataforma','commissionCents'],['Custos do provedor','providerFeeCents']].map(([label,key])=>label+': '+this.conditionMoney(v[key])).join('\n')});}
+      delete this._conditionsPending[kind];
+      this.conditionSet(kind,{pending:false,status:(simulate?'Simulação concluída.':'Publicação confirmada.')+' Request ID: '+pending.requestId,resultText:simulate?'': 'Versão publicada: '+v.resourceId+'\nVigência: '+v.effectiveAt+'\nPublicação: '+v.publishedAt});
+    }catch(e){if(current())this.conditionSet(kind,{status:simulate?'Não foi possível obter uma simulação exata. Tente novamente.':'Resultado incerto. Rascunho bloqueado; reenvie o mesmo pedido para confirmar. Request ID: '+pending.requestId});}
+    finally {clearTimeout(timer);if(current())this.conditionSet(kind,{busy:false});}
+  }
+  conditionsVals() {
+    const result={conditionQuote:this.state.conditionQuote};
+    for(const kind of ['terms','fees']){const f=this.state.conditions[kind];result['c'+kind]={...f,...f.draft,locked:f.busy||f.pending,publishLabel:f.pending?'Reenviar publicação idêntica':kind==='terms'?'Publicar termos':'Publicar tabela',publish:()=>this.conditionSend(kind),simulate:()=>this.conditionSend(kind,true)};for(const field of Object.keys(f.draft))result['c'+kind]['on'+field]=e=>this.conditionEdit(kind,field,e.target.value);}
+    return result;
+  }
+
   recKey(kind) { return kind === "global" ? "recGlobal" : "recUser"; }
   recPath(kind) { return "/admin/receivables/rollout" + (kind === "user" ? "/users/" + encodeURIComponent(this.state.recUserId) : ""); }
   recSelect(id, name) {
@@ -1289,6 +1372,7 @@ class Component extends DCLogic {
     const suspenso = !!(det && det.suspendedAt);
     return {
       ...this.recebimentosVals(),
+      ...this.conditionsVals(),
       sRecebimentos: navS(st.page === "recebimentos"), bRecebimentos: navB(st.page === "recebimentos"),
       sVis: navS(pageKey === "vis"), sUsu: navS(pageKey === "usu"), sGru: navS(pageKey === "gru"), sRec: navS(pageKey === "rec"), sCup: navS(pageKey === "cup"), sSup: navS(pageKey === "sup"),
       bVis: navB(pageKey === "vis"), bUsu: navB(pageKey === "usu"), bGru: navB(pageKey === "gru"), bRec: navB(pageKey === "rec"), bCup: navB(pageKey === "cup"), bSup: navB(pageKey === "sup"),
