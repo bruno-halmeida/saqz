@@ -339,3 +339,31 @@ para 404. A asserção foi preservada e o rerun passou.
 Sem interface visual do painel nesta entrega e sem publicação de condições reais.
 
 Gate amplo após publicação: 384 bootstrap e 20 arquitetura passaram, sem falhas, erros ou ignorados.
+
+
+## T06 — ativação expressa por grupo
+
+GroupReceivablesIntegrationTest: sete testes com PostgreSQL e contratos HTTP cobrem:
+- Revisão dos preços reais do grupo, consentimento obrigatório e snapshot imutável das condições.
+- Bloqueio por plano, cadastro não aprovado ou operação desabilitada; leitura permanece acessível.
+- Alteração de preço ou tabela entre revisão e confirmação retorna conflito.
+- Ativação concorrente com mesmo requestId tem um único efeito; replay após desativação não reativa.
+- Delegado revogado perde acesso na mesma sessão; troca de dono não transfere conta financeira.
+- Desativação após exclusão do grupo/perda do plano preserva conta e agenda interrupção de recorrência.
+- HTTP propaga requestId, permissões e erros tipados sem revelar conta de terceiros.
+
+V52 adiciona auditoria imutável de configurações; expectativa do schema atualizada para quatro
+migrações e 19 tabelas financeiras, preservando as demais asserções. Nenhuma ordem ou instrumento
+é emitido durante a ativação. STOP_RECURRENCE fica persistido para execução futura de T13.
+
+Gate com JDK 21: receivables check (12 unitários + 24 integração), grupos test (645),
+architecture-tests test (20), bootstrap test (391), todos sem falhas/erros/ignorados.
+A primeira compilação do teste HTTP usou o namespace Jackson 2 indisponível no bootstrap;
+ajustado para JsonMapper do Jackson 3 já usado no módulo, sem alterar asserções.
+
+## Sandbox — cadastro isolado
+
+A criação direta de subconta de homologação retornou HTTP 200 após a conta principal virar PJ
+(e correção do telefone sintético rejeitado). Consulta autenticada de situação retornou APPROVED.
+Esse cadastro está somente no Asaas; não valida a jornada integrada no Saqz, pagamentos, split,
+saques ou reembolsos. Credenciais e respostas privadas permanecem cifradas fora do repositório.

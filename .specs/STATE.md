@@ -11,7 +11,7 @@
 
 - `feat/receivables-core`: domínio, schema, cifra, operações persistidas e cálculo de tarifas.
 - `feat/receivables-foundation`: entrega dependente com onboarding, delegação e elegibilidade central.
-- Base atualizada para origin/main 6f86f8f6, incluindo trial central.
+- Base atualizada para origin/main c3d1802d, incluindo trial central e onboarding mobile paralelo.
 - V48 resolve colisão preexistente do trial com V46 de grupos; V49 cria recebimentos; V50 adiciona data remota.
 - Criação do PR recusada pelo GitHub: `must be a collaborator (createPullRequest)`.
   Restrição de PR superada pela autorização explícita do usuário para merge direto na main.
@@ -23,13 +23,15 @@
   Pendentes correção cadastral e recuperação operacional de chave perdida.
 - T05 parcial: concessão/revogação/diretório, revogação transacional ao remover/rebaixar admin.
   Permissões nas futuras operações serão aplicadas quando essas rotas existirem.
-- T06 parcial: composição com trial e assinatura centrais, inclusive corte efetivo de downgrade.
-  Ativação por grupo ainda pendente.
+- T06 implementada: elegibilidade central, revisão de preços/tarifas, aceite explícito,
+  ativação idempotente e desativação independente de plano/grupo. Interrupção remota permanece em T13.
 - T07 parcial: núcleo decimal, gross-up, split fixo, simulação HTTP e consulta de termos; publicação administrativa implementada; emissão pendente.
 - T08–T17 e T19–T20 pendentes. T18 parcial: APIs de publicação/preview administrativo implementadas; interface adm-web pendente. Sem pagamentos, carteira, recorrência ou mobile implementados.
 - T21 parcial: revisão individual e sete mutações detectadas em cópia temporária.
-- 51 testes novos: 12 domínio/cifra/tarifas, 24 PostgreSQL/HTTP, 8 delegação, 4 elegibilidade, 3 HTTP administrativo.
-- Homologação real Asaas e liberação do piloto não realizadas.
+- 58 testes novos: 12 domínio/cifra/tarifas, 24 PostgreSQL/HTTP, 8 delegação, 4 elegibilidade, 3 HTTP administrativo e 7 ativação de grupos.
+- Subconta sandbox criada diretamente no Asaas após alteração da conta principal para PJ;
+  consulta cadastral retornou APPROVED. Credenciais cifradas no servidor, sem vínculo no banco Saqz.
+  Homologação de pagamentos e liberação do piloto ainda não realizadas.
 
 - `feat/receivables-quotes`: terceira entrega dependente com catálogo vigente e simulação HTTP; três testes PostgreSQL/HTTP novos passaram.
 
@@ -37,7 +39,10 @@
 
 ## Integração em main
 
-- Usuário autorizou merge direto das quatro entregas. Merge local realizado sem conflitos,
-  sobre origin/main 6f86f8f6; publicação remota será verificada ao concluir a operação.
+- Quatro entregas anteriores integradas e publicadas em main (30691c5e; documentação 4bfe4666).
+- Entrega T06 em feat/receivables-group-activation, baseada em c3d1802d.
+- Gate T06: 391 bootstrap, 645 grupos, 12 + 24 receivables e 20 arquitetura, sem falhas.
+- V52 registra revisão imutável por grupo; 19 tabelas financeiras.
+- Próximo: liberação auditada do piloto e ordens/instrumentos de pagamento; depois conciliação.
 - Não há bloqueio de informação para continuar a implementação. Antes de liberar o piloto,
-  serão necessárias habilitação BaaS, condições comerciais reais, termos e homologação Asaas.
+  serão necessárias confirmação das condições BaaS de produção, tarifas reais, termos e homologação financeira Asaas.
