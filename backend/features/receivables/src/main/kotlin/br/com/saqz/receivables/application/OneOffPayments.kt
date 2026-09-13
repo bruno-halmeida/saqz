@@ -25,6 +25,7 @@ data class PaymentInstrument(val id: UUID, val accountId: UUID, val orderId: UUI
     val splitSettled: Boolean = false, val expiresAt: Instant? = null)
 data class PaymentOrderDetail(val order: PaymentOrder, val instruments: List<PaymentInstrument>)
 data class PaymentOrderPage(val orders: List<PaymentOrder>, val nextCursor: UUID?)
+data class ChargeOrderLookup(val detail: PaymentOrderDetail?)
 
 interface PaymentStore {
     fun <T> transaction(block: () -> T): T
@@ -69,6 +70,18 @@ class OneOffPayments(private val store: PaymentStore, private val groupCharges: 
             if (accounts.findById(accountId)?.ownerUserId != charge.ownerUserId) fail(FinancialError.NOT_FOUND)
             if (!charge.pending || !charge.groupActive || charge.reservedOrderId != null) fail(FinancialError.CONFLICT)
             review(charge, accountId)
+        }
+    }
+    fun orderForCharge(chargeId: UUID, accountId: UUID, request: FinancialRequest): FinancialResult<ChargeOrderLookup> = safely(request) {
+        store.transaction {
+            val charge = groupCharges.lock(chargeId) ?: fail(FinancialError.NOT_FOUND)
+            val order = store.orderForCharge(chargeId)
+            if (order != null && order.accountId != accountId) fail(FinancialError.NOT_FOUND)
+            authorize(accountId, order?.groupId ?: charge.groupId, request, false)
+            if (order == null && (!charge.groupActive || accounts.findById(accountId)?.ownerUserId != charge.ownerUserId)) {
+                fail(FinancialError.NOT_FOUND)
+            }
+            ChargeOrderLookup(order?.let { detail(it.id) })
         }
     }
     fun approve(chargeId: UUID, accountId: UUID, request: FinancialRequest, fingerprint: String,

@@ -557,6 +557,69 @@ class OneOffPaymentsIntegrationTest {
             assertIs<FinancialResult.Success<PaymentOrderPage>>(f.service.ownOrders(f.payerRequest(), foreign)).value)
     }
 
+    @Test fun `charge order lookup is local and survives financial maintenance cutoffs`() = fixture { f ->
+        assertNull(assertIs<FinancialResult.Success<ChargeOrderLookup>>(f.service.orderForCharge(f.charge, f.account, f.request())).value.detail)
+        val order = f.approve()
+        val operations = f.count("receivable_operations")
+        f.eligible = false; f.remote.providerDown = true
+        f.sql("UPDATE receivable_rollout SET backend_mode='OFF'")
+        f.sql("UPDATE receivable_group_links SET enabled=false")
+        f.sql("UPDATE access_groups SET owner_user_id='${f.payer}',deleted_at=now()")
+        val result = assertIs<FinancialResult.Success<ChargeOrderLookup>>(f.service.orderForCharge(f.charge, f.account, f.request())).value
+        assertEquals(PaymentOrderDetail(order, emptyList()), result.detail)
+        assertEquals(operations, f.count("receivable_operations"))
+        assertEquals(0, f.remote.customerPosts); assertEquals(0, f.remote.paymentPosts); assertEquals(0, f.remote.qrRequests)
+        assertEquals("PENDING", f.string("SELECT status::text FROM group_charges"))
+    }
+
+    @Test fun `charge lookup hides resources from payers foreign accounts revoked delegates and former owners without order`() = fixture { f ->
+        for (actor in listOf(f.payer, UUID.randomUUID())) {
+            assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.service.orderForCharge(f.charge, f.account,
+                FinancialRequest(UUID.randomUUID(), actor))).error)
+        }
+        val order = f.approve()
+        assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.service.orderForCharge(f.charge, UUID.randomUUID(), f.request())).error)
+        assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.service.orderForCharge(UUID.randomUUID(), f.account, f.request())).error)
+        val acceptance = UUID.randomUUID()
+        f.sql("UPDATE group_memberships SET role='ADMIN'")
+        f.sql("INSERT INTO receivable_terms_acceptances VALUES ('$acceptance','${f.account}','${f.payer}','v1','DELEGATION','${UUID.randomUUID()}',now())")
+        f.sql("INSERT INTO receivable_delegations VALUES ('${f.account}','${f.payer}','${f.owner}','$acceptance',now(),NULL)")
+        assertEquals(order, assertIs<FinancialResult.Success<ChargeOrderLookup>>(f.service.orderForCharge(f.charge, f.account, f.payerRequest())).value.detail?.order)
+        f.sql("UPDATE receivable_delegations SET revoked_at=now()")
+        assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.service.orderForCharge(f.charge, f.account, f.payerRequest())).error)
+    }
+
+    @Test fun `empty charge lookup requires current ownership and active group`() = fixture { f ->
+        f.sql("UPDATE access_groups SET owner_user_id='${f.payer}'")
+        assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.service.orderForCharge(f.charge, f.account, f.request())).error)
+        f.sql("UPDATE access_groups SET owner_user_id='${f.owner}',deleted_at=now()")
+        assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.service.orderForCharge(f.charge, f.account, f.request())).error)
+    }
+
+    @Test fun `charge order lookup HTTP validates account and returns authenticated no-store envelope`() = fixture { f ->
+        var actor = f.owner
+        val resolver = object : HandlerMethodArgumentResolver {
+            override fun supportsParameter(parameter: MethodParameter) = parameter.parameterType == RequestIdentity::class.java
+            override fun resolveArgument(parameter: MethodParameter, container: ModelAndViewContainer?, request: NativeWebRequest,
+                binder: WebDataBinderFactory?) = RequestIdentity("subject", "request")
+        }
+        val mvc = MockMvcBuilders.standaloneSetup(OneOffPaymentsController(FinancialActorResolver { actor }, f.service))
+            .setCustomArgumentResolvers(resolver).build()
+        val path = "/api/receivables/charges/${f.charge}/order"
+        val empty = mvc.perform(get(path).param("accountId", f.account.toString())).andReturn().response
+        assertEquals(200, empty.status); assertEquals("no-store", empty.getHeader("Cache-Control"))
+        assertTrue(mapper.readTree(empty.contentAsString)["value"]["detail"].isNull)
+        val order = f.approve()
+        val found = mvc.perform(get(path).param("accountId", f.account.toString())).andReturn().response
+        assertEquals(200, found.status)
+        assertEquals(order.id.toString(), mapper.readTree(found.contentAsString)["value"]["detail"]["order"]["id"].asText())
+        assertNotNull(UUID.fromString(mapper.readTree(found.contentAsString)["requestId"].asText()))
+        assertEquals(400, mvc.perform(get(path)).andReturn().response.status)
+        assertEquals(400, mvc.perform(get(path).param("accountId", "bad")).andReturn().response.status)
+        actor = f.payer
+        assertEquals(404, mvc.perform(get(path).param("accountId", f.account.toString()).param("actor", f.owner.toString())).andReturn().response.status)
+    }
+
     private fun fixture(methods: Set<PaymentMethod> = PaymentMethod.entries.toSet(), block: (Fixture) -> Unit) {
         Remote().use { remote -> block(Fixture(remote, methods)) }
     }

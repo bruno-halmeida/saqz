@@ -28,6 +28,10 @@ class OneOffPaymentsController(private val actors: FinancialActorResolver, priva
     @GetMapping("/orders")
     fun ownOrders(@AuthenticationPrincipal identity: RequestIdentity, @RequestParam(required = false) after: UUID?): ResponseEntity<*> =
         response(service.ownOrders(FinancialRequest(UUID.randomUUID(), actors.resolve(identity)), after))
+    @GetMapping("/charges/{chargeId}/order")
+    fun chargeOrder(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable chargeId: UUID,
+                    @RequestParam accountId: UUID): ResponseEntity<*> =
+        response(service.orderForCharge(chargeId, accountId, FinancialRequest(UUID.randomUUID(), actors.resolve(identity))))
     @PostMapping("/charges/{chargeId}/preview")
     fun preview(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable chargeId: UUID, @RequestBody body: PaymentCommand) =
         execute(identity, body) { service.preview(chargeId, body.accountId ?: invalid(), it) }
