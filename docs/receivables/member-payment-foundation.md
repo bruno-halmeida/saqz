@@ -61,3 +61,7 @@ em payment-http-contract.md continua autoritativo. Nenhuma chamada ao Asaas real
 Mapeamento reverso: os três testes novos :475, :497, :519 cobrem respectivamente AC1/AC2,
 AC3 e AC1/AC3 HTTP. Nenhum teste especulativo; os 28 anteriores foram preservados.
 Adequação: aprovado para o passo 1; revisão independente final ainda pendente.
+
+Complemento do passo 1: o teste :547 cobre cursor estrangeiro mais recente quando há histórico
+próprio mais antigo (:557–560: listas próprias exatas e `PaymentOrderPage(emptyList(), null)` para
+cursor estrangeiro). Gate repetido: 32 testes de pagamentos, sem falhas, exit 0.

@@ -544,6 +544,19 @@ class OneOffPaymentsIntegrationTest {
         assertEquals(0, mapper.readTree(empty.contentAsString)["value"]["orders"].size())
     }
 
+    @Test fun `foreign history cursor is opaque even when the payer has older orders`() = fixture { f ->
+        val own = f.approve()
+        val foreign = UUID.randomUUID()
+        f.sql("""INSERT INTO receivable_orders(id,account_id,group_id,member_user_id,group_charge_id,due_date,status,base_cents,request_id,issued_at,approval_fingerprint)
+            SELECT '$foreign',account_id,group_id,'${f.owner}','${UUID.randomUUID()}',due_date,'ISSUED',base_cents,'${UUID.randomUUID()}',issued_at + interval '1 second',approval_fingerprint
+            FROM receivable_orders WHERE id='${own.id}'""")
+        f.sql("INSERT INTO receivable_order_quotes SELECT '$foreign',method,quote FROM receivable_order_quotes WHERE order_id='${own.id}'")
+        assertEquals(listOf(own), assertIs<FinancialResult.Success<PaymentOrderPage>>(f.service.ownOrders(f.payerRequest(), null)).value.orders)
+        assertEquals(listOf(foreign), assertIs<FinancialResult.Success<PaymentOrderPage>>(f.service.ownOrders(f.request(), null)).value.orders.map { it.id })
+        assertEquals(PaymentOrderPage(emptyList(), null),
+            assertIs<FinancialResult.Success<PaymentOrderPage>>(f.service.ownOrders(f.payerRequest(), foreign)).value)
+    }
+
     private fun fixture(methods: Set<PaymentMethod> = PaymentMethod.entries.toSet(), block: (Fixture) -> Unit) {
         Remote().use { remote -> block(Fixture(remote, methods)) }
     }
