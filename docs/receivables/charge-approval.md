@@ -53,3 +53,11 @@ in /tmp/saqz-charge-lookup.log. Four new tests assert exact empty/detail respons
 operations/charge status, owner/delegate/revocation/account isolation, transfer/deletion, HTTP
 200/400/404 and no-store. Source assertions are in OneOffPaymentsIntegrationTest from line560;
 final independent matrix will preserve exact expressions and line numbers.
+
+## Gate CA2
+
+Oito casos novos KtorChargeApprovalGatewayTest aprovados nas duas plataformas, junto da regressão
+de gateways existente. Assertions :18–20 autenticam/isolam lookup; :23 preserva detalhe/vazio;
+:30–35 payload e revisão; :39–49 corpo exato e retry; :54–61 cancelamento pendente; :70–83 identidades/
+fingerprint/centavos; :90–101 erros; :107–109 envelope incerto; :115–119 comandos inválidos não enviam.
+Android/iOS data + detekt domain/data, exit 0 em /tmp/saqz-charge-gateway.log.

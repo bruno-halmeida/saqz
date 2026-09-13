@@ -56,7 +56,7 @@ class KtorMemberPaymentsGateway(private val network: AuthenticatedNetworkClient)
 }
 
 private fun orderPath(id: String) = "api/receivables/orders/${id.encodeURLPathPart()}"
-private fun NetworkError.paymentError(writing: Boolean): ReceiptError = when (this) {
+internal fun NetworkError.paymentError(writing: Boolean): ReceiptError = when (this) {
     is NetworkError.HttpStatus -> status.paymentError(writing)
     is NetworkError.ApiProblemError -> problem.status.paymentError(writing)
     NetworkError.Unavailable -> ReceiptError.SIGNED_OUT
