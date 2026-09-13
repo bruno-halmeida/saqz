@@ -147,8 +147,8 @@ class JdbcPaymentExecution(dataSource: DataSource, private val store: JdbcPaymen
                 store.changeOrder(order.id, "PAID")
             } else { occurrence(current, "CASH_CONFLICT", ref); cashConflict = true }
         }
-        if (observed.splitSettled && observed.splitCents != null) movement(current, "COMMISSION", -observed.splitCents, ref)
-        if (observed.returnedCommissionCents != null) movement(current, "COMMISSION", observed.returnedCommissionCents, "$ref:refund")
+        if (observed.splitSettled && observed.splitCents != null && observed.splitCents > 0) movement(current, "COMMISSION", -observed.splitCents, ref)
+        if (observed.returnedCommissionCents != null) returnedCommission(current, observed.returnedCommissionCents, ref)
         if (settled && observed.providerFeeCents != null) movement(current, "SETTLEMENT", observed.totalCents - observed.providerFeeCents, ref)
         if (observed.available && observed.providerFeeCents != null) movement(current, "AVAILABILITY", observed.totalCents - observed.providerFeeCents, ref)
         if (reversed) {
@@ -164,6 +164,21 @@ class JdbcPaymentExecution(dataSource: DataSource, private val store: JdbcPaymen
             store.changeOrder(order.id, "CANCELLED"); charges.release(order.chargeId, order.id)
         }
         return !cashConflict
+    }
+    private fun returnedCommission(i: PaymentInstrument, returned: Long, ref: String) {
+        // A REFUNDED split alone does not prove that its commission was debited.
+        // Only offset the effective debit recorded from a settled split, never the quote.
+        val debit = jdbc.sql("""SELECT coalesce(-sum(amount_cents),0) FROM receivable_movements
+            WHERE instrument_id=:id AND kind='COMMISSION' AND amount_cents<0""")
+            .param("id", i.id).query(Long::class.java).single()
+        val credit = jdbc.sql("""SELECT coalesce(sum(amount_cents),0) FROM receivable_movements
+            WHERE instrument_id=:id AND kind='COMMISSION' AND amount_cents>0""")
+            .param("id", i.id).query(Long::class.java).single()
+        if (returned < 0 || returned > debit || (credit != 0L && credit != returned)) {
+            occurrence(i, "REVERSAL_SPLIT_PENDING", ref)
+            return
+        }
+        if (returned > 0 && credit == 0L) movement(i, "COMMISSION", returned, "$ref:refund")
     }
     private fun rejectCreation(id: UUID, claim: OperationClaim? = null) {
         store.transaction {

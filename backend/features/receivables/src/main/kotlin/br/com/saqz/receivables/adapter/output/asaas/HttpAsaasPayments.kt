@@ -79,14 +79,18 @@ class HttpAsaasPayments(private val baseUrl: URI, private val walletId: String,
             "split" to if (quote.commissionCents == 0L) emptyList<Any>() else listOf(mapOf("walletId" to walletId, "fixedValue" to quote.fixedSplitValue()))))
         return observation(context, node)
     }
-    override fun recover(context: ProviderPaymentContext): ProviderPaymentObservation? {
+    override fun recover(context: ProviderPaymentContext): ProviderPaymentObservation? = recover(context, true)
+    private fun recover(context: ProviderPaymentContext, includeVisuals: Boolean): ProviderPaymentObservation? {
         val i = context.instrument; val key = credentials.apiKey(i.accountId)
         val node = if (i.paymentId != null) send(key, "GET", "/payments/${safeId(i.paymentId)}")
             else single(send(key, "GET", "/payments?externalReference=${i.id}&limit=2")) ?: return null
-        return observation(context, node)
+        return observation(context, node, includeVisuals)
     }
     override fun cancel(context: ProviderPaymentContext): ProviderPaymentObservation? {
-        val observed = recover(context) ?: return null
+        val observed = recover(context, false) ?: return null
+        val instrument = context.instrument
+        require(observed.method == instrument.quote.method && observed.totalCents == instrument.quote.totalCents)
+        require(instrument.paymentId == null || observed.paymentId == instrument.paymentId)
         if (observed.status != "ACTIVE") return observed
         val id = observed.paymentId ?: return null
         val response = send(credentials.apiKey(context.instrument.accountId), "DELETE", "/payments/${safeId(id)}")
@@ -94,7 +98,7 @@ class HttpAsaasPayments(private val baseUrl: URI, private val walletId: String,
         if (!response.path("deleted").asBoolean(false) || response.path("id").asText() != id) return null
         return observed.copy(status = "CANCELLED")
     }
-    private fun observation(context: ProviderPaymentContext, node: JsonNode): ProviderPaymentObservation {
+    private fun observation(context: ProviderPaymentContext, node: JsonNode, includeVisuals: Boolean = true): ProviderPaymentObservation {
         val instrument = context.instrument
         val reference = node.path("externalReference").asText()
         require(reference == instrument.id.toString())
@@ -116,13 +120,7 @@ class HttpAsaasPayments(private val baseUrl: URI, private val walletId: String,
         val splits = node.path("split").filter { it.path("walletId").asText() == walletId }
         require(splits.size <= 1)
         val split = splits.singleOrNull()
-        val qr = if (method == PaymentMethod.PIX && status == "ACTIVE")
-            send(credentials.apiKey(instrument.accountId), "GET", "/payments/$id/pixQrCode") else null
-        val url = if (method == PaymentMethod.CARD && status == "ACTIVE") node.path("invoiceUrl").asText().also {
-            val uri = URI(it); require(uri.scheme == "https" && uri.userInfo == null &&
-                (uri.host == "asaas.com" || uri.host.endsWith(".asaas.com")))
-        } else null
-        return ProviderPaymentObservation(paymentId = id, reference = reference, method = method, totalCents = total, status = if (status == "AVAILABLE" && node.path("escrow").path("status").asText() == "ACTIVE") "SETTLED" else status,
+        val facts = ProviderPaymentObservation(paymentId = id, reference = reference, method = method, totalCents = total, status = if (status == "AVAILABLE" && node.path("escrow").path("status").asText() == "ACTIVE") "SETTLED" else status,
             providerFeeCents = node.get("netValue")?.takeIf { it.isNumber }?.let { total - cents(node, "netValue") },
             splitCents = split?.let { cents(it, "fixedValue") } ?: if (instrument.quote.commissionCents == 0L) 0 else null,
             splitId = split?.get("id")?.asText(), splitSettled = split?.path("status")?.asText() == "DONE",
@@ -131,11 +129,29 @@ class HttpAsaasPayments(private val baseUrl: URI, private val walletId: String,
                 val returned = node.path("refunds").filter { it.path("status").asText() == "DONE" }
                     .flatMap { it.path("refundedSplits").toList() }.filter { it.path("id").asText() == splitId && it.path("done").asBoolean() }
                 if (returned.isEmpty()) null else returned.sumOf { cents(it, "value") }
-            },
-            pixPayload = qr?.let { required(it, "payload") }, pixImage = qr?.let { required(it, "encodedImage") }, checkoutUrl = url,
-            expiresAt = qr?.get("expirationDate")?.asText()?.let { java.time.LocalDateTime.parse(it,
-                java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")).atZone(java.time.ZoneId.of("America/Sao_Paulo")).toInstant() })
+            })
+        return if (includeVisuals) enrichVisuals(context, node, facts) else facts
     }
+    /** Display artifacts are optional; a QR outage must not discard authenticated payment facts. */
+    private fun enrichVisuals(context: ProviderPaymentContext, node: JsonNode, facts: ProviderPaymentObservation): ProviderPaymentObservation {
+        if (facts.status != "ACTIVE") return facts
+        return try {
+            if (facts.method == PaymentMethod.PIX) {
+                val qr = send(credentials.apiKey(context.instrument.accountId), "GET", "/payments/${facts.paymentId}/pixQrCode")
+                facts.copy(pixPayload = required(qr, "payload"), pixImage = required(qr, "encodedImage"),
+                    expiresAt = qr.get("expirationDate")?.asText()?.let { java.time.LocalDateTime.parse(it,
+                        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        .atZone(java.time.ZoneId.of("America/Sao_Paulo")).toInstant() })
+            } else {
+                val url = required(node, "invoiceUrl")
+                val uri = URI(url)
+                require(uri.scheme == "https" && uri.userInfo == null && uri.host != null &&
+                    (uri.host == "asaas.com" || uri.host.endsWith(".asaas.com")))
+                facts.copy(checkoutUrl = url)
+            }
+        } catch (_: Exception) { facts }
+    }
+
     private fun single(node: JsonNode): JsonNode? {
         require(node.path("data").isArray && !node.path("hasMore").asBoolean(true))
         require(node.path("data").size() <= 1)

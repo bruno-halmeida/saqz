@@ -172,6 +172,95 @@ class OneOffPaymentsIntegrationTest {
         assertIs<ChargeStatusResult.Success>(f.manualStatus())
     }
 
+    @Test fun `QR outage cannot block cancellation of authenticated existing Pix`() = fixture { f ->
+        val order = f.approve(); f.instrument(order)
+        val qrRequests = f.remote.qrRequests
+        f.remote.qrDown = true
+        val result = assertIs<FinancialResult.Success<PaymentOrderDetail>>(f.service.cancel(order.id, f.request())).value
+        assertEquals("CANCELLED", result.order.status)
+        assertEquals(listOf("/v3/payments/pay_local"), f.remote.deletePaths)
+        assertEquals(qrRequests, f.remote.qrRequests)
+        assertEquals(1, f.remote.paymentPosts)
+        assertIs<ChargeStatusResult.Success>(f.manualStatus())
+    }
+
+    @Test fun `QR outage preserves creation facts and uncertain cancellation recovers same payment`() = fixture { f ->
+        f.remote.qrDown = true
+        val order = f.approve(); val i = f.instrument(order)
+        assertEquals("ACTIVE", i.status)
+        assertEquals("pay_local", i.paymentId)
+        assertNull(i.pixPayload)
+        f.remote.disconnectDelete = true
+        assertEquals("CANCEL_PENDING", assertIs<FinancialResult.Success<PaymentOrderDetail>>(f.service.cancel(order.id, f.request())).value.order.status)
+        assertEquals(ChargeStatusResult.Conflict, f.manualStatus())
+        f.remote.disconnectDelete = false
+        f.sql("UPDATE receivable_operations SET next_attempt_at='-infinity' WHERE kind='CANCEL_INSTRUMENT'")
+        assertTrue(f.execution.reconcile(i.id))
+        assertEquals("CANCELLED", f.store.order(order.id)!!.status)
+        assertTrue(f.remote.deletePaths.all { it == "/v3/payments/pay_local" })
+        assertEquals(1, f.remote.paymentPosts)
+        assertEquals(1, f.count("receivable_instruments"))
+        assertIs<ChargeStatusResult.Success>(f.manualStatus())
+    }
+
+    @Test fun `cancellation validates payment identity method and amount before DELETE despite QR outage`() {
+        for (mismatch in listOf("id", "externalReference", "billingType", "value")) fixture { f ->
+            val order = f.approve(); f.instrument(order)
+            f.remote.qrDown = true
+            f.remote.paymentMismatch = mismatch
+            val result = assertIs<FinancialResult.Success<PaymentOrderDetail>>(f.service.cancel(order.id, f.request())).value
+            assertEquals("CANCEL_PENDING", result.order.status, mismatch)
+            assertTrue(f.remote.deletePaths.isEmpty(), mismatch)
+            assertEquals(1, f.remote.paymentPosts, mismatch)
+            assertEquals(ChargeStatusResult.Conflict, f.manualStatus(), mismatch)
+        }
+    }
+
+    @Test fun `first observation refunded never credits commission without effective debit`() = fixture { f ->
+        val i = f.instrument(f.approve(), PaymentMethod.CARD)
+        f.remote.paymentStatus = "REFUNDED"; f.remote.splitStatus = "REFUNDED"; f.remote.returnedCommissionCents = 300
+        repeat(3) { assertTrue(f.execution.reconcile(i.id)) }
+        assertEquals("REFUNDED", f.store.order(i.orderId)!!.status)
+        assertEquals(0L, f.commissionBalance())
+        assertEquals(0, f.jdbc.sql("SELECT count(*) FROM receivable_movements WHERE kind='COMMISSION'").query(Int::class.java).single())
+        assertEquals(1, f.jdbc.sql("SELECT count(*) FROM receivable_payment_occurrences WHERE code='REVERSAL_SPLIT_PENDING'").query(Int::class.java).single())
+        assertEquals(2, f.count("group_charge_payment_effects"))
+        assertEquals(2, f.count("receivable_cash_effects"))
+    }
+
+    @Test fun `proven settled commission is returned once and delayed settlement evidence also conserves balance`() {
+        for (refundFirst in listOf(false, true)) fixture { f ->
+            val i = f.instrument(f.approve(), PaymentMethod.CARD)
+            if (refundFirst) {
+                f.remote.paymentStatus = "REFUNDED"; f.remote.splitStatus = "REFUNDED"; f.remote.returnedCommissionCents = 300
+                assertTrue(f.execution.reconcile(i.id))
+                assertEquals(0L, f.commissionBalance())
+            }
+            f.remote.paymentStatus = "RECEIVED"; f.remote.splitStatus = "DONE"; f.remote.returnedCommissionCents = null
+            assertTrue(f.execution.reconcile(i.id))
+            assertEquals(-300L, f.commissionBalance())
+            f.remote.paymentStatus = "REFUNDED"; f.remote.splitStatus = "REFUNDED"; f.remote.returnedCommissionCents = 300
+            repeat(3) { assertTrue(f.execution.reconcile(i.id)) }
+            assertEquals(0L, f.commissionBalance())
+            assertEquals(2, f.jdbc.sql("SELECT count(*) FROM receivable_movements WHERE kind='COMMISSION'").query(Int::class.java).single())
+            assertEquals("REFUNDED", f.store.order(i.orderId)!!.status)
+            assertEquals(2, f.count("group_charge_payment_effects"))
+        }
+    }
+
+    @Test fun `commission return exceeding effective debit remains pending without fabricated credit`() = fixture { f ->
+        val i = f.instrument(f.approve(), PaymentMethod.CARD)
+        f.remote.paymentStatus = "RECEIVED"; f.remote.splitStatus = "DONE"
+        assertTrue(f.execution.reconcile(i.id))
+        f.remote.paymentStatus = "REFUNDED"; f.remote.splitStatus = "REFUNDED"; f.remote.returnedCommissionCents = 301
+        repeat(2) { assertTrue(f.execution.reconcile(i.id)) }
+        assertEquals(-300L, f.commissionBalance())
+        assertEquals(1, f.jdbc.sql("SELECT count(*) FROM receivable_payment_occurrences WHERE code='REVERSAL_SPLIT_PENDING'").query(Int::class.java).single())
+        f.remote.returnedCommissionCents = 300
+        assertTrue(f.execution.reconcile(i.id))
+        assertEquals(0L, f.commissionBalance())
+    }
+
     @Test fun `HTTP requires stable request IDs payer acceptance and hides foreign order`() = fixture { f ->
         var actor = f.owner
         val resolver = object : HandlerMethodArgumentResolver {
@@ -425,6 +514,7 @@ class OneOffPaymentsIntegrationTest {
         fun manualStatus() = ChargeManagement(JdbcTransactionRunner(ds), JdbcChargeManagementRepository(ds), { now }, UUID::randomUUID)
             .status(owner, group, charge, 1, ChargeStatusCommand(ChargeStatus.PAID))
         fun sql(s: String) { jdbc.sql(s).update() }
+        fun commissionBalance() = jdbc.sql("SELECT coalesce(sum(amount_cents),0) FROM receivable_movements WHERE kind='COMMISSION'").query(Long::class.java).single()
         fun count(table: String) = jdbc.sql("SELECT count(*) FROM $table").query(Int::class.java).single()
         fun string(s: String) = jdbc.sql(s).query(String::class.java).single()
     }
@@ -435,6 +525,10 @@ class OneOffPaymentsIntegrationTest {
         var disconnectCustomer = false; var disconnectPayment = false; var wrongAmount = false
         var disconnectDelete = false; var rejectCustomer = false; var providerDown = false
         var rejectWebhook = false
+        var qrDown = false; var qrRequests = 0
+        var splitStatus = "PENDING"; var returnedCommissionCents: Long? = null
+        var paymentMismatch: String? = null
+        val deletePaths = mutableListOf<String>()
         var webhookPosts = 0; var webhook: com.fasterxml.jackson.databind.JsonNode? = null; var disconnectWebhook = false
         var customer: com.fasterxml.jackson.databind.JsonNode? = null
         var lastPayment: com.fasterxml.jackson.databind.JsonNode? = null
@@ -443,7 +537,8 @@ class OneOffPaymentsIntegrationTest {
             server.createContext("/v3") { exchange ->
                 check(exchange.requestHeaders.getFirst("access_token") == "local-key")
                 val path = exchange.requestURI.path; val method = exchange.requestMethod
-                if (providerDown) { exchange.sendResponseHeaders(503, -1); exchange.close(); return@createContext }
+                if (path.endsWith("/pixQrCode")) qrRequests++
+                if (providerDown || (qrDown && path.endsWith("/pixQrCode"))) { exchange.sendResponseHeaders(503, -1); exchange.close(); return@createContext }
                 val response: Any = when {
                     path == "/v3/webhooks" && method == "POST" -> {
                         webhookPosts++; webhook = mapper.readTree(exchange.requestBody.readBytes())
@@ -473,6 +568,7 @@ class OneOffPaymentsIntegrationTest {
                     path == "/v3/payments" -> mapOf("hasMore" to false, "data" to if (lastPayment == null) emptyList<Any>() else listOf(payment()))
                     path.endsWith("/pixQrCode") -> mapOf("payload" to "pix-copy", "encodedImage" to "cGl4", "expirationDate" to "2026-09-20 23:59:59")
                     method == "DELETE" -> {
+                        deletePaths += path
                         if (disconnectDelete) { exchange.close(); return@createContext }
                         deleted = true; mapOf("deleted" to true, "id" to "pay_local") }
                     else -> payment()
@@ -485,10 +581,13 @@ class OneOffPaymentsIntegrationTest {
         }
         fun payment(): Any {
             val p = lastPayment!!
-            return mapOf("id" to "pay_local", "customer" to "cus_local", "externalReference" to p["externalReference"].asText(),
-                "billingType" to p["billingType"].asText(), "value" to if (wrongAmount) java.math.BigDecimal("200") else p["value"].decimalValue(),
+            return mapOf("id" to if (paymentMismatch == "id") "pay_other" else "pay_local", "customer" to "cus_local",
+                "externalReference" to if (paymentMismatch == "externalReference") "other" else p["externalReference"].asText(),
+                "billingType" to if (paymentMismatch == "billingType") "CREDIT_CARD" else p["billingType"].asText(), "value" to if (wrongAmount || paymentMismatch == "value") java.math.BigDecimal("200") else p["value"].decimalValue(),
                 "netValue" to java.math.BigDecimal("103.00"), "status" to paymentStatus, "deleted" to deleted,
-                "invoiceUrl" to "https://asaas.com/i/pay_local", "split" to listOf(mapOf("id" to "split_local", "walletId" to "wallet-platform", "fixedValue" to java.math.BigDecimal("3.00"), "status" to "PENDING")))
+                "invoiceUrl" to "https://asaas.com/i/pay_local", "split" to listOf(mapOf("id" to "split_local", "walletId" to "wallet-platform", "fixedValue" to java.math.BigDecimal("3.00"), "status" to splitStatus)),
+                "refunds" to returnedCommissionCents?.let { returned -> listOf(mapOf("status" to "DONE", "value" to p["value"].decimalValue(),
+                    "refundedSplits" to listOf(mapOf("id" to "split_local", "done" to true, "value" to java.math.BigDecimal.valueOf(returned, 2))))) }.orEmpty())
         }
         override fun close() { server.stop(0) }
     }
