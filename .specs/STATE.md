@@ -46,3 +46,12 @@
 - Próximo: liberação auditada do piloto e ordens/instrumentos de pagamento; depois conciliação.
 - Não há bloqueio de informação para continuar a implementação. Antes de liberar o piloto,
   serão necessárias confirmação das condições BaaS de produção, tarifas reais, termos e homologação financeira Asaas.
+
+## Handoff
+
+- 2026-09-13: usuário autorizou execução paralela supervisionada pelo Orca, substituindo escolha anterior de execução individual.
+- Branch feat/receivables-rollout, base e55fa717. Contrato compartilhado docs/receivables/rollout-contract.md.
+- Run Orca run_f38959a437de. Backend task_1d78b9588c74 / ctx_881a9eb5ff87; adm task_a131c1593f7e / ctx_0e41da9d0325; mobile task_c3bdfb520b73 / ctx_0253116c4152.
+- Workers na árvore atual, propriedade exclusiva backend/**, adm-web/** e mobile/** respectivamente. Coordenador faz commits e integração; workers não mudam branch/staging.
+- Primeiro lote: toggles e segmentação ponta a ponta. Próximo lote: pagamentos avulsos e conciliação, após gates e contrato financeiro.
+- Não tocar context.md/direcionamento.md não rastreados. Nenhuma liberação de produção autorizada nesta etapa.
