@@ -15,7 +15,7 @@
 <body>
 <x-dc>
 <helmet>
-<style>/* Saqz uses Inter across product and communication.
+<style>.recebimentos{overflow:auto;padding:24px 28px;font-size:14px}.recebimentos h1{margin-top:0}.recebimentos h2{font-size:18px}.recebimentos section{background:white;border:1px solid var(--saqz-border);border-radius:16px;padding:20px;margin:18px 0}.rec-fields{display:flex;gap:16px;flex-wrap:wrap}.recebimentos label{display:grid;gap:8px;margin:12px 0;flex:1;min-width:180px}.recebimentos select,.recebimentos textarea{font:inherit;padding:10px;border:1px solid var(--saqz-border);border-radius:8px;background:white}.recebimentos textarea{min-height:70px;resize:vertical}.rec-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.recebimentos button{font:600 13px Inter,sans-serif;padding:9px 14px;border:1px solid var(--saqz-border);border-radius:20px;background:white;color:var(--saqz-blue);cursor:pointer}.recebimentos button:disabled{opacity:.5;cursor:default}.recebimentos article{border-top:1px solid var(--saqz-border);padding:16px 0;overflow-wrap:anywhere}.recebimentos pre{white-space:pre-wrap;overflow-wrap:anywhere}.recebimentos p{line-height:1.5;color:var(--saqz-muted)}</style><style>/* Saqz uses Inter across product and communication.
    Variable font: opsz 14–32, wght 100–900. */
 @font-face {
   font-family: "Inter";
@@ -303,6 +303,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
     <button type="button" aria-label="Visão geral" title="Visão geral" sc-camel-on-click="{{ goVis }}" style="{{ sVis }}"><span style="{{ bVis }}"></span><span class="msr" style="font-size:20px">monitoring</span></button>
     <button type="button" aria-label="Usuários" title="Usuários" sc-camel-on-click="{{ goUsu }}" style="{{ sUsu }}"><span style="{{ bUsu }}"></span><span class="msr" style="font-size:20px">group</span></button>
     <button type="button" aria-label="Grupos" title="Grupos" sc-camel-on-click="{{ goGru }}" style="{{ sGru }}"><span style="{{ bGru }}"></span><span class="msr" style="font-size:20px">sports_volleyball</span></button>
+<button type="button" aria-label="Recebimentos" title="Recebimentos" sc-camel-on-click="{{ goRecebimentos }}" style="{{ sRecebimentos }}"><span style="{{ bRecebimentos }}"></span><span class="msr" style="font-size:20px">account_balance</span></button>
     <button type="button" aria-label="Receita" title="Receita" sc-camel-on-click="{{ goRec }}" style="{{ sRec }}"><span style="{{ bRec }}"></span><span class="msr" style="font-size:20px">payments</span></button>
     <button type="button" aria-label="Cupons" title="Cupons" sc-camel-on-click="{{ goCup }}" style="{{ sCup }}"><span style="{{ bCup }}"></span><span class="msr" style="font-size:20px">sell</span></button>
     <button type="button" aria-label="Suporte" title="Suporte" sc-camel-on-click="{{ goSup }}" style="{{ sSup }}"><span style="{{ bSup }}"></span><span class="msr" style="font-size:20px">support</span><span style="{{ supDot }}"></span></button>
@@ -360,6 +361,10 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
   </div>
   </sc-if>
 
+<sc-if value="{{ isRecebimentos }}"><div class="recebimentos"><h1>Recebimentos</h1>
+<p>Controle de novas operações e descoberta. Backend desligado bloqueia também o mobile. Aprovação cadastral, elegibilidade comercial e ativação do grupo continuam obrigatórias.</p>
+<p>Estes controles não bloqueiam manutenção nem pagamentos de ordens já emitidas. A flag da conta é separada e nenhuma alteração cria uma conta.</p>
+<section><h2>Liberação por sistema</h2><div class="rec-fields"><label>Backend<sc-raw-select aria-label="Liberação por sistema Backend" disabled="{{ recG.locked }}" value="{{ recG.BACKEND }}" sc-camel-on-change="{{ recG.onBackend }}"><option value="OFF">Desligado</option><option value="SELECTED_USERS">Usuários selecionados</option><option value="ALL_USERS">Todos os usuários</option></sc-raw-select></label><label>Mobile<sc-raw-select aria-label="Liberação por sistema Mobile" disabled="{{ recG.locked }}" value="{{ recG.MOBILE }}" sc-camel-on-change="{{ recG.onMobile }}"><option value="OFF">Desligado</option><option value="SELECTED_USERS">Usuários selecionados</option><option value="ALL_USERS">Todos os usuários</option></sc-raw-select></label></div><label>Motivo obrigatório (3–500 caracteres)<textarea aria-label="Motivo global" maxlength="500" disabled="{{ recG.locked }}" value="{{ recG.reason }}" sc-camel-on-change="{{ recG.onReason }}"></textarea></label><div class="rec-actions"><button type="button" disabled="{{ recG.saveDisabled }}" sc-camel-on-click="{{ recG.onSave }}">{{ recG.saveLabel }}</button><button type="button" disabled="{{ recG.reloadDisabled }}" sc-camel-on-click="{{ recG.onReload }}">Recarregar</button><span>{{ recG.version }}</span></div><p role="status">{{ recG.status }}</p></section><section><h2>Selecionar usuário</h2><p>Abra um usuário na listagem e escolha “Controles de recebimentos”.</p><button type="button" disabled="{{ recChooseDisabled }}" sc-camel-on-click="{{ goUsu }}">Buscar na lista de usuários</button></section><sc-if value="{{ recHasUser }}"><section><h2>Exceções do usuário</h2><strong>{{ recUserName }}</strong><p>{{ recEffective }}</p><p>{{ recAccount }}</p><p>Estado efetivo confirmado pelo servidor; as edições abaixo só valem após salvar.</p><div class="rec-fields"><label>Backend<sc-raw-select aria-label="Exceções do usuário Backend" disabled="{{ recU.locked }}" value="{{ recU.BACKEND }}" sc-camel-on-change="{{ recU.onBackend }}"><option value="INHERIT">Herdar regra geral</option><option value="ALLOW">Permitir</option><option value="DENY">Negar</option></sc-raw-select></label><label>Mobile<sc-raw-select aria-label="Exceções do usuário Mobile" disabled="{{ recU.locked }}" value="{{ recU.MOBILE }}" sc-camel-on-change="{{ recU.onMobile }}"><option value="INHERIT">Herdar regra geral</option><option value="ALLOW">Permitir</option><option value="DENY">Negar</option></sc-raw-select></label><label>Operações da conta<sc-raw-select aria-label="Operações da conta" disabled="{{ recAccountDisabled }}" value="{{ recU.account }}" sc-camel-on-change="{{ recU.onAccount }}"><option value="keep">Manter estado atual</option><option value="true">Liberar operações</option><option value="false">Restringir operações</option></sc-raw-select></label></div><label>Motivo obrigatório (3–500 caracteres)<textarea aria-label="Motivo do usuário" maxlength="500" disabled="{{ recU.locked }}" value="{{ recU.reason }}" sc-camel-on-change="{{ recU.onReason }}"></textarea></label><div class="rec-actions"><button type="button" disabled="{{ recU.saveDisabled }}" sc-camel-on-click="{{ recU.onSave }}">{{ recU.saveLabel }}</button><button type="button" disabled="{{ recU.reloadDisabled }}" sc-camel-on-click="{{ recU.onReload }}">Recarregar</button><span>{{ recU.version }}</span></div><p role="status">{{ recU.status }}</p></section></sc-if><section><h2>Histórico de alterações</h2><nav class="pagination" aria-label="Paginação do histórico"><span role="status">{{ recHistoryStatus }}</span><button disabled="{{ recHistoryBusy }}" sc-camel-on-click="{{ recHistoryReload }}">Atualizar histórico</button><button disabled="{{ recHistoryPrevDisabled }}" sc-camel-on-click="{{ recHistoryPrev }}">Anterior</button><button disabled="{{ recHistoryNextDisabled }}" sc-camel-on-click="{{ recHistoryNext }}">Próxima</button></nav><sc-for list="{{ recHistoryRows }}" as="entry"><article><strong>{{ entry.reason }}</strong><p>{{ entry.date }} · Ator: {{ entry.actorUserId }} · Alvo: {{ entry.target }}</p><p>Request ID: {{ entry.requestId }}</p><details><summary>Ver antes e depois</summary><div class="rec-fields"><div>Antes<pre>{{ entry.beforeText }}</pre></div><div>Depois<pre>{{ entry.afterText }}</pre></div></div></details></article></sc-for></section></div></sc-if>
   <sc-if value="{{ isUsu }}" hint-placeholder-val="{{ false }}">
   <div style="flex:1;min-height:0;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border);flex-wrap:wrap">
@@ -402,7 +407,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
   <div style="flex:1;min-height:0;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;gap:14px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
       <button type="button" sc-camel-on-click="{{ goUsu }}" style="display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;font-family:inherit;font-size:13px;font-weight:700;color:var(--saqz-blue);cursor:pointer"><span class="msr" style="font-size:16px">arrow_back</span>Usuários</button>
-      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em">{{ ud.nome }}</strong>
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em">{{ ud.nome }}</strong><button type="button" disabled="{{ recChooseDisabled }}" sc-camel-on-click="{{ recSelectCurrent }}">Controles de recebimentos</button>
       <span style="{{ udStatusStyle }}">{{ udStatusTxt }}</span>
       <span style="margin-left:auto"></span>
       <span sc-camel-on-click="{{ onSuspender }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 18px;border:1px solid var(--saqz-border);color:var(--saqz-error);background:var(--saqz-white)" style-hover="background:rgba(229,72,77,.06)">{{ udBtnLabel }}</span>
@@ -697,7 +702,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1440, &quot;height&quot;: 900}, &quot;paginaInicial&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;visao&quot;, &quot;usuarios&quot;, &quot;grupos&quot;, &quot;receita&quot;, &quot;cupons&quot;, &quot;suporte&quot;], &quot;default&quot;: &quot;visao&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Comportamento&quot;}}">
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1440, &quot;height&quot;: 900}, &quot;paginaInicial&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;visao&quot;, &quot;usuarios&quot;, &quot;grupos&quot;, &quot;receita&quot;, &quot;recebimentos&quot;, &quot;cupons&quot;, &quot;suporte&quot;], &quot;default&quot;: &quot;visao&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Comportamento&quot;}}">
 class Component extends DCLogic {
   state = {
     page: this.props.paginaInicial ?? "visao",
@@ -707,6 +712,7 @@ class Component extends DCLogic {
     gBusca: "", gStatus: "todos",
     rTab: "ass",
     // Dados vindos da API /admin (null = carregando; {erro:true} = falhou)
+    ...this.recebimentosInitial(),
     overview: null, atrasadas: null,
     usersPage: null, userDetail: null, userReceipts: null,
     groupsPage: null, groupDetail: null,
@@ -729,6 +735,7 @@ class Component extends DCLogic {
       window.saqzAdmin.onSession((me) => {
         // Qualquer transição de sessão invalida respostas em voo da época anterior.
         this._epoca = (this._epoca || 0) + 1;
+        this._recebimentosPending = {};
         // Timers pendentes não disparam depois da transição de sessão.
         clearTimeout(this._ud);
         clearTimeout(this._gd);
@@ -739,7 +746,8 @@ class Component extends DCLogic {
           // Sessão encerrada: nada da sessão anterior fica em memória nem
           // aparece entre o logout e a validação do próximo login.
           this.setState({
-            overview: null, atrasadas: null,
+            ...this.recebimentosInitial(),
+    overview: null, atrasadas: null,
             usersPage: null, userDetail: null, userReceipts: null,
             groupsPage: null, groupDetail: null,
             subsPage: null, subDetail: null, couponsData: null,
@@ -757,6 +765,116 @@ class Component extends DCLogic {
         }
       });
     }
+  }
+
+  recebimentosInitial() {
+    return { recGlobal: null, recUser: null, recUserId: null, recUserName: "", recHistoryData: null, recHistoryPage: 1,
+      recGlobalDraft: { BACKEND: "OFF", MOBILE: "OFF", reason: "" }, recUserDraft: { BACKEND: "INHERIT", MOBILE: "INHERIT", account: "keep", reason: "" },
+      recGlobalBusy: false, recUserBusy: false, recGlobalPending: false, recUserPending: false,
+      recGlobalError: "", recUserError: "", recGlobalConflict: false, recUserConflict: false };
+  }
+  recKey(kind) { return kind === "global" ? "recGlobal" : "recUser"; }
+  recPath(kind) { return "/admin/receivables/rollout" + (kind === "user" ? "/users/" + encodeURIComponent(this.state.recUserId) : ""); }
+  recSelect(id, name) {
+    if (this.state.recUserBusy || this.state.recUserPending) return;
+    this._recuser = (this._recuser || 0) + 1;
+    this.setState({ recUserId: id, recUserName: name, recUser: null, recUserConflict: false, recUserError: "", recUserDraft: { BACKEND: "INHERIT", MOBILE: "INHERIT", account: "keep", reason: "" } }, () => this.go("recebimentos"));
+  }
+  recApply(kind, data) {
+    const key = this.recKey(kind);
+    const values = kind === "global" ? data.systems : data.overrides;
+    const draft = { reason: "", account: "keep" };
+    values.forEach(v => { draft[v.system] = kind === "global" ? v.mode : v.decision; });
+    this.setState({ [key]: data, [key + "Draft"]: draft, [key + "Conflict"]: false });
+  }
+  recLoad(kind) {
+    const key = this.recKey(kind);
+    if (this.state[key + "Busy"] || this.state[key + "Pending"] || (kind === "user" && !this.state.recUserId)) return;
+    const req = this["_rec" + kind] = (this["_rec" + kind] || 0) + 1;
+    const epoch = this._epoca;
+    const current = () => this["_rec" + kind] === req && this._epoca === epoch;
+    this.setState({ [key]: null, [key + "Busy"]: true, [key + "Error"]: "" });
+    this.api(this.recPath(kind)).then(data => { if (current()) this.recApply(kind, data); })
+      .catch(() => { if (current()) this.setState({ [key + "Error"]: "Não foi possível carregar. Use Recarregar." }); })
+      .finally(() => { if (current()) this.setState({ [key + "Busy"]: false }); });
+  }
+  recEdit(kind, field, value) {
+    const key = this.recKey(kind);
+    if (this.state[key + "Busy"] || this.state[key + "Pending"]) return;
+    this.setState({ [key + "Draft"]: { ...this.state[key + "Draft"], [field]: value } });
+  }
+  async recSave(kind) {
+    const key = this.recKey(kind), st = this.state;
+    if (st[key + "Busy"] || !st[key] || st[key + "Conflict"]) return;
+    this._recebimentosPending = this._recebimentosPending || {};
+    let pending = this._recebimentosPending[kind];
+    if (!pending) {
+      const draft = st[key + "Draft"], reason = draft.reason.trim();
+      if (reason.length < 3 || reason.length > 500) { this.setState({ [key + "Error"]: "Informe um motivo de 3 a 500 caracteres." }); return; }
+      const body = { requestId: window.crypto.randomUUID(), expectedVersion: st[key].version, reason };
+      if (kind === "global") body.systems = ["BACKEND", "MOBILE"].map(system => ({ system, mode: draft[system] }));
+      else { body.overrides = ["BACKEND", "MOBILE"].map(system => ({ system, decision: draft[system] })); body.accountOperationsEnabled = draft.account === "keep" ? null : draft.account === "true"; }
+      pending = { path: this.recPath(kind), body: JSON.stringify(body) };
+      this._recebimentosPending[kind] = pending;
+    }
+    const epoch = this._epoca, req = this["_rec" + kind] = (this["_rec" + kind] || 0) + 1;
+    const current = () => this._epoca === epoch && this["_rec" + kind] === req;
+    this.setState({ [key + "Busy"]: true, [key + "Pending"]: true, [key + "Error"]: "" });
+    let timer;
+    try {
+      const response = await Promise.race([
+        this.mutacao(pending.path, { method: "PUT", headers: { "Content-Type": "application/json" }, body: pending.body }).then(async r => ({ ok: r.ok, status: r.status, data: r.ok ? await r.json() : null })),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), 15000); })
+      ]);
+      if (!current()) return;
+      if (!response.ok) {
+        if (response.status >= 500) throw new Error("unknown");
+        delete this._recebimentosPending[kind];
+        this.setState({ [key + "Pending"]: false, [key + "Conflict"]: response.status === 409,
+          [key + "Error"]: response.status === 409 ? "Conflito: outra alteração foi registrada. Recarregue e revise antes de salvar." : "Alteração recusada (HTTP " + response.status + "). Revise os dados e seu acesso." });
+        return;
+      }
+      delete this._recebimentosPending[kind];
+      this.recApply(kind, response.data);
+      this.setState({ [key + "Pending"]: false, [key + "Error"]: "Alteração salva. Estado confirmado pela API." });
+      this.recHistory(1);
+      if (kind === "global" && this.state.recUserId) this.recLoad("user");
+    } catch (_) {
+      if (current()) this.setState({ [key + "Error"]: "Resultado não confirmado. Reenvie a mesma tentativa para consultar ou concluir a alteração." });
+    } finally { clearTimeout(timer); if (current()) this.setState({ [key + "Busy"]: false }); }
+  }
+  recHistory(page) {
+    const req = this._recHistoryReq = (this._recHistoryReq || 0) + 1, epoch = this._epoca;
+    const current = () => req === this._recHistoryReq && epoch === this._epoca;
+    this.setState({ recHistoryData: null, recHistoryPage: page });
+    this.api("/admin/receivables/rollout/history?page=" + page + "&size=25").then(data => {
+      if (!current()) return;
+      const last = Math.max(1, Math.ceil(data.total / 25));
+      if (page > last) return this.recHistory(last);
+      this.setState({ recHistoryData: data });
+    }).catch(() => { if (current()) this.setState({ recHistoryData: { erro: true, items: [] } }); });
+  }
+  recebimentosVals() {
+    const st = this.state;
+    const form = kind => {
+      const key = this.recKey(kind), data = st[key], draft = st[key + "Draft"];
+      return { ...draft, locked: !data || st[key + "Busy"] || st[key + "Pending"], saveDisabled: !data || st[key + "Busy"] || st[key + "Conflict"], reloadDisabled: st[key + "Busy"] || st[key + "Pending"],
+        status: st[key + "Busy"] ? "Carregando…" : st[key + "Error"], version: data ? "Versão " + data.version : "Estado indisponível",
+        saveLabel: st[key + "Pending"] ? "Reenviar mesma tentativa" : "Salvar alterações",
+        onBackend: e => this.recEdit(kind, "BACKEND", e.target.value), onMobile: e => this.recEdit(kind, "MOBILE", e.target.value), onReason: e => this.recEdit(kind, "reason", e.target.value), onAccount: e => this.recEdit(kind, "account", e.target.value),
+        onSave: () => this.recSave(kind), onReload: () => this.recLoad(kind) };
+    };
+    const h = st.recHistoryData, user = st.recUser;
+    return { isRecebimentos: st.page === "recebimentos", goRecebimentos: () => this.go("recebimentos"), recG: form("global"), recU: form("user"), recHasUser: !!st.recUserId,
+      recSelectCurrent: () => this.recSelect(st.selU, st.userDetail?.displayName || st.selU), recUserName: st.recUserName,
+      recChooseDisabled: st.recUserBusy || st.recUserPending,
+      recEffective: user ? "Backend: " + (user.backendEnabled ? "liberado" : "bloqueado") + " · Mobile: " + (user.mobileEnabled ? "liberado" : "bloqueado") : "Estado efetivo indisponível",
+      recAccount: user ? (user.accountId ? "Conta " + user.accountId + " · operações " + (user.accountOperationsEnabled ? "liberadas" : "restritas") : "Usuário sem conta de recebimentos") : "",
+      recAccountDisabled: !user?.accountId || st.recUserBusy || st.recUserPending,
+      recHistoryRows: h && !h.erro ? h.items.map(item => ({ ...item, target: item.userId || "Configuração geral", date: new Date(item.createdAt).toLocaleString("pt-BR"), beforeText: JSON.stringify(item.before, null, 2), afterText: JSON.stringify(item.after, null, 2) })) : [],
+      recHistoryStatus: !h ? "Carregando histórico…" : h.erro ? "Não foi possível carregar o histórico." : h.total + " alterações · página " + st.recHistoryPage + " de " + Math.max(1, Math.ceil(h.total / 25)),
+      recHistoryBusy: !h, recHistoryPrevDisabled: !h || st.recHistoryPage <= 1, recHistoryNextDisabled: !h || h.erro || st.recHistoryPage * 25 >= h.total,
+      recHistoryReload: () => this.recHistory(st.recHistoryPage), recHistoryPrev: () => this.recHistory(Math.max(1, st.recHistoryPage - 1)), recHistoryNext: () => this.recHistory(st.recHistoryPage + 1) };
   }
 
   mutacao(path, options) {
@@ -791,6 +909,7 @@ class Component extends DCLogic {
 
   carregarPagina(page, force) {
     const st = this.state;
+    if (page === "recebimentos") { this.recLoad("global"); this.recHistory(1); if (st.recUserId) this.recLoad("user"); }
     if (page === "visao" && (force || !st.overview)) this.carregarVisao();
     if (page === "usuarios" && (force || !st.usersPage)) this.carregarUsuarios();
     if (page === "grupos" && (force || !st.groupsPage)) this.carregarGrupos();
@@ -1169,6 +1288,8 @@ class Component extends DCLogic {
     const modal = st.modal;
     const suspenso = !!(det && det.suspendedAt);
     return {
+      ...this.recebimentosVals(),
+      sRecebimentos: navS(st.page === "recebimentos"), bRecebimentos: navB(st.page === "recebimentos"),
       sVis: navS(pageKey === "vis"), sUsu: navS(pageKey === "usu"), sGru: navS(pageKey === "gru"), sRec: navS(pageKey === "rec"), sCup: navS(pageKey === "cup"), sSup: navS(pageKey === "sup"),
       bVis: navB(pageKey === "vis"), bUsu: navB(pageKey === "usu"), bGru: navB(pageKey === "gru"), bRec: navB(pageKey === "rec"), bCup: navB(pageKey === "cup"), bSup: navB(pageKey === "sup"),
       supDot: denAbertas ? "position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--saqz-error);box-shadow:0 0 0 2px #fff" : "display:none",

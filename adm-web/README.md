@@ -42,3 +42,11 @@ Roteiros manuais e insumos de automação: [tests/acceptance](../tests/acceptanc
 O target `adm-web` de Firebase Hosting está configurado no `firebase.json` da raiz. A publicação exige configuração Firebase/API do ambiente, origem autorizada no backend e autorização operacional. Nenhum deploy é feito pelos testes acima.
 
 O hosting serve arquivos públicos; dados e operações administrativas dependem da autorização do backend.
+
+## Recebimentos
+
+Seção conectada ao contrato `docs/receivables/rollout-contract.md`: modos backend/mobile, exceções por usuário, estado efetivo, flag operacional da conta existente e histórico de 25 itens por página. Para selecionar uma pessoa, abra **Usuários → detalhe → Controles de recebimentos**. A liberação não substitui aprovação, plano ou ativação do grupo e não cria conta automaticamente.
+
+Cada escrita exige motivo e versão lida; conflito bloqueia nova escrita até **Recarregar** e revisar. Timeout, falha de rede ou HTTP 5xx preservam o corpo e o requestId em memória: **Reenviar mesma tentativa** repete exatamente a operação, com os campos bloqueados até confirmação. Logout elimina também esse estado; não há armazenamento local de payloads administrativos.
+
+Gate: `node --test adm-web/tests/*.test.cjs`. A suíte de recebimentos executa a lógica embarcada de produção. A homologação visual desta entrega usa API e sessão explicitamente simuladas, sem credenciais ou backend real; veja `tests/receivables-evidence.md`.
