@@ -81,7 +81,19 @@ interface AppOnboardingCodeListener {
     fun onAppOnboardingCode(code: String)
 }
 
-interface NativeAuthPort {
+sealed interface NativeReauthentication {
+    class Password(val password: String) : NativeReauthentication {
+        override fun toString() = "Password(redacted)"
+    }
+    data object Google : NativeReauthentication
+}
+
+interface NativeReauthenticationPort {
+    fun reauthenticate(request: NativeReauthentication, done: AuthCallback) =
+        done.complete(AuthResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))
+}
+
+interface NativeAuthPort : NativeReauthenticationPort {
     fun observe(listener: AuthStateListener): Cancelable
     fun createAccount(name: String, email: String, password: String, done: AuthCallback)
     fun signInWithPassword(email: String, password: String, done: AuthCallback)

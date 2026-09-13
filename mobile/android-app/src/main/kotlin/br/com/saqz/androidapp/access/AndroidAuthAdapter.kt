@@ -69,7 +69,7 @@ internal sealed interface AndroidProviderResult<out T> {
     data class Failure(val code: AndroidProviderFailure) : AndroidProviderResult<Nothing>
 }
 
-internal interface AndroidFirebaseAuthClient {
+internal interface AndroidFirebaseAuthClient : AndroidFirebaseReauthenticationClient {
     fun observe(listener: (AndroidProviderUser?) -> Unit): Cancelable
     fun createAccount(name: String, email: String, password: String, done: (AndroidProviderResult<AndroidProviderUser>) -> Unit)
     fun signInWithPassword(email: String, password: String, done: (AndroidProviderResult<AndroidProviderUser>) -> Unit)
@@ -93,7 +93,7 @@ internal interface AndroidGoogleCredentialClient {
 internal class AndroidAuthAdapter(
     private val firebase: AndroidFirebaseAuthClient,
     private val google: AndroidGoogleCredentialClient,
-) : NativeAuthPort {
+) : NativeAuthPort, br.com.saqz.access.domain.port.NativeReauthenticationPort by AndroidReauthenticationAdapter(firebase, google) {
     override fun observe(listener: AuthStateListener): Cancelable = firebase.observe { user ->
         listener.onStateChanged(user?.let { AuthState.SignedIn(it.toNative()) } ?: AuthState.SignedOut)
     }
@@ -156,7 +156,7 @@ internal class AndroidAuthAdapter(
 
 internal class FirebaseSdkAuthClient(
     private val auth: FirebaseAuth,
-) : AndroidFirebaseAuthClient {
+) : AndroidFirebaseAuthClient, AndroidFirebaseReauthenticationClient by FirebaseSdkReauthenticationClient(auth) {
     init {
         auth.setLanguageCode("pt-BR")
     }
@@ -357,14 +357,14 @@ internal fun mapFirebaseFailure(
     }
 }
 
-private fun Throwable?.toFailure() = AndroidProviderResult.Failure(mapFirebaseFailure(this))
-private fun missingUser() = AndroidProviderResult.Failure(AndroidProviderFailure.INVALID_CREDENTIALS)
+internal fun Throwable?.toFailure() = AndroidProviderResult.Failure(mapFirebaseFailure(this))
+internal fun missingUser() = AndroidProviderResult.Failure(AndroidProviderFailure.INVALID_CREDENTIALS)
 private fun unavailable() = AndroidProviderResult.Failure(AndroidProviderFailure.UNAVAILABLE)
 
-private fun FirebaseUser.toProvider() = AndroidProviderUser(uid, email, isEmailVerified, displayName)
+internal fun FirebaseUser.toProvider() = AndroidProviderUser(uid, email, isEmailVerified, displayName)
 private fun AndroidProviderUser.toNative() = NativeUser(subject, email, emailVerified, displayName)
 
-private fun AndroidProviderFailure.toNative() = when (this) {
+internal fun AndroidProviderFailure.toNative() = when (this) {
     AndroidProviderFailure.INVALID_CREDENTIALS -> NativeFailureCode.INVALID_CREDENTIALS
     AndroidProviderFailure.EMAIL_IN_USE -> NativeFailureCode.EMAIL_IN_USE
     AndroidProviderFailure.WEAK_PASSWORD -> NativeFailureCode.WEAK_PASSWORD
@@ -375,7 +375,7 @@ private fun AndroidProviderFailure.toNative() = when (this) {
     AndroidProviderFailure.UNKNOWN -> NativeFailureCode.UNKNOWN
 }
 
-private fun AndroidProviderResult<AndroidProviderUser>.toAuthResult() = when (this) {
+internal fun AndroidProviderResult<AndroidProviderUser>.toAuthResult() = when (this) {
     is AndroidProviderResult.Success -> AuthResult.Success(value.toNative())
     AndroidProviderResult.Cancelled -> AuthResult.Cancelled
     is AndroidProviderResult.Failure -> AuthResult.Failure(code.toNative())

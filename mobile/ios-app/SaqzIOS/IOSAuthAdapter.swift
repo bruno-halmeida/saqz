@@ -47,6 +47,9 @@ protocol IOSFirebaseAuthClient: AnyObject {
     func signInWithPassword(email: String, password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func signInWithCustomToken(_ customToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func signInWithGoogle(idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
+    func currentSubject() -> String?
+    func reauthenticateWithPassword(_ password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
+    func reauthenticateWithGoogle(subject: String, idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func sendVerification(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void)
     func reloadUser(completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func updateDisplayName(_ name: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
@@ -55,6 +58,14 @@ protocol IOSFirebaseAuthClient: AnyObject {
 }
 
 extension IOSFirebaseAuthClient {
+    func currentSubject() -> String? { nil }
+    func reauthenticateWithPassword(_ password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        completion(.failure(.providerUnavailable))
+    }
+    func reauthenticateWithGoogle(subject: String, idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        completion(.failure(.providerUnavailable))
+    }
+
     func signInWithCustomToken(_ customToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
         completion(.failure(.providerUnavailable))
     }
@@ -165,6 +176,39 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
         }
     }
 
+    func reauthenticate(request: NativeReauthentication, done: AuthCallback) {
+        if let password = request as? NativeReauthenticationPassword {
+            reauthenticateWithPassword(password: password.password, done: done)
+        } else if request is NativeReauthenticationGoogle {
+            reauthenticateWithGoogle(done: done)
+        } else {
+            done.complete(result: IOSAuthFailure.invalidCredentials.authResult)
+        }
+    }
+
+    private func reauthenticateWithPassword(password: String, done: AuthCallback) {
+        firebase.reauthenticateWithPassword(password) { done.complete(result: $0.authResult) }
+    }
+
+    private func reauthenticateWithGoogle(done: AuthCallback) {
+        guard let subject = firebase.currentSubject() else {
+            done.complete(result: IOSAuthFailure.invalidCredentials.authResult); return
+        }
+        google.signIn { [weak firebase] result in
+            guard let firebase else {
+                done.complete(result: IOSAuthFailure.providerUnavailable.authResult); return
+            }
+            switch result {
+            case .cancelled: done.complete(result: AuthResultCancelled.shared)
+            case .failure(let failure): done.complete(result: failure.authResult)
+            case .success(let idToken, let accessToken):
+                firebase.reauthenticateWithGoogle(subject: subject, idToken: idToken, accessToken: accessToken) {
+                    done.complete(result: $0.authResult)
+                }
+            }
+        }
+    }
+
     func handleGoogleURL(_ url: URL) -> Bool { google.handle(url: url) }
 
     func sendVerification(done: ResultCallback) {
@@ -252,6 +296,40 @@ final class LiveFirebaseAuthClient: IOSFirebaseAuthClient {
         let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: accessToken)
         auth.signIn(with: credential) { result, error in
             Self.complete(user: result?.user, error: error, completion: completion)
+        }
+    }
+
+    func currentSubject() -> String? { auth.currentUser?.uid }
+
+    func reauthenticateWithPassword(_ password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        guard let user = auth.currentUser, let email = user.email, !password.isEmpty else {
+            completion(.failure(.invalidCredentials)); return
+        }
+        reauthenticate(subject: user.uid, credential: EmailAuthProvider.credential(withEmail: email, password: password), completion: completion)
+    }
+
+    func reauthenticateWithGoogle(subject: String, idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        reauthenticate(subject: subject, credential: GoogleAuthProvider.credential(withIDToken: idToken, accessToken: accessToken), completion: completion)
+    }
+
+    private func reauthenticate(subject: String, credential: AuthCredential, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        guard let user = auth.currentUser, user.uid == subject else {
+            completion(.failure(.invalidCredentials)); return
+        }
+        user.reauthenticate(with: credential) { [weak self] _, error in
+            Task { @MainActor in
+                guard error == nil, self?.auth.currentUser?.uid == subject else {
+                    completion(.failure(error.map(IOSAuthFailureMapper.map) ?? .invalidCredentials)); return
+                }
+                user.getIDTokenForcingRefresh(true) { [weak self] token, error in
+                    Task { @MainActor in
+                        guard error == nil, token?.isEmpty == false, self?.auth.currentUser?.uid == subject else {
+                            completion(.failure(error.map(IOSAuthFailureMapper.map) ?? .invalidCredentials)); return
+                        }
+                        completion(.success(IOSAuthUser(user)))
+                    }
+                }
+            }
         }
     }
 

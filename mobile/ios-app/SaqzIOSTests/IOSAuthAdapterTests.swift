@@ -315,6 +315,34 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertTrue((callback.result as? AuthResultFailure)?.code === NativeFailureCode.invalidCredentials)
     }
 
+    func testReauthenticationUsesPasswordCredentialWithoutSigningIn() {
+        let fixture = makeFixture()
+        let callback = RecordingAuthCallback()
+        fixture.firebase.passwordResult = .failure(.invalidCredentials)
+        fixture.adapter.reauthenticate(request: NativeReauthenticationPassword(password: "wrong"), done: callback)
+        XCTAssertEqual(fixture.firebase.events, [.reauthPassword])
+        XCTAssertTrue((callback.result as? AuthResultFailure)?.code === NativeFailureCode.invalidCredentials)
+    }
+
+    func testReauthenticationGoogleCancellationDoesNotUseFirebase() {
+        let fixture = makeFixture()
+        fixture.firebase.subject = "original-subject"
+        fixture.google.result = .cancelled
+        let callback = RecordingAuthCallback()
+        fixture.adapter.reauthenticate(request: NativeReauthenticationGoogle.shared, done: callback)
+        XCTAssertTrue(callback.result is AuthResultCancelled)
+        XCTAssertTrue(fixture.firebase.events.isEmpty)
+    }
+
+    func testReauthenticationGoogleUsesCurrentSubject() {
+        let fixture = makeFixture()
+        fixture.firebase.subject = "original-subject"
+        fixture.google.result = .success(idToken: "fresh", accessToken: "access")
+        let callback = RecordingAuthCallback()
+        fixture.adapter.reauthenticate(request: NativeReauthenticationGoogle.shared, done: callback)
+        XCTAssertEqual(fixture.firebase.events, [.reauthGoogle("original-subject")])
+    }
+
     private func makeFixture() -> (adapter: IOSAuthAdapter, firebase: FakeFirebaseAuthClient, google: FakeGoogleSignInClient) {
         let firebase = FakeFirebaseAuthClient()
         let google = FakeGoogleSignInClient()
@@ -325,6 +353,8 @@ final class IOSAuthAdapterTests: XCTestCase {
 @MainActor
 private final class FakeFirebaseAuthClient: IOSFirebaseAuthClient {
     enum Event: Equatable {
+        case reauthPassword
+        case reauthGoogle(String)
         case create(email: String, password: String)
         case updateDisplayName(String)
         case password(email: String, password: String)
@@ -333,6 +363,15 @@ private final class FakeFirebaseAuthClient: IOSFirebaseAuthClient {
         case token(forceRefresh: Bool)
         case signOut
         case sendVerification
+    }
+
+    var subject: String?
+    func currentSubject() -> String? { subject }
+    func reauthenticateWithPassword(_ password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        events.append(.reauthPassword); completion(passwordResult)
+    }
+    func reauthenticateWithGoogle(subject: String, idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        events.append(.reauthGoogle(subject)); completion(googleResult)
     }
 
     var createResult: Result<IOSAuthUser, IOSAuthFailure> = .failure(.unknown)

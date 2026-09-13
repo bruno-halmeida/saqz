@@ -1,5 +1,6 @@
 package br.com.saqz.androidapp.access
 
+import br.com.saqz.access.domain.port.NativeReauthentication
 import br.com.saqz.access.domain.port.AuthResult
 import br.com.saqz.access.domain.port.AuthState
 import br.com.saqz.access.domain.port.AuthStateListener
@@ -17,6 +18,50 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AndroidAuthAdapterTest {
+    @Test
+    fun passwordReauthenticationUsesExistingIdentityAndMapsFailure() {
+        val fixture = Fixture()
+        var result: AuthResult? = null
+        fixture.firebase.subject = "original-subject"
+        fixture.adapter.reauthenticate(NativeReauthentication.Password("wrong"), authCallback { result = it })
+        fixture.firebase.completeAuth(AndroidProviderResult.Failure(AndroidProviderFailure.INVALID_CREDENTIALS))
+        assertEquals(listOf("reauth-password"), fixture.firebase.calls)
+        assertEquals(AuthResult.Failure(NativeFailureCode.INVALID_CREDENTIALS), result)
+    }
+
+    @Test
+    fun googleReauthenticationKeepsSubjectCapturedBeforeAccountPicker() {
+        val fixture = Fixture()
+        var result: AuthResult? = null
+        fixture.firebase.subject = "original-subject"
+        fixture.adapter.reauthenticate(NativeReauthentication.Google,authCallback { result = it })
+        fixture.firebase.subject = "changed-subject"
+        fixture.google.complete(AndroidProviderResult.Success("fresh-credential"))
+        fixture.firebase.completeAuth(AndroidProviderResult.Failure(AndroidProviderFailure.INVALID_CREDENTIALS))
+        assertEquals(listOf("reauth-google:original-subject"), fixture.firebase.calls)
+        assertEquals(AuthResult.Failure(NativeFailureCode.INVALID_CREDENTIALS), result)
+    }
+
+    @Test
+    fun googleReauthenticationCancellationDoesNotAuthenticateOrRefresh() {
+        val fixture = Fixture()
+        fixture.firebase.subject = "original-subject"
+        var result: AuthResult? = null
+        fixture.adapter.reauthenticate(NativeReauthentication.Google,authCallback { result = it })
+        fixture.google.complete(AndroidProviderResult.Cancelled)
+        assertSame(AuthResult.Cancelled, result)
+        assertTrue(fixture.firebase.calls.isEmpty())
+    }
+
+    @Test
+    fun reauthenticationWithoutSessionDoesNotStartGoogle() {
+        val fixture = Fixture()
+        var result: AuthResult? = null
+        fixture.adapter.reauthenticate(NativeReauthentication.Google,authCallback { result = it })
+        assertEquals(AuthResult.Failure(NativeFailureCode.INVALID_CREDENTIALS), result)
+        assertTrue(fixture.firebase.calls.isEmpty())
+    }
+
     @Test
     fun observeMapsSignedOutState() {
         val fixture = Fixture()
@@ -322,6 +367,18 @@ class AndroidAuthAdapterTest {
     private class FakeFirebaseAuthClient : AndroidFirebaseAuthClient {
         val calls = mutableListOf<String>()
         var observationCancelled = false
+        var subject: String? = null
+        override val currentSubject: String? get() = subject
+        override fun reauthenticate(
+            subject: String, credential: AndroidReauthentication,
+            done: (AndroidProviderResult<AndroidProviderUser>) -> Unit,
+        ) {
+            calls += when (credential) {
+                is AndroidReauthentication.Password -> "reauth-password"
+                is AndroidReauthentication.Google -> "reauth-google:$subject"
+            }
+            authDone = done
+        }
         private var listener: ((AndroidProviderUser?) -> Unit)? = null
         private var authDone: ((AndroidProviderResult<AndroidProviderUser>) -> Unit)? = null
         private var operationDone: ((AndroidProviderResult<Unit>) -> Unit)? = null
