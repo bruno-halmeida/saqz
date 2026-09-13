@@ -60,3 +60,11 @@
 - Correção: chave autoritativa de sessão revogada no início do logout, incluindo geração para novo login da mesma pessoa. Gates: 67 testes de sessão iOS; 12 binding/logout/DI em cada plataforma; gateway/coordinator Android/iOS; 186 testes Android integrados, compilações e detekt. Relatório em docs/receivables/evidence/mobile-logout-fix.md.
 - Revisão final aprovada e main publicada: nenhum bloqueio confirmado restante no lote de controles. Relatório docs/receivables/evidence/verification-final.md. Próximo lote: pagamentos avulsos e conciliação; preparação em docs/receivables/payment-next-wave.md.
 - Preservados context.md/direcionamento.md não rastreados. Produção permanece sem liberação automática.
+
+## Onda de pagamentos em andamento — 2026-09-13
+
+- Usuário confirmou: titular escolhe Pix/cartão/ambos e ativação exige ao menos um meio.
+- Branch feat/receivables-payments, base main 3a9f6b6d. Contrato de divisão em docs/receivables/payment-wave.md.
+- Run Orca run_f939f361277e: backend task_eaaf5ca56cdb / ctx_002c48133a7a; mobile task_8224e1dd64bf / ctx_8a203aae795f; adm task_ee454554457c / ctx_dcb9b14b5bb4.
+- Backend: pagamentos avulsos/conciliação e guardas de caixa; mobile: escolha de meios/revisão/ativação; adm: termos/tarifas/simulação. Workers não fazem git; coordenador integra após gates.
+- GET de configuração independente de preview solicitado para permitir leitura/desativação sem tarifa vigente. Nenhuma liberação de produção ou chamada Asaas real nesta onda.
