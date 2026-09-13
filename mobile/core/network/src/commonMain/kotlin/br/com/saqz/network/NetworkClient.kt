@@ -54,7 +54,22 @@ class NetworkClient(
         upload: NetworkMediaUpload,
         bearerToken: String? = null,
         request: NetworkRequest = NetworkRequest(),
-    ): NetworkResult<Unit> {
+    ): NetworkResult<Unit> = uploadDecoded(method, path, upload, bearerToken, request) { response ->
+        response.bodyAsChannel().cancel()
+        NetworkResult.Success(Unit, response.metadata())
+    }
+
+    suspend fun <T> uploadMediaDecoded(method: HttpMethod, path: String, upload: NetworkMediaUpload,
+        responseSerializer: KSerializer<T>, bearerToken: String? = null, request: NetworkRequest = NetworkRequest()): NetworkResult<T> =
+        uploadDecoded(method, path, upload, bearerToken, request) { response ->
+            runCatching { json.decodeFromString(responseSerializer, response.bodyAsText()) }.fold(
+                onSuccess = { NetworkResult.Success(it, response.metadata()) },
+                onFailure = { NetworkResult.Failure(NetworkError.InvalidResponse) },
+            )
+        }
+
+    private suspend fun <T> uploadDecoded(method: HttpMethod, path: String, upload: NetworkMediaUpload,
+        bearerToken: String?, request: NetworkRequest, decode: suspend (HttpResponse) -> NetworkResult<T>): NetworkResult<T> {
         if (upload.contentLength > config.maxBinaryBodyBytes) {
             return NetworkResult.Failure(NetworkError.PayloadTooLarge)
         }
@@ -69,10 +84,8 @@ class NetworkClient(
                 upload.etag?.let { header(HttpHeaders.IfMatch, it.toStrongEntityTag()) }
                 setBody(content)
             },
-        ) { response ->
-            response.bodyAsChannel().cancel()
-            NetworkResult.Success(Unit, response.metadata())
-        }
+            decode = decode,
+        )
         if (content.limitExceeded) return NetworkResult.Failure(NetworkError.PayloadTooLarge)
         return result
     }

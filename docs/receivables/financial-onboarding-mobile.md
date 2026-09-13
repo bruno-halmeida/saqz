@@ -67,3 +67,17 @@ seguintes; não apresentar telas não implementadas como ações disponíveis.
 | FO1/2 sessão | BearerSecurityIntegrationTest novo método `financial onboarding discovery and recovery require authentication`, helper assertUnauthorized401 | segurança real |
 
 Todos os testes adicionados mapeiam FO1/FO2/FO6; nenhum existente foi removido, ignorado ou enfraquecido.
+
+## Gate tarefa 2
+
+Gateway autenticado e multipart com envelope tipado: dados/requestId exatos, erros e proteção contra
+retry de upload. Extensão `uploadMediaDecoded` reutiliza o transporte limitado existente; o método
+antigo de mídia conserva seu decoder Unit. Gate `/tmp/saqz-onboarding-data.log`, exit0: data39 Android
++39 iOS; network allTests e detekt domain/data/network aprovados.
+
+FO3/6 evidências em KtorFinancialOnboardingGatewayTest (commonTest): :21 conta inteira; :22 ator
+inválido; :23 ausência404 vs :24 rede; :31 termo completo; :33 vazio inválido; :45–50 corpo exato/retry;
+:58–62 recuperação somente request/isolamento; :69 instruções; :72–81 links/duplicatas; :90–93 bytes,
+MIME e parâmetros exatos; :102–107 pending/malformed/perda => UNCERTAIN e chamada única;
+:115–123 comandos e arquivos inválidos não enviam; :130–133 erros400/401/403/404/409 tipados.
+Cada um dos nove testes deriva FO3/FO6, sem casos removidos/ignorados nem asserções enfraquecidas.

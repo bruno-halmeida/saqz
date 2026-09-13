@@ -56,6 +56,11 @@ class AuthenticatedNetworkClient(
         network.uploadMedia(method, path, upload, token, request)
     }
 
+    suspend fun <T> uploadMediaDecoded(method: HttpMethod, path: String, upload: NetworkMediaUpload,
+        responseSerializer: KSerializer<T>, request: NetworkRequest = NetworkRequest()): NetworkResult<T> = authenticated { token ->
+        network.uploadMediaDecoded(method, path, upload, responseSerializer, token, request)
+    }
+
     suspend fun readBinary(
         path: String,
         request: NetworkRequest = NetworkRequest(),
