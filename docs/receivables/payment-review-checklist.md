@@ -33,3 +33,12 @@ percentuais BigDecimal reais do backend mantém representação decimal exata, s
 
 Adm: revisão independente aprovada, incluindo probe HTTP real de strings decimais e JDBC. Rótulos
 finais ajustados pelo coordenador e 45 testes + navegador mockado reexecutados.
+
+Auditoria independente inicial (fontes em construção):
+
+- C9: cancelamento de jogo também encerra ordem sem instrumento e libera a reserva de forma atômica.
+- C10: disputa de chargeback e disputa vencida não podem virar reversão terminal que ignore o recebimento recuperado.
+- C11: JSON inválido em webhook autenticado retorna 400; falha de persistência mantém 5xx.
+- Mobile: recuperação persistida deve usar identidade estável do pagador/operador, sem perder a guarda de geração para respostas em voo. Reenvio após recriação recarrega conta e permissões.
+
+O guard de bootstrap `payments-enabled` prepara o deployment inicial; não é a reversão operacional. Depois de emitir ordens, usar os controles administrativos de novos negócios, preservando os beans de manutenção e o scheduler.

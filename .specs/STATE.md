@@ -71,3 +71,5 @@
 
 - Adm desta onda implementado em d5ea8368 e 456d8b03: publicação de termos/tarifas, simulação e reenvio idempotente. Revisão independente task_a52994883930 / ctx_ecda05788946 aprovada; 45 testes Node, quatro probes HTTP (um temporário para decimais textuais) e quatro JDBC. Evidências de navegador com API simulada em docs/receivables/evidence/payments; sem homologação Asaas.
 - Auditoria inicial backend task_2be4fe454598 iniciada enquanto o autor resolve checklist C1–C8; não representa gate final. Mobile em validação de configuração, incluindo seleção vazia, Pix/cartão/ambos, retomada de operação incerta e logout.
+
+- Adm integrado e publicado em main 45d10d0d. Mobile implementado no commit ce18d907 (1435 linhas), autor concluído/liberado; revisão independente task_0e3a5228db83 / ctx_9608ae52f015 executando gates após correções de recuperação M1/M2. Relatório do autor:44 host Android,4 visuais e173 iOS,31 capturas; ainda não é aprovação final.
