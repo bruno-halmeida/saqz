@@ -17,3 +17,18 @@ Todos os caminhos citados abaixo estão em `backend/bootstrap/src/test/kotlin/br
 Gate e contagens finais registrados após execução. Código de preparação inicialmente omitiu email_verified obrigatório; corrigido fixture sem alterar assertions.
 
 T1 gate JDK21: bootstrap:test --tests *Coupon* --tests *Trial* (44) e subscriptions:test (247): PASS, zero falhas/erros/ignorados. Log /tmp/coupon-analytics-backend.log. Adequação: AC1–7 cobertos pelos sete testes novos, sem assertions enfraquecidas.
+
+## T2 cobertura e necessidade
+Arquivo `adm-web/tests/coupon-analytics.test.cjs`, seis testes novos necessários para AC8:
+
+| AC8 caminho | Linha / assertion | Resultado |
+|---|---|---|
+| Loading/API/duplicata | :21 `assert.equal(requests.length,1)` e path exato; :22 ready=false | Sem requisição duplicada ou total fictício |
+| Resumo/formatação/linhas/maturidade | :24 users3, payers2,66,67%,R$20; :25 benefícios; :26 prazo e50%; :27 taxa nula/status/incompleto | Resumo não soma linhas e ambos os tipos visíveis |
+| Filtros | :31 DISCOUNT:d; :33 TRIAL:t; :34 desativado; :35 resumo3; :36 noResults=true | Código duplicado, busca campanha, todos os status, resumo fixo |
+| Falha/retry | :40 ready=false,rows0,erro; :41 ready=true | Erro não é receita zero, recuperação disponível |
+| Catálogo vazio | :45 empty=true,noResults=false,rate=— | Distingue vazio de filtro |
+| Logout/resposta parse tardia | :50 data null,busy false,search vazio,type ALL,rows0 | Não repõe dados privados |
+| Troca direta de administrador | :54 duas consultas; :56 busy false e catálogo novo vazio | Nova sessão não fica presa nem herda relatório |
+
+Gate `node --test adm-web/tests/*.test.cjs`: 57 PASS, 0 falhas/ignorados. Log /tmp/coupon-analytics-admin.log. Nenhum teste anterior modificado; proteção de sessão do painel cobre também troca direta entre contas.

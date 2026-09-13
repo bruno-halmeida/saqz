@@ -18,6 +18,21 @@
 .trial-fields label{display:grid;gap:6px;font-size:13px}
 .trial-fields input{min-width:0;width:100%;box-sizing:border-box;border:1px solid var(--saqz-border);border-radius:8px;padding:10px;font:inherit}
 .trial-row{display:grid;grid-template-columns:1.4fr .5fr 1fr 1fr .8fr 110px;gap:10px;align-items:center;text-align:left;padding:12px 8px;border-bottom:1px solid var(--saqz-border)}
+
+.coupon-analytics { background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:20px;margin-bottom:24px;display:flex;flex-direction:column;gap:16px; }
+.analytics-note { margin:4px 0 0;color:var(--saqz-muted);font-size:12px;line-height:1.5; }
+.analytics-note:empty { display:none; }
+.analytics-cards { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px; }
+.analytics-cards > div { background:var(--saqz-ice);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px; }
+.analytics-cards span { color:var(--saqz-muted);font-size:12px; }
+.analytics-cards strong { font-size:24px;letter-spacing:-.03em;overflow-wrap:anywhere; }
+.analytics-filters { display:flex;flex-wrap:wrap;gap:16px; }
+.analytics-filters label { display:flex;flex-direction:column;gap:6px;font-size:12px;min-width:180px; }
+.analytics-filters input,.analytics-filters select { box-sizing:border-box;width:100%;padding:10px 12px;border:1px solid var(--saqz-border);border-radius:8px;background:var(--saqz-white);color:var(--saqz-navy);font:inherit; }
+.analytics-row { display:grid;grid-template-columns:1.3fr 1fr .5fr .55fr .7fr 1.2fr 1.5fr;gap:14px;align-items:start;padding:16px 4px;border-bottom:1px solid var(--saqz-border);font-size:13px; }
+.analytics-head { font-size:11px;font-weight:700;color:var(--saqz-muted);padding-top:8px; }
+.analytics-status { display:inline-block;font-size:11px;padding:4px 8px;margin-top:6px;border-radius:20px;background:var(--saqz-ice); }
+@media(max-width:1100px) { .analytics-cards { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 </style></head>
 <body>
 <x-dc>
@@ -609,6 +624,46 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
       <span sc-camel-on-click="{{ onNovoCupom }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 20px;background:var(--saqz-blue);color:#fff" style-hover="background:#052BB3">Criar cupom</span>
     </div>
     <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px">
+      <section aria-label="Conversão de cupons" class="coupon-analytics">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between">
+          <div><h2 style="font-size:20px;margin:0 0 6px">Conversão de cupons</h2><p class="analytics-note">Trials e descontos · Todo o histórico registrado</p></div>
+          <button class="trial-button secondary" disabled="{{ analytics.busy }}" sc-camel-on-click="{{ analytics.onReload }}">{{ analytics.reloadLabel }}</button>
+        </div>
+        <p role="status" aria-live="polite" class="analytics-note">{{ analytics.status }}</p>
+        <sc-if value="{{ analytics.ready }}">
+          <div><strong style="font-size:13px">Resumo de todos os cupons · sem duplicar pessoas ou pagamentos</strong><p class="analytics-note">{{ analytics.asOf }}</p></div>
+          <div class="analytics-cards">
+            <div><span>Organizadores que usaram</span><strong>{{ analytics.users }}</strong></div>
+            <div><span>Pagantes confirmados</span><strong>{{ analytics.payers }}</strong></div>
+            <div><span>Conversão em pagamento</span><strong>{{ analytics.rate }}</strong></div>
+            <div><span>Receita confirmada bruta</span><strong>{{ analytics.revenue }}</strong></div>
+          </div>
+          <p class="analytics-note">{{ analytics.incomplete }}</p>
+          <div class="analytics-filters">
+            <label>Tipo de cupom<select aria-label="Tipo de cupom" sc-raw-select value="{{ analytics.type }}" sc-camel-on-change="{{ analytics.onType }}"><option value="ALL">Todos os cupons</option><option value="TRIAL">Trial</option><option value="DISCOUNT">Desconto</option></select></label>
+            <label style="flex:1">Buscar cupom ou campanha<input aria-label="Buscar cupom ou campanha" type="search" value="{{ analytics.search }}" sc-camel-on-input="{{ analytics.onSearch }}" placeholder="Código ou nome da campanha" /></label>
+          </div>
+          <sc-if value="{{ analytics.empty }}"><p>Nenhum cupom criado. Os indicadores aparecerão aqui após a criação.</p></sc-if>
+          <sc-if value="{{ analytics.noResults }}"><p>Nenhum cupom corresponde aos filtros.</p></sc-if>
+          <div style="overflow-x:auto" tabindex="0" aria-label="Indicadores por cupom">
+            <div role="table" aria-label="Conversão por cupom" style="min-width:1050px">
+              <div role="row" class="analytics-row analytics-head"><span role="columnheader">Cupom / campanha</span><span role="columnheader">Benefício</span><span role="columnheader">Usaram</span><span role="columnheader">Pagantes</span><span role="columnheader">Conversão</span><span role="columnheader">Receita bruta</span><span role="columnheader">Prazo dos trials</span></div>
+              <sc-for list="{{ analyticsRows }}" as="a"><div role="row" class="analytics-row">
+                <div role="cell"><strong>{{ a.code }}</strong><p class="analytics-note">{{ a.campaign }}</p><span class="analytics-status">{{ a.status }}</span></div>
+                <span role="cell">{{ a.benefit }}</span><strong role="cell">{{ a.users }}</strong><strong role="cell">{{ a.payers }}</strong><strong role="cell">{{ a.rate }}</strong>
+                <div role="cell"><strong>{{ a.revenue }}</strong><p class="analytics-note">{{ a.payments }}</p><p class="analytics-note">{{ a.incomplete }}</p></div>
+                <div role="cell"><span>{{ a.maturity }}</span><p class="analytics-note">{{ a.matureRate }}</p></div>
+              </div></sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <details class="analytics-note"><summary style="cursor:pointer;font-weight:700">Como os indicadores são calculados</summary>
+          <p>Usaram: organizadores com trial iniciado ou resgate de desconto registrado. Aplicar um trial sem criar o grupo não conta. Conversão: quem tem pagamento confirmado de valor positivo após o uso, dividido por quem usou.</p>
+          <p>A primeira confirmação registrada no sistema define a data do pagamento. A receita inclui renovações posteriores ao uso, sem descontar taxas ou estornos. Uma mesma cobrança conta uma vez.</p>
+          <p>Quem usou vários cupons pode aparecer em várias campanhas. O resumo geral remove essa duplicidade e permanece igual ao filtrar a tabela. Os números mostram participação, sem atribuir a venda exclusivamente a um cupom.</p>
+          <p>Compare campanhas de trial pela conversão dos prazos encerrados. “—” significa que ainda não há base para a taxa. Confirmações sem recibo completo são sinalizadas; valores não são estimados pelo preço do plano. Eventos antigos sem vínculo com o organizador não entram no cálculo.</p>
+        </details>
+      </section>
       <section aria-label="Trial e campanhas" style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:20px;margin-bottom:24px;display:flex;flex-direction:column;gap:16px">
         <strong style="font-size:18px">Trial e campanhas</strong>
         <p style="margin:0;color:var(--saqz-muted);font-size:13.5px">O trial aberto dura 14 dias. Cada cupom define seu próprio prazo, contado na criação do primeiro grupo. Trials já iniciados mantêm a data de término.</p>
@@ -750,6 +805,7 @@ class Component extends DCLogic {
     // Dados vindos da API /admin (null = carregando; {erro:true} = falhou)
     ...this.recebimentosInitial(),
     ...this.trialInitial(),
+    ...this.analyticsInitial(),
     overview: null, atrasadas: null,
     usersPage: null, userDetail: null, userReceipts: null,
     groupsPage: null, groupDetail: null,
@@ -774,7 +830,7 @@ class Component extends DCLogic {
         this._epoca = (this._epoca || 0) + 1;
         this._recebimentosPending = {};
         this._conditionsPending = {};
-        this.setState(this.conditionsInitial());
+        this.setState({...this.conditionsInitial(), ...this.analyticsInitial()});
         // Timers pendentes não disparam depois da transição de sessão.
         clearTimeout(this._ud);
         clearTimeout(this._gd);
@@ -1035,6 +1091,7 @@ class Component extends DCLogic {
     if (page === "receita" && (force || !st.subsPage)) this.carregarAssinaturas();
     if (page === "cupons" && (force || !st.couponsData)) this.carregarCupons();
     if (page === "cupons" && (force || !st.trialData)) this.trialLoad();
+    if (page === "cupons" && (force || !st.analyticsData)) this.analyticsLoad();
     // Re-login com detalhe aberto: recarrega o registro selecionado.
     if (page === "usuario" && st.selU && (force || !st.userDetail)) this.carregarUsuario(st.selU);
     if (page === "grupo" && st.selG && (force || !st.groupDetail)) this.carregarGrupo(st.selG);
@@ -1165,6 +1222,47 @@ class Component extends DCLogic {
     this.api(`/admin/subscriptions/${ownerId}`)
       .then((subDetail) => { if (atual()) this.setState({ subDetail }); })
       .catch(() => { if (atual()) this.setState({ subDetail: { erro: true } }); });
+  }
+
+  analyticsInitial() {
+    return {analyticsData:null, analyticsBusy:false, analyticsError:"", analyticsType:"ALL", analyticsSearch:""};
+  }
+  async analyticsLoad() {
+    if (this.state.analyticsBusy) return;
+    const epoch=this._epoca, req=this._analyticsReq=(this._analyticsReq || 0)+1;
+    const current=()=>epoch===this._epoca && req===this._analyticsReq;
+    this.setState({analyticsBusy:true, analyticsError:"", analyticsData:null});
+    try {
+      const analyticsData=await this.api("/admin/coupon-analytics");
+      if (current()) this.setState({analyticsData});
+    } catch (_) {
+      if (current()) this.setState({analyticsError:"Não foi possível carregar os indicadores. Tente novamente."});
+    } finally { if (current()) this.setState({analyticsBusy:false}); }
+  }
+  analyticsVals() {
+    const st=this.state, data=st.analyticsData, summary=data?.summary;
+    const rate=n=>n==null ? "—" : Number(n).toLocaleString("pt-BR",{maximumFractionDigits:2})+"%";
+    const money=n=>(Number(n)/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+    const missing=n=>n ? n+" organizador(es) com confirmação incompleta. Receita e conversão podem estar subestimadas." : "";
+    const query=st.analyticsSearch.trim().toLocaleLowerCase("pt-BR");
+    const rows=(data?.coupons || []).filter(c=>(st.analyticsType==="ALL" || c.type===st.analyticsType) &&
+      (!query || (c.code+" "+(c.campaign || "")).toLocaleLowerCase("pt-BR").includes(query)));
+    const names={ACTIVE:"Ativo",INACTIVE:"Desativado",EXPIRED:"Expirado",EXHAUSTED:"Esgotado"};
+    return {analytics:{busy:st.analyticsBusy, ready:!!data, search:st.analyticsSearch, type:st.analyticsType,
+      status:st.analyticsBusy ? "Carregando indicadores…" : st.analyticsError,
+      reloadLabel:st.analyticsError ? "Tentar novamente" : "Atualizar indicadores",
+      asOf:data ? "Atualizado em "+new Date(data.asOf).toLocaleString("pt-BR") : "",
+      users:summary?.users, payers:summary?.payingUsers, rate:rate(summary?.conversionPercent), revenue:summary ? money(summary.revenueCents) : "—",
+      incomplete:missing(summary?.incompleteUsers), empty:!!data && data.coupons.length===0,
+      noResults:!!data && data.coupons.length>0 && rows.length===0,
+      onReload:()=>this.analyticsLoad(), onSearch:e=>this.setState({analyticsSearch:e.target.value}),
+      onType:e=>{if(["ALL","TRIAL","DISCOUNT"].includes(e.target.value)) this.setState({analyticsType:e.target.value});}},
+      analyticsRows:rows.map(c=>({key:c.type+":"+c.id,code:c.code,campaign:c.campaign || "",status:names[c.status] || c.status,
+        benefit:c.type==="TRIAL" ? "Trial · "+c.trialDays+" dias" : "Desconto · "+c.discountPercent+"%",
+        users:c.metrics.users,payers:c.metrics.payingUsers,rate:rate(c.metrics.conversionPercent),revenue:money(c.metrics.revenueCents),
+        payments:c.metrics.payments+" pagamento(s)",incomplete:missing(c.metrics.incompleteUsers),
+        maturity:c.type==="TRIAL" ? c.ongoingTrials+" em andamento · "+c.endedTrials+" encerrados" : "Não se aplica",
+        matureRate:c.type==="TRIAL" ? "Conversão dos encerrados: "+rate(c.endedConversionPercent) : ""}))};
   }
 
   trialInitial() {
@@ -1526,6 +1624,7 @@ class Component extends DCLogic {
       } } }),
       cuponsRows,
       ...this.trialVals(),
+      ...this.analyticsVals(),
       onNovoCupom: () => this.setState({ cupomOpen: true }),
       onCupomFechar: () => this.setState({ cupomOpen: false }),
       cupomOpen: st.cupomOpen,
