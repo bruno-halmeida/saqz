@@ -10,6 +10,7 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
+import br.com.saqz.receivables.data.KtorMemberPaymentsGateway
 import br.com.saqz.receivables.data.KtorGroupReceivablesGateway
 import br.com.saqz.receivables.domain.GroupReceivablesGateway
 import br.com.saqz.receivables.domain.ReceiptAccountDirectory
@@ -25,6 +26,7 @@ internal val receivablesModule = module {
         ReceivablesSessionContext { session.activeSessionKey.value }
     }
     singleOf(::KtorGroupReceivablesGateway) bind GroupReceivablesGateway::class bind ReceiptAccountDirectory::class
+    singleOf(::KtorMemberPaymentsGateway) bind br.com.saqz.receivables.domain.MemberPaymentsGateway::class
     viewModelOf(::ReceiptConfigurationViewModel)
     single<ReceivablesRecoveryIdentity> {
         val session = get<SessionAccessStateMachine>()

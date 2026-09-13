@@ -65,3 +65,25 @@ Adequação: aprovado para o passo 1; revisão independente final ainda pendente
 Complemento do passo 1: o teste :547 cobre cursor estrangeiro mais recente quando há histórico
 próprio mais antigo (:557–560: listas próprias exatas e `PaymentOrderPage(emptyList(), null)` para
 cursor estrangeiro). Gate repetido: 32 testes de pagamentos, sem falhas, exit 0.
+
+## Gate do passo 2
+
+2026-09-13: gate mobile principal terminou com exit 0. Receivables data: 19 testes Android host
+ e 19 iOS (10 novos em cada plataforma, 9 existentes preservados). DI Android: 6 testes.
+Compilação do app Android e compose-app iOS e detekt data/domain passaram. Log local
+/tmp/saqz-member-mobile.log. Gate adicional DI iOS (6 testes)/detekt compose-app passou, exit 0; log /tmp/saqz-member-di.log.
+
+| Critério | Evidência em KtorMemberPaymentsGatewayTest.kt | Resultado esperado |
+|---|---|---|
+| AC4 lista/centavos/fingerprint | :18–22 parâmetros/autenticação e `assertEquals(SaqzResult.Success(MemberPaymentPage(listOf(order), "order")), ...)`; :30 página vazia | snapshot completo preservado |
+| AC4 Pix/checkout/expiração e marcos | :39 `assertEquals(SaqzResult.Success(MemberPaymentDetail(order, listOf(instrument))), ...)`; :43–46 REFUNDED e marcos true; :60 instrumento CARD completo | dados exatos, sem falsa confirmação/saldo |
+| AC5 escrita aceita e replay | :62–65 2 corpos iguais e igualdade JSON com requestId/method/fingerprint/accepted/payer | nenhuma propriedade financeira calculada enviada |
+| AC5 recuperação | :71–79 caminho reconcile, body só requestId, resultado UNKNOWN | nunca criação como efeito da recuperação |
+| AC6 HTTP | :86–91 `assertEquals(SaqzResult.Failure(expected), ...)`, 503 write UNCERTAIN | erros tipados, escrita incerta preservada |
+| AC6 envelope/identidade/quote | :102 `assertEquals(SaqzResult.Failure(ReceiptError.UNCERTAIN), ...)`; :110–114 leitura INVALID e reconcile UNCERTAIN | resposta incompatível não aceita |
+| AC6 transporte | :125–129 NETWORK em leitura, UNCERTAIN em escrita, 4 corpos idênticos e requestId request | timeout/conexão não gera novo comando |
+| AC5 aceite/snapshot | :135–137 INVALID antes da rede para fingerprint/meio/aceite incompatíveis | sem envio fora da revisão aprovada |
+
+Mapeamento reverso dos dez testes: :14/:25/:33→AC4; :49/:68→AC5; :82/:94/:106/:117→AC6;
+:133→AC5/AC6. DI em SaqzKoinModulesTest.kt:280 resolve MemberPaymentsGateway como
+KtorMemberPaymentsGateway. Adequação aprovada para o passo 2; revisão independente final pendente.
