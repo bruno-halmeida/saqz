@@ -1,6 +1,6 @@
 # Execução — recebimentos Asaas
 
-Fonte de intenção: plano de implementação fornecido pelo usuário em 2026-09-12.
+Fonte de intenção: plano de implementação fornecido pelo usuário em 2026-09-12, com as revisões de escopo posteriores registradas abaixo.
 O plano substitui as decisões ainda pendentes e propostas conflitantes de context.md
 e direcionamento.md. O estado de cada tarefa está indicado abaixo; itens parciais permanecem abertos.
 
@@ -10,6 +10,7 @@ e direcionamento.md. O estado de cada tarefa está indicado abaixo; itens parcia
 - Trial ativo, Organizador e Ilimitado permitem novas ordens; Titular e direito expirado não permitem.
 - Corte interrompe ciclos futuros, preservando vencidas e avulsas emitidas; retomada exige autorização.
 - Dinheiro existente e conciliação independem do direito comercial e da existência do grupo.
+- Revisão explícita de escopo: reembolsos são tratados fora do Saqz pelo titular ou pela operação, inclusive os dos planos do próprio app. Não implementar solicitação, aprovação ou execução de reembolso no mobile, painel administrativo ou API do Saqz. Manter a conciliação dos fatos externos e seus reflexos no histórico/caixa; não é funcionalidade adiada.
 - Identidade financeira não acompanha transferência de grupo; delegação é revogável e sem redelegação.
 - Nenhum retorno de navegador confirma pagamento. Resultado incerto exige recuperação, nunca recriação cega.
 
@@ -31,7 +32,7 @@ e direcionamento.md. O estado de cada tarefa está indicado abaixo; itens parcia
 - [x] T09 (webhooks autenticados, recuperação, estados distintos e reflexo único verificados com PostgreSQL/HTTP simulado; homologação real em T20) Persistir/processar webhooks e conciliar pagamento, liquidação, split e caixa. Gate: duplicados, fora de ordem, outra conta, evento perdido e divergência.
 - [x] T10 (reserva/concorrência/cancelamento no backend e seleção/revisão/aceite explícitos no caixa mobile verificados em 6001480d; recuperação consulta antes de replay e preserva comando no retorno) Integrar cobranças manuais, cancelamento e seleção de pendências antigas. Gate: corrida entre baixa manual, cancelamento e pagamento.
 - [ ] T11 Implementar carteira, destinos, autenticação recente e saques. Gate: saldo insuficiente, restrição, concorrência e acesso após expiração/exclusão do grupo.
-- [ ] T12 (parcial: fatos de reembolso/contestação e reversão única conciliados; solicitação de reembolso e conciliação final de custo residual pendentes) Implementar reembolso integral e chargebacks com reversão única. Gate: taxas integrais, custo residual e dívida não reaberta.
+- [ ] T12 (parcial: fatos de reembolso/contestação e reversão única conciliados; conciliação final de custo residual pendente) Conciliar reembolsos realizados externamente e chargebacks com reversão única. Solicitação e execução pelo Saqz excluídas por decisão do usuário. Gate: valores e taxas observados no provedor, custo residual, idempotência e dívida não reaberta.
 - [ ] T13 Implementar recorrência, corte efetivo e retomada autorizada. Gate: competência única, ciclos futuros antecipados, vencidas preservadas e corte incompleto recuperável.
 
 ### Fase 3 — clientes e operação (lote 3; depende da fase 2)
@@ -39,7 +40,7 @@ e direcionamento.md. O estado de cada tarefa está indicado abaixo; itens parcia
 - [ ] T14 (parcial: módulos KMP, gateway de disponibilidade e controle conectado à sessão/app verificados; gateways de contas/configuração/preview/termos/ativação concluídos; gateway de ordens próprias/detalhe/instrumento/conciliação implementado em 8c3e939a, cobertura reforçada em 97855e20 e revisão independente aprovada; gateway de liberação/cancelamento pelo gestor verificado em 6001480d; cadastro financeiro/documentos conectados em 19fba8f4; carteira pendente) Criar módulos KMP domain/data/presentation e gateways tipados. Gate: gateways Ktor, erros, requestId e fronteiras.
 - [ ] T15 (parcial: configuração de meios, revisão/aceite, ativação/desativação e recuperação de resultado incerto aprovadas no mobile; cadastro próprio PF/PJ, documentos e recuperação implementados em 19fba8f4; delegação mobile pendente) Implementar descoberta, cadastro, ativação e delegações no mobile. Gate: ViewModels, navegação, rascunhos não sensíveis e evidências visuais.
 - [ ] T16 (parcial: UI de histórico e pagamento avulso implementada em d4204d36/ff870197, corrigida em 6d2bd9f9/06d70c7b e aprovada por revisão independente; recorrência, renovação Pix e comprovante exportável pendentes) Implementar pagamento avulso, recorrência e histórico do membro. Gate: Pix expirado, cartão recusado, retorno pendente, abandono e cancelamento.
-- [ ] T17 (parcial: entrada permanente Perfil → Recebimentos e cadastro próprio implementados em 19fba8f4; carteira, saque e reembolso pendentes) Implementar Perfil → Recebimentos, carteira, saque e reembolso permanentes. Gate: novo login, perda de vínculo/plano, Android e simulador iOS.
+- [ ] T17 (parcial: entrada permanente Perfil → Recebimentos e cadastro próprio implementados em 19fba8f4; carteira e saque pendentes) Implementar Perfil → Recebimentos, carteira e saque permanentes; exibir no histórico os reembolsos conciliados externamente. Gate: novo login, perda de vínculo/plano, Android e simulador iOS.
 - [ ] T18 (parcial: APIs administrativas de publicação/preview e painel de rollout por sistema/usuário verificados; termos/tarifas visuais e simulador aprovados; fila operacional financeira pendente) Implementar painel operacional, tarifas/termos/piloto e recuperação auditada. Gate: testes Node e navegador/API; admin sem poder de saque.
 - [ ] T19 Implementar termos públicos, retorno do checkout, avisos de plano e notificações operacionais. Gate: callback sem confirmação e ausência de dados financeiros no endereço.
 - [ ] T20 Executar homologação integrada e documentar liberação/reversão e monitoramento. Gate: todos os cenários obrigatórios do plano; BaaS, termos e condições reais são pré-requisitos de produção.

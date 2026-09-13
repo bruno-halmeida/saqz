@@ -6,6 +6,7 @@
 - Execução inicialmente individual; em 2026-09-13 o usuário autorizou três frentes paralelas e supervisão pelo Orca.
 - Receivables permanece separado de subscriptions; manutenção financeira independe de plano/grupo.
 - Nenhuma tarifa ou condição comercial real foi inventada.
+- Revisão posterior do usuário: reembolsos serão tratados fora do Saqz, tanto pelo titular quanto pela operação dos planos do próprio app. Solicitar/aprovar/executar reembolso não faz parte do produto (mobile, adm ou API), nem de uma fase futura. Preservar apenas a conciliação dos eventos externos e o histórico/caixa. Esta decisão substitui as menções históricas a reembolso solicitado como pendência.
 
 ## Entregas
 
@@ -194,3 +195,14 @@
 - Compilação final Android/framework iOS e detekt Android aprovados no HEAD 03e6f2e3;
   Xcode SaqzDev com o framework final também BUILD SUCCEEDED. Sem walkthrough do picker
   nativo iOS, sem UAT humano e sem homologação financeira real.
+
+## Revisão de escopo — reembolso externo
+
+- Decisão explícita do usuário após a conclusão do cadastro financeiro: o titular trata reembolso
+  fora do app; o mesmo vale para reembolsos dos planos do próprio Saqz.
+- Retirada a solicitação de reembolso de T12/T17 e das pendências de entrega. Não criar fluxo
+  equivalente no painel administrativo ou endpoint para iniciá-lo pelo Saqz.
+- Permanecem conciliação de reembolsos/contestações externos, reversão única, histórico correto
+  e apuração de custos residuais observados. T12 continua parcial somente por essa conciliação.
+- Inspeção do código atual não encontrou fluxo de solicitação de reembolso a remover.
+  Alteração de planejamento; nenhuma mudança em webhooks, caixa ou estados financeiros.

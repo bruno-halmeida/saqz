@@ -47,8 +47,11 @@ Nunca copiar API keys, tokens, documentos ou dados bancários para logs, screens
 ## Limites a conferir antes do piloto
 
 A jornada avulsa do membro e a seleção/liberação/cancelamento pelo gestor estão conectadas no
-mobile e passaram em testes locais. Cadastro financeiro mobile, carteira/saque, reembolso solicitado,
-recorrência e corte remoto de ciclos ainda não estão concluídos. A renovação de instrumento Pix expirado exige
+mobile e passaram em testes locais. O cadastro financeiro mobile também foi concluído e revisado.
+Carteira/saque, recorrência e corte remoto de ciclos ainda não estão concluídos.
+Reembolsos são tratados externamente pelo titular ou pela operação, inclusive os dos planos do Saqz;
+solicitar/aprovar/executar reembolso pelo app, painel ou API foi excluído do escopo por decisão do usuário.
+A conciliação dos fatos externos permanece necessária para histórico e caixa corretos. A renovação de instrumento Pix expirado exige
 validação específica; o GET do QR não é uma implementação automática dessa renovação.
 
 Uma consulta simulada ao provedor e testes PostgreSQL locais não substituem o teste integral

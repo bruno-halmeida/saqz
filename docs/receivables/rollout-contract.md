@@ -8,7 +8,7 @@ Fonte: usuário autorizou controle no adm por sistema (backend/mobile) e usuári
 - Exceção por usuário/sistema INHERIT, ALLOW ou DENY. OFF é bloqueio absoluto; SELECTED_USERS só permite ALLOW; ALL_USERS permite exceto DENY. INHERIT remove a exceção.
 - mobileEnabled = backendEnabled && regra MOBILE. Backend nunca confia na configuração enviada pelo cliente.
 - Avaliar novamente nas operações, sem guardar decisão na sessão. Liberação financeira de grupo considera o titular financeiro; consulta mobile é do usuário autenticado. Delegação não ultrapassa bloqueios da conta/titular.
-- Toggles controlam NOVAS operações e descoberta; leitura, pagamento de ordem já emitida, documentos, cancelamentos, saldo, saque, reembolso e conciliação não recebem bloqueio global por toggle. Não prometer endpoints de dinheiro ainda não implementados.
+- Toggles controlam NOVAS operações e descoberta; leitura, pagamento de ordem já emitida, documentos, cancelamentos, saldo, saque e conciliação de reembolsos externos não recebem bloqueio global por toggle. Não prometer endpoints de dinheiro ainda não implementados.
 - Cadastro aprovado, elegibilidade comercial e ativação do grupo continuam obrigatórios.
 - Flag operacional existente da conta permanece separada. Admin pode liberar/restringir a conta existente pelo endpoint abaixo; nenhuma toggle cria subconta automaticamente.
 - Alterações são auditadas com ator autenticado, motivo, antes/depois, data e requestId. Reenvio idempotente, conflito de conteúdo/ator retorna 409. Sem credenciais/dados financeiros no payload.
