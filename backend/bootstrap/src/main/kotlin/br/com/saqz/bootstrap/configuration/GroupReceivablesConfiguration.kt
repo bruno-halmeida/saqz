@@ -4,6 +4,7 @@ import br.com.saqz.groups.adapter.output.jdbc.group.JdbcGroupFinancialSetupLooku
 import br.com.saqz.receivables.adapter.input.http.FinancialActorResolver
 import br.com.saqz.receivables.adapter.input.http.GroupReceivablesController
 import br.com.saqz.receivables.adapter.output.jdbc.JdbcGroupReceivablesStore
+import br.com.saqz.receivables.adapter.output.jdbc.JdbcGroupPaymentCancellation
 import br.com.saqz.receivables.application.*
 import br.com.saqz.sharedkernel.group.GroupAdministrationDirectory
 import br.com.saqz.sharedkernel.group.GroupFinancialSetupLookup
@@ -17,6 +18,7 @@ import javax.sql.DataSource
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty("spring.datasource.url")
 class GroupReceivablesConfiguration {
+    @Bean fun groupChargePaymentCancellation(dataSource: DataSource): br.com.saqz.sharedkernel.group.GroupChargePaymentCancellation = JdbcGroupPaymentCancellation(dataSource, br.com.saqz.groups.adapter.output.jdbc.finance.JdbcGroupChargePayments(dataSource))
     @Bean fun groupFinancialSetupLookup(dataSource: DataSource): GroupFinancialSetupLookup = JdbcGroupFinancialSetupLookup(dataSource)
     @Bean fun groupReceivablesStore(dataSource: DataSource): GroupReceivablesStore = JdbcGroupReceivablesStore(dataSource)
     @Bean fun manageGroupReceivables(accounts: FinancialAccountRepository, admins: GroupAdministrationDirectory,

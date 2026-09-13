@@ -124,7 +124,7 @@ class IdentitySecurityConfiguration {
                 .requestMatchers("/api/invites/preview").permitAll()
                 .requestMatchers("/subscriptions/checkout-login").permitAll()
                 .requestMatchers("/api/session/app-link/redeem").permitAll()
-                .requestMatchers("/webhooks/asaas").permitAll()
+                .requestMatchers("/webhooks/asaas", "/api/receivables/webhooks/asaas/*").permitAll()
                 .anyRequest().authenticated()
         }
         .exceptionHandling {
@@ -148,6 +148,7 @@ class IdentitySecurityConfiguration {
             "/api/password-reset",
             "/subscriptions/checkout-login",
             "/webhooks/asaas",
+            "/api/receivables/webhooks/asaas",
         )
         val EXACT_ANONYMOUS_PATHS = setOf("/api/session/app-link/redeem")
         val OPTIONAL_AUTHENTICATION_PATHS = setOf("/api/invites/preview")

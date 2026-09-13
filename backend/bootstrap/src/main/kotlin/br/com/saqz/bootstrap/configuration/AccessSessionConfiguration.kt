@@ -781,7 +781,7 @@ class AccessSessionConfiguration {
         AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
     )
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
-    @Bean fun chargeTransactionRepository(dataSource: DataSource) = JdbcChargeTransactionRepository(dataSource)
+    @Bean fun chargeTransactionRepository(dataSource: DataSource, cancellation: br.com.saqz.sharedkernel.group.GroupChargePaymentCancellation) = JdbcChargeTransactionRepository(dataSource, cancellation)
     @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository, writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess) = ChargeTransactions(transaction, repository, Instant::now, writeAccess)
     @Bean fun autoConfirmationRepository(dataSource: DataSource) = JdbcAutoConfirmationRepository(dataSource)
     @Bean fun autoConfirmAttendance(

@@ -11,7 +11,7 @@ import java.time.YearMonth
 import java.util.UUID
 import javax.sql.DataSource
 
-class JdbcChargeTransactionRepository(dataSource:DataSource):ChargeTransactionRepository,MonthlyDueMembershipRepository{
+class JdbcChargeTransactionRepository(dataSource:DataSource, private val electronicCancellation: br.com.saqz.sharedkernel.group.GroupChargePaymentCancellation = br.com.saqz.sharedkernel.group.GroupChargePaymentCancellation { _, _, _ -> }):ChargeTransactionRepository,MonthlyDueMembershipRepository{
     private val jdbc=JdbcClient.create(dataSource)
     override fun createGameCharge(input:GameChargeInput,actorId:UUID,now:Instant):Charge{
         requireActiveGroup(input.groupId)
@@ -22,11 +22,13 @@ class JdbcChargeTransactionRepository(dataSource:DataSource):ChargeTransactionRe
     }
     override fun reconcileGameCancellation(groupId:UUID,gameId:UUID,actorId:UUID,now:Instant){
         requireActiveGroup(groupId)
-        val pending=jdbc.sql("SELECT charges.id FROM group_charges charges JOIN access_groups groups ON groups.id=charges.group_id AND groups.deleted_at IS NULL WHERE charges.group_id=:group AND charges.game_id=:game AND charges.status='PENDING' FOR UPDATE OF charges").param("group",groupId).param("game",gameId).query(UUID::class.java).list().filterNotNull()
-        jdbc.sql("UPDATE group_charges SET status='CANCELLED',changed_by_user_id=:actor,version=version+1,updated_at=:now WHERE group_id=:group AND game_id=:game AND status='PENDING' AND EXISTS (SELECT 1 FROM access_groups g WHERE g.id=:group AND g.deleted_at IS NULL)").param("actor",actorId).param("now",Timestamp.from(now)).param("group",groupId).param("game",gameId).update()
+        val electronicOrders=jdbc.sql("SELECT electronic_order_id FROM group_charges WHERE group_id=:group AND game_id=:game AND status='PENDING' AND electronic_order_id IS NOT NULL FOR UPDATE").param("group",groupId).param("game",gameId).query(UUID::class.java).list().filterNotNull()
+        electronicOrders.forEach { electronicCancellation.request(it, actorId, now) }
+        val pending=jdbc.sql("SELECT charges.id FROM group_charges charges JOIN access_groups groups ON groups.id=charges.group_id AND groups.deleted_at IS NULL WHERE charges.group_id=:group AND charges.game_id=:game AND charges.status='PENDING' AND charges.electronic_order_id IS NULL FOR UPDATE OF charges").param("group",groupId).param("game",gameId).query(UUID::class.java).list().filterNotNull()
+        jdbc.sql("UPDATE group_charges SET status='CANCELLED',changed_by_user_id=:actor,version=version+1,updated_at=:now WHERE group_id=:group AND game_id=:game AND status='PENDING' AND electronic_order_id IS NULL AND EXISTS (SELECT 1 FROM access_groups g WHERE g.id=:group AND g.deleted_at IS NULL)").param("actor",actorId).param("now",Timestamp.from(now)).param("group",groupId).param("game",gameId).update()
         pending.forEach{eventId->event(find(eventId)?:error("cancelled charge lost"),ChargeStatus.PENDING,ChargeStatus.CANCELLED,actorId,now)}
-        jdbc.sql("UPDATE group_charges SET review_required=true,changed_by_user_id=:actor,version=version+1,updated_at=:now WHERE group_id=:group AND game_id=:game AND status IN ('PAID','WAIVED') AND NOT review_required AND EXISTS (SELECT 1 FROM access_groups g WHERE g.id=:group AND g.deleted_at IS NULL)").param("actor",actorId).param("now",Timestamp.from(now)).param("group",groupId).param("game",gameId).update()
-        jdbc.sql("UPDATE games SET finance_review_required=true WHERE group_id=:group AND id=:game AND EXISTS (SELECT 1 FROM group_charges WHERE group_id=:group AND game_id=:game AND status IN ('PAID','WAIVED'))").param("group",groupId).param("game",gameId).update()
+        jdbc.sql("UPDATE group_charges SET review_required=true,changed_by_user_id=:actor,version=version+1,updated_at=:now WHERE group_id=:group AND game_id=:game AND (status IN ('PAID','WAIVED') OR electronic_order_id IS NOT NULL) AND NOT review_required AND EXISTS (SELECT 1 FROM access_groups g WHERE g.id=:group AND g.deleted_at IS NULL)").param("actor",actorId).param("now",Timestamp.from(now)).param("group",groupId).param("game",gameId).update()
+        jdbc.sql("UPDATE games SET finance_review_required=true WHERE group_id=:group AND id=:game AND EXISTS (SELECT 1 FROM group_charges WHERE group_id=:group AND game_id=:game AND (status IN ('PAID','WAIVED') OR electronic_order_id IS NOT NULL))").param("group",groupId).param("game",gameId).update()
     }
     override fun members(groupId:UUID):GroupMembers?{
         val exists=jdbc.sql("SELECT count(*) FROM access_groups WHERE id=:group AND deleted_at IS NULL").param("group",groupId).query(Int::class.java).single()>0;if(!exists)return null

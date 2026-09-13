@@ -19,6 +19,14 @@ class GroupReceivablesRequest {
 @RestController
 @RequestMapping("/api/receivables/groups/{groupId}")
 class GroupReceivablesController(private val actors: FinancialActorResolver, private val service: ManageGroupReceivables) {
+    @GetMapping
+    fun read(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: UUID,
+             @RequestParam accountId: UUID): ResponseEntity<*> {
+        val result = service.read(accountId, groupId, FinancialRequest(UUID.randomUUID(), actors.resolve(identity)))
+        return ResponseEntity.status(if (result is FinancialResult.Success) 200 else 404)
+            .header("Cache-Control", "no-store").body(result)
+    }
+
     @PostMapping("/preview")
     fun preview(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: UUID,
                 @RequestBody body: GroupReceivablesRequest): ResponseEntity<*> = execute(identity, body) { account, request ->

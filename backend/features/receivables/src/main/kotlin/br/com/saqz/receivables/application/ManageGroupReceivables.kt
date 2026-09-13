@@ -11,6 +11,7 @@ import java.util.UUID
 
 data class GroupReceivablesState(val accountId: UUID, val groupId: UUID, val enabled: Boolean,
                                  val pixEnabled: Boolean, val cardEnabled: Boolean)
+data class GroupReceivablesMaintenance(val state: GroupReceivablesState, val permissions: Map<FinancialAction, ActionPermission>)
 data class GroupPriceQuotes(val kind: String, val baseCents: Long, val quotes: List<FeeQuote>)
 data class GroupReceivablesReview(val state: GroupReceivablesState, val schedules: List<FeeSchedule>,
     val prices: List<GroupPriceQuotes>, val permissions: Map<FinancialAction, ActionPermission>,
@@ -30,6 +31,22 @@ class ManageGroupReceivables(private val accounts: FinancialAccountRepository,
     private val administrators: GroupAdministrationDirectory, private val groups: GroupFinancialSetupLookup,
     private val store: GroupReceivablesStore, private val conditions: FinancialConditions,
     private val eligibility: ReceivablesEligibility, private val clock: Clock, private val rollout: ReceivablesRolloutAccess) {
+
+    fun read(accountId: UUID, groupId: UUID, request: FinancialRequest): FinancialResult<GroupReceivablesMaintenance> = safely(request) {
+        store.transaction {
+            val state = store.state(accountId, groupId)
+            if (state == null) {
+                val group = groups.lockActive(groupId) ?: return@transaction hidden(request)
+                val account = store.lockAccount(accountId) ?: return@transaction hidden(request)
+                if (group.ownerUserId != account.ownerUserId) return@transaction hidden(request)
+            }
+            val account = store.lockAccount(accountId) ?: return@transaction hidden(request)
+            val context = context(account, groupId, request, false)
+            if (!FinancialAccess.permission(FinancialAction.READ, context).allowed) return@transaction hidden(request)
+            FinancialResult.Success(GroupReceivablesMaintenance(state ?: GroupReceivablesState(accountId, groupId, false, false, false),
+                listOf(FinancialAction.READ, FinancialAction.CANCEL).associateWith { FinancialAccess.permission(it, context) }), request.requestId)
+        }
+    }
 
     fun preview(accountId: UUID, groupId: UUID, request: FinancialRequest,
                 methods: Set<PaymentMethod>): FinancialResult<GroupReceivablesReview> = safely(request) {

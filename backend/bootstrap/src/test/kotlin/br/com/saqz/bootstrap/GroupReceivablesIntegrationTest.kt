@@ -183,6 +183,30 @@ class GroupReceivablesIntegrationTest {
         assertEquals(400, call("preview").status)
     }
 
+    @Test fun `empty selection is invalid while maintenance read works without conditions rollout or active group`() = fixture { f ->
+        assertEquals(FinancialError.INVALID_INPUT, assertIs<FinancialResult.Failure>(f.service.preview(f.account, f.group, f.request(), emptySet())).error)
+        assertEquals(FinancialError.INVALID_INPUT, assertIs<FinancialResult.Failure>(f.service.activate(f.account, f.group, f.request(), emptySet(), "a".repeat(64), true)).error)
+        f.activate(f.preview())
+        f.sql("UPDATE access_groups SET deleted_at=now()")
+        f.sql("DROP TABLE receivable_rollout")
+        f.eligible = false
+        val state = assertIs<FinancialResult.Success<GroupReceivablesMaintenance>>(f.service.read(f.account, f.group, f.request())).value
+        assertTrue(state.state.pixEnabled)
+        assertTrue(state.permissions.getValue(FinancialAction.CANCEL).allowed)
+        assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.service.read(f.account, f.group, FinancialRequest(UUID.randomUUID(), UUID.randomUUID()))).error)
+    }
+
+    @Test fun `activation persists only explicitly selected PIX CARD or both`() {
+        for (methods in listOf(setOf(PaymentMethod.PIX), setOf(PaymentMethod.CARD), PaymentMethod.entries.toSet())) fixture { f ->
+            f.sql("INSERT INTO receivable_fee_schedules VALUES ('${UUID.randomUUID()}','CARD',0.03,50,0.02,100,'v1','2026-09-01','2026-09-01','${f.owner}')")
+            val review = assertIs<FinancialResult.Success<GroupReceivablesReview>>(f.service.preview(f.account, f.group, f.request(), methods)).value
+            val state = assertIs<FinancialResult.Success<GroupReceivablesState>>(f.service.activate(f.account, f.group, f.request(), methods, review.fingerprint, true)).value
+            assertEquals(PaymentMethod.PIX in methods, state.pixEnabled)
+            assertEquals(PaymentMethod.CARD in methods, state.cardEnabled)
+            assertTrue(state.enabled)
+        }
+    }
+
     private fun fixture(block: (Fixture) -> Unit) { block(Fixture(TestPostgres.migrated("classpath:db/migration", owner = this).dataSource)) }
     private inner class Fixture(val ds: javax.sql.DataSource) {
         val owner = UUID.randomUUID(); val group = UUID.randomUUID(); val account = UUID.randomUUID(); val fee = UUID.randomUUID()

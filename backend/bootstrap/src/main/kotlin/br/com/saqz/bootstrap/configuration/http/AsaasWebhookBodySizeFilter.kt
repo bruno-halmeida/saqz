@@ -21,7 +21,7 @@ class AsaasWebhookBodySizeFilter(
     private val onTooLarge: (HttpServletRequest, HttpServletResponse) -> Unit,
 ) : OncePerRequestFilter() {
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        request.requestURI != WEBHOOK_PATH
+        request.requestURI != WEBHOOK_PATH && !request.requestURI.startsWith("/api/receivables/webhooks/asaas/")
 
     override fun doFilterInternal(
         request: HttpServletRequest,
