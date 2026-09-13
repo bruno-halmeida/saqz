@@ -35,6 +35,15 @@ class FinancialConditionsController(private val conditions: FinancialConditions,
         }).body(result)
     }
 
+    @GetMapping("/terms")
+    fun currentTerms(): ResponseEntity<*> {
+        val requestId = UUID.randomUUID()
+        val terms = conditions.currentTerms(clock.instant())
+            ?: return ResponseEntity.status(404).header("Cache-Control", "no-store")
+                .body(FinancialResult.Failure(FinancialError.NOT_FOUND, requestId))
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(FinancialResult.Success(terms, requestId))
+    }
+
     @GetMapping("/terms/{version}")
     fun terms(@PathVariable version: String): ResponseEntity<*> {
         val requestId = UUID.randomUUID()

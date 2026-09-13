@@ -14,6 +14,7 @@ interface FinancialConditions {
     /** One database snapshot for all methods, including applicable published terms. */
     fun current(methods: Set<PaymentMethod>, at: Instant): List<FeeSchedule>
     fun terms(version: String, at: Instant): FinancialTerms?
+    fun currentTerms(at: Instant): FinancialTerms?
 }
 
 data class ChargeSimulation(val quotes: List<FeeQuote>, val calculatedAt: Instant,

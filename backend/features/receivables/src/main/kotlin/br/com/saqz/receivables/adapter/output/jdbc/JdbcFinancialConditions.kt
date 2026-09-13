@@ -28,6 +28,14 @@ class JdbcFinancialConditions(dataSource: DataSource) : FinancialConditions {
                 rs.getLong("commission_fixed_cents"), rs.getString("terms_version")) }.list()
     }
 
+    override fun currentTerms(at: Instant): FinancialTerms? = jdbc.sql("""
+        SELECT * FROM receivable_terms WHERE published_at<=:at AND effective_at<=:at
+        ORDER BY effective_at DESC,published_at DESC,version DESC LIMIT 1
+    """.trimIndent()).param("at", Timestamp.from(at)).query { rs, _ ->
+        FinancialTerms(rs.getString("version"), rs.getString("content"), rs.getString("content_sha256"),
+            rs.getTimestamp("effective_at").toInstant(), rs.getTimestamp("published_at").toInstant())
+    }.optional().orElse(null)
+
     // Historical accepted versions remain readable after new terms take effect.
     override fun terms(version: String, at: Instant): FinancialTerms? = jdbc.sql("""
         SELECT * FROM receivable_terms WHERE version=:version AND published_at<=:at

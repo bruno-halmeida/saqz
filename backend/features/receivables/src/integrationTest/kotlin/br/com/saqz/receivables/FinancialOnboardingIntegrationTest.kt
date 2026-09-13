@@ -168,6 +168,64 @@ class FinancialOnboardingIntegrationTest {
         assertEquals(0, server.requestCount)
     }
 
+    @Test fun `own recovery retains unique operation and never retries unknown account creation`() = fixture { store, service, server ->
+        val recovery = FinancialRequest(UUID.randomUUID(), owner)
+        assertEquals(FinancialResult.Failure(FinancialError.NOT_FOUND, recovery.requestId), service.recover(recovery, now))
+        val account = assertIs<FinancialResult.Success<br.com.saqz.receivables.domain.FinancialAccount>>(
+            service.begin(request, true, "v1", registration(), now)).value
+        val operation = store.creationOperation(account.id)
+        server.enqueue(json("""{"id":"acc_lost","walletId":"wallet_lost"}"""))
+        assertEquals(FinancialResult.Success(account, recovery.requestId), service.recover(recovery, now))
+        assertEquals(OperationStatus.UNKNOWN, store.creationOperation(account.id).status)
+        assertEquals(FinancialResult.Success(account, recovery.requestId), service.recover(recovery, now.plusSeconds(100)))
+        assertEquals(operation.id, store.creationOperation(account.id).id)
+        assertEquals(1, server.requestCount); assertNull(store.credentials(account.id))
+        val foreign = recovery.copy(actorUserId = UUID.randomUUID())
+        assertEquals(FinancialResult.Failure(FinancialError.NOT_FOUND, recovery.requestId), service.recover(foreign, now))
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test fun `recovery HTTP uses session owner exact request and no-store without legal data`() = fixture { store, service, server ->
+        var actor = owner
+        val resolver = object : org.springframework.web.method.support.HandlerMethodArgumentResolver {
+            override fun supportsParameter(parameter: org.springframework.core.MethodParameter) =
+                parameter.parameterType == br.com.saqz.sharedkernel.RequestIdentity::class.java
+            override fun resolveArgument(parameter: org.springframework.core.MethodParameter,
+                container: org.springframework.web.method.support.ModelAndViewContainer?,
+                webRequest: org.springframework.web.context.request.NativeWebRequest,
+                binder: org.springframework.web.bind.support.WebDataBinderFactory?) = br.com.saqz.sharedkernel.RequestIdentity("subject", "request")
+        }
+        val controller = br.com.saqz.receivables.adapter.input.http.FinancialAccountsController(
+            br.com.saqz.receivables.adapter.input.http.FinancialActorResolver { actor }, service, store, Clock.fixed(now, java.time.ZoneOffset.UTC))
+        val mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controller)
+            .setCustomArgumentResolvers(resolver).build()
+        fun post(body: String) = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+            .post("/api/receivables/accounts/me/recover").contentType("application/json").content(body)).andReturn().response
+        val id = UUID.randomUUID(); val body = """{"requestId":"$id"}"""
+        assertEquals(404, post(body).status)
+        val account = assertIs<FinancialResult.Success<br.com.saqz.receivables.domain.FinancialAccount>>(
+            service.begin(request, true, "v1", registration(), now)).value
+        server.enqueue(json("""{"id":"acc_1","walletId":"wallet_1","apiKey":"subaccount-secret"}"""))
+        val response = post(body); val json = jacksonObjectMapper().readTree(response.contentAsString)
+        assertEquals(200, response.status); assertEquals("no-store", response.getHeader("Cache-Control"))
+        assertEquals(id.toString(), json["requestId"].asText()); assertEquals(account.id.toString(), json["value"]["id"].asText())
+        assertEquals(owner.toString(), json["value"]["ownerUserId"].asText()); assertEquals("UNDER_REVIEW", json["value"]["registration"].asText())
+        assertFalse(json["value"]["newOperationsEnabled"].asBoolean())
+        assertEquals(setOf("id", "ownerUserId", "registration", "newOperationsEnabled"), json["value"].fieldNames().asSequence().toSet())
+        assertEquals(200, post(body).status); assertEquals(1, server.requestCount)
+        assertEquals(400, post("{}").status); assertEquals(400, post("""{"requestId":"bad"}""").status)
+        actor = UUID.randomUUID(); assertEquals(404, post(body).status); assertEquals(1, server.requestCount)
+    }
+
+    @Test fun `custom document instructions are preserved for the holder`() = fixture { store, service, server ->
+        val account = (service.begin(request, true, "v1", registration(), now) as FinancialResult.Success).value
+        store.saveProviderAccount(account.id, ProviderAccount("acc", "wallet", "subaccount-secret"), now)
+        server.enqueue(json("""{"data":[{"id":"doc","type":"CUSTOM","status":"PENDING","description":"Ata de eleição"}]}"""))
+        server.enqueue(json("""{"general":"PENDING"}"""))
+        assertEquals(FinancialResult.Success(listOf(FinancialDocument("doc", "CUSTOM", "PENDING", null, "Ata de eleição")), request.requestId),
+            service.refresh(request, now.plusSeconds(15)))
+    }
+
     private fun json(body: String) = MockResponse().setHeader("Content-Type", "application/json").setBody(body)
 
     private fun fixture(enabled: Boolean = true,

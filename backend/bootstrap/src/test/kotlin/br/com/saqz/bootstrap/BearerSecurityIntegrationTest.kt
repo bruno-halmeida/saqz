@@ -58,6 +58,14 @@ class BearerSecurityIntegrationTest {
     }
 
     @Test
+    fun `financial onboarding discovery and recovery require authentication`() {
+        assertUnauthorized(HttpRequest.newBuilder().uri(URI("http://127.0.0.1:$port/api/receivables/terms")).GET().build())
+        assertUnauthorized(HttpRequest.newBuilder().uri(URI("http://127.0.0.1:$port/api/receivables/accounts/me/recover"))
+            .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString("{}" )).build())
+        assertTrue(verifier.tokens.isEmpty())
+    }
+
+    @Test
     fun `empty malformed and non-Bearer credentials return exact unauthorized problem without verification`() {
         listOf("Bearer", "Bearer ", "Basic abc", "not-a-scheme").forEach { authorization ->
             assertUnauthorized(request(authorization))

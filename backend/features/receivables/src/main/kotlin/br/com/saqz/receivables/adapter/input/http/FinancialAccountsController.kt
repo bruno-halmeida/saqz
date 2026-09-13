@@ -21,6 +21,8 @@ class FinancialRegistrationRequest @JsonCreator constructor(
     @JsonProperty("postalCode") val postalCode: String, @JsonProperty("birthDate") val birthDate: String? = null, @JsonProperty("companyType") val companyType: String? = null,
 )
 
+data class FinancialAccountRecoveryRequest @JsonCreator constructor(@JsonProperty("requestId") val requestId: UUID)
+
 @RestController
 @RequestMapping("/api/receivables/accounts")
 class FinancialAccountsController(
@@ -54,6 +56,12 @@ class FinancialAccountsController(
         return result(response)
     }
 
+    @PostMapping("/me/recover")
+    fun recover(@AuthenticationPrincipal identity: RequestIdentity,
+                @RequestBody body: FinancialAccountRecoveryRequest): ResponseEntity<*> = result(
+        onboarding.recover(FinancialRequest(body.requestId, actors.resolve(identity)), clock.instant()),
+    )
+
     @GetMapping("/me/documents")
     fun documents(@AuthenticationPrincipal identity: RequestIdentity): ResponseEntity<*> = result(
         onboarding.refresh(FinancialRequest(UUID.randomUUID(), actors.resolve(identity)), clock.instant()),
@@ -79,6 +87,6 @@ class FinancialAccountsController(
                 else -> 503
             }
         }
-        return ResponseEntity.status(status).body(result)
+        return ResponseEntity.status(status).header("Cache-Control", "no-store").body(result)
     }
 }

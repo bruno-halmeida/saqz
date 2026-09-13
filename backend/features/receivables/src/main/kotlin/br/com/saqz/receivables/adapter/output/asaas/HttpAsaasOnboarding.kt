@@ -53,7 +53,7 @@ class HttpAsaasOnboarding(
             FinancialDocument(required(it, "id"), required(it, "type"), required(it, "status"),
                 it["onboardingUrl"]?.takeUnless(JsonNode::isNull)?.asText()?.takeIf(String::isNotBlank)?.also { link ->
                     require(URI(link).scheme == "https") { "Financial provider link invalid" }
-                })
+                }, it["description"]?.takeIf(JsonNode::isTextual)?.asText()?.takeIf(String::isNotBlank))
         }
     }
 

@@ -95,6 +95,31 @@ class FinancialConditionsIntegrationTest {
             .content("""{"requestId":"$requestId","baseCents":10000,"methods":["CARD"]}""")).andReturn().response.status)
     }
 
+    @Test fun `current terms discovery selects published effective version deterministically without writes`() {
+        val f = fixture()
+        val mvc = MockMvcBuilders.standaloneSetup(FinancialConditionsController(f.conditions, f.service,
+            Clock.fixed(at, ZoneOffset.UTC))).build()
+        val missing = mvc.perform(get("/api/receivables/terms")).andReturn().response
+        assertEquals(404, missing.status); assertEquals("no-store", missing.getHeader("Cache-Control"))
+        assertNull(f.conditions.currentTerms(at))
+        f.terms("v1"); f.terms("v2", effective = at.minusSeconds(1))
+        f.terms("future", effective = at.plusSeconds(1))
+        f.terms("unpublished", effective = at, published = at.plusSeconds(1))
+        assertEquals("v2", f.conditions.currentTerms(at)?.version)
+        f.terms("v3", effective = at.minusSeconds(1), published = at.minusSeconds(1))
+        f.terms("v4", effective = at.minusSeconds(1), published = at.minusSeconds(1))
+        val response = mvc.perform(get("/api/receivables/terms")).andReturn().response
+        assertEquals(200, response.status); assertEquals("no-store", response.getHeader("Cache-Control"))
+        val body = mapper.readTree(response.contentAsString)
+        assertEquals("v4", body["value"]["version"].asText())
+        assertEquals("Test conditions only", body["value"]["content"].asText())
+        assertEquals("a".repeat(64), body["value"]["contentSha256"].asText())
+        assertNotNull(UUID.fromString(body["requestId"].asText()))
+        assertEquals("v1", f.conditions.terms("v1", at)?.version)
+        for (table in listOf("receivable_accounts", "receivable_terms_acceptances", "receivable_operations"))
+            assertEquals(0L, f.jdbc.sql("SELECT count(*) FROM $table").query(Long::class.java).single())
+    }
+
     private fun fixture(): Fixture {
         val database = TestPostgres.migrated("filesystem:" + Path.of("src/main/resources/db/migration").toAbsolutePath(), owner = this)
         return Fixture(JdbcClient.create(database.dataSource), JdbcFinancialConditions(database.dataSource))

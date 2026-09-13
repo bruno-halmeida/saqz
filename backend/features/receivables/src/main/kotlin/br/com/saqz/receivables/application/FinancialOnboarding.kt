@@ -22,7 +22,7 @@ class LegalRegistration(
 }
 
 class ProviderAccount(val id: String, val walletId: String, val apiKey: String)
-data class FinancialDocument(val id: String, val type: String, val status: String, val onboardingUrl: String?)
+data class FinancialDocument(val id: String, val type: String, val status: String, val onboardingUrl: String?, val description: String? = null)
 class AccountCredentials(val apiKey: String, val createdAt: Instant, val providerAccountId: String)
 
 interface FinancialOnboardingProvider {
@@ -89,6 +89,13 @@ class OnboardFinancialAccount(
                 } else ProviderOperationResult.Unknown
         }
         return RunFinancialOperation(operations, gateway).run(accountId, operation.id, now)
+    }
+
+    fun recover(request: FinancialRequest, now: Instant): FinancialResult<FinancialAccount> {
+        val account = store.findOwned(request.actorUserId)
+            ?: return FinancialResult.Failure(FinancialError.NOT_FOUND, request.requestId)
+        provision(account.id, now)
+        return FinancialResult.Success(requireNotNull(store.findOwned(request.actorUserId)), request.requestId)
     }
 
     fun refresh(request: FinancialRequest, now: Instant): FinancialResult<List<FinancialDocument>> {
