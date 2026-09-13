@@ -160,7 +160,8 @@ internal sealed interface TransportLogStyle {
 }
 
 internal fun HttpResponse.metadata() = NetworkResponseMetadata(
-    headers.entries().associate { (name, values) ->
+    status = status.value,
+    headers = headers.entries().associate { (name, values) ->
         name to values.map { value -> if (isEntityTagHeader(name)) value.toStrongEntityTag() else value }
     },
 )

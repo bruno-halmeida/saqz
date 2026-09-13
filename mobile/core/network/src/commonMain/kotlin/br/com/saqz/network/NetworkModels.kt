@@ -133,6 +133,7 @@ data class NetworkBinaryBody(
 
 data class NetworkResponseMetadata(
     val headers: Map<String, List<String>> = emptyMap(),
+    val status: Int = 200,
 ) {
     fun header(name: String): String? = headers.entries
         .firstOrNull { (key) -> key.equals(name, ignoreCase = true) }

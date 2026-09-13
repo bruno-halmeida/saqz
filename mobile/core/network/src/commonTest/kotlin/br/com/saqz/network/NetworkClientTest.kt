@@ -22,6 +22,18 @@ import kotlin.test.assertTrue
 
 class NetworkClientTest {
     @Test
+    fun `accepted HTTP status is preserved for asynchronous operation consumers`() = runTest {
+        val client = NetworkClient(MockEngine {
+            respond("{\"value\":\"pending\"}", HttpStatusCode.Accepted,
+                headersOf(HttpHeaders.ContentType, "application/json"))
+        }, NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/"))
+        val result = assertIs<NetworkResult.Success<ProbeResponse>>(
+            client.execute(HttpMethod.Post, "operation", serializer<ProbeResponse>()))
+        assertEquals(202, result.metadata.status)
+        assertEquals("pending", result.value.value)
+    }
+
+    @Test
     fun `injected json controls response decoding`() = runTest {
         val strictJson = Json { ignoreUnknownKeys = false }
         val client = NetworkClient(
