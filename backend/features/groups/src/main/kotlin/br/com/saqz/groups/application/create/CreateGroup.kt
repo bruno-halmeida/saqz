@@ -49,7 +49,7 @@ class CreateGroup(
             repository.lockOwnerForGroupLimit(actor)
             repository.findByCreationKey(actor, requestId)?.let { return@inTransaction it }
 
-            val eligibleForTrial = trial.isEligible(actor)
+            val eligibleForTrial = trial.tryStart(actor)
             val groupLimit = if (eligibleForTrial) 1 else subscriptionLimits.groupLimitFor(actor)
             val ownedCount = repository.countOwnedGroups(actor)
             if (!PlanLimitPolicy.canCreateGroup(ownedCount, groupLimit)) {
@@ -63,7 +63,7 @@ class CreateGroup(
                     timeZone = requireNotNull(validTimeZone),
                     profile = (profileValidation as GroupProfileDefaultsValidation.Valid).value,
                 ),
-            ).also { if (eligibleForTrial) trial.start(actor) }
+            )
         } ?: return CreateGroupResult.GroupLimitExceeded
 
         return CreateGroupResult.Success(
