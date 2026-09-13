@@ -391,3 +391,42 @@ de backend, adm e mobile. Contrato comum: `docs/receivables/rollout-contract.md`
 
 Esses gates não homologam emissão, conciliação, saque ou reembolso. As telas do adm foram testadas
 com API simulada; a API backend foi testada separadamente via HTTP real e PostgreSQL local.
+
+
+## Configuração de meios e condições — 2026-09-13
+
+O run Orca `run_f939f361277e` entregou adm e mobile em paralelo com backend.
+O titular escolhe Pix, cartão ou ambos, com bloqueio explícito de seleção vazia no backend e mobile.
+Condições são revisadas e aceitas antes de ativar; alteração da escolha invalida a revisão anterior.
+
+- Adm: 45 testes Node, revisão independente de contratos HTTP/PostgreSQL e jornada Chromium
+  com API simulada. Evidências em `docs/receivables/evidence/payments/adm-review.md`.
+- Mobile: revisão funcional aprovada e integração `469af9a3`. 44 testes host da feature, 173 iOS,
+  188 host integrados, 4 visuais, 2 probes independentes host e 1 instrumentado aprovados.
+  Suite Android geral: 42/44; os mesmos dois testes de cadastro/sessão falham na base `45d10d0d`.
+  Esse gate geral permanece vermelho; não há regressão atribuída à configuração de recebimentos.
+  Relatório: `docs/receivables/evidence/payments/mobile-review.md`.
+- 31 capturas Compose publicadas separadamente na branch screenshots, com links imutáveis em
+  `docs/receivables/evidence/payments/mobile-visuals.md`. Entrega mobile total: 1743 linhas.
+
+A implementação de pagamentos backend e sua revisão financeira têm evidências próprias.
+Nenhuma destas validações constitui homologação financeira real ou libera produção.
+
+## Pagamentos avulsos e conciliação — 2026-09-13
+
+Backend `de4707ef` com correção `564028ab`: ordens aprovadas, instrumentos Pix/cartão hospedado,
+split fixo, recuperação de resultado incerto, webhooks autenticados e conciliação com reserva
+contra baixa manual concorrente. O gate amplo anterior teve 1646 testes verdes; após o último
+ajuste de webhook, 32 bootstrap direcionados e 20 arquitetura passaram. A revisão independente
+reproduziu F1 (crédito indevido de comissão em refund como primeiro fato) e F2 (QR indisponível
+impedindo cancelamento). Ambos foram corrigidos antes de integrar backend em main.
+
+Reverificação independente final: 40/40 testes, incluindo os 11 probes originais sem alteração,
+28 testes permanentes de integração e 1 de fatos, todos executados contra snapshot integral de
+564028ab. Relatório `docs/receivables/evidence/payments/backend-review-final.md`; primeiro gate e
+correção preservados no mesmo diretório. Nenhuma chamada Asaas real. Custos sem comprovação e
+comissão retornada sem débito anterior ficam pendentes explícitos, sem crédito inventado.
+
+Contrato: `docs/receivables/payment-http-contract.md`. Operação e limites:
+`docs/receivables/payment-operation.md`. Renovação Pix, checkout mobile do membro, carteira,
+saque, solicitação de reembolso, recorrência e homologação integral continuam pendentes.

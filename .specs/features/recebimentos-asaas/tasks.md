@@ -26,24 +26,24 @@ e direcionamento.md. O estado de cada tarefa está indicado abaixo; itens parcia
 
 ### Fase 2 — cobrança e dinheiro (lote 2; depende da fase 1)
 
-- [ ] T07 (parcial: núcleo decimal e split fixo verificados; simulação HTTP, consulta e publicação de termos/tarifas verificadas; emissão pendente) Implementar tarifas versionadas e cálculo decimal em centavos com split fixo. Gate: casos fixos/percentuais, arredondamento e snapshot aceito.
-- [ ] T08 Implementar ordens e instrumentos Pix/cartão hospedado com recuperação de resultado incerto. Gate: pagamento simulado, renovação após corte e timeout sem duplicação.
-- [ ] T09 Persistir/processar webhooks e conciliar pagamento, liquidação, split e caixa. Gate: duplicados, fora de ordem, outra conta, evento perdido e divergência.
-- [ ] T10 Integrar cobranças manuais, cancelamento e seleção de pendências antigas. Gate: corrida entre baixa manual, cancelamento e pagamento.
+- [x] T07 (cálculo, publicação, simulação e snapshots imutáveis aceitos na emissão verificados) Implementar tarifas versionadas e cálculo decimal em centavos com split fixo. Gate: casos fixos/percentuais, arredondamento e snapshot aceito.
+- [ ] T08 (parcial: emissão Pix/cartão hospedado, resultado incerto e recuperação verificados; renovação Pix expirada após corte pendente) Implementar ordens e instrumentos Pix/cartão hospedado com recuperação de resultado incerto. Gate: pagamento simulado, renovação após corte e timeout sem duplicação.
+- [x] T09 (webhooks autenticados, recuperação, estados distintos e reflexo único verificados com PostgreSQL/HTTP simulado; homologação real em T20) Persistir/processar webhooks e conciliar pagamento, liquidação, split e caixa. Gate: duplicados, fora de ordem, outra conta, evento perdido e divergência.
+- [ ] T10 (parcial: reserva de cobrança, seleção explícita por API, cancelamento e concorrência verificados; seleção de pendências no mobile pendente) Integrar cobranças manuais, cancelamento e seleção de pendências antigas. Gate: corrida entre baixa manual, cancelamento e pagamento.
 - [ ] T11 Implementar carteira, destinos, autenticação recente e saques. Gate: saldo insuficiente, restrição, concorrência e acesso após expiração/exclusão do grupo.
-- [ ] T12 Implementar reembolso integral e chargebacks com reversão única. Gate: taxas integrais, custo residual e dívida não reaberta.
+- [ ] T12 (parcial: fatos de reembolso/contestação e reversão única conciliados; solicitação de reembolso e conciliação final de custo residual pendentes) Implementar reembolso integral e chargebacks com reversão única. Gate: taxas integrais, custo residual e dívida não reaberta.
 - [ ] T13 Implementar recorrência, corte efetivo e retomada autorizada. Gate: competência única, ciclos futuros antecipados, vencidas preservadas e corte incompleto recuperável.
 
 ### Fase 3 — clientes e operação (lote 3; depende da fase 2)
 
-- [ ] T14 (parcial: módulos KMP, gateway de disponibilidade e controle conectado à sessão/app verificados; gateways financeiros pendentes) Criar módulos KMP domain/data/presentation e gateways tipados. Gate: gateways Ktor, erros, requestId e fronteiras.
-- [ ] T15 Implementar descoberta, cadastro, ativação e delegações no mobile. Gate: ViewModels, navegação, rascunhos não sensíveis e evidências visuais.
+- [ ] T14 (parcial: módulos KMP, gateway de disponibilidade e controle conectado à sessão/app verificados; gateways de contas/configuração/preview/termos/ativação concluídos; pagamento e carteira pendentes) Criar módulos KMP domain/data/presentation e gateways tipados. Gate: gateways Ktor, erros, requestId e fronteiras.
+- [ ] T15 (parcial: configuração de meios, revisão/aceite, ativação/desativação e recuperação de resultado incerto aprovadas no mobile; cadastro/delegação pendentes) Implementar descoberta, cadastro, ativação e delegações no mobile. Gate: ViewModels, navegação, rascunhos não sensíveis e evidências visuais.
 - [ ] T16 Implementar pagamento avulso, recorrência e histórico do membro. Gate: Pix expirado, cartão recusado, retorno pendente, abandono e cancelamento.
 - [ ] T17 Implementar Perfil → Recebimentos, carteira, saque e reembolso permanentes. Gate: novo login, perda de vínculo/plano, Android e simulador iOS.
-- [ ] T18 (parcial: APIs administrativas de publicação/preview e painel de rollout por sistema/usuário verificados; tarifas visuais e operação financeira pendentes) Implementar painel operacional, tarifas/termos/piloto e recuperação auditada. Gate: testes Node e navegador/API; admin sem poder de saque.
+- [ ] T18 (parcial: APIs administrativas de publicação/preview e painel de rollout por sistema/usuário verificados; termos/tarifas visuais e simulador aprovados; fila operacional financeira pendente) Implementar painel operacional, tarifas/termos/piloto e recuperação auditada. Gate: testes Node e navegador/API; admin sem poder de saque.
 - [ ] T19 Implementar termos públicos, retorno do checkout, avisos de plano e notificações operacionais. Gate: callback sem confirmação e ausência de dados financeiros no endereço.
 - [ ] T20 Executar homologação integrada e documentar liberação/reversão e monitoramento. Gate: todos os cenários obrigatórios do plano; BaaS, termos e condições reais são pré-requisitos de produção.
-- [ ] T21 (parcial: lote de controles verificado por dois revisores Orca; corrida de logout corrigida e probe independente aprovado; demais lotes pendentes) Executar verificação independente via Orca, conforme nova escolha do usuário, corrigir lacunas e registrar evidências por critério. Gate: relatório do verificador, incluindo teste de discriminação em cópia temporária.
+- [ ] T21 (parcial: lote de controles verificado por dois revisores Orca; corrida de logout corrigida e probe independente aprovado; onda de pagamentos aprovada após F1/F2, com 40 testes finais; demais lotes pendentes) Executar verificação independente via Orca, conforme nova escolha do usuário, corrigir lacunas e registrar evidências por critério. Gate: relatório do verificador, incluindo teste de discriminação em cópia temporária.
 
 ## Critérios de entrega
 

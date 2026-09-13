@@ -32,7 +32,7 @@ Nunca copiar API keys, tokens, documentos ou dados bancários para logs, screens
    expirações diferentes; não interpretar a leitura do QR como prova de renovação.
    Referência: [cobranças Pix do Asaas](https://docs.asaas.com/docs/cobrancas-via-pix).
 5. Liberar os usuários de teste nos sistemas necessários. Ativar o grupo após escolher Pix, cartão ou
-   ambos, revisar condições e aceitar. Nenhum meio selecionado deve impedir a ativação.
+   ambos, revisar condições e aceitar. A seleção vazia deve impedir a ativação.
 6. Selecionar expressamente uma cobrança existente, consultar preview e aprovar a ordem. Conferir
    `chargeId`, pagador, valor base, competência original e snapshot das condições.
 7. Como pagador original, consultar a ordem, aceitar meio/total e solicitar instrumento com o mesmo
@@ -54,3 +54,15 @@ validação específica; o GET do QR não é uma implementação automática des
 Uma consulta simulada ao provedor e testes PostgreSQL locais não substituem o teste integral
 na subconta sandbox, nem comprovam condições de produção. Os relatórios da entrega devem registrar
 quais cenários foram efetivamente executados e quais dependem dessa homologação.
+
+## Reconciliação e ocorrências desta entrega
+
+Os flags `confirmed`, `settled`, `available` e `splitSettled` no contrato são marcos históricos.
+Eles não representam saldo atual nem autorizam saque. Pagamento, liquidação, disponibilidade,
+comissão e reversão têm registros distintos; não somar todas as movimentações como saldo.
+
+Se o primeiro fato recebido já for um reembolso, a comissão devolvida só será creditada contra
+um débito efetivo registrado. Sem essa evidência, fica uma ocorrência `REVERSAL_SPLIT_PENDING`.
+Custos de reversão sem confirmação do provedor também permanecem pendentes; não são estimados
+como custo final. Uma falha na consulta do QR não bloqueia a recuperação dos fatos financeiros
+nem o cancelamento autenticado do pagamento.

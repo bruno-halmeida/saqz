@@ -73,3 +73,13 @@
 - Auditoria inicial backend task_2be4fe454598 iniciada enquanto o autor resolve checklist C1–C8; não representa gate final. Mobile em validação de configuração, incluindo seleção vazia, Pix/cartão/ambos, retomada de operação incerta e logout.
 
 - Adm integrado e publicado em main 45d10d0d. Mobile implementado no commit ce18d907 (1435 linhas), autor concluído/liberado; revisão independente task_0e3a5228db83 / ctx_9608ae52f015 executando gates após correções de recuperação M1/M2. Relatório do autor:44 host Android,4 visuais e173 iOS,31 capturas; ainda não é aprovação final.
+
+- Backend candidato de4707ef (1824 linhas) concluído/liberado; 1646 testes de regressão no penúltimo snapshot,32 bootstrap direcionados+20 arquitetura no snapshot final após correção webhook400. Revisão independente task_485cb2adb63b / ctx_c99120267142 em execução. Contrato final em docs/receivables/payment-http-contract.md; homologação Asaas e renovação Pix ainda pendentes.
+
+- Gate independente backend de de4707ef encontrou dois defeitos reproduzidos por probes: comissão devolvida sem débito anterior quando REFUNDED é a primeira observação; cancelamento Pix bloqueado por falha da consulta QR. Correção delegada em task_bdc066c5093f; backend ainda não integrado em main. Gate Android AVD teve duas falhas em testes de cadastro/sessão existentes; revisão compara baseline antes de atribuir ao lote.
+
+- Mobile ce18d907 aprovado funcionalmente por revisão independente:44 host,173 iOS,188 host integrados,4 visuais,2 probes host e1 probe instrumentado de Recebimentos passaram. Android geral42/44; os mesmos dois testes de cadastro/sessão falharam identicamente na base45d10d0d isolada. Gate geral permanece vermelho por falhas preexistentes, não regressões deste lote. AVD criado para teste foi encerrado pelo coordenador.
+
+- Mobile e evidências publicados em main 469af9a3; entrega total de 1743 linhas, capturas na branch screenshots 8577de1e. Correções financeiras F1/F2 implementadas em 564028ab por task_bdc066c5093f, autor liberado; 28 regressões de integração e 1 teste de fatos aprovados em execuções agregadas. Nova revisão independente task_ee5379abb0fb verifica o delta e os 11 probes originais antes de integrar backend.
+
+- Gate final backend aprovado por task_ee5379abb0fb / ctx_6c88acb67d7c, autor diferente do corretor: 40 testes (11 probes originais intactos, 28 integração, 1 fatos) passaram no snapshot completo 564028ab. F1/F2 resolvidos, worker liberado. Evidência permanente em docs/receivables/evidence/payments/backend-review-final.md. Lote pronto para integração; piloto completo permanece pendente conforme tasks.md e payment-operation.md.
