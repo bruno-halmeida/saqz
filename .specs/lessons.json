@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 5,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "ac_gap::correlate uncertain financial commands against pre command instrument ids before clearing recovery markers",
+      "text": "Correlate uncertain financial commands against pre-command instrument IDs before clearing recovery markers.",
+      "signal": "ac_gap",
+      "scope": "mobile/receivables",
+      "status": "candidate",
+      "features": [
+        "member-payment-ui"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "docs/receivables/evidence/member-payment-ui-review.md:75 (mobile/receivables)"
+      ],
+      "created": "2026-09-13T19:25:13Z",
+      "last_seen": "2026-09-13T19:25:13Z"
+    },
+    {
+      "id": "L-002",
+      "key": "ac_gap::revalidate buffered ui effects against generation session and current permission when consuming them",
+      "text": "Revalidate buffered UI effects against generation, session and current permission when consuming them.",
+      "signal": "ac_gap",
+      "scope": "mobile/presentation",
+      "status": "candidate",
+      "features": [
+        "member-payment-ui"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "docs/receivables/evidence/member-payment-ui-review.md:76 (mobile/presentation)"
+      ],
+      "created": "2026-09-13T19:25:13Z",
+      "last_seen": "2026-09-13T19:25:13Z"
+    },
+    {
+      "id": "L-003",
+      "key": "surviving_mutant::assert exact base fees and total amounts in payment ui tests even when recording screenshots",
+      "text": "Assert exact base, fees and total amounts in payment UI tests even when recording screenshots.",
+      "signal": "surviving_mutant",
+      "scope": "mobile/receivables",
+      "status": "candidate",
+      "features": [
+        "member-payment-ui"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "docs/receivables/evidence/member-payment-ui-review.md:69 (mobile/receivables)"
+      ],
+      "created": "2026-09-13T19:25:13Z",
+      "last_seen": "2026-09-13T19:25:13Z"
+    },
+    {
+      "id": "L-004",
+      "key": "surviving_mutant::advance the injected clock past payment expiry without running timers to test user action freshness",
+      "text": "Advance the injected clock past payment expiry without running timers to test user-action freshness.",
+      "signal": "surviving_mutant",
+      "scope": "mobile/receivables",
+      "status": "candidate",
+      "features": [
+        "member-payment-ui"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "docs/receivables/evidence/member-payment-ui-review.md:68 (mobile/receivables)"
+      ],
+      "created": "2026-09-13T19:25:13Z",
+      "last_seen": "2026-09-13T19:25:13Z"
+    }
+  ]
+}

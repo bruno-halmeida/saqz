@@ -108,3 +108,27 @@
   docs/receivables/evidence/member-payment-foundation-review.md. Não foram retomados workers
   nem provider session anteriores. O gate Android instrumentado geral não foi reexecutado:
   suas duas falhas preexistentes continuam registradas no lote anterior.
+
+## Jornada do membro — continuação autorizada
+
+- Histórico, revisão/aceite, CPF/nome em memória, Pix/QR/copia e cola e checkout hospedado
+  conectados em Perfil → Minhas mensalidades → Pagar pelo app. A entrada permanece disponível
+  mesmo sem grupos carregados ou sem elegibilidade para novas ordens.
+- Commits locais d4204d36 (estado/recuperação) e ff870197 (UI/rotas/DI). Testes do autor no escopo:
+  106 execuções Android/iOS, sem falhas ou skips; compilações e detekt aprovados. Capturas inspecionadas.
+- Revisão independente fresca verify_member_payment_ui aprovada em 06d70c7b: 106 execuções, 13 falhas comportamentais distintas injetadas e detectadas, nenhuma sobrevivente.
+  Sem push, produção ou chamadas Asaas reais. Contrato: docs/receivables/member-payment-ui.md.
+- T16 permanece parcial: não inclui recorrência, renovação Pix, aprovação de pendências pelo gestor,
+  nem comprovante exportável. Homologação sandbox e UAT humano ainda não realizados.
+- Correções 6d2bd9f9/06d70c7b: tentativas antigas canceladas não resolvem emissão nova incerta;
+  efeitos enfileirados revalidam geração/sessão/prazo antes de copiar/abrir/navegar; feedback de cópia
+  após execução. Cobertura reforçada para relógio e valores literais Pix/cartão.
+- Próximo lote funcional: seleção/aprovação das cobranças pelo gestor no mobile, para alimentar
+  a jornada do membro sem depender de operação direta da API. Os demais itens seguem em tasks.md.
+- Evidência final: docs/receivables/evidence/member-payment-ui-review.md. Três regressões
+  reproduzidas pelo revisor passaram após as correções. Quatro lições candidatas registradas pelo script
+  do skill; nenhuma delas é tratada como regra confirmada ainda. Capturas permanecem locais em
+  mobile/build/reports/member-payment-ui/ e member-payment-entry/.
+- Limites: testes automatizados e leitura de código não substituem o walkthrough nativo de navegador,
+  clipboard/voltar nem a jornada completa em sandbox. Os dois testes gerais Android preexistentes
+  continuam fora deste gate e pendentes no projeto.

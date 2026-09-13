@@ -94,4 +94,14 @@ Gate do snapshot corrigido: presentation Android43 + iOS45, quatro testes de UI 
 compilações app Android/iOS e detekt presentation aprovados em /tmp/saqz-member-ui-effects-fix.log.
 Os demais gates de integração anteriores seguem válidos; total agregado do autor: 106 execuções.
 Captura revisao-cartao inspecionada com total R$ 109,00 e taxas R$ 9,00 (fixtures de teste).
-Revisão independente final ainda em andamento; não representa homologação Asaas nem UAT humano.
+Revisão independente final aprovada em 06d70c7b; não representa homologação Asaas nem UAT humano.
+
+## Fechamento do lote
+
+Revisão fresca independente aprovada: UI1–UI7 no escopo automatizado/leitura de código,
+106 execuções de testes sem falhas/erros/skips, 13 falhas comportamentais distintas detectadas
+em 15 tentativas de mutação. Os três probes independentes que reproduziram os defeitos iniciais
+passaram no snapshot final. Evidência completa, asserções por critério e limites em
+[evidence/member-payment-ui-review.md](evidence/member-payment-ui-review.md).
+T16 continua parcial além deste lote; aprovação pelo gestor, recorrência, renovação e homologação
+seguem em tasks.md. Commit local, sem push, publicação ou pagamento real.

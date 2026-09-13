@@ -40,3 +40,14 @@ feat/receivables-quotes contém a entrega dependente de catálogo e simulação.
 Após publicação administrativa e correção de 404, gate amplo: 384 bootstrap e
 20 arquitetura passaram. Receivables tem 12 unitários e 24 PostgreSQL/HTTP sem falhas.
 V51 registra auditoria das condições. A interface visual administrativa ainda não foi implementada.
+
+
+## Lote UI do membro — 2026-09-13
+
+Verificador independente novo verify_member_payment_ui, delta 0a2cf201..06d70c7b, aprovou
+UI1–UI7 de docs/receivables/member-payment-ui.md após corrigir recuperação com histórico cancelado
+e efeitos obsoletos. Relatório detalhado: docs/receivables/evidence/member-payment-ui-review.md.
+106 execuções passaram; 13 mutações comportamentais distintas detectadas, zero sobreviventes;
+três probes inicialmente falhos passaram. Sem redução/enfraquecimento de testes anteriores.
+Limites explícitos no relatório: UAT humano, interação nativa completa e sandbox real pendentes;
+T16 permanece parcial. Quatro lições candidatas registradas via scripts/lessons.py do skill.
