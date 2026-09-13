@@ -68,3 +68,6 @@
 - Run Orca run_f939f361277e: backend task_eaaf5ca56cdb / ctx_002c48133a7a; mobile task_8224e1dd64bf / ctx_8a203aae795f; adm task_ee454554457c / ctx_dcb9b14b5bb4.
 - Backend: pagamentos avulsos/conciliação e guardas de caixa; mobile: escolha de meios/revisão/ativação; adm: termos/tarifas/simulação. Workers não fazem git; coordenador integra após gates.
 - GET de configuração independente de preview solicitado para permitir leitura/desativação sem tarifa vigente. Nenhuma liberação de produção ou chamada Asaas real nesta onda.
+
+- Adm desta onda implementado em d5ea8368 e 456d8b03: publicação de termos/tarifas, simulação e reenvio idempotente. Revisão independente task_a52994883930 / ctx_ecda05788946 aprovada; 45 testes Node, quatro probes HTTP (um temporário para decimais textuais) e quatro JDBC. Evidências de navegador com API simulada em docs/receivables/evidence/payments; sem homologação Asaas.
+- Auditoria inicial backend task_2be4fe454598 iniciada enquanto o autor resolve checklist C1–C8; não representa gate final. Mobile em validação de configuração, incluindo seleção vazia, Pix/cartão/ambos, retomada de operação incerta e logout.

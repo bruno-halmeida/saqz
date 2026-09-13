@@ -57,3 +57,19 @@ Mobile: gateways/ViewModels/navegação, Android e iOS, revisão visual com evid
 Adm: Node e navegador, comprovando parsing de centavos/percentuais e reenvio idêntico.
 Verificador independente após cada frente pronta. Produção e homologação financeira não são
 atestadas por mocks. Mantêm-se OFF inicial e todas as permissões financeiras no servidor.
+
+## Ajustes coordenados durante a implementação
+
+GET /api/receivables/groups/{groupId}?accountId=UUID retorna {value:{state:{accountId,groupId,
+enabled,pixEnabled,cardEnabled},permissions:{READ:{allowed,reason},CANCEL:{allowed,reason}}},requestId}.
+Leitura não depende de termos, tarifas, rollout ou elegibilidade. Vínculo existente pode ser lido
+pelo operador autorizado da conta mesmo após exclusão/troca de titular do grupo. Sem vínculo,
+validar grupo ativo e titular correspondente; retornar estado desativado sem persistir nada.
+Isolamento 404 e Cache-Control no-store.
+
+Para cartão avulso será usada a fatura hospedada retornada em invoiceUrl de POST /payments com
+billingType=CREDIT_CARD, sem dados de cartão no Saqz. Essa via documentada permite recuperar a
+cobrança por externalReference; o produto separado /checkouts não fornece a mesma garantia de
+consulta documentada. Pix usa payments e consulta de QR Code. Fontes verificadas em 2026-09-13:
+https://docs.asaas.com/docs/cobrancas-via-cartao-de-credito e
+https://docs.asaas.com/reference/criar-cobranca-com-cartao-de-credito.
