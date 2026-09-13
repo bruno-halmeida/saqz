@@ -29,6 +29,7 @@ class OwnProfileViewModel(
             OwnProfileIntent.OpenMyPlan -> emit(OwnProfileEffect.OpenMyPlan)
             OwnProfileIntent.OpenSettings -> emit(OwnProfileEffect.OpenSettings)
 
+            OwnProfileIntent.OpenReceipts -> emit(OwnProfileEffect.OpenReceipts)
             OwnProfileIntent.OpenMonthlyPayments -> emit(OwnProfileEffect.OpenMonthlyPayments)
 
             OwnProfileIntent.OpenNotifications -> emit(OwnProfileEffect.OpenNotifications)

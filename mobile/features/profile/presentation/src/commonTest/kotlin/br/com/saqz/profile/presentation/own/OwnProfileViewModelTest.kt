@@ -35,6 +35,8 @@ class OwnProfileViewModelTest {
         vm.onIntent(OwnProfileIntent.OpenGroup("my-group"))
         advanceUntilIdle()
         assertEquals(OwnProfileEffect.OpenAthleteProfile("my-group"), vm.effects.first())
+        vm.onIntent(OwnProfileIntent.OpenReceipts)
+        assertEquals(OwnProfileEffect.OpenReceipts, vm.effects.first())
         vm.onIntent(OwnProfileIntent.OpenMonthlyPayments)
         advanceUntilIdle()
         assertEquals(OwnProfileEffect.OpenMonthlyPayments, vm.effects.first())

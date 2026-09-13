@@ -45,6 +45,7 @@ sealed interface OwnProfileIntent {
     data object EditData : OwnProfileIntent
     data object OpenSettings : OwnProfileIntent
     data object OpenMyPlan : OwnProfileIntent
+    data object OpenReceipts : OwnProfileIntent
     data object OpenMonthlyPayments : OwnProfileIntent
     data object OpenNotifications : OwnProfileIntent
     data object ChangePassword : OwnProfileIntent
@@ -57,6 +58,7 @@ sealed interface OwnProfileEffect {
     data object OpenPasswordRecovery : OwnProfileEffect
     data object OpenMyPlan : OwnProfileEffect
     data class OpenAthleteProfile(val groupId: String) : OwnProfileEffect
+    data object OpenReceipts : OwnProfileEffect
     data object OpenMonthlyPayments : OwnProfileEffect
     data object OpenSettings : OwnProfileEffect
     data object OpenNotifications : OwnProfileEffect

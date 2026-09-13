@@ -18,6 +18,7 @@ kotlin {
             implementation(project(":features:receivables:domain"))
             implementation(project(":core:domain"))
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.json)
             implementation(project(":core:common"))
             implementation(project(":core:design-system"))

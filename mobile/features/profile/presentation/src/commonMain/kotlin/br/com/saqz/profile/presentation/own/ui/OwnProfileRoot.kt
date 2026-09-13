@@ -23,6 +23,7 @@ fun OwnProfileRoot(
     onOpenMyPlan: () -> Unit = {},
     onOpenAthleteProfile: (String) -> Unit = {},
     onOpenMonthlyPayments: () -> Unit = {},
+    onOpenReceipts: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
     isPlanOwner: Boolean = false,
@@ -46,6 +47,7 @@ fun OwnProfileRoot(
             OwnProfileEffect.OpenPasswordRecovery -> onOpenPasswordRecovery()
             OwnProfileEffect.OpenMyPlan -> onOpenMyPlan()
             is OwnProfileEffect.OpenAthleteProfile -> onOpenAthleteProfile(effect.groupId)
+            OwnProfileEffect.OpenReceipts -> onOpenReceipts()
             OwnProfileEffect.OpenMonthlyPayments -> onOpenMonthlyPayments()
             OwnProfileEffect.OpenSettings -> onOpenSettings()
             OwnProfileEffect.OpenNotifications -> onOpenNotifications()

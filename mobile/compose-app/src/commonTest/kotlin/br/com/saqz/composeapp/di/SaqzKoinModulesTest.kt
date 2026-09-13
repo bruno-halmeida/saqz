@@ -152,6 +152,15 @@ class SaqzKoinModulesTest {
         single<NativeAuthPort> { FakeAuthPort }
     }
     private val nativePortsFixtureModule = module {
+        single<br.com.saqz.receivables.domain.port.ReceiptDocumentPicker> {
+            object : br.com.saqz.receivables.domain.port.ReceiptDocumentPicker {
+                override fun choose(done: br.com.saqz.receivables.domain.port.ReceiptFileCallback):
+                    br.com.saqz.receivables.domain.port.ReceiptFileCancellation {
+                    done.onFileSelected(br.com.saqz.receivables.domain.port.ReceiptFileSelection.Cancelled)
+                    return br.com.saqz.receivables.domain.port.ReceiptFileCancellation { }
+                }
+            }
+        }
         single {
             SaqzNativePorts(
                 access = AccessRuntimeDependencies(
@@ -280,6 +289,9 @@ class SaqzKoinModulesTest {
         assertIs<br.com.saqz.receivables.data.KtorMemberPaymentsGateway>(koin.get<br.com.saqz.receivables.domain.MemberPaymentsGateway>())
         koin.get<br.com.saqz.receivables.domain.GroupReceivablesGateway>()
         koin.get<br.com.saqz.receivables.presentation.MemberPaymentHistoryViewModel>()
+        koin.get<br.com.saqz.receivables.domain.FinancialOnboardingGateway>()
+        koin.get<br.com.saqz.receivables.domain.port.ReceiptDocumentPicker>()
+        koin.get<br.com.saqz.receivables.presentation.FinancialOnboardingViewModel> { parametersOf(SavedStateHandle()) }
         koin.get<br.com.saqz.receivables.presentation.MemberPaymentViewModel> { parametersOf("order", SavedStateHandle()) }
         koin.get<br.com.saqz.receivables.presentation.ChargeApprovalViewModel> { parametersOf("group", "charge", SavedStateHandle()) }
         koin.get<br.com.saqz.receivables.presentation.ReceiptConfigurationViewModel> { parametersOf("group", SavedStateHandle()) }

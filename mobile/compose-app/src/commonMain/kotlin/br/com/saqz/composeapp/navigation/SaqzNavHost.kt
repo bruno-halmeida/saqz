@@ -92,6 +92,8 @@ import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.presentation.ui.changeplan.ChangePlanRoot
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
+import br.com.saqz.receivables.presentation.FinancialOnboardingRoute
+import br.com.saqz.receivables.presentation.FinancialOnboardingRoot
 import br.com.saqz.receivables.presentation.ChargeApprovalRoute
 import br.com.saqz.receivables.presentation.ChargeApprovalRoot
 import br.com.saqz.receivables.presentation.MemberPaymentRoute
@@ -172,7 +174,8 @@ internal fun SaqzNavHost(
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
     val inviteCoordinator = koinInject<GroupInviteCoordinator>()
-    val receipts = koinInject<ReceivablesCoordinator>().state.collectAsStateWithLifecycle().value
+    val receiptsCoordinator = koinInject<ReceivablesCoordinator>()
+    val receipts = receiptsCoordinator.state.collectAsStateWithLifecycle().value
     LaunchedEffect(inviteCoordinator) {
         if (pendingInviteCode == null) {
             // This must run before the session gate as well: a signed-out relaunch needs the
@@ -394,6 +397,7 @@ internal fun SaqzNavHost(
                             onOpenMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
                             onOpenAthleteProfile = { backStack.add(GroupsRoute.AthleteRegistration(it, fromProfile = true)) },
                             onOpenMonthlyPayments = { backStack.add(FinanceRoute.OwnMonthlyPayments) },
+                            onOpenReceipts = { backStack.add(FinancialOnboardingRoute) },
                             onOpenSettings = { backStack.add(GroupsRoute.Notifications(settings = true)) },
                             onOpenNotifications = { backStack.add(GroupsRoute.Notifications()) },
                             isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
@@ -479,6 +483,10 @@ internal fun SaqzNavHost(
                     onClose = pop,
                     onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                 )
+            }
+            entry<FinancialOnboardingRoute> {
+                FinancialOnboardingRoot(onBack = { receiptsCoordinator.refresh(); profileRefreshVersion++; pop() },
+                    onChange = { receiptsCoordinator.refresh(); profileRefreshVersion++ })
             }
             entry<MemberPaymentHistoryRoute> {
                 MemberPaymentHistoryRoot(onBack = pop, onOpen = { backStack.add(MemberPaymentRoute(it)) })

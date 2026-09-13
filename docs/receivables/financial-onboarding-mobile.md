@@ -99,3 +99,48 @@ solicitados no Android, 6 DI efetivamente executados; rota é iOS), `/tmp/saqz-o
 Swift6 typecheck do adapter exit0 em `/tmp/saqz-onboarding-swift.log`; app SaqzDev compilado
 no Xcode para arm64 simulator, `BUILD SUCCEEDED` em `/tmp/saqz-onboarding-xcode.log`.
 Compilação não equivale a walkthrough do seletor nativo iOS; esse limite não é homologação Asaas.
+
+## Gate tarefa 4
+
+Critérios FO3–FO7: estado/VM, Root, tela shared, Perfil, navegação e DI.
+
+| Critério | Evidência literal no teste |
+|---|---|
+| FO4 | `mobile/features/receivables/presentation/src/commonTest/kotlin/br/com/saqz/receivables/presentation/FinancialOnboardingViewModelTest.kt:25` — `assertFalse(failed.state.value.discovered); assertFalse(failed.state.value.canEdit); assertEquals(ReceiptError.NETWORK, failed.state.value.error)` |
+| FO3 | `mobile/features/receivables/presentation/src/commonTest/kotlin/br/com/saqz/receivables/presentation/FinancialOnboardingViewModelTest.kt:34` — `assertEquals(250001L, registration.incomeCents); assertEquals("1990-01-01", registration.birthDate); assertNull(registration.companyType)` |
+| FO3/5 | `mobile/features/receivables/presentation/src/commonTest/kotlin/br/com/saqz/receivables/presentation/FinancialOnboardingViewModelTest.kt:71` — `assertEquals(OnboardingAttempt("owner", f.commands.single().requestId, "CREATE"), Json.decodeFromString<OnboardingAttempt>(marker))` |
+| FO5 replay | `mobile/features/receivables/presentation/src/commonTest/kotlin/br/com/saqz/receivables/presentation/FinancialOnboardingViewModelTest.kt:78` — `assertTrue(f.mineReads > reads); assertSame(f.commands[0], f.commands[1])` |
+| FO5 restauração | `mobile/features/receivables/presentation/src/commonTest/kotlin/br/com/saqz/receivables/presentation/FinancialOnboardingViewModelTest.kt:81` — `assertEquals(2, f.commands.size); assertTrue(restored.state.value.pending)` |
+| FO5 recuperação | `mobile/features/receivables/presentation/src/commonTest/kotlin/br/com/saqz/receivables/presentation/FinancialOnboardingViewModelTest.kt:92` — `vm.onIntent(FinancialOnboardingIntent.Recover); assertEquals(f.recoveries[0], f.recoveries[1]); assertTrue(f.commands.isEmpty())` |
+| FO6 envio | `mobile/features/receivables/presentation/src/commonTest/kotlin/br/com/saqz/receivables/presentation/FinancialOnboardingViewModelTest.kt:103` — `assertEquals(onboardingDocument, f.uploads.single().first); assertContentEquals(onboardingFile.bytes, f.uploads.single().third.bytes)` |
+| FO6 incerteza | `mobile/features/receivables/presentation/src/commonTest/kotlin/br/com/saqz/receivables/presentation/FinancialOnboardingViewModelTest.kt:114` — `assertEquals(OnboardingAttempt("owner", f.uploads.single().second, "UPLOAD", "doc", "PENDING"), Json.decodeFromString<OnboardingAttempt>(marker))` |
+| FO5 sessão | `mobile/features/receivables/presentation/src/commonTest/kotlin/br/com/saqz/receivables/presentation/FinancialOnboardingViewModelTest.kt:150` — `assertNull(vm3.state.value.selectedFile); assertEquals(ReceiptError.SIGNED_OUT, vm3.state.value.error); assertTrue(f3.pickCancelled)` |
+| FO6 link | `mobile/features/receivables/presentation/src/commonTest/kotlin/br/com/saqz/receivables/presentation/FinancialOnboardingViewModelTest.kt:128` — `assertEquals(FinancialOnboardingEffect.Open("doc", "https://asaas.com/onboarding/test", effect.generation), effect)` |
+| FO7 valor/aceite | `mobile/android-app/src/test/kotlin/br/com/saqz/androidapp/FinancialOnboardingScreenshotTest.kt:31` — `compose.onNodeWithText("Renda ou faturamento informado: R$\u00a02.500,01").performScrollTo().assertIsDisplayed()` |
+| FO7 confirmação | `mobile/android-app/src/test/kotlin/br/com/saqz/androidapp/FinancialOnboardingScreenshotTest.kt:74` — `assertEquals(FinancialOnboardingIntent.Upload, intents.last()); capture("confirmar-documento")` |
+| FO7 voltar nativo | `mobile/android-app/src/test/kotlin/br/com/saqz/androidapp/FinancialOnboardingBackTest.kt:50` — `assertEquals(0, returned); assertEquals(marker, saved.get<String>("onboarding.attempt"))` |
+| FO7 diretório | `mobile/android-app/src/test/kotlin/br/com/saqz/androidapp/FinancialOnboardingBackTest.kt:57` — `assertEquals(1, changed)` |
+| FO7 Perfil | `mobile/features/profile/presentation/src/commonTest/kotlin/br/com/saqz/profile/presentation/own/ui/OwnProfileRootTest.kt:38` — `assertEquals(1, opens)` |
+| FO7 rota | `mobile/compose-app/src/commonTest/kotlin/br/com/saqz/composeapp/navigation/MemberPaymentNavigationTest.kt:22` — `assertEquals(stack.toList(), restored.toList())` |
+
+Mapa reverso: os 11 testes FinancialOnboardingViewModelTest cobrem descoberta (FO4), PF/PJ e
+aceite (FO3), invalidação do aceite (FO3/5), create incerto, recover, sessão e rejeição (FO5),
+seleção/envio/link/upload incerto (FO6). Os três testes ScreenshotTest cobrem formulário/termos,
+estados/voltar e documentos/situação (FO7); BackTest cobre Root/diretório (FO5/7). O teste iOS
+FinancialOnboardingScreenTest cobre os mesmos CTAs no runtime Compose iOS (FO7). Perfil Root/VM,
+serialização/logout e DI cobrem a entrada permanente e montagem real (FO4/7). Nenhum teste sem
+critério, removido, ignorado ou enfraquecido; fixtures de plataforma ganharam a porta exigida.
+
+Gates finais do autor:
+- `/tmp/saqz-onboarding-full-ui.log` exit0: presentation receivables 66 Android +70 iOS; profile
+  12 Android +36 iOS; DI/bootstrap Android8; picker2 e UI Android4. Detekt presentation/profile/compose.
+- `/tmp/saqz-onboarding-visual.log` exit0: DI/bootstrap/rota iOS9; Roborazzi onboarding3,
+  14 capturas em `mobile/build/reports/financial-onboarding/` (locais). Inspecionadas formulário,
+  termos, confirmação, incerteza, enviado, preparação, link e erro; os demais estados usam a mesma composição.
+- `/tmp/saqz-onboarding-android-final.log` exit0: detekt Android app completo +18 testes de
+  onboarding/picker e regressões dos testes antigos, que receberam somente quebras de linha.
+- `/tmp/saqz-onboarding-ui-build.log` exit0: compilação Android e framework iOS, testes VM e detekt.
+
+Adequação do autor: resultados e payloads exatos, limites, consentimento, recuperação e sessão
+cobertos nos contratos desta onda. Revisão independente ainda deve confirmar discriminação.
+As duas falhas gerais Android instrumentadas anteriores não fazem parte destes resultados.

@@ -81,6 +81,7 @@ import br.com.saqz.profile.resources.profile_error_message
 import br.com.saqz.profile.resources.profile_error_title
 import br.com.saqz.profile.resources.profile_games
 import br.com.saqz.profile.resources.profile_groups
+import br.com.saqz.profile.resources.profile_receipts
 import br.com.saqz.profile.resources.profile_monthly_payments
 import br.com.saqz.profile.resources.profile_my_plan
 import br.com.saqz.profile.resources.profile_notifications
@@ -103,6 +104,7 @@ internal object OwnProfileTags {
     const val MyPlan = "own-profile-my-plan"
     const val Failure = "own-profile-failure"
     const val Retry = "own-profile-retry"
+    const val Receipts = "own-profile-receipts"
     const val MonthlyPayments = "own-profile-monthly-payments"
     const val Notifications = "own-profile-notifications"
     const val ChangePassword = "own-profile-change-password"
@@ -493,6 +495,9 @@ private fun OwnProfileOwnerCard(onIntent: (OwnProfileIntent) -> Unit) {
 @Composable
 private fun OwnProfileAccountCard(onIntent: (OwnProfileIntent) -> Unit) {
     SaqzCard(padded = false) {
+        OwnProfileAccountRow(icon = SaqzIcons.CreditCard, label = stringResource(Res.string.profile_receipts),
+            onClick = { onIntent(OwnProfileIntent.OpenReceipts) }, modifier = Modifier.testTag(OwnProfileTags.Receipts))
+        SaqzDivider()
         OwnProfileAccountRow(
             icon = SaqzIcons.CreditCard,
             label = stringResource(Res.string.profile_monthly_payments),

@@ -10,6 +10,8 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
+import br.com.saqz.receivables.data.KtorFinancialOnboardingGateway
+import br.com.saqz.receivables.presentation.FinancialOnboardingViewModel
 import br.com.saqz.receivables.data.KtorChargeApprovalGateway
 import br.com.saqz.receivables.presentation.ChargeApprovalViewModel
 import br.com.saqz.receivables.data.KtorMemberPaymentsGateway
@@ -32,6 +34,8 @@ internal val receivablesModule = module {
     singleOf(::KtorGroupReceivablesGateway) bind GroupReceivablesGateway::class bind ReceiptAccountDirectory::class
     singleOf(::KtorMemberPaymentsGateway) bind br.com.saqz.receivables.domain.MemberPaymentsGateway::class
     singleOf(::KtorChargeApprovalGateway) bind br.com.saqz.receivables.domain.ChargeApprovalGateway::class
+    singleOf(::KtorFinancialOnboardingGateway) bind br.com.saqz.receivables.domain.FinancialOnboardingGateway::class
+    viewModelOf(::FinancialOnboardingViewModel)
     viewModelOf(::ChargeApprovalViewModel)
     viewModelOf(::ReceiptConfigurationViewModel)
     single<kotlin.time.Clock> { kotlin.time.Clock.System }

@@ -5,6 +5,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.runComposeUiTest
 import coil3.ImageLoader
@@ -17,6 +20,23 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class OwnProfileRootTest {
+    @Test
+    fun receiptsEntryRoutesWithoutPlanOwnershipOrGroups() = runComposeUiTest {
+        val gateway = FakeProfileGateway().apply { profile = profile.copy(memberships = emptyList()) }
+        val viewModel = OwnProfileViewModel(gateway)
+        var opens = 0
+        setContent {
+            val context = LocalPlatformContext.current
+            val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
+            SaqzTheme {
+                OwnProfileRoot(onOpenEditor = {}, onOpenPasswordRecovery = {}, onSignOut = {},
+                    onOpenReceipts = { opens++ }, isPlanOwner = false, viewModel = viewModel, imageLoader = imageLoader)
+            }
+        }
+        onNodeWithTag(OwnProfileTags.Receipts).performScrollTo().performClick()
+        waitForIdle()
+        assertEquals(1, opens)
+    }
     @Test
     fun `refresh version reloads the retained profile after an editor save`() = runComposeUiTest {
         val gateway = FakeProfileGateway()
