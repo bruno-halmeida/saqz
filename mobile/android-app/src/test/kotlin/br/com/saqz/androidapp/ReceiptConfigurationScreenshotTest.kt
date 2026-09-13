@@ -29,7 +29,8 @@ class ReceiptConfigurationScreenshotTest {
         capture("carregando")
         show(state, ReceiptConfigurationState(loading = false), "sem-conta")
         AccountRegistration.entries.forEach { registration ->
-            show(state, selected.copy(accounts = listOf(ReceiptAccount("00000000-0000-4000-8000-000000001234", registration, false))),
+            show(state, selected.copy(accounts = listOf(ReceiptAccount("00000000-0000-4000-8000-000000001234",
+                registration, false))),
                 "cadastro-${registration.name.lowercase()}")
         }
         ReceiptError.entries.forEach { error ->
@@ -41,16 +42,19 @@ class ReceiptConfigurationScreenshotTest {
         show(state, ReceiptConfigurationState(loading = false, pendingMutation = true), "restauracao-pendente")
         compose.onNodeWithText("Você ainda não tem", substring = true).assertDoesNotExist()
         show(state, selected.copy(pendingMutation = true, loading = true), "operacao-em-andamento")
-        show(state, selected.copy(completed = true, status = selected.status!!.copy(state = config.copy(enabled = true, pixEnabled = true))), "configuracao-salva")
+        show(state, selected.copy(completed = true, status = selected.status!!.copy(state = config.copy(enabled = true,
+            pixEnabled = true))), "configuracao-salva")
         show(state, selected.copy(discoveryAvailable = false), "rollout-off")
         show(state, selected, "nenhum-meio")
         compose.onNodeWithTag(ReceiptConfigurationTags.Preview).assertIsNotEnabled()
-        listOf(setOf(ReceiptMethod.PIX), setOf(ReceiptMethod.CARD), ReceiptMethod.entries.toSet()).forEachIndexed { index, methods ->
+        listOf(setOf(ReceiptMethod.PIX), setOf(ReceiptMethod.CARD), ReceiptMethod.entries.toSet()).forEachIndexed {
+            index, methods ->
             show(state, selected.copy(methods = methods), "meios-$index")
             compose.onNodeWithTag(ReceiptConfigurationTags.Preview).assertIsEnabled()
         }
         val reviewed = selected.copy(methods = setOf(ReceiptMethod.PIX), review = review,
-            terms = listOf(ReceiptTerms("v1", "Termos de demonstração para revisão visual. Confira as tarifas e o valor total antes de aceitar. " +
+            terms = listOf(ReceiptTerms("v1",
+                "Termos de demonstração para revisão visual. Confira as tarifas e o valor total antes de aceitar. " +
                 "O aceite se aplica às novas emissões. Ordens já emitidas preservam suas condições.")))
         compose.runOnIdle { state.value = reviewed }
         compose.onNodeWithTag(ReceiptConfigurationTags.Activate).performScrollTo()
@@ -68,7 +72,8 @@ class ReceiptConfigurationScreenshotTest {
         compose.onNodeWithTag(ReceiptConfigurationTags.Activate).performScrollTo()
         compose.onNodeWithTag(ReceiptConfigurationTags.Activate).assertIsEnabled()
         capture("aceite-explicito")
-        compose.runOnIdle { state.value = selected.copy(status = selected.status!!.copy(state = config.copy(enabled = true, pixEnabled = true)),
+        compose.runOnIdle { state.value = selected.copy(status = selected.status!!.copy(state = config.copy(enabled =
+            true, pixEnabled = true)),
             confirmingDeactivation = true, discoveryAvailable = false) }
         compose.onNodeWithText("Confirmar desativação").performScrollTo()
         capture("desativacao-sem-rollout")
@@ -81,7 +86,8 @@ class ReceiptConfigurationScreenshotTest {
         org.junit.Assert.assertEquals(listOf(ReceiptConfigurationIntent.ToggleMethod(ReceiptMethod.CARD)), intents)
     }
 
-    private fun show(state: androidx.compose.runtime.MutableState<ReceiptConfigurationState>, next: ReceiptConfigurationState, name: String) {
+    private fun show(state: androidx.compose.runtime.MutableState<ReceiptConfigurationState>,
+        next: ReceiptConfigurationState, name: String) {
         compose.runOnIdle { state.value = next }
         compose.onNodeWithTag(ReceiptConfigurationTags.Screen).assertExists()
         capture(name)
@@ -92,8 +98,10 @@ class ReceiptConfigurationScreenshotTest {
     }
     private val config = ReceiptConfiguration("00000000-0000-4000-8000-000000001234", "group", false, false, false)
     private val selected = ReceiptConfigurationState(loading = false,
-        accounts = listOf(ReceiptAccount("00000000-0000-4000-8000-000000001234", AccountRegistration.APPROVED, true)), accountId = "00000000-0000-4000-8000-000000001234",
-        status = ReceiptStatus(config, mapOf("READ" to ReceiptPermission(true), "CANCEL" to ReceiptPermission(true))), discoveryAvailable = true)
+        accounts = listOf(ReceiptAccount("00000000-0000-4000-8000-000000001234", AccountRegistration.APPROVED, true)),
+            accountId = "00000000-0000-4000-8000-000000001234",
+        status = ReceiptStatus(config, mapOf("READ" to ReceiptPermission(true), "CANCEL" to ReceiptPermission(true))),
+            discoveryAvailable = true)
     private val review = ReceiptReview(config, listOf(ReceiptSchedule(ReceiptMethod.PIX, "v1", "0.01", 10, "0.02", 20)),
         listOf(ReceiptPrice("GAME", ReceiptMethod.PIX, 1000, 61, 1061, 1000)),
         mapOf("ACTIVATE_GROUP" to ReceiptPermission(true)), null, "a".repeat(64))

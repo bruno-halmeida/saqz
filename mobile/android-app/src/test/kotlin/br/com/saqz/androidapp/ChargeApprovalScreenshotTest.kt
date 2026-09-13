@@ -63,7 +63,8 @@ class ChargeApprovalScreenshotTest {
         compose.onNodeWithTag(ChargeApprovalTags.Submit).performScrollTo().assertIsNotEnabled()
     }
     @Test fun cancellationIsExplicitAndPendingIsNotConfirmed() {
-        val state = mutableStateOf(ChargeApprovalState(loading = false, accountId = "account", detail = MemberPaymentDetail(order, emptyList())))
+        val state = mutableStateOf(ChargeApprovalState(loading = false, accountId = "account", detail =
+            MemberPaymentDetail(order, emptyList())))
         val intents = mutableListOf<ChargeApprovalIntent>()
         compose.setContent { SaqzTheme { ChargeApprovalScreen(state.value, intents::add, {}) } }
         compose.onNodeWithTag(ChargeApprovalTags.Confirm).assertDoesNotExist(); capture("liberada")
@@ -109,9 +110,12 @@ class ChargeApprovalScreenshotTest {
     private val target = ChargeApprovalTarget("group", "charge", "account")
     private val pix = MemberPaymentQuote("schedule", "v1", ReceiptMethod.PIX, 10000, 658, 10658, 10000, 300, 358)
     private val review = ChargeApprovalReview(target, "payer", "2026-09-20", "2026-08-01",
-        listOf(pix, pix.copy(method = ReceiptMethod.CARD, termsVersion = "v2", feesCents = 900, totalCents = 10900, providerFeeCents = 600)), "a".repeat(64))
-    private val reviewed = ChargeApprovalState(loading = false, accounts = listOf(account), accountId = "account", review = review,
+        listOf(pix, pix.copy(method = ReceiptMethod.CARD, termsVersion = "v2", feesCents = 900, totalCents = 10900,
+            providerFeeCents = 600)), "a".repeat(64))
+    private val reviewed = ChargeApprovalState(loading = false, accounts = listOf(account), accountId = "account",
+        review = review,
         terms = listOf(ReceiptTerms("v1", "Termos Pix de teste"), ReceiptTerms("v2", "Termos cartão de teste")))
-    private val order = MemberPaymentOrder("order", "account", "charge", "group", "payer", "2026-09-20", "ISSUED", review.quotes, review.fingerprint)
+    private val order = MemberPaymentOrder("order", "account", "charge", "group", "payer", "2026-09-20", "ISSUED",
+        review.quotes, review.fingerprint)
     private val attempt = ApprovalAttempt("owner", "group", "charge", "account", "request", review.fingerprint)
 }
