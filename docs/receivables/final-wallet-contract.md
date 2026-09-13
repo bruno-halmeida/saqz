@@ -28,7 +28,7 @@ Data de fixação: 2026-09-13. Base: `384b5894`.
   autorização é recalculada em toda chamada; plano/grupo expirado não bloqueia dinheiro existente.
 - Cadastro de destino e saque exigem um Bearer reemitido após reautenticação. A camada central valida
   assinatura/revogação e propaga o `auth_time` verificado; a carteira aceita no máximo 5 minutos
-  (com 30 segundos de tolerância futura). Um booleano/data enviados pelo cliente nunca bastam.
+  (sem aceitar timestamp futuro). Um booleano/data enviados pelo cliente nunca bastam.
 - Saque requer `explicitlyAuthorized: true`. Não há rota administrativa de saque.
 - Falha de autorização/isolamento retorna `404` para não revelar outra conta; autenticação recente
   ausente/inválida retorna `403` com `RECENT_AUTHENTICATION_REQUIRED`.
@@ -109,3 +109,11 @@ test e integrationTest), `HttpAsaasWallet`, `JdbcWalletStore`, `WalletController
 `backend/bootstrap/.../ReceivablesWalletConfiguration.kt`, este contrato e
 `docs/receivables/evidence/final-wallet-author.md`. Nenhum arquivo reservado às outras frentes será
 editado.
+
+## Estado de recuperação no mobile
+
+O marker salva ator, conta, requestId, tipo e, para saque, destino por ID e valor exato em centavos.
+Os dois últimos campos vinculam a resposta recuperada à intenção original: divergência mantém a operação
+pendente e não é mostrada como sucesso. O marker não salva consentimento, senha, CPF/CNPJ nem dados bancários.
+Após recriação o app consulta o servidor pelo requestId, inicia com aceite desmarcado e não repete POST.
+A representação do servidor é a fonte do resultado; os valores locais servem somente à conferência.

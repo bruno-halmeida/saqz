@@ -1,5 +1,9 @@
 # Estado de implementação
 
+## Status atual — 2026-09-13, conclusão paralela
+
+As jornadas de pagamento, cadastro/gestão/delegação, carteira/saque, recorrência, renovação Pix, comprovante, operação e páginas públicas foram implementadas e verificadas. Commits desta conclusão: `91410d94`, `fda7607d`, `cd0a4a3c`, `a401eb7b`, `de5e7eed`, `6f700201`, `af0a043a`, `777abef4`, `e40d5c0b`. Quatro revisões independentes finais aprovadas; todos os defeitos reproduzidos foram corrigidos. O procedimento operacional de credencial perdida (T04) também está concluído e aprovado: importação cifrada auditada, somente consultas ao provedor e comando sem servidor web. Não há tarefa de implementação pendente. Homologação real T20, condições comerciais e termos aprovados permanecem externos; nenhum deploy ou teste financeiro real nesta onda. O restante deste arquivo conserva o histórico e não substitui este status atual.
+
 ## Decisões
 
 - O plano do usuário de 2026-09-12 prevalece sobre context.md e direcionamento.md.
@@ -17,7 +21,7 @@
 - Criação do PR recusada pelo GitHub: `must be a collaborator (createPullRequest)`.
   Restrição de PR superada pela autorização explícita do usuário para merge direto na main.
 
-## Progresso e pendências
+## Progresso histórico anterior às ondas seguintes
 
 - T01–T03 implementadas e verificadas.
 - T04 parcial: cadastro voluntário PF/PJ, aceite, cifra, retomada sem duplicação, documentos e HTTP.
@@ -206,3 +210,13 @@
   e apuração de custos residuais observados. T12 continua parcial somente por essa conciliação.
 - Inspeção do código atual não encontrou fluxo de solicitação de reembolso a remover.
   Alteração de planejamento; nenhuma mudança em webhooks, caixa ou estados financeiros.
+
+
+## Conclusão verificada — 2026-09-13 23:54 UTC
+
+- T01–T19 e T21 implementadas/verificadas; T20 conserva somente a homologação real externa. Nenhuma funcionalidade de reembolso solicitado foi criada.
+- Gates finais backend: 65 unitários, 57 integração PostgreSQL/HTTP, 70 bootstrap focados e 20 arquitetura; últimas regressões de prova HTTP/contagem em 14 testes focados adicionais aprovadas.
+- Gate final mobile: 213 Android completos, domínio 7+7, dados 67+67, apresentação 107+118, rede 95 iOS e DI/navegação 9 iOS; detektAll, framework e Xcode arm64 aprovados.
+- Revisão de credencial: 75 testes independentes e 11 mutações mortas/restauradas; executável real validado com stdin, API loopback e PostgreSQL descartável, sem iniciar web/agendadores. Inventário 14 migrações/34 tabelas financeiras.
+- Relatório autoritativo: docs/receivables/final-completion.md. Todas as frentes concluídas/liberadas; servidor estático temporário encerrado. Sessões históricas e arquivos de intenção não rastreados do usuário preservados.
+- Nenhum push, deploy, operação financeira real ou mensagem externa nesta onda. Credenciais/condições comerciais/termos aprovados e homologação sandbox/piloto são pré-requisitos da liberação, não testes simulados declarados como reais.

@@ -1,0 +1,30 @@
+[
+  {
+    "path": "/tmp/saqz-final-mobile-review-fixes4.log",
+    "sha256": "0d5c071bfef374fd5ba42868bb4ea7aee1dc801da3c8702ddd3563defdb773cb"
+  },
+  {
+    "path": "/tmp/saqz-final-mobile-captures-framework.log",
+    "sha256": "f8974e6955b9c5c81937757c273691cac6cebde4e36c17b949566b496c93d2b6"
+  },
+  {
+    "path": "/tmp/saqz-final-complete-xcode.log",
+    "sha256": "5b0a1ef6c37e3c68ee78f9873548bcfa3e03c7d32af85abd8acb27846bb6097a"
+  },
+  {
+    "path": "/tmp/saqz-final-credential-integrated.log",
+    "sha256": "6a7eabe0ae4bcda3bfab5bcdb8947ef9b26d4b192206b63024a3f3ec218300b1"
+  },
+  {
+    "path": "/tmp/saqz-final-credential-proof.log",
+    "sha256": "fae4ffc43da47c8030c6314c7a3a3e85950e095440e5b93c094b10a431f8148d"
+  },
+  {
+    "path": "/tmp/saqz-final-web-tests.log",
+    "sha256": "95c0ec0eabcdcb93182db4370cb3b7b15f25109e504c5599a8aad2594e33b390"
+  },
+  {
+    "path": "/tmp/saqz-final-reauth-ios-tests.log",
+    "sha256": "9106bb60912180e496c6eebc365eda1ce2eb414b8ab62ccf720559e68ace341a"
+  }
+]

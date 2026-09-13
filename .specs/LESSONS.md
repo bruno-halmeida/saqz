@@ -72,6 +72,21 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: docs/receivables/evidence/charge-approval-review.md CA4 terminal outcomes (mobile/receivables)
 - last seen: 2026-09-13T20:39:42Z
 
+### L-011 — Use deferred native callbacks and queued dispatchers to test pending UI state and session changes before network work.
+- signal: `surviving_mutant` · scope: `mobile/receivables` · status: candidate
+- evidence: docs/receivables/evidence/final-recurring-mobile-review.md
+- last seen: 2026-09-13T23:45:00Z
+
+### L-012 — Exercise the actual operational configuration binding to prove recovery performs only provider reads.
+- signal: `surviving_mutant` · scope: `backend/receivables` · status: candidate
+- evidence: docs/receivables/evidence/final-recurrence-operations-review.md
+- last seen: 2026-09-13T23:45:00Z
+
+### L-013 — Revalidate delegated authorization after provider reads and before claiming or submitting financial writes.
+- signal: `ac_gap` · scope: `backend/receivables` · status: candidate
+- evidence: docs/receivables/evidence/final-wallet-management-review.md
+- last seen: 2026-09-13T23:45:00Z
+
 ## Quarantined (failed when applied — ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
