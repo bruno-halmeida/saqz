@@ -30,6 +30,18 @@ import kotlin.test.*
 class GroupReceivablesIntegrationTest {
     private val now = Instant.parse("2026-09-13T12:00:00Z")
 
+    @Test fun `direct activation reevaluates owner rollout while cancellation survives missing configuration`() = fixture { f ->
+        val review = f.preview()
+        f.sql("UPDATE receivable_rollout SET backend_mode='OFF'")
+        assertEquals(FinancialError.OPERATIONS_DISABLED,assertIs<FinancialResult.Failure>(f.activate(review)).error)
+        assertEquals(0,f.count("receivable_group_links"))
+        f.sql("UPDATE receivable_rollout SET backend_mode='ALL_USERS'")
+        assertIs<FinancialResult.Success<GroupReceivablesState>>(f.activate(review))
+        f.sql("DROP TABLE receivable_rollout")
+        val cancelled = assertIs<FinancialResult.Success<GroupReceivablesState>>(f.service.deactivate(f.account,f.group,f.request()))
+        assertFalse(cancelled.value.enabled)
+    }
+
     @Test fun `activation requires explicit acceptance and preserves reviewed prices without creating debt`() = fixture { f ->
         val review = f.preview()
         assertFalse(review.state.enabled)
@@ -100,6 +112,10 @@ class GroupReceivablesIntegrationTest {
         assertIs<FinancialResult.Success<*>>(manage.grant(f.account, f.request(), delegate, "v1", true, now))
         val session = FinancialRequest(UUID.randomUUID(), delegate)
         val review = assertIs<FinancialResult.Success<GroupReceivablesReview>>(f.service.preview(f.account, f.group, session, setOf(PaymentMethod.PIX))).value
+        f.sql("INSERT INTO receivable_rollout_users VALUES ('${f.owner}',1),('$delegate',1)")
+        f.sql("INSERT INTO receivable_rollout_overrides VALUES ('${f.owner}','BACKEND','DENY'),('$delegate','BACKEND','ALLOW')")
+        assertEquals(FinancialError.OPERATIONS_DISABLED,assertIs<FinancialResult.Failure>(f.activate(review,request=session)).error)
+        f.sql("DELETE FROM receivable_rollout_overrides WHERE user_id='${f.owner}'")
         assertIs<FinancialResult.Success<*>>(f.activate(review, request = session))
         assertIs<FinancialResult.Success<*>>(manage.revoke(f.account, f.request(), delegate, now))
         assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.service.deactivate(f.account, f.group, session)).error)
@@ -175,8 +191,9 @@ class GroupReceivablesIntegrationTest {
         var eligible = true
         val service = ManageGroupReceivables(accounts, JdbcGroupAdministrationDirectory(ds), JdbcGroupFinancialSetupLookup(ds),
             JdbcGroupReceivablesStore(ds), JdbcFinancialConditions(ds), ReceivablesEligibility { _, _ -> ReceivablesEntitlement(eligible, null) },
-            Clock.fixed(now, ZoneOffset.UTC))
+            Clock.fixed(now, ZoneOffset.UTC), br.com.saqz.receivables.adapter.output.jdbc.JdbcReceivablesRollout(ds, { true }, Clock.fixed(now, ZoneOffset.UTC)))
         init {
+            sql("UPDATE receivable_rollout SET backend_mode='ALL_USERS'")
             sql("INSERT INTO access_users(id,firebase_subject,email_verified,created_at,updated_at) VALUES ('$owner','$owner',true,now(),now())")
             sql("""INSERT INTO access_groups(id,owner_user_id,creation_key,name,time_zone,default_game_fee_cents,monthly_fee_cents,monthly_due_day,created_at,updated_at)
                 VALUES ('$group','$owner','${UUID.randomUUID()}','Test group','UTC',2500,10000,10,now(),now())""")

@@ -1,5 +1,10 @@
 package br.com.saqz.receivables
 
+import br.com.saqz.receivables.application.*
+import br.com.saqz.receivables.adapter.output.jdbc.JdbcReceivablesRollout
+import br.com.saqz.receivables.adapter.output.jdbc.JdbcFinancialAccountRepository
+import java.time.Clock
+
 import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.receivables.adapter.input.http.FinancialAccountsController
 import br.com.saqz.receivables.adapter.input.http.FinancialActorResolver
@@ -23,7 +28,6 @@ import org.springframework.web.context.request.NativeWebRequest
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.method.support.ModelAndViewContainer
 import java.nio.file.Path
-import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
@@ -36,6 +40,9 @@ class FinancialAccountsHttpIntegrationTest {
         database.dataSource.connection.use { it.createStatement().use { statement ->
             statement.execute("INSERT INTO receivable_terms VALUES ('v1','terms','${"a".repeat(64)}','2026-01-01','2026-01-01')")
         } }
+        database.dataSource.connection.use { it.createStatement().execute("UPDATE receivable_rollout SET backend_mode='ALL_USERS'") }
+        val rollout = JdbcReceivablesRollout(database.dataSource, { true }, Clock.systemUTC())
+        val accounts = JdbcFinancialAccountRepository(database.dataSource)
         val secrets = FinancialSecrets("test", mapOf("test" to ByteArray(32) { 1 }), ByteArray(32) { 2 })
         val store = JdbcFinancialOnboardingStore(database.dataSource, secrets)
         var actor = UUID.randomUUID()
@@ -44,7 +51,7 @@ class FinancialAccountsHttpIntegrationTest {
         MockWebServer().use { server ->
             server.start()
             val service = OnboardFinancialAccount(store, JdbcFinancialOperationStore(database.dataSource),
-                HttpAsaasOnboarding(server.url("/v3").toUri(), "platform-secret", true))
+                HttpAsaasOnboarding(server.url("/v3").toUri(), "platform-secret", true), rollout = rollout, accounts = accounts)
             val controller = FinancialAccountsController(FinancialActorResolver { UUID.fromString(it.subject) }, service,
                 store, Clock.fixed(Instant.parse("2026-09-12T12:00:00Z"), ZoneOffset.UTC))
             val resolver = object : HandlerMethodArgumentResolver {

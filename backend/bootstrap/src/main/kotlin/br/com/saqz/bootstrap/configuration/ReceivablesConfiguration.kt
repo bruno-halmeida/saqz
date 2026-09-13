@@ -6,7 +6,7 @@ import br.com.saqz.receivables.adapter.output.asaas.HttpAsaasOnboarding
 import br.com.saqz.receivables.adapter.output.crypto.FinancialSecrets
 import br.com.saqz.receivables.adapter.output.jdbc.JdbcFinancialOnboardingStore
 import br.com.saqz.receivables.adapter.output.jdbc.JdbcFinancialOperationStore
-import br.com.saqz.receivables.application.OnboardFinancialAccount
+import br.com.saqz.receivables.application.*
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionActorResolver
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -43,7 +43,7 @@ class ReceivablesConfiguration {
 
     @Bean
     fun financialOnboarding(store: JdbcFinancialOnboardingStore, operations: JdbcFinancialOperationStore,
-                            provider: HttpAsaasOnboarding, clock: Clock) = OnboardFinancialAccount(store, operations, provider, clock)
+                            provider: HttpAsaasOnboarding, clock: Clock, rollout: ReceivablesRollout, accounts: FinancialAccountRepository) = OnboardFinancialAccount(store, operations, provider, clock, rollout, accounts)
 
     @Bean
     fun financialAccountsController(actors: SubscriptionActorResolver, onboarding: OnboardFinancialAccount,

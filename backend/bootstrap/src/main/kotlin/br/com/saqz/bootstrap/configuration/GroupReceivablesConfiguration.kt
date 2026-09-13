@@ -21,7 +21,7 @@ class GroupReceivablesConfiguration {
     @Bean fun groupReceivablesStore(dataSource: DataSource): GroupReceivablesStore = JdbcGroupReceivablesStore(dataSource)
     @Bean fun manageGroupReceivables(accounts: FinancialAccountRepository, admins: GroupAdministrationDirectory,
         groups: GroupFinancialSetupLookup, store: GroupReceivablesStore, conditions: FinancialConditions,
-        eligibility: ReceivablesEligibility, clock: Clock) = ManageGroupReceivables(accounts, admins, groups, store, conditions, eligibility, clock)
+        eligibility: ReceivablesEligibility, clock: Clock, rollout: ReceivablesRollout) = ManageGroupReceivables(accounts, admins, groups, store, conditions, eligibility, clock, rollout)
     @Bean fun groupReceivablesController(actors: SubscriptionActorResolver, service: ManageGroupReceivables) =
         GroupReceivablesController(FinancialActorResolver { actors.resolve(it) }, service)
 }

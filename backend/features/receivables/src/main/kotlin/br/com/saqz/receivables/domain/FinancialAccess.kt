@@ -43,6 +43,7 @@ data class FinancialAccessContext(
     val recentlyAuthenticated: Boolean,
     val commerciallyEligible: Boolean,
     val groupEnabled: Boolean,
+    val rolloutEnabled: Boolean = false,
 )
 
 object FinancialAccess {
@@ -58,6 +59,7 @@ object FinancialAccess {
             return deny(UnavailabilityReason.RECENT_AUTHENTICATION_REQUIRED)
         }
         if (action in newBusiness) {
+            if (!context.rolloutEnabled) return deny(UnavailabilityReason.OPERATIONS_DISABLED)
             if (!context.commerciallyEligible) return deny(UnavailabilityReason.INELIGIBLE_PLAN)
             if (context.account.registration != RegistrationStatus.APPROVED) {
                 return deny(UnavailabilityReason.REGISTRATION_NOT_APPROVED)

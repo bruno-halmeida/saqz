@@ -51,9 +51,12 @@ class OnboardFinancialAccount(
     private val operations: FinancialOperationStore,
     private val provider: FinancialOnboardingProvider,
     private val clock: Clock = Clock.systemUTC(),
+    private val rollout: ReceivablesRolloutAccess,
+    private val accounts: FinancialAccountRepository,
 ) {
     fun begin(request: FinancialRequest, accepted: Boolean, termsVersion: String,
               registration: LegalRegistration, now: Instant): FinancialResult<FinancialAccount> {
+        if (store.findOwned(request.actorUserId) == null && !rollout.availability(request.actorUserId).backendEnabled) return FinancialResult.Failure(FinancialError.OPERATIONS_DISABLED, request.requestId)
         if (!accepted || termsVersion.isBlank() || !registration.isValid()) {
             return FinancialResult.Failure(FinancialError.INVALID_INPUT, request.requestId)
         }
@@ -70,8 +73,10 @@ class OnboardFinancialAccount(
     }
 
     fun provision(accountId: UUID, now: Instant): Boolean {
-        if (!provider.canCreateAccounts && store.credentials(accountId) == null) return false
+        val account = accounts.findById(accountId) ?: return false
         val operation = store.creationOperation(accountId)
+        if (operation.status == OperationStatus.READY &&
+            (!rollout.availability(account.ownerUserId).backendEnabled || !provider.canCreateAccounts)) return false
         val gateway = object : FinancialOperationProvider {
             override fun execute(operation: FinancialOperation): ProviderOperationResult {
                 val result = provider.create(store.registration(operation.accountId))

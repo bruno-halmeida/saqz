@@ -29,7 +29,7 @@ interface GroupReceivablesStore {
 class ManageGroupReceivables(private val accounts: FinancialAccountRepository,
     private val administrators: GroupAdministrationDirectory, private val groups: GroupFinancialSetupLookup,
     private val store: GroupReceivablesStore, private val conditions: FinancialConditions,
-    private val eligibility: ReceivablesEligibility, private val clock: Clock) {
+    private val eligibility: ReceivablesEligibility, private val clock: Clock, private val rollout: ReceivablesRolloutAccess) {
 
     fun preview(accountId: UUID, groupId: UUID, request: FinancialRequest,
                 methods: Set<PaymentMethod>): FinancialResult<GroupReceivablesReview> = safely(request) {
@@ -91,6 +91,7 @@ class ManageGroupReceivables(private val accounts: FinancialAccountRepository,
         request.actorUserId != account.ownerUserId && administrators.isAdministrator(account.ownerUserId, request.actorUserId),
         false, checkEntitlement && eligibility.forOwner(account.ownerUserId, clock.instant()).eligible,
         store.state(account.id, groupId)?.enabled == true,
+        checkEntitlement && rollout.availability(account.ownerUserId).backendEnabled,
     )
 
     private fun review(group: GroupFinancialSetup, context: FinancialAccessContext, methods: Set<PaymentMethod>): GroupReceivablesReview {

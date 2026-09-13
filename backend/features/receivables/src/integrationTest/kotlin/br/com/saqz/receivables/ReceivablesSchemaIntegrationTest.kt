@@ -22,11 +22,11 @@ class ReceivablesSchemaIntegrationTest {
         }
         val migration = Flyway.configure().dataSource(database.dataSource).locations(location)
             .baselineOnMigrate(true).baselineVersion("46").load()
-        assertEquals(4, migration.migrate().migrationsExecuted)
+        assertEquals(5, migration.migrate().migrationsExecuted)
         assertEquals(0, migration.migrate().migrationsExecuted)
         database.dataSource.connection.use {
             assertEquals(2300, it.number("SELECT amount_cents FROM group_charges"))
-            assertEquals(19, it.number("SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'receivable_%'"))
+            assertEquals(23, it.number("SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'receivable_%'"))
         }
     }
 

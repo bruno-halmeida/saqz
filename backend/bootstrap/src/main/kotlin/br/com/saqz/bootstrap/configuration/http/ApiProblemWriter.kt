@@ -21,6 +21,19 @@ class ApiProblemWriter(
         expiredAt: Instant? = null,
         conflictGameId: String? = null,
     ) {
+        if (request.requestURI == "/api/receivables/availability" ||
+            request.requestURI == "/admin/receivables/rollout" || request.requestURI.startsWith("/admin/receivables/rollout/")) {
+            response.status = status
+            response.contentType = MediaType.APPLICATION_JSON_VALUE
+            response.setHeader("Cache-Control", "no-store")
+            objectMapper.writeValue(response.outputStream, mapOf("error" to when (status) {
+                401, 403 -> "UNAUTHORIZED"
+                404 -> "NOT_FOUND"
+                409 -> "CONFLICT"
+                else -> "INVALID_INPUT"
+            }, "requestId" to java.util.UUID.randomUUID()))
+            return
+        }
         val correlationId = requestCorrelationId(request).value
         response.status = status
         response.contentType = MediaType.APPLICATION_PROBLEM_JSON_VALUE

@@ -1,11 +1,15 @@
 package br.com.saqz.receivables
 
+import br.com.saqz.receivables.application.*
+import br.com.saqz.receivables.adapter.output.jdbc.JdbcReceivablesRollout
+import br.com.saqz.receivables.adapter.output.jdbc.JdbcFinancialAccountRepository
+import java.time.Clock
+
 import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.receivables.adapter.output.asaas.HttpAsaasOnboarding
 import br.com.saqz.receivables.adapter.output.crypto.FinancialSecrets
 import br.com.saqz.receivables.adapter.output.jdbc.JdbcFinancialOnboardingStore
 import br.com.saqz.receivables.adapter.output.jdbc.JdbcFinancialOperationStore
-import br.com.saqz.receivables.application.*
 import br.com.saqz.receivables.domain.RegistrationStatus
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import okhttp3.mockwebserver.MockResponse
@@ -23,6 +27,41 @@ class FinancialOnboardingIntegrationTest {
     private val request = FinancialRequest(UUID.randomUUID(), owner)
     private fun registration(name: String = "Titular") = LegalRegistration(name, "owner@example.test", "12345678901",
         "11999999999", 250000, "Rua Teste", "10", "Centro", "01001000", LocalDate.parse("1990-01-01"))
+
+    @Test fun `rollout revocation blocks registration and ready provisioning while preserving replay documents and recovery`() {
+        val db = TestPostgres.migrated("filesystem:" + Path.of("src/main/resources/db/migration").toAbsolutePath(), owner=this)
+        val jdbc = org.springframework.jdbc.core.simple.JdbcClient.create(db.dataSource)
+        jdbc.sql("INSERT INTO receivable_terms VALUES ('v1','terms','${"a".repeat(64)}','2026-01-01','2026-01-01')").update()
+        val rollout = JdbcReceivablesRollout(db.dataSource,{ true },Clock.systemUTC())
+        val store = JdbcFinancialOnboardingStore(db.dataSource,FinancialSecrets("test",mapOf("test" to ByteArray(32) { 1 }),ByteArray(32) { 2 }))
+        MockWebServer().use { server ->
+            server.start()
+            val service = OnboardFinancialAccount(store,JdbcFinancialOperationStore(db.dataSource),
+                HttpAsaasOnboarding(server.url("/v3").toUri(),"platform-secret",true),rollout=rollout,accounts=JdbcFinancialAccountRepository(db.dataSource))
+            assertEquals(FinancialError.OPERATIONS_DISABLED,assertIs<FinancialResult.Failure>(service.begin(request,true,"v1",registration(),now)).error)
+            assertNull(store.findOwned(owner))
+            jdbc.sql("UPDATE receivable_rollout SET backend_mode='ALL_USERS'").update()
+            val account = assertIs<FinancialResult.Success<br.com.saqz.receivables.domain.FinancialAccount>>(service.begin(request,true,"v1",registration(),now)).value
+            jdbc.sql("UPDATE receivable_rollout SET backend_mode='OFF'").update()
+            assertEquals(account.id,assertIs<FinancialResult.Success<br.com.saqz.receivables.domain.FinancialAccount>>(service.begin(request,true,"v1",registration(),now)).value.id)
+            assertFalse(service.provision(account.id,now))
+            assertEquals(OperationStatus.READY,store.creationOperation(account.id).status)
+            assertEquals(0,server.requestCount)
+            jdbc.sql("UPDATE receivable_rollout SET backend_mode='ALL_USERS'").update()
+            server.enqueue(json("""{"id":"lost","walletId":"lost-wallet"}"""))
+            assertTrue(service.provision(account.id,now))
+            assertEquals(OperationStatus.UNKNOWN,store.creationOperation(account.id).status)
+            jdbc.sql("UPDATE receivable_rollout SET backend_mode='OFF'").update()
+            assertTrue(service.provision(account.id,now.plusSeconds(60)))
+            assertEquals(OperationStatus.UNKNOWN,store.creationOperation(account.id).status)
+            assertEquals(1,server.requestCount)
+            store.saveProviderAccount(account.id,ProviderAccount("existing","wallet","subaccount-secret"),now)
+            server.enqueue(json("""{"data":[]}"""))
+            server.enqueue(json("""{"general":"APPROVED"}"""))
+            assertIs<FinancialResult.Success<List<FinancialDocument>>>(service.refresh(request,now.plusSeconds(90)))
+            assertEquals(3,server.requestCount)
+        }
+    }
 
     @Test
     fun `voluntary consent and published terms are required before any account or provider operation`() = fixture { store, service, server ->
@@ -137,12 +176,15 @@ class FinancialOnboardingIntegrationTest {
         database.dataSource.connection.use { connection -> connection.createStatement().use {
             it.execute("INSERT INTO receivable_terms VALUES ('v1','terms','${"a".repeat(64)}','2026-01-01','2026-01-01')")
         } }
+        database.dataSource.connection.use { it.createStatement().execute("UPDATE receivable_rollout SET backend_mode='ALL_USERS'") }
+        val rollout = JdbcReceivablesRollout(database.dataSource, { true }, Clock.systemUTC())
+        val accounts = JdbcFinancialAccountRepository(database.dataSource)
         val secrets = FinancialSecrets("test", mapOf("test" to ByteArray(32) { 1 }), ByteArray(32) { 2 })
         val store = JdbcFinancialOnboardingStore(database.dataSource, secrets)
         MockWebServer().use { server ->
             server.start()
             val provider = HttpAsaasOnboarding(server.url("/v3").toUri(), "platform-secret", enabled)
-            val service = OnboardFinancialAccount(store, JdbcFinancialOperationStore(database.dataSource), provider)
+            val service = OnboardFinancialAccount(store, JdbcFinancialOperationStore(database.dataSource), provider, rollout = rollout, accounts = accounts)
             block(store, service, server)
             database.dataSource.connection.use { connection -> connection.createStatement().use { statement ->
                 statement.executeQuery("SELECT legal_data_encrypted,credentials_encrypted FROM receivable_accounts").use { rs ->

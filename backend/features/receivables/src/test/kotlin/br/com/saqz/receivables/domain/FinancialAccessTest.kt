@@ -10,7 +10,19 @@ class FinancialAccessTest {
     private val owner = UUID.randomUUID()
     private val delegate = UUID.randomUUID()
     private val account = FinancialAccount(UUID.randomUUID(), owner, RegistrationStatus.APPROVED, true)
-    private val context = FinancialAccessContext(account, owner, null, false, true, true, true)
+    private val context = FinancialAccessContext(account, owner, null, false, true, true, true, rolloutEnabled = true)
+
+    @Test fun `rollout off blocks new business for owner and delegate but preserves maintenance`() {
+        for (actor in listOf(context, context.copy(actorUserId = delegate, delegateIsCurrentAdministrator = true,
+            delegation = FinancialDelegation(account.id, delegate, Instant.EPOCH)))) {
+            val off = actor.copy(rolloutEnabled = false)
+            for (action in listOf(FinancialAction.ACTIVATE_GROUP, FinancialAction.ISSUE_ORDER, FinancialAction.START_RECURRENCE))
+                assertEquals(UnavailabilityReason.OPERATIONS_DISABLED, FinancialAccess.permission(action,off).reason)
+            for (action in listOf(FinancialAction.READ, FinancialAction.CANCEL, FinancialAction.WITHDRAW, FinancialAction.REFUND,
+                FinancialAction.CORRECT_REGISTRATION, FinancialAction.RENEW_INSTRUMENT))
+                assertTrue(FinancialAccess.permission(action,off).allowed)
+        }
+    }
 
     @Test
     fun `expired plan and disabled group preserve existing money and instruments`() {
