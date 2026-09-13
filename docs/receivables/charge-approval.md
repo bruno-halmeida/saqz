@@ -108,3 +108,14 @@ Gates /tmp/saqz-charge-review-fixes-{mobile,backend}.log: 43 backend (36 pagamen
 
 Todos os reforços acima derivam de CA1/3/4/6, preservam os testes anteriores e cobrem os dois
 mutantes sobreviventes identificados pelo revisor. Revalidação independente ainda em andamento.
+
+## Retorno nativo — ajuste complementar
+
+CA4/CA6: `ChargeApprovalRoot` intercepta também o Voltar nativo após resolução, encaminhando ao
+mesmo callback de retorno do cabeçalho (que recarrega caixa/detalhes). `ChargeApprovalBackTest:40`
+asserta `assertEquals(0, returned)` e marker exato enquanto pendente; :48 confirma marker nulo e
+ordem autoritativa; :50 `assertEquals(1, returned)` após dispatch real de Voltar no ComponentActivity.
+O teste monta Root/VM reais com gateways simulados; não representa walkthrough do app no dispositivo.
+Dependência testImplementation core:common adicionada para acesso à superclasse pública do VM.
+Gate /tmp/saqz-charge-native-back.log: 6 testes Android UI (5 telas+1 Root), detekt e compilação iOS
+aprovados, sem falhas/erros/skips nos testes. Cobertura necessária e suficiente para o delta CA4/CA6.

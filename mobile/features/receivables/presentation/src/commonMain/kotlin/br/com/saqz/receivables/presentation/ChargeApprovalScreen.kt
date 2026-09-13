@@ -35,7 +35,7 @@ fun ChargeApprovalRoot(groupId: String, chargeId: String, onBack: () -> Unit, on
     viewModel: ChargeApprovalViewModel = koinViewModel(key = "approval/$groupId/$chargeId",
         parameters = { parametersOf(groupId, chargeId) })) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    BackHandler(enabled = state.attempt != null) { /* Preserve the unresolved command for recovery. */ }
+    BackHandler { if (state.attempt == null) onBack() }
     LifecycleResumeEffect(viewModel) { viewModel.onIntent(ChargeApprovalIntent.Refresh); onPauseOrDispose { } }
     ObserveAsEvents(viewModel.effects) { if (viewModel.validEffect(it)) onMutationSuccess() }
     ChargeApprovalScreen(state, viewModel::onIntent, onBack)

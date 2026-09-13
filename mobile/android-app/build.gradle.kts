@@ -188,6 +188,7 @@ dependencies {
     testImplementation(project(":features:subscriptions:domain"))
     testImplementation(project(":features:subscriptions:presentation"))
     testImplementation(project(":core:domain"))
+    testImplementation(project(":core:common"))
     testImplementation(libs.bundles.compose)
 
     androidTestImplementation(libs.androidx.test.ext.junit)
