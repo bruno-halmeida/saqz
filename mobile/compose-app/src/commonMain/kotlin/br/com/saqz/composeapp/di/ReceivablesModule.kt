@@ -17,6 +17,8 @@ import br.com.saqz.receivables.domain.ReceiptAccountDirectory
 import br.com.saqz.receivables.domain.ReceivablesRecoveryIdentity
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.receivables.presentation.ReceiptConfigurationViewModel
+import br.com.saqz.receivables.presentation.MemberPaymentViewModel
+import br.com.saqz.receivables.presentation.MemberPaymentHistoryViewModel
 import org.koin.core.module.dsl.viewModelOf
 
 internal val receivablesModule = module {
@@ -28,6 +30,9 @@ internal val receivablesModule = module {
     singleOf(::KtorGroupReceivablesGateway) bind GroupReceivablesGateway::class bind ReceiptAccountDirectory::class
     singleOf(::KtorMemberPaymentsGateway) bind br.com.saqz.receivables.domain.MemberPaymentsGateway::class
     viewModelOf(::ReceiptConfigurationViewModel)
+    single<kotlin.time.Clock> { kotlin.time.Clock.System }
+    viewModelOf(::MemberPaymentHistoryViewModel)
+    viewModelOf(::MemberPaymentViewModel)
     single<ReceivablesRecoveryIdentity> {
         val session = get<SessionAccessStateMachine>()
         ReceivablesRecoveryIdentity {

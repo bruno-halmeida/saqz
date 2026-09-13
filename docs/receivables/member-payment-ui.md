@@ -53,11 +53,20 @@ falhos não são evidência desta entrega; não haverá chamada Asaas real nem l
 2026-09-13, exit 0 em /tmp/saqz-member-ui-vm.log: presentation 38 Android host e 39 iOS,
 sem falhas; detekt passou. São 15 testes novos (11 pagamento + 4 histórico), preservando os anteriores.
 
-Evidência (MemberPaymentViewModelTest.kt): UI2 :35 `assertEquals("v1", ...terms?.version)`,
-:42–48 quote/método/aceite/comando completos, :54–62 emissão bloqueada; UI3 :67–81 marker e
-comandos iguais, :87–96 recuperação sem criar; UI6 :102–103 ator estrangeiro, :112–115 geração/sessão,
-:124–127 resposta de criação após logout (numeração conferir no relatório final); UI4/UI5 testes
-`expiredPixCannotBeCopiedOrReissuedAndRefundedMilestonesNeverEnablePayment`,
-`activePixAndHostedCardEmitOnlyTheirOwnActionAndRefreshNeverConfirmsLocally` e URLs de checkout.
-UI1: MemberPaymentHistoryViewModelTest cobre paginação sem duplicatas, erro/retry/seleção,
-geração e nova sessão. Matriz final exata será consolidada pelo verificador após a UI.
+Evidência do autor: MemberPaymentViewModelTest.kt verifica versão exata dos termos (:31),
+comando completo (:38–41), bloqueio por dados/termos inválidos (:46–50), marker e replay (:55–65),
+restauração sem criação (:70–77), ator estrangeiro (:83–84), geração/sessão (:92–105),
+expiração/status (:112–116), nova revisão após rejeição (:121–124), efeitos (:135–137) e URL (:143–147).
+MemberPaymentHistoryViewModelTest.kt verifica IDs/paginação (:17–24), retry e seleção (:29–35),
+resposta obsoleta (:44) e nova sessão (:50–51). Matriz independente será consolidada no relatório final.
+
+## Gate passo 2
+
+2026-09-13: compilação Android e iOS, detekt presentation/compose-app/groups passaram.
+Execuções aprovadas no escopo: presentation 38 Android + 40 iOS, DI 6 Android + 6 iOS,
+navegação/restauração/logout 1 iOS, interface 4 Android e entrada de mensalidades 1 Android.
+Total: 96 execuções, sem falhas ou skips. Logs locais em /tmp/saqz-member-ui-{build,final-gates,captures}.log.
+As capturas Roborazzi estão em mobile/build/reports/member-payment-ui/ e member-payment-entry/;
+inspecionadas revisão/aceite, Pix/QR, cartão, incerteza, reembolso e entrada com erro de rede.
+A captura usa o nó da tela; o cabeçalho permanece visível ao rolar a revisão. Fixtures de QR e termos
+são apenas de teste. Homologação real e UAT humano permanecem pendentes.

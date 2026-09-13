@@ -23,6 +23,7 @@ import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.details.GroupOwnChargesSection
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.connected_load_failure_title
+import br.com.saqz.groups.resources.monthly_payments_pay_in_app
 import br.com.saqz.groups.resources.monthly_payments_title
 import br.com.saqz.groups.resources.monthly_payments_empty
 import br.com.saqz.groups.resources.monthly_payments_open_group
@@ -32,12 +33,13 @@ import androidx.compose.ui.tooling.preview.Preview
 
 object OwnMonthlyPaymentsTags {
     const val Screen = "own-monthly-payments"
+    const val PayInApp = "monthly-payments-pay-in-app"
     const val Empty = "monthly-payments-empty"
     fun group(id: String) = "monthly-payments-group-$id"
 }
 
 @Composable
-fun OwnMonthlyPaymentsRoot(onBack: () -> Unit, onOpenGroup: (String) -> Unit) {
+fun OwnMonthlyPaymentsRoot(onBack: () -> Unit, onOpenGroup: (String) -> Unit, onPayInApp: () -> Unit) {
     val vm: OwnMonthlyPaymentsViewModel = koinViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     ObserveAsEvents(vm.effects) { effect ->
@@ -45,7 +47,7 @@ fun OwnMonthlyPaymentsRoot(onBack: () -> Unit, onOpenGroup: (String) -> Unit) {
             is OwnMonthlyPaymentsEffect.OpenGroup -> onOpenGroup(effect.groupId)
         }
     }
-    OwnMonthlyPaymentsScreen(state, onBack, vm::onIntent)
+    OwnMonthlyPaymentsScreen(state, onBack, vm::onIntent, onPayInApp)
 }
 
 @Composable
@@ -53,9 +55,13 @@ internal fun OwnMonthlyPaymentsScreen(
     state: OwnMonthlyPaymentsState,
     onBack: () -> Unit,
     onIntent: (OwnMonthlyPaymentsIntent) -> Unit,
+    onPayInApp: () -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(OwnMonthlyPaymentsTags.Screen)) {
         SaqzTopAppBar(title = stringResource(Res.string.monthly_payments_title), onBack = onBack)
+        SaqzButton(stringResource(Res.string.monthly_payments_pay_in_app), onPayInApp,
+            modifier = Modifier.padding(horizontal = SaqzTheme.metrics.horizontalPadding).testTag(OwnMonthlyPaymentsTags.PayInApp),
+            fullWidth = true)
         when {
             state.loading -> SaqzSpinner()
             state.error != null -> GroupLoadFailure(

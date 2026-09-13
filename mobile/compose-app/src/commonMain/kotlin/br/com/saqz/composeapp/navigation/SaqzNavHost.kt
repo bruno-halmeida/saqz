@@ -92,6 +92,10 @@ import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.presentation.ui.changeplan.ChangePlanRoot
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
+import br.com.saqz.receivables.presentation.MemberPaymentRoute
+import br.com.saqz.receivables.presentation.MemberPaymentHistoryRoute
+import br.com.saqz.receivables.presentation.MemberPaymentRoot
+import br.com.saqz.receivables.presentation.MemberPaymentHistoryRoot
 import br.com.saqz.receivables.presentation.ReceiptConfigurationRoot
 import br.com.saqz.receivables.presentation.ReceiptConfigurationRoute
 import org.koin.compose.koinInject
@@ -474,6 +478,10 @@ internal fun SaqzNavHost(
                     onLogout = { onIntent(AccessIntent.ConfirmLogout) },
                 )
             }
+            entry<MemberPaymentHistoryRoute> {
+                MemberPaymentHistoryRoot(onBack = pop, onOpen = { backStack.add(MemberPaymentRoute(it)) })
+            }
+            entry<MemberPaymentRoute> { route -> MemberPaymentRoot(route.orderId, onBack = pop) }
             entry<ReceiptConfigurationRoute> { route ->
                 ReceiptConfigurationRoot(route.groupId, onBack = pop)
             }
@@ -704,7 +712,8 @@ internal fun SaqzNavHost(
                 )
             }
             entry<FinanceRoute.OwnMonthlyPayments> {
-                OwnMonthlyPaymentsRoot(onBack = pop, onOpenGroup = { backStack.add(GroupsRoute.Details(it)) })
+                OwnMonthlyPaymentsRoot(onBack = pop, onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
+                    onPayInApp = { backStack.add(MemberPaymentHistoryRoute) })
             }
             entry<GroupsRoute.MemberProfile> { route ->
                 MemberProfileRoot(route.groupId, route.userId, onBack = pop)

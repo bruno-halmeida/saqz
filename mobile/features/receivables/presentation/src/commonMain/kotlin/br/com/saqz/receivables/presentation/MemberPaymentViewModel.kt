@@ -115,7 +115,7 @@ class MemberPaymentViewModel(private val orderId: String, private val gateway: M
                 is SaqzResult.Success -> {
                     val instruments = state.value.detail!!.instruments.filter { it.id != result.value.id } + result.value
                     clearPending()
-                    update { it.copy(loading = false, name = "", document = "", accepted = false, terms = null,
+                    update { it.copy(loading = false, name = "", document = "", method = null, accepted = false, terms = null,
                         detail = MemberPaymentDetail(order, instruments)) }
                     scheduleExpiry()
                 }
