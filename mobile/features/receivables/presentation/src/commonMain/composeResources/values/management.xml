@@ -1,0 +1,36 @@
+<resources>
+    <string name="management_title">Gerenciar conta financeira</string>
+    <string name="management_open">Gerenciar conta e acessos</string>
+    <string name="management_empty">Nenhuma conta financeira acessível.</string>
+    <string name="management_account">Conta %1$s</string>
+    <string name="management_owner">Papel: titular</string>
+    <string name="management_delegate">Papel: administrador delegado</string>
+    <string name="management_completed">Alteração confirmada.</string>
+    <string name="management_pending">Resultado ainda não confirmado.</string>
+    <string name="management_recover">Verificar resultado sem repetir</string>
+    <string name="management_correction_title">Corrigir contato, endereço e renda</string>
+    <string name="management_email">E-mail</string>
+    <string name="management_phone">Telefone</string>
+    <string name="management_mobile">Celular</string>
+    <string name="management_site">Site</string>
+    <string name="management_income">Renda ou faturamento mensal (R$)</string>
+    <string name="management_income_review">Valor informado: %1$s</string>
+    <string name="management_postal">CEP</string>
+    <string name="management_address">Logradouro</string>
+    <string name="management_number">Número</string>
+    <string name="management_complement">Complemento</string>
+    <string name="management_province">Bairro</string>
+    <string name="management_municipality_warning">Alterar o município pode redefinir configurações fiscais e cancelar NFS-e agendadas no Asaas.</string>
+    <string name="management_warning_accept">Revisei o endereço e entendi o possível impacto fiscal</string>
+    <string name="management_correct">Enviar correção</string>
+    <string name="management_delegations">Administradores delegados</string>
+    <string name="management_active">Ativo</string>
+    <string name="management_revoked">Revogado</string>
+    <string name="management_revoke">Revogar</string>
+    <string name="management_administrator">Administrador</string>
+    <string name="management_choose_administrator">Escolha um administrador dos seus grupos</string>
+    <string name="management_no_candidates">Nenhum administrador disponível. Adicione um administrador ao grupo para conceder acesso financeiro.</string>
+    <string name="management_accept_delegation">Conceder acesso à conta financeira inteira</string>
+    <string name="management_grant">Conceder acesso</string>
+    <string name="management_no_redelegation">Delegados podem corrigir o cadastro, mas não conceder acesso nem transferir titularidade.</string>
+</resources>
