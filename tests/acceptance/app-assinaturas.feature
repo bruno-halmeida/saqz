@@ -20,10 +20,12 @@ Funcionalidade: Consultar e gerenciar o próprio plano pelo aplicativo
   @p0 @APP-S02
   Cenário: Upgrade pago por Pix só muda o plano depois da confirmação
     Dado que ASSINANTE tem plano Organizador e um upgrade para Ilimitado gera diferença positiva
+    E antes da ação registrei os preços dos dois planos, o ciclo, o período restante e o pró-rata esperado em centavos
     Quando abre Trocar plano, seleciona Ilimitado e cancela a confirmação
     Então permanece no plano Organizador e nenhuma cobrança é criada
     Quando seleciona Ilimitado novamente e confirma
-    Então vejo Pix pendente e o valor exato retornado pela API para o upgrade
+    Então vejo Pix pendente e o valor cobrado corresponde ao pró-rata registrado antes da ação
+    E a API, o Pix e a tela apresentam esse mesmo valor em centavos
     Quando toca em Já paguei antes da confirmação do provedor
     Então continua aguardando e o plano Organizador permanece vigente
     Quando o pagamento sandbox é confirmado e consulta novamente

@@ -10,8 +10,9 @@ Funcionalidade: Criar, editar e cancelar jogos
     Dado que DONO abriu Criar jogo em G1
     Quando escolhe uma data futura sem conflito, 20h, duração de 120 minutos e capacidade 12
     E confirma a quadra de teste, o prazo de confirmação e salva
-    Então abre o detalhe de um único jogo publicado com esses dados no fuso de G1
-    E o jogo aparece na Agenda de G1 após reabrir
+    Então retorna à tela anterior e existe um único jogo publicado com os dados escolhidos
+    Quando abre a Agenda de G1 e seleciona o novo jogo
+    Então o detalhe mostra a data, horário, duração, capacidade, quadra e prazo escolhidos no fuso de G1
     E ATLETA consegue abrir esse jogo e responder presença
     E G2 não recebe um jogo novo
 

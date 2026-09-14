@@ -104,7 +104,7 @@ Massa adicional dos novos roteiros:
 | Alias / dado | Preparação |
 | --- | --- |
 | NOVO | Conta diferente por cenário, sem grupo anterior, trial ou pagamento; liberação de criação definida no próprio roteiro. Para APP-OB01/02, emitir link válido pelo fluxo de primeiro acesso do ambiente. |
-| ASSINANTE | Assinatura sandbox independente por cenário; guardar plano, ciclo, limites, fim do período e valores de recibos. Para upgrade, garantir diferença positiva; para downgrade, preparar uso compatível ou acima do limite conforme o caso. |
+| ASSINANTE | Assinatura sandbox independente por cenário; guardar plano, ciclo, limites, fim do período e valores de recibos. Para upgrade, registrar preços de origem/destino e instante de referência, calcular previamente o pró-rata positivo do período restante e conferir esse valor na cobrança. Para downgrade, preparar uso compatível ou acima do limite conforme o caso. |
 | A e B | Contas exclusivas do banco de analytics. Em ADM-CA01, ambas usam QA30, somente A usa QA10, ambos os trials estão encerrados, e os dois pagamentos de A são posteriores aos usos. |
 | QA30 / QA10 / QASEMUSO | Códigos de teste em base isolada; QA30 com 30 dias, QA10 de desconto e QASEMUSO sem uso. Restaurar a massa entre cenários; não presumir que executar TRIAL-02 prepara ADM-CA01. |
 | Fotos e telefone | Imagens sintéticas distintas na galeria e celular fictício válido no formato aceito pelo app, sem depender de uma pessoa real. |
