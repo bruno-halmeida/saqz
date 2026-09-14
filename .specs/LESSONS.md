@@ -96,6 +96,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: AC7 / G1 (mobile)
 - last seen: 2026-09-13T20:38:32Z
 
+### L-015 — Derive monetary expectations from known fixtures before invoking the operation under test.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `tests/acceptance` · harmful: 0
+- features: critical-acceptance-scenarios
+- evidence: .specs/features/critical-acceptance-scenarios/validation.md F1 (tests/acceptance)
+- last seen: 2026-09-14T19:29:43Z
+
+### L-016 — Declare the navigation action that opens a screen before asserting its contents in acceptance journeys.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `tests/acceptance` · harmful: 0
+- features: critical-acceptance-scenarios
+- evidence: .specs/features/critical-acceptance-scenarios/validation.md F2 (tests/acceptance)
+- last seen: 2026-09-14T19:29:44Z
+
 ## Quarantined (failed when applied — ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

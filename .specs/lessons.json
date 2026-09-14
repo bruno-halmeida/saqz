@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 15,
+  "next_id": 17,
   "lessons": [
     {
       "id": "L-001",
@@ -258,6 +258,42 @@
       ],
       "created": "2026-09-13T20:38:32Z",
       "last_seen": "2026-09-13T20:38:32Z"
+    },
+    {
+      "id": "L-015",
+      "key": "spec_precision_gap::derive monetary expectations from known fixtures before invoking the operation under test",
+      "text": "Derive monetary expectations from known fixtures before invoking the operation under test.",
+      "signal": "spec_precision_gap",
+      "scope": "tests/acceptance",
+      "status": "candidate",
+      "features": [
+        "critical-acceptance-scenarios"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/critical-acceptance-scenarios/validation.md F1 (tests/acceptance)"
+      ],
+      "created": "2026-09-14T19:29:43Z",
+      "last_seen": "2026-09-14T19:29:43Z"
+    },
+    {
+      "id": "L-016",
+      "key": "spec_precision_gap::declare the navigation action that opens a screen before asserting its contents in acceptance journeys",
+      "text": "Declare the navigation action that opens a screen before asserting its contents in acceptance journeys.",
+      "signal": "spec_precision_gap",
+      "scope": "tests/acceptance",
+      "status": "candidate",
+      "features": [
+        "critical-acceptance-scenarios"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/critical-acceptance-scenarios/validation.md F2 (tests/acceptance)"
+      ],
+      "created": "2026-09-14T19:29:44Z",
+      "last_seen": "2026-09-14T19:29:44Z"
     }
   ]
 }
