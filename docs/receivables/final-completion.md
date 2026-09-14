@@ -2,8 +2,8 @@
 
 A jornada completa está implementada no backend, Android/iOS e interfaces web. Reembolsos são
 tratados fora do Saqz; o produto somente concilia fatos externos e seus reflexos no histórico/caixa.
-Nenhum push, deploy, publicação de termos, ativação de piloto ou operação financeira real foi
-executado nesta onda. `context.md` e `direcionamento.md` do usuário foram preservados.
+A implementação foi concluída sem deploy, publicação de termos, ativação de piloto ou operação
+financeira real. A publicação na `main` foi autorizada posteriormente pelo usuário. `context.md` e `direcionamento.md` do usuário foram preservados.
 
 ## Entregas e critérios
 
@@ -58,3 +58,18 @@ que depende da emissão manual autorizada no Asaas e não oferece API/UI públic
 `af0a043a` carteira/gestão mobile; `777abef4` pagamento/recorrência e wiring; `e40d5c0b` recuperação
 operacional de credencial. Os três commits mobile finais têm individualmente menos de 2.000 linhas.
 A documentação de fechamento complementa essas entregas sem publicar ou ativar produção.
+
+## Integração com main para publicação autorizada
+
+A entrega incorpora `origin/main` em `dccc5e02`, preservando trial/cupons e o painel de conversão.
+A migração financeira local V56 foi renumerada para V64 sem alterar o SQL; a V56 de trial já
+publicada permanece idêntica. V57–V63 não dependem das colunas de destinos adicionadas por V64.
+Os registros de estado e lições das duas frentes foram preservados, com a lição de trial em L-014.
+
+Validação da árvore integrada: 1.504 testes backend (65 recebíveis unitários, 59 integração,
+247 assinaturas, 645 grupos, 468 bootstrap e 20 arquitetura), 1.005 mobile (38 dados de assinaturas
+iOS, 51 apresentação de assinaturas iOS, 556 grupos iOS, 146 compose-app iOS e 214 Android)
+e 64 web. Todos sem falhas, erros ou ignorados. `bootJar` e `compose-app:detektAll` aprovados.
+Os fontes backend/mobile do checkout correspondem byte a byte aos usados na validação.
+Logs locais: `/tmp/saqz-main-merge-backend.log`, `/tmp/saqz-main-merge-mobile.log` e
+`/tmp/saqz-main-merge-web.log`. Os pré-requisitos de produção acima continuam pendentes.

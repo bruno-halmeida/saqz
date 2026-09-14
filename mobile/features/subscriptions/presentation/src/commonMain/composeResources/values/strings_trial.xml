@@ -1,0 +1,21 @@
+<resources>
+    <string name="trial_entry_title">Criar meu grupo</string>
+    <string name="trial_entry_loading">Consultando opções…</string>
+    <string name="trial_entry_available">%1$d dias para experimentar</string>
+    <string name="trial_entry_terms">O prazo começa ao criar seu primeiro grupo. Até 25 atletas, sem cartão e sem cobrança automática.</string>
+    <string name="trial_entry_coupon_only">Tem um cupom de trial?</string>
+    <string name="trial_entry_coupon_optional">Se você recebeu um cupom, pode aplicá-lo para usar o prazo da campanha.</string>
+    <string name="trial_entry_coupon_help">Aplique o código da campanha para consultar o prazo e liberar a criação do grupo.</string>
+    <string name="trial_entry_off">O trial está indisponível no momento. Conheça os planos para criar seu grupo.</string>
+    <string name="trial_entry_unavailable">Não há uma vaga disponível para criar outro grupo. Confira seu plano.</string>
+    <string name="trial_entry_code">Cupom de trial</string>
+    <string name="trial_entry_apply">Aplicar cupom</string>
+    <string name="trial_entry_applied">Cupom %1$s aplicado. Crie seu grupo enquanto a campanha estiver válida.</string>
+    <string name="trial_entry_continue">Continuar para criar grupo</string>
+    <string name="trial_entry_plans">Conhecer planos</string>
+    <string name="trial_entry_refresh">Atualizar opções</string>
+    <string name="trial_entry_load_error">Não foi possível consultar as opções. Tente novamente.</string>
+    <string name="trial_entry_coupon_error">Cupom inválido, expirado ou sem usos disponíveis. Confira o código.</string>
+    <string name="trial_entry_offer_error">A oferta mudou ou esta conta não pode receber um novo trial. Atualize as opções.</string>
+    <string name="trial_entry_apply_error">Não foi possível confirmar o cupom. Tente novamente ou atualize as opções.</string>
+</resources>

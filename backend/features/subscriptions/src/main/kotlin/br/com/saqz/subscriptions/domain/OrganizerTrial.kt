@@ -8,7 +8,9 @@ data class OrganizerTrial(val ownerUserId: UUID, val startedAt: Instant, val end
     fun isActiveAt(now: Instant): Boolean = now < endsAt
 
     companion object {
-        fun start(ownerUserId: UUID, now: Instant) =
-            OrganizerTrial(ownerUserId, now, now.plus(Duration.ofDays(14)))
+        fun start(ownerUserId: UUID, now: Instant, days: Int = 14): OrganizerTrial {
+            require(days in 1..365)
+            return OrganizerTrial(ownerUserId, now, now.plus(Duration.ofDays(days.toLong())))
+        }
     }
 }

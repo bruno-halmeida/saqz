@@ -105,7 +105,7 @@ identificador do recurso para manutenção autenticada.
 - AC-W8: não existe endpoint de saque administrativo nem de reembolso.
 
 Arquivos próprios: novos `Wallet*`, `Bank*`, `Withdrawal*` em `backend/features/receivables` (main,
-test e integrationTest), `HttpAsaasWallet`, `JdbcWalletStore`, `WalletController`, migrações V56/V59,
+test e integrationTest), `HttpAsaasWallet`, `JdbcWalletStore`, `WalletController`, migrações V64/V59 (V56 da revisão original renumerada na integração com main),
 `backend/bootstrap/.../ReceivablesWalletConfiguration.kt`, este contrato e
 `docs/receivables/evidence/final-wallet-author.md`. Nenhum arquivo reservado às outras frentes será
 editado.

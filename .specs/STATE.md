@@ -91,132 +91,26 @@ As jornadas de pagamento, cadastro/gestão/delegação, carteira/saque, recorrê
 
 - Integração concluída: main remota publicada em b377e853, incluindo backend de4707ef/564028ab e evidências finais. Todos os nove tasks do run Orca run_f939f361277e concluídos e respectivos workers liberados; checkout retornou à main. Nenhuma liberação de produção realizada. Próxima entrega funcional: pagamento do membro no mobile e jornada web; carteira/saques/reembolsos solicitados e recorrência continuam no plano. Dois testes Android gerais preexistentes permanecem falhos e documentados.
 
-## Continuação em nova sessão — 2026-09-13
 
-- A sessão anterior permaneceu somente leitura. Base autoritativa encontrada: main 702f3fe7,
-  com context.md/direcionamento.md não rastreados preservados.
-- Descoberta necessária para a jornada do membro implementada em 658649a5 e 095044d6:
-  GET /api/receivables/orders, paginação 50, ator da sessão e cursor isolados por pagador;
-  consulta local continua após corte/saída/exclusão e inclui estados terminais.
-- Gateway KMP MemberPaymentsGateway implementado em 8c3e939a: lista, detalhe, instrumento Pix/cartão
-  e conciliação, snapshots em centavos, erros tipados, reenvio idempotente e validação da resposta.
-  Registrado no Koin. Nenhuma tela foi alterada; T16 ainda não é uma jornada disponível no app.
-- Gates do autor: 32 testes backend pagamentos + 20 arquitetura; 22 gateway Android e 22 iOS (após reforço de cobertura 97855e20);
-  6 testes DI em cada plataforma; compilação Android/iOS e detekt dos módulos tocados passaram.
-  Evidências e critérios em docs/receivables/member-payment-foundation.md.
-- Revisão independente do delta 702f3fe7..97855e20 aprovada; commits locais, sem push/liberação
-  ou chamadas Asaas reais. Próximo: UI do membro com aceite, CPF/nome, Pix/cartão e recuperação;
-  seleção/aprovação pelo gestor e renovação Pix continuam pendentes.
-- Verificador novo e independente verify_member_payment_foundation: 10 mutações distintas,
-  todas detectadas após reforço dos fixtures em 97855e20. Nenhum defeito de produção encontrado;
-  gaps de teste de identidade/snapshot corrigidos com três casos novos. Relatório em
-  docs/receivables/evidence/member-payment-foundation-review.md. Não foram retomados workers
-  nem provider session anteriores. O gate Android instrumentado geral não foi reexecutado:
-  suas duas falhas preexistentes continuam registradas no lote anterior.
+## Trial e cupons — 2026-09-13
 
-## Jornada do membro — continuação autorizada
+- Pedido autorizado: criar cupons de trial, modos ligado/desligado/somente cupom, dias configuráveis por cupom e integração final na main.
+- Implementados backend transacional, administrativo e entrada mobile. Oferta pública permanece em 14 dias; cupons de 1 a 365 dias; prazo inicia no primeiro grupo e benefícios já concedidos são preservados.
+- Spec e evidências: `.specs/features/trial-coupons/`. Operação: `docs/trials/operation.md`.
+- Gates backend, administrativo, iOS, Android e detekt passaram. Verificação independente PASS no commit funcional 208cd905: AC1–AC7, 1.770 testes sem falhas/ignorados e 5/5 mutações detectadas.
+- Entrega integrada e publicada por fast-forward em origin/main 6761baea. Checkout local main preservado porque contém trabalho concorrente em andamento. Nenhum deploy de produção executado.
 
-- Histórico, revisão/aceite, CPF/nome em memória, Pix/QR/copia e cola e checkout hospedado
-  conectados em Perfil → Minhas mensalidades → Pagar pelo app. A entrada permanece disponível
-  mesmo sem grupos carregados ou sem elegibilidade para novas ordens.
-- Commits locais d4204d36 (estado/recuperação) e ff870197 (UI/rotas/DI). Testes do autor no escopo:
-  106 execuções Android/iOS, sem falhas ou skips; compilações e detekt aprovados. Capturas inspecionadas.
-- Revisão independente fresca verify_member_payment_ui aprovada em 06d70c7b: 106 execuções, 13 falhas comportamentais distintas injetadas e detectadas, nenhuma sobrevivente.
-  Sem push, produção ou chamadas Asaas reais. Contrato: docs/receivables/member-payment-ui.md.
-- T16 permanece parcial: não inclui recorrência, renovação Pix, aprovação de pendências pelo gestor,
-  nem comprovante exportável. Homologação sandbox e UAT humano ainda não realizados.
-- Correções 6d2bd9f9/06d70c7b: tentativas antigas canceladas não resolvem emissão nova incerta;
-  efeitos enfileirados revalidam geração/sessão/prazo antes de copiar/abrir/navegar; feedback de cópia
-  após execução. Cobertura reforçada para relógio e valores literais Pix/cartão.
-- Próximo lote funcional: seleção/aprovação das cobranças pelo gestor no mobile, para alimentar
-  a jornada do membro sem depender de operação direta da API. Os demais itens seguem em tasks.md.
-- Evidência final: docs/receivables/evidence/member-payment-ui-review.md. Três regressões
-  reproduzidas pelo revisor passaram após as correções. Quatro lições candidatas registradas pelo script
-  do skill; nenhuma delas é tratada como regra confirmada ainda. Capturas permanecem locais em
-  mobile/build/reports/member-payment-ui/ e member-payment-entry/.
-- Limites: testes automatizados e leitura de código não substituem o walkthrough nativo de navegador,
-  clipboard/voltar nem a jornada completa em sandbox. Os dois testes gerais Android preexistentes
-  continuam fora deste gate e pendentes no projeto.
+## Painel de conversão de cupons — 2026-09-13
 
+- Pedido: rastrear todos os cupons, incluindo trials e descontos, no administrativo.
+- Implementados endpoint administrativo somente leitura e painel em Cupons → Conversão de cupons, com busca/tipo, resumo deduplicado, usos, pagantes, conversão, receita bruta, maturidade dos trials e dados incompletos sinalizados.
+- Decisões: atribuição por participação após uso; resumo não soma linhas; receita não desconta taxas/estornos; sem estimativas pelo preço do plano nem escrita em pagamentos. Histórico sem fatos suficientes permanece incompleto.
+- Commits funcionais f0ec5c0b/fd6412fc e evidências visuais/guia 3b0d281f. Gates locais: 44 bootstrap, 247 subscriptions e 57 admin; Chromium desktop/tablet, loading/error/empty PASS.
+- Spec/validação: `.specs/features/coupon-analytics/`. Guia: `docs/coupons/analytics.md`. Revisão independente PASS em 3b0d281f: AC1–8, 348 testes e 6/6 mutações detectadas. Painel integrado e publicado por fast-forward em origin/main 35073c76. Nenhum deploy de produção realizado. Checkout main local preservado por trabalho mobile concorrente.
 
-## Liberação e cancelamento pelo gestor — 2026-09-13
+## Integração de recebimentos para publicação na main
 
-- Continuação autorizada por “Siga pra finalizar”. Base f765e19d; consulta local de ordem por cobrança
-  em 01044670, gateway KMP em 6812cd11, caixa→revisão/termos/aceite/liberação e cancelamento em
-  5419b961. Correções de recuperação e cobertura 47bf3b0b; retorno nativo 6001480d.
-- Gestor escolhe cobrança e conta autorizada; vê valores por meio e todas as versões de termos;
-  libera expressamente. Consulta/manutenção permanece após corte, rollout OFF e exclusão/transferência.
-- Tentativas incertas persistem comando não sensível por ator/grupo/cobrança/conta. Recuperação consulta
-  antes de repetir exatamente o comando. Voltar preserva pendência e recarrega caixa após resolução.
-  PAID/REFUNDED/CHARGEBACK encerram retry de cancelamento exibindo estado real; somente CANCELLED
-  confirma cancelamento. Sem mudança nas regras de reserva/reembolso do backend.
-- Revisão independente verify_charge_approval: 256 execuções sem falhas/erros/skips, 14 falhas distintas
-  injetadas em scratch e detectadas, nenhuma sobrevivente; 17 tentativas totais de mutação.
-  Relatório docs/receivables/evidence/charge-approval-review.md; contrato docs/receivables/charge-approval.md.
-- T10 concluído. T14/T16/T21 continuam parciais no plano maior. Nenhuma chamada Asaas real,
-  publicação remota ou liberação de produção nesta continuação. Capturas locais em
-  mobile/build/reports/charge-approval/. Teste do Voltar usa Root/VM reais em ComponentActivity
-  Robolectric; não equivale a walkthrough no AVD. Os dois testes gerais Android antigos continuam abertos.
-- Lições registradas via script: L005–L010 candidatas; L003 (valores literais na UI financeira)
-  confirmado por recorrência independente na UI do membro e do gestor. Candidatas não viram regras.
-- Investigação Pix: HttpAsaasPayments.recover consulta o QR do mesmo paymentId; não há renovação
-  remota automática. Documentação oficial distingue validade do QR e vencimento da dívida; para o
-  fallback sem chave, a atualização da cobrança exige validação própria. Não afirmar que GET QR renova.
-- Próxima dependência para um titular novo: cadastro financeiro no mobile. FinancialAccountsController
-  possui me/create/documents/upload; faltam descoberta de termos vigentes (só GET terms/{version}),
-  recuperação do provisionamento pela conta existente sem reenviar dados pessoais e telas/port de
-  documentos. OnboardFinancialAccount.provision preserva criação UNKNOWN sem repetir POST quando
-  a chave remota é desconhecida. Nenhuma implementação dessa próxima etapa foi iniciada.
-- Carteira/saque, reembolso solicitado, recorrência, operação/comunicação e homologação integrada
-  permanecem abertos conforme tasks.md. Não são pendências apenas de deploy.
-
-## Cadastro financeiro no mobile — continuação de 2026-09-13
-
-- Backend 16427b58: termos publicados/vigentes e recuperação da conta própria, com sessão,
-  requestId e no-store. Não repete criação remota UNKNOWN quando falta credencial.
-- Gateway e multipart tipado em 16746aa0: PF/PJ, centavos exatos, aceite e envelopes validados,
-  consulta por ator, documentos e upload sem retry cego. Cadastro/documentos pessoais só em memória.
-- Ports Android OpenDocument e iOS UIDocumentPicker em 84ade378. Compilação Swift6 e Xcode
-  arm64 simulator aprovada; limites/cancelamento testados no Android, DI em ambas as plataformas.
-- Jornada shared 19fba8f4: Perfil → Recebimentos permanente, formulário voluntário, termos e aceite,
-  situação real, documentos por link Asaas ou seleção/confirmar envio. Resultado incerto conserva
-  marker não sensível e impede duplicação; recuperação lê antes de replay de criação em memória.
-  Restauração não persiste formulário/arquivo; logout descarta callbacks e efeitos antigos.
-- T04/T14/T15/T17 continuam parciais no plano maior: correção cadastral remota, delegação mobile,
-  carteira/saque e solicitação de reembolso não foram implementados nesta onda.
-- Testes instrumentados antigos corrigidos em 03e6f2e3: seletores/formulário atual e expectativa
-  coerente com retirada do bloqueio de e-mail (VUL-84). Gate completo no AVD Saqz_API_30:
-  44 testes, 0 falhas/erros/skips. Evidência docs/receivables/evidence/android-legacy-lifecycle-fix.md.
-  Esta dívida antiga deixa de ficar aberta; não alterar os registros históricos dos gates anteriores.
-- Sem push, deploy, termos/tarifas inventados ou chamadas Asaas reais. Nenhum provider session
-  antigo retomado. context.md/direcionamento.md continuam não rastreados e preservados.
-- Carteira/saque, reembolso solicitado, recorrência/corte, renovação Pix, operação/comunicação e
-  homologação integrada seguem abertos. A implementação completa do plano ainda não terminou.
-- Revisão independente fresca verify_financial_onboarding aprovada em 19fba8f4: FO1–FO7,
-  10 falhas comportamentais injetadas e detectadas em cópia temporária, nenhuma sobrevivente
-  ou inconclusiva. Relatório docs/receivables/evidence/financial-onboarding-mobile-review.md;
-  inclui apêndice independente de inspeção de 03e6f2e3 e do XML Android44.
-- Compilação final Android/framework iOS e detekt Android aprovados no HEAD 03e6f2e3;
-  Xcode SaqzDev com o framework final também BUILD SUCCEEDED. Sem walkthrough do picker
-  nativo iOS, sem UAT humano e sem homologação financeira real.
-
-## Revisão de escopo — reembolso externo
-
-- Decisão explícita do usuário após a conclusão do cadastro financeiro: o titular trata reembolso
-  fora do app; o mesmo vale para reembolsos dos planos do próprio Saqz.
-- Retirada a solicitação de reembolso de T12/T17 e das pendências de entrega. Não criar fluxo
-  equivalente no painel administrativo ou endpoint para iniciá-lo pelo Saqz.
-- Permanecem conciliação de reembolsos/contestações externos, reversão única, histórico correto
-  e apuração de custos residuais observados. T12 continua parcial somente por essa conciliação.
-- Inspeção do código atual não encontrou fluxo de solicitação de reembolso a remover.
-  Alteração de planejamento; nenhuma mudança em webhooks, caixa ou estados financeiros.
-
-
-## Conclusão verificada — 2026-09-13 23:54 UTC
-
-- T01–T19 e T21 implementadas/verificadas; T20 conserva somente a homologação real externa. Nenhuma funcionalidade de reembolso solicitado foi criada.
-- Gates finais backend: 65 unitários, 57 integração PostgreSQL/HTTP, 70 bootstrap focados e 20 arquitetura; últimas regressões de prova HTTP/contagem em 14 testes focados adicionais aprovadas.
-- Gate final mobile: 213 Android completos, domínio 7+7, dados 67+67, apresentação 107+118, rede 95 iOS e DI/navegação 9 iOS; detektAll, framework e Xcode arm64 aprovados.
-- Revisão de credencial: 75 testes independentes e 11 mutações mortas/restauradas; executável real validado com stdin, API loopback e PostgreSQL descartável, sem iniciar web/agendadores. Inventário 14 migrações/34 tabelas financeiras.
-- Relatório autoritativo: docs/receivables/final-completion.md. Todas as frentes concluídas/liberadas; servidor estático temporário encerrado. Sessões históricas e arquivos de intenção não rastreados do usuário preservados.
-- Nenhum push, deploy, operação financeira real ou mensagem externa nesta onda. Credenciais/condições comerciais/termos aprovados e homologação sandbox/piloto são pré-requisitos da liberação, não testes simulados declarados como reais.
+- Envio autorizado pelo usuário; incorporada a main remota dccc5e02 com trial e análise de cupons.
+- V56 de trial preservada; V56 local de destinos bancários renumerada V64, SQL idêntico e sem dependências nas V57–V63.
+- Validação integrada: backend 1.504, mobile 1.005, web 64, bootJar e compose-app detektAll aprovados.
+- Sem deploy/operações financeiras reais. T20 permanece pendente. Contexto local do usuário preservado.

@@ -73,19 +73,28 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - last seen: 2026-09-13T20:39:42Z
 
 ### L-011 — Use deferred native callbacks and queued dispatchers to test pending UI state and session changes before network work.
-- signal: `surviving_mutant` · scope: `mobile/receivables` · status: candidate
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `mobile/receivables` · harmful: 0
+- features: receivables-final
 - evidence: docs/receivables/evidence/final-recurring-mobile-review.md
 - last seen: 2026-09-13T23:45:00Z
 
 ### L-012 — Exercise the actual operational configuration binding to prove recovery performs only provider reads.
-- signal: `surviving_mutant` · scope: `backend/receivables` · status: candidate
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `backend/receivables` · harmful: 0
+- features: receivables-final
 - evidence: docs/receivables/evidence/final-recurrence-operations-review.md
 - last seen: 2026-09-13T23:45:00Z
 
 ### L-013 — Revalidate delegated authorization after provider reads and before claiming or submitting financial writes.
-- signal: `ac_gap` · scope: `backend/receivables` · status: candidate
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `backend/receivables` · harmful: 0
+- features: receivables-final
 - evidence: docs/receivables/evidence/final-wallet-management-review.md
 - last seen: 2026-09-13T23:45:00Z
+
+### L-014 — Keep entitlement lookup failures distinct from plan denial so group creation can reach its retry screen.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `mobile` · harmful: 0
+- features: trial-coupons
+- evidence: AC7 / G1 (mobile)
+- last seen: 2026-09-13T20:38:32Z
 
 ## Quarantined (failed when applied — ignore)
 

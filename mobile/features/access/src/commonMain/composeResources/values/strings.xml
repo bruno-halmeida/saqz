@@ -139,7 +139,7 @@
     <string name="app_onboarding_title">Comece sua</string>
     <string name="app_onboarding_emphasis">jornada</string>
     <string name="app_onboarding_current_account">a conta atual</string>
-    <string name="app_onboarding_body">Crie seu grupo, convide a galera e organize presenças e pagamentos. Os 14 dias de teste começam ao criar o primeiro grupo.</string>
+    <string name="app_onboarding_body">Crie seu grupo, convide a galera e organize presenças e pagamentos. Confira as opções disponíveis para criar seu primeiro grupo.</string>
     <string name="app_onboarding_continue">Criar meu grupo</string>
     <string name="app_onboarding_skip">Pular apresentação</string>
     <string name="app_onboarding_confirm_account">Usar a conta do link</string>

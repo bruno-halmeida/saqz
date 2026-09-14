@@ -641,15 +641,20 @@ internal fun SaqzNavHost(
                 )
             }
             entry<GroupsRoute.Create> {
-                GroupSetupDestination(
-                    mode = GroupSetupMode.Create,
-                    backStack = backStack,
-                    showTrialOffer = (state.session as? SessionAccessState.Ready)?.session?.planOwner == false,
-                    onGroupListChange = {
-                        groupListRefreshVersion++
-                        onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
-                    },
-                )
+                br.com.saqz.subscriptions.presentation.trial.TrialEntryRoot(
+                    onBack = pop,
+                    onSubscribe = { backStack.add(SubscriptionRequired) },
+                ) {
+                    GroupSetupDestination(
+                        mode = GroupSetupMode.Create,
+                        backStack = backStack,
+                        showTrialOffer = false,
+                        onGroupListChange = {
+                            groupListRefreshVersion++
+                            onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                        },
+                    )
+                }
             }
             entry<GroupsRoute.Edit> { route ->
                 GroupSetupDestination(

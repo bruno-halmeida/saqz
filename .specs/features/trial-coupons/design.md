@@ -1,0 +1,2 @@
+# Desenho
+Cupons de trial têm tabela e endpoints próprios, sem misturar desconto de assinatura. Seleção por organizador é provisória; a atribuição definitiva usa FK do trial e snapshot de código/campanha. Uma porta TrialOffer integra StartOrganizerTrial à política persistida. Criação bloqueia o usuário (já existente), a configuração em SHARE e o cupom em UPDATE, nessa ordem, antes de conceder. Alterar modo usa UPDATE na configuração; limites são serializados por cupom. Toda concessão ocorre dentro da transação de criação do grupo.

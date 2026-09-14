@@ -42,7 +42,11 @@ nesta entrega; credenciais, condições comerciais e termos aprovados continuam 
 
 ## Liberação
 
-1. Aplicar o conjunto versionado completo pendente (incluindo V56–V63 desta onda) e verificar constraints/índices/triggers; não aplicar apenas as migrações do painel.
+Na integração com a `main`, a migração de destinos bancários passou de V56 para V64,
+sem alteração do SQL. A V56 de cupons/trial já publicada foi preservada. As V57–V63
+não dependem das novas colunas dos destinos bancários; o conjunto completo deve ser aplicado.
+
+1. Aplicar o conjunto versionado completo pendente (incluindo V57–V64 desta onda) e verificar constraints/índices/triggers; não aplicar apenas as migrações do painel.
 2. Fazer smoke test anônimo apenas em `GET /public/receivables/terms/*` e
    `GET /public/receivables/checkout-return`; confirmar 401 em POST e paths irmãos.
 3. Fazer smoke test admin com conta autorizada e outra revogada.

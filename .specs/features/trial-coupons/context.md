@@ -1,0 +1,2 @@
+# Contexto
+Decisões já dadas pelo usuário: três modos, trial público de 14 dias, dias configuráveis por cupom, criar cupons e merge final na main. Os trials concedidos continuam até o prazo. As escolhas operacionais e de interface seguem padrões existentes, conforme escopo autorizado; não há informação pendente para implementar. Métricas completas discutidas anteriormente permanecem fora deste pedido, preservando-se atribuição para evolução.

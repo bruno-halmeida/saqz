@@ -14,6 +14,9 @@ import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupDirectoryRepos
 import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupStatsRepository
 import br.com.saqz.groups.application.admin.AdminGroupDirectory
 import br.com.saqz.groups.application.admin.AdminGroupStats
+import br.com.saqz.adminweb.http.AdminCouponAnalyticsController
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminCouponAnalytics
+import java.time.Clock
 import br.com.saqz.adminweb.http.AdminCouponsController
 import br.com.saqz.adminweb.http.AdminSubscriptionsController
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminCouponDirectoryRepository
@@ -88,6 +91,10 @@ class PlatformAdminConfiguration {
 
     @Bean
     fun adminCouponsController(directory: AdminCouponDirectory) = AdminCouponsController(directory)
+
+    @Bean
+    fun adminCouponAnalyticsController(dataSource: DataSource, clock: Clock) =
+        AdminCouponAnalyticsController(JdbcAdminCouponAnalytics(dataSource, clock))
 
     @Bean
     fun adminOverviewController(

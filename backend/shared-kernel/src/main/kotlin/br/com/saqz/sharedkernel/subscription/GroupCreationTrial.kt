@@ -5,6 +5,12 @@ import java.util.UUID
 /** Called only under the owner's group-creation row lock and transaction. */
 interface GroupCreationTrial {
     fun isEligible(ownerId: UUID): Boolean
+    fun tryStart(ownerId: UUID): Boolean {
+        if (!isEligible(ownerId)) return false
+        start(ownerId)
+        return true
+    }
+
     fun start(ownerId: UUID)
 
     object None : GroupCreationTrial {

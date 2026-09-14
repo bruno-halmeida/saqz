@@ -141,6 +141,19 @@ class GroupListViewModelTest {
         assertEquals(GroupListEffect.OpenCreateGroup, viewModel.effects.first())
     }
 
+    @Test
+    fun `creation entry can handle retry without granting group permission`() = runTest {
+        val entitlement = object : GroupCreationEntitlement {
+            override suspend fun canCreateGroup() = false
+            override suspend fun canOpenCreationFlow() = true
+        }
+        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), entitlement)
+
+        viewModel.onIntent(GroupListIntent.CreateGroup)
+
+        assertEquals(GroupListEffect.OpenCreateGroup, viewModel.effects.first())
+    }
+
     // O segundo toque enquanto a checagem está em voo é descartado — uma consulta, um efeito.
     @Test
     fun `tapping create again while the check is in flight emits exactly one effect`() = runTest {

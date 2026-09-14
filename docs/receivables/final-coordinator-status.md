@@ -19,3 +19,11 @@ apenas espaços finais/EOF em dez arquivos. Nenhuma supressão, baseline ou test
 Nenhum push/deploy/chamada financeira real nesta onda. context.md/direcionamento.md do usuário
 seguem não rastreados e intocados. Próximo passo externo está no runbook: condições comerciais,
 termos aprovados, homologação real sandbox e piloto controlado.
+
+## Publicação autorizada na main
+
+O usuário solicitou o envio de toda a implementação. A integração com `origin/main` dccc5e02
+preserva as entregas concorrentes de trial/cupons; a migração local de destinos passa a V64.
+Gates após merge: backend 1.504, mobile 1.005, web 64; todos aprovados, assim como bootJar
+e detekt do composition root. Detalhes em `final-completion.md`. Homologação/produção continuam
+externas; os dois arquivos locais do usuário seguem intocados.
