@@ -15,6 +15,7 @@ dependencies {
     implementation(libs.hikaricp)
     implementation(libs.spring.jdbc)
     implementation(libs.firebase.admin)
+    implementation("io.github.uazapi:uazapi-connector-sdk:0.1.0-SNAPSHOT")
     implementation(libs.flyway.core)
     implementation(project(":features:access"))
     implementation(project(":features:groups"))

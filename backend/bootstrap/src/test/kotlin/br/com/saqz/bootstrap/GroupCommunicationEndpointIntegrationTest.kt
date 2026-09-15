@@ -77,6 +77,24 @@ class GroupCommunicationEndpointIntegrationTest {
         for (id in listOf(owner, member)) jdbc.sql("INSERT INTO group_memberships (group_id, user_id, role, created_at, updated_at) VALUES (:group, :user, 'ATHLETE', now(), now())")
             .param("group", group).param("user", id).update()
     }
+    @Test fun `notification channels persist separately and legacy clients preserve WhatsApp opt in`() {
+        val path = "/api/me/notification-preferences"
+        val payload = """{"notices":false,"messages":true,"reminders":false,
+            "push":{"notices":true,"messages":false,"reminders":true,"charges":false},
+            "whatsapp":{"notices":true,"reminders":false,"charges":true}}"""
+        assertEquals(401, request("PUT", path, payload, actor = null).statusCode())
+        assertEquals(200, request("PUT", path, payload, member).statusCode())
+        val saved = json.readTree(request("GET", path, actor = member).body())
+        assertEquals(json.readTree(payload), saved)
+        val other = json.readTree(request("GET", path, actor = stranger).body())
+        assertEquals(false, other["whatsapp"]["notices"].booleanValue())
+        assertEquals(200, request("PUT", path, """{"notices":true,"messages":true,"reminders":false}""", member).statusCode())
+        val legacy = json.readTree(request("GET", path, actor = member).body())
+        assertEquals(saved["whatsapp"], legacy["whatsapp"])
+        assertEquals(false, legacy["push"]["charges"].booleanValue())
+        assertEquals(422, request("PUT", path, "{}", member).statusCode())
+    }
+
     @Test fun `authenticated message API persists author context and handles retry validation and permissions`() {
         val path = "/api/groups/$group/messages?channel=CHAT"
         assertEquals(401, request("GET", path, actor = null).statusCode())

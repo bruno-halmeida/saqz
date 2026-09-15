@@ -5,6 +5,8 @@ import br.com.saqz.groups.application.communication.GroupMessage
 import br.com.saqz.groups.application.communication.GroupNotification
 import br.com.saqz.groups.application.communication.MessageChannel
 import br.com.saqz.groups.application.communication.NotificationPreferences
+import br.com.saqz.groups.application.communication.PushPreferences
+import br.com.saqz.groups.application.communication.WhatsAppPreferences
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
 import java.sql.Types
@@ -38,17 +40,13 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             """.trimIndent(),
         ).param("id", id).param("group", groupId).param("actor", actor).param("channel", channel.name, Types.OTHER)
             .param("request", requestId).param("body", body).param("game", gameId, Types.OTHER).update()
-        val recipients = jdbc.sql(
+        jdbc.sql(
             """
             INSERT INTO group_notifications (recipient_id, message_id)
             SELECT membership.user_id, :message
             FROM group_memberships membership
             LEFT JOIN group_notification_preferences pref ON pref.user_id = membership.user_id
             WHERE membership.group_id = :group AND membership.active AND membership.user_id <> :actor
-              AND CASE :channel
-                  WHEN 'CHAT' THEN coalesce(pref.messages, true)
-                  WHEN 'NOTICE' THEN coalesce(pref.notices, true)
-                  ELSE coalesce(pref.reminders, true) END
               AND (CAST(:game AS uuid) IS NULL OR NOT EXISTS (
                   SELECT 1 FROM game_attendance a
                   WHERE a.group_id = :group AND a.game_id = :game AND a.member_user_id = membership.user_id
@@ -56,6 +54,8 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             """.trimIndent(),
         ).param("message", id).param("group", groupId).param("actor", actor).param("channel", channel.name)
             .param("game", gameId, Types.OTHER).update()
+        val recipients = jdbc.sql("SELECT count(*) FROM group_notifications WHERE message_id = :id AND in_app")
+            .param("id", id).query(Int::class.java).single()
         jdbc.sql("UPDATE group_messages SET recipient_count = :count WHERE id = :id")
             .param("count", recipients).param("id", id).update()
         return checkNotNull(findRequest(groupId, actor, channel, requestId))
@@ -72,7 +72,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         FROM group_notifications n JOIN group_messages m ON m.id = n.message_id
         JOIN access_groups g ON g.id = m.group_id AND g.deleted_at IS NULL
         JOIN group_memberships membership ON membership.group_id = m.group_id AND membership.user_id = n.recipient_id
-        WHERE n.recipient_id = :actor AND (:before IS NULL OR n.sequence < :before)
+        WHERE n.recipient_id = :actor AND n.in_app AND (:before IS NULL OR n.sequence < :before)
         ORDER BY n.sequence DESC LIMIT 51
         """.trimIndent(),
     ).param("actor", actor).param("before", before, Types.BIGINT)
@@ -84,19 +84,33 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
     }
 
     override fun preferences(actor: UUID): NotificationPreferences = jdbc.sql(
-        "SELECT notices, messages, reminders FROM group_notification_preferences WHERE user_id = :actor",
+        "SELECT * FROM group_notification_preferences WHERE user_id = :actor",
     ).param("actor", actor).query { rs, _ -> preferences(rs) }.optional().orElse(NotificationPreferences())
 
     override fun savePreferences(actor: UUID, preferences: NotificationPreferences): NotificationPreferences = jdbc.sql(
         """
-        INSERT INTO group_notification_preferences (user_id, notices, messages, reminders) VALUES (:actor, :notices, :messages, :reminders)
-        ON CONFLICT (user_id) DO UPDATE SET notices = excluded.notices, messages = excluded.messages, reminders = excluded.reminders
-        RETURNING notices, messages, reminders
+        INSERT INTO group_notification_preferences
+            (user_id, notices, messages, reminders, push_notices, push_messages, push_reminders, push_charges,
+             whatsapp_notices, whatsapp_reminders, whatsapp_charges)
+        VALUES (:actor, :notices, :messages, :reminders, :pn, :pm, :pr, :pc, :wn, :wr, :wc)
+        ON CONFLICT (user_id) DO UPDATE SET notices = excluded.notices, messages = excluded.messages, reminders = excluded.reminders,
+            push_notices = excluded.push_notices, push_messages = excluded.push_messages,
+            push_reminders = excluded.push_reminders, push_charges = excluded.push_charges,
+            whatsapp_notices = excluded.whatsapp_notices, whatsapp_reminders = excluded.whatsapp_reminders,
+            whatsapp_charges = excluded.whatsapp_charges
+        RETURNING *
         """.trimIndent(),
     ).param("actor", actor).param("notices", preferences.notices).param("messages", preferences.messages)
-        .param("reminders", preferences.reminders).query { rs, _ -> preferences(rs) }.single()
+        .param("reminders", preferences.reminders).param("pn", preferences.push.notices).param("pm", preferences.push.messages)
+        .param("pr", preferences.push.reminders).param("pc", preferences.push.charges)
+        .param("wn", preferences.whatsapp.notices).param("wr", preferences.whatsapp.reminders).param("wc", preferences.whatsapp.charges)
+        .query { rs, _ -> preferences(rs) }.single()
 
-    private fun preferences(rs: ResultSet) = NotificationPreferences(rs.getBoolean("notices"), rs.getBoolean("messages"), rs.getBoolean("reminders"))
+    private fun preferences(rs: ResultSet) = NotificationPreferences(
+        rs.getBoolean("notices"), rs.getBoolean("messages"), rs.getBoolean("reminders"),
+        PushPreferences(rs.getBoolean("push_notices"), rs.getBoolean("push_messages"), rs.getBoolean("push_reminders"), rs.getBoolean("push_charges")),
+        WhatsAppPreferences(rs.getBoolean("whatsapp_notices"), rs.getBoolean("whatsapp_reminders"), rs.getBoolean("whatsapp_charges")),
+    )
 
     private fun message(rs: ResultSet) = GroupMessage(
         id = rs.getObject("id", UUID::class.java), sequence = rs.getLong("sequence"), groupId = rs.getObject("group_id", UUID::class.java),

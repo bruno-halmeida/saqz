@@ -20,7 +20,13 @@ data class GroupMessage(
 
 data class CommunicationPage<T>(val items: List<T>, val nextCursor: Long?)
 data class GroupNotification(val sequence: Long, val message: GroupMessage, val read: Boolean)
-data class NotificationPreferences(val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true)
+data class PushPreferences(val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true, val charges: Boolean = true)
+data class WhatsAppPreferences(val notices: Boolean = false, val reminders: Boolean = false, val charges: Boolean = false)
+data class NotificationPreferences(
+    val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true,
+    val push: PushPreferences = PushPreferences(notices, messages, reminders, reminders),
+    val whatsapp: WhatsAppPreferences = WhatsAppPreferences(),
+)
 enum class CommunicationError { NOT_FOUND, FORBIDDEN, INVALID, CONFLICT }
 sealed interface CommunicationResult<out T> {
     data class Success<T>(val value: T) : CommunicationResult<T>

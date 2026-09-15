@@ -36,15 +36,15 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
             ORDER BY notification_id LIMIT 1 FOR UPDATE SKIP LOCKED
         """).query(Long::class.java).optional().orElse(null) ?: return@inTransaction false
         val message = jdbc.sql("""
-            SELECT m.group_id, g.name FROM group_notifications n JOIN group_messages m ON m.id = n.message_id
-            JOIN access_groups g ON g.id = m.group_id AND g.deleted_at IS NULL
-            JOIN group_memberships gm ON gm.group_id = g.id AND gm.user_id = n.recipient_id AND gm.active
-            JOIN group_charges c ON c.id = m.charge_id AND c.status = 'PENDING'
-            LEFT JOIN group_notification_preferences p ON p.user_id = n.recipient_id
-            WHERE n.sequence = :id AND coalesce(p.reminders, true)
+            SELECT group_id, channel FROM notification_delivery_context WHERE sequence = :id AND push_enabled
         """).param("id", id).query { rs, _ ->
-            NotificationPush(id, rs.getObject("group_id", UUID::class.java), "Saqz",
-                "Você recebeu um lembrete de cobrança. Abra o app para conferir.")
+            val body = when (rs.getString("channel")) {
+                "NOTICE" -> "Você recebeu um aviso do grupo. Abra o app para conferir."
+                "CHAT" -> "Você recebeu uma mensagem no grupo. Abra o app para conferir."
+                "REMINDER" -> "Confirme sua presença no próximo jogo. Abra o app para conferir."
+                else -> "Você recebeu um lembrete de cobrança. Abra o app para conferir."
+            }
+            NotificationPush(id, rs.getObject("group_id", UUID::class.java), "Saqz", body)
         }.optional().orElse(null)
         var retry = false
         if (message != null) {

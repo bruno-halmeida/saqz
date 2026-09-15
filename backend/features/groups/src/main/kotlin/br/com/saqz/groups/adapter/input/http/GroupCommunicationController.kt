@@ -5,6 +5,8 @@ import br.com.saqz.groups.application.communication.CommunicationResult
 import br.com.saqz.groups.application.communication.GroupCommunicationService
 import br.com.saqz.groups.application.communication.MessageChannel
 import br.com.saqz.groups.application.communication.NotificationPreferences
+import br.com.saqz.groups.application.communication.PushPreferences
+import br.com.saqz.groups.application.communication.WhatsAppPreferences
 import br.com.saqz.sharedkernel.RequestIdentity
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -29,6 +31,17 @@ data class NotificationPreferencesRequest @JsonCreator constructor(
     @JsonProperty("notices") val notices: Boolean?,
     @JsonProperty("messages") val messages: Boolean?,
     @JsonProperty("reminders") val reminders: Boolean?,
+    @JsonProperty("push") val push: PushPreferencesRequest? = null,
+    @JsonProperty("whatsapp") val whatsapp: WhatsAppPreferencesRequest? = null,
+)
+
+data class PushPreferencesRequest @JsonCreator constructor(
+    @JsonProperty("notices") val notices: Boolean?, @JsonProperty("messages") val messages: Boolean?,
+    @JsonProperty("reminders") val reminders: Boolean?, @JsonProperty("charges") val charges: Boolean?,
+)
+data class WhatsAppPreferencesRequest @JsonCreator constructor(
+    @JsonProperty("notices") val notices: Boolean?, @JsonProperty("reminders") val reminders: Boolean?,
+    @JsonProperty("charges") val charges: Boolean?,
 )
 
 @RestController
@@ -78,6 +91,10 @@ class GroupCommunicationController(
     fun preferences(@AuthenticationPrincipal identity: RequestIdentity, @RequestBody request: NotificationPreferencesRequest) =
         service.savePreferences(actors.resolve(identity), NotificationPreferences(
             request.notices ?: invalid(), request.messages ?: invalid(), request.reminders ?: invalid(),
+            request.push?.let { PushPreferences(it.notices ?: invalid(), it.messages ?: invalid(), it.reminders ?: invalid(), it.charges ?: invalid()) }
+                ?: PushPreferences(request.notices, request.messages, request.reminders, request.reminders),
+            request.whatsapp?.let { WhatsAppPreferences(it.notices ?: invalid(), it.reminders ?: invalid(), it.charges ?: invalid()) }
+                ?: service.preferences(actors.resolve(identity)).whatsapp,
         ))
 
     private fun channel(raw: String) = runCatching { MessageChannel.valueOf(raw) }.getOrNull() ?: invalid()
