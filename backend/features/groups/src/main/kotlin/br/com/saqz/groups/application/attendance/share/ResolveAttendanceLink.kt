@@ -8,7 +8,7 @@ import java.time.Instant
 import java.util.UUID
 
 sealed interface ResolveAttendanceLinkResult {
-    data class Success(val groupId: UUID, val gameId: UUID) : ResolveAttendanceLinkResult
+    data class Success(val groupId: UUID, val gameId: UUID, val registrationRequired: Boolean = false) : ResolveAttendanceLinkResult
 
     data class AttemptLimit(val retryAfterSeconds: Int) : ResolveAttendanceLinkResult
 
@@ -46,7 +46,7 @@ class ResolveAttendanceLink(
                 return@inTransaction ResolveAttendanceLinkResult.InvalidOrExpired
             }
 
-            ResolveAttendanceLinkResult.Success(target.groupId, target.gameId)
+            ResolveAttendanceLinkResult.Success(target.groupId, target.gameId, target.registrationRequired)
         }
     }.getOrElse {
         ResolveAttendanceLinkResult.Unavailable

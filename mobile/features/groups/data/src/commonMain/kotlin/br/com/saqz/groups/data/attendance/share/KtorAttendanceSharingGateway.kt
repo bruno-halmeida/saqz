@@ -15,7 +15,9 @@ import kotlinx.serialization.json.Json
 internal data class AttendanceLinkUrlDto(val url: String)
 
 @Serializable
-internal data class ResolvedAttendanceLinkDto(val groupId: String, val gameId: String)
+internal data class ResolvedAttendanceLinkDto(
+    val groupId: String, val gameId: String, val registrationRequired: Boolean = false,
+)
 
 @Serializable
 internal data class AttendanceShareSnapshotPersonDto(
@@ -75,7 +77,7 @@ private fun NetworkResult<AttendanceLinkUrlDto>.toLinkResult() = when (this) {
 private fun NetworkResult<ResolvedAttendanceLinkDto>.toDestinationResult() = when (this) {
     is NetworkResult.Failure -> SaqzResult.Failure(error.toSharingError())
     is NetworkResult.Success -> if (value.groupId.isBlank() || value.gameId.isBlank()) invalidResponse()
-    else SaqzResult.Success(AttendanceLinkDestination(GroupId(value.groupId), value.gameId))
+    else SaqzResult.Success(AttendanceLinkDestination(GroupId(value.groupId), value.gameId, value.registrationRequired))
 }
 
 private fun NetworkResult<AttendanceShareSnapshotDto>.toSnapshotResult() = when (this) {

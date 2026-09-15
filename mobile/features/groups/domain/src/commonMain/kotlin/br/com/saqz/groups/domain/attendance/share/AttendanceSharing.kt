@@ -12,7 +12,7 @@ value class AttendanceLinkCode(val value: String)
 @JvmInline
 value class AttendanceLinkUrl(val value: String)
 
-data class AttendanceLinkDestination(val groupId: GroupId, val gameId: String)
+data class AttendanceLinkDestination(val groupId: GroupId, val gameId: String, val registrationRequired: Boolean = false)
 
 data class AttendanceSharePerson(
     val displayName: String,

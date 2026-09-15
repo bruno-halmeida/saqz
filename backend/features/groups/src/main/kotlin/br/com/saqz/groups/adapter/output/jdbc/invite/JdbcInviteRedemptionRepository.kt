@@ -58,6 +58,14 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         FROM group_invites invites
         JOIN access_groups groups ON groups.id = invites.group_id
         WHERE invites.token_digest = :tokenDigest
+        UNION ALL
+        SELECT m.group_id, groups.deleted_at IS NOT NULL AS group_deleted,
+               groups.entry_requires_approval, game.confirmation_deadline AS expires_at
+        FROM notification_attendance_links link
+        JOIN group_messages m ON m.id = link.message_id
+        JOIN access_groups groups ON groups.id = m.group_id
+        JOIN games game ON game.id = m.game_id AND game.group_id = m.group_id
+        WHERE sha256(convert_to(link.code, 'UTF8')) = :tokenDigest AND game.status = 'PUBLISHED'
         """.trimIndent(),
     )
         .param("tokenDigest", digest.toByteArray())

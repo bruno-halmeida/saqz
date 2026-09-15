@@ -152,3 +152,28 @@ class NotificationChannelSettingsScreenshotTest : ConnectedFlowsScreenshotScene(
     @Test fun whatsappSaving() = notifications("settings-whatsapp-saving", settingsState.copy(busy = true,
         settingsChannel = br.com.saqz.groups.presentation.communication.NotificationSettingsChannel.WHATSAPP), true)
 }
+
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = RobolectricDeviceQualifiers.Pixel7, application = Application::class)
+class AttendanceLinkScreenshotTest : ConnectedFlowsScreenshotScene() {
+    @Test fun loading() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Loading)
+    @Test fun confirmed() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Confirmed)
+    @Test fun waitlisted() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Waitlisted)
+    @Test fun invalid() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Invalid)
+    @Test fun pending() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Pending)
+    @Test fun registration() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Registration)
+    @Test fun failed() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Failed)
+    private fun scene(phase: br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase) {
+        val destination = if (phase in listOf(
+            br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Confirmed,
+            br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Waitlisted,
+        )) br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination(br.com.saqz.domain.GroupId("group"), "game")
+        else null
+        capture("attendance-link-${phase.name.lowercase()}") {
+            br.com.saqz.groups.presentation.attendancelink.AttendanceLinkScreen(
+                br.com.saqz.groups.presentation.attendancelink.AttendanceLinkState(phase, destination), {}, {}, {},
+            )
+        }
+    }
+}

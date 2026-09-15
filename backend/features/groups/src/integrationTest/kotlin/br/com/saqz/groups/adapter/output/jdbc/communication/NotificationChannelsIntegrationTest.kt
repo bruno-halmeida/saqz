@@ -16,7 +16,8 @@ class NotificationChannelsIntegrationTest {
     private val transaction = JdbcTransactionRunner(source)
     private val repository = JdbcGroupCommunicationRepository(source)
     private val service = GroupCommunicationService(transaction, JdbcGroupReadRepository(source), repository)
-    private val whatsapp = JdbcNotificationWhatsApp(source, transaction)
+    private val whatsapp = JdbcNotificationWhatsApp(source, transaction,
+        br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory(java.net.URI("https://saqz.test-app.link")))
     private val push = JdbcNotificationPush(source, transaction)
     private val owner = user("Owner")
     private val member = user("Member")
@@ -152,6 +153,74 @@ class NotificationChannelsIntegrationTest {
         jdbc.sql("UPDATE group_charges SET status = 'CANCELLED' WHERE id = :id").param("id", charge).update()
         drain { error("cancelled charge") }
         assertEquals("CANCELLED", status())
+    }
+
+    @Test fun `chat push delivers without WhatsApp and respects its own preference`() {
+        publish(MessageChannel.CHAT, "Mensagem da conversa")
+        val sent = mutableListOf<Pair<String, NotificationPush>>()
+        push.drain(NotificationPushSender { token, message -> sent += token to message; PushDelivery.SENT })
+        assertEquals("member-device", sent.single().first)
+        assertEquals(group, sent.single().second.groupId)
+        assertEquals("Você recebeu uma mensagem no grupo. Abra o app para conferir.", sent.single().second.body)
+        assertEquals(inbox().single().sequence, sent.single().second.notificationId)
+        assertEquals(0L, count("notification_whatsapp_queue"))
+        service.savePreferences(member, NotificationPreferences(push = PushPreferences(messages = false)))
+        publish(MessageChannel.CHAT)
+        push.drain(NotificationPushSender { _, _ -> error("muted chat") })
+        assertEquals(2, inbox().size)
+    }
+
+    @Test fun `presence sends app link and resolves only for an active member without changing attendance`() {
+        service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(reminders = true)))
+        val game = UUID.randomUUID()
+        jdbc.sql("""
+            INSERT INTO games(id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
+                confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at)
+            VALUES (:id, :g, 'Treino', current_date + 2, '12:00', 'UTC', now() + interval '2 days', 90,
+                now() + interval '1 day', 'Arena', 'Rua 100', 12, 'PUBLISHED', now(), now())
+        """).param("id", game).param("g", group).update()
+        val request = UUID.randomUUID()
+        service.remind(owner, group, game, request).success()
+        service.remind(owner, group, game, request).success()
+        assertEquals(1L, count("notification_attendance_links"))
+        val code = jdbc.sql("SELECT code FROM notification_attendance_links").query(String::class.java).single()
+        val sent = mutableListOf<WhatsAppNotification>()
+        drain { sent += it; WhatsAppDelivery.Accepted }
+        assertTrue(sent.single().body.contains("saqz_attendance=$code"))
+        assertTrue(sent.single().body.contains("Confirmar minha presença no Saqz:"))
+        val pushes = mutableListOf<NotificationPush>()
+        push.drain(NotificationPushSender { token, message -> assertEquals("member-device", token); pushes += message; PushDelivery.SENT })
+        assertEquals("Confirme sua presença no próximo jogo. Abra o app para conferir.", pushes.single().body)
+        val resolver = br.com.saqz.groups.application.attendance.share.ResolveAttendanceLink(transaction,
+            br.com.saqz.groups.adapter.output.jdbc.attendance.share.JdbcAttendanceLinkRepository(source), java.time.Clock.systemUTC())
+        assertEquals(br.com.saqz.groups.application.attendance.share.ResolveAttendanceLinkResult.Success(group, game, registrationRequired = true),
+            resolver.execute(member, code))
+        assertEquals(0L, count("game_attendance"))
+        assertEquals(br.com.saqz.groups.application.attendance.share.ResolveAttendanceLinkResult.InvalidOrExpired,
+            resolver.execute(user("Stranger"), code))
+        val redeemer = br.com.saqz.groups.application.invite.redeem.RedeemInvite(transaction,
+            br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteRedemptionRepository(source),
+            object : br.com.saqz.sharedkernel.subscription.SubscriptionLimits {
+                override fun groupLimitFor(ownerId: UUID): Int? = null
+                override fun athleteLimitFor(ownerId: UUID): Int? = null
+            }, java.time.Clock.systemUTC())
+        val newcomer = user("New athlete")
+        assertIs<br.com.saqz.groups.application.invite.redeem.RedeemInviteResult.Success>(redeemer.execute(newcomer, code))
+        assertEquals(br.com.saqz.groups.application.attendance.share.ResolveAttendanceLinkResult.Success(group, game, true),
+            resolver.execute(newcomer, code))
+        br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteRepository(source).updateOwn(
+            br.com.saqz.groups.application.athlete.UpdateOwnAthleteProfileCommand(group, newcomer, null, null, null, null, null, null))
+        assertEquals(br.com.saqz.groups.application.attendance.share.ResolveAttendanceLinkResult.Success(group, game, false),
+            resolver.execute(newcomer, code))
+        assertEquals(0L, count("game_attendance"))
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :id").param("id", group).update()
+        val pending = user("Pending athlete")
+        assertEquals(br.com.saqz.groups.application.invite.redeem.RedeemInviteResult.Pending(group), redeemer.execute(pending, code))
+        assertEquals(1L, count("group_entry_requests"))
+        assertEquals(br.com.saqz.groups.application.attendance.share.ResolveAttendanceLinkResult.InvalidOrExpired,
+            resolver.execute(pending, code))
+        jdbc.sql("UPDATE group_memberships SET active = false WHERE user_id = :u").param("u", member).update()
+        assertEquals(br.com.saqz.groups.application.attendance.share.ResolveAttendanceLinkResult.InvalidOrExpired, resolver.execute(member, code))
     }
 
     private fun publish(channel: MessageChannel, body: String = "Aviso", request: UUID = UUID.randomUUID()) =

@@ -71,6 +71,7 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(GroupsRoute.MemberEditor::class, GroupsRoute.MemberEditor.serializer())
             subclass(GroupsRoute.MemberProfile::class, GroupsRoute.MemberProfile.serializer())
             subclass(GroupsRoute.Thread::class, GroupsRoute.Thread.serializer())
+            subclass(GroupsRoute.AttendanceLink::class, GroupsRoute.AttendanceLink.serializer())
             subclass(GroupsRoute.Notifications::class, GroupsRoute.Notifications.serializer())
             // VUL-151: rotas de jogo — registro incondicional para sobreviver à rotação.
             subclass(GroupsRoute.GameEditor::class, GroupsRoute.GameEditor.serializer())

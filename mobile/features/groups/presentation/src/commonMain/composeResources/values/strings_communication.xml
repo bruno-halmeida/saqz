@@ -34,4 +34,6 @@
     <string name="attendance_link_waitlisted">Você entrou na lista de espera. Confira sua posição no jogo.</string>
     <string name="attendance_link_invalid">Não foi possível confirmar. O prazo pode ter encerrado ou este jogo não está disponível para sua conta.</string>
     <string name="attendance_link_open_game">Ver jogo</string>
+    <string name="attendance_link_registration">Complete seu cadastro de atleta neste grupo para confirmar a presença.</string>
+    <string name="attendance_link_pending">Sua entrada no grupo aguarda aprovação. Depois de aprovado, atualize para concluir seu cadastro e confirmar a presença.</string>
 </resources>

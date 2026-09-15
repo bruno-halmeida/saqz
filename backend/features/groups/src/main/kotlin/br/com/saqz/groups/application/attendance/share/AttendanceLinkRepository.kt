@@ -34,6 +34,7 @@ data class AttendanceLinkResolvableTarget(
     val gameId: UUID,
     val status: GameStatus,
     val confirmationDeadline: Instant,
+    val registrationRequired: Boolean = false,
 )
 
 data class RecordInvalidAttendanceLinkAttempt(

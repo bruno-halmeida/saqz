@@ -40,6 +40,9 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             """.trimIndent(),
         ).param("id", id).param("group", groupId).param("actor", actor).param("channel", channel.name, Types.OTHER)
             .param("request", requestId).param("body", body).param("game", gameId, Types.OTHER).update()
+        if (channel == MessageChannel.REMINDER) {
+            jdbc.sql("INSERT INTO notification_attendance_links(message_id) VALUES (:id)").param("id", id).update()
+        }
         jdbc.sql(
             """
             INSERT INTO group_notifications (recipient_id, message_id)

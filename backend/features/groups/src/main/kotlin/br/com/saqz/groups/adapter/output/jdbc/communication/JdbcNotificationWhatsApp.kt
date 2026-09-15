@@ -1,11 +1,15 @@
 package br.com.saqz.groups.adapter.output.jdbc.communication
 
 import br.com.saqz.groups.application.communication.*
+import br.com.saqz.groups.application.attendance.share.AttendanceLinkCode
+import br.com.saqz.groups.application.attendance.share.AttendanceLinkFactory
 import br.com.saqz.groups.application.create.TransactionRunner
 import org.springframework.jdbc.core.simple.JdbcClient
 import javax.sql.DataSource
 
-class JdbcNotificationWhatsApp(dataSource: DataSource, private val transaction: TransactionRunner) {
+class JdbcNotificationWhatsApp(
+    dataSource: DataSource, private val transaction: TransactionRunner, private val links: AttendanceLinkFactory,
+) {
     private val jdbc = JdbcClient.create(dataSource)
 
     fun drain(sender: NotificationWhatsAppSender, limit: Int = 20) {
@@ -21,11 +25,14 @@ class JdbcNotificationWhatsApp(dataSource: DataSource, private val transaction: 
             ?: return@inTransaction false
         val (id, attempts) = job
         val message = jdbc.sql("""
-            SELECT c.phone, c.group_name, c.body FROM notification_delivery_context c
+            SELECT c.phone, c.group_name, c.body, link.code FROM notification_delivery_context c
+            JOIN group_notifications n ON n.sequence = c.sequence
+            LEFT JOIN notification_attendance_links link ON link.message_id = n.message_id
             JOIN notification_whatsapp_queue q ON q.notification_id = c.sequence AND q.phone = c.phone
             WHERE c.sequence = :id AND c.whatsapp_enabled
         """).param("id", id).query { rs, _ ->
-            WhatsAppNotification(id, rs.getString("phone"), "Saqz · ${rs.getString("group_name")}\n${rs.getString("body")}")
+            val link = rs.getString("code")?.let { "\nConfirmar minha presença no Saqz: ${links.create(AttendanceLinkCode.from(it))}" }.orEmpty()
+            WhatsAppNotification(id, rs.getString("phone"), "Saqz · ${rs.getString("group_name")}\n${rs.getString("body")}$link")
         }.optional().orElse(null)
         if (message == null) {
             finish(id, "CANCELLED")

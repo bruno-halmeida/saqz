@@ -59,6 +59,7 @@ class JdbcAthleteRepository(
                 level = :level,
                 preferred_side = :preferredSide,
                 height_cm = :heightCm,
+                athlete_registration_completed = true,
                 updated_at = now()
             WHERE group_id = :groupId AND user_id = :userId
               AND EXISTS (

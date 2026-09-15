@@ -115,6 +115,18 @@ class AttendanceShareEndpointIntegrationTest {
     }
 
     @Test
+    fun `incomplete athlete resolution includes registration requirement for the same group`() {
+        resolveAttendanceRepository.resolvableTarget = AttendanceLinkResolvableTarget(
+            AttendanceShareTestConfiguration.GROUP_ID, AttendanceShareTestConfiguration.GAME_ID,
+            GameStatus.PUBLISHED, AttendanceShareTestConfiguration.NOW.plusSeconds(60), registrationRequired = true,
+        )
+        val response = resolve(AttendanceShareTestConfiguration.CODE.value)
+        assertEquals(200, response.statusCode())
+        assertEquals(true, json(response)["registrationRequired"].booleanValue())
+        assertEquals(AttendanceShareTestConfiguration.GROUP_ID.toString(), json(response)["groupId"].stringValue())
+    }
+
+    @Test
     fun `missing malformed and frozen capabilities share equivalent public problems`() {
         resolveAttendanceRepository.resolvableTarget = null
         val missing = resolve(AttendanceShareTestConfiguration.CODE.value)

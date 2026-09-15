@@ -23,6 +23,7 @@ import org.koin.dsl.module
  * a [AccessViewModel] cancela no `onCleared`.
  */
 internal val composePresentationModule = module {
+    single { br.com.saqz.composeapp.notifications.AttendanceLinkInbox(get(), get(), get()) }
     factoryOf(::AccessOrchestrator) { bind<AccessRuntimeContract>() }
     viewModelOf(::AccessViewModel)
     viewModelOf(::SubscriptionGateViewModel)

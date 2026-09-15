@@ -80,6 +80,7 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
                 result.getObject("game_id", UUID::class.java),
                 GameStatus.valueOf(result.getString("status")),
                 result.getTimestamp("confirmation_deadline").toInstant(),
+                result.getBoolean("registration_required"),
             )
         }
         .optional()
@@ -188,13 +189,22 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
         """
 
         const val RESOLVABLE_TARGET = """
-            SELECT g.group_id, g.id AS game_id, g.status, g.confirmation_deadline
+            SELECT g.group_id, g.id AS game_id, g.status, g.confirmation_deadline, false AS registration_required
             FROM game_attendance_links link
             JOIN games g ON g.id = link.game_id AND g.group_id = link.group_id
             JOIN access_groups ag ON ag.id = link.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships member ON member.group_id = link.group_id AND member.user_id = :actor
             WHERE link.token_digest = :digest
               AND (ag.owner_user_id = :actor OR member.user_id IS NOT NULL)
+            UNION ALL
+            SELECT m.group_id, game.id AS game_id, game.status, game.confirmation_deadline,
+                   NOT member.athlete_registration_completed AS registration_required
+            FROM notification_attendance_links link
+            JOIN group_messages m ON m.id = link.message_id
+            JOIN games game ON game.id = m.game_id AND game.group_id = m.group_id
+            JOIN access_groups ag ON ag.id = m.group_id AND ag.deleted_at IS NULL
+            JOIN group_memberships member ON member.group_id = m.group_id AND member.user_id = :actor AND member.active
+            WHERE sha256(convert_to(link.code, 'UTF8')) = :digest
         """
 
         const val SNAPSHOT_ACCESS = """

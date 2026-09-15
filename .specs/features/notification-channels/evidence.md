@@ -76,3 +76,46 @@ Gate focado iOS (gateway e comunicação), detekt dos três módulos e compilaç
 - Testes anteriores de salvar/erro e payload legado preservados. Mapeamento reverso: testes novos somente AC5.
 
 Execução ampla iOS de apresentação encontrou dois testes fora do escopo com expectativa “reserva” e recurso “lista de espera”: HomeViewModelTest e GroupDetailsScreenTest. A diferença já está em HEAD nos recursos originais; arquivos envolvidos não foram modificados. Não houve execução isolada da base. Gate focado de notificações verde; gate amplo continua vermelho.
+
+## T4 — AC6–7
+Gates PASS: backend JDBC (multicanal 9, resolução de presença 9, convites 21), HTTP presença (12), bootJar; mobile iOS (ViewModel presença/cadastro 5, gateway cadastro 1, inbox persistente 2), compilações Android/iOS do shell, detekt e 7 capturas do link.
+
+- `AttendanceLinkViewModelTest.kt:20` — `assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:21` — `assertEquals(destination, vm.state.value.destination)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:22` — `assertEquals(listOf(destination), gateway.targets)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:23` — `assertEquals(AttendanceIntent.Confirm, gateway.commands.single().intent)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:26` — `assertEquals(AttendanceLinkPhase.Waitlisted, waitlisted.state.value.phase)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:27` — `assertEquals(gateway.commands.first().requestId, gateway.commands.last().requestId)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:28` — `assertEquals("00000000-0000-0000-0000-000000000000", gateway.commands.first().requestId)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:34` — `assertEquals(AttendanceLinkPhase.Invalid, vm.state.value.phase)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:35` — `assertTrue(gateway.commands.isEmpty())` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:38` — `assertEquals(AttendanceLinkPhase.Invalid, closed.state.value.phase)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:39` — `assertNull(closed.state.value.destination)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:45` — `assertEquals(AttendanceLinkPhase.Failed, vm.state.value.phase)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:48` — `assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:49` — `assertEquals(1, gateway.commands.map { it.requestId }.distinct().size)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:51` — `assertEquals(2, gateway.commands.size)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:58` — `assertEquals(listOf(InviteCode(code)), invite.codes)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:59` — `assertEquals(AttendanceLinkPhase.Registration, vm.state.value.phase)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:60` — `assertEquals(AttendanceLinkEffect.Register("group"), vm.effects.first())` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:61` — `assertTrue(gateway.commands.isEmpty())` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:63` — `assertEquals(AttendanceLinkEffect.Register("group"), incomplete.effects.first())` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:64` — `assertTrue(gateway.commands.isEmpty())` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:70` — `assertEquals(AttendanceLinkPhase.Pending, vm.state.value.phase)` (AC6–7).
+- `AttendanceLinkViewModelTest.kt:71` — `assertTrue(gateway.commands.isEmpty())` (AC6–7).
+- `AttendanceLinkInboxTest.kt:15` — `assertEquals("first", ports.stored)` (AC6–7).
+- `AttendanceLinkInboxTest.kt:16` — `assertEquals("first", inbox.pending.value)` (AC6–7).
+- `AttendanceLinkInboxTest.kt:20` — `assertEquals("first", restored.pending.value)` (AC6–7).
+- `AttendanceLinkInboxTest.kt:22` — `assertEquals("first", ports.stored)` (AC6–7).
+- `AttendanceLinkInboxTest.kt:24` — `assertNull(ports.stored)` (AC6–7).
+- `AttendanceLinkInboxTest.kt:25` — `assertNull(restored.pending.value)` (AC6–7).
+- `AttendanceLinkInboxTest.kt:35` — `assertEquals("new", inbox.pending.value)` (AC6–7).
+- `AttendanceLinkInboxTest.kt:38` — `assertEquals("new", inbox.pending.value)` (AC6–7).
+- `AttendanceLinkInboxTest.kt:39` — `assertEquals("new", ports.stored)` (AC6–7).
+- `AttendanceLinkRegistrationGatewayTest.kt:18` — `assertEquals("/api/attendance-links/resolve", request.url.encodedPath)` (AC6–7).
+- `AttendanceLinkRegistrationGatewayTest.kt:19` — `assertEquals("Bearer test-token", request.headers[HttpHeaders.Authorization])` (AC6–7).
+- `AttendanceLinkRegistrationGatewayTest.kt:26` — `assertEquals(SaqzResult.Success(AttendanceLinkDestination(GroupId("group"), "game", true)),` (AC6–7).
+
+Asserções de destino, estado, payload e requestId mapeiam AC6; asserções de cadastro, pendência e ausência de confirmação antecipada mapeiam AC7. Teste JDBC novo valida entrada via código, política de aprovação e marca de cadastro concluído. O teste HTTP legado continuou inalterado: registrationRequired=false é omitido do JSON, mantendo seu contrato; true é testado separadamente.
+
+A spec foi atualizada conforme a instrução adicional do usuário sobre cadastro vinculado ao grupo. A expectativa do teste novo de resolução mudou para registrationRequired=true para uma associação recém-criada, seguindo esse requisito; não se alterou nenhuma expectativa legada.

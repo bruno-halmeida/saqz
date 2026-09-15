@@ -45,7 +45,7 @@ sealed interface GroupsRoute : NavKey {
 
     /** 3j/3k: first athlete profile after a successful invite redemption. */
     @Serializable
-    data class AthleteRegistration(val groupId: String, val fromProfile: Boolean = false) : GroupsRoute
+    data class AthleteRegistration(val groupId: String, val fromProfile: Boolean = false, val attendanceCode: String? = null) : GroupsRoute
 
     @Serializable
     data class MemberProfile(val groupId: String, val userId: String) : GroupsRoute
@@ -55,6 +55,9 @@ sealed interface GroupsRoute : NavKey {
 
     @Serializable
     data class Notifications(val settings: Boolean = false) : GroupsRoute
+
+    @Serializable
+    data class AttendanceLink(val code: String) : GroupsRoute
 
     /** 3g: member editor. */
     @Serializable

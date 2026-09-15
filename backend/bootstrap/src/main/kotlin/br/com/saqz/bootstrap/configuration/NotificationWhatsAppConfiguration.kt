@@ -29,8 +29,9 @@ class NotificationWhatsAppConfiguration {
             .connectTimeout(Duration.ofSeconds(10)).readTimeout(Duration.ofSeconds(30)).build()
     }
     @Bean fun notificationWhatsAppSender(client: UazapiClient): NotificationWhatsAppSender = UazapiNotificationSender(client)
-    @Bean fun notificationWhatsAppQueue(dataSource: DataSource, transaction: JdbcTransactionRunner) =
-        JdbcNotificationWhatsApp(dataSource, transaction)
+    @Bean fun notificationWhatsAppQueue(dataSource: DataSource, transaction: JdbcTransactionRunner,
+        links: br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory) =
+        JdbcNotificationWhatsApp(dataSource, transaction, links)
     @Bean fun notificationWhatsAppWorker(queue: JdbcNotificationWhatsApp, sender: NotificationWhatsAppSender) =
         NotificationWhatsAppWorker(queue, sender)
 }

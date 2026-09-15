@@ -182,6 +182,12 @@ internal fun SaqzNavHost(
     var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
+    val attendanceLinks = koinInject<br.com.saqz.composeapp.notifications.AttendanceLinkInbox>()
+    val attendanceCode by attendanceLinks.pending.collectAsStateWithLifecycle()
+    androidx.compose.runtime.DisposableEffect(attendanceLinks) {
+        attendanceLinks.start()
+        onDispose { attendanceLinks.stop() }
+    }
     val inviteCoordinator = koinInject<GroupInviteCoordinator>()
     val receiptsCoordinator = koinInject<ReceivablesCoordinator>()
     val receipts = receiptsCoordinator.state.collectAsStateWithLifecycle().value
@@ -202,6 +208,15 @@ internal fun SaqzNavHost(
         } else if (state.session !is SessionAccessState.Ready && coordinatorAuthenticated) {
             coordinatorAuthenticated = false
             inviteCoordinator.onSignedOut()
+        }
+    }
+    LaunchedEffect(attendanceCode, state.session) {
+        val code = attendanceCode
+        if (code != null && state.session is SessionAccessState.Ready) {
+            if (backStack.none { it is GroupsRoute.AttendanceLink && it.code == code }) {
+                backStack.add(GroupsRoute.AttendanceLink(code))
+            }
+            attendanceLinks.consume(code)
         }
     }
     LaunchedEffect(inviteCoordinator, state.session) {
@@ -758,7 +773,9 @@ internal fun SaqzNavHost(
                         profileRefreshVersion++
                         groupDetailsRefreshVersion++
                         pop()
-                        if (!route.fromProfile) backStack.add(GroupsRoute.Details(route.groupId))
+                        val attendanceCode = route.attendanceCode
+                        if (attendanceCode != null) backStack.add(GroupsRoute.AttendanceLink(attendanceCode))
+                        else if (!route.fromProfile) backStack.add(GroupsRoute.Details(route.groupId))
                     },
                     onBack = pop,
                 )
@@ -789,6 +806,15 @@ internal fun SaqzNavHost(
                     groupDetailsRefreshVersion++
                     pop()
                 })
+            }
+            entry<GroupsRoute.AttendanceLink> { route ->
+                br.com.saqz.groups.presentation.attendancelink.AttendanceLinkRoot(route.code, pop, onRegister = { groupId ->
+                    pop()
+                    backStack.add(GroupsRoute.AthleteRegistration(groupId, attendanceCode = route.code))
+                }) { destination ->
+                    pop()
+                    backStack.add(GroupsRoute.GameDetail(destination.groupId.value, destination.gameId))
+                }
             }
             entry<GroupsRoute.Notifications> { route ->
                 br.com.saqz.groups.presentation.communication.NotificationCenterRoot(route.settings, onBack = pop) { effect ->

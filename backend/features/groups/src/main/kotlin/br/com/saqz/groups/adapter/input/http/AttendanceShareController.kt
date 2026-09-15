@@ -29,6 +29,8 @@ data class ResolveAttendanceLinkRequest @JsonCreator constructor(
 data class ResolvedAttendanceLinkResponse(
     val groupId: UUID,
     val gameId: UUID,
+    @get:com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT)
+    val registrationRequired: Boolean = false,
 )
 
 data class AttendanceShareSnapshotPersonResponse(
@@ -85,7 +87,7 @@ class AttendanceShareController(
         ResolveAttendanceLinkResult.InvalidOrExpired -> throw AttendanceLinkInvalidOrExpiredException()
         is ResolveAttendanceLinkResult.AttemptLimit -> throw AttendanceLinkAttemptLimitException(result.retryAfterSeconds)
         ResolveAttendanceLinkResult.Unavailable -> throw AttendanceLinkUnavailableException()
-        is ResolveAttendanceLinkResult.Success -> ResolvedAttendanceLinkResponse(result.groupId, result.gameId)
+        is ResolveAttendanceLinkResult.Success -> ResolvedAttendanceLinkResponse(result.groupId, result.gameId, result.registrationRequired)
     }
 
     @GetMapping("/api/groups/{groupId}/games/{gameId}/attendance-share")
