@@ -65,8 +65,146 @@
     .offer li { position:relative; padding-left:24px; line-height:1.45; }
     .offer li::before { content:""; position:absolute; width:8px; height:8px; left:3px; top:.45em; border-radius:50%; background:var(--lime); box-shadow:0 0 0 4px rgba(199,243,0,.2); }
     .app-link { display:block; margin-top:14px; text-align:center; text-decoration:none; }
-    footer { grid-column:1 / -1; color:var(--muted); font-size:13px; text-align:center; }
-    @media (max-width:419px) { .shell { width:min(100% - 24px, 440px); } main { padding-top:16px; } .card { padding:18px; } h1 { font-size:28px; } }
+    .download-panel {
+      margin: 4px 0 8px;
+      padding: 20px 18px 18px;
+      border-radius: 16px;
+      background: var(--navy);
+      color: var(--white);
+    }
+    .download-kicker {
+      margin: 0 0 8px;
+      color: var(--lime);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .download-title {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: -.03em;
+    }
+    .download-steps {
+      margin: 16px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+    .download-steps li {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 10px;
+      align-items: start;
+      color: rgba(255,255,255,.82);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .download-steps li::before {
+      content: counter(step);
+      counter-increment: step;
+      display: grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      margin-top: 1px;
+      border-radius: 50%;
+      background: var(--lime);
+      color: var(--navy);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .download-steps { counter-reset: step; }
+    .store-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .store-badge {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 56px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 14px;
+      background: #050A1C;
+      color: var(--white);
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .store-badge svg { width: 22px; height: 22px; flex: 0 0 auto; fill: currentColor; }
+    .store-badge small {
+      display: block;
+      color: rgba(255,255,255,.62);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .store-badge strong { display: block; margin-top: 1px; font-size: 14px; letter-spacing: -.02em; }
+    .store-badge:focus-visible { outline: 3px solid rgba(199,243,0,.35); outline-offset: 2px; }
+    .store-badge:not(.is-soon):hover { border-color: var(--lime); }
+    .store-badge.is-soon {
+      cursor: default;
+      pointer-events: none;
+      opacity: .78;
+    }
+    .store-badge .soon {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: var(--lime);
+      color: var(--navy);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .store-badge:not(.is-soon) .soon { display: none; }
+    .download-soon {
+      margin: 12px 0 0;
+      color: rgba(255,255,255,.62);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .download-open {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+    .download-open-label {
+      margin: 0;
+      color: rgba(255,255,255,.72);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .download-panel .btn { margin-top: 12px; }
+    .download-panel .btn-quiet {
+      background: transparent;
+      color: var(--white);
+      border-color: rgba(255,255,255,.22);
+    }
+    .download-panel .btn-quiet:hover { background: rgba(255,255,255,.06); }
+    .download-panel .notice { background: rgba(255,255,255,.08); color: rgba(255,255,255,.88); }
+    .download-panel .notice.error { background: rgba(229,72,77,.16); color: #FFD2D3; }
+    .trial-block { margin-top: 18px; padding-top: 4px; }
+    .trial-block h3 { margin: 0 0 6px; font-size: 16px; letter-spacing: -.02em; }
+    footer { grid-column: 1 / -1; color: var(--muted); font-size: 13px; text-align: center; }
+    .download-panel a.store-badge { color: var(--white); font-weight: 700; text-decoration: none; }
+    @media (max-width:419px) {
+      .shell { width:min(100% - 24px, 440px); }
+      main { padding-top:16px; }
+      .card { padding:18px; }
+      h1 { font-size:28px; }
+      .store-row { grid-template-columns: 1fr; }
+    }
     @media (max-width:1099px) { .intro .offer { display:none; } }
     @media (min-width:1100px) {
       .shell { width:min(100% - 48px, 920px); }
@@ -148,13 +286,38 @@
 
     <section class="card" id="ready-card" hidden>
       <h2 id="ready-title">Sua conta está pronta.</h2>
-      <p class="sub" id="ready-copy">Escolha seu teste aqui. A liberação fica vinculada a esta conta, e o prazo só começa quando você criar seu primeiro grupo no app.</p>
-      <ul class="offer">
-        <li>Quando disponível, o teste começa na criação do primeiro grupo. Os demais usam o mesmo prazo.</li>
-        <li>O teste do Organizador inclui até 3 grupos e atletas ilimitados, sem cartão.</li>
-        <li>Cupons podem oferecer um prazo próprio de teste, conforme a campanha.</li>
-      </ul>
-      <div id="trial-options">
+      <p class="sub" id="ready-copy">Baixe o app e entre com esta mesma conta. O teste começa quando você criar o primeiro grupo no celular.</p>
+      <div class="download-panel">
+        <p class="download-kicker">Próximo passo</p>
+        <h3 class="download-title">Instale o Saqz no celular</h3>
+        <ol class="download-steps">
+          <li>Baixe o app na loja do iPhone ou Android</li>
+          <li>Entre com o mesmo e-mail ou Google deste cadastro</li>
+          <li>Crie o primeiro grupo para começar o teste</li>
+        </ol>
+        <div class="store-row">
+          <a class="store-badge is-soon" id="ios-store" data-label="Baixar na App Store" aria-disabled="true" aria-label="Baixar na App Store — em breve">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16.18 12.55c.03-2.08 1.7-3.08 1.78-3.13-1-.1-2.12.58-2.66.58-.56 0-1.4-.56-2.31-.55-1.19.02-2.29.69-2.9 1.76-1.25 2.16-.32 5.35.88 7.1.6.86 1.3 1.82 2.22 1.78.9-.04 1.23-.57 2.31-.57s1.38.57 2.32.55c.96-.02 1.57-.86 2.15-1.73.68-1 .96-1.96.98-2.01-.02 0-1.86-.71-1.89-2.83zM14.7 8.4c.48-.59.81-1.4.72-2.22-.7.03-1.55.47-2.05 1.05-.45.52-.85 1.36-.74 2.16.78.06 1.58-.4 2.07-.99z"/></svg>
+            <span><small>Baixar na</small><strong>App Store</strong></span>
+            <span class="soon">Em breve</span>
+          </a>
+          <a class="store-badge is-soon" id="android-store" data-label="Disponível no Google Play" aria-disabled="true" aria-label="Disponível no Google Play — em breve">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.6 2.8v18.4c0 .5.4.7.8.4l10.2-9.2c.3-.3.3-.8 0-1.1L4.4 2.3c-.4-.3-.8-.1-.8.5zm12.3 7.2 2.3-2.1c.7-.6.7-1.8 0-2.4L15.3 3c-.3-.3-.8-.1-.8.3v4.3l1.4 2.4zm0 4.8-1.4 2.4v4.3c0 .4.5.6.8.3l2.9-2.6c.7-.6.7-1.8 0-2.4l-2.3-2z"/></svg>
+            <span><small>Disponível no</small><strong>Google Play</strong></span>
+            <span class="soon">Em breve</span>
+          </a>
+        </div>
+        <p class="download-soon" id="store-soon-note">Os links das lojas entram neste layout assim que o app for publicado.</p>
+        <div class="download-open">
+          <p class="download-open-label">Já tem o app instalado?</p>
+          <button class="btn" id="request-app-link" type="button">Abrir o app neste celular</button>
+          <a class="btn btn-quiet app-link" id="app-link" href="#" target="_blank" rel="noopener" hidden>Continuar no app</a>
+          <div class="notice" id="app-link-help">O link é temporário. Se expirar, gere outro ou entre no app com esta mesma conta.</div>
+          <div class="notice error" id="app-link-error" role="alert" hidden></div>
+        </div>
+      </div>
+      <div class="trial-block" id="trial-options">
+        <h3>Teste desta conta</h3>
         <p class="notice" id="trial-status" role="status">Consultando as opções de teste…</p>
         <button class="btn" id="enroll-trial" type="button" hidden>Liberar meu teste</button>
         <form id="trial-coupon-form" hidden>
@@ -165,11 +328,7 @@
         <button class="btn btn-quiet" id="refresh-trial" type="button">Atualizar opções</button>
         <p class="fine"><a href="../assinar/">Conhecer os planos pagos</a></p>
       </div>
-      <p class="fine">O Titular comporta 1 grupo e até 25 atletas. Se usar mais durante o teste, escolha um plano compatível. Nenhum dado será excluído automaticamente.</p>
-      <button class="btn" id="request-app-link" type="button">Abrir o app no celular</button>
-      <a class="btn btn-quiet app-link" id="app-link" href="#" target="_blank" rel="noopener" hidden>Continuar no app</a>
-      <div class="notice" id="app-link-help">O link é temporário e seguro. Se expirar, gere outro ou entre manualmente com esta mesma conta.</div>
-      <div class="notice error" id="app-link-error" role="alert" hidden></div>
+      <p class="fine">O teste do Organizador inclui até 3 grupos e atletas ilimitados, sem cartão. O prazo só começa na criação do primeiro grupo.</p>
       <button class="btn btn-quiet" id="logout" type="button">Sair e entrar com outra conta</button>
     </section>
     </div>

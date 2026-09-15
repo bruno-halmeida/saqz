@@ -131,6 +131,7 @@
     hide("app-link");
     $("app-link").removeAttribute("href");
     setMessage("app-link-error", "");
+    setMessage("app-link-help", "O link é temporário. Se expirar, gere outro ou entre no app com esta mesma conta.");
     $("auth-form").reset();
     $("profile-form").reset();
   }
@@ -163,6 +164,8 @@
     show("ready-card");
     hide("profile-card");
     setMessage("ready-title", "Sua conta está pronta.");
+    setMessage("ready-copy", "Baixe o app e entre com esta mesma conta. O teste começa quando você criar o primeiro grupo no celular.");
+    bindStoreBadges();
     loadTrial(currentUser, generation);
   }
   function bootstrap(user, requestedName, expectedGeneration) {
@@ -414,6 +417,35 @@
       return url.toString();
     } catch (ignored) { return null; }
   }
+  function storeUrl(value) {
+    return typeof value === "string" && /^https:\/\//.test(value.trim()) ? value.trim() : "";
+  }
+  function bindStoreBadge(id, url) {
+    var element = $(id);
+    var href = storeUrl(url);
+    var label = element.getAttribute("data-label") || "";
+    var soon = !href;
+    element.classList.toggle("is-soon", soon);
+    if (soon) {
+      element.removeAttribute("href");
+      element.removeAttribute("target");
+      element.removeAttribute("rel");
+      element.setAttribute("aria-disabled", "true");
+      element.setAttribute("aria-label", label + " — em breve");
+      return;
+    }
+    element.href = href;
+    element.target = "_blank";
+    element.rel = "noopener noreferrer";
+    element.removeAttribute("aria-disabled");
+    element.setAttribute("aria-label", label);
+  }
+  function bindStoreBadges() {
+    bindStoreBadge("ios-store", config.iosAppStoreUrl);
+    bindStoreBadge("android-store", config.androidPlayStoreUrl);
+    var waiting = $("ios-store").classList.contains("is-soon") && $("android-store").classList.contains("is-soon");
+    $("store-soon-note").hidden = !waiting;
+  }
   function requestAppLink() {
     if (busy || !currentUser || !profileReady) return;
     var user = currentUser;
@@ -457,6 +489,12 @@
         if (validGeneration(user, expectedGeneration)) setMessage("app-link-error", error.safeMessage || "Não foi possível gerar o link agora. Tente novamente.", "error");
       })
       .finally(function () { if (validGeneration(user, expectedGeneration)) setBusy(false); });
+  }
+  function resumeConnectedSession(user) {
+    setMode("login");
+    $("form-title").textContent = "Preparando sua conta";
+    $("form-subtitle").textContent = "Você já está conectado. Seguimos sem criar outra conta.";
+    finishAccount(user, user.displayName || null);
   }
   function setMode(nextMode) {
     mode = nextMode;
@@ -509,6 +547,7 @@
         profileRetry = Boolean(currentUser);
         setBusy(false);
         setMessage("auth-error", currentUser ? "A preparação foi cancelada. Clique em continuar para retomar sua conta." : "A preparação foi cancelada.");
+        if (currentUser) $("submit-auth").textContent = "Continuar com esta conta";
         show("auth-card");
         return;
       }
@@ -526,17 +565,11 @@
       if (observedUser && user && observedUser.uid !== user.uid) {
         resetReady();
         setBusy(false);
-        setMessage("auth-error", "Você entrou com outra conta. Clique em continuar para preparar este perfil.");
-        show("auth-card");
       }
       observedUser = user;
       currentUser = user;
       if (!user) { resetForLogout(); return; }
-      if (!busy && !profileReady) {
-        profileRetry = true;
-        $("submit-auth").textContent = "Continuar com esta conta";
-        setMessage("auth-error", "Você já está conectado. Clique em continuar para preparar sua conta.");
-      }
+      if (!busy && !profileReady && !session) resumeConnectedSession(user);
     });
   }
   function start() {
@@ -545,6 +578,7 @@
       auth = firebase.auth();
       if (config.authEmulatorUrl) auth.useEmulator(config.authEmulatorUrl, { disableWarnings: true });
       bind();
+      bindStoreBadges();
     } catch (error) {
       setMessage("auth-error", "Não foi possível carregar o acesso agora. Tente novamente mais tarde.", "error");
     }
