@@ -42,8 +42,8 @@
     <string name="receipt_error_DENIED">Você não tem permissão para esta operação ou ela está indisponível nas condições atuais.</string>
     <string name="receipt_error_STALE">As condições mudaram. Revise novamente e faça um novo aceite.</string>
     <string name="receipt_error_INVALID">Não foi possível validar a resposta. Atualize os dados antes de continuar.</string>
-    <string name="receipt_error_UNAVAILABLE">Serviço indisponível. Tente novamente; o reenvio da operação mantém o mesmo identificador.</string>
-    <string name="receipt_error_NETWORK">Falha de conexão. Tente novamente; o reenvio da operação mantém o mesmo identificador.</string>
+    <string name="receipt_error_UNAVAILABLE">O serviço está indisponível. Tente novamente em instantes.</string>
+    <string name="receipt_error_NETWORK">Não foi possível conectar. Confira sua internet e tente novamente.</string>
     <string name="receipt_error_SIGNED_OUT">Sua sessão terminou. Entre novamente para continuar.</string>
     <string name="receipt_error_UNCERTAIN">Não foi possível confirmar o resultado da operação.</string>
     <string name="receipt_pending">Há uma operação sem confirmação. Reenvie a mesma operação antes de alterar a configuração.</string>

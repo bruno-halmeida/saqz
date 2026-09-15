@@ -45,7 +45,7 @@
     <string name="onboarding_uploaded">Arquivo enviado para análise. A aprovação será exibida após a confirmação do Asaas.</string>
     <string name="onboarding_pending">Estamos verificando sua tentativa. Mantenha esta tela para acompanhar o resultado sem repetir o cadastro ou o envio.</string>
     <string name="onboarding_pending_help">Se a situação ainda não mudar, atualize novamente em alguns instantes. Os dados do formulário e o arquivo não são salvos no aparelho.</string>
-    <string name="onboarding_recover">Recuperar tentativa</string>
+    <string name="onboarding_recover">Verificar andamento</string>
     <string name="onboarding_provision">Retomar preparação da conta</string>
     <string name="onboarding_refresh">Atualizar cadastro</string>
 </resources>

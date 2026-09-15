@@ -21,7 +21,7 @@ class MyPlanTrialScreenTest {
         setContent {
             SaqzTheme { MyPlanScreen(trialState(TrialStatus.Expired), {}, intents::add) }
         }
-        onNodeWithText("Seu histórico está preservado. Assine para criar jogos, receber novas respostas de presença e voltar a alterar o financeiro.").assertExists()
+        onNodeWithText("Seu histórico está preservado. Assine para marcar jogos, receber novas respostas de presença e voltar a alterar o financeiro.").assertExists()
         onNodeWithTag(MyPlanTags.CancelButton).assertDoesNotExist()
         onNodeWithTag(MyPlanTags.Receipts).assertDoesNotExist()
         onNodeWithTag(MyPlanTags.ChangePlan).assertDoesNotExist()

@@ -13,7 +13,7 @@
     <string name="group_cashbox_received_action">Recebi</string>
     <string name="group_cashbox_statement">Ver extrato completo</string>
     <string name="group_cashbox_pix_title">Pix do grupo</string>
-    <string name="group_cashbox_pix_copy">Copiar</string>
+    <string name="group_cashbox_pix_copy">Copiar chave Pix</string>
     <string name="group_cashbox_empty_title">Caixa zerado</string>
     <string name="group_cashbox_empty_body">Comece definindo a mensalidade ou registrando o aluguel da quadra</string>
     <string name="group_cashbox_empty_action">Registrar primeiro lançamento</string>

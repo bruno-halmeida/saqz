@@ -52,7 +52,7 @@ class GameSettlementScreenTest {
         setScreen(progressState, intents::add)
 
         onNodeWithText("JOGO ENCERRADO").assertExists()
-        onNodeWithText("2 de 6 diaristas acertaram · faltam R$\u00A080,00").assertExists()
+        onNodeWithText("2 de 6 avulsos acertaram · faltam R$\u00A080,00").assertExists()
         onNodeWithText("3 mensalistas").assertExists()
         onNodeWithText("Já estão cobertos pela mensalidade.").assertExists()
         onNodeWithText("Toque em 'Recebi' quando o Pix ou o dinheiro chegar. Nada é cobrado automaticamente.").assertExists()
@@ -71,10 +71,10 @@ class GameSettlementScreenTest {
 
         onNodeWithText("ENCERRADO").assertExists()
         onNodeWithTag(GameSettlementTags.Summary).assertExists()
-        onNodeWithText("2 diaristas", substring = true).assertExists()
+        onNodeWithText("2 avulsos", substring = true).assertExists()
         onAllNodesWithText("R$\u00A07.000,00", substring = true).assertCountEquals(2)
         onNodeWithText("-R$\u00A020,00").assertExists()
-        onNodeWithText("A diferença saiu do saldo. Considere ajustar o valor do diarista.").assertExists()
+        onNodeWithText("A diferença saiu do saldo. Considere ajustar o valor do avulso.").assertExists()
         onAllNodesWithText("Recebido").assertCountEquals(2)
         onNodeWithTag(GameSettlementTags.Cashbox).performScrollTo().performClick()
 

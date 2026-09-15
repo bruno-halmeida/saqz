@@ -87,19 +87,19 @@ class GameDetailScreenTest {
             }
         }
 
-        onNodeWithText("Reserva").assertExists()
+        onNodeWithText("Lista de espera").assertExists()
         onNodeWithText("1º na fila").assertExists()
         onAllNodesWithText("Central").assertCountEquals(2)
         onNodeWithText("Mensalista").assertExists()
-        onNodeWithText("Promover").assertExists()
+        onNodeWithText("Colocar no jogo").assertExists()
     }
 
     @Test
     fun `fifo waitlist hides promote action while keeping capacity action`() = runComposeUiTest {
         setScreen()
 
-        onNodeWithText("Reserva").assertExists()
-        onAllNodesWithText("Promover").assertCountEquals(0)
+        onNodeWithText("Lista de espera").assertExists()
+        onAllNodesWithText("Colocar no jogo").assertCountEquals(0)
         onNodeWithText("Ajustar vagas").assertExists()
     }
 
@@ -107,7 +107,7 @@ class GameDetailScreenTest {
     fun `empty waitlist does not render its section`() = runComposeUiTest {
         setScreen(waitlist = emptyList())
 
-        onAllNodesWithText("Reserva").assertCountEquals(0)
+        onAllNodesWithText("Lista de espera").assertCountEquals(0)
     }
 
     @Test

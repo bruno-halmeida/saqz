@@ -32,7 +32,7 @@ class TrialEntryScreenshotTest {
         val access=TrialAccess(TrialStatus.Ineligible,null,null,"2026-09-13T12:00:00Z",false,false,1,25,true,null,
             offerMode="COUPON_ONLY",canRedeemCoupon=true)
         compose.runOnIdle { state.value=TrialEntryState(loading=false,access=access) }
-        compose.onNodeWithText("Tem um cupom de trial?").assertExists()
+        compose.onNodeWithText("Tem um cupom de teste grátis?").assertExists()
         compose.onNodeWithTag(TrialEntryTags.Continue).assertDoesNotExist()
         compose.onNodeWithTag(TrialEntryTags.Apply).assertIsNotEnabled()
         capture("coupon-only")
@@ -56,7 +56,7 @@ class TrialEntryScreenshotTest {
         compose.runOnIdle { state.value=TrialEntryState(loading=false,access=access.copy(offerMode="OFF",canRedeemCoupon=false)) }
         compose.onNodeWithTag(TrialEntryTags.Code).assertDoesNotExist()
         compose.onNodeWithTag(TrialEntryTags.Continue).assertDoesNotExist()
-        compose.onNodeWithText("O trial está indisponível no momento.",substring=true).assertExists()
+        compose.onNodeWithText("O teste grátis está indisponível no momento.",substring=true).assertExists()
         capture("off")
         compose.runOnIdle { state.value=TrialEntryState(loading=false,failure=TrialEntryFailure.Load) }
         capture("network-error")

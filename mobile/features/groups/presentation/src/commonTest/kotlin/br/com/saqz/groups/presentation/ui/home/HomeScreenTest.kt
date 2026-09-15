@@ -98,8 +98,8 @@ class HomeScreenTest {
             intents::add,
         )
 
-        onNodeWithText("Reserva · 1º").assertIsDisplayed()
-        onNodeWithText("As vagas acabaram. Você entrou na reserva.").assertIsDisplayed()
+        onNodeWithText("Lista de espera · 1º").assertIsDisplayed()
+        onNodeWithText("As vagas acabaram. Você entrou na lista de espera.").assertIsDisplayed()
         onAllNodesWithText("Vou").assertCountEquals(0)
         onAllNodesWithText("Não vou").assertCountEquals(0)
         onNodeWithTag(HomeWaitlistTags.ReservaLeave).assertIsDisplayed()
@@ -169,7 +169,7 @@ class HomeScreenTest {
         onNodeWithTag(HomeAdminTags.Hero).assertIsDisplayed()
         onNodeWithText("Vão").assertIsDisplayed()
         onNodeWithText("Não vão").assertIsDisplayed()
-        onNodeWithText("Pendentes").assertIsDisplayed()
+        onNodeWithText("Sem resposta").assertIsDisplayed()
         // Dono e admin também jogam: o placar não substitui a resposta deles.
         onNodeWithTag(HomeTags.ResponseYes).assertIsDisplayed()
         onNodeWithTag(HomeTags.ResponseNo).assertIsDisplayed()

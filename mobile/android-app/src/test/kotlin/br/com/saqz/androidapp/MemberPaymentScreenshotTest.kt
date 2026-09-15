@@ -68,7 +68,7 @@ class MemberPaymentScreenshotTest {
         compose.runOnIdle { state.value = review.copy(accepted = true, document = "123") }
         compose.onNodeWithTag(MemberPaymentTags.Pay).assertIsNotEnabled(); capture("documento-incompleto")
         compose.runOnIdle { state.value = review.copy(pending = true, canReplay = true, error = ReceiptError.UNCERTAIN) }
-        compose.onNodeWithText("Recuperar tentativa").performScrollTo(); capture("tentativa-incerta")
+        compose.onNodeWithText("Verificar pagamento").performScrollTo(); capture("tentativa-incerta")
         compose.onNodeWithTag(MemberPaymentTags.Pay).performScrollTo().assertIsNotEnabled()
     }
     @Test fun paymentStatusesNeverMistakeRefundOrUncertaintyForSuccess() {

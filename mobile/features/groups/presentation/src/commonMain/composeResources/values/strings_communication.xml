@@ -1,9 +1,9 @@
 <resources>
     <string name="connected_load_failure_title">Não foi possível carregar os dados</string>
-    <string name="communication_chat">Chat do grupo</string>
+    <string name="communication_chat">Conversa do grupo</string>
     <string name="communication_notices">Avisos do grupo</string>
     <string name="communication_refresh">Atualizar</string>
-    <string name="communication_more">Carregar anteriores</string>
+    <string name="communication_more">Ver mensagens anteriores</string>
     <string name="communication_empty">Nenhuma mensagem por aqui ainda.</string>
     <string name="communication_draft">Mensagem (até 2.000 caracteres)</string>
     <string name="communication_send">Enviar</string>
@@ -13,7 +13,7 @@
     <string name="communication_settings">Configurações de notificações</string>
     <string name="communication_settings_note">Estas preferências controlam a caixa de notificações dentro do Saqz. Não enviamos notificações push nem mensagens pelo WhatsApp.</string>
     <string name="communication_pref_notices">Avisos dos grupos</string>
-    <string name="communication_pref_messages">Mensagens do chat</string>
+    <string name="communication_pref_messages">Mensagens das conversas</string>
     <string name="communication_pref_reminders">Lembretes de presença</string>
     <string name="communication_save">Salvar preferências</string>
     <string name="communication_saved">Preferências salvas.</string>

@@ -19,17 +19,17 @@
     <string name="changeplan_confirm_title">Trocar para %1$s?</string>
     <string name="changeplan_confirm">Trocar plano</string>
     <string name="changeplan_keep">Manter plano atual</string>
-    <string name="changeplan_downgrade_blocked">Este plano não comporta o uso atual da sua conta. Reduza grupos ou atletas antes de trocar.</string>
+    <string name="changeplan_downgrade_blocked">Você tem mais grupos ou atletas do que este plano permite. Reduza essa quantidade antes de trocar.</string>
     <string name="changeplan_scheduled_title">Troca agendada</string>
     <string name="changeplan_scheduled_sub">O plano %1$s passa a valer em %2$s. Até lá você continua no plano atual.</string>
     <string name="changeplan_upgraded_title">Plano atualizado</string>
-    <string name="changeplan_upgraded_sub">Seu plano já está em vigor.</string>
+    <string name="changeplan_upgraded_sub">Seu novo plano já está valendo.</string>
     <string name="changeplan_pix_title">Pague a diferença</string>
-    <string name="changeplan_pix_summary">Diferença do upgrade · %1$s</string>
+    <string name="changeplan_pix_summary">Diferença para mudar de plano · %1$s</string>
     <string name="changeplan_pix_copy">Copiar código Pix</string>
     <string name="changeplan_pix_paid">Já paguei</string>
     <string name="changeplan_pix_waiting">Ainda não confirmamos o pagamento. Se já pagou, aguarde alguns segundos e toque de novo.</string>
     <string name="changeplan_pix_invoice">Abrir fatura</string>
     <string name="changeplan_back_catalog">Ver planos</string>
-    <string name="changeplan_retry">Tentar de novo</string>
+    <string name="changeplan_retry">Tentar novamente</string>
 </resources>

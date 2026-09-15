@@ -91,7 +91,7 @@ class RegisterScreenTest {
     // 1b: subtítulo presente, helper da senha presente, nenhum alerta.
     @Test fun `the quiet screen shows the subtitle and the password hint`() = runComposeUiTest {
         content()
-        onNodeWithText("Crie sua conta em menos de um minuto.").assertExists()
+        onNodeWithText("Crie sua conta para participar dos grupos e organizar jogos.").assertExists()
         onNodeWithTag(RegisterTags.PasswordHint).assertExists()
         onNodeWithTag(RegisterTags.Alert).assertDoesNotExist()
     }
@@ -108,7 +108,7 @@ class RegisterScreenTest {
         onNodeWithText("Entrando no Vôlei do CERET").assertExists()
         onNodeWithText("Convite de Ana · precisa de aprovação").assertExists()
         onNodeWithText("Depois disso você escolhe apelido, posição e nível no grupo.").assertExists()
-        onNodeWithText("Crie sua conta em menos de um minuto.").assertDoesNotExist()
+        onNodeWithText("Crie sua conta para participar dos grupos e organizar jogos.").assertDoesNotExist()
     }
 
     @Test fun `invite registration falls back to generic header without preview`() = runComposeUiTest {
@@ -122,7 +122,7 @@ class RegisterScreenTest {
     // "3" literal do mockup, que desenha quatro campos errados.
     @Test fun `the refused screen swaps the subtitle for a counted alert`() = runComposeUiTest {
         content(state = refused())
-        onNodeWithText("Crie sua conta em menos de um minuto.").assertDoesNotExist()
+        onNodeWithText("Crie sua conta para participar dos grupos e organizar jogos.").assertDoesNotExist()
         onNodeWithText("Revise 4 campos para criar sua conta.").assertExists()
         onNodeWithTag(RegisterTags.PasswordHint).assertDoesNotExist()
     }

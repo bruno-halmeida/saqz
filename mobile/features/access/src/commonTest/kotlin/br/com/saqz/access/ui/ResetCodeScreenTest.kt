@@ -105,11 +105,11 @@ class ResetCodeScreenTest {
         content(
             state = ResetCodeState(
                 email = EMAIL,
-                failure = UiText.Raw("Verifique sua conexao e tente novamente"),
+                failure = UiText.Raw("Confira sua conexão e tente novamente."),
             ),
         )
 
-        onNodeWithTag(ResetCodeTags.Failure).assertTextContains("Verifique sua conexao e tente novamente")
+        onNodeWithTag(ResetCodeTags.Failure).assertTextContains("Confira sua conexão e tente novamente.")
     }
 
     @Test fun `typing forwards the digits to the view model`() = runComposeUiTest {

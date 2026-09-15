@@ -24,7 +24,7 @@ class BootstrapAccessScreenTest {
         setContent {
             SaqzTheme { BootstrapAccessScreen(SessionAccessState.BootstrapError, onIntent = { intent = it }) }
         }
-        onNodeWithText("Nao foi possivel carregar sua conta").assertExists()
+        onNodeWithText("Não foi possível carregar sua conta.").assertExists()
         onNodeWithText("Tentar novamente").performClick()
         assertEquals(SessionIntent.RetryBootstrap, intent)
         onNodeWithText("Entrar").assertDoesNotExist()

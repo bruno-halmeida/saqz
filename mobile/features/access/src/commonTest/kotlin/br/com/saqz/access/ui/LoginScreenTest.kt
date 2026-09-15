@@ -89,7 +89,7 @@ class LoginScreenTest {
         content()
         onNodeWithText("Organize seu grupo.", substring = true).assertExists()
         onNodeWithText("Jogue junto.", substring = true).assertExists()
-        onNodeWithText("Entre na sua conta e mantenha sua galera sempre alinhada.").assertExists()
+        onNodeWithText("Entre para acompanhar seus grupos, jogos e pagamentos.").assertExists()
         onNodeWithText("ou continue com").assertExists()
         onNodeWithText("Entrar com Google").assertExists()
     }
@@ -175,7 +175,7 @@ class LoginScreenTest {
         content(state = refused())
         onNodeWithTag(LoginTags.Alert).assertExists()
         onNodeWithText("E-mail ou senha incorretos.", substring = true).assertExists()
-        onNodeWithText("Entre na sua conta e mantenha sua galera sempre alinhada.").assertDoesNotExist()
+        onNodeWithText("Entre para acompanhar seus grupos, jogos e pagamentos.").assertDoesNotExist()
     }
 
     @Test fun `each field carries its own refusal`() = runComposeUiTest {
@@ -250,7 +250,7 @@ class LoginScreenTest {
             "E-mail ou senha incorretos.",
             alertEmphasis("E-mail ou senha incorretos. Confira os dados e tente de novo."),
         )
-        assertNull(alertEmphasis("Verifique sua conexao e tente novamente"))
+        assertNull(alertEmphasis("Confira sua conexão e tente novamente."))
     }
 
     private suspend fun fluxo1(): JsonObject = Json.parseToJsonElement(

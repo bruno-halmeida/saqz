@@ -87,13 +87,13 @@ class IdentityCompletionScreenTest {
     // tem de aparecer na linha do seu campo — a 1c mostra os dois ao mesmo tempo.
     @Test fun `each refused field carries its own message`() = runComposeUiTest {
         content(IdentityCompletionState(invalidName = true, invalidPhone = true))
-        onNodeWithText("Diga como a galera te chama.").assertExists()
+        onNodeWithText("Informe seu nome.").assertExists()
         onNodeWithText("Telefone incompleto. Use DDD + 9 dígitos.").assertExists()
     }
 
     @Test fun `a refused name leaves the phone message alone`() = runComposeUiTest {
         content(IdentityCompletionState(invalidName = true))
-        onNodeWithText("Diga como a galera te chama.").assertExists()
+        onNodeWithText("Informe seu nome.").assertExists()
         onNodeWithText("Telefone incompleto. Use DDD + 9 dígitos.").assertDoesNotExist()
     }
 

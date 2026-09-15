@@ -27,7 +27,7 @@
     <string name="athlete_registration_save_error">Não foi possível salvar seu perfil. Tente de novo.</string>
     <string name="athlete_registration_load_error_title">Não foi possível carregar seu cadastro</string>
     <string name="athlete_registration_load_error_body">Verifique sua conexão e tente de novo.</string>
-    <string name="athlete_registration_retry">Tentar de novo</string>
+    <string name="athlete_registration_retry">Tentar novamente</string>
 
     <string name="athlete_registration_position_setter_female">Levantadora</string>
     <string name="athlete_registration_position_setter_male">Levantador</string>

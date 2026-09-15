@@ -16,7 +16,7 @@ class ReceiptWalletScreenTest {
         val intents = mutableListOf<ReceiptWalletIntent>()
         setContent { SaqzTheme { ReceiptWalletScreen(state.value, intents::add, {}) } }
         onNodeWithTag(ReceiptWalletTags.Balance).assertTextEquals("Disponível para saque: R$\u00a0123,45")
-        onNodeWithTag(ReceiptWalletTags.Pending).assertTextEquals("Recebíveis pendentes: R$\u00a067,89")
+        onNodeWithTag(ReceiptWalletTags.Pending).assertTextEquals("Valores a receber: R$\u00a067,89")
         onNodeWithTag(ReceiptWalletTags.Withdraw).performScrollTo().assertIsNotEnabled()
         runOnIdle { state.value = state.value.copy(accepted = true) }
         onNodeWithTag(ReceiptWalletTags.Withdraw).performClick()

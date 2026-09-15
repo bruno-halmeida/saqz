@@ -108,7 +108,7 @@ private fun String.toPositionLabel(): String? = when (uppercase()) {
 
 private fun String.toRoleLabel(): String? = when (uppercase()) {
     "OWNER" -> "Organizador"
-    "ADMIN" -> "Admin"
+    "ADMIN" -> "Administrador"
     "ATHLETE" -> "Atleta"
     else -> takeIf(String::isNotBlank)
 }

@@ -44,20 +44,20 @@ class GroupMembersScreenTest {
         content(state = state.copy(selected = thiago))
 
         onNodeWithText("Editar jogador").assertExists()
-        onNodeWithText("Tornar admin").assertExists()
+        onNodeWithText("Tornar administrador").assertExists()
         onNodeWithText("Remover do grupo").assertExists()
         onNodeWithText("Ver perfil").assertExists()
-        onNodeWithText("Remover admin").assertDoesNotExist()
+        onNodeWithText("Retirar acesso de administrador").assertDoesNotExist()
     }
 
     @Test fun `the sheet of an admin offers the profile and the demotion`() = runComposeUiTest {
         content(state = state.copy(selected = bia))
 
         onNodeWithText("Ver perfil").assertExists()
-        onNodeWithText("Remover admin").assertExists()
+        onNodeWithText("Retirar acesso de administrador").assertExists()
         onNodeWithText("Remover do grupo").assertExists()
         onNodeWithText("Editar jogador").assertDoesNotExist()
-        onNodeWithText("Tornar admin").assertDoesNotExist()
+        onNodeWithText("Tornar administrador").assertDoesNotExist()
     }
 
     @Test fun `the sheet of an admin viewer removes a member without promoting`() = runComposeUiTest {
@@ -66,8 +66,8 @@ class GroupMembersScreenTest {
         onNodeWithText("Ver perfil").assertExists()
         onNodeWithText("Editar jogador").assertExists()
         onNodeWithText("Remover do grupo").assertExists()
-        onNodeWithText("Tornar admin").assertDoesNotExist()
-        onNodeWithText("Remover admin").assertDoesNotExist()
+        onNodeWithText("Tornar administrador").assertDoesNotExist()
+        onNodeWithText("Retirar acesso de administrador").assertDoesNotExist()
     }
 
     @Test fun profileActionDispatchesWithoutRemovingEditAction() = runComposeUiTest {
@@ -90,9 +90,9 @@ class GroupMembersScreenTest {
         content(state = state.copy(selected = lucas.copy(isSelf = false, isOwner = true)))
 
         onNodeWithText("Ver perfil").assertExists()
-        onNodeWithText("Remover admin").assertDoesNotExist()
+        onNodeWithText("Retirar acesso de administrador").assertDoesNotExist()
         onNodeWithText("Remover do grupo").assertDoesNotExist()
-        onNodeWithText("Tornar admin").assertDoesNotExist()
+        onNodeWithText("Tornar administrador").assertDoesNotExist()
         onNodeWithText("Editar jogador").assertDoesNotExist()
     }
 
@@ -108,7 +108,7 @@ class GroupMembersScreenTest {
     @Test fun `no sheet is drawn while nobody is selected`() = runComposeUiTest {
         content()
 
-        onNodeWithText("Tornar admin").assertDoesNotExist()
+        onNodeWithText("Tornar administrador").assertDoesNotExist()
         onNodeWithText("Ver perfil").assertDoesNotExist()
     }
 

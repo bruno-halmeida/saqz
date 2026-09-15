@@ -33,7 +33,7 @@ class RecurrenceScreenTest {
         onNodeWithText("Cancelamento em confirmação").performScrollTo().assertIsDisplayed()
         onNodeWithTag(RecurrenceTags.Cancel).assertDoesNotExist()
         runOnIdle { state.value = state.value.copy(pending = false, recurrence = recurrence.copy(status = "STOPPED")) }
-        onNodeWithText("A recorrência anterior continua encerrada.", substring = true).performScrollTo().assertIsDisplayed()
+        onNodeWithText("A cobrança mensal anterior foi encerrada.", substring = true).performScrollTo().assertIsDisplayed()
         onNodeWithTag(RecurrenceTags.Submit).assertDoesNotExist()
         runOnIdle { state.value = state.value.copy(recurrence = recurrence.copy(status = "AUTHORIZING",
             method = ReceiptMethod.CARD, hostedCheckoutUrl = "https://asaas.com/c/checkout")) }

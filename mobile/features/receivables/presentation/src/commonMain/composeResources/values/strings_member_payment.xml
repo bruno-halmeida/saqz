@@ -14,7 +14,7 @@
     <string name="payment_accept">Li os termos e aceito pagar o total com as taxas apresentadas.</string>
     <string name="payment_submit">Pagar %1$s</string>
     <string name="payment_refresh">Atualizar pagamento</string>
-    <string name="payment_replay">Recuperar tentativa</string>
+    <string name="payment_replay">Verificar pagamento</string>
     <string name="payment_pending">Estamos verificando sua tentativa. Aguarde a confirmação antes de tentar outro pagamento.</string>
     <string name="payment_pending_restored">Se o resultado ainda não aparecer, atualize novamente em alguns instantes.</string>
     <string name="payment_copy">Copiar código Pix</string>
@@ -25,7 +25,7 @@
     <string name="payment_expired_help">Este Pix expirou. Renove abaixo sem criar outra cobrança.</string>
     <string name="payment_renewal_date">Novo vencimento</string>
     <string name="payment_renew_pix">Renovar este Pix</string>
-    <string name="payment_recurrence">Mensalidade recorrente</string>
+    <string name="payment_recurrence">Cobrança mensal</string>
     <string name="payment_export_receipt">Compartilhar comprovante</string>
     <string name="payment_export_shared">Compartilhamento aberto.</string>
     <string name="payment_export_failed">Não foi possível compartilhar o comprovante.</string>

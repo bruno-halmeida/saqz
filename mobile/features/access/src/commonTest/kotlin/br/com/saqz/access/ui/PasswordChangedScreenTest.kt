@@ -70,7 +70,7 @@ class PasswordChangedScreenTest {
         setContent { SaqzTheme { PasswordChangedScreen(onSignIn = {}, onBack = {}) } }
         onNodeWithTag(PasswordChangedTags.Check).assertExists()
         onNodeWithText("Senha alterada!", substring = true).assertExists()
-        onNodeWithText("Tudo certo. Use a nova senha para entrar e voltar pra sua galera.").assertExists()
+        onNodeWithText("Use sua nova senha para entrar.").assertExists()
         onNodeWithTag(PasswordChangedTags.Submit).assertExists()
     }
 

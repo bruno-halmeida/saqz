@@ -62,7 +62,7 @@ class MonthlyGenerationScreenTest {
                 )
             }
         }
-        onNodeWithText("Você não tem permissão para gerar mensalidades neste grupo.").assertExists()
+        onNodeWithText("Você não tem permissão para criar cobranças do mês neste grupo.").assertExists()
         onNodeWithTag(MonthlyGenerationTags.Review).assertDoesNotExist()
         onNodeWithTag(MonthlyGenerationTags.Retry).performClick()
         assertEquals(listOf<MonthlyGenerationIntent>(MonthlyGenerationIntent.Retry), intents)
@@ -86,7 +86,7 @@ class MonthlyGenerationScreenTest {
         onNodeWithTag(MonthlyGenerationTags.Confirm).performScrollTo().performClick()
         waitForIdle()
         assertEquals(0, generated)
-        onNodeWithText("Não foi possível confirmar a geração. Seus dados foram mantidos; tente novamente.").assertExists()
+        onNodeWithText("Não foi possível criar as cobranças. Mantivemos os dados que você preencheu. Tente novamente.").assertExists()
         gateway.result = SaqzResult.Success(br.com.saqz.groups.domain.finance.ChargeList(emptyList()))
         onNodeWithTag(MonthlyGenerationTags.Confirm).performScrollTo().performClick()
         waitForIdle()

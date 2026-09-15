@@ -11,7 +11,7 @@
     <string name="groups_summary">%1$d grupos · %2$d pedindo confirmação</string>
     <string name="groups_summary_one">%1$d grupo · %2$d pedindo confirmação</string>
     <string name="groups_confirm">Confirme</string>
-    <string name="groups_role_admin">Admin</string>
+    <string name="groups_role_admin">Administrador</string>
     <string name="groups_attendance_going">Vou</string>
     <string name="groups_no_game">Nenhum jogo marcado por enquanto.</string>
     <string name="groups_invite_title">Convite recebido</string>
@@ -80,11 +80,11 @@
     <string name="group_photo_target_unavailable">A foto estará disponível depois que o grupo for criado.</string>
     <string name="group_setup_name_label">Nome do grupo</string>
     <string name="group_setup_name_hint">Ex.: Vôlei do CERET</string>
-    <string name="group_setup_modality_label">Modalidade</string>
-    <string name="group_setup_modality_hint">Escolha o tipo de jogo do grupo.</string>
+    <string name="group_setup_modality_label">Esporte</string>
+    <string name="group_setup_modality_hint">Escolha o esporte do grupo.</string>
     <string name="group_setup_composition_label">Público</string>
     <string name="group_setup_composition_hint">Como os times se formam.</string>
-    <string name="group_setup_level_label">Categoria</string>
+    <string name="group_setup_level_label">Nível do grupo</string>
     <string name="group_setup_level_hint">Escolha o nível do grupo.</string>
     <string name="group_setup_custom_level_hint">Ex.: Recreativo, Competitivo…</string>
     <string name="group_setup_play_style_label">Sistema de jogo</string>
@@ -92,12 +92,12 @@
     <string name="group_setup_play_style_not_applicable">Sistema de jogo (6-0 / 5-1) não se aplica ao vôlei de areia.</string>
     <string name="group_setup_description_label">Descrição</string>
     <string name="group_setup_description_hint">Fale sobre o grupo, regras, nível esperado… (opcional)</string>
-    <string name="group_setup_capacity_label">Máx. de jogadores por jogo</string>
-    <string name="group_setup_capacity_hint">Acima disso entra na reserva.</string>
+    <string name="group_setup_capacity_label">Limite de jogadores por jogo</string>
+    <string name="group_setup_capacity_hint">Quando as vagas acabarem, quem confirmar entra na lista de espera.</string>
     <string name="group_setup_capacity_beach_hint">Dupla ou quarteto na areia.</string>
     <string name="group_setup_duration_label">Duração do jogo</string>
     <string name="group_setup_confirmation_lead_label">Confirmar presença até</string>
-    <string name="group_setup_confirmation_lead_hint">Quanto tempo antes do jogo as confirmações encerram.</string>
+    <string name="group_setup_confirmation_lead_hint">Escolha quanto tempo antes do jogo o prazo termina.</string>
     <string name="group_setup_venue_name_label">Nome da quadra</string>
     <string name="group_setup_venue_name_hint">Ex.: CERET — Quadra 2</string>
     <string name="group_setup_venue_address_label">Endereço da quadra</string>
@@ -124,10 +124,10 @@
     <string name="group_setup_error_banner">Faltam %1$d informações para criar o grupo. Elas estão marcadas abaixo.</string>
     <string name="group_setup_error_banner_one">Falta %1$d informação para criar o grupo. Ela está marcada abaixo.</string>
     <string name="group_setup_error_name">O grupo precisa de um nome.</string>
-    <string name="group_setup_error_modality">Escolha a modalidade do grupo.</string>
+    <string name="group_setup_error_modality">Escolha o esporte do grupo.</string>
     <string name="group_setup_error_composition">Escolha o público do grupo.</string>
-    <string name="group_setup_error_level">Escolha a categoria do grupo.</string>
-    <string name="group_setup_error_custom_level">Dê um nome para a categoria personalizada.</string>
+    <string name="group_setup_error_level">Escolha o nível do grupo.</string>
+    <string name="group_setup_error_custom_level">Dê um nome para o nível personalizado.</string>
     <string name="group_setup_error_description">A descrição precisa de pelo menos 2 caracteres.</string>
     <string name="group_setup_error_play_style">Escolha o sistema de jogo.</string>
     <string name="group_setup_error_capacity">O grupo precisa de pelo menos 2 jogadores.</string>
@@ -146,7 +146,7 @@
     <string name="group_system_save_failure">Não foi possível criar o grupo</string>
     <string name="group_system_save_failure_edit">Não foi possível salvar o grupo</string>
     <string name="group_system_save_failure_body">Suas informações continuam salvas aqui. Tente novamente.</string>
-    <string name="group_system_retry">Tentar de novo</string>
+    <string name="group_system_retry">Tentar novamente</string>
     <string name="group_system_save_draft">Salvar rascunho</string>
     <string name="group_system_sending_title">Enviando</string>
     <string name="group_system_creating">Criando grupo…</string>
@@ -170,9 +170,9 @@
     <!-- 2d · revisão -->
     <string name="group_review_title">Revisar grupo</string>
     <string name="group_review_players">%1$d jogadores</string>
-    <string name="group_review_modality">Modalidade</string>
+    <string name="group_review_modality">Esporte</string>
     <string name="group_review_composition">Público</string>
-    <string name="group_review_level">Categoria</string>
+    <string name="group_review_level">Nível do grupo</string>
     <string name="group_review_play_style">Sistema de jogo</string>
     <string name="group_review_capacity">Máx. por jogo</string>
     <string name="group_review_duration">Duração</string>
@@ -189,30 +189,30 @@
 
     <!-- 2e e 2f · detalhe -->
     <string name="group_details_members_count">%1$d membros</string>
-    <string name="group_details_admin">Admin</string>
+    <string name="group_details_admin">Administrador</string>
     <string name="group_details_next_game">Próximo jogo</string>
     <string name="group_details_next_game_day">Próximo jogo · %1$s</string>
     <string name="group_details_confirmation_closes">Encerra %1$s</string>
     <string name="group_details_confirmed_count">%1$d de %2$d confirmados</string>
     <string name="group_details_confirm_attendance">Confirmar presença</string>
     <string name="group_details_view_game">Ver jogo</string>
-    <string name="group_details_create_next_game">Criar próximo jogo</string>
+    <string name="group_details_create_next_game">Marcar próximo jogo</string>
     <string name="group_details_edit_group">Editar grupo</string>
     <string name="group_details_created_photo_failed_title">Grupo criado</string>
     <string name="group_details_created_photo_failed">A foto não carregou. Você pode tentar de novo em Editar grupo.</string>
     <string name="group_details_going_count">%1$d vão</string>
     <string name="group_details_maybe_count">%1$d talvez</string>
-    <string name="group_details_pending_count">%1$d pendentes</string>
+    <string name="group_details_pending_count">%1$d sem resposta</string>
     <string name="group_details_going">Vão</string>
     <string name="group_details_maybe">Talvez</string>
-    <string name="group_details_pending">Pendentes</string>
+    <string name="group_details_pending">Sem resposta</string>
     <string name="group_details_notify_pending">Avisar quem falta confirmar</string>
     <string name="group_details_venue_map">Ver no mapa</string>
     <string name="group_details_venue_edit">Editar</string>
     <string name="group_details_notices">Avisos</string>
     <string name="group_details_cash">Caixa</string>
     <string name="group_details_schedule">Jogos</string>
-    <string name="group_details_chat">Chat</string>
+    <string name="group_details_chat">Conversa</string>
     <string name="group_details_recent_notice">Aviso recente</string>
     <string name="group_details_members">Membros</string>
     <string name="group_details_view_all">Ver todos</string>
@@ -230,7 +230,7 @@
     <string name="group_members_title">Membros e permissões</string>
     <string name="group_members_search">Buscar membro</string>
     <string name="group_members_filter_all">Todos · %1$d</string>
-    <string name="group_members_filter_admins">Admins · %1$d</string>
+    <string name="group_members_filter_admins">Administradores · %1$d</string>
     <string name="group_members_filter_pending">Pendentes · %1$d</string>
     <string name="group_members_join_requests">Pedidos para entrar</string>
     <string name="group_members_pending_section">Pendentes</string>
@@ -239,7 +239,7 @@
     <string name="group_members_showing">Mostrando %1$d de %2$d membros</string>
     <string name="group_members_invite">Convidar mais gente</string>
     <string name="group_members_you">você</string>
-    <string name="group_members_admin">Admin</string>
+    <string name="group_members_admin">Administrador</string>
     <string name="group_members_pending">Pendente</string>
     <string name="group_member_joined_by_code">Entrou pelo código · %1$s</string>
     <string name="group_member_joined_by_link">Entrou pelo link · %1$s</string>
@@ -256,11 +256,11 @@
     <string name="group_member_stats">%1$d jogos · %2$d%% de presença</string>
     <string name="group_member_edit">Editar jogador</string>
     <string name="group_member_edit_hint">Posição, mensalidade e permissões</string>
-    <string name="group_member_make_admin">Tornar admin</string>
-    <string name="group_member_make_admin_hint">Pode criar jogos e avisar a galera</string>
+    <string name="group_member_make_admin">Tornar administrador</string>
+    <string name="group_member_make_admin_hint">Pode marcar jogos e avisar a galera</string>
     <string name="group_member_view_profile">Ver perfil</string>
-    <string name="group_member_remove_admin">Remover admin</string>
-    <string name="group_member_remove_admin_hint">Volta a ser membro comum</string>
+    <string name="group_member_remove_admin">Retirar acesso de administrador</string>
+    <string name="group_member_remove_admin_hint">Continua no grupo, mas deixa de administrá-lo.</string>
     <string name="group_member_remove">Remover do grupo</string>
     <string name="group_member_cancel">Cancelar</string>
 

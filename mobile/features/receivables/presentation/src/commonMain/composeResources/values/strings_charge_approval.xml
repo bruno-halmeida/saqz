@@ -7,9 +7,9 @@
     <string name="approval_accept">Revisei os termos e os valores de todos os meios e quero liberar esta cobrança para pagamento pelo app.</string>
     <string name="approval_submit">Liberar cobrança</string>
     <string name="approval_existing">Cobrança liberada. Acompanhe a situação abaixo.</string>
-    <string name="approval_pending">Estamos verificando sua solicitação. Atualize para consultar o resultado ou recupere a mesma tentativa.</string>
+    <string name="approval_pending">Estamos verificando sua solicitação. Atualize ou toque em Verificar solicitação para acompanhar o resultado.</string>
     <string name="approval_refresh">Atualizar cobrança</string>
-    <string name="approval_replay">Recuperar tentativa</string>
+    <string name="approval_replay">Verificar solicitação</string>
     <string name="approval_cancel">Cancelar pagamento pelo app</string>
     <string name="approval_cancel_confirm">Quer cancelar esta ordem? A cobrança só será liberada para recebimento manual após a confirmação do cancelamento. Esta ação não solicita reembolso.</string>
     <string name="approval_cancel_yes">Confirmar cancelamento</string>

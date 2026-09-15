@@ -20,7 +20,7 @@
     <string name="login_headline_first">Organize seu grupo.</string>
     <string name="login_headline_second">Jogue</string>
     <string name="login_headline_emphasis">junto.</string>
-    <string name="login_supporting_text">Entre na sua conta e mantenha sua galera sempre alinhada.</string>
+    <string name="login_supporting_text">Entre para acompanhar seus grupos, jogos e pagamentos.</string>
     <string name="login_email">E-mail</string>
     <string name="login_email_placeholder">ana@exemplo.com</string>
     <string name="login_password">Senha</string>
@@ -44,7 +44,7 @@
     <!-- 1b · criar conta -->
     <string name="register_headline">Bora organizar\nsua</string>
     <string name="register_headline_emphasis">galera.</string>
-    <string name="register_supporting_text">Crie sua conta em menos de um minuto.</string>
+    <string name="register_supporting_text">Crie sua conta para participar dos grupos e organizar jogos.</string>
     <string name="register_name_placeholder">Seu nome</string>
     <string name="register_email_placeholder">ana@exemplo.com</string>
     <string name="register_phone_placeholder">(11) 99999-0000</string>
@@ -55,7 +55,7 @@
 
     <!-- 1j · criar conta, recusado -->
     <string name="register_error_summary">Revise %1$d campos para criar sua conta.</string>
-    <string name="register_error_name">Diga como a galera te chama.</string>
+    <string name="register_error_name">Informe seu nome.</string>
     <string name="register_error_email_taken">Esse e-mail já tem conta no Saqz. Entrar?</string>
     <string name="register_error_phone">Telefone incompleto. Use DDD + 9 dígitos.</string>
     <string name="register_error_password">Use no mínimo 8 caracteres.</string>
@@ -87,7 +87,7 @@
     <string name="reset_code_resend_countdown">Não chegou? Reenviar código · %1$s</string>
     <string name="reset_code_submit">Verificar código</string>
     <string name="reset_code_resent">Enviamos um novo código para o seu e-mail.</string>
-    <string name="reset_code_resend_wait">Reenviar novamente em %1$s</string>
+    <string name="reset_code_resend_wait">Reenviar código em %1$s</string>
     <string name="reset_code_error_invalid">Código incorreto. Restam %1$d tentativas.</string>
     <string name="reset_code_error_expired">Esse código expirou. Peça um novo para continuar.</string>
     <string name="reset_code_resend">Reenviar código</string>
@@ -103,7 +103,7 @@
     <!-- 1h · senha alterada -->
     <string name="password_changed_headline">Senha</string>
     <string name="password_changed_headline_emphasis">alterada!</string>
-    <string name="password_changed_supporting_text">Tudo certo. Use a nova senha para entrar e voltar pra sua galera.</string>
+    <string name="password_changed_supporting_text">Use sua nova senha para entrar.</string>
     <string name="password_changed_submit">Entrar agora</string>
 
     <!-- Repetidos entre telas, uma chave só: o 1d e o 1e trazem o mesmo link de volta ao
@@ -111,19 +111,19 @@
     <string name="access_signin_link">Lembrou a senha? Entrar ›</string>
     <string name="access_password_hint">Mínimo de 8 caracteres.</string>
 
-    <string name="auth_error_invalid_credentials">E-mail ou senha invalidos</string>
-    <string name="auth_error_email_in_use">Este e-mail ja esta em uso</string>
+    <string name="auth_error_invalid_credentials">E-mail ou senha incorretos.</string>
+    <string name="auth_error_email_in_use">Este e-mail já está em uso.</string>
     <string name="auth_error_weak_password">Escolha uma senha mais forte</string>
-    <string name="auth_error_method_conflict">Entre usando o metodo ja vinculado a esta conta</string>
-    <string name="auth_error_network">Verifique sua conexao e tente novamente</string>
-    <string name="auth_error_provider">O login esta indisponivel. Tente novamente</string>
-    <string name="auth_error_unknown">Nao foi possivel entrar. Tente novamente</string>
+    <string name="auth_error_method_conflict">Entre da mesma forma que você usou para criar esta conta.</string>
+    <string name="auth_error_network">Confira sua conexão e tente novamente.</string>
+    <string name="auth_error_provider">Não foi possível entrar agora. Tente novamente.</string>
+    <string name="auth_error_unknown">Não foi possível entrar. Tente novamente.</string>
     <string name="verification_title">Verifique seu e-mail</string>
-    <string name="verification_body">Enviamos as instrucoes para</string>
-    <string name="verification_confirm">Ja verifiquei</string>
+    <string name="verification_body">Enviamos as instruções para</string>
+    <string name="verification_confirm">Já confirmei meu e-mail</string>
     <string name="verification_resend">Reenviar e-mail</string>
     <string name="verification_sent">E-mail enviado. Aguarde antes de reenviar</string>
-    <string name="bootstrap_error">Nao foi possivel carregar sua conta</string>
+    <string name="bootstrap_error">Não foi possível carregar sua conta.</string>
     <string name="action_retry">Tentar novamente</string>
     <string name="groups_empty">Voce ainda nao participa de um grupo</string>
     <string name="groups_select">Escolha um grupo</string>
@@ -165,7 +165,7 @@
     <string name="logout_confirm">Confirmar saida</string>
     <string name="action_cancel">Cancelar</string>
     <string name="memberships_title">Gerenciar acessos</string>
-    <string name="membership_make_admin">Tornar admin</string>
+    <string name="membership_make_admin">Tornar administrador</string>
     <string name="membership_make_athlete">Tornar atleta</string>
     <string name="invite_title">Convite do grupo</string>
     <string name="invite_generate">Gerar convite</string>

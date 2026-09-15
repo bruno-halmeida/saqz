@@ -29,7 +29,7 @@
     <string name="myplan_receipts_empty">Nenhum recibo ainda.</string>
     <string name="myplan_receipts_load_error">Não foi possível carregar os recibos agora.</string>
     <string name="myplan_load_error">Não foi possível carregar seu plano agora.</string>
-    <string name="myplan_retry">Tentar de novo</string>
+    <string name="myplan_retry">Tentar novamente</string>
     <string name="myplan_generic_error">Algo deu errado. Tente de novo.</string>
     <string name="myplan_network_error">Sem conexão. Confira sua internet e tente de novo.</string>
     <string name="myplan_trial_active">Teste ativo até %1$s</string>
@@ -38,6 +38,6 @@
     <string name="myplan_trial_organizer">Fale com o organizador para continuar.</string>
     <string name="myplan_trial_available">Seus %1$s dias grátis começam ao criar o primeiro grupo.</string>
     <string name="myplan_trial_ineligible">Esta conta não tem um teste gratuito disponível.</string>
-    <string name="myplan_trial_readonly">Seu histórico está preservado. Assine para criar jogos, receber novas respostas de presença e voltar a alterar o financeiro.</string>
+    <string name="myplan_trial_readonly">Seu histórico está preservado. Assine para marcar jogos, receber novas respostas de presença e voltar a alterar o financeiro.</string>
     <string name="myplan_trial_date_unavailable">data indisponível</string>
 </resources>

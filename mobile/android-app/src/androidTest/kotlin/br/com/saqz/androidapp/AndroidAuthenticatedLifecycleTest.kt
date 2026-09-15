@@ -211,14 +211,14 @@ class AndroidAuthenticatedLifecycleTest {
         compose.waitUntil(5_000) {
             session.state.value == br.com.saqz.access.presentation.SessionAccessState.BootstrapError
         }
-        compose.onNodeWithText("Nao foi possivel carregar sua conta").assertIsDisplayed()
+        compose.onNodeWithText("Não foi possível carregar sua conta.").assertIsDisplayed()
         compose.onNodeWithTag("login-submit").assertDoesNotExist()
 
         compose.activityRule.scenario.recreate()
         compose.waitForIdle()
 
         assertEquals(br.com.saqz.access.presentation.SessionAccessState.BootstrapError, session.state.value)
-        compose.onNodeWithText("Nao foi possivel carregar sua conta").assertIsDisplayed()
+        compose.onNodeWithText("Não foi possível carregar sua conta.").assertIsDisplayed()
         assertEquals(1, state.compositions)
         assertEquals(1, state.auth.observeCalls)
         compose.onNodeWithTag("login-submit").assertDoesNotExist()
@@ -234,7 +234,7 @@ class AndroidAuthenticatedLifecycleTest {
         compose.onNodeWithTag("login-submit").performClick()
         compose.waitForIdle()
 
-        compose.onNodeWithText("O login esta indisponivel. Tente novamente").assertIsDisplayed()
+        compose.onNodeWithText("Não foi possível entrar agora. Tente novamente.").assertIsDisplayed()
         compose.onNodeWithTag("login-submit").assertIsDisplayed()
         compose.onNodeWithText("Explorar componentes").assertDoesNotExist()
     }

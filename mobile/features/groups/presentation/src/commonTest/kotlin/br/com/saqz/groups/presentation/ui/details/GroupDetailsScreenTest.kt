@@ -178,7 +178,7 @@ class GroupDetailsScreenTest {
         onNodeWithTag(GroupGameResponseTags.Going).performClick()
 
         assertEquals(GroupDetailsIntent.Respond(br.com.saqz.groups.domain.attendance.AttendanceIntent.Confirm), intents.single())
-        onNodeWithText("Você está confirmado na vaga.").assertExists()
+        onNodeWithText("Sua presença está confirmada.").assertExists()
         onAllNodesWithText("Talvez").assertCountEquals(0)
     }
 

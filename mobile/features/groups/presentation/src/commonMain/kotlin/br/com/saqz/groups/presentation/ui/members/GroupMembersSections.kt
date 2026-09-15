@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.ui.members
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -103,9 +104,10 @@ internal fun GroupMembersFilters(
         GroupMembersFilter.Admins to stringResource(Res.string.group_members_filter_admins, adminCount),
         GroupMembersFilter.Pending to stringResource(Res.string.group_members_filter_pending, pendingCount),
     )
-    Row(
+    FlowRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
     ) {
         labels.forEach { (value, label) ->
             SaqzChoiceChip(

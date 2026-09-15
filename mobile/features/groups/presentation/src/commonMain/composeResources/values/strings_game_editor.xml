@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- 4a · Cabeçalho -->
-    <string name="game_editor_create_title">Criar jogo</string>
+    <string name="game_editor_create_title">Marcar jogo</string>
     <string name="game_editor_edit_title">Editar jogo</string>
     <string name="game_editor_subtitle">Jogo extra</string>
     <string name="game_editor_group_name">%1$s</string>
@@ -16,17 +16,17 @@
     <string name="game_editor_venue_name_hint">Ex.: CERET — Quadra 2</string>
     <string name="game_editor_venue_address_label">Endereço</string>
     <string name="game_editor_venue_address_hint">R. Canuto Abreu, s/n · Tatuapé</string>
-    <string name="game_editor_venue_helper">Já vem da quadra padrão do grupo. Você pode trocar só neste jogo.</string>
+    <string name="game_editor_venue_helper">Usamos a quadra do grupo. Você pode escolher outra só para este jogo.</string>
     <string name="game_editor_capacity_label">Vagas neste jogo</string>
-    <string name="game_editor_capacity_helper">Acima disso entra na reserva.</string>
+    <string name="game_editor_capacity_helper">Quando as vagas acabarem, quem confirmar entra na lista de espera.</string>
     <string name="game_editor_confirmation_lead_label">Confirmar presença até</string>
     <string name="game_editor_notes_label">Recado para a galera</string>
     <string name="game_editor_notes_hint">Opcional. Aparece no convite do jogo.</string>
 
     <!-- 4a · Ação -->
-    <string name="game_editor_create_action">Criar jogo</string>
+    <string name="game_editor_create_action">Marcar jogo</string>
     <string name="game_editor_save_action">Salvar alterações</string>
-    <string name="game_editor_creating">Criando jogo…</string>
+    <string name="game_editor_creating">Marcando jogo…</string>
     <string name="game_editor_saving">Salvando…</string>
 
     <!-- 4b · Picker de data e horário -->
