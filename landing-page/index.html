@@ -428,24 +428,12 @@
       .primary .arrow { transition:none; }
     }
 
-    /* Ajustes de layout: dobra do hero, painel de confirmações, header, footer e tipografia. */
+    /* Ajustes de layout: dobra do hero, painel de confirmações, header e tipografia. */
     h1, h2, h3 { text-wrap:balance; }
     .lead, .section-lead, .truth-copy > p, .final p, .question p, .attendance-copy > p { text-wrap:pretty; }
     .nav-links { display:flex; gap:26px; }
     .nav-links a { color:var(--ink); font-size:13px; letter-spacing:-.01em; text-decoration:none; opacity:.72; transition:opacity .2s ease; }
     .nav-links a:hover { opacity:1; }
-    .site-footer { padding:30px 0 36px; }
-    .footer-inner { display:flex; flex-direction:column; gap:14px; }
-    .footer-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px 24px; }
-    .footer-logo { width:84px; height:auto; }
-    .site-footer p { margin:0; color:#6e6e73; font-size:12px; }
-    .footer-legal, .footer-contact { color:#8e8e93; font-size:11px; letter-spacing:.02em; text-align:center; }
-    .footer-contact { color:#6e6e73; font-size:12px; }
-    .footer-contact a { color:inherit; text-decoration:none; }
-    .footer-contact a:hover { color:var(--ink); }
-    .footer-nav { display:flex; gap:20px; }
-    .footer-nav a { color:#6e6e73; font-size:12px; text-decoration:none; }
-    .footer-nav a:hover { color:var(--ink); }
     @media (min-width:901px) {
       .hero-grid { min-height:1030px; padding-top:60px; }
       .visual { min-height:690px; margin-top:8px; }
@@ -463,7 +451,6 @@
       .float-card i { width:24px; height:24px; }
       .one { left:-10px; bottom:-18px; }
       .two { top:150px; right:-10px; }
-      .footer-row { flex-direction:column; text-align:center; }
       .final .click-trigger { width:auto; max-width:100%; flex-wrap:wrap; justify-content:center; }
     }
   </style>
@@ -583,7 +570,6 @@
     <section class="faq shell" id="faq"><div class="faq-grid"><div data-reveal><span class="eyebrow">Perguntas frequentes</span><h2>O que acontece no teste?</h2></div><div class="questions"><details class="question" open data-reveal><summary><span class="question-index">01</span><h3>Quando começam os 14 dias?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>O teste começa somente quando você cria com sucesso o primeiro grupo no app. Criar a conta ou abrir o app não inicia o prazo.</p></details><details class="question" data-reveal data-reveal-delay="80"><summary><span class="question-index">02</span><h3>Preciso cadastrar cartão?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Não. O teste não exige cartão e não gera cobrança ou assinatura automática.</p></details><details class="question" data-reveal data-reveal-delay="150"><summary><span class="question-index">03</span><h3>O que posso testar?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>O teste é para um organizador autenticado que ainda não criou um grupo e não tem histórico de assinatura paga. Ele pode ser usado uma vez, para testar até 3 grupos e atletas ilimitados, incluindo jogos, convites, confirmações de presença e financeiro.</p></details><details class="question" data-reveal data-reveal-delay="220"><summary><span class="question-index">04</span><h3>O que acontece ao terminar?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Seu histórico continua disponível para leitura. Criar novos jogos, alterar o financeiro e criar ou alterar respostas de presença ficam bloqueados até o organizador assinar um plano.</p></details><details class="question" data-reveal data-reveal-delay="290"><summary><span class="question-index">05</span><h3>Posso marcar um jogo depois do teste?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Você pode marcar jogos durante o teste. Se a data do jogo for igual ou posterior ao fim do teste, o app avisa com antecedência que será preciso assinar para o grupo continuar funcionando. Agendar o jogo não estende o prazo gratuito.</p></details><details class="question" data-reveal data-reveal-delay="360"><summary><span class="question-index">06</span><h3>Os atletas também precisam assinar?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Não. O organizador assina o plano do Saqz. Mensalidades e diárias do grupo são cobranças separadas, definidas pelo organizador.</p></details><details class="question" data-reveal data-reveal-delay="430"><summary><span class="question-index">07</span><h3>Como continuo usando?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Continue com o Organizador ou escolha outro plano compatível no checkout. O Titular atende 1 grupo com até 25 atletas; se seu uso ultrapassar esse limite, a contratação será bloqueada até o uso caber no plano. Nenhum dado é excluído automaticamente e o teste não inicia pagamento por conta própria.</p></details></div></div></section>
     <section class="final shell" id="comecar"><img class="final-logo" src="assets/saqz-logo.svg" alt="Saqz" data-reveal><span class="eyebrow" data-reveal data-reveal-delay="80">Pronto para começar?</span><h2 data-reveal data-reveal-delay="150">Organize o próximo jogo do seu grupo.</h2><p data-reveal data-reveal-delay="220">Crie sua conta e abra o app para criar seu primeiro grupo. Você escolhe se quer assinar depois do teste.</p><div data-reveal data-reveal-delay="300"><a class="primary" href="https://saqzweb.brunoalmeida.dev/comecar/">Testar grátis por 14 dias <span class="arrow" aria-hidden="true">→</span></a><span class="click-trigger">Sem cartão · até 3 grupos e atletas ilimitados · 14 dias após criar o grupo.</span></div></section>
   </main>
-  <footer class="site-footer"><div class="shell footer-inner" data-reveal><div class="footer-row"><img class="footer-logo" src="assets/saqz-logo.svg" alt="Saqz"><p>© 2026 Saqz · Feito para quem organiza vôlei de quadra</p><nav class="footer-nav" aria-label="Rodapé"><a href="#painel">Como funciona</a><a href="#precos">Planos</a><a href="#faq">Perguntas</a></nav></div><p class="footer-contact">Suporte: <a href="https://wa.me/5534999576016" aria-label="Suporte pelo WhatsApp">WhatsApp (34) 99957-6016</a></p><p class="footer-legal">Empresa responsável: BRUNO HENRIQUE DE ALMEIDA TECNOLOGIA DA INFORMACAO LTDA</p></div></footer>
   <script src="assets/motion.js"></script>
   <script src="assets/phone-carousel.js?v=autoplay-2400"></script>
   <script>
