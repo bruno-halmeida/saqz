@@ -19,9 +19,12 @@ class NotificationChannelsIntegrationTest {
     private val whatsapp = JdbcNotificationWhatsApp(source, transaction,
         br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory(java.net.URI("https://saqz.test-app.link")))
     private val push = JdbcNotificationPush(source, transaction)
+    private val reminders = ChargeReminderService(transaction, JdbcGroupReadRepository(source), repository, JdbcChargeReminderStore(source))
     private val owner = user("Owner")
     private val member = user("Member")
     private val group = UUID.randomUUID()
+    private var chargeSequence = 0
+    private var gameSequence = 0
     init {
         jdbc.sql("""INSERT INTO access_groups (id, owner_user_id, creation_key, name, time_zone, created_at, updated_at)
             VALUES (:id, :owner, :key, 'Futebol', 'UTC', now(), now())""")
@@ -33,43 +36,46 @@ class NotificationChannelsIntegrationTest {
         push.register(member, UUID.randomUUID(), "member-device", "ANDROID")
     }
 
-    @Test fun `WhatsApp requires opt in and never sends conversations or to the author`() {
+    @Test fun `notice never uses WhatsApp DM even with opt in and never reaches the author`() {
         publish(MessageChannel.NOTICE)
         assertEquals(0L, count("notification_whatsapp_queue"))
         assertEquals(1, inbox().size)
         service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(true, true, true)))
         publish(MessageChannel.CHAT)
         publish(MessageChannel.NOTICE, "Treino amanhã")
-        val sent = mutableListOf<WhatsAppNotification>()
-        drain { message -> sent += message; WhatsAppDelivery.Accepted }
-        assertEquals(1, sent.size)
-        assertEquals("+5511999999999", sent.single().phone)
-        assertEquals("Saqz · Futebol\nTreino amanhã", sent.single().body)
-        assertEquals(inbox().first().sequence, sent.single().notificationId)
-        assertEquals("ACCEPTED", status())
+        drain { error("NOTICE and CHAT must not enqueue a WhatsApp DM") }
+        assertEquals(0L, count("notification_whatsapp_queue"))
+        assertEquals(3, inbox().size)
+        val pushes = mutableListOf<NotificationPush>()
+        push.drain(NotificationPushSender { _, message -> pushes += message; PushDelivery.SENT })
+        assertEquals(2, pushes.count { it.body == "Você recebeu um aviso do grupo. Abra o app para conferir." })
+        assertEquals(1, pushes.count { it.body == "Você recebeu uma mensagem no grupo. Abra o app para conferir." })
         assertTrue(service.inbox(owner, null).success().items.isEmpty())
     }
 
-    @Test fun `app push and WhatsApp selections are independent and replay creates one job`() {
-        val preferences = NotificationPreferences(notices = false, push = PushPreferences(notices = false),
-            whatsapp = WhatsAppPreferences(notices = true))
+    @Test fun `charge WhatsApp delivery is independent from push and replay creates one job`() {
+        val preferences = NotificationPreferences(notices = false, push = PushPreferences(charges = false),
+            whatsapp = WhatsAppPreferences(charges = true))
         assertEquals(preferences, service.savePreferences(member, preferences))
         assertEquals(preferences, service.preferences(member))
         val request = UUID.randomUUID()
-        val message = publish(MessageChannel.NOTICE, request = request)
-        assertEquals(message, publish(MessageChannel.NOTICE, request = request))
-        assertTrue(inbox().isEmpty())
-        assertEquals(0L, count("notification_push_queue"))
+        val charge = charge()
+        remindCharges(charge, request = request)
+        remindCharges(charge, request = request)
         assertEquals(1L, count("notification_whatsapp_queue"))
+        assertEquals(0L, count("notification_push_queue"))
         val sent = mutableListOf<WhatsAppNotification>()
         drain { sent += it; WhatsAppDelivery.Accepted }
         drain { error("accepted delivery was repeated") }
         assertEquals(1, sent.size)
+        assertEquals("+5511999999999", sent.single().phone)
+        assertTrue(sent.single().body.startsWith("Saqz · Futebol\nVocê tem uma cobrança de"))
+        assertTrue(sent.single().body.contains("em aberto. Abra o grupo para conferir sua cobrança."))
     }
 
-    @Test fun `WhatsApp failure cannot lose inbox or block push and respects retry after`() {
-        service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(notices = true)))
-        publish(MessageChannel.NOTICE)
+    @Test fun `charge WhatsApp failure cannot lose inbox or block push and respects retry after`() {
+        service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(charges = true)))
+        remindCharges(charge())
         drain { WhatsAppDelivery.Retry(7200) }
         assertEquals("PENDING", status())
         assertTrue(jdbc.sql("SELECT next_attempt_at >= now() + interval '7190 seconds' FROM notification_whatsapp_queue")
@@ -79,20 +85,20 @@ class NotificationChannelsIntegrationTest {
         push.drain(NotificationPushSender { token, message -> sent += token to message; PushDelivery.SENT })
         assertEquals("member-device", sent.single().first)
         assertEquals(group, sent.single().second.groupId)
-        assertEquals("Você recebeu um aviso do grupo. Abra o app para conferir.", sent.single().second.body)
+        assertEquals("Você recebeu um lembrete de cobrança. Abra o app para conferir.", sent.single().second.body)
         jdbc.sql("UPDATE notification_whatsapp_queue SET next_attempt_at = now()").update()
         drain { WhatsAppDelivery.Accepted }
         assertEquals("ACCEPTED", status())
         assertEquals(2, jdbc.sql("SELECT attempts FROM notification_whatsapp_queue").query(Int::class.java).single())
     }
 
-    @Test fun `pending delivery is cancelled after opt out departure or phone change`() {
+    @Test fun `pending charge delivery is cancelled after opt out departure or phone change`() {
         for (change in listOf("mute", "departure", "phone")) {
             jdbc.sql("TRUNCATE group_messages CASCADE").update()
             jdbc.sql("UPDATE group_memberships SET active = true").update()
             jdbc.sql("UPDATE access_users SET phone = '+5511999999999' WHERE id = :u").param("u", member).update()
-            service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(notices = true)))
-            publish(MessageChannel.NOTICE)
+            service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(charges = true)))
+            remindCharges(charge())
             when (change) {
                 "mute" -> service.savePreferences(member, NotificationPreferences())
                 "departure" -> jdbc.sql("UPDATE group_memberships SET active = false WHERE user_id = :u").param("u", member).update()
@@ -103,13 +109,13 @@ class NotificationChannelsIntegrationTest {
         }
     }
 
-    @Test fun `missing phone and permanent or exhausted failures do not loop`() {
-        service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(notices = true)))
+    @Test fun `missing phone and permanent or exhausted charge failures do not loop`() {
+        service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(charges = true)))
         jdbc.sql("UPDATE access_users SET phone = null WHERE id = :u").param("u", member).update()
-        publish(MessageChannel.NOTICE)
+        remindCharges(charge())
         assertEquals(0L, count("notification_whatsapp_queue"))
         jdbc.sql("UPDATE access_users SET phone = '+5511999999999' WHERE id = :u").param("u", member).update()
-        publish(MessageChannel.NOTICE)
+        remindCharges(charge())
         drain { WhatsAppDelivery.Failed }
         assertEquals("FAILED", status())
         jdbc.sql("UPDATE notification_whatsapp_queue SET status = 'PENDING', attempts = 9, completed_at = null").update()
@@ -119,34 +125,21 @@ class NotificationChannelsIntegrationTest {
         drain { error("terminal delivery retried") }
     }
 
-    @Test fun `presence reminder is delivered only while attendance remains open and unanswered`() {
+    @Test fun `presence reminder never enqueues a WhatsApp DM and is dropped once the deadline closes`() {
         service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(reminders = true)))
-        val game = UUID.randomUUID()
-        jdbc.sql("""
-            INSERT INTO games(id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
-                confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at)
-            VALUES (:id, :g, 'Treino', current_date + 2, '12:00', 'UTC', now() + interval '2 days', 90,
-                now() + interval '1 day', 'Arena', 'Rua 100', 12, 'PUBLISHED', now(), now())
-        """).param("id", game).param("g", group).update()
+        val game = publishedGame()
         service.remind(owner, group, game, UUID.randomUUID()).success()
-        assertEquals(1L, count("notification_whatsapp_queue"))
+        assertEquals(0L, count("notification_whatsapp_queue"))
+        drain { error("REMINDER must not enqueue a WhatsApp DM") }
         jdbc.sql("UPDATE games SET confirmation_deadline = now() - interval '1 minute' WHERE id = :id").param("id", game).update()
-        drain { error("expired reminder") }
-        push.drain(NotificationPushSender { _, _ -> error("expired push") })
-        assertEquals("CANCELLED", status())
+        push.drain(NotificationPushSender { _, _ -> error("expired reminder") })
         assertEquals(1, inbox().size)
     }
 
     @Test fun `charge WhatsApp is private and cancelled charges cancel pending delivery`() {
         service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(charges = true)))
-        val charge = UUID.randomUUID()
-        jdbc.sql("""
-            INSERT INTO group_charges(id, group_id, member_user_id, kind, billing_month, amount_cents, due_date,
-                created_by_user_id, changed_by_user_id, created_at, updated_at, member_display_name)
-            VALUES (:id, :g, :u, 'MONTHLY', '2026-09-01', 7000, '2026-09-10', :a, :a, now(), now(), 'Member')
-        """).param("id", charge).param("g", group).param("u", member).param("a", owner).update()
-        val reminders = ChargeReminderService(transaction, JdbcGroupReadRepository(source), repository, JdbcChargeReminderStore(source))
-        reminders.send(owner, group, UUID.randomUUID(), listOf(charge)).success()
+        val charge = charge()
+        remindCharges(charge)
         assertEquals(1L, count("notification_whatsapp_queue"))
         assertEquals(MessageChannel.CHARGE, inbox().single().message.channel)
         assertTrue(service.inbox(owner, null).success().items.isEmpty())
@@ -172,22 +165,13 @@ class NotificationChannelsIntegrationTest {
 
     @Test fun `presence sends app link and resolves only for an active member without changing attendance`() {
         service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(reminders = true)))
-        val game = UUID.randomUUID()
-        jdbc.sql("""
-            INSERT INTO games(id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
-                confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at)
-            VALUES (:id, :g, 'Treino', current_date + 2, '12:00', 'UTC', now() + interval '2 days', 90,
-                now() + interval '1 day', 'Arena', 'Rua 100', 12, 'PUBLISHED', now(), now())
-        """).param("id", game).param("g", group).update()
+        val game = publishedGame()
         val request = UUID.randomUUID()
         service.remind(owner, group, game, request).success()
         service.remind(owner, group, game, request).success()
         assertEquals(1L, count("notification_attendance_links"))
+        assertEquals(0L, count("notification_whatsapp_queue"))
         val code = jdbc.sql("SELECT code FROM notification_attendance_links").query(String::class.java).single()
-        val sent = mutableListOf<WhatsAppNotification>()
-        drain { sent += it; WhatsAppDelivery.Accepted }
-        assertTrue(sent.single().body.contains("saqz_attendance=$code"))
-        assertTrue(sent.single().body.contains("Confirmar minha presença no Saqz:"))
         val pushes = mutableListOf<NotificationPush>()
         push.drain(NotificationPushSender { token, message -> assertEquals("member-device", token); pushes += message; PushDelivery.SENT })
         assertEquals("Confirme sua presença no próximo jogo. Abra o app para conferir.", pushes.single().body)
@@ -226,6 +210,30 @@ class NotificationChannelsIntegrationTest {
     private fun publish(channel: MessageChannel, body: String = "Aviso", request: UUID = UUID.randomUUID()) =
         service.publish(owner, group, channel, request, body).success()
     private fun drain(send: (WhatsAppNotification) -> WhatsAppDelivery) = whatsapp.drain(NotificationWhatsAppSender(send))
+    private fun remindCharges(vararg charges: UUID, request: UUID = UUID.randomUUID()): ChargeReminderReceipt =
+        reminders.send(owner, group, request, charges.toList()).success()
+    private fun charge(amountCents: Long = 7000): UUID {
+        chargeSequence += 1
+        val id = UUID.randomUUID()
+        jdbc.sql("""
+            INSERT INTO group_charges(id, group_id, member_user_id, kind, billing_month, amount_cents, due_date,
+                created_by_user_id, changed_by_user_id, created_at, updated_at, member_display_name)
+            VALUES (:id, :g, :u, 'MONTHLY', CAST(:month AS date), :amount, '2026-09-10', :a, :a, now(), now(), 'Member')
+        """).param("id", id).param("g", group).param("u", member).param("a", owner)
+            .param("month", "2026-%02d-01".format(chargeSequence)).param("amount", amountCents).update()
+        return id
+    }
+    private fun publishedGame(): UUID {
+        gameSequence += 1
+        val id = UUID.randomUUID()
+        jdbc.sql("""
+            INSERT INTO games(id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
+                confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at)
+            VALUES (:id, :g, 'Treino', current_date + :offset, '12:00', 'UTC', now() + (:offset * interval '1 day'), 90,
+                now() + interval '1 day', 'Arena', 'Rua 100', 12, 'PUBLISHED', now(), now())
+        """).param("id", id).param("g", group).param("offset", gameSequence + 1).update()
+        return id
+    }
     private fun inbox() = service.inbox(member, null).success().items
     private fun status() = jdbc.sql("SELECT status FROM notification_whatsapp_queue").query(String::class.java).single()
     private fun count(table: String) = jdbc.sql("SELECT count(*) FROM $table").query(Long::class.java).single()
