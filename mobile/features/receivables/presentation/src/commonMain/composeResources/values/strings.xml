@@ -3,7 +3,7 @@
     <string name="receipt_intro">Escolha Pix, cartão ou ambos para novas cobranças. A alteração não muda ordens e aceites já emitidos.</string>
     <string name="receipt_account">Conta · %1$s</string>
     <string name="receipt_accounts">Selecione uma conta financeira</string>
-    <string name="receipt_no_account">Você ainda não tem uma conta financeira disponível. O cadastro financeiro não está disponível nesta jornada.</string>
+    <string name="receipt_no_account">Você ainda não tem uma conta disponível para receber pagamentos. O cadastro não pode ser feito nesta tela.</string>
     <string name="receipt_registration_INCOMPLETE">Cadastro incompleto</string>
     <string name="receipt_registration_UNDER_REVIEW">Cadastro em análise</string>
     <string name="receipt_registration_CORRECTION_REQUIRED">Cadastro precisa de correção</string>
@@ -11,10 +11,10 @@
     <string name="receipt_registration_REJECTED">Cadastro não aprovado</string>
     <string name="receipt_enabled">Recebimentos ativados</string>
     <string name="receipt_disabled">Recebimentos desativados</string>
-    <string name="receipt_current">Meios atuais: %1$s</string>
+    <string name="receipt_current">Formas de pagamento: %1$s</string>
     <string name="receipt_pix">Pix</string>
     <string name="receipt_card">Cartão</string>
-    <string name="receipt_choose">Selecione pelo menos um meio para revisar e ativar.</string>
+    <string name="receipt_choose">Escolha Pix, cartão ou os dois para continuar.</string>
     <string name="receipt_preview">Revisar condições</string>
     <string name="receipt_activate">Aceitar e ativar recebimentos</string>
     <string name="receipt_accept">Li e aceito os termos apresentados nesta revisão</string>
@@ -32,15 +32,15 @@
     <string name="receipt_price">%1$s · %2$s</string>
     <string name="receipt_GAME">Por jogo</string>
     <string name="receipt_MONTHLY">Mensalidade</string>
-    <string name="receipt_base">Base: %1$s</string>
+    <string name="receipt_base">Valor sem taxas: %1$s</string>
     <string name="receipt_fees">Taxas de serviço e pagamento: %1$s</string>
-    <string name="receipt_total">Total para o pagador: %1$s</string>
-    <string name="receipt_net">Líquido previsto para o grupo: %1$s</string>
+    <string name="receipt_total">Total a pagar: %1$s</string>
+    <string name="receipt_net">Valor previsto para o grupo após as taxas: %1$s</string>
     <string name="receipt_no_prices">O grupo não possui preços positivos para simular. Consulte a composição das taxas e os termos antes de ativar.</string>
     <string name="receipt_cutoff">Elegibilidade até: %1$s</string>
     <string name="receipt_denied">Ativação não permitida nas condições atuais da conta, do plano ou da liberação.</string>
     <string name="receipt_error_DENIED">Você não tem permissão para esta operação ou ela está indisponível nas condições atuais.</string>
-    <string name="receipt_error_STALE">As condições mudaram. Revise novamente e faça um novo aceite.</string>
+    <string name="receipt_error_STALE">As condições mudaram. Confira os novos valores e termos antes de aceitar.</string>
     <string name="receipt_error_INVALID">Não foi possível validar a resposta. Atualize os dados antes de continuar.</string>
     <string name="receipt_error_UNAVAILABLE">O serviço está indisponível. Tente novamente em instantes.</string>
     <string name="receipt_error_NETWORK">Não foi possível conectar. Confira sua internet e tente novamente.</string>
@@ -48,7 +48,7 @@
     <string name="receipt_error_UNCERTAIN">Não foi possível confirmar o resultado da operação.</string>
     <string name="receipt_pending">Há uma operação sem confirmação. Reenvie a mesma operação antes de alterar a configuração.</string>
     <string name="receipt_retry_mutation">Reenviar operação pendente</string>
-    <string name="receipt_composition">Composição das taxas</string>
+    <string name="receipt_composition">Detalhes das taxas</string>
     <string name="receipt_provider_minimum">Tarifa mínima Asaas: %1$s</string>
     <string name="receipt_provider_maximum">Tarifa máxima Asaas: %1$s</string>
 </resources>

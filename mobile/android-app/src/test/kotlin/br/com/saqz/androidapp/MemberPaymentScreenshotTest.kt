@@ -48,13 +48,13 @@ class MemberPaymentScreenshotTest {
         compose.runOnIdle { state.value = review.copy(terms = null, error = ReceiptError.UNAVAILABLE) }
         compose.onNodeWithTag(MemberPaymentTags.Accept).performScrollTo().assertIsNotEnabled(); capture("termos-indisponiveis")
         compose.runOnIdle { state.value = review }
-        compose.onNodeWithText("Base: R$\u00a0100,00").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Valor sem taxas: R$\u00a0100,00").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Taxas de serviço e pagamento: R$\u00a06,58").assertIsDisplayed()
-        compose.onNodeWithText("Total para o pagador: R$\u00a0106,58").assertIsDisplayed()
+        compose.onNodeWithText("Total a pagar: R$\u00a0106,58").assertIsDisplayed()
         compose.onNodeWithText("Pagar R$\u00a0106,58").assertExists()
         compose.runOnIdle { state.value = review.copy(method = ReceiptMethod.CARD) }
         compose.onNodeWithText("Taxas de serviço e pagamento: R$\u00a09,00").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Total para o pagador: R$\u00a0109,00").assertIsDisplayed()
+        compose.onNodeWithText("Total a pagar: R$\u00a0109,00").assertIsDisplayed()
         compose.onNodeWithTag(MemberPaymentTags.Pay).assertTextEquals("Pagar R$\u00a0109,00").assertIsNotEnabled()
         capture("revisao-cartao")
         compose.runOnIdle { state.value = review }

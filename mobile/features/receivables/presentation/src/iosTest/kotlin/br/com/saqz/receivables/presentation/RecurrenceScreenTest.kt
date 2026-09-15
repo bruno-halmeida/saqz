@@ -18,8 +18,8 @@ class RecurrenceScreenTest {
         assertEquals(listOf<RecurrenceIntent>(RecurrenceIntent.Preview), intents)
         runOnIdle { state.value = state.value.copy(review = review, terms = ReceiptTerms("terms", "Termos publicados"),
             name = "Pessoa Teste", document = "12345678909") }
-        onNodeWithText("Base: R$\u00a0100,00").performScrollTo().assertIsDisplayed()
-        onNodeWithText("Total para o pagador: R$\u00a0104,90").assertIsDisplayed()
+        onNodeWithText("Valor sem taxas: R$\u00a0100,00").performScrollTo().assertIsDisplayed()
+        onNodeWithText("Total a pagar: R$\u00a0104,90").assertIsDisplayed()
         onNodeWithTag(RecurrenceTags.Submit).performScrollTo().assertIsNotEnabled()
         runOnIdle { state.value = state.value.copy(accepted = true) }
         onNodeWithTag(RecurrenceTags.Submit).assertIsEnabled().performClick()

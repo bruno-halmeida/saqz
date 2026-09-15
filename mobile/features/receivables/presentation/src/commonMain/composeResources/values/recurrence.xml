@@ -1,8 +1,8 @@
 <resources>
     <string name="recurrence_title">Cobrança mensal</string>
-    <string name="recurrence_intro">Revise o valor, o meio de pagamento e os termos antes de autorizar.</string>
+    <string name="recurrence_intro">Confira o valor, a forma de pagamento e os termos antes de autorizar.</string>
     <string name="recurrence_pix_manual">No Pix, uma nova cobrança é gerada a cada mês para você pagar manualmente.</string>
-    <string name="recurrence_pending">A operação ainda está sendo confirmada. Atualize para recuperar a mesma tentativa; não faça outra.</string>
+    <string name="recurrence_pending">Ainda estamos confirmando sua solicitação. Atualize para acompanhar o resultado antes de tentar novamente.</string>
     <string name="recurrence_reference">Cobrança mensal ••••%1$s</string>
     <string name="recurrence_method">Forma de pagamento: %1$s</string>
     <string name="recurrence_cutoff">Cancelamento solicitado em %1$s</string>

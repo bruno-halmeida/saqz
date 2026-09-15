@@ -1,7 +1,7 @@
 <resources>
     <string name="management_title">Gerenciar conta financeira</string>
     <string name="management_open">Gerenciar conta e acessos</string>
-    <string name="management_empty">Nenhuma conta financeira acessível.</string>
+    <string name="management_empty">Você ainda não tem acesso a uma conta financeira.</string>
     <string name="management_account">Conta %1$s</string>
     <string name="management_owner">Titular da conta</string>
     <string name="management_delegate">Administrador com acesso à conta</string>

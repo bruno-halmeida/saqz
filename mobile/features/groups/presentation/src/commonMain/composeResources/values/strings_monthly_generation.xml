@@ -1,6 +1,6 @@
 <resources>
     <string name="monthly_generation_title">Criar cobranças do mês</string>
-    <string name="monthly_generation_note">O valor informado vale para cada pessoa selecionada. Esta ação cria cobranças pendentes: não registra recebimento, não envia mensagens e não altera a geração automática. Cobranças existentes no mês serão mantidas.</string>
+    <string name="monthly_generation_note">Cada pessoa selecionada terá uma cobrança com o valor informado. As cobranças que já existem neste mês serão mantidas.\n\nCriar as cobranças não registra pagamentos nem envia mensagens. A criação automática de cobranças continua como está.</string>
     <string name="monthly_generation_month">Mês (AAAA-MM)</string>
     <string name="monthly_generation_due">Vencimento (DD/MM/AAAA)</string>
     <string name="monthly_generation_amount">Valor por pessoa (R$)</string>
@@ -11,6 +11,6 @@
     <string name="monthly_generation_confirm">Criar cobranças</string>
     <string name="monthly_generation_edit">Voltar e editar</string>
     <string name="monthly_generation_failed">Não foi possível criar as cobranças. Mantivemos os dados que você preencheu. Tente novamente.</string>
-    <string name="monthly_generation_validation">Confira o mês, o vencimento dentro do mês, o valor positivo e selecione ao menos uma pessoa.</string>
+    <string name="monthly_generation_validation">Escolha pelo menos uma pessoa, informe um valor maior que zero e um vencimento dentro do mês escolhido. Confira também se o mês está correto.</string>
     <string name="monthly_generation_denied">Você não tem permissão para criar cobranças do mês neste grupo.</string>
 </resources>

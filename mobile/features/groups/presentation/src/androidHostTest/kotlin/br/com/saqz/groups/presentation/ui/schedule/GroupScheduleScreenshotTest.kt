@@ -96,7 +96,7 @@ class GroupScheduleScreenshotTest {
     }
 
     // Sem recorrência para o card de pausa caber na tela: com as pílulas de slot ele fica
-    // abaixo da dobra e o estado "Retomar a agenda" não apareceria na captura.
+    // abaixo da dobra e o estado "Retomar novos jogos da semana" não apareceria na captura.
     @Test
     fun withoutUpcomingGames() = capture("group-schedule-sem-jogos") {
         GroupScheduleScreen(

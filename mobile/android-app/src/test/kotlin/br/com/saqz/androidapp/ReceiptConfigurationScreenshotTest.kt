@@ -63,7 +63,7 @@ class ReceiptConfigurationScreenshotTest {
         compose.onNodeWithTag(ReceiptConfigurationTags.Accept).performScrollTo().assertIsNotEnabled()
         capture("termos-indisponiveis")
         compose.runOnIdle { state.value = reviewed }
-        compose.onNodeWithText("Composição das taxas").performScrollTo().performClick()
+        compose.onNodeWithText("Detalhes das taxas").performScrollTo().performClick()
         capture("tarifas-e-precos")
         compose.onNodeWithTag(ReceiptConfigurationTags.Accept).performScrollTo()
         capture("termos-sem-aceite")
@@ -85,7 +85,7 @@ class ReceiptConfigurationScreenshotTest {
             prices = listOf(ReceiptPrice("GAME", ReceiptMethod.PIX, 1000, 69, 1069, 1000)))
         compose.setContent { SaqzTheme { ReceiptConfigurationScreen(selected.copy(methods = setOf(ReceiptMethod.PIX),
             review = bounded, terms = listOf(ReceiptTerms("v1", "Termos de teste"))), {}, {}) } }
-        compose.onNodeWithText("Composição das taxas").performScrollTo().performClick()
+        compose.onNodeWithText("Detalhes das taxas").performScrollTo().performClick()
         compose.onNodeWithText("Tarifa mínima Asaas: R$\u00a00,29").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Tarifa máxima Asaas: R$\u00a01,99").assertIsDisplayed()
         capture("tarifas-asaas-com-limites")

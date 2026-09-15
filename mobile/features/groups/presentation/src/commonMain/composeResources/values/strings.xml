@@ -269,12 +269,14 @@
     <string name="group_schedule_upcoming">Próximos jogos</string>
     <string name="group_schedule_published">Publicado</string>
     <string name="group_schedule_scheduled">Agendado</string>
-    <string name="group_schedule_pause">Pausar a agenda por um tempo</string>
-    <string name="group_schedule_resume">Retomar a agenda</string>
+    <string name="group_schedule_pause">Pausar novos jogos da semana</string>
+    <string name="group_schedule_resume">Retomar novos jogos da semana</string>
     <string name="group_schedule_save">Salvar alterações</string>
-    <string name="group_schedule_save_error">Não foi possível salvar a agenda. Suas alterações continuam aqui.</string>
-    <string name="group_schedule_conflict">O grupo foi alterado. Recarregue antes de editar novamente.</string>
+    <string name="group_schedule_save_error">Não foi possível salvar os horários. Suas alterações continuam aqui.</string>
+    <string name="group_schedule_conflict">As informações do grupo mudaram. Atualize a tela antes de editar novamente.</string>
     <string name="group_schedule_invalid">Adicione ao menos um horário e evite horários repetidos.</string>
     <string name="group_system_reload">Recarregar</string>
     <string name="groups_next_game_summary">%1$s · %2$s · %3$d de %4$d</string>
+    <string name="group_schedule_pause_help">Toque aqui e salve as alterações para parar de criar novos jogos nos dias e horários definidos. Os jogos já criados continuam como estão.</string>
+    <string name="group_schedule_resume_help">Toque aqui e salve as alterações para voltar a criar jogos nos dias e horários definidos.</string>
 </resources>

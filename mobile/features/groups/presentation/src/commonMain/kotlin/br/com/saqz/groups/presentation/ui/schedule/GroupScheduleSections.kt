@@ -33,6 +33,8 @@ import br.com.saqz.groups.presentation.ui.components.GroupChoiceChipRow
 import br.com.saqz.groups.presentation.ui.confirmationLeadLabel
 import br.com.saqz.groups.presentation.ui.durationLabel
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.group_schedule_pause_help
+import br.com.saqz.groups.resources.group_schedule_resume_help
 import br.com.saqz.groups.resources.group_schedule_pause
 import br.com.saqz.groups.resources.group_schedule_published
 import br.com.saqz.groups.resources.group_schedule_resume
@@ -203,13 +205,22 @@ internal fun GroupPauseScheduleCard(
             .clickable(role = Role.Button, onClickLabel = label, onClick = onToggle)
             .testTag(GroupScheduleTags.Pause),
     ) {
-        Text(
-            text = label,
-            style = SaqzTheme.typography.label,
-            color = SaqzTheme.colors.textSecondary,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
+            Text(
+                text = label,
+                style = SaqzTheme.typography.label,
+                color = SaqzTheme.colors.textSecondary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = stringResource(
+                    if (isPaused) Res.string.group_schedule_resume_help else Res.string.group_schedule_pause_help,
+                ),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+        }
     }
 }
 
