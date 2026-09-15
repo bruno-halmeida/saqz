@@ -33,7 +33,10 @@ final class LaunchContractTests: XCTestCase {
     }
 
     func testSymbolAssetIsTargetMember() {
-        XCTAssertNotNil(UIImage(named: "LaunchSymbol"))
+        let symbol = UIImage(named: "LaunchSymbol")
+        XCTAssertNotNil(symbol)
+        XCTAssertEqual(symbol?.size.width, 86, "Keep the native launch logo aligned with the Compose splash size")
+        XCTAssertEqual(symbol?.size.height, 86)
     }
 
     func testSourceHashMatchesT18() throws {
