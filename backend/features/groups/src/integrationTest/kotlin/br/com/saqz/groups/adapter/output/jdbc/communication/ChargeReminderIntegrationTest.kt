@@ -97,6 +97,53 @@ class ChargeReminderIntegrationTest {
         assertEquals(CommunicationResult.Failure(CommunicationError.CONFLICT), reminders.send(owner, group, UUID.randomUUID(), listOf(first)))
         assertEquals(0L, count("group_notifications"))
     }
+    @Test fun `push delivers selected recipient only and retries without resending successful devices`() {
+        val charge = charge(member)
+        reminders.send(owner, group, UUID.randomUUID(), listOf(charge)).success()
+        val push = JdbcNotificationPush(dataSource, JdbcTransactionRunner(dataSource))
+        push.register(member, UUID.randomUUID(), "member-token", "ANDROID")
+        push.register(member, UUID.randomUUID(), "retry-token", "IOS")
+        push.register(owner, UUID.randomUUID(), "owner-token", "ANDROID")
+        val delivered = mutableListOf<String>()
+        val sender = br.com.saqz.groups.application.communication.NotificationPushSender { token, message ->
+            assertEquals(group, message.groupId)
+            assertFalse(message.body.contains("70,00"))
+            delivered += token
+            if (token == "retry-token") br.com.saqz.groups.application.communication.PushDelivery.RETRY
+            else br.com.saqz.groups.application.communication.PushDelivery.SENT
+        }
+        push.drain(sender)
+        assertEquals(setOf("member-token", "retry-token"), delivered.toSet())
+        assertEquals(1L, count("notification_push_deliveries"))
+        jdbc.sql("UPDATE notification_push_queue SET next_attempt_at = now()").update()
+        delivered.clear()
+        push.drain(br.com.saqz.groups.application.communication.NotificationPushSender { token, _ ->
+            delivered += token
+            br.com.saqz.groups.application.communication.PushDelivery.INVALID_TOKEN
+        })
+        assertEquals(listOf("retry-token"), delivered)
+        assertEquals(2L, count("notification_devices"))
+        assertEquals(1L, jdbc.sql("SELECT count(*) FROM notification_push_queue WHERE completed_at IS NOT NULL").query(Long::class.java).single())
+    }
+    @Test fun `muting push preserves inbox and reassigning a device stops previous recipient delivery`() {
+        val push = JdbcNotificationPush(dataSource, JdbcTransactionRunner(dataSource))
+        val installation = UUID.randomUUID()
+        push.register(member, installation, "token", "ANDROID")
+        push.unregister(owner, installation)
+        assertEquals(1L, count("notification_devices"))
+        push.register(owner, installation, "token", "ANDROID")
+        assertEquals(1L, count("notification_devices"))
+        reminders.send(owner, group, UUID.randomUUID(), listOf(charge(member))).success()
+        push.drain(br.com.saqz.groups.application.communication.NotificationPushSender { _, _ -> error("wrong recipient") })
+        assertEquals(1, service.inbox(member, null).success().items.size)
+        push.register(member, installation, "token", "ANDROID")
+        service.savePreferences(member, NotificationPreferences(reminders = false))
+        reminders.send(owner, group, UUID.randomUUID(), listOf(jdbc.sql("SELECT id FROM group_charges").query(UUID::class.java).single())).success()
+        push.drain(br.com.saqz.groups.application.communication.NotificationPushSender { _, _ -> error("muted") })
+        assertEquals(2, service.inbox(member, null).success().items.size)
+        push.unregister(member, installation)
+        assertEquals(0L, count("notification_devices"))
+    }
     private fun count(table: String) = jdbc.sql("SELECT count(*) FROM $table").query(Long::class.java).single()
     private fun charge(recipient: UUID): UUID {
         val id = UUID.randomUUID()
