@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 17,
+  "next_id": 21,
   "lessons": [
     {
       "id": "L-001",
@@ -294,6 +294,78 @@
       ],
       "created": "2026-09-14T19:29:44Z",
       "last_seen": "2026-09-14T19:29:44Z"
+    },
+    {
+      "id": "L-017",
+      "key": "ac_gap::preserve failed native token revocation across session changes and restart before allowing a new authenticated device binding",
+      "text": "Preserve failed native token revocation across session changes and restart before allowing a new authenticated device binding.",
+      "signal": "ac_gap",
+      "scope": "mobile/notifications",
+      "status": "candidate",
+      "features": [
+        "charge-notifications"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "AC6 (mobile/notifications)"
+      ],
+      "created": "2026-09-15T15:17:46Z",
+      "last_seen": "2026-09-15T15:17:46Z"
+    },
+    {
+      "id": "L-018",
+      "key": "ac_gap::assert the notification destination route matches the promised user journey including every supported charge kind",
+      "text": "Assert the notification destination route matches the promised user journey, including every supported charge kind.",
+      "signal": "ac_gap",
+      "scope": "mobile/navigation",
+      "status": "candidate",
+      "features": [
+        "charge-notifications"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "AC5 (mobile/navigation)"
+      ],
+      "created": "2026-09-15T15:17:46Z",
+      "last_seen": "2026-09-15T15:17:46Z"
+    },
+    {
+      "id": "L-019",
+      "key": "ac_gap::exercise authenticated write endpoints through real http binding and assert both accepted and rejected collection size boundaries",
+      "text": "Exercise authenticated write endpoints through real HTTP binding and assert both accepted and rejected collection-size boundaries.",
+      "signal": "ac_gap",
+      "scope": "backend/http",
+      "status": "candidate",
+      "features": [
+        "charge-notifications"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "AC1 (backend/http)"
+      ],
+      "created": "2026-09-15T15:17:47Z",
+      "last_seen": "2026-09-15T15:17:47Z"
+    },
+    {
+      "id": "L-020",
+      "key": "ac_gap::test provider specific transient error classification and minimum retry delays instead of assuming a generic exponential schedule is sufficient",
+      "text": "Test provider-specific transient error classification and minimum retry delays instead of assuming a generic exponential schedule is sufficient.",
+      "signal": "ac_gap",
+      "scope": "backend/push",
+      "status": "candidate",
+      "features": [
+        "charge-notifications"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "AC4 (backend/push)"
+      ],
+      "created": "2026-09-15T15:17:47Z",
+      "last_seen": "2026-09-15T15:17:47Z"
     }
   ]
 }

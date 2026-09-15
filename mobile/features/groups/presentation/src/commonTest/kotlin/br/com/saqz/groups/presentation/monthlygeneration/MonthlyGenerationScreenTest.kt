@@ -106,8 +106,8 @@ class MonthlyGenerationScreenTest {
         var opened: String? = null
         setContent {
             SaqzTheme {
-                GroupCashboxRoot(reminders = br.com.saqz.groups.presentation.fakeChargeReminders(),
-                    "selected-group", {}, {}, onOpenMonthlyGeneration = { opened = it }, viewModel = cashbox,
+                GroupCashboxRoot(
+                    "selected-group", {}, {}, reminders = br.com.saqz.groups.presentation.fakeChargeReminders(), onOpenMonthlyGeneration = { opened = it }, viewModel = cashbox,
                 )
             }
         }

@@ -108,6 +108,30 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: .specs/features/critical-acceptance-scenarios/validation.md F2 (tests/acceptance)
 - last seen: 2026-09-14T19:29:44Z
 
+### L-017 — Preserve failed native token revocation across session changes and restart before allowing a new authenticated device binding.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `mobile/notifications` · harmful: 0
+- features: charge-notifications
+- evidence: AC6 (mobile/notifications)
+- last seen: 2026-09-15T15:17:46Z
+
+### L-018 — Assert the notification destination route matches the promised user journey, including every supported charge kind.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `mobile/navigation` · harmful: 0
+- features: charge-notifications
+- evidence: AC5 (mobile/navigation)
+- last seen: 2026-09-15T15:17:46Z
+
+### L-019 — Exercise authenticated write endpoints through real HTTP binding and assert both accepted and rejected collection-size boundaries.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `backend/http` · harmful: 0
+- features: charge-notifications
+- evidence: AC1 (backend/http)
+- last seen: 2026-09-15T15:17:47Z
+
+### L-020 — Test provider-specific transient error classification and minimum retry delays instead of assuming a generic exponential schedule is sufficient.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `backend/push` · harmful: 0
+- features: charge-notifications
+- evidence: AC4 (backend/push)
+- last seen: 2026-09-15T15:17:47Z
+
 ## Quarantined (failed when applied — ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

@@ -52,7 +52,7 @@ class GroupCashboxScreenTest {
 
         onNodeWithText("Cadastre o Pix do grupo em Editar grupo").assertDoesNotExist()
         onNodeWithTag(GroupCashboxTags.ChargeMissing).performClick()
-        assertEquals(listOf(GroupCashboxIntent.ChargeMissing), intents)
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.ChargeMissing), intents)
     }
 
     @Test
