@@ -42,7 +42,7 @@ cuja jornada ainda depende de implementação; não conta como aprovado nem como
 | Jogos e presença | APP-J01–05, APP-R08/R09 |
 | Comunicação e notificações | APP-C01/C02/C04/C05, APP-N01/N03/N04 |
 | Financeiro do grupo | APP-EF01–04, APP-MG01, APP-R10/R12, APP-AC01, APP-F01; APP-R11 depende das ações de isenção/cancelamento no app |
-| Assinaturas e trial | APP-S01–06, TRIAL-01–06; ADM-X01–03 para contratação no checkout |
+| Assinaturas e trial | APP-S01–06, TRIAL-01–18; ADM-X01–03 para contratação no checkout |
 | Administrativo | ADM-A01/A02, ADM-O01, ADM-U01/U02, ADM-G01, ADM-S01, ADM-C01 e ADM-PG01 |
 | Conversão de cupons | ADM-CA01–03 |
 | Recebimentos Asaas | As 12 jornadas da seção F1–F7 do runbook: cadastro, gestão/delegação, Pix, cartão, renovação, carteira/comprovante, saque, recorrência, corte, retomada, operação e clientes |
@@ -103,7 +103,7 @@ Massa adicional dos novos roteiros:
 
 | Alias / dado | Preparação |
 | --- | --- |
-| NOVO | Conta diferente por cenário, sem grupo anterior, trial ou pagamento; liberação de criação definida no próprio roteiro. Para APP-OB01/02, emitir link válido pelo fluxo de primeiro acesso do ambiente. |
+| NOVO | Conta diferente por cenário, sem grupo anterior, trial ou pagamento; liberação de criação definida no próprio roteiro. Para TRIAL-07, liberar o teste pela web antes de abrir o app; nos testes de oferta pública, começar sem liberação prévia. Para APP-OB01/02, emitir link válido pelo fluxo de primeiro acesso do ambiente. |
 | ASSINANTE | Assinatura sandbox independente por cenário; guardar plano, ciclo, limites, fim do período e valores de recibos. Para upgrade, registrar preços de origem/destino e instante de referência, calcular previamente o pró-rata positivo do período restante e conferir esse valor na cobrança. Para downgrade, preparar uso compatível ou acima do limite conforme o caso. |
 | A e B | Contas exclusivas do banco de analytics. Em ADM-CA01, ambas usam QA30, somente A usa QA10, ambos os trials estão encerrados, e os dois pagamentos de A são posteriores aos usos. |
 | QA30 / QA10 / QASEMUSO | Códigos de teste em base isolada; QA30 com 30 dias, QA10 de desconto e QASEMUSO sem uso. Restaurar a massa entre cenários; não presumir que executar TRIAL-02 prepara ADM-CA01. |
@@ -162,3 +162,34 @@ Seletores novos estáveis: `GroupLeaveTags`, `MemberProfileTags`, `OwnMonthlyPay
 - O painel ainda usa dados demonstrativos em **Suporte e moderação** (`VUL-171`). Não aprovar esse fluxo como integrado; cenário correspondente está bloqueado por implementação.
 - As três listas paginadas do painel exigem massa de pelo menos 51 registros e filtros com mais de 25 resultados para testar todas as transições; não use dados reais de clientes como fixture.
 - Este catálogo é a primeira bateria crítica, não uma alegação de cobertura exaustiva de todas as combinações do produto.
+
+### Teste grátis e cupons — fluxo atualizado em 2026-09-15
+
+`trial-cupons.feature` contém 18 cenários e 21 execuções ao expandir os exemplos.
+Aplicar a migração `V66__trial_enrollments.sql` junto das demais migrações da versão.
+No modo Ligado, contas elegíveis sem liberação prévia veem a oferta no app e um único aceite.
+A liberação pública e os cupons da página web ficam vinculados à conta; essa conta entra direto na criação.
+O prazo começa somente no commit do primeiro grupo. Após o prazo, é preciso assinar para continuar,
+sem cobrança automática. O modo Desligado continua impedindo novos testes e preservando os já iniciados.
+
+Não confundir permissão de resgatar cupom com autorização para criar um grupo.
+Cupons são aplicados pela página web de contratação. Para testar expiração, controlar o relógio do
+backend; mudar apenas a data do celular não altera o prazo autoritativo.
+
+O teste usa o plano **Organizador**: até 3 grupos e atletas ilimitados, incluindo campanhas com
+prazo próprio. Todos os grupos compartilham o prazo iniciado no primeiro. O Titular permanece
+uma opção quando o uso cabe em 1 grupo e até 25 atletas; contratações incompatíveis são recusadas
+antes da cobrança. Durante checkout pendente de plano menor, novas inclusões respeitam seus
+limites. Isso não concede assinatura paga nem estende teste expirado. Casos TRIAL-14–18.
+
+
+### Revisão visual — Meu plano
+
+- Conferir o cartão de destaque do plano e o status real nos estados ativo, pagamento pendente e cancelado.
+- No teste ativo/disponível, conferir Organizador, até 3 grupos, atletas ilimitados e o prazo informado, sem contador estimado.
+- No teste encerrado, conferir histórico preservado e assinatura necessária para continuar, sem cobrança automática.
+- Na conta sem teste elegível, conferir “Conhecer os planos”, sem sugerir que há um teste ativo.
+- Validar rolagem em tela pequena e fonte ampliada; o botão de assinatura deve continuar acessível.
+- Conferir uso, troca de plano, recibos e cancelamento na assinatura. Participante não deve receber ação exclusiva do organizador.
+
+Validação manual em dispositivo permanece pendente. Capturas automatizadas cobrem os estados principais.

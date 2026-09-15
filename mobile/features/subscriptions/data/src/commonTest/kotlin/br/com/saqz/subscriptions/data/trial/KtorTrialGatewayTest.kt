@@ -40,15 +40,25 @@ class KtorTrialGatewayTest {
         }.ownerTrial()
 
         val value = success(result)
+        assertEquals(false, value.preauthorized)
         assertEquals(TrialStatus.Available, value.status)
         assertNull(value.startedAt)
         assertNull(value.endsAt)
         assertEquals("2026-09-12T16:00:00Z", value.serverTime)
         assertTrue(value.canCreateGroup)
-        assertEquals(1, value.maxGroups)
-        assertEquals(25, value.maxAthletes)
+        assertEquals(3, value.maxGroups)
+        assertNull(value.maxAthletes)
         assertTrue(value.isOwner)
         assertEquals("https://branch.example.test/?%24ios_nativelink=true", value.appUrl)
+    }
+
+    @Test
+    fun `web preauthorization is read from the server`() = runTest {
+        val value = success(gateway {
+            json(AVAILABLE.replace("\"status\":", "\"preauthorized\":true,\"status\":"))
+        }.ownerTrial())
+        assertTrue(value.preauthorized)
+        assertNull(value.startedAt)
     }
 
     @Test
@@ -182,19 +192,19 @@ class KtorTrialGatewayTest {
 
     private companion object {
         const val AVAILABLE = """
-            {"status":"AVAILABLE","startedAt":null,"endsAt":null,"serverTime":"2026-09-12T16:00:00Z","readOnly":false,"canCreateGroup":true,"maxGroups":1,"maxAthletes":25,"isOwner":true,"appUrl":"https://branch.example.test/?%24ios_nativelink=true"}
+            {"status":"AVAILABLE","startedAt":null,"endsAt":null,"serverTime":"2026-09-12T16:00:00Z","readOnly":false,"canCreateGroup":true,"maxGroups":3,"maxAthletes":null,"isOwner":true,"appUrl":"https://branch.example.test/?%24ios_nativelink=true"}
         """
         const val ACTIVE_OWNER = """
-            {"status":"ACTIVE","startedAt":"2026-09-12T10:00:00Z","endsAt":"2026-09-26T10:00:00Z","serverTime":"2026-09-12T16:00:00Z","readOnly":false,"canCreateGroup":false,"maxGroups":1,"maxAthletes":25,"isOwner":true,"appUrl":null}
+            {"status":"ACTIVE","startedAt":"2026-09-12T10:00:00Z","endsAt":"2026-09-26T10:00:00Z","serverTime":"2026-09-12T16:00:00Z","readOnly":false,"canCreateGroup":false,"maxGroups":3,"maxAthletes":null,"isOwner":true,"appUrl":null}
         """
         const val ACTIVE_GROUP = """
-            {"status":"ACTIVE","startedAt":"2026-09-12T10:00:00Z","endsAt":"2026-09-26T10:00:00Z","serverTime":"2026-09-12T16:00:00Z","readOnly":false,"canCreateGroup":false,"maxGroups":1,"maxAthletes":25,"isOwner":false,"appUrl":null}
+            {"status":"ACTIVE","startedAt":"2026-09-12T10:00:00Z","endsAt":"2026-09-26T10:00:00Z","serverTime":"2026-09-12T16:00:00Z","readOnly":false,"canCreateGroup":false,"maxGroups":3,"maxAthletes":null,"isOwner":false,"appUrl":null}
         """
         const val EXPIRED = """
-            {"status":"EXPIRED","startedAt":"2026-09-12T10:00:00Z","endsAt":"2026-09-12T10:00:00Z","serverTime":"2026-09-12T16:00:00Z","readOnly":true,"canCreateGroup":false,"maxGroups":1,"maxAthletes":25,"isOwner":false,"appUrl":null}
+            {"status":"EXPIRED","startedAt":"2026-09-12T10:00:00Z","endsAt":"2026-09-12T10:00:00Z","serverTime":"2026-09-12T16:00:00Z","readOnly":true,"canCreateGroup":false,"maxGroups":3,"maxAthletes":null,"isOwner":false,"appUrl":null}
         """
         const val SUBSCRIBED = """
-            {"status":"SUBSCRIBED","startedAt":null,"endsAt":null,"serverTime":"2026-09-12T16:00:00Z","readOnly":false,"canCreateGroup":true,"maxGroups":1,"maxAthletes":25,"isOwner":true,"appUrl":null}
+            {"status":"SUBSCRIBED","startedAt":null,"endsAt":null,"serverTime":"2026-09-12T16:00:00Z","readOnly":false,"canCreateGroup":true,"maxGroups":3,"maxAthletes":null,"isOwner":true,"appUrl":null}
         """
     }
 }

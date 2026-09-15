@@ -14,10 +14,10 @@ internal class TrialGroupCreationEntitlement(private val gateway: TrialGateway) 
 
     override suspend fun canOpenCreationFlow(): Boolean = when (val result = gateway.ownerTrial()) {
         is SaqzResult.Failure -> true
-        is SaqzResult.Success -> result.value.canEnter()
+        is SaqzResult.Success -> result.value.canRedeemCoupon || result.value.canEnter()
     }
 
-    private fun TrialAccess.canEnter(): Boolean = canRedeemCoupon || (canCreateGroup && when (status) {
+    private fun TrialAccess.canEnter(): Boolean = (canCreateGroup && when (status) {
         TrialStatus.Available, TrialStatus.Active, TrialStatus.Subscribed -> true
         TrialStatus.Expired, TrialStatus.Ineligible -> false
     })

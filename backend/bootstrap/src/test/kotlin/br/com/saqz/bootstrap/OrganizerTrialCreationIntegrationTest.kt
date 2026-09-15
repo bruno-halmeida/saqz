@@ -54,7 +54,7 @@ class OrganizerTrialCreationIntegrationTest {
 
     private fun create(fail: Boolean = false) = CreateGroup(
         JdbcTransactionRunner(ds), JdbcGroupCreationRepository(ds) { if (fail) error("injected group failure") },
-        SubscriptionLimitsAdapter(SubscriptionPlanLookup { null }), start,
+        SubscriptionLimitsAdapter(SubscriptionPlanLookup { null }, trials, Clock.fixed(now, ZoneOffset.UTC)), start,
     )
 
     @Test
@@ -80,16 +80,16 @@ class OrganizerTrialCreationIntegrationTest {
     }
 
     @Test
-    fun `concurrent distinct requests create only one group and one trial`() {
+    fun `concurrent requests respect three groups and start only one trial`() {
         val latch = CountDownLatch(1)
-        val executor = Executors.newFixedThreadPool(2)
+        val executor = Executors.newFixedThreadPool(4)
         try {
-            val requests = (1..2).map { executor.submit(Callable { latch.await(); create().execute(owner, UUID.randomUUID(), profile, "UTC") }) }
+            val requests = (1..4).map { executor.submit(Callable { latch.await(); create().execute(owner, UUID.randomUUID(), profile, "UTC") }) }
             latch.countDown()
             val results = requests.map { it.get() }
-            assertEquals(1, results.count { it is CreateGroupResult.Success })
+            assertEquals(3, results.count { it is CreateGroupResult.Success })
             assertEquals(1, results.count { it == CreateGroupResult.GroupLimitExceeded })
-            assertEquals(1, count("access_groups"))
+            assertEquals(3, count("access_groups"))
             assertEquals(1, count("organizer_trials"))
         } finally { executor.shutdownNow() }
     }
@@ -98,7 +98,7 @@ class OrganizerTrialCreationIntegrationTest {
     fun `deleting an existing group cannot grant a new trial`() {
         val group = assertIs<CreateGroupResult.Success>(create().execute(owner, UUID.randomUUID(), profile, "UTC")).group
         jdbc.sql("UPDATE access_groups SET deleted_at = now() WHERE id = :id").param("id", group.id).update()
-        assertEquals(CreateGroupResult.GroupLimitExceeded, create().execute(owner, UUID.randomUUID(), profile, "UTC"))
+        assertIs<CreateGroupResult.Success>(create().execute(owner, UUID.randomUUID(), profile, "UTC"))
         assertEquals(now, trials.find(owner)?.startedAt)
         // A legacy group also disqualifies an organizer even without a trial record.
         jdbc.sql("DELETE FROM organizer_trials WHERE owner_user_id = :owner").param("owner", owner).update()

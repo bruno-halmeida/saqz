@@ -43,6 +43,17 @@ class JdbcSubscriptionPlanLookupIntegrationTest {
     }
 
     @Test
+    fun `pending checkout supplies a ceiling but never paid entitlement`() {
+        subscriptions.insert(subscription(status = SubscriptionStatus.PAST_DUE, firstConfirmedAt = null))
+        assertNull(lookup.findEntitlingPlan(ownerId))
+        assertEquals(Plan.TITULAR, lookup.findPendingCheckoutPlan(ownerId))
+        assertNull(lookup.findPendingCheckoutPlan(UUID.randomUUID()))
+        jdbc.sql("UPDATE subscriptions SET status='CANCELED' WHERE owner_user_id=:owner")
+            .param("owner", ownerId).update()
+        assertNull(lookup.findPendingCheckoutPlan(ownerId))
+    }
+
+    @Test
     fun `an active subscription is entitling`() {
         subscriptions.insert(subscription(status = SubscriptionStatus.ACTIVE, firstConfirmedAt = Instant.now()))
 

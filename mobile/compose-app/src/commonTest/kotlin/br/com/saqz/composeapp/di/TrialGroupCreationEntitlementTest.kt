@@ -40,9 +40,9 @@ class TrialGroupCreationEntitlementTest {
     }
 
     @Test
-    fun couponEligibleOrganizerCanReachCouponEntryWithoutGroupPermission() = runTest {
+    fun couponEligibilityDoesNotAuthorizeGroupCreation() = runTest {
         val trial = access(TrialStatus.Ineligible, false).copy(canRedeemCoupon = true, offerMode = "COUPON_ONLY")
-        assertTrue(TrialGroupCreationEntitlement(FakeTrialGateway(SaqzResult.Success(trial))).canCreateGroup())
+        assertFalse(TrialGroupCreationEntitlement(FakeTrialGateway(SaqzResult.Success(trial))).canCreateGroup())
     }
 
     @Test

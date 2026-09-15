@@ -35,17 +35,6 @@ import br.com.saqz.subscriptions.presentation.myplan.MyPlanIntent
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanState
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanStatusTone
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanUsageUi
-import br.com.saqz.subscriptions.presentation.myplan.MyPlanTrialUi
-import br.com.saqz.subscriptions.resources.myplan_trial_active
-import br.com.saqz.subscriptions.resources.myplan_trial_expired
-import br.com.saqz.subscriptions.resources.myplan_trial_subscribe
-import br.com.saqz.subscriptions.resources.myplan_trial_organizer
-import br.com.saqz.subscriptions.resources.myplan_trial_available
-import br.com.saqz.subscriptions.resources.myplan_trial_ineligible
-import br.com.saqz.subscriptions.resources.myplan_trial_readonly
-import br.com.saqz.subscriptions.resources.myplan_trial_date_unavailable
-import br.com.saqz.subscriptions.domain.trial.TrialStatus
-import br.com.saqz.core.common.formatting.formatInstantDateTimePtBr
 import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.myplan_access_until
 import br.com.saqz.subscriptions.resources.myplan_cancel_button
@@ -71,21 +60,23 @@ import org.jetbrains.compose.resources.stringResource
 internal fun MyPlanCurrentCard(plan: MyPlanCardUi, modifier: Modifier = Modifier) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    SaqzCard(modifier = modifier.testTag(MyPlanTags.PlanCard), tone = SaqzCardTone.Soft) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    MyPlanHero(modifier = modifier.testTag(MyPlanTags.PlanCard)) {
+        Column(verticalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
             Text(
                 text = stringResource(Res.string.myplan_current_plan_label),
                 style = SaqzTheme.typography.eyebrow,
-                color = colors.primary,
+                color = colors.accent,
             )
-            SaqzStatusChip(text = plan.statusLabel.asString(), tone = plan.statusTone.toChipTone(), dot = true)
+            Row(Modifier.background(colors.surface, RoundedCornerShape(metrics.cardRadius)).padding(metrics.subGrid)) {
+                SaqzStatusChip(text = plan.statusLabel.asString(), tone = plan.statusTone.toChipTone(), dot = true)
+            }
         }
-        Text(text = plan.name, style = SaqzTheme.typography.title, color = colors.textPrimary)
+        Text(text = plan.name, style = SaqzTheme.typography.headline, color = colors.onPrimary)
         plan.pendingNote?.let { note ->
             Text(
                 text = note.asString(),
                 style = SaqzTheme.typography.support,
-                color = colors.primary,
+                color = colors.onPrimary,
             )
         }
         if (plan.nextChargeDate != null) {
@@ -124,59 +115,18 @@ internal fun MyPlanCurrentCard(plan: MyPlanCardUi, modifier: Modifier = Modifier
 }
 
 @Composable
-internal fun MyPlanTrialCard(trial: MyPlanTrialUi, onSubscribe: () -> Unit, modifier: Modifier = Modifier) {
-    if (trial.status == TrialStatus.Subscribed) return
-    SaqzCard(modifier = modifier.testTag(MyPlanTags.TrialCard), tone = SaqzCardTone.Soft) {
-        Text(
-            text = stringResource(
-                when (trial.status) {
-                    TrialStatus.Expired -> Res.string.myplan_trial_expired
-                    TrialStatus.Active -> Res.string.myplan_trial_active
-                    TrialStatus.Available -> Res.string.myplan_trial_available
-                    TrialStatus.Ineligible, TrialStatus.Subscribed -> Res.string.myplan_trial_ineligible
-                },
-                if (trial.status == TrialStatus.Available) trial.trialDays.toString()
-                else formatInstantDateTimePtBr(trial.endsAt) ?: stringResource(Res.string.myplan_trial_date_unavailable),
-            ),
-            style = SaqzTheme.typography.subtitle,
-            color = SaqzTheme.colors.textPrimary,
-        )
-        if (trial.status == TrialStatus.Expired) {
-            Text(
-                text = stringResource(Res.string.myplan_trial_readonly),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.textSecondary,
-            )
-        }
-        if (trial.canSubscribe) {
-            SaqzButton(
-                label = stringResource(Res.string.myplan_trial_subscribe),
-                onClick = onSubscribe,
-                fullWidth = true,
-                modifier = Modifier.testTag(MyPlanTags.Subscribe),
-            )
-        } else if (!trial.isOwner) {
-            Text(
-                text = stringResource(Res.string.myplan_trial_organizer),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.textSecondary,
-            )
-        }
-    }
-}
-
-@Composable
 internal fun MyPlanUsageCard(usage: MyPlanUsageUi, modifier: Modifier = Modifier) {
     val colors = SaqzTheme.colors
     SaqzCard(modifier = modifier.testTag(MyPlanTags.UsageCard)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            SaqzIcon(SaqzIcons.Users, tint = colors.primary)
             Text(text = stringResource(Res.string.myplan_usage_title), style = SaqzTheme.typography.subtitle, color = colors.textPrimary)
-            Text(text = usage.ratioLabel.asString(), style = SaqzTheme.typography.support, color = colors.primary)
         }
+        Text(text = usage.ratioLabel.asString(), style = SaqzTheme.typography.title, color = colors.primary)
         if (usage.progress != null) {
             SaqzProgressBar(value = usage.progress)
         }

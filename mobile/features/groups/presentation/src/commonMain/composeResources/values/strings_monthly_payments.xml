@@ -3,4 +3,7 @@
     <string name="monthly_payments_empty">Nenhuma mensalidade registrada.</string>
     <string name="monthly_payments_open_group">Ver grupo e dados para pagamento</string>
     <string name="monthly_payments_pay_in_app">Pagar pelo app</string>
+    <string name="monthly_payments_summary_title">Seu futebol em dia</string>
+    <string name="monthly_payments_summary_help">Acompanhe as pendências e o histórico de mensalidades dos seus grupos em um só lugar.</string>
+    <string name="monthly_payments_empty_help">Quando seus grupos registrarem uma mensalidade para você, ela aparecerá aqui.</string>
 </resources>

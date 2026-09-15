@@ -189,6 +189,7 @@ class SubscriptionCommandController(
                     invoiceUrl = result.invoiceUrl,
                 ),
             )
+            CreateSubscriptionResult.PlanDoesNotFitUsage -> throw DowngradeBlockedException()
             CreateSubscriptionResult.AlreadySubscribed -> throw SubscriptionConflictException()
             CreateSubscriptionResult.PendingCheckoutMismatch -> throw PendingCheckoutMismatchException()
             CreateSubscriptionResult.CouponNotFound -> throw CouponNotFoundException()

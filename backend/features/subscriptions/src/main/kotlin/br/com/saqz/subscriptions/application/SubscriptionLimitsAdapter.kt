@@ -2,11 +2,13 @@ package br.com.saqz.subscriptions.application
 
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import br.com.saqz.subscriptions.domain.Plan
+import br.com.saqz.subscriptions.domain.OrganizerTrial
 import java.util.UUID
 import java.time.Clock
 
 fun interface SubscriptionPlanLookup {
     fun findEntitlingPlan(ownerId: UUID): EntitlingSubscription?
+    fun findPendingCheckoutPlan(ownerId: UUID): Plan? = null
 }
 
 data class EntitlingSubscription(
@@ -27,7 +29,10 @@ class SubscriptionLimitsAdapter(
 
     private fun effectiveLimit(ownerId: UUID, selector: (Plan) -> Int?): Int? {
         val subscription = lookup.findEntitlingPlan(ownerId)
-            ?: return if (trials?.find(ownerId)?.isActiveAt(clock.instant()) == true) selector(Plan.TITULAR) else 0
+            ?: return if (trials?.find(ownerId)?.isActiveAt(clock.instant()) == true) {
+                // A pending smaller checkout must not outgrow its limits before payment confirmation.
+                moreRestrictive(selector(OrganizerTrial.plan), lookup.findPendingCheckoutPlan(ownerId)?.let(selector))
+            } else 0
         val current = selector(subscription.plan)
         val pending = subscription.pendingPlan?.let(selector)
         return moreRestrictive(current, pending)

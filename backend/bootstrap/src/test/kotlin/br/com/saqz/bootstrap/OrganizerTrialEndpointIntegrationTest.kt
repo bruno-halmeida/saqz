@@ -62,11 +62,36 @@ class OrganizerTrialEndpointIntegrationTest {
         assertEquals(now.toString(), body["serverTime"].stringValue())
         assertTrue(body["canCreateGroup"].booleanValue())
         assertFalse(body["readOnly"].booleanValue())
-        assertEquals(1, body["maxGroups"].intValue())
-        assertEquals(25, body["maxAthletes"].intValue())
+        assertEquals(3, body["maxGroups"].intValue())
+        assertTrue(body["maxAthletes"].isNull)
         assertEquals("https://join.test/?%24ios_nativelink=true", body["appUrl"].stringValue())
         assertEquals(404, request("GET", "/subscriptions/me").statusCode())
         assertEquals(0, jdbc().sql("SELECT count(*)::int FROM organizer_trials t JOIN access_users u ON t.owner_user_id=u.id WHERE u.firebase_subject=:token").param("token", token).query(Int::class.java).single())
+    }
+
+    @Test
+    fun `organizador trial shares one deadline across three groups and blocks the fourth`() {
+        val first = createGroup()
+        val original = mapper.readTree(request("GET", "/subscriptions/trial").body())
+        clock.now = now.plus(Duration.ofDays(2))
+        val second = createGroup()
+        val third = createGroup()
+        val full = mapper.readTree(request("GET", "/subscriptions/trial").body())
+        assertFalse(full["canCreateGroup"].booleanValue())
+        assertEquals(original["endsAt"], full["endsAt"])
+        val fourth = request("POST", "/api/groups", """{"requestId":"${UUID.randomUUID()}","name":"Fourth", "modality":"COURT_VOLLEYBALL","composition":"MIXED","timeZone":"UTC"}""")
+        assertEquals(403, fourth.statusCode(), fourth.body())
+        for (group in listOf(first, second, third)) {
+            val active = mapper.readTree(request("GET", "/api/groups/$group/trial").body())
+            assertEquals(original["endsAt"], active["endsAt"])
+            assertTrue(active["maxAthletes"].isNull)
+        }
+        clock.now = now.plus(Duration.ofDays(14))
+        for (group in listOf(first, second, third)) {
+            val expired = mapper.readTree(request("GET", "/api/groups/$group/trial").body())
+            assertTrue(expired["readOnly"].booleanValue())
+            assertEquals(403, request("POST", "/api/groups/$group/games", "{}").statusCode())
+        }
     }
 
     @Test
@@ -172,7 +197,7 @@ class OrganizerTrialEndpointIntegrationTest {
         assertEquals(now.toString(), body["startedAt"].stringValue())
         assertEquals(now.plus(Duration.ofDays(14)).toString(), body["endsAt"].stringValue())
         assertTrue(body["isOwner"].booleanValue())
-        assertFalse(body["canCreateGroup"].booleanValue())
+        assertTrue(body["canCreateGroup"].booleanValue())
         val member = UUID.randomUUID().toString()
         request("GET", "/subscriptions/trial", actor = member)
         jdbc().sql("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at) SELECT :group,id,'ATHLETE',now(),now() FROM access_users WHERE firebase_subject=:subject")

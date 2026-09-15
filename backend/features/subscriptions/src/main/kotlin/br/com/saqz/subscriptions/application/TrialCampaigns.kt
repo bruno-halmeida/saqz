@@ -32,6 +32,8 @@ interface TrialOffer {
 enum class TrialCouponSelection { APPLIED, UNAVAILABLE, INELIGIBLE }
 
 interface TrialCampaignStore : TrialOffer {
+    fun isPreauthorized(ownerId: UUID): Boolean
+    fun enroll(ownerId: UUID, eligible: () -> Boolean): Boolean
     fun mode(): TrialOfferMode
     fun setMode(mode: TrialOfferMode)
     fun list(): List<TrialCoupon>

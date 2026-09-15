@@ -22,7 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefreshIndicatorTransform
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.Text
@@ -54,6 +54,7 @@ import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
+import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.saqzInitials
@@ -164,7 +165,7 @@ fun OwnProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
             ) {
                 when {
-                    state.isLoading -> Unit // PullRefreshIndicator is the single loading indicator.
+                    state.isLoading -> Unit // A bola do gesto de atualizar indica a carga.
 
                     state.loadError -> item(key = "error") {
                         OwnProfileFailure(onRetry = { onIntent(OwnProfileIntent.Refresh) })
@@ -227,12 +228,12 @@ fun OwnProfileScreen(
                     }
                 }
             }
-            PullRefreshIndicator(
-                refreshing = state.isLoading,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter),
-                backgroundColor = colors.surface,
-                contentColor = colors.primary,
+            SaqzSpinner(
+                animating = state.isLoading,
+                onDark = true,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .pullRefreshIndicatorTransform(pullRefreshState, scale = true),
             )
         }
     }

@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -183,16 +182,10 @@ fun SaqzOfflineBanner(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        // Indicador local em vez de SaqzSpinner: ele só escolhe entre primary e onPrimary,
-        // e nenhum dos dois é o lime que o export pede em cima do navy.
-        //
-        // `clearAndSetSemantics` não é zelo: o CircularProgressIndicator publica semântica
-        // de progresso indeterminado por conta própria, mesmo sem contentDescription. Sem
-        // limpar, o TalkBack anuncia um nó de progresso ao lado da faixa e a pessoa ouve
-        // duas coisas para um aviso só. Aqui o texto já diz tudo; o giro é decoração.
-        CircularProgressIndicator(
-            color = colors.accent,
-            strokeWidth = 2.dp,
+        // O texto já anuncia a espera; a bola é decorativa nesta faixa.
+        SaqzSpinner(
+            onDark = true,
+            size = 16.dp,
             modifier = Modifier.size(16.dp).clearAndSetSemantics {},
         )
         SaqzToastText(message, modifier = Modifier.weight(1f))

@@ -116,7 +116,8 @@ class AsaasWebhookConfiguration {
         transaction: SubscriptionsTransactionRunner,
         clock: Clock,
         creditCardTokens: CreditCardTokenStore,
-    ) = CreateSubscription(subscriptions, coupons, asaasGateway, transaction, clock, creditCardTokens)
+        usageLookup: OwnerPlanUsageLookup,
+    ) = CreateSubscription(subscriptions, coupons, asaasGateway, transaction, clock, usageLookup, creditCardTokens)
 
     @Bean
     fun changePlan(

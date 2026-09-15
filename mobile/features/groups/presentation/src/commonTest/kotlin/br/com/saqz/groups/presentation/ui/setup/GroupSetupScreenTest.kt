@@ -55,7 +55,7 @@ class GroupSetupScreenTest {
             }
         }
         onNodeWithTag(GroupSetupTags.TrialOffer).assertExists()
-        onNodeWithText("O teste de 14 dias começa ao criar seu primeiro grupo, para quem nunca teve grupo ou assinatura. Até 25 atletas, sem cartão e sem cobrança automática.").assertExists()
+        onNodeWithText("Teste o Organizador com até 3 grupos e atletas ilimitados. O prazo começa no primeiro grupo e é o mesmo para todos. Depois, escolha um plano pago para continuar, sem cobrança automática.").assertExists()
     }
 
     @Test

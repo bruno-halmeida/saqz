@@ -21,7 +21,7 @@ class MyPlanTrialScreenTest {
         setContent {
             SaqzTheme { MyPlanScreen(trialState(TrialStatus.Expired), {}, intents::add) }
         }
-        onNodeWithText("Seu histórico está preservado. Assine para marcar jogos, receber novas respostas de presença e voltar a alterar o financeiro.").assertExists()
+        onNodeWithText("Seu histórico está preservado. Continue com o Organizador ou escolha outro plano compatível para voltar a usar seus grupos.").assertExists()
         onNodeWithTag(MyPlanTags.CancelButton).assertDoesNotExist()
         onNodeWithTag(MyPlanTags.Receipts).assertDoesNotExist()
         onNodeWithTag(MyPlanTags.ChangePlan).assertDoesNotExist()
@@ -32,7 +32,7 @@ class MyPlanTrialScreenTest {
     @Test
     fun availableTrialHasNotStartedYet() = runComposeUiTest {
         setContent { SaqzTheme { MyPlanScreen(trialState(TrialStatus.Available), {}, {}) } }
-        onNodeWithText("Seus 14 dias grátis começam ao criar o primeiro grupo.").assertExists()
+        onNodeWithText("Teste o Organizador por 14 dias. O prazo começa ao criar o primeiro grupo.").assertExists()
     }
 
     @Test
@@ -51,7 +51,7 @@ class MyPlanTrialScreenTest {
     fun customTrialOfferDisplaysConfiguredDays() = runComposeUiTest {
         val state = MyPlanState(isLoading = false, trial = MyPlanTrialUi(TrialStatus.Available, null, true, true, 45))
         setContent { SaqzTheme { MyPlanScreen(state, {}, {}) } }
-        onNodeWithText("Seus 45 dias grátis começam ao criar o primeiro grupo.").assertExists()
+        onNodeWithText("Teste o Organizador por 45 dias. O prazo começa ao criar o primeiro grupo.").assertExists()
     }
 
     private fun trialState(status: TrialStatus) = MyPlanState(

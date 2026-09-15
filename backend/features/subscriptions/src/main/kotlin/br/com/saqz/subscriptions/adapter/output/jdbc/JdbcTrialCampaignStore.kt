@@ -56,6 +56,22 @@ class JdbcTrialCampaignStore(dataSource: DataSource, private val clock: Clock) :
         return jdbc.sql("$projection WHERE c.id=:id").param("id", id).query { rs, _ -> rs.coupon() }.optional().orElse(null)
     }
 
+    private fun enrolled(ownerId: UUID): Boolean = jdbc.sql(
+        "SELECT EXISTS(SELECT 1 FROM trial_enrollments WHERE owner_user_id=:owner)",
+    ).param("owner", ownerId).query(Boolean::class.java).single()
+
+    override fun isPreauthorized(ownerId: UUID) = enrolled(ownerId) || selected(ownerId) != null
+
+    override fun enroll(ownerId: UUID, eligible: () -> Boolean): Boolean = requireNotNull(transaction.execute {
+        jdbc.sql("SELECT id FROM access_users WHERE id=:owner FOR UPDATE")
+            .param("owner", ownerId).query(UUID::class.java).single()
+        if (readMode(true) != TrialOfferMode.ON || !eligible()) return@execute false
+        jdbc.sql("""INSERT INTO trial_enrollments(owner_user_id, enrolled_at) VALUES (:owner,:now)
+            ON CONFLICT(owner_user_id) DO NOTHING""")
+            .param("owner", ownerId).param("now", Timestamp.from(clock.instant())).update()
+        true
+    })
+
     override fun isAvailable(ownerId: UUID) = when (mode()) {
         TrialOfferMode.ON -> true
         TrialOfferMode.OFF -> false

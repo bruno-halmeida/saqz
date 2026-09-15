@@ -1,6 +1,18 @@
 package br.com.saqz.groups.presentation.monthlypayments
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import br.com.saqz.designsystem.SaqzCard
+import br.com.saqz.designsystem.SaqzIcon
+import br.com.saqz.designsystem.SaqzIcons
+import br.com.saqz.designsystem.SaqzButtonVariant
+import br.com.saqz.groups.resources.monthly_payments_summary_title
+import br.com.saqz.groups.resources.monthly_payments_summary_help
+import br.com.saqz.groups.resources.monthly_payments_empty_help
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +46,8 @@ import androidx.compose.ui.tooling.preview.Preview
 object OwnMonthlyPaymentsTags {
     const val Screen = "own-monthly-payments"
     const val PayInApp = "monthly-payments-pay-in-app"
+    const val Content = "monthly-payments-content"
+    const val Loading = "monthly-payments-loading"
     const val Empty = "monthly-payments-empty"
     fun group(id: String) = "monthly-payments-group-$id"
 }
@@ -64,24 +78,41 @@ internal fun OwnMonthlyPaymentsScreen(
                 modifier = Modifier.padding(horizontal = SaqzTheme.metrics.horizontalPadding).testTag(OwnMonthlyPaymentsTags.PayInApp),
                 fullWidth = true)
         }
+        Box(Modifier.weight(1f).fillMaxWidth().testTag(OwnMonthlyPaymentsTags.Content)) {
         when {
-            state.loading -> SaqzSpinner()
+            state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                SaqzSpinner(modifier = Modifier.testTag(OwnMonthlyPaymentsTags.Loading))
+            }
             state.error != null -> GroupLoadFailure(
                 state.error, { onIntent(OwnMonthlyPaymentsIntent.Retry) },
                 failureTitle = stringResource(Res.string.connected_load_failure_title),
             )
             else -> LazyColumn(
-                modifier = Modifier.padding(horizontal = SaqzTheme.metrics.horizontalPadding),
-                verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(SaqzTheme.metrics.horizontalPadding),
+                verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.sectionGap),
             ) {
-                if (state.groups.isEmpty()) item {
-                    Text(stringResource(Res.string.monthly_payments_empty), modifier = Modifier.testTag(OwnMonthlyPaymentsTags.Empty))
+                item {
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .background(SaqzTheme.colors.primary, RoundedCornerShape(SaqzTheme.metrics.blockRadius))
+                            .padding(SaqzTheme.metrics.sectionGap),
+                        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+                    ) {
+                        SaqzIcon(SaqzIcons.Calendar, tint = SaqzTheme.colors.accent, size = SaqzTheme.metrics.iconButtonSize)
+                        Text(stringResource(Res.string.monthly_payments_summary_title),
+                            style = SaqzTheme.typography.headline, color = SaqzTheme.colors.onPrimary)
+                        Text(stringResource(Res.string.monthly_payments_summary_help),
+                            style = SaqzTheme.typography.support, color = SaqzTheme.colors.onPrimary)
+                    }
                 }
+                if (state.groups.isEmpty()) item { MonthlyPaymentsEmpty() }
                 items(state.groups, key = { it.id }) { group ->
-                    Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap)) {
-                        Text(group.name, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
+                    SaqzCard {
+                        Text(group.name, style = SaqzTheme.typography.title, color = SaqzTheme.colors.textPrimary)
                         if (!group.charges.failed && group.charges.pending.isEmpty() && group.charges.history.isEmpty()) {
-                            Text(stringResource(Res.string.monthly_payments_empty))
+                            Text(stringResource(Res.string.monthly_payments_empty),
+                                style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
                         } else {
                             GroupOwnChargesSection(group.charges, onIntent = { intent ->
                                 if (intent == GroupDetailsIntent.RetryOwnCharges) onIntent(OwnMonthlyPaymentsIntent.Retry)
@@ -91,12 +122,24 @@ internal fun OwnMonthlyPaymentsScreen(
                             label = stringResource(Res.string.monthly_payments_open_group),
                             onClick = { onIntent(OwnMonthlyPaymentsIntent.OpenGroup(group.id)) },
                             modifier = Modifier.testTag(OwnMonthlyPaymentsTags.group(group.id)),
+                            variant = SaqzButtonVariant.Secondary,
+                            fullWidth = true,
                         )
                     }
                 }
             }
         }
+        }
     }
+}
+
+@Composable
+private fun MonthlyPaymentsEmpty() = SaqzCard(modifier = Modifier.testTag(OwnMonthlyPaymentsTags.Empty)) {
+    SaqzIcon(SaqzIcons.Calendar, tint = SaqzTheme.colors.primary)
+    Text(stringResource(Res.string.monthly_payments_empty),
+        style = SaqzTheme.typography.subtitle, color = SaqzTheme.colors.textPrimary)
+    Text(stringResource(Res.string.monthly_payments_empty_help),
+        style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
 }
 
 @Preview

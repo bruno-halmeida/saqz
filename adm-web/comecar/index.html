@@ -58,7 +58,7 @@
       <div class="brand"><img src="../assets/logo.png" alt="Saqz"><span>Saqz</span></div>
       <p class="kicker">Começar sem compromisso</p>
       <h1>Comece pelo seu grupo de vôlei.</h1>
-      <p class="lead">Crie sua conta e organize jogos, presenças e financeiro em um só lugar. Confira no app as opções disponíveis para criar seu primeiro grupo.</p>
+      <p class="lead">Crie sua conta e organize jogos, presenças e financeiro em um só lugar. Experimente o Organizador por 14 dias. Libere seu teste aqui e continue no app para criar seu primeiro grupo.</p>
     </div>
   </header>
   <main class="shell">
@@ -105,12 +105,24 @@
 
     <section class="card" id="ready-card" hidden>
       <h2 id="ready-title">Sua conta está pronta.</h2>
-      <p class="sub" id="ready-copy">Continue no Saqz com esta conta pelo link abaixo. No app você pode aplicar um cupom de trial ou consultar as opções para criar seu grupo.</p>
+      <p class="sub" id="ready-copy">Escolha seu teste aqui. A liberação fica vinculada a esta conta, e o prazo só começa quando você criar seu primeiro grupo no app.</p>
       <ul class="offer">
-        <li>Quando disponível, o trial começa na criação do primeiro grupo.</li>
-        <li>O trial inclui 1 grupo com até 25 atletas, sem cartão.</li>
+        <li>Quando disponível, o teste começa na criação do primeiro grupo. Os demais usam o mesmo prazo.</li>
+        <li>O teste do Organizador inclui até 3 grupos e atletas ilimitados, sem cartão.</li>
         <li>Cupons podem oferecer um prazo próprio de teste, conforme a campanha.</li>
       </ul>
+      <div id="trial-options">
+        <p class="notice" id="trial-status" role="status">Consultando as opções de teste…</p>
+        <button class="btn" id="enroll-trial" type="button" hidden>Liberar meu teste</button>
+        <form id="trial-coupon-form" hidden>
+          <label for="trial-coupon">Tem um cupom de teste?</label>
+          <input id="trial-coupon" name="trial-coupon" maxlength="32" autocomplete="off" autocapitalize="characters" placeholder="Código da campanha">
+          <button class="btn btn-quiet" id="apply-trial-coupon" type="submit">Aplicar cupom</button>
+        </form>
+        <button class="btn btn-quiet" id="refresh-trial" type="button">Atualizar opções</button>
+        <p class="fine"><a href="../assinar/">Conhecer os planos pagos</a></p>
+      </div>
+      <p class="fine">O Titular comporta 1 grupo e até 25 atletas. Se usar mais durante o teste, escolha um plano compatível. Nenhum dado será excluído automaticamente.</p>
       <button class="btn" id="request-app-link" type="button">Abrir o app no celular</button>
       <a class="btn btn-quiet app-link" id="app-link" href="#" target="_blank" rel="noopener" hidden>Continuar no app</a>
       <div class="notice" id="app-link-help">O link é temporário e seguro. Se expirar, gere outro ou entre manualmente com esta mesma conta.</div>
@@ -118,7 +130,7 @@
       <button class="btn btn-quiet" id="logout" type="button">Sair e entrar com outra conta</button>
     </section>
 
-    <footer>O teste começa apenas ao criar seu primeiro grupo no app. Assinatura paga é uma escolha separada.</footer>
+    <footer>O teste começa apenas ao criar seu primeiro grupo no app. Após o teste, escolha um plano pago compatível para continuar. Não há cobrança automática.</footer>
   </main>
 </body>
 </html>

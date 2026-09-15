@@ -48,6 +48,26 @@ class TrialCampaignEndpointIntegrationTest {
     private fun code() = UUID.randomUUID().toString().replace("-", "").uppercase()
     private fun create(c: String = code(), days: Int = 30) = request("POST", "/admin/trial-coupons", """{"code":"$c","trialDays":$days,"campaign":"Quadra","maxUses":10}""")
 
+    @Test fun `public trial stays available while web enrollment preauthorizes only current account`() {
+        val before = mapper.readTree(request("GET", "/subscriptions/trial", token = user).body())
+        assertTrue(before["canCreateGroup"].booleanValue())
+        assertFalse(before["preauthorized"].booleanValue())
+        repeat(2) {
+            val response = request("POST", "/subscriptions/trial/enrollment", "{}", user)
+            assertEquals(200, response.statusCode(), response.body())
+            val access = mapper.readTree(response.body())
+            assertTrue(access["preauthorized"].booleanValue())
+            assertTrue(access["startedAt"].isNull)
+        }
+        val other = mapper.readTree(request("GET", "/subscriptions/trial", token = UUID.randomUUID().toString()).body())
+        assertFalse(other["preauthorized"].booleanValue())
+        assertEquals(401, request("POST", "/subscriptions/trial/enrollment", "{}", null).statusCode())
+        request("PUT", "/admin/trial-offer", """{"mode":"OFF"}""")
+        assertEquals(409, request("POST", "/subscriptions/trial/enrollment", "{}", user).statusCode())
+        val off = mapper.readTree(request("GET", "/subscriptions/trial", token = user).body())
+        assertFalse(off["preauthorized"].booleanValue())
+    }
+
     @Test fun `admin creates custom duration coupon and user applies without starting trial`() {
         val c = code()
         val created = create(c.lowercase(), 45)

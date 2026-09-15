@@ -29,6 +29,7 @@ class CreateSubscriptionTest {
     private lateinit var coupons: FakeCouponRepository
     private lateinit var gateway: FakeAsaasGateway
     private lateinit var creditCardTokens: RecordingCreditCardTokenStore
+    private var usage = br.com.saqz.sharedkernel.subscription.OwnerPlanUsage(0, 0)
     private lateinit var useCase: CreateSubscription
 
     @BeforeEach
@@ -46,7 +47,30 @@ class CreateSubscriptionTest {
             },
             clock = clock,
             creditCardTokens = creditCardTokens,
+            usageLookup = { usage },
         )
+    }
+
+    @Test
+    fun `trial usage above titular limits cannot create payment or subscription`() {
+        for (counts in listOf(2 to 20, 1 to 26)) {
+            usage = br.com.saqz.sharedkernel.subscription.OwnerPlanUsage(counts.first, counts.second)
+            assertEquals(CreateSubscriptionResult.PlanDoesNotFitUsage, useCase.execute(baseCommand().copy(plan = Plan.TITULAR)))
+            assertNull(subscriptions.findByOwnerUserId(ownerId))
+            assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+        }
+    }
+
+    @Test
+    fun `organizador accommodates three trial groups and more than twenty five athletes`() {
+        usage = br.com.saqz.sharedkernel.subscription.OwnerPlanUsage(3, 80)
+        assertIs<CreateSubscriptionResult.Success>(useCase.execute(baseCommand().copy(plan = Plan.ORGANIZADOR)))
+    }
+
+    @Test
+    fun `titular remains available when trial usage fits`() {
+        usage = br.com.saqz.sharedkernel.subscription.OwnerPlanUsage(1, 25)
+        assertIs<CreateSubscriptionResult.Success>(useCase.execute(baseCommand().copy(plan = Plan.TITULAR)))
     }
 
     private fun validCreditCard() = CreditCardDetails(

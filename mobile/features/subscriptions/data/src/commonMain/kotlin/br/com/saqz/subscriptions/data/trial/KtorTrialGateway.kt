@@ -35,13 +35,14 @@ internal data class TrialAccessTransport(
     val readOnly: Boolean,
     val canCreateGroup: Boolean,
     val maxGroups: Int,
-    val maxAthletes: Int,
+    val maxAthletes: Int?,
     val isOwner: Boolean,
     val appUrl: String? = null,
     val offerMode: String = "ON",
     val canRedeemCoupon: Boolean = false,
     val selectedCouponCode: String? = null,
     val trialDays: Int = 14,
+    val preauthorized: Boolean = false,
 )
 
 @Serializable
@@ -86,6 +87,7 @@ private fun TrialAccessTransport.toDomain() = TrialAccess(
     canRedeemCoupon = canRedeemCoupon,
     selectedCouponCode = selectedCouponCode,
     trialDays = trialDays,
+    preauthorized = preauthorized,
 )
 
 private fun TrialStatusTransport.toDomain() = when (this) {

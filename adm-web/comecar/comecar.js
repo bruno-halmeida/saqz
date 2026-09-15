@@ -16,6 +16,7 @@
   var profileReady = false;
   var profileRetry = false;
   var session = null;
+  var trialGeneration = 0;
 
   function $(id) { return document.getElementById(id); }
   function show(id) { $(id).hidden = false; }
@@ -34,6 +35,10 @@
     $("google-auth").disabled = controlsDisabled;
     $("save-profile").disabled = value;
     $("request-app-link").disabled = value;
+    $("enroll-trial").disabled = value;
+    $("apply-trial-coupon").disabled = value;
+    $("trial-coupon").disabled = value;
+    $("refresh-trial").disabled = value;
     $("signup-tab").disabled = controlsDisabled;
     $("login-tab").disabled = controlsDisabled;
     $("cancel-auth").hidden = !value && !providerSettling;
@@ -113,6 +118,11 @@
     return value.trim().length >= 2;
   }
   function resetReady() {
+    trialGeneration += 1;
+    hide("enroll-trial");
+    hide("trial-coupon-form");
+    $("trial-coupon").value = "";
+    setMessage("trial-status", "Consultando as opções de teste…");
     session = null;
     profileReady = false;
     profileRetry = false;
@@ -153,6 +163,7 @@
     show("ready-card");
     hide("profile-card");
     setMessage("ready-title", "Sua conta está pronta.");
+    loadTrial(currentUser, generation);
   }
   function bootstrap(user, requestedName, expectedGeneration) {
     if (!validGeneration(user, expectedGeneration)) return Promise.reject({ stale: true });
@@ -326,6 +337,7 @@
         if (profileReady) {
           hide("profile-card");
           show("ready-card");
+          loadTrial(currentUser, expectedGeneration);
         }
       })
       .catch(function (error) {
@@ -333,6 +345,54 @@
         if (validGeneration(currentUser, expectedGeneration)) setMessage("profile-error", error.safeMessage || "Não foi possível salvar o perfil. Tente novamente.", "error");
       })
       .finally(function () { if (validGeneration(currentUser, expectedGeneration)) setBusy(false); });
+  }
+  function displayTrial(access) {
+    $("enroll-trial").hidden = access.offerMode !== "ON" || !access.canRedeemCoupon || access.preauthorized;
+    $("trial-coupon-form").hidden = !access.canRedeemCoupon;
+    $("enroll-trial").textContent = "Experimentar o Organizador por " + access.trialDays + " dias";
+    var message = access.status === "AVAILABLE" && access.preauthorized
+      ? "Organizador: teste de " + access.trialDays + " dias liberado para esta conta. O prazo começa ao criar seu primeiro grupo no app."
+      : access.status === "ACTIVE" ? "Seu teste do Organizador já está em andamento. Continue no app."
+      : access.status === "SUBSCRIBED" ? "Sua conta já tem uma assinatura. Continue no app."
+      : access.offerMode === "ON" && access.canRedeemCoupon ? "Você pode liberar seu teste de " + access.trialDays + " dias ou aplicar um cupom de campanha."
+      : access.canRedeemCoupon ? "Aplique um cupom válido para liberar seu teste."
+      : "Não há um novo teste disponível para esta conta. Confira os planos pagos.";
+    setMessage("trial-status", message, access.canCreateGroup ? "success" : null);
+  }
+  function loadTrial(user, expectedGeneration) {
+    var request = ++trialGeneration;
+    return api("/subscriptions/trial", user, expectedGeneration, { method: "GET" })
+      .then(function (response) {
+        if (!response.ok) throw safeError("Não foi possível consultar seu teste. Atualize as opções.");
+        return response.json();
+      }).then(function (access) {
+        if (request === trialGeneration && validGeneration(user, expectedGeneration)) displayTrial(access);
+      }).catch(function (error) {
+        if (request === trialGeneration && validGeneration(user, expectedGeneration)) setMessage("trial-status", error.safeMessage || "Não foi possível consultar seu teste. Atualize as opções.", "error");
+      });
+  }
+  function selectTrial(coupon) {
+    if (busy || !currentUser || !profileReady) return;
+    var user = currentUser;
+    var expectedGeneration = generation;
+    var code = $("trial-coupon").value.trim().toUpperCase();
+    if (coupon && !/^[A-Z0-9]{1,32}$/.test(code)) {
+      setMessage("trial-status", "Informe um cupom válido, com letras e números.", "error");
+      return;
+    }
+    var request = ++trialGeneration;
+    setBusy(true);
+    jsonApi(coupon ? "/subscriptions/trial/coupon" : "/subscriptions/trial/enrollment", user, expectedGeneration, "POST", coupon ? { code: code } : {})
+      .then(function (response) {
+        if (!response.ok) throw safeError(response.status === 400
+          ? "Cupom inválido, expirado ou sem usos disponíveis. Confira o código."
+          : "Não foi possível liberar este teste. Atualize as opções e tente novamente.");
+        return response.json();
+      }).then(function (access) {
+        if (request === trialGeneration && validGeneration(user, expectedGeneration)) displayTrial(access);
+      }).catch(function (error) {
+        if (request === trialGeneration && validGeneration(user, expectedGeneration)) setMessage("trial-status", error.safeMessage || "Não foi possível liberar seu teste. Tente novamente.", "error");
+      }).finally(function () { if (request === trialGeneration && validGeneration(user, expectedGeneration)) setBusy(false); });
   }
   function branchOriginFromAppUrl(raw) {
     try {
@@ -410,6 +470,11 @@
     setMessage("auth-error", "");
   }
   function bind() {
+    $("enroll-trial").addEventListener("click", function () { selectTrial(false); });
+    $("trial-coupon-form").addEventListener("submit", function (event) { event.preventDefault(); selectTrial(true); });
+    $("refresh-trial").addEventListener("click", function () {
+      if (!busy && currentUser && profileReady) loadTrial(currentUser, generation);
+    });
     $("signup-tab").addEventListener("click", function () { setMode("signup"); });
     $("login-tab").addEventListener("click", function () { setMode("login"); });
     $("auth-form").addEventListener("submit", authenticateWithCredentials);

@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.application
 
+import br.com.saqz.sharedkernel.subscription.OwnerPlanUsageLookup
 import br.com.saqz.subscriptions.application.SubscriptionPricing.discountedPriceCents
 import br.com.saqz.subscriptions.application.SubscriptionPricing.initialPeriodEnd
 import br.com.saqz.subscriptions.domain.Coupon
@@ -38,6 +39,7 @@ sealed interface CreateSubscriptionResult {
         val invoiceUrl: String?,
     ) : CreateSubscriptionResult
 
+    data object PlanDoesNotFitUsage : CreateSubscriptionResult
     data object AlreadySubscribed : CreateSubscriptionResult
     data object CouponNotFound : CreateSubscriptionResult
     data object CouponExpired : CreateSubscriptionResult
@@ -62,6 +64,7 @@ class CreateSubscription(
     private val asaasGateway: AsaasGateway,
     private val transaction: SubscriptionsTransactionRunner,
     private val clock: Clock,
+    private val usageLookup: OwnerPlanUsageLookup,
     private val creditCardTokens: CreditCardTokenStore = CreditCardTokenStore { _, _, _, _ -> },
 ) {
     private val recoverUnconfirmed = RecoverUnconfirmedPayment(
@@ -146,6 +149,10 @@ class CreateSubscription(
         now: Instant,
         create: (Coupon?, Long) -> Subscription,
     ): CommitOutcome {
+        val usage = usageLookup.usageFor(command.ownerUserId)
+        if ((command.plan.maxGroups != null && usage.ownedGroupCount > command.plan.maxGroups) ||
+            (command.plan.maxAthletes != null && usage.occupyingAthleteCount > command.plan.maxAthletes)
+        ) return CommitOutcome.Rejected(CreateSubscriptionResult.PlanDoesNotFitUsage)
         val couponOutcome = resolveCoupon(command.couponCode, command.ownerUserId, now)
         if (couponOutcome is CouponOutcome.Failure) return CommitOutcome.Rejected(couponOutcome.result)
         val coupon = (couponOutcome as CouponOutcome.Ok).coupon

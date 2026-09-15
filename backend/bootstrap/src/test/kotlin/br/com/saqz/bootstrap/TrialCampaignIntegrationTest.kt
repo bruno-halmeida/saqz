@@ -45,11 +45,35 @@ class TrialCampaignIntegrationTest {
     }
     private fun create(owner: UUID, key: UUID = UUID.randomUUID(), fail: Boolean = false) = CreateGroup(
         JdbcTransactionRunner(ds), JdbcGroupCreationRepository(ds) { if (fail) error("failure") },
-        SubscriptionLimitsAdapter(SubscriptionPlanLookup { null }), start,
+        SubscriptionLimitsAdapter(SubscriptionPlanLookup { null }, trials, clock), start,
     ).execute(owner, key, profile, "UTC")
     private fun coupon(days: Int = 30, max: Int? = null, until: Instant? = null) =
         requireNotNull(campaigns.create("QUADRA", "Quadra A", days, until, max))
     private fun select(owner: UUID, code: String = "quadra") = campaigns.select(owner, code) { start.isFirstTrialEligible(owner) }
+
+    @Test fun `web enrollment is durable and idempotent without starting the trial`() {
+        val owner = owner()
+        assertFalse(campaigns.isPreauthorized(owner))
+        repeat(2) { assertTrue(campaigns.enroll(owner) { start.isFirstTrialEligible(owner) }) }
+        assertTrue(JdbcTrialCampaignStore(ds, clock).isPreauthorized(owner))
+        assertNull(trials.find(owner))
+        assertFailsWith<IllegalStateException> { create(owner, fail = true) }
+        assertNull(trials.find(owner))
+        assertTrue(campaigns.isPreauthorized(owner))
+        assertIs<CreateGroupResult.Success>(create(owner))
+        assertEquals(now.plusSeconds(14 * 86400L), trials.find(owner)?.endsAt)
+        assertFalse(campaigns.enroll(owner) { start.isFirstTrialEligible(owner) })
+    }
+
+    @Test fun `enrollment respects campaign mode and eligibility`() {
+        val owner = owner()
+        assertFalse(campaigns.enroll(owner) { false })
+        for (mode in listOf(TrialOfferMode.OFF, TrialOfferMode.COUPON_ONLY)) {
+            campaigns.setMode(mode)
+            assertFalse(campaigns.enroll(owner) { true })
+            assertFalse(campaigns.isPreauthorized(owner))
+        }
+    }
 
     @Test fun `default open grants fourteen days while off blocks and preserves existing trial`() {
         val owner = owner()

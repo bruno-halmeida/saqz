@@ -10,6 +10,11 @@ import javax.sql.DataSource
 class JdbcSubscriptionPlanLookup(dataSource: DataSource) : SubscriptionPlanLookup {
     private val jdbc = JdbcClient.create(dataSource)
 
+    override fun findPendingCheckoutPlan(ownerId: UUID): Plan? = jdbc.sql(
+        """SELECT plan FROM subscriptions WHERE owner_user_id=:owner
+            AND status='PAST_DUE' AND first_confirmed_at IS NULL""",
+    ).param("owner", ownerId).query { result, _ -> Plan.valueOf(result.getString("plan")) }.optional().orElse(null)
+
     override fun findEntitlingPlan(ownerId: UUID): EntitlingSubscription? = jdbc.sql(
         """
         SELECT plan, pending_plan

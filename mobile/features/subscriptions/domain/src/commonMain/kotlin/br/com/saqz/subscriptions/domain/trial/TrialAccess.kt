@@ -22,13 +22,14 @@ data class TrialAccess(
     val readOnly: Boolean,
     val canCreateGroup: Boolean,
     val maxGroups: Int,
-    val maxAthletes: Int,
+    val maxAthletes: Int?,
     val isOwner: Boolean,
     val appUrl: String?,
     val offerMode: String = "ON",
     val canRedeemCoupon: Boolean = false,
     val selectedCouponCode: String? = null,
     val trialDays: Int = 14,
+    val preauthorized: Boolean = false,
 )
 
 sealed interface TrialError : SaqzError {

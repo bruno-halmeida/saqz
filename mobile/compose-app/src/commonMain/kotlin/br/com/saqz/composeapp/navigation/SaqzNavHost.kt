@@ -301,7 +301,14 @@ internal fun SaqzNavHost(
             rememberViewModelStoreNavEntryDecorator(),
         ),
         entryProvider = entryProvider {
-            entry<AccessRoute.Starting> { SaqzSpinner() }
+            entry<AccessRoute.Starting> {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SaqzSpinner()
+                }
+            }
             entry<AccessRoute.Login> {
                 LoginRoot(
                     onCreateAccount = { backStack.add(AccessRoute.Register) },

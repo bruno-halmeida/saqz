@@ -30,12 +30,13 @@ data class TrialAccessResponse(
     val canCreateGroup: Boolean,
     @get:com.fasterxml.jackson.annotation.JsonProperty("isOwner") val isOwner: Boolean,
     val appUrl: String,
-    val maxGroups: Int = 1,
-    val maxAthletes: Int = 25,
+    val maxGroups: Int = requireNotNull(br.com.saqz.subscriptions.domain.OrganizerTrial.plan.maxGroups),
+    val maxAthletes: Int? = br.com.saqz.subscriptions.domain.OrganizerTrial.plan.maxAthletes,
     val offerMode: TrialOfferMode = TrialOfferMode.ON,
     val canRedeemCoupon: Boolean = false,
     val selectedCouponCode: String? = null,
     val trialDays: Int = 14,
+    val preauthorized: Boolean = false,
 )
 
 class ApplyTrialCouponRequest { var code: String? = null }
@@ -59,11 +60,19 @@ class OrganizerTrialController(
         val canApply = mode != TrialOfferMode.OFF && eligibility?.isFirstTrialEligible(owner) == true
         val selected = if (canApply) campaigns?.selected(owner) else null
         return access.copy(offerMode = mode, canRedeemCoupon = canApply, selectedCouponCode = selected?.code,
-            trialDays = selected?.trialDays ?: access.trialDays)
+            trialDays = selected?.trialDays ?: access.trialDays,
+            preauthorized = access.canCreateGroup && campaigns?.isPreauthorized(owner) == true)
     }
 
     @org.springframework.web.bind.annotation.ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException::class)
     fun invalidBody(): ResponseEntity<Void> = ResponseEntity.badRequest().build()
+
+    @PostMapping("/subscriptions/trial/enrollment")
+    fun enroll(@AuthenticationPrincipal identity: RequestIdentity): ResponseEntity<TrialAccessResponse> {
+        val owner = actors.resolve(identity).userId
+        val enrolled = campaigns?.enroll(owner) { eligibility?.isFirstTrialEligible(owner) == true } == true
+        return if (enrolled) ResponseEntity.ok(ownerResponse(owner)) else ResponseEntity.status(409).build()
+    }
 
     @PostMapping("/subscriptions/trial/coupon")
     fun apply(@AuthenticationPrincipal identity: RequestIdentity, @RequestBody body: ApplyTrialCouponRequest): ResponseEntity<TrialAccessResponse> {

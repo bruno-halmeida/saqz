@@ -9,37 +9,60 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.material.Icon
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.state_loading
+import br.com.saqz.designsystem.resources.saqz_volleyball
+import br.com.saqz.designsystem.theme.SaqzMotionPolicy
+import org.jetbrains.compose.resources.painterResource
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
 
-/**
- * 10o — o spinner do design system, com o nome acessível em pt-BR. `onDark` troca
- * para o tom que sobrevive em cima do azul.
- */
+/** Bola de vôlei girando, com nome acessível e suporte a movimento reduzido. */
 @Composable
 fun SaqzSpinner(
     modifier: Modifier = Modifier,
     size: Dp = 30.dp,
     onDark: Boolean = false,
+    animating: Boolean = true,
 ) {
     val label = stringResource(Res.string.state_loading)
-    CircularProgressIndicator(
-        color = if (onDark) SaqzTheme.colors.onPrimary else SaqzTheme.colors.primary,
-        strokeWidth = if (size <= 20.dp) 2.dp else 3.dp,
-        modifier = modifier.size(size).semantics { contentDescription = label },
+    val rotation = if (!animating || SaqzTheme.motion == SaqzMotionPolicy.Reduced) {
+        null
+    } else {
+        rememberInfiniteTransition(label = "volleyballLoading").animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(tween(durationMillis = 900, easing = LinearEasing)),
+            label = "volleyballRotation",
+        )
+    }
+    Icon(
+        painter = painterResource(Res.drawable.saqz_volleyball),
+        contentDescription = label,
+        tint = SaqzTheme.colors.primary,
+        modifier = modifier
+            .size(size)
+            .then(if (onDark) Modifier.background(SaqzTheme.colors.surface, CircleShape) else Modifier)
+            .graphicsLayer { rotationZ = rotation?.value ?: 0f }
+            .semantics { progressBarRangeInfo = ProgressBarRangeInfo.Indeterminate },
     )
 }
 

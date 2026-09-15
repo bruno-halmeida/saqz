@@ -248,7 +248,7 @@
       var atual = modoTroca() && plano.id === assinaturaAtual.plan;
       var agendado = modoTroca() && assinaturaAtual.pendingPlan && plano.id === assinaturaAtual.pendingPlan;
       var classes = ["card", "plano"];
-      if (plano.maxGroups == null) classes.push("plano--destaque");
+      if (plano.id === "ORGANIZADOR") classes.push("plano--destaque");
       if (atual) classes.push("plano--atual");
       if (agendado) classes.push("plano--agendado");
       var card = document.createElement("div");
@@ -266,7 +266,7 @@
         ? "Plano atual"
         : (agendado
           ? ("A partir de " + dataPt(assinaturaAtual.pendingPlanEffectiveAt))
-          : (modoTroca() ? "Trocar para este plano" : "Assinar este plano"));
+          : (modoTroca() ? "Trocar para este plano" : (plano.id === "ORGANIZADOR" ? "Continuar com o Organizador" : "Assinar este plano")));
       card.innerHTML =
         '<div class="topo"><h2></h2><span class="preco">' + preco + "</span></div>" +
         "<ul>" + beneficios.map(function (b) { return "<li>" + b + "</li>"; }).join("") + "</ul>" +
@@ -518,6 +518,10 @@
             mostrarErro("dados-erro",
               "Você já tem um pagamento pendente de outro plano. Recarregando para retomá-lo…");
             setTimeout(iniciar, 2500);
+            return;
+          }
+          if (problema.code === "DOWNGRADE_BLOCKED") {
+            mostrarErro("dados-erro", "Este plano não comporta seus grupos ou atletas. Nenhuma cobrança foi gerada. Volte e escolha um plano compatível. Durante o teste ativo, você também pode ajustar o uso no app; atletas removidos ainda podem ocupar vagas por 30 dias. Seus dados não serão excluídos automaticamente.");
             return;
           }
           if (problema.code === "COUPON_NOT_FOUND" || problema.code === "COUPON_EXPIRED" ||

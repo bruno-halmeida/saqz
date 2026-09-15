@@ -19,10 +19,10 @@ class TrialSubscriptionLimitsTest {
     }
 
     @Test
-    fun `active trial grants exactly titular quotas and no access to another owner`() {
+    fun `active trial grants organizador quotas and no access to another owner`() {
         val limits = limits(trial.endsAt.minusNanos(1))
-        assertEquals(1, limits.groupLimitFor(owner))
-        assertEquals(25, limits.athleteLimitFor(owner))
+        assertEquals(3, limits.groupLimitFor(owner))
+        assertNull(limits.athleteLimitFor(owner))
         assertEquals(0, limits.groupLimitFor(UUID.randomUUID()))
         assertEquals(0, limits.athleteLimitFor(UUID.randomUUID()))
     }
@@ -45,6 +45,20 @@ class TrialSubscriptionLimitsTest {
             assertEquals(1, downgrade.groupLimitFor(owner))
             assertEquals(25, downgrade.athleteLimitFor(owner))
         }
+    }
+
+    @Test
+    fun `pending titular checkout caps trial growth without granting paid access`() {
+        val lookup = object : SubscriptionPlanLookup {
+            override fun findEntitlingPlan(ownerId: UUID): EntitlingSubscription? = null
+            override fun findPendingCheckoutPlan(ownerId: UUID) = Plan.TITULAR
+        }
+        val active = SubscriptionLimitsAdapter(lookup, repository, Clock.fixed(trial.startedAt, ZoneOffset.UTC))
+        assertEquals(1, active.groupLimitFor(owner))
+        assertEquals(25, active.athleteLimitFor(owner))
+        val expired = SubscriptionLimitsAdapter(lookup, repository, Clock.fixed(trial.endsAt, ZoneOffset.UTC))
+        assertEquals(0, expired.groupLimitFor(owner))
+        assertEquals(0, expired.athleteLimitFor(owner))
     }
 
     private fun limits(now: Instant, paid: EntitlingSubscription? = null) =

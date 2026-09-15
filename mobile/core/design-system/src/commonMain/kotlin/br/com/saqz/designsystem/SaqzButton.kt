@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -187,9 +186,9 @@ fun SaqzButton(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (loading) {
-                CircularProgressIndicator(
-                    color = content,
-                    strokeWidth = 2.dp,
+                SaqzSpinner(
+                    onDark = variant == SaqzButtonVariant.Primary || variant == SaqzButtonVariant.Danger,
+                    size = 20.dp,
                     modifier = Modifier.size(20.dp),
                 )
             } else {

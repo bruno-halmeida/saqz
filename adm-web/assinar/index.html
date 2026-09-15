@@ -408,12 +408,11 @@ button { font: inherit; cursor: pointer; }
 .spinner {
   width: 28px; height: 28px;
   margin: 48px auto;
-  border: 3px solid var(--saqz-border);
-  border-top-color: var(--saqz-lime);
-  border-radius: 50%;
-  animation: girar .8s linear infinite;
+  background: url("../assets/saqz-volleyball.svg") center / contain no-repeat;
+  animation: girar .9s linear infinite;
 }
 @keyframes girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 .rodape-sessao { font-size: 12.5px; color: var(--saqz-muted); text-align: center; margin-top: 20px; }
 .rodape-sessao button { border: 0; background: none; color: var(--saqz-blue); font-weight: 700; padding: 0; }
 </style>
@@ -447,7 +446,7 @@ button { font: inherit; cursor: pointer; }
     </form>
     <button class="btn-secundario" type="button" id="botao-google">Entrar com Google</button>
   </div>
-  <p class="rodape-sessao">Ainda não tem conta? Crie no app Saqz.</p>
+  <p class="rodape-sessao">Quer experimentar ou recebeu um cupom de teste? <a href="../comecar/">Comece por aqui.</a></p>
 </section>
 
 <section id="estado-assinante" class="coluna" hidden>
@@ -461,6 +460,8 @@ button { font: inherit; cursor: pointer; }
 <section id="estado-planos" hidden>
   <h1 id="planos-titulo">Escolha o plano</h1>
   <p class="sub" id="planos-sub">Jogo, presença e mensalidade num lugar só. Assine e crie seus grupos.</p>
+  <p class="sub">Quer experimentar ou recebeu um cupom de teste? <a href="../comecar/">Confira seu teste grátis.</a></p>
+  <p class="sub">O teste inclui o Organizador: até 3 grupos e atletas ilimitados. Para escolher o Titular, seu uso precisa caber em 1 grupo e até 25 atletas. Nenhum dado é excluído automaticamente.</p>
   <p class="sub" id="planos-aviso" hidden></p>
   <div class="ciclo" id="ciclo-cobranca" role="group" aria-label="Ciclo de cobrança">
     <button type="button" data-ciclo="MONTHLY" aria-pressed="true">Mensal</button>
@@ -473,6 +474,7 @@ button { font: inherit; cursor: pointer; }
 <section id="estado-dados" class="coluna" hidden>
   <h1 id="dados-titulo">Quase lá</h1>
   <p class="sub" id="dados-resumo-plano"></p>
+  <p class="sub">Se você ainda está no teste, gerar o pagamento passa a limitar novas inclusões aos limites do plano escolhido enquanto aguarda a confirmação.</p>
   <div class="card">
     <form id="form-dados">
       <label for="dados-cpf">CPF ou CNPJ do titular</label>

@@ -117,6 +117,17 @@ class SubscriptionCommandControllerTest {
         assertTrue(error.fieldErrors.containsKey("creditCard"))
     }
 
+    @Test
+    fun `titular above trial usage returns the usage conflict before reaching billing`() {
+        val controller = controllerForNewSubscription(
+            UnusedAsaasGateway, br.com.saqz.sharedkernel.subscription.OwnerPlanUsage(3, 30),
+        )
+        assertThrows<DowngradeBlockedException> {
+            controller.create(identity, createRequest(planId = Plan.TITULAR.name, cycle = SubscriptionCycle.MONTHLY.name),
+                MockHttpServletRequest())
+        }
+    }
+
     private fun controllerWith(existing: Subscription): SubscriptionCommandController {
         val transaction = object : SubscriptionsTransactionRunner {
             override fun <T> inTransaction(block: () -> T): T = block()
@@ -124,6 +135,7 @@ class SubscriptionCommandControllerTest {
         return SubscriptionCommandController(
             actors = SubscriptionActorResolver { ownerId },
             createSubscription = CreateSubscription(
+                usageLookup = { br.com.saqz.sharedkernel.subscription.OwnerPlanUsage(0, 0) },
                 subscriptions = FixedSubscriptionRepository(existing),
                 coupons = UnusedCouponRepository,
                 asaasGateway = UnusedAsaasGateway,
@@ -148,13 +160,16 @@ class SubscriptionCommandControllerTest {
         )
     }
 
-    private fun controllerForNewSubscription(gateway: AsaasGateway): SubscriptionCommandController {
+    private fun controllerForNewSubscription(
+        gateway: AsaasGateway, usage: br.com.saqz.sharedkernel.subscription.OwnerPlanUsage = br.com.saqz.sharedkernel.subscription.OwnerPlanUsage(0, 0),
+    ): SubscriptionCommandController {
         val transaction = object : SubscriptionsTransactionRunner {
             override fun <T> inTransaction(block: () -> T): T = block()
         }
         return SubscriptionCommandController(
             actors = SubscriptionActorResolver { ownerId },
             createSubscription = CreateSubscription(
+                usageLookup = { usage },
                 subscriptions = NullSubscriptionRepository,
                 coupons = UnusedCouponRepository,
                 asaasGateway = gateway,
