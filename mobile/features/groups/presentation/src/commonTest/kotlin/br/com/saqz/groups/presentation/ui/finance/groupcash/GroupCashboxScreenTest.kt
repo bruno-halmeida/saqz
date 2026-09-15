@@ -46,15 +46,13 @@ class GroupCashboxScreenTest {
     }
 
     @Test
-    fun `missing Pix disables charge CTAs and explains where to configure it`() = runComposeUiTest {
+    fun `notifications remain available without Pix`() = runComposeUiTest {
         val intents = mutableListOf<GroupCashboxIntent>()
         setScreen(loadedState.copy(pix = null), intents::add)
 
-        onNodeWithText("Cadastre o Pix do grupo em Editar grupo").assertExists()
-        onNodeWithTag(GroupCashboxTags.ChargeMissing).assertIsNotEnabled()
-        onNodeWithTag(GroupCashboxTags.OverdueCharge).assertIsNotEnabled()
-        onNodeWithTag(GroupCashboxTags.chargeIndividual("charge-1")).assertIsNotEnabled()
-        assertEquals(emptyList(), intents)
+        onNodeWithText("Cadastre o Pix do grupo em Editar grupo").assertDoesNotExist()
+        onNodeWithTag(GroupCashboxTags.ChargeMissing).performClick()
+        assertEquals(listOf(GroupCashboxIntent.ChargeMissing), intents)
     }
 
     @Test

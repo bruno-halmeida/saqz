@@ -4,12 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -21,24 +20,23 @@ import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChoiceChip
-import br.com.saqz.designsystem.SaqzIcon
-import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSegmented
-import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.finance.PaidMethod
 import br.com.saqz.groups.presentation.ui.finance.groupcash.DebtorUi
+import br.com.saqz.groups.resources.sheet_charge_close
+import br.com.saqz.groups.resources.sheet_charge_notification_title
+import br.com.saqz.groups.resources.sheet_charge_notification_note
+import br.com.saqz.groups.resources.sheet_charge_failure
+import br.com.saqz.groups.resources.sheet_charge_success
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.sheet_charge_all
+import br.com.saqz.groups.resources.sheet_charge_clear
+import br.com.saqz.groups.resources.sheet_charge_selected
 import br.com.saqz.groups.resources.sheet_charge_cancel
-import br.com.saqz.groups.resources.sheet_charge_copy_pix
 import br.com.saqz.groups.resources.sheet_charge_description
-import br.com.saqz.groups.resources.sheet_charge_message
-import br.com.saqz.groups.resources.sheet_charge_pix_title
 import br.com.saqz.groups.resources.sheet_charge_send
-import br.com.saqz.groups.resources.sheet_charge_summary
 import br.com.saqz.groups.resources.sheet_charge_title
-import br.com.saqz.groups.resources.sheet_charge_whatsapp
-import br.com.saqz.groups.resources.sheet_charge_whatsapp_description
 import br.com.saqz.groups.resources.sheet_receipt_amount
 import br.com.saqz.groups.resources.sheet_receipt_cancel
 import br.com.saqz.groups.resources.sheet_receipt_confirm
@@ -57,7 +55,11 @@ internal object FinanceSheetsTags {
     const val ChargePix = "finance-charge-pix"
     const val ChargeCopyPix = "finance-charge-copy-pix"
     const val ChargeWhatsApp = "finance-charge-whatsapp"
+    const val ChargeSuccess = "finance-charge-success"
     const val ChargeSend = "finance-charge-send"
+    const val ChargeAll = "finance-charge-all"
+    const val ChargeClear = "finance-charge-clear"
+    const val ChargeSelection = "finance-charge-selection"
     const val Receipt = "finance-receipt-sheet"
     const val ReceiptAvatar = "finance-receipt-avatar"
     const val ReceiptAmount = "finance-receipt-amount"
@@ -71,105 +73,82 @@ internal object FinanceSheetsTags {
 internal fun ChargeSheet(
     open: Boolean,
     debtors: List<DebtorUi>,
-    pixKey: String?,
-    pixLabel: String?,
     onClose: () -> Unit,
-    onCopyPix: () -> Unit,
-    onSend: (DebtorUi, String) -> Unit,
+    onSend: (List<String>) -> Unit,
+    delivery: ChargeReminderState = ChargeReminderState(),
 ) {
-    var selectedChargeId by remember(open, debtors) {
-        mutableStateOf(debtors.firstOrNull()?.chargeId)
+    var selectedChargeIds by remember(open, debtors.map { it.chargeId }) {
+        mutableStateOf(setOfNotNull(debtors.firstOrNull()?.chargeId))
     }
-    val selectedDebtor = debtors.firstOrNull { it.chargeId == selectedChargeId }
-        ?: debtors.firstOrNull()
-    val totalLabel = br.com.saqz.core.common.formatting.formatBrl(debtors.sumOf { it.amountCents })
-    val referenceLabel = debtors
-        .map { it.referenceLabel }
-        .distinct()
-        .joinToString(" / ")
-    val message = selectedDebtor?.let {
-        stringResource(Res.string.sheet_charge_message, it.name, it.amountLabel, pixKey.orEmpty())
-    }
-
+    val selected = debtors.filter { it.chargeId in selectedChargeIds }
+    val editable = !delivery.sending && delivery.sent == null
     SaqzBottomSheet(
         open = open,
-        onClose = onClose,
+        onClose = { if (!delivery.sending) onClose() },
         modifier = Modifier.testTag(FinanceSheetsTags.Charge),
         title = pluralStringResource(Res.plurals.sheet_charge_title, debtors.size, debtors.size),
-        description = stringResource(Res.string.sheet_charge_summary, totalLabel, referenceLabel),
+        description = stringResource(Res.string.sheet_charge_description),
         splitFooter = {
             SaqzButton(
-                label = stringResource(Res.string.sheet_charge_cancel),
+                label = stringResource(if (delivery.sent == null) Res.string.sheet_charge_cancel else Res.string.sheet_charge_close),
                 onClick = onClose,
+                enabled = !delivery.sending,
                 variant = SaqzButtonVariant.Secondary,
                 modifier = Modifier.weight(1f),
             )
             SaqzButton(
-                label = stringResource(Res.string.sheet_charge_send),
-                onClick = {
-                    if (selectedDebtor != null && message != null) onSend(selectedDebtor, message)
-                },
-                enabled = selectedDebtor != null && !pixKey.isNullOrBlank(),
+                label = stringResource(Res.string.sheet_charge_send, selected.size),
+                onClick = { if (editable && selected.isNotEmpty()) onSend(selected.map { it.chargeId }) },
+                loading = delivery.sending,
+                enabled = editable && selected.isNotEmpty(),
                 modifier = Modifier.weight(1f).testTag(FinanceSheetsTags.ChargeSend),
             )
         },
     ) {
-        if (debtors.isNotEmpty()) {
-            SaqzSectionHeader(title = stringResource(Res.string.sheet_charge_description))
-            Column(
-                modifier = Modifier.testTag(FinanceSheetsTags.ChargeRecipient),
-                verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
-            ) {
-                debtors.forEach { debtor ->
-                    SaqzChoiceChip(
-                        label = "${debtor.name} · ${debtor.amountLabel}",
-                        selected = debtor.chargeId == selectedDebtor?.chargeId,
-                        onClick = { selectedChargeId = debtor.chargeId },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag(FinanceSheetsTags.chargeRecipient(debtor.chargeId)),
-                    )
-                }
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
+            SaqzButton(
+                label = stringResource(Res.string.sheet_charge_all),
+                onClick = { selectedChargeIds = debtors.map { it.chargeId }.toSet() },
+                enabled = editable && selected.size != debtors.size,
+                variant = SaqzButtonVariant.Secondary,
+                modifier = Modifier.weight(1f).testTag(FinanceSheetsTags.ChargeAll),
+            )
+            SaqzButton(
+                label = stringResource(Res.string.sheet_charge_clear),
+                onClick = { selectedChargeIds = emptySet() },
+                enabled = editable && selected.isNotEmpty(),
+                variant = SaqzButtonVariant.Ghost,
+                modifier = Modifier.weight(1f).testTag(FinanceSheetsTags.ChargeClear),
+            )
         }
-        SaqzCard(
-            tone = SaqzCardTone.Soft,
-            modifier = Modifier.testTag(FinanceSheetsTags.ChargeWhatsApp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
-            ) {
-                SaqzIcon(SaqzIcons.MessageSquare, tint = SaqzTheme.colors.primary)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(Res.string.sheet_charge_whatsapp),
-                        style = SaqzTheme.typography.body,
-                        color = SaqzTheme.colors.textPrimary,
-                    )
-                    Text(
-                        text = stringResource(Res.string.sheet_charge_whatsapp_description),
-                        style = SaqzTheme.typography.support,
-                        color = SaqzTheme.colors.textSecondary,
-                    )
-                }
-            }
-        }
-        pixKey?.takeIf(String::isNotBlank)?.let { key ->
-            SaqzCard(modifier = Modifier.testTag(FinanceSheetsTags.ChargePix)) {
-                SaqzSectionHeader(title = stringResource(Res.string.sheet_charge_pix_title))
-                Text(text = key, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
-                pixLabel?.takeIf(String::isNotBlank)?.let {
-                    Text(text = it, style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
-                }
-                SaqzButton(
-                    label = stringResource(Res.string.sheet_charge_copy_pix),
-                    onClick = onCopyPix,
-                    variant = SaqzButtonVariant.Secondary,
-                    fullWidth = true,
-                    modifier = Modifier.testTag(FinanceSheetsTags.ChargeCopyPix),
+        Text(
+            text = stringResource(Res.string.sheet_charge_selected, selected.size,
+                br.com.saqz.core.common.formatting.formatBrl(selected.sumOf { it.amountCents })),
+            style = SaqzTheme.typography.support,
+            color = SaqzTheme.colors.textSecondary,
+            modifier = Modifier.testTag(FinanceSheetsTags.ChargeSelection),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
+            debtors.forEach { debtor ->
+                SaqzChoiceChip(
+                    label = "${debtor.name} · ${debtor.amountLabel}",
+                    selected = debtor.chargeId in selectedChargeIds,
+                    onClick = {
+                        if (editable) selectedChargeIds = if (debtor.chargeId in selectedChargeIds) {
+                            selectedChargeIds - debtor.chargeId
+                        } else selectedChargeIds + debtor.chargeId
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag(FinanceSheetsTags.chargeRecipient(debtor.chargeId)),
                 )
             }
+        }
+        SaqzCard(tone = SaqzCardTone.Soft) {
+            Text(stringResource(Res.string.sheet_charge_notification_title), style = SaqzTheme.typography.body)
+            Text(stringResource(Res.string.sheet_charge_notification_note), style = SaqzTheme.typography.support)
+        }
+        if (delivery.failed) Text(stringResource(Res.string.sheet_charge_failure), color = SaqzTheme.colors.errorForeground)
+        delivery.sent?.let {
+            Text(stringResource(Res.string.sheet_charge_success, it), modifier = Modifier.testTag(FinanceSheetsTags.ChargeSuccess))
         }
     }
 }

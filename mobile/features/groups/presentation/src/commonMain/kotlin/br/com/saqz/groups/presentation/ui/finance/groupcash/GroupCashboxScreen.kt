@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
+import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderState
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +17,6 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import br.com.saqz.designsystem.SaqzAvatar
@@ -67,11 +68,9 @@ import br.com.saqz.groups.resources.group_cashbox_statement
 import br.com.saqz.groups.resources.group_cashbox_received_monthly_suffix
 import br.com.saqz.groups.resources.group_cashbox_title
 import br.com.saqz.groups.resources.monthly_generation_title
-import br.com.saqz.groups.resources.sheet_charge_missing_pix
 import br.com.saqz.groups.presentation.ui.finance.PixCard
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
-import br.com.saqz.groups.presentation.ui.finance.sheets.whatsappChargeUrl
 import org.jetbrains.compose.resources.stringResource
 
 internal object GroupCashboxTags {
@@ -100,10 +99,11 @@ internal fun GroupCashboxScreen(
     onBack: () -> Unit,
     onIntent: (GroupCashboxIntent) -> Unit,
     modifier: Modifier = Modifier,
+    reminder: ChargeReminderState = ChargeReminderState(),
+    onSendReminders: (List<String>) -> Unit = {},
     onOpenReceivables: (() -> Unit)? = null,
     onOpenChargePayment: ((String) -> Unit)? = null,
 ) {
-    val uriHandler = LocalUriHandler.current
     val receiptDebtor = state.debtors.firstOrNull { it.chargeId == state.receiptSheetChargeId }
     val chargeDebtors = state.debtors.filter {
         state.chargeSheetChargeId == null || it.chargeId == state.chargeSheetChargeId
@@ -125,14 +125,9 @@ internal fun GroupCashboxScreen(
         ChargeSheet(
             open = state.chargeSheetOpen,
             debtors = chargeDebtors,
-            pixKey = state.pix?.key,
-            pixLabel = state.pix?.label,
             onClose = { onIntent(GroupCashboxIntent.DismissChargeSheet) },
-            onCopyPix = { onIntent(CopyPix) },
-            onSend = { _, message ->
-                uriHandler.openUri(whatsappChargeUrl(message))
-                onIntent(GroupCashboxIntent.DismissChargeSheet)
-            },
+            onSend = onSendReminders,
+            delivery = reminder,
         )
         ReceiptSheet(
             open = state.receiptSheetChargeId != null,
@@ -174,8 +169,7 @@ private fun LoadFailure(onRetry: () -> Unit) = Column(
 private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxIntent) -> Unit,
     onOpenChargePayment: ((String) -> Unit)? = null) {
     val metrics = SaqzTheme.metrics
-    val hasPix = state.pix?.key?.isNotBlank() == true
-    val canCharge = hasPix && state.debtors.isNotEmpty()
+    val canCharge = state.debtors.isNotEmpty()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -183,7 +177,7 @@ private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxInten
             .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
         verticalArrangement = Arrangement.spacedBy(metrics.blockGap * 2),
     ) {
-        CashboxHeader(state = state, canCharge = canCharge, hasPix = hasPix, onIntent = onIntent)
+        CashboxHeader(state = state, canCharge = canCharge, onIntent = onIntent)
         Text(
             text = stringResource(if (onOpenChargePayment != null) Res.string.group_cashbox_note_with_app
                 else Res.string.group_cashbox_note),
@@ -226,7 +220,6 @@ private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxInten
 private fun CashboxHeader(
     state: GroupCashboxState,
     canCharge: Boolean,
-    hasPix: Boolean,
     onIntent: (GroupCashboxIntent) -> Unit,
 ) {
     val colors = SaqzTheme.colors
@@ -266,13 +259,6 @@ private fun CashboxHeader(
                 onClick = { onIntent(Register) },
                 size = SaqzButtonSize.Sm,
                 modifier = Modifier.weight(1f).testTag(GroupCashboxTags.Register),
-            )
-        }
-        if (!hasPix) {
-            Text(
-                text = stringResource(Res.string.sheet_charge_missing_pix),
-                style = SaqzTheme.typography.support,
-                color = colors.textSecondary,
             )
         }
         if (state.operationFailed) {

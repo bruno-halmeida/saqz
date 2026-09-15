@@ -117,7 +117,7 @@ class GroupCashboxRootTest {
             SaqzTheme {
                 if (showingCashbox) {
                     stateHolder.SaveableStateProvider("cashbox") {
-                        GroupCashboxRoot(
+                        GroupCashboxRoot(reminders = br.com.saqz.groups.presentation.fakeChargeReminders(),
                             groupId = "group-1",
                             onBack = { showingCashbox = false },
                             onMutationSuccess = {
@@ -199,7 +199,7 @@ class GroupCashboxRootTest {
 
         setContent {
             SaqzTheme {
-                GroupCashboxRoot(
+                GroupCashboxRoot(reminders = br.com.saqz.groups.presentation.fakeChargeReminders(),
                     groupId = "group-1",
                     onBack = {},
                     onOpenStatement = {},

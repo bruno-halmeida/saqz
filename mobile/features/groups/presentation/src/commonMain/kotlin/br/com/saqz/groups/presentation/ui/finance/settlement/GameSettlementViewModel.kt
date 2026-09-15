@@ -88,7 +88,7 @@ class GameSettlementViewModel(
         val current = state.value
         val targetExists = chargeId == null || current.debtors.any { it.chargeId == chargeId }
         val canOpen = !current.isLoading && current.updatingChargeId == null &&
-            !current.pix?.key.isNullOrBlank() && current.debtors.isNotEmpty() && targetExists
+            current.debtors.isNotEmpty() && targetExists
         if (!canOpen) return
         update {
             it.copy(

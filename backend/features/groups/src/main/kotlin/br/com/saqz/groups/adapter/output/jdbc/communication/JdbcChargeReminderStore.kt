@@ -34,7 +34,7 @@ class JdbcChargeReminderStore(dataSource: DataSource) : ChargeReminderStore {
                 INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, charge_id, recipient_count)
                 SELECT :id, :g, :a, display_name, 'CHARGE', :r, :body, :charge, 1 FROM access_users WHERE id = :a
             """).param("id", message).param("g", group).param("a", actor).param("r", UUID.randomUUID())
-                .param("body", "Você tem uma cobrança de $amount em aberto. Confira os detalhes em Minhas cobranças.")
+                .param("body", "Você tem uma cobrança de $amount em aberto. Abra o grupo para conferir sua cobrança.")
                 .param("charge", charge.id).update()
             val notification = jdbc.sql("""
                 INSERT INTO group_notifications (recipient_id, message_id) VALUES (:recipient, :message) RETURNING sequence

@@ -67,7 +67,7 @@ class GameSettlementRootTest {
         val navigation = mutableListOf<String>()
         setContent {
             SaqzTheme {
-                GameSettlementRoot(
+                GameSettlementRoot(reminders = br.com.saqz.groups.presentation.fakeChargeReminders(),
                     groupId = "selected-group", gameId = "game-1",
                     onBack = { navigation += "back" }, onOpenNewEntry = { _, _ -> },
                     onOpenCashbox = { navigation += it }, viewModel = viewModel,
@@ -93,7 +93,7 @@ class GameSettlementRootTest {
         var mutations = 0
         setContent {
             SaqzTheme {
-                GameSettlementRoot(
+                GameSettlementRoot(reminders = br.com.saqz.groups.presentation.fakeChargeReminders(),
                     groupId = "group-1", gameId = "game-1",
                     onBack = { navigation += "back" },
                     onOpenNewEntry = { _, _ -> navigation += "new-entry" },
@@ -171,7 +171,7 @@ class GameSettlementRootTest {
             SaqzTheme {
                 if (showingSettlement) {
                     stateHolder.SaveableStateProvider("settlement") {
-                        GameSettlementRoot(
+                        GameSettlementRoot(reminders = br.com.saqz.groups.presentation.fakeChargeReminders(),
                             groupId = "group-1",
                             gameId = "game-1",
                             onBack = { showingSettlement = false },

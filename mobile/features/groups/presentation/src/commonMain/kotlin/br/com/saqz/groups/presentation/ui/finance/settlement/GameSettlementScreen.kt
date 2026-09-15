@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.ui.finance.settlement
 
+import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderState
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import br.com.saqz.core.common.formatting.formatBrl
@@ -37,7 +38,6 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
-import br.com.saqz.groups.presentation.ui.finance.sheets.whatsappChargeUrl
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.PaidMethod
 import br.com.saqz.groups.resources.Res
@@ -67,7 +67,6 @@ import br.com.saqz.groups.resources.game_settlement_summary_diarists_other
 import br.com.saqz.groups.resources.game_settlement_title
 import br.com.saqz.groups.resources.game_settlement_view_cashbox
 import br.com.saqz.groups.resources.game_settlement_waived_status
-import br.com.saqz.groups.resources.sheet_charge_missing_pix
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -94,8 +93,9 @@ internal fun GameSettlementScreen(
     onBack: () -> Unit,
     onIntent: (GameSettlementIntent) -> Unit,
     modifier: Modifier = Modifier,
+    reminder: ChargeReminderState = ChargeReminderState(),
+    onSendReminders: (List<String>) -> Unit = {},
 ) {
-    val uriHandler = LocalUriHandler.current
     val receiptDebtor = state.debtors.firstOrNull { it.chargeId == state.receiptSheetChargeId }
     val chargeDebtors = state.debtors.filter {
         state.chargeSheetChargeId == null || it.chargeId == state.chargeSheetChargeId
@@ -118,14 +118,9 @@ internal fun GameSettlementScreen(
         ChargeSheet(
             open = state.chargeSheetOpen,
             debtors = chargeDebtors,
-            pixKey = state.pix?.key,
-            pixLabel = state.pix?.label,
             onClose = { onIntent(GameSettlementIntent.DismissChargeSheet) },
-            onCopyPix = { onIntent(GameSettlementIntent.CopyPix) },
-            onSend = { _, message ->
-                uriHandler.openUri(whatsappChargeUrl(message))
-                onIntent(GameSettlementIntent.DismissChargeSheet)
-            },
+            onSend = onSendReminders,
+            delivery = reminder,
         )
         ReceiptSheet(
             open = state.receiptSheetChargeId != null,
@@ -143,8 +138,7 @@ internal fun GameSettlementScreen(
 @Composable
 private fun LoadedContent(state: GameSettlementState, onIntent: (GameSettlementIntent) -> Unit) {
     val metrics = SaqzTheme.metrics
-    val hasPix = state.pix?.key?.isNotBlank() == true
-    val canCharge = hasPix && state.debtors.isNotEmpty()
+    val canCharge = state.debtors.isNotEmpty()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -167,13 +161,6 @@ private fun LoadedContent(state: GameSettlementState, onIntent: (GameSettlementI
                 text = stringResource(Res.string.game_settlement_debt_note),
                 style = SaqzTheme.typography.support,
                 color = SaqzTheme.colors.warningForeground,
-            )
-        }
-        if (!hasPix) {
-            Text(
-                text = stringResource(Res.string.sheet_charge_missing_pix),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.textSecondary,
             )
         }
         if (state.operationFailed) {

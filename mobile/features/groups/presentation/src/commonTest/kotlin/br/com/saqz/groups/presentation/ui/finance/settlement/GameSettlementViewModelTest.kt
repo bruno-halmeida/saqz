@@ -272,14 +272,14 @@ class GameSettlementViewModelTest {
     }
 
     @Test
-    fun `charge action stays closed without a configured Pix`() = runTest {
+    fun `charge notifications open without configured Pix`() = runTest {
         val group = sampleGroup(profile = sampleGroup().profile)
         val finance = SettlementFinanceGateway(charges = charges(), expenses = expenses())
         val viewModel = viewModel(finance, group = group)
 
         viewModel.onIntent(GameSettlementIntent.ChargeMissing)
 
-        assertFalse(viewModel.state.value.chargeSheetOpen)
+        assertTrue(viewModel.state.value.chargeSheetOpen)
         assertEquals(null, viewModel.state.value.pix)
     }
 

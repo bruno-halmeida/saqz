@@ -17,64 +17,16 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalTestApi::class)
 class FinanceSheetsTest {
     @Test
-    fun `charge sheet shows individual WhatsApp billing and group Pix details`() = runComposeUiTest {
-        var sent: Pair<DebtorUi, String>? = null
-        val debtors = listOf(
-            debtor("charge-camila", "Camila", 7_000L, "Mensalista · agosto"),
-            debtor("charge-pedro", "Pedro", 3_000L, "Diarista · jogo de 28/07"),
-        )
-
-        setContent {
-            SaqzTheme {
-                ChargeSheet(
-                    open = true,
-                    debtors = debtors,
-                    pixKey = "pix@saqz.com",
-                    pixLabel = "Vôlei do CERET",
-                    onClose = {},
-                    onCopyPix = {},
-                    onSend = { debtor, message -> sent = debtor to message },
-                )
-            }
-        }
-
-        onNodeWithText("Cobrar 2 cobranças").assertExists()
-        onNodeWithText("R$\u00A0100,00 em aberto · Mensalista · agosto / Diarista · jogo de 28/07").assertExists()
-        onNodeWithText("Cobrar no WhatsApp").assertExists()
-        onNodeWithText("pix@saqz.com").assertExists()
-        onNodeWithText("Vôlei do CERET").assertExists()
-        onAllNodesWithText("Aviso no app").assertCountEquals(0)
-
-        onNodeWithTag(FinanceSheetsTags.chargeRecipient("charge-pedro")).performClick()
+    fun `charge sheet submits only selected ids as notifications`() = runComposeUiTest {
+        var sent = emptyList<String>()
+        setContent { SaqzTheme {
+            ChargeSheet(true, listOf(debtor("ana", "Ana", 7000, "Julho"), debtor("pedro", "Pedro", 3000, "Agosto")), {}, { sent = it })
+        } }
+        onNodeWithText("Notificar no app").assertExists()
+        onNodeWithText("Cobrar no WhatsApp").assertDoesNotExist()
+        onNodeWithTag(FinanceSheetsTags.chargeRecipient("pedro")).performClick()
         onNodeWithTag(FinanceSheetsTags.ChargeSend).performClick()
-
-        val sentPair = sent ?: error("Expected a WhatsApp charge")
-        assertEquals("charge-pedro", sentPair.first.chargeId)
-        assertTrue(sentPair.second.contains("Pedro"))
-        assertTrue(sentPair.second.contains("pix@saqz.com"))
-    }
-
-    @Test
-    fun `charge sheet uses singular title and debtor reference in summary`() = runComposeUiTest {
-        val debtor = debtor("charge-game", "Ana", 7_000L, "Diarista · jogo de 28/07")
-
-        setContent {
-            SaqzTheme {
-                ChargeSheet(
-                    open = true,
-                    debtors = listOf(debtor),
-                    pixKey = "pix@saqz.com",
-                    pixLabel = "Vôlei do CERET",
-                    onClose = {},
-                    onCopyPix = {},
-                    onSend = { _, _ -> },
-                )
-            }
-        }
-
-        onNodeWithText("Cobrar 1 cobrança").assertExists()
-        onNodeWithText("R$\u00A070,00 em aberto", substring = true).assertExists()
-        onNodeWithText("Diarista · jogo de 28/07", substring = true).assertExists()
+        assertEquals(listOf("ana", "pedro"), sent)
     }
 
     @Test

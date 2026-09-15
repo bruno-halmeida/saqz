@@ -42,34 +42,34 @@ class KtorCommunicationGateway(private val network: AuthenticatedNetworkClient) 
         HttpMethod.Get, "api/groups/${groupId.value}/messages",
         PageDto.serializer(MessageDto.serializer()),
         NetworkRequest(query = mapOf("channel" to channel.name) + cursor(before)),
-    ).map { page -> page.domain { it.domain() } }
+    ).communicationResult { page -> page.domain { it.domain() } }
 
     override suspend fun publish(groupId: GroupId, channel: CommunicationChannel, requestId: String, body: String) = network.execute(
         HttpMethod.Post, "api/groups/${groupId.value}/messages", MessageDto.serializer(),
         NetworkRequest(Json.encodeToString(PublishDto(requestId, body)), query = mapOf("channel" to channel.name)),
-    ).map { it.domain() }
+    ).communicationResult { it.domain() }
 
     override suspend fun remind(groupId: GroupId, gameId: String, requestId: String) = network.execute(
         HttpMethod.Post, "api/groups/${groupId.value}/games/$gameId/notify-pending", MessageDto.serializer(),
         NetworkRequest(Json.encodeToString(PublishDto(requestId))),
-    ).map { it.domain() }
+    ).communicationResult { it.domain() }
 
     override suspend fun inbox(before: Long?) = network.execute(
         HttpMethod.Get, "api/me/notifications", PageDto.serializer(NotificationDto.serializer()), NetworkRequest(query = cursor(before)),
-    ).map { page -> page.domain { dto -> dto.message.domain()?.let { InAppNotification(dto.sequence, it, dto.read) } } }
+    ).communicationResult { page -> page.domain { dto -> dto.message.domain()?.let { InAppNotification(dto.sequence, it, dto.read) } } }
 
     override suspend fun markRead(sequence: Long) = network.executeNoContent(
         HttpMethod.Put, "api/me/notifications/$sequence/read",
-    ).map { Unit }
+    ).communicationResult { Unit }
 
     override suspend fun preferences() = network.execute(
         HttpMethod.Get, "api/me/notification-preferences", PreferencesDto.serializer(),
-    ).map { it.domain() }
+    ).communicationResult { it.domain() }
 
     override suspend fun savePreferences(preferences: NotificationPreferences) = network.execute(
         HttpMethod.Put, "api/me/notification-preferences", PreferencesDto.serializer(),
         NetworkRequest(Json.encodeToString(PreferencesDto(preferences.notices, preferences.messages, preferences.reminders))),
-    ).map { it.domain() }
+    ).communicationResult { it.domain() }
 }
 
 private fun cursor(before: Long?) = before?.let { mapOf("before" to it.toString()) }.orEmpty()
@@ -77,7 +77,7 @@ private fun <T, R> PageDto<T>.domain(transform: (T) -> R?): CommunicationPage<R>
     val mapped = items.mapNotNull(transform)
     return if (mapped.size == items.size && (nextCursor == null || nextCursor > 0)) CommunicationPage(mapped, nextCursor) else null
 }
-private fun <T, R> NetworkResult<T>.map(transform: (T) -> R?): SaqzResult<R, CommunicationError> = when (this) {
+internal fun <T, R> NetworkResult<T>.communicationResult(transform: (T) -> R?): SaqzResult<R, CommunicationError> = when (this) {
     is NetworkResult.Success -> transform(value)?.let { SaqzResult.Success(it) }
         ?: SaqzResult.Failure(CommunicationError(DataError.InvalidResponse))
     is NetworkResult.Failure -> SaqzResult.Failure(CommunicationError(error.domain()))

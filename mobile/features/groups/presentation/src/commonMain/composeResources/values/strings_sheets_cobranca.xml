@@ -1,4 +1,12 @@
 <resources>
+    <string name="sheet_charge_close">Fechar</string>
+    <string name="sheet_charge_notification_title">Notificar no app</string>
+    <string name="sheet_charge_notification_note">Cada pessoa recebe um aviso com suas cobranças. O push aparece nos aparelhos com notificações ativadas.</string>
+    <string name="sheet_charge_failure">Não foi possível confirmar o envio. Tente novamente.</string>
+    <string name="sheet_charge_success">Avisos enviados: %1$d</string>
+    <string name="sheet_charge_all">Cobrar todos</string>
+    <string name="sheet_charge_clear">Limpar seleção</string>
+    <string name="sheet_charge_selected">Selecionadas: %1$d · %2$s</string>
     <plurals name="sheet_charge_title">
         <item quantity="one">Cobrar %1$d cobrança</item>
         <item quantity="other">Cobrar %1$d cobranças</item>
@@ -7,11 +15,13 @@
     <string name="sheet_charge_description">Escolha quem vai receber a cobrança</string>
     <string name="sheet_charge_missing_pix">Cadastre o Pix do grupo em Editar grupo</string>
     <string name="sheet_charge_whatsapp">Cobrar no WhatsApp</string>
+    <string name="sheet_charge_message_group">Olá, pessoal! Estas cobranças estão em aberto:\n\n%1$s\n\nTotal: %2$s\nPix: %3$s</string>
+    <string name="sheet_charge_message_item">• %1$s: %2$s</string>
     <string name="sheet_charge_message">Oi, %1$s! A cobrança está em aberto no valor de %2$s. Você pode pagar via Pix pela chave %3$s.</string>
-    <string name="sheet_charge_whatsapp_description">Mensagem individual com valor e chave Pix</string>
+    <string name="sheet_charge_whatsapp_description">Mensagem com nomes, valores e chave Pix. Escolha a conversa no WhatsApp.</string>
     <string name="sheet_charge_pix_title">Pix do grupo</string>
     <string name="sheet_charge_copy_pix">Copiar chave Pix</string>
-    <string name="sheet_charge_send">Enviar cobrança</string>
+    <string name="sheet_charge_send">Enviar (%1$d)</string>
     <string name="sheet_charge_cancel">Cancelar</string>
 
     <string name="sheet_receipt_title">Confirmar recebimento</string>

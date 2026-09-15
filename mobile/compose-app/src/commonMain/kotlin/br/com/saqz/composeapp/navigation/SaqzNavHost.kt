@@ -785,7 +785,9 @@ internal fun SaqzNavHost(
             }
             entry<GroupsRoute.Notifications> { route ->
                 br.com.saqz.groups.presentation.communication.NotificationCenterRoot(route.settings, onBack = pop) { effect ->
-                    if (effect.gameId != null) backStack.add(GroupsRoute.GameDetail(effect.groupId, effect.gameId!!))
+                    if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.CHARGE) {
+                        backStack.add(GroupsRoute.Details(effect.groupId))
+                    } else if (effect.gameId != null) backStack.add(GroupsRoute.GameDetail(effect.groupId, effect.gameId!!))
                     else backStack.add(GroupsRoute.Thread(
                         effect.groupId,
                         effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.NOTICE,

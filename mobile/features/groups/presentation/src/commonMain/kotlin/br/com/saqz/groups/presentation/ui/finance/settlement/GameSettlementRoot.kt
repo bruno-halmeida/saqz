@@ -1,5 +1,9 @@
 package br.com.saqz.groups.presentation.ui.finance.settlement
 
+import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderIntent
+
+import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderViewModel
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,8 +28,15 @@ fun GameSettlementRoot(
         key = "settlement/$groupId/$gameId",
         parameters = { parametersOf(groupId, gameId) },
     ),
+    reminders: ChargeReminderViewModel = koinViewModel(
+        key = "charge-reminders/$groupId", parameters = { parametersOf(groupId) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val reminder by reminders.state.collectAsStateWithLifecycle()
+    LaunchedEffect(state.chargeSheetOpen) {
+        if (!state.chargeSheetOpen) reminders.onIntent(ChargeReminderIntent.Reset)
+    }
     val clipboard = LocalClipboardManager.current
     // VUL-205: só recarrega se o contador mudou desde que esta ViewModel nasceu — ver
     // `GroupDetailsRoot`.
@@ -42,5 +53,7 @@ fun GameSettlementRoot(
             GameSettlementEffect.MutationSucceeded -> onMutationSuccess()
         }
     }
-    GameSettlementScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)
+    GameSettlementScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent,
+        reminder = reminder,
+        onSendReminders = { reminders.onIntent(ChargeReminderIntent.Send(it)) })
 }

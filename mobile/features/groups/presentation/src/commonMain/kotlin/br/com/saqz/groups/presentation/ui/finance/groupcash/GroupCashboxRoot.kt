@@ -1,5 +1,9 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
+import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderIntent
+
+import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderViewModel
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,8 +30,15 @@ fun GroupCashboxRoot(
         key = "cashbox/$groupId",
         parameters = { parametersOf(groupId) },
     ),
+    reminders: ChargeReminderViewModel = koinViewModel(
+        key = "charge-reminders/$groupId", parameters = { parametersOf(groupId) },
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val reminder by reminders.state.collectAsStateWithLifecycle()
+    LaunchedEffect(state.chargeSheetOpen) {
+        if (!state.chargeSheetOpen) reminders.onIntent(ChargeReminderIntent.Reset)
+    }
     val clipboard = LocalClipboardManager.current
     // VUL-205: só recarrega se o contador mudou desde que esta ViewModel nasceu — ver
     // `GroupDetailsRoot`. Aqui a volta do lançamento (`FinanceRoute.NewEntry`) é o caminho
@@ -46,6 +57,8 @@ fun GroupCashboxRoot(
             GroupCashboxEffect.MutationSucceeded -> onMutationSuccess()
         }
     }
-    GroupCashboxScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent, onOpenReceivables = onOpenReceivables,
+    GroupCashboxScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent,
+        reminder = reminder,
+        onSendReminders = { reminders.onIntent(ChargeReminderIntent.Send(it)) }, onOpenReceivables = onOpenReceivables,
         onOpenChargePayment = onOpenChargePayment)
 }

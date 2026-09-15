@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.di
 
+import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderViewModel
+
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.game.GameGateway
 import br.com.saqz.groups.domain.group.GroupGateway
@@ -44,6 +46,7 @@ import org.koin.dsl.module
  * a resposta chega. Conteúdo de amostra pertence apenas às previews e às capturas.
  */
 fun groupsPresentationModule(): Module = module {
+    viewModel { params -> ChargeReminderViewModel(params.get(), get(), get()) }
     viewModel { GroupListViewModel(get(), get(), get(), get()) }
     viewModel { HomeViewModel(get(), get(), get(), get<GroupNowPort>()) }
     viewModel { FinanceOverviewViewModel(get(), get()) }

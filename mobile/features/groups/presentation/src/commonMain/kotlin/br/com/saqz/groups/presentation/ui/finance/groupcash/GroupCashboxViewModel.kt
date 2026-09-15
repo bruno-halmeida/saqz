@@ -67,7 +67,6 @@ class GroupCashboxViewModel(
         val busy = current.isLoading || current.updatingChargeId != null
         val unknownCharge = chargeId != null && current.debtors.none { it.chargeId == chargeId }
         if (busy ||
-            current.pix?.key.isNullOrBlank() ||
             current.debtors.isEmpty() ||
             unknownCharge
         ) return

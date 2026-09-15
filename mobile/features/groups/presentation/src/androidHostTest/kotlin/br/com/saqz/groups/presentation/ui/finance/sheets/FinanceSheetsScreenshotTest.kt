@@ -35,11 +35,8 @@ class FinanceSheetsScreenshotTest {
         ChargeSheet(
             open = true,
             debtors = debtors,
-            pixKey = "pix@saqz.com",
-            pixLabel = "Vôlei do CERET",
             onClose = {},
-            onCopyPix = {},
-            onSend = { _, _ -> },
+            onSend = {},
         )
     }
 

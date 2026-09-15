@@ -298,7 +298,7 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
-    fun `charge missing does not open without a group Pix even with pending debtors`() = runTest {
+    fun `charge notifications open without configured Pix`() = runTest {
         val viewModel = viewModel(
             group = FakeGroupGateway(
                 readResult = SaqzResult.Success(sampleVersionedGroup(sampleGroup())),
@@ -310,7 +310,7 @@ class GroupCashboxViewModelTest {
 
         viewModel.onIntent(GroupCashboxIntent.ChargeMissing)
 
-        assertFalse(viewModel.state.value.chargeSheetOpen)
+        assertTrue(viewModel.state.value.chargeSheetOpen)
         assertNull(viewModel.state.value.chargeSheetChargeId)
     }
 

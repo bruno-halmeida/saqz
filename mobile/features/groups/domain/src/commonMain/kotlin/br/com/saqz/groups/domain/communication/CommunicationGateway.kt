@@ -5,7 +5,7 @@ import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzError
 import br.com.saqz.domain.SaqzResult
 
-enum class CommunicationChannel { CHAT, NOTICE, REMINDER }
+enum class CommunicationChannel { CHAT, NOTICE, REMINDER, CHARGE }
 data class CommunicationMessage(
     val id: String, val sequence: Long, val groupId: GroupId, val authorId: String, val authorName: String,
     val channel: CommunicationChannel, val body: String, val createdAt: String, val gameId: String? = null,
