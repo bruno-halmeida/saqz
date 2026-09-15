@@ -26,7 +26,7 @@
     <string name="communication_channel_push">Push</string>
     <string name="communication_channel_whatsapp">WhatsApp</string>
     <string name="communication_push_note">O recebimento depende da permissão de notificações do seu celular.</string>
-    <string name="communication_whatsapp_note">Ao ativar, você aceita receber mensagens individuais no telefone do seu perfil. Conversas do grupo não são enviadas por WhatsApp.</string>
+    <string name="communication_whatsapp_note">Ao ativar, você aceita receber apenas lembretes de cobrança no telefone do seu perfil. Avisos e presença são enviados pelo grupo de WhatsApp do seu time, e conversas do grupo não são enviadas por WhatsApp.</string>
     <string name="communication_pref_charges">Lembretes de cobrança</string>
     <string name="attendance_link_title">Confirmar presença</string>
     <string name="attendance_link_loading">Confirmando sua presença…</string>

@@ -8,6 +8,8 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.communication.NotificationPreferences
+import br.com.saqz.groups.domain.communication.PushPreferences
+import br.com.saqz.groups.domain.communication.WhatsAppPreferences
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -40,18 +42,20 @@ class CommunicationScreenTest {
         onNodeWithText("Salvar preferências").performClick()
         assertEquals(NotificationCenterIntent.Save, intents.last())
     }
-    @Test fun whatsappOptInChangesOnlyTheSelectedCategory() = runComposeUiTest {
+    @Test fun whatsappPreferencesKeepOnlyTheChargeSwitchAndPreserveServerValues() = runComposeUiTest {
         val intents = mutableListOf<NotificationCenterIntent>()
         val preferences = NotificationPreferences(
-            push = br.com.saqz.groups.domain.communication.PushPreferences(messages = false),
-            whatsapp = br.com.saqz.groups.domain.communication.WhatsAppPreferences())
+            push = PushPreferences(messages = false),
+            whatsapp = WhatsAppPreferences(notices = true, reminders = true))
         setContent { SaqzTheme {
             NotificationCenterScreen(NotificationCenterState(loading = false, preferences = preferences,
                 settingsChannel = NotificationSettingsChannel.WHATSAPP), true, {}, { intents += it })
         } }
-        onNodeWithTag("preferences-whatsapp-notices").performClick()
+        onNodeWithTag("preferences-whatsapp-notices").assertDoesNotExist()
+        onNodeWithTag("preferences-whatsapp-reminders").assertDoesNotExist()
+        onNodeWithTag("preferences-whatsapp-charges").performClick()
         assertEquals(NotificationCenterIntent.Preferences(preferences.copy(
-            whatsapp = br.com.saqz.groups.domain.communication.WhatsAppPreferences(notices = true))), intents.single())
+            whatsapp = WhatsAppPreferences(notices = true, reminders = true, charges = true))), intents.single())
         onNodeWithTag("preferences-whatsapp-messages").assertDoesNotExist()
     }
     @Test fun pushSettingsAreDisabledWhileSaving() = runComposeUiTest {
