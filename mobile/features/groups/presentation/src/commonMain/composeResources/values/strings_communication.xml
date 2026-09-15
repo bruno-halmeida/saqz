@@ -11,7 +11,7 @@
     <string name="communication_read_only">Somente administradores publicam avisos.</string>
     <string name="communication_notifications">Notificações</string>
     <string name="communication_settings">Configurações de notificações</string>
-    <string name="communication_settings_note">Estas preferências controlam a caixa de notificações dentro do Saqz. Não enviamos notificações push nem mensagens pelo WhatsApp.</string>
+    <string name="communication_settings_note">Escolha o que receber em cada canal. Cobranças ficam registradas na central do app.</string>
     <string name="communication_pref_notices">Avisos dos grupos</string>
     <string name="communication_pref_messages">Mensagens das conversas</string>
     <string name="communication_pref_reminders">Lembretes de presença</string>
@@ -22,4 +22,16 @@
     <string name="communication_unread">Não lida</string>
     <string name="communication_inbox_empty">Nenhuma notificação.</string>
     <string name="communication_reminded">Lembrete enviado no Saqz para %1$s pessoa(s).</string>
+    <string name="communication_channel_app">No app</string>
+    <string name="communication_channel_push">Push</string>
+    <string name="communication_channel_whatsapp">WhatsApp</string>
+    <string name="communication_push_note">O recebimento depende da permissão de notificações do seu celular.</string>
+    <string name="communication_whatsapp_note">Ao ativar, você aceita receber mensagens individuais no telefone do seu perfil. Conversas do grupo não são enviadas por WhatsApp.</string>
+    <string name="communication_pref_charges">Lembretes de cobrança</string>
+    <string name="attendance_link_title">Confirmar presença</string>
+    <string name="attendance_link_loading">Confirmando sua presença…</string>
+    <string name="attendance_link_confirmed">Presença confirmada para sua conta.</string>
+    <string name="attendance_link_waitlisted">Você entrou na lista de espera. Confira sua posição no jogo.</string>
+    <string name="attendance_link_invalid">Não foi possível confirmar. O prazo pode ter encerrado ou este jogo não está disponível para sua conta.</string>
+    <string name="attendance_link_open_game">Ver jogo</string>
 </resources>

@@ -10,6 +10,8 @@ import br.com.saqz.groups.domain.communication.CommunicationMessage
 import br.com.saqz.groups.domain.communication.CommunicationPage
 import br.com.saqz.groups.domain.communication.InAppNotification
 import br.com.saqz.groups.domain.communication.NotificationPreferences
+import br.com.saqz.groups.domain.communication.PushPreferences
+import br.com.saqz.groups.domain.communication.WhatsAppPreferences
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkRequest
@@ -33,8 +35,19 @@ private data class MessageDto(
 @Serializable private data class PageDto<T>(val items: List<T>, val nextCursor: Long? = null)
 @Serializable private data class NotificationDto(val sequence: Long, val message: MessageDto, val read: Boolean)
 @Serializable private data class PublishDto(val requestId: String, val body: String? = null)
-@Serializable private data class PreferencesDto(val notices: Boolean, val messages: Boolean, val reminders: Boolean) {
-    fun domain() = NotificationPreferences(notices, messages, reminders)
+@Serializable private data class PushPreferencesDto(
+    val notices: Boolean, val messages: Boolean, val reminders: Boolean, val charges: Boolean,
+) {
+    fun domain() = PushPreferences(notices, messages, reminders, charges)
+}
+@Serializable private data class WhatsAppPreferencesDto(val notices: Boolean, val reminders: Boolean, val charges: Boolean) {
+    fun domain() = WhatsAppPreferences(notices, reminders, charges)
+}
+@Serializable private data class PreferencesDto(
+    val notices: Boolean, val messages: Boolean, val reminders: Boolean,
+    val push: PushPreferencesDto? = null, val whatsapp: WhatsAppPreferencesDto? = null,
+) {
+    fun domain() = NotificationPreferences(notices, messages, reminders, push?.domain(), whatsapp?.domain())
 }
 
 class KtorCommunicationGateway(private val network: AuthenticatedNetworkClient) : CommunicationGateway {
@@ -68,7 +81,11 @@ class KtorCommunicationGateway(private val network: AuthenticatedNetworkClient) 
 
     override suspend fun savePreferences(preferences: NotificationPreferences) = network.execute(
         HttpMethod.Put, "api/me/notification-preferences", PreferencesDto.serializer(),
-        NetworkRequest(Json.encodeToString(PreferencesDto(preferences.notices, preferences.messages, preferences.reminders))),
+        NetworkRequest(Json.encodeToString(PreferencesDto(
+            preferences.notices, preferences.messages, preferences.reminders,
+            preferences.push?.let { PushPreferencesDto(it.notices, it.messages, it.reminders, it.charges) },
+            preferences.whatsapp?.let { WhatsAppPreferencesDto(it.notices, it.reminders, it.charges) },
+        ))),
     ).communicationResult { it.domain() }
 }
 

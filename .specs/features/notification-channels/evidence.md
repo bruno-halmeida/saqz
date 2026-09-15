@@ -67,3 +67,12 @@ Gates JDBC (7 casos novos e regressões de comunicação/cobranças), HTTP (6 ca
 - `GroupCommunicationEndpointIntegrationTest.kt:109`: `assertEquals("Olá grupo", message["body"].stringValue())` — AC2–4 (preferências, privacidade, filas, cancelamento e retentativa).
 
 Mapeamento reverso: todos os casos novos exercitam AC2–4; nenhuma alteração de testes anteriores. Teste HTTP detectou desserialização incorreta de DTOs aninhados: corrigida com DTOs de entrada explícitos e retestado.
+
+## T3 — AC5
+Gate focado iOS (gateway e comunicação), detekt dos três módulos e compilação Android: PASS. Capturas Roborazzi dos três canais, WhatsApp ligado/desligado/salvando e estados já existentes geradas; WhatsApp inspecionado visualmente.
+- KtorCommunicationGatewayTest.deliveryChannelsRoundTripWithoutChangingOtherPreferences: assert de JSON completo e igualdade de NotificationPreferences tanto em PUT como GET (AC5).
+- CommunicationScreenTest.whatsappOptInChangesOnlyTheSelectedCategory: assert de payload completo preservando push e ausência de switch de conversas (AC5).
+- CommunicationScreenTest.pushSettingsAreDisabledWhileSaving: assertIsNotEnabled em cobrança (AC5).
+- Testes anteriores de salvar/erro e payload legado preservados. Mapeamento reverso: testes novos somente AC5.
+
+Execução ampla iOS de apresentação encontrou dois testes fora do escopo com expectativa “reserva” e recurso “lista de espera”: HomeViewModelTest e GroupDetailsScreenTest. A diferença já está em HEAD nos recursos originais; arquivos envolvidos não foram modificados. Não houve execução isolada da base. Gate focado de notificações verde; gate amplo continua vermelho.

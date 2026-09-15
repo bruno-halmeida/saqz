@@ -13,6 +13,7 @@ class NotificationCenterViewModel(private val settings: Boolean, private val gat
     override fun onIntent(intent: NotificationCenterIntent) {
         if (state.value.busy) return
         when (intent) {
+            is NotificationCenterIntent.SelectChannel -> update { it.copy(settingsChannel = intent.channel) }
             NotificationCenterIntent.Refresh -> load()
             NotificationCenterIntent.More -> if (!settings && state.value.nextCursor != null) load(more = true)
             NotificationCenterIntent.Save -> if (settings && !state.value.loading && state.value.error == null) save()

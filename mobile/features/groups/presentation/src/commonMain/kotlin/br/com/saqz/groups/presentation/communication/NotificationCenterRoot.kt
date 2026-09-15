@@ -18,6 +18,7 @@ import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzSwitch
+import br.com.saqz.designsystem.SaqzSegmented
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
@@ -26,6 +27,12 @@ import br.com.saqz.groups.resources.connected_load_failure_title
 import br.com.saqz.groups.resources.communication_notifications
 import br.com.saqz.groups.resources.communication_settings
 import br.com.saqz.groups.resources.communication_settings_note
+import br.com.saqz.groups.resources.communication_channel_app
+import br.com.saqz.groups.resources.communication_channel_push
+import br.com.saqz.groups.resources.communication_channel_whatsapp
+import br.com.saqz.groups.resources.communication_push_note
+import br.com.saqz.groups.resources.communication_whatsapp_note
+import br.com.saqz.groups.resources.communication_pref_charges
 import br.com.saqz.groups.resources.communication_pref_notices
 import br.com.saqz.groups.resources.communication_pref_messages
 import br.com.saqz.groups.resources.communication_pref_reminders
@@ -86,6 +93,15 @@ internal fun NotificationCenterScreen(
                 if (settings) item {
                     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap)) {
                         Text(stringResource(Res.string.communication_settings_note))
+                        SaqzSegmented(
+                            listOf(
+                                stringResource(Res.string.communication_channel_app),
+                                stringResource(Res.string.communication_channel_push),
+                                stringResource(Res.string.communication_channel_whatsapp)),
+                            state.settingsChannel.ordinal,
+                            { onIntent(NotificationCenterIntent.SelectChannel(NotificationSettingsChannel.entries[it])) },
+                        )
+                        if (state.settingsChannel == NotificationSettingsChannel.APP) {
                         SaqzSwitch(
                             state.preferences.notices,
                             { onIntent(NotificationCenterIntent.Preferences(state.preferences.copy(notices = it))) },
@@ -104,6 +120,7 @@ internal fun NotificationCenterScreen(
                             label = stringResource(Res.string.communication_pref_reminders), enabled = !state.busy,
                             modifier = Modifier.testTag(NotificationCenterTags.Reminders),
                         )
+                        } else DeliveryChannelSettings(state, onIntent)
                         SaqzButton(
                             stringResource(Res.string.communication_save),
                             { onIntent(NotificationCenterIntent.Save) }, loading = state.busy,
@@ -140,6 +157,44 @@ internal fun NotificationCenterScreen(
             }
         }
     }
+}
+
+@Composable
+private fun DeliveryChannelSettings(state: NotificationCenterState, onIntent: (NotificationCenterIntent) -> Unit) {
+    val preferences = state.preferences
+    val push = preferences.pushSettings
+    val whatsapp = preferences.whatsappSettings
+    if (state.settingsChannel == NotificationSettingsChannel.PUSH) {
+    Text(stringResource(Res.string.communication_push_note), style = SaqzTheme.typography.support)
+    PreferenceSwitch("push-notices", stringResource(Res.string.communication_pref_notices), push.notices, state.busy) {
+        onIntent(NotificationCenterIntent.Preferences(preferences.copy(push = push.copy(notices = it))))
+    }
+    PreferenceSwitch("push-messages", stringResource(Res.string.communication_pref_messages), push.messages, state.busy) {
+        onIntent(NotificationCenterIntent.Preferences(preferences.copy(push = push.copy(messages = it))))
+    }
+    PreferenceSwitch("push-reminders", stringResource(Res.string.communication_pref_reminders), push.reminders, state.busy) {
+        onIntent(NotificationCenterIntent.Preferences(preferences.copy(push = push.copy(reminders = it))))
+    }
+    PreferenceSwitch("push-charges", stringResource(Res.string.communication_pref_charges), push.charges, state.busy) {
+        onIntent(NotificationCenterIntent.Preferences(preferences.copy(push = push.copy(charges = it))))
+    }
+    } else {
+    Text(stringResource(Res.string.communication_whatsapp_note), style = SaqzTheme.typography.support)
+    PreferenceSwitch("whatsapp-notices", stringResource(Res.string.communication_pref_notices), whatsapp.notices, state.busy) {
+        onIntent(NotificationCenterIntent.Preferences(preferences.copy(whatsapp = whatsapp.copy(notices = it))))
+    }
+    PreferenceSwitch("whatsapp-reminders", stringResource(Res.string.communication_pref_reminders), whatsapp.reminders, state.busy) {
+        onIntent(NotificationCenterIntent.Preferences(preferences.copy(whatsapp = whatsapp.copy(reminders = it))))
+    }
+    PreferenceSwitch("whatsapp-charges", stringResource(Res.string.communication_pref_charges), whatsapp.charges, state.busy) {
+        onIntent(NotificationCenterIntent.Preferences(preferences.copy(whatsapp = whatsapp.copy(charges = it))))
+    }
+    }
+}
+
+@Composable
+private fun PreferenceSwitch(tag: String, label: String, checked: Boolean, busy: Boolean, onChange: (Boolean) -> Unit) {
+    SaqzSwitch(checked, onChange, label = label, enabled = !busy, modifier = Modifier.testTag("preferences-$tag"))
 }
 
 @Preview

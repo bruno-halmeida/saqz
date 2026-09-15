@@ -13,7 +13,18 @@ data class CommunicationMessage(
 )
 data class CommunicationPage<T>(val items: List<T>, val nextCursor: Long?)
 data class InAppNotification(val sequence: Long, val message: CommunicationMessage, val read: Boolean)
-data class NotificationPreferences(val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true)
+data class PushPreferences(
+    val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true, val charges: Boolean = true,
+)
+data class WhatsAppPreferences(val notices: Boolean = false, val reminders: Boolean = false, val charges: Boolean = false)
+data class NotificationPreferences(
+    val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true,
+    // Null represents a server/client predating delivery-channel preferences.
+    val push: PushPreferences? = null, val whatsapp: WhatsAppPreferences? = null,
+) {
+    val pushSettings: PushPreferences get() = push ?: PushPreferences(notices, messages, reminders, reminders)
+    val whatsappSettings: WhatsAppPreferences get() = whatsapp ?: WhatsAppPreferences()
+}
 data class CommunicationError(val cause: DataError) : SaqzError
 
 interface CommunicationGateway {

@@ -5,6 +5,8 @@ import br.com.saqz.groups.domain.communication.CommunicationChannel
 import br.com.saqz.groups.domain.communication.NotificationPreferences
 import br.com.saqz.groups.presentation.GroupUiError
 
+enum class NotificationSettingsChannel { APP, PUSH, WHATSAPP }
+
 @Immutable
 data class NotificationCenterState(
     val loading: Boolean = true,
@@ -15,6 +17,7 @@ data class NotificationCenterState(
     val actionFailed: Boolean = false,
     val preferences: NotificationPreferences = NotificationPreferences(),
     val saved: Boolean = false,
+    val settingsChannel: NotificationSettingsChannel = NotificationSettingsChannel.APP,
 )
 @Immutable
 data class NotificationUi(
@@ -24,6 +27,7 @@ data class NotificationUi(
 sealed interface NotificationCenterIntent {
     data object Refresh : NotificationCenterIntent
     data object More : NotificationCenterIntent
+    data class SelectChannel(val channel: NotificationSettingsChannel) : NotificationCenterIntent
     data object Save : NotificationCenterIntent
     data class Open(val sequence: Long) : NotificationCenterIntent
     data class Preferences(val value: NotificationPreferences) : NotificationCenterIntent

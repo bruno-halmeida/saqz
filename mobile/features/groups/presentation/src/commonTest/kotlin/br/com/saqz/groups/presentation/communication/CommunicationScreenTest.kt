@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.communication.NotificationPreferences
@@ -39,4 +40,26 @@ class CommunicationScreenTest {
         onNodeWithText("Salvar preferências").performClick()
         assertEquals(NotificationCenterIntent.Save, intents.last())
     }
+    @Test fun whatsappOptInChangesOnlyTheSelectedCategory() = runComposeUiTest {
+        val intents = mutableListOf<NotificationCenterIntent>()
+        val preferences = NotificationPreferences(
+            push = br.com.saqz.groups.domain.communication.PushPreferences(messages = false),
+            whatsapp = br.com.saqz.groups.domain.communication.WhatsAppPreferences())
+        setContent { SaqzTheme {
+            NotificationCenterScreen(NotificationCenterState(loading = false, preferences = preferences,
+                settingsChannel = NotificationSettingsChannel.WHATSAPP), true, {}, { intents += it })
+        } }
+        onNodeWithTag("preferences-whatsapp-notices").performClick()
+        assertEquals(NotificationCenterIntent.Preferences(preferences.copy(
+            whatsapp = br.com.saqz.groups.domain.communication.WhatsAppPreferences(notices = true))), intents.single())
+        onNodeWithTag("preferences-whatsapp-messages").assertDoesNotExist()
+    }
+    @Test fun pushSettingsAreDisabledWhileSaving() = runComposeUiTest {
+        setContent { SaqzTheme {
+            NotificationCenterScreen(NotificationCenterState(loading = false, busy = true,
+                settingsChannel = NotificationSettingsChannel.PUSH), true, {}, {})
+        } }
+        onNodeWithTag("preferences-push-charges").assertIsNotEnabled()
+    }
+
 }

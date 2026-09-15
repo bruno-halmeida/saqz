@@ -136,3 +136,19 @@ class ConnectedNotificationFlowsScreenshotTest : ConnectedFlowsScreenshotScene()
     @Test fun settingsSaved() = notifications("settings-saved", settingsState.copy(saved = true), true)
     @Test fun settingsError() = notifications("settings-error", settingsState.copy(actionFailed = true), true)
 }
+
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = RobolectricDeviceQualifiers.Pixel7, application = Application::class)
+class NotificationChannelSettingsScreenshotTest : ConnectedFlowsScreenshotScene() {
+    @Test fun pushSettings() = notifications("settings-push", settingsState.copy(
+        settingsChannel = br.com.saqz.groups.presentation.communication.NotificationSettingsChannel.PUSH), true)
+    @Test fun whatsappSettings() = notifications("settings-whatsapp", settingsState.copy(
+        settingsChannel = br.com.saqz.groups.presentation.communication.NotificationSettingsChannel.WHATSAPP), true)
+    @Test fun whatsappEnabled() = notifications("settings-whatsapp-enabled", settingsState.copy(
+        settingsChannel = br.com.saqz.groups.presentation.communication.NotificationSettingsChannel.WHATSAPP,
+        preferences = NotificationPreferences(
+            whatsapp = br.com.saqz.groups.domain.communication.WhatsAppPreferences(true, true, true))), true)
+    @Test fun whatsappSaving() = notifications("settings-whatsapp-saving", settingsState.copy(busy = true,
+        settingsChannel = br.com.saqz.groups.presentation.communication.NotificationSettingsChannel.WHATSAPP), true)
+}

@@ -103,6 +103,19 @@ class KtorCommunicationGatewayTest {
         }
         assertTrue(gateway { respond("{}", headers = jsonHeaders) }.preferences() is SaqzResult.Failure)
     }
+    @Test fun deliveryChannelsRoundTripWithoutChangingOtherPreferences() = runTest {
+        val value = NotificationPreferences(false, true, false,
+            br.com.saqz.groups.domain.communication.PushPreferences(true, false, true, false),
+            br.com.saqz.groups.domain.communication.WhatsAppPreferences(true, false, true))
+        val payload = """{"notices":false,"messages":true,"reminders":false,"push":{"notices":true,"messages":false,"reminders":true,"charges":false},"whatsapp":{"notices":true,"reminders":false,"charges":true}}"""
+        val result = gateway { request ->
+            assertEquals(Json.parseToJsonElement(payload), Json.parseToJsonElement((request.body as TextContent).text))
+            respond(payload, headers = jsonHeaders)
+        }.savePreferences(value)
+        assertEquals(SaqzResult.Success(value), result)
+        assertEquals(SaqzResult.Success(value), gateway { respond(payload, headers = jsonHeaders) }.preferences())
+    }
+
     private fun gateway(response: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): KtorCommunicationGateway {
         val network = NetworkClient(MockEngine { response(it) }, NetworkConfig(NetworkEnvironment.Test, "https://api.test/"))
         return KtorCommunicationGateway(AuthenticatedNetworkClient(network, object : IdTokenProvider {
