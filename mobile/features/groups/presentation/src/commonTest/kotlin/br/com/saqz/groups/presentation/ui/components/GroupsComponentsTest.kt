@@ -53,7 +53,7 @@ class GroupsComponentsTest {
             }
         }
 
-        onNodeWithText("Sem recorrência: você marca cada jogo manualmente, quando quiser.")
+        onNodeWithText("Você marca cada jogo quando quiser.")
             .assertIsDisplayed()
         onAllNodesWithText("Adicionar dia e horário").assertCountEquals(0)
     }

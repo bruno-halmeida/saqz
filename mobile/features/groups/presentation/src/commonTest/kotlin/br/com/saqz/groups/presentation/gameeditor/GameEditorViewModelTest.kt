@@ -275,7 +275,7 @@ class GameEditorViewModelTest {
     @Test
     fun `retry with group default fee recognizes own published draft`() = runTest {
         val submittedGame = sampleGame().copy(
-            title = "Jogo fora da recorrência",
+            title = "Jogo extra",
             startsAt = "2026-08-04T22:30:00Z",
             confirmationDeadline = "2026-08-04T16:30:00Z",
             gameFeeCents = 2500,
