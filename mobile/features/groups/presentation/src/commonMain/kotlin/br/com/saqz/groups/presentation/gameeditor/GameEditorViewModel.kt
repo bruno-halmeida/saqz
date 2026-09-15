@@ -469,7 +469,7 @@ class GameEditorViewModel(
         const val KeyPendingGameId = "game-editor-pending-game-id"
         const val KeyPendingVersion = "game-editor-pending-version"
         const val KeyPendingFingerprint = "game-editor-pending-fingerprint"
-        const val DEFAULT_TITLE = "Jogo fora da recorrência"
+        const val DEFAULT_TITLE = "Jogo extra"
     }
 }
 

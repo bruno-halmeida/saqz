@@ -102,9 +102,9 @@
     <string name="group_setup_venue_name_hint">Ex.: CERET — Quadra 2</string>
     <string name="group_setup_venue_address_label">Endereço da quadra</string>
     <string name="group_setup_venue_address_hint">R. Canuto Abreu, s/n · Tatuapé</string>
-    <string name="group_setup_recurrence_label">Jogo recorrente</string>
-    <string name="group_setup_recurrence_hint">Mesmos dias e horários toda semana.</string>
-    <string name="group_setup_recurring_off">Sem recorrência: você marca cada jogo manualmente, quando quiser.</string>
+    <string name="group_setup_recurrence_label">Repetir toda semana</string>
+    <string name="group_setup_recurrence_hint">Os jogos acontecem nos mesmos dias e horários.</string>
+    <string name="group_setup_recurring_off">Você marca cada jogo quando quiser.</string>
     <string name="group_setup_add_slot">Adicionar dia e horário</string>
     <string name="group_setup_remove_slot">Remover dia e horário</string>
     <string name="group_setup_delete_action">Excluir grupo</string>
@@ -177,7 +177,7 @@
     <string name="group_review_capacity">Máx. por jogo</string>
     <string name="group_review_duration">Duração</string>
     <string name="group_review_confirmation_lead">Confirmar até</string>
-    <string name="group_review_weekly_schedule">Agenda semanal</string>
+    <string name="group_review_weekly_schedule">Dias e horários</string>
     <string name="group_review_create">Criar grupo</string>
     <string name="group_review_edit">Editar informações</string>
 
@@ -211,7 +211,7 @@
     <string name="group_details_venue_edit">Editar</string>
     <string name="group_details_notices">Avisos</string>
     <string name="group_details_cash">Caixa</string>
-    <string name="group_details_schedule">Agenda</string>
+    <string name="group_details_schedule">Jogos</string>
     <string name="group_details_chat">Chat</string>
     <string name="group_details_recent_notice">Aviso recente</string>
     <string name="group_details_members">Membros</string>
@@ -223,7 +223,7 @@
     <string name="group_details_cash_summary">Saldo %1$s · %2$d mensalidades em aberto</string>
     <string name="group_details_manage">Gerenciar</string>
     <string name="group_details_manage_members">Membros e permissões</string>
-    <string name="group_details_manage_schedule">Agenda e recorrência</string>
+    <string name="group_details_manage_schedule">Jogos e horários</string>
     <string name="group_details_invite_link">Convidar por link</string>
 
     <!-- 2k e 2l · membros e ações -->
@@ -265,7 +265,7 @@
     <string name="group_member_cancel">Cancelar</string>
 
     <!-- 2m · agenda -->
-    <string name="group_schedule_title">Agenda e recorrência</string>
+    <string name="group_schedule_title">Jogos e horários</string>
     <string name="group_schedule_upcoming">Próximos jogos</string>
     <string name="group_schedule_published">Publicado</string>
     <string name="group_schedule_scheduled">Agendado</string>

@@ -3,7 +3,7 @@
     <!-- 4a · Cabeçalho -->
     <string name="game_editor_create_title">Criar jogo</string>
     <string name="game_editor_edit_title">Editar jogo</string>
-    <string name="game_editor_subtitle">Jogo fora da recorrência</string>
+    <string name="game_editor_subtitle">Jogo extra</string>
     <string name="game_editor_group_name">%1$s</string>
 
     <!-- 4a · Campos -->
