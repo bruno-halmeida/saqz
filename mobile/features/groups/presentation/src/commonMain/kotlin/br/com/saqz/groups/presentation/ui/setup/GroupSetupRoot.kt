@@ -52,6 +52,7 @@ fun GroupSetupRoot(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     showTrialOffer: Boolean = false,
+    onOpenWhatsApp: (() -> Unit)? = null,
     viewModel: GroupSetupViewModel = koinViewModel(
         key = "group-setup/$mode",
         parameters = { parametersOf(mode) },
@@ -139,6 +140,7 @@ fun GroupSetupRoot(
                 showTrialOffer = showTrialOffer,
                 onIntent = viewModel::onIntent,
                 onBack = onBack,
+                onOpenWhatsApp = onOpenWhatsApp,
             )
 
             GroupSetupStep.Review -> GroupReviewScreen(state = screenState, onIntent = viewModel::onIntent)

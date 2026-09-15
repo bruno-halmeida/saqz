@@ -47,6 +47,7 @@ import br.com.saqz.groups.presentation.setup.GroupSetupSheet
 import br.com.saqz.groups.presentation.setup.GroupSetupState
 import br.com.saqz.groups.presentation.setup.validate
 import br.com.saqz.groups.presentation.ui.label
+import br.com.saqz.groups.presentation.ui.components.GroupFormCard
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_pix_error_key
 import br.com.saqz.groups.resources.group_pix_error_label
@@ -67,6 +68,9 @@ import br.com.saqz.groups.resources.group_setup_error_venue_name
 import br.com.saqz.groups.resources.group_setup_save_action
 import br.com.saqz.groups.resources.group_system_creating
 import br.com.saqz.groups.resources.group_system_offline
+import br.com.saqz.groups.resources.whatsapp_binding_open
+import br.com.saqz.groups.resources.whatsapp_binding_section_hint
+import br.com.saqz.groups.resources.whatsapp_binding_section_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -105,6 +109,8 @@ internal object GroupSetupTags {
     const val Submit = "group-setup-submit"
     const val ReviewCreate = "group-review-create"
     const val ReviewEdit = "group-review-edit"
+    const val WhatsApp = "group-setup-whatsapp"
+    const val WhatsAppOpen = "group-setup-whatsapp-open"
 }
 
 /**
@@ -119,6 +125,7 @@ fun GroupSetupScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     showTrialOffer: Boolean = false,
+    onOpenWhatsApp: (() -> Unit)? = null,
 ) {
     val metrics = SaqzTheme.metrics
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
@@ -163,7 +170,7 @@ fun GroupSetupScreen(
                     )
                 }
                 GroupSetupNotices(state, onIntent)
-                GroupSetupCards(state, onIntent)
+                GroupSetupCards(state, onIntent, onOpenWhatsApp)
             }
             GroupSetupFooter(state, onIntent)
         }
@@ -189,7 +196,7 @@ private fun GroupSetupNotices(state: GroupSetupState, onIntent: (GroupSetupInten
 }
 
 @Composable
-private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit) {
+private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit, onOpenWhatsApp: (() -> Unit)?) {
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap)) {
         val form = state.form
         var advancedExpanded by rememberSaveable { mutableStateOf(false) }
@@ -236,12 +243,16 @@ private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent)
             )
             if (!advancedExpanded) return@Column
         }
-        GroupSetupAdvancedCards(state, onIntent)
+        GroupSetupAdvancedCards(state, onIntent, onOpenWhatsApp)
     }
 }
 
 @Composable
-private fun GroupSetupAdvancedCards(state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit) {
+private fun GroupSetupAdvancedCards(
+    state: GroupSetupState,
+    onIntent: (GroupSetupIntent) -> Unit,
+    onOpenWhatsApp: (() -> Unit)?,
+) {
     val form = state.form
     GroupLevelSection(
         levelLabel = form.level?.label(),
@@ -326,6 +337,30 @@ private fun GroupSetupAdvancedCards(state: GroupSetupState, onIntent: (GroupSetu
             pixLabelError = state.errorText(GroupSetupError.PixLabelTooShort, Res.string.group_pix_error_label),
             onPixKeyChange = { onIntent(GroupSetupIntent.UpdatePixKey(it)) },
             onPixLabelChange = { onIntent(GroupSetupIntent.UpdatePixLabel(it)) },
+        )
+    }
+    if (state.isEditing && onOpenWhatsApp != null) {
+        GroupWhatsAppSection(onOpen = onOpenWhatsApp)
+    }
+}
+
+/**
+ * Entrada das configurações avançadas → grupo do WhatsApp. Só aparece no editar e quando
+ * o host expõe a navegação: a tela em si não conhece `NavDisplay` (AGENTS.md §6).
+ */
+@Composable
+private fun GroupWhatsAppSection(onOpen: () -> Unit) {
+    GroupFormCard(
+        title = stringResource(Res.string.whatsapp_binding_section_title),
+        hint = stringResource(Res.string.whatsapp_binding_section_hint),
+        modifier = Modifier.testTag(GroupSetupTags.WhatsApp),
+    ) {
+        SaqzButton(
+            label = stringResource(Res.string.whatsapp_binding_open),
+            onClick = onOpen,
+            variant = SaqzButtonVariant.Secondary,
+            fullWidth = true,
+            modifier = Modifier.testTag(GroupSetupTags.WhatsAppOpen),
         )
     }
 }

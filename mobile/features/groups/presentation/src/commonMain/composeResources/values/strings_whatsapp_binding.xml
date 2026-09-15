@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="whatsapp_binding_title">Grupo do WhatsApp</string>
+    <string name="whatsapp_binding_section_title">WhatsApp</string>
+    <string name="whatsapp_binding_section_hint">Vincule o grupo do WhatsApp para receber avisos e lembretes de presença.</string>
+    <string name="whatsapp_binding_open">Configurar</string>
+    <string name="whatsapp_binding_loading">Carregando vínculo…</string>
+    <string name="whatsapp_binding_error">Não foi possível carregar o vínculo. Tente novamente.</string>
+    <string name="whatsapp_binding_retry">Tentar novamente</string>
+    <string name="whatsapp_binding_empty_title">Nenhum grupo vinculado</string>
+    <string name="whatsapp_binding_empty_description">Cole o link de convite do grupo do WhatsApp para começar.</string>
+    <string name="whatsapp_binding_invite_label">Link de convite</string>
+    <string name="whatsapp_binding_invite_placeholder">chat.whatsapp.com/…</string>
+    <string name="whatsapp_binding_link_action">Vincular grupo</string>
+    <string name="whatsapp_binding_group_label">Grupo vinculado</string>
+    <string name="whatsapp_binding_confirmation">Grupo vinculado: %1$s</string>
+    <string name="whatsapp_binding_status_active">Ativo</string>
+    <string name="whatsapp_binding_status_disabled">Desabilitado</string>
+    <string name="whatsapp_binding_status_broken">Quebrado</string>
+    <string name="whatsapp_binding_disable_action">Desabilitar</string>
+    <string name="whatsapp_binding_enable_action">Reabilitar</string>
+    <string name="whatsapp_binding_saved">Vínculo atualizado.</string>
+</resources>

@@ -86,6 +86,7 @@ import br.com.saqz.groups.presentation.ui.list.GroupListRoot
 import br.com.saqz.groups.presentation.ui.members.GroupMembersRoot
 import br.com.saqz.groups.presentation.ui.schedule.GroupScheduleRoot
 import br.com.saqz.groups.presentation.ui.setup.GroupSetupRoot
+import br.com.saqz.groups.presentation.whatsappbinding.WhatsAppBindingRoot
 import br.com.saqz.profile.presentation.edit.ui.EditProfileRoot
 import br.com.saqz.profile.presentation.exit.ProfileExitRoot
 import br.com.saqz.profile.presentation.navigation.ProfileRoute
@@ -687,6 +688,7 @@ internal fun SaqzNavHost(
                 GroupSetupDestination(
                     mode = GroupSetupMode.Edit(route.groupId),
                     backStack = backStack,
+                    onOpenWhatsApp = { backStack.add(GroupsRoute.WhatsApp(route.groupId)) },
                     onGroupListChange = {
                         // Edit empilha sobre Details: a lista já recarregava; o detalhe
                         // ficava com foto e nome antigos porque a ViewModel sobrevive no
@@ -695,6 +697,9 @@ internal fun SaqzNavHost(
                         groupDetailsRefreshVersion++
                     },
                 )
+            }
+            entry<GroupsRoute.WhatsApp> { route ->
+                WhatsAppBindingRoot(groupId = route.groupId, onBack = pop)
             }
             entry<GroupsRoute.Details> { route ->
                 GroupDetailsRoot(
@@ -1047,12 +1052,14 @@ private fun GroupSetupDestination(
     mode: GroupSetupMode,
     backStack: NavBackStack<NavKey>,
     onGroupListChange: () -> Unit,
+    onOpenWhatsApp: (() -> Unit)? = null,
     showTrialOffer: Boolean = false,
 ) {
     val pop: () -> Unit = { backStack.removeLastOrNull() }
     GroupSetupRoot(
         mode = mode,
         showTrialOffer = showTrialOffer,
+        onOpenWhatsApp = onOpenWhatsApp,
         // Criou: o formulário sai do stack e o grupo novo entra no lugar dele.
         onGroupCreate = { groupId, photoFailed ->
             onGroupListChange()

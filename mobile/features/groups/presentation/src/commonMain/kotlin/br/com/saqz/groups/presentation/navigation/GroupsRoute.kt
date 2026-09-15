@@ -70,6 +70,10 @@ sealed interface GroupsRoute : NavKey {
     /** 4: detalhe do jogo. */
     @Serializable
     data class GameDetail(val groupId: String, val gameId: String) : GroupsRoute
+
+    /** Avisos e lembretes no grupo do WhatsApp: configurações avançadas do gestor. */
+    @Serializable
+    data class WhatsApp(val groupId: String) : GroupsRoute
 }
 
 @Serializable

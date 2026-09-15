@@ -33,6 +33,7 @@ import br.com.saqz.groups.presentation.di.athleteRegistrationPresentationModule
 import br.com.saqz.groups.presentation.di.groupsPresentationModule
 import br.com.saqz.groups.presentation.di.inviteLandingPresentationModule
 import br.com.saqz.groups.presentation.di.inviteManagementPresentationModule
+import br.com.saqz.groups.presentation.di.whatsAppBindingPresentationModule
 import br.com.saqz.groups.presentation.membereditor.memberEditorPresentationModule
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.authenticatedImageLoaderModule
@@ -82,6 +83,7 @@ private val commonModules = listOf(
     inviteJourneyDataModule(),
     inviteManagementDataModule(),
     inviteManagementPresentationModule(),
+    whatsAppBindingPresentationModule(),
     inviteLandingPresentationModule(),
     athleteRegistrationPresentationModule(),
     memberEditorPresentationModule(),
