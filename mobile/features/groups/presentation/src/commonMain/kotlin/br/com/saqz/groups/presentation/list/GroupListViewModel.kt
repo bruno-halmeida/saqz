@@ -13,11 +13,16 @@ import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.photo.groupPhotoUrl
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
+import br.com.saqz.groups.domain.game.GameGateway
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class GroupListViewModel(
     private val athleteGateway: AthleteGateway,
     private val groupGateway: GroupGateway,
     private val entitlement: GroupCreationEntitlement,
+    private val gameGateway: GameGateway,
+    private val now: () -> Instant = { Clock.System.now() },
 ) : MviViewModel<GroupListState, GroupListIntent, GroupListEffect>(GroupListState()) {
 
     private var loadGeneration = 0
@@ -72,28 +77,33 @@ class GroupListViewModel(
                 }
                 is SaqzResult.Success -> {
                     val memberships = result.value.memberships.filter(OwnAthleteMembership::active)
-                    val cards = memberships.map { membership ->
-                        // ponytail: N+1 por grupo; agregado quando houver endpoint de lista.
-                        groupGateway.read(membership.groupId)
+                    val loadedCards = mutableListOf<GroupCardUi>()
+                    val currentTime = now()
+                    for (membership in memberships) {
+                        // ponytail: per-group reads until a list endpoint includes game summaries.
+                        val group = when (val read = groupGateway.read(membership.groupId)) {
+                            is SaqzResult.Success -> read.value.group
+                            is SaqzResult.Failure -> {
+                                if (!softRefresh) showFailure(generation, read.error.toUiError())
+                                return@launch
+                            }
+                        }
+                        if (generation != loadGeneration) return@launch
+                        val games = when (val read = gameGateway.list(membership.groupId)) {
+                            is SaqzResult.Success -> read.value
+                            is SaqzResult.Failure -> {
+                                showFailure(generation, read.error.toUiError())
+                                return@launch
+                            }
+                        }
+                        if (generation != loadGeneration) return@launch
+                        loadedCards += group.toCard(membership).copy(
+                            nextGame = games.nextGroupCardGame(group.role, currentTime),
+                        )
                     }
                     if (generation != loadGeneration) return@launch
-                    val failure = cards.firstNotNullOfOrNull { card ->
-                        (card as? SaqzResult.Failure)?.error?.toUiError()
-                    }
-                    if (failure != null) {
-                        if (!softRefresh) showFailure(generation, failure)
-                    } else {
-                        update {
-                            it.copy(
-                                isLoading = false,
-                                loadFailed = false,
-                                error = null,
-                                groups = memberships.zip(cards).map { (membership, card) ->
-                                    val group = (card as SaqzResult.Success).value.group
-                                    group.toCard(membership)
-                                },
-                            )
-                        }
+                    update {
+                        it.copy(isLoading = false, loadFailed = false, error = null, groups = loadedCards)
                     }
                 }
             }

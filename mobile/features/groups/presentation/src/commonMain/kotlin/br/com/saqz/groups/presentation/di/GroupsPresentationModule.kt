@@ -44,7 +44,7 @@ import org.koin.dsl.module
  * a resposta chega. Conteúdo de amostra pertence apenas às previews e às capturas.
  */
 fun groupsPresentationModule(): Module = module {
-    viewModel { GroupListViewModel(get(), get(), get()) }
+    viewModel { GroupListViewModel(get(), get(), get(), get()) }
     viewModel { HomeViewModel(get(), get(), get(), get<GroupNowPort>()) }
     viewModel { FinanceOverviewViewModel(get(), get()) }
     viewModel { params ->

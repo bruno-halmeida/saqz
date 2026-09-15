@@ -276,4 +276,5 @@
     <string name="group_schedule_conflict">O grupo foi alterado. Recarregue antes de editar novamente.</string>
     <string name="group_schedule_invalid">Adicione ao menos um horário e evite horários repetidos.</string>
     <string name="group_system_reload">Recarregar</string>
+    <string name="groups_next_game_summary">%1$s · %2$s · %3$d de %4$d</string>
 </resources>

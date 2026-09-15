@@ -35,6 +35,14 @@ class GroupListScreenshotTest {
     fun filled() = capture("group-list-2n-lista-cheia", GroupListSamples.filled)
 
     @Test
+    fun upcomingGame() = capture(
+        "group-list-proximo-jogo",
+        GroupListSamples.filled.copy(groups = GroupListSamples.filled.groups.take(1).map {
+            it.copy(nextGame = br.com.saqz.groups.presentation.list.GroupCardGameUi("04/08 · 19:30 · 9 de 12", null))
+        }),
+    )
+
+    @Test
     fun empty() = capture("group-list-2o-primeiro-acesso", GroupListSamples.empty)
 
     @Test

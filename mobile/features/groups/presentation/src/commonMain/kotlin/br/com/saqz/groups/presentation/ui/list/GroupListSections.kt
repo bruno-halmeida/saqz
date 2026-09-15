@@ -210,7 +210,7 @@ internal fun GroupCardGameRow(
             color = colors.textPrimary,
             modifier = Modifier.weight(1f),
         )
-        GroupCardAttendanceChip(attendance = game.attendance)
+        game.attendance?.let { GroupCardAttendanceChip(attendance = it) }
     }
 }
 
