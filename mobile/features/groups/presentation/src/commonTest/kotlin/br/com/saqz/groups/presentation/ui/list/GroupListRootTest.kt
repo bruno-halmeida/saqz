@@ -16,6 +16,7 @@ import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
 import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.FakeAthleteGateway
+import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.list.GroupListViewModel
 import br.com.saqz.groups.presentation.sampleVersionedGroup
@@ -32,6 +33,7 @@ class GroupListRootTest {
             athlete,
             FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())),
             noPlan,
+            gameGateway = FakeGameGateway(),
         )
         var refreshVersion by mutableIntStateOf(0)
 
@@ -65,6 +67,7 @@ class GroupListRootTest {
             athlete,
             FakeGroupGateway(),
             noPlan,
+            gameGateway = FakeGameGateway(),
         )
 
         setContent {
@@ -90,6 +93,7 @@ class GroupListRootTest {
             athlete,
             FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())),
             noPlan,
+            gameGateway = FakeGameGateway(),
         )
         var refreshVersion by mutableIntStateOf(0)
         var onScreen by mutableStateOf(true)

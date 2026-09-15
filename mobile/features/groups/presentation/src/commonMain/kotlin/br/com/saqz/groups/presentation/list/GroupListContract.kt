@@ -38,7 +38,7 @@ data class GroupCardUi(
 data class GroupCardGameUi(
     /** "Ter, 28/07 · 19h30 · 9 de 12" — data já formatada é String no estado (AGENTS.md §8). */
     val label: String,
-    val attendance: GroupCardAttendance,
+    val attendance: GroupCardAttendance?,
 ) {
     val needsConfirmation: Boolean = attendance == GroupCardAttendance.Pending
 }

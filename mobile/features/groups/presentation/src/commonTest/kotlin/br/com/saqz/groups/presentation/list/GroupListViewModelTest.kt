@@ -7,6 +7,7 @@ import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.FakeAthleteGateway
+import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleGroup
@@ -59,7 +60,10 @@ class GroupListViewModelTest {
                 ),
             ),
         )
-        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())), noPlan)
+        val viewModel = GroupListViewModel(
+            athlete, FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())), noPlan,
+            gameGateway = FakeGameGateway(),
+        )
 
         assertFalse(viewModel.state.value.isLoading)
         assertEquals(listOf("group-1"), viewModel.state.value.groups.map { it.id })
@@ -71,7 +75,9 @@ class GroupListViewModelTest {
 
     @Test
     fun `empty own profile becomes the first access state`() = runTest {
-        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), noPlan)
+        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), noPlan,
+            gameGateway = FakeGameGateway(),
+        )
 
         assertTrue(viewModel.state.value.isEmpty)
         assertFalse(viewModel.state.value.isLoading)
@@ -84,7 +90,9 @@ class GroupListViewModelTest {
                 br.com.saqz.groups.domain.athlete.AthleteError.DataFailure(DataError.Forbidden),
             ),
         )
-        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(), noPlan)
+        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(), noPlan,
+            gameGateway = FakeGameGateway(),
+        )
 
         assertTrue(viewModel.state.value.loadFailed)
         assertEquals(GroupUiError.AccessDenied, viewModel.state.value.error)
@@ -114,7 +122,9 @@ class GroupListViewModelTest {
         val gateway = FakeGroupGateway(
             readResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.NotFound)),
         )
-        val viewModel = GroupListViewModel(athlete, gateway, noPlan)
+        val viewModel = GroupListViewModel(athlete, gateway, noPlan,
+            gameGateway = FakeGameGateway(),
+        )
 
         assertTrue(viewModel.state.value.loadFailed)
         assertEquals(GroupUiError.NotFound, viewModel.state.value.error)
@@ -122,7 +132,9 @@ class GroupListViewModelTest {
 
     @Test
     fun `navigation effects remain available after loading`() = runTest {
-        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), noPlan)
+        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), noPlan,
+            gameGateway = FakeGameGateway(),
+        )
 
         viewModel.onIntent(GroupListIntent.OpenGroup("group-1"))
         assertEquals(GroupListEffect.OpenGroup("group-1"), viewModel.effects.first())
@@ -134,7 +146,10 @@ class GroupListViewModelTest {
     // Com plano ativo e vaga, o "+" de 2n atalha para o formulário 2a.
     @Test
     fun `entitled member creating a group goes straight to the form`() = runTest {
-        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), GroupCreationEntitlement { true })
+        val viewModel = GroupListViewModel(
+            FakeAthleteGateway(), FakeGroupGateway(), GroupCreationEntitlement { true },
+            gameGateway = FakeGameGateway(),
+        )
 
         viewModel.onIntent(GroupListIntent.CreateGroup)
 
@@ -147,7 +162,9 @@ class GroupListViewModelTest {
             override suspend fun canCreateGroup() = false
             override suspend fun canOpenCreationFlow() = true
         }
-        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), entitlement)
+        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), entitlement,
+            gameGateway = FakeGameGateway(),
+        )
 
         viewModel.onIntent(GroupListIntent.CreateGroup)
 
@@ -163,6 +180,7 @@ class GroupListViewModelTest {
             FakeAthleteGateway(),
             FakeGroupGateway(),
             GroupCreationEntitlement { calls++; gate.await() },
+            gameGateway = FakeGameGateway(),
         )
 
         viewModel.onIntent(GroupListIntent.CreateGroup)
@@ -186,6 +204,7 @@ class GroupListViewModelTest {
             athlete,
             FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())),
             noPlan,
+            gameGateway = FakeGameGateway(),
         )
         assertTrue(viewModel.state.value.isEmpty)
         assertEquals(1, athlete.ownProfileCalls)
