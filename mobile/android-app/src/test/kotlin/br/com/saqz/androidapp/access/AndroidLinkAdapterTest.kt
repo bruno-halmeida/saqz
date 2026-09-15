@@ -8,6 +8,21 @@ import org.junit.Test
 
 class AndroidLinkAdapterTest {
     @Test
+    fun reopeningAttendanceLinkDeliversAgainButBranchCopyDoesNot() {
+        val fixture = Fixture()
+        val events = mutableListOf<br.com.saqz.groups.port.GroupLinkEvent>()
+        fixture.adapter.start(object : br.com.saqz.groups.port.GroupLinkEventListener {
+            override fun onEvent(event: br.com.saqz.groups.port.GroupLinkEvent) { events += event }
+        })
+        val url = "https://saqz.test-app.link/attendance/$CODE_A"
+        fixture.adapter.onColdStart(url)
+        fixture.branch.complete(mapOf("saqz_attendance" to CODE_A))
+        fixture.adapter.onWarmIntent(url)
+        fixture.branch.complete(mapOf("saqz_attendance" to CODE_A))
+        assertEquals(List(2) { br.com.saqz.groups.port.GroupLinkEvent.Attendance(CODE_A) }, events)
+    }
+
+    @Test
     fun coldAppLinkDeliversOnlyOpaqueInviteCode() {
         val fixture = Fixture()
         fixture.start()

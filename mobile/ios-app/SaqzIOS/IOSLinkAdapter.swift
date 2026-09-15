@@ -66,6 +66,7 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
     }
 
     func onColdStart(url: URL?) {
+        lastAcceptedEventKey = nil // Deduplicate direct/Branch copies within this opening only.
         acceptOnboarding(Self.directOnboardingCode(url, allowedHosts: allowedHosts))
         accept(Self.directEvent(url, allowedHosts: allowedHosts))
         branch.initialize { [weak self] parameters in
@@ -76,6 +77,7 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
 
     @discardableResult
     func onOpenURL(_ url: URL) -> Bool {
+        lastAcceptedEventKey = nil // Deduplicate direct/Branch copies within this opening only.
         acceptOnboarding(Self.directOnboardingCode(url, allowedHosts: allowedHosts))
         accept(Self.directEvent(url, allowedHosts: allowedHosts))
         return branch.handle(url: url)
@@ -83,6 +85,7 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
 
     @discardableResult
     func onContinueUserActivity(_ activity: NSUserActivity) -> Bool {
+        lastAcceptedEventKey = nil // Deduplicate direct/Branch copies within this opening only.
         acceptOnboarding(Self.directOnboardingCode(activity.webpageURL, allowedHosts: allowedHosts))
         accept(Self.directEvent(activity.webpageURL, allowedHosts: allowedHosts))
         return branch.continueActivity(activity)

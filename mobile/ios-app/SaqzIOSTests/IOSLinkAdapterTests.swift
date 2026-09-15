@@ -5,6 +5,20 @@ import XCTest
 
 @MainActor
 final class IOSLinkAdapterTests: XCTestCase {
+    func testReopeningAttendanceLinkDeliversAgainButBranchCopyDoesNot() {
+        let fixture = Fixture(); fixture.start()
+        let url = URL(string: "https://saqz.test-app.link/attendance/\(Self.codeA)")!
+        fixture.adapter.onColdStart(url: url)
+        fixture.branch.complete(["saqz_attendance": Self.codeA])
+        fixture.adapter.onOpenURL(url)
+        fixture.branch.complete(["saqz_attendance": Self.codeA])
+        let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+        activity.webpageURL = url
+        fixture.adapter.onContinueUserActivity(activity)
+        fixture.branch.complete(["saqz_attendance": Self.codeA])
+        XCTAssertEqual(fixture.attendanceReceived, [Self.codeA, Self.codeA, Self.codeA])
+    }
+
     func testOnboardingColdAndDeferredCopiesUseOnlyAccessListenerOnce() {
         let fixture = Fixture(); fixture.start(); fixture.startOnboarding()
         fixture.adapter.onColdStart(url: URL(string: "https://saqz.test-app.link/?saqz_onboarding=\(Self.codeA)"))

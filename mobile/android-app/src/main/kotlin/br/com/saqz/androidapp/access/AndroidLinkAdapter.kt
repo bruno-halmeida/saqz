@@ -76,12 +76,14 @@ internal class AndroidLinkAdapter(
     }
 
     override fun onColdStart(url: String?) {
+        lastAcceptedEventKey = null // Deduplicate direct/Branch copies within this opening only.
         acceptOnboarding(directOnboardingCode(url, allowedHosts))
         accept(directEvent(url, allowedHosts))
         branch.initialize(url, ::acceptBranchParameters)
     }
 
     override fun onWarmIntent(url: String?) {
+        lastAcceptedEventKey = null // Deduplicate direct/Branch copies within this opening only.
         acceptOnboarding(directOnboardingCode(url, allowedHosts))
         accept(directEvent(url, allowedHosts))
         branch.reinitialize(url, ::acceptBranchParameters)
