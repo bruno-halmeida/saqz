@@ -5,4 +5,7 @@ window.SAQZ_FIREBASE_CONFIG = {
   authDomain: "saqz-dev.firebaseapp.com",
   projectId: "saqz-dev",
   apiBaseUrl: "https://saqz-api.brunoalmeida.dev",
+  // Preencha quando as lojas publicarem o app; vazio mantém o estado "Em breve".
+  iosAppStoreUrl: "",
+  androidPlayStoreUrl: "",
 };
