@@ -43,7 +43,7 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
             LEFT JOIN group_notification_preferences p ON p.user_id = n.recipient_id
             WHERE n.sequence = :id AND coalesce(p.reminders, true)
         """).param("id", id).query { rs, _ ->
-            NotificationPush(id, rs.getObject("group_id", UUID::class.java), "Saqz · ${rs.getString("name")}",
+            NotificationPush(id, rs.getObject("group_id", UUID::class.java), "Saqz",
                 "Você recebeu um lembrete de cobrança. Abra o app para conferir.")
         }.optional().orElse(null)
         var retry = false
@@ -67,7 +67,7 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
         }
         if (retry) jdbc.sql("""
             UPDATE notification_push_queue SET attempts = attempts + 1,
-                next_attempt_at = now() + make_interval(secs => least(3600, 30 * power(2, attempts))::integer)
+                next_attempt_at = now() + make_interval(secs => least(3600, 60 * power(2, attempts))::integer)
             WHERE notification_id = :id
         """).param("id", id).update()
         else jdbc.sql("UPDATE notification_push_queue SET completed_at = now() WHERE notification_id = :id").param("id", id).update()

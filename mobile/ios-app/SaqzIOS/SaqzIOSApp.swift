@@ -89,6 +89,7 @@ struct IOSAppComposition {
                 monthlyChargeDrafts: drafts.monthly,
                 expenseDrafts: drafts.expense
             ),
+            notifications: IOSNotificationPort(),
             financialDocuments: IOSReceiptDocumentPicker(presenter: { IOSPresentationRoot.current })
         )
         return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, photos: photos, drafts: drafts, dependencies: dependencies)
@@ -198,6 +199,7 @@ enum FirebaseBootstrap {
 
 @main
 struct SaqzIOSApp: App {
+    @UIApplicationDelegateAdaptor(SaqzPushDelegate.self) private var pushDelegate
     private let root: ComposeRootView
     private let router: IOSLifecycleRouter
 

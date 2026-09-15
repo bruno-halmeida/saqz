@@ -482,6 +482,9 @@ class SafeExceptionHandler(
     fun messageNotReadable(request: HttpServletRequest, response: HttpServletResponse) {
         if (request.requestURI == "/api/session/app-link/redeem") {
             problemWriter.write(request, response, 400, ErrorCode.APP_ONBOARDING_CODE_INVALID)
+        } else if (request.requestURI.startsWith("/api/me/notification-devices/") ||
+            request.requestURI.matches(Regex("/api/groups/[^/]+/charges/notify"))) {
+            problemWriter.write(request, response, 400, ErrorCode.VALIDATION_FAILED)
         } else {
             problemWriter.write(request, response, 500)
         }

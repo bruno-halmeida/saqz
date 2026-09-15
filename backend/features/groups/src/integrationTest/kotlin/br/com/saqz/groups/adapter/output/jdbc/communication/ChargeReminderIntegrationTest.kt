@@ -91,6 +91,30 @@ class ChargeReminderIntegrationTest {
         assertEquals(CommunicationResult.Failure(CommunicationError.CONFLICT), reminders.send(owner, group, UUID.randomUUID(), listOf(first)))
         assertEquals(0L, count("group_notifications"))
     }
+    @Test fun `selection limit accepts 200 and rejects 201 without partial delivery`() {
+        val ids = (1..201).map { index ->
+            val recipient = user("Member $index")
+            membership(recipient)
+            charge(recipient)
+        }
+        assertEquals(CommunicationResult.Failure(CommunicationError.INVALID),
+            reminders.send(owner, group, UUID.randomUUID(), ids))
+        assertEquals(0L, count("group_notifications"))
+        assertEquals(200, reminders.send(owner, group, UUID.randomUUID(), ids.take(200)).success().notificationCount)
+        assertEquals(200L, count("group_notifications"))
+    }
+    @Test fun `charge from another group rejects the whole selection`() {
+        val original = group
+        val first = charge(member)
+        group = UUID.randomUUID()
+        jdbc.sql("INSERT INTO access_groups (id, owner_user_id, creation_key, name, time_zone, created_at, updated_at) VALUES (:id, :owner, :key, 'Other', 'UTC', now(), now())")
+            .param("id", group).param("owner", owner).param("key", UUID.randomUUID()).update()
+        membership(owner, "ADMIN"); membership(member)
+        val foreign = charge(member)
+        assertEquals(CommunicationResult.Failure(CommunicationError.CONFLICT),
+            reminders.send(owner, original, UUID.randomUUID(), listOf(first, foreign)))
+        assertEquals(0L, count("group_notifications"))
+    }
     @Test fun `inactive recipient is rejected without partial notifications`() {
         val first = charge(member)
         jdbc.sql("UPDATE group_memberships SET active = false WHERE user_id = :id").param("id", member).update()
@@ -107,6 +131,7 @@ class ChargeReminderIntegrationTest {
         val delivered = mutableListOf<String>()
         val sender = br.com.saqz.groups.application.communication.NotificationPushSender { token, message ->
             assertEquals(group, message.groupId)
+            assertEquals("Saqz", message.title)
             assertFalse(message.body.contains("70,00"))
             delivered += token
             if (token == "retry-token") br.com.saqz.groups.application.communication.PushDelivery.RETRY

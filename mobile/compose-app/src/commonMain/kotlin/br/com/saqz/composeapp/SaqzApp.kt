@@ -66,6 +66,11 @@ private fun AccessGate(
     viewModel: AccessViewModel = koinViewModel(),
     config: NetworkConfig = koinInject(),
 ) {
+    val notifications = koinInject<br.com.saqz.composeapp.notifications.NotificationSessionBinding>()
+    LifecycleResumeEffect(notifications) {
+        notifications.refresh()
+        onPauseOrDispose { }
+    }
     val receivables = koinInject<ReceivablesSessionBinding>()
     LifecycleResumeEffect(receivables) {
         receivables.onResume()

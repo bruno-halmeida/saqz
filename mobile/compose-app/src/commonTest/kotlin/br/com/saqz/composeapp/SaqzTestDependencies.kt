@@ -79,6 +79,11 @@ internal fun startTestSaqzKoin(
 internal fun stopTestSaqzKoin() = stopSaqzKoin()
 
 internal fun testSaqzPlatformDependencies() = SaqzPlatformDependencies(
+    notifications = object : br.com.saqz.groups.domain.communication.NativeNotificationPort {
+        override fun device(done: (br.com.saqz.groups.domain.communication.NotificationDevice?) -> Unit) = done(null)
+        override fun clear(done: (Boolean) -> Unit) = done(true)
+        override fun observe(changed: () -> Unit) = br.com.saqz.groups.domain.communication.NotificationSubscription { }
+    },
     financialDocuments = object : br.com.saqz.receivables.domain.port.ReceiptDocumentPicker {
         override fun choose(done: br.com.saqz.receivables.domain.port.ReceiptFileCallback): br.com.saqz.receivables.domain.port.ReceiptFileCancellation {
             done.onFileSelected(br.com.saqz.receivables.domain.port.ReceiptFileSelection.Cancelled)

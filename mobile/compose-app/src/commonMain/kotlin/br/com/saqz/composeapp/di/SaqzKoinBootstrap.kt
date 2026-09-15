@@ -73,6 +73,11 @@ private val commonModules = listOf(
     editProfilePresentationModule(),
     ownProfilePresentationModule(),
     groupsDataModule(),
+    module {
+        single { br.com.saqz.composeapp.notifications.NotificationSessionBinding(
+            get<br.com.saqz.access.presentation.SessionAccessStateMachine>().activeSessionKey, get(), get(), get(),
+        ) }
+    },
     groupsPresentationModule(),
     inviteJourneyDataModule(),
     inviteManagementDataModule(),
@@ -149,6 +154,7 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
             baseUrl = dependencies.apiBaseUrl,
         )
     }
+    single<br.com.saqz.groups.domain.communication.NativeNotificationPort> { dependencies.notifications }
     single { SaqzNativePorts(access = dependencies.access, groups = dependencies.groups) }
     single<NativeAuthPort>(named("raw-native-auth")) {
         BackendEmailVerificationAuth(

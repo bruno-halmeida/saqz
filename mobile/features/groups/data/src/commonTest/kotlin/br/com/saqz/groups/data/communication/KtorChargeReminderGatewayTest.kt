@@ -3,9 +3,7 @@ package br.com.saqz.groups.data.communication
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
-import br.com.saqz.groups.domain.communication.CommunicationChannel
 import br.com.saqz.groups.domain.communication.CommunicationError
-import br.com.saqz.groups.domain.communication.NotificationPreferences
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
 import br.com.saqz.network.NetworkClient
@@ -31,7 +29,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertTrue
 
 class KtorChargeReminderGatewayTest {
     @Test fun sendsOnlySelectedIdsAndRequestIdToAuthenticatedGroupEndpoint() = runTest {
@@ -61,5 +58,4 @@ class KtorChargeReminderGatewayTest {
     }
     private fun <T> SaqzResult<T, CommunicationError>.success() = assertIs<SaqzResult.Success<T>>(this).value
     private val jsonHeaders = headersOf(HttpHeaders.ContentType, "application/json")
-    private val message = """{"id":"message-1","sequence":89,"groupId":"group-1","authorId":"me","authorName":"Ana","channel":"NOTICE","body":"Treino amanhã","createdAt":"2026-09-09T12:00:00Z","gameId":null,"recipientCount":1}"""
 }

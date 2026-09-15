@@ -76,6 +76,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
         val profilePhoto = AndroidProfilePhotoAdapter(photos.selection, photos.encoder, scope)
         val documents = br.com.saqz.androidapp.receivables.AndroidReceiptDocumentPicker(context.applicationContext, scope)
         val dependencies = SaqzPlatformDependencies(
+                notifications = AndroidNotificationPort(context.applicationContext),
                 financialDocuments = documents,
                 environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,

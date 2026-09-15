@@ -12,6 +12,7 @@ import org.koin.dsl.module
 class SaqzApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        initializeNotificationFirebase(this)
         Branch.getAutoInstance(this)
         startKoin { androidContext(this@SaqzApplication) }
         installSaqzKoinModules()

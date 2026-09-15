@@ -51,6 +51,7 @@ class SaqzPlatformDependencies(
     val access: AccessRuntimeDependencies,
     val groups: GroupsRuntimeDependencies,
     val drafts: SaqzDraftStores,
+    val notifications: br.com.saqz.groups.domain.communication.NativeNotificationPort,
     val financialDocuments: br.com.saqz.receivables.domain.port.ReceiptDocumentPicker,
 ) {
     init {
