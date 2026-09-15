@@ -13,13 +13,13 @@ class GroupCommunicationService(
 ) {
     fun messages(actor: UUID, groupId: UUID, channel: MessageChannel, before: Long?): CommunicationResult<CommunicationPage<GroupMessage>> =
         inGroup(actor, groupId) {
-            if (channel == MessageChannel.REMINDER || (before != null && before <= 0)) return@inGroup invalid()
+            if (channel in setOf(MessageChannel.REMINDER, MessageChannel.CHARGE) || (before != null && before <= 0)) return@inGroup invalid()
             CommunicationResult.Success(page(repository.messages(groupId, channel, before)) { it.sequence })
         }
 
     fun publish(actor: UUID, groupId: UUID, channel: MessageChannel, requestId: UUID, body: String): CommunicationResult<GroupMessage> =
         inGroup(actor, groupId) { role ->
-            if (channel == MessageChannel.REMINDER) return@inGroup invalid()
+            if (channel in setOf(MessageChannel.REMINDER, MessageChannel.CHARGE)) return@inGroup invalid()
             if (channel == MessageChannel.NOTICE && role == GroupRole.ATHLETE) return@inGroup forbidden()
             val text = body.trim()
             if (text.length !in 1..2000 || text.any { it.isISOControl() && it !in "\n\t\r" }) return@inGroup invalid()

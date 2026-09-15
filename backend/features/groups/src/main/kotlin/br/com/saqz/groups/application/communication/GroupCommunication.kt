@@ -3,7 +3,7 @@ package br.com.saqz.groups.application.communication
 import java.time.Instant
 import java.util.UUID
 
-enum class MessageChannel { CHAT, NOTICE, REMINDER }
+enum class MessageChannel { CHAT, NOTICE, REMINDER, CHARGE }
 
 data class GroupMessage(
     val id: UUID,
