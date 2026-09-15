@@ -1,7 +1,7 @@
 # Central de notificações multicanal
 
 ## Decisões confirmadas
-- SDK de produção `io.github.uazapi:uazapi-connector-sdk:0.1.0-SNAPSHOT`, Maven local.
+- SDK de produção `com.github.thoughtbruno:uazapi-connector-sdk:0.1.0`, via JitPack.
 - WhatsApp individual: avisos, lembretes de presença e cobranças; conversa excluída.
 - Identidade confirmada pelo usuário: conta autenticada no Saqz, sem inferir telefone do clique.
 - Link de confirmação abre o app autenticado e confirma presença respeitando regras do jogo.

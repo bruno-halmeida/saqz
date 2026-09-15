@@ -26,6 +26,12 @@ services:
       SAQZ_PASSWORD_RESET_SECRET: apenas-para-desenvolvimento-local-nao-use-em-producao
       # Origens liberadas para o adm-web (CORS de /admin/**). Vazio = nada liberado.
       SAQZ_ADMINWEB_ORIGINS: ${SAQZ_ADMINWEB_ORIGINS:-}
+      # WhatsApp (Uazapi). Desligado por padrao. Atencao: ligar aqui com o token
+      # de producao faz o ambiente local enviar mensagens reais.
+      SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED: ${SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED:-false}
+      SAQZ_NOTIFICATIONS_WHATSAPP_BASEURL: ${SAQZ_NOTIFICATIONS_WHATSAPP_BASEURL:-https://saqzapp.uazapi.com}
+      SAQZ_NOTIFICATIONS_WHATSAPP_TOKEN: ${SAQZ_NOTIFICATIONS_WHATSAPP_TOKEN:-}
+      SAQZ_NOTIFICATIONS_WHATSAPP_DELAYMS: ${SAQZ_NOTIFICATIONS_WHATSAPP_DELAYMS:-15000}
     secrets:
       - firebase-admin
     healthcheck:

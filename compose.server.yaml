@@ -20,6 +20,12 @@ services:
       # de producao. O default aqui evita mandar string vazia (que sobrescreveria
       # o default de application.properties e quebraria a base-url).
       SAQZ_ASAAS_BASE_URL: ${SAQZ_ASAAS_BASE_URL:-https://api-sandbox.asaas.com/v3}
+      # WhatsApp (Uazapi). Desligado por padrao: sem ENABLED=true o backend nao
+      # cria nenhum bean de WhatsApp e o token vazio nunca e lido.
+      SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED: ${SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED:-false}
+      SAQZ_NOTIFICATIONS_WHATSAPP_BASEURL: ${SAQZ_NOTIFICATIONS_WHATSAPP_BASEURL:-https://saqzapp.uazapi.com}
+      SAQZ_NOTIFICATIONS_WHATSAPP_TOKEN: ${SAQZ_NOTIFICATIONS_WHATSAPP_TOKEN:-}
+      SAQZ_NOTIFICATIONS_WHATSAPP_DELAYMS: ${SAQZ_NOTIFICATIONS_WHATSAPP_DELAYMS:-15000}
     depends_on: !reset {}
     networks:
       - default

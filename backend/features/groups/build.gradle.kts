@@ -8,7 +8,7 @@ version = "0.1.0-SNAPSHOT"
 dependencies {
     implementation(platform("org.springframework.boot:spring-boot-dependencies:4.1.0"))
     implementation(project(":shared-kernel"))
-    implementation("io.github.uazapi:uazapi-connector-sdk:0.1.0-SNAPSHOT")
+    implementation("com.github.thoughtbruno:uazapi-connector-sdk:0.1.0")
     implementation(libs.flyway.core)
     implementation(libs.spring.jdbc)
     implementation(libs.twelvemonkeys.imageio.webp)

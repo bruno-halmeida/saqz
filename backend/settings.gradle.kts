@@ -8,7 +8,11 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        mavenLocal { content { includeModule("io.github.uazapi", "uazapi-connector-sdk") } }
+        // SDK do WhatsApp publicado pelo JitPack a partir do release da tag no GitHub.
+        exclusiveContent {
+            forRepository { maven("https://jitpack.io") }
+            filter { includeModule("com.github.thoughtbruno", "uazapi-connector-sdk") }
+        }
         mavenCentral()
     }
 }
