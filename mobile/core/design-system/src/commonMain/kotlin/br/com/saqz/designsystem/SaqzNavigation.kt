@@ -92,7 +92,7 @@ fun SaqzTopAppBar(
 data class SaqzNavItem(val id: String, val label: String, val icon: ImageVector)
 
 /**
- * 10q — fixo, 76dp mais a safe area, branco a 96%. O indicador lime é o único uso
+ * 10q — compacto, 68dp mais a safe area, branco a 96%. O indicador lime é o único uso
  * de lime na navegação.
  *
  * ponytail: sem o blur de 18px do mock — `Modifier.blur` borra o próprio conteúdo,
@@ -147,7 +147,7 @@ private fun NavTab(
         modifier = modifier
             .fillMaxHeight()
             .selectable(selected = selected, role = Role.Tab, onClick = onSelect)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {

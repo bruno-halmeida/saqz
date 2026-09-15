@@ -59,7 +59,7 @@ data class SaqzMetrics(
             cardRadius = 12.dp,
             blockRadius = 20.dp,
             sheetRadius = 28.dp,
-            bottomNavHeight = 76.dp,
+            bottomNavHeight = 68.dp,
             // Piso de acessibilidade para linha e alvo genérico. O export pede 44 aqui
             // (`--touch-min` no spacing.css); 48 é override deliberado, não desatualização
             // — Material manda 48 e o design system não abaixa acessibilidade para casar
