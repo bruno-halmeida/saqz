@@ -33,6 +33,14 @@ function setup() {
 function respond(request, body, status = 200) {
   request.resolve({ ok: status >= 200 && status < 300, status, json: async () => body });
 }
+test('Google is the first auth action and keeps the official mark', () => {
+  const google = html.indexOf('id="google-auth"');
+  const submit = html.indexOf('id="submit-auth"');
+  assert.ok(google > 0 && google < submit);
+  assert.match(html, /Continuar com o Google/);
+  assert.match(html, /fill="#4285F4"/);
+  assert.match(html, /Mais rápido · sem criar senha/);
+});
 test('public availability offers enrollment without claiming it is already selected', async () => {
   const { app, requests, element } = setup();
   app.load(); await flush(); respond(requests[0], available); await flush();
