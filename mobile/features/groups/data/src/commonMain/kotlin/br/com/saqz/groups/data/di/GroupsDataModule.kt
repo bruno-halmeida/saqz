@@ -40,6 +40,9 @@ fun groupsDataModule(): Module = module {
         br.com.saqz.groups.data.communication.KtorChargeReminderGateway(get())
     }
     single<CommunicationGateway> { KtorCommunicationGateway(get()) }
+    single<br.com.saqz.groups.domain.communication.GroupWhatsAppGateway> {
+        br.com.saqz.groups.data.communication.KtorGroupWhatsAppGateway(get())
+    }
     single<br.com.saqz.groups.domain.group.GroupScheduleGateway> {
         br.com.saqz.groups.data.group.KtorGroupScheduleGateway(get())
     }
