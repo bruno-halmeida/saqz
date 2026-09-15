@@ -2,6 +2,7 @@ package br.com.saqz.profile.presentation.own.ui
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -15,13 +16,14 @@ import coil3.compose.LocalPlatformContext
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.profile.fake.FakeProfileGateway
 import br.com.saqz.profile.presentation.own.OwnProfileViewModel
+import br.com.saqz.profile.presentation.own.OwnProfileIntent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class OwnProfileRootTest {
     @Test
-    fun receiptsEntryRoutesWithoutPlanOwnershipOrGroups() = runComposeUiTest {
+    fun receiptsEntryRoutesWhenAuthorizedEvenWithoutPlanOwnership() = runComposeUiTest {
         val gateway = FakeProfileGateway().apply { profile = profile.copy(memberships = emptyList()) }
         val viewModel = OwnProfileViewModel(gateway)
         var opens = 0
@@ -37,6 +39,35 @@ class OwnProfileRootTest {
         waitForIdle()
         assertEquals(1, opens)
     }
+
+    @Test
+    fun receiptsEntryDisappearsAndStopsRoutingWhenAuthorizationIsRemoved() = runComposeUiTest {
+        val gateway = FakeProfileGateway().apply { profile = profile.copy(memberships = emptyList()) }
+        val viewModel = OwnProfileViewModel(gateway)
+        var opens = 0
+        var onOpenReceipts by mutableStateOf<(() -> Unit)?>({ opens++ })
+        setContent {
+            val context = LocalPlatformContext.current
+            val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
+            SaqzTheme {
+                OwnProfileRoot(
+                    onOpenEditor = {}, onOpenPasswordRecovery = {}, onSignOut = {},
+                    onOpenReceipts = onOpenReceipts, viewModel = viewModel, imageLoader = imageLoader,
+                )
+            }
+        }
+        onNodeWithTag(OwnProfileTags.Receipts).performScrollTo().performClick()
+        waitForIdle()
+        assertEquals(1, opens)
+
+        runOnIdle { onOpenReceipts = null }
+        onNodeWithTag(OwnProfileTags.MonthlyPayments).performScrollTo().assertExists()
+        onNodeWithTag(OwnProfileTags.Receipts).assertDoesNotExist()
+        runOnIdle { viewModel.onIntent(OwnProfileIntent.OpenReceipts) }
+        waitForIdle()
+        assertEquals(1, opens)
+    }
+
     @Test
     fun `refresh version reloads the retained profile after an editor save`() = runComposeUiTest {
         val gateway = FakeProfileGateway()

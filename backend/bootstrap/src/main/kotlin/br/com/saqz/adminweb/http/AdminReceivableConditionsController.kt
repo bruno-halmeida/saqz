@@ -33,8 +33,12 @@ class PublishReceivableFeesRequest {
     var baseCents: BigDecimal? = null
 
     fun schedule(): FeeSchedule? = try {
-        FeeSchedule(requireNotNull(requestId), requireNotNull(method), requireNotNull(providerRate),
-            requireNotNull(providerFixedCents).longValueExact(), requireNotNull(commissionRate),
+        // Retain legacy input names only to reject clients attempting to set Asaas tariffs.
+        require(providerRate == null && providerFixedCents == null)
+        require(requireNotNull(commissionRate).stripTrailingZeros().scale() <= 10)
+        // Legacy provider columns are non-authoritative; current costs are resolved by FinancialFeeProvider.
+        FeeSchedule(requireNotNull(requestId), requireNotNull(method), BigDecimal.ZERO,
+            0, requireNotNull(commissionRate),
             requireNotNull(commissionFixedCents).longValueExact(), requireNotNull(termsVersion))
     } catch (_: IllegalArgumentException) { null } catch (_: ArithmeticException) { null }
 }
@@ -43,7 +47,8 @@ class PublishReceivableFeesRequest {
 @RestController
 @RequestMapping("/admin/receivables")
 class AdminReceivableConditionsController(private val admins: PlatformAdminLookup,
-    private val publisher: FinancialConditionsPublisher, private val clock: Clock) {
+    private val publisher: FinancialConditionsPublisher, private val clock: Clock,
+    private val provider: FinancialFeeProvider) {
 
     @PostMapping("/terms")
     fun publishTerms(@AuthenticationPrincipal identity: RequestIdentity,
@@ -73,11 +78,14 @@ class AdminReceivableConditionsController(private val admins: PlatformAdminLooku
         val requestId = body.requestId ?: UUID.randomUUID()
         if (admins.findBySubject(identity.subject) == null) return denied(requestId)
         val schedule = body.schedule() ?: return invalid(requestId)
-        if (schedule.providerRate.stripTrailingZeros().scale() > 10 ||
-            schedule.commissionRate.stripTrailingZeros().scale() > 10) return invalid(requestId)
         return try {
             val base = body.baseCents?.longValueExact() ?: return invalid(requestId)
-            ResponseEntity.ok(FinancialResult.Success(FeeCalculator.quote(base, schedule), requestId))
+            if (base <= 0) return invalid(requestId)
+            val fees = provider.current(setOf(schedule.method), clock.instant(), null)[schedule.method]
+                ?: throw FinancialFeesUnavailable()
+            ResponseEntity.ok(FinancialResult.Success(FeeCalculator.quote(base, fees.applyTo(schedule)), requestId))
+        } catch (_: FinancialFeesUnavailable) {
+            ResponseEntity.status(503).body(FinancialResult.Failure(FinancialError.CONFIGURATION_UNAVAILABLE, requestId))
         } catch (_: IllegalArgumentException) { invalid(requestId) } catch (_: ArithmeticException) { invalid(requestId) }
     }
 

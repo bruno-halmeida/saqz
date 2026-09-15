@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollTo
 import coil3.compose.LocalPlatformContext
 import br.com.saqz.designsystem.SaqzBottomNav
 import br.com.saqz.designsystem.SaqzNavItem
@@ -49,7 +51,30 @@ class OwnProfileScreenshotTest {
     @Test
     fun failure() = capture("perfil-7a-falha-de-carga", OwnProfilePreviewData.error)
 
-    private fun capture(name: String, state: br.com.saqz.profile.presentation.own.OwnProfileState) {
+    @Test
+    fun athleteAccountHidesReceipts() = capture(
+        "perfil-7a-conta-atleta",
+        OwnProfilePreviewData.filled.copy(groups = OwnProfilePreviewData.filled.groups.map { it.copy(details = "Ponta") }),
+        showAccount = true,
+    )
+
+    @Test
+    fun ownerOrAdminAccountShowsReceipts() = capture(
+        "perfil-7a-conta-organizador", OwnProfilePreviewData.filled, receiptsVisible = true, showAccount = true,
+    )
+
+    @Test
+    fun organizerWithoutReleaseHidesReceipts() = capture(
+        "perfil-7a-conta-organizador-sem-liberacao", OwnProfilePreviewData.filled, showAccount = true, financeVisible = true,
+    )
+
+    private fun capture(
+        name: String,
+        state: br.com.saqz.profile.presentation.own.OwnProfileState,
+        receiptsVisible: Boolean = false,
+        showAccount: Boolean = false,
+        financeVisible: Boolean = receiptsVisible,
+    ) {
         compose.setContent {
             SaqzTheme {
                 val context = LocalPlatformContext.current
@@ -64,14 +89,14 @@ class OwnProfileScreenshotTest {
                         onIntent = {},
                         imageLoader = imageLoader,
                         modifier = Modifier.weight(1f),
+                        receiptsVisible = receiptsVisible,
                     )
-                    // A barra do membro comum (VUL-200): Jogos saiu do app e a Caixa só
-                    // aparece para quem administra grupo. Quem manda é o `shellNavItems` do
-                    // `SaqzAppShell`; aqui é amostra, porque a feature não enxerga o shell.
+                    // Amostra da barra do shell; a feature não enxerga `shellNavItems`.
                     SaqzBottomNav(
-                        items = listOf(
+                        items = listOfNotNull(
                             SaqzNavItem("home", "Início", SaqzIcons.Home),
                             SaqzNavItem("groups", "Grupos", SaqzIcons.Users),
+                            if (financeVisible) SaqzNavItem("finance", "Financeiro", SaqzIcons.CreditCard) else null,
                             SaqzNavItem("profile", "Perfil", SaqzIcons.User),
                         ),
                         activeId = "profile",
@@ -81,6 +106,14 @@ class OwnProfileScreenshotTest {
             }
         }
         compose.waitForIdle()
+        if (showAccount) {
+            compose.onNodeWithTag(OwnProfileTags.MonthlyPayments).performScrollTo().assertExists()
+            if (receiptsVisible) {
+                compose.onNodeWithTag(OwnProfileTags.Receipts).assertExists()
+            } else {
+                compose.onNodeWithTag(OwnProfileTags.Receipts).assertDoesNotExist()
+            }
+        }
         compose.onRoot().captureRoboImage("screenshots/vul-128/$name.png")
     }
 }

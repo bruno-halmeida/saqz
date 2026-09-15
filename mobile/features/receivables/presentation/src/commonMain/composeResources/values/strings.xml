@@ -27,8 +27,8 @@
     <string name="receipt_unavailable">Novas ativações indisponíveis no momento. A manutenção dos recebimentos continua acessível.</string>
     <string name="receipt_terms">Termos · versão %1$s</string>
     <string name="receipt_schedule">%1$s · termos %2$s</string>
-    <string name="receipt_provider">Pagamento: %1$s + %2$s</string>
-    <string name="receipt_commission">Serviço: %1$s + %2$s</string>
+    <string name="receipt_provider">Pagamento (Asaas): %1$s + %2$s</string>
+    <string name="receipt_commission">Comissão Saqz: %1$s + %2$s</string>
     <string name="receipt_price">%1$s · %2$s</string>
     <string name="receipt_GAME">Por jogo</string>
     <string name="receipt_MONTHLY">Mensalidade</string>
@@ -49,4 +49,6 @@
     <string name="receipt_pending">Há uma operação sem confirmação. Reenvie a mesma operação antes de alterar a configuração.</string>
     <string name="receipt_retry_mutation">Reenviar operação pendente</string>
     <string name="receipt_composition">Composição das taxas</string>
+    <string name="receipt_provider_minimum">Tarifa mínima Asaas: %1$s</string>
+    <string name="receipt_provider_maximum">Tarifa máxima Asaas: %1$s</string>
 </resources>

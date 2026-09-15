@@ -113,7 +113,7 @@ class ManageGroupReceivables(private val accounts: FinancialAccountRepository,
 
     private fun review(group: GroupFinancialSetup, context: FinancialAccessContext, methods: Set<PaymentMethod>): GroupReceivablesReview {
         require(methods.isNotEmpty())
-        val schedules = conditions.current(methods, clock.instant()).sortedBy { it.method.ordinal }
+        val schedules = conditions.current(methods, clock.instant(), context.account.id).sortedBy { it.method.ordinal }
         if (schedules.map { it.method }.toSet() != methods) throw ConditionsUnavailable()
         val prices = listOf("GAME" to group.gameFeeCents, "MONTHLY" to group.monthlyFeeCents)
             .filter { it.second != null && it.second!! > 0 }.map { (kind, cents) ->
@@ -121,7 +121,7 @@ class ManageGroupReceivables(private val accounts: FinancialAccountRepository,
             }
         val canonical = "${context.account.id}:${group.groupId}:${group.gameFeeCents}:${group.monthlyFeeCents}:" + schedules.joinToString("|") {
             "${it.id}:${it.method}:${it.termsVersion}:${it.providerRate.stripTrailingZeros().toPlainString()}:${it.providerFixedCents}:" +
-                "${it.commissionRate.stripTrailingZeros().toPlainString()}:${it.commissionFixedCents}"
+                "${it.commissionRate.stripTrailingZeros().toPlainString()}:${it.commissionFixedCents}:${it.providerMinimumCents}:${it.providerMaximumCents}"
         }
         return GroupReceivablesReview(store.state(context.account.id, group.groupId)
             ?: GroupReceivablesState(context.account.id, group.groupId, false, false, false), schedules, prices,

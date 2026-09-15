@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.receivables.presentation.ReceivablesCoordinator
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntryDecorator
@@ -405,7 +406,9 @@ internal fun SaqzNavHost(
                             onOpenMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
                             onOpenAthleteProfile = { backStack.add(GroupsRoute.AthleteRegistration(it, fromProfile = true)) },
                             onOpenMonthlyPayments = { backStack.add(FinanceRoute.OwnMonthlyPayments) },
-                            onOpenReceipts = { backStack.add(ReceiptFinanceHomeRoute) },
+                            onOpenReceipts = if (state.session.canOpenReceipts(receipts)) {
+                                { backStack.add(ReceiptFinanceHomeRoute) }
+                            } else null,
                             onOpenSettings = { backStack.add(GroupsRoute.Notifications(settings = true)) },
                             onOpenNotifications = { backStack.add(GroupsRoute.Notifications()) },
                             isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
@@ -532,11 +535,13 @@ internal fun SaqzNavHost(
                     groupId = route.groupId,
                     onBack = pop,
                     onMutationSuccess = { groupDetailsRefreshVersion++ },
-                    onOpenReceivables = if (receipts.configurationEntryAvailable) {
+                    onOpenReceivables = if (state.session.canOpenReceipts(receipts)) {
                         { backStack.add(ReceiptConfigurationRoute(route.groupId)) }
                     } else null,
                     refreshVersion = groupCashboxRefreshVersion,
-                    onOpenChargePayment = { chargeId -> backStack.add(ChargeApprovalRoute(route.groupId, chargeId)) },
+                    onOpenChargePayment = if (state.session.canOpenReceipts(receipts)) {
+                        { chargeId -> backStack.add(ChargeApprovalRoute(route.groupId, chargeId)) }
+                    } else null,
                     onOpenMonthlyGeneration = { backStack.add(FinanceRoute.MonthlyGeneration(it)) },
                     onOpenNewEntry = { groupId ->
                         backStack.add(FinanceRoute.NewEntry(groupId))
@@ -760,8 +765,14 @@ internal fun SaqzNavHost(
                 )
             }
             entry<FinanceRoute.OwnMonthlyPayments> {
+                LifecycleResumeEffect(receiptsCoordinator) {
+                    receiptsCoordinator.refresh()
+                    onPauseOrDispose { }
+                }
                 OwnMonthlyPaymentsRoot(onBack = pop, onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
-                    onPayInApp = { backStack.add(MemberPaymentHistoryRoute) })
+                    onPayInApp = if (receipts.paymentEntryAvailable) {
+                        { backStack.add(MemberPaymentHistoryRoute) }
+                    } else null)
             }
             entry<GroupsRoute.MemberProfile> { route ->
                 MemberProfileRoot(route.groupId, route.userId, onBack = pop)

@@ -38,15 +38,17 @@ class KtorGroupReceivablesGatewayTest {
                 assertEquals(setOf("PIX"), command.getValue("methods").jsonArray.map { it.jsonPrimitive.content }.toSet())
                 assertFalse(command.getValue("accepted").jsonPrimitive.boolean)
                 respond(envelope("""{"state":$configuration,"schedules":[{"method":"PIX","termsVersion":"v1",
-                    "providerRate":0.01,"providerFixedCents":10,"commissionRate":0.02,"commissionFixedCents":20}],
-                    "prices":[{"kind":"GAME","quotes":[{"method":"PIX","baseCents":1000,"feesCents":61,
-                    "totalCents":1061,"expectedNetCents":1000}]}],"permissions":{"ACTIVATE_GROUP":{"allowed":true}},
+                    "providerRate":0.01,"providerFixedCents":0,"providerMinimumCents":29,"providerMaximumCents":199,"commissionRate":0.02,"commissionFixedCents":20}],
+                    "prices":[{"kind":"GAME","quotes":[{"method":"PIX","baseCents":1000,"feesCents":69,
+                    "totalCents":1069,"expectedNetCents":1000}]}],"permissions":{"ACTIVATE_GROUP":{"allowed":true}},
                     "fingerprint":"${"a".repeat(64)}"}""", "request"), HttpStatusCode.OK, headers)
             }
         })
         val review = assertIs<SaqzResult.Success<ReceiptReview>>(gateway.preview("group", command)).value
         assertEquals("0.01", review.schedules.single().providerRate)
-        assertEquals(1061L, review.prices.single().totalCents)
+        assertEquals(29L, review.schedules.single().providerMinimumCents)
+        assertEquals(199L, review.schedules.single().providerMaximumCents)
+        assertEquals(1069L, review.prices.single().totalCents)
         assertEquals("Termos publicados", assertIs<SaqzResult.Success<ReceiptTerms>>(gateway.terms("v1")).value.content)
     }
 

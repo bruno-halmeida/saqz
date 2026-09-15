@@ -122,6 +122,7 @@ fun OwnProfileScreen(
     modifier: Modifier = Modifier,
     topBarWindowInsets: WindowInsets = WindowInsets.statusBars,
     isPlanOwner: Boolean = false,
+    receiptsVisible: Boolean = false,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -224,7 +225,7 @@ fun OwnProfileScreen(
                             SaqzSectionHeader(title = stringResource(Res.string.profile_account))
                         }
                         item(key = "account-card") {
-                            OwnProfileAccountCard(onIntent = onIntent)
+                            OwnProfileAccountCard(onIntent = onIntent, receiptsVisible = receiptsVisible)
                         }
                     }
                 }
@@ -493,11 +494,17 @@ private fun OwnProfileOwnerCard(onIntent: (OwnProfileIntent) -> Unit) {
 }
 
 @Composable
-private fun OwnProfileAccountCard(onIntent: (OwnProfileIntent) -> Unit) {
+private fun OwnProfileAccountCard(onIntent: (OwnProfileIntent) -> Unit, receiptsVisible: Boolean) {
     SaqzCard(padded = false) {
-        OwnProfileAccountRow(icon = SaqzIcons.CreditCard, label = stringResource(Res.string.profile_receipts),
-            onClick = { onIntent(OwnProfileIntent.OpenReceipts) }, modifier = Modifier.testTag(OwnProfileTags.Receipts))
-        SaqzDivider()
+        if (receiptsVisible) {
+            OwnProfileAccountRow(
+                icon = SaqzIcons.CreditCard,
+                label = stringResource(Res.string.profile_receipts),
+                onClick = { onIntent(OwnProfileIntent.OpenReceipts) },
+                modifier = Modifier.testTag(OwnProfileTags.Receipts),
+            )
+            SaqzDivider()
+        }
         OwnProfileAccountRow(
             icon = SaqzIcons.CreditCard,
             label = stringResource(Res.string.profile_monthly_payments),
@@ -612,6 +619,7 @@ private fun OwnProfileOwnerEmptyPreview() = SaqzTheme {
         onIntent = {},
         imageLoader = imageLoader,
         isPlanOwner = true,
+        receiptsVisible = true,
     )
 }
 

@@ -10,8 +10,10 @@ data class ReceivablesState(
     val error: ReceivablesError? = null,
     val hasAccount: Boolean = false,
     val accountLookupFailed: Boolean = false,
+    val hasPayments: Boolean = false,
 ) {
-    val configurationEntryAvailable get() = signedIn && (discoveryAvailable || hasAccount || accountLookupFailed)
+    val configurationEntryAvailable get() = signedIn && (discoveryAvailable || hasAccount)
+    val paymentEntryAvailable get() = signedIn && (discoveryAvailable || hasPayments)
 
     // Maintenance is independent of rollout and network failures; resource authorization is server-side.
     val maintenanceAvailable: Boolean get() = signedIn

@@ -31,3 +31,14 @@ com o mesmo mock e asserts de jornada, sem erros JavaScript, usando
 `/tmp/playwright-test-payment-adm-final.js`; imagens finais copiadas para
 `docs/receivables/evidence/payments/adm-*.png`. Revisão independente e probe HTTP real
 registrados em `docs/receivables/evidence/payments/adm-review.md`.
+
+## Atualização — disponibilidade e origem das tarifas (2026-09-14)
+
+- A toggle Ativo/Inativo está no topo de Recebimentos. Salvar ativa o mesmo público em BACKEND/MOBILE ou grava OFF nos dois, com motivo, versão, auditoria e retentativa preservados. Configurações antigas com liberação parcial são identificadas na tela.
+- Removidos os campos editáveis de tarifas do provedor. Somente a comissão Saqz é enviada nos pedidos de publicação/simulação; a API rejeita tentativas de enviar tarifas Asaas. Detalhes do contrato: [origem das tarifas](../provider-fees.md).
+- ADM: 66 testes Node aprovados (`/tmp/saqz-receipts-adm-tests.log`). Chromium visível com HTML real, sessão/API simuladas e tráfego externo bloqueado: toggle por teclado, gravação conjunta, público selecionado, estado confirmado, publicação, valores decimais, retry, conflito e logout, sem erros JavaScript (`/tmp/saqz-receipts-browser.log`).
+- Backend: 74 testes unitários de Recebimentos, 8 testes JDBC de condições comerciais e 59 testes de integração de endpoints/fluxos aprovados. Incluem leitura HTTP simulada do Asaas, chave da conta recebedora, descontos, Pix com limites, precisão, indisponibilidade sem fallback, invalidação de prévias e preservação de ordens aprovadas. Build `:bootstrap:bootJar` gerado com JDK 21.
+- Capturas desktop/tablet inspecionadas: `/tmp/saqz-receipts-toggle-desktop.png`, `/tmp/saqz-receipts-toggle-tablet.png`, `/tmp/saqz-receipts-adm-tablet.png`. Executor: `/tmp/playwright-test-receipts-toggle.js`, URL parametrizável por `TARGET_URL`.
+- Mobile: 4 testes de gateway e 3 testes de tela aprovados; compilação Android/iOS e Detekt dos módulos alterados passaram. Capturas com/sem limites Asaas inspecionadas em `mobile/build/reports/receivables-configuration/tarifas-asaas-com-limites.png` e `tarifas-e-precos.png`. Logs: `/tmp/saqz-asaas-fees-mobile-tests.log` e `/tmp/saqz-asaas-fees-screenshots.log`.
+
+Asaas real e produção não foram acionados. Sem deploy ou migração de banco.

@@ -214,7 +214,10 @@ class GroupReceivablesIntegrationTest {
         val accounts = JdbcFinancialAccountRepository(ds)
         var eligible = true
         val service = ManageGroupReceivables(accounts, JdbcGroupAdministrationDirectory(ds), JdbcGroupFinancialSetupLookup(ds),
-            JdbcGroupReceivablesStore(ds), JdbcFinancialConditions(ds), ReceivablesEligibility { _, _ -> ReceivablesEntitlement(eligible, null) },
+            JdbcGroupReceivablesStore(ds), ProviderFinancialConditions(JdbcFinancialConditions(ds), FinancialFeeProvider { methods, _, id ->
+                assertEquals(account, id)
+                methods.associateWith { ProviderPaymentFee(java.math.BigDecimal("0.0299"), 39) }
+            }), ReceivablesEligibility { _, _ -> ReceivablesEntitlement(eligible, null) },
             Clock.fixed(now, ZoneOffset.UTC), br.com.saqz.receivables.adapter.output.jdbc.JdbcReceivablesRollout(ds, { true }, Clock.fixed(now, ZoneOffset.UTC)))
         init {
             sql("UPDATE receivable_rollout SET backend_mode='ALL_USERS'")

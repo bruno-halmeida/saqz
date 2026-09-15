@@ -73,9 +73,10 @@ private fun ConfigurationTransport.domain() = ReceiptConfiguration(accountId, gr
 private fun PermissionTransport.domain() = ReceiptPermission(allowed, reason)
 @Serializable internal data class StatusTransport(val state: ConfigurationTransport, val permissions: Map<String, PermissionTransport>)
 @Serializable internal data class ScheduleTransport(val method: String, val termsVersion: String,
-    val providerRate: JsonPrimitive, val providerFixedCents: Long, val commissionRate: JsonPrimitive, val commissionFixedCents: Long)
+    val providerRate: JsonPrimitive, val providerFixedCents: Long, val commissionRate: JsonPrimitive, val commissionFixedCents: Long,
+    val providerMinimumCents: Long = 0, val providerMaximumCents: Long? = null)
 private fun ScheduleTransport.domain() = ReceiptSchedule(ReceiptMethod.valueOf(method), termsVersion, providerRate.decimalRate(),
-        providerFixedCents, commissionRate.decimalRate(), commissionFixedCents)
+        providerFixedCents, commissionRate.decimalRate(), commissionFixedCents, providerMinimumCents, providerMaximumCents)
 @Serializable internal data class PriceTransport(val kind: String, val quotes: List<QuoteTransport>)
 @Serializable internal data class QuoteTransport(val method: String, val baseCents: Long, val feesCents: Long,
     val totalCents: Long, val expectedNetCents: Long)

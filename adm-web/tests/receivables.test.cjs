@@ -53,3 +53,30 @@ test('outdated selected-user response is discarded after a later target load',as
  app._recuser++;app.state.recUserBusy=false;app.state.recUserId='second';app.recLoad('user');
  requests[1].resolve(ok({...userData,userId:'second'}));await flush();requests[0].resolve(ok({...userData,userId:'first'}));await flush();assert.equal(app.state.recUser.userId,'second');
 });
+
+test('feature toggle enables and disables both systems atomically after explicit save',async()=>{
+ for(const initialMode of ['OFF','ALL_USERS','SELECTED_USERS']){
+  const {app,requests}=setup();app.recApply('global',{...globalData,systems:['BACKEND','MOBILE'].map(system=>({system,mode:initialMode}))});
+  const view=app.recebimentosVals().recG;assert.equal(view.activeText,String(initialMode!=='OFF'));
+  view.onToggle();assert.equal(requests.length,0);
+  const mode=initialMode==='OFF'?'ALL_USERS':'OFF';assert.equal(app.recebimentosVals().recG.activeText,String(mode!=='OFF'));
+  app.recEdit('global','reason','Alterar disponibilidade');const saving=app.recSave('global');const body=JSON.parse(requests[0].options.body);
+  assert.deepEqual(body.systems,['BACKEND','MOBILE'].map(system=>({system,mode})));
+  requests[0].resolve(ok({...globalData,version:8,systems:body.systems}));await saving;
+ }
+});
+test('selected audience stays selected across a draft off and on without enabling prematurely',()=>{
+ const {app,requests}=setup();app.recAudience('SELECTED_USERS');assert.equal(app.state.recGlobalDraft.BACKEND,'OFF');
+ app.recToggle();assert.equal(app.state.recGlobalDraft.BACKEND,'SELECTED_USERS');assert.equal(app.state.recGlobalDraft.MOBILE,'SELECTED_USERS');
+ app.recToggle();app.recToggle();assert.equal(app.state.recGlobalDraft.BACKEND,'SELECTED_USERS');assert.equal(requests.length,0);
+});
+test('toggle and audience are frozen while a mutation is pending or state unavailable',async()=>{
+ const {app,requests,timers}=setup();app.recEdit('global','reason','Teste de indisponibilidade');const saving=app.recSave('global');
+ for(const timer of timers.values())timer();await saving;app.recToggle();app.recAudience('SELECTED_USERS');assert.equal(app.state.recGlobalDraft.BACKEND,'OFF');assert.equal(app.state.recGlobalDraft.audience,'ALL_USERS');
+ app.state.recGlobalPending=false;app.state.recGlobal=null;app.recToggle();assert.equal(app.state.recGlobalDraft.BACKEND,'OFF');
+ assert.equal(app.recebimentosVals().recG.locked,true);assert.equal(requests.length,1);
+});
+test('partial legacy release is visible and turning it off blocks both systems',()=>{
+ const {app}=setup();app.recApply('global',{...globalData,systems:[{system:'BACKEND',mode:'ALL_USERS'},{system:'MOBILE',mode:'OFF'}]});
+ assert.match(app.recebimentosVals().recG.savedStatus,/parcial/);app.recToggle();assert.equal(app.state.recGlobalDraft.BACKEND,'OFF');assert.equal(app.state.recGlobalDraft.MOBILE,'OFF');
+});

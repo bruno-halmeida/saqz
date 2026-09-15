@@ -13,7 +13,7 @@ import javax.sql.DataSource
 class JdbcFinancialConditions(dataSource: DataSource) : FinancialConditions {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun current(methods: Set<PaymentMethod>, at: Instant): List<FeeSchedule> {
+    override fun current(methods: Set<PaymentMethod>, at: Instant, accountId: UUID?): List<FeeSchedule> {
         if (methods.isEmpty()) return emptyList()
         return jdbc.sql("""
             SELECT DISTINCT ON (f.method) f.* FROM receivable_fee_schedules f

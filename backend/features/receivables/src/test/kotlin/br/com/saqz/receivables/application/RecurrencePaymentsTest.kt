@@ -125,7 +125,7 @@ class RecurrencePaymentsTest {
         override fun configure(accountId: UUID, groupId: UUID, request: FinancialRequest, digest: String, review: GroupReceivablesReview?, at: Instant) = state(accountId, groupId)!!
     }
     private fun conditions() = object : FinancialConditions {
-        override fun current(methods: Set<PaymentMethod>, at: Instant) = listOf(fee.copy(method = methods.single()))
+        override fun current(methods: Set<PaymentMethod>, at: Instant, accountId: UUID?) = listOf(fee.copy(method = methods.single())).also { assertEquals(account.id, accountId) }
         override fun terms(version: String, at: Instant) = null
         override fun currentTerms(at: Instant) = null
     }

@@ -23,7 +23,7 @@ fun OwnProfileRoot(
     onOpenMyPlan: () -> Unit = {},
     onOpenAthleteProfile: (String) -> Unit = {},
     onOpenMonthlyPayments: () -> Unit = {},
-    onOpenReceipts: () -> Unit = {},
+    onOpenReceipts: (() -> Unit)? = null,
     onOpenSettings: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
     isPlanOwner: Boolean = false,
@@ -41,13 +41,13 @@ fun OwnProfileRoot(
     LaunchedEffect(viewModel, refreshVersion) {
         if (refreshVersion != loadedVersion) viewModel.onIntent(OwnProfileIntent.Refresh)
     }
-    ObserveAsEvents(viewModel.effects) { effect ->
+    ObserveAsEvents(viewModel.effects, key = onOpenReceipts != null) { effect ->
         when (effect) {
             OwnProfileEffect.OpenEditor -> onOpenEditor()
             OwnProfileEffect.OpenPasswordRecovery -> onOpenPasswordRecovery()
             OwnProfileEffect.OpenMyPlan -> onOpenMyPlan()
             is OwnProfileEffect.OpenAthleteProfile -> onOpenAthleteProfile(effect.groupId)
-            OwnProfileEffect.OpenReceipts -> onOpenReceipts()
+            OwnProfileEffect.OpenReceipts -> onOpenReceipts?.invoke()
             OwnProfileEffect.OpenMonthlyPayments -> onOpenMonthlyPayments()
             OwnProfileEffect.OpenSettings -> onOpenSettings()
             OwnProfileEffect.OpenNotifications -> onOpenNotifications()
@@ -60,5 +60,6 @@ fun OwnProfileRoot(
         imageLoader = imageLoader,
         topBarWindowInsets = topBarWindowInsets,
         isPlanOwner = isPlanOwner,
+        receiptsVisible = onOpenReceipts != null,
     )
 }

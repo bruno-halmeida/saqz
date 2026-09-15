@@ -142,7 +142,7 @@ class RecurrencePayments(private val store: RecurrenceStore,
         val monthly = store.monthlyTerms(accountId, groupId, request.actorUserId) ?: fail(FinancialError.NOT_FOUND)
         if (!monthly.memberActive) fail(FinancialError.NOT_FOUND)
         require(firstDueDate >= LocalDate.now(clock) && firstDueDate.dayOfMonth == monthly.dueDay.coerceAtMost(firstDueDate.lengthOfMonth()))
-        val schedule = conditions.current(setOf(method), clock.instant()).singleOrNull() ?: fail(FinancialError.CONFIGURATION_UNAVAILABLE)
+        val schedule = conditions.current(setOf(method), clock.instant(), accountId).singleOrNull() ?: fail(FinancialError.CONFIGURATION_UNAVAILABLE)
         val quote = FeeCalculator.quote(monthly.baseCents, schedule)
         val fingerprint = paymentDigest("$accountId:$groupId:${request.actorUserId}:$method:${quote.feeScheduleId}:${quote.baseCents}:${quote.feesCents}:${quote.totalCents}:${quote.commissionCents}:${quote.providerFeeCents}:${quote.expectedNetCents}:${quote.termsVersion}:$firstDueDate:MONTHLY")
         return RecurrenceReview(accountId, groupId, request.actorUserId, method, quote.baseCents, quote.feesCents,

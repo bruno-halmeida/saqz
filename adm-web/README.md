@@ -45,7 +45,11 @@ O hosting serve arquivos públicos; dados e operações administrativas dependem
 
 ## Recebimentos
 
-Seção conectada ao contrato `docs/receivables/rollout-contract.md`: modos backend/mobile, exceções por usuário, estado efetivo, flag operacional da conta existente e histórico de 25 itens por página. Para selecionar uma pessoa, abra **Usuários → detalhe → Controles de recebimentos**. A liberação não substitui aprovação, plano ou ativação do grupo e não cria conta automaticamente.
+Em **Recebimentos → Disponibilidade de Recebimentos**, a toggle **Ativo/Inativo** controla a liberação da funcionalidade. Escolha o público, informe o motivo e clique em **Salvar alterações**. O estado confirmado aparece abaixo da toggle. Ativar grava o mesmo público nos controles de backend e mobile; desativar grava `OFF` nos dois, bloqueando novos cadastros e operações mesmo para usuários com exceção `ALLOW`.
+
+A seção usa o contrato `docs/receivables/rollout-contract.md`, com exceções por usuário, estado efetivo, controle operacional da conta existente e histórico de 25 itens por página. Para selecionar uma pessoa, abra **Usuários → detalhe → Controles de recebimentos**. A liberação não substitui aprovação, plano ou ativação do grupo e não cria conta automaticamente. Contas existentes continuam acessíveis para manutenção e ordens já emitidas podem ser pagas.
+
+**Condições comerciais:** somente a comissão do Saqz é configurável. As tarifas de pagamento são consultadas no Asaas pelo backend. A simulação administrativa usa a conta Saqz; a emissão usa a conta recebedora. Sem uma resposta válida do Asaas, a simulação fica indisponível. Veja [origem das tarifas](provider-fees.md).
 
 Cada escrita exige motivo e versão lida; conflito bloqueia nova escrita até **Recarregar** e revisar. Timeout, falha de rede ou HTTP 5xx preservam o corpo e o requestId em memória: **Reenviar mesma tentativa** repete exatamente a operação, com os campos bloqueados até confirmação. Logout elimina também esse estado; não há armazenamento local de payloads administrativos.
 

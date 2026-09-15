@@ -39,7 +39,7 @@ object OwnMonthlyPaymentsTags {
 }
 
 @Composable
-fun OwnMonthlyPaymentsRoot(onBack: () -> Unit, onOpenGroup: (String) -> Unit, onPayInApp: () -> Unit) {
+fun OwnMonthlyPaymentsRoot(onBack: () -> Unit, onOpenGroup: (String) -> Unit, onPayInApp: (() -> Unit)? = null) {
     val vm: OwnMonthlyPaymentsViewModel = koinViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     ObserveAsEvents(vm.effects) { effect ->
@@ -55,13 +55,15 @@ internal fun OwnMonthlyPaymentsScreen(
     state: OwnMonthlyPaymentsState,
     onBack: () -> Unit,
     onIntent: (OwnMonthlyPaymentsIntent) -> Unit,
-    onPayInApp: () -> Unit = {},
+    onPayInApp: (() -> Unit)? = null,
 ) {
     Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(OwnMonthlyPaymentsTags.Screen)) {
         SaqzTopAppBar(title = stringResource(Res.string.monthly_payments_title), onBack = onBack)
-        SaqzButton(stringResource(Res.string.monthly_payments_pay_in_app), onPayInApp,
-            modifier = Modifier.padding(horizontal = SaqzTheme.metrics.horizontalPadding).testTag(OwnMonthlyPaymentsTags.PayInApp),
-            fullWidth = true)
+        onPayInApp?.let { open ->
+            SaqzButton(stringResource(Res.string.monthly_payments_pay_in_app), open,
+                modifier = Modifier.padding(horizontal = SaqzTheme.metrics.horizontalPadding).testTag(OwnMonthlyPaymentsTags.PayInApp),
+                fullWidth = true)
+        }
         when {
             state.loading -> SaqzSpinner()
             state.error != null -> GroupLoadFailure(

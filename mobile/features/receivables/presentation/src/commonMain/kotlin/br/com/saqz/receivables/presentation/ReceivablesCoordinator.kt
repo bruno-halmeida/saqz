@@ -3,6 +3,7 @@ package br.com.saqz.receivables.presentation
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.receivables.domain.ReceivablesSessionContext
 import br.com.saqz.receivables.domain.ReceiptAccountDirectory
+import br.com.saqz.receivables.domain.MemberPaymentsGateway
 import br.com.saqz.receivables.domain.ReceivablesAvailabilityGateway
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -16,6 +17,7 @@ class ReceivablesCoordinator(
     private val scope: CoroutineScope,
     private val sessionContext: ReceivablesSessionContext,
     private val directory: ReceiptAccountDirectory,
+    private val payments: MemberPaymentsGateway,
 ) {
     private val mutableState = MutableStateFlow(ReceivablesState())
     val state = mutableState.asStateFlow()
@@ -23,6 +25,7 @@ class ReceivablesCoordinator(
     private var generation = 0L
     private var request: Job? = null
     private var accountRequest: Job? = null
+    private var paymentRequest: Job? = null
 
     fun onSessionChanged(key: String?) {
         if (key == sessionKey) return
@@ -57,6 +60,7 @@ class ReceivablesCoordinator(
         val expectedGeneration = generation
         mutableState.value = mutableState.value.copy(signedIn = true, loading = true, discoveryAvailable = false, error = null)
         queryAccounts(expectedGeneration)
+        queryPayments(expectedGeneration)
         request = scope.launch {
             val result = gateway.get()
             if (generation != expectedGeneration) return@launch
@@ -95,5 +99,18 @@ class ReceivablesCoordinator(
         request = null
         accountRequest?.cancel()
         accountRequest = null
+        paymentRequest?.cancel()
+        paymentRequest = null
+    }
+
+    private fun queryPayments(expectedGeneration: Long) {
+        paymentRequest = scope.launch {
+            val result = payments.orders()
+            if (generation != expectedGeneration) return@launch
+            if (sessionContext.currentKey() != sessionKey) { onSessionChanged(null); return@launch }
+            if (result is SaqzResult.Success) {
+                mutableState.value = mutableState.value.copy(hasPayments = result.value.orders.isNotEmpty())
+            }
+        }
     }
 }

@@ -22,6 +22,18 @@ import java.io.File
 @Config(sdk = [35], qualifiers = RobolectricDeviceQualifiers.Pixel7, application = Application::class)
 class OwnMonthlyPaymentsEntryTest {
     @get:Rule val compose = createComposeRule()
+    @Test fun unreleasedPaymentsStayHiddenWhileMonthlyChargesLoadOrFail() {
+        val state = mutableStateOf(OwnMonthlyPaymentsState())
+        compose.setContent { SaqzTheme { OwnMonthlyPaymentsScreen(state.value, {}, {}) } }
+        listOf(OwnMonthlyPaymentsState(), OwnMonthlyPaymentsState(loading = false),
+            OwnMonthlyPaymentsState(loading = false, error = GroupUiError.Network)).forEachIndexed { index, next ->
+            compose.runOnIdle { state.value = next }
+            compose.onNodeWithTag(OwnMonthlyPaymentsTags.PayInApp).assertDoesNotExist()
+            val folder = File("../../../build/reports/member-payment-entry").apply { mkdirs() }
+            compose.onRoot().captureRoboImage(File(folder, "entry-hidden-$index.png").path)
+        }
+    }
+
     @Test fun paymentEntryRemainsAvailableWithoutLoadedOrCurrentGroups() {
         val state = mutableStateOf(OwnMonthlyPaymentsState()); var opened = 0
         compose.setContent { SaqzTheme { OwnMonthlyPaymentsScreen(state.value, {}, {}, { opened++ }) } }

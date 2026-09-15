@@ -41,6 +41,22 @@ class OneOffPaymentsIntegrationTest {
     private val mapper = ObjectMapper()
     private val payerData = PaymentPayer("Pagador de teste", "12345678909")
 
+    @Test fun `new reviews use current provider fees and existing instruments keep the accepted amount`() = fixture { f ->
+        val first = f.review()
+        f.providerFixedCents = 139
+        val second = f.review()
+        assertNotEquals(first.fingerprint, second.fingerprint)
+        assertEquals(FinancialError.CONFLICT, assertIs<FinancialResult.Failure>(f.service.approve(f.charge, f.account, f.request(), first.fingerprint, true)).error)
+        f.feesAvailable = false
+        assertEquals(FinancialError.CONFIGURATION_UNAVAILABLE, assertIs<FinancialResult.Failure>(f.service.preview(f.charge, f.account, f.request())).error)
+        f.feesAvailable = true
+        val order = f.approve(second)
+        f.feesAvailable = false
+        val instrument = f.instrument(order)
+        assertEquals("ACTIVE", instrument.status)
+        assertEquals(second.quotes.single { it.method == PaymentMethod.PIX }.totalCents, f.remote.lastPayment!!["value"].decimalValue().movePointRight(2).longValueExact())
+    }
+
     @Test fun `PIX CARD and both preserve approved methods and real monthly competence`() {
         for (methods in listOf(setOf(PaymentMethod.PIX), setOf(PaymentMethod.CARD), PaymentMethod.entries.toSet())) fixture(methods) { f ->
             val review = f.review()
@@ -432,7 +448,7 @@ class OneOffPaymentsIntegrationTest {
                 "saqz.receivables.webhook-email" to "ops@saqz.test")))
             val beans = mapOf("dataSource" to f.ds, "financialSecrets" to f.secrets, "financialOperationStore" to JdbcFinancialOperationStore(f.ds),
                 "financialAccounts" to f.accounts, "groupReceivables" to JdbcGroupReceivablesStore(f.ds),
-                "groupAdministrators" to JdbcGroupAdministrationDirectory(f.ds), "conditions" to JdbcFinancialConditions(f.ds),
+                "groupAdministrators" to JdbcGroupAdministrationDirectory(f.ds), "conditions" to f.liveConditions,
                 "eligibility" to ReceivablesEligibility { _, _ -> ReceivablesEntitlement(true, null) },
                 "rollout" to JdbcReceivablesRollout(f.ds, { true }, f.clock),
                 "residualCostReconciler" to ReconcileExternalResidualCost(JdbcExternalResidualCostLedger(f.ds)),
@@ -640,8 +656,15 @@ class OneOffPaymentsIntegrationTest {
             ReconcileExternalResidualCost(JdbcExternalResidualCostLedger(ds)))
         val events = JdbcPaymentEvents(ds, secrets, execution, clock)
         var eligible = true
+        var feesAvailable = true
+        var providerFixedCents = 39L
+        val liveConditions = ProviderFinancialConditions(JdbcFinancialConditions(ds), FinancialFeeProvider { methods, _, id ->
+            assertEquals(account, id)
+            if (!feesAvailable) throw FinancialFeesUnavailable()
+            methods.associateWith { ProviderPaymentFee(java.math.BigDecimal("0.0299"), providerFixedCents) }
+        })
         val service = OneOffPayments(store, charges, accounts, JdbcGroupReceivablesStore(ds), JdbcGroupAdministrationDirectory(ds),
-            JdbcFinancialConditions(ds), ReceivablesEligibility { _, _ -> ReceivablesEntitlement(eligible, null) },
+            liveConditions, ReceivablesEligibility { _, _ -> ReceivablesEntitlement(eligible, null) },
             JdbcReceivablesRollout(ds, { true }, clock), execution, clock)
         init {
             for (id in listOf(owner, payer)) sql("INSERT INTO access_users(id,firebase_subject,email_verified,created_at,updated_at) VALUES ('$id','$id',true,now(),now())")

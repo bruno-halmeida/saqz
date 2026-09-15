@@ -35,6 +35,9 @@ class GroupCashboxScreenshotTest {
     fun receiptConfigurationEntryHiddenWhenCallbackAbsent() {
         compose.setContent { SaqzTheme { GroupCashboxScreen(loadedState, {}, {}) } }
         compose.onNodeWithText("Configurar recebimentos").assertDoesNotExist()
+        compose.onNodeWithText("Pagamento pelo app").assertDoesNotExist()
+        compose.onNodeWithText("Para pagamento pelo app, libere a cobrança abaixo. Use 'Recebi' apenas para valores recebidos fora do app.")
+            .assertDoesNotExist()
         compose.onRoot().captureRoboImage("../../../build/reports/receivables-configuration/entrada-oculta-sem-conta-off.png")
     }
 

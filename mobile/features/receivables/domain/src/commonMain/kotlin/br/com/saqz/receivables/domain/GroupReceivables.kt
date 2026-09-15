@@ -11,7 +11,8 @@ data class ReceiptConfiguration(val accountId: String, val groupId: String, val 
 data class ReceiptPermission(val allowed: Boolean, val reason: String? = null)
 data class ReceiptStatus(val state: ReceiptConfiguration, val permissions: Map<String, ReceiptPermission>)
 data class ReceiptSchedule(val method: ReceiptMethod, val termsVersion: String,
-    val providerRate: String, val providerFixedCents: Long, val commissionRate: String, val commissionFixedCents: Long)
+    val providerRate: String, val providerFixedCents: Long, val commissionRate: String, val commissionFixedCents: Long,
+    val providerMinimumCents: Long = 0, val providerMaximumCents: Long? = null)
 data class ReceiptPrice(val kind: String, val method: ReceiptMethod, val baseCents: Long,
     val feesCents: Long, val totalCents: Long, val expectedNetCents: Long)
 data class ReceiptReview(val state: ReceiptConfiguration, val schedules: List<ReceiptSchedule>,

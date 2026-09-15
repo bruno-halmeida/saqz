@@ -62,4 +62,21 @@ class FeeCalculatorTest {
     private fun schedule(providerRate: String, providerFixed: Long, commissionRate: String, commissionFixed: Long) =
         FeeSchedule(UUID.randomUUID(), PaymentMethod.CARD, BigDecimal(providerRate), providerFixed,
             BigDecimal(commissionRate), commissionFixed, "terms-test")
+
+    @Test fun `bounded pix tariff preserves the base at minimum proportional and maximum fees`() {
+        val fees = schedule("0.0099", 0, "0.02", 0).copy(providerMinimumCents = 29, providerMaximumCents = 199)
+        for (base in listOf(1L, 100, 1000, 10000, 100000)) {
+            val quote = FeeCalculator.quote(base, fees)
+            assertEquals(base, quote.expectedNetCents)
+            assertEquals(base + quote.commissionCents + quote.providerFeeCents, quote.totalCents)
+            assertEquals(quote.providerFeeCents, BigDecimal.valueOf(quote.totalCents).multiply(fees.providerRate)
+                .setScale(0, java.math.RoundingMode.HALF_UP).longValueExact().coerceIn(29, 199))
+        }
+        assertEquals(29, FeeCalculator.quote(100, fees).providerFeeCents)
+        assertEquals(199, FeeCalculator.quote(100000, fees).providerFeeCents)
+        // The cap permits this gross amount even when the uncapped analytical bound would overflow.
+        val large = FeeCalculator.quote(Long.MAX_VALUE - 10, schedule("0.9", 0, "0", 0).copy(providerMaximumCents = 10))
+        assertEquals(Long.MAX_VALUE, large.totalCents)
+        assertEquals(10, large.providerFeeCents)
+    }
 }

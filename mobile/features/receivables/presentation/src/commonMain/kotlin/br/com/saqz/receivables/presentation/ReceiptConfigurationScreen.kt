@@ -134,6 +134,11 @@ private fun ReviewContent(review: ReceiptReview, terms: List<ReceiptTerms>) {
                 Text(stringResource(Res.string.receipt_schedule, methodName(schedule.method), schedule.termsVersion))
                 Text(stringResource(Res.string.receipt_provider, receiptPercentage(schedule.providerRate),
                     formatBrl(schedule.providerFixedCents)))
+                if (schedule.providerMinimumCents > 0) Text(stringResource(Res.string.receipt_provider_minimum,
+                    formatBrl(schedule.providerMinimumCents)))
+                schedule.providerMaximumCents?.let { maximum ->
+                    Text(stringResource(Res.string.receipt_provider_maximum, formatBrl(maximum)))
+                }
                 Text(stringResource(Res.string.receipt_commission, receiptPercentage(schedule.commissionRate),
                     formatBrl(schedule.commissionFixedCents)))
             }

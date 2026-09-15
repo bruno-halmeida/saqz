@@ -369,6 +369,30 @@ class SaqzNavHostTest {
         assertFalse(payer.administersAnyGroup())
     }
 
+    @Test
+    fun receiptsRequireAnOrganizerAndRolloutOrAnExistingAccount() {
+        val off = br.com.saqz.receivables.presentation.ReceivablesState(signedIn = true)
+        val on = off.copy(discoveryAvailable = true)
+        val existing = off.copy(hasAccount = true)
+        val organizers = listOf(
+            SessionAccessState.Ready(session.copy(planOwner = true)),
+            SessionAccessState.Ready(sessionWith("OWNER")),
+            SessionAccessState.Ready(sessionWith("ADMIN")),
+        )
+        organizers.forEach { organizer ->
+            assertFalse(organizer.canOpenReceipts(off))
+            assertFalse(organizer.canOpenReceipts(off.copy(loading = true)))
+            assertFalse(organizer.canOpenReceipts(off.copy(accountLookupFailed = true)))
+            assertTrue(organizer.canOpenReceipts(on))
+            assertTrue(organizer.canOpenReceipts(existing))
+        }
+        listOf(on, existing).forEach { receipts ->
+            assertFalse(SessionAccessState.Ready(sessionWith("ATHLETE")).canOpenReceipts(receipts))
+            assertFalse(SessionAccessState.Ready(session).canOpenReceipts(receipts))
+            assertFalse(SessionAccessState.SignedOut.canOpenReceipts(receipts))
+        }
+    }
+
     // Fora de `Ready` não há sessão para consultar — e o shell nem existe (o gate colapsa).
     @Test
     fun theFinanceTabStaysHiddenWithoutASession() {

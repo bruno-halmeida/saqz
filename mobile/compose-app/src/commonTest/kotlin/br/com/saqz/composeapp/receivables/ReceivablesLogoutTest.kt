@@ -112,7 +112,7 @@ class ReceivablesLogoutTest {
         val availability = DelayedAvailability()
         val receivables = ReceivablesCoordinator(
             availability, immediateScope, ReceivablesSessionContext { machine.activeSessionKey.value },
-            ReceiptAccountDirectory { SaqzResult.Success(emptyList()) },
+            ReceiptAccountDirectory { SaqzResult.Success(emptyList()) }, EmptyMemberPaymentsGateway(),
         )
         val binding = ReceivablesSessionBinding(machine.activeSessionKey, receivables, backgroundScope)
         return Fixture(machine, auth, availability, receivables, binding)

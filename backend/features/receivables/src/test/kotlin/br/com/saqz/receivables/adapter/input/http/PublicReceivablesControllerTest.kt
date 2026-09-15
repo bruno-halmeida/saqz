@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.UUID
 import kotlin.test.*
 
 class PublicReceivablesControllerTest {
@@ -44,7 +45,7 @@ class PublicReceivablesControllerTest {
     }
 
     private class Conditions(private val terms: FinancialTerms?) : FinancialConditions {
-        override fun current(methods: Set<PaymentMethod>, at: Instant): List<FeeSchedule> = emptyList()
+        override fun current(methods: Set<PaymentMethod>, at: Instant, accountId: UUID?): List<FeeSchedule> = emptyList()
         override fun terms(version: String, at: Instant): FinancialTerms? = terms?.takeIf { it.version == version }
         override fun currentTerms(at: Instant): FinancialTerms? = terms?.takeIf { it.effectiveAt <= at && it.publishedAt <= at }
     }

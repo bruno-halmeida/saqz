@@ -11,8 +11,8 @@ data class FinancialTerms(val version: String, val content: String, val contentS
                           val effectiveAt: Instant, val publishedAt: Instant)
 
 interface FinancialConditions {
-    /** One database snapshot for all methods, including applicable published terms. */
-    fun current(methods: Set<PaymentMethod>, at: Instant): List<FeeSchedule>
+    /** Current commission and provider fees for the receiving account, with applicable published terms. */
+    fun current(methods: Set<PaymentMethod>, at: Instant, accountId: UUID? = null): List<FeeSchedule>
     fun terms(version: String, at: Instant): FinancialTerms?
     fun currentTerms(at: Instant): FinancialTerms?
 }

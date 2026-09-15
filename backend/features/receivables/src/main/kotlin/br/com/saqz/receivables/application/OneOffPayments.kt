@@ -235,7 +235,7 @@ class OneOffPayments(private val store: PaymentStore, private val groupCharges: 
         val state = groups.state(account, charge.groupId) ?: fail(FinancialError.NOT_FOUND)
         val methods = buildSet { if (state.pixEnabled) add(PaymentMethod.PIX); if (state.cardEnabled) add(PaymentMethod.CARD) }
         require(methods.isNotEmpty())
-        val schedules = conditions.current(methods, clock.instant()).sortedBy { it.method.ordinal }
+        val schedules = conditions.current(methods, clock.instant(), account).sortedBy { it.method.ordinal }
         if (schedules.map { it.method }.toSet() != methods) fail(FinancialError.CONFIGURATION_UNAVAILABLE)
         val quotes = schedules.map { FeeCalculator.quote(charge.baseCents, it) }
         return ChargePaymentReview(account, charge.id, charge.groupId, charge.payerId, charge.dueDate, charge.billingMonth, quotes,
