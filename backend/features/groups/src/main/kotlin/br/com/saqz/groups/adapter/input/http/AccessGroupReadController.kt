@@ -55,6 +55,7 @@ data class GroupProfileReadResponse(
     val defaultConfirmationLeadMinutes: Int?,
     val pixKey: String?,
     val pixLabel: String?,
+    val defaultDurationMinutes: Int? = null,
 )
 
 data class GroupVenueReadResponse(
@@ -145,6 +146,7 @@ private fun GroupProfileReadModel.toResponse() = GroupProfileReadResponse(
     defaultConfirmationLeadMinutes = defaultConfirmationLeadMinutes,
     pixKey = pixKey,
     pixLabel = pixLabel,
+    defaultDurationMinutes = defaultDurationMinutes,
 )
 
 private fun GroupVenueReadModel.toResponse() = GroupVenueReadResponse(id, name, address, court)

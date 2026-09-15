@@ -493,6 +493,23 @@ class AccessSessionConfiguration {
     ) = AccessGroupListController(verifiedGroupActorResolver, listGroups)
 
     @Bean
+    fun groupScheduleRepository(dataSource: DataSource) =
+        br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupScheduleRepository(dataSource)
+
+    @Bean
+    fun groupScheduleService(
+        transaction: JdbcTransactionRunner,
+        groups: JdbcGroupReadRepository,
+        schedules: br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupScheduleRepository,
+    ) = br.com.saqz.groups.application.settings.GroupScheduleService(transaction, groups, schedules)
+
+    @Bean
+    fun groupScheduleController(
+        actors: VerifiedGroupActorResolver,
+        service: br.com.saqz.groups.application.settings.GroupScheduleService,
+    ) = br.com.saqz.groups.adapter.input.http.GroupScheduleController(actors, service)
+
+    @Bean
     fun groupSettingsRepository(dataSource: DataSource) = JdbcGroupSettingsRepository(dataSource)
 
     @Bean
@@ -743,6 +760,7 @@ class AccessSessionConfiguration {
     @Bean fun gameIdFactory() = GameIdFactory(java.util.UUID::randomUUID)
     @Bean fun occurrenceMaterializationRepository(dataSource: DataSource) = JdbcOccurrenceMaterializationRepository(dataSource)
     @Bean fun materializeWeeklySeries(
+        schedules: br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupScheduleRepository,
         transaction: JdbcTransactionRunner,
         repository: JdbcOccurrenceMaterializationRepository,
         ids: GameIdFactory,
@@ -755,6 +773,7 @@ class AccessSessionConfiguration {
         Clock.systemUTC(),
         AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
         writeAccess,
+        schedules,
     )
     @Bean fun weeklySeriesRepository(dataSource: DataSource) = JdbcWeeklySeriesRepository(dataSource)
     @Bean fun weeklySeriesService(

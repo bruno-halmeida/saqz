@@ -34,6 +34,9 @@ import br.com.saqz.groups.data.communication.KtorCommunicationGateway
 /** Bindings da camada remota da feature de grupos. */
 fun groupsDataModule(): Module = module {
     single<CommunicationGateway> { KtorCommunicationGateway(get()) }
+    single<br.com.saqz.groups.domain.group.GroupScheduleGateway> {
+        br.com.saqz.groups.data.group.KtorGroupScheduleGateway(get())
+    }
     single<KtorGroupGateway> { KtorGroupGateway(get()) }
     single<GroupGateway> { get<KtorGroupGateway>() }
     single<GroupProfileGateway> { get<KtorGroupGateway>() }

@@ -50,6 +50,7 @@ class JdbcGroupReadRepository(
             groups.play_style,
             groups.custom_play_style,
             groups.default_capacity,
+            groups.default_duration_minutes,
             groups.default_confirmation_lead_minutes,
             CASE
                 WHEN groups.owner_user_id = :actorUserId OR memberships.role = 'ADMIN'
@@ -124,6 +125,7 @@ class JdbcGroupReadRepository(
                 defaultVenue = first.defaultVenue,
                 regularSlots = rows.mapNotNull { it.slot },
                 defaultCapacity = first.defaultCapacity,
+                defaultDurationMinutes = first.defaultDurationMinutes,
                 defaultConfirmationLeadMinutes = first.defaultConfirmationLeadMinutes,
                 pixKey = first.pixKey,
                 pixLabel = first.pixLabel,
@@ -170,6 +172,7 @@ class JdbcGroupReadRepository(
             )
         },
         defaultCapacity = getNullableInt("default_capacity"),
+        defaultDurationMinutes = getNullableInt("default_duration_minutes"),
         defaultConfirmationLeadMinutes = getNullableInt("default_confirmation_lead_minutes"),
         financeDefaults = GroupFinanceDefaultsReadModel(
             defaultGameFeeCents = getNullableLong("default_game_fee_cents"),
@@ -212,6 +215,7 @@ class JdbcGroupReadRepository(
         val defaultVenue: GroupVenueReadModel?,
         val slot: GroupRegularSlotReadModel?,
         val defaultCapacity: Int?,
+        val defaultDurationMinutes: Int?,
         val defaultConfirmationLeadMinutes: Int?,
         val financeDefaults: GroupFinanceDefaultsReadModel,
         val mensalistaPriority: Boolean,

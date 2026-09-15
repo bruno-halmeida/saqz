@@ -200,8 +200,8 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                    g.default_confirmation_lead_minutes, g.default_game_fee_cents,
                    g.mensalista_priority, g.promotion_mode, g.auto_confirm_enabled,
                    v.name AS venue_name, v.address AS venue_address, v.court AS venue_court,
-                   (SELECT s.duration_minutes FROM group_regular_slots s
-                    WHERE s.group_id = g.id ORDER BY s.position, s.weekday, s.start_time LIMIT 1) AS default_duration,
+                   COALESCE((SELECT s.duration_minutes FROM group_regular_slots s
+                    WHERE s.group_id = g.id ORDER BY s.position, s.weekday, s.start_time LIMIT 1), g.default_duration_minutes) AS default_duration,
                    CASE WHEN g.owner_user_id = :actor THEN 'OWNER' ELSE m.role::text END AS actor_role
             FROM access_groups g
             LEFT JOIN group_memberships m ON m.group_id = g.id AND m.user_id = :actor

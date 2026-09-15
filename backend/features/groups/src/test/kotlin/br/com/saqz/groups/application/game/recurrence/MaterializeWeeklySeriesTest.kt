@@ -17,6 +17,19 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class MaterializeWeeklySeriesTest {
+    @Test fun `pausing prevents new games and resume permits materialization`() {
+        val repository = IdentityRepository()
+        var paused = true
+        val service = MaterializeWeeklySeries(
+            RecordingTransaction(), repository, RecordingIds(), Clock.systemUTC(),
+            schedulePolicy = ScheduleMaterializationPolicy { paused },
+        )
+        assertEquals(MaterializeWeeklySeriesResult.Success(0, 0), service.execute(rule(), DATE))
+        assertTrue(repository.identities.isEmpty())
+        paused = false
+        assertEquals(12, assertIs<MaterializeWeeklySeriesResult.Success>(service.execute(rule(), DATE)).inserted)
+    }
+
     @Test fun `expired trial cannot create a recurring series through an internal entry point`() {
         val persisted = mutableListOf<MaterializedGameOccurrence>()
         val repository = object : br.com.saqz.groups.application.game.series.WeeklySeriesRepository {

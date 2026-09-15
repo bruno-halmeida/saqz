@@ -54,7 +54,6 @@ import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
-import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.saqzInitials
@@ -165,9 +164,7 @@ fun OwnProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
             ) {
                 when {
-                    state.isLoading -> item(key = "loading") {
-                        OwnProfileLoading()
-                    }
+                    state.isLoading -> Unit // PullRefreshIndicator is the single loading indicator.
 
                     state.loadError -> item(key = "error") {
                         OwnProfileFailure(onRetry = { onIntent(OwnProfileIntent.Refresh) })
@@ -238,19 +235,6 @@ fun OwnProfileScreen(
                 contentColor = colors.primary,
             )
         }
-    }
-}
-
-@Composable
-private fun OwnProfileLoading() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(SaqzTheme.metrics.sectionVerticalPadding)
-            .testTag("${OwnProfileTags.Screen}-loading"),
-        contentAlignment = Alignment.Center,
-    ) {
-        SaqzSpinner()
     }
 }
 

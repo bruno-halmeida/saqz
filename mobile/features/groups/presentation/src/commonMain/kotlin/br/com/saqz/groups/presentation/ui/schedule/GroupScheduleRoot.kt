@@ -29,6 +29,7 @@ fun GroupScheduleRoot(
     onBack: () -> Unit,
     onOpenGame: (String) -> Unit,
     refreshVersion: Int = 0,
+    onSave: () -> Unit = {},
 ) {
     val viewModel: GroupScheduleViewModel =
         koinViewModel(key = "schedule/$groupId", parameters = { parametersOf(groupId) })
@@ -43,7 +44,10 @@ fun GroupScheduleRoot(
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             // Salvar fecha a tela: o 2m é uma folha do Gerenciar do 2f.
-            GroupScheduleEffect.Saved -> onBack()
+            GroupScheduleEffect.Saved -> {
+                onSave()
+                onBack()
+            }
             is GroupScheduleEffect.OpenGame -> onOpenGame(effect.gameId)
         }
     }

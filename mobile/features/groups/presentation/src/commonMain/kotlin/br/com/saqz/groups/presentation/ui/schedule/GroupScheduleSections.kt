@@ -75,7 +75,7 @@ internal fun GroupScheduleTimingCard(
             color = SaqzTheme.colors.textPrimary,
         )
         GroupChoiceChipRow(
-            values = DURATION_OPTIONS,
+            values = (DURATION_OPTIONS + durationMinutes).distinct().sorted(),
             selectedValue = durationMinutes,
             label = { durationLabel(it) },
             onSelect = onSelectDuration,
@@ -93,7 +93,7 @@ internal fun GroupScheduleTimingCard(
             )
         }
         GroupChoiceChipRow(
-            values = CONFIRMATION_LEAD_OPTIONS,
+            values = (CONFIRMATION_LEAD_OPTIONS + confirmationLeadMinutes).distinct().sorted(),
             selectedValue = confirmationLeadMinutes,
             label = { confirmationLeadLabel(it) },
             onSelect = onSelectConfirmationLead,

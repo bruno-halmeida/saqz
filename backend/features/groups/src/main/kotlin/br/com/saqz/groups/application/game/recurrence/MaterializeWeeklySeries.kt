@@ -20,6 +20,8 @@ data class MaterializedGameOccurrence(
     val createdAt: Instant,
 )
 
+fun interface ScheduleMaterializationPolicy { fun isPaused(groupId: UUID): Boolean }
+
 fun interface GameIdFactory { fun create(): UUID }
 
 fun interface OccurrenceMaterializationRepository {
@@ -38,6 +40,7 @@ class MaterializeWeeklySeries(
     private val clock: Clock,
     private val autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { },
     private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
+    private val schedulePolicy: ScheduleMaterializationPolicy = ScheduleMaterializationPolicy { false },
 ) {
     fun execute(rule: WeeklySeriesRule, from: LocalDate): MaterializeWeeklySeriesResult {
         val resolved = when (val result = WeeklyRecurrenceResolver.resolve(rule, from)) {
@@ -47,7 +50,7 @@ class MaterializeWeeklySeries(
         val createdAt = clock.instant()
         val materialized = resolved.map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, createdAt) }
         return transactionRunner.inTransaction {
-            if (!writeAccess.canWrite(rule.groupId)) return@inTransaction MaterializeWeeklySeriesResult.Success(0, 0)
+            if (!writeAccess.canWrite(rule.groupId) || schedulePolicy.isPaused(rule.groupId)) return@inTransaction MaterializeWeeklySeriesResult.Success(0, 0)
             val inserted = repository.insertIfAbsent(materialized)
             autoConfirmation.apply(materialized)
             MaterializeWeeklySeriesResult.Success(materialized.size, inserted)
