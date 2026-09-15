@@ -42,3 +42,9 @@ registrados em `docs/receivables/evidence/payments/adm-review.md`.
 - Mobile: 4 testes de gateway e 3 testes de tela aprovados; compilação Android/iOS e Detekt dos módulos alterados passaram. Capturas com/sem limites Asaas inspecionadas em `mobile/build/reports/receivables-configuration/tarifas-asaas-com-limites.png` e `tarifas-e-precos.png`. Logs: `/tmp/saqz-asaas-fees-mobile-tests.log` e `/tmp/saqz-asaas-fees-screenshots.log`.
 
 Asaas real e produção não foram acionados. Sem deploy ou migração de banco.
+
+### Correção do bloqueio ao salvar a toggle
+
+O relato de “Resultado não confirmado” revelou uma lacuna: os testes de navegador acima usavam API simulada e os testes HTTP de rollout não enviavam `Origin`. A API publicada respondeu `200` ao preflight GET e `403 Invalid CORS request` ao preflight PUT, ambos enviados da origem configurada do ADM. Nenhuma configuração foi alterada durante esse diagnóstico.
+
+A configuração CORS agora permite GET/PUT/OPTIONS nas rotas de rollout geral e por usuário, com precedência sobre `/admin/**` e mantendo a lista de origens autorizadas. O novo teste reproduziu o 403 antes da correção. Depois, as suítes `AdminWebCorsIntegrationTest` e `ReceivablesRolloutEndpointIntegrationTest` passaram, incluindo gravação real com `Origin`, persistência, replay e rejeição de outras origens/métodos. Backend recompilado; aplicar a correção no servidor exige atualizar o código e reconstruir o serviço backend.

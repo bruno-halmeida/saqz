@@ -100,6 +100,13 @@ class IdentitySecurityConfiguration {
                 allowedMethods = listOf("GET", "POST", "OPTIONS")
                 allowedHeaders = listOf("Authorization", "Content-Type")
             }
+            // Register before /admin/**: the first matching CORS rule wins.
+            val rolloutConfiguration = CorsConfiguration(configuration).apply {
+                allowedMethods = listOf("GET", "PUT", "OPTIONS")
+            }
+            listOf("/admin/receivables/rollout", "/admin/receivables/rollout/users/*").forEach { path ->
+                source.registerCorsConfiguration(path, rolloutConfiguration)
+            }
             WEB_PATHS.forEach { path -> source.registerCorsConfiguration(path, configuration) }
             source.registerCorsConfiguration("/api/session", CorsConfiguration(configuration).apply {
                 allowedMethods = listOf("PUT", "OPTIONS")

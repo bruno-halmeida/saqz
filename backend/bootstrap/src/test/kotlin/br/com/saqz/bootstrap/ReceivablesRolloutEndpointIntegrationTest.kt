@@ -30,7 +30,7 @@ import kotlin.test.*
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(ReceivablesRolloutEndpointIntegrationTest.Config::class)
 @ActiveProfiles("test")
-@TestPropertySource(properties=["saqz.firebase.emulator.enabled=true"])
+@TestPropertySource(properties=["saqz.firebase.emulator.enabled=true", "saqz.adminweb.origins=http://127.0.0.1:8123"])
 class ReceivablesRolloutEndpointIntegrationTest {
     @LocalServerPort private var port = 0
     @Autowired private lateinit var mapper: ObjectMapper
@@ -71,6 +71,7 @@ class ReceivablesRolloutEndpointIntegrationTest {
         assertEquals(403,call(root,"PUT",body,"user").statusCode())
         val written = call(root,"PUT",body)
         assertEquals(200,written.statusCode())
+        assertEquals("http://127.0.0.1:8123", written.headers().firstValue("Access-Control-Allow-Origin").orElse(""))
         assertEquals(written.body(),call(root,"PUT",body).body())
         assertEquals(409,call(root,"PUT",body.replace("Enable backend","Different reason")).statusCode())
         assertEquals(409,call(root,"PUT",body.replace(id.toString(),UUID.randomUUID().toString())).statusCode())
@@ -93,6 +94,7 @@ class ReceivablesRolloutEndpointIntegrationTest {
     }
     private fun call(path: String, method: String="GET", body: String?=null, token: String?="admin"): HttpResponse<String> {
         val request = HttpRequest.newBuilder(URI.create("http://localhost:$port$path"))
+            .header("Origin", "http://127.0.0.1:8123")
             .header("Content-Type","application/json").method(method,body?.let { HttpRequest.BodyPublishers.ofString(it) } ?: HttpRequest.BodyPublishers.noBody())
         if (token != null) request.header("Authorization","Bearer $token")
         return client.send(request.build(),HttpResponse.BodyHandlers.ofString())

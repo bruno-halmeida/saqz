@@ -36,6 +36,23 @@ import kotlin.test.assertNull
 )
 class AdminWebCorsIntegrationTest {
     @Test
+    fun `receivables rollout permits browser reads and writes only from configured origins`() {
+        val origin = "http://127.0.0.1:8123"
+        val paths = listOf("/admin/receivables/rollout", "/admin/receivables/rollout/users/${UUID.randomUUID()}")
+        for (path in paths) {
+            for (method in listOf("GET", "PUT")) {
+                val response = options(path, origin, method)
+                assertEquals(200, response.statusCode(), "$method $path")
+                assertEquals(origin, response.headers().firstValue("Access-Control-Allow-Origin").orElse(""))
+                assertEquals(403, options(path, "https://malicioso.example", method).statusCode())
+            }
+            assertEquals(403, options(path, origin, "DELETE").statusCode())
+        }
+        assertEquals(403, options("/admin/me", origin, "PUT").statusCode())
+        assertEquals(403, options("/admin/receivables/fees", origin, "PUT").statusCode())
+    }
+
+    @Test
     fun `onboarding permits only explicit session writes from configured web origin`() {
         listOf(
             "/api/session" to "PUT",
@@ -173,7 +190,7 @@ class AdminWebCorsIntegrationTest {
             .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
             .header("Origin", origin)
             .header("Access-Control-Request-Method", requestMethod)
-            .header("Access-Control-Request-Headers", "Authorization")
+            .header("Access-Control-Request-Headers", "Authorization,Content-Type")
             .build()
         return client.send(request, HttpResponse.BodyHandlers.ofString())
     }
