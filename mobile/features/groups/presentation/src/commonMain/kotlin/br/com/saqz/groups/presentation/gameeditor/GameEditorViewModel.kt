@@ -99,7 +99,8 @@ class GameEditorViewModel(
             val profile = group.profile
             val defaultForm = GameEditorFields(
                 title = if (gameId == null) DEFAULT_TITLE else "",
-                durationMinutes = profile?.regularSlots?.firstOrNull()?.durationMinutes ?: DEFAULT_DURATION,
+                durationMinutes = profile?.regularSlots?.firstOrNull()?.durationMinutes
+                    ?: profile?.defaultDurationMinutes ?: DEFAULT_DURATION,
                 venue = profile?.defaultVenue?.toGameVenue(),
                 capacity = profile?.defaultCapacity ?: DEFAULT_CAPACITY,
                 confirmationLeadMinutes = profile?.defaultConfirmationLeadMinutes ?: DEFAULT_LEAD,

@@ -50,6 +50,7 @@ data class GroupProfile(
     val defaultConfirmationLeadMinutes: Int?,
     val pixKey: String? = null,
     val pixLabel: String? = null,
+    val defaultDurationMinutes: Int? = null,
 )
 
 data class GroupGameConfig(

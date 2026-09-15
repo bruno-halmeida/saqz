@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.schedule
 
+import androidx.compose.material.Text
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,11 @@ import br.com.saqz.groups.presentation.schedule.UpcomingGameUi
 import br.com.saqz.groups.presentation.ui.components.GroupRecurrenceSection
 import br.com.saqz.groups.presentation.ui.components.GroupSlotPicker
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
+import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.resources.group_schedule_save_error
+import br.com.saqz.groups.resources.group_schedule_conflict
+import br.com.saqz.groups.resources.group_system_reload
+import br.com.saqz.groups.resources.group_schedule_invalid
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_schedule_save
 import br.com.saqz.groups.resources.group_schedule_title
@@ -71,6 +77,23 @@ internal fun GroupScheduleScreen(
                         onRetry = { onIntent(GroupScheduleIntent.Retry) },
                     )
                 } else {
+                    state.error?.let { error ->
+                        SaqzCard {
+                            Text(
+                                text = stringResource(when (error) {
+                                    GroupUiError.Conflict -> Res.string.group_schedule_conflict
+                                    GroupUiError.Validation -> Res.string.group_schedule_invalid
+                                    else -> Res.string.group_schedule_save_error
+                                }),
+                                style = SaqzTheme.typography.support,
+                                color = SaqzTheme.colors.errorForeground,
+                            )
+                            if (error == GroupUiError.Conflict) SaqzButton(
+                                label = stringResource(Res.string.group_system_reload),
+                                onClick = { onIntent(GroupScheduleIntent.Retry) },
+                            )
+                        }
+                    }
                     SaqzCard {
                         GroupRecurrenceSection(
                             recurring = state.recurring,
@@ -92,7 +115,7 @@ internal fun GroupScheduleScreen(
                         games = state.upcoming,
                         onOpenGame = { onIntent(GroupScheduleIntent.OpenGame(it)) },
                     )
-                    GroupPauseScheduleCard(
+                    if (state.recurring) GroupPauseScheduleCard(
                         isPaused = state.isPaused,
                         onToggle = { onIntent(GroupScheduleIntent.TogglePause) },
                     )
@@ -114,7 +137,7 @@ internal fun GroupScheduleScreen(
                     fullWidth = true,
                     // Nada a salvar enquanto o skeleton está na tela; a ViewModel também
                     // recusa o intent, isto aqui só evita oferecer o toque morto.
-                    enabled = !state.isLoading,
+                    enabled = !state.isLoading && !state.loadFailed && !state.isSaving,
                     loading = state.isSaving,
                     modifier = Modifier.testTag(GroupScheduleTags.Save),
                 )

@@ -812,6 +812,7 @@ internal fun SaqzNavHost(
                     // 4 · Detalhe do jogo da agenda.
                     onOpenGame = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
                     refreshVersion = scheduleRefreshVersion,
+                    onSave = { groupDetailsRefreshVersion++ },
                 )
             }
             entry<GroupsRoute.GameEditor> { route ->

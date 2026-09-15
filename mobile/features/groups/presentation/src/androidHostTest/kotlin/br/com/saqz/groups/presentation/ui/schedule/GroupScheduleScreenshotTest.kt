@@ -109,7 +109,7 @@ class GroupScheduleScreenshotTest {
     @Test
     fun paused() = capture("group-schedule-pausada") {
         GroupScheduleScreen(
-            state = previewScheduleState.copy(recurring = false, slots = emptyList(), isPaused = true),
+            state = previewScheduleState.copy(slots = emptyList(), upcoming = emptyList(), isPaused = true),
             onIntent = {},
             onBack = {},
         )

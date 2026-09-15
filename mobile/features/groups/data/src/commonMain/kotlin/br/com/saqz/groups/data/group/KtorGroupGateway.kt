@@ -74,6 +74,7 @@ internal data class GroupProfileDto(
     val defaultConfirmationLeadMinutes: Int? = null,
     val pixKey: String? = null,
     val pixLabel: String? = null,
+    val defaultDurationMinutes: Int? = null,
 )
 
 @Serializable
@@ -306,6 +307,7 @@ private fun GroupProfileDto.toDomain(): GroupProfile? {
         defaultConfirmationLeadMinutes = defaultConfirmationLeadMinutes,
         pixKey = pixKey,
         pixLabel = pixLabel,
+        defaultDurationMinutes = defaultDurationMinutes,
     )
 }
 
@@ -340,7 +342,7 @@ private fun GroupSetupForm.toRequest(requestId: String? = null, timeZone: String
     )
 }
 
-private fun NetworkError.toDomainError(): GroupProfileError = when (this) {
+internal fun NetworkError.toDomainError(): GroupProfileError = when (this) {
     is NetworkError.ApiProblemError -> when {
         problem.code == "VERSION_CONFLICT" || problem.status == 409 -> GroupProfileError.Conflict()
         problem.code == "VALIDATION_FAILED" || problem.status == 400 -> GroupProfileError.Validation(

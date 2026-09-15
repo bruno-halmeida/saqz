@@ -56,6 +56,17 @@ class GameEditorViewModelTest {
     ) = GameEditorViewModel("group-1", gameId, savedState, gameGateway, groupGateway)
 
     @Test
+    fun `new manual game uses the duration saved in the schedule`() = runTest {
+        val group = br.com.saqz.groups.presentation.sampleGroup().let {
+            it.copy(profile = it.profile?.copy(regularSlots = emptyList(), defaultDurationMinutes = 150))
+        }
+        val gateway = FakeGroupGateway(readResult = SaqzResult.Success(
+            br.com.saqz.groups.presentation.sampleVersionedGroup(group),
+        ))
+        assertEquals(150, viewModel(groupGateway = gateway).state.value.form.durationMinutes)
+    }
+
+    @Test
     fun `create mode loads group defaults and does not read a game`() = runTest {
         val gateway = FakeGameGateway()
         val vm = viewModel(gameGateway = gateway)

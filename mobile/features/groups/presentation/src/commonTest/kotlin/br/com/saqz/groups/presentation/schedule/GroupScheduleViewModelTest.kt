@@ -4,14 +4,15 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameStatus
-import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.domain.group.*
+import br.com.saqz.domain.GroupId
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import br.com.saqz.groups.domain.group.GroupWeekday as DomainGroupWeekday
 import br.com.saqz.groups.presentation.FakeGameGateway
-import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
-import br.com.saqz.groups.presentation.sampleGroup
 import br.com.saqz.groups.presentation.sampleGame
-import br.com.saqz.groups.presentation.sampleVersionedGroup
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupWeekday
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +42,7 @@ class GroupScheduleViewModelTest {
         val viewModel = GroupScheduleViewModel(
             "group-1",
             FakeGameGateway(SaqzResult.Success(listOf(sampleGame()))),
-            FakeGroupGateway(),
+            FakeScheduleGateway(),
             todayInZone = { "2026-08-02" },
         )
 
@@ -54,22 +55,15 @@ class GroupScheduleViewModelTest {
 
     @Test
     fun `success hydrates schedule configuration from the group snapshot`() = runTest {
-        val group = sampleGroup(
-            profile = sampleGroup().profile?.copy(
-                regularSlots = listOf(
-                    GroupRegularSlot(
-                        weekday = DomainGroupWeekday.TUESDAY,
-                        startTime = "19:30",
-                        durationMinutes = 90,
-                    ),
-                ),
-                defaultConfirmationLeadMinutes = 180,
-            ),
+        val schedule = defaultSchedule.copy(
+            slots = listOf(GroupScheduleSlot(DomainGroupWeekday.TUESDAY, "19:30")),
+            durationMinutes = 90,
+            confirmationLeadMinutes = 180,
         )
         val viewModel = GroupScheduleViewModel(
             "group-1",
             FakeGameGateway(),
-            FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(group))),
+            FakeScheduleGateway(schedule),
         )
 
         assertTrue(viewModel.state.value.recurring)
@@ -85,7 +79,7 @@ class GroupScheduleViewModelTest {
         val viewModel = GroupScheduleViewModel(
             "group-1",
             FakeGameGateway(SaqzResult.Success(listOf(past, completed, sampleGame()))),
-            FakeGroupGateway(),
+            FakeScheduleGateway(),
             todayInZone = { "2026-08-02" },
         )
 
@@ -94,7 +88,7 @@ class GroupScheduleViewModelTest {
 
     @Test
     fun `empty game list leaves the schedule empty`() = runTest {
-        val viewModel = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeGroupGateway())
+        val viewModel = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeScheduleGateway())
 
         assertFalse(viewModel.state.value.isLoading)
         assertTrue(viewModel.state.value.upcoming.isEmpty())
@@ -106,7 +100,7 @@ class GroupScheduleViewModelTest {
         val viewModel = GroupScheduleViewModel(
             "group-1",
             gateway,
-            FakeGroupGateway(),
+            FakeScheduleGateway(),
             todayInZone = { "2026-08-02" },
         )
 
@@ -123,7 +117,7 @@ class GroupScheduleViewModelTest {
             FakeGameGateway(
                 SaqzResult.Failure(GameError.Data(DataError.Forbidden)),
             ),
-            FakeGroupGateway(),
+            FakeScheduleGateway(),
         )
 
         assertTrue(viewModel.state.value.loadFailed)
@@ -131,11 +125,11 @@ class GroupScheduleViewModelTest {
     }
 
     @Test
-    fun `slot editing remains local while the read path is wired`() = runTest {
+    fun `slot editing remains local until save`() = runTest {
         val viewModel = GroupScheduleViewModel(
             "group-1",
             FakeGameGateway(),
-            FakeGroupGateway(),
+            FakeScheduleGateway(),
             GroupScheduleState(isLoading = false, slots = listOf(slot)),
         )
 
@@ -153,7 +147,7 @@ class GroupScheduleViewModelTest {
         val viewModel = GroupScheduleViewModel(
             "group-1",
             FakeGameGateway(SaqzResult.Failure(GameError.Data(DataError.Forbidden))),
-            FakeGroupGateway(),
+            FakeScheduleGateway(),
         )
 
         viewModel.onIntent(GroupScheduleIntent.Save)
@@ -163,11 +157,82 @@ class GroupScheduleViewModelTest {
 
     @Test
     fun `navigation effect carries the game id`() = runTest {
-        val viewModel = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeGroupGateway())
+        val viewModel = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeScheduleGateway())
 
         viewModel.onIntent(GroupScheduleIntent.OpenGame("game-1"))
 
         assertEquals(GroupScheduleEffect.OpenGame("game-1"), viewModel.effects.first())
+    }
+
+    @Test
+    fun `save persists settings and reopening hydrates the server values`() = runTest {
+        val gateway = FakeScheduleGateway()
+        val viewModel = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+        viewModel.onIntent(GroupScheduleIntent.SelectDuration(90))
+        viewModel.onIntent(GroupScheduleIntent.SelectConfirmationLead(720))
+        viewModel.onIntent(GroupScheduleIntent.TogglePause)
+        viewModel.onIntent(GroupScheduleIntent.Save)
+        assertEquals(GroupScheduleEffect.Saved, viewModel.effects.first())
+        assertEquals(GroupVersionToken("\"7\""), gateway.savedVersion)
+        val reopened = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+        assertEquals(90, reopened.state.value.durationMinutes)
+        assertEquals(720, reopened.state.value.confirmationLeadMinutes)
+        assertTrue(reopened.state.value.isPaused)
+        assertFalse(viewModel.state.value.isSaving)
+    }
+
+    @Test
+    fun `turning recurrence off persists duration without slots or pause`() = runTest {
+        val gateway = FakeScheduleGateway()
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+        vm.onIntent(GroupScheduleIntent.TogglePause)
+        vm.onIntent(GroupScheduleIntent.ToggleRecurring(false))
+        vm.onIntent(GroupScheduleIntent.SelectDuration(150))
+        vm.onIntent(GroupScheduleIntent.Save)
+        assertFalse(gateway.schedule.recurring)
+        assertFalse(gateway.schedule.paused)
+        assertTrue(gateway.schedule.slots.isEmpty())
+        assertEquals(150, gateway.schedule.durationMinutes)
+    }
+
+    @Test
+    fun `failure preserves edits and emits no success`() = runTest {
+        val gateway = FakeScheduleGateway().apply { failure = GroupProfileError.Conflict() }
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+        val effects = mutableListOf<GroupScheduleEffect>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.effects.toList(effects) }
+        vm.onIntent(GroupScheduleIntent.SelectDuration(90))
+        vm.onIntent(GroupScheduleIntent.Save)
+        assertEquals(GroupUiError.Conflict, vm.state.value.error)
+        assertEquals(90, vm.state.value.durationMinutes)
+        assertFalse(vm.state.value.isSaving)
+        assertTrue(effects.isEmpty())
+    }
+
+    @Test
+    fun `pending save blocks duplicate requests and edits`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val gateway = FakeScheduleGateway().apply { pending = gate }
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+        vm.onIntent(GroupScheduleIntent.Save)
+        vm.onIntent(GroupScheduleIntent.Save)
+        vm.onIntent(GroupScheduleIntent.SelectDuration(60))
+        vm.onIntent(GroupScheduleIntent.Retry)
+        assertTrue(vm.state.value.isSaving)
+        assertEquals(1, gateway.writes)
+        assertEquals(120, vm.state.value.durationMinutes)
+        gate.complete(Unit)
+        assertEquals(GroupScheduleEffect.Saved, vm.effects.first())
+    }
+
+    @Test
+    fun `recurrence without slots cannot report saved`() = runTest {
+        val gateway = FakeScheduleGateway(defaultSchedule.copy(recurring = false, slots = emptyList()))
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+        vm.onIntent(GroupScheduleIntent.ToggleRecurring(true))
+        vm.onIntent(GroupScheduleIntent.Save)
+        assertEquals(GroupUiError.Validation, vm.state.value.error)
+        assertEquals(0, gateway.writes)
     }
 
     private val slot = GroupRegularSlotForm(
@@ -175,4 +240,28 @@ class GroupScheduleViewModelTest {
         startTime = "19:30",
         durationMinutes = 120,
     )
+}
+
+private val defaultSchedule = GroupSchedule(
+    true, listOf(GroupScheduleSlot(DomainGroupWeekday.TUESDAY, "19:30")), 120, 360, false,
+)
+private class FakeScheduleGateway(var schedule: GroupSchedule = defaultSchedule) : GroupScheduleGateway {
+    var failure: GroupProfileError? = null
+    var pending: CompletableDeferred<Unit>? = null
+    var writes = 0
+    var savedVersion: GroupVersionToken? = null
+    override suspend fun readSchedule(groupId: GroupId) =
+        SaqzResult.Success(VersionedGroupSchedule(schedule, GroupVersionToken("\"7\"")))
+    override suspend fun updateSchedule(
+        groupId: GroupId,
+        versionToken: GroupVersionToken,
+        schedule: GroupSchedule,
+    ): SaqzResult<VersionedGroupSchedule, GroupProfileError> {
+        writes++
+        savedVersion = versionToken
+        pending?.await()
+        failure?.let { return SaqzResult.Failure(it) }
+        this.schedule = schedule
+        return SaqzResult.Success(VersionedGroupSchedule(schedule, GroupVersionToken("\"8\"")))
+    }
 }
