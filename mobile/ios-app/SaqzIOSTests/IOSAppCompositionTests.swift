@@ -49,13 +49,13 @@ final class IOSAppCompositionTests: XCTestCase {
 
     func testLifecycleRouterForwardsWarmURLToGoogleAndBranch() {
         let fixture = makeFixture(); let router = IOSLifecycleRouter(auth: fixture.composition.auth, links: fixture.composition.links)
-        let url = URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.code)")!; router.open(url)
+        let url = URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.code)")!; router.open(url)
         XCTAssertEqual(fixture.google.urls, [url]); XCTAssertEqual(fixture.branch.urls, [url])
     }
 
     func testLifecycleRouterForwardsUniversalLinkToBranch() {
         let fixture = makeFixture(); let router = IOSLifecycleRouter(auth: fixture.composition.auth, links: fixture.composition.links)
-        let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb); activity.webpageURL = URL(string: "https://saqz.test-app.link/invite")
+        let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb); activity.webpageURL = URL(string: "https://links.saqz.app/invite")
         router.continueActivity(activity); XCTAssertEqual(fixture.branch.activities.count, 1)
     }
 

@@ -50,8 +50,8 @@ import br.com.saqz.access.adapter.output.jdbc.session.JdbcAppOnboardingTokenStor
 import br.com.saqz.access.adapter.output.mail.EmailVerificationMailer
 import br.com.saqz.access.adapter.output.mail.VerificationCodeMailer
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
-import br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory
-import br.com.saqz.groups.adapter.output.link.BranchInviteLinkFactory
+import br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory
+import br.com.saqz.groups.adapter.output.link.PublicInviteLinkFactory
 import br.com.saqz.groups.application.attendance.share.ReadAttendanceShareSnapshot
 import br.com.saqz.groups.application.attendance.share.ResolveAttendanceLink
 import br.com.saqz.groups.application.attendance.share.RotateAttendanceLink
@@ -306,8 +306,8 @@ class AccessSessionConfiguration {
         IssueAppOnboardingLink(tokenStore, clock)
 
     @Bean
-    fun appOnboardingLinkFactory(@Value("\${saqz.branch.domain}") branchDomain: String) =
-        AppOnboardingLinkFactory(URI(branchDomain))
+    fun appOnboardingLinkFactory(@Value("\${saqz.links.domain}") linksDomain: String) =
+        AppOnboardingLinkFactory(URI(linksDomain))
 
     @Bean
     fun appOnboardingController(
@@ -373,7 +373,7 @@ class AccessSessionConfiguration {
     /**
      * Sem default de propósito: o segredo do HMAC é o que impede um dump do banco de
      * virar tomada de conta, então subir sem ele tem que quebrar alto, como o
-     * `saqz.branch.domain`.
+     * `saqz.links.domain`.
      */
     @Bean
     fun resetSecretHasher(@Value("\${saqz.password-reset.secret}") secret: String) = ResetSecretHasher(secret)
@@ -612,8 +612,8 @@ class AccessSessionConfiguration {
     fun inviteTokenGenerator() = JcaSecureTokenGenerator()
 
     @Bean
-    fun inviteLinkFactory(@Value("\${saqz.branch.domain}") branchDomain: String) =
-        BranchInviteLinkFactory(URI(branchDomain))
+    fun inviteLinkFactory(@Value("\${saqz.links.domain}") linksDomain: String) =
+        PublicInviteLinkFactory(URI(linksDomain))
 
     @Bean
     fun rotateInvite(
@@ -621,7 +621,7 @@ class AccessSessionConfiguration {
         readRepository: JdbcGroupReadRepository,
         inviteRepository: JdbcInviteManagementRepository,
         tokenGenerator: JcaSecureTokenGenerator,
-        linkFactory: BranchInviteLinkFactory,
+        linkFactory: PublicInviteLinkFactory,
     ) = RotateInvite(
         transaction,
         readRepository,
@@ -698,15 +698,15 @@ class AccessSessionConfiguration {
     fun attendanceLinkTokenGenerator() = JcaAttendanceLinkTokenGenerator()
 
     @Bean
-    fun attendanceLinkFactory(@Value("\${saqz.branch.domain}") branchDomain: String) =
-        BranchAttendanceLinkFactory(URI(branchDomain))
+    fun attendanceLinkFactory(@Value("\${saqz.links.domain}") linksDomain: String) =
+        PublicAttendanceLinkFactory(URI(linksDomain))
 
     @Bean
     fun rotateAttendanceLink(
         transaction: JdbcTransactionRunner,
         repository: JdbcAttendanceLinkRepository,
         tokenGenerator: JcaAttendanceLinkTokenGenerator,
-        linkFactory: BranchAttendanceLinkFactory,
+        linkFactory: PublicAttendanceLinkFactory,
     ) = RotateAttendanceLink(
         transaction,
         repository,

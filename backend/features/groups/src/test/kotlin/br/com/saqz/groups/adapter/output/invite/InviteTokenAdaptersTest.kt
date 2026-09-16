@@ -1,7 +1,7 @@
 package br.com.saqz.groups.adapter.output.invite
 
 import br.com.saqz.groups.adapter.output.crypto.JcaSecureTokenGenerator
-import br.com.saqz.groups.adapter.output.link.BranchInviteLinkFactory
+import br.com.saqz.groups.adapter.output.link.PublicInviteLinkFactory
 import br.com.saqz.groups.application.invite.InviteCode
 import org.junit.jupiter.api.Test
 import java.net.URI
@@ -103,14 +103,14 @@ class InviteTokenAdaptersTest {
     }
 
     @Test
-    fun `link factory rejects a non-HTTPS Branch domain`() {
+    fun `link factory rejects a non-HTTPS links domain`() {
         assertFailsWith<IllegalArgumentException> {
-            BranchInviteLinkFactory(URI("http://join.saqz.app"))
+            PublicInviteLinkFactory(URI("http://join.saqz.app"))
         }
     }
 
     @Test
-    fun `link factory rejects a Branch domain with mutable URL components`() {
+    fun `link factory rejects a links domain with mutable URL components`() {
         listOf(
             "https://user@join.saqz.app",
             "https://join.saqz.app/base",
@@ -118,38 +118,29 @@ class InviteTokenAdaptersTest {
             "https://join.saqz.app#fragment",
         ).forEach { configuredUrl ->
             assertFailsWith<IllegalArgumentException>(configuredUrl) {
-                BranchInviteLinkFactory(URI(configuredUrl))
+                PublicInviteLinkFactory(URI(configuredUrl))
             }
         }
     }
 
     @Test
-    fun `long link decodes to the exact Branch invite parameters`() {
-        val link = BranchInviteLinkFactory(URI("https://join.saqz.app")).create(code)
+    fun `long link decodes to the exact public invite parameters`() {
+        val link = PublicInviteLinkFactory(URI("https://join.saqz.app")).create(code)
 
         assertEquals("https", link.scheme)
         assertEquals("join.saqz.app", link.host)
         assertEquals("/", link.path)
-        assertEquals(
-            mapOf(
-                "\$deeplink_path" to "invite/${code.value}",
-                "saqz_invite" to code.value,
-                "\$ios_nativelink" to "true",
-            ),
-            decodedQuery(link),
-        )
-        assertTrue(link.rawQuery.contains("%24deeplink_path=invite%2F"))
-        assertTrue(link.rawQuery.contains("%24ios_nativelink=true"))
+        assertEquals(mapOf("saqz_invite" to code.value), decodedQuery(link))
     }
 
     @Test
     fun `long link contains no identity group role or short-link metadata`() {
-        val link = BranchInviteLinkFactory(URI("https://join.saqz.app")).create(code)
+        val link = PublicInviteLinkFactory(URI("https://join.saqz.app")).create(code)
         val serialized = link.toASCIIString()
 
         listOf("groupId", "groupName", "email", "owner", "admin", "athlete", "alias", "campaign")
             .forEach { forbidden -> assertFalse(serialized.contains(forbidden, ignoreCase = true), forbidden) }
-        assertEquals(setOf("\$deeplink_path", "saqz_invite", "\$ios_nativelink"), decodedQuery(link).keys)
+        assertEquals(setOf("saqz_invite"), decodedQuery(link).keys)
     }
 
     private fun deterministicGenerator() = JcaSecureTokenGenerator { target -> bytes.copyInto(target) }

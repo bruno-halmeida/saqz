@@ -13,7 +13,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: dev
       SAQZ_FIREBASE_PROJECT_ID: saqz-dev
-      SAQZ_BRANCH_DOMAIN: https://saqz.test-app.link
+      SAQZ_LINKS_DOMAIN: https://links.saqz.app
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-admin
       SPRING_DATASOURCE_URL: jdbc:postgresql://database:5432/saqz
       SPRING_DATASOURCE_USERNAME: saqz

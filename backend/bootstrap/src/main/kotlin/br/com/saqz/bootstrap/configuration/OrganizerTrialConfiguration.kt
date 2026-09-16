@@ -62,14 +62,14 @@ class OrganizerTrialConfiguration {
         groups: br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup,
         campaigns: TrialCampaignStore,
         eligibility: StartOrganizerTrial,
-        @org.springframework.beans.factory.annotation.Value("\${saqz.branch.domain}") branchDomain: String,
+        @org.springframework.beans.factory.annotation.Value("\${saqz.links.domain}") linksDomain: String,
     ): br.com.saqz.trials.http.OrganizerTrialController {
-        val domain = java.net.URI(branchDomain)
+        val domain = java.net.URI(linksDomain)
         require(domain.scheme == "https" && !domain.host.isNullOrBlank() && domain.userInfo == null && domain.port == -1)
         require(domain.path.isNullOrEmpty() || domain.path == "/")
         require(domain.query == null && domain.fragment == null)
         return br.com.saqz.trials.http.OrganizerTrialController(
-            actors, trials, groups, domain.toString().trimEnd('/') + "/?%24ios_nativelink=true", campaigns, eligibility,
+            actors, trials, groups, domain.toString().trimEnd('/') + "/", campaigns, eligibility,
         )
     }
 

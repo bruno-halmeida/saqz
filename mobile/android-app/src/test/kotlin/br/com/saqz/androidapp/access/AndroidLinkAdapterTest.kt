@@ -14,7 +14,7 @@ class AndroidLinkAdapterTest {
         fixture.adapter.start(object : br.com.saqz.groups.port.GroupLinkEventListener {
             override fun onEvent(event: br.com.saqz.groups.port.GroupLinkEvent) { events += event }
         })
-        val url = "https://saqz.test-app.link/attendance/$CODE_A"
+        val url = "https://links.saqz.app/attendance/$CODE_A"
         fixture.adapter.onColdStart(url)
         fixture.branch.complete(mapOf("saqz_attendance" to CODE_A))
         fixture.adapter.onWarmIntent(url)
@@ -27,10 +27,10 @@ class AndroidLinkAdapterTest {
         val fixture = Fixture()
         fixture.start()
 
-        fixture.adapter.onColdStart("https://saqz.test-app.link/invite?saqz_invite=$CODE_A&groupId=secret")
+        fixture.adapter.onColdStart("https://links.saqz.app/invite?saqz_invite=$CODE_A&groupId=secret")
 
         assertEquals(listOf(CODE_A), fixture.received)
-        assertEquals(listOf("cold:https://saqz.test-app.link/invite?saqz_invite=$CODE_A&groupId=secret"), fixture.branch.calls)
+        assertEquals(listOf("cold:https://links.saqz.app/invite?saqz_invite=$CODE_A&groupId=secret"), fixture.branch.calls)
     }
 
     @Test
@@ -49,10 +49,10 @@ class AndroidLinkAdapterTest {
         val fixture = Fixture()
         fixture.start()
 
-        fixture.adapter.onWarmIntent("https://saqz.test-app.link/invite?saqz_invite=$CODE_B")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/invite?saqz_invite=$CODE_B")
 
         assertEquals(listOf(CODE_B), fixture.received)
-        assertEquals(listOf("warm:https://saqz.test-app.link/invite?saqz_invite=$CODE_B"), fixture.branch.calls)
+        assertEquals(listOf("warm:https://links.saqz.app/invite?saqz_invite=$CODE_B"), fixture.branch.calls)
     }
 
     @Test
@@ -60,7 +60,7 @@ class AndroidLinkAdapterTest {
         val fixture = Fixture()
         fixture.start()
 
-        fixture.adapter.onWarmIntent("https://saqz.test-app.link/opaque-route")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/opaque-route")
         fixture.branch.complete(mapOf("saqz_invite" to CODE_B))
 
         assertEquals(listOf(CODE_B), fixture.received)
@@ -82,7 +82,7 @@ class AndroidLinkAdapterTest {
         val fixture = Fixture()
         fixture.start()
 
-        fixture.adapter.onColdStart("https://saqz.test-app.link/invite?groupId=$CODE_A&email=person%40example.test")
+        fixture.adapter.onColdStart("https://links.saqz.app/invite?groupId=$CODE_A&email=person%40example.test")
         fixture.branch.complete(mapOf("groupId" to CODE_A, "email" to "person@example.test"))
 
         assertTrue(fixture.received.isEmpty())
@@ -94,7 +94,7 @@ class AndroidLinkAdapterTest {
         fixture.start()
 
         listOf("short", "${"A".repeat(42)}+", "${"A".repeat(42)}=", "${"A".repeat(42)}B")
-            .forEach { fixture.adapter.onWarmIntent("https://saqz.test-app.link/invite?saqz_invite=$it") }
+            .forEach { fixture.adapter.onWarmIntent("https://links.saqz.app/invite?saqz_invite=$it") }
 
         assertTrue(fixture.received.isEmpty())
     }
@@ -114,7 +114,7 @@ class AndroidLinkAdapterTest {
         val fixture = Fixture()
         fixture.start()
 
-        fixture.adapter.onColdStart("https://saqz.test-app.link/invite?saqz_invite=$CODE_A")
+        fixture.adapter.onColdStart("https://links.saqz.app/invite?saqz_invite=$CODE_A")
         fixture.branch.complete(mapOf("saqz_invite" to CODE_A))
 
         assertEquals(listOf(CODE_A), fixture.received)
@@ -137,9 +137,9 @@ class AndroidLinkAdapterTest {
         val fixture = Fixture()
         fixture.start()
 
-        fixture.adapter.onWarmIntent("https://saqz.test-app.link/invite?saqz_invite=$CODE_A")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/invite?saqz_invite=$CODE_A")
         fixture.branch.complete(mapOf("saqz_invite" to CODE_A))
-        fixture.adapter.onWarmIntent("https://saqz.test-app.link/invite?saqz_invite=$CODE_B")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/invite?saqz_invite=$CODE_B")
 
         assertEquals(listOf(CODE_A, CODE_B), fixture.received)
     }
@@ -148,8 +148,8 @@ class AndroidLinkAdapterTest {
     fun latestEventBeforeListenerWins() {
         val fixture = Fixture()
 
-        fixture.adapter.onColdStart("https://saqz.test-app.link/invite?saqz_invite=$CODE_A")
-        fixture.adapter.onWarmIntent("https://saqz.test-app.link/invite?saqz_invite=$CODE_B")
+        fixture.adapter.onColdStart("https://links.saqz.app/invite?saqz_invite=$CODE_A")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/invite?saqz_invite=$CODE_B")
         fixture.start()
 
         assertEquals(listOf(CODE_B), fixture.received)
@@ -161,7 +161,7 @@ class AndroidLinkAdapterTest {
         val subscription = fixture.start()
         subscription.cancel()
 
-        fixture.adapter.onWarmIntent("https://saqz.test-app.link/invite?saqz_invite=$CODE_A")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/invite?saqz_invite=$CODE_A")
 
         assertTrue(fixture.received.isEmpty())
         assertEquals(1, fixture.branch.calls.size)
@@ -200,7 +200,7 @@ class AndroidLinkAdapterTest {
         val fixture = Fixture()
         fixture.startOnboarding()
 
-        fixture.adapter.onColdStart("https://saqz.test-app.link/?%24deeplink_path=onboarding&saqz_onboarding=$CODE_A")
+        fixture.adapter.onColdStart("https://links.saqz.app/?%24deeplink_path=onboarding&saqz_onboarding=$CODE_A")
         fixture.branch.complete(mapOf("saqz_onboarding" to CODE_A))
 
         assertEquals(listOf(CODE_A), fixture.onboardingReceived)
@@ -212,7 +212,7 @@ class AndroidLinkAdapterTest {
         val fixture = Fixture()
         fixture.startOnboarding()
 
-        fixture.adapter.onWarmIntent("https://saqz.test-app.link/?saqz_onboarding=$CODE_A&saqz_invite=$CODE_B")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/?saqz_onboarding=$CODE_A&saqz_invite=$CODE_B")
         fixture.adapter.onWarmIntent("https://evil.example/?saqz_onboarding=$CODE_A")
 
         assertTrue(fixture.onboardingReceived.isEmpty())
@@ -224,7 +224,7 @@ class AndroidLinkAdapterTest {
         fixture.adapter.onColdStart(null)
         fixture.branch.complete(mapOf("saqz_onboarding" to CODE_A))
         fixture.startOnboarding()
-        fixture.adapter.onWarmIntent("https://saqz.test-app.link/?saqz_onboarding=$CODE_B")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/?saqz_onboarding=$CODE_B")
         assertEquals(listOf(CODE_A, CODE_B), fixture.onboardingReceived)
     }
 
@@ -232,7 +232,7 @@ class AndroidLinkAdapterTest {
     fun onboardingUsesConfiguredHostAndRejectsDuplicateParameters() {
         val fixture = Fixture(setOf("configured.app.link"))
         fixture.startOnboarding()
-        fixture.adapter.onWarmIntent("https://saqz.test-app.link/?saqz_onboarding=$CODE_A")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/?saqz_onboarding=$CODE_A")
         fixture.adapter.onWarmIntent("https://configured.app.link/?saqz_onboarding=$CODE_A&saqz_onboarding=$CODE_A")
         assertTrue(fixture.onboardingReceived.isEmpty())
         fixture.adapter.onWarmIntent("https://configured.app.link/?saqz_onboarding=$CODE_A")
@@ -258,7 +258,7 @@ class AndroidLinkAdapterTest {
         )
     }
 
-    private class Fixture(allowedHosts: Set<String> = setOf("saqz.test-app.link")) {
+    private class Fixture(allowedHosts: Set<String> = setOf("links.saqz.app")) {
         val branch = FakeBranchSessionClient()
         val adapter = AndroidLinkAdapter(branch, allowedHosts)
         val received = mutableListOf<String>()

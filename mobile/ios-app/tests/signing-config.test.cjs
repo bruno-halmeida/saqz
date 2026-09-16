@@ -20,25 +20,32 @@ const scheme = (name) => readFileSync(
   path.join(iosRoot, `SaqzIOS.xcodeproj/xcshareddata/xcschemes/${name}.xcscheme`), 'utf8',
 );
 
-test('SaqzDev runs Debug without entitlements unsupported by Personal Team', () => {
+test('SaqzDev runs Debug with sandbox push and the public links domain', () => {
   assert.equal(settings('Debug').CODE_SIGN_STYLE, 'Automatic');
-  assert.equal(settings('Debug').CODE_SIGN_ENTITLEMENTS, '');
+  assert.equal(settings('Debug').CODE_SIGN_ENTITLEMENTS, 'SaqzIOS/SaqzIOS.debug.entitlements');
+  const entitlements = readPlist(settings('Debug').CODE_SIGN_ENTITLEMENTS);
+  assert.equal(entitlements['aps-environment'], 'development');
+  assert.deepEqual(entitlements['com.apple.developer.associated-domains'], [
+    'applinks:$(BRANCH_DOMAIN)',
+  ]);
   assert.match(scheme('SaqzDev'), /<LaunchAction\s+buildConfiguration="Debug"/);
 });
 
 test('SaqzProd preserves Associated Domains in Release', () => {
   assert.equal(settings('Release').CODE_SIGN_ENTITLEMENTS, 'SaqzIOS/SaqzIOS.entitlements');
   const entitlements = readPlist(settings('Release').CODE_SIGN_ENTITLEMENTS);
+  assert.equal(entitlements['aps-environment'], 'production');
   assert.deepEqual(entitlements['com.apple.developer.associated-domains'], [
     'applinks:$(BRANCH_DOMAIN)',
   ]);
   assert.match(scheme('SaqzProd'), /<LaunchAction\s+buildConfiguration="Release"/);
 });
 
-test('development signing preserves app identity and native saqz links', () => {
+test('development signing preserves app identity, links domain and native saqz links', () => {
   for (const name of ['Debug', 'Release']) {
     assert.equal(settings(name).PRODUCT_BUNDLE_IDENTIFIER, 'app.saqz');
-    assert.equal(settings(name).DEVELOPMENT_TEAM, '8A3G5G4G2B');
+    assert.equal(settings(name).DEVELOPMENT_TEAM, '8JG4JP8VMT');
+    assert.equal(settings(name).BRANCH_DOMAIN, 'links.saqz.app');
     const info = readPlist(settings(name).INFOPLIST_FILE);
     const schemes = info.CFBundleURLTypes.flatMap((type) => type.CFBundleURLSchemes);
     assert.ok(schemes.includes('saqz'));

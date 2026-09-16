@@ -7,7 +7,7 @@ import XCTest
 final class IOSLinkAdapterTests: XCTestCase {
     func testReopeningAttendanceLinkDeliversAgainButBranchCopyDoesNot() {
         let fixture = Fixture(); fixture.start()
-        let url = URL(string: "https://saqz.test-app.link/attendance/\(Self.codeA)")!
+        let url = URL(string: "https://links.saqz.app/attendance/\(Self.codeA)")!
         fixture.adapter.onColdStart(url: url)
         fixture.branch.complete(["saqz_attendance": Self.codeA])
         fixture.adapter.onOpenURL(url)
@@ -21,7 +21,7 @@ final class IOSLinkAdapterTests: XCTestCase {
 
     func testOnboardingColdAndDeferredCopiesUseOnlyAccessListenerOnce() {
         let fixture = Fixture(); fixture.start(); fixture.startOnboarding()
-        fixture.adapter.onColdStart(url: URL(string: "https://saqz.test-app.link/?saqz_onboarding=\(Self.codeA)"))
+        fixture.adapter.onColdStart(url: URL(string: "https://links.saqz.app/?saqz_onboarding=\(Self.codeA)"))
         fixture.branch.complete(["saqz_onboarding": Self.codeA])
         XCTAssertEqual(fixture.onboardingReceived, [Self.codeA])
         XCTAssertTrue(fixture.received.isEmpty)
@@ -33,7 +33,7 @@ final class IOSLinkAdapterTests: XCTestCase {
         fixture.adapter.onColdStart(url: nil)
         fixture.branch.complete(["saqz_onboarding": Self.codeA])
         fixture.startOnboarding()
-        fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/?saqz_onboarding=\(Self.codeB)")!)
+        fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/?saqz_onboarding=\(Self.codeB)")!)
         XCTAssertEqual(fixture.onboardingReceived, [Self.codeA, Self.codeB])
     }
 
@@ -41,9 +41,9 @@ final class IOSLinkAdapterTests: XCTestCase {
         let fixture = Fixture(); fixture.startOnboarding(); fixture.adapter.onColdStart(url: nil)
         for raw in [
             "https://evil.example/?saqz_onboarding=\(Self.codeA)",
-            "https://saqz.test-app.link/?saqz_onboarding=\(Self.codeA)&saqz_onboarding=\(Self.codeA)",
-            "https://saqz.test-app.link/?saqz_onboarding=\(Self.codeA)&saqz_invite=\(Self.codeB)",
-            "https://saqz.test-app.link/attendance/\(Self.codeB)?saqz_onboarding=\(Self.codeA)"
+            "https://links.saqz.app/?saqz_onboarding=\(Self.codeA)&saqz_onboarding=\(Self.codeA)",
+            "https://links.saqz.app/?saqz_onboarding=\(Self.codeA)&saqz_invite=\(Self.codeB)",
+            "https://links.saqz.app/attendance/\(Self.codeB)?saqz_onboarding=\(Self.codeA)"
         ] { fixture.adapter.onOpenURL(URL(string: raw)!) }
         fixture.branch.complete(["saqz_onboarding": Self.codeA, "saqz_attendance": Self.codeB])
         XCTAssertTrue(fixture.onboardingReceived.isEmpty)
@@ -54,7 +54,7 @@ final class IOSLinkAdapterTests: XCTestCase {
         let adapter = IOSLinkAdapter(branch: branch, allowedHosts: ["configured.app.link"])
         var received: [String] = []
         let subscription = adapter.startAppOnboarding(listener: RecordingOnboardingListener { received.append($0) })
-        adapter.onOpenURL(URL(string: "https://saqz.test-app.link/?saqz_onboarding=\(Self.codeA)")!)
+        adapter.onOpenURL(URL(string: "https://links.saqz.app/?saqz_onboarding=\(Self.codeA)")!)
         XCTAssertTrue(received.isEmpty)
         adapter.onOpenURL(URL(string: "https://configured.app.link/?saqz_onboarding=\(Self.codeA)")!)
         XCTAssertEqual(received, [Self.codeA])
@@ -63,7 +63,7 @@ final class IOSLinkAdapterTests: XCTestCase {
 
     func testColdAppLinkDeliversOnlyOpaqueInviteCode() {
         let fixture = Fixture(); fixture.start()
-        let url = URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)&groupId=secret")!
+        let url = URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)&groupId=secret")!
         fixture.adapter.onColdStart(url: url)
         XCTAssertEqual(fixture.received, [Self.codeA]); XCTAssertEqual(fixture.branch.initializeCount, 1)
     }
@@ -76,7 +76,7 @@ final class IOSLinkAdapterTests: XCTestCase {
 
     func testWarmURLUsesBranchAndSameListener() {
         let fixture = Fixture(); fixture.start()
-        let handled = fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeB)")!)
+        let handled = fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeB)")!)
         XCTAssertTrue(handled); XCTAssertEqual(fixture.received, [Self.codeB]); XCTAssertEqual(fixture.branch.urls.count, 1)
     }
 
@@ -89,14 +89,14 @@ final class IOSLinkAdapterTests: XCTestCase {
     func testUniversalLinkForwardsActivityAndDeliversCode() {
         let fixture = Fixture(); fixture.start()
         let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
-        activity.webpageURL = URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)")
+        activity.webpageURL = URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)")
         XCTAssertTrue(fixture.adapter.onContinueUserActivity(activity)); XCTAssertEqual(fixture.received, [Self.codeA])
         XCTAssertEqual(fixture.branch.activities.count, 1)
     }
 
     func testNativeLinkDenialIsNoOpAndLaterLinkRecovers() {
         let fixture = Fixture(); fixture.start(); fixture.adapter.onColdStart(url: nil); fixture.branch.complete(nil)
-        fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)")!)
+        fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)")!)
         XCTAssertEqual(fixture.received, [Self.codeA])
     }
 
@@ -109,14 +109,14 @@ final class IOSLinkAdapterTests: XCTestCase {
     func testInvalidBase64URLAlphabetPaddingAndLengthAreRejected() {
         let fixture = Fixture(); fixture.start()
         ["short", String(repeating: "A", count: 42) + "+", String(repeating: "A", count: 42) + "=", String(repeating: "A", count: 42) + "B"].forEach {
-            fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/invite?saqz_invite=\($0)")!)
+            fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\($0)")!)
         }
         XCTAssertTrue(fixture.received.isEmpty)
     }
 
     func testNonHTTPSDirectURLIsRejected() {
         let fixture = Fixture(); fixture.start()
-        fixture.adapter.onOpenURL(URL(string: "http://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)")!)
+        fixture.adapter.onOpenURL(URL(string: "http://links.saqz.app/invite?saqz_invite=\(Self.codeA)")!)
         fixture.adapter.onOpenURL(URL(string: "otherapp://invite?saqz_invite=\(Self.codeA)")!)
         XCTAssertTrue(fixture.received.isEmpty)
     }
@@ -129,7 +129,7 @@ final class IOSLinkAdapterTests: XCTestCase {
 
     func testDirectAndBranchCopiesAreDeliveredOnce() {
         let fixture = Fixture(); fixture.start()
-        fixture.adapter.onColdStart(url: URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)"))
+        fixture.adapter.onColdStart(url: URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)"))
         fixture.branch.complete(["saqz_invite": Self.codeA])
         XCTAssertEqual(fixture.received, [Self.codeA])
     }
@@ -143,29 +143,29 @@ final class IOSLinkAdapterTests: XCTestCase {
 
     func testNewerWarmLinkAfterDuplicateIsDelivered() {
         let fixture = Fixture(); fixture.start()
-        fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)")!)
+        fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)")!)
         fixture.branch.complete(["saqz_invite": Self.codeA])
-        fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeB)")!)
+        fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeB)")!)
         XCTAssertEqual(fixture.received, [Self.codeA, Self.codeB])
     }
 
     func testLatestEventBeforeListenerWins() {
         let fixture = Fixture()
-        fixture.adapter.onColdStart(url: URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)"))
-        fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeB)")!)
+        fixture.adapter.onColdStart(url: URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)"))
+        fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeB)")!)
         fixture.start(); XCTAssertEqual(fixture.received, [Self.codeB])
     }
 
     func testAttendanceLinkDispatchesTypedEvent() {
         let fixture = Fixture(); fixture.start()
-        fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/attendance?saqz_attendance=\(Self.codeA)")!)
+        fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/attendance?saqz_attendance=\(Self.codeA)")!)
         XCTAssertEqual(fixture.attendanceReceived, [Self.codeA])
         XCTAssertEqual(fixture.received, [])
     }
 
     func testCancellationStopsDeliveryWithoutStoppingBranchLifecycle() {
         let fixture = Fixture(); let cancellation = fixture.start(); cancellation.cancel()
-        fixture.adapter.onOpenURL(URL(string: "https://saqz.test-app.link/invite?saqz_invite=\(Self.codeA)")!)
+        fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)")!)
         XCTAssertTrue(fixture.received.isEmpty); XCTAssertEqual(fixture.branch.urls.count, 1)
     }
 

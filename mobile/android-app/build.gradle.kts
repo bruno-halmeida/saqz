@@ -56,7 +56,7 @@ val branchLiveKey = branchProperty(
 val branchTestDomain = branchProperty(
     name = "saqz.branch.testDomain",
     required = false,
-    fallback = "saqz.test-app.link",
+    fallback = "links.saqz.app",
 )
 val branchLiveDomain = branchProperty(
     name = "saqz.branch.liveDomain",

@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.saqz",
+      "sha256_cert_fingerprints": [
+        "10:01:9C:47:79:13:10:94:5D:BA:03:50:6E:89:D7:53:FE:A0:1A:8F:5F:6F:5B:4A:CF:BF:16:F9:FD:DB:DA:8F"
+      ]
+    }
+  }
+]

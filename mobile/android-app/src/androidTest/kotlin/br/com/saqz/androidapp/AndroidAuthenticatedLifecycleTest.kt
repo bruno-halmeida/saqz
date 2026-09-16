@@ -124,7 +124,7 @@ class AndroidAuthenticatedLifecycleTest {
 
     @Test
     fun warmIntentIsForwardedAndBecomesCurrentActivityIntent() {
-        val url = "https://saqz.test-app.link/invite?saqz_invite=${LifecycleFixture.NEW_INVITE}"
+        val url = "https://links.saqz.app/invite?saqz_invite=${LifecycleFixture.NEW_INVITE}"
         lateinit var scenarioIntent: Intent
         try {
             compose.activityRule.scenario.onActivity { activity ->

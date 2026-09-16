@@ -48,7 +48,7 @@ class UazapiGroupNotificationSenderTest {
             exchange.responseBody.use { it.write("{}".toByteArray()) }
         }
         val messageId = UUID.randomUUID()
-        val link = "https://saqz.test-app.link/?saqz_attendance=code"
+        val link = "https://links.saqz.app/attendance/code"
         client(server).use { client ->
             assertEquals(WhatsAppDelivery.Accepted, UazapiGroupNotificationSender(client).send(groupJid, messageId, text, link))
         }
@@ -74,7 +74,7 @@ class UazapiGroupNotificationSenderTest {
             exchange.sendResponseHeaders(status, 2)
             exchange.responseBody.use { it.write("{}".toByteArray()) }
         }
-        val link = "https://saqz.test-app.link/?saqz_attendance=code"
+        val link = "https://links.saqz.app/attendance/code"
         client(server).use { client ->
             assertEquals(WhatsAppDelivery.Accepted, UazapiGroupNotificationSender(client).send(groupJid, UUID.randomUUID(), text, link))
         }

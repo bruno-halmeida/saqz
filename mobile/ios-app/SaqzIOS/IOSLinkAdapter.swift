@@ -24,7 +24,7 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
     private var lastAcceptedEventKey: String?
     private var pushObserver: NSObjectProtocol?
 
-    init(branch: IOSBranchSessionClient, allowedHosts: Set<String> = ["saqz.test-app.link"]) {
+    init(branch: IOSBranchSessionClient, allowedHosts: Set<String> = ["links.saqz.app"]) {
         self.branch = branch
         self.allowedHosts = allowedHosts
         pushObserver = NotificationCenter.default.addObserver(forName: .saqzPushOpened, object: nil, queue: .main) { [weak self] note in
@@ -147,7 +147,7 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
     }
 
     static func directEvent(_ url: URL?) -> GroupLinkEvent? {
-        directEvent(url, allowedHosts: ["saqz.test-app.link"])
+        directEvent(url, allowedHosts: ["links.saqz.app"])
     }
 
     private static func directEvent(_ url: URL?, allowedHosts: Set<String>) -> GroupLinkEvent? {
@@ -265,7 +265,7 @@ final class LiveBranchSessionClient: IOSBranchSessionClient {
 enum IOSLinkComposition {
     static func makeLive(bundle: Bundle = .main) -> IOSLinkAdapter {
         let domain = (bundle.object(forInfoDictionaryKey: "branch_universal_link_domains") as? [String])?.first
-            ?? "saqz.test-app.link"
+            ?? "links.saqz.app"
         return IOSLinkAdapter(branch: LiveBranchSessionClient(), allowedHosts: [domain])
     }
 }

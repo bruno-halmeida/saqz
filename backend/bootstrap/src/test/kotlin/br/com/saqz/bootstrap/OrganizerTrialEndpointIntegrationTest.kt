@@ -64,7 +64,7 @@ class OrganizerTrialEndpointIntegrationTest {
         assertFalse(body["readOnly"].booleanValue())
         assertEquals(3, body["maxGroups"].intValue())
         assertTrue(body["maxAthletes"].isNull)
-        assertEquals("https://join.test/?%24ios_nativelink=true", body["appUrl"].stringValue())
+        assertEquals("https://join.test/", body["appUrl"].stringValue())
         assertEquals(404, request("GET", "/subscriptions/me").statusCode())
         assertEquals(0, jdbc().sql("SELECT count(*)::int FROM organizer_trials t JOIN access_users u ON t.owner_user_id=u.id WHERE u.firebase_subject=:token").param("token", token).query(Int::class.java).single())
     }
@@ -95,7 +95,7 @@ class OrganizerTrialEndpointIntegrationTest {
     }
 
     @Test
-    fun `authenticated first access issues opaque onboarding Branch URL without starting trial`() {
+    fun `authenticated first access issues opaque onboarding public URL without starting trial`() {
         assertEquals(200, request("PUT", "/api/session").statusCode())
 
         val response = request("POST", "/api/session/app-link")
@@ -104,9 +104,8 @@ class OrganizerTrialEndpointIntegrationTest {
 
         assertEquals(200, response.statusCode(), response.body())
         assertTrue(url.startsWith("https://join.test/"))
-        assertTrue(url.contains("%24deeplink_path=onboarding"))
         assertTrue(url.contains("saqz_onboarding="))
-        assertTrue(url.contains("%24ios_nativelink=true"))
+        assertFalse(url.contains("%24"))
         assertFalse(response.body().contains("customToken"))
         assertFalse(response.body().contains("firebaseSubject"))
         assertEquals("no-store", response.headers().firstValue("Cache-Control").orElse(""), response.headers().toString())
@@ -461,7 +460,7 @@ class OrganizerTrialEndpointIntegrationTest {
             registry.add("spring.datasource.username") { database.username }
             registry.add("spring.datasource.password") { database.password }
             registry.add("saqz.firebase.emulator.enabled") { "true" }
-            registry.add("saqz.branch.domain") { "https://join.test" }
+            registry.add("saqz.links.domain") { "https://join.test" }
             registry.add("saqz.password-reset.secret") { "segredo-de-teste-com-trinta-e-dois" }
         }
     }

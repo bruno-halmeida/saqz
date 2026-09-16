@@ -42,13 +42,13 @@ class NotificationWhatsAppConfiguration {
     }
     @Bean fun notificationWhatsAppSender(client: UazapiClient): NotificationWhatsAppSender = UazapiNotificationSender(client)
     @Bean fun notificationWhatsAppQueue(dataSource: DataSource, transaction: JdbcTransactionRunner,
-        links: br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory) =
+        links: br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory) =
         JdbcNotificationWhatsApp(dataSource, transaction, links)
     @Bean fun notificationWhatsAppWorker(queue: JdbcNotificationWhatsApp, sender: NotificationWhatsAppSender) =
         NotificationWhatsAppWorker(queue, sender)
 
     @Bean fun notificationWhatsAppGroupQueue(dataSource: DataSource, transaction: JdbcTransactionRunner,
-        links: br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory) =
+        links: br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory) =
         JdbcNotificationWhatsAppGroup(dataSource, transaction, links)
     @Bean fun notificationWhatsAppGroupSender(client: UazapiClient): NotificationWhatsAppGroupSender =
         UazapiGroupNotificationSender(client)

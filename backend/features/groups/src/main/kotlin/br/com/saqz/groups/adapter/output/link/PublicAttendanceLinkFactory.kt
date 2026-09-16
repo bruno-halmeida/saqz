@@ -1,10 +1,11 @@
-package br.com.saqz.bootstrap.configuration
+package br.com.saqz.groups.adapter.output.link
 
-import br.com.saqz.access.application.session.AppOnboardingCode
+import br.com.saqz.groups.application.attendance.share.AttendanceLinkCode
+import br.com.saqz.groups.application.attendance.share.AttendanceLinkFactory
 import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
 
-class AppOnboardingLinkFactory(private val linksDomain: URI) {
+class PublicAttendanceLinkFactory(private val linksDomain: URI) : AttendanceLinkFactory {
     init {
         require(linksDomain.scheme.equals("https", ignoreCase = true)) { "Links domain must use HTTPS" }
         require(!linksDomain.host.isNullOrBlank()) { "Links domain must have a host" }
@@ -17,11 +18,10 @@ class AppOnboardingLinkFactory(private val linksDomain: URI) {
         require(linksDomain.fragment == null) { "Links domain must not contain a fragment" }
     }
 
-    fun create(code: AppOnboardingCode): URI =
+    override fun create(code: AttendanceLinkCode): URI =
         UriComponentsBuilder
             .fromUri(linksDomain)
-            .replacePath("/")
-            .queryParam("saqz_onboarding", code.value)
+            .pathSegment("attendance", code.value)
             .build()
             .toUri()
 }

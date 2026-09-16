@@ -17,7 +17,7 @@ class NotificationChannelsIntegrationTest {
     private val repository = JdbcGroupCommunicationRepository(source)
     private val service = GroupCommunicationService(transaction, JdbcGroupReadRepository(source), repository)
     private val whatsapp = JdbcNotificationWhatsApp(source, transaction,
-        br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory(java.net.URI("https://saqz.test-app.link")))
+        br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory(java.net.URI("https://links.saqz.app")))
     private val push = JdbcNotificationPush(source, transaction)
     private val reminders = ChargeReminderService(transaction, JdbcGroupReadRepository(source), repository, JdbcChargeReminderStore(source))
     private val owner = user("Owner")

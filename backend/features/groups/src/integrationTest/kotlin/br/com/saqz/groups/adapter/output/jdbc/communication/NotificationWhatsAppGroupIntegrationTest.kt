@@ -3,7 +3,7 @@ package br.com.saqz.groups.adapter.output.jdbc.communication
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.adapter.output.jdbc.whatsapp.JdbcGroupWhatsAppBindingRepository
-import br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory
+import br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory
 import br.com.saqz.groups.application.communication.*
 import br.com.saqz.groups.application.whatsapp.DirectoryError
 import br.com.saqz.groups.application.whatsapp.LinkGroupWhatsApp
@@ -36,7 +36,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         jdbc = JdbcClient.create(dataSource)
         transaction = JdbcTransactionRunner(dataSource)
         service = GroupCommunicationService(transaction, JdbcGroupReadRepository(dataSource), JdbcGroupCommunicationRepository(dataSource))
-        queue = JdbcNotificationWhatsAppGroup(dataSource, transaction, BranchAttendanceLinkFactory(URI("https://saqz.test-app.link")))
+        queue = JdbcNotificationWhatsAppGroup(dataSource, transaction, PublicAttendanceLinkFactory(URI("https://links.saqz.app")))
         link = LinkGroupWhatsApp(transaction, JdbcGroupReadRepository(dataSource), JdbcGroupWhatsAppBindingRepository(dataSource), directory)
         directory.reset()
         owner = user("Owner", "+$OWNER_PHONE")
@@ -105,7 +105,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         // O link vai como botão: a URL crua nunca entra no texto.
         assertFalse(text.contains("https://"), text)
         assertFalse(text.contains("Confirmar minha presença"), text)
-        assertTrue(link!!.contains("https://saqz.test-app.link/"), link)
+        assertTrue(link!!.contains("https://links.saqz.app/attendance/"), link)
         assertTrue(link.contains(code), link)
         assertEquals("ACCEPTED", status())
         assertFalse(text.contains(INSTANCE_JID))

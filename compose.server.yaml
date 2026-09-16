@@ -5,6 +5,7 @@
 #   backend      -> https://saqz-api.brunoalmeida.dev
 #   adm-web      -> https://saqzweb.brunoalmeida.dev
 #   landing-page -> https://saqz.app
+#   links-page   -> https://links.saqz.app (AASA + assetlinks + página de fallback)
 #   mailpit      -> https://saqz-mail.brunoalmeida.dev (exige SAQZ_MAILPIT_AUTH no .env)
 # Database: Supabase (dev) via IPv4 session pooler; local postgres disabled.
 services:
@@ -78,6 +79,28 @@ services:
       - "traefik.http.middlewares.saqz-landing-www.redirectregex.replacement=https://saqz.app/$${1}"
       - "traefik.http.middlewares.saqz-landing-www.redirectregex.permanent=true"
       - "traefik.http.routers.saqz-landing.middlewares=saqz-landing-www"
+
+  # O host dos deep links. Apple e Google buscam os arquivos de associacao
+  # (apple-app-site-association e assetlinks.json) direto na origem, e o resto
+  # do host serve a pagina de fallback de quem ainda nao tem o app.
+  # O DNS de links.saqz.app e `DNS only` no Cloudflare de proposito: sem edge
+  # no meio, o arquivo chega sem redirect e com o Content-Type certo.
+  links-page:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      - ./links-page:/usr/share/nginx/html:ro
+      - ./nginx-links.conf:/etc/nginx/conf.d/default.conf:ro
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - local-server-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.saqz-links.rule=Host(`links.saqz.app`)"
+      - "traefik.http.routers.saqz-links.entrypoints=websecure"
+      - "traefik.http.routers.saqz-links.tls=true"
+      - "traefik.http.services.saqz-links.loadbalancer.server.port=80"
 
   # A caixa de teste do ambiente: e aqui que o QA le o codigo de quatro digitos do reset
   # de senha. O Mailpit ja subia neste overlay (o backend entrega nele desde sempre), mas

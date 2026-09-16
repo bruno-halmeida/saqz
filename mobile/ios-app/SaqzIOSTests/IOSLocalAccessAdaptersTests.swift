@@ -62,7 +62,7 @@ final class IOSLocalAccessAdaptersTests: XCTestCase {
 
     func testSharePassesCompleteURLAndControllerAddsNoSyntheticAccessibilityNode() {
         let launcher = FakeShareLauncher(); let adapter = IOSShareAdapter(launcher: launcher); let callback = RecordingResultCallback()
-        let url = "https://saqz.test-app.link/invite?saqz_invite=opaque_code"
+        let url = "https://links.saqz.app/invite?saqz_invite=opaque_code"
         adapter.share(text: url, done: callback)
         XCTAssertEqual(launcher.values, [url]); XCTAssertTrue(callback.result is OperationResultSuccess)
         XCTAssertFalse(IOSActivityShareLauncher.makeController(text: url).view.isAccessibilityElement)

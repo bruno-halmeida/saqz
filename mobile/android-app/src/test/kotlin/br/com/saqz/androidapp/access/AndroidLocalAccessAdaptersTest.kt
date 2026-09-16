@@ -81,7 +81,7 @@ class AndroidLocalAccessAdaptersTest {
         val launcher = FakeShareLauncher()
         val adapter = AndroidShareAdapter(launcher)
         var result: OperationResult? = null
-        val url = "https://saqz.test-app.link/invite?saqz_invite=opaque_code"
+        val url = "https://links.saqz.app/invite?saqz_invite=opaque_code"
 
         adapter.share(url, resultCallback { result = it })
 

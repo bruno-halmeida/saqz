@@ -3,8 +3,13 @@
 <plist version="1.0">
 <dict>
     <!-- Debug usa APNs sandbox; a Release usa producao (SaqzIOS.entitlements).
-         Sem associated-domains de proposito: Universal Links seguem so na Release. -->
+         Associated Domains e a mesma nos dois: o host dos links e publico
+         (links.saqz.app) e nao tem par test/live. -->
     <key>aps-environment</key>
     <string>development</string>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:$(BRANCH_DOMAIN)</string>
+	</array>
 </dict>
 </plist>

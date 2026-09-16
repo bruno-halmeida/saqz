@@ -30,7 +30,7 @@ internal interface AndroidIntentLinkPort : NativeLinkPort {
 
 internal class AndroidLinkAdapter(
     private val branch: AndroidBranchSessionClient,
-    private val allowedHosts: Set<String> = setOf("saqz.test-app.link"),
+    private val allowedHosts: Set<String> = setOf("links.saqz.app"),
 ) : AndroidIntentLinkPort, NativeGroupLinkPort {
     private var accessListener: InviteCodeListener? = null
     private var onboardingListener: AppOnboardingCodeListener? = null

@@ -1,0 +1,29 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["8JG4JP8VMT.app.saqz"],
+        "components": [
+          {
+            "/": "/attendance/*",
+            "comment": "Confirmacao de presenca: /attendance/<codigo>"
+          },
+          {
+            "/": "/",
+            "?": { "saqz_invite": "*" },
+            "comment": "Convite de grupo: /?saqz_invite=<codigo>"
+          },
+          {
+            "/": "/",
+            "?": { "saqz_onboarding": "*" },
+            "comment": "Onboarding do app: /?saqz_onboarding=<codigo>"
+          },
+          {
+            "/": "/",
+            "comment": "App instalado: a raiz abre o app (links de campanha sem codigo)"
+          }
+        ]
+      }
+    ]
+  }
+}

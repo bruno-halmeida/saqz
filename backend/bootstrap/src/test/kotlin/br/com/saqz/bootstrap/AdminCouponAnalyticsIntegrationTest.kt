@@ -161,7 +161,7 @@ class AdminCouponAnalyticsIntegrationTest {
         private val database=TestPostgres.empty()
         @JvmStatic @DynamicPropertySource fun properties(r: DynamicPropertyRegistry) {
             r.add("spring.datasource.url") { database.jdbcUrl };r.add("spring.datasource.username") { database.username };r.add("spring.datasource.password") { database.password }
-            r.add("saqz.firebase.emulator.enabled") { "true" };r.add("saqz.branch.domain") { "https://join.test" };r.add("saqz.password-reset.secret") { "segredo-de-teste-com-trinta-e-dois" }
+            r.add("saqz.firebase.emulator.enabled") { "true" };r.add("saqz.links.domain") { "https://join.test" };r.add("saqz.password-reset.secret") { "segredo-de-teste-com-trinta-e-dois" }
         }
     }
 }
