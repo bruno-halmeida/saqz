@@ -480,6 +480,10 @@ private class LifecycleLinkPort : AndroidIntentLinkPort, NativeGroupLinkPort {
         warmUrls += url
     }
 
+    override fun onNotificationOpen(groupId: String?) {
+        if (groupListeners.isNotEmpty()) groupListeners.forEach { it.onEvent(GroupLinkEvent.NotificationOpen(groupId)) }
+    }
+
     fun emit(code: String) {
         if (groupListeners.isNotEmpty()) groupListeners.forEach { it.onEvent(GroupLinkEvent.Invite(code)) }
         else listener?.onInviteCode(code)
