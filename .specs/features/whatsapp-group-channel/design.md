@@ -36,7 +36,11 @@ CREATE TABLE group_whatsapp_bindings (
 );
 ```
 
-### V74__notification_whatsapp_group_queue.sql
+### V76__notification_whatsapp_group_queue.sql
+
+> **Numeração corrigida:** V73 (T1) e V75 (T4) já foram integradas e aplicadas no dev. Flyway aqui roda
+> com `outOfOrder=false` (default), então a V74 nunca pode existir depois disso — a fila usa **V76**.
+> V74 fica permanentemente vago.
 ```sql
 CREATE TABLE notification_whatsapp_group_queue (
     message_id uuid PRIMARY KEY REFERENCES group_messages(id),
@@ -152,6 +156,6 @@ Extração do código do convite: aceitar URL completa ou código puro — regex
 | Risco | Mitigação |
 |---|---|
 | U1 (semântica `Owner*`) pode mudar o parse | parse isolado em `UazapiGroupDirectory`; T0 antes de T2 |
-| Colisão de migrações entre lanes | números atribuídos: V73/T1, V74/T3, V75/T4 |
+| Colisão de migrações entre lanes | V73 (T1) e V75 (T4) já em main/dev; T3 usa **V76** (V74 fica vago, `outOfOrder=false`) |
 | Colisão de testes entre lanes | fila de grupo = **novo** arquivo `NotificationWhatsAppGroupIntegrationTest.kt`; T4 só edita o existente |
 | `JsonNode` do SDK sem tipagem | fakes no mesmo formato JSON da doc oficial nos testes de unidade |

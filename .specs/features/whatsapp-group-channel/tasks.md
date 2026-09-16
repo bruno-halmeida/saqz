@@ -83,9 +83,9 @@ do T0), HTTP integration (bootstrap, todas as rotas e erros do contrato)
 
 ## T3: Fila de grupo + worker
 
-**What**: V74 (tabela + trigger), `NotificationWhatsAppGroupSender` + `UazapiGroupNotificationSender`,
+**What**: V76 (tabela + trigger), `NotificationWhatsAppGroupSender` + `UazapiGroupNotificationSender`,
 `JdbcNotificationWhatsAppGroup` com o algoritmo do design, beans do worker.
-**Where**: `db/migration/V74__notification_whatsapp_group_queue.sql`,
+**Where**: `db/migration/V76__notification_whatsapp_group_queue.sql` (V74 fica vago — V75 já aplicada no dev, Flyway `outOfOrder=false`),
 `application/communication/NotificationWhatsAppGroup.kt` (novo), `adapter/output/whatsapp/UazapiGroupNotificationSender.kt`,
 `adapter/output/jdbc/communication/JdbcNotificationWhatsAppGroup.kt`, `NotificationWhatsAppConfiguration.kt`
 **Depends on**: T0, T1, T2 · **Requirement**: AC3, AC4, AC6
@@ -171,7 +171,7 @@ testes de tela (**só esta lane toca esses arquivos**)
 
 ## Regras de ownership (anti-colisão entre lanes)
 
-- **Lane A** (T1–T3): backend `whatsapp/`, V73/V74, `NotificationWhatsAppConfiguration.kt`,
+  - **Lane A** (T1–T3): backend `whatsapp/`, V73/V76, `NotificationWhatsAppConfiguration.kt`,
   `NotificationWhatsAppGroupIntegrationTest.kt` (novo).
 - **Lane B** (T4): V75 + `NotificationChannelsIntegrationTest.kt` (único lane que edita).
 - **Lane C** (T5–T6): `communication/GroupWhatsAppGateway*`, `whatsappbinding/`, rotas/nav/strings novos.
