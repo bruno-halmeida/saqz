@@ -203,7 +203,7 @@ class HomeViewModelTest {
         )
 
         assertEquals(
-            "Você está na reserva de Vôlei do CERET.",
+            "Você está na lista de espera de Vôlei do CERET.",
             viewModel.state.value.member?.subtitle,
         )
         assertEquals(HomeWaitlistKind.Reserva, viewModel.state.value.member?.nextGame?.waitlistKind)

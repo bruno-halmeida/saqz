@@ -193,7 +193,7 @@ class GroupDetailsScreenTest {
             ),
         )
 
-        onNodeWithText("Você é o 3º da reserva.").assertExists()
+        onNodeWithText("Você está em 3º na lista de espera.").assertExists()
         onNodeWithText("Ao confirmar, a cobrança deste jogo será gerada.").assertExists()
         onNodeWithText("As confirmações estão encerradas.").assertExists()
         onNodeWithTag(GroupGameResponseTags.Going).assertExists()
