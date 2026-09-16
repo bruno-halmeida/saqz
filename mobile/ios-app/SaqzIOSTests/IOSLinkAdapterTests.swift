@@ -179,16 +179,37 @@ final class IOSLinkAdapterTests: XCTestCase {
         XCTAssertTrue(entitlements.contains("applinks:$(BRANCH_DOMAIN)"))
     }
 
+    func testNotificationTapIsBufferedUntilListenerAndDeliveredOnEveryTap() {
+        let fixture = Fixture()
+        fixture.adapter.onNotificationOpen(groupId: "group-1")
+        fixture.start()
+        fixture.adapter.onNotificationOpen(groupId: nil)
+        XCTAssertEqual(fixture.notificationReceived, ["group-1", nil])
+    }
+
+    func testPushOpenedNotificationRoutesGroupIdToTheLinkPort() {
+        let fixture = Fixture(); fixture.start()
+        NotificationCenter.default.post(name: .saqzPushOpened, object: nil, userInfo: ["groupId": "group-9"])
+        XCTAssertEqual(fixture.notificationReceived, ["group-9"])
+    }
+
     @MainActor
     private final class Fixture {
         let branch = FakeBranchSessionClient(); lazy var adapter = IOSLinkAdapter(branch: branch)
         var received: [String] = []
         var attendanceReceived: [String] = []
         var onboardingReceived: [String] = []
+        var notificationReceived: [String?] = []
         func startOnboarding() {
             _ = adapter.startAppOnboarding(listener: RecordingOnboardingListener { self.onboardingReceived.append($0) })
         }
-        func start() -> GroupCancelable { adapter.start(listener_: RecordingLinkEventListener(invite: { self.received.append($0) }, attendance: { self.attendanceReceived.append($0) })) }
+        func start() -> GroupCancelable {
+            adapter.start(listener_: RecordingLinkEventListener(
+                invite: { self.received.append($0) },
+                attendance: { self.attendanceReceived.append($0) },
+                notification: { self.notificationReceived.append($0) },
+            ))
+        }
     }
 
     private static let codeA = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -216,15 +237,19 @@ private final class FakeBranchSessionClient: IOSBranchSessionClient {
 private final class RecordingLinkEventListener: @preconcurrency GroupLinkEventListener {
     private let invite: (String) -> Void
     private let attendance: (String) -> Void
-    init(invite: @escaping (String) -> Void, attendance: @escaping (String) -> Void) {
+    private let notification: (String?) -> Void
+    init(invite: @escaping (String) -> Void, attendance: @escaping (String) -> Void, notification: @escaping (String?) -> Void = { _ in }) {
         self.invite = invite
         self.attendance = attendance
+        self.notification = notification
     }
     func onEvent(event: GroupLinkEvent) {
         if let inviteEvent = event as? GroupLinkEventInvite {
             invite(inviteEvent.code)
         } else if let attendanceEvent = event as? GroupLinkEventAttendance {
             attendance(attendanceEvent.code)
+        } else if let notificationEvent = event as? GroupLinkEventNotificationOpen {
+            notification(notificationEvent.groupId)
         }
     }
 }

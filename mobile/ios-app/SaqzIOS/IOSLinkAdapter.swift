@@ -22,10 +22,30 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
     private var pendingAccessCode: String?
     private var pendingOnboardingCode: String?
     private var lastAcceptedEventKey: String?
+    private var pushObserver: NSObjectProtocol?
 
     init(branch: IOSBranchSessionClient, allowedHosts: Set<String> = ["saqz.test-app.link"]) {
         self.branch = branch
         self.allowedHosts = allowedHosts
+        pushObserver = NotificationCenter.default.addObserver(forName: .saqzPushOpened, object: nil, queue: .main) { [weak self] note in
+            let groupId = note.userInfo?["groupId"] as? String
+            MainActor.assumeIsolated { self?.onNotificationOpen(groupId: groupId) }
+        }
+    }
+
+    deinit {
+        if let pushObserver { NotificationCenter.default.removeObserver(pushObserver) }
+    }
+
+    /** Push tap: always routes to the notification center; no dedup across taps. */
+    func onNotificationOpen(groupId: String?) {
+        let event = GroupLinkEventNotificationOpen(groupId: groupId)
+        if listeners.isEmpty {
+            pendingEvent = event
+        } else {
+            pendingEvent = nil
+            listeners.values.forEach { $0.onEvent(event: event) }
+        }
     }
 
     func start(listener: InviteCodeListener) -> Cancelable {
