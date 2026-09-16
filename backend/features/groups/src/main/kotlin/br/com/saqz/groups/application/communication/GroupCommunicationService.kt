@@ -61,6 +61,22 @@ class GroupCommunicationService(
         candidates.size
     }
 
+    /**
+     * Aviso diário de jogo liberado. Usa os mesmos candidatos do lembrete (jogo publicado, com
+     * prazo e início no futuro) e o mesmo autor — o dono, que por isso fica fora. O canal
+     * GAME_OPEN nunca vira WhatsApp: é o toque por push para quem ainda não respondeu.
+     */
+    fun announceOpenGames(): Int = transaction.inTransaction {
+        val candidates = repository.reminderCandidates()
+        candidates.forEach { candidate ->
+            repository.publish(
+                candidate.groupId, candidate.ownerId, MessageChannel.GAME_OPEN, UUID.randomUUID(),
+                openGameBody(candidate.game), candidate.gameId,
+            )
+        }
+        candidates.size
+    }
+
     fun inbox(actor: UUID, before: Long?): CommunicationResult<CommunicationPage<GroupNotification>> =
         if (before != null && before <= 0) invalid()
         else CommunicationResult.Success(page(repository.inbox(actor, before)) { it.sequence })

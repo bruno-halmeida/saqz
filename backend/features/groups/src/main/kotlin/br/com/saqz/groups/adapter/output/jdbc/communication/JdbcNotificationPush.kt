@@ -42,6 +42,7 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
                 "NOTICE" -> "Você recebeu um aviso do grupo. Abra o app para conferir."
                 "CHAT" -> "Você recebeu uma mensagem no grupo. Abra o app para conferir."
                 "REMINDER" -> "Confirme sua presença no próximo jogo. Abra o app para conferir."
+                "GAME_OPEN" -> "O jogo está liberado. Abra o app para confirmar sua presença."
                 else -> "Você recebeu um lembrete de cobrança. Abra o app para conferir."
             }
             NotificationPush(id, rs.getObject("group_id", UUID::class.java), "Saqz", body)

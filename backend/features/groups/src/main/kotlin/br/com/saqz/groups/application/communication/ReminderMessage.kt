@@ -13,6 +13,14 @@ fun gameSchedule(localDate: LocalDate, localTime: LocalTime): String =
         " às ${two(localTime.hour)}:${two(localTime.minute)}"
 
 /**
+ * Corpo do aviso de jogo liberado: o toque diário por push para quem ainda não respondeu.
+ * Mesmo cabeçalho do lembrete, sem as listas nominais.
+ */
+fun openGameBody(game: ReminderGame): String =
+    "Jogo: ${gameSchedule(game.localDate, game.localTime)}\nLocal: ${game.venue}\n" +
+        "\nO jogo está liberado. Confirme sua presença."
+
+/**
  * Corpo do lembrete de presença: `Jogo: {dia, data às hora}`, `Local: {local}` e listas nominais
  * por situação, na ordem confirmados, lista de espera e fora, um nome por linha. Seções vazias são
  * omitidas. Acima de [REMINDER_BODY_LIMIT] o texto é cortado no último nome completo, com `…`.
