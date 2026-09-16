@@ -104,6 +104,10 @@ class JdbcHomeRepositoryIntegrationTest {
             home.member.nextGame?.rosterPreview?.waitlisted?.map { it.displayName },
         )
         assertEquals(listOf(1L, 2L), home.member.nextGame?.rosterPreview?.waitlisted?.map { it.waitlistPosition })
+        // O jogo publicado seguinte (memberGroup, 03/08) entra na lista; o hero não.
+        assertEquals(listOf(laterNext), home.member.upcomingGames.map { it.gameId })
+        assertEquals("Member home", home.member.upcomingGames.single().groupName)
+        assertNull(home.member.upcomingGames.single().ownStatus)
         assertEquals(latestCompleted, home.member.lastCompletedGame?.gameId)
         assertEquals("America/Sao_Paulo", home.member.lastCompletedGame?.zoneId)
         assertEquals(1, home.member.lastCompletedGame?.confirmedCount)
@@ -125,6 +129,72 @@ class JdbcHomeRepositoryIntegrationTest {
         assertEquals(YearMonth.of(2026, 8), adminAdmin.monthlyCharges.billingMonth)
         assertTrue(admin.groups.none { it.name == "Athlete only" })
         assertNull(home.ownCharges)
+    }
+
+    @Test
+    fun listsUpToThreeUpcomingGamesAfterTheHeroAcrossGroups() {
+        val actor = user("upcoming-actor", "Upcoming Actor")
+        val other = user("upcoming-other", "Other Upcoming")
+        val owner = user("upcoming-owner", "Upcoming Owner")
+        val groupA = group("Upcoming A", owner)
+        val groupB = group("Upcoming B", owner)
+        val strangerGroup = group("Upcoming C", owner)
+        membership(groupA, actor)
+        membership(groupB, actor)
+        membership(groupA, other)
+
+        val hero = game(groupA, "2026-08-02T10:00:00Z", "PUBLISHED", capacity = 12)
+        val second = game(groupB, "2026-08-03T10:00:00Z", "PUBLISHED", capacity = 10)
+        val third = game(groupA, "2026-08-04T10:00:00Z", "PUBLISHED", capacity = 12)
+        val fourth = game(groupB, "2026-08-05T10:00:00Z", "PUBLISHED", capacity = 10)
+        game(groupA, "2026-08-06T10:00:00Z", "PUBLISHED", capacity = 12) // quinto: fora do LIMIT 3
+        game(groupA, "2026-07-30T10:00:00Z", "COMPLETED", capacity = 12) // passado
+        game(groupB, "2026-08-03T12:00:00Z", "CANCELLED", capacity = 10) // não publicado
+        game(strangerGroup, "2026-08-03T09:00:00Z", "PUBLISHED", capacity = 10) // grupo de que não participa
+        check(second != hero && third != hero && fourth != hero)
+
+        attendance(second, groupB, actor, "CONFIRMED", null)
+        attendance(third, groupA, other, "CONFIRMED", null)
+        attendance(third, groupA, actor, "WAITLISTED", 1)
+
+        val member = repository().find(
+            actorId = actor,
+            now = Instant.parse("2026-08-01T12:00:00Z"),
+            today = LocalDate.of(2026, 8, 1),
+        ).member
+
+        assertEquals(hero, member.nextGame?.gameId)
+        assertEquals(listOf(second, third, fourth), member.upcomingGames.map { it.gameId })
+        assertEquals(listOf("Upcoming B", "Upcoming A", "Upcoming B"), member.upcomingGames.map { it.groupName })
+        val secondGame = member.upcomingGames[0]
+        assertEquals(Instant.parse("2026-08-03T10:00:00Z"), secondGame.startsAt)
+        assertEquals(Instant.parse("2026-08-02T10:00:00Z"), secondGame.confirmationDeadline)
+        assertEquals("America/Sao_Paulo", secondGame.zoneId)
+        assertEquals(10, secondGame.capacity)
+        assertEquals(1, secondGame.confirmedCount)
+        assertEquals("CONFIRMED", secondGame.ownStatus?.name)
+        assertEquals(1, member.upcomingGames[1].confirmedCount)
+        assertEquals("WAITLISTED", member.upcomingGames[1].ownStatus?.name)
+        assertEquals(0, member.upcomingGames[2].confirmedCount)
+        assertNull(member.upcomingGames[2].ownStatus)
+    }
+
+    @Test
+    fun returnsNoUpcomingGamesWithoutAFutureGame() {
+        val actor = user("upcoming-none", "No Upcoming")
+        val owner = user("upcoming-none-owner", "No Upcoming Owner")
+        val groupA = group("Upcoming none", owner)
+        membership(groupA, actor)
+        game(groupA, "2026-07-30T10:00:00Z", "COMPLETED", capacity = 12)
+
+        val member = repository().find(
+            actorId = actor,
+            now = Instant.parse("2026-08-01T12:00:00Z"),
+            today = LocalDate.of(2026, 8, 1),
+        ).member
+
+        assertNull(member.nextGame)
+        assertEquals(emptyList(), member.upcomingGames)
     }
 
     @Test

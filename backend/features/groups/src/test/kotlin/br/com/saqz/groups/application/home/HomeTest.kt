@@ -34,6 +34,11 @@ class HomeTest {
         assertEquals(LocalDate.of(2026, 7, 31), repository.today)
     }
 
+    @Test
+    fun memberReadModelDefaultsToNoUpcomingGames() {
+        assertEquals(emptyList(), HomeMemberReadModel(null, null, emptyList()).upcomingGames)
+    }
+
     private class RecordingRepository(
         private val result: HomeReadModel,
     ) : HomeRepository {

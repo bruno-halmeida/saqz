@@ -22,6 +22,12 @@ tests {
     if (res.body.member.lastCompletedGame !== null) {
       expect(res.body.member.lastCompletedGame).to.have.property("zoneId");
     }
+    expect(res.body.member.upcomingGames).to.be.an("array");
+    res.body.member.upcomingGames.forEach(function (game) {
+      expect(game).to.have.property("zoneId");
+      expect(game).to.have.property("ownStatus");
+      expect(game.confirmedCount).to.be.a("number");
+    });
   });
   test("home own charges contract when present", function () {
     expect(res.body).to.have.property("ownCharges");

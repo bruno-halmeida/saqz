@@ -14,6 +14,7 @@ import br.com.saqz.groups.application.home.HomeOwnChargesReadModel
 import br.com.saqz.groups.application.home.HomeQuery
 import br.com.saqz.groups.application.home.HomeReadModel
 import br.com.saqz.groups.application.home.HomeRosterMember
+import br.com.saqz.groups.application.home.HomeUpcomingGame
 import br.com.saqz.sharedkernel.RequestIdentity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
@@ -74,10 +75,23 @@ data class HomeLastCompletedGameResponse(
     val ownPlayed: Boolean,
 )
 
+data class HomeUpcomingGameResponse(
+    val groupId: UUID,
+    val groupName: String,
+    val gameId: UUID,
+    val zoneId: String,
+    val startsAt: Instant,
+    val confirmationDeadline: Instant,
+    val capacity: Int,
+    val confirmedCount: Int,
+    val ownStatus: String?,
+)
+
 data class HomeMemberResponse(
     val nextGame: HomeNextGameResponse?,
     val lastCompletedGame: HomeLastCompletedGameResponse?,
     val groups: List<HomeGroupResponse>,
+    val upcomingGames: List<HomeUpcomingGameResponse>,
 )
 
 data class HomeMonthlyChargesResponse(
@@ -184,6 +198,7 @@ private fun HomeMemberReadModel.toResponse() = HomeMemberResponse(
     nextGame = nextGame?.toResponse(),
     lastCompletedGame = lastCompletedGame?.toResponse(),
     groups = groups.map(HomeMemberGroup::toResponse),
+    upcomingGames = upcomingGames.map(HomeUpcomingGame::toResponse),
 )
 
 private fun HomeMemberGroup.toResponse() = HomeGroupResponse(
@@ -230,6 +245,18 @@ private fun HomeLastCompletedGame.toResponse() = HomeLastCompletedGameResponse(
     startsAt = startsAt,
     confirmedCount = confirmedCount,
     ownPlayed = ownPlayed,
+)
+
+private fun HomeUpcomingGame.toResponse() = HomeUpcomingGameResponse(
+    groupId = groupId,
+    groupName = groupName,
+    gameId = gameId,
+    zoneId = zoneId,
+    startsAt = startsAt,
+    confirmationDeadline = confirmationDeadline,
+    capacity = capacity,
+    confirmedCount = confirmedCount,
+    ownStatus = ownStatus?.name,
 )
 
 private fun HomeAdminGroup.toResponse() = HomeAdminGroupResponse(
