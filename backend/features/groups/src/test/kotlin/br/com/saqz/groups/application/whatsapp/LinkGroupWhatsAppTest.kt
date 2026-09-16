@@ -168,9 +168,19 @@ class LinkGroupWhatsAppTest {
     fun `join rejected by the provider is an invalid invite`() {
         val fixture = fixture()
         fixture.directory.joinFailure = DirectoryError.NotInGroup
+        fixture.directory.member = false
 
         assertSame(LinkGroupWhatsAppResult.InvalidInvite, fixture.useCase.execute(actor, groupId, "AbCdEf123456"))
         assertTrue(fixture.bindings.upserted.isEmpty())
+    }
+
+    @Test
+    fun `join rejected after the instance is already in the group still binds`() {
+        val fixture = fixture()
+        fixture.directory.joinFailure = DirectoryError.NotInGroup
+
+        assertIs<LinkGroupWhatsAppResult.Linked>(fixture.useCase.execute(actor, groupId, "AbCdEf123456"))
+        assertEquals(1, fixture.bindings.upserted.size)
     }
 
     private fun fixture(

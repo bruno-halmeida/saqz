@@ -104,7 +104,12 @@ class UazapiGroupDirectory(private val client: UazapiClient) : WhatsAppGroupDire
         participant, "PhoneNumber", "phoneNumber", "phone", "Phone", "JID", "Jid", "jid", "id", "ID",
     )
 
-    private fun digits(value: String) = value.filter(Char::isDigit)
+    /**
+     * WhatsApp multi-device JIDs look like `551153040175:2@s.whatsapp.net`. Taking every
+     * digit would keep the device index (`…01752`) and miss the participant `PhoneNumber`.
+     */
+    private fun digits(value: String) =
+        value.substringBefore("@").substringBefore(":").filter(Char::isDigit)
 
     private fun missingGroup(error: UazapiApiException) =
         error.statusCode() == 500 && error.responseBody()?.contains("that group does not exist") == true

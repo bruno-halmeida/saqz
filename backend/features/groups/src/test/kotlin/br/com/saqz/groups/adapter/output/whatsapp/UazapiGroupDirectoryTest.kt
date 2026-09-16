@@ -157,6 +157,29 @@ class UazapiGroupDirectoryTest {
     }
 
     @Test
+    fun `instanceStatus strips the multi-device suffix from a textual jid`() {
+        val server = Server()
+        server.on("/instance/status") { 200 to statusJson(connected = true, jid = "$INSTANCE_PHONE:2@s.whatsapp.net") }
+        try {
+            assertEquals(INSTANCE_PHONE, directory(server).instanceStatus())
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun `isMember matches the instance phone when the status jid has a device suffix`() {
+        val server = Server()
+        server.on("/instance/status") { 200 to statusJson(connected = true, jid = "$INSTANCE_PHONE:2@s.whatsapp.net") }
+        server.on("/group/info") { 200 to groupJson(participants = listOf(ADMIN_PHONE to true, INSTANCE_PHONE to false)) }
+        try {
+            assertTrue(directory(server).isMember(GROUP_JID))
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
     fun `instanceStatus throws Disconnected when the instance is not connected`() {
         val server = Server()
         server.on("/instance/status") { 200 to statusJson(connected = false) }
@@ -201,7 +224,7 @@ class UazapiGroupDirectoryTest {
         return mapper.writeValueAsString(group)
     }
 
-    private fun statusJson(connected: Boolean): String {
+    private fun statusJson(connected: Boolean, jid: String? = null): String {
         val instance = mapper.createObjectNode()
         instance.put("id", "i")
         instance.put("name", "saqz-principal")
@@ -211,9 +234,13 @@ class UazapiGroupDirectoryTest {
         val status = mapper.createObjectNode()
         status.put("connected", connected)
         status.put("loggedIn", connected)
-        val jid = status.putObject("jid")
-        jid.put("user", INSTANCE_PHONE)
-        jid.put("server", "s.whatsapp.net")
+        if (jid != null) {
+            status.put("jid", jid)
+        } else {
+            val node = status.putObject("jid")
+            node.put("user", INSTANCE_PHONE)
+            node.put("server", "s.whatsapp.net")
+        }
         val root = mapper.createObjectNode()
         root.set<JsonNode>("instance", instance)
         root.set<JsonNode>("status", status)

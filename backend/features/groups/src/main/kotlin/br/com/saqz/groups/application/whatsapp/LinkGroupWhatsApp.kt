@@ -80,10 +80,13 @@ class LinkGroupWhatsApp(
         try {
             directory.join(code)
         } catch (error: DirectoryError) {
-            return when (error) {
-                DirectoryError.InvalidInvite, DirectoryError.NotInGroup -> LinkGroupWhatsAppResult.InvalidInvite
-                DirectoryError.Disconnected -> LinkGroupWhatsAppResult.InstanceDisconnected
-                is DirectoryError.Unavailable -> LinkGroupWhatsAppResult.ProviderUnavailable
+            val alreadyMember = runCatching { directory.isMember(invite.jid) }.getOrDefault(false)
+            if (!alreadyMember) {
+                return when (error) {
+                    DirectoryError.InvalidInvite, DirectoryError.NotInGroup -> LinkGroupWhatsAppResult.InvalidInvite
+                    DirectoryError.Disconnected -> LinkGroupWhatsAppResult.InstanceDisconnected
+                    is DirectoryError.Unavailable -> LinkGroupWhatsAppResult.ProviderUnavailable
+                }
             }
         }
 
