@@ -181,7 +181,7 @@ class JdbcGroupReadRepositoryIntegrationTest {
         assertEquals(10, snapshot.financeDefaults?.monthlyDueDay)
         assertEquals(true, snapshot.gameConfig?.mensalistaPriority)
         assertEquals(GroupPromotionMode.FIFO, snapshot.gameConfig?.promotionMode)
-        assertEquals(false, snapshot.gameConfig?.autoConfirmEnabled)
+        assertEquals(true, snapshot.gameConfig?.autoConfirmEnabled)
     }
 
     @Test
@@ -190,14 +190,14 @@ class JdbcGroupReadRepositoryIntegrationTest {
         val group = insertCompleteGroup(owner)
         execute(
             "UPDATE access_groups SET mensalista_priority = false, promotion_mode = 'MANUAL', " +
-                "auto_confirm_enabled = true WHERE id = '$group'",
+                "auto_confirm_enabled = false WHERE id = '$group'",
         )
 
         val snapshot = requireNotNull(repository.find(GroupReadKey(owner, group)))
 
         assertEquals(false, snapshot.gameConfig?.mensalistaPriority)
         assertEquals(GroupPromotionMode.MANUAL, snapshot.gameConfig?.promotionMode)
-        assertEquals(true, snapshot.gameConfig?.autoConfirmEnabled)
+        assertEquals(false, snapshot.gameConfig?.autoConfirmEnabled)
     }
 
     @Test

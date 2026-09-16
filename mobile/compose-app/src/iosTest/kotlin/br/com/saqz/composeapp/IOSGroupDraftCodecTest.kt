@@ -62,7 +62,7 @@ class IOSGroupDraftCodecTest {
         val form = codec.decodeSetup(oldPayload).form
         assertTrue(form.mensalistaPriority)
         assertEquals(PromotionMode.FIFO, form.promotionMode)
-        assertFalse(form.autoConfirmEnabled)
+        assertTrue(form.autoConfirmEnabled)
     }
 
     @Test

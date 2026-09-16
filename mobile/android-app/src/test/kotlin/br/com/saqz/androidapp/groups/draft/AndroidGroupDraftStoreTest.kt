@@ -29,7 +29,7 @@ class AndroidGroupDraftStoreTest {
         val form = success(f.store.readSetup(GroupDraftKey(GroupDraftResource.UPDATE_GROUP, GROUP))).form
         assertTrue(form.mensalistaPriority)
         assertEquals(PromotionMode.FIFO, form.promotionMode)
-        assertFalse(form.autoConfirmEnabled)
+        assertTrue(form.autoConfirmEnabled)
     }
 
     @Test fun gameDraftRoundTripsExactResourceEtagKeyAndAllowedValues() {

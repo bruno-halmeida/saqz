@@ -45,11 +45,13 @@ export async function seed(sql, scenarioNames) {
     const secondGroup = randomUUID();
     // Only preconditions use SQL, in this run's disposable DB. Every tested action uses UI.
     // No subscription/provider payment is simulated as a tested scenario.
+    // auto-confirm is a product default (on); scenarios pin it off to keep their assertions about
+    // explicit confirmations, waitlists and reminder recipients deterministic.
     await sql(`BEGIN;
       INSERT INTO access_groups (id,owner_user_id,creation_key,name,time_zone,profile_status,modality,composition,
-        default_capacity,default_game_fee_cents,mensalista_priority,created_at,updated_at) VALUES
-        ('${group}','${owner.id}','${randomUUID()}','Volei ${name}','America/Sao_Paulo','COMPLETE','COURT_VOLLEYBALL','MIXED',2,2000,false,now(),now()),
-        ('${secondGroup}','${owner.id}','${randomUUID()}','Praia ${name}','America/Sao_Paulo','COMPLETE','BEACH_VOLLEYBALL','MIXED',2,2000,false,now(),now());
+        default_capacity,default_game_fee_cents,mensalista_priority,auto_confirm_enabled,created_at,updated_at) VALUES
+        ('${group}','${owner.id}','${randomUUID()}','Volei ${name}','America/Sao_Paulo','COMPLETE','COURT_VOLLEYBALL','MIXED',2,2000,false,false,now(),now()),
+        ('${secondGroup}','${owner.id}','${randomUUID()}','Praia ${name}','America/Sao_Paulo','COMPLETE','BEACH_VOLLEYBALL','MIXED',2,2000,false,false,now(),now());
       INSERT INTO group_memberships (group_id,user_id,role,membership_type,created_at,updated_at) VALUES
         ('${group}','${owner.id}','ADMIN','AVULSO',now(),now()),
         ('${group}','${athlete.id}','ATHLETE','MENSALISTA',now(),now()),

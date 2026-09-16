@@ -58,21 +58,21 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         assertEquals(2500, context?.defaults?.gameFeeCents)
         assertEquals(true, context?.defaults?.mensalistaPriority)
         assertEquals(GroupPromotionMode.FIFO, context?.defaults?.promotionMode)
-        assertEquals(false, context?.defaults?.autoConfirmEnabled)
+        assertEquals(true, context?.defaults?.autoConfirmEnabled)
     }
 
     @Test fun `creation context reads back custom game config fields`() {
         val fixture = fixture()
         execute(
             "UPDATE access_groups SET mensalista_priority = false, promotion_mode = 'MANUAL', " +
-                "auto_confirm_enabled = true WHERE id = '${fixture.group}'",
+                "auto_confirm_enabled = false WHERE id = '${fixture.group}'",
         )
 
         val context = fixture.repository.creationContext(fixture.owner, fixture.group)
 
         assertEquals(false, context?.defaults?.mensalistaPriority)
         assertEquals(GroupPromotionMode.MANUAL, context?.defaults?.promotionMode)
-        assertEquals(true, context?.defaults?.autoConfirmEnabled)
+        assertEquals(false, context?.defaults?.autoConfirmEnabled)
     }
 
     @Test fun `deleted group rejects game reads and creation`() {

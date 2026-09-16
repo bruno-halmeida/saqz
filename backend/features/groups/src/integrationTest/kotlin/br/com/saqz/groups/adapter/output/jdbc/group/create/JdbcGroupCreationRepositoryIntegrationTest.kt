@@ -234,7 +234,7 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         assertEquals(7, count("SELECT monthly_due_day FROM access_groups WHERE id = '${group.id}'"))
         assertEquals(true, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '${group.id}'"))
         assertEquals("FIFO", text("SELECT promotion_mode FROM access_groups WHERE id = '${group.id}'"))
-        assertEquals(false, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '${group.id}'"))
+        assertEquals(true, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '${group.id}'"))
     }
 
     @Test

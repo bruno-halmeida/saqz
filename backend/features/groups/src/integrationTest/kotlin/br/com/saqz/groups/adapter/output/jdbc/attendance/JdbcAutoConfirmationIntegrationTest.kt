@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.attendance
 
+import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcGroupCommunicationRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameOccurrenceRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcOccurrenceMaterializationRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
@@ -8,6 +9,7 @@ import br.com.saqz.groups.application.attendance.AutoConfirmAttendance
 import br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort
 import br.com.saqz.groups.application.attendance.AutoConfirmationOptInUpdate
 import br.com.saqz.groups.application.attendance.RespondAttendance
+import br.com.saqz.groups.application.communication.reminderBody
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.game.ChangeGameLifecycle
 import br.com.saqz.groups.application.game.GameCommandResult
@@ -74,6 +76,11 @@ class JdbcAutoConfirmationIntegrationTest {
         assertEquals(1, count("SELECT count(*) FROM game_attendance WHERE game_id='${fixture.game}' AND status='WAITLISTED'"))
         assertEquals(3, count("SELECT count(*) FROM attendance_events WHERE game_id='${fixture.game}' AND source='SYSTEM'"))
         assertEquals(0, count("SELECT count(*) FROM group_charges"))
+        val roster = JdbcGroupCommunicationRepository(dataSource).reminderRoster(fixture.group, fixture.game)
+        assertEquals(
+            "*Treino*\n\n✅ Confirmados:\nearly\nmiddle\n\n🕒 Lista de espera:\nlate",
+            reminderBody("Treino", roster),
+        )
 
         val self = RespondAttendance(
             JdbcTransactionRunner(dataSource),
@@ -185,7 +192,7 @@ class JdbcAutoConfirmationIntegrationTest {
     }
 
     private fun user(subject: String): UUID = UUID.randomUUID().also { id ->
-        execute("INSERT INTO access_users (id,firebase_subject,email_verified,display_name,created_at,updated_at) VALUES ('$id','$subject-$id',true,'User',now(),now())")
+        execute("INSERT INTO access_users (id,firebase_subject,email_verified,display_name,created_at,updated_at) VALUES ('$id','$subject-$id',true,'$subject',now(),now())")
     }
 
     private fun execute(sql: String) { connection().use { it.createStatement().use { statement -> statement.execute(sql) } } }

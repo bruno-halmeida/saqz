@@ -148,7 +148,7 @@ private data class PersistedGroupSetupForm(
     val monthlyDueDay: Int? = null,
     val mensalistaPriority: Boolean = true,
     val promotionMode: PersistedPromotionMode = PersistedPromotionMode.FIFO,
-    val autoConfirmEnabled: Boolean = false,
+    val autoConfirmEnabled: Boolean = true,
 )
 
 @Serializable

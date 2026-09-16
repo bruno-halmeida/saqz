@@ -144,7 +144,7 @@ class JdbcGroupCreationRepository(
             :monthlyFeeCents, :monthlyDueDay,
             COALESCE(CAST(:mensalistaPriority AS boolean), true),
             COALESCE(:promotionMode, 'FIFO'::public.promotion_mode),
-            COALESCE(CAST(:autoConfirmEnabled AS boolean), false),
+            COALESCE(CAST(:autoConfirmEnabled AS boolean), true),
             :pixKey, :pixLabel,
             now(), now()
         )
