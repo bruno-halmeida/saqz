@@ -2,9 +2,11 @@ package br.com.saqz.groups.adapter.output.jdbc.communication
 
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
+import br.com.saqz.groups.adapter.output.jdbc.whatsapp.JdbcGroupWhatsAppBindingRepository
 import br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory
 import br.com.saqz.groups.application.communication.*
 import br.com.saqz.groups.application.whatsapp.DirectoryError
+import br.com.saqz.groups.application.whatsapp.LinkGroupWhatsApp
 import br.com.saqz.groups.application.whatsapp.WhatsAppGroupDirectory
 import br.com.saqz.groups.application.whatsapp.WhatsAppGroupInfo
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
@@ -23,6 +25,7 @@ class NotificationWhatsAppGroupIntegrationTest {
     private lateinit var transaction: JdbcTransactionRunner
     private lateinit var service: GroupCommunicationService
     private lateinit var queue: JdbcNotificationWhatsAppGroup
+    private lateinit var link: LinkGroupWhatsApp
     private lateinit var owner: UUID
     private lateinit var member: UUID
     private lateinit var group: UUID
@@ -34,8 +37,9 @@ class NotificationWhatsAppGroupIntegrationTest {
         transaction = JdbcTransactionRunner(dataSource)
         service = GroupCommunicationService(transaction, JdbcGroupReadRepository(dataSource), JdbcGroupCommunicationRepository(dataSource))
         queue = JdbcNotificationWhatsAppGroup(dataSource, transaction, BranchAttendanceLinkFactory(URI("https://saqz.test-app.link")))
+        link = LinkGroupWhatsApp(transaction, JdbcGroupReadRepository(dataSource), JdbcGroupWhatsAppBindingRepository(dataSource), directory)
         directory.reset()
-        owner = user("Owner")
+        owner = user("Owner", "+$OWNER_PHONE")
         member = user("Member")
         group = UUID.randomUUID()
         jdbc.sql("""INSERT INTO access_groups (id, owner_user_id, creation_key, name, time_zone, created_at, updated_at)
@@ -189,6 +193,32 @@ class NotificationWhatsAppGroupIntegrationTest {
         assertEquals(1, service.inbox(member, null).success().items.size)
     }
 
+    @Test fun `relinking with a different jid cancels the pending jobs of the previous binding`() {
+        binding()
+        publish(MessageChannel.NOTICE)
+        assertEquals(1, countStatus("PENDING"))
+        directory.invite = WhatsAppGroupInfo(NEW_JID, "Novo Grupo", listOf(OWNER_PHONE))
+
+        link.execute(owner, group, "NewInvite01")
+
+        assertEquals("CANCELLED", status())
+        assertEquals(0, attempts())
+        assertEquals(0, countStatus("PENDING"))
+        assertEquals(NEW_JID, bindingJid())
+    }
+
+    @Test fun `relinking the same jid preserves the pending jobs`() {
+        binding()
+        publish(MessageChannel.NOTICE)
+        assertEquals(1, countStatus("PENDING"))
+        directory.invite = WhatsAppGroupInfo(GROUP_JID, "Vôlei do CERET", listOf(OWNER_PHONE))
+
+        link.execute(owner, group, "SameInvite01")
+
+        assertEquals("PENDING", status())
+        assertEquals(GROUP_JID, bindingJid())
+    }
+
     private fun binding(jid: String = GROUP_JID, name: String = "Vôlei do CERET", enabled: Boolean = true, broken: Boolean = false) {
         jdbc.sql("""
             INSERT INTO group_whatsapp_bindings
@@ -225,16 +255,17 @@ class NotificationWhatsAppGroupIntegrationTest {
     }
 
     private fun status() = jdbc.sql("SELECT status FROM notification_whatsapp_group_queue").query(String::class.java).single()
+    private fun bindingJid() = jdbc.sql("SELECT whatsapp_jid FROM group_whatsapp_bindings").query(String::class.java).single()
     private fun attempts() = jdbc.sql("SELECT attempts FROM notification_whatsapp_group_queue").query(Int::class.java).single()
     private fun count(table: String) = jdbc.sql("SELECT count(*) FROM $table").query(Long::class.java).single()
     private fun countStatus(value: String) = jdbc.sql("SELECT count(*) FROM notification_whatsapp_group_queue WHERE status = :value")
         .param("value", value).query(Int::class.java).single()
     private fun isBroken() = jdbc.sql("SELECT broken_at IS NOT NULL FROM group_whatsapp_bindings").query(Boolean::class.java).single()
 
-    private fun user(name: String): UUID = UUID.randomUUID().also { id ->
-        jdbc.sql("""INSERT INTO access_users(id, firebase_subject, email_verified, display_name, created_at, updated_at)
-            VALUES (:id, :subject, true, :name, now(), now())""")
-            .param("id", id).param("subject", id.toString()).param("name", name).update()
+    private fun user(name: String, phone: String? = null): UUID = UUID.randomUUID().also { id ->
+        jdbc.sql("""INSERT INTO access_users(id, firebase_subject, email_verified, display_name, phone, created_at, updated_at)
+            VALUES (:id, :subject, true, :name, :phone, now(), now())""")
+            .param("id", id).param("subject", id.toString()).param("name", name).param("phone", phone).update()
     }
 
     private fun <T> CommunicationResult<T>.success(): T = assertIs<CommunicationResult.Success<T>>(this).value
@@ -243,6 +274,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         var groupError: DirectoryError? = null
         var member = true
         var infoChecks = 0
+        var invite = WhatsAppGroupInfo(GROUP_JID, "Vôlei do CERET", emptyList())
 
         override fun groupInfo(jid: String): WhatsAppGroupInfo {
             infoChecks += 1
@@ -252,18 +284,21 @@ class NotificationWhatsAppGroupIntegrationTest {
 
         override fun isMember(jid: String): Boolean = member
         override fun instanceStatus(): String = INSTANCE_JID
-        override fun inviteInfo(inviteCode: String): WhatsAppGroupInfo = WhatsAppGroupInfo(GROUP_JID, "Vôlei do CERET", emptyList())
+        override fun inviteInfo(inviteCode: String): WhatsAppGroupInfo = invite
         override fun join(inviteCode: String) = Unit
 
         fun reset() {
             groupError = null
             member = true
             infoChecks = 0
+            invite = WhatsAppGroupInfo(GROUP_JID, "Vôlei do CERET", emptyList())
         }
     }
 
     private companion object {
         const val GROUP_JID = "120363000000000000@g.us"
+        const val NEW_JID = "120363111111111111@g.us"
         const val INSTANCE_JID = "5511999990000"
+        const val OWNER_PHONE = "5511988887777"
     }
 }

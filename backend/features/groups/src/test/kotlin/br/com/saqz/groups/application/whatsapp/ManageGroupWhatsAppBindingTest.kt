@@ -133,6 +133,8 @@ class ManageGroupWhatsAppBindingTest {
 
         override fun upsert(binding: GroupWhatsAppBinding) = Unit
 
+        override fun cancelPendingByGroup(groupId: UUID): Int = 0
+
         override fun setEnabled(groupId: UUID, enabled: Boolean) {
             this.enabled += groupId to enabled
         }

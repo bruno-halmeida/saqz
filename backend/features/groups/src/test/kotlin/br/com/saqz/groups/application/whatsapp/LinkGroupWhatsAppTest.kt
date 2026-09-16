@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.whatsapp
 
+import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.application.read.GroupReadSnapshot
@@ -186,7 +187,11 @@ class LinkGroupWhatsAppTest {
         val bindings = RecordingBindings()
         bindings.phones = phones
         val directory = FakeDirectory()
-        return Fixture(LinkGroupWhatsApp(read, bindings, directory), bindings, directory)
+        return Fixture(LinkGroupWhatsApp(ImmediateTransactionRunner, read, bindings, directory), bindings, directory)
+    }
+
+    private object ImmediateTransactionRunner : TransactionRunner {
+        override fun <T> inTransaction(block: () -> T): T = block()
     }
 
     private fun binding(targetGroup: UUID) = GroupWhatsAppBinding(
@@ -229,6 +234,8 @@ class LinkGroupWhatsAppTest {
         override fun upsert(binding: GroupWhatsAppBinding) {
             upserted += binding
         }
+
+        override fun cancelPendingByGroup(groupId: UUID): Int = 0
 
         override fun setEnabled(groupId: UUID, enabled: Boolean) = Unit
 

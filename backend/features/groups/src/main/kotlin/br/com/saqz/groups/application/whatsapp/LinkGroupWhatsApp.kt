@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.whatsapp
 
+import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.domain.GroupRole
@@ -38,6 +39,7 @@ sealed interface LinkGroupWhatsAppResult {
  * a outro grupo Saqz é rejeitado antes de entrar; o mesmo grupo re-vinculando é upsert normal.
  */
 class LinkGroupWhatsApp(
+    private val transactionRunner: TransactionRunner,
     private val groups: GroupReadRepository,
     private val bindings: GroupWhatsAppBindingRepository,
     private val directory: WhatsAppGroupDirectory,
@@ -118,7 +120,11 @@ class LinkGroupWhatsApp(
             brokenAt = null,
             createdBy = actor,
         )
-        bindings.upsert(binding)
+        transactionRunner.inTransaction {
+            val replaced = bindings.find(groupId)?.whatsappJid?.let { it != invite.jid } ?: false
+            bindings.upsert(binding)
+            if (replaced) bindings.cancelPendingByGroup(groupId)
+        }
         return LinkGroupWhatsAppResult.Linked(binding)
     }
 

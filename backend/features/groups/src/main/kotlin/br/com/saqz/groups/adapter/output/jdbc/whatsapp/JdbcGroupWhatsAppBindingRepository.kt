@@ -38,6 +38,10 @@ class JdbcGroupWhatsAppBindingRepository(dataSource: DataSource) : GroupWhatsApp
             .update()
     }
 
+    override fun cancelPendingByGroup(groupId: UUID): Int = jdbc.sql(CANCEL_PENDING_BY_GROUP)
+        .param("groupId", groupId)
+        .update()
+
     override fun setEnabled(groupId: UUID, enabled: Boolean) {
         jdbc.sql(SET_ENABLED)
             .param("groupId", groupId)
@@ -94,6 +98,12 @@ class JdbcGroupWhatsAppBindingRepository(dataSource: DataSource) : GroupWhatsApp
                 broken_at = EXCLUDED.broken_at,
                 created_by = EXCLUDED.created_by,
                 updated_at = now()
+        """
+
+        const val CANCEL_PENDING_BY_GROUP = """
+            UPDATE notification_whatsapp_group_queue q SET status = 'CANCELLED', completed_at = now()
+            WHERE q.status = 'PENDING'
+              AND q.message_id IN (SELECT id FROM group_messages WHERE group_id = :groupId)
         """
 
         const val SET_ENABLED = """

@@ -16,6 +16,13 @@ interface GroupWhatsAppBindingRepository {
 
     fun upsert(binding: GroupWhatsAppBinding)
 
+    /**
+     * Cancela os jobs `PENDING` da fila de grupo daquele grupo Saqz (`status='CANCELLED'`,
+     * `completed_at=now()`), devolvendo quantos foram cancelados. Cancelado não incrementa
+     * `attempts`, como no worker. Usado ao substituir o vínculo por um novo JID.
+     */
+    fun cancelPendingByGroup(groupId: UUID): Int
+
     fun setEnabled(groupId: UUID, enabled: Boolean)
 
     fun markBroken(groupId: UUID)

@@ -64,10 +64,11 @@ class NotificationWhatsAppConfiguration {
     @Bean fun whatsAppGroupDirectory(client: UazapiClient): WhatsAppGroupDirectory = UazapiGroupDirectory(client)
 
     @Bean fun linkGroupWhatsApp(
+        transaction: JdbcTransactionRunner,
         groups: JdbcGroupReadRepository,
         bindings: GroupWhatsAppBindingRepository,
         directory: WhatsAppGroupDirectory,
-    ) = LinkGroupWhatsApp(groups, bindings, directory)
+    ) = LinkGroupWhatsApp(transaction, groups, bindings, directory)
 
     @Bean fun manageGroupWhatsAppBinding(
         groups: JdbcGroupReadRepository,

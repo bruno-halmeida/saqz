@@ -3,6 +3,7 @@ package br.com.saqz.bootstrap
 import br.com.saqz.groups.adapter.input.http.GroupWhatsAppBindingController
 import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
+import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.adapter.output.jdbc.whatsapp.JdbcGroupWhatsAppBindingRepository
 import br.com.saqz.groups.application.whatsapp.DirectoryError
 import br.com.saqz.groups.application.whatsapp.LinkGroupWhatsApp
@@ -223,7 +224,7 @@ class GroupWhatsAppBindingEndpointIntegrationTest {
             val bindings = JdbcGroupWhatsAppBindingRepository(dataSource)
             return GroupWhatsAppBindingController(
                 VerifiedGroupActorResolver { UUID.fromString(it.subject) },
-                LinkGroupWhatsApp(groups, bindings, directory),
+                LinkGroupWhatsApp(JdbcTransactionRunner(dataSource), groups, bindings, directory),
                 ManageGroupWhatsAppBinding(groups, bindings),
             )
         }
