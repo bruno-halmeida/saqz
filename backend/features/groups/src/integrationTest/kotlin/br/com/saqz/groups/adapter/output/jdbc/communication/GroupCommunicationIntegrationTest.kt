@@ -140,9 +140,10 @@ class GroupCommunicationIntegrationTest {
         assertEquals(1, service.publish(owner, group, MessageChannel.CHAT, UUID.randomUUID(), "Mensagem liberada").success().recipientCount)
         assertEquals(2, service.inbox(member, null).success().items.size)
     }
-    @Test fun `reminders only reach active nonresponders and retries preserve recipients`() {
+    @Test fun `reminders list confirmed out and pending and retries preserve recipients`() {
         val confirmed = user("Confirmed Person").also { membership(it) }
         val declined = user("Declined Person").also { membership(it) }
+        val waitlisted = user("Waitlisted Person").also { membership(it) }
         val inactive = user("Inactive Person").also { membership(it, active = false) }
         val game = UUID.randomUUID()
         jdbc.sql("""
@@ -152,17 +153,31 @@ class GroupCommunicationIntegrationTest {
                 ((now() AT TIME ZONE 'UTC')::date + 2) + time '12:00', 90, now() + interval '1 day',
                 'Arena', 'Rua Central 100', 12, 'PUBLISHED', now(), now())
         """.trimIndent()).param("game", game).param("group", group).update()
-        for ((person, status) in listOf(confirmed to "CONFIRMED", declined to "DECLINED")) {
-            jdbc.sql("INSERT INTO game_attendance (game_id, group_id, member_user_id, status, responded_at, updated_at, version, member_display_name) VALUES (:game, :group, :member, :status, now(), now(), 1, 'Person')")
-                .param("game", game).param("group", group).param("member", person).param("status", status, java.sql.Types.OTHER).update()
+        for ((row, sequence) in listOf(
+            Triple(confirmed, "CONFIRMED", "Ana") to null,
+            Triple(declined, "DECLINED", "Bia") to null,
+            Triple(waitlisted, "WAITLISTED", "Caio") to 1L,
+        )) {
+            val (person, status, name) = row
+            jdbc.sql("INSERT INTO game_attendance (game_id, group_id, member_user_id, status, waitlist_sequence, responded_at, updated_at, version, member_display_name) VALUES (:game, :group, :member, :status, :sequence, now(), now(), 1, :name)")
+                .param("game", game).param("group", group).param("member", person)
+                .param("status", status, java.sql.Types.OTHER).param("sequence", sequence, java.sql.Types.BIGINT)
+                .param("name", name).update()
         }
         assertEquals(CommunicationResult.Failure(CommunicationError.FORBIDDEN), service.remind(member, group, game, UUID.randomUUID()))
         assertEquals(CommunicationResult.Failure(CommunicationError.INVALID), service.remind(owner, group, UUID.randomUUID(), UUID.randomUUID()))
         val request = UUID.randomUUID()
         val reminder = service.remind(owner, group, game, request).success()
         assertEquals(1, reminder.recipientCount)
+        assertEquals(
+            "*Treino*\n\n✅ Confirmados:\nAna\n\n🕒 Lista de espera:\nCaio\n\n❌ Fora:\nBia\n\n⏳ A confirmar:\nMember Person, Owner Person",
+            reminder.body,
+        )
+        assertFalse(reminder.body.contains("Inactive Person"))
         assertEquals(game, service.inbox(member, null).success().items.single().message.gameId)
-        for (person in listOf(confirmed, declined, inactive, owner)) assertTrue(service.inbox(person, null).success().items.isEmpty())
+        for (person in listOf(confirmed, declined, waitlisted, inactive, owner)) {
+            assertTrue(service.inbox(person, null).success().items.isEmpty())
+        }
         assertEquals(reminder, service.remind(owner, group, game, request).success())
         assertEquals(1, service.inbox(member, null).success().items.size)
         assertEquals(CommunicationResult.Failure(CommunicationError.INVALID), service.messages(member, group, MessageChannel.REMINDER, null))

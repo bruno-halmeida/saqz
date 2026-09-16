@@ -20,6 +20,14 @@ data class GroupMessage(
 
 data class CommunicationPage<T>(val items: List<T>, val nextCursor: Long?)
 data class GroupNotification(val sequence: Long, val message: GroupMessage, val read: Boolean)
+
+/** Ordem das seções no corpo: confirmados, lista de espera, fora e a confirmar. */
+data class ReminderRoster(
+    val confirmed: List<String>,
+    val waitlisted: List<String>,
+    val declined: List<String>,
+    val pending: List<String>,
+)
 data class PushPreferences(val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true, val charges: Boolean = true)
 data class WhatsAppPreferences(val notices: Boolean = false, val reminders: Boolean = false, val charges: Boolean = false)
 data class NotificationPreferences(
@@ -39,6 +47,7 @@ interface GroupCommunicationRepository {
     fun findRequest(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID): GroupMessage?
     fun publish(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID, body: String, gameId: UUID?): GroupMessage
     fun reminderTitle(groupId: UUID, gameId: UUID): String?
+    fun reminderRoster(groupId: UUID, gameId: UUID): ReminderRoster
     fun inbox(actor: UUID, before: Long?): List<GroupNotification>
     fun markRead(actor: UUID, sequence: Long)
     fun preferences(actor: UUID): NotificationPreferences

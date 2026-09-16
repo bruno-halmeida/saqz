@@ -284,7 +284,13 @@ internal class ReminderE2eTest : InstalledE2e("reminders") {
         assertEquals("REMINDER", message.getString("channel"))
         assertEquals(actor("owner").getString("id"), message.getString("authorId"))
         assertEquals(1, message.getInt("recipientCount"))
-        assertEquals("Confirme sua presença: ${data.getString("gameTitle")}", message.getString("body"))
+        assertEquals(
+            "*${data.getString("gameTitle")}*\n\n" +
+                "✅ Confirmados:\nE2E reminders-admin, E2E reminders-athlete\n\n" +
+                "❌ Fora:\nE2E reminders-declined\n\n" +
+                "⏳ A confirmar:\nE2E reminders-owner, E2E reminders-peer",
+            message.getString("body"),
+        )
         assertNoNotifications(exceptPeer = true)
         assertEquals(before, snapshot(attendancePath))
         api("athlete", "/api/groups/$group/games/$game/notify-pending", "POST", requestId(), status = 403)

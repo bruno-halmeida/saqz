@@ -30,11 +30,15 @@
 - **CHARGE permanece 100% no fluxo DM atual**: opt-in individual, telefone no perfil, retry,
   cancelamento. As colunas `whatsapp_notices`/`whatsapp_reminders` ficam **inertes** (mantidas por
   compatibilidade de API; o mobile preserva seus valores ao salvar preferências).
-- **Texto da mensagem de grupo** (templates exatos, nada de valor financeiro, pessoa ou telefone):
+- **Texto da mensagem de grupo** (templates exatos; nada de valor financeiro ou telefone; o lembrete
+  de presença lista nomes):
   - NOTICE: `Saqz · {group_name}\n{body}`
   - REMINDER: `Saqz · {group_name}\n{body}` com botão CTA de URL `Confirmar presença` → `{link}`
   (o link é o `notification_attendance_links.code` da mensagem, via `BranchAttendanceLinkFactory`;
   se o provedor recusar o botão, o envio cai para texto com `Confirmar minha presença no Saqz: {link}`).
+  - Corpo do REMINDER (`{body}`): `*{título}*` + `✅ Confirmados:`, `🕒 Lista de espera:`, `❌ Fora:`
+  e `⏳ A confirmar:` (nomes separados por vírgula, nesta ordem; seção vazia é omitida; corte em
+  2000 caracteres no último nome, com `…`).
 - **Worker de grupo**: antes de enviar cada mensagem revalida, via `group/info`: (1) vínculo ativo
   e habilitado; (2) instância consta em `Participants`; (3) para REMINDER, jogo ainda publicado,
   prazo aberto e no futuro. Falha de rede/timeout → retry (mesma política do DM: até 10 tentativas,

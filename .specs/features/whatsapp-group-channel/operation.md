@@ -51,9 +51,10 @@ o `UazapiGroupDirectory` traduz esse 500 específico para quebra de vínculo e *
 (a política de DM trataria 5xx como transitório e o worker ficaria em loop). Todos os contratos de
 parser validados no T0 estão em `evidence.md`.
 
-Corpos (sem valor financeiro, sem nome de pessoa, sem telefone):
+Corpos (NOTICE sem valor financeiro, sem nome de pessoa ou telefone; REMINDER lista os nomes por situação):
 - NOTICE: `Saqz · {grupo}\n{texto}`
-- REMINDER: `Saqz · {grupo}\n{texto}` + botão `Confirmar presença` → `{link}` (fallback de texto com a URL se o botão for recusado)
+- REMINDER: `Saqz · {grupo}\n{corpo}` + botão `Confirmar presença` → `{link}` (fallback de texto com a URL se o botão for recusado)
+- `{corpo}`: `*{título}*` + `✅ Confirmados:`, `🕒 Lista de espera:`, `❌ Fora:` e `⏳ A confirmar:` (nomes por vírgula, nesta ordem; seção vazia omitida; corte em 2000 caracteres no último nome, com `…`)
 
 ## Inspeção operacional
 

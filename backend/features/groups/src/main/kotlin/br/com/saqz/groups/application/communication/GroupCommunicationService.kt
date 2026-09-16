@@ -40,7 +40,8 @@ class GroupCommunicationService(
             } else CommunicationResult.Failure(CommunicationError.CONFLICT)
             val title = repository.reminderTitle(groupId, gameId) ?: return@inGroup invalid()
             CommunicationResult.Success(repository.publish(
-                groupId, actor, MessageChannel.REMINDER, requestId, "Confirme sua presença: $title", gameId,
+                groupId, actor, MessageChannel.REMINDER, requestId,
+                reminderBody(title, repository.reminderRoster(groupId, gameId)), gameId,
             ))
         }
 
