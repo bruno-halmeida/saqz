@@ -17,23 +17,48 @@
   .logo { width:150px; height:auto; }
   h1 { font-size:24px; line-height:1.2; margin:28px 0 12px; letter-spacing:-.02em; }
   p { font-size:15px; line-height:1.5; margin:0 0 28px; color:#3c4257; }
-  .primary {
+  .primary, .secondary {
     display:inline-flex; align-items:center; justify-content:center; width:100%;
-    padding:16px 24px; border-radius:999px; background:var(--blue); color:#fff;
-    text-decoration:none; font-size:15px; font-weight:700;
+    padding:16px 24px; border-radius:999px; text-decoration:none; font-size:15px; font-weight:700;
   }
-  .primary:active { transform:scale(.98); }
+  .primary { background:var(--blue); color:#fff; }
+  .secondary { margin-top:12px; background:transparent; color:var(--ink); border:1.5px solid rgba(7,16,37,.18); }
+  .primary:active, .secondary:active { transform:scale(.98); }
   .note { display:block; margin-top:18px; font-size:13px; line-height:1.5; color:#6b7280; }
+  [hidden] { display:none; }
 </style>
 </head>
 <body>
 <main>
   <img class="logo" src="assets/saqz-logo.svg" alt="Saqz">
   <h1>Este link abre no app Saqz</h1>
-  <p>Instale o app para entrar no grupo ou confirmar sua presença. Depois de instalar, toque no link novamente.</p>
+  <p id="lead">Instale o app para entrar no grupo ou confirmar sua presença.</p>
+  <a id="open" class="primary" hidden>Abrir no app</a>
   <!-- Quando publicados, trocar por https://apps.apple.com/app/id<APP_ID> e https://play.google.com/store/apps/details?id=app.saqz -->
-  <a class="primary" href="https://saqz.app">Baixar o app</a>
-  <span class="note">Já tem o app instalado? Toque no link de novo — ele abre direto.</span>
+  <a id="download" class="primary" href="https://saqz.app">Baixar o app</a>
+  <span class="note">Já tem o app instalado? Toque em “Abrir no app”.</span>
 </main>
+<script>
+  (function () {
+    var code = "[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]";
+    var path = location.pathname.match(new RegExp("^/attendance/(" + code + ")$"));
+    var params = new URLSearchParams(location.search);
+    var invite = params.get("saqz_invite");
+    var onboarding = params.get("saqz_onboarding");
+    var scheme = null;
+    if (path) scheme = "saqz:///attendance/" + path[1];
+    else if (invite && new RegExp("^" + code + "$").test(invite)) scheme = "saqz:///?saqz_invite=" + invite;
+    else if (onboarding && new RegExp("^" + code + "$").test(onboarding)) scheme = "saqz:///?saqz_onboarding=" + onboarding;
+    var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (!scheme || !isIOS) return;
+    var open = document.getElementById("open");
+    open.href = scheme;
+    open.hidden = false;
+    document.getElementById("download").className = "secondary";
+    document.getElementById("lead").textContent =
+      "Já tem o app instalado? Abra por aqui. Se ainda não tem, baixe abaixo.";
+  })();
+</script>
 </body>
 </html>
