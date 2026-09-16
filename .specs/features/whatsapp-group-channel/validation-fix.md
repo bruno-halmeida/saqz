@@ -11,8 +11,8 @@
 
 **PASS.** O fix entrega o desfecho exigido pela spec: re-vínculo com JID **diferente** cancela os
 jobs `PENDING` do grupo **na mesma transação** do upsert; re-vínculo do **mesmo JID** preserva os
-pendentes. Nenhum `SPEC_DEVIATION`. Um sobrevivente de mutação (M3), que é lacuna de **teste**
-(o código entregue está correto), não de produto.
+pendentes. Nenhum `SPEC_DEVIATION`. Na Rodada 1, M3 (filtro de status) sobreviveu como lacuna de
+**teste**; o teste de `2b903208` a matou na Rodada 2 — **3/3 mutações mortas** (ver seção final).
 
 ## A) Resultado ancorado na spec
 
@@ -81,7 +81,7 @@ cancel é emitido. Evidência verde: `NotificationWhatsAppGroupIntegrationTest.k
 **Nenhum `SPEC_DEVIATION`.** Ressalva não-bloqueante: não há teste que force falha para provar o
 rollback conjunto (estruturalmente correto); ver gaps.
 
-## B) Sensor de discriminação em cópia isolada
+## B) Sensor de discriminação em cópia isolada (Rodada 1)
 
 Cópia: `git archive 82d0ad82 backend > /tmp/reverify-fix.tar`, extraída em `/tmp/reverify-fix`.
 Todas as mutações aplicadas **somente na cópia**; repo intacto (`git status --porcelain` vazio
@@ -97,9 +97,13 @@ Cobertura de quem exercita `cancelPendingByGroup`: apenas os 2 testes novos de r
 `backend/features/groups/src` e `backend/bootstrap/src`); o endpoint de bootstrap não inspeciona a
 fila, e os unitários usam fakes (`LinkGroupWhatsAppTest.kt:238`, `ManageGroupWhatsAppBindingTest.kt:136`).
 
+> M3 foi re-checado em cópia nova de `origin/main` (`2b903208`) e está **MORTA** na Rodada 2 —
+> detalhes na seção final.
+
 ## Gaps ranqueados
 
-1. **[Média — lacuna de teste, não do fix] M3 sobrevive: nada distingue cancelar só `PENDING` de
+1. **[Média — lacuna de teste, não do fix; RESOLVIDO na Rodada 2 — `2b903208`] M3 sobreviveu na
+   Rodada 1: nada distinguia cancelar só `PENDING` de
    sobrescrever status terminal.** Cenário sem cobertura: job já `ACCEPTED`/`FAILED`/`CANCELLED`
    do grupo + re-vínculo com JID diferente. No código entregue ele fica intacto; um refactor que
    remova o filtro sobrescreveria `status`/`completed_at` (corrupção de histórico) sem nenhum teste
@@ -107,6 +111,9 @@ fila, e os unitários usam fakes (`LinkGroupWhatsAppTest.kt:238`, `ManageGroupWh
    e assere que o job terminal permaneceu `ACCEPTED` com `completed_at` inalterado. Adjacente:
    o **escopo por grupo** da subquery também não é discriminado (os cenários atuais têm um único
    grupo; um cancelamento global passaria) — vale assert com 2 grupos e job `PENDING` no outro.
+   **Status:** resolvido em `2b903208` — o teste `relinking keeps terminal jobs of the previous
+   binding intact` mata M3 (ver "Rodada 2"). A lacuna adjacente de **escopo** segue sem teste
+   dedicado (não foi alvo desta rodada; ver item 2 sobre evidência dinâmica).
 2. **[Baixa] Sem teste de atomicidade/rollback.** A estrutura usa `TransactionTemplate`
    (correta), mas nenhum teste força falha no upsert/cancel para provar que ambos revertem juntos.
    Não contradiz a spec; é lacuna de evidência dinâmica.
@@ -120,7 +127,37 @@ fila, e os unitários usam fakes (`LinkGroupWhatsAppTest.kt:238`, `ManageGroupWh
 | A) Desfecho da spec (`spec.md:16-18`) | **PASS** | `LinkGroupWhatsApp.kt:123-127` + 2 testes novos verdes |
 | B) M1 | MORTA | `NotificationWhatsAppGroupIntegrationTest.kt:218` |
 | B) M2 | MORTA | `NotificationWhatsAppGroupIntegrationTest.kt:204` |
-| B) M3 | **SOBREVIVENTE (gap 1)** | 573/573 verdes com SQL mutado compilado |
+| B) M3 | **MORTA** (Rodada 2, `2b903208`) | `NotificationWhatsAppGroupIntegrationTest.kt:233` — `expected: <1> but was: <0>` |
 
-Gate no HEAD: **1263 testes, 0 falhas** (`test` 690 + `integrationTest` 573). Fix verificado: o gap
-1 de `validation.md` está resolvido no produto; resta 1 lacuna de teste (M3) ranqueada acima.
+Gate na Rodada 1 (HEAD `82d0ad82`): **1263 testes, 0 falhas** (`test` 690 + `integrationTest` 573).
+Fix verificado: o gap 1 de `validation.md` está resolvido no produto e a lacuna de teste (M3) foi
+fechada em `2b903208`; sensor final **3/3 mortas**.
+
+---
+
+## Rodada 2 — M3 re-checado (2b903208)
+
+- **Base:** `origin/main` = `2b903208` (`test(groups): cover terminal group jobs preserved across
+  rebind`); commit desta verificação rebaseado por cima; árvore limpa antes/depois.
+- **Cópia isolada nova:** `git archive origin/main backend > /tmp/reverify-round2.tar`, extraída em
+  `/tmp/reverify-round2`; mutação aplicada **somente na cópia**; cópia descartada ao fim; repo
+  intacto (`git status --porcelain` vazio).
+- **Mutação M3 (re-aplicada):** remover `AND q.status = 'PENDING'` do SQL de
+  `cancelPendingByGroup` (`JdbcGroupWhatsAppBindingRepository.kt:105` na cópia).
+- **Comando:**
+  ```
+  cd /tmp/reverify-round2/backend && JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
+    ./gradlew :features:groups:integrationTest --tests '*NotificationWhatsAppGroupIntegrationTest' --rerun-tasks
+  ```
+- **Resultado: M3 MORTA.** `BUILD FAILED` (`EXIT=1`); `NotificationWhatsAppGroupIntegrationTest`
+  com **16 testes / 1 falha**:
+  - Teste que matou: `relinking keeps terminal jobs of the previous binding intact()`
+  - Asserção/linha: `NotificationWhatsAppGroupIntegrationTest.kt:233` —
+    `AssertionFailedError: expected: <1> but was: <0>` (`assertEquals(1, countStatus("ACCEPTED"))`
+    após o re-vínculo: sem o filtro, o job terminal `ACCEPTED` é sobrescrito para `CANCELLED`).
+  - Classe mutante compilada confirmada sem a string do filtro (0 ocorrências de
+    `q.status = 'PENDING'` no `.class`), logo a mutação esteve ativa na execução.
+- **Baseline (sem mutação, repo em `2b903208`):** o mesmo teste passa — `tests=1 failures=0`,
+  `BUILD SUCCESSFUL`.
+- **Sensor final: 3/3 mutações mortas** (M1 e M2 na Rodada 1; M3 na Rodada 2). Veredito global:
+  **PASS**, sem gaps abertos de discriminação.
