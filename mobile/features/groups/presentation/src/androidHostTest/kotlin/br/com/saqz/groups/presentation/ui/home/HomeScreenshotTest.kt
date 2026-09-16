@@ -2,7 +2,9 @@ package br.com.saqz.groups.presentation.ui.home
 
 import android.app.Application
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.home.HomeGroupUi
@@ -55,6 +57,10 @@ class HomeScreenshotTest {
 
     @Test
     fun declined() = capture("home-content-declined", state(AttendanceStatus.Declined))
+
+    /** Depois do "Alterar": os botões reaparecem com a escolha atual marcada. */
+    @Test
+    fun changingConfirmedResponse() = captureChanging("home-content-trocando-resposta", AttendanceStatus.Confirmed)
 
     @Test
     fun waitlisted() = capture("home-content-waitlisted", state(AttendanceStatus.Waitlisted))
@@ -147,6 +153,17 @@ class HomeScreenshotTest {
         }
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("screenshots/$directory/$name.png")
+    }
+
+    private fun captureChanging(name: String, attendance: AttendanceStatus) {
+        compose.setContent {
+            SaqzTheme {
+                HomeScreen(state = state(attendance), onIntent = {})
+            }
+        }
+        compose.onNodeWithTag(HomeTags.ResponseChange).performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("screenshots/vul-191/$name.png")
     }
 
     private fun state(

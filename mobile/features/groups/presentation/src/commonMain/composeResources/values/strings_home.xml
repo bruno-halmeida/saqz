@@ -26,6 +26,8 @@
     <string name="home_status_declined">Tudo bem, na próxima. Sua vaga já foi liberada.</string>
     <string name="home_response_yes">Vou</string>
     <string name="home_response_no">Não vou</string>
+    <string name="home_attendance_change">Alterar</string>
+    <string name="home_attendance_cancel">Cancelar</string>
     <string name="home_response_error">Não foi possível atualizar sua presença. Tente novamente.</string>
     <string name="home_waitlisted">Lista de espera</string>
     <string name="home_waitlist_reserva_chip">Lista de espera · %1$dº</string>

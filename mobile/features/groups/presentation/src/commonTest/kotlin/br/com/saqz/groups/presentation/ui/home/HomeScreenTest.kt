@@ -147,6 +147,47 @@ class HomeScreenTest {
     }
 
     @Test
+    fun `answered game shows the status panel instead of the enabled buttons`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(nextGameState(nextGame = nextGame(AttendanceStatus.Confirmed)), intents::add)
+
+        onNodeWithText("Você está confirmado.").assertIsDisplayed()
+        onAllNodesWithTag(HomeTags.ResponseYes).assertCountEquals(0)
+        onAllNodesWithTag(HomeTags.ResponseNo).assertCountEquals(0)
+
+        // "Alterar" revela os botões; "Cancelar" volta para o painel sem emitir intent.
+        onNodeWithTag(HomeTags.ResponseChange).performClick()
+        onNodeWithTag(HomeTags.ResponseYes).assertIsDisplayed()
+        onNodeWithTag(HomeTags.ResponseCancel).performClick()
+        onAllNodesWithTag(HomeTags.ResponseYes).assertCountEquals(0)
+
+        assertEquals(emptyList<HomeIntent>(), intents)
+    }
+
+    @Test
+    fun `changing an answered response emits the new choice`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(nextGameState(nextGame = nextGame(AttendanceStatus.Confirmed)), intents::add)
+
+        onNodeWithTag(HomeTags.ResponseChange).performClick()
+        onNodeWithTag(HomeTags.ResponseNo).performClick()
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.Respond(AttendanceIntent.Decline)), intents)
+    }
+
+    @Test
+    fun `closed deadline keeps the answered panel with change disabled`() = runComposeUiTest {
+        setScreen(
+            nextGameState(
+                nextGame = nextGame(AttendanceStatus.Declined).copy(confirmationOpen = false),
+            ),
+        )
+
+        onNodeWithText("Tudo bem, na próxima. Sua vaga já foi liberada.").assertIsDisplayed()
+        onNodeWithTag(HomeTags.ResponseChange).assertIsNotEnabled()
+    }
+
+    @Test
     fun `closed deadline disables the waitlist leave button but keeps view game enabled`() = runComposeUiTest {
         setScreen(
             nextGameState(
