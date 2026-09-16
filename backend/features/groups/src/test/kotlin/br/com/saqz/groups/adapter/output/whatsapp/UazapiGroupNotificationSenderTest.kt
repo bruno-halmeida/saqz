@@ -10,6 +10,7 @@ import java.time.Duration
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class UazapiGroupNotificationSenderTest {
     @Test fun `sends the group text to the jid with stable tracking and instance authentication`() = server { server ->
@@ -25,7 +26,7 @@ class UazapiGroupNotificationSenderTest {
         }
         val messageId = UUID.randomUUID()
         client(server).use { client ->
-            assertEquals(WhatsAppDelivery.Accepted, UazapiGroupNotificationSender(client).send(groupJid, messageId, text))
+            assertEquals(WhatsAppDelivery.Accepted, UazapiGroupNotificationSender(client).send(groupJid, messageId, text, null))
         }
         assertEquals("/send/text", path)
         assertEquals("test-instance-token", token)
@@ -37,6 +38,50 @@ class UazapiGroupNotificationSenderTest {
         assertFalse(payload["async"].asBoolean())
     }
 
+    @Test fun `a link becomes a url button and never appears raw in the text`() = server { server ->
+        var path = ""
+        var body = ""
+        server.createContext("/") { exchange ->
+            path = exchange.requestURI.path
+            body = exchange.requestBody.bufferedReader().readText()
+            exchange.sendResponseHeaders(200, 2)
+            exchange.responseBody.use { it.write("{}".toByteArray()) }
+        }
+        val messageId = UUID.randomUUID()
+        val link = "https://saqz.test-app.link/?saqz_attendance=code"
+        client(server).use { client ->
+            assertEquals(WhatsAppDelivery.Accepted, UazapiGroupNotificationSender(client).send(groupJid, messageId, text, link))
+        }
+        assertEquals("/send/menu", path)
+        val payload = ObjectMapper().readTree(body)
+        assertEquals(groupJid, payload["number"].asText())
+        assertEquals("button", payload["type"].asText().lowercase())
+        assertEquals(text, payload["text"].asText())
+        assertFalse(payload["text"].asText().contains(link))
+        assertEquals("Confirmar presença|$link", payload["choices"][0].asText())
+        assertEquals("group-$messageId", payload["track_id"].asText())
+        assertFalse(payload["async"].asBoolean())
+    }
+
+    @Test fun `a permanently rejected button falls back to text with the link`() = server { server ->
+        val paths = mutableListOf<String>()
+        val bodies = mutableListOf<String>()
+        server.createContext("/") { exchange ->
+            val path = exchange.requestURI.path
+            paths += path
+            bodies += exchange.requestBody.bufferedReader().readText()
+            val status = if (path == "/send/menu") 400 else 200
+            exchange.sendResponseHeaders(status, 2)
+            exchange.responseBody.use { it.write("{}".toByteArray()) }
+        }
+        val link = "https://saqz.test-app.link/?saqz_attendance=code"
+        client(server).use { client ->
+            assertEquals(WhatsAppDelivery.Accepted, UazapiGroupNotificationSender(client).send(groupJid, UUID.randomUUID(), text, link))
+        }
+        assertEquals(listOf("/send/menu", "/send/text"), paths)
+        assertTrue(ObjectMapper().readTree(bodies[1])["text"].asText().endsWith(": $link"))
+    }
+
     @Test fun `the group jid is never rejected by a phone regex`() = server { server ->
         var payload = ""
         server.createContext("/") { exchange ->
@@ -45,7 +90,7 @@ class UazapiGroupNotificationSenderTest {
             exchange.responseBody.use { it.write("{}".toByteArray()) }
         }
         client(server).use { client ->
-            assertEquals(WhatsAppDelivery.Accepted, UazapiGroupNotificationSender(client).send(groupJid, UUID.randomUUID(), text))
+            assertEquals(WhatsAppDelivery.Accepted, UazapiGroupNotificationSender(client).send(groupJid, UUID.randomUUID(), text, null))
         }
         assertEquals(groupJid, ObjectMapper().readTree(payload)["number"].asText())
     }
@@ -57,7 +102,7 @@ class UazapiGroupNotificationSenderTest {
             exchange.responseBody.use { it.write("{}".toByteArray()) }
         }
         client(server).use {
-            assertEquals(WhatsAppDelivery.Retry(7200), UazapiGroupNotificationSender(it).send(groupJid, UUID.randomUUID(), text))
+            assertEquals(WhatsAppDelivery.Retry(7200), UazapiGroupNotificationSender(it).send(groupJid, UUID.randomUUID(), text, null))
         }
     }
 
@@ -69,7 +114,7 @@ class UazapiGroupNotificationSenderTest {
             }
             val expected = if (status == 408 || status >= 500) WhatsAppDelivery.Retry() else WhatsAppDelivery.Failed
             client(server).use {
-                assertEquals(expected, UazapiGroupNotificationSender(it).send(groupJid, UUID.randomUUID(), text), "HTTP $status")
+                assertEquals(expected, UazapiGroupNotificationSender(it).send(groupJid, UUID.randomUUID(), text, null), "HTTP $status")
             }
         }
     }
@@ -77,7 +122,7 @@ class UazapiGroupNotificationSenderTest {
     @Test fun `network failure is retryable`() = server { server ->
         client(server).use { client ->
             server.stop(0)
-            assertEquals(WhatsAppDelivery.Retry(), UazapiGroupNotificationSender(client).send(groupJid, UUID.randomUUID(), text))
+            assertEquals(WhatsAppDelivery.Retry(), UazapiGroupNotificationSender(client).send(groupJid, UUID.randomUUID(), text, null))
         }
     }
 

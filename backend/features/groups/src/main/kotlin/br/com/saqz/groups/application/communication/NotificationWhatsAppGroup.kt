@@ -10,5 +10,8 @@ import java.util.UUID
  * do sender individual.
  */
 fun interface NotificationWhatsAppGroupSender {
-    fun send(jid: String, messageId: UUID, body: String): WhatsAppDelivery
+    /**
+     * [link] não-nulo vira botão de URL na mensagem; o texto nunca carrega a URL crua.
+     */
+    fun send(jid: String, messageId: UUID, text: String, link: String?): WhatsAppDelivery
 }

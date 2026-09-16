@@ -60,8 +60,8 @@ class JdbcNotificationWhatsAppGroup(
                 if (error is DirectoryError.NotInGroup) breakBinding(binding.groupId) else scheduleRetry(job)
                 return@inTransaction true
             }
-            val body = body(message, binding) ?: run { finish(job.messageId, "CANCELLED"); return@inTransaction true }
-            when (val result = sender.send(binding.whatsappJid, job.messageId, body)) {
+            val content = content(message, binding) ?: run { finish(job.messageId, "CANCELLED"); return@inTransaction true }
+            when (val result = sender.send(binding.whatsappJid, job.messageId, content.text, content.link)) {
                 WhatsAppDelivery.Accepted -> finish(job.messageId, "ACCEPTED")
                 WhatsAppDelivery.Failed -> finish(job.messageId, "FAILED")
                 is WhatsAppDelivery.Retry -> scheduleRetry(job, result.afterSeconds)
@@ -102,11 +102,11 @@ class JdbcNotificationWhatsAppGroup(
           AND status = 'PUBLISHED' AND starts_at > now() AND confirmation_deadline > now()
     """).param("game", gameId).param("group", groupId).query(Int::class.java).single() == 1
 
-    private fun body(message: PendingMessage, binding: Binding): String? {
-        val prefix = "Saqz · ${binding.groupName}\n${message.body}"
-        if (message.channel != "REMINDER") return prefix
+    private fun content(message: PendingMessage, binding: Binding): GroupContent? {
+        val text = "Saqz · ${binding.groupName}\n${message.body}"
+        if (message.channel != "REMINDER") return GroupContent(text, null)
         val code = message.code ?: return null
-        return "$prefix\nConfirmar minha presença no Saqz: ${links.create(AttendanceLinkCode.from(code))}"
+        return GroupContent(text, links.create(AttendanceLinkCode.from(code)).toString())
     }
 
     private fun breakBinding(groupId: UUID) {
@@ -145,4 +145,6 @@ class JdbcNotificationWhatsAppGroup(
     private data class PendingMessage(
         val groupId: UUID, val channel: String, val gameId: UUID?, val body: String, val code: String?, val binding: Binding?,
     )
+    /** [link] não-nulo é entregue como botão, nunca embutido no texto. */
+    private data class GroupContent(val text: String, val link: String?)
 }

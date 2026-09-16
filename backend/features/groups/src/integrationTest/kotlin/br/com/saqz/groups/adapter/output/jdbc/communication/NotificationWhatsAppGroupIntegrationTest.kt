@@ -84,7 +84,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         binding()
         publish(MessageChannel.NOTICE, "Treino amanhã")
         val sent = mutableListOf<Triple<String, UUID, String>>()
-        drain { jid, id, body -> sent += Triple(jid, id, body); WhatsAppDelivery.Accepted }
+        drain { jid, id, text, _ -> sent += Triple(jid, id, text); WhatsAppDelivery.Accepted }
         assertEquals(1, sent.size)
         assertEquals(GROUP_JID, sent.single().first)
         assertEquals("Saqz · Vôlei do CERET\nTreino amanhã", sent.single().third)
@@ -98,16 +98,19 @@ class NotificationWhatsAppGroupIntegrationTest {
         val game = publishedGame()
         service.remind(owner, group, game, UUID.randomUUID()).success()
         val code = jdbc.sql("SELECT code FROM notification_attendance_links").query(String::class.java).single()
-        val sent = mutableListOf<String>()
-        drain { _, _, body -> sent += body; WhatsAppDelivery.Accepted }
-        val body = sent.single()
-        assertTrue(body.startsWith("Saqz · Vôlei do CERET\nConfirme sua presença: Treino\n"), body)
-        assertTrue(body.contains("Confirmar minha presença no Saqz: https://saqz.test-app.link/"), body)
-        assertTrue(body.contains(code), body)
+        val sent = mutableListOf<Pair<String, String?>>()
+        drain { _, _, text, link -> sent += text to link; WhatsAppDelivery.Accepted }
+        val (text, link) = sent.single()
+        assertTrue(text.startsWith("Saqz · Vôlei do CERET\nConfirme sua presença: Treino"), text)
+        // O link vai como botão: a URL crua nunca entra no texto.
+        assertFalse(text.contains("https://"), text)
+        assertFalse(text.contains("Confirmar minha presença"), text)
+        assertTrue(link!!.contains("https://saqz.test-app.link/"), link)
+        assertTrue(link.contains(code), link)
         assertEquals("ACCEPTED", status())
-        assertFalse(body.contains(INSTANCE_JID))
-        assertFalse(body.contains("@s.whatsapp.net"))
-        assertFalse(body.contains("R$"))
+        assertFalse(text.contains(INSTANCE_JID))
+        assertFalse(text.contains("@s.whatsapp.net"))
+        assertFalse(text.contains("R$"))
     }
 
     @Test fun `not in group breaks the binding and cancels every pending job of the group`() {
@@ -115,7 +118,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         publish(MessageChannel.NOTICE)
         publish(MessageChannel.NOTICE)
         directory.groupError = DirectoryError.NotInGroup
-        drain { _, _, _ -> error("a broken group must never be sent") }
+        drain { _, _, _, _ -> error("a broken group must never be sent") }
         assertEquals(2, countStatus("CANCELLED"))
         assertTrue(isBroken())
         assertEquals(0, countStatus("PENDING"))
@@ -125,7 +128,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         binding()
         publish(MessageChannel.NOTICE)
         directory.member = false
-        drain { _, _, _ -> error("removed instance must never be sent") }
+        drain { _, _, _, _ -> error("removed instance must never be sent") }
         assertEquals("CANCELLED", status())
         assertTrue(isBroken())
     }
@@ -134,7 +137,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         binding()
         publish(MessageChannel.NOTICE)
         directory.groupError = DirectoryError.Unavailable("upstream down")
-        drain { _, _, _ -> error("unavailable provider must not send") }
+        drain { _, _, _, _ -> error("unavailable provider must not send") }
         assertEquals("PENDING", status())
         assertEquals(1, attempts())
         assertFalse(isBroken())
@@ -144,7 +147,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         binding()
         publish(MessageChannel.NOTICE)
         jdbc.sql("UPDATE group_whatsapp_bindings SET enabled = false").update()
-        drain { _, _, _ -> error("disabled binding must not send") }
+        drain { _, _, _, _ -> error("disabled binding must not send") }
         assertEquals("CANCELLED", status())
     }
 
@@ -152,34 +155,34 @@ class NotificationWhatsAppGroupIntegrationTest {
         binding()
         publish(MessageChannel.NOTICE)
         jdbc.sql("DELETE FROM group_whatsapp_bindings").update()
-        drain { _, _, _ -> error("unlinked group must not send") }
+        drain { _, _, _, _ -> error("unlinked group must not send") }
         assertEquals("CANCELLED", status())
     }
 
     @Test fun `retry respects the backoff and exhausts at ten attempts`() {
         binding()
         publish(MessageChannel.NOTICE)
-        drain { _, _, _ -> WhatsAppDelivery.Retry(7200) }
+        drain { _, _, _, _ -> WhatsAppDelivery.Retry(7200) }
         assertEquals("PENDING", status())
         assertTrue(jdbc.sql("SELECT next_attempt_at >= now() + interval '7190 seconds' FROM notification_whatsapp_group_queue")
             .query(Boolean::class.java).single())
         assertEquals(1, attempts())
         jdbc.sql("UPDATE notification_whatsapp_group_queue SET next_attempt_at = now()").update()
-        drain { _, _, _ -> WhatsAppDelivery.Retry() }
+        drain { _, _, _, _ -> WhatsAppDelivery.Retry() }
         assertEquals(2, attempts())
         jdbc.sql("UPDATE notification_whatsapp_group_queue SET attempts = 9, next_attempt_at = now()").update()
-        drain { _, _, _ -> WhatsAppDelivery.Retry() }
+        drain { _, _, _, _ -> WhatsAppDelivery.Retry() }
         assertEquals("FAILED", status())
         assertEquals(10, attempts())
-        drain { _, _, _ -> error("terminal delivery retried") }
+        drain { _, _, _, _ -> error("terminal delivery retried") }
     }
 
     @Test fun `a permanent send failure becomes FAILED`() {
         binding()
         publish(MessageChannel.NOTICE)
-        drain { _, _, _ -> WhatsAppDelivery.Failed }
+        drain { _, _, _, _ -> WhatsAppDelivery.Failed }
         assertEquals("FAILED", status())
-        drain { _, _, _ -> error("failed delivery retried") }
+        drain { _, _, _, _ -> error("failed delivery retried") }
     }
 
     @Test fun `an expired reminder is cancelled without losing the in-app notification`() {
@@ -188,7 +191,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         service.remind(owner, group, game, UUID.randomUUID()).success()
         jdbc.sql("UPDATE games SET confirmation_deadline = now() - interval '1 minute' WHERE id = :id")
             .param("id", game).update()
-        drain { _, _, _ -> error("expired reminder must not send") }
+        drain { _, _, _, _ -> error("expired reminder must not send") }
         assertEquals("CANCELLED", status())
         assertEquals(1, service.inbox(member, null).success().items.size)
     }
@@ -222,7 +225,7 @@ class NotificationWhatsAppGroupIntegrationTest {
     @Test fun `relinking keeps terminal jobs of the previous binding intact`() {
         binding()
         publish(MessageChannel.NOTICE, "Primeiro")
-        drain { _, _, _ -> WhatsAppDelivery.Accepted }
+        drain { _, _, _, _ -> WhatsAppDelivery.Accepted }
         publish(MessageChannel.NOTICE, "Segundo")
         assertEquals(1, countStatus("ACCEPTED"))
         assertEquals(1, countStatus("PENDING"))
@@ -248,7 +251,7 @@ class NotificationWhatsAppGroupIntegrationTest {
     private fun publish(channel: MessageChannel, body: String = "Aviso", request: UUID = UUID.randomUUID()) =
         service.publish(owner, group, channel, request, body).success()
 
-    private fun drain(send: (String, UUID, String) -> WhatsAppDelivery) =
+    private fun drain(send: (String, UUID, String, String?) -> WhatsAppDelivery) =
         queue.drain(NotificationWhatsAppGroupSender(send), directory)
 
     private fun chargeMessage() {
