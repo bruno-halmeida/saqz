@@ -23,6 +23,7 @@ class SaqzThemeTest {
         lateinit var motion: SaqzMotionPolicy
         lateinit var shadows: SaqzShadows
         lateinit var family: FontFamily
+        lateinit var display: FontFamily
         setContent {
             SaqzTheme {
                 colors = SaqzTheme.colors
@@ -31,6 +32,7 @@ class SaqzThemeTest {
                 motion = SaqzTheme.motion
                 shadows = SaqzTheme.shadows
                 family = saqzFontFamily()
+                display = saqzDisplayFontFamily()
             }
         }
         assertEquals(SaqzColorTokens.Light, colors)
@@ -39,6 +41,7 @@ class SaqzThemeTest {
         assertEquals(SaqzShadows.Default, shadows)
         assertEquals(SaqzTypography.Default.body.fontSize, typography.body.fontSize)
         assertEquals(family, typography.body.fontFamily)
+        assertEquals(display, typography.display.fontFamily)
     }
 
     @Test

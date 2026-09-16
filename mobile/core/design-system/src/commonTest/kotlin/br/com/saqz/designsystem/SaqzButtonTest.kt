@@ -37,7 +37,7 @@ class SaqzButtonTest {
     private val tokens = SaqzColorTokens.Light
 
     @Test
-    fun fourVariantsUseExpectedTokens() {
+    fun variantsUseExpectedTokens() {
         val primary = tokens.buttonColors(SaqzButtonVariant.Primary)
         assertEquals(tokens.primary, primary.container)
         assertEquals(tokens.onPrimary, primary.content)
@@ -57,12 +57,30 @@ class SaqzButtonTest {
         assertEquals(Color.Transparent, ghost.container)
         assertEquals(tokens.primary, ghost.content)
 
-        // accent is never an action surface.
+        val accent = tokens.buttonColors(SaqzButtonVariant.Accent)
+        assertEquals(tokens.accent, accent.container)
+        assertEquals(tokens.textPrimary, accent.content)
+        assertEquals(null, accent.border)
+
+        val inverse = tokens.buttonColors(SaqzButtonVariant.Inverse)
+        assertEquals(tokens.surface, inverse.container)
+        assertEquals(tokens.textPrimary, inverse.content)
+        assertEquals(null, inverse.border)
+
+        // Lima nunca é cor de TEXTO de botão; como fundo só existe no Accent (VUL-217).
         SaqzButtonVariant.entries.forEach { variant ->
             val c = tokens.buttonColors(variant)
-            assertTrue(c.container != tokens.accent, "$variant must not use accent")
-            assertTrue(c.content != tokens.accent, "$variant must not use accent")
+            assertTrue(c.content != tokens.accent, "$variant must not use accent as content")
+            if (variant != SaqzButtonVariant.Accent) {
+                assertTrue(c.container != tokens.accent, "$variant must not use accent as container")
+            }
         }
+    }
+
+    @Test
+    fun accentLabelIsReadableOnLime() {
+        // Texto navy sobre o lima do CTA: AA para texto normal.
+        assertAtLeast(4.5, contrast(tokens.textPrimary, tokens.accent))
     }
 
     @Test

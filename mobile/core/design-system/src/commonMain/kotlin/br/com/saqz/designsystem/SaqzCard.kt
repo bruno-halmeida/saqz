@@ -31,7 +31,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 
 enum class SaqzCardTone { Default, Soft }
 
-enum class SaqzChipTone { Neutral, Accent, Brand, Success, Warning, Error }
+enum class SaqzChipTone { Neutral, Accent, Brand, Success, Warning, Error, Inverse }
 
 /**
  * 10i — branco, borda de 1px, raio 12, sem sombra. `tone = Soft` é o bloco de
@@ -130,6 +130,8 @@ fun SaqzSectionHeader(
  * anterior calculava o fundo como `foreground.copy(alpha = .12f)` e isso apagou a
  * exceção do `warning` — o único tom em que o export escreve o texto numa cor
  * diferente da que tinge o fundo — além de arredondar os alfas de `brand` e `error`.
+ *
+ * Inverse é o chip sobre o hero azul da Home nova (VUL-217): branco a 14% com texto branco.
  */
 @Composable
 fun SaqzStatusChip(
@@ -146,6 +148,7 @@ fun SaqzStatusChip(
         SaqzChipTone.Success -> colors.success to colors.success.copy(alpha = 0.12f)
         SaqzChipTone.Warning -> colors.warningForeground to colors.warning.copy(alpha = 0.14f)
         SaqzChipTone.Error -> colors.errorForeground to colors.errorForeground.copy(alpha = 0.10f)
+        SaqzChipTone.Inverse -> colors.onPrimary to colors.onPrimary.copy(alpha = 0.14f)
     }
     Row(
         modifier = modifier
@@ -195,7 +198,7 @@ private fun SaqzCardPreview() = SaqzTheme {
 @Preview
 @Composable
 private fun SaqzStatusChipPreview() = SaqzTheme {
-    // Os seis tons nas duas formas: sem ponto e com ponto. Tom que não está aqui não
+    // Os sete tons nas duas formas: sem ponto e com ponto. Tom que não está aqui não
     // está sendo conferido — foi assim que o warning ficou em 1,9:1 sem ninguém ver.
     SaqzPreviewGrid {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -217,6 +220,13 @@ private fun SaqzStatusChipPreview() = SaqzTheme {
             SaqzStatusChip("Vou", tone = SaqzChipTone.Success, dot = true)
             SaqzStatusChip("Talvez", tone = SaqzChipTone.Warning, dot = true)
             SaqzStatusChip("Não vou", tone = SaqzChipTone.Error, dot = true)
+        }
+        Row(
+            modifier = Modifier.background(SaqzTheme.colors.primary, RoundedCornerShape(12.dp)).padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SaqzStatusChip("Vôlei do CERET", tone = SaqzChipTone.Inverse)
+            SaqzStatusChip("Lista de espera · 1º", tone = SaqzChipTone.Inverse, dot = true)
         }
     }
 }

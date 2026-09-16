@@ -27,6 +27,7 @@ class SaqzTypographyTest {
         "caption" to typography.caption,
         "eyebrow" to typography.eyebrow,
         "navigation" to typography.navigation,
+        "display" to typography.display,
     )
 
     private data class StyleSpec(
@@ -86,6 +87,9 @@ class SaqzTypographyTest {
 
     @Test
     fun navigation() = runTest { assertStyleMatches("navigation") }
+
+    @Test
+    fun display() = runTest { assertStyleMatches("display") }
 
     @Test
     fun inventoryIsClosed() = runTest {
