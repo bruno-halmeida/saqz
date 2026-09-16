@@ -1,9 +1,18 @@
 package br.com.saqz.bootstrap.configuration
 
+import br.com.saqz.groups.adapter.input.http.GroupWhatsAppBindingController
+import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcNotificationWhatsApp
+import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
+import br.com.saqz.groups.adapter.output.jdbc.whatsapp.JdbcGroupWhatsAppBindingRepository
+import br.com.saqz.groups.adapter.output.whatsapp.UazapiGroupDirectory
 import br.com.saqz.groups.adapter.output.whatsapp.UazapiNotificationSender
 import br.com.saqz.groups.application.communication.NotificationWhatsAppSender
+import br.com.saqz.groups.application.whatsapp.GroupWhatsAppBindingRepository
+import br.com.saqz.groups.application.whatsapp.LinkGroupWhatsApp
+import br.com.saqz.groups.application.whatsapp.ManageGroupWhatsAppBinding
+import br.com.saqz.groups.application.whatsapp.WhatsAppGroupDirectory
 import com.uazapi.sdk.UazapiClient
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -34,6 +43,28 @@ class NotificationWhatsAppConfiguration {
         JdbcNotificationWhatsApp(dataSource, transaction, links)
     @Bean fun notificationWhatsAppWorker(queue: JdbcNotificationWhatsApp, sender: NotificationWhatsAppSender) =
         NotificationWhatsAppWorker(queue, sender)
+
+    @Bean fun groupWhatsAppBindingRepository(dataSource: DataSource): GroupWhatsAppBindingRepository =
+        JdbcGroupWhatsAppBindingRepository(dataSource)
+
+    @Bean fun whatsAppGroupDirectory(client: UazapiClient): WhatsAppGroupDirectory = UazapiGroupDirectory(client)
+
+    @Bean fun linkGroupWhatsApp(
+        groups: JdbcGroupReadRepository,
+        bindings: GroupWhatsAppBindingRepository,
+        directory: WhatsAppGroupDirectory,
+    ) = LinkGroupWhatsApp(groups, bindings, directory)
+
+    @Bean fun manageGroupWhatsAppBinding(
+        groups: JdbcGroupReadRepository,
+        bindings: GroupWhatsAppBindingRepository,
+    ) = ManageGroupWhatsAppBinding(groups, bindings)
+
+    @Bean fun groupWhatsAppBindingController(
+        actors: VerifiedGroupActorResolver,
+        link: LinkGroupWhatsApp,
+        manage: ManageGroupWhatsAppBinding,
+    ) = GroupWhatsAppBindingController(actors, link, manage)
 }
 
 class NotificationWhatsAppWorker(private val queue: JdbcNotificationWhatsApp, private val sender: NotificationWhatsAppSender) {

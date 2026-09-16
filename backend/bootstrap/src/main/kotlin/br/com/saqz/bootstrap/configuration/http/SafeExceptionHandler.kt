@@ -33,6 +33,8 @@ import br.com.saqz.groups.adapter.input.http.AttendanceLinkAttemptLimitException
 import br.com.saqz.groups.adapter.input.http.AttendanceLinkInvalidOrExpiredException
 import br.com.saqz.groups.adapter.input.http.AttendanceLinkUnavailableException
 import br.com.saqz.groups.adapter.input.http.VersionConflictException
+import br.com.saqz.groups.adapter.input.http.WhatsAppGroupBindingConflictException
+import br.com.saqz.groups.adapter.input.http.WhatsAppGroupBindingUnavailableException
 import br.com.saqz.groups.adapter.input.http.PreconditionRequiredException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.groups.adapter.input.http.InvalidGroupPhotoException
@@ -262,6 +264,16 @@ class SafeExceptionHandler(
     @ExceptionHandler(VersionConflictException::class)
     fun versionConflict(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 409, ErrorCode.VERSION_CONFLICT)
+    }
+
+    @ExceptionHandler(WhatsAppGroupBindingConflictException::class)
+    fun whatsAppGroupBindingConflict(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409)
+    }
+
+    @ExceptionHandler(WhatsAppGroupBindingUnavailableException::class)
+    fun whatsAppGroupBindingUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 502)
     }
 
     @ExceptionHandler(GameScheduleConflictException::class)
