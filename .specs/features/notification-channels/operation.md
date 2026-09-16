@@ -49,6 +49,12 @@ Push preserva recibos por instalação, revoga tokens inválidos e limita retent
 
 Não reative indiscriminadamente jobs FAILED: primeiro corrija credencial/conexão, avalie entrega incerta e confira destinatário/evento. Habilitar WhatsApp não reenvia histórico anterior ao opt-in. Desligar o worker pausa jobs pendentes; os controles do usuário continuam sendo reavaliados quando retomar.
 
+## Lembrete automático de presença
+
+- `SAQZ_NOTIFICATIONS_REMINDER_ENABLED=true` liga o worker; `SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS` é o intervalo (propriedades canônicas `saqz.notifications.reminder.enabled` e `delay-ms`, default 60000).
+- A cada execução publica um REMINDER novo para todo jogo `PUBLISHED` com `starts_at` e `confirmation_deadline` no futuro. Sem vínculo de WhatsApp o lembrete continua virando push/central; o envio ao grupo exige vínculo ativo. O autor é o dono do grupo, então ele fica fora dos destinatários da notificação.
+- Fase de teste: `60000` (1/min). Produção: `21600000` (6h). Cada execução cria mensagem nova, sem dedup entre execuções — o intervalo é o único limitador de frequência.
+
 ## Verificação
 
 Testes HTTP do SDK usam servidor local. Testes de filas usam PostgreSQL descartável. Evidências em `.specs/features/notification-channels/`.

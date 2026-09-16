@@ -286,9 +286,8 @@ internal class ReminderE2eTest : InstalledE2e("reminders") {
         assertEquals(1, message.getInt("recipientCount"))
         assertEquals(
             "*${data.getString("gameTitle")}*\n\n" +
-                "✅ Confirmados:\nE2E reminders-admin, E2E reminders-athlete\n\n" +
-                "❌ Fora:\nE2E reminders-declined\n\n" +
-                "⏳ A confirmar:\nE2E reminders-owner, E2E reminders-peer",
+                "✅ Confirmados:\nE2E reminders-admin\nE2E reminders-athlete\n\n" +
+                "❌ Fora:\nE2E reminders-declined",
             message.getString("body"),
         )
         assertNoNotifications(exceptPeer = true)
