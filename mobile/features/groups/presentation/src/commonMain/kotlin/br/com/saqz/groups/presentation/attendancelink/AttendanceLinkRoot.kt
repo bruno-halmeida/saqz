@@ -17,40 +17,79 @@ import org.koin.core.parameter.parametersOf
 
 @Composable
 fun AttendanceLinkRoot(
-    code: String, onBack: () -> Unit, onRegister: (String) -> Unit, onOpenGame: (AttendanceLinkDestination) -> Unit,
+    code: String,
+    decline: Boolean,
+    onBack: () -> Unit,
+    onRegister: (String) -> Unit,
+    onOpenGame: (AttendanceLinkDestination) -> Unit,
 ) {
-    val vm: AttendanceLinkViewModel = koinViewModel(key = "attendance-link/$code", parameters = { parametersOf(code) })
+    val vm: AttendanceLinkViewModel = koinViewModel(
+        key = "attendance-link/$code/$decline",
+        parameters = { parametersOf(code, decline) },
+    )
     val state by vm.state.collectAsStateWithLifecycle()
     ObserveAsEvents(vm.effects) { effect -> when (effect) { is AttendanceLinkEffect.Register -> onRegister(effect.groupId) } }
-    AttendanceLinkScreen(state, onBack, vm::retry, onOpenGame)
+    AttendanceLinkScreen(state, onBack, vm::onIntent, onOpenGame)
 }
 
 @Composable
 internal fun AttendanceLinkScreen(
-    state: AttendanceLinkState, onBack: () -> Unit, onRetry: () -> Unit, onOpenGame: (AttendanceLinkDestination) -> Unit,
+    state: AttendanceLinkState, onBack: () -> Unit, onIntent: (AttendanceLinkIntent) -> Unit,
+    onOpenGame: (AttendanceLinkDestination) -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
-        SaqzTopAppBar(title = stringResource(Res.string.attendance_link_title), onBack = onBack)
-        Column(
-            Modifier.padding(SaqzTheme.metrics.horizontalPadding),
-            verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
+            SaqzTopAppBar(title = stringResource(Res.string.attendance_link_title), onBack = onBack)
+            Column(
+                Modifier.padding(SaqzTheme.metrics.horizontalPadding),
+                verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+            ) {
+                if (state.phase == AttendanceLinkPhase.Loading) SaqzSpinner()
+                Text(stringResource(when (state.phase) {
+                    AttendanceLinkPhase.Loading -> Res.string.attendance_link_loading
+                    AttendanceLinkPhase.Confirmed -> Res.string.attendance_link_confirmed
+                    AttendanceLinkPhase.Waitlisted -> Res.string.attendance_link_waitlisted
+                    AttendanceLinkPhase.DeclineSheet, AttendanceLinkPhase.Declined -> Res.string.attendance_link_declined
+                    AttendanceLinkPhase.Invalid -> Res.string.attendance_link_invalid
+                    AttendanceLinkPhase.Failed -> Res.string.communication_failure
+                    AttendanceLinkPhase.Registration -> Res.string.attendance_link_registration
+                    AttendanceLinkPhase.Pending -> Res.string.attendance_link_pending
+                }))
+                if (state.phase in listOf(AttendanceLinkPhase.Failed, AttendanceLinkPhase.Pending)) {
+                    SaqzButton(stringResource(Res.string.communication_refresh), { onIntent(AttendanceLinkIntent.Retry) })
+                }
+                state.destination?.let { destination ->
+                    SaqzButton(stringResource(Res.string.attendance_link_open_game), { onOpenGame(destination) })
+                }
+            }
+        }
+        // O aviso do "não vou": fecha pela alça, pelo scrim ou pelo back, e nenhum deles
+        // responde nada — só o botão do rodapé escreve no servidor.
+        SaqzBottomSheet(
+            open = state.phase == AttendanceLinkPhase.DeclineSheet,
+            onClose = onBack,
+            title = stringResource(Res.string.attendance_link_decline_sheet_title),
+            description = stringResource(Res.string.attendance_link_decline_sheet_description),
+            splitFooter = {
+                SaqzButton(
+                    label = stringResource(Res.string.attendance_link_decline_sheet_back),
+                    onClick = onBack,
+                    variant = SaqzButtonVariant.Secondary,
+                    modifier = Modifier.weight(1f),
+                )
+                SaqzButton(
+                    label = stringResource(Res.string.attendance_link_decline_sheet_confirm),
+                    onClick = { onIntent(AttendanceLinkIntent.Decline) },
+                    variant = SaqzButtonVariant.Danger,
+                    modifier = Modifier.weight(1f),
+                )
+            },
         ) {
-            if (state.phase == AttendanceLinkPhase.Loading) SaqzSpinner()
-            Text(stringResource(when (state.phase) {
-                AttendanceLinkPhase.Loading -> Res.string.attendance_link_loading
-                AttendanceLinkPhase.Confirmed -> Res.string.attendance_link_confirmed
-                AttendanceLinkPhase.Waitlisted -> Res.string.attendance_link_waitlisted
-                AttendanceLinkPhase.Invalid -> Res.string.attendance_link_invalid
-                AttendanceLinkPhase.Failed -> Res.string.communication_failure
-                AttendanceLinkPhase.Registration -> Res.string.attendance_link_registration
-                AttendanceLinkPhase.Pending -> Res.string.attendance_link_pending
-            }))
-            if (state.phase in listOf(AttendanceLinkPhase.Failed, AttendanceLinkPhase.Pending)) {
-                SaqzButton(stringResource(Res.string.communication_refresh), onRetry)
-            }
-            state.destination?.let { destination ->
-                SaqzButton(stringResource(Res.string.attendance_link_open_game), { onOpenGame(destination) })
-            }
+            Text(
+                text = stringResource(Res.string.attendance_link_decline_sheet_body),
+                style = SaqzTheme.typography.body,
+                color = SaqzTheme.colors.textSecondary,
+            )
         }
     }
 }

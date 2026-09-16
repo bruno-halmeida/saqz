@@ -97,7 +97,7 @@ class AttendanceSharePrimitivesTest {
 
     @Test
     fun `long link decodes to the exact public attendance parameters`() {
-        val link = PublicAttendanceLinkFactory(URI("https://join.saqz.app")).create(code)
+        val link = PublicAttendanceLinkFactory(URI("https://join.saqz.app")).confirm(code)
 
         assertEquals("https", link.scheme)
         assertEquals("join.saqz.app", link.host)
@@ -106,9 +106,19 @@ class AttendanceSharePrimitivesTest {
     }
 
     @Test
+    fun `decline link preserves the attendance path and marks only the intent`() {
+        val link = PublicAttendanceLinkFactory(URI("https://join.saqz.app")).decline(code)
+
+        assertEquals("/attendance/${code.value}", link.path)
+        assertEquals("saqz_intent=decline", link.rawQuery)
+    }
+
+    @Test
     fun `long link contains no group game member contact attendance or finance metadata`() {
-        val link = PublicAttendanceLinkFactory(URI("https://join.saqz.app")).create(code)
-        val serialized = link.toASCIIString()
+        val factory = PublicAttendanceLinkFactory(URI("https://join.saqz.app"))
+        val confirm = factory.confirm(code)
+        val decline = factory.decline(code)
+        assertNull(confirm.rawQuery)
         val forbiddenSamples = listOf(
             UUID.randomUUID().toString(),
             "groupId",
@@ -125,11 +135,11 @@ class AttendanceSharePrimitivesTest {
             "charge",
             "finance",
         )
-
-        forbiddenSamples.forEach { forbidden ->
-            assertFalse(serialized.contains(forbidden, ignoreCase = true), forbidden)
+        listOf(confirm, decline).map(URI::toASCIIString).forEach { serialized ->
+            forbiddenSamples.forEach { forbidden ->
+                assertFalse(serialized.contains(forbidden, ignoreCase = true), "$forbidden in $serialized")
+            }
         }
-        assertNull(link.rawQuery)
     }
 
     private fun deterministicGenerator() = JcaAttendanceLinkTokenGenerator { target -> bytes.copyInto(target) }

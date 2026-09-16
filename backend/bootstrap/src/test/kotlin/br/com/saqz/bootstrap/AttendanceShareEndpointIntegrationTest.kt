@@ -367,10 +367,12 @@ class AttendanceShareEndpointIntegrationTest {
 
     class RecordingAttendanceLinkFactory : AttendanceLinkFactory {
         var failure: RuntimeException? = null
-        override fun create(code: AttendanceLinkCode): URI {
+        override fun confirm(code: AttendanceLinkCode): URI {
             failure?.let { throw it }
             return AttendanceShareTestConfiguration.LINK_URL
         }
+
+        override fun decline(code: AttendanceLinkCode): URI = error("unused")
     }
 
     class RecordingSnapshotRepository : AttendanceShareSnapshotRepository {

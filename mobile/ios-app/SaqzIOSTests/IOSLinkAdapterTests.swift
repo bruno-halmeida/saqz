@@ -163,6 +163,19 @@ final class IOSLinkAdapterTests: XCTestCase {
         XCTAssertEqual(fixture.received, [])
     }
 
+    func testDeclineIntentTravelsOnlyWhenTheParameterSaysSo() {
+        let fixture = Fixture(); fixture.start()
+        fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/attendance/\(Self.codeA)?saqz_intent=decline")!)
+        fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/?saqz_attendance=\(Self.codeB)&saqz_intent=maybe")!)
+        fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/attendance/\(Self.codeA)?saqz_intent=decline&saqz_intent=decline")!)
+        fixture.adapter.onColdStart(url: nil)
+        fixture.branch.complete(["saqz_attendance": Self.codeA, "saqz_intent": "decline"])
+        XCTAssertEqual(
+            fixture.attendanceIntents,
+            [AttendanceIntent.decline, AttendanceIntent.confirm, AttendanceIntent.decline]
+        )
+    }
+
     func testCancellationStopsDeliveryWithoutStoppingBranchLifecycle() {
         let fixture = Fixture(); let cancellation = fixture.start(); cancellation.cancel()
         fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)")!)
@@ -198,6 +211,7 @@ final class IOSLinkAdapterTests: XCTestCase {
         let branch = FakeBranchSessionClient(); lazy var adapter = IOSLinkAdapter(branch: branch)
         var received: [String] = []
         var attendanceReceived: [String] = []
+        var attendanceIntents: [AttendanceIntent] = []
         var onboardingReceived: [String] = []
         var notificationReceived: [String?] = []
         func startOnboarding() {
@@ -207,6 +221,7 @@ final class IOSLinkAdapterTests: XCTestCase {
             adapter.start(listener_: RecordingLinkEventListener(
                 invite: { self.received.append($0) },
                 attendance: { self.attendanceReceived.append($0) },
+                attendanceIntent: { self.attendanceIntents.append($0) },
                 notification: { self.notificationReceived.append($0) },
             ))
         }
@@ -237,10 +252,17 @@ private final class FakeBranchSessionClient: IOSBranchSessionClient {
 private final class RecordingLinkEventListener: @preconcurrency GroupLinkEventListener {
     private let invite: (String) -> Void
     private let attendance: (String) -> Void
+    private let attendanceIntent: (AttendanceIntent) -> Void
     private let notification: (String?) -> Void
-    init(invite: @escaping (String) -> Void, attendance: @escaping (String) -> Void, notification: @escaping (String?) -> Void = { _ in }) {
+    init(
+        invite: @escaping (String) -> Void,
+        attendance: @escaping (String) -> Void,
+        attendanceIntent: @escaping (AttendanceIntent) -> Void = { _ in },
+        notification: @escaping (String?) -> Void = { _ in }
+    ) {
         self.invite = invite
         self.attendance = attendance
+        self.attendanceIntent = attendanceIntent
         self.notification = notification
     }
     func onEvent(event: GroupLinkEvent) {
@@ -248,6 +270,7 @@ private final class RecordingLinkEventListener: @preconcurrency GroupLinkEventLi
             invite(inviteEvent.code)
         } else if let attendanceEvent = event as? GroupLinkEventAttendance {
             attendance(attendanceEvent.code)
+            attendanceIntent(attendanceEvent.intent)
         } else if let notificationEvent = event as? GroupLinkEventNotificationOpen {
             notification(notificationEvent.groupId)
         }

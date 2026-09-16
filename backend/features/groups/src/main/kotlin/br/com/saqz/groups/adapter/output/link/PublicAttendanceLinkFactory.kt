@@ -18,10 +18,22 @@ class PublicAttendanceLinkFactory(private val linksDomain: URI) : AttendanceLink
         require(linksDomain.fragment == null) { "Links domain must not contain a fragment" }
     }
 
-    override fun create(code: AttendanceLinkCode): URI =
+    override fun confirm(code: AttendanceLinkCode): URI =
         UriComponentsBuilder
             .fromUri(linksDomain)
             .pathSegment("attendance", code.value)
             .build()
             .toUri()
+
+    override fun decline(code: AttendanceLinkCode): URI =
+        UriComponentsBuilder
+            .fromUri(confirm(code))
+            .queryParam(INTENT_PARAMETER, DECLINE_INTENT)
+            .build()
+            .toUri()
+
+    companion object {
+        const val INTENT_PARAMETER = "saqz_intent"
+        const val DECLINE_INTENT = "decline"
+    }
 }

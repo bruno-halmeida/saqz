@@ -14,6 +14,8 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
     private static let inviteParameter = "saqz_invite"
     private static let attendanceParameter = "saqz_attendance"
     private static let onboardingParameter = "saqz_onboarding"
+    private static let intentParameter = "saqz_intent"
+    private static let declineIntent = "decline"
     private let branch: IOSBranchSessionClient
     private let allowedHosts: Set<String>
     private var listeners: [ObjectIdentifier: GroupLinkEventListener] = [:]
@@ -117,7 +119,7 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         if let invite = event as? GroupLinkEventInvite {
             eventKey = "invite:\(invite.code)"
         } else if let attendance = event as? GroupLinkEventAttendance {
-            eventKey = "attendance:\(attendance.code)"
+            eventKey = "attendance:\(attendance.intent.name):\(attendance.code)"
         } else {
             return
         }
@@ -158,6 +160,9 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         let inviteItems = components.queryItems?.filter { $0.name == inviteParameter } ?? []
         let attendanceItems = components.queryItems?.filter { $0.name == attendanceParameter } ?? []
         guard inviteItems.count <= 1, attendanceItems.count <= 1 else { return nil }
+        let intentItems = components.queryItems?.filter { $0.name == intentParameter } ?? []
+        guard intentItems.count <= 1 else { return nil }
+        let intent = intentItems.last?.value == declineIntent ? AttendanceIntent.decline : AttendanceIntent.confirm
         let parts = url.path.split(separator: "/").map(String.init)
         let hasAttendancePath = parts.count == 2 && parts[0] == "attendance" && isValidInviteCode(parts[1])
         if hasAttendancePath && components.queryItems?.contains(where: {
@@ -171,9 +176,9 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
             components.queryItems?.contains { $0.name == inviteParameter && $0.value != nil } == true &&
                 components.queryItems?.contains { $0.name == attendanceParameter && $0.value != nil } == true { return nil }
         if let invite = inviteValues.last { return GroupLinkEventInvite(code: invite) }
-        if let attendance = attendanceValues.last { return GroupLinkEventAttendance(code: attendance) }
+        if let attendance = attendanceValues.last { return GroupLinkEventAttendance(code: attendance, intent: intent) }
         if hasAttendancePath {
-            return GroupLinkEventAttendance(code: parts[1])
+            return GroupLinkEventAttendance(code: parts[1], intent: intent)
         }
         return nil
     }
@@ -203,7 +208,10 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         let attendance = (parameters?[attendanceParameter] as? String).flatMap { isValidInviteCode($0) ? $0 : nil }
         if invite != nil && attendance != nil { return nil }
         if let invite { return GroupLinkEventInvite(code: invite) }
-        if let attendance { return GroupLinkEventAttendance(code: attendance) }
+        if let attendance {
+            let intent = parameters?[intentParameter] as? String == declineIntent ? AttendanceIntent.decline : AttendanceIntent.confirm
+            return GroupLinkEventAttendance(code: attendance, intent: intent)
+        }
         return nil
     }
 

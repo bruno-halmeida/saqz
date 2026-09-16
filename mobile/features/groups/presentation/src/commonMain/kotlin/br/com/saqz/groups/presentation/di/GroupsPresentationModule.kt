@@ -79,7 +79,11 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> MemberProfileViewModel(params[0], params[1], get()) }
     viewModel { OwnMonthlyPaymentsViewModel(get(), get()) }
     viewModel { params -> br.com.saqz.groups.presentation.communication.GroupThreadViewModel(params[0], params[1], get(), get(), get()) }
-    viewModel { params -> br.com.saqz.groups.presentation.attendancelink.AttendanceLinkViewModel(params.get(), get(), get(), get()) }
+    viewModel { params ->
+        br.com.saqz.groups.presentation.attendancelink.AttendanceLinkViewModel(
+            params[0], params[1], get(), get(), get(),
+        )
+    }
     viewModel { params -> br.com.saqz.groups.presentation.communication.NotificationCenterViewModel(params.get(), get()) }
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
     viewModel { params ->

@@ -46,7 +46,7 @@
     var invite = params.get("saqz_invite");
     var onboarding = params.get("saqz_onboarding");
     var scheme = null;
-    if (path) scheme = "saqz:///attendance/" + path[1];
+    if (path) scheme = "saqz:///attendance/" + path[1] + (params.get("saqz_intent") === "decline" ? "?saqz_intent=decline" : "");
     else if (invite && new RegExp("^" + code + "$").test(invite)) scheme = "saqz:///?saqz_invite=" + invite;
     else if (onboarding && new RegExp("^" + code + "$").test(onboarding)) scheme = "saqz:///?saqz_onboarding=" + onboarding;
     var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||

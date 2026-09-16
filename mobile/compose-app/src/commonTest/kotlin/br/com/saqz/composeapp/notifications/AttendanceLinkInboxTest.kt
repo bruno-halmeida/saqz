@@ -1,5 +1,6 @@
 package br.com.saqz.composeapp.notifications
 
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.port.*
 import kotlinx.coroutines.test.*
 import kotlin.test.*
@@ -13,16 +14,35 @@ class AttendanceLinkInboxTest {
         ports.listener?.onEvent(GroupLinkEvent.Attendance("first"))
         runCurrent()
         assertEquals("first", ports.stored)
-        assertEquals("first", inbox.pending.value)
+        assertEquals(PendingAttendanceLink("first"), inbox.pending.value)
         inbox.stop()
         val restored = AttendanceLinkInbox(ports, ports, backgroundScope)
         restored.start()
-        assertEquals("first", restored.pending.value)
-        restored.consume("other")
+        assertEquals(PendingAttendanceLink("first"), restored.pending.value)
+        restored.consume(PendingAttendanceLink("other"))
         assertEquals("first", ports.stored)
-        restored.consume("first")
+        restored.consume(PendingAttendanceLink("first"))
         assertNull(ports.stored)
         assertNull(restored.pending.value)
+    }
+
+    @Test fun declineIntentSurvivesRestartAndNeverCollidesWithThePlainCode() = runTest {
+        val ports = Ports()
+        val inbox = AttendanceLinkInbox(ports, ports, backgroundScope)
+        inbox.start()
+        ports.listener?.onEvent(GroupLinkEvent.Attendance("first", AttendanceIntent.Decline))
+        runCurrent()
+        assertEquals("decline:first", ports.stored)
+        assertEquals(PendingAttendanceLink("first", AttendanceIntent.Decline), inbox.pending.value)
+        inbox.stop()
+        val restored = AttendanceLinkInbox(ports, ports, backgroundScope)
+        restored.start()
+        assertEquals(PendingAttendanceLink("first", AttendanceIntent.Decline), restored.pending.value)
+        // O mesmo código com intenção diferente é outro alvo: consumir um não limpa o outro.
+        restored.consume(PendingAttendanceLink("first"))
+        assertEquals("decline:first", ports.stored)
+        restored.consume(PendingAttendanceLink("first", AttendanceIntent.Decline))
+        assertNull(ports.stored)
     }
 
     @Test fun staleStorageReadCannotReplaceNewLinkAndFailedClearRetainsPending() = runTest {
@@ -32,10 +52,10 @@ class AttendanceLinkInboxTest {
         ports.listener?.onEvent(GroupLinkEvent.Attendance("new"))
         ports.read?.complete(GroupValueResult.Success("old"))
         runCurrent()
-        assertEquals("new", inbox.pending.value)
+        assertEquals(PendingAttendanceLink("new"), inbox.pending.value)
         ports.failWrite = true
-        inbox.consume("new")
-        assertEquals("new", inbox.pending.value)
+        inbox.consume(PendingAttendanceLink("new"))
+        assertEquals(PendingAttendanceLink("new"), inbox.pending.value)
         assertEquals("new", ports.stored)
     }
 

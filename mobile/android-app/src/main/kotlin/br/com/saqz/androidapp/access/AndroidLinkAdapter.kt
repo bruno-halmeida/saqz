@@ -6,6 +6,7 @@ import br.com.saqz.access.domain.port.Cancelable
 import br.com.saqz.access.domain.port.AppOnboardingCodeListener
 import br.com.saqz.access.domain.port.InviteCodeListener
 import br.com.saqz.access.domain.port.NativeLinkPort
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.groups.port.GroupLinkEventListener
@@ -119,7 +120,7 @@ internal class AndroidLinkAdapter(
         val accepted = event ?: return
         val key = when (accepted) {
             is GroupLinkEvent.Invite -> "invite:${accepted.code}"
-            is GroupLinkEvent.Attendance -> "attendance:${accepted.code}"
+            is GroupLinkEvent.Attendance -> "attendance:${accepted.intent}:${accepted.code}"
             // Push taps têm caminho próprio (onNotificationOpen), sem dedup por abertura.
             is GroupLinkEvent.NotificationOpen -> return
         }
@@ -141,6 +142,8 @@ internal class AndroidLinkAdapter(
         const val INVITE_PARAMETER = "saqz_invite"
         const val ATTENDANCE_PARAMETER = "saqz_attendance"
         const val ONBOARDING_PARAMETER = "saqz_onboarding"
+        const val INTENT_PARAMETER = "saqz_intent"
+        const val DECLINE_INTENT = "decline"
         const val ATTENDANCE_PATH_SEGMENT = "attendance"
 
         fun directEvent(url: String?, allowedHosts: Set<String>): GroupLinkEvent? = runCatching {
@@ -167,14 +170,21 @@ internal class AndroidLinkAdapter(
             val inviteEntries = queryEntries.filter { it.first == INVITE_PARAMETER }
             val attendanceEntries = queryEntries.filter { it.first == ATTENDANCE_PARAMETER }
             if (inviteEntries.size > 1 || attendanceEntries.size > 1) return null
+            val intentEntries = queryEntries.filter { it.first == INTENT_PARAMETER }
+            if (intentEntries.size > 1) return null
+            val intent = if (intentEntries.singleOrNull()?.second == DECLINE_INTENT) {
+                AttendanceIntent.Decline
+            } else {
+                AttendanceIntent.Confirm
+            }
             val inviteCodes = inviteEntries.map { it.second }.filter(::isValidInviteCode)
             val attendanceCodes = attendanceEntries.map { it.second }.filter(::isValidInviteCode)
             if (queryEntries.any { it.first == ONBOARDING_PARAMETER }) return null
             if (inviteCodes.isNotEmpty() && attendanceCodes.isNotEmpty()) return null
             if (inviteCodes.size == 1) return GroupLinkEvent.Invite(inviteCodes.single())
-            if (attendanceCodes.size == 1) return GroupLinkEvent.Attendance(attendanceCodes.single())
+            if (attendanceCodes.size == 1) return GroupLinkEvent.Attendance(attendanceCodes.single(), intent)
             if (hasAttendancePath) {
-                return GroupLinkEvent.Attendance(pathSegments[1])
+                return GroupLinkEvent.Attendance(pathSegments[1], intent)
             }
             null
         }.getOrNull()
@@ -212,10 +222,15 @@ internal class AndroidLinkAdapter(
             if (parameters.containsKey(ONBOARDING_PARAMETER)) return null
             val invite = parameters[INVITE_PARAMETER]?.takeIf(::isValidInviteCode)
             val attendance = parameters[ATTENDANCE_PARAMETER]?.takeIf(::isValidInviteCode)
+            val intent = if (parameters[INTENT_PARAMETER] == DECLINE_INTENT) {
+                AttendanceIntent.Decline
+            } else {
+                AttendanceIntent.Confirm
+            }
             return when {
                 invite != null && attendance != null -> null
                 invite != null -> GroupLinkEvent.Invite(invite)
-                attendance != null -> GroupLinkEvent.Attendance(attendance)
+                attendance != null -> GroupLinkEvent.Attendance(attendance, intent)
                 else -> null
             }
         }

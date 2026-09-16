@@ -41,7 +41,7 @@ class RotateAttendanceLink(
         if (clock.instant() > target.confirmationDeadline) return@inTransaction RotateAttendanceLinkResult.DeadlinePassed
 
         val token = tokenGenerator.generate()
-        val url = linkFactory.create(token.code)
+        val url = linkFactory.confirm(token.code)
         repository.rotate(RotateAttendanceLinkCommand(groupId, gameId, token.digest, actorId))
         RotateAttendanceLinkResult.Success(url)
     }

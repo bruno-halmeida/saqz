@@ -16,13 +16,13 @@ class AttendanceLinkViewModelTest {
 
     @Test fun linkConfirmsTheAuthenticatedUserAndShowsWaitlistInsteadOfFalseConfirmation() = runTest {
         val gateway = AttendanceFake()
-        val vm = AttendanceLinkViewModel(code, SharingFake(), gateway, InviteFake())
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
         assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)
         assertEquals(destination, vm.state.value.destination)
         assertEquals(listOf(destination), gateway.targets)
         assertEquals(AttendanceIntent.Confirm, gateway.commands.single().intent)
         gateway.status = AttendanceStatus.Waitlisted
-        val waitlisted = AttendanceLinkViewModel(code, SharingFake(), gateway, InviteFake())
+        val waitlisted = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
         assertEquals(AttendanceLinkPhase.Waitlisted, waitlisted.state.value.phase)
         assertEquals(gateway.commands.first().requestId, gateway.commands.last().requestId)
         assertEquals("00000000-0000-0000-0000-000000000000", gateway.commands.first().requestId)
@@ -30,18 +30,18 @@ class AttendanceLinkViewModelTest {
 
     @Test fun expiredLinkCannotSubmitAttendanceAndDeadlineFailureIsNotSuccess() = runTest {
         val gateway = AttendanceFake()
-        val vm = AttendanceLinkViewModel(code, SharingFake(expired = true), gateway, InviteFake())
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true), gateway, InviteFake())
         assertEquals(AttendanceLinkPhase.Invalid, vm.state.value.phase)
         assertTrue(gateway.commands.isEmpty())
         gateway.error = AttendanceError.DeadlinePassed
-        val closed = AttendanceLinkViewModel(code, SharingFake(), gateway, InviteFake())
+        val closed = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
         assertEquals(AttendanceLinkPhase.Invalid, closed.state.value.phase)
         assertNull(closed.state.value.destination)
     }
 
     @Test fun retryPreservesRequestIdentityAndSuccessfulStateDoesNotResubmit() = runTest {
         val gateway = AttendanceFake().apply { error = AttendanceError.Data(DataError.Connectivity) }
-        val vm = AttendanceLinkViewModel(code, SharingFake(), gateway, InviteFake())
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
         assertEquals(AttendanceLinkPhase.Failed, vm.state.value.phase)
         gateway.error = null
         vm.retry()
@@ -54,21 +54,66 @@ class AttendanceLinkViewModelTest {
     @Test fun newcomerJoinsGroupAndRegistersBeforeAnyAttendanceWrite() = runTest {
         val gateway = AttendanceFake()
         val invite = InviteFake(InviteRedeemStatus.JOINED)
-        val vm = AttendanceLinkViewModel(code, SharingFake(expired = true, firstOnly = true), gateway, invite)
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true, firstOnly = true), gateway, invite)
         assertEquals(listOf(InviteCode(code)), invite.codes)
         assertEquals(AttendanceLinkPhase.Registration, vm.state.value.phase)
         assertEquals(AttendanceLinkEffect.Register("group"), vm.effects.first())
         assertTrue(gateway.commands.isEmpty())
-        val incomplete = AttendanceLinkViewModel(code, SharingFake(registration = true), gateway, InviteFake())
+        val incomplete = AttendanceLinkViewModel(code, false, SharingFake(registration = true), gateway, InviteFake())
         assertEquals(AttendanceLinkEffect.Register("group"), incomplete.effects.first())
         assertTrue(gateway.commands.isEmpty())
     }
 
     @Test fun approvalRequiredDoesNotSkipMembershipAndRegistrationGates() = runTest {
         val gateway = AttendanceFake()
-        val vm = AttendanceLinkViewModel(code, SharingFake(expired = true), gateway, InviteFake(InviteRedeemStatus.PENDING))
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true), gateway, InviteFake(InviteRedeemStatus.PENDING))
         assertEquals(AttendanceLinkPhase.Pending, vm.state.value.phase)
         assertTrue(gateway.commands.isEmpty())
+    }
+
+    @Test fun declineLinkWarnsBeforeWritingAndCarriesItsOwnRequestId() = runTest {
+        val gateway = AttendanceFake().apply { status = AttendanceStatus.Declined }
+        val vm = AttendanceLinkViewModel(declineCode, true, SharingFake(), gateway, InviteFake())
+        // O link do "não vou" não escreve nada: abre o aviso e espera o toque.
+        assertEquals(AttendanceLinkPhase.DeclineSheet, vm.state.value.phase)
+        assertEquals(destination, vm.state.value.destination)
+        assertTrue(gateway.commands.isEmpty())
+        vm.onIntent(AttendanceLinkIntent.Decline)
+        assertEquals(AttendanceLinkPhase.Declined, vm.state.value.phase)
+        assertEquals(AttendanceIntent.Decline, gateway.commands.single().intent)
+        // Confirmar e declinar o mesmo código são comandos distintos: requestId distinto.
+        assertEquals("737a8188-8f96-9da4-abb2-b9c0c7ced5dc", gateway.commands.single().requestId)
+        gateway.status = AttendanceStatus.Confirmed
+        val confirm = AttendanceLinkViewModel(declineCode, false, SharingFake(), gateway, InviteFake())
+        assertEquals(AttendanceLinkPhase.Confirmed, confirm.state.value.phase)
+        assertEquals("030a1118-1f26-2d34-3b42-4950575e656c", gateway.commands.last().requestId)
+    }
+
+    @Test fun declinePastTheDeadlineIsInvalidAndNeverFakesTheAnswer() = runTest {
+        val gateway = AttendanceFake().apply { error = AttendanceError.DeadlinePassed }
+        val vm = AttendanceLinkViewModel(declineCode, true, SharingFake(), gateway, InviteFake())
+        vm.onIntent(AttendanceLinkIntent.Decline)
+        assertEquals(AttendanceLinkPhase.Invalid, vm.state.value.phase)
+        assertEquals(AttendanceIntent.Decline, gateway.commands.single().intent)
+    }
+
+    @Test fun declineGoesThroughRegistrationBeforeShowingTheWarning() = runTest {
+        val gateway = AttendanceFake()
+        val vm = AttendanceLinkViewModel(declineCode, true, SharingFake(registration = true), gateway, InviteFake())
+        assertEquals(AttendanceLinkEffect.Register("group"), vm.effects.first())
+        assertEquals(AttendanceLinkPhase.Registration, vm.state.value.phase)
+        assertTrue(gateway.commands.isEmpty())
+    }
+
+    @Test fun declineOnlyReactsToTheWarningIntent() = runTest {
+        val gateway = AttendanceFake()
+        val vm = AttendanceLinkViewModel(declineCode, true, SharingFake(), gateway, InviteFake())
+        vm.onIntent(AttendanceLinkIntent.Retry)
+        assertEquals(AttendanceLinkPhase.DeclineSheet, vm.state.value.phase)
+        assertTrue(gateway.commands.isEmpty())
+        vm.onIntent(AttendanceLinkIntent.Decline)
+        vm.onIntent(AttendanceLinkIntent.Decline)
+        assertEquals(1, gateway.commands.size)
     }
 
     private class InviteFake(private val status: InviteRedeemStatus? = null) : InviteGateway {
@@ -118,6 +163,8 @@ class AttendanceLinkViewModelTest {
     }
     private companion object {
         val code = "A".repeat(43)
+        /** 32 bytes distintos; confirmar usa a metade inicial e declinar a final. */
+        val declineCode = "AwoRGB8mLTQ7QklQV15lbHN6gYiPlp2kq7K5wMfO1dw"
         val destination = AttendanceLinkDestination(GroupId("group"), "game")
     }
 }

@@ -98,15 +98,21 @@ class NotificationWhatsAppGroupIntegrationTest {
         val game = publishedGame()
         service.remind(owner, group, game, UUID.randomUUID()).success()
         val code = jdbc.sql("SELECT code FROM notification_attendance_links").query(String::class.java).single()
-        val sent = mutableListOf<Pair<String, String?>>()
-        drain { _, _, text, link -> sent += text to link; WhatsAppDelivery.Accepted }
-        val (text, link) = sent.single()
+        val sent = mutableListOf<Pair<String, List<WhatsAppGroupButton>>>()
+        drain { _, _, text, buttons -> sent += text to buttons; WhatsAppDelivery.Accepted }
+        val (text, buttons) = sent.single()
         assertEquals("Saqz · Vôlei do CERET\n*Treino*", text)
-        // O link vai como botão: a URL crua nunca entra no texto.
+        // Os links vão como botões: a URL crua nunca entra no texto.
         assertFalse(text.contains("https://"), text)
         assertFalse(text.contains("Confirmar minha presença"), text)
-        assertTrue(link!!.contains("https://links.saqz.app/attendance/"), link)
-        assertTrue(link.contains(code), link)
+        assertEquals(
+            listOf(
+                "https://links.saqz.app/attendance/$code",
+                "https://links.saqz.app/attendance/$code?saqz_intent=decline",
+            ),
+            buttons.map { it.url },
+        )
+        assertTrue(buttons.all { it.label.isNotBlank() })
         assertEquals("ACCEPTED", status())
         assertFalse(text.contains(INSTANCE_JID))
         assertFalse(text.contains("@s.whatsapp.net"))
@@ -251,7 +257,7 @@ class NotificationWhatsAppGroupIntegrationTest {
     private fun publish(channel: MessageChannel, body: String = "Aviso", request: UUID = UUID.randomUUID()) =
         service.publish(owner, group, channel, request, body).success()
 
-    private fun drain(send: (String, UUID, String, String?) -> WhatsAppDelivery) =
+    private fun drain(send: (String, UUID, String, List<WhatsAppGroupButton>) -> WhatsAppDelivery) =
         queue.drain(NotificationWhatsAppGroupSender(send), directory)
 
     private fun chargeMessage() {

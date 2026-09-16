@@ -31,7 +31,7 @@ class JdbcNotificationWhatsApp(
             JOIN notification_whatsapp_queue q ON q.notification_id = c.sequence AND q.phone = c.phone
             WHERE c.sequence = :id AND c.whatsapp_enabled
         """).param("id", id).query { rs, _ ->
-            val link = rs.getString("code")?.let { "\nConfirmar minha presença no Saqz: ${links.create(AttendanceLinkCode.from(it))}" }.orEmpty()
+            val link = rs.getString("code")?.let { "\nConfirmar minha presença no Saqz: ${links.confirm(AttendanceLinkCode.from(it))}" }.orEmpty()
             WhatsAppNotification(id, rs.getString("phone"), "Saqz · ${rs.getString("group_name")}\n${rs.getString("body")}$link")
         }.optional().orElse(null)
         if (message == null) {

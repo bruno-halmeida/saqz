@@ -1,5 +1,7 @@
 package br.com.saqz.groups.port
 
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
+
 interface GroupCancelable { fun cancel() }
 
 enum class GroupNativeFailureCode { UNKNOWN }
@@ -20,7 +22,11 @@ interface GroupValueCallback { fun complete(result: GroupValueResult) }
 
 sealed interface GroupLinkEvent {
     data class Invite(val code: String) : GroupLinkEvent
-    data class Attendance(val code: String) : GroupLinkEvent
+    /** [intent] viaja no endereço: `saqz_intent=decline` é o "não vou"; sem ele, confirma. */
+    data class Attendance(
+        val code: String,
+        val intent: AttendanceIntent = AttendanceIntent.Confirm,
+    ) : GroupLinkEvent
     /** Toque em push de notificação; abre a central. O grupo fica para navegação futura. */
     data class NotificationOpen(val groupId: String?) : GroupLinkEvent
 }

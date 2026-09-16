@@ -2,6 +2,9 @@ package br.com.saqz.groups.application.communication
 
 import java.util.UUID
 
+/** Rótulo e URL de um botão de menu na mensagem do grupo. */
+data class WhatsAppGroupButton(val label: String, val url: String)
+
 /**
  * Entrega de uma mensagem de grupo (NOTICE/REMINDER) ao grupo do WhatsApp vinculado.
  *
@@ -11,7 +14,8 @@ import java.util.UUID
  */
 fun interface NotificationWhatsAppGroupSender {
     /**
-     * [link] não-nulo vira botão de URL na mensagem; o texto nunca carrega a URL crua.
+     * [buttons] vira botão de URL na mensagem; o texto nunca carrega a URL crua. Lista vazia
+     * envia texto puro.
      */
-    fun send(jid: String, messageId: UUID, text: String, link: String?): WhatsAppDelivery
+    fun send(jid: String, messageId: UUID, text: String, buttons: List<WhatsAppGroupButton>): WhatsAppDelivery
 }

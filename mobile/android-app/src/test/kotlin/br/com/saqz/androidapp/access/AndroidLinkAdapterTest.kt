@@ -2,6 +2,7 @@ package br.com.saqz.androidapp.access
 
 import br.com.saqz.access.domain.port.InviteCodeListener
 import br.com.saqz.access.domain.port.AppOnboardingCodeListener
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -20,6 +21,36 @@ class AndroidLinkAdapterTest {
         fixture.adapter.onWarmIntent(url)
         fixture.branch.complete(mapOf("saqz_attendance" to CODE_A))
         assertEquals(List(2) { br.com.saqz.groups.port.GroupLinkEvent.Attendance(CODE_A) }, events)
+    }
+
+    @Test
+    fun declineParameterSelectsTheDeclineIntentAndAbsenceConfirms() {
+        val fixture = Fixture()
+        val events = mutableListOf<br.com.saqz.groups.port.GroupLinkEvent>()
+        fixture.adapter.start(object : br.com.saqz.groups.port.GroupLinkEventListener {
+            override fun onEvent(event: br.com.saqz.groups.port.GroupLinkEvent) { events += event }
+        })
+        fixture.adapter.onColdStart("https://links.saqz.app/attendance/$CODE_A?saqz_intent=decline")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/?saqz_attendance=$CODE_A")
+        assertEquals(
+            listOf(
+                br.com.saqz.groups.port.GroupLinkEvent.Attendance(CODE_A, AttendanceIntent.Decline),
+                br.com.saqz.groups.port.GroupLinkEvent.Attendance(CODE_A, AttendanceIntent.Confirm),
+            ),
+            events,
+        )
+    }
+
+    @Test
+    fun unknownIntentConfirmsAndDuplicatedIntentIsRejected() {
+        val fixture = Fixture()
+        val events = mutableListOf<br.com.saqz.groups.port.GroupLinkEvent>()
+        fixture.adapter.start(object : br.com.saqz.groups.port.GroupLinkEventListener {
+            override fun onEvent(event: br.com.saqz.groups.port.GroupLinkEvent) { events += event }
+        })
+        fixture.adapter.onColdStart("https://links.saqz.app/attendance/$CODE_A?saqz_intent=maybe")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/attendance/$CODE_A?saqz_intent=decline&saqz_intent=decline")
+        assertEquals(listOf(br.com.saqz.groups.port.GroupLinkEvent.Attendance(CODE_A)), events)
     }
 
     @Test

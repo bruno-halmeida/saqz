@@ -52,6 +52,13 @@ fun interface AttendanceLinkTokenGenerator {
     fun generate(): AttendanceLinkToken
 }
 
-fun interface AttendanceLinkFactory {
-    fun create(code: AttendanceLinkCode): URI
+/**
+ * URLs públicas do link de presença. Confirmar é o caminho nu (`/attendance/<code>`) — o app
+ * trata a ausência de intenção como confirmação desde os links já enviados; o declínio é
+ * explícito para o app abrir o aviso certo.
+ */
+interface AttendanceLinkFactory {
+    fun confirm(code: AttendanceLinkCode): URI
+
+    fun decline(code: AttendanceLinkCode): URI
 }

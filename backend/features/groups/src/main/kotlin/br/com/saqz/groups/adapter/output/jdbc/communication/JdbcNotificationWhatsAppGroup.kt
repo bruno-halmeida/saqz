@@ -4,6 +4,7 @@ import br.com.saqz.groups.application.attendance.share.AttendanceLinkCode
 import br.com.saqz.groups.application.attendance.share.AttendanceLinkFactory
 import br.com.saqz.groups.application.communication.NotificationWhatsAppGroupSender
 import br.com.saqz.groups.application.communication.WhatsAppDelivery
+import br.com.saqz.groups.application.communication.WhatsAppGroupButton
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.whatsapp.DirectoryError
 import br.com.saqz.groups.application.whatsapp.WhatsAppGroupDirectory
@@ -61,7 +62,7 @@ class JdbcNotificationWhatsAppGroup(
                 return@inTransaction true
             }
             val content = content(message, binding) ?: run { finish(job.messageId, "CANCELLED"); return@inTransaction true }
-            when (val result = sender.send(binding.whatsappJid, job.messageId, content.text, content.link)) {
+            when (val result = sender.send(binding.whatsappJid, job.messageId, content.text, content.buttons)) {
                 WhatsAppDelivery.Accepted -> finish(job.messageId, "ACCEPTED")
                 WhatsAppDelivery.Failed -> finish(job.messageId, "FAILED")
                 is WhatsAppDelivery.Retry -> scheduleRetry(job, result.afterSeconds)
@@ -104,9 +105,16 @@ class JdbcNotificationWhatsAppGroup(
 
     private fun content(message: PendingMessage, binding: Binding): GroupContent? {
         val text = "Saqz · ${binding.groupName}\n${message.body}"
-        if (message.channel != "REMINDER") return GroupContent(text, null)
+        if (message.channel != "REMINDER") return GroupContent(text, emptyList())
         val code = message.code ?: return null
-        return GroupContent(text, links.create(AttendanceLinkCode.from(code)).toString())
+        val attendance = AttendanceLinkCode.from(code)
+        return GroupContent(
+            text,
+            listOf(
+                WhatsAppGroupButton(CONFIRM_LABEL, links.confirm(attendance).toString()),
+                WhatsAppGroupButton(DECLINE_LABEL, links.decline(attendance).toString()),
+            ),
+        )
     }
 
     private fun breakBinding(groupId: UUID) {
@@ -145,6 +153,11 @@ class JdbcNotificationWhatsAppGroup(
     private data class PendingMessage(
         val groupId: UUID, val channel: String, val gameId: UUID?, val body: String, val code: String?, val binding: Binding?,
     )
-    /** [link] não-nulo é entregue como botão, nunca embutido no texto. */
-    private data class GroupContent(val text: String, val link: String?)
+    /** [buttons] vazio é mensagem de texto; não-vazio vira botões, nunca embutidos no texto. */
+    private data class GroupContent(val text: String, val buttons: List<WhatsAppGroupButton>)
+
+    private companion object {
+        const val CONFIRM_LABEL = "😍 Vou, me confirma!"
+        const val DECLINE_LABEL = "😢 Não conseguirei ir!"
+    }
 }

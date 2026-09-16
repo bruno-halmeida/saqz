@@ -36,4 +36,10 @@
     <string name="attendance_link_open_game">Ver jogo</string>
     <string name="attendance_link_registration">Complete seu cadastro de atleta neste grupo para confirmar a presença.</string>
     <string name="attendance_link_pending">Sua entrada no grupo aguarda aprovação. Depois de aprovado, atualize para concluir seu cadastro e confirmar a presença.</string>
+    <string name="attendance_link_declined">Avisamos o grupo que você não vai. Sua vaga ficou livre para a fila de espera.</string>
+    <string name="attendance_link_decline_sheet_title">Não conseguirá ir?</string>
+    <string name="attendance_link_decline_sheet_description">Vamos avisar o grupo que você não vai.</string>
+    <string name="attendance_link_decline_sheet_body">Sua vaga libera na hora para quem está na fila de espera. Se mudar de ideia, toque no botão de confirmar do lembrete enquanto o prazo estiver aberto.</string>
+    <string name="attendance_link_decline_sheet_back">Voltar</string>
+    <string name="attendance_link_decline_sheet_confirm">Sim, não vou</string>
 </resources>
