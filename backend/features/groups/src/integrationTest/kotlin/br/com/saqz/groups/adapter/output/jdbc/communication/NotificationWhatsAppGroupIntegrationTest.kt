@@ -101,7 +101,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         val sent = mutableListOf<Pair<String, String?>>()
         drain { _, _, text, link -> sent += text to link; WhatsAppDelivery.Accepted }
         val (text, link) = sent.single()
-        assertEquals("Saqz · Vôlei do CERET\n*Treino*\n\n⏳ A confirmar:\nMember, Owner", text)
+        assertEquals("Saqz · Vôlei do CERET\n*Treino*", text)
         // O link vai como botão: a URL crua nunca entra no texto.
         assertFalse(text.contains("https://"), text)
         assertFalse(text.contains("Confirmar minha presença"), text)

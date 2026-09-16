@@ -140,7 +140,7 @@ class GroupCommunicationIntegrationTest {
         assertEquals(1, service.publish(owner, group, MessageChannel.CHAT, UUID.randomUUID(), "Mensagem liberada").success().recipientCount)
         assertEquals(2, service.inbox(member, null).success().items.size)
     }
-    @Test fun `reminders list confirmed out and pending and retries preserve recipients`() {
+    @Test fun `reminders list confirmed waitlist and out and retries preserve recipients`() {
         val confirmed = user("Confirmed Person").also { membership(it) }
         val declined = user("Declined Person").also { membership(it) }
         val waitlisted = user("Waitlisted Person").also { membership(it) }
@@ -170,7 +170,7 @@ class GroupCommunicationIntegrationTest {
         val reminder = service.remind(owner, group, game, request).success()
         assertEquals(1, reminder.recipientCount)
         assertEquals(
-            "*Treino*\n\n✅ Confirmados:\nAna\n\n🕒 Lista de espera:\nCaio\n\n❌ Fora:\nBia\n\n⏳ A confirmar:\nMember Person, Owner Person",
+            "*Treino*\n\n✅ Confirmados:\nAna\n\n🕒 Lista de espera:\nCaio\n\n❌ Fora:\nBia",
             reminder.body,
         )
         assertFalse(reminder.body.contains("Inactive Person"))
@@ -192,7 +192,7 @@ class GroupCommunicationIntegrationTest {
         assertEquals(open, reminder.gameId)
         assertEquals(MessageChannel.REMINDER, reminder.channel)
         assertEquals(owner, reminder.authorId)
-        assertEquals("*Treino aberto*\n\n⏳ A confirmar:\nMember Person, Owner Person", reminder.body)
+        assertEquals("*Treino aberto*", reminder.body)
         assertEquals(1, service.remindAutomatically())
         assertEquals(2, service.inbox(member, null).success().items.size)
         assertTrue(service.inbox(owner, null).success().items.isEmpty())

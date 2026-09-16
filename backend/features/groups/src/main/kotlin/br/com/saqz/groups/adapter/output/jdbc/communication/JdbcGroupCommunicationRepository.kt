@@ -74,29 +74,17 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
     override fun reminderRoster(groupId: UUID, gameId: UUID): ReminderRoster {
         val rows = jdbc.sql(
             """
-            SELECT roster.bucket, roster.name FROM (
-                SELECT CASE attendance.status
-                           WHEN 'CONFIRMED' THEN 'CONFIRMED'
-                           WHEN 'WAITLISTED' THEN 'WAITLISTED'
-                           WHEN 'DECLINED' THEN 'DECLINED'
-                           ELSE 'PENDING' END AS bucket,
-                       attendance.member_display_name AS name
-                FROM game_attendance attendance
-                JOIN group_memberships membership
-                    ON membership.group_id = attendance.group_id
-                    AND membership.user_id = attendance.member_user_id AND membership.active
-                WHERE attendance.game_id = :game AND attendance.group_id = :group
-                UNION ALL
-                SELECT 'PENDING', users.display_name
-                FROM group_memberships membership
-                JOIN access_users users ON users.id = membership.user_id
-                WHERE membership.group_id = :group AND membership.active
-                  AND NOT EXISTS (
-                      SELECT 1 FROM game_attendance attendance
-                      WHERE attendance.game_id = :game AND attendance.member_user_id = membership.user_id
-                  )
-            ) roster
-            ORDER BY lower(roster.name), roster.name
+            SELECT CASE attendance.status
+                       WHEN 'CONFIRMED' THEN 'CONFIRMED'
+                       WHEN 'WAITLISTED' THEN 'WAITLISTED'
+                       ELSE 'DECLINED' END AS bucket,
+                   attendance.member_display_name AS name
+            FROM game_attendance attendance
+            JOIN group_memberships membership
+                ON membership.group_id = attendance.group_id
+                AND membership.user_id = attendance.member_user_id AND membership.active
+            WHERE attendance.game_id = :game AND attendance.group_id = :group
+            ORDER BY lower(attendance.member_display_name), attendance.member_display_name
             """.trimIndent(),
         ).param("group", groupId).param("game", gameId)
             .query { rs, _ -> rs.getString("bucket") to rs.getString("name") }.list()
@@ -104,7 +92,6 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             confirmed = rows.filter { it.first == "CONFIRMED" }.map { it.second },
             waitlisted = rows.filter { it.first == "WAITLISTED" }.map { it.second },
             declined = rows.filter { it.first == "DECLINED" }.map { it.second },
-            pending = rows.filter { it.first == "PENDING" }.map { it.second },
         )
     }
 
