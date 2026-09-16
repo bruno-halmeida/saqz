@@ -219,6 +219,22 @@ class NotificationWhatsAppGroupIntegrationTest {
         assertEquals(GROUP_JID, bindingJid())
     }
 
+    @Test fun `relinking keeps terminal jobs of the previous binding intact`() {
+        binding()
+        publish(MessageChannel.NOTICE, "Primeiro")
+        drain { _, _, _ -> WhatsAppDelivery.Accepted }
+        publish(MessageChannel.NOTICE, "Segundo")
+        assertEquals(1, countStatus("ACCEPTED"))
+        assertEquals(1, countStatus("PENDING"))
+        directory.invite = WhatsAppGroupInfo(NEW_JID, "Novo Grupo", listOf(OWNER_PHONE))
+
+        link.execute(owner, group, "NewInvite02")
+
+        assertEquals(1, countStatus("ACCEPTED"))
+        assertEquals(0, countStatus("PENDING"))
+        assertEquals(NEW_JID, bindingJid())
+    }
+
     private fun binding(jid: String = GROUP_JID, name: String = "Vôlei do CERET", enabled: Boolean = true, broken: Boolean = false) {
         jdbc.sql("""
             INSERT INTO group_whatsapp_bindings
