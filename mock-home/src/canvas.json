@@ -1,0 +1,280 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "title": "Atleta · Sem resposta",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 900,
+      "page": "atleta"
+    },
+    {
+      "file": "AtletaConfirmado.dc.html",
+      "title": "Atleta · Confirmado (+ toast)",
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 900,
+      "page": "atleta"
+    },
+    {
+      "file": "AtletaNaoVou.dc.html",
+      "title": "Atleta · Não vou",
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 900,
+      "page": "atleta"
+    },
+    {
+      "file": "AtletaAlterando.dc.html",
+      "title": "Atleta · Alterando resposta",
+      "x": 1410,
+      "y": 0,
+      "w": 390,
+      "h": 900,
+      "page": "atleta"
+    },
+    {
+      "file": "AtletaErroResposta.dc.html",
+      "title": "Atleta · Erro ao responder",
+      "x": 1880,
+      "y": 0,
+      "w": 390,
+      "h": 900,
+      "page": "atleta"
+    },
+    {
+      "file": "AtletaEncerradas.dc.html",
+      "title": "Atleta · Confirmações encerradas",
+      "x": 2350,
+      "y": 0,
+      "w": 390,
+      "h": 900,
+      "page": "atleta"
+    },
+    {
+      "file": "AtletaSemJogo.dc.html",
+      "title": "Atleta · Sem jogo",
+      "x": 2820,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "atleta"
+    },
+    {
+      "file": "AtletaCarregando.dc.html",
+      "title": "Atleta · Carregando",
+      "x": 3290,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "atleta"
+    },
+    {
+      "file": "AtletaErro.dc.html",
+      "title": "Atleta · Erro ao carregar",
+      "x": 3760,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "atleta"
+    },
+    {
+      "file": "AtletaReserva.dc.html",
+      "title": "Atleta · Reserva (6b)",
+      "x": 0,
+      "y": 1060,
+      "w": 390,
+      "h": 1280,
+      "page": "atleta"
+    },
+    {
+      "file": "AtletaListaAvulso.dc.html",
+      "title": "Atleta · Lista de espera do avulso (6e)",
+      "x": 470,
+      "y": 1060,
+      "w": 390,
+      "h": 1460,
+      "page": "atleta"
+    },
+    {
+      "file": "AtletaCobrancaVencida.dc.html",
+      "title": "Atleta · Cobrança vencida",
+      "x": 940,
+      "y": 1060,
+      "w": 390,
+      "h": 1180,
+      "page": "atleta"
+    },
+    {
+      "file": "AtletaChaveCopiada.dc.html",
+      "title": "Atleta · Chave Pix copiada",
+      "x": 1410,
+      "y": 1060,
+      "w": 390,
+      "h": 1180,
+      "page": "atleta"
+    },
+    {
+      "file": "GestorPendencias.dc.html",
+      "title": "Gestor · Com pendências, sem resposta",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 1380,
+      "page": "gestor"
+    },
+    {
+      "file": "GestorSemPendencias.dc.html",
+      "title": "Gestor · Sem pendências",
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 1120,
+      "page": "gestor"
+    },
+    {
+      "file": "GestorConfirmado.dc.html",
+      "title": "Gestor · Confirmado",
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 1380,
+      "page": "gestor"
+    },
+    {
+      "file": "GestorEncerradas.dc.html",
+      "title": "Gestor · Confirmações encerradas",
+      "x": 1410,
+      "y": 0,
+      "w": 390,
+      "h": 1380,
+      "page": "gestor"
+    },
+    {
+      "file": "GestorTambemDeve.dc.html",
+      "title": "Gestor · Também deve (cobrança vencida)",
+      "x": 1880,
+      "y": 0,
+      "w": 390,
+      "h": 1620,
+      "page": "gestor"
+    },
+    {
+      "file": "GestorSemJogo.dc.html",
+      "title": "Gestor · Sem jogo marcado",
+      "x": 2350,
+      "y": 0,
+      "w": 390,
+      "h": 1040,
+      "page": "gestor"
+    },
+    {
+      "file": "GestorMisto.dc.html",
+      "title": "Gestor de outro grupo · atleta no próximo jogo",
+      "x": 2820,
+      "y": 0,
+      "w": 390,
+      "h": 1180,
+      "page": "gestor"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "a-hero",
+      "page": "atleta",
+      "x": 0,
+      "y": -230,
+      "w": 420,
+      "text": "HERO = MARCA\nAzul (primary) + lima (accent) + bola: os três elementos do logo. Só tokens que já existem no design system. A bola é a do SaqzSpinner (saqz_volleyball), em branco a 20%. Data em Anybody 800 (a fonte dos títulos da landing). \"Vou\" em lima com texto ink é o CTA da landing; \"Não vou\" fica em contorno."
+    },
+    {
+      "id": "a-topo",
+      "page": "atleta",
+      "x": -470,
+      "y": -230,
+      "w": 420,
+      "text": "CABEÇALHO\nLogo antes da saudação. O sino abre Notificações (hoje só se chega pelo Perfil); o ponto azul marca não lidas. A faixa de aviso (cobrança em aberto) entra logo abaixo do cabeçalho, não acima dele."
+    },
+    {
+      "id": "a-cortes",
+      "page": "atleta",
+      "x": 470,
+      "y": -230,
+      "w": 420,
+      "text": "CORTADO\n• Subtítulo da saudação (repetia o hero)\n• Emoji do \"Fala, Bruna!\" (marca não usa emoji)\n• Card \"Da última vez\": histórico mora no grupo (princípio do VUL-200)\n• Roster dentro do hero nos estados de espera (as seções abaixo já mostram)"
+    },
+    {
+      "id": "a-strings",
+      "page": "atleta",
+      "x": 940,
+      "y": -230,
+      "w": 420,
+      "text": "STRINGS NOVAS (para você serializar)\n• \"Terça, 19h30\" — weekday + time, já existem no HomeNextGameUi\n• \"28 de julho · {local}\" — meta do hero\n• \"Sem jogo marcado\" — título do hero vazio\n• \"Confirmações encerradas.\" — prazo fechado\n• \"Encerrou {data} · {hora}\" — chip do gestor com prazo fechado\nTodo o resto reaproveita as chaves do strings_home.xml."
+    },
+    {
+      "id": "a-cobranca",
+      "page": "atleta",
+      "x": 940,
+      "y": 840,
+      "w": 460,
+      "text": "COBRANÇA: SÓ QUANDO VENCIDA\nNo prazo, a Início não mostra nada; a dívida mora no detalhe do grupo e em Perfil → Mensalidades. Vencida: card branco, valor em display, chip âmbar (sem vermelho), recebedor no lugar da chave, um botão azul. Um card por grupo; com mais de uma cobrança entra \"N cobranças em aberto\". Ao copiar, botão vira \"Chave copiada\" e o toast explica a baixa manual.\n\nDecisão em aberto: a faixa do shell nas outras abas segue a mesma regra (só vencida)?\n\nStrings novas: \"Mensalidade de julho\", \"Pix de {nome} · {banco}\", \"Chave copiada\", \"Chave copiada. Depois de pagar, o admin dá baixa.\""
+    },
+    {
+      "id": "a-proximos",
+      "page": "atleta",
+      "x": 1410,
+      "y": -230,
+      "w": 460,
+      "text": "PRÓXIMOS JOGOS (proposta para preencher)\nO que vem depois do hero, em todos os grupos: data, grupo e hora, quantos confirmaram, e o seu estado (Sem resposta / Você vai). Toque abre o jogo. É a única informação que ainda é \"agora\" e não é filler; quem tem dois grupos vê os dois, quem tem um vê a semana que vem. Some quando não há mais nada marcado.\n\nCusta: `upcomingGames` (os N seguintes) no GET /api/me/home."
+    },
+    {
+      "id": "a-espera",
+      "page": "atleta",
+      "x": 0,
+      "y": 860,
+      "w": 420,
+      "text": "ESPERA (6b / 6e)\nMesmo hero azul, com o chip e a caixa de aviso em branco translúcido. \"Ver o jogo\" sobe para botão sólido; \"Sair\" vira ação fantasma abaixo. As seções Confirmados / Como está a lista seguem o vocabulário atual."
+    },
+    {
+      "id": "g-hero",
+      "page": "gestor",
+      "x": 0,
+      "y": -260,
+      "w": 420,
+      "text": "GESTOR\nPlacar (Vão / Não vão / Sem resposta) entra no hero azul; \"Vão\" em lima. O gestor também responde presença no mesmo lugar (dono e admin jogam). Chip da direita mostra o prazo."
+    },
+    {
+      "id": "g-atalhos",
+      "page": "gestor",
+      "x": 470,
+      "y": -260,
+      "w": 420,
+      "text": "ATALHOS: SÓ DOIS\n\"Marcar jogo\" e \"Convidar\". Caixa e Grupos já são abas na barra inferior. Sem jogo marcado, os dois verbos sobem para dentro do hero e a linha de atalhos some."
+    },
+    {
+      "id": "g-misto",
+      "page": "gestor",
+      "x": 940,
+      "y": -260,
+      "w": 420,
+      "text": "MISTO\nAdmin de um grupo, atleta no grupo do próximo jogo: hero de atleta (RSVP) + \"Esperando você\" do grupo que administra. É a regra atual (isAdminOfNextGame), só com a roupa nova."
+    }
+  ],
+  "pages": [
+    {
+      "id": "atleta",
+      "name": "Atleta"
+    },
+    {
+      "id": "gestor",
+      "name": "Gestor / owner"
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "atleta"
+  }
+}
