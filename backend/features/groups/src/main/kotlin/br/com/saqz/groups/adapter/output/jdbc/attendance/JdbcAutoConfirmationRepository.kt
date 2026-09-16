@@ -64,6 +64,10 @@ class JdbcAutoConfirmationRepository(dataSource: DataSource) : AutoConfirmationR
         .optional()
         .orElse(null)
 
+    override fun openGames(): List<AutoConfirmationGame> = jdbc.sql(
+        GAME + " WHERE g.status='PUBLISHED' AND g.starts_at > now() AND g.confirmation_deadline > now() ORDER BY g.id",
+    ).query(::mapGame).list()
+
     override fun candidates(gameId: UUID): List<AutoConfirmationCandidate> = jdbc.sql(
         """
         SELECT m.user_id, m.membership_type, m.auto_confirm_enabled, m.created_at

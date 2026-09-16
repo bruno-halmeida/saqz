@@ -7,11 +7,14 @@ import br.com.saqz.groups.application.communication.MessageChannel
 import br.com.saqz.groups.application.communication.NotificationPreferences
 import br.com.saqz.groups.application.communication.PushPreferences
 import br.com.saqz.groups.application.communication.ReminderCandidate
+import br.com.saqz.groups.application.communication.ReminderGame
 import br.com.saqz.groups.application.communication.ReminderRoster
 import br.com.saqz.groups.application.communication.WhatsAppPreferences
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
 import java.sql.Types
+import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 import javax.sql.DataSource
 
@@ -66,10 +69,14 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         return checkNotNull(findRequest(groupId, actor, channel, requestId))
     }
 
-    override fun reminderTitle(groupId: UUID, gameId: UUID): String? = jdbc.sql(
-        "SELECT title FROM games WHERE group_id = :group AND id = :game AND status = 'PUBLISHED' " +
-            "AND starts_at > now() AND confirmation_deadline > now()",
-    ).param("group", groupId).param("game", gameId).query(String::class.java).optional().orElse(null)
+    override fun reminderGame(groupId: UUID, gameId: UUID): ReminderGame? = jdbc.sql(
+        "SELECT local_date, local_time, venue_name FROM games WHERE group_id = :group AND id = :game " +
+            "AND status = 'PUBLISHED' AND starts_at > now() AND confirmation_deadline > now()",
+    ).param("group", groupId).param("game", gameId).query { rs, _ -> ReminderGame(
+        localDate = rs.getObject("local_date", LocalDate::class.java),
+        localTime = rs.getObject("local_time", LocalTime::class.java),
+        venue = rs.getString("venue_name"),
+    ) }.optional().orElse(null)
 
     override fun reminderRoster(groupId: UUID, gameId: UUID): ReminderRoster {
         val rows = jdbc.sql(
@@ -97,7 +104,8 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
 
     override fun reminderCandidates(): List<ReminderCandidate> = jdbc.sql(
         """
-        SELECT games.id AS game_id, games.group_id, games.title, groups.owner_user_id
+        SELECT games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
+               groups.owner_user_id
         FROM games
         JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
         WHERE games.status = 'PUBLISHED' AND games.starts_at > now() AND games.confirmation_deadline > now()
@@ -107,7 +115,11 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         gameId = rs.getObject("game_id", UUID::class.java),
         groupId = rs.getObject("group_id", UUID::class.java),
         ownerId = rs.getObject("owner_user_id", UUID::class.java),
-        title = rs.getString("title"),
+        game = ReminderGame(
+            localDate = rs.getObject("local_date", LocalDate::class.java),
+            localTime = rs.getObject("local_time", LocalTime::class.java),
+            venue = rs.getString("venue_name"),
+        ),
     ) }.list()
 
     override fun inbox(actor: UUID, before: Long?) = jdbc.sql(

@@ -104,7 +104,8 @@ class JdbcNotificationWhatsAppGroup(
     """).param("game", gameId).param("group", groupId).query(Int::class.java).single() == 1
 
     private fun content(message: PendingMessage, binding: Binding): GroupContent? {
-        val text = "Saqz · ${binding.groupName}\n${message.body}"
+        val prefix = if (message.channel == "REMINDER") binding.groupName else "Saqz · ${binding.groupName}"
+        val text = "$prefix\n${message.body}"
         if (message.channel != "REMINDER") return GroupContent(text, emptyList())
         val code = message.code ?: return null
         val attendance = AttendanceLinkCode.from(code)

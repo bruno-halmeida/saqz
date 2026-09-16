@@ -1,6 +1,8 @@
 package br.com.saqz.groups.application.communication
 
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 
 enum class MessageChannel { CHAT, NOTICE, REMINDER, CHARGE }
@@ -24,7 +26,14 @@ data class GroupNotification(val sequence: Long, val message: GroupMessage, val 
 /** Ordem das seções no corpo: confirmados, lista de espera e fora. */
 data class ReminderRoster(val confirmed: List<String>, val waitlisted: List<String>, val declined: List<String>)
 
-data class ReminderCandidate(val gameId: UUID, val groupId: UUID, val ownerId: UUID, val title: String)
+data class ReminderGame(val localDate: LocalDate, val localTime: LocalTime, val venue: String)
+
+data class ReminderCandidate(
+    val gameId: UUID,
+    val groupId: UUID,
+    val ownerId: UUID,
+    val game: ReminderGame,
+)
 data class PushPreferences(val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true, val charges: Boolean = true)
 data class WhatsAppPreferences(val notices: Boolean = false, val reminders: Boolean = false, val charges: Boolean = false)
 data class NotificationPreferences(
@@ -43,7 +52,7 @@ interface GroupCommunicationRepository {
     fun messages(groupId: UUID, channel: MessageChannel, before: Long?): List<GroupMessage>
     fun findRequest(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID): GroupMessage?
     fun publish(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID, body: String, gameId: UUID?): GroupMessage
-    fun reminderTitle(groupId: UUID, gameId: UUID): String?
+    fun reminderGame(groupId: UUID, gameId: UUID): ReminderGame?
     fun reminderRoster(groupId: UUID, gameId: UUID): ReminderRoster
     fun reminderCandidates(): List<ReminderCandidate>
     fun inbox(actor: UUID, before: Long?): List<GroupNotification>

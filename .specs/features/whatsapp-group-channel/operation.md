@@ -53,8 +53,8 @@ parser validados no T0 estão em `evidence.md`.
 
 Corpos (NOTICE sem valor financeiro, sem nome de pessoa ou telefone; REMINDER lista os nomes por situação):
 - NOTICE: `Saqz · {grupo}\n{texto}`
-- REMINDER: `Saqz · {grupo}\n{corpo}` + botão `Confirmar presença` → `{link}` (fallback de texto com a URL se o botão for recusado)
-- `{corpo}`: `*{título}*` + `✅ Confirmados:`, `🕒 Lista de espera:` e `❌ Fora:` (um nome por linha, nesta ordem; seção vazia omitida; corte em 2000 caracteres no último nome, com `…`)
+- REMINDER: `{grupo}\n{corpo}` + botões `😍 Vou, me confirma!` → `{link}` e `😢 Não conseguirei ir!` → `{link}?saqz_intent=decline` (fallback de texto com as URLs se os botões forem recusados)
+- `{corpo}`: `Jogo: {dia, data às hora}`, `Local: {local}` + `✅ Confirmados:`, `🕒 Lista de espera:` e `❌ Fora:` (um nome por linha, nesta ordem; seção vazia omitida; corte em 2000 caracteres no último nome, com `…`)
 
 ## Inspeção operacional
 

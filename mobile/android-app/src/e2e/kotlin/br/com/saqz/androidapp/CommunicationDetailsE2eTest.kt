@@ -284,11 +284,12 @@ internal class ReminderE2eTest : InstalledE2e("reminders") {
         assertEquals("REMINDER", message.getString("channel"))
         assertEquals(actor("owner").getString("id"), message.getString("authorId"))
         assertEquals(1, message.getInt("recipientCount"))
+        val body = message.getString("body")
+        assertTrue(body, body.startsWith("Jogo: "))
         assertEquals(
-            "*${data.getString("gameTitle")}*\n\n" +
-                "✅ Confirmados:\nE2E reminders-admin\nE2E reminders-athlete\n\n" +
+            "Local: Arena QA\n\n✅ Confirmados:\nE2E reminders-admin\nE2E reminders-athlete\n\n" +
                 "❌ Fora:\nE2E reminders-declined",
-            message.getString("body"),
+            body.substringAfter("\n"),
         )
         assertNoNotifications(exceptPeer = true)
         assertEquals(before, snapshot(attendancePath))

@@ -33,6 +33,7 @@ interface AutoConfirmationRepository {
     fun updateOwnOptIn(groupId: UUID, memberId: UUID, enabled: Boolean): AutoConfirmationOptInUpdate
     fun lockGame(groupId: UUID, gameId: UUID): AutoConfirmationGame?
     fun lockOccurrence(groupId: UUID, seriesId: UUID, localDate: java.time.LocalDate, slotKey: UUID): AutoConfirmationGame?
+    fun openGames(): List<AutoConfirmationGame>
     fun candidates(gameId: UUID): List<br.com.saqz.groups.domain.attendance.AutoConfirmationCandidate>
     fun nextWaitlistSequence(groupId: UUID, gameId: UUID): Long
     fun save(record: AttendanceRecord)
@@ -65,6 +66,18 @@ class AutoConfirmAttendance(
     fun applyMaterialized(occurrences: List<br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence>) {
         occurrences.forEach { occurrence ->
             applyOccurrence(occurrence.occurrence)
+        }
+    }
+
+    /**
+     * Confirma mensalistas opt-in em todo jogo aberto. Cobre jogos publicados antes da feature
+     * ligada e mensalistas que entraram no grupo depois do publish; idempotente por candidato.
+     */
+    fun applyOpenGames(): Int = repository.openGames().sumOf { open ->
+        transaction.inTransaction {
+            val game = repository.lockGame(open.groupId, open.gameId) ?: return@inTransaction 0
+            if (!game.autoConfirmEnabled || game.status != GameStatus.PUBLISHED) return@inTransaction 0
+            confirm(game, game.ownerId)
         }
     }
 

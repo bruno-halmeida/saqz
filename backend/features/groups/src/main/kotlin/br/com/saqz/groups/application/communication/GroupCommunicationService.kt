@@ -38,10 +38,10 @@ class GroupCommunicationService(
             if (existing != null) return@inGroup if (existing.gameId == gameId) {
                 CommunicationResult.Success(existing)
             } else CommunicationResult.Failure(CommunicationError.CONFLICT)
-            val title = repository.reminderTitle(groupId, gameId) ?: return@inGroup invalid()
+            val game = repository.reminderGame(groupId, gameId) ?: return@inGroup invalid()
             CommunicationResult.Success(repository.publish(
                 groupId, actor, MessageChannel.REMINDER, requestId,
-                reminderBody(title, repository.reminderRoster(groupId, gameId)), gameId,
+                reminderBody(game, repository.reminderRoster(groupId, gameId)), gameId,
             ))
         }
 
@@ -54,7 +54,7 @@ class GroupCommunicationService(
         candidates.forEach { candidate ->
             repository.publish(
                 candidate.groupId, candidate.ownerId, MessageChannel.REMINDER, UUID.randomUUID(),
-                reminderBody(candidate.title, repository.reminderRoster(candidate.groupId, candidate.gameId)),
+                reminderBody(candidate.game, repository.reminderRoster(candidate.groupId, candidate.gameId)),
                 candidate.gameId,
             )
         }

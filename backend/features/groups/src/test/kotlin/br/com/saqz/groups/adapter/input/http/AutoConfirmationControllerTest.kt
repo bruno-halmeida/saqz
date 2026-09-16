@@ -79,6 +79,7 @@ class AutoConfirmationControllerTest {
 
         override fun lockGame(groupId: UUID, gameId: UUID): AutoConfirmationGame? = error("unused")
         override fun lockOccurrence(groupId: UUID, seriesId: UUID, localDate: LocalDate, slotKey: UUID): AutoConfirmationGame? = error("unused")
+        override fun openGames(): List<AutoConfirmationGame> = error("unused")
         override fun candidates(gameId: UUID): List<AutoConfirmationCandidate> = error("unused")
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID): Long = error("unused")
         override fun save(record: AttendanceRecord) = error("unused")

@@ -101,7 +101,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         val sent = mutableListOf<Pair<String, List<WhatsAppGroupButton>>>()
         drain { _, _, text, buttons -> sent += text to buttons; WhatsAppDelivery.Accepted }
         val (text, buttons) = sent.single()
-        assertEquals("Saqz · Vôlei do CERET\n*Treino*", text)
+        assertEquals("Vôlei do CERET\nJogo: domingo, 20/09 às 12:00\nLocal: Arena", text)
         // Os links vão como botões: a URL crua nunca entra no texto.
         assertFalse(text.contains("https://"), text)
         assertFalse(text.contains("Confirmar minha presença"), text)
@@ -273,7 +273,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         jdbc.sql("""
             INSERT INTO games(id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
                 confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at)
-            VALUES (:id, :g, 'Treino', current_date + 1, '12:00', 'UTC', now() + interval '1 day', 90,
+            VALUES (:id, :g, 'Treino', DATE '2026-09-20', TIME '12:00', 'UTC', now() + interval '1 day', 90,
                 now() + interval '1 day', 'Arena', 'Rua 100', 12, 'PUBLISHED', now(), now())
         """).param("id", id).param("g", group).update()
         return id

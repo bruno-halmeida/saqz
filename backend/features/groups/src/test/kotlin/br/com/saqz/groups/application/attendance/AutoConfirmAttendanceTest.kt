@@ -69,6 +69,7 @@ class AutoConfirmAttendanceTest {
         override fun lockGame(groupId: UUID, gameId: UUID): AutoConfirmationGame? = null
         override fun lockOccurrence(groupId: UUID, seriesId: UUID, localDate: LocalDate, slotKey: UUID) =
             AutoConfirmationGame(GROUP, GAME, OWNER, status, 2, 0, true)
+        override fun openGames() = emptyList<AutoConfirmationGame>()
         override fun candidates(gameId: UUID) = listOf(AutoConfirmationCandidate(MEMBER, AthleteMembershipType.MENSALISTA, true, NOW))
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = 1L
         override fun save(record: AttendanceRecord) { saved += record }

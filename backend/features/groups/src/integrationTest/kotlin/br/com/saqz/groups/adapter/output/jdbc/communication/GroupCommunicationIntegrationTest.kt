@@ -149,7 +149,7 @@ class GroupCommunicationIntegrationTest {
         jdbc.sql("""
             INSERT INTO games (id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
                 confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at)
-            VALUES (:game, :group, 'Treino', (now() AT TIME ZONE 'UTC')::date + 2, '12:00', 'UTC',
+            VALUES (:game, :group, 'Treino', DATE '2026-09-20', TIME '19:30', 'UTC',
                 ((now() AT TIME ZONE 'UTC')::date + 2) + time '12:00', 90, now() + interval '1 day',
                 'Arena', 'Rua Central 100', 12, 'PUBLISHED', now(), now())
         """.trimIndent()).param("game", game).param("group", group).update()
@@ -170,7 +170,7 @@ class GroupCommunicationIntegrationTest {
         val reminder = service.remind(owner, group, game, request).success()
         assertEquals(1, reminder.recipientCount)
         assertEquals(
-            "*Treino*\n\n✅ Confirmados:\nAna\n\n🕒 Lista de espera:\nCaio\n\n❌ Fora:\nBia",
+            "Jogo: domingo, 20/09 às 19:30\nLocal: Arena\n\n✅ Confirmados:\nAna\n\n🕒 Lista de espera:\nCaio\n\n❌ Fora:\nBia",
             reminder.body,
         )
         assertFalse(reminder.body.contains("Inactive Person"))
@@ -192,7 +192,7 @@ class GroupCommunicationIntegrationTest {
         assertEquals(open, reminder.gameId)
         assertEquals(MessageChannel.REMINDER, reminder.channel)
         assertEquals(owner, reminder.authorId)
-        assertEquals("*Treino aberto*", reminder.body)
+        assertEquals("Jogo: domingo, 20/09 às 12:00\nLocal: Arena", reminder.body)
         assertEquals(1, service.remindAutomatically())
         assertEquals(2, service.inbox(member, null).success().items.size)
         assertTrue(service.inbox(owner, null).success().items.isEmpty())
@@ -207,12 +207,11 @@ class GroupCommunicationIntegrationTest {
         jdbc.sql("""
             INSERT INTO games (id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
                 confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at)
-            VALUES (:id, :group, :title, (now() AT TIME ZONE 'UTC')::date + :days, '12:00', 'UTC',
+            VALUES (:id, :group, :title, DATE '2026-09-20', TIME '12:00', 'UTC',
                 now() + (:starts * interval '1 hour'), 90, now() + (:deadline * interval '1 hour'),
                 'Arena', 'Rua Central 100', 12, '$status', now(), now())
         """.trimIndent()).param("id", id).param("group", group).param("title", title)
-            .param("days", (startsInHours / 24).toInt()).param("starts", startsInHours)
-            .param("deadline", deadlineInHours).update()
+            .param("starts", startsInHours).param("deadline", deadlineInHours).update()
         return id
     }
     private fun user(name: String): UUID {

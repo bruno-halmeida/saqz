@@ -33,12 +33,13 @@
 - **Texto da mensagem de grupo** (templates exatos; nada de valor financeiro ou telefone; o lembrete
   de presença lista nomes):
   - NOTICE: `Saqz · {group_name}\n{body}`
-  - REMINDER: `Saqz · {group_name}\n{body}` com botão CTA de URL `Confirmar presença` → `{link}`
-  (o link é o `notification_attendance_links.code` da mensagem, via `BranchAttendanceLinkFactory`;
-  se o provedor recusar o botão, o envio cai para texto com `Confirmar minha presença no Saqz: {link}`).
-  - Corpo do REMINDER (`{body}`): `*{título}*` + `✅ Confirmados:`, `🕒 Lista de espera:` e `❌ Fora:`
-  (um nome por linha, nesta ordem; seção vazia é omitida; corte em 2000 caracteres no último nome,
-  com `…`).
+  - REMINDER: `{group_name}\n{body}` com botões CTA de URL `😍 Vou, me confirma!` → `{link}` e
+  `😢 Não conseguirei ir!` → `{link}?saqz_intent=decline` (o link é o
+  `notification_attendance_links.code` da mensagem, via `PublicAttendanceLinkFactory`; se o provedor
+  recusar o botão, o envio cai para texto com as URLs ao final).
+  - Corpo do REMINDER (`{body}`): `Jogo: {dia, data às hora}`, `Local: {local}` + `✅ Confirmados:`,
+  `🕒 Lista de espera:` e `❌ Fora:` (um nome por linha, nesta ordem; seção vazia é omitida; corte em
+  2000 caracteres no último nome, com `…`).
 - **Worker de grupo**: antes de enviar cada mensagem revalida, via `group/info`: (1) vínculo ativo
   e habilitado; (2) instância consta em `Participants`; (3) para REMINDER, jogo ainda publicado,
   prazo aberto e no futuro. Falha de rede/timeout → retry (mesma política do DM: até 10 tentativas,

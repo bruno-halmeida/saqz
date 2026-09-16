@@ -9,6 +9,7 @@ import br.com.saqz.groups.application.attendance.AutoConfirmAttendance
 import br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort
 import br.com.saqz.groups.application.attendance.AutoConfirmationOptInUpdate
 import br.com.saqz.groups.application.attendance.RespondAttendance
+import br.com.saqz.groups.application.communication.ReminderGame
 import br.com.saqz.groups.application.communication.reminderBody
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.game.ChangeGameLifecycle
@@ -78,8 +79,8 @@ class JdbcAutoConfirmationIntegrationTest {
         assertEquals(0, count("SELECT count(*) FROM group_charges"))
         val roster = JdbcGroupCommunicationRepository(dataSource).reminderRoster(fixture.group, fixture.game)
         assertEquals(
-            "*Treino*\n\n✅ Confirmados:\nearly\nmiddle\n\n🕒 Lista de espera:\nlate",
-            reminderBody("Treino", roster),
+            "Jogo: quarta, 12/08 às 19:30\nLocal: Arena\n\n✅ Confirmados:\nearly\nmiddle\n\n🕒 Lista de espera:\nlate",
+            reminderBody(ReminderGame(LocalDate.of(2026, 8, 12), LocalTime.of(19, 30), "Arena"), roster),
         )
 
         val self = RespondAttendance(
@@ -132,6 +133,25 @@ class JdbcAutoConfirmationIntegrationTest {
         assertEquals(2, count("SELECT count(*) FROM game_attendance WHERE game_id='$game' AND status='CONFIRMED'"))
         assertEquals(1, count("SELECT count(*) FROM game_attendance WHERE game_id='$game' AND status='WAITLISTED'"))
         assertEquals(3, count("SELECT count(*) FROM attendance_events WHERE game_id='$game' AND source='SYSTEM'"))
+    }
+
+    @Test
+    fun `open games sweep confirms opted in mensalistas of games published before the feature`() {
+        val fixture = publishFixture()
+        execute(
+            "UPDATE games SET status='PUBLISHED', starts_at=now() + interval '2 days', " +
+                "confirmation_deadline=now() + interval '1 day', local_date=current_date + 2 WHERE id='${fixture.game}'",
+        )
+        val auto = autoConfirm()
+        assertEquals(3, auto.applyOpenGames())
+        assertEquals("CONFIRMED", status(fixture.early, fixture.game))
+        assertEquals("CONFIRMED", status(fixture.middle, fixture.game))
+        assertEquals("WAITLISTED", status(fixture.late, fixture.game))
+        assertEquals(null, status(fixture.optOut, fixture.game))
+        assertEquals(null, status(fixture.avulso, fixture.game))
+        assertEquals(0, auto.applyOpenGames())
+        execute("UPDATE games SET confirmation_deadline = now() - interval '1 hour' WHERE id='${fixture.game}'")
+        assertEquals(0, auto.applyOpenGames())
     }
 
     @Test
