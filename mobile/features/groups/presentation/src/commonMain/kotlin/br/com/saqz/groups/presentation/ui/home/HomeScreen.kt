@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
@@ -72,9 +71,7 @@ import br.com.saqz.groups.resources.home_response_error
 import br.com.saqz.groups.resources.home_response_no
 import br.com.saqz.groups.resources.home_response_yes
 import br.com.saqz.groups.resources.home_retry
-import br.com.saqz.groups.resources.home_status_confirmed
-import br.com.saqz.groups.resources.home_status_declined
-import br.com.saqz.groups.resources.home_status_pending
+import br.com.saqz.groups.resources.home_spots_left
 import br.com.saqz.groups.resources.home_toast_confirmed
 import br.com.saqz.groups.resources.home_toast_declined
 import br.com.saqz.groups.resources.home_toast_waitlisted
@@ -124,6 +121,8 @@ fun HomeScreen(
 @Composable
 private fun HomeSkeleton(modifier: Modifier = Modifier) {
     val metrics = SaqzTheme.metrics
+    // Espelha o layout real (greeting, hero com as duas pílulas do RSVP, lista de
+    // grupos): quanto mais o skeleton parece o conteúdo, menor o salto na troca.
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -132,10 +131,22 @@ private fun HomeSkeleton(modifier: Modifier = Modifier) {
             .testTag(HomeTags.Loading),
         verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        SaqzSkeleton(width = metrics.avatarSize, height = metrics.avatarSize, circle = true)
         SaqzSkeleton(width = metrics.buttonHeight * 4, height = metrics.buttonHeight / 2)
-        SaqzSkeleton(height = metrics.avatarSize * 2)
-        SaqzSkeleton(height = metrics.avatarSize * 2)
+        SaqzSkeleton(width = metrics.buttonHeight * 6, height = metrics.buttonHeight / 3)
+        SaqzCard {
+            SaqzSkeleton(width = metrics.buttonHeight * 5, height = metrics.buttonHeight / 2)
+            SaqzSkeleton(height = metrics.buttonHeight / 3)
+            Row(horizontalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+                SaqzSkeleton(height = metrics.buttonHeight, modifier = Modifier.weight(1f))
+                SaqzSkeleton(height = metrics.buttonHeight, modifier = Modifier.weight(1f))
+            }
+            SaqzSkeleton(height = metrics.avatarSize)
+        }
+        SaqzSkeleton(width = metrics.buttonHeight * 3, height = metrics.buttonHeight / 3)
+        SaqzCard {
+            SaqzSkeleton(height = metrics.avatarSize)
+            SaqzSkeleton(height = metrics.avatarSize)
+        }
     }
 }
 
@@ -209,14 +220,15 @@ private fun HomeContent(
                     // Fora do if: quem está na reserva vê a fila, admin ou não.
                     HomeWaitlistExtras(game = it)
                 } ?: HomeNoGame(onIntent)
-                // VUL-202: abaixo do hero e acima de "Seus grupos". Antes do bloco do admin
-                // de propósito — o que a pessoa deve vem antes do que ela administra.
-                state.ownCharges?.let { HomeOwnChargesSection(ownCharges = it, onIntent = onIntent) }
-                member.lastCompletedGame?.let { HomeLastGame(it) }
+                // Para o admin, o que o grupo espera dele é tão pessoal quanto o que ele
+                // deve — "Esperando você" sobe para logo abaixo do hero, antes das
+                // seções individuais (VUL-202) e do histórico.
                 member.admin?.let { admin ->
                     HomeAdminWaitingSection(admin = admin, onIntent = onIntent)
                     HomeAdminShortcuts(admin = admin, nextGame = member.nextGame, onIntent = onIntent)
                 }
+                state.ownCharges?.let { HomeOwnChargesSection(ownCharges = it, onIntent = onIntent) }
+                member.lastCompletedGame?.let { HomeLastGame(it) }
                 HomeGroups(member.groups, onIntent)
             }
         }
@@ -286,6 +298,13 @@ private fun HomeHero(
             style = SaqzTheme.typography.support,
             color = colors.textSecondary,
         )
+        // O prazo é o gatilho do RSVP: fica colado nos botões e com peso de leitura,
+        // não no rodapé em caption — separado dos botões ele virava ruído.
+        Text(
+            text = game.deadline,
+            style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+            color = if (game.confirmationOpen) colors.textPrimary else colors.textSecondary,
+        )
         HomeAttendanceControls(
             game = game,
             responding = responding,
@@ -302,15 +321,22 @@ private fun HomeHero(
                 text = game.confirmedSummary,
                 style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
                 color = colors.textSecondary,
+                modifier = Modifier.weight(1f),
             )
+            val spotsLeft = game.capacity - game.confirmedCount
+            if (spotsLeft in 1..SpotsLeftMax && game.ownAttendance != AttendanceStatus.Waitlisted) {
+                SaqzStatusChip(
+                    text = stringResource(Res.string.home_spots_left, spotsLeft),
+                    tone = SaqzChipTone.Warning,
+                    dot = true,
+                )
+            }
         }
-        Text(
-            text = game.deadline,
-            style = SaqzTheme.typography.caption,
-            color = colors.textSecondary,
-        )
     }
 }
+
+/** Escassez que muda comportamento: abaixo disso o "9 de 12" vira "restam N". */
+private const val SpotsLeftMax = 3
 
 /**
  * Seletor de presença do hero. Vive fora do `HomeHero` porque o hero do admin
@@ -340,30 +366,32 @@ internal fun ColumnScope.HomeAttendanceControls(
             )
         }
         else -> {
+            // Pendente é o momento do toque: botões grandes. Depois de respondido,
+            // encolhem — o estado já está no botão selecionado.
+            val buttonSize = if (game.ownAttendance == null) SaqzButtonSize.Md else SaqzButtonSize.Sm
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
             ) {
                 HomeResponseButton(
                     label = stringResource(Res.string.home_response_yes),
-                    danger = false,
                     selected = game.ownAttendance == AttendanceStatus.Confirmed,
                     loading = responding && game.ownAttendance == AttendanceStatus.Confirmed,
                     enabled = game.confirmationOpen && !responding,
+                    size = buttonSize,
                     modifier = Modifier.weight(1f).testTag(HomeTags.ResponseYes),
                     onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Confirm)) },
                 )
                 HomeResponseButton(
                     label = stringResource(Res.string.home_response_no),
-                    danger = true,
                     selected = game.ownAttendance == AttendanceStatus.Declined,
                     loading = responding && game.ownAttendance == AttendanceStatus.Declined,
                     enabled = game.confirmationOpen && !responding,
+                    size = buttonSize,
                     modifier = Modifier.weight(1f).testTag(HomeTags.ResponseNo),
                     onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Decline)) },
                 )
             }
-            HomeStatus(game.ownAttendance)
         }
     }
     if (responseFailed) {
@@ -379,58 +407,25 @@ internal fun ColumnScope.HomeAttendanceControls(
 @Composable
 private fun HomeResponseButton(
     label: String,
-    danger: Boolean,
     selected: Boolean,
     loading: Boolean,
     enabled: Boolean,
+    size: SaqzButtonSize,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Selecionado é sempre Primary, inclusive o "Não vou": recusar é decisão legítima
+    // e reversível, não erro — Danger comunicava destruição.
     SaqzButton(
         label = label,
         onClick = onClick,
         modifier = modifier,
-        variant = when {
-            selected && danger -> SaqzButtonVariant.Danger
-            selected -> SaqzButtonVariant.Primary
-            else -> SaqzButtonVariant.Secondary
-        },
-        size = SaqzButtonSize.Sm,
+        variant = if (selected) SaqzButtonVariant.Primary else SaqzButtonVariant.Secondary,
+        size = size,
         fullWidth = true,
         enabled = enabled,
         loading = loading,
     )
-}
-
-@Composable
-private fun HomeStatus(status: AttendanceStatus?) {
-    val colors = SaqzTheme.colors
-    val metrics = SaqzTheme.metrics
-    val (color, text) = when (status) {
-        AttendanceStatus.Confirmed -> colors.success to stringResource(Res.string.home_status_confirmed)
-        AttendanceStatus.Declined -> colors.textSecondary to stringResource(Res.string.home_status_declined)
-        AttendanceStatus.Waitlisted -> return
-        null -> colors.primary to stringResource(Res.string.home_status_pending)
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(metrics.inputRadius))
-            .padding(metrics.blockGap),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(metrics.grid + metrics.subGrid / 2)
-                .background(color, CircleShape),
-        )
-        Text(
-            text = text,
-            style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-            color = colors.textPrimary,
-        )
-    }
 }
 
 /**

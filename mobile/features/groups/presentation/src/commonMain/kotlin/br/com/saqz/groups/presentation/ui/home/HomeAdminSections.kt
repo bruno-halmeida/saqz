@@ -24,7 +24,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChipTone
@@ -43,6 +42,7 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.home_admin_cd_score_going
 import br.com.saqz.groups.resources.home_admin_cd_score_out
 import br.com.saqz.groups.resources.home_admin_cd_score_pending
+import br.com.saqz.groups.resources.home_admin_cd_scoreboard_open
 import br.com.saqz.groups.resources.home_admin_cd_shortcut_cashbox
 import br.com.saqz.groups.resources.home_admin_cd_shortcut_create_game
 import br.com.saqz.groups.resources.home_admin_cd_shortcut_groups
@@ -129,6 +129,9 @@ internal fun HomeAdminHero(
             going = game.confirmedCount,
             out = game.declinedCount,
             pending = game.pendingCount,
+            // O placar é o dado que o admin mais quer detalhar — tocar abre o jogo,
+            // onde mora a lista de quem respondeu (e a cobrança de presença).
+            onClick = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) },
         )
         HomeAttendanceControls(
             game = game,
@@ -149,11 +152,23 @@ private fun AdminScoreBoard(
     going: Int,
     out: Int,
     pending: Int,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(metrics.inputRadius))
+            .clickable(
+                onClickLabel = stringResource(Res.string.home_admin_cd_scoreboard_open),
+                role = Role.Button,
+                onClick = onClick,
+            )
+            // Funde as descrições das três colunas num nó só: o placar inteiro é um botão.
+            .semantics(mergeDescendants = true) {},
+    ) {
         SaqzDivider()
         Row(
             modifier = Modifier
@@ -206,11 +221,7 @@ private fun RowScope.AdminScoreColumn(
     ) {
         Text(
             text = stringResource(Res.string.home_admin_score_value, value),
-            style = SaqzTheme.typography.title.copy(
-                fontSize = 20.sp,
-                fontWeight = FontWeight(800),
-                lineHeight = 20.sp,
-            ),
+            style = SaqzTheme.typography.title.copy(fontWeight = FontWeight(800)),
             color = color,
         )
         Text(
