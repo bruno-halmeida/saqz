@@ -1,4 +1,5 @@
 # Overlay for the home server. Usage:
+#   ./deploy.sh
 #   docker compose -f compose.yaml -f compose.server.yaml up -d --build
 # Publishes:
 #   backend      -> https://saqz-api.brunoalmeida.dev
