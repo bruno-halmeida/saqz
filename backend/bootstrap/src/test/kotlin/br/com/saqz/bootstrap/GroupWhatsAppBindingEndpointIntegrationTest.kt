@@ -132,13 +132,13 @@ class GroupWhatsAppBindingEndpointIntegrationTest {
     }
 
     @Test
-    fun `invite without a resolvable admin is unprocessable`() {
+    fun `invite without a resolvable admin still links while anti-sequestro is paused`() {
         directory.reset(adminPhone = "5511900000000")
 
-        val failure = request("PUT", bindingPath(), """{"inviteLink":"https://chat.whatsapp.com/AbCdEf123456"}""")
+        val linked = request("PUT", bindingPath(), """{"inviteLink":"https://chat.whatsapp.com/AbCdEf123456"}""")
 
-        assertEquals(422, failure.statusCode(), failure.body())
-        assertTrue(directory.joined.isEmpty())
+        assertEquals(200, linked.statusCode(), linked.body())
+        assertEquals(listOf("AbCdEf123456"), directory.joined)
     }
 
     @Test

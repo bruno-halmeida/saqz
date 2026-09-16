@@ -107,25 +107,20 @@ class LinkGroupWhatsAppTest {
     }
 
     @Test
-    fun `no whatsapp admin matches an active saqz member`() {
+    fun `no whatsapp admin match still joins while anti-sequestro is paused`() {
         val fixture = fixture(phones = listOf("5511900000000"))
 
-        assertSame(
-            LinkGroupWhatsAppResult.UnresolvableAdmins,
-            fixture.useCase.execute(actor, groupId, "AbCdEf123456"),
-        )
-        assertTrue(fixture.directory.joins.isEmpty())
+        assertIs<LinkGroupWhatsAppResult.Linked>(fixture.useCase.execute(actor, groupId, "AbCdEf123456"))
+        assertEquals(listOf("AbCdEf123456"), fixture.directory.joins)
     }
 
     @Test
-    fun `invite without an admin phone is rejected as unresolvable`() {
+    fun `invite without an admin phone still joins while anti-sequestro is paused`() {
         val fixture = fixture()
         fixture.directory.invite = WhatsAppGroupInfo(WHA_GROUP_JID, "Vôlei do CERET", emptyList())
 
-        assertSame(
-            LinkGroupWhatsAppResult.UnresolvableAdmins,
-            fixture.useCase.execute(actor, groupId, "AbCdEf123456"),
-        )
+        assertIs<LinkGroupWhatsAppResult.Linked>(fixture.useCase.execute(actor, groupId, "AbCdEf123456"))
+        assertEquals(listOf("AbCdEf123456"), fixture.directory.joins)
     }
 
     @Test
