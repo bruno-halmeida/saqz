@@ -98,9 +98,25 @@ interface WhatsAppGroupDirectory {
     fun instanceStatus(): String // telefone da instância, só dígitos; lança DirectoryError.Disconnected
     fun inviteInfo(inviteCode: String): WhatsAppGroupInfo
     fun join(inviteCode: String)
-    fun groupInfo(jid: String): WhatsAppGroupInfo // lança NotInGroup quando 404/fora
+    fun groupInfo(jid: String): WhatsAppGroupInfo // lança NotInGroup quando o grupo não existe/fomos removidos
     fun isMember(jid: String): Boolean
 }
+```
+
+### Contratos de parser validados no T0 (`evidence.md`)
+
+1. Respostas de `create`/`inviteInfo`/`join`/`updateAnnounce`/`updateParticipants` **embrulham o
+   Group em `{"group": ...}`** — desembrulhar antes de ler campos.
+2. **Fora do grupo/inexistente = HTTP 500 `{"error":"that group does not exist"}`** (não 404). O
+   adapter traduz esse 500 específico para `NotInGroup` — **nunca retry** (a política de DM trata
+   5xx como transitório e o worker ficaria em loop num grupo que nos removeu).
+3. `Participants[].PhoneNumber` vem como JID completo (`551153040175@s.whatsapp.net`): normalizar
+   removendo sufixo e não-dígitos antes de comparar com o telefone Saqz.
+4. `join` retorna Group **vazio** (`Participants: null`, `needs_refresh: true`) mesmo em sucesso —
+   nunca confiar; sempre reconfirmar com `group/info` (`force: true`).
+5. `group/list` tem cache defasada sem `force` — membership em produção usa `group/info`.
+6. `inviteInfo` aceita código puro ou URL completa; anti-sequestro usa `Participants[].IsAdmin` +
+   `PhoneNumber` — não depender de `Owner*`.
 ```
 
 ## Endpoints (contrato fixo — mobile implementa contra isto)
