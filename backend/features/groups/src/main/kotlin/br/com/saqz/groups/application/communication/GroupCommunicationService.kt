@@ -45,6 +45,22 @@ class GroupCommunicationService(
             ))
         }
 
+    /**
+     * Lembrete automático para todo jogo com confirmação aberta. O autor é o dono do grupo,
+     * então ele fica fora dos destinatários da notificação; cada execução cria mensagem nova.
+     */
+    fun remindAutomatically(): Int = transaction.inTransaction {
+        val candidates = repository.reminderCandidates()
+        candidates.forEach { candidate ->
+            repository.publish(
+                candidate.groupId, candidate.ownerId, MessageChannel.REMINDER, UUID.randomUUID(),
+                reminderBody(candidate.title, repository.reminderRoster(candidate.groupId, candidate.gameId)),
+                candidate.gameId,
+            )
+        }
+        candidates.size
+    }
+
     fun inbox(actor: UUID, before: Long?): CommunicationResult<CommunicationPage<GroupNotification>> =
         if (before != null && before <= 0) invalid()
         else CommunicationResult.Success(page(repository.inbox(actor, before)) { it.sequence })

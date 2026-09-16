@@ -6,6 +6,7 @@ import br.com.saqz.groups.application.communication.GroupNotification
 import br.com.saqz.groups.application.communication.MessageChannel
 import br.com.saqz.groups.application.communication.NotificationPreferences
 import br.com.saqz.groups.application.communication.PushPreferences
+import br.com.saqz.groups.application.communication.ReminderCandidate
 import br.com.saqz.groups.application.communication.ReminderRoster
 import br.com.saqz.groups.application.communication.WhatsAppPreferences
 import org.springframework.jdbc.core.simple.JdbcClient
@@ -106,6 +107,21 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             pending = rows.filter { it.first == "PENDING" }.map { it.second },
         )
     }
+
+    override fun reminderCandidates(): List<ReminderCandidate> = jdbc.sql(
+        """
+        SELECT games.id AS game_id, games.group_id, games.title, groups.owner_user_id
+        FROM games
+        JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
+        WHERE games.status = 'PUBLISHED' AND games.starts_at > now() AND games.confirmation_deadline > now()
+        ORDER BY games.starts_at, games.id
+        """.trimIndent(),
+    ).query { rs, _ -> ReminderCandidate(
+        gameId = rs.getObject("game_id", UUID::class.java),
+        groupId = rs.getObject("group_id", UUID::class.java),
+        ownerId = rs.getObject("owner_user_id", UUID::class.java),
+        title = rs.getString("title"),
+    ) }.list()
 
     override fun inbox(actor: UUID, before: Long?) = jdbc.sql(
         """

@@ -182,6 +182,39 @@ class GroupCommunicationIntegrationTest {
         assertEquals(1, service.inbox(member, null).success().items.size)
         assertEquals(CommunicationResult.Failure(CommunicationError.INVALID), service.messages(member, group, MessageChannel.REMINDER, null))
     }
+    @Test fun `automatic reminders reach only open games and repeat on every run`() {
+        val open = game("Treino aberto")
+        game("Treino sem prazo", deadlineInHours = -1)
+        game("Treino já iniciado", startsInHours = -1, deadlineInHours = -2)
+        game("Treino concluído", status = "COMPLETED")
+        assertEquals(1, service.remindAutomatically())
+        val reminder = service.inbox(member, null).success().items.single().message
+        assertEquals(open, reminder.gameId)
+        assertEquals(MessageChannel.REMINDER, reminder.channel)
+        assertEquals(owner, reminder.authorId)
+        assertEquals("*Treino aberto*\n\n⏳ A confirmar:\nMember Person, Owner Person", reminder.body)
+        assertEquals(1, service.remindAutomatically())
+        assertEquals(2, service.inbox(member, null).success().items.size)
+        assertTrue(service.inbox(owner, null).success().items.isEmpty())
+    }
+    private fun game(
+        title: String,
+        status: String = "PUBLISHED",
+        startsInHours: Long = 48,
+        deadlineInHours: Long = 24,
+    ): UUID {
+        val id = UUID.randomUUID()
+        jdbc.sql("""
+            INSERT INTO games (id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
+                confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at)
+            VALUES (:id, :group, :title, (now() AT TIME ZONE 'UTC')::date + :days, '12:00', 'UTC',
+                now() + (:starts * interval '1 hour'), 90, now() + (:deadline * interval '1 hour'),
+                'Arena', 'Rua Central 100', 12, '$status', now(), now())
+        """.trimIndent()).param("id", id).param("group", group).param("title", title)
+            .param("days", (startsInHours / 24).toInt()).param("starts", startsInHours)
+            .param("deadline", deadlineInHours).update()
+        return id
+    }
     private fun user(name: String): UUID {
         val id = UUID.randomUUID()
         jdbc.sql("INSERT INTO access_users (id, firebase_subject, email_verified, display_name, created_at, updated_at) VALUES (:id, :subject, true, :name, now(), now())")
