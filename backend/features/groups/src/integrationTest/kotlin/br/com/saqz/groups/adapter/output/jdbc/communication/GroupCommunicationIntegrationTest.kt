@@ -181,6 +181,12 @@ class GroupCommunicationIntegrationTest {
         assertEquals(reminder, service.remind(owner, group, game, request).success())
         assertEquals(1, service.inbox(member, null).success().items.size)
         assertEquals(CommunicationResult.Failure(CommunicationError.INVALID), service.messages(member, group, MessageChannel.REMINDER, null))
+        // GAME_OPEN é canal de sistema: nem aparece na thread, nem aceita publicação pela API.
+        assertEquals(CommunicationResult.Failure(CommunicationError.INVALID), service.messages(member, group, MessageChannel.GAME_OPEN, null))
+        assertEquals(
+            CommunicationResult.Failure(CommunicationError.INVALID),
+            service.publish(owner, group, MessageChannel.GAME_OPEN, UUID.randomUUID(), "Jogo liberado"),
+        )
     }
     @Test fun `automatic reminders reach only open games and repeat on every run`() {
         val open = game("Treino aberto")
