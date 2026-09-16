@@ -54,10 +54,17 @@
     if (!scheme || !isIOS) return;
     var open = document.getElementById("open");
     open.href = scheme;
-    open.hidden = false;
-    document.getElementById("download").className = "secondary";
-    document.getElementById("lead").textContent =
-      "Já tem o app instalado? Abra por aqui. Se ainda não tem, baixe abaixo.";
+    var timer = setTimeout(reveal, 1600);
+    ["visibilitychange", "pagehide"].forEach(function (event) {
+      addEventListener(event, function () { clearTimeout(timer); });
+    });
+    location.href = scheme;
+    function reveal() {
+      open.hidden = false;
+      document.getElementById("download").className = "secondary";
+      document.getElementById("lead").textContent =
+        "Não abriu? Toque em “Abrir no app” ou baixe abaixo.";
+    }
   })();
 </script>
 </body>
