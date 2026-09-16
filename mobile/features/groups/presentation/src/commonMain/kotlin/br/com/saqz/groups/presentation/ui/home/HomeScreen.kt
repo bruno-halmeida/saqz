@@ -13,10 +13,15 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +61,8 @@ import br.com.saqz.groups.presentation.home.HomeState
 import br.com.saqz.groups.presentation.home.HomeToast
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.home_attendance_cancel
+import br.com.saqz.groups.resources.home_attendance_change
 import br.com.saqz.groups.resources.home_error_message
 import br.com.saqz.groups.resources.home_error_title
 import br.com.saqz.groups.resources.home_game_next
@@ -72,6 +79,8 @@ import br.com.saqz.groups.resources.home_response_no
 import br.com.saqz.groups.resources.home_response_yes
 import br.com.saqz.groups.resources.home_retry
 import br.com.saqz.groups.resources.home_spots_left
+import br.com.saqz.groups.resources.home_status_confirmed
+import br.com.saqz.groups.resources.home_status_declined
 import br.com.saqz.groups.resources.home_toast_confirmed
 import br.com.saqz.groups.resources.home_toast_declined
 import br.com.saqz.groups.resources.home_toast_waitlisted
@@ -88,6 +97,8 @@ internal object HomeTags {
     const val Groups = "home-groups"
     const val ResponseYes = "home-response-yes"
     const val ResponseNo = "home-response-no"
+    const val ResponseChange = "home-response-change"
+    const val ResponseCancel = "home-response-cancel"
     const val ResponseError = "home-response-error"
     const val Toast = "home-toast"
     const val OwnCharges = "home-own-charges"
@@ -366,30 +377,24 @@ internal fun ColumnScope.HomeAttendanceControls(
             )
         }
         else -> {
-            // Pendente é o momento do toque: botões grandes. Depois de respondido,
-            // encolhem — o estado já está no botão selecionado.
-            val buttonSize = if (game.ownAttendance == null) SaqzButtonSize.Md else SaqzButtonSize.Sm
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
-            ) {
-                HomeResponseButton(
-                    label = stringResource(Res.string.home_response_yes),
-                    selected = game.ownAttendance == AttendanceStatus.Confirmed,
-                    loading = responding && game.ownAttendance == AttendanceStatus.Confirmed,
-                    enabled = game.confirmationOpen && !responding,
-                    size = buttonSize,
-                    modifier = Modifier.weight(1f).testTag(HomeTags.ResponseYes),
-                    onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Confirm)) },
+            // Pendente é o momento do toque: botões grandes, pergunta aberta.
+            // Depois de respondido, os botões somem — dois botões habilitados num jogo
+            // já confirmado pareciam uma pergunta sem resposta e confundiam o atleta.
+            val answered = game.ownAttendance
+            if (answered == null) {
+                HomeResponseRow(
+                    ownAttendance = answered,
+                    confirmationOpen = game.confirmationOpen,
+                    responding = responding,
+                    size = SaqzButtonSize.Md,
+                    onIntent = onIntent,
                 )
-                HomeResponseButton(
-                    label = stringResource(Res.string.home_response_no),
-                    selected = game.ownAttendance == AttendanceStatus.Declined,
-                    loading = responding && game.ownAttendance == AttendanceStatus.Declined,
-                    enabled = game.confirmationOpen && !responding,
-                    size = buttonSize,
-                    modifier = Modifier.weight(1f).testTag(HomeTags.ResponseNo),
-                    onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Decline)) },
+            } else {
+                HomeAnsweredStatus(
+                    status = answered,
+                    responding = responding,
+                    changeEnabled = game.confirmationOpen,
+                    onIntent = onIntent,
                 )
             }
         }
@@ -401,6 +406,119 @@ internal fun ColumnScope.HomeAttendanceControls(
             color = colors.errorForeground,
             modifier = Modifier.testTag(HomeTags.ResponseError),
         )
+    }
+}
+
+@Composable
+internal fun HomeResponseRow(
+    ownAttendance: AttendanceStatus?,
+    confirmationOpen: Boolean,
+    responding: Boolean,
+    size: SaqzButtonSize,
+    onIntent: (HomeIntent) -> Unit,
+) {
+    val metrics = SaqzTheme.metrics
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
+    ) {
+        HomeResponseButton(
+            label = stringResource(Res.string.home_response_yes),
+            selected = ownAttendance == AttendanceStatus.Confirmed,
+            loading = responding && ownAttendance == AttendanceStatus.Confirmed,
+            enabled = confirmationOpen && !responding,
+            size = size,
+            modifier = Modifier.weight(1f).testTag(HomeTags.ResponseYes),
+            onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Confirm)) },
+        )
+        HomeResponseButton(
+            label = stringResource(Res.string.home_response_no),
+            selected = ownAttendance == AttendanceStatus.Declined,
+            loading = responding && ownAttendance == AttendanceStatus.Declined,
+            enabled = confirmationOpen && !responding,
+            size = size,
+            modifier = Modifier.weight(1f).testTag(HomeTags.ResponseNo),
+            onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Decline)) },
+        )
+    }
+}
+
+/**
+ * Estado de quem já respondeu: painel único com a resposta e "Alterar" — os botões só
+ * reaparecem a pedido (`editing`), porque dois botões habilitados num jogo já
+ * confirmado não dizem que a resposta foi registrada e parecem exigir nova ação.
+ * `editing` vive na composição e morre quando o status muda: responder de novo
+ * (com sucesso) volta para o painel automaticamente.
+ */
+@Composable
+private fun HomeAnsweredStatus(
+    status: AttendanceStatus,
+    responding: Boolean,
+    changeEnabled: Boolean,
+    onIntent: (HomeIntent) -> Unit,
+) {
+    val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
+    var editing by remember(status) { mutableStateOf(false) }
+    if (editing) {
+        Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+            HomeResponseRow(
+                ownAttendance = status,
+                confirmationOpen = changeEnabled,
+                responding = responding,
+                size = SaqzButtonSize.Sm,
+                onIntent = onIntent,
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                SaqzButton(
+                    label = stringResource(Res.string.home_attendance_cancel),
+                    onClick = { editing = false },
+                    variant = SaqzButtonVariant.Ghost,
+                    size = SaqzButtonSize.Sm,
+                    enabled = !responding,
+                    modifier = Modifier.testTag(HomeTags.ResponseCancel),
+                )
+            }
+        }
+    } else {
+        val (color, text) = when (status) {
+            AttendanceStatus.Confirmed -> colors.success to stringResource(Res.string.home_status_confirmed)
+            else -> colors.textSecondary to stringResource(Res.string.home_status_declined)
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.surface, RoundedCornerShape(metrics.inputRadius))
+                .padding(
+                    start = metrics.blockGap,
+                    end = metrics.subGrid,
+                    top = metrics.subGrid,
+                    bottom = metrics.subGrid,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(metrics.subGrid * 2),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(metrics.grid + metrics.subGrid / 2)
+                    .background(color, CircleShape),
+            )
+            Text(
+                text = text,
+                style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.textPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            SaqzButton(
+                label = stringResource(Res.string.home_attendance_change),
+                onClick = { editing = true },
+                variant = SaqzButtonVariant.Ghost,
+                size = SaqzButtonSize.Sm,
+                enabled = changeEnabled && !responding,
+                loading = responding,
+                modifier = Modifier.testTag(HomeTags.ResponseChange),
+            )
+        }
     }
 }
 
