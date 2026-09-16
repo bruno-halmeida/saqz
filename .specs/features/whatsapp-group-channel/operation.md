@@ -53,7 +53,7 @@ parser validados no T0 estão em `evidence.md`.
 
 Corpos (sem valor financeiro, sem nome de pessoa, sem telefone):
 - NOTICE: `Saqz · {grupo}\n{texto}`
-- REMINDER: `Saqz · {grupo}\n{texto}\nConfirmar minha presença no Saqz: {link}`
+- REMINDER: `Saqz · {grupo}\n{texto}` + botão `Confirmar presença` → `{link}` (fallback de texto com a URL se o botão for recusado)
 
 ## Inspeção operacional
 

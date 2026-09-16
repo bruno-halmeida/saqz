@@ -32,8 +32,9 @@
   compatibilidade de API; o mobile preserva seus valores ao salvar preferências).
 - **Texto da mensagem de grupo** (templates exatos, nada de valor financeiro, pessoa ou telefone):
   - NOTICE: `Saqz · {group_name}\n{body}`
-  - REMINDER: `Saqz · {group_name}\n{body}\nConfirmar minha presença no Saqz: {link}`
-  (o link é o `notification_attendance_links.code` da mensagem, via `BranchAttendanceLinkFactory`).
+  - REMINDER: `Saqz · {group_name}\n{body}` com botão CTA de URL `Confirmar presença` → `{link}`
+  (o link é o `notification_attendance_links.code` da mensagem, via `BranchAttendanceLinkFactory`;
+  se o provedor recusar o botão, o envio cai para texto com `Confirmar minha presença no Saqz: {link}`).
 - **Worker de grupo**: antes de enviar cada mensagem revalida, via `group/info`: (1) vínculo ativo
   e habilitado; (2) instância consta em `Participants`; (3) para REMINDER, jogo ainda publicado,
   prazo aberto e no futuro. Falha de rede/timeout → retry (mesma política do DM: até 10 tentativas,
