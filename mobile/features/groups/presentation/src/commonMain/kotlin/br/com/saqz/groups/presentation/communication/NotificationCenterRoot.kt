@@ -150,10 +150,14 @@ internal fun NotificationCenterScreen(
                     }
                 } else {
                     item {
-                        SaqzButton(
-                            stringResource(Res.string.communication_refresh),
-                            { onIntent(NotificationCenterIntent.Refresh) }, enabled = !state.busy,
-                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            SaqzButton(
+                                stringResource(Res.string.communication_refresh),
+                                { onIntent(NotificationCenterIntent.Refresh) },
+                                variant = SaqzButtonVariant.Ghost, size = SaqzButtonSize.Sm,
+                                enabled = !state.busy,
+                            )
+                        }
                     }
                     if (state.items.isEmpty()) item { Text(stringResource(Res.string.communication_inbox_empty)) }
                     items(state.items, key = { it.sequence }) { item ->
