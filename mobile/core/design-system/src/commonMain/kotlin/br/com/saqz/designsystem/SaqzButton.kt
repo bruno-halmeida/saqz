@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -34,6 +35,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -44,12 +46,14 @@ import br.com.saqz.designsystem.theme.SaqzMotionPolicy
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.stringResource
 
-enum class SaqzButtonVariant { Primary, Secondary, Danger, Ghost }
+enum class SaqzButtonVariant { Primary, Secondary, Danger, Ghost, Accent, Inverse }
 
 enum class SaqzButtonSize { Sm, Md }
 
 // Container/content/border a variant paints, all pulled from the token registry.
-// accent/on-accent never appear here: accent is a non-clickable status hue.
+// Accent é o CTA lima do hero da Home nova (VUL-217, decisão do usuário em 2026-09-16):
+// container `accent`, conteúdo `textPrimary` (14:1). Não existe token `onAccent` e o lima
+// continua nunca sendo cor de TEXTO. Inverse é o botão branco sólido sobre o hero azul.
 @Immutable
 internal data class SaqzButtonColors(
     val container: Color,
@@ -65,6 +69,8 @@ internal fun SaqzColorTokens.buttonColors(variant: SaqzButtonVariant): SaqzButto
         SaqzButtonVariant.Secondary -> SaqzButtonColors(surface, primary, border = primary)
         SaqzButtonVariant.Danger -> SaqzButtonColors(errorForeground, onPrimary, border = null)
         SaqzButtonVariant.Ghost -> SaqzButtonColors(Color.Transparent, primary, border = null)
+        SaqzButtonVariant.Accent -> SaqzButtonColors(accent, textPrimary, border = null)
+        SaqzButtonVariant.Inverse -> SaqzButtonColors(surface, textPrimary, border = null)
     }
 
 // Spatial press response: shrinks to the policy scale while held, 1f at rest.
@@ -114,6 +120,8 @@ fun SaqzButton(
     val defaultStyle =
         if (size == SaqzButtonSize.Sm) SaqzTheme.typography.support.copy(fontWeight = SaqzTheme.typography.label.fontWeight)
         else SaqzTheme.typography.label
+    // O CTA lima pesa 700 no mock; as outras variantes seguem o `label` (600).
+    val variantStyle = if (variant == SaqzButtonVariant.Accent) defaultStyle.copy(fontWeight = FontWeight(700)) else defaultStyle
 
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -197,7 +205,7 @@ fun SaqzButton(
             Text(
                 text = label,
                 color = content,
-                style = labelStyle ?: defaultStyle,
+                style = labelStyle ?: variantStyle,
             )
             trailingContent?.invoke(content)
         }
@@ -309,6 +317,17 @@ private fun SaqzButtonPreview() = SaqzTheme {
         SaqzButton(label = "Criar jogo", onClick = {}, size = SaqzButtonSize.Sm)
         SaqzButton(label = "Criando grupo…", onClick = {}, loading = true, fullWidth = true)
         SaqzButton(label = "Criar grupo", onClick = {}, enabled = false, fullWidth = true)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(SaqzTheme.colors.primary, RoundedCornerShape(12.dp))
+                .padding(12.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SaqzButton("Vou", onClick = {}, variant = SaqzButtonVariant.Accent, modifier = Modifier.weight(1f))
+                SaqzButton("Não vou", onClick = {}, variant = SaqzButtonVariant.Inverse, modifier = Modifier.weight(1f))
+            }
+        }
     }
 }
 

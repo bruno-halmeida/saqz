@@ -1,5 +1,6 @@
 package br.com.saqz.composeapp.catalog
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -58,6 +60,7 @@ import br.com.saqz.designsystem.SaqzChoiceChipDefaults
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzEmptyState
 import br.com.saqz.designsystem.SaqzGameSummaryCard
+import br.com.saqz.designsystem.SaqzHeroCard
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
@@ -77,8 +80,11 @@ import br.com.saqz.designsystem.SaqzSwitch
 import br.com.saqz.designsystem.SaqzToast
 import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.SaqzTopAppBar
+import br.com.saqz.designsystem.resources.Res as DsRes
+import br.com.saqz.designsystem.resources.saqz_mark
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -92,6 +98,7 @@ object SaqzCatalogTags {
     const val Actions = "saqz-catalog-acoes"
     const val Forms = "saqz-catalog-formularios"
     const val Data = "saqz-catalog-dados"
+    const val Hero = "saqz-catalog-hero"
     const val Feedback = "saqz-catalog-feedback"
     const val Navigation = "saqz-catalog-navegacao"
     const val MotionTokens = "saqz-catalog-motion"
@@ -251,6 +258,7 @@ private fun ColumnScope.FoundationSpecimens() {
     }
     SaqzDivider()
     val scale = listOf(
+        "display" to SaqzTheme.typography.display,
         "headline" to SaqzTheme.typography.headline,
         "title" to SaqzTheme.typography.title,
         "subtitle" to SaqzTheme.typography.subtitle,
@@ -262,6 +270,10 @@ private fun ColumnScope.FoundationSpecimens() {
         "navigation" to SaqzTheme.typography.navigation,
     )
     scale.forEach { (name, style) -> TypeSpecimen(name = name, style = style) }
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Image(painter = painterResource(DsRes.drawable.saqz_mark), contentDescription = null, modifier = Modifier.size(30.dp))
+        Text(text = "saqz_mark · 30dp", style = SaqzTheme.typography.caption, color = colors.textSecondary)
+    }
     SaqzDivider()
     Text(
         text = "sheet ${motion.sheetDurationMillis}ms · thumb do segmented ${motion.thumbDurationMillis}ms · " +
@@ -309,6 +321,17 @@ private fun ColumnScope.ActionSpecimens() {
     SaqzButton(label = "Editar", onClick = {}, variant = SaqzButtonVariant.Secondary, fullWidth = true)
     SaqzButton(label = "Excluir grupo", onClick = {}, variant = SaqzButtonVariant.Danger, fullWidth = true)
     SaqzButton(label = "Cancelar", onClick = {}, variant = SaqzButtonVariant.Ghost, fullWidth = true)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(SaqzTheme.colors.primary, RoundedCornerShape(12.dp))
+            .padding(12.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SaqzButton("Vou", onClick = {}, variant = SaqzButtonVariant.Accent, modifier = Modifier.weight(1f))
+            SaqzButton("Não vou", onClick = {}, variant = SaqzButtonVariant.Inverse, modifier = Modifier.weight(1f))
+        }
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         SaqzButton(label = "Criar jogo", onClick = {}, size = SaqzButtonSize.Sm)
         SaqzButton(label = "Criando grupo", onClick = {}, loading = true)
@@ -412,6 +435,31 @@ private fun ColumnScope.DataSpecimens() {
             onClick = { confirmed = !confirmed },
             fullWidth = true,
             variant = if (confirmed) SaqzButtonVariant.Secondary else SaqzButtonVariant.Primary,
+        )
+    }
+    SaqzHeroCard(
+        kicker = "PRÓXIMO JOGO",
+        title = "Terça, 19h30",
+        meta = "28 de julho · CERET — Quadra 2 · Tatuapé",
+        trailing = { SaqzStatusChip("Vôlei do CERET", tone = SaqzChipTone.Inverse) },
+        modifier = Modifier.testTag(SaqzCatalogTags.Hero),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SaqzButton("Vou", onClick = {}, variant = SaqzButtonVariant.Accent, modifier = Modifier.weight(1f))
+            SaqzButton(
+                "Não vou",
+                onClick = {},
+                variant = SaqzButtonVariant.Ghost,
+                contentColor = SaqzTheme.colors.onPrimary,
+                borderColor = SaqzTheme.colors.onPrimary.copy(alpha = 0.45f),
+                modifier = Modifier.weight(1f),
+            )
+        }
+        SaqzAvatarStack(
+            names = listOf("Ana Souza", "Bruna Lima", "Caio", "Duda"),
+            ring = SaqzTheme.colors.primary,
+            overflowContainer = SaqzTheme.colors.accent,
+            overflowContent = SaqzTheme.colors.textPrimary,
         )
     }
     SaqzCard {

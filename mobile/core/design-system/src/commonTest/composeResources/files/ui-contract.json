@@ -17,10 +17,20 @@
       "nosso": "48",
       "motivo": "Piso de acessibilidade do Android (Material: 48dp). O design system não abaixa acessibilidade para casar com o export. O 44 do export não sumiu: virou iconButtonSize, que é o alvo onde o desenho manda."
     },
+    "metrics.bottomNavHeight": {
+      "export": "76 — altura do 10q no _ds_bundle.js, o número que este contrato trouxe desde o VUL-44",
+      "nosso": "68",
+      "motivo": "A barra foi compactada na main em 2026-09-15 (718e72e6, `fix(mobile): compact bottom navigation spacing`), junto com o padding vertical da aba (10 -> 8). O contrato ficou para trás e reprovava o SaqzMetricsTest; o valor vivo é 68 e o 76 do export fica registrado aqui."
+    },
     "metrics.sectionVerticalPadding": {
       "export": "não existe — nenhum CSS nem o bundle declaram esse espaçamento",
       "nosso": "48",
       "motivo": "Respiro vertical de seção medido nas telas do fluxo 10, não token do export. Múltiplo de 4 e alinhado à grade. Export novo não tem o que dizer sobre ele."
+    },
+    "typography.display": {
+      "export": "não existe — a escala mobile do export (--m-*) para no headline 32/700",
+      "nosso": "36 / 800 / 38 / -0.03, família Anybody (instância estática wdth 110, wght 800), não Inter",
+      "motivo": "Título do hero da Home nova (VUL-217): a fonte dos títulos da landing trazida para o app. Decisão do usuário em 2026-09-16; um export novo não tem o que dizer sobre ela."
     },
     "typography.eyebrow": {
       "export": "só --text-eyebrow-track: 0.08em, e da escala web (--text-*), não da mobile (--m-*)",
@@ -88,7 +98,7 @@
     "cardRadius": 12,
     "blockRadius": 20,
     "sheetRadius": 28,
-    "bottomNavHeight": 76,
+    "bottomNavHeight": 68,
     "minimumTouchTarget": 48,
     "buttonHeight": 52,
     "iconButtonSize": 44,
@@ -110,7 +120,8 @@
     "label": { "size": 15, "weight": 600, "lineHeight": 18, "tracking": 0.0 },
     "caption": { "size": 12, "weight": 400, "lineHeight": 16, "tracking": 0.0 },
     "eyebrow": { "size": 12, "weight": 600, "lineHeight": 16, "tracking": 0.08 },
-    "navigation": { "size": 11, "weight": 600, "lineHeight": 14, "tracking": 0.0 }
+    "navigation": { "size": 11, "weight": 600, "lineHeight": 14, "tracking": 0.0 },
+    "display": { "size": 36, "weight": 800, "lineHeight": 38, "tracking": -0.03 }
   },
   "fluxo1": {
     "_nota": "Números do fluxo 1 (autenticação, 11 telas) tal como o export os escreve — literais, sem arredondar para a grade de 4. Diferente de colors/metrics/typography/motion, este bloco NÃO é o espelho de um registry Kotlin: é o que as telas do fluxo 1 consomem, e cada tela versiona aqui o que desenha. Onde o número já tem token vivo (voltar 44, botão 52, raio 10, gap 12, raio 12 do alerta), o SaqzFluxo1ContractTest amarra os dois — mudar o token e não mudar aqui reprova, e é essa a intenção.",

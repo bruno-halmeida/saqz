@@ -45,7 +45,7 @@ fun SaqzTheme(
     }
     val metrics = SaqzMetrics.Default
     val motion = if (preferences.reduceMotion) SaqzMotionPolicy.Reduced else SaqzMotionPolicy.Normal
-    val typography = SaqzTypography.Default.withFontFamily(saqzFontFamily())
+    val typography = SaqzTypography.Default.withFontFamily(saqzFontFamily(), saqzDisplayFontFamily())
     CompositionLocalProvider(
         LocalSaqzColors provides colors,
         LocalSaqzMetrics provides metrics,
@@ -61,7 +61,7 @@ fun SaqzTheme(
     }
 }
 
-private fun SaqzTypography.withFontFamily(family: FontFamily) = SaqzTypography(
+private fun SaqzTypography.withFontFamily(family: FontFamily, displayFamily: FontFamily) = SaqzTypography(
     headline = headline.copy(fontFamily = family),
     title = title.copy(fontFamily = family),
     subtitle = subtitle.copy(fontFamily = family),
@@ -75,6 +75,7 @@ private fun SaqzTypography.withFontFamily(family: FontFamily) = SaqzTypography(
     compactMeta = compactMeta.copy(fontFamily = family),
     dateDay = dateDay.copy(fontFamily = family),
     dateMonth = dateMonth.copy(fontFamily = family),
+    display = display.copy(fontFamily = displayFamily),
 )
 
 // Material 2 stays a primitive: its color/type/shape subsets are derived from the
