@@ -25,6 +25,7 @@ internal interface AndroidBranchSessionClient {
 internal interface AndroidIntentLinkPort : NativeLinkPort {
     fun onColdStart(url: String?)
     fun onWarmIntent(url: String?)
+    fun onNotificationOpen(groupId: String?)
 }
 
 internal class AndroidLinkAdapter(
@@ -89,6 +90,17 @@ internal class AndroidLinkAdapter(
         branch.reinitialize(url, ::acceptBranchParameters)
     }
 
+    /** Push tap: always routes to the notification center; no dedup across taps. */
+    override fun onNotificationOpen(groupId: String?) {
+        val event = GroupLinkEvent.NotificationOpen(groupId)
+        if (groupListeners.isEmpty()) {
+            pendingGroupEvent = event
+        } else {
+            pendingGroupEvent = null
+            groupListeners.forEach { it.onEvent(event) }
+        }
+    }
+
     private fun acceptBranchParameters(parameters: Map<String, String?>) {
         acceptOnboarding(branchOnboardingCode(parameters))
         accept(branchEvent(parameters))
@@ -108,6 +120,8 @@ internal class AndroidLinkAdapter(
         val key = when (accepted) {
             is GroupLinkEvent.Invite -> "invite:${accepted.code}"
             is GroupLinkEvent.Attendance -> "attendance:${accepted.code}"
+            // Push taps têm caminho próprio (onNotificationOpen), sem dedup por abertura.
+            is GroupLinkEvent.NotificationOpen -> return
         }
         if (key == lastAcceptedEventKey) return
         lastAcceptedEventKey = key

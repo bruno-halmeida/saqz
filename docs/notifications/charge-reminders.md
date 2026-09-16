@@ -9,7 +9,7 @@ O servidor valida o gestor e todas as cobranças antes de gravar. Uma notificaç
 - Android: Firebase Messaging, canal `saqz-reminders`, permissão `POST_NOTIFICATIONS` no Android 13+, token da aplicação Firebase padrão.
 - iOS: FirebaseMessaging encaminha pelo APNs. A Release assina `SaqzIOS/SaqzIOS.entitlements` (`aps-environment=production` + Universal Links); a Debug assina `SaqzIOS/SaqzIOS.debug.entitlements` (**push em sandbox** `aps-environment=development`, sem associated-domains — Universal Links seguem só na Release). Debug com push exige a equipe real com a capability habilitada; Personal Team não assina com esse entitlement.
 - A central no app funciona sem permissão de push. A preferência de lembretes desativa o push de cobrança; não apaga o aviso na central.
-- O toque no push abre o app. Na central, “Abrir” leva ao grupo, onde o usuário vê suas próprias cobranças.
+- O toque no push abre a **central de notificações** do app (Android e iOS). Na central, “Abrir” leva ao grupo, onde o usuário vê suas próprias cobranças.
 - O token é revogado quando a sessão termina ou troca de conta e antes do primeiro registro após iniciar o processo. Falhas de revogação bloqueiam o registro seguinte e são tentadas novamente ao retomar o app. Sem rede, a revogação não é imediata: um push genérico pode chegar até a revogação concluir; não contém grupo, pessoa ou valor. Tokens revogados são removidos do backend quando FCM retorna UNREGISTERED. Falhas de registro também são tentadas novamente ao retomar o app.
 
 ## Configuração externa para entrega real

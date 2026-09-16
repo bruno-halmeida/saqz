@@ -37,16 +37,24 @@ internal class NotificationSessionBinding(
                 val current = session.value
                 if (previous != null && previous != current) needsClear = true
                 previous = current
+                println("[SaqzPush] refresh session=${current != null} needsClear=$needsClear")
                 if (needsClear) {
                     // Revoga inclusive após reinício; falhas mantêm o bloqueio até o próximo refresh.
-                    if (!clearDevice()) return@withLock
+                    if (!clearDevice()) {
+                        println("[SaqzPush] clear FALHOU — registro bloqueado")
+                        return@withLock
+                    }
                     registered = null
                     needsClear = false
                 }
                 if (current == null) return@withLock
-                val device = currentDevice() ?: return@withLock
+                val device = currentDevice()
+                println("[SaqzPush] device=${device != null}")
+                if (device == null) return@withLock
                 if (session.value != current || registered == current to device) return@withLock
-                if (gateway.register(device) is SaqzResult.Success && session.value == current) registered = current to device
+                val result = gateway.register(device)
+                println("[SaqzPush] register=${result is SaqzResult.Success}")
+                if (result is SaqzResult.Success && session.value == current) registered = current to device
             }
         }
     }
