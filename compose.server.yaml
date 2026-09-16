@@ -100,6 +100,9 @@ services:
       - "traefik.http.routers.saqz-links.rule=Host(`links.saqz.app`)"
       - "traefik.http.routers.saqz-links.entrypoints=websecure"
       - "traefik.http.routers.saqz-links.tls=true"
+      # O DNS de links.saqz.app aponta direto para o servidor (sem Cloudflare na
+      # frente), entao o certificado e emitido aqui pelo Let's Encrypt via HTTP-01.
+      - "traefik.http.routers.saqz-links.tls.certresolver=letsencrypt"
       - "traefik.http.services.saqz-links.loadbalancer.server.port=80"
 
   # A caixa de teste do ambiente: e aqui que o QA le o codigo de quatro digitos do reset
