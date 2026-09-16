@@ -33,13 +33,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        model.onStart(intent?.dataString)
+        model.onStart(intent?.dataString, intent?.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID))
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        model.onWarmIntent(intent.dataString)
+        model.onWarmIntent(intent.dataString, intent.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID))
     }
 }
 
@@ -60,14 +60,16 @@ internal class MainActivityModel(
         (value as? ComponentActivity)?.let { composition.photos?.attach(it); composition.documents?.attach(it) }
     }
 
-    fun onStart(url: String?) {
+    fun onStart(url: String?, notificationGroupId: String?) {
         if (coldStarted) return
         coldStarted = true
         composition.links.onColdStart(url)
+        notificationGroupId?.let(composition.links::onNotificationOpen)
     }
 
-    fun onWarmIntent(url: String?) {
+    fun onWarmIntent(url: String?, notificationGroupId: String?) {
         composition.links.onWarmIntent(url)
+        notificationGroupId?.let(composition.links::onNotificationOpen)
     }
 
 }

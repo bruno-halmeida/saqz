@@ -26,7 +26,9 @@ class SaqzMessagingService : FirebaseMessagingService() {
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 24 && !manager.areNotificationsEnabled()) return
         val id = message.data["notificationId"]?.hashCode() ?: message.messageId.hashCode()
-        val intent = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        val intent = Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(EXTRA_NOTIFICATION_GROUP_ID, message.data["groupId"])
         val content = PendingIntent.getActivity(this, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         manager.notify(id, NotificationCompat.Builder(this, REMINDER_CHANNEL)
             .setSmallIcon(R.drawable.ic_saqz_notification).setContentTitle(notification.title)
@@ -34,6 +36,7 @@ class SaqzMessagingService : FirebaseMessagingService() {
     }
 }
 internal const val REMINDER_CHANNEL = "saqz-reminders"
+internal const val EXTRA_NOTIFICATION_GROUP_ID = "saqz.notification.groupId"
 internal fun initializeNotificationFirebase(application: android.app.Application) {
     val manager = application.getSystemService(NotificationManager::class.java)
     if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(
