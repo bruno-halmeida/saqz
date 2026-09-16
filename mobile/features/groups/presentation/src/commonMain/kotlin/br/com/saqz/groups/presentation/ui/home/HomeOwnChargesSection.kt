@@ -147,6 +147,9 @@ private fun HomeOwnChargeCard(
                     color = if (group.overdue) colors.warningForeground else colors.textSecondary,
                 )
             }
+            // O card inteiro é clicável — sem affordance o usuário só descobria por
+            // tentativa, e ainda competia com o PixCard logo abaixo.
+            SaqzIcon(SaqzIcons.ChevronRight, tint = colors.textSecondary)
         }
     }
 }

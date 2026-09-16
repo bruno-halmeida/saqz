@@ -20,6 +20,7 @@
     <string name="home_deadline_tomorrow">As confirmações encerram amanhã às %1$s.</string>
     <string name="home_deadline_date">As confirmações encerram em %1$s às %2$s.</string>
     <string name="home_confirmed_summary">%1$d de %2$d confirmados</string>
+    <string name="home_spots_left">Restam %1$d vagas</string>
     <string name="home_status_pending">Responda para a galera saber se conta com você.</string>
     <string name="home_status_confirmed">Você está confirmado.</string>
     <string name="home_status_declined">Tudo bem, na próxima. Sua vaga já foi liberada.</string>
@@ -109,6 +110,7 @@
     <string name="home_admin_cd_score_going">%1$d confirmados</string>
     <string name="home_admin_cd_score_out">%1$d não vão</string>
     <string name="home_admin_cd_score_pending">%1$d pendentes</string>
+    <string name="home_admin_cd_scoreboard_open">Abrir a lista de presença do jogo</string>
     <string name="home_admin_cd_waiting_entry_requests">%1$d pedidos para entrar em %2$s</string>
     <string name="home_admin_cd_waiting_monthly">%1$d mensalidades a receber em %2$s</string>
     <string name="home_admin_cd_waiting_settle">Acertar o jogo de %1$s em %2$s</string>
