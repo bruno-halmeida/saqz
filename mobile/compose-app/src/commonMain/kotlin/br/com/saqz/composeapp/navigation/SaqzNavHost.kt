@@ -189,6 +189,12 @@ internal fun SaqzNavHost(
         attendanceLinks.start()
         onDispose { attendanceLinks.stop() }
     }
+    val notificationOpen = koinInject<br.com.saqz.composeapp.notifications.NotificationOpenInbox>()
+    val notificationOpenPending by notificationOpen.pending.collectAsStateWithLifecycle()
+    androidx.compose.runtime.DisposableEffect(notificationOpen) {
+        notificationOpen.start()
+        onDispose { notificationOpen.stop() }
+    }
     val inviteCoordinator = koinInject<GroupInviteCoordinator>()
     val receiptsCoordinator = koinInject<ReceivablesCoordinator>()
     val receipts = receiptsCoordinator.state.collectAsStateWithLifecycle().value
@@ -218,6 +224,12 @@ internal fun SaqzNavHost(
                 backStack.add(GroupsRoute.AttendanceLink(code))
             }
             attendanceLinks.consume(code)
+        }
+    }
+    LaunchedEffect(notificationOpenPending, state.session) {
+        if (notificationOpenPending && state.session is SessionAccessState.Ready) {
+            if (backStack.none { it is GroupsRoute.Notifications }) backStack.add(GroupsRoute.Notifications())
+            notificationOpen.consume()
         }
     }
     LaunchedEffect(inviteCoordinator, state.session) {

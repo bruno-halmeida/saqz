@@ -24,6 +24,7 @@ import org.koin.dsl.module
  */
 internal val composePresentationModule = module {
     single { br.com.saqz.composeapp.notifications.AttendanceLinkInbox(get(), get(), get()) }
+    single { br.com.saqz.composeapp.notifications.NotificationOpenInbox(get()) }
     factoryOf(::AccessOrchestrator) { bind<AccessRuntimeContract>() }
     viewModelOf(::AccessViewModel)
     viewModelOf(::SubscriptionGateViewModel)

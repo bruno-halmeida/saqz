@@ -21,6 +21,8 @@ interface GroupValueCallback { fun complete(result: GroupValueResult) }
 sealed interface GroupLinkEvent {
     data class Invite(val code: String) : GroupLinkEvent
     data class Attendance(val code: String) : GroupLinkEvent
+    /** Toque em push de notificação; abre a central. O grupo fica para navegação futura. */
+    data class NotificationOpen(val groupId: String?) : GroupLinkEvent
 }
 
 interface GroupLinkEventListener { fun onEvent(event: GroupLinkEvent) }
