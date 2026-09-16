@@ -87,7 +87,7 @@ try {
   service('java', ['-jar', path.join(root, 'backend/bootstrap/build/libs', jars[0])], 'backend', {
     ...process.env, SPRING_PROFILES_ACTIVE: 'local', SERVER_PORT: '18080', SERVER_ADDRESS: '127.0.0.1',
     FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:9099',
-    SAQZ_BRANCH_DOMAIN: 'https://saqz.test-app.link',
+    SAQZ_LINKS_DOMAIN: 'https://links.saqz.app',
     SPRING_DATASOURCE_URL: `jdbc:postgresql://127.0.0.1:${databasePort}/saqz_e2e`,
     SPRING_DATASOURCE_USERNAME: 'saqz', SPRING_DATASOURCE_PASSWORD: 'e2e-local-only',
     SAQZ_PASSWORD_RESET_SECRET: 'disposable-local-e2e-password-reset-secret',

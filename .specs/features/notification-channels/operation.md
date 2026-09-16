@@ -30,7 +30,7 @@ SAQZ_NOTIFICATIONS_WHATSAPP_DELAYMS=15000
 ```
 
 A propriedade canônica é `saqz.notifications.whatsapp.base-url` (e `delay-ms`); use as formas acima ao configurar variáveis de ambiente. O token não é armazenado no repositório. A instância deve estar conectada. Desabilitado por padrão; não há conexão/pareamento ou envio real nos testes.
-O domínio `saqz.branch.domain` precisa corresponder aos App Links/Universal Links já configurados no Android/iOS.
+O domínio `saqz.links.domain` precisa corresponder aos App Links/Universal Links já configurados no Android/iOS.
 
 ## Entrega e recuperação
 
