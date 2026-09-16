@@ -3,11 +3,14 @@ package br.com.saqz.bootstrap.configuration
 import br.com.saqz.groups.adapter.input.http.GroupWhatsAppBindingController
 import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcNotificationWhatsApp
+import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcNotificationWhatsAppGroup
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.adapter.output.jdbc.whatsapp.JdbcGroupWhatsAppBindingRepository
 import br.com.saqz.groups.adapter.output.whatsapp.UazapiGroupDirectory
+import br.com.saqz.groups.adapter.output.whatsapp.UazapiGroupNotificationSender
 import br.com.saqz.groups.adapter.output.whatsapp.UazapiNotificationSender
+import br.com.saqz.groups.application.communication.NotificationWhatsAppGroupSender
 import br.com.saqz.groups.application.communication.NotificationWhatsAppSender
 import br.com.saqz.groups.application.whatsapp.GroupWhatsAppBindingRepository
 import br.com.saqz.groups.application.whatsapp.LinkGroupWhatsApp
@@ -44,6 +47,17 @@ class NotificationWhatsAppConfiguration {
     @Bean fun notificationWhatsAppWorker(queue: JdbcNotificationWhatsApp, sender: NotificationWhatsAppSender) =
         NotificationWhatsAppWorker(queue, sender)
 
+    @Bean fun notificationWhatsAppGroupQueue(dataSource: DataSource, transaction: JdbcTransactionRunner,
+        links: br.com.saqz.groups.adapter.output.link.BranchAttendanceLinkFactory) =
+        JdbcNotificationWhatsAppGroup(dataSource, transaction, links)
+    @Bean fun notificationWhatsAppGroupSender(client: UazapiClient): NotificationWhatsAppGroupSender =
+        UazapiGroupNotificationSender(client)
+    @Bean fun notificationWhatsAppGroupWorker(
+        queue: JdbcNotificationWhatsAppGroup,
+        sender: NotificationWhatsAppGroupSender,
+        directory: WhatsAppGroupDirectory,
+    ) = NotificationWhatsAppGroupWorker(queue, sender, directory)
+
     @Bean fun groupWhatsAppBindingRepository(dataSource: DataSource): GroupWhatsAppBindingRepository =
         JdbcGroupWhatsAppBindingRepository(dataSource)
 
@@ -70,4 +84,13 @@ class NotificationWhatsAppConfiguration {
 class NotificationWhatsAppWorker(private val queue: JdbcNotificationWhatsApp, private val sender: NotificationWhatsAppSender) {
     @Scheduled(fixedDelayString = "\${saqz.notifications.whatsapp.delay-ms:15000}")
     fun run() = queue.drain(sender)
+}
+
+class NotificationWhatsAppGroupWorker(
+    private val queue: JdbcNotificationWhatsAppGroup,
+    private val sender: NotificationWhatsAppGroupSender,
+    private val directory: WhatsAppGroupDirectory,
+) {
+    @Scheduled(fixedDelayString = "\${saqz.notifications.whatsapp.group-delay-ms:15000}")
+    fun run() = queue.drain(sender, directory)
 }
