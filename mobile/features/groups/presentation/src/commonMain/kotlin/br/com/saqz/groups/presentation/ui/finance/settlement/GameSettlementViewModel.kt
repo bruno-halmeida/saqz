@@ -253,10 +253,13 @@ class GameSettlementViewModel(
         pix: PixUi?,
     ): GameSettlementState {
         val athleteById = athletes.associateBy(AthleteRosterEntry::userId)
-        val names = roster.confirmed.associate { it.memberId to it.displayName }
+        val names = roster.confirmed.filterNot { it.isGuest }.associate { it.memberId to it.displayName }
         val gameCharges = charges
             .filter { it.kind == ChargeKind.Game && it.gameId == game.id && it.status != ChargeStatus.Cancelled }
-            .map { it.toDiarist(names[it.memberId] ?: athleteById[it.memberId]?.displayName ?: "Membro") }
+            .map { charge ->
+                val memberName = names[charge.memberId] ?: athleteById[charge.memberId]?.displayName ?: "Membro"
+                charge.toDiarist(memberName)
+            }
         val paid = gameCharges.filter { it.status == ChargeStatus.Paid }
         val pending = gameCharges.filter { it.status == ChargeStatus.Pending }
         val costCents = expenses
@@ -276,7 +279,7 @@ class GameSettlementViewModel(
             "${it.day.toString().padStart(2, '0')}/${it.month.ordinal.plus(1).toString().padStart(2, '0')}/${it.year} · " +
                 "${it.hour.toString().padStart(2, '0')}:${it.minute.toString().padStart(2, '0')}"
         } ?: game.localDate
-        val monthlyMemberCount = roster.confirmed.count {
+        val monthlyMemberCount = roster.confirmed.filterNot { it.isGuest }.count {
             athleteById[it.memberId]?.membershipType == AthleteMembershipType.MENSALISTA
         }
         val totalCents = gameCharges.sumOf { it.amountCents }
@@ -309,18 +312,26 @@ class GameSettlementViewModel(
         )
     }
 
-    private fun Charge.toDiarist(name: String) = GameSettlementDiaristUi(
-        chargeId = id,
-        memberId = memberId,
-        name = name,
-        meta = "Diarista",
-        amountLabel = formatBrl(amountCents),
-        amountCents = amountCents,
-        dueDate = dueDate,
-        chargeVersion = version,
-        status = status,
-        referenceLabel = "Diarista · jogo de ${formatDate(dueDate)}",
-    )
+    /** [memberName] é de quem PAGA. Cobrança de convidado mostra o convidado e diz quem paga. */
+    private fun Charge.toDiarist(memberName: String): GameSettlementDiaristUi {
+        val guest = guestDisplayName
+        return GameSettlementDiaristUi(
+            chargeId = id,
+            memberId = memberId,
+            name = guest ?: memberName,
+            meta = if (guest != null) "Convidado de $memberName · quem paga é $memberName" else "Diarista",
+            amountLabel = formatBrl(amountCents),
+            amountCents = amountCents,
+            dueDate = dueDate,
+            chargeVersion = version,
+            status = status,
+            referenceLabel = if (guest != null) {
+                "Convidado $guest · jogo de ${formatDate(dueDate)}"
+            } else {
+                "Diarista · jogo de ${formatDate(dueDate)}"
+            },
+        )
+    }
 
     private fun GameSettlementDiaristUi.toDebtor() = DebtorUi(
         chargeId = chargeId,
