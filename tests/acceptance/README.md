@@ -36,7 +36,7 @@ cuja jornada ainda depende de implementação; não conta como aprovado nem como
 | Área | Roteiros da bateria principal |
 | --- | --- |
 | Autenticação | J1.1–J1.12: caminhos principais; complementar com senha incorreta, falta de rede, código inválido/expirado e cancelar uma confirmação. As demais variações ficam para regressão complementar. |
-| Primeiro acesso, Início e perfil | APP-OB01–02, APP-H01–03, APP-P04–07; APP-P01–02 para cadastro esportivo e privacidade do perfil alheio |
+| Primeiro acesso, Início e perfil | APP-OB01–02, APP-H01–05, APP-P04–07; APP-P01–02 para cadastro esportivo e privacidade do perfil alheio |
 | Grupos e membros | APP-G01–07, APP-MB01–06; APP-R05/R07 para plano e edição básica; APP-L01–03 para saída voluntária |
 | Convites | APP-I01/I02/I04/I05/I07 e APP-R06; caminho que depende de aprovação pela tela de Membros está bloqueado conforme tabela abaixo |
 | Jogos e presença | APP-J01–05, APP-R08/R09 |
@@ -97,7 +97,7 @@ Prepare contas descartáveis distintas; não reutilize dados pessoais nem contas
 | G2 | “Praia QA”, outro grupo de ATLETA, com dono distinto |
 | J1 | Jogo publicado de G1, amanhã às 20h no fuso do grupo, confirmação até amanhã às 18h, capacidade 2 |
 | J2 | Outro jogo futuro de G1, depois de J1 |
-| M1–M4 | Mensalidades de ATLETA em G1: pendente R$80, paga R$80, isenta R$80, cancelada R$80; competências distintas |
+| M1–M4 | Mensalidades de ATLETA em G1: pendente R$80 (vencimento ajustado pelo cenário: vencida em APP-H02, no prazo em APP-H04), paga R$80, isenta R$80, cancelada R$80; competências distintas |
 
 Massa adicional dos novos roteiros:
 
