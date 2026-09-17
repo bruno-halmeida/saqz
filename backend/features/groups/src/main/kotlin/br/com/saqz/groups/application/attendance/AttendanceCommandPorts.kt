@@ -25,6 +25,8 @@ data class AttendanceAggregate(
     val membershipType: AthleteMembershipType,
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionMode = PromotionMode.FIFO,
+    val guestSeq: Int = 0,
+    val guestName: String? = null,
 )
 
 data class AttendanceRecord(
@@ -36,6 +38,7 @@ data class AttendanceRecord(
     val respondedAt: Instant,
     val updatedAt: Instant,
     val version: Long,
+    val guestSeq: Int = 0,
 )
 
 data class AttendanceEvent(
@@ -50,6 +53,7 @@ data class AttendanceEvent(
     val reason: String?,
     val occurredAt: Instant,
     val requestId: UUID? = null,
+    val guestSeq: Int = 0,
 )
 
 data class AttendancePromotionReplay(
@@ -63,7 +67,7 @@ data class AttendanceResponseReplay(
 )
 
 interface AttendanceCommandRepository {
-    fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate?
+    fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID, guestSeq: Int = 0): AttendanceAggregate?
     fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate?
     fun nextWaitlistSequence(groupId: UUID, gameId: UUID): Long
     fun earliestWaitlisted(groupId: UUID, gameId: UUID): AttendanceRecord?
@@ -123,6 +127,8 @@ data class AttendanceRosterMember(
     val memberId: UUID,
     val displayName: String,
     val waitlistPosition: Long? = null,
+    val guestSeq: Int = 0,
+    val hostDisplayName: String? = null,
 )
 
 data class AttendanceRoster(
