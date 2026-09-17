@@ -109,6 +109,12 @@ data class AttendanceDetail(
 
 fun interface AttendanceDetailQuery {
     fun find(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceDetail?
+
+    // As respostas do próprio ator nos jogos do grupo, por id do jogo, numa consulta só.
+    // Jogo sem resposta fica fora do mapa.
+    // ponytail: corpo padrão vazio para os fakes de teste não mudarem; o único adapter real
+    // (JdbcAttendanceCommandRepository) sobrescreve. Tirar o padrão se surgir um segundo adapter.
+    fun ownByGame(actorId: UUID, groupId: UUID): Map<UUID, AttendanceRecord> = emptyMap()
 }
 
 // Names reuse the AttendanceShareSnapshotPerson convention, read from the

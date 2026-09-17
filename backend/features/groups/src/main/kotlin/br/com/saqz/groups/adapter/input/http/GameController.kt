@@ -10,6 +10,7 @@ import br.com.saqz.groups.application.game.GameView
 import br.com.saqz.groups.application.game.GetGame
 import br.com.saqz.groups.application.game.ListGames
 import br.com.saqz.groups.application.attendance.AttendanceDetailQuery
+import br.com.saqz.groups.application.attendance.AttendanceRecord
 import br.com.saqz.groups.domain.game.CreateGameInput
 import br.com.saqz.groups.domain.game.GameDraftInput
 import br.com.saqz.groups.domain.game.GameMutation
@@ -82,18 +83,23 @@ class GameController(
     }
 
     @GetMapping("/api/groups/{groupId}/games")
-    fun list(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: String): List<GameResponse> =
-        when (val result = listGames.execute(actors.resolve(identity), uuid(groupId))) {
-            is GameListResult.Success -> result.games.map(GameView::toResponse)
+    fun list(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: String): List<GameResponse> {
+        val actor = actors.resolve(identity); val group = uuid(groupId)
+        return when (val result = listGames.execute(actor, group)) {
+            is GameListResult.Success -> {
+                val own = attendance?.ownByGame(actor, group).orEmpty()
+                result.games.map { it.toResponse().copy(ownAttendance = own[it.game.id]?.toEntryResponse()) }
+            }
             GameListResult.GroupNotFound -> throw GameNotFoundException()
         }
+    }
 
     @GetMapping("/api/groups/{groupId}/games/{gameId}")
     fun read(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: String, @PathVariable gameId: String): ResponseEntity<GameResponse> {
         val actor = actors.resolve(identity); val group = uuid(groupId); val game = uuid(gameId)
         return when (val result = getGame.execute(actor, group, game)) {
             is GameReadResult.Success -> ResponseEntity.ok().eTag(result.game.game.version.toString()).body(
-                result.game.toResponse().copy(ownAttendance = attendance?.find(actor, group, game)?.own?.let { AttendanceEntryResponse(it.memberId, it.status.name, it.waitlistSequence, it.version) }),
+                result.game.toResponse().copy(ownAttendance = attendance?.find(actor, group, game)?.own?.toEntryResponse()),
             )
             GameReadResult.GameNotFound -> throw GameNotFoundException()
         }
@@ -138,3 +144,4 @@ private fun GameWriteRequest.toDraft() = GameDraftInput(title, venue?.toInput(),
 private fun GameVenueRequest.toInput() = GameVenueInput(venueId, name, address, court)
 private fun br.com.saqz.groups.domain.game.Game.toView() = GameView(this, 0, snapshot.capacity, 0)
 private fun GameView.toResponse(): GameResponse { val s = game.snapshot; return GameResponse(game.id, game.groupId, s.title, GameVenueResponse(s.venue.venueId,s.venue.name,s.venue.address,s.venue.court),s.localDate,s.localTime,s.zoneId.value,s.startsAt,s.durationMinutes,s.capacity,s.confirmationDeadline,s.gameFeeCents,s.notes,game.status.name,game.version,confirmedCount,availableSpots,waitlistCount,game.financeReviewRequired) }
+private fun AttendanceRecord.toEntryResponse() = AttendanceEntryResponse(memberId, status.name, waitlistSequence, version)

@@ -2,22 +2,28 @@ package br.com.saqz.groups.adapter.output.jdbc.attendance
 
 import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
+import br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameOccurrenceRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.attendance.*
 import br.com.saqz.groups.application.finance.charge.ChargeTransactions
+import br.com.saqz.groups.application.game.ListGames
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.testing.*
 import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.springframework.jdbc.datasource.AbstractDataSource
 import org.springframework.jdbc.datasource.DriverManagerDataSource
+import java.lang.reflect.Proxy
 import java.sql.Connection
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
+import javax.sql.DataSource
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
@@ -80,6 +86,106 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         val detail = requireNotNull(JdbcAttendanceCommandRepository(dataSource).find(f.member, f.group, f.game))
 
         assertEquals(2, detail.pendingCount)
+    }
+
+    // --- VUL-226: minha presença na listagem de jogos ---
+    @Test fun `own by game returns the actors status waitlist position and version for each answered game`() {
+        val f = fixture()
+        val declined = f.copy(game = extraGame(f, 3))
+        val waitlisted = f.copy(game = extraGame(f, 4))
+        attendance(f, f.member, "CONFIRMED")
+        attendance(declined, f.member, "DECLINED")
+        execute("UPDATE game_attendance SET version=5 WHERE game_id='${declined.game}' AND member_user_id='${f.member}'")
+        waitlist(waitlisted, member(f.group, "ahead"), 1)
+        waitlist(waitlisted, f.member, 2)
+
+        val own = JdbcAttendanceCommandRepository(dataSource).ownByGame(f.member, f.group)
+
+        assertEquals(setOf(f.game, declined.game, waitlisted.game), own.keys)
+        assertEquals(AttendanceStatus.CONFIRMED, own.getValue(f.game).status)
+        assertNull(own.getValue(f.game).waitlistSequence)
+        assertEquals(1L, own.getValue(f.game).version)
+        assertEquals(AttendanceStatus.DECLINED, own.getValue(declined.game).status)
+        assertNull(own.getValue(declined.game).waitlistSequence)
+        assertEquals(5L, own.getValue(declined.game).version)
+        assertEquals(AttendanceStatus.WAITLISTED, own.getValue(waitlisted.game).status)
+        assertEquals(2L, own.getValue(waitlisted.game).waitlistSequence)
+        assertEquals(listOf(f.member), own.values.map { it.memberId }.distinct())
+        assertEquals(listOf(f.group), own.values.map { it.groupId }.distinct())
+    }
+
+    @Test fun `own by game leaves out the games the actor has not answered`() {
+        val f = fixture()
+        val unanswered = extraGame(f, 3)
+        attendance(f, f.member, "CONFIRMED")
+
+        val own = JdbcAttendanceCommandRepository(dataSource).ownByGame(f.member, f.group)
+
+        assertEquals(setOf(f.game), own.keys)
+        assertNull(own[unanswered])
+    }
+
+    @Test fun `own by game never returns another members answer`() {
+        val f = fixture()
+        attendance(f, member(f.group, "other"), "CONFIRMED")
+        waitlist(f, member(f.group, "queued"), 1)
+
+        assertEquals(emptyMap(), JdbcAttendanceCommandRepository(dataSource).ownByGame(f.member, f.group))
+    }
+
+    @Test fun `own by game is scoped to the requested group`() {
+        val f = fixture()
+        val other = fixture("other")
+        attendance(other, f.member, "CONFIRMED")
+        val repository = JdbcAttendanceCommandRepository(dataSource)
+
+        assertEquals(emptyMap(), repository.ownByGame(f.member, f.group))
+        assertEquals(setOf(other.game), repository.ownByGame(f.member, other.group).keys)
+    }
+
+    @Test fun `own by game is empty once the group is deleted`() {
+        val f = fixture()
+        attendance(f, f.member, "CONFIRMED")
+        execute("UPDATE access_groups SET deleted_at=now() WHERE id='${f.group}'")
+
+        assertEquals(emptyMap(), JdbcAttendanceCommandRepository(dataSource).ownByGame(f.member, f.group))
+    }
+
+    @Test fun `own by game runs a single statement no matter how many games the group has`() {
+        val f = fixture()
+        attendance(f, f.member, "CONFIRMED")
+        val counting = CountingDataSource(dataSource)
+        val repository = JdbcAttendanceCommandRepository(counting)
+
+        val withOneGame = repository.ownByGame(f.member, f.group)
+        assertEquals(1, counting.preparedStatements.get())
+        (3..7).forEach { attendance(f.copy(game = extraGame(f, it)), f.member, "CONFIRMED") }
+        val withSixGames = repository.ownByGame(f.member, f.group)
+
+        assertEquals(1, withOneGame.size)
+        assertEquals(6, withSixGames.size)
+        assertEquals(2, counting.preparedStatements.get())
+    }
+
+    @Test fun `listing games with own attendance costs the same statements for one game and for six`() {
+        val f = fixture()
+        attendance(f, f.member, "CONFIRMED")
+        val counting = CountingDataSource(dataSource)
+        val attendanceRepository = JdbcAttendanceCommandRepository(counting)
+        val listGames = ListGames(JdbcGameOccurrenceRepository(counting), attendanceRepository)
+        fun cost(): Int {
+            val before = counting.preparedStatements.get()
+            listGames.execute(f.member, f.group)
+            attendanceRepository.ownByGame(f.member, f.group)
+            return counting.preparedStatements.get() - before
+        }
+
+        val withOneGame = cost()
+        (3..7).forEach { attendance(f.copy(game = extraGame(f, it)), f.member, "CONFIRMED") }
+
+        // role + list + counts + ownByGame
+        assertEquals(4, withOneGame)
+        assertEquals(withOneGame, cost())
     }
 
     // --- VUL-152: ordenação da reserva por faixa + FIFO e colapso pós-prazo ---
@@ -410,6 +516,23 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     private fun queryStrings(sql: String): List<String> = connection().use { c -> c.createStatement().use { s -> s.executeQuery(sql).use { r -> buildList { while (r.next()) add(r.getString(1)) } } } }
     private fun <T> query(sql: String, read: (java.sql.ResultSet) -> T): T = connection().use { c -> c.createStatement().use { s -> s.executeQuery(sql).use { r -> check(r.next()); read(r) } } }
     private fun connection(): Connection = dataSource.connection
+    // Jogo PUBLISHED a mais no grupo do fixture. `days` >= 3 e distinto por chamada: o fixture ocupa
+    // now() + 2 dias e games_schedule_start_unique proíbe dois jogos ativos no mesmo início.
+    private fun extraGame(f: Fixture, days: Int): UUID { val id = UUID.randomUUID(); execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$id','${f.group}','Treino $days',(CURRENT_DATE + $days),TIME '19:30','America/Sao_Paulo',now() + interval '$days days',90,now() + interval '${days - 1} days','Arena','Rua Central 100',2,2500,'PUBLISHED',now(),now())"); return id }
+    // ponytail: cópia enxuta do CountingDataSource de JdbcGroupReadRepositoryIntegrationTest (lá ele é
+    // private). Extrair para br.com.saqz.groups.testing quando um terceiro teste precisar contar statements.
+    private class CountingDataSource(private val delegate: DataSource) : AbstractDataSource() {
+        val preparedStatements = AtomicInteger()
+        override fun getConnection(): Connection = wrap(delegate.connection)
+        override fun getConnection(username: String, password: String): Connection = wrap(delegate.getConnection(username, password))
+        private fun wrap(connection: Connection): Connection = Proxy.newProxyInstance(
+            Connection::class.java.classLoader,
+            arrayOf(Connection::class.java),
+        ) { _, method, arguments ->
+            if (method.name == "prepareStatement") preparedStatements.incrementAndGet()
+            method.invoke(connection, *(arguments ?: emptyArray()))
+        } as Connection
+    }
     private data class Fixture(val owner: UUID, val member: UUID, val group: UUID, val game: UUID, val service: RespondAttendance)
     private data class PromotionFixture(val owner: UUID, val member: UUID, val group: UUID, val game: UUID, val service: RespondAttendance, val waiting: List<UUID>)
 }
