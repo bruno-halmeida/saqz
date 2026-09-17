@@ -5,6 +5,7 @@ Responde a uma pergunta: **quantas pessoas ao mesmo tempo este servidor aguenta,
 | Arquivo | O que é |
 |---|---|
 | `session.js` | Roteiro k6 que repete o que o app faz: abre (PUT session + Home), entra no grupo (as mesmas chamadas em série da tela), às vezes abre membros, opcionalmente responde presença. Tem pausas de leitura, então **1 VU ≈ 1 pessoa usando o app**. |
+| `analise.mjs` | Lê o `--out json` e diz, **degrau por degrau**, quem passou. O resumo do k6 é acumulado: um degrau ruim no fim fica diluído. É este que responde "qual foi o último degrau bom". |
 | `seed-volume.sql` | Envelhece o grupo do seed em 2 anos (~210 jogos, ~3.000 presenças, ~1.350 cobranças). Sem isso `/games` e `/charges`, que devolvem o histórico inteiro, parecem rápidos e o número sai otimista. |
 
 ## Onde rodar
@@ -67,11 +68,53 @@ k6 run -e BASE_URL=... -e PROFILE=soak  -e MAX_VUS=<capacidade> tests/load/sessi
 
 `WRITES=1` liga a resposta de presença (só em ambiente isolado).
 
-- **ramp** sobe em degraus (10, 25, 50, 100, 150, 200, 300) e **aborta** quando p95 > 1 s ou erro > 1%.
-  O último degrau que passou é a capacidade em usuários simultâneos.
+- **ramp** sobe em degraus (10 → 1200, limitado por `MAX_VUS`). A capacidade sai do `analise.mjs`, não
+  do abort: o threshold aqui é rede de segurança (10% de erro, p95 3 s), porque 1% julgado cedo mata o
+  teste por ruído. Guarde a saída com `--out json=/tmp/ramp.json` ou o degrau se perde.
+- **concorrencia** mede **requisição em voo**, não usuário: sem pausa de leitura, 1 VU = 1 requisição
+  simultânea. No `ramp`, 300 usuários com pausa realista são só ~4 requisições em voo.
 - **spike** simula a hora do jogo: todos chegam em 1 minuto, cada iteração com **token novo**, o que
   fura o cache de 3 minutos e bate no Firebase a cada abertura.
 - **soak** segura metade da capacidade por 1 hora: vazamento, conexão presa, cache crescendo.
+
+## Resultado medido (2026-09-17, Server Dev)
+
+`PROFILE=ramp MAX_VUS=900`, grupo com 2 anos de histórico (volume aplicado), 30 min:
+
+| | |
+|---|---|
+| **Capacidade útil** | **676 VUs** (~11.300 req/min) — último degrau com p95 < 1 s |
+| Primeiro degrau ruim | 826 VUs (p95 1.091 ms) — **sem erro nenhum** |
+| Vazão máxima | 14.998 req/min (250 req/s) em 900 VUs, mas p95 1,3 s |
+| Joelho da latência | p95 dobra de 97 ms (150 VUs) para 198 ms (450 VUs) |
+| Erro | **2 em 133.931 requisições** (0,00%), em todos os degraus |
+
+A vazão **não tem platô** dentro do que medimos: ela sobe até o fim. Quem estoura é a latência. O
+servidor degrada, não cai — não houve 5xx, timeout nem 429 da borda em nenhum degrau.
+
+Para comparar, o mesmo ramp no grupo **sem** volume (`MAX_VUS=300`): p95 plano de 93 a 119 ms, mediana
+*caindo* de 57 para 53 ms conforme o cache de token esquenta, 0 erro em 40.371 requisições. Nenhum
+sinal de saturação — por isso o volume não é opcional para medir capacidade.
+
+### Quem limita: CPU, 2 cores
+
+No pico (`docker stats` no servidor, load average 8.37 em 2 cores):
+
+| Container | CPU (de 200%) | Memória |
+|---|---|---|
+| `saqz-backend-1` | 88,3% | 503 MB / 7,76 GB |
+| `cloudflare-tunnel` | 51,1% | 88 MB |
+| `traefik` | 29,3% | 168 MB |
+| `saqz-database-1` | 0,0% | 32 MB (ocioso — o app usa Supabase) |
+
+Não é o pool do Hikari (5), não é memória, não é o Supabase: são os 2 cores, e **47% do pico é
+caminho de entrada** (túnel + proxy), não aplicação. O k6 do lado do cliente ficou em 21% de um core
+de 10 e 46 Mbps — o gargalo não era o teste.
+
+Ordem de alavanca, da melhor para a pior: **mais cores** (ganho quase linear, zero código) → **os 51%
+do túnel** → **janela em `/charges`**, que devolve o histórico inteiro (831 KB, 1.642 itens no grupo
+de 2 anos) e cresce ~500 itens/ano **por grupo, independente de quantos usuários existam** — um grupo
+de 3 anos com 20 membros é mais lento que um grupo novo com 300.
 
 ## O que olhar enquanto roda
 
@@ -88,6 +131,15 @@ mode cada conexão do pool segura um slot do pooler.
 
 ## Como ler o resultado
 
-Capacidade = último degrau do `ramp` sem abortar. Isso é gente **usando ao mesmo tempo**; a base total
-que isso sustenta depende de quanta gente abre o app na mesma hora (a hora do jogo é o pior caso, e é
-o que o `spike` mede). Anote junto: qual suspeito encheu primeiro, e o p95 por endpoint do resumo do k6.
+Capacidade = último degrau com p95 < 1 s e erro < 1%, e isso sai do `analise.mjs`, não do resumo do
+k6 (que é acumulado e dilui o degrau ruim). Isso é gente **usando ao mesmo tempo**; a base total que
+isso sustenta depende de quanta gente abre o app na mesma hora — a hora do jogo é o pior caso, e é o
+que o `spike` mede. Anote junto: qual suspeito encheu primeiro, e as rotas mais lentas do último degrau.
+
+Dois cuidados que custaram ramps abortados:
+
+- **Erro em bloco não é saturação.** 403 é papel (`/memberships` exige `MANAGE_ATHLETES`, atleta leva
+  403 por definição) e 404 é conta fora do grupo — o `setup()` descobre o rateio justamente por isso.
+  Saturação aqui apareceu como latência, nunca como erro.
+- **O primeiro degrau é lento por aquecimento, não por fila.** Todo VU acabou de logar e paga o
+  `checkRevoked` (~270 ms) antes do cache de 3 min pegar: 327 ms em 10 VUs contra 84 ms em 300.
