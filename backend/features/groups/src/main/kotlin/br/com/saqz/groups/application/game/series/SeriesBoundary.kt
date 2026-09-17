@@ -8,7 +8,9 @@ import br.com.saqz.groups.domain.game.recurrence.RecurrenceValidationError
 import br.com.saqz.groups.domain.game.recurrence.WeeklyRecurrenceResolver
 import br.com.saqz.groups.domain.game.recurrence.WeeklyRecurrenceResult
 import br.com.saqz.groups.domain.game.recurrence.WeeklySeriesRule
+import br.com.saqz.sharedkernel.subscription.GameCreationHorizon
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -22,6 +24,8 @@ data class OnlyThisBoundaryCommand(
     val today: LocalDate,
     val action: SeriesBoundaryAction,
     val replacement: GameSnapshot? = null,
+    /** Preenchido pelo [ApplySeriesBoundary]: jogo que já começou não é mais alterado. */
+    val now: Instant = Instant.EPOCH,
 )
 
 data class FutureBoundaryCommand(
@@ -33,6 +37,10 @@ data class FutureBoundaryCommand(
     val boundary: LocalDate,
     val action: SeriesBoundaryAction,
     val occurrences: List<MaterializedGameOccurrence>,
+    /** Jogo com `starts_at <= now` já começou e não é reescrito nem cancelado. */
+    val now: Instant = Instant.EPOCH,
+    /** Ocorrência existente é atualizada em qualquer data; nova só nasce antes deste instante. */
+    val insertUntil: Instant = Instant.MAX,
 )
 
 sealed interface SeriesBoundaryResult {
@@ -54,12 +62,13 @@ class ApplySeriesBoundary(
     private val ids: () -> UUID,
     private val clock: Clock,
     private val autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { },
+    private val horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
 ) {
     fun onlyThis(command: OnlyThisBoundaryCommand): SeriesBoundaryResult {
         if (command.action == SeriesBoundaryAction.EDIT && command.replacement == null) {
             return SeriesBoundaryResult.InvalidBoundary
         }
-        return repository.applyOnlyThis(command)
+        return repository.applyOnlyThis(command.copy(now = clock.instant()))
     }
 
     fun thisAndFuture(
@@ -79,10 +88,11 @@ class ApplySeriesBoundary(
             is WeeklyRecurrenceResult.Valid -> result.occurrences
         }
         val now = clock.instant()
-        val materialized = resolved.map { MaterializedGameOccurrence(ids(), it, GameStatus.DRAFT, now) }
+        val materialized = resolved.filter { it.startsAt > now }
+            .map { MaterializedGameOccurrence(ids(), it, GameStatus.DRAFT, now) }
         val command = FutureBoundaryCommand(
             groupId, currentRevisionId, expectedVersion, successorRule, revisionNumber,
-            boundary, action, materialized,
+            boundary, action, materialized, now, horizon.until(groupId) ?: now,
         )
         val result = repository.applyThisAndFuture(command)
         if (command.action != SeriesBoundaryAction.CANCEL &&

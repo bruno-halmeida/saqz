@@ -127,6 +127,12 @@ fun validate(state: GroupSetupState): Set<GroupSetupError> {
             }
         }
         if (state.recurring && form.regularSlots.isEmpty()) add(GroupSetupError.SlotsRequired)
+        // Recorrência ligada gera os jogos na criação, e jogo não existe sem local: o backend
+        // (`CreateGroup`) recusa horário regular sem quadra padrão. Os dois erros já têm campo dono.
+        if (state.recurring && venue == null) {
+            add(GroupSetupError.VenueNameRequired)
+            add(GroupSetupError.VenueAddressNotFound)
+        }
         // A quadra inteira é opcional, mas pela metade não existe: o
         // `GroupProfileDefaultsValidator.validateVenue` do backend exige nome **e**
         // endereço sempre que `defaultVenue` vem preenchido. A ViewModel devolve a

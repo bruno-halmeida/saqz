@@ -708,6 +708,8 @@ class GroupSetupViewModelTest {
                 ),
             )
 
+            // Com recorrência ligada a quadra é obrigatória; o caso aqui é o grupo sem recorrência.
+            viewModel.onIntent(GroupSetupIntent.ToggleRecurring(false))
             viewModel.onIntent(GroupSetupIntent.UpdateVenueName(""))
             viewModel.onIntent(GroupSetupIntent.UpdateVenueAddress(""))
             viewModel.onIntent(GroupSetupIntent.Submit)
@@ -727,6 +729,8 @@ class GroupSetupViewModelTest {
         )
 
         val viewModel = viewModel(savedState = handle)
+        // Com recorrência ligada a quadra é obrigatória; o caso aqui é o grupo sem recorrência.
+        viewModel.onIntent(GroupSetupIntent.ToggleRecurring(false))
         viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 

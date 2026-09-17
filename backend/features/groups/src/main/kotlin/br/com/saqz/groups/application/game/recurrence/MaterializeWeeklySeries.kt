@@ -11,7 +11,9 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import br.com.saqz.sharedkernel.subscription.GameCreationHorizon
 import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
+import br.com.saqz.groups.domain.game.recurrence.ResolvedWeeklyOccurrence
 
 data class MaterializedGameOccurrence(
     val id: UUID,
@@ -19,6 +21,10 @@ data class MaterializedGameOccurrence(
     val status: GameStatus,
     val createdAt: Instant,
 )
+
+/** Jogo só nasce no futuro e dentro do horizonte mensal do plano ([GameCreationHorizon]). */
+fun List<ResolvedWeeklyOccurrence>.creatableBetween(now: Instant, until: Instant): List<ResolvedWeeklyOccurrence> =
+    filter { it.startsAt > now && it.startsAt < until }
 
 fun interface ScheduleMaterializationPolicy { fun isPaused(groupId: UUID): Boolean }
 
@@ -41,6 +47,7 @@ class MaterializeWeeklySeries(
     private val autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { },
     private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
     private val schedulePolicy: ScheduleMaterializationPolicy = ScheduleMaterializationPolicy { false },
+    private val horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
 ) {
     fun execute(rule: WeeklySeriesRule, from: LocalDate): MaterializeWeeklySeriesResult {
         val resolved = when (val result = WeeklyRecurrenceResolver.resolve(rule, from)) {
@@ -48,7 +55,8 @@ class MaterializeWeeklySeries(
             is WeeklyRecurrenceResult.Valid -> result.occurrences
         }
         val createdAt = clock.instant()
-        val materialized = resolved.map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, createdAt) }
+        val until = horizon.until(rule.groupId) ?: return MaterializeWeeklySeriesResult.Success(0, 0)
+        val materialized = resolved.creatableBetween(createdAt, until).map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, createdAt) }
         return transactionRunner.inTransaction {
             if (!writeAccess.canWrite(rule.groupId) || schedulePolicy.isPaused(rule.groupId)) return@inTransaction MaterializeWeeklySeriesResult.Success(0, 0)
             val inserted = repository.insertIfAbsent(materialized)

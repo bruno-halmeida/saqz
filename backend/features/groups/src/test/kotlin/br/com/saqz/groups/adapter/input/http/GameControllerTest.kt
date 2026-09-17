@@ -25,7 +25,7 @@ class GameControllerTest {
         val tx = object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() }
         val counts = GameAttendanceCountSource { ids -> ids.associateWith { GameAttendanceCounts(3, 2) } }
         attendance = FakeAttendance()
-        controller = GameController(VerifiedGroupActorResolver { actor }, CreateGame(tx, repository), EditGame(tx, repository, effects), ChangeGameLifecycle(tx, repository, effects), ListGames(repository, counts), GetGame(repository, counts), attendance)
+        controller = GameController(VerifiedGroupActorResolver { actor }, CreateGame(tx, repository), EditGame(tx, repository, effects, java.time.Clock.fixed(java.time.Instant.parse("2026-08-01T12:00:00Z"), java.time.ZoneOffset.UTC)), ChangeGameLifecycle(tx, repository, effects), ListGames(repository, counts), GetGame(repository, counts), attendance)
     }
 
     @Test fun `create returns 201 quoted ETag and server state`() { val response = controller.create(ID, "$group", request()); assertEquals(201, response.statusCode.value()); assertEquals("\"1\"", response.headers.eTag); assertEquals("DRAFT", response.body!!.status); assertEquals(0, response.body!!.confirmedCount) }

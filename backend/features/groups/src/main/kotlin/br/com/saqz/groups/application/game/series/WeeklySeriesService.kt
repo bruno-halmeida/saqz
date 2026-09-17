@@ -11,6 +11,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
+import br.com.saqz.groups.application.game.recurrence.creatableBetween
+import br.com.saqz.sharedkernel.subscription.GameCreationHorizon
 import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 
 data class SeriesOccurrenceView(val id: UUID, val localDate: LocalDate, val localTime: LocalTime, val startsAt: Instant, val status: GameStatus, val version: Long)
@@ -28,6 +30,8 @@ interface WeeklySeriesRepository {
     fun role(actor: UUID, groupId: UUID): GroupRole?
     fun create(rule: WeeklySeriesRule, occurrences: List<MaterializedGameOccurrence>): Boolean
     fun find(groupId: UUID, lineageId: UUID): WeeklySeriesView?
+    /** (grupo, linhagem) de toda série cuja última revisão segue aberta em grupo ativo. */
+    fun openSeries(): List<Pair<UUID, UUID>> = emptyList()
 }
 
 class WeeklySeriesService(
@@ -36,6 +40,7 @@ class WeeklySeriesService(
     private val clock: Clock,
     private val autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { },
     private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
+    private val horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
 ) {
     fun authorizeOrganizer(actor: UUID, groupId: UUID): WeeklySeriesResult? = when (repository.role(actor, groupId)) {
         null -> WeeklySeriesResult.NotFound
@@ -51,7 +56,9 @@ class WeeklySeriesService(
             is WeeklyRecurrenceResult.Valid -> result.occurrences
         }
         val now = clock.instant()
-        val materialized = resolved.map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, now) }
+        // O resto da série nasce mês a mês, pela rotina ExtendGameSeries.
+        val materialized = resolved.creatableBetween(now, horizon.until(rule.groupId) ?: now)
+            .map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, now) }
         val inserted = repository.create(rule, materialized)
         autoConfirmation.apply(materialized)
         val stored = repository.find(rule.groupId, rule.seriesId) ?: error("created series not readable")

@@ -41,6 +41,15 @@ class OrganizerTrialConfiguration {
         }
 
     @Bean
+    fun gameCreationHorizon(
+        groups: br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup,
+        trials: br.com.saqz.sharedkernel.subscription.OrganizerTrialAccessLookup,
+        subscriptions: br.com.saqz.subscriptions.application.SubscriptionRepository,
+        clock: Clock,
+    ): br.com.saqz.sharedkernel.subscription.GameCreationHorizon =
+        br.com.saqz.subscriptions.application.MonthlyGameCreationHorizon(groups, trials, subscriptions, clock)
+
+    @Bean
     fun groupPlanOwnerLookup(dataSource: DataSource): br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup =
         br.com.saqz.groups.adapter.output.jdbc.plan.JdbcGroupPlanOwnerLookup(dataSource)
 

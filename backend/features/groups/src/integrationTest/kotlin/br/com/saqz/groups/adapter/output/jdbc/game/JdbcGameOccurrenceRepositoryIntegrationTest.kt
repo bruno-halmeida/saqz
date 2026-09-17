@@ -191,6 +191,7 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
             transaction(),
             fixture.repository,
             GameSideEffectPort { _, _, _ -> effectCalls++ },
+            java.time.Clock.fixed(java.time.Instant.parse("2026-08-01T12:00:00Z"), java.time.ZoneOffset.UTC),
         ).execute(
             fixture.owner,
             fixture.group,

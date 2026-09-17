@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.settings
 
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.application.game.series.ScheduleSeriesSync
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.domain.GroupRole
@@ -32,6 +33,7 @@ class GroupScheduleService(
     private val transaction: TransactionRunner,
     private val groups: GroupReadRepository,
     private val schedules: GroupScheduleRepository,
+    private val scheduleSeries: ScheduleSeriesSync = ScheduleSeriesSync { },
 ) {
     fun read(actor: UUID, groupId: UUID): GroupScheduleResult = transaction.inTransaction {
         authorize(actor, groupId)?.let { return@inTransaction it }
@@ -44,6 +46,9 @@ class GroupScheduleService(
             if (!schedule.valid()) return@inTransaction GroupScheduleResult.Invalid
             if (!schedules.update(groupId, expectedVersion, schedule)) return@inTransaction GroupScheduleResult.Conflict
             GroupScheduleResult.Success(requireNotNull(schedules.read(groupId)))
+        }.also {
+            // Fora da transação: os repositórios de série abrem a própria conexão e só enxergam a agenda commitada.
+            if (it is GroupScheduleResult.Success) scheduleSeries.sync(groupId)
         }
 
     private fun authorize(actor: UUID, groupId: UUID): GroupScheduleResult? =
