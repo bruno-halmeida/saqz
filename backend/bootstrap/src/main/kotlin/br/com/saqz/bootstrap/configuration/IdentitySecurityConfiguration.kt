@@ -53,6 +53,12 @@ class IdentitySecurityConfiguration {
                         .let { it.isNotBlank() && '/' !in it }
                 )
         },
+        // Dinheiro e exclusão nunca usam o cache do token: revogação vale na hora.
+        alwaysVerify = { request ->
+            val uri = request.requestURI
+            request.method != "GET" && (uri.startsWith("/subscriptions") || uri.startsWith("/api/receivables")) ||
+                request.method == "DELETE" && (uri == "/api/session" || GROUP_ROOT.matches(uri))
+        },
     ) { request, response, status, code ->
         problemWriter.write(request, response, status, code)
     }
@@ -164,6 +170,8 @@ class IdentitySecurityConfiguration {
         .build()
 
     private companion object {
+        val GROUP_ROOT = Regex("/api/groups/[^/]+")
+
         /**
          * Quem esqueceu a senha não tem sessão: os três passos do VUL-80 passam sem bearer.
          * O link do e-mail de assinar também chega antes de existir sessão Firebase.

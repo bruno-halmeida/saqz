@@ -17,6 +17,7 @@ class BearerAuthenticationFilter(
     private val optionalAuthenticationPaths: Set<String> = emptySet(),
     private val exactAnonymousPaths: Set<String> = emptySet(),
     private val additionalAnonymousRequest: (HttpServletRequest) -> Boolean = { false },
+    private val alwaysVerify: (HttpServletRequest) -> Boolean = { false },
     private val writeProblem: (HttpServletRequest, HttpServletResponse, Int, ErrorCode?) -> Unit,
 ) : OncePerRequestFilter() {
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
@@ -38,7 +39,9 @@ class BearerAuthenticationFilter(
             return
         }
 
-        when (val verification = verifyRequestIdentity.execute(RawIdentityToken(token))) {
+        val raw = RawIdentityToken(token)
+        val outcome = if (alwaysVerify(request)) verifyRequestIdentity.executeFresh(raw) else verifyRequestIdentity.execute(raw)
+        when (val verification = outcome) {
             TokenVerification.Rejected -> writeProblem(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
             TokenVerification.ProviderUnavailable ->
                 writeProblem(request, response, 503, ErrorCode.IDENTITY_PROVIDER_UNAVAILABLE)
