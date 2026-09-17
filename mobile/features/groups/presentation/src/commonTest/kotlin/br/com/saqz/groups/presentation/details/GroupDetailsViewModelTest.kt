@@ -1040,6 +1040,30 @@ class GroupDetailsViewModelTest {
         assertEquals(OwnChargeStatusUi.Paid, ownCharges.history.single().status)
     }
 
+    @Test
+    fun `ownGuestChargeIsTitledWithTheGuestName`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = athleteGroupGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(
+                ownChargesResult = SaqzResult.Success(
+                    ChargeList(
+                        listOf(
+                            ownCharge(
+                                "convidado",
+                                kind = ChargeKind.Game,
+                                dueDate = "2026-08-28",
+                                guestDisplayName = "Rafa Moreira",
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val ownCharges = assertNotNull(viewModel.state.value.ownCharges)
+        assertEquals("Convidado: Rafa Moreira", ownCharges.pending.single().title)
+    }
+
     // O fuso é o do grupo, não o do aparelho nem UTC: às 23h de São Paulo ainda é dia 10,
     // e uma cobrança que vence hoje não pode aparecer como vencida.
     @Test
@@ -1210,6 +1234,30 @@ class GroupDetailsViewModelTest {
                 rows = listOf(HomeWaitlistRowUi("Caio", 1, false), HomeWaitlistRowUi("Duda", 2, true)),
             ),
             viewModel.state.value.waitlist,
+        )
+    }
+
+    @Test
+    fun `myGuestInTheQueueIsNotMarkedAsSelf`() = runTest {
+        val viewModel = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = FakeAttendanceGateway(
+                detailResult = SaqzResult.Success(waitlistedDetail("wait-2", 1)),
+                rosterResult = SaqzResult.Success(
+                    AttendanceRoster(
+                        confirmed = emptyList(),
+                        waitlisted = listOf(
+                            AttendanceRosterMember("wait-2", "Duda", 1),
+                            AttendanceRosterMember("wait-2", "Rafa Moreira", 2, guestSeq = 1, hostDisplayName = "Duda"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(HomeWaitlistRowUi("Duda", 1, true), HomeWaitlistRowUi("Rafa Moreira", 2, false)),
+            viewModel.state.value.waitlist?.rows,
         )
     }
 
@@ -1673,6 +1721,7 @@ class GroupDetailsViewModelTest {
         month: String? = null,
         dueDate: String = "2026-08-10",
         status: ChargeStatus = ChargeStatus.Pending,
+        guestDisplayName: String? = null,
     ) = Charge(
         id = id,
         groupId = GroupId(GROUP_ID),
@@ -1684,6 +1733,7 @@ class GroupDetailsViewModelTest {
         status = status,
         version = 1,
         audit = emptyList(),
+        guestDisplayName = guestDisplayName,
     )
 
     private fun pixGroupGateway() = FakeGroupGateway(
