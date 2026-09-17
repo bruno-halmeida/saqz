@@ -64,6 +64,7 @@ data class HomeMemberUi(
     val groups: List<HomeGroupUi>,
     val admin: HomeAdminReadModelUi? = null,
     val adminSubtitle: String? = null,
+    val upcomingGames: List<HomeUpcomingGameUi> = emptyList(),
 )
 
 /**
@@ -122,6 +123,27 @@ data class HomeGroupUi(
     val name: String,
     val meta: String,
     val isAdmin: Boolean = false,
+)
+
+enum class HomeUpcomingStatus { Pending, Going, Out, Waitlisted }
+
+/** Uma linha de "Próximos jogos" (VUL-221): tudo já formatado no fuso do jogo. */
+@Immutable
+data class HomeUpcomingGameUi(
+    val groupId: String,
+    val gameId: String,
+    /** "30" */
+    val day: String,
+    /** "JUL" */
+    val month: String,
+    /** "Vôlei Pacaembu · 20h00" */
+    val title: String,
+    /** "Quinta · 6 confirmados" */
+    val meta: String,
+    val status: HomeUpcomingStatus,
+    /** Rótulo do chip: "Sem resposta", "Você vai", "Não vai", "Na espera". */
+    val statusLabel: String,
+    val contentDescription: String,
 )
 
 enum class HomeToast {
