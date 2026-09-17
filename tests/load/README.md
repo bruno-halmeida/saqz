@@ -9,18 +9,25 @@ Responde a uma pergunta: **quantas pessoas ao mesmo tempo este servidor aguenta,
 
 ## Onde rodar
 
-**Nunca contra o Server Dev**: é compartilhado, tem conta de gente real, fica atrás do Cloudflare (que
-bloqueia o tráfego como ataque) e gasta cota do Firebase e do Supabase. O script recusa esse host.
-Exceção: `PROFILE=smoke` com `ALLOW_SHARED=1`, que é 1 usuário fazendo 1 sessão; a única escrita é o `PUT /api/session`, idempotente, o mesmo que o app faz ao abrir.
+**O alvo é o Server Dev** (`https://saqz-api.brunoalmeida.dev`, com `ALLOW_SHARED=1`). Todo dado lá é
+de teste e a máquina é do mesmo porte da que vai rodar de verdade — é justamente o teste que vale.
+O `ALLOW_SHARED` continua obrigatório para o alvo nunca ser implícito.
 
-O alvo certo é um ambiente isolado de mesmo porte do servidor real, batendo direto na origem:
+O que a medição carrega por bater nesse host, e que é bom saber ao ler o resultado:
 
-1. Subir backend + Postgres próprios (`compose.yaml`), com projeto Firebase de teste.
-2. `./seed-usuarios.sh local` → `./seed-exploracao.sh local` → aplicar `tests/load/seed-volume.sql`
-   (`docker compose exec -T database psql -U saqz -d saqz -f - < tests/load/seed-volume.sql`).
-3. Expor as métricas só nesse ambiente, por variável (nada muda em produção):
-   `MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,metrics`
-4. Pagamento fica de fora: o roteiro não toca `/subscriptions` nem `/api/receivables`.
+- **Cloudflare na frente.** O número inclui a borda. Se aparecer 403/429 em bloco, é a borda vendo
+  ataque, não o servidor saturando — dá para separar pelo corpo da resposta.
+- **Banco remoto** (Supabase, pooler em modo sessão). Cada conexão do Hikari ocupa um slot lá, por
+  isso o pool é pequeno; `saqz.db.max-pool-size` ajusta sem recompilar.
+- **Cota do Firebase**: cada `signIn` é uma chamada real. O `ramp` reusa o token por 50 min, como o
+  app; só o `spike` pega token novo a cada iteração.
+- **Pagamento fica de fora**: o roteiro não toca `/subscriptions` nem `/api/receivables`.
+- As métricas do Hikari **não estão expostas** (401). Para enxergar o pool em vez de inferir pela
+  curva de latência: `MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,metrics`.
+
+Em ambiente isolado (`compose.yaml`, Firebase de teste) o caminho é o mesmo, trocando a `BASE_URL`:
+`./seed-usuarios.sh local` → `./seed-exploracao.sh local` → `seed-volume.sql`
+(`docker compose exec -T database psql -U saqz -d saqz -f - < tests/load/seed-volume.sql`).
 
 ## Rodar
 
