@@ -7,6 +7,7 @@ import br.com.saqz.groups.presentation.details.GroupDetailsResponseStatus
 import br.com.saqz.groups.presentation.details.GroupDetailsResponseUi
 import br.com.saqz.groups.presentation.details.GroupDetailsState
 import br.com.saqz.groups.presentation.details.GroupHeaderUi
+import br.com.saqz.groups.presentation.details.GroupOwnDebtUi
 import br.com.saqz.groups.presentation.details.GroupSummaryChipUi
 import br.com.saqz.groups.presentation.details.MemberPreviewUi
 import br.com.saqz.groups.presentation.details.MemberStatusUi
@@ -42,6 +43,12 @@ internal object GroupDetailsPreviewData {
         date = "Ter, 28/07 · 19h30",
         venue = "CERET — Quadra 2 · Tatuapé",
         deadline = "Encerra hoje · 18h",
+        display = "Terça, 19h30",
+        meta = "28 de julho · CERET — Quadra 2",
+        address = "R. Canuto Abreu, s/n · Tatuapé",
+        deadlineLine = "As confirmações encerram hoje às 18h00.",
+        deadlineShort = "Encerra 28/07 · 18h00",
+        bellLabel = "Avisamos você se abrir vaga até 18h00 de 28/07.",
         confirmedCount = 9,
         capacity = 12,
         confirmedNames = listOf(
@@ -109,6 +116,14 @@ internal object GroupDetailsPreviewData {
             ),
         ),
         pix = PixUi(key = "ceret@volei.com.br", label = "Lucas Prado"),
+        debt = GroupOwnDebtUi(
+            eyebrow = "Mensalidade · Agosto",
+            totalLabel = "R$ 95,00",
+            dueLabel = "Venceu em 10/08",
+            overdue = true,
+            countLabel = "2 cobranças em aberto",
+            receiverLabel = "Pix de Lucas Prado",
+        ),
     )
 
     /** Dono COM jogo marcado e ainda sem resposta: o que o gestor real vê. */
@@ -119,7 +134,7 @@ internal object GroupDetailsPreviewData {
         header = header,
         nextGame = nextGame,
         attendance = attendance,
-        cashbox = CashboxUi(summary = "Saldo R$ 380,00 · 8 mensalidades em aberto"),
+        cashbox = CashboxUi(summary = "Saldo R$ 380,00"),
         venue = venue,
         memberCount = 26,
         scheduleSummary = "Ter, Qui",
@@ -167,6 +182,6 @@ internal object GroupDetailsPreviewData {
 
     /** Sem pendência não há Pix: a seção fica só com o histórico. */
     val memberOwnChargesSettled = member.copy(
-        ownCharges = ownCharges.copy(pending = emptyList(), pix = null),
+        ownCharges = ownCharges.copy(pending = emptyList(), pix = null, debt = null),
     )
 }
