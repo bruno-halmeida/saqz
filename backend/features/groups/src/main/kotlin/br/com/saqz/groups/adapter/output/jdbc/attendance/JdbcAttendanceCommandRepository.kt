@@ -199,7 +199,11 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         .optional()
         .orElse(null)
 
-    override fun save(record: AttendanceRecord) {
+    override fun save(record: AttendanceRecord) = write(record, null)
+
+    override fun saveGuest(record: AttendanceRecord, guestName: String) = write(record, guestName)
+
+    private fun write(record: AttendanceRecord, guestName: String?) {
         check(
             jdbc.sql(SAVE)
                 .param("game", record.gameId)
@@ -211,10 +215,39 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                 .param("updated", Timestamp.from(record.updatedAt))
                 .param("version", record.version)
                 .param("guest", record.guestSeq)
-                .param("guestName", null as String?, java.sql.Types.VARCHAR)
+                .param("guestName", guestName, java.sql.Types.VARCHAR)
                 .update() == 1,
         ) { "attendance optimistic write lost" }
     }
+
+    override fun nextGuestSeq(gameId: UUID, hostId: UUID): Int =
+        requireNotNull(
+            jdbc.sql("SELECT coalesce(max(guest_seq),0)+1 FROM game_attendance WHERE game_id=:game AND member_user_id=:host")
+                .param("game", gameId)
+                .param("host", hostId)
+                .query(Int::class.java)
+                .single(),
+        )
+
+    override fun activeGuests(groupId: UUID, gameId: UUID, hostId: UUID): List<AttendanceRecord> =
+        jdbc.sql(ACTIVE_GUESTS)
+            .param("group", groupId)
+            .param("game", gameId)
+            .param("host", hostId)
+            .query { rs, _ ->
+                AttendanceRecord(
+                    rs.getObject("game_id", UUID::class.java),
+                    rs.getObject("group_id", UUID::class.java),
+                    rs.getObject("member_user_id", UUID::class.java),
+                    AttendanceStatus.valueOf(rs.getString("status")),
+                    rs.getObject("waitlist_sequence", Long::class.javaObjectType),
+                    rs.getTimestamp("responded_at").toInstant(),
+                    rs.getTimestamp("updated_at").toInstant(),
+                    rs.getLong("version"),
+                    guestSeq = rs.getInt("guest_seq"),
+                )
+            }
+            .list()
 
     override fun append(event: AttendanceEvent) {
         val appended = jdbc.sql(APPEND)
@@ -475,6 +508,14 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             LEFT JOIN group_memberships actor ON actor.group_id=g.group_id AND actor.user_id=:actor
             WHERE g.group_id=:group AND g.id=:game
         """
+        const val ACTIVE_GUESTS = """
+            SELECT game_id,group_id,member_user_id,guest_seq,status,waitlist_sequence,responded_at,updated_at,version
+            FROM game_attendance
+            WHERE group_id=:group AND game_id=:game AND member_user_id=:host AND guest_seq>0
+              AND status IN ('CONFIRMED','WAITLISTED')
+            ORDER BY guest_seq
+            FOR UPDATE
+        """
         const val EARLIEST_WAITLISTED = """
             SELECT attendance.game_id,attendance.group_id,attendance.member_user_id,attendance.guest_seq,
                    attendance.waitlist_sequence,attendance.responded_at,attendance.updated_at,attendance.version
@@ -560,6 +601,9 @@ class AttendanceChargeAdapter(private val charges: ChargeTransactions) : Attenda
     override fun promoted(aggregate: AttendanceAggregate, actorId: UUID) {
         charge(aggregate, actorId, AttendanceBillingOutcome.PROMOTED)
     }
+
+    override fun guestRemoved(aggregate: AttendanceAggregate, actorId: UUID) =
+        charges.cancelGuest(aggregate.groupId, aggregate.gameId, aggregate.memberId, aggregate.guestSeq, actorId)
 
     private fun charge(aggregate: AttendanceAggregate, actorId: UUID, outcome: AttendanceBillingOutcome) {
         charges.attendance(

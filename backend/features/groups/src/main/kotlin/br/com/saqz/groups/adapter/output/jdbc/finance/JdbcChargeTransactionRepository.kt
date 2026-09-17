@@ -30,6 +30,12 @@ class JdbcChargeTransactionRepository(dataSource:DataSource, private val electro
         jdbc.sql("UPDATE group_charges SET review_required=true,changed_by_user_id=:actor,version=version+1,updated_at=:now WHERE group_id=:group AND game_id=:game AND (status IN ('PAID','WAIVED') OR electronic_order_id IS NOT NULL) AND NOT review_required AND EXISTS (SELECT 1 FROM access_groups g WHERE g.id=:group AND g.deleted_at IS NULL)").param("actor",actorId).param("now",Timestamp.from(now)).param("group",groupId).param("game",gameId).update()
         jdbc.sql("UPDATE games SET finance_review_required=true WHERE group_id=:group AND id=:game AND EXISTS (SELECT 1 FROM group_charges WHERE group_id=:group AND game_id=:game AND (status IN ('PAID','WAIVED') OR electronic_order_id IS NOT NULL))").param("group",groupId).param("game",gameId).update()
     }
+    override fun cancelGuestCharge(groupId:UUID,gameId:UUID,memberId:UUID,guestSeq:Int,actorId:UUID,now:Instant){
+        requireActiveGroup(groupId)
+        val id=jdbc.sql("SELECT id FROM group_charges WHERE group_id=:group AND game_id=:game AND member_user_id=:member AND guest_seq=:guest AND kind='GAME' AND status='PENDING' AND electronic_order_id IS NULL FOR UPDATE").param("group",groupId).param("game",gameId).param("member",memberId).param("guest",guestSeq).query(UUID::class.java).optional().orElse(null)?:return
+        jdbc.sql("UPDATE group_charges SET status='CANCELLED',changed_by_user_id=:actor,version=version+1,updated_at=:now WHERE id=:id").param("actor",actorId).param("now",Timestamp.from(now)).param("id",id).update()
+        event(find(id)!!,ChargeStatus.PENDING,ChargeStatus.CANCELLED,actorId,now)
+    }
     override fun members(groupId:UUID):GroupMembers?{
         val exists=jdbc.sql("SELECT count(*) FROM access_groups WHERE id=:group AND deleted_at IS NULL").param("group",groupId).query(Int::class.java).single()>0;if(!exists)return null
         val rows=jdbc.sql("SELECT memberships.user_id,memberships.active FROM group_memberships memberships JOIN access_groups groups ON groups.id=memberships.group_id AND groups.deleted_at IS NULL WHERE memberships.group_id=:group").param("group",groupId).query{rs,_->rs.getObject("user_id",UUID::class.java) to rs.getBoolean("active")}.list()

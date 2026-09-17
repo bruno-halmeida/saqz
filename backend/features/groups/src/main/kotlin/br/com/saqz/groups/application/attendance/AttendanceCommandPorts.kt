@@ -76,11 +76,21 @@ interface AttendanceCommandRepository {
     fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean
     fun findPromotionReplay(groupId: UUID, gameId: UUID, actorId: UUID, requestId: UUID): AttendancePromotionReplay? = null
     fun findResponseReplay(groupId: UUID, gameId: UUID, actorId: UUID, requestId: UUID): AttendanceResponseReplay? = null
+
+    /** Próximo número de convidado do anfitrião neste jogo (linhas nunca são apagadas → max+1). */
+    fun nextGuestSeq(gameId: UUID, hostId: UUID): Int = 1
+
+    /** Convidados do anfitrião ainda no jogo (CONFIRMED ou WAITLISTED), travados para escrita. */
+    fun activeGuests(groupId: UUID, gameId: UUID, hostId: UUID): List<AttendanceRecord> = emptyList()
+
+    /** Como [save], mas gravando o nome digitado do convidado. */
+    fun saveGuest(record: AttendanceRecord, guestName: String) = save(record)
 }
 
 fun interface AttendanceChargePort {
     fun confirmed(aggregate: AttendanceAggregate, actorId: UUID)
     fun promoted(aggregate: AttendanceAggregate, actorId: UUID) = confirmed(aggregate, actorId)
+    fun guestRemoved(aggregate: AttendanceAggregate, actorId: UUID) {}
 }
 
 data class CapacityAggregate(
