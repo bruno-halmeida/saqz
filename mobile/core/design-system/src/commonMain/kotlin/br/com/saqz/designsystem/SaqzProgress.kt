@@ -39,7 +39,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun SaqzSpinner(
     modifier: Modifier = Modifier,
-    size: Dp = 30.dp,
+    size: Dp = 80.dp,
     onDark: Boolean = false,
     animating: Boolean = true,
 ) {
@@ -121,6 +121,7 @@ private fun SaqzProgressPreview() = SaqzTheme {
             SaqzSpinner(size = 16.dp)
             SaqzSpinner(size = 20.dp)
             SaqzSpinner(size = 30.dp)
+            SaqzSpinner(size = 80.dp)
         }
         SaqzProgressBar(value = 0.4f)
         SaqzProgressBar()
