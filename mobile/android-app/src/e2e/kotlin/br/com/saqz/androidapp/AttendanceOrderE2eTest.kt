@@ -21,9 +21,11 @@ internal class AttendanceOrderE2eTest : InstalledE2e("attendance-order") {
 
         login("owner")
         openGroup()
+        // O fixture entrega o dono CONFIRMADO: o hero mostra o painel, e os botões só voltam em "Alterar".
+        click("group-game-response-change", scroll = true)
         click("group-game-response-not-going", scroll = true)
         waitText("Você não vai jogar.")
-        waitEnabled("group-game-response-not-going")
+        waitEnabled("group-game-response-change")
         ui.onNodeWithText("Você não vai jogar.").performScrollTo().assertIsDisplayed()
 
         assertEquals("CONFIRMED", api("athlete", path).getJSONObject("ownAttendance").getString("status"))

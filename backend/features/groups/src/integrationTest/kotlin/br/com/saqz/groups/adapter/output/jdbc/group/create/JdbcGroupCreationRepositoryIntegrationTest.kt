@@ -320,6 +320,8 @@ class JdbcGroupCreationRepositoryIntegrationTest {
                 owner,
                 UUID.randomUUID(),
                 validProfile(
+                    // Horário regular exige quadra padrão (CreateGroup).
+                    defaultVenue = GroupVenueInput("Arena Beach", "Rua Central 100", null),
                     regularSlots = listOf(
                         RegularSlotInput(DayOfWeek.MONDAY, LocalTime.of(20, 0), 120),
                         RegularSlotInput(DayOfWeek.THURSDAY, LocalTime.of(19, 30), 90),

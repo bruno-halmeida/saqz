@@ -1,6 +1,7 @@
 package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.identity.adapter.output.firebase.FirebaseAdminTokenVerifier
+import br.com.saqz.identity.adapter.output.CachedVerifyRequestIdentity
 import br.com.saqz.identity.application.DefaultVerifyRequestIdentity
 import br.com.saqz.identity.application.IdentityTokenVerifier
 import br.com.saqz.identity.application.VerifyRequestIdentity
@@ -53,7 +54,7 @@ class FirebaseConfiguration {
 
     @Bean
     fun verifyRequestIdentity(identityTokenVerifier: IdentityTokenVerifier): VerifyRequestIdentity =
-        DefaultVerifyRequestIdentity(identityTokenVerifier)
+        CachedVerifyRequestIdentity(DefaultVerifyRequestIdentity(identityTokenVerifier))
 
     private fun emulatorCredentials(): GoogleCredentials =
         GoogleCredentials.create(AccessToken("owner", Date(Long.MAX_VALUE)))

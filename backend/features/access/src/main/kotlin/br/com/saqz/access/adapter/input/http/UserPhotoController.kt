@@ -5,7 +5,7 @@ import br.com.saqz.access.application.photo.UploadUserPhotoResult
 import br.com.saqz.access.application.photo.UserPhotoRejection
 import br.com.saqz.access.application.photo.UserPhotoService
 import br.com.saqz.access.application.session.BootstrapSession
-import br.com.saqz.access.application.session.BootstrapSessionResult
+import br.com.saqz.access.application.session.SessionActorResult
 import br.com.saqz.sharedkernel.RequestIdentity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -76,10 +76,10 @@ class UserPhotoController(
     }
 
     private fun resolveUserId(identity: RequestIdentity): UUID =
-        when (val result = bootstrapSession.execute(identity)) {
-            BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
-            BootstrapSessionResult.Suspended -> throw AccountSuspendedException()
-            is BootstrapSessionResult.Success -> result.session.user.id
+        when (val result = bootstrapSession.actorId(identity)) {
+            SessionActorResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            SessionActorResult.Suspended -> throw AccountSuspendedException()
+            is SessionActorResult.Found -> result.userId
         }
 
     // Validador forte pelo conteudo: bytes iguais dao a mesma ETag e bytes

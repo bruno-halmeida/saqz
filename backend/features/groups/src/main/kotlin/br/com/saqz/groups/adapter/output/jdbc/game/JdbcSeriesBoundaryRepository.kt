@@ -27,12 +27,12 @@ class JdbcSeriesBoundaryRepository(
             statement.setObject(2, command.gameId)
             statement.executeQuery().use { result ->
                 if (!result.next()) return@transaction SeriesBoundaryResult.NotFound
-                LockedGame(result.getLong("version"), result.getObject("local_date", java.time.LocalDate::class.java), result.getString("status"), result.getBoolean("detached_from_series"))
+                LockedGame(result.getLong("version"), result.getObject("local_date", java.time.LocalDate::class.java), result.getString("status"), result.getBoolean("detached_from_series"), result.getTimestamp("starts_at").toInstant())
             }
         }
         if (row.detached && row.version == command.expectedVersion) return@transaction SeriesBoundaryResult.Replay
         if (row.version != command.expectedVersion) return@transaction SeriesBoundaryResult.VersionConflict
-        if (row.date < command.today || row.status == "COMPLETED") return@transaction SeriesBoundaryResult.InvalidBoundary
+        if (row.date < command.today || !row.startsAt.isAfter(command.now) || row.status == "COMPLETED") return@transaction SeriesBoundaryResult.InvalidBoundary
         val updated = connection.prepareStatement(if (command.action == SeriesBoundaryAction.CANCEL) CANCEL_ONE else EDIT_ONE).use { statement ->
             if (command.action == SeriesBoundaryAction.EDIT) statement.bindSnapshot(requireNotNull(command.replacement), 1)
             val offset = if (command.action == SeriesBoundaryAction.EDIT) 16 else 1
@@ -82,9 +82,12 @@ class JdbcSeriesBoundaryRepository(
                 statement.setObject(17, command.successorRule.seriesId)
                 statement.setObject(18, occurrence.localDate)
                 statement.setObject(19, occurrence.slot.slotKey)
+                statement.setTimestamp(20, Timestamp.from(command.now))
                 statement.executeUpdate()
             }
-            if (updated == 0 && !occurrenceExists(connection, command, occurrence.localDate, occurrence.slot.slotKey)) {
+            if (updated == 0 && occurrence.startsAt < command.insertUntil &&
+                !occurrenceExists(connection, command, occurrence.localDate, occurrence.slot.slotKey)
+            ) {
                 insertOccurrence(connection, value)
             }
         }
@@ -99,6 +102,7 @@ class JdbcSeriesBoundaryRepository(
             statement.setObject(1, command.groupId)
             statement.setObject(2, command.successorRule.seriesId)
             statement.setObject(3, command.boundary)
+            statement.setTimestamp(4, Timestamp.from(command.now))
             statement.executeQuery().use { result ->
                 val removed = mutableListOf<Pair<java.time.LocalDate, java.util.UUID>>()
                 while (result.next()) {
@@ -116,6 +120,7 @@ class JdbcSeriesBoundaryRepository(
             statement.setObject(2, command.groupId)
             statement.setObject(3, command.successorRule.seriesId)
             statement.setObject(4, command.boundary)
+            statement.setTimestamp(5, Timestamp.from(command.now))
             statement.executeUpdate()
         }
     }
@@ -126,6 +131,7 @@ class JdbcSeriesBoundaryRepository(
             statement.setObject(2, command.successorRule.seriesId)
             statement.setObject(3, identity.first)
             statement.setObject(4, identity.second)
+            statement.setTimestamp(5, Timestamp.from(command.now))
             statement.executeUpdate()
         }
     }
@@ -213,22 +219,23 @@ class JdbcSeriesBoundaryRepository(
         }
     }
 
-    private data class LockedGame(val version: Long, val date: java.time.LocalDate, val status: String, val detached: Boolean)
+    private data class LockedGame(val version: Long, val date: java.time.LocalDate, val status: String, val detached: Boolean, val startsAt: java.time.Instant)
     private data class LockedRevision(val version: Long, val start: java.time.LocalDate, val end: java.time.LocalDate?)
 
     private companion object {
-        const val LOCK_GAME = "SELECT version, local_date, status, detached_from_series FROM games WHERE group_id = ? AND id = ? AND series_id IS NOT NULL FOR UPDATE"
+        const val LOCK_GAME = "SELECT version, local_date, status, detached_from_series, starts_at FROM games WHERE group_id = ? AND id = ? AND series_id IS NOT NULL FOR UPDATE"
         const val LOCK_REVISION = "SELECT version, local_start_date, local_end_date FROM game_series WHERE group_id = ? AND id = ? FOR UPDATE"
         const val EDIT_ONE = """UPDATE games SET title=?, local_date=?, local_time=?, zone_id=?, starts_at=?, duration_minutes=?, confirmation_deadline=?, venue_id=?, venue_name=?, venue_address=?, venue_court=?, capacity=?, game_fee_cents=?, notes=?, detached_from_series=?, version=version+1, updated_at=now() WHERE group_id=? AND id=? AND version=?"""
         const val CANCEL_ONE = "UPDATE games SET status='CANCELLED', detached_from_series=true, version=version+1, updated_at=now() WHERE group_id=? AND id=? AND version=?"
         const val INSERT_SUCCESSOR = """INSERT INTO game_series (id,lineage_id,group_id,previous_revision_id,revision_number,zone_id,local_start_date,local_end_date,active_through_date,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,now(),now())"""
         const val INSERT_SLOT = """INSERT INTO game_series_slots (series_revision_id,group_id,slot_key,title,weekday,local_time,duration_minutes,venue_id,venue_name,venue_address,venue_court,capacity,confirmation_lead_minutes,game_fee_cents,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,now())"""
         const val CLOSE_REVISION = "UPDATE game_series SET active_through_date=?, version=version+1, updated_at=now() WHERE id=? AND version=?"
-        const val REGENERATE = """UPDATE games SET series_revision_id=?, title=?, local_date=?, local_time=?, zone_id=?, starts_at=?, duration_minutes=?, confirmation_deadline=?, venue_id=?, venue_name=?, venue_address=?, venue_court=?, capacity=?, game_fee_cents=?, detached_from_series=false, version=version+1, updated_at=? WHERE group_id=? AND series_id=? AND local_date=? AND slot_key=? AND status <> 'COMPLETED'"""
+        const val REGENERATE = """UPDATE games SET series_revision_id=?, title=?, local_date=?, local_time=?, zone_id=?, starts_at=?, duration_minutes=?, confirmation_deadline=?, venue_id=?, venue_name=?, venue_address=?, venue_court=?, capacity=?, game_fee_cents=?, detached_from_series=false, version=version+1, updated_at=? WHERE group_id=? AND series_id=? AND local_date=? AND slot_key=? AND status <> 'COMPLETED' AND starts_at > ?"""
         const val INSERT_OCCURRENCE = """INSERT INTO games (id,group_id,series_id,series_revision_id,slot_key,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_id,venue_name,venue_address,venue_court,capacity,game_fee_cents,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT',?,?)"""
         const val OCCURRENCE_EXISTS = "SELECT 1 FROM games WHERE group_id=? AND series_id=? AND local_date=? AND slot_key=?"
-        const val SELECT_FUTURE_IDENTITIES = "SELECT local_date,slot_key FROM games WHERE group_id=? AND series_id=? AND local_date>=? AND status<>'COMPLETED'"
-        const val CANCEL_IDENTITY = "UPDATE games SET status='CANCELLED', version=version+1, updated_at=now() WHERE group_id=? AND series_id=? AND local_date=? AND slot_key=? AND status<>'COMPLETED'"
-        const val CANCEL_FUTURE = "UPDATE games SET series_revision_id=?, status='CANCELLED', version=version+1, updated_at=now() WHERE group_id=? AND series_id=? AND local_date>=? AND status<>'COMPLETED'"
+        const val SELECT_FUTURE_IDENTITIES = "SELECT local_date,slot_key FROM games WHERE group_id=? AND series_id=? AND local_date>=? AND status<>'COMPLETED' AND starts_at > ?"
+        const val CANCEL_IDENTITY = "UPDATE games SET status='CANCELLED', version=version+1, updated_at=now() WHERE group_id=? AND series_id=? AND local_date=? AND slot_key=? AND status<>'COMPLETED' AND starts_at > ?"
+        // Jogo já cancelado fica na revisão antiga: o slot dele pode não existir na sucessora (fk_games_series_slot).
+        const val CANCEL_FUTURE = "UPDATE games SET series_revision_id=?, status='CANCELLED', version=version+1, updated_at=now() WHERE group_id=? AND series_id=? AND local_date>=? AND status NOT IN ('COMPLETED','CANCELLED') AND starts_at > ?"
     }
 }

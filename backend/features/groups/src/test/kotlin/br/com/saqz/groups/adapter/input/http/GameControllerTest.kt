@@ -18,13 +18,14 @@ import kotlin.test.*
 class GameControllerTest {
     private val actor = UUID.randomUUID(); private val group = UUID.randomUUID(); private lateinit var repository: MemoryRepository
     private lateinit var effects: RecordingEffects; private lateinit var controller: GameController
+    private lateinit var attendance: FakeAttendance
 
     @BeforeEach fun setup() {
         repository = MemoryRepository(); effects = RecordingEffects()
         val tx = object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() }
         val counts = GameAttendanceCountSource { ids -> ids.associateWith { GameAttendanceCounts(3, 2) } }
-        val attendance = AttendanceDetailQuery { _, _, gameId -> AttendanceDetail(AttendanceRecord(gameId, group, actor, AttendanceStatus.WAITLISTED, 4, START, START, 2), 3, 21, 2, 24, 1) }
-        controller = GameController(VerifiedGroupActorResolver { actor }, CreateGame(tx, repository), EditGame(tx, repository, effects), ChangeGameLifecycle(tx, repository, effects), ListGames(repository, counts), GetGame(repository, counts), attendance)
+        attendance = FakeAttendance()
+        controller = GameController(VerifiedGroupActorResolver { actor }, CreateGame(tx, repository), EditGame(tx, repository, effects, java.time.Clock.fixed(java.time.Instant.parse("2026-08-01T12:00:00Z"), java.time.ZoneOffset.UTC)), ChangeGameLifecycle(tx, repository, effects), ListGames(repository, counts), GetGame(repository, counts), attendance)
     }
 
     @Test fun `create returns 201 quoted ETag and server state`() { val response = controller.create(ID, "$group", request()); assertEquals(201, response.statusCode.value()); assertEquals("\"1\"", response.headers.eTag); assertEquals("DRAFT", response.body!!.status); assertEquals(0, response.body!!.confirmedCount) }
@@ -39,6 +40,20 @@ class GameControllerTest {
     @Test fun `nonmember list is privacy not found`() { repository.role=null; assertFailsWith<GameNotFoundException>{controller.list(ID,"$group")} }
     @Test fun `read returns authoritative counts and quoted ETag`() { val game=seed(GameStatus.PUBLISHED); val response=controller.read(ID,"$group","${game.id}"); assertEquals("\"1\"",response.headers.eTag); assertEquals(3,response.body!!.confirmedCount) }
     @Test fun `read includes only callers own attendance`() { val game=seed(GameStatus.PUBLISHED); val response=controller.read(ID,"$group","${game.id}"); assertEquals(actor,response.body!!.ownAttendance!!.memberId); assertEquals("WAITLISTED",response.body!!.ownAttendance!!.status); assertEquals(4,response.body!!.ownAttendance!!.waitlistPosition) }
+    @Test fun `list includes the callers own attendance for every status`() {
+        val confirmed=seed(GameStatus.PUBLISHED); val declined=seed(GameStatus.PUBLISHED); val waitlisted=seed(GameStatus.PUBLISHED)
+        attendance.own=mapOf(confirmed.id to answer(confirmed,AttendanceStatus.CONFIRMED,null,1), declined.id to answer(declined,AttendanceStatus.DECLINED,null,3), waitlisted.id to answer(waitlisted,AttendanceStatus.WAITLISTED,4,2))
+        val listed=controller.list(ID,"$group").associateBy { it.id }
+        assertEquals(AttendanceEntryResponse(actor,"CONFIRMED",null,1),listed.getValue(confirmed.id).ownAttendance)
+        assertEquals(AttendanceEntryResponse(actor,"DECLINED",null,3),listed.getValue(declined.id).ownAttendance)
+        assertEquals(AttendanceEntryResponse(actor,"WAITLISTED",4,2),listed.getValue(waitlisted.id).ownAttendance)
+        assertEquals(actor to group,attendance.lastOwnKey)
+    }
+    @Test fun `list leaves own attendance null for a game the caller has not answered`() { val answered=seed(GameStatus.PUBLISHED); val unanswered=seed(GameStatus.PUBLISHED); attendance.own=mapOf(answered.id to answer(answered,AttendanceStatus.CONFIRMED,null,1)); val listed=controller.list(ID,"$group").associateBy { it.id }; assertNotNull(listed.getValue(answered.id).ownAttendance); assertNull(listed.getValue(unanswered.id).ownAttendance) }
+    @Test fun `list own attendance equals what the read returns for the same game`() { val game=seed(GameStatus.PUBLISHED); attendance.own=mapOf(game.id to answer(game,AttendanceStatus.WAITLISTED,4,2)); val fromRead=controller.read(ID,"$group","${game.id}").body!!.ownAttendance; assertNotNull(fromRead); assertEquals(fromRead,controller.list(ID,"$group").single().ownAttendance) }
+    @Test fun `athlete list never exposes own attendance of a hidden draft`() { val draft=seed(); val published=seed(GameStatus.PUBLISHED); attendance.own=mapOf(draft.id to answer(draft,AttendanceStatus.CONFIRMED,null,1)); repository.role=GroupRole.ATHLETE; val listed=controller.list(ID,"$group"); assertEquals(listOf(published.id),listed.map { it.id }); assertNull(listed.single().ownAttendance) }
+    @Test fun `nonmember list never reads own attendance`() { repository.role=null; assertFailsWith<GameNotFoundException>{controller.list(ID,"$group")}; assertEquals(0,attendance.ownCalls) }
+    @Test fun `list reads own attendance once no matter how many games it returns`() { repeat(5){ seed(GameStatus.PUBLISHED) }; assertEquals(5,controller.list(ID,"$group").size); assertEquals(1,attendance.ownCalls) }
     @Test fun `athlete draft read is hidden`() { val game=seed(); repository.role=GroupRole.ATHLETE; assertFailsWith<GameNotFoundException>{controller.read(ID,"$group","${game.id}")} }
     @Test fun `malformed resource identifiers are hidden`() { assertFailsWith<GameNotFoundException>{controller.read(ID,"bad","also-bad")} }
     @Test fun `edit returns incremented ETag and immutable response fields`() { val game=seed(); val response=controller.edit(ID,"$group","${game.id}","\"1\"",request().copy(requestId=null,title="Treino novo")); assertEquals("\"2\"",response.headers.eTag); assertEquals("Treino novo",response.body!!.title) }
@@ -69,5 +84,11 @@ class GameControllerTest {
         override fun find(groupId:UUID,gameId:UUID)=if(groupId==group)games[gameId] else null
     }
     private inner class RecordingEffects:GameSideEffectPort { var last:Set<GameSideEffect> = emptySet(); var paidCharge = false; override fun apply(game:Game,actorId:UUID,effects:Set<GameSideEffect>){last=effects; if (paidCharge && GameSideEffect.PENDING_CHARGES_CANCELLED in effects) repository.games[game.id] = game.copy(financeReviewRequired=true)} }
+    private fun answer(game: Game, status: AttendanceStatus, waitlist: Long?, version: Long) = AttendanceRecord(game.id, group, actor, status, waitlist, START, START, version)
+    private inner class FakeAttendance : AttendanceDetailQuery {
+        var own: Map<UUID, AttendanceRecord> = emptyMap(); var ownCalls = 0; var lastOwnKey: Pair<UUID, UUID>? = null
+        override fun find(actorId: UUID, groupId: UUID, gameId: UUID) = AttendanceDetail(AttendanceRecord(gameId, group, actor, AttendanceStatus.WAITLISTED, 4, START, START, 2), 3, 21, 2, 24, 1)
+        override fun ownByGame(actorId: UUID, groupId: UUID): Map<UUID, AttendanceRecord> { ownCalls++; lastOwnKey = actorId to groupId; return own }
+    }
     private companion object { val ID=RequestIdentity("subject",emailVerified=true,displayName="Player"); val DATE=LocalDate.of(2026,8,12); val START=Instant.parse("2026-08-12T22:30:00Z") }
 }

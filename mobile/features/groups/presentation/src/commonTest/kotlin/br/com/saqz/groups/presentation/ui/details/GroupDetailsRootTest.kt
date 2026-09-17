@@ -212,6 +212,7 @@ class GroupDetailsRootTest {
         now = GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") },
         departureGateway = br.com.saqz.groups.domain.membership.GroupDepartureGateway { SaqzResult.Success(Unit) },
         communications = br.com.saqz.groups.presentation.FakeCommunicationGateway(),
+        entryRequests = br.com.saqz.groups.presentation.FakeGroupEntryRequestGateway(),
     )
 
     private companion object {

@@ -4,6 +4,8 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.ValidationDetails
+import br.com.saqz.groups.data.attendance.AttendanceEntryTransport
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
@@ -76,6 +78,7 @@ internal data class GameTransport(
     val availableSpots: Int,
     val waitlistCount: Int,
     val financeReviewRequired: Boolean = false,
+    val ownAttendance: AttendanceEntryTransport? = null,
 )
 
 @Serializable
@@ -300,6 +303,7 @@ private fun GameTransport.toDomain() = Game(
     id, GroupId(groupId), title, venue.toDomain(), localDate, localTime, zoneId, startsAt,
     durationMinutes, capacity, confirmationDeadline, gameFeeCents, notes, status.toDomain(),
     version, confirmedCount, availableSpots, waitlistCount, financeReviewRequired,
+    ownAttendance?.status?.let { AttendanceStatus.entries[it.ordinal] },
 )
 
 private fun GameVenueTransport.toDomain() = GameVenue(venueId, name, address, court)

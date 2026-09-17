@@ -1,6 +1,7 @@
 package br.com.saqz.access.adapter.output.jdbc.session
 
 import br.com.saqz.access.application.session.AccountDeletionRepository
+import br.com.saqz.access.application.session.ExistingSessionUser
 import br.com.saqz.access.application.session.ProfileCompletion
 import br.com.saqz.access.application.session.SessionMembership
 import br.com.saqz.access.application.session.SessionRepository
@@ -29,7 +30,22 @@ class JdbcSessionRepository(
         .map { it.toInstant() }
         .orElse(null)
 
+    override fun existingUser(subject: String): ExistingSessionUser? = jdbc.sql(
+        "SELECT id, suspended_at FROM access_users WHERE firebase_subject = :subject AND deleted_at IS NULL",
+    )
+        .param("subject", subject)
+        .query { result, _ ->
+            ExistingSessionUser(
+                id = result.getObject("id", UUID::class.java),
+                suspendedAt = result.getObject("suspended_at", java.time.OffsetDateTime::class.java)?.toInstant(),
+            )
+        }
+        .optional()
+        .orElse(null)
+
     override fun upsertAndLoad(command: SessionUpsert): SessionView {
+        // O nome do token só vale na criação: depois disso quem manda é o PATCH do perfil. O token
+        // guarda o nome do cadastro para sempre, e espelhá-lo aqui revertia toda renomeação.
         val user = jdbc.sql(
             """
             INSERT INTO access_users (
@@ -40,7 +56,7 @@ class JdbcSessionRepository(
             ON CONFLICT (firebase_subject) WHERE deleted_at IS NULL DO UPDATE SET
                 email = EXCLUDED.email,
                 email_verified = EXCLUDED.email_verified,
-                display_name = EXCLUDED.display_name,
+                display_name = COALESCE(access_users.display_name, EXCLUDED.display_name),
                 updated_at = now()
             RETURNING id, email, display_name, phone, nickname, city, phone_visibility
             """.trimIndent(),

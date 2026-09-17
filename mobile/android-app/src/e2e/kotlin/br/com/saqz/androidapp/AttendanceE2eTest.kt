@@ -17,9 +17,10 @@ internal class AttendanceE2eTest : InstalledE2e("attendance") {
         login("athlete")
         openGroup()
         click("group-game-response-going", scroll = true)
-        waitText("Você está em 1º na lista de espera.")
-        waitEnabled("group-game-response-going")
-        ui.onNodeWithText("Você está em 1º na lista de espera.").performScrollTo().assertIsDisplayed()
+        // Em espera os dois botões somem: ficam o chip com a posição e "Sair da lista de espera".
+        waitText("Lista de espera · 1º")
+        waitEnabled("home-reserva-leave")
+        ui.onNodeWithText("Lista de espera · 1º").performScrollTo().assertIsDisplayed()
         val waiting = api("athlete", attendancePath)
         assertEquals(2, waiting.getInt("confirmedCount"))
         assertEquals(0, waiting.getInt("availableSpots"))
@@ -31,9 +32,11 @@ internal class AttendanceE2eTest : InstalledE2e("attendance") {
 
         login("owner")
         openGroup()
+        // O fixture entrega o dono CONFIRMADO: o hero mostra o painel, e os botões só voltam em "Alterar".
+        click("group-game-response-change", scroll = true)
         click("group-game-response-not-going", scroll = true)
         waitText("Você não vai jogar.")
-        waitEnabled("group-game-response-not-going")
+        waitEnabled("group-game-response-change")
         ui.onNodeWithText("Você não vai jogar.").performScrollTo().assertIsDisplayed()
         assertEquals("DECLINED", api("owner", attendancePath).getJSONObject("ownAttendance").getString("status"))
         val promoted = api("athlete", attendancePath)

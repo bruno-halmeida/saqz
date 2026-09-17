@@ -1,7 +1,7 @@
 package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.access.application.session.BootstrapSession
-import br.com.saqz.access.application.session.BootstrapSessionResult
+import br.com.saqz.access.application.session.SessionActorResult
 import br.com.saqz.access.adapter.input.http.AccountSuspendedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.sharedkernel.RequestIdentity
@@ -60,10 +60,10 @@ class SubscriptionsReadConfiguration {
     fun authenticatedActorResolver(bootstrapSession: BootstrapSession): AuthenticatedActorResolver =
         object : AuthenticatedActorResolver {
             override fun resolve(identity: RequestIdentity): AuthenticatedActor =
-                when (val result = bootstrapSession.execute(identity)) {
-                    BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
-                    BootstrapSessionResult.Suspended -> throw AccountSuspendedException()
-                    is BootstrapSessionResult.Success -> AuthenticatedActor(result.session.user.id)
+                when (val result = bootstrapSession.actorId(identity)) {
+                    SessionActorResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+                    SessionActorResult.Suspended -> throw AccountSuspendedException()
+                    is SessionActorResult.Found -> AuthenticatedActor(result.userId)
                 }
         }
 

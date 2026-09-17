@@ -4,6 +4,8 @@ import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.home.HomeWaitlistKind
+import br.com.saqz.groups.presentation.home.HomeWaitlistRowUi
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 
 /**
@@ -50,6 +52,16 @@ data class GroupDetailsState(
     val onboarding: GroupOnboarding? = null,
     val athleteIntroVisible: Boolean = false,
     val athleteShareFailed: Boolean = false,
+    /** Espera do próprio usuário no próximo jogo; `null` fora da lista de espera. */
+    val waitlist: GroupWaitlistUi? = null,
+    /** Retorno de uma ação recém-concluída; some em [GroupDetailsIntent.DismissToast]. */
+    val toast: GroupDetailsToast? = null,
+    /** A chave Pix acabou de ser copiada: o ticket troca o botão por "Chave copiada" por 2 s. */
+    val pixCopied: Boolean = false,
+    /** Próximos jogos do grupo SEM o jogo do hero, em ordem de início; no máximo 12. */
+    val agenda: List<GroupAgendaRowUi> = emptyList(),
+    /** "Esperando você" — só gestor. `null` = nenhuma das três linhas. */
+    val waiting: GroupWaitingUi? = null,
 )
 
 /** Nome, linha de resumo e — só no 2e — os chips de bairro/modalidade/agenda. */
@@ -82,6 +94,18 @@ data class NextGameUi(
     val availableSpots: Int = 0,
     val confirmationOpen: Boolean = true,
     val hasGameFee: Boolean = false,
+    /** "Terça, 19h30" — título do hero. */
+    val display: String = "",
+    /** "4 de agosto · CERET — Quadra 2" — linha abaixo do título. */
+    val meta: String = "",
+    /** Endereço DO JOGO, não o da quadra padrão do grupo. Vazio esconde a linha e o mapa. */
+    val address: String = "",
+    /** A frase do prazo ABERTO. Encerrado, a tela usa `game_response_deadline_closed`. */
+    val deadlineLine: String = "",
+    /** "Encerra 04/08 · 12h00" — a meta da linha de quórum do gestor. */
+    val deadlineShort: String = "",
+    /** "Avisamos você se abrir vaga até 12h00 de 04/08." — o card do sino da reserva. */
+    val bellLabel: String = "",
 )
 
 /** Os contadores 9 / 3 / 4 do 2f, com o título da própria linha e o "9/12" azul. */
@@ -104,7 +128,20 @@ data class GroupDetailsResponseUi(
 
 enum class GroupDetailsResponseStatus { Confirmed, Declined, Waitlisted }
 
-/** A linha de caixa do 2f — saldo e mensalidades já num texto só. */
+/**
+ * A espera do próprio usuário, com as mesmas peças da Início: [kind] escolhe o texto
+ * (reserva × lista do avulso) e [rows] é a fila, com `isSelf` na linha de quem olha. Aqui o
+ * casamento é por `memberId` — o roster do detalhe traz o id, o da Início não.
+ */
+@Immutable
+data class GroupWaitlistUi(
+    val kind: HomeWaitlistKind,
+    val rows: List<HomeWaitlistRowUi> = emptyList(),
+)
+
+enum class GroupDetailsToast { Confirmed, Declined, Waitlisted, PixCopied }
+
+/** A linha de caixa do gestor — só o saldo ("Saldo R$ 380,00"). As mensalidades a receber moram em [GroupWaitingUi]. */
 @Immutable
 data class CashboxUi(val summary: String? = null)
 
@@ -124,6 +161,8 @@ data class OwnChargesUi(
     val pending: List<OwnChargeUi> = emptyList(),
     val history: List<OwnChargeUi> = emptyList(),
     val pix: PixUi? = null,
+    /** O resumo do ticket: só existe com pendência. Ver [GroupOwnDebtUi]. */
+    val debt: GroupOwnDebtUi? = null,
     val isLoading: Boolean = false,
     val failed: Boolean = false,
 )
@@ -138,6 +177,21 @@ data class OwnChargeUi(
 )
 
 enum class OwnChargeStatusUi { Pending, Paid, Waived, Cancelled }
+
+/**
+ * O ticket de cobrança no molde da Início: [eyebrow] e [dueLabel] são da pendência mais
+ * antiga, [totalLabel] é a soma. [countLabel] só existe com mais de uma pendência.
+ * [receiverLabel] ("Pix de Lucas Prado") some sem rótulo do recebedor ou sem chave.
+ */
+@Immutable
+data class GroupOwnDebtUi(
+    val eyebrow: String,
+    val totalLabel: String,
+    val dueLabel: String,
+    val overdue: Boolean,
+    val countLabel: String? = null,
+    val receiverLabel: String? = null,
+)
 
 @Immutable
 data class VenueUi(val name: String, val address: String)
@@ -161,6 +215,52 @@ data class MemberPreviewUi(
 
 /** Os três tons de etiqueta que as linhas de membro do 2e usam. */
 enum class MemberStatusUi { Admin, Going, Maybe }
+
+/** O chip de uma linha da agenda. [Draft] vence a resposta: rascunho ninguém respondeu ainda. */
+enum class GroupAgendaStatus { Pending, Going, Out, Waitlisted, Draft }
+
+/**
+ * Uma linha de "Próximos jogos", no molde da linha da Início: bloco de data ([day] "6" e
+ * [month] "AGO"), [title] "Quinta · 19h30", [meta] com a lotação e o chip [statusLabel].
+ * Tudo no fuso DO JOGO.
+ */
+@Immutable
+data class GroupAgendaRowUi(
+    val gameId: String,
+    val day: String,
+    val month: String,
+    val title: String,
+    val meta: String,
+    val status: GroupAgendaStatus,
+    val statusLabel: String,
+    val contentDescription: String,
+)
+
+/** Uma linha de "Esperando você" que só abre um destino do grupo. [count] alimenta o chip. */
+@Immutable
+data class GroupWaitingRowUi(
+    val title: String,
+    val meta: String,
+    val contentDescription: String,
+    val count: Int = 0,
+)
+
+/** A linha "Acertar o jogo de 28/07": carrega o [gameId] porque o destino é o acerto DAQUELE jogo. */
+@Immutable
+data class GroupSettleRowUi(
+    val gameId: String,
+    val title: String,
+    val meta: String,
+    val contentDescription: String,
+)
+
+/** As três pendências do gestor. O bloco inteiro é `null` no estado quando as três são nulas. */
+@Immutable
+data class GroupWaitingUi(
+    val entryRequests: GroupWaitingRowUi? = null,
+    val monthly: GroupWaitingRowUi? = null,
+    val settle: GroupSettleRowUi? = null,
+)
 
 sealed interface GroupDetailsIntent {
     data object DismissAthleteIntro : GroupDetailsIntent
@@ -203,6 +303,12 @@ sealed interface GroupDetailsIntent {
 
     data object Invite : GroupDetailsIntent
 
+    /** Linha da agenda: abre o jogo tocado. O hero continua em [ViewGame]. */
+    data class OpenAgendaGame(val gameId: String) : GroupDetailsIntent
+
+    /** Linha "Acertar o jogo": abre o acerto daquele jogo. */
+    data class OpenSettlement(val gameId: String) : GroupDetailsIntent
+
     // Comum às duas visões
     data object OpenCashbox : GroupDetailsIntent
 
@@ -218,6 +324,8 @@ sealed interface GroupDetailsIntent {
     data object RetryOwnCharges : GroupDetailsIntent
 
     data object CopyPix : GroupDetailsIntent
+
+    data object DismissToast : GroupDetailsIntent
 
     data class Respond(val intent: AttendanceIntent) : GroupDetailsIntent
 

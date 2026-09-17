@@ -68,7 +68,7 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> MonthlyGenerationViewModel(params.get(), params.get(), get(), get(), get(), get<GroupNowPort>()) }
     viewModel {
         params ->
-        GroupDetailsViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>(), get(), get())
+        GroupDetailsViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>(), get(), get(), get())
     }
     viewModel { params -> GroupCashboxViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>()) }
     viewModel {

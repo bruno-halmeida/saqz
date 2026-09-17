@@ -144,7 +144,7 @@ import br.com.saqz.access.application.session.IssueAppOnboardingLink
 import br.com.saqz.access.application.session.RedeemAppOnboardingLink
 import br.com.saqz.access.application.session.GetAppOnboarding
 import br.com.saqz.access.application.session.CompleteAppOnboarding
-import br.com.saqz.access.application.session.BootstrapSessionResult
+import br.com.saqz.access.application.session.SessionActorResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.access.application.session.AccountGroupCleanup
 import br.com.saqz.access.application.session.AccountTransactionRunner
@@ -186,7 +186,8 @@ class AccessSessionConfiguration {
             jdbcUrl = environment.getRequiredProperty("spring.datasource.url")
             username = environment.getProperty("spring.datasource.username").orEmpty()
             password = environment.getProperty("spring.datasource.password").orEmpty()
-            maximumPoolSize = 5
+            // Ajustável para o teste de carga (tests/load); o padrão continua pequeno pelo motivo acima.
+            maximumPoolSize = environment.getProperty("saqz.db.max-pool-size", Int::class.java, 5)
         },
     )
 
@@ -209,10 +210,10 @@ class AccessSessionConfiguration {
 
     @Bean
     fun verifiedGroupActorResolver(bootstrapSession: BootstrapSession) = VerifiedGroupActorResolver { identity ->
-        when (val result = bootstrapSession.execute(identity)) {
-            BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
-            BootstrapSessionResult.Suspended -> throw AccountSuspendedException()
-            is BootstrapSessionResult.Success -> result.session.user.id
+        when (val result = bootstrapSession.actorId(identity)) {
+            SessionActorResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            SessionActorResult.Suspended -> throw AccountSuspendedException()
+            is SessionActorResult.Found -> result.userId
         }
     }
 
@@ -449,7 +450,26 @@ class AccessSessionConfiguration {
         repository: JdbcGroupCreationRepository,
         subscriptionLimits: SubscriptionLimits,
         trial: br.com.saqz.sharedkernel.subscription.GroupCreationTrial,
-    ) = CreateGroup(transaction, repository, subscriptionLimits, trial)
+        scheduleSeries: br.com.saqz.groups.application.game.series.SyncScheduleSeries,
+    ) = CreateGroup(transaction, repository, subscriptionLimits, trial, scheduleSeries)
+
+    @Bean
+    fun syncScheduleSeries(
+        schedules: br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupScheduleRepository,
+        series: JdbcWeeklySeriesRepository,
+        boundary: ApplySeriesBoundary,
+        ids: GameIdFactory,
+        autoConfirm: AutoConfirmAttendance,
+        horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
+    ) = br.com.saqz.groups.application.game.series.SyncScheduleSeries(
+        schedules,
+        series,
+        boundary,
+        ids,
+        Clock.systemUTC(),
+        AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
+        horizon,
+    )
 
     @Bean
     fun groupDeletionRepository(dataSource: DataSource) = JdbcGroupDeletionRepository(dataSource)
@@ -501,7 +521,8 @@ class AccessSessionConfiguration {
         transaction: JdbcTransactionRunner,
         groups: JdbcGroupReadRepository,
         schedules: br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupScheduleRepository,
-    ) = br.com.saqz.groups.application.settings.GroupScheduleService(transaction, groups, schedules)
+        scheduleSeries: br.com.saqz.groups.application.game.series.SyncScheduleSeries,
+    ) = br.com.saqz.groups.application.settings.GroupScheduleService(transaction, groups, schedules, scheduleSeries)
 
     @Bean
     fun groupScheduleController(
@@ -766,6 +787,7 @@ class AccessSessionConfiguration {
         ids: GameIdFactory,
         autoConfirm: AutoConfirmAttendance,
         writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
+        horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
     ) = MaterializeWeeklySeries(
         transaction,
         repository,
@@ -774,6 +796,7 @@ class AccessSessionConfiguration {
         AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
         writeAccess,
         schedules,
+        horizon,
     )
     @Bean fun weeklySeriesRepository(dataSource: DataSource) = JdbcWeeklySeriesRepository(dataSource)
     @Bean fun weeklySeriesService(
@@ -781,24 +804,49 @@ class AccessSessionConfiguration {
         ids: GameIdFactory,
         autoConfirm: AutoConfirmAttendance,
         writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
+        horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
     ) = WeeklySeriesService(
         repository,
         ids,
         Clock.systemUTC(),
         AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
         writeAccess,
+        horizon,
     )
     @Bean fun seriesBoundaryRepository(dataSource: DataSource) = JdbcSeriesBoundaryRepository(dataSource)
     @Bean fun applySeriesBoundary(
         repository: JdbcSeriesBoundaryRepository,
         ids: GameIdFactory,
         autoConfirm: AutoConfirmAttendance,
+        horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
     ) = ApplySeriesBoundary(
         repository,
         ids::create,
         Clock.systemUTC(),
         AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
+        horizon,
     )
+    @Bean fun extendGameSeries(
+        series: JdbcWeeklySeriesRepository,
+        schedules: br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupScheduleRepository,
+        materialize: MaterializeWeeklySeries,
+        boundary: ApplySeriesBoundary,
+        scheduleSeries: br.com.saqz.groups.application.game.series.SyncScheduleSeries,
+        horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
+        ids: GameIdFactory,
+    ) = br.com.saqz.groups.application.game.series.ExtendGameSeries(
+        series, schedules, materialize, boundary, scheduleSeries, horizon, ids::create, Clock.systemUTC(),
+    ) { what, failure ->
+        val log = org.slf4j.LoggerFactory.getLogger(br.com.saqz.groups.application.game.series.ExtendGameSeries::class.java)
+        // Grupo antigo que já tem série do editor no mesmo horário: a série da agenda não nasce, e isso não é erro.
+        if (failure is br.com.saqz.groups.application.game.GameScheduleConflictWriteException) {
+            log.debug("game series extension skipped for {}: schedule conflict", what)
+        } else {
+            log.warn("game series extension failed for {}", what, failure)
+        }
+    }
+    @Bean fun extendGameSeriesJob(extend: br.com.saqz.groups.application.game.series.ExtendGameSeries) =
+        br.com.saqz.groups.adapter.input.scheduling.ExtendGameSeriesJob(extend)
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
     @Bean fun chargeTransactionRepository(dataSource: DataSource, cancellation: br.com.saqz.sharedkernel.group.GroupChargePaymentCancellation) = JdbcChargeTransactionRepository(dataSource, cancellation)
     @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository, writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess) = ChargeTransactions(transaction, repository, Instant::now, writeAccess)

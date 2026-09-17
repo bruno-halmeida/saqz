@@ -261,6 +261,23 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             .optional()
             .orElse(null)
 
+    override fun ownByGame(actorId: UUID, groupId: UUID): Map<UUID, AttendanceRecord> =
+        jdbc.sql(OWN_BY_GAME)
+            .param("actor", actorId)
+            .param("group", groupId)
+            .query { rs, _ ->
+                AttendanceRecord(
+                    rs.getObject("game_id", UUID::class.java), groupId, actorId,
+                    AttendanceStatus.valueOf(rs.getString("status")),
+                    rs.getObject("waitlist_sequence", Long::class.javaObjectType),
+                    rs.getTimestamp("responded_at").toInstant(),
+                    rs.getTimestamp("updated_at").toInstant(),
+                    rs.getLong("version"),
+                )
+            }
+            .list()
+            .associateBy(AttendanceRecord::gameId)
+
     override fun roster(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceRoster? {
         val rows = jdbc.sql(ROSTER)
             .param("actor", actorId)
@@ -285,15 +302,21 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         )
     }
 
-    override fun counts(gameIds: Set<UUID>): Map<UUID, GameAttendanceCounts> = gameIds.associateWith { gameId ->
-        jdbc.sql(
-            "SELECT count(*) FILTER (WHERE attendance.status='CONFIRMED') AS confirmed," +
+    // Uma consulta para todos os jogos: a lista de jogos chamava isto com o histórico inteiro do grupo.
+    override fun counts(gameIds: Set<UUID>): Map<UUID, GameAttendanceCounts> {
+        if (gameIds.isEmpty()) return emptyMap()
+        val counted = jdbc.sql(
+            "SELECT attendance.game_id," +
+                "count(*) FILTER (WHERE attendance.status='CONFIRMED') AS confirmed," +
                 "count(*) FILTER (WHERE attendance.status='WAITLISTED') AS waitlisted " +
                 "FROM game_attendance attendance " +
                 "JOIN games game ON game.id = attendance.game_id AND game.group_id = attendance.group_id " +
                 "JOIN access_groups ag ON ag.id = game.group_id AND ag.deleted_at IS NULL " +
-                "WHERE attendance.game_id=:game",
-        ).param("game", gameId).query { rs, _ -> GameAttendanceCounts(rs.getInt("confirmed"), rs.getInt("waitlisted")) }.single()
+                "WHERE attendance.game_id IN (:games) GROUP BY attendance.game_id",
+        ).param("games", gameIds).query { rs, _ ->
+            rs.getObject("game_id", UUID::class.java) to GameAttendanceCounts(rs.getInt("confirmed"), rs.getInt("waitlisted"))
+        }.list().toMap()
+        return gameIds.associateWith { counted[it] ?: GameAttendanceCounts(0, 0) }
     }
 
     private data class RosterRow(
@@ -468,6 +491,16 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             LEFT JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=:actor
             WHERE g.group_id=:group AND g.id=:game
               AND (ag.owner_user_id=:actor OR member.user_id IS NOT NULL)
+        """
+        // ponytail: traz as respostas do ator em todos os jogos do grupo (uma linha por jogo
+        // respondido), não só nos jogos visíveis; a listagem não pagina. Se paginar, filtrar
+        // por a.game_id IN (:games).
+        const val OWN_BY_GAME = """
+            SELECT a.game_id,a.status,a.waitlist_sequence,a.responded_at,a.updated_at,a.version
+            FROM games g
+            JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
+            JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=:actor
+            WHERE g.group_id=:group
         """
         const val ROSTER = """
             SELECT a.member_user_id,a.member_display_name,a.status AS attendance_status,a.waitlist_sequence,

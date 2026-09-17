@@ -8,6 +8,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteGateway
+import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.attendance.AttendanceDetail
 import br.com.saqz.groups.domain.attendance.AttendanceEntry
 import br.com.saqz.groups.domain.attendance.AttendanceError
@@ -33,14 +34,25 @@ import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfile
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.membership.GroupDepartureGateway
+import br.com.saqz.groups.domain.membership.GroupEntryRequest
+import br.com.saqz.groups.domain.membership.GroupEntryRequestGateway
 import br.com.saqz.groups.domain.communication.CommunicationGateway
 import br.com.saqz.groups.domain.communication.CommunicationChannel
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.game.gameBellLabel
+import br.com.saqz.groups.presentation.game.gameDeadlineSentence
+import br.com.saqz.groups.presentation.game.gameDeadlineShort
+import br.com.saqz.groups.presentation.game.gameHeroDisplay
+import br.com.saqz.groups.presentation.game.gameHeroMeta
+import br.com.saqz.groups.presentation.game.gameTimeZone
+import br.com.saqz.groups.presentation.home.HomeWaitlistKind
+import br.com.saqz.groups.presentation.home.HomeWaitlistRowUi
 import br.com.saqz.groups.presentation.photo.groupPhotoUrl
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.group_details_cash_balance
 import br.com.saqz.groups.resources.onboarding_athlete_share_message
 import br.com.saqz.groups.resources.finance_overview_month_april
 import br.com.saqz.groups.resources.finance_overview_month_august
@@ -61,6 +73,7 @@ import br.com.saqz.groups.resources.own_charges_due_overdue
 import br.com.saqz.groups.resources.own_charges_game
 import br.com.saqz.groups.resources.own_charges_monthly
 import br.com.saqz.groups.resources.own_charges_monthly_unknown
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -85,6 +98,7 @@ class GroupDetailsViewModel(
     private val now: GroupNowPort,
     private val departureGateway: GroupDepartureGateway,
     private val communications: CommunicationGateway,
+    private val entryRequests: GroupEntryRequestGateway,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(GroupDetailsState()) {
 
     private var loadGeneration = 0
@@ -92,6 +106,7 @@ class GroupDetailsViewModel(
     private var autoConfirmationGeneration = 0L
     private var rosterGeneration = 0L
     private var ownChargesGeneration = 0L
+    private var pixCopiedGeneration = 0L
     private var athleteIntroShown = false
 
     /** O grupo da carga corrente: a seção de cobranças sozinha precisa do fuso e do Pix. */
@@ -134,6 +149,7 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.RetryRoster -> retryRoster()
             GroupDetailsIntent.RetryOwnCharges -> retryOwnCharges()
             GroupDetailsIntent.CopyPix -> copyPix()
+            GroupDetailsIntent.DismissToast -> update { it.copy(toast = null) }
             GroupDetailsIntent.ViewGame -> viewGame()
             GroupDetailsIntent.ConfirmAttendance -> viewGame()
             GroupDetailsIntent.NotifyPending -> notifyPending()
@@ -141,11 +157,17 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.OpenChat -> emit(GroupDetailsEffect.OpenThread(groupId, notices = false))
             is GroupDetailsIntent.Respond -> respond(intent.intent)
             is GroupDetailsIntent.ToggleAutoConfirmation -> toggleAutoConfirmation(intent.enabled)
+            is GroupDetailsIntent.OpenAgendaGame -> emit(GroupDetailsEffect.OpenGame(groupId, intent.gameId))
+            is GroupDetailsIntent.OpenSettlement -> emit(GroupDetailsEffect.OpenSettlement(groupId, intent.gameId))
         }
     }
 
+    // O mapa abre o endereço DO JOGO: a quadra padrão do grupo pode ser outra. Sem jogo (ou
+    // com jogo sem endereço) vale a quadra padrão, que é o que a tela mostra nesse caso.
     private fun openMap() {
-        val address = state.value.venue?.address?.takeIf(String::isNotBlank)
+        val current = state.value
+        val address = current.nextGame?.address?.takeIf(String::isNotBlank)
+            ?: current.venue?.address?.takeIf(String::isNotBlank)
         update { it.copy(mapFailed = address == null) }
         if (address != null) emit(GroupDetailsEffect.OpenMap(address))
     }
@@ -228,6 +250,14 @@ class GroupDetailsViewModel(
     private fun copyPix() {
         val pix = state.value.ownCharges?.pix ?: return
         emit(GroupDetailsEffect.CopyPix(pix.key))
+        // Contador monotônico, não igualdade de valor: dois toques seguidos não podem deixar
+        // o delay do primeiro apagar o estado do segundo (mesma regra da Início, VUL-220).
+        val generation = ++pixCopiedGeneration
+        update { it.copy(pixCopied = true, toast = GroupDetailsToast.PixCopied) }
+        viewModelScope.launch {
+            delay(PIX_COPIED_DWELL_MILLIS)
+            if (generation == pixCopiedGeneration) update { it.copy(pixCopied = false) }
+        }
     }
 
     private fun load() {
@@ -236,12 +266,14 @@ class GroupDetailsViewModel(
         autoConfirmationGeneration++
         rosterGeneration++
         ownChargesGeneration++
+        pixCopiedGeneration++
         loadedGroup = null
         update { it.copy(
             isLoading = true, loadFailed = false, error = null,
             onboarding = null,
             athleteIntroVisible = false, athleteShareFailed = false,
             notifying = false, notificationFailed = false, notifiedCount = null,
+            pixCopied = false,
         ) }
         viewModelScope.launch {
             when (val groupResult = groupGateway.read(GroupId(groupId))) {
@@ -252,14 +284,48 @@ class GroupDetailsViewModel(
                     when (val gamesResult = gameGateway.list(GroupId(groupId))) {
                         is SaqzResult.Failure -> showFailure(generation, gamesResult.error.toUiError())
                         is SaqzResult.Success -> {
-                            loadNextGame(generation, group, gamesResult.value)
-                            loadAdminCashbox(generation, group)
+                            val games = gamesResult.value
+                            loadNextGame(generation, group, games)
+                            loadAgenda(generation, group, games)
+                            loadAdminCashbox(generation, group, games)
                             loadOwnCharges(generation, group)
+                            loadPeople(generation)
                             loadLatestNotice(generation)
                         }
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * "Próximos jogos" sem o jogo do hero. Roda depois de [loadNextGame], que acabou de
+     * publicar o hero desta mesma geração no estado — é dele que sai o id a pular.
+     */
+    private suspend fun loadAgenda(generation: Int, group: Group, games: List<Game>) {
+        if (generation != loadGeneration) return
+        val agenda = groupAgenda(games, state.value.nextGame?.gameId, now.now(), group.profile?.defaultVenue?.name)
+        // Formatar suspende (`getString`): a guarda é re-checada depois, não antes.
+        if (generation != loadGeneration) return
+        update { it.copy(agenda = agenda) }
+    }
+
+    /**
+     * "Galera": a contagem e os quatro primeiros do roster de atletas. Falha aqui não derruba
+     * a tela nem apaga o que já estava nela — o bloco só fica com o que tinha.
+     */
+    private suspend fun loadPeople(generation: Int) {
+        if (generation != loadGeneration) return
+        val result = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
+        if (generation != loadGeneration) return
+        val roster = (result as? SaqzResult.Success)?.value ?: return
+        update {
+            it.copy(
+                memberCount = roster.size,
+                memberPreview = roster.take(MEMBER_PREVIEW_LIMIT).map { member ->
+                    MemberPreviewUi(id = member.userId, name = member.displayName, meta = "")
+                },
+            )
         }
     }
 
@@ -310,9 +376,8 @@ class GroupDetailsViewModel(
     private suspend fun List<Charge>.toOwnCharges(group: Group): OwnChargesUi? {
         if (isEmpty()) return null
         val today = currentDate(group.timeZone.id)
-        val pending = filter { it.status == ChargeStatus.Pending }
-            .sortedBy { it.dueDate }
-            .map { it.toOwnCharge(today) }
+        val pendingCharges = filter { it.status == ChargeStatus.Pending }.sortedBy { it.dueDate }
+        val pending = pendingCharges.map { it.toOwnCharge(today) }
         // ponytail: histórico cortado nas 6 mais recentes — a lista não pagina e isto é um
         // `Column` não-lazy dentro da tela mais aberta do app; um mensalista de dois anos
         // comporia 24 linhas toda vez. Quem quiser tudo vai pelo extrato (VUL-176).
@@ -320,11 +385,12 @@ class GroupDetailsViewModel(
             .sortedByDescending { it.dueDate }
             .take(OWN_CHARGES_HISTORY_LIMIT)
             .map { it.toOwnCharge(today) }
+        val pixKey = group.profile?.pixKey?.trim()?.takeIf { it.isNotEmpty() && pending.isNotEmpty() }
         return OwnChargesUi(
             pending = pending,
             history = history,
-            pix = group.profile?.pixKey?.trim()?.takeIf { it.isNotEmpty() && pending.isNotEmpty() }
-                ?.let { PixUi(it, group.profile?.pixLabel) },
+            pix = pixKey?.let { PixUi(it, group.profile?.pixLabel) },
+            debt = groupOwnDebt(pendingCharges, pending, today, group.profile?.pixLabel, pixKey != null),
         )
     }
 
@@ -372,11 +438,16 @@ class GroupDetailsViewModel(
 
     private fun Int.twoDigits() = toString().padStart(2, '0')
 
+    /**
+     * Caixa e "Esperando você" do gestor saem das mesmas leituras. Falha de finanças degrada
+     * sem derrubar a tela: o caixa fica sem saldo e a espera só com o que não depende de
+     * finanças (pedidos para entrar). Atleta não tem nenhum dos dois.
+     */
     @Suppress("ReturnCount")
-    private suspend fun loadAdminCashbox(generation: Int, group: Group) {
+    private suspend fun loadAdminCashbox(generation: Int, group: Group, games: List<Game>) {
         if (generation != loadGeneration) return
         if (group.role == GroupRole.ATHLETE) {
-            update { it.copy(cashbox = null) }
+            update { it.copy(cashbox = null, waiting = null) }
             return
         }
         val monthKey = currentDate(group.timeZone.id).monthKey()
@@ -387,20 +458,30 @@ class GroupDetailsViewModel(
         if (generation != loadGeneration) return
         val chargesResult = organizerFinanceGateway.charges(GroupId(groupId))
         if (generation != loadGeneration) return
-        val cashbox = if (statementResult is SaqzResult.Success && chargesResult is SaqzResult.Success) {
-            val openMonthlyCount = chargesResult.value.charges.count {
-                it.kind == ChargeKind.Monthly &&
-                    it.status == ChargeStatus.Pending
-            }
-            CashboxUi(
-                summary = "Saldo ${formatBrl(statementResult.value.summary.accumulatedBalanceCents)} · " +
-                    "$openMonthlyCount mensalidades em aberto",
-            )
-        } else {
-            CashboxUi()
-        }
+        val requests = loadEntryRequests(group)
         if (generation != loadGeneration) return
-        update { it.copy(cashbox = cashbox) }
+        val cashbox: CashboxUi
+        val charges: List<Charge>
+        if (statementResult is SaqzResult.Success && chargesResult is SaqzResult.Success) {
+            val balance = formatBrl(statementResult.value.summary.accumulatedBalanceCents)
+            cashbox = CashboxUi(summary = getString(Res.string.group_details_cash_balance, balance))
+            charges = chargesResult.value.charges
+        } else {
+            cashbox = CashboxUi()
+            charges = emptyList()
+        }
+        // O guia `ReviewFinances` desta geração já foi publicado por `loadNextGame`.
+        val reviewingGameId = (state.value.onboarding as? GroupOnboarding.ReviewFinances)?.gameId
+        val waiting = groupWaiting(charges, games, requests, monthKey, reviewingGameId)
+        // Formatar suspende (`getString`): a guarda é re-checada depois, não antes.
+        if (generation != loadGeneration) return
+        update { it.copy(cashbox = cashbox, waiting = waiting) }
+    }
+
+    /** Pedido só existe em grupo com aprovação. Falha vira lista vazia: nunca derruba a tela. */
+    private suspend fun loadEntryRequests(group: Group): List<GroupEntryRequest> {
+        if (!group.entryRequiresApproval) return emptyList()
+        return (entryRequests.list(GroupId(groupId)) as? SaqzResult.Success)?.value.orEmpty()
     }
 
     @Suppress("ReturnCount")
@@ -420,6 +501,7 @@ class GroupDetailsViewModel(
                     memberResponse = null,
                     membershipType = null,
                     autoConfirmationVisible = false,
+                    waitlist = null,
                 ).from(group)
             }
             return
@@ -441,15 +523,20 @@ class GroupDetailsViewModel(
                 val membershipType = (profileResult as SaqzResult.Success).value.memberships
                     .firstOrNull { it.groupId == GroupId(groupId) }
                     ?.membershipType
+                val nextGame = game.toNextGame(detail, roster)
+                // Formatar suspende (`getString`): a guarda é re-checada depois, não antes.
+                if (generation != loadGeneration) return
+                val response = detail.ownAttendance?.toResponse(roster)
                 update {
                     it.copy(
                         isLoading = false,
                         loadFailed = false,
                         error = null,
-                        nextGame = game.toNextGame(detail, roster),
+                        nextGame = nextGame,
                         onboarding = onboarding,
                         attendance = detail.toAttendance(),
-                        memberResponse = detail.ownAttendance?.toResponse(roster),
+                        memberResponse = response,
+                        waitlist = response.toWaitlist(roster, emptyList(), membershipType),
                         responding = false,
                         responseFailed = false,
                         membershipType = membershipType,
@@ -471,7 +558,10 @@ class GroupDetailsViewModel(
     private fun respond(intent: AttendanceIntent) {
         val current = state.value
         val game = current.nextGame ?: return
-        if (!game.confirmationOpen || current.responding) return
+        // Quem já está na fila só pode sair dela: um segundo "Vou" não muda nada no servidor
+        // e o otimista piscaria "confirmado" (mesma guarda da Início).
+        val alreadyQueued = current.memberResponse?.status == GroupDetailsResponseStatus.Waitlisted
+        if (!game.confirmationOpen || current.responding || (alreadyQueued && intent == AttendanceIntent.Confirm)) return
         if (!game.confirmationIsOpen()) {
             update { it.copy(nextGame = game.copy(confirmationOpen = false)) }
             return
@@ -480,9 +570,13 @@ class GroupDetailsViewModel(
         rosterGeneration++
         val loadAtStart = loadGeneration
         val previousResponse = current.memberResponse
+        val previousWaitlist = current.waitlist
+        val optimistic = current.optimisticStatus(game, intent)
         update {
             it.copy(
-                memberResponse = GroupDetailsResponseUi(intent.toResponseStatus()),
+                memberResponse = GroupDetailsResponseUi(optimistic),
+                waitlist = GroupDetailsResponseUi(optimistic)
+                    .toWaitlist(null, it.waitlist?.rows.orEmpty(), it.membershipType),
                 responding = true,
                 athleteIntroVisible = false,
                 responseFailed = false,
@@ -502,13 +596,16 @@ class GroupDetailsViewModel(
                     val roster = (rosterResult as? SaqzResult.Success)?.value
                     val detail = result.value.value.detail
                     val response = result.value.value.attendance.toResponse(roster)
+                    val reconciled = if (roster != null) response.reconcileRoster(roster) else response
                     val showIntroduction = !state.value.isAdmin && !athleteIntroShown
                     if (showIntroduction) athleteIntroShown = true
                     update {
                         it.copy(
                             nextGame = it.nextGame?.reconcile(detail, roster),
                             attendance = detail.toAttendance(),
-                            memberResponse = if (roster != null) response.reconcileRoster(roster) else response,
+                            memberResponse = reconciled,
+                            waitlist = reconciled.toWaitlist(roster, it.waitlist?.rows.orEmpty(), it.membershipType),
+                            toast = reconciled.status.toToast(),
                             responding = false,
                             athleteIntroVisible = it.athleteIntroVisible || showIntroduction,
                             responseFailed = false,
@@ -520,6 +617,7 @@ class GroupDetailsViewModel(
                 is SaqzResult.Failure -> update {
                     it.copy(
                         memberResponse = previousResponse,
+                        waitlist = previousWaitlist,
                         responding = false,
                         responseFailed = result.error != AttendanceError.Frozen,
                         nextGame = if (result.error == AttendanceError.DeadlinePassed || result.error == AttendanceError.Frozen) {
@@ -544,10 +642,12 @@ class GroupDetailsViewModel(
                 roster is SaqzResult.Success && detail is SaqzResult.Success ->
                     if (generation == rosterGeneration && loadAtStart == loadGeneration) {
                     update {
+                        val reconciled = it.memberResponse?.reconcileRoster(roster.value)
                         it.copy(
                             nextGame = it.nextGame?.reconcile(detail.value, roster.value),
                             attendance = detail.value.toAttendance(),
-                            memberResponse = it.memberResponse?.reconcileRoster(roster.value),
+                            memberResponse = reconciled,
+                            waitlist = reconciled.toWaitlist(roster.value, emptyList(), it.membershipType),
                             rosterStale = false,
                             rosterRefreshing = false,
                         )
@@ -649,19 +749,31 @@ class GroupDetailsViewModel(
         availableSpots = availableSpots,
     )
 
-    private fun Game.toNextGame(detail: AttendanceDetail, roster: AttendanceRoster) = NextGameUi(
-        gameId = id,
-        date = displayDate(),
-        venue = listOfNotNull(venue.name, venue.court).joinToString(" — "),
-        deadline = displayDeadline(),
-        confirmationDeadline = confirmationDeadline,
-        confirmedCount = detail.confirmedCount,
-        capacity = detail.capacity,
-        confirmedNames = roster.confirmed.map { it.displayName },
-        availableSpots = detail.availableSpots,
-        confirmationOpen = status == GameStatus.Published && deadlineIsOpen(),
-        hasGameFee = gameFeeCents != null,
-    )
+    private suspend fun Game.toNextGame(detail: AttendanceDetail, roster: AttendanceRoster): NextGameUi {
+        val zone = gameTimeZone(zoneId)
+        val startsAtLocal = runCatching { Instant.parse(startsAt).toLocalDateTime(zone) }.getOrNull()
+        val deadlineLocal = runCatching { Instant.parse(confirmationDeadline).toLocalDateTime(zone) }.getOrNull()
+        val place = listOfNotNull(venue.name, venue.court).joinToString(" — ")
+        return NextGameUi(
+            gameId = id,
+            date = displayDate(),
+            venue = place,
+            deadline = displayDeadline(),
+            confirmationDeadline = confirmationDeadline,
+            confirmedCount = detail.confirmedCount,
+            capacity = detail.capacity,
+            confirmedNames = roster.confirmed.map { it.displayName },
+            availableSpots = detail.availableSpots,
+            confirmationOpen = status == GameStatus.Published && deadlineIsOpen(),
+            hasGameFee = gameFeeCents != null,
+            display = startsAtLocal?.gameHeroDisplay() ?: displayDate(),
+            meta = startsAtLocal?.gameHeroMeta(place) ?: place,
+            address = venue.address,
+            deadlineLine = deadlineLocal?.gameDeadlineSentence(now.now().toLocalDateTime(zone).date).orEmpty(),
+            deadlineShort = deadlineLocal?.gameDeadlineShort().orEmpty(),
+            bellLabel = deadlineLocal?.gameBellLabel().orEmpty(),
+        )
+    }
 
     private fun NextGameUi.reconcile(detail: AttendanceDetail, roster: AttendanceRoster?): NextGameUi = copy(
         confirmedCount = detail.confirmedCount,
@@ -720,6 +832,43 @@ class GroupDetailsViewModel(
         AttendanceStatus.Waitlisted -> GroupDetailsResponseStatus.Waitlisted
     }
 
+    private fun GroupDetailsResponseStatus.toToast() = when (this) {
+        GroupDetailsResponseStatus.Confirmed -> GroupDetailsToast.Confirmed
+        GroupDetailsResponseStatus.Declined -> GroupDetailsToast.Declined
+        GroupDetailsResponseStatus.Waitlisted -> GroupDetailsToast.Waitlisted
+    }
+
+    // A mesma previsão da Início: recusar é sempre recusa; quem já está confirmado continua;
+    // avulso sob prioridade de mensalista e jogo lotado caem na fila. O servidor confirma.
+    private fun GroupDetailsState.optimisticStatus(game: NextGameUi, intent: AttendanceIntent) = when {
+        intent == AttendanceIntent.Decline -> GroupDetailsResponseStatus.Declined
+        memberResponse?.status == GroupDetailsResponseStatus.Confirmed -> GroupDetailsResponseStatus.Confirmed
+        waitlistKind(membershipType) == HomeWaitlistKind.AvulsoList -> GroupDetailsResponseStatus.Waitlisted
+        game.confirmedCount >= game.capacity -> GroupDetailsResponseStatus.Waitlisted
+        else -> GroupDetailsResponseStatus.Confirmed
+    }
+
+    /** Ponto único do tipo de espera, com a regra da Início: avulso + prioridade ⇒ lista do avulso. */
+    private fun waitlistKind(membershipType: AthleteMembershipType?): HomeWaitlistKind =
+        if (membershipType == AthleteMembershipType.AVULSO && loadedGroup?.gameConfig?.mensalistaPriority == true) {
+            HomeWaitlistKind.AvulsoList
+        } else {
+            HomeWaitlistKind.Reserva
+        }
+
+    /** Fora da fila não há espera. Sem roster novo (otimista), a fila anterior é mantida. */
+    private fun GroupDetailsResponseUi?.toWaitlist(
+        roster: AttendanceRoster?,
+        fallbackRows: List<HomeWaitlistRowUi>,
+        membershipType: AthleteMembershipType?,
+    ): GroupWaitlistUi? {
+        if (this?.status != GroupDetailsResponseStatus.Waitlisted) return null
+        val rows = roster?.waitlisted?.mapIndexed { index, member ->
+            HomeWaitlistRowUi(name = member.displayName, position = index + 1L, isSelf = member.memberId == memberId)
+        } ?: fallbackRows
+        return GroupWaitlistUi(kind = waitlistKind(membershipType), rows = rows)
+    }
+
     private fun Game.displayDate(): String {
         val date = runCatching { LocalDate.parse(localDate) }.getOrNull()
         return date?.let {
@@ -752,6 +901,8 @@ class GroupDetailsViewModel(
 
 private const val MONTHS_IN_YEAR = 12
 private const val OWN_CHARGES_HISTORY_LIMIT = 6
+private const val PIX_COPIED_DWELL_MILLIS = 2_000L
+private const val MEMBER_PREVIEW_LIMIT = 4
 
 // Os nomes de mês já existem no módulo (fluxo 5, caixa geral). Reusar é o que evita uma
 // segunda tabela de doze strings dizendo a mesma coisa — e é por isso que esta é
@@ -797,6 +948,7 @@ private fun GroupDetailsState.from(group: Group): GroupDetailsState {
             photoUrl = groupPhotoUrl(group.id.value, group.version),
         ),
         venue = profile?.defaultVenue?.let { VenueUi(it.name, it.address) },
+        scheduleSummary = profile?.regularSlots?.let { slots -> groupScheduleSummary(slots) { it.label() } },
     )
 }
 
