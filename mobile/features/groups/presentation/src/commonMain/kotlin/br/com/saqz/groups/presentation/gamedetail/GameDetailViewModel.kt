@@ -84,6 +84,13 @@ class GameDetailViewModel(
             GameDetailIntent.DismissCapacitySheet -> if (!state.value.savingCapacity) {
                 update { it.copy(capacitySheetOpen = false, capacityFailed = false) }
             }
+            else -> onGuestIntent(intent)
+        }
+    }
+
+    /** Ramos do convidado, extraídos para manter a complexidade ciclomática de [onIntent] no teto. */
+    private fun onGuestIntent(intent: GameDetailIntent): Boolean {
+        when (intent) {
             GameDetailIntent.OpenGuestSheet -> if (state.value.guest.enabled) {
                 updateGuest { it.copy(sheetOpen = true, name = "", addFailed = false) }
             }
@@ -100,7 +107,9 @@ class GameDetailViewModel(
                 updateGuest { it.copy(removal = null, removeFailed = false) }
             }
             GameDetailIntent.DismissGuestNotice -> updateGuest { it.copy(noticeName = null) }
+            else -> return false
         }
+        return true
     }
     private fun load() {
         val generation = ++loadGeneration
