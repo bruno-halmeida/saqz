@@ -1,24 +1,10 @@
 package br.com.saqz.groups.presentation.ui.home
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzDivider
@@ -28,6 +14,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeUpcomingGameUi
 import br.com.saqz.groups.presentation.home.HomeUpcomingStatus
+import br.com.saqz.groups.presentation.ui.components.UpcomingGameRow
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.home_upcoming_title
 import org.jetbrains.compose.resources.stringResource
@@ -58,51 +45,26 @@ internal fun HomeUpcomingSection(
         SaqzCard(padded = false) {
             games.forEachIndexed { index, game ->
                 if (index > 0) SaqzDivider()
-                HomeUpcomingRow(game = game, onClick = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) })
+                UpcomingGameRow(
+                    day = game.day,
+                    month = game.month,
+                    title = game.title,
+                    meta = game.meta,
+                    contentDescription = game.contentDescription,
+                    onClick = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) },
+                    tag = HomeUpcomingTags.row(game.gameId),
+                ) {
+                    SaqzStatusChip(
+                        text = game.statusLabel,
+                        tone = when (game.status) {
+                            HomeUpcomingStatus.Going -> SaqzChipTone.Success
+                            HomeUpcomingStatus.Waitlisted -> SaqzChipTone.Warning
+                            HomeUpcomingStatus.Pending, HomeUpcomingStatus.Out -> SaqzChipTone.Neutral
+                        },
+                        dot = game.status == HomeUpcomingStatus.Going || game.status == HomeUpcomingStatus.Waitlisted,
+                    )
+                }
             }
         }
     }
 }
-
-@Composable
-private fun HomeUpcomingRow(game: HomeUpcomingGameUi, onClick: () -> Unit) {
-    val colors = SaqzTheme.colors
-    val metrics = SaqzTheme.metrics
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = metrics.minimumTouchTarget)
-            .clickable(onClickLabel = game.contentDescription, role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = game.contentDescription }
-            .testTag(HomeUpcomingTags.row(game.gameId))
-            .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
-    ) {
-        Column(
-            modifier = Modifier
-                .size(DateBoxSize)
-                .background(colors.surfaceSoft, RoundedCornerShape(metrics.inputRadius)),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(text = game.day, style = SaqzTheme.typography.dateDay, color = colors.textPrimary)
-            Text(text = game.month, style = SaqzTheme.typography.dateMonth, color = colors.primary)
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = game.title, style = SaqzTheme.typography.compactTitle, color = colors.textPrimary)
-            Text(text = game.meta, style = SaqzTheme.typography.compactMeta, color = colors.textSecondary)
-        }
-        SaqzStatusChip(
-            text = game.statusLabel,
-            tone = when (game.status) {
-                HomeUpcomingStatus.Going -> SaqzChipTone.Success
-                HomeUpcomingStatus.Waitlisted -> SaqzChipTone.Warning
-                HomeUpcomingStatus.Pending, HomeUpcomingStatus.Out -> SaqzChipTone.Neutral
-            },
-            dot = game.status == HomeUpcomingStatus.Going || game.status == HomeUpcomingStatus.Waitlisted,
-        )
-    }
-}
-
-private val DateBoxSize = 44.dp

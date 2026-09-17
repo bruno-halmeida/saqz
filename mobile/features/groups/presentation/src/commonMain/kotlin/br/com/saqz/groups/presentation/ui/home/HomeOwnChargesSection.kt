@@ -17,20 +17,16 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import br.com.saqz.designsystem.SaqzButton
-import br.com.saqz.designsystem.SaqzButtonVariant
-import br.com.saqz.designsystem.SaqzCard
-import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
-import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeOwnChargeGroupUi
 import br.com.saqz.groups.presentation.home.HomeOwnChargesUi
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
+import br.com.saqz.groups.presentation.ui.components.OwnChargeTicket
+import br.com.saqz.groups.presentation.ui.components.OwnChargeTicketTags
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_cashbox_pix_copy
 import br.com.saqz.groups.resources.home_own_charge_copied
@@ -74,80 +70,28 @@ private fun HomeOwnChargeTicket(
     copied: Boolean,
     onIntent: (HomeIntent) -> Unit,
 ) {
-    val colors = SaqzTheme.colors
-    val metrics = SaqzTheme.metrics
-    SaqzCard(
-        cornerRadius = metrics.blockRadius,
-        modifier = Modifier
-            .clickable(
-                onClickLabel = group.groupName,
-                role = Role.Button,
-                onClick = { onIntent(HomeIntent.OpenGroup(group.groupId)) },
-            )
-            .semantics { contentDescription = group.groupName }
-            .testTag(HomeTags.ownCharge(group.groupId)),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(metrics.grid),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Eyebrow em caixa alta no próprio texto: a escala não transforma.
-            Text(
-                text = group.competence.uppercase(),
-                style = SaqzTheme.typography.eyebrow,
-                color = colors.primary,
-                modifier = Modifier.weight(1f),
-            )
-            SaqzStatusChip(text = group.groupName, tone = SaqzChipTone.Brand)
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = group.amountLabel,
-                style = SaqzTheme.typography.display,
-                color = colors.textPrimary,
-                modifier = Modifier.weight(1f),
-            )
-            // Âmbar, não vermelho: lembrete, não alarme (decisão do VUL-202).
-            SaqzStatusChip(text = group.dueLabel, tone = SaqzChipTone.Warning, dot = true)
-        }
-        group.countLabel?.let {
-            Text(text = it, style = SaqzTheme.typography.support, color = colors.textSecondary)
-        }
-        group.pix?.let { pix ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(metrics.grid),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SaqzIcon(SaqzIcons.CreditCard, tint = colors.textSecondary, size = PixIconSize)
-                Text(
-                    text = stringResource(Res.string.home_own_charge_pix_receiver, pix.label ?: pix.key),
-                    style = SaqzTheme.typography.support,
-                    color = colors.textSecondary,
-                )
-            }
-            SaqzButton(
-                label = stringResource(if (copied) Res.string.home_own_charge_copied else Res.string.group_cashbox_pix_copy),
-                onClick = { onIntent(HomeIntent.CopyPix(group.groupId)) },
-                variant = if (copied) SaqzButtonVariant.Secondary else SaqzButtonVariant.Primary,
-                fullWidth = true,
-                leadingContent = if (copied) {
-                    { tint -> SaqzIcon(SaqzIcons.Check, tint = tint, size = PixCheckSize) }
-                } else {
-                    null
-                },
-                modifier = Modifier.testTag(HomeTags.ownChargePixCopy(group.groupId)),
-            )
-        }
-    }
+    val copyPix = { onIntent(HomeIntent.CopyPix(group.groupId)) }
+    OwnChargeTicket(
+        eyebrow = group.competence,
+        amountLabel = group.amountLabel,
+        dueChipLabel = group.dueLabel,
+        dueChipOverdue = group.overdue,
+        headerChip = group.groupName,
+        countLabel = group.countLabel,
+        receiverLabel = group.pix?.let { stringResource(Res.string.home_own_charge_pix_receiver, it.label ?: it.key) },
+        copied = copied,
+        copyLabel = stringResource(Res.string.group_cashbox_pix_copy),
+        copiedLabel = stringResource(Res.string.home_own_charge_copied),
+        // Sem chave Pix o ticket não tem verbo: somem a linha do recebedor e o botão.
+        onCopy = copyPix.takeIf { group.pix != null },
+        onClick = { onIntent(HomeIntent.OpenGroup(group.groupId)) },
+        contentDescription = group.groupName,
+        tags = OwnChargeTicketTags(
+            card = HomeTags.ownCharge(group.groupId),
+            copy = HomeTags.ownChargePixCopy(group.groupId),
+        ),
+    )
 }
-
-private val PixIconSize = 16.dp
-private val PixCheckSize = 18.dp
 
 /**
  * O aviso permanente do shell (VUL-202). Formato do [EmailVerificationBanner][1]: faixa
