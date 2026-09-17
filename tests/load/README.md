@@ -29,6 +29,33 @@ Em ambiente isolado (`compose.yaml`, Firebase de teste) o caminho é o mesmo, tr
 `./seed-usuarios.sh local` → `./seed-exploracao.sh local` → `seed-volume.sql`
 (`docker compose exec -T database psql -U saqz -d saqz -f - < tests/load/seed-volume.sql`).
 
+No Supabase do Server Dev, a mesma conexão do `seed-exploracao.sh server`:
+
+```sh
+docker run --rm -i -e PGPASSWORD="$SAQZ_DB_PASSWORD" -e PGSSLMODE=require postgres:16-alpine \
+  psql -h aws-0-sa-east-1.pooler.supabase.com -p 5432 \
+       -U postgres.jrwpmobttggeturyekot -d postgres \
+       -v ON_ERROR_STOP=1 -f - < tests/load/seed-volume.sql
+```
+
+### O volume aplica uma vez, e é de mão única
+
+`group_charge_events` tem trigger `BEFORE UPDATE OR DELETE` que recusa qualquer mutação
+(`V5__add_group_finance.sql`). O volume escreve ~1.300 desses eventos, e o `seed-exploracao.sql`
+começa com `DELETE FROM group_charge_events` — ou seja, **depois do volume o seed de exploração não
+roda mais nesse banco**. O próprio volume é no-op na segunda vez (checa o prefixo `10ad`).
+
+Para voltar atrás sem recriar o banco, desligar o trigger é o único caminho, e só o dono da tabela
+consegue:
+
+```sql
+ALTER TABLE group_charge_events DISABLE TRIGGER group_charge_events_append_only;
+DELETE FROM group_charge_events WHERE group_id = '9a000000-0000-4000-8000-000000000001';
+ALTER TABLE group_charge_events ENABLE TRIGGER group_charge_events_append_only;
+```
+
+Reabilitar não é opcional: é a trava que garante que histórico financeiro não se reescreve.
+
 ## Rodar
 
 ```sh
