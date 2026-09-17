@@ -106,12 +106,18 @@ const patamares = [...porDegrau.entries()]
   .filter(([, ps]) => ps.length >= 2) // 1 bucket só = degrau de passagem, não patamar
   .map(([vus, ps]) => ({ vus, p95: quantil(ps, 0.5) }))
   .sort((a, b) => a.vus - b.vus)
-const melhor = Math.min(...patamares.map((p) => p.p95))
-const joelho = patamares.find((p) => p.p95 > melhor * 2)
+// E o joelho só pode estar ACIMA do degrau mais rápido. O primeiro degrau de qualquer ramp roda
+// com cache de token frio (todos os VUs acabaram de logar, cada requisição paga o checkRevoked
+// de ~270 ms), então ele é lento por aquecimento, não por fila: 327 ms em 10 VUs contra 84 ms em
+// 300. Ancorar no degrau mais rápido e olhar só para a frente descarta isso de graça.
+const base = patamares.reduce((a, p) => (p.p95 < a.p95 ? p : a), patamares[0] ?? { p95: Infinity, vus: 0 })
+const melhor = base.p95
+const joelho = patamares.find((p) => p.vus > base.vus && p.p95 > melhor * 2)
+const maiorDegrau = patamares.at(-1)
 console.log(joelho
-  ? `Joelho: p95 dobra (${Math.round(melhor)}ms -> ${Math.round(joelho.p95)}ms) em ${joelho.vus} VUs.`
-  : `Joelho: não apareceu — p95 de patamar nunca dobrou (melhor ${Math.round(melhor)}ms, ` +
-    `pior ${Math.round(Math.max(...patamares.map((p) => p.p95)))}ms em ${patamares.at(-1)?.vus} VUs).`)
+  ? `Joelho: p95 dobra (${Math.round(melhor)}ms em ${base.vus} VUs -> ${Math.round(joelho.p95)}ms em ${joelho.vus} VUs).`
+  : `Joelho: não apareceu acima de ${base.vus} VUs — melhor patamar ${Math.round(melhor)}ms ` +
+    `(${base.vus} VUs), último ${Math.round(maiorDegrau?.p95 ?? 0)}ms (${maiorDegrau?.vus} VUs).`)
 
 // As rotas mais lentas do último bucket com amostra, que é onde a pressão foi maior.
 const ultimo = [...linhas].reverse().find((l) => !l.magro)
