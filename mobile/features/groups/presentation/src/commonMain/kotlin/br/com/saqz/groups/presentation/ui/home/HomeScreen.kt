@@ -86,6 +86,7 @@ import br.com.saqz.groups.resources.home_status_confirmed
 import br.com.saqz.groups.resources.home_status_declined
 import br.com.saqz.groups.resources.home_toast_confirmed
 import br.com.saqz.groups.resources.home_toast_declined
+import br.com.saqz.groups.resources.home_toast_pix_copied
 import br.com.saqz.groups.resources.home_toast_waitlisted
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -111,8 +112,6 @@ internal object HomeTags {
     fun group(id: String) = "home-group-$id"
 
     fun ownCharge(id: String) = "home-own-charge-$id"
-
-    fun ownChargePix(id: String) = "home-own-charge-pix-$id"
 
     fun ownChargePixCopy(id: String) = "home-own-charge-pix-copy-$id"
 }
@@ -235,6 +234,10 @@ private fun HomeContent(
                     // Fora do if: quem está na reserva vê a fila, admin ou não.
                     HomeWaitlistExtras(game = it)
                 } ?: member.admin?.let { admin -> HomeAdminNoGame(admin = admin, onIntent = onIntent) } ?: HomeNoGame(onIntent)
+                // Dívida vencida é tão pessoal quanto o RSVP: vem logo abaixo do hero (VUL-220).
+                state.ownCharges?.takeIf { it.overdueGroups.isNotEmpty() }?.let {
+                    HomeOwnChargesSection(ownCharges = it, pixCopiedGroupId = state.pixCopiedGroupId, onIntent = onIntent)
+                }
                 // Para o admin, o que o grupo espera dele é tão pessoal quanto o que ele
                 // deve — "Esperando você" sobe para logo abaixo do hero, antes das
                 // seções individuais (VUL-202) e do histórico.
@@ -245,7 +248,6 @@ private fun HomeContent(
                         HomeAdminShortcuts(admin = admin, nextGame = member.nextGame, onIntent = onIntent)
                     }
                 }
-                state.ownCharges?.let { HomeOwnChargesSection(ownCharges = it, onIntent = onIntent) }
                 HomeGroups(member.groups, onIntent)
             }
         }
@@ -264,6 +266,7 @@ private fun HomeContent(
                             HomeToast.Confirmed -> Res.string.home_toast_confirmed
                             HomeToast.Declined -> Res.string.home_toast_declined
                             HomeToast.Waitlisted -> Res.string.home_toast_waitlisted
+                            HomeToast.PixCopied -> Res.string.home_toast_pix_copied
                         },
                     ),
                 )

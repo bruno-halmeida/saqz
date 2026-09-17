@@ -22,6 +22,8 @@ data class HomeState(
      * daqui em qualquer aba, inclusive quando a Home nem chegou a ser montada.
      */
     val ownCharges: HomeOwnChargesUi? = null,
+    /** Grupo cuja chave Pix acabou de ser copiada; a seção troca o botão por "Chave copiada" por 2 s (VUL-220). */
+    val pixCopiedGroupId: String? = null,
 )
 
 /**
@@ -35,7 +37,11 @@ data class HomeOwnChargesUi(
     val bannerContentDescription: String,
     val overdue: Boolean,
     val groups: List<HomeOwnChargeGroupUi>,
-)
+) {
+    /** Só o vencido entra na Início (VUL-220); a faixa continua lendo [groups] inteiro. */
+    val overdueGroups: List<HomeOwnChargeGroupUi>
+        get() = groups.filter { it.overdue }
+}
 
 @Immutable
 data class HomeOwnChargeGroupUi(
@@ -122,6 +128,7 @@ enum class HomeToast {
     Confirmed,
     Declined,
     Waitlisted,
+    PixCopied,
 }
 
 @Immutable

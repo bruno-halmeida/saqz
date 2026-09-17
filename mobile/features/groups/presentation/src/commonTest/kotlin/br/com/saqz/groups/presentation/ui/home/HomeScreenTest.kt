@@ -324,45 +324,50 @@ class HomeScreenTest {
         setScreen(nextGameState())
 
         onAllNodesWithTag(HomeTags.OwnCharges).assertCountEquals(0)
-        onAllNodesWithTag(HomeTags.ownChargePix("ceret")).assertCountEquals(0)
+        onAllNodesWithTag(HomeTags.ownChargePixCopy("ceret")).assertCountEquals(0)
     }
 
     @Test
-    fun `own charges section names the direction the competence and the due date`() = runComposeUiTest {
+    fun `charges on time render no section`() = runComposeUiTest {
         setScreen(nextGameState().copy(ownCharges = previewOwnCharges()))
+
+        onAllNodesWithTag(HomeTags.OwnCharges).assertCountEquals(0)
+        onAllNodesWithText("Minhas cobranças").assertCountEquals(0)
+    }
+
+    @Test
+    fun `overdue charge ticket opens the group and the button copies the key`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(nextGameState().copy(ownCharges = previewOwnChargesOverdue()), intents::add)
 
         onNodeWithTag(HomeTags.OwnCharges).assertIsDisplayed()
         onNodeWithText("Minhas cobranças").assertIsDisplayed()
-        onNodeWithText("O que você deve aos seus grupos").assertIsDisplayed()
-        onNodeWithText("Mensalidade · Julho").assertIsDisplayed()
-        onNodeWithText("Vence em 05/08").assertIsDisplayed()
+        onNodeWithText("MENSALIDADE DE JULHO").assertIsDisplayed()
         onNodeWithText("R$ 80,00").assertIsDisplayed()
-        onNodeWithText("ceret@volei.com.br").assertIsDisplayed()
-    }
-
-    @Test
-    fun `own charges row opens the group and the pix card copies the key`() = runComposeUiTest {
-        val intents = mutableListOf<HomeIntent>()
-        setScreen(nextGameState().copy(ownCharges = previewOwnCharges()), intents::add)
-
+        onNodeWithText("Pix de Ana Souza · Nubank").assertIsDisplayed()
         onNodeWithTag(HomeTags.ownCharge("ceret")).performClick()
         onNodeWithTag(HomeTags.ownChargePixCopy("ceret")).performClick()
 
-        assertEquals(
-            listOf<HomeIntent>(HomeIntent.OpenGroup("ceret"), HomeIntent.CopyPix("ceret")),
-            intents,
-        )
+        assertEquals(listOf<HomeIntent>(HomeIntent.OpenGroup("ceret"), HomeIntent.CopyPix("ceret")), intents)
     }
 
     @Test
-    fun `overdue charge keeps the wording of the server flag`() = runComposeUiTest {
-        setScreen(nextGameState().copy(ownCharges = previewOwnChargesOverdue()))
+    fun `only overdue groups get a ticket and the copied state swaps the button`() = runComposeUiTest {
+        setScreen(nextGameState().copy(ownCharges = previewOwnChargesOverdue(), pixCopiedGroupId = "ceret"))
 
         onNodeWithText("Venceu em 05/07").assertIsDisplayed()
         onNodeWithText("2 cobranças em aberto").assertIsDisplayed()
-        // O grupo sem chave não desenha card de Pix, e o outro desenha.
-        onAllNodesWithTag(HomeTags.ownChargePix("pacaembu")).assertCountEquals(0)
-        onNodeWithTag(HomeTags.ownChargePix("ceret")).assertIsDisplayed()
+        // O grupo no prazo (pacaembu) não entra na Início.
+        onAllNodesWithTag(HomeTags.ownCharge("pacaembu")).assertCountEquals(0)
+        onNodeWithText("Chave copiada").assertIsDisplayed()
+        onAllNodesWithText("Copiar chave Pix").assertCountEquals(0)
+    }
+
+    @Test
+    fun `pix copied toast renders the manual settlement hint`() = runComposeUiTest {
+        setScreen(nextGameState().copy(toast = br.com.saqz.groups.presentation.home.HomeToast.PixCopied))
+
+        onNodeWithText("Chave copiada. Depois de pagar, o admin dá baixa.").assertIsDisplayed()
     }
 
     @Test

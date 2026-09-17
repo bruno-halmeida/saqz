@@ -118,6 +118,17 @@ class HomeScreenshotTest {
         state().copy(ownCharges = previewOwnChargesOverdue()),
     )
 
+    /** Chave copiada: botão secundário com check e o toast da baixa manual. */
+    @Test
+    fun ownChargesCopied() = captureOwnCharges(
+        "home-cobranca-copiada",
+        state().copy(
+            ownCharges = previewOwnChargesOverdue(),
+            pixCopiedGroupId = "ceret",
+            toast = br.com.saqz.groups.presentation.home.HomeToast.PixCopied,
+        ),
+    )
+
     /** O caso que a nomenclatura precisa resolver: quem recebe e deve na mesma tela. */
     @Test
     fun ownChargesForAnAdminWhoAlsoOwes() = captureOwnCharges(
