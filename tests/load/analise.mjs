@@ -56,11 +56,12 @@ const quantil = (xs, q) => {
   return s[Math.min(s.length - 1, Math.floor(q * s.length))]
 }
 
-console.log('min:seg   VUs   reqs   erro     med      p95      veredito')
+console.log('min:seg   VUs    req/min   erro     med      p95      veredito')
 const linhas = []
 for (const [key, b] of [...buckets.entries()].sort((a, b) => a[0] - b[0])) {
   const taxa = b.reqs ? b.falhas / b.reqs : 0
   const p95 = quantil(b.dur, 0.95)
+  const porMin = b.reqs * (60_000 / BUCKET_MS)
   // Bucket com pouca amostra não condena nem absolve: sem amostra não há veredito.
   const magro = b.reqs < 20
   const ok = !magro && p95 < P95 && taxa < ERR
@@ -68,11 +69,11 @@ for (const [key, b] of [...buckets.entries()].sort((a, b) => a[0] - b[0])) {
   const t = key * BUCKET_MS / 1000
   console.log(
     `${String(Math.floor(t / 60)).padStart(2)}:${String(t % 60).padStart(2, '0')}   ` +
-    `${String(b.vus).padStart(3)}   ${String(b.reqs).padStart(4)}   ` +
+    `${String(b.vus).padStart(4)}   ${String(porMin).padStart(6)}   ` +
     `${(taxa * 100).toFixed(1).padStart(5)}%   ${String(Math.round(quantil(b.dur, 0.5))).padStart(5)}ms   ` +
     `${String(Math.round(p95)).padStart(5)}ms   ${veredito}`,
   )
-  linhas.push({ vus: b.vus, ok, magro, p95, taxa, porRota: b.porRota })
+  linhas.push({ vus: b.vus, ok, magro, p95, taxa, porMin, porRota: b.porRota })
 }
 
 // Capacidade: o maior número de VUs com bucket bom, sem nenhum bucket ruim em VUs iguais ou menores.
@@ -81,6 +82,36 @@ const capacidade = Math.max(...linhas.filter((l) => l.ok && l.vus < ruimAte).map
 console.log(`\nCapacidade: ${capacidade} VUs simultâneos` + (ruimAte === Infinity
   ? ' — nada degradou; o teto está ACIMA do que este ramp mediu, suba MAX_VUS.'
   : ` (o primeiro degrau ruim foi ${ruimAte}).`))
+
+// Vazão máxima: o platô. Se ele chega antes do último degrau, a vazão é o teto do servidor;
+// se o pico está no último degrau, quem limitou foi o teste, não o servidor.
+const gordas = linhas.filter((l) => !l.magro)
+const pico = gordas.reduce((a, l) => (l.porMin > a.porMin ? l : a), { porMin: 0, vus: 0 })
+const vusMax = Math.max(...gordas.map((l) => l.vus), 0)
+console.log(`Vazão máxima: ${pico.porMin} req/min (${Math.round(pico.porMin / 60)} req/s) em ${pico.vus} VUs` +
+  (pico.vus >= vusMax ? ' — no ÚLTIMO degrau, ou seja o platô ainda não apareceu.' : ' — depois disso a vazão parou de subir: é o platô.'))
+
+// Joelho da latência: onde p95 dobra. Aparece antes do erro e é o primeiro sinal de fila (no pool,
+// na CPU, no que for), mesmo com p95 ainda dentro do limite.
+//
+// Só vale o patamar, nunca o bucket de subida: enquanto os VUs mudam, a amostra mistura dois
+// degraus e o primeiro bucket do teste ainda paga cache de token frio (336 ms contra 85 ms de
+// regime). Julgar bucket a bucket apontava "joelho em 7 VUs", que era o aquecimento.
+const porDegrau = new Map()
+for (const l of gordas) {
+  if (!porDegrau.has(l.vus)) porDegrau.set(l.vus, [])
+  porDegrau.get(l.vus).push(l.p95)
+}
+const patamares = [...porDegrau.entries()]
+  .filter(([, ps]) => ps.length >= 2) // 1 bucket só = degrau de passagem, não patamar
+  .map(([vus, ps]) => ({ vus, p95: quantil(ps, 0.5) }))
+  .sort((a, b) => a.vus - b.vus)
+const melhor = Math.min(...patamares.map((p) => p.p95))
+const joelho = patamares.find((p) => p.p95 > melhor * 2)
+console.log(joelho
+  ? `Joelho: p95 dobra (${Math.round(melhor)}ms -> ${Math.round(joelho.p95)}ms) em ${joelho.vus} VUs.`
+  : `Joelho: não apareceu — p95 de patamar nunca dobrou (melhor ${Math.round(melhor)}ms, ` +
+    `pior ${Math.round(Math.max(...patamares.map((p) => p.p95)))}ms em ${patamares.at(-1)?.vus} VUs).`)
 
 // As rotas mais lentas do último bucket com amostra, que é onde a pressão foi maior.
 const ultimo = [...linhas].reverse().find((l) => !l.magro)
