@@ -186,7 +186,8 @@ class AccessSessionConfiguration {
             jdbcUrl = environment.getRequiredProperty("spring.datasource.url")
             username = environment.getProperty("spring.datasource.username").orEmpty()
             password = environment.getProperty("spring.datasource.password").orEmpty()
-            maximumPoolSize = 5
+            // Ajustável para o teste de carga (tests/load); o padrão continua pequeno pelo motivo acima.
+            maximumPoolSize = environment.getProperty("saqz.db.max-pool-size", Int::class.java, 5)
         },
     )
 
