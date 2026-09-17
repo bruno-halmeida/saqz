@@ -126,18 +126,9 @@ private fun GroupSkeletonList(headerWidth: Dp, titleWidth: Dp, metaWidth: Dp, ci
     }
 }
 
-/**
- * O topo da coluna rolável: só o banner da foto (pós-criação). [state] e [onIntent] ficam na
- * assinatura porque `GroupDetailsScreen` (fechado até o fecho) chama com os três; o D enxuga a
- * assinatura e apaga o `@Suppress` junto.
- */
-@Suppress("UnusedParameter")
+/** O topo da coluna rolável: só o banner da foto (pós-criação). */
 @Composable
-internal fun ColumnScope.GroupTopContent(
-    state: GroupDetailsState,
-    onIntent: (GroupDetailsIntent) -> Unit,
-    photoFailed: Boolean,
-) {
+internal fun ColumnScope.GroupTopContent(photoFailed: Boolean) {
     if (photoFailed) GroupPhotoFailedBanner()
 }
 

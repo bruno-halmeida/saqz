@@ -104,15 +104,10 @@ internal fun GroupOwnDebtBlock(
 /**
  * A linha "Tudo em dia" do fim da tela: só com cobranças carregadas, nenhuma pendência e
  * algum histórico — que ela abre e fecha. Sem histórico não há o que mostrar.
- *
- * [onIntent] fica sem uso de propósito: a assinatura é a de todo bloco do detalhe e este
- * não tem intent para emitir (abrir o histórico é estado visual).
  */
-@Suppress("UnusedParameter")
 @Composable
 internal fun GroupOwnChargesSettledBlock(
     state: GroupDetailsState,
-    onIntent: (GroupDetailsIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val ownCharges = state.ownCharges ?: return
@@ -384,5 +379,5 @@ private fun GroupOwnDebtBlockPreview() = SaqzTheme {
 @Preview
 @Composable
 private fun GroupOwnChargesSettledBlockPreview() = SaqzTheme {
-    GroupOwnChargesSettledBlock(state = GroupOwnDebtPreviewData.settled, onIntent = {})
+    GroupOwnChargesSettledBlock(state = GroupOwnDebtPreviewData.settled)
 }
