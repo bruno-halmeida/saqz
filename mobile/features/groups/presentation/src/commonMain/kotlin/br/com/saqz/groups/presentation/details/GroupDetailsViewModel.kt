@@ -71,6 +71,7 @@ import br.com.saqz.groups.resources.own_charges_due
 import br.com.saqz.groups.resources.own_charges_due_history
 import br.com.saqz.groups.resources.own_charges_due_overdue
 import br.com.saqz.groups.resources.own_charges_game
+import br.com.saqz.groups.resources.own_charges_guest
 import br.com.saqz.groups.resources.own_charges_monthly
 import br.com.saqz.groups.resources.own_charges_monthly_unknown
 import kotlinx.coroutines.delay
@@ -397,7 +398,8 @@ class GroupDetailsViewModel(
     private suspend fun Charge.toOwnCharge(today: LocalDate) = OwnChargeUi(
         id = id,
         title = when (kind) {
-            ChargeKind.Game -> getString(Res.string.own_charges_game)
+            ChargeKind.Game -> guestDisplayName?.let { getString(Res.string.own_charges_guest, it) }
+                ?: getString(Res.string.own_charges_game)
             ChargeKind.Monthly -> month?.monthName()
                 ?.let { getString(Res.string.own_charges_monthly, it) }
                 ?: getString(Res.string.own_charges_monthly_unknown)
@@ -791,7 +793,7 @@ class GroupDetailsViewModel(
         memberId = memberId,
         waitlistPosition = if (status == AttendanceStatus.Waitlisted) {
             roster?.waitlisted
-                ?.indexOfFirst { it.memberId == memberId }
+                ?.indexOfFirst { !it.isGuest && it.memberId == memberId }
                 ?.takeIf { it >= 0 }
                 ?.let { it + 1L }
                 ?: waitlistPosition
@@ -805,13 +807,13 @@ class GroupDetailsViewModel(
     private fun GroupDetailsResponseUi.reconcileRoster(roster: AttendanceRoster): GroupDetailsResponseUi {
         val id = memberId ?: return this
         return when {
-            roster.confirmed.any { it.memberId == id } -> copy(
+            roster.confirmed.any { !it.isGuest && it.memberId == id } -> copy(
                 status = GroupDetailsResponseStatus.Confirmed,
                 waitlistPosition = null,
             )
-            roster.waitlisted.any { it.memberId == id } -> copy(
+            roster.waitlisted.any { !it.isGuest && it.memberId == id } -> copy(
                 status = GroupDetailsResponseStatus.Waitlisted,
-                waitlistPosition = roster.waitlisted.indexOfFirst { it.memberId == id } + 1L,
+                waitlistPosition = roster.waitlisted.indexOfFirst { !it.isGuest && it.memberId == id } + 1L,
             )
             status != GroupDetailsResponseStatus.Declined -> copy(
                 status = GroupDetailsResponseStatus.Declined,
@@ -864,7 +866,7 @@ class GroupDetailsViewModel(
     ): GroupWaitlistUi? {
         if (this?.status != GroupDetailsResponseStatus.Waitlisted) return null
         val rows = roster?.waitlisted?.mapIndexed { index, member ->
-            HomeWaitlistRowUi(name = member.displayName, position = index + 1L, isSelf = member.memberId == memberId)
+            HomeWaitlistRowUi(name = member.displayName, position = index + 1L, isSelf = !member.isGuest && member.memberId == memberId)
         } ?: fallbackRows
         return GroupWaitlistUi(kind = waitlistKind(membershipType), rows = rows)
     }

@@ -5,6 +5,7 @@
     <string name="own_charges_monthly">Mensalidade · %1$s</string>
     <string name="own_charges_monthly_unknown">Mensalidade</string>
     <string name="own_charges_game">Jogo avulso</string>
+    <string name="own_charges_guest">Convidado: %1$s</string>
     <string name="own_charges_date">%1$s/%2$s</string>
     <string name="own_charges_due">Vence em %1$s</string>
     <string name="own_charges_due_overdue">Venceu em %1$s</string>
