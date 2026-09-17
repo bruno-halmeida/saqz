@@ -36,13 +36,6 @@ import br.com.saqz.groups.resources.game_response_waitlisted_unknown
 import br.com.saqz.groups.resources.game_response_yes
 import org.jetbrains.compose.resources.stringResource
 
-internal object GroupGameResponseTags {
-    const val Section = "group-game-response-section"
-    const val Going = "group-game-response-going"
-    const val NotGoing = "group-game-response-not-going"
-    const val AutoConfirmation = "group-game-response-auto-confirmation"
-}
-
 @Composable
 internal fun GroupGameResponseSection(
     state: GroupDetailsState,
