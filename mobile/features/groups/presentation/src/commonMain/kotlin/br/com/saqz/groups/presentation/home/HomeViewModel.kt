@@ -27,6 +27,7 @@ import br.com.saqz.groups.domain.home.HomeOwnChargeGroup
 import br.com.saqz.groups.domain.home.HomeOwnChargeOldest
 import br.com.saqz.groups.domain.home.HomeOwnCharges
 import br.com.saqz.groups.domain.home.HomeReadModel
+import br.com.saqz.groups.domain.home.HomeUpcomingGame
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
@@ -34,6 +35,7 @@ import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.home_admin_hero_deadline
 import br.com.saqz.groups.resources.home_admin_hero_deadline_closed
+import br.com.saqz.groups.resources.home_admin_score_pending
 import br.com.saqz.groups.resources.home_admin_subtitle
 import br.com.saqz.groups.resources.home_admin_waiting_entry_requests_meta
 import br.com.saqz.groups.resources.home_admin_waiting_monthly_meta
@@ -84,6 +86,12 @@ import br.com.saqz.groups.resources.own_charges_due_overdue
 import br.com.saqz.groups.resources.own_charges_game
 import br.com.saqz.groups.resources.own_charges_monthly_unknown
 import br.com.saqz.groups.resources.home_time
+import br.com.saqz.groups.resources.home_upcoming_cd_row
+import br.com.saqz.groups.resources.home_upcoming_row_meta
+import br.com.saqz.groups.resources.home_upcoming_row_title
+import br.com.saqz.groups.resources.home_upcoming_status_going
+import br.com.saqz.groups.resources.home_upcoming_status_out
+import br.com.saqz.groups.resources.home_upcoming_status_waitlisted
 import br.com.saqz.groups.resources.home_waitlist_reserva_bell
 import br.com.saqz.groups.resources.home_weekday_friday
 import br.com.saqz.groups.resources.home_weekday_friday_short
@@ -395,6 +403,7 @@ class HomeViewModel(
     private suspend fun HomeMemberReadModel.toUi(): HomeMemberUi = HomeMemberUi(
         nextGame = nextGame?.toUi(),
         groups = groups.map { it.toUi() },
+        upcomingGames = upcomingGames.map { it.toUi() },
     )
 
     private suspend fun HomeNextGame.toUi(): HomeNextGameUi {
@@ -468,6 +477,39 @@ class HomeViewModel(
         meta = getString(Res.string.home_group_meta, memberCount, gamesPlayed),
         isAdmin = role == GroupRole.OWNER || role == GroupRole.ADMIN,
     )
+
+    private suspend fun HomeUpcomingGame.toUi(): HomeUpcomingGameUi {
+        val zone = gameTimeZone(zoneId)
+        val local = runCatching { Instant.parse(startsAt).toLocalDateTime(zone) }.getOrNull()
+        val time = local?.let { getString(Res.string.home_time, it.hour.twoDigits(), it.minute.twoDigits()) } ?: startsAt
+        val weekday = local?.let { getString(it.date.dayOfWeek.longResource()).capitalized() } ?: ""
+        val dateLabel = local?.let { getString(Res.string.home_date, it.day.twoDigits(), (it.month.ordinal + 1).twoDigits()) } ?: startsAt
+        val status = when (ownStatus) {
+            null -> HomeUpcomingStatus.Pending
+            AttendanceStatus.Confirmed -> HomeUpcomingStatus.Going
+            AttendanceStatus.Declined -> HomeUpcomingStatus.Out
+            AttendanceStatus.Waitlisted -> HomeUpcomingStatus.Waitlisted
+        }
+        val statusLabel = getString(
+            when (status) {
+                HomeUpcomingStatus.Pending -> Res.string.home_admin_score_pending
+                HomeUpcomingStatus.Going -> Res.string.home_upcoming_status_going
+                HomeUpcomingStatus.Out -> Res.string.home_upcoming_status_out
+                HomeUpcomingStatus.Waitlisted -> Res.string.home_upcoming_status_waitlisted
+            },
+        )
+        return HomeUpcomingGameUi(
+            groupId = groupId.value,
+            gameId = gameId,
+            day = local?.day?.toString() ?: "",
+            month = local?.let { getString((it.month.ordinal + 1).monthResource()) } ?: "",
+            title = getString(Res.string.home_upcoming_row_title, groupName, time),
+            meta = getString(Res.string.home_upcoming_row_meta, weekday, confirmedCount),
+            status = status,
+            statusLabel = statusLabel,
+            contentDescription = getString(Res.string.home_upcoming_cd_row, groupName, dateLabel, time, statusLabel),
+        )
+    }
 
     private suspend fun deadlineLabel(deadline: kotlinx.datetime.LocalDateTime?, zone: TimeZone): String {
         if (deadline == null) return ""

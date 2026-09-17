@@ -50,6 +50,20 @@ data class HomeNextGame(
     val rosterPreview: HomeRosterPreview,
 )
 
+/** Um jogo depois do hero (até 3, todos os grupos) — só o que a linha de "Próximos jogos" mostra. */
+data class HomeUpcomingGame(
+    val groupId: GroupId,
+    val groupName: String,
+    val gameId: String,
+    val zoneId: String,
+    val startsAt: String,
+    val confirmationDeadline: String,
+    val capacity: Int,
+    val confirmedCount: Int,
+    /** `null` = o usuário ainda não respondeu. */
+    val ownStatus: AttendanceStatus?,
+)
+
 data class HomeLastCompletedGame(
     val groupId: GroupId,
     val groupName: String,
@@ -64,6 +78,7 @@ data class HomeMemberReadModel(
     val nextGame: HomeNextGame?,
     val lastCompletedGame: HomeLastCompletedGame?,
     val groups: List<HomeMemberGroup>,
+    val upcomingGames: List<HomeUpcomingGame> = emptyList(),
 )
 
 data class HomeMonthlyCharges(

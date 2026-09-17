@@ -248,6 +248,7 @@ private fun HomeContent(
                         HomeAdminShortcuts(admin = admin, nextGame = member.nextGame, onIntent = onIntent)
                     }
                 }
+                HomeUpcomingSection(games = member.upcomingGames, onIntent = onIntent)
                 HomeGroups(member.groups, onIntent)
             }
         }
