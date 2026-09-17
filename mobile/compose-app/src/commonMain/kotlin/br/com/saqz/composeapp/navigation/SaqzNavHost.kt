@@ -431,6 +431,7 @@ internal fun SaqzNavHost(
                             },
                             onOpenGameEditor = { backStack.add(GroupsRoute.GameEditor(it)) },
                             onOpenInvite = { backStack.add(GroupsRoute.Invite(it)) },
+                            onOpenNotifications = { backStack.add(GroupsRoute.Notifications()) },
                         )
                     },
                     profileTab = {

@@ -12,7 +12,6 @@ import br.com.saqz.groups.presentation.home.HomeAdminGroupUi
 import br.com.saqz.groups.presentation.home.HomeAdminReadModelUi
 import br.com.saqz.groups.presentation.home.HomeGameToSettleUi
 import br.com.saqz.groups.presentation.home.HomeMonthlyChargesUi
-import br.com.saqz.groups.presentation.home.HomeLastCompletedGameUi
 import br.com.saqz.groups.presentation.home.HomeMemberUi
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
 import br.com.saqz.groups.presentation.home.HomeOwnChargesUi
@@ -119,20 +118,11 @@ class HomeScreenshotTest {
         state().copy(ownCharges = previewOwnChargesOverdue()),
     )
 
-    /**
-     * O caso que a nomenclatura precisa resolver: quem recebe e deve na mesma tela. Sem o
-     * card "Da última vez" — ele não tem nada com o assunto e empurrava o "Esperando você"
-     * para fora do quadro, que é justamente o rótulo que esta cena existe para comparar.
-     */
+    /** O caso que a nomenclatura precisa resolver: quem recebe e deve na mesma tela. */
     @Test
     fun ownChargesForAnAdminWhoAlsoOwes() = captureOwnCharges(
         "home-cobranca-admin-que-deve",
-        adminState().let { admin ->
-            admin.copy(
-                ownCharges = previewOwnCharges(),
-                member = checkNotNull(admin.member).copy(lastCompletedGame = null),
-            )
-        },
+        adminState().copy(ownCharges = previewOwnCharges()),
     )
 
     @Test
@@ -191,14 +181,7 @@ class HomeScreenshotTest {
         isLoading = false,
         displayName = "Bruna",
         member = HomeMemberUi(
-            subtitle = if (nextGame == null) "Semana sem jogo por aqui." else "Terça tem jogo. Confirma?",
             nextGame = nextGame,
-            lastCompletedGame = HomeLastCompletedGameUi(
-                day = "21",
-                month = "JUL",
-                title = "Vôlei do CERET · 19h30",
-                summary = "Você jogou · 12 confirmados",
-            ),
             groups = listOf(
                 HomeGroupUi("ceret", "Vôlei do CERET", "26 pessoas · 18 jogos"),
                 HomeGroupUi("pacaembu", "Vôlei Pacaembu", "14 pessoas · 6 jogos"),
@@ -280,11 +263,6 @@ class HomeScreenshotTest {
                 groups = checkNotNull(memberState.member).groups.map { group ->
                     if (group.id == "ceret") group.copy(isAdmin = true) else group
                 },
-                subtitle = if (withPendingItems) {
-                    "2 grupos · 3 coisas esperando você"
-                } else {
-                    "Terça tem jogo. Confirma?"
-                },
                 adminSubtitle = if (withPendingItems) "2 grupos · 3 coisas esperando você" else null,
                 admin = HomeAdminReadModelUi(listOf(admin)),
             ),
@@ -293,7 +271,6 @@ class HomeScreenshotTest {
 
     private fun mixedAdminState() = state().copy(
         member = checkNotNull(state().member).copy(
-            subtitle = "2 grupos · 1 coisas esperando você",
             adminSubtitle = "2 grupos · 1 coisas esperando você",
             groups = checkNotNull(state().member).groups.map { group ->
                 if (group.id == "pacaembu") group.copy(isAdmin = true) else group

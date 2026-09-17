@@ -54,9 +54,7 @@ data class HomeOwnChargeGroupUi(
 
 @Immutable
 data class HomeMemberUi(
-    val subtitle: String,
     val nextGame: HomeNextGameUi?,
-    val lastCompletedGame: HomeLastCompletedGameUi?,
     val groups: List<HomeGroupUi>,
     val admin: HomeAdminReadModelUi? = null,
     val adminSubtitle: String? = null,
@@ -110,14 +108,6 @@ data class HomeNextGameUi(
     val display: String = "",
     /** "28 de julho · CERET — Quadra 2 · Tatuapé" — linha abaixo do título (VUL-218). */
     val meta: String = "",
-)
-
-@Immutable
-data class HomeLastCompletedGameUi(
-    val day: String,
-    val month: String,
-    val title: String,
-    val summary: String,
 )
 
 @Immutable
@@ -181,6 +171,7 @@ sealed interface HomeIntent {
     data class Respond(val intent: br.com.saqz.groups.domain.attendance.AttendanceIntent) : HomeIntent
     data object DismissToast : HomeIntent
     data object OpenGroups : HomeIntent
+    data object OpenNotifications : HomeIntent
     data class OpenGroup(val groupId: String) : HomeIntent
     data class OpenGame(val groupId: String, val gameId: String) : HomeIntent
     data class OpenMembers(val groupId: String) : HomeIntent
@@ -193,6 +184,7 @@ sealed interface HomeIntent {
 
 sealed interface HomeEffect {
     data object OpenGroups : HomeEffect
+    data object OpenNotifications : HomeEffect
     data class OpenGroup(val groupId: String) : HomeEffect
     data class OpenGame(val groupId: String, val gameId: String) : HomeEffect
     data class OpenMembers(val groupId: String) : HomeEffect
