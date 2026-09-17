@@ -48,9 +48,7 @@ import br.com.saqz.groups.resources.home_admin_cd_score_going
 import br.com.saqz.groups.resources.home_admin_cd_score_out
 import br.com.saqz.groups.resources.home_admin_cd_score_pending
 import br.com.saqz.groups.resources.home_admin_cd_scoreboard_open
-import br.com.saqz.groups.resources.home_admin_cd_shortcut_cashbox
 import br.com.saqz.groups.resources.home_admin_cd_shortcut_create_game
-import br.com.saqz.groups.resources.home_admin_cd_shortcut_groups
 import br.com.saqz.groups.resources.home_admin_cd_shortcut_invite
 import br.com.saqz.groups.resources.home_admin_cd_waiting_entry_requests
 import br.com.saqz.groups.resources.home_admin_cd_waiting_monthly
@@ -60,9 +58,7 @@ import br.com.saqz.groups.resources.home_admin_score_value
 import br.com.saqz.groups.resources.home_admin_score_going
 import br.com.saqz.groups.resources.home_admin_score_out
 import br.com.saqz.groups.resources.home_admin_score_pending
-import br.com.saqz.groups.resources.home_admin_shortcuts_cashbox
 import br.com.saqz.groups.resources.home_admin_shortcuts_create_game
-import br.com.saqz.groups.resources.home_admin_shortcuts_groups
 import br.com.saqz.groups.resources.home_admin_shortcuts_invite
 import br.com.saqz.groups.resources.home_admin_waiting_entry_requests
 import br.com.saqz.groups.resources.home_admin_waiting_entry_chip
@@ -85,8 +81,6 @@ internal object HomeAdminTags {
     const val Shortcuts = "home-admin-shortcuts"
     const val ShortcutCreateGame = "home-admin-shortcut-create-game"
     const val ShortcutInvite = "home-admin-shortcut-invite"
-    const val ShortcutCashbox = "home-admin-shortcut-cashbox"
-    const val ShortcutGroups = "home-admin-shortcut-groups"
     const val EmptyCreateGame = "home-admin-empty-create-game"
     const val EmptyInvite = "home-admin-empty-invite"
 
@@ -458,9 +452,8 @@ private fun HomeWaitingRow(
 }
 
 /**
- * Atalhos rápidos: grid de 4 cards brancos (ícone azul 24px + rótulo 12.5px/600).
- * Criar jogo → GameEditor, Convidar → Invite, Caixa → caixa do fluxo 5,
- * Grupos → aba Grupos. Tudo via callback cross-feature.
+ * Atalhos rápidos do gestor: Marcar jogo → GameEditor e Convidar → Invite (VUL-219).
+ * Caixa e Grupos saíram porque já são abas.
  */
 @Composable
 internal fun HomeAdminShortcuts(
@@ -500,29 +493,6 @@ internal fun HomeAdminShortcuts(
                     .weight(1f)
                     .testTag(HomeAdminTags.ShortcutInvite),
                 onClick = { onIntent(HomeIntent.OpenInvite(primaryGroupId)) },
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
-        ) {
-            HomeShortcutCard(
-                icon = SaqzIcons.CreditCard,
-                label = stringResource(Res.string.home_admin_shortcuts_cashbox),
-                contentDescription = stringResource(Res.string.home_admin_cd_shortcut_cashbox),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag(HomeAdminTags.ShortcutCashbox),
-                onClick = { onIntent(HomeIntent.OpenCashbox(primaryGroupId)) },
-            )
-            HomeShortcutCard(
-                icon = SaqzIcons.Users,
-                label = stringResource(Res.string.home_admin_shortcuts_groups),
-                contentDescription = stringResource(Res.string.home_admin_cd_shortcut_groups),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag(HomeAdminTags.ShortcutGroups),
-                onClick = { onIntent(HomeIntent.OpenGroups) },
             )
         }
     }

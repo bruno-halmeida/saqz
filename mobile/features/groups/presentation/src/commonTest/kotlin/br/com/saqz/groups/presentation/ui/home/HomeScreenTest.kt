@@ -21,7 +21,6 @@ import br.com.saqz.groups.presentation.home.HomeAdminReadModelUi
 import br.com.saqz.groups.presentation.home.HomeGameToSettleUi
 import br.com.saqz.groups.presentation.home.HomeMonthlyChargesUi
 import br.com.saqz.groups.presentation.home.HomeIntent
-import br.com.saqz.groups.presentation.home.HomeLastCompletedGameUi
 import br.com.saqz.groups.presentation.home.HomeMemberUi
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
 import br.com.saqz.groups.presentation.home.HomeState
@@ -56,7 +55,6 @@ class HomeScreenTest {
         setScreen(nextGameState(), intents::add)
 
         onNodeWithText("Fala, Bruna!").assertIsDisplayed()
-        onNodeWithText("Terça tem jogo. Confirma?").assertIsDisplayed()
         onNodeWithTag(HomeTags.NextGame).assertIsDisplayed()
         onNodeWithText("PRÓXIMO JOGO").assertIsDisplayed()
         onNodeWithText("Terça, 19h30").assertIsDisplayed()
@@ -66,27 +64,26 @@ class HomeScreenTest {
         onNodeWithText("Não vou").performClick()
         onNodeWithTag(HomeTags.Groups).assertIsDisplayed()
         onNodeWithTag(HomeTags.group("ceret")).performClick()
+        onNodeWithTag(HomeTags.Notifications).performClick()
 
         assertEquals(
             listOf(
                 HomeIntent.Respond(AttendanceIntent.Confirm),
                 HomeIntent.Respond(AttendanceIntent.Decline),
                 HomeIntent.OpenGroup("ceret"),
+                HomeIntent.OpenNotifications,
             ),
             intents,
         )
     }
 
     @Test
-    fun `empty state renders last game and opens groups from both actions`() = runComposeUiTest {
+    fun `empty state opens groups from both actions`() = runComposeUiTest {
         val intents = mutableListOf<HomeIntent>()
         setScreen(nextGameState(nextGame = null), intents::add)
 
         onNodeWithTag(HomeTags.Empty).assertIsDisplayed()
         onNodeWithText("Sem jogo marcado").assertIsDisplayed()
-        onNodeWithText("Da última vez").assertIsDisplayed()
-        onNodeWithText("21").assertIsDisplayed()
-        onNodeWithText("Você jogou · 12 confirmados").assertIsDisplayed()
         onNodeWithText("Ver meus grupos").performClick()
         onNodeWithText("Ver todos").performClick()
 
@@ -284,6 +281,37 @@ class HomeScreenTest {
     }
 
     @Test
+    fun `admin with next game shows only create game and invite shortcuts`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(adminState(), intents::add)
+
+        onNodeWithTag(HomeAdminTags.ShortcutCreateGame).performClick()
+        onNodeWithTag(HomeAdminTags.ShortcutInvite).performClick()
+        onAllNodesWithText("Caixa").assertCountEquals(0)
+        onAllNodesWithText("Grupos").assertCountEquals(0)
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.OpenGameEditor("ceret"), HomeIntent.OpenInvite("ceret")), intents)
+    }
+
+    @Test
+    fun `admin without next game hides the shortcuts row`() = runComposeUiTest {
+        val state = adminState()
+        setScreen(state.copy(member = checkNotNull(state.member).copy(nextGame = null)))
+
+        onAllNodesWithTag(HomeAdminTags.Shortcuts).assertCountEquals(0)
+        onNodeWithTag(HomeAdminTags.EmptyCreateGame).assertIsDisplayed()
+    }
+
+    @Test
+    fun `admin subtitle renders under the greeting and the bell is reachable`() = runComposeUiTest {
+        setScreen(adminState())
+
+        onNodeWithText("Fala, Bruna!").assertIsDisplayed()
+        onNodeWithText("1 grupos · 3 coisas esperando você").assertIsDisplayed()
+        onNodeWithTag(HomeTags.Notifications).assertIsDisplayed()
+    }
+
+    @Test
     fun `toast state renders the confirmation feedback`() = runComposeUiTest {
         setScreen(nextGameState().copy(toast = br.com.saqz.groups.presentation.home.HomeToast.Confirmed))
 
@@ -365,14 +393,7 @@ private fun nextGameState(nextGame: HomeNextGameUi? = nextGame()) = HomeState(
     isLoading = false,
     displayName = "Bruna",
     member = HomeMemberUi(
-        subtitle = if (nextGame == null) "Semana sem jogo por aqui." else "Terça tem jogo. Confirma?",
         nextGame = nextGame,
-        lastCompletedGame = HomeLastCompletedGameUi(
-            day = "21",
-            month = "JUL",
-            title = "Vôlei do CERET · 19h30",
-            summary = "Você jogou · 12 confirmados",
-        ),
         groups = listOf(HomeGroupUi("ceret", "Vôlei do CERET", "26 pessoas · 18 jogos")),
     ),
 )

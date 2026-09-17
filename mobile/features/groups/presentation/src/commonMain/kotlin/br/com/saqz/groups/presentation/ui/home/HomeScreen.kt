@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.home
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +43,7 @@ import br.com.saqz.designsystem.SaqzHeroCard
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzEmptyState
 import br.com.saqz.designsystem.SaqzIcon
+import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSkeleton
@@ -49,12 +51,13 @@ import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzToast
 import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.saqzInitials
+import br.com.saqz.designsystem.resources.Res as DsRes
+import br.com.saqz.designsystem.resources.saqz_mark
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.home.HomeGroupUi
 import br.com.saqz.groups.presentation.home.HomeIntent
-import br.com.saqz.groups.presentation.home.HomeLastCompletedGameUi
 import br.com.saqz.groups.presentation.home.HomeMemberUi
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
 import br.com.saqz.groups.presentation.home.HomeState
@@ -70,10 +73,10 @@ import br.com.saqz.groups.resources.home_admin_group_chip
 import br.com.saqz.groups.resources.home_groups_title
 import br.com.saqz.groups.resources.home_groups_view_all
 import br.com.saqz.groups.resources.home_greeting
-import br.com.saqz.groups.resources.home_last_game_section
 import br.com.saqz.groups.resources.home_no_game_action
 import br.com.saqz.groups.resources.home_no_game_description
 import br.com.saqz.groups.resources.home_no_game_hero_title
+import br.com.saqz.groups.resources.home_notifications_cd
 import br.com.saqz.groups.resources.home_response_error
 import br.com.saqz.groups.resources.home_response_no
 import br.com.saqz.groups.resources.home_response_yes
@@ -84,6 +87,7 @@ import br.com.saqz.groups.resources.home_status_declined
 import br.com.saqz.groups.resources.home_toast_confirmed
 import br.com.saqz.groups.resources.home_toast_declined
 import br.com.saqz.groups.resources.home_toast_waitlisted
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object HomeTags {
@@ -93,8 +97,8 @@ internal object HomeTags {
     const val Retry = "home-retry"
     const val NextGame = "home-next-game"
     const val Empty = "home-empty"
-    const val LastGame = "home-last-game"
     const val Groups = "home-groups"
+    const val Notifications = "home-notifications"
     const val ResponseYes = "home-response-yes"
     const val ResponseNo = "home-response-no"
     const val ResponseChange = "home-response-change"
@@ -204,7 +208,7 @@ private fun HomeContent(
                 .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
             verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
         ) {
-            HomeHeader(state.displayName, member?.adminSubtitle ?: member?.subtitle)
+            HomeHeader(displayName = state.displayName, subtitle = member?.adminSubtitle, onIntent = onIntent)
             if (member == null) {
                 Text(
                     text = stringResource(Res.string.home_error_message),
@@ -236,10 +240,12 @@ private fun HomeContent(
                 // seções individuais (VUL-202) e do histórico.
                 member.admin?.let { admin ->
                     HomeAdminWaitingSection(admin = admin, onIntent = onIntent)
-                    HomeAdminShortcuts(admin = admin, nextGame = member.nextGame, onIntent = onIntent)
+                    // Sem jogo marcado os dois verbos já estão no hero (HomeAdminNoGame).
+                    if (member.nextGame != null) {
+                        HomeAdminShortcuts(admin = admin, nextGame = member.nextGame, onIntent = onIntent)
+                    }
                 }
                 state.ownCharges?.let { HomeOwnChargesSection(ownCharges = it, onIntent = onIntent) }
-                member.lastCompletedGame?.let { HomeLastGame(it) }
                 HomeGroups(member.groups, onIntent)
             }
         }
@@ -266,26 +272,61 @@ private fun HomeContent(
     }
 }
 
+/**
+ * Marca, saudação e sino (VUL-219). O sino abre Notificações — hoje só se chega lá pelo
+ * Perfil. Sem ponto de não lidas: não existe contagem no agregado. O subtítulo é só o do
+ * gestor ("N grupos · M coisas esperando você"); o do atleta saiu porque repetia o hero.
+ */
 @Composable
-private fun HomeHeader(displayName: String?, subtitle: String?) {
+private fun HomeHeader(
+    displayName: String?,
+    subtitle: String?,
+    onIntent: (HomeIntent) -> Unit,
+) {
     val colors = SaqzTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
-        if (displayName != null) {
-            Text(
-                text = stringResource(Res.string.home_greeting, displayName),
-                style = SaqzTheme.typography.title.copy(fontWeight = FontWeight(800)),
-                color = colors.textPrimary,
+    val metrics = SaqzTheme.metrics
+    Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(HeaderMarkGap),
+        ) {
+            Image(
+                painter = painterResource(DsRes.drawable.saqz_mark),
+                contentDescription = null,
+                modifier = Modifier.size(HeaderMarkSize),
             )
+            if (displayName != null) {
+                Text(
+                    text = stringResource(Res.string.home_greeting, displayName),
+                    style = SaqzTheme.typography.title.copy(fontWeight = FontWeight(800)),
+                    color = colors.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                Box(modifier = Modifier.weight(1f))
+            }
+            SaqzIconButton(
+                onClick = { onIntent(HomeIntent.OpenNotifications) },
+                contentDescription = stringResource(Res.string.home_notifications_cd),
+                modifier = Modifier.testTag(HomeTags.Notifications),
+            ) {
+                SaqzIcon(SaqzIcons.Bell)
+            }
         }
         if (subtitle != null) {
             Text(
                 text = subtitle,
                 style = SaqzTheme.typography.support,
                 color = colors.textSecondary,
+                modifier = Modifier.padding(start = HeaderMarkSize + HeaderMarkGap),
             )
         }
     }
 }
+
+private val HeaderMarkSize = 30.dp
+private val HeaderMarkGap = 10.dp
 
 @Composable
 private fun HomeHero(
@@ -662,54 +703,6 @@ private fun HomeNoGame(onIntent: (HomeIntent) -> Unit) {
 }
 
 @Composable
-private fun HomeLastGame(game: HomeLastCompletedGameUi) {
-    SaqzCard(modifier = Modifier.testTag(HomeTags.LastGame)) {
-        Text(
-            text = stringResource(Res.string.home_last_game_section),
-            style = SaqzTheme.typography.subtitle,
-            color = SaqzTheme.colors.textPrimary,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
-        ) {
-            Column(
-                modifier = Modifier
-                    .size(SaqzTheme.metrics.avatarSize)
-                    .background(SaqzTheme.colors.surfaceSoft, RoundedCornerShape(SaqzTheme.metrics.inputRadius))
-                    .padding(SaqzTheme.metrics.subGrid),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = game.day,
-                    style = SaqzTheme.typography.dateDay,
-                    color = SaqzTheme.colors.textPrimary,
-                )
-                Text(
-                    text = game.month,
-                    style = SaqzTheme.typography.dateMonth,
-                    color = SaqzTheme.colors.primary,
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
-                Text(
-                    text = game.title,
-                    style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
-                    color = SaqzTheme.colors.textPrimary,
-                )
-                Text(
-                    text = game.summary,
-                    style = SaqzTheme.typography.caption,
-                    color = SaqzTheme.colors.textSecondary,
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun HomeGroups(groups: List<HomeGroupUi>, onIntent: (HomeIntent) -> Unit) {
     Column(
         modifier = Modifier.testTag(HomeTags.Groups),
@@ -758,22 +751,29 @@ private fun HomeGroupRow(group: HomeGroupUi, onClick: () -> Unit) {
                 color = SaqzTheme.colors.primary,
             )
         }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = group.name,
-                style = SaqzTheme.typography.compactTitle,
-                color = SaqzTheme.colors.textPrimary,
-            )
+        // Chip ao lado do nome, meta embaixo: no fim da linha ele espremia a coluna e a
+        // meta quebrava em duas linhas.
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid / 2)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(metrics.grid),
+            ) {
+                Text(
+                    text = group.name,
+                    style = SaqzTheme.typography.compactTitle,
+                    color = SaqzTheme.colors.textPrimary,
+                )
+                if (group.isAdmin) {
+                    SaqzStatusChip(
+                        text = stringResource(Res.string.home_admin_group_chip),
+                        tone = SaqzChipTone.Brand,
+                    )
+                }
+            }
             Text(
                 text = group.meta,
                 style = SaqzTheme.typography.compactMeta,
                 color = SaqzTheme.colors.textSecondary,
-            )
-        }
-        if (group.isAdmin) {
-            SaqzStatusChip(
-                text = stringResource(Res.string.home_admin_group_chip),
-                tone = SaqzChipTone.Brand,
             )
         }
         SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary)
@@ -850,16 +850,9 @@ private fun previewState(
     isLoading = false,
     displayName = "Bruna",
     member = HomeMemberUi(
-        subtitle = if (nextGame == null) "Semana sem jogo por aqui." else "Terça tem jogo. Confirma?",
         nextGame = nextGame,
-        lastCompletedGame = HomeLastCompletedGameUi(
-            day = "21",
-            month = "JUL",
-            title = "Vôlei do CERET · 19h30",
-            summary = "Você jogou · 12 confirmados",
-        ),
         groups = listOf(
-            HomeGroupUi("ceret", "Vôlei do CERET", "26 pessoas · 18 jogos"),
+            HomeGroupUi("ceret", "Vôlei do CERET", "26 pessoas · 18 jogos", isAdmin = true),
             HomeGroupUi("pacaembu", "Vôlei Pacaembu", "14 pessoas · 6 jogos"),
         ),
     ),

@@ -66,17 +66,15 @@ class HomeViewModelTest {
         assertFalse(viewModel.state.value.isLoading)
         assertEquals("Bruna", viewModel.state.value.displayName)
         assertEquals(home, viewModel.state.value.home)
-        assertEquals("Terça", viewModel.state.value.member?.subtitle?.substringBefore(" tem"))
         assertEquals("9 de 12 confirmados", viewModel.state.value.member?.nextGame?.confirmedSummary)
         assertTrue(viewModel.state.value.member?.nextGame?.deadline?.contains("hoje") == true)
         assertFalse(viewModel.state.value.loadFailed)
     }
 
     @Test
-    fun `home without next game formats the empty week subtitle`() = runTest {
+    fun `home without next game keeps the member block without a hero`() = runTest {
         val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome())))
 
-        assertEquals("Semana sem jogo por aqui.", viewModel.state.value.member?.subtitle)
         assertNull(viewModel.state.value.member?.nextGame)
     }
 
@@ -240,7 +238,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `waitlisted mensalista formats the reserva subtitle`() = runTest {
+    fun `waitlisted mensalista derives the reserva kind`() = runTest {
         val viewModel = viewModel(
             homeGateway = SequenceHomeGateway(
                 SaqzResult.Success(
@@ -249,15 +247,11 @@ class HomeViewModelTest {
             ),
         )
 
-        assertEquals(
-            "Você está na lista de espera de Vôlei do CERET.",
-            viewModel.state.value.member?.subtitle,
-        )
         assertEquals(HomeWaitlistKind.Reserva, viewModel.state.value.member?.nextGame?.waitlistKind)
     }
 
     @Test
-    fun `waitlisted avulso with mensalista priority formats the avulso list subtitle`() = runTest {
+    fun `waitlisted avulso with mensalista priority derives the avulso list kind and the self row`() = runTest {
         val viewModel = viewModel(
             homeGateway = SequenceHomeGateway(
                 SaqzResult.Success(
@@ -278,10 +272,6 @@ class HomeViewModelTest {
             ),
         )
 
-        assertEquals(
-            "Você está na lista de espera de Vôlei do CERET.",
-            viewModel.state.value.member?.subtitle,
-        )
         assertEquals(HomeWaitlistKind.AvulsoList, viewModel.state.value.member?.nextGame?.waitlistKind)
         assertEquals(2, viewModel.state.value.member?.nextGame?.waitlistedRoster?.size)
         assertTrue(viewModel.state.value.member?.nextGame?.waitlistedRoster?.get(1)?.isSelf == true)
@@ -832,6 +822,15 @@ class HomeViewModelTest {
 
         // O grupo sem chave não emitiu nada: o primeiro efeito é o do grupo que tem Pix.
         assertEquals(HomeEffect.CopyPix("ceret@volei.com.br"), viewModel.effects.first())
+    }
+
+    @Test
+    fun `open notifications intent emits the navigation effect`() = runTest {
+        val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome())))
+
+        viewModel.onIntent(HomeIntent.OpenNotifications)
+
+        assertEquals(HomeEffect.OpenNotifications, viewModel.effects.first())
     }
 
     private fun viewModel(

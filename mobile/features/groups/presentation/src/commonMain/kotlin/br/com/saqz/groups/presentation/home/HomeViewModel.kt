@@ -18,7 +18,6 @@ import br.com.saqz.groups.domain.home.HomeAdminGroup
 import br.com.saqz.groups.domain.home.HomeAdminReadModel
 import br.com.saqz.groups.domain.home.HomeGameToSettle
 import br.com.saqz.groups.domain.home.HomeGateway
-import br.com.saqz.groups.domain.home.HomeLastCompletedGame
 import br.com.saqz.groups.domain.home.HomeMemberGroup
 import br.com.saqz.groups.domain.home.HomeMemberReadModel
 import br.com.saqz.groups.domain.home.HomeMonthlyCharges
@@ -51,9 +50,6 @@ import br.com.saqz.groups.resources.home_game_date_time
 import br.com.saqz.groups.resources.home_game_display
 import br.com.saqz.groups.resources.home_game_meta
 import br.com.saqz.groups.resources.home_group_meta
-import br.com.saqz.groups.resources.home_last_game_played
-import br.com.saqz.groups.resources.home_last_game_summary
-import br.com.saqz.groups.resources.home_last_game_title
 import br.com.saqz.groups.resources.home_month_april
 import br.com.saqz.groups.resources.home_month_april_long
 import br.com.saqz.groups.resources.home_month_august
@@ -88,13 +84,6 @@ import br.com.saqz.groups.resources.own_charges_due_overdue
 import br.com.saqz.groups.resources.own_charges_game
 import br.com.saqz.groups.resources.own_charges_monthly
 import br.com.saqz.groups.resources.own_charges_monthly_unknown
-import br.com.saqz.groups.resources.home_subtitle_confirmed
-import br.com.saqz.groups.resources.home_subtitle_declined
-import br.com.saqz.groups.resources.home_subtitle_no_game
-import br.com.saqz.groups.resources.home_subtitle_no_response
-import br.com.saqz.groups.resources.home_subtitle_waitlisted
-import br.com.saqz.groups.resources.home_subtitle_waitlist_avulso
-import br.com.saqz.groups.resources.home_subtitle_waitlist_reserva
 import br.com.saqz.groups.resources.home_time
 import br.com.saqz.groups.resources.home_waitlist_reserva_bell
 import br.com.saqz.groups.resources.home_weekday_friday
@@ -158,6 +147,7 @@ class HomeViewModel(
             is HomeIntent.Respond -> respond(intent.intent)
             HomeIntent.DismissToast -> update { it.copy(toast = null) }
             HomeIntent.OpenGroups -> emit(HomeEffect.OpenGroups)
+            HomeIntent.OpenNotifications -> emit(HomeEffect.OpenNotifications)
             is HomeIntent.OpenGroup -> emit(HomeEffect.OpenGroup(intent.groupId))
             is HomeIntent.OpenGame -> emit(HomeEffect.OpenGame(intent.groupId, intent.gameId))
             is HomeIntent.OpenMembers -> emit(HomeEffect.OpenMembers(intent.groupId))
@@ -393,38 +383,10 @@ class HomeViewModel(
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
     }
 
-    private suspend fun HomeMemberReadModel.toUi(): HomeMemberUi {
-        val nextGameUi = nextGame?.toUi()
-        return HomeMemberUi(
-            subtitle = when {
-                nextGameUi == null -> getString(Res.string.home_subtitle_no_game)
-                nextGameUi.ownAttendance == AttendanceStatus.Waitlisted -> when (nextGameUi.waitlistKind) {
-                    HomeWaitlistKind.Reserva -> getString(
-                        Res.string.home_subtitle_waitlist_reserva,
-                        nextGameUi.groupName,
-                    )
-                    HomeWaitlistKind.AvulsoList -> getString(
-                        Res.string.home_subtitle_waitlist_avulso,
-                        nextGameUi.groupName,
-                    )
-                    null -> getString(Res.string.home_subtitle_waitlisted, nextGameUi.groupName)
-                }
-                nextGameUi.ownAttendance == AttendanceStatus.Confirmed -> getString(
-                    Res.string.home_subtitle_confirmed,
-                    nextGameUi.weekday,
-                    nextGameUi.time,
-                )
-                nextGameUi.ownAttendance == AttendanceStatus.Declined -> getString(
-                    Res.string.home_subtitle_declined,
-                    nextGameUi.weekday,
-                )
-                else -> getString(Res.string.home_subtitle_no_response, nextGameUi.weekday.capitalized())
-            },
-            nextGame = nextGameUi,
-            lastCompletedGame = lastCompletedGame?.toUi(),
-            groups = groups.map { it.toUi() },
-        )
-    }
+    private suspend fun HomeMemberReadModel.toUi(): HomeMemberUi = HomeMemberUi(
+        nextGame = nextGame?.toUi(),
+        groups = groups.map { it.toUi() },
+    )
 
     private suspend fun HomeNextGame.toUi(): HomeNextGameUi {
         val zone = gameTimeZone(zoneId)
@@ -488,24 +450,6 @@ class HomeViewModel(
             adminHeroDeadlineLabel = adminHeroDeadline,
             display = display,
             meta = meta,
-        )
-    }
-
-    private suspend fun HomeLastCompletedGame.toUi(): HomeLastCompletedGameUi {
-        val local = runCatching {
-            Instant.parse(startsAt).toLocalDateTime(gameTimeZone(zoneId))
-        }.getOrNull()
-        val time = local?.let { getString(Res.string.home_time, it.hour.twoDigits(), it.minute.twoDigits()) } ?: startsAt
-        val month = local?.let { getString((it.month.ordinal + 1).monthResource()) } ?: ""
-        return HomeLastCompletedGameUi(
-            day = local?.day?.toString() ?: startsAt,
-            month = month,
-            title = getString(Res.string.home_last_game_title, groupName, time),
-            summary = if (ownPlayed) {
-                getString(Res.string.home_last_game_played, confirmedCount)
-            } else {
-                getString(Res.string.home_last_game_summary, confirmedCount)
-            },
         )
     }
 
