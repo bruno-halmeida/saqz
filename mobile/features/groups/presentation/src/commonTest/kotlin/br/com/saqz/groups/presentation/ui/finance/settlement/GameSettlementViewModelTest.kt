@@ -177,6 +177,107 @@ class GameSettlementViewModelTest {
     }
 
     @Test
+    fun `guestChargeShowsTheGuestAndWhoPays`() = runTest {
+        val finance = SettlementFinanceGateway(
+            charges = listOf(
+                Charge(
+                    id = "host-charge",
+                    groupId = GroupId("group-1"),
+                    memberId = "member-host",
+                    kind = ChargeKind.Game,
+                    gameId = "game-1",
+                    amountCents = 7_000L,
+                    dueDate = "2026-08-04",
+                    status = ChargeStatus.Pending,
+                    version = 1L,
+                    audit = emptyList(),
+                ),
+                Charge(
+                    id = "guest-charge",
+                    groupId = GroupId("group-1"),
+                    memberId = "member-host",
+                    kind = ChargeKind.Game,
+                    gameId = "game-1",
+                    amountCents = 7_000L,
+                    dueDate = "2026-08-04",
+                    status = ChargeStatus.Pending,
+                    version = 2L,
+                    audit = emptyList(),
+                    guestDisplayName = "Rafa Moreira",
+                ),
+            ),
+            expenses = emptyList(),
+        )
+        val viewModel = GameSettlementViewModel(
+            groupId = "group-1",
+            gameId = "game-1",
+            gameGateway = FakeGameGateway(),
+            groupGateway = FakeGroupGateway(SaqzResult.Success(sampleVersionedGroup())),
+            attendanceGateway = FakeAttendanceGateway(
+                rosterResult = SaqzResult.Success(
+                    AttendanceRoster(
+                        confirmed = listOf(
+                            AttendanceRosterMember(memberId = "member-host", displayName = "Host Nome"),
+                            AttendanceRosterMember(
+                                memberId = "member-host",
+                                displayName = "Rafa Moreira",
+                                guestSeq = 1,
+                                hostDisplayName = "Host Nome",
+                            ),
+                        ),
+                        waitlisted = emptyList(),
+                    ),
+                ),
+            ),
+            athleteGateway = FakeAthleteGateway(
+                rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("member-host"))),
+            ),
+            organizerFinanceGateway = finance,
+        )
+
+        val diarists = viewModel.state.value.diarists
+        assertEquals(2, diarists.size)
+        val hostDiarist = diarists.first { it.chargeId == "host-charge" }
+        val guestDiarist = diarists.first { it.chargeId == "guest-charge" }
+        assertEquals("Host Nome", hostDiarist.name)
+        assertEquals("Rafa Moreira", guestDiarist.name)
+        assertEquals("Convidado de Host Nome · quem paga é Host Nome", guestDiarist.meta)
+    }
+
+    @Test
+    fun `guestDoesNotCountAsMonthlyMember`() = runTest {
+        val finance = SettlementFinanceGateway(charges = emptyList(), expenses = emptyList())
+        val viewModel = GameSettlementViewModel(
+            groupId = "group-1",
+            gameId = "game-1",
+            gameGateway = FakeGameGateway(),
+            groupGateway = FakeGroupGateway(SaqzResult.Success(sampleVersionedGroup())),
+            attendanceGateway = FakeAttendanceGateway(
+                rosterResult = SaqzResult.Success(
+                    AttendanceRoster(
+                        confirmed = listOf(
+                            AttendanceRosterMember(memberId = "member-host", displayName = "Host Nome"),
+                            AttendanceRosterMember(
+                                memberId = "member-host",
+                                displayName = "Rafa Moreira",
+                                guestSeq = 1,
+                                hostDisplayName = "Host Nome",
+                            ),
+                        ),
+                        waitlisted = emptyList(),
+                    ),
+                ),
+            ),
+            athleteGateway = FakeAthleteGateway(
+                rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("member-host"))),
+            ),
+            organizerFinanceGateway = finance,
+        )
+
+        assertEquals(1, viewModel.state.value.monthlyMemberCount)
+    }
+
+    @Test
     fun `opens court expense with the local date of a past game and includes its cost`() = runTest {
         val pastDate = "2026-08-03"
         val pastGame = sampleVersionedGame().game.copy(
