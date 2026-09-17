@@ -54,7 +54,7 @@ internal fun GroupDetailsScreen(
                         .testTag(GroupDetailsTags.Content),
                     verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
                 ) {
-                    GroupTopContent(state = state, onIntent = onIntent, photoFailed = photoFailed)
+                    GroupTopContent(photoFailed = photoFailed)
                     GroupHeroBlock(state = state, onIntent = onIntent)
                     GroupOwnDebtBlock(state = state, onIntent = onIntent)
                     GroupWaitingBlock(state = state, onIntent = onIntent)
@@ -62,7 +62,7 @@ internal fun GroupDetailsScreen(
                     GroupHomeCourtBlock(state = state, onIntent = onIntent)
                     GroupMuralBlock(state = state, onIntent = onIntent)
                     GroupPeopleBlock(state = state, onIntent = onIntent)
-                    GroupOwnChargesSettledBlock(state = state, onIntent = onIntent)
+                    GroupOwnChargesSettledBlock(state = state)
                     GroupLeaveBlock(state = state, onIntent = onIntent)
                 }
                 GroupToastBlock(
