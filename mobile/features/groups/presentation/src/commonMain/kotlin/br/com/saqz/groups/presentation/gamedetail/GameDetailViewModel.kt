@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.gamedetail
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
@@ -8,6 +9,7 @@ import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthleteRosterEntry
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
+import br.com.saqz.groups.domain.attendance.AddGuestCommand
 import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
 import br.com.saqz.groups.domain.attendance.AttendanceDetail
 import br.com.saqz.groups.domain.attendance.AttendanceError
@@ -15,6 +17,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
@@ -52,6 +55,7 @@ class GameDetailViewModel(
     private var promotionGeneration = 0
     private var capacityGeneration = 0
     private var versionToken: GameVersionToken? = null
+    private var selfId: String? = null
     init {
         load()
     }
@@ -71,7 +75,7 @@ class GameDetailViewModel(
                 update { it.copy(cancelDialogOpen = false, cancelFailed = false) }
             }
             GameDetailIntent.ConfirmCancel -> cancel()
-            is GameDetailIntent.Promote -> promote(intent.memberId, intent.reason)
+            is GameDetailIntent.Promote -> promote(intent.memberId, intent.reason, intent.guestSeq)
             GameDetailIntent.OpenCapacitySheet -> openCapacitySheet()
             is GameDetailIntent.UpdateCapacity -> update {
                 it.copy(capacityDraft = intent.value.coerceIn(MIN_CAPACITY, MAX_CAPACITY), capacityFailed = false)
@@ -80,7 +84,32 @@ class GameDetailViewModel(
             GameDetailIntent.DismissCapacitySheet -> if (!state.value.savingCapacity) {
                 update { it.copy(capacitySheetOpen = false, capacityFailed = false) }
             }
+            else -> onGuestIntent(intent)
         }
+    }
+
+    /** Ramos do convidado, extraídos para manter a complexidade ciclomática de [onIntent] no teto. */
+    private fun onGuestIntent(intent: GameDetailIntent): Boolean {
+        when (intent) {
+            GameDetailIntent.OpenGuestSheet -> if (state.value.guest.enabled) {
+                updateGuest { it.copy(sheetOpen = true, name = "", addFailed = false) }
+            }
+            is GameDetailIntent.UpdateGuestName -> updateGuest {
+                it.copy(name = intent.value.take(MAX_GUEST_NAME), addFailed = false)
+            }
+            GameDetailIntent.SubmitGuest -> submitGuest()
+            GameDetailIntent.DismissGuestSheet -> if (!state.value.guest.adding) {
+                updateGuest { it.copy(sheetOpen = false, addFailed = false) }
+            }
+            is GameDetailIntent.RequestRemoveGuest -> requestRemoveGuest(intent.rowId)
+            GameDetailIntent.ConfirmRemoveGuest -> confirmRemoveGuest()
+            GameDetailIntent.DismissRemoveGuest -> if (!state.value.guest.removing) {
+                updateGuest { it.copy(removal = null, removeFailed = false) }
+            }
+            GameDetailIntent.DismissGuestNotice -> updateGuest { it.copy(noticeName = null) }
+            else -> return false
+        }
+        return true
     }
     private fun load() {
         val generation = ++loadGeneration
@@ -132,6 +161,9 @@ class GameDetailViewModel(
                 val detail = (detailResult as SaqzResult.Success).value
                 val roster = (rosterResult as SaqzResult.Success).value
                 val athletes = (athletesResult as SaqzResult.Success).value.associateBy(AthleteRosterEntry::userId)
+                selfId = detail.ownAttendance?.memberId
+                val open = game.toHeader().confirmationOpen
+                val tone = game.toHeader().statusTone
                 update {
                     it.copy(
                         isLoading = false,
@@ -139,8 +171,13 @@ class GameDetailViewModel(
                         error = null,
                         header = game.toHeader().copy(availableSpots = detail.availableSpots),
                         attendance = detail.toAttendance(),
-                        confirmedRoster = roster.confirmed.map { member -> member.toConfirmed(athletes[member.memberId]) },
-                        waitlist = roster.waitlisted.map { member -> member.toWaitlist(athletes[member.memberId]) },
+                        confirmedRoster = roster.confirmed.map { member ->
+                            member.toConfirmed(athletes[member.memberId], isAdmin, open, tone)
+                        },
+                        waitlist = roster.waitlisted.map { member ->
+                            member.toWaitlist(athletes[member.memberId], isAdmin, open, tone)
+                        },
+                        guest = guestUi(game, detail, open, it.guest),
                         mensalistaPriority = mensalistaPriority,
                         promotionMode = promotionMode,
                         isAdmin = isAdmin,
@@ -155,7 +192,7 @@ class GameDetailViewModel(
         }
     }
 
-    private fun promote(memberId: String, reason: String) {
+    private fun promote(memberId: String, reason: String, guestSeq: Int) {
         val current = state.value
         if (
             !current.isAdmin ||
@@ -163,21 +200,22 @@ class GameDetailViewModel(
             current.promotionMode != PromotionMode.MANUAL ||
             current.promotingMemberId != null
         ) return
+        val rowId = if (guestSeq > 0) "$memberId#$guestSeq" else memberId
         val previousWaitlist = current.waitlist
         val previousAttendance = current.attendance
-        if (previousWaitlist.none { it.id == memberId }) return
+        if (previousWaitlist.none { it.id == rowId }) return
         val loadAtStart = loadGeneration
         val generation = ++promotionGeneration
         update {
             it.copy(
-                waitlist = it.waitlist.filterNot { member -> member.id == memberId },
+                waitlist = it.waitlist.filterNot { member -> member.id == rowId },
                 attendance = it.attendance?.let { attendance ->
                     attendance.copy(
                         confirmed = attendance.confirmed + 1,
                         availableSpots = (attendance.availableSpots - 1).coerceAtLeast(0),
                     )
                 },
-                promotingMemberId = memberId,
+                promotingMemberId = rowId,
                 promotionFailed = false,
             )
         }
@@ -185,7 +223,7 @@ class GameDetailViewModel(
             val result = attendanceGateway.promote(
                 GroupId(groupId),
                 gameId,
-                AttendancePromotionCommand(Uuid.random().toString(), memberId, reason),
+                AttendancePromotionCommand(Uuid.random().toString(), memberId, reason, guestSeq),
             )
             if (!isCurrent(Operation.Promotion, generation, loadAtStart)) return@launch
             when (result) {
@@ -295,10 +333,17 @@ class GameDetailViewModel(
                 else -> {
                     val roster = (rosterResult as SaqzResult.Success).value
                     val athletes = (athletesResult as SaqzResult.Success).value.associateBy(AthleteRosterEntry::userId)
+                    val isAdmin = state.value.isAdmin
+                    val open = state.value.header?.confirmationOpen == true
+                    val tone = state.value.header?.statusTone
                     update {
                         it.copy(
-                            confirmedRoster = roster.confirmed.map { member -> member.toConfirmed(athletes[member.memberId]) },
-                            waitlist = roster.waitlisted.map { member -> member.toWaitlist(athletes[member.memberId]) },
+                            confirmedRoster = roster.confirmed.map { member ->
+                                member.toConfirmed(athletes[member.memberId], isAdmin, open, tone)
+                            },
+                            waitlist = roster.waitlisted.map { member ->
+                                member.toWaitlist(athletes[member.memberId], isAdmin, open, tone)
+                            },
                         )
                     }
                 }
@@ -379,20 +424,136 @@ class GameDetailViewModel(
         pending = pendingCount,
     )
 
-    private fun AttendanceRosterMember.toConfirmed(athlete: AthleteRosterEntry?) = GameDetailConfirmedUi(
-        id = memberId,
+    private fun AttendanceRosterMember.toConfirmed(
+        athlete: AthleteRosterEntry?,
+        isAdmin: Boolean,
+        open: Boolean,
+        tone: GameDetailStatusTone?,
+    ) = GameDetailConfirmedUi(
+        id = rowKey,
         name = displayName,
-        isYou = false,
-        position = athlete?.position?.name.orEmpty(),
+        isYou = !isGuest && memberId == selfId,
+        position = if (isGuest) "" else athlete?.position?.name.orEmpty(),
+        guest = guestRow(isAdmin, open, tone),
     )
 
-    private fun AttendanceRosterMember.toWaitlist(athlete: AthleteRosterEntry?) = GameDetailWaitlistUi(
-        id = memberId,
+    private fun AttendanceRosterMember.toWaitlist(
+        athlete: AthleteRosterEntry?,
+        isAdmin: Boolean,
+        open: Boolean,
+        tone: GameDetailStatusTone?,
+    ) = GameDetailWaitlistUi(
+        id = rowKey,
         name = displayName,
         queuePosition = waitlistPosition,
-        athletePosition = athlete?.position,
-        isMensalista = athlete?.membershipType == AthleteMembershipType.MENSALISTA,
+        athletePosition = if (isGuest) null else athlete?.position,
+        isMensalista = !isGuest && athlete?.membershipType == AthleteMembershipType.MENSALISTA,
+        guest = guestRow(isAdmin, open, tone),
     )
+
+    private fun AttendanceRosterMember.guestRow(
+        isAdmin: Boolean,
+        open: Boolean,
+        tone: GameDetailStatusTone?,
+    ): GameGuestRowUi? {
+        if (!isGuest) return null
+        val yours = memberId == selfId
+        val published = tone != GameDetailStatusTone.Cancelled && tone != GameDetailStatusTone.Completed
+        return GameGuestRowUi(
+            hostId = memberId,
+            guestSeq = guestSeq,
+            hostName = hostDisplayName.orEmpty(),
+            isYours = yours,
+            canRemove = (yours && open) || (isAdmin && published),
+        )
+    }
+
+    /** Regras A e C: só quem já disse "Vou" (confirmado ou na fila), e só com confirmações abertas. */
+    private fun guestUi(game: Game, detail: AttendanceDetail, open: Boolean, previous: GameGuestUi): GameGuestUi {
+        val going = detail.ownAttendance?.status == AttendanceStatus.Confirmed ||
+            detail.ownAttendance?.status == AttendanceStatus.Waitlisted
+        return previous.copy(
+            visible = game.status == GameStatus.Published,
+            enabled = open && going,
+            hint = when {
+                !open -> GameGuestHint.Closed
+                !going -> GameGuestHint.NeedAnswer
+                else -> GameGuestHint.Default
+            },
+            feeLabel = game.gameFeeCents?.let(::formatBrl),
+            sheetOpen = false,
+            adding = false,
+            removal = null,
+            removing = false,
+        )
+    }
+
+    private fun updateGuest(block: (GameGuestUi) -> GameGuestUi) = update { it.copy(guest = block(it.guest)) }
+
+    private fun submitGuest() {
+        val guest = state.value.guest
+        if (!guest.enabled || !guest.canSubmit) return
+        val name = guest.name.trim()
+        val loadAtStart = loadGeneration
+        updateGuest { it.copy(adding = true, addFailed = false) }
+        viewModelScope.launch {
+            val result = attendanceGateway.addGuest(
+                GroupId(groupId),
+                gameId,
+                AddGuestCommand(Uuid.random().toString(), name),
+            )
+            if (loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    updateGuest {
+                        it.copy(sheetOpen = false, adding = false, name = "", noticeName = name, noticeJoined = true)
+                    }
+                    load()
+                }
+                is SaqzResult.Failure -> updateGuest { it.copy(adding = false, addFailed = true) }
+            }
+        }
+    }
+
+    private fun requestRemoveGuest(rowId: String) {
+        val confirmed = state.value.confirmedRoster.firstOrNull { it.id == rowId }
+        val waiting = state.value.waitlist.firstOrNull { it.id == rowId }
+        val row = confirmed?.guest ?: waiting?.guest ?: return
+        if (!row.canRemove) return
+        updateGuest {
+            it.copy(
+                removal = GameGuestRemovalUi(
+                    rowId,
+                    row.hostId,
+                    row.guestSeq,
+                    confirmed?.name ?: waiting?.name.orEmpty(),
+                    confirmed != null,
+                ),
+                removeFailed = false,
+            )
+        }
+    }
+
+    private fun confirmRemoveGuest() {
+        val removal = state.value.guest.removal ?: return
+        if (state.value.guest.removing) return
+        val loadAtStart = loadGeneration
+        updateGuest { it.copy(removing = true, removeFailed = false) }
+        viewModelScope.launch {
+            val result = attendanceGateway.removeGuest(GroupId(groupId), gameId, removal.hostId, removal.guestSeq)
+            if (loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    updateGuest {
+                        it.copy(removal = null, removing = false, noticeName = removal.name, noticeJoined = false)
+                    }
+                    load()
+                }
+                is SaqzResult.Failure -> updateGuest { it.copy(removing = false, removeFailed = true) }
+            }
+        }
+    }
+
     private fun Int.pad(): String = if (this < 10) "0$this" else toString()
 }
 
@@ -414,6 +575,7 @@ private fun AthleteError.toUiError(): GroupUiError = when (this) {
 
 private const val MIN_CAPACITY = 2
 private const val MAX_CAPACITY = 100
+private const val MAX_GUEST_NAME = 80
 private fun GameStatus.toTone(): GameDetailStatusTone = when (this) {
     GameStatus.Draft -> GameDetailStatusTone.Draft
     GameStatus.Published -> GameDetailStatusTone.Published

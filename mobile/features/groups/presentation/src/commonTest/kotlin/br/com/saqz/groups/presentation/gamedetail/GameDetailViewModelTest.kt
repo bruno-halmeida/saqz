@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.gamedetail
 
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.attendance.AddGuestCommand
 import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
 import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
 import br.com.saqz.groups.domain.attendance.AutoConfirmationUpdate
@@ -33,6 +34,7 @@ import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleCancelledGame
+import br.com.saqz.groups.presentation.sampleGame
 import br.com.saqz.groups.presentation.sampleGroup
 import br.com.saqz.groups.presentation.sampleAttendanceDetail
 import br.com.saqz.groups.presentation.sampleAttendanceRoster
@@ -469,6 +471,320 @@ class GameDetailViewModelTest {
         ),
     )
 
+    private fun athleteGroupGateway() = FakeGroupGateway(
+        SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = br.com.saqz.groups.domain.group.GroupRole.ATHLETE))),
+    )
+
+    private fun openGame() = sampleGame().copy(confirmationDeadline = "2030-01-01T12:00:00-03:00")
+
+    private fun goingDetail(status: AttendanceStatus, memberId: String = "me") =
+        sampleAttendanceDetail().copy(ownAttendance = AttendanceEntry(memberId, status, null, 1L))
+
+    @Test
+    fun guestButtonIsHiddenUntilTheGameIsPublished() = runTest {
+        val draft = sampleVersionedGame(sampleGame().copy(status = GameStatus.Draft))
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(draft)),
+            FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway(),
+        )
+
+        assertFalse(viewModel.state.value.guest.visible)
+    }
+
+    @Test
+    fun guestButtonNeedsTheViewersOwnAnswer() = runTest {
+        val noAnswer = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway(),
+        )
+        assertEquals(GameGuestHint.NeedAnswer, noAnswer.state.value.guest.hint)
+        assertFalse(noAnswer.state.value.guest.enabled)
+
+        val declined = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            FakeGroupGateway(),
+            FakeAttendanceGateway(readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Declined))),
+            FakeAthleteGateway(),
+        )
+        assertEquals(GameGuestHint.NeedAnswer, declined.state.value.guest.hint)
+        assertFalse(declined.state.value.guest.enabled)
+    }
+
+    @Test
+    fun guestButtonClosesWithTheDeadline() = runTest {
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame())),
+            FakeGroupGateway(),
+            FakeAttendanceGateway(readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed))),
+            FakeAthleteGateway(),
+        )
+
+        assertEquals(GameGuestHint.Closed, viewModel.state.value.guest.hint)
+        assertFalse(viewModel.state.value.guest.enabled)
+    }
+
+    @Test
+    fun waitlistedHostCanBringAGuest() = runTest {
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            FakeGroupGateway(),
+            FakeAttendanceGateway(readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Waitlisted))),
+            FakeAthleteGateway(),
+        )
+
+        assertTrue(viewModel.state.value.guest.enabled)
+        assertEquals(GameGuestHint.Default, viewModel.state.value.guest.hint)
+    }
+
+    @Test
+    fun submitGuestCallsTheGatewayReloadsAndAnnounces() = runTest {
+        val attendance = FakeAttendanceGateway(readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed)))
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            FakeGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.OpenGuestSheet)
+        viewModel.onIntent(GameDetailIntent.UpdateGuestName("  Rafa Moreira  "))
+        viewModel.onIntent(GameDetailIntent.SubmitGuest)
+
+        assertEquals(1, attendance.addGuestCalls)
+        assertEquals("Rafa Moreira", attendance.lastAddGuestCommand?.displayName)
+        assertEquals(2, attendance.rosterCalls)
+        assertFalse(viewModel.state.value.guest.sheetOpen)
+        assertFalse(viewModel.state.value.guest.adding)
+        assertEquals("", viewModel.state.value.guest.name)
+        assertEquals("Rafa Moreira", viewModel.state.value.guest.noticeName)
+        assertTrue(viewModel.state.value.guest.noticeJoined)
+    }
+
+    @Test
+    fun submitGuestFailureKeepsTheSheetAndTheName() = runTest {
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed)),
+            addGuestResult = SaqzResult.Failure(AttendanceError.Data(DataError.Server)),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            FakeGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.OpenGuestSheet)
+        viewModel.onIntent(GameDetailIntent.UpdateGuestName("Rafa Moreira"))
+        viewModel.onIntent(GameDetailIntent.SubmitGuest)
+
+        assertTrue(viewModel.state.value.guest.sheetOpen)
+        assertEquals("Rafa Moreira", viewModel.state.value.guest.name)
+        assertFalse(viewModel.state.value.guest.adding)
+        assertTrue(viewModel.state.value.guest.addFailed)
+        assertEquals(1, attendance.rosterCalls)
+    }
+
+    @Test
+    fun nameShorterThanTwoLettersCannotBeSubmitted() = runTest {
+        val attendance = FakeAttendanceGateway(readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed)))
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            FakeGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.OpenGuestSheet)
+        viewModel.onIntent(GameDetailIntent.UpdateGuestName("A"))
+        viewModel.onIntent(GameDetailIntent.SubmitGuest)
+
+        assertEquals(0, attendance.addGuestCalls)
+    }
+
+    @Test
+    fun guestRowsCarryHostAndOwnership() = runTest {
+        val roster = AttendanceRoster(
+            confirmed = listOf(
+                AttendanceRosterMember("host-1", "Convidado A", guestSeq = 1, hostDisplayName = "Host Um"),
+                AttendanceRosterMember("host-1", "Convidado B", guestSeq = 2, hostDisplayName = "Host Um"),
+            ),
+            waitlisted = emptyList(),
+        )
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed, memberId = "host-1")),
+            rosterResult = SaqzResult.Success(roster),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            FakeGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        val rows = viewModel.state.value.confirmedRoster
+        assertEquals(listOf("host-1#1", "host-1#2"), rows.map { it.id })
+        assertTrue(rows.all { it.guest?.isYours == true })
+        assertTrue(rows.all { it.guest?.hostName == "Host Um" })
+    }
+
+    @Test
+    fun onlyHostAndOrganizerCanRemove() = runTest {
+        val roster = AttendanceRoster(
+            confirmed = listOf(AttendanceRosterMember("host-1", "Convidado A", guestSeq = 1, hostDisplayName = "Host Um")),
+            waitlisted = emptyList(),
+        )
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed, memberId = "someone-else")),
+            rosterResult = SaqzResult.Success(roster),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            athleteGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        val row = viewModel.state.value.confirmedRoster.first()
+        assertFalse(row.guest?.canRemove == true)
+
+        viewModel.onIntent(GameDetailIntent.RequestRemoveGuest(row.id))
+
+        assertNull(viewModel.state.value.guest.removal)
+    }
+
+    @Test
+    fun hostCannotRemoveAfterTheDeadlineButOrganizerCan() = runTest {
+        val roster = AttendanceRoster(
+            confirmed = listOf(AttendanceRosterMember("host-1", "Convidado A", guestSeq = 1, hostDisplayName = "Host Um")),
+            waitlisted = emptyList(),
+        )
+        val hostAttendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed, memberId = "host-1")),
+            rosterResult = SaqzResult.Success(roster),
+        )
+        val hostViewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame())),
+            athleteGroupGateway(), hostAttendance, FakeAthleteGateway(),
+        )
+        assertFalse(hostViewModel.state.value.confirmedRoster.first().guest?.canRemove == true)
+
+        val organizerAttendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed, memberId = "someone-else")),
+            rosterResult = SaqzResult.Success(roster),
+        )
+        val organizerViewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame())),
+            FakeGroupGateway(), organizerAttendance, FakeAthleteGateway(),
+        )
+        assertTrue(organizerViewModel.state.value.confirmedRoster.first().guest?.canRemove == true)
+    }
+
+    @Test
+    fun confirmRemoveCallsTheGatewayWithHostAndSeq() = runTest {
+        val roster = AttendanceRoster(
+            confirmed = listOf(AttendanceRosterMember("host-1", "Convidado A", guestSeq = 1, hostDisplayName = "Host Um")),
+            waitlisted = emptyList(),
+        )
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed, memberId = "host-1")),
+            rosterResult = SaqzResult.Success(roster),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            athleteGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        val rowId = viewModel.state.value.confirmedRoster.first().id
+        viewModel.onIntent(GameDetailIntent.RequestRemoveGuest(rowId))
+        viewModel.onIntent(GameDetailIntent.ConfirmRemoveGuest)
+
+        assertEquals(1, attendance.removeGuestCalls)
+        assertEquals("host-1", attendance.lastRemoveGuestHostId)
+        assertEquals(1, attendance.lastRemoveGuestSeq)
+        assertNull(viewModel.state.value.guest.removal)
+        assertEquals("Convidado A", viewModel.state.value.guest.noticeName)
+        assertFalse(viewModel.state.value.guest.noticeJoined)
+        assertEquals(2, attendance.rosterCalls)
+    }
+
+    @Test
+    fun removeFailureKeepsTheConfirmationOpen() = runTest {
+        val roster = AttendanceRoster(
+            confirmed = listOf(AttendanceRosterMember("host-1", "Convidado A", guestSeq = 1, hostDisplayName = "Host Um")),
+            waitlisted = emptyList(),
+        )
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed, memberId = "host-1")),
+            rosterResult = SaqzResult.Success(roster),
+            removeGuestResult = SaqzResult.Failure(AttendanceError.Data(DataError.Server)),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            athleteGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        val rowId = viewModel.state.value.confirmedRoster.first().id
+        viewModel.onIntent(GameDetailIntent.RequestRemoveGuest(rowId))
+        viewModel.onIntent(GameDetailIntent.ConfirmRemoveGuest)
+
+        assertNotNull(viewModel.state.value.guest.removal)
+        assertFalse(viewModel.state.value.guest.removing)
+        assertTrue(viewModel.state.value.guest.removeFailed)
+    }
+
+    @Test
+    fun promoteGuestSendsGuestSeqAndUsesTheRowId() = runTest {
+        val roster = AttendanceRoster(
+            confirmed = emptyList(),
+            waitlisted = listOf(
+                AttendanceRosterMember("host-1", "Convidado A", waitlistPosition = 1, guestSeq = 1, hostDisplayName = "Host Um"),
+            ),
+        )
+        val attendance = FakeAttendanceGateway(rosterResult = SaqzResult.Success(roster))
+        val promotion = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        attendance.promoteDeferred = promotion
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(), manualGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.Promote("host-1", "Escolha do organizador", 1))
+
+        assertEquals("host-1#1", viewModel.state.value.promotingMemberId)
+        assertEquals(1, attendance.lastPromotionCommand?.guestSeq)
+        assertEquals("host-1", attendance.lastPromotionCommand?.memberId)
+        assertTrue(viewModel.state.value.waitlist.none { it.id == "host-1#1" })
+
+        promotion.complete(SaqzResult.Success(sampleVersionedAttendanceMutation()))
+
+        assertNull(viewModel.state.value.promotingMemberId)
+    }
+
+    @Test
+    fun staleGuestResultAfterAReloadIsIgnored() = runTest {
+        val attendance = FakeAttendanceGateway(readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed)))
+        val addGuestDeferred = CompletableDeferred<SaqzResult<AttendanceRosterMember, AttendanceError>>()
+        attendance.addGuestDeferred = addGuestDeferred
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            FakeGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.OpenGuestSheet)
+        viewModel.onIntent(GameDetailIntent.UpdateGuestName("Rafa Moreira"))
+        viewModel.onIntent(GameDetailIntent.SubmitGuest)
+        assertTrue(viewModel.state.value.guest.adding)
+
+        viewModel.onIntent(GameDetailIntent.Retry)
+
+        addGuestDeferred.complete(SaqzResult.Success(AttendanceRosterMember("host-1", "Rafa Moreira", null, 1, null)))
+
+        assertNull(viewModel.state.value.guest.noticeName)
+    }
 }
 
 private class FakeAttendanceGateway(
@@ -490,6 +806,9 @@ private class FakeAttendanceGateway(
         SaqzResult.Success(sampleVersionedAttendanceCapacity()),
     var autoConfirmationResult: SaqzResult<AutoConfirmationUpdate, AttendanceError> =
         SaqzResult.Success(AutoConfirmationUpdate(false)),
+    var addGuestResult: SaqzResult<AttendanceRosterMember, AttendanceError> =
+        SaqzResult.Success(AttendanceRosterMember("host-1", "Convidado", null, 1, null)),
+    var removeGuestResult: SaqzResult<Unit, AttendanceError> = SaqzResult.Success(Unit),
 ) : AttendanceGateway {
     var readCalls = 0
     var rosterCalls = 0
@@ -497,11 +816,18 @@ private class FakeAttendanceGateway(
     var promoteCalls = 0
     var capacityCalls = 0
     var autoConfirmationCalls = 0
+    var addGuestCalls = 0
+    var removeGuestCalls = 0
     var lastResponse: SelfAttendanceCommand? = null
     var lastPromotionCommand: AttendancePromotionCommand? = null
     var lastAutoConfirmation: AutoConfirmationCommand? = null
+    var lastAddGuestCommand: AddGuestCommand? = null
+    var lastRemoveGuestHostId: String? = null
+    var lastRemoveGuestSeq: Int? = null
     var promoteDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>? = null
     var capacityDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceCapacity, AttendanceError>>? = null
+    var addGuestDeferred: CompletableDeferred<SaqzResult<AttendanceRosterMember, AttendanceError>>? = null
+    var removeGuestDeferred: CompletableDeferred<SaqzResult<Unit, AttendanceError>>? = null
 
     override suspend fun read(groupId: br.com.saqz.domain.GroupId, gameId: String): SaqzResult<AttendanceDetail, AttendanceError> {
         readCalls++
@@ -557,5 +883,27 @@ private class FakeAttendanceGateway(
         autoConfirmationCalls++
         lastAutoConfirmation = command
         return autoConfirmationResult
+    }
+
+    override suspend fun addGuest(
+        groupId: br.com.saqz.domain.GroupId,
+        gameId: String,
+        command: AddGuestCommand,
+    ): SaqzResult<AttendanceRosterMember, AttendanceError> {
+        addGuestCalls++
+        lastAddGuestCommand = command
+        return addGuestDeferred?.await() ?: addGuestResult
+    }
+
+    override suspend fun removeGuest(
+        groupId: br.com.saqz.domain.GroupId,
+        gameId: String,
+        hostId: String,
+        guestSeq: Int,
+    ): SaqzResult<Unit, AttendanceError> {
+        removeGuestCalls++
+        lastRemoveGuestHostId = hostId
+        lastRemoveGuestSeq = guestSeq
+        return removeGuestDeferred?.await() ?: removeGuestResult
     }
 }
