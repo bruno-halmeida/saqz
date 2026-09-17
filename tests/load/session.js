@@ -37,14 +37,22 @@ const PROFILES = {
 export const options = {
   scenarios: { session: PROFILES[PROFILE] },
   thresholds: {
-    http_req_failed: [{ threshold: 'rate<0.01', abortOnFail: PROFILE === 'ramp', delayAbortEval: '30s' }],
-    'http_req_duration{kind:api}': [{ threshold: 'p(95)<1000', abortOnFail: PROFILE === 'ramp', delayAbortEval: '30s' }],
+    // Só o erro da NOSSA API aborta: a taxa geral inclui o login no Firebase, que tem cota
+    // própria e derrubaria a medição por um motivo que não é o servidor. E 2 min de espera
+    // para o primeiro veredito, senão o primeiro degrau julga a taxa com 50 requisições.
+    'http_req_failed{kind:api}': [{ threshold: 'rate<0.01', abortOnFail: PROFILE === 'ramp', delayAbortEval: '2m' }],
+    http_req_failed: ['rate<0.05'],
+    'http_req_duration{kind:api}': [{ threshold: 'p(95)<1000', abortOnFail: PROFILE === 'ramp', delayAbortEval: '2m' }],
   },
   summaryTrendStats: ['med', 'p(95)', 'p(99)', 'max'],
 }
 
-// 21 contas do seed: a 0 é o dono (vê as telas de admin), as outras são atletas.
-const account = (vu) => (vu % 21 === 0 ? 'owner' : `atleta${String(vu % 21).padStart(2, '0')}`) + '@saqz.local'
+// 20 das 21 contas do seed: a 0 é o dono (vê as telas de admin), 1..19 são atletas ativos.
+// A atleta20 fica de fora de propósito: é o membro INATIVO do seed e o grupo responde 403 para ela.
+// ACCOUNT fixa a conta de todos os VUs: serve para o smoke provar o caminho do dono, que só
+// apareceria a partir do VU 20 no ramp.
+const account = (vu) => __ENV.ACCOUNT ||
+  (vu % 20 === 0 ? 'owner' : `atleta${String(vu % 20).padStart(2, '0')}`) + '@saqz.local'
 
 let session = null // por VU: { token, expiresAt, owner }
 function signIn() {
@@ -87,7 +95,8 @@ export default function () {
     get(`/api/groups/${GROUP}`, 'GET group')
     const games = get(`/api/groups/${GROUP}/games`, 'GET games')
     const now = Date.now()
-    nextGame = (games.json() || [])
+    const list = games.status === 200 ? games.json() : []
+    nextGame = (Array.isArray(list) ? list : [])
       .filter((g) => g.status === 'PUBLISHED' && Date.parse(g.startsAt) > now)
       .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0]
     if (nextGame) {
@@ -104,10 +113,13 @@ export default function () {
   })
   think(5, 15)
 
-  if (Math.random() < 0.3) {
+  // 30% das sessões abrem a lista de membros; o smoke abre sempre, para não deixar requisição
+  // nenhuma sem prova antes de um ramp de 21 minutos.
+  if (PROFILE === 'smoke' || Math.random() < 0.3) {
     group('lista de membros', () => {
       get(`/api/groups/${GROUP}/athletes`, 'GET athletes')
-      get(`/api/groups/${GROUP}/memberships`, 'GET memberships')
+      // Papéis são gestão de elenco (MANAGE_ATHLETES): atleta leva 403 aqui, é o esperado.
+      if (session.owner) get(`/api/groups/${GROUP}/memberships`, 'GET memberships')
     })
     think(3, 8)
   }
