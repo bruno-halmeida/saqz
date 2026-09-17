@@ -735,7 +735,8 @@ internal fun SaqzNavHost(
             entry<GroupsRoute.Invite> { route ->
                 GroupInviteRoot(
                     groupId = route.groupId,
-                    onBack = pop,
+                    // Pedido aprovado muda "Esperando você" e a contagem da galera do detalhe.
+                    onBack = { groupDetailsRefreshVersion++; pop() },
                     onOpenMessagePreview = { groupName, inviteUrl ->
                         backStack.add(GroupsRoute.InviteMessagePreview(groupName, inviteUrl))
                     },
@@ -858,7 +859,8 @@ internal fun SaqzNavHost(
             entry<GroupsRoute.Members> { route ->
                 GroupMembersRoot(
                     groupId = route.groupId,
-                    onBack = pop,
+                    // Membro removido muda a contagem e a prévia da galera do detalhe.
+                    onBack = { groupDetailsRefreshVersion++; pop() },
                     onOpenProfile = { userId -> backStack.add(GroupsRoute.MemberProfile(route.groupId, userId)) },
                     onOpenMemberEditor = { userId ->
                         backStack.add(GroupsRoute.MemberEditor(route.groupId, userId))
@@ -899,7 +901,8 @@ internal fun SaqzNavHost(
                 GameDetailRoot(
                     groupId = route.groupId,
                     gameId = route.gameId,
-                    onBack = pop,
+                    // Resposta dada no jogo muda o placar do hero e o chip da agenda do detalhe.
+                    onBack = { groupDetailsRefreshVersion++; pop() },
                     onOpenEditor = { backStack.add(GroupsRoute.GameEditor(route.groupId, route.gameId)) },
                     onOpenSettlement = {
                         backStack.add(FinanceRoute.GameSettlement(route.groupId, route.gameId))

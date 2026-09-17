@@ -495,7 +495,7 @@ private class FixedHomeGateway(private val payload: HomeReadModel) : HomeGateway
     override suspend fun read(): SaqzResult<HomeReadModel, HomeError> = SaqzResult.Success(payload)
 }
 
-/** A Home só chama `ownProfile()`; o resto da porta não é alcançável por esta jornada. */
+/** A Home só chama `ownProfile()`; o detalhe do grupo lê o `roster()` (vazio aqui). O resto não é alcançável por estas jornadas. */
 private object FixedAthleteGateway : AthleteGateway {
     override suspend fun ownProfile(): SaqzResult<OwnAthleteProfile, AthleteError> = SaqzResult.Success(
         OwnAthleteProfile(userId = "user", displayName = "Atleta", phone = null, memberships = emptyList()),
@@ -504,7 +504,7 @@ private object FixedAthleteGateway : AthleteGateway {
     override suspend fun roster(
         groupId: GroupId,
         filter: AthleteRosterFilter,
-    ): SaqzResult<List<AthleteRosterEntry>, AthleteError> = unused()
+    ): SaqzResult<List<AthleteRosterEntry>, AthleteError> = SaqzResult.Success(emptyList())
 
     override suspend fun updateOwnPosition(
         groupId: GroupId,
