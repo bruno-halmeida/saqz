@@ -5,6 +5,7 @@ import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthleteError
+import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
 import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
 import br.com.saqz.groups.domain.attendance.AttendanceDetail
@@ -21,9 +22,12 @@ import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.FinanceError
 import br.com.saqz.groups.domain.finance.FinanceStatementPage
 import br.com.saqz.groups.domain.finance.FinanceStatementSummary
+import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.membership.EntryRequestError
 import br.com.saqz.groups.domain.membership.GroupDepartureGateway
+import br.com.saqz.groups.domain.membership.GroupEntryRequest
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import kotlinx.coroutines.launch
 import br.com.saqz.groups.domain.group.GroupGameConfig
@@ -34,6 +38,7 @@ import br.com.saqz.groups.presentation.FakeAttendanceGateway
 import br.com.saqz.groups.presentation.FakeFinanceStatementGateway
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.presentation.FakeGroupEntryRequestGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.FakeOrganizerFinanceGateway
 import br.com.saqz.groups.presentation.GroupUiError
@@ -43,6 +48,7 @@ import br.com.saqz.groups.presentation.sampleGroup
 import br.com.saqz.groups.presentation.sampleAttendanceDetail
 import br.com.saqz.groups.presentation.sampleAttendanceRoster
 import br.com.saqz.groups.presentation.sampleGame
+import br.com.saqz.groups.presentation.sampleRosterEntry
 import br.com.saqz.groups.presentation.sampleVersionedAttendanceMutation
 import br.com.saqz.groups.presentation.sampleVersionedGroup
 import br.com.saqz.groups.port.GroupNowPort
@@ -399,11 +405,14 @@ class GroupDetailsViewModelTest {
         )
 
         assertTrue(viewModel.state.value.isAdmin)
-        assertEquals("Saldo R$\u00A0380,00 · 3 mensalidades em aberto", viewModel.state.value.cashbox?.summary)
+        assertEquals("Saldo R$\u00A0380,00", viewModel.state.value.cashbox?.summary)
+        // A contagem saiu da frase do caixa: mora em "Esperando você", só com o mês corrente
+        // (grupo em UTC + `now` de 01/08 ⇒ competência 2026-08; a de julho fica de fora).
+        assertEquals("2 mensalidades a receber", viewModel.state.value.waiting?.monthly?.title)
     }
 
     @Test
-    fun `admin cashbox counts pending monthly charges from previous months`() = runTest {
+    fun `admin cashbox summary carries only the balance`() = runTest {
         val viewModel = viewModel(
             organizerFinanceGateway = FakeOrganizerFinanceGateway(
                 chargesResult = SaqzResult.Success(
@@ -427,7 +436,7 @@ class GroupDetailsViewModelTest {
             ),
         )
 
-        assertEquals("Saldo R$\u00A00,00 · 1 mensalidades em aberto", viewModel.state.value.cashbox?.summary)
+        assertEquals("Saldo R$\u00A00,00", viewModel.state.value.cashbox?.summary)
     }
 
     @Test
@@ -1366,6 +1375,274 @@ class GroupDetailsViewModelTest {
         assertNull(viewModel.state.value.ownCharges?.debt)
     }
 
+    @Test
+    fun `agenda lists the upcoming games after the hero and keeps the drafts the backend sent`() = runTest {
+        val games = listOf(
+            sampleGame(),
+            sampleGame().copy(id = "draft-1", status = GameStatus.Draft, startsAt = "2026-08-11T19:30:00-03:00"),
+            sampleGame().copy(
+                id = "game-2",
+                startsAt = "2026-08-06T19:30:00-03:00",
+                ownAttendance = AttendanceStatus.Confirmed,
+            ),
+        )
+        val viewModel = viewModel(gameGateway = FakeGameGateway(listResult = SaqzResult.Success(games)))
+
+        assertEquals("game-1", viewModel.state.value.nextGame?.gameId)
+        val agenda = viewModel.state.value.agenda
+        assertEquals(listOf("game-2", "draft-1"), agenda.map { it.gameId })
+        assertEquals(
+            GroupAgendaRowUi(
+                gameId = "game-2",
+                day = "6",
+                month = "AGO",
+                title = "Quinta · 19h30",
+                meta = "8 de 12 confirmados",
+                status = GroupAgendaStatus.Going,
+                statusLabel = "Você vai",
+                contentDescription = "Quinta, 06/08 às 19h30, Você vai",
+            ),
+            agenda.first(),
+        )
+        assertEquals(GroupAgendaStatus.Draft, agenda.last().status)
+    }
+
+    @Test
+    fun `without a hero every upcoming game stays in the agenda`() = runTest {
+        val draft = sampleGame().copy(id = "draft-1", status = GameStatus.Draft)
+        val viewModel = viewModel(gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(draft))))
+
+        assertNull(viewModel.state.value.nextGame)
+        assertEquals(listOf("draft-1"), viewModel.state.value.agenda.map { it.gameId })
+    }
+
+    @Test
+    fun `organizer waiting block carries entry requests monthly charges and the game to settle`() = runTest {
+        val games = listOf(
+            sampleGame().copy(id = "old", status = GameStatus.Completed, startsAt = "2026-07-21T19:30:00-03:00"),
+            sampleGame().copy(id = "done", status = GameStatus.Completed, startsAt = "2026-07-28T19:30:00-03:00"),
+        )
+        val viewModel = viewModel(
+            groupGateway = approvalGroupGateway(),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(games)),
+            organizerFinanceGateway = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(
+                    ChargeList(
+                        listOf(
+                            ownCharge("m1", month = "2026-08"),
+                            ownCharge("m2", month = "2026-08"),
+                            dayCharge("g1", "done"),
+                            dayCharge("g2", "done"),
+                            dayCharge("g3", "old"),
+                        ),
+                    ),
+                ),
+            ),
+            now = midAugust,
+            entryRequests = FakeGroupEntryRequestGateway(
+                listResult = SaqzResult.Success(listOf(entryRequest("Ana"), entryRequest("Bia"), entryRequest("Caio"))),
+            ),
+        )
+
+        val waiting = assertNotNull(viewModel.state.value.waiting)
+        assertEquals("3 pedidos para entrar", waiting.entryRequests?.title)
+        assertEquals("Ana, Bia e mais 1", waiting.entryRequests?.meta)
+        assertEquals(3, waiting.entryRequests?.count)
+        assertEquals("2 mensalidades a receber", waiting.monthly?.title)
+        assertEquals("R$ 140,00 · AGO", waiting.monthly?.meta)
+        assertEquals(
+            GroupSettleRowUi(
+                gameId = "done",
+                title = "Acertar o jogo de 28/07",
+                meta = "2 avulsos · R$ 50,00 a receber",
+                contentDescription = "Acertar o jogo de 28/07. 2 avulsos · R$ 50,00 a receber",
+            ),
+            waiting.settle,
+        )
+    }
+
+    @Test
+    fun `monthly row ignores pending charges from other months`() = runTest {
+        val viewModel = viewModel(
+            organizerFinanceGateway = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(
+                    ChargeList(listOf(ownCharge("julho", month = "2026-07", dueDate = "2026-07-10"))),
+                ),
+            ),
+            now = midAugust,
+        )
+
+        assertNull(viewModel.state.value.waiting)
+    }
+
+    @Test
+    fun `settle row steps aside while the onboarding guide reviews the same game`() = runTest {
+        val done = sampleGame().copy(id = "done", status = GameStatus.Completed, startsAt = "2026-07-28T19:30:00-03:00")
+        val viewModel = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(done))),
+            organizerFinanceGateway = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(ChargeList(listOf(dayCharge("g1", "done")))),
+            ),
+            now = midAugust,
+        )
+
+        assertEquals(GroupOnboarding.ReviewFinances("done"), viewModel.state.value.onboarding)
+        assertNull(viewModel.state.value.waiting)
+    }
+
+    @Test
+    fun `finance failure keeps only the entry requests and never breaks the screen`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = approvalGroupGateway(),
+            statementGateway = FakeFinanceStatementGateway(
+                result = SaqzResult.Failure(FinanceError.Data(DataError.Connectivity)),
+            ),
+            organizerFinanceGateway = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Failure(FinanceError.Data(DataError.Connectivity)),
+            ),
+            now = midAugust,
+            entryRequests = FakeGroupEntryRequestGateway(listResult = SaqzResult.Success(listOf(entryRequest("Ana")))),
+        )
+
+        assertFalse(viewModel.state.value.loadFailed)
+        assertNull(viewModel.state.value.cashbox?.summary)
+        val waiting = assertNotNull(viewModel.state.value.waiting)
+        assertEquals("Ana", waiting.entryRequests?.meta)
+        assertNull(waiting.monthly)
+        assertNull(waiting.settle)
+    }
+
+    @Test
+    fun `entry request failure degrades to the finance rows`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = approvalGroupGateway(),
+            organizerFinanceGateway = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(ChargeList(listOf(ownCharge("m1", month = "2026-08")))),
+            ),
+            now = midAugust,
+            entryRequests = FakeGroupEntryRequestGateway(
+                listResult = SaqzResult.Failure(EntryRequestError.DataFailure(DataError.Connectivity)),
+            ),
+        )
+
+        assertFalse(viewModel.state.value.loadFailed)
+        val waiting = assertNotNull(viewModel.state.value.waiting)
+        assertNull(waiting.entryRequests)
+        assertEquals(1, waiting.monthly?.count)
+    }
+
+    @Test
+    fun `entry requests are only fetched when the group requires approval`() = runTest {
+        val open = FakeGroupEntryRequestGateway()
+        viewModel(entryRequests = open)
+        assertEquals(0, open.listCalls)
+
+        val gated = FakeGroupEntryRequestGateway()
+        viewModel(groupGateway = approvalGroupGateway(), entryRequests = gated)
+        assertEquals(1, gated.listCalls)
+    }
+
+    @Test
+    fun `athlete never receives the waiting block nor asks for entry requests`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(listResult = SaqzResult.Success(listOf(entryRequest("Ana"))))
+        val viewModel = viewModel(
+            groupGateway = approvalGroupGateway(GroupRole.ATHLETE),
+            organizerFinanceGateway = FakeOrganizerFinanceGateway(
+                chargesResult = SaqzResult.Success(ChargeList(listOf(ownCharge("m1", month = "2026-08")))),
+            ),
+            now = midAugust,
+            entryRequests = entry,
+        )
+
+        assertFalse(viewModel.state.value.isAdmin)
+        assertNull(viewModel.state.value.waiting)
+        assertEquals(0, entry.listCalls)
+    }
+
+    @Test
+    fun `stale entry requests from a superseded load are discarded`() = runTest {
+        val stale = CompletableDeferred<SaqzResult<List<GroupEntryRequest>, EntryRequestError>>()
+        val entry = FakeGroupEntryRequestGateway(listResult = SaqzResult.Success(listOf(entryRequest("Ana"))))
+            .apply { listDeferred = stale }
+        val viewModel = viewModel(groupGateway = approvalGroupGateway(), entryRequests = entry)
+        assertNull(viewModel.state.value.waiting)
+
+        entry.listDeferred = null
+        viewModel.onIntent(GroupDetailsIntent.Retry)
+        assertEquals(1, viewModel.state.value.waiting?.entryRequests?.count)
+
+        stale.complete(SaqzResult.Success(listOf(entryRequest("Ana"), entryRequest("Bia"), entryRequest("Caio"))))
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.state.value.waiting?.entryRequests?.count)
+    }
+
+    @Test
+    fun `people block gets the roster count the first four members and the schedule summary`() = runTest {
+        val athletes = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(
+                listOf("Ana", "Bia", "Caio", "Duda", "Edu").mapIndexed { index, name ->
+                    sampleRosterEntry(userId = "member-$index").copy(displayName = name)
+                },
+            ),
+        )
+        val viewModel = viewModel(groupGateway = athleteGroupGateway(), athleteGateway = athletes)
+
+        assertEquals(5, viewModel.state.value.memberCount)
+        assertEquals(
+            listOf(
+                MemberPreviewUi("member-0", "Ana", ""),
+                MemberPreviewUi("member-1", "Bia", ""),
+                MemberPreviewUi("member-2", "Caio", ""),
+                MemberPreviewUi("member-3", "Duda", ""),
+            ),
+            viewModel.state.value.memberPreview,
+        )
+        assertEquals("Terça · 19h30", viewModel.state.value.scheduleSummary)
+        assertEquals(AthleteRosterFilter(), athletes.lastRosterFilter)
+    }
+
+    @Test
+    fun `athlete roster failure keeps the screen up with an empty people block`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = athleteGroupGateway(),
+            athleteGateway = FakeAthleteGateway(
+                rosterResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Connectivity)),
+            ),
+        )
+
+        assertFalse(viewModel.state.value.loadFailed)
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(0, viewModel.state.value.memberCount)
+        assertTrue(viewModel.state.value.memberPreview.isEmpty())
+    }
+
+    @Test
+    fun `agenda and settlement rows emit the existing game effects`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupDetailsIntent.OpenAgendaGame("game-2"))
+        assertEquals(GroupDetailsEffect.OpenGame(GROUP_ID, "game-2"), viewModel.effects.first())
+
+        viewModel.onIntent(GroupDetailsIntent.OpenSettlement("done"))
+        assertEquals(GroupDetailsEffect.OpenSettlement(GROUP_ID, "done"), viewModel.effects.first())
+    }
+
+    // 10/08 às 12h em São Paulo: competência 2026-08 sem ambiguidade de fuso.
+    private val midAugust = GroupNowPort { kotlin.time.Instant.parse("2026-08-10T15:00:00Z") }
+
+    private fun approvalGroupGateway(role: GroupRole = GroupRole.ADMIN) = FakeGroupGateway(
+        readResult = SaqzResult.Success(
+            sampleVersionedGroup(sampleGroup(role = role).copy(entryRequiresApproval = true)),
+        ),
+    )
+
+    private fun entryRequest(name: String) =
+        GroupEntryRequest(userId = name.lowercase(), displayName = name, requestedAt = "2026-08-01T12:00:00Z")
+
+    private fun dayCharge(id: String, gameId: String) =
+        ownCharge(id, kind = ChargeKind.Game).copy(gameId = gameId, amountCents = 2_500L)
+
     private fun waitlistedDetail(memberId: String, position: Long): AttendanceDetail = sampleAttendanceDetail().copy(
         ownAttendance = AttendanceEntry(memberId, AttendanceStatus.Waitlisted, position, version = 1),
     )
@@ -1435,6 +1712,7 @@ class GroupDetailsViewModelTest {
         now: GroupNowPort = GroupNowPort { kotlin.time.Instant.parse("2026-08-01T00:00:00Z") },
         departureGateway: GroupDepartureGateway = GroupDepartureGateway { SaqzResult.Success(Unit) },
         communications: br.com.saqz.groups.presentation.FakeCommunicationGateway = br.com.saqz.groups.presentation.FakeCommunicationGateway(),
+        entryRequests: FakeGroupEntryRequestGateway = FakeGroupEntryRequestGateway(),
     ) = GroupDetailsViewModel(
         GROUP_ID,
         groupGateway,
@@ -1447,6 +1725,7 @@ class GroupDetailsViewModelTest {
         now,
         departureGateway,
         communications,
+        entryRequests,
     )
 
     private fun athleteGroupGateway() = FakeGroupGateway(

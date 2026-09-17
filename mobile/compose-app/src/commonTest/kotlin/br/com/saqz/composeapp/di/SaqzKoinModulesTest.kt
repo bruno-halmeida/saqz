@@ -90,6 +90,7 @@ import br.com.saqz.groups.port.DefaultGroupNowPort
 import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.data.di.groupsDataModule
+import br.com.saqz.groups.data.di.inviteManagementDataModule
 import br.com.saqz.groups.data.finance.KtorFinanceOverviewGateway
 import br.com.saqz.groups.data.finance.KtorFinanceStatementGateway
 import br.com.saqz.groups.domain.finance.FinanceOverviewGateway
@@ -340,6 +341,8 @@ class SaqzKoinModulesTest {
                 composePresentationModule,
                 receivablesModule,
                 groupsDataModule(),
+                // O detalhe do grupo lista os pedidos de entrada: o binding mora no módulo do convite.
+                inviteManagementDataModule(),
                 groupsPresentationModule(),
                 // Quem provê a porta no app real é o groupCreationEntitlementModule, que
                 // depende do gateway de assinaturas — fora deste grafo de fixture.

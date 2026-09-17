@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation
 
+import br.com.saqz.domain.EmptyResult
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.Athlete
@@ -65,6 +66,9 @@ import br.com.saqz.groups.domain.group.UpdateGroupProfileCommand
 import br.com.saqz.groups.domain.group.UpdateGroupSettingsCommand
 import br.com.saqz.groups.domain.group.VersionedGroup
 import br.com.saqz.groups.domain.membership.ChangeMembershipRoleCommand
+import br.com.saqz.groups.domain.membership.EntryRequestError
+import br.com.saqz.groups.domain.membership.GroupEntryRequest
+import br.com.saqz.groups.domain.membership.GroupEntryRequestGateway
 import br.com.saqz.groups.domain.membership.GroupInviteUrl
 import br.com.saqz.groups.domain.membership.GroupInviteMetadata
 import br.com.saqz.groups.domain.membership.GroupMembership
@@ -399,6 +403,24 @@ class FakeGroupMembershipGateway(
     override suspend fun expireInvite(groupId: GroupId): SaqzResult<Unit, GroupMembershipError> =
         error("not used in this screen")
 
+}
+
+class FakeGroupEntryRequestGateway(
+    var listResult: SaqzResult<List<GroupEntryRequest>, EntryRequestError> = SaqzResult.Success(emptyList()),
+) : GroupEntryRequestGateway {
+    var listCalls = 0
+    var listDeferred: CompletableDeferred<SaqzResult<List<GroupEntryRequest>, EntryRequestError>>? = null
+
+    override suspend fun list(groupId: GroupId): SaqzResult<List<GroupEntryRequest>, EntryRequestError> {
+        listCalls++
+        return listDeferred?.await() ?: listResult
+    }
+
+    override suspend fun approve(groupId: GroupId, userId: String): SaqzResult<GroupMembership, EntryRequestError> =
+        error("not used in this screen")
+
+    override suspend fun reject(groupId: GroupId, userId: String): EmptyResult<EntryRequestError> =
+        error("not used in this screen")
 }
 
 class FakeGroupSystemTimeZonePort : GroupSystemTimeZonePort {

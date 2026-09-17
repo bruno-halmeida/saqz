@@ -93,6 +93,7 @@ class GroupCashboxRootTest {
         val detailsViewModel = GroupDetailsViewModel(
             departureGateway = br.com.saqz.groups.domain.membership.GroupDepartureGateway { SaqzResult.Success(Unit) },
             communications = br.com.saqz.groups.presentation.FakeCommunicationGateway(),
+            entryRequests = br.com.saqz.groups.presentation.FakeGroupEntryRequestGateway(),
             groupId = "group-1",
             groupGateway = FakeGroupGateway(),
             gameGateway = FakeGameGateway(),
@@ -122,6 +123,17 @@ class GroupCashboxRootTest {
                             onBack = { showingCashbox = false },
                             onMutationSuccess = {
                                 detailsGateway.chargesResult = SaqzResult.Success(ChargeList(emptyList()))
+                                // A frase do caixa do detalhe agora é só o saldo: é ele que prova a recarga.
+                                statementGateway.result = SaqzResult.Success(
+                                    FinanceStatementPage(
+                                        month = "2026-08",
+                                        items = emptyList(),
+                                        summary = FinanceStatementSummary(0L, 0L, 0L, 7_000L),
+                                        limit = 20,
+                                        offset = 0,
+                                        hasMore = false,
+                                    ),
+                                )
                                 refreshVersion++
                             },
                             onOpenStatement = {},
@@ -157,7 +169,7 @@ class GroupCashboxRootTest {
         onNodeWithContentDescription("Voltar").performClick()
         waitForIdle()
 
-        onNodeWithText("Saldo R$\u00A00,00 · 0 mensalidades em aberto").assertExists()
+        onNodeWithText("Saldo R$\u00A070,00").assertExists()
         assertEquals(1, refreshVersion)
     }
 
