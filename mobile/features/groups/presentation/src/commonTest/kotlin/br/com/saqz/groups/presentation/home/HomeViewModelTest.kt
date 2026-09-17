@@ -34,6 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -66,17 +67,15 @@ class HomeViewModelTest {
         assertFalse(viewModel.state.value.isLoading)
         assertEquals("Bruna", viewModel.state.value.displayName)
         assertEquals(home, viewModel.state.value.home)
-        assertEquals("Terça", viewModel.state.value.member?.subtitle?.substringBefore(" tem"))
         assertEquals("9 de 12 confirmados", viewModel.state.value.member?.nextGame?.confirmedSummary)
         assertTrue(viewModel.state.value.member?.nextGame?.deadline?.contains("hoje") == true)
         assertFalse(viewModel.state.value.loadFailed)
     }
 
     @Test
-    fun `home without next game formats the empty week subtitle`() = runTest {
+    fun `home without next game keeps the member block without a hero`() = runTest {
         val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome())))
 
-        assertEquals("Semana sem jogo por aqui.", viewModel.state.value.member?.subtitle)
         assertNull(viewModel.state.value.member?.nextGame)
     }
 
@@ -193,7 +192,54 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `waitlisted mensalista formats the reserva subtitle`() = runTest {
+    fun `formats the hero display and meta in the game's timezone`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        nextGame = sampleNextGame(
+                            startsAt = "2026-08-12T22:30:00Z",
+                            confirmationDeadline = "2026-08-12T21:00:00Z",
+                            zoneId = "America/Sao_Paulo",
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("Quarta, 19h30", viewModel.state.value.member?.nextGame?.display)
+        assertEquals("12 de agosto · CERET — Quadra 2 · Tatuapé", viewModel.state.value.member?.nextGame?.meta)
+    }
+
+    @Test
+    fun `closed confirmation deadline formats the closed labels for athlete and admin`() = runTest {
+        // `now` do teste é 2026-07-28T12:00Z; o prazo abaixo já passou.
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(nextGame = sampleNextGame(confirmationDeadline = "2026-07-27T18:00:00-03:00")),
+                ),
+            ),
+        )
+
+        val game = viewModel.state.value.member?.nextGame
+        assertEquals(false, game?.confirmationOpen)
+        assertEquals("Confirmações encerradas.", game?.deadline)
+        assertEquals("Encerrou 27/07 · 18h00", game?.adminHeroDeadlineLabel)
+    }
+
+    @Test
+    fun `open confirmation deadline keeps the open labels`() = runTest {
+        val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = sampleNextGame()))))
+
+        val game = viewModel.state.value.member?.nextGame
+        assertEquals(true, game?.confirmationOpen)
+        assertEquals("As confirmações encerram hoje às 18h00.", game?.deadline)
+        assertEquals("Encerra 28/07 · 18h00", game?.adminHeroDeadlineLabel)
+    }
+
+    @Test
+    fun `waitlisted mensalista derives the reserva kind`() = runTest {
         val viewModel = viewModel(
             homeGateway = SequenceHomeGateway(
                 SaqzResult.Success(
@@ -202,15 +248,11 @@ class HomeViewModelTest {
             ),
         )
 
-        assertEquals(
-            "Você está na lista de espera de Vôlei do CERET.",
-            viewModel.state.value.member?.subtitle,
-        )
         assertEquals(HomeWaitlistKind.Reserva, viewModel.state.value.member?.nextGame?.waitlistKind)
     }
 
     @Test
-    fun `waitlisted avulso with mensalista priority formats the avulso list subtitle`() = runTest {
+    fun `waitlisted avulso with mensalista priority derives the avulso list kind and the self row`() = runTest {
         val viewModel = viewModel(
             homeGateway = SequenceHomeGateway(
                 SaqzResult.Success(
@@ -231,10 +273,6 @@ class HomeViewModelTest {
             ),
         )
 
-        assertEquals(
-            "Você está na lista de espera de Vôlei do CERET.",
-            viewModel.state.value.member?.subtitle,
-        )
         assertEquals(HomeWaitlistKind.AvulsoList, viewModel.state.value.member?.nextGame?.waitlistKind)
         assertEquals(2, viewModel.state.value.member?.nextGame?.waitlistedRoster?.size)
         assertTrue(viewModel.state.value.member?.nextGame?.waitlistedRoster?.get(1)?.isSelf == true)
@@ -650,7 +688,7 @@ class HomeViewModelTest {
         assertTrue(charges?.overdue == true)
         val monthly = charges?.groups?.first()
         assertEquals("Vôlei do CERET", monthly?.groupName)
-        assertEquals("Mensalidade · Julho", monthly?.competence)
+        assertEquals("Mensalidade de julho", monthly?.competence)
         assertEquals("R$ 80,00", monthly?.amountLabel)
         assertEquals("Venceu em 05/08", monthly?.dueLabel)
         assertEquals("2 cobranças em aberto", monthly?.countLabel)
@@ -660,6 +698,7 @@ class HomeViewModelTest {
         assertEquals("Vence em 12/08", game?.dueLabel)
         assertNull(game?.countLabel)
         assertNull(game?.pix)
+        assertEquals(listOf("Vôlei do CERET"), charges?.overdueGroups?.map { it.groupName })
     }
 
     @Test
@@ -681,6 +720,7 @@ class HomeViewModelTest {
         assertEquals("Você tem R$ 80,00 em aberto", viewModel.state.value.ownCharges?.bannerText)
         assertFalse(viewModel.state.value.ownCharges?.overdue == true)
         assertEquals("Vence em 05/08", viewModel.state.value.ownCharges?.groups?.single()?.dueLabel)
+        assertTrue(viewModel.state.value.ownCharges?.overdueGroups?.isEmpty() == true)
     }
 
     @Test
@@ -785,6 +825,58 @@ class HomeViewModelTest {
 
         // O grupo sem chave não emitiu nada: o primeiro efeito é o do grupo que tem Pix.
         assertEquals(HomeEffect.CopyPix("ceret@volei.com.br"), viewModel.effects.first())
+    }
+
+    @Test
+    fun `copy pix marks the group as copied and toasts then clears after the dwell`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges()))),
+        )
+
+        viewModel.onIntent(HomeIntent.CopyPix("group-1"))
+
+        assertEquals("group-1", viewModel.state.value.pixCopiedGroupId)
+        assertEquals(HomeToast.PixCopied, viewModel.state.value.toast)
+        advanceTimeBy(2_001)
+        assertNull(viewModel.state.value.pixCopiedGroupId)
+    }
+
+    @Test
+    fun `second copy within the dwell keeps the copied state until its own dwell ends`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges()))),
+        )
+
+        viewModel.onIntent(HomeIntent.CopyPix("group-1"))
+        advanceTimeBy(1_500)
+        viewModel.onIntent(HomeIntent.CopyPix("group-1"))
+        advanceTimeBy(1_000)
+
+        // O delay do primeiro toque já venceu; o estado é do segundo e continua de pé.
+        assertEquals("group-1", viewModel.state.value.pixCopiedGroupId)
+        advanceTimeBy(1_001)
+        assertNull(viewModel.state.value.pixCopiedGroupId)
+    }
+
+    @Test
+    fun `copy pix on a group without key leaves the copied state untouched`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges()))),
+        )
+
+        viewModel.onIntent(HomeIntent.CopyPix("group-2"))
+
+        assertNull(viewModel.state.value.pixCopiedGroupId)
+        assertNull(viewModel.state.value.toast)
+    }
+
+    @Test
+    fun `open notifications intent emits the navigation effect`() = runTest {
+        val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome())))
+
+        viewModel.onIntent(HomeIntent.OpenNotifications)
+
+        assertEquals(HomeEffect.OpenNotifications, viewModel.effects.first())
     }
 
     private fun viewModel(

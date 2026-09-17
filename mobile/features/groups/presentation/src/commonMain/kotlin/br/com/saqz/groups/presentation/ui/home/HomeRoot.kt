@@ -23,6 +23,7 @@ fun HomeRoot(
     onOpenGameSettlement: (String, String) -> Unit = { _, _ -> },
     onOpenGameEditor: (String) -> Unit = {},
     onOpenInvite: (String) -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -30,6 +31,7 @@ fun HomeRoot(
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             HomeEffect.OpenGroups -> onOpenGroups()
+            HomeEffect.OpenNotifications -> onOpenNotifications()
             is HomeEffect.OpenGroup -> onOpenGroup(effect.groupId)
             is HomeEffect.OpenGame -> onOpenGame(effect.groupId, effect.gameId)
             is HomeEffect.OpenMembers -> onOpenMembers(effect.groupId)

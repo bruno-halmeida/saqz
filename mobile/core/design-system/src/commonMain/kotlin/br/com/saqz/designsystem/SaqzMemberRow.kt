@@ -67,6 +67,7 @@ fun SaqzAvatar(
     size: Dp = 40.dp,
     background: Color = SaqzTheme.colors.surfaceSoft,
     initialsColor: Color = SaqzTheme.colors.textPrimary,
+    ring: Color = SaqzTheme.colors.border,
     photo: (@Composable () -> Unit)? = null,
 ) {
     val colors = SaqzTheme.colors
@@ -75,7 +76,7 @@ fun SaqzAvatar(
             .size(size)
             .clip(CircleShape)
             .background(background, CircleShape)
-            .border(1.dp, colors.border, CircleShape),
+            .border(1.dp, ring, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         if (photo != null) {
@@ -96,6 +97,9 @@ fun SaqzAvatar(
  * 10k — pilha sobreposta. Acima de [max] avatares, o excedente vira "+N" em azul
  * sólido: é ele que diz "tem mais gente aqui", então é o círculo mais forte da
  * pilha, não o mais apagado.
+ *
+ * Sobre o hero azul (VUL-217) o "+N" em primary some: a Home passa ring = primary,
+ * overflowContainer = accent e overflowContent = textPrimary.
  */
 @Composable
 fun SaqzAvatarStack(
@@ -103,6 +107,9 @@ fun SaqzAvatarStack(
     modifier: Modifier = Modifier,
     size: Dp = 30.dp,
     max: Int = 3,
+    ring: Color = SaqzTheme.colors.border,
+    overflowContainer: Color = SaqzTheme.colors.primary,
+    overflowContent: Color = SaqzTheme.colors.onPrimary,
 ) {
     val colors = SaqzTheme.colors
     val shown = names.take(max)
@@ -111,7 +118,7 @@ fun SaqzAvatarStack(
         // Sem zIndex: a ordem de pintura é a do Row, que é a do DOM no export —
         // cada círculo cobre a borda esquerda do anterior e o "+N" fica inteiro.
         shown.forEach { name ->
-            SaqzAvatar(name = name, size = size, background = colors.surface)
+            SaqzAvatar(name = name, size = size, background = colors.surface, ring = ring)
         }
         if (overflow > 0) {
             Box(
@@ -119,7 +126,7 @@ fun SaqzAvatarStack(
                     .size(size)
                     .clip(CircleShape)
                     // Sem anel: no export só os círculos brancos têm o inset de 1px.
-                    .background(colors.primary, CircleShape),
+                    .background(overflowContainer, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -127,7 +134,7 @@ fun SaqzAvatarStack(
                     fontSize = (size.value * AvatarTextRatio).sp,
                     lineHeight = (size.value * AvatarTextRatio).sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = colors.onPrimary,
+                    color = overflowContent,
                 )
             }
         }

@@ -22,6 +22,8 @@ data class HomeState(
      * daqui em qualquer aba, inclusive quando a Home nem chegou a ser montada.
      */
     val ownCharges: HomeOwnChargesUi? = null,
+    /** Grupo cuja chave Pix acabou de ser copiada; a seção troca o botão por "Chave copiada" por 2 s (VUL-220). */
+    val pixCopiedGroupId: String? = null,
 )
 
 /**
@@ -35,7 +37,11 @@ data class HomeOwnChargesUi(
     val bannerContentDescription: String,
     val overdue: Boolean,
     val groups: List<HomeOwnChargeGroupUi>,
-)
+) {
+    /** Só o vencido entra na Início (VUL-220); a faixa continua lendo [groups] inteiro. */
+    val overdueGroups: List<HomeOwnChargeGroupUi>
+        get() = groups.filter { it.overdue }
+}
 
 @Immutable
 data class HomeOwnChargeGroupUi(
@@ -54,12 +60,11 @@ data class HomeOwnChargeGroupUi(
 
 @Immutable
 data class HomeMemberUi(
-    val subtitle: String,
     val nextGame: HomeNextGameUi?,
-    val lastCompletedGame: HomeLastCompletedGameUi?,
     val groups: List<HomeGroupUi>,
     val admin: HomeAdminReadModelUi? = null,
     val adminSubtitle: String? = null,
+    val upcomingGames: List<HomeUpcomingGameUi> = emptyList(),
 )
 
 /**
@@ -106,14 +111,10 @@ data class HomeNextGameUi(
     val declinedCount: Int = 0,
     val pendingCount: Int = 0,
     val adminHeroDeadlineLabel: String = "",
-)
-
-@Immutable
-data class HomeLastCompletedGameUi(
-    val day: String,
-    val month: String,
-    val title: String,
-    val summary: String,
+    /** "Terça, 19h30" — título do hero (VUL-218). */
+    val display: String = "",
+    /** "28 de julho · CERET — Quadra 2 · Tatuapé" — linha abaixo do título (VUL-218). */
+    val meta: String = "",
 )
 
 @Immutable
@@ -124,10 +125,32 @@ data class HomeGroupUi(
     val isAdmin: Boolean = false,
 )
 
+enum class HomeUpcomingStatus { Pending, Going, Out, Waitlisted }
+
+/** Uma linha de "Próximos jogos" (VUL-221): tudo já formatado no fuso do jogo. */
+@Immutable
+data class HomeUpcomingGameUi(
+    val groupId: String,
+    val gameId: String,
+    /** "30" */
+    val day: String,
+    /** "JUL" */
+    val month: String,
+    /** "Vôlei Pacaembu · 20h00" */
+    val title: String,
+    /** "Quinta · 6 confirmados" */
+    val meta: String,
+    val status: HomeUpcomingStatus,
+    /** Rótulo do chip: "Sem resposta", "Você vai", "Não vai", "Na espera". */
+    val statusLabel: String,
+    val contentDescription: String,
+)
+
 enum class HomeToast {
     Confirmed,
     Declined,
     Waitlisted,
+    PixCopied,
 }
 
 @Immutable
@@ -177,6 +200,7 @@ sealed interface HomeIntent {
     data class Respond(val intent: br.com.saqz.groups.domain.attendance.AttendanceIntent) : HomeIntent
     data object DismissToast : HomeIntent
     data object OpenGroups : HomeIntent
+    data object OpenNotifications : HomeIntent
     data class OpenGroup(val groupId: String) : HomeIntent
     data class OpenGame(val groupId: String, val gameId: String) : HomeIntent
     data class OpenMembers(val groupId: String) : HomeIntent
@@ -189,6 +213,7 @@ sealed interface HomeIntent {
 
 sealed interface HomeEffect {
     data object OpenGroups : HomeEffect
+    data object OpenNotifications : HomeEffect
     data class OpenGroup(val groupId: String) : HomeEffect
     data class OpenGame(val groupId: String, val gameId: String) : HomeEffect
     data class OpenMembers(val groupId: String) : HomeEffect

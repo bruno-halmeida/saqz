@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.home
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +19,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,17 +32,18 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzAvatarStack
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
-import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChipTone
+import br.com.saqz.designsystem.SaqzHeroCard
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzEmptyState
-import br.com.saqz.designsystem.SaqzGameSummaryCard
 import br.com.saqz.designsystem.SaqzIcon
+import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSkeleton
@@ -45,18 +51,21 @@ import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzToast
 import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.saqzInitials
+import br.com.saqz.designsystem.resources.Res as DsRes
+import br.com.saqz.designsystem.resources.saqz_mark
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.home.HomeGroupUi
 import br.com.saqz.groups.presentation.home.HomeIntent
-import br.com.saqz.groups.presentation.home.HomeLastCompletedGameUi
 import br.com.saqz.groups.presentation.home.HomeMemberUi
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
 import br.com.saqz.groups.presentation.home.HomeState
 import br.com.saqz.groups.presentation.home.HomeToast
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.home_attendance_cancel
+import br.com.saqz.groups.resources.home_attendance_change
 import br.com.saqz.groups.resources.home_error_message
 import br.com.saqz.groups.resources.home_error_title
 import br.com.saqz.groups.resources.home_game_next
@@ -64,20 +73,22 @@ import br.com.saqz.groups.resources.home_admin_group_chip
 import br.com.saqz.groups.resources.home_groups_title
 import br.com.saqz.groups.resources.home_groups_view_all
 import br.com.saqz.groups.resources.home_greeting
-import br.com.saqz.groups.resources.home_last_game_section
 import br.com.saqz.groups.resources.home_no_game_action
 import br.com.saqz.groups.resources.home_no_game_description
-import br.com.saqz.groups.resources.home_no_game_title
+import br.com.saqz.groups.resources.home_no_game_hero_title
+import br.com.saqz.groups.resources.home_notifications_cd
 import br.com.saqz.groups.resources.home_response_error
 import br.com.saqz.groups.resources.home_response_no
 import br.com.saqz.groups.resources.home_response_yes
 import br.com.saqz.groups.resources.home_retry
+import br.com.saqz.groups.resources.home_spots_left
 import br.com.saqz.groups.resources.home_status_confirmed
 import br.com.saqz.groups.resources.home_status_declined
-import br.com.saqz.groups.resources.home_status_pending
 import br.com.saqz.groups.resources.home_toast_confirmed
 import br.com.saqz.groups.resources.home_toast_declined
+import br.com.saqz.groups.resources.home_toast_pix_copied
 import br.com.saqz.groups.resources.home_toast_waitlisted
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object HomeTags {
@@ -87,10 +98,12 @@ internal object HomeTags {
     const val Retry = "home-retry"
     const val NextGame = "home-next-game"
     const val Empty = "home-empty"
-    const val LastGame = "home-last-game"
     const val Groups = "home-groups"
+    const val Notifications = "home-notifications"
     const val ResponseYes = "home-response-yes"
     const val ResponseNo = "home-response-no"
+    const val ResponseChange = "home-response-change"
+    const val ResponseCancel = "home-response-cancel"
     const val ResponseError = "home-response-error"
     const val Toast = "home-toast"
     const val OwnCharges = "home-own-charges"
@@ -99,8 +112,6 @@ internal object HomeTags {
     fun group(id: String) = "home-group-$id"
 
     fun ownCharge(id: String) = "home-own-charge-$id"
-
-    fun ownChargePix(id: String) = "home-own-charge-pix-$id"
 
     fun ownChargePixCopy(id: String) = "home-own-charge-pix-copy-$id"
 }
@@ -124,6 +135,8 @@ fun HomeScreen(
 @Composable
 private fun HomeSkeleton(modifier: Modifier = Modifier) {
     val metrics = SaqzTheme.metrics
+    // Espelha o layout real (greeting, hero com as duas pílulas do RSVP, lista de
+    // grupos): quanto mais o skeleton parece o conteúdo, menor o salto na troca.
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -132,10 +145,22 @@ private fun HomeSkeleton(modifier: Modifier = Modifier) {
             .testTag(HomeTags.Loading),
         verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        SaqzSkeleton(width = metrics.avatarSize, height = metrics.avatarSize, circle = true)
         SaqzSkeleton(width = metrics.buttonHeight * 4, height = metrics.buttonHeight / 2)
-        SaqzSkeleton(height = metrics.avatarSize * 2)
-        SaqzSkeleton(height = metrics.avatarSize * 2)
+        SaqzSkeleton(width = metrics.buttonHeight * 6, height = metrics.buttonHeight / 3)
+        SaqzCard {
+            SaqzSkeleton(width = metrics.buttonHeight * 5, height = metrics.buttonHeight / 2)
+            SaqzSkeleton(height = metrics.buttonHeight / 3)
+            Row(horizontalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+                SaqzSkeleton(height = metrics.buttonHeight, modifier = Modifier.weight(1f))
+                SaqzSkeleton(height = metrics.buttonHeight, modifier = Modifier.weight(1f))
+            }
+            SaqzSkeleton(height = metrics.avatarSize)
+        }
+        SaqzSkeleton(width = metrics.buttonHeight * 3, height = metrics.buttonHeight / 3)
+        SaqzCard {
+            SaqzSkeleton(height = metrics.avatarSize)
+            SaqzSkeleton(height = metrics.avatarSize)
+        }
     }
 }
 
@@ -182,7 +207,7 @@ private fun HomeContent(
                 .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
             verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
         ) {
-            HomeHeader(state.displayName, member?.adminSubtitle ?: member?.subtitle)
+            HomeHeader(displayName = state.displayName, subtitle = member?.adminSubtitle, onIntent = onIntent)
             if (member == null) {
                 Text(
                     text = stringResource(Res.string.home_error_message),
@@ -208,15 +233,22 @@ private fun HomeContent(
                     }
                     // Fora do if: quem está na reserva vê a fila, admin ou não.
                     HomeWaitlistExtras(game = it)
-                } ?: HomeNoGame(onIntent)
-                // VUL-202: abaixo do hero e acima de "Seus grupos". Antes do bloco do admin
-                // de propósito — o que a pessoa deve vem antes do que ela administra.
-                state.ownCharges?.let { HomeOwnChargesSection(ownCharges = it, onIntent = onIntent) }
-                member.lastCompletedGame?.let { HomeLastGame(it) }
+                } ?: member.admin?.let { admin -> HomeAdminNoGame(admin = admin, onIntent = onIntent) } ?: HomeNoGame(onIntent)
+                // Dívida vencida é tão pessoal quanto o RSVP: vem logo abaixo do hero (VUL-220).
+                state.ownCharges?.takeIf { it.overdueGroups.isNotEmpty() }?.let {
+                    HomeOwnChargesSection(ownCharges = it, pixCopiedGroupId = state.pixCopiedGroupId, onIntent = onIntent)
+                }
+                // Para o admin, o que o grupo espera dele é tão pessoal quanto o que ele
+                // deve — "Esperando você" sobe para logo abaixo do hero, antes das
+                // seções individuais (VUL-202) e do histórico.
                 member.admin?.let { admin ->
                     HomeAdminWaitingSection(admin = admin, onIntent = onIntent)
-                    HomeAdminShortcuts(admin = admin, nextGame = member.nextGame, onIntent = onIntent)
+                    // Sem jogo marcado os dois verbos já estão no hero (HomeAdminNoGame).
+                    if (member.nextGame != null) {
+                        HomeAdminShortcuts(admin = admin, nextGame = member.nextGame, onIntent = onIntent)
+                    }
                 }
+                HomeUpcomingSection(games = member.upcomingGames, onIntent = onIntent)
                 HomeGroups(member.groups, onIntent)
             }
         }
@@ -235,6 +267,7 @@ private fun HomeContent(
                             HomeToast.Confirmed -> Res.string.home_toast_confirmed
                             HomeToast.Declined -> Res.string.home_toast_declined
                             HomeToast.Waitlisted -> Res.string.home_toast_waitlisted
+                            HomeToast.PixCopied -> Res.string.home_toast_pix_copied
                         },
                     ),
                 )
@@ -243,26 +276,61 @@ private fun HomeContent(
     }
 }
 
+/**
+ * Marca, saudação e sino (VUL-219). O sino abre Notificações — hoje só se chega lá pelo
+ * Perfil. Sem ponto de não lidas: não existe contagem no agregado. O subtítulo é só o do
+ * gestor ("N grupos · M coisas esperando você"); o do atleta saiu porque repetia o hero.
+ */
 @Composable
-private fun HomeHeader(displayName: String?, subtitle: String?) {
+private fun HomeHeader(
+    displayName: String?,
+    subtitle: String?,
+    onIntent: (HomeIntent) -> Unit,
+) {
     val colors = SaqzTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
-        if (displayName != null) {
-            Text(
-                text = stringResource(Res.string.home_greeting, displayName),
-                style = SaqzTheme.typography.title.copy(fontWeight = FontWeight(800)),
-                color = colors.textPrimary,
+    val metrics = SaqzTheme.metrics
+    Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(HeaderMarkGap),
+        ) {
+            Image(
+                painter = painterResource(DsRes.drawable.saqz_mark),
+                contentDescription = null,
+                modifier = Modifier.size(HeaderMarkSize),
             )
+            if (displayName != null) {
+                Text(
+                    text = stringResource(Res.string.home_greeting, displayName),
+                    style = SaqzTheme.typography.title.copy(fontWeight = FontWeight(800)),
+                    color = colors.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                Box(modifier = Modifier.weight(1f))
+            }
+            SaqzIconButton(
+                onClick = { onIntent(HomeIntent.OpenNotifications) },
+                contentDescription = stringResource(Res.string.home_notifications_cd),
+                modifier = Modifier.testTag(HomeTags.Notifications),
+            ) {
+                SaqzIcon(SaqzIcons.Bell)
+            }
         }
         if (subtitle != null) {
             Text(
                 text = subtitle,
                 style = SaqzTheme.typography.support,
                 color = colors.textSecondary,
+                modifier = Modifier.padding(start = HeaderMarkSize + HeaderMarkGap),
             )
         }
     }
 }
+
+private val HeaderMarkSize = 30.dp
+private val HeaderMarkGap = 10.dp
 
 @Composable
 private fun HomeHero(
@@ -273,44 +341,85 @@ private fun HomeHero(
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    SaqzGameSummaryCard(
-        eyebrow = stringResource(Res.string.home_game_next),
-        title = game.dateTime,
-        trailingEyebrow = game.groupName,
-        tone = SaqzCardTone.Soft,
-        cornerRadius = metrics.blockRadius,
+    SaqzHeroCard(
+        kicker = stringResource(Res.string.home_game_next),
+        title = game.display,
+        meta = game.meta,
+        trailing = { SaqzStatusChip(text = game.groupName, tone = SaqzChipTone.Inverse) },
         modifier = Modifier.testTag(HomeTags.NextGame),
     ) {
-        Text(
-            text = game.local,
-            style = SaqzTheme.typography.support,
-            color = colors.textSecondary,
-        )
+        HomeDeadlineLine(text = game.deadline, open = game.confirmationOpen)
         HomeAttendanceControls(
             game = game,
             responding = responding,
             responseFailed = responseFailed,
             onIntent = onIntent,
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
-        ) {
-            SaqzAvatarStack(names = game.rosterNames)
-            Text(
-                text = game.confirmedSummary,
-                style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.textSecondary,
-            )
+        // Em espera, as seções abaixo do hero já mostram o roster: a linha some.
+        if (game.ownAttendance != AttendanceStatus.Waitlisted) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
+            ) {
+                SaqzAvatarStack(
+                    names = game.rosterNames,
+                    ring = colors.primary,
+                    overflowContainer = colors.accent,
+                    overflowContent = colors.textPrimary,
+                )
+                Text(
+                    text = game.confirmedSummary,
+                    style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.onPrimary.copy(alpha = HeroSummaryAlpha),
+                    modifier = Modifier.weight(1f),
+                )
+                val spotsLeft = game.capacity - game.confirmedCount
+                if (spotsLeft in 1..SpotsLeftMax) {
+                    SaqzStatusChip(
+                        text = stringResource(Res.string.home_spots_left, spotsLeft),
+                        tone = SaqzChipTone.Inverse,
+                        dot = true,
+                    )
+                }
+            }
         }
+    }
+}
+
+/** Linha do prazo do RSVP: relógio + texto; com o prazo encerrado fica mais apagada. */
+@Composable
+internal fun HomeDeadlineLine(text: String, open: Boolean) {
+    val color = SaqzTheme.colors.onPrimary.copy(alpha = if (open) HeroTextAlpha else HeroMutedAlpha)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(HeroIconGap),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SaqzIcon(SaqzIcons.Clock, tint = color, size = HeroLineIconSize)
         Text(
-            text = game.deadline,
-            style = SaqzTheme.typography.caption,
-            color = colors.textSecondary,
+            text = text,
+            style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+            color = color,
         )
     }
 }
+
+/** Escassez que muda comportamento: abaixo disso o "9 de 12" vira "restam N". */
+private const val SpotsLeftMax = 3
+
+// Opacidades do branco sobre o azul do hero (VUL-218). Só `onPrimary` com alfa: não há
+// token de branco translúcido no contrato, e derivar do sólido é o padrão dos chips.
+private const val HeroTextAlpha = 0.9f
+private const val HeroMutedAlpha = 0.7f
+private const val HeroSummaryAlpha = 0.88f
+private const val HeroPanelAlpha = 0.12f
+private const val HeroDotMutedAlpha = 0.45f
+internal const val HeroOutlineAlpha = 0.45f
+private val HeroIconGap = 6.dp
+private val HeroLineIconSize = 14.dp
+private val HeroInlineIconSize = 16.dp
+private val HeroCheckSize = 18.dp
+private val HeroStatusDot = 10.dp
 
 /**
  * Seletor de presença do hero. Vive fora do `HomeHero` porque o hero do admin
@@ -325,7 +434,6 @@ internal fun ColumnScope.HomeAttendanceControls(
     onIntent: (HomeIntent) -> Unit,
 ) {
     val colors = SaqzTheme.colors
-    val metrics = SaqzTheme.metrics
     when (game.ownAttendance) {
         AttendanceStatus.Waitlisted -> {
             val kind = game.waitlistKind ?: HomeWaitlistKind.Reserva
@@ -340,97 +448,206 @@ internal fun ColumnScope.HomeAttendanceControls(
             )
         }
         else -> {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
-            ) {
-                HomeResponseButton(
-                    label = stringResource(Res.string.home_response_yes),
-                    danger = false,
-                    selected = game.ownAttendance == AttendanceStatus.Confirmed,
-                    loading = responding && game.ownAttendance == AttendanceStatus.Confirmed,
-                    enabled = game.confirmationOpen && !responding,
-                    modifier = Modifier.weight(1f).testTag(HomeTags.ResponseYes),
-                    onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Confirm)) },
+            // Pendente é o momento do toque: botões grandes, pergunta aberta.
+            // Depois de respondido, os botões somem — dois botões habilitados num jogo
+            // já confirmado pareciam uma pergunta sem resposta e confundiam o atleta.
+            val answered = game.ownAttendance
+            if (answered == null) {
+                HomeResponseRow(
+                    ownAttendance = answered,
+                    confirmationOpen = game.confirmationOpen,
+                    responding = responding,
+                    size = SaqzButtonSize.Md,
+                    onIntent = onIntent,
                 )
-                HomeResponseButton(
-                    label = stringResource(Res.string.home_response_no),
-                    danger = true,
-                    selected = game.ownAttendance == AttendanceStatus.Declined,
-                    loading = responding && game.ownAttendance == AttendanceStatus.Declined,
-                    enabled = game.confirmationOpen && !responding,
-                    modifier = Modifier.weight(1f).testTag(HomeTags.ResponseNo),
-                    onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Decline)) },
+            } else {
+                HomeAnsweredStatus(
+                    status = answered,
+                    responding = responding,
+                    changeEnabled = game.confirmationOpen,
+                    onIntent = onIntent,
                 )
             }
-            HomeStatus(game.ownAttendance)
         }
     }
     if (responseFailed) {
-        Text(
-            text = stringResource(Res.string.home_response_error),
-            style = SaqzTheme.typography.support,
-            color = colors.errorForeground,
+        // Não há token de erro legível sobre azul: o aviso é branco com o ícone de alerta.
+        val color = colors.onPrimary.copy(alpha = HeroTextAlpha)
+        Row(
             modifier = Modifier.testTag(HomeTags.ResponseError),
+            horizontalArrangement = Arrangement.spacedBy(HeroIconGap),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SaqzIcon(SaqzIcons.CircleAlert, tint = color, size = HeroInlineIconSize)
+            Text(
+                text = stringResource(Res.string.home_response_error),
+                style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.Medium),
+                color = color,
+            )
+        }
+    }
+}
+
+/**
+ * "Vou" é sempre o CTA lima; "Não vou" é contorno branco. Com resposta marcada (modo
+ * alterar) a marcada leva o check: "Vou" continua lima, "Não vou" marcado vira branco sólido
+ * e o outro cai para contorno.
+ */
+@Composable
+internal fun HomeResponseRow(
+    ownAttendance: AttendanceStatus?,
+    confirmationOpen: Boolean,
+    responding: Boolean,
+    size: SaqzButtonSize,
+    onIntent: (HomeIntent) -> Unit,
+) {
+    val metrics = SaqzTheme.metrics
+    val declined = ownAttendance == AttendanceStatus.Declined
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
+    ) {
+        HomeResponseButton(
+            label = stringResource(Res.string.home_response_yes),
+            variant = if (declined) HomeResponseVariant.Outline else HomeResponseVariant.Accent,
+            selected = ownAttendance == AttendanceStatus.Confirmed,
+            loading = responding && ownAttendance == AttendanceStatus.Confirmed,
+            enabled = confirmationOpen && !responding,
+            size = size,
+            modifier = Modifier.weight(1f).testTag(HomeTags.ResponseYes),
+            onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Confirm)) },
         )
+        HomeResponseButton(
+            label = stringResource(Res.string.home_response_no),
+            variant = if (declined) HomeResponseVariant.Inverse else HomeResponseVariant.Outline,
+            selected = declined,
+            loading = responding && declined,
+            enabled = confirmationOpen && !responding,
+            size = size,
+            modifier = Modifier.weight(1f).testTag(HomeTags.ResponseNo),
+            onClick = { onIntent(HomeIntent.Respond(AttendanceIntent.Decline)) },
+        )
+    }
+}
+
+private enum class HomeResponseVariant { Accent, Inverse, Outline }
+
+/**
+ * Estado de quem já respondeu: painel único com a resposta e "Alterar" — os botões só
+ * reaparecem a pedido (`editing`), porque dois botões habilitados num jogo já
+ * confirmado não dizem que a resposta foi registrada e parecem exigir nova ação.
+ * `editing` vive na composição e morre quando o status muda: responder de novo
+ * (com sucesso) volta para o painel automaticamente.
+ */
+@Composable
+private fun HomeAnsweredStatus(
+    status: AttendanceStatus,
+    responding: Boolean,
+    changeEnabled: Boolean,
+    onIntent: (HomeIntent) -> Unit,
+) {
+    val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
+    var editing by remember(status) { mutableStateOf(false) }
+    if (editing) {
+        Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+            HomeResponseRow(
+                ownAttendance = status,
+                confirmationOpen = changeEnabled,
+                responding = responding,
+                size = SaqzButtonSize.Sm,
+                onIntent = onIntent,
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                SaqzButton(
+                    label = stringResource(Res.string.home_attendance_cancel),
+                    onClick = { editing = false },
+                    variant = SaqzButtonVariant.Ghost,
+                    contentColor = colors.onPrimary,
+                    size = SaqzButtonSize.Sm,
+                    enabled = !responding,
+                    modifier = Modifier.testTag(HomeTags.ResponseCancel),
+                )
+            }
+        }
+    } else {
+        val (color, text) = when (status) {
+            AttendanceStatus.Confirmed -> colors.success to stringResource(Res.string.home_status_confirmed)
+            else -> colors.onPrimary.copy(alpha = HeroDotMutedAlpha) to stringResource(Res.string.home_status_declined)
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.onPrimary.copy(alpha = HeroPanelAlpha), RoundedCornerShape(metrics.inputRadius))
+                .padding(
+                    start = metrics.blockGap,
+                    end = metrics.subGrid,
+                    top = metrics.subGrid,
+                    bottom = metrics.subGrid,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(metrics.subGrid * 2),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(HeroStatusDot)
+                    .background(color, CircleShape),
+            )
+            Text(
+                text = text,
+                style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.onPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            SaqzButton(
+                label = stringResource(Res.string.home_attendance_change),
+                onClick = { editing = true },
+                variant = SaqzButtonVariant.Ghost,
+                contentColor = colors.onPrimary,
+                size = SaqzButtonSize.Sm,
+                enabled = changeEnabled && !responding,
+                loading = responding,
+                modifier = Modifier.testTag(HomeTags.ResponseChange),
+            )
+        }
     }
 }
 
 @Composable
 private fun HomeResponseButton(
     label: String,
-    danger: Boolean,
+    variant: HomeResponseVariant,
     selected: Boolean,
     loading: Boolean,
     enabled: Boolean,
+    size: SaqzButtonSize,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = SaqzTheme.colors
+    val saqzVariant = when (variant) {
+        HomeResponseVariant.Accent -> SaqzButtonVariant.Accent
+        HomeResponseVariant.Inverse -> SaqzButtonVariant.Inverse
+        HomeResponseVariant.Outline -> SaqzButtonVariant.Ghost
+    }
+    val outline = variant == HomeResponseVariant.Outline
     SaqzButton(
         label = label,
         onClick = onClick,
         modifier = modifier,
-        variant = when {
-            selected && danger -> SaqzButtonVariant.Danger
-            selected -> SaqzButtonVariant.Primary
-            else -> SaqzButtonVariant.Secondary
-        },
-        size = SaqzButtonSize.Sm,
+        variant = saqzVariant,
+        size = size,
         fullWidth = true,
         enabled = enabled,
         loading = loading,
+        contentColor = if (outline) colors.onPrimary else null,
+        borderColor = if (outline) colors.onPrimary.copy(alpha = HeroOutlineAlpha) else null,
+        leadingContent = if (selected) {
+            { tint -> SaqzIcon(SaqzIcons.Check, tint = tint, size = HeroCheckSize) }
+        } else {
+            null
+        },
     )
-}
-
-@Composable
-private fun HomeStatus(status: AttendanceStatus?) {
-    val colors = SaqzTheme.colors
-    val metrics = SaqzTheme.metrics
-    val (color, text) = when (status) {
-        AttendanceStatus.Confirmed -> colors.success to stringResource(Res.string.home_status_confirmed)
-        AttendanceStatus.Declined -> colors.textSecondary to stringResource(Res.string.home_status_declined)
-        AttendanceStatus.Waitlisted -> return
-        null -> colors.primary to stringResource(Res.string.home_status_pending)
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(metrics.inputRadius))
-            .padding(metrics.blockGap),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(metrics.grid + metrics.subGrid / 2)
-                .background(color, CircleShape),
-        )
-        Text(
-            text = text,
-            style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-            color = colors.textPrimary,
-        )
-    }
 }
 
 /**
@@ -471,64 +688,21 @@ private fun HomeWaitlistExtras(
 
 @Composable
 private fun HomeNoGame(onIntent: (HomeIntent) -> Unit) {
-    SaqzEmptyState(
-        title = stringResource(Res.string.home_no_game_title),
-        description = stringResource(Res.string.home_no_game_description),
-        icon = SaqzIcons.Calendar,
-        action = stringResource(Res.string.home_no_game_action),
-        actionVariant = SaqzButtonVariant.Secondary,
-        actionFullWidth = true,
-        iconBadgeSize = SaqzTheme.metrics.avatarSize,
-        onAction = { onIntent(HomeIntent.OpenGroups) },
+    val colors = SaqzTheme.colors
+    SaqzHeroCard(
+        kicker = stringResource(Res.string.home_game_next),
+        title = stringResource(Res.string.home_no_game_hero_title),
+        meta = stringResource(Res.string.home_no_game_description),
         modifier = Modifier.testTag(HomeTags.Empty),
-    )
-}
-
-@Composable
-private fun HomeLastGame(game: HomeLastCompletedGameUi) {
-    SaqzCard(modifier = Modifier.testTag(HomeTags.LastGame)) {
-        Text(
-            text = stringResource(Res.string.home_last_game_section),
-            style = SaqzTheme.typography.subtitle,
-            color = SaqzTheme.colors.textPrimary,
+    ) {
+        SaqzButton(
+            label = stringResource(Res.string.home_no_game_action),
+            onClick = { onIntent(HomeIntent.OpenGroups) },
+            variant = SaqzButtonVariant.Ghost,
+            contentColor = colors.onPrimary,
+            borderColor = colors.onPrimary.copy(alpha = HeroOutlineAlpha),
+            fullWidth = true,
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
-        ) {
-            Column(
-                modifier = Modifier
-                    .size(SaqzTheme.metrics.avatarSize)
-                    .background(SaqzTheme.colors.surfaceSoft, RoundedCornerShape(SaqzTheme.metrics.inputRadius))
-                    .padding(SaqzTheme.metrics.subGrid),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = game.day,
-                    style = SaqzTheme.typography.dateDay,
-                    color = SaqzTheme.colors.textPrimary,
-                )
-                Text(
-                    text = game.month,
-                    style = SaqzTheme.typography.dateMonth,
-                    color = SaqzTheme.colors.primary,
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
-                Text(
-                    text = game.title,
-                    style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
-                    color = SaqzTheme.colors.textPrimary,
-                )
-                Text(
-                    text = game.summary,
-                    style = SaqzTheme.typography.caption,
-                    color = SaqzTheme.colors.textSecondary,
-                )
-            }
-        }
     }
 }
 
@@ -581,22 +755,29 @@ private fun HomeGroupRow(group: HomeGroupUi, onClick: () -> Unit) {
                 color = SaqzTheme.colors.primary,
             )
         }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = group.name,
-                style = SaqzTheme.typography.compactTitle,
-                color = SaqzTheme.colors.textPrimary,
-            )
+        // Chip ao lado do nome, meta embaixo: no fim da linha ele espremia a coluna e a
+        // meta quebrava em duas linhas.
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid / 2)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(metrics.grid),
+            ) {
+                Text(
+                    text = group.name,
+                    style = SaqzTheme.typography.compactTitle,
+                    color = SaqzTheme.colors.textPrimary,
+                )
+                if (group.isAdmin) {
+                    SaqzStatusChip(
+                        text = stringResource(Res.string.home_admin_group_chip),
+                        tone = SaqzChipTone.Brand,
+                    )
+                }
+            }
             Text(
                 text = group.meta,
                 style = SaqzTheme.typography.compactMeta,
                 color = SaqzTheme.colors.textSecondary,
-            )
-        }
-        if (group.isAdmin) {
-            SaqzStatusChip(
-                text = stringResource(Res.string.home_admin_group_chip),
-                tone = SaqzChipTone.Brand,
             )
         }
         SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary)
@@ -666,21 +847,16 @@ private fun previewState(
         ownAttendance = null,
         weekday = "terça",
         time = "19h30",
+        display = "Terça, 19h30",
+        meta = "28 de julho · CERET — Quadra 2 · Tatuapé",
     ),
 ) = HomeState(
     isLoading = false,
     displayName = "Bruna",
     member = HomeMemberUi(
-        subtitle = if (nextGame == null) "Semana sem jogo por aqui." else "Terça tem jogo. Confirma?",
         nextGame = nextGame,
-        lastCompletedGame = HomeLastCompletedGameUi(
-            day = "21",
-            month = "JUL",
-            title = "Vôlei do CERET · 19h30",
-            summary = "Você jogou · 12 confirmados",
-        ),
         groups = listOf(
-            HomeGroupUi("ceret", "Vôlei do CERET", "26 pessoas · 18 jogos"),
+            HomeGroupUi("ceret", "Vôlei do CERET", "26 pessoas · 18 jogos", isAdmin = true),
             HomeGroupUi("pacaembu", "Vôlei Pacaembu", "14 pessoas · 6 jogos"),
         ),
     ),
@@ -700,6 +876,8 @@ private fun reservaPreviewGame() = HomeNextGameUi(
     ownAttendance = AttendanceStatus.Waitlisted,
     weekday = "terça",
     time = "19h30",
+    display = "Terça, 19h30",
+    meta = "28 de julho · CERET — Quadra 2 · Tatuapé",
     confirmationOpen = true,
     waitlistKind = HomeWaitlistKind.Reserva,
     waitlistPosition = 1,
@@ -721,6 +899,8 @@ private fun avulsoListPreviewGame() = HomeNextGameUi(
     ownAttendance = AttendanceStatus.Waitlisted,
     weekday = "terça",
     time = "19h30",
+    display = "Terça, 19h30",
+    meta = "28 de julho · CERET — Quadra 2 · Tatuapé",
     confirmationOpen = true,
     waitlistKind = HomeWaitlistKind.AvulsoList,
     waitlistPosition = 2,

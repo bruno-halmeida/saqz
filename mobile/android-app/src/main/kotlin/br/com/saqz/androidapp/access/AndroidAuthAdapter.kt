@@ -144,8 +144,14 @@ internal class AndroidAuthAdapter(
     override fun signOut(done: ResultCallback) {
         firebase.signOut { firebaseResult ->
             when (firebaseResult) {
+                // Com o Firebase fora, a identidade do provedor é conhecida: nenhuma. Limpar o
+                // Credential Manager é cortesia para o próximo "Entrar com Google" voltar a
+                // oferecer contas — e falha sempre onde não há provedor (imagem AOSP, aparelho
+                // sem Play Services). Propagar essa falha como falha do sign-out fazia o
+                // `SerializedNativeAuthPort` reprovar a barreira de limpeza e cancelar todo
+                // login seguinte sem chegar ao SDK (VUL-223).
                 is AndroidProviderResult.Success -> google.clearCredentialState {
-                    done.complete(it.toOperationResult())
+                    done.complete(OperationResult.Success)
                 }
                 AndroidProviderResult.Cancelled -> done.complete(OperationResult.Failure(NativeFailureCode.UNKNOWN))
                 is AndroidProviderResult.Failure -> done.complete(OperationResult.Failure(firebaseResult.code.toNative()))

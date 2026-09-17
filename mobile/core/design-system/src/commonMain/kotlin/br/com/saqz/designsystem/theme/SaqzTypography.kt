@@ -23,6 +23,7 @@ data class SaqzTypography(
     val compactMeta: TextStyle,
     val dateDay: TextStyle,
     val dateMonth: TextStyle,
+    val display: TextStyle,
 ) {
     companion object {
         val Default = SaqzTypography(
@@ -103,6 +104,13 @@ data class SaqzTypography(
                 lineHeight = 14.sp,
                 fontWeight = FontWeight(700),
                 letterSpacing = 0.08.em,
+            ),
+            // Hero da Home nova (VUL-217): a única escala com família própria (Anybody).
+            display = TextStyle(
+                fontSize = 36.sp,
+                lineHeight = 38.sp,
+                fontWeight = FontWeight(800),
+                letterSpacing = (-0.03).em,
             ),
         )
     }

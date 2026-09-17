@@ -1,17 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home_greeting">Fala, %1$s! 👋</string>
-    <string name="home_placeholder">Os conteúdos da sua Home aparecem aqui.</string>
+    <string name="home_greeting">Fala, %1$s!</string>
     <string name="home_error_title">Não foi possível carregar sua Home</string>
     <string name="home_error_message">Tente novamente em alguns instantes.</string>
     <string name="home_retry">Tentar novamente</string>
-    <string name="home_subtitle_no_response">%1$s tem jogo. Confirma?</string>
-    <string name="home_subtitle_confirmed">Você joga %1$s, %2$s.</string>
-    <string name="home_subtitle_declined">Você está fora de %1$s.</string>
-    <string name="home_subtitle_waitlisted">Você está na lista de espera de %1$s.</string>
-    <string name="home_subtitle_waitlist_reserva">Você está na lista de espera de %1$s.</string>
-    <string name="home_subtitle_waitlist_avulso">Você está na lista de espera de %1$s.</string>
-    <string name="home_subtitle_no_game">Semana sem jogo por aqui.</string>
     <string name="home_game_date_time">%1$s, %2$s · %3$s</string>
     <string name="home_game_next">PRÓXIMO JOGO</string>
     <string name="home_date">%1$s/%2$s</string>
@@ -20,13 +12,14 @@
     <string name="home_deadline_tomorrow">As confirmações encerram amanhã às %1$s.</string>
     <string name="home_deadline_date">As confirmações encerram em %1$s às %2$s.</string>
     <string name="home_confirmed_summary">%1$d de %2$d confirmados</string>
-    <string name="home_status_pending">Responda para a galera saber se conta com você.</string>
+    <string name="home_spots_left">Restam %1$d vagas</string>
     <string name="home_status_confirmed">Você está confirmado.</string>
     <string name="home_status_declined">Tudo bem, na próxima. Sua vaga já foi liberada.</string>
     <string name="home_response_yes">Vou</string>
     <string name="home_response_no">Não vou</string>
+    <string name="home_attendance_change">Alterar</string>
+    <string name="home_attendance_cancel">Cancelar</string>
     <string name="home_response_error">Não foi possível atualizar sua presença. Tente novamente.</string>
-    <string name="home_waitlisted">Lista de espera</string>
     <string name="home_waitlist_reserva_chip">Lista de espera · %1$dº</string>
     <string name="home_waitlist_reserva_chip_no_position">Lista de espera</string>
     <string name="home_waitlist_reserva_box_title">As vagas acabaram. Você entrou na lista de espera.</string>
@@ -47,13 +40,8 @@
     <string name="home_waitlist_position">%1$dº na espera</string>
     <string name="home_waitlist_row_a11y">%1$s, %2$dº na espera</string>
     <string name="home_waitlist_you">Você</string>
-    <string name="home_no_game_title">Nenhum jogo marcado por enquanto</string>
     <string name="home_no_game_description">Quando a galera marcar, aparece aqui e você confirma em um toque.</string>
     <string name="home_no_game_action">Ver meus grupos</string>
-    <string name="home_last_game_title">%1$s · %2$s</string>
-    <string name="home_last_game_played">Você jogou · %1$d confirmados</string>
-    <string name="home_last_game_summary">%1$d confirmados</string>
-    <string name="home_last_game_section">Da última vez</string>
     <string name="home_groups_title">Seus grupos</string>
     <string name="home_groups_view_all">Ver todos</string>
     <string name="home_group_meta">%1$d pessoas · %2$d jogos</string>
@@ -91,7 +79,6 @@
     <string name="home_admin_score_out">Não vão</string>
     <string name="home_admin_score_pending">Sem resposta</string>
     <string name="home_admin_hero_deadline">Encerra %1$s · %2$s</string>
-    <string name="home_admin_hero_location">%1$s · %2$s</string>
     <string name="home_admin_score_value">%1$d</string>
     <string name="home_admin_waiting_title">Esperando você</string>
     <string name="home_admin_waiting_entry_requests">%1$d pedidos para entrar</string>
@@ -103,23 +90,53 @@
     <string name="home_admin_waiting_entry_chip">%1$d</string>
     <string name="home_admin_shortcuts_create_game">Marcar jogo</string>
     <string name="home_admin_shortcuts_invite">Convidar</string>
-    <string name="home_admin_shortcuts_cashbox">Caixa</string>
-    <string name="home_admin_shortcuts_groups">Grupos</string>
     <string name="home_admin_group_chip">Administrador</string>
     <string name="home_admin_cd_score_going">%1$d confirmados</string>
     <string name="home_admin_cd_score_out">%1$d não vão</string>
     <string name="home_admin_cd_score_pending">%1$d pendentes</string>
+    <string name="home_admin_cd_scoreboard_open">Abrir a lista de presença do jogo</string>
     <string name="home_admin_cd_waiting_entry_requests">%1$d pedidos para entrar em %2$s</string>
     <string name="home_admin_cd_waiting_monthly">%1$d mensalidades a receber em %2$s</string>
     <string name="home_admin_cd_waiting_settle">Acertar o jogo de %1$s em %2$s</string>
     <string name="home_admin_cd_shortcut_create_game">Marcar jogo</string>
     <string name="home_admin_cd_shortcut_invite">Convidar</string>
-    <string name="home_admin_cd_shortcut_cashbox">Caixa</string>
-    <string name="home_admin_cd_shortcut_groups">Grupos</string>
-    <string name="home_admin_cd_group_admin">Administrador</string>
     <string name="home_own_charges_caption">O que você deve aos seus grupos</string>
     <string name="home_own_charges_count">%1$d cobranças em aberto</string>
     <string name="home_own_charges_banner">Você tem %1$s em aberto</string>
     <string name="home_own_charges_banner_groups">Você tem %1$s em aberto em %2$d grupos</string>
     <string name="home_own_charges_cd_banner">%1$s. Abrir a Início para ver suas cobranças.</string>
+    <!-- Home nova · hero -->
+    <string name="home_game_display">%1$s, %2$s</string>
+    <string name="home_game_meta">%1$s de %2$s · %3$s</string>
+    <string name="home_no_game_hero_title">Sem jogo marcado</string>
+    <string name="home_deadline_closed">Confirmações encerradas.</string>
+    <string name="home_admin_hero_deadline_closed">Encerrou %1$s · %2$s</string>
+    <!-- Home nova · cabeçalho -->
+    <string name="home_notifications_cd">Notificações</string>
+    <!-- Home nova · meses por extenso (minúsculos; a UI não capitaliza) -->
+    <string name="home_month_january_long">janeiro</string>
+    <string name="home_month_february_long">fevereiro</string>
+    <string name="home_month_march_long">março</string>
+    <string name="home_month_april_long">abril</string>
+    <string name="home_month_may_long">maio</string>
+    <string name="home_month_june_long">junho</string>
+    <string name="home_month_july_long">julho</string>
+    <string name="home_month_august_long">agosto</string>
+    <string name="home_month_september_long">setembro</string>
+    <string name="home_month_october_long">outubro</string>
+    <string name="home_month_november_long">novembro</string>
+    <string name="home_month_december_long">dezembro</string>
+    <!-- Home nova · próximos jogos -->
+    <string name="home_upcoming_title">Próximos jogos</string>
+    <string name="home_upcoming_row_title">%1$s · %2$s</string>
+    <string name="home_upcoming_row_meta">%1$s · %2$d confirmados</string>
+    <string name="home_upcoming_status_going">Você vai</string>
+    <string name="home_upcoming_status_out">Não vai</string>
+    <string name="home_upcoming_status_waitlisted">Na espera</string>
+    <string name="home_upcoming_cd_row">%1$s, %2$s às %3$s, %4$s</string>
+    <!-- Home nova · cobrança vencida -->
+    <string name="home_own_charge_competence_monthly">Mensalidade de %1$s</string>
+    <string name="home_own_charge_pix_receiver">Pix de %1$s</string>
+    <string name="home_own_charge_copied">Chave copiada</string>
+    <string name="home_toast_pix_copied">Chave copiada. Depois de pagar, o admin dá baixa.</string>
 </resources>

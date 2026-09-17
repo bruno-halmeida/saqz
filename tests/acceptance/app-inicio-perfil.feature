@@ -39,12 +39,12 @@ Funcionalidade: Primeiro acesso, Início e perfil pessoal
     E a participação nos jogos de G2 permanece inalterada
 
   @p0 @APP-H02
-  Cenário: Voltar ao app atualiza uma dívida recebida em outro aparelho
-    Dado que M1 é a única cobrança pendente de ATLETA em todos os seus grupos
-    E ATLETA vê R$80,00 em aberto na seção e no aviso de cobranças do Início
+  Cenário: Voltar ao app atualiza uma dívida vencida recebida em outro aparelho
+    Dado que M1 é a única cobrança pendente de ATLETA em todos os seus grupos e já venceu
+    E ATLETA vê no Início a seção "Minhas cobranças" com R$80,00 vencidos, a competência de M1 e a chave Pix de G1, além do aviso de cobranças
     Quando ATLETA deixa o app em segundo plano e DONO registra o recebimento de M1 em outro aparelho
     E ATLETA volta ao app com conexão e aguarda a atualização
-    Então a seção e o aviso não mostram mais R$80,00 pendentes
+    Então a seção "Minhas cobranças" some do Início e o aviso não mostra mais R$80,00 pendentes
     E Minhas mensalidades mostra M1 paga após atualizar
 
   @p1 @APP-H03
@@ -57,6 +57,29 @@ Funcionalidade: Primeiro acesso, Início e perfil pessoal
     Então vejo falha recuperável, sem apresentar a falha como resultado vazio confirmado
     Quando restauro a rede e tento novamente
     Então volto ao estado sem grupos
+
+  @p1 @APP-H04
+  Cenário: Cobrança pendente dentro do prazo fica só no aviso, não na seção do Início
+    Dado que M1 é a única cobrança pendente de ATLETA em todos os seus grupos e ainda não venceu
+    Quando ATLETA abre Início
+    Então vê o aviso de cobranças com R$80,00 pendentes
+    E não vê a seção "Minhas cobranças" entre o próximo jogo e os grupos
+    Quando o vencimento de M1 é antecipado para ontem na massa e ATLETA atualiza o Início
+    Então a seção "Minhas cobranças" aparece com R$80,00 vencidos, a competência de M1 e a chave Pix de G1
+    E "Copiar chave Pix" copia a chave, mostra "Chave copiada" por alguns segundos e avisa que a baixa é feita pelo gestor
+
+  @p1 @APP-H05
+  Cenário: Próximos jogos lista os jogos seguintes de todos os grupos depois do próximo jogo
+    Dado que ATLETA participa de G1 e G2, J1 é seu próximo jogo e J2 e um jogo publicado de G2 vêm depois de J1
+    Quando ATLETA abre Início
+    Então o hero mostra J1 de G1
+    E "Próximos jogos" lista J2 e o jogo de G2 em ordem de data, cada um com dia, mês, grupo, hora, confirmados e a própria resposta
+    E J1 não aparece em "Próximos jogos"
+    Quando toca no jogo de G2
+    Então abre o detalhe desse jogo em G2, não o de J1
+    Dado que ATLETA não tem nenhum jogo depois de J1
+    Quando atualiza o Início
+    Então "Próximos jogos" não aparece
 
   @p1 @APP-P04
   Cenário: Editar os dados pessoais persiste após novo login

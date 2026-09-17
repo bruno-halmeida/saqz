@@ -17,9 +17,9 @@ internal class AttendanceE2eTest : InstalledE2e("attendance") {
         login("athlete")
         openGroup()
         click("group-game-response-going", scroll = true)
-        waitText("Você é o 1º da reserva.")
+        waitText("Você está em 1º na lista de espera.")
         waitEnabled("group-game-response-going")
-        ui.onNodeWithText("Você é o 1º da reserva.").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("Você está em 1º na lista de espera.").performScrollTo().assertIsDisplayed()
         val waiting = api("athlete", attendancePath)
         assertEquals(2, waiting.getInt("confirmedCount"))
         assertEquals(0, waiting.getInt("availableSpots"))
@@ -54,7 +54,7 @@ internal class AttendanceE2eTest : InstalledE2e("attendance") {
 
         login("athlete")
         openGroup()
-        waitText("Você está confirmado na vaga.")
-        ui.onNodeWithText("Você está confirmado na vaga.").performScrollTo().assertIsDisplayed()
+        waitText("Sua presença está confirmada.")
+        ui.onNodeWithText("Sua presença está confirmada.").performScrollTo().assertIsDisplayed()
     }
 }

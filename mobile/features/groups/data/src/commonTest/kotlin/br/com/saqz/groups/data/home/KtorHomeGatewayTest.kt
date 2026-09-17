@@ -24,6 +24,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 
 class KtorHomeGatewayTest {
     @Test
@@ -45,6 +46,10 @@ class KtorHomeGatewayTest {
         assertEquals(3L, home.member.nextGame?.rosterPreview?.waitlisted?.single()?.waitlistPosition)
         assertEquals("game-0", home.member.lastCompletedGame?.gameId)
         assertEquals("America/Sao_Paulo", home.member.lastCompletedGame?.zoneId)
+        assertEquals(listOf("game-3", "game-4"), home.member.upcomingGames.map { it.gameId })
+        assertNull(home.member.upcomingGames[0].ownStatus)
+        assertEquals("CONFIRMED", home.member.upcomingGames[1].ownStatus?.name?.uppercase())
+        assertEquals(6, home.member.upcomingGames[0].confirmedCount)
         assertEquals(1, home.admin?.groups?.single()?.entryRequestCount)
         assertEquals(2400L, home.admin?.groups?.single()?.monthlyCharges?.totalCents)
         assertEquals("2026-08", home.admin?.groups?.single()?.monthlyCharges?.billingMonth)
@@ -90,6 +95,24 @@ class KtorHomeGatewayTest {
         }.read()
 
         assertEquals(null, assertIs<SaqzResult.Success<HomeReadModel>>(result).value.ownCharges)
+    }
+
+    @Test
+    fun `home without the upcoming games block reads as no upcoming game`() = runTest {
+        val result = gateway {
+            respond(HOME_JSON.replace("\"upcomingGames\"", "\"ignoredUpcomingGames\""), headers = jsonHeaders())
+        }.read()
+
+        assertEquals(emptyList(), assertIs<SaqzResult.Success<HomeReadModel>>(result).value.member.upcomingGames)
+    }
+
+    @Test
+    fun `upcoming game with unknown status is dropped instead of the home`() = runTest {
+        val result = gateway {
+            respond(HOME_JSON.replace("\"ownStatus\": \"CONFIRMED\"", "\"ownStatus\": \"PIZZA\""), headers = jsonHeaders())
+        }.read()
+
+        assertEquals(listOf("game-3"), assertIs<SaqzResult.Success<HomeReadModel>>(result).value.member.upcomingGames.map { it.gameId })
     }
 
     @Test
@@ -169,6 +192,30 @@ class KtorHomeGatewayTest {
                   "confirmedCount": 10,
                   "ownPlayed": true
                 },
+                "upcomingGames": [
+                  {
+                    "groupId": "group-2",
+                    "groupName": "Vôlei Pacaembu",
+                    "gameId": "game-3",
+                    "zoneId": "America/Sao_Paulo",
+                    "startsAt": "2026-08-13T23:00:00Z",
+                    "confirmationDeadline": "2026-08-13T21:00:00Z",
+                    "capacity": 10,
+                    "confirmedCount": 6,
+                    "ownStatus": null
+                  },
+                  {
+                    "groupId": "group-1",
+                    "groupName": "Vôlei do CERET",
+                    "gameId": "game-4",
+                    "zoneId": "America/Sao_Paulo",
+                    "startsAt": "2026-08-19T22:30:00Z",
+                    "confirmationDeadline": "2026-08-19T18:30:00Z",
+                    "capacity": 12,
+                    "confirmedCount": 3,
+                    "ownStatus": "CONFIRMED"
+                  }
+                ],
                 "groups": [{
                   "id": "group-1",
                   "name": "Vôlei do CERET",

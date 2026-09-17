@@ -71,7 +71,7 @@ internal object HomeWaitlistTags {
 }
 
 /**
- * Chip de espera do hero — warning com dot. O texto varia conforme o tipo de espera.
+ * Chip de espera do hero — Inverse com dot, sobre o azul (VUL-218). O texto varia conforme o tipo de espera.
  * A posição só aparece quando conhecida; sem ela o chip omite o número (não mostra "0º").
  */
 @Composable
@@ -84,7 +84,7 @@ internal fun HomeWaitlistChip(kind: HomeWaitlistKind, position: Long?, modifier:
     }
     SaqzStatusChip(
         text = text,
-        tone = SaqzChipTone.Warning,
+        tone = SaqzChipTone.Inverse,
         dot = true,
         modifier = modifier.testTag(
             if (kind == HomeWaitlistKind.Reserva) HomeWaitlistTags.ReservaChip else HomeWaitlistTags.AvulsoChip,
@@ -93,15 +93,15 @@ internal fun HomeWaitlistChip(kind: HomeWaitlistKind, position: Long?, modifier:
 }
 
 /**
- * Caixa branca (radius 14) com ícone de relógio warning para a reserva (6b), ou
- * ícone de circle-alert para a lista do avulso (6e).
+ * Caixa branca a 12% sobre o azul, ícone em círculo branco a 16%. Relógio na reserva
+ * (6b), circle-alert na lista do avulso (6e).
  */
 @Composable
 internal fun HomeWaitlistInfoBox(kind: HomeWaitlistKind, modifier: Modifier = Modifier) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     val icon = if (kind == HomeWaitlistKind.Reserva) SaqzIcons.Clock else SaqzIcons.CircleAlert
-    val iconColor = if (kind == HomeWaitlistKind.Reserva) colors.warningForeground else colors.textSecondary
+    val iconColor = colors.onPrimary
     val title = when (kind) {
         HomeWaitlistKind.Reserva -> Res.string.home_waitlist_reserva_box_title
         HomeWaitlistKind.AvulsoList -> Res.string.home_waitlist_avulso_box_title
@@ -114,7 +114,7 @@ internal fun HomeWaitlistInfoBox(kind: HomeWaitlistKind, modifier: Modifier = Mo
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(metrics.cardRadius + metrics.subGrid / 2))
-            .background(colors.surface)
+            .background(colors.onPrimary.copy(alpha = WaitBoxAlpha))
             .padding(metrics.blockGap),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(metrics.subGrid * 2),
@@ -123,7 +123,7 @@ internal fun HomeWaitlistInfoBox(kind: HomeWaitlistKind, modifier: Modifier = Mo
             modifier = Modifier
                 .size(metrics.iconButtonSize - metrics.subGrid / 2)
                 .clip(CircleShape)
-                .background(colors.surfaceSoft, CircleShape),
+                .background(colors.onPrimary.copy(alpha = WaitIconAlpha), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             SaqzIcon(icon = icon, tint = iconColor)
@@ -132,21 +132,20 @@ internal fun HomeWaitlistInfoBox(kind: HomeWaitlistKind, modifier: Modifier = Mo
             Text(
                 text = stringResource(title),
                 style = SaqzTheme.typography.body.copy(fontWeight = FontWeight(700)),
-                color = colors.textPrimary,
+                color = colors.onPrimary,
             )
             Text(
                 text = stringResource(body),
                 style = SaqzTheme.typography.support,
-                color = colors.textSecondary,
+                color = colors.onPrimary.copy(alpha = WaitBodyAlpha),
             )
         }
     }
 }
 
 /**
- * Botões em grid 1fr/1fr: secundário sm "Sair da reserva/lista" e primário sm "Ver o jogo".
- * "Sair" desabilita quando o prazo encerrou (o `respond()` early-returna e o toque seria
- * no-op silencioso); "Ver o jogo" continua habilitado — navegação, não resposta.
+ * Ver o jogo (branco sólido) em cima, Sair (fantasma branco) embaixo; Sair desabilita com o
+ * prazo encerrado, Ver o jogo continua habilitado — navegação, não resposta.
  */
 @Composable
 internal fun HomeWaitlistActions(
@@ -165,34 +164,36 @@ internal fun HomeWaitlistActions(
     val viewLabel = stringResource(Res.string.home_waitlist_view_game)
     val leaveTag = if (kind == HomeWaitlistKind.Reserva) HomeWaitlistTags.ReservaLeave else HomeWaitlistTags.AvulsoLeave
     val viewTag = if (kind == HomeWaitlistKind.Reserva) HomeWaitlistTags.ReservaViewGame else HomeWaitlistTags.AvulsoViewGame
-    Row(
+    val colors = SaqzTheme.colors
+    Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
+        verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
     ) {
-        SaqzButton(
-            label = leaveLabel,
-            onClick = onLeave,
-            modifier = Modifier
-                .weight(1f)
-                .testTag(leaveTag)
-                .semantics { contentDescription = leaveLabel },
-            variant = SaqzButtonVariant.Secondary,
-            size = SaqzButtonSize.Sm,
-            fullWidth = true,
-            loading = responding,
-            enabled = confirmationOpen && !responding,
-        )
         SaqzButton(
             label = viewLabel,
             onClick = onViewGame,
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth()
                 .testTag(viewTag)
                 .semantics { contentDescription = viewLabel },
-            variant = SaqzButtonVariant.Primary,
+            variant = SaqzButtonVariant.Inverse,
             size = SaqzButtonSize.Sm,
             fullWidth = true,
             enabled = !responding,
+        )
+        SaqzButton(
+            label = leaveLabel,
+            onClick = onLeave,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(leaveTag)
+                .semantics { contentDescription = leaveLabel },
+            variant = SaqzButtonVariant.Ghost,
+            contentColor = colors.onPrimary,
+            size = SaqzButtonSize.Sm,
+            fullWidth = true,
+            loading = responding,
+            enabled = confirmationOpen && !responding,
         )
     }
 }
@@ -364,3 +365,7 @@ private fun HomeWaitlistQueueRow(row: HomeWaitlistRowUi) {
         )
     }
 }
+
+private const val WaitBoxAlpha = 0.12f
+private const val WaitIconAlpha = 0.16f
+private const val WaitBodyAlpha = 0.82f

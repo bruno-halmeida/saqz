@@ -18,7 +18,6 @@ import br.com.saqz.groups.domain.home.HomeAdminGroup
 import br.com.saqz.groups.domain.home.HomeAdminReadModel
 import br.com.saqz.groups.domain.home.HomeGameToSettle
 import br.com.saqz.groups.domain.home.HomeGateway
-import br.com.saqz.groups.domain.home.HomeLastCompletedGame
 import br.com.saqz.groups.domain.home.HomeMemberGroup
 import br.com.saqz.groups.domain.home.HomeMemberReadModel
 import br.com.saqz.groups.domain.home.HomeMonthlyCharges
@@ -28,13 +27,15 @@ import br.com.saqz.groups.domain.home.HomeOwnChargeGroup
 import br.com.saqz.groups.domain.home.HomeOwnChargeOldest
 import br.com.saqz.groups.domain.home.HomeOwnCharges
 import br.com.saqz.groups.domain.home.HomeReadModel
+import br.com.saqz.groups.domain.home.HomeUpcomingGame
 import br.com.saqz.groups.presentation.GroupUiError
-import br.com.saqz.groups.presentation.details.monthResource as longMonthResource
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.home_admin_hero_deadline
+import br.com.saqz.groups.resources.home_admin_hero_deadline_closed
+import br.com.saqz.groups.resources.home_admin_score_pending
 import br.com.saqz.groups.resources.home_admin_subtitle
 import br.com.saqz.groups.resources.home_admin_waiting_entry_requests_meta
 import br.com.saqz.groups.resources.home_admin_waiting_monthly_meta
@@ -42,44 +43,55 @@ import br.com.saqz.groups.resources.home_admin_waiting_settle
 import br.com.saqz.groups.resources.home_admin_waiting_settle_meta
 import br.com.saqz.groups.resources.home_confirmed_summary
 import br.com.saqz.groups.resources.home_date
+import br.com.saqz.groups.resources.home_deadline_closed
 import br.com.saqz.groups.resources.home_deadline_date
 import br.com.saqz.groups.resources.home_deadline_today
 import br.com.saqz.groups.resources.home_deadline_tomorrow
 import br.com.saqz.groups.resources.home_game_date_time
+import br.com.saqz.groups.resources.home_game_display
+import br.com.saqz.groups.resources.home_game_meta
 import br.com.saqz.groups.resources.home_group_meta
-import br.com.saqz.groups.resources.home_last_game_played
-import br.com.saqz.groups.resources.home_last_game_summary
-import br.com.saqz.groups.resources.home_last_game_title
 import br.com.saqz.groups.resources.home_month_april
+import br.com.saqz.groups.resources.home_month_april_long
 import br.com.saqz.groups.resources.home_month_august
+import br.com.saqz.groups.resources.home_month_august_long
 import br.com.saqz.groups.resources.home_month_december
+import br.com.saqz.groups.resources.home_month_december_long
 import br.com.saqz.groups.resources.home_month_february
+import br.com.saqz.groups.resources.home_month_february_long
 import br.com.saqz.groups.resources.home_month_january
+import br.com.saqz.groups.resources.home_month_january_long
 import br.com.saqz.groups.resources.home_month_july
+import br.com.saqz.groups.resources.home_month_july_long
 import br.com.saqz.groups.resources.home_month_june
+import br.com.saqz.groups.resources.home_month_june_long
 import br.com.saqz.groups.resources.home_month_march
+import br.com.saqz.groups.resources.home_month_march_long
 import br.com.saqz.groups.resources.home_month_may
+import br.com.saqz.groups.resources.home_month_may_long
 import br.com.saqz.groups.resources.home_month_november
+import br.com.saqz.groups.resources.home_month_november_long
 import br.com.saqz.groups.resources.home_month_october
+import br.com.saqz.groups.resources.home_month_october_long
 import br.com.saqz.groups.resources.home_month_september
+import br.com.saqz.groups.resources.home_month_september_long
 import br.com.saqz.groups.resources.home_own_charges_banner
 import br.com.saqz.groups.resources.home_own_charges_banner_groups
 import br.com.saqz.groups.resources.home_own_charges_cd_banner
+import br.com.saqz.groups.resources.home_own_charge_competence_monthly
 import br.com.saqz.groups.resources.home_own_charges_count
 import br.com.saqz.groups.resources.own_charges_date
 import br.com.saqz.groups.resources.own_charges_due
 import br.com.saqz.groups.resources.own_charges_due_overdue
 import br.com.saqz.groups.resources.own_charges_game
-import br.com.saqz.groups.resources.own_charges_monthly
 import br.com.saqz.groups.resources.own_charges_monthly_unknown
-import br.com.saqz.groups.resources.home_subtitle_confirmed
-import br.com.saqz.groups.resources.home_subtitle_declined
-import br.com.saqz.groups.resources.home_subtitle_no_game
-import br.com.saqz.groups.resources.home_subtitle_no_response
-import br.com.saqz.groups.resources.home_subtitle_waitlisted
-import br.com.saqz.groups.resources.home_subtitle_waitlist_avulso
-import br.com.saqz.groups.resources.home_subtitle_waitlist_reserva
 import br.com.saqz.groups.resources.home_time
+import br.com.saqz.groups.resources.home_upcoming_cd_row
+import br.com.saqz.groups.resources.home_upcoming_row_meta
+import br.com.saqz.groups.resources.home_upcoming_row_title
+import br.com.saqz.groups.resources.home_upcoming_status_going
+import br.com.saqz.groups.resources.home_upcoming_status_out
+import br.com.saqz.groups.resources.home_upcoming_status_waitlisted
 import br.com.saqz.groups.resources.home_waitlist_reserva_bell
 import br.com.saqz.groups.resources.home_weekday_friday
 import br.com.saqz.groups.resources.home_weekday_friday_short
@@ -96,6 +108,7 @@ import br.com.saqz.groups.resources.home_weekday_tuesday_short
 import br.com.saqz.groups.resources.home_weekday_wednesday
 import br.com.saqz.groups.resources.home_weekday_wednesday_short
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -118,6 +131,7 @@ class HomeViewModel(
 ) : MviViewModel<HomeState, HomeIntent, HomeEffect>(HomeState()) {
     private var loadGeneration = 0L
     private var responseGeneration = 0L
+    private var pixCopiedGeneration = 0L
 
     /**
      * Há carga no ar. Existe para a recarga por baixo (VUL-202) não repetir o que já está
@@ -142,6 +156,7 @@ class HomeViewModel(
             is HomeIntent.Respond -> respond(intent.intent)
             HomeIntent.DismissToast -> update { it.copy(toast = null) }
             HomeIntent.OpenGroups -> emit(HomeEffect.OpenGroups)
+            HomeIntent.OpenNotifications -> emit(HomeEffect.OpenNotifications)
             is HomeIntent.OpenGroup -> emit(HomeEffect.OpenGroup(intent.groupId))
             is HomeIntent.OpenGame -> emit(HomeEffect.OpenGame(intent.groupId, intent.gameId))
             is HomeIntent.OpenMembers -> emit(HomeEffect.OpenMembers(intent.groupId))
@@ -161,6 +176,14 @@ class HomeViewModel(
             ?.pix
             ?: return
         emit(HomeEffect.CopyPix(pix.key))
+        // Contador monotônico, não igualdade de valor: dois toques seguidos no mesmo grupo
+        // não podem deixar o primeiro delay apagar o estado do segundo.
+        val generation = ++pixCopiedGeneration
+        update { it.copy(pixCopiedGroupId = groupId, toast = HomeToast.PixCopied) }
+        viewModelScope.launch {
+            delay(PixCopiedDwellMillis)
+            if (generation == pixCopiedGeneration) update { it.copy(pixCopiedGroupId = null) }
+        }
     }
 
     private fun load(softRefresh: Boolean = false) {
@@ -377,38 +400,11 @@ class HomeViewModel(
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
     }
 
-    private suspend fun HomeMemberReadModel.toUi(): HomeMemberUi {
-        val nextGameUi = nextGame?.toUi()
-        return HomeMemberUi(
-            subtitle = when {
-                nextGameUi == null -> getString(Res.string.home_subtitle_no_game)
-                nextGameUi.ownAttendance == AttendanceStatus.Waitlisted -> when (nextGameUi.waitlistKind) {
-                    HomeWaitlistKind.Reserva -> getString(
-                        Res.string.home_subtitle_waitlist_reserva,
-                        nextGameUi.groupName,
-                    )
-                    HomeWaitlistKind.AvulsoList -> getString(
-                        Res.string.home_subtitle_waitlist_avulso,
-                        nextGameUi.groupName,
-                    )
-                    null -> getString(Res.string.home_subtitle_waitlisted, nextGameUi.groupName)
-                }
-                nextGameUi.ownAttendance == AttendanceStatus.Confirmed -> getString(
-                    Res.string.home_subtitle_confirmed,
-                    nextGameUi.weekday,
-                    nextGameUi.time,
-                )
-                nextGameUi.ownAttendance == AttendanceStatus.Declined -> getString(
-                    Res.string.home_subtitle_declined,
-                    nextGameUi.weekday,
-                )
-                else -> getString(Res.string.home_subtitle_no_response, nextGameUi.weekday.capitalized())
-            },
-            nextGame = nextGameUi,
-            lastCompletedGame = lastCompletedGame?.toUi(),
-            groups = groups.map { it.toUi() },
-        )
-    }
+    private suspend fun HomeMemberReadModel.toUi(): HomeMemberUi = HomeMemberUi(
+        nextGame = nextGame?.toUi(),
+        groups = groups.map { it.toUi() },
+        upcomingGames = upcomingGames.map { it.toUi() },
+    )
 
     private suspend fun HomeNextGame.toUi(): HomeNextGameUi {
         val zone = gameTimeZone(zoneId)
@@ -425,6 +421,8 @@ class HomeViewModel(
         } ?: startsAt
         val time = startsAtLocal?.let { getString(Res.string.home_time, it.hour.twoDigits(), it.minute.twoDigits()) } ?: startsAt
         val weekday = startsAtLocal?.let { getString(it.date.dayOfWeek.longResource()) } ?: ""
+        val confirmationOpen = deadlineInstant?.let { now.now() < it } == true
+        val (display, meta) = heroLabels(startsAtLocal, dateTime, time, weekday, local)
         val ownPosition = ownAttendance
             ?.takeIf { it.status == AttendanceStatus.Waitlisted }
             ?.waitlistPosition
@@ -443,20 +441,20 @@ class HomeViewModel(
         } else {
             previewWaitlistedRows
         }
-        val adminHeroDeadline = deadline?.let { adminHeroDeadlineLabel(it) } ?: ""
+        val adminHeroDeadline = deadline?.let { adminHeroDeadlineLabel(it, confirmationOpen) } ?: ""
         return HomeNextGameUi(
             groupId = groupId.value,
             gameId = gameId,
             groupName = groupName,
             dateTime = dateTime,
             local = local,
-            deadline = deadlineLabel(deadline, zone),
+            deadline = if (confirmationOpen) deadlineLabel(deadline, zone) else getString(Res.string.home_deadline_closed),
             confirmedSummary = getString(Res.string.home_confirmed_summary, confirmedCount, capacity),
             confirmedCount = confirmedCount,
             capacity = capacity,
             rosterNames = rosterPreview.confirmed.map { it.displayName },
             ownAttendance = ownAttendance?.status,
-            confirmationOpen = deadlineInstant?.let { now.now() < it } == true,
+            confirmationOpen = confirmationOpen,
             weekday = weekday,
             time = time,
             waitlistKind = ownAttendance?.status?.let { waitlistKind() },
@@ -468,24 +466,8 @@ class HomeViewModel(
             declinedCount = declinedCount,
             pendingCount = pendingCount,
             adminHeroDeadlineLabel = adminHeroDeadline,
-        )
-    }
-
-    private suspend fun HomeLastCompletedGame.toUi(): HomeLastCompletedGameUi {
-        val local = runCatching {
-            Instant.parse(startsAt).toLocalDateTime(gameTimeZone(zoneId))
-        }.getOrNull()
-        val time = local?.let { getString(Res.string.home_time, it.hour.twoDigits(), it.minute.twoDigits()) } ?: startsAt
-        val month = local?.let { getString((it.month.ordinal + 1).monthResource()) } ?: ""
-        return HomeLastCompletedGameUi(
-            day = local?.day?.toString() ?: startsAt,
-            month = month,
-            title = getString(Res.string.home_last_game_title, groupName, time),
-            summary = if (ownPlayed) {
-                getString(Res.string.home_last_game_played, confirmedCount)
-            } else {
-                getString(Res.string.home_last_game_summary, confirmedCount)
-            },
+            display = display,
+            meta = meta,
         )
     }
 
@@ -495,6 +477,39 @@ class HomeViewModel(
         meta = getString(Res.string.home_group_meta, memberCount, gamesPlayed),
         isAdmin = role == GroupRole.OWNER || role == GroupRole.ADMIN,
     )
+
+    private suspend fun HomeUpcomingGame.toUi(): HomeUpcomingGameUi {
+        val zone = gameTimeZone(zoneId)
+        val local = runCatching { Instant.parse(startsAt).toLocalDateTime(zone) }.getOrNull()
+        val time = local?.let { getString(Res.string.home_time, it.hour.twoDigits(), it.minute.twoDigits()) } ?: startsAt
+        val weekday = local?.let { getString(it.date.dayOfWeek.longResource()).capitalized() } ?: ""
+        val dateLabel = local?.let { getString(Res.string.home_date, it.day.twoDigits(), (it.month.ordinal + 1).twoDigits()) } ?: startsAt
+        val status = when (ownStatus) {
+            null -> HomeUpcomingStatus.Pending
+            AttendanceStatus.Confirmed -> HomeUpcomingStatus.Going
+            AttendanceStatus.Declined -> HomeUpcomingStatus.Out
+            AttendanceStatus.Waitlisted -> HomeUpcomingStatus.Waitlisted
+        }
+        val statusLabel = getString(
+            when (status) {
+                HomeUpcomingStatus.Pending -> Res.string.home_admin_score_pending
+                HomeUpcomingStatus.Going -> Res.string.home_upcoming_status_going
+                HomeUpcomingStatus.Out -> Res.string.home_upcoming_status_out
+                HomeUpcomingStatus.Waitlisted -> Res.string.home_upcoming_status_waitlisted
+            },
+        )
+        return HomeUpcomingGameUi(
+            groupId = groupId.value,
+            gameId = gameId,
+            day = local?.day?.toString() ?: "",
+            month = local?.let { getString((it.month.ordinal + 1).monthResource()) } ?: "",
+            title = getString(Res.string.home_upcoming_row_title, groupName, time),
+            meta = getString(Res.string.home_upcoming_row_meta, weekday, confirmedCount),
+            status = status,
+            statusLabel = statusLabel,
+            contentDescription = getString(Res.string.home_upcoming_cd_row, groupName, dateLabel, time, statusLabel),
+        )
+    }
 
     private suspend fun deadlineLabel(deadline: kotlinx.datetime.LocalDateTime?, zone: TimeZone): String {
         if (deadline == null) return ""
@@ -565,10 +580,9 @@ class HomeViewModel(
         groupId = groupId.value,
         groupName = groupName,
         competence = when (val competence = oldest) {
-            // Mês por extenso ("Julho"), o mesmo da tela irmã — o `monthResource()` deste
-            // arquivo é a forma curta do card de data ("JUL") e diria outra coisa aqui.
+            // "Mensalidade de julho": mês por extenso minúsculo, as chaves do VUL-215.
             is HomeOwnChargeOldest.Monthly -> competence.month.monthIndexOrNull()
-                ?.let { getString(Res.string.own_charges_monthly, getString(it.longMonthResource())) }
+                ?.let { getString(Res.string.home_own_charge_competence_monthly, getString(it.homeLongMonthResource())) }
                 ?: getString(Res.string.own_charges_monthly_unknown)
             HomeOwnChargeOldest.Game -> getString(Res.string.own_charges_game)
         },
@@ -606,14 +620,38 @@ class HomeViewModel(
         )
     }
 
-    private suspend fun adminHeroDeadlineLabel(deadline: kotlinx.datetime.LocalDateTime): String {
+    /**
+     * Título e linha meta do hero (VUL-218): "Terça, 19h30" e "28 de julho · {local}".
+     * Fora do `toUi()` só para o método não estourar o teto de complexidade do detekt.
+     */
+    private suspend fun heroLabels(
+        startsAtLocal: kotlinx.datetime.LocalDateTime?,
+        dateTime: String,
+        time: String,
+        weekday: String,
+        local: String,
+    ): Pair<String, String> {
+        startsAtLocal ?: return dateTime to local
+        return getString(Res.string.home_game_display, weekday.capitalized(), time) to getString(
+            Res.string.home_game_meta,
+            startsAtLocal.day.toString(),
+            getString((startsAtLocal.month.ordinal + 1).homeLongMonthResource()),
+            local,
+        )
+    }
+
+    private suspend fun adminHeroDeadlineLabel(deadline: kotlinx.datetime.LocalDateTime, open: Boolean): String {
         val time = getString(Res.string.home_time, deadline.hour.twoDigits(), deadline.minute.twoDigits())
         val dateStr = getString(
             Res.string.home_date,
             deadline.day.twoDigits(),
             (deadline.month.ordinal + 1).twoDigits(),
         )
-        return getString(Res.string.home_admin_hero_deadline, dateStr, time)
+        return getString(
+            if (open) Res.string.home_admin_hero_deadline else Res.string.home_admin_hero_deadline_closed,
+            dateStr,
+            time,
+        )
     }
 
     private suspend fun deriveAdminSubtitle(admin: HomeAdminReadModelUi, groupCount: Int): String? {
@@ -700,6 +738,22 @@ private fun Int.monthResource(): StringResource = when (this) {
     else -> Res.string.home_month_december
 }
 
+// Mês por extenso e minúsculo ("28 de julho"), as chaves `home_month_*_long` do VUL-215.
+private fun Int.homeLongMonthResource(): StringResource = when (this) {
+    1 -> Res.string.home_month_january_long
+    2 -> Res.string.home_month_february_long
+    3 -> Res.string.home_month_march_long
+    4 -> Res.string.home_month_april_long
+    5 -> Res.string.home_month_may_long
+    6 -> Res.string.home_month_june_long
+    7 -> Res.string.home_month_july_long
+    8 -> Res.string.home_month_august_long
+    9 -> Res.string.home_month_september_long
+    10 -> Res.string.home_month_october_long
+    11 -> Res.string.home_month_november_long
+    else -> Res.string.home_month_december_long
+}
+
 // "YYYY-MM" (formato do backend) → índice 1..12. Devolve null se o formato for
 // inesperado; quem chama cai no `now` em UTC como fallback de segurança.
 private fun String.monthIndexOrNull(): Int? = split("-").let { parts ->
@@ -707,3 +761,5 @@ private fun String.monthIndexOrNull(): Int? = split("-").let { parts ->
     val month = parts[1].toIntOrNull() ?: return null
     if (month in 1..12) month else null
 }
+
+private const val PixCopiedDwellMillis = 2_000L

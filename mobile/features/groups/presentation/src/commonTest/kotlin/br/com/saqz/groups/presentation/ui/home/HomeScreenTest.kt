@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -20,13 +21,13 @@ import br.com.saqz.groups.presentation.home.HomeAdminReadModelUi
 import br.com.saqz.groups.presentation.home.HomeGameToSettleUi
 import br.com.saqz.groups.presentation.home.HomeMonthlyChargesUi
 import br.com.saqz.groups.presentation.home.HomeIntent
-import br.com.saqz.groups.presentation.home.HomeLastCompletedGameUi
 import br.com.saqz.groups.presentation.home.HomeMemberUi
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
 import br.com.saqz.groups.presentation.home.HomeState
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class HomeScreenTest {
@@ -53,37 +54,36 @@ class HomeScreenTest {
         val intents = mutableListOf<HomeIntent>()
         setScreen(nextGameState(), intents::add)
 
-        onNodeWithText("Fala, Bruna! 👋").assertIsDisplayed()
-        onNodeWithText("Terça tem jogo. Confirma?").assertIsDisplayed()
+        onNodeWithText("Fala, Bruna!").assertIsDisplayed()
         onNodeWithTag(HomeTags.NextGame).assertIsDisplayed()
         onNodeWithText("PRÓXIMO JOGO").assertIsDisplayed()
-        onNodeWithText("CERET — Quadra 2 · Tatuapé").assertIsDisplayed()
+        onNodeWithText("Terça, 19h30").assertIsDisplayed()
+        onNodeWithText("28 de julho · CERET — Quadra 2 · Tatuapé").assertIsDisplayed()
         onNodeWithText("9 de 12 confirmados").assertIsDisplayed()
         onNodeWithText("Vou").performClick()
         onNodeWithText("Não vou").performClick()
         onNodeWithTag(HomeTags.Groups).assertIsDisplayed()
         onNodeWithTag(HomeTags.group("ceret")).performClick()
+        onNodeWithTag(HomeTags.Notifications).performClick()
 
         assertEquals(
             listOf(
                 HomeIntent.Respond(AttendanceIntent.Confirm),
                 HomeIntent.Respond(AttendanceIntent.Decline),
                 HomeIntent.OpenGroup("ceret"),
+                HomeIntent.OpenNotifications,
             ),
             intents,
         )
     }
 
     @Test
-    fun `empty state renders last game and opens groups from both actions`() = runComposeUiTest {
+    fun `empty state opens groups from both actions`() = runComposeUiTest {
         val intents = mutableListOf<HomeIntent>()
         setScreen(nextGameState(nextGame = null), intents::add)
 
         onNodeWithTag(HomeTags.Empty).assertIsDisplayed()
-        onNodeWithText("Nenhum jogo marcado por enquanto").assertIsDisplayed()
-        onNodeWithText("Da última vez").assertIsDisplayed()
-        onNodeWithText("21").assertIsDisplayed()
-        onNodeWithText("Você jogou · 12 confirmados").assertIsDisplayed()
+        onNodeWithText("Sem jogo marcado").assertIsDisplayed()
         onNodeWithText("Ver meus grupos").performClick()
         onNodeWithText("Ver todos").performClick()
 
@@ -147,6 +147,47 @@ class HomeScreenTest {
     }
 
     @Test
+    fun `answered game shows the status panel instead of the enabled buttons`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(nextGameState(nextGame = nextGame(AttendanceStatus.Confirmed)), intents::add)
+
+        onNodeWithText("Você está confirmado.").assertIsDisplayed()
+        onAllNodesWithTag(HomeTags.ResponseYes).assertCountEquals(0)
+        onAllNodesWithTag(HomeTags.ResponseNo).assertCountEquals(0)
+
+        // "Alterar" revela os botões; "Cancelar" volta para o painel sem emitir intent.
+        onNodeWithTag(HomeTags.ResponseChange).performClick()
+        onNodeWithTag(HomeTags.ResponseYes).assertIsDisplayed()
+        onNodeWithTag(HomeTags.ResponseCancel).performClick()
+        onAllNodesWithTag(HomeTags.ResponseYes).assertCountEquals(0)
+
+        assertEquals(emptyList<HomeIntent>(), intents)
+    }
+
+    @Test
+    fun `changing an answered response emits the new choice`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(nextGameState(nextGame = nextGame(AttendanceStatus.Confirmed)), intents::add)
+
+        onNodeWithTag(HomeTags.ResponseChange).performClick()
+        onNodeWithTag(HomeTags.ResponseNo).performClick()
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.Respond(AttendanceIntent.Decline)), intents)
+    }
+
+    @Test
+    fun `closed deadline keeps the answered panel with change disabled`() = runComposeUiTest {
+        setScreen(
+            nextGameState(
+                nextGame = nextGame(AttendanceStatus.Declined).copy(confirmationOpen = false),
+            ),
+        )
+
+        onNodeWithText("Tudo bem, na próxima. Sua vaga já foi liberada.").assertIsDisplayed()
+        onNodeWithTag(HomeTags.ResponseChange).assertIsNotEnabled()
+    }
+
+    @Test
     fun `closed deadline disables the waitlist leave button but keeps view game enabled`() = runComposeUiTest {
         setScreen(
             nextGameState(
@@ -160,6 +201,33 @@ class HomeScreenTest {
 
         onNodeWithTag(HomeWaitlistTags.ReservaLeave).assertIsNotEnabled()
         onNodeWithTag(HomeWaitlistTags.ReservaViewGame).assertIsDisplayed()
+    }
+
+    @Test
+    fun `waitlist actions put view game above leave`() = runComposeUiTest {
+        setScreen(
+            nextGameState(
+                nextGame = nextGame(AttendanceStatus.Waitlisted).copy(waitlistKind = HomeWaitlistKind.Reserva, waitlistPosition = 1),
+            ),
+        )
+
+        val view = onNodeWithTag(HomeWaitlistTags.ReservaViewGame).getUnclippedBoundsInRoot()
+        val leave = onNodeWithTag(HomeWaitlistTags.ReservaLeave).getUnclippedBoundsInRoot()
+        assertTrue(view.top < leave.top, "Ver o jogo fica acima de Sair: ${view.top} × ${leave.top}")
+    }
+
+    @Test
+    fun `admin without next game offers create game and invite in the hero`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        val state = adminState()
+        setScreen(state.copy(member = checkNotNull(state.member).copy(nextGame = null)), intents::add)
+
+        onNodeWithTag(HomeTags.Empty).assertIsDisplayed()
+        onNodeWithText("Sem jogo marcado").assertIsDisplayed()
+        onNodeWithTag(HomeAdminTags.EmptyCreateGame).performClick()
+        onNodeWithTag(HomeAdminTags.EmptyInvite).performClick()
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.OpenGameEditor("ceret"), HomeIntent.OpenInvite("ceret")), intents)
     }
 
     @Test
@@ -213,6 +281,37 @@ class HomeScreenTest {
     }
 
     @Test
+    fun `admin with next game shows only create game and invite shortcuts`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(adminState(), intents::add)
+
+        onNodeWithTag(HomeAdminTags.ShortcutCreateGame).performClick()
+        onNodeWithTag(HomeAdminTags.ShortcutInvite).performClick()
+        onAllNodesWithText("Caixa").assertCountEquals(0)
+        onAllNodesWithText("Grupos").assertCountEquals(0)
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.OpenGameEditor("ceret"), HomeIntent.OpenInvite("ceret")), intents)
+    }
+
+    @Test
+    fun `admin without next game hides the shortcuts row`() = runComposeUiTest {
+        val state = adminState()
+        setScreen(state.copy(member = checkNotNull(state.member).copy(nextGame = null)))
+
+        onAllNodesWithTag(HomeAdminTags.Shortcuts).assertCountEquals(0)
+        onNodeWithTag(HomeAdminTags.EmptyCreateGame).assertIsDisplayed()
+    }
+
+    @Test
+    fun `admin subtitle renders under the greeting and the bell is reachable`() = runComposeUiTest {
+        setScreen(adminState())
+
+        onNodeWithText("Fala, Bruna!").assertIsDisplayed()
+        onNodeWithText("1 grupos · 3 coisas esperando você").assertIsDisplayed()
+        onNodeWithTag(HomeTags.Notifications).assertIsDisplayed()
+    }
+
+    @Test
     fun `toast state renders the confirmation feedback`() = runComposeUiTest {
         setScreen(nextGameState().copy(toast = br.com.saqz.groups.presentation.home.HomeToast.Confirmed))
 
@@ -225,45 +324,50 @@ class HomeScreenTest {
         setScreen(nextGameState())
 
         onAllNodesWithTag(HomeTags.OwnCharges).assertCountEquals(0)
-        onAllNodesWithTag(HomeTags.ownChargePix("ceret")).assertCountEquals(0)
+        onAllNodesWithTag(HomeTags.ownChargePixCopy("ceret")).assertCountEquals(0)
     }
 
     @Test
-    fun `own charges section names the direction the competence and the due date`() = runComposeUiTest {
+    fun `charges on time render no section`() = runComposeUiTest {
         setScreen(nextGameState().copy(ownCharges = previewOwnCharges()))
+
+        onAllNodesWithTag(HomeTags.OwnCharges).assertCountEquals(0)
+        onAllNodesWithText("Minhas cobranças").assertCountEquals(0)
+    }
+
+    @Test
+    fun `overdue charge ticket opens the group and the button copies the key`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(nextGameState().copy(ownCharges = previewOwnChargesOverdue()), intents::add)
 
         onNodeWithTag(HomeTags.OwnCharges).assertIsDisplayed()
         onNodeWithText("Minhas cobranças").assertIsDisplayed()
-        onNodeWithText("O que você deve aos seus grupos").assertIsDisplayed()
-        onNodeWithText("Mensalidade · Julho").assertIsDisplayed()
-        onNodeWithText("Vence em 05/08").assertIsDisplayed()
+        onNodeWithText("MENSALIDADE DE JULHO").assertIsDisplayed()
         onNodeWithText("R$ 80,00").assertIsDisplayed()
-        onNodeWithText("ceret@volei.com.br").assertIsDisplayed()
-    }
-
-    @Test
-    fun `own charges row opens the group and the pix card copies the key`() = runComposeUiTest {
-        val intents = mutableListOf<HomeIntent>()
-        setScreen(nextGameState().copy(ownCharges = previewOwnCharges()), intents::add)
-
+        onNodeWithText("Pix de Ana Souza · Nubank").assertIsDisplayed()
         onNodeWithTag(HomeTags.ownCharge("ceret")).performClick()
         onNodeWithTag(HomeTags.ownChargePixCopy("ceret")).performClick()
 
-        assertEquals(
-            listOf<HomeIntent>(HomeIntent.OpenGroup("ceret"), HomeIntent.CopyPix("ceret")),
-            intents,
-        )
+        assertEquals(listOf<HomeIntent>(HomeIntent.OpenGroup("ceret"), HomeIntent.CopyPix("ceret")), intents)
     }
 
     @Test
-    fun `overdue charge keeps the wording of the server flag`() = runComposeUiTest {
-        setScreen(nextGameState().copy(ownCharges = previewOwnChargesOverdue()))
+    fun `only overdue groups get a ticket and the copied state swaps the button`() = runComposeUiTest {
+        setScreen(nextGameState().copy(ownCharges = previewOwnChargesOverdue(), pixCopiedGroupId = "ceret"))
 
         onNodeWithText("Venceu em 05/07").assertIsDisplayed()
         onNodeWithText("2 cobranças em aberto").assertIsDisplayed()
-        // O grupo sem chave não desenha card de Pix, e o outro desenha.
-        onAllNodesWithTag(HomeTags.ownChargePix("pacaembu")).assertCountEquals(0)
-        onNodeWithTag(HomeTags.ownChargePix("ceret")).assertIsDisplayed()
+        // O grupo no prazo (pacaembu) não entra na Início.
+        onAllNodesWithTag(HomeTags.ownCharge("pacaembu")).assertCountEquals(0)
+        onNodeWithText("Chave copiada").assertIsDisplayed()
+        onAllNodesWithText("Copiar chave Pix").assertCountEquals(0)
+    }
+
+    @Test
+    fun `pix copied toast renders the manual settlement hint`() = runComposeUiTest {
+        setScreen(nextGameState().copy(toast = br.com.saqz.groups.presentation.home.HomeToast.PixCopied))
+
+        onNodeWithText("Chave copiada. Depois de pagar, o admin dá baixa.").assertIsDisplayed()
     }
 
     @Test
@@ -294,14 +398,7 @@ private fun nextGameState(nextGame: HomeNextGameUi? = nextGame()) = HomeState(
     isLoading = false,
     displayName = "Bruna",
     member = HomeMemberUi(
-        subtitle = if (nextGame == null) "Semana sem jogo por aqui." else "Terça tem jogo. Confirma?",
         nextGame = nextGame,
-        lastCompletedGame = HomeLastCompletedGameUi(
-            day = "21",
-            month = "JUL",
-            title = "Vôlei do CERET · 19h30",
-            summary = "Você jogou · 12 confirmados",
-        ),
         groups = listOf(HomeGroupUi("ceret", "Vôlei do CERET", "26 pessoas · 18 jogos")),
     ),
 )
@@ -320,6 +417,8 @@ private fun nextGame(status: AttendanceStatus? = null) = HomeNextGameUi(
     ownAttendance = status,
     weekday = "terça",
     time = "19h30",
+    display = "Terça, 19h30",
+    meta = "28 de julho · CERET — Quadra 2 · Tatuapé",
 )
 
 private fun adminState(withPendingItems: Boolean = true) = nextGameState().copy(

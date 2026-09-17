@@ -280,6 +280,36 @@ class AndroidAuthAdapterTest {
         assertSame(OperationResult.Success, result)
     }
 
+    /**
+     * VUL-223: sem provedor de credenciais (AOSP, aparelho sem Play Services) o
+     * `clearCredentialState` falha sempre. O Firebase já saiu, então o sign-out é sucesso —
+     * como falha, o `SerializedNativeAuthPort` cancelava todo login seguinte.
+     */
+    @Test
+    fun signOutSucceedsWhenCredentialManagerHasNoProvider() {
+        val fixture = Fixture()
+        var result: OperationResult? = null
+
+        fixture.adapter.signOut(resultCallback { result = it })
+        fixture.firebase.completeOperation(AndroidProviderResult.Success(Unit))
+        fixture.google.completeClear(AndroidProviderResult.Failure(AndroidProviderFailure.UNAVAILABLE))
+
+        assertEquals(1, fixture.google.clearCalls)
+        assertSame(OperationResult.Success, result)
+    }
+
+    @Test
+    fun signOutStillFailsWhenFirebaseCannotSignOut() {
+        val fixture = Fixture()
+        var result: OperationResult? = null
+
+        fixture.adapter.signOut(resultCallback { result = it })
+        fixture.firebase.completeOperation(AndroidProviderResult.Failure(AndroidProviderFailure.NETWORK))
+
+        assertEquals(0, fixture.google.clearCalls)
+        assertEquals(OperationResult.Failure(NativeFailureCode.NETWORK_UNAVAILABLE), result)
+    }
+
     @Test
     fun invalidCredentialExceptionsMapToStableFailure() {
         assertEquals(

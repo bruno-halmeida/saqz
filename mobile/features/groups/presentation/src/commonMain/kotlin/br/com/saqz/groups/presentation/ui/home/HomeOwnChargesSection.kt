@@ -16,41 +16,42 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import br.com.saqz.designsystem.SaqzButton
+import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
-import br.com.saqz.designsystem.SaqzCardTone
+import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
+import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeOwnChargeGroupUi
 import br.com.saqz.groups.presentation.home.HomeOwnChargesUi
-import br.com.saqz.groups.presentation.ui.finance.PixCard
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.resources.Res
-import br.com.saqz.groups.resources.home_own_charges_caption
-import br.com.saqz.groups.resources.own_charges_note
+import br.com.saqz.groups.resources.group_cashbox_pix_copy
+import br.com.saqz.groups.resources.home_own_charge_copied
+import br.com.saqz.groups.resources.home_own_charge_pix_receiver
 import br.com.saqz.groups.resources.own_charges_title
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * VUL-202 — "o que **eu** devo", na Home, abaixo do hero e acima de "Seus grupos".
+ * VUL-220 — "o que **eu** devo", na Home, logo abaixo do hero: só os grupos com cobrança
+ * **vencida**. No prazo a dívida mora no detalhe do grupo e em Perfil → Mensalidades; aqui
+ * a seção nem aparece (quem decide é `overdueGroups`, e o `HomeContent` só a monta quando
+ * há algo). O título repete o da tela irmã (VUL-203) de propósito.
  *
- * A tela do admin mostra as duas direções de dinheiro ao mesmo tempo, com palavras quase
- * iguais: "Esperando você" são as mensalidades **do grupo, que ele recebe**; esta seção é o
- * que **ele deve**. O título repete o da tela irmã (VUL-203, no detalhe do grupo) de
- * propósito — mesmo vocabulário para a mesma ideia — e a legenda abaixo dele é quem diz a
- * direção, porque só "Minhas cobranças" ainda pode ser lido como "as cobranças que emiti".
- *
- * Pagar é manual (decisão do fluxo 5): o único verbo aqui é copiar a chave Pix do grupo,
- * pelo mesmo [PixCard] do VUL-203. A linha leva ao detalhe do grupo, onde mora a lista
- * completa com histórico.
+ * Pagar é manual (decisão do fluxo 5): o único verbo é copiar a chave Pix. O card inteiro
+ * leva ao detalhe do grupo, onde mora a lista completa com histórico. Depois de copiar, o
+ * botão vira "Chave copiada" por 2 s ([pixCopiedGroupId]) e o toast explica a baixa manual.
  */
 @Composable
 internal fun HomeOwnChargesSection(
     ownCharges: HomeOwnChargesUi,
+    pixCopiedGroupId: String?,
     onIntent: (HomeIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) = Column(
@@ -58,41 +59,25 @@ internal fun HomeOwnChargesSection(
     verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
 ) {
     SaqzSectionHeader(title = stringResource(Res.string.own_charges_title))
-    Text(
-        text = stringResource(Res.string.home_own_charges_caption),
-        style = SaqzTheme.typography.caption,
-        color = SaqzTheme.colors.textSecondary,
-    )
-    ownCharges.groups.forEach { group ->
-        HomeOwnChargeCard(group = group, onIntent = onIntent)
-        group.pix?.let { pix ->
-            PixCard(
-                pix = pix,
-                onCopy = { onIntent(HomeIntent.CopyPix(group.groupId)) },
-                cardTag = HomeTags.ownChargePix(group.groupId),
-                copyTag = HomeTags.ownChargePixCopy(group.groupId),
-            )
-            // A mesma nota da tela irmã, na mesma chave, e logo abaixo da chave a que ela
-            // se refere: com dois grupos na lista, uma nota só no fim do bloco parecia
-            // falar do último card — que pode ser justamente o grupo sem Pix.
-            Text(
-                text = stringResource(Res.string.own_charges_note),
-                style = SaqzTheme.typography.caption,
-                color = SaqzTheme.colors.textSecondary,
-            )
-        }
+    ownCharges.overdueGroups.forEach { group ->
+        HomeOwnChargeTicket(
+            group = group,
+            copied = group.groupId == pixCopiedGroupId,
+            onIntent = onIntent,
+        )
     }
 }
 
 @Composable
-private fun HomeOwnChargeCard(
+private fun HomeOwnChargeTicket(
     group: HomeOwnChargeGroupUi,
+    copied: Boolean,
     onIntent: (HomeIntent) -> Unit,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     SaqzCard(
-        tone = SaqzCardTone.Soft,
+        cornerRadius = metrics.blockRadius,
         modifier = Modifier
             .clickable(
                 onClickLabel = group.groupName,
@@ -104,52 +89,65 @@ private fun HomeOwnChargeCard(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(metrics.grid),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Eyebrow em caixa alta no próprio texto: a escala não transforma.
+            Text(
+                text = group.competence.uppercase(),
+                style = SaqzTheme.typography.eyebrow,
+                color = colors.primary,
+                modifier = Modifier.weight(1f),
+            )
+            SaqzStatusChip(text = group.groupName, tone = SaqzChipTone.Brand)
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(
+            Text(
+                text = group.amountLabel,
+                style = SaqzTheme.typography.display,
+                color = colors.textPrimary,
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
+            )
+            // Âmbar, não vermelho: lembrete, não alarme (decisão do VUL-202).
+            SaqzStatusChip(text = group.dueLabel, tone = SaqzChipTone.Warning, dot = true)
+        }
+        group.countLabel?.let {
+            Text(text = it, style = SaqzTheme.typography.support, color = colors.textSecondary)
+        }
+        group.pix?.let { pix ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(metrics.grid),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                SaqzIcon(SaqzIcons.CreditCard, tint = colors.textSecondary, size = PixIconSize)
                 Text(
-                    text = group.groupName,
-                    style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
-                    color = colors.textPrimary,
-                )
-                Text(
-                    text = group.competence,
-                    style = SaqzTheme.typography.caption,
+                    text = stringResource(Res.string.home_own_charge_pix_receiver, pix.label ?: pix.key),
+                    style = SaqzTheme.typography.support,
                     color = colors.textSecondary,
                 )
-                group.countLabel?.let {
-                    Text(
-                        text = it,
-                        style = SaqzTheme.typography.caption,
-                        color = colors.textSecondary,
-                    )
-                }
             }
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
-            ) {
-                Text(
-                    text = group.amountLabel,
-                    style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.Bold),
-                    color = colors.textPrimary,
-                )
-                // O vencido acende no âmbar do design system; no prazo fica no cinza de
-                // metadado. É a mesma regra de tom do aviso do shell, e o `overdue` dos
-                // dois vem do servidor.
-                Text(
-                    text = group.dueLabel,
-                    style = SaqzTheme.typography.caption,
-                    color = if (group.overdue) colors.warningForeground else colors.textSecondary,
-                )
-            }
+            SaqzButton(
+                label = stringResource(if (copied) Res.string.home_own_charge_copied else Res.string.group_cashbox_pix_copy),
+                onClick = { onIntent(HomeIntent.CopyPix(group.groupId)) },
+                variant = if (copied) SaqzButtonVariant.Secondary else SaqzButtonVariant.Primary,
+                fullWidth = true,
+                leadingContent = if (copied) {
+                    { tint -> SaqzIcon(SaqzIcons.Check, tint = tint, size = PixCheckSize) }
+                } else {
+                    null
+                },
+                modifier = Modifier.testTag(HomeTags.ownChargePixCopy(group.groupId)),
+            )
         }
     }
 }
+
+private val PixIconSize = 16.dp
+private val PixCheckSize = 18.dp
 
 /**
  * O aviso permanente do shell (VUL-202). Formato do [EmailVerificationBanner][1]: faixa
@@ -216,7 +214,13 @@ private fun HomeOwnChargesBannerOverduePreview() = SaqzTheme {
 @Preview(name = "Minhas cobranças na Home", widthDp = 390)
 @Composable
 private fun HomeOwnChargesSectionPreview() = SaqzTheme {
-    HomeOwnChargesSection(ownCharges = previewOwnCharges(), onIntent = {})
+    HomeOwnChargesSection(ownCharges = previewOwnChargesOverdue(), pixCopiedGroupId = null, onIntent = {})
+}
+
+@Preview(name = "Minhas cobranças · chave copiada", widthDp = 390)
+@Composable
+private fun HomeOwnChargesSectionCopiedPreview() = SaqzTheme {
+    HomeOwnChargesSection(ownCharges = previewOwnChargesOverdue(), pixCopiedGroupId = "ceret", onIntent = {})
 }
 
 internal fun previewOwnCharges() = HomeOwnChargesUi(
@@ -227,7 +231,7 @@ internal fun previewOwnCharges() = HomeOwnChargesUi(
         HomeOwnChargeGroupUi(
             groupId = "ceret",
             groupName = "Vôlei do CERET",
-            competence = "Mensalidade · Julho",
+            competence = "Mensalidade de julho",
             amountLabel = "R$ 80,00",
             dueLabel = "Vence em 05/08",
             overdue = false,

@@ -17,6 +17,7 @@ import br.com.saqz.groups.application.home.HomeReadModel
 import br.com.saqz.groups.application.home.HomeRepository
 import br.com.saqz.groups.application.home.HomeRosterMember
 import br.com.saqz.groups.application.home.HomeRosterPreview
+import br.com.saqz.groups.application.home.HomeUpcomingGame
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
@@ -37,6 +38,8 @@ class MyHomeControllerTest {
     private val otherGroup = UUID.randomUUID()
     private val nextGame = UUID.randomUUID()
     private val completedGame = UUID.randomUUID()
+    private val upcomingGame = UUID.randomUUID()
+    private val otherUpcomingGame = UUID.randomUUID()
     private val identity = RequestIdentity("subject", emailVerified = true)
     private val now = Instant.parse("2026-08-01T12:00:00Z")
 
@@ -85,6 +88,33 @@ class MyHomeControllerTest {
                 ownPlayed = true,
             ),
             response.member.lastCompletedGame,
+        )
+        assertEquals(
+            listOf(
+                HomeUpcomingGameResponse(
+                    groupId = otherGroup,
+                    groupName = "Grupo Quadra",
+                    gameId = upcomingGame,
+                    zoneId = "America/Sao_Paulo",
+                    startsAt = now.plusSeconds(7_200),
+                    confirmationDeadline = now.plusSeconds(3_600),
+                    capacity = 10,
+                    confirmedCount = 6,
+                    ownStatus = null,
+                ),
+                HomeUpcomingGameResponse(
+                    groupId = group,
+                    groupName = "Grupo Praia",
+                    gameId = otherUpcomingGame,
+                    zoneId = "America/Sao_Paulo",
+                    startsAt = now.plusSeconds(10_800),
+                    confirmationDeadline = now.plusSeconds(7_200),
+                    capacity = 12,
+                    confirmedCount = 3,
+                    ownStatus = "CONFIRMED",
+                ),
+            ),
+            response.member.upcomingGames,
         )
         assertEquals(
             HomeAdminResponse(
@@ -161,6 +191,7 @@ class MyHomeControllerTest {
         assertNull(response.member.nextGame)
         assertNull(response.member.lastCompletedGame)
         assertEquals(emptyList(), response.member.groups)
+        assertEquals(emptyList(), response.member.upcomingGames)
         assertNull(response.admin)
         assertNull(response.ownCharges)
     }
@@ -205,6 +236,30 @@ class MyHomeControllerTest {
                             ownPlayed = true,
                         ),
                         groups = listOf(HomeMemberGroup(group, "Grupo Praia", GroupRole.ATHLETE, 20, 4)),
+                        upcomingGames = listOf(
+                            HomeUpcomingGame(
+                                groupId = otherGroup,
+                                groupName = "Grupo Quadra",
+                                gameId = upcomingGame,
+                                zoneId = "America/Sao_Paulo",
+                                startsAt = now.plusSeconds(7_200),
+                                confirmationDeadline = now.plusSeconds(3_600),
+                                capacity = 10,
+                                confirmedCount = 6,
+                                ownStatus = null,
+                            ),
+                            HomeUpcomingGame(
+                                groupId = group,
+                                groupName = "Grupo Praia",
+                                gameId = otherUpcomingGame,
+                                zoneId = "America/Sao_Paulo",
+                                startsAt = now.plusSeconds(10_800),
+                                confirmationDeadline = now.plusSeconds(7_200),
+                                capacity = 12,
+                                confirmedCount = 3,
+                                ownStatus = AttendanceStatus.CONFIRMED,
+                            ),
+                        ),
                     ),
                     admin = HomeAdminReadModel(
                         groups = listOf(

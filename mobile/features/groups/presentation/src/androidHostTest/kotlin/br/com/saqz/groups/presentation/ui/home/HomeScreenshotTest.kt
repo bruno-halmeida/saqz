@@ -2,7 +2,9 @@ package br.com.saqz.groups.presentation.ui.home
 
 import android.app.Application
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.home.HomeGroupUi
@@ -10,7 +12,6 @@ import br.com.saqz.groups.presentation.home.HomeAdminGroupUi
 import br.com.saqz.groups.presentation.home.HomeAdminReadModelUi
 import br.com.saqz.groups.presentation.home.HomeGameToSettleUi
 import br.com.saqz.groups.presentation.home.HomeMonthlyChargesUi
-import br.com.saqz.groups.presentation.home.HomeLastCompletedGameUi
 import br.com.saqz.groups.presentation.home.HomeMemberUi
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
 import br.com.saqz.groups.presentation.home.HomeOwnChargesUi
@@ -56,6 +57,10 @@ class HomeScreenshotTest {
     @Test
     fun declined() = capture("home-content-declined", state(AttendanceStatus.Declined))
 
+    /** Depois do "Alterar": os botões reaparecem com a escolha atual marcada. */
+    @Test
+    fun changingConfirmedResponse() = captureChanging("home-content-trocando-resposta", AttendanceStatus.Confirmed)
+
     @Test
     fun waitlisted() = capture("home-content-waitlisted", state(AttendanceStatus.Waitlisted))
 
@@ -68,11 +73,29 @@ class HomeScreenshotTest {
     @Test
     fun empty() = capture("home-empty", state(nextGame = null))
 
+    /** Prazo encerrado sem resposta: botões desabilitados e a linha "Confirmações encerradas." */
+    @Test
+    fun closedDeadline() = capture(
+        "home-content-encerradas",
+        state(nextGame = nextGame().copy(confirmationOpen = false, deadline = "Confirmações encerradas.")),
+    )
+
+    /** Falha ao responder: o aviso branco com o ícone de alerta dentro do hero. */
+    @Test
+    fun responseFailed() = capture("home-content-erro-resposta", state().copy(responseFailed = true))
+
     @Test
     fun adminWithPendingItems() = captureAdmin("home-admin-pending", adminState())
 
     @Test
     fun adminWithoutPendingItems() = captureAdmin("home-admin-empty", adminState(withPendingItems = false))
+
+    /** Gestor sem jogo marcado: "Marcar jogo" e "Convidar" dentro do hero. */
+    @Test
+    fun adminWithoutNextGame() = captureAdmin(
+        "home-admin-no-game",
+        adminState().let { it.copy(member = checkNotNull(it.member).copy(nextGame = null)) },
+    )
 
     @Test
     fun adminAndMemberMixed() = captureAdmin("home-admin-member-mixed", mixedAdminState())
@@ -95,20 +118,22 @@ class HomeScreenshotTest {
         state().copy(ownCharges = previewOwnChargesOverdue()),
     )
 
-    /**
-     * O caso que a nomenclatura precisa resolver: quem recebe e deve na mesma tela. Sem o
-     * card "Da última vez" — ele não tem nada com o assunto e empurrava o "Esperando você"
-     * para fora do quadro, que é justamente o rótulo que esta cena existe para comparar.
-     */
+    /** Chave copiada: botão secundário com check e o toast da baixa manual. */
+    @Test
+    fun ownChargesCopied() = captureOwnCharges(
+        "home-cobranca-copiada",
+        state().copy(
+            ownCharges = previewOwnChargesOverdue(),
+            pixCopiedGroupId = "ceret",
+            toast = br.com.saqz.groups.presentation.home.HomeToast.PixCopied,
+        ),
+    )
+
+    /** O caso que a nomenclatura precisa resolver: quem recebe (Esperando você) e deve (cobrança vencida) na mesma tela. */
     @Test
     fun ownChargesForAnAdminWhoAlsoOwes() = captureOwnCharges(
         "home-cobranca-admin-que-deve",
-        adminState().let { admin ->
-            admin.copy(
-                ownCharges = previewOwnCharges(),
-                member = checkNotNull(admin.member).copy(lastCompletedGame = null),
-            )
-        },
+        adminState().copy(ownCharges = previewOwnChargesOverdue()),
     )
 
     @Test
@@ -149,6 +174,17 @@ class HomeScreenshotTest {
         compose.onRoot().captureRoboImage("screenshots/$directory/$name.png")
     }
 
+    private fun captureChanging(name: String, attendance: AttendanceStatus) {
+        compose.setContent {
+            SaqzTheme {
+                HomeScreen(state = state(attendance), onIntent = {})
+            }
+        }
+        compose.onNodeWithTag(HomeTags.ResponseChange).performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("screenshots/vul-191/$name.png")
+    }
+
     private fun state(
         attendance: AttendanceStatus? = null,
         nextGame: HomeNextGameUi? = nextGame(attendance),
@@ -156,14 +192,7 @@ class HomeScreenshotTest {
         isLoading = false,
         displayName = "Bruna",
         member = HomeMemberUi(
-            subtitle = if (nextGame == null) "Semana sem jogo por aqui." else "Terça tem jogo. Confirma?",
             nextGame = nextGame,
-            lastCompletedGame = HomeLastCompletedGameUi(
-                day = "21",
-                month = "JUL",
-                title = "Vôlei do CERET · 19h30",
-                summary = "Você jogou · 12 confirmados",
-            ),
             groups = listOf(
                 HomeGroupUi("ceret", "Vôlei do CERET", "26 pessoas · 18 jogos"),
                 HomeGroupUi("pacaembu", "Vôlei Pacaembu", "14 pessoas · 6 jogos"),
@@ -185,6 +214,8 @@ class HomeScreenshotTest {
         ownAttendance = status,
         weekday = "terça",
         time = "19h30",
+        display = "Terça, 19h30",
+        meta = "28 de julho · CERET — Quadra 2 · Tatuapé",
     )
 
     private fun reservaGame() = nextGame(AttendanceStatus.Waitlisted).copy(
@@ -243,11 +274,6 @@ class HomeScreenshotTest {
                 groups = checkNotNull(memberState.member).groups.map { group ->
                     if (group.id == "ceret") group.copy(isAdmin = true) else group
                 },
-                subtitle = if (withPendingItems) {
-                    "2 grupos · 3 coisas esperando você"
-                } else {
-                    "Terça tem jogo. Confirma?"
-                },
                 adminSubtitle = if (withPendingItems) "2 grupos · 3 coisas esperando você" else null,
                 admin = HomeAdminReadModelUi(listOf(admin)),
             ),
@@ -256,7 +282,6 @@ class HomeScreenshotTest {
 
     private fun mixedAdminState() = state().copy(
         member = checkNotNull(state().member).copy(
-            subtitle = "2 grupos · 1 coisas esperando você",
             adminSubtitle = "2 grupos · 1 coisas esperando você",
             groups = checkNotNull(state().member).groups.map { group ->
                 if (group.id == "pacaembu") group.copy(isAdmin = true) else group

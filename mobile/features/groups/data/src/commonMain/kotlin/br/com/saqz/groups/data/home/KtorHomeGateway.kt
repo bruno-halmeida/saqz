@@ -23,6 +23,7 @@ import br.com.saqz.groups.domain.home.HomeOwnCharges
 import br.com.saqz.groups.domain.home.HomeReadModel
 import br.com.saqz.groups.domain.home.HomeRosterMember
 import br.com.saqz.groups.domain.home.HomeRosterPreview
+import br.com.saqz.groups.domain.home.HomeUpcomingGame
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkResult
@@ -90,10 +91,24 @@ internal data class HomeLastCompletedGameTransport(
 )
 
 @Serializable
+internal data class HomeUpcomingGameTransport(
+    val groupId: String,
+    val groupName: String,
+    val gameId: String,
+    val zoneId: String,
+    val startsAt: String,
+    val confirmationDeadline: String,
+    val capacity: Int,
+    val confirmedCount: Int,
+    val ownStatus: String? = null,
+)
+
+@Serializable
 internal data class HomeMemberTransport(
     val nextGame: HomeNextGameTransport?,
     val lastCompletedGame: HomeLastCompletedGameTransport?,
     val groups: List<HomeGroupTransport>,
+    val upcomingGames: List<HomeUpcomingGameTransport> = emptyList(),
 )
 
 @Serializable
@@ -254,6 +269,7 @@ private fun HomeMemberTransport.toDomain(): HomeMemberReadModel? {
         lastCompletedGame = lastCompletedGame?.toDomain()
             ?: if (lastCompletedGame == null) null else return null,
         groups = groupsDomain.filterNotNull(),
+        upcomingGames = upcomingGames.mapNotNull(HomeUpcomingGameTransport::toDomain),
     )
 }
 
@@ -313,6 +329,25 @@ private fun HomeLastCompletedGameTransport.toDomain() = HomeLastCompletedGame(
     confirmedCount = confirmedCount,
     ownPlayed = ownPlayed,
 )
+
+/**
+ * Status desconhecido derruba **o jogo**, não a Home: a linha é secundária, a mesma
+ * filosofia do `ownCharges` logo acima.
+ */
+private fun HomeUpcomingGameTransport.toDomain(): HomeUpcomingGame? {
+    val statusDomain = ownStatus?.let { it.toAttendanceStatus() ?: return null }
+    return HomeUpcomingGame(
+        groupId = GroupId(groupId),
+        groupName = groupName,
+        gameId = gameId,
+        zoneId = zoneId,
+        startsAt = startsAt,
+        confirmationDeadline = confirmationDeadline,
+        capacity = capacity,
+        confirmedCount = confirmedCount,
+        ownStatus = statusDomain,
+    )
+}
 
 private fun HomeAdminTransport.toDomain() = HomeAdminReadModel(groups = groups.map(HomeAdminGroupTransport::toDomain))
 

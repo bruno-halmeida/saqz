@@ -16,6 +16,7 @@ import br.com.saqz.groups.application.home.HomeReadModel
 import br.com.saqz.groups.application.home.HomeRepository
 import br.com.saqz.groups.application.home.HomeRosterMember
 import br.com.saqz.groups.application.home.HomeRosterPreview
+import br.com.saqz.groups.application.home.HomeUpcomingGame
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
@@ -53,6 +54,14 @@ class JdbcHomeRepository(
                 .query(::mapRosterMember)
                 .list()
         } ?: emptyList()
+        // Só há "depois do hero" quando há hero; sem jogo futuro não consulta.
+        val upcomingGames = nextGame?.let {
+            jdbc.sql(UPCOMING_GAMES)
+                .param("actor", actorId)
+                .param("now", Timestamp.from(now))
+                .query(::mapUpcomingGame)
+                .list()
+        } ?: emptyList()
         val lastCompleted = jdbc.sql(LAST_COMPLETED_GAME)
             .param("actor", actorId)
             .query(::mapLastCompletedGame)
@@ -74,6 +83,7 @@ class JdbcHomeRepository(
                 nextGame = nextGame?.withRoster(roster),
                 lastCompletedGame = lastCompleted,
                 groups = memberGroups,
+                upcomingGames = upcomingGames,
             ),
             admin = adminGroups.takeIf { it.isNotEmpty() }?.let(::HomeAdminReadModel),
             ownCharges = ownChargeGroups.takeIf { it.isNotEmpty() }?.let {
@@ -122,6 +132,18 @@ class JdbcHomeRepository(
         displayName = result.getString("display_name"),
         status = AttendanceStatus.valueOf(result.getString("status")),
         waitlistPosition = result.getObject("waitlist_position", Long::class.javaObjectType),
+    )
+
+    private fun mapUpcomingGame(result: ResultSet, @Suppress("UNUSED_PARAMETER") row: Int) = HomeUpcomingGame(
+        groupId = result.getObject("group_id", UUID::class.java),
+        groupName = result.getString("group_name"),
+        gameId = result.getObject("game_id", UUID::class.java),
+        zoneId = result.getString("zone_id"),
+        startsAt = result.getTimestamp("starts_at").toInstant(),
+        confirmationDeadline = result.getTimestamp("confirmation_deadline").toInstant(),
+        capacity = result.getInt("capacity"),
+        confirmedCount = result.getInt("confirmed_count"),
+        ownStatus = result.getString("own_status")?.let(AttendanceStatus::valueOf),
     )
 
     private fun mapLastCompletedGame(
@@ -288,6 +310,40 @@ class JdbcHomeRepository(
               AND (groups.owner_user_id = :actor OR memberships.user_id IS NOT NULL)
             ORDER BY games.starts_at, games.id
             LIMIT 1
+        """
+
+        // Os jogos depois do hero, em todos os grupos: mesmo FROM/WHERE/ORDER BY da NEXT_GAME.
+        // O desempate por games.id é o que faz o OFFSET 1 pular exatamente o jogo do hero.
+        const val UPCOMING_GAMES = """
+            SELECT games.group_id,
+                   groups.name AS group_name,
+                   games.id AS game_id,
+                   games.zone_id,
+                   games.starts_at,
+                   games.confirmation_deadline,
+                   games.capacity,
+                   (
+                       SELECT count(*)
+                       FROM game_attendance attendance
+                       WHERE attendance.game_id = games.id
+                         AND attendance.status = 'CONFIRMED'
+                   ) AS confirmed_count,
+                   own.status AS own_status
+            FROM games
+            JOIN access_groups groups
+                ON groups.id = games.group_id
+               AND groups.deleted_at IS NULL
+            LEFT JOIN group_memberships memberships
+                ON memberships.group_id = games.group_id
+               AND memberships.user_id = :actor
+            LEFT JOIN game_attendance own
+                ON own.game_id = games.id
+               AND own.member_user_id = :actor
+            WHERE games.status = 'PUBLISHED'
+              AND games.starts_at >= :now
+              AND (groups.owner_user_id = :actor OR memberships.user_id IS NOT NULL)
+            ORDER BY games.starts_at, games.id
+            OFFSET 1 LIMIT 3
         """
 
         const val NEXT_GAME_ROSTER = """
