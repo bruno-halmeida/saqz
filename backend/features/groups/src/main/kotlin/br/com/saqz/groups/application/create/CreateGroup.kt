@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.create
 
+import br.com.saqz.groups.application.game.series.ScheduleSeriesSync
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
@@ -18,6 +19,7 @@ class CreateGroup(
     private val repository: GroupCreationRepository,
     private val subscriptionLimits: SubscriptionLimits,
     private val trial: GroupCreationTrial = GroupCreationTrial.None,
+    private val scheduleSeries: ScheduleSeriesSync = ScheduleSeriesSync { },
 ) {
     fun execute(
         actor: UUID,
@@ -40,6 +42,10 @@ class CreateGroup(
         val errors = buildList {
             if (profileValidation is GroupProfileDefaultsValidation.Invalid) addAll(profileValidation.errors)
             timeZoneError?.let(::add)
+            // Horário regular vira jogo na criação, e jogo não existe sem local.
+            if (profileValidation is GroupProfileDefaultsValidation.Valid &&
+                profileValidation.value.regularSlots.isNotEmpty() && profileValidation.value.defaultVenue == null
+            ) add(GroupValidationError("defaultVenue", "is required when regularSlots are set"))
         }
         if (errors.isNotEmpty()) return CreateGroupResult.Invalid(errors)
 
@@ -65,6 +71,9 @@ class CreateGroup(
                 ),
             )
         } ?: return CreateGroupResult.GroupLimitExceeded
+
+        // Fora da transação: o repositório de séries abre a própria conexão e só enxerga o grupo já commitado.
+        scheduleSeries.sync(stored.id)
 
         return CreateGroupResult.Success(
             CreatedGroup(

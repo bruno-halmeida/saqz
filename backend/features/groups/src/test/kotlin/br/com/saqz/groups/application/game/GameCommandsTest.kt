@@ -109,6 +109,14 @@ class GameCommandsTest {
         assertTrue(fixture.effects.calls.isEmpty())
     }
 
+    @Test fun `game past its start time is no longer editable`() {
+        val fixture = fixture(GroupRole.OWNER, clock = java.time.Clock.fixed(START, java.time.ZoneOffset.UTC))
+        val result = fixture.edit.execute(actor, groupId, gameId, 1, validDraft(title = "Novo título"))
+
+        assertIs<GameCommandResult.InvalidTransition>(result)
+        assertTrue(fixture.repository.updates.isEmpty())
+    }
+
     @Test fun `draft edit stores immutable replacement and schedules only after success`() {
         val fixture = fixture(GroupRole.OWNER)
         val result = fixture.edit.execute(actor, groupId, gameId, 1, validDraft(title = "Novo título"))
@@ -265,6 +273,7 @@ class GameCommandsTest {
         status: GameStatus = GameStatus.DRAFT,
         version: Long = 1,
         defaults: GroupGameDefaults = defaults(),
+        clock: java.time.Clock = java.time.Clock.fixed(java.time.Instant.parse("2026-08-01T12:00:00Z"), java.time.ZoneOffset.UTC),
     ): Fixture {
         val transaction = ImmediateTransaction()
         val repository = FakeRepository(
@@ -274,7 +283,7 @@ class GameCommandsTest {
         val effects = FakeEffects()
         return Fixture(
             CreateGame(transaction, repository),
-            EditGame(transaction, repository, effects),
+            EditGame(transaction, repository, effects, clock),
             ChangeGameLifecycle(transaction, repository, effects),
             repository,
             effects,

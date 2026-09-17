@@ -157,6 +157,14 @@ class GroupSetupValidatorTest {
     }
 
     @Test
+    fun `recorrente sem quadra pede nome e endereco`() {
+        val errors = validate(state(recurring = true) { copy(defaultVenue = null) })
+
+        assertEquals(setOf(GroupSetupError.VenueNameRequired, GroupSetupError.VenueAddressNotFound), errors)
+        assertEquals(emptySet(), validate(state(recurring = false) { copy(defaultVenue = null, regularSlots = emptyList()) }))
+    }
+
+    @Test
     fun `sem recorrencia a lista vazia de horarios e valida`() {
         val errors = validate(state(recurring = false) { copy(regularSlots = emptyList()) })
 
@@ -182,8 +190,8 @@ class GroupSetupValidatorTest {
     }
 
     @Test
-    fun `sem quadra nenhuma nao ha erro de quadra`() {
-        val errors = validate(state { copy(defaultVenue = null) })
+    fun `sem recorrencia e sem quadra nenhuma nao ha erro de quadra`() {
+        val errors = validate(state(recurring = false) { copy(defaultVenue = null) })
 
         assertTrue(errors.isEmpty())
     }

@@ -21,7 +21,7 @@ class MaterializeWeeklySeriesTest {
         val repository = IdentityRepository()
         var paused = true
         val service = MaterializeWeeklySeries(
-            RecordingTransaction(), repository, RecordingIds(), Clock.systemUTC(),
+            RecordingTransaction(), repository, RecordingIds(), Clock.fixed(Instant.parse("2026-01-01T12:00:00Z"), ZoneOffset.UTC),
             schedulePolicy = ScheduleMaterializationPolicy { paused },
         )
         assertEquals(MaterializeWeeklySeriesResult.Success(0, 0), service.execute(rule(), DATE))
@@ -41,7 +41,7 @@ class MaterializeWeeklySeriesTest {
             override fun find(groupId: UUID, lineageId: UUID): br.com.saqz.groups.application.game.series.WeeklySeriesView? = null
         }
         val service = br.com.saqz.groups.application.game.series.WeeklySeriesService(
-            repository, RecordingIds(), Clock.systemUTC(), writeAccess = br.com.saqz.sharedkernel.subscription.GroupWriteAccess { false },
+            repository, RecordingIds(), Clock.fixed(Instant.parse("2026-01-01T12:00:00Z"), ZoneOffset.UTC), writeAccess = br.com.saqz.sharedkernel.subscription.GroupWriteAccess { false },
         )
         kotlin.test.assertFailsWith<br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException> { service.create(UUID.randomUUID(), rule()) }
         assertTrue(persisted.isEmpty())

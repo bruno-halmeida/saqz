@@ -85,6 +85,7 @@ class EditGame(
     private val transactionRunner: TransactionRunner,
     private val repository: GameCommandRepository,
     private val sideEffects: GameSideEffectPort,
+    private val clock: java.time.Clock = java.time.Clock.systemUTC(),
 ) {
     fun execute(
         actor: UUID,
@@ -96,7 +97,10 @@ class EditGame(
         val context = repository.find(actor, groupId, gameId) ?: return@inTransaction GameCommandResult.GameNotFound
         if (!context.role.isOrganizer()) return@inTransaction context.role.denied()
         if (context.game.version != expectedVersion) return@inTransaction GameCommandResult.VersionConflict
-        if (!GameLifecyclePolicy.canMutate(context.game.status, GameMutation.EDIT)) {
+        // Jogo que já passou do horário de início não é mais alterado.
+        if (!context.game.snapshot.startsAt.isAfter(clock.instant()) ||
+            !GameLifecyclePolicy.canMutate(context.game.status, GameMutation.EDIT)
+        ) {
             return@inTransaction GameCommandResult.InvalidTransition(context.game.status, GameMutation.EDIT)
         }
         val snapshot = when (val validation = GameDraftValidator.validate(input)) {
