@@ -201,9 +201,39 @@ class BootstrapSessionTest {
         assertTrue(repository.commands.isEmpty())
     }
 
+    @Test
+    fun `actor id of an existing account costs no upsert and ignores a nameless token`() {
+        val repository = RecordingSessionRepository(view, existing = ExistingSessionUser(userId, null))
+
+        val result = BootstrapSession(repository).actorId(identity(displayName = null))
+
+        assertEquals(SessionActorResult.Found(userId), result)
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `actor id of a suspended account is Suspended without touching the upsert`() {
+        val suspended = ExistingSessionUser(userId, java.time.Instant.parse("2026-08-01T00:00:00Z"))
+        val repository = RecordingSessionRepository(view, existing = suspended)
+
+        assertEquals(SessionActorResult.Suspended, BootstrapSession(repository).actorId(identity()))
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
+    fun `actor id of an unknown account falls back to the full bootstrap`() {
+        val repository = RecordingSessionRepository(view)
+        val useCase = BootstrapSession(repository)
+
+        assertEquals(SessionActorResult.Found(userId), useCase.actorId(identity()))
+        assertEquals(1, repository.commands.size)
+        assertEquals(SessionActorResult.InvalidDisplayName, useCase.actorId(identity(displayName = null)))
+    }
+
     private class RecordingSessionRepository(
         private val result: SessionView,
         private val suspendedAt: java.time.Instant? = null,
+        private val existing: ExistingSessionUser? = null,
     ) : SessionRepository {
         val commands: MutableList<SessionUpsert> = Collections.synchronizedList(mutableListOf())
 
@@ -213,5 +243,7 @@ class BootstrapSessionTest {
         }
 
         override fun suspendedAt(subject: String): java.time.Instant? = suspendedAt
+
+        override fun existingUser(subject: String): ExistingSessionUser? = existing
     }
 }

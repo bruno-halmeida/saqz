@@ -1,6 +1,7 @@
 package br.com.saqz.access.adapter.output.jdbc.session
 
 import br.com.saqz.access.application.session.AccountDeletionRepository
+import br.com.saqz.access.application.session.ExistingSessionUser
 import br.com.saqz.access.application.session.ProfileCompletion
 import br.com.saqz.access.application.session.SessionMembership
 import br.com.saqz.access.application.session.SessionRepository
@@ -27,6 +28,19 @@ class JdbcSessionRepository(
         .query(java.time.OffsetDateTime::class.java)
         .optional()
         .map { it.toInstant() }
+        .orElse(null)
+
+    override fun existingUser(subject: String): ExistingSessionUser? = jdbc.sql(
+        "SELECT id, suspended_at FROM access_users WHERE firebase_subject = :subject AND deleted_at IS NULL",
+    )
+        .param("subject", subject)
+        .query { result, _ ->
+            ExistingSessionUser(
+                id = result.getObject("id", UUID::class.java),
+                suspendedAt = result.getObject("suspended_at", java.time.OffsetDateTime::class.java)?.toInstant(),
+            )
+        }
+        .optional()
         .orElse(null)
 
     override fun upsertAndLoad(command: SessionUpsert): SessionView {

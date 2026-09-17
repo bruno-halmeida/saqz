@@ -8,4 +8,7 @@ interface SessionRepository {
 
     /** Instante da suspensão de plataforma, ou null quando a conta pode entrar. */
     fun suspendedAt(subject: String): java.time.Instant? = null
+
+    /** Conta viva pelo subject, em um SELECT só; null quando ainda não existe. */
+    fun existingUser(subject: String): ExistingSessionUser? = null
 }

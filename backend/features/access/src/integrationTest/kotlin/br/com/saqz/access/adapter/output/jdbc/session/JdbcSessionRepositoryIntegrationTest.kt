@@ -4,6 +4,7 @@ import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.ProfileCompletion
 import br.com.saqz.access.application.session.PhoneVisibility
+import br.com.saqz.access.application.session.SessionActorResult
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.access.domain.PhoneNumber
@@ -24,6 +25,7 @@ import java.util.concurrent.Executors
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -431,6 +433,41 @@ class JdbcSessionRepositoryIntegrationTest {
             1,
             count("SELECT count(*) FROM group_memberships WHERE group_id = '$oldGroup' AND user_id = '${deleted.user.id}'"),
         )
+    }
+
+    @Test
+    fun `existing user lookup returns the live account and misses an unknown subject`() {
+        val session = repository.upsertAndLoad(command("subject-lean"))
+
+        val found = repository.existingUser("subject-lean")
+
+        assertEquals(session.user.id, found?.id)
+        assertNull(found?.suspendedAt)
+        assertNull(repository.existingUser("subject-never-seen"))
+    }
+
+    @Test
+    fun `existing user lookup reports the suspension instant`() {
+        val session = repository.upsertAndLoad(command("subject-suspended"))
+        execute("UPDATE access_users SET suspended_at = now() WHERE id = '${session.user.id}'")
+
+        assertNotNull(repository.existingUser("subject-suspended")?.suspendedAt)
+    }
+
+    @Test
+    fun `actor id of a soft deleted subject bootstraps a fresh user instead of the dead row`() {
+        val deleted = repository.upsertAndLoad(command("subject-gone"))
+        repository.softDelete("subject-gone")
+
+        // O atalho tem que ERRAR a linha apagada: quem responde é o bootstrap, que cria a conta nova.
+        assertNull(repository.existingUser("subject-gone"))
+        val actor = BootstrapSession(repository).actorId(
+            RequestIdentity("subject-gone", "person@example.test", true, "Person Name"),
+        )
+
+        val replacement = assertIs<SessionActorResult.Found>(actor)
+        assertNotEquals(deleted.user.id, replacement.userId)
+        assertEquals(2, count("SELECT count(*) FROM access_users"))
     }
 
     private fun command(subject: String, emailVerified: Boolean = true) =

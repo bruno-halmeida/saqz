@@ -144,7 +144,7 @@ import br.com.saqz.access.application.session.IssueAppOnboardingLink
 import br.com.saqz.access.application.session.RedeemAppOnboardingLink
 import br.com.saqz.access.application.session.GetAppOnboarding
 import br.com.saqz.access.application.session.CompleteAppOnboarding
-import br.com.saqz.access.application.session.BootstrapSessionResult
+import br.com.saqz.access.application.session.SessionActorResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
 import br.com.saqz.access.application.session.AccountGroupCleanup
 import br.com.saqz.access.application.session.AccountTransactionRunner
@@ -209,10 +209,10 @@ class AccessSessionConfiguration {
 
     @Bean
     fun verifiedGroupActorResolver(bootstrapSession: BootstrapSession) = VerifiedGroupActorResolver { identity ->
-        when (val result = bootstrapSession.execute(identity)) {
-            BootstrapSessionResult.InvalidDisplayName -> throw InvalidDisplayNameException()
-            BootstrapSessionResult.Suspended -> throw AccountSuspendedException()
-            is BootstrapSessionResult.Success -> result.session.user.id
+        when (val result = bootstrapSession.actorId(identity)) {
+            SessionActorResult.InvalidDisplayName -> throw InvalidDisplayNameException()
+            SessionActorResult.Suspended -> throw AccountSuspendedException()
+            is SessionActorResult.Found -> result.userId
         }
     }
 

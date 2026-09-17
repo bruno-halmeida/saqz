@@ -77,6 +77,16 @@ sealed interface BootstrapSessionResult {
     data object Suspended : BootstrapSessionResult
 }
 
+data class ExistingSessionUser(val id: UUID, val suspendedAt: java.time.Instant?)
+
+sealed interface SessionActorResult {
+    data class Found(val userId: UUID) : SessionActorResult
+
+    data object InvalidDisplayName : SessionActorResult
+
+    data object Suspended : SessionActorResult
+}
+
 sealed interface CompleteSessionProfileResult {
     data class Success(val session: SessionView) : CompleteSessionProfileResult
 
