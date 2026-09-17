@@ -40,9 +40,10 @@ class GameGuestMigrationIntegrationTest {
         execute(
             """
             INSERT INTO game_attendance (
-                game_id, group_id, member_user_id, status, guest_seq, responded_at, updated_at, member_display_name
+                game_id, group_id, member_user_id, status, guest_seq, waitlist_sequence,
+                responded_at, updated_at, member_display_name
             ) VALUES (
-                '${fixture.game}', '${fixture.group}', '${fixture.member}', 'WAITLISTED', 1, now(), now(), 'Rafa'
+                '${fixture.game}', '${fixture.group}', '${fixture.member}', 'WAITLISTED', 1, 1, now(), now(), 'Rafa'
             )
             """.trimIndent(),
         )
@@ -52,9 +53,10 @@ class GameGuestMigrationIntegrationTest {
             execute(
                 """
                 INSERT INTO game_attendance (
-                    game_id, group_id, member_user_id, status, guest_seq, responded_at, updated_at, member_display_name
+                    game_id, group_id, member_user_id, status, guest_seq, waitlist_sequence,
+                    responded_at, updated_at, member_display_name
                 ) VALUES (
-                    '${fixture.game}', '${fixture.group}', '${fixture.member}', 'WAITLISTED', 1, now(), now(), 'Rafa'
+                    '${fixture.game}', '${fixture.group}', '${fixture.member}', 'WAITLISTED', 1, 2, now(), now(), 'Rafa'
                 )
                 """.trimIndent(),
             )
