@@ -150,6 +150,7 @@ class GameSettlementRootTest {
         val detailsViewModel = GroupDetailsViewModel(
             departureGateway = br.com.saqz.groups.domain.membership.GroupDepartureGateway { SaqzResult.Success(Unit) },
             communications = br.com.saqz.groups.presentation.FakeCommunicationGateway(),
+            entryRequests = br.com.saqz.groups.presentation.FakeGroupEntryRequestGateway(),
             groupId = "group-1",
             groupGateway = FakeGroupGateway(),
             gameGateway = FakeGameGateway(),
@@ -220,7 +221,7 @@ class GameSettlementRootTest {
         onNodeWithContentDescription("Voltar").performClick()
         waitForIdle()
 
-        onNodeWithText("Saldo R$\u00A070,00 · 0 mensalidades em aberto").assertExists()
+        onNodeWithText("Saldo R$\u00A070,00").assertExists()
         assertEquals(1, refreshVersion)
     }
 }

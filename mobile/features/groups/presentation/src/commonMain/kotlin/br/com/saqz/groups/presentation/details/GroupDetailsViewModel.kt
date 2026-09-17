@@ -8,6 +8,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteGateway
+import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.attendance.AttendanceDetail
 import br.com.saqz.groups.domain.attendance.AttendanceEntry
 import br.com.saqz.groups.domain.attendance.AttendanceError
@@ -33,6 +34,8 @@ import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfile
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.membership.GroupDepartureGateway
+import br.com.saqz.groups.domain.membership.GroupEntryRequest
+import br.com.saqz.groups.domain.membership.GroupEntryRequestGateway
 import br.com.saqz.groups.domain.communication.CommunicationGateway
 import br.com.saqz.groups.domain.communication.CommunicationChannel
 import br.com.saqz.groups.presentation.GroupUiError
@@ -49,6 +52,7 @@ import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.group_details_cash_balance
 import br.com.saqz.groups.resources.onboarding_athlete_share_message
 import br.com.saqz.groups.resources.finance_overview_month_april
 import br.com.saqz.groups.resources.finance_overview_month_august
@@ -94,6 +98,7 @@ class GroupDetailsViewModel(
     private val now: GroupNowPort,
     private val departureGateway: GroupDepartureGateway,
     private val communications: CommunicationGateway,
+    private val entryRequests: GroupEntryRequestGateway,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(GroupDetailsState()) {
 
     private var loadGeneration = 0
@@ -152,6 +157,8 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.OpenChat -> emit(GroupDetailsEffect.OpenThread(groupId, notices = false))
             is GroupDetailsIntent.Respond -> respond(intent.intent)
             is GroupDetailsIntent.ToggleAutoConfirmation -> toggleAutoConfirmation(intent.enabled)
+            is GroupDetailsIntent.OpenAgendaGame -> emit(GroupDetailsEffect.OpenGame(groupId, intent.gameId))
+            is GroupDetailsIntent.OpenSettlement -> emit(GroupDetailsEffect.OpenSettlement(groupId, intent.gameId))
         }
     }
 
@@ -277,14 +284,48 @@ class GroupDetailsViewModel(
                     when (val gamesResult = gameGateway.list(GroupId(groupId))) {
                         is SaqzResult.Failure -> showFailure(generation, gamesResult.error.toUiError())
                         is SaqzResult.Success -> {
-                            loadNextGame(generation, group, gamesResult.value)
-                            loadAdminCashbox(generation, group)
+                            val games = gamesResult.value
+                            loadNextGame(generation, group, games)
+                            loadAgenda(generation, group, games)
+                            loadAdminCashbox(generation, group, games)
                             loadOwnCharges(generation, group)
+                            loadPeople(generation)
                             loadLatestNotice(generation)
                         }
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * "Próximos jogos" sem o jogo do hero. Roda depois de [loadNextGame], que acabou de
+     * publicar o hero desta mesma geração no estado — é dele que sai o id a pular.
+     */
+    private suspend fun loadAgenda(generation: Int, group: Group, games: List<Game>) {
+        if (generation != loadGeneration) return
+        val agenda = groupAgenda(games, state.value.nextGame?.gameId, now.now(), group.profile?.defaultVenue?.name)
+        // Formatar suspende (`getString`): a guarda é re-checada depois, não antes.
+        if (generation != loadGeneration) return
+        update { it.copy(agenda = agenda) }
+    }
+
+    /**
+     * "Galera": a contagem e os quatro primeiros do roster de atletas. Falha aqui não derruba
+     * a tela nem apaga o que já estava nela — o bloco só fica com o que tinha.
+     */
+    private suspend fun loadPeople(generation: Int) {
+        if (generation != loadGeneration) return
+        val result = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
+        if (generation != loadGeneration) return
+        val roster = (result as? SaqzResult.Success)?.value ?: return
+        update {
+            it.copy(
+                memberCount = roster.size,
+                memberPreview = roster.take(MEMBER_PREVIEW_LIMIT).map { member ->
+                    MemberPreviewUi(id = member.userId, name = member.displayName, meta = "")
+                },
+            )
         }
     }
 
@@ -397,11 +438,16 @@ class GroupDetailsViewModel(
 
     private fun Int.twoDigits() = toString().padStart(2, '0')
 
+    /**
+     * Caixa e "Esperando você" do gestor saem das mesmas leituras. Falha de finanças degrada
+     * sem derrubar a tela: o caixa fica sem saldo e a espera só com o que não depende de
+     * finanças (pedidos para entrar). Atleta não tem nenhum dos dois.
+     */
     @Suppress("ReturnCount")
-    private suspend fun loadAdminCashbox(generation: Int, group: Group) {
+    private suspend fun loadAdminCashbox(generation: Int, group: Group, games: List<Game>) {
         if (generation != loadGeneration) return
         if (group.role == GroupRole.ATHLETE) {
-            update { it.copy(cashbox = null) }
+            update { it.copy(cashbox = null, waiting = null) }
             return
         }
         val monthKey = currentDate(group.timeZone.id).monthKey()
@@ -412,20 +458,30 @@ class GroupDetailsViewModel(
         if (generation != loadGeneration) return
         val chargesResult = organizerFinanceGateway.charges(GroupId(groupId))
         if (generation != loadGeneration) return
-        val cashbox = if (statementResult is SaqzResult.Success && chargesResult is SaqzResult.Success) {
-            val openMonthlyCount = chargesResult.value.charges.count {
-                it.kind == ChargeKind.Monthly &&
-                    it.status == ChargeStatus.Pending
-            }
-            CashboxUi(
-                summary = "Saldo ${formatBrl(statementResult.value.summary.accumulatedBalanceCents)} · " +
-                    "$openMonthlyCount mensalidades em aberto",
-            )
-        } else {
-            CashboxUi()
-        }
+        val requests = loadEntryRequests(group)
         if (generation != loadGeneration) return
-        update { it.copy(cashbox = cashbox) }
+        val cashbox: CashboxUi
+        val charges: List<Charge>
+        if (statementResult is SaqzResult.Success && chargesResult is SaqzResult.Success) {
+            val balance = formatBrl(statementResult.value.summary.accumulatedBalanceCents)
+            cashbox = CashboxUi(summary = getString(Res.string.group_details_cash_balance, balance))
+            charges = chargesResult.value.charges
+        } else {
+            cashbox = CashboxUi()
+            charges = emptyList()
+        }
+        // O guia `ReviewFinances` desta geração já foi publicado por `loadNextGame`.
+        val reviewingGameId = (state.value.onboarding as? GroupOnboarding.ReviewFinances)?.gameId
+        val waiting = groupWaiting(charges, games, requests, monthKey, reviewingGameId)
+        // Formatar suspende (`getString`): a guarda é re-checada depois, não antes.
+        if (generation != loadGeneration) return
+        update { it.copy(cashbox = cashbox, waiting = waiting) }
+    }
+
+    /** Pedido só existe em grupo com aprovação. Falha vira lista vazia: nunca derruba a tela. */
+    private suspend fun loadEntryRequests(group: Group): List<GroupEntryRequest> {
+        if (!group.entryRequiresApproval) return emptyList()
+        return (entryRequests.list(GroupId(groupId)) as? SaqzResult.Success)?.value.orEmpty()
     }
 
     @Suppress("ReturnCount")
@@ -846,6 +902,7 @@ class GroupDetailsViewModel(
 private const val MONTHS_IN_YEAR = 12
 private const val OWN_CHARGES_HISTORY_LIMIT = 6
 private const val PIX_COPIED_DWELL_MILLIS = 2_000L
+private const val MEMBER_PREVIEW_LIMIT = 4
 
 // Os nomes de mês já existem no módulo (fluxo 5, caixa geral). Reusar é o que evita uma
 // segunda tabela de doze strings dizendo a mesma coisa — e é por isso que esta é
@@ -891,6 +948,7 @@ private fun GroupDetailsState.from(group: Group): GroupDetailsState {
             photoUrl = groupPhotoUrl(group.id.value, group.version),
         ),
         venue = profile?.defaultVenue?.let { VenueUi(it.name, it.address) },
+        scheduleSummary = profile?.regularSlots?.let { slots -> groupScheduleSummary(slots) { it.label() } },
     )
 }
 

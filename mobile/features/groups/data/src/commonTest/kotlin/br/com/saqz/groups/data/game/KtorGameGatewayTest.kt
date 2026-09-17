@@ -3,6 +3,7 @@ package br.com.saqz.groups.data.game
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameLifecycleAction
 import br.com.saqz.groups.domain.game.GameStatus
@@ -59,6 +60,13 @@ class KtorGameGatewayTest {
     fun `list preserves null venue id`() = runTest {
         assertNull(successList().single().venue.venueId)
     }
+
+    @Test fun `list maps confirmed own attendance`() = ownAttendanceCase(ownAttendanceJson("CONFIRMED"), AttendanceStatus.Confirmed)
+    @Test fun `list maps declined own attendance`() = ownAttendanceCase(ownAttendanceJson("DECLINED"), AttendanceStatus.Declined)
+    @Test fun `list maps waitlisted own attendance`() =
+        ownAttendanceCase(ownAttendanceJson("WAITLISTED", position = "2"), AttendanceStatus.Waitlisted)
+    @Test fun `list keeps explicit null own attendance as no response`() = ownAttendanceCase("null", null)
+    @Test fun `list without the own attendance key means no response`() = ownAttendanceCase(null, null)
 
     @Test
     fun `read preserves exact quoted etag`() = runTest {
@@ -231,6 +239,17 @@ class KtorGameGatewayTest {
         val result = gateway { respond("[${GAME_JSON.replace("DRAFT", raw)}]", headers = jsonHeaders()) }.list(GROUP)
         assertEquals(expected, assertIs<SaqzResult.Success<List<br.com.saqz.groups.domain.game.Game>>>(result).value.single().status)
     }
+
+    /** [raw] é o valor JSON de `ownAttendance`; `null` deixa a chave AUSENTE do payload. */
+    private fun ownAttendanceCase(raw: String?, expected: AttendanceStatus?) = runTest {
+        val body = if (raw == null) GAME_JSON else GAME_JSON.dropLast(1) + ",\"ownAttendance\":$raw}"
+        val result = gateway { respond("[$body]", headers = jsonHeaders()) }.list(GROUP)
+        val games = assertIs<SaqzResult.Success<List<br.com.saqz.groups.domain.game.Game>>>(result).value
+        assertEquals(expected, games.single().ownAttendance)
+    }
+
+    private fun ownAttendanceJson(status: String, position: String = "null") =
+        """{"memberId":"member-1","status":"$status","waitlistPosition":$position,"version":1}"""
 
     private suspend fun successList() = assertIs<SaqzResult.Success<List<br.com.saqz.groups.domain.game.Game>>>(
         gateway { respond("[$GAME_JSON]", headers = jsonHeaders()) }.list(GROUP),

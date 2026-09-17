@@ -4,6 +4,7 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.GroupId
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 
 enum class GameStatus { Draft, Published, Cancelled, Completed }
 
@@ -47,6 +48,8 @@ data class Game(
     val availableSpots: Int,
     val waitlistCount: Int,
     val financeReviewRequired: Boolean = false,
+    /** A resposta de QUEM OLHA neste jogo, vinda da listagem; `null` = ainda não respondeu. */
+    val ownAttendance: AttendanceStatus? = null,
 )
 
 data class VersionedGame(val game: Game, val version: GameVersionToken)
