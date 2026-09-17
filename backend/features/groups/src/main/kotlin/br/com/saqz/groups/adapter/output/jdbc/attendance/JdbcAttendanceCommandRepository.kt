@@ -261,6 +261,23 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             .optional()
             .orElse(null)
 
+    override fun ownByGame(actorId: UUID, groupId: UUID): Map<UUID, AttendanceRecord> =
+        jdbc.sql(OWN_BY_GAME)
+            .param("actor", actorId)
+            .param("group", groupId)
+            .query { rs, _ ->
+                AttendanceRecord(
+                    rs.getObject("game_id", UUID::class.java), groupId, actorId,
+                    AttendanceStatus.valueOf(rs.getString("status")),
+                    rs.getObject("waitlist_sequence", Long::class.javaObjectType),
+                    rs.getTimestamp("responded_at").toInstant(),
+                    rs.getTimestamp("updated_at").toInstant(),
+                    rs.getLong("version"),
+                )
+            }
+            .list()
+            .associateBy(AttendanceRecord::gameId)
+
     override fun roster(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceRoster? {
         val rows = jdbc.sql(ROSTER)
             .param("actor", actorId)
@@ -474,6 +491,16 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             LEFT JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=:actor
             WHERE g.group_id=:group AND g.id=:game
               AND (ag.owner_user_id=:actor OR member.user_id IS NOT NULL)
+        """
+        // ponytail: traz as respostas do ator em todos os jogos do grupo (uma linha por jogo
+        // respondido), não só nos jogos visíveis; a listagem não pagina. Se paginar, filtrar
+        // por a.game_id IN (:games).
+        const val OWN_BY_GAME = """
+            SELECT a.game_id,a.status,a.waitlist_sequence,a.responded_at,a.updated_at,a.version
+            FROM games g
+            JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
+            JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=:actor
+            WHERE g.group_id=:group
         """
         const val ROSTER = """
             SELECT a.member_user_id,a.member_display_name,a.status AS attendance_status,a.waitlist_sequence,
