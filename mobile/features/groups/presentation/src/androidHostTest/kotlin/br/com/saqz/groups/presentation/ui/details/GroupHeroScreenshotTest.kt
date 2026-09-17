@@ -28,6 +28,7 @@ import org.robolectric.annotation.GraphicsMode
     qualifiers = RobolectricDeviceQualifiers.Pixel7,
     application = Application::class,
 )
+@Suppress("TooManyFunctions")
 class GroupHeroScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
