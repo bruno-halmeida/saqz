@@ -4,6 +4,7 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.ValidationDetails
+import br.com.saqz.groups.domain.attendance.AddGuestCommand
 import br.com.saqz.groups.domain.attendance.AttendanceAudit
 import br.com.saqz.groups.domain.attendance.AttendanceCapacity
 import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
@@ -84,6 +85,8 @@ internal data class AttendanceRosterMemberTransport(
     val memberId: String,
     val displayName: String,
     val waitlistPosition: Long? = null,
+    val guestSeq: Int = 0,
+    val hostDisplayName: String? = null,
 )
 
 @Serializable
@@ -127,6 +130,21 @@ internal data class AttendancePromotionRequest(
     val requestId: String,
     val memberId: String,
     val reason: String? = null,
+    val guestSeq: Int = 0,
+)
+
+@Serializable
+internal data class AddGuestRequest(
+    val requestId: String,
+    val displayName: String,
+)
+
+@Serializable
+internal data class GuestTransport(
+    val memberId: String,
+    val guestSeq: Int,
+    val displayName: String,
+    val waitlistPosition: Long? = null,
 )
 
 @Serializable
@@ -213,6 +231,45 @@ class KtorAttendanceGateway(
             )
         }.mutationResult()
 
+    override suspend fun addGuest(
+        groupId: GroupId,
+        gameId: String,
+        command: AddGuestCommand,
+    ): SaqzResult<AttendanceRosterMember, AttendanceError> =
+        retryTransport(command.requestId.safety(), delayMillis = retryDelay) {
+            network.execute(
+                HttpMethod.Post,
+                "${attendanceRoute(groupId, gameId)}/guests",
+                GuestTransport.serializer(),
+                NetworkRequest(json.encodeToString(AddGuestRequest(command.requestId, command.displayName))),
+            )
+        }.let { result ->
+            when (result) {
+                is NetworkResult.Success -> SaqzResult.Success(
+                    AttendanceRosterMember(
+                        memberId = result.value.memberId,
+                        displayName = result.value.displayName,
+                        waitlistPosition = result.value.waitlistPosition,
+                        guestSeq = result.value.guestSeq,
+                    ),
+                )
+                is NetworkResult.Failure -> SaqzResult.Failure(result.error.toDomain())
+            }
+        }
+
+    override suspend fun removeGuest(
+        groupId: GroupId,
+        gameId: String,
+        hostId: String,
+        guestSeq: Int,
+    ): SaqzResult<Unit, AttendanceError> {
+        val route = "${attendanceRoute(groupId, gameId)}/guests/$hostId/$guestSeq"
+        return when (val result = network.executeNoContent(HttpMethod.Delete, route)) {
+            is NetworkResult.Success -> SaqzResult.Success(Unit)
+            is NetworkResult.Failure -> SaqzResult.Failure(result.error.toDomain())
+        }
+    }
+
     override suspend fun capacity(
         groupId: GroupId,
         gameId: String,
@@ -271,6 +328,7 @@ private fun AttendancePromotionCommand.toRequest() = AttendancePromotionRequest(
     requestId = requestId,
     memberId = memberId,
     reason = reason,
+    guestSeq = guestSeq,
 )
 
 private fun AttendanceCapacityCommand.toRequest() = AttendanceCapacityRequest(
@@ -330,6 +388,7 @@ private fun NetworkError.toDomain(): AttendanceError = when (this) {
         "ATTENDANCE_DEADLINE_PASSED" -> AttendanceError.DeadlinePassed
         "ATTENDANCE_FROZEN", "INVALID_GAME_TRANSITION" -> AttendanceError.Frozen
         "VERSION_CONFLICT" -> AttendanceError.Conflict
+        "ATTENDANCE_HOST_NOT_GOING" -> AttendanceError.Conflict
         "AUTHENTICATION_REQUIRED" -> AttendanceError.Authentication
         else -> AttendanceError.Data(problem.status.toDataError())
     }
@@ -403,4 +462,6 @@ private fun AttendanceRosterMemberTransport.toDomain() = AttendanceRosterMember(
     memberId = memberId,
     displayName = displayName,
     waitlistPosition = waitlistPosition,
+    guestSeq = guestSeq,
+    hostDisplayName = hostDisplayName,
 )
