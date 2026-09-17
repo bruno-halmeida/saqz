@@ -8,7 +8,7 @@
     <string name="group_details_own_charges_history_show">Ver histórico (%1$d)</string>
     <string name="group_details_own_charges_history_hide">Ocultar histórico</string>
     <string name="group_details_own_charges_settled_title">Tudo em dia</string>
-    <string name="group_details_own_charges_settled_meta">Nenhuma cobrança em aberto</string>
+    <string name="group_details_own_charges_settled_meta">Nada em aberto</string>
     <string name="group_details_own_charges_no_pix">O grupo ainda não cadastrou uma chave Pix. Combine o pagamento com o admin — a baixa acontece no caixa do grupo.</string>
     <!-- Detalhe do grupo novo · esperando você -->
     <string name="group_details_waiting_quorum">%1$d pessoas sem resposta</string>
