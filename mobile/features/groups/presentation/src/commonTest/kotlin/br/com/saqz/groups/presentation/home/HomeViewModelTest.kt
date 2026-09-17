@@ -193,6 +193,53 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `formats the hero display and meta in the game's timezone`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        nextGame = sampleNextGame(
+                            startsAt = "2026-08-12T22:30:00Z",
+                            confirmationDeadline = "2026-08-12T21:00:00Z",
+                            zoneId = "America/Sao_Paulo",
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("Quarta, 19h30", viewModel.state.value.member?.nextGame?.display)
+        assertEquals("12 de agosto · CERET — Quadra 2 · Tatuapé", viewModel.state.value.member?.nextGame?.meta)
+    }
+
+    @Test
+    fun `closed confirmation deadline formats the closed labels for athlete and admin`() = runTest {
+        // `now` do teste é 2026-07-28T12:00Z; o prazo abaixo já passou.
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(nextGame = sampleNextGame(confirmationDeadline = "2026-07-27T18:00:00-03:00")),
+                ),
+            ),
+        )
+
+        val game = viewModel.state.value.member?.nextGame
+        assertEquals(false, game?.confirmationOpen)
+        assertEquals("Confirmações encerradas.", game?.deadline)
+        assertEquals("Encerrou 27/07 · 18h00", game?.adminHeroDeadlineLabel)
+    }
+
+    @Test
+    fun `open confirmation deadline keeps the open labels`() = runTest {
+        val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = sampleNextGame()))))
+
+        val game = viewModel.state.value.member?.nextGame
+        assertEquals(true, game?.confirmationOpen)
+        assertEquals("As confirmações encerram hoje às 18h00.", game?.deadline)
+        assertEquals("Encerra 28/07 · 18h00", game?.adminHeroDeadlineLabel)
+    }
+
+    @Test
     fun `waitlisted mensalista formats the reserva subtitle`() = runTest {
         val viewModel = viewModel(
             homeGateway = SequenceHomeGateway(

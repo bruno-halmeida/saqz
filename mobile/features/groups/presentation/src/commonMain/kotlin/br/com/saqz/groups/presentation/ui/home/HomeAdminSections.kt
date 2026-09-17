@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
@@ -24,11 +26,14 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import br.com.saqz.designsystem.SaqzButton
+import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
-import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChipTone
+import br.com.saqz.designsystem.SaqzHeroCard
 import br.com.saqz.designsystem.SaqzDivider
-import br.com.saqz.designsystem.SaqzGameSummaryCard
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
@@ -51,7 +56,6 @@ import br.com.saqz.groups.resources.home_admin_cd_waiting_entry_requests
 import br.com.saqz.groups.resources.home_admin_cd_waiting_monthly
 import br.com.saqz.groups.resources.home_admin_cd_waiting_settle
 import br.com.saqz.groups.resources.home_game_next
-import br.com.saqz.groups.resources.home_admin_hero_location
 import br.com.saqz.groups.resources.home_admin_score_value
 import br.com.saqz.groups.resources.home_admin_score_going
 import br.com.saqz.groups.resources.home_admin_score_out
@@ -68,6 +72,8 @@ import br.com.saqz.groups.resources.home_admin_waiting_monthly_meta
 import br.com.saqz.groups.resources.home_admin_waiting_settle
 import br.com.saqz.groups.resources.home_admin_waiting_settle_meta
 import br.com.saqz.groups.resources.home_admin_waiting_title
+import br.com.saqz.groups.resources.home_no_game_description
+import br.com.saqz.groups.resources.home_no_game_hero_title
 import org.jetbrains.compose.resources.stringResource
 
 internal object HomeAdminTags {
@@ -81,6 +87,8 @@ internal object HomeAdminTags {
     const val ShortcutInvite = "home-admin-shortcut-invite"
     const val ShortcutCashbox = "home-admin-shortcut-cashbox"
     const val ShortcutGroups = "home-admin-shortcut-groups"
+    const val EmptyCreateGame = "home-admin-empty-create-game"
+    const val EmptyInvite = "home-admin-empty-invite"
 
     fun entryRequests(groupId: String) = "home-admin-entry-requests-$groupId"
     fun monthly(groupId: String) = "home-admin-monthly-$groupId"
@@ -97,12 +105,6 @@ internal fun isAdminOfNextGame(
     admin: HomeAdminReadModelUi?,
 ): Boolean = admin?.groups?.any { it.id == nextGame.groupId } == true
 
-/**
- * Hero card variante admin: mesmo card ice com eyebrow "PRÓXIMO JOGO" e canto
- * direito "Encerra {dia} · {hora}" (do `confirmationDeadline` no fuso do jogo).
- * Placar em 3 colunas (Vão / Não vão / Pendentes) SEM Talvez, e o mesmo seletor
- * de presença do hero de membro — dono e admin também jogam.
- */
 @Composable
 internal fun HomeAdminHero(
     game: HomeNextGameUi,
@@ -111,20 +113,15 @@ internal fun HomeAdminHero(
     onIntent: (HomeIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val metrics = SaqzTheme.metrics
-    SaqzGameSummaryCard(
-        eyebrow = stringResource(Res.string.home_game_next),
-        title = game.dateTime,
-        trailingEyebrow = game.adminHeroDeadlineLabel.ifBlank { null },
-        tone = SaqzCardTone.Soft,
-        cornerRadius = metrics.blockRadius,
+    SaqzHeroCard(
+        kicker = stringResource(Res.string.home_game_next),
+        title = game.display,
+        meta = game.meta,
+        trailing = game.adminHeroDeadlineLabel.ifBlank { null }?.let { label ->
+            { SaqzStatusChip(text = label, tone = SaqzChipTone.Inverse) }
+        },
         modifier = modifier.testTag(HomeAdminTags.Hero),
-        ) {
-        Text(
-            text = stringResource(Res.string.home_admin_hero_location, game.groupName, game.local),
-            style = SaqzTheme.typography.support,
-            color = SaqzTheme.colors.textSecondary,
-        )
+    ) {
         AdminScoreBoard(
             going = game.confirmedCount,
             out = game.declinedCount,
@@ -133,6 +130,7 @@ internal fun HomeAdminHero(
             // onde mora a lista de quem respondeu (e a cobrança de presença).
             onClick = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) },
         )
+        HomeDeadlineLine(text = game.deadline, open = game.confirmationOpen)
         HomeAttendanceControls(
             game = game,
             responding = responding,
@@ -142,10 +140,50 @@ internal fun HomeAdminHero(
     }
 }
 
+/** Gestor sem jogo marcado: os dois verbos dele sobem para dentro do hero (VUL-218). */
+@Composable
+internal fun HomeAdminNoGame(
+    admin: HomeAdminReadModelUi,
+    onIntent: (HomeIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
+    val primaryGroupId = admin.groups.firstOrNull()?.id ?: return
+    SaqzHeroCard(
+        kicker = stringResource(Res.string.home_game_next),
+        title = stringResource(Res.string.home_no_game_hero_title),
+        meta = stringResource(Res.string.home_no_game_description),
+        modifier = modifier.testTag(HomeTags.Empty),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
+        ) {
+            SaqzButton(
+                label = stringResource(Res.string.home_admin_shortcuts_create_game),
+                onClick = { onIntent(HomeIntent.OpenGameEditor(primaryGroupId)) },
+                variant = SaqzButtonVariant.Accent,
+                fullWidth = true,
+                modifier = Modifier.weight(1f).testTag(HomeAdminTags.EmptyCreateGame),
+            )
+            SaqzButton(
+                label = stringResource(Res.string.home_admin_shortcuts_invite),
+                onClick = { onIntent(HomeIntent.OpenInvite(primaryGroupId)) },
+                variant = SaqzButtonVariant.Ghost,
+                contentColor = colors.onPrimary,
+                borderColor = colors.onPrimary.copy(alpha = HeroOutlineAlpha),
+                fullWidth = true,
+                modifier = Modifier.weight(1f).testTag(HomeAdminTags.EmptyInvite),
+            )
+        }
+    }
+}
+
 /**
- * Placar em 3 colunas: fundo branco radius 14, divisórias verticais. "Vão" em
- * verde/800 20px, "Não vão" muted, "Pendentes" warning. Rótulos 12px muted.
- * SEM Talvez (decisão do projeto).
+ * Placar em 3 colunas sobre o hero azul: painel branco a 10%, traços brancos a 18%,
+ * números em `display` 28sp — Vão em lima, Não vão em branco a 70%, Sem resposta em
+ * warning. SEM Talvez (decisão do projeto).
  */
 @Composable
 private fun AdminScoreBoard(
@@ -157,52 +195,54 @@ private fun AdminScoreBoard(
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    Column(
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(metrics.inputRadius))
+            .background(colors.onPrimary.copy(alpha = ScorePanelAlpha))
             .clickable(
                 onClickLabel = stringResource(Res.string.home_admin_cd_scoreboard_open),
                 role = Role.Button,
                 onClick = onClick,
             )
             // Funde as descrições das três colunas num nó só: o placar inteiro é um botão.
-            .semantics(mergeDescendants = true) {},
+            .semantics(mergeDescendants = true) {}
+            .height(IntrinsicSize.Min)
+            .padding(vertical = metrics.blockGap),
     ) {
-        SaqzDivider()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
-                .padding(vertical = metrics.blockGap),
-        ) {
-            AdminScoreColumn(
-                value = going,
-                label = stringResource(Res.string.home_admin_score_going),
-                color = colors.success,
-                contentDescription = stringResource(Res.string.home_admin_cd_score_going, going),
-                modifier = Modifier.testTag(HomeAdminTags.ScoreGoing),
-            )
-            SaqzDivider(vertical = true)
-            AdminScoreColumn(
-                value = out,
-                label = stringResource(Res.string.home_admin_score_out),
-                color = colors.textSecondary,
-                contentDescription = stringResource(Res.string.home_admin_cd_score_out, out),
-                modifier = Modifier.testTag(HomeAdminTags.ScoreOut),
-            )
-            SaqzDivider(vertical = true)
-            AdminScoreColumn(
-                value = pending,
-                label = stringResource(Res.string.home_admin_score_pending),
-                color = colors.warningForeground,
-                contentDescription = stringResource(Res.string.home_admin_cd_score_pending, pending),
-                modifier = Modifier.testTag(HomeAdminTags.ScorePending),
-            )
-        }
-        SaqzDivider()
+        AdminScoreColumn(
+            value = going,
+            label = stringResource(Res.string.home_admin_score_going),
+            color = colors.accent,
+            contentDescription = stringResource(Res.string.home_admin_cd_score_going, going),
+            modifier = Modifier.testTag(HomeAdminTags.ScoreGoing),
+        )
+        ScoreDivider()
+        AdminScoreColumn(
+            value = out,
+            label = stringResource(Res.string.home_admin_score_out),
+            color = colors.onPrimary.copy(alpha = ScoreOutAlpha),
+            contentDescription = stringResource(Res.string.home_admin_cd_score_out, out),
+            modifier = Modifier.testTag(HomeAdminTags.ScoreOut),
+        )
+        ScoreDivider()
+        AdminScoreColumn(
+            value = pending,
+            label = stringResource(Res.string.home_admin_score_pending),
+            color = colors.warning,
+            contentDescription = stringResource(Res.string.home_admin_cd_score_pending, pending),
+            modifier = Modifier.testTag(HomeAdminTags.ScorePending),
+        )
     }
 }
+
+@Composable
+private fun ScoreDivider() = Box(
+    modifier = Modifier
+        .width(1.dp)
+        .fillMaxHeight()
+        .background(SaqzTheme.colors.onPrimary.copy(alpha = ScoreDividerAlpha)),
+)
 
 @Composable
 private fun RowScope.AdminScoreColumn(
@@ -221,16 +261,22 @@ private fun RowScope.AdminScoreColumn(
     ) {
         Text(
             text = stringResource(Res.string.home_admin_score_value, value),
-            style = SaqzTheme.typography.title.copy(fontWeight = FontWeight(800)),
+            style = SaqzTheme.typography.display.copy(fontSize = ScoreValueSize, lineHeight = ScoreValueSize),
             color = color,
         )
         Text(
             text = label,
             style = SaqzTheme.typography.caption,
-            color = SaqzTheme.colors.textSecondary,
+            color = SaqzTheme.colors.onPrimary.copy(alpha = ScoreLabelAlpha),
         )
     }
 }
+
+private const val ScorePanelAlpha = 0.10f
+private const val ScoreDividerAlpha = 0.18f
+private const val ScoreOutAlpha = 0.7f
+private const val ScoreLabelAlpha = 0.72f
+private val ScoreValueSize = 28.sp
 
 /**
  * Seção "Esperando você": card branco com linhas divididas. Cada linha tem um

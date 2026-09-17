@@ -74,11 +74,29 @@ class HomeScreenshotTest {
     @Test
     fun empty() = capture("home-empty", state(nextGame = null))
 
+    /** Prazo encerrado sem resposta: botões desabilitados e a linha "Confirmações encerradas." */
+    @Test
+    fun closedDeadline() = capture(
+        "home-content-encerradas",
+        state(nextGame = nextGame().copy(confirmationOpen = false, deadline = "Confirmações encerradas.")),
+    )
+
+    /** Falha ao responder: o aviso branco com o ícone de alerta dentro do hero. */
+    @Test
+    fun responseFailed() = capture("home-content-erro-resposta", state().copy(responseFailed = true))
+
     @Test
     fun adminWithPendingItems() = captureAdmin("home-admin-pending", adminState())
 
     @Test
     fun adminWithoutPendingItems() = captureAdmin("home-admin-empty", adminState(withPendingItems = false))
+
+    /** Gestor sem jogo marcado: "Marcar jogo" e "Convidar" dentro do hero. */
+    @Test
+    fun adminWithoutNextGame() = captureAdmin(
+        "home-admin-no-game",
+        adminState().let { it.copy(member = checkNotNull(it.member).copy(nextGame = null)) },
+    )
 
     @Test
     fun adminAndMemberMixed() = captureAdmin("home-admin-member-mixed", mixedAdminState())
@@ -202,6 +220,8 @@ class HomeScreenshotTest {
         ownAttendance = status,
         weekday = "terça",
         time = "19h30",
+        display = "Terça, 19h30",
+        meta = "28 de julho · CERET — Quadra 2 · Tatuapé",
     )
 
     private fun reservaGame() = nextGame(AttendanceStatus.Waitlisted).copy(

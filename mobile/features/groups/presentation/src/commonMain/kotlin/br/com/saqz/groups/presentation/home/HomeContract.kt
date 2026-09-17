@@ -106,6 +106,10 @@ data class HomeNextGameUi(
     val declinedCount: Int = 0,
     val pendingCount: Int = 0,
     val adminHeroDeadlineLabel: String = "",
+    /** "Terça, 19h30" — título do hero (VUL-218). */
+    val display: String = "",
+    /** "28 de julho · CERET — Quadra 2 · Tatuapé" — linha abaixo do título (VUL-218). */
+    val meta: String = "",
 )
 
 @Immutable
