@@ -7,6 +7,7 @@ import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
 import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
+import br.com.saqz.groups.domain.attendance.AttendanceDetail
 import br.com.saqz.groups.domain.attendance.AttendanceEntry
 import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
@@ -20,6 +21,7 @@ import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.FinanceError
 import br.com.saqz.groups.domain.finance.FinanceStatementPage
 import br.com.saqz.groups.domain.finance.FinanceStatementSummary
+import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.membership.GroupDepartureGateway
 import br.com.saqz.groups.domain.membership.GroupMembershipError
@@ -35,6 +37,8 @@ import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.FakeOrganizerFinanceGateway
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.home.HomeWaitlistKind
+import br.com.saqz.groups.presentation.home.HomeWaitlistRowUi
 import br.com.saqz.groups.presentation.sampleGroup
 import br.com.saqz.groups.presentation.sampleAttendanceDetail
 import br.com.saqz.groups.presentation.sampleAttendanceRoster
@@ -47,6 +51,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -1149,6 +1154,241 @@ class GroupDetailsViewModelTest {
 
         assertEquals(listOf("novo"), viewModel.state.value.ownCharges?.pending?.map { it.id })
     }
+
+    @Test
+    fun `next game exposes the hero labels in the game time zone`() = runTest {
+        val viewModel = viewModel(gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))))
+
+        val game = assertNotNull(viewModel.state.value.nextGame)
+        assertEquals("Terça, 19h30", game.display)
+        assertEquals("4 de agosto · CERET", game.meta)
+        assertEquals("Rua Canuto Abreu", game.address)
+        assertEquals("As confirmações encerram em 04/08 às 12h00.", game.deadlineLine)
+        assertEquals("Encerra 04/08 · 12h00", game.deadlineShort)
+        assertEquals("Avisamos você se abrir vaga até 12h00 de 04/08.", game.bellLabel)
+    }
+
+    @Test
+    fun `deadline sentence turns relative on the day of the game`() = runTest {
+        val viewModel = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            now = GroupNowPort { kotlin.time.Instant.parse("2026-08-04T13:00:00Z") },
+        )
+
+        assertEquals("As confirmações encerram hoje às 12h00.", viewModel.state.value.nextGame?.deadlineLine)
+    }
+
+    @Test
+    fun `map prefers the game address over the group default venue`() = runTest {
+        val elsewhere = sampleGame().copy(venue = GameVenue(name = "Arena Mooca", address = "Av. Paes de Barros, 1000"))
+        val viewModel = viewModel(gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(elsewhere))))
+
+        viewModel.onIntent(GroupDetailsIntent.OpenVenueMap)
+
+        assertEquals(GroupDetailsEffect.OpenMap("Av. Paes de Barros, 1000"), viewModel.effects.first())
+    }
+
+    @Test
+    fun `waitlist rows mark the own line by member id and default to the reserve kind`() = runTest {
+        val viewModel = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = FakeAttendanceGateway(detailResult = SaqzResult.Success(waitlistedDetail("wait-2", 2))),
+        )
+
+        assertEquals(
+            GroupWaitlistUi(
+                kind = HomeWaitlistKind.Reserva,
+                rows = listOf(HomeWaitlistRowUi("Caio", 1, false), HomeWaitlistRowUi("Duda", 2, true)),
+            ),
+            viewModel.state.value.waitlist,
+        )
+    }
+
+    @Test
+    fun `a waitlisted member cannot confirm again but can leave the queue`() = runTest {
+        val attendance = FakeAttendanceGateway(detailResult = SaqzResult.Success(waitlistedDetail("wait-1", 1)))
+        val viewModel = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        assertEquals(0, attendance.respondCalls)
+
+        viewModel.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Decline))
+        assertEquals(1, attendance.respondCalls)
+    }
+
+    @Test
+    fun `optimistic response predicts the queue when the game is already full`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            detailResult = SaqzResult.Success(sampleAttendanceDetail().copy(confirmedCount = 12, availableSpots = 0)),
+        )
+        attendance.respondDeferred = CompletableDeferred()
+        val viewModel = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+
+        assertEquals(GroupDetailsResponseStatus.Waitlisted, viewModel.state.value.memberResponse?.status)
+        assertEquals(HomeWaitlistKind.Reserva, viewModel.state.value.waitlist?.kind)
+    }
+
+    @Test
+    fun `day member under monthly priority is predicted into the day member list`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        attendance.respondDeferred = CompletableDeferred()
+        val viewModel = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = attendance,
+            athleteGateway = dayMemberAthleteGateway(),
+        )
+
+        viewModel.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+
+        assertEquals(GroupDetailsResponseStatus.Waitlisted, viewModel.state.value.memberResponse?.status)
+        assertEquals(HomeWaitlistKind.AvulsoList, viewModel.state.value.waitlist?.kind)
+    }
+
+    @Test
+    fun `failed response restores the previous waitlist`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            detailResult = SaqzResult.Success(waitlistedDetail("wait-1", 1)),
+            respondResult = SaqzResult.Failure(AttendanceError.Conflict),
+        )
+        val viewModel = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = attendance,
+        )
+        val before = assertNotNull(viewModel.state.value.waitlist)
+
+        viewModel.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Decline))
+
+        assertEquals(before, viewModel.state.value.waitlist)
+        assertTrue(viewModel.state.value.responseFailed)
+    }
+
+    @Test
+    fun `successful response raises the matching toast and dismiss clears it`() = runTest {
+        // O roster padrão do fake deixa "wait-1" na fila; aqui ele precisa estar confirmado para
+        // a reconciliação não rebaixar a resposta e o toast ser o de presença confirmada.
+        val attendance = FakeAttendanceGateway(
+            rosterResult = SaqzResult.Success(
+                AttendanceRoster(confirmed = listOf(AttendanceRosterMember("wait-1", "Caio")), waitlisted = emptyList()),
+            ),
+        )
+        val viewModel = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        assertEquals(GroupDetailsToast.Confirmed, viewModel.state.value.toast)
+
+        viewModel.onIntent(GroupDetailsIntent.DismissToast)
+        assertNull(viewModel.state.value.toast)
+    }
+
+    @Test
+    fun `copied pix flips the ticket for two seconds and toasts`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = pixGroupGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(
+                ownChargesResult = SaqzResult.Success(ChargeList(listOf(ownCharge("mensal", month = "2026-08")))),
+            ),
+        )
+
+        viewModel.onIntent(GroupDetailsIntent.CopyPix)
+
+        assertTrue(viewModel.state.value.pixCopied)
+        assertEquals(GroupDetailsToast.PixCopied, viewModel.state.value.toast)
+        advanceTimeBy(2_001)
+        assertFalse(viewModel.state.value.pixCopied)
+    }
+
+    @Test
+    fun `second copy inside the dwell keeps the copied state until its own dwell ends`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = pixGroupGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(
+                ownChargesResult = SaqzResult.Success(ChargeList(listOf(ownCharge("mensal", month = "2026-08")))),
+            ),
+        )
+
+        viewModel.onIntent(GroupDetailsIntent.CopyPix)
+        advanceTimeBy(1_500)
+        viewModel.onIntent(GroupDetailsIntent.CopyPix)
+        advanceTimeBy(1_000)
+
+        assertTrue(viewModel.state.value.pixCopied)
+        advanceTimeBy(1_001)
+        assertFalse(viewModel.state.value.pixCopied)
+    }
+
+    @Test
+    fun `own charges carry the debt summary of the oldest pending charge`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = pixGroupGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(
+                ownChargesResult = SaqzResult.Success(
+                    ChargeList(
+                        listOf(
+                            ownCharge("avulso", kind = ChargeKind.Game, dueDate = "2026-08-28"),
+                            ownCharge("mensal", month = "2026-07", dueDate = "2026-07-10"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val debt = assertNotNull(viewModel.state.value.ownCharges?.debt)
+        assertEquals("Mensalidade · Julho", debt.eyebrow)
+        assertEquals("R$ 140,00", debt.totalLabel)
+        assertEquals("Venceu em 10/07", debt.dueLabel)
+        assertTrue(debt.overdue)
+        assertEquals("2 cobranças em aberto", debt.countLabel)
+        assertEquals("Pix de Lucas Prado", debt.receiverLabel)
+    }
+
+    @Test
+    fun `settled charges expose no debt`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = athleteGroupGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(
+                ownChargesResult = SaqzResult.Success(
+                    ChargeList(listOf(ownCharge("paga", month = "2026-07", status = ChargeStatus.Paid))),
+                ),
+            ),
+        )
+
+        assertNull(viewModel.state.value.ownCharges?.debt)
+    }
+
+    private fun waitlistedDetail(memberId: String, position: Long): AttendanceDetail = sampleAttendanceDetail().copy(
+        ownAttendance = AttendanceEntry(memberId, AttendanceStatus.Waitlisted, position, version = 1),
+    )
+
+    private fun dayMemberAthleteGateway() = FakeAthleteGateway(
+        ownProfileResult = SaqzResult.Success(
+            OwnAthleteProfile(
+                userId = "me",
+                displayName = "Member",
+                phone = null,
+                memberships = listOf(
+                    OwnAthleteMembership(
+                        groupId = GroupId(GROUP_ID),
+                        groupName = "Vôlei do CERET",
+                        role = GroupRole.ATHLETE,
+                        position = null,
+                        membershipType = AthleteMembershipType.AVULSO,
+                        active = true,
+                    ),
+                ),
+            ),
+        ),
+    )
 
     private fun ownCharge(
         id: String,
