@@ -3,6 +3,7 @@ package br.com.saqz.groups.data.attendance
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.attendance.AddGuestCommand
 import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
 import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
@@ -101,6 +102,61 @@ class KtorAttendanceGatewayTest {
         assertEquals(listOf("confirmed-1", "confirmed-2"), roster.confirmed.map { it.memberId })
         assertEquals(listOf("wait-2", "wait-1"), roster.waitlisted.map { it.memberId })
         assertEquals(2L, roster.waitlisted.first().waitlistPosition)
+    }
+
+    @Test
+    fun rosterParsesGuestsAndKeepsOldPayloadWorking() = runTest {
+        val result = gateway { rosterWithGuestResponse() }.roster(GROUP, GAME)
+
+        val roster = assertIs<SaqzResult.Success<*>>(result).value as br.com.saqz.groups.domain.attendance.AttendanceRoster
+        val member = roster.confirmed.first { it.memberId == "member-1" }
+        val guest = roster.waitlisted.first { it.memberId == "host-1" }
+
+        assertEquals(0, member.guestSeq)
+        assertTrue(guest.isGuest)
+        assertEquals("host-1#1", guest.rowKey)
+    }
+
+    @Test
+    fun addGuestPostsNameAndReturnsTheWaitlistedGuest() = runTest {
+        val result = gateway { request ->
+            assertEquals(HttpMethod.Post, request.method)
+            assertEquals("/api/groups/group-1/games/game-1/attendance/guests", request.url.encodedPath)
+            assertEquals(KEY, request.bodyJson()["requestId"]?.jsonPrimitive?.content)
+            assertEquals("Rafa Moreira", request.bodyJson()["displayName"]?.jsonPrimitive?.content)
+            respond(GUEST_JSON, headers = jsonHeaders())
+        }.addGuest(GROUP, GAME, AddGuestCommand(KEY, "Rafa Moreira"))
+
+        val guest = assertIs<SaqzResult.Success<*>>(result).value as br.com.saqz.groups.domain.attendance.AttendanceRosterMember
+        assertEquals(1, guest.guestSeq)
+        assertEquals(7L, guest.waitlistPosition)
+    }
+
+    @Test
+    fun addGuestMapsHostNotGoingToConflict() = runTest {
+        val result = gateway(delay = {}) { problemResponse(409, "ATTENDANCE_HOST_NOT_GOING") }
+            .addGuest(GROUP, GAME, AddGuestCommand(KEY, "Rafa Moreira"))
+
+        assertIs<AttendanceError.Conflict>(assertIs<SaqzResult.Failure<*>>(result).error)
+    }
+
+    @Test
+    fun removeGuestDeletesByHostAndSeq() = runTest {
+        val result = gateway { request ->
+            assertEquals(HttpMethod.Delete, request.method)
+            assertEquals("/api/groups/group-1/games/game-1/attendance/guests/host-1/2", request.url.encodedPath)
+            respond("", HttpStatusCode.NoContent)
+        }.removeGuest(GROUP, GAME, "host-1", 2)
+
+        assertEquals(SaqzResult.Success(Unit), result)
+    }
+
+    @Test
+    fun promoteSendsGuestSeq() = runTest {
+        gateway { request ->
+            assertEquals(2, request.bodyJson()["guestSeq"]?.jsonPrimitive?.content?.toInt())
+            mutationResponse()
+        }.promote(GROUP, GAME, AttendancePromotionCommand(KEY, "member-2", "Escolha do organizador", guestSeq = 2))
     }
 
     @Test
@@ -421,6 +477,9 @@ class KtorAttendanceGatewayTest {
     private fun MockRequestHandleScope.rosterResponse() =
         respond(ROSTER_JSON, headers = jsonHeaders())
 
+    private fun MockRequestHandleScope.rosterWithGuestResponse() =
+        respond(ROSTER_WITH_GUEST_JSON, headers = jsonHeaders())
+
     private fun MockRequestHandleScope.mutationResponse(etag: String = "\"2\"") =
         respond(MUTATION_JSON, headers = versionedHeaders(etag))
 
@@ -460,6 +519,8 @@ class KtorAttendanceGatewayTest {
         const val GAME = "game-1"
         const val KEY = "request-key"
         const val ROSTER_JSON = """{"confirmed":[{"memberId":"confirmed-1","displayName":"Ana"},{"memberId":"confirmed-2","displayName":"Bia"}],"waitlisted":[{"memberId":"wait-2","displayName":"Caio","waitlistPosition":2},{"memberId":"wait-1","displayName":"Duda","waitlistPosition":1}]}"""
+        const val ROSTER_WITH_GUEST_JSON = """{"confirmed":[{"memberId":"member-1","displayName":"Ana"}],"waitlisted":[{"memberId":"host-1","displayName":"Rafa Moreira","guestSeq":1,"hostDisplayName":"Bia Souza","waitlistPosition":3}]}"""
+        const val GUEST_JSON = """{"memberId":"host-1","guestSeq":1,"displayName":"Rafa Moreira","waitlistPosition":7}"""
         const val DETAIL_JSON = """{"ownAttendance":{"memberId":"member-1","status":"WAITLISTED","waitlistPosition":4,"version":7},"confirmedCount":3,"availableSpots":21,"waitlistCount":2,"capacity":24,"declinedCount":5,"pendingCount":7,"autoConfirmEnabled":true}"""
         const val DETAIL_WITHOUT_OWN = """{"confirmedCount":3,"availableSpots":21,"waitlistCount":2,"capacity":24}"""
         const val MUTATION_JSON = """{"attendance":{"memberId":"member-1","status":"CONFIRMED","version":8},"audit":{"actorId":"organizer-1","source":"ORGANIZER_OVERRIDE","oldStatus":"WAITLISTED","newStatus":"CONFIRMED","reason":"Correção","occurredAt":"2026-08-12T22:30:00Z"},"promotedCount":2,"detail":{"ownAttendance":{"memberId":"member-1","status":"CONFIRMED","version":8},"confirmedCount":4,"availableSpots":20,"waitlistCount":1,"capacity":24}}"""

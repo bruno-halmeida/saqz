@@ -48,6 +48,7 @@ internal data class ChargeTransport(
     val version: Long,
     val events: List<ChargeAuditTransport>,
     val paidMethod: String? = null,
+    val guestDisplayName: String? = null,
 )
 
 @Serializable
@@ -428,6 +429,7 @@ private fun ChargeTransport.toDomain() = Charge(
     id, GroupId(groupId), memberId, kind.toDomain(), gameId, month, amountCents,
     dueDate, status.toDomain(), reviewRequired, version, events.map(ChargeAuditTransport::toDomain),
     paidMethod.toPaidMethod(),
+    guestDisplayName = guestDisplayName,
 )
 
 private fun ChargeAuditTransport.toDomain() =

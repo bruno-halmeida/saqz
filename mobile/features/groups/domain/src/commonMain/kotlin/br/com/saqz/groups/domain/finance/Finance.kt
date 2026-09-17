@@ -73,6 +73,8 @@ data class Charge(
     val version: Long,
     val audit: List<ChargeAudit>,
     val paidMethod: PaidMethod? = null,
+    /** Nome do convidado quando a cobrança de jogo é de um "+1" do membro; senão `null`. */
+    val guestDisplayName: String? = null,
 )
 
 data class ChargeTotals(
