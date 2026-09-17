@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -27,6 +28,7 @@ import br.com.saqz.groups.presentation.home.HomeState
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class HomeScreenTest {
@@ -53,11 +55,12 @@ class HomeScreenTest {
         val intents = mutableListOf<HomeIntent>()
         setScreen(nextGameState(), intents::add)
 
-        onNodeWithText("Fala, Bruna! 👋").assertIsDisplayed()
+        onNodeWithText("Fala, Bruna!").assertIsDisplayed()
         onNodeWithText("Terça tem jogo. Confirma?").assertIsDisplayed()
         onNodeWithTag(HomeTags.NextGame).assertIsDisplayed()
         onNodeWithText("PRÓXIMO JOGO").assertIsDisplayed()
-        onNodeWithText("CERET — Quadra 2 · Tatuapé").assertIsDisplayed()
+        onNodeWithText("Terça, 19h30").assertIsDisplayed()
+        onNodeWithText("28 de julho · CERET — Quadra 2 · Tatuapé").assertIsDisplayed()
         onNodeWithText("9 de 12 confirmados").assertIsDisplayed()
         onNodeWithText("Vou").performClick()
         onNodeWithText("Não vou").performClick()
@@ -80,7 +83,7 @@ class HomeScreenTest {
         setScreen(nextGameState(nextGame = null), intents::add)
 
         onNodeWithTag(HomeTags.Empty).assertIsDisplayed()
-        onNodeWithText("Nenhum jogo marcado por enquanto").assertIsDisplayed()
+        onNodeWithText("Sem jogo marcado").assertIsDisplayed()
         onNodeWithText("Da última vez").assertIsDisplayed()
         onNodeWithText("21").assertIsDisplayed()
         onNodeWithText("Você jogou · 12 confirmados").assertIsDisplayed()
@@ -201,6 +204,33 @@ class HomeScreenTest {
 
         onNodeWithTag(HomeWaitlistTags.ReservaLeave).assertIsNotEnabled()
         onNodeWithTag(HomeWaitlistTags.ReservaViewGame).assertIsDisplayed()
+    }
+
+    @Test
+    fun `waitlist actions put view game above leave`() = runComposeUiTest {
+        setScreen(
+            nextGameState(
+                nextGame = nextGame(AttendanceStatus.Waitlisted).copy(waitlistKind = HomeWaitlistKind.Reserva, waitlistPosition = 1),
+            ),
+        )
+
+        val view = onNodeWithTag(HomeWaitlistTags.ReservaViewGame).getUnclippedBoundsInRoot()
+        val leave = onNodeWithTag(HomeWaitlistTags.ReservaLeave).getUnclippedBoundsInRoot()
+        assertTrue(view.top < leave.top, "Ver o jogo fica acima de Sair: ${view.top} × ${leave.top}")
+    }
+
+    @Test
+    fun `admin without next game offers create game and invite in the hero`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        val state = adminState()
+        setScreen(state.copy(member = checkNotNull(state.member).copy(nextGame = null)), intents::add)
+
+        onNodeWithTag(HomeTags.Empty).assertIsDisplayed()
+        onNodeWithText("Sem jogo marcado").assertIsDisplayed()
+        onNodeWithTag(HomeAdminTags.EmptyCreateGame).performClick()
+        onNodeWithTag(HomeAdminTags.EmptyInvite).performClick()
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.OpenGameEditor("ceret"), HomeIntent.OpenInvite("ceret")), intents)
     }
 
     @Test
@@ -361,6 +391,8 @@ private fun nextGame(status: AttendanceStatus? = null) = HomeNextGameUi(
     ownAttendance = status,
     weekday = "terça",
     time = "19h30",
+    display = "Terça, 19h30",
+    meta = "28 de julho · CERET — Quadra 2 · Tatuapé",
 )
 
 private fun adminState(withPendingItems: Boolean = true) = nextGameState().copy(

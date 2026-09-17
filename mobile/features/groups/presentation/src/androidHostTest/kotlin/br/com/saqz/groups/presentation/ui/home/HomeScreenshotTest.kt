@@ -202,6 +202,8 @@ class HomeScreenshotTest {
         ownAttendance = status,
         weekday = "terça",
         time = "19h30",
+        display = "Terça, 19h30",
+        meta = "28 de julho · CERET — Quadra 2 · Tatuapé",
     )
 
     private fun reservaGame() = nextGame(AttendanceStatus.Waitlisted).copy(
