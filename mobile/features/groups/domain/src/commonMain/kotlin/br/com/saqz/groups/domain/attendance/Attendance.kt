@@ -51,7 +51,16 @@ data class AttendanceRosterMember(
     val memberId: String,
     val displayName: String,
     val waitlistPosition: Long? = null,
-)
+    /** 0 = o próprio membro; 1..n = convidado dele. Para convidado, [memberId] é o id do ANFITRIÃO. */
+    val guestSeq: Int = 0,
+    /** Nome do anfitrião; só vem quando [guestSeq] > 0. */
+    val hostDisplayName: String? = null,
+) {
+    val isGuest: Boolean get() = guestSeq > 0
+
+    /** Chave única de linha: dois convidados do mesmo anfitrião dividem o [memberId]. */
+    val rowKey: String get() = if (isGuest) "$memberId#$guestSeq" else memberId
+}
 
 data class AttendanceRoster(
     val confirmed: List<AttendanceRosterMember>,
@@ -107,6 +116,12 @@ data class AttendancePromotionCommand(
     val requestId: String,
     val memberId: String,
     val reason: String,
+    val guestSeq: Int = 0,
+)
+
+data class AddGuestCommand(
+    val requestId: String,
+    val displayName: String,
 )
 
 sealed interface AttendanceError : SaqzError {
@@ -159,4 +174,19 @@ interface AttendanceGateway {
         groupId: GroupId,
         command: AutoConfirmationCommand,
     ): SaqzResult<AutoConfirmationUpdate, AttendanceError>
+
+    // ponytail: corpo padrão para os fakes de teste existentes não mudarem; o único adapter real
+    // (KtorAttendanceGateway) sobrescreve. Tirar o padrão se surgir um segundo adapter.
+    suspend fun addGuest(
+        groupId: GroupId,
+        gameId: String,
+        command: AddGuestCommand,
+    ): SaqzResult<AttendanceRosterMember, AttendanceError> = SaqzResult.Failure(AttendanceError.HiddenResource)
+
+    suspend fun removeGuest(
+        groupId: GroupId,
+        gameId: String,
+        hostId: String,
+        guestSeq: Int,
+    ): SaqzResult<Unit, AttendanceError> = SaqzResult.Failure(AttendanceError.HiddenResource)
 }
