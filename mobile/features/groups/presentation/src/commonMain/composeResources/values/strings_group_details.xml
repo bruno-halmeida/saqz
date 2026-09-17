@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Detalhe do grupo novo · hero sem jogo -->
+    <string name="group_details_hero_empty_admin">Marque o próximo e a galera confirma em um toque.</string>
+    <string name="group_details_hero_first_title">Grupo criado!</string>
+    <string name="group_details_hero_first_body">Vamos marcar o primeiro jogo? Defina data, local e vagas — depois é só chamar a galera.</string>
+    <!-- Detalhe do grupo novo · minhas cobranças -->
+    <string name="group_details_own_charges_history_show">Ver histórico (%1$d)</string>
+    <string name="group_details_own_charges_history_hide">Ocultar histórico</string>
+    <string name="group_details_own_charges_settled_title">Tudo em dia</string>
+    <string name="group_details_own_charges_settled_meta">Nenhuma cobrança em aberto</string>
+    <string name="group_details_own_charges_no_pix">O grupo ainda não cadastrou uma chave Pix. Combine o pagamento com o admin — a baixa acontece no caixa do grupo.</string>
+    <!-- Detalhe do grupo novo · esperando você -->
+    <string name="group_details_waiting_quorum">%1$d pessoas sem resposta</string>
+    <string name="group_details_waiting_quorum_one">1 pessoa sem resposta</string>
+    <string name="group_details_waiting_notify">Avisar</string>
+    <string name="group_details_names_two">%1$s e %2$s</string>
+    <string name="group_details_names_more">%1$s, %2$s e mais %3$d</string>
+    <!-- Detalhe do grupo novo · próximos jogos -->
+    <string name="group_details_agenda_meta">%1$d de %2$d confirmados</string>
+    <string name="group_details_agenda_meta_venue">%1$d de %2$d · %3$s</string>
+    <string name="group_details_agenda_meta_full">Lotado · %1$d de %2$d</string>
+    <string name="group_details_agenda_meta_draft">Só você vê até publicar</string>
+    <string name="group_details_agenda_status_draft">Rascunho</string>
+    <string name="group_details_agenda_more">Ver mais %1$d jogos</string>
+    <string name="group_details_agenda_more_one">Ver mais 1 jogo</string>
+    <!-- Detalhe do grupo novo · mural -->
+    <string name="group_details_mural_title">Mural</string>
+    <string name="group_details_mural_notice_preview">%1$s: %2$s · %3$s</string>
+    <string name="group_details_mural_notices_empty">Nenhum aviso por enquanto</string>
+    <string name="group_details_mural_chat_meta">Fale com a galera do grupo</string>
+    <!-- Detalhe do grupo novo · galera, gestão e quadra -->
+    <string name="group_details_people_title">Galera</string>
+    <string name="group_details_people_count">%1$d pessoas</string>
+    <string name="group_details_people_count_one">1 pessoa</string>
+    <string name="group_details_people_fallback">Membros</string>
+    <string name="group_details_manage_title">Gestão</string>
+    <string name="group_details_manage_invite_meta">Link, QR e pedidos de entrada</string>
+    <string name="group_details_cash_balance">Saldo %1$s</string>
+    <string name="group_details_home_court_title">Onde a gente joga</string>
+</resources>
