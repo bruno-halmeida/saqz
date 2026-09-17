@@ -99,7 +99,10 @@ internal fun GameDetailScreen(
                 ) {
                     state.header?.let { GameDetailHeader(it) }
                     state.attendance?.let { GameDetailAttendance(it) }
-                    state.confirmedRoster.takeIf { it.isNotEmpty() }?.let { GameDetailConfirmedList(it) }
+                    GameGuestAction(state.guest, onIntent)
+                    state.confirmedRoster.takeIf { it.isNotEmpty() }?.let {
+                        GameDetailConfirmedList(it, state.guest.feeLabel, onIntent)
+                    }
                     state.waitlist.takeIf { it.isNotEmpty() }?.let { GameWaitlistSection(state, onIntent) }
                     if (state.isAdmin) {
                         if (state.header?.statusTone == GameDetailStatusTone.Published) {
@@ -117,6 +120,9 @@ internal fun GameDetailScreen(
         }
         if (state.cancelDialogOpen) GameDetailCancelSheet(state, onIntent)
         if (state.capacitySheetOpen) GameWaitlistCapacitySheet(state, onIntent)
+        if (state.guest.sheetOpen) GameGuestAddSheet(state.guest, onIntent)
+        state.guest.removal?.let { GameGuestRemoveSheet(state.guest, it, onIntent) }
+        GameGuestNotice(state.guest, onIntent, Modifier.align(Alignment.BottomCenter))
     }
 }
 @Composable
@@ -205,7 +211,11 @@ private fun Counter(value: Int, label: String, color: Color, modifier: Modifier 
     Text(label, color = SaqzTheme.colors.textSecondary, style = SaqzTheme.typography.caption)
 }
 @Composable
-private fun GameDetailConfirmedList(confirmed: List<GameDetailConfirmedUi>) {
+private fun GameDetailConfirmedList(
+    confirmed: List<GameDetailConfirmedUi>,
+    feeLabel: String?,
+    onIntent: (GameDetailIntent) -> Unit,
+) {
     SaqzCard(padded = false) {
         Box(Modifier.padding(SaqzTheme.metrics.horizontalPadding)) {
             SaqzSectionHeader(stringResource(Res.string.game_detail_confirmed_section))
@@ -219,7 +229,10 @@ private fun GameDetailConfirmedList(confirmed: List<GameDetailConfirmedUi>) {
                 } else {
                     person.name
                 },
-                meta = person.position,
+                modifier = person.guest?.let { Modifier.testTag(GameGuestTags.row(person.id)) } ?: Modifier,
+                meta = person.guest?.metaLabel(feeLabel, confirmed = true) ?: person.position,
+                photo = person.guest?.let { { GameGuestAvatar() } },
+                trailing = person.guest?.let { guest -> { GameGuestRemoveAction(person.id, guest, onIntent) } },
             )
         }
     }
