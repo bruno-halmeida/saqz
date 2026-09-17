@@ -32,7 +32,13 @@ const PROFILES = {
   spike: ramp([{ duration: '1m', target: MAX_VUS }, { duration: '3m', target: MAX_VUS }, { duration: '30s', target: 0 }]),
   // Metade da capacidade por 1h: vazamento de memória, conexão presa, cache de token crescendo.
   soak: ramp([{ duration: '2m', target: Math.ceil(MAX_VUS / 2) }, { duration: '60m', target: Math.ceil(MAX_VUS / 2) }]),
+  // Requisição SIMULTÂNEA, não usuário: sem pausa de leitura, cada VU mantém exatamente uma
+  // requisição em voo, então VU = concorrência. O `ramp` não responde isso — lá 300 usuários
+  // com pausa realista viram ~4 requisições em voo. Degraus pequenos porque o pool tem 5.
+  concorrencia: ramp([2, 5, 10, 20, 40, 80, 160, 320].filter((v) => v <= MAX_VUS)
+    .flatMap((v) => [{ duration: '30s', target: v }, { duration: '90s', target: v }])),
 }
+const SEM_PAUSA = PROFILE === 'concorrencia'
 
 export const options = {
   scenarios: { session: PROFILES[PROFILE] },
@@ -42,9 +48,9 @@ export const options = {
     // Quem responde "qual foi o último degrau bom" é a série temporal, degrau por degrau —
     // ver `analise.mjs`. Aqui só paramos quando já não há o que medir.
     // A taxa geral inclui o login no Firebase, que tem cota própria: não aborta por isso.
-    'http_req_failed{kind:api}': [{ threshold: 'rate<0.10', abortOnFail: PROFILE === 'ramp', delayAbortEval: '2m' }],
+    'http_req_failed{kind:api}': [{ threshold: 'rate<0.10', abortOnFail: PROFILE === 'ramp' || SEM_PAUSA, delayAbortEval: '2m' }],
     http_req_failed: ['rate<0.10'],
-    'http_req_duration{kind:api}': [{ threshold: 'p(95)<3000', abortOnFail: PROFILE === 'ramp', delayAbortEval: '2m' }],
+    'http_req_duration{kind:api}': [{ threshold: 'p(95)<3000', abortOnFail: PROFILE === 'ramp' || SEM_PAUSA, delayAbortEval: '2m' }],
   },
   summaryTrendStats: ['med', 'p(95)', 'p(99)', 'max'],
 }
@@ -90,7 +96,7 @@ function signIn(contas) {
   return { token: res.json('idToken'), expiresAt: Date.now() + 50 * 60 * 1000, owner: email.startsWith('owner') }
 }
 
-const think = (min, max) => sleep(min + Math.random() * (max - min))
+const think = (min, max) => { if (!SEM_PAUSA) sleep(min + Math.random() * (max - min)) }
 
 export default function (dados) {
   // No spike cada iteração é um "cold start" com token novo; nos outros o token vive 50 min, como no app.
