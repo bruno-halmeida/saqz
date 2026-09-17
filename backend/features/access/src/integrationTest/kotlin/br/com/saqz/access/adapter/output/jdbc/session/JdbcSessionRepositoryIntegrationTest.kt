@@ -114,7 +114,7 @@ class JdbcSessionRepositoryIntegrationTest {
     }
 
     @Test
-    fun `changed email and display name update mirrors without changing user ID`() {
+    fun `changed email updates the mirror but the token never renames an existing account`() {
         val original = repository.upsertAndLoad(command("subject-update"))
         val updated = repository.upsertAndLoad(
             SessionUpsert("subject-update", "changed@example.test", true, AccessName.from("Changed Name")),
@@ -122,8 +122,20 @@ class JdbcSessionRepositoryIntegrationTest {
 
         assertEquals(original.user.id, updated.user.id)
         assertEquals("changed@example.test", updated.user.email)
-        assertEquals("Changed Name", updated.user.displayName.value)
+        assertEquals("Person Name", updated.user.displayName.value)
         assertEquals("changed@example.test", text("SELECT email FROM access_users WHERE id = '${updated.user.id}'"))
+    }
+
+    @Test
+    fun `a profile rename survives the next session bootstrap`() {
+        repository.upsertAndLoad(command("subject-rename"))
+        repository.updateProfile(
+            ProfileCompletion("subject-rename", phone = null, displayName = AccessName.from("Chosen Name"), phoneProvided = false),
+        )
+
+        val next = repository.upsertAndLoad(command("subject-rename"))
+
+        assertEquals("Chosen Name", next.user.displayName.value)
     }
 
     @Test

@@ -44,6 +44,8 @@ class JdbcSessionRepository(
         .orElse(null)
 
     override fun upsertAndLoad(command: SessionUpsert): SessionView {
+        // O nome do token só vale na criação: depois disso quem manda é o PATCH do perfil. O token
+        // guarda o nome do cadastro para sempre, e espelhá-lo aqui revertia toda renomeação.
         val user = jdbc.sql(
             """
             INSERT INTO access_users (
@@ -54,7 +56,7 @@ class JdbcSessionRepository(
             ON CONFLICT (firebase_subject) WHERE deleted_at IS NULL DO UPDATE SET
                 email = EXCLUDED.email,
                 email_verified = EXCLUDED.email_verified,
-                display_name = EXCLUDED.display_name,
+                display_name = COALESCE(access_users.display_name, EXCLUDED.display_name),
                 updated_at = now()
             RETURNING id, email, display_name, phone, nickname, city, phone_visibility
             """.trimIndent(),
