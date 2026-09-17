@@ -21,6 +21,7 @@ class JdbcAthleteStatsRepository(dataSource: DataSource) : AthleteStatsRepositor
         LEFT JOIN game_attendance attendance
             ON attendance.group_id = membership.group_id
             AND attendance.member_user_id = membership.user_id
+            AND attendance.guest_seq = 0
         WHERE membership.group_id = :groupId
           AND membership.user_id = :userId
         GROUP BY membership.group_id, membership.user_id

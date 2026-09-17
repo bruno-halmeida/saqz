@@ -48,6 +48,7 @@ class JdbcProfileStatsRepository(dataSource: DataSource) : ProfileStatsRepositor
                 ON attendance.group_id = games.group_id
                 AND attendance.game_id = games.id
                 AND attendance.member_user_id = memberships.user_id
+                AND attendance.guest_seq = 0
             WHERE memberships.user_id = :userId
         """
     }

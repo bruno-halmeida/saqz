@@ -91,6 +91,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
                 ON membership.group_id = attendance.group_id
                 AND membership.user_id = attendance.member_user_id AND membership.active
             WHERE attendance.game_id = :game AND attendance.group_id = :group
+              AND (attendance.guest_seq = 0 OR attendance.status <> 'DECLINED')
             ORDER BY lower(attendance.member_display_name), attendance.member_display_name
             """.trimIndent(),
         ).param("group", groupId).param("game", gameId)

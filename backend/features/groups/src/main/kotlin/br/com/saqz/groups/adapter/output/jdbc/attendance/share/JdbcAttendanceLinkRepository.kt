@@ -220,12 +220,14 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
         const val SNAPSHOT_ROWS = """
             SELECT g.title, g.starts_at, g.zone_id, g.venue_name, g.capacity,
                    attendance.member_user_id, attendance.status AS attendance_status,
-                   attendance.waitlist_sequence, user_account.display_name
+                   attendance.waitlist_sequence,
+                   CASE WHEN attendance.guest_seq > 0 THEN attendance.member_display_name ELSE user_account.display_name END AS display_name
             FROM games g
             JOIN access_groups ag ON ag.id = g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN game_attendance attendance
                 ON attendance.game_id = g.id AND attendance.group_id = g.group_id
                AND attendance.status IN ('CONFIRMED', 'WAITLISTED', 'DECLINED')
+               AND (attendance.guest_seq = 0 OR attendance.status <> 'DECLINED')
             LEFT JOIN access_users user_account ON user_account.id = attendance.member_user_id
             WHERE g.group_id = :group AND g.id = :game
         """
