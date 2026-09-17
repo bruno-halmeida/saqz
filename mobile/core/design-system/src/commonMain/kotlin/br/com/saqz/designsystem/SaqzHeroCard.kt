@@ -30,7 +30,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.painterResource
 
 /**
- * Bloco de destaque da Home nova: azul (`primary`), kicker com ponto lima, título em
+ * Bloco de destaque da Home nova e do detalhe do grupo (2º uso, VUL-231): azul (`primary`), kicker com ponto lima, título em
  * `display`, meta opcional e o conteúdo que a tela quiser embaixo. A bola do
  * `SaqzSpinner` entra como marca d'água branca a 20% no canto superior direito.
  *
