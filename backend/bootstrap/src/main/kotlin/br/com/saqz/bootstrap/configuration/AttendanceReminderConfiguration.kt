@@ -20,7 +20,7 @@ class AutomaticAttendanceReminder(
     private val autoConfirm: AutoConfirmAttendance,
     private val reminders: GroupCommunicationService,
 ) {
-    @Scheduled(fixedDelayString = "\${saqz.notifications.reminder.delay-ms:60000}")
+    @Scheduled(fixedDelayString = "\${saqz.notifications.reminder.delay-ms:25200000}")
     fun run() {
         autoConfirm.applyOpenGames()
         reminders.remindAutomatically()
