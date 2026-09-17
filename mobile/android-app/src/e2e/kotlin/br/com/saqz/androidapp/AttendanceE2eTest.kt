@@ -54,7 +54,7 @@ internal class AttendanceE2eTest : InstalledE2e("attendance") {
 
         login("athlete")
         openGroup()
-        waitText("Você está confirmado na vaga.")
-        ui.onNodeWithText("Você está confirmado na vaga.").performScrollTo().assertIsDisplayed()
+        waitText("Sua presença está confirmada.")
+        ui.onNodeWithText("Sua presença está confirmada.").performScrollTo().assertIsDisplayed()
     }
 }
