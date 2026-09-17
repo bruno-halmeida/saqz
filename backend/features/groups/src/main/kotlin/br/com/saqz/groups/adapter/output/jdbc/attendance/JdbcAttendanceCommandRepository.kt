@@ -285,15 +285,21 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         )
     }
 
-    override fun counts(gameIds: Set<UUID>): Map<UUID, GameAttendanceCounts> = gameIds.associateWith { gameId ->
-        jdbc.sql(
-            "SELECT count(*) FILTER (WHERE attendance.status='CONFIRMED') AS confirmed," +
+    // Uma consulta para todos os jogos: a lista de jogos chamava isto com o histórico inteiro do grupo.
+    override fun counts(gameIds: Set<UUID>): Map<UUID, GameAttendanceCounts> {
+        if (gameIds.isEmpty()) return emptyMap()
+        val counted = jdbc.sql(
+            "SELECT attendance.game_id," +
+                "count(*) FILTER (WHERE attendance.status='CONFIRMED') AS confirmed," +
                 "count(*) FILTER (WHERE attendance.status='WAITLISTED') AS waitlisted " +
                 "FROM game_attendance attendance " +
                 "JOIN games game ON game.id = attendance.game_id AND game.group_id = attendance.group_id " +
                 "JOIN access_groups ag ON ag.id = game.group_id AND ag.deleted_at IS NULL " +
-                "WHERE attendance.game_id=:game",
-        ).param("game", gameId).query { rs, _ -> GameAttendanceCounts(rs.getInt("confirmed"), rs.getInt("waitlisted")) }.single()
+                "WHERE attendance.game_id IN (:games) GROUP BY attendance.game_id",
+        ).param("games", gameIds).query { rs, _ ->
+            rs.getObject("game_id", UUID::class.java) to GameAttendanceCounts(rs.getInt("confirmed"), rs.getInt("waitlisted"))
+        }.list().toMap()
+        return gameIds.associateWith { counted[it] ?: GameAttendanceCounts(0, 0) }
     }
 
     private data class RosterRow(
