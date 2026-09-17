@@ -3,18 +3,10 @@ package br.com.saqz.groups.presentation.ui.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -26,8 +18,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
@@ -43,21 +33,18 @@ import br.com.saqz.groups.presentation.home.HomeAdminGroupUi
 import br.com.saqz.groups.presentation.home.HomeAdminReadModelUi
 import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
+import br.com.saqz.groups.presentation.ui.components.AttendanceScoreBoard
+import br.com.saqz.groups.presentation.ui.components.AttendanceScoreBoardTags
+import br.com.saqz.groups.presentation.ui.components.HeroDeadlineLine
+import br.com.saqz.groups.presentation.ui.components.HeroOutlineAlpha
+import br.com.saqz.groups.presentation.ui.components.WaitingRow
 import br.com.saqz.groups.resources.Res
-import br.com.saqz.groups.resources.home_admin_cd_score_going
-import br.com.saqz.groups.resources.home_admin_cd_score_out
-import br.com.saqz.groups.resources.home_admin_cd_score_pending
-import br.com.saqz.groups.resources.home_admin_cd_scoreboard_open
 import br.com.saqz.groups.resources.home_admin_cd_shortcut_create_game
 import br.com.saqz.groups.resources.home_admin_cd_shortcut_invite
 import br.com.saqz.groups.resources.home_admin_cd_waiting_entry_requests
 import br.com.saqz.groups.resources.home_admin_cd_waiting_monthly
 import br.com.saqz.groups.resources.home_admin_cd_waiting_settle
 import br.com.saqz.groups.resources.home_game_next
-import br.com.saqz.groups.resources.home_admin_score_value
-import br.com.saqz.groups.resources.home_admin_score_going
-import br.com.saqz.groups.resources.home_admin_score_out
-import br.com.saqz.groups.resources.home_admin_score_pending
 import br.com.saqz.groups.resources.home_admin_shortcuts_create_game
 import br.com.saqz.groups.resources.home_admin_shortcuts_invite
 import br.com.saqz.groups.resources.home_admin_waiting_entry_requests
@@ -116,15 +103,16 @@ internal fun HomeAdminHero(
         },
         modifier = modifier.testTag(HomeAdminTags.Hero),
     ) {
-        AdminScoreBoard(
+        AttendanceScoreBoard(
             going = game.confirmedCount,
             out = game.declinedCount,
             pending = game.pendingCount,
             // O placar é o dado que o admin mais quer detalhar — tocar abre o jogo,
             // onde mora a lista de quem respondeu (e a cobrança de presença).
             onClick = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) },
+            tags = HomeScoreBoardTags,
         )
-        HomeDeadlineLine(text = game.deadline, open = game.confirmationOpen)
+        HeroDeadlineLine(text = game.deadline, open = game.confirmationOpen)
         HomeAttendanceControls(
             game = game,
             responding = responding,
@@ -174,103 +162,11 @@ internal fun HomeAdminNoGame(
     }
 }
 
-/**
- * Placar em 3 colunas sobre o hero azul: painel branco a 10%, traços brancos a 18%,
- * números em `display` 28sp — Vão em lima, Não vão em branco a 70%, Sem resposta em
- * warning. SEM Talvez (decisão do projeto).
- */
-@Composable
-private fun AdminScoreBoard(
-    going: Int,
-    out: Int,
-    pending: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = SaqzTheme.colors
-    val metrics = SaqzTheme.metrics
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(metrics.inputRadius))
-            .background(colors.onPrimary.copy(alpha = ScorePanelAlpha))
-            .clickable(
-                onClickLabel = stringResource(Res.string.home_admin_cd_scoreboard_open),
-                role = Role.Button,
-                onClick = onClick,
-            )
-            // Funde as descrições das três colunas num nó só: o placar inteiro é um botão.
-            .semantics(mergeDescendants = true) {}
-            .height(IntrinsicSize.Min)
-            .padding(vertical = metrics.blockGap),
-    ) {
-        AdminScoreColumn(
-            value = going,
-            label = stringResource(Res.string.home_admin_score_going),
-            color = colors.accent,
-            contentDescription = stringResource(Res.string.home_admin_cd_score_going, going),
-            modifier = Modifier.testTag(HomeAdminTags.ScoreGoing),
-        )
-        ScoreDivider()
-        AdminScoreColumn(
-            value = out,
-            label = stringResource(Res.string.home_admin_score_out),
-            color = colors.onPrimary.copy(alpha = ScoreOutAlpha),
-            contentDescription = stringResource(Res.string.home_admin_cd_score_out, out),
-            modifier = Modifier.testTag(HomeAdminTags.ScoreOut),
-        )
-        ScoreDivider()
-        AdminScoreColumn(
-            value = pending,
-            label = stringResource(Res.string.home_admin_score_pending),
-            color = colors.warning,
-            contentDescription = stringResource(Res.string.home_admin_cd_score_pending, pending),
-            modifier = Modifier.testTag(HomeAdminTags.ScorePending),
-        )
-    }
-}
-
-@Composable
-private fun ScoreDivider() = Box(
-    modifier = Modifier
-        .width(1.dp)
-        .fillMaxHeight()
-        .background(SaqzTheme.colors.onPrimary.copy(alpha = ScoreDividerAlpha)),
+private val HomeScoreBoardTags = AttendanceScoreBoardTags(
+    going = HomeAdminTags.ScoreGoing,
+    out = HomeAdminTags.ScoreOut,
+    pending = HomeAdminTags.ScorePending,
 )
-
-@Composable
-private fun RowScope.AdminScoreColumn(
-    value: Int,
-    label: String,
-    color: androidx.compose.ui.graphics.Color,
-    contentDescription: String,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .weight(1f)
-            .semantics { this.contentDescription = contentDescription },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
-    ) {
-        Text(
-            text = stringResource(Res.string.home_admin_score_value, value),
-            style = SaqzTheme.typography.display.copy(fontSize = ScoreValueSize, lineHeight = ScoreValueSize),
-            color = color,
-        )
-        Text(
-            text = label,
-            style = SaqzTheme.typography.caption,
-            color = SaqzTheme.colors.onPrimary.copy(alpha = ScoreLabelAlpha),
-        )
-    }
-}
-
-private const val ScorePanelAlpha = 0.10f
-private const val ScoreDividerAlpha = 0.18f
-private const val ScoreOutAlpha = 0.7f
-private const val ScoreLabelAlpha = 0.72f
-private val ScoreValueSize = 28.sp
 
 /**
  * Seção "Esperando você": card branco com linhas divididas. Cada linha tem um
@@ -406,47 +302,23 @@ private fun HomeWaitingRow(
     item: HomeWaitingItem,
     onIntent: (HomeIntent) -> Unit,
 ) {
-    val colors = SaqzTheme.colors
-    val metrics = SaqzTheme.metrics
-    val clickAction = { onIntent(item.action) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClickLabel = item.a11y, role = Role.Button, onClick = clickAction)
-            .semantics { contentDescription = item.a11y }
-            .testTag(item.tag)
-            .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
+    WaitingRow(
+        icon = item.icon,
+        title = item.title,
+        meta = item.meta,
+        contentDescription = item.a11y,
+        onClick = { onIntent(item.action) },
+        tag = item.tag,
+        // A Início nunca limitou a meta; o default de 1 linha é do detalhe do grupo.
+        metaMaxLines = Int.MAX_VALUE,
     ) {
-        Box(
-            modifier = Modifier
-                .size(metrics.grid * 5)
-                .clip(CircleShape)
-                .background(colors.surfaceSoft, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            SaqzIcon(icon = item.icon, tint = colors.textSecondary)
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid / 2)) {
-            Text(
-                text = item.title,
-                style = SaqzTheme.typography.compactTitle,
-                color = colors.textPrimary,
-            )
-            Text(
-                text = item.meta,
-                style = SaqzTheme.typography.compactMeta,
-                color = colors.textSecondary,
-            )
-        }
         when (item.trailing) {
             is WaitingTrailing.WarningChip -> SaqzStatusChip(
                 text = item.trailing.text,
                 tone = SaqzChipTone.Warning,
                 dot = true,
             )
-            WaitingTrailing.Chevron -> SaqzIcon(SaqzIcons.ChevronRight, tint = colors.textSecondary)
+            WaitingTrailing.Chevron -> SaqzIcon(SaqzIcons.ChevronRight, tint = SaqzTheme.colors.textSecondary)
         }
     }
 }
