@@ -151,7 +151,7 @@ class AttendanceControllerTest {
         var status = GameStatus.PUBLISHED; var deadline = NOW.plusSeconds(60); var capacity = 2; var version = 1L; var allocator = 0L
         var mensalistaPriority = true
         var promotionMode = PromotionMode.FIFO
-        override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID): AttendanceAggregate? =
+        override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID, guestSeq: Int): AttendanceAggregate? =
             if (groupId == group && gameId == game && memberId in members) {
                 AttendanceAggregate(
                     group,

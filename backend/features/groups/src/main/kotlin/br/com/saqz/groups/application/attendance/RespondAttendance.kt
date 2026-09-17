@@ -125,6 +125,7 @@ class RespondAttendance(
             respondedAt,
             maxOf(timestamp, respondedAt),
             (aggregate.current?.version ?: 0) + 1,
+            guestSeq = aggregate.guestSeq,
         )
         repository.save(record)
         val event = AttendanceEvent(
@@ -139,6 +140,7 @@ class RespondAttendance(
             decision.reason,
             timestamp,
             requestId,
+            guestSeq = aggregate.guestSeq,
         )
         repository.append(event)
         if (decision.createGameCharge) charges.confirmed(aggregate, aggregate.actorId)
@@ -156,6 +158,7 @@ class RespondAttendance(
             memberId = waiting.memberId,
             current = waiting,
             confirmedCount = (aggregate.confirmedCount - 1).coerceAtLeast(0),
+            guestSeq = waiting.guestSeq,
         )
         return when (val result = promoteAttendance(
             promotionAggregate,

@@ -270,6 +270,7 @@ class JdbcHomeRepository(
                        FROM game_attendance attendance
                        WHERE attendance.game_id = games.id
                          AND attendance.status = 'DECLINED'
+                         AND attendance.guest_seq = 0
                    ) AS declined_count,
                    -- Todo membro ativo joga, inclusive dono e admin: o papel administrativo
                    -- não dispensa ninguém de responder.
@@ -305,6 +306,7 @@ class JdbcHomeRepository(
             LEFT JOIN game_attendance own
                 ON own.game_id = games.id
                AND own.member_user_id = :actor
+               AND own.guest_seq = 0
             WHERE games.status = 'PUBLISHED'
               AND games.starts_at >= :now
               AND (groups.owner_user_id = :actor OR memberships.user_id IS NOT NULL)
@@ -339,6 +341,7 @@ class JdbcHomeRepository(
             LEFT JOIN game_attendance own
                 ON own.game_id = games.id
                AND own.member_user_id = :actor
+               AND own.guest_seq = 0
             WHERE games.status = 'PUBLISHED'
               AND games.starts_at >= :now
               AND (groups.owner_user_id = :actor OR memberships.user_id IS NOT NULL)
@@ -390,6 +393,7 @@ class JdbcHomeRepository(
                        WHERE own.game_id = games.id
                          AND own.member_user_id = :actor
                          AND own.status = 'CONFIRMED'
+                         AND own.guest_seq = 0
                    ) AS own_played
             FROM games
             JOIN access_groups groups

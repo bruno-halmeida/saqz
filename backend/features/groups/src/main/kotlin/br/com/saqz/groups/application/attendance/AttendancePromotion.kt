@@ -67,6 +67,7 @@ internal fun promoteAttendance(
         transition.reason,
         timestamp,
         requestId,
+        guestSeq = promoted.guestSeq,
     )
     repository.append(event)
     if (transition.createGameCharge) charges.promoted(aggregate, aggregate.actorId)

@@ -73,7 +73,7 @@ class JdbcAutoConfirmationRepository(dataSource: DataSource) : AutoConfirmationR
         SELECT m.user_id, m.membership_type, m.auto_confirm_enabled, m.created_at
         FROM games g
         JOIN group_memberships m ON m.group_id=g.group_id AND m.active
-        LEFT JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=m.user_id
+        LEFT JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=m.user_id AND a.guest_seq=0
         WHERE g.id=:game AND a.member_user_id IS NULL
         ORDER BY m.created_at, m.user_id
         """.trimIndent(),
@@ -159,11 +159,11 @@ class JdbcAutoConfirmationRepository(dataSource: DataSource) : AutoConfirmationR
         """
         const val SAVE = """
             INSERT INTO game_attendance
-                (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version,member_display_name)
+                (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version,member_display_name,guest_seq)
             SELECT :game,:group,:member,:status,:sequence,:responded,:updated,:version,
-                   (SELECT coalesce(nickname, display_name) FROM access_users WHERE id=:member)
+                   (SELECT coalesce(nickname, display_name) FROM access_users WHERE id=:member),0
             WHERE EXISTS (SELECT 1 FROM access_groups WHERE id=:group AND deleted_at IS NULL)
-            ON CONFLICT (game_id,member_user_id) DO UPDATE SET
+            ON CONFLICT (game_id,member_user_id,guest_seq) DO UPDATE SET
                 status=EXCLUDED.status,waitlist_sequence=EXCLUDED.waitlist_sequence,
                 updated_at=EXCLUDED.updated_at,version=EXCLUDED.version
             WHERE game_attendance.version=EXCLUDED.version-1

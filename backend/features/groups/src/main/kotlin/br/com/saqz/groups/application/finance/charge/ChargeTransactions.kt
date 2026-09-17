@@ -9,7 +9,7 @@ import java.util.UUID
 import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 
 enum class AttendanceBillingOutcome { CONFIRMED, PROMOTED, WAITLISTED, DECLINED, NO_RESPONSE, WITHDRAWN }
-data class GameChargeInput(val groupId:UUID,val gameId:UUID,val memberId:UUID,val gameFeeCents:Long?,val dueDate:LocalDate,val outcome:AttendanceBillingOutcome)
+data class GameChargeInput(val groupId:UUID,val gameId:UUID,val memberId:UUID,val gameFeeCents:Long?,val dueDate:LocalDate,val outcome:AttendanceBillingOutcome,val guestSeq:Int=0)
 data class MonthlyGenerationCommand(val requestId:UUID,val groupId:UUID,val actorId:UUID,val month:YearMonth,val amountCents:Long,val dueDate:LocalDate,val selectedMemberIds:Set<UUID>)
 data class GroupMembers(val all:Set<UUID>,val active:Set<UUID>)
 sealed interface MonthlyGenerationResult{data class Success(val charges:List<Charge>,val excludedInactiveCount:Int=0):MonthlyGenerationResult;data class Invalid(val fields:Set<String>):MonthlyGenerationResult;data object Hidden:MonthlyGenerationResult}
