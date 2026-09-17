@@ -129,11 +129,11 @@ class HomeScreenshotTest {
         ),
     )
 
-    /** O caso que a nomenclatura precisa resolver: quem recebe e deve na mesma tela. */
+    /** O caso que a nomenclatura precisa resolver: quem recebe (Esperando você) e deve (cobrança vencida) na mesma tela. */
     @Test
     fun ownChargesForAnAdminWhoAlsoOwes() = captureOwnCharges(
         "home-cobranca-admin-que-deve",
-        adminState().copy(ownCharges = previewOwnCharges()),
+        adminState().copy(ownCharges = previewOwnChargesOverdue()),
     )
 
     @Test
