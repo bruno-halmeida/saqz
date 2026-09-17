@@ -79,7 +79,10 @@ BEGIN
         SELECT users.id, users.display_name, row_number() OVER (ORDER BY users.email) AS n
         FROM group_memberships m JOIN access_users users ON users.id = m.user_id
         WHERE m.group_id = c_group AND m.membership_type = 'MENSALISTA' AND m.role = 'ATHLETE'
-    ) AS a;
+    ) AS a
+    -- O seed de exploração já cria mensalidade dos meses recentes: onde os dois se encontram,
+    -- a dele fica. O predicado tem que ser repetido porque o índice é parcial.
+    ON CONFLICT (group_id, billing_month, member_user_id) WHERE kind = 'MONTHLY' DO NOTHING;
 
     -- Cobrança de jogo para cada avulso que confirmou jogo já realizado; os 30 dias recentes ficam pendentes.
     INSERT INTO group_charges (
@@ -96,7 +99,8 @@ BEGIN
     FROM game_attendance att
     JOIN games g ON g.id = att.game_id AND g.status = 'COMPLETED'
     JOIN group_memberships m ON m.group_id = c_group AND m.user_id = att.member_user_id AND m.membership_type = 'AVULSO'
-    WHERE att.group_id = c_group AND att.game_id::text LIKE '10ad%';
+    WHERE att.group_id = c_group AND att.game_id::text LIKE '10ad%'
+    ON CONFLICT (group_id, game_id, member_user_id) WHERE kind = 'GAME' DO NOTHING;
 
     -- Um evento PENDING -> PAID por cobrança paga: é o que a listagem carrega junto.
     INSERT INTO group_charge_events (id, charge_id, group_id, actor_user_id, old_status, new_status, occurred_at)

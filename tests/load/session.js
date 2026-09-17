@@ -26,7 +26,7 @@ const PROFILES = {
   // 1 usuário, 1 sessão completa: prova que o roteiro funciona contra o alvo.
   smoke: { executor: 'per-vu-iterations', vus: 1, iterations: 1, maxDuration: '3m' },
   // Degraus até MAX_VUS: o degrau em que p95 ou erro estouram é a capacidade.
-  ramp: ramp([10, 25, 50, 100, 150, 200, 300].filter((v) => v <= MAX_VUS)
+  ramp: ramp([10, 25, 50, 100, 150, 200, 300, 450, 600, 900, 1200].filter((v) => v <= MAX_VUS)
     .flatMap((v) => [{ duration: '1m', target: v }, { duration: '2m', target: v }])),
   // Hora do jogo: todo mundo abre o app em 1 minuto, cada um com token NOVO (fura o cache de 3 min).
   spike: ramp([{ duration: '1m', target: MAX_VUS }, { duration: '3m', target: MAX_VUS }, { duration: '30s', target: 0 }]),
