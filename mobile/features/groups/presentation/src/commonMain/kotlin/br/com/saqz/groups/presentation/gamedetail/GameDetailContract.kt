@@ -28,6 +28,7 @@ data class GameDetailState(
     val capacityDraft: Int = 2,
     val savingCapacity: Boolean = false,
     val capacityFailed: Boolean = false,
+    val guest: GameGuestUi = GameGuestUi(),
 )
 @Immutable
 data class GameDetailHeaderUi(
@@ -57,6 +58,8 @@ data class GameDetailConfirmedUi(
     val name: String,
     val isYou: Boolean,
     val position: String,
+    /** `null` = membro. Convidado: de quem é e o que quem olha pode fazer com ele. */
+    val guest: GameGuestRowUi? = null,
 )
 @Immutable
 data class GameDetailWaitlistUi(
@@ -65,7 +68,59 @@ data class GameDetailWaitlistUi(
     val queuePosition: Long?,
     val athletePosition: AthletePosition?,
     val isMensalista: Boolean,
+    /** `null` = membro. Convidado: de quem é e o que quem olha pode fazer com ele. */
+    val guest: GameGuestRowUi? = null,
 )
+
+@Immutable
+data class GameGuestRowUi(
+    val hostId: String,
+    val guestSeq: Int,
+    val hostName: String,
+    /** O convidado é de quem está olhando. */
+    val isYours: Boolean,
+    /** Anfitrião com confirmações abertas, ou gestor com jogo publicado. */
+    val canRemove: Boolean,
+)
+
+enum class GameGuestHint { Default, NeedAnswer, Closed }
+
+@Immutable
+data class GameGuestRemovalUi(
+    val rowId: String,
+    val hostId: String,
+    val guestSeq: Int,
+    val name: String,
+    val confirmed: Boolean,
+)
+
+@Immutable
+data class GameGuestUi(
+    /** Botão aparece só com jogo publicado e quem olha sendo membro que joga (tem `memberId`). */
+    val visible: Boolean = false,
+    val enabled: Boolean = false,
+    val hint: GameGuestHint = GameGuestHint.Default,
+    /** "R$ 25,00" quando o jogo tem taxa; `null` = a folha não fala de cobrança. */
+    val feeLabel: String? = null,
+    val sheetOpen: Boolean = false,
+    val name: String = "",
+    val adding: Boolean = false,
+    val addFailed: Boolean = false,
+    val removal: GameGuestRemovalUi? = null,
+    val removing: Boolean = false,
+    val removeFailed: Boolean = false,
+    /** Nome de quem acabou de entrar (`joined = true`) ou sair; a UI mostra o toast e manda `DismissGuestNotice`. */
+    val noticeName: String? = null,
+    val noticeJoined: Boolean = true,
+) {
+    val canSubmit: Boolean get() = name.trim().length in MIN_NAME..MAX_NAME && !adding
+
+    private companion object {
+        const val MIN_NAME = 2
+        const val MAX_NAME = 80
+    }
+}
+
 sealed interface GameDetailIntent {
     data object Retry : GameDetailIntent
     data object Edit : GameDetailIntent
@@ -73,11 +128,19 @@ sealed interface GameDetailIntent {
     data object RequestCancel : GameDetailIntent
     data object ConfirmCancel : GameDetailIntent
     data object DismissCancel : GameDetailIntent
-    data class Promote(val memberId: String, val reason: String) : GameDetailIntent
+    data class Promote(val memberId: String, val reason: String, val guestSeq: Int = 0) : GameDetailIntent
     data object OpenCapacitySheet : GameDetailIntent
     data class UpdateCapacity(val value: Int) : GameDetailIntent
     data object SaveCapacity : GameDetailIntent
     data object DismissCapacitySheet : GameDetailIntent
+    data object OpenGuestSheet : GameDetailIntent
+    data class UpdateGuestName(val value: String) : GameDetailIntent
+    data object SubmitGuest : GameDetailIntent
+    data object DismissGuestSheet : GameDetailIntent
+    data class RequestRemoveGuest(val rowId: String) : GameDetailIntent
+    data object ConfirmRemoveGuest : GameDetailIntent
+    data object DismissRemoveGuest : GameDetailIntent
+    data object DismissGuestNotice : GameDetailIntent
 }
 sealed interface GameDetailEffect {
     data object OpenEditor : GameDetailEffect

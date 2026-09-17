@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="game_guest_add">Levar convidado</string>
+    <string name="game_guest_hint_default">Entra na lista de espera. Você responde por ele.</string>
+    <string name="game_guest_hint_need_answer">Responda \"Vou\" para poder levar alguém.</string>
+    <string name="game_guest_hint_closed">As confirmações estão encerradas. Fale com o gestor.</string>
+    <string name="game_guest_sheet_title">Levar convidado</string>
+    <string name="game_guest_name_label">Nome do convidado</string>
+    <string name="game_guest_name_placeholder">Como a galera vai chamar</string>
+    <string name="game_guest_info_queue">Entra no fim da lista de espera e sobe quando abrir vaga.</string>
+    <string name="game_guest_info_fee">Se ele entrar no jogo, a taxa de %1$s vem para você.</string>
+    <string name="game_guest_info_scope">Não vira membro do grupo. Vale só para este jogo.</string>
+    <string name="game_guest_submit">Adicionar à lista de espera</string>
+    <string name="game_guest_submitting">Adicionando…</string>
+    <string name="game_guest_add_failed">Não foi possível adicionar. Tente de novo.</string>
+    <string name="game_guest_yours">Convidado seu</string>
+    <string name="game_guest_yours_fee">Convidado seu · %1$s na sua conta</string>
+    <string name="game_guest_of">Convidado de %1$s</string>
+    <string name="game_guest_remove">Tirar</string>
+    <string name="game_guest_remove_title">Tirar %1$s do jogo?</string>
+    <string name="game_guest_remove_waitlisted">Ele sai da lista de espera. Nada é cobrado.</string>
+    <string name="game_guest_remove_confirmed">Ele sai dos confirmados e a vaga vai para o próximo da lista.</string>
+    <string name="game_guest_remove_confirmed_fee">Ele sai dos confirmados, a vaga vai para o próximo da lista e a cobrança de %1$s em seu nome é cancelada.</string>
+    <string name="game_guest_remove_keep">Manter</string>
+    <string name="game_guest_remove_confirm">Tirar</string>
+    <string name="game_guest_remove_failed">Não foi possível tirar. Tente de novo.</string>
+    <string name="game_guest_joined">%1$s entrou na lista de espera.</string>
+    <string name="game_guest_removed">%1$s saiu do jogo.</string>
+</resources>
