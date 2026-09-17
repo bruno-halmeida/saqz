@@ -118,11 +118,22 @@ class HomeScreenshotTest {
         state().copy(ownCharges = previewOwnChargesOverdue()),
     )
 
-    /** O caso que a nomenclatura precisa resolver: quem recebe e deve na mesma tela. */
+    /** Chave copiada: botão secundário com check e o toast da baixa manual. */
+    @Test
+    fun ownChargesCopied() = captureOwnCharges(
+        "home-cobranca-copiada",
+        state().copy(
+            ownCharges = previewOwnChargesOverdue(),
+            pixCopiedGroupId = "ceret",
+            toast = br.com.saqz.groups.presentation.home.HomeToast.PixCopied,
+        ),
+    )
+
+    /** O caso que a nomenclatura precisa resolver: quem recebe (Esperando você) e deve (cobrança vencida) na mesma tela. */
     @Test
     fun ownChargesForAnAdminWhoAlsoOwes() = captureOwnCharges(
         "home-cobranca-admin-que-deve",
-        adminState().copy(ownCharges = previewOwnCharges()),
+        adminState().copy(ownCharges = previewOwnChargesOverdue()),
     )
 
     @Test

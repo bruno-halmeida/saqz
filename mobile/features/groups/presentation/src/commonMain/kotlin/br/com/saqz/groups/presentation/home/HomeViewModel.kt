@@ -28,7 +28,6 @@ import br.com.saqz.groups.domain.home.HomeOwnChargeOldest
 import br.com.saqz.groups.domain.home.HomeOwnCharges
 import br.com.saqz.groups.domain.home.HomeReadModel
 import br.com.saqz.groups.presentation.GroupUiError
-import br.com.saqz.groups.presentation.details.monthResource as longMonthResource
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
@@ -77,12 +76,12 @@ import br.com.saqz.groups.resources.home_month_september_long
 import br.com.saqz.groups.resources.home_own_charges_banner
 import br.com.saqz.groups.resources.home_own_charges_banner_groups
 import br.com.saqz.groups.resources.home_own_charges_cd_banner
+import br.com.saqz.groups.resources.home_own_charge_competence_monthly
 import br.com.saqz.groups.resources.home_own_charges_count
 import br.com.saqz.groups.resources.own_charges_date
 import br.com.saqz.groups.resources.own_charges_due
 import br.com.saqz.groups.resources.own_charges_due_overdue
 import br.com.saqz.groups.resources.own_charges_game
-import br.com.saqz.groups.resources.own_charges_monthly
 import br.com.saqz.groups.resources.own_charges_monthly_unknown
 import br.com.saqz.groups.resources.home_time
 import br.com.saqz.groups.resources.home_waitlist_reserva_bell
@@ -101,6 +100,7 @@ import br.com.saqz.groups.resources.home_weekday_tuesday_short
 import br.com.saqz.groups.resources.home_weekday_wednesday
 import br.com.saqz.groups.resources.home_weekday_wednesday_short
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -123,6 +123,7 @@ class HomeViewModel(
 ) : MviViewModel<HomeState, HomeIntent, HomeEffect>(HomeState()) {
     private var loadGeneration = 0L
     private var responseGeneration = 0L
+    private var pixCopiedGeneration = 0L
 
     /**
      * Há carga no ar. Existe para a recarga por baixo (VUL-202) não repetir o que já está
@@ -167,6 +168,14 @@ class HomeViewModel(
             ?.pix
             ?: return
         emit(HomeEffect.CopyPix(pix.key))
+        // Contador monotônico, não igualdade de valor: dois toques seguidos no mesmo grupo
+        // não podem deixar o primeiro delay apagar o estado do segundo.
+        val generation = ++pixCopiedGeneration
+        update { it.copy(pixCopiedGroupId = groupId, toast = HomeToast.PixCopied) }
+        viewModelScope.launch {
+            delay(PixCopiedDwellMillis)
+            if (generation == pixCopiedGeneration) update { it.copy(pixCopiedGroupId = null) }
+        }
     }
 
     private fun load(softRefresh: Boolean = false) {
@@ -529,10 +538,9 @@ class HomeViewModel(
         groupId = groupId.value,
         groupName = groupName,
         competence = when (val competence = oldest) {
-            // Mês por extenso ("Julho"), o mesmo da tela irmã — o `monthResource()` deste
-            // arquivo é a forma curta do card de data ("JUL") e diria outra coisa aqui.
+            // "Mensalidade de julho": mês por extenso minúsculo, as chaves do VUL-215.
             is HomeOwnChargeOldest.Monthly -> competence.month.monthIndexOrNull()
-                ?.let { getString(Res.string.own_charges_monthly, getString(it.longMonthResource())) }
+                ?.let { getString(Res.string.home_own_charge_competence_monthly, getString(it.homeLongMonthResource())) }
                 ?: getString(Res.string.own_charges_monthly_unknown)
             HomeOwnChargeOldest.Game -> getString(Res.string.own_charges_game)
         },
@@ -711,3 +719,5 @@ private fun String.monthIndexOrNull(): Int? = split("-").let { parts ->
     val month = parts[1].toIntOrNull() ?: return null
     if (month in 1..12) month else null
 }
+
+private const val PixCopiedDwellMillis = 2_000L

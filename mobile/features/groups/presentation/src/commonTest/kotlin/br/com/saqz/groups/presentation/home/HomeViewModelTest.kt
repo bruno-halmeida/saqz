@@ -34,6 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -687,7 +688,7 @@ class HomeViewModelTest {
         assertTrue(charges?.overdue == true)
         val monthly = charges?.groups?.first()
         assertEquals("Vôlei do CERET", monthly?.groupName)
-        assertEquals("Mensalidade · Julho", monthly?.competence)
+        assertEquals("Mensalidade de julho", monthly?.competence)
         assertEquals("R$ 80,00", monthly?.amountLabel)
         assertEquals("Venceu em 05/08", monthly?.dueLabel)
         assertEquals("2 cobranças em aberto", monthly?.countLabel)
@@ -697,6 +698,7 @@ class HomeViewModelTest {
         assertEquals("Vence em 12/08", game?.dueLabel)
         assertNull(game?.countLabel)
         assertNull(game?.pix)
+        assertEquals(listOf("Vôlei do CERET"), charges?.overdueGroups?.map { it.groupName })
     }
 
     @Test
@@ -718,6 +720,7 @@ class HomeViewModelTest {
         assertEquals("Você tem R$ 80,00 em aberto", viewModel.state.value.ownCharges?.bannerText)
         assertFalse(viewModel.state.value.ownCharges?.overdue == true)
         assertEquals("Vence em 05/08", viewModel.state.value.ownCharges?.groups?.single()?.dueLabel)
+        assertTrue(viewModel.state.value.ownCharges?.overdueGroups?.isEmpty() == true)
     }
 
     @Test
@@ -822,6 +825,49 @@ class HomeViewModelTest {
 
         // O grupo sem chave não emitiu nada: o primeiro efeito é o do grupo que tem Pix.
         assertEquals(HomeEffect.CopyPix("ceret@volei.com.br"), viewModel.effects.first())
+    }
+
+    @Test
+    fun `copy pix marks the group as copied and toasts then clears after the dwell`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges()))),
+        )
+
+        viewModel.onIntent(HomeIntent.CopyPix("group-1"))
+
+        assertEquals("group-1", viewModel.state.value.pixCopiedGroupId)
+        assertEquals(HomeToast.PixCopied, viewModel.state.value.toast)
+        advanceTimeBy(2_001)
+        assertNull(viewModel.state.value.pixCopiedGroupId)
+    }
+
+    @Test
+    fun `second copy within the dwell keeps the copied state until its own dwell ends`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges()))),
+        )
+
+        viewModel.onIntent(HomeIntent.CopyPix("group-1"))
+        advanceTimeBy(1_500)
+        viewModel.onIntent(HomeIntent.CopyPix("group-1"))
+        advanceTimeBy(1_000)
+
+        // O delay do primeiro toque já venceu; o estado é do segundo e continua de pé.
+        assertEquals("group-1", viewModel.state.value.pixCopiedGroupId)
+        advanceTimeBy(1_001)
+        assertNull(viewModel.state.value.pixCopiedGroupId)
+    }
+
+    @Test
+    fun `copy pix on a group without key leaves the copied state untouched`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges()))),
+        )
+
+        viewModel.onIntent(HomeIntent.CopyPix("group-2"))
+
+        assertNull(viewModel.state.value.pixCopiedGroupId)
+        assertNull(viewModel.state.value.toast)
     }
 
     @Test
