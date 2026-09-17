@@ -11,6 +11,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+private val fullAdmin = GroupDetailsPreviewData.admin.copy(
+    waiting = GroupWaitingPreviewData.waiting,
+    agenda = listOf(GroupAgendaPreviewData.pending, GroupAgendaPreviewData.going, GroupAgendaPreviewData.draft),
+)
+private val fullMember = GroupDetailsPreviewData.member.copy(
+    agenda = listOf(GroupAgendaPreviewData.pending, GroupAgendaPreviewData.going, GroupAgendaPreviewData.waitlisted),
+)
+
 /** A tela inteira nos estados-base. Os estados de cada bloco moram na suíte do bloco. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -26,7 +34,7 @@ class GroupDetailsScreenshotTest {
     // A tela rola: a altura sobe só na captura, para o print do PR mostrar a pilha inteira.
     @Test
     @Config(qualifiers = "+h2400dp")
-    fun admin() = compose.captureDetails("group-details-admin", GroupDetailsPreviewData.admin, "details")
+    fun admin() = compose.captureDetails("group-details-admin", fullAdmin, "details")
 
     @Test
     @Config(qualifiers = "+h1400dp")
@@ -34,7 +42,7 @@ class GroupDetailsScreenshotTest {
 
     @Test
     @Config(qualifiers = "+h2400dp")
-    fun member() = compose.captureDetails("group-details-member", GroupDetailsPreviewData.member, "details")
+    fun member() = compose.captureDetails("group-details-member", fullMember, "details")
 
     @Test
     @Config(qualifiers = "+h1800dp")
