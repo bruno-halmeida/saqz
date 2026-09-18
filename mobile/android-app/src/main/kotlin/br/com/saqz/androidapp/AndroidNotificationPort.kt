@@ -28,7 +28,9 @@ internal class AndroidNotificationPort(private val context: Context) : NativeNot
     }
     override fun device(done: (NotificationDevice?) -> Unit) {
         if (BuildConfig.FIREBASE_USE_EMULATOR) { done(null); return }
-        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+        val permissionMissing = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        if (Build.VERSION.SDK_INT >= 33 && permissionMissing) {
             if (preferences.getBoolean("permissionAsked", false) || permission == null) { done(null); return }
             preferences.edit().putBoolean("permissionAsked", true).apply()
             pending = done
