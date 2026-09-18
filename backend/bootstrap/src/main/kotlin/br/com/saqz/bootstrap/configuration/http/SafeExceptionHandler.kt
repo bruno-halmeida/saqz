@@ -47,6 +47,7 @@ import br.com.saqz.groups.adapter.input.http.GameScheduleConflictException
 import br.com.saqz.groups.adapter.input.http.InvalidGameTransitionException
 import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
 import br.com.saqz.groups.adapter.input.http.AttendanceFrozenException
+import br.com.saqz.groups.adapter.input.http.AttendanceHostNotGoingException
 import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookSubscriptionNotReadyException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookUnauthorizedException
@@ -314,6 +315,11 @@ class SafeExceptionHandler(
     @ExceptionHandler(AttendanceFrozenException::class)
     fun attendanceFrozen(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 409, ErrorCode.ATTENDANCE_FROZEN)
+    }
+
+    @ExceptionHandler(AttendanceHostNotGoingException::class)
+    fun attendanceHostNotGoing(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.ATTENDANCE_HOST_NOT_GOING)
     }
 
     @ExceptionHandler(InviteInvalidOrExpiredException::class)

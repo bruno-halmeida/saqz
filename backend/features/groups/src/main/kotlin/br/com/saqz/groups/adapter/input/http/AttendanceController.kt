@@ -5,6 +5,7 @@ import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.sharedkernel.RequestIdentity
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
@@ -25,6 +26,7 @@ data class AttendancePromotionRequest @JsonCreator constructor(
     @JsonProperty("requestId") val requestId: UUID?,
     @JsonProperty("memberId") val memberId: UUID?,
     @JsonProperty("reason") val reason: String?,
+    @JsonProperty("guestSeq") val guestSeq: Int? = null,
 )
 data class CapacityRequest @JsonCreator constructor(
     @JsonProperty("requestId") val requestId: UUID?,
@@ -58,6 +60,8 @@ data class AttendanceRosterMemberResponse(
     val memberId: UUID,
     val displayName: String,
     val waitlistPosition: Long?,
+    val guestSeq: Int,
+    val hostDisplayName: String?,
 )
 data class AttendanceRosterResponse(
     val confirmed: List<AttendanceRosterMemberResponse>,
@@ -77,6 +81,18 @@ data class CapacityResponse(
 )
 class AttendanceDeadlinePassedException : RuntimeException()
 class AttendanceFrozenException : RuntimeException()
+class AttendanceHostNotGoingException : RuntimeException()
+data class GuestRequest @JsonCreator constructor(
+    @JsonProperty("requestId") val requestId: UUID?,
+    @JsonProperty("displayName") val displayName: String?,
+)
+data class GuestResponse(
+    val memberId: UUID,
+    val guestSeq: Int,
+    val displayName: String,
+    val status: String,
+    val waitlistPosition: Long?,
+)
 
 @RestController
 class AttendanceController(
@@ -85,6 +101,7 @@ class AttendanceController(
     private val capacities: AdjustGameCapacity,
     private val details: AttendanceDetailQuery,
     private val rosters: AttendanceRosterQuery,
+    private val guests: GameGuests,
 ) {
     @GetMapping("/api/groups/{groupId}/games/{gameId}/attendance")
     fun read(
@@ -143,9 +160,42 @@ class AttendanceController(
         val requestId = required(request.requestId, "requestId")
         val actor = actors.resolve(identity)
         return mutation(
-            responses.promote(actor, uuid(groupId), uuid(gameId), member, requestId, request.reason),
+            responses.promote(actor, uuid(groupId), uuid(gameId), member, requestId, request.reason, guestSeq = request.guestSeq ?: 0),
             actor, uuid(groupId), uuid(gameId),
         )
+    }
+
+    @PostMapping("/api/groups/{groupId}/games/{gameId}/attendance/guests")
+    fun addGuest(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @PathVariable groupId: String,
+        @PathVariable gameId: String,
+        @RequestBody request: GuestRequest,
+    ): ResponseEntity<GuestResponse> {
+        val requestId = required(request.requestId, "requestId")
+        val name = required(request.displayName, "displayName")
+        return when (val result = guests.add(actors.resolve(identity), uuid(groupId), uuid(gameId), name, requestId)) {
+            is AttendanceCommandResult.Success -> ResponseEntity.status(HttpStatus.CREATED).body(
+                GuestResponse(result.attendance.memberId, result.attendance.guestSeq, name.trim(), result.attendance.status.name, result.attendance.waitlistSequence),
+            )
+            is AttendanceCommandResult.Denied -> denied(result.reason, "displayName")
+            AttendanceCommandResult.Hidden -> throw GameNotFoundException()
+            AttendanceCommandResult.Forbidden -> throw AccessForbiddenException()
+        }
+    }
+
+    @DeleteMapping("/api/groups/{groupId}/games/{gameId}/attendance/guests/{hostId}/{guestSeq}")
+    fun removeGuest(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @PathVariable groupId: String,
+        @PathVariable gameId: String,
+        @PathVariable hostId: String,
+        @PathVariable guestSeq: Int,
+    ): ResponseEntity<Void> = when (val result = guests.remove(actors.resolve(identity), uuid(groupId), uuid(gameId), uuid(hostId), guestSeq)) {
+        is AttendanceCommandResult.Success -> ResponseEntity.noContent().build()
+        is AttendanceCommandResult.Denied -> denied(result.reason, "guest")
+        AttendanceCommandResult.Hidden -> throw GameNotFoundException()
+        AttendanceCommandResult.Forbidden -> throw AccessForbiddenException()
     }
 
     @PutMapping("/api/groups/{groupId}/games/{gameId}/capacity")
@@ -186,9 +236,17 @@ class AttendanceController(
             AttendanceDenial.MANUAL_PROMOTION_ONLY -> invalid("promotionMode")
             AttendanceDenial.DEADLINE_PASSED -> throw AttendanceDeadlinePassedException()
             AttendanceDenial.NOT_PUBLISHED, AttendanceDenial.FROZEN -> throw AttendanceFrozenException()
+            AttendanceDenial.HOST_NOT_GOING -> throw AttendanceHostNotGoingException()
         }
         AttendanceCommandResult.Hidden -> throw GameNotFoundException()
         AttendanceCommandResult.Forbidden -> throw AccessForbiddenException()
+    }
+
+    private fun denied(reason: AttendanceDenial, field: String): Nothing = when (reason) {
+        AttendanceDenial.HOST_NOT_GOING -> throw AttendanceHostNotGoingException()
+        AttendanceDenial.DEADLINE_PASSED -> throw AttendanceDeadlinePassedException()
+        AttendanceDenial.NOT_PUBLISHED, AttendanceDenial.FROZEN -> throw AttendanceFrozenException()
+        else -> invalid(field)
     }
 
     private fun detail(actor: UUID, group: UUID, game: UUID): AttendanceDetailResponse =
@@ -215,5 +273,5 @@ private fun AttendanceDetail.response() = AttendanceDetailResponse(
     pendingCount,
     autoConfirmEnabled,
 )
-private fun AttendanceRosterMember.response() = AttendanceRosterMemberResponse(memberId, displayName, waitlistPosition)
+private fun AttendanceRosterMember.response() = AttendanceRosterMemberResponse(memberId, displayName, waitlistPosition, guestSeq, hostDisplayName)
 private fun AttendanceRoster.response() = AttendanceRosterResponse(confirmed.map { it.response() }, waitlisted.map { it.response() })
