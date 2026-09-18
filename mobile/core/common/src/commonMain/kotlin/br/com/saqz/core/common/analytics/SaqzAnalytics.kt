@@ -12,6 +12,9 @@ object SaqzAnalytics {
     var track: (name: String, params: Map<String, String>) -> Unit = { _, _ -> }
     var setUser: (id: String?) -> Unit = { }
 
+    /** Breadcrumb do Crashlytics. Só recebe linha já segura (o `NetworkCallLogger` não loga token nem corpo). */
+    var log: (message: String) -> Unit = { }
+
     fun screen(name: String) = track("screen_view", mapOf("screen_name" to name))
 
     fun action(screen: String, action: String) {
@@ -23,6 +26,7 @@ object SaqzAnalytics {
     fun reset() {
         track = { _, _ -> }
         setUser = { }
+        log = { }
     }
 }
 

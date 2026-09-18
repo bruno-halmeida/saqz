@@ -26,7 +26,13 @@ import kotlinx.io.readByteArray
 import kotlinx.serialization.json.Json
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
+/** Mesmo nome que o `RequestCorrelationFilter` do backend lê e ecoa. */
+internal const val CORRELATION_HEADER = "X-Correlation-ID"
+
+@OptIn(ExperimentalUuidApi::class)
 internal class HttpTransport(
     engine: HttpClientEngine,
     private val config: NetworkConfig,
@@ -53,8 +59,11 @@ internal class HttpTransport(
         configure: HttpRequestBuilder.() -> Unit = {},
         decode: suspend (HttpResponse) -> NetworkResult<T>,
     ): NetworkResult<T> {
+        // Um id por tentativa: nasce aqui para o app conhecê-lo mesmo quando a resposta não
+        // chega, e o backend ecoa o mesmo valor no header e no ApiProblem.
+        val correlationId = Uuid.random().toString()
         val started = TimeSource.Monotonic.markNow()
-        logStyle.logRequest(logger, method, bearerToken != null)
+        logStyle.logRequest(logger, method, bearerToken != null, correlationId)
         return try {
             val response = client.request(config.baseUrl) {
                 this.method = method
@@ -63,6 +72,7 @@ internal class HttpTransport(
                     request.query.forEach { (name, value) -> parameters.append(name, value) }
                 }
                 if (bearerToken != null) bearerAuth(bearerToken)
+                header(CORRELATION_HEADER, correlationId)
                 request.headers.forEach { (name, value) ->
                     header(name, if (isEntityTagHeader(name)) value.toStrongEntityTag() else value)
                 }
@@ -73,20 +83,20 @@ internal class HttpTransport(
                 configure()
             }
             val result = if (response.status.value in 200..299) decode(response) else response.toBoundedError()
-            logStyle.logResponse(logger, method, response.status.value, started, result)
+            logStyle.logResponse(logger, method, response.status.value, started, result, correlationId)
             result
         } catch (_: HttpRequestTimeoutException) {
-            failure(method, logStyle, started, NetworkError.Timeout)
+            failure(method, logStyle, started, NetworkError.Timeout, correlationId)
         } catch (_: SocketTimeoutException) {
-            failure(method, logStyle, started, NetworkError.Timeout)
+            failure(method, logStyle, started, NetworkError.Timeout, correlationId)
         } catch (_: UnresolvedAddressException) {
-            failure(method, logStyle, started, NetworkError.Connectivity)
+            failure(method, logStyle, started, NetworkError.Connectivity, correlationId)
         } catch (failure: CancellationException) {
             throw failure
         } catch (_: MediaLimitException) {
-            failure(method, logStyle, started, NetworkError.PayloadTooLarge)
+            failure(method, logStyle, started, NetworkError.PayloadTooLarge, correlationId)
         } catch (failure: Throwable) {
-            failure(method, logStyle, started, NetworkError.Unknown, failure::class.simpleName)
+            failure(method, logStyle, started, NetworkError.Unknown, correlationId, failure::class.simpleName)
         }
     }
 
@@ -105,57 +115,65 @@ internal class HttpTransport(
         }
     }
 
+    @Suppress("LongParameterList")
     private fun <T> failure(
         method: HttpMethod,
         logStyle: TransportLogStyle,
         started: TimeMark,
         error: NetworkError,
+        correlationId: String,
         cause: String? = null,
     ): NetworkResult<T> = NetworkResult.Failure(error).also {
-        logStyle.logResponse(logger, method, null, started, it, cause)
+        logStyle.logResponse(logger, method, null, started, it, correlationId, cause)
     }
 }
 
 internal sealed interface TransportLogStyle {
-    fun logRequest(logger: NetworkCallLogger, method: HttpMethod, authenticated: Boolean)
+    fun logRequest(logger: NetworkCallLogger, method: HttpMethod, authenticated: Boolean, correlationId: String)
 
+    @Suppress("LongParameterList")
     fun logResponse(
         logger: NetworkCallLogger,
         method: HttpMethod,
         status: Int?,
         started: TimeMark,
         result: NetworkResult<*>,
+        correlationId: String,
         cause: String? = null,
     )
 
     data class Standard(private val requestDescription: String) : TransportLogStyle {
-        override fun logRequest(logger: NetworkCallLogger, method: HttpMethod, authenticated: Boolean) {
-            logger.safeLog("request $requestDescription authenticated=$authenticated")
+        override fun logRequest(logger: NetworkCallLogger, method: HttpMethod, authenticated: Boolean, correlationId: String) {
+            logger.safeLog("request $requestDescription authenticated=$authenticated correlationId=$correlationId")
         }
 
+        @Suppress("LongParameterList")
         override fun logResponse(
             logger: NetworkCallLogger,
             method: HttpMethod,
             status: Int?,
             started: TimeMark,
             result: NetworkResult<*>,
+            correlationId: String,
             cause: String?,
-        ) = logResponse(logger, requestDescription, status, started, result, cause)
+        ) = logResponse(logger, requestDescription, status, started, result, correlationId, cause)
     }
 
     data class Media(private val safePath: String) : TransportLogStyle {
-        override fun logRequest(logger: NetworkCallLogger, method: HttpMethod, authenticated: Boolean) {
-            logger.safeLog("request ${method.value} $safePath")
+        override fun logRequest(logger: NetworkCallLogger, method: HttpMethod, authenticated: Boolean, correlationId: String) {
+            logger.safeLog("request ${method.value} $safePath correlationId=$correlationId")
         }
 
+        @Suppress("LongParameterList")
         override fun logResponse(
             logger: NetworkCallLogger,
             method: HttpMethod,
             status: Int?,
             started: TimeMark,
             result: NetworkResult<*>,
+            correlationId: String,
             cause: String?,
-        ) = logMediaResponse(logger, method, safePath, status, started)
+        ) = logMediaResponse(logger, method, safePath, status, started, correlationId)
     }
 }
 

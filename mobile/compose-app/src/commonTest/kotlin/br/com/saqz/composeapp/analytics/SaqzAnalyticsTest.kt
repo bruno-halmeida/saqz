@@ -64,4 +64,16 @@ class SaqzAnalyticsTest {
 
         assertEquals(listOf("screen_view" to mapOf("screen_name" to "Shell.inicio")), recorded)
     }
+
+    @Test
+    fun `log is forwarded to the installed sink and reset removes it`() {
+        val lines = mutableListOf<String>()
+        SaqzAnalytics.log = lines::add
+
+        SaqzAnalytics.log("response GET probe status=503")
+        SaqzAnalytics.reset()
+        SaqzAnalytics.log("ignored")
+
+        assertEquals(listOf("response GET probe status=503"), lines)
+    }
 }

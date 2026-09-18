@@ -1,5 +1,6 @@
 package br.com.saqz.network
 
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import io.ktor.http.HttpMethod
 import kotlin.time.TimeMark
 
@@ -11,6 +12,8 @@ typealias NetworkLogger = NetworkCallLogger
 
 internal fun NetworkCallLogger.safeLog(message: String) {
     runCatching { log(message) }
+    // Breadcrumb do Crashlytics: toda linha de rede já é segura (sem token, sem corpo).
+    SaqzAnalytics.log(message)
 }
 
 internal fun logMediaResponse(
@@ -19,9 +22,11 @@ internal fun logMediaResponse(
     path: String,
     status: Int?,
     started: TimeMark,
+    correlationId: String,
 ) {
     logger.safeLog(
-        "response ${method.value} $path status=${status ?: "none"} durationMs=${started.elapsedNow().inWholeMilliseconds}",
+        "response ${method.value} $path status=${status ?: "none"} " +
+            "durationMs=${started.elapsedNow().inWholeMilliseconds} correlationId=$correlationId",
     )
 }
 
@@ -31,6 +36,7 @@ internal fun logResponse(
     status: Int?,
     started: TimeMark,
     result: NetworkResult<*>,
+    correlationId: String,
     cause: String? = null,
 ) {
     val statusDescription = status?.toString() ?: "none"
@@ -38,7 +44,7 @@ internal fun logResponse(
     logger.safeLog(
         "response $requestDescription status=$statusDescription " +
             "durationMs=${started.elapsedNow().inWholeMilliseconds} " +
-            "result=${result.logDescription()}$causeDescription",
+            "result=${result.logDescription()}$causeDescription correlationId=$correlationId",
     )
 }
 
@@ -51,7 +57,7 @@ private fun NetworkError.logDescription(): String = when (this) {
     is NetworkError.ApiProblemError -> buildString {
         append("api-error")
         append(" code=${problem.code ?: "none"}")
-        append(" correlationId=${problem.correlationId}")
+        append(" serverCorrelationId=${problem.correlationId}")
     }
     is NetworkError.HttpStatus -> "http-error status=$status"
     NetworkError.InvalidResponse -> "invalid-response"
