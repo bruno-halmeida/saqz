@@ -250,3 +250,16 @@ fun environmentProperty(name: String, required: Boolean, fallback: String): Stri
     require(value.isNotEmpty() || !required) { "Missing required Gradle property: $name" }
     return value.ifEmpty { fallback }
 }
+
+// Crashlytics entrou sem o plugin Gradle (VUL-251): o app não minifica, então não há mapping do
+// R8 para subir. No dia em que alguém ligar a minificação, o stack trace de produção ficaria
+// ilegível em silêncio. Falhe alto antes: ligar minify exige aplicar `com.google.firebase.crashlytics`
+// (e o google-services de que ele depende) no mesmo PR, e remover esta trava.
+afterEvaluate {
+    android.buildTypes.forEach { type ->
+        check(!type.isMinifyEnabled || plugins.hasPlugin("com.google.firebase.crashlytics")) {
+            "Build type '${type.name}' liga isMinifyEnabled sem o plugin Gradle do Crashlytics: " +
+                "sem upload de mapping os crashes do Android chegam ofuscados. Veja o comentário acima."
+        }
+    }
+}

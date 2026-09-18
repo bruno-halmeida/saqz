@@ -163,8 +163,8 @@ class PrivateMediaNetworkTest {
 
         val correlationId = assertNotNull(sentCorrelationId)
         assertEquals(2, messages.size)
-        assertEquals("request PUT /api/groups/g/photo correlationId=$correlationId", messages.first())
-        assertTrue(messages.last().matches(Regex("response PUT /api/groups/g/photo status=200 durationMs=\\d+ correlationId=$correlationId")))
+        assertEquals("request PUT /api/groups/g/photo correlationId=$correlationId attempt=1", messages.first())
+        assertTrue(messages.last().matches(Regex("response PUT /api/groups/g/photo status=200 durationMs=\\d+ correlationId=$correlationId attempt=1")))
         assertFalse(messages.any { it.contains(token) || it.contains(etag) || it.contains(filename) || it.contains("png") })
     }
 
