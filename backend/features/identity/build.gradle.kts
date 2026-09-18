@@ -11,6 +11,7 @@ dependencies {
     implementation(libs.firebase.admin)
     implementation("org.springframework.security:spring-security-core")
     implementation("org.springframework.security:spring-security-web")
+    implementation("org.slf4j:slf4j-api")
     compileOnly("jakarta.servlet:jakarta.servlet-api")
 
     testImplementation(kotlin("test"))
