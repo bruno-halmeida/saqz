@@ -337,6 +337,33 @@ class JdbcHomeRepositoryIntegrationTest {
     }
 
     @Test
+    fun oldestGuestChargeCarriesTheGuestName() {
+        val actor = user("own-guest-actor", "Guest Actor")
+        val owner = user("own-guest-owner", "Guest Owner")
+        val group = group("Convidado de jogo", owner)
+        membership(group, actor)
+
+        val played = game(group, "2026-07-20T10:00:00Z", "COMPLETED", capacity = 4)
+        gameCharge(
+            group,
+            actor,
+            played,
+            300,
+            "PENDING",
+            owner,
+            dueDate = "2026-07-25",
+            guestSeq = 1,
+            guestDisplayName = "Rafa Moreira",
+        )
+
+        val single = requireNotNull(ownChargesOf(actor)).groups.single()
+
+        val oldest = single.oldest
+        assertTrue(oldest is HomeOwnChargeOldest.Game)
+        assertEquals("Rafa Moreira", oldest.guestDisplayName)
+    }
+
+    @Test
     fun returnsEmptyMemberDataAndNoAdminBlockForUnknownActor() {
         val home = repository().find(
             actorId = UUID.randomUUID(),
@@ -465,14 +492,17 @@ class JdbcHomeRepositoryIntegrationTest {
         status: String,
         actor: UUID,
         dueDate: String = "2026-08-01",
+        guestSeq: Int = 0,
+        guestDisplayName: String? = null,
     ) {
         val id = UUID.randomUUID()
         val displayName = memberName(member)
+        val guestName = guestDisplayName?.let { "'$it'" } ?: "NULL"
         execute(
             "INSERT INTO group_charges (id,group_id,member_user_id,kind,game_id,amount_cents,due_date,status," +
-                "created_by_user_id,changed_by_user_id,created_at,updated_at,member_display_name) " +
+                "created_by_user_id,changed_by_user_id,created_at,updated_at,member_display_name,guest_seq,guest_display_name) " +
                 "VALUES ('$id','$group','$member','GAME','$game',$amount,DATE '$dueDate','$status'," +
-                "'$actor','$actor',now(),now(),'$displayName')",
+                "'$actor','$actor',now(),now(),'$displayName',$guestSeq,$guestName)",
         )
     }
 

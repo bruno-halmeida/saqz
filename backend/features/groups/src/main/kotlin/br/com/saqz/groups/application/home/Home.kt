@@ -120,6 +120,7 @@ sealed interface HomeOwnChargeOldest {
         val startsAt: Instant,
         val zoneId: String,
         override val dueDate: LocalDate,
+        val guestDisplayName: String? = null,
     ) : HomeOwnChargeOldest
 }
 
