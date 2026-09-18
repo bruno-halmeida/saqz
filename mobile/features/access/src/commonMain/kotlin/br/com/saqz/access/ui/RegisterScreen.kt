@@ -21,7 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
@@ -100,10 +102,13 @@ private val TermsFontSize = AccessMetrics.TERMS_SIZE.sp
  * Os dois trechos que o export sublinha dentro da frase dos termos. São **localizadores**,
  * não texto de tela: o que aparece vem sempre de `register_terms`, e um localizador que não
  * casa apenas devolve a frase sem o destaque — a mesma degradação do `emphasis` do
- * [SaqzInlineAlert]. Não há destino para os dois documentos em lugar nenhum do app ainda,
- * então eles são estilo, não link.
+ * [SaqzInlineAlert]. Cada trecho abre a página pública do documento (VUL-256/257) no
+ * navegador: `LinkAnnotation.Url` resolve pelo `LocalUriHandler`, sem port nativo.
  */
-private val TermsLinks = listOf("Termos de uso", "Política de privacidade")
+private val TermsLinks = listOf(
+    "Termos de uso" to "https://saqz.app/termos/",
+    "Política de privacidade" to "https://saqz.app/privacidade/",
+)
 
 /**
  * 1b — criar conta —, e o 1j é esta mesma tela com os erros acesos.
@@ -400,19 +405,16 @@ internal fun signInLink(text: String, color: Color): AnnotatedString {
 internal fun termsText(text: String, linkColor: Color): AnnotatedString =
     buildAnnotatedString {
         append(text)
-        TermsLinks.forEach { link ->
+        val linkStyle = TextLinkStyles(
+            style = SpanStyle(
+                color = linkColor,
+                fontWeight = FontWeight(AccessMetrics.LINK_WEIGHT),
+                textDecoration = TextDecoration.Underline,
+            ),
+        )
+        TermsLinks.forEach { (link, url) ->
             val start = text.indexOf(link)
-            if (start >= 0) {
-                addStyle(
-                    SpanStyle(
-                        color = linkColor,
-                        fontWeight = FontWeight(AccessMetrics.LINK_WEIGHT),
-                        textDecoration = TextDecoration.Underline,
-                    ),
-                    start,
-                    start + link.length,
-                )
-            }
+            if (start >= 0) addLink(LinkAnnotation.Url(url, linkStyle), start, start + link.length)
         }
     }
 
