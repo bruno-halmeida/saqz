@@ -89,6 +89,12 @@ export async function seed(sql, scenarioNames) {
             assert.equal(waiting.attendance.waitlistPosition, index + 1);
           }
         }
+        if (name === 'attendance-guest') {
+          // O anfitrião entra na fila pela API (precondição); levar o convidado é ação de UI.
+          const waiting = await request(`${api}/api/groups/${group}/games/${game.id}/attendance`, 'PUT',
+            { requestId: randomUUID(), intent: 'CONFIRM' }, athlete.token);
+          assert.equal(waiting.attendance.status, 'WAITLISTED');
+        }
       }
     }
     const context = { name, sql, request, user, publishedGame, api, runId, owner, athlete, other, group, secondGroup };
