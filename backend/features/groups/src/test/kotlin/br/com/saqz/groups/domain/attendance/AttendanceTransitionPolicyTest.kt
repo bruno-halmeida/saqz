@@ -93,6 +93,10 @@ class AttendanceTransitionPolicyTest {
 
     @Test fun `only a newly confirmed transition requests a charge`() { transition(context(current = AttendanceStatus.DECLINED), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true); transition(context(current = AttendanceStatus.CONFIRMED), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, charge = false) }
 
+    // --- VUL-239: convidado de jogo ---
+    @Test fun guestAlwaysJoinsTheWaitlistEvenWithRoom() = transition(context(capacity = 12, confirmed = 3, guest = true), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true)
+    @Test fun guestPromotionCreatesTheCharge() = transition(context(current = AttendanceStatus.WAITLISTED, guest = true), AttendanceIntent.PROMOTE, AttendanceStatus.CONFIRMED, changed = true, charge = true)
+
     private fun transition(
         context: AttendanceDecisionContext,
         intent: AttendanceIntent,
@@ -122,7 +126,8 @@ class AttendanceTransitionPolicyTest {
         reason: String? = null,
         membership: AthleteMembershipType = AthleteMembershipType.MENSALISTA,
         mensalistaPriority: Boolean = true,
-    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.SELF, reason, membership, mensalistaPriority)
+        guest: Boolean = false,
+    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.SELF, reason, membership, mensalistaPriority, guest)
 
     private fun organizer(
         status: GameStatus = GameStatus.PUBLISHED,

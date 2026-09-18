@@ -18,6 +18,7 @@ interface ChargeTransactionRepository{
     fun reconcileGameCancellation(groupId:UUID,gameId:UUID,actorId:UUID,now:Instant)
     fun members(groupId:UUID):GroupMembers?
     fun createMonthlyCharge(command:MonthlyGenerationCommand,memberId:UUID,now:Instant):Charge
+    fun cancelGuestCharge(groupId:UUID,gameId:UUID,memberId:UUID,guestSeq:Int,actorId:UUID,now:Instant){}
 }
 class ChargeTransactions(private val transaction:TransactionRunner,private val repository:ChargeTransactionRepository,private val now:()->Instant,private val writeAccess:GroupWriteAccess){
     constructor(transaction:TransactionRunner,repository:ChargeTransactionRepository,now:()->Instant):this(transaction,repository,now,GroupWriteAccess.Unrestricted)
@@ -27,6 +28,9 @@ class ChargeTransactions(private val transaction:TransactionRunner,private val r
         repository.createGameCharge(input,actorId,now())
     }
     fun cancelGame(groupId:UUID,gameId:UUID,actorId:UUID)=transaction.inTransaction{writeAccess.requireWrite(groupId);repository.reconcileGameCancellation(groupId,gameId,actorId,now())}
+    fun cancelGuest(groupId:UUID,gameId:UUID,memberId:UUID,guestSeq:Int,actorId:UUID)=transaction.inTransaction{
+        require(guestSeq>0);writeAccess.requireWrite(groupId);repository.cancelGuestCharge(groupId,gameId,memberId,guestSeq,actorId,now())
+    }
     fun generate(command:MonthlyGenerationCommand):MonthlyGenerationResult=transaction.inTransaction{
         writeAccess.requireWrite(command.groupId)
         val fields=buildSet{if(command.amountCents !in 1..99_999_999)add("amountCents");if(command.dueDate.month!=command.month.month||command.dueDate.year!=command.month.year)add("dueDate");if(command.selectedMemberIds.isEmpty())add("memberIds")}
