@@ -22,6 +22,7 @@ import io.ktor.util.network.UnresolvedAddressException
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.readRemaining
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.io.readByteArray
 import kotlinx.serialization.json.Json
 import kotlin.time.TimeMark
@@ -31,6 +32,7 @@ import kotlin.uuid.Uuid
 
 /** Mesmo nome que o `RequestCorrelationFilter` do backend lê e ecoa. */
 internal const val CORRELATION_HEADER = "X-Correlation-ID"
+internal const val CORRELATION_ATTEMPT_HEADER = "X-Correlation-Attempt"
 
 @OptIn(ExperimentalUuidApi::class)
 internal class HttpTransport(
@@ -59,9 +61,13 @@ internal class HttpTransport(
         configure: HttpRequestBuilder.() -> Unit = {},
         decode: suspend (HttpResponse) -> NetworkResult<T>,
     ): NetworkResult<T> {
-        // Um id por tentativa: nasce aqui para o app conhecê-lo mesmo quando a resposta não
-        // chega, e o backend ecoa o mesmo valor no header e no ApiProblem.
-        val correlationId = Uuid.random().toString()
+        // Um id por operação (os retries compartilham, via CorrelationContext) e o número da
+        // tentativa. Nasce no app para ele conhecê-lo mesmo quando a resposta não chega; o
+        // backend ecoa o id no header e no ApiProblem.
+        val operation = currentCoroutineContext()[CorrelationContext]
+        val operationId = operation?.id ?: Uuid.random().toString()
+        val attempt = operation?.attempt ?: 1
+        val correlationId = "$operationId attempt=$attempt"
         val started = TimeSource.Monotonic.markNow()
         logStyle.logRequest(logger, method, bearerToken != null, correlationId)
         return try {
@@ -72,7 +78,8 @@ internal class HttpTransport(
                     request.query.forEach { (name, value) -> parameters.append(name, value) }
                 }
                 if (bearerToken != null) bearerAuth(bearerToken)
-                header(CORRELATION_HEADER, correlationId)
+                header(CORRELATION_HEADER, operationId)
+                header(CORRELATION_ATTEMPT_HEADER, attempt.toString())
                 request.headers.forEach { (name, value) ->
                     header(name, if (isEntityTagHeader(name)) value.toStrongEntityTag() else value)
                 }
