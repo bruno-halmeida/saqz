@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.gamedetail
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import br.com.saqz.designsystem.SaqzAvatar
 import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
@@ -77,7 +79,16 @@ internal fun GameWaitlistSection(
             GameWaitlistRow(
                 state = state,
                 person = person,
-                onPromote = { onIntent(GameDetailIntent.Promote(person.id, promotionReason)) },
+                onPromote = {
+                    onIntent(
+                        GameDetailIntent.Promote(
+                            person.guest?.hostId ?: person.id,
+                            promotionReason,
+                            person.guest?.guestSeq ?: 0,
+                        ),
+                    )
+                },
+                onIntent = onIntent,
             )
         }
         if (state.promotionFailed) {
@@ -99,11 +110,19 @@ private fun GameWaitlistRow(
     state: GameDetailState,
     person: GameDetailWaitlistUi,
     onPromote: () -> Unit,
+    onIntent: (GameDetailIntent) -> Unit,
 ) {
     val metrics = SaqzTheme.metrics
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (person.guest != null) {
+                    Modifier.testTag(GameGuestTags.row(person.id)).background(SaqzTheme.colors.surfaceSoft)
+                } else {
+                    Modifier
+                },
+            )
             .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
@@ -115,17 +134,22 @@ private fun GameWaitlistRow(
             style = SaqzTheme.typography.caption,
             modifier = Modifier.width(metrics.iconButtonSize),
         )
-        SaqzAvatar(name = person.name, initialsColor = SaqzTheme.colors.primary)
+        if (person.guest != null) GameGuestAvatar() else SaqzAvatar(name = person.name, initialsColor = SaqzTheme.colors.primary)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
             Text(
                 text = person.name,
                 color = SaqzTheme.colors.textPrimary,
                 style = SaqzTheme.typography.body.copy(fontWeight = SaqzTheme.typography.body.fontWeight),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = stringResource(person.athletePosition.positionResource()),
-                color = SaqzTheme.colors.textSecondary,
+                text = person.guest?.metaLabel(state.guest.feeLabel, confirmed = false)
+                    ?: stringResource(person.athletePosition.positionResource()),
+                color = if (person.guest != null) SaqzTheme.colors.primary else SaqzTheme.colors.textSecondary,
                 style = SaqzTheme.typography.support,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             if (state.mensalistaPriority && person.isMensalista) {
                 SaqzStatusChip(
@@ -149,6 +173,7 @@ private fun GameWaitlistRow(
                 enabled = state.promotingMemberId == null,
             )
         }
+        person.guest?.let { GameGuestRemoveAction(person.id, it, onIntent) }
     }
 }
 
