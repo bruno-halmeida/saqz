@@ -2,7 +2,7 @@
 <resources>
     <string name="game_guest_add">Levar convidado</string>
     <string name="game_guest_hint_default">Entra na lista de espera. Você responde por ele.</string>
-    <string name="game_guest_hint_need_answer">Responda \"Vou\" para poder levar alguém.</string>
+    <string name="game_guest_hint_need_answer">Responda “Vou” para poder levar alguém.</string>
     <string name="game_guest_hint_closed">As confirmações estão encerradas. Fale com o gestor.</string>
     <string name="game_guest_sheet_title">Levar convidado</string>
     <string name="game_guest_name_label">Nome do convidado</string>

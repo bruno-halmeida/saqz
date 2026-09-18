@@ -39,9 +39,7 @@ class GameGuestSectionTest {
             val intents = mutableListOf<GameDetailIntent>()
             setScreen(GameGuestPreviewData.needAnswer, intents::add)
 
-            // O texto renderizado carrega as barras literais: `strings_game_guest.xml` (GM2) não
-            // é escapado pelo compose-resources como o Android faria; fora do escopo do GM3.
-            onNodeWithText("Responda \\\"Vou\\\" para poder levar alguém.").assertExists()
+            onNodeWithText("Responda “Vou” para poder levar alguém.").assertExists()
             onNodeWithTag(GameGuestTags.Add).performScrollTo().performClick()
 
             assertEquals(emptyList(), intents)
