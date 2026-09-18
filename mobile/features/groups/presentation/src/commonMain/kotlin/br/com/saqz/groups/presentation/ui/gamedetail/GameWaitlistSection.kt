@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import br.com.saqz.designsystem.SaqzAvatar
 import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
@@ -139,12 +140,16 @@ private fun GameWaitlistRow(
                 text = person.name,
                 color = SaqzTheme.colors.textPrimary,
                 style = SaqzTheme.typography.body.copy(fontWeight = SaqzTheme.typography.body.fontWeight),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = person.guest?.metaLabel(state.guest.feeLabel, confirmed = false)
                     ?: stringResource(person.athletePosition.positionResource()),
                 color = if (person.guest != null) SaqzTheme.colors.primary else SaqzTheme.colors.textSecondary,
                 style = SaqzTheme.typography.support,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             if (state.mensalistaPriority && person.isMensalista) {
                 SaqzStatusChip(
