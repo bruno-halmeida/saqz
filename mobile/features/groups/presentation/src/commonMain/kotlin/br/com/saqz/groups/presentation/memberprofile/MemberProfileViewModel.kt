@@ -25,7 +25,7 @@ class MemberProfileViewModel(
 
     init { load() }
 
-    override fun onIntent(intent: MemberProfileIntent) = when (intent) {
+    override fun handleIntent(intent: MemberProfileIntent) = when (intent) {
         MemberProfileIntent.Retry -> load()
     }
 

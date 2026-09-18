@@ -19,7 +19,7 @@ class WhatsAppBindingViewModel(
         load()
     }
 
-    override fun onIntent(intent: WhatsAppBindingIntent) {
+    override fun handleIntent(intent: WhatsAppBindingIntent) {
         when (intent) {
             WhatsAppBindingIntent.Load -> load()
             is WhatsAppBindingIntent.ChangeInviteLink -> update { it.copy(inviteLink = intent.value) }

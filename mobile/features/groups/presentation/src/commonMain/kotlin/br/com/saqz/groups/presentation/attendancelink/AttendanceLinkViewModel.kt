@@ -20,7 +20,7 @@ class AttendanceLinkViewModel(
     private var generation = 0
     init { resolve() }
 
-    override fun onIntent(intent: AttendanceLinkIntent) {
+    override fun handleIntent(intent: AttendanceLinkIntent) {
         when (intent) {
             AttendanceLinkIntent.Retry -> retry()
             AttendanceLinkIntent.Decline -> decline()

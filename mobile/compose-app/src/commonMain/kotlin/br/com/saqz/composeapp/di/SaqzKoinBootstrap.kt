@@ -11,6 +11,7 @@ import br.com.saqz.access.domain.port.NativeSharePort
 import br.com.saqz.access.domain.verification.EmailVerificationGateway
 import br.com.saqz.composeapp.SaqzPlatformDependencies
 import br.com.saqz.composeapp.access.BackendEmailVerificationAuth
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
 import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
@@ -138,6 +139,8 @@ fun loadSaqzPlatformDependencies(
         imageLoaderContext?.let(::authenticatedImageLoaderModule),
     ).filterNotNull().also(::loadKoinModules)
     koin.get<GroupInviteCoordinator>().start()
+    SaqzAnalytics.track = dependencies.analytics::track
+    SaqzAnalytics.setUser = dependencies.analytics::setUserId
 }
 
 internal fun stopSaqzKoin() {

@@ -28,7 +28,7 @@ class RecurrenceViewModel(
         if (attempt == null) discover() else recover(attempt)
     }
 
-    override fun onIntent(intent: RecurrenceIntent) {
+    override fun handleIntent(intent: RecurrenceIntent) {
         if (!validSession()) return
         if (intent == RecurrenceIntent.Refresh) return refresh()
         val current = state.value

@@ -90,6 +90,10 @@ internal fun testSaqzPlatformDependencies() = SaqzPlatformDependencies(
             return br.com.saqz.receivables.domain.port.ReceiptFileCancellation {}
         }
     },
+    analytics = object : br.com.saqz.composeapp.analytics.AnalyticsSink {
+        override fun track(name: String, params: Map<String, String>) = Unit
+        override fun setUserId(id: String?) = Unit
+    },
     environment = "test",
     apiBaseUrl = "https://api.invalid",
     access = AccessRuntimeDependencies(

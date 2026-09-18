@@ -29,7 +29,7 @@ class FinanceOverviewViewModel(
         load(FinanceOverviewPeriodSelection.CurrentMonth)
     }
 
-    override fun onIntent(intent: FinanceOverviewIntent) {
+    override fun handleIntent(intent: FinanceOverviewIntent) {
         when (intent) {
             is FinanceOverviewIntent.SelectPeriod -> load(intent.selection)
             is FinanceOverviewIntent.OpenGroup -> emit(FinanceOverviewEffect.OpenGroup(intent.groupId))

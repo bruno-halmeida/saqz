@@ -34,7 +34,7 @@ class GroupMembersViewModel(
         load()
     }
 
-    override fun onIntent(intent: GroupMembersIntent) {
+    override fun handleIntent(intent: GroupMembersIntent) {
         when (intent) {
             GroupMembersIntent.Retry -> load()
             is GroupMembersIntent.UpdateQuery -> {

@@ -36,7 +36,7 @@ class MyPlanViewModel(
         load()
     }
 
-    override fun onIntent(intent: MyPlanIntent) {
+    override fun handleIntent(intent: MyPlanIntent) {
         when (intent) {
             MyPlanIntent.Retry -> load()
             MyPlanIntent.Refresh -> load()

@@ -33,7 +33,7 @@ class GroupThreadViewModel(
     private var generation = 0
     init { load() }
 
-    override fun onIntent(intent: GroupThreadIntent) {
+    override fun handleIntent(intent: GroupThreadIntent) {
         when (intent) {
             GroupThreadIntent.Refresh -> if (!state.value.sending) load()
             GroupThreadIntent.More -> if (!state.value.sending && !state.value.paging && state.value.nextCursor != null) load(more = true)

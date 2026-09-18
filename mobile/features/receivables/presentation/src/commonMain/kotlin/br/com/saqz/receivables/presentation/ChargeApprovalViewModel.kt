@@ -27,7 +27,7 @@ class ChargeApprovalViewModel(private val groupId: String, private val chargeId:
         } else saved.remove<String>("approval.attempt")
         refresh()
     }
-    override fun onIntent(intent: ChargeApprovalIntent) {
+    override fun handleIntent(intent: ChargeApprovalIntent) {
         if (!validSession()) return
         if (intent == ChargeApprovalIntent.Refresh) { requestRefresh(); return }
         val current = state.value

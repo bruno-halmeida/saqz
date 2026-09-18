@@ -30,7 +30,7 @@ class GroupPhotoViewModel(
     private var groupVersion: GroupPhotoVersionToken? = null
     private var pending: GroupPhotoSelection? = null
 
-    override fun onIntent(intent: GroupPhotoIntent) {
+    override fun handleIntent(intent: GroupPhotoIntent) {
         when (intent) {
             is GroupPhotoIntent.BindGroup -> bind(intent.groupId)
             GroupPhotoIntent.ChooseCamera -> choose(selection::chooseCamera)

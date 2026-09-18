@@ -45,7 +45,7 @@ class LoginViewModel(
             .launchIn(viewModelScope)
     }
 
-    override fun onIntent(intent: LoginIntent) {
+    override fun handleIntent(intent: LoginIntent) {
         when (intent) {
             is LoginIntent.UpdateEmail -> authentication.onIntent(AuthenticationIntent.UpdateEmail(intent.value))
             is LoginIntent.UpdatePassword -> authentication.onIntent(AuthenticationIntent.UpdatePassword(intent.value))

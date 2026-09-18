@@ -90,7 +90,8 @@ struct IOSAppComposition {
                 expenseDrafts: drafts.expense
             ),
             notifications: IOSNotificationPort(),
-            financialDocuments: IOSReceiptDocumentPicker(presenter: { IOSPresentationRoot.current })
+            financialDocuments: IOSReceiptDocumentPicker(presenter: { IOSPresentationRoot.current }),
+            analytics: IOSAnalyticsSink()
         )
         return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, photos: photos, drafts: drafts, dependencies: dependencies)
     }

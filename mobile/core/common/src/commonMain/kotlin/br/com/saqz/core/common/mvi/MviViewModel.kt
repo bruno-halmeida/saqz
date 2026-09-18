@@ -1,6 +1,8 @@
 package br.com.saqz.core.common.mvi
 
 import androidx.lifecycle.ViewModel
+import br.com.saqz.core.common.analytics.SaqzAnalytics
+import br.com.saqz.core.common.analytics.analyticsName
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,5 +26,11 @@ abstract class MviViewModel<S, I, E>(initialState: S) : ViewModel() {
         effectChannel.trySend(effect)
     }
 
-    abstract fun onIntent(intent: I)
+    /** Entrada única da UI: registra o `ui_action` e delega. Roots e testes continuam chamando aqui. */
+    fun onIntent(intent: I) {
+        SaqzAnalytics.action(screen = analyticsName(this).removeSuffix("ViewModel"), action = analyticsName(intent))
+        handleIntent(intent)
+    }
+
+    protected abstract fun handleIntent(intent: I)
 }

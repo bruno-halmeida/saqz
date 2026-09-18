@@ -33,7 +33,7 @@ class SubscriptionGateViewModel(
     private var operationJob: Job? = null
     private var pollingJob: Job? = null
 
-    override fun onIntent(intent: SubscriptionGateIntent) {
+    override fun handleIntent(intent: SubscriptionGateIntent) {
         when (intent) {
             SubscriptionGateIntent.Opened -> open()
             SubscriptionGateIntent.Closed -> close()

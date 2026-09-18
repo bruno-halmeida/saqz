@@ -32,7 +32,7 @@ class FinancialOnboardingViewModel(private val gateway: FinancialOnboardingGatew
         else saved.remove<String>("onboarding.attempt")
         refresh()
     }
-    override fun onIntent(intent: FinancialOnboardingIntent) {
+    override fun handleIntent(intent: FinancialOnboardingIntent) {
         if (!validSession()) return
         if (intent == FinancialOnboardingIntent.Refresh) { refreshIfIdle(); return }
         val s = state.value

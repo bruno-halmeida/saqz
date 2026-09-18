@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -25,6 +26,7 @@ import br.com.saqz.composeapp.resources.shell_nav_finance
 import br.com.saqz.composeapp.resources.shell_nav_groups
 import br.com.saqz.composeapp.resources.shell_nav_home
 import br.com.saqz.composeapp.resources.shell_nav_profile
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.designsystem.SaqzBottomNav
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzNavItem
@@ -112,6 +114,7 @@ internal fun SaqzAppShell(
     // recarregar de verdade. Derivado em vez de efeito: assim não existe um quadro sequer
     // com a aba ativa apontando para item que não está na barra.
     val activeTab = if (navItems.any { it.id == selectedTab }) selectedTab else SaqzShellHomeTab
+    LaunchedEffect(activeTab) { SaqzAnalytics.screen("Shell.$activeTab") }
     // Uma saída, dois gatilhos: a seta da barra e o back do sistema (botão no Android,
     // gesto no iOS) chamam o mesmo fechamento. Sem isto o back agiria no shell por baixo
     // — ou sairia do app — com o catálogo ainda na tela.

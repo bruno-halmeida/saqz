@@ -67,7 +67,7 @@ class GroupInviteViewModel(
 
     init { load() }
 
-    override fun onIntent(intent: GroupInviteIntent) {
+    override fun handleIntent(intent: GroupInviteIntent) {
         when (intent) {
             GroupInviteIntent.Retry -> load()
             GroupInviteIntent.GenerateInvite -> rotate()
@@ -388,7 +388,7 @@ class InvitePreviewMessageViewModel(
         if (!messageEdited) updateMessage(message)
     }
 
-    override fun onIntent(intent: InvitePreviewIntent) {
+    override fun handleIntent(intent: InvitePreviewIntent) {
         when (intent) {
             is InvitePreviewIntent.MessageChanged -> {
                 messageEdited = true
@@ -438,7 +438,7 @@ class InviteQrViewModel(
     private var shareGeneration = 0L
     private var saveGeneration = 0L
 
-    override fun onIntent(intent: InviteQrIntent) {
+    override fun handleIntent(intent: InviteQrIntent) {
         when (intent) {
             InviteQrIntent.Share -> share()
             InviteQrIntent.Save -> save()

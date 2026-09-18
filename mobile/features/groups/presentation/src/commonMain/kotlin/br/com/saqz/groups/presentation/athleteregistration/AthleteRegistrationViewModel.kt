@@ -28,7 +28,7 @@ class AthleteRegistrationViewModel(
         load()
     }
 
-    override fun onIntent(intent: AthleteRegistrationIntent) {
+    override fun handleIntent(intent: AthleteRegistrationIntent) {
         when (intent) {
             AthleteRegistrationIntent.Retry -> load()
             is AthleteRegistrationIntent.NicknameChanged -> {

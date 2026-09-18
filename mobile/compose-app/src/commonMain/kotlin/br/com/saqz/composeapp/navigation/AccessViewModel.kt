@@ -31,7 +31,7 @@ internal class AccessViewModel(
         runtime.onIntent(AccessRuntimeIntent.Start)
     }
 
-    override fun onIntent(intent: AccessIntent) {
+    override fun handleIntent(intent: AccessIntent) {
         when (intent) {
             is AccessIntent.Authentication -> runtime.onIntent(AccessRuntimeIntent.Authentication(intent.intent))
             is AccessIntent.Session -> runtime.onIntent(AccessRuntimeIntent.Session(intent.intent))

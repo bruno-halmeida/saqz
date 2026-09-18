@@ -306,6 +306,10 @@ private class LifecycleCompositionFactory(
             return br.com.saqz.receivables.domain.port.ReceiptFileCancellation {}
         }
     },
+            analytics = object : br.com.saqz.composeapp.analytics.AnalyticsSink {
+                override fun track(name: String, params: Map<String, String>) = Unit
+                override fun setUserId(id: String?) = Unit
+            },
             environment = "dev",
             apiBaseUrl = "http://127.0.0.1:1",
             access = AccessRuntimeDependencies(

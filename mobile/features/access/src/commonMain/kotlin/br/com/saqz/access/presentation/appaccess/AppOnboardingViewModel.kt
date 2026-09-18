@@ -15,7 +15,7 @@ class AppOnboardingViewModel(
     private var generation = 0
     private var loadedOwnerUserId: String? = null
 
-    override fun onIntent(intent: AppOnboardingIntent) {
+    override fun handleIntent(intent: AppOnboardingIntent) {
         when (intent) {
             AppOnboardingIntent.Opened -> load()
             AppOnboardingIntent.Retry -> load(force = true)

@@ -55,7 +55,7 @@ class GameSettlementViewModel(
         load()
     }
 
-    override fun onIntent(intent: GameSettlementIntent) {
+    override fun handleIntent(intent: GameSettlementIntent) {
         when (intent) {
             GameSettlementIntent.Retry -> load()
             GameSettlementIntent.ChargeMissing -> openChargeSheet()

@@ -39,6 +39,8 @@
 		F09000000000000000000001 /* IOSReceiptDocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09000000000000000000002 /* IOSReceiptDocumentPicker.swift */; };
 		F09100000000000000000001 /* IOSNotificationPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09100000000000000000002 /* IOSNotificationPort.swift */; };
 		F09100000000000000000003 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = F09100000000000000000004 /* FirebaseMessaging */; };
+		F09200000000000000000001 /* IOSAnalyticsSink.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09200000000000000000002 /* IOSAnalyticsSink.swift */; };
+		F09200000000000000000003 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = F09200000000000000000004 /* FirebaseAnalytics */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,6 +93,7 @@
 		E90000000000000000000012 /* IOSInviteUrlStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSInviteUrlStoreTests.swift; sourceTree = "<group>"; };
 		F09000000000000000000002 /* IOSReceiptDocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSReceiptDocumentPicker.swift; sourceTree = "<group>"; };
 		F09100000000000000000002 /* IOSNotificationPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSNotificationPort.swift; sourceTree = "<group>"; };
+		F09200000000000000000002 /* IOSAnalyticsSink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAnalyticsSink.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,6 +104,7 @@
 				A10000000000000000000002 /* ../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework in Frameworks */,
 				A10000000000000000000004 /* FirebaseAuth in Frameworks */,
 				F09100000000000000000003 /* FirebaseMessaging in Frameworks */,
+				F09200000000000000000003 /* FirebaseAnalytics in Frameworks */,
 				A20000000000000000000003 /* GoogleSignIn in Frameworks */,
 				A30000000000000000000003 /* BranchSDK in Frameworks */,
 			);
@@ -147,6 +151,7 @@
 				D80000000000000000000011 /* IOSProfilePhotoAdapter.swift */,
 				F09000000000000000000002 /* IOSReceiptDocumentPicker.swift */,
 				F09100000000000000000002 /* IOSNotificationPort.swift */,
+				F09200000000000000000002 /* IOSAnalyticsSink.swift */,
 				E90000000000000000000011 /* GroupsInvite/IOSInviteAdapters.swift */,
 				A30000000000000000000013 /* SaqzIOS.entitlements */,
 				A10000000000000000000018 /* Assets.xcassets */,
@@ -223,6 +228,7 @@
 			packageProductDependencies = (
 				A10000000000000000000131 /* FirebaseAuth */,
 				F09100000000000000000004 /* FirebaseMessaging */,
+				F09200000000000000000004 /* FirebaseAnalytics */,
 				A20000000000000000000131 /* GoogleSignIn */,
 				A30000000000000000000131 /* BranchSDK */,
 			);
@@ -400,6 +406,7 @@
 				D80000000000000000000001 /* IOSProfilePhotoAdapter.swift in Sources */,
 				F09000000000000000000001 /* IOSReceiptDocumentPicker.swift in Sources */,
 				F09100000000000000000001 /* IOSNotificationPort.swift in Sources */,
+				F09200000000000000000001 /* IOSAnalyticsSink.swift in Sources */,
 				E90000000000000000000001 /* GroupsInvite/IOSInviteAdapters.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -702,6 +709,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A10000000000000000000130 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
+		};
+		F09200000000000000000004 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000000000000000000130 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 
 class MviViewModelTest {
     private class CounterViewModel : MviViewModel<Int, Int, String>(0) {
-        override fun onIntent(intent: Int) {
+        override fun handleIntent(intent: Int) {
             update { it + intent }
         }
 

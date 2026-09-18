@@ -57,7 +57,7 @@ class GroupSetupViewModel(
     }
 
     @Suppress("CyclomaticComplexMethod")
-    override fun onIntent(intent: GroupSetupIntent) {
+    override fun handleIntent(intent: GroupSetupIntent) {
         when (intent) {
             is GroupSetupIntent.UpdateName ->
                 onTextChange(KeyName, intent.value, GroupTextLimits.NameMax) { copy(name = it) }

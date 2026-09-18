@@ -172,6 +172,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.messaging)
+    implementation(libs.firebase.analytics)
     implementation(libs.google.id)
     implementation(libs.koin.android)
     implementation(libs.kotlinx.serialization.json)

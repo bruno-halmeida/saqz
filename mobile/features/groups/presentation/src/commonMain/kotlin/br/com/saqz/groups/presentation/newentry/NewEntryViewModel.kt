@@ -30,7 +30,7 @@ class NewEntryViewModel(
     private var requestId = savedState.get<String>(KEY_REQUEST_ID)
         ?: Uuid.random().toString().also { savedState[KEY_REQUEST_ID] = it }
 
-    override fun onIntent(intent: NewEntryIntent) {
+    override fun handleIntent(intent: NewEntryIntent) {
         when (intent) {
             is NewEntryIntent.SelectDirection -> {
                 savedState[KEY_DIRECTION] = intent.direction.name

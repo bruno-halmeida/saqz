@@ -41,7 +41,7 @@ class MemberEditorViewModel(
         load()
     }
 
-    override fun onIntent(intent: MemberEditorIntent) {
+    override fun handleIntent(intent: MemberEditorIntent) {
         when (intent) {
             MemberEditorIntent.Retry -> load()
             is MemberEditorIntent.NicknameChanged -> {

@@ -27,7 +27,7 @@ class ReceiptWalletViewModel(private val gateway: ReceiptWalletGateway, private 
         } else saved.remove<String>(ATTEMPT)
         refresh()
     }
-    override fun onIntent(intent: ReceiptWalletIntent) {
+    override fun handleIntent(intent: ReceiptWalletIntent) {
         if (!validSession() || !state.value.idle) return
         when (intent) {
             ReceiptWalletIntent.Refresh -> refresh()

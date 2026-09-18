@@ -10,7 +10,7 @@ class NotificationCenterViewModel(private val settings: Boolean, private val gat
     MviViewModel<NotificationCenterState, NotificationCenterIntent, NotificationCenterEffect>(NotificationCenterState()) {
     private var generation = 0
     init { load() }
-    override fun onIntent(intent: NotificationCenterIntent) {
+    override fun handleIntent(intent: NotificationCenterIntent) {
         if (state.value.busy) return
         when (intent) {
             is NotificationCenterIntent.SelectChannel -> update { it.copy(settingsChannel = intent.channel) }

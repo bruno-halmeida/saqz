@@ -5,6 +5,7 @@ import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.access.domain.port.NativeProfilePhotoPort
 import br.com.saqz.access.domain.port.NativeSharePort
+import br.com.saqz.composeapp.analytics.AnalyticsSink
 import br.com.saqz.composeapp.di.SaqzDraftStores
 import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
 import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
@@ -45,6 +46,7 @@ class GroupsRuntimeDependencies(
     val inviteClipboard: NativeInviteClipboardPort,
 )
 
+@Suppress("LongParameterList")
 class SaqzPlatformDependencies(
     val environment: String,
     val apiBaseUrl: String,
@@ -53,6 +55,7 @@ class SaqzPlatformDependencies(
     val drafts: SaqzDraftStores,
     val notifications: br.com.saqz.groups.domain.communication.NativeNotificationPort,
     val financialDocuments: br.com.saqz.receivables.domain.port.ReceiptDocumentPicker,
+    val analytics: AnalyticsSink,
 ) {
     init {
         require(environment.isNotBlank()) { "environment must not be blank" }

@@ -94,6 +94,7 @@ afterEvaluate {
             include("**/SaqzTestDependencies.kt")
             include("**/SaqzKoinModulesTest.kt")
             include("**/SaqzKoinBootstrapTest.kt")
+            include("**/analytics/**")
         })
     }
 }

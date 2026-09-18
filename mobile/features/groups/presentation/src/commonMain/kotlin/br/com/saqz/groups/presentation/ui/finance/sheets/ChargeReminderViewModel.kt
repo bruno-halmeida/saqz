@@ -22,7 +22,7 @@ class ChargeReminderViewModel(
     private val saved: SavedStateHandle,
 ) :
     MviViewModel<ChargeReminderState, ChargeReminderIntent, Nothing>(ChargeReminderState()) {
-    override fun onIntent(intent: ChargeReminderIntent) {
+    override fun handleIntent(intent: ChargeReminderIntent) {
         if (state.value.sending) return
         when (intent) {
             ChargeReminderIntent.Reset -> {

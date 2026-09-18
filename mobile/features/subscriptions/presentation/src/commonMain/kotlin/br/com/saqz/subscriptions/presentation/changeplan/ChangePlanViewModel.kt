@@ -30,7 +30,7 @@ class ChangePlanViewModel(
         load()
     }
 
-    override fun onIntent(intent: ChangePlanIntent) {
+    override fun handleIntent(intent: ChangePlanIntent) {
         when (intent) {
             ChangePlanIntent.Retry -> load()
             is ChangePlanIntent.SelectPlan -> select(intent.plan)

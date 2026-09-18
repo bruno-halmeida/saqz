@@ -48,6 +48,8 @@ import br.com.saqz.access.ui.RegisterRoot
 import br.com.saqz.access.ui.ResetCodeRoot
 import br.com.saqz.composeapp.shell.EmailVerificationBanner
 import br.com.saqz.composeapp.shell.SaqzAppShell
+import br.com.saqz.core.common.analytics.SaqzAnalytics
+import br.com.saqz.core.common.analytics.analyticsName
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.domain.SaqzResult
@@ -198,6 +200,9 @@ internal fun SaqzNavHost(
     val inviteCoordinator = koinInject<GroupInviteCoordinator>()
     val receiptsCoordinator = koinInject<ReceivablesCoordinator>()
     val receipts = receiptsCoordinator.state.collectAsStateWithLifecycle().value
+    // Uma linha para as ~45 rotas: rota nova entra sozinha. Só o nome da classe, nunca os campos.
+    val topRoute = backStack.lastOrNull()
+    LaunchedEffect(topRoute) { if (topRoute != null) SaqzAnalytics.screen(analyticsName(topRoute)) }
     LaunchedEffect(inviteCoordinator) {
         if (pendingInviteCode == null) {
             // This must run before the session gate as well: a signed-out relaunch needs the
@@ -206,6 +211,7 @@ internal fun SaqzNavHost(
         }
     }
     LaunchedEffect(state.session, state.appOnboarding) {
+        SaqzAnalytics.setUser((state.session as? SessionAccessState.Ready)?.session?.user?.id)
         reconcileAccessStack(backStack, state.session, restoring = restoring[0])
         reconcileAppOnboardingStack(backStack, state.session, state.appOnboarding)
         restoring[0] = false
