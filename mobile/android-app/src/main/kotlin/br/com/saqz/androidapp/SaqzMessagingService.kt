@@ -40,7 +40,11 @@ internal const val EXTRA_NOTIFICATION_GROUP_ID = "saqz.notification.groupId"
 internal fun initializeNotificationFirebase(application: android.app.Application) {
     val manager = application.getSystemService(NotificationManager::class.java)
     if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(
-        NotificationChannel(REMINDER_CHANNEL, application.getString(R.string.notification_reminders), NotificationManager.IMPORTANCE_DEFAULT),
+        NotificationChannel(
+            REMINDER_CHANNEL,
+            application.getString(R.string.notification_reminders),
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ),
     )
     if (BuildConfig.FIREBASE_USE_EMULATOR) return
     if (FirebaseApp.getApps(application).none { it.name == FirebaseApp.DEFAULT_APP_NAME }) {

@@ -111,32 +111,11 @@ internal class AndroidLinkAdapter(
         const val DECLINE_INTENT = "decline"
         const val ATTENDANCE_PATH_SEGMENT = "attendance"
 
-        fun directEvent(url: String?, allowedHosts: Set<String>): GroupLinkEvent? = runCatching {
-            val uri = URI(url ?: return null)
-            if (!uri.scheme.equals("https", ignoreCase = true)) return null
-            if (uri.host?.lowercase() !in allowedHosts.map(String::lowercase)) return null
-            if (uri.userInfo != null || uri.port != -1) return null
-            val queryEntries = uri.rawQuery
-                ?.split('&')
-                ?.mapNotNull { entry ->
-                    val separator = entry.indexOf('=')
-                    if (separator < 0) return@mapNotNull null
-                    val key = URLDecoder.decode(entry.substring(0, separator), StandardCharsets.UTF_8.name())
-                    val value = URLDecoder.decode(entry.substring(separator + 1), StandardCharsets.UTF_8.name())
-                    key to value
-                }
-                .orEmpty()
-            val pathSegments = uri.path.trim('/').split('/').filter(String::isNotBlank)
-            val hasAttendancePath = pathSegments.size == 2 && pathSegments[0] == ATTENDANCE_PATH_SEGMENT &&
-                isValidInviteCode(pathSegments[1])
-            if (hasAttendancePath && queryEntries.any { it.first in setOf(INVITE_PARAMETER, ATTENDANCE_PARAMETER, ONBOARDING_PARAMETER) }) {
-                return null
-            }
-            val inviteEntries = queryEntries.filter { it.first == INVITE_PARAMETER }
-            val attendanceEntries = queryEntries.filter { it.first == ATTENDANCE_PARAMETER }
-            if (inviteEntries.size > 1 || attendanceEntries.size > 1) return null
-            val intentEntries = queryEntries.filter { it.first == INTENT_PARAMETER }
-            if (intentEntries.size > 1) return null
+        fun directEvent(url: String?, allowedHosts: Set<String>): GroupLinkEvent? {
+            val link = trustedLink(url, allowedHosts) ?: return null
+            val inviteEntries = link.query.filter { it.first == INVITE_PARAMETER }
+            val attendanceEntries = link.query.filter { it.first == ATTENDANCE_PARAMETER }
+            val intentEntries = link.query.filter { it.first == INTENT_PARAMETER }
             val intent = if (intentEntries.singleOrNull()?.second == DECLINE_INTENT) {
                 AttendanceIntent.Decline
             } else {
@@ -144,22 +123,33 @@ internal class AndroidLinkAdapter(
             }
             val inviteCodes = inviteEntries.map { it.second }.filter(::isValidInviteCode)
             val attendanceCodes = attendanceEntries.map { it.second }.filter(::isValidInviteCode)
-            if (queryEntries.any { it.first == ONBOARDING_PARAMETER }) return null
-            if (inviteCodes.isNotEmpty() && attendanceCodes.isNotEmpty()) return null
-            if (inviteCodes.size == 1) return GroupLinkEvent.Invite(inviteCodes.single())
-            if (attendanceCodes.size == 1) return GroupLinkEvent.Attendance(attendanceCodes.single(), intent)
-            if (hasAttendancePath) {
-                return GroupLinkEvent.Attendance(pathSegments[1], intent)
+            val duplicated = inviteEntries.size > 1 || attendanceEntries.size > 1 || intentEntries.size > 1
+            val mixed = link.query.any { it.first == ONBOARDING_PARAMETER } ||
+                (inviteCodes.isNotEmpty() && attendanceCodes.isNotEmpty())
+            return when {
+                duplicated || mixed -> null
+                inviteCodes.size == 1 -> GroupLinkEvent.Invite(inviteCodes.single())
+                attendanceCodes.size == 1 -> GroupLinkEvent.Attendance(attendanceCodes.single(), intent)
+                else -> link.attendancePathCode?.let { GroupLinkEvent.Attendance(it, intent) }
             }
-            null
-        }.getOrNull()
+        }
 
-        fun directOnboardingCode(url: String?, allowedHosts: Set<String>): String? = runCatching {
+        fun directOnboardingCode(url: String?, allowedHosts: Set<String>): String? {
+            val link = trustedLink(url, allowedHosts) ?: return null
+            val onboardingEntries = link.query.filter { it.first == ONBOARDING_PARAMETER }
+            if (onboardingEntries.size != 1) return null
+            val onboarding = onboardingEntries.map { it.second }.filter(::isValidInviteCode)
+            val mixed = link.query.any { it.first == INVITE_PARAMETER || it.first == ATTENDANCE_PARAMETER }
+            return if (mixed || onboarding.size != 1) null else onboarding.single()
+        }
+
+        /** Único ponto que decide se uma URL é um link nosso: https, host permitido, sem userinfo/porta. */
+        private fun trustedLink(url: String?, allowedHosts: Set<String>): TrustedLink? = runCatching {
             val uri = URI(url ?: return null)
             if (!uri.scheme.equals("https", ignoreCase = true)) return null
             if (uri.host?.lowercase() !in allowedHosts.map(String::lowercase)) return null
             if (uri.userInfo != null || uri.port != -1) return null
-            val entries = uri.rawQuery
+            val query = uri.rawQuery
                 ?.split('&')
                 ?.mapNotNull { entry ->
                     val separator = entry.indexOf('=')
@@ -169,21 +159,19 @@ internal class AndroidLinkAdapter(
                     key to value
                 }
                 .orEmpty()
-            val pathSegments = uri.path.trim('/').split('/').filter(String::isNotBlank)
-            val hasAttendancePath = pathSegments.size == 2 && pathSegments[0] == ATTENDANCE_PATH_SEGMENT &&
-                isValidInviteCode(pathSegments[1])
-            if (hasAttendancePath && entries.any { it.first in setOf(INVITE_PARAMETER, ATTENDANCE_PARAMETER, ONBOARDING_PARAMETER) }) {
-                return null
+            val segments = uri.path.trim('/').split('/').filter(String::isNotBlank)
+            val attendancePathCode = segments.getOrNull(1)?.takeIf {
+                segments.size == 2 && segments[0] == ATTENDANCE_PATH_SEGMENT && isValidInviteCode(it)
             }
-            val onboardingEntries = entries.filter { it.first == ONBOARDING_PARAMETER }
-            if (onboardingEntries.size != 1) return null
-            val onboarding = onboardingEntries.map { it.second }.filter(::isValidInviteCode)
-            val invite = entries.any { it.first == INVITE_PARAMETER }
-            val attendance = entries.any { it.first == ATTENDANCE_PARAMETER }
-            if (invite || attendance || onboarding.size != 1) null else onboarding.single()
+            // /attendance/<código> não aceita código concorrente na query.
+            val codeParameters = setOf(INVITE_PARAMETER, ATTENDANCE_PARAMETER, ONBOARDING_PARAMETER)
+            if (attendancePathCode != null && query.any { it.first in codeParameters }) return null
+            TrustedLink(query, attendancePathCode)
         }.getOrNull()
 
         fun isValidInviteCode(value: String?): Boolean =
             value?.matches(Regex("[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]")) == true
     }
 }
+
+private class TrustedLink(val query: List<Pair<String, String>>, val attendancePathCode: String?)
