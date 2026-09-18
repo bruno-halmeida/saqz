@@ -37,26 +37,25 @@ final class IOSAppCompositionTests: XCTestCase {
         XCTAssertTrue((composition.dependencies.drafts.expenseDrafts as AnyObject) === composition.drafts.expense)
     }
 
-    func testBranchDeferredSessionStartsExactlyOnceBeforeComposeConsumption() {
-        let fixture = makeFixture(); XCTAssertEqual(fixture.branch.initializeCount, 1)
-    }
-
-    func testDeferredInviteReceivedBeforeListenerSurvivesComposition() {
-        let fixture = makeFixture(); fixture.branch.complete(["saqz_invite": Self.code])
+    func testInviteReceivedBeforeListenerSurvivesComposition() {
+        let fixture = makeFixture(); fixture.composition.links.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.code)")!)
         let listener = RecordingInviteListener(); _ = fixture.composition.dependencies.groups.links.start(listener_: listener)
         XCTAssertEqual(listener.codes, [Self.code])
     }
 
-    func testLifecycleRouterForwardsWarmURLToGoogleAndBranch() {
+    func testLifecycleRouterForwardsWarmURLToGoogleAndLinks() {
         let fixture = makeFixture(); let router = IOSLifecycleRouter(auth: fixture.composition.auth, links: fixture.composition.links)
         let url = URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.code)")!; router.open(url)
-        XCTAssertEqual(fixture.google.urls, [url]); XCTAssertEqual(fixture.branch.urls, [url])
+        let listener = RecordingInviteListener(); _ = fixture.composition.dependencies.groups.links.start(listener_: listener)
+        XCTAssertEqual(fixture.google.urls, [url]); XCTAssertEqual(listener.codes, [Self.code])
     }
 
-    func testLifecycleRouterForwardsUniversalLinkToBranch() {
+    func testLifecycleRouterForwardsUniversalLinkToLinks() {
         let fixture = makeFixture(); let router = IOSLifecycleRouter(auth: fixture.composition.auth, links: fixture.composition.links)
-        let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb); activity.webpageURL = URL(string: "https://links.saqz.app/invite")
-        router.continueActivity(activity); XCTAssertEqual(fixture.branch.activities.count, 1)
+        let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb); activity.webpageURL = URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.code)")
+        router.continueActivity(activity)
+        let listener = RecordingInviteListener(); _ = fixture.composition.dependencies.groups.links.start(listener_: listener)
+        XCTAssertEqual(listener.codes, [Self.code])
     }
 
     func testBackgroundForegroundUsesSameRetainedAdapterInstances() {
@@ -72,8 +71,8 @@ final class IOSAppCompositionTests: XCTestCase {
     }
 
     private func makeFixture() -> Fixture {
-        let firebase = FakeFirebase(); let google = FakeGoogle(); let branch = FakeBranch(); let store = FakeStore(); let share = FakeShare()
-        let auth = IOSAuthAdapter(firebase: firebase, google: google); let links = IOSLinkAdapter(branch: branch)
+        let firebase = FakeFirebase(); let google = FakeGoogle(); let store = FakeStore(); let share = FakeShare()
+        let auth = IOSAuthAdapter(firebase: firebase, google: google); let links = IOSLinkAdapter()
         let local = IOSLocalAccessStateAdapter(store: store); let groupState = IOSLocalGroupStateAdapter(store: store); let shareAdapter = IOSShareAdapter(launcher: share)
         let attendanceShare = IOSAttendanceShareAdapter(presenter: { nil })
         let inviteUrlStore = IOSInviteUrlStore()
@@ -86,10 +85,10 @@ final class IOSAppCompositionTests: XCTestCase {
             share: shareAdapter, attendanceShare: attendanceShare, inviteUrlStore: inviteUrlStore,
             inviteShare: inviteShare, photos: photos, drafts: drafts
         )
-        return Fixture(composition: composition, google: google, branch: branch)
+        return Fixture(composition: composition, google: google)
     }
 
-    private struct Fixture { let composition: IOSAppComposition; let google: FakeGoogle; let branch: FakeBranch }
+    private struct Fixture { let composition: IOSAppComposition; let google: FakeGoogle }
     private static let code = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 }
 
@@ -109,14 +108,6 @@ final class IOSAppCompositionTests: XCTestCase {
 @MainActor private final class FakeGoogle: IOSGoogleSignInClient {
     var urls: [URL] = []; func signIn(completion: @escaping (IOSGoogleSignInResult) -> Void) {}
     func handle(url: URL) -> Bool { urls.append(url); return true }
-}
-
-@MainActor private final class FakeBranch: IOSBranchSessionClient {
-    var initializeCount = 0; var urls: [URL] = []; var activities: [NSUserActivity] = []; var callback: (([String: Any]?) -> Void)?
-    func initialize(callback: @escaping ([String: Any]?) -> Void) { initializeCount += 1; self.callback = callback }
-    func handle(url: URL) -> Bool { urls.append(url); return true }
-    func continueActivity(_ activity: NSUserActivity) -> Bool { activities.append(activity); return true }
-    func complete(_ parameters: [String: Any]?) { callback?(parameters) }
 }
 
 @MainActor private final class FakeStore: IOSAccessStateStore {

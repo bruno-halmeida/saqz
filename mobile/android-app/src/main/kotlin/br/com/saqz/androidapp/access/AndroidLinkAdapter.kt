@@ -1,7 +1,5 @@
 package br.com.saqz.androidapp.access
 
-import android.app.Activity
-import android.net.Uri
 import br.com.saqz.access.domain.port.Cancelable
 import br.com.saqz.access.domain.port.AppOnboardingCodeListener
 import br.com.saqz.access.domain.port.InviteCodeListener
@@ -11,17 +9,9 @@ import br.com.saqz.groups.port.GroupCancelable
 import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.groups.port.GroupLinkEventListener
 import br.com.saqz.groups.port.NativeGroupLinkPort
-import io.branch.referral.Branch
-import io.branch.referral.BranchError
-import org.json.JSONObject
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-
-internal interface AndroidBranchSessionClient {
-    fun initialize(url: String?, callback: (Map<String, String?>) -> Unit)
-    fun reinitialize(url: String?, callback: (Map<String, String?>) -> Unit)
-}
 
 internal interface AndroidIntentLinkPort : NativeLinkPort {
     fun onColdStart(url: String?)
@@ -30,7 +20,6 @@ internal interface AndroidIntentLinkPort : NativeLinkPort {
 }
 
 internal class AndroidLinkAdapter(
-    private val branch: AndroidBranchSessionClient,
     private val allowedHosts: Set<String> = setOf("links.saqz.app"),
 ) : AndroidIntentLinkPort, NativeGroupLinkPort {
     private var accessListener: InviteCodeListener? = null
@@ -39,7 +28,6 @@ internal class AndroidLinkAdapter(
     private var pendingAccessCode: String? = null
     private var pendingOnboardingCode: String? = null
     private var pendingGroupEvent: GroupLinkEvent? = null
-    private var lastAcceptedEventKey: String? = null
 
     override fun start(listener: InviteCodeListener): Cancelable {
         accessListener = listener
@@ -78,18 +66,11 @@ internal class AndroidLinkAdapter(
     }
 
     override fun onColdStart(url: String?) {
-        lastAcceptedEventKey = null // Deduplicate direct/Branch copies within this opening only.
         acceptOnboarding(directOnboardingCode(url, allowedHosts))
         accept(directEvent(url, allowedHosts))
-        branch.initialize(url, ::acceptBranchParameters)
     }
 
-    override fun onWarmIntent(url: String?) {
-        lastAcceptedEventKey = null // Deduplicate direct/Branch copies within this opening only.
-        acceptOnboarding(directOnboardingCode(url, allowedHosts))
-        accept(directEvent(url, allowedHosts))
-        branch.reinitialize(url, ::acceptBranchParameters)
-    }
+    override fun onWarmIntent(url: String?) = onColdStart(url)
 
     /** Push tap: always routes to the notification center; no dedup across taps. */
     override fun onNotificationOpen(groupId: String?) {
@@ -102,30 +83,14 @@ internal class AndroidLinkAdapter(
         }
     }
 
-    private fun acceptBranchParameters(parameters: Map<String, String?>) {
-        acceptOnboarding(branchOnboardingCode(parameters))
-        accept(branchEvent(parameters))
-    }
-
     private fun acceptOnboarding(code: String?) {
         val accepted = code ?: return
-        val key = "onboarding:$accepted"
-        if (key == lastAcceptedEventKey) return
-        lastAcceptedEventKey = key
         val current = onboardingListener
         if (current == null) pendingOnboardingCode = accepted else current.onAppOnboardingCode(accepted)
     }
 
     private fun accept(event: GroupLinkEvent?) {
         val accepted = event ?: return
-        val key = when (accepted) {
-            is GroupLinkEvent.Invite -> "invite:${accepted.code}"
-            is GroupLinkEvent.Attendance -> "attendance:${accepted.intent}:${accepted.code}"
-            // Push taps têm caminho próprio (onNotificationOpen), sem dedup por abertura.
-            is GroupLinkEvent.NotificationOpen -> return
-        }
-        if (key == lastAcceptedEventKey) return
-        lastAcceptedEventKey = key
         if (accepted is GroupLinkEvent.Invite) {
             val current = accessListener
             if (current == null) pendingAccessCode = accepted.code else current.onInviteCode(accepted.code)
@@ -218,68 +183,7 @@ internal class AndroidLinkAdapter(
             if (invite || attendance || onboarding.size != 1) null else onboarding.single()
         }.getOrNull()
 
-        fun branchEvent(parameters: Map<String, String?>): GroupLinkEvent? {
-            if (parameters.containsKey(ONBOARDING_PARAMETER)) return null
-            val invite = parameters[INVITE_PARAMETER]?.takeIf(::isValidInviteCode)
-            val attendance = parameters[ATTENDANCE_PARAMETER]?.takeIf(::isValidInviteCode)
-            val intent = if (parameters[INTENT_PARAMETER] == DECLINE_INTENT) {
-                AttendanceIntent.Decline
-            } else {
-                AttendanceIntent.Confirm
-            }
-            return when {
-                invite != null && attendance != null -> null
-                invite != null -> GroupLinkEvent.Invite(invite)
-                attendance != null -> GroupLinkEvent.Attendance(attendance, intent)
-                else -> null
-            }
-        }
-
-        fun branchOnboardingCode(parameters: Map<String, String?>): String? {
-            val onboarding = parameters[ONBOARDING_PARAMETER]?.takeIf(::isValidInviteCode) ?: return null
-            val invite = parameters[INVITE_PARAMETER]
-            val attendance = parameters[ATTENDANCE_PARAMETER]
-            return if (invite == null && attendance == null) onboarding else null
-        }
-
         fun isValidInviteCode(value: String?): Boolean =
             value?.matches(Regex("[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]")) == true
-    }
-}
-
-internal class BranchSdkSessionClient(
-    private val activity: Activity,
-) : AndroidBranchSessionClient {
-    override fun initialize(url: String?, callback: (Map<String, String?>) -> Unit) {
-        Branch.sessionBuilder(activity)
-            .withCallback(branchCallback(callback))
-            .withData(url?.let(Uri::parse))
-            .init()
-    }
-
-    override fun reinitialize(url: String?, callback: (Map<String, String?>) -> Unit) {
-        Branch.sessionBuilder(activity)
-            .withCallback(branchCallback(callback))
-            .withData(url?.let(Uri::parse))
-            .reInit()
-    }
-
-    private fun branchCallback(callback: (Map<String, String?>) -> Unit) =
-        Branch.BranchReferralInitListener { parameters: JSONObject?, error: BranchError? ->
-            if (error != null || parameters == null) {
-                callback(emptyMap())
-            } else {
-                val result = mutableMapOf<String, String?>()
-                if (parameters.has(INVITE_PARAMETER)) result[INVITE_PARAMETER] = parameters.opt(INVITE_PARAMETER) as? String
-                if (parameters.has(ATTENDANCE_PARAMETER)) result[ATTENDANCE_PARAMETER] = parameters.opt(ATTENDANCE_PARAMETER) as? String
-                if (parameters.has(ONBOARDING_PARAMETER)) result[ONBOARDING_PARAMETER] = parameters.opt(ONBOARDING_PARAMETER) as? String
-                callback(result)
-            }
-        }
-
-    private companion object {
-        const val INVITE_PARAMETER = "saqz_invite"
-        const val ATTENDANCE_PARAMETER = "saqz_attendance"
-        const val ONBOARDING_PARAMETER = "saqz_onboarding"
     }
 }

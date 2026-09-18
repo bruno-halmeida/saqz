@@ -5,33 +5,28 @@ import XCTest
 
 @MainActor
 final class IOSLinkAdapterTests: XCTestCase {
-    func testReopeningAttendanceLinkDeliversAgainButBranchCopyDoesNot() {
+    func testReopeningAttendanceLinkDeliversAgain() {
         let fixture = Fixture(); fixture.start()
         let url = URL(string: "https://links.saqz.app/attendance/\(Self.codeA)")!
         fixture.adapter.onColdStart(url: url)
-        fixture.branch.complete(["saqz_attendance": Self.codeA])
         fixture.adapter.onOpenURL(url)
-        fixture.branch.complete(["saqz_attendance": Self.codeA])
         let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
         activity.webpageURL = url
         fixture.adapter.onContinueUserActivity(activity)
-        fixture.branch.complete(["saqz_attendance": Self.codeA])
         XCTAssertEqual(fixture.attendanceReceived, [Self.codeA, Self.codeA, Self.codeA])
     }
 
-    func testOnboardingColdAndDeferredCopiesUseOnlyAccessListenerOnce() {
+    func testOnboardingColdLinkUsesOnlyOnboardingListener() {
         let fixture = Fixture(); fixture.start(); fixture.startOnboarding()
         fixture.adapter.onColdStart(url: URL(string: "https://links.saqz.app/?saqz_onboarding=\(Self.codeA)"))
-        fixture.branch.complete(["saqz_onboarding": Self.codeA])
         XCTAssertEqual(fixture.onboardingReceived, [Self.codeA])
         XCTAssertTrue(fixture.received.isEmpty)
         XCTAssertTrue(fixture.attendanceReceived.isEmpty)
     }
 
-    func testDeferredOnboardingBeforeListenerAndNewWarmCode() {
+    func testOnboardingBeforeListenerAndNewWarmCode() {
         let fixture = Fixture()
-        fixture.adapter.onColdStart(url: nil)
-        fixture.branch.complete(["saqz_onboarding": Self.codeA])
+        fixture.adapter.onColdStart(url: URL(string: "https://links.saqz.app/?saqz_onboarding=\(Self.codeA)"))
         fixture.startOnboarding()
         fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/?saqz_onboarding=\(Self.codeB)")!)
         XCTAssertEqual(fixture.onboardingReceived, [Self.codeA, Self.codeB])
@@ -45,13 +40,11 @@ final class IOSLinkAdapterTests: XCTestCase {
             "https://links.saqz.app/?saqz_onboarding=\(Self.codeA)&saqz_invite=\(Self.codeB)",
             "https://links.saqz.app/attendance/\(Self.codeB)?saqz_onboarding=\(Self.codeA)"
         ] { fixture.adapter.onOpenURL(URL(string: raw)!) }
-        fixture.branch.complete(["saqz_onboarding": Self.codeA, "saqz_attendance": Self.codeB])
         XCTAssertTrue(fixture.onboardingReceived.isEmpty)
     }
 
     func testOnboardingUsesConfiguredHost() {
-        let branch = FakeBranchSessionClient()
-        let adapter = IOSLinkAdapter(branch: branch, allowedHosts: ["configured.app.link"])
+        let adapter = IOSLinkAdapter(allowedHosts: ["configured.app.link"])
         var received: [String] = []
         let subscription = adapter.startAppOnboarding(listener: RecordingOnboardingListener { received.append($0) })
         adapter.onOpenURL(URL(string: "https://links.saqz.app/?saqz_onboarding=\(Self.codeA)")!)
@@ -65,45 +58,20 @@ final class IOSLinkAdapterTests: XCTestCase {
         let fixture = Fixture(); fixture.start()
         let url = URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)&groupId=secret")!
         fixture.adapter.onColdStart(url: url)
-        XCTAssertEqual(fixture.received, [Self.codeA]); XCTAssertEqual(fixture.branch.initializeCount, 1)
-    }
-
-    func testDeferredBranchResultDeliversCodeWithoutLaunchURL() {
-        let fixture = Fixture(); fixture.start(); fixture.adapter.onColdStart(url: nil)
-        fixture.branch.complete(["saqz_invite": Self.codeA, "groupId": "secret"])
         XCTAssertEqual(fixture.received, [Self.codeA])
     }
 
-    func testWarmURLUsesBranchAndSameListener() {
+    func testWarmURLUsesSameListener() {
         let fixture = Fixture(); fixture.start()
         let handled = fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeB)")!)
-        XCTAssertTrue(handled); XCTAssertEqual(fixture.received, [Self.codeB]); XCTAssertEqual(fixture.branch.urls.count, 1)
+        XCTAssertTrue(handled); XCTAssertEqual(fixture.received, [Self.codeB])
     }
 
-    func testWarmBranchCallbackUsesSameListenerAsDirectAndDeferred() {
-        let fixture = Fixture(); fixture.start(); fixture.adapter.onColdStart(url: nil)
-        fixture.branch.complete(["saqz_invite": Self.codeB])
-        XCTAssertEqual(fixture.received, [Self.codeB])
-    }
-
-    func testUniversalLinkForwardsActivityAndDeliversCode() {
+    func testUniversalLinkDeliversCode() {
         let fixture = Fixture(); fixture.start()
         let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
         activity.webpageURL = URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)")
         XCTAssertTrue(fixture.adapter.onContinueUserActivity(activity)); XCTAssertEqual(fixture.received, [Self.codeA])
-        XCTAssertEqual(fixture.branch.activities.count, 1)
-    }
-
-    func testNativeLinkDenialIsNoOpAndLaterLinkRecovers() {
-        let fixture = Fixture(); fixture.start(); fixture.adapter.onColdStart(url: nil); fixture.branch.complete(nil)
-        fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)")!)
-        XCTAssertEqual(fixture.received, [Self.codeA])
-    }
-
-    func testUnrelatedParametersAndPIINeverBecomeInviteCode() {
-        let fixture = Fixture(); fixture.start(); fixture.adapter.onColdStart(url: nil)
-        fixture.branch.complete(["groupId": Self.codeA, "email": "person@example.test"])
-        XCTAssertTrue(fixture.received.isEmpty)
     }
 
     func testInvalidBase64URLAlphabetPaddingAndLengthAreRejected() {
@@ -127,24 +95,9 @@ final class IOSLinkAdapterTests: XCTestCase {
         XCTAssertTrue(handled); XCTAssertEqual(fixture.received, [Self.codeA])
     }
 
-    func testDirectAndBranchCopiesAreDeliveredOnce() {
-        let fixture = Fixture(); fixture.start()
-        fixture.adapter.onColdStart(url: URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)"))
-        fixture.branch.complete(["saqz_invite": Self.codeA])
-        XCTAssertEqual(fixture.received, [Self.codeA])
-    }
-
-    func testRepeatedBranchCopiesAreDeliveredOnce() {
-        let fixture = Fixture(); fixture.start(); fixture.adapter.onColdStart(url: nil)
-        fixture.branch.complete(["saqz_invite": Self.codeA])
-        fixture.branch.complete(["saqz_invite": Self.codeA])
-        XCTAssertEqual(fixture.received, [Self.codeA])
-    }
-
-    func testNewerWarmLinkAfterDuplicateIsDelivered() {
+    func testNewerWarmLinkIsDelivered() {
         let fixture = Fixture(); fixture.start()
         fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)")!)
-        fixture.branch.complete(["saqz_invite": Self.codeA])
         fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeB)")!)
         XCTAssertEqual(fixture.received, [Self.codeA, Self.codeB])
     }
@@ -168,28 +121,25 @@ final class IOSLinkAdapterTests: XCTestCase {
         fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/attendance/\(Self.codeA)?saqz_intent=decline")!)
         fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/?saqz_attendance=\(Self.codeB)&saqz_intent=maybe")!)
         fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/attendance/\(Self.codeA)?saqz_intent=decline&saqz_intent=decline")!)
-        fixture.adapter.onColdStart(url: nil)
-        fixture.branch.complete(["saqz_attendance": Self.codeA, "saqz_intent": "decline"])
         XCTAssertEqual(
             fixture.attendanceIntents,
-            [AttendanceIntent.decline, AttendanceIntent.confirm, AttendanceIntent.decline]
+            [AttendanceIntent.decline, AttendanceIntent.confirm]
         )
     }
 
-    func testCancellationStopsDeliveryWithoutStoppingBranchLifecycle() {
+    func testCancellationStopsDelivery() {
         let fixture = Fixture(); let cancellation = fixture.start(); cancellation.cancel()
         fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.codeA)")!)
-        XCTAssertTrue(fixture.received.isEmpty); XCTAssertEqual(fixture.branch.urls.count, 1)
+        XCTAssertTrue(fixture.received.isEmpty)
     }
 
-    func testConfigurationSeparatesTestLiveKeysAndUniversalDomainWithoutSecrets() throws {
+    func testConfigurationDeclaresLinksDomainAndAppSchemeWithoutSecrets() throws {
         let sourceRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let info = try String(contentsOf: sourceRoot.appendingPathComponent("SaqzIOS/Info.plist"), encoding: .utf8)
         let entitlements = try String(contentsOf: sourceRoot.appendingPathComponent("SaqzIOS/SaqzIOS.entitlements"), encoding: .utf8)
-        XCTAssertTrue(info.contains("<key>branch_key</key>")); XCTAssertTrue(info.contains("$(BRANCH_TEST_KEY)"))
-        XCTAssertTrue(info.contains("$(BRANCH_LIVE_KEY)")); XCTAssertFalse(info.contains("saqz_invite"))
+        XCTAssertTrue(info.contains("$(LINKS_DOMAIN)")); XCTAssertFalse(info.contains("saqz_invite"))
         XCTAssertTrue(info.contains("<key>CFBundleURLSchemes</key>")); XCTAssertTrue(info.contains("<string>saqz</string>"))
-        XCTAssertTrue(entitlements.contains("applinks:$(BRANCH_DOMAIN)"))
+        XCTAssertTrue(entitlements.contains("applinks:$(LINKS_DOMAIN)"))
     }
 
     func testNotificationTapIsBufferedUntilListenerAndDeliveredOnEveryTap() {
@@ -208,7 +158,7 @@ final class IOSLinkAdapterTests: XCTestCase {
 
     @MainActor
     private final class Fixture {
-        let branch = FakeBranchSessionClient(); lazy var adapter = IOSLinkAdapter(branch: branch)
+        let adapter = IOSLinkAdapter()
         var received: [String] = []
         var attendanceReceived: [String] = []
         var attendanceIntents: [AttendanceIntent] = []
@@ -236,16 +186,6 @@ private final class RecordingOnboardingListener: @preconcurrency AppOnboardingCo
     private let receive: (String) -> Void
     init(_ receive: @escaping (String) -> Void) { self.receive = receive }
     func onAppOnboardingCode(code: String) { receive(code) }
-}
-
-@MainActor
-private final class FakeBranchSessionClient: IOSBranchSessionClient {
-    var initializeCount = 0; var urls: [URL] = []; var activities: [NSUserActivity] = []
-    private var callback: (([String: Any]?) -> Void)?
-    func initialize(callback: @escaping ([String: Any]?) -> Void) { initializeCount += 1; self.callback = callback }
-    func handle(url: URL) -> Bool { urls.append(url); return true }
-    func continueActivity(_ activity: NSUserActivity) -> Bool { activities.append(activity); return true }
-    func complete(_ parameters: [String: Any]?) { callback?(parameters) }
 }
 
 @MainActor

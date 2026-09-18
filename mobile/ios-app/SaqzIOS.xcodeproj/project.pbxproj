@@ -22,7 +22,6 @@
 		A20000000000000000000003 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000131 /* GoogleSignIn */; };
 		A30000000000000000000001 /* IOSLinkAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000011 /* IOSLinkAdapter.swift */; };
 		A30000000000000000000002 /* IOSLinkAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000012 /* IOSLinkAdapterTests.swift */; };
-		A30000000000000000000003 /* BranchSDK in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000131 /* BranchSDK */; };
 		A40000000000000000000001 /* IOSLocalAccessAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000011 /* IOSLocalAccessAdapters.swift */; };
 		A40000000000000000000002 /* IOSLocalAccessAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */; };
 		A50000000000000000000001 /* IOSAppCompositionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000011 /* IOSAppCompositionTests.swift */; };
@@ -108,7 +107,6 @@
 				F09200000000000000000003 /* FirebaseAnalytics in Frameworks */,
 				F09300000000000000000003 /* FirebaseCrashlytics in Frameworks */,
 				A20000000000000000000003 /* GoogleSignIn in Frameworks */,
-				A30000000000000000000003 /* BranchSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -234,7 +232,6 @@
 				F09200000000000000000004 /* FirebaseAnalytics */,
 				F09300000000000000000004 /* FirebaseCrashlytics */,
 				A20000000000000000000131 /* GoogleSignIn */,
-				A30000000000000000000131 /* BranchSDK */,
 			);
 			productName = SaqzIOS;
 			productReference = A10000000000000000000014 /* SaqzIOS.app */;
@@ -311,7 +308,6 @@
 			packageReferences = (
 				A10000000000000000000130 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				A20000000000000000000130 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
-				A30000000000000000000130 /* XCRemoteSwiftPackageReference "ios-branch-deep-linking-attribution" */,
 			);
 			productRefGroup = A10000000000000000000035 /* Products */;
 			projectDirPath = "";
@@ -518,10 +514,7 @@
 			buildSettings = {
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				BRANCH_DOMAIN = "links.saqz.app";
-				BRANCH_LIVE_KEY = "missing-branch-live-key";
-				BRANCH_TEST_KEY = key_test_saqz_local_fixture;
-				BRANCH_TEST_MODE = YES;
+				LINKS_DOMAIN = "links.saqz.app";
 				CODE_SIGN_ENTITLEMENTS = SaqzIOS/SaqzIOS.debug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -554,10 +547,7 @@
 			buildSettings = {
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				BRANCH_DOMAIN = "links.saqz.app";
-				BRANCH_LIVE_KEY = "missing-branch-live-key";
-				BRANCH_TEST_KEY = key_test_saqz_local_fixture;
-				BRANCH_TEST_MODE = NO;
+				LINKS_DOMAIN = "links.saqz.app";
 				CODE_SIGN_ENTITLEMENTS = SaqzIOS/SaqzIOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -699,14 +689,6 @@
 				version = 9.1.0;
 			};
 		};
-		A30000000000000000000130 /* XCRemoteSwiftPackageReference "ios-branch-deep-linking-attribution" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/BranchMetrics/ios-branch-deep-linking-attribution";
-			requirement = {
-				kind = exactVersion;
-				version = 3.14.2;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -719,11 +701,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A20000000000000000000130 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignIn;
-		};
-		A30000000000000000000131 /* BranchSDK */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A30000000000000000000130 /* XCRemoteSwiftPackageReference "ios-branch-deep-linking-attribution" */;
-			productName = BranchSDK;
 		};
 		F09100000000000000000004 /* FirebaseMessaging */ = {
 			isa = XCSwiftPackageProductDependency;

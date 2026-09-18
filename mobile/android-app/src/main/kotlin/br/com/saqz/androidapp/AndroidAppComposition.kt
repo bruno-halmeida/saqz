@@ -3,7 +3,6 @@ package br.com.saqz.androidapp
 import android.app.Activity
 import android.content.Context
 import br.com.saqz.androidapp.access.AndroidAuthAdapter
-import br.com.saqz.androidapp.access.AndroidBranchSessionClient
 import br.com.saqz.androidapp.access.AndroidEncryptedAccessStateStore
 import br.com.saqz.androidapp.access.AndroidGoogleCredentialClient
 import br.com.saqz.androidapp.access.AndroidIntentLinkPort
@@ -13,7 +12,6 @@ import br.com.saqz.androidapp.access.AndroidLocalAccessStateAdapter
 import br.com.saqz.androidapp.access.AndroidProfilePhotoAdapter
 import br.com.saqz.androidapp.access.AndroidShareAdapter
 import br.com.saqz.androidapp.access.AndroidShareLauncher
-import br.com.saqz.androidapp.access.BranchSdkSessionClient
 import br.com.saqz.androidapp.access.CredentialManagerGoogleClient
 import br.com.saqz.androidapp.access.FirebaseSdkAuthClient
 import br.com.saqz.androidapp.groups.attendance.share.AndroidAttendanceShareAdapter
@@ -57,10 +55,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
         activity: () -> Activity,
     ): AndroidAppComposition {
         val firebase = AndroidFirebaseBootstrap.initialize(context)
-        val links = AndroidLinkAdapter(
-            branch = ActivityBranchSessionClient(activity),
-            allowedHosts = setOf(BuildConfig.BRANCH_DOMAIN),
-        )
+        val links = AndroidLinkAdapter(allowedHosts = setOf(BuildConfig.LINKS_DOMAIN))
         val auth = AndroidAuthAdapter(
             firebase = FirebaseSdkAuthClient(firebase),
             google = ActivityGoogleCredentialClient(activity, scope),
@@ -117,16 +112,6 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
             documents = documents,
         )
     }
-}
-
-private class ActivityBranchSessionClient(
-    private val activity: () -> Activity,
-) : AndroidBranchSessionClient {
-    override fun initialize(url: String?, callback: (Map<String, String?>) -> Unit) =
-        BranchSdkSessionClient(activity()).initialize(url, callback)
-
-    override fun reinitialize(url: String?, callback: (Map<String, String?>) -> Unit) =
-        BranchSdkSessionClient(activity()).reinitialize(url, callback)
 }
 
 private class ActivityGoogleCredentialClient(
