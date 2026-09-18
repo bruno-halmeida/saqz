@@ -93,6 +93,7 @@ internal fun testSaqzPlatformDependencies() = SaqzPlatformDependencies(
     analytics = object : br.com.saqz.composeapp.analytics.AnalyticsSink {
         override fun track(name: String, params: Map<String, String>) = Unit
         override fun setUserId(id: String?) = Unit
+        override fun log(message: String) = Unit
     },
     environment = "test",
     apiBaseUrl = "https://api.invalid",

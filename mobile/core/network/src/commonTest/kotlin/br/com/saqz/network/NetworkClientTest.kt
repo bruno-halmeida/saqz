@@ -1,5 +1,6 @@
 package br.com.saqz.network
 
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
@@ -18,6 +19,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class NetworkClientTest {
@@ -258,6 +260,30 @@ class NetworkClientTest {
         assertTrue(messages[1].contains("result=http-error status=503"))
         assertFalse(messages.any { it.contains(token) })
         assertFalse(messages.any { it.contains(body) })
+    }
+
+    @Test
+    fun `every attempt carries a client generated correlation id that reaches logs and breadcrumbs`() = runTest {
+        val messages = mutableListOf<String>()
+        val crumbs = mutableListOf<String>()
+        var sent: String? = null
+        val engine = MockEngine { request ->
+            sent = request.headers["X-Correlation-ID"]
+            respond("{\"value\":\"ok\"}", headers = jsonHeaders())
+        }
+        SaqzAnalytics.log = crumbs::add
+        try {
+            NetworkClient(engine, NetworkConfig(NetworkEnvironment.Dev, "https://api.example.test/"), NetworkLogger(messages::add))
+                .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+        } finally {
+            SaqzAnalytics.reset()
+        }
+
+        val correlationId = assertNotNull(sent)
+        assertEquals(36, correlationId.length)
+        assertEquals(2, messages.size)
+        assertTrue(messages.all { it.contains("correlationId=$correlationId") })
+        assertEquals(messages, crumbs)
     }
 
     @Test

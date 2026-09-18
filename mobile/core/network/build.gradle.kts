@@ -13,6 +13,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(project(":core:common"))
             implementation(libs.coil.core)
             implementation(libs.koin.core)
             implementation(libs.kotlinx.coroutines.core)

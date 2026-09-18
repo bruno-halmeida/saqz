@@ -141,6 +141,7 @@ fun loadSaqzPlatformDependencies(
     koin.get<GroupInviteCoordinator>().start()
     SaqzAnalytics.track = dependencies.analytics::track
     SaqzAnalytics.setUser = dependencies.analytics::setUserId
+    SaqzAnalytics.log = dependencies.analytics::log
 }
 
 internal fun stopSaqzKoin() {

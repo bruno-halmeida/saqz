@@ -4,4 +4,7 @@ package br.com.saqz.composeapp.analytics
 interface AnalyticsSink {
     fun track(name: String, params: Map<String, String>)
     fun setUserId(id: String?)
+
+    /** Breadcrumb (Crashlytics `log`). Recebe só linhas já seguras. */
+    fun log(message: String)
 }

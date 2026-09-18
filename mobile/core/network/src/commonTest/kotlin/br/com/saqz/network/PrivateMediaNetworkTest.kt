@@ -21,6 +21,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class PrivateMediaNetworkTest {
@@ -149,15 +150,21 @@ class PrivateMediaNetworkTest {
         val etag = "private-etag"
         val filename = "private-name.png"
         val messages = mutableListOf<String>()
-        val engine = MockEngine { request -> request.body.toByteArray(); respond("") }
+        var sentCorrelationId: String? = null
+        val engine = MockEngine { request ->
+            sentCorrelationId = request.headers["X-Correlation-ID"]
+            request.body.toByteArray()
+            respond("")
+        }
         val client = NetworkClient(engine, config(), NetworkLogger(messages::add))
         val upload = NetworkMediaUpload("file", filename, ContentType.Image.PNG, 3, etag) { ByteReadChannel("png".encodeToByteArray()) }
 
         client.uploadMedia(HttpMethod.Put, "api/groups/g/photo", upload, token)
 
+        val correlationId = assertNotNull(sentCorrelationId)
         assertEquals(2, messages.size)
-        assertEquals("request PUT /api/groups/g/photo", messages.first())
-        assertTrue(messages.last().matches(Regex("response PUT /api/groups/g/photo status=200 durationMs=\\d+")))
+        assertEquals("request PUT /api/groups/g/photo correlationId=$correlationId", messages.first())
+        assertTrue(messages.last().matches(Regex("response PUT /api/groups/g/photo status=200 durationMs=\\d+ correlationId=$correlationId")))
         assertFalse(messages.any { it.contains(token) || it.contains(etag) || it.contains(filename) || it.contains("png") })
     }
 
