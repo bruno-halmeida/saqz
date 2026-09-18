@@ -9,7 +9,7 @@ import org.junit.Test
 
 class AndroidLinkAdapterTest {
     @Test
-    fun reopeningAttendanceLinkDeliversAgainButBranchCopyDoesNot() {
+    fun reopeningAttendanceLinkDeliversAgain() {
         val fixture = Fixture()
         val events = mutableListOf<br.com.saqz.groups.port.GroupLinkEvent>()
         fixture.adapter.start(object : br.com.saqz.groups.port.GroupLinkEventListener {
@@ -17,9 +17,7 @@ class AndroidLinkAdapterTest {
         })
         val url = "https://links.saqz.app/attendance/$CODE_A"
         fixture.adapter.onColdStart(url)
-        fixture.branch.complete(mapOf("saqz_attendance" to CODE_A))
         fixture.adapter.onWarmIntent(url)
-        fixture.branch.complete(mapOf("saqz_attendance" to CODE_A))
         assertEquals(List(2) { br.com.saqz.groups.port.GroupLinkEvent.Attendance(CODE_A) }, events)
     }
 
@@ -61,51 +59,16 @@ class AndroidLinkAdapterTest {
         fixture.adapter.onColdStart("https://links.saqz.app/invite?saqz_invite=$CODE_A&groupId=secret")
 
         assertEquals(listOf(CODE_A), fixture.received)
-        assertEquals(listOf("cold:https://links.saqz.app/invite?saqz_invite=$CODE_A&groupId=secret"), fixture.branch.calls)
     }
 
     @Test
-    fun deferredBranchColdResultDeliversCodeWithoutIntentData() {
-        val fixture = Fixture()
-        fixture.start()
-
-        fixture.adapter.onColdStart(null)
-        fixture.branch.complete(mapOf("saqz_invite" to CODE_A, "groupId" to "secret"))
-
-        assertEquals(listOf(CODE_A), fixture.received)
-    }
-
-    @Test
-    fun warmAppLinkUsesReinitializedBranchSession() {
+    fun warmAppLinkDeliversInviteCode() {
         val fixture = Fixture()
         fixture.start()
 
         fixture.adapter.onWarmIntent("https://links.saqz.app/invite?saqz_invite=$CODE_B")
 
         assertEquals(listOf(CODE_B), fixture.received)
-        assertEquals(listOf("warm:https://links.saqz.app/invite?saqz_invite=$CODE_B"), fixture.branch.calls)
-    }
-
-    @Test
-    fun warmBranchResultDeliversCodeWhenUrlHasNoQuery() {
-        val fixture = Fixture()
-        fixture.start()
-
-        fixture.adapter.onWarmIntent("https://links.saqz.app/opaque-route")
-        fixture.branch.complete(mapOf("saqz_invite" to CODE_B))
-
-        assertEquals(listOf(CODE_B), fixture.received)
-    }
-
-    @Test
-    fun intentWithoutBranchOrInviteCodeIsNoOp() {
-        val fixture = Fixture()
-        fixture.start()
-
-        fixture.adapter.onColdStart(null)
-        fixture.branch.complete(emptyMap())
-
-        assertTrue(fixture.received.isEmpty())
     }
 
     @Test
@@ -114,7 +77,6 @@ class AndroidLinkAdapterTest {
         fixture.start()
 
         fixture.adapter.onColdStart("https://links.saqz.app/invite?groupId=$CODE_A&email=person%40example.test")
-        fixture.branch.complete(mapOf("groupId" to CODE_A, "email" to "person@example.test"))
 
         assertTrue(fixture.received.isEmpty())
     }
@@ -141,35 +103,11 @@ class AndroidLinkAdapterTest {
     }
 
     @Test
-    fun directAndBranchCopiesOfSameEventAreDeliveredOnce() {
-        val fixture = Fixture()
-        fixture.start()
-
-        fixture.adapter.onColdStart("https://links.saqz.app/invite?saqz_invite=$CODE_A")
-        fixture.branch.complete(mapOf("saqz_invite" to CODE_A))
-
-        assertEquals(listOf(CODE_A), fixture.received)
-    }
-
-    @Test
-    fun repeatedBranchCopiesOfSameEventAreDeliveredOnce() {
-        val fixture = Fixture()
-        fixture.start()
-
-        fixture.adapter.onColdStart(null)
-        fixture.branch.complete(mapOf("saqz_invite" to CODE_A))
-        fixture.branch.complete(mapOf("saqz_invite" to CODE_A))
-
-        assertEquals(listOf(CODE_A), fixture.received)
-    }
-
-    @Test
-    fun newerWarmLinkAfterDuplicateIsDelivered() {
+    fun newerWarmLinkIsDelivered() {
         val fixture = Fixture()
         fixture.start()
 
         fixture.adapter.onWarmIntent("https://links.saqz.app/invite?saqz_invite=$CODE_A")
-        fixture.branch.complete(mapOf("saqz_invite" to CODE_A))
         fixture.adapter.onWarmIntent("https://links.saqz.app/invite?saqz_invite=$CODE_B")
 
         assertEquals(listOf(CODE_A, CODE_B), fixture.received)
@@ -187,7 +125,7 @@ class AndroidLinkAdapterTest {
     }
 
     @Test
-    fun cancellationStopsDeliveryWithoutStoppingBranchLifecycle() {
+    fun cancellationStopsDelivery() {
         val fixture = Fixture()
         val subscription = fixture.start()
         subscription.cancel()
@@ -195,44 +133,27 @@ class AndroidLinkAdapterTest {
         fixture.adapter.onWarmIntent("https://links.saqz.app/invite?saqz_invite=$CODE_A")
 
         assertTrue(fixture.received.isEmpty())
-        assertEquals(1, fixture.branch.calls.size)
     }
 
     @Test
-    fun deferredBranchAttendanceResultDeliversAttendanceEvent() {
+    fun linkWithBothInviteAndAttendanceIsRejected() {
         val fixture = Fixture()
         val events = mutableListOf<br.com.saqz.groups.port.GroupLinkEvent>()
         fixture.adapter.start(object : br.com.saqz.groups.port.GroupLinkEventListener {
             override fun onEvent(event: br.com.saqz.groups.port.GroupLinkEvent) { events += event }
         })
 
-        fixture.adapter.onColdStart(null)
-        fixture.branch.complete(mapOf("saqz_attendance" to CODE_A))
-
-        assertEquals(listOf(br.com.saqz.groups.port.GroupLinkEvent.Attendance(CODE_A)), events)
-    }
-
-    @Test
-    fun branchParametersWithBothInviteAndAttendanceAreRejected() {
-        val fixture = Fixture()
-        val events = mutableListOf<br.com.saqz.groups.port.GroupLinkEvent>()
-        fixture.adapter.start(object : br.com.saqz.groups.port.GroupLinkEventListener {
-            override fun onEvent(event: br.com.saqz.groups.port.GroupLinkEvent) { events += event }
-        })
-
-        fixture.adapter.onColdStart(null)
-        fixture.branch.complete(mapOf("saqz_invite" to CODE_A, "saqz_attendance" to CODE_B))
+        fixture.adapter.onColdStart("https://links.saqz.app/?saqz_invite=$CODE_A&saqz_attendance=$CODE_B")
 
         assertTrue(events.isEmpty())
     }
 
     @Test
-    fun onboardingCodeUsesSeparateListenerAndDeduplicatesDirectAndBranch() {
+    fun onboardingCodeUsesSeparateListener() {
         val fixture = Fixture()
         fixture.startOnboarding()
 
         fixture.adapter.onColdStart("https://links.saqz.app/?%24deeplink_path=onboarding&saqz_onboarding=$CODE_A")
-        fixture.branch.complete(mapOf("saqz_onboarding" to CODE_A))
 
         assertEquals(listOf(CODE_A), fixture.onboardingReceived)
         assertTrue(fixture.received.isEmpty())
@@ -250,10 +171,9 @@ class AndroidLinkAdapterTest {
     }
 
     @Test
-    fun deferredOnboardingBeforeListenerAndNewWarmCodeAreDelivered() {
+    fun onboardingBeforeListenerAndNewWarmCodeAreDelivered() {
         val fixture = Fixture()
-        fixture.adapter.onColdStart(null)
-        fixture.branch.complete(mapOf("saqz_onboarding" to CODE_A))
+        fixture.adapter.onColdStart("https://links.saqz.app/?saqz_onboarding=$CODE_A")
         fixture.startOnboarding()
         fixture.adapter.onWarmIntent("https://links.saqz.app/?saqz_onboarding=$CODE_B")
         assertEquals(listOf(CODE_A, CODE_B), fixture.onboardingReceived)
@@ -290,8 +210,7 @@ class AndroidLinkAdapterTest {
     }
 
     private class Fixture(allowedHosts: Set<String> = setOf("links.saqz.app")) {
-        val branch = FakeBranchSessionClient()
-        val adapter = AndroidLinkAdapter(branch, allowedHosts)
+        val adapter = AndroidLinkAdapter(allowedHosts)
         val received = mutableListOf<String>()
         val onboardingReceived = mutableListOf<String>()
 
@@ -306,23 +225,6 @@ class AndroidLinkAdapterTest {
                 onboardingReceived += code
             }
         })
-    }
-
-    private class FakeBranchSessionClient : AndroidBranchSessionClient {
-        val calls = mutableListOf<String>()
-        private var callback: ((Map<String, String?>) -> Unit)? = null
-
-        override fun initialize(url: String?, callback: (Map<String, String?>) -> Unit) {
-            calls += "cold:$url"
-            this.callback = callback
-        }
-
-        override fun reinitialize(url: String?, callback: (Map<String, String?>) -> Unit) {
-            calls += "warm:$url"
-            this.callback = callback
-        }
-
-        fun complete(parameters: Map<String, String?>) = callback!!.invoke(parameters)
     }
 
     private companion object {

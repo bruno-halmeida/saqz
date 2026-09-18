@@ -1,13 +1,5 @@
-@preconcurrency import BranchSDK
 import Foundation
 import SaqzMobile
-
-@MainActor
-protocol IOSBranchSessionClient: AnyObject {
-    func initialize(callback: @escaping ([String: Any]?) -> Void)
-    func handle(url: URL) -> Bool
-    func continueActivity(_ activity: NSUserActivity) -> Bool
-}
 
 @MainActor
 final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency NativeLinkPort {
@@ -16,18 +8,16 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
     private static let onboardingParameter = "saqz_onboarding"
     private static let intentParameter = "saqz_intent"
     private static let declineIntent = "decline"
-    private let branch: IOSBranchSessionClient
     private let allowedHosts: Set<String>
     private var listeners: [ObjectIdentifier: GroupLinkEventListener] = [:]
     private var accessListeners: [ObjectIdentifier: InviteCodeListener] = [:]
     private var pendingEvent: GroupLinkEvent?
     private var pendingAccessCode: String?
     private var pendingOnboardingCode: String?
-    private var lastAcceptedEventKey: String?
-    private var pushObserver: NSObjectProtocol?
+    // Só escrito no init e lido no deinit; o token do NotificationCenter não é Sendable.
+    nonisolated(unsafe) private var pushObserver: NSObjectProtocol?
 
-    init(branch: IOSBranchSessionClient, allowedHosts: Set<String> = ["links.saqz.app"]) {
-        self.branch = branch
+    init(allowedHosts: Set<String> = ["links.saqz.app"]) {
         self.allowedHosts = allowedHosts
         pushObserver = NotificationCenter.default.addObserver(forName: .saqzPushOpened, object: nil, queue: .main) { [weak self] note in
             let groupId = note.userInfo?["groupId"] as? String
@@ -87,44 +77,24 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         }
     }
 
-    func onColdStart(url: URL?) {
-        lastAcceptedEventKey = nil // Deduplicate direct/Branch copies within this opening only.
-        acceptOnboarding(Self.directOnboardingCode(url, allowedHosts: allowedHosts))
-        accept(Self.directEvent(url, allowedHosts: allowedHosts))
-        branch.initialize { [weak self] parameters in
-            self?.acceptOnboarding(Self.branchOnboardingCode(parameters))
-            self?.accept(Self.branchEvent(parameters))
-        }
+    /// Devolve se a URL era um link do Saqz (convite, presença ou onboarding).
+    @discardableResult
+    func onColdStart(url: URL?) -> Bool {
+        let onboarding = Self.directOnboardingCode(url, allowedHosts: allowedHosts)
+        let event = Self.directEvent(url, allowedHosts: allowedHosts)
+        acceptOnboarding(onboarding)
+        accept(event)
+        return onboarding != nil || event != nil
     }
 
     @discardableResult
-    func onOpenURL(_ url: URL) -> Bool {
-        lastAcceptedEventKey = nil // Deduplicate direct/Branch copies within this opening only.
-        acceptOnboarding(Self.directOnboardingCode(url, allowedHosts: allowedHosts))
-        accept(Self.directEvent(url, allowedHosts: allowedHosts))
-        return branch.handle(url: url)
-    }
+    func onOpenURL(_ url: URL) -> Bool { onColdStart(url: url) }
 
     @discardableResult
-    func onContinueUserActivity(_ activity: NSUserActivity) -> Bool {
-        lastAcceptedEventKey = nil // Deduplicate direct/Branch copies within this opening only.
-        acceptOnboarding(Self.directOnboardingCode(activity.webpageURL, allowedHosts: allowedHosts))
-        accept(Self.directEvent(activity.webpageURL, allowedHosts: allowedHosts))
-        return branch.continueActivity(activity)
-    }
+    func onContinueUserActivity(_ activity: NSUserActivity) -> Bool { onColdStart(url: activity.webpageURL) }
 
     private func accept(_ event: GroupLinkEvent?) {
         guard let event else { return }
-        let eventKey: String
-        if let invite = event as? GroupLinkEventInvite {
-            eventKey = "invite:\(invite.code)"
-        } else if let attendance = event as? GroupLinkEventAttendance {
-            eventKey = "attendance:\(attendance.intent.name):\(attendance.code)"
-        } else {
-            return
-        }
-        guard eventKey != lastAcceptedEventKey else { return }
-        lastAcceptedEventKey = eventKey
         if listeners.isEmpty {
             pendingEvent = event
         } else {
@@ -141,9 +111,6 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
 
     private func acceptOnboarding(_ code: String?) {
         guard let code else { return }
-        let key = "onboarding:\(code)"
-        guard key != lastAcceptedEventKey else { return }
-        lastAcceptedEventKey = key
         if onboardingListeners.isEmpty { pendingOnboardingCode = code }
         else { onboardingListeners.values.forEach { $0.onAppOnboardingCode(code: code) } }
     }
@@ -202,26 +169,6 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         return values.last
     }
 
-    static func branchEvent(_ parameters: [String: Any]?) -> GroupLinkEvent? {
-        if parameters?[onboardingParameter] != nil { return nil }
-        let invite = (parameters?[inviteParameter] as? String).flatMap { isValidInviteCode($0) ? $0 : nil }
-        let attendance = (parameters?[attendanceParameter] as? String).flatMap { isValidInviteCode($0) ? $0 : nil }
-        if invite != nil && attendance != nil { return nil }
-        if let invite { return GroupLinkEventInvite(code: invite) }
-        if let attendance {
-            let intent = parameters?[intentParameter] as? String == declineIntent ? AttendanceIntent.decline : AttendanceIntent.confirm
-            return GroupLinkEventAttendance(code: attendance, intent: intent)
-        }
-        return nil
-    }
-
-    private static func branchOnboardingCode(_ parameters: [String: Any]?) -> String? {
-        let onboarding = (parameters?[onboardingParameter] as? String).flatMap { isValidInviteCode($0) ? $0 : nil }
-        let invite = parameters?[inviteParameter] != nil
-        let attendance = parameters?[attendanceParameter] != nil
-        return !invite && !attendance ? onboarding : nil
-    }
-
     static func isValidInviteCode(_ value: String?) -> Bool {
         guard let value, value.count == 43,
               value.range(of: "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$", options: .regularExpression) != nil else {
@@ -230,7 +177,7 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         return true
     }
 
-    // HTTPS is the public Branch invite. `saqz` is the registered app scheme so
+    // HTTPS is the public invite link. `saqz` is the registered app scheme so
     // `simctl openurl` can launch the app; iOS sends https to Safari without AASA.
     private static func isDirectLinkScheme(_ scheme: String?) -> Bool {
         switch scheme?.lowercased() {
@@ -241,40 +188,10 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
 }
 
 @MainActor
-final class LiveBranchSessionClient: IOSBranchSessionClient {
-    private let branch: Branch
-
-    init(bundle: Bundle = .main, branch: Branch = .getInstance()) {
-        self.branch = branch
-        let configuredMode = bundle.object(forInfoDictionaryKey: "BranchTestMode")
-        let usesTestKey = configuredMode as? Bool == true || (configuredMode as? String)?.uppercased() == "YES"
-        if usesTestKey {
-            Branch.setUseTestBranchKey(true)
-        }
-    }
-
-    func initialize(callback: @escaping ([String: Any]?) -> Void) {
-        // Formed on the MainActor: an isolated function value is Sendable, so only it
-        // crosses the Branch callback boundary (same shape as LiveGoogleSignInClient.signIn).
-        let deliver: @MainActor ([String: Any]?) -> Void = { callback($0) }
-        branch.initSession(launchOptions: nil) { parameters, error in
-            MainActor.assumeIsolated {
-                deliver(error == nil ? parameters as? [String: Any] : nil)
-            }
-        }
-    }
-
-    func handle(url: URL) -> Bool { branch.handleDeepLink(url) }
-
-    func continueActivity(_ activity: NSUserActivity) -> Bool { branch.continue(activity) }
-}
-
-@MainActor
 enum IOSLinkComposition {
     static func makeLive(bundle: Bundle = .main) -> IOSLinkAdapter {
-        let domain = (bundle.object(forInfoDictionaryKey: "branch_universal_link_domains") as? [String])?.first
-            ?? "links.saqz.app"
-        return IOSLinkAdapter(branch: LiveBranchSessionClient(), allowedHosts: [domain])
+        let domain = bundle.object(forInfoDictionaryKey: "SaqzLinksDomain") as? String ?? "links.saqz.app"
+        return IOSLinkAdapter(allowedHosts: [domain])
     }
 }
 

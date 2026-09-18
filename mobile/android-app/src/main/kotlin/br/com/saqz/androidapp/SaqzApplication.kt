@@ -2,7 +2,6 @@ package br.com.saqz.androidapp
 
 import android.app.Application
 import br.com.saqz.composeapp.di.installSaqzKoinModules
-import io.branch.referral.Branch
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.loadKoinModules
@@ -13,7 +12,6 @@ class SaqzApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         initializeNotificationFirebase(this)
-        Branch.getAutoInstance(this)
         startKoin { androidContext(this@SaqzApplication) }
         installSaqzKoinModules()
         loadKoinModules(androidAppModule(this))

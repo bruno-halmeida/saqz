@@ -39,29 +39,15 @@ val missingReleaseFirebaseAndroidConfig = FirebaseAndroidConfig(
     googleServerClientId = "missing-release-google-server-client-id",
 )
 
-val requiresProdBranchConfig = gradle.startParameter.taskNames.any {
+val requiresProdConfig = gradle.startParameter.taskNames.any {
     it.contains("Prod", ignoreCase = true) || it.contains("Release", ignoreCase = true)
 }
 
-val branchTestKey = branchProperty(
-    name = "saqz.branch.testKey",
-    required = requiresProdBranchConfig,
-    fallback = "key_test_saqz_local_fixture",
-)
-val branchLiveKey = branchProperty(
-    name = "saqz.branch.liveKey",
-    required = requiresProdBranchConfig,
-    fallback = "missing-branch-live-key",
-)
-val branchTestDomain = branchProperty(
-    name = "saqz.branch.testDomain",
+// Host dos links de convite/presença (App Links): o mesmo em dev e prod, servido pela links-page.
+val linksDomain = environmentProperty(
+    name = "saqz.links.domain",
     required = false,
     fallback = "links.saqz.app",
-)
-val branchLiveDomain = branchProperty(
-    name = "saqz.branch.liveDomain",
-    required = requiresProdBranchConfig,
-    fallback = "missing-branch-live-domain.invalid",
 )
 val devApiBaseUrl = environmentProperty(
     name = "saqz.api.devBaseUrl",
@@ -70,7 +56,7 @@ val devApiBaseUrl = environmentProperty(
 )
 val prodApiBaseUrl = environmentProperty(
     name = "saqz.api.prodBaseUrl",
-    required = requiresProdBranchConfig,
+    required = requiresProdConfig,
     fallback = "missing-release-api-base-url",
 )
 
@@ -80,6 +66,8 @@ android {
     defaultConfig {
         applicationId = "app.saqz"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["linksDomain"] = linksDomain
+        buildConfigField("String", "LINKS_DOMAIN", linksDomain.toBuildConfigString())
     }
 
     buildFeatures {
@@ -125,12 +113,6 @@ android {
             buildConfigField("boolean", "FIREBASE_USE_EMULATOR", (installedE2e || !firebaseConfigFile.isFile).toString())
             buildConfigField("String", "ENVIRONMENT", "dev".toBuildConfigString())
             buildConfigField("String", "API_BASE_URL", (if (installedE2e) "http://10.0.2.2:18080" else devApiBaseUrl).toBuildConfigString())
-            manifestPlaceholders["branchLiveKey"] = branchLiveKey
-            manifestPlaceholders["branchTestKey"] = branchTestKey
-            manifestPlaceholders["branchTestMode"] = "true"
-            manifestPlaceholders["branchDomain"] = branchTestDomain
-            buildConfigField("String", "BRANCH_DOMAIN", branchTestDomain.toBuildConfigString())
-            buildConfigField("boolean", "BRANCH_TEST_MODE", "true")
         }
         create("prod") {
             dimension = "environment"
@@ -149,12 +131,6 @@ android {
             buildConfigField("boolean", "FIREBASE_USE_EMULATOR", "false")
             buildConfigField("String", "ENVIRONMENT", "prod".toBuildConfigString())
             buildConfigField("String", "API_BASE_URL", prodApiBaseUrl.toBuildConfigString())
-            manifestPlaceholders["branchLiveKey"] = branchLiveKey
-            manifestPlaceholders["branchTestKey"] = branchTestKey
-            manifestPlaceholders["branchTestMode"] = "false"
-            manifestPlaceholders["branchDomain"] = branchLiveDomain
-            buildConfigField("String", "BRANCH_DOMAIN", branchLiveDomain.toBuildConfigString())
-            buildConfigField("boolean", "BRANCH_TEST_MODE", "false")
         }
     }
 }
@@ -168,7 +144,6 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
-    implementation(libs.branch)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.messaging)
@@ -238,12 +213,6 @@ fun firebaseAndroidConfig(
 }
 
 fun String.toBuildConfigString() = "\"$this\""
-
-fun branchProperty(name: String, required: Boolean, fallback: String): String {
-    val value = providers.gradleProperty(name).orNull?.trim().orEmpty()
-    require(value.isNotEmpty() || !required) { "Missing required Gradle property: $name" }
-    return value.ifEmpty { fallback }
-}
 
 fun environmentProperty(name: String, required: Boolean, fallback: String): String {
     val value = providers.gradleProperty(name).orNull?.trim().orEmpty()

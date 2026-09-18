@@ -16,16 +16,6 @@
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_saqz_notification" />
         <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />
 
-        <meta-data
-            android:name="io.branch.sdk.BranchKey"
-            android:value="${branchLiveKey}" />
-        <meta-data
-            android:name="io.branch.sdk.BranchKey.test"
-            android:value="${branchTestKey}" />
-        <meta-data
-            android:name="io.branch.sdk.TestMode"
-            android:value="${branchTestMode}" />
-
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.group-photo-files"
@@ -56,7 +46,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="${branchDomain}" />
+                    android:host="${linksDomain}" />
             </intent-filter>
         </activity>
     </application>
