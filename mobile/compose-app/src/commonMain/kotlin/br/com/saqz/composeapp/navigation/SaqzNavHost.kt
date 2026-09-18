@@ -200,9 +200,18 @@ internal fun SaqzNavHost(
     val inviteCoordinator = koinInject<GroupInviteCoordinator>()
     val receiptsCoordinator = koinInject<ReceivablesCoordinator>()
     val receipts = receiptsCoordinator.state.collectAsStateWithLifecycle().value
+    val planAnalytics = koinInject<br.com.saqz.composeapp.analytics.PlanAnalytics>()
     // Uma linha para as ~45 rotas: rota nova entra sozinha. Só o nome da classe, nunca os campos.
     val topRoute = backStack.lastOrNull()
-    LaunchedEffect(topRoute) { if (topRoute != null) SaqzAnalytics.screen(analyticsName(topRoute)) }
+    LaunchedEffect(topRoute) {
+        if (topRoute == null) return@LaunchedEffect
+        SaqzAnalytics.screen(analyticsName(topRoute))
+        // Evento próprio, além do screen_view: meta de A/B no Firebase é nome de evento.
+        if (topRoute is SubscriptionRequired || topRoute is SubscribeForAccess) {
+            val origin = backStack.getOrNull(backStack.lastIndex - 1)?.let(::analyticsName) ?: "none"
+            SaqzAnalytics.event("paywall_shown", "origin" to origin)
+        }
+    }
     LaunchedEffect(inviteCoordinator) {
         if (pendingInviteCode == null) {
             // This must run before the session gate as well: a signed-out relaunch needs the
@@ -218,6 +227,7 @@ internal fun SaqzNavHost(
         if (state.session is SessionAccessState.Ready && !coordinatorAuthenticated) {
             coordinatorAuthenticated = true
             inviteCoordinator.onAuthenticated()
+            planAnalytics.refresh()
         } else if (state.session !is SessionAccessState.Ready && coordinatorAuthenticated) {
             coordinatorAuthenticated = false
             inviteCoordinator.onSignedOut()
@@ -669,6 +679,7 @@ internal fun SaqzNavHost(
                 SubscriptionRequiredDestination(
                     onBack = pop,
                     onAuthorizationSuccess = {
+                        planAnalytics.purchased()
                         backStack.replaceSubscriptionRequiredWithGroupCreation()
                     },
                 )
@@ -677,6 +688,7 @@ internal fun SaqzNavHost(
                 SubscriptionRequiredDestination(
                     onBack = pop,
                     onAuthorizationSuccess = {
+                        planAnalytics.purchased()
                         myPlanRefreshVersion++
                         groupDetailsRefreshVersion++
                         onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
@@ -697,6 +709,7 @@ internal fun SaqzNavHost(
                         backStack = backStack,
                         showTrialOffer = false,
                         onGroupListChange = {
+                            planAnalytics.refresh()
                             groupListRefreshVersion++
                             onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
                         },

@@ -142,6 +142,7 @@ fun loadSaqzPlatformDependencies(
     SaqzAnalytics.track = dependencies.analytics::track
     SaqzAnalytics.setUser = dependencies.analytics::setUserId
     SaqzAnalytics.log = dependencies.analytics::log
+    SaqzAnalytics.setProperty = dependencies.analytics::setUserProperty
 }
 
 internal fun stopSaqzKoin() {

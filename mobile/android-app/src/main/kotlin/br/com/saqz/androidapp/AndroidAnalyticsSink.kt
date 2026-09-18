@@ -29,4 +29,8 @@ internal class AndroidAnalyticsSink(context: Context) : AnalyticsSink {
     override fun log(message: String) {
         crashlytics?.log(message)
     }
+
+    override fun setUserProperty(name: String, value: String?) {
+        firebase?.setUserProperty(name, value)
+    }
 }

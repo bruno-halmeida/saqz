@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.setup
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
@@ -230,6 +231,7 @@ class GroupSetupViewModel(
                             creationCommandKey = null,
                         )
                     }
+                    SaqzAnalytics.event("group_created")
                     emit(GroupSetupEffect.Created(result.value.id.value))
                 }
                 is SaqzResult.Failure -> showOperationFailure(result.error.toUiError())

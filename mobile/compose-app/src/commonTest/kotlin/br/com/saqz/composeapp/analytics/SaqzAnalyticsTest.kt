@@ -76,4 +76,16 @@ class SaqzAnalyticsTest {
 
         assertEquals(listOf("response GET probe status=503"), lines)
     }
+
+    @Test
+    fun `curated event and user property reach the sink`() {
+        val properties = mutableListOf<Pair<String, String?>>()
+        SaqzAnalytics.setProperty = { name, value -> properties += name to value }
+
+        SaqzAnalytics.event("sign_up", "method" to "password")
+        SaqzAnalytics.userProperty("plan_state", "active")
+
+        assertEquals(listOf("sign_up" to mapOf("method" to "password")), recorded)
+        assertEquals(listOf<Pair<String, String?>>("plan_state" to "active"), properties)
+    }
 }
