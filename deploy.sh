@@ -37,7 +37,7 @@ docker compose -f compose.yaml -f compose.server.yaml up -d --build --remove-orp
 echo "==> waiting backend health"
 healthy=0
 for _ in $(seq 1 36); do
-  if curl -sf http://127.0.0.1:8080/actuator/health | grep -q '"status":"UP"'; then
+  if curl -sf "http://127.0.0.1:${SAQZ_MANAGEMENT_PORT:-9090}/actuator/health" | grep -q '"status":"UP"'; then
     healthy=1
     break
   fi

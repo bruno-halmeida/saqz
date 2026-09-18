@@ -12,6 +12,7 @@ import java.util.UUID
 private const val CORRELATION_ATTRIBUTE = "br.com.saqz.correlationId"
 private const val CORRELATION_HEADER = "X-Correlation-ID"
 private const val UUID_LENGTH = 36
+private const val NANOS_PER_MILLI = 1_000_000L
 
 class RequestCorrelationFilter : OncePerRequestFilter() {
     private val requestLogger = LoggerFactory.getLogger(RequestCorrelationFilter::class.java)
@@ -23,6 +24,7 @@ class RequestCorrelationFilter : OncePerRequestFilter() {
     ) {
         // O id nasce no app (HttpTransport do mobile) para o cliente conhecê-lo mesmo quando a
         // resposta não chega. Sem header, ou com header que não é UUID, o servidor gera um.
+        val started = System.nanoTime()
         val supplied = request.getHeader(CORRELATION_HEADER)?.takeIf(::isUuid)
         val correlationId = CorrelationId(supplied ?: UUID.randomUUID().toString())
         request.setAttribute(CORRELATION_ATTRIBUTE, correlationId)
@@ -31,7 +33,16 @@ class RequestCorrelationFilter : OncePerRequestFilter() {
         try {
             filterChain.doFilter(request, response)
         } finally {
-            requestLogger.info("request_complete correlationId={} status={}", correlationId.value, response.status)
+            // `correlationId={} status={}` ficam adjacentes: SafeDiagnosticsIntegrationTest casa nessa substring.
+            // `requestURI` nao carrega query string, entao nenhum parametro vai para o log.
+            requestLogger.info(
+                "request_complete correlationId={} status={} method={} path={} durationMs={}",
+                correlationId.value,
+                response.status,
+                request.method,
+                request.requestURI,
+                (System.nanoTime() - started) / NANOS_PER_MILLI,
+            )
             // Este filtro é o mais externo da cadeia: limpa também o `subject` que o
             // BearerAuthenticationFilter põe, depois de a linha acima já tê-lo impresso.
             MDC.clear()
