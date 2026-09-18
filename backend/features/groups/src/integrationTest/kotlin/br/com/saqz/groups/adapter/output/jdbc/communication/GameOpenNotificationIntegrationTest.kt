@@ -51,28 +51,47 @@ class GameOpenNotificationIntegrationTest {
         jdbc.sql("TRUNCATE group_messages CASCADE").update()
     }
 
-    @Test fun `daily announcement pushes only the athletes who have not answered`() {
+    /** O mensalista entra no jogo já confirmado pelo auto-confirm: é este aviso, e só ele, que conta que o jogo abriu. */
+    @Test fun `the first announcement reaches the whole group, answered members and owner included`() {
         val game = publishedGame()
         answer(game, answered, "CONFIRMED")
 
         assertEquals(1, service.announceOpenGames())
 
-        assertEquals(listOf(silent), recipients())
+        assertEquals(setOf(owner, answered, silent), recipients().toSet())
         assertTrue(body().startsWith("Jogo: "), body())
         assertTrue(body().endsWith("Local: Arena\n\nO jogo está liberado. Confirme sua presença."), body())
         val sent = mutableListOf<Pair<String, NotificationPush>>()
         push.drain(NotificationPushSender { token, message -> sent += token to message; PushDelivery.SENT })
-        assertEquals(listOf("silent-device"), sent.map { it.first })
-        assertEquals("O jogo está liberado. Abra o app para confirmar sua presença.", sent.single().second.body)
+        assertEquals(setOf("answered-device", "silent-device"), sent.map { it.first }.toSet())
+        assertEquals("O jogo está liberado. Abra o app para confirmar sua presença.", sent.first().second.body)
         assertEquals(0L, count("notification_whatsapp_queue"))
         assertEquals(0L, count("notification_whatsapp_group_queue"))
     }
 
-    @Test fun `answering after the announcement drops the queued push`() {
+    /** Do segundo aviso em diante o canal volta a ser o toque em quem ficou de responder. */
+    @Test fun `later announcements only reach the athletes who have not answered`() {
         val game = publishedGame()
-        // Ninguém respondeu ainda: o aviso sai para os dois membros.
+        answer(game, answered, "CONFIRMED")
         service.announceOpenGames()
-        assertEquals(2L, count("notification_push_queue WHERE completed_at IS NULL"))
+        push.drain(NotificationPushSender { _, _ -> PushDelivery.SENT })
+
+        assertEquals(1, service.announceOpenGames())
+
+        // O dono não respondeu: como qualquer atleta, segue na lista.
+        assertEquals(setOf(owner, silent), recipientsOf(latestAnnouncement()).toSet())
+        val sent = mutableListOf<String>()
+        push.drain(NotificationPushSender { token, _ -> sent += token; PushDelivery.SENT })
+        assertEquals(listOf("silent-device"), sent)
+    }
+
+    @Test fun `answering after a later announcement drops the queued push`() {
+        val game = publishedGame()
+        // O primeiro aviso alcança todo mundo; é o segundo que se importa com a resposta.
+        service.announceOpenGames()
+        push.drain(NotificationPushSender { _, _ -> PushDelivery.SENT })
+        service.announceOpenGames()
+        assertEquals(3L, count("notification_push_queue WHERE completed_at IS NULL"))
 
         answer(game, silent, "DECLINED")
 
@@ -94,15 +113,16 @@ class GameOpenNotificationIntegrationTest {
     }
 
     @Test fun `opting out of reminders also silences the daily announcement`() {
-        val game = publishedGame()
-        answer(game, answered, "CONFIRMED")
+        publishedGame()
         service.savePreferences(silent, NotificationPreferences(push = PushPreferences(reminders = false)))
 
         assertEquals(1, service.announceOpenGames())
 
-        assertEquals(0L, count("notification_push_queue"))
+        val sent = mutableListOf<String>()
+        push.drain(NotificationPushSender { token, _ -> sent += token; PushDelivery.SENT })
+        assertEquals(listOf("answered-device"), sent)
         // A central continua registrando o aviso; o que a preferência desliga é o push.
-        assertEquals(listOf(silent), recipients())
+        assertTrue(silent in recipients())
     }
 
     @Test fun `a second run the same day creates a new message instead of replaying the first`() {
@@ -135,6 +155,14 @@ class GameOpenNotificationIntegrationTest {
         JOIN group_messages m ON m.id = n.message_id
         WHERE m.channel = 'GAME_OPEN' ORDER BY n.recipient_id
     """).query { rs, _ -> rs.getObject("recipient_id", UUID::class.java) }.list()
+
+    private fun recipientsOf(message: UUID): List<UUID> = jdbc.sql(
+        "SELECT recipient_id FROM group_notifications WHERE message_id = :id",
+    ).param("id", message).query { rs, _ -> rs.getObject("recipient_id", UUID::class.java) }.list()
+
+    private fun latestAnnouncement(): UUID = jdbc.sql(
+        "SELECT id FROM group_messages WHERE channel = 'GAME_OPEN' ORDER BY sequence DESC LIMIT 1",
+    ).query(UUID::class.java).single()
 
     private fun body(): String = jdbc.sql("SELECT body FROM group_messages WHERE channel = 'GAME_OPEN'")
         .query(String::class.java).single()

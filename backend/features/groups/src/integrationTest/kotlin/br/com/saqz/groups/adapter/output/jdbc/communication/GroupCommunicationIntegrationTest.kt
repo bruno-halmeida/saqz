@@ -188,8 +188,10 @@ class GroupCommunicationIntegrationTest {
             service.publish(owner, group, MessageChannel.GAME_OPEN, UUID.randomUUID(), "Jogo liberado"),
         )
     }
-    @Test fun `automatic reminders reach only open games and repeat on every run`() {
+    @Test fun `automatic reminders reach only the next open game and repeat on every run`() {
         val open = game("Treino aberto")
+        // Agenda recorrente: os dois estão abertos, mas só o mais próximo vira lembrete.
+        game("Treino da semana seguinte", startsInHours = 168, deadlineInHours = 144)
         game("Treino sem prazo", deadlineInHours = -1)
         game("Treino já iniciado", startsInHours = -1, deadlineInHours = -2)
         game("Treino concluído", status = "COMPLETED")

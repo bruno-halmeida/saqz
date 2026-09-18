@@ -48,19 +48,25 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         if (channel == MessageChannel.REMINDER) {
             jdbc.sql("INSERT INTO notification_attendance_links(message_id) VALUES (:id)").param("id", id).update()
         }
+        // GAME_OPEN não tem autor de verdade — o dono só assina o aviso do sistema, e jogando
+        // como qualquer um também precisa recebê-lo. Ver [firstGameOpenNotice] para o alcance.
+        val systemAuthored = channel == MessageChannel.GAME_OPEN
         jdbc.sql(
             """
             INSERT INTO group_notifications (recipient_id, message_id)
             SELECT membership.user_id, :message
             FROM group_memberships membership
-            LEFT JOIN group_notification_preferences pref ON pref.user_id = membership.user_id
-            WHERE membership.group_id = :group AND membership.active AND membership.user_id <> :actor
-              AND (CAST(:game AS uuid) IS NULL OR NOT EXISTS (
+            WHERE membership.group_id = :group AND membership.active
+              AND (:systemAuthored OR membership.user_id <> :actor)
+              AND (:everyone OR CAST(:game AS uuid) IS NULL OR NOT EXISTS (
                   SELECT 1 FROM game_attendance a
                   WHERE a.group_id = :group AND a.game_id = :game AND a.member_user_id = membership.user_id
+                    AND a.guest_seq = 0
               ))
             """.trimIndent(),
-        ).param("message", id).param("group", groupId).param("actor", actor).param("channel", channel.name)
+        ).param("message", id).param("group", groupId).param("actor", actor)
+            .param("systemAuthored", systemAuthored)
+            .param("everyone", systemAuthored && firstGameOpenNotice(id, gameId))
             .param("game", gameId, Types.OTHER).update()
         val recipients = jdbc.sql("SELECT count(*) FROM group_notifications WHERE message_id = :id AND in_app")
             .param("id", id).query(Int::class.java).single()
@@ -68,6 +74,21 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             .param("count", recipients).param("id", id).update()
         return checkNotNull(findRequest(groupId, actor, channel, requestId))
     }
+
+    /**
+     * O primeiro aviso de jogo liberado alcança o grupo inteiro — inclusive quem o auto-confirm
+     * já confirmou, que só por ele fica sabendo que o jogo abriu. A view
+     * `notification_delivery_context` repete este critério por `sequence` na entrega, porque o
+     * push é revalidado depois de enfileirado.
+     */
+    private fun firstGameOpenNotice(messageId: UUID, gameId: UUID?): Boolean = gameId != null && jdbc.sql(
+        """
+        SELECT NOT EXISTS (
+            SELECT 1 FROM group_messages earlier
+            WHERE earlier.game_id = :game AND earlier.channel = 'GAME_OPEN'
+              AND earlier.sequence < (SELECT sequence FROM group_messages WHERE id = :id))
+        """.trimIndent(),
+    ).param("game", gameId).param("id", messageId).query(Boolean::class.java).single()
 
     override fun reminderGame(groupId: UUID, gameId: UUID): ReminderGame? = jdbc.sql(
         "SELECT local_date, local_time, venue_name FROM games WHERE group_id = :group AND id = :game " +
@@ -103,14 +124,16 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         )
     }
 
+    /** `DISTINCT ON`: um grupo com agenda recorrente tem vários jogos abertos, mas só o mais próximo é lembrado. */
     override fun reminderCandidates(): List<ReminderCandidate> = jdbc.sql(
         """
-        SELECT games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
+        SELECT DISTINCT ON (games.group_id)
+               games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
                groups.owner_user_id
         FROM games
         JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
         WHERE games.status = 'PUBLISHED' AND games.starts_at > now() AND games.confirmation_deadline > now()
-        ORDER BY games.starts_at, games.id
+        ORDER BY games.group_id, games.starts_at, games.id
         """.trimIndent(),
     ).query { rs, _ -> ReminderCandidate(
         gameId = rs.getObject("game_id", UUID::class.java),

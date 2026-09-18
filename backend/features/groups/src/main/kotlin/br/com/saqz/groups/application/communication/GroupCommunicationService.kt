@@ -46,8 +46,10 @@ class GroupCommunicationService(
         }
 
     /**
-     * Lembrete automático para todo jogo com confirmação aberta. O autor é o dono do grupo,
-     * então ele fica fora dos destinatários da notificação; cada execução cria mensagem nova.
+     * Lembrete automático para o próximo jogo com confirmação aberta de cada grupo — agenda
+     * recorrente deixa vários jogos abertos ao mesmo tempo e o grupo não quer um lembrete por
+     * jogo. O autor é o dono do grupo, então ele fica fora dos destinatários da notificação;
+     * cada execução cria mensagem nova.
      */
     fun remindAutomatically(): Int = transaction.inTransaction {
         val candidates = repository.reminderCandidates()
@@ -62,9 +64,11 @@ class GroupCommunicationService(
     }
 
     /**
-     * Aviso diário de jogo liberado. Usa os mesmos candidatos do lembrete (jogo publicado, com
-     * prazo e início no futuro) e o mesmo autor — o dono, que por isso fica fora. O canal
-     * GAME_OPEN nunca vira WhatsApp: é o toque por push para quem ainda não respondeu.
+     * Aviso diário de jogo liberado. Usa os mesmos candidatos do lembrete: o próximo jogo
+     * publicado de cada grupo, com prazo e início no futuro. O dono assina o aviso, mas como ele
+     * é do sistema também o recebe. O primeiro aviso de cada jogo vai para o grupo inteiro —
+     * inclusive o mensalista que já nasce confirmado; os seguintes tocam só quem não respondeu.
+     * GAME_OPEN nunca vira WhatsApp: é push e central.
      */
     fun announceOpenGames(): Int = transaction.inTransaction {
         val candidates = repository.reminderCandidates()
