@@ -7,6 +7,7 @@ import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.MDC
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.filter.OncePerRequestFilter
@@ -52,6 +53,8 @@ class BearerAuthenticationFilter(
                     null,
                     emptyList(),
                 )
+                // Removido pelo MDC.clear() do RequestCorrelationFilter, que envolve este filtro.
+                MDC.put("subject", verification.principal.subject)
                 SecurityContextHolder.setContext(context)
                 filterChain.doFilter(request, response)
             }

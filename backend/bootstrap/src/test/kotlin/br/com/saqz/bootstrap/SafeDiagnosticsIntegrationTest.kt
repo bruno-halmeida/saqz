@@ -216,6 +216,34 @@ class SafeDiagnosticsIntegrationTest {
     }
 
     @Test
+    fun `client supplied correlation ID is echoed in header and problem`() {
+        val supplied = java.util.UUID.randomUUID().toString()
+        val response = get("/api/session", "client-corr-token", correlation = supplied)
+
+        assertEquals(supplied, correlationHeader(response))
+        assertEquals(supplied, correlationId(response))
+    }
+
+    @Test
+    fun `malformed client correlation ID is replaced by a server one`() {
+        val response = get("/api/session", "bad-corr-token", correlation = "not-a-uuid")
+
+        val issued = correlationHeader(response)
+        assertNotEquals("not-a-uuid", issued)
+        assertEquals(36, issued.length)
+        assertEquals(issued, correlationId(response))
+    }
+
+    @Test
+    fun `authenticated request logs the identity subject on the completion line`(output: CapturedOutput) {
+        verifier.result = TokenVerification.Verified(RequestIdentity("logged-subject"))
+        val response = get("/test/success", "subject-log-token")
+
+        assertCorrelationLogged(output, correlationHeader(response), 200)
+        assertTrue(output.out.contains("sub=logged-subject"))
+    }
+
+    @Test
     fun `problem omits optional fields when they are absent`() {
         val problem = objectMapper.readTree(get("/api/session", "optional-fields-token").body())
 
@@ -258,13 +286,13 @@ class SafeDiagnosticsIntegrationTest {
         assertFalse((response.body() + output.out).contains(secret))
     }
 
-    private fun get(path: String, token: String): HttpResponse<String> {
-        val request = HttpRequest.newBuilder()
+    private fun get(path: String, token: String, correlation: String? = null): HttpResponse<String> {
+        val builder = HttpRequest.newBuilder()
             .uri(URI("http://127.0.0.1:$port$path"))
             .header("Authorization", "Bearer $token")
             .GET()
-            .build()
-        return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString())
+        if (correlation != null) builder.header("X-Correlation-ID", correlation)
+        return HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString())
     }
 
     private fun post(path: String, token: String, body: String): HttpResponse<String> {
