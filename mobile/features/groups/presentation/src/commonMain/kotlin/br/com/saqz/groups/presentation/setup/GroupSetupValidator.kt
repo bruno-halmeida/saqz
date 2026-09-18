@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.setup
 
 import br.com.saqz.groups.model.GroupLevel
+import br.com.saqz.groups.model.GroupVenueForm
 
 /**
  * Os sete campos que o `2g` marca em vermelho, mais três que só o backend exige.
@@ -127,26 +128,7 @@ fun validate(state: GroupSetupState): Set<GroupSetupError> {
             }
         }
         if (state.recurring && form.regularSlots.isEmpty()) add(GroupSetupError.SlotsRequired)
-        // Recorrência ligada gera os jogos na criação, e jogo não existe sem local: o backend
-        // (`CreateGroup`) recusa horário regular sem quadra padrão. Os dois erros já têm campo dono.
-        if (state.recurring && venue == null) {
-            add(GroupSetupError.VenueNameRequired)
-            add(GroupSetupError.VenueAddressNotFound)
-        }
-        // A quadra inteira é opcional, mas pela metade não existe: o
-        // `GroupProfileDefaultsValidator.validateVenue` do backend exige nome **e**
-        // endereço sempre que `defaultVenue` vem preenchido. A ViewModel devolve a
-        // quadra a `null` quando os dois campos ficam vazios, então aqui só sobra o
-        // preenchimento parcial.
-        if (venue != null && venue.name.codePointLength() < GroupTextLimits.VenueNameMin) {
-            add(GroupSetupError.VenueNameRequired)
-        }
-        // ponytail: sem geocodificação, "não encontramos esse endereço" é a ausência do
-        // endereço de uma quadra que já começou a ser preenchida. A checagem real nasce
-        // junto do gateway de local, que é quem sabe resolver a rua.
-        if (venue != null && venue.address.codePointLength() < GroupTextLimits.VenueAddressMin) {
-            add(GroupSetupError.VenueAddressNotFound)
-        }
+        addAll(validateVenue(state.recurring, venue))
     }
 }
 
@@ -158,5 +140,28 @@ private fun validatePix(state: GroupSetupState): Set<GroupSetupError> = buildSet
     val pixLabel = state.pixLabel?.trim()
     if (!pixLabel.isNullOrEmpty() && pixLabel.codePointLength() < GroupPixTextLimits.Min) {
         add(GroupSetupError.PixLabelTooShort)
+    }
+}
+
+private fun validateVenue(recurring: Boolean, venue: GroupVenueForm?): Set<GroupSetupError> = buildSet {
+    // Recorrência ligada gera os jogos na criação, e jogo não existe sem local: o backend
+    // (`CreateGroup`) recusa horário regular sem quadra padrão. Os dois erros já têm campo dono.
+    if (recurring && venue == null) {
+        add(GroupSetupError.VenueNameRequired)
+        add(GroupSetupError.VenueAddressNotFound)
+    }
+    // A quadra inteira é opcional, mas pela metade não existe: o
+    // `GroupProfileDefaultsValidator.validateVenue` do backend exige nome **e**
+    // endereço sempre que `defaultVenue` vem preenchido. A ViewModel devolve a
+    // quadra a `null` quando os dois campos ficam vazios, então aqui só sobra o
+    // preenchimento parcial.
+    if (venue != null && venue.name.codePointLength() < GroupTextLimits.VenueNameMin) {
+        add(GroupSetupError.VenueNameRequired)
+    }
+    // ponytail: sem geocodificação, "não encontramos esse endereço" é a ausência do
+    // endereço de uma quadra que já começou a ser preenchida. A checagem real nasce
+    // junto do gateway de local, que é quem sabe resolver a rua.
+    if (venue != null && venue.address.codePointLength() < GroupTextLimits.VenueAddressMin) {
+        add(GroupSetupError.VenueAddressNotFound)
     }
 }
