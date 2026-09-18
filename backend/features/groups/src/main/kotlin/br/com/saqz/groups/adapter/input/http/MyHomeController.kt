@@ -127,6 +127,7 @@ data class HomeOwnChargeOldestResponse(
     val gameStartsAt: Instant?,
     val gameZoneId: String?,
     val dueDate: LocalDate,
+    val guestDisplayName: String? = null,
 )
 
 data class HomeOwnChargeGroupResponse(
@@ -189,9 +190,9 @@ private fun HomeOwnChargeGroup.toResponse() = HomeOwnChargeGroupResponse(
 
 private fun HomeOwnChargeOldest.toResponse() = when (this) {
     is HomeOwnChargeOldest.Monthly ->
-        HomeOwnChargeOldestResponse("MONTHLY", month.toString(), null, null, null, dueDate)
+        HomeOwnChargeOldestResponse("MONTHLY", month.toString(), null, null, null, dueDate, null)
     is HomeOwnChargeOldest.Game ->
-        HomeOwnChargeOldestResponse("GAME", null, gameId, startsAt, zoneId, dueDate)
+        HomeOwnChargeOldestResponse("GAME", null, gameId, startsAt, zoneId, dueDate, guestDisplayName)
 }
 
 private fun HomeMemberReadModel.toResponse() = HomeMemberResponse(

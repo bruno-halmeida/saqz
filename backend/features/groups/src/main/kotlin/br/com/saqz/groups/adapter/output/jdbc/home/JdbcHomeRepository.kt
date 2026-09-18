@@ -201,6 +201,7 @@ class JdbcHomeRepository(
                     startsAt = result.getTimestamp("oldest_game_starts_at").toInstant(),
                     zoneId = result.getString("oldest_game_zone_id"),
                     dueDate = oldestDueDate,
+                    guestDisplayName = result.getString("oldest_guest_display_name"),
                 ),
         )
     }
@@ -492,6 +493,7 @@ class JdbcHomeRepository(
                        charges.amount_cents,
                        games.starts_at AS game_starts_at,
                        games.zone_id AS game_zone_id,
+                       charges.guest_display_name,
                        row_number() OVER (
                            PARTITION BY charges.group_id
                            ORDER BY coalesce(
@@ -528,7 +530,8 @@ class JdbcHomeRepository(
                    oldest.game_id AS oldest_game_id,
                    oldest.game_starts_at AS oldest_game_starts_at,
                    oldest.game_zone_id AS oldest_game_zone_id,
-                   oldest.due_date AS oldest_due_date
+                   oldest.due_date AS oldest_due_date,
+                   oldest.guest_display_name AS oldest_guest_display_name
             FROM totals
             JOIN access_groups groups
                 ON groups.id = totals.group_id

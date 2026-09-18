@@ -74,7 +74,23 @@ class KtorHomeGatewayTest {
         val game = charges?.groups?.last()
         assertEquals(false, game?.overdue)
         assertEquals(null, game?.pixKey)
-        assertEquals(HomeOwnChargeOldest.Game, game?.oldest)
+        assertEquals(HomeOwnChargeOldest.Game(), game?.oldest)
+    }
+
+    @Test
+    fun `oldest game charge carries the guest name`() = runTest {
+        val result = gateway {
+            respond(
+                HOME_JSON.replace(
+                    "\"dueDate\": \"2026-08-12\"",
+                    "\"dueDate\": \"2026-08-12\", \"guestDisplayName\": \"Rafa Moreira\"",
+                ),
+                headers = jsonHeaders(),
+            )
+        }.read()
+
+        val game = assertIs<SaqzResult.Success<HomeReadModel>>(result).value.ownCharges?.groups?.last()
+        assertEquals(HomeOwnChargeOldest.Game("Rafa Moreira"), game?.oldest)
     }
 
     @Test
