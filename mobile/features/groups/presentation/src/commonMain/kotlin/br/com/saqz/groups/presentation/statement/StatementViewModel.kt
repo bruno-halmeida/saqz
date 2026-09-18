@@ -24,7 +24,7 @@ class StatementViewModel(
 ) : MviViewModel<StatementState, StatementIntent, StatementEffect>(StatementState()) {
     private var loadGeneration = 0L
 
-    override fun onIntent(intent: StatementIntent) {
+    override fun handleIntent(intent: StatementIntent) {
         when (intent) {
             StatementIntent.Retry -> load(reset = true)
             is StatementIntent.SelectFilter -> if (intent.filter != state.value.filter) {

@@ -63,7 +63,7 @@ class IdentityCompletionViewModel(
             .launchIn(viewModelScope)
     }
 
-    override fun onIntent(intent: IdentityCompletionIntent) {
+    override fun handleIntent(intent: IdentityCompletionIntent) {
         when (intent) {
             is IdentityCompletionIntent.UpdateName -> session.onIntent(SessionIntent.UpdateName(intent.value))
             is IdentityCompletionIntent.UpdatePhone -> session.onIntent(SessionIntent.UpdatePhone(intent.value))

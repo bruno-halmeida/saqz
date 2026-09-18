@@ -40,7 +40,7 @@ class GroupCashboxViewModel(
         load()
     }
 
-    override fun onIntent(intent: GroupCashboxIntent) {
+    override fun handleIntent(intent: GroupCashboxIntent) {
         when (intent) {
             GroupCashboxIntent.Retry -> load()
             GroupCashboxIntent.ChargeMissing -> openChargeSheet()

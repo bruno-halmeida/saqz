@@ -21,7 +21,7 @@ class EditProfileViewModel(
         load()
     }
 
-    override fun onIntent(intent: EditProfileIntent) {
+    override fun handleIntent(intent: EditProfileIntent) {
         when (intent) {
             is EditProfileIntent.UpdateDisplayName -> updateDraft(KeyDisplayName, intent.value) {
                 updateForm(EditProfileFieldError.NameRequired) { copy(displayName = intent.value) }

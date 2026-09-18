@@ -32,7 +32,7 @@ class MemberPaymentViewModel(private val orderId: String, private val gateway: M
         else clearMarker()
         load(reconcile = state.value.pending)
     }
-    override fun onIntent(intent: MemberPaymentIntent) {
+    override fun handleIntent(intent: MemberPaymentIntent) {
         if (!validSession()) return
         if (intent == MemberPaymentIntent.Refresh) return refresh()
         if (intent is MemberPaymentIntent.ReceiptExported) return finishReceiptExport(intent)

@@ -29,7 +29,7 @@ class OwnMonthlyPaymentsViewModel(
 
     init { load() }
 
-    override fun onIntent(intent: OwnMonthlyPaymentsIntent) = when (intent) {
+    override fun handleIntent(intent: OwnMonthlyPaymentsIntent) = when (intent) {
         OwnMonthlyPaymentsIntent.Retry -> load()
         is OwnMonthlyPaymentsIntent.OpenGroup -> emit(OwnMonthlyPaymentsEffect.OpenGroup(intent.groupId))
     }

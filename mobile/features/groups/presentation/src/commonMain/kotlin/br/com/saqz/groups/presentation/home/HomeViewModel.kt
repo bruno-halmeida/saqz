@@ -138,7 +138,7 @@ class HomeViewModel(
         load()
     }
 
-    override fun onIntent(intent: HomeIntent) {
+    override fun handleIntent(intent: HomeIntent) {
         when (intent) {
             HomeIntent.Retry -> load()
             HomeIntent.Refresh -> load(softRefresh = true)

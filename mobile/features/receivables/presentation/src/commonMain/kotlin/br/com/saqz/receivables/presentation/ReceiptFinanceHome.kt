@@ -28,7 +28,7 @@ data class ReceiptFinanceHomeState(val loading: Boolean = false, val notices: Li
 class ReceiptFinanceHomeViewModel(private val gateway: ReceiptNoticesGateway, private val session: ReceivablesSessionContext) :
     MviViewModel<ReceiptFinanceHomeState, Unit, Unit>(ReceiptFinanceHomeState()) {
     private val key = session.currentKey()
-    override fun onIntent(intent: Unit) {
+    override fun handleIntent(intent: Unit) {
         if (key == null || key != session.currentKey()) { update { ReceiptFinanceHomeState(error = ReceiptError.SIGNED_OUT) }; return }
         if (state.value.loading) return
         update { it.copy(loading = true, error = null) }

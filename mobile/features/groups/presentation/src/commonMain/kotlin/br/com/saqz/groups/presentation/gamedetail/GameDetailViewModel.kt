@@ -59,7 +59,7 @@ class GameDetailViewModel(
     init {
         load()
     }
-    override fun onIntent(intent: GameDetailIntent) {
+    override fun handleIntent(intent: GameDetailIntent) {
         when (intent) {
             GameDetailIntent.Retry -> load()
             GameDetailIntent.Edit -> emit(GameDetailEffect.OpenEditor)

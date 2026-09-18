@@ -19,7 +19,7 @@ internal class ProfilePhotoViewModel(
 ) : MviViewModel<ProfilePhotoState, ProfilePhotoIntent, Nothing>(
     ProfilePhotoState(photoUrl = initialPhotoUrl),
 ) {
-    override fun onIntent(intent: ProfilePhotoIntent) {
+    override fun handleIntent(intent: ProfilePhotoIntent) {
         when (intent) {
             ProfilePhotoIntent.ChooseCamera -> choose(selection::chooseCamera)
             ProfilePhotoIntent.ChooseLibrary -> choose(selection::chooseLibrary)

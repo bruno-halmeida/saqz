@@ -56,7 +56,7 @@ class ResetCodeViewModel(
         resendWindow.restart(RESET_CODE_RESEND_SECONDS)
     }
 
-    override fun onIntent(intent: ResetCodeIntent) {
+    override fun handleIntent(intent: ResetCodeIntent) {
         when (intent) {
             // Mexer num dígito apaga a recusa **do código anterior** — sem isso, o valor
             // novo, ainda não verificado, continuaria vermelho com a contagem antiga

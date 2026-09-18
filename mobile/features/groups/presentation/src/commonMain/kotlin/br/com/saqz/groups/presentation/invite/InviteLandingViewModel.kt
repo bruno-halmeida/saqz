@@ -43,7 +43,7 @@ class InviteLandingViewModel(
         if (initialRedeemError == null) loadPreview()
     }
 
-    override fun onIntent(intent: InviteLandingIntent) {
+    override fun handleIntent(intent: InviteLandingIntent) {
         when (intent) {
             InviteLandingIntent.Retry -> retry()
             InviteLandingIntent.PrimaryAction -> redeem()

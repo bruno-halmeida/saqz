@@ -76,6 +76,7 @@ compose-ui-tooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.r
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
+firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 google-id = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "google-id" }
 junit = { module = "junit:junit", version.ref = "junit" }

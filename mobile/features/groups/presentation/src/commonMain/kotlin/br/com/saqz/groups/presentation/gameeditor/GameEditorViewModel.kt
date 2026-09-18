@@ -47,7 +47,7 @@ class GameEditorViewModel(
         load()
     }
 
-    override fun onIntent(intent: GameEditorIntent) {
+    override fun handleIntent(intent: GameEditorIntent) {
         when (intent) {
             GameEditorIntent.Retry -> load()
             GameEditorIntent.Submit -> submit()

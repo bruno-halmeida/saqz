@@ -78,6 +78,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
         val dependencies = SaqzPlatformDependencies(
                 notifications = AndroidNotificationPort(context.applicationContext),
                 financialDocuments = documents,
+                analytics = AndroidAnalyticsSink(context.applicationContext),
                 environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,
                 access = AccessRuntimeDependencies(

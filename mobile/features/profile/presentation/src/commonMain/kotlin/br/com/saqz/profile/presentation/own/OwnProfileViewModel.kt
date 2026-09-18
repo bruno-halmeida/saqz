@@ -20,7 +20,7 @@ class OwnProfileViewModel(
         load()
     }
 
-    override fun onIntent(intent: OwnProfileIntent) {
+    override fun handleIntent(intent: OwnProfileIntent) {
         when (intent) {
             OwnProfileIntent.Refresh -> load()
             OwnProfileIntent.EditData -> emit(OwnProfileEffect.OpenEditor)

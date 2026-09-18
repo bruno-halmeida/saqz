@@ -11,7 +11,7 @@ class TrialEntryViewModel(private val gateway: TrialGateway) :
     MviViewModel<TrialEntryState, TrialEntryIntent, Nothing>(TrialEntryState()) {
     private var generation = 0
     init { load() }
-    override fun onIntent(intent: TrialEntryIntent) {
+    override fun handleIntent(intent: TrialEntryIntent) {
         when (intent) {
             TrialEntryIntent.Refresh -> load()
             TrialEntryIntent.Continue -> if (state.value.canContinue) load(proceed = true)

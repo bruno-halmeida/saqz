@@ -35,7 +35,7 @@ class GroupListViewModel(
         load()
     }
 
-    override fun onIntent(intent: GroupListIntent) {
+    override fun handleIntent(intent: GroupListIntent) {
         when (intent) {
             is GroupListIntent.OpenGroup -> emit(GroupListEffect.OpenGroup(intent.id))
             GroupListIntent.CreateGroup -> checkCreateGroup()

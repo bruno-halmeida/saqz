@@ -16,7 +16,7 @@ class ForgotPasswordViewModel(
     private val gateway: PasswordResetGateway,
 ) : MviViewModel<ForgotPasswordState, ForgotPasswordIntent, ForgotPasswordEffect>(ForgotPasswordState()) {
 
-    override fun onIntent(intent: ForgotPasswordIntent) {
+    override fun handleIntent(intent: ForgotPasswordIntent) {
         when (intent) {
             is ForgotPasswordIntent.UpdateEmail -> update { it.copy(email = intent.value, error = null) }
             ForgotPasswordIntent.Submit -> submit()

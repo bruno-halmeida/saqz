@@ -31,7 +31,7 @@ class FinancialManagementViewModel(
         refresh()
     }
 
-    override fun onIntent(intent: FinancialManagementIntent) {
+    override fun handleIntent(intent: FinancialManagementIntent) {
         if (!validSession()) return
         if (intent == FinancialManagementIntent.Refresh) { refresh(); return }
         if (state.value.loading) return

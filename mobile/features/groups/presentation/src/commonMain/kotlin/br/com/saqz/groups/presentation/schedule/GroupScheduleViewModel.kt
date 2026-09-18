@@ -34,7 +34,7 @@ internal class GroupScheduleViewModel(
         load()
     }
 
-    override fun onIntent(intent: GroupScheduleIntent) {
+    override fun handleIntent(intent: GroupScheduleIntent) {
         if (state.value.isSaving) return
         when (intent) {
             GroupScheduleIntent.Retry -> load()

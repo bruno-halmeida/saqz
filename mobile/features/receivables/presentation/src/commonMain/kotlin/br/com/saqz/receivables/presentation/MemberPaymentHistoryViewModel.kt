@@ -11,7 +11,7 @@ class MemberPaymentHistoryViewModel(private val gateway: MemberPaymentsGateway, 
     private val key = session.currentKey()
     private var generation = 0
     init { load(false) }
-    override fun onIntent(intent: MemberPaymentHistoryIntent) {
+    override fun handleIntent(intent: MemberPaymentHistoryIntent) {
         if (!valid()) return
         when (intent) {
             MemberPaymentHistoryIntent.Refresh -> load(false)

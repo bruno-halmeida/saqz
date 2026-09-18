@@ -41,7 +41,7 @@ class MonthlyGenerationViewModel(
 
     init { load() }
 
-    override fun onIntent(intent: MonthlyGenerationIntent) {
+    override fun handleIntent(intent: MonthlyGenerationIntent) {
         if (state.value.isSaving || completed) return
         if (intent == MonthlyGenerationIntent.Retry) { load(); return }
         if (state.value.isLoading || state.value.loadFailed) return

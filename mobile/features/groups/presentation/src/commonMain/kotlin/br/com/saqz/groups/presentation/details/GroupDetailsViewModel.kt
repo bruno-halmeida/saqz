@@ -120,7 +120,7 @@ class GroupDetailsViewModel(
 
     // Dispatch exaustivo: regras e guardas ficam nos handlers de cada operação.
     @Suppress("CyclomaticComplexMethod")
-    override fun onIntent(intent: GroupDetailsIntent) {
+    override fun handleIntent(intent: GroupDetailsIntent) {
         when (intent) {
             GroupDetailsIntent.DismissAthleteIntro -> update { it.copy(athleteIntroVisible = false, athleteShareFailed = false) }
             GroupDetailsIntent.ShareSaqz -> shareSaqz()

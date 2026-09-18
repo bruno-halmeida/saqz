@@ -45,7 +45,7 @@ class RegisterViewModel(
     private val onSessionIntent: (SessionIntent) -> Unit,
 ) : MviViewModel<RegisterState, RegisterIntent, RegisterEffect>(savedState.restoredDraft()) {
 
-    override fun onIntent(intent: RegisterIntent) {
+    override fun handleIntent(intent: RegisterIntent) {
         when (intent) {
             is RegisterIntent.UpdateName -> {
                 saveDraft(KeyName, intent.value)

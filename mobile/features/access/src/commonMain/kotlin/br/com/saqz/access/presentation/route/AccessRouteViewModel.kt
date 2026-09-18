@@ -29,7 +29,7 @@ class AccessRouteViewModel(
         }
     }
 
-    override fun onIntent(intent: AccessRouteIntent) {
+    override fun handleIntent(intent: AccessRouteIntent) {
         when (intent) {
             AccessRouteIntent.RetryBootstrap -> {
                 if (mode == AccessRouteMode.BOOTSTRAP) session.onIntent(SessionIntent.RetryBootstrap)

@@ -34,7 +34,7 @@ class ReceiptConfigurationViewModel(
         } else { clearPending(); load() }
     }
 
-    override fun onIntent(intent: ReceiptConfigurationIntent) {
+    override fun handleIntent(intent: ReceiptConfigurationIntent) {
         if (!validSession()) return
         val current = state.value
         if (current.loading) return

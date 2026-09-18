@@ -29,7 +29,7 @@ class NewPasswordViewModel(
     private val gateway: PasswordResetGateway,
 ) : MviViewModel<NewPasswordState, NewPasswordIntent, NewPasswordEffect>(NewPasswordState()) {
 
-    override fun onIntent(intent: NewPasswordIntent) {
+    override fun handleIntent(intent: NewPasswordIntent) {
         when (intent) {
             // Digitar limpa a recusa do campo: a linha vermelha fala do que foi enviado,
             // não do que está sendo escrito agora.
