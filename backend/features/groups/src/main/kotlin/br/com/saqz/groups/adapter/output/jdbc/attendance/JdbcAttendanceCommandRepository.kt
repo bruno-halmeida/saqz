@@ -434,7 +434,8 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             INSERT INTO game_attendance
                 (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version,member_display_name,guest_seq)
             SELECT :game,:group,:member,:status,:sequence,:responded,:updated,:version,
-                   CASE WHEN :guest > 0 THEN :guestName ELSE (SELECT coalesce(nickname, display_name) FROM access_users WHERE id=:member) END,
+                   CASE WHEN :guest > 0 THEN coalesce(:guestName, (SELECT member_display_name FROM game_attendance WHERE game_id=:game AND member_user_id=:member AND guest_seq=:guest))
+                        ELSE (SELECT coalesce(nickname, display_name) FROM access_users WHERE id=:member) END,
                    :guest
             WHERE EXISTS (
                 SELECT 1 FROM access_groups
