@@ -64,6 +64,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./landing-page:/usr/share/nginx/html:ro
+      - ./nginx-landing.conf:/etc/nginx/conf.d/default.conf:ro
     security_opt:
       - no-new-privileges:true
     networks:
