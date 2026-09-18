@@ -244,6 +244,31 @@ class SafeDiagnosticsIntegrationTest {
     }
 
     @Test
+    fun `client retry attempt is logged on the completion line`(output: CapturedOutput) {
+        verifier.result = TokenVerification.Verified(RequestIdentity("retry-subject"))
+        val supplied = java.util.UUID.randomUUID().toString()
+        val response = get("/test/success", "retry-token", correlation = supplied, attempt = "3")
+
+        assertCorrelationLogged(output, correlationHeader(response), 200)
+        assertTrue(output.out.contains("correlationId=$supplied status=200"))
+        assertTrue(Regex("correlationId=$supplied status=200 .*attempt=3").containsMatchIn(output.out))
+    }
+
+    @Test
+    fun `missing or malformed attempt is logged as one`(output: CapturedOutput) {
+        verifier.result = TokenVerification.Verified(RequestIdentity("retry-subject"))
+        val first = java.util.UUID.randomUUID().toString()
+        val second = java.util.UUID.randomUUID().toString()
+        val plain = get("/test/success", "plain-token", correlation = first)
+        val malformed = get("/test/success", "malformed-token", correlation = second, attempt = "999")
+
+        assertCorrelationLogged(output, correlationHeader(plain), 200)
+        assertCorrelationLogged(output, correlationHeader(malformed), 200)
+        assertTrue(Regex("correlationId=$first status=200 .*attempt=1").containsMatchIn(output.out))
+        assertTrue(Regex("correlationId=$second status=200 .*attempt=1").containsMatchIn(output.out))
+    }
+
+    @Test
     fun `problem omits optional fields when they are absent`() {
         val problem = objectMapper.readTree(get("/api/session", "optional-fields-token").body())
 
@@ -286,12 +311,18 @@ class SafeDiagnosticsIntegrationTest {
         assertFalse((response.body() + output.out).contains(secret))
     }
 
-    private fun get(path: String, token: String, correlation: String? = null): HttpResponse<String> {
+    private fun get(
+        path: String,
+        token: String,
+        correlation: String? = null,
+        attempt: String? = null,
+    ): HttpResponse<String> {
         val builder = HttpRequest.newBuilder()
             .uri(URI("http://127.0.0.1:$port$path"))
             .header("Authorization", "Bearer $token")
             .GET()
         if (correlation != null) builder.header("X-Correlation-ID", correlation)
+        if (attempt != null) builder.header("X-Correlation-Attempt", attempt)
         return HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString())
     }
 
