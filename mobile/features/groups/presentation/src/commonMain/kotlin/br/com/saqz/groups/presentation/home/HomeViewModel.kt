@@ -75,6 +75,7 @@ import br.com.saqz.groups.resources.own_charges_date
 import br.com.saqz.groups.resources.own_charges_due
 import br.com.saqz.groups.resources.own_charges_due_overdue
 import br.com.saqz.groups.resources.own_charges_game
+import br.com.saqz.groups.resources.own_charges_guest
 import br.com.saqz.groups.resources.own_charges_monthly_unknown
 import br.com.saqz.groups.resources.home_upcoming_cd_row
 import br.com.saqz.groups.resources.home_upcoming_row_meta
@@ -556,7 +557,8 @@ class HomeViewModel(
             is HomeOwnChargeOldest.Monthly -> competence.month.monthIndexOrNull()
                 ?.let { getString(Res.string.home_own_charge_competence_monthly, getString(it.homeLongMonthResource())) }
                 ?: getString(Res.string.own_charges_monthly_unknown)
-            HomeOwnChargeOldest.Game -> getString(Res.string.own_charges_game)
+            is HomeOwnChargeOldest.Game -> competence.guestDisplayName?.let { getString(Res.string.own_charges_guest, it) }
+                ?: getString(Res.string.own_charges_game)
         },
         amountLabel = formatBrl(totalCents),
         dueLabel = getString(

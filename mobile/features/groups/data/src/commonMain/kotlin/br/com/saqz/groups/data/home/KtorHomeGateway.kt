@@ -145,6 +145,7 @@ internal data class HomeAdminTransport(
 internal data class HomeOwnChargeOldestTransport(
     val kind: String,
     val month: String? = null,
+    val guestDisplayName: String? = null,
 )
 
 @Serializable
@@ -257,7 +258,7 @@ private fun HomeOwnChargeGroupTransport.toDomain(): HomeOwnChargeGroup? {
 
 private fun HomeOwnChargeOldestTransport.toDomain(): HomeOwnChargeOldest? = when (kind) {
     "MONTHLY" -> month?.let(HomeOwnChargeOldest::Monthly)
-    "GAME" -> HomeOwnChargeOldest.Game
+    "GAME" -> HomeOwnChargeOldest.Game(guestDisplayName)
     else -> null
 }
 

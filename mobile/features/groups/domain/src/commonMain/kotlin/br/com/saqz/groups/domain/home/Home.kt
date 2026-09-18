@@ -117,7 +117,7 @@ sealed interface HomeOwnChargeOldest {
     /** [month] é a competência crua do backend, `"YYYY-MM"`. */
     data class Monthly(val month: String) : HomeOwnChargeOldest
 
-    data object Game : HomeOwnChargeOldest
+    data class Game(val guestDisplayName: String? = null) : HomeOwnChargeOldest
 }
 
 /**

@@ -702,6 +702,28 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `own charge of a guest is titled with the guest name`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        ownCharges = HomeOwnCharges(
+                            groupCount = 1,
+                            totalCents = 6000,
+                            groups = listOf(
+                                sampleOwnChargeGroup(oldest = HomeOwnChargeOldest.Game("Rafa Moreira")),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val game = viewModel.state.value.ownCharges?.groups?.single()
+        assertEquals("Convidado: Rafa Moreira", game?.competence)
+    }
+
+    @Test
     fun `single group banner drops the group count and the overdue tone`() = runTest {
         val viewModel = viewModel(
             homeGateway = SequenceHomeGateway(
@@ -978,7 +1000,7 @@ private fun sampleOwnCharges() = HomeOwnCharges(
             nextDueDate = "2026-08-12",
             overdue = false,
             pixKey = null,
-            oldest = HomeOwnChargeOldest.Game,
+            oldest = HomeOwnChargeOldest.Game(),
         ),
     ),
 )
