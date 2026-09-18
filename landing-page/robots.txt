@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://saqz.app/sitemap.xml
+Sitemap: https://saqz.app/sitemap.txt
