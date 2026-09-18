@@ -85,5 +85,6 @@ class AdjustGameCapacity(
         AthleteMembershipType.MENSALISTA,
         mensalistaPriority,
         promotionMode,
+        guestSeq = record.guestSeq,
     )
 }

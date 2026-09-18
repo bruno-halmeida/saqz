@@ -76,11 +76,12 @@ class RespondAttendance(
         memberId: UUID,
         requestId: UUID,
         reason: String?,
+        guestSeq: Int = 0,
     ): AttendanceCommandResult = transaction.inTransaction {
         repository.findPromotionReplay(groupId, gameId, actorId, requestId)?.let {
             return@inTransaction it.result()
         }
-        val aggregate = repository.lock(groupId, gameId, memberId, actorId)
+        val aggregate = repository.lock(groupId, gameId, memberId, actorId, guestSeq)
             ?: return@inTransaction AttendanceCommandResult.Hidden
         repository.findPromotionReplay(groupId, gameId, actorId, requestId)?.let {
             return@inTransaction it.result()
@@ -106,7 +107,7 @@ class RespondAttendance(
         }
     }
 
-    private fun apply(
+    internal fun apply(
         aggregate: AttendanceAggregate,
         decision: AttendanceDecision.Transition,
         requestId: UUID?,
@@ -127,7 +128,11 @@ class RespondAttendance(
             (aggregate.current?.version ?: 0) + 1,
             guestSeq = aggregate.guestSeq,
         )
-        repository.save(record)
+        if (aggregate.guestSeq > 0 && aggregate.current == null) {
+            repository.saveGuest(record, requireNotNull(aggregate.guestName))
+        } else {
+            repository.save(record)
+        }
         val event = AttendanceEvent(
             ids(),
             aggregate.gameId,
@@ -144,35 +149,41 @@ class RespondAttendance(
         )
         repository.append(event)
         if (decision.createGameCharge) charges.confirmed(aggregate, aggregate.actorId)
-        val promoted = if (
-            aggregate.promotionMode == PromotionMode.FIFO &&
-            decision.oldStatus == AttendanceStatus.CONFIRMED &&
-            decision.newStatus == AttendanceStatus.DECLINED
-        ) promoteOne(aggregate, timestamp) else null
-        return AttendanceCommandResult.Success(record, listOfNotNull(promoted), event)
+        val leaving = decision.newStatus == AttendanceStatus.DECLINED
+        val wasConfirmed = decision.oldStatus == AttendanceStatus.CONFIRMED
+        if (leaving && wasConfirmed && aggregate.guestSeq > 0) charges.guestRemoved(aggregate, aggregate.actorId)
+        // Anfitrião saiu: os convidados dele saem ANTES de qualquer promoção, senão a fila
+        // promoveria um convidado que cai no passo seguinte.
+        val freedByGuests = if (leaving && aggregate.guestSeq == 0) dropGuests(aggregate, timestamp) else 0
+        val freed = freedByGuests + if (leaving && wasConfirmed) 1 else 0
+        val promoted = if (aggregate.promotionMode == PromotionMode.FIFO) promoteFreed(aggregate, freed, timestamp) else emptyList()
+        return AttendanceCommandResult.Success(record, promoted, event)
     }
 
-    private fun promoteOne(aggregate: AttendanceAggregate, timestamp: Instant): AttendanceRecord? {
-        val waiting = repository.earliestWaitlisted(aggregate.groupId, aggregate.gameId) ?: return null
-        val promotionAggregate = aggregate.copy(
-            memberId = waiting.memberId,
-            current = waiting,
-            confirmedCount = (aggregate.confirmedCount - 1).coerceAtLeast(0),
-            guestSeq = waiting.guestSeq,
-        )
-        return when (val result = promoteAttendance(
-            promotionAggregate,
-            AttendanceSource.SYSTEM,
-            reason = null,
-            repository = repository,
-            charges = charges,
-            timestamp = timestamp,
-            ids = ids,
-        )) {
-            is AttendancePromotionResult.Denied -> null
-            is AttendancePromotionResult.Success -> result.attendance
+    /** Promove até [freed] pessoas da fila; [aggregate].confirmedCount é a contagem ANTES das saídas. */
+    private fun promoteFreed(aggregate: AttendanceAggregate, freed: Int, timestamp: Instant): List<AttendanceRecord> {
+        var confirmed = (aggregate.confirmedCount - freed).coerceAtLeast(0)
+        return buildList {
+            repeat(freed) {
+                val waiting = repository.earliestWaitlisted(aggregate.groupId, aggregate.gameId) ?: return@buildList
+                val target = aggregate.copy(memberId = waiting.memberId, guestSeq = waiting.guestSeq, guestName = null, current = waiting, confirmedCount = confirmed)
+                val result = promoteAttendance(target, AttendanceSource.SYSTEM, reason = null, repository = repository, charges = charges, timestamp = timestamp, ids = ids)
+                if (result !is AttendancePromotionResult.Success) return@buildList
+                add(result.attendance); confirmed++
+            }
         }
     }
+
+    /** Derruba os convidados ativos do anfitrião; devolve quantas vagas CONFIRMADAS eles liberaram. */
+    private fun dropGuests(host: AttendanceAggregate, timestamp: Instant): Int =
+        repository.activeGuests(host.groupId, host.gameId, host.memberId).count { guest ->
+            val dropped = guest.copy(status = AttendanceStatus.DECLINED, waitlistSequence = null, updatedAt = maxOf(timestamp, guest.respondedAt), version = guest.version + 1)
+            repository.save(dropped)
+            repository.append(AttendanceEvent(ids(), host.gameId, host.groupId, host.memberId, host.actorId, AttendanceSource.SYSTEM, guest.status, AttendanceStatus.DECLINED, null, timestamp, guestSeq = guest.guestSeq))
+            val confirmed = guest.status == AttendanceStatus.CONFIRMED
+            if (confirmed) charges.guestRemoved(host.copy(guestSeq = guest.guestSeq, current = guest), host.actorId)
+            confirmed
+        }
 
     private fun AttendancePromotionResult.Success.result() =
         AttendanceCommandResult.Success(attendance, listOf(attendance), event)
@@ -183,13 +194,13 @@ class RespondAttendance(
     private fun AttendanceResponseReplay.result() =
         AttendanceCommandResult.Success(attendance, event = event)
 
-    private fun AttendanceAggregate.authorized(source: AttendanceSource): Boolean = when (source) {
+    internal fun AttendanceAggregate.authorized(source: AttendanceSource): Boolean = when (source) {
         AttendanceSource.SELF -> actorId == memberId && actorRole != null
         AttendanceSource.ORGANIZER -> actorRole == GroupRole.OWNER || actorRole == GroupRole.ADMIN
         AttendanceSource.SYSTEM -> true
     }
 
-    private fun AttendanceAggregate.denied(source: AttendanceSource): AttendanceCommandResult =
+    internal fun AttendanceAggregate.denied(source: AttendanceSource): AttendanceCommandResult =
         if (actorRole == null || source == AttendanceSource.SELF) AttendanceCommandResult.Hidden
         else AttendanceCommandResult.Forbidden
 }
