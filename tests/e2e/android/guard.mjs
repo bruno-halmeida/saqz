@@ -5,6 +5,7 @@ const scenarios = {
   leave: ['GroupLeaveE2eTest', 1],
   attendance: ['AttendanceE2eTest', 1],
   'attendance-order': ['AttendanceOrderE2eTest', 1],
+  'attendance-guest': ['GameGuestE2eTest', 1],
   communication: ['CommunicationE2eTest', 1],
   finance: ['MonthlyGenerationE2eTest', 1],
   'notification-settings': ['NotificationsE2eTest', 1],

@@ -16,6 +16,7 @@ automatiza os recortes abaixo; a contagem de testes não significa features inte
 | `GroupLeaveE2eTest.cancellationDepartureAndOwnerProtectionPersistAcrossSessions` | APP-L01/L02/L03; repetição de L04; acesso de N04 | Cancelar mantém vínculo; confirmar remove apenas G1; resultado persiste após recriação; jogo/chat ficam inacessíveis; repetir DELETE é seguro; dono não pode sair e mantém o jogo original. Não cobre histórico financeiro nem revogação da caixa de notificações. |
 | `AttendanceE2eTest.fullGameWaitlistsAthleteAndWithdrawalPromotesThemWithoutOverbooking` | APP-R08 | Terceira confirmação entra na reserva, posição 1; desistência libera vaga; atleta promovido vê confirmação após novo login; elenco permanece com exatamente duas confirmações. |
 | `AttendanceOrderE2eTest.withdrawalPromotesFirstWaitingAthleteAndKeepsSecondInQueue` | APP-R08, ordem FIFO | Com dois reservas ordenados, desistência promove o primeiro; o segundo continua aguardando. Detecta promoção do último no lugar do primeiro. |
+| `GameGuestE2eTest.hostBringsAGuestOrganizerRemovesItAndHostDeclineDropsTheRest` | VUL-239, convidado de jogo | Anfitrião na fila leva convidado pela UI (fila, seq 1 e 2); gestor tira um; desistência do gestor promove o anfitrião e não o convidado; capacidade maior promove o convidado e cobra o anfitrião; desistência do anfitrião derruba o convidado e cancela a cobrança; sem resposta própria não há botão. |
 | `CommunicationE2eTest.chatAndNoticesPersistForOtherAccountsWithCorrectPublishingPermissions` | APP-C01/C02 | Chat do atleta e aviso do dono persistem uma vez, com texto, autor, grupo e canal corretos; outra conta lê; atleta não publica aviso; G2 não recebe conteúdo de G1. |
 | `MonthlyGenerationE2eTest.reviewedMonthlyChargeIsIsolatedAndRepeatCannotDuplicateOrRepriceIt` | APP-MG01, dono/seleção/revisão/repetição; APP-MG02, seleção vazia; APP-F01, cobrança própria | Sem seleção automática; seleção vazia bloqueia revisão; avulso não é destinatário; abrir/revisar/editar não cria cobrança; confirmar cria somente R$123,45 para o mensalista selecionado; repetir com R$200 mantém ID, versão, valor e vencimento originais; geração não é receita nem mensagem; atleta vê a própria pendência. |
 | `NotificationsE2eTest` | APP-N01/N03, preferências e caixa de notificações | Desativar chat persiste após reabrir; só futuras notificações desse canal deixam de chegar; aviso/lembrete abrem o grupo/jogo correto; leitura não altera a caixa alheia. Não cobre push nem falhas de rede. |
@@ -54,7 +55,7 @@ Não configure credenciais de produção. A primeira execução pode baixar depe
 `postgres:16-alpine`; as seguintes reutilizam caches, mas sempre criam banco e usuários novos.
 
 Para repetir apenas um recorte, use `--scenario NOME`. Nomes disponíveis:
-`access`, `leave`, `attendance`, `attendance-order`, `communication`, `finance`,
+`access`, `leave`, `attendance`, `attendance-order`, `attendance-guest`, `communication`, `finance`,
 `notification-settings`, `message-pagination`, `reminders`, `sports-profile`, `member-privacy`,
 `monthly-history`, `payments`, `charge-lifecycle` e `settlement`. Exemplo:
 
