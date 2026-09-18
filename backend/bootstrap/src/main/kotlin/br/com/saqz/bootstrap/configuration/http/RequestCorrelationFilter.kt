@@ -11,6 +11,8 @@ import java.util.UUID
 
 private const val CORRELATION_ATTRIBUTE = "br.com.saqz.correlationId"
 private const val CORRELATION_HEADER = "X-Correlation-ID"
+private const val CORRELATION_ATTEMPT_HEADER = "X-Correlation-Attempt"
+private const val MAX_ATTEMPT_DIGITS = 2
 private const val UUID_LENGTH = 36
 private const val NANOS_PER_MILLI = 1_000_000L
 
@@ -30,18 +32,22 @@ class RequestCorrelationFilter : OncePerRequestFilter() {
         request.setAttribute(CORRELATION_ATTRIBUTE, correlationId)
         response.setHeader(CORRELATION_HEADER, correlationId.value)
         MDC.put("correlationId", correlationId.value)
+        // Tentativa do retry do app (VUL-253): o id é o mesmo nas N tentativas, este número as separa.
+        val attempt = request.getHeader(CORRELATION_ATTEMPT_HEADER)?.takeIf(::isAttempt) ?: "1"
+        MDC.put("attempt", attempt)
         try {
             filterChain.doFilter(request, response)
         } finally {
             // `correlationId={} status={}` ficam adjacentes: SafeDiagnosticsIntegrationTest casa nessa substring.
             // `requestURI` nao carrega query string, entao nenhum parametro vai para o log.
             requestLogger.info(
-                "request_complete correlationId={} status={} method={} path={} durationMs={}",
+                "request_complete correlationId={} status={} method={} path={} durationMs={} attempt={}",
                 correlationId.value,
                 response.status,
                 request.method,
                 request.requestURI,
                 (System.nanoTime() - started) / NANOS_PER_MILLI,
+                attempt,
             )
             // Este filtro é o mais externo da cadeia: limpa também o `subject` que o
             // BearerAuthenticationFilter põe, depois de a linha acima já tê-lo impresso.
@@ -55,3 +61,6 @@ fun requestCorrelationId(request: HttpServletRequest): CorrelationId =
 
 private fun isUuid(value: String): Boolean =
     value.length == UUID_LENGTH && runCatching { UUID.fromString(value) }.isSuccess
+
+private fun isAttempt(value: String): Boolean =
+    value.isNotEmpty() && value.length <= MAX_ATTEMPT_DIGITS && value.all(Char::isDigit)
