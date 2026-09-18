@@ -151,6 +151,7 @@ class IdentitySecurityConfiguration {
                 "/public/receivables/terms/*", "/public/receivables/checkout-return",
             ).permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/actuator/prometheus").permitAll()
                 .requestMatchers("/api/password-reset/**").permitAll()
                 .requestMatchers("/api/invites/preview").permitAll()
                 .requestMatchers("/subscriptions/checkout-login").permitAll()
@@ -178,6 +179,7 @@ class IdentitySecurityConfiguration {
          */
         val ANONYMOUS_PATHS = setOf(
             "/actuator/health",
+            "/actuator/prometheus",
             "/api/password-reset",
             "/subscriptions/checkout-login",
             "/webhooks/asaas",
