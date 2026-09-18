@@ -310,6 +310,7 @@ private class LifecycleCompositionFactory(
                 override fun track(name: String, params: Map<String, String>) = Unit
                 override fun setUserId(id: String?) = Unit
                 override fun log(message: String) = Unit
+                override fun setUserProperty(name: String, value: String?) = Unit
             },
             environment = "dev",
             apiBaseUrl = "http://127.0.0.1:1",

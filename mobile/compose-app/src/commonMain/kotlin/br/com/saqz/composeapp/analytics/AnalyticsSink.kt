@@ -7,4 +7,6 @@ interface AnalyticsSink {
 
     /** Breadcrumb (Crashlytics `log`). Recebe só linhas já seguras. */
     fun log(message: String)
+
+    fun setUserProperty(name: String, value: String?)
 }

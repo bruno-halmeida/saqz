@@ -1,6 +1,7 @@
 package br.com.saqz.composeapp.subscriptiongate
 
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.subscriptions.domain.purchase.PurchaseInformationError
@@ -38,7 +39,10 @@ class SubscriptionGateViewModel(
             SubscriptionGateIntent.Opened -> open()
             SubscriptionGateIntent.Closed -> close()
             is SubscriptionGateIntent.ForegroundChanged -> setForeground(intent.isForeground)
-            SubscriptionGateIntent.RequestPurchaseInformation -> requestPurchaseInformation()
+            SubscriptionGateIntent.RequestPurchaseInformation -> {
+                SaqzAnalytics.event("begin_checkout")
+                requestPurchaseInformation()
+            }
             SubscriptionGateIntent.RefreshAuthorization -> checkAuthorization()
         }
     }

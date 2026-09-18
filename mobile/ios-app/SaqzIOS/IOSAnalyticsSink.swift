@@ -26,4 +26,9 @@ final class IOSAnalyticsSink: AnalyticsSink {
         guard enabled else { return }
         Crashlytics.crashlytics().log(message)
     }
+
+    func setUserProperty(name: String, value: String?) {
+        guard enabled else { return }
+        Analytics.setUserProperty(value, forName: name)
+    }
 }

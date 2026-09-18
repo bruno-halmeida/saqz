@@ -13,6 +13,7 @@ import br.com.saqz.access.presentation.message
 import br.com.saqz.access.presentation.normalizedBrMobilePhone
 import br.com.saqz.access.presentation.normalizedDisplayName
 import br.com.saqz.access.presentation.toUiError
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.mvi.MviViewModel
 
 /** O que o helper da 1b promete e o mínimo que o Firebase aceita. */
@@ -131,6 +132,8 @@ class RegisterViewModel(
                 // até aqui não tem por que esperar a próxima instalação. O telefone depositado
                 // fica — a sessão é dona dele até a 1c consumir.
                 clearDraft()
+                // Só o cadastro por senha chega aqui (`createAccount`); sucesso, não submit.
+                SaqzAnalytics.event("sign_up", "method" to "password")
                 update { it.copy(isLoading = false) }
                 onSessionIntent(SessionIntent.Accept(AuthTransition.Authenticated(result.user)))
             }
