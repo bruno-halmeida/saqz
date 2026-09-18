@@ -16,12 +16,13 @@ test("xml sitemap follows Google's loc/lastmod example and lists only indexable 
   assert.match(sitemap, /<loc>https:\/\/saqz\.app\/<\/loc>/);
   assert.match(sitemap, /<loc>https:\/\/saqz\.app\/termos\/recebimentos\/<\/loc>/);
   assert.match(sitemap, /<loc>https:\/\/saqz\.app\/privacidade\/<\/loc>/);
-  assert.equal([...sitemap.matchAll(/<loc>/g)].length, 3);
+  assert.match(sitemap, /<loc>https:\/\/saqz\.app\/termos\/<\/loc>/);
+  assert.equal([...sitemap.matchAll(/<loc>/g)].length, 4);
   assert.doesNotMatch(sitemap, /changefreq|priority|recebimentos\/retorno/);
 });
 
 test("text sitemap lists the same public URLs one per line", () => {
-  assert.equal(sitemapTxt, "https://saqz.app/\nhttps://saqz.app/termos/recebimentos/\nhttps://saqz.app/privacidade/\n");
+  assert.equal(sitemapTxt, "https://saqz.app/\nhttps://saqz.app/termos/recebimentos/\nhttps://saqz.app/privacidade/\nhttps://saqz.app/termos/\n");
 });
 
 test("robots.txt allows crawlers and points to both sitemaps", () => {
