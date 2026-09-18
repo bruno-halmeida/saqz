@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.sharedkernel.RequestIdentity
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.http.HttpStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -28,12 +29,14 @@ class AttendanceControllerTest {
         repository = MemoryRepository()
         val transaction = object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() }
         val charges = AttendanceChargePort { _, _ -> }
+        val responses = RespondAttendance(transaction, repository, charges, { NOW }, UUID::randomUUID)
         controller = AttendanceController(
             VerifiedGroupActorResolver { actor },
-            RespondAttendance(transaction, repository, charges, { NOW }, UUID::randomUUID),
+            responses,
             AdjustGameCapacity(transaction, repository, charges, { NOW }, UUID::randomUUID),
             repository,
             repository,
+            GameGuests(transaction, repository, responses, { NOW }),
         )
     }
 
@@ -140,6 +143,55 @@ class AttendanceControllerTest {
     @Test fun `nonmember roster read is privacy hidden`() { actor = UUID.randomUUID(); assertFailsWith<GameNotFoundException> { controller.roster(ID, "$group", "$game") } }
     @Test fun `malformed attendance identifiers are privacy hidden`() { actor = member; assertFailsWith<GameNotFoundException> { controller.read(ID, "bad", "bad") } }
 
+    @Test
+    fun addGuestReturns201WithTheWaitlistedGuest() {
+        actor = member
+        repository.record(member, AttendanceStatus.CONFIRMED)
+        val response = controller.addGuest(ID, "$group", "$game", GuestRequest(UUID.randomUUID(), "Rafa Moreira"))
+        assertEquals(HttpStatus.CREATED, response.statusCode)
+        assertEquals(member, response.body!!.memberId)
+        assertEquals(1, response.body!!.guestSeq)
+        assertEquals("Rafa Moreira", response.body!!.displayName)
+        assertEquals("WAITLISTED", response.body!!.status)
+        assertEquals(1L, response.body!!.waitlistPosition)
+    }
+
+    @Test
+    fun addGuestWithoutHostAnswerReturnsHostNotGoingProblem() {
+        actor = member
+        assertFailsWith<AttendanceHostNotGoingException> {
+            controller.addGuest(ID, "$group", "$game", GuestRequest(UUID.randomUUID(), "Rafa Moreira"))
+        }
+    }
+
+    @Test
+    fun removeGuestReturns204() {
+        actor = member
+        repository.record(member, AttendanceStatus.WAITLISTED, 1, guestSeq = 1)
+        val response = controller.removeGuest(ID, "$group", "$game", "$member", 1)
+        assertEquals(HttpStatus.NO_CONTENT, response.statusCode)
+        assertEquals(AttendanceStatus.DECLINED, repository.records[member]!!.status)
+    }
+
+    @Test
+    fun rosterIncludesGuestFields() {
+        actor = member
+        repository.record(member, AttendanceStatus.WAITLISTED, 1, "Rafa Moreira", guestSeq = 1, hostName = "Bruno")
+        val roster = controller.roster(ID, "$group", "$game")
+        val guest = roster.waitlisted.single()
+        assertEquals(1, guest.guestSeq)
+        assertEquals("Bruno", guest.hostDisplayName)
+    }
+
+    @Test
+    fun promoteForwardsGuestSeq() {
+        repository.promotionMode = PromotionMode.MANUAL
+        repository.record(member, AttendanceStatus.CONFIRMED)
+        repository.record(second, AttendanceStatus.WAITLISTED, 1, guestSeq = 3)
+        controller.promote(ID, "$group", "$game", AttendancePromotionRequest(UUID.randomUUID(), second, "Escolha do organizador", guestSeq = 3))
+        assertEquals(3, repository.lastLockGuestSeq)
+    }
+
     private fun self() = AttendanceSelfRequest(UUID.randomUUID(), "CONFIRM")
     private fun override() = AttendanceOverrideRequest(UUID.randomUUID(), member, "CONFIRM", "Chegou após o prazo")
     private fun promotion(memberId: UUID) = AttendancePromotionRequest(UUID.randomUUID(), memberId, "Escolha do organizador")
@@ -147,12 +199,15 @@ class AttendanceControllerTest {
     private inner class MemoryRepository : AttendanceCommandRepository, AttendanceDetailQuery, AttendanceRosterQuery {
         val members = linkedSetOf(member, second); val records = linkedMapOf<UUID, AttendanceRecord>(); val events = mutableListOf<AttendanceEvent>()
         val names = mutableMapOf<UUID, String>()
+        val hostNames = mutableMapOf<UUID, String>()
         val membership = linkedMapOf<UUID, AthleteMembershipType>()
         var status = GameStatus.PUBLISHED; var deadline = NOW.plusSeconds(60); var capacity = 2; var version = 1L; var allocator = 0L
         var mensalistaPriority = true
         var promotionMode = PromotionMode.FIFO
-        override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID, guestSeq: Int): AttendanceAggregate? =
-            if (groupId == group && gameId == game && memberId in members) {
+        var lastLockGuestSeq: Int? = null
+        override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID, guestSeq: Int): AttendanceAggregate? {
+            lastLockGuestSeq = guestSeq
+            return if (groupId == group && gameId == game && memberId in members) {
                 AttendanceAggregate(
                     group,
                     game,
@@ -171,6 +226,7 @@ class AttendanceControllerTest {
                     promotionMode,
                 )
             } else null
+        }
         override fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate? =
             if (groupId == group && gameId == game) {
                 CapacityAggregate(
@@ -222,13 +278,13 @@ class AttendanceControllerTest {
         override fun roster(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceRoster? {
             if (groupId != group || gameId != game || role(actorId) == null) return null
             fun entries(status: AttendanceStatus) = records.values.filter { it.status == status }
-                .map { AttendanceRosterMember(it.memberId, names[it.memberId] ?: "Atleta", it.waitlistSequence) }
+                .map { AttendanceRosterMember(it.memberId, names[it.memberId] ?: "Atleta", it.waitlistSequence, it.guestSeq, hostNames[it.memberId]) }
             return AttendanceRoster(
                 entries(AttendanceStatus.CONFIRMED).sortedBy { it.displayName.lowercase() },
                 entries(AttendanceStatus.WAITLISTED).sortedBy { it.waitlistPosition },
             )
         }
-        fun record(memberId: UUID, status: AttendanceStatus, sequence: Long? = null, name: String? = null) { records[memberId] = AttendanceRecord(game, group, memberId, status, sequence, NOW, NOW, 1); name?.let { names[memberId] = it }; if (sequence != null) allocator = maxOf(allocator, sequence) }
+        fun record(memberId: UUID, status: AttendanceStatus, sequence: Long? = null, name: String? = null, guestSeq: Int = 0, hostName: String? = null) { records[memberId] = AttendanceRecord(game, group, memberId, status, sequence, NOW, NOW, 1, guestSeq); name?.let { names[memberId] = it }; hostName?.let { hostNames[memberId] = it }; if (sequence != null) allocator = maxOf(allocator, sequence) }
         private fun confirmed() = records.values.count { it.status == AttendanceStatus.CONFIRMED }
         private fun role(actorId: UUID) = when (actorId) { owner -> GroupRole.OWNER; in members -> GroupRole.ATHLETE; else -> null }
     }
