@@ -1,4 +1,4 @@
--- Seed de exploração geral: plano TITULAR do dono, grupo, vínculos e financeiro
+-- Seed de exploração geral: plano ORGANIZADOR do dono, grupo, vínculos e financeiro
 -- para 1 dono e 20 atletas. Sem a assinatura o app trata o dono como não-entitled
 -- e as telas de gestão do grupo não batem com o cenário.
 --
@@ -71,7 +71,7 @@ BEGIN
     DELETE FROM access_groups        WHERE id       = c_group;
 
     -- -----------------------------------------------------------------------
-    -- Plano do dono. TITULAR: 1 grupo, 25 atletas — cabe este cenário. IDs Asaas
+    -- Plano do dono. ORGANIZADOR: 3 grupos, atletas sem limite. IDs Asaas
     -- são marcadores de seed (não existem na sandbox): o entitlement é local.
     -- Trocar plano / cancelar por esta conta falha na Asaas; gestão do grupo, não.
     -- -----------------------------------------------------------------------
@@ -82,7 +82,7 @@ BEGIN
         current_period_end, first_confirmed_at, created_at, updated_at
     ) VALUES (
         v_owner,
-        'TITULAR',
+        'ORGANIZADOR',
         'MONTHLY',
         'ACTIVE',
         'cus_seed_owner_saqz_local',
