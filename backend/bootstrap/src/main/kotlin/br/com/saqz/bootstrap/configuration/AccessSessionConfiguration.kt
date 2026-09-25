@@ -125,6 +125,8 @@ import br.com.saqz.groups.application.attendance.AttendanceDetailQuery
 import br.com.saqz.groups.application.attendance.AttendanceRosterQuery
 import br.com.saqz.groups.application.attendance.GameGuests
 import br.com.saqz.groups.application.attendance.RespondAttendance
+import br.com.saqz.groups.application.communication.GameOpenOnPublish
+import br.com.saqz.groups.application.communication.GroupCommunicationService
 import br.com.saqz.groups.application.game.ChangeGameLifecycle
 import br.com.saqz.groups.application.game.CreateGame
 import br.com.saqz.groups.application.game.EditGame
@@ -888,8 +890,13 @@ class AccessSessionConfiguration {
      */
     @Bean
     @Primary
-    fun gameSideEffects(charges: ChargeTransactions, autoConfirm: AutoConfirmAttendance): GameSideEffectPort =
-        GameSideEffects(listOf(GameFinanceSideEffects(charges), autoConfirm))
+    fun gameSideEffects(
+        charges: ChargeTransactions,
+        autoConfirm: AutoConfirmAttendance,
+        communication: GroupCommunicationService,
+        @Value("\${saqz.notifications.reminder.enabled:false}") reminders: Boolean,
+    ): GameSideEffectPort =
+        GameSideEffects(listOf(GameFinanceSideEffects(charges), autoConfirm, GameOpenOnPublish(communication, reminders)))
     @Bean fun attendanceCharges(charges: ChargeTransactions) = AttendanceChargeAdapter(charges)
     @Bean fun respondAttendance(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = RespondAttendance(transaction, repository, charges, Instant::now)
     @Bean fun gameGuests(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, responses: RespondAttendance) = GameGuests(transaction, repository, responses, Instant::now)

@@ -135,7 +135,22 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         WHERE games.status = 'PUBLISHED' AND games.starts_at > now() AND games.confirmation_deadline > now()
         ORDER BY games.group_id, games.starts_at, games.id
         """.trimIndent(),
-    ).query { rs, _ -> ReminderCandidate(
+    ).query { rs, _ -> candidate(rs) }.list()
+
+    override fun reminderCandidate(groupId: UUID): ReminderCandidate? = jdbc.sql(
+        """
+        SELECT games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
+               groups.owner_user_id
+        FROM games
+        JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
+        WHERE games.group_id = :group AND games.status = 'PUBLISHED'
+          AND games.starts_at > now() AND games.confirmation_deadline > now()
+        ORDER BY games.starts_at, games.id
+        LIMIT 1
+        """.trimIndent(),
+    ).param("group", groupId).query { rs, _ -> candidate(rs) }.optional().orElse(null)
+
+    private fun candidate(rs: ResultSet) = ReminderCandidate(
         gameId = rs.getObject("game_id", UUID::class.java),
         groupId = rs.getObject("group_id", UUID::class.java),
         ownerId = rs.getObject("owner_user_id", UUID::class.java),
@@ -144,7 +159,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             localTime = rs.getObject("local_time", LocalTime::class.java),
             venue = rs.getString("venue_name"),
         ),
-    ) }.list()
+    )
 
     override fun inbox(actor: UUID, before: Long?) = jdbc.sql(
         """
