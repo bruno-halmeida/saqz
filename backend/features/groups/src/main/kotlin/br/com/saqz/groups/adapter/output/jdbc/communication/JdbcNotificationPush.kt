@@ -40,7 +40,8 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
             ORDER BY notification_id LIMIT 1 FOR UPDATE SKIP LOCKED
         """).query(Long::class.java).optional().orElse(null) ?: return@inTransaction false
         val message = jdbc.sql("""
-            SELECT c.group_id, c.channel, c.game_id, u.firebase_subject FROM notification_delivery_context c
+            SELECT c.group_id, c.channel, c.body, c.game_id, c.window_ends_at, u.firebase_subject
+            FROM notification_delivery_context c
             JOIN access_users u ON u.id = c.recipient_id WHERE c.sequence = :id AND c.push_enabled
         """).param("id", id).query { rs, _ ->
             val channel = rs.getString("channel")
@@ -49,11 +50,13 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
                 "CHAT" -> "Você recebeu uma mensagem no grupo. Abra o app para conferir."
                 "REMINDER" -> "Confirme sua presença no próximo jogo. Abra o app para conferir."
                 "GAME_OPEN" -> "O jogo está liberado. Abra o app para confirmar sua presença."
+                "ATTENDANCE_WINDOW" -> rs.getString("body")
                 else -> "Você recebeu um lembrete de cobrança. Abra o app para conferir."
             }
             NotificationPush(
                 id, rs.getObject("group_id", UUID::class.java), "Saqz", body, channel,
                 recipient = rs.getString("firebase_subject"), gameId = rs.getObject("game_id", UUID::class.java),
+                windowEndsAt = rs.getTimestamp("window_ends_at")?.toInstant(),
             )
         }.optional().orElse(null)
         var retry = false
