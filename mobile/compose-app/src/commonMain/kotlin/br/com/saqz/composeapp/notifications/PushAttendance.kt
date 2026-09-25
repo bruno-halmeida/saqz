@@ -15,7 +15,7 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 /** O que a notificação mostra depois de responder presença sem abrir o app. */
-enum class PushAttendanceOutcome { Confirmed, Waitlisted, Declined, Closed, Failed }
+enum class PushAttendanceOutcome { Confirmed, Waitlisted, Declined, Closed, Failed, NoResponse }
 
 /** Botões "Confirmar" / "Não vou" do push: mesmo gateway (auth, retry, idempotência) da tela do jogo. */
 class PushAttendance(private val gateway: AttendanceGateway, private val scope: CoroutineScope) {
@@ -27,7 +27,8 @@ class PushAttendance(private val gateway: AttendanceGateway, private val scope: 
             val result = withTimeoutOrNull(RESPONSE_TIMEOUT_MS) {
                 gateway.respond(GroupId(groupId), gameId, SelfAttendanceCommand(Uuid.random().toString(), intent))
             }
-            done(result?.toOutcome() ?: PushAttendanceOutcome.Failed)
+            // Estourou o teto: o servidor pode ter gravado; não afirmar falha nem convidar a repetir.
+            done(result?.toOutcome() ?: PushAttendanceOutcome.NoResponse)
         }
     }
 

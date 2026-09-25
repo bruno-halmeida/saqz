@@ -27,7 +27,13 @@ internal class NotificationSessionBinding(
         scope.launch {
             val subscription = native.observe { refresh() }
             try {
-                session.collect { refresh() }
+                // Fora do mutex: a conta que sai perde os botões de presença na hora, sem esperar rede.
+                var seen: String? = null
+                session.collect { current ->
+                    if (seen != null && seen != current) native.dismissAll()
+                    seen = current
+                    refresh()
+                }
             } finally { subscription.cancel() }
         }
     }
@@ -35,7 +41,7 @@ internal class NotificationSessionBinding(
         scope.launch {
             mutex.withLock {
                 val current = session.value
-                if (previous != null && previous != current) { needsClear = true; native.dismissAll() }
+                if (previous != null && previous != current) needsClear = true
                 previous = current
                 println("[SaqzPush] refresh session=${current != null} needsClear=$needsClear")
                 if (needsClear) {

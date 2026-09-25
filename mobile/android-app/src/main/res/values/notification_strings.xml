@@ -7,4 +7,5 @@
     <string name="notification_attendance_declined">Ausência registrada.</string>
     <string name="notification_attendance_closed">Prazo encerrado. Abra o app para conferir.</string>
     <string name="notification_attendance_failed">Não deu para registrar. Abra o app e tente de novo.</string>
+    <string name="notification_attendance_no_response">Sem resposta do servidor. Abra o app para conferir.</string>
 </resources>

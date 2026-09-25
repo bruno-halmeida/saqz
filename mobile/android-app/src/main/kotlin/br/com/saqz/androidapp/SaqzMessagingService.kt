@@ -53,7 +53,7 @@ internal fun reminderNotification(context: Context, id: Int, title: String, body
     val content = PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     return NotificationCompat.Builder(context, REMINDER_CHANNEL)
         .setSmallIcon(R.drawable.ic_saqz_notification).setContentTitle(title)
-        .setContentText(body).setAutoCancel(true).setContentIntent(content)
+        .setContentText(body).setAutoCancel(true).setOnlyAlertOnce(true).setContentIntent(content)
 }
 internal const val REMINDER_CHANNEL = "saqz-reminders"
 internal const val EXTRA_NOTIFICATION_GROUP_ID = "saqz.notification.groupId"

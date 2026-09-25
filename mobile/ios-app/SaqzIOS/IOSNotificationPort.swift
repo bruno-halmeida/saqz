@@ -171,6 +171,7 @@ private extension PushAttendanceOutcome {
         case .waitlisted: return "Jogo lotado: você entrou na lista de espera."
         case .declined: return "Ausência registrada."
         case .closed: return "Prazo encerrado. Abra o app para conferir."
+        case .noResponse: return "Sem resposta do servidor. Abra o app para conferir."
         default: return "Não deu para registrar. Abra o app e tente de novo."
         }
     }

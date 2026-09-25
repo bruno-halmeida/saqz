@@ -57,12 +57,12 @@ class PushAttendanceTest {
     }
 
     @Test
-    fun aRequestSlowerThanTheReceiverWindowFailsInsteadOfHanging() = runTest {
+    fun aRequestSlowerThanTheReceiverWindowIsReportedAsNoResponseInsteadOfHanging() = runTest {
         val gateway = RespondOnly { delay(60_000); answered(AttendanceStatus.Confirmed) }
         val outcomes = mutableListOf<PushAttendanceOutcome>()
         PushAttendance(gateway, this).respond("g1", "game1", confirm = true) { outcomes += it }
         advanceUntilIdle()
-        assertEquals(listOf(PushAttendanceOutcome.Failed), outcomes)
+        assertEquals(listOf(PushAttendanceOutcome.NoResponse), outcomes)
     }
 
     private class RespondOnly(

@@ -32,6 +32,7 @@ private fun PushAttendanceOutcome.label() = when (this) {
     PushAttendanceOutcome.Declined -> R.string.notification_attendance_declined
     PushAttendanceOutcome.Closed -> R.string.notification_attendance_closed
     PushAttendanceOutcome.Failed -> R.string.notification_attendance_failed
+    PushAttendanceOutcome.NoResponse -> R.string.notification_attendance_no_response
 }
 
 internal const val ACTION_CONFIRM = "br.com.saqz.CONFIRM_ATTENDANCE"
