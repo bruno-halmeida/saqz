@@ -4,6 +4,8 @@ import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import br.com.saqz.composeapp.di.hasSaqzPlatformDependencies
+import br.com.saqz.composeapp.di.loadSaqzPlatformDependencies
 import br.com.saqz.composeapp.notifications.PushAttendance
 import br.com.saqz.composeapp.notifications.PushAttendanceOutcome
 import org.koin.core.context.GlobalContext
@@ -19,7 +21,15 @@ class AttendanceActionReceiver : BroadcastReceiver() {
         // Sem botões enquanto responde: segundo toque não dispara pedido concorrente.
         manager.notify(id, reminderNotification(context, id, title, intent.getStringExtra(EXTRA_BODY).orEmpty(), groupId).build())
         val pending = goAsync()
-        GlobalContext.get().get<PushAttendance>().respond(groupId, gameId, confirm = intent.action == ACTION_CONFIRM) { outcome ->
+        val koin = GlobalContext.get()
+        if (!hasSaqzPlatformDependencies()) {
+            // Processo acordado direto pelo botão: a MainActivity, que carrega a plataforma no Koin, não existiu.
+            val composition = MainActivityComposition.factory().create(context.applicationContext, koin.get()) {
+                error("ação de push não tem Activity")
+            }
+            loadSaqzPlatformDependencies(composition.dependencies, context.applicationContext)
+        }
+        koin.get<PushAttendance>().respond(groupId, gameId, confirm = intent.action == ACTION_CONFIRM) { outcome ->
             manager.notify(id, reminderNotification(context, id, title, context.getString(outcome.label()), groupId).build())
             pending.finish()
         }

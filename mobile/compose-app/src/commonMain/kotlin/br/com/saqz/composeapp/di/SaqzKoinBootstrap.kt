@@ -120,6 +120,10 @@ internal fun startSaqzKoin(
     loadSaqzPlatformDependencies(dependencies, imageLoaderContext)
 }
 
+/** Falso num processo acordado por broadcast: a tela que carrega a plataforma ainda não existiu. */
+@HiddenFromObjC
+fun hasSaqzPlatformDependencies(): Boolean = platformModules.isNotEmpty()
+
 @HiddenFromObjC
 fun loadSaqzPlatformDependencies(
     dependencies: SaqzPlatformDependencies,

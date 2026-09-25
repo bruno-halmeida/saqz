@@ -21,16 +21,17 @@ class NotificationSessionBindingTest {
         session.value = "user-a"
         runCurrent()
         assertEquals(listOf("token-1"), gateway.devices.map { it.token })
+        assertEquals(1, native.dismissed)
         binding.refresh(); runCurrent()
         assertEquals(1, gateway.devices.size)
         session.value = "user-b"; runCurrent()
         assertEquals(2, native.clears)
-        assertEquals(1, native.dismissed)
+        assertEquals(2, native.dismissed)
         assertEquals(listOf("token-1", "token-2"), gateway.devices.map { it.token })
         assertEquals(emptyList(), gateway.removed)
         session.value = null; runCurrent()
         assertEquals(3, native.clears)
-        assertEquals(2, native.dismissed)
+        assertEquals(3, native.dismissed)
         assertEquals(0, gateway.removed.size)
     }
     @Test fun refreshRetriesRegistrationFailureAndTokenChangesRegisterAgain() = runTest {

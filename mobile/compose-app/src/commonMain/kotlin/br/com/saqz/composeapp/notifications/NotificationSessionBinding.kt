@@ -27,10 +27,13 @@ internal class NotificationSessionBinding(
         scope.launch {
             val subscription = native.observe { refresh() }
             try {
-                // Fora do mutex: a conta que sai perde os botões de presença na hora, sem esperar rede.
+                // Fora do mutex: troca, saída e entrada de conta descartam os botões na hora, sem esperar rede.
+                // Entrada também: push da conta anterior pode ter chegado depois do logout (token não revogado).
+                var started = false
                 var seen: String? = null
                 session.collect { current ->
-                    if (seen != null && seen != current) native.dismissAll()
+                    if (started && seen != current) native.dismissAll()
+                    started = true
                     seen = current
                     refresh()
                 }
