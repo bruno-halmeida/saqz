@@ -42,6 +42,15 @@ class KtorNotificationDeviceGatewayTest {
         }.register(NotificationDevice("install-1", "fcm-token", "ANDROID"))
         assertIs<SaqzResult.Success<Unit>>(result)
     }
+    @Test fun registersTheLiveActivityStartTokenOnlyWhenPresent() = runTest {
+        val result = gateway { request ->
+            val body = Json.parseToJsonElement((request.body as TextContent).text).jsonObject
+            assertEquals(setOf("token", "platform", "liveActivityStartToken"), body.keys)
+            assertEquals("start-token", body["liveActivityStartToken"]?.jsonPrimitive?.content)
+            respond("", HttpStatusCode.NoContent)
+        }.register(NotificationDevice("install-1", "fcm-token", "IOS", liveActivityStartToken = "start-token"))
+        assertIs<SaqzResult.Success<Unit>>(result)
+    }
     @Test fun unregisterUsesAuthenticatedDeleteAndPreservesFailure() = runTest {
         val result = gateway { request ->
             assertEquals(HttpMethod.Delete, request.method)

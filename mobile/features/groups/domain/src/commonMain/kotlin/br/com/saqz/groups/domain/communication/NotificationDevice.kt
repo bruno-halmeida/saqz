@@ -2,7 +2,13 @@ package br.com.saqz.groups.domain.communication
 
 import br.com.saqz.domain.SaqzResult
 
-data class NotificationDevice(val installationId: String, val token: String, val platform: String)
+/** [liveActivityStartToken]: token de push-to-start da Live Activity (iOS 17.2+); nulo no Android e sem Live Activity. */
+data class NotificationDevice(
+    val installationId: String,
+    val token: String,
+    val platform: String,
+    val liveActivityStartToken: String? = null,
+)
 fun interface NotificationSubscription { fun cancel() }
 interface NativeNotificationPort {
     fun device(done: (NotificationDevice?) -> Unit)
