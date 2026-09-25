@@ -14,6 +14,8 @@ data class AccessUser(
     val phone: String? = null,
     val phoneRequired: Boolean = false,
     val emailVerified: Boolean = false,
+    /** E-mail confirmado ou telefone confirmado pelo link do WhatsApp — quem decide é o backend. */
+    val accountVerified: Boolean = false,
     val photoUrl: String? = null,
 )
 

@@ -35,7 +35,7 @@ import androidx.navigation3.ui.NavDisplay
 import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
-import br.com.saqz.access.presentation.emailVerified
+import br.com.saqz.access.presentation.accountVerified
 import br.com.saqz.access.presentation.register.RegisterInviteContext
 import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.AppOnboardingRoot
@@ -499,7 +499,7 @@ internal fun SaqzNavHost(
                         var emailBannerDismissed by rememberSaveable { mutableStateOf(false) }
                         HomeOwnChargesBannerRoot(
                             onOpenHome = onOpenHome,
-                            emailBanner = if (ready != null && !ready.emailVerified && !emailBannerDismissed) {
+                            emailBanner = if (ready != null && !ready.accountVerified && !emailBannerDismissed) {
                                 {
                                     EmailVerificationBanner(
                                         onRefresh = {

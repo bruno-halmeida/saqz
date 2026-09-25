@@ -71,11 +71,12 @@ class KtorSessionGatewayTest {
     }
 
     @Test fun `bootstrap carries the verification flag and the photo url of the session`() = runTest {
-        val body = """{"user":{"id":"user-1","email":"person@example.test","displayName":"Person","emailVerified":true,"photoUrl":"/api/session/photo?v=digest"},"memberships":[]}"""
+        val body = """{"user":{"id":"user-1","email":"person@example.test","displayName":"Person","emailVerified":true,"accountVerified":true,"photoUrl":"/api/session/photo?v=digest"},"memberships":[]}"""
 
         val user = fixture { sessionResponse(body) }.gateway.bootstrap().success().user
 
         assertTrue(user.emailVerified)
+        assertTrue(user.accountVerified)
         assertEquals("/api/session/photo?v=digest", user.photoUrl)
     }
 
@@ -83,6 +84,7 @@ class KtorSessionGatewayTest {
         val user = fixture { sessionResponse() }.gateway.bootstrap().success().user
 
         assertFalse(user.emailVerified)
+        assertFalse(user.accountVerified)
         assertNull(user.photoUrl)
     }
 

@@ -74,6 +74,22 @@ class EmailVerificationEndpointIntegrationTest {
     }
 
     @Test
+    fun `pagina publica de confirmacao abre sem token e so confirma no post`() {
+        val url = URI.create("http://localhost:$port/public/account-confirmation/${"a".repeat(43)}")
+
+        val page = client.send(HttpRequest.newBuilder(url).GET().build(), HttpResponse.BodyHandlers.ofString())
+        val post = client.send(
+            HttpRequest.newBuilder(url).POST(HttpRequest.BodyPublishers.noBody()).build(),
+            HttpResponse.BodyHandlers.ofString(),
+        )
+
+        assertEquals(200, page.statusCode())
+        assertTrue("<form method=\"post\">" in page.body())
+        assertEquals(200, post.statusCode())
+        assertTrue("Link inválido" in post.body())
+    }
+
+    @Test
     fun `pede o link e entrega o html com o botao escondendo a url`() {
         assertEquals(202, request().statusCode())
 

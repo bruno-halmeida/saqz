@@ -1,6 +1,8 @@
 package br.com.saqz.access.application.emailverification
 
 import br.com.saqz.access.application.passwordreset.RateLimitWindow
+import br.com.saqz.access.application.session.AppOnboardingCode
+import br.com.saqz.access.application.session.AppOnboardingDigest
 import br.com.saqz.sharedkernel.RequestIdentity
 import org.junit.jupiter.api.Test
 import java.time.Clock
@@ -137,6 +139,73 @@ class RequestEmailVerificationTest {
         assertEquals(RequestVerificationResult.Accepted, useCase.request(unverified(), "10.0.0.1"))
     }
 
+    @Test
+    fun `com o WhatsApp ligado manda o link para o telefone junto com o e-mail`() {
+        val phones = InMemoryPhones(phone = "+5541999990000")
+        val whatsApp = RecordingWhatsApp()
+        val both = RequestEmailVerification(links, mailer, sends, clock, phones, whatsApp)
+
+        assertEquals(RequestVerificationResult.Accepted, both.request(unverified(), "10.0.0.1"))
+
+        assertEquals(1, mailer.sent.size)
+        val (phone, code) = whatsApp.sent.single()
+        assertEquals("+5541999990000", phone)
+        assertEquals(AppOnboardingDigest.sha256(code), phones.issued)
+        assertTrue(ConfirmAccountPhone(phones, clock).confirm(code.value))
+    }
+
+    @Test
+    fun `sem e-mail o WhatsApp ainda sai`() {
+        val whatsApp = RecordingWhatsApp()
+        val onlyPhone = RequestEmailVerification(links, mailer, sends, clock, InMemoryPhones("+5541999990000"), whatsApp)
+
+        onlyPhone.request(RequestIdentity("subject-1", email = null, emailVerified = false), "10.0.0.1")
+
+        assertTrue(mailer.sent.isEmpty())
+        assertEquals(1, whatsApp.sent.size)
+    }
+
+    @Test
+    fun `telefone ja confirmado ou ausente nao recebe WhatsApp`() {
+        val whatsApp = RecordingWhatsApp()
+        val noPhone = RequestEmailVerification(links, mailer, sends, clock, InMemoryPhones(phone = null), whatsApp)
+
+        noPhone.request(unverified(), "10.0.0.1")
+
+        assertTrue(whatsApp.sent.isEmpty())
+        assertEquals(1, mailer.sent.size)
+    }
+
+    @Test
+    fun `telefone gravado no perfil manda o WhatsApp sem mexer no e-mail`() {
+        val whatsApp = RecordingWhatsApp()
+        val both = RequestEmailVerification(links, mailer, sends, clock, InMemoryPhones("+5541999990000"), whatsApp)
+
+        both.requestPhone(unverified())
+        both.requestPhone(unverified())
+        both.requestPhone(verified())
+
+        assertEquals(1, whatsApp.sent.size)
+        assertTrue(mailer.sent.isEmpty())
+    }
+
+    @Test
+    fun `o mesmo numero recebe no maximo o teto por dia, mesmo trocando de conta`() {
+        val whatsApp = RecordingWhatsApp()
+        val both = RequestEmailVerification(links, mailer, sends, clock, InMemoryPhones("+5541999990000"), whatsApp)
+
+        repeat(RequestEmailVerification.MAX_PER_PHONE + 3) { index ->
+            both.requestPhone(RequestIdentity("subject-$index", "p$index@saqz.test", emailVerified = false))
+        }
+
+        assertEquals(RequestEmailVerification.MAX_PER_PHONE, whatsApp.sent.size)
+    }
+
+    @Test
+    fun `codigo malformado nao confirma`() {
+        assertEquals(false, ConfirmAccountPhone(InMemoryPhones("+5541999990000"), clock).confirm("../x"))
+    }
+
     private fun unverified(email: String = "atleta@saqz.test") =
         RequestIdentity("subject-1", email, emailVerified = false)
 
@@ -157,6 +226,21 @@ class RequestEmailVerificationTest {
         override fun send(recipient: String, confirmationLink: String) {
             if (failing) error("SMTP fora do ar")
             sent += recipient to confirmationLink
+        }
+    }
+
+    private class InMemoryPhones(private val phone: String?) : PhoneConfirmationStore {
+        var issued: AppOnboardingDigest? = null
+        override fun issue(subject: String, digest: AppOnboardingDigest, expiresAt: Instant): String? =
+            phone?.also { issued = digest }
+        override fun confirm(digest: AppOnboardingDigest, now: Instant): Boolean =
+            (digest == issued).also { if (it) issued = null }
+    }
+
+    private class RecordingWhatsApp : PhoneConfirmationSender {
+        val sent = mutableListOf<Pair<String, AppOnboardingCode>>()
+        override fun send(phone: String, code: AppOnboardingCode) {
+            sent += phone to code
         }
     }
 

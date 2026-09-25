@@ -16,7 +16,13 @@ import br.com.saqz.access.adapter.input.http.AppOnboardingController
 import br.com.saqz.access.adapter.input.http.EmailVerificationController
 import br.com.saqz.access.adapter.input.http.PasswordResetController
 import br.com.saqz.access.adapter.output.jdbc.passwordreset.JdbcPasswordResetRepository
+import br.com.saqz.access.adapter.input.http.PhoneConfirmationController
+import br.com.saqz.access.adapter.output.jdbc.session.JdbcPhoneConfirmationStore
+import br.com.saqz.access.application.emailverification.ConfirmAccountPhone
+import br.com.saqz.access.application.emailverification.PhoneConfirmationStore
 import br.com.saqz.access.application.emailverification.RequestEmailVerification
+import br.com.saqz.groups.application.communication.NotificationWhatsAppSender
+import org.springframework.beans.factory.ObjectProvider
 import br.com.saqz.access.application.emailverification.VerificationLinkGenerator
 import br.com.saqz.access.application.emailverification.VerificationLinkMailer
 import br.com.saqz.access.application.emailverification.VerificationSendLog
@@ -298,7 +304,8 @@ class AccessSessionConfiguration {
         useCase: BootstrapSession,
         profile: CompleteSessionProfile,
         deleteAccount: DeleteAccount,
-    ) = AccessSessionController(useCase, profile, deleteAccount)
+        verification: RequestEmailVerification,
+    ) = AccessSessionController(useCase, profile, deleteAccount, verification)
 
     @Bean
     fun appOnboardingTokenStore(dataSource: DataSource) = JdbcAppOnboardingTokenStore(dataSource)
@@ -416,12 +423,30 @@ class AccessSessionConfiguration {
     }
 
     @Bean
+    fun phoneConfirmationStore(dataSource: DataSource): PhoneConfirmationStore = JdbcPhoneConfirmationStore(dataSource)
+
+    /** WhatsApp desligado (`saqz.notifications.whatsapp.enabled`) = só o e-mail sai. */
+    @Bean
     fun requestEmailVerification(
         links: VerificationLinkGenerator,
         mailer: VerificationLinkMailer,
         sends: VerificationSendLog,
         clock: Clock,
-    ) = RequestEmailVerification(links, mailer, sends, clock)
+        phones: PhoneConfirmationStore,
+        whatsApp: ObjectProvider<NotificationWhatsAppSender>,
+        @Value("\${saqz.public-api-url:https://api.saqz.app}") apiBaseUrl: String,
+    ) = RequestEmailVerification(
+        links,
+        mailer,
+        sends,
+        clock,
+        phones = phones,
+        whatsApp = whatsApp.ifAvailable?.let { WhatsAppPhoneConfirmation(it, apiBaseUrl) },
+    )
+
+    @Bean
+    fun phoneConfirmationController(phones: PhoneConfirmationStore, clock: Clock) =
+        PhoneConfirmationController(ConfirmAccountPhone(phones, clock))
 
     @Bean
     fun emailVerificationController(verification: RequestEmailVerification) =

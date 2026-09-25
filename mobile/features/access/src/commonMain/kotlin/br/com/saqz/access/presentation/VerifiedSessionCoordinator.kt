@@ -80,6 +80,12 @@ sealed interface SessionAccessState {
  */
 val SessionAccessState.Ready.emailVerified: Boolean get() = session.user.emailVerified
 
+/**
+ * O que tira a faixa: o e-mail (que o reload do provedor vira na hora) ou a conta que o
+ * backend já deu por confirmada pelo WhatsApp (chega no `RefreshAccess` da volta ao app).
+ */
+val SessionAccessState.Ready.accountVerified: Boolean get() = session.user.run { emailVerified || accountVerified }
+
 sealed interface SessionIntent {
     data class Accept(val transition: AuthTransition) : SessionIntent
 
