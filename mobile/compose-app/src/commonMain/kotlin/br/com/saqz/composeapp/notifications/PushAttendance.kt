@@ -1,7 +1,9 @@
 package br.com.saqz.composeapp.notifications
 
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
@@ -40,7 +42,9 @@ class PushAttendance(
             // ponytail: o teto cabe na janela do goAsync do Android (~10 s); WorkManager se a rede pedir mais.
             val outcome = withTimeoutOrNull(RESPONSE_TIMEOUT_MS) {
                 if (subject() != recipient) return@withTimeoutOrNull PushAttendanceOutcome.Failed
-                gateway.respond(GroupId(groupId), gameId, SelfAttendanceCommand(Uuid.random().toString(), intent)).toOutcome()
+                gateway.respond(GroupId(groupId), gameId, SelfAttendanceCommand(Uuid.random().toString(), intent))
+                    .onSuccess { SaqzAnalytics.attendanceAnswered("push", confirm) }
+                    .toOutcome()
             }
             // Estourou o teto: o servidor pode ter gravado; não afirmar falha nem convidar a repetir.
             done(outcome ?: PushAttendanceOutcome.NoResponse)

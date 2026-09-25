@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.details
 
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
@@ -105,6 +106,25 @@ class GroupDetailsViewModelTest {
         vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
         advanceUntilIdle()
         assertFalse(vm.state.value.athleteIntroVisible)
+    }
+
+    @Test
+    fun `recorded response reports attendance_answered from the app surface`() = runTest {
+        val recorded = mutableListOf<Pair<String, Map<String, String>>>()
+        SaqzAnalytics.track = { name, params -> recorded += name to params }
+        try {
+            val vm = viewModel(groupGateway = athleteGroupGateway(), attendanceGateway = FakeAttendanceGateway(),
+                gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))))
+            vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+            advanceUntilIdle()
+        } finally {
+            SaqzAnalytics.reset()
+        }
+
+        assertEquals(
+            listOf("attendance_answered" to mapOf("surface" to "app", "answer" to "confirm")),
+            recorded.filter { it.first == "attendance_answered" },
+        )
     }
 
     @Test

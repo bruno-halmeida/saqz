@@ -1,8 +1,10 @@
 package br.com.saqz.groups.presentation.attendancelink
 
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.attendance.share.*
 import br.com.saqz.groups.domain.membership.*
@@ -103,6 +105,7 @@ class AttendanceLinkViewModel(
         intent: AttendanceIntent,
     ) {
         val response = attendance.respond(destination.groupId, destination.gameId, SelfAttendanceCommand(requestId, intent))
+            .onSuccess { SaqzAnalytics.attendanceAnswered("link", intent == AttendanceIntent.Confirm) }
         if (current != generation) return
         when (response) {
             is SaqzResult.Success -> update {

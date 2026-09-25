@@ -1,5 +1,6 @@
 package br.com.saqz.composeapp.notifications
 
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
@@ -82,6 +83,23 @@ class PushAttendanceTest {
         advanceUntilIdle()
         assertEquals(listOf(PushAttendanceOutcome.Failed), outcomes)
         assertEquals(emptyList(), gateway.calls)
+    }
+
+    @Test
+    fun aRecordedAnswerReportsAttendanceAnsweredFromThePushSurfaceAndAFailureDoesNot() = runTest {
+        val recorded = mutableListOf<Pair<String, Map<String, String>>>()
+        SaqzAnalytics.track = { name, params -> recorded += name to params }
+        try {
+            PushAttendance(RespondOnly { answered(AttendanceStatus.Confirmed) }, loggedIn, this)
+                .respond("g1", "game1", "user-a", confirm = true) { }
+            PushAttendance(RespondOnly { SaqzResult.Failure(AttendanceError.Frozen) }, loggedIn, this)
+                .respond("g1", "game1", "user-a", confirm = false) { }
+            advanceUntilIdle()
+        } finally {
+            SaqzAnalytics.reset()
+        }
+
+        assertEquals(listOf("attendance_answered" to mapOf("surface" to "push", "answer" to "confirm")), recorded)
     }
 
     private class RespondOnly(

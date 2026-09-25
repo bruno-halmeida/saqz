@@ -88,4 +88,11 @@ class SaqzAnalyticsTest {
         assertEquals(listOf("sign_up" to mapOf("method" to "password")), recorded)
         assertEquals(listOf<Pair<String, String?>>("plan_state" to "active"), properties)
     }
+
+    @Test
+    fun `attendance answer carries the surface and the answer`() {
+        SaqzAnalytics.attendanceAnswered("live_activity", confirm = false)
+
+        assertEquals(listOf("attendance_answered" to mapOf("surface" to "live_activity", "answer" to "decline")), recorded)
+    }
 }
