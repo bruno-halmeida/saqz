@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: saqz-prod
+resources:
+  - ../../base
+  - namespace.yaml
+  - ingress.yaml
+images:
+  - name: ghcr.io/bruno-halmeida/saqz-backend
+    # Cada deploy fixa uma tag Git publicada pelo workflow de release.
+    newTag: v.0.0.1
+configMapGenerator:
+  - name: backend-config
+    literals:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SAQZ_FIREBASE_PROJECT_ID=saquz-app
+      - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/firebase-admin.json
+      - MANAGEMENT_SERVER_PORT=9090
+      - LOGGING_STRUCTURED_FORMAT_CONSOLE=logstash
+      - SERVER_FORWARD_HEADERS_STRATEGY=framework
+      - SERVER_SHUTDOWN=graceful
+      - SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE=25s
+      - SAQZ_LINKS_DOMAIN=https://links.saqz.app
+      - SAQZ_ASAAS_BASE_URL=https://api.asaas.com/v3
+      - SAQZ_ADMINWEB_ORIGINS=
+      - SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED=false
+      - SAQZ_NOTIFICATIONS_REMINDER_ENABLED=true
+      - SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS=25200000

@@ -1,0 +1,22 @@
+http:
+  routers:
+    saqz-prod:
+      rule: Host(`api.saqz.app`)
+      # Vence a regra antiga com os dois hosts enquanto as labels de staging existirem.
+      priority: 1000
+      entryPoints: [websecure]
+      tls: {}
+      middlewares: [saqz-prod-strip-forwarded]
+      service: saqz-prod
+  middlewares:
+    saqz-prod-strip-forwarded:
+      headers:
+        customRequestHeaders:
+          # Spring usa esse header antes de X-Forwarded-For ao resolver o IP.
+          Forwarded: ""
+  services:
+    saqz-prod:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: http://172.18.0.1:30080
