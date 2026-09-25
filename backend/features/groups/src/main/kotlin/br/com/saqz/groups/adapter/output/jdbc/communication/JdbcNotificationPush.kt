@@ -8,18 +8,22 @@ import javax.sql.DataSource
 
 class JdbcNotificationPush(dataSource: DataSource, private val transaction: TransactionRunner) {
     private val jdbc = JdbcClient.create(dataSource)
-    fun register(actor: UUID, installation: UUID, token: String, platform: String) = transaction.inTransaction {
-        // Serializa rotação/transferência do mesmo token sem guardar dois destinatários.
-        jdbc.sql("SELECT pg_advisory_xact_lock(hashtextextended(:token, 0))").param("token", token).query { _, _ -> Unit }.single()
-        jdbc.sql("DELETE FROM notification_devices WHERE token = :token AND installation_id <> :id")
-            .param("token", token).param("id", installation).update()
-        jdbc.sql("""
-            INSERT INTO notification_devices (installation_id, user_id, token, platform) VALUES (:id, :actor, :token, :platform)
-            ON CONFLICT (installation_id) DO UPDATE SET user_id = excluded.user_id, token = excluded.token,
-                platform = excluded.platform, updated_at = now()
-        """).param("id", installation).param("actor", actor).param("token", token).param("platform", platform).update()
-        Unit
-    }
+    fun register(actor: UUID, installation: UUID, token: String, platform: String, liveActivityStartToken: String? = null) =
+        transaction.inTransaction {
+            // Serializa rotação/transferência do mesmo token sem guardar dois destinatários.
+            jdbc.sql("SELECT pg_advisory_xact_lock(hashtextextended(:token, 0))").param("token", token).query { _, _ -> Unit }.single()
+            jdbc.sql("DELETE FROM notification_devices WHERE token = :token AND installation_id <> :id")
+                .param("token", token).param("id", installation).update()
+            jdbc.sql("""
+                INSERT INTO notification_devices (installation_id, user_id, token, platform, live_activity_start_token)
+                VALUES (:id, :actor, :token, :platform, :start)
+                ON CONFLICT (installation_id) DO UPDATE SET user_id = excluded.user_id, token = excluded.token,
+                    platform = excluded.platform, live_activity_start_token = excluded.live_activity_start_token,
+                    updated_at = now()
+            """).param("id", installation).param("actor", actor).param("token", token).param("platform", platform)
+                .param("start", liveActivityStartToken, java.sql.Types.VARCHAR).update()
+            Unit
+        }
     fun unregister(actor: UUID, installation: UUID) {
         jdbc.sql("DELETE FROM notification_devices WHERE user_id = :actor AND installation_id = :id")
             .param("actor", actor).param("id", installation).update()
