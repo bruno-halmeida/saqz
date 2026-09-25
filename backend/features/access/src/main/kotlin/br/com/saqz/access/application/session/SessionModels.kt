@@ -17,6 +17,8 @@ data class UserAccount(
     val nickname: String? = null,
     val city: String? = null,
     val phoneVisibility: String = "ADMINS",
+    /** O telefone atual foi confirmado pelo link do WhatsApp. */
+    val phoneVerified: Boolean = false,
 )
 
 data class SessionMembership(

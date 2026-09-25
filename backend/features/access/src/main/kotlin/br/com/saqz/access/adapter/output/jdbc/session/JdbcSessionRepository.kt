@@ -58,7 +58,8 @@ class JdbcSessionRepository(
                 email_verified = EXCLUDED.email_verified,
                 display_name = COALESCE(access_users.display_name, EXCLUDED.display_name),
                 updated_at = now()
-            RETURNING id, email, display_name, phone, nickname, city, phone_visibility
+            RETURNING id, email, display_name, phone, nickname, city, phone_visibility,
+                phone IS NOT NULL AND phone = verified_phone AS phone_verified
             """.trimIndent(),
         )
             .param("id", UUID.randomUUID())
@@ -75,6 +76,7 @@ class JdbcSessionRepository(
                     nickname = result.getString("nickname"),
                     city = result.getString("city"),
                     phoneVisibility = result.getString("phone_visibility"),
+                    phoneVerified = result.getBoolean("phone_verified"),
                 )
             }
             .single()
@@ -90,6 +92,7 @@ class JdbcSessionRepository(
                 nickname = user.nickname,
                 city = user.city,
                 phoneVisibility = user.phoneVisibility,
+                phoneVerified = user.phoneVerified,
             ),
             memberships = loadMemberships(user.id),
         )
@@ -114,6 +117,7 @@ class JdbcSessionRepository(
             SET deleted_at = now(),
                 email = NULL,
                 phone = NULL,
+                verified_phone = NULL,
                 city = NULL,
                 nickname = NULL,
                 updated_at = now()
@@ -138,7 +142,8 @@ class JdbcSessionRepository(
                 updated_at = now()
             WHERE firebase_subject = :subject
               AND deleted_at IS NULL
-            RETURNING id, email, display_name, phone, nickname, city, phone_visibility
+            RETURNING id, email, display_name, phone, nickname, city, phone_visibility,
+                phone IS NOT NULL AND phone = verified_phone AS phone_verified
             """.trimIndent(),
         )
             .param("phone", command.phone?.value, Types.VARCHAR)
@@ -161,6 +166,7 @@ class JdbcSessionRepository(
                     nickname = result.getString("nickname"),
                     city = result.getString("city"),
                     phoneVisibility = result.getString("phone_visibility"),
+                    phoneVerified = result.getBoolean("phone_verified"),
                 )
             }
             .optional()
@@ -177,6 +183,7 @@ class JdbcSessionRepository(
                 nickname = user.nickname,
                 city = user.city,
                 phoneVisibility = user.phoneVisibility,
+                phoneVerified = user.phoneVerified,
             ),
             memberships = loadMemberships(user.id),
         )
@@ -220,5 +227,6 @@ class JdbcSessionRepository(
         val nickname: String?,
         val city: String?,
         val phoneVisibility: String,
+        val phoneVerified: Boolean,
     )
 }

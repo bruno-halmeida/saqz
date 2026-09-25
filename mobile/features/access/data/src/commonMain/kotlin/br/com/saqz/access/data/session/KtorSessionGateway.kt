@@ -33,6 +33,7 @@ internal data class SessionUserDto(
     val phone: String? = null,
     val phoneRequired: Boolean = false,
     val emailVerified: Boolean = false,
+    val accountVerified: Boolean = false,
     val photoUrl: String? = null,
 )
 
@@ -117,6 +118,7 @@ private fun SessionDto.toAccessSession(): SaqzResult<AccessSession, AccessError>
                 phone = user.phone,
                 phoneRequired = user.phoneRequired,
                 emailVerified = user.emailVerified,
+                accountVerified = user.accountVerified,
                 photoUrl = user.photoUrl,
             ),
             memberships = memberships.map {

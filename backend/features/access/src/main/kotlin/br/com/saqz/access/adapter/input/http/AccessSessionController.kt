@@ -1,5 +1,6 @@
 package br.com.saqz.access.adapter.input.http
 
+import br.com.saqz.access.application.emailverification.RequestEmailVerification
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.BootstrapSessionResult
 import br.com.saqz.access.application.session.CompleteSessionProfile
@@ -29,6 +30,8 @@ data class SessionUserResponse(
     val phoneVisibility: String,
     val city: String?,
     val emailVerified: Boolean,
+    /** E-mail confirmado no Firebase ou telefone confirmado pelo WhatsApp. É o que tira a faixa do app. */
+    val accountVerified: Boolean,
     val photoUrl: String?,
 )
 
@@ -112,6 +115,7 @@ class AccessSessionController(
     private val bootstrapSession: BootstrapSession,
     private val completeSessionProfile: CompleteSessionProfile,
     private val deleteAccount: DeleteAccount,
+    private val verification: RequestEmailVerification? = null,
 ) {
     @PutMapping("/api/session")
     fun session(@AuthenticationPrincipal identity: RequestIdentity): AccessSessionResponse =
@@ -150,7 +154,10 @@ class AccessSessionController(
             CompleteSessionProfileResult.InvalidPhoneVisibility ->
                 throw InvalidSessionProfileFieldException("phoneVisibility")
             CompleteSessionProfileResult.AccountNotFound -> throw AccountNotFoundException()
-            is CompleteSessionProfileResult.Success -> result.session.toResponse(identity.hasVerifiedEmail())
+            is CompleteSessionProfileResult.Success -> {
+                if (request.phoneProvided && !result.session.user.phoneVerified) verification?.requestPhone(identity)
+                result.session.toResponse(identity.hasVerifiedEmail())
+            }
         }
 
     @DeleteMapping("/api/session")
@@ -171,6 +178,7 @@ private fun SessionView.toResponse(emailVerified: Boolean) = AccessSessionRespon
         phoneVisibility = user.phoneVisibility,
         city = user.city,
         emailVerified = emailVerified,
+        accountVerified = emailVerified || user.phoneVerified,
         // O digest vai na URL para o cliente nao servir a foto antiga do cache
         // depois de uma troca: contador reiniciaria em 1 depois de uma remocao.
         photoUrl = user.photoDigest?.let { "$USER_PHOTO_PATH?v=$it" },
