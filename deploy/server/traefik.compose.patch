@@ -1,0 +1,11 @@
+--- docker-compose.yaml
++++ docker-compose.yaml
+@@ -9,2 +9,4 @@
+       - "--providers.docker.exposedbydefault=false"
++      - "--providers.file.directory=/etc/traefik/dynamic"
++      - "--providers.file.watch=true"
+       - "--providers.docker.network=local-server-network"
+@@ -35,2 +37,3 @@
+       - "/var/run/docker.sock:/var/run/docker.sock:ro"
++      - "./dynamic:/etc/traefik/dynamic:ro"
+       - "./letsencrypt:/letsencrypt"

@@ -1,0 +1,19 @@
+# Customização do Traefik empacotado pelo k3s; não requer CLI Helm.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      type: NodePort
+    ports:
+      web:
+        nodePort: 30080
+        forwardedHeaders:
+          trustedIPs:
+            - 172.18.0.0/16
+      websecure:
+        expose:
+          default: false

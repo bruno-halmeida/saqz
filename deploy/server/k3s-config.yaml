@@ -1,0 +1,16 @@
+# Servidor único: endereço privado do host na local-server-network.
+# Essa rede deve existir antes de iniciar o k3s, inclusive após reboot.
+disable:
+  - servicelb
+  - metrics-server
+write-kubeconfig-mode: "0600"
+secrets-encryption: true
+bind-address: 172.18.0.1
+advertise-address: 172.18.0.1
+node-ip: 172.18.0.1
+# Um único node não precisa de um túnel VXLAN entre máquinas.
+flannel-backend: host-gw
+kubelet-arg:
+  - address=127.0.0.1
+kube-proxy-arg:
+  - nodeport-addresses=172.18.0.1/32

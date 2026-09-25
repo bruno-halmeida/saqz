@@ -2,7 +2,7 @@
 #   ./deploy.sh
 #   docker compose -f compose.yaml -f compose.server.yaml up -d --build
 # Publishes:
-#   backend      -> https://api.saqz.app (produção) e https://saqz-api.brunoalmeida.dev (legado/dev)
+#   backend      -> https://saqz-api.brunoalmeida.dev (staging; produção fica no k3s)
 #   adm-web      -> https://saqzweb.brunoalmeida.dev
 #   landing-page -> https://saqz.app
 #   links-page   -> https://links.saqz.app (AASA + assetlinks + página de fallback)
@@ -36,7 +36,7 @@ services:
       - local-server-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.saqz-api.rule=Host(`api.saqz.app`) || Host(`saqz-api.brunoalmeida.dev`)"
+      - "traefik.http.routers.saqz-api.rule=Host(`saqz-api.brunoalmeida.dev`)"
       - "traefik.http.routers.saqz-api.entrypoints=websecure"
       - "traefik.http.routers.saqz-api.tls=true"
       - "traefik.http.services.saqz-api.loadbalancer.server.port=8080"
