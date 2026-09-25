@@ -81,6 +81,22 @@ class GroupCommunicationService(
         candidates.size
     }
 
+    /**
+     * Aviso de jogo liberado na hora da publicação, sem esperar o cron das 14h — só quando o jogo
+     * publicado é o próximo aberto do grupo (a regra do [announceOpenGames]). Roda dentro da
+     * transação da publicação, depois do auto-confirm; como é o primeiro aviso do jogo, alcança o
+     * grupo inteiro.
+     */
+    fun announceOpenGame(groupId: UUID, gameId: UUID): Boolean = transaction.inTransaction {
+        val candidate = repository.reminderCandidate(groupId)?.takeIf { it.gameId == gameId }
+            ?: return@inTransaction false
+        repository.publish(
+            candidate.groupId, candidate.ownerId, MessageChannel.GAME_OPEN, UUID.randomUUID(),
+            openGameBody(candidate.game), candidate.gameId,
+        )
+        true
+    }
+
     fun inbox(actor: UUID, before: Long?): CommunicationResult<CommunicationPage<GroupNotification>> =
         if (before != null && before <= 0) invalid()
         else CommunicationResult.Success(page(repository.inbox(actor, before)) { it.sequence })

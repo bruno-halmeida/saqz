@@ -55,6 +55,9 @@ interface GroupCommunicationRepository {
     fun reminderGame(groupId: UUID, gameId: UUID): ReminderGame?
     fun reminderRoster(groupId: UUID, gameId: UUID): ReminderRoster
     fun reminderCandidates(): List<ReminderCandidate>
+
+    /** O próximo jogo aberto de um grupo: a mesma regra de [reminderCandidates], para um grupo só. */
+    fun reminderCandidate(groupId: UUID): ReminderCandidate?
     fun inbox(actor: UUID, before: Long?): List<GroupNotification>
     fun markRead(actor: UUID, sequence: Long)
     fun preferences(actor: UUID): NotificationPreferences
