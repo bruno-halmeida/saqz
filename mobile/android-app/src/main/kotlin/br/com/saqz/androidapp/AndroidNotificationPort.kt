@@ -1,6 +1,7 @@
 package br.com.saqz.androidapp
 
 import android.Manifest
+import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -50,6 +51,7 @@ internal class AndroidNotificationPort(private val context: Context) : NativeNot
         if (BuildConfig.FIREBASE_USE_EMULATOR) { done(true); return }
         FirebaseMessaging.getInstance().deleteToken().addOnCompleteListener { done(it.isSuccessful) }
     }
+    override fun dismissAll() = context.getSystemService(NotificationManager::class.java).cancelAll()
     override fun observe(changed: () -> Unit): NotificationSubscription {
         listeners += changed
         return NotificationSubscription { listeners -= changed }

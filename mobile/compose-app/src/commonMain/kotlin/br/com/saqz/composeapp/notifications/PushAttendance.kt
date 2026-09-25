@@ -9,9 +9,8 @@ import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.koin.mp.KoinPlatformTools
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -19,14 +18,21 @@ import kotlin.uuid.Uuid
 enum class PushAttendanceOutcome { Confirmed, Waitlisted, Declined, Closed, Failed }
 
 /** Botões "Confirmar" / "Não vou" do push: mesmo gateway (auth, retry, idempotência) da tela do jogo. */
-object PushAttendance {
+class PushAttendance(private val gateway: AttendanceGateway, private val scope: CoroutineScope) {
     @OptIn(ExperimentalUuidApi::class)
     fun respond(groupId: String, gameId: String, confirm: Boolean, done: (PushAttendanceOutcome) -> Unit) {
-        val gateway = KoinPlatformTools.defaultContext().get().get<AttendanceGateway>()
         val intent = if (confirm) AttendanceIntent.Confirm else AttendanceIntent.Decline
-        CoroutineScope(Dispatchers.Main).launch {
-            done(gateway.respond(GroupId(groupId), gameId, SelfAttendanceCommand(Uuid.random().toString(), intent)).toOutcome())
+        scope.launch {
+            // ponytail: o teto cabe na janela do goAsync do Android (~10 s); WorkManager se a rede pedir mais.
+            val result = withTimeoutOrNull(RESPONSE_TIMEOUT_MS) {
+                gateway.respond(GroupId(groupId), gameId, SelfAttendanceCommand(Uuid.random().toString(), intent))
+            }
+            done(result?.toOutcome() ?: PushAttendanceOutcome.Failed)
         }
+    }
+
+    private companion object {
+        const val RESPONSE_TIMEOUT_MS = 8_000L
     }
 }
 

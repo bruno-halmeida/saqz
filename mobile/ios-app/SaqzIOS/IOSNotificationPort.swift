@@ -77,6 +77,7 @@ final class IOSNotificationPort: NSObject, @preconcurrency NativeNotificationPor
             Task { @MainActor in completion.finish(error == nil || ignorable) }
         }
     }
+    func dismissAll() { UNUserNotificationCenter.current().removeAllDeliveredNotifications() }
     func observe(changed: @escaping () -> Void) -> any NotificationSubscription {
         let id = UUID()
         listeners[id] = changed

@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import br.com.saqz.composeapp.notifications.PushAttendance
 import br.com.saqz.composeapp.notifications.PushAttendanceOutcome
+import org.koin.core.context.GlobalContext
 
 /** "Confirmar" / "Não vou" tocados na notificação: responde sem abrir o app e troca o texto pelo resultado. */
 class AttendanceActionReceiver : BroadcastReceiver() {
@@ -14,11 +15,12 @@ class AttendanceActionReceiver : BroadcastReceiver() {
         val groupId = intent.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID) ?: return
         val id = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
-        // ponytail: goAsync dá ~10 s; se a rede estourar isso, vira WorkManager.
+        val manager = context.getSystemService(NotificationManager::class.java)
+        // Sem botões enquanto responde: segundo toque não dispara pedido concorrente.
+        manager.notify(id, reminderNotification(context, id, title, intent.getStringExtra(EXTRA_BODY).orEmpty(), groupId).build())
         val pending = goAsync()
-        PushAttendance.respond(groupId, gameId, confirm = intent.action == ACTION_CONFIRM) { outcome ->
-            context.getSystemService(NotificationManager::class.java)
-                .notify(id, reminderNotification(context, id, title, context.getString(outcome.label()), groupId).build())
+        GlobalContext.get().get<PushAttendance>().respond(groupId, gameId, confirm = intent.action == ACTION_CONFIRM) { outcome ->
+            manager.notify(id, reminderNotification(context, id, title, context.getString(outcome.label()), groupId).build())
             pending.finish()
         }
     }
@@ -37,3 +39,4 @@ internal const val ACTION_DECLINE = "br.com.saqz.DECLINE_ATTENDANCE"
 internal const val EXTRA_NOTIFICATION_ID = "saqz.notification.id"
 internal const val EXTRA_GAME_ID = "saqz.notification.gameId"
 internal const val EXTRA_TITLE = "saqz.notification.title"
+internal const val EXTRA_BODY = "saqz.notification.body"

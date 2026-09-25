@@ -41,7 +41,7 @@ class SaqzMessagingService : FirebaseMessagingService() {
     private fun attendanceAction(action: String, id: Int, data: Map<String, String>, gameId: String): PendingIntent {
         val intent = Intent(this, AttendanceActionReceiver::class.java).setAction(action)
             .putExtra(EXTRA_NOTIFICATION_ID, id).putExtra(EXTRA_NOTIFICATION_GROUP_ID, data["groupId"])
-            .putExtra(EXTRA_GAME_ID, gameId).putExtra(EXTRA_TITLE, data["title"])
+            .putExtra(EXTRA_GAME_ID, gameId).putExtra(EXTRA_TITLE, data["title"]).putExtra(EXTRA_BODY, data["body"])
         // requestCode = id: extras não distinguem PendingIntents, e cada push precisa do seu.
         return PendingIntent.getBroadcast(this, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }

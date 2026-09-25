@@ -35,7 +35,7 @@ internal class NotificationSessionBinding(
         scope.launch {
             mutex.withLock {
                 val current = session.value
-                if (previous != null && previous != current) needsClear = true
+                if (previous != null && previous != current) { needsClear = true; native.dismissAll() }
                 previous = current
                 println("[SaqzPush] refresh session=${current != null} needsClear=$needsClear")
                 if (needsClear) {

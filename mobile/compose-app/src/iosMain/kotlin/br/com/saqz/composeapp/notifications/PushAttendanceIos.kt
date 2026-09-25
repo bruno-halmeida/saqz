@@ -14,5 +14,5 @@ fun respondPushAttendance(
     done: (PushAttendanceOutcome) -> Unit,
 ) {
     if (KoinPlatformTools.defaultContext().getOrNull() == null) startSaqzKoin(dependencies, PlatformContext.INSTANCE)
-    PushAttendance.respond(groupId, gameId, confirm, done)
+    KoinPlatformTools.defaultContext().get().get<PushAttendance>().respond(groupId, gameId, confirm, done)
 }
