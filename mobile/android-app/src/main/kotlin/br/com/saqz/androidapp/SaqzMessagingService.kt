@@ -3,6 +3,7 @@ package br.com.saqz.androidapp
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Handler
@@ -21,19 +22,38 @@ class SaqzMessagingService : FirebaseMessagingService() {
             (GlobalContext.getOrNull()?.getOrNull<NativeNotificationPort>() as? AndroidNotificationPort)?.tokenChanged()
         }
     }
+    // Mensagem só de dados: chega aqui também em segundo plano, e é o app que monta a notificação.
     override fun onMessageReceived(message: RemoteMessage) {
-        val notification = message.notification ?: return
+        val data = message.data
+        val title = data["title"] ?: message.notification?.title ?: return
+        val body = data["body"] ?: message.notification?.body ?: return
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 24 && !manager.areNotificationsEnabled()) return
-        val id = message.data["notificationId"]?.hashCode() ?: message.messageId.hashCode()
-        val intent = Intent(this, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra(EXTRA_NOTIFICATION_GROUP_ID, message.data["groupId"])
-        val content = PendingIntent.getActivity(this, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        manager.notify(id, NotificationCompat.Builder(this, REMINDER_CHANNEL)
-            .setSmallIcon(R.drawable.ic_saqz_notification).setContentTitle(notification.title)
-            .setContentText(notification.body).setAutoCancel(true).setContentIntent(content).build())
+        val id = data["notificationId"]?.hashCode() ?: message.messageId.hashCode()
+        val notification = reminderNotification(this, id, title, body, data["groupId"])
+        data["gameId"]?.let { gameId ->
+            notification
+                .addAction(0, getString(R.string.notification_action_confirm), attendanceAction(ACTION_CONFIRM, id, data, gameId))
+                .addAction(0, getString(R.string.notification_action_decline), attendanceAction(ACTION_DECLINE, id, data, gameId))
+        }
+        manager.notify(id, notification.build())
     }
+    private fun attendanceAction(action: String, id: Int, data: Map<String, String>, gameId: String): PendingIntent {
+        val intent = Intent(this, AttendanceActionReceiver::class.java).setAction(action)
+            .putExtra(EXTRA_NOTIFICATION_ID, id).putExtra(EXTRA_NOTIFICATION_GROUP_ID, data["groupId"])
+            .putExtra(EXTRA_GAME_ID, gameId).putExtra(EXTRA_TITLE, data["title"])
+        // requestCode = id: extras não distinguem PendingIntents, e cada push precisa do seu.
+        return PendingIntent.getBroadcast(this, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+}
+internal fun reminderNotification(context: Context, id: Int, title: String, body: String, groupId: String?): NotificationCompat.Builder {
+    val intent = Intent(context, MainActivity::class.java)
+        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        .putExtra(EXTRA_NOTIFICATION_GROUP_ID, groupId)
+    val content = PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    return NotificationCompat.Builder(context, REMINDER_CHANNEL)
+        .setSmallIcon(R.drawable.ic_saqz_notification).setContentTitle(title)
+        .setContentText(body).setAutoCancel(true).setContentIntent(content)
 }
 internal const val REMINDER_CHANNEL = "saqz-reminders"
 internal const val EXTRA_NOTIFICATION_GROUP_ID = "saqz.notification.groupId"

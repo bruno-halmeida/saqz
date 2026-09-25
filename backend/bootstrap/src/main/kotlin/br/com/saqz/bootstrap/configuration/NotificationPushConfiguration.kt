@@ -31,16 +31,32 @@ class FirebaseNotificationPushSender(private val app: FirebaseApp) : Notificatio
         // O Auth Emulator não oferece FCM: preservar a fila para diagnóstico, nunca fingir entrega.
         if (app.options.projectId == "saqz-local") return PushDelivery.RETRY
         return try {
+            // Sem `notification` de topo: no Android a mensagem é só dados, para o app montar a notificação
+            // com os botões de presença mesmo em segundo plano; no iOS o alerta vai explícito no `aps`.
+            val aps = Aps.builder().setSound("default")
+                .setAlert(ApsAlert.builder().setTitle(message.title).setBody(message.body).build())
+            if (message.gameId != null) aps.setCategory(ATTENDANCE_CATEGORY)
             FirebaseMessaging.getInstance(app).send(Message.builder().setToken(token)
-                .setNotification(Notification.builder().setTitle(message.title).setBody(message.body).build())
-                .putData("notificationId", message.notificationId.toString()).putData("groupId", message.groupId.toString())
-                .setAndroidConfig(AndroidConfig.builder().setNotification(AndroidNotification.builder()
-                    .setChannelId("saqz-reminders").setTag("charge-${message.notificationId}").build()).build())
-                .setApnsConfig(ApnsConfig.builder().setAps(Aps.builder().setSound("default").build()).build())
+                .putAllData(message.data())
+                .setAndroidConfig(AndroidConfig.builder().setPriority(AndroidConfig.Priority.HIGH).build())
+                .setApnsConfig(ApnsConfig.builder().setAps(aps.build()).build())
                 .build())
             PushDelivery.SENT
         } catch (error: FirebaseMessagingException) {
             if (error.messagingErrorCode == MessagingErrorCode.UNREGISTERED) PushDelivery.INVALID_TOKEN else PushDelivery.RETRY
         }
     }
+}
+
+/** Categoria APNs registrada no app iOS com as ações "Confirmar" / "Não vou". */
+const val ATTENDANCE_CATEGORY = "SAQZ_ATTENDANCE"
+
+/** Chaves lidas pelos apps: título/corpo (Android monta a notificação) e o jogo, quando o push pede presença. */
+fun NotificationPush.data(): Map<String, String> = buildMap {
+    put("notificationId", notificationId.toString())
+    put("groupId", groupId.toString())
+    put("channel", channel)
+    put("title", title)
+    put("body", body)
+    gameId?.let { put("gameId", it.toString()) }
 }

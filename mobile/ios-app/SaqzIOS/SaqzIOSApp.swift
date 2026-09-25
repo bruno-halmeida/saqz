@@ -209,6 +209,7 @@ struct SaqzIOSApp: App {
         }
         router = IOSLifecycleRouter(auth: composition.auth, links: composition.links)
         root = ComposeRootView(dependencies: composition.dependencies)
+        SaqzPushDelegate.dependencies = composition.dependencies
     }
 
     var body: some Scene {

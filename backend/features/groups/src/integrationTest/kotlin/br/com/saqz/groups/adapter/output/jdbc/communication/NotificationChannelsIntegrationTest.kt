@@ -50,6 +50,7 @@ class NotificationChannelsIntegrationTest {
         push.drain(NotificationPushSender { _, message -> pushes += message; PushDelivery.SENT })
         assertEquals(2, pushes.count { it.body == "Você recebeu um aviso do grupo. Abra o app para conferir." })
         assertEquals(1, pushes.count { it.body == "Você recebeu uma mensagem no grupo. Abra o app para conferir." })
+        assertTrue(pushes.all { it.gameId == null && it.channel in setOf("NOTICE", "CHAT") })
         assertTrue(service.inbox(owner, null).success().items.isEmpty())
     }
 
