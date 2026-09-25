@@ -47,6 +47,19 @@ class NotificationSessionBindingTest {
         native.changed?.invoke(); runCurrent()
         assertEquals("token-2", gateway.devices.last().token)
     }
+    @Test fun aNewLiveActivityStartTokenRegistersTheSameInstallationAgain() = runTest {
+        val native = Native()
+        val gateway = Gateway()
+        NotificationSessionBinding(MutableStateFlow("user"), native, gateway, backgroundScope)
+        runCurrent()
+        assertEquals(1, gateway.devices.size)
+
+        native.startToken = "start-1"
+        native.changed?.invoke(); runCurrent()
+
+        assertEquals(2, gateway.devices.size)
+        assertEquals("installation" to "start-1", gateway.devices.last().let { it.installationId to it.liveActivityStartToken })
+    }
     @Test fun failedRevocationBlocksReuseUntilRetryEvenAfterRestart() = runTest {
         val session = MutableStateFlow<String?>("user-a")
         val native = Native()
@@ -75,7 +88,9 @@ class NotificationSessionBindingTest {
         var clears = 0
         var clearSuccess = true
         var changed: (() -> Unit)? = null
-        override fun device(done: (NotificationDevice?) -> Unit) = done(NotificationDevice("installation", "token-$clears", "ANDROID"))
+        var startToken: String? = null
+        override fun device(done: (NotificationDevice?) -> Unit) =
+            done(NotificationDevice("installation", "token-$clears", "ANDROID", liveActivityStartToken = startToken))
         override fun clear(done: (Boolean) -> Unit) { if (clearSuccess) clears++; done(clearSuccess) }
         var dismissed = 0
         override fun dismissAll() { dismissed++ }

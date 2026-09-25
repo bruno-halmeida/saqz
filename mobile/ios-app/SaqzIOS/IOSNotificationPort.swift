@@ -58,7 +58,7 @@ final class IOSNotificationPort: NSObject, @preconcurrency NativeNotificationPor
         let defaults = UserDefaults.standard
         let installation = defaults.string(forKey: "saqz.notificationInstallation") ?? UUID().uuidString
         defaults.set(installation, forKey: "saqz.notificationInstallation")
-        callback(NotificationDevice(installationId: installation, token: token, platform: "IOS"))
+        callback(NotificationDevice(installationId: installation, token: token, platform: "IOS", liveActivityStartToken: nil))
     }
     func clear(done: @escaping (KotlinBoolean) -> Void) {
         NSLog("[SaqzPush] clear: chamado")
