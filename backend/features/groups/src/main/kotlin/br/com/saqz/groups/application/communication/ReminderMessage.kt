@@ -20,6 +20,12 @@ fun openGameBody(game: ReminderGame): String =
     "Jogo: ${gameSchedule(game.localDate, game.localTime)}\nLocal: ${game.venue}\n" +
         "\nO jogo está liberado. Confirme sua presença."
 
+/** Corpo da janela de presença das 24 h: horário, local e a contagem no momento em que ela abre. */
+fun attendanceWindowBody(game: ReminderGame, confirmed: Int, capacity: Int, waitlisted: Int): String =
+    "Jogo: ${gameSchedule(game.localDate, game.localTime)}\nLocal: ${game.venue}\n" +
+        "$confirmed/$capacity confirmados" + (if (waitlisted > 0) " · $waitlisted na espera" else "") +
+        "\n\nConfirme sua presença."
+
 /**
  * Corpo do lembrete de presença: `Jogo: {dia, data às hora}`, `Local: {local}` e listas nominais
  * por situação, na ordem confirmados, lista de espera e fora, um nome por linha. Seções vazias são

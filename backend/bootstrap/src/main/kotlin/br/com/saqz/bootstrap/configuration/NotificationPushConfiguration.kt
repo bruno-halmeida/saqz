@@ -11,6 +11,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.Scheduled
+import java.time.Duration
+import java.time.Instant
 import javax.sql.DataSource
 
 @Configuration(proxyBeanMethods = false)
@@ -36,10 +38,17 @@ class FirebaseNotificationPushSender(private val app: FirebaseApp) : Notificatio
             val aps = Aps.builder().setSound("default")
                 .setAlert(ApsAlert.builder().setTitle(message.title).setBody(message.body).build())
             if (message.gameId != null) aps.setCategory(ATTENDANCE_CATEGORY)
+            val android = AndroidConfig.builder().setPriority(AndroidConfig.Priority.HIGH)
+            val apns = ApnsConfig.builder()
+            message.windowEndsAt?.let { end ->
+                // Fora da janela o push não vale mais: FCM e APNs descartam em vez de entregar atrasado.
+                android.setTtl(Duration.between(Instant.now(), end).toMillis().coerceAtLeast(0))
+                apns.putHeader("apns-expiration", end.epochSecond.toString())
+            }
             FirebaseMessaging.getInstance(app).send(Message.builder().setToken(token)
                 .putAllData(message.data())
-                .setAndroidConfig(AndroidConfig.builder().setPriority(AndroidConfig.Priority.HIGH).build())
-                .setApnsConfig(ApnsConfig.builder().setAps(aps.build()).build())
+                .setAndroidConfig(android.build())
+                .setApnsConfig(apns.setAps(aps.build()).build())
                 .build())
             PushDelivery.SENT
         } catch (error: FirebaseMessagingException) {
@@ -51,7 +60,7 @@ class FirebaseNotificationPushSender(private val app: FirebaseApp) : Notificatio
 /** Categoria APNs registrada no app iOS com as ações "Confirmar" / "Não vou". */
 const val ATTENDANCE_CATEGORY = "SAQZ_ATTENDANCE"
 
-/** Chaves lidas pelos apps: título/corpo (Android monta a notificação) e o jogo, quando o push pede presença. */
+/** Chaves lidas pelos apps: título/corpo (Android monta a notificação), o jogo quando o push pede presença e o fim da janela das 24 h. */
 fun NotificationPush.data(): Map<String, String> = buildMap {
     put("notificationId", notificationId.toString())
     put("groupId", groupId.toString())
@@ -60,4 +69,5 @@ fun NotificationPush.data(): Map<String, String> = buildMap {
     put("title", title)
     put("body", body)
     gameId?.let { put("gameId", it.toString()) }
+    windowEndsAt?.let { put("windowEndsAt", it.toEpochMilli().toString()) }
 }

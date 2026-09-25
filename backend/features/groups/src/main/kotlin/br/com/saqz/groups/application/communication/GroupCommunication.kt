@@ -5,7 +5,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 
-enum class MessageChannel { CHAT, NOTICE, REMINDER, GAME_OPEN, CHARGE }
+enum class MessageChannel { CHAT, NOTICE, REMINDER, GAME_OPEN, CHARGE, ATTENDANCE_WINDOW }
 
 data class GroupMessage(
     val id: UUID,
@@ -34,6 +34,17 @@ data class ReminderCandidate(
     val ownerId: UUID,
     val game: ReminderGame,
 )
+
+/** Jogo que entrou na janela das 24 h, com a contagem do momento em que ela abre. */
+data class AttendanceWindowCandidate(
+    val gameId: UUID,
+    val groupId: UUID,
+    val ownerId: UUID,
+    val game: ReminderGame,
+    val confirmed: Int,
+    val capacity: Int,
+    val waitlisted: Int,
+)
 data class PushPreferences(val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true, val charges: Boolean = true)
 data class WhatsAppPreferences(val notices: Boolean = false, val reminders: Boolean = false, val charges: Boolean = false)
 data class NotificationPreferences(
@@ -58,6 +69,7 @@ interface GroupCommunicationRepository {
 
     /** O próximo jogo aberto de um grupo: a mesma regra de [reminderCandidates], para um grupo só. */
     fun reminderCandidate(groupId: UUID): ReminderCandidate?
+    fun attendanceWindowCandidates(): List<AttendanceWindowCandidate>
     fun inbox(actor: UUID, before: Long?): List<GroupNotification>
     fun markRead(actor: UUID, sequence: Long)
     fun preferences(actor: UUID): NotificationPreferences

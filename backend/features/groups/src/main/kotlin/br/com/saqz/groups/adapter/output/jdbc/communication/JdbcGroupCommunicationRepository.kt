@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.communication
 
+import br.com.saqz.groups.application.communication.AttendanceWindowCandidate
 import br.com.saqz.groups.application.communication.GroupCommunicationRepository
 import br.com.saqz.groups.application.communication.GroupMessage
 import br.com.saqz.groups.application.communication.GroupNotification
@@ -48,9 +49,9 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         if (channel == MessageChannel.REMINDER) {
             jdbc.sql("INSERT INTO notification_attendance_links(message_id) VALUES (:id)").param("id", id).update()
         }
-        // GAME_OPEN não tem autor de verdade — o dono só assina o aviso do sistema, e jogando
-        // como qualquer um também precisa recebê-lo. Ver [firstGameOpenNotice] para o alcance.
-        val systemAuthored = channel == MessageChannel.GAME_OPEN
+        // GAME_OPEN e a janela de presença não têm autor de verdade — o dono só assina o aviso do
+        // sistema, e jogando como qualquer um também precisa recebê-los. Ver [firstGameOpenNotice].
+        val systemAuthored = channel == MessageChannel.GAME_OPEN || channel == MessageChannel.ATTENDANCE_WINDOW
         jdbc.sql(
             """
             INSERT INTO group_notifications (recipient_id, message_id)
@@ -66,7 +67,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             """.trimIndent(),
         ).param("message", id).param("group", groupId).param("actor", actor)
             .param("systemAuthored", systemAuthored)
-            .param("everyone", systemAuthored && firstGameOpenNotice(id, gameId))
+            .param("everyone", channel == MessageChannel.GAME_OPEN && firstGameOpenNotice(id, gameId))
             .param("game", gameId, Types.OTHER).update()
         val recipients = jdbc.sql("SELECT count(*) FROM group_notifications WHERE message_id = :id AND in_app")
             .param("id", id).query(Int::class.java).single()
@@ -149,6 +150,43 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         LIMIT 1
         """.trimIndent(),
     ).param("group", groupId).query { rs, _ -> candidate(rs) }.optional().orElse(null)
+
+    /**
+     * Jogos que entraram na janela das 24 h: publicados antes do T-24h, com a janela ainda aberta
+     * (até T-22h ou o prazo, o que vier antes) e sem janela anterior. É por jogo, não só o próximo
+     * do grupo. A contagem inclui convidados, como o `confirmedCount` do jogo.
+     */
+    override fun attendanceWindowCandidates(): List<AttendanceWindowCandidate> = jdbc.sql(
+        """
+        SELECT games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
+               games.capacity, groups.owner_user_id,
+               count(*) FILTER (WHERE a.status = 'CONFIRMED') AS confirmed,
+               count(*) FILTER (WHERE a.status = 'WAITLISTED') AS waitlisted
+        FROM games
+        JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
+        LEFT JOIN game_attendance a ON a.game_id = games.id
+        WHERE games.status = 'PUBLISHED'
+          AND games.published_at <= games.starts_at - interval '24 hours'
+          AND now() >= games.starts_at - interval '24 hours'
+          AND now() < least(games.starts_at - interval '22 hours', games.confirmation_deadline)
+          AND NOT EXISTS (
+              SELECT 1 FROM group_messages w WHERE w.game_id = games.id AND w.channel = 'ATTENDANCE_WINDOW')
+        GROUP BY games.id, groups.owner_user_id
+        ORDER BY games.starts_at, games.id
+        """.trimIndent(),
+    ).query { rs, _ -> AttendanceWindowCandidate(
+        gameId = rs.getObject("game_id", UUID::class.java),
+        groupId = rs.getObject("group_id", UUID::class.java),
+        ownerId = rs.getObject("owner_user_id", UUID::class.java),
+        game = ReminderGame(
+            localDate = rs.getObject("local_date", LocalDate::class.java),
+            localTime = rs.getObject("local_time", LocalTime::class.java),
+            venue = rs.getString("venue_name"),
+        ),
+        confirmed = rs.getInt("confirmed"),
+        capacity = rs.getInt("capacity"),
+        waitlisted = rs.getInt("waitlisted"),
+    ) }.list()
 
     private fun candidate(rs: ResultSet) = ReminderCandidate(
         gameId = rs.getObject("game_id", UUID::class.java),

@@ -13,13 +13,13 @@ class GroupCommunicationService(
 ) {
     fun messages(actor: UUID, groupId: UUID, channel: MessageChannel, before: Long?): CommunicationResult<CommunicationPage<GroupMessage>> =
         inGroup(actor, groupId) {
-            if (channel in setOf(MessageChannel.REMINDER, MessageChannel.GAME_OPEN, MessageChannel.CHARGE) || (before != null && before <= 0)) return@inGroup invalid()
+            if (channel in setOf(MessageChannel.REMINDER, MessageChannel.GAME_OPEN, MessageChannel.CHARGE, MessageChannel.ATTENDANCE_WINDOW) || (before != null && before <= 0)) return@inGroup invalid()
             CommunicationResult.Success(page(repository.messages(groupId, channel, before)) { it.sequence })
         }
 
     fun publish(actor: UUID, groupId: UUID, channel: MessageChannel, requestId: UUID, body: String): CommunicationResult<GroupMessage> =
         inGroup(actor, groupId) { role ->
-            if (channel in setOf(MessageChannel.REMINDER, MessageChannel.GAME_OPEN, MessageChannel.CHARGE)) return@inGroup invalid()
+            if (channel in setOf(MessageChannel.REMINDER, MessageChannel.GAME_OPEN, MessageChannel.CHARGE, MessageChannel.ATTENDANCE_WINDOW)) return@inGroup invalid()
             if (channel == MessageChannel.NOTICE && role == GroupRole.ATHLETE) return@inGroup forbidden()
             val text = body.trim()
             if (text.length !in 1..2000 || text.any { it.isISOControl() && it !in "\n\t\r" }) return@inGroup invalid()
@@ -95,6 +95,23 @@ class GroupCommunicationService(
             openGameBody(candidate.game), candidate.gameId,
         )
         true
+    }
+
+    /**
+     * Janela de presença das 24 h: uma mensagem por jogo publicado antes do T-24h que entrou na
+     * janela, para quem ainda não respondeu (dono incluído). A view revalida a entrega até o fim
+     * da janela — T-22h ou o prazo, o que vier antes.
+     */
+    fun openAttendanceWindows(): Int = transaction.inTransaction {
+        val candidates = repository.attendanceWindowCandidates()
+        candidates.forEach { candidate ->
+            repository.publish(
+                candidate.groupId, candidate.ownerId, MessageChannel.ATTENDANCE_WINDOW, UUID.randomUUID(),
+                attendanceWindowBody(candidate.game, candidate.confirmed, candidate.capacity, candidate.waitlisted),
+                candidate.gameId,
+            )
+        }
+        candidates.size
     }
 
     fun inbox(actor: UUID, before: Long?): CommunicationResult<CommunicationPage<GroupNotification>> =
