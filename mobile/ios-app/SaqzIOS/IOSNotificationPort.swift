@@ -141,10 +141,13 @@ final class SaqzPushDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         let userInfo = response.notification.request.content.userInfo
         let groupId = userInfo["groupId"] as? String
         let intents = ["CONFIRM": true, "DECLINE": false]
-        if let groupId, let gameId = userInfo["gameId"] as? String, let confirm = intents[response.actionIdentifier] {
+        if let groupId, let gameId = userInfo["gameId"] as? String, let recipient = userInfo["recipient"] as? String,
+           let confirm = intents[response.actionIdentifier] {
             NSLog("[SaqzPush] ação no push: confirm=\(confirm) gameId=\(gameId)")
             nonisolated(unsafe) let done = completionHandler
-            Task { @MainActor in Self.respondAttendance(groupId: groupId, gameId: gameId, confirm: confirm, completion: done) }
+            Task { @MainActor in
+                Self.respondAttendance(groupId: groupId, gameId: gameId, recipient: recipient, confirm: confirm, completion: done)
+            }
             return
         }
         NSLog("[SaqzPush] toque no push: groupId=\(groupId ?? "-")")
@@ -152,9 +155,11 @@ final class SaqzPushDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         completionHandler()
     }
     /// O sistema já descarta a notificação tocada; o resultado volta como notificação local.
-    private static func respondAttendance(groupId: String, gameId: String, confirm: Bool, completion: @escaping () -> Void) {
+    private static func respondAttendance(groupId: String, gameId: String, recipient: String, confirm: Bool, completion: @escaping () -> Void) {
         guard let dependencies else { completion(); return }
-        PushAttendanceIosKt.respondPushAttendance(dependencies: dependencies, groupId: groupId, gameId: gameId, confirm: confirm) { outcome in
+        PushAttendanceIosKt.respondPushAttendance(
+            dependencies: dependencies, groupId: groupId, gameId: gameId, recipient: recipient, confirm: confirm
+        ) { outcome in
             let content = UNMutableNotificationContent()
             content.title = "Saqz"
             content.body = outcome.message

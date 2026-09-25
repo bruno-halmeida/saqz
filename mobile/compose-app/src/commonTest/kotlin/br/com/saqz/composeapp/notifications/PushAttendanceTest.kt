@@ -16,13 +16,22 @@ import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
 import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
+import br.com.saqz.network.IdTokenProvider
+import br.com.saqz.network.TokenResult
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+@OptIn(ExperimentalEncodingApi::class)
 class PushAttendanceTest {
+    private val loggedIn = object : IdTokenProvider {
+        override fun token(forceRefresh: Boolean, completion: (TokenResult) -> Unit) =
+            completion(TokenResult.Available("h." + Base64.UrlSafe.encode("""{"sub":"user-a"}""".encodeToByteArray()).trimEnd('=') + ".s"))
+    }
     private fun answered(status: AttendanceStatus) = SaqzResult.Success(
         VersionedAttendanceMutation(
             AttendanceMutation(
@@ -48,7 +57,7 @@ class PushAttendanceTest {
     fun declineReachesTheGatewayWithAFreshRequestIdAndTheOutcomeComesBack() = runTest {
         val gateway = RespondOnly { answered(AttendanceStatus.Declined) }
         val outcomes = mutableListOf<PushAttendanceOutcome>()
-        PushAttendance(gateway, this).respond("g1", "game1", confirm = false) { outcomes += it }
+        PushAttendance(gateway, loggedIn, this).respond("g1", "game1", "user-a", confirm = false) { outcomes += it }
         advanceUntilIdle()
         assertEquals(listOf(PushAttendanceOutcome.Declined), outcomes)
         assertEquals(listOf(GroupId("g1") to "game1"), gateway.calls.map { it.first })
@@ -60,9 +69,19 @@ class PushAttendanceTest {
     fun aRequestSlowerThanTheReceiverWindowIsReportedAsNoResponseInsteadOfHanging() = runTest {
         val gateway = RespondOnly { delay(60_000); answered(AttendanceStatus.Confirmed) }
         val outcomes = mutableListOf<PushAttendanceOutcome>()
-        PushAttendance(gateway, this).respond("g1", "game1", confirm = true) { outcomes += it }
+        PushAttendance(gateway, loggedIn, this).respond("g1", "game1", "user-a", confirm = true) { outcomes += it }
         advanceUntilIdle()
         assertEquals(listOf(PushAttendanceOutcome.NoResponse), outcomes)
+    }
+
+    @Test
+    fun aPushForAnotherAccountOnThisDeviceIsRefusedWithoutTouchingTheGateway() = runTest {
+        val gateway = RespondOnly { answered(AttendanceStatus.Confirmed) }
+        val outcomes = mutableListOf<PushAttendanceOutcome>()
+        PushAttendance(gateway, loggedIn, this).respond("g1", "game1", "user-b", confirm = true) { outcomes += it }
+        advanceUntilIdle()
+        assertEquals(listOf(PushAttendanceOutcome.Failed), outcomes)
+        assertEquals(emptyList(), gateway.calls)
     }
 
     private class RespondOnly(

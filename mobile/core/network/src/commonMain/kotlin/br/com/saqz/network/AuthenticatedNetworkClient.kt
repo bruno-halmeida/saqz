@@ -4,8 +4,8 @@ import io.ktor.http.HttpMethod
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.KSerializer
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 sealed interface TokenResult {
     data class Available(val value: String) : TokenResult
@@ -103,8 +103,9 @@ class AuthenticatedNetworkClient(
         refreshed
     }
 
-    private suspend fun token(forceRefresh: Boolean): TokenResult = suspendCoroutine { continuation ->
-        tokenProvider.token(forceRefresh) { continuation.resume(it) }
+    // Cancelável: um teto de tempo (ação de push) não fica preso esperando o callback nativo.
+    private suspend fun token(forceRefresh: Boolean): TokenResult = suspendCancellableCoroutine { continuation ->
+        tokenProvider.token(forceRefresh) { if (continuation.isActive) continuation.resume(it) }
     }
 }
 

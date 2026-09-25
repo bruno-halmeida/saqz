@@ -15,6 +15,7 @@ class AttendanceActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val gameId = intent.getStringExtra(EXTRA_GAME_ID) ?: return
         val groupId = intent.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID) ?: return
+        val recipient = intent.getStringExtra(EXTRA_RECIPIENT) ?: return
         val id = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -29,7 +30,7 @@ class AttendanceActionReceiver : BroadcastReceiver() {
             }
             loadSaqzPlatformDependencies(composition.dependencies, context.applicationContext)
         }
-        koin.get<PushAttendance>().respond(groupId, gameId, confirm = intent.action == ACTION_CONFIRM) { outcome ->
+        koin.get<PushAttendance>().respond(groupId, gameId, recipient, confirm = intent.action == ACTION_CONFIRM) { outcome ->
             manager.notify(id, reminderNotification(context, id, title, context.getString(outcome.label()), groupId).build())
             pending.finish()
         }
@@ -51,3 +52,4 @@ internal const val EXTRA_NOTIFICATION_ID = "saqz.notification.id"
 internal const val EXTRA_GAME_ID = "saqz.notification.gameId"
 internal const val EXTRA_TITLE = "saqz.notification.title"
 internal const val EXTRA_BODY = "saqz.notification.body"
+internal const val EXTRA_RECIPIENT = "saqz.notification.recipient"

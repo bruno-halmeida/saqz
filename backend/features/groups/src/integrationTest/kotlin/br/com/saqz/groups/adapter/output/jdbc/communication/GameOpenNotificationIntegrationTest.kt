@@ -67,6 +67,7 @@ class GameOpenNotificationIntegrationTest {
         assertEquals("O jogo está liberado. Abra o app para confirmar sua presença.", sent.first().second.body)
         // O app usa o jogo para oferecer "Confirmar" / "Não vou" direto na notificação.
         assertEquals("GAME_OPEN" to game, sent.first().second.let { it.channel to it.gameId })
+        assertEquals(2, sent.map { it.second.recipient }.filter { it.isNotBlank() }.distinct().size)
         assertEquals(0L, count("notification_whatsapp_queue"))
         assertEquals(0L, count("notification_whatsapp_group_queue"))
     }

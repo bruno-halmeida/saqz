@@ -56,6 +56,7 @@ fun NotificationPush.data(): Map<String, String> = buildMap {
     put("notificationId", notificationId.toString())
     put("groupId", groupId.toString())
     put("channel", channel)
+    put("recipient", recipient)
     put("title", title)
     put("body", body)
     gameId?.let { put("gameId", it.toString()) }
