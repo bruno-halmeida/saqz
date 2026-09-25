@@ -53,7 +53,7 @@ class ResetCodeScreenTest {
         content(state = ResetCodeState(email = EMAIL, resendSeconds = 59, resent = true))
 
         onNodeWithTag(ResetCodeTags.Resent).assertExists()
-        onNodeWithTag(ResetCodeTags.Resend).assertTextEquals("Reenviar novamente em 0:59")
+        onNodeWithTag(ResetCodeTags.Resend).assertTextEquals("Reenviar código em 0:59")
         onNodeWithTag(ResetCodeTags.SignIn).assertDoesNotExist()
         // O reenvio não muda o que o botão faz: o código novo ainda precisa ser conferido.
         onNodeWithText("Verificar código").assertExists()
