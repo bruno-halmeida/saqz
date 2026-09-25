@@ -9,6 +9,7 @@ import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.access.domain.port.NativeProfilePhotoPort
 import br.com.saqz.access.domain.port.NativeSharePort
 import br.com.saqz.access.domain.verification.EmailVerificationGateway
+import br.com.saqz.composeapp.notifications.PushAttendance
 import br.com.saqz.composeapp.SaqzPlatformDependencies
 import br.com.saqz.composeapp.access.BackendEmailVerificationAuth
 import br.com.saqz.core.common.analytics.SaqzAnalytics
@@ -50,6 +51,7 @@ import org.koin.core.context.loadKoinModules
 import org.koin.core.context.stopKoin
 import org.koin.core.context.unloadKoinModules
 import org.koin.core.module.Module
+import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 import org.koin.core.qualifier.named
 import org.koin.mp.KoinPlatformTools
@@ -79,6 +81,7 @@ private val commonModules = listOf(
         single { br.com.saqz.composeapp.notifications.NotificationSessionBinding(
             get<br.com.saqz.access.presentation.SessionAccessStateMachine>().activeSessionKey, get(), get(), get(),
         ) }
+        singleOf(::PushAttendance)
     },
     groupsPresentationModule(),
     inviteJourneyDataModule(),
@@ -116,6 +119,10 @@ internal fun startSaqzKoin(
     startSaqzKoin()
     loadSaqzPlatformDependencies(dependencies, imageLoaderContext)
 }
+
+/** Falso num processo acordado por broadcast: a tela que carrega a plataforma ainda não existiu. */
+@HiddenFromObjC
+fun hasSaqzPlatformDependencies(): Boolean = platformModules.isNotEmpty()
 
 @HiddenFromObjC
 fun loadSaqzPlatformDependencies(

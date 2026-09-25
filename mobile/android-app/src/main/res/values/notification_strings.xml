@@ -1,1 +1,11 @@
-<resources><string name="notification_reminders">Lembretes de cobrança</string></resources>
+<resources>
+    <string name="notification_reminders">Lembretes de cobrança</string>
+    <string name="notification_action_confirm">Confirmar</string>
+    <string name="notification_action_decline">Não vou</string>
+    <string name="notification_attendance_confirmed">Presença confirmada.</string>
+    <string name="notification_attendance_waitlisted">Jogo lotado: você entrou na lista de espera.</string>
+    <string name="notification_attendance_declined">Ausência registrada.</string>
+    <string name="notification_attendance_closed">Prazo encerrado. Abra o app para conferir.</string>
+    <string name="notification_attendance_failed">Não deu para registrar. Abra o app e tente de novo.</string>
+    <string name="notification_attendance_no_response">Sem resposta do servidor. Abra o app para conferir.</string>
+</resources>

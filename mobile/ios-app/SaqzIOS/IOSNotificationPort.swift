@@ -77,6 +77,7 @@ final class IOSNotificationPort: NSObject, @preconcurrency NativeNotificationPor
             Task { @MainActor in completion.finish(error == nil || ignorable) }
         }
     }
+    func dismissAll() { UNUserNotificationCenter.current().removeAllDeliveredNotifications() }
     func observe(changed: @escaping () -> Void) -> any NotificationSubscription {
         let id = UUID()
         listeners[id] = changed
@@ -108,8 +109,18 @@ extension Notification.Name {
 }
 @MainActor
 final class SaqzPushDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    /// Entregue pelo `SaqzIOSApp.init`: a ação do push pode rodar sem tela, e o Koin sobe com isto.
+    static var dependencies: SaqzPlatformDependencies?
+    static let attendanceCategory = "SAQZ_ATTENDANCE"
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        UNUserNotificationCenter.current().delegate = self
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+        let confirm = UNNotificationAction(identifier: "CONFIRM", title: "Confirmar", options: [])
+        let decline = UNNotificationAction(identifier: "DECLINE", title: "Não vou", options: [.destructive])
+        center.setNotificationCategories([
+            UNNotificationCategory(identifier: Self.attendanceCategory, actions: [confirm, decline], intentIdentifiers: []),
+        ])
         return true
     }
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
@@ -129,8 +140,44 @@ final class SaqzPushDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
         let groupId = userInfo["groupId"] as? String
+        let intents = ["CONFIRM": true, "DECLINE": false]
+        if let groupId, let gameId = userInfo["gameId"] as? String, let recipient = userInfo["recipient"] as? String,
+           let confirm = intents[response.actionIdentifier] {
+            NSLog("[SaqzPush] ação no push: confirm=\(confirm) gameId=\(gameId)")
+            nonisolated(unsafe) let done = completionHandler
+            Task { @MainActor in
+                Self.respondAttendance(groupId: groupId, gameId: gameId, recipient: recipient, confirm: confirm, completion: done)
+            }
+            return
+        }
         NSLog("[SaqzPush] toque no push: groupId=\(groupId ?? "-")")
         NotificationCenter.default.post(name: .saqzPushOpened, object: nil, userInfo: groupId.map { ["groupId": $0] })
         completionHandler()
+    }
+    /// O sistema já descarta a notificação tocada; o resultado volta como notificação local.
+    private static func respondAttendance(groupId: String, gameId: String, recipient: String, confirm: Bool, completion: @escaping () -> Void) {
+        guard let dependencies else { completion(); return }
+        PushAttendanceIosKt.respondPushAttendance(
+            dependencies: dependencies, groupId: groupId, gameId: gameId, recipient: recipient, confirm: confirm
+        ) { outcome in
+            let content = UNMutableNotificationContent()
+            content.title = "Saqz"
+            content.body = outcome.message
+            UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "attendance-\(gameId)", content: content, trigger: nil))
+            completion()
+        }
+    }
+}
+
+private extension PushAttendanceOutcome {
+    var message: String {
+        switch self {
+        case .confirmed: return "Presença confirmada."
+        case .waitlisted: return "Jogo lotado: você entrou na lista de espera."
+        case .declined: return "Ausência registrada."
+        case .closed: return "Prazo encerrado. Abra o app para conferir."
+        case .noresponse: return "Sem resposta do servidor. Abra o app para conferir."
+        default: return "Não deu para registrar. Abra o app e tente de novo."
+        }
     }
 }
