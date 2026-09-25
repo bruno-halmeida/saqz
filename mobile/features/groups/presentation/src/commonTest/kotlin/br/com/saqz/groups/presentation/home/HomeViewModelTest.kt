@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.home
 
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
@@ -382,6 +383,36 @@ class HomeViewModelTest {
         assertNull(viewModel.state.value.member?.nextGame?.ownAttendance)
         assertTrue(viewModel.state.value.responseFailed)
         assertFalse(viewModel.state.value.responding)
+    }
+
+    @Test
+    fun `recorded response reports attendance_answered from the app surface and a failed one does not`() = runTest {
+        val recorded = mutableListOf<Pair<String, Map<String, String>>>()
+        SaqzAnalytics.track = { name, params -> recorded += name to params }
+        try {
+            val confirmed = viewModel(
+                homeGateway = SequenceHomeGateway(
+                    SaqzResult.Success(sampleHome(nextGame = sampleNextGame())),
+                    SaqzResult.Success(sampleHome(nextGame = sampleNextGame(HomeOwnAttendance(AttendanceStatus.Confirmed, null)))),
+                ),
+                attendanceGateway = FakeAttendanceGateway(),
+            )
+            confirmed.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+            advanceUntilIdle()
+            val failed = viewModel(
+                homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = sampleNextGame()))),
+                attendanceGateway = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.Data(DataError.Server))),
+            )
+            failed.onIntent(HomeIntent.Respond(AttendanceIntent.Decline))
+            advanceUntilIdle()
+        } finally {
+            SaqzAnalytics.reset()
+        }
+
+        assertEquals(
+            listOf("attendance_answered" to mapOf("surface" to "app", "answer" to "confirm")),
+            recorded.filter { it.first == "attendance_answered" },
+        )
     }
 
     @Test

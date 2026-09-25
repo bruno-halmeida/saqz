@@ -1,10 +1,12 @@
 package br.com.saqz.groups.presentation.details
 
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteGateway
@@ -589,7 +591,7 @@ class GroupDetailsViewModel(
                 GroupId(groupId),
                 game.gameId,
                 SelfAttendanceCommand(Uuid.random().toString(), intent),
-            )
+            ).onSuccess { SaqzAnalytics.attendanceAnswered("app", intent == AttendanceIntent.Confirm) }
             if (generation != responseGeneration || loadAtStart != loadGeneration) return@launch
             when (result) {
                 is SaqzResult.Success -> {

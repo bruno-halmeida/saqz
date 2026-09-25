@@ -22,6 +22,10 @@ object SaqzAnalytics {
     /** Evento curado: fato de sucesso que `ui_action` não distingue (submit não é sucesso). */
     fun event(name: String, vararg params: Pair<String, String>) = track(name, params.toMap())
 
+    /** Resposta de presença gravada no servidor; [surface] é `app`, `link`, `push` ou `live_activity`. */
+    fun attendanceAnswered(surface: String, confirm: Boolean) =
+        event("attendance_answered", "surface" to surface, "answer" to if (confirm) "confirm" else "decline")
+
     /** User property do GA4 (nome até 24 caracteres, valor até 36). `null` apaga. */
     fun userProperty(name: String, value: String?) = setProperty(name, value)
 

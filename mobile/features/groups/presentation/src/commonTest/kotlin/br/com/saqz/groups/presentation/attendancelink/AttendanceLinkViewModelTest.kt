@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.attendancelink
 
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.*
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.attendance.share.*
@@ -26,6 +27,22 @@ class AttendanceLinkViewModelTest {
         assertEquals(AttendanceLinkPhase.Waitlisted, waitlisted.state.value.phase)
         assertEquals(gateway.commands.first().requestId, gateway.commands.last().requestId)
         assertEquals("00000000-0000-0000-0000-000000000000", gateway.commands.first().requestId)
+    }
+
+    @Test fun recordedLinkAnswerReportsAttendanceAnsweredFromTheLinkSurfaceAndAFailureDoesNot() = runTest {
+        val recorded = mutableListOf<Pair<String, Map<String, String>>>()
+        SaqzAnalytics.track = { name, params -> recorded += name to params }
+        try {
+            AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake())
+            AttendanceLinkViewModel(code, false, SharingFake(),
+                AttendanceFake().apply { error = AttendanceError.Data(DataError.Connectivity) }, InviteFake())
+        } finally {
+            SaqzAnalytics.reset()
+        }
+        assertEquals(
+            listOf("attendance_answered" to mapOf("surface" to "link", "answer" to "confirm")),
+            recorded.filter { it.first == "attendance_answered" },
+        )
     }
 
     @Test fun expiredLinkCannotSubmitAttendanceAndDeadlineFailureIsNotSuccess() = runTest {
