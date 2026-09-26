@@ -20,6 +20,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
+import br.com.saqz.groups.domain.communication.NativeNotificationPort
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
@@ -102,6 +103,7 @@ class GroupDetailsViewModel(
     private val departureGateway: GroupDepartureGateway,
     private val communications: CommunicationGateway,
     private val entryRequests: GroupEntryRequestGateway,
+    private val notifications: NativeNotificationPort? = null,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(GroupDetailsState()) {
 
     private var loadGeneration = 0
@@ -591,7 +593,10 @@ class GroupDetailsViewModel(
                 GroupId(groupId),
                 game.gameId,
                 SelfAttendanceCommand(Uuid.random().toString(), intent),
-            ).onSuccess { SaqzAnalytics.attendanceAnswered("app", intent == AttendanceIntent.Confirm) }
+            ).onSuccess {
+                SaqzAnalytics.attendanceAnswered("app", intent == AttendanceIntent.Confirm)
+                notifications?.dismissAttendance(game.gameId)
+            }
             if (generation != responseGeneration || loadAtStart != loadGeneration) return@launch
             when (result) {
                 is SaqzResult.Success -> {

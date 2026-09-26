@@ -27,6 +27,9 @@ import br.com.saqz.groups.domain.attendance.AutoConfirmationUpdate
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
+import br.com.saqz.groups.domain.communication.NativeNotificationPort
+import br.com.saqz.groups.domain.communication.NotificationDevice
+import br.com.saqz.groups.domain.communication.NotificationSubscription
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
@@ -610,3 +613,13 @@ fun sampleVersionedAttendanceCapacity() = VersionedAttendanceCapacity(
 )
 
 fun sampleCancelledGame() = sampleGame().copy(status = GameStatus.Cancelled, version = 2)
+
+/** Registra os jogos cuja janela das 24 h foi dispensada depois de uma resposta pelo app (VUL-267). */
+class FakeNativeNotifications : NativeNotificationPort {
+    val dismissed = mutableListOf<String>()
+    override fun device(done: (NotificationDevice?) -> Unit) = done(null)
+    override fun clear(done: (Boolean) -> Unit) = done(true)
+    override fun dismissAll() = Unit
+    override fun observe(changed: () -> Unit) = NotificationSubscription { }
+    override fun dismissAttendance(gameId: String) { dismissed += gameId }
+}

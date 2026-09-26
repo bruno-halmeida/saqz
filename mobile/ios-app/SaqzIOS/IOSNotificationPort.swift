@@ -78,6 +78,16 @@ final class IOSNotificationPort: NSObject, @preconcurrency NativeNotificationPor
         }
     }
     func dismissAll() { UNUserNotificationCenter.current().removeAllDeliveredNotifications() }
+    /// Resposta pelo app ou pelo link: some o push de presença daquele jogo (a Live Activity entra no VUL-269).
+    func dismissAttendance(gameId: String) {
+        Task {
+            let center = UNUserNotificationCenter.current()
+            let ids = await center.deliveredNotifications()
+                .filter { ($0.request.content.userInfo["gameId"] as? String) == gameId }
+                .map(\.request.identifier)
+            center.removeDeliveredNotifications(withIdentifiers: ids)
+        }
+    }
     func observe(changed: @escaping () -> Void) -> any NotificationSubscription {
         let id = UUID()
         listeners[id] = changed

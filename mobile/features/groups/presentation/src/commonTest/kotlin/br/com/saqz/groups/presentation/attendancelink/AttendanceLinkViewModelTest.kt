@@ -45,6 +45,14 @@ class AttendanceLinkViewModelTest {
         )
     }
 
+    @Test fun recordedLinkAnswerDismissesTheAttendanceWindowAndAFailureKeepsIt() = runTest {
+        val notifications = br.com.saqz.groups.presentation.FakeNativeNotifications()
+        AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake(), notifications)
+        AttendanceLinkViewModel(code, false, SharingFake(),
+            AttendanceFake().apply { error = AttendanceError.Data(DataError.Connectivity) }, InviteFake(), notifications)
+        assertEquals(1, notifications.dismissed.size)
+    }
+
     @Test fun expiredLinkCannotSubmitAttendanceAndDeadlineFailureIsNotSuccess() = runTest {
         val gateway = AttendanceFake()
         val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true), gateway, InviteFake())

@@ -48,7 +48,7 @@ import org.koin.dsl.module
 fun groupsPresentationModule(): Module = module {
     viewModel { params -> ChargeReminderViewModel(params.get(), get(), get()) }
     viewModel { GroupListViewModel(get(), get(), get(), get()) }
-    viewModel { HomeViewModel(get(), get(), get(), get<GroupNowPort>()) }
+    viewModel { HomeViewModel(get(), get(), get(), get<GroupNowPort>(), getOrNull()) }
     viewModel { FinanceOverviewViewModel(get(), get()) }
     viewModel { params ->
         val mode = params.get<GroupSetupMode>()
@@ -68,7 +68,10 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> MonthlyGenerationViewModel(params.get(), params.get(), get(), get(), get(), get<GroupNowPort>()) }
     viewModel {
         params ->
-        GroupDetailsViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>(), get(), get(), get())
+        GroupDetailsViewModel(
+            params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>(), get(), get(), get(),
+            getOrNull(),
+        )
     }
     viewModel { params -> GroupCashboxViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>()) }
     viewModel {
@@ -81,7 +84,7 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> br.com.saqz.groups.presentation.communication.GroupThreadViewModel(params[0], params[1], get(), get(), get()) }
     viewModel { params ->
         br.com.saqz.groups.presentation.attendancelink.AttendanceLinkViewModel(
-            params[0], params[1], get(), get(), get(),
+            params[0], params[1], get(), get(), get(), getOrNull(),
         )
     }
     viewModel { params -> br.com.saqz.groups.presentation.communication.NotificationCenterViewModel(params.get(), get()) }

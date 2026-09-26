@@ -7,6 +7,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.attendance.share.*
+import br.com.saqz.groups.domain.communication.NativeNotificationPort
 import br.com.saqz.groups.domain.membership.*
 import kotlinx.coroutines.launch
 import kotlin.io.encoding.Base64
@@ -18,6 +19,7 @@ class AttendanceLinkViewModel(
     private val sharing: AttendanceSharingGateway,
     private val attendance: AttendanceGateway,
     private val invites: InviteGateway,
+    private val notifications: NativeNotificationPort? = null,
 ) : MviViewModel<AttendanceLinkState, AttendanceLinkIntent, AttendanceLinkEffect>(AttendanceLinkState()) {
     private var generation = 0
     init { resolve() }
@@ -105,7 +107,10 @@ class AttendanceLinkViewModel(
         intent: AttendanceIntent,
     ) {
         val response = attendance.respond(destination.groupId, destination.gameId, SelfAttendanceCommand(requestId, intent))
-            .onSuccess { SaqzAnalytics.attendanceAnswered("link", intent == AttendanceIntent.Confirm) }
+            .onSuccess {
+                SaqzAnalytics.attendanceAnswered("link", intent == AttendanceIntent.Confirm)
+                notifications?.dismissAttendance(destination.gameId)
+            }
         if (current != generation) return
         when (response) {
             is SaqzResult.Success -> update {

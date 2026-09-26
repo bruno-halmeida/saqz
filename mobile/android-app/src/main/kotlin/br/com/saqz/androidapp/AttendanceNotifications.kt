@@ -24,8 +24,7 @@ internal data class AttendancePush(
         fun from(data: Map<String, String>, title: String, body: String, fallbackId: String?): AttendancePush {
             val gameId = data["gameId"]
             val windowEndsAt = data["windowEndsAt"]?.toLongOrNull()
-            // A janela é uma por jogo: id fixo por jogo, para a notificação ser trocada no lugar.
-            val id = if (windowEndsAt != null && gameId != null) "window:$gameId".hashCode()
+            val id = if (windowEndsAt != null && gameId != null) attendanceWindowId(gameId)
                 else (data["notificationId"] ?: fallbackId).hashCode()
             return AttendancePush(id, data["groupId"], gameId, title, body, data["recipient"], windowEndsAt)
         }
@@ -84,3 +83,6 @@ private fun Context.attendanceAction(action: String, push: AttendancePush): Pend
 
 /** Quanto o resultado do toque fica na tela antes de sumir (decisão de produto: 2 min). */
 internal const val FINAL_STATE_MS = 120_000L
+
+/** A janela é uma por jogo: id fixo por jogo, para a notificação ser trocada no lugar e cancelada de fora. */
+internal fun attendanceWindowId(gameId: String) = "window:$gameId".hashCode()
