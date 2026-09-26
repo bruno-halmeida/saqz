@@ -13,6 +13,7 @@
 		A10000000000000000000004 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000131 /* FirebaseAuth */; };
 		A10000000000000000000005 /* SaqzIOSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* SaqzIOSTests.swift */; };
 		A10000000000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000018 /* Assets.xcassets */; };
+		A10000000000000000000141 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000140 /* PrivacyInfo.xcprivacy */; };
 		A10000000000000000000007 /* LaunchContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000019 /* LaunchContractTests.swift */; };
 		A10000000000000000000008 /* AccessibilityPreferencesObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */; };
 		A10000000000000000000009 /* AccessibilityPreferencesObserverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */; };
@@ -95,6 +96,7 @@
 		A10000000000000000000016 /* SaqzIOSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzIOSTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000017 /* SaqzIOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SaqzIOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A10000000000000000000140 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A10000000000000000000019 /* LaunchContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchContractTests.swift; sourceTree = "<group>"; };
 		A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityPreferencesObserver.swift; sourceTree = "<group>"; };
 		A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityPreferencesObserverTests.swift; sourceTree = "<group>"; };
@@ -194,6 +196,7 @@
 				E90000000000000000000011 /* GroupsInvite/IOSInviteAdapters.swift */,
 				A30000000000000000000013 /* SaqzIOS.entitlements */,
 				A10000000000000000000018 /* Assets.xcassets */,
+				A10000000000000000000140 /* PrivacyInfo.xcprivacy */,
 			);
 			path = SaqzIOS;
 			sourceTree = "<group>";
@@ -400,6 +403,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000006 /* Assets.xcassets in Resources */,
+				A10000000000000000000141 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -629,7 +633,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.0.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-weak_framework",
@@ -669,7 +673,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.0.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-weak_framework",
@@ -756,7 +760,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.saqz.LiveActivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -778,7 +782,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.saqz.LiveActivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
