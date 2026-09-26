@@ -4,20 +4,20 @@ import br.com.saqz.groups.port.*
 import kotlin.test.*
 
 class NotificationOpenInboxTest {
-    @Test fun opensOnlyForNotificationTapsAndConsumesOnce() {
+    @Test fun keepsOnlyNotificationTapsWithTheirGameAndConsumesOnce() {
         val ports = Ports()
         val inbox = NotificationOpenInbox(ports)
         inbox.start()
 
         ports.listener?.onEvent(GroupLinkEvent.Attendance("code"))
         ports.listener?.onEvent(GroupLinkEvent.Invite("code"))
-        assertFalse(inbox.pending.value)
+        assertNull(inbox.pending.value)
 
-        ports.listener?.onEvent(GroupLinkEvent.NotificationOpen(groupId = "group"))
-        assertTrue(inbox.pending.value)
+        ports.listener?.onEvent(GroupLinkEvent.NotificationOpen(groupId = "group", gameId = "game"))
+        assertEquals(GroupLinkEvent.NotificationOpen(groupId = "group", gameId = "game"), inbox.pending.value)
 
         inbox.consume()
-        assertFalse(inbox.pending.value)
+        assertNull(inbox.pending.value)
     }
 
     @Test fun startIsIdempotentAndStopCancels() {

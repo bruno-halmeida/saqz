@@ -37,7 +37,7 @@ internal fun Context.attendanceNotification(
     body: String = push.body,
     buttons: Boolean = true,
 ): NotificationCompat.Builder {
-    val builder = reminderNotification(this, push.id, push.title, body, push.groupId)
+    val builder = reminderNotification(this, push.id, push.title, body, push.groupId, push.gameId)
     if (push.isWindow) {
         // Live Update no Android 16+; abaixo disso o pedido é ignorado e a notificação sai comum.
         builder.setOngoing(true).setRequestPromotedOngoing(true)
@@ -57,8 +57,8 @@ internal fun Context.attendanceNotification(
  */
 internal fun Context.attendanceOutcome(push: AttendancePush, failed: Boolean, text: String): NotificationCompat.Builder = when {
     push.isWindow && failed -> attendanceNotification(push, body = text)
-    push.isWindow -> reminderNotification(this, push.id, push.title, text, push.groupId).setTimeoutAfter(FINAL_STATE_MS)
-    else -> reminderNotification(this, push.id, push.title, text, push.groupId)
+    push.isWindow -> reminderNotification(this, push.id, push.title, text, push.groupId, push.gameId).setTimeoutAfter(FINAL_STATE_MS)
+    else -> reminderNotification(this, push.id, push.title, text, push.groupId, push.gameId)
 }
 
 internal fun Intent.attendancePush() = AttendancePush(

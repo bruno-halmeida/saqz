@@ -193,17 +193,17 @@ class AndroidLinkAdapterTest {
     @Test
     fun notificationTapIsBufferedUntilListenerAndDeliveredOnEveryTap() {
         val fixture = Fixture()
-        fixture.adapter.onNotificationOpen("group-1")
+        fixture.adapter.onNotificationOpen("group-1", "game-1")
         val events = mutableListOf<br.com.saqz.groups.port.GroupLinkEvent>()
         fixture.adapter.start(object : br.com.saqz.groups.port.GroupLinkEventListener {
             override fun onEvent(event: br.com.saqz.groups.port.GroupLinkEvent) { events += event }
         })
-        fixture.adapter.onNotificationOpen(null)
+        fixture.adapter.onNotificationOpen(null, null)
 
         assertEquals(
             listOf(
-                br.com.saqz.groups.port.GroupLinkEvent.NotificationOpen("group-1"),
-                br.com.saqz.groups.port.GroupLinkEvent.NotificationOpen(null),
+                br.com.saqz.groups.port.GroupLinkEvent.NotificationOpen("group-1", "game-1"),
+                br.com.saqz.groups.port.GroupLinkEvent.NotificationOpen(null, null),
             ),
             events,
         )
