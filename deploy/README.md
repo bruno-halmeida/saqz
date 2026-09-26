@@ -80,10 +80,12 @@ O `backend.env` contém os três `SPRING_DATASOURCE_*`, os campos `SAQZ_MAIL_*`,
 Inclua também `SAQZ_ASAAS_BASE_URL=https://api.asaas.com/v3`, `SAQZ_ASAAS_API_KEY`,
 `SAQZ_ASAAS_WEBHOOK_TOKEN` e `SAQZ_PASSWORD_RESET_SECRET`.
 
-Defina `SAQZ_SUBSCRIPTION_PURCHASE_URL=https://saqz.app`, endereço de produção
-aprovado para os e-mails de contratação. Ela é obrigatória no Deployment
+Defina `SAQZ_SUBSCRIPTION_PURCHASE_URL=https://saqz.app/assinar/`, endereço no domínio
+de produção aprovado para os e-mails de contratação. O backend exige o caminho
+exato `/assinar/`; a raiz do site impede o boot. Ela é obrigatória no Deployment
 para impedir o fallback para `/assinar` de staging. O painel web de produção ainda
 está fora desta implantação; CORS administrativo fica vazio e WhatsApp desligado.
+A página `/assinar/` também precisa ser publicada antes de usar a contratação por e-mail.
 O perfil `prod`, Firebase, portas e demais configurações fixas vêm do ConfigMap.
 
 ```bash
@@ -108,6 +110,15 @@ Confirme que o workflow terminou, o pacote está público e `newTag` no overlay 
 a versão desejada. O primeiro boot executa Flyway no banco de produção; confirme o
 projeto Supabase de destino antes de aplicar. Na primeira instalação o banco deve
 estar vazio; nos próximos deploys tenha backup compatível com as novas migrações.
+
+Um projeto Supabase novo pode conter a função `public.rls_auto_enable` e o event
+trigger `ensure_rls`, mesmo sem tabelas. Nesse caso, o Flyway recusa a inicialização
+por considerar o schema não vazio. Após verificar que não existem tabelas, tipos
+ou outras funções da aplicação nem histórico Flyway, execute uma única vez
+`baseline` com `baselineVersion=0`, usando a versão Flyway da imagem e as credenciais
+de produção fora do Git. A versão zero permite executar todas as migrações desde V1.
+Preserve a função/event trigger de RLS; não habilite baseline automático nos boots.
+Essa inicialização foi executada na primeira implantação de produção em 2026-09-26.
 
 ```bash
 sudo k3s kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml kustomize deploy/k8s/overlays/prod
@@ -144,6 +155,9 @@ No túnel Cloudflare existente, adicione o hostname `api.saqz.app`, copiando o s
 de origem HTTPS e as opções TLS usados para chegar ao Traefik Docker. Preserve o
 Host `api.saqz.app`; não copie um override de Host/SNI de staging sem revisar.
 O router externo usa o mesmo modelo TLS dos hosts que já passam pelo túnel.
+Se a rota `*.saqz.app` já aponta para `https://traefik:443`, ela atende a API sem
+uma rota adicional. Confirme também o CNAME `*` da zona DNS apontando para
+`<id-do-túnel>.cfargotunnel.com` com proxy habilitado: a rota no túnel não basta.
 
 Depois valide a resposta 401 em `https://api.saqz.app/api/session/onboarding`, login com build
 Release/TestFlight (Firebase `saquz-app`), recuperação de senha e recebimento de
