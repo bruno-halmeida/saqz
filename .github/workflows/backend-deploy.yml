@@ -1,0 +1,51 @@
+name: Executar deploy do backend
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-deploy-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && (inputs.target == 'dev' || inputs.target == 'prod')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.target }}
+    steps:
+      - name: Obter os arquivos de deploy
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validar a versão e a imagem pública
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$RELEASE_VERSION" =~ ^v\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo 'Informe uma versão no formato v.0.0.1.' >&2
+            exit 1
+          }
+          git merge-base --is-ancestor "refs/tags/$RELEASE_VERSION^{commit}" HEAD
+          docker manifest inspect "ghcr.io/bruno-halmeida/saqz-backend:$RELEASE_VERSION" >/dev/null
+      - name: Implantar e aguardar o health
+        env:
+          DEPLOY_TARGET: ${{ inputs.target }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: bash deploy/server/deploy-via-ssh.sh "$DEPLOY_TARGET" "$RELEASE_VERSION"

@@ -21,6 +21,8 @@ jobs:
     permissions:
       contents: write
       packages: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
     steps:
       - name: Obter código
         uses: actions/checkout@v7
@@ -96,6 +98,7 @@ jobs:
           cache-from: type=gha,scope=backend
           cache-to: type=gha,scope=backend,mode=max
       - name: Registrar a versão publicada no Git
+        id: release
         if: steps.changes.outputs.backend == 'true'
         env:
           RELEASE_TAG: ${{ steps.changes.outputs.tag }}
@@ -104,3 +107,11 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git tag -a "$RELEASE_TAG" -m "Saqz backend $RELEASE_TAG"
           git push origin "refs/tags/$RELEASE_TAG"
+          echo "version=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+  deploy-dev:
+    needs: publish
+    if: needs.publish.outputs.version != ''
+    uses: ./.github/workflows/backend-deploy-dev.yml
+    with:
+      version: ${{ needs.publish.outputs.version }}

@@ -1,0 +1,25 @@
+name: Deploy do backend em dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão já publicada no GHCR, por exemplo v.0.0.1'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/backend-deploy.yml
+    with:
+      target: dev
+      version: ${{ inputs.version }}

@@ -1,12 +1,12 @@
-# Backend de produção
+# Deploy do backend
 
 k3s em um servidor Debian amd64, com banco no Supabase e SMTP na Hostinger.
-O compose continua atendendo staging. Estes arquivos não instalam nem publicam nada
-até que os comandos abaixo sejam executados.
+Dev/staging continua no Compose. O Actions publica a imagem e atualiza dev;
+produção é implantada manualmente, escolhendo uma versão publicada.
 
 ## Releases
 
-Cada release usa a mesma versão na tag Git, imagem e overlay: `v.0.0.1`, `v.0.0.2`, etc.
+Cada release usa a mesma versão na tag Git e imagem: `v.0.0.1`, `v.0.0.2`, etc.
 O workflow `backend-image.yml` roda após mudanças em `backend/**` na `main`.
 Ele incrementa o último número da maior versão existente, publica a imagem no GHCR
 e só então cria a tag Git no commit correspondente. A primeira versão é `v.0.0.1`.
@@ -27,13 +27,81 @@ gh workflow run backend-image.yml --ref main
 ```
 
 Nunca mova uma tag publicada nem reutilize uma versão para outro commit. Para corrigir
-uma release, faça uma nova alteração no backend. Publicar a imagem não aplica nada
-no servidor: atualize `newTag` no overlay, revise e aplique a versão desejada.
+uma release, faça uma nova alteração no backend. Após publicar a imagem e a tag,
+o workflow chama o deploy de dev com essa versão. Se a publicação for ignorada,
+não há deploy automático. Produção só muda ao executar seu workflow manual.
 Se o push da imagem funcionar e o da tag Git falhar, a próxima execução interrompe
 ao encontrar a imagem existente. Recupere a tag no commit original antes de continuar.
 Na primeira publicação, torne o pacote `saqz-backend` **público** nas configurações
 do GHCR: o repositório público não garante essa visibilidade automaticamente.
 Confirme o pull anônimo antes do deploy; não há `imagePullSecret` nos manifestos.
+
+## Deploy pelo Actions
+
+Em **Actions**, escolha **Deploy do backend em dev** ou **Deploy do backend em produção**,
+clique em **Run workflow**, selecione `main` e informe `version`, por exemplo `v.0.0.1`.
+Também é possível disparar pela CLI:
+
+```bash
+gh workflow run backend-deploy-dev.yml --ref main -f version=v.0.0.1
+gh workflow run backend-deploy-prod.yml --ref main -f version=v.0.0.1
+```
+
+Ambos verificam se a tag pertence ao histórico de `main` e se a imagem está pública
+no GHCR antes de conectar por SSH. Os deploys de cada ambiente são serializados.
+`backend-deploy.yml` contém a execução compartilhada pelos dois workflows.
+
+- **Dev:** puxa a imagem escolhida e recria apenas `backend`, usando o `.env` em
+  `/root/applications/saqz/.env` e a service account de dev já existente. O override
+  `deploy/server/compose.image.yaml` desativa o build local. Aguarda o health do Compose.
+- **Produção:** importa novamente `/root/.secrets/saqz-prod/backend.env` e a service
+  account, aplica os manifestos no namespace `saqz-prod` e aguarda o rollout do k3s.
+  Uma cópia temporária do overlay recebe a versão escolhida; o checkout do servidor
+  permanece intacto. A anotação do pod força a leitura dos Secrets mesmo na mesma versão.
+
+Para aplicar mudanças no `.env` ou repetir um deploy que falhou, execute o workflow
+do ambiente com a versão desejada. Isso não faz build nem cria outra tag. Uma falha
+no deploy de dev não apaga a imagem/tag já publicada. A execução falha se o backend
+não ficar saudável; não há rollback automático de imagem ou de migrações.
+
+### Configuração única do acesso
+
+Em **Settings → Environments**, crie `dev` e `prod` e limite as branches de deploy
+a `main`. Configure em cada Environment:
+
+| Tipo | Nome | Valor |
+| --- | --- | --- |
+| Variable | `DEPLOY_HOST` | IP público ou hostname SSH do servidor |
+| Variable | `DEPLOY_PORT` | Porta SSH; padrão `22` |
+| Variable | `DEPLOY_USER` | `root`, exigido pelos scripts deste servidor |
+| Secret | `DEPLOY_SSH_KEY` | Chave privada dedicada ao Actions, sem senha |
+| Secret | `DEPLOY_KNOWN_HOSTS` | Linha de `known_hosts` conferida no próprio servidor |
+
+No servidor, crie a chave dedicada uma vez, fora do repositório:
+
+```bash
+install -d -m 700 /root/.ssh
+ssh-keygen -t ed25519 -N '' -C saqz-actions -f /root/.ssh/saqz-actions
+printf 'restrict %s\n' "$(cat /root/.ssh/saqz-actions.pub)" >> /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+```
+
+Use o conteúdo de `/root/.ssh/saqz-actions` no secret `DEPLOY_SSH_KEY` de cada
+Environment. Essa chave permite executar os comandos de deploy como root;
+as credenciais de banco, Firebase, Asaas e SMTP continuam somente no servidor.
+
+Para obter a linha de `DEPLOY_KNOWN_HOSTS` da chave pública local do SSH, substitua
+o endereço abaixo pelo mesmo valor de `DEPLOY_HOST`:
+
+```bash
+awk -v host='IP_OU_HOSTNAME_DO_SERVIDOR' '{print host, $1, $2}' /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+Se usar outra porta, o primeiro campo deve ser `[IP_OU_HOSTNAME_DO_SERVIDOR]:PORTA`.
+O runner exige a chave conhecida; não descobre nem aceita chaves remotas automaticamente.
+O servidor precisa aceitar SSH dos runners do GitHub. O pacote transferido contém
+somente os arquivos de implantação, sem `.env` ou service accounts. Nenhuma etapa
+executa `git pull`, altera a ponte Traefik ou recria os serviços web/Mailpit.
 
 ## Instalação do servidor
 
@@ -104,10 +172,12 @@ URL `https://api.saqz.app/webhooks/asaas`, token igual ao arquivo e eventos trat
 em `ProcessAsaasWebhook`. Não crie um segundo webhook. Confirme a autenticação da API
 Asaas com uma consulta de leitura antes de ativar pagamentos reais.
 
-## Aplicar uma release
+## Aplicar uma release manualmente no servidor
 
-Confirme que o workflow terminou, o pacote está público e `newTag` no overlay contém
-a versão desejada. O primeiro boot executa Flyway no banco de produção; confirme o
+Como alternativa ao Actions, confirme que a publicação terminou, o pacote está público
+e `newTag` no overlay contém a versão desejada. O Actions não grava sua escolha nesse
+arquivo; confira a versão antes de um apply manual para evitar retornar à versão inicial.
+O primeiro boot executa Flyway no banco de produção; confirme o
 projeto Supabase de destino antes de aplicar. Na primeira instalação o banco deve
 estar vazio; nos próximos deploys tenha backup compatível com as novas migrações.
 
@@ -129,8 +199,10 @@ sudo k3s kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml -n saqz-prod port-forwar
 ```
 
 Em outro terminal, `curl --fail http://127.0.0.1:19090/actuator/health` deve retornar
-`UP`. A gestão 9090 só aparece no Service interno, sem Ingress. Readiness e liveness
-usam esse endpoint; como ele inclui o banco, uma indisponibilidade prolongada do
+`UP`. O Ingress também encaminha o caminho exato `/actuator/health` à porta 9090,
+permitindo consultar `https://api.saqz.app/actuator/health` pelo túnel existente.
+Os demais endpoints de gestão, incluindo Prometheus, continuam internos.
+Readiness e liveness usam esse endpoint; como ele inclui o banco, uma indisponibilidade prolongada do
 Supabase também pode reiniciar o pod. A startup probe permite até cinco minutos.
 O rollout pode manter temporariamente duas réplicas de até 1 GiB cada.
 
@@ -167,10 +239,11 @@ efetuam cobranças precisam de destinatário/caso de teste combinado.
 
 ## Recuperação
 
-Para a aplicação, volte `newTag` à versão anterior e aplique o overlay. Uma imagem
-anterior não desfaz migrações: verifique compatibilidade do schema antes do rollback.
-Para atualização de segredos, importe novamente e execute `rollout restart deployment/backend`
-no namespace `saqz-prod` com o kubeconfig acima.
+Para a aplicação, execute o workflow do ambiente com a versão anterior, ou volte
+`newTag` e aplique o overlay manualmente. Uma imagem anterior não desfaz migrações:
+verifique compatibilidade do schema antes do rollback. Para atualizar segredos,
+repita o deploy da mesma versão pelo Actions; manualmente, importe novamente e execute
+`rollout restart deployment/backend` no namespace `saqz-prod` com o kubeconfig acima.
 
 Para desfazer a ponte, restaure `docker-compose.yaml.saqz-prod.bak` no diretório do
 Traefik e recrie esse serviço com `docker compose up -d --no-deps traefik`.

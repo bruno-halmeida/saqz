@@ -1,0 +1,4 @@
+services:
+  backend:
+    image: ghcr.io/bruno-halmeida/saqz-backend:${SAQZ_BACKEND_VERSION:?Informe a versão do backend}
+    build: !reset null

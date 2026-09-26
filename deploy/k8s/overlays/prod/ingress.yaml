@@ -10,6 +10,13 @@ spec:
     - host: api.saqz.app
       http:
         paths:
+          - path: /actuator/health
+            pathType: Exact
+            backend:
+              service:
+                name: backend
+                port:
+                  name: management
           - path: /
             pathType: Prefix
             backend:
