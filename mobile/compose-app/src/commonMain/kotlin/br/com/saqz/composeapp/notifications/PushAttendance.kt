@@ -34,16 +34,26 @@ class PushAttendance(
     private val tokens: IdTokenProvider,
     private val scope: CoroutineScope,
 ) {
-    /** [recipient] é o `firebase_subject` que o backend pôs no push; só o mesmo usuário logado responde. */
+    /**
+     * [recipient] é o `firebase_subject` que o backend pôs no push; só o mesmo usuário logado responde.
+     * [surface] vai para o analytics: "push" nos botões do push, "live_activity" nos do card.
+     */
     @OptIn(ExperimentalUuidApi::class)
-    fun respond(groupId: String, gameId: String, recipient: String, confirm: Boolean, done: (PushAttendanceOutcome) -> Unit) {
+    fun respond(
+        groupId: String,
+        gameId: String,
+        recipient: String,
+        confirm: Boolean,
+        surface: String = "push",
+        done: (PushAttendanceOutcome) -> Unit,
+    ) {
         val intent = if (confirm) AttendanceIntent.Confirm else AttendanceIntent.Decline
         scope.launch {
             // ponytail: o teto cabe na janela do goAsync do Android (~10 s); WorkManager se a rede pedir mais.
             val outcome = withTimeoutOrNull(RESPONSE_TIMEOUT_MS) {
                 if (subject() != recipient) return@withTimeoutOrNull PushAttendanceOutcome.Failed
                 gateway.respond(GroupId(groupId), gameId, SelfAttendanceCommand(Uuid.random().toString(), intent))
-                    .onSuccess { SaqzAnalytics.attendanceAnswered("push", confirm) }
+                    .onSuccess { SaqzAnalytics.attendanceAnswered(surface, confirm) }
                     .toOutcome()
             }
             // Estourou o teto: o servidor pode ter gravado; não afirmar falha nem convidar a repetir.

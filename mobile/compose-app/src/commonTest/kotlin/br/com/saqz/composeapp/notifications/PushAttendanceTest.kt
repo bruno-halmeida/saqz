@@ -102,6 +102,21 @@ class PushAttendanceTest {
         assertEquals(listOf("attendance_answered" to mapOf("surface" to "push", "answer" to "confirm")), recorded)
     }
 
+    @Test
+    fun aLiveActivityAnswerReportsTheLiveActivitySurface() = runTest {
+        val recorded = mutableListOf<Pair<String, Map<String, String>>>()
+        SaqzAnalytics.track = { name, params -> recorded += name to params }
+        try {
+            PushAttendance(RespondOnly { answered(AttendanceStatus.Declined) }, loggedIn, this)
+                .respond("g1", "game1", "user-a", confirm = false, surface = "live_activity") { }
+            advanceUntilIdle()
+        } finally {
+            SaqzAnalytics.reset()
+        }
+
+        assertEquals(listOf("attendance_answered" to mapOf("surface" to "live_activity", "answer" to "decline")), recorded)
+    }
+
     private class RespondOnly(
         private val answer: suspend () -> SaqzResult<VersionedAttendanceMutation, AttendanceError>,
     ) : AttendanceGateway {

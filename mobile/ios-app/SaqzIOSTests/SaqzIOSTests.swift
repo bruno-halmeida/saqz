@@ -80,6 +80,16 @@ final class SaqzIOSTests: XCTestCase {
             ]
         )
     }
+
+    func testPushOutcomeBecomesTheLiveActivityStatusAndUnknownFailuresKeepTheButtons() {
+        guard #available(iOS 16.1, *) else { return }
+        XCTAssertEqual(SaqzGameAttributes.Status(.confirmed), .confirmed)
+        XCTAssertEqual(SaqzGameAttributes.Status(.waitlisted), .waitlisted)
+        XCTAssertEqual(SaqzGameAttributes.Status(.declined), .declined)
+        XCTAssertEqual(SaqzGameAttributes.Status(.closed), .closed)
+        XCTAssertEqual(SaqzGameAttributes.Status(.noresponse), .noResponse)
+        XCTAssertEqual(SaqzGameAttributes.Status(.failed), .failed)
+    }
 }
 
 private final class RecordingMapCallback: GroupMapCallback {
