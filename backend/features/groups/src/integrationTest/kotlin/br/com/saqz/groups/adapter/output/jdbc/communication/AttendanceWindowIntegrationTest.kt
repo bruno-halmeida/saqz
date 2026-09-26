@@ -52,6 +52,7 @@ class AttendanceWindowIntegrationTest {
         jdbc.sql("TRUNCATE games CASCADE").update()
         jdbc.sql("TRUNCATE group_messages CASCADE").update()
         jdbc.sql("TRUNCATE group_notification_preferences").update()
+        jdbc.sql("UPDATE notification_devices SET live_activity_start_token = NULL").update()
     }
 
     @Test fun `the window opens once and reaches the owner and whoever has not answered`() {
@@ -123,6 +124,36 @@ class AttendanceWindowIntegrationTest {
         assertTrue(silent in recipients("ATTENDANCE_WINDOW"))
     }
 
+    @Test fun `an iPhone with a start token gets the window as a live activity with the game card`() {
+        push.register(owner, UUID.randomUUID(), "owner-device", "IOS", liveActivityStartToken = "owner-start")
+        val game = game()
+        answer(game, answered, "CONFIRMED")
+        service.openAttendanceWindows()
+
+        val sent = drain()
+
+        val ownerPush = sent.single { it.first == "owner-device" }.second
+        assertEquals("owner-start", ownerPush.liveActivityStartToken)
+        assertEquals(LiveActivityGame("Arena", startsAt(game), confirmed = 1, capacity = 12, waitlisted = 0), ownerPush.liveActivity)
+        assertNull(sent.single { it.first == "silent-device" }.second.liveActivityStartToken)
+    }
+
+    @Test fun `a refused start token is cleared and the same iPhone still gets the regular push`() {
+        push.register(owner, UUID.randomUUID(), "owner-device", "IOS", liveActivityStartToken = "owner-start")
+        game()
+        service.openAttendanceWindows()
+
+        val sent = mutableListOf<Pair<String, NotificationPush>>()
+        push.drain(NotificationPushSender { token, message ->
+            sent += token to message
+            if (message.liveActivityStartToken != null) PushDelivery.INVALID_START_TOKEN else PushDelivery.SENT
+        })
+
+        assertEquals(listOf("owner-start", null), sent.filter { it.first == "owner-device" }.map { it.second.liveActivityStartToken })
+        assertNull(startToken("owner-device"))
+        assertEquals(0L, count("notification_push_queue WHERE completed_at IS NULL"))
+    }
+
     /** Padrão: começa daqui a 23 h (janela aberta há 1 h), prazo daqui a 20 h, publicado há 2 dias. */
     private fun game(startsInMinutes: Int = 23 * 60, deadlineInMinutes: Int = 20 * 60, publishedInMinutes: Int = -2 * 24 * 60): UUID {
         val id = UUID.randomUUID()
@@ -157,6 +188,13 @@ class AttendanceWindowIntegrationTest {
     private fun windowEnd(game: UUID): Instant = jdbc.sql(
         "SELECT least(starts_at - interval '22 hours', confirmation_deadline) FROM games WHERE id = :id",
     ).param("id", game).query { rs, _ -> rs.getTimestamp(1).toInstant() }.single()
+
+    private fun startsAt(game: UUID): Instant = jdbc.sql("SELECT starts_at FROM games WHERE id = :id")
+        .param("id", game).query { rs, _ -> rs.getTimestamp(1).toInstant() }.single()
+
+    /** `.list().single()`: o `single()` do JdbcClient recusa valor nulo, e o token limpo é nulo. */
+    private fun startToken(token: String): String? = jdbc.sql("SELECT live_activity_start_token FROM notification_devices WHERE token = :t")
+        .param("t", token).query { rs, _ -> rs.getString(1) }.list().single()
 
     private fun count(table: String) = jdbc.sql("SELECT count(*) FROM $table").query(Long::class.java).single()
     private fun user(name: String): UUID = UUID.randomUUID().also { id ->
