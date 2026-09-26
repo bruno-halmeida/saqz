@@ -10,17 +10,19 @@ import br.com.saqz.composeapp.notifications.PushAttendance
 import br.com.saqz.composeapp.notifications.PushAttendanceOutcome
 import org.koin.core.context.GlobalContext
 
-/** "Confirmar" / "Não vou" tocados na notificação: responde sem abrir o app e troca o texto pelo resultado. */
+/**
+ * "Confirmar" / "Não vou" tocados na notificação: responde sem abrir o app e troca o texto pelo resultado
+ * (na janela das 24 h, some em 2 min).
+ */
 class AttendanceActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val gameId = intent.getStringExtra(EXTRA_GAME_ID) ?: return
-        val groupId = intent.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID) ?: return
-        val recipient = intent.getStringExtra(EXTRA_RECIPIENT) ?: return
-        val id = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
-        val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
+        val push = intent.attendancePush()
+        val gameId = push.gameId ?: return
+        val groupId = push.groupId ?: return
+        val recipient = push.recipient ?: return
         val manager = context.getSystemService(NotificationManager::class.java)
         // Sem botões enquanto responde: segundo toque não dispara pedido concorrente.
-        manager.notify(id, reminderNotification(context, id, title, intent.getStringExtra(EXTRA_BODY).orEmpty(), groupId).build())
+        manager.notify(push.id, context.attendanceNotification(push, buttons = false).build())
         val pending = goAsync()
         val koin = GlobalContext.get()
         if (!hasSaqzPlatformDependencies()) {
@@ -31,7 +33,8 @@ class AttendanceActionReceiver : BroadcastReceiver() {
             loadSaqzPlatformDependencies(composition.dependencies, context.applicationContext)
         }
         koin.get<PushAttendance>().respond(groupId, gameId, recipient, confirm = intent.action == ACTION_CONFIRM) { outcome ->
-            manager.notify(id, reminderNotification(context, id, title, context.getString(outcome.label()), groupId).build())
+            val text = context.getString(outcome.label())
+            manager.notify(push.id, context.attendanceOutcome(push, outcome == PushAttendanceOutcome.Failed, text).build())
             pending.finish()
         }
     }
@@ -53,3 +56,4 @@ internal const val EXTRA_GAME_ID = "saqz.notification.gameId"
 internal const val EXTRA_TITLE = "saqz.notification.title"
 internal const val EXTRA_BODY = "saqz.notification.body"
 internal const val EXTRA_RECIPIENT = "saqz.notification.recipient"
+internal const val EXTRA_WINDOW_ENDS_AT = "saqz.notification.windowEndsAt"
