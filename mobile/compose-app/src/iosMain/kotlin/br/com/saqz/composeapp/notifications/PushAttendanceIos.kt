@@ -5,15 +5,16 @@ import br.com.saqz.composeapp.di.startSaqzKoin
 import coil3.PlatformContext
 import org.koin.mp.KoinPlatformTools
 
-/** A ação do push pode acordar o app em segundo plano, antes de existir tela (e Koin). */
+/** A ação do push ou do card pode acordar o app em segundo plano, antes de existir tela (e Koin). */
 fun respondPushAttendance(
     dependencies: SaqzPlatformDependencies,
     groupId: String,
     gameId: String,
     recipient: String,
     confirm: Boolean,
+    surface: String,
     done: (PushAttendanceOutcome) -> Unit,
 ) {
     if (KoinPlatformTools.defaultContext().getOrNull() == null) startSaqzKoin(dependencies, PlatformContext.INSTANCE)
-    KoinPlatformTools.defaultContext().get().get<PushAttendance>().respond(groupId, gameId, recipient, confirm, done)
+    KoinPlatformTools.defaultContext().get().get<PushAttendance>().respond(groupId, gameId, recipient, confirm, surface, done)
 }

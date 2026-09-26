@@ -1,3 +1,5 @@
+// Activity não é Sendable; todo uso do card fica no @MainActor (LiveActivityAttendance).
+@preconcurrency import ActivityKit
 import Foundation
 @preconcurrency import FirebaseMessaging
 import FirebaseCore
@@ -10,6 +12,8 @@ final class IOSNotificationPort: NSObject, @preconcurrency NativeNotificationPor
     private var pending: ((NotificationDevice?) -> Void)?
     private var listeners: [UUID: () -> Void] = [:]
     private var observers: [NSObjectProtocol] = []
+    /// Token de push-to-start da Live Activity (iOS 17.2+), em hex; vai no registro do aparelho.
+    private var liveActivityStartToken: String?
 
     override init() {
         super.init()
@@ -25,6 +29,20 @@ final class IOSNotificationPort: NSObject, @preconcurrency NativeNotificationPor
         observers.append(NotificationCenter.default.addObserver(forName: .saqzAPNsFailed, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.finish(nil) }
         })
+        observeLiveActivityStartToken()
+    }
+
+    /// Token novo: guarda e avisa os listeners; o binding registra o aparelho de novo (VUL-264).
+    private func observeLiveActivityStartToken() {
+        guard #available(iOS 17.2, *) else { return }
+        Task { [weak self] in
+            for await data in Activity<SaqzGameAttributes>.pushToStartTokenUpdates {
+                guard let self else { return }
+                self.liveActivityStartToken = data.map { String(format: "%02x", $0) }.joined()
+                NSLog("[SaqzPush] token de push-to-start da Live Activity recebido")
+                for callback in self.listeners.values { callback() }
+            }
+        }
     }
     func device(done: @escaping (NotificationDevice?) -> Void) {
         NSLog("[SaqzPush] device: chamado")
@@ -58,7 +76,7 @@ final class IOSNotificationPort: NSObject, @preconcurrency NativeNotificationPor
         let defaults = UserDefaults.standard
         let installation = defaults.string(forKey: "saqz.notificationInstallation") ?? UUID().uuidString
         defaults.set(installation, forKey: "saqz.notificationInstallation")
-        callback(NotificationDevice(installationId: installation, token: token, platform: "IOS", liveActivityStartToken: nil))
+        callback(NotificationDevice(installationId: installation, token: token, platform: "IOS", liveActivityStartToken: liveActivityStartToken))
     }
     func clear(done: @escaping (KotlinBoolean) -> Void) {
         NSLog("[SaqzPush] clear: chamado")
@@ -78,7 +96,7 @@ final class IOSNotificationPort: NSObject, @preconcurrency NativeNotificationPor
         }
     }
     func dismissAll() { UNUserNotificationCenter.current().removeAllDeliveredNotifications() }
-    /// Resposta pelo app ou pelo link: some o push de presença daquele jogo (a Live Activity entra no VUL-269).
+    /// Resposta pelo app ou pelo link: some o push de presença daquele jogo e a Live Activity que ainda pedia resposta.
     func dismissAttendance(gameId: String) {
         Task {
             let center = UNUserNotificationCenter.current()
@@ -87,6 +105,7 @@ final class IOSNotificationPort: NSObject, @preconcurrency NativeNotificationPor
                 .map(\.request.identifier)
             center.removeDeliveredNotifications(withIdentifiers: ids)
         }
+        if #available(iOS 17.0, *) { Task { await LiveActivityAttendance.dismiss(gameId: gameId) } }
     }
     func observe(changed: @escaping () -> Void) -> any NotificationSubscription {
         let id = UUID()
@@ -131,6 +150,7 @@ final class SaqzPushDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         center.setNotificationCategories([
             UNNotificationCategory(identifier: Self.attendanceCategory, actions: [confirm, decline], intentIdentifiers: []),
         ])
+        if #available(iOS 17.0, *) { AttendanceWindowIntent.handler = LiveActivityAttendance.respond }
         return true
     }
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
@@ -171,7 +191,7 @@ final class SaqzPushDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
     private static func respondAttendance(groupId: String, gameId: String, recipient: String, confirm: Bool, completion: @escaping () -> Void) {
         guard let dependencies else { completion(); return }
         PushAttendanceIosKt.respondPushAttendance(
-            dependencies: dependencies, groupId: groupId, gameId: gameId, recipient: recipient, confirm: confirm
+            dependencies: dependencies, groupId: groupId, gameId: gameId, recipient: recipient, confirm: confirm, surface: "push"
         ) { outcome in
             let content = UNMutableNotificationContent()
             content.title = "Saqz"
@@ -192,5 +212,63 @@ private extension PushAttendanceOutcome {
         case .noresponse: return "Sem resposta do servidor. Abra o app para conferir."
         default: return "Não deu para registrar. Abra o app e tente de novo."
         }
+    }
+}
+
+/// Botões do card da janela (VUL-268): "Enviando…", responde pelo mesmo caminho do push e encerra
+/// mostrando o resultado por 2 min. Falha de rede mantém os botões (decisão de produto).
+@available(iOS 17.0, *)
+@MainActor
+enum LiveActivityAttendance {
+    static func respond(gameId: String, confirm: Bool) async {
+        guard let activity = Activity<SaqzGameAttributes>.activities.first(where: { $0.attributes.gameId == gameId }),
+              let dependencies = SaqzPushDelegate.dependencies else { return }
+        let state = activity.content.state
+        let staleDate = activity.content.staleDate
+        await activity.update(ActivityContent(state: state.with(.sending), staleDate: staleDate))
+        let status = await withCheckedContinuation { (continuation: CheckedContinuation<SaqzGameAttributes.Status, Never>) in
+            PushAttendanceIosKt.respondPushAttendance(
+                dependencies: dependencies, groupId: activity.attributes.groupId, gameId: gameId,
+                recipient: activity.attributes.recipient, confirm: confirm, surface: "live_activity"
+            ) { outcome in continuation.resume(returning: SaqzGameAttributes.Status(outcome)) }
+        }
+        if status == .failed {
+            await activity.update(ActivityContent(state: state.with(.failed), staleDate: staleDate))
+        } else {
+            await activity.end(ActivityContent(state: state.with(status), staleDate: nil),
+                dismissalPolicy: .after(Date().addingTimeInterval(120)))
+        }
+    }
+
+    /// Resposta pelo app ou pelo link (VUL-267): encerra na hora o card que ainda pedia resposta.
+    static func dismiss(gameId: String) async {
+        for activity in Activity<SaqzGameAttributes>.activities
+        where activity.attributes.gameId == gameId && [.pending, .failed].contains(activity.content.state.status) {
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
+    }
+}
+
+@available(iOS 16.1, *)
+extension SaqzGameAttributes.Status {
+    /// Resultado do push de presença no estado do card; qualquer outro vira FAILED, que devolve os botões.
+    init(_ outcome: PushAttendanceOutcome) {
+        switch outcome {
+        case .confirmed: self = .confirmed
+        case .waitlisted: self = .waitlisted
+        case .declined: self = .declined
+        case .closed: self = .closed
+        case .noresponse: self = .noResponse
+        default: self = .failed
+        }
+    }
+}
+
+@available(iOS 16.1, *)
+private extension SaqzGameAttributes.ContentState {
+    func with(_ status: SaqzGameAttributes.Status) -> Self {
+        var copy = self
+        copy.status = status
+        return copy
     }
 }
