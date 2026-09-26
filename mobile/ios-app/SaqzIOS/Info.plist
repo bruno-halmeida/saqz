@@ -37,6 +37,8 @@
 	<string>$(LINKS_DOMAIN)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Use a câmera para escolher a foto privada do grupo.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
