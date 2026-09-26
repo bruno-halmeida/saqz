@@ -16,6 +16,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
+import br.com.saqz.groups.domain.communication.NativeNotificationPort
 import br.com.saqz.groups.domain.finance.Charge
 import br.com.saqz.groups.domain.finance.ChargeKind
 import br.com.saqz.groups.domain.finance.ChargeList
@@ -125,6 +126,18 @@ class GroupDetailsViewModelTest {
             listOf("attendance_answered" to mapOf("surface" to "app", "answer" to "confirm")),
             recorded.filter { it.first == "attendance_answered" },
         )
+    }
+
+    @Test
+    fun `recorded response dismisses the attendance window of that game`() = runTest {
+        val notifications = br.com.saqz.groups.presentation.FakeNativeNotifications()
+        val vm = viewModel(groupGateway = athleteGroupGateway(), attendanceGateway = FakeAttendanceGateway(),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))), notifications = notifications)
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        assertEquals(1, notifications.dismissed.size)
     }
 
     @Test
@@ -1783,6 +1796,7 @@ class GroupDetailsViewModelTest {
         departureGateway: GroupDepartureGateway = GroupDepartureGateway { SaqzResult.Success(Unit) },
         communications: br.com.saqz.groups.presentation.FakeCommunicationGateway = br.com.saqz.groups.presentation.FakeCommunicationGateway(),
         entryRequests: FakeGroupEntryRequestGateway = FakeGroupEntryRequestGateway(),
+        notifications: NativeNotificationPort? = null,
     ) = GroupDetailsViewModel(
         GROUP_ID,
         groupGateway,
@@ -1796,6 +1810,7 @@ class GroupDetailsViewModelTest {
         departureGateway,
         communications,
         entryRequests,
+        notifications,
     )
 
     private fun athleteGroupGateway() = FakeGroupGateway(

@@ -15,6 +15,11 @@ interface NativeNotificationPort {
     fun clear(done: (Boolean) -> Unit)
     /** Descarta as notificações já entregues: a conta que sai não deixa botão de presença para a próxima. */
     fun dismissAll()
+    /**
+     * A pessoa respondeu presença pelo app ou pelo link: some a janela das 24 h daquele jogo, que
+     * não tem mais o que pedir. Vazio por padrão (fakes e plataformas sem janela).
+     */
+    fun dismissAttendance(gameId: String) {}
     fun observe(changed: () -> Unit): NotificationSubscription
 }
 interface NotificationDeviceGateway {

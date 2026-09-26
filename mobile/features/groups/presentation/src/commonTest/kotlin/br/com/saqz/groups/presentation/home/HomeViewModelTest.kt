@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
+import br.com.saqz.groups.domain.communication.NativeNotificationPort
 import br.com.saqz.groups.domain.home.HomeError
 import br.com.saqz.groups.domain.home.HomeAdminGroup
 import br.com.saqz.groups.domain.home.HomeAdminReadModel
@@ -413,6 +414,29 @@ class HomeViewModelTest {
             listOf("attendance_answered" to mapOf("surface" to "app", "answer" to "confirm")),
             recorded.filter { it.first == "attendance_answered" },
         )
+    }
+
+    @Test
+    fun `recorded response dismisses the attendance window of that game and a failed one keeps it`() = runTest {
+        val notifications = br.com.saqz.groups.presentation.FakeNativeNotifications()
+        val confirmed = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(sampleHome(nextGame = sampleNextGame())),
+                SaqzResult.Success(sampleHome(nextGame = sampleNextGame(HomeOwnAttendance(AttendanceStatus.Confirmed, null)))),
+            ),
+            notifications = notifications,
+        )
+        confirmed.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+        val failed = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = sampleNextGame()))),
+            attendanceGateway = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.Data(DataError.Server))),
+            notifications = notifications,
+        )
+        failed.onIntent(HomeIntent.Respond(AttendanceIntent.Decline))
+        advanceUntilIdle()
+
+        assertEquals(listOf(sampleNextGame().gameId), notifications.dismissed)
     }
 
     @Test
@@ -936,6 +960,7 @@ class HomeViewModelTest {
         homeGateway: HomeGateway,
         attendanceGateway: FakeAttendanceGateway = FakeAttendanceGateway(),
         now: GroupNowPort = this.now,
+        notifications: NativeNotificationPort? = null,
     ) = HomeViewModel(
         homeGateway = homeGateway,
         athleteGateway = FakeAthleteGateway(
@@ -943,6 +968,7 @@ class HomeViewModelTest {
         ),
         attendanceGateway = attendanceGateway,
         now = now,
+        notifications = notifications,
     )
 }
 

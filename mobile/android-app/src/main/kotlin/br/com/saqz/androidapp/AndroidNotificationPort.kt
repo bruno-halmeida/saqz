@@ -52,6 +52,8 @@ internal class AndroidNotificationPort(private val context: Context) : NativeNot
         FirebaseMessaging.getInstance().deleteToken().addOnCompleteListener { done(it.isSuccessful) }
     }
     override fun dismissAll() = context.getSystemService(NotificationManager::class.java).cancelAll()
+    override fun dismissAttendance(gameId: String) =
+        context.getSystemService(NotificationManager::class.java).cancel(attendanceWindowId(gameId))
     override fun observe(changed: () -> Unit): NotificationSubscription {
         listeners += changed
         return NotificationSubscription { listeners -= changed }

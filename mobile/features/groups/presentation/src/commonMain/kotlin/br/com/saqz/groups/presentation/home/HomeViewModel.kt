@@ -15,6 +15,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
+import br.com.saqz.groups.domain.communication.NativeNotificationPort
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.home.HomeAdminGroup
 import br.com.saqz.groups.domain.home.HomeAdminReadModel
@@ -119,6 +120,7 @@ class HomeViewModel(
     private val athleteGateway: AthleteGateway,
     private val attendanceGateway: AttendanceGateway,
     private val now: GroupNowPort,
+    private val notifications: NativeNotificationPort? = null,
 ) : MviViewModel<HomeState, HomeIntent, HomeEffect>(HomeState()) {
     private var loadGeneration = 0L
     private var responseGeneration = 0L
@@ -263,7 +265,10 @@ class HomeViewModel(
                 GroupId(game.groupId.value),
                 game.gameId,
                 SelfAttendanceCommand(Uuid.random().toString(), intent),
-            ).onSuccess { SaqzAnalytics.attendanceAnswered("app", intent == AttendanceIntent.Confirm) }
+            ).onSuccess {
+                SaqzAnalytics.attendanceAnswered("app", intent == AttendanceIntent.Confirm)
+                notifications?.dismissAttendance(game.gameId)
+            }
             if (generation >= responseGeneration && loadAtStart >= loadGeneration) {
                 applyAttendanceResult(result, context)
             }
