@@ -29,22 +29,10 @@ class SaqzMessagingService : FirebaseMessagingService() {
         val body = data["body"] ?: message.notification?.body ?: return
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 24 && !manager.areNotificationsEnabled()) return
-        val id = data["notificationId"]?.hashCode() ?: message.messageId.hashCode()
-        val notification = reminderNotification(this, id, title, body, data["groupId"])
-        data["gameId"]?.let { gameId ->
-            notification
-                .addAction(0, getString(R.string.notification_action_confirm), attendanceAction(ACTION_CONFIRM, id, data, gameId))
-                .addAction(0, getString(R.string.notification_action_decline), attendanceAction(ACTION_DECLINE, id, data, gameId))
-        }
-        manager.notify(id, notification.build())
-    }
-    private fun attendanceAction(action: String, id: Int, data: Map<String, String>, gameId: String): PendingIntent {
-        val intent = Intent(this, AttendanceActionReceiver::class.java).setAction(action)
-            .putExtra(EXTRA_NOTIFICATION_ID, id).putExtra(EXTRA_NOTIFICATION_GROUP_ID, data["groupId"])
-            .putExtra(EXTRA_GAME_ID, gameId).putExtra(EXTRA_TITLE, data["title"]).putExtra(EXTRA_BODY, data["body"])
-            .putExtra(EXTRA_RECIPIENT, data["recipient"])
-        // requestCode = id: extras não distinguem PendingIntents, e cada push precisa do seu.
-        return PendingIntent.getBroadcast(this, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val push = AttendancePush.from(data, title, body, fallbackId = message.messageId)
+        // Janela das 24 h que chegou depois do fim: não vale mais nada.
+        if (push.isWindow && (push.remaining() ?: 0) <= 0) return
+        manager.notify(push.id, attendanceNotification(push).build())
     }
 }
 internal fun reminderNotification(context: Context, id: Int, title: String, body: String, groupId: String?): NotificationCompat.Builder {

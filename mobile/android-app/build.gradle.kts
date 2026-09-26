@@ -144,6 +144,8 @@ dependencies {
     implementation(project(":features:access:domain"))
     implementation(project(":features:profile:domain"))
     implementation(libs.androidx.activity.compose)
+    // 1.17.0: `setRequestPromotedOngoing` (Live Update do Android 16) na janela de presença.
+    implementation(libs.androidx.core)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)

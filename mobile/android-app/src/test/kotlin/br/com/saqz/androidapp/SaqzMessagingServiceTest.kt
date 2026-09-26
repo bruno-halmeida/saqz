@@ -1,10 +1,13 @@
 package br.com.saqz.androidapp
 
 import android.app.Application
+import android.app.Notification
 import android.app.NotificationManager
+import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.RemoteMessage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -36,5 +39,31 @@ class SaqzMessagingServiceTest {
     fun pushWithoutGameHasNoActions() {
         receive()
         assertNull(posted().actions)
+    }
+
+    @Test
+    fun windowPushBecomesAnOngoingPromotedNotificationThatExpiresAtTheWindowEnd() {
+        receive("gameId" to "game1", "recipient" to "sub", "windowEndsAt" to (System.currentTimeMillis() + 3_600_000).toString())
+
+        val window = shadowOf(service.getSystemService(NotificationManager::class.java)).getNotification("window:game1".hashCode())
+        assertTrue(window.flags and Notification.FLAG_ONGOING_EVENT != 0)
+        assertTrue(NotificationCompat.isRequestPromotedOngoing(window))
+        assertTrue(window.timeoutAfter in 3_590_000..3_600_000)
+        assertEquals(listOf("Confirmar", "Não vou"), window.actions.map { it.title.toString() })
+    }
+
+    @Test
+    fun windowPushThatArrivesAfterTheWindowIsDropped() {
+        receive("gameId" to "game1", "recipient" to "sub", "windowEndsAt" to (System.currentTimeMillis() - 1_000).toString())
+
+        assertTrue(shadowOf(service.getSystemService(NotificationManager::class.java)).allNotifications.isEmpty())
+    }
+
+    @Test
+    fun regularPushStaysDismissableAndNeverExpires() {
+        receive("gameId" to "game1")
+
+        assertEquals(0, posted().flags and Notification.FLAG_ONGOING_EVENT)
+        assertEquals(0L, posted().timeoutAfter)
     }
 }
