@@ -110,8 +110,8 @@ if values.get('SAQZ_ASAAS_BASE_URL') != 'https://api.asaas.com/v3':
     sys.exit('Configure a URL de produção do Asaas.')
 url = urlsplit(values['SAQZ_SUBSCRIPTION_PURCHASE_URL'])
 if (url.scheme != 'https' or not url.hostname or url.username or url.query or url.fragment
-        or url.hostname.endswith('brunoalmeida.dev')):
-    sys.exit('Configure uma URL HTTPS de contratação de produção.')
+        or url.port is not None or url.path != '/assinar/' or url.hostname.endswith('brunoalmeida.dev')):
+    sys.exit('Configure uma URL HTTPS de contratação de produção, com caminho /assinar/ e sem porta.')
 if json.loads(sa.read_text()).get('project_id') != 'saquz-app':
     sys.exit('Service account não pertence ao projeto saquz-app.')
 print('Arquivos de segredos verificados; valores não exibidos.')
