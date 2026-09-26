@@ -11,6 +11,6 @@ node-ip: 172.18.0.1
 # Um único node não precisa de um túnel VXLAN entre máquinas.
 flannel-backend: host-gw
 kubelet-arg:
-  - address=127.0.0.1
+  - address=172.18.0.1
 kube-proxy-arg:
   - nodeport-addresses=172.18.0.1/32

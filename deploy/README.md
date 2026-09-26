@@ -7,26 +7,30 @@ até que os comandos abaixo sejam executados.
 ## Releases
 
 Cada release usa a mesma versão na tag Git, imagem e overlay: `v.0.0.1`, `v.0.0.2`, etc.
-O workflow `backend-image.yml` publica apenas após push de uma tag `v.X.Y.Z`
-cujo commit já esteja na `main`. Publica uma única tag de imagem, sem `main` ou `latest`.
+O workflow `backend-image.yml` roda após mudanças em `backend/**` na `main`.
+Ele incrementa o último número da maior versão existente, publica a imagem no GHCR
+e só então cria a tag Git no commit correspondente. A primeira versão é `v.0.0.1`.
+Publica uma única tag de imagem, sem `main` ou `latest`.
 O build roda no GitHub para `linux/amd64`, com cache GHA e o Dockerfile existente.
-Antes dele, um job leve compara `backend/` com a maior versão anterior alcançável
-no histórico da tag. A primeira release compara com uma árvore vazia para publicar
+Antes dele, uma etapa leve compara `backend/` com a última release.
+A primeira release compara com uma árvore vazia para publicar
 o backend existente. Se só mobile, páginas, infraestrutura ou workflow mudaram, o
-job de build/publicação é ignorado e a versão do backend implantado deve ser mantida.
-Esse filtro é feito no job porque o GitHub não aplica filtros `paths` a pushes de tags.
+build/publicação é ignorado e a versão do backend implantado deve ser mantida.
+As execuções são serializadas para não reservar a mesma versão simultaneamente;
+reexecutar um commit já publicado não cria outra release.
 
-Após review e merge das mudanças, incluindo `newTag` no overlay de produção:
+Para a primeira publicação ou para tentar novamente uma execução que falhou, use
+o disparo manual na `main`. Ele também verifica se há mudanças no backend:
 
 ```bash
-git switch main
-git pull --ff-only
-git tag -a v.0.0.1 -m 'Saqz v.0.0.1'
-git push origin v.0.0.1
+gh workflow run backend-image.yml --ref main
 ```
 
-Nunca mova uma tag publicada nem reutilize uma versão para outro build. Para corrigir
-uma release, crie outra versão. Publicar a imagem não aplica nada no servidor.
+Nunca mova uma tag publicada nem reutilize uma versão para outro commit. Para corrigir
+uma release, faça uma nova alteração no backend. Publicar a imagem não aplica nada
+no servidor: atualize `newTag` no overlay, revise e aplique a versão desejada.
+Se o push da imagem funcionar e o da tag Git falhar, a próxima execução interrompe
+ao encontrar a imagem existente. Recupere a tag no commit original antes de continuar.
 Na primeira publicação, torne o pacote `saqz-backend` **público** nas configurações
 do GHCR: o repositório público não garante essa visibilidade automaticamente.
 Confirme o pull anônimo antes do deploy; não há `imagePullSecret` nos manifestos.
@@ -46,8 +50,8 @@ NodePort HTTP `30080`. O `HelmChartConfig` configura o componente empacotado;
 os recursos da aplicação usam Kustomize, sem instalação manual de charts Helm.
 
 As portas 80/443 continuam no Docker. O host `172.18.0.1` pertence à rede Docker
-`local-server-network`; API Kubernetes e NodePort usam esse endereço privado.
-O kubelet escuta em loopback, acessado pelo túnel do k3s, e o Flannel usa `host-gw`
+`local-server-network`; API Kubernetes, kubelet e NodePort usam esse endereço privado.
+O Flannel usa `host-gw`
 para este cluster de um node. O serviço k3s inicia depois do Docker. Não remova essa
 rede; outro servidor ou expansão do cluster exige rever os endereços e a rede.
 
@@ -76,8 +80,8 @@ O `backend.env` contém os três `SPRING_DATASOURCE_*`, os campos `SAQZ_MAIL_*`,
 Inclua também `SAQZ_ASAAS_BASE_URL=https://api.asaas.com/v3`, `SAQZ_ASAAS_API_KEY`,
 `SAQZ_ASAAS_WEBHOOK_TOKEN` e `SAQZ_PASSWORD_RESET_SECRET`.
 
-**Pendente antes do deploy:** definir `SAQZ_SUBSCRIPTION_PURCHASE_URL` com a URL HTTPS
-de produção aprovada para os e-mails de contratação. Ela é obrigatória no Deployment
+Defina `SAQZ_SUBSCRIPTION_PURCHASE_URL=https://saqz.app`, endereço de produção
+aprovado para os e-mails de contratação. Ela é obrigatória no Deployment
 para impedir o fallback para `/assinar` de staging. O painel web de produção ainda
 está fora desta implantação; CORS administrativo fica vazio e WhatsApp desligado.
 O perfil `prod`, Firebase, portas e demais configurações fixas vêm do ConfigMap.

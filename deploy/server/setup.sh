@@ -54,7 +54,7 @@ case "$1" in
       python3 -c 'import json,sys; assert any(x.get("Gateway")=="172.18.0.1" for x in json.load(sys.stdin)), "Gateway Docker diferente do previsto"'
     python3 - <<'PY'
 import socket
-for host, port in [('172.18.0.1', 6443), ('127.0.0.1', 10250), ('172.18.0.1', 30080)]:
+for host, port in [('172.18.0.1', 6443), ('172.18.0.1', 10250), ('172.18.0.1', 30080)]:
     with socket.socket() as sock:
         sock.bind((host, port))
 PY
@@ -72,6 +72,7 @@ EOF
     trap 'rm -f "$installer"' EXIT
     curl --fail --silent --show-error --location https://get.k3s.io -o "$installer"
     INSTALL_K3S_VERSION="$k3s_version" sh "$installer" server
+    k wait --for=create node --all --timeout=180s
     k wait --for=condition=Ready node --all --timeout=180s
     k -n kube-system wait --for=create deployment/traefik --timeout=180s
     k -n kube-system rollout status deployment/traefik --timeout=180s
