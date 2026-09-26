@@ -161,7 +161,10 @@ final class SaqzPushDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
             return
         }
         NSLog("[SaqzPush] toque no push: groupId=\(groupId ?? "-")")
-        NotificationCenter.default.post(name: .saqzPushOpened, object: nil, userInfo: groupId.map { ["groupId": $0] })
+        var opened: [String: String] = [:]
+        opened["groupId"] = groupId
+        opened["gameId"] = userInfo["gameId"] as? String
+        NotificationCenter.default.post(name: .saqzPushOpened, object: nil, userInfo: opened)
         completionHandler()
     }
     /// O sistema já descarta a notificação tocada; o resultado volta como notificação local.

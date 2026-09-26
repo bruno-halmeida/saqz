@@ -35,10 +35,18 @@ class SaqzMessagingService : FirebaseMessagingService() {
         manager.notify(push.id, attendanceNotification(push).build())
     }
 }
-internal fun reminderNotification(context: Context, id: Int, title: String, body: String, groupId: String?): NotificationCompat.Builder {
+internal fun reminderNotification(
+    context: Context,
+    id: Int,
+    title: String,
+    body: String,
+    groupId: String?,
+    gameId: String?,
+): NotificationCompat.Builder {
     val intent = Intent(context, MainActivity::class.java)
         .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         .putExtra(EXTRA_NOTIFICATION_GROUP_ID, groupId)
+        .putExtra(EXTRA_GAME_ID, gameId)
     val content = PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     return NotificationCompat.Builder(context, REMINDER_CHANNEL)
         .setSmallIcon(R.drawable.ic_saqz_notification).setContentTitle(title)

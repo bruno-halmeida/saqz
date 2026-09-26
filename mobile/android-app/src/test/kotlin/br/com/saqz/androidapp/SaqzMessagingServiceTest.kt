@@ -66,4 +66,13 @@ class SaqzMessagingServiceTest {
         assertEquals(0, posted().flags and Notification.FLAG_ONGOING_EVENT)
         assertEquals(0L, posted().timeoutAfter)
     }
+
+    @Test
+    fun tappingAGamePushCarriesTheGameToTheActivity() {
+        receive("gameId" to "game1")
+
+        val tap = shadowOf(posted().contentIntent).savedIntent
+        assertEquals("g1", tap.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID))
+        assertEquals("game1", tap.getStringExtra(EXTRA_GAME_ID))
+    }
 }

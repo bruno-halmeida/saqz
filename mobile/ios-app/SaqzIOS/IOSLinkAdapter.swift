@@ -21,7 +21,8 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         self.allowedHosts = allowedHosts
         pushObserver = NotificationCenter.default.addObserver(forName: .saqzPushOpened, object: nil, queue: .main) { [weak self] note in
             let groupId = note.userInfo?["groupId"] as? String
-            MainActor.assumeIsolated { self?.onNotificationOpen(groupId: groupId) }
+            let gameId = note.userInfo?["gameId"] as? String
+            MainActor.assumeIsolated { self?.onNotificationOpen(groupId: groupId, gameId: gameId) }
         }
     }
 
@@ -29,9 +30,9 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         if let pushObserver { NotificationCenter.default.removeObserver(pushObserver) }
     }
 
-    /** Push tap: always routes to the notification center; no dedup across taps. */
-    func onNotificationOpen(groupId: String?) {
-        let event = GroupLinkEventNotificationOpen(groupId: groupId)
+    /** Push tap: game pushes open the game, the rest the notification center; no dedup across taps. */
+    func onNotificationOpen(groupId: String?, gameId: String?) {
+        let event = GroupLinkEventNotificationOpen(groupId: groupId, gameId: gameId)
         if listeners.isEmpty {
             pendingEvent = event
         } else {
@@ -80,6 +81,7 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
     /// Devolve se a URL era um link do Saqz (convite, presença ou onboarding).
     @discardableResult
     func onColdStart(url: URL?) -> Bool {
+        if let opened = Self.gameEvent(url) { accept(opened); return true }
         let onboarding = Self.directOnboardingCode(url, allowedHosts: allowedHosts)
         let event = Self.directEvent(url, allowedHosts: allowedHosts)
         acceptOnboarding(onboarding)
@@ -89,6 +91,15 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
 
     @discardableResult
     func onOpenURL(_ url: URL) -> Bool { onColdStart(url: url) }
+
+    /// Card da Live Activity (VUL-268): `saqz://game?group=<id>&game=<id>` abre o jogo, como o toque no push.
+    private static func gameEvent(_ url: URL?) -> GroupLinkEvent? {
+        guard let url, url.scheme == "saqz", url.host == "game",
+              let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+              let group = items.first(where: { $0.name == "group" })?.value,
+              let game = items.first(where: { $0.name == "game" })?.value else { return nil }
+        return GroupLinkEventNotificationOpen(groupId: group, gameId: game)
+    }
 
     @discardableResult
     func onContinueUserActivity(_ activity: NSUserActivity) -> Bool { onColdStart(url: activity.webpageURL) }

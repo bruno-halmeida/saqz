@@ -243,8 +243,13 @@ internal fun SaqzNavHost(
         }
     }
     LaunchedEffect(notificationOpenPending, state.session) {
-        if (notificationOpenPending && state.session is SessionAccessState.Ready) {
-            if (backStack.none { it is GroupsRoute.Notifications }) backStack.add(GroupsRoute.Notifications())
+        val opened = notificationOpenPending ?: return@LaunchedEffect
+        if (state.session is SessionAccessState.Ready) {
+            val groupId = opened.groupId
+            val gameId = opened.gameId
+            // Push de jogo abre o jogo (onde se confirma); os outros abrem a central.
+            if (groupId != null && gameId != null) backStack.add(GroupsRoute.GameDetail(groupId, gameId))
+            else if (backStack.none { it is GroupsRoute.Notifications }) backStack.add(GroupsRoute.Notifications())
             notificationOpen.consume()
         }
     }

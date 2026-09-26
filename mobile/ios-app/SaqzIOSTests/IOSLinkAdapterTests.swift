@@ -144,9 +144,9 @@ final class IOSLinkAdapterTests: XCTestCase {
 
     func testNotificationTapIsBufferedUntilListenerAndDeliveredOnEveryTap() {
         let fixture = Fixture()
-        fixture.adapter.onNotificationOpen(groupId: "group-1")
+        fixture.adapter.onNotificationOpen(groupId: "group-1", gameId: nil)
         fixture.start()
-        fixture.adapter.onNotificationOpen(groupId: nil)
+        fixture.adapter.onNotificationOpen(groupId: nil, gameId: nil)
         XCTAssertEqual(fixture.notificationReceived, ["group-1", nil])
     }
 
@@ -154,6 +154,20 @@ final class IOSLinkAdapterTests: XCTestCase {
         let fixture = Fixture(); fixture.start()
         NotificationCenter.default.post(name: .saqzPushOpened, object: nil, userInfo: ["groupId": "group-9"])
         XCTAssertEqual(fixture.notificationReceived, ["group-9"])
+    }
+
+    func testPushOpenedNotificationCarriesTheGameToTheLinkPort() {
+        let fixture = Fixture(); fixture.start()
+        NotificationCenter.default.post(name: .saqzPushOpened, object: nil, userInfo: ["groupId": "group-9", "gameId": "game-9"])
+        XCTAssertEqual(fixture.notificationReceived, ["group-9"])
+        XCTAssertEqual(fixture.notificationGames, ["game-9"])
+    }
+
+    func testLiveActivityGameURLOpensTheGame() {
+        let fixture = Fixture(); fixture.start()
+        XCTAssertTrue(fixture.adapter.onOpenURL(URL(string: "saqz://game?group=g1&game=game1")!))
+        XCTAssertEqual(fixture.notificationReceived, ["g1"])
+        XCTAssertEqual(fixture.notificationGames, ["game1"])
     }
 
     @MainActor
@@ -164,6 +178,7 @@ final class IOSLinkAdapterTests: XCTestCase {
         var attendanceIntents: [AttendanceIntent] = []
         var onboardingReceived: [String] = []
         var notificationReceived: [String?] = []
+        var notificationGames: [String?] = []
         func startOnboarding() {
             _ = adapter.startAppOnboarding(listener: RecordingOnboardingListener { self.onboardingReceived.append($0) })
         }
@@ -173,6 +188,7 @@ final class IOSLinkAdapterTests: XCTestCase {
                 attendance: { self.attendanceReceived.append($0) },
                 attendanceIntent: { self.attendanceIntents.append($0) },
                 notification: { self.notificationReceived.append($0) },
+                notificationGame: { self.notificationGames.append($0) },
             ))
         }
     }
@@ -194,16 +210,19 @@ private final class RecordingLinkEventListener: @preconcurrency GroupLinkEventLi
     private let attendance: (String) -> Void
     private let attendanceIntent: (AttendanceIntent) -> Void
     private let notification: (String?) -> Void
+    private let notificationGame: (String?) -> Void
     init(
         invite: @escaping (String) -> Void,
         attendance: @escaping (String) -> Void,
         attendanceIntent: @escaping (AttendanceIntent) -> Void = { _ in },
-        notification: @escaping (String?) -> Void = { _ in }
+        notification: @escaping (String?) -> Void = { _ in },
+        notificationGame: @escaping (String?) -> Void = { _ in }
     ) {
         self.invite = invite
         self.attendance = attendance
         self.attendanceIntent = attendanceIntent
         self.notification = notification
+        self.notificationGame = notificationGame
     }
     func onEvent(event: GroupLinkEvent) {
         if let inviteEvent = event as? GroupLinkEventInvite {
@@ -213,6 +232,7 @@ private final class RecordingLinkEventListener: @preconcurrency GroupLinkEventLi
             attendanceIntent(attendanceEvent.intent)
         } else if let notificationEvent = event as? GroupLinkEventNotificationOpen {
             notification(notificationEvent.groupId)
+            notificationGame(notificationEvent.gameId)
         }
     }
 }

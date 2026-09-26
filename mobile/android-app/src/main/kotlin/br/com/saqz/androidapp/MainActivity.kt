@@ -33,13 +33,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        model.onStart(intent?.dataString, intent?.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID))
+        model.onStart(intent?.dataString, intent?.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID), intent?.getStringExtra(EXTRA_GAME_ID))
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        model.onWarmIntent(intent.dataString, intent.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID))
+        model.onWarmIntent(intent.dataString, intent.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID), intent.getStringExtra(EXTRA_GAME_ID))
     }
 }
 
@@ -60,16 +60,16 @@ internal class MainActivityModel(
         (value as? ComponentActivity)?.let { composition.photos?.attach(it); composition.documents?.attach(it) }
     }
 
-    fun onStart(url: String?, notificationGroupId: String?) {
+    fun onStart(url: String?, notificationGroupId: String?, notificationGameId: String?) {
         if (coldStarted) return
         coldStarted = true
         composition.links.onColdStart(url)
-        notificationGroupId?.let(composition.links::onNotificationOpen)
+        notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId) }
     }
 
-    fun onWarmIntent(url: String?, notificationGroupId: String?) {
+    fun onWarmIntent(url: String?, notificationGroupId: String?, notificationGameId: String?) {
         composition.links.onWarmIntent(url)
-        notificationGroupId?.let(composition.links::onNotificationOpen)
+        notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId) }
     }
 
 }
