@@ -40,9 +40,14 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
             ORDER BY notification_id LIMIT 1 FOR UPDATE SKIP LOCKED
         """).query(Long::class.java).optional().orElse(null) ?: return@inTransaction false
         val message = jdbc.sql("""
-            SELECT c.group_id, c.channel, c.body, c.game_id, c.window_ends_at, u.firebase_subject
+            SELECT c.group_id, c.channel, c.body, c.game_id, c.window_ends_at, u.firebase_subject,
+                   game.venue_name, game.starts_at, game.capacity,
+                   (SELECT count(*) FROM game_attendance a WHERE a.game_id = game.id AND a.status = 'CONFIRMED') AS confirmed,
+                   (SELECT count(*) FROM game_attendance a WHERE a.game_id = game.id AND a.status = 'WAITLISTED') AS waitlisted
             FROM notification_delivery_context c
-            JOIN access_users u ON u.id = c.recipient_id WHERE c.sequence = :id AND c.push_enabled
+            JOIN access_users u ON u.id = c.recipient_id
+            LEFT JOIN games game ON game.id = c.game_id AND c.channel = 'ATTENDANCE_WINDOW'
+            WHERE c.sequence = :id AND c.push_enabled
         """).param("id", id).query { rs, _ ->
             val channel = rs.getString("channel")
             val body = when (channel) {
@@ -57,24 +62,41 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
                 id, rs.getObject("group_id", UUID::class.java), "Saqz", body, channel,
                 recipient = rs.getString("firebase_subject"), gameId = rs.getObject("game_id", UUID::class.java),
                 windowEndsAt = rs.getTimestamp("window_ends_at")?.toInstant(),
+                // Só a janela junta o jogo: nos outros canais `venue_name` vem nulo e não há card.
+                liveActivity = rs.getString("venue_name")?.let { venue ->
+                    LiveActivityGame(
+                        venue = venue, startsAt = rs.getTimestamp("starts_at").toInstant(),
+                        confirmed = rs.getInt("confirmed"), capacity = rs.getInt("capacity"), waitlisted = rs.getInt("waitlisted"),
+                    )
+                },
             )
         }.optional().orElse(null)
         var retry = false
         if (message != null) {
             val devices = jdbc.sql("""
-                SELECT d.installation_id, d.token FROM notification_devices d
+                SELECT d.installation_id, d.token, d.live_activity_start_token FROM notification_devices d
                 JOIN group_notifications n ON n.recipient_id = d.user_id
                 WHERE n.sequence = :id AND NOT EXISTS (
                     SELECT 1 FROM notification_push_deliveries r WHERE r.notification_id = :id AND r.installation_id = d.installation_id)
                 ORDER BY d.installation_id FOR UPDATE OF d
-            """).param("id", id).query { rs, _ -> rs.getObject("installation_id", UUID::class.java) to rs.getString("token") }.list()
-            devices.forEach { (installation, token) ->
-                when (sender.send(token, message)) {
+            """).param("id", id).query { rs, _ ->
+                Triple(rs.getObject("installation_id", UUID::class.java), rs.getString("token"), rs.getString("live_activity_start_token"))
+            }.list()
+            devices.forEach { (installation, token, startToken) ->
+                val live = message.liveActivity != null && startToken != null
+                var delivery = sender.send(token, if (live) message.copy(liveActivityStartToken = startToken) else message)
+                if (delivery == PushDelivery.INVALID_START_TOKEN) {
+                    // Token de start recusado: limpa só ele e entrega o push comum no mesmo aparelho.
+                    jdbc.sql("UPDATE notification_devices SET live_activity_start_token = NULL WHERE installation_id = :id")
+                        .param("id", installation).update()
+                    delivery = sender.send(token, message)
+                }
+                when (delivery) {
                     PushDelivery.SENT -> jdbc.sql("INSERT INTO notification_push_deliveries VALUES (:n, :d) ON CONFLICT DO NOTHING")
                         .param("n", id).param("d", installation).update()
                     PushDelivery.INVALID_TOKEN -> jdbc.sql("DELETE FROM notification_devices WHERE installation_id = :id AND token = :token")
                         .param("id", installation).param("token", token).update()
-                    PushDelivery.RETRY -> retry = true
+                    PushDelivery.RETRY, PushDelivery.INVALID_START_TOKEN -> retry = true
                 }
             }
         }
