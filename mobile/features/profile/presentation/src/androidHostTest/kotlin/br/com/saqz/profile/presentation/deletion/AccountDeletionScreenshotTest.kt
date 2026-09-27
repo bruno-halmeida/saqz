@@ -21,7 +21,10 @@ class AccountDeletionScreenshotTest {
     @Test fun confirmation() {
         compose.setContent {
             SaqzTheme {
-                AccountDeletionScreen(AccountDeletionState(userId = "profile", email = "ana@example.test", isLoading = false, supportsApple = true), {}, {})
+                AccountDeletionScreen(
+                    AccountDeletionState(userId = "profile", email = "ana@example.test", isLoading = false, supportsApple = true),
+                    {}, {},
+                )
             }
         }
         compose.onRoot().captureRoboImage("/tmp/saqz-account-deletion.png")

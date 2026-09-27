@@ -37,3 +37,12 @@ test("privacy page is static and canonical", () => {
 test("home links to the privacy policy", () => {
   assert.match(home, /href="\/privacidade\/"/);
 });
+
+test("privacy describes the Brazil launch and both account deletion channels", () => {
+  assert.match(page, /Google ou Apple/);
+  assert.match(page, /chat não está disponível/);
+  assert.match(page, /Recebimentos automáticos por API e assinaturas de grupos estão desativados/);
+  assert.match(page, /Perfil → Excluir conta/);
+  assert.match(page, /href="\/excluir-conta\/"/);
+  assert.doesNotMatch(page, /<strong>Branch:/);
+});

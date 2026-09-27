@@ -40,7 +40,7 @@
 		F09100000000000000000001 /* IOSNotificationPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09100000000000000000002 /* IOSNotificationPort.swift */; };
 		F09100000000000000000003 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = F09100000000000000000004 /* FirebaseMessaging */; };
 		F09200000000000000000001 /* IOSAnalyticsSink.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09200000000000000000002 /* IOSAnalyticsSink.swift */; };
-		F09200000000000000000003 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = F09200000000000000000004 /* FirebaseAnalytics */; };
+		F09200000000000000000003 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = F09200000000000000000004 /* FirebaseAnalyticsCore */; };
 		F09300000000000000000003 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = F09300000000000000000004 /* FirebaseCrashlytics */; };
 		EE0000000000000000000011 /* SaqzGameAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000001 /* SaqzGameAttributes.swift */; };
 		EE0000000000000000000012 /* SaqzGameAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000001 /* SaqzGameAttributes.swift */; };
@@ -137,7 +137,7 @@
 				A10000000000000000000002 /* ../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework in Frameworks */,
 				A10000000000000000000004 /* FirebaseAuth in Frameworks */,
 				F09100000000000000000003 /* FirebaseMessaging in Frameworks */,
-				F09200000000000000000003 /* FirebaseAnalytics in Frameworks */,
+				F09200000000000000000003 /* FirebaseAnalyticsCore in Frameworks */,
 				F09300000000000000000003 /* FirebaseCrashlytics in Frameworks */,
 				A20000000000000000000003 /* GoogleSignIn in Frameworks */,
 			);
@@ -285,7 +285,7 @@
 			packageProductDependencies = (
 				A10000000000000000000131 /* FirebaseAuth */,
 				F09100000000000000000004 /* FirebaseMessaging */,
-				F09200000000000000000004 /* FirebaseAnalytics */,
+				F09200000000000000000004 /* FirebaseAnalyticsCore */,
 				F09300000000000000000004 /* FirebaseCrashlytics */,
 				A20000000000000000000131 /* GoogleSignIn */,
 			);
@@ -876,10 +876,10 @@
 			package = A10000000000000000000130 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
 		};
-		F09200000000000000000004 /* FirebaseAnalytics */ = {
+		F09200000000000000000004 /* FirebaseAnalyticsCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A10000000000000000000130 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAnalytics;
+			productName = FirebaseAnalyticsCore;
 		};
 		F09300000000000000000004 /* FirebaseCrashlytics */ = {
 			isa = XCSwiftPackageProductDependency;

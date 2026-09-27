@@ -18,6 +18,8 @@ import br.com.saqz.access.domain.port.TokenCallback
  * newer operation starts. Provider observer callbacks are quarantined during that cleanup;
  * this prevents an old SignedIn event from reopening a session or erasing the newer account.
  */
+// This decorator mirrors the native auth contract; splitting it would split session ownership.
+@Suppress("TooManyFunctions")
 class SerializedNativeAuthPort(
     private val delegate: NativeAuthPort,
 ) : NativeAuthPort {

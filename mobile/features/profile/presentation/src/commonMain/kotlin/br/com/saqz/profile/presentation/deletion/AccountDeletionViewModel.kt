@@ -37,7 +37,9 @@ class AccountDeletionViewModel(
             val result = gateway.bootstrap()
             if (request != generation) return@launch
             when (result) {
-                is SaqzResult.Success -> update { it.copy(isLoading = false, userId = result.value.user.id, email = result.value.user.email) }
+                is SaqzResult.Success -> update {
+                    it.copy(isLoading = false, userId = result.value.user.id, email = result.value.user.email)
+                }
                 is SaqzResult.Failure -> update { it.copy(isLoading = false, loadFailed = true) }
             }
         }
@@ -46,8 +48,9 @@ class AccountDeletionViewModel(
     private fun delete(method: AccountDeletionMethod) {
         val snapshot = state.value
         val id = snapshot.userId ?: return
-        if (!snapshot.canDelete || (method == AccountDeletionMethod.PASSWORD && snapshot.password.isEmpty()) ||
-            (method == AccountDeletionMethod.APPLE && !snapshot.supportsApple)) return
+        if (!snapshot.canDelete) return
+        if (method == AccountDeletionMethod.PASSWORD && snapshot.password.isEmpty()) return
+        if (method == AccountDeletionMethod.APPLE && !snapshot.supportsApple) return
         ++generation
         update { it.copy(isBusy = true, password = "", error = null) }
         viewModelScope.launch {
@@ -66,7 +69,9 @@ class AccountDeletionViewModel(
                     is SaqzResult.Failure -> update { it.copy(isBusy = false, error = AccountDeletionError.REQUEST) }
                 }
                 AccountDeletionAuthorizationResult.CANCELLED -> update { it.copy(isBusy = false) }
-                AccountDeletionAuthorizationResult.REJECTED -> update { it.copy(isBusy = false, error = AccountDeletionError.AUTHENTICATION) }
+                AccountDeletionAuthorizationResult.REJECTED -> update {
+                    it.copy(isBusy = false, error = AccountDeletionError.AUTHENTICATION)
+                }
             }
         }
     }

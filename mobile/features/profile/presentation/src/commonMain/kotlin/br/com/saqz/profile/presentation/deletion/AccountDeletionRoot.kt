@@ -7,8 +7,8 @@ import br.com.saqz.designsystem.ObserveAsEvents
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun AccountDeletionRoot(onBack: () -> Unit, onDeleted: () -> Unit, viewModel: AccountDeletionViewModel = koinViewModel()) {
+fun AccountDeletionRoot(onBack: () -> Unit, onDeletionComplete: () -> Unit, viewModel: AccountDeletionViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    ObserveAsEvents(viewModel.effects) { if (it == AccountDeletionEffect.DELETED) onDeleted() }
+    ObserveAsEvents(viewModel.effects) { if (it == AccountDeletionEffect.DELETED) onDeletionComplete() }
     AccountDeletionScreen(state, viewModel::onIntent, onBack)
 }

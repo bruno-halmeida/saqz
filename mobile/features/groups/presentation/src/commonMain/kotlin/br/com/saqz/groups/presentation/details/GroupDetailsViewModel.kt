@@ -159,7 +159,9 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.ConfirmAttendance -> viewGame()
             GroupDetailsIntent.NotifyPending -> notifyPending()
             GroupDetailsIntent.OpenNotices -> emit(GroupDetailsEffect.OpenThread(groupId, notices = true))
-            GroupDetailsIntent.OpenChat -> if (br.com.saqz.domain.StoreLaunchPolicy.chat) emit(GroupDetailsEffect.OpenThread(groupId, notices = false))
+            GroupDetailsIntent.OpenChat -> if (br.com.saqz.domain.StoreLaunchPolicy.chat) {
+                emit(GroupDetailsEffect.OpenThread(groupId, notices = false))
+            }
             is GroupDetailsIntent.Respond -> respond(intent.intent)
             is GroupDetailsIntent.ToggleAutoConfirmation -> toggleAutoConfirmation(intent.enabled)
             is GroupDetailsIntent.OpenAgendaGame -> emit(GroupDetailsEffect.OpenGame(groupId, intent.gameId))

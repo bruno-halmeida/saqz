@@ -21,4 +21,5 @@
     <string name="profile_error_message">Confira sua conexão e tente novamente.</string>
     <string name="profile_retry">Tentar novamente</string>
     <string name="profile_receipts">Recebimentos</string>
+    <string name="profile_privacy">Política de privacidade</string>
 </resources>

@@ -131,3 +131,28 @@ real mantém a capacidade desligada e foi validado pelo SaqzKoinModulesTest.
 A manutenção de registros financeiros anteriores permanece no backend, sem criar
 novas operações. Para futuro lançamento de recebimentos são necessários deployment
 `SAQZ_RECEIVABLES_LAUNCH_ENABLED=true`, rollout e nova versão mobile revisada.
+
+## T7 — Privacidade
+
+Gates: 38 testes Node (páginas, configuração Firebase e manifesto iOS), 45 testes
+nativos Swift, 38 testes KMP de login/serialização, 15 de perfil e 1 Robolectric
+sobre permissões/metadata do manifesto Android mesclado. Após ajustes de estilo,
+`detektAll` passou, assim como os 22 testes de perfil/exclusão. Não houve remoção
+de testes. Os dois contratos nativos de autenticação mantêm superfície única por
+identidade e têm exceção localizada/documentada à métrica TooManyFunctions.
+Logs: `/tmp/saqz-store-privacy-node.log`, `/tmp/saqz-store-privacy-mobile.log`
+(testes passaram; a primeira checagem estática apontou estilo),
+`/tmp/saqz-store-quality-mobile.log` (gate final passou) e
+`/tmp/saqz-store-privacy-swift.log`.
+
+| Critério SR7 | Evidência | Esperado |
+|---|---|---|
+| Coleta real | privacy-config.test.cjs | 15 tipos vinculados à conta, sem tracking, com finalidades |
+| IDFA | privacy-config.test.cjs + build/test Swift | produto FirebaseAnalyticsCore, sem produto de publicidade; IDFV e consentimentos publicitários false |
+| Permissões Android efetivas | StorePrivacyPermissionsTest.kt | manifesto empacotado sem AD_ID/AD_SERVICES, consentimentos publicitários false |
+| Política pública | landing-page/tests/privacy.test.cjs | Apple/relay, dados de grupos, exclusão, ausência de chat e APIs desligadas; sem referência incorreta ao Branch |
+
+O login oferece termos/política; o perfil oferece política e exclusão.
+A declaração do App Store Connect/Data safety deve ser revisada com o archive
+assinado final e os operadores reais, conforme o roteiro de submissão. Os testes
+não equivalem ao preenchimento dos consoles nem à publicação da política.

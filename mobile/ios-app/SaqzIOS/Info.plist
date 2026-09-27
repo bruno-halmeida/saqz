@@ -42,7 +42,7 @@
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Use a câmera para escolher a foto privada do grupo.</string>
+	<string>Use a câmera para adicionar uma foto ao seu perfil ou grupo.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Permita salvar a imagem do convite na sua fototeca.</string>
 	<key>SaqzAPIBaseURL</key>
@@ -66,5 +66,19 @@
 		<key>UIImageName</key>
 		<string>LaunchSymbol</string>
 	</dict>
+	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS</key>
+	<false/>
+	<key>GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED</key>
+	<false/>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>pt-BR</string>
+	</array>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>pt_BR</string>
+	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_STORAGE</key>
+	<false/>
+	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_USER_DATA</key>
+	<false/>
 </dict>
 </plist>

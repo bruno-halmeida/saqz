@@ -43,6 +43,7 @@ data class OwnProfileGroupUi(
 sealed interface OwnProfileIntent {
     data object Refresh : OwnProfileIntent
     data object EditData : OwnProfileIntent
+    data object OpenPrivacy : OwnProfileIntent
     data object OpenSettings : OwnProfileIntent
     data object OpenMyPlan : OwnProfileIntent
     data object OpenReceipts : OwnProfileIntent
@@ -61,6 +62,7 @@ sealed interface OwnProfileEffect {
     data class OpenAthleteProfile(val groupId: String) : OwnProfileEffect
     data object OpenReceipts : OwnProfileEffect
     data object OpenMonthlyPayments : OwnProfileEffect
+    data object OpenPrivacy : OwnProfileEffect
     data object OpenSettings : OwnProfileEffect
     data object OpenNotifications : OwnProfileEffect
     data object OpenAccountDeletion : OwnProfileEffect

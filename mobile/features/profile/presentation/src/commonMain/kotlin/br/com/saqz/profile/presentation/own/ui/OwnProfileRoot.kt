@@ -33,6 +33,7 @@ fun OwnProfileRoot(
     viewModel: OwnProfileViewModel = koinViewModel(),
     imageLoader: ImageLoader = koinInject(),
 ) {
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     val state by viewModel.state.collectAsStateWithLifecycle()
     // VUL-205: só recarrega se o contador mudou desde que esta ViewModel nasceu. O contador é
     // do host e sobrevive ao pop da entrada (`SaqzNavHost`), então `> 0` fazia a aba de perfil
@@ -50,6 +51,7 @@ fun OwnProfileRoot(
             is OwnProfileEffect.OpenAthleteProfile -> onOpenAthleteProfile(effect.groupId)
             OwnProfileEffect.OpenReceipts -> onOpenReceipts?.invoke()
             OwnProfileEffect.OpenMonthlyPayments -> onOpenMonthlyPayments()
+            OwnProfileEffect.OpenPrivacy -> uriHandler.openUri("https://saqz.app/privacidade/")
             OwnProfileEffect.OpenSettings -> onOpenSettings()
             OwnProfileEffect.OpenNotifications -> onOpenNotifications()
             OwnProfileEffect.OpenAccountDeletion -> onOpenAccountDeletion()

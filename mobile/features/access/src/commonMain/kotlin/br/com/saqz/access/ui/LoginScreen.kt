@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.access.presentation.login.LoginIntent
 import br.com.saqz.access.presentation.login.LoginState
+import br.com.saqz.access.resources.login_terms
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.google_g
 import br.com.saqz.access.resources.login_continue_with
@@ -62,6 +63,7 @@ internal object LoginTags {
     const val ForgotPassword = "login-forgot-password"
     const val CreateAccount = "login-create-account"
     const val Alert = "login-alert"
+    const val Legal = "login-legal"
     const val Attempts = "login-attempts"
 }
 
@@ -239,6 +241,14 @@ fun LoginScreen(
             weight = FontWeight(700),
             onClick = onCreateAccount,
             modifier = Modifier.testTag(LoginTags.CreateAccount),
+        )
+        Spacer(Modifier.height(LoginMetrics.fieldGap))
+        Text(
+            text = termsText(stringResource(Res.string.login_terms), colors.textSecondary),
+            style = SaqzTheme.typography.caption,
+            color = colors.textSecondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().testTag(LoginTags.Legal),
         )
         Spacer(Modifier.height(LoginMetrics.bottomGap))
     }

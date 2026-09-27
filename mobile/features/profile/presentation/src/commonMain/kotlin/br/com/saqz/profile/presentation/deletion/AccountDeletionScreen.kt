@@ -40,7 +40,12 @@ object AccountDeletionTags {
 }
 
 @Composable
-fun AccountDeletionScreen(state: AccountDeletionState, onIntent: (AccountDeletionIntent) -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun AccountDeletionScreen(
+    state: AccountDeletionState,
+    onIntent: (AccountDeletionIntent) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier.fillMaxSize().background(SaqzTheme.colors.background).navigationBarsPadding().imePadding()) {
         SaqzTopAppBar(title = stringResource(Res.string.profile_delete_title), onBack = { if (!state.isBusy) onBack() })
         Column(
@@ -55,8 +60,14 @@ fun AccountDeletionScreen(state: AccountDeletionState, onIntent: (AccountDeletio
                 )
                 else -> {
                     state.email?.let { Text(it, color = SaqzTheme.colors.textPrimary, style = SaqzTheme.typography.label) }
-                    Text(stringResource(Res.string.profile_delete_body), color = SaqzTheme.colors.textPrimary, style = SaqzTheme.typography.body)
-                    Text(stringResource(Res.string.profile_delete_retention), color = SaqzTheme.colors.textSecondary, style = SaqzTheme.typography.support)
+                    Text(
+                        stringResource(Res.string.profile_delete_body),
+                        color = SaqzTheme.colors.textPrimary, style = SaqzTheme.typography.body,
+                    )
+                    Text(
+                        stringResource(Res.string.profile_delete_retention),
+                        color = SaqzTheme.colors.textSecondary, style = SaqzTheme.typography.support,
+                    )
                     Row(
                         Modifier.fillMaxWidth().testTag(AccountDeletionTags.Confirm).toggleable(
                             value = state.confirmed, enabled = !state.isBusy, role = Role.Checkbox,
@@ -64,12 +75,22 @@ fun AccountDeletionScreen(state: AccountDeletionState, onIntent: (AccountDeletio
                         ), verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Checkbox(checked = state.confirmed, onCheckedChange = null, enabled = !state.isBusy)
-                        Text(stringResource(Res.string.profile_delete_confirm), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
+                        Text(
+                            stringResource(Res.string.profile_delete_confirm),
+                            style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary,
+                        )
                     }
-                    Text(stringResource(Res.string.profile_delete_identity), style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
-                    SaqzInput(state.password, { onIntent(AccountDeletionIntent.Password(it)) }, stringResource(Res.string.profile_delete_password),
-                        kind = SaqzInputKind.Password, enabled = !state.isBusy, modifier = Modifier.testTag(AccountDeletionTags.Password))
-                    val methods = if (state.supportsApple) AccountDeletionMethod.entries else listOf(AccountDeletionMethod.PASSWORD, AccountDeletionMethod.GOOGLE)
+                    Text(
+                        stringResource(Res.string.profile_delete_identity),
+                        style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary,
+                    )
+                    SaqzInput(
+                        state.password, { onIntent(AccountDeletionIntent.Password(it)) },
+                        stringResource(Res.string.profile_delete_password), kind = SaqzInputKind.Password,
+                        enabled = !state.isBusy, modifier = Modifier.testTag(AccountDeletionTags.Password),
+                    )
+                    val methods = if (state.supportsApple) AccountDeletionMethod.entries
+                    else listOf(AccountDeletionMethod.PASSWORD, AccountDeletionMethod.GOOGLE)
                     methods.forEach { method ->
                         val label = when (method) {
                             AccountDeletionMethod.PASSWORD -> Res.string.profile_delete_with_password
@@ -83,8 +104,12 @@ fun AccountDeletionScreen(state: AccountDeletionState, onIntent: (AccountDeletio
                     }
                     if (state.isBusy) Text(stringResource(Res.string.profile_delete_busy), color = SaqzTheme.colors.textSecondary)
                     state.error?.let { error ->
-                        Text(stringResource(if (error == AccountDeletionError.AUTHENTICATION) Res.string.profile_delete_auth_error else Res.string.profile_delete_request_error),
-                            color = SaqzTheme.colors.errorForeground, modifier = Modifier.testTag(AccountDeletionTags.Error))
+                        val message = if (error == AccountDeletionError.AUTHENTICATION) Res.string.profile_delete_auth_error
+                        else Res.string.profile_delete_request_error
+                        Text(
+                            stringResource(message), color = SaqzTheme.colors.errorForeground,
+                            modifier = Modifier.testTag(AccountDeletionTags.Error),
+                        )
                     }
                 }
             }
@@ -95,5 +120,7 @@ fun AccountDeletionScreen(state: AccountDeletionState, onIntent: (AccountDeletio
 @Preview
 @Composable
 private fun AccountDeletionPreview() = SaqzTheme {
-    AccountDeletionScreen(AccountDeletionState(userId = "user", email = "ana@example.test", isLoading = false, supportsApple = true), {}, {})
+    AccountDeletionScreen(
+        AccountDeletionState(userId = "user", email = "ana@example.test", isLoading = false, supportsApple = true), {}, {},
+    )
 }

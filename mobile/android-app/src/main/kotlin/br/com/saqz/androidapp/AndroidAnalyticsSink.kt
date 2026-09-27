@@ -8,8 +8,8 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 /**
  * Firebase Analytics e Crashlytics do app padrão, que o [SaqzApplication] só inicializa fora do
- * emulador (dev sem google-services e e2e). Sem plugin Gradle do Crashlytics: o app não minifica,
- * então não há mapping para subir.
+ * emulador (dev sem google-services e e2e). O plugin do Crashlytics gera o ID obrigatório
+ * do build, inclusive quando não há minificação.
  */
 internal class AndroidAnalyticsSink(context: Context) : AnalyticsSink {
     private val enabled = !BuildConfig.FIREBASE_USE_EMULATOR

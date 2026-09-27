@@ -94,6 +94,8 @@ interface NativeReauthenticationPort {
         done.complete(AuthResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))
 }
 
+// One Swift-exported auth contract owns provider login, session and account lifecycle.
+@Suppress("TooManyFunctions")
 interface NativeAuthPort : NativeReauthenticationPort {
     fun observe(listener: AuthStateListener): Cancelable
     fun createAccount(name: String, email: String, password: String, done: AuthCallback)
