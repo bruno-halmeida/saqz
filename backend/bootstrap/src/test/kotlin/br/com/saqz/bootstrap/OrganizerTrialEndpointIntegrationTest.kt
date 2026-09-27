@@ -27,6 +27,7 @@ import java.net.http.HttpResponse
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.UUID
@@ -323,13 +324,15 @@ class OrganizerTrialEndpointIntegrationTest {
     fun `future game works during trial freezes attendance at expiry and resumes only after paid confirmation`() {
         val group = createGroup()
         val game = UUID.randomUUID()
+        // Attendance uses the system clock, while trial expiration uses the fixture clock.
+        val gameDate = maxOf(LocalDate.now(ZoneOffset.UTC), now.atZone(ZoneOffset.UTC).toLocalDate()).plusDays(15)
         val gamePayload = """{
             "requestId":"$game","title":"Jogo depois do teste","venue":{"name":"Arena Central","address":"Rua Central 100"},
-            "localDate":"2026-09-27","localTime":"12:00:00","zoneId":"UTC","startsAt":"2026-09-27T12:00:00Z",
-            "durationMinutes":90,"capacity":25,"confirmationDeadline":"2026-09-27T11:00:00Z"}"""
+            "localDate":"$gameDate","localTime":"12:00:00","zoneId":"UTC","startsAt":"${gameDate}T12:00:00Z",
+            "durationMinutes":90,"capacity":25,"confirmationDeadline":"${gameDate}T11:00:00Z"}"""
         val created = request("POST", "/api/groups/$group/games", gamePayload)
         assertEquals(201, created.statusCode(), created.body())
-        assertEquals("2026-09-27T12:00:00Z", mapper.readTree(created.body())["startsAt"].stringValue())
+        assertEquals("${gameDate}T12:00:00Z", mapper.readTree(created.body())["startsAt"].stringValue())
         assertEquals("2026-09-26T12:00:00Z", mapper.readTree(request("GET", "/api/groups/$group/trial").body())["endsAt"].stringValue())
         val published = request("POST", "/api/groups/$group/games/$game/publish", ifMatch = "\"1\"")
         assertEquals(200, published.statusCode(), published.body())
