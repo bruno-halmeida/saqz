@@ -16,6 +16,28 @@ import kotlin.test.assertTrue
 
 class SerializedNativeAuthPortTest {
     @Test
+    fun `apple response arriving after logout cannot reopen the session`() {
+        val firebase = FakeAuth()
+        val auth = SerializedNativeAuthPort(firebase)
+        val observed = mutableListOf<AuthState>()
+        auth.observe(object : AuthStateListener {
+            override fun onStateChanged(state: AuthState) { observed += state }
+        })
+        var result: AuthResult? = null
+        auth.signInWithApple(object : AuthCallback {
+            override fun complete(resultValue: AuthResult) { result = resultValue }
+        })
+        auth.signOut(object : ResultCallback {
+            override fun complete(result: OperationResult) = Unit
+        })
+        firebase.completeApple(AuthResult.Success(user("old-apple-user")))
+        firebase.completeSignOut()
+        assertEquals(AuthResult.Cancelled, result)
+        assertEquals(null, firebase.currentUser)
+        assertEquals(listOf<AuthState>(AuthState.SignedOut), observed)
+    }
+
+    @Test
     fun `new login waits for stale custom sign in then cleanup before mutating Firebase`() {
         val firebase = FakeAuth()
         val auth = SerializedNativeAuthPort(firebase)
@@ -301,6 +323,15 @@ class SerializedNativeAuthPortTest {
     private fun user(subject: String) = NativeUser(subject, "$subject@example.test", true, subject)
 
     private class FakeAuth : NativeAuthPort {
+        private var appleCallback: AuthCallback? = null
+        override fun signInWithApple(done: AuthCallback) { appleCallback = done }
+        fun completeApple(result: AuthResult) {
+            if (result is AuthResult.Success) {
+                currentUser = result.user
+                observer?.onStateChanged(AuthState.SignedIn(result.user))
+            }
+            appleCallback!!.complete(result)
+        }
         val operations = mutableListOf<String>()
         private var observer: AuthStateListener? = null
         private var custom: AuthCallback? = null

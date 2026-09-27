@@ -29,6 +29,7 @@ internal class AndroidReauthenticationAdapter(
         val subject = firebase.currentSubject
             ?: return done.complete(AuthResult.Failure(NativeFailureCode.INVALID_CREDENTIALS))
         when (request) {
+            NativeReauthentication.Apple -> done.complete(AuthResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))
             is NativeReauthentication.Password ->
                 firebase.reauthenticate(subject, AndroidReauthentication.Password(request.password)) {
                     done.complete(it.toAuthResult())

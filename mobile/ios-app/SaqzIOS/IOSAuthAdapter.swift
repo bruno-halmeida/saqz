@@ -1,4 +1,6 @@
 import FirebaseAuth
+import AuthenticationServices
+import CryptoKit
 @preconcurrency import GoogleSignIn
 import SaqzMobile
 import UIKit
@@ -47,6 +49,8 @@ protocol IOSFirebaseAuthClient: AnyObject {
     func signInWithPassword(email: String, password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func signInWithCustomToken(_ customToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func signInWithGoogle(idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
+    func signInWithApple(_ credential: IOSAppleCredential, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
+    func reauthenticateWithApple(subject: String, credential: IOSAppleCredential, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func currentSubject() -> String?
     func reauthenticateWithPassword(_ password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func reauthenticateWithGoogle(subject: String, idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
@@ -58,6 +62,12 @@ protocol IOSFirebaseAuthClient: AnyObject {
 }
 
 extension IOSFirebaseAuthClient {
+    func signInWithApple(_ credential: IOSAppleCredential, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        completion(.failure(.providerUnavailable))
+    }
+    func reauthenticateWithApple(subject: String, credential: IOSAppleCredential, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        completion(.failure(.providerUnavailable))
+    }
     func currentSubject() -> String? { nil }
     func reauthenticateWithPassword(_ password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
         completion(.failure(.providerUnavailable))
@@ -126,10 +136,13 @@ enum IOSAuthFailureMapper {
 final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
     private let firebase: IOSFirebaseAuthClient
     private let google: IOSGoogleSignInClient
+    private let apple: IOSAppleSignInClient?
+    private(set) var appleDeletionAuthorization: (subject: String, code: String)?
 
-    init(firebase: IOSFirebaseAuthClient, google: IOSGoogleSignInClient) {
+    init(firebase: IOSFirebaseAuthClient, google: IOSGoogleSignInClient, apple: IOSAppleSignInClient? = nil) {
         self.firebase = firebase
         self.google = google
+        self.apple = apple
     }
 
     func observe(listener: AuthStateListener) -> Cancelable {
@@ -181,8 +194,41 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
             reauthenticateWithPassword(password: password.password, done: done)
         } else if request is NativeReauthenticationGoogle {
             reauthenticateWithGoogle(done: done)
+        } else if request is NativeReauthenticationApple {
+            performApple(reauthenticating: true, done: done)
         } else {
             done.complete(result: IOSAuthFailure.invalidCredentials.authResult)
+        }
+    }
+
+    func supportsAppleSignIn() -> Bool { apple != nil }
+
+    func signInWithApple(done: AuthCallback) { performApple(reauthenticating: false, done: done) }
+
+    private func performApple(reauthenticating: Bool, done: AuthCallback) {
+        guard let apple else { done.complete(result: IOSAuthFailure.providerUnavailable.authResult); return }
+        let subject = firebase.currentSubject()
+        appleDeletionAuthorization = nil
+        if reauthenticating && subject == nil {
+            done.complete(result: IOSAuthFailure.invalidCredentials.authResult); return
+        }
+        apple.signIn { [weak self] result in
+            guard let self else { done.complete(result: IOSAuthFailure.providerUnavailable.authResult); return }
+            switch result {
+            case .cancelled: done.complete(result: AuthResultCancelled.shared)
+            case .failure(let failure): done.complete(result: failure.authResult)
+            case .success(let credential):
+                if reauthenticating, let subject {
+                    self.firebase.reauthenticateWithApple(subject: subject, credential: credential) { [weak self] response in
+                        if case .success(let user) = response, user.subject == subject, let code = credential.authorizationCode {
+                            self?.appleDeletionAuthorization = (subject, code)
+                        }
+                        done.complete(result: response.authResult)
+                    }
+                } else {
+                    self.firebase.signInWithApple(credential) { done.complete(result: $0.authResult) }
+                }
+            }
         }
     }
 
@@ -300,6 +346,29 @@ final class LiveFirebaseAuthClient: IOSFirebaseAuthClient {
     }
 
     func currentSubject() -> String? { auth.currentUser?.uid }
+
+    func signInWithApple(_ apple: IOSAppleCredential, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        let credential = OAuthProvider.appleCredential(withIDToken: apple.idToken, rawNonce: apple.rawNonce, fullName: apple.fullName)
+        auth.signIn(with: credential) { result, error in
+            guard error == nil, let user = result?.user else {
+                Self.complete(user: nil, error: error, completion: completion); return
+            }
+            // Apple may omit the name on subsequent authorizations. Existing names
+            // are kept; a new unnamed profile can edit this neutral label in the app.
+            if user.displayName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false {
+                let change = user.createProfileChangeRequest()
+                change.displayName = "Atleta"
+                change.commitChanges { error in Self.complete(user: error == nil ? user : nil, error: error, completion: completion) }
+            } else {
+                Self.complete(user: user, error: nil, completion: completion)
+            }
+        }
+    }
+
+    func reauthenticateWithApple(subject: String, credential apple: IOSAppleCredential, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        let credential = OAuthProvider.appleCredential(withIDToken: apple.idToken, rawNonce: apple.rawNonce, fullName: apple.fullName)
+        reauthenticate(subject: subject, credential: credential, completion: completion)
+    }
 
     func reauthenticateWithPassword(_ password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
         guard let user = auth.currentUser, let email = user.email, !password.isEmpty else {
@@ -501,5 +570,104 @@ private extension IOSAuthFailure {
         default:
             false
         }
+    }
+}
+
+struct IOSAppleCredential {
+    let idToken: String
+    let rawNonce: String
+    let fullName: PersonNameComponents?
+    let authorizationCode: String?
+}
+
+enum IOSAppleSignInResult {
+    case success(IOSAppleCredential)
+    case cancelled
+    case failure(IOSAuthFailure)
+}
+
+@MainActor
+protocol IOSAppleSignInClient: AnyObject {
+    func signIn(completion: @escaping (IOSAppleSignInResult) -> Void)
+}
+
+struct IOSAppleAuthorizationRequest {
+    let rawNonce: String
+    let request: ASAuthorizationAppleIDRequest
+
+    static func make() throws -> IOSAppleAuthorizationRequest {
+        var bytes = [UInt8](repeating: 0, count: 32)
+        guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
+            throw IOSAuthFailure.providerUnavailable
+        }
+        let nonce = bytes.map { String(format: "%02x", $0) }.joined()
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = SHA256.hash(data: Data(nonce.utf8)).map { String(format: "%02x", $0) }.joined()
+        return IOSAppleAuthorizationRequest(rawNonce: nonce, request: request)
+    }
+}
+
+@MainActor
+final class LiveAppleSignInClient: NSObject, IOSAppleSignInClient, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    private let presentingViewController: () -> UIViewController?
+    private var completion: ((IOSAppleSignInResult) -> Void)?
+    private var rawNonce: String?
+    private var controller: ASAuthorizationController?
+    private var window: UIWindow?
+
+    init(presentingViewController: @escaping () -> UIViewController?) {
+        self.presentingViewController = presentingViewController
+    }
+
+    func signIn(completion: @escaping (IOSAppleSignInResult) -> Void) {
+        guard self.completion == nil, let window = presentingViewController()?.view.window else {
+            completion(.failure(.providerUnavailable)); return
+        }
+        do {
+            let prepared = try IOSAppleAuthorizationRequest.make()
+            self.window = window
+            self.rawNonce = prepared.rawNonce
+            self.completion = completion
+            let controller = ASAuthorizationController(authorizationRequests: [prepared.request])
+            self.controller = controller
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            controller.performRequests()
+        } catch {
+            completion(.failure(.providerUnavailable))
+        }
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        // Retained before performing the request; the system asks only while it is active.
+        window ?? ASPresentationAnchor()
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard controller === self.controller else { return }
+        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let nonce = rawNonce,
+              let tokenData = credential.identityToken,
+              let token = String(data: tokenData, encoding: .utf8), !token.isEmpty else {
+            finish(.failure(.providerUnavailable)); return
+        }
+        finish(.success(IOSAppleCredential(
+            idToken: token, rawNonce: nonce, fullName: credential.fullName,
+            authorizationCode: credential.authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
+        )))
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        guard controller === self.controller else { return }
+        let error = error as NSError
+        finish(error.domain == ASAuthorizationError.errorDomain && error.code == ASAuthorizationError.canceled.rawValue
+            ? .cancelled : .failure(.providerUnavailable))
+    }
+
+    private func finish(_ result: IOSAppleSignInResult) {
+        let callback = completion
+        completion = nil; rawNonce = nil; controller = nil; window = nil
+        callback?(result)
     }
 }

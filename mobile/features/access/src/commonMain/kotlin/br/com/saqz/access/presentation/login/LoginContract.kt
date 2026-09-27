@@ -16,6 +16,7 @@ data class LoginState(
     val email: String = "",
     val password: String = "",
     val isLoading: Boolean = false,
+    val appleSignInAvailable: Boolean = false,
     val error: UiText? = null,
     val emailError: UiText? = null,
     val passwordError: UiText? = null,
@@ -52,6 +53,7 @@ sealed interface LoginIntent {
     data object SubmitPasswordLogin : LoginIntent
 
     data object SubmitGoogleLogin : LoginIntent
+    data object SubmitAppleLogin : LoginIntent
 }
 
 /** Login exposes no one-off effects: sign-in flows through the shared session. */

@@ -90,6 +90,15 @@ class SerializedNativeAuthPort(
             cancel = { done.complete(AuthResult.Cancelled) },
         )
 
+    override fun supportsAppleSignIn() = delegate.supportsAppleSignIn()
+
+    override fun signInWithApple(done: AuthCallback) =
+        enqueueAuth(
+            start = { callback -> delegate.signInWithApple(callback) },
+            deliver = { result -> done.complete(result) },
+            cancel = { done.complete(AuthResult.Cancelled) },
+        )
+
     override fun sendVerification(done: ResultCallback) = delegate.sendVerification(done)
 
     override fun reloadUser(done: AuthCallback) = delegate.reloadUser(done)

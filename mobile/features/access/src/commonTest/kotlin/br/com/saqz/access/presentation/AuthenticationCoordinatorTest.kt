@@ -109,6 +109,38 @@ class AuthenticationStateMachineTest {
         assertTrue(fixture.transitions.isEmpty())
     }
 
+    @Test
+    fun `apple success uses the shared authenticated transition and ignores double submit`() {
+        val fixture = fixture()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitAppleLogin)
+        fixture.machine.onIntent(AuthenticationIntent.SubmitAppleLogin)
+        assertTrue(fixture.machine.state.value.isLoading)
+        assertEquals(1, fixture.auth.appleCalls)
+        fixture.auth.completeAuth(AuthResult.Success(verifiedUser))
+        assertEquals(AuthTransition.Authenticated(verifiedUser), fixture.transitions.single())
+        assertFalse(fixture.machine.state.value.isLoading)
+    }
+
+    @Test
+    fun `apple cancellation returns to login without a session or error`() {
+        val fixture = fixture()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitAppleLogin)
+        fixture.auth.completeAuth(AuthResult.Cancelled)
+        assertTrue(fixture.transitions.isEmpty())
+        assertNull(fixture.machine.state.value.error)
+        assertFalse(fixture.machine.state.value.isLoading)
+    }
+
+    @Test
+    fun `apple failure leaves the user signed out with a recoverable error`() {
+        val fixture = fixture()
+        fixture.machine.onIntent(AuthenticationIntent.SubmitAppleLogin)
+        fixture.auth.completeAuth(AuthResult.Failure(NativeFailureCode.NETWORK_UNAVAILABLE))
+        assertTrue(fixture.transitions.isEmpty())
+        assertEquals(AuthUiError.NETWORK_UNAVAILABLE, fixture.machine.state.value.error)
+        assertFalse(fixture.machine.state.value.isLoading)
+    }
+
     private fun fixture(): Fixture {
         val auth = FakeAuthPort()
         val transitions = mutableListOf<AuthTransition>()
@@ -117,6 +149,12 @@ class AuthenticationStateMachineTest {
 
     private class FakeAuthPort : NativeAuthPort {
         val logins = mutableListOf<LoginCall>()
+        var appleCalls = 0
+        override fun supportsAppleSignIn() = true
+        override fun signInWithApple(done: AuthCallback) {
+            appleCalls += 1
+            authCallback = done
+        }
         var googleCalls = 0
         private var authCallback: AuthCallback? = null
 

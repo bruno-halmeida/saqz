@@ -6,7 +6,7 @@ const path = require('node:path');
 const { test } = require('node:test');
 const root = path.resolve(__dirname, '..');
 const config = {
-  PROJECT_ID: 'saqz-production', API_KEY: 'test-only-key', GCM_SENDER_ID: '123',
+  PROJECT_ID: 'saqz-production', API_KEY: 'AIzaSy' + '0'.repeat(33), GCM_SENDER_ID: '123',
   GOOGLE_APP_ID: '1:123:ios:test', BUNDLE_ID: 'app.saqz',
   CLIENT_ID: 'test.apps.googleusercontent.com', REVERSED_CLIENT_ID: 'com.googleusercontent.apps.test',
 };
@@ -47,6 +47,12 @@ test('Release rejects Firebase config for another application', t => {
   assert.match(result.stderr, /BUNDLE_ID must match/);
 });
 
+test('build rejects API key format that crashes Firebase Installations at startup', t => {
+  const result = fixture(t, { firebase: { ...config, API_KEY: 'fake-local-key' } }).run();
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /API_KEY has an invalid format/);
+});
+
 test('Firebase config needs Google OAuth as well as Firebase keys', t => {
   const { CLIENT_ID, ...incomplete } = config;
   const result = fixture(t, { firebase: incomplete }).run();
@@ -84,6 +90,10 @@ test('Xcode executes the validated copy phase', () => {
   const project = JSON.parse(execFileSync('plutil', ['-convert', 'json', '-o', '-', path.join(root, 'SaqzIOS.xcodeproj/project.pbxproj')]));
   const phase = Object.values(project.objects).find(o => o.name === 'Copy Firebase Plist');
   assert.match(phase.shellScript, /\/bin\/sh "\$SRCROOT\/scripts\/copy-firebase-config.sh"/);
+  const configs = project.objects[project.objects[project.rootObject].buildConfigurationList]
+    .buildConfigurations.map(id => project.objects[id]);
+  assert.match(configs.find(c => c.name === 'Debug').buildSettings.SWIFT_ACTIVE_COMPILATION_CONDITIONS, /\bDEBUG\b/);
+  assert.doesNotMatch(configs.find(c => c.name === 'Release').buildSettings.SWIFT_ACTIVE_COMPILATION_CONDITIONS || '', /\bDEBUG\b/);
 });
 
 test('Release API phase accepts production and refuses a development endpoint', t => {

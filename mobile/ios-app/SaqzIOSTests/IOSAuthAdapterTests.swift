@@ -1,3 +1,4 @@
+import CryptoKit
 import SaqzMobile
 import XCTest
 @testable import SaqzIOS
@@ -343,10 +344,64 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertEqual(fixture.firebase.events, [.reauthGoogle("original-subject")])
     }
 
-    private func makeFixture() -> (adapter: IOSAuthAdapter, firebase: FakeFirebaseAuthClient, google: FakeGoogleSignInClient) {
+    func testAppleCancellationDoesNotContactFirebase() {
+        let fixture = makeFixture()
+        fixture.apple.result = .cancelled
+        let callback = RecordingAuthCallback()
+        fixture.adapter.signInWithApple(done: callback)
+        XCTAssertTrue(callback.result is AuthResultCancelled)
+        XCTAssertTrue(fixture.firebase.events.isEmpty)
+        XCTAssertNil(fixture.firebase.appleCredential)
+    }
+
+    func testAppleCredentialPreservesNonceAndPrivateIdentity() {
+        let fixture = makeFixture()
+        var name = PersonNameComponents(); name.givenName = "Ana"
+        fixture.apple.result = .success(IOSAppleCredential(idToken: "apple-token", rawNonce: "fresh-nonce", fullName: name, authorizationCode: "authorization"))
+        fixture.firebase.appleResult = .success(IOSAuthUser(subject: "apple-user", email: "private@privaterelay.appleid.com", emailVerified: true, displayName: "Ana"))
+        let callback = RecordingAuthCallback()
+        fixture.adapter.signInWithApple(done: callback)
+        XCTAssertEqual(fixture.firebase.appleCredential?.idToken, "apple-token")
+        XCTAssertEqual(fixture.firebase.appleCredential?.rawNonce, "fresh-nonce")
+        XCTAssertEqual(fixture.firebase.appleCredential?.fullName?.givenName, "Ana")
+        XCTAssertEqual((callback.result as? AuthResultSuccess)?.user.email, "private@privaterelay.appleid.com")
+        XCTAssertEqual((callback.result as? AuthResultSuccess)?.user.subject, "apple-user")
+    }
+
+    func testAppleProviderFailureDoesNotContactFirebase() {
+        let fixture = makeFixture()
+        fixture.apple.result = .failure(.providerUnavailable)
+        let callback = RecordingAuthCallback()
+        fixture.adapter.signInWithApple(done: callback)
+        XCTAssertEqual((callback.result as? AuthResultFailure)?.code, .providerUnavailable)
+        XCTAssertTrue(fixture.firebase.events.isEmpty)
+        XCTAssertNil(fixture.firebase.appleCredential)
+    }
+
+    func testAppleFirebaseFailureIsShownWithoutAuthenticating() {
+        let fixture = makeFixture()
+        fixture.apple.result = .success(IOSAppleCredential(idToken: "token", rawNonce: "nonce", fullName: nil, authorizationCode: nil))
+        fixture.firebase.appleResult = .failure(.authMethodConflict)
+        let callback = RecordingAuthCallback()
+        fixture.adapter.signInWithApple(done: callback)
+        XCTAssertEqual((callback.result as? AuthResultFailure)?.code, .authMethodConflict)
+    }
+
+    func testAppleRequestUsesFreshHashedNonce() throws {
+        let first = try IOSAppleAuthorizationRequest.make()
+        let second = try IOSAppleAuthorizationRequest.make()
+        let expected = SHA256.hash(data: Data(first.rawNonce.utf8)).map { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(first.request.nonce, expected)
+        XCTAssertNotEqual(first.request.nonce, first.rawNonce)
+        XCTAssertNotEqual(first.rawNonce, second.rawNonce)
+        XCTAssertEqual(first.rawNonce.count, 64)
+    }
+
+    private func makeFixture() -> (adapter: IOSAuthAdapter, firebase: FakeFirebaseAuthClient, google: FakeGoogleSignInClient, apple: FakeAppleSignInClient) {
         let firebase = FakeFirebaseAuthClient()
         let google = FakeGoogleSignInClient()
-        return (IOSAuthAdapter(firebase: firebase, google: google), firebase, google)
+        let apple = FakeAppleSignInClient()
+        return (IOSAuthAdapter(firebase: firebase, google: google, apple: apple), firebase, google, apple)
     }
 }
 
@@ -365,6 +420,11 @@ private final class FakeFirebaseAuthClient: IOSFirebaseAuthClient {
         case sendVerification
     }
 
+    var appleCredential: IOSAppleCredential?
+    var appleResult: Result<IOSAuthUser, IOSAuthFailure> = .failure(.unknown)
+    func signInWithApple(_ credential: IOSAppleCredential, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        appleCredential = credential; completion(appleResult)
+    }
     var subject: String?
     func currentSubject() -> String? { subject }
     func reauthenticateWithPassword(_ password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
@@ -470,4 +530,10 @@ private final class RecordingTokenCallback: @preconcurrency TokenCallback {
 
 private extension Array {
     var single: Element? { count == 1 ? self[0] : nil }
+}
+
+@MainActor
+private final class FakeAppleSignInClient: IOSAppleSignInClient {
+    var result: IOSAppleSignInResult = .cancelled
+    func signIn(completion: @escaping (IOSAppleSignInResult) -> Void) { completion(result) }
 }

@@ -51,6 +51,7 @@ class LoginViewModel(
             is LoginIntent.UpdatePassword -> authentication.onIntent(AuthenticationIntent.UpdatePassword(intent.value))
             LoginIntent.SubmitPasswordLogin -> submitPasswordLogin()
             LoginIntent.SubmitGoogleLogin -> authentication.onIntent(AuthenticationIntent.SubmitGoogleLogin)
+            LoginIntent.SubmitAppleLogin -> authentication.onIntent(AuthenticationIntent.SubmitAppleLogin)
         }
     }
 
@@ -84,6 +85,7 @@ private fun AuthenticationState.toLoginState() = LoginState(
     email = email,
     password = password,
     isLoading = isLoading,
+    appleSignInAvailable = appleSignInAvailable,
     error = error?.loginMessage(),
     passwordError = UiText.Res(Res.string.login_error_password)
         .takeIf { error == AuthUiError.INVALID_CREDENTIALS },

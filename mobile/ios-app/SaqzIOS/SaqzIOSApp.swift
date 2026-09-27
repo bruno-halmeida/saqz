@@ -119,7 +119,7 @@ struct LocalFirebaseConfiguration: Equatable {
 
     static let local = LocalFirebaseConfiguration(
         projectID: "saqz-local",
-        apiKey: "fake-saqz-local-api-key",
+        apiKey: "AIzaSy000000000000000000000000000000000",
         senderID: "123456789000",
         appID: "1:123456789000:ios:5a61717a6c6f6361",
         bundleID: "br.com.saqz.local",
@@ -233,7 +233,8 @@ enum IOSAuthComposition {
     ) -> IOSAuthAdapter {
         IOSAuthAdapter(
             firebase: LiveFirebaseAuthClient(),
-            google: LiveGoogleSignInClient(presentingViewController: presenter)
+            google: LiveGoogleSignInClient(presentingViewController: presenter),
+            apple: LiveAppleSignInClient(presentingViewController: presenter)
         )
     }
 }

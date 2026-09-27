@@ -86,6 +86,7 @@ sealed interface NativeReauthentication {
         override fun toString() = "Password(redacted)"
     }
     data object Google : NativeReauthentication
+    data object Apple : NativeReauthentication
 }
 
 interface NativeReauthenticationPort {
@@ -98,6 +99,9 @@ interface NativeAuthPort : NativeReauthenticationPort {
     fun createAccount(name: String, email: String, password: String, done: AuthCallback)
     fun signInWithPassword(email: String, password: String, done: AuthCallback)
     fun signInWithGoogle(done: AuthCallback)
+    fun supportsAppleSignIn(): Boolean = false
+    fun signInWithApple(done: AuthCallback) =
+        done.complete(AuthResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))
     fun signInWithCustomToken(customToken: String, done: AuthCallback) =
         done.complete(AuthResult.Failure(NativeFailureCode.PROVIDER_UNAVAILABLE))
     fun sendVerification(done: ResultCallback)

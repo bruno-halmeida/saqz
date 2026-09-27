@@ -25,6 +25,7 @@ data class AuthenticationState(
     val password: String = "",
     val isLoading: Boolean = false,
     val error: AuthUiError? = null,
+    val appleSignInAvailable: Boolean = false,
 )
 
 sealed interface AuthTransition {
@@ -39,13 +40,14 @@ sealed interface AuthenticationIntent {
     data object SubmitPasswordLogin : AuthenticationIntent
 
     data object SubmitGoogleLogin : AuthenticationIntent
+    data object SubmitAppleLogin : AuthenticationIntent
 }
 
 class AuthenticationStateMachine(
     private val auth: NativeAuthPort,
     private val transition: (AuthTransition) -> Unit,
 ) {
-    private val mutableState = MutableStateFlow(AuthenticationState())
+    private val mutableState = MutableStateFlow(AuthenticationState(appleSignInAvailable = auth.supportsAppleSignIn()))
     val state: StateFlow<AuthenticationState> = mutableState.asStateFlow()
 
     fun onIntent(intent: AuthenticationIntent) {
@@ -54,6 +56,7 @@ class AuthenticationStateMachine(
             is AuthenticationIntent.UpdatePassword -> updateForm { copy(password = intent.value) }
             AuthenticationIntent.SubmitPasswordLogin -> submitPasswordLogin()
             AuthenticationIntent.SubmitGoogleLogin -> submitGoogleLogin()
+            AuthenticationIntent.SubmitAppleLogin -> submitAppleLogin()
         }
     }
 
@@ -65,6 +68,11 @@ class AuthenticationStateMachine(
     private fun submitGoogleLogin() {
         if (!beginSubmit()) return
         auth.signInWithGoogle(authCallback(::completeLogin))
+    }
+
+    private fun submitAppleLogin() {
+        if (!mutableState.value.appleSignInAvailable || !beginSubmit()) return
+        auth.signInWithApple(authCallback(::completeLogin))
     }
 
     private fun completeLogin(result: AuthResult) {

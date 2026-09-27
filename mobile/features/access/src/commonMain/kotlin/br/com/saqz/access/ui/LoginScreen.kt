@@ -58,6 +58,7 @@ internal object LoginTags {
     const val Password = "login-password"
     const val Submit = "login-submit"
     const val Google = "login-google"
+    const val Apple = "login-apple"
     const val ForgotPassword = "login-forgot-password"
     const val CreateAccount = "login-create-account"
     const val Alert = "login-alert"
@@ -217,6 +218,14 @@ fun LoginScreen(
             onClick = { onIntent(LoginIntent.SubmitGoogleLogin) },
             enabled = !state.isLoading,
         )
+        if (state.appleSignInAvailable) {
+            Spacer(Modifier.height(LoginMetrics.fieldGap))
+            AppleSignInButton(
+                onClick = { onIntent(LoginIntent.SubmitAppleLogin) },
+                enabled = !state.isLoading,
+                modifier = Modifier.fillMaxWidth().height(SaqzTheme.metrics.buttonHeight).testTag(LoginTags.Apple),
+            )
+        }
         Spacer(Modifier.height(LoginMetrics.signupPromptGap))
         Text(
             text = stringResource(Res.string.login_signup_prompt),
