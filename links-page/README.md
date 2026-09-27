@@ -7,11 +7,14 @@ O certificado Android atual é de desenvolvimento: **não está pronto para Play
 ## Obter e aplicar o certificado do Play
 
 1. Abra o [Google Play Console](https://play.google.com/console/) e selecione Saqz.
-2. Abra **Testar e lançar → Configuração → Assinatura do app**. Dependendo da
-   navegação da conta, essa opção também aparece em **Integridade do app →
+2. No menu atual, abra **Protegido com o Google Play → Distribuição na Google
+   Play Store → Acessar a Assinatura de Apps do Google Play**. A navegação antiga
+   pode mostrar **Testar e lançar → Configuração → Integridade do app →
    Assinatura do app**.
-3. Na seção **Certificado da chave de assinatura do app**, copie a impressão
-   digital **SHA-256**. Não copie o certificado da chave de upload.
+3. Na seção **Chave de assinatura do app** (ou **Certificado da chave de assinatura
+   do app**), copie a impressão digital **SHA-256**. Se o console mostrar várias
+   chaves que assinam as versões distribuídas, copie o SHA-256 de cada uma.
+   Não copie o certificado da chave de upload.
 4. Se a assinatura ainda não foi configurada, conclua Play App Signing ao preparar
    o primeiro app bundle na faixa interna. Não substitua por uma chave inventada
    nem pelo `debug.keystore`. O fingerprint é público; nenhuma chave privada é necessária.
@@ -36,6 +39,7 @@ novamente `google-services.json` para `mobile/android-app/src/prod/`.
 Fontes: [assinatura de apps](https://support.google.com/googleplay/android-developer/answer/9842756?hl=pt-BR),
 [certificado para App Links](https://developer.android.com/training/app-links/faq),
 [Google Sign-in e certificados](https://developers.google.com/android/guides/client-auth).
+Navegação atual conferida na ajuda oficial em 27/09/2026.
 
 ## Publicação e homologação
 
