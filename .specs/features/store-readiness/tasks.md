@@ -33,11 +33,11 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8
 | T1 | Integração Crashlytics Android: catálogo, gradle app, teste de recurso | SR1 | Build e teste do ID real gerado | Concluída |
 | T2 | Validação Firebase iOS: script, pbxproj, bootstrap, testes | SR2 | Contrato executando script com configurações inválidas/válidas | Concluída |
 | T3 | Login Apple: ports/coordenador, UI login, adaptador Swift, entitlements | SR3 | Estados e callbacks; compilação Kotlin/Swift | Concluída |
-| T4 | Endpoint exclusão: caso de uso, persistência, integrações, controller | SR4 | Unitários e integração PostgreSQL | Implementada; correções F1–F6 aguardam revalidação |
-| T5 | Jornada exclusão: profile, composição, reautenticação, página pública | SR5 | VM/UI, gateway, página e sessão | Implementada; cobertura F7 aguarda revalidação |
+| T4 | Endpoint exclusão: caso de uso, persistência, integrações, controller | SR4 | Unitários e integração PostgreSQL | Concluída; F1–F6 revalidados |
+| T5 | Jornada exclusão: profile, composição, reautenticação, página pública | SR5 | VM/UI, gateway, página e sessão | Concluída; F7 revalidado |
 | T6 | Capacidade de lançamento: navegação, CTAs, disponibilidade e chat | SR6 | Entradas/rotas, ausência de compra, rollout | Concluída |
 | T7 | Declaração de privacidade: política, manifesto, permissões | SR7 | Plist, manifesto mesclado, testes páginas | Concluída |
-| T8 | Associação de produção: links-page, entitlements, instruções/evidências | SR8 | Contratos e validação fingerprint; verificador final | Concluída; aguardando verificador |
+| T8 | Associação de produção: links-page, entitlements, instruções/evidências | SR8 | Contratos e validação fingerprint; verificador final | Concluída; PASS local, certificado Play pendente externo |
 
 Cada tarefa depende da anterior apenas na ordem de execução; T5 reutiliza T3/T4.
 Testes acompanham a entrega correspondente. Não publicar mudanças nesta execução.
@@ -57,5 +57,7 @@ Testes acompanham a entrega correspondente. Não publicar mudanças nesta execu�
 - Fixture preexistente de trial: jogo deve permanecer futuro perante os relógios
   do trial e do sistema; data absoluta venceu em 27/09, sem alterar assertions.
 
-Revalidação requerida no commit das correções, incluindo os mutantes M5/M6 que
-sobreviveram no primeiro ciclo. Nenhuma falha é resolvida apagando/pulando testes.
+Revalidação concluída em 96a04c02: 2.378 testes backend e 10 de navegação passaram,
+6/6 mutações foram detectadas (incluindo M5/M6) e os três probes independentes
+passaram. F1–F7 encerrados no escopo local; limites externos em validation.md.
+Nenhuma falha foi resolvida apagando/pulando testes.

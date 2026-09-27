@@ -1,5 +1,96 @@
 # Validação independente — preparação das lojas
 
+Data: 2026-09-27. Verificador independente, distinto do autor. Revalidação 1 após a reprovação inicial.
+
+**Veredito atual: PASS da implementação local em `96a04c02ecdb443c3d849e2b5913025b89c2970d`.** Os oito critérios SR1–SR8 têm evidência compatível com os resultados definidos no spec e seus limites externos. F1–F7 estão resolvidos. O backend passou com **2.378 testes**, a integração de navegação com **10**, os probes independentes com **3** e o sensor atual matou **6/6 mutantes**, sem sobreviventes.
+
+Este resultado não aprova publicação nem substitui os insumos externos: certificado Play, configuração dos consoles/provedores, retenção operacional, homologação em binários assinados e UAT humano continuam pendentes. Nenhuma publicação foi realizada.
+
+Escopo completo: `b484dac1192fb08aa707bca8848ccb283979b30c..96a04c02ecdb443c3d849e2b5913025b89c2970d`. A revalidação examinou especialmente `42f2f3c0..96a04c02`, incluindo os fixes `9ffa131c` e `9426f743`. O commit posterior `8be04bf2` altera somente instruções em `links-page/README.md`; não muda fonte, teste ou configuração. Edições documentais posteriores do coordenador não fazem parte do gate congelado.
+
+O verificador não alterou código, testes ou estado git do checkout real. As mutações e os probes foram executados em uma cópia criada por `git archive 96a04c02`, em `/var/folders/y5/qpphs0gs7558vcgg6pjplblh0000gn/T/saqz-store-reverify-qyzhjrd_`. A única escrita versionável do verificador no checkout real foi este relatório.
+
+## Fechamento de F1–F7
+
+| Achado | Evidência da correção e resultado esperado | Resultado |
+|---|---|---|
+| F1 — exclusão com presença | `backend/bootstrap/src/test/kotlin/br/com/saqz/bootstrap/DeleteAccountIntegrationTest.kt:98` — `assertEquals("Conta excluída", reason)`; `:99` — motivo SELF nulo; `:100` e `:101` — CONFIRMED/DECLINED preservados. `:82`, `:121` e `:124` exigem `SQLException` para redação antes da exclusão, alteração de estado e DELETE. A factory real é usada em `:154`. V90 permite só a alteração de reason após soft-delete, mantendo os demais campos iguais. Probe independente e mutantes R1/R4 discriminam a regra. | PASS |
+| F2 — recriação concorrente | `backend/bootstrap/src/test/kotlin/br/com/saqz/bootstrap/AccountDeletionPersistenceTest.kt:134` exige espera real no PostgreSQL; `:136` — `assertIs<AccountDeleted>(...exceptionOrNull())`; `:137` — zero perfis ativos; `:140` — tombstone presente. O lock de identidade precede os row locks em `JdbcSessionRepository.kt:49` e `:114`. Probe adicional observa especificamente `pg_advisory_xact_lock` e repete a recusa após completar o job. R2 morre quando o lock do bootstrap é omitido. | PASS |
+| F3 — snapshots pessoais | `DeleteAccountIntegrationTest.kt:113` e `:117` exigem `Endereço removido` em jogo e série; `:114` e `:118` exigem `Jogo excluído`; `:115`, `:116`, `:119` exigem notas/quadras nulas; `:120` preserva o endereço do jogo de terceiros. Probe independente passa e R3 morre. | PASS |
+| F4 — billing opcional | `backend/bootstrap/src/test/kotlin/br/com/saqz/bootstrap/configuration/AccountDeletionSubscriptionCleanupTest.kt:36` exige falha com assinatura não cancelada/provedor ausente; `:37` e `:38` preservam token/ACTIVE. `:27` cobre ausência de assinatura; `:47` exige purge da já cancelada. A composição usa `ObjectProvider<CancelSubscription>` sem excluir o bean do perfil test. Todos os 519 testes bootstrap passam, inclusive os 63 contextos antes quebrados. | PASS |
+| F5 — integração contraditória | `DeleteAccountIntegrationTest.kt:154` usa `AccessSessionConfiguration().deleteAccount(...)`; `:90` exige nome neutro; `:131` recusa o UID antigo; `:137` aceita UID novo, `:142` exige ID distinto, `:143`, `:146` e `:147` exigem ausência de vínculos/histórico herdado. O cenário anterior foi preservado e ampliado. | PASS |
+| F6 — adapters não discriminados | `backend/bootstrap/src/test/kotlin/br/com/saqz/bootstrap/configuration/FirebaseAccountDeletionTest.kt:16` e `:17` verificam, em ordem, `revokeRefreshTokens("subject-to-delete")` e `deleteUser("subject-to-delete")`; `:31` verifica USER_NOT_FOUND em ambos os passos; `:42` exige propagação da mesma falha. `AccountDeletionSubscriptionCleanupTest.kt:56` usa CancelSubscription/JDBC/transação reais, com mock apenas do gateway Asaas; `:64` exige o ID externo exato, `:65` o instante de cancelamento, `:68` ausência de recancelamento. `:84` exige simultaneamente token, last4 e brand nulos. M5R/M6R morrem. | PASS local, sem chamada aos provedores reais |
+| F7 — sessão e pilha após exclusão | `mobile/compose-app/src/commonTest/kotlin/br/com/saqz/composeapp/navigation/SaqzNavHostViewModelScopeTest.kt:187` exige a conta enviada à API; `:188` e `:189` mantêm Ready e rota de exclusão enquanto a resposta está pendente; `:192` espera pilha exata `[AccessRoute.Login]`; `:194` exige SignedOut, `:196` chave de sessão nula, `:197` formulário de login. Exercita AccountDeletionRoot/SaqzNavHost e AccessViewModel reais. Classe completa 10/10 no iOS. | PASS |
+
+## Critérios e escopo do PASS
+
+**8/8 ACs correspondem ao resultado do spec no escopo local.** Para SR1–SR3 e SR6–SR8, permanecem as assertions `arquivo:linha` da matriz inicial abaixo: código e testes correspondentes não mudaram. SR4/SR5 agora têm as evidências completas do quadro F1–F7. Autenticação recente continua coberta por `SessionEndpointIntegrationTest.kt:124`–`:129` (null, now−301 e futuro → 403/RECENT_AUTHENTICATION_REQUIRED/nenhuma exclusão) e `:113`/`:114` (auth recente → 204 idempotente). A identidade exibida é protegida por `AccountDeletionPersistenceTest.kt:105` — AccountDeletionIdentityMismatch, `:106`/`:107` — sem tombstone e conta preservada.
+
+A precisão antes ausente foi resolvida no spec: **300 segundos**, serialização da identidade e matriz de categorias/momentos/acesso. O histórico financeiro é verificado por `DeleteAccountIntegrationTest.kt:108`/`:109` — extrato real com `Mensalidade · Conta excluída` e 5000; `:110`/`:111`/`:112` — GameNotFound para excluído, grupo encerrado e terceiro sem vínculo. Expurgo por idade, prazos legais/operacionais, backups e retenção dos operadores continuam explicitamente pendentes; não são inferidos dos testes.
+
+## Gates da revalidação
+
+Ambiente: macOS, JDK 21, PostgreSQL Zonky embutido, sem Docker; Compose em `iosSimulatorArm64Test`.
+
+| Gate | Comando/seleção | Resultado |
+|---|---|---|
+| Backend amplo congelado | `./gradlew :features:access:test :features:access:integrationTest :features:subscriptions:test :features:groups:test :features:groups:integrationTest :bootstrap:test --console=plain` em scratch/backend | **2.378/2.378**, zero failures/errors/skips; BUILD SUCCESSFUL. Por suíte: 147, 117, 257, 723, 615, 519 |
+| Distinção execução/cache | Primeiro gate executou groups:test e bootstrap:test (1.242 casos); quatro suítes vieram FROM-CACHE (1.136). Uma confirmação dessas quatro já estava iniciada ao receber orientação para priorizar probes | `:features:access:test --rerun :features:access:integrationTest --rerun :features:subscriptions:test --rerun :features:groups:integrationTest --rerun`: **1.136/1.136**, zero falhas/skips, quatro tasks efetivamente executadas. Não somar novamente aos 2.378 |
+| Integração nova de navegação | `./gradlew :compose-app:iosSimulatorArm64Test --tests '*SaqzNavHostViewModelScopeTest*' --console=plain` | **10/10**, zero falhas/skips; inclui F7. Executado no checkout real, sem alteração de fonte/teste |
+| Pós-sensor e probes | `:bootstrap:test --tests '*VerifierDeletionProbeTest' --tests '*FirebaseAccountDeletionTest' --tests '*AccountDeletionSubscriptionCleanupTest' --tests '*DeleteAccountIntegrationTest' --tests '*AccountDeletionPersistenceTest' --rerun` | **15/15**: 3 probes independentes + 12 testes de regressão restaurados, zero falhas/skips |
+| Gates anteriores sem alteração relevante | Android 231, KMP 221, Swift 45, Node 50, detekt e build negativo prod descritos no histórico | Evidência mantida; sem repetição de mobile/web inalterados. Compilação Swift/Kotlin e testes Android estavam verdes |
+
+Logs atuais: `/tmp/store-verifier-recheck-backend-gate.log`, `/tmp/store-verifier-recheck-cache-confirmation.log`, `/tmp/store-verifier-recheck-ui-gate.log`, `/tmp/store-verifier-recheck-probes.log`. XMLs preservados antes do sensor em `/tmp/store-verifier-recheck-results`; a subpasta `probes-and-restored` guarda os 15 casos finais. Os avisos de conexão recusada no shutdown de um contexto aparecem após encerrar o PostgreSQL embutido; o gate termina com exit 0 e zero falhas nos XMLs. Eles não foram confundidos com as falhas reais do primeiro ciclo.
+
+O alvo bootstrap:test continua excluindo testes com tag `emulator` por configuração preexistente (`backend/bootstrap/build.gradle.kts:38`); provedores reais não foram executados. Tasks Gradle NO-SOURCE/SKIPPED de configuração não foram contadas como testes. O Android Lint extra do autor mantém 9 erros preexistentes/19 avisos, registrados na documentação: não é apresentado aqui como gate verde nem como regressão deste diff. Nenhuma baseline de lint foi regenerada pelo verificador.
+
+## Sensor atual de discriminação
+
+Profundidade crítica: **seis mutações comportamentais, seis mortas, zero sobreviventes**. Baseline ampla verde antes da primeira mutação. Cada arquivo foi restaurado em `finally`; os quatro arquivos de produção afetados foram comparados byte a byte ao commit congelado ao terminar. Todos os mutantes compilaram; as mortes ocorreram em assertions de comportamento ou rejeição SQL esperada da falha injetada, nunca por erro de sintaxe.
+
+| Mutante | Local em 96a04c02 | Falha injetada | Resultado observado |
+|---|---|---|---|
+| M5R | `backend/bootstrap/src/main/kotlin/br/com/saqz/bootstrap/configuration/AccountDeletionConfiguration.kt:50` | Omitir `auth.deleteUser(subject)` | **Morto**: 3/3 testes Firebase falham; falta `deleteUser("subject-to-delete")`, falta chamada na idempotência e falha externa deixa de propagar |
+| M6R | `AccountDeletionConfiguration.kt:66` | Preservar token, last4 e brand por autoatribuição SQL | **Morto**: 2/4 testes de cleanup falham na conjunção `token IS NULL AND last4 IS NULL AND brand IS NULL` |
+| R1 | `backend/features/groups/src/main/resources/db/migration/V90__allow_account_deletion_attendance_redaction.sql:5` | Trocar condição de UPDATE por FALSE | **Morto**: integração real de exclusão falha com SQLSTATE P0001/append only na redação do motivo |
+| R2 | `backend/features/access/src/main/kotlin/br/com/saqz/access/adapter/output/jdbc/session/JdbcSessionRepository.kt:50` | Omitir lock de identidade antes do bootstrap | **Morto**: assertion exige AccountDeleted, recebe null porque o bootstrap concorrente termina com sucesso |
+| R3 | `backend/bootstrap/src/main/kotlin/br/com/saqz/bootstrap/configuration/DeletedAccountPersonalData.kt:36` | Omitir redação de snapshots de games | **Morto**: esperado `Endereço removido`, recebido `Rua Central 100` |
+| R4 | `V90__allow_account_deletion_attendance_redaction.sql:7` | Remover igualdade dos campos históricos, mantendo só a regra de reason | **Morto**: alteração arbitrária de new_status termina com sucesso quando o teste exige SQLException |
+
+Script: `/tmp/store-verifier-recheck-mutations.py`; resultados: `/tmp/store-verifier-recheck-mutants.json`; logs: `/tmp/store-verifier-recheck-<mutante>.log`; XMLs: `/tmp/store-verifier-recheck-mutant-results/`. M5/M6 sobreviventes no primeiro ciclo estão fechados por M5R/M6R. O histórico de 4 mortos/2 sobreviventes permanece verdadeiro para o código inicial; não foi reescrito como se já tivesse passado. As quatro regras M1–M4 continuam com a evidência anterior e suas suítes passam na baseline atual.
+
+## Probes independentes
+
+O script `/tmp/store-verifier-recheck-probes.py` criou somente no scratch `backend/bootstrap/src/test/kotlin/br/com/saqz/bootstrap/VerifierDeletionProbeTest.kt`:
+
+- Linhas 45–54: semeia evento ORGANIZER com texto pessoal; a exclusão conclui, `reason == "Conta excluída"` e `new_status == "CONFIRMED"`.
+- Linhas 56–64: semeia endereço e telefone em notas do jogo próprio; após exclusão exige endereço neutro e notas nulas.
+- Linhas 66–95: executa softDelete real em transação não confirmada, sobrepõe bootstrap por outra conexão, observa a espera em `pg_advisory_xact_lock` (`assertTrue(waiting)`, linha 85), confirma a transação e exige AccountDeleted (87). Completa o job, confirma tombstone e recusa novo bootstrap (92/93), com zero perfis ativos (94).
+
+A sincronização do probe de concorrência acompanha a nova ordem de locks. O antigo probe tomava row lock manual antes do lock da identidade, ordem que a implementação corrigida não usa; ele permanece apenas como evidência histórica do bug inicial. Não foi usado para induzir um deadlock artificial e classificar o fix como falho.
+
+## Integridade, qualidade e rastreabilidade
+
+Contagem estática no diff atual: **42 arquivos de teste, 426 → 500 definições (+74), nenhum arquivo com redução**; inventário `/tmp/store-verifier-recheck-test-inventory.json`. O universo cresceu em relação aos 37 arquivos iniciais porque os fixes tocaram outras suítes existentes. Nenhum novo skip/disable/exclude encobre falha. DeleteAccountIntegrationTest preserva o cenário e acompanha a decisão expressa de anonimização/UID antigo bloqueado. A fixture OrganizerTrial venceu no dia da verificação: `OrganizerTrialEndpointIntegrationTest.kt:328` escolhe data futura perante os dois relógios; status, transições e valores continuam afirmados, sem remover assertions.
+
+Qualidade após gate verde: **PASS** de escopo necessário, simplicidade, padrões existentes, integridade e cobertura por camada. Configuração/build, caso de uso, PostgreSQL/HTTP, adapters e composição da UI possuem happy path e bordas/falhas pertinentes. Os novos testes mapeiam a SR4/F1–F6 e SR5/F7; a fixture mantém a cobertura anterior de assinatura. As diretrizes de `mobile/AGENTS.md` foram conferidas: ports por callback, fronteiras de módulos, Root/Screen e commonTest no iOS. O teste de composição usa o harness Koin preexistente da navegação para provar F7; testes de VM continuam com fakes diretos. Mockito fica nos adapters backend, como no padrão existente. Não há novo framework genérico, baseline afrouxada ou funcionalidade fora do pedido; `git diff --check` passa.
+
+T1–T8 têm evidência local; o coordenador pode concluir T4/T5 e SR4/SR5 localmente e a verificação de T8, preservando os limites externos. Este verificador não alterou spec.md/tasks.md. O diff congelado contém 142 arquivos, 4.620 adições e 219 remoções, incluindo documentação/relatório/lições. O limite de 2.000 linhas por PR de `mobile/AGENTS.md` continua aplicável se for aberto PR; nenhum foi aberto aqui. Não houve UAT humano nem aprovação visual de produto; testes automáticos não substituem homologação assinada.
+
+## Pendências externas e lições
+
+Permanecem: SHA-256 público do Play App Signing e geração/publicação do assetlinks real; configurações Apple/Firebase nos consoles; credenciais e cancelamento nos provedores reais; fichas/deploy/homologação assinada; análise de UGC para fotos/textos; matriz de prazos/operadores/backups e implementação operacional do expurgo declarado fora do escopo. O script de fingerprint valida estrutura/pacote e rejeita o debug conhecido, mas não atesta a origem de um certificado arbitrário.
+
+Essas pendências não são defeitos locais escondidos pelo PASS. São limites explícitos do spec, continuam abertas e impedem declarar produção homologada/publicação concluída.
+
+As lições do primeiro ciclo foram registradas pelo coordenador como L-021–L-029. Esta revalidação não encontrou novo mutante sobrevivente, lacuna de precisão ou falha que exija nova lição. A autoria de verificação permaneceu independente; a escrita do verificador continua restrita a validation.md.
+
+---
+
+## Histórico preservado — primeira verificação de 42f2f3c0
+
+**O FAIL e as tarefas abaixo são o registro inicial, superado pelo PASS local acima após os fixes.** Os resultados, mutantes sobreviventes e reproduções originais foram preservados para auditoria.
+
 Data: 2026-09-27. Verificador independente, distinto do autor.
 
 **Veredito do diff `b484dac1192fb08aa707bca8848ccb283979b30c..42f2f3c0`: FAIL.**

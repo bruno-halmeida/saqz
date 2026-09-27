@@ -23,6 +23,13 @@ O bloqueio de funcionalidades vale para esta versão distribuída a todos, inclu
 a revisão. Uma futura ativação deve passar por nova avaliação de produto e das
 políticas; não há mecanismo para liberar funcionalidades somente após o review.
 
+A [verificação independente](../../.specs/features/store-readiness/validation.md)
+encerrou os oito critérios locais após corrigir os achados da primeira rodada.
+Passaram 2.378 testes de backend e 10 testes de navegação no iOS; os gates anteriores
+de Android, Swift, KMP e páginas também passaram. Os testes detectaram as seis
+falhas introduzidas deliberadamente no checkout temporário. O Android Lint tem a
+ressalva descrita ao final; a aprovação local não substitui a revisão das lojas.
+
 ## O que ainda impede concluir a preparação para envio
 
 1. **Certificado do Google Play:** informar o SHA-256 da **chave de assinatura do
@@ -62,6 +69,11 @@ pendentes sem registrar tokens ou dados pessoais nos logs.
 
 - Disponibilidade: Brasil. Política: `https://saqz.app/privacidade/`. Exclusão
   web no Play: `https://saqz.app/excluir-conta/`. Publicar antes de preencher.
+- Conferir a identidade do desenvolvedor e o registro de `app.saqz` no Play
+  Console: as novas proteções começam no Brasil em **30/09/2026** para lojas
+  participantes em dispositivos certificados Android 7+. O Google registra
+  automaticamente a maioria dos apps Play, mas o status desta conta não foi
+  consultado. [Android — verificação](https://developer.android.com/developer-verification).
 - Descrição, screenshots e classificação etária devem retratar esta versão,
   sem promover chat, recebimentos ou compras desabilitados. Declarar o conteúdo
   criado por usuários que permanece acessível. Conferir os questionários atuais

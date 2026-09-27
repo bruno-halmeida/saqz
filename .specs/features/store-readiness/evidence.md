@@ -220,5 +220,27 @@ erro adicional. Não confundir esse resultado com detekt, testes Android e build
 de desenvolvimento, que passaram.
 
 Lições fundamentadas F1–F7, M5/M6 e precisão de SR4 registradas pelo script da
-skill em `.specs/lessons.json` (candidatas L-021 a L-029). Revalidação independente
-do commit das correções ainda precisa fechar o gate completo e matar M5/M6.
+skill em `.specs/lessons.json` (candidatas L-021 a L-029). A revalidação independente
+do commit das correções está registrada a seguir.
+
+## Revalidação do commit 96a04c02
+
+O verificador repetiu o gate amplo e obteve **2.378 testes de backend, zero
+falhas/erros/pulados**: access 147 + 117, subscriptions 257, groups 723 + 615 e
+bootstrap 519. O primeiro gate executou 1.242 casos e reutilizou 1.136 do cache;
+uma execução adicional sem cache confirmou esses 1.136 casos. A classe Compose
+SaqzNavHostViewModelScopeTest passou 10/10 no simulador iOS.
+
+Logs: `/tmp/store-verifier-recheck-backend-gate.log`,
+`/tmp/store-verifier-recheck-cache-confirmation.log` e
+`/tmp/store-verifier-recheck-ui-gate.log`. XMLs preservados em
+`/tmp/store-verifier-recheck-results`. Esses números não devem ser somados aos
+testes focados anteriores, que se sobrepõem. O resultado completo do sensor e
+dos probes independentes fica em `validation.md`.
+
+Resultado adicional: **6/6 mutações detectadas, zero sobreviventes**, incluindo
+remoção da chamada Firebase e preservação de credenciais financeiras. Os três
+probes independentes de PostgreSQL passaram: presença, snapshots e corrida de
+bootstrap/exclusão, inclusive após concluir o job. O conjunto restaurado passou
+15/15. O verificador encerrou F1–F7 e os oito critérios no escopo local; isso não
+encerra as pendências dos consoles, publicação, UGC e homologação assinada.
