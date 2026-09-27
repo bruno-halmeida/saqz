@@ -156,3 +156,33 @@ O login oferece termos/política; o perfil oferece política e exclusão.
 A declaração do App Store Connect/Data safety deve ser revisada com o archive
 assinado final e os operadores reais, conforme o roteiro de submissão. Os testes
 não equivalem ao preenchimento dos consoles nem à publicação da política.
+
+## T8 — Links e fechamento
+
+12 testes Node de associação/fallback/signing passaram; suíte consolidada das
+páginas e configuração nativa: 50 testes, zero falhas/skips.
+`node links-page/scripts/configure-app-links.cjs --check` retorna 1 no arquivo
+atual, recusando o certificado debug conhecido: pendência externa explícita de
+SR8. O usuário ainda não forneceu o certificado de assinatura do Play. Nenhum
+fingerprint de teste foi colocado no arquivo publicado/versionado de associação.
+
+O fallback Android limita destinos ao pacote app.saqz e códigos válidos de
+convite/onboarding/presença. iOS Debug/Release usam a associação pública.
+`links-page/README.md` contém instruções de Play/Firebase e validação em aparelhos.
+`audits/store-review/preparacao-final-2026-09-27.md` consolida pendências e os
+rascunhos de declaração/revisão das lojas; a auditoria original fica histórica.
+
+Gate integrado: `:android-app:testDevDebugUnitTest :android-app:assembleDevDebug`
+passou, 231 testes Android sem falhas/erros/skips. APK de desenvolvimento
+compilado; isso não equivale a AAB/IPA de produção assinado. Log:
+`/tmp/saqz-store-final-android.log`. `detektAll` passou no fechamento de T7.
+
+Verificação pública somente de leitura via curl em 27/09/2026:
+- privacidade: HTTP 200;
+- excluir-conta: HTTP 404 (página local ainda não publicada);
+- AASA e assetlinks: HTTP 200, application/json, sem redirecionar;
+- assetlinks publicado ainda contém somente a chave debug conhecida.
+
+Permanece pendente a homologação com consoles/provedores reais, mais a avaliação
+operacional de UGC restante. A validação independente será registrada em
+`validation.md`; não substitui esses passos externos.

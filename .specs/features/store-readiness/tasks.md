@@ -37,7 +37,7 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8
 | T5 | Jornada exclusão: profile, composição, reautenticação, página pública | SR5 | VM/UI, gateway, página e sessão | Concluída |
 | T6 | Capacidade de lançamento: navegação, CTAs, disponibilidade e chat | SR6 | Entradas/rotas, ausência de compra, rollout | Concluída |
 | T7 | Declaração de privacidade: política, manifesto, permissões | SR7 | Plist, manifesto mesclado, testes páginas | Concluída |
-| T8 | Associação de produção: links-page, entitlements, instruções/evidências | SR8 | Contratos e validação fingerprint; verificador final | Pendente |
+| T8 | Associação de produção: links-page, entitlements, instruções/evidências | SR8 | Contratos e validação fingerprint; verificador final | Concluída; aguardando verificador |
 
 Cada tarefa depende da anterior apenas na ordem de execução; T5 reutiliza T3/T4.
 Testes acompanham a entrega correspondente. Não publicar mudanças nesta execução.

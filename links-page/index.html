@@ -30,12 +30,12 @@
 </head>
 <body>
 <main>
-  <img class="logo" src="assets/saqz-logo.svg" alt="Saqz">
+  <img class="logo" src="/assets/saqz-logo.svg" alt="Saqz">
   <h1>Este link abre no app Saqz</h1>
   <p id="lead">Instale o app para entrar no grupo ou confirmar sua presença.</p>
   <a id="open" class="primary" hidden>Abrir no app</a>
   <!-- Quando publicados, trocar por https://apps.apple.com/app/id<APP_ID> e https://play.google.com/store/apps/details?id=app.saqz -->
-  <a id="download" class="primary" href="https://saqz.app">Baixar o app</a>
+  <a id="download" class="primary" href="https://saqz.app">Acessar site do Saqz</a>
   <span class="note">Já tem o app instalado? Toque em “Abrir no app”.</span>
 </main>
 <script>
@@ -51,8 +51,15 @@
     else if (onboarding && new RegExp("^" + code + "$").test(onboarding)) scheme = "saqz:///?saqz_onboarding=" + onboarding;
     var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    if (!scheme || !isIOS) return;
+    var isAndroid = /Android/.test(navigator.userAgent);
+    if (!scheme || (!isIOS && !isAndroid)) return;
     var open = document.getElementById("open");
+    if (isAndroid) {
+      open.href = "intent://links.saqz.app/" + scheme.slice("saqz:///".length) +
+        "#Intent;scheme=https;package=app.saqz;S.browser_fallback_url=" + encodeURIComponent("https://saqz.app") + ";end";
+      reveal();
+      return;
+    }
     open.href = scheme;
     var timer = setTimeout(reveal, 1600);
     ["visibilitychange", "pagehide"].forEach(function (event) {
@@ -63,7 +70,7 @@
       open.hidden = false;
       document.getElementById("download").className = "secondary";
       document.getElementById("lead").textContent =
-        "Não abriu? Toque em “Abrir no app” ou baixe abaixo.";
+        "Toque em “Abrir no app” para continuar ou acesse nosso site.";
     }
   })();
 </script>
