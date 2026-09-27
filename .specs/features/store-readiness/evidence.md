@@ -59,3 +59,24 @@ capacidade para exibi-lo somente quando há adaptador Apple.
 Mapeamento reverso: os testes novos acima correspondem a SR3; não testam além do
 escopo. Login real ainda exige habilitar o provedor no Firebase, capability no
 Apple Developer e configurar relay de e-mail. Nenhuma credencial real foi criada.
+
+## T4 — Exclusão no backend
+
+Gates passaram: access:test (147), access:integrationTest (117),
+subscriptions:test (257), subscriptions:integrationTest (60), bootstrap:test
+selecionado (50: SessionEndpoint, AdminUsersEndpoint, AccountDeletionPersistence).
+Zero falhas/skip. PostgreSQL real temporário via Zonky; provedores externos em fakes.
+A migração V89 acrescentou uma tabela ao inventário contratual (18 migrations).
+
+| Critério SR4 | Evidência | Resultado esperado |
+|---|---|---|
+| Confirmação recente | SessionEndpointIntegrationTest: teste de auth_time antigo/ausente/futuro | 403 RECENT_AUTHENTICATION_REQUIRED, conta intacta |
+| Dados e registros financeiros | AccountDeletionPersistenceTest: exclusão transacional | perfil/foto/tokens/mensagens removidos, registro PAID de 4500 preservado e anonimizado; outro usuário intacto |
+| Identidade esperada | AccountDeletionPersistenceTest: expected user mismatch | falha sem alterar conta |
+| Retomada e concorrência | AccountDeletionPersistenceTest: claim/retry/complete | lease e tentativa impedem conclusão obsoleta; subject removido após completar; digest impede recriação por token antigo |
+| Cancelamento e Firebase | CompleteAccountDeletionTest | sucesso encerra os dois; falha mantém trabalho pendente, sem apagar identidade antes de cancelar cobrança |
+| Cancelamento repetido | HttpAsaasGatewayTest | 404 considerado já cancelado; falhas de servidor propagadas para nova tentativa |
+
+Mapeamento reverso: todos os testes novos acima verificam SR4. Testes de exclusão
+anteriores agora exigem anonimização e bloqueiam reativação pelo mesmo UID, conforme
+a decisão autorizada. Integração ao Firebase/Asaas de produção ainda exige homologação.

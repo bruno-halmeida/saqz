@@ -90,7 +90,7 @@ class DisposableAccessFlowIntegrationTest {
     }
 
     @Test
-    fun `deleted account bootstraps as a new user without owned or third party groups`() {
+    fun `deleted identity stays closed and a new registration has no old groups`() {
         val subjectToken = createVerifiedIdentity("Deletion Fixture")
         val originalSession = session(subjectToken)
         assertEquals(200, originalSession.statusCode(), originalSession.body())
@@ -107,7 +107,8 @@ class DisposableAccessFlowIntegrationTest {
         assertEquals(204, deleted.statusCode(), deleted.body())
         assertEquals("", deleted.body())
 
-        val replacement = session(subjectToken)
+        assertEquals(401, session(subjectToken).statusCode())
+        val replacement = session(createVerifiedIdentity("New Registration"))
         assertEquals(200, replacement.statusCode(), replacement.body())
         val replacementUserId = UUID.fromString(jsonValue(replacement.body(), "id"))
         assertNotEquals(originalUserId, replacementUserId)

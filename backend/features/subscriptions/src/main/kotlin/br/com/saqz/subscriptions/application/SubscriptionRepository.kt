@@ -3,6 +3,8 @@ package br.com.saqz.subscriptions.application
 import br.com.saqz.subscriptions.domain.Subscription
 import java.util.UUID
 
+class SubscriptionOwnerUnavailable : RuntimeException()
+
 interface SubscriptionRepository {
     fun findByAsaasSubscriptionId(asaasSubscriptionId: String): Subscription?
 

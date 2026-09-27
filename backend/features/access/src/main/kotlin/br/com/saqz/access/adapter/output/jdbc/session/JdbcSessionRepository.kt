@@ -44,6 +44,7 @@ class JdbcSessionRepository(
         .orElse(null)
 
     override fun upsertAndLoad(command: SessionUpsert): SessionView {
+        if (deletionRequested(command.subject)) throw br.com.saqz.access.application.session.AccountDeleted()
         // O nome do token só vale na criação: depois disso quem manda é o PATCH do perfil. O token
         // guarda o nome do cadastro para sempre, e espelhá-lo aqui revertia toda renomeação.
         val user = jdbc.sql(
@@ -98,7 +99,11 @@ class JdbcSessionRepository(
         )
     }
 
-    override fun softDelete(subject: String): UUID? {
+    override fun deletionRequested(subject: String): Boolean = jdbc.sql(
+        "SELECT EXISTS (SELECT 1 FROM account_deletion_requests WHERE subject_digest = sha256(convert_to(:subject, 'UTF8')))",
+    ).param("subject", subject).query(Boolean::class.java).single()
+
+    override fun softDelete(subject: String, expectedUserId: UUID?): UUID? {
         val userId = jdbc.sql(
             "SELECT id FROM access_users WHERE firebase_subject = :subject AND deleted_at IS NULL FOR UPDATE",
         )
@@ -106,6 +111,23 @@ class JdbcSessionRepository(
             .query(UUID::class.java)
             .optional()
             .orElse(null) ?: return null
+
+        if (expectedUserId != null && userId != expectedUserId) {
+            throw br.com.saqz.access.application.session.AccountDeletionIdentityMismatch()
+        }
+
+        jdbc.sql(
+            """INSERT INTO account_deletion_requests(user_id, subject_digest, firebase_subject)
+                VALUES (:userId, sha256(convert_to(:subject, 'UTF8')), :subject)
+                ON CONFLICT (user_id) DO NOTHING""",
+        ).param("userId", userId).param("subject", subject).update()
+
+        jdbc.sql("DELETE FROM access_phone_confirmations WHERE user_id = :userId")
+            .param("userId", userId).update()
+        jdbc.sql("DELETE FROM app_onboarding_login_tokens WHERE owner_user_id = :userId")
+            .param("userId", userId).update()
+        jdbc.sql("DELETE FROM password_reset_codes WHERE email = (SELECT lower(email) FROM access_users WHERE id = :userId)")
+            .param("userId", userId).update()
 
         jdbc.sql("DELETE FROM access_user_photos WHERE user_id = :userId")
             .param("userId", userId)
@@ -120,6 +142,8 @@ class JdbcSessionRepository(
                 verified_phone = NULL,
                 city = NULL,
                 nickname = NULL,
+                display_name = 'Conta excluída',
+                email_verified = false,
                 updated_at = now()
             WHERE id = :userId AND deleted_at IS NULL
             """.trimIndent(),

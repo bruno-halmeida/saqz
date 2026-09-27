@@ -180,7 +180,7 @@ class AdminUsersEndpointIntegrationTest {
                     RequestIdentity("user-subject", "user@saqz.test", true, "Uso Comum"),
                 )
                 "suspended-token" -> TokenVerification.Verified(
-                    RequestIdentity("suspended-subject", "sus@saqz.test", true, "Pessoa Suspensa"),
+                    RequestIdentity("suspended-subject", "sus@saqz.test", true, "Pessoa Suspensa", java.time.Instant.now().epochSecond),
                 )
                 else -> TokenVerification.Rejected
             }
@@ -213,7 +213,7 @@ class AdminUsersEndpointIntegrationTest {
                 override fun <T> inTransaction(block: () -> T): T = block()
             },
             repository = object : br.com.saqz.access.application.session.AccountDeletionRepository {
-                override fun softDelete(subject: String): UUID? = null
+                override fun softDelete(subject: String, expectedUserId: UUID?): UUID? = null
 
                 override fun suspendedAt(subject: String): Instant? =
                     if (subject == "suspended-subject") Instant.parse("2026-08-01T00:00:00Z") else null

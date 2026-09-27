@@ -152,7 +152,7 @@ class EmulatorSessionIntegrationTest {
                 override fun <T> inTransaction(block: () -> T): T = block()
             },
             repository = object : AccountDeletionRepository {
-                override fun softDelete(subject: String): UUID? = null
+                override fun softDelete(subject: String, expectedUserId: UUID?): UUID? = null
             },
             groupCleanup = object : AccountGroupCleanup {
                 override fun deleteOwnedGroups(ownerUserId: UUID) = Unit

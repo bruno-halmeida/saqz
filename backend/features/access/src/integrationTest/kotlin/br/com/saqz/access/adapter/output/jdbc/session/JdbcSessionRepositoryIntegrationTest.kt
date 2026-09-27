@@ -392,7 +392,7 @@ class JdbcSessionRepositoryIntegrationTest {
     }
 
     @Test
-    fun `soft delete clears personal fields and photo while preserving the display name`() {
+    fun `soft delete clears personal fields and photo and anonymizes the display name`() {
         val session = repository.upsertAndLoad(command("subject-delete"))
         repository.updateProfile(
             ProfileCompletion(
@@ -417,7 +417,7 @@ class JdbcSessionRepositoryIntegrationTest {
 
         assertEquals(session.user.id, repository.softDelete("subject-delete"))
         assertEquals(1, count("SELECT count(*) FROM access_users WHERE deleted_at IS NOT NULL"))
-        assertEquals("Public Snapshot", text("SELECT display_name FROM access_users WHERE id = '${session.user.id}'"))
+        assertEquals("Conta excluída", text("SELECT display_name FROM access_users WHERE id = '${session.user.id}'"))
         assertNull(textOrNull("SELECT email FROM access_users WHERE id = '${session.user.id}'"))
         assertNull(textOrNull("SELECT phone FROM access_users WHERE id = '${session.user.id}'"))
         assertNull(textOrNull("SELECT nickname FROM access_users WHERE id = '${session.user.id}'"))
@@ -426,13 +426,16 @@ class JdbcSessionRepositoryIntegrationTest {
     }
 
     @Test
-    fun `deleted subject bootstraps a fresh user without old memberships`() {
+    fun `only a new Firebase identity can register after account deletion`() {
         val deleted = repository.upsertAndLoad(command("subject-old"))
         val oldGroup = insertGroup(deleted.user.id, "Old Group")
         repository.softDelete("subject-old")
 
+        org.junit.jupiter.api.assertThrows<br.com.saqz.access.application.session.AccountDeleted> {
+            BootstrapSession(repository).execute(RequestIdentity("subject-old", "person@example.test", true, "New Person"))
+        }
         val result = BootstrapSession(repository).execute(
-            RequestIdentity("subject-old", "person@example.test", true, "New Person"),
+            RequestIdentity("subject-new-registration", "person@example.test", true, "New Person"),
         )
         val replacement = assertIs<BootstrapSessionResult.Success>(result).session
 
@@ -467,14 +470,16 @@ class JdbcSessionRepositoryIntegrationTest {
     }
 
     @Test
-    fun `actor id of a soft deleted subject bootstraps a fresh user instead of the dead row`() {
+    fun `actor lookup rejects a deleted identity and accepts a new registration`() {
         val deleted = repository.upsertAndLoad(command("subject-gone"))
         repository.softDelete("subject-gone")
 
-        // O atalho tem que ERRAR a linha apagada: quem responde é o bootstrap, que cria a conta nova.
         assertNull(repository.existingUser("subject-gone"))
+        org.junit.jupiter.api.assertThrows<br.com.saqz.access.application.session.AccountDeleted> {
+            BootstrapSession(repository).actorId(RequestIdentity("subject-gone", "person@example.test", true, "Person Name"))
+        }
         val actor = BootstrapSession(repository).actorId(
-            RequestIdentity("subject-gone", "person@example.test", true, "Person Name"),
+            RequestIdentity("new-registration", "person@example.test", true, "Person Name"),
         )
 
         val replacement = assertIs<SessionActorResult.Found>(actor)

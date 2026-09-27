@@ -163,7 +163,12 @@ class HttpAsaasGateway(
     }
 
     override fun cancelSubscription(asaasSubscriptionId: String) {
-        delete("/subscriptions/$asaasSubscriptionId")
+        try {
+            delete("/subscriptions/$asaasSubscriptionId")
+        } catch (failure: AsaasException) {
+            // Retrying after a lost response must not leave account deletion stuck.
+            if (failure.statusCode != 404) throw failure
+        }
     }
 
     override fun createOneOffCharge(

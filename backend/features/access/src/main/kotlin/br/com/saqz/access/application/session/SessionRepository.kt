@@ -11,4 +11,5 @@ interface SessionRepository {
 
     /** Conta viva pelo subject, em um SELECT só; null quando ainda não existe. */
     fun existingUser(subject: String): ExistingSessionUser? = null
+    fun deletionRequested(subject: String): Boolean = false
 }

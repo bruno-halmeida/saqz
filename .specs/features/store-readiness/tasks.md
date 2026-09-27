@@ -33,7 +33,7 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8
 | T1 | Integração Crashlytics Android: catálogo, gradle app, teste de recurso | SR1 | Build e teste do ID real gerado | Concluída |
 | T2 | Validação Firebase iOS: script, pbxproj, bootstrap, testes | SR2 | Contrato executando script com configurações inválidas/válidas | Concluída |
 | T3 | Login Apple: ports/coordenador, UI login, adaptador Swift, entitlements | SR3 | Estados e callbacks; compilação Kotlin/Swift | Concluída |
-| T4 | Endpoint exclusão: caso de uso, persistência, integrações, controller | SR4 | Unitários e integração PostgreSQL | Pendente |
+| T4 | Endpoint exclusão: caso de uso, persistência, integrações, controller | SR4 | Unitários e integração PostgreSQL | Concluída |
 | T5 | Jornada exclusão: profile, composição, reautenticação, página pública | SR5 | VM/UI, gateway, página e sessão | Pendente |
 | T6 | Capacidade de lançamento: navegação, CTAs, disponibilidade e chat | SR6 | Entradas/rotas, ausência de compra, rollout | Pendente |
 | T7 | Declaração de privacidade: política, manifesto, permissões | SR7 | Plist, manifesto mesclado, testes páginas | Pendente |

@@ -89,13 +89,13 @@ class JdbcSubscriptionRepository(
 
     override fun lockOwner(ownerUserId: UUID) {
         val locked = jdbc.sql(
-            "SELECT id FROM access_users WHERE id = :ownerUserId FOR UPDATE",
+            "SELECT id FROM access_users WHERE id = :ownerUserId AND deleted_at IS NULL FOR UPDATE",
         )
             .param("ownerUserId", ownerUserId)
             .query(UUID::class.java)
             .optional()
             .orElse(null)
-        check(locked != null) { "Owner user was not found for subscription lock" }
+        if (locked == null) throw br.com.saqz.subscriptions.application.SubscriptionOwnerUnavailable()
     }
 
     override fun insert(subscription: Subscription) {

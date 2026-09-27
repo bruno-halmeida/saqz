@@ -259,6 +259,7 @@ class AccessSessionConfiguration {
                 jdbc.sql("DELETE FROM group_entry_requests WHERE user_id = :userId")
                     .param("userId", userId)
                     .update()
+                removeDeletedAccountPersonalData(jdbc, userId)
             }
 
             private fun ownedGroupIds(ownerUserId: UUID): List<UUID> = jdbc.sql(

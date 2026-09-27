@@ -118,6 +118,19 @@ class SessionEndpointIntegrationTest {
     }
 
     @Test
+    fun `deletion refuses old missing and future authentication without changing account`() {
+        putSession()
+        val now = java.time.Instant.now().epochSecond
+        for (authTime in listOf(null, now - 301, now + 600)) {
+            verifier.principal = identity().copy(authenticatedAtEpochSeconds = authTime)
+            val response = deleteSession()
+            assertEquals(403, response.statusCode())
+            assertEquals("RECENT_AUTHENTICATION_REQUIRED", json(response)["code"].stringValue())
+            assertTrue(repository.deletedSubjects.isEmpty())
+        }
+    }
+
+    @Test
     fun `false email verification returns the session flagged as unverified`() {
         verifier.principal = identity(emailVerified = false)
 
@@ -483,7 +496,7 @@ class SessionEndpointIntegrationTest {
         email: String? = "session@example.test",
         emailVerified: Boolean? = true,
         displayName: String? = "Session Person",
-    ) = RequestIdentity("subject-session", email, emailVerified, displayName)
+    ) = RequestIdentity("subject-session", email, emailVerified, displayName, java.time.Instant.now().epochSecond)
 
     private fun putSession(body: String? = null): HttpResponse<String> {
         val builder = HttpRequest.newBuilder(uri())
@@ -593,7 +606,7 @@ class SessionEndpointIntegrationTest {
             deletedSubjects.clear()
         }
 
-        override fun softDelete(subject: String): UUID? {
+        override fun softDelete(subject: String, expectedUserId: UUID?): UUID? {
             val id = ids[subject] ?: return null
             if (!deletedSubjects.add(subject)) return null
             return id

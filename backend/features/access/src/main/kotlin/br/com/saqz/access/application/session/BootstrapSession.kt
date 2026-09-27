@@ -9,6 +9,7 @@ class BootstrapSession(
     private val planOwners: PlanOwnerLookup = PlanOwnerLookup { false },
 ) {
     fun execute(identity: RequestIdentity): BootstrapSessionResult {
+        if (repository.deletionRequested(identity.subject)) throw AccountDeleted()
         val displayName = identity.displayName
             ?.let { runCatching { AccessName.from(it) }.getOrNull() }
             ?: return BootstrapSessionResult.InvalidDisplayName
@@ -35,6 +36,7 @@ class BootstrapSession(
     // no PUT /api/session, que o app chama a cada abertura. Se o painel precisar de
     // granularidade por request, um UPDATE de updated_at com throttle aqui resolve.
     fun actorId(identity: RequestIdentity): SessionActorResult {
+        if (repository.deletionRequested(identity.subject)) throw AccountDeleted()
         val existing = repository.existingUser(identity.subject)
             ?: return when (val result = execute(identity)) {
                 BootstrapSessionResult.InvalidDisplayName -> SessionActorResult.InvalidDisplayName

@@ -109,6 +109,7 @@ class InvalidPhoneException : RuntimeException()
 class InvalidSessionProfileFieldException(val field: String) : RuntimeException()
 
 class AccountNotFoundException : RuntimeException()
+class RecentAuthenticationRequiredException : RuntimeException()
 
 @RestController
 class AccessSessionController(
@@ -116,6 +117,7 @@ class AccessSessionController(
     private val completeSessionProfile: CompleteSessionProfile,
     private val deleteAccount: DeleteAccount,
     private val verification: RequestEmailVerification? = null,
+    private val clock: java.time.Clock = java.time.Clock.systemUTC(),
 ) {
     @PutMapping("/api/session")
     fun session(@AuthenticationPrincipal identity: RequestIdentity): AccessSessionResponse =
@@ -161,8 +163,16 @@ class AccessSessionController(
         }
 
     @DeleteMapping("/api/session")
-    fun delete(@AuthenticationPrincipal identity: RequestIdentity): ResponseEntity<Void> {
-        if (!deleteAccount.execute(identity.subject)) throw AccountSuspendedException()
+    fun delete(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @org.springframework.web.bind.annotation.RequestHeader("X-Expected-User-Id", required = false) expectedUserId: java.util.UUID? = null,
+    ): ResponseEntity<Void> {
+        val now = clock.instant().epochSecond
+        val authenticatedAt = identity.authenticatedAtEpochSeconds
+        if (authenticatedAt == null || authenticatedAt !in (now - 300)..now) {
+            throw RecentAuthenticationRequiredException()
+        }
+        if (!deleteAccount.execute(identity.subject, expectedUserId)) throw AccountSuspendedException()
         return ResponseEntity.noContent().build()
     }
 }

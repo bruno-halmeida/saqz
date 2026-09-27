@@ -48,7 +48,7 @@ class DeleteAccountTest {
     private class RecordingRepository(private val result: UUID?) : AccountDeletionRepository {
         val events = mutableListOf<String>()
 
-        override fun softDelete(subject: String): UUID? {
+        override fun softDelete(subject: String, expectedUserId: UUID?): UUID? {
             events += "softDelete"
             return result
         }

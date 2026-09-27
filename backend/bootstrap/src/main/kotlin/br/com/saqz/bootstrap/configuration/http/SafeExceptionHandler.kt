@@ -242,6 +242,24 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 403, ErrorCode.ACCOUNT_SUSPENDED)
     }
 
+    @ExceptionHandler(br.com.saqz.access.adapter.input.http.RecentAuthenticationRequiredException::class)
+    fun deletionNeedsRecentAuthentication(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 403, ErrorCode.RECENT_AUTHENTICATION_REQUIRED)
+    }
+
+    @ExceptionHandler(
+        br.com.saqz.access.application.session.AccountDeleted::class,
+        br.com.saqz.subscriptions.application.SubscriptionOwnerUnavailable::class,
+    )
+    fun deletedAccount(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
+    }
+
+    @ExceptionHandler(br.com.saqz.access.application.session.AccountDeletionIdentityMismatch::class)
+    fun deletionIdentityMismatch(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.VERSION_CONFLICT)
+    }
+
     @ExceptionHandler(AppOnboardingCodeInvalidException::class)
     fun appOnboardingCodeInvalid(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 400, ErrorCode.APP_ONBOARDING_CODE_INVALID)

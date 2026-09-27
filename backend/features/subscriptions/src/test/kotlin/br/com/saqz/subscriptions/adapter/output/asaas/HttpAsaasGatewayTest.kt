@@ -465,6 +465,22 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
+    fun `cancelSubscription accepts already removed subscriptions on retry`() {
+        server.enqueue(json(404, """{"errors":[{"code":"not_found","description":"Not found"}]}"""))
+        gateway.cancelSubscription("sub_removed")
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/v3/subscriptions/sub_removed", request.path)
+    }
+
+    @Test
+    fun `cancelSubscription preserves provider failures so deletion can retry`() {
+        server.enqueue(json(503, """{"errors":[{"code":"unavailable","description":"Unavailable"}]}"""))
+        val error = assertThrows<AsaasException> { gateway.cancelSubscription("sub_retry") }
+        assertEquals(503, error.statusCode)
+    }
+
+    @Test
     fun `updateSubscriptionValue throws on asaas 4xx`() {
         server.enqueue(
             json(404, """{"errors":[{"code":"not_found","description":"Assinatura não encontrada"}]}"""),
