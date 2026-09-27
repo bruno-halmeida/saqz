@@ -148,12 +148,13 @@ class KtorProfileGatewayTest {
             calls += 1
             assertEquals(HttpMethod.Delete, it.method)
             assertEquals("/api/session", it.url.encodedPath)
+            assertEquals("profile-to-delete", it.headers["X-Expected-User-Id"])
             assertEquals(0, it.body.contentLength ?: 0)
             respond("", HttpStatusCode.NoContent)
         }
 
-        assertEquals(Unit, fixture.gateway.deleteSession().success())
-        assertEquals(Unit, fixture.gateway.deleteSession().success())
+        assertEquals(Unit, fixture.gateway.deleteSession("profile-to-delete").success())
+        assertEquals(Unit, fixture.gateway.deleteSession("profile-to-delete").success())
         assertEquals(2, calls)
     }
 

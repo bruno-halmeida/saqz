@@ -94,7 +94,7 @@ interface ProfileGateway {
 
     suspend fun athleteProfile(): SaqzResult<AthleteProfile, ProfileError>
 
-    suspend fun deleteSession(): SaqzResult<Unit, ProfileError>
+    suspend fun deleteSession(expectedUserId: String): SaqzResult<Unit, ProfileError>
 
     suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, ProfileError>
 

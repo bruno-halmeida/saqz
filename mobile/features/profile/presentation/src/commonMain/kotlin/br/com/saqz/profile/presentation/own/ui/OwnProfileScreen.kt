@@ -70,6 +70,7 @@ import br.com.saqz.profile.presentation.own.toOwnProfileGroupUi
 import br.com.saqz.profile.presentation.own.toOwnProfileStatsUi
 import br.com.saqz.profile.presentation.own.toOwnProfileUserUi
 import br.com.saqz.profile.presentation.photo.profilePhotoImageRequest
+import br.com.saqz.profile.resources.profile_delete_title
 import br.com.saqz.profile.resources.Res
 import br.com.saqz.profile.resources.profile_account
 import br.com.saqz.profile.resources.profile_attendance
@@ -108,6 +109,7 @@ internal object OwnProfileTags {
     const val MonthlyPayments = "own-profile-monthly-payments"
     const val Notifications = "own-profile-notifications"
     const val ChangePassword = "own-profile-change-password"
+    const val DeleteAccount = "profile-delete-account"
     const val SignOut = "own-profile-sign-out"
 
     fun group(id: String) = "own-profile-group-$id"
@@ -509,6 +511,13 @@ private fun OwnProfileAccountCard(onIntent: (OwnProfileIntent) -> Unit, receipts
             label = stringResource(Res.string.profile_change_password),
             onClick = { onIntent(OwnProfileIntent.ChangePassword) },
             modifier = Modifier.testTag(OwnProfileTags.ChangePassword),
+        )
+        SaqzDivider()
+        OwnProfileAccountRow(
+            icon = SaqzIcons.Trash,
+            label = stringResource(Res.string.profile_delete_title),
+            onClick = { onIntent(OwnProfileIntent.DeleteAccount) },
+            modifier = Modifier.testTag(OwnProfileTags.DeleteAccount),
         )
         SaqzDivider()
         OwnProfileAccountRow(

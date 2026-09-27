@@ -108,6 +108,8 @@ interface NativeAuthPort : NativeReauthenticationPort {
     fun reloadUser(done: AuthCallback)
     fun updateDisplayName(name: String, done: AuthCallback)
     fun idToken(forceRefresh: Boolean, done: TokenCallback)
+    /** Revoke linked provider consent before server-side account deletion; never deletes locally. */
+    fun prepareAccountDeletion(subject: String, done: ResultCallback) = done.complete(OperationResult.Success)
     fun signOut(done: ResultCallback)
 }
 

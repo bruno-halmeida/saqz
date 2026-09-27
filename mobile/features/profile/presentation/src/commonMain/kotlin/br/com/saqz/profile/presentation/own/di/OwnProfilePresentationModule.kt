@@ -7,4 +7,5 @@ import org.koin.dsl.module
 
 fun ownProfilePresentationModule(): Module = module {
     viewModel { OwnProfileViewModel(gateway = get()) }
+    viewModel { br.com.saqz.profile.presentation.deletion.AccountDeletionViewModel(get(), get()) }
 }

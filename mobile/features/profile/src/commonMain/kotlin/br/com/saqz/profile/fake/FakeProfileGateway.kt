@@ -35,6 +35,8 @@ class FakeProfileGateway(
     val uploadedPhotos = mutableListOf<UploadedPhoto>()
     var deleteSessionCalls: Int = 0
         private set
+    var deletedUserId: String? = null
+        private set
     var deletePhotoCalls: Int = 0
         private set
     var accountDeleted: Boolean = false
@@ -58,9 +60,10 @@ class FakeProfileGateway(
     override suspend fun athleteProfile(): SaqzResult<AthleteProfile, ProfileError> =
         athleteProfileError?.let { SaqzResult.Failure(it) } ?: SaqzResult.Success(athleteProfile)
 
-    override suspend fun deleteSession(): SaqzResult<Unit, ProfileError> {
+    override suspend fun deleteSession(expectedUserId: String): SaqzResult<Unit, ProfileError> {
         deleteSessionCalls += 1
         deleteSessionError?.let { return SaqzResult.Failure(it) }
+        deletedUserId = expectedUserId
         accountDeleted = true
         return SaqzResult.Success(Unit)
     }

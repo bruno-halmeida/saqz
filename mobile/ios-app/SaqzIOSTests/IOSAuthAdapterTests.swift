@@ -397,6 +397,56 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertEqual(first.rawNonce.count, 64)
     }
 
+    func testDeletionRevokesAppleAuthorizationAndConsumesTheCode() {
+        let fixture = makeFixture()
+        fixture.firebase.subject = user.subject
+        fixture.firebase.appleLinked = true
+        fixture.firebase.appleResult = .success(user)
+        fixture.apple.result = .success(IOSAppleCredential(idToken: "token", rawNonce: "nonce", fullName: nil, authorizationCode: "delete-code"))
+        fixture.adapter.reauthenticate(request: NativeReauthenticationApple.shared, done: RecordingAuthCallback())
+        XCTAssertTrue(fixture.firebase.revokedCodes.isEmpty)
+        let callback = RecordingResultCallback()
+        fixture.adapter.prepareAccountDeletion(subject: user.subject, done: callback)
+        XCTAssertEqual(fixture.firebase.revokedCodes, ["delete-code"])
+        XCTAssertTrue(callback.result is OperationResultSuccess)
+        XCTAssertNil(fixture.adapter.appleDeletionAuthorization)
+        XCTAssertFalse(fixture.firebase.events.contains(.signOut))
+    }
+
+    func testDeletionRevocationFailurePreventsSuccessAndClearsSingleUseCode() {
+        let fixture = makeFixture()
+        fixture.firebase.subject = user.subject
+        fixture.firebase.appleLinked = true
+        fixture.firebase.appleResult = .success(user)
+        fixture.firebase.revocationResult = .failure(.networkUnavailable)
+        fixture.apple.result = .success(IOSAppleCredential(idToken: "token", rawNonce: "nonce", fullName: nil, authorizationCode: "failed-code"))
+        let callback = RecordingResultCallback()
+        fixture.adapter.prepareAccountDeletion(subject: user.subject, done: callback)
+        XCTAssertEqual((callback.result as? OperationResultFailure)?.code, .networkUnavailable)
+        XCTAssertEqual(fixture.firebase.revokedCodes, ["failed-code"])
+        XCTAssertNil(fixture.adapter.appleDeletionAuthorization)
+    }
+
+    func testDeletionCannotRevokeAnotherIdentityAfterAccountSwitch() {
+        let fixture = makeFixture()
+        fixture.firebase.subject = "other-person"
+        fixture.firebase.appleLinked = true
+        let callback = RecordingResultCallback()
+        fixture.adapter.prepareAccountDeletion(subject: user.subject, done: callback)
+        XCTAssertEqual((callback.result as? OperationResultFailure)?.code, .invalidCredentials)
+        XCTAssertTrue(fixture.firebase.revokedCodes.isEmpty)
+    }
+
+    func testDeletionOfPasswordAccountDoesNotRequestApple() {
+        let fixture = makeFixture()
+        fixture.firebase.subject = user.subject
+        let callback = RecordingResultCallback()
+        fixture.adapter.prepareAccountDeletion(subject: user.subject, done: callback)
+        XCTAssertTrue(callback.result is OperationResultSuccess)
+        XCTAssertNil(fixture.firebase.appleCredential)
+        XCTAssertTrue(fixture.firebase.revokedCodes.isEmpty)
+    }
+
     private func makeFixture() -> (adapter: IOSAuthAdapter, firebase: FakeFirebaseAuthClient, google: FakeGoogleSignInClient, apple: FakeAppleSignInClient) {
         let firebase = FakeFirebaseAuthClient()
         let google = FakeGoogleSignInClient()
@@ -426,6 +476,16 @@ private final class FakeFirebaseAuthClient: IOSFirebaseAuthClient {
         appleCredential = credential; completion(appleResult)
     }
     var subject: String?
+    var appleLinked = false
+    var revokedCodes: [String] = []
+    var revocationResult: Result<Void, IOSAuthFailure> = .success(())
+    func hasAppleProvider() -> Bool { appleLinked }
+    func revokeAppleToken(code: String, completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {
+        revokedCodes.append(code); completion(revocationResult)
+    }
+    func reauthenticateWithApple(subject: String, credential: IOSAppleCredential, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
+        appleCredential = credential; completion(appleResult)
+    }
     func currentSubject() -> String? { subject }
     func reauthenticateWithPassword(_ password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
         events.append(.reauthPassword); completion(passwordResult)

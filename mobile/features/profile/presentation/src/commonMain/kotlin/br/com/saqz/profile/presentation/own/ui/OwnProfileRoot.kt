@@ -20,6 +20,7 @@ fun OwnProfileRoot(
     onOpenEditor: () -> Unit,
     onOpenPasswordRecovery: () -> Unit,
     onSignOut: () -> Unit,
+    onOpenAccountDeletion: () -> Unit = {},
     onOpenMyPlan: () -> Unit = {},
     onOpenAthleteProfile: (String) -> Unit = {},
     onOpenMonthlyPayments: () -> Unit = {},
@@ -51,6 +52,7 @@ fun OwnProfileRoot(
             OwnProfileEffect.OpenMonthlyPayments -> onOpenMonthlyPayments()
             OwnProfileEffect.OpenSettings -> onOpenSettings()
             OwnProfileEffect.OpenNotifications -> onOpenNotifications()
+            OwnProfileEffect.OpenAccountDeletion -> onOpenAccountDeletion()
             OwnProfileEffect.SignedOut -> onSignOut()
         }
     }

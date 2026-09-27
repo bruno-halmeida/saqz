@@ -52,6 +52,8 @@ protocol IOSFirebaseAuthClient: AnyObject {
     func signInWithApple(_ credential: IOSAppleCredential, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func reauthenticateWithApple(subject: String, credential: IOSAppleCredential, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func currentSubject() -> String?
+    func hasAppleProvider() -> Bool
+    func revokeAppleToken(code: String, completion: @escaping (Result<Void, IOSAuthFailure>) -> Void)
     func reauthenticateWithPassword(_ password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func reauthenticateWithGoogle(subject: String, idToken: String, accessToken: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void)
     func sendVerification(completion: @escaping (Result<Void, IOSAuthFailure>) -> Void)
@@ -69,6 +71,10 @@ extension IOSFirebaseAuthClient {
         completion(.failure(.providerUnavailable))
     }
     func currentSubject() -> String? { nil }
+    func hasAppleProvider() -> Bool { false }
+    func revokeAppleToken(code: String, completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {
+        completion(.failure(.providerUnavailable))
+    }
     func reauthenticateWithPassword(_ password: String, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
         completion(.failure(.providerUnavailable))
     }
@@ -282,7 +288,33 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
     }
 
     func signOut(done: ResultCallback) {
+        appleDeletionAuthorization = nil
         firebase.signOut { done.complete(result__: $0.operationResult) }
+    }
+
+    func prepareAccountDeletion(subject: String, done: ResultCallback) {
+        guard firebase.currentSubject() == subject else {
+            done.complete(result__: OperationResultFailure(code: .invalidCredentials)); return
+        }
+        guard firebase.hasAppleProvider() else { done.complete(result__: OperationResultSuccess.shared); return }
+        // A fresh Apple authorization is required, including for an account with another linked provider.
+        guard let authorization = appleDeletionAuthorization, authorization.subject == subject else {
+            performApple(reauthenticating: true, done: IOSDeletionAuthCallback { [weak self] result in
+                guard let self, let success = result as? AuthResultSuccess,
+                      success.user.subject == subject, self.appleDeletionAuthorization?.subject == subject else {
+                    done.complete(result__: OperationResultFailure(code: .providerUnavailable)); return
+                }
+                self.prepareAccountDeletion(subject: subject, done: done)
+            })
+            return
+        }
+        appleDeletionAuthorization = nil // Authorization codes are single-use; retry must obtain a new one.
+        firebase.revokeAppleToken(code: authorization.code) { [weak self] result in
+            guard self?.firebase.currentSubject() == subject else {
+                done.complete(result__: OperationResultFailure(code: .invalidCredentials)); return
+            }
+            done.complete(result__: result.operationResult)
+        }
     }
 
     private func dropLocalSessionIfNeeded<T>(
@@ -346,6 +378,12 @@ final class LiveFirebaseAuthClient: IOSFirebaseAuthClient {
     }
 
     func currentSubject() -> String? { auth.currentUser?.uid }
+
+    func hasAppleProvider() -> Bool { auth.currentUser?.providerData.contains { $0.providerID == "apple.com" } == true }
+
+    func revokeAppleToken(code: String, completion: @escaping (Result<Void, IOSAuthFailure>) -> Void) {
+        auth.revokeToken(withAuthorizationCode: code) { error in Self.complete(error: error, completion: completion) }
+    }
 
     func signInWithApple(_ apple: IOSAppleCredential, completion: @escaping (Result<IOSAuthUser, IOSAuthFailure>) -> Void) {
         let credential = OAuthProvider.appleCredential(withIDToken: apple.idToken, rawNonce: apple.rawNonce, fullName: apple.fullName)
@@ -670,4 +708,11 @@ final class LiveAppleSignInClient: NSObject, IOSAppleSignInClient, ASAuthorizati
         completion = nil; rawNonce = nil; controller = nil; window = nil
         callback?(result)
     }
+}
+
+@MainActor
+private final class IOSDeletionAuthCallback: @preconcurrency AuthCallback {
+    private let completion: (AuthResult) -> Void
+    init(_ completion: @escaping (AuthResult) -> Void) { self.completion = completion }
+    func complete(result: AuthResult) { completion(result) }
 }

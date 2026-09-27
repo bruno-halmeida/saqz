@@ -49,6 +49,7 @@ sealed interface OwnProfileIntent {
     data object OpenMonthlyPayments : OwnProfileIntent
     data object OpenNotifications : OwnProfileIntent
     data object ChangePassword : OwnProfileIntent
+    data object DeleteAccount : OwnProfileIntent
     data object SignOut : OwnProfileIntent
     data class OpenGroup(val groupId: String) : OwnProfileIntent
 }
@@ -62,6 +63,7 @@ sealed interface OwnProfileEffect {
     data object OpenMonthlyPayments : OwnProfileEffect
     data object OpenSettings : OwnProfileEffect
     data object OpenNotifications : OwnProfileEffect
+    data object OpenAccountDeletion : OwnProfileEffect
     data object SignedOut : OwnProfileEffect
 }
 

@@ -25,6 +25,7 @@ class OwnProfileViewModel(
             OwnProfileIntent.Refresh -> load()
             OwnProfileIntent.EditData -> emit(OwnProfileEffect.OpenEditor)
             OwnProfileIntent.ChangePassword -> emit(OwnProfileEffect.OpenPasswordRecovery)
+            OwnProfileIntent.DeleteAccount -> emit(OwnProfileEffect.OpenAccountDeletion)
             OwnProfileIntent.SignOut -> emit(OwnProfileEffect.SignedOut)
             OwnProfileIntent.OpenMyPlan -> emit(OwnProfileEffect.OpenMyPlan)
             OwnProfileIntent.OpenSettings -> emit(OwnProfileEffect.OpenSettings)

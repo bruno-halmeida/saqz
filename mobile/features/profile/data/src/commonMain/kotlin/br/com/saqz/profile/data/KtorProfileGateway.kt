@@ -117,8 +117,11 @@ class KtorProfileGateway(
             network.execute(HttpMethod.Get, ATHLETE_PROFILE_PATH, AthleteProfileTransport.serializer())
         }.toAthleteProfileResult()
 
-    override suspend fun deleteSession(): SaqzResult<Unit, ProfileError> =
-        network.executeNoContent(HttpMethod.Delete, SESSION_PATH).toEmptyResult()
+    override suspend fun deleteSession(expectedUserId: String): SaqzResult<Unit, ProfileError> =
+        network.executeNoContent(
+            HttpMethod.Delete, SESSION_PATH,
+            NetworkRequest(headers = mapOf("X-Expected-User-Id" to expectedUserId)),
+        ).toEmptyResult()
 
     override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, ProfileError> =
         network.uploadMedia(

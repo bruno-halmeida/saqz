@@ -177,6 +177,14 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
         )
     }
     single<NativeAuthPort> { SerializedNativeAuthPort(get(named("raw-native-auth"))) }
+    single<br.com.saqz.profile.domain.AccountDeletionAuthorization> {
+        val session = get<br.com.saqz.access.presentation.SessionAccessStateMachine>()
+        br.com.saqz.composeapp.profile.AccountDeletionAuthorizationBinding(get(named("raw-native-auth"))) {
+            val key = session.activeSessionKey.value
+            val ready = session.state.value as? br.com.saqz.access.presentation.SessionAccessState.Ready
+            if (key == null || ready == null) null else br.com.saqz.composeapp.profile.DeletionSession(ready.session.user.id, key)
+        }
+    }
     single<NativeLinkPort> { get<SaqzNativePorts>().access.links }
     single<LocalAccessStatePort> { get<SaqzNativePorts>().access.localState }
     single<NativeSharePort> { get<SaqzNativePorts>().access.share }

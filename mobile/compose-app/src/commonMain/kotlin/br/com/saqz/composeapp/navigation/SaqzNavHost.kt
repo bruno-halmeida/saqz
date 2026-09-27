@@ -459,6 +459,7 @@ internal fun SaqzNavHost(
                         OwnProfileRoot(
                             onOpenEditor = { backStack.add(ProfileRoute.Edit) },
                             onOpenPasswordRecovery = { backStack.add(AccessRoute.ForgotPassword) },
+                            onOpenAccountDeletion = { backStack.add(ProfileRoute.DeleteAccount) },
                             onSignOut = { backStack.add(ProfileRoute.Exit) },
                             onOpenMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
                             onOpenAthleteProfile = { backStack.add(GroupsRoute.AthleteRegistration(it, fromProfile = true)) },
@@ -544,6 +545,11 @@ internal fun SaqzNavHost(
                         profileRefreshVersion++
                     },
                     onBack = pop,
+                )
+            }
+            entry<ProfileRoute.DeleteAccount> {
+                br.com.saqz.profile.presentation.deletion.AccountDeletionRoot(
+                    onBack = pop, onDeleted = { onIntent(AccessIntent.ConfirmLogout) },
                 )
             }
             entry<ProfileRoute.Exit> {

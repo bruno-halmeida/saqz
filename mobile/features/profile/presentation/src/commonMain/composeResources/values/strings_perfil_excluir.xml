@@ -1,0 +1,14 @@
+<resources>
+    <string name="profile_delete_title">Excluir conta</string>
+    <string name="profile_delete_body">Esta ação é permanente. Seu perfil, fotos e vínculos serão removidos. Os grupos que você criou serão encerrados, e os participantes perderão acesso a eles. A assinatura da plataforma será cancelada.</string>
+    <string name="profile_delete_retention">Registros financeiros e fiscais exigidos por lei serão mantidos com acesso restrito. A limpeza nos serviços de autenticação e pagamento será concluída em segundo plano.</string>
+    <string name="profile_delete_confirm">Entendo as consequências e quero excluir minha conta.</string>
+    <string name="profile_delete_identity">Confirme sua identidade usando o mesmo método de entrada da conta.</string>
+    <string name="profile_delete_password">Senha atual</string>
+    <string name="profile_delete_with_password">Confirmar senha e excluir</string>
+    <string name="profile_delete_with_google">Confirmar com Google e excluir</string>
+    <string name="profile_delete_with_apple">Confirmar com Apple e excluir</string>
+    <string name="profile_delete_auth_error">Não foi possível confirmar sua identidade. Use o método de entrada desta conta e tente novamente.</string>
+    <string name="profile_delete_request_error">Não foi possível confirmar a exclusão. Verifique sua conexão e tente novamente. Se a conta já foi encerrada, sua sessão será finalizada.</string>
+    <string name="profile_delete_busy">Confirmando a exclusão…</string>
+</resources>

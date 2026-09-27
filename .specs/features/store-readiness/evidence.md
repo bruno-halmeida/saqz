@@ -80,3 +80,30 @@ A migração V89 acrescentou uma tabela ao inventário contratual (18 migrations
 Mapeamento reverso: todos os testes novos acima verificam SR4. Testes de exclusão
 anteriores agora exigem anonimização e bloqueiam reativação pelo mesmo UID, conforme
 a decisão autorizada. Integração ao Firebase/Asaas de produção ainda exige homologação.
+
+## T5 — Jornada de exclusão
+
+Gates: 7 testes VM/UI de AccountDeletion no iOS, 4 da composição/autorização,
+10 do KtorProfileGateway, 45 testes nativos Swift, 25 Node das páginas; sem falhas.
+Compilação compartilhada iOS e captura Robolectric Android passaram. A imagem
+`/tmp/saqz-account-deletion.png` foi inspecionada: texto legível, confirmação
+explícita, senha mascarada e ações desabilitadas até consentir.
+Resultado Swift: `/tmp/saqz-store-ios/Logs/Test/Test-SaqzDev-2026.09.27_17-56-56--0300.xcresult`.
+
+| Critério SR5 | Evidência | Resultado esperado |
+|---|---|---|
+| Consentimento/senha | AccountDeletionViewModelTest.kt:24–29 | conta intacta sem confirmação/senha |
+| Sucesso | AccountDeletionViewModelTest.kt:40–45 | mesma identidade excluída, senha limpa, efeito DELETED |
+| Cancelamento/falhas | AccountDeletionViewModelTest.kt:48–74 | conta preservada, erro recuperável, retry conclui |
+| Duplo clique | AccountDeletionViewModelTest.kt:77–97 | uma exclusão enquanto diálogo pendente |
+| Troca de sessão/cancelamento | AccountDeletionAuthorizationBindingTest.kt:21–56 | REJECTED ou callback cancelado, sem revogar outra identidade |
+| Token recente e provedor | AccountDeletionAuthorizationBindingTest.kt:9–18/:34–46 | token renovado antes de revogar; erro não autoriza DELETE |
+| Apple | IOSAuthAdapterTests.swift:400–447 | código consumido, revogação só na exclusão; falha impede sucesso |
+| UI | AccountDeletionScreenTest.kt:14–28 | botões protegidos; Apple só em plataforma suportada |
+| Identidade no HTTP | KtorProfileGatewayTest.kt:145–158 | header X-Expected-User-Id, DELETE sem corpo e repetível |
+| Canal público | account-deletion.test.cjs:8–16 | passos, contato direto, retenção e canonical acessíveis sem login |
+
+Mapeamento reverso: os testes novos verificam SR5 e a parte Apple de SR4; nenhum
+teste foi removido/ignorado. O conflito inicial entre tags do campo senha e do
+botão foi corrigido e a suíte repetida passou. Publicar a página e operar as
+solicitações recebidas pelo contato são etapas externas à implementação.

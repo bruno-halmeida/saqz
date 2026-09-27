@@ -10,4 +10,7 @@ sealed interface ProfileRoute : NavKey {
 
     @Serializable
     data object Exit : ProfileRoute
+
+    @Serializable
+    data object DeleteAccount : ProfileRoute
 }
