@@ -23,6 +23,7 @@ class SubscriptionGateViewModel(
     private val entitlement: GroupCreationEntitlement,
     private val purchaseInformation: PurchaseInformationGateway,
     private val customerInfo: CustomerInfoProvider,
+    private val purchasesEnabled: Boolean = br.com.saqz.domain.StoreLaunchPolicy.purchases,
 ) : MviViewModel<SubscriptionGateState, SubscriptionGateIntent, SubscriptionGateEffect>(
     SubscriptionGateState(),
 ) {
@@ -40,6 +41,7 @@ class SubscriptionGateViewModel(
             SubscriptionGateIntent.Closed -> close()
             is SubscriptionGateIntent.ForegroundChanged -> setForeground(intent.isForeground)
             SubscriptionGateIntent.RequestPurchaseInformation -> {
+                if (!purchasesEnabled) return
                 SaqzAnalytics.event("begin_checkout")
                 requestPurchaseInformation()
             }

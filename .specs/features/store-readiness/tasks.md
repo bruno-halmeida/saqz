@@ -35,7 +35,7 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8
 | T3 | Login Apple: ports/coordenador, UI login, adaptador Swift, entitlements | SR3 | Estados e callbacks; compilação Kotlin/Swift | Concluída |
 | T4 | Endpoint exclusão: caso de uso, persistência, integrações, controller | SR4 | Unitários e integração PostgreSQL | Concluída |
 | T5 | Jornada exclusão: profile, composição, reautenticação, página pública | SR5 | VM/UI, gateway, página e sessão | Concluída |
-| T6 | Capacidade de lançamento: navegação, CTAs, disponibilidade e chat | SR6 | Entradas/rotas, ausência de compra, rollout | Pendente |
+| T6 | Capacidade de lançamento: navegação, CTAs, disponibilidade e chat | SR6 | Entradas/rotas, ausência de compra, rollout | Concluída |
 | T7 | Declaração de privacidade: política, manifesto, permissões | SR7 | Plist, manifesto mesclado, testes páginas | Pendente |
 | T8 | Associação de produção: links-page, entitlements, instruções/evidências | SR8 | Contratos e validação fingerprint; verificador final | Pendente |
 

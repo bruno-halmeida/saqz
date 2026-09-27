@@ -17,9 +17,9 @@
     <string name="trial_entry_finance">Financeiro do grupo</string>
     <string name="trial_entry_finance_help">Acompanhe cobranças e pagamentos em um só lugar.</string>
     <string name="trial_entry_after_title">E depois do teste?</string>
-    <string name="trial_entry_after">Continue com o Organizador ou escolha outro plano que comporte seus grupos e atletas. Após o teste, é preciso assinar para continuar. Não há cobrança automática.</string>
+    <string name="trial_entry_after">O teste termina na data indicada, sem cobrança automática. Depois disso, o acesso depende das permissões e do plano ativo da conta.</string>
     <string name="trial_entry_setup_title">Seu próximo grupo começa aqui</string>
-    <string name="trial_entry_setup_help">Confira seu acesso na página de contratação. Se você recebeu um cupom, aplique-o por lá e depois atualize esta tela.</string>
+    <string name="trial_entry_setup_help">Não há acesso disponível para criar um grupo nesta conta. Você pode atualizar a verificação ou voltar para as demais funções.</string>
     <string name="trial_entry_retry">Tentar novamente</string>
     <string name="trial_entry_group_unlimited">Até %1$d grupos · atletas ilimitados</string>
 </resources>

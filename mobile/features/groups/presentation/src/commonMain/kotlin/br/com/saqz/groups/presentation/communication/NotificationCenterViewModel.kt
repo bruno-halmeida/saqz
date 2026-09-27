@@ -36,7 +36,7 @@ class NotificationCenterViewModel(private val settings: Boolean, private val gat
             } else when (val result = gateway.inbox(before)) {
                 is SaqzResult.Success -> if (request == generation) update {
                     it.copy(loading = false, busy = false, nextCursor = result.value.nextCursor, items =
-                        ((if (more) it.items else emptyList()) + result.value.items.map { notification ->
+                        ((if (more) it.items else emptyList()) + result.value.items.filter { br.com.saqz.domain.StoreLaunchPolicy.chat || it.message.channel != br.com.saqz.groups.domain.communication.CommunicationChannel.CHAT }.map { notification ->
                             val message = notification.message
                             NotificationUi(
                                 notification.sequence, message.groupId.value, message.channel,

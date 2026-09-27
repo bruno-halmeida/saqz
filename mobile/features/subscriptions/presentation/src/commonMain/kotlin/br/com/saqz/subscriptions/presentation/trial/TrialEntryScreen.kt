@@ -83,7 +83,7 @@ fun TrialEntryScreen(state: TrialEntryState, onIntent: (TrialEntryIntent) -> Uni
             if (state.access?.canCreateGroup == true && state.failure == null) {
                 SaqzButton(stringResource(Res.string.trial_entry_continue), { onIntent(TrialEntryIntent.Continue) },
                     enabled = state.canContinue, fullWidth = true, modifier = Modifier.testTag(TrialEntryTags.Continue))
-            } else if (!state.loading && state.failure == null) {
+            } else if (br.com.saqz.domain.StoreLaunchPolicy.purchases && !state.loading && state.failure == null) {
                 SaqzButton(stringResource(Res.string.trial_entry_plans), onSubscribe, fullWidth = true)
             }
             if (state.failure != null || (!state.loading && state.access?.canCreateGroup != true)) {

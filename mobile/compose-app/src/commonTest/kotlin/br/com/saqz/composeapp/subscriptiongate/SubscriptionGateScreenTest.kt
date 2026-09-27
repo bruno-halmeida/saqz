@@ -21,7 +21,7 @@ import kotlin.test.assertTrue
 class SubscriptionGateScreenTest {
 
     @Test
-    fun initialStateExposesTheThreeActionsAndEmitsTheirCallbacks() = runComposeUiTest {
+    fun launchOnlyAllowsAccessRefreshAndBack() = runComposeUiTest {
         val intents = mutableListOf<SubscriptionGateIntent>()
         var backPresses = 0
         setContent {
@@ -35,13 +35,12 @@ class SubscriptionGateScreenTest {
         }
 
         onNodeWithTag(SubscriptionGateTags.Root).assertIsDisplayed()
-        onNodeWithTag(SubscriptionGateTags.Request).assertTextEquals("Receber por e-mail").performClick()
-        onNodeWithTag(SubscriptionGateTags.Refresh).assertTextEquals("Já assinei — atualizar").performClick()
+        onNodeWithTag(SubscriptionGateTags.Request).assertDoesNotExist()
+        onNodeWithTag(SubscriptionGateTags.Refresh).assertTextEquals("Atualizar acesso").performClick()
         onNodeWithContentDescription("Voltar").performClick()
 
         assertEquals(
-            listOf(
-                SubscriptionGateIntent.RequestPurchaseInformation,
+            listOf<SubscriptionGateIntent>(
                 SubscriptionGateIntent.RefreshAuthorization,
             ),
             intents,
@@ -52,7 +51,7 @@ class SubscriptionGateScreenTest {
     @Test
     fun everyMandatoryStateHasAReadableStatusAndExpectedRecovery() = runComposeUiTest {
         val cases = listOf(
-            SubscriptionGateState() to ("Assinatura necessária" to "Para continuar, confirme sua assinatura ou receba as informações por e-mail."),
+            SubscriptionGateState() to ("Acesso da conta" to "Este recurso depende das permissões e do plano ativo da sua conta. Atualize para verificar seu acesso."),
             SubscriptionGateState(status = SubscriptionGateStatus.Sending) to ("Enviando informações" to "Estamos enviando as informações para o e-mail associado à sua conta."),
             SubscriptionGateState(status = SubscriptionGateStatus.Sent, maskedEmail = "a***a@exemplo.com") to ("Informações enviadas" to "As informações foram enviadas para o e-mail associado à sua conta."),
             SubscriptionGateState(
@@ -68,13 +67,13 @@ class SubscriptionGateScreenTest {
                 failure = SubscriptionGateFailure.Authorization,
             ) to ("Verificando assinatura" to "Não foi possível confirmar sua assinatura agora. Tente novamente."),
             SubscriptionGateState(status = SubscriptionGateStatus.Verifying) to ("Verificando assinatura" to "Aguarde enquanto confirmamos sua assinatura."),
-            SubscriptionGateState(status = SubscriptionGateStatus.NotAuthorized) to ("Assinatura necessária" to "Ainda não encontramos uma assinatura autorizada. Você pode receber as informações por e-mail ou atualizar a confirmação."),
+            SubscriptionGateState(status = SubscriptionGateStatus.NotAuthorized) to ("Recurso indisponível" to "Sua conta ainda não tem acesso a este recurso. Você pode continuar usando as demais funções disponíveis."),
             SubscriptionGateState(status = SubscriptionGateStatus.Authorized) to ("Assinatura confirmada" to "Acesso confirmado. Finalizando."),
         )
         val renderedState = mutableStateOf(cases.first().first)
         setContent {
             SaqzTheme {
-                SubscriptionGateScreen(state = renderedState.value, onIntent = {}, onBack = {})
+                SubscriptionGateScreen(purchasesEnabled = true, state = renderedState.value, onIntent = {}, onBack = {})
             }
         }
 
@@ -144,7 +143,7 @@ class SubscriptionGateScreenTest {
         )
         setContent {
             SaqzTheme {
-                SubscriptionGateScreen(state = renderedState.value, onIntent = intents::add, onBack = {})
+                SubscriptionGateScreen(purchasesEnabled = true, state = renderedState.value, onIntent = intents::add, onBack = {})
             }
         }
         onNodeWithTag(SubscriptionGateTags.Request).assertTextEquals("Tentar novamente").performClick()
@@ -159,7 +158,7 @@ class SubscriptionGateScreenTest {
         onNodeWithTag(SubscriptionGateTags.Refresh).assertTextEquals("Tentar novamente").performClick()
 
         assertEquals(
-            listOf(
+            listOf<SubscriptionGateIntent>(
                 SubscriptionGateIntent.RequestPurchaseInformation,
                 SubscriptionGateIntent.RefreshAuthorization,
             ),

@@ -54,7 +54,6 @@ import br.com.saqz.groups.resources.communication_push_note
 import br.com.saqz.groups.resources.communication_whatsapp_note
 import br.com.saqz.groups.resources.communication_pref_charges
 import br.com.saqz.groups.resources.communication_pref_notices
-import br.com.saqz.groups.resources.communication_pref_messages
 import br.com.saqz.groups.resources.communication_pref_reminders
 import br.com.saqz.groups.resources.communication_save
 import br.com.saqz.groups.resources.communication_saved
@@ -128,12 +127,6 @@ internal fun NotificationCenterScreen(
                             { onIntent(NotificationCenterIntent.Preferences(state.preferences.copy(notices = it))) },
                             label = stringResource(Res.string.communication_pref_notices), enabled = !state.busy,
                             modifier = Modifier.testTag(NotificationCenterTags.Notices),
-                        )
-                        SaqzSwitch(
-                            state.preferences.messages,
-                            { onIntent(NotificationCenterIntent.Preferences(state.preferences.copy(messages = it))) },
-                            label = stringResource(Res.string.communication_pref_messages), enabled = !state.busy,
-                            modifier = Modifier.testTag(NotificationCenterTags.Messages),
                         )
                         SaqzSwitch(
                             state.preferences.reminders,
@@ -275,9 +268,6 @@ private fun DeliveryChannelSettings(state: NotificationCenterState, onIntent: (N
     Text(stringResource(Res.string.communication_push_note), style = SaqzTheme.typography.support)
     PreferenceSwitch("push-notices", stringResource(Res.string.communication_pref_notices), push.notices, state.busy) {
         onIntent(NotificationCenterIntent.Preferences(preferences.copy(push = push.copy(notices = it))))
-    }
-    PreferenceSwitch("push-messages", stringResource(Res.string.communication_pref_messages), push.messages, state.busy) {
-        onIntent(NotificationCenterIntent.Preferences(preferences.copy(push = push.copy(messages = it))))
     }
     PreferenceSwitch("push-reminders", stringResource(Res.string.communication_pref_reminders), push.reminders, state.busy) {
         onIntent(NotificationCenterIntent.Preferences(preferences.copy(push = push.copy(reminders = it))))

@@ -65,6 +65,7 @@ fun SubscriptionGateScreen(
     onIntent: (SubscriptionGateIntent) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    purchasesEnabled: Boolean = br.com.saqz.domain.StoreLaunchPolicy.purchases,
 ) {
     val metrics = SaqzTheme.metrics
     Column(
@@ -87,7 +88,7 @@ fun SubscriptionGateScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            SubscriptionGateBody(state = state, onIntent = onIntent)
+            SubscriptionGateBody(state = state, onIntent = onIntent, purchasesEnabled = purchasesEnabled)
         }
     }
 }
@@ -96,6 +97,7 @@ fun SubscriptionGateScreen(
 private fun SubscriptionGateBody(
     state: SubscriptionGateState,
     onIntent: (SubscriptionGateIntent) -> Unit,
+    purchasesEnabled: Boolean,
 ) {
     val status = state.status
     val copy = statusCopy(state)
@@ -158,7 +160,7 @@ private fun SubscriptionGateBody(
             ) {
                 // Sem e-mail na conta o envio não tem como funcionar: o botão sai em vez
                 // de virar um "tentar novamente" que sempre falha.
-                if (state.failure != SubscriptionGateFailure.EmailMissing) {
+                if (purchasesEnabled && state.failure != SubscriptionGateFailure.EmailMissing) {
                     SaqzButton(
                         label = requestLabel,
                         onClick = { onIntent(SubscriptionGateIntent.RequestPurchaseInformation) },

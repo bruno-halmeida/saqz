@@ -283,12 +283,12 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
-    fun `communication shortcuts route to the same group with distinct channels`() = runTest {
+    fun `notices open but removed chat emits no navigation`() = runTest {
         val vm = viewModel()
         vm.onIntent(GroupDetailsIntent.OpenNotices)
         assertEquals(GroupDetailsEffect.OpenThread(GROUP_ID, true), vm.effects.first())
         vm.onIntent(GroupDetailsIntent.OpenChat)
-        assertEquals(GroupDetailsEffect.OpenThread(GROUP_ID, false), vm.effects.first())
+        assertEquals(null, kotlinx.coroutines.withTimeoutOrNull(1) { vm.effects.first() })
     }
 
     @Test

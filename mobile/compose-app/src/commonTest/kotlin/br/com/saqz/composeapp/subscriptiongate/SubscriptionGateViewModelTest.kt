@@ -38,6 +38,27 @@ class SubscriptionGateViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     @Test
+    fun `store launch cannot send purchase email and still recognizes an active web subscription`() = runTest {
+        val entitlement = FakeEntitlement(false)
+        val purchase = FakePurchaseInformationGateway(SaqzResult.Success(Unit))
+        val customer = FakeCustomerInfoProvider(null)
+        val viewModel = SubscriptionGateViewModel(entitlement, purchase, customer)
+        viewModel.onIntent(SubscriptionGateIntent.Opened)
+        runCurrent()
+        viewModel.onIntent(SubscriptionGateIntent.RequestPurchaseInformation)
+        runCurrent()
+        assertEquals(0, purchase.calls)
+        assertEquals(SubscriptionGateStatus.NotAuthorized, viewModel.state.value.status)
+        entitlement.allowed = true
+        viewModel.onIntent(SubscriptionGateIntent.RefreshAuthorization)
+        runCurrent()
+        assertEquals(SubscriptionGateStatus.Authorized, viewModel.state.value.status)
+        assertEquals(SubscriptionGateEffect.AuthorizationGranted, viewModel.effects.first())
+        viewModel.onIntent(SubscriptionGateIntent.Closed)
+        viewModel.viewModelScope.cancel()
+    }
+
+    @Test
     fun `opening gate verifies immediately and leaves it awaiting authorization`() = runTest {
         val entitlement = FakeEntitlement(false)
         withViewModel(entitlement = entitlement) { viewModel ->
@@ -319,7 +340,7 @@ class SubscriptionGateViewModelTest {
         entitlement: FakeEntitlement,
         purchase: PurchaseInformationGateway = FakePurchaseInformationGateway(SaqzResult.Success(Unit)),
         customer: CustomerInfoProvider = FakeCustomerInfoProvider(null),
-    ) = SubscriptionGateViewModel(entitlement, purchase, customer)
+    ) = SubscriptionGateViewModel(entitlement, purchase, customer, purchasesEnabled = true)
 
     private suspend fun TestScope.withViewModel(
         entitlement: FakeEntitlement,

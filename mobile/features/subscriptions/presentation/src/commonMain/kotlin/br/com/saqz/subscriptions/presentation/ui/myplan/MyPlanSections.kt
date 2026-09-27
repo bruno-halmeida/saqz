@@ -142,7 +142,7 @@ internal fun MyPlanManageSection(
 ) = Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
     SaqzSectionHeader(title = stringResource(Res.string.myplan_manage_title))
     SaqzCard(padded = false) {
-        if (state.plan?.statusTone != MyPlanStatusTone.Canceled) {
+        if (br.com.saqz.domain.StoreLaunchPolicy.purchases && state.plan?.statusTone != MyPlanStatusTone.Canceled) {
             MyPlanManageRow(
                 label = stringResource(Res.string.myplan_manage_change_plan),
                 tag = MyPlanTags.ChangePlan,

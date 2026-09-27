@@ -203,6 +203,8 @@ internal fun SaqzNavHost(
     val planAnalytics = koinInject<br.com.saqz.composeapp.analytics.PlanAnalytics>()
     // Uma linha para as ~45 rotas: rota nova entra sozinha. Só o nome da classe, nunca os campos.
     val topRoute = backStack.lastOrNull()
+    val launchStack = backStack.filter { it.isAvailableAtLaunch() }.ifEmpty { listOf(AccessRoute.Starting) }
+    LaunchedEffect(backStack.toList()) { backStack.removeAll { !it.isAvailableAtLaunch() } }
     LaunchedEffect(topRoute) {
         if (topRoute == null) return@LaunchedEffect
         SaqzAnalytics.screen(analyticsName(topRoute))
@@ -314,7 +316,7 @@ internal fun SaqzNavHost(
         }
     }
     NavDisplay(
-        backStack = backStack,
+        backStack = launchStack,
         // O `NavDisplay` só habilita o back quando há entrada anterior
         // (`isBackEnabled = scene.previousEntries.isNotEmpty()`, NavDisplay.kt:557 do
         // navigation3-ui 1.1.1), então isto nunca esvazia a base que o gate garante — é o
@@ -844,7 +846,7 @@ internal fun SaqzNavHost(
                     onPauseOrDispose { }
                 }
                 OwnMonthlyPaymentsRoot(onBack = pop, onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
-                    onPayInApp = if (receipts.paymentEntryAvailable) {
+                    onPayInApp = if (br.com.saqz.domain.StoreLaunchPolicy.receivables && receipts.paymentEntryAvailable) {
                         { backStack.add(MemberPaymentHistoryRoute) }
                     } else null)
             }

@@ -36,7 +36,6 @@ class GroupShellBlocksTest {
     private val everyone = listOf(
         GroupDetailsTags.Mural,
         GroupDetailsTags.ShortcutNotices,
-        GroupDetailsTags.ShortcutChat,
         GroupDetailsTags.People,
     )
 
@@ -137,14 +136,14 @@ class GroupShellBlocksTest {
     // ---- mural ----
 
     @Test
-    fun muralRowsOpenNoticesAndChat() = runComposeUiTest {
+    fun muralOpensNoticesWithoutChat() = runComposeUiTest {
         val intents = mutableListOf<GroupDetailsIntent>()
         setDetailsScreen(GroupShellPreviewData.member) { intents += it }
 
         onNodeWithTag(GroupDetailsTags.ShortcutNotices).performScrollTo().performClick()
-        onNodeWithTag(GroupDetailsTags.ShortcutChat).performScrollTo().performClick()
+        onNodeWithTag(GroupDetailsTags.ShortcutChat).assertDoesNotExist()
 
-        assertEquals(listOf(GroupDetailsIntent.OpenNotices, GroupDetailsIntent.OpenChat), intents)
+        assertEquals(listOf<GroupDetailsIntent>(GroupDetailsIntent.OpenNotices), intents)
     }
 
     @Test
@@ -153,7 +152,7 @@ class GroupShellBlocksTest {
 
         onNodeWithText("Mural").assertExists()
         onNodeWithText("Lucas: Cheguem 15 min antes para montar a rede. · Hoje, 10h30").assertExists()
-        onNodeWithText("Fale com a galera do grupo").assertExists()
+        onNodeWithText("Fale com a galera do grupo").assertDoesNotExist()
         onAllNodesWithText("Nenhum aviso por enquanto").assertCountEquals(0)
     }
 

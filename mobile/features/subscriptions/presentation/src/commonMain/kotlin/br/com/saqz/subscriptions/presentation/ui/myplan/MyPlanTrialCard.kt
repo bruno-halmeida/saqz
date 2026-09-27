@@ -81,7 +81,7 @@ internal fun MyPlanTrialCard(trial: MyPlanTrialUi, onSubscribe: () -> Unit, modi
                 stringResource(if (hasTrial) Res.string.myplan_trial_no_charge else Res.string.myplan_choose_help),
                 style = typography.support,
                     color = colors.textSecondary)
-            if (trial.canSubscribe) {
+            if (br.com.saqz.domain.StoreLaunchPolicy.purchases && trial.canSubscribe) {
                 SaqzButton(stringResource(if (hasTrial) Res.string.myplan_trial_subscribe else Res.string.myplan_choose_plan),
                     onClick = onSubscribe, fullWidth = true, modifier = Modifier.testTag(MyPlanTags.Subscribe))
             } else if (!trial.isOwner) {

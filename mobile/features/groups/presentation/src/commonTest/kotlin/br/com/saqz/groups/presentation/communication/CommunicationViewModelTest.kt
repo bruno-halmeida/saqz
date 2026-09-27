@@ -105,6 +105,17 @@ class CommunicationViewModelTest {
         assertTrue(vm.state.value.saved)
         assertFalse(vm.state.value.actionFailed)
     }
+    @Test fun launchInboxRemovesChatAndKeepsNotices() = runTest {
+        val message = sampleCommunicationMessage()
+        val gateway = FakeCommunicationGateway().apply {
+            inboxResult = SaqzResult.Success(CommunicationPage(listOf(
+                InAppNotification(7, message, false),
+                InAppNotification(8, message.copy(channel = CommunicationChannel.NOTICE), false)), null))
+        }
+        val vm = NotificationCenterViewModel(false, gateway)
+        assertEquals(listOf(8L), vm.state.value.items.map { it.sequence })
+        assertEquals(CommunicationChannel.NOTICE, vm.state.value.items.single().channel)
+    }
     @Test fun openingNotificationMarksOnlySelectedItemAndDoesNotNavigateOnFailure() = runTest {
         val message = sampleCommunicationMessage().copy(channel = CommunicationChannel.REMINDER, gameId = "game-1")
         val gateway = FakeCommunicationGateway().apply {

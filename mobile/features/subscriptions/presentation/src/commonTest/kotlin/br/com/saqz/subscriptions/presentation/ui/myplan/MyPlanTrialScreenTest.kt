@@ -16,17 +16,17 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class MyPlanTrialScreenTest {
     @Test
-    fun expiredTrialExplainsReadOnlyAndOffersSubscriptionWithoutPaidControls() = runComposeUiTest {
+    fun expiredTrialShowsAccessStatusWithoutPurchaseControls() = runComposeUiTest {
         val intents = mutableListOf<MyPlanIntent>()
         setContent {
             SaqzTheme { MyPlanScreen(trialState(TrialStatus.Expired), {}, intents::add) }
         }
-        onNodeWithText("Seu histórico está preservado. Continue com o Organizador ou escolha outro plano compatível para voltar a usar seus grupos.").assertExists()
+        onNodeWithText("Seu histórico está preservado. Os recursos disponíveis dependem do acesso ativo da conta.").assertExists()
         onNodeWithTag(MyPlanTags.CancelButton).assertDoesNotExist()
         onNodeWithTag(MyPlanTags.Receipts).assertDoesNotExist()
         onNodeWithTag(MyPlanTags.ChangePlan).assertDoesNotExist()
-        onNodeWithTag(MyPlanTags.Subscribe).performClick()
-        assertEquals(listOf<MyPlanIntent>(MyPlanIntent.OpenSubscribe), intents)
+        onNodeWithTag(MyPlanTags.Subscribe).assertDoesNotExist()
+        assertEquals(emptyList(), intents)
     }
 
     @Test

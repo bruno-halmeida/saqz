@@ -107,3 +107,27 @@ Mapeamento reverso: os testes novos verificam SR5 e a parte Apple de SR4; nenhum
 teste foi removido/ignorado. O conflito inicial entre tags do campo senha e do
 botão foi corrigido e a suíte repetida passou. Publicar a página e operar as
 solicitações recebidas pelo contato são etapas externas à implementação.
+
+## T6 — Capacidade de lançamento
+
+Gates: testes iOS focados de composição (57), grupos (122) e planos/trial (34),
+74 unitários + 59 integrações de recebimentos e 2 testes bootstrap; sem falhas.
+O app preserva leitura do plano, cancelamento e atualização de acesso obtido na web.
+Compras/upgrade/links por e-mail, chat e jornadas de recebimentos não ficam disponíveis.
+O bloqueio de navegação acontece antes de compor destinos, inclusive após restauração.
+
+| Critério SR6 | Evidência | Esperado |
+|---|---|---|
+| Rotas antigas | StoreLaunchNavigationTest.kt:13–29 | somente shell sobrevive; perfil, avisos e consulta do plano permanecem |
+| Compra por e-mail | SubscriptionGateViewModelTest.kt:41–62 | zero requisições; atualização reconhece assinatura ativa |
+| UI sem direcionamento | SubscriptionGateScreenTest.kt:24–47; MyPlanTrialScreenTest.kt:18–29 | sem botão de compra; refresh e voltar funcionam |
+| Chat removido | GroupShellBlocksTest.kt:140–157; GroupDetailsViewModelTest.kt:286–292 | ausência de entrada/efeito; avisos continuam |
+| Notificações antigas | CommunicationViewModelTest: launchInboxRemovesChatAndKeepsNotices | apenas NOTICE visível |
+| Recebimentos desligados | ReceivablesLaunchConfigurationTest.kt:15–26 | mesmo ALL_USERS no banco resulta false/false no deployment padrão |
+
+Mapeamento reverso: os testes alterados refletem as decisões do usuário. Testes de
+componentes de compra ainda existentes usam opt-in explícito isolado; o grafo
+real mantém a capacidade desligada e foi validado pelo SaqzKoinModulesTest.
+A manutenção de registros financeiros anteriores permanece no backend, sem criar
+novas operações. Para futuro lançamento de recebimentos são necessários deployment
+`SAQZ_RECEIVABLES_LAUNCH_ENABLED=true`, rollout e nova versão mobile revisada.

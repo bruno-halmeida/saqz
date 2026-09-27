@@ -28,7 +28,7 @@ internal val composePresentationModule = module {
     single { br.com.saqz.composeapp.analytics.PlanAnalytics(get(), get()) }
     factoryOf(::AccessOrchestrator) { bind<AccessRuntimeContract>() }
     viewModelOf(::AccessViewModel)
-    viewModelOf(::SubscriptionGateViewModel)
+    viewModel { SubscriptionGateViewModel(get(), get(), get()) }
     viewModel(qualifier = paidSubscriptionGateQualifier) {
         SubscriptionGateViewModel(PaidSubscriptionEntitlement(get()), get(), get())
     }
