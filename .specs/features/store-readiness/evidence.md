@@ -186,3 +186,39 @@ Verificação pública somente de leitura via curl em 27/09/2026:
 Permanece pendente a homologação com consoles/provedores reais, mais a avaliação
 operacional de UGC restante. A validação independente será registrada em
 `validation.md`; não substitui esses passos externos.
+
+## Correções após a primeira verificação independente
+
+O primeiro relatório encontrou falhas concretas em SR4 e falta de cobertura
+integrada em SR5. As correções acrescentam lock transacional por UID, redação dos
+snapshots de jogos/séries e a migração V90 para redação limitada do histórico de
+presença. O restante do histórico permanece imutável.
+
+O adapter de exclusão agora aceita configuração sem billing, mas recusa concluir
+quando existe assinatura não cancelada. Foram acrescentadas assertions das
+chamadas reais ao SDK Firebase e teste de cancelamento com caso de uso/repositório
+reais, PostgreSQL e gateway simulado, incluindo purge do token/last4/brand.
+
+| Verificação após correção | Resultado / log |
+|---|---|
+| Access unitário + integração e bootstrap focado em exclusão/Firebase/contexto sem billing | PASS; `/tmp/saqz-store-verifier-fixes.log` |
+| Bootstrap completo | 518/519; única falha era data fixa vencida no teste de trial, `ATTENDANCE_DEADLINE_PASSED`; `/tmp/saqz-store-final-backend.log` |
+| Classe OrganizerTrialEndpointIntegrationTest após tornar o jogo futuro nos dois relógios | PASS; `/tmp/saqz-store-final-backend-retry.log`; nenhuma assertion removida |
+| Integração de grupos com migração V90 | 615 testes, zero falhas/pulados; XML `features/groups/build/test-results/integrationTest` |
+| Exclusão pela composição real + cancelamento real/purge | 5 testes, zero falhas/pulados; `/tmp/saqz-store-deletion-final-focused.log` |
+| Navegação após exclusão via Root/AccessViewModel reais | 1 teste Compose em iOS Simulator, zero falhas/pulados; `/tmp/saqz-store-deletion-navigation.log` |
+
+O teste de composição também prova o extrato preservado para o dono autorizado,
+nome neutro e valor exato; conta excluída, grupo encerrado e usuário sem vínculo
+não obtêm o extrato. A resolução de identidade nesse teste é simulada; autenticação
+HTTP é coberta separadamente pelo gate de endpoints.
+
+O Android Lint completo foi executado e **não passou**: nove erros preexistentes
+nos testes AndroidReduceMotionTest e SaqzNavHostViewModelScopeTest, mais 19 avisos.
+Log `/tmp/saqz-store-final-lint.log`. O teste de navegação acrescentado não criou
+erro adicional. Não confundir esse resultado com detekt, testes Android e build
+de desenvolvimento, que passaram.
+
+Lições fundamentadas F1–F7, M5/M6 e precisão de SR4 registradas pelo script da
+skill em `.specs/lessons.json` (candidatas L-021 a L-029). Revalidação independente
+do commit das correções ainda precisa fechar o gate completo e matar M5/M6.

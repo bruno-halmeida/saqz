@@ -35,7 +35,7 @@ políticas; não há mecanismo para liberar funcionalidades somente após o revi
    no Firebase Authentication; configurar os identificadores e a chave exigidos
    pelo provedor, incluindo revogação. Registrar os remetentes no Private Email
    Relay e validar a entrega para endereços privados. Não houve acesso aos consoles.
-4. **Publicação:** implantar a migração V89 e o backend, as páginas de
+4. **Publicação:** implantar as migrações V89/V90 e o backend, as páginas de
    privacidade/exclusão e a associação de domínio. A landing e o host de links têm
    deploys distintos. Verificar os endpoints publicados sem login e sem redirects.
 5. **Conteúdo de usuários:** remover chat reduz a superfície, mas **fotos, nomes,
@@ -47,6 +47,10 @@ políticas; não há mecanismo para liberar funcionalidades somente após o revi
 6. **Fichas e binários:** concluir os formulários abaixo e homologar AAB/IPA
    assinados em Play interno/TestFlight. IDs das fichas e credenciais de revisão
    não foram fornecidos. Aprovação em primeira submissão não pode ser garantida.
+7. **Retenção operacional:** definir prazos e acesso aos registros financeiros,
+   backups e dados dos operadores. A entrega apaga/redige os dados pessoais e
+   preserva o histórico necessário; não adiciona expurgo automático por idade
+   desse histórico. A política publicada precisa refletir os prazos adotados.
 
 Configuração de lançamento: manter `SAQZ_RECEIVABLES_LAUNCH_ENABLED=false` e
 pagamentos de recebimentos desligados. Não desativar o processamento durável de
@@ -123,3 +127,8 @@ assinatura, ícones, versão/build, SDK/API exigidos e suporte a páginas de 16 
 Os [resultados reproduzíveis](../../.specs/features/store-readiness/evidence.md)
 registram as suítes executadas. Testes com fakes e simuladores não substituem essa
 homologação nem a verificação dos consoles.
+
+O Android Lint completo continua com nove erros preexistentes em testes Compose
+(`remember` retornando `Unit` e `mutableStateOf` criado durante composição), além
+de 19 avisos. O build de desenvolvimento, testes Android e detekt passaram; isso
+não equivale a um Lint integralmente verde. As falhas estão registradas nas evidências.

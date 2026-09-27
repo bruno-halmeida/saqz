@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 21,
+  "next_id": 30,
   "lessons": [
     {
       "id": "L-001",
@@ -366,6 +366,168 @@
       ],
       "created": "2026-09-15T15:17:47Z",
       "last_seen": "2026-09-15T15:17:47Z"
+    },
+    {
+      "id": "L-021",
+      "key": "ac_gap::testes de exclus o devem semear hist rico sujeito a triggers e constraints de imutabilidade",
+      "text": "Testes de exclusão devem semear histórico sujeito a triggers e constraints de imutabilidade.",
+      "signal": "ac_gap",
+      "scope": "backend",
+      "status": "candidate",
+      "features": [
+        "store-readiness"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/store-readiness/validation.md: F1 (ciclo inicial 42f2f3c0) (backend)"
+      ],
+      "created": "2026-09-27T21:53:09Z",
+      "last_seen": "2026-09-27T21:53:09Z"
+    },
+    {
+      "id": "L-022",
+      "key": "ac_gap::testes de tombstone devem sincronizar opera es concorrentes antes do commit de exclus o",
+      "text": "Testes de tombstone devem sincronizar operações concorrentes antes do commit de exclusão.",
+      "signal": "ac_gap",
+      "scope": "backend",
+      "status": "candidate",
+      "features": [
+        "store-readiness"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/store-readiness/validation.md: F2 (ciclo inicial 42f2f3c0) (backend)"
+      ],
+      "created": "2026-09-27T21:53:09Z",
+      "last_seen": "2026-09-27T21:53:09Z"
+    },
+    {
+      "id": "L-023",
+      "key": "ac_gap::inventarie snapshots e c pias desnormalizadas ao provar remo o de dados pessoais",
+      "text": "Inventarie snapshots e cópias desnormalizadas ao provar remoção de dados pessoais.",
+      "signal": "ac_gap",
+      "scope": "backend",
+      "status": "candidate",
+      "features": [
+        "store-readiness"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/store-readiness/validation.md: F3 (ciclo inicial 42f2f3c0) (backend)"
+      ],
+      "created": "2026-09-27T21:53:09Z",
+      "last_seen": "2026-09-27T21:53:09Z"
+    },
+    {
+      "id": "L-024",
+      "key": "gate_fail::beans de limpeza devem funcionar com depend ncias opcionais sem transformar indisponibilidade de cobran a em sucesso",
+      "text": "Beans de limpeza devem funcionar com dependências opcionais sem transformar indisponibilidade de cobrança em sucesso.",
+      "signal": "gate_fail",
+      "scope": "backend",
+      "status": "candidate",
+      "features": [
+        "store-readiness"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/store-readiness/validation.md: F4 (ciclo inicial 42f2f3c0) (backend)"
+      ],
+      "created": "2026-09-27T21:53:09Z",
+      "last_seen": "2026-09-27T21:53:09Z"
+    },
+    {
+      "id": "L-025",
+      "key": "gate_fail::testes de integra o de exclus o devem usar a composi o real de limpeza de dados",
+      "text": "Testes de integração de exclusão devem usar a composição real de limpeza de dados.",
+      "signal": "gate_fail",
+      "scope": "backend",
+      "status": "candidate",
+      "features": [
+        "store-readiness"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/store-readiness/validation.md: F5 (ciclo inicial 42f2f3c0) (backend)"
+      ],
+      "created": "2026-09-27T21:53:09Z",
+      "last_seen": "2026-09-27T21:53:09Z"
+    },
+    {
+      "id": "L-026",
+      "key": "surviving_mutant::prove chamadas e payloads no adapter real de exclus o de identidade al m do fake do caso de uso",
+      "text": "Prove chamadas e payloads no adapter real de exclusão de identidade, além do fake do caso de uso.",
+      "signal": "surviving_mutant",
+      "scope": "backend",
+      "status": "candidate",
+      "features": [
+        "store-readiness"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/store-readiness/validation.md: M5 (ciclo inicial 42f2f3c0) (backend)"
+      ],
+      "created": "2026-09-27T21:53:09Z",
+      "last_seen": "2026-09-27T21:53:09Z"
+    },
+    {
+      "id": "L-027",
+      "key": "surviving_mutant::prove em postgresql a remo o de credenciais financeiras ap s cancelamento",
+      "text": "Prove em PostgreSQL a remoção de credenciais financeiras após cancelamento.",
+      "signal": "surviving_mutant",
+      "scope": "backend",
+      "status": "candidate",
+      "features": [
+        "store-readiness"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/store-readiness/validation.md: M6 (ciclo inicial 42f2f3c0) (backend)"
+      ],
+      "created": "2026-09-27T21:53:09Z",
+      "last_seen": "2026-09-27T21:53:09Z"
+    },
+    {
+      "id": "L-028",
+      "key": "ac_gap::prove encerramento de sess o na composi o da jornada al m da emiss o de um efeito",
+      "text": "Prove encerramento de sessão na composição da jornada, além da emissão de um efeito.",
+      "signal": "ac_gap",
+      "scope": "mobile",
+      "status": "candidate",
+      "features": [
+        "store-readiness"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/store-readiness/validation.md: F7 (ciclo inicial 42f2f3c0) (mobile)"
+      ],
+      "created": "2026-09-27T21:53:09Z",
+      "last_seen": "2026-09-27T21:53:09Z"
+    },
+    {
+      "id": "L-029",
+      "key": "spec_precision_gap::explicite a janela de autentica o recente e as categorias de reten o no contrato de exclus o",
+      "text": "Explicite a janela de autenticação recente e as categorias de retenção no contrato de exclusão.",
+      "signal": "spec_precision_gap",
+      "scope": "access",
+      "status": "candidate",
+      "features": [
+        "store-readiness"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/store-readiness/validation.md: SR4 (ciclo inicial 42f2f3c0) (access)"
+      ],
+      "created": "2026-09-27T21:53:09Z",
+      "last_seen": "2026-09-27T21:53:09Z"
     }
   ]
 }

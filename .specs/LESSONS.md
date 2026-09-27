@@ -132,6 +132,60 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: AC4 (backend/push)
 - last seen: 2026-09-15T15:17:47Z
 
+### L-021 — Testes de exclusão devem semear histórico sujeito a triggers e constraints de imutabilidade.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `backend` · harmful: 0
+- features: store-readiness
+- evidence: .specs/features/store-readiness/validation.md: F1 (ciclo inicial 42f2f3c0) (backend)
+- last seen: 2026-09-27T21:53:09Z
+
+### L-022 — Testes de tombstone devem sincronizar operações concorrentes antes do commit de exclusão.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `backend` · harmful: 0
+- features: store-readiness
+- evidence: .specs/features/store-readiness/validation.md: F2 (ciclo inicial 42f2f3c0) (backend)
+- last seen: 2026-09-27T21:53:09Z
+
+### L-023 — Inventarie snapshots e cópias desnormalizadas ao provar remoção de dados pessoais.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `backend` · harmful: 0
+- features: store-readiness
+- evidence: .specs/features/store-readiness/validation.md: F3 (ciclo inicial 42f2f3c0) (backend)
+- last seen: 2026-09-27T21:53:09Z
+
+### L-024 — Beans de limpeza devem funcionar com dependências opcionais sem transformar indisponibilidade de cobrança em sucesso.
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `backend` · harmful: 0
+- features: store-readiness
+- evidence: .specs/features/store-readiness/validation.md: F4 (ciclo inicial 42f2f3c0) (backend)
+- last seen: 2026-09-27T21:53:09Z
+
+### L-025 — Testes de integração de exclusão devem usar a composição real de limpeza de dados.
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `backend` · harmful: 0
+- features: store-readiness
+- evidence: .specs/features/store-readiness/validation.md: F5 (ciclo inicial 42f2f3c0) (backend)
+- last seen: 2026-09-27T21:53:09Z
+
+### L-026 — Prove chamadas e payloads no adapter real de exclusão de identidade, além do fake do caso de uso.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `backend` · harmful: 0
+- features: store-readiness
+- evidence: .specs/features/store-readiness/validation.md: M5 (ciclo inicial 42f2f3c0) (backend)
+- last seen: 2026-09-27T21:53:09Z
+
+### L-027 — Prove em PostgreSQL a remoção de credenciais financeiras após cancelamento.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `backend` · harmful: 0
+- features: store-readiness
+- evidence: .specs/features/store-readiness/validation.md: M6 (ciclo inicial 42f2f3c0) (backend)
+- last seen: 2026-09-27T21:53:09Z
+
+### L-028 — Prove encerramento de sessão na composição da jornada, além da emissão de um efeito.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `mobile` · harmful: 0
+- features: store-readiness
+- evidence: .specs/features/store-readiness/validation.md: F7 (ciclo inicial 42f2f3c0) (mobile)
+- last seen: 2026-09-27T21:53:09Z
+
+### L-029 — Explicite a janela de autenticação recente e as categorias de retenção no contrato de exclusão.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `access` · harmful: 0
+- features: store-readiness
+- evidence: .specs/features/store-readiness/validation.md: SR4 (ciclo inicial 42f2f3c0) (access)
+- last seen: 2026-09-27T21:53:09Z
+
 ## Quarantined (failed when applied — ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
