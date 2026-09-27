@@ -1,12 +1,21 @@
 import groovy.json.JsonSlurper
+import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.roborazzi)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
     id("saqz.android-application")
     id("saqz.detekt")
+}
+
+// Configless dev uses the auth emulator. Production is validated below before any
+// build can run. Crashlytics still generates its build ID for every variant.
+googleServices {
+    missingGoogleServicesStrategy = MissingGoogleServicesStrategy.IGNORE
 }
 
 data class FirebaseAndroidConfig(
@@ -138,6 +147,21 @@ android {
     }
 }
 
+// Aggregate tasks (for example `assemble`) also build prod without naming it on
+// the command line. Never package the placeholder configuration in those builds.
+androidComponents.onVariants(androidComponents.selector().withFlavor("environment" to "prod")) { variant ->
+    val variantName = variant.name.replaceFirstChar { it.uppercaseChar() }
+    val configFile = layout.projectDirectory.file("src/prod/google-services.json").asFile
+    val validateFirebase = tasks.register("validate${variantName}Firebase") {
+        doLast {
+            check(configFile.isFile) { "Missing Android Firebase config: ${configFile.path}" }
+        }
+    }
+    tasks.matching { it.name == "pre${variantName}Build" }.configureEach {
+        dependsOn(validateFirebase)
+    }
+}
+
 dependencies {
     implementation(project(":compose-app"))
     implementation(project(":core:network"))
@@ -223,17 +247,4 @@ fun environmentProperty(name: String, required: Boolean, fallback: String): Stri
     val value = providers.gradleProperty(name).orNull?.trim().orEmpty()
     require(value.isNotEmpty() || !required) { "Missing required Gradle property: $name" }
     return value.ifEmpty { fallback }
-}
-
-// Crashlytics entrou sem o plugin Gradle (VUL-251): o app não minifica, então não há mapping do
-// R8 para subir. No dia em que alguém ligar a minificação, o stack trace de produção ficaria
-// ilegível em silêncio. Falhe alto antes: ligar minify exige aplicar `com.google.firebase.crashlytics`
-// (e o google-services de que ele depende) no mesmo PR, e remover esta trava.
-afterEvaluate {
-    android.buildTypes.forEach { type ->
-        check(!type.isMinifyEnabled || plugins.hasPlugin("com.google.firebase.crashlytics")) {
-            "Build type '${type.name}' liga isMinifyEnabled sem o plugin Gradle do Crashlytics: " +
-                "sem upload de mapping os crashes do Android chegam ofuscados. Veja o comentário acima."
-        }
-    }
 }
