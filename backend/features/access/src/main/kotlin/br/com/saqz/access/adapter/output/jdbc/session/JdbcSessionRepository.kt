@@ -11,6 +11,8 @@ import br.com.saqz.access.application.session.UserAccount
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.access.domain.PhoneNumber
 import org.springframework.jdbc.core.simple.JdbcClient
+import org.springframework.jdbc.datasource.DataSourceTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 import java.sql.Types
 import java.util.UUID
 import javax.sql.DataSource
@@ -19,6 +21,7 @@ class JdbcSessionRepository(
     dataSource: DataSource,
 ) : SessionRepository, AccountDeletionRepository {
     private val jdbc = JdbcClient.create(dataSource)
+    private val transaction = TransactionTemplate(DataSourceTransactionManager(dataSource))
 
     override fun suspendedAt(subject: String): java.time.Instant? = jdbc.sql(
         "SELECT suspended_at FROM access_users " +
@@ -43,7 +46,12 @@ class JdbcSessionRepository(
         .optional()
         .orElse(null)
 
-    override fun upsertAndLoad(command: SessionUpsert): SessionView {
+    override fun upsertAndLoad(command: SessionUpsert): SessionView = checkNotNull(transaction.execute {
+        lockIdentity(command.subject)
+        upsertLocked(command)
+    })
+
+    private fun upsertLocked(command: SessionUpsert): SessionView {
         if (deletionRequested(command.subject)) throw br.com.saqz.access.application.session.AccountDeleted()
         // O nome do token só vale na criação: depois disso quem manda é o PATCH do perfil. O token
         // guarda o nome do cadastro para sempre, e espelhá-lo aqui revertia toda renomeação.
@@ -103,7 +111,12 @@ class JdbcSessionRepository(
         "SELECT EXISTS (SELECT 1 FROM account_deletion_requests WHERE subject_digest = sha256(convert_to(:subject, 'UTF8')))",
     ).param("subject", subject).query(Boolean::class.java).single()
 
-    override fun softDelete(subject: String, expectedUserId: UUID?): UUID? {
+    override fun softDelete(subject: String, expectedUserId: UUID?): UUID? = transaction.execute {
+        lockIdentity(subject)
+        softDeleteLocked(subject, expectedUserId)
+    }
+
+    private fun softDeleteLocked(subject: String, expectedUserId: UUID?): UUID? {
         val userId = jdbc.sql(
             "SELECT id FROM access_users WHERE firebase_subject = :subject AND deleted_at IS NULL FOR UPDATE",
         )
@@ -152,6 +165,14 @@ class JdbcSessionRepository(
             .update()
 
         return userId
+    }
+
+    // Take this before any access_users row lock. Separate subsequent statements get
+    // a fresh READ COMMITTED snapshot after waiting, so an old in-flight bootstrap
+    // cannot recreate a UID after the deletion transaction commits its tombstone.
+    private fun lockIdentity(subject: String) {
+        jdbc.sql("SELECT pg_advisory_xact_lock(hashtextextended(:subject, 0))")
+            .param("subject", subject).query { _, _ -> Unit }.single()
     }
 
     override fun updateProfile(command: ProfileCompletion): SessionView? {

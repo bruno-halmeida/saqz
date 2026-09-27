@@ -15,6 +15,9 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
 import kotlin.test.*
 
 class AccountDeletionPersistenceTest {
@@ -102,6 +105,42 @@ class AccountDeletionPersistenceTest {
         assertThrows<AccountDeletionIdentityMismatch> { sessions.softDelete("person-a", UUID.randomUUID()) }
         assertFalse(sessions.deletionRequested("person-a"))
         assertNotNull(sessions.existingUser("person-a"))
+    }
+
+    @Test
+    fun `bootstrap racing an uncommitted deletion cannot recreate the deleted identity`() {
+        val db = TestPostgres.migrated("classpath:db/migration", owner = this).dataSource
+        val sessions = JdbcSessionRepository(db)
+        val subject = "racing-person"
+        val user = sessions.upsertAndLoad(command(subject)).user.id
+        val jdbc = JdbcClient.create(db)
+        val transaction = TransactionTemplate(DataSourceTransactionManager(db))
+        val executor = Executors.newSingleThreadExecutor()
+        var request: Future<Result<*>>? = null
+        try {
+            transaction.executeWithoutResult {
+                sessions.softDelete(subject, user)
+                request = executor.submit<Result<*>> { runCatching { sessions.upsertAndLoad(command(subject)) } }
+                val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+                var waiting = false
+                while (System.nanoTime() < deadline) {
+                    jdbc.sql("SELECT pg_stat_clear_snapshot()").query { _, _ -> Unit }.single()
+                    waiting = jdbc.sql("""SELECT EXISTS (SELECT 1 FROM pg_stat_activity
+                        WHERE datname = current_database() AND pid <> pg_backend_pid()
+                          AND wait_event_type = 'Lock')""").query(Boolean::class.java).single()
+                    if (waiting) break
+                    Thread.sleep(20)
+                }
+                assertTrue(waiting, "bootstrap must overlap and wait for the deleting transaction")
+            }
+            assertIs<AccountDeleted>(assertNotNull(request).get(10, TimeUnit.SECONDS).exceptionOrNull())
+            assertEquals(0, jdbc.sql("""SELECT count(*) FROM access_users
+                WHERE firebase_subject = :subject AND deleted_at IS NULL""")
+                .param("subject", subject).query(Int::class.java).single())
+            assertTrue(sessions.deletionRequested(subject))
+        } finally {
+            executor.shutdownNow()
+        }
     }
 
     private fun command(subject: String) = SessionUpsert(subject, "$subject@example.test", true, AccessName.from("Private Name"))

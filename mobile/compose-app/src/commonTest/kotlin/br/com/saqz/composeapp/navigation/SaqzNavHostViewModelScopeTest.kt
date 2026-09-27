@@ -2,7 +2,8 @@ package br.com.saqz.composeapp.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.DisposableEffect
@@ -130,6 +131,72 @@ import org.koin.dsl.module
  */
 @OptIn(ExperimentalTestApi::class)
 class SaqzNavHostViewModelScopeTest {
+
+    @Test
+    fun completedAccountDeletionSignsOutAndClearsTheAuthenticatedStack() = withProbes { _, _ ->
+        val original = KoinPlatform.getKoin().get<ProfileGateway>()
+        val response = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val deletions = mutableListOf<String>()
+        val sessionGateway = object : br.com.saqz.access.domain.session.SessionGateway {
+            override suspend fun bootstrap() = SaqzResult.Success(AccessSession(ana, emptyList()))
+            override suspend fun completeProfile(phone: String, displayName: String?) = bootstrap()
+            override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String) = SaqzResult.Success(Unit)
+        }
+        val profile = object : ProfileGateway by original {
+            override suspend fun bootstrap() = SaqzResult.Success(Profile(
+                ProfileUser("ana", "ana@exemplo.com", "Ana", null, null, false, PhoneVisibility.NOBODY, null, true, null),
+                emptyList(),
+            ))
+            override suspend fun deleteSession(expectedUserId: String): SaqzResult<Unit, br.com.saqz.profile.domain.ProfileError> {
+                deletions += expectedUserId
+                response.await()
+                return SaqzResult.Success(Unit)
+            }
+        }
+        val authorization = object : br.com.saqz.profile.domain.AccountDeletionAuthorization {
+            override val supportsApple = false
+            override fun authorize(
+                expectedUserId: String, method: br.com.saqz.profile.domain.AccountDeletionMethod, password: String,
+                done: (br.com.saqz.profile.domain.AccountDeletionAuthorizationResult) -> Unit,
+            ): br.com.saqz.profile.domain.AccountDeletionCancellation {
+                assertEquals("ana", expectedUserId)
+                done(br.com.saqz.profile.domain.AccountDeletionAuthorizationResult.AUTHORIZED)
+                return br.com.saqz.profile.domain.AccountDeletionCancellation { }
+            }
+        }
+        loadKoinModules(module {
+            single<br.com.saqz.access.domain.session.SessionGateway> { sessionGateway }
+            single<ProfileGateway> { profile }
+            single<br.com.saqz.profile.domain.AccountDeletionAuthorization> { authorization }
+        })
+        runComposeUiTest {
+            val access = KoinPlatform.getKoin().get<AccessViewModel>()
+            access.onIntent(AccessIntent.Session(SessionIntent.Accept(
+                br.com.saqz.access.presentation.AuthTransition.Authenticated(
+                    br.com.saqz.access.domain.port.NativeUser("provider-ana", "ana@exemplo.com", true, "Ana"),
+                ),
+            )))
+            val backStack = NavBackStack<NavKey>(SaqzShellDestination.Home)
+            setContent { NavHostUnderTest(access.state.collectAsState(), backStack, access::onIntent) }
+            awaitText(AnaBanner)
+            backStack.add(br.com.saqz.profile.presentation.navigation.ProfileRoute.DeleteAccount)
+            awaitText("ana@exemplo.com")
+            onNodeWithTag("account-deletion-confirm").performScrollTo().performClick()
+            onNodeWithTag("account-deletion-google").performScrollTo().performClick()
+            waitForIdle()
+            assertEquals(listOf("ana"), deletions)
+            assertTrue(access.state.value.session is SessionAccessState.Ready)
+            assertEquals(br.com.saqz.profile.presentation.navigation.ProfileRoute.DeleteAccount, backStack.last())
+            response.complete(Unit)
+            waitUntil(timeoutMillis = 10_000) {
+                backStack.toList() == listOf<NavKey>(br.com.saqz.access.navigation.AccessRoute.Login)
+            }
+            assertEquals(SessionAccessState.SignedOut, access.state.value.session)
+            val machine = KoinPlatform.getKoin().get<br.com.saqz.access.presentation.SessionAccessStateMachine>()
+            kotlin.test.assertNull(machine.activeSessionKey.value)
+            onNodeWithTag("login-submit").assertExists()
+        }
+    }
 
     @Test
     fun theBannerAndTheHomeTabShareOneViewModel() = withProbes { probe, _ ->
@@ -461,7 +528,7 @@ private fun ComposeUiTest.awaitText(text: String) = waitUntil(timeoutMillis = 10
 
 @Composable
 private fun NavHostUnderTest(
-    session: MutableState<AccessUiState>,
+    session: State<AccessUiState>,
     backStack: NavBackStack<NavKey> = NavBackStack(SaqzShellDestination.Home),
     onIntent: (AccessIntent) -> Unit = {},
 ) = SaqzTheme {
