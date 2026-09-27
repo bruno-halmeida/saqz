@@ -131,7 +131,11 @@ struct LocalFirebaseConfiguration: Equatable {
         guard
             let url = bundle.url(forResource: "GoogleService-Info", withExtension: "plist")
         else {
+            #if DEBUG
             return .local
+            #else
+            preconditionFailure("Release requires a bundled production GoogleService-Info.plist")
+            #endif
         }
 
         guard
