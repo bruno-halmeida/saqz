@@ -1,0 +1,34 @@
+[
+  {
+    "file": "01-grupos.png",
+    "width": 1080,
+    "height": 1920,
+    "format": "PNG RGB 24 bits",
+    "bytes": 269275,
+    "alt": "Saqz: lista de grupos de vôlei e futevôlei, próximos jogos e convite para entrar em um grupo."
+  },
+  {
+    "file": "02-presenca.png",
+    "width": 1080,
+    "height": 1920,
+    "format": "PNG RGB 24 bits",
+    "bytes": 309415,
+    "alt": "Saqz: próximo jogo com data, local, confirmação de presença e nove de doze participantes confirmados."
+  },
+  {
+    "file": "03-membros.png",
+    "width": 1080,
+    "height": 1920,
+    "format": "PNG RGB 24 bits",
+    "bytes": 318590,
+    "alt": "Saqz: gestão dos participantes, pedidos para entrar no grupo, administradores e membros."
+  },
+  {
+    "file": "04-financeiro.png",
+    "width": 1080,
+    "height": 1920,
+    "format": "PNG RGB 24 bits",
+    "bytes": 291497,
+    "alt": "Saqz: caixa geral com os saldos de cada grupo, entradas, saídas e valores pendentes de recebimento."
+  }
+]

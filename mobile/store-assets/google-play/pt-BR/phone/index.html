@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Saqz — capturas para smartphones</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="content.js" defer></script>
+    <script src="preview.js" defer></script>
+  </head>
+  <body>
+    <header class="workspace-header">
+      <div>
+        <p class="workspace-eyebrow">Saqz · Google Play · PT-BR</p>
+        <h1>As quatro telas da sua loja.</h1>
+        <p>1080 × 1920 px · Edite os textos em <code>content.js</code> e o visual em <code>styles.css</code>.</p>
+      </div>
+      <label class="zoom-control">Prévia <select id="preview-scale" aria-label="Tamanho da prévia">
+        <option value="0.25">25%</option>
+        <option value="0.32" selected>32%</option>
+        <option value="0.4">40%</option>
+        <option value="0.5">50%</option>
+      </select></label>
+    </header>
+    <main id="gallery" class="gallery" aria-label="Peças para smartphones"></main>
+    <noscript>Ative JavaScript para visualizar as quatro peças.</noscript>
+    <template id="asset-template">
+      <figure class="preview-item">
+        <div class="preview-window">
+          <article class="artboard">
+            <div class="court-mark" aria-hidden="true"><span></span></div>
+            <div class="accent-curve" aria-hidden="true"></div>
+            <div class="brand-row">
+              <img class="brand-logo" src="assets/saqz-logo.svg" alt="Saqz">
+              <p class="feature-label"></p>
+            </div>
+            <header class="hero">
+              <h2 class="headline"><span></span><span class="highlight"></span></h2>
+              <p class="description"></p>
+            </header>
+            <div class="phone-frame">
+              <span class="phone-speaker" aria-hidden="true"></span>
+              <span class="phone-camera" aria-hidden="true"></span>
+              <span class="phone-button phone-button-volume" aria-hidden="true"></span>
+              <span class="phone-button phone-button-power" aria-hidden="true"></span>
+              <div class="screen-surface">
+                <img class="app-screen" decoding="sync" draggable="false" alt="">
+              </div>
+            </div>
+            <div class="sequence" aria-hidden="true"><span class="sequence-line"></span><span class="sequence-number"></span></div>
+          </article>
+        </div>
+        <figcaption><span class="caption-name"></span><a class="png-link" download>Baixar PNG</a></figcaption>
+      </figure>
+    </template>
+  </body>
+</html>

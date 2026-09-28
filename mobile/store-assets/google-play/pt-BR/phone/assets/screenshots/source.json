@@ -1,0 +1,32 @@
+{
+  "sourceCommit": "60a3bb4d89b8e08dfc314a57013661791af4a748",
+  "capturedOn": "2026-09-28",
+  "renderer": "Compose + Roborazzi, Android API 35 / Pixel 7",
+  "data": "Dados de demonstração dos cenários nativos existentes.",
+  "files": [
+    {
+      "file": "grupos.png",
+      "source": "mobile/features/groups/presentation/screenshots/vul-67/group-list-2n-lista-cheia.png",
+      "test": "br.com.saqz.groups.presentation.ui.list.GroupListScreenshotTest.filled",
+      "sha256": "8f5efa8a39a2eeed67f7ae50dbf9a91e8b72d9d8888c146247a3f85b0a08361a"
+    },
+    {
+      "file": "presenca.png",
+      "source": "mobile/features/groups/presentation/screenshots/vul-222/flow6b-01-atleta-sem-resposta.png",
+      "test": "br.com.saqz.groups.presentation.ui.home.HomeJourneyScreenshotTest.s01AthleteWithoutResponse",
+      "sha256": "f8ac397fb2fe3c574dbcf123da719dffb34425e0951af0a805b7bdff7af4b803"
+    },
+    {
+      "file": "membros.png",
+      "source": "mobile/features/groups/presentation/screenshots/vul-70/group-members-list.png",
+      "test": "br.com.saqz.groups.presentation.ui.members.GroupMembersScreenshotTest.list",
+      "sha256": "c67b75cdb0a3ee1fce0bddbf1f0fd7b804acdd804ddf095e42442c292bcebe5c"
+    },
+    {
+      "file": "financeiro.png",
+      "source": "mobile/features/groups/presentation/screenshots/vul-181/finance-overview-filled.png",
+      "test": "br.com.saqz.groups.presentation.ui.finance.overview.FinanceOverviewScreenshotTest.filled",
+      "sha256": "7f6fca337c698fe70743849ef7107f2176c1f971498aca1b23726b0ffb55c760"
+    }
+  ]
+}

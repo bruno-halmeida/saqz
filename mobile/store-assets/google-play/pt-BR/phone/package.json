@@ -1,0 +1,12 @@
+{
+  "name": "saqz-google-play-phone-assets",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Quatro peças editáveis de 1080 × 1920 para Google Play",
+  "scripts": {
+    "export": "node export.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.61.1"
+  }
+}
