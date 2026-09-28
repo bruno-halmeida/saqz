@@ -2,7 +2,12 @@
 
 Identidade: `app.saqz` nas duas plataformas; Apple Team ID `8JG4JP8VMT`;
 domínio `https://links.saqz.app`. iOS Debug e Release usam a associação pública.
-O certificado Android atual é de desenvolvimento: **não está pronto para Play**.
+Os certificados Android do Play foram configurados em 28/09/2026: chave atual
+clássica (`hybrid_classical_cert.der`), pós-quântica (`hybrid_pqc_cert.der`) e
+certificado anterior (`deployment_cert.der`). Os dois fingerprints atuais foram
+confirmados pelo titular no Play Console. O certificado de debug foi removido.
+Ainda é necessário publicar o arquivo e homologar a associação no app instalado
+pelo Play.
 
 ## Obter e aplicar o certificado do Play
 
