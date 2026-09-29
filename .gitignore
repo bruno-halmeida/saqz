@@ -38,6 +38,11 @@ firebase-export-*/
 !.env.*.example
 google-services.json
 GoogleService-Info.plist
+*.jks
+*.keystore
+
+# Bundle assinado que o "Generate Signed Bundle" do Android Studio grava em <módulo>/<flavor>/release.
+mobile/android-app/prod/
 
 # Operating systems
 .DS_Store
