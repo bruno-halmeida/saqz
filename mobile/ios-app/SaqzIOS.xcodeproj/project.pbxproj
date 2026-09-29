@@ -13,11 +13,11 @@
 		A10000000000000000000004 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000131 /* FirebaseAuth */; };
 		A10000000000000000000005 /* SaqzIOSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* SaqzIOSTests.swift */; };
 		A10000000000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000018 /* Assets.xcassets */; };
-		A10000000000000000000141 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000140 /* PrivacyInfo.xcprivacy */; };
 		A10000000000000000000007 /* LaunchContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000019 /* LaunchContractTests.swift */; };
 		A10000000000000000000008 /* AccessibilityPreferencesObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */; };
 		A10000000000000000000009 /* AccessibilityPreferencesObserverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */; };
 		A1000000000000000000000A /* AccessibilityUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001C /* AccessibilityUITests.swift */; };
+		A10000000000000000000141 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000140 /* PrivacyInfo.xcprivacy */; };
 		A20000000000000000000001 /* IOSAuthAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* IOSAuthAdapter.swift */; };
 		A20000000000000000000002 /* IOSAuthAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* IOSAuthAdapterTests.swift */; };
 		A20000000000000000000003 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000131 /* GoogleSignIn */; };
@@ -36,17 +36,17 @@
 		D80000000000000000000002 /* IOSProfilePhotoAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000012 /* IOSProfilePhotoAdapterTests.swift */; };
 		E90000000000000000000001 /* GroupsInvite/IOSInviteAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = E90000000000000000000011 /* GroupsInvite/IOSInviteAdapters.swift */; };
 		E90000000000000000000002 /* IOSInviteUrlStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E90000000000000000000012 /* IOSInviteUrlStoreTests.swift */; };
+		EE0000000000000000000011 /* SaqzGameAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000001 /* SaqzGameAttributes.swift */; };
+		EE0000000000000000000012 /* SaqzGameAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000001 /* SaqzGameAttributes.swift */; };
+		EE0000000000000000000013 /* SaqzLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000003 /* SaqzLiveActivityWidget.swift */; };
+		EE0000000000000000000014 /* SaqzLiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000004 /* SaqzLiveActivityBundle.swift */; };
+		EE0000000000000000000032 /* SaqzLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000002 /* SaqzLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F09000000000000000000001 /* IOSReceiptDocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09000000000000000000002 /* IOSReceiptDocumentPicker.swift */; };
 		F09100000000000000000001 /* IOSNotificationPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09100000000000000000002 /* IOSNotificationPort.swift */; };
 		F09100000000000000000003 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = F09100000000000000000004 /* FirebaseMessaging */; };
 		F09200000000000000000001 /* IOSAnalyticsSink.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09200000000000000000002 /* IOSAnalyticsSink.swift */; };
 		F09200000000000000000003 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = F09200000000000000000004 /* FirebaseAnalyticsCore */; };
 		F09300000000000000000003 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = F09300000000000000000004 /* FirebaseCrashlytics */; };
-		EE0000000000000000000011 /* SaqzGameAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000001 /* SaqzGameAttributes.swift */; };
-		EE0000000000000000000012 /* SaqzGameAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000001 /* SaqzGameAttributes.swift */; };
-		EE0000000000000000000013 /* SaqzLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000003 /* SaqzLiveActivityWidget.swift */; };
-		EE0000000000000000000014 /* SaqzLiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000004 /* SaqzLiveActivityBundle.swift */; };
-		EE0000000000000000000032 /* SaqzLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EE0000000000000000000002 /* SaqzLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -96,11 +96,11 @@
 		A10000000000000000000016 /* SaqzIOSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzIOSTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000017 /* SaqzIOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SaqzIOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		A10000000000000000000140 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A10000000000000000000019 /* LaunchContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchContractTests.swift; sourceTree = "<group>"; };
 		A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityPreferencesObserver.swift; sourceTree = "<group>"; };
 		A1000000000000000000001B /* AccessibilityPreferencesObserverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityPreferencesObserverTests.swift; sourceTree = "<group>"; };
 		A1000000000000000000001C /* AccessibilityUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityUITests.swift; sourceTree = "<group>"; };
+		A10000000000000000000140 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A20000000000000000000011 /* IOSAuthAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAuthAdapter.swift; sourceTree = "<group>"; };
 		A20000000000000000000012 /* IOSAuthAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAuthAdapterTests.swift; sourceTree = "<group>"; };
 		A30000000000000000000011 /* IOSLinkAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLinkAdapter.swift; sourceTree = "<group>"; };
@@ -119,14 +119,14 @@
 		D80000000000000000000012 /* IOSProfilePhotoAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSProfilePhotoAdapterTests.swift; sourceTree = "<group>"; };
 		E90000000000000000000011 /* GroupsInvite/IOSInviteAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsInvite/IOSInviteAdapters.swift; sourceTree = "<group>"; };
 		E90000000000000000000012 /* IOSInviteUrlStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSInviteUrlStoreTests.swift; sourceTree = "<group>"; };
-		F09000000000000000000002 /* IOSReceiptDocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSReceiptDocumentPicker.swift; sourceTree = "<group>"; };
-		F09100000000000000000002 /* IOSNotificationPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSNotificationPort.swift; sourceTree = "<group>"; };
-		F09200000000000000000002 /* IOSAnalyticsSink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAnalyticsSink.swift; sourceTree = "<group>"; };
 		EE0000000000000000000001 /* SaqzGameAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzGameAttributes.swift; sourceTree = "<group>"; };
 		EE0000000000000000000002 /* SaqzLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SaqzLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE0000000000000000000003 /* SaqzLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzLiveActivityWidget.swift; sourceTree = "<group>"; };
 		EE0000000000000000000004 /* SaqzLiveActivityBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzLiveActivityBundle.swift; sourceTree = "<group>"; };
 		EE0000000000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F09000000000000000000002 /* IOSReceiptDocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSReceiptDocumentPicker.swift; sourceTree = "<group>"; };
+		F09100000000000000000002 /* IOSNotificationPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSNotificationPort.swift; sourceTree = "<group>"; };
+		F09200000000000000000002 /* IOSAnalyticsSink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAnalyticsSink.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -577,20 +577,45 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
 				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
@@ -599,13 +624,38 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_VERSION = 6.0;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -616,10 +666,9 @@
 			buildSettings = {
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				LINKS_DOMAIN = "links.saqz.app";
 				CODE_SIGN_ENTITLEMENTS = SaqzIOS/SaqzIOS.debug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 8JG4JP8VMT;
 				ENABLE_PREVIEWS = YES;
@@ -629,12 +678,15 @@
 				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SaqzIOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Saqz;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.1;
+				LINKS_DOMAIN = links.saqz.app;
+				MARKETING_VERSION = 0.0.2;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-weak_framework",
@@ -646,8 +698,13 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SAQZ_API_BASE_URL = "http://127.0.0.1:8080";
 				SAQZ_ENVIRONMENT = dev;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -656,10 +713,9 @@
 			buildSettings = {
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				LINKS_DOMAIN = "links.saqz.app";
 				CODE_SIGN_ENTITLEMENTS = SaqzIOS/SaqzIOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 8JG4JP8VMT;
 				ENABLE_PREVIEWS = YES;
@@ -669,12 +725,15 @@
 				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SaqzIOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Saqz;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.1;
+				LINKS_DOMAIN = links.saqz.app;
+				MARKETING_VERSION = 0.0.2;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-weak_framework",
@@ -686,8 +745,13 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SAQZ_API_BASE_URL = "https://api.saqz.app";
 				SAQZ_ENVIRONMENT = prod;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -751,7 +815,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 8JG4JP8VMT;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SaqzLiveActivity/Info.plist;
@@ -761,7 +825,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.0.1;
+				MARKETING_VERSION = 0.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = app.saqz.LiveActivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -773,7 +837,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 8JG4JP8VMT;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SaqzLiveActivity/Info.plist;
@@ -783,7 +847,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.0.1;
+				MARKETING_VERSION = 0.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = app.saqz.LiveActivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
