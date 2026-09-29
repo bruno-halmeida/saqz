@@ -1,5 +1,6 @@
 import groovy.json.JsonSlurper
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -52,6 +53,13 @@ val requiresProdConfig = gradle.startParameter.taskNames.any {
     it.contains("Prod", ignoreCase = true) || it.contains("Release", ignoreCase = true)
 }
 
+// local.properties fica fora do git: é onde mora o que é só desta máquina, como a chave de upload.
+// Precisa vir antes do primeiro environmentProperty, que já consulta este mapa.
+val localProperties = Properties().apply {
+    providers.fileContents(rootProject.layout.projectDirectory.file("local.properties"))
+        .asText.orNull?.let { load(it.reader()) }
+}
+
 // Host dos links de convite/presença (App Links): o mesmo em dev e prod, servido pela links-page.
 val linksDomain = environmentProperty(
     name = "saqz.links.domain",
@@ -75,8 +83,8 @@ android {
     defaultConfig {
         applicationId = "app.saqz"
         // O Play exige versionCode inteiro e maior a cada upload; versionName é só o texto que o usuário vê.
-        versionCode = 1
-        versionName = "0.0.1"
+        versionCode = 4
+        versionName = "0.0.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["linksDomain"] = linksDomain
         buildConfigField("String", "LINKS_DOMAIN", linksDomain.toBuildConfigString())
@@ -84,6 +92,29 @@ android {
 
     buildFeatures {
         buildConfig = true
+    }
+
+    signingConfigs {
+        // A chave de upload mora fora do repositório (local.properties, ~/.gradle/gradle.properties ou -P). Sem ela o
+        // release sai sem assinatura, como antes, e o "Generate Signed Bundle" do Studio segue igual.
+        val uploadStoreFile = environmentProperty(name = "saqz.upload.storeFile", required = false, fallback = "")
+        if (uploadStoreFile.isNotEmpty()) {
+            create("upload") {
+                storeFile = file(uploadStoreFile)
+                storePassword = environmentProperty(name = "saqz.upload.storePassword", required = true, fallback = "")
+                keyAlias = environmentProperty(name = "saqz.upload.keyAlias", required = true, fallback = "")
+                keyPassword = environmentProperty(name = "saqz.upload.keyPassword", required = true, fallback = "")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.findByName("upload")
+            // R8 enxuga o código e gera o mapa de desofuscação, que vai dentro do AAB e para o Crashlytics.
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+        }
     }
 
     testOptions {
@@ -244,7 +275,8 @@ fun firebaseAndroidConfig(
 fun String.toBuildConfigString() = "\"$this\""
 
 fun environmentProperty(name: String, required: Boolean, fallback: String): String {
-    val value = providers.gradleProperty(name).orNull?.trim().orEmpty()
+    // -P e gradle.properties ganham; local.properties cobre o que não pode ser versionado.
+    val value = (providers.gradleProperty(name).orNull ?: localProperties.getProperty(name))?.trim().orEmpty()
     require(value.isNotEmpty() || !required) { "Missing required Gradle property: $name" }
     return value.ifEmpty { fallback }
 }
