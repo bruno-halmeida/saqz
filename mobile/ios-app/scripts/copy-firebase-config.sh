@@ -2,7 +2,7 @@
 set -eu
 case "$CONFIGURATION" in
     Debug) firebase_environment="Dev" ;;
-    Release) firebase_environment="Prod" ;;
+    Release|ProdDebug) firebase_environment="Prod" ;;
     *) echo "error: Unsupported Firebase configuration: $CONFIGURATION" >&2; exit 1 ;;
 esac
 
@@ -10,7 +10,7 @@ if [ -n "$firebase_environment" ]; then
     plist="$SRCROOT/SaqzIOS/Config/$firebase_environment/GoogleService-Info.plist"
     resources="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
     if [ ! -f "$plist" ]; then
-        if [ "$CONFIGURATION" = "Release" ]; then
+        if [ "$firebase_environment" = "Prod" ]; then
             echo "error: Production Firebase configuration is required: $plist" >&2
             exit 1
         fi
@@ -46,10 +46,10 @@ if [ -n "$firebase_environment" ]; then
         echo "error: Firebase BUNDLE_ID must match PRODUCT_BUNDLE_IDENTIFIER" >&2
         exit 1
     fi
-    if [ "$CONFIGURATION" = "Release" ]; then
+    if [ "$firebase_environment" = "Prod" ]; then
         firebase_project=$(/usr/libexec/PlistBuddy -c "Print :PROJECT_ID" "$plist")
         if [ "$firebase_project" = "saqz-local" ] || [ "${SAQZ_ENVIRONMENT:-}" != "prod" ]; then
-            echo "error: Release requires the production Firebase environment" >&2
+            echo "error: $CONFIGURATION requires the production Firebase environment" >&2
             exit 1
         fi
     fi
@@ -59,6 +59,11 @@ if [ -n "$firebase_environment" ]; then
         built_plist="$TARGET_BUILD_DIR/$INFOPLIST_PATH"
         /usr/libexec/PlistBuddy -c "Delete :FIREBASE_ANALYTICS_COLLECTION_DEACTIVATED" "$built_plist" 2>/dev/null || true
         /usr/libexec/PlistBuddy -c "Delete :FirebaseCrashlyticsCollectionEnabled" "$built_plist" 2>/dev/null || true
+        # ProdDebug fala com o Firebase de prod, mas build de desenvolvimento não entra nas métricas reais.
+        if [ "$CONFIGURATION" = "ProdDebug" ]; then
+            /usr/libexec/PlistBuddy -c "Add :FIREBASE_ANALYTICS_COLLECTION_DEACTIVATED bool true" "$built_plist"
+            /usr/libexec/PlistBuddy -c "Add :FirebaseCrashlyticsCollectionEnabled bool false" "$built_plist"
+        fi
         client_id=$(/usr/libexec/PlistBuddy -c "Print :CLIENT_ID" "$plist" 2>/dev/null || true)
         reversed_client_id=$(/usr/libexec/PlistBuddy -c "Print :REVERSED_CLIENT_ID" "$plist" 2>/dev/null || true)
         if [ -n "$client_id" ] && [ -n "$reversed_client_id" ]; then

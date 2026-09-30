@@ -472,7 +472,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\ncase \"$CONFIGURATION\" in\n    Debug) api_key=\"dev\" ;;\n    Release) api_key=\"prod\" ;;\n    *) exit 0 ;;\nesac\n\nconfig_plist=\"$SRCROOT/../compose-app/build/xcode-api-config/saqz-api-config.plist\"\nbuilt_plist=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n\n# O Android Studio pula a fase do Gradle (OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED); cai no build setting.\nif [ -f \"$config_plist\" ]; then\n    api_base_url=$(/usr/libexec/PlistBuddy -c \"Print :$api_key\" \"$config_plist\" 2>/dev/null || true)\nelse\n    api_base_url=\"${SAQZ_API_BASE_URL:-}\"\nfi\nif [ -z \"$api_base_url\" ]; then\n    echo \"error: API base URL for '$api_key' not found in saqz-api-config.plist nor SAQZ_API_BASE_URL\"\n    exit 1\nfi\n\nif [ \"$api_key\" = \"prod\" ]; then\n    case \"$api_base_url\" in\n        https://api.saqz.app|https://api.saqz.app/) ;;\n        *) echo \"error: Release requires https://api.saqz.app\" >&2; exit 1 ;;\n    esac\nfi\n\n/usr/libexec/PlistBuddy -c \"Delete :SaqzAPIBaseURL\" \"$built_plist\" 2>/dev/null || true\n/usr/libexec/PlistBuddy -c \"Add :SaqzAPIBaseURL string $api_base_url\" \"$built_plist\"\n";
+			shellScript = "set -eu\ncase \"$CONFIGURATION\" in\n    Debug) api_key=\"dev\" ;;\n    Release|ProdDebug) api_key=\"prod\" ;;\n    *) exit 0 ;;\nesac\n\nconfig_plist=\"$SRCROOT/../compose-app/build/xcode-api-config/saqz-api-config.plist\"\nbuilt_plist=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n\n# O Android Studio pula a fase do Gradle (OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED); cai no build setting.\nif [ -f \"$config_plist\" ]; then\n    api_base_url=$(/usr/libexec/PlistBuddy -c \"Print :$api_key\" \"$config_plist\" 2>/dev/null || true)\nelse\n    api_base_url=\"${SAQZ_API_BASE_URL:-}\"\nfi\nif [ -z \"$api_base_url\" ]; then\n    echo \"error: API base URL for '$api_key' not found in saqz-api-config.plist nor SAQZ_API_BASE_URL\"\n    exit 1\nfi\n\nif [ \"$api_key\" = \"prod\" ]; then\n    case \"$api_base_url\" in\n        https://api.saqz.app|https://api.saqz.app/) ;;\n        *) echo \"error: Release requires https://api.saqz.app\" >&2; exit 1 ;;\n    esac\nfi\n\n/usr/libexec/PlistBuddy -c \"Delete :SaqzAPIBaseURL\" \"$built_plist\" 2>/dev/null || true\n/usr/libexec/PlistBuddy -c \"Add :SaqzAPIBaseURL string $api_base_url\" \"$built_plist\"\n";
 		};
 		A10000000000000000000135 /* Upload Crashlytics dSYM */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -855,6 +855,151 @@
 			};
 			name = Release;
 		};
+		A100000000000000000000A1 /* ProdDebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				KOTLIN_FRAMEWORK_BUILD_TYPE = debug;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_VERSION = 6.0;
+			};
+			name = ProdDebug;
+		};
+		A100000000000000000000A3 /* ProdDebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SaqzIOS/SaqzIOS.debug.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 8JG4JP8VMT;
+				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+				);
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SaqzIOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Saqz;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LINKS_DOMAIN = links.saqz.app;
+				MARKETING_VERSION = 0.0.2;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-weak_framework",
+					ActivityKit,
+					"-weak_framework",
+					AppIntents,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.saqz;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SAQZ_API_BASE_URL = "https://api.saqz.app";
+				SAQZ_ENVIRONMENT = prod;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = ProdDebug;
+		};
+		A100000000000000000000A5 /* ProdDebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = br.com.saqz.local.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = SaqzIOS;
+			};
+			name = ProdDebug;
+		};
+		A100000000000000000000A7 /* ProdDebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = br.com.saqz.local.unittests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SaqzIOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SaqzIOS";
+			};
+			name = ProdDebug;
+		};
+		EE00000000000000000000A2 /* ProdDebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 8JG4JP8VMT;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SaqzLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = app.saqz.LiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = ProdDebug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -863,6 +1008,7 @@
 			buildConfigurations = (
 				A10000000000000000000093 /* Debug */,
 				A10000000000000000000094 /* Release */,
+				A100000000000000000000A3 /* ProdDebug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -872,6 +1018,7 @@
 			buildConfigurations = (
 				A10000000000000000000095 /* Debug */,
 				A10000000000000000000096 /* Release */,
+				A100000000000000000000A5 /* ProdDebug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -881,6 +1028,7 @@
 			buildConfigurations = (
 				A10000000000000000000091 /* Debug */,
 				A10000000000000000000092 /* Release */,
+				A100000000000000000000A1 /* ProdDebug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -890,6 +1038,7 @@
 			buildConfigurations = (
 				A10000000000000000000097 /* Debug */,
 				A10000000000000000000098 /* Release */,
+				A100000000000000000000A7 /* ProdDebug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -899,6 +1048,7 @@
 			buildConfigurations = (
 				EE0000000000000000000052 /* Debug */,
 				EE0000000000000000000053 /* Release */,
+				EE00000000000000000000A2 /* ProdDebug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
