@@ -147,6 +147,9 @@ class GroupSetupViewModel(
                             durationMinutes = group.profile?.regularSlots?.firstOrNull()?.durationMinutes
                                 ?: it.durationMinutes,
                             form = group.toForm(),
+                            // Sem isso, salvar a edição de um grupo com horários os apagaria:
+                            // desligado, `slotsForCommand` manda a lista vazia.
+                            recurring = group.profile?.regularSlots.orEmpty().isNotEmpty(),
                             pixKey = group.profile?.pixKey,
                             pixLabel = group.profile?.pixLabel,
                         ).withSavedText(savedState)

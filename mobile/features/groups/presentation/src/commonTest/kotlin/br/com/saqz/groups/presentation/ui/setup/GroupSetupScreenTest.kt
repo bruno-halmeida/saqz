@@ -55,7 +55,7 @@ class GroupSetupScreenTest {
             }
         }
         onNodeWithTag(GroupSetupTags.TrialOffer).assertExists()
-        onNodeWithText("Teste o Organizador com até 3 grupos e atletas ilimitados. O prazo começa no primeiro grupo e é o mesmo para todos. Depois, escolha um plano pago para continuar, sem cobrança automática.").assertExists()
+        onNodeWithText("Teste o Organizador com até 3 grupos e atletas ilimitados. O prazo começa no primeiro grupo e é o mesmo para todos, sem cobrança automática.").assertExists()
     }
 
     @Test

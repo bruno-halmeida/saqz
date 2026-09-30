@@ -91,7 +91,10 @@ data class GroupSetupState(
     /** Configurações de jogo são visíveis apenas ao OWNER/ADMIN. */
     val canManageGameConfig: Boolean = false,
     // NÃO se deriva de `form.regularSlots.isEmpty()`: ligado e sem horário é o `2g`.
-    val recurring: Boolean = true,
+    // Na criação começa desligado: o primeiro cadastro são só os três campos à vista, e
+    // quadra e horários (obrigatórios com a recorrência) ficam para as opções avançadas.
+    // Na edição, o `load()` liga quando o grupo já tem horário.
+    val recurring: Boolean = false,
     // Duração é do grupo no desenho e por slot no modelo; ver GroupSetupViewModel.
     val durationMinutes: Int = GroupSetupDefaults.DurationMinutes,
     val errors: Set<GroupSetupError> = emptySet(),

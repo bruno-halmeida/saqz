@@ -15,6 +15,8 @@ import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.FakeGroupProfileGateway
 import br.com.saqz.groups.presentation.FakeGroupSystemTimeZonePort
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.sampleGroup
+import br.com.saqz.groups.presentation.sampleVersionedGroup
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import kotlinx.coroutines.Dispatchers
@@ -218,14 +220,82 @@ class GroupSetupViewModelTest {
             val updateGateway = FakeGroupProfileGateway()
             val editing = viewModel(
                 mode = GroupSetupMode.Edit(groupId = "grp-1"),
-                recurring = false,
                 profileGateway = updateGateway,
             )
+            // O `load()` liga a recorrência porque o grupo tem horário; a pessoa desliga.
+            runCurrent()
+            editing.onIntent(GroupSetupIntent.ToggleRecurring(false))
             editing.onIntent(GroupSetupIntent.Submit)
             runCurrent()
 
             assertEquals(emptyList(), updateGateway.lastUpdateCommand?.form?.regularSlots)
         }
+
+    @Test
+    fun `criar comeca sem recorrencia e aceita so os tres campos a vista`() = runTest(mainDispatcher) {
+        val creating = GroupSetupViewModel(
+            initialState = GroupSetupState(
+                mode = GroupSetupMode.Create,
+                form = GroupSetupDefaults.Form.copy(
+                    name = "Vôlei de terça",
+                    modality = GroupModality.COURT_VOLLEYBALL,
+                ),
+            ),
+            savedState = SavedStateHandle(),
+            groupGateway = FakeGroupGateway(),
+            profileGateway = FakeGroupProfileGateway(),
+            timeZonePort = FakeGroupSystemTimeZonePort(),
+        )
+
+        creating.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(false, creating.state.value.recurring)
+        assertEquals(emptySet(), creating.state.value.errors)
+        assertEquals(GroupSetupStep.Review, creating.state.value.step)
+    }
+
+    @Test
+    fun `editar grupo com horario carrega a recorrencia ligada e preserva os horarios`() =
+        runTest(mainDispatcher) {
+            val gateway = FakeGroupProfileGateway()
+            val editing = viewModel(
+                mode = GroupSetupMode.Edit(groupId = "grp-1"),
+                recurring = false,
+                profileGateway = gateway,
+            )
+            runCurrent()
+
+            assertEquals(true, editing.state.value.recurring)
+
+            editing.onIntent(GroupSetupIntent.Submit)
+            runCurrent()
+
+            assertEquals(1, gateway.lastUpdateCommand?.form?.regularSlots?.size)
+        }
+
+    @Test
+    fun `editar grupo sem horario carrega a recorrencia desligada`() = runTest(mainDispatcher) {
+        val group = sampleGroup()
+        val gateway = FakeGroupProfileGateway(
+            readResult = SaqzResult.Success(
+                sampleVersionedGroup(group.copy(profile = group.profile?.copy(regularSlots = emptyList()))),
+            ),
+        )
+        val editing = viewModel(
+            mode = GroupSetupMode.Edit(groupId = "grp-1"),
+            recurring = true,
+            profileGateway = gateway,
+        )
+        runCurrent()
+
+        assertEquals(false, editing.state.value.recurring)
+
+        editing.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(emptySet(), editing.state.value.errors)
+    }
 
     @Test
     fun `excluir so vale no modo de edicao`() = runTest(mainDispatcher) {
