@@ -43,7 +43,6 @@ import br.com.saqz.access.resources.login_password
 import br.com.saqz.access.resources.login_signup_link
 import br.com.saqz.access.resources.login_signup_prompt
 import br.com.saqz.access.resources.login_submit
-import br.com.saqz.access.resources.login_supporting_text
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzDivider
@@ -85,8 +84,9 @@ private object LoginMetrics {
     val fieldGap = 12.dp
     val wideGap = 14.dp
     val blockGap = 18.dp
-    val brandGap = 24.dp
-    val headerGap = 30.dp
+    // Mais justos desde que o subtítulo saiu: marca, título e formulário leem como um bloco.
+    val brandGap = 16.dp
+    val headerGap = 20.dp
     val signupPromptGap = 20.dp
     val signupLinkGap = 8.dp
 
@@ -111,8 +111,8 @@ private object LoginMetrics {
 }
 
 /**
- * 1a (entrar) e 1i (credenciais recusadas) — a mesma tela: o 1i é o 1a com o alerta no
- * lugar do subtítulo, erro por campo e a frase do contador embaixo do botão.
+ * 1a (entrar) e 1i (credenciais recusadas) — a mesma tela: o 1i é o 1a com o alerta entre
+ * o título e os campos, erro por campo e a frase do contador embaixo do botão.
  *
  * As duas são as **únicas** telas do fluxo com topo de 36 (`spacious`), porque são as
  * únicas sem botão de voltar; e as únicas com a marca grande e o lettering.
@@ -138,8 +138,6 @@ fun LoginScreen(
             title = "${stringResource(Res.string.login_headline_first)}\n" +
                 stringResource(Res.string.login_headline_second),
             emphasis = stringResource(Res.string.login_headline_emphasis),
-            // 1i não tem subtítulo: o alerta ocupa o lugar dele.
-            subtitle = if (alert == null) stringResource(Res.string.login_supporting_text) else null,
             spacious = true,
         )
         Spacer(Modifier.height(LoginMetrics.headerGap))

@@ -103,7 +103,7 @@ class LoginScreenTest {
         content()
         onNodeWithText("Organize seu grupo.", substring = true).assertExists()
         onNodeWithText("Jogue junto.", substring = true).assertExists()
-        onNodeWithText("Entre para acompanhar seus grupos, jogos e pagamentos.").assertExists()
+        onNodeWithTag(AccessChromeTags.Subtitle).assertDoesNotExist()
         onNodeWithText("ou continue com").assertExists()
         onNodeWithText("Entrar com Google").assertExists()
     }
@@ -183,13 +183,12 @@ class LoginScreenTest {
 
     // ---- 1i ----
 
-    // A primeira diferença do 1i: o subtítulo some e o alerta ocupa o lugar dele. Os dois
-    // juntos empurrariam os campos para fora do primeiro dobra.
-    @Test fun `the refusal alert takes the place of the subtitle`() = runComposeUiTest {
+    // A primeira diferença do 1i: o alerta entra entre o título e os campos.
+    @Test fun `the refusal alert sits between the title and the fields`() = runComposeUiTest {
         content(state = refused())
         onNodeWithTag(LoginTags.Alert).assertExists()
         onNodeWithText("E-mail ou senha incorretos.", substring = true).assertExists()
-        onNodeWithText("Entre para acompanhar seus grupos, jogos e pagamentos.").assertDoesNotExist()
+        onNodeWithTag(AccessChromeTags.Subtitle).assertDoesNotExist()
     }
 
     @Test fun `each field carries its own refusal`() = runComposeUiTest {

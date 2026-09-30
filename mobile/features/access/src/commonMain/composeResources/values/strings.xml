@@ -20,7 +20,6 @@
     <string name="login_headline_first">Organize seu grupo.</string>
     <string name="login_headline_second">Jogue</string>
     <string name="login_headline_emphasis">junto.</string>
-    <string name="login_supporting_text">Entre para acompanhar seus grupos, jogos e pagamentos.</string>
     <string name="login_email">E-mail</string>
     <string name="login_email_placeholder">ana@exemplo.com</string>
     <string name="login_password">Senha</string>
