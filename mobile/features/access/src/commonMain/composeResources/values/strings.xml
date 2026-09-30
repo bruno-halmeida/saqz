@@ -28,6 +28,9 @@
     <string name="login_submit">Entrar</string>
     <string name="login_continue_with">ou continue com</string>
     <string name="login_google">Entrar com Google</string>
+    <!-- Lado a lado com a Apple (iOS): a linha só comporta o nome do provedor. -->
+    <string name="login_google_short">Google</string>
+    <string name="login_apple_short">Apple</string>
     <string name="login_signup_prompt">Ainda não tem uma conta?</string>
     <string name="login_signup_link">Criar conta ›</string>
 

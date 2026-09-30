@@ -85,6 +85,20 @@ class LoginScreenTest {
         assertEquals(LoginIntent.SubmitGoogleLogin, intent)
     }
 
+    @Test fun `apple sits beside google with the same button and height`() = runComposeUiTest {
+        val intents = mutableListOf<LoginIntent>()
+        content(state = LoginState(appleSignInAvailable = true), onIntent = { intents += it })
+        onNodeWithText("Entrar com Google").assertDoesNotExist()
+        val google = onNodeWithTag(LoginTags.Google).performScrollTo().getUnclippedBoundsInRoot()
+        val apple = onNodeWithTag(LoginTags.Apple).getUnclippedBoundsInRoot()
+        assertEquals(google.top, apple.top)
+        assertEquals(google.height, apple.height)
+        assertEquals(google.right - google.left, apple.right - apple.left)
+        onNodeWithText("Google").performClick()
+        onNodeWithText("Apple").performClick()
+        assertEquals(listOf(LoginIntent.SubmitGoogleLogin, LoginIntent.SubmitAppleLogin), intents)
+    }
+
     @Test fun `approved visual hierarchy exposes the complete login journey`() = runComposeUiTest {
         content()
         onNodeWithText("Organize seu grupo.", substring = true).assertExists()

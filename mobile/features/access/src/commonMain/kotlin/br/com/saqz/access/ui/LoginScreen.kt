@@ -13,6 +13,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
@@ -25,13 +26,16 @@ import br.com.saqz.access.presentation.login.LoginIntent
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.resources.login_terms
 import br.com.saqz.access.resources.Res
+import br.com.saqz.access.resources.apple_logo
 import br.com.saqz.access.resources.google_g
 import br.com.saqz.access.resources.login_continue_with
 import br.com.saqz.access.resources.login_email
 import br.com.saqz.access.resources.login_email_placeholder
 import br.com.saqz.access.resources.login_error_attempts
 import br.com.saqz.access.resources.login_forgot_password
+import br.com.saqz.access.resources.login_apple_short
 import br.com.saqz.access.resources.login_google
+import br.com.saqz.access.resources.login_google_short
 import br.com.saqz.access.resources.login_headline_emphasis
 import br.com.saqz.access.resources.login_headline_first
 import br.com.saqz.access.resources.login_headline_second
@@ -51,6 +55,7 @@ import br.com.saqz.designsystem.rememberSaqzFormScope
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -92,11 +97,11 @@ private object LoginMetrics {
     val icon = 20.dp
     val arrow = 20.dp
 
-    // Botão do Google. Mora **nesta tela**, e não no design system: é a única do app que
+    // Botões dos provedores. Moram **nesta tela**, e não no design system: é a única do app que
     // entra por provedor. A pílula, a altura de 52 e a borda de 1px são as do
     // `SaqzButton`; o que muda é a cor — linha `--saqz-border` cinza e rótulo navy, em vez
     // do azul do secundário — e o logo de 19.
-    val googleLogo = 19.dp
+    val providerLogo = 19.dp
 
     val dividerLabelSize = 12.5.sp
     val forgotSize = 14.sp
@@ -215,17 +220,37 @@ fun LoginScreen(
         Spacer(Modifier.height(LoginMetrics.blockGap))
         LoginDivider(stringResource(Res.string.login_continue_with))
         Spacer(Modifier.height(LoginMetrics.blockGap))
-        GoogleButton(
-            label = stringResource(Res.string.login_google),
-            onClick = { onIntent(LoginIntent.SubmitGoogleLogin) },
-            enabled = !state.isLoading,
-        )
         if (state.appleSignInAvailable) {
-            Spacer(Modifier.height(LoginMetrics.fieldGap))
-            AppleSignInButton(
-                onClick = { onIntent(LoginIntent.SubmitAppleLogin) },
+            // iOS: os dois provedores na mesma linha, meio a meio, com o mesmo botão.
+            Row(horizontalArrangement = Arrangement.spacedBy(LoginMetrics.fieldGap)) {
+                ProviderButton(
+                    label = stringResource(Res.string.login_google_short),
+                    logo = Res.drawable.google_g,
+                    tinted = false,
+                    onClick = { onIntent(LoginIntent.SubmitGoogleLogin) },
+                    enabled = !state.isLoading,
+                    fullWidth = false,
+                    modifier = Modifier.weight(1f).testTag(LoginTags.Google),
+                )
+                ProviderButton(
+                    label = stringResource(Res.string.login_apple_short),
+                    logo = Res.drawable.apple_logo,
+                    tinted = true,
+                    onClick = { onIntent(LoginIntent.SubmitAppleLogin) },
+                    enabled = !state.isLoading,
+                    fullWidth = false,
+                    modifier = Modifier.weight(1f).testTag(LoginTags.Apple),
+                )
+            }
+        } else {
+            ProviderButton(
+                label = stringResource(Res.string.login_google),
+                logo = Res.drawable.google_g,
+                tinted = false,
+                onClick = { onIntent(LoginIntent.SubmitGoogleLogin) },
                 enabled = !state.isLoading,
-                modifier = Modifier.fillMaxWidth().height(SaqzTheme.metrics.buttonHeight).testTag(LoginTags.Apple),
+                fullWidth = true,
+                modifier = Modifier.testTag(LoginTags.Google),
             )
         }
         Spacer(Modifier.height(LoginMetrics.signupPromptGap))
@@ -294,23 +319,33 @@ private fun LoginDivider(label: String) = Row(
     SaqzDivider(Modifier.weight(1f))
 }
 
+/** Google e Apple: o logo do Google mantém as cores; o da Apple segue a cor do rótulo. */
 @Composable
-private fun GoogleButton(label: String, onClick: () -> Unit, enabled: Boolean) = SaqzButton(
+private fun ProviderButton(
+    label: String,
+    logo: DrawableResource,
+    tinted: Boolean,
+    onClick: () -> Unit,
+    enabled: Boolean,
+    fullWidth: Boolean,
+    modifier: Modifier = Modifier,
+) = SaqzButton(
     label = label,
     onClick = onClick,
     variant = SaqzButtonVariant.Secondary,
-    fullWidth = true,
+    fullWidth = fullWidth,
     enabled = enabled,
     contentColor = SaqzTheme.colors.textPrimary,
     borderColor = SaqzTheme.colors.border,
-    leadingContent = {
+    leadingContent = { color ->
         Image(
-            painter = painterResource(Res.drawable.google_g),
+            painter = painterResource(logo),
             contentDescription = null,
-            modifier = Modifier.size(LoginMetrics.googleLogo).clearAndSetSemantics {},
+            colorFilter = if (tinted) ColorFilter.tint(color) else null,
+            modifier = Modifier.size(LoginMetrics.providerLogo).clearAndSetSemantics {},
         )
     },
-    modifier = Modifier.testTag(LoginTags.Google),
+    modifier = modifier,
 )
 
 @Preview(name = "1a — entrar", widthDp = 390, heightDp = 844)
