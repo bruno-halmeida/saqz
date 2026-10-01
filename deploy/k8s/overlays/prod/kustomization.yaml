@@ -23,6 +23,7 @@ configMapGenerator:
       - SAQZ_LINKS_DOMAIN=https://links.saqz.app
       - SAQZ_ASAAS_BASE_URL=https://api.asaas.com/v3
       - SAQZ_ADMINWEB_ORIGINS=
+      # Padrões; qualquer chave igual no backend.env sobrepõe estes valores.
       - SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED=false
       - SAQZ_NOTIFICATIONS_REMINDER_ENABLED=true
       - SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS=25200000

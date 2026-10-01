@@ -152,9 +152,19 @@ Defina `SAQZ_SUBSCRIPTION_PURCHASE_URL=https://saqz.app/assinar/`, endereço no 
 de produção aprovado para os e-mails de contratação. O backend exige o caminho
 exato `/assinar/`; a raiz do site impede o boot. Ela é obrigatória no Deployment
 para impedir o fallback para `/assinar` de staging. O painel web de produção ainda
-está fora desta implantação; CORS administrativo fica vazio e WhatsApp desligado.
+está fora desta implantação; CORS administrativo fica vazio.
 A página `/assinar/` também precisa ser publicada antes de usar a contratação por e-mail.
 O perfil `prod`, Firebase, portas e demais configurações fixas vêm do ConfigMap.
+O `backend.env` é a fonte de verdade: o Deployment carrega o ConfigMap primeiro e o
+Secret depois, então qualquer chave repetida no `backend.env` sobrepõe o ConfigMap.
+
+WhatsApp fica desligado por padrão (`SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED=false` no
+ConfigMap). Para ligar, defina no `backend.env`:
+
+- `SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED=true`
+- `SAQZ_NOTIFICATIONS_WHATSAPP_TOKEN`: token da instância uazapi, obrigatório; sem ele o backend não sobe.
+- `SAQZ_NOTIFICATIONS_WHATSAPP_BASEURL`: opcional, padrão `https://saqzapp.uazapi.com`.
+- `SAQZ_NOTIFICATIONS_WHATSAPP_DELAYMS` e `SAQZ_NOTIFICATIONS_WHATSAPP_GROUPDELAYMS`: opcionais, padrão `15000`.
 
 ```bash
 bash deploy/server/setup.sh segredos
