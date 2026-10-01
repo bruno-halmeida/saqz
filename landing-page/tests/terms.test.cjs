@@ -29,6 +29,13 @@ test("terms match the trial rules published on the home page", () => {
   assert.match(home, /14 dias/);
 });
 
+test("terms set zero tolerance for objectionable content and a 24h report response", () => {
+  assert.match(page, /não tolera conteúdo ofensivo nem usuários abusivos/);
+  assert.match(page, /denunciar avisos, pessoas e grupos e bloquear/);
+  assert.match(page, /Analisamos cada denúncia em até 24 horas/);
+  assert.match(page, /href="mailto:contato@egysis\.com"/);
+});
+
 test("terms keep the statutory consumer rights", () => {
   assert.match(page, /7 dias corridos/);
   assert.match(page, /Código de Defesa do Consumidor/);
