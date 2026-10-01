@@ -103,6 +103,17 @@ class KtorCommunicationGatewayTest {
         }
         assertTrue(gateway { respond("{}", headers = jsonHeaders) }.preferences() is SaqzResult.Failure)
     }
+    @Test fun objectionableNoticeKeepsTheFieldErrorForThePresentation() = runTest {
+        val result = gateway {
+            respond(
+                """{"status":422,"code":"VALIDATION_FAILED","fieldErrors":{"body":["objectionable"]}}""",
+                HttpStatusCode.UnprocessableEntity,
+                jsonHeaders,
+            )
+        }.publish(GroupId("group-1"), CommunicationChannel.NOTICE, "request", "texto")
+        val cause = assertIs<DataError.Validation>(assertIs<SaqzResult.Failure<CommunicationError>>(result).error.cause)
+        assertEquals(mapOf("body" to listOf("objectionable")), cause.details.fieldMessages)
+    }
     @Test fun deliveryChannelsRoundTripWithoutChangingOtherPreferences() = runTest {
         val value = NotificationPreferences(false, true, false,
             br.com.saqz.groups.domain.communication.PushPreferences(true, false, true, false),

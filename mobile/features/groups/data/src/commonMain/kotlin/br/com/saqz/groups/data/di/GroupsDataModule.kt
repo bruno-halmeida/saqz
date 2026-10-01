@@ -11,6 +11,7 @@ import br.com.saqz.groups.data.game.KtorGameGateway
 import br.com.saqz.groups.data.group.KtorGroupGateway
 import br.com.saqz.groups.data.home.KtorHomeGateway
 import br.com.saqz.groups.data.membership.KtorGroupMembershipGateway
+import br.com.saqz.groups.data.moderation.KtorModerationGateway
 import br.com.saqz.groups.data.photo.KtorGroupPhotoGateway
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
@@ -25,6 +26,7 @@ import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.domain.home.HomeGateway
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
 import br.com.saqz.groups.domain.membership.GroupDepartureGateway
+import br.com.saqz.groups.domain.moderation.ModerationGateway
 import br.com.saqz.groups.domain.photo.GroupPhotoGateway
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -56,6 +58,7 @@ fun groupsDataModule(): Module = module {
     single<KtorGroupMembershipGateway> { KtorGroupMembershipGateway(get()) }
     single<GroupMembershipGateway> { get<KtorGroupMembershipGateway>() }
     single<GroupDepartureGateway> { get<KtorGroupMembershipGateway>() }
+    single<ModerationGateway> { KtorModerationGateway(get()) }
     single<AthleteFinanceGateway> { KtorAthleteFinanceGateway(get()) }
     single<OrganizerFinanceGateway> { KtorOrganizerFinanceGateway(get()) }
     single<FinanceStatementGateway> { KtorFinanceStatementGateway(get()) }

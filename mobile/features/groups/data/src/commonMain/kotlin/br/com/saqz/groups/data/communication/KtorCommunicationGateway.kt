@@ -3,6 +3,7 @@ package br.com.saqz.groups.data.communication
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.ValidationDetails
 import br.com.saqz.groups.domain.communication.CommunicationChannel
 import br.com.saqz.groups.domain.communication.CommunicationError
 import br.com.saqz.groups.domain.communication.CommunicationGateway
@@ -100,7 +101,13 @@ internal fun <T, R> NetworkResult<T>.communicationResult(transform: (T) -> R?): 
     is NetworkResult.Failure -> SaqzResult.Failure(CommunicationError(error.domain()))
 }
 private fun NetworkError.domain(): DataError = when (this) {
-    is NetworkError.ApiProblemError -> problem.status.dataError()
+    // O filtro de texto do aviso responde 422 com `fieldErrors.body = ["objectionable"]`: o
+    // detalhe sobe até a apresentação, que troca o erro genérico pela frase específica.
+    is NetworkError.ApiProblemError -> if (problem.code == "VALIDATION_FAILED" || problem.status == 422) {
+        DataError.Validation(ValidationDetails(emptyList(), problem.fieldErrors.orEmpty()))
+    } else {
+        problem.status.dataError()
+    }
     is NetworkError.HttpStatus -> status.dataError()
     NetworkError.Timeout -> DataError.Timeout
     NetworkError.Connectivity -> DataError.Connectivity
