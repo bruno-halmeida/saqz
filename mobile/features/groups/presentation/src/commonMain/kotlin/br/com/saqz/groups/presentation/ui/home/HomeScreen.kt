@@ -66,6 +66,7 @@ import br.com.saqz.groups.resources.home_attendance_cancel
 import br.com.saqz.groups.resources.home_attendance_change
 import br.com.saqz.groups.resources.home_error_message
 import br.com.saqz.groups.resources.home_error_title
+import br.com.saqz.groups.resources.home_first_access_subtitle
 import br.com.saqz.groups.resources.home_game_next
 import br.com.saqz.groups.resources.home_admin_group_chip
 import br.com.saqz.groups.resources.home_groups_title
@@ -106,6 +107,14 @@ internal object HomeTags {
     const val Toast = "home-toast"
     const val OwnCharges = "home-own-charges"
     const val OwnChargesBanner = "home-own-charges-banner"
+    const val FirstAccess = "home-first-access"
+    const val FirstAccessCreate = "home-first-access-create"
+    const val FirstAccessInvite = "home-first-access-invite"
+    const val Steps = "home-steps"
+    const val InviteSheetField = "home-invite-sheet-field"
+    const val InviteSheetSubmit = "home-invite-sheet-submit"
+
+    fun step(number: Int) = "home-step-$number"
 
     fun group(id: String) = "home-group-$id"
 
@@ -205,13 +214,24 @@ private fun HomeContent(
                 .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
             verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
         ) {
-            HomeHeader(displayName = state.displayName, subtitle = member?.adminSubtitle, onIntent = onIntent)
+            val firstAccess = member?.firstAccess == true
+            HomeHeader(
+                displayName = state.displayName,
+                subtitle = member?.adminSubtitle
+                    ?: stringResource(Res.string.home_first_access_subtitle).takeIf { firstAccess },
+                onIntent = onIntent,
+            )
             if (member == null) {
                 Text(
                     text = stringResource(Res.string.home_error_message),
                     style = SaqzTheme.typography.body,
                     color = SaqzTheme.colors.textSecondary,
                 )
+            } else if (firstAccess) {
+                // Onboarding da Início: só enquanto não há grupo. Com o primeiro grupo a
+                // tela volta ao normal e o guia passa a morar no grupo.
+                HomeFirstAccessHero(onIntent)
+                HomeFirstAccessSteps(onIntent)
             } else {
                 member.nextGame?.let {
                     if (isAdminOfNextGame(it, member.admin)) {
@@ -250,6 +270,7 @@ private fun HomeContent(
                 HomeGroups(member.groups, onIntent)
             }
         }
+        HomeInviteSheet(state = state, onIntent = onIntent)
         state.toast?.let { toast ->
             SaqzToast(
                 visible = true,
@@ -471,6 +492,8 @@ private fun HomeNoGame(onIntent: (HomeIntent) -> Unit) {
 
 @Composable
 private fun HomeGroups(groups: List<HomeGroupUi>, onIntent: (HomeIntent) -> Unit) {
+    // Cabeçalho sem lista embaixo parece erro, não vazio: sem grupo a seção some inteira.
+    if (groups.isEmpty()) return
     Column(
         modifier = Modifier.testTag(HomeTags.Groups),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
@@ -582,6 +605,31 @@ private fun HomeOwnChargesOverduePreview() = SaqzTheme {
 private fun HomeEmptyPreview() = SaqzTheme {
     HomeScreen(previewState(nextGame = null), onIntent = {})
 }
+
+@Preview(name = "Home primeiro acesso", widthDp = 390, heightDp = 844)
+@Composable
+private fun HomeFirstAccessPreview() = SaqzTheme {
+    HomeScreen(firstAccessPreviewState(), onIntent = {})
+}
+
+@Preview(name = "Home primeiro acesso · folha de convite", widthDp = 390, heightDp = 844)
+@Composable
+private fun HomeInviteSheetPreview() = SaqzTheme {
+    HomeScreen(
+        firstAccessPreviewState().copy(
+            inviteSheetOpen = true,
+            inviteLink = "https://saqz.app/",
+            inviteLinkInvalid = true,
+        ),
+        onIntent = {},
+    )
+}
+
+private fun firstAccessPreviewState() = HomeState(
+    isLoading = false,
+    displayName = "Bruna",
+    member = HomeMemberUi(nextGame = null, groups = emptyList()),
+)
 
 @Preview(name = "Home reserva (6b)", widthDp = 390, heightDp = 1200)
 @Composable

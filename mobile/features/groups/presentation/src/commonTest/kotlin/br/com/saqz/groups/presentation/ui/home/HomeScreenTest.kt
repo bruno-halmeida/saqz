@@ -6,6 +6,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -88,6 +90,53 @@ class HomeScreenTest {
         onNodeWithText("Ver todos").performClick()
 
         assertEquals(listOf<HomeIntent>(HomeIntent.OpenGroups, HomeIntent.OpenGroups), intents)
+    }
+
+    @Test
+    fun `first access renders the onboarding hero and steps and routes both paths`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(firstAccessState(), intents::add)
+
+        onNodeWithText("Boas-vindas ao Saqz").assertIsDisplayed()
+        onNodeWithTag(HomeTags.FirstAccess).assertIsDisplayed()
+        onNodeWithText("Seu grupo em 1 minuto").assertIsDisplayed()
+        onNodeWithTag(HomeTags.Steps).assertIsDisplayed()
+        onNodeWithText("Agora").assertIsDisplayed()
+        // Sem grupo não há hero de "sem jogo" nem cabeçalho "Seus grupos" solto.
+        onNodeWithTag(HomeTags.Empty).assertDoesNotExist()
+        onNodeWithTag(HomeTags.Groups).assertDoesNotExist()
+        onNodeWithTag(HomeTags.FirstAccessCreate).performClick()
+        onNodeWithTag(HomeTags.step(1)).performClick()
+        onNodeWithTag(HomeTags.step(2)).assertHasNoClickAction()
+        onNodeWithTag(HomeTags.step(3)).assertHasNoClickAction()
+        onNodeWithTag(HomeTags.FirstAccessInvite).performClick()
+
+        assertEquals(
+            listOf(HomeIntent.CreateGroup, HomeIntent.CreateGroup, HomeIntent.OpenInviteSheet),
+            intents,
+        )
+    }
+
+    @Test
+    fun `invite sheet submits the pasted link and shows the parse error`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(
+            firstAccessState().copy(inviteSheetOpen = true, inviteLink = "https://saqz.app/", inviteLinkInvalid = true),
+            intents::add,
+        )
+
+        onNodeWithText("Recebeu um convite?").assertIsDisplayed()
+        onNodeWithText("Não achei um convite nesse link. Confira e cole de novo.").assertIsDisplayed()
+        onNodeWithTag(HomeTags.InviteSheetSubmit).assertIsEnabled().performClick()
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.SubmitInviteLink), intents)
+    }
+
+    @Test
+    fun `invite sheet keeps submit disabled while the field is blank`() = runComposeUiTest {
+        setScreen(firstAccessState().copy(inviteSheetOpen = true))
+
+        onNodeWithTag(HomeTags.InviteSheetSubmit).assertIsNotEnabled()
     }
 
     @Test
@@ -393,6 +442,12 @@ class HomeScreenTest {
         }
     }
 }
+
+private fun firstAccessState() = HomeState(
+    isLoading = false,
+    displayName = "Bruna",
+    member = HomeMemberUi(nextGame = null, groups = emptyList()),
+)
 
 private fun nextGameState(nextGame: HomeNextGameUi? = nextGame()) = HomeState(
     isLoading = false,

@@ -455,6 +455,9 @@ internal fun SaqzNavHost(
                             onOpenGameEditor = { backStack.add(GroupsRoute.GameEditor(it)) },
                             onOpenInvite = { backStack.add(GroupsRoute.Invite(it)) },
                             onOpenNotifications = { backStack.add(GroupsRoute.Notifications()) },
+                            onCreateGroup = { backStack.add(GroupsRoute.Create) },
+                            // Link colado na folha "Tenho um convite": mesmo caminho do deep link.
+                            onAcceptInviteCode = inviteCoordinator::acceptInvite,
                         )
                     },
                     profileTab = {

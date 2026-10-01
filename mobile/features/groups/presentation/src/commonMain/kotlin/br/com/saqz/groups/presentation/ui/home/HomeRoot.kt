@@ -24,6 +24,8 @@ fun HomeRoot(
     onOpenGameEditor: (String) -> Unit = {},
     onOpenInvite: (String) -> Unit = {},
     onOpenNotifications: () -> Unit = {},
+    onCreateGroup: () -> Unit = {},
+    onAcceptInviteCode: (String) -> Unit = {},
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -42,6 +44,8 @@ fun HomeRoot(
             // VUL-202: mesma ligação do 2f e do caixa — copiar é área de transferência,
             // não navegação, e morre aqui.
             is HomeEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
+            HomeEffect.OpenCreateGroup -> onCreateGroup()
+            is HomeEffect.AcceptInviteCode -> onAcceptInviteCode(effect.code)
         }
     }
     HomeScreen(state = state, onIntent = viewModel::onIntent)

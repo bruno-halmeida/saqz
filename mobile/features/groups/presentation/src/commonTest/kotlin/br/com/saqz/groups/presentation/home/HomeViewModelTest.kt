@@ -956,6 +956,62 @@ class HomeViewModelTest {
         assertEquals(HomeEffect.OpenNotifications, viewModel.effects.first())
     }
 
+    @Test
+    fun `member without groups is the first access and a group ends it`() = runTest {
+        val empty = sampleHome().let { it.copy(member = it.member.copy(groups = emptyList())) }
+        val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(empty), SaqzResult.Success(sampleHome())))
+
+        assertTrue(viewModel.state.value.member?.firstAccess == true)
+
+        viewModel.onIntent(HomeIntent.Refresh)
+
+        assertFalse(viewModel.state.value.member?.firstAccess == true)
+    }
+
+    @Test
+    fun `create group from the first access emits the navigation effect`() = runTest {
+        val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome())))
+
+        viewModel.onIntent(HomeIntent.CreateGroup)
+
+        assertEquals(HomeEffect.OpenCreateGroup, viewModel.effects.first())
+    }
+
+    @Test
+    fun `submitting a pasted invite link closes the sheet and hands the code to the coordinator`() = runTest {
+        val code = "a".repeat(42) + "A"
+        val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome())))
+
+        viewModel.onIntent(HomeIntent.OpenInviteSheet)
+        viewModel.onIntent(HomeIntent.InviteLinkChanged("https://links.saqz.app/?saqz_invite=$code"))
+        viewModel.onIntent(HomeIntent.SubmitInviteLink)
+
+        assertEquals(HomeEffect.AcceptInviteCode(code), viewModel.effects.first())
+        assertFalse(viewModel.state.value.inviteSheetOpen)
+        assertEquals("", viewModel.state.value.inviteLink)
+        assertFalse(viewModel.state.value.inviteLinkInvalid)
+    }
+
+    @Test
+    fun `a pasted text without an invite code flags the field and keeps the sheet open`() = runTest {
+        val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome())))
+
+        viewModel.onIntent(HomeIntent.OpenInviteSheet)
+        viewModel.onIntent(HomeIntent.InviteLinkChanged("https://saqz.app/"))
+        viewModel.onIntent(HomeIntent.SubmitInviteLink)
+
+        assertTrue(viewModel.state.value.inviteLinkInvalid)
+        assertTrue(viewModel.state.value.inviteSheetOpen)
+        assertEquals("https://saqz.app/", viewModel.state.value.inviteLink)
+
+        // Digitar de novo limpa o erro; fechar esvazia a folha.
+        viewModel.onIntent(HomeIntent.InviteLinkChanged("x"))
+        assertFalse(viewModel.state.value.inviteLinkInvalid)
+        viewModel.onIntent(HomeIntent.CloseInviteSheet)
+        assertFalse(viewModel.state.value.inviteSheetOpen)
+        assertEquals("", viewModel.state.value.inviteLink)
+    }
+
     private fun viewModel(
         homeGateway: HomeGateway,
         attendanceGateway: FakeAttendanceGateway = FakeAttendanceGateway(),

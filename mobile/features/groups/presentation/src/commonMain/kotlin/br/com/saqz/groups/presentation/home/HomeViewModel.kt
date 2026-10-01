@@ -158,6 +158,13 @@ class HomeViewModel(
             is HomeIntent.OpenGameEditor -> emit(HomeEffect.OpenGameEditor(intent.groupId))
             is HomeIntent.OpenInvite -> emit(HomeEffect.OpenInvite(intent.groupId))
             is HomeIntent.CopyPix -> copyPix(intent.groupId)
+            HomeIntent.CreateGroup -> emit(HomeEffect.OpenCreateGroup)
+            HomeIntent.OpenInviteSheet -> update { it.copy(inviteSheetOpen = true, inviteLinkInvalid = false) }
+            HomeIntent.CloseInviteSheet -> update {
+                it.copy(inviteSheetOpen = false, inviteLink = "", inviteLinkInvalid = false)
+            }
+            is HomeIntent.InviteLinkChanged -> update { it.copy(inviteLink = intent.value, inviteLinkInvalid = false) }
+            HomeIntent.SubmitInviteLink -> submitInviteLink()
         }
     }
 
@@ -250,6 +257,20 @@ class HomeViewModel(
         // geração e um cancelamento do escopo também têm que devolver a chave. A checagem
         // impede que uma carga velha destrave enquanto a nova ainda está no ar.
         job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
+    }
+
+    /**
+     * O link colado vira código aqui, sem rede: se não houver código, a folha aponta o erro e
+     * fica aberta. Com código, a folha fecha e o resgate segue o mesmo caminho do deep link.
+     */
+    private fun submitInviteLink() {
+        val code = InviteLinkParser.parse(state.value.inviteLink)
+        if (code == null) {
+            update { it.copy(inviteLinkInvalid = true) }
+            return
+        }
+        update { it.copy(inviteSheetOpen = false, inviteLink = "", inviteLinkInvalid = false) }
+        emit(HomeEffect.AcceptInviteCode(code))
     }
 
     private fun respond(intent: AttendanceIntent) {

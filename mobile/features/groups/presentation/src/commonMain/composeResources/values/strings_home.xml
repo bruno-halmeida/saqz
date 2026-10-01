@@ -139,4 +139,30 @@
     <string name="home_own_charge_pix_receiver">Pix de %1$s</string>
     <string name="home_own_charge_copied">Chave copiada</string>
     <string name="home_toast_pix_copied">Chave copiada. Depois de pagar, o admin dá baixa.</string>
+    <!-- Primeiro acesso · onboarding da Início, só até o primeiro grupo existir -->
+    <string name="home_first_access_subtitle">Boas-vindas ao Saqz</string>
+    <string name="home_first_access_kicker">COMECE POR AQUI</string>
+    <string name="home_first_access_title">Seu grupo em 1 minuto</string>
+    <string name="home_first_access_body">Crie o grupo, marque o primeiro jogo e chame a galera pelo WhatsApp. O resto você ajusta depois.</string>
+    <string name="home_first_access_create">Criar meu grupo</string>
+    <string name="home_first_access_invite">Tenho um convite</string>
+    <string name="home_steps_title">Como funciona</string>
+    <string name="home_step_group_title">Crie o grupo</string>
+    <string name="home_step_group_body">Nome, esporte e público. Só isso.</string>
+    <string name="home_step_game_title">Marque o primeiro jogo</string>
+    <string name="home_step_game_body">Data, quadra e vagas. Pode repetir toda semana.</string>
+    <string name="home_step_invite_title">Chame a galera</string>
+    <string name="home_step_invite_body">Convite pelo WhatsApp. Eles respondem “Vou” no app.</string>
+    <string name="home_step_now">Agora</string>
+    <string name="home_step_done">Feito</string>
+    <string name="home_step_cd">Passo %1$d: %2$s</string>
+    <!-- Gestor sem jogo marcado: a frase é de quem marca, não de quem espera -->
+    <string name="home_admin_no_game_description">Marque o próximo jogo e a galera confirma em um toque.</string>
+    <!-- Folha "Tenho um convite" -->
+    <string name="home_invite_sheet_title">Recebeu um convite?</string>
+    <string name="home_invite_sheet_body">Abra o link que mandaram no WhatsApp. Ele abre direto no Saqz. Se preferir, cole o link aqui.</string>
+    <string name="home_invite_sheet_field">Link do convite</string>
+    <string name="home_invite_sheet_placeholder">https://links.saqz.app/…</string>
+    <string name="home_invite_sheet_action">Entrar no grupo</string>
+    <string name="home_invite_sheet_invalid">Não achei um convite nesse link. Confira e cole de novo.</string>
 </resources>

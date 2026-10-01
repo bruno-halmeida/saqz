@@ -24,6 +24,13 @@ data class HomeState(
     val ownCharges: HomeOwnChargesUi? = null,
     /** Grupo cuja chave Pix acabou de ser copiada; a seção troca o botão por "Chave copiada" por 2 s (VUL-220). */
     val pixCopiedGroupId: String? = null,
+    /**
+     * Folha "Tenho um convite" do primeiro acesso: aberta, o texto colado e se o último envio
+     * não continha um código de convite. Fecha e esvazia quando o código vai ao coordinator.
+     */
+    val inviteSheetOpen: Boolean = false,
+    val inviteLink: String = "",
+    val inviteLinkInvalid: Boolean = false,
 )
 
 /**
@@ -65,7 +72,15 @@ data class HomeMemberUi(
     val admin: HomeAdminReadModelUi? = null,
     val adminSubtitle: String? = null,
     val upcomingGames: List<HomeUpcomingGameUi> = emptyList(),
-)
+) {
+    /**
+     * Primeiro acesso: a conta não participa de grupo nenhum. É o único estado em que a
+     * Início guia (criar o grupo ou colar um convite); com um grupo ela volta ao normal e
+     * o guia passa a morar no grupo. Derivado, não marcado: some sozinho no primeiro grupo.
+     */
+    val firstAccess: Boolean
+        get() = groups.isEmpty() && nextGame == null
+}
 
 /**
  * Tipo de espera do membro no próximo jogo, derivado num único ponto do ViewModel:
@@ -209,6 +224,13 @@ sealed interface HomeIntent {
     data class OpenGameEditor(val groupId: String) : HomeIntent
     data class OpenInvite(val groupId: String) : HomeIntent
     data class CopyPix(val groupId: String) : HomeIntent
+
+    // Primeiro acesso (sem grupo): os dois caminhos do hero e a folha de convite.
+    data object CreateGroup : HomeIntent
+    data object OpenInviteSheet : HomeIntent
+    data object CloseInviteSheet : HomeIntent
+    data class InviteLinkChanged(val value: String) : HomeIntent
+    data object SubmitInviteLink : HomeIntent
 }
 
 sealed interface HomeEffect {
@@ -222,4 +244,8 @@ sealed interface HomeEffect {
     data class OpenGameEditor(val groupId: String) : HomeEffect
     data class OpenInvite(val groupId: String) : HomeEffect
     data class CopyPix(val key: String) : HomeEffect
+    data object OpenCreateGroup : HomeEffect
+
+    /** Código lido de um link colado; o fecho entrega ao `GroupInviteCoordinator`, como um deep link. */
+    data class AcceptInviteCode(val code: String) : HomeEffect
 }

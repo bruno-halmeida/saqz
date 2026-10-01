@@ -55,7 +55,7 @@ import br.com.saqz.groups.resources.home_admin_waiting_monthly_meta
 import br.com.saqz.groups.resources.home_admin_waiting_settle
 import br.com.saqz.groups.resources.home_admin_waiting_settle_meta
 import br.com.saqz.groups.resources.home_admin_waiting_title
-import br.com.saqz.groups.resources.home_no_game_description
+import br.com.saqz.groups.resources.home_admin_no_game_description
 import br.com.saqz.groups.resources.home_no_game_hero_title
 import org.jetbrains.compose.resources.stringResource
 
@@ -135,7 +135,7 @@ internal fun HomeAdminNoGame(
     SaqzHeroCard(
         kicker = stringResource(Res.string.home_game_next),
         title = stringResource(Res.string.home_no_game_hero_title),
-        meta = stringResource(Res.string.home_no_game_description),
+        meta = stringResource(Res.string.home_admin_no_game_description),
         modifier = modifier.testTag(HomeTags.Empty),
     ) {
         Row(
