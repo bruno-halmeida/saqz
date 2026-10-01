@@ -277,8 +277,8 @@ private object TestExpenseDraftStore : ExpenseDraftStorePort {
 }
 
 private object TestGroupOnboardingMemoryPort : GroupOnboardingMemoryPort {
-    override fun read(groupId: String, done: (GroupOnboardingMemory) -> Unit) = done(GroupOnboardingMemory())
-    override fun write(groupId: String, memory: GroupOnboardingMemory, done: (Boolean) -> Unit) = done(true)
+    override fun readMemory(groupId: String, done: (GroupOnboardingMemory) -> Unit) = done(GroupOnboardingMemory())
+    override fun writeMemory(groupId: String, memory: GroupOnboardingMemory, done: (Boolean) -> Unit) = done(true)
     override fun isSheetSeen(sheetId: String, done: (Boolean) -> Unit) = done(false)
     override fun markSheetSeen(sheetId: String, done: (Boolean) -> Unit) = done(true)
 }

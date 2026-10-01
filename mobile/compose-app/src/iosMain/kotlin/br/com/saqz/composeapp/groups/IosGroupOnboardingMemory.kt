@@ -8,7 +8,7 @@ import platform.Foundation.NSUserDefaults
 class IosGroupOnboardingMemory(private val defaults: NSUserDefaults) : GroupOnboardingMemoryPort {
     constructor() : this(NSUserDefaults.standardUserDefaults)
 
-    override fun read(groupId: String, done: (GroupOnboardingMemory) -> Unit) {
+    override fun readMemory(groupId: String, done: (GroupOnboardingMemory) -> Unit) {
         val snoozeKey = snoozeKey(groupId)
         val snooze = if (defaults.objectForKey(snoozeKey) != null) defaults.doubleForKey(snoozeKey).toLong() else null
         done(
@@ -19,7 +19,7 @@ class IosGroupOnboardingMemory(private val defaults: NSUserDefaults) : GroupOnbo
         )
     }
 
-    override fun write(groupId: String, memory: GroupOnboardingMemory, done: (Boolean) -> Unit) {
+    override fun writeMemory(groupId: String, memory: GroupOnboardingMemory, done: (Boolean) -> Unit) {
         defaults.setBool(memory.rulesOpened, forKey = rulesKey(groupId))
         val snooze = memory.snoozedUntilEpochMillis
         if (snooze == null) {

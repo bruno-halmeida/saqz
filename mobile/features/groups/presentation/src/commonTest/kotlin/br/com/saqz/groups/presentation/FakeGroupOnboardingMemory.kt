@@ -12,11 +12,11 @@ internal class FakeGroupOnboardingMemory(
     val seenSheets = seen.toMutableSet()
     val writes = mutableListOf<Pair<String, GroupOnboardingMemory>>()
 
-    override fun read(groupId: String, done: (GroupOnboardingMemory) -> Unit) {
+    override fun readMemory(groupId: String, done: (GroupOnboardingMemory) -> Unit) {
         done(memories[groupId] ?: GroupOnboardingMemory())
     }
 
-    override fun write(groupId: String, memory: GroupOnboardingMemory, done: (Boolean) -> Unit) {
+    override fun writeMemory(groupId: String, memory: GroupOnboardingMemory, done: (Boolean) -> Unit) {
         memories[groupId] = memory
         writes += groupId to memory
         done(true)

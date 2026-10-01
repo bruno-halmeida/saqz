@@ -369,8 +369,8 @@ class GroupDetailsViewModel(
 
     private fun loadMemory(generation: Int) {
         val port = onboardingMemory ?: return
-        port.read(groupId) { read ->
-            if (generation != loadGeneration) return@read
+        port.readMemory(groupId) { read ->
+            if (generation != loadGeneration) return@readMemory
             memory = read
             recomputeChecklist(generation)
         }
@@ -408,7 +408,7 @@ class GroupDetailsViewModel(
     private fun remember(next: GroupOnboardingMemory) {
         memory = next
         recomputeChecklist(loadGeneration)
-        onboardingMemory?.write(groupId, next) {}
+        onboardingMemory?.writeMemory(groupId, next) {}
     }
 
     private suspend fun loadLatestNotice(generation: Int) {

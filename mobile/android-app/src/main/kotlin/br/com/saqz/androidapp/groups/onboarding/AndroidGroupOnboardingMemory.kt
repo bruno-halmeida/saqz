@@ -10,7 +10,7 @@ class AndroidGroupOnboardingMemory(context: Context) : GroupOnboardingMemoryPort
     private val preferences: SharedPreferences =
         context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
-    override fun read(groupId: String, done: (GroupOnboardingMemory) -> Unit) {
+    override fun readMemory(groupId: String, done: (GroupOnboardingMemory) -> Unit) {
         val snooze = preferences.getLong(snoozeKey(groupId), NO_SNOOZE)
         done(
             GroupOnboardingMemory(
@@ -20,7 +20,7 @@ class AndroidGroupOnboardingMemory(context: Context) : GroupOnboardingMemoryPort
         )
     }
 
-    override fun write(groupId: String, memory: GroupOnboardingMemory, done: (Boolean) -> Unit) {
+    override fun writeMemory(groupId: String, memory: GroupOnboardingMemory, done: (Boolean) -> Unit) {
         preferences.edit()
             .putBoolean(rulesKey(groupId), memory.rulesOpened)
             .putLong(snoozeKey(groupId), memory.snoozedUntilEpochMillis ?: NO_SNOOZE)

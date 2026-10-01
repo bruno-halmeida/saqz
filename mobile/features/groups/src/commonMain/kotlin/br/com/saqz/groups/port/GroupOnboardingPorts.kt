@@ -14,12 +14,14 @@ data class GroupOnboardingMemory(
  * Só o que não dá para derivar do próprio grupo mora aqui: "regras abertas uma vez", o
  * "deixar para depois" da checklist e as folhas "Como funciona" já vistas. Fica no aparelho
  * de propósito, sem backend; trocar de aparelho pode repetir uma folha, e isso é aceitável.
- * Callback, não `suspend`, como todo port nativo (AGENTS.md §9).
+ * Callback, não `suspend`, como todo port nativo (AGENTS.md §9). Os nomes carregam "Memory" de
+ * propósito: `read(groupId:done:)` já existe em `GroupInviteUrlStorePort`, e dois seletores iguais com
+ * tipos diferentes fazem o Kotlin/Native renomear um deles no header ObjC, quebrando o Swift.
  */
 interface GroupOnboardingMemoryPort {
-    fun read(groupId: String, done: (GroupOnboardingMemory) -> Unit)
+    fun readMemory(groupId: String, done: (GroupOnboardingMemory) -> Unit)
 
-    fun write(groupId: String, memory: GroupOnboardingMemory, done: (Boolean) -> Unit)
+    fun writeMemory(groupId: String, memory: GroupOnboardingMemory, done: (Boolean) -> Unit)
 
     fun isSheetSeen(sheetId: String, done: (Boolean) -> Unit)
 
