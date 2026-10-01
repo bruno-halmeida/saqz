@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.settings
 
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.application.game.series.ScheduleSeriesSync
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.domain.AccessName
@@ -17,7 +18,12 @@ class UpdateGroupSettings(
     private val readRepository: GroupReadRepository,
     private val settingsRepository: GroupSettingsRepository,
     private val accessPolicy: GroupAccessPolicy,
+    private val scheduleSeries: ScheduleSeriesSync = ScheduleSeriesSync { },
 ) {
+    /**
+     * O perfil carrega os horários regulares, então a série semanal acompanha a gravação na hora,
+     * como na agenda ([GroupScheduleService]); antes só a rotina de hora em hora a alcançava.
+     */
     fun execute(
         actor: UUID,
         groupId: UUID,
@@ -29,7 +35,20 @@ class UpdateGroupSettings(
             return UpdateGroupSettingsResult.InvalidProfile(profileValidation.errors)
         }
 
-        return transactionRunner.inTransaction {
+        return updateProfile(actor, groupId, expectedVersion, input, profileValidation).also {
+            // Fora da transação: os repositórios de série abrem a própria conexão e só enxergam o commit.
+            if (it is UpdateGroupSettingsResult.Success) scheduleSeries.sync(groupId)
+        }
+    }
+
+    private fun updateProfile(
+        actor: UUID,
+        groupId: UUID,
+        expectedVersion: Long,
+        input: UpdateGroupProfileInput,
+        profileValidation: GroupProfileDefaultsValidation,
+    ): UpdateGroupSettingsResult =
+        transactionRunner.inTransaction {
             val current = readRepository.find(GroupReadKey(actor, groupId))
                 ?: return@inTransaction UpdateGroupSettingsResult.GroupNotFound
             when (accessPolicy.authorize(current.role, GroupAction.UPDATE_SETTINGS)) {
@@ -70,7 +89,6 @@ class UpdateGroupSettings(
                 )
             }
         }
-    }
 
     fun execute(
         actor: UUID,

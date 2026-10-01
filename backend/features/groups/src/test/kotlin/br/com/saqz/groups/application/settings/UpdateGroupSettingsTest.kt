@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.settings
 
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.application.game.series.ScheduleSeriesSync
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.application.read.GroupReadSnapshot
@@ -152,6 +153,34 @@ class UpdateGroupSettingsTest {
     }
 
     @Test
+    fun `profile update syncs the schedule series after the transaction commits`() {
+        val fixture = fixture(GroupRole.OWNER)
+
+        fixture.useCase.execute(actor, groupId, 3, UpdateGroupProfileInput(profile()))
+
+        assertEquals(listOf(groupId), fixture.sync.groups)
+        assertEquals(listOf(false), fixture.sync.insideTransaction)
+    }
+
+    @Test
+    fun `failed profile update does not sync the schedule series`() {
+        val fixture = fixture(GroupRole.OWNER, currentVersion = 4)
+
+        fixture.useCase.execute(actor, groupId, 3, UpdateGroupProfileInput(profile()))
+
+        assertTrue(fixture.sync.groups.isEmpty())
+    }
+
+    @Test
+    fun `name and timezone update does not touch the schedule series`() {
+        val fixture = fixture(GroupRole.OWNER)
+
+        fixture.useCase.execute(actor, groupId, 3, "New Group", "UTC")
+
+        assertTrue(fixture.sync.groups.isEmpty())
+    }
+
+    @Test
     fun `admin can update complete profile defaults`() {
         val result = fixture(GroupRole.ADMIN).useCase.execute(
             actor,
@@ -237,7 +266,13 @@ class UpdateGroupSettingsTest {
         val transaction = RecordingTransactionRunner()
         val read = RecordingReadRepository(if (exists) snapshot(role, currentVersion) else null)
         val settings = RecordingSettingsRepository(writeResult, failure)
-        return Fixture(UpdateGroupSettings(transaction, read, settings, GroupAccessPolicy()), transaction, settings)
+        val sync = RecordingScheduleSync(transaction)
+        return Fixture(
+            UpdateGroupSettings(transaction, read, settings, GroupAccessPolicy(), sync),
+            transaction,
+            settings,
+            sync,
+        )
     }
 
     private fun snapshot(role: GroupRole?, version: Long) = GroupReadSnapshot(
@@ -280,17 +315,31 @@ class UpdateGroupSettingsTest {
         val useCase: UpdateGroupSettings,
         val transaction: RecordingTransactionRunner,
         val settings: RecordingSettingsRepository,
+        val sync: RecordingScheduleSync,
     )
 
     private class RecordingTransactionRunner : TransactionRunner {
         var calls = 0
         var rollbacks = 0
+        var inside = false
         override fun <T> inTransaction(block: () -> T): T {
             calls += 1
+            inside = true
             return try { block() } catch (failure: Throwable) {
                 rollbacks += 1
                 throw failure
+            } finally {
+                inside = false
             }
+        }
+    }
+
+    private class RecordingScheduleSync(private val transaction: RecordingTransactionRunner) : ScheduleSeriesSync {
+        val groups = mutableListOf<UUID>()
+        val insideTransaction = mutableListOf<Boolean>()
+        override fun sync(groupId: UUID) {
+            groups += groupId
+            insideTransaction += transaction.inside
         }
     }
 

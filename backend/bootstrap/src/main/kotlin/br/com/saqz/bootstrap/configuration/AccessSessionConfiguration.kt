@@ -567,7 +567,8 @@ class AccessSessionConfiguration {
         transaction: JdbcTransactionRunner,
         readRepository: JdbcGroupReadRepository,
         settingsRepository: JdbcGroupSettingsRepository,
-    ) = UpdateGroupSettings(transaction, readRepository, settingsRepository, GroupAccessPolicy())
+        scheduleSeries: br.com.saqz.groups.application.game.series.SyncScheduleSeries,
+    ) = UpdateGroupSettings(transaction, readRepository, settingsRepository, GroupAccessPolicy(), scheduleSeries)
 
     @Bean
     fun accessGroupSettingsController(
