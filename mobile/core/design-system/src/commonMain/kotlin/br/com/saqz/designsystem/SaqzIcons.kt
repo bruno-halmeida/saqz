@@ -26,6 +26,7 @@ import com.composables.icons.lucide.CreditCard
 import com.composables.icons.lucide.EllipsisVertical
 import com.composables.icons.lucide.Eye
 import com.composables.icons.lucide.EyeOff
+import com.composables.icons.lucide.FileText
 import com.composables.icons.lucide.Flag
 import com.composables.icons.lucide.House
 import com.composables.icons.lucide.Lock
@@ -92,6 +93,9 @@ object SaqzIcons {
     val MoreVertical = Lucide.EllipsisVertical
     val Flag = Lucide.Flag
     val Ban = Lucide.Ban
+
+    /** Documento: "Termos de uso" no Perfil. */
+    val FileText = Lucide.FileText
 }
 
 @Composable

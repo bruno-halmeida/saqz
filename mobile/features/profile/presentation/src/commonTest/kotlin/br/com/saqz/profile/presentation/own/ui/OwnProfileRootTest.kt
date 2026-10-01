@@ -1,10 +1,13 @@
 package br.com.saqz.profile.presentation.own.ui
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -22,6 +25,31 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class OwnProfileRootTest {
+    @Test
+    fun helpAndTermsOpenThePublishedContactAndTerms() = runComposeUiTest {
+        val viewModel = OwnProfileViewModel(FakeProfileGateway())
+        val opened = mutableListOf<String>()
+        val uriHandler = object : UriHandler {
+            override fun openUri(uri: String) {
+                opened += uri
+            }
+        }
+        setContent {
+            val context = LocalPlatformContext.current
+            val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
+            CompositionLocalProvider(LocalUriHandler provides uriHandler) {
+                SaqzTheme {
+                    OwnProfileRoot(onOpenEditor = {}, onOpenPasswordRecovery = {}, onSignOut = {},
+                        viewModel = viewModel, imageLoader = imageLoader)
+                }
+            }
+        }
+        onNodeWithText("Ajuda e contato").performScrollTo().performClick()
+        onNodeWithText("Termos de uso").performScrollTo().performClick()
+        waitForIdle()
+        assertEquals(listOf("mailto:contato@egysis.com?subject=Saqz%20-%20Ajuda", "https://saqz.app/termos/"), opened)
+    }
+
     @Test
     fun receiptsEntryRoutesWhenAuthorizedEvenWithoutPlanOwnership() = runComposeUiTest {
         val gateway = FakeProfileGateway().apply { profile = profile.copy(memberships = emptyList()) }

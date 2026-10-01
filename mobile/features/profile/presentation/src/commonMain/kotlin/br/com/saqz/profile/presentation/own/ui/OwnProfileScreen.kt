@@ -70,7 +70,9 @@ import br.com.saqz.profile.presentation.own.toOwnProfileGroupUi
 import br.com.saqz.profile.presentation.own.toOwnProfileStatsUi
 import br.com.saqz.profile.presentation.own.toOwnProfileUserUi
 import br.com.saqz.profile.presentation.photo.profilePhotoImageRequest
+import br.com.saqz.profile.resources.profile_help
 import br.com.saqz.profile.resources.profile_privacy
+import br.com.saqz.profile.resources.profile_terms
 import br.com.saqz.profile.resources.profile_delete_title
 import br.com.saqz.profile.resources.Res
 import br.com.saqz.profile.resources.profile_account
@@ -111,6 +113,8 @@ internal object OwnProfileTags {
     const val Notifications = "own-profile-notifications"
     const val ChangePassword = "own-profile-change-password"
     const val Privacy = "profile-privacy"
+    const val Terms = "profile-terms"
+    const val Help = "profile-help"
     const val DeleteAccount = "profile-delete-account"
     const val SignOut = "own-profile-sign-out"
 
@@ -513,6 +517,20 @@ private fun OwnProfileAccountCard(onIntent: (OwnProfileIntent) -> Unit, receipts
             label = stringResource(Res.string.profile_change_password),
             onClick = { onIntent(OwnProfileIntent.ChangePassword) },
             modifier = Modifier.testTag(OwnProfileTags.ChangePassword),
+        )
+        SaqzDivider()
+        OwnProfileAccountRow(
+            icon = SaqzIcons.Mail,
+            label = stringResource(Res.string.profile_help),
+            onClick = { onIntent(OwnProfileIntent.OpenHelp) },
+            modifier = Modifier.testTag(OwnProfileTags.Help),
+        )
+        SaqzDivider()
+        OwnProfileAccountRow(
+            icon = SaqzIcons.FileText,
+            label = stringResource(Res.string.profile_terms),
+            onClick = { onIntent(OwnProfileIntent.OpenTerms) },
+            modifier = Modifier.testTag(OwnProfileTags.Terms),
         )
         SaqzDivider()
         OwnProfileAccountRow(

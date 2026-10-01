@@ -15,6 +15,12 @@ import br.com.saqz.profile.presentation.own.OwnProfileViewModel
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
+internal const val PrivacyUrl = "https://saqz.app/privacidade/"
+internal const val TermsUrl = "https://saqz.app/termos/"
+
+/** Contato publicado no app: abre o e-mail com o assunto preenchido. */
+internal const val HelpMailto = "mailto:contato@egysis.com?subject=Saqz%20-%20Ajuda"
+
 @Composable
 fun OwnProfileRoot(
     onOpenEditor: () -> Unit,
@@ -51,7 +57,9 @@ fun OwnProfileRoot(
             is OwnProfileEffect.OpenAthleteProfile -> onOpenAthleteProfile(effect.groupId)
             OwnProfileEffect.OpenReceipts -> onOpenReceipts?.invoke()
             OwnProfileEffect.OpenMonthlyPayments -> onOpenMonthlyPayments()
-            OwnProfileEffect.OpenPrivacy -> uriHandler.openUri("https://saqz.app/privacidade/")
+            OwnProfileEffect.OpenPrivacy -> uriHandler.openUri(PrivacyUrl)
+            OwnProfileEffect.OpenTerms -> uriHandler.openUri(TermsUrl)
+            OwnProfileEffect.OpenHelp -> uriHandler.openUri(HelpMailto)
             OwnProfileEffect.OpenSettings -> onOpenSettings()
             OwnProfileEffect.OpenNotifications -> onOpenNotifications()
             OwnProfileEffect.OpenAccountDeletion -> onOpenAccountDeletion()

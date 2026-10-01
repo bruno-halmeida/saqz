@@ -42,6 +42,7 @@ class SaqzIconsTest {
         "MoreVertical" to Pair(SaqzIcons.MoreVertical, "ellipsis-vertical"),
         "Flag" to Pair(SaqzIcons.Flag, "flag"),
         "Ban" to Pair(SaqzIcons.Ban, "ban"),
+        "FileText" to Pair(SaqzIcons.FileText, "file-text"),
     )
 
     @Test

@@ -44,6 +44,8 @@ sealed interface OwnProfileIntent {
     data object Refresh : OwnProfileIntent
     data object EditData : OwnProfileIntent
     data object OpenPrivacy : OwnProfileIntent
+    data object OpenTerms : OwnProfileIntent
+    data object OpenHelp : OwnProfileIntent
     data object OpenSettings : OwnProfileIntent
     data object OpenMyPlan : OwnProfileIntent
     data object OpenReceipts : OwnProfileIntent
@@ -63,6 +65,10 @@ sealed interface OwnProfileEffect {
     data object OpenReceipts : OwnProfileEffect
     data object OpenMonthlyPayments : OwnProfileEffect
     data object OpenPrivacy : OwnProfileEffect
+    data object OpenTerms : OwnProfileEffect
+
+    /** "Ajuda e contato": o e-mail da equipe, publicado dentro do app (App Store 1.2). */
+    data object OpenHelp : OwnProfileEffect
     data object OpenSettings : OwnProfileEffect
     data object OpenNotifications : OwnProfileEffect
     data object OpenAccountDeletion : OwnProfileEffect

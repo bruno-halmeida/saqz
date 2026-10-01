@@ -29,6 +29,8 @@ class OwnProfileViewModel(
             OwnProfileIntent.SignOut -> emit(OwnProfileEffect.SignedOut)
             OwnProfileIntent.OpenMyPlan -> emit(OwnProfileEffect.OpenMyPlan)
             OwnProfileIntent.OpenPrivacy -> emit(OwnProfileEffect.OpenPrivacy)
+            OwnProfileIntent.OpenTerms -> emit(OwnProfileEffect.OpenTerms)
+            OwnProfileIntent.OpenHelp -> emit(OwnProfileEffect.OpenHelp)
             OwnProfileIntent.OpenSettings -> emit(OwnProfileEffect.OpenSettings)
 
             OwnProfileIntent.OpenReceipts -> emit(OwnProfileEffect.OpenReceipts)

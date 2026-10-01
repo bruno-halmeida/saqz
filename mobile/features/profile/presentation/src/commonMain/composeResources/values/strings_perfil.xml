@@ -22,4 +22,6 @@
     <string name="profile_retry">Tentar novamente</string>
     <string name="profile_receipts">Recebimentos</string>
     <string name="profile_privacy">Política de privacidade</string>
+    <string name="profile_help">Ajuda e contato</string>
+    <string name="profile_terms">Termos de uso</string>
 </resources>

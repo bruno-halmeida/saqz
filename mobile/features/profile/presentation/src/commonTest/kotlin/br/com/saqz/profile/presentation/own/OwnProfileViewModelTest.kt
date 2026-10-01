@@ -46,6 +46,10 @@ class OwnProfileViewModelTest {
         vm.onIntent(OwnProfileIntent.OpenNotifications)
         advanceUntilIdle()
         assertEquals(OwnProfileEffect.OpenNotifications, vm.effects.first())
+        vm.onIntent(OwnProfileIntent.OpenHelp)
+        assertEquals(OwnProfileEffect.OpenHelp, vm.effects.first())
+        vm.onIntent(OwnProfileIntent.OpenTerms)
+        assertEquals(OwnProfileEffect.OpenTerms, vm.effects.first())
     }
 
     @Test
