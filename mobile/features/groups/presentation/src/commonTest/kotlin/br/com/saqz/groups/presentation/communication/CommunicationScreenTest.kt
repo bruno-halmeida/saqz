@@ -1,5 +1,8 @@
 package br.com.saqz.groups.presentation.communication
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -87,6 +90,16 @@ class CommunicationScreenTest {
         assertEquals(NotificationCenterIntent.Preferences(preferences.copy(
             whatsapp = WhatsAppPreferences(notices = true, reminders = true, charges = true))), intents.single())
         onNodeWithTag("preferences-whatsapp-messages").assertDoesNotExist()
+    }
+    @Test fun whatsappChannelIsHiddenWhileTheLaunchPolicyKeepsItOff() = runComposeUiTest {
+        var whatsApp by mutableStateOf(false)
+        setContent { SaqzTheme {
+            NotificationCenterScreen(NotificationCenterState(loading = false), true, {}, {}, whatsAppChannel = whatsApp)
+        } }
+        onNodeWithText("Push").assertExists()
+        onNodeWithText("WhatsApp").assertDoesNotExist()
+        whatsApp = true
+        onNodeWithText("WhatsApp").assertExists()
     }
     @Test fun pushSettingsAreDisabledWhileSaving() = runComposeUiTest {
         setContent { SaqzTheme {

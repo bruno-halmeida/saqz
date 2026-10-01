@@ -92,7 +92,10 @@ internal fun NotificationCenterScreen(
     settings: Boolean,
     onBack: () -> Unit,
     onIntent: (NotificationCenterIntent) -> Unit,
+    whatsAppChannel: Boolean = br.com.saqz.domain.StoreLaunchPolicy.whatsAppNotifications,
 ) {
+    val channels = NotificationSettingsChannel.entries
+        .filter { it != NotificationSettingsChannel.WHATSAPP || whatsAppChannel }
     Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(NotificationCenterTags.Screen)) {
         SaqzTopAppBar(
             title = stringResource(if (settings) Res.string.communication_settings else Res.string.communication_notifications),
@@ -114,12 +117,15 @@ internal fun NotificationCenterScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap)) {
                         Text(stringResource(Res.string.communication_settings_note))
                         SaqzSegmented(
-                            listOf(
-                                stringResource(Res.string.communication_channel_app),
-                                stringResource(Res.string.communication_channel_push),
-                                stringResource(Res.string.communication_channel_whatsapp)),
-                            state.settingsChannel.ordinal,
-                            { onIntent(NotificationCenterIntent.SelectChannel(NotificationSettingsChannel.entries[it])) },
+                            channels.map { channel ->
+                                stringResource(when (channel) {
+                                    NotificationSettingsChannel.APP -> Res.string.communication_channel_app
+                                    NotificationSettingsChannel.PUSH -> Res.string.communication_channel_push
+                                    NotificationSettingsChannel.WHATSAPP -> Res.string.communication_channel_whatsapp
+                                })
+                            },
+                            channels.indexOf(state.settingsChannel).coerceAtLeast(0),
+                            { onIntent(NotificationCenterIntent.SelectChannel(channels[it])) },
                         )
                         if (state.settingsChannel == NotificationSettingsChannel.APP) {
                         SaqzSwitch(

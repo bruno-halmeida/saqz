@@ -12,4 +12,10 @@ object StoreLaunchPolicy {
      * WhatsApp" (link wa.me) é outra coisa e continua valendo.
      */
     const val whatsAppGroupBinding = false
+
+    /**
+     * Lembrete de cobrança por WhatsApp (DM). O envio por WhatsApp está desligado no servidor
+     * de produção, então a aba "WhatsApp" das preferências prometeria algo que não chega.
+     */
+    const val whatsAppNotifications = false
 }
