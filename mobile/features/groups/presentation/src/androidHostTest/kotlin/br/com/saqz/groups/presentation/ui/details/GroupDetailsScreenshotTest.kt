@@ -40,6 +40,21 @@ class GroupDetailsScreenshotTest {
     @Config(qualifiers = "+h1400dp")
     fun adminNoGame() = compose.captureDetails("group-details-admin-no-game", GroupDetailsPreviewData.adminNoGame, "details")
 
+    // Primeiro grupo da conta, três passos feitos: entra "Deixe o grupo redondo" e a linha do WhatsApp.
+    @Test
+    @Config(qualifiers = "+h2400dp")
+    fun adminChecklist() = compose.captureDetails(
+        "group-details-admin-checklist",
+        GroupDetailsPreviewData.adminNoGame.copy(
+            onboarding = br.com.saqz.groups.presentation.details.GroupOnboarding.InviteAthletes("game-1"),
+            memberCount = 2,
+            checklist = GroupChecklistPreview,
+            whatsApp = br.com.saqz.groups.domain.communication.GroupWhatsAppStatus.NONE,
+        ),
+        "details",
+        onboardingGroup = true,
+    )
+
     @Test
     @Config(qualifiers = "+h2400dp")
     fun member() = compose.captureDetails("group-details-member", fullMember, "details")

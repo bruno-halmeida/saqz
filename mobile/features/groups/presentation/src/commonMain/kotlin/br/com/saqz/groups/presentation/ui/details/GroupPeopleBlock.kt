@@ -25,6 +25,7 @@ import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import br.com.saqz.groups.presentation.details.GroupDetailsState
 import br.com.saqz.groups.presentation.ui.components.WaitingRow
@@ -37,6 +38,7 @@ import br.com.saqz.groups.resources.group_details_manage_invite_meta
 import br.com.saqz.groups.resources.group_details_manage_members
 import br.com.saqz.groups.resources.group_details_manage_schedule
 import br.com.saqz.groups.resources.group_details_manage_title
+import br.com.saqz.groups.resources.group_details_manage_whatsapp
 import br.com.saqz.groups.resources.group_details_map_failure
 import br.com.saqz.groups.resources.group_details_names_more
 import br.com.saqz.groups.resources.group_details_names_two
@@ -45,6 +47,11 @@ import br.com.saqz.groups.resources.group_details_people_count_one
 import br.com.saqz.groups.resources.group_details_people_fallback
 import br.com.saqz.groups.resources.group_details_people_title
 import br.com.saqz.groups.resources.group_details_venue_map
+import br.com.saqz.groups.resources.whatsapp_binding_status_active
+import br.com.saqz.groups.resources.whatsapp_binding_status_broken
+import br.com.saqz.groups.resources.whatsapp_binding_status_disabled
+import br.com.saqz.groups.resources.whatsapp_binding_status_none
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 private const val CrowdAvatarMax = 4
@@ -188,6 +195,17 @@ private fun GroupManageSection(
                 tag = GroupDetailsTags.ManageInviteLink,
                 onClick = { onIntent(GroupDetailsIntent.InviteByLink) },
             )
+            // O grupo do WhatsApp sobe para a Gestão, com status: morava escondido em Editar grupo.
+            state.whatsApp?.let { status ->
+                SaqzDivider()
+                GroupShellRow(
+                    icon = SaqzIcons.MessageSquare,
+                    title = stringResource(Res.string.group_details_manage_whatsapp),
+                    meta = stringResource(status.label()),
+                    tag = GroupDetailsTags.ManageWhatsApp,
+                    onClick = { onIntent(GroupDetailsIntent.OpenWhatsApp) },
+                )
+            }
             state.cashbox?.let { cashbox ->
                 SaqzDivider()
                 GroupShellRow(
@@ -283,4 +301,11 @@ private fun GroupShellMemberPreview() = SaqzTheme {
 @Composable
 private fun GroupShellManagerPreview() = SaqzTheme {
     GroupDetailsScreen(state = GroupShellPreviewData.manager, onBack = {}, onIntent = {})
+}
+
+private fun GroupWhatsAppStatus.label(): StringResource = when (this) {
+    GroupWhatsAppStatus.ACTIVE -> Res.string.whatsapp_binding_status_active
+    GroupWhatsAppStatus.DISABLED -> Res.string.whatsapp_binding_status_disabled
+    GroupWhatsAppStatus.BROKEN -> Res.string.whatsapp_binding_status_broken
+    GroupWhatsAppStatus.NONE -> Res.string.whatsapp_binding_status_none
 }

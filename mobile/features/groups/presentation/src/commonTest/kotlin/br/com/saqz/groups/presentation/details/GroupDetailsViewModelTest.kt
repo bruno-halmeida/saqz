@@ -31,6 +31,8 @@ import br.com.saqz.groups.domain.membership.EntryRequestError
 import br.com.saqz.groups.domain.membership.GroupDepartureGateway
 import br.com.saqz.groups.domain.membership.GroupEntryRequest
 import br.com.saqz.groups.domain.membership.GroupMembershipError
+import br.com.saqz.groups.presentation.FakeGroupOnboardingMemory
+import br.com.saqz.groups.presentation.FakeGroupWhatsAppGateway
 import kotlinx.coroutines.launch
 import br.com.saqz.groups.domain.group.GroupGameConfig
 import br.com.saqz.groups.domain.group.GroupTimeZone
@@ -1784,6 +1786,70 @@ class GroupDetailsViewModelTest {
         ),
     )
 
+    @Test
+    fun `admin loads the whatsapp status and the checklist with whatsapp as the current item`() = runTest {
+        val whatsApp = FakeGroupWhatsAppGateway()
+        val memory = FakeGroupOnboardingMemory()
+        val viewModel = viewModel(whatsApp = whatsApp, onboardingMemory = memory)
+
+        assertEquals(listOf(GroupId(GROUP_ID)), whatsApp.bindingCalls)
+        assertEquals(br.com.saqz.groups.domain.communication.GroupWhatsAppStatus.NONE, viewModel.state.value.whatsApp)
+        assertEquals(
+            br.com.saqz.groups.presentation.details.GroupChecklistItem.WhatsApp,
+            viewModel.state.value.checklist?.current,
+        )
+    }
+
+    @Test
+    fun `athlete never loads the binding nor the checklist`() = runTest {
+        val whatsApp = FakeGroupWhatsAppGateway()
+        val viewModel = viewModel(groupGateway = athleteGroupGateway(), whatsApp = whatsApp, onboardingMemory = FakeGroupOnboardingMemory())
+
+        assertTrue(whatsApp.bindingCalls.isEmpty())
+        assertNull(viewModel.state.value.whatsApp)
+        assertNull(viewModel.state.value.checklist)
+    }
+
+    @Test
+    fun `opening the rules from the checklist remembers it locally and navigates to edit`() = runTest {
+        val memory = FakeGroupOnboardingMemory()
+        val viewModel = viewModel(whatsApp = FakeGroupWhatsAppGateway(), onboardingMemory = memory)
+
+        viewModel.onIntent(GroupDetailsIntent.ChecklistAction(br.com.saqz.groups.presentation.details.GroupChecklistItem.Rules))
+
+        assertEquals(GroupDetailsEffect.OpenEdit(GROUP_ID), viewModel.effects.first())
+        assertTrue(memory.memories[GROUP_ID]?.rulesOpened == true)
+        assertTrue(
+            viewModel.state.value.checklist?.rows
+                ?.single { it.item == br.com.saqz.groups.presentation.details.GroupChecklistItem.Rules }?.done == true,
+        )
+    }
+
+    @Test
+    fun `snoozing hides the checklist for a week and survives reload`() = runTest {
+        val memory = FakeGroupOnboardingMemory()
+        val viewModel = viewModel(whatsApp = FakeGroupWhatsAppGateway(), onboardingMemory = memory)
+
+        viewModel.onIntent(GroupDetailsIntent.SnoozeChecklist)
+
+        assertNull(viewModel.state.value.checklist)
+        assertTrue((memory.memories[GROUP_ID]?.snoozedUntilEpochMillis ?: 0L) > 0L)
+        viewModel.onIntent(GroupDetailsIntent.Retry)
+        assertNull(viewModel.state.value.checklist)
+    }
+
+    @Test
+    fun `checklist items open their own screens`() = runTest {
+        val viewModel = viewModel(whatsApp = FakeGroupWhatsAppGateway(), onboardingMemory = FakeGroupOnboardingMemory())
+
+        viewModel.onIntent(GroupDetailsIntent.ChecklistAction(br.com.saqz.groups.presentation.details.GroupChecklistItem.WhatsApp))
+        assertEquals(GroupDetailsEffect.OpenWhatsApp(GROUP_ID), viewModel.effects.first())
+        viewModel.onIntent(GroupDetailsIntent.OpenWhatsApp)
+        assertEquals(GroupDetailsEffect.OpenWhatsApp(GROUP_ID), viewModel.effects.first())
+        viewModel.onIntent(GroupDetailsIntent.ChecklistAction(br.com.saqz.groups.presentation.details.GroupChecklistItem.Recurrence))
+        assertEquals(GroupDetailsEffect.OpenSchedule(GROUP_ID), viewModel.effects.first())
+    }
+
     private fun viewModel(
         groupGateway: FakeGroupGateway = FakeGroupGateway(),
         gameGateway: FakeGameGateway = FakeGameGateway(),
@@ -1797,6 +1863,8 @@ class GroupDetailsViewModelTest {
         communications: br.com.saqz.groups.presentation.FakeCommunicationGateway = br.com.saqz.groups.presentation.FakeCommunicationGateway(),
         entryRequests: FakeGroupEntryRequestGateway = FakeGroupEntryRequestGateway(),
         notifications: NativeNotificationPort? = null,
+        whatsApp: FakeGroupWhatsAppGateway? = null,
+        onboardingMemory: FakeGroupOnboardingMemory? = null,
     ) = GroupDetailsViewModel(
         GROUP_ID,
         groupGateway,
@@ -1811,6 +1879,8 @@ class GroupDetailsViewModelTest {
         communications,
         entryRequests,
         notifications,
+        whatsApp,
+        onboardingMemory,
     )
 
     private fun athleteGroupGateway() = FakeGroupGateway(

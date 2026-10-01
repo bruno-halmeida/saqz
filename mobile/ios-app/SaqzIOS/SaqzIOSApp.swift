@@ -80,7 +80,8 @@ struct IOSAppComposition {
                 state: groupState,
                 inviteUrlStore: inviteUrlStore,
                 inviteShare: inviteShare,
-                inviteClipboard: inviteShare
+                inviteClipboard: inviteShare,
+                onboardingMemory: IosGroupOnboardingMemory()
             ),
             drafts: SaqzDraftStores(
                 groupDrafts: drafts.setup,

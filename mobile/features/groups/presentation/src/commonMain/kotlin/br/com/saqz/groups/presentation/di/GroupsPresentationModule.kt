@@ -70,7 +70,7 @@ fun groupsPresentationModule(): Module = module {
         params ->
         GroupDetailsViewModel(
             params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>(), get(), get(), get(),
-            getOrNull(),
+            getOrNull(), get(), get(),
         )
     }
     viewModel { params -> GroupCashboxViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>()) }

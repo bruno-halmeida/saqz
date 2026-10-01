@@ -57,6 +57,10 @@ internal fun GroupDetailsScreen(
                 ) {
                     GroupTopContent(photoFailed = photoFailed)
                     GroupHeroBlock(state = state, onIntent = onIntent, onboardingGroup = onboardingGroup)
+                    // Depois dos três passos, no primeiro grupo da conta, entra a checklist.
+                    if (onboardingGroup && state.isAdmin && groupOnboardingSteps(state) == null) {
+                        state.checklist?.let { GroupChecklistBlock(checklist = it, onIntent = onIntent) }
+                    }
                     GroupOwnDebtBlock(state = state, onIntent = onIntent)
                     GroupWaitingBlock(state = state, onIntent = onIntent)
                     GroupAgendaBlock(state = state, onIntent = onIntent)

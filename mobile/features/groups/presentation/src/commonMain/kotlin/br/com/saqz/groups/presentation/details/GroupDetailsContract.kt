@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.details
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
+import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.presentation.home.HomeWaitlistRowUi
@@ -62,6 +63,10 @@ data class GroupDetailsState(
     val agenda: List<GroupAgendaRowUi> = emptyList(),
     /** "Esperando você" — só gestor. `null` = nenhuma das três linhas. */
     val waiting: GroupWaitingUi? = null,
+    /** Status do vínculo com o WhatsApp (só gestor); `null` enquanto não carregou ou se falhou. */
+    val whatsApp: GroupWhatsAppStatus? = null,
+    /** "Deixe o grupo redondo"; `null` = feita, adiada ou não se aplica. Só o primeiro grupo da conta a desenha. */
+    val checklist: GroupChecklistUi? = null,
 )
 
 /** Nome, linha de resumo e — só no 2e — os chips de bairro/modalidade/agenda. */
@@ -312,6 +317,14 @@ sealed interface GroupDetailsIntent {
     // Comum às duas visões
     data object OpenCashbox : GroupDetailsIntent
 
+    data object OpenWhatsApp : GroupDetailsIntent
+
+    /** Toque numa linha de "Deixe o grupo redondo": vai direto à tela da ação. */
+    data class ChecklistAction(val item: GroupChecklistItem) : GroupDetailsIntent
+
+    /** "Deixar para depois": esconde a checklist por uma semana, no aparelho. */
+    data object SnoozeChecklist : GroupDetailsIntent
+
     data object Leave : GroupDetailsIntent
 
     data object ConfirmLeave : GroupDetailsIntent
@@ -354,6 +367,8 @@ sealed interface GroupDetailsEffect {
     data class OpenCashbox(val groupId: String) : GroupDetailsEffect
 
     data class OpenInviteLink(val groupId: String) : GroupDetailsEffect
+
+    data class OpenWhatsApp(val groupId: String) : GroupDetailsEffect
 
     data class OpenMap(val address: String) : GroupDetailsEffect
 

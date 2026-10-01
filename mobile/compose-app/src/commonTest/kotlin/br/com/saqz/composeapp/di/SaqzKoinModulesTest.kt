@@ -1,5 +1,7 @@
 package br.com.saqz.composeapp.di
 
+import br.com.saqz.groups.port.GroupOnboardingMemory
+import br.com.saqz.groups.port.GroupOnboardingMemoryPort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.setMain
@@ -185,6 +187,7 @@ class SaqzKoinModulesTest {
                     inviteShare = FakeInviteSharePort,
                     map = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                     inviteClipboard = FakeInviteClipboardPort,
+                    onboardingMemory = FakeGroupOnboardingMemoryPort,
                 ),
             )
         }
@@ -197,6 +200,7 @@ class SaqzKoinModulesTest {
         single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groups.photos.encoder }
         single<NativeGroupLinkPort> { get<SaqzNativePorts>().groups.links }
         single<LocalGroupStatePort> { get<SaqzNativePorts>().groups.state }
+        single<GroupOnboardingMemoryPort> { get<SaqzNativePorts>().groups.onboardingMemory }
         single<GroupSystemTimeZonePort> { DefaultGroupSystemTimeZonePort() }
         single<GroupNowPort> { DefaultGroupNowPort() }
     }
@@ -646,4 +650,11 @@ private object FakeExpenseDraftStore : ExpenseDraftStorePort {
 
     override fun clear(groupId: String, expenseId: String?, commandKey: String, done: (ExpenseDraftWriteResult) -> Unit) =
         done(ExpenseDraftWriteResult.Success)
+}
+
+private object FakeGroupOnboardingMemoryPort : GroupOnboardingMemoryPort {
+    override fun read(groupId: String, done: (GroupOnboardingMemory) -> Unit) = done(GroupOnboardingMemory())
+    override fun write(groupId: String, memory: GroupOnboardingMemory, done: (Boolean) -> Unit) = done(true)
+    override fun isSheetSeen(sheetId: String, done: (Boolean) -> Unit) = done(false)
+    override fun markSheetSeen(sheetId: String, done: (Boolean) -> Unit) = done(true)
 }

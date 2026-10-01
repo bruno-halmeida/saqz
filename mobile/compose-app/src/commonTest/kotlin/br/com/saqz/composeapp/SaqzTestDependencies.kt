@@ -50,6 +50,8 @@ import br.com.saqz.groups.port.GroupDraftReadResult
 import br.com.saqz.groups.port.GroupDraftStorePort
 import br.com.saqz.groups.port.GroupDraftWriteResult
 import br.com.saqz.groups.port.GroupLinkEventListener
+import br.com.saqz.groups.port.GroupOnboardingMemory
+import br.com.saqz.groups.port.GroupOnboardingMemoryPort
 import br.com.saqz.groups.port.GroupOperationResult
 import br.com.saqz.groups.port.GroupResultCallback
 import br.com.saqz.groups.port.GroupValueCallback
@@ -120,6 +122,7 @@ internal fun testSaqzPlatformDependencies() = SaqzPlatformDependencies(
         inviteShare = TestInviteSharePort,
         map = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
         inviteClipboard = TestInviteClipboardPort,
+        onboardingMemory = TestGroupOnboardingMemoryPort,
     ),
     drafts = SaqzDraftStores(
         groupDrafts = TestGroupDraftStore,
@@ -271,4 +274,11 @@ private object TestExpenseDraftStore : ExpenseDraftStorePort {
     override fun read(groupId: String, expenseId: String?, done: (ExpenseDraftReadResult) -> Unit) = done(ExpenseDraftReadResult.Success(null))
     override fun write(draft: ExpenseDraft, done: (ExpenseDraftWriteResult) -> Unit) = done(ExpenseDraftWriteResult.Success)
     override fun clear(groupId: String, expenseId: String?, commandKey: String, done: (ExpenseDraftWriteResult) -> Unit) = done(ExpenseDraftWriteResult.Success)
+}
+
+private object TestGroupOnboardingMemoryPort : GroupOnboardingMemoryPort {
+    override fun read(groupId: String, done: (GroupOnboardingMemory) -> Unit) = done(GroupOnboardingMemory())
+    override fun write(groupId: String, memory: GroupOnboardingMemory, done: (Boolean) -> Unit) = done(true)
+    override fun isSheetSeen(sheetId: String, done: (Boolean) -> Unit) = done(false)
+    override fun markSheetSeen(sheetId: String, done: (Boolean) -> Unit) = done(true)
 }

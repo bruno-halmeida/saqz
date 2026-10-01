@@ -11,6 +11,7 @@ import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
 import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
 import br.com.saqz.groups.domain.photo.GroupPhotoPreviewPort
 import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
+import br.com.saqz.groups.port.GroupOnboardingMemoryPort
 import br.com.saqz.groups.port.LocalGroupStatePort
 import br.com.saqz.groups.port.NativeGroupLinkPort
 import br.com.saqz.groups.port.GroupInviteUrlStorePort
@@ -44,6 +45,7 @@ class GroupsRuntimeDependencies(
     val inviteUrlStore: GroupInviteUrlStorePort,
     val inviteShare: NativeInviteSharePort,
     val inviteClipboard: NativeInviteClipboardPort,
+    val onboardingMemory: GroupOnboardingMemoryPort,
 )
 
 @Suppress("LongParameterList")

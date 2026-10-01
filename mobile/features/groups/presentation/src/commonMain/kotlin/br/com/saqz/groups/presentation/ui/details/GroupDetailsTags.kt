@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.ui.details
 
+import br.com.saqz.groups.presentation.details.GroupChecklistItem
+
 /**
  * Todas as tags do detalhe do grupo. Várias são CONTRATO do e2e Android
  * (`mobile/android-app/src/e2e`): `group-details`, `-leave`, `-shortcut-chat`,
@@ -57,6 +59,11 @@ internal object GroupDetailsTags {
     const val Agenda = "group-details-agenda"
     const val AgendaCreate = "group-details-agenda-create"
     const val AgendaMore = "group-details-agenda-more"
+    const val ManageWhatsApp = "group-details-manage-whatsapp"
+    const val Checklist = "group-details-checklist"
+    const val ChecklistSnooze = "group-details-checklist-snooze"
+
+    fun checklistItem(item: GroupChecklistItem) = "group-details-checklist-${item.name.lowercase()}"
 
     // mural
     const val Mural = "group-details-mural"

@@ -1165,6 +1165,7 @@ internal fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop
         is GroupDetailsEffect.OpenCashbox -> add(FinanceRoute.GroupCashbox(effect.groupId))
         is GroupDetailsEffect.OpenSettlement -> add(FinanceRoute.GameSettlement(effect.groupId, effect.gameId))
         is GroupDetailsEffect.OpenInviteLink -> add(GroupsRoute.Invite(effect.groupId))
+        is GroupDetailsEffect.OpenWhatsApp -> add(GroupsRoute.WhatsApp(effect.groupId))
         // O Root abre o endereço com o handler nativo e trata falha localmente.
         is GroupDetailsEffect.OpenMap -> Unit
         is GroupDetailsEffect.OpenThread -> add(GroupsRoute.Thread(effect.groupId, effect.notices))

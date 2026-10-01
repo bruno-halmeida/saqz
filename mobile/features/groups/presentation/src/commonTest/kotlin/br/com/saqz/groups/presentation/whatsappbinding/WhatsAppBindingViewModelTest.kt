@@ -7,6 +7,7 @@ import br.com.saqz.groups.domain.communication.CommunicationError
 import br.com.saqz.groups.domain.communication.GroupWhatsAppBinding
 import br.com.saqz.groups.domain.communication.GroupWhatsAppGateway
 import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
+import br.com.saqz.groups.presentation.FakeGroupWhatsAppGateway
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -133,37 +134,5 @@ class WhatsAppBindingViewModelTest {
         assertTrue(viewModel.state.value.canToggle)
         viewModel.onIntent(WhatsAppBindingIntent.SetEnabled(true))
         assertEquals(listOf(GroupId("group-1") to true), gateway.enabledCalls)
-    }
-
-    private class FakeGroupWhatsAppGateway(
-        var binding: GroupWhatsAppBinding = GroupWhatsAppBinding(bound = false),
-        var linked: GroupWhatsAppBinding = GroupWhatsAppBinding(true, "123@g.us", "Vôlei do CERET", GroupWhatsAppStatus.ACTIVE),
-        var shouldFail: Boolean = false,
-    ) : GroupWhatsAppGateway {
-        val bindingCalls = mutableListOf<GroupId>()
-        val linkCalls = mutableListOf<Pair<GroupId, String>>()
-        val enabledCalls = mutableListOf<Pair<GroupId, Boolean>>()
-
-        override suspend fun binding(groupId: GroupId): SaqzResult<GroupWhatsAppBinding, CommunicationError> {
-            bindingCalls += groupId
-            return failure() ?: SaqzResult.Success(binding)
-        }
-
-        override suspend fun link(groupId: GroupId, inviteLink: String): SaqzResult<GroupWhatsAppBinding, CommunicationError> {
-            linkCalls += groupId to inviteLink
-            return failure() ?: SaqzResult.Success(linked)
-        }
-
-        override suspend fun setEnabled(groupId: GroupId, enabled: Boolean): SaqzResult<GroupWhatsAppBinding, CommunicationError> {
-            enabledCalls += groupId to enabled
-            val next = binding.copy(
-                bound = true,
-                status = if (enabled) GroupWhatsAppStatus.ACTIVE else GroupWhatsAppStatus.DISABLED,
-            )
-            return failure() ?: SaqzResult.Success(next)
-        }
-
-        private fun failure(): SaqzResult.Failure<CommunicationError>? =
-            if (shouldFail) SaqzResult.Failure(CommunicationError(DataError.Connectivity)) else null
     }
 }

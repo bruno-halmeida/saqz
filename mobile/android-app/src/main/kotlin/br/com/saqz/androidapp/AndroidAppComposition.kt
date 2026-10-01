@@ -97,6 +97,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
                     inviteUrlStore = inviteUrlStore,
                     inviteShare = inviteShare,
                     inviteClipboard = inviteShare,
+                    onboardingMemory = br.com.saqz.androidapp.groups.onboarding.AndroidGroupOnboardingMemory(context.applicationContext),
                 ),
                 drafts = SaqzDraftStores(
                     groupDrafts = drafts.setup,

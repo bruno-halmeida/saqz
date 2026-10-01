@@ -20,6 +20,8 @@ import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
+import br.com.saqz.groups.domain.communication.GroupWhatsAppGateway
+import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
 import br.com.saqz.groups.domain.communication.NativeNotificationPort
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
@@ -41,6 +43,8 @@ import br.com.saqz.groups.domain.membership.GroupEntryRequest
 import br.com.saqz.groups.domain.membership.GroupEntryRequestGateway
 import br.com.saqz.groups.domain.communication.CommunicationGateway
 import br.com.saqz.groups.domain.communication.CommunicationChannel
+import br.com.saqz.groups.port.GroupOnboardingMemory
+import br.com.saqz.groups.port.GroupOnboardingMemoryPort
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.game.gameBellLabel
 import br.com.saqz.groups.presentation.game.gameDeadlineSentence
@@ -104,6 +108,8 @@ class GroupDetailsViewModel(
     private val communications: CommunicationGateway,
     private val entryRequests: GroupEntryRequestGateway,
     private val notifications: NativeNotificationPort? = null,
+    private val whatsApp: GroupWhatsAppGateway? = null,
+    private val onboardingMemory: GroupOnboardingMemoryPort? = null,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(GroupDetailsState()) {
 
     private var loadGeneration = 0
@@ -117,6 +123,11 @@ class GroupDetailsViewModel(
     /** O grupo da carga corrente: a seção de cobranças sozinha precisa do fuso e do Pix. */
     private var loadedGroup: Group? = null
     private var reminderRequest: Pair<String, String>? = null
+
+    // Entradas de "Deixe o grupo redondo": chegam de chamadas separadas e se combinam em [recomputeChecklist].
+    private var rosterHasMensalista = false
+    private var whatsAppStatus: GroupWhatsAppStatus? = null
+    private var memory = GroupOnboardingMemory()
 
     init {
         load()
@@ -146,6 +157,9 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.Invite,
             -> emit(GroupDetailsEffect.OpenInviteLink(groupId))
             GroupDetailsIntent.OpenCashbox -> emit(GroupDetailsEffect.OpenCashbox(groupId))
+            GroupDetailsIntent.OpenWhatsApp -> emit(GroupDetailsEffect.OpenWhatsApp(groupId))
+            is GroupDetailsIntent.ChecklistAction -> checklistAction(intent.item)
+            GroupDetailsIntent.SnoozeChecklist -> snoozeChecklist()
             GroupDetailsIntent.OpenVenueMap -> openMap()
             GroupDetailsIntent.MapOpenFailed -> update { it.copy(mapFailed = true) }
             GroupDetailsIntent.Leave -> confirmDeparture()
@@ -275,9 +289,12 @@ class GroupDetailsViewModel(
         ownChargesGeneration++
         pixCopiedGeneration++
         loadedGroup = null
+        rosterHasMensalista = false
+        whatsAppStatus = null
+        memory = GroupOnboardingMemory()
         update { it.copy(
             isLoading = true, loadFailed = false, error = null,
-            onboarding = null,
+            onboarding = null, checklist = null, whatsApp = null,
             athleteIntroVisible = false, athleteShareFailed = false,
             notifying = false, notificationFailed = false, notifiedCount = null,
             pixCopied = false,
@@ -297,6 +314,8 @@ class GroupDetailsViewModel(
                             loadAdminCashbox(generation, group, games)
                             loadOwnCharges(generation, group)
                             loadPeople(generation)
+                            loadWhatsApp(generation, group)
+                            loadMemory(generation)
                             loadLatestNotice(generation)
                         }
                     }
@@ -326,6 +345,7 @@ class GroupDetailsViewModel(
         val result = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
         if (generation != loadGeneration) return
         val roster = (result as? SaqzResult.Success)?.value ?: return
+        rosterHasMensalista = roster.hasMensalista()
         update {
             it.copy(
                 memberCount = roster.size,
@@ -334,6 +354,61 @@ class GroupDetailsViewModel(
                 },
             )
         }
+        recomputeChecklist(generation)
+    }
+
+    /** Status do vínculo, só para quem administra: alimenta a linha de Gestão e a checklist. Falha cala. */
+    private suspend fun loadWhatsApp(generation: Int, group: Group) {
+        val gateway = whatsApp ?: return
+        if (group.role == GroupRole.ATHLETE) return
+        val result = gateway.binding(GroupId(groupId))
+        if (generation != loadGeneration) return
+        whatsAppStatus = (result as? SaqzResult.Success)?.value?.status
+        recomputeChecklist(generation)
+    }
+
+    private fun loadMemory(generation: Int) {
+        val port = onboardingMemory ?: return
+        port.read(groupId) { read ->
+            if (generation != loadGeneration) return@read
+            memory = read
+            recomputeChecklist(generation)
+        }
+    }
+
+    private fun recomputeChecklist(generation: Int) {
+        if (generation != loadGeneration) return
+        val group = loadedGroup ?: return
+        val checklist = if (group.role == GroupRole.ATHLETE) {
+            null
+        } else {
+            groupChecklist(group, rosterHasMensalista, whatsAppStatus, memory, now.now().toEpochMilliseconds())
+        }
+        update { it.copy(checklist = checklist, whatsApp = whatsAppStatus) }
+    }
+
+    private fun checklistAction(item: GroupChecklistItem) {
+        when (item) {
+            GroupChecklistItem.WhatsApp -> emit(GroupDetailsEffect.OpenWhatsApp(groupId))
+            GroupChecklistItem.Mensalistas -> emit(GroupDetailsEffect.OpenMembers(groupId))
+            GroupChecklistItem.Pix -> emit(GroupDetailsEffect.OpenEdit(groupId))
+            GroupChecklistItem.Rules -> {
+                // Abrir as regras uma vez é o que conta: não dá para ler isso do grupo.
+                remember(memory.copy(rulesOpened = true))
+                emit(GroupDetailsEffect.OpenEdit(groupId))
+            }
+            GroupChecklistItem.Recurrence -> emit(GroupDetailsEffect.OpenSchedule(groupId))
+        }
+    }
+
+    private fun snoozeChecklist() {
+        remember(memory.copy(snoozedUntilEpochMillis = now.now().toEpochMilliseconds() + CHECKLIST_SNOOZE_MILLIS))
+    }
+
+    private fun remember(next: GroupOnboardingMemory) {
+        memory = next
+        recomputeChecklist(loadGeneration)
+        onboardingMemory?.write(groupId, next) {}
     }
 
     private suspend fun loadLatestNotice(generation: Int) {
@@ -913,6 +988,8 @@ class GroupDetailsViewModel(
 private const val MONTHS_IN_YEAR = 12
 private const val OWN_CHARGES_HISTORY_LIMIT = 6
 private const val PIX_COPIED_DWELL_MILLIS = 2_000L
+/** "Deixar para depois" esconde a checklist por uma semana. */
+private const val CHECKLIST_SNOOZE_MILLIS = 7L * 24 * 60 * 60 * 1000
 private const val MEMBER_PREVIEW_LIMIT = 4
 
 // Os nomes de mês já existem no módulo (fluxo 5, caixa geral). Reusar é o que evita uma

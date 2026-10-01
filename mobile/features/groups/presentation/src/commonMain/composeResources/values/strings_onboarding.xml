@@ -19,4 +19,18 @@
     <string name="onboarding_athlete_share_message">Nosso grupo usa o Saqz para organizar jogos, presenças e o caixa. Que tal levar para o seu grupo também? https://saqz.app/</string>
     <string name="onboarding_athlete_share_failed">Não foi possível abrir o compartilhamento. Tente novamente.</string>
     <string name="onboarding_athlete_entry">Você participa pelo app sem assinar o Saqz. Os valores dos jogos são combinados com o grupo.</string>
+    <!-- "Deixe o grupo redondo": os cinco ajustes depois dos três passos, só no primeiro grupo da conta -->
+    <string name="checklist_title">Deixe o grupo redondo</string>
+    <string name="checklist_whatsapp_title">Grupo do WhatsApp</string>
+    <string name="checklist_whatsapp_body">Avisos e lembretes de presença direto no grupo da galera.</string>
+    <string name="checklist_mensalistas_title">Mensalistas e mensalidade</string>
+    <string name="checklist_mensalistas_body">Quem paga por mês entra primeiro na lista.</string>
+    <string name="checklist_pix_title">Pix do grupo</string>
+    <string name="checklist_pix_body">Aparece na cobrança. A galera copia e paga.</string>
+    <string name="checklist_rules_title">Regras da lista de espera</string>
+    <string name="checklist_rules_body">Prioridade, promoção automática e prazo.</string>
+    <string name="checklist_recurrence_title">Repetir toda semana</string>
+    <string name="checklist_recurrence_body">Os jogos nascem sozinhos nos dias e horários.</string>
+    <string name="checklist_snooze">Deixar para depois</string>
+    <string name="group_details_manage_whatsapp">Grupo do WhatsApp</string>
 </resources>
