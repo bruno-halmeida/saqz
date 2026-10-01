@@ -9,6 +9,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceSource
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceTransitionPolicy
+import br.com.saqz.sharedkernel.moderation.ObjectionableText
 import java.time.Instant
 import java.util.UUID
 
@@ -72,6 +73,7 @@ class GameGuests(
         val name = raw?.trim()?.takeUnless(String::isBlank) ?: return null
         if (name.codePointCount(0, name.length) !in 2..80) return null
         if (name.codePoints().anyMatch(Character::isISOControl)) return null
+        if (ObjectionableText.contains(name)) return null
         return name
     }
 

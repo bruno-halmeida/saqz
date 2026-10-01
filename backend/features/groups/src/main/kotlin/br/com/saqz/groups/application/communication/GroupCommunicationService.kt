@@ -4,6 +4,7 @@ import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.sharedkernel.moderation.ObjectionableText
 import java.util.UUID
 
 class GroupCommunicationService(
@@ -14,7 +15,7 @@ class GroupCommunicationService(
     fun messages(actor: UUID, groupId: UUID, channel: MessageChannel, before: Long?): CommunicationResult<CommunicationPage<GroupMessage>> =
         inGroup(actor, groupId) {
             if (channel in setOf(MessageChannel.REMINDER, MessageChannel.GAME_OPEN, MessageChannel.CHARGE, MessageChannel.ATTENDANCE_WINDOW) || (before != null && before <= 0)) return@inGroup invalid()
-            CommunicationResult.Success(page(repository.messages(groupId, channel, before)) { it.sequence })
+            CommunicationResult.Success(page(repository.messages(actor, groupId, channel, before)) { it.sequence })
         }
 
     fun publish(actor: UUID, groupId: UUID, channel: MessageChannel, requestId: UUID, body: String): CommunicationResult<GroupMessage> =
@@ -23,6 +24,7 @@ class GroupCommunicationService(
             if (channel == MessageChannel.NOTICE && role == GroupRole.ATHLETE) return@inGroup forbidden()
             val text = body.trim()
             if (text.length !in 1..2000 || text.any { it.isISOControl() && it !in "\n\t\r" }) return@inGroup invalid()
+            if (ObjectionableText.contains(text)) return@inGroup CommunicationResult.Failure(CommunicationError.OBJECTIONABLE)
             val existing = repository.findRequest(groupId, actor, channel, requestId)
             when {
                 existing == null -> CommunicationResult.Success(repository.publish(groupId, actor, channel, requestId, text, null))

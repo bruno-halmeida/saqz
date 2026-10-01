@@ -2,6 +2,7 @@ package br.com.saqz.access.application.session
 
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.access.domain.PhoneNumber
+import br.com.saqz.sharedkernel.moderation.ObjectionableText
 import br.com.saqz.sharedkernel.subscription.PlanOwnerLookup
 
 class CompleteSessionProfile(
@@ -34,6 +35,7 @@ class CompleteSessionProfile(
         val displayName = if (displayNameProvided) {
             rawDisplayName?.let {
                 runCatching { AccessName.from(it) }.getOrNull()
+                    ?.takeUnless { name -> ObjectionableText.contains(name.value) }
                     ?: return CompleteSessionProfileResult.InvalidDisplayName
             } ?: return CompleteSessionProfileResult.InvalidDisplayName
         } else {
@@ -47,7 +49,7 @@ class CompleteSessionProfile(
             null
         }
         val nickname = rawNickname?.takeUnless(String::isBlank)
-        if (nicknameProvided && nickname != null && !nickname.isValidNickname()) {
+        if (nicknameProvided && nickname != null && (!nickname.isValidNickname() || ObjectionableText.contains(nickname))) {
             return CompleteSessionProfileResult.InvalidNickname
         }
         val city = rawCity?.takeUnless(String::isBlank)

@@ -7,18 +7,19 @@ import br.com.saqz.access.adapter.output.jdbc.admin.JdbcPlatformAdminRepository
 import br.com.saqz.access.application.admin.AdminAccessStats
 import br.com.saqz.access.application.admin.AdminUserDirectory
 import br.com.saqz.access.application.admin.PlatformAdminLookup
+import br.com.saqz.adminweb.http.AdminCouponAnalyticsController
+import br.com.saqz.adminweb.http.AdminCouponsController
 import br.com.saqz.adminweb.http.AdminGroupsController
+import br.com.saqz.adminweb.http.AdminModerationController
 import br.com.saqz.adminweb.http.AdminOverviewController
+import br.com.saqz.adminweb.http.AdminSubscriptionsController
 import br.com.saqz.adminweb.http.AdminUsersController
 import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupDirectoryRepository
 import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupStatsRepository
 import br.com.saqz.groups.application.admin.AdminGroupDirectory
 import br.com.saqz.groups.application.admin.AdminGroupStats
-import br.com.saqz.adminweb.http.AdminCouponAnalyticsController
+import br.com.saqz.groups.application.moderation.ContentModerationService
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminCouponAnalytics
-import java.time.Clock
-import br.com.saqz.adminweb.http.AdminCouponsController
-import br.com.saqz.adminweb.http.AdminSubscriptionsController
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminCouponDirectoryRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueStatsRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminSubscriptionDirectoryRepository
@@ -27,11 +28,12 @@ import br.com.saqz.subscriptions.application.AdminRevenueStats
 import br.com.saqz.subscriptions.application.AdminSubscriptionCanceler
 import br.com.saqz.subscriptions.application.AdminSubscriptionDirectory
 import br.com.saqz.subscriptions.application.CancelSubscription
+import java.time.Clock
+import javax.sql.DataSource
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import javax.sql.DataSource
 
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty("spring.datasource.url")
@@ -95,6 +97,9 @@ class PlatformAdminConfiguration {
     @Bean
     fun adminCouponAnalyticsController(dataSource: DataSource, clock: Clock) =
         AdminCouponAnalyticsController(JdbcAdminCouponAnalytics(dataSource, clock))
+
+    @Bean
+    fun adminModerationController(moderation: ContentModerationService) = AdminModerationController(moderation)
 
     @Bean
     fun adminOverviewController(

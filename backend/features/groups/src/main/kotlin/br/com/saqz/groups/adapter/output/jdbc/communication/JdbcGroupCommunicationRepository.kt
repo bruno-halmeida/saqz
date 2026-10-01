@@ -26,10 +26,11 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         "SELECT id FROM access_groups WHERE id = :group AND deleted_at IS NULL FOR UPDATE",
     ).param("group", groupId).query(UUID::class.java).optional().isPresent
 
-    override fun messages(groupId: UUID, channel: MessageChannel, before: Long?) = jdbc.sql(
+    /** Avisos e mensagens de quem o leitor bloqueou não aparecem para ele. */
+    override fun messages(viewer: UUID, groupId: UUID, channel: MessageChannel, before: Long?) = jdbc.sql(
         "SELECT m.* FROM group_messages m WHERE group_id = :group AND channel = :channel " +
-            "AND (:before IS NULL OR sequence < :before) ORDER BY sequence DESC LIMIT 51",
-    ).param("group", groupId).param("channel", channel.name, Types.OTHER)
+            "AND (:before IS NULL OR sequence < :before) AND $NOT_FROM_BLOCKED ORDER BY sequence DESC LIMIT 51",
+    ).param("group", groupId).param("channel", channel.name, Types.OTHER).param("viewer", viewer)
         .param("before", before, Types.BIGINT).query { rs, _ -> message(rs) }.list()
 
     override fun findRequest(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID) = jdbc.sql(
@@ -59,6 +60,8 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             FROM group_memberships membership
             WHERE membership.group_id = :group AND membership.active
               AND (:systemAuthored OR membership.user_id <> :actor)
+              AND (NOT :personal OR NOT EXISTS (
+                  SELECT 1 FROM user_blocks b WHERE b.blocker_id = membership.user_id AND b.blocked_id = :actor))
               AND (:everyone OR CAST(:game AS uuid) IS NULL OR NOT EXISTS (
                   SELECT 1 FROM game_attendance a
                   WHERE a.group_id = :group AND a.game_id = :game AND a.member_user_id = membership.user_id
@@ -67,6 +70,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             """.trimIndent(),
         ).param("message", id).param("group", groupId).param("actor", actor)
             .param("systemAuthored", systemAuthored)
+            .param("personal", channel in PERSONAL_CHANNELS)
             .param("everyone", channel == MessageChannel.GAME_OPEN && firstGameOpenNotice(id, gameId))
             .param("game", gameId, Types.OTHER).update()
         val recipients = jdbc.sql("SELECT count(*) FROM group_notifications WHERE message_id = :id AND in_app")
@@ -206,9 +210,10 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         JOIN access_groups g ON g.id = m.group_id AND g.deleted_at IS NULL
         JOIN group_memberships membership ON membership.group_id = m.group_id AND membership.user_id = n.recipient_id
         WHERE n.recipient_id = :actor AND n.in_app AND (:before IS NULL OR n.sequence < :before)
+          AND $NOT_FROM_BLOCKED
         ORDER BY n.sequence DESC LIMIT 51
         """.trimIndent(),
-    ).param("actor", actor).param("before", before, Types.BIGINT)
+    ).param("actor", actor).param("viewer", actor).param("before", before, Types.BIGINT)
         .query { rs, _ -> GroupNotification(rs.getLong("notification_sequence"), message(rs), rs.getTimestamp("read_at") != null) }.list()
 
     override fun markRead(actor: UUID, sequence: Long) {
@@ -251,4 +256,11 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         channel = MessageChannel.valueOf(rs.getString("channel")), body = rs.getString("body"),
         gameId = rs.getObject("game_id", UUID::class.java), recipientCount = rs.getInt("recipient_count"), createdAt = rs.getTimestamp("created_at").toInstant(),
     )
+
+    private companion object {
+        /** Canais escritos por uma pessoa: são os que o bloqueio esconde. Os do sistema seguem chegando. */
+        val PERSONAL_CHANNELS = setOf(MessageChannel.NOTICE, MessageChannel.CHAT)
+        const val NOT_FROM_BLOCKED = "(m.channel NOT IN ('NOTICE', 'CHAT') OR NOT EXISTS (" +
+            "SELECT 1 FROM user_blocks b WHERE b.blocker_id = :viewer AND b.blocked_id = m.author_id))"
+    }
 }

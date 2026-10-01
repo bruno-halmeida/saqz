@@ -1,5 +1,6 @@
 package br.com.saqz.groups.domain.group
 
+import br.com.saqz.sharedkernel.moderation.ObjectionableText
 import java.time.DayOfWeek
 import java.time.LocalTime
 
@@ -123,6 +124,9 @@ object GroupProfileDefaultsValidator {
         val errors = mutableListOf<GroupValidationError>()
         val name = requiredText(input.name, "name", 2, 80, errors)
         val description = optionalText(input.description, "description", 2, 500, errors)
+        listOf("name" to name, "description" to description).forEach { (field, value) ->
+            if (value != null && ObjectionableText.contains(value)) errors += GroupValidationError(field, "objectionable")
+        }
         val city = optionalText(input.city, "city", 2, 80, errors)
         val customLevel = optionalText(input.customLevel, "customLevel", 2, 40, errors)
         val customPlayStyle = optionalText(input.customPlayStyle, "customPlayStyle", 2, 40, errors)

@@ -11,6 +11,7 @@ import br.com.saqz.groups.domain.GroupAction
 import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsValidation
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsValidator
+import br.com.saqz.sharedkernel.moderation.ObjectionableText
 import java.util.UUID
 
 class UpdateGroupSettings(
@@ -101,7 +102,7 @@ class UpdateGroupSettings(
         val validName = runCatching { AccessName.from(name) }.getOrNull()
         val validTimeZone = runCatching { IanaTimeZone.from(timeZone) }.getOrNull()
         val invalidFields = buildSet {
-            if (validName == null) add(UpdateGroupSettingsField.NAME)
+            if (validName == null || ObjectionableText.contains(validName.value)) add(UpdateGroupSettingsField.NAME)
             if (validTimeZone == null) add(UpdateGroupSettingsField.TIME_ZONE)
         }
         if (invalidFields.isNotEmpty()) return UpdateGroupSettingsResult.Invalid(invalidFields)

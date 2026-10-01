@@ -9,6 +9,10 @@ internal fun removeDeletedAccountPersonalData(jdbc: JdbcClient, userId: UUID) {
     val notifications = "SELECT sequence FROM group_notifications WHERE recipient_id = :id OR message_id IN ($messages)"
     fun execute(sql: String) { jdbc.sql(sql).param("id", userId).update() }
 
+    // Reports filed by or about the account, and blocks in either direction.
+    execute("""DELETE FROM content_reports WHERE reporter_id = :id OR target_user_id = :id
+        OR group_id IN (SELECT id FROM access_groups WHERE owner_user_id = :id)""")
+    execute("DELETE FROM user_blocks WHERE blocker_id = :id OR blocked_id = :id")
     // Delete the notification payloads/queues before their parent messages.
     listOf("notification_push_deliveries", "notification_push_queue", "notification_whatsapp_queue").forEach {
         execute("DELETE FROM $it WHERE notification_id IN ($notifications)")

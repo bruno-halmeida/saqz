@@ -3,6 +3,7 @@ package br.com.saqz.groups.domain.game
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.groups.domain.group.PromotionMode
+import br.com.saqz.sharedkernel.moderation.ObjectionableText
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -64,6 +65,7 @@ object GameDraftValidator {
     fun validate(input: GameDraftInput): GameDraftValidation {
         val errors = mutableListOf<GameValidationError>()
         val title = requiredText(input.title, "title", 2, 120, errors)
+        if (title != null && ObjectionableText.contains(title)) errors += GameValidationError("title", "objectionable")
         val venue = validateVenue(input.venue, errors)
         val zone = input.zoneId?.let { runCatching { IanaTimeZone.from(it.trim()) }.getOrNull() }
         if (input.localDate == null) errors += required("localDate")

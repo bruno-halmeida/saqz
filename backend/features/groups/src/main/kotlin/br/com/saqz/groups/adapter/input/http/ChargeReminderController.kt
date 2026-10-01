@@ -22,7 +22,8 @@ class ChargeReminderController(private val actors: VerifiedGroupActorResolver, p
                 CommunicationError.NOT_FOUND -> throw GroupNotFoundException()
                 CommunicationError.FORBIDDEN -> throw AccessForbiddenException()
                 CommunicationError.CONFLICT -> throw VersionConflictException()
-                CommunicationError.INVALID -> throw InvalidGroupRequestException(mapOf("chargeIds" to listOf("is invalid")), 422)
+                CommunicationError.INVALID, CommunicationError.OBJECTIONABLE ->
+                    throw InvalidGroupRequestException(mapOf("chargeIds" to listOf("is invalid")), 422)
             }
         }
 }

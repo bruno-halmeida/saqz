@@ -52,7 +52,8 @@ data class NotificationPreferences(
     val push: PushPreferences = PushPreferences(notices, messages, reminders, reminders),
     val whatsapp: WhatsAppPreferences = WhatsAppPreferences(),
 )
-enum class CommunicationError { NOT_FOUND, FORBIDDEN, INVALID, CONFLICT }
+/** OBJECTIONABLE: o texto passou na validação de formato mas caiu no filtro de conteúdo ofensivo. */
+enum class CommunicationError { NOT_FOUND, FORBIDDEN, INVALID, CONFLICT, OBJECTIONABLE }
 sealed interface CommunicationResult<out T> {
     data class Success<T>(val value: T) : CommunicationResult<T>
     data class Failure(val reason: CommunicationError) : CommunicationResult<Nothing>
@@ -60,7 +61,7 @@ sealed interface CommunicationResult<out T> {
 
 interface GroupCommunicationRepository {
     fun lockGroup(groupId: UUID): Boolean
-    fun messages(groupId: UUID, channel: MessageChannel, before: Long?): List<GroupMessage>
+    fun messages(viewer: UUID, groupId: UUID, channel: MessageChannel, before: Long?): List<GroupMessage>
     fun findRequest(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID): GroupMessage?
     fun publish(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID, body: String, gameId: UUID?): GroupMessage
     fun reminderGame(groupId: UUID, gameId: UUID): ReminderGame?

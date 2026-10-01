@@ -107,6 +107,7 @@ class GroupCommunicationController(
             CommunicationError.FORBIDDEN -> throw AccessForbiddenException()
             CommunicationError.INVALID -> invalid()
             CommunicationError.CONFLICT -> throw VersionConflictException()
+            CommunicationError.OBJECTIONABLE -> throw InvalidGroupRequestException(mapOf("body" to listOf("objectionable")), 422)
         }
     }
 }
