@@ -10,8 +10,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class StoreLaunchNavigationTest {
-    @Test fun `restored purchases chat and API payments cannot compose destinations`() {
+    @Test fun `restored purchases chat whatsapp group and API payments cannot compose destinations`() {
         val disabled = listOf<NavKey>(SubscriptionsRoute.ChangePlan, GroupsRoute.Thread("group", false),
+            GroupsRoute.WhatsApp("group"),
             ReceiptFinanceHomeRoute, FinancialOnboardingRoute, FinancialManagementRoute, ReceiptWalletRoute,
             MemberPaymentHistoryRoute, MemberPaymentRoute("order"), RecurrenceRoute("account", "group"),
             ChargeApprovalRoute("group", "charge"), ReceiptConfigurationRoute("group"))

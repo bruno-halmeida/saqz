@@ -22,7 +22,10 @@ data class GroupChecklistUi(val rows: List<GroupChecklistRowUi>) {
 /**
  * Derivação da checklist a partir do que o grupo já tem. Nada é marcado à mão, exceto o que não
  * dá para ler do grupo: "regras abertas uma vez" e o "deixar para depois", que vêm da memória
- * local do aparelho. Com os cinco feitos, ou durante o "deixar para depois", devolve `null`.
+ * local do aparelho. Com todos feitos, ou durante o "deixar para depois", devolve `null`.
+ *
+ * Sem [whatsAppBinding] (`StoreLaunchPolicy.whatsAppGroupBinding` desligado) o item do WhatsApp
+ * nem existe: não aparece e não conta para a checklist ficar completa.
  */
 internal fun groupChecklist(
     group: Group,
@@ -30,11 +33,12 @@ internal fun groupChecklist(
     whatsApp: GroupWhatsAppStatus?,
     memory: GroupOnboardingMemory,
     nowEpochMillis: Long,
+    whatsAppBinding: Boolean,
 ): GroupChecklistUi? {
     val snoozed = memory.snoozedUntilEpochMillis?.let { it > nowEpochMillis } == true
     if (snoozed) return null
-    val rows = listOf(
-        GroupChecklistRowUi(GroupChecklistItem.WhatsApp, whatsApp == GroupWhatsAppStatus.ACTIVE),
+    val rows = listOfNotNull(
+        GroupChecklistRowUi(GroupChecklistItem.WhatsApp, whatsApp == GroupWhatsAppStatus.ACTIVE).takeIf { whatsAppBinding },
         GroupChecklistRowUi(
             GroupChecklistItem.Mensalistas,
             group.financeDefaults?.monthlyFeeCents != null || rosterHasMensalista,

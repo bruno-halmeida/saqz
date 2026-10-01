@@ -737,7 +737,11 @@ internal fun SaqzNavHost(
                 GroupSetupDestination(
                     mode = GroupSetupMode.Edit(route.groupId),
                     backStack = backStack,
-                    onOpenWhatsApp = { backStack.add(GroupsRoute.WhatsApp(route.groupId)) },
+                    onOpenWhatsApp = if (br.com.saqz.domain.StoreLaunchPolicy.whatsAppGroupBinding) {
+                        { backStack.add(GroupsRoute.WhatsApp(route.groupId)) }
+                    } else {
+                        null
+                    },
                     onGroupListChange = {
                         // Edit empilha sobre Details: a lista já recarregava; o detalhe
                         // ficava com foto e nome antigos porque a ViewModel sobrevive no

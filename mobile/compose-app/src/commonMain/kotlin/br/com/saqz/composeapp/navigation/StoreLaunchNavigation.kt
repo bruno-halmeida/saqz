@@ -18,6 +18,7 @@ import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 internal fun NavKey.isAvailableAtLaunch(): Boolean = when (this) {
     SubscriptionsRoute.ChangePlan -> StoreLaunchPolicy.purchases
     is GroupsRoute.Thread -> notices || StoreLaunchPolicy.chat
+    is GroupsRoute.WhatsApp -> StoreLaunchPolicy.whatsAppGroupBinding
     ReceiptFinanceHomeRoute, FinancialManagementRoute, FinancialOnboardingRoute,
     ReceiptWalletRoute, MemberPaymentHistoryRoute, is MemberPaymentRoute,
     is RecurrenceRoute, is ChargeApprovalRoute, is ReceiptConfigurationRoute -> StoreLaunchPolicy.receivables

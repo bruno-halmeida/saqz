@@ -1819,6 +1819,24 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `with the binding off the admin never reaches the whatsapp group`() = runTest {
+        val whatsApp = FakeGroupWhatsAppGateway()
+        val effects = mutableListOf<GroupDetailsEffect>()
+        val viewModel = viewModel(whatsApp = whatsApp, onboardingMemory = FakeGroupOnboardingMemory(), whatsAppGroupBinding = false)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.effects.collect { effects += it } }
+
+        assertTrue(whatsApp.bindingCalls.isEmpty())
+        assertNull(viewModel.state.value.whatsApp)
+        val checklist = checkNotNull(viewModel.state.value.checklist)
+        assertTrue(checklist.rows.none { it.item == br.com.saqz.groups.presentation.details.GroupChecklistItem.WhatsApp })
+        assertEquals(br.com.saqz.groups.presentation.details.GroupChecklistItem.Mensalistas, checklist.current)
+
+        viewModel.onIntent(GroupDetailsIntent.OpenWhatsApp)
+        viewModel.onIntent(GroupDetailsIntent.ChecklistAction(br.com.saqz.groups.presentation.details.GroupChecklistItem.WhatsApp))
+        assertTrue(effects.isEmpty())
+    }
+
+    @Test
     fun `athlete never loads the binding nor the checklist`() = runTest {
         val whatsApp = FakeGroupWhatsAppGateway()
         val viewModel = viewModel(groupGateway = athleteGroupGateway(), whatsApp = whatsApp, onboardingMemory = FakeGroupOnboardingMemory())
@@ -1883,6 +1901,8 @@ class GroupDetailsViewModelTest {
         notifications: NativeNotificationPort? = null,
         whatsApp: FakeGroupWhatsAppGateway? = null,
         onboardingMemory: FakeGroupOnboardingMemory? = null,
+        // O padrão dos testes cobre o vínculo ligado; o desligado (produção hoje) tem teste próprio.
+        whatsAppGroupBinding: Boolean = true,
     ) = GroupDetailsViewModel(
         GROUP_ID,
         groupGateway,
@@ -1899,6 +1919,7 @@ class GroupDetailsViewModelTest {
         notifications,
         whatsApp,
         onboardingMemory,
+        whatsAppGroupBinding,
     )
 
     private fun athleteGroupGateway() = FakeGroupGateway(

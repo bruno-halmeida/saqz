@@ -110,6 +110,8 @@ class GroupDetailsViewModel(
     private val notifications: NativeNotificationPort? = null,
     private val whatsApp: GroupWhatsAppGateway? = null,
     private val onboardingMemory: GroupOnboardingMemoryPort? = null,
+    /** Configuração de lançamento, não dependência: o teste liga para cobrir o vínculo. */
+    private val whatsAppGroupBinding: Boolean = br.com.saqz.domain.StoreLaunchPolicy.whatsAppGroupBinding,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(GroupDetailsState()) {
 
     private var loadGeneration = 0
@@ -157,7 +159,7 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.Invite,
             -> emit(GroupDetailsEffect.OpenInviteLink(groupId))
             GroupDetailsIntent.OpenCashbox -> emit(GroupDetailsEffect.OpenCashbox(groupId))
-            GroupDetailsIntent.OpenWhatsApp -> emit(GroupDetailsEffect.OpenWhatsApp(groupId))
+            GroupDetailsIntent.OpenWhatsApp -> if (whatsAppGroupBinding) emit(GroupDetailsEffect.OpenWhatsApp(groupId))
             is GroupDetailsIntent.ChecklistAction -> checklistAction(intent.item)
             GroupDetailsIntent.SnoozeChecklist -> snoozeChecklist()
             GroupDetailsIntent.OpenVenueMap -> openMap()
@@ -366,6 +368,7 @@ class GroupDetailsViewModel(
 
     /** Status do vínculo, só para quem administra: alimenta a linha de Gestão e a checklist. Falha cala. */
     private suspend fun loadWhatsApp(generation: Int, group: Group) {
+        if (!whatsAppGroupBinding) return
         val gateway = whatsApp ?: return
         if (group.role == GroupRole.ATHLETE) return
         val result = gateway.binding(GroupId(groupId))
@@ -389,14 +392,17 @@ class GroupDetailsViewModel(
         val checklist = if (group.role == GroupRole.ATHLETE) {
             null
         } else {
-            groupChecklist(group, rosterHasMensalista, whatsAppStatus, memory, now.now().toEpochMilliseconds())
+            groupChecklist(
+                group, rosterHasMensalista, whatsAppStatus, memory, now.now().toEpochMilliseconds(),
+                whatsAppBinding = whatsAppGroupBinding,
+            )
         }
         update { it.copy(checklist = checklist, whatsApp = whatsAppStatus) }
     }
 
     private fun checklistAction(item: GroupChecklistItem) {
         when (item) {
-            GroupChecklistItem.WhatsApp -> emit(GroupDetailsEffect.OpenWhatsApp(groupId))
+            GroupChecklistItem.WhatsApp -> if (whatsAppGroupBinding) emit(GroupDetailsEffect.OpenWhatsApp(groupId))
             GroupChecklistItem.Mensalistas -> emit(GroupDetailsEffect.OpenMembers(groupId))
             GroupChecklistItem.Pix -> emit(GroupDetailsEffect.OpenEdit(groupId))
             GroupChecklistItem.Rules -> {
