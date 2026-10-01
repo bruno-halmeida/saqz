@@ -12,6 +12,7 @@ import br.com.saqz.groups.domain.game.recurrence.WeeklySeriesRule
 import br.com.saqz.groups.domain.game.recurrence.WeeklySlotRule
 import java.sql.Connection
 import java.sql.Timestamp
+import java.time.Instant
 import java.time.DayOfWeek
 import java.util.UUID
 import javax.sql.DataSource
@@ -45,6 +46,10 @@ class JdbcWeeklySeriesRepository(private val dataSource: DataSource) : WeeklySer
         } }
     }
 
+    override fun occupiedStartsAt(groupId: UUID, lineageId: UUID, after: Instant): Set<Instant> = dataSource.connection.use { c ->
+        c.prepareStatement(OCCUPIED_STARTS).use { s -> s.setObject(1,groupId);s.setTimestamp(2,Timestamp.from(after));s.setObject(3,lineageId);s.executeQuery().use { r -> buildSet { while (r.next()) add(r.getTimestamp(1).toInstant()) } } }
+    }
+
     override fun openSeries(): List<Pair<UUID, UUID>> = dataSource.connection.use { c -> c.prepareStatement(OPEN_SERIES).use { s -> s.executeQuery().use { r -> buildList { while (r.next()) add(r.getObject(1, UUID::class.java) to r.getObject(2, UUID::class.java)) } } } }
 
     private fun slots(c:Connection, revision:UUID)=c.prepareStatement(FIND_SLOTS).use{s->s.setObject(1,revision);s.executeQuery().use{r->buildList{while(r.next())add(WeeklySlotRule(r.getObject("slot_key",UUID::class.java),DayOfWeek.of(r.getInt("weekday")),r.getObject("local_time",java.time.LocalTime::class.java),r.getInt("duration_minutes"),GameVenueSnapshot(r.getObject("venue_id",UUID::class.java),r.getString("venue_name"),r.getString("venue_address"),r.getString("venue_court")),r.getInt("capacity"),r.getInt("confirmation_lead_minutes"),r.getObject("game_fee_cents",java.lang.Long::class.java)?.toLong(),r.getString("title")))}}}
@@ -57,6 +62,7 @@ class JdbcWeeklySeriesRepository(private val dataSource: DataSource) : WeeklySer
         const val INSERT_GAME="/* Grupo ativo bloqueado em create() */ INSERT INTO games (id,group_id,series_id,series_revision_id,slot_key,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_id,venue_name,venue_address,venue_court,capacity,game_fee_cents,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT',?,?)"
         const val FIND_SERIES="SELECT game_series.* FROM game_series JOIN access_groups g ON g.id=game_series.group_id AND g.deleted_at IS NULL WHERE game_series.group_id=? AND game_series.lineage_id=? ORDER BY game_series.revision_number DESC LIMIT 1"
         const val OPEN_SERIES="SELECT s.group_id,s.lineage_id FROM game_series s JOIN access_groups g ON g.id=s.group_id AND g.deleted_at IS NULL WHERE s.active_through_date IS NULL AND (s.local_end_date IS NULL OR s.local_end_date>=CURRENT_DATE) AND NOT EXISTS (SELECT 1 FROM game_series n WHERE n.group_id=s.group_id AND n.lineage_id=s.lineage_id AND n.revision_number>s.revision_number)"
+        const val OCCUPIED_STARTS="SELECT starts_at FROM games WHERE group_id=? AND starts_at>? AND status IN ('DRAFT','PUBLISHED') AND (series_id IS NULL OR series_id<>?)"
         const val FIND_SLOTS="SELECT * FROM game_series_slots WHERE series_revision_id=? ORDER BY weekday,local_time,slot_key"
         const val FIND_GAMES="SELECT games.id,games.local_date,games.local_time,games.starts_at,games.status,games.version FROM games JOIN access_groups g ON g.id=games.group_id AND g.deleted_at IS NULL WHERE games.group_id=? AND games.series_id=? ORDER BY games.local_date,games.local_time,games.id LIMIT 256"
     }

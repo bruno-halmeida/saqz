@@ -70,6 +70,9 @@ class SyncScheduleSeries(
         }
         // Sem horizonte = trial expirado sem assinatura: mesma saída de recorrência desligada, cancela o futuro.
         val until = horizon.until(groupId)
+        // Jogo avulso já marcado no horário de um slot (o "marcar jogo" com repetição faz isso de
+        // propósito) não vira conflito: a série pula essa ocorrência e o jogo fica como está.
+        val occupied = series.occupiedStartsAt(groupId, lineageId(groupId, generation), now)
         val slots = (if (until == null) emptyList() else group.slots).map { slot ->
             WeeklySlotRule(
                 // Chave por dia+hora: horário que não mudou mantém os mesmos jogos (e presenças) na edição.
@@ -86,7 +89,7 @@ class SyncScheduleSeries(
         }
         when {
             current == null && slots.isEmpty() -> Unit
-            current == null -> create(groupId, generation, group.zoneId, start, slots, until ?: now)
+            current == null -> create(groupId, generation, group.zoneId, start, slots, until ?: now, occupied)
             current.rule.slots.toSet() == slots.toSet() -> Unit
             // Vale a partir de agora: a fronteira é hoje e o repositório não toca em jogo que já começou.
             else -> boundary.thisAndFuture(
@@ -102,11 +105,21 @@ class SyncScheduleSeries(
                 revisionNumber = current.revisionNumber + 1,
                 boundary = maxOf(today, current.rule.localStartDate),
                 action = if (slots.isEmpty()) SeriesBoundaryAction.CANCEL else SeriesBoundaryAction.EDIT,
+                skipStartsAt = occupied,
             )
         }
     }
 
-    private fun create(groupId: UUID, generation: Int, zoneId: String, start: LocalDate, slots: List<WeeklySlotRule>, until: java.time.Instant) {
+    @Suppress("LongParameterList")
+    private fun create(
+        groupId: UUID,
+        generation: Int,
+        zoneId: String,
+        start: LocalDate,
+        slots: List<WeeklySlotRule>,
+        until: java.time.Instant,
+        occupied: Set<java.time.Instant>,
+    ) {
         val rule = WeeklySeriesRule(
             groupId = groupId,
             seriesId = lineageId(groupId, generation),
@@ -123,6 +136,7 @@ class SyncScheduleSeries(
         // O horário de hoje que já passou não vira jogo.
         // O resto nasce mês a mês, pela ExtendGameSeries.
         val materialized = resolved.creatableBetween(now, until)
+            .filterNot { it.startsAt in occupied }
             .map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, now) }
         if (series.create(rule, materialized)) autoConfirmation.apply(materialized)
     }

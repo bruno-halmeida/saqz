@@ -71,6 +71,7 @@ class ApplySeriesBoundary(
         return repository.applyOnlyThis(command.copy(now = clock.instant()))
     }
 
+    @Suppress("LongParameterList")
     fun thisAndFuture(
         groupId: UUID,
         currentRevisionId: UUID,
@@ -79,6 +80,8 @@ class ApplySeriesBoundary(
         revisionNumber: Int,
         boundary: LocalDate,
         action: SeriesBoundaryAction,
+        /** Horários já ocupados por jogo de fora da série: a ocorrência não nasce, e o jogo fica. */
+        skipStartsAt: Set<Instant> = emptySet(),
     ): SeriesBoundaryResult {
         if (successorRule.groupId != groupId || successorRule.localStartDate != boundary) {
             return SeriesBoundaryResult.InvalidBoundary
@@ -88,7 +91,7 @@ class ApplySeriesBoundary(
             is WeeklyRecurrenceResult.Valid -> result.occurrences
         }
         val now = clock.instant()
-        val materialized = resolved.filter { it.startsAt > now }
+        val materialized = resolved.filter { it.startsAt > now && it.startsAt !in skipStartsAt }
             .map { MaterializedGameOccurrence(ids(), it, GameStatus.DRAFT, now) }
         val command = FutureBoundaryCommand(
             groupId, currentRevisionId, expectedVersion, successorRule, revisionNumber,

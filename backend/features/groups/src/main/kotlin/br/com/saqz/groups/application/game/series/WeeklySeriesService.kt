@@ -32,6 +32,11 @@ interface WeeklySeriesRepository {
     fun find(groupId: UUID, lineageId: UUID): WeeklySeriesView?
     /** (grupo, linhagem) de toda série cuja última revisão segue aberta em grupo ativo. */
     fun openSeries(): List<Pair<UUID, UUID>> = emptyList()
+    /**
+     * `starts_at` dos jogos DRAFT/PUBLISHED do grupo que não pertencem a esta linhagem, depois de
+     * [after]. Jogo avulso marcado num horário regular vale pela ocorrência: a série nasce sem ela.
+     */
+    fun occupiedStartsAt(groupId: UUID, lineageId: UUID, after: Instant): Set<Instant> = emptySet()
 }
 
 class WeeklySeriesService(

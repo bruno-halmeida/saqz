@@ -67,6 +67,18 @@ class ApplySeriesBoundaryTest {
         assertTrue(fixture.repository.future!!.occurrences.all { it.occurrence.localDate < DATE.plusWeeks(12) })
     }
 
+    @Test fun `future edit skips starts already occupied by games outside the series`() {
+        val fixture = fixture()
+        // Quarta 14/01 19:30 em São Paulo: um jogo avulso já está marcado ali.
+        val occupied = Instant.parse("2026-01-14T22:30:00Z")
+
+        assertEquals(SeriesBoundaryResult.Applied, fixture.future(fixture.rule, skipStartsAt = setOf(occupied)))
+
+        val occurrences = fixture.repository.future!!.occurrences
+        assertEquals(11, occurrences.size)
+        assertTrue(occurrences.none { it.occurrence.startsAt == occupied })
+    }
+
     @Test fun `future cancel retains explicit action`() {
         val fixture = fixture()
         fixture.future(fixture.rule, SeriesBoundaryAction.CANCEL)
@@ -109,7 +121,11 @@ class ApplySeriesBoundaryTest {
 
     private data class Fixture(val group: UUID, val current: UUID, val rule: WeeklySeriesRule, val repository: RecordingRepository, val useCase: ApplySeriesBoundary) {
         fun only(action: SeriesBoundaryAction) = OnlyThisBoundaryCommand(group, UUID.randomUUID(), 1, DATE.minusDays(1), action)
-        fun future(rule: WeeklySeriesRule, action: SeriesBoundaryAction = SeriesBoundaryAction.EDIT) = useCase.thisAndFuture(group, current, 1, rule, 2, DATE, action)
+        fun future(
+            rule: WeeklySeriesRule,
+            action: SeriesBoundaryAction = SeriesBoundaryAction.EDIT,
+            skipStartsAt: Set<Instant> = emptySet(),
+        ) = useCase.thisAndFuture(group, current, 1, rule, 2, DATE, action, skipStartsAt)
     }
 
     private companion object {

@@ -3,10 +3,12 @@ package br.com.saqz.groups.adapter.output.jdbc.game
 import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
 import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
 import br.com.saqz.groups.application.game.recurrence.OccurrenceMaterializationRepository
+import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.Statement
 import java.sql.Timestamp
 import java.sql.Types
+import java.time.Instant
 import javax.sql.DataSource
 
 class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource) : OccurrenceMaterializationRepository {
@@ -15,8 +17,12 @@ class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource
         dataSource.connection.use { connection ->
             connection.autoCommit = false
             try {
+                // "Ausente" também vale para o horário: jogo avulso no mesmo `starts_at` (o "marcar
+                // jogo" com repetição) conta como a ocorrência, em vez de derrubar o lote inteiro.
+                val occupied = occupiedStartsAt(connection, occurrences)
                 val inserted = connection.prepareStatement(INSERT).use { statement ->
-                    occurrences.forEach { occurrence -> statement.bind(occurrence).addBatch() }
+                    occurrences.filterNot { it.occurrence.startsAt in occupied }
+                        .forEach { occurrence -> statement.bind(occurrence).addBatch() }
                     statement.executeBatch().sumOf { count ->
                         when {
                             count == Statement.SUCCESS_NO_INFO -> 1
@@ -31,6 +37,21 @@ class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource
                 connection.rollback()
                 if (failure.isGameScheduleConflict()) throw GameScheduleConflictWriteException()
                 throw failure
+            }
+        }
+    }
+
+    private fun occupiedStartsAt(connection: Connection, occurrences: List<MaterializedGameOccurrence>): Set<Instant> {
+        val groups = occurrences.map { it.occurrence.groupId }.distinct()
+        val starts = occurrences.map { it.occurrence.startsAt }
+        return groups.flatMapTo(mutableSetOf()) { group ->
+            connection.prepareStatement(OCCUPIED).use { statement ->
+                statement.setObject(1, group)
+                statement.setTimestamp(2, Timestamp.from(starts.min()))
+                statement.setTimestamp(3, Timestamp.from(starts.max()))
+                statement.executeQuery().use { result ->
+                    buildList { while (result.next()) add(result.getTimestamp(1).toInstant()) }
+                }
             }
         }
     }
@@ -62,6 +83,10 @@ class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource
     }
 
     private companion object {
+        const val OCCUPIED = """
+            SELECT starts_at FROM games
+            WHERE group_id = ? AND starts_at BETWEEN ? AND ? AND status IN ('DRAFT', 'PUBLISHED')
+        """
         const val INSERT = """
             INSERT INTO games (
                 id, group_id, series_id, series_revision_id, slot_key, title,

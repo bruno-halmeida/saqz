@@ -85,6 +85,32 @@ class SyncScheduleSeriesIntegrationTest {
         assertEquals(9, activeGames())
     }
 
+    @Test fun `one-off game at a slot time is kept and the series skips that occurrence`() {
+        // "Marcar jogo" com repetição: o jogo avulso já está publicado quando o horário regular chega.
+        val oneOff = oneOffGame("2026-09-24", "20:00", "2026-09-24T23:00:00Z")
+        slots(4 to "20:00")
+        sync(); sync()
+        assertEquals(1, int("SELECT count(*) FROM game_series WHERE group_id='$group'"))
+        assertEquals(4, activeGames()) // 5 quintas no mês, menos a que o avulso ocupa
+        assertEquals("PUBLISHED", string("SELECT status::text FROM games WHERE id='$oneOff'"))
+        assertEquals(0, int("SELECT count(*) FROM games WHERE id='$oneOff' AND series_id IS NOT NULL"))
+
+        // Edição da agenda com outro avulso no horário novo: a revisão sucessora também pula.
+        oneOffGame("2026-09-26", "10:00", "2026-09-26T13:00:00Z")
+        slots(4 to "20:00", 6 to "10:00")
+        sync(); sync()
+        assertEquals(4 + 4, activeGames()) // 5 sábados, menos o ocupado
+
+        // A rotina mensal idem: o avulso no horizonte novo não derruba a extensão.
+        oneOffGame("2026-10-22", "20:00", "2026-10-22T23:00:00Z")
+        until = Instant.parse("2026-11-17T15:00:00Z")
+        val failures = mutableListOf<String>()
+        extend { what, _ -> failures += what }
+        assertEquals(emptyList(), failures)
+        assertEquals(8 + 3 + 4, activeGames()) // quintas 29/10, 5/11, 12/11 + sábados 24/10 a 14/11
+        assertEquals(1, int("SELECT count(*) FROM games WHERE group_id='$group' AND local_date='2026-10-22'"))
+    }
+
     @Test fun `paused schedule or missing venue generates nothing`() {
         slots(4 to "20:00")
         execute("UPDATE access_groups SET schedule_paused=true WHERE id='$group'")
@@ -102,11 +128,21 @@ class SyncScheduleSeriesIntegrationTest {
         boundary(), UUID::randomUUID, CLOCK, horizon = horizon,
     )
     private fun sync() = syncer().sync(group)
-    private fun extend() = ExtendGameSeries(
+    private fun extend(onFailure: (String, Throwable) -> Unit = { _, _ -> }) = ExtendGameSeries(
         JdbcWeeklySeriesRepository(dataSource), JdbcGroupScheduleRepository(dataSource),
         MaterializeWeeklySeries(JdbcTransactionRunner(dataSource), JdbcOccurrenceMaterializationRepository(dataSource), UUID::randomUUID, CLOCK, horizon = horizon),
-        boundary(), syncer(), horizon, UUID::randomUUID, CLOCK,
+        boundary(), syncer(), horizon, UUID::randomUUID, CLOCK, onFailure,
     ).run()
+
+    /** Jogo avulso publicado, fora de qualquer série, como o editor de jogo cria. */
+    private fun oneOffGame(date: String, time: String, startsAt: String): UUID {
+        val id = UUID.randomUUID()
+        execute(
+            "INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,status,created_at,updated_at) " +
+                "VALUES ('$id','$group','Jogo extra',DATE '$date',TIME '$time','America/Sao_Paulo','$startsAt',120,TIMESTAMPTZ '$startsAt' - interval '6 hours','Arena Central','Rua das Flores 100',12,'PUBLISHED',now(),now())",
+        )
+        return id
+    }
 
     private fun slots(vararg slots: Pair<Int, String>) {
         execute("DELETE FROM group_regular_slots WHERE group_id='$group'")
