@@ -14,6 +14,7 @@
     <string name="group_invite_share_image">Gerar imagem do convite</string>
     <string name="group_invite_deactivate">Desativar link</string>
     <string name="group_invite_approval">Aprovar pedidos para entrar</string>
+    <string name="group_invite_approval_hint">Ligado, quem abre o link pede para entrar e você aprova. Desligado, entra na hora.</string>
     <string name="group_invite_people">Quem entrou</string>
     <string name="group_invite_pending">Pedidos para entrar</string>
     <string name="group_invite_approve">Aprovar</string>

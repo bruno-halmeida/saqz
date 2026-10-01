@@ -33,4 +33,8 @@
     <string name="checklist_recurrence_body">Os jogos nascem sozinhos nos dias e horários.</string>
     <string name="checklist_snooze">Deixar para depois</string>
     <string name="group_details_manage_whatsapp">Grupo do WhatsApp</string>
+    <!-- Folha "Como funciona": um padrão só para toda tela densa -->
+    <string name="how_it_works_title">Como funciona</string>
+    <string name="how_it_works_link">Como funciona</string>
+    <string name="how_it_works_got_it">Entendi</string>
 </resources>

@@ -18,6 +18,8 @@ data class WhatsAppBindingState(
     val status: GroupWhatsAppStatus = GroupWhatsAppStatus.NONE,
     val inviteLink: String = "",
     val confirmedGroupName: String? = null,
+    /** Folha "Como funciona": abre sozinha na primeira visita e depois pelo link da tela. */
+    val howItWorksOpen: Boolean = false,
 ) {
     val canToggle: Boolean = bound && status != GroupWhatsAppStatus.NONE
 }
@@ -30,6 +32,10 @@ sealed interface WhatsAppBindingIntent {
     data object Link : WhatsAppBindingIntent
 
     data class SetEnabled(val enabled: Boolean) : WhatsAppBindingIntent
+
+    data object OpenHowItWorks : WhatsAppBindingIntent
+
+    data object CloseHowItWorks : WhatsAppBindingIntent
 }
 
 sealed interface WhatsAppBindingEffect {

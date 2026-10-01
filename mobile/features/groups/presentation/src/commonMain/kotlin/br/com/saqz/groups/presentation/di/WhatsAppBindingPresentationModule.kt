@@ -7,5 +7,5 @@ import org.koin.dsl.module
 
 /** Grafo das configurações avançadas do vínculo com o grupo do WhatsApp. */
 fun whatsAppBindingPresentationModule(): Module = module {
-    viewModel { params -> WhatsAppBindingViewModel(params.get(), get()) }
+    viewModel { params -> WhatsAppBindingViewModel(params.get(), get(), get()) }
 }

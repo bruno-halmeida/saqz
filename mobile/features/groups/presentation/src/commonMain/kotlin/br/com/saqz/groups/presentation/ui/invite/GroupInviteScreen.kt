@@ -37,6 +37,7 @@ import br.com.saqz.groups.presentation.invite.PendingEntryRequestUi
 import br.com.saqz.groups.presentation.invite.RecentMemberUi
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_invite_active_expires
+import br.com.saqz.groups.resources.group_invite_approval_hint
 import br.com.saqz.groups.resources.group_invite_never_expires
 import br.com.saqz.groups.resources.group_invite_approve
 import br.com.saqz.groups.resources.group_invite_approval
@@ -250,6 +251,12 @@ private fun ApprovalRow(state: GroupInviteState, onIntent: (GroupInviteIntent) -
             label = stringResource(Res.string.group_invite_approval),
             enabled = !state.isUpdatingApproval,
             modifier = Modifier.testTag(GroupInviteTags.Approval),
+        )
+        // A consequência em uma linha: o que muda para quem abre o link.
+        Text(
+            text = stringResource(Res.string.group_invite_approval_hint),
+            style = SaqzTheme.typography.support,
+            color = SaqzTheme.colors.textSecondary,
         )
     }
 }

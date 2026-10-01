@@ -7,16 +7,29 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.communication.CommunicationError
 import br.com.saqz.groups.domain.communication.GroupWhatsAppBinding
 import br.com.saqz.groups.domain.communication.GroupWhatsAppGateway
+import br.com.saqz.groups.port.GroupOnboardingMemoryPort
 import kotlinx.coroutines.launch
 
 class WhatsAppBindingViewModel(
     private val groupId: String,
     private val gateway: GroupWhatsAppGateway,
+    private val memory: GroupOnboardingMemoryPort? = null,
 ) : MviViewModel<WhatsAppBindingState, WhatsAppBindingIntent, WhatsAppBindingEffect>(WhatsAppBindingState()) {
     private var generation = 0
 
     init {
         load()
+        openHowItWorksOnFirstVisit()
+    }
+
+    /** A folha abre sozinha uma vez por aparelho; a memória é local e nunca passa pelo servidor. */
+    private fun openHowItWorksOnFirstVisit() {
+        val port = memory ?: return
+        port.isSheetSeen(HOW_IT_WORKS_SHEET) { seen ->
+            if (seen) return@isSheetSeen
+            update { it.copy(howItWorksOpen = true) }
+            port.markSheetSeen(HOW_IT_WORKS_SHEET) {}
+        }
     }
 
     override fun handleIntent(intent: WhatsAppBindingIntent) {
@@ -25,6 +38,8 @@ class WhatsAppBindingViewModel(
             is WhatsAppBindingIntent.ChangeInviteLink -> update { it.copy(inviteLink = intent.value) }
             WhatsAppBindingIntent.Link -> link()
             is WhatsAppBindingIntent.SetEnabled -> setEnabled(intent.enabled)
+            WhatsAppBindingIntent.OpenHowItWorks -> update { it.copy(howItWorksOpen = true) }
+            WhatsAppBindingIntent.CloseHowItWorks -> update { it.copy(howItWorksOpen = false) }
         }
     }
 
@@ -92,3 +107,5 @@ class WhatsAppBindingViewModel(
         }
     }
 }
+
+private const val HOW_IT_WORKS_SHEET = "whatsapp-binding"

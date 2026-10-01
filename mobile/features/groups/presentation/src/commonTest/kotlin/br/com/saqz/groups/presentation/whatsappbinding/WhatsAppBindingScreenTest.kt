@@ -2,89 +2,48 @@ package br.com.saqz.groups.presentation.whatsappbinding
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
+import br.com.saqz.groups.presentation.ui.components.HowItWorksTags
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class WhatsAppBindingScreenTest {
-    @Test fun loadingShowsSpinner() = runComposeUiTest {
-        setContent { SaqzTheme { screen(WhatsAppBindingState(loading = true)) } }
-        onNodeWithTag(WhatsAppBindingTags.Loading).assertIsDisplayed()
-    }
-
-    @Test fun errorOffersRetryThatReloads() = runComposeUiTest {
-        val intents = mutableListOf<WhatsAppBindingIntent>()
-        setContent { SaqzTheme { screen(WhatsAppBindingState(loading = false, error = true), intents::add) } }
-        onNodeWithTag(WhatsAppBindingTags.Error).assertIsDisplayed()
-        onNodeWithTag(WhatsAppBindingTags.Retry).performClick()
-        assertEquals(listOf<WhatsAppBindingIntent>(WhatsAppBindingIntent.Load), intents)
-    }
-
-    @Test fun unboundShowsInviteFormDisabledUntilLinkIsPresent() = runComposeUiTest {
-        setContent { SaqzTheme { screen(WhatsAppBindingState(loading = false)) } }
-        onNodeWithTag(WhatsAppBindingTags.Empty).assertIsDisplayed()
-        onNodeWithTag(WhatsAppBindingTags.InviteLink).assertIsDisplayed()
-        onNodeWithTag(WhatsAppBindingTags.Link).assertIsNotEnabled()
-    }
-
-    @Test fun filledInviteLinkSubmitsBindingIntent() = runComposeUiTest {
+    @Test
+    fun `the link under the form opens how it works`() = runComposeUiTest {
         val intents = mutableListOf<WhatsAppBindingIntent>()
         setContent {
-            SaqzTheme { screen(WhatsAppBindingState(loading = false, inviteLink = "chat.whatsapp.com/abc"), intents::add) }
+            SaqzTheme { WhatsAppBindingScreen(state = WhatsAppBindingState(loading = false), onIntent = intents::add, onBack = {}) }
         }
-        onNodeWithTag(WhatsAppBindingTags.Link).performClick()
-        assertEquals(listOf<WhatsAppBindingIntent>(WhatsAppBindingIntent.Link), intents)
+
+        onNodeWithTag(WhatsAppBindingTags.HowItWorks).performScrollTo().performClick()
+
+        assertEquals(listOf<WhatsAppBindingIntent>(WhatsAppBindingIntent.OpenHowItWorks), intents)
     }
 
-    @Test fun activeBindingShowsGroupNameAndDisables() = runComposeUiTest {
+    @Test
+    fun `how it works shows the steps the caveat and the statuses and closes on got it`() = runComposeUiTest {
         val intents = mutableListOf<WhatsAppBindingIntent>()
-        setContent { SaqzTheme { screen(bound(GroupWhatsAppStatus.ACTIVE), intents::add) } }
-        onNodeWithTag(WhatsAppBindingTags.GroupName).assertIsDisplayed()
-        onNodeWithTag(WhatsAppBindingTags.Status).assertIsDisplayed()
-        onNodeWithTag(WhatsAppBindingTags.Toggle).performClick()
-        assertEquals(listOf<WhatsAppBindingIntent>(WhatsAppBindingIntent.SetEnabled(false)), intents)
-    }
-
-    @Test fun disabledBindingCanBeReenabled() = runComposeUiTest {
-        val intents = mutableListOf<WhatsAppBindingIntent>()
-        setContent { SaqzTheme { screen(bound(GroupWhatsAppStatus.DISABLED), intents::add) } }
-        onNodeWithTag(WhatsAppBindingTags.Toggle).performClick()
-        assertEquals(listOf<WhatsAppBindingIntent>(WhatsAppBindingIntent.SetEnabled(true)), intents)
-    }
-
-    @Test fun brokenBindingCanBeReenabled() = runComposeUiTest {
-        val intents = mutableListOf<WhatsAppBindingIntent>()
-        setContent { SaqzTheme { screen(bound(GroupWhatsAppStatus.BROKEN), intents::add) } }
-        onNodeWithTag(WhatsAppBindingTags.Toggle).performClick()
-        assertEquals(listOf<WhatsAppBindingIntent>(WhatsAppBindingIntent.SetEnabled(true)), intents)
-    }
-
-    @Test fun confirmationNamesTheReturnedGroup() = runComposeUiTest {
         setContent {
             SaqzTheme {
-                screen(bound(GroupWhatsAppStatus.ACTIVE).copy(confirmedGroupName = "Vôlei do CERET"))
+                WhatsAppBindingScreen(
+                    state = WhatsAppBindingState(loading = false, howItWorksOpen = true),
+                    onIntent = intents::add,
+                    onBack = {},
+                )
             }
         }
-        onNodeWithTag(WhatsAppBindingTags.Confirmation).assertIsDisplayed()
-        onNodeWithText("Grupo vinculado: Vôlei do CERET").assertIsDisplayed()
-    }
 
-    @androidx.compose.runtime.Composable
-    private fun screen(state: WhatsAppBindingState, onIntent: (WhatsAppBindingIntent) -> Unit = {}) {
-        WhatsAppBindingScreen(state = state, onIntent = onIntent, onBack = {})
-    }
+        onNodeWithTag(HowItWorksTags.Sheet).assertIsDisplayed()
+        onNodeWithText("Cole o link aqui e toque em “Vincular grupo”.").assertIsDisplayed()
+        onNodeWithText("Aguardando aprovação").assertIsDisplayed()
+        onNodeWithTag(HowItWorksTags.GotIt).performClick()
 
-    private fun bound(status: GroupWhatsAppStatus) = WhatsAppBindingState(
-        loading = false,
-        bound = true,
-        groupName = "Vôlei do CERET",
-        status = status,
-    )
+        assertEquals(listOf<WhatsAppBindingIntent>(WhatsAppBindingIntent.CloseHowItWorks), intents)
+    }
 }

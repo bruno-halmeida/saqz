@@ -21,4 +21,14 @@
     <string name="whatsapp_binding_disable_action">Desabilitar</string>
     <string name="whatsapp_binding_enable_action">Reabilitar</string>
     <string name="whatsapp_binding_saved">Vínculo atualizado.</string>
+    <!-- Folha "Como funciona" do grupo do WhatsApp -->
+    <string name="whatsapp_how_intro">O Saqz entra no grupo do WhatsApp da galera e manda os avisos e os lembretes de presença por lá, com botão para confirmar. Ninguém precisa sair do WhatsApp para saber do jogo.</string>
+    <string name="whatsapp_how_steps_label">Como vincular</string>
+    <string name="whatsapp_how_step_1">No WhatsApp, abra o grupo, toque no nome e em “Convidar via link”. Copie o link.</string>
+    <string name="whatsapp_how_step_2">Cole o link aqui e toque em “Vincular grupo”.</string>
+    <string name="whatsapp_how_step_3">Se o grupo aprova novos membros, aceite o número do Saqz quando ele pedir para entrar.</string>
+    <string name="whatsapp_how_not_label">O que não acontece</string>
+    <string name="whatsapp_how_not">O Saqz não lê nem guarda as conversas do grupo. Cobrança nunca vai no grupo: vai no privado, só para quem ativou.</string>
+    <string name="whatsapp_how_status_label">Status</string>
+    <string name="whatsapp_how_status_pending">Aguardando aprovação</string>
 </resources>

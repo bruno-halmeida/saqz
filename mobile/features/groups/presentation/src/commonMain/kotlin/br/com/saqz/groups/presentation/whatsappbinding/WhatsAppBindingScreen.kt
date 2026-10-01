@@ -17,13 +17,18 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
+import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
 import br.com.saqz.groups.presentation.ui.components.GroupFormCard
+import br.com.saqz.groups.presentation.ui.components.HowItWorksContent
+import br.com.saqz.groups.presentation.ui.components.HowItWorksSheet
+import br.com.saqz.groups.presentation.ui.components.HowItWorksStatus
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.how_it_works_link
 import br.com.saqz.groups.resources.whatsapp_binding_confirmation
 import br.com.saqz.groups.resources.whatsapp_binding_disable_action
 import br.com.saqz.groups.resources.whatsapp_binding_empty_description
@@ -39,6 +44,15 @@ import br.com.saqz.groups.resources.whatsapp_binding_status_active
 import br.com.saqz.groups.resources.whatsapp_binding_status_broken
 import br.com.saqz.groups.resources.whatsapp_binding_status_disabled
 import br.com.saqz.groups.resources.whatsapp_binding_title
+import br.com.saqz.groups.resources.whatsapp_how_intro
+import br.com.saqz.groups.resources.whatsapp_how_not
+import br.com.saqz.groups.resources.whatsapp_how_not_label
+import br.com.saqz.groups.resources.whatsapp_how_status_label
+import br.com.saqz.groups.resources.whatsapp_how_status_pending
+import br.com.saqz.groups.resources.whatsapp_how_step_1
+import br.com.saqz.groups.resources.whatsapp_how_step_2
+import br.com.saqz.groups.resources.whatsapp_how_step_3
+import br.com.saqz.groups.resources.whatsapp_how_steps_label
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -53,6 +67,7 @@ internal object WhatsAppBindingTags {
     const val Status = "whatsapp-binding-status"
     const val Toggle = "whatsapp-binding-toggle"
     const val Confirmation = "whatsapp-binding-confirmation"
+    const val HowItWorks = "whatsapp-binding-how-it-works"
 }
 
 /**
@@ -68,31 +83,66 @@ fun WhatsAppBindingScreen(
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
-    Column(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
-        SaqzTopAppBar(title = stringResource(Res.string.whatsapp_binding_title), onBack = onBack)
-        if (state.loading) {
-            Box(
-                modifier = Modifier.fillMaxSize().testTag(WhatsAppBindingTags.Loading),
-                contentAlignment = Alignment.Center,
-            ) {
-                SaqzSpinner()
+    // Box por causa da folha "Como funciona": overlay na mesma janela, por cima da coluna.
+    Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            SaqzTopAppBar(title = stringResource(Res.string.whatsapp_binding_title), onBack = onBack)
+            if (state.loading) {
+                Box(
+                    modifier = Modifier.fillMaxSize().testTag(WhatsAppBindingTags.Loading),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SaqzSpinner()
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = metrics.horizontalPadding, vertical = metrics.grid),
+                    verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
+                ) {
+                    if (state.error) WhatsAppBindingError(onRetry = { onIntent(WhatsAppBindingIntent.Load) })
+                    state.confirmedGroupName?.let { WhatsAppBindingConfirmation(it) }
+                    if (state.bound) WhatsAppBindingBound(state, onIntent) else WhatsAppBindingEmpty(state, onIntent)
+                    SaqzButton(
+                        label = stringResource(Res.string.how_it_works_link),
+                        onClick = { onIntent(WhatsAppBindingIntent.OpenHowItWorks) },
+                        variant = SaqzButtonVariant.Ghost,
+                        fullWidth = true,
+                        modifier = Modifier.testTag(WhatsAppBindingTags.HowItWorks),
+                    )
+                }
             }
-            return@Column
         }
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = metrics.horizontalPadding, vertical = metrics.grid),
-            verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
-        ) {
-            if (state.error) WhatsAppBindingError(onRetry = { onIntent(WhatsAppBindingIntent.Load) })
-            state.confirmedGroupName?.let { WhatsAppBindingConfirmation(it) }
-            if (state.bound) WhatsAppBindingBound(state, onIntent) else WhatsAppBindingEmpty(state, onIntent)
-        }
+        HowItWorksSheet(
+            open = state.howItWorksOpen,
+            content = whatsAppHowItWorks(),
+            onClose = { onIntent(WhatsAppBindingIntent.CloseHowItWorks) },
+        )
     }
 }
+
+/** O texto da folha do WhatsApp: onde pegar o link, que um número do Saqz entra no grupo, o que ele manda e os estados. */
+@Composable
+private fun whatsAppHowItWorks() = HowItWorksContent(
+    intro = stringResource(Res.string.whatsapp_how_intro),
+    stepsLabel = stringResource(Res.string.whatsapp_how_steps_label),
+    steps = listOf(
+        stringResource(Res.string.whatsapp_how_step_1),
+        stringResource(Res.string.whatsapp_how_step_2),
+        stringResource(Res.string.whatsapp_how_step_3),
+    ),
+    notLabel = stringResource(Res.string.whatsapp_how_not_label),
+    notHappening = stringResource(Res.string.whatsapp_how_not),
+    statusLabel = stringResource(Res.string.whatsapp_how_status_label),
+    statuses = listOf(
+        HowItWorksStatus(stringResource(Res.string.whatsapp_binding_status_active), SaqzChipTone.Success),
+        HowItWorksStatus(stringResource(Res.string.whatsapp_how_status_pending), SaqzChipTone.Warning),
+        HowItWorksStatus(stringResource(Res.string.whatsapp_binding_status_broken), SaqzChipTone.Error),
+    ),
+)
 
 @Composable
 private fun WhatsAppBindingError(onRetry: () -> Unit) {

@@ -7,6 +7,7 @@ import br.com.saqz.groups.domain.communication.CommunicationError
 import br.com.saqz.groups.domain.communication.GroupWhatsAppBinding
 import br.com.saqz.groups.domain.communication.GroupWhatsAppGateway
 import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
+import br.com.saqz.groups.presentation.FakeGroupOnboardingMemory
 import br.com.saqz.groups.presentation.FakeGroupWhatsAppGateway
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -39,6 +40,26 @@ class WhatsAppBindingViewModelTest {
         assertTrue(state.bound)
         assertEquals("Vôlei do CERET", state.groupName)
         assertEquals(GroupWhatsAppStatus.ACTIVE, state.status)
+    }
+
+    @Test fun firstVisitOpensHowItWorksAndRemembersIt() = runTest {
+        val memory = FakeGroupOnboardingMemory()
+        val viewModel = WhatsAppBindingViewModel("group-1", FakeGroupWhatsAppGateway(), memory)
+
+        assertTrue(viewModel.state.value.howItWorksOpen)
+        assertTrue("whatsapp-binding" in memory.seenSheets)
+
+        viewModel.onIntent(WhatsAppBindingIntent.CloseHowItWorks)
+        assertFalse(viewModel.state.value.howItWorksOpen)
+        viewModel.onIntent(WhatsAppBindingIntent.OpenHowItWorks)
+        assertTrue(viewModel.state.value.howItWorksOpen)
+    }
+
+    @Test fun laterVisitsKeepHowItWorksClosed() = runTest {
+        val memory = FakeGroupOnboardingMemory(seen = setOf("whatsapp-binding"))
+        val viewModel = WhatsAppBindingViewModel("group-1", FakeGroupWhatsAppGateway(), memory)
+
+        assertFalse(viewModel.state.value.howItWorksOpen)
     }
 
     @Test fun unboundGroupLoadsAsNoneWithEmptyInvite() = runTest {
