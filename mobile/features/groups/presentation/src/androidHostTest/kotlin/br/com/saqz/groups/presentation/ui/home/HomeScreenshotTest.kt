@@ -42,6 +42,23 @@ class HomeScreenshotTest {
     @Test
     fun loading() = capture("home-loading", HomeState())
 
+    // Primeiro acesso: sem grupo, a Início guia (onboarding) até o primeiro grupo existir.
+    @Test
+    fun firstAccess() = capture("home-first-access", firstAccessState(), "onboarding")
+
+    @Test
+    fun firstAccessInviteSheet() = capture(
+        "home-first-access-invite-sheet",
+        firstAccessState().copy(inviteSheetOpen = true, inviteLink = "https://saqz.app/", inviteLinkInvalid = true),
+        "onboarding",
+    )
+
+    private fun firstAccessState() = HomeState(
+        isLoading = false,
+        displayName = "Bruna",
+        member = HomeMemberUi(nextGame = null, groups = emptyList()),
+    )
+
     @Test
     fun failure() = capture("home-failure", HomeState(isLoading = false, loadFailed = true))
 

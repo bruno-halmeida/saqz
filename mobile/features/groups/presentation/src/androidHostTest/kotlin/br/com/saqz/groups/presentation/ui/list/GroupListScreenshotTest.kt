@@ -46,6 +46,12 @@ class GroupListScreenshotTest {
     fun empty() = capture("group-list-2o-primeiro-acesso", GroupListSamples.empty)
 
     @Test
+    fun emptyInviteSheet() = capture(
+        "group-list-2o-tenho-um-convite",
+        GroupListSamples.empty.copy(inviteSheetOpen = true, inviteLink = "https://links.saqz.app/?saqz_invite=…"),
+    )
+
+    @Test
     fun loading() = capture("group-list-carregando", GroupListSamples.loading)
 
     @Test
