@@ -53,6 +53,7 @@ import br.com.saqz.groups.resources.groups_attendance_going
 import br.com.saqz.groups.resources.groups_confirm
 import br.com.saqz.groups.resources.groups_empty_body
 import br.com.saqz.groups.resources.groups_empty_create
+import br.com.saqz.groups.resources.groups_empty_join
 import br.com.saqz.groups.resources.groups_empty_owner_body
 import br.com.saqz.groups.resources.groups_empty_owner_title
 import br.com.saqz.groups.resources.groups_empty_title
@@ -345,6 +346,7 @@ internal fun GroupInviteCard(
 @Composable
 internal fun GroupListEmpty(
     onCreate: () -> Unit,
+    onInvite: () -> Unit,
     modifier: Modifier = Modifier,
     isPlanOwner: Boolean = false,
 ) {
@@ -366,6 +368,13 @@ internal fun GroupListEmpty(
             action = stringResource(Res.string.groups_empty_create),
             onAction = onCreate,
             modifier = Modifier.testTag(GroupListTags.Empty),
+        )
+        // O segundo caminho do 2o: quem recebeu o link mas abriu o app por conta própria.
+        SaqzButton(
+            label = stringResource(Res.string.groups_empty_join),
+            onClick = onInvite,
+            variant = SaqzButtonVariant.Ghost,
+            modifier = Modifier.testTag(GroupListTags.EmptyInvite),
         )
     }
 }

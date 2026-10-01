@@ -20,8 +20,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
-import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
@@ -30,25 +28,19 @@ import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzHeroCard
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
-import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeState
 import br.com.saqz.groups.presentation.ui.components.HeroOutlineAlpha
+import br.com.saqz.groups.presentation.ui.invite.InviteLinkSheet
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.home_first_access_body
 import br.com.saqz.groups.resources.home_first_access_create
 import br.com.saqz.groups.resources.home_first_access_invite
 import br.com.saqz.groups.resources.home_first_access_kicker
 import br.com.saqz.groups.resources.home_first_access_title
-import br.com.saqz.groups.resources.home_invite_sheet_action
-import br.com.saqz.groups.resources.home_invite_sheet_body
-import br.com.saqz.groups.resources.home_invite_sheet_field
-import br.com.saqz.groups.resources.home_invite_sheet_invalid
-import br.com.saqz.groups.resources.home_invite_sheet_placeholder
-import br.com.saqz.groups.resources.home_invite_sheet_title
 import br.com.saqz.groups.resources.home_step_cd
 import br.com.saqz.groups.resources.home_step_done
 import br.com.saqz.groups.resources.home_step_game_body
@@ -243,40 +235,20 @@ private fun HomeStepCircle(number: Int, state: HomeStepState) {
     }
 }
 
-/**
- * Folha "Tenho um convite". O convite normal chega por deep link; esta folha existe para quem
- * recebeu o link mas abriu o app por conta própria. O texto colado vira código na ViewModel
- * (`InviteLinkParser`) e segue o mesmo caminho do deep link.
- */
+/** A folha "Tenho um convite" ligada ao estado da Início; a folha em si é [InviteLinkSheet]. */
 @Composable
 internal fun HomeInviteSheet(
     state: HomeState,
     onIntent: (HomeIntent) -> Unit,
 ) {
-    SaqzBottomSheet(
+    InviteLinkSheet(
         open = state.inviteSheetOpen,
-        title = stringResource(Res.string.home_invite_sheet_title),
-        description = stringResource(Res.string.home_invite_sheet_body),
+        link = state.inviteLink,
+        invalid = state.inviteLinkInvalid,
+        onLinkChange = { onIntent(HomeIntent.InviteLinkChanged(it)) },
         onClose = { onIntent(HomeIntent.CloseInviteSheet) },
-        footer = {
-            SaqzButton(
-                label = stringResource(Res.string.home_invite_sheet_action),
-                onClick = { onIntent(HomeIntent.SubmitInviteLink) },
-                enabled = state.inviteLink.isNotBlank(),
-                fullWidth = true,
-                modifier = Modifier.testTag(HomeTags.InviteSheetSubmit),
-            )
-        },
-    ) {
-        SaqzInput(
-            value = state.inviteLink,
-            onValueChange = { onIntent(HomeIntent.InviteLinkChanged(it)) },
-            label = stringResource(Res.string.home_invite_sheet_field),
-            placeholder = stringResource(Res.string.home_invite_sheet_placeholder),
-            invalid = state.inviteLinkInvalid,
-            errorText = stringResource(Res.string.home_invite_sheet_invalid).takeIf { state.inviteLinkInvalid },
-            keyboardType = KeyboardType.Uri,
-            modifier = Modifier.testTag(HomeTags.InviteSheetField),
-        )
-    }
+        onSubmit = { onIntent(HomeIntent.SubmitInviteLink) },
+        fieldTag = HomeTags.InviteSheetField,
+        submitTag = HomeTags.InviteSheetSubmit,
+    )
 }

@@ -74,6 +74,35 @@ class GroupListViewModelTest {
     }
 
     @Test
+    fun `submitting a pasted invite link closes the sheet and hands the code over`() = runTest {
+        val code = "a".repeat(42) + "A"
+        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), noPlan, gameGateway = FakeGameGateway())
+
+        viewModel.onIntent(GroupListIntent.OpenInviteSheet)
+        viewModel.onIntent(GroupListIntent.InviteLinkChanged("https://links.saqz.app/?saqz_invite=$code"))
+        viewModel.onIntent(GroupListIntent.SubmitInviteLink)
+
+        assertEquals(GroupListEffect.AcceptInviteCode(code), viewModel.effects.first())
+        assertFalse(viewModel.state.value.inviteSheetOpen)
+        assertEquals("", viewModel.state.value.inviteLink)
+    }
+
+    @Test
+    fun `a pasted text without an invite code flags the field and keeps the sheet open`() = runTest {
+        val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), noPlan, gameGateway = FakeGameGateway())
+
+        viewModel.onIntent(GroupListIntent.OpenInviteSheet)
+        viewModel.onIntent(GroupListIntent.InviteLinkChanged("https://saqz.app/"))
+        viewModel.onIntent(GroupListIntent.SubmitInviteLink)
+
+        assertTrue(viewModel.state.value.inviteLinkInvalid)
+        assertTrue(viewModel.state.value.inviteSheetOpen)
+        viewModel.onIntent(GroupListIntent.CloseInviteSheet)
+        assertFalse(viewModel.state.value.inviteSheetOpen)
+        assertEquals("", viewModel.state.value.inviteLink)
+    }
+
+    @Test
     fun `empty own profile becomes the first access state`() = runTest {
         val viewModel = GroupListViewModel(FakeAthleteGateway(), FakeGroupGateway(), noPlan,
             gameGateway = FakeGameGateway(),

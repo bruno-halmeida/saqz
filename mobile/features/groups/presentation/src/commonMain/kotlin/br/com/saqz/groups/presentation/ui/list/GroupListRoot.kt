@@ -25,6 +25,7 @@ fun GroupListRoot(
     onOpenPlans: () -> Unit,
     isPlanOwner: Boolean = false,
     refreshVersion: Int = 0,
+    onAcceptInviteCode: (String) -> Unit = {},
     viewModel: GroupListViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -40,6 +41,7 @@ fun GroupListRoot(
             is GroupListEffect.OpenGroup -> onOpenGroup(effect.id)
             GroupListEffect.OpenCreateGroup -> onCreateGroup()
             GroupListEffect.OpenPlans -> onOpenPlans()
+            is GroupListEffect.AcceptInviteCode -> onAcceptInviteCode(effect.code)
         }
     }
     GroupListScreen(state = state, onIntent = viewModel::onIntent, isPlanOwner = isPlanOwner)

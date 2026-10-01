@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.ui.list
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,7 @@ import br.com.saqz.groups.presentation.list.GroupCardUi
 import br.com.saqz.groups.presentation.list.GroupInviteUi
 import br.com.saqz.groups.presentation.list.GroupListIntent
 import br.com.saqz.groups.presentation.list.GroupListState
+import br.com.saqz.groups.presentation.ui.invite.InviteLinkSheet
 
 internal object GroupListTags {
     const val Create = "group-list-create"
@@ -29,6 +31,9 @@ internal object GroupListTags {
     const val Failure = "group-list-failure"
     const val InviteAccept = "group-list-invite-accept"
     const val InviteDecline = "group-list-invite-decline"
+    const val EmptyInvite = "group-list-empty-invite"
+    const val InviteSheetField = "group-list-invite-sheet-field"
+    const val InviteSheetSubmit = "group-list-invite-sheet-submit"
 
     fun group(id: String) = "group-list-group-$id"
 }
@@ -50,11 +55,14 @@ fun GroupListScreen(
 ) {
     val metrics = SaqzTheme.metrics
     val onCreate: () -> Unit = { onIntent(GroupListIntent.CreateGroup) }
-    Column(
+    // Box por causa da folha "Tenho um convite": ela é um overlay na mesma janela e precisa
+    // cobrir a lista inteira, não entrar na coluna como mais uma seção.
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(SaqzTheme.colors.background),
     ) {
+        Column(modifier = Modifier.fillMaxSize()) {
         GroupListHeader(
             groupCount = state.groups.size,
             awaitingConfirmation = state.awaitingConfirmation,
@@ -67,7 +75,11 @@ fun GroupListScreen(
                 error = state.error,
                 onRetry = { onIntent(GroupListIntent.Retry) },
             )
-            state.isEmpty -> GroupListEmpty(onCreate = onCreate, isPlanOwner = isPlanOwner)
+            state.isEmpty -> GroupListEmpty(
+                onCreate = onCreate,
+                onInvite = { onIntent(GroupListIntent.OpenInviteSheet) },
+                isPlanOwner = isPlanOwner,
+            )
 
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -96,6 +108,17 @@ fun GroupListScreen(
                 }
             }
         }
+        }
+        InviteLinkSheet(
+            open = state.inviteSheetOpen,
+            link = state.inviteLink,
+            invalid = state.inviteLinkInvalid,
+            onLinkChange = { onIntent(GroupListIntent.InviteLinkChanged(it)) },
+            onClose = { onIntent(GroupListIntent.CloseInviteSheet) },
+            onSubmit = { onIntent(GroupListIntent.SubmitInviteLink) },
+            fieldTag = GroupListTags.InviteSheetField,
+            submitTag = GroupListTags.InviteSheetSubmit,
+        )
     }
 }
 

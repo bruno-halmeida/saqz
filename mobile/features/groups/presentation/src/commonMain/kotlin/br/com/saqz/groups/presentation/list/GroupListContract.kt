@@ -14,6 +14,10 @@ data class GroupListState(
     val error: GroupUiError? = null,
     val groups: List<GroupCardUi> = emptyList(),
     val invite: GroupInviteUi? = null,
+    /** Folha "Tenho um convite" do 2o: aberta, o texto colado e se o último envio não tinha código. */
+    val inviteSheetOpen: Boolean = false,
+    val inviteLink: String = "",
+    val inviteLinkInvalid: Boolean = false,
 ) {
     val isEmpty: Boolean = !isLoading && !loadFailed && groups.isEmpty() && invite == null
 
@@ -61,7 +65,16 @@ sealed interface GroupListIntent {
 
     /** Recarrega a lista sem esqueleto — a volta do 2a, com a ViewModel ainda viva. */
     data object Refresh : GroupListIntent
+
+    // 2o · "Tenho um convite": a folha para colar o link, o mesmo caminho da Início sem grupo.
+    data object OpenInviteSheet : GroupListInviteSheetIntent
+    data object CloseInviteSheet : GroupListInviteSheetIntent
+    data class InviteLinkChanged(val value: String) : GroupListInviteSheetIntent
+    data object SubmitInviteLink : GroupListInviteSheetIntent
 }
+
+/** Os intents da folha "Tenho um convite", agrupados para a ViewModel tratá-los num bloco só. */
+sealed interface GroupListInviteSheetIntent : GroupListIntent
 
 sealed interface GroupListEffect {
     data class OpenGroup(val id: String) : GroupListEffect
@@ -75,4 +88,7 @@ sealed interface GroupListEffect {
 
     /** Plano ativo com vaga de grupo: o "+" de 2n atalha para o formulário 2a. */
     data object OpenCreateGroup : GroupListEffect
+
+    /** Código lido de um link colado; o fecho entrega ao `GroupInviteCoordinator`, como um deep link. */
+    data class AcceptInviteCode(val code: String) : GroupListEffect
 }

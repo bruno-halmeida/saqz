@@ -539,6 +539,7 @@ internal fun SaqzNavHost(
                             onOpenPlans = { backStack.add(SubscriptionRequired) },
                             isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
                             refreshVersion = groupListRefreshVersion,
+                            onAcceptInviteCode = inviteCoordinator::acceptInvite,
                         )
                     },
                 )

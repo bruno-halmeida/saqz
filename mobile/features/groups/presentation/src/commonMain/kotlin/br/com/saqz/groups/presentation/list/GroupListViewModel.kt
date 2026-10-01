@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.home.InviteLinkParser
 import br.com.saqz.groups.presentation.photo.groupPhotoUrl
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
@@ -43,7 +44,30 @@ class GroupListViewModel(
             is GroupListIntent.DeclineInvite -> dismissInvite(intent.id)
             GroupListIntent.Retry -> load()
             GroupListIntent.Refresh -> load(softRefresh = true)
+            is GroupListInviteSheetIntent -> handleInviteSheet(intent)
         }
+    }
+
+    private fun handleInviteSheet(intent: GroupListInviteSheetIntent) {
+        when (intent) {
+            GroupListIntent.OpenInviteSheet -> update { it.copy(inviteSheetOpen = true, inviteLinkInvalid = false) }
+            GroupListIntent.CloseInviteSheet -> update {
+                it.copy(inviteSheetOpen = false, inviteLink = "", inviteLinkInvalid = false)
+            }
+            is GroupListIntent.InviteLinkChanged -> update { it.copy(inviteLink = intent.value, inviteLinkInvalid = false) }
+            GroupListIntent.SubmitInviteLink -> submitInviteLink()
+        }
+    }
+
+    /** Sem código no texto a folha aponta o erro e fica aberta; com código, fecha e o resgate segue como deep link. */
+    private fun submitInviteLink() {
+        val code = InviteLinkParser.parse(state.value.inviteLink)
+        if (code == null) {
+            update { it.copy(inviteLinkInvalid = true) }
+            return
+        }
+        update { it.copy(inviteSheetOpen = false, inviteLink = "", inviteLinkInvalid = false) }
+        emit(GroupListEffect.AcceptInviteCode(code))
     }
 
     private fun checkCreateGroup() {
