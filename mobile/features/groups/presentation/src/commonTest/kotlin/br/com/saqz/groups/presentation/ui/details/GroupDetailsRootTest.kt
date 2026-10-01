@@ -42,7 +42,7 @@ class GroupDetailsRootTest {
         }
         setContent {
             SaqzTheme {
-                GroupDetailsRoot(GroupId, {}, {}, viewModel = vm, sharePort = share,
+                GroupDetailsRoot(GroupId, {}, {}, viewModel = vm, sharePort = share, moderation = br.com.saqz.groups.presentation.fakeModeration(),
                     mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) })
             }
         }
@@ -64,7 +64,7 @@ class GroupDetailsRootTest {
         setContent {
             SaqzTheme {
                 GroupDetailsRoot(
-                    sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
+                    moderation = br.com.saqz.groups.presentation.fakeModeration(), sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
                     groupId = GroupId,
                     onBack = {},
                     onEffect = {},
@@ -92,7 +92,7 @@ class GroupDetailsRootTest {
         setContent {
             SaqzTheme {
                 GroupDetailsRoot(
-                    sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
+                    moderation = br.com.saqz.groups.presentation.fakeModeration(), sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
 
                     mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                     groupId = GroupId,
@@ -129,7 +129,7 @@ class GroupDetailsRootTest {
         setContent {
             SaqzTheme {
                 GroupDetailsRoot(
-                    sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
+                    moderation = br.com.saqz.groups.presentation.fakeModeration(), sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
 
                     mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                     groupId = GroupId,
@@ -170,7 +170,7 @@ class GroupDetailsRootTest {
                 if (onScreen) {
                     stateHolder.SaveableStateProvider(GroupId) {
                         GroupDetailsRoot(
-                            sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
+                            moderation = br.com.saqz.groups.presentation.fakeModeration(), sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
 
                             mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                             groupId = GroupId,

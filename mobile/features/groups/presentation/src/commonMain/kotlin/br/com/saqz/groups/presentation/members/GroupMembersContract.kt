@@ -9,8 +9,9 @@ enum class GroupMembersFilter { All, Admins, Pending }
 /**
  * Linhas possíveis do sheet. Quais aparecem sai de [sheetActions], não de dois sheets:
  * o 2k abre o sheet de membro comum e o 2l o de admin, mas é o mesmo painel.
+ * [Report], [Block] e [Unblock] são de qualquer papel (App Store 1.2), nunca sobre si mesmo.
  */
-enum class GroupMemberAction { ViewProfile, EditMember, Promote, Demote, Remove }
+enum class GroupMemberAction { ViewProfile, EditMember, Promote, Demote, Remove, Report, Block, Unblock }
 
 @Immutable
 data class MemberUi(
@@ -29,6 +30,8 @@ data class MemberUi(
     val canManageRoles: Boolean = true,
     /** O dono do grupo não sai do elenco nem perde o papel. */
     val isOwner: Boolean = false,
+    /** Quem olha bloqueou esta pessoa: o sheet troca "Bloquear" por "Desbloquear". */
+    val isBlocked: Boolean = false,
 )
 
 @Immutable
@@ -73,7 +76,9 @@ val GroupMembersState.memberCount: Int get() = totalCount - adminCount
  * O dono do grupo é imutável: ninguém rebaixa nem remove. Admin promovido edita e
  * remove elenco, mas não promove — isso fica com o OWNER.
  */
-fun MemberUi.sheetActions(): List<GroupMemberAction> = when {
+fun MemberUi.sheetActions(): List<GroupMemberAction> = managementActions() + moderationActions()
+
+private fun MemberUi.managementActions(): List<GroupMemberAction> = when {
     isOwner -> listOf(GroupMemberAction.ViewProfile)
     !canManageAthletes && !canManageRoles -> listOf(GroupMemberAction.ViewProfile)
     isAdmin -> buildList {
@@ -87,6 +92,13 @@ fun MemberUi.sheetActions(): List<GroupMemberAction> = when {
         if (canManageRoles) add(GroupMemberAction.Promote)
         if (canManageAthletes) add(GroupMemberAction.Remove)
     }
+}
+
+/** Denunciar e bloquear valem para qualquer outra pessoa do grupo, dono incluído. */
+private fun MemberUi.moderationActions(): List<GroupMemberAction> = if (isSelf) {
+    emptyList()
+} else {
+    listOf(GroupMemberAction.Report, if (isBlocked) GroupMemberAction.Unblock else GroupMemberAction.Block)
 }
 
 sealed interface GroupMembersIntent {
@@ -118,4 +130,11 @@ sealed interface GroupMembersEffect {
 
     /** Fluxo 3 (3a). */
     data class OpenInvite(val groupId: String) : GroupMembersEffect
+
+    /** Os sheets de denúncia e bloqueio são do `ModerationViewModel`; o Root repassa. */
+    data class ReportMember(val groupId: String, val memberId: String, val name: String) : GroupMembersEffect
+
+    data class BlockMember(val groupId: String, val memberId: String, val name: String) : GroupMembersEffect
+
+    data class UnblockMember(val memberId: String) : GroupMembersEffect
 }

@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.communication
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -23,6 +24,35 @@ class CommunicationScreenTest {
         onNodeWithText("Treino às 20h").assertExists()
         onNodeWithTag("message-send").assertDoesNotExist()
         onNodeWithText("Somente administradores publicam avisos.").assertExists()
+    }
+    @Test fun onlySomeoneElsesNoticeHasTheOptionsMenu() = runComposeUiTest {
+        val intents = mutableListOf<GroupThreadIntent>()
+        setContent { SaqzTheme {
+            GroupThreadScreen(GroupThreadState(loading = false, messages = listOf(
+                ThreadMessageUi("mine", "Eu", "Meu aviso", "09/09 12:00", authorId = "me", own = true),
+                ThreadMessageUi("hers", "Bia", "Aviso da Bia", "09/09 12:00", authorId = "bia"),
+            )), true, {}, { intents += it })
+        } }
+        onNodeWithTag(GroupThreadTags.options("mine")).assertDoesNotExist()
+        onNodeWithContentDescription("Opções do aviso de Bia").performClick()
+        assertEquals(listOf<GroupThreadIntent>(GroupThreadIntent.OpenMessageActions("hers")), intents)
+    }
+    @Test fun optionsSheetReportsTheNoticeOrBlocksTheAuthor() = runComposeUiTest {
+        val intents = mutableListOf<GroupThreadIntent>()
+        val hers = ThreadMessageUi("hers", "Bia", "Aviso da Bia", "09/09 12:00", authorId = "bia")
+        setContent { SaqzTheme {
+            GroupThreadScreen(GroupThreadState(loading = false, messages = listOf(hers), actionsFor = hers), true, {}, { intents += it })
+        } }
+        onNodeWithText("Denunciar aviso").performClick()
+        onNodeWithText("Bloquear Bia").performClick()
+        assertEquals(listOf(GroupThreadIntent.ReportMessage, GroupThreadIntent.BlockAuthor), intents)
+    }
+    @Test fun objectionableNoticeShowsTheSpecificMessage() = runComposeUiTest {
+        setContent { SaqzTheme {
+            GroupThreadScreen(GroupThreadState(loading = false, canPost = true, draft = "texto", sendRejected = true), true, {}, {})
+        } }
+        onNodeWithText("Esse texto tem palavras que não são permitidas no Saqz. Revise e tente de novo.").assertExists()
+        onNodeWithText("Não foi possível confirmar o envio. Tente enviar novamente.").assertDoesNotExist()
     }
     @Test fun chatSendButtonHasAnExplicitIntent() = runComposeUiTest {
         val intents = mutableListOf<GroupThreadIntent>()

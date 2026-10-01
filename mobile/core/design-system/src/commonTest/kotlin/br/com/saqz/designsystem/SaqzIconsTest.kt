@@ -39,6 +39,9 @@ class SaqzIconsTest {
         "Clock" to Pair(SaqzIcons.Clock, "clock"),
         "CreditCard" to Pair(SaqzIcons.CreditCard, "credit-card"),
         "MessageSquare" to Pair(SaqzIcons.MessageSquare, "message-square"),
+        "MoreVertical" to Pair(SaqzIcons.MoreVertical, "ellipsis-vertical"),
+        "Flag" to Pair(SaqzIcons.Flag, "flag"),
+        "Ban" to Pair(SaqzIcons.Ban, "ban"),
     )
 
     @Test

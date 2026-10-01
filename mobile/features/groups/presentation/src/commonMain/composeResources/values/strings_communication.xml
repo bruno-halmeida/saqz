@@ -17,6 +17,7 @@
     <string name="communication_pref_reminders">Lembretes de presença</string>
     <string name="communication_save">Salvar preferências</string>
     <string name="communication_saved">Preferências salvas.</string>
+    <string name="communication_objectionable">Esse texto tem palavras que não são permitidas no Saqz. Revise e tente de novo.</string>
     <string name="communication_failure">Não foi possível concluir. Tente novamente.</string>
     <string name="communication_open">Abrir</string>
     <string name="communication_unread">Não lida</string>

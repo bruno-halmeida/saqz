@@ -21,6 +21,8 @@ import br.com.saqz.groups.presentation.home.HomeViewModel
 import br.com.saqz.groups.presentation.list.GroupListViewModel
 import br.com.saqz.groups.presentation.members.GroupMembersViewModel
 import br.com.saqz.groups.presentation.memberprofile.MemberProfileViewModel
+import br.com.saqz.groups.presentation.moderation.BlockedPeopleRepository
+import br.com.saqz.groups.presentation.moderation.ModerationViewModel
 import br.com.saqz.groups.presentation.monthlypayments.OwnMonthlyPaymentsViewModel
 import br.com.saqz.groups.presentation.newentry.NewEntryViewModel
 import br.com.saqz.groups.presentation.monthlygeneration.MonthlyGenerationViewModel
@@ -34,7 +36,9 @@ import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxViewMode
 import br.com.saqz.groups.presentation.ui.finance.settlement.GameSettlementViewModel
 import org.koin.core.parameter.ParametersHolder
 import org.koin.core.module.Module
+import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModel
+import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 /**
@@ -78,16 +82,21 @@ fun groupsPresentationModule(): Module = module {
         params ->
         GameSettlementViewModel(params.get(), params.get(), get(), get(), get(), get(), get())
     }
-    viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get()) }
-    viewModel { params -> MemberProfileViewModel(params[0], params[1], get()) }
+    // Uma lista de bloqueados para o app inteiro: o bloqueio feito no perfil some com o aviso na thread.
+    singleOf(::BlockedPeopleRepository)
+    viewModelOf(::ModerationViewModel)
+    viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get(), get()) }
+    viewModel { params -> MemberProfileViewModel(params[0], params[1], get(), get()) }
     viewModel { OwnMonthlyPaymentsViewModel(get(), get()) }
-    viewModel { params -> br.com.saqz.groups.presentation.communication.GroupThreadViewModel(params[0], params[1], get(), get(), get()) }
+    viewModel { params ->
+        br.com.saqz.groups.presentation.communication.GroupThreadViewModel(params[0], params[1], get(), get(), get(), get(), get())
+    }
     viewModel { params ->
         br.com.saqz.groups.presentation.attendancelink.AttendanceLinkViewModel(
             params[0], params[1], get(), get(), get(), getOrNull(),
         )
     }
-    viewModel { params -> br.com.saqz.groups.presentation.communication.NotificationCenterViewModel(params.get(), get()) }
+    viewModel { params -> br.com.saqz.groups.presentation.communication.NotificationCenterViewModel(params.get(), get(), get()) }
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
     viewModel { params ->
         val (groupId, gameId) = gameEditorRouteArguments(params)

@@ -326,6 +326,18 @@ class GroupShellBlocksTest {
         setDetailsScreen(GroupShellPreviewData.manager)
 
         onAllNodesWithTag(GroupDetailsTags.Leave).assertCountEquals(0)
+        onAllNodesWithTag(GroupDetailsTags.ReportGroup).assertCountEquals(0)
+    }
+
+    @Test
+    fun memberCanReportTheGroupNextToLeaving() = runComposeUiTest {
+        val intents = mutableListOf<GroupDetailsIntent>()
+        setDetailsScreen(GroupShellPreviewData.member) { intents += it }
+
+        onNodeWithText("Denunciar grupo").assertExists()
+        onNodeWithTag(GroupDetailsTags.ReportGroup).performScrollTo().performClick()
+
+        assertEquals(listOf<GroupDetailsIntent>(GroupDetailsIntent.ReportGroup), intents)
     }
 
     @Test

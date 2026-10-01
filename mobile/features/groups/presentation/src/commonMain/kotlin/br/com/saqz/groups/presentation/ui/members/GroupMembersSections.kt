@@ -61,6 +61,11 @@ import br.com.saqz.groups.resources.group_members_search
 import br.com.saqz.groups.resources.group_members_you
 import br.com.saqz.groups.resources.groups_invite_accept
 import br.com.saqz.groups.resources.groups_invite_decline
+import br.com.saqz.groups.resources.moderation_action_block
+import br.com.saqz.groups.resources.moderation_action_block_hint
+import br.com.saqz.groups.resources.moderation_action_report
+import br.com.saqz.groups.resources.moderation_action_report_hint
+import br.com.saqz.groups.resources.moderation_action_unblock
 import org.jetbrains.compose.resources.stringResource
 
 // O export escreve meta, estatística e rodapé da lista em 13px, e a escala do design
@@ -367,8 +372,8 @@ internal fun GroupMemberActionsSheet(
 
 /**
  * Linha de ação do sheet: 56 de altura mínima, ícone de 22 em `primary`, título 16/600 e
- * subtítulo opcional 13/400. "Remover do grupo" é a exceção — inteira em
- * `errorForeground`, sem subtítulo e sem ícone azul.
+ * subtítulo opcional 13/400. "Remover do grupo" e "Bloquear" são a exceção — inteiras em
+ * `errorForeground`, sem ícone azul.
  */
 @Composable
 internal fun GroupMemberActionRow(
@@ -378,7 +383,7 @@ internal fun GroupMemberActionRow(
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    val destructive = action == GroupMemberAction.Remove
+    val destructive = action == GroupMemberAction.Remove || action == GroupMemberAction.Block
     val foreground = if (destructive) colors.errorForeground else colors.textPrimary
     val title = stringResource(action.titleResource())
     val hint = action.hintResource()?.let { stringResource(it) }
@@ -436,14 +441,19 @@ private fun GroupMemberAction.titleResource() = when (this) {
     GroupMemberAction.Promote -> Res.string.group_member_make_admin
     GroupMemberAction.Demote -> Res.string.group_member_remove_admin
     GroupMemberAction.Remove -> Res.string.group_member_remove
+    GroupMemberAction.Report -> Res.string.moderation_action_report
+    GroupMemberAction.Block -> Res.string.moderation_action_block
+    GroupMemberAction.Unblock -> Res.string.moderation_action_unblock
 }
 
 private fun GroupMemberAction.hintResource() = when (this) {
     GroupMemberAction.EditMember -> Res.string.group_member_edit_hint
     GroupMemberAction.Promote -> Res.string.group_member_make_admin_hint
     GroupMemberAction.Demote -> Res.string.group_member_remove_admin_hint
+    GroupMemberAction.Report -> Res.string.moderation_action_report_hint
+    GroupMemberAction.Block -> Res.string.moderation_action_block_hint
     // "Ver perfil" e "Remover do grupo" são linhas de uma frase só no export.
-    GroupMemberAction.ViewProfile, GroupMemberAction.Remove -> null
+    GroupMemberAction.ViewProfile, GroupMemberAction.Remove, GroupMemberAction.Unblock -> null
 }
 
 // TODO(VUL-96): o export usa lápis (editar), estrela (admin) e user-minus (remover). Os
@@ -455,4 +465,6 @@ private fun GroupMemberAction.icon() = when (this) {
     GroupMemberAction.ViewProfile, GroupMemberAction.EditMember -> SaqzIcons.User
     GroupMemberAction.Promote, GroupMemberAction.Demote -> SaqzIcons.Users
     GroupMemberAction.Remove -> SaqzIcons.Trash
+    GroupMemberAction.Report -> SaqzIcons.Flag
+    GroupMemberAction.Block, GroupMemberAction.Unblock -> SaqzIcons.Ban
 }

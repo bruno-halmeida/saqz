@@ -15,6 +15,7 @@ import br.com.saqz.groups.domain.membership.isExpectedRosterAccessFailure
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.moderation.BlockedPeopleRepository
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
 
@@ -23,6 +24,7 @@ class GroupMembersViewModel(
     private val athleteGateway: AthleteGateway,
     private val membershipGateway: GroupMembershipGateway,
     private val groupGateway: GroupGateway,
+    private val blocks: BlockedPeopleRepository,
 ) : MviViewModel<GroupMembersState, GroupMembersIntent, GroupMembersEffect>(GroupMembersState()) {
 
     private var loadGeneration = 0
@@ -32,6 +34,13 @@ class GroupMembersViewModel(
 
     init {
         load()
+        // Bloquear aqui ou no perfil do membro troca a linha do sheet sem recarregar a lista.
+        viewModelScope.launch {
+            blocks.blocked.collect { blocked ->
+                roster = roster.map { it.copy(isBlocked = it.id in blocked) }
+                project()
+            }
+        }
     }
 
     override fun handleIntent(intent: GroupMembersIntent) {
@@ -57,6 +66,7 @@ class GroupMembersViewModel(
     private fun load() {
         val generation = ++loadGeneration
         update { it.copy(isLoading = true, loadFailed = false, error = null) }
+        viewModelScope.launch { blocks.refresh() }
         viewModelScope.launch {
             val viewerRole = when (val result = groupGateway.read(GroupId(groupId))) {
                 is SaqzResult.Failure -> {
@@ -107,6 +117,7 @@ class GroupMembersViewModel(
             val canManageAthletes = viewerRole == GroupRole.OWNER || viewerRole == GroupRole.ADMIN
             val canManageRoles = viewerRole == GroupRole.OWNER
 
+            val blocked = blocks.blocked.value
             roster = (rosterResult as SaqzResult.Success).value.map { entry ->
                 entry.toUi(
                     role = roles[entry.userId]
@@ -115,7 +126,7 @@ class GroupMembersViewModel(
                     ownUserId = ownProfile.userId,
                     canManageAthletes = canManageAthletes,
                     canManageRoles = canManageRoles,
-                )
+                ).copy(isBlocked = entry.userId in blocked)
             }
             requests = emptyList()
             update {
@@ -146,15 +157,19 @@ class GroupMembersViewModel(
     private fun perform(action: GroupMemberAction) {
         val selected = state.value.selected ?: return
         if (action !in selected.sheetActions() || actionInFlight) return
-        if (selected.isOwner && action != GroupMemberAction.ViewProfile) return
+        if (selected.isOwner && action in OwnerProtectedActions) return
         when (action) {
             GroupMemberAction.ViewProfile -> emit(GroupMembersEffect.OpenMemberProfile(selected.id))
             GroupMemberAction.EditMember -> emit(GroupMembersEffect.OpenMemberEditor(selected.id))
             GroupMemberAction.Promote -> changeRole(selected, AssignableGroupRole.ADMIN)
             GroupMemberAction.Demote -> changeRole(selected, AssignableGroupRole.ATHLETE)
             GroupMemberAction.Remove -> remove(selected)
+            GroupMemberAction.Report -> emit(GroupMembersEffect.ReportMember(groupId, selected.id, selected.name))
+            GroupMemberAction.Block -> emit(GroupMembersEffect.BlockMember(groupId, selected.id, selected.name))
+            GroupMemberAction.Unblock -> emit(GroupMembersEffect.UnblockMember(selected.id))
         }
-        if (action == GroupMemberAction.ViewProfile || action == GroupMemberAction.EditMember) {
+        // Promover, rebaixar e remover fecham o sheet sozinhos, quando a chamada começa.
+        if (action !in RemoteActions) {
             update { it.copy(selected = null) }
         }
     }
@@ -217,6 +232,16 @@ class GroupMembersViewModel(
         )
     }
 }
+
+/** O que mexe no papel ou no elenco: nunca sobre o dono. Denunciar e bloquear valem para ele também. */
+private val OwnerProtectedActions = setOf(
+    GroupMemberAction.EditMember,
+    GroupMemberAction.Promote,
+    GroupMemberAction.Demote,
+    GroupMemberAction.Remove,
+)
+
+private val RemoteActions = setOf(GroupMemberAction.Promote, GroupMemberAction.Demote, GroupMemberAction.Remove)
 
 private fun AthleteRosterEntry.toUi(
     role: GroupRole?,

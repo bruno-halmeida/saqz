@@ -327,6 +327,9 @@ sealed interface GroupDetailsIntent {
 
     data object Leave : GroupDetailsIntent
 
+    /** "Denunciar grupo", ao lado de "Sair do grupo": só para quem não é o dono. */
+    data object ReportGroup : GroupDetailsIntent
+
     data object ConfirmLeave : GroupDetailsIntent
 
     data object CancelLeave : GroupDetailsIntent
@@ -378,4 +381,7 @@ sealed interface GroupDetailsEffect {
 
     /** Copiar a chave Pix é da área de transferência, não do back stack: morre no Root. */
     data class CopyPix(val key: String) : GroupDetailsEffect
+
+    /** Abre o sheet de denúncia por cima do detalhe: também morre no Root. */
+    data class ReportGroup(val groupId: String, val groupName: String) : GroupDetailsEffect
 }

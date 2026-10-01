@@ -144,7 +144,7 @@ class GroupCashboxRootTest {
                 } else {
                     stateHolder.SaveableStateProvider("details") {
                         GroupDetailsRoot(
-                            sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
+                            moderation = br.com.saqz.groups.presentation.fakeModeration(), sharePort = br.com.saqz.groups.presentation.FakeInviteSharePort(),
 
                             mapPort = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },
                             groupId = "group-1",

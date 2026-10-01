@@ -85,6 +85,7 @@ internal object GroupDetailsTags {
     const val HomeCourt = "group-details-home-court"
     const val HomeCourtMap = "group-details-home-court-map"
     const val Leave = "group-details-leave"
+    const val ReportGroup = "group-details-report-group"
 
     fun ownCharge(chargeId: String) = "group-details-own-charge-$chargeId"
 

@@ -86,10 +86,12 @@ class GroupMembersScreenTest {
         )
     }
 
-    @Test fun `the sheet of the group owner offers only the profile`() = runComposeUiTest {
+    @Test fun `the sheet of the group owner offers only the profile report and block`() = runComposeUiTest {
         content(state = state.copy(selected = lucas.copy(isSelf = false, isOwner = true)))
 
         onNodeWithText("Ver perfil").assertExists()
+        onNodeWithText("Denunciar").assertExists()
+        onNodeWithText("Bloquear").assertExists()
         onNodeWithText("Retirar acesso de administrador").assertDoesNotExist()
         onNodeWithText("Remover do grupo").assertDoesNotExist()
         onNodeWithText("Tornar administrador").assertDoesNotExist()
@@ -103,6 +105,30 @@ class GroupMembersScreenTest {
         onNodeWithTag(GroupMembersTags.action(GroupMemberAction.Promote)).performClick()
 
         assertEquals(GroupMembersIntent.PerformAction(GroupMemberAction.Promote), intent)
+    }
+
+    @Test fun `report and block dispatch on the touched member`() = runComposeUiTest {
+        val intents = mutableListOf<GroupMembersIntent>()
+        content(state = state.copy(selected = thiago.copy(canManageAthletes = false, canManageRoles = false)), onIntent = { intents += it })
+
+        onNodeWithText("Editar jogador").assertDoesNotExist()
+        onNodeWithTag(GroupMembersTags.action(GroupMemberAction.Report)).performClick()
+        onNodeWithTag(GroupMembersTags.action(GroupMemberAction.Block)).performClick()
+
+        assertEquals(
+            listOf<GroupMembersIntent>(
+                GroupMembersIntent.PerformAction(GroupMemberAction.Report),
+                GroupMembersIntent.PerformAction(GroupMemberAction.Block),
+            ),
+            intents,
+        )
+    }
+
+    @Test fun `a blocked member offers unblock instead of block`() = runComposeUiTest {
+        content(state = state.copy(selected = thiago.copy(isBlocked = true)))
+
+        onNodeWithText("Desbloquear").assertExists()
+        onNodeWithText("Bloquear").assertDoesNotExist()
     }
 
     @Test fun `no sheet is drawn while nobody is selected`() = runComposeUiTest {

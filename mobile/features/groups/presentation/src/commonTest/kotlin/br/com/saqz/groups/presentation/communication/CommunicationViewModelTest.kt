@@ -11,7 +11,10 @@ import br.com.saqz.groups.domain.communication.CommunicationPage
 import br.com.saqz.groups.domain.communication.InAppNotification
 import br.com.saqz.groups.domain.communication.NotificationPreferences
 import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeCommunicationGateway
+import br.com.saqz.groups.presentation.fakeBlocks
+import br.com.saqz.groups.presentation.moderation.BlockedPeopleRepository
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.sampleCommunicationMessage
 import br.com.saqz.groups.presentation.sampleGroup
@@ -92,7 +95,7 @@ class CommunicationViewModelTest {
     }
     @Test fun preferencesAreSavedOnlyAfterSuccessAndFailedRequestRetainsDraft() = runTest {
         val gateway = FakeCommunicationGateway().apply { saveResult = SaqzResult.Failure(CommunicationError(DataError.Connectivity)) }
-        val vm = NotificationCenterViewModel(true, gateway)
+        val vm = NotificationCenterViewModel(true, gateway, fakeBlocks())
         val draft = NotificationPreferences(false, true, false)
         vm.onIntent(NotificationCenterIntent.Preferences(draft))
         vm.onIntent(NotificationCenterIntent.Save)
@@ -112,7 +115,7 @@ class CommunicationViewModelTest {
                 InAppNotification(7, message, false),
                 InAppNotification(8, message.copy(channel = CommunicationChannel.NOTICE), false)), null))
         }
-        val vm = NotificationCenterViewModel(false, gateway)
+        val vm = NotificationCenterViewModel(false, gateway, fakeBlocks())
         assertEquals(listOf(8L), vm.state.value.items.map { it.sequence })
         assertEquals(CommunicationChannel.NOTICE, vm.state.value.items.single().channel)
     }
@@ -122,7 +125,7 @@ class CommunicationViewModelTest {
             inboxResult = SaqzResult.Success(CommunicationPage(listOf(InAppNotification(7, message, false), InAppNotification(8, message, false)), null))
             readResult = SaqzResult.Failure(CommunicationError(DataError.Connectivity))
         }
-        val vm = NotificationCenterViewModel(false, gateway)
+        val vm = NotificationCenterViewModel(false, gateway, fakeBlocks())
         val effects = mutableListOf<NotificationCenterEffect>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.effects.collect { effects += it } }
         vm.onIntent(NotificationCenterIntent.Open(7))
@@ -135,6 +138,15 @@ class CommunicationViewModelTest {
         assertTrue(vm.state.value.items.first().read)
         assertFalse(vm.state.value.items.last().read)
     }
-    private fun thread(gateway: FakeCommunicationGateway, notices: Boolean = false, role: GroupRole = GroupRole.ADMIN, saved: SavedStateHandle = SavedStateHandle()) =
-        GroupThreadViewModel("group-1", notices, saved, gateway, FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = role)))))
+    private fun thread(
+        gateway: FakeCommunicationGateway,
+        notices: Boolean = false,
+        role: GroupRole = GroupRole.ADMIN,
+        saved: SavedStateHandle = SavedStateHandle(),
+        blocks: BlockedPeopleRepository = fakeBlocks(),
+    ) = GroupThreadViewModel(
+        "group-1", notices, saved, gateway,
+        FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = role)))),
+        FakeAthleteGateway(), blocks,
+    )
 }

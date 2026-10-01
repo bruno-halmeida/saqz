@@ -1,0 +1,35 @@
+<resources>
+    <!-- Denunciar (App Store 1.2): sheet único para aviso, pessoa e grupo -->
+    <string name="moderation_report_title">Denunciar</string>
+    <string name="moderation_report_subject_message">Aviso de %1$s</string>
+    <string name="moderation_report_subject_group">Grupo %1$s</string>
+    <string name="moderation_report_reason_label">Motivo</string>
+    <string name="moderation_reason_spam">Spam ou propaganda</string>
+    <string name="moderation_reason_offensive">Conteúdo ofensivo ou impróprio</string>
+    <string name="moderation_reason_harassment">Assédio ou ameaça</string>
+    <string name="moderation_reason_other">Outro motivo</string>
+    <string name="moderation_report_details">Conte o que aconteceu (opcional)</string>
+    <string name="moderation_report_details_count">%1$d/%2$d</string>
+    <string name="moderation_report_send">Enviar denúncia</string>
+    <string name="moderation_report_sent">Denúncia enviada. Nossa equipe analisa em até 24 horas.</string>
+    <string name="moderation_report_failure">Não foi possível enviar a denúncia. Verifique sua conexão e tente de novo.</string>
+    <!-- Bloquear -->
+    <string name="moderation_block_title">Bloquear %1$s?</string>
+    <string name="moderation_block_body">Você deixa de ver os avisos e mensagens dessa pessoa e não recebe mais notificações dela. Ela não é avisada. Nossa equipe também recebe um alerta para analisar.</string>
+    <string name="moderation_block_confirm">Bloquear</string>
+    <string name="moderation_block_cancel">Cancelar</string>
+    <string name="moderation_block_failure">Não foi possível bloquear. Verifique sua conexão e tente de novo.</string>
+    <string name="moderation_blocked">Pessoa bloqueada.</string>
+    <string name="moderation_unblocked">Pessoa desbloqueada.</string>
+    <string name="moderation_unblock_failure">Não foi possível desbloquear. Tente de novo.</string>
+    <!-- Ações nas telas -->
+    <string name="moderation_action_report">Denunciar</string>
+    <string name="moderation_action_report_hint">Nossa equipe analisa em até 24 horas.</string>
+    <string name="moderation_action_block">Bloquear</string>
+    <string name="moderation_action_block_hint">Você deixa de ver os avisos e as notificações dessa pessoa.</string>
+    <string name="moderation_action_unblock">Desbloquear</string>
+    <string name="moderation_report_notice">Denunciar aviso</string>
+    <string name="moderation_block_author">Bloquear %1$s</string>
+    <string name="moderation_notice_options">Opções do aviso de %1$s</string>
+    <string name="moderation_report_group">Denunciar grupo</string>
+</resources>

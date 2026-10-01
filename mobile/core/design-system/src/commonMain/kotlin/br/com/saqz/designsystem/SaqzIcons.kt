@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
 import com.composables.icons.lucide.ArrowRight
+import com.composables.icons.lucide.Ban
 import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.Calendar
 import com.composables.icons.lucide.Camera
@@ -22,8 +23,10 @@ import com.composables.icons.lucide.ChevronRight
 import com.composables.icons.lucide.CircleAlert
 import com.composables.icons.lucide.Clock
 import com.composables.icons.lucide.CreditCard
+import com.composables.icons.lucide.EllipsisVertical
 import com.composables.icons.lucide.Eye
 import com.composables.icons.lucide.EyeOff
+import com.composables.icons.lucide.Flag
 import com.composables.icons.lucide.House
 import com.composables.icons.lucide.Lock
 import com.composables.icons.lucide.Lucide
@@ -83,6 +86,12 @@ object SaqzIcons {
     val Clock = Lucide.Clock
     val CreditCard = Lucide.CreditCard
     val MessageSquare = Lucide.MessageSquare
+
+    // Denunciar e bloquear (App Store 1.2): o menu de três pontos do export, a bandeira da
+    // denúncia e o círculo cortado do bloqueio.
+    val MoreVertical = Lucide.EllipsisVertical
+    val Flag = Lucide.Flag
+    val Ban = Lucide.Ban
 }
 
 @Composable

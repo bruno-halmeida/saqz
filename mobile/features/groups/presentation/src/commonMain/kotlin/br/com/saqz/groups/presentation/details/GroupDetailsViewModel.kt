@@ -163,6 +163,7 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.OpenVenueMap -> openMap()
             GroupDetailsIntent.MapOpenFailed -> update { it.copy(mapFailed = true) }
             GroupDetailsIntent.Leave -> confirmDeparture()
+            GroupDetailsIntent.ReportGroup -> reportGroup()
             GroupDetailsIntent.CancelLeave -> cancelDeparture()
             GroupDetailsIntent.ConfirmLeave -> leave()
             GroupDetailsIntent.RetryRoster -> retryRoster()
@@ -219,6 +220,12 @@ class GroupDetailsViewModel(
     private fun confirmDeparture() {
         if (state.value.isOwner || state.value.isLoading) return
         update { it.copy(confirmingLeave = true, leaveFailed = false) }
+    }
+
+    private fun reportGroup() {
+        val current = state.value
+        if (current.isOwner || current.isLoading || current.loadFailed) return
+        emit(GroupDetailsEffect.ReportGroup(groupId, current.header?.name.orEmpty()))
     }
 
     private fun cancelDeparture() {

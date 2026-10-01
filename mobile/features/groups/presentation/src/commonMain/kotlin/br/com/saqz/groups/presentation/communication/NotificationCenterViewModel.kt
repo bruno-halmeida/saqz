@@ -6,12 +6,20 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.StoreLaunchPolicy
 import br.com.saqz.groups.domain.communication.CommunicationChannel
 import br.com.saqz.groups.domain.communication.CommunicationGateway
+import br.com.saqz.groups.presentation.moderation.BlockedPeopleRepository
 import kotlinx.coroutines.launch
 
-class NotificationCenterViewModel(private val settings: Boolean, private val gateway: CommunicationGateway) :
-    MviViewModel<NotificationCenterState, NotificationCenterIntent, NotificationCenterEffect>(NotificationCenterState()) {
+class NotificationCenterViewModel(
+    private val settings: Boolean,
+    private val gateway: CommunicationGateway,
+    private val blocks: BlockedPeopleRepository,
+) : MviViewModel<NotificationCenterState, NotificationCenterIntent, NotificationCenterEffect>(NotificationCenterState()) {
     private var generation = 0
-    init { load() }
+    init {
+        load()
+        // O servidor deixa de entregar o que a pessoa bloqueada escreveu: a central recarrega e some com ela.
+        if (!settings) viewModelScope.launch { blocks.changes.collect { if (!state.value.busy) load() } }
+    }
     override fun handleIntent(intent: NotificationCenterIntent) {
         if (state.value.busy) return
         when (intent) {

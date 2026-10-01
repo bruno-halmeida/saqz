@@ -362,6 +362,24 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `member reports the group by name and the owner cannot`() = runTest {
+        val vm = viewModel()
+        vm.onIntent(GroupDetailsIntent.ReportGroup)
+        assertEquals(
+            GroupDetailsEffect.ReportGroup(GROUP_ID, checkNotNull(vm.state.value.header).name),
+            vm.effects.first(),
+        )
+
+        val effects = mutableListOf<GroupDetailsEffect>()
+        val owner = viewModel(
+            groupGateway = FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = GroupRole.OWNER)))),
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { owner.effects.collect { effects += it } }
+        owner.onIntent(GroupDetailsIntent.ReportGroup)
+        assertTrue(effects.isEmpty())
+    }
+
+    @Test
     fun `success loads the group header and profile details`() = runTest {
         val viewModel = viewModel()
 

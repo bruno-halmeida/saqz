@@ -370,6 +370,12 @@ class SaqzKoinModulesTest {
         koin.get<br.com.saqz.groups.presentation.communication.GroupThreadViewModel> { parametersOf("ceret", true, SavedStateHandle()) }
         koin.get<br.com.saqz.groups.presentation.communication.NotificationCenterViewModel> { parametersOf(false) }
         koin.get<GroupMembersViewModel> { parametersOf("ceret") }
+        // Denunciar e bloquear: um sheet por tela, uma lista de bloqueados para o app inteiro.
+        koin.get<br.com.saqz.groups.presentation.moderation.ModerationViewModel>()
+        assertSame(
+            koin.get<br.com.saqz.groups.presentation.moderation.BlockedPeopleRepository>(),
+            koin.get<br.com.saqz.groups.presentation.moderation.BlockedPeopleRepository>(),
+        )
         // VUL-151: editor (criar/editar) e detalhe do jogo resolvem com os ids da rota.
         koin.get<GameEditorViewModel> { parametersOf("ceret", null, SavedStateHandle()) }
         koin.get<GameEditorViewModel> { parametersOf("ceret", "game-1", SavedStateHandle()) }

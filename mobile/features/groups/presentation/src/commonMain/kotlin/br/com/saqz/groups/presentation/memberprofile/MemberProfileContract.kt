@@ -14,7 +14,14 @@ data class MemberProfileState(
     val attendance: String? = null,
     val absences: String? = null,
     val statsFailed: Boolean = false,
-)
+    /** O próprio perfil não oferece denunciar nem bloquear. */
+    val isSelf: Boolean = false,
+    /** Quem olha bloqueou esta pessoa: a ação vira "Desbloquear". */
+    val blocked: Boolean = false,
+) {
+    /** Denunciar e bloquear só aparecem com o perfil carregado e de outra pessoa. */
+    val moderationVisible: Boolean get() = !loading && error == null && !isSelf && name.isNotBlank()
+}
 
 sealed interface MemberProfileIntent {
     data object Retry : MemberProfileIntent

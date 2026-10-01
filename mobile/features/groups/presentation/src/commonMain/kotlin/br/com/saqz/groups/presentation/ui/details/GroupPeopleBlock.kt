@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -47,6 +48,7 @@ import br.com.saqz.groups.resources.group_details_people_count_one
 import br.com.saqz.groups.resources.group_details_people_fallback
 import br.com.saqz.groups.resources.group_details_people_title
 import br.com.saqz.groups.resources.group_details_venue_map
+import br.com.saqz.groups.resources.moderation_report_group
 import br.com.saqz.groups.resources.whatsapp_binding_status_active
 import br.com.saqz.groups.resources.whatsapp_binding_status_broken
 import br.com.saqz.groups.resources.whatsapp_binding_status_disabled
@@ -266,7 +268,10 @@ internal fun GroupHomeCourtBlock(
     }
 }
 
-/** Sair é discreto de propósito: texto centralizado, sem card. Dono não sai do grupo. */
+/**
+ * Sair e denunciar são discretos de propósito: texto centralizado, sem card. Dono não sai do
+ * grupo nem denuncia o próprio grupo.
+ */
 @Composable
 internal fun GroupLeaveBlock(
     state: GroupDetailsState,
@@ -274,20 +279,37 @@ internal fun GroupLeaveBlock(
     modifier: Modifier = Modifier,
 ) {
     if (state.isOwner) return
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        GroupFooterLink(
+            label = stringResource(Res.string.moderation_report_group),
+            tag = GroupDetailsTags.ReportGroup,
+            onClick = { onIntent(GroupDetailsIntent.ReportGroup) },
+        )
+        GroupFooterLink(
+            label = stringResource(Res.string.group_details_leave),
+            tag = GroupDetailsTags.Leave,
+            onClick = { onIntent(GroupDetailsIntent.Leave) },
+        )
+    }
+}
+
+@Composable
+private fun GroupFooterLink(label: String, tag: String, onClick: () -> Unit) {
     val metrics = SaqzTheme.metrics
-    val label = stringResource(Res.string.group_details_leave)
-    Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Box(
-            modifier = Modifier
-                .clip(CircleShape)
-                .clickable(onClickLabel = label, role = Role.Button) { onIntent(GroupDetailsIntent.Leave) }
-                .testTag(GroupDetailsTags.Leave)
-                .heightIn(min = metrics.minimumTouchTarget)
-                .padding(horizontal = metrics.horizontalPadding),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(text = label, style = SaqzTheme.typography.label, color = SaqzTheme.colors.textSecondary)
-        }
+    Box(
+        modifier = Modifier
+            .clip(CircleShape)
+            .clickable(onClickLabel = label, role = Role.Button, onClick = onClick)
+            .testTag(tag)
+            .heightIn(min = metrics.minimumTouchTarget)
+            .padding(horizontal = metrics.horizontalPadding),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = label, style = SaqzTheme.typography.label, color = SaqzTheme.colors.textSecondary)
     }
 }
 

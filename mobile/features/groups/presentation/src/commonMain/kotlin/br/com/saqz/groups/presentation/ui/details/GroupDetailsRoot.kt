@@ -1,17 +1,25 @@
 package br.com.saqz.groups.presentation.ui.details
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalClipboardManager
 import br.com.saqz.groups.domain.map.GroupMapPort
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.groups.presentation.details.GroupDetailsEffect
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
+import br.com.saqz.groups.domain.moderation.ReportTargetType
+import br.com.saqz.groups.presentation.moderation.ModerationIntent
+import br.com.saqz.groups.presentation.moderation.ModerationViewModel
+import br.com.saqz.groups.presentation.moderation.ReportTargetUi
+import br.com.saqz.groups.presentation.ui.moderation.ModerationOverlay
 import br.com.saqz.groups.port.NativeInviteSharePort
 import br.com.saqz.groups.port.InviteNativeOperationResult
 import org.koin.compose.viewmodel.koinViewModel
@@ -27,6 +35,7 @@ fun GroupDetailsRoot(
     groupId: String,
     onBack: () -> Unit,
     onEffect: (GroupDetailsEffect) -> Unit,
+    modifier: Modifier = Modifier,
     // VUL-204: o `groupId` entra na chave do store. Quem separa o grupo A do B é o escopo
     // por destino do `NavDisplay` (cada `GroupsRoute.Details` é uma entrada com store
     // próprio); a chave é a segunda tranca, e é ela que mantém o Root correto sozinho —
@@ -48,8 +57,10 @@ fun GroupDetailsRoot(
     onboardingGroup: Boolean = false,
     mapPort: GroupMapPort = koinInject(),
     sharePort: NativeInviteSharePort = koinInject(),
+    moderation: ModerationViewModel = koinViewModel(key = "moderation/details/$groupId"),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val moderationState by moderation.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
     // VUL-205: só recarrega se o contador mudou desde que esta ViewModel nasceu. O contador é
     // do host e sobrevive ao pop da entrada (`SaqzNavHost`), então `> 0` fazia a entrada
@@ -69,6 +80,11 @@ fun GroupDetailsRoot(
                 }
             }
             is GroupDetailsEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
+            is GroupDetailsEffect.ReportGroup -> moderation.onIntent(
+                ModerationIntent.StartReport(
+                    ReportTargetUi(effect.groupId, ReportTargetType.GROUP, effect.groupId, effect.groupName),
+                ),
+            )
             is GroupDetailsEffect.OpenMap -> {
                 mapPort.open(venueMapUrl(effect.address)) { opened ->
                     if (!opened) viewModel.onIntent(GroupDetailsIntent.MapOpenFailed)
@@ -77,13 +93,16 @@ fun GroupDetailsRoot(
             else -> onEffect(effect)
         }
     }
-    GroupDetailsScreen(
-        state = state,
-        onBack = onBack,
-        onIntent = viewModel::onIntent,
-        photoFailed = photoFailed,
-        onboardingGroup = onboardingGroup,
-    )
+    Box(modifier = modifier.fillMaxSize()) {
+        GroupDetailsScreen(
+            state = state,
+            onBack = onBack,
+            onIntent = viewModel::onIntent,
+            photoFailed = photoFailed,
+            onboardingGroup = onboardingGroup,
+        )
+        ModerationOverlay(state = moderationState, onIntent = moderation::onIntent)
+    }
 }
 
 internal fun venueMapUrl(address: String): String {

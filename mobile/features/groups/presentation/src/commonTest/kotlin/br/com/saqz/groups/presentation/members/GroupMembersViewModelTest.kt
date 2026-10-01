@@ -11,7 +11,11 @@ import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeGroupMembershipGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
+import br.com.saqz.groups.presentation.FakeModerationGateway
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.blockedPerson
+import br.com.saqz.groups.presentation.fakeBlocks
+import br.com.saqz.groups.presentation.moderation.BlockedPeopleRepository
 import br.com.saqz.groups.presentation.sampleRosterEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -47,7 +51,7 @@ class GroupMembersViewModelTest {
                 listOf(GroupMembership("admin", "Admin", GroupRole.ADMIN)),
             ),
         )
-        val viewModel = GroupMembersViewModel("group-1", athlete, memberships, FakeGroupGateway())
+        val viewModel = membersViewModel("group-1", athlete, memberships, FakeGroupGateway())
 
         assertFalse(viewModel.state.value.isLoading)
         assertEquals(2, viewModel.state.value.totalCount)
@@ -65,7 +69,7 @@ class GroupMembersViewModelTest {
             ),
             rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("me"))),
         )
-        val viewModel = GroupMembersViewModel(
+        val viewModel = membersViewModel(
             "group-1",
             athlete,
             FakeGroupMembershipGateway(
@@ -86,7 +90,7 @@ class GroupMembersViewModelTest {
 
     @Test
     fun `empty roster renders without sections`() = runTest {
-        val viewModel = GroupMembersViewModel(
+        val viewModel = membersViewModel(
             "group-1",
             FakeAthleteGateway(),
             FakeGroupMembershipGateway(),
@@ -101,7 +105,7 @@ class GroupMembersViewModelTest {
 
     @Test
     fun `roster failure is visible and typed`() = runTest {
-        val viewModel = GroupMembersViewModel(
+        val viewModel = membersViewModel(
             "group-1",
             FakeAthleteGateway(
                 rosterResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Forbidden)),
@@ -116,7 +120,7 @@ class GroupMembersViewModelTest {
 
     @Test
     fun `forbidden membership lookup does not hide a readable roster`() = runTest {
-        val viewModel = GroupMembersViewModel(
+        val viewModel = membersViewModel(
             "group-1",
             FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry()))),
             FakeGroupMembershipGateway(
@@ -134,7 +138,7 @@ class GroupMembersViewModelTest {
         val membership = FakeGroupMembershipGateway(
             listResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Forbidden)),
         )
-        val viewModel = GroupMembersViewModel(
+        val viewModel = membersViewModel(
             "group-1",
             FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry()))),
             membership,
@@ -142,7 +146,10 @@ class GroupMembersViewModelTest {
         )
 
         val member = viewModel.state.value.members.single()
-        assertEquals(listOf(GroupMemberAction.ViewProfile), member.sheetActions())
+        assertEquals(
+            listOf(GroupMemberAction.ViewProfile, GroupMemberAction.Report, GroupMemberAction.Block),
+            member.sheetActions(),
+        )
         viewModel.onIntent(GroupMembersIntent.OpenMember(member.id))
         viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Promote))
         viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
@@ -152,7 +159,7 @@ class GroupMembersViewModelTest {
 
     @Test
     fun `admin ve o dono na secao de admins mesmo sem lookup de memberships`() = runTest {
-        val viewModel = GroupMembersViewModel(
+        val viewModel = membersViewModel(
             "group-1",
             FakeAthleteGateway(
                 ownProfileResult = SaqzResult.Success(
@@ -181,11 +188,17 @@ class GroupMembersViewModelTest {
     fun `admin remove atleta e nao promove`() = runTest {
         val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
         val membership = FakeGroupMembershipGateway()
-        val viewModel = GroupMembersViewModel("group-1", athlete, membership, groupAs(GroupRole.ADMIN))
+        val viewModel = membersViewModel("group-1", athlete, membership, groupAs(GroupRole.ADMIN))
 
         val member = viewModel.state.value.members.single()
         assertEquals(
-            listOf(GroupMemberAction.ViewProfile, GroupMemberAction.EditMember, GroupMemberAction.Remove),
+            listOf(
+                GroupMemberAction.ViewProfile,
+                GroupMemberAction.EditMember,
+                GroupMemberAction.Remove,
+                GroupMemberAction.Report,
+                GroupMemberAction.Block,
+            ),
             member.sheetActions(),
         )
         viewModel.onIntent(GroupMembersIntent.OpenMember(member.id))
@@ -206,6 +219,8 @@ class GroupMembersViewModelTest {
                 GroupMemberAction.EditMember,
                 GroupMemberAction.Promote,
                 GroupMemberAction.Remove,
+                GroupMemberAction.Report,
+                GroupMemberAction.Block,
             ),
         )
     }
@@ -214,7 +229,13 @@ class GroupMembersViewModelTest {
     fun adminCanOpenProfileAndEditorOfSelectedAthlete() = runTest {
         assertProfileAndEditorNavigation(
             GroupRole.ADMIN,
-            listOf(GroupMemberAction.ViewProfile, GroupMemberAction.EditMember, GroupMemberAction.Remove),
+            listOf(
+                GroupMemberAction.ViewProfile,
+                GroupMemberAction.EditMember,
+                GroupMemberAction.Remove,
+                GroupMemberAction.Report,
+                GroupMemberAction.Block,
+            ),
         )
     }
 
@@ -229,10 +250,13 @@ class GroupMembersViewModelTest {
         val membership = FakeGroupMembershipGateway(
             listResult = SaqzResult.Success(listOf(GroupMembership("owner", "Owner", GroupRole.OWNER))),
         )
-        val viewModel = GroupMembersViewModel("group-1", athlete, membership, groupAs(GroupRole.ADMIN))
+        val viewModel = membersViewModel("group-1", athlete, membership, groupAs(GroupRole.ADMIN))
 
         val owner = viewModel.state.value.admins.single()
-        assertEquals(listOf(GroupMemberAction.ViewProfile), owner.sheetActions())
+        assertEquals(
+            listOf(GroupMemberAction.ViewProfile, GroupMemberAction.Report, GroupMemberAction.Block),
+            owner.sheetActions(),
+        )
         viewModel.onIntent(GroupMembersIntent.OpenMember(owner.id))
         viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Demote))
         viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
@@ -245,7 +269,7 @@ class GroupMembersViewModelTest {
     fun `promote calls membership gateway and closes the sheet`() = runTest {
         val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
         val membership = FakeGroupMembershipGateway()
-        val viewModel = GroupMembersViewModel(
+        val viewModel = membersViewModel(
             "group-1",
             athlete,
             membership,
@@ -269,7 +293,7 @@ class GroupMembersViewModelTest {
     @Test
     fun `remove calls athlete gateway`() = runTest {
         val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
-        val viewModel = GroupMembersViewModel(
+        val viewModel = membersViewModel(
             "group-1",
             athlete,
             FakeGroupMembershipGateway(),
@@ -298,7 +322,7 @@ class GroupMembersViewModelTest {
         val memberships = FakeGroupMembershipGateway(
             listResult = SaqzResult.Success(listOf(GroupMembership("one", "One", GroupRole.ADMIN))),
         )
-        val viewModel = GroupMembersViewModel("group-1", athlete, memberships, FakeGroupGateway())
+        val viewModel = membersViewModel("group-1", athlete, memberships, FakeGroupGateway())
 
         viewModel.onIntent(GroupMembersIntent.SelectFilter(GroupMembersFilter.Admins))
 
@@ -306,10 +330,68 @@ class GroupMembersViewModelTest {
         assertTrue(viewModel.state.value.members.isEmpty())
     }
 
+    @Test
+    fun `athlete reports and blocks anyone else including the owner`() = runTest {
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(
+                listOf(sampleRosterEntry("owner", role = GroupRole.OWNER), sampleRosterEntry("me"), sampleRosterEntry("bia")),
+            ),
+        )
+        val viewModel = membersViewModel(
+            "group-1",
+            athlete,
+            FakeGroupMembershipGateway(listResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Forbidden))),
+            groupAs(GroupRole.ATHLETE),
+        )
+
+        val owner = viewModel.state.value.admins.single()
+        assertEquals(
+            listOf(GroupMemberAction.ViewProfile, GroupMemberAction.Report, GroupMemberAction.Block),
+            owner.sheetActions(),
+        )
+        assertTrue(viewModel.state.value.members.single { it.id == "me" }.sheetActions().none {
+            it == GroupMemberAction.Report || it == GroupMemberAction.Block
+        })
+
+        viewModel.onIntent(GroupMembersIntent.OpenMember("owner"))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Report))
+        assertEquals(GroupMembersEffect.ReportMember("group-1", "owner", "Member"), viewModel.effects.first())
+        assertEquals(null, viewModel.state.value.selected)
+
+        viewModel.onIntent(GroupMembersIntent.OpenMember("bia"))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Block))
+        assertEquals(GroupMembersEffect.BlockMember("group-1", "bia", "Member"), viewModel.effects.first())
+        assertEquals(null, viewModel.state.value.selected)
+    }
+
+    @Test
+    fun `blocked people offer unblock and the row follows a new block at once`() = runTest {
+        val gateway = FakeModerationGateway(blockedResult = SaqzResult.Success(listOf(blockedPerson("bia"))))
+        val blocks = BlockedPeopleRepository(gateway)
+        val viewModel = membersViewModel(
+            "group-1",
+            FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("bia"), sampleRosterEntry("leo")))),
+            FakeGroupMembershipGateway(),
+            groupAs(GroupRole.ATHLETE),
+            blocks,
+        )
+
+        val bia = viewModel.state.value.members.single { it.id == "bia" }
+        assertTrue(bia.isBlocked)
+        assertEquals(GroupMemberAction.Unblock, bia.sheetActions().last())
+        viewModel.onIntent(GroupMembersIntent.OpenMember("bia"))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Unblock))
+        assertEquals(GroupMembersEffect.UnblockMember("bia"), viewModel.effects.first())
+
+        assertFalse(viewModel.state.value.members.single { it.id == "leo" }.isBlocked)
+        blocks.block("leo", br.com.saqz.domain.GroupId("group-1"))
+        assertTrue(viewModel.state.value.members.single { it.id == "leo" }.isBlocked)
+    }
+
     private suspend fun assertProfileAndEditorNavigation(role: GroupRole, actions: List<GroupMemberAction>) {
         val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("member-1"))))
         val membership = FakeGroupMembershipGateway()
-        val viewModel = GroupMembersViewModel("group-1", athlete, membership, groupAs(role))
+        val viewModel = membersViewModel("group-1", athlete, membership, groupAs(role))
         assertEquals(actions, viewModel.state.value.members.single().sheetActions())
 
         viewModel.onIntent(GroupMembersIntent.OpenMember("member-1"))
@@ -328,6 +410,14 @@ class GroupMembersViewModelTest {
         assertEquals(null, athlete.lastRemovedUserId)
         assertEquals(null, membership.lastRoleCommand)
     }
+
+    private fun membersViewModel(
+        groupId: String,
+        athlete: FakeAthleteGateway,
+        memberships: FakeGroupMembershipGateway,
+        group: FakeGroupGateway,
+        blocks: BlockedPeopleRepository = fakeBlocks(),
+    ) = GroupMembersViewModel(groupId, athlete, memberships, group, blocks)
 
     private fun groupAs(role: GroupRole) = FakeGroupGateway(
         readResult = SaqzResult.Success(

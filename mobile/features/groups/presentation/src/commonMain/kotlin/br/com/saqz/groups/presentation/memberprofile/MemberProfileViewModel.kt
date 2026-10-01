@@ -9,6 +9,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.moderation.BlockedPeopleRepository
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.athleteregistration.levelLabel
 import br.com.saqz.groups.presentation.ui.athleteregistration.positionLabel
@@ -20,10 +21,16 @@ class MemberProfileViewModel(
     private val groupId: String,
     private val userId: String,
     private val athletes: AthleteGateway,
+    private val blocks: BlockedPeopleRepository,
 ) : MviViewModel<MemberProfileState, MemberProfileIntent, MemberProfileEffect>(MemberProfileState()) {
     private var generation = 0
 
-    init { load() }
+    init {
+        load()
+        viewModelScope.launch {
+            blocks.blocked.collect { blocked -> update { it.copy(blocked = userId in blocked) } }
+        }
+    }
 
     override fun handleIntent(intent: MemberProfileIntent) = when (intent) {
         MemberProfileIntent.Retry -> load()
@@ -31,7 +38,8 @@ class MemberProfileViewModel(
 
     private fun load() {
         val request = ++generation
-        update { MemberProfileState() }
+        update { MemberProfileState(blocked = userId in blocks.blocked.value) }
+        viewModelScope.launch { blocks.refresh() }
         viewModelScope.launch {
             val roster = athletes.roster(GroupId(groupId), AthleteRosterFilter(includeInactive = true))
             if (request != generation) return@launch
@@ -45,6 +53,9 @@ class MemberProfileViewModel(
                 return@launch
             }
             val stats = athletes.stats(GroupId(groupId), userId)
+            if (request != generation) return@launch
+            // Sem o próprio id, oferecer denunciar é o lado seguro: o servidor recusa o autobloqueio.
+            val isSelf = (athletes.ownProfile() as? SaqzResult.Success)?.value?.userId == userId
             if (request != generation) return@launch
             val attributes = listOfNotNull(
                 member.nickname?.takeIf(String::isNotBlank),
@@ -68,6 +79,8 @@ class MemberProfileViewModel(
                     attendance = numbers?.attendanceRate?.let { "$it%" },
                     absences = numbers?.absences?.toString(),
                     statsFailed = statsFailed,
+                    isSelf = isSelf,
+                    blocked = userId in blocks.blocked.value,
                 )
             }
         }

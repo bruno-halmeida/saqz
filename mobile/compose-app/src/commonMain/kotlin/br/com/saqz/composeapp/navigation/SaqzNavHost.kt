@@ -1174,6 +1174,8 @@ internal fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop
         // não é `else`, e nenhum efeito de navegação cai nele.
         is GroupDetailsEffect.CopyPix -> Unit
         is GroupDetailsEffect.ShareSaqz -> Unit // Native sharing is consumed by GroupDetailsRoot.
+        // O sheet de denúncia é sobreposição do próprio detalhe: o `GroupDetailsRoot` consome.
+        is GroupDetailsEffect.ReportGroup -> Unit
     }
 }
 
