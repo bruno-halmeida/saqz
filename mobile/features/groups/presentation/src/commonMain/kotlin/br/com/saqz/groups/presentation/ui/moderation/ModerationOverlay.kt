@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -89,7 +90,8 @@ fun ModerationOverlay(
     onIntent: (ModerationIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
+    // `imePadding`: o campo de detalhes abre o teclado, e o painel sobe junto em vez de ficar atrás dele.
+    Box(modifier = modifier.fillMaxSize().imePadding()) {
         ReportSheet(draft = state.report, onIntent = onIntent)
         BlockSheet(prompt = state.block, onIntent = onIntent)
         val feedback = state.feedback
