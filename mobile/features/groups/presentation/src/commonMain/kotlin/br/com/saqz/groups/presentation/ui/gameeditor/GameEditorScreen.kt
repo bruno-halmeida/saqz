@@ -37,17 +37,25 @@ import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSpinner
+import br.com.saqz.designsystem.SaqzIcon
+import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzStepper
+import br.com.saqz.designsystem.SaqzSwitch
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.game.GameVenue
+import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.gameeditor.GameEditorEffect
 import br.com.saqz.groups.presentation.gameeditor.GameEditorFieldError
 import br.com.saqz.groups.presentation.gameeditor.GameEditorFields
 import br.com.saqz.groups.presentation.gameeditor.GameEditorIntent
 import br.com.saqz.groups.presentation.gameeditor.GameEditorState
+import br.com.saqz.groups.presentation.gameeditor.hasSlotAt
+import br.com.saqz.groups.presentation.gameeditor.recurrenceSlotFor
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
+import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.game_editor_capacity_helper
 import br.com.saqz.groups.resources.game_editor_capacity_label
@@ -74,6 +82,18 @@ import br.com.saqz.groups.resources.game_editor_error_venue_address_too_long
 import br.com.saqz.groups.resources.game_editor_error_venue_name
 import br.com.saqz.groups.resources.game_editor_error_venue_name_too_long
 import br.com.saqz.groups.resources.game_editor_error_notes_length
+import br.com.saqz.groups.resources.game_editor_error_recurrence_body
+import br.com.saqz.groups.resources.game_editor_error_recurrence_title
+import br.com.saqz.groups.resources.game_editor_recurrence_already
+import br.com.saqz.groups.resources.game_editor_recurrence_drafts
+import br.com.saqz.groups.resources.game_editor_recurrence_hint
+import br.com.saqz.groups.resources.game_editor_recurrence_label
+import br.com.saqz.groups.resources.game_editor_recurrence_off
+import br.com.saqz.groups.resources.game_editor_recurrence_pick_date
+import br.com.saqz.groups.resources.game_editor_recurrence_slot
+import br.com.saqz.groups.resources.game_editor_recurrence_slot_new
+import br.com.saqz.groups.resources.game_editor_recurrence_venue_group
+import br.com.saqz.groups.resources.game_editor_recurrence_venue_new
 import br.com.saqz.groups.resources.game_editor_group_name
 import br.com.saqz.groups.resources.game_editor_notes_hint
 import br.com.saqz.groups.resources.game_editor_notes_label
@@ -138,6 +158,9 @@ internal object GameEditorTags {
     const val ErrorBanner = "game-editor-error-banner"
     const val ConflictBanner = "game-editor-conflict-banner"
     const val SaveFailure = "game-editor-save-failure"
+    const val Recurrence = "game-editor-recurrence"
+    const val RecurrenceToggle = "game-editor-recurrence-toggle"
+    const val RecurrenceFailure = "game-editor-recurrence-failure"
 }
 
 private val DurationOptions = listOf(60, 90, 120, 150)
@@ -237,11 +260,22 @@ private fun FormScroll(
                 onRetry = { onIntent(GameEditorIntent.Submit) },
             )
         }
+        if (state.recurrenceFailed) {
+            RecurrenceFailureBanner(
+                onRetry = { onIntent(GameEditorIntent.Submit) },
+            )
+        }
         DateTimeFields(
             form = state.form,
             errors = errors,
             onOpenPicker = onOpenPicker,
         )
+        if (state.recurrenceOffered) {
+            RecurrenceSection(
+                state = state,
+                onToggle = { onIntent(GameEditorIntent.ToggleRecurring(it)) },
+            )
+        }
         if (state.trialWarningVisible) {
             SaqzCard(modifier = Modifier.testTag("game-editor-trial-warning"), tone = SaqzCardTone.Soft) {
                 Text(
@@ -390,6 +424,126 @@ private fun SaveFailureBanner(onRetry: () -> Unit) {
             onClick = onRetry,
             variant = SaqzButtonVariant.Secondary,
             size = SaqzButtonSize.Sm,
+        )
+    }
+}
+
+@Composable
+private fun RecurrenceFailureBanner(onRetry: () -> Unit) {
+    val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(GameEditorTags.RecurrenceFailure)
+            .background(colors.errorForeground.copy(alpha = SoftTintAlpha), RoundedCornerShape(metrics.cardRadius))
+            .padding(metrics.horizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
+    ) {
+        Text(
+            stringResource(Res.string.game_editor_error_recurrence_title),
+            style = SaqzTheme.typography.subtitle,
+            color = colors.errorForeground,
+        )
+        Text(
+            stringResource(Res.string.game_editor_error_recurrence_body),
+            style = SaqzTheme.typography.support,
+            color = colors.errorForeground,
+        )
+        SaqzButton(
+            label = stringResource(Res.string.game_editor_error_retry),
+            onClick = onRetry,
+            variant = SaqzButtonVariant.Secondary,
+            size = SaqzButtonSize.Sm,
+        )
+    }
+}
+
+/**
+ * "Repetir toda semana" (4a). Ligado, mostra os horários que o grupo já tem e o deste jogo; a
+ * recorrência continua sendo a da agenda do grupo (2m), só que ligada daqui.
+ */
+@Composable
+private fun RecurrenceSection(state: GameEditorState, onToggle: (Boolean) -> Unit) {
+    val metrics = SaqzTheme.metrics
+    val label = stringResource(Res.string.game_editor_recurrence_label)
+    val slot = recurrenceSlotFor(state.form)
+    val alreadyRecurring = slot != null && state.regularSlots.hasSlotAt(slot)
+    SaqzCard(modifier = Modifier.testTag(GameEditorTags.Recurrence)) {
+        Column(verticalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+                    Text(label, style = SaqzTheme.typography.label, color = SaqzTheme.colors.textPrimary)
+                    Text(
+                        stringResource(Res.string.game_editor_recurrence_hint),
+                        style = SaqzTheme.typography.support,
+                        color = SaqzTheme.colors.textSecondary,
+                    )
+                }
+                SaqzSwitch(
+                    checked = state.form.recurring,
+                    onCheckedChange = onToggle,
+                    contentDescription = label,
+                    modifier = Modifier.testTag(GameEditorTags.RecurrenceToggle),
+                )
+            }
+            when {
+                !state.form.recurring -> HelperText(stringResource(Res.string.game_editor_recurrence_off))
+                slot == null -> HelperText(stringResource(Res.string.game_editor_recurrence_pick_date))
+                else -> RecurrenceSlots(state, slot, alreadyRecurring)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecurrenceSlots(state: GameEditorState, slot: GroupRegularSlot, alreadyRecurring: Boolean) {
+    val metrics = SaqzTheme.metrics
+    Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+        state.regularSlots.forEach { existing -> RecurrencePill(existing, highlighted = false) }
+        if (!alreadyRecurring) RecurrencePill(slot, highlighted = true)
+        HelperText(
+            stringResource(
+                when {
+                    alreadyRecurring -> Res.string.game_editor_recurrence_already
+                    state.groupHasVenue -> Res.string.game_editor_recurrence_venue_group
+                    else -> Res.string.game_editor_recurrence_venue_new
+                },
+            ),
+        )
+        if (!alreadyRecurring) HelperText(stringResource(Res.string.game_editor_recurrence_drafts))
+    }
+}
+
+@Composable
+private fun RecurrencePill(slot: GroupRegularSlot, highlighted: Boolean) {
+    val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
+    val weekday = GroupWeekday.valueOf(slot.weekday.name).label()
+    val time = formatDisplayTime(slot.startTime)
+    Row(
+        modifier = Modifier
+            .background(
+                if (highlighted) colors.primary.copy(alpha = SoftTintAlpha) else colors.surfaceSoft,
+                RoundedCornerShape(metrics.cardRadius),
+            )
+            .padding(horizontal = metrics.blockGap, vertical = metrics.subGrid),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
+    ) {
+        SaqzIcon(SaqzIcons.Calendar, tint = if (highlighted) colors.primary else colors.textSecondary)
+        Text(
+            text = stringResource(
+                if (highlighted) Res.string.game_editor_recurrence_slot_new else Res.string.game_editor_recurrence_slot,
+                weekday,
+                time,
+            ),
+            style = SaqzTheme.typography.label,
+            color = colors.textPrimary,
         )
     }
 }
@@ -737,6 +891,39 @@ private fun GameEditorCreatePreview() = SaqzTheme {
                 capacity = 12,
                 confirmationLeadMinutes = 360,
             ),
+            recurrenceOffered = true,
+            groupHasVenue = true,
+        ),
+        onBack = {},
+        onIntent = {},
+    )
+}
+
+@Preview
+@Composable
+private fun GameEditorRecurringPreview() = SaqzTheme {
+    GameEditorScreen(
+        state = GameEditorState(
+            isLoading = false,
+            groupName = "Vôlei do CERET",
+            form = GameEditorFields(
+                localDate = "2026-08-06",
+                localTime = "20:00",
+                durationMinutes = 120,
+                venue = GameVenue(name = "CERET", address = "R. Canuto Abreu"),
+                capacity = 12,
+                confirmationLeadMinutes = 360,
+                recurring = true,
+            ),
+            recurrenceOffered = true,
+            regularSlots = listOf(
+                GroupRegularSlot(
+                    weekday = br.com.saqz.groups.domain.group.GroupWeekday.TUESDAY,
+                    startTime = "19:30",
+                    durationMinutes = 120,
+                ),
+            ),
+            groupHasVenue = true,
         ),
         onBack = {},
         onIntent = {},

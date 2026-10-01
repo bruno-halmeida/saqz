@@ -16,6 +16,8 @@ import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.GameWriteCommand
 import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.group.GroupGateway
+import br.com.saqz.groups.domain.group.GroupProfile
+import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.group.GroupVenue
 import br.com.saqz.groups.model.GameEditorDraft
@@ -37,6 +39,7 @@ class GameEditorViewModel(
     private val savedState: SavedStateHandle,
     private val gameGateway: GameGateway,
     private val groupGateway: GroupGateway,
+    private val profileGateway: GroupProfileGateway,
     private val trialAccess: GroupTrialAccessPort? = null,
 ) : MviViewModel<GameEditorState, GameEditorIntent, GameEditorEffect>(
     initialState = GameEditorState(isLoading = true),
@@ -69,6 +72,9 @@ class GameEditorViewModel(
                 copy(confirmationLeadMinutes = intent.minutes)
             }
             is GameEditorIntent.UpdateNotes -> updateForm { copy(notes = intent.notes) }
+            is GameEditorIntent.ToggleRecurring -> if (state.value.recurrenceOffered) {
+                updateForm { copy(recurring = intent.value) }
+            }
             GameEditorIntent.DismissConflict -> update { it.copy(hasConflict = false, conflictGameId = null) }
             GameEditorIntent.OpenExistingGame -> openExistingGame()
         }
@@ -83,6 +89,7 @@ class GameEditorViewModel(
                 error = null,
                 isSaving = false,
                 saveFailed = false,
+                recurrenceFailed = false,
                 hasConflict = false,
                 conflictGameId = null,
             )
@@ -97,14 +104,7 @@ class GameEditorViewModel(
             val group = (groupResult as SaqzResult.Success).value.group
             val trial = trialAccess?.read(GroupId(groupId))
             val profile = group.profile
-            val defaultForm = GameEditorFields(
-                title = if (gameId == null) DEFAULT_TITLE else "",
-                durationMinutes = profile?.regularSlots?.firstOrNull()?.durationMinutes
-                    ?: profile?.defaultDurationMinutes ?: DEFAULT_DURATION,
-                venue = profile?.defaultVenue?.toGameVenue(),
-                capacity = profile?.defaultCapacity ?: DEFAULT_CAPACITY,
-                confirmationLeadMinutes = profile?.defaultConfirmationLeadMinutes ?: DEFAULT_LEAD,
-            )
+            val defaultForm = defaultForm(profile)
             if (gameId == null) {
                 update {
                     it.copy(
@@ -113,6 +113,10 @@ class GameEditorViewModel(
                         zoneId = group.timeZone.id,
                         trialEndsAt = trial?.endsAt,
                         form = restoreForm(defaultForm),
+                        // Perfil incompleto não aceita o `PUT` do grupo: aí o toggle nem aparece.
+                        recurrenceOffered = profile?.modality != null && profile.composition != null,
+                        regularSlots = profile?.regularSlots.orEmpty(),
+                        groupHasVenue = profile?.defaultVenue != null,
                     )
                 }
                 return@launch
@@ -153,6 +157,15 @@ class GameEditorViewModel(
         }
     }
 
+    private fun defaultForm(profile: GroupProfile?) = GameEditorFields(
+        title = if (gameId == null) DEFAULT_TITLE else "",
+        durationMinutes = profile?.regularSlots?.firstOrNull()?.durationMinutes
+            ?: profile?.defaultDurationMinutes ?: DEFAULT_DURATION,
+        venue = profile?.defaultVenue?.toGameVenue(),
+        capacity = profile?.defaultCapacity ?: DEFAULT_CAPACITY,
+        confirmationLeadMinutes = profile?.defaultConfirmationLeadMinutes ?: DEFAULT_LEAD,
+    )
+
     private fun submit() {
         val current = state.value
         val errors = validateGameEditor(current.form)
@@ -174,7 +187,9 @@ class GameEditorViewModel(
             val versionToken = current.versionToken ?: return
             LastAttempt.Edit(gameId, versionToken, commandKey, publishAfterEdit = false)
         }
-        update { it.copy(isSaving = true, saveFailed = false, hasConflict = false, conflictGameId = null) }
+        update {
+            it.copy(isSaving = true, saveFailed = false, recurrenceFailed = false, hasConflict = false, conflictGameId = null)
+        }
         viewModelScope.launch {
             val result = when (attempt) {
                 is LastAttempt.Create -> createAndPublish(command)
@@ -183,6 +198,13 @@ class GameEditorViewModel(
             }
             when (result) {
                 is SaqzResult.Success -> {
+                    // O jogo já existe e está publicado; o rascunho pendente fica guardado para o
+                    // retry resumir sem criar outro jogo caso só a repetição falhe.
+                    val recurrence = saveRecurrence(groupId, current, groupGateway, profileGateway)
+                    if (recurrence is SaqzResult.Failure) {
+                        update { it.copy(isSaving = false, recurrenceFailed = true, error = recurrence.error.toUiError()) }
+                        return@launch
+                    }
                     clearPendingDraft()
                     savedState.remove<String>(KeyCommand)
                     update { it.copy(isSaving = false, saveFailed = false) }
@@ -356,27 +378,6 @@ class GameEditorViewModel(
         )
     }
 
-    private fun buildCommand(draft: GameEditorDraft): GameWriteCommand =
-        GameWriteCommand(
-            requestId = draft.commandKey,
-            title = draft.form.title.takeIf(String::isNotBlank),
-            venue = draft.form.venue,
-            localDate = draft.form.localDate,
-            localTime = draft.form.localTime,
-            zoneId = draft.form.zoneId,
-            startsAt = draft.form.startsAt,
-            durationMinutes = draft.form.durationMinutes.toIntOrNull(),
-            capacity = draft.form.capacity.toIntOrNull(),
-            confirmationDeadline = draft.form.confirmationDeadline,
-            gameFeeCents = draft.form.gameFeeCents,
-            useDefaultGameFee = draft.form.gameFeeCents == null,
-            notes = draft.form.notes.takeIf(String::isNotBlank),
-        )
-
-    private fun localStart(date: String, time: String, zoneId: String): String? = runCatching {
-        LocalDateTime.parse("${date}T$time").toInstant(TimeZone.of(zoneId)).toString()
-    }.getOrNull()
-
     private fun showLoadFailure(generation: Int, error: GroupUiError) {
         if (generation != loadGeneration) return
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
@@ -392,15 +393,10 @@ class GameEditorViewModel(
             state.copy(
                 form = form,
                 validationErrors = emptySet(),
+                recurrenceFailed = false,
                 trialWarningVisible = trialWarning(form, state.trialEndsAt, state.zoneId),
             )
         }
-    }
-
-    private fun trialWarning(form: GameEditorFields, endsAt: String?, zoneId: String): Boolean {
-        if (endsAt.isNullOrBlank() || !form.hasDateTime || zoneId.isBlank()) return false
-        val starts = localStart(form.localDate, form.localTime, zoneId) ?: return false
-        return runCatching { Instant.parse(starts) >= Instant.parse(endsAt) }.getOrDefault(false)
     }
 
     private fun persistForm(form: GameEditorFields) {
@@ -411,6 +407,7 @@ class GameEditorViewModel(
         savedState[KeyCapacity] = form.capacity
         savedState[KeyLead] = form.confirmationLeadMinutes
         savedState[KeyNotes] = form.notes
+        savedState[KeyRecurring] = form.recurring
         form.venue?.let {
             savedState[KeyVenueName] = it.name
             savedState[KeyVenueAddress] = it.address
@@ -425,6 +422,7 @@ class GameEditorViewModel(
         capacity = savedState.get<Int>(KeyCapacity) ?: form.capacity,
         confirmationLeadMinutes = savedState.get<Int>(KeyLead) ?: form.confirmationLeadMinutes,
         notes = savedState.get<String>(KeyNotes) ?: form.notes,
+        recurring = savedState.get<Boolean>(KeyRecurring) ?: form.recurring,
         venue = savedState.get<String>(KeyVenueName)?.let { name ->
             (form.venue ?: emptyVenue()).copy(
                 name = name,
@@ -464,6 +462,7 @@ class GameEditorViewModel(
         const val KeyCapacity = "game-editor-capacity"
         const val KeyLead = "game-editor-confirmation-lead"
         const val KeyNotes = "game-editor-notes"
+        const val KeyRecurring = "game-editor-recurring"
         const val KeyVenueName = "game-editor-venue-name"
         const val KeyVenueAddress = "game-editor-venue-address"
         const val KeyPendingGameId = "game-editor-pending-game-id"
@@ -471,6 +470,33 @@ class GameEditorViewModel(
         const val KeyPendingFingerprint = "game-editor-pending-fingerprint"
         const val DEFAULT_TITLE = "Jogo extra"
     }
+}
+
+private fun buildCommand(draft: GameEditorDraft): GameWriteCommand =
+    GameWriteCommand(
+        requestId = draft.commandKey,
+        title = draft.form.title.takeIf(String::isNotBlank),
+        venue = draft.form.venue,
+        localDate = draft.form.localDate,
+        localTime = draft.form.localTime,
+        zoneId = draft.form.zoneId,
+        startsAt = draft.form.startsAt,
+        durationMinutes = draft.form.durationMinutes.toIntOrNull(),
+        capacity = draft.form.capacity.toIntOrNull(),
+        confirmationDeadline = draft.form.confirmationDeadline,
+        gameFeeCents = draft.form.gameFeeCents,
+        useDefaultGameFee = draft.form.gameFeeCents == null,
+        notes = draft.form.notes.takeIf(String::isNotBlank),
+    )
+
+private fun localStart(date: String, time: String, zoneId: String): String? = runCatching {
+    LocalDateTime.parse("${date}T$time").toInstant(TimeZone.of(zoneId)).toString()
+}.getOrNull()
+
+private fun trialWarning(form: GameEditorFields, endsAt: String?, zoneId: String): Boolean {
+    if (endsAt.isNullOrBlank() || !form.hasDateTime || zoneId.isBlank()) return false
+    val starts = localStart(form.localDate, form.localTime, zoneId) ?: return false
+    return runCatching { Instant.parse(starts) >= Instant.parse(endsAt) }.getOrDefault(false)
 }
 
 private data class PendingDraft(

@@ -2,12 +2,17 @@ package br.com.saqz.groups.presentation.gameeditor
 
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.game.GameVenue
+import br.com.saqz.groups.domain.group.GroupRegularSlot
 import br.com.saqz.groups.presentation.GroupUiError
 
 /**
- * 4a/4b/4e — editor de jogo fora da recorrência. `gameId == null` cria; presente edita.
+ * 4a/4b/4e — editor de jogo. `gameId == null` cria; presente edita.
  * O formulário carrega defaults da quadra/vagas/prazo do grupo e deixa o admin trocar só
  * neste jogo. Data e horário compartilham o mesmo bottom-sheet de rolagem (4b).
+ *
+ * Na criação, "Repetir toda semana" grava o dia e a hora do jogo como horário regular do grupo
+ * (a mesma recorrência da agenda, 2m), para não obrigar ninguém a editar o grupo. O jogo marcado
+ * sai publicado; os das próximas semanas o backend cria como rascunho.
  */
 @Immutable
 data class GameEditorState(
@@ -19,6 +24,14 @@ data class GameEditorState(
     val trialEndsAt: String? = null,
     val trialWarningVisible: Boolean = false,
     val form: GameEditorFields = GameEditorFields(),
+    /** Só na criação, e só com perfil completo: na edição a recorrência é da agenda do grupo. */
+    val recurrenceOffered: Boolean = false,
+    /** Horários regulares que o grupo já tem; a pílula deste jogo entra ao lado deles. */
+    val regularSlots: List<GroupRegularSlot> = emptyList(),
+    /** Sem quadra padrão, a quadra deste jogo vira a do grupo quando a repetição liga. */
+    val groupHasVenue: Boolean = false,
+    /** O jogo foi marcado, mas o horário regular não foi gravado; o retry resume o rascunho. */
+    val recurrenceFailed: Boolean = false,
     val validationErrors: Set<GameEditorFieldError> = emptySet(),
     val versionToken: String? = null,
     val isSaving: Boolean = false,
@@ -40,6 +53,8 @@ data class GameEditorFields(
     val capacity: Int = 0,
     val confirmationLeadMinutes: Int = 0,
     val notes: String = "",
+    /** "Repetir toda semana": só vale na criação ([GameEditorState.recurrenceOffered]). */
+    val recurring: Boolean = false,
 ) {
     val hasDateTime: Boolean get() = localDate.isNotBlank() && localTime.isNotBlank()
 }
@@ -65,6 +80,7 @@ sealed interface GameEditorIntent {
     data class UpdateCapacity(val capacity: Int) : GameEditorIntent
     data class SelectConfirmationLead(val minutes: Int) : GameEditorIntent
     data class UpdateNotes(val notes: String) : GameEditorIntent
+    data class ToggleRecurring(val value: Boolean) : GameEditorIntent
     data object DismissConflict : GameEditorIntent
     data object OpenExistingGame : GameEditorIntent
 }

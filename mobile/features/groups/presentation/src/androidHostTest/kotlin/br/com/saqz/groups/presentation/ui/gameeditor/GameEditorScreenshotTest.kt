@@ -12,6 +12,8 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.game.GameVenue
+import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.domain.group.GroupWeekday
 import br.com.saqz.groups.presentation.gameeditor.GameEditorFields
 import br.com.saqz.groups.presentation.gameeditor.GameEditorFieldError
 import br.com.saqz.groups.presentation.gameeditor.GameEditorState
@@ -27,6 +29,7 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = RobolectricDeviceQualifiers.Pixel7, application = Application::class)
+@Suppress("TooManyFunctions")
 class GameEditorScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
@@ -80,6 +83,44 @@ class GameEditorScreenshotTest {
     }
 
     @Test
+    fun recurrenceOff() = capture("4a-editor-recurrence-off") {
+        GameEditorScreen(state = previewState().copy(recurrenceOffered = true, groupHasVenue = true), onBack = {}, onIntent = {})
+    }
+
+    @Test
+    fun recurrenceOn() = capture("4a-editor-recurrence-on") {
+        GameEditorScreen(state = recurringState(), onBack = {}, onIntent = {})
+    }
+
+    @Test
+    fun recurrenceOnWithoutGroupVenue() = capture("4a-editor-recurrence-on-new-venue") {
+        GameEditorScreen(state = recurringState().copy(groupHasVenue = false), onBack = {}, onIntent = {})
+    }
+
+    @Test
+    fun recurrenceAlreadyRecurring() = capture("4a-editor-recurrence-already") {
+        GameEditorScreen(
+            state = recurringState().copy(form = recurringState().form.copy(localDate = "2026-08-04", localTime = "19:30")),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
+    @Test
+    fun recurrenceWithoutDate() = capture("4a-editor-recurrence-no-date") {
+        GameEditorScreen(
+            state = recurringState().copy(form = recurringState().form.copy(localDate = "", localTime = "")),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
+    @Test
+    fun recurrenceFailure() = capture("4e-editor-recurrence-failure") {
+        GameEditorScreen(state = recurringState().copy(recurrenceFailed = true), onBack = {}, onIntent = {})
+    }
+
+    @Test
     fun dateTimePicker() {
         compose.setContent { Themed { GameEditorScreen(state = previewState(), onBack = {}, onIntent = {}) } }
         compose.onNodeWithTag(GameEditorTags.Date).performClick()
@@ -97,6 +138,15 @@ class GameEditorScreenshotTest {
             Box(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) { content() }
         }
     }
+
+    private fun recurringState() = previewState().copy(
+        form = previewState().form.copy(localDate = "2026-08-06", localTime = "20:00", recurring = true),
+        recurrenceOffered = true,
+        groupHasVenue = true,
+        regularSlots = listOf(
+            GroupRegularSlot(weekday = GroupWeekday.TUESDAY, startTime = "19:30", durationMinutes = 120),
+        ),
+    )
 
     private fun previewState() = GameEditorState(
         groupName = "Vôlei do CERET",

@@ -10,8 +10,12 @@ import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.group.GroupFinanceDefaults
+import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.domain.group.GroupWeekday
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
+import br.com.saqz.groups.presentation.FakeGroupProfileGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleVersionedGame
 import br.com.saqz.groups.presentation.sampleGame
@@ -53,7 +57,172 @@ class GameEditorViewModelTest {
         savedState: SavedStateHandle = SavedStateHandle(),
         gameGateway: FakeGameGateway = FakeGameGateway(),
         groupGateway: FakeGroupGateway = FakeGroupGateway(),
-    ) = GameEditorViewModel("group-1", gameId, savedState, gameGateway, groupGateway)
+        profileGateway: FakeGroupProfileGateway = FakeGroupProfileGateway(),
+    ) = GameEditorViewModel("group-1", gameId, savedState, gameGateway, groupGateway, profileGateway)
+
+    private fun groupGateway(
+        transform: (br.com.saqz.groups.domain.group.Group) -> br.com.saqz.groups.domain.group.Group,
+    ) = FakeGroupGateway(
+        readResult = SaqzResult.Success(
+            br.com.saqz.groups.presentation.sampleVersionedGroup(
+                transform(br.com.saqz.groups.presentation.sampleGroup()),
+            ),
+        ),
+    )
+
+    // ---- Repetir toda semana (4a) ----
+
+    @Test
+    fun `create mode offers recurrence with the group slots and venue`() = runTest {
+        val vm = viewModel()
+        assertTrue(vm.state.value.recurrenceOffered)
+        assertTrue(vm.state.value.groupHasVenue)
+        assertEquals(listOf(GroupWeekday.TUESDAY), vm.state.value.regularSlots.map { it.weekday })
+        assertFalse(vm.state.value.form.recurring)
+    }
+
+    @Test
+    fun `edit mode does not offer recurrence and ignores the toggle`() = runTest {
+        val vm = viewModel(gameId = "game-1")
+        vm.onIntent(GameEditorIntent.ToggleRecurring(true))
+        assertFalse(vm.state.value.recurrenceOffered)
+        assertFalse(vm.state.value.form.recurring)
+    }
+
+    @Test
+    fun `incomplete profile does not offer recurrence`() = runTest {
+        val vm = viewModel(groupGateway = groupGateway { it.copy(profile = null) })
+        assertFalse(vm.state.value.recurrenceOffered)
+    }
+
+    @Test
+    fun `recurring create publishes the game and then adds the slot to the group`() = runTest {
+        // O backend devolve o jogo como rascunho; o editor publica antes de gravar a repetição.
+        val draft = sampleVersionedGame(sampleGame().copy(status = GameStatus.Draft))
+        val gameGateway = FakeGameGateway(createResult = SaqzResult.Success(draft))
+        val profileGateway = FakeGroupProfileGateway()
+        val vm = viewModel(gameGateway = gameGateway, profileGateway = profileGateway)
+
+        // Quinta 06/08 às 20h, 90 min.
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
+        vm.onIntent(GameEditorIntent.SelectDuration(90))
+        vm.onIntent(GameEditorIntent.ToggleRecurring(true))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(1, gameGateway.createCalls)
+        assertEquals(GameLifecycleAction.Publish, gameGateway.lastLifecycleAction)
+        val form = assertNotNull(profileGateway.lastUpdateCommand).form
+        assertEquals(
+            listOf(
+                GroupRegularSlot(weekday = GroupWeekday.TUESDAY, startTime = "19:30", durationMinutes = 120),
+                GroupRegularSlot(weekday = GroupWeekday.THURSDAY, startTime = "20:00", durationMinutes = 90),
+            ),
+            form.regularSlots,
+        )
+        // O grupo já tem quadra: a deste jogo não a substitui.
+        assertEquals("CERET", form.defaultVenue?.name)
+        assertEquals("etag-2", profileGateway.lastUpdateCommand?.versionToken?.value)
+        assertFalse(vm.state.value.isSaving)
+        assertFalse(vm.state.value.recurrenceFailed)
+        assertTrue(vm.effects.first() is GameEditorEffect.Saved)
+    }
+
+    @Test
+    fun `recurring create gives the group this venue when it has none`() = runTest {
+        val profileGateway = FakeGroupProfileGateway()
+        val vm = viewModel(
+            groupGateway = groupGateway { it.copy(profile = it.profile?.copy(defaultVenue = null)) },
+            profileGateway = profileGateway,
+        )
+        assertFalse(vm.state.value.groupHasVenue)
+
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
+        vm.onIntent(GameEditorIntent.UpdateVenueName("Quadra da praça"))
+        vm.onIntent(GameEditorIntent.UpdateVenueAddress("Praça da Sé, 1"))
+        vm.onIntent(GameEditorIntent.ToggleRecurring(true))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        val venue = assertNotNull(profileGateway.lastUpdateCommand?.form?.defaultVenue)
+        assertEquals("Quadra da praça", venue.name)
+        assertEquals("Praça da Sé, 1", venue.address)
+    }
+
+    @Test
+    fun `recurring create skips the group update when the slot already exists`() = runTest {
+        val profileGateway = FakeGroupProfileGateway()
+        val vm = viewModel(profileGateway = profileGateway)
+
+        // Terça 04/08 às 19h30: o grupo já se repete aí.
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.ToggleRecurring(true))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertNull(profileGateway.lastUpdateCommand)
+        assertFalse(vm.state.value.recurrenceFailed)
+        assertTrue(vm.effects.first() is GameEditorEffect.Saved)
+    }
+
+    @Test
+    fun `recurrence failure keeps the published game and the retry does not create another`() = runTest {
+        val gameGateway = FakeGameGateway()
+        val profileGateway = FakeGroupProfileGateway(
+            updateResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Server)),
+        )
+        val vm = viewModel(gameGateway = gameGateway, profileGateway = profileGateway)
+
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
+        vm.onIntent(GameEditorIntent.ToggleRecurring(true))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertTrue(vm.state.value.recurrenceFailed)
+        assertFalse(vm.state.value.saveFailed)
+        assertFalse(vm.state.value.isSaving)
+        assertEquals(GroupUiError.Network, vm.state.value.error)
+
+        profileGateway.updateResult = SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedGroup())
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(1, gameGateway.createCalls)
+        assertEquals(1, gameGateway.readCalls)
+        assertFalse(vm.state.value.recurrenceFailed)
+        assertTrue(vm.effects.first() is GameEditorEffect.Saved)
+    }
+
+    @Test
+    fun `turning the toggle off after a recurrence failure saves without touching the group`() = runTest {
+        val profileGateway = FakeGroupProfileGateway(
+            updateResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Server)),
+        )
+        val vm = viewModel(profileGateway = profileGateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
+        vm.onIntent(GameEditorIntent.ToggleRecurring(true))
+        vm.onIntent(GameEditorIntent.Submit)
+        assertTrue(vm.state.value.recurrenceFailed)
+
+        vm.onIntent(GameEditorIntent.ToggleRecurring(false))
+        assertFalse(vm.state.value.recurrenceFailed)
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertFalse(vm.state.value.recurrenceFailed)
+        assertTrue(vm.effects.first() is GameEditorEffect.Saved)
+    }
+
+    @Test
+    fun `recurring flag survives view model recreation`() = runTest {
+        val savedState = SavedStateHandle()
+        viewModel(savedState = savedState).onIntent(GameEditorIntent.ToggleRecurring(true))
+        assertTrue(viewModel(savedState = savedState).state.value.form.recurring)
+    }
+
+    @Test
+    fun `recurrence slot follows the chosen date time and duration`() {
+        val slot = recurrenceSlotFor(
+            GameEditorFields(localDate = "2026-08-09", localTime = "08:05", durationMinutes = 60),
+        )
+        assertEquals(GroupRegularSlot(weekday = GroupWeekday.SUNDAY, startTime = "08:05", durationMinutes = 60), slot)
+        assertNull(recurrenceSlotFor(GameEditorFields(localDate = "2026-08-09")))
+        assertNull(recurrenceSlotFor(GameEditorFields(localDate = "hoje", localTime = "08:05")))
+    }
 
     @Test
     fun `new manual game uses the duration saved in the schedule`() = runTest {

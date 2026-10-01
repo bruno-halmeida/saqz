@@ -23,6 +23,18 @@
     <string name="game_editor_notes_label">Recado para a galera</string>
     <string name="game_editor_notes_hint">Opcional. Aparece no convite do jogo.</string>
 
+    <!-- 4a · Repetir toda semana: vira horário regular do grupo, sem passar pela edição do grupo -->
+    <string name="game_editor_recurrence_label">Repetir toda semana</string>
+    <string name="game_editor_recurrence_hint">Vira horário fixo do grupo: os próximos jogos entram na agenda sozinhos.</string>
+    <string name="game_editor_recurrence_off">Só este jogo. Você marca o próximo quando quiser.</string>
+    <string name="game_editor_recurrence_pick_date">Escolha a data e o horário para ver o dia que vai se repetir.</string>
+    <string name="game_editor_recurrence_slot">%1$s · %2$s</string>
+    <string name="game_editor_recurrence_slot_new">%1$s · %2$s · novo</string>
+    <string name="game_editor_recurrence_already">Este dia e horário já se repetem toda semana.</string>
+    <string name="game_editor_recurrence_venue_group">Os próximos jogos usam a quadra do grupo.</string>
+    <string name="game_editor_recurrence_venue_new">A quadra acima passa a ser a quadra do grupo.</string>
+    <string name="game_editor_recurrence_drafts">Os próximos jogos nascem como rascunho. Publique cada um no detalhe do jogo.</string>
+
     <!-- 4a · Ação -->
     <string name="game_editor_create_action">Marcar jogo</string>
     <string name="game_editor_save_action">Salvar alterações</string>
@@ -62,6 +74,8 @@
     <string name="game_editor_error_save_title">Não foi possível criar o jogo</string>
     <string name="game_editor_error_save_body">Tente novamente.</string>
     <string name="game_editor_error_retry">Tentar</string>
+    <string name="game_editor_error_recurrence_title">O jogo foi marcado, mas a repetição não foi salva</string>
+    <string name="game_editor_error_recurrence_body">Tente de novo ou ligue a repetição na agenda do grupo.</string>
     <string name="game_editor_trial_warning">Este jogo começa em %1$s, depois do fim do teste. O acesso ao grupo nessa data depende do plano ativo da conta.</string>
 
 </resources>
