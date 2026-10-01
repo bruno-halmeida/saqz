@@ -96,6 +96,7 @@ internal fun GroupHeroBlock(
     state: GroupDetailsState,
     onIntent: (GroupDetailsIntent) -> Unit,
     modifier: Modifier = Modifier,
+    onboardingGroup: Boolean = false,
 ) {
     val game = state.nextGame
     Column(
@@ -105,7 +106,7 @@ internal fun GroupHeroBlock(
         if (game != null) {
             GroupGameHero(state = state, game = game, onIntent = onIntent)
         } else {
-            GroupNoGameHero(state = state, onIntent = onIntent)
+            GroupNoGameHero(state = state, onIntent = onIntent, onboardingGroup = onboardingGroup)
         }
         if (game != null && state.autoConfirmationVisible) {
             GroupAutoConfirmationCard(state = state, onIntent = onIntent)
@@ -113,9 +114,12 @@ internal fun GroupHeroBlock(
         if (state.athleteIntroVisible && !state.isAdmin && !state.responding) {
             AthleteOnboardingCard(state.athleteShareFailed, onIntent)
         }
-        // O guia "marcar o primeiro jogo" não vira card: ele É o hero sem jogo do gestor.
-        if (state.isAdmin) {
-            state.onboarding?.takeIf { it != GroupOnboarding.CreateGame }?.let { GroupOnboardingCard(it, onIntent) }
+        // Onboarding de organizador só no primeiro grupo criado pela conta. A lista de passos
+        // continua a da Início (passo 1 feito) e some quando os três estão feitos; o acerto do
+        // primeiro jogo segue como card, porque depende de um jogo encerrar.
+        if (state.isAdmin && onboardingGroup) {
+            GroupOnboardingSteps(state = state, onIntent = onIntent)
+            (state.onboarding as? GroupOnboarding.ReviewFinances)?.let { GroupOnboardingCard(it, onIntent) }
         }
         if (game != null) GroupWaitlistExtras(state = state, game = game)
     }
@@ -315,8 +319,9 @@ private fun HeroRosterStale(
 private fun GroupNoGameHero(
     state: GroupDetailsState,
     onIntent: (GroupDetailsIntent) -> Unit,
+    onboardingGroup: Boolean,
 ) {
-    val first = state.isAdmin && state.onboarding == GroupOnboarding.CreateGame
+    val first = state.isAdmin && onboardingGroup && state.onboarding == GroupOnboarding.CreateGame
     val title = if (first) Res.string.group_details_hero_first_title else Res.string.home_no_game_hero_title
     val meta = when {
         first -> Res.string.group_details_hero_first_body

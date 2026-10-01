@@ -159,12 +159,7 @@ class HomeViewModel(
             is HomeIntent.OpenInvite -> emit(HomeEffect.OpenInvite(intent.groupId))
             is HomeIntent.CopyPix -> copyPix(intent.groupId)
             HomeIntent.CreateGroup -> emit(HomeEffect.OpenCreateGroup)
-            HomeIntent.OpenInviteSheet -> update { it.copy(inviteSheetOpen = true, inviteLinkInvalid = false) }
-            HomeIntent.CloseInviteSheet -> update {
-                it.copy(inviteSheetOpen = false, inviteLink = "", inviteLinkInvalid = false)
-            }
-            is HomeIntent.InviteLinkChanged -> update { it.copy(inviteLink = intent.value, inviteLinkInvalid = false) }
-            HomeIntent.SubmitInviteLink -> submitInviteLink()
+            is HomeInviteSheetIntent -> handleInviteSheet(intent)
         }
     }
 
@@ -257,6 +252,17 @@ class HomeViewModel(
         // geração e um cancelamento do escopo também têm que devolver a chave. A checagem
         // impede que uma carga velha destrave enquanto a nova ainda está no ar.
         job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
+    }
+
+    private fun handleInviteSheet(intent: HomeInviteSheetIntent) {
+        when (intent) {
+            HomeIntent.OpenInviteSheet -> update { it.copy(inviteSheetOpen = true, inviteLinkInvalid = false) }
+            HomeIntent.CloseInviteSheet -> update {
+                it.copy(inviteSheetOpen = false, inviteLink = "", inviteLinkInvalid = false)
+            }
+            is HomeIntent.InviteLinkChanged -> update { it.copy(inviteLink = intent.value, inviteLinkInvalid = false) }
+            HomeIntent.SubmitInviteLink -> submitInviteLink()
+        }
     }
 
     /**

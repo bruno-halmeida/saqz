@@ -227,11 +227,14 @@ sealed interface HomeIntent {
 
     // Primeiro acesso (sem grupo): os dois caminhos do hero e a folha de convite.
     data object CreateGroup : HomeIntent
-    data object OpenInviteSheet : HomeIntent
-    data object CloseInviteSheet : HomeIntent
-    data class InviteLinkChanged(val value: String) : HomeIntent
-    data object SubmitInviteLink : HomeIntent
+    data object OpenInviteSheet : HomeInviteSheetIntent
+    data object CloseInviteSheet : HomeInviteSheetIntent
+    data class InviteLinkChanged(val value: String) : HomeInviteSheetIntent
+    data object SubmitInviteLink : HomeInviteSheetIntent
 }
+
+/** Os intents da folha "Tenho um convite", agrupados para a ViewModel tratá-los num bloco só. */
+sealed interface HomeInviteSheetIntent : HomeIntent
 
 sealed interface HomeEffect {
     data object OpenGroups : HomeEffect

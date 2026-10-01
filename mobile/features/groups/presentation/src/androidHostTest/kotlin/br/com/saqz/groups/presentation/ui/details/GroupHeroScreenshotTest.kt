@@ -33,7 +33,8 @@ class GroupHeroScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun capture(name: String, state: GroupDetailsState) = compose.captureDetails(name, state, "hero")
+    private fun capture(name: String, state: GroupDetailsState, onboardingGroup: Boolean = false) =
+        compose.captureDetails(name, state, "hero", onboardingGroup = onboardingGroup)
 
     @Test fun pending() = capture("group-hero-pending", GroupHeroPreviewData.pending)
 
@@ -99,13 +100,18 @@ class GroupHeroScreenshotTest {
 
     @Test fun adminNoGame() = capture("group-hero-admin-no-game", GroupHeroPreviewData.adminNoGame)
 
-    @Test fun adminFirstGame() = capture("group-hero-admin-first-game", GroupHeroPreviewData.adminFirstGame)
+    // As três cenas de guia são do primeiro grupo da conta: fora dele não existe guia.
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun adminFirstGame() = capture("group-hero-admin-first-game", GroupHeroPreviewData.adminFirstGame, onboardingGroup = true)
+
+    @Test fun adminSecondGroupNew() = capture("group-hero-admin-second-group-new", GroupHeroPreviewData.adminFirstGame)
 
     @Test
     @Config(qualifiers = "+h1400dp")
-    fun adminInviteGuide() = capture("group-hero-admin-invite-guide", GroupHeroPreviewData.adminInviteGuide)
+    fun adminInviteGuide() = capture("group-hero-admin-invite-guide", GroupHeroPreviewData.adminInviteGuide, onboardingGroup = true)
 
     @Test
     @Config(qualifiers = "+h1400dp")
-    fun adminFinanceGuide() = capture("group-hero-admin-finance-guide", GroupHeroPreviewData.adminFinanceGuide)
+    fun adminFinanceGuide() = capture("group-hero-admin-finance-guide", GroupHeroPreviewData.adminFinanceGuide, onboardingGroup = true)
 }

@@ -266,30 +266,74 @@ class GroupHeroBlockTest {
     }
 
     @Test
-    fun firstGameHeroReplacesTheCreateGuide() = runComposeUiTest {
+    fun firstGameHeroReplacesTheCreateGuideInTheOnboardingGroup() = runComposeUiTest {
         val intents = mutableListOf<GroupDetailsIntent>()
-        setDetailsScreen(GroupHeroPreviewData.adminFirstGame) { intents += it }
+        setDetailsScreen(GroupHeroPreviewData.adminFirstGame, onboardingGroup = true) { intents += it }
 
         onNodeWithText("Grupo criado!").assertExists()
         onNodeWithText("Marcar primeiro jogo").assertExists()
         inHero(GroupDetailsTags.HeroInvite).assertCountEquals(0)
         onAllNodesWithTag(GroupOnboardingTags.Card).assertCountEquals(0)
+        // A lista continua a da Início: grupo feito, jogo é o passo de agora, convite espera.
+        onNodeWithTag(GroupOnboardingStepsTags.Steps).assertExists()
+        onNodeWithText("Feito").assertExists()
+        onNodeWithText("Agora").assertExists()
         inHero(GroupDetailsTags.CreateNextGame)[0].performScrollTo().performClick()
+        onNodeWithTag(GroupOnboardingStepsTags.step(2)).performScrollTo().performClick()
+        onNodeWithTag(GroupOnboardingStepsTags.step(3)).performScrollTo().performClick()
 
-        assertEquals(GroupDetailsIntent.CreateNextGame, intents.single())
+        assertEquals(
+            listOf(GroupDetailsIntent.CreateNextGame, GroupDetailsIntent.CreateNextGame, GroupDetailsIntent.InviteByLink),
+            intents,
+        )
     }
 
     @Test
-    fun inviteAndFinanceGuidesStayAsCardsForTheAdminOnly() = runComposeUiTest {
-        setDetailsScreen(GroupHeroPreviewData.adminInviteGuide)
+    fun secondGroupHasNoGuideEvenWhenBrandNew() = runComposeUiTest {
+        setDetailsScreen(GroupHeroPreviewData.adminFirstGame)
+
+        onAllNodesWithText("Grupo criado!").assertCountEquals(0)
+        onNodeWithText("Sem jogo marcado").assertExists()
+        inHero(GroupDetailsTags.HeroInvite).assertCountEquals(1)
+        onAllNodesWithTag(GroupOnboardingStepsTags.Steps).assertCountEquals(0)
+        onAllNodesWithTag(GroupOnboardingTags.Card).assertCountEquals(0)
+    }
+
+    @Test
+    fun gameMarkedMovesTheGuideToTheInviteStepWithoutTheOldCard() = runComposeUiTest {
+        val intents = mutableListOf<GroupDetailsIntent>()
+        setDetailsScreen(GroupHeroPreviewData.adminInviteGuide, onboardingGroup = true) { intents += it }
+
+        onAllNodesWithTag(GroupOnboardingTags.Card).assertCountEquals(0)
+        onNodeWithTag(GroupOnboardingStepsTags.Steps).assertExists()
+        onNodeWithTag(GroupOnboardingStepsTags.step(3)).performScrollTo().performClick()
+
+        assertEquals(GroupDetailsIntent.InviteByLink, intents.single())
+    }
+
+    @Test
+    fun stepsDisappearOnceTheGameIsMarkedAndSomeoneJoined() = runComposeUiTest {
+        setDetailsScreen(GroupHeroPreviewData.adminInviteGuide.copy(memberCount = 2), onboardingGroup = true)
+
+        onAllNodesWithTag(GroupOnboardingStepsTags.Steps).assertCountEquals(0)
+    }
+
+    @Test
+    fun financeGuideStaysAsACardInTheOnboardingGroup() = runComposeUiTest {
+        setDetailsScreen(GroupHeroPreviewData.adminFinanceGuide, onboardingGroup = true)
+
         onNodeWithTag(GroupOnboardingTags.Card).assertExists()
-        onNodeWithTag(GroupOnboardingTags.Responses).assertExists()
+        onNodeWithText("Ver acerto do primeiro jogo").assertExists()
     }
 
     @Test
     fun guideNeverShowsForAMember() = runComposeUiTest {
-        setDetailsScreen(GroupHeroPreviewData.adminFinanceGuide.copy(isAdmin = false, isOwner = false))
+        setDetailsScreen(
+            GroupHeroPreviewData.adminFinanceGuide.copy(isAdmin = false, isOwner = false),
+            onboardingGroup = true,
+        )
         onAllNodesWithTag(GroupOnboardingTags.Card).assertCountEquals(0)
+        onAllNodesWithTag(GroupOnboardingStepsTags.Steps).assertCountEquals(0)
     }
 
     @Test

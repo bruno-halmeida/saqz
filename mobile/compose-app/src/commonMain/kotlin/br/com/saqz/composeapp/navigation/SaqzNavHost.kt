@@ -753,6 +753,11 @@ internal fun SaqzNavHost(
                 GroupDetailsRoot(
                     groupId = route.groupId,
                     photoFailed = route.photoFailed,
+                    // Onboarding é uma vez por conta e só no primeiro grupo criado: o guia
+                    // aparece enquanto este for o único grupo de que a conta é dona. Com um
+                    // segundo grupo, ou em grupo em que a pessoa só entrou, não há guia.
+                    onboardingGroup = (state.session as? SessionAccessState.Ready)
+                        ?.session?.isOnlyOwnedGroup(route.groupId) == true,
                     onBack = pop,
                     onEffect = { effect ->
                         if (effect is GroupDetailsEffect.Left) {
@@ -1221,3 +1226,9 @@ private fun SessionAccessState.toDestination(): NavKey = when (this) {
     SessionAccessState.Bootstrapping, SessionAccessState.BootstrapError -> AccessRoute.Bootstrap
     is SessionAccessState.Ready -> SaqzShellDestination.Home
 }
+
+/** A conta é dona de exatamente um grupo, e é este. */
+private fun br.com.saqz.access.domain.session.AccessSession.isOnlyOwnedGroup(groupId: String): Boolean =
+    memberships.filter { it.role.value == OwnerRole }.map { it.groupId.value } == listOf(groupId)
+
+private const val OwnerRole = "OWNER"

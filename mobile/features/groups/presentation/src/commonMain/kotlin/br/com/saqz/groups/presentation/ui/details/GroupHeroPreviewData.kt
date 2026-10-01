@@ -91,9 +91,11 @@ internal object GroupHeroPreviewData {
         attendance = AttendanceSummaryUi(confirmedCount = 10, capacity = 12, going = 10, notGoing = 2, pending = 0, availableSpots = 2),
     )
     val adminNoGame = GroupDetailsPreviewData.adminNoGame
-    val adminFirstGame = adminNoGame.copy(onboarding = GroupOnboarding.CreateGame)
+    // Primeiro grupo da conta: só o dono está nele até o convite sair.
+    val adminFirstGame = adminNoGame.copy(onboarding = GroupOnboarding.CreateGame, memberCount = 1)
     val adminInviteGuide = adminPending.copy(
         onboarding = GroupOnboarding.InviteAthletes("game-1"),
+        memberCount = 1,
         attendance = AttendanceSummaryUi(confirmedCount = 0, capacity = 12, going = 0, notGoing = 0, pending = 1, availableSpots = 12),
     )
     val adminFinanceGuide = adminNoGame.copy(onboarding = GroupOnboarding.ReviewFinances("game-0"))

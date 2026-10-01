@@ -44,6 +44,8 @@ fun GroupDetailsRoot(
     ),
     refreshVersion: Int = 0,
     photoFailed: Boolean = false,
+    /** Este é o primeiro grupo que a conta criou: o único que mostra o guia de organizador. */
+    onboardingGroup: Boolean = false,
     mapPort: GroupMapPort = koinInject(),
     sharePort: NativeInviteSharePort = koinInject(),
 ) {
@@ -80,6 +82,7 @@ fun GroupDetailsRoot(
         onBack = onBack,
         onIntent = viewModel::onIntent,
         photoFailed = photoFailed,
+        onboardingGroup = onboardingGroup,
     )
 }
 

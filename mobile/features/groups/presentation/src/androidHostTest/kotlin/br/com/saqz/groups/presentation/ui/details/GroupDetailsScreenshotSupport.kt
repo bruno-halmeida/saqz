@@ -16,6 +16,7 @@ internal fun ComposeContentTestRule.captureDetails(
     state: GroupDetailsState,
     directory: String,
     photoFailed: Boolean = false,
+    onboardingGroup: Boolean = false,
 ) {
     setContent {
         SaqzTheme {
@@ -24,7 +25,13 @@ internal fun ComposeContentTestRule.captureDetails(
                     .fillMaxSize()
                     .background(SaqzTheme.colors.background),
             ) {
-                GroupDetailsScreen(state = state, onBack = {}, onIntent = {}, photoFailed = photoFailed)
+                GroupDetailsScreen(
+                    state = state,
+                    onBack = {},
+                    onIntent = {},
+                    photoFailed = photoFailed,
+                    onboardingGroup = onboardingGroup,
+                )
             }
         }
     }

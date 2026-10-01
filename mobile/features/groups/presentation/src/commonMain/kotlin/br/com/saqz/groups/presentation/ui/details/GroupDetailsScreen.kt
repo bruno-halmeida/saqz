@@ -33,6 +33,7 @@ internal fun GroupDetailsScreen(
     onIntent: (GroupDetailsIntent) -> Unit,
     modifier: Modifier = Modifier,
     photoFailed: Boolean = false,
+    onboardingGroup: Boolean = false,
 ) {
     val metrics = SaqzTheme.metrics
     Column(
@@ -55,7 +56,7 @@ internal fun GroupDetailsScreen(
                     verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
                 ) {
                     GroupTopContent(photoFailed = photoFailed)
-                    GroupHeroBlock(state = state, onIntent = onIntent)
+                    GroupHeroBlock(state = state, onIntent = onIntent, onboardingGroup = onboardingGroup)
                     GroupOwnDebtBlock(state = state, onIntent = onIntent)
                     GroupWaitingBlock(state = state, onIntent = onIntent)
                     GroupAgendaBlock(state = state, onIntent = onIntent)

@@ -11,6 +11,7 @@ import br.com.saqz.groups.presentation.details.GroupDetailsState
 internal fun ComposeUiTest.setDetailsScreen(
     state: GroupDetailsState,
     photoFailed: Boolean = false,
+    onboardingGroup: Boolean = false,
     onIntent: (GroupDetailsIntent) -> Unit = {},
 ) = setContent {
     SaqzTheme {
@@ -19,6 +20,7 @@ internal fun ComposeUiTest.setDetailsScreen(
             onBack = {},
             onIntent = onIntent,
             photoFailed = photoFailed,
+            onboardingGroup = onboardingGroup,
         )
     }
 }
