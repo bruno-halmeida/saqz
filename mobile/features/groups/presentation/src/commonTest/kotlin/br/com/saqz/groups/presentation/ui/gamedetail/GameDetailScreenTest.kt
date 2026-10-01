@@ -62,6 +62,42 @@ class GameDetailScreenTest {
     }
 
     @Test
+    fun `publish action is offered to admins on draft games only`() = runComposeUiTest {
+        setScreen(GameDetailStatusTone.Draft)
+
+        onNodeWithTag(GameDetailTags.Publish).assertExists()
+        onNodeWithText("Só você vê este jogo até publicar.").assertExists()
+    }
+
+    @Test
+    fun `publish action is hidden for published games and athletes`() = runComposeUiTest {
+        setScreen(GameDetailStatusTone.Published)
+        onAllNodesWithText("Publicar jogo").assertCountEquals(0)
+    }
+
+    @Test
+    fun `athlete never sees the publish action`() = runComposeUiTest {
+        setScreen(
+            state = GameDetailPreviewData.admin.copy(
+                isAdmin = false,
+                header = GameDetailPreviewData.header.copy(statusTone = GameDetailStatusTone.Draft),
+            ),
+        )
+        onAllNodesWithText("Publicar jogo").assertCountEquals(0)
+    }
+
+    @Test
+    fun `publish failure replaces the hint`() = runComposeUiTest {
+        setScreen(
+            state = GameDetailPreviewData.admin.copy(
+                publishFailed = true,
+                header = GameDetailPreviewData.header.copy(statusTone = GameDetailStatusTone.Draft),
+            ),
+        )
+        onNodeWithText("Não foi possível publicar o jogo. Tente novamente.").assertExists()
+    }
+
+    @Test
     fun `cancel sheet is hosted as a full screen overlay`() = runComposeUiTest {
         setScreen(cancelDialogOpen = true)
 

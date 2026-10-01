@@ -22,6 +22,9 @@ data class GameDetailState(
     val cancelling: Boolean = false,
     val cancelFailed: Boolean = false,
     val cancelDialogOpen: Boolean = false,
+    /** Rascunho (os da recorrência nascem assim) virando jogo publicado. */
+    val publishing: Boolean = false,
+    val publishFailed: Boolean = false,
     val promotingMemberId: String? = null,
     val promotionFailed: Boolean = false,
     val capacitySheetOpen: Boolean = false,
@@ -128,6 +131,7 @@ sealed interface GameDetailIntent {
     data object RequestCancel : GameDetailIntent
     data object ConfirmCancel : GameDetailIntent
     data object DismissCancel : GameDetailIntent
+    data object Publish : GameDetailIntent
     data class Promote(val memberId: String, val reason: String, val guestSeq: Int = 0) : GameDetailIntent
     data object OpenCapacitySheet : GameDetailIntent
     data class UpdateCapacity(val value: Int) : GameDetailIntent

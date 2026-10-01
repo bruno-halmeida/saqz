@@ -75,6 +75,7 @@ class GameDetailViewModel(
                 update { it.copy(cancelDialogOpen = false, cancelFailed = false) }
             }
             GameDetailIntent.ConfirmCancel -> cancel()
+            GameDetailIntent.Publish -> publish()
             is GameDetailIntent.Promote -> promote(intent.memberId, intent.reason, intent.guestSeq)
             GameDetailIntent.OpenCapacitySheet -> openCapacitySheet()
             is GameDetailIntent.UpdateCapacity -> update {
@@ -381,6 +382,34 @@ class GameDetailViewModel(
             }
         }
     }
+    /**
+     * Rascunho vira jogo publicado: é quando o atleta passa a vê-lo. Os jogos da recorrência nascem
+     * assim, e o organizador publica um a um. Convidado, fila e presenças dependem do status, então
+     * depois recarrega tudo em vez de remendar o estado.
+     */
+    private fun publish() {
+        val current = state.value
+        if (!current.isAdmin || current.header?.statusTone != GameDetailStatusTone.Draft || current.publishing) return
+        val token = versionToken ?: return
+        update { it.copy(publishing = true, publishFailed = false) }
+        viewModelScope.launch {
+            val result = gameGateway.lifecycle(GroupId(groupId), gameId, token, GameLifecycleAction.Publish)
+            when (result) {
+                is SaqzResult.Success -> {
+                    versionToken = result.value.version
+                    update { it.copy(publishing = false, header = result.value.game.toHeader()) }
+                    load()
+                }
+                is SaqzResult.Failure -> if (result.error is GameError.Conflict) {
+                    update { it.copy(publishing = false) }
+                    load()
+                } else {
+                    update { it.copy(publishing = false, publishFailed = true) }
+                }
+            }
+        }
+    }
+
     private fun showFailure(generation: Int, error: GroupUiError) {
         if (generation != loadGeneration) return
         update { it.copy(isLoading = false, loadFailed = true, error = error) }

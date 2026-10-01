@@ -15,6 +15,9 @@
     <string name="game_detail_stat_going">Vou</string>
     <string name="game_detail_confirmed_section">Confirmados</string>
     <string name="game_detail_you">· você</string>
+    <string name="game_detail_publish">Publicar jogo</string>
+    <string name="game_detail_publish_hint">Só você vê este jogo até publicar.</string>
+    <string name="game_detail_publish_failed">Não foi possível publicar o jogo. Tente novamente.</string>
     <string name="game_detail_edit">Editar jogo</string>
     <string name="game_detail_cancel">Cancelar jogo</string>
     <string name="game_detail_cancel_title">Cancelar o jogo?</string>

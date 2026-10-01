@@ -67,6 +67,26 @@ class GameDetailScreenshotTest {
     )
 
     @Test
+    @Config(qualifiers = "+h1400dp")
+    fun draftPublishing() = capture(
+        "game-detail-draft-publishing",
+        GameDetailPreviewData.admin.copy(
+            header = GameDetailPreviewData.header.copy(statusTone = GameDetailStatusTone.Draft),
+            publishing = true,
+        ),
+    )
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun draftPublishFailed() = capture(
+        "game-detail-draft-publish-failed",
+        GameDetailPreviewData.admin.copy(
+            header = GameDetailPreviewData.header.copy(statusTone = GameDetailStatusTone.Draft),
+            publishFailed = true,
+        ),
+    )
+
+    @Test
     fun loading() = capture("game-detail-loading", GameDetailState())
 
     @Test

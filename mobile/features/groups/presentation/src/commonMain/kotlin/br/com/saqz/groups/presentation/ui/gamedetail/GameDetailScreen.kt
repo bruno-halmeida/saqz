@@ -50,6 +50,9 @@ import br.com.saqz.groups.resources.game_detail_cancel
 import br.com.saqz.groups.resources.game_detail_cancel_body
 import br.com.saqz.groups.resources.game_detail_cancel_failed
 import br.com.saqz.groups.resources.game_detail_cancel_title
+import br.com.saqz.groups.resources.game_detail_publish
+import br.com.saqz.groups.resources.game_detail_publish_failed
+import br.com.saqz.groups.resources.game_detail_publish_hint
 import br.com.saqz.groups.resources.game_detail_confirmation_deadline
 import br.com.saqz.groups.resources.game_detail_confirmed_summary
 import br.com.saqz.groups.resources.game_detail_confirmed_section
@@ -71,6 +74,7 @@ import org.jetbrains.compose.resources.stringResource
 internal object GameDetailTags {
     const val Screen = "game-detail"
     const val CancelSheet = "game-detail-cancel-sheet"
+    const val Publish = "game-detail-publish"
 }
 @Composable
 internal fun GameDetailScreen(
@@ -112,6 +116,9 @@ internal fun GameDetailScreen(
                             cancelling = state.cancelling,
                             canCancel = state.header?.statusTone == GameDetailStatusTone.Published,
                             canSettle = state.header?.statusTone == GameDetailStatusTone.Completed,
+                            canPublish = state.header?.statusTone == GameDetailStatusTone.Draft,
+                            publishing = state.publishing,
+                            publishFailed = state.publishFailed,
                             onIntent = onIntent,
                         )
                     }
@@ -242,11 +249,29 @@ private fun GameDetailAdminActions(
     cancelling: Boolean,
     canCancel: Boolean,
     canSettle: Boolean,
+    canPublish: Boolean,
+    publishing: Boolean,
+    publishFailed: Boolean,
     onIntent: (GameDetailIntent) -> Unit,
 ) = Column(
     Modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
 ) {
+    if (canPublish) {
+        SaqzButton(
+            stringResource(Res.string.game_detail_publish),
+            { onIntent(GameDetailIntent.Publish) },
+            Modifier.testTag(GameDetailTags.Publish),
+            fullWidth = true,
+            enabled = !publishing,
+            loading = publishing,
+        )
+        Text(
+            stringResource(if (publishFailed) Res.string.game_detail_publish_failed else Res.string.game_detail_publish_hint),
+            style = SaqzTheme.typography.support,
+            color = if (publishFailed) SaqzTheme.colors.errorForeground else SaqzTheme.colors.textSecondary,
+        )
+    }
     SaqzButton(
         stringResource(Res.string.game_detail_edit),
         { onIntent(GameDetailIntent.Edit) },

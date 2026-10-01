@@ -40,6 +40,7 @@ import br.com.saqz.groups.presentation.sampleAttendanceDetail
 import br.com.saqz.groups.presentation.sampleAttendanceRoster
 import br.com.saqz.groups.presentation.sampleVersionedAttendanceCapacity
 import br.com.saqz.groups.presentation.sampleVersionedAttendanceMutation
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.sampleVersionedGroup
 import br.com.saqz.groups.presentation.sampleVersionedGame
 import kotlinx.coroutines.CompletableDeferred
@@ -196,6 +197,81 @@ class GameDetailViewModelTest {
 
         lifecycle.complete(SaqzResult.Success(VersionedGame(sampleCancelledGame(), GameVersionToken("etag-2"))))
         assertFalse(viewModel.state.value.cancelling)
+    }
+
+    @Test
+    fun `publish promotes the draft and reloads with the new version`() = runTest {
+        val draft = sampleVersionedGame().copy(game = sampleVersionedGame().game.copy(status = GameStatus.Draft))
+        val published = VersionedGame(sampleVersionedGame().game, GameVersionToken("etag-2"))
+        val gateway = FakeGameGateway(
+            readResults = ArrayDeque(listOf(SaqzResult.Success(draft))),
+            readResult = SaqzResult.Success(published),
+            lifecycleResult = SaqzResult.Success(published),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+        assertEquals(GameDetailStatusTone.Draft, viewModel.state.value.header?.statusTone)
+
+        viewModel.onIntent(GameDetailIntent.Publish)
+
+        assertEquals(GameLifecycleAction.Publish, gateway.lastLifecycleAction)
+        assertEquals(listOf(GameVersionToken("etag-1")), gateway.lifecycleVersions)
+        assertEquals(2, gateway.readCalls)
+        assertEquals(GameDetailStatusTone.Published, viewModel.state.value.header?.statusTone)
+        assertFalse(viewModel.state.value.publishing)
+        assertFalse(viewModel.state.value.publishFailed)
+    }
+
+    @Test
+    fun `publish is ignored for published games and for athletes`() = runTest {
+        val gateway = FakeGameGateway()
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+        viewModel.onIntent(GameDetailIntent.Publish)
+        assertTrue(gateway.lifecycleVersions.isEmpty())
+
+        val draft = sampleVersionedGame().copy(game = sampleVersionedGame().game.copy(status = GameStatus.Draft))
+        val athleteGateway = FakeGameGateway(readResult = SaqzResult.Success(draft))
+        val athlete = GameDetailViewModel(
+            "group-1",
+            "game-1",
+            athleteGateway,
+            FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = GroupRole.ATHLETE)))),
+            FakeAttendanceGateway(),
+            FakeAthleteGateway(),
+        )
+        athlete.onIntent(GameDetailIntent.Publish)
+        assertTrue(athleteGateway.lifecycleVersions.isEmpty())
+    }
+
+    @Test
+    fun `publish failure keeps the draft and surfaces the error`() = runTest {
+        val draft = sampleVersionedGame().copy(game = sampleVersionedGame().game.copy(status = GameStatus.Draft))
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(draft),
+            lifecycleResult = SaqzResult.Failure(GameError.Data(DataError.Server)),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+
+        viewModel.onIntent(GameDetailIntent.Publish)
+
+        assertTrue(viewModel.state.value.publishFailed)
+        assertFalse(viewModel.state.value.publishing)
+        assertEquals(GameDetailStatusTone.Draft, viewModel.state.value.header?.statusTone)
+        assertEquals(1, gateway.readCalls)
+    }
+
+    @Test
+    fun `publish conflict reloads the game instead of failing`() = runTest {
+        val draft = sampleVersionedGame().copy(game = sampleVersionedGame().game.copy(status = GameStatus.Draft))
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(draft),
+            lifecycleResult = SaqzResult.Failure(GameError.Conflict()),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+
+        viewModel.onIntent(GameDetailIntent.Publish)
+
+        assertEquals(2, gateway.readCalls)
+        assertFalse(viewModel.state.value.publishFailed)
     }
 
     @Test
