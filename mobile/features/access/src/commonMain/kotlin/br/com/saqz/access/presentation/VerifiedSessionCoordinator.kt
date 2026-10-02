@@ -544,7 +544,17 @@ class SessionAccessStateMachine(
             if (context.state !is SessionAccessState.BootstrapError) return@begin null
             context.copy(state = SessionAccessState.Bootstrapping)
         } ?: return
-        bootstrap(started.turn())
+        val turn = started.turn()
+        // O token em cache pode ser anterior ao nome: na conta recém-criada o provedor emite o
+        // token no cadastro e o nome entra depois, então o `PUT api/session` sai sem o claim
+        // `name`, o backend recusa (400) e repetir com o mesmo token nunca sai disso. Renovar
+        // antes do retry custa uma chamada e vale para qualquer motivo de falha; se a renovação
+        // falhar, o bootstrap falha do mesmo jeito e a tela de erro volta.
+        auth.idToken(true, object : TokenCallback {
+            override fun complete(result: TokenResult) {
+                if (turn.current()) bootstrap(turn)
+            }
+        })
     }
 
     /**

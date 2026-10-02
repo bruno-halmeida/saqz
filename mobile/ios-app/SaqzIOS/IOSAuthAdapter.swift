@@ -163,8 +163,18 @@ final class IOSAuthAdapter: @preconcurrency NativeAuthPort {
             guard let self else { return }
             switch result {
             case .success:
-                self.firebase.updateDisplayName(name) { nameResult in
-                    done.complete(result: nameResult.authResult)
+                self.firebase.updateDisplayName(name) { [weak self] nameResult in
+                    guard case .success = nameResult, let self else {
+                        done.complete(result: nameResult.authResult)
+                        return
+                    }
+                    // O token emitido no cadastro é anterior ao nome: sem o claim `name` o
+                    // `PUT api/session` volta 400 e o bootstrap não sai da tela de erro. Um token
+                    // novo aqui faz o primeiro pedido ao backend já levar o nome. Falha ao
+                    // renovar não desfaz o cadastro; o "Tentar novamente" renova de novo.
+                    self.firebase.idToken(forceRefresh: true) { _ in
+                        done.complete(result: nameResult.authResult)
+                    }
                 }
             case .failure(let failure):
                 done.complete(result: failure.authResult)

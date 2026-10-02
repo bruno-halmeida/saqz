@@ -302,6 +302,7 @@ class SessionAccessStateMachineTest {
         fixture.session.result = SaqzResult.Success(phoneRequiredSession)
         fixture.session.profileResult = SaqzResult.Success(session)
         fixture.machine.onIntent(SessionIntent.RetryBootstrap)
+        fixture.auth.completeToken(TokenResult.Success("refreshed"))
         runCurrent()
 
         assertEquals(listOf<Pair<String, String?>>("+5511999990000" to "Pessoa Nova"), fixture.session.profileCalls)
@@ -912,8 +913,10 @@ class SessionAccessStateMachineTest {
         fixture.machine.onIntent(SessionIntent.Logout)
 
         fixture.session.result = SaqzResult.Success(session)
+        val tokensBefore = fixture.auth.tokenCalls.size
         fixture.machine.onIntent(SessionIntent.RetryBootstrap)
         runCurrent()
+        assertEquals(tokensBefore, fixture.auth.tokenCalls.size)
         fixture.auth.completeSignOut()
         runCurrent()
 
@@ -1015,6 +1018,28 @@ class SessionAccessStateMachineTest {
         assertEquals(0, fixture.auth.signOutCalls)
     }
 
+    // Conta recém-criada: o token do cadastro não tem o nome e o backend recusa o bootstrap.
+    // Repetir com o mesmo token prendia a pessoa na tela de erro (até o token expirar).
+    @Test
+    fun `bootstrap retry renews the token before asking the backend again`() = runTest {
+        val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Server)))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        fixture.confirmProviderStillPresent()
+        fixture.session.result = SaqzResult.Success(session)
+        val tokensBefore = fixture.auth.tokenCalls.size
+
+        fixture.machine.onIntent(SessionIntent.RetryBootstrap)
+        runCurrent()
+        assertEquals(listOf(true), fixture.auth.tokenCalls.drop(tokensBefore))
+        assertEquals(1, fixture.session.calls)
+
+        fixture.auth.completeToken(TokenResult.Success("refreshed"))
+        runCurrent()
+        assertEquals(2, fixture.session.calls)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
     @Test
     fun `bootstrap retry preserves the native session and can recover`() = runTest {
         val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
@@ -1024,6 +1049,7 @@ class SessionAccessStateMachineTest {
         fixture.session.result = SaqzResult.Success(session)
 
         fixture.machine.onIntent(SessionIntent.RetryBootstrap)
+        fixture.auth.completeToken(TokenResult.Success("refreshed"))
         runCurrent()
 
         assertIs<SessionAccessState.Ready>(fixture.machine.state.value)

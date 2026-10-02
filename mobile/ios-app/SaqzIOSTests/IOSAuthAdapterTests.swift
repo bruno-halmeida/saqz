@@ -61,6 +61,7 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertEqual(fixture.firebase.events, [
             .create(email: "ana@example.test", password: "provider-policy"),
             .updateDisplayName("Ana"),
+            .token(forceRefresh: true),
         ])
         XCTAssertEqual((callback.result as? AuthResultSuccess)?.user.displayName, "Ana")
     }
@@ -88,6 +89,7 @@ final class IOSAuthAdapterTests: XCTestCase {
         XCTAssertEqual(fixture.firebase.events, [
             .create(email: "ana@example.test", password: "provider-policy"),
             .updateDisplayName("Ana"),
+            .token(forceRefresh: true),
         ])
     }
 

@@ -11,6 +11,7 @@ import br.com.saqz.access.domain.port.OperationResult
 import br.com.saqz.access.domain.port.ResultCallback
 import br.com.saqz.access.domain.port.TokenCallback
 import br.com.saqz.access.domain.port.ValueCallback
+import br.com.saqz.access.domain.port.TokenResult
 import br.com.saqz.access.domain.session.AccessError
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.SessionGateway
@@ -156,7 +157,7 @@ class AccessRouteViewModelTest {
         override fun signInWithPassword(email: String, password: String, done: AuthCallback) = Unit
         override fun signInWithGoogle(done: AuthCallback) = Unit
         override fun updateDisplayName(name: String, done: AuthCallback) = Unit
-        override fun idToken(forceRefresh: Boolean, done: TokenCallback) = Unit
+        override fun idToken(forceRefresh: Boolean, done: TokenCallback) = done.complete(TokenResult.Success("token"))
         override fun signOut(done: ResultCallback) = done.complete(OperationResult.Success)
         override fun reloadUser(done: AuthCallback) = done.complete(AuthResult.Success(verifiedNamedUser))
         override fun sendVerification(done: ResultCallback) = Unit
