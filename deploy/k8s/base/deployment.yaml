@@ -38,11 +38,13 @@ spec:
               containerPort: 8080
             - name: management
               containerPort: 9090
+          # A última fonte vence quando a mesma chave aparece em ambas: o ConfigMap
+          # traz os padrões fixos e o backend.env (Secret) é a fonte de verdade.
           envFrom:
-            - secretRef:
-                name: backend-env
             - configMapRef:
                 name: backend-config
+            - secretRef:
+                name: backend-env
           env:
             # Obrigatório para não herdar a página de contratação de staging.
             - name: SAQZ_SUBSCRIPTION_PURCHASE_URL
