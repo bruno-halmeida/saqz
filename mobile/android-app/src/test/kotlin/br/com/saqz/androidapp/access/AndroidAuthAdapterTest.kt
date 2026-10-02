@@ -104,11 +104,37 @@ class AndroidAuthAdapterTest {
 
         fixture.adapter.createAccount("Ana", "ana@example.test", "strong-pass", authCallback { result = it })
         fixture.firebase.completeAuth(AndroidProviderResult.Success(providerUser()))
+        fixture.firebase.completeToken(AndroidProviderResult.Success("token-with-name"))
 
         assertEquals(
-            listOf("create:Ana:ana@example.test:strong-pass"),
+            listOf("create:Ana:ana@example.test:strong-pass", "token:true"),
             fixture.firebase.calls,
         )
+        assertEquals(nativeUser(), (result as AuthResult.Success).user)
+    }
+
+    @Test
+    fun createAccountWaitsForTokenWithNameBeforeCompleting() {
+        val fixture = Fixture()
+        var result: AuthResult? = null
+
+        fixture.adapter.createAccount("Ana", "ana@example.test", "strong-pass", authCallback { result = it })
+        fixture.firebase.completeAuth(AndroidProviderResult.Success(providerUser()))
+
+        assertEquals(null, result)
+        fixture.firebase.completeToken(AndroidProviderResult.Success("token-with-name"))
+        assertEquals(nativeUser(), (result as AuthResult.Success).user)
+    }
+
+    @Test
+    fun createAccountStillSucceedsWhenTokenRefreshFails() {
+        val fixture = Fixture()
+        var result: AuthResult? = null
+
+        fixture.adapter.createAccount("Ana", "ana@example.test", "strong-pass", authCallback { result = it })
+        fixture.firebase.completeAuth(AndroidProviderResult.Success(providerUser()))
+        fixture.firebase.completeToken(AndroidProviderResult.Failure(AndroidProviderFailure.NETWORK))
+
         assertEquals(nativeUser(), (result as AuthResult.Success).user)
     }
 
@@ -120,7 +146,7 @@ class AndroidAuthAdapterTest {
         fixture.firebase.completeAuth(AndroidProviderResult.Success(providerUser(emailVerified = false)))
 
         assertEquals(
-            listOf("create:Ana:ana@example.test:strong-pass"),
+            listOf("create:Ana:ana@example.test:strong-pass", "token:true"),
             fixture.firebase.calls,
         )
     }
@@ -132,7 +158,7 @@ class AndroidAuthAdapterTest {
         fixture.adapter.createAccount("Ana", "ana@example.test", "strong-pass", authCallback { })
         fixture.firebase.completeAuth(AndroidProviderResult.Success(providerUser(emailVerified = true)))
 
-        assertEquals(listOf("create:Ana:ana@example.test:strong-pass"), fixture.firebase.calls)
+        assertEquals(listOf("create:Ana:ana@example.test:strong-pass", "token:true"), fixture.firebase.calls)
     }
 
     @Test

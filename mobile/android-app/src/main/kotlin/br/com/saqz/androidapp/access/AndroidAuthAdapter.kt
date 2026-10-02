@@ -100,7 +100,12 @@ internal class AndroidAuthAdapter(
 
     override fun createAccount(name: String, email: String, password: String, done: AuthCallback) =
         firebase.createAccount(name, email, password) { result ->
-            done.complete(result.toAuthResult())
+            if (result !is AndroidProviderResult.Success) return@createAccount done.complete(result.toAuthResult())
+            // O token emitido no cadastro é anterior ao nome: sem o claim `name` o
+            // `PUT api/session` volta 400 e o bootstrap não sai da tela de erro. Um token
+            // novo aqui faz o primeiro pedido ao backend já levar o nome. Falha ao
+            // renovar não desfaz o cadastro; o "Tentar novamente" renova de novo.
+            firebase.idToken(forceRefresh = true) { done.complete(result.toAuthResult()) }
         }
 
     override fun signInWithPassword(email: String, password: String, done: AuthCallback) =
