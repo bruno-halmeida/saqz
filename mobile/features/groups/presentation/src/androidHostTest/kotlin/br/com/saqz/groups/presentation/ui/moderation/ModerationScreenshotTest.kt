@@ -36,7 +36,13 @@ class ModerationScreenshotTest {
     val compose = createComposeRule()
 
     private val messages = listOf(
-        ThreadMessageUi("m1", "Marina Costa", "Bem-vindos ao Vôlei de Quinta! Confirme sua presença até as 18h.", "Hoje, 17:42", authorId = "marina"),
+        ThreadMessageUi(
+            "m1",
+            "Marina Costa",
+            "Bem-vindos ao Vôlei de Quinta! Confirme sua presença até as 18h.",
+            "Hoje, 17:42",
+            authorId = "marina",
+        ),
         ThreadMessageUi("m2", "Você", "Combinado!", "Hoje, 17:50", authorId = "me", own = true),
     )
 
@@ -44,7 +50,10 @@ class ModerationScreenshotTest {
     fun noticesWithMenu() = captureThread("notices", GroupThreadState(loading = false, messages = messages))
 
     @Test
-    fun noticeActions() = captureThread("notice-actions", GroupThreadState(loading = false, messages = messages, actionsFor = messages[0]))
+    fun noticeActions() = captureThread(
+        "notice-actions",
+        GroupThreadState(loading = false, messages = messages, actionsFor = messages[0]),
+    )
 
     @Test
     fun reportSheet() = captureOverlay(

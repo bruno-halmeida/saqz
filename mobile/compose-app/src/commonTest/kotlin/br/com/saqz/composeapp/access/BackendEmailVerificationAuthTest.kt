@@ -15,7 +15,10 @@ import br.com.saqz.access.domain.verification.EmailVerificationError
 import br.com.saqz.access.domain.verification.EmailVerificationGateway
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.runTest
+import kotlin.coroutines.ContinuationInterceptor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
@@ -172,5 +175,12 @@ class BackendEmailVerificationAuthTest {
             done.complete(TokenResult.Failure(NativeFailureCode.UNKNOWN))
 
         override fun signOut(done: ResultCallback) = done.complete(OperationResult.Success)
+    }
+
+    @Test
+    fun `o envio roda na main porque o token vem de um adapter MainActor no iOS`() {
+        val scope = verificationScope()
+        assertEquals(Dispatchers.Main, scope.coroutineContext[ContinuationInterceptor])
+        scope.cancel()
     }
 }

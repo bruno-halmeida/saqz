@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 class BackendEmailVerificationAuth(
     private val auth: NativeAuthPort,
     private val gateway: () -> EmailVerificationGateway,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val scope: CoroutineScope = verificationScope(),
 ) : NativeAuthPort by auth {
     override fun createAccount(name: String, email: String, password: String, done: AuthCallback) {
         auth.createAccount(
@@ -53,6 +53,15 @@ class BackendEmailVerificationAuth(
         }
     }
 }
+
+/**
+ * Main, não Default: o pedido autenticado busca o token no `NativeAuthPort`, que no iOS é um
+ * adapter `@MainActor`, e o alvo compila em Swift 6 — chamado de outra thread é trap de
+ * runtime e o app fecha logo depois de "Criar conta". Nada aqui bloqueia: o I/O sai da
+ * thread pelo engine do Ktor. É o mesmo motivo do `fetcherCoroutineContext` do
+ * `AuthenticatedImageLoader`.
+ */
+internal fun verificationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
 private fun SaqzResult<Unit, EmailVerificationError>.toOperation(): OperationResult = when (this) {
     is SaqzResult.Success -> OperationResult.Success
