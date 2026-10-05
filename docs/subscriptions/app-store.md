@@ -105,3 +105,52 @@ a que dá acesso; se as duas dão, a da App Store.
   (`asaasEventId` = transaction ID, `valueCents` = preço pago).
 - Excluir a conta não cancela a assinatura da Apple (só o usuário cancela). O app
   avisa e oferece "Gerenciar assinatura" antes da exclusão.
+
+## Backend
+
+| Variável | Produção | Dev local |
+|---|---|---|
+| `SAQZ_APP_STORE_BUNDLE_ID` | `app.saqz` (padrão) | `app.saqz` |
+| `SAQZ_APP_STORE_APP_APPLE_ID` | Apple ID numérico do app — **obrigatório** para aceitar compras reais | vazio |
+| `SAQZ_APP_STORE_ENVIRONMENTS` | `PRODUCTION,SANDBOX` (padrão) | `SANDBOX,XCODE` (`compose.yaml`) |
+| `SAQZ_APP_STORE_ONLINE_CHECKS` | `true` (OCSP dos certificados) | `true` |
+
+- Produção aceita `SANDBOX` de propósito: a revisão da Apple e o TestFlight compram
+  em sandbox contra `api.saqz.app`.
+- `XCODE` aceita JWS sem assinatura da Apple (arquivo `.storekit` local). Nunca em
+  produção.
+- A raiz de confiança é a Apple Root CA - G3, versionada em
+  `backend/features/subscriptions/src/main/resources/app-store/`
+  (SHA-256 `63:34:3A:BF:…:3E:91:79`).
+- Tabelas: `app_store_subscriptions` (uma linha por transação original),
+  `app_store_transactions` (cada cobrança) e `app_store_notifications` (idempotência
+  das notificações). Migração `V92`.
+
+Sem chave da App Store Server API por enquanto: o estado vem só da transação
+enviada pelo app e das notificações. Se uma notificação se perder, o app reenvia
+as transações quando o usuário abre o app.
+
+## Roteiro no App Store Connect
+
+1. **Contratos, Impostos e Bancos:** contrato de Apps Pagos ativo, com conta bancária
+   e formulários fiscais. Sem isso o StoreKit não devolve os produtos, nem em sandbox.
+   Vale aderir ao App Store Small Business Program (comissão de 15%).
+2. **Assinaturas:** criar o grupo **Saqz** e os seis produtos da tabela acima, com
+   duração de 1 mês ou 1 ano, preço em BRL, nome e descrição em pt-BR e o nível de
+   cada um. Cada produto precisa de captura de tela da tela de compra e nota para a
+   revisão. Sem oferta introdutória.
+3. **Notificações do servidor (V2):** em Informações do app → App Store Server
+   Notifications, URL de produção **e** de sandbox =
+   `https://api.saqz.app/webhooks/app-store`. Depois, pedir uma notificação de teste:
+   a API responde 200 e grava uma linha `TEST` em `app_store_notifications`.
+4. **Apple ID do app:** copiar de Informações do app → Apple ID para
+   `SAQZ_APP_STORE_APP_APPLE_ID` em `deploy/k8s/overlays/prod/kustomization.yaml` e
+   publicar o backend. Antes disso, compras reais em produção recebem 422.
+5. **Testadores sandbox:** Usuários e Acesso → Sandbox, para testar no iPhone e no
+   TestFlight.
+6. **Envio para revisão:** a primeira assinatura só vai junto de uma versão nova do
+   app — na página da versão, seção Compras e Assinaturas, adicionar os seis produtos.
+   Nos metadados, link para os Termos de Uso (EULA) e para a Política de Privacidade.
+   Nas notas da revisão: a assinatura do Saqz é vendida pelo In-App Purchase; o
+   pagamento de mensalidade dos grupos (quadra) é serviço presencial e está desligado
+   nesta versão.
