@@ -83,8 +83,8 @@ android {
     defaultConfig {
         applicationId = "app.saqz"
         // O Play exige versionCode inteiro e maior a cada upload; versionName é só o texto que o usuário vê.
-        versionCode = 4
-        versionName = "0.0.2"
+        versionCode = 5
+        versionName = "0.0.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["linksDomain"] = linksDomain
         buildConfigField("String", "LINKS_DOMAIN", linksDomain.toBuildConfigString())
