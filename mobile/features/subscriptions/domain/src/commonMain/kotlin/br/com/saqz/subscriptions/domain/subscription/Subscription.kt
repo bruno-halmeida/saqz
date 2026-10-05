@@ -10,8 +10,8 @@ enum class SubscriptionCycle { Monthly, Annual }
 
 enum class SubscriptionStatus { Active, PastDue, Canceled }
 
-/** Quem cobra: a web (Asaas) ou a App Store. Troca de plano e cancelamento dependem disso. */
-enum class SubscriptionProvider { Asaas, AppStore }
+/** Quem cobra: a web (Asaas), a App Store ou o Google Play. Troca de plano e cancelamento dependem disso. */
+enum class SubscriptionProvider { Asaas, AppStore, GooglePlay }
 
 data class SubscriptionUsage(val groupsUsed: Int, val groupsLimit: Int?)
 
@@ -27,12 +27,15 @@ data class MySubscription(
     val pendingPlan: Plan? = null,
     val pendingPlanEffectiveAt: String? = null,
     val provider: SubscriptionProvider = SubscriptionProvider.Asaas,
-    /** Renovação automática da App Store; nulo numa assinatura da web. */
+    /** Renovação automática da loja (App Store ou Google Play); nulo numa assinatura da web. */
     val autoRenew: Boolean? = null,
 )
 
 /** Os dois produtos da App Store de um plano. O mapeamento é do backend (`GET /plans`). */
 data class AppStoreProductIds(val monthly: String, val annual: String)
+
+/** No Play um plano é uma assinatura com dois planos base. O mapeamento é do backend (`GET /plans`). */
+data class GooglePlayProductIds(val productId: String, val monthlyBasePlanId: String, val annualBasePlanId: String)
 
 data class PlanCatalogItem(
     val id: Plan,
@@ -44,6 +47,7 @@ data class PlanCatalogItem(
     val reports: Boolean,
     val whatsappSla: Boolean,
     val appStoreProductIds: AppStoreProductIds? = null,
+    val googlePlay: GooglePlayProductIds? = null,
 )
 
 data class ChangedPlan(

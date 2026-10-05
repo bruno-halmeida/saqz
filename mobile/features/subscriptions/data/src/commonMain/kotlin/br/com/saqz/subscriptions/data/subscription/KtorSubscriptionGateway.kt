@@ -20,10 +20,17 @@ internal enum class SubscriptionCycleTransport { MONTHLY, ANNUAL }
 internal enum class SubscriptionStatusTransport { ACTIVE, PAST_DUE, CANCELED }
 
 @Serializable
-internal enum class SubscriptionProviderTransport { ASAAS, APP_STORE }
+internal enum class SubscriptionProviderTransport { ASAAS, APP_STORE, GOOGLE_PLAY }
 
 @Serializable
 internal data class AppStoreProductIdsTransport(val monthly: String, val annual: String)
+
+@Serializable
+internal data class GooglePlayProductIdsTransport(
+    val productId: String,
+    val monthlyBasePlanId: String,
+    val annualBasePlanId: String,
+)
 
 @Serializable
 internal data class SubscriptionUsageTransport(
@@ -58,6 +65,7 @@ internal data class PlanCatalogItemTransport(
     val reports: Boolean,
     val whatsappSla: Boolean,
     val appStoreProductIds: AppStoreProductIdsTransport? = null,
+    val googlePlay: GooglePlayProductIdsTransport? = null,
 )
 
 @Serializable
@@ -164,6 +172,7 @@ internal fun MySubscriptionTransport.toDomain() = MySubscription(
     provider = when (provider) {
         SubscriptionProviderTransport.ASAAS -> SubscriptionProvider.Asaas
         SubscriptionProviderTransport.APP_STORE -> SubscriptionProvider.AppStore
+        SubscriptionProviderTransport.GOOGLE_PLAY -> SubscriptionProvider.GooglePlay
     },
     autoRenew = autoRenew,
 )
@@ -178,6 +187,13 @@ private fun PlanCatalogItemTransport.toDomain() = PlanCatalogItem(
     reports = reports,
     whatsappSla = whatsappSla,
     appStoreProductIds = appStoreProductIds?.let { AppStoreProductIds(monthly = it.monthly, annual = it.annual) },
+    googlePlay = googlePlay?.let {
+        GooglePlayProductIds(
+            productId = it.productId,
+            monthlyBasePlanId = it.monthlyBasePlanId,
+            annualBasePlanId = it.annualBasePlanId,
+        )
+    },
 )
 
 private fun ChangePlanTransport.toDomain() = ChangedPlan(
