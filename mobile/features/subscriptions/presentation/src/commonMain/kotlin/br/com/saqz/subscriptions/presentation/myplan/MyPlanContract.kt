@@ -28,6 +28,8 @@ data class MyPlanState(
     val isCancelSheetOpen: Boolean = false,
     val isCanceling: Boolean = false,
     val cancelError: UiText? = null,
+    /** Assinatura da App Store: troca e cancelamento acontecem lá, não no backend. */
+    val managedByAppStore: Boolean = false,
 )
 
 @Immutable
@@ -81,9 +83,11 @@ sealed interface MyPlanIntent {
     data object ConfirmCancel : MyPlanIntent
     data object OpenChangePlan : MyPlanIntent
     data object OpenSubscribe : MyPlanIntent
+    data object ManageAppStoreSubscription : MyPlanIntent
 }
 
 sealed interface MyPlanEffect {
     data object OpenChangePlan : MyPlanEffect
     data object OpenSubscribe : MyPlanEffect
+    data object ManageAppStoreSubscription : MyPlanEffect
 }

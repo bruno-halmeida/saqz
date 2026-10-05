@@ -39,6 +39,7 @@ internal object MyPlanTags {
     const val UsageCard = "myplan-usage-card"
     const val Receipts = "myplan-receipts"
     const val ChangePlan = "myplan-change-plan"
+    const val ManageAppStore = "myplan-manage-app-store"
     const val LoadMoreReceipts = "myplan-load-more-receipts"
     const val CancelButton = "myplan-cancel-button"
     const val ReceiptsSheet = "myplan-receipts-sheet"
@@ -55,6 +56,10 @@ fun MyPlanScreen(
     onBack: () -> Unit,
     onIntent: (MyPlanIntent) -> Unit,
     modifier: Modifier = Modifier,
+    /** Só o iOS abre a gestão de assinaturas da Apple; no Android a tela só explica onde fica. */
+    appStoreManagementAvailable: Boolean = false,
+    /** Contratação disponível: a web (Asaas) ou a App Store neste aparelho. */
+    purchasesAvailable: Boolean = br.com.saqz.domain.StoreLaunchPolicy.purchases,
 ) {
     val metrics = SaqzTheme.metrics
     Column(
@@ -85,13 +90,24 @@ fun MyPlanScreen(
             ) {
                 state.plan?.let { MyPlanCurrentCard(it) }
                 state.trial?.let { trial ->
-                    MyPlanTrialCard(trial, onSubscribe = { onIntent(MyPlanIntent.OpenSubscribe) })
+                    MyPlanTrialCard(
+                        trial,
+                        onSubscribe = { onIntent(MyPlanIntent.OpenSubscribe) },
+                        purchasesAvailable = purchasesAvailable,
+                    )
                 }
                 state.usage?.let { MyPlanUsageCard(it) }
-                if (state.plan != null) MyPlanManageSection(state = state, onIntent = onIntent)
+                if (state.plan != null) {
+                    MyPlanManageSection(
+                        state = state,
+                        onIntent = onIntent,
+                        appStoreManagementAvailable = appStoreManagementAvailable,
+                    )
+                }
                 // Assinatura já efetivamente cancelada (achado do Codex no PR #93) não tem
-                // o que cancelar de novo — o backend já rejeita com AlreadyCanceled.
-                if (state.plan != null && state.plan.statusTone != MyPlanStatusTone.Canceled) {
+                // o que cancelar de novo — o backend já rejeita com AlreadyCanceled. A da
+                // App Store só se cancela na conta Apple.
+                if (state.plan != null && state.plan.statusTone != MyPlanStatusTone.Canceled && !state.managedByAppStore) {
                     MyPlanCancelSection(onIntent = onIntent)
                 }
             }
@@ -145,6 +161,17 @@ private fun MyPlanScreenLoadingPreview() = SaqzTheme {
 @Composable
 private fun MyPlanScreenErrorPreview() = SaqzTheme {
     MyPlanScreen(state = MyPlanPreviewData.error, onBack = {}, onIntent = {})
+}
+
+@Preview(name = "App Store")
+@Composable
+private fun MyPlanScreenAppStorePreview() = SaqzTheme {
+    MyPlanScreen(
+        state = MyPlanPreviewData.active.copy(managedByAppStore = true),
+        onBack = {},
+        onIntent = {},
+        appStoreManagementAvailable = true,
+    )
 }
 
 @Preview

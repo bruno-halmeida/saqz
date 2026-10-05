@@ -31,6 +31,7 @@ class SubscriptionGateViewModel(
     private var foreground = true
     private var authorized = false
     private var operationActive = false
+    private var recheckRequested = false
     private var lifecycleGeneration = 0L
     private var operationJob: Job? = null
     private var pollingJob: Job? = null
@@ -45,7 +46,13 @@ class SubscriptionGateViewModel(
                 SaqzAnalytics.event("begin_checkout")
                 requestPurchaseInformation()
             }
-            SubscriptionGateIntent.RefreshAuthorization -> checkAuthorization()
+            // A compra pela App Store termina enquanto a consulta de volta do primeiro plano
+            // ainda roda: a confirmação pedida não pode se perder no meio dela.
+            SubscriptionGateIntent.RefreshAuthorization -> if (operationActive) {
+                recheckRequested = true
+            } else {
+                checkAuthorization()
+            }
         }
     }
 
@@ -61,6 +68,7 @@ class SubscriptionGateViewModel(
 
     private fun close() {
         visible = false
+        recheckRequested = false
         lifecycleGeneration++
         stopPolling()
         cancelOperation()
@@ -225,6 +233,10 @@ class SubscriptionGateViewModel(
             } finally {
                 operationActive = false
                 operationJob = null
+                if (recheckRequested) {
+                    recheckRequested = false
+                    checkAuthorization()
+                }
             }
         }
     }

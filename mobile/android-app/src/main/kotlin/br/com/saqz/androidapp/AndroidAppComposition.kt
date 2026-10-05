@@ -74,6 +74,8 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
                 notifications = AndroidNotificationPort(context.applicationContext),
                 financialDocuments = documents,
                 analytics = AndroidAnalyticsSink(context.applicationContext),
+                // Sem Play Billing: o Android não vende a assinatura dentro do app.
+                appStorePurchases = null,
                 environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,
                 access = AccessRuntimeDependencies(

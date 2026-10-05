@@ -69,6 +69,40 @@ class SaqzKoinBootstrapTest {
     }
 
     @Test
+    fun appStorePortRegistersThePaywallAndTheTransactionSync() {
+        stopSaqzKoin()
+        try {
+            val port = TestAppStorePort()
+            startSaqzKoin(testSaqzPlatformDependencies(appStorePurchases = port))
+            val koin = KoinPlatformTools.defaultContext().get()
+
+            val checkout = koin.get<br.com.saqz.composeapp.subscriptiongate.AppStoreCheckout>()
+            kotlin.test.assertTrue(checkout.purchasesAvailable)
+            kotlin.test.assertSame(checkout.sync, koin.get<br.com.saqz.subscriptions.presentation.appstore.AppStoreTransactionSync>())
+            assertNotNull(koin.get<br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallViewModel>())
+            // O listener de `Transaction.updates` é registrado já na carga da plataforma.
+            kotlin.test.assertTrue(port.listening)
+        } finally {
+            stopSaqzKoin()
+        }
+    }
+
+    @Test
+    fun withoutAnAppStorePortNothingIsSoldInTheApp() {
+        stopSaqzKoin()
+        try {
+            startSaqzKoin(testSaqzPlatformDependencies())
+            val checkout = KoinPlatformTools.defaultContext().get().get<br.com.saqz.composeapp.subscriptiongate.AppStoreCheckout>()
+
+            kotlin.test.assertFalse(checkout.purchasesAvailable)
+            kotlin.test.assertFalse(checkout.canManageSubscriptions)
+            kotlin.test.assertNull(checkout.sync)
+        } finally {
+            stopSaqzKoin()
+        }
+    }
+
+    @Test
     fun reloadingPlatformBindingsRecreatesTheNetworkSingleton() {
         stopSaqzKoin()
         try {
@@ -83,4 +117,36 @@ class SaqzKoinBootstrapTest {
             stopSaqzKoin()
         }
     }
+}
+
+private class TestAppStorePort : br.com.saqz.subscriptions.domain.port.AppStorePurchasesPort {
+    var listening = false
+
+    override fun canMakeAppStorePayments() = true
+
+    override fun loadAppStoreProducts(
+        productIds: List<String>,
+        done: br.com.saqz.subscriptions.domain.port.AppStoreProductsCallback,
+    ) = done.onAppStoreProducts(br.com.saqz.subscriptions.domain.port.AppStoreProductsResult.Loaded(emptyList()))
+
+    override fun purchaseAppStoreProduct(
+        productId: String,
+        appAccountToken: String,
+        done: br.com.saqz.subscriptions.domain.port.AppStorePurchaseCallback,
+    ) = done.onAppStorePurchase(br.com.saqz.subscriptions.domain.port.AppStorePurchaseResult.Cancelled)
+
+    override fun finishAppStoreTransaction(transactionId: String) = Unit
+
+    override fun readUnfinishedAppStoreTransactions(done: br.com.saqz.subscriptions.domain.port.AppStoreTransactionsCallback) =
+        done.onAppStoreTransactions(br.com.saqz.subscriptions.domain.port.AppStoreTransactionsResult.Loaded(emptyList()))
+
+    override fun restoreAppStorePurchases(done: br.com.saqz.subscriptions.domain.port.AppStoreTransactionsCallback) =
+        done.onAppStoreTransactions(br.com.saqz.subscriptions.domain.port.AppStoreTransactionsResult.Loaded(emptyList()))
+
+    override fun listenForAppStoreTransactions(listener: br.com.saqz.subscriptions.domain.port.AppStoreTransactionListener) {
+        listening = true
+    }
+
+    override fun showAppStoreSubscriptionManagement(done: br.com.saqz.subscriptions.domain.port.AppStoreManagementCallback) =
+        done.onAppStoreManagementClosed()
 }

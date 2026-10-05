@@ -53,7 +53,7 @@ internal fun PlanCatalogItem.toCardUi(
     )
 }
 
-private fun PlanCatalogItem.benefits(): List<UiText> = buildList {
+internal fun PlanCatalogItem.benefits(): List<UiText> = buildList {
     val groups = maxGroups
     add(
         when (groups) {

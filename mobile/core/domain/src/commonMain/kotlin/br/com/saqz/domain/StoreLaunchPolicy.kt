@@ -2,7 +2,14 @@ package br.com.saqz.domain
 
 /** Brazil launch capabilities. Re-enabling requires a new release and policy review. */
 object StoreLaunchPolicy {
+    /** Contratação pelo Asaas dentro do app (e-mail com link de compra, troca de plano com Pix). */
     const val purchases = false
+
+    /**
+     * Assinatura pela App Store (StoreKit). Só vale onde existe o port nativo, ou seja, no iOS;
+     * desligar aqui volta o iOS ao portão de assinatura sem compra.
+     */
+    const val appStorePurchases = true
     const val chat = false
     const val receivables = false
 

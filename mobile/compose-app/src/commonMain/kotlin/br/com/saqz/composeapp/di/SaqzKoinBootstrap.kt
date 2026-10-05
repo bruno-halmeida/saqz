@@ -12,6 +12,8 @@ import br.com.saqz.access.domain.verification.EmailVerificationGateway
 import br.com.saqz.composeapp.notifications.PushAttendance
 import br.com.saqz.composeapp.SaqzPlatformDependencies
 import br.com.saqz.composeapp.access.BackendEmailVerificationAuth
+import br.com.saqz.composeapp.subscriptiongate.AppStoreCheckout
+import br.com.saqz.composeapp.subscriptiongate.appStoreCheckoutModule
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort
 import br.com.saqz.groups.domain.photo.GroupPhotoEncoderPort
@@ -140,6 +142,7 @@ fun loadSaqzPlatformDependencies(
     }
     platformModules = listOf(
         platformBindingsModule(dependencies),
+        appStoreCheckoutModule(dependencies.appStorePurchases),
         profilePhotoPresentationModule(
             selection = dependencies.access.profilePhotoSelection,
             initialPhotoUrl = null,
@@ -147,6 +150,8 @@ fun loadSaqzPlatformDependencies(
         imageLoaderContext?.let(::authenticatedImageLoaderModule),
     ).filterNotNull().also(::loadKoinModules)
     koin.get<GroupInviteCoordinator>().start()
+    // Desde a abertura: a renovação e o Ask to Buy aprovado chegam por `Transaction.updates`.
+    koin.get<AppStoreCheckout>().sync?.start()
     SaqzAnalytics.track = dependencies.analytics::track
     SaqzAnalytics.setUser = dependencies.analytics::setUserId
     SaqzAnalytics.log = dependencies.analytics::log

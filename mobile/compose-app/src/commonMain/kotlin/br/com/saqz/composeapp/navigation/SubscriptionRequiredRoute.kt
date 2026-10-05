@@ -6,12 +6,16 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
+import br.com.saqz.composeapp.subscriptiongate.AppStoreCheckout
 import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateEffect
 import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateIntent
 import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateScreen
+import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateStatus
 import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateViewModel
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.subscriptions.presentation.ui.appstore.AppStorePaywallRoot
 import kotlinx.serialization.Serializable
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /** App-owned entry point for the shared subscription authorization gate. */
@@ -36,6 +40,7 @@ internal fun SubscriptionRequiredDestination(
     onBack: () -> Unit,
     onAuthorizationSuccess: () -> Unit,
     viewModel: SubscriptionGateViewModel = koinViewModel(),
+    appStore: AppStoreCheckout = koinInject(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -61,9 +66,22 @@ internal fun SubscriptionRequiredDestination(
         }
     }
 
-    SubscriptionGateScreen(
-        state = state,
-        onIntent = viewModel::onIntent,
-        onBack = onBack,
-    )
+    val gate: @Composable () -> Unit = {
+        SubscriptionGateScreen(
+            state = state,
+            onIntent = viewModel::onIntent,
+            onBack = onBack,
+        )
+    }
+    // O portão continua dono da autorização (e do polling); a App Store só vende. Confirmada
+    // a compra, o portão reconsulta e segue pelo mesmo AuthorizationGranted de sempre.
+    if (appStore.purchasesAvailable && state.status != SubscriptionGateStatus.Authorized) {
+        AppStorePaywallRoot(
+            onBack = onBack,
+            onSubscriptionConfirm = { viewModel.onIntent(SubscriptionGateIntent.RefreshAuthorization) },
+            fallback = gate,
+        )
+    } else {
+        gate()
+    }
 }

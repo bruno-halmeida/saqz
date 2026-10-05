@@ -28,6 +28,7 @@ kotlin {
             export(project(":features:groups:domain"))
             export(project(":features:profile:domain"))
             export(project(":features:receivables:domain"))
+            export(project(":features:subscriptions:domain"))
         }
     }
 

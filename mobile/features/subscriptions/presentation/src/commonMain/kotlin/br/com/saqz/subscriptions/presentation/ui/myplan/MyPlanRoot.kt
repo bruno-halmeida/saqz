@@ -18,6 +18,9 @@ fun MyPlanRoot(
     onOpenChangePlan: () -> Unit = {},
     onOpenSubscribe: () -> Unit = {},
     refreshVersion: Int = 0,
+    /** Nulo fora do iOS: não há gestão de assinaturas da Apple para abrir. */
+    onManageAppStoreSubscription: (() -> Unit)? = null,
+    purchasesAvailable: Boolean = br.com.saqz.domain.StoreLaunchPolicy.purchases,
     viewModel: MyPlanViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -33,11 +36,14 @@ fun MyPlanRoot(
         when (effect) {
             MyPlanEffect.OpenChangePlan -> onOpenChangePlan()
             MyPlanEffect.OpenSubscribe -> onOpenSubscribe()
+            MyPlanEffect.ManageAppStoreSubscription -> onManageAppStoreSubscription?.invoke()
         }
     }
     MyPlanScreen(
         state = state,
         onBack = onBack,
         onIntent = viewModel::onIntent,
+        appStoreManagementAvailable = onManageAppStoreSubscription != null,
+        purchasesAvailable = purchasesAvailable,
     )
 }

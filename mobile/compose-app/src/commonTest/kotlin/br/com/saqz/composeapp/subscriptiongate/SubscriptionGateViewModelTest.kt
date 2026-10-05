@@ -212,6 +212,27 @@ class SubscriptionGateViewModelTest {
     }
 
     @Test
+    fun `refresh asked during a running check runs right after it and never alongside`() = runTest {
+        val first = CompletableDeferred<Boolean>()
+        val entitlement = FakeEntitlement(false).apply { pending = first }
+        withViewModel(entitlement = entitlement) { viewModel ->
+            viewModel.onIntent(SubscriptionGateIntent.Opened)
+            runCurrent()
+
+            // A App Store confirmou a compra enquanto a consulta de abertura ainda rodava.
+            viewModel.onIntent(SubscriptionGateIntent.RefreshAuthorization)
+            entitlement.pending = null
+            entitlement.allowed = true
+            first.complete(false)
+            runCurrent()
+
+            assertEquals(2, entitlement.calls)
+            assertEquals(1, entitlement.maxActiveCalls)
+            assertEquals(SubscriptionGateStatus.Authorized, viewModel.state.value.status)
+        }
+    }
+
+    @Test
     fun `foreground bounce during a check never lets two requests overlap`() = runTest {
         val entitlement = FakeEntitlement(false).apply { pending = CompletableDeferred() }
         withViewModel(entitlement = entitlement) { viewModel ->

@@ -34,15 +34,22 @@ object TrialEntryTags {
 
 @Composable
 fun TrialEntryRoot(onBack: () -> Unit, onSubscribe: () -> Unit,
-    viewModel: TrialEntryViewModel = koinViewModel(), content: @Composable () -> Unit,
+    viewModel: TrialEntryViewModel = koinViewModel(),
+    purchasesAvailable: Boolean = br.com.saqz.domain.StoreLaunchPolicy.purchases,
+    content: @Composable () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    if (state.ready) content() else TrialEntryScreen(state, viewModel::onIntent, onBack, onSubscribe)
+    if (state.ready) {
+        content()
+    } else {
+        TrialEntryScreen(state, viewModel::onIntent, onBack, onSubscribe, purchasesAvailable = purchasesAvailable)
+    }
 }
 
 @Composable
 fun TrialEntryScreen(state: TrialEntryState, onIntent: (TrialEntryIntent) -> Unit, onBack: () -> Unit,
     onSubscribe: () -> Unit, modifier: Modifier = Modifier,
+    purchasesAvailable: Boolean = br.com.saqz.domain.StoreLaunchPolicy.purchases,
 ) {
     val metrics = SaqzTheme.metrics
     Column(modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
@@ -83,7 +90,7 @@ fun TrialEntryScreen(state: TrialEntryState, onIntent: (TrialEntryIntent) -> Uni
             if (state.access?.canCreateGroup == true && state.failure == null) {
                 SaqzButton(stringResource(Res.string.trial_entry_continue), { onIntent(TrialEntryIntent.Continue) },
                     enabled = state.canContinue, fullWidth = true, modifier = Modifier.testTag(TrialEntryTags.Continue))
-            } else if (br.com.saqz.domain.StoreLaunchPolicy.purchases && !state.loading && state.failure == null) {
+            } else if (purchasesAvailable && !state.loading && state.failure == null) {
                 SaqzButton(stringResource(Res.string.trial_entry_plans), onSubscribe, fullWidth = true)
             }
             if (state.failure != null || (!state.loading && state.access?.canCreateGroup != true)) {

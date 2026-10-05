@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="paywall_title">Assinar o Saqz</string>
+    <string name="paywall_sub">Escolha um plano. A cobrança é feita na sua conta da App Store.</string>
+    <string name="paywall_cycle_monthly">Mensal</string>
+    <string name="paywall_cycle_annual">Anual</string>
+    <string name="paywall_duration_monthly">Assinatura mensal · renovação automática</string>
+    <string name="paywall_duration_annual">Assinatura anual · renovação automática</string>
+    <string name="paywall_price_month">%1$s por mês</string>
+    <string name="paywall_price_year">%1$s por ano</string>
+    <string name="paywall_cta">Assinar %1$s</string>
+    <string name="paywall_current">Plano atual</string>
+    <string name="paywall_restore">Restaurar compras</string>
+    <string name="paywall_terms">Termos de Uso</string>
+    <string name="paywall_privacy">Política de Privacidade</string>
+    <string name="paywall_disclosure">O valor é cobrado na sua conta da App Store quando você confirma a compra. A assinatura renova automaticamente pelo mesmo valor e período, a menos que a renovação seja desativada pelo menos 24 horas antes do fim do período atual. Gerencie ou cancele quando quiser nos Ajustes do iPhone.</string>
+    <string name="paywall_load_error">Não foi possível carregar os planos agora.</string>
+    <string name="paywall_retry">Tentar novamente</string>
+    <string name="paywall_notice_pending">Compra aguardando aprovação. Assim que for aprovada, o acesso é liberado.</string>
+    <string name="paywall_notice_failed">Não foi possível concluir a compra. Tente novamente.</string>
+    <string name="paywall_notice_owned">Esta assinatura da App Store já está vinculada a outra conta do Saqz. Entre com essa conta ou use outro Apple ID.</string>
+    <string name="paywall_notice_invalid">Não conseguimos validar esta compra. Fale com o suporte do Saqz.</string>
+    <string name="paywall_notice_confirmation">A App Store confirmou a compra, mas o Saqz ainda não liberou o acesso. Tente confirmar de novo em instantes.</string>
+    <string name="paywall_confirm_retry">Confirmar de novo</string>
+    <string name="paywall_notice_nothing">Nenhuma assinatura ativa encontrada para este Apple ID.</string>
+    <string name="paywall_notice_restore_failed">Não foi possível restaurar as compras agora. Tente novamente.</string>
+    <string name="paywall_subscribed">Assinatura confirmada. Finalizando…</string>
+</resources>

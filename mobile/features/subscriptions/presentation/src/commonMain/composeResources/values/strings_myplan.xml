@@ -16,6 +16,9 @@
     <string name="myplan_usage_helper">Perto do limite? Acompanhe seu uso para planejar os próximos grupos.</string>
     <string name="myplan_manage_title">Gerenciar</string>
     <string name="myplan_manage_change_plan">Trocar de plano</string>
+    <string name="myplan_manage_app_store">Trocar de plano ou cancelar</string>
+    <string name="myplan_app_store_helper">Assinatura feita pela App Store. Troca de plano e cancelamento ficam na sua conta Apple.</string>
+    <string name="myplan_app_store_elsewhere">Para trocar de plano ou cancelar, use o iPhone: Ajustes › seu nome › Assinaturas.</string>
     <string name="myplan_manage_receipts">Recibos</string>
     <string name="myplan_manage_receipts_count">%1$d pagamentos</string>
     <string name="myplan_manage_receipts_count_one">%1$d pagamento</string>

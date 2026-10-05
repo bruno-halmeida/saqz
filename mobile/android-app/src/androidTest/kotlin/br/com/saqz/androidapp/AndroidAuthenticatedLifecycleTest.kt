@@ -313,6 +313,7 @@ private class LifecycleCompositionFactory(
                 override fun log(message: String) = Unit
                 override fun setUserProperty(name: String, value: String?) = Unit
             },
+            appStorePurchases = null,
             environment = "dev",
             apiBaseUrl = "http://127.0.0.1:1",
             access = AccessRuntimeDependencies(

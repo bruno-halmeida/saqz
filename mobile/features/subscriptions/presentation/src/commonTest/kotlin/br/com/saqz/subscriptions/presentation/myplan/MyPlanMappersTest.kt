@@ -71,6 +71,15 @@ class MyPlanMappersTest {
     }
 
     @Test
+    fun `expired subscription without cancel date has no next charge`() {
+        val card = subscription(status = SubscriptionStatus.Canceled).toCardUi()
+
+        assertEquals(MyPlanStatusTone.Canceled, card.statusTone)
+        assertNull(card.nextChargeDate)
+        assertEquals("30/08/2026", card.accessUntilDate)
+    }
+
+    @Test
     fun `subscription maps bounded usage`() {
         val usage = subscription(usage = SubscriptionUsage(groupsUsed = 2, groupsLimit = 3)).toUsageUi()
 

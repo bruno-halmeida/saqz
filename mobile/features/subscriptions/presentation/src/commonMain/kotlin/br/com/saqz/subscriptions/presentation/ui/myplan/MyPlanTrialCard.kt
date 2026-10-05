@@ -32,7 +32,12 @@ internal fun MyPlanHero(modifier: Modifier = Modifier, content: @Composable Colu
 }
 
 @Composable
-internal fun MyPlanTrialCard(trial: MyPlanTrialUi, onSubscribe: () -> Unit, modifier: Modifier = Modifier) {
+internal fun MyPlanTrialCard(
+    trial: MyPlanTrialUi,
+    onSubscribe: () -> Unit,
+    modifier: Modifier = Modifier,
+    purchasesAvailable: Boolean = br.com.saqz.domain.StoreLaunchPolicy.purchases,
+) {
     if (trial.status == TrialStatus.Subscribed) return
     val colors = SaqzTheme.colors
     val typography = SaqzTheme.typography
@@ -81,7 +86,7 @@ internal fun MyPlanTrialCard(trial: MyPlanTrialUi, onSubscribe: () -> Unit, modi
                 stringResource(if (hasTrial) Res.string.myplan_trial_no_charge else Res.string.myplan_choose_help),
                 style = typography.support,
                     color = colors.textSecondary)
-            if (br.com.saqz.domain.StoreLaunchPolicy.purchases && trial.canSubscribe) {
+            if (purchasesAvailable && trial.canSubscribe) {
                 SaqzButton(stringResource(if (hasTrial) Res.string.myplan_trial_subscribe else Res.string.myplan_choose_plan),
                     onClick = onSubscribe, fullWidth = true, modifier = Modifier.testTag(MyPlanTags.Subscribe))
             } else if (!trial.isOwner) {

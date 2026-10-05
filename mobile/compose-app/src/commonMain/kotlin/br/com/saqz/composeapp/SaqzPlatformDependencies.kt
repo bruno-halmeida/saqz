@@ -58,6 +58,8 @@ class SaqzPlatformDependencies(
     val notifications: br.com.saqz.groups.domain.communication.NativeNotificationPort,
     val financialDocuments: br.com.saqz.receivables.domain.port.ReceiptDocumentPicker,
     val analytics: AnalyticsSink,
+    /** StoreKit no iOS; `null` explícito no Android, que não vende pela loja. */
+    val appStorePurchases: br.com.saqz.subscriptions.domain.port.AppStorePurchasesPort?,
 ) {
     init {
         require(environment.isNotBlank()) { "environment must not be blank" }

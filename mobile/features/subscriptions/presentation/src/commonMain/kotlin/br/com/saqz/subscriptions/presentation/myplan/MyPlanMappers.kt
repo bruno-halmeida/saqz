@@ -31,7 +31,9 @@ internal fun MySubscription.toCardUi(): MyPlanCardUi {
     // `currentPeriodEnd`, e é o webhook quem migra o status pra CANCELED depois (achado
     // do Codex no PR #93, confirmado em CancelSubscriptionTest). A tela não pode esperar
     // o webhook para parar de mostrar "Ativo" com o botão de cancelar habilitado de novo.
-    val canceled = canceledAt != null
+    // Status CANCELED sem `canceledAt` é a assinatura da App Store que venceu sem renovar:
+    // também não tem próxima cobrança.
+    val canceled = canceledAt != null || status == SubscriptionStatus.Canceled
     val effectiveStatus = if (canceled) SubscriptionStatus.Canceled else status
     val pending = pendingPlan
     val pendingAt = pendingPlanEffectiveAt
