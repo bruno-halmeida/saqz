@@ -100,12 +100,15 @@ Play; excluir a conta não cancela a assinatura do Play (o app avisa).
    qual não dá para criar produtos pagos.
 2. **API:** no projeto do Google Cloud `saquz-app`, ativar a *Google Play Android
    Developer API*. No Play Console → Usuários e permissões, convidar a conta de serviço
-   do backend (a mesma do Firebase Admin) com "Ver dados financeiros" e "Gerenciar
-   pedidos e assinaturas".
+   do backend, a mesma do Firebase Admin
+   (`firebase-adminsdk-fbsvc@saquz-app.iam.gserviceaccount.com`), com "Ver dados
+   financeiros" e "Gerenciar pedidos e assinaturas".
 3. **Assinaturas:** criar as três assinaturas e os planos base da tabela, só Brasil.
 4. **Notificações:** tópico Pub/Sub `play-billing` no `saquz-app`, com permissão de
    publicação para `google-play-developer-notifications@system.gserviceaccount.com`;
    assinatura push para `https://api.saqz.app/webhooks/google-play?token=<segredo>`;
    no Play Console → Monetização → Configuração, apontar o tópico e enviar a
    notificação de teste.
-5. **Teste:** app numa faixa de teste interno, testadores de licença cadastrados.
+5. **Segredo do webhook:** gerar um valor aleatório, guardar em `SAQZ_GOOGLE_PLAY_WEBHOOK_TOKEN`
+   (Secret `backend-env`) e usar o mesmo na URL da assinatura push.
+6. **Teste:** app numa faixa de teste interno, testadores de licença cadastrados.
