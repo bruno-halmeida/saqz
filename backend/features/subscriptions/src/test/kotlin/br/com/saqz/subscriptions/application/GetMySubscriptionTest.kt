@@ -4,6 +4,9 @@ import br.com.saqz.sharedkernel.subscription.OwnedGroupCounter
 import br.com.saqz.subscriptions.domain.AppStoreProduct
 import br.com.saqz.subscriptions.domain.AppStoreRenewalInfo
 import br.com.saqz.subscriptions.domain.AppStoreSubscription
+import br.com.saqz.subscriptions.domain.GooglePlayProduct
+import br.com.saqz.subscriptions.domain.GooglePlayState
+import br.com.saqz.subscriptions.domain.GooglePlaySubscription
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.Subscription
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
@@ -322,6 +325,59 @@ class GetMySubscriptionTest {
         assertEquals(SubscriptionProvider.ASAAS, found.subscription.provider)
         assertNull(found.subscription.autoRenew)
     }
+
+    @Test
+    fun `a Google Play subscriber in grace keeps access as past due`() {
+        val view = googlePlayView(googlePlay(GooglePlayState.IN_GRACE_PERIOD))
+
+        assertEquals(SubscriptionProvider.GOOGLE_PLAY, view.provider)
+        assertEquals(SubscriptionStatus.PAST_DUE, view.status)
+        assertTrue(view.entitled)
+        assertEquals(Plan.ORGANIZADOR, view.plan)
+    }
+
+    @Test
+    fun `Google Play on hold or replaced by an upgrade gives no access`() {
+        assertFalse(googlePlayView(googlePlay(GooglePlayState.ON_HOLD)).entitled)
+        val replaced = googlePlayView(googlePlay(GooglePlayState.ACTIVE).copy(supersededAt = now.minusSeconds(60)))
+        assertEquals(SubscriptionStatus.CANCELED, replaced.status)
+        assertFalse(replaced.entitled)
+    }
+
+    private fun googlePlayView(subscription: GooglePlaySubscription): MySubscriptionView {
+        val repository = object : GooglePlaySubscriptionRepository {
+            override fun insertIfAbsent(subscription: GooglePlaySubscription) = Unit
+            override fun findForUpdate(purchaseToken: String): GooglePlaySubscription? = null
+            override fun save(subscription: GooglePlaySubscription) = Unit
+            override fun findByOwner(ownerUserId: UUID) = listOf(subscription)
+            override fun ownerExists(ownerUserId: UUID) = true
+            override fun supersede(purchaseToken: String, at: Instant) = Unit
+            override fun markAcknowledged(purchaseToken: String) = Unit
+            override fun recordOrder(subscription: GooglePlaySubscription) = Unit
+            override fun listOrdersForOwner(ownerUserId: UUID, limit: Int) = emptyList<GooglePlayOrderRecord>()
+        }
+        val useCase = GetMySubscription(
+            MemorySubscriptions(null),
+            FixedOwnedGroups(0),
+            clock,
+            googlePlaySubscriptions = repository,
+        )
+        return assertIs<GetMySubscriptionResult.Found>(useCase.execute(ownerId)).subscription
+    }
+
+    private fun googlePlay(state: GooglePlayState) = GooglePlaySubscription(
+        purchaseToken = "tok",
+        ownerUserId = ownerId,
+        product = GooglePlayProduct.ORGANIZADOR_MENSAL,
+        state = state,
+        expiresAt = now.plusSeconds(10L * 24 * 3600),
+        autoRenew = true,
+        canceledAt = null,
+        latestOrderId = "GPA.1",
+        linkedPurchaseToken = null,
+        acknowledged = true,
+        testPurchase = false,
+    )
 
     private fun appStoreView(subscription: AppStoreSubscription): MySubscriptionView {
         val useCase = GetMySubscription(
