@@ -112,3 +112,22 @@ Play; excluir a conta não cancela a assinatura do Play (o app avisa).
 5. **Segredo do webhook:** gerar um valor aleatório, guardar em `SAQZ_GOOGLE_PLAY_WEBHOOK_TOKEN`
    (Secret `backend-env`) e usar o mesmo na URL da assinatura push.
 6. **Teste:** app numa faixa de teste interno, testadores de licença cadastrados.
+
+## App (Android)
+
+- O Play Billing 9.1.0 (`billing-ktx`) fica em
+  `mobile/android-app/.../subscriptions/AndroidGooglePlayPurchases.kt`, atrás do
+  `GooglePlayPurchasesPort` (`:features:subscriptions:domain`). O iOS passa `nil`. A
+  biblioteca põe a permissão `com.android.vending.BILLING` no manifesto.
+- O cliente nunca chama `acknowledgePurchase` nem `consumeAsync`. Compra `PENDING` não vai
+  ao backend: quando o pagamento cai, o Play a entrega de novo e ela segue o caminho normal.
+- `GooglePlayPurchaseSync` (`:features:subscriptions:presentation`) envia ao backend toda
+  compra que o Play devolve como não reconhecida a cada login; "Restaurar compras" reenvia
+  todas. 409 e 422 não são reenviados; 5xx e rede ficam para a próxima abertura.
+- A tela de compra é a mesma do iOS (`PaywallStore` escolhe a loja); o preço é o
+  `formattedPrice` do plano base, e ofertas do Play são ignoradas. Quem tem acesso pela web
+  ou pela App Store não vê a compra. Em "Meu plano", "Trocar de plano ou cancelar" abre a
+  central de assinaturas do Play só se a assinatura for do Play.
+- `StoreLaunchPolicy.googlePlayPurchases = false` desliga a compra no Android.
+- Teste: AAB numa faixa de teste interno (a compra só funciona em app instalado pelo Play)
+  e a conta Google do aparelho entre os testadores de licença.
