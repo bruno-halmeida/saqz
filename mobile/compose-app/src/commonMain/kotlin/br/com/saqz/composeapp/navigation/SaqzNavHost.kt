@@ -201,7 +201,7 @@ internal fun SaqzNavHost(
     val receiptsCoordinator = koinInject<ReceivablesCoordinator>()
     val receipts = receiptsCoordinator.state.collectAsStateWithLifecycle().value
     val planAnalytics = koinInject<br.com.saqz.composeapp.analytics.PlanAnalytics>()
-    val appStoreCheckout = koinInject<br.com.saqz.composeapp.subscriptiongate.AppStoreCheckout>()
+    val storeCheckout = koinInject<br.com.saqz.composeapp.subscriptiongate.StoreCheckout>()
     // Uma linha para as ~45 rotas: rota nova entra sozinha. Só o nome da classe, nunca os campos.
     val topRoute = backStack.lastOrNull()
     val launchStack = backStack.filter { it.isAvailableAtLaunch() }.ifEmpty { listOf(AccessRoute.Starting) }
@@ -230,19 +230,19 @@ internal fun SaqzNavHost(
         if (state.session is SessionAccessState.Ready && !coordinatorAuthenticated) {
             coordinatorAuthenticated = true
             inviteCoordinator.onAuthenticated()
-            appStoreCheckout.sync?.onAuthenticated()
+            storeCheckout.sync?.onAuthenticated()
             planAnalytics.refresh()
         } else if (state.session !is SessionAccessState.Ready && coordinatorAuthenticated) {
             coordinatorAuthenticated = false
             inviteCoordinator.onSignedOut()
-            appStoreCheckout.sync?.onSignedOut()
+            storeCheckout.sync?.onSignedOut()
         }
     }
-    // Renovação, Ask to Buy aprovado ou troca de plano feita na App Store: o backend já
-    // respondeu com a assinatura nova, então o plano e o acesso da sessão se atualizam.
+    // Renovação, Ask to Buy aprovado, pagamento pendente que caiu ou troca de plano feita na
+    // loja: o backend já respondeu com a assinatura nova, então o plano e o acesso se atualizam.
     val currentOnIntent by androidx.compose.runtime.rememberUpdatedState(onIntent)
-    LaunchedEffect(appStoreCheckout) {
-        appStoreCheckout.sync?.deliveries?.collect {
+    LaunchedEffect(storeCheckout) {
+        storeCheckout.sync?.deliveries?.collect {
             myPlanRefreshVersion++
             currentOnIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
         }
@@ -695,12 +695,13 @@ internal fun SaqzNavHost(
                     onOpenChangePlan = { backStack.add(SubscriptionsRoute.ChangePlan) },
                     onOpenSubscribe = { backStack.add(SubscribeForAccess) },
                     refreshVersion = myPlanRefreshVersion,
-                    onManageAppStoreSubscription = if (appStoreCheckout.canManageSubscriptions) {
-                        { appStoreCheckout.manageSubscriptions { myPlanRefreshVersion++ } }
+                    onManageStoreSubscription = if (storeCheckout.canManageSubscriptions) {
+                        { storeCheckout.manageSubscriptions { myPlanRefreshVersion++ } }
                     } else {
                         null
                     },
-                    purchasesAvailable = appStoreCheckout.anyPurchaseAvailable,
+                    deviceStore = storeCheckout.deviceStore,
+                    purchasesAvailable = storeCheckout.anyPurchaseAvailable,
                 )
             }
             entry<SubscriptionsRoute.ChangePlan> {
@@ -739,7 +740,7 @@ internal fun SaqzNavHost(
                 br.com.saqz.subscriptions.presentation.trial.TrialEntryRoot(
                     onBack = pop,
                     onSubscribe = { backStack.add(SubscriptionRequired) },
-                    purchasesAvailable = appStoreCheckout.anyPurchaseAvailable,
+                    purchasesAvailable = storeCheckout.anyPurchaseAvailable,
                 ) {
                     GroupSetupDestination(
                         mode = GroupSetupMode.Create,

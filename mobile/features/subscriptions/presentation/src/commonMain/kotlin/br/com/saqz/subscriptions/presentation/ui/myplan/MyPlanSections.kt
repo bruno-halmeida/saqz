@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.presentation.ui.myplan
 
+import br.com.saqz.subscriptions.domain.subscription.SubscriptionProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -45,6 +46,8 @@ import br.com.saqz.subscriptions.resources.myplan_cancel_helper
 import br.com.saqz.subscriptions.resources.myplan_cancel_keep
 import br.com.saqz.subscriptions.resources.myplan_cancel_sheet_title
 import br.com.saqz.subscriptions.resources.myplan_current_plan_label
+import br.com.saqz.subscriptions.resources.myplan_google_play_elsewhere
+import br.com.saqz.subscriptions.resources.myplan_google_play_helper
 import br.com.saqz.subscriptions.resources.myplan_manage_app_store
 import br.com.saqz.subscriptions.resources.myplan_manage_change_plan
 import br.com.saqz.subscriptions.resources.myplan_manage_receipts
@@ -142,24 +145,23 @@ internal fun MyPlanManageSection(
     state: MyPlanState,
     onIntent: (MyPlanIntent) -> Unit,
     modifier: Modifier = Modifier,
-    appStoreManagementAvailable: Boolean = false,
+    deviceStore: SubscriptionProvider? = null,
 ) = Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
     SaqzSectionHeader(title = stringResource(Res.string.myplan_manage_title))
-    if (state.managedByAppStore) {
+    val storeManagementAvailable = state.managingStore != null && state.managingStore == deviceStore
+    state.managingStore?.let { store ->
         Text(
-            text = stringResource(
-                if (appStoreManagementAvailable) Res.string.myplan_app_store_helper else Res.string.myplan_app_store_elsewhere,
-            ),
+            text = stringResource(store.managementHelp(storeManagementAvailable)),
             style = SaqzTheme.typography.support,
             color = SaqzTheme.colors.textSecondary,
         )
     }
     SaqzCard(padded = false) {
-        if (state.managedByAppStore && appStoreManagementAvailable) {
+        if (storeManagementAvailable) {
             MyPlanManageRow(
                 label = stringResource(Res.string.myplan_manage_app_store),
                 tag = MyPlanTags.ManageAppStore,
-                onClick = { onIntent(MyPlanIntent.ManageAppStoreSubscription) },
+                onClick = { onIntent(MyPlanIntent.ManageStoreSubscription) },
             ) {
                 SaqzIcon(
                     SaqzIcons.ChevronRight,
@@ -168,7 +170,7 @@ internal fun MyPlanManageSection(
                 )
             }
         }
-        if (br.com.saqz.domain.StoreLaunchPolicy.purchases && !state.managedByAppStore &&
+        if (br.com.saqz.domain.StoreLaunchPolicy.purchases && !state.managedByStore &&
             state.plan?.statusTone != MyPlanStatusTone.Canceled
         ) {
             MyPlanManageRow(
@@ -349,4 +351,12 @@ private fun MyPlanStatusTone.toChipTone(): SaqzChipTone = when (this) {
     MyPlanStatusTone.Active -> SaqzChipTone.Success
     MyPlanStatusTone.PastDue -> SaqzChipTone.Warning
     MyPlanStatusTone.Canceled -> SaqzChipTone.Error
+}
+
+/** Onde trocar de plano ou cancelar: a loja que cobra, aberta daqui ou só explicada. */
+private fun SubscriptionProvider.managementHelp(availableHere: Boolean) = when (this) {
+    SubscriptionProvider.GooglePlay ->
+        if (availableHere) Res.string.myplan_google_play_helper else Res.string.myplan_google_play_elsewhere
+    SubscriptionProvider.AppStore, SubscriptionProvider.Asaas ->
+        if (availableHere) Res.string.myplan_app_store_helper else Res.string.myplan_app_store_elsewhere
 }

@@ -6,7 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
-import br.com.saqz.composeapp.subscriptiongate.AppStoreCheckout
+import br.com.saqz.composeapp.subscriptiongate.StoreCheckout
 import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateEffect
 import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateIntent
 import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateScreen
@@ -40,7 +40,7 @@ internal fun SubscriptionRequiredDestination(
     onBack: () -> Unit,
     onAuthorizationSuccess: () -> Unit,
     viewModel: SubscriptionGateViewModel = koinViewModel(),
-    appStore: AppStoreCheckout = koinInject(),
+    store: StoreCheckout = koinInject(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -73,9 +73,9 @@ internal fun SubscriptionRequiredDestination(
             onBack = onBack,
         )
     }
-    // O portão continua dono da autorização (e do polling); a App Store só vende. Confirmada
-    // a compra, o portão reconsulta e segue pelo mesmo AuthorizationGranted de sempre.
-    if (appStore.purchasesAvailable && state.status != SubscriptionGateStatus.Authorized) {
+    // O portão continua dono da autorização (e do polling); a loja só vende. Confirmada a
+    // compra, o portão reconsulta e segue pelo mesmo AuthorizationGranted de sempre.
+    if (store.purchasesAvailable && state.status != SubscriptionGateStatus.Authorized) {
         AppStorePaywallRoot(
             onBack = onBack,
             onSubscriptionConfirm = { viewModel.onIntent(SubscriptionGateIntent.RefreshAuthorization) },

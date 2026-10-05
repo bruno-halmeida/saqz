@@ -82,6 +82,7 @@ internal fun stopTestSaqzKoin() = stopSaqzKoin()
 
 internal fun testSaqzPlatformDependencies(
     appStorePurchases: br.com.saqz.subscriptions.domain.port.AppStorePurchasesPort? = null,
+    googlePlayPurchases: br.com.saqz.subscriptions.domain.port.GooglePlayPurchasesPort? = null,
 ) = SaqzPlatformDependencies(
     notifications = object : br.com.saqz.groups.domain.communication.NativeNotificationPort {
         override fun device(done: (br.com.saqz.groups.domain.communication.NotificationDevice?) -> Unit) = done(null)
@@ -102,6 +103,7 @@ internal fun testSaqzPlatformDependencies(
         override fun setUserProperty(name: String, value: String?) = Unit
     },
     appStorePurchases = appStorePurchases,
+    googlePlayPurchases = googlePlayPurchases,
     environment = "test",
     apiBaseUrl = "https://api.invalid",
     access = AccessRuntimeDependencies(

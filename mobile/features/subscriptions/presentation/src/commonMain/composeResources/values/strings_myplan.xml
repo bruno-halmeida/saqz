@@ -18,6 +18,8 @@
     <string name="myplan_manage_change_plan">Trocar de plano</string>
     <string name="myplan_manage_app_store">Trocar de plano ou cancelar</string>
     <string name="myplan_app_store_helper">Assinatura feita pela App Store. Troca de plano e cancelamento ficam na sua conta Apple.</string>
+    <string name="myplan_google_play_helper">Assinatura feita pelo Google Play. Troca de plano e cancelamento ficam na sua conta Google.</string>
+    <string name="myplan_google_play_elsewhere">Para trocar de plano ou cancelar, use um celular Android: Play Store › Pagamentos e assinaturas › Assinaturas.</string>
     <string name="myplan_app_store_elsewhere">Para trocar de plano ou cancelar, use o iPhone: Ajustes › seu nome › Assinaturas.</string>
     <string name="myplan_manage_receipts">Recibos</string>
     <string name="myplan_manage_receipts_count">%1$d pagamentos</string>

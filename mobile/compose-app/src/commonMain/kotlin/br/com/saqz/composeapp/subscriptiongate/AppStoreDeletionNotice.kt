@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import br.com.saqz.composeapp.resources.Res
 import br.com.saqz.composeapp.resources.appstore_deletion_manage
 import br.com.saqz.composeapp.resources.appstore_deletion_notice
+import br.com.saqz.composeapp.resources.googleplay_deletion_notice
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
@@ -26,16 +27,22 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @Immutable
-data class AppStoreDeletionNoticeState(val visible: Boolean = false)
+data class AppStoreDeletionNoticeState(
+    /** A loja que segue cobrando (App Store ou Google Play); nulo esconde o aviso. */
+    val store: SubscriptionProvider? = null,
+) {
+    val visible: Boolean get() = store != null
+}
 
 sealed interface AppStoreDeletionNoticeIntent {
     data object Refresh : AppStoreDeletionNoticeIntent
 }
 
 /**
- * Exigência da Apple na exclusão de conta: quem assina pela App Store precisa saber que a
- * cobrança continua até cancelar na conta Apple — o Saqz não consegue cancelar por ela.
- * Mora no app-shell porque junta o Perfil (exclusão) e Assinaturas, que não se conhecem.
+ * Exigência das lojas na exclusão de conta: quem assina pela App Store ou pelo Google Play
+ * precisa saber que a cobrança continua até cancelar na conta da loja — o Saqz não consegue
+ * cancelar por ela. Mora no app-shell porque junta o Perfil (exclusão) e Assinaturas, que
+ * não se conhecem.
  */
 class AppStoreDeletionNoticeViewModel(
     private val gateway: SubscriptionGateway,
@@ -57,11 +64,15 @@ class AppStoreDeletionNoticeViewModel(
         viewModelScope.launch {
             val subscription = (gateway.mySubscription() as? SaqzResult.Success)?.value
             if (current != generation) return@launch
-            val renewing = subscription?.provider == SubscriptionProvider.AppStore && subscription.autoRenew == true
-            update { it.copy(visible = renewing) }
+            val renewingAtStore = subscription?.takeIf {
+                it.autoRenew == true && it.provider in STORE_PROVIDERS
+            }?.provider
+            update { it.copy(store = renewingAtStore) }
         }
     }
 }
+
+private val STORE_PROVIDERS = setOf(SubscriptionProvider.AppStore, SubscriptionProvider.GooglePlay)
 
 object AppStoreDeletionNoticeTags {
     const val Notice = "appstore-deletion-notice"
@@ -70,18 +81,23 @@ object AppStoreDeletionNoticeTags {
 
 @Composable
 internal fun AppStoreDeletionNotice(
-    checkout: AppStoreCheckout = koinInject(),
+    checkout: StoreCheckout = koinInject(),
     viewModel: AppStoreDeletionNoticeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     if (!state.visible) return
+    val notice = when (state.store) {
+        SubscriptionProvider.GooglePlay -> Res.string.googleplay_deletion_notice
+        else -> Res.string.appstore_deletion_notice
+    }
     SaqzCard(tone = SaqzCardTone.Soft, modifier = Modifier.testTag(AppStoreDeletionNoticeTags.Notice)) {
         Text(
-            text = stringResource(Res.string.appstore_deletion_notice),
+            text = stringResource(notice),
             style = SaqzTheme.typography.support,
             color = SaqzTheme.colors.textPrimary,
         )
-        if (checkout.canManageSubscriptions) {
+        // Só abre a gestão da loja deste aparelho: assinatura do Play vista no iPhone só avisa.
+        if (checkout.canManageSubscriptions && checkout.deviceStore == state.store) {
             SaqzButton(
                 label = stringResource(Res.string.appstore_deletion_manage),
                 onClick = { checkout.manageSubscriptions { viewModel.onIntent(AppStoreDeletionNoticeIntent.Refresh) } },

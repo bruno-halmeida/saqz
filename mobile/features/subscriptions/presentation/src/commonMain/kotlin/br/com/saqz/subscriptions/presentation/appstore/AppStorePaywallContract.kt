@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.subscriptions.domain.subscription.Plan
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
+import br.com.saqz.subscriptions.presentation.store.PaywallStoreKind
 
 enum class AppStorePaywallPhase {
     Loading,
@@ -31,7 +32,7 @@ enum class AppStorePaywallNotice {
     RestoreFailed,
 }
 
-/** Uma assinatura de um ciclo: o product ID e o preço que o StoreKit devolveu. */
+/** Uma assinatura de um ciclo: o id da oferta na loja e o preço que a loja devolveu. */
 @Immutable
 data class AppStorePaywallOfferUi(
     val productId: String,
@@ -53,6 +54,8 @@ data class AppStorePaywallPlanUi(
 
 @Immutable
 data class AppStorePaywallState(
+    /** App Store ou Google Play: muda o texto (onde é cobrado, onde cancelar), não o fluxo. */
+    val store: PaywallStoreKind = PaywallStoreKind.AppStore,
     val phase: AppStorePaywallPhase = AppStorePaywallPhase.Loading,
     val cycle: SubscriptionCycle = SubscriptionCycle.Monthly,
     val plans: List<AppStorePaywallPlanUi> = emptyList(),

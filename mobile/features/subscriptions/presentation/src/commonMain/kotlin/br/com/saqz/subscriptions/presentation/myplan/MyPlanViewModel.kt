@@ -50,7 +50,7 @@ class MyPlanViewModel(
             MyPlanIntent.DismissCancel -> update { it.copy(isCancelSheetOpen = false, cancelError = null) }
             MyPlanIntent.ConfirmCancel -> cancel()
             MyPlanIntent.OpenChangePlan,
-            MyPlanIntent.ManageAppStoreSubscription,
+            MyPlanIntent.ManageStoreSubscription,
             MyPlanIntent.OpenSubscribe,
             -> openManagement(intent)
         }
@@ -59,8 +59,8 @@ class MyPlanViewModel(
     private fun openManagement(intent: MyPlanIntent) {
         when (intent) {
             MyPlanIntent.OpenChangePlan -> if (canManageWebPlan()) emit(MyPlanEffect.OpenChangePlan)
-            MyPlanIntent.ManageAppStoreSubscription -> if (canManagePaidPlan() && state.value.managedByAppStore) {
-                emit(MyPlanEffect.ManageAppStoreSubscription)
+            MyPlanIntent.ManageStoreSubscription -> if (canManagePaidPlan() && state.value.managedByStore) {
+                emit(MyPlanEffect.ManageStoreSubscription)
             }
             MyPlanIntent.OpenSubscribe -> if (!state.value.isLoading && state.value.trial?.canSubscribe == true) {
                 emit(MyPlanEffect.OpenSubscribe)
@@ -106,7 +106,7 @@ class MyPlanViewModel(
                         trial = trialResult.value.toUi(),
                         receipts = emptyList(),
                         hasMoreReceipts = false,
-                        managedByAppStore = false,
+                        managingStore = null,
                     )
                 }
                 return@launch
@@ -123,7 +123,7 @@ class MyPlanViewModel(
                     plan = loadedSubscription.toCardUi(),
                     usage = loadedSubscription.toUsageUi(),
                     trial = null,
-                    managedByAppStore = loadedSubscription.provider == SubscriptionProvider.AppStore,
+                    managingStore = loadedSubscription.provider.takeIf { it != SubscriptionProvider.Asaas },
                     // Falha aqui não pode virar "nenhum recibo ainda" (achado do Codex no
                     // PR #93): mantém a última lista boa e guarda o erro à parte.
                     receipts = (receiptsResult as? SaqzResult.Success)?.value?.map { r -> r.toUi() } ?: it.receipts,
@@ -217,7 +217,7 @@ class MyPlanViewModel(
         !state.value.isLoading && state.value.loadError == null && state.value.plan != null && state.value.trial == null
 
     /** Troca e cancelamento pelo backend só existem na assinatura da web. */
-    private fun canManageWebPlan(): Boolean = canManagePaidPlan() && !state.value.managedByAppStore
+    private fun canManageWebPlan(): Boolean = canManagePaidPlan() && !state.value.managedByStore
 }
 
 private fun br.com.saqz.subscriptions.domain.trial.TrialAccess.toUi() = MyPlanTrialUi(

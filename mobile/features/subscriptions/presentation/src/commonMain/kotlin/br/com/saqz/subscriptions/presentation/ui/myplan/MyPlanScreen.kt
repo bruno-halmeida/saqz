@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.presentation.ui.myplan
 
+import br.com.saqz.subscriptions.domain.subscription.SubscriptionProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,9 +57,12 @@ fun MyPlanScreen(
     onBack: () -> Unit,
     onIntent: (MyPlanIntent) -> Unit,
     modifier: Modifier = Modifier,
-    /** Só o iOS abre a gestão de assinaturas da Apple; no Android a tela só explica onde fica. */
-    appStoreManagementAvailable: Boolean = false,
-    /** Contratação disponível: a web (Asaas) ou a App Store neste aparelho. */
+    /**
+     * Loja cuja gestão este aparelho abre. Assinatura de outra loja (App Store vista no
+     * Android, por exemplo) só ganha a explicação de onde gerenciar.
+     */
+    deviceStore: SubscriptionProvider? = null,
+    /** Contratação disponível: a web (Asaas) ou a loja deste aparelho. */
     purchasesAvailable: Boolean = br.com.saqz.domain.StoreLaunchPolicy.purchases,
 ) {
     val metrics = SaqzTheme.metrics
@@ -101,13 +105,13 @@ fun MyPlanScreen(
                     MyPlanManageSection(
                         state = state,
                         onIntent = onIntent,
-                        appStoreManagementAvailable = appStoreManagementAvailable,
+                        deviceStore = deviceStore,
                     )
                 }
                 // Assinatura já efetivamente cancelada (achado do Codex no PR #93) não tem
                 // o que cancelar de novo — o backend já rejeita com AlreadyCanceled. A da
-                // App Store só se cancela na conta Apple.
-                if (state.plan != null && state.plan.statusTone != MyPlanStatusTone.Canceled && !state.managedByAppStore) {
+                // loja (App Store ou Google Play) só se cancela na conta da loja.
+                if (state.plan != null && state.plan.statusTone != MyPlanStatusTone.Canceled && !state.managedByStore) {
                     MyPlanCancelSection(onIntent = onIntent)
                 }
             }
@@ -167,10 +171,21 @@ private fun MyPlanScreenErrorPreview() = SaqzTheme {
 @Composable
 private fun MyPlanScreenAppStorePreview() = SaqzTheme {
     MyPlanScreen(
-        state = MyPlanPreviewData.active.copy(managedByAppStore = true),
+        state = MyPlanPreviewData.active.copy(managingStore = SubscriptionProvider.AppStore),
         onBack = {},
         onIntent = {},
-        appStoreManagementAvailable = true,
+        deviceStore = SubscriptionProvider.AppStore,
+    )
+}
+
+@Preview(name = "Google Play")
+@Composable
+private fun MyPlanScreenGooglePlayPreview() = SaqzTheme {
+    MyPlanScreen(
+        state = MyPlanPreviewData.active.copy(managingStore = SubscriptionProvider.GooglePlay),
+        onBack = {},
+        onIntent = {},
+        deviceStore = SubscriptionProvider.GooglePlay,
     )
 }
 

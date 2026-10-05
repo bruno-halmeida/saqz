@@ -76,7 +76,7 @@ class SaqzKoinBootstrapTest {
             startSaqzKoin(testSaqzPlatformDependencies(appStorePurchases = port))
             val koin = KoinPlatformTools.defaultContext().get()
 
-            val checkout = koin.get<br.com.saqz.composeapp.subscriptiongate.AppStoreCheckout>()
+            val checkout = koin.get<br.com.saqz.composeapp.subscriptiongate.StoreCheckout>()
             kotlin.test.assertTrue(checkout.purchasesAvailable)
             kotlin.test.assertSame(checkout.sync, koin.get<br.com.saqz.subscriptions.presentation.appstore.AppStoreTransactionSync>())
             assertNotNull(koin.get<br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallViewModel>())
@@ -88,11 +88,31 @@ class SaqzKoinBootstrapTest {
     }
 
     @Test
+    fun googlePlayPortRegistersThePaywallAndThePurchaseSync() {
+        stopSaqzKoin()
+        try {
+            val port = TestGooglePlayPort()
+            startSaqzKoin(testSaqzPlatformDependencies(googlePlayPurchases = port))
+            val koin = KoinPlatformTools.defaultContext().get()
+
+            val checkout = koin.get<br.com.saqz.composeapp.subscriptiongate.StoreCheckout>()
+            kotlin.test.assertTrue(checkout.purchasesAvailable)
+            kotlin.test.assertEquals(br.com.saqz.subscriptions.domain.subscription.SubscriptionProvider.GooglePlay, checkout.deviceStore)
+            kotlin.test.assertSame(checkout.sync, koin.get<br.com.saqz.subscriptions.presentation.googleplay.GooglePlayPurchaseSync>())
+            assertNotNull(koin.get<br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallViewModel>())
+            // O listener do Play é registrado já na carga da plataforma.
+            kotlin.test.assertTrue(port.listening)
+        } finally {
+            stopSaqzKoin()
+        }
+    }
+
+    @Test
     fun withoutAnAppStorePortNothingIsSoldInTheApp() {
         stopSaqzKoin()
         try {
             startSaqzKoin(testSaqzPlatformDependencies())
-            val checkout = KoinPlatformTools.defaultContext().get().get<br.com.saqz.composeapp.subscriptiongate.AppStoreCheckout>()
+            val checkout = KoinPlatformTools.defaultContext().get().get<br.com.saqz.composeapp.subscriptiongate.StoreCheckout>()
 
             kotlin.test.assertFalse(checkout.purchasesAvailable)
             kotlin.test.assertFalse(checkout.canManageSubscriptions)
@@ -149,4 +169,31 @@ private class TestAppStorePort : br.com.saqz.subscriptions.domain.port.AppStoreP
 
     override fun showAppStoreSubscriptionManagement(done: br.com.saqz.subscriptions.domain.port.AppStoreManagementCallback) =
         done.onAppStoreManagementClosed()
+}
+
+private class TestGooglePlayPort : br.com.saqz.subscriptions.domain.port.GooglePlayPurchasesPort {
+    var listening = false
+
+    override fun canMakeGooglePlayPayments() = true
+
+    override fun loadGooglePlayProducts(
+        productIds: List<String>,
+        done: br.com.saqz.subscriptions.domain.port.GooglePlayProductsCallback,
+    ) = done.onGooglePlayProducts(br.com.saqz.subscriptions.domain.port.GooglePlayProductsResult.Loaded(emptyList()))
+
+    override fun purchaseGooglePlayProduct(
+        productId: String,
+        offerToken: String,
+        obfuscatedAccountId: String,
+        done: br.com.saqz.subscriptions.domain.port.GooglePlayPurchaseCallback,
+    ) = done.onGooglePlayPurchase(br.com.saqz.subscriptions.domain.port.GooglePlayPurchaseResult.Cancelled)
+
+    override fun readGooglePlaySubscriptionPurchases(done: br.com.saqz.subscriptions.domain.port.GooglePlayPurchasesCallback) =
+        done.onGooglePlayPurchases(br.com.saqz.subscriptions.domain.port.GooglePlayPurchasesResult.Loaded(emptyList()))
+
+    override fun listenForGooglePlayPurchases(listener: br.com.saqz.subscriptions.domain.port.GooglePlayPurchaseListener) {
+        listening = true
+    }
+
+    override fun showGooglePlaySubscriptionManagement(productId: String?) = Unit
 }

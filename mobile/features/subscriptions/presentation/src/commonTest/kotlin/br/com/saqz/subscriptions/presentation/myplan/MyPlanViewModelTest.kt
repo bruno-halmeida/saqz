@@ -248,24 +248,41 @@ class MyPlanViewModelTest {
             ),
         )
         val viewModel = MyPlanViewModel(gateway)
-        assertEquals(true, viewModel.state.value.managedByAppStore)
+        assertEquals(SubscriptionProvider.AppStore, viewModel.state.value.managingStore)
 
         viewModel.onIntent(MyPlanIntent.OpenCancel)
         viewModel.onIntent(MyPlanIntent.ConfirmCancel)
         viewModel.onIntent(MyPlanIntent.OpenChangePlan)
-        viewModel.onIntent(MyPlanIntent.ManageAppStoreSubscription)
+        viewModel.onIntent(MyPlanIntent.ManageStoreSubscription)
 
         assertEquals(false, viewModel.state.value.isCancelSheetOpen)
         assertEquals(0, gateway.cancelCalls)
-        assertEquals(MyPlanEffect.ManageAppStoreSubscription, viewModel.effects.first())
+        assertEquals(MyPlanEffect.ManageStoreSubscription, viewModel.effects.first())
+    }
+
+    @Test
+    fun `a google play subscription is managed at google and never by the web cancel`() = runTest {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResult = SaqzResult.Success(
+                ACTIVE_SUBSCRIPTION.copy(provider = SubscriptionProvider.GooglePlay, autoRenew = true),
+            ),
+        )
+        val viewModel = MyPlanViewModel(gateway)
+        assertEquals(SubscriptionProvider.GooglePlay, viewModel.state.value.managingStore)
+
+        viewModel.onIntent(MyPlanIntent.OpenCancel)
+        viewModel.onIntent(MyPlanIntent.ManageStoreSubscription)
+
+        assertEquals(false, viewModel.state.value.isCancelSheetOpen)
+        assertEquals(MyPlanEffect.ManageStoreSubscription, viewModel.effects.first())
     }
 
     @Test
     fun `a web subscription never opens the app store management`() = runTest {
         val viewModel = MyPlanViewModel(FakeSubscriptionGateway())
-        assertEquals(false, viewModel.state.value.managedByAppStore)
+        assertEquals(false, viewModel.state.value.managedByStore)
 
-        viewModel.onIntent(MyPlanIntent.ManageAppStoreSubscription)
+        viewModel.onIntent(MyPlanIntent.ManageStoreSubscription)
         viewModel.onIntent(MyPlanIntent.OpenChangePlan)
 
         assertEquals(MyPlanEffect.OpenChangePlan, viewModel.effects.first())

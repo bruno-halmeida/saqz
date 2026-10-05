@@ -10,6 +10,7 @@ import br.com.saqz.subscriptions.domain.port.AppStorePurchasesPort
 import br.com.saqz.subscriptions.domain.port.AppStoreSignedTransaction
 import br.com.saqz.subscriptions.domain.port.AppStoreTransactionsResult
 import br.com.saqz.subscriptions.domain.subscription.MySubscription
+import br.com.saqz.subscriptions.presentation.store.StorePurchaseSync
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -48,16 +49,16 @@ class AppStoreTransactionSync(
     private val port: AppStorePurchasesPort,
     private val gateway: AppStoreSubscriptionGateway,
     private val scope: CoroutineScope,
-) {
+) : StorePurchaseSync {
     private val mutex = Mutex()
     private val deliveredSubscriptions = MutableSharedFlow<MySubscription>(extraBufferCapacity = DELIVERY_BUFFER)
     private var listening = false
     private var authenticated = false
 
     /** Toda assinatura que o backend devolveu, inclusive a de uma renovação em segundo plano. */
-    val deliveries: SharedFlow<MySubscription> = deliveredSubscriptions.asSharedFlow()
+    override val deliveries: SharedFlow<MySubscription> = deliveredSubscriptions.asSharedFlow()
 
-    fun start() {
+    override fun start() {
         if (listening) return
         listening = true
         port.listenForAppStoreTransactions { transaction ->
@@ -67,13 +68,13 @@ class AppStoreTransactionSync(
         }
     }
 
-    fun onAuthenticated() {
+    override fun onAuthenticated() {
         if (authenticated) return
         authenticated = true
         scope.launch { drainUnfinished() }
     }
 
-    fun onSignedOut() {
+    override fun onSignedOut() {
         authenticated = false
     }
 

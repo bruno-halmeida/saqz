@@ -40,4 +40,5 @@
     <string name="subscription_gate_authorized_message">Acesso confirmado. Finalizando.</string>
     <string name="appstore_deletion_notice">Sua assinatura do Saqz pela App Store continua sendo cobrada pela Apple até você cancelar. Excluir a conta não cancela a assinatura.</string>
     <string name="appstore_deletion_manage">Gerenciar assinatura</string>
+    <string name="googleplay_deletion_notice">Sua assinatura do Saqz pelo Google Play continua sendo cobrada pelo Google até você cancelar. Excluir a conta não cancela a assinatura.</string>
 </resources>

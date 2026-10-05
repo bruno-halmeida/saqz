@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.presentation.myplan
 
+import br.com.saqz.subscriptions.domain.subscription.SubscriptionProvider
 import androidx.compose.runtime.Immutable
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.subscriptions.domain.trial.TrialStatus
@@ -28,9 +29,11 @@ data class MyPlanState(
     val isCancelSheetOpen: Boolean = false,
     val isCanceling: Boolean = false,
     val cancelError: UiText? = null,
-    /** Assinatura da App Store: troca e cancelamento acontecem lá, não no backend. */
-    val managedByAppStore: Boolean = false,
-)
+    /** Loja que cobra (App Store ou Google Play): troca e cancelamento acontecem lá, não no backend. */
+    val managingStore: SubscriptionProvider? = null,
+) {
+    val managedByStore: Boolean get() = managingStore != null
+}
 
 @Immutable
 data class MyPlanTrialUi(
@@ -83,11 +86,11 @@ sealed interface MyPlanIntent {
     data object ConfirmCancel : MyPlanIntent
     data object OpenChangePlan : MyPlanIntent
     data object OpenSubscribe : MyPlanIntent
-    data object ManageAppStoreSubscription : MyPlanIntent
+    data object ManageStoreSubscription : MyPlanIntent
 }
 
 sealed interface MyPlanEffect {
     data object OpenChangePlan : MyPlanEffect
     data object OpenSubscribe : MyPlanEffect
-    data object ManageAppStoreSubscription : MyPlanEffect
+    data object ManageStoreSubscription : MyPlanEffect
 }

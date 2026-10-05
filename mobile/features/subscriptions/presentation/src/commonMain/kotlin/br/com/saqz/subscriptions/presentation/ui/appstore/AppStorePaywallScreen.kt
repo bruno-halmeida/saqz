@@ -42,6 +42,7 @@ import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallOfferUi
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallPhase
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallPlanUi
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallState
+import br.com.saqz.subscriptions.presentation.store.PaywallStoreKind
 import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.paywall_confirm_retry
 import br.com.saqz.subscriptions.resources.paywall_cta
@@ -49,14 +50,18 @@ import br.com.saqz.subscriptions.resources.paywall_current
 import br.com.saqz.subscriptions.resources.paywall_cycle_annual
 import br.com.saqz.subscriptions.resources.paywall_cycle_monthly
 import br.com.saqz.subscriptions.resources.paywall_disclosure
+import br.com.saqz.subscriptions.resources.paywall_disclosure_play
 import br.com.saqz.subscriptions.resources.paywall_duration_annual
 import br.com.saqz.subscriptions.resources.paywall_duration_monthly
 import br.com.saqz.subscriptions.resources.paywall_load_error
 import br.com.saqz.subscriptions.resources.paywall_notice_confirmation
+import br.com.saqz.subscriptions.resources.paywall_notice_confirmation_play
 import br.com.saqz.subscriptions.resources.paywall_notice_failed
 import br.com.saqz.subscriptions.resources.paywall_notice_invalid
 import br.com.saqz.subscriptions.resources.paywall_notice_nothing
+import br.com.saqz.subscriptions.resources.paywall_notice_nothing_play
 import br.com.saqz.subscriptions.resources.paywall_notice_owned
+import br.com.saqz.subscriptions.resources.paywall_notice_owned_play
 import br.com.saqz.subscriptions.resources.paywall_notice_pending
 import br.com.saqz.subscriptions.resources.paywall_notice_restore_failed
 import br.com.saqz.subscriptions.resources.paywall_price_month
@@ -65,6 +70,7 @@ import br.com.saqz.subscriptions.resources.paywall_privacy
 import br.com.saqz.subscriptions.resources.paywall_restore
 import br.com.saqz.subscriptions.resources.paywall_retry
 import br.com.saqz.subscriptions.resources.paywall_sub
+import br.com.saqz.subscriptions.resources.paywall_sub_play
 import br.com.saqz.subscriptions.resources.paywall_subscribed
 import br.com.saqz.subscriptions.resources.paywall_terms
 import br.com.saqz.subscriptions.resources.paywall_title
@@ -162,7 +168,7 @@ private fun AppStorePaywallCatalog(
         verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
     ) {
         Text(
-            text = stringResource(Res.string.paywall_sub),
+            text = stringResource(if (state.store == PaywallStoreKind.GooglePlay) Res.string.paywall_sub_play else Res.string.paywall_sub),
             style = SaqzTheme.typography.support,
             color = SaqzTheme.colors.textSecondary,
         )
@@ -175,7 +181,7 @@ private fun AppStorePaywallCatalog(
             onSelect = { index -> onIntent(AppStorePaywallIntent.SelectCycle(cycles[index])) },
             modifier = Modifier.testTag(AppStorePaywallTags.Cycle),
         )
-        state.notice?.let { notice -> AppStorePaywallNoticeCard(notice, state.isConfirming, onIntent) }
+        state.notice?.let { notice -> AppStorePaywallNoticeCard(notice, state.store, state.isConfirming, onIntent) }
         state.plans.forEach { plan ->
             val offer = plan.offer(state.cycle) ?: return@forEach
             AppStorePaywallPlanCard(
@@ -188,7 +194,9 @@ private fun AppStorePaywallCatalog(
             )
         }
         Text(
-            text = stringResource(Res.string.paywall_disclosure),
+            text = stringResource(
+                if (state.store == PaywallStoreKind.GooglePlay) Res.string.paywall_disclosure_play else Res.string.paywall_disclosure,
+            ),
             style = SaqzTheme.typography.caption,
             color = SaqzTheme.colors.textSecondary,
             modifier = Modifier.testTag(AppStorePaywallTags.Disclosure),
@@ -282,13 +290,14 @@ private fun AppStorePaywallPlanCard(
 @Composable
 private fun AppStorePaywallNoticeCard(
     notice: AppStorePaywallNotice,
+    store: PaywallStoreKind,
     isConfirming: Boolean,
     onIntent: (AppStorePaywallIntent) -> Unit,
 ) {
     val isError = notice != AppStorePaywallNotice.Pending && notice != AppStorePaywallNotice.NothingToRestore
     SaqzCard(tone = SaqzCardTone.Soft, modifier = Modifier.testTag(AppStorePaywallTags.Notice)) {
         Text(
-            text = stringResource(notice.message()),
+            text = stringResource(notice.message(store)),
             style = SaqzTheme.typography.support,
             color = if (isError) SaqzTheme.colors.errorForeground else SaqzTheme.colors.textPrimary,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
@@ -306,13 +315,16 @@ private fun AppStorePaywallNoticeCard(
     }
 }
 
-private fun AppStorePaywallNotice.message() = when (this) {
+private fun AppStorePaywallNotice.message(store: PaywallStoreKind) = when (this) {
     AppStorePaywallNotice.Pending -> Res.string.paywall_notice_pending
     AppStorePaywallNotice.PurchaseFailed -> Res.string.paywall_notice_failed
-    AppStorePaywallNotice.OwnedByAnotherAccount -> Res.string.paywall_notice_owned
+    AppStorePaywallNotice.OwnedByAnotherAccount ->
+        if (store == PaywallStoreKind.GooglePlay) Res.string.paywall_notice_owned_play else Res.string.paywall_notice_owned
     AppStorePaywallNotice.Invalid -> Res.string.paywall_notice_invalid
-    AppStorePaywallNotice.ConfirmationPending -> Res.string.paywall_notice_confirmation
-    AppStorePaywallNotice.NothingToRestore -> Res.string.paywall_notice_nothing
+    AppStorePaywallNotice.ConfirmationPending ->
+        if (store == PaywallStoreKind.GooglePlay) Res.string.paywall_notice_confirmation_play else Res.string.paywall_notice_confirmation
+    AppStorePaywallNotice.NothingToRestore ->
+        if (store == PaywallStoreKind.GooglePlay) Res.string.paywall_notice_nothing_play else Res.string.paywall_notice_nothing
     AppStorePaywallNotice.RestoreFailed -> Res.string.paywall_notice_restore_failed
 }
 
@@ -344,6 +356,11 @@ private fun AppStorePaywallPreview(state: AppStorePaywallState) = SaqzTheme {
 @Preview(name = "Mensal")
 @Composable
 private fun AppStorePaywallMonthlyPreview() = AppStorePaywallPreview(AppStorePaywallPreviewData.ready)
+
+@Preview(name = "Google Play")
+@Composable
+private fun AppStorePaywallGooglePlayPreview() =
+    AppStorePaywallPreview(AppStorePaywallPreviewData.ready.copy(store = PaywallStoreKind.GooglePlay))
 
 @Preview(name = "Anual")
 @Composable

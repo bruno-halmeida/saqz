@@ -4,37 +4,46 @@ import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.subscriptions.domain.appstore.AppStoreSubscriptionGateway
-import br.com.saqz.subscriptions.domain.port.AppStoreProduct
-import br.com.saqz.subscriptions.domain.port.AppStoreProductsResult
-import br.com.saqz.subscriptions.domain.port.AppStorePurchaseResult
 import br.com.saqz.subscriptions.domain.port.AppStorePurchasesPort
 import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.PlanCatalogItem
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionError
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
-import br.com.saqz.subscriptions.domain.subscription.SubscriptionProvider
 import br.com.saqz.subscriptions.presentation.changeplan.benefits
+import br.com.saqz.subscriptions.presentation.store.PaywallStore
+import br.com.saqz.subscriptions.presentation.store.PlanCycle
+import br.com.saqz.subscriptions.presentation.store.StoreDelivery
+import br.com.saqz.subscriptions.presentation.store.StoreOffer
+import br.com.saqz.subscriptions.presentation.store.StorePurchaseOutcome
+import br.com.saqz.subscriptions.presentation.store.StoreRestoreOutcome
 import kotlinx.coroutines.launch
 
 /**
- * Compra da assinatura pela App Store. O preço vem do StoreKit; plano, ciclo e benefícios vêm
- * de `GET /plans`; quem diz se a conta tem acesso é a resposta do backend à transação.
+ * Compra da assinatura pela loja do aparelho — App Store no iOS, Google Play no Android. O
+ * preço vem da loja; plano, ciclo e benefícios vêm de `GET /plans`; quem diz se a conta tem
+ * acesso é a resposta do backend à compra.
  */
 class AppStorePaywallViewModel(
-    private val port: AppStorePurchasesPort,
-    private val sync: AppStoreTransactionSync,
-    private val appStore: AppStoreSubscriptionGateway,
+    private val store: PaywallStore,
     private val subscriptions: SubscriptionGateway,
-) : MviViewModel<AppStorePaywallState, AppStorePaywallIntent, AppStorePaywallEffect>(AppStorePaywallState()) {
+) : MviViewModel<AppStorePaywallState, AppStorePaywallIntent, AppStorePaywallEffect>(
+    AppStorePaywallState(store = store.kind),
+) {
+    constructor(
+        port: AppStorePurchasesPort,
+        sync: AppStoreTransactionSync,
+        appStore: AppStoreSubscriptionGateway,
+        subscriptions: SubscriptionGateway,
+    ) : this(AppStorePaywallStore(port, sync, appStore), subscriptions)
 
     private var loadGeneration = 0
 
     init {
         load()
-        // Ask to Buy aprovado ou compra concluída fora desta tela chegam por aqui.
+        // Ask to Buy aprovado, pagamento pendente que caiu ou compra concluída fora desta tela.
         viewModelScope.launch {
-            sync.deliveries.collect { subscription -> if (subscription.entitled) subscribed() }
+            store.deliveries.collect { subscription -> if (subscription.entitled) subscribed() }
         }
     }
 
@@ -60,48 +69,40 @@ class AppStorePaywallViewModel(
     }
 
     private suspend fun loadPhase(): LoadedPaywall {
-        if (!port.canMakeAppStorePayments()) return LoadedPaywall(AppStorePaywallPhase.Unavailable)
+        if (!store.canPurchase()) return LoadedPaywall(AppStorePaywallPhase.Unavailable)
         val current = when (val result = subscriptions.mySubscription()) {
             is SaqzResult.Success -> result.value
             is SaqzResult.Failure -> if (result.error == SubscriptionError.NotFound) null else return LoadFailed
         }
-        // Quem já assina pela web não compra de novo aqui: seriam duas cobranças.
-        val webSubscriber = current != null && current.entitled && current.provider == SubscriptionProvider.Asaas
-        return if (webSubscriber) LoadedPaywall(AppStorePaywallPhase.Unavailable) else loadCatalog(current)
+        // Quem já assina pela web ou pela outra loja não compra de novo aqui: seriam duas cobranças.
+        val elsewhere = current != null && current.entitled && current.provider != store.provider
+        return if (elsewhere) LoadedPaywall(AppStorePaywallPhase.Unavailable) else loadCatalog(current)
     }
 
     private suspend fun loadCatalog(current: MySubscription?): LoadedPaywall {
         val catalog = when (val result = subscriptions.listPlans()) {
-            is SaqzResult.Success -> result.value.filter { it.appStoreProductIds != null }
+            is SaqzResult.Success -> result.value
             is SaqzResult.Failure -> return LoadFailed
         }
-        val ids = catalog.flatMap { listOfNotNull(it.appStoreProductIds?.monthly, it.appStoreProductIds?.annual) }
-        val products = when (val result = if (ids.isEmpty()) null else port.products(ids)) {
-            null -> emptyMap()
-            is AppStoreProductsResult.Loaded -> result.products.associateBy(AppStoreProduct::id)
-            is AppStoreProductsResult.Failed -> return LoadFailed
-        }
-        val plans = catalog.mapNotNull { it.toPaywallPlan(products, current) }
+        val offers = store.offers(catalog) ?: return LoadFailed
+        val plans = catalog.mapNotNull { it.toPaywallPlan(offers, current?.takeIf { sub -> sub.provider == store.provider }) }
         return LoadedPaywall(if (plans.isEmpty()) AppStorePaywallPhase.Unavailable else AppStorePaywallPhase.Ready, plans)
     }
 
-    private fun purchase(productId: String) {
+    private fun purchase(offerId: String) {
         val current = state.value
         if (current.phase != AppStorePaywallPhase.Ready || current.isBusy) return
         val offer = current.plans.firstNotNullOfOrNull { plan ->
-            listOfNotNull(plan.monthly, plan.annual).firstOrNull { it.productId == productId }
+            listOfNotNull(plan.monthly, plan.annual).firstOrNull { it.productId == offerId }
         } ?: return
         if (offer.isCurrent) return
-        update { it.copy(purchasingProductId = productId, notice = null) }
+        update { it.copy(purchasingProductId = offerId, notice = null) }
         viewModelScope.launch {
-            val notice = when (val token = appStore.appAccountToken()) {
-                is SaqzResult.Failure -> AppStorePaywallNotice.PurchaseFailed
-                is SaqzResult.Success -> when (val result = port.purchase(productId, token.value)) {
-                    is AppStorePurchaseResult.Purchased -> sync.deliver(result.transaction).toNotice()
-                    AppStorePurchaseResult.Pending -> AppStorePaywallNotice.Pending
-                    AppStorePurchaseResult.Cancelled -> null
-                    is AppStorePurchaseResult.Failed -> AppStorePaywallNotice.PurchaseFailed
-                }
+            val notice = when (val outcome = store.purchase(offerId)) {
+                is StorePurchaseOutcome.Completed -> outcome.delivery.toNotice()
+                StorePurchaseOutcome.Pending -> AppStorePaywallNotice.Pending
+                StorePurchaseOutcome.Cancelled -> null
+                StorePurchaseOutcome.Failed -> AppStorePaywallNotice.PurchaseFailed
             }
             update { it.copy(purchasingProductId = null, notice = notice ?: it.notice) }
         }
@@ -112,9 +113,9 @@ class AppStorePaywallViewModel(
         if (current.phase != AppStorePaywallPhase.Ready || current.isBusy) return
         update { it.copy(isRestoring = true, notice = null) }
         viewModelScope.launch {
-            val notice = when (val outcome = sync.restore()) {
-                AppStoreRestoreOutcome.Failed -> AppStorePaywallNotice.RestoreFailed
-                is AppStoreRestoreOutcome.Restored -> outcome.deliveries.toNotice()
+            val notice = when (val outcome = store.restore()) {
+                StoreRestoreOutcome.Failed -> AppStorePaywallNotice.RestoreFailed
+                is StoreRestoreOutcome.Restored -> outcome.deliveries.toNotice()
             }
             update { it.copy(isRestoring = false, notice = notice ?: it.notice) }
         }
@@ -125,35 +126,35 @@ class AppStorePaywallViewModel(
         if (current.notice != AppStorePaywallNotice.ConfirmationPending || current.isBusy) return
         update { it.copy(isConfirming = true) }
         viewModelScope.launch {
-            val notice = sync.drainUnfinished().toNotice() ?: AppStorePaywallNotice.ConfirmationPending
+            val notice = store.retryPending().toNotice() ?: AppStorePaywallNotice.ConfirmationPending
             update { it.copy(isConfirming = false, notice = notice) }
         }
     }
 
     /** Nulo quando a entrega deu acesso: a tela segue pelo efeito, sem aviso. */
-    private fun AppStoreDelivery.toNotice(): AppStorePaywallNotice? = when (this) {
-        is AppStoreDelivery.Delivered -> if (subscription.entitled) {
+    private fun StoreDelivery.toNotice(): AppStorePaywallNotice? = when (this) {
+        is StoreDelivery.Delivered -> if (subscription.entitled) {
             subscribed()
             null
         } else {
             AppStorePaywallNotice.Invalid
         }
-        AppStoreDelivery.OwnedByAnotherAccount -> AppStorePaywallNotice.OwnedByAnotherAccount
-        AppStoreDelivery.Rejected -> AppStorePaywallNotice.Invalid
-        is AppStoreDelivery.Deferred -> AppStorePaywallNotice.ConfirmationPending
+        StoreDelivery.OwnedByAnotherAccount -> AppStorePaywallNotice.OwnedByAnotherAccount
+        StoreDelivery.Rejected -> AppStorePaywallNotice.Invalid
+        is StoreDelivery.Deferred -> AppStorePaywallNotice.ConfirmationPending
     }
 
     /**
-     * Restaurar devolve todas as assinaturas do Apple ID: basta uma com acesso. Sem nenhuma,
-     * a mais informativa ganha — outra conta, depois confirmação pendente, depois "nada".
+     * Restaurar devolve todas as assinaturas da conta da loja: basta uma com acesso. Sem
+     * nenhuma, a mais informativa ganha — outra conta, depois confirmação pendente, depois "nada".
      */
-    private fun List<AppStoreDelivery>.toNotice(): AppStorePaywallNotice? = when {
-        any { it is AppStoreDelivery.Delivered && it.subscription.entitled } -> {
+    private fun List<StoreDelivery>.toNotice(): AppStorePaywallNotice? = when {
+        any { it is StoreDelivery.Delivered && it.subscription.entitled } -> {
             subscribed()
             null
         }
-        any { it == AppStoreDelivery.OwnedByAnotherAccount } -> AppStorePaywallNotice.OwnedByAnotherAccount
-        any { it is AppStoreDelivery.Deferred } -> AppStorePaywallNotice.ConfirmationPending
+        any { it == StoreDelivery.OwnedByAnotherAccount } -> AppStorePaywallNotice.OwnedByAnotherAccount
+        any { it is StoreDelivery.Deferred } -> AppStorePaywallNotice.ConfirmationPending
         else -> AppStorePaywallNotice.NothingToRestore
     }
 
@@ -170,21 +171,21 @@ class AppStorePaywallViewModel(
     }
 }
 
+/** [current] é a assinatura desta mesma loja (ou nula): é ela que marca o plano atual. */
 private fun PlanCatalogItem.toPaywallPlan(
-    products: Map<String, AppStoreProduct>,
+    offers: Map<PlanCycle, StoreOffer>,
     current: MySubscription?,
 ): AppStorePaywallPlanUi? {
-    val ids = appStoreProductIds ?: return null
-    val ownsAppStorePlan = current != null && current.entitled && current.provider == SubscriptionProvider.AppStore
-    fun offer(productId: String, cycle: SubscriptionCycle) = products[productId]?.let { product ->
+    val ownsStorePlan = current != null && current.entitled
+    fun offer(cycle: SubscriptionCycle) = offers[PlanCycle(id, cycle)]?.let { offer ->
         AppStorePaywallOfferUi(
-            productId = product.id,
-            displayPrice = product.displayPrice,
-            isCurrent = ownsAppStorePlan && current?.plan == id && current.cycle == cycle,
+            productId = offer.id,
+            displayPrice = offer.displayPrice,
+            isCurrent = ownsStorePlan && current?.plan == id && current.cycle == cycle,
         )
     }
-    val monthly = offer(ids.monthly, SubscriptionCycle.Monthly)
-    val annual = offer(ids.annual, SubscriptionCycle.Annual)
+    val monthly = offer(SubscriptionCycle.Monthly)
+    val annual = offer(SubscriptionCycle.Annual)
     if (monthly == null && annual == null) return null
     return AppStorePaywallPlanUi(plan = id, name = id.name, benefits = benefits(), monthly = monthly, annual = annual)
 }

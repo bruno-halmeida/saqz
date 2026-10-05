@@ -19,6 +19,7 @@ import br.com.saqz.androidapp.groups.photo.AndroidGroupPhotoAdapters
 import br.com.saqz.androidapp.groups.draft.AndroidGroupDraftAdapters
 import br.com.saqz.androidapp.groups.invite.AndroidInviteShareAdapter
 import br.com.saqz.androidapp.groups.invite.AndroidInviteUrlStore
+import br.com.saqz.androidapp.subscriptions.AndroidGooglePlayPurchases
 import br.com.saqz.composeapp.AccessRuntimeDependencies
 import br.com.saqz.composeapp.GroupPhotoRuntimeDependencies
 import br.com.saqz.composeapp.GroupsRuntimeDependencies
@@ -74,8 +75,8 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
                 notifications = AndroidNotificationPort(context.applicationContext),
                 financialDocuments = documents,
                 analytics = AndroidAnalyticsSink(context.applicationContext),
-                // Sem Play Billing: o Android não vende a assinatura dentro do app.
                 appStorePurchases = null,
+                googlePlayPurchases = AndroidGooglePlayPurchases(context.applicationContext, activity),
                 environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,
                 access = AccessRuntimeDependencies(

@@ -7,6 +7,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.subscriptions.domain.subscription.SubscriptionProvider
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanEffect
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanIntent
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanViewModel
@@ -18,8 +19,10 @@ fun MyPlanRoot(
     onOpenChangePlan: () -> Unit = {},
     onOpenSubscribe: () -> Unit = {},
     refreshVersion: Int = 0,
-    /** Nulo fora do iOS: não há gestão de assinaturas da Apple para abrir. */
-    onManageAppStoreSubscription: (() -> Unit)? = null,
+    /** Abre a gestão de assinaturas da loja deste aparelho; nulo quando não há loja. */
+    onManageStoreSubscription: (() -> Unit)? = null,
+    /** A loja que este aparelho sabe abrir: App Store no iOS, Google Play no Android. */
+    deviceStore: SubscriptionProvider? = null,
     purchasesAvailable: Boolean = br.com.saqz.domain.StoreLaunchPolicy.purchases,
     viewModel: MyPlanViewModel = koinViewModel(),
 ) {
@@ -36,14 +39,14 @@ fun MyPlanRoot(
         when (effect) {
             MyPlanEffect.OpenChangePlan -> onOpenChangePlan()
             MyPlanEffect.OpenSubscribe -> onOpenSubscribe()
-            MyPlanEffect.ManageAppStoreSubscription -> onManageAppStoreSubscription?.invoke()
+            MyPlanEffect.ManageStoreSubscription -> onManageStoreSubscription?.invoke()
         }
     }
     MyPlanScreen(
         state = state,
         onBack = onBack,
         onIntent = viewModel::onIntent,
-        appStoreManagementAvailable = onManageAppStoreSubscription != null,
+        deviceStore = deviceStore.takeIf { onManageStoreSubscription != null },
         purchasesAvailable = purchasesAvailable,
     )
 }

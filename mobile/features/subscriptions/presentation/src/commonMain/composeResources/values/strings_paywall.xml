@@ -25,4 +25,9 @@
     <string name="paywall_notice_nothing">Nenhuma assinatura ativa encontrada para este Apple ID.</string>
     <string name="paywall_notice_restore_failed">Não foi possível restaurar as compras agora. Tente novamente.</string>
     <string name="paywall_subscribed">Assinatura confirmada. Finalizando…</string>
+    <string name="paywall_sub_play">Escolha um plano. A cobrança é feita na sua conta do Google Play.</string>
+    <string name="paywall_disclosure_play">O valor é cobrado na sua conta do Google Play quando você confirma a compra. A assinatura renova automaticamente pelo mesmo valor e período até ser cancelada. Gerencie ou cancele quando quiser no Google Play, em Pagamentos e assinaturas.</string>
+    <string name="paywall_notice_owned_play">Esta assinatura do Google Play já está vinculada a outra conta do Saqz. Entre com essa conta ou use outra conta Google.</string>
+    <string name="paywall_notice_confirmation_play">O Google Play confirmou a compra, mas o Saqz ainda não liberou o acesso. Tente confirmar de novo em instantes.</string>
+    <string name="paywall_notice_nothing_play">Nenhuma assinatura ativa encontrada nesta conta Google.</string>
 </resources>

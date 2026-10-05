@@ -314,6 +314,7 @@ private class LifecycleCompositionFactory(
                 override fun setUserProperty(name: String, value: String?) = Unit
             },
             appStorePurchases = null,
+            googlePlayPurchases = null,
             environment = "dev",
             apiBaseUrl = "http://127.0.0.1:1",
             access = AccessRuntimeDependencies(

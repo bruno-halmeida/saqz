@@ -41,6 +41,14 @@ class AppStoreDeletionNoticeViewModelTest {
     }
 
     @Test
+    fun `renewing google play subscription warns and says which store`() = runTest {
+        val gateway = Gateway(SaqzResult.Success(subscription(SubscriptionProvider.GooglePlay, autoRenew = true)))
+        val state = AppStoreDeletionNoticeViewModel(gateway).state.value
+        assertTrue(state.visible)
+        kotlin.test.assertEquals(SubscriptionProvider.GooglePlay, state.store)
+    }
+
+    @Test
     fun `web subscription or canceled renewal or no subscription show no warning`() = runTest {
         assertFalse(AppStoreDeletionNoticeViewModel(Gateway(SaqzResult.Success(subscription(SubscriptionProvider.Asaas, null)))).state.value.visible)
         assertFalse(AppStoreDeletionNoticeViewModel(Gateway(SaqzResult.Success(subscription(SubscriptionProvider.AppStore, false)))).state.value.visible)

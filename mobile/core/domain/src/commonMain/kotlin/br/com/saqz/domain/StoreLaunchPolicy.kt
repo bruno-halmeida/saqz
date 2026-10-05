@@ -10,6 +10,12 @@ object StoreLaunchPolicy {
      * desligar aqui volta o iOS ao portão de assinatura sem compra.
      */
     const val appStorePurchases = true
+
+    /**
+     * Assinatura pelo Google Play (Play Billing). Só vale onde existe o port nativo, ou seja,
+     * no Android; desligar aqui volta o Android ao portão de assinatura sem compra.
+     */
+    const val googlePlayPurchases = true
     const val chat = false
     const val receivables = false
 
