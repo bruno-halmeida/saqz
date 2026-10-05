@@ -47,6 +47,8 @@
 		F09200000000000000000001 /* IOSAnalyticsSink.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09200000000000000000002 /* IOSAnalyticsSink.swift */; };
 		F09200000000000000000003 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = F09200000000000000000004 /* FirebaseAnalyticsCore */; };
 		F09300000000000000000003 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = F09300000000000000000004 /* FirebaseCrashlytics */; };
+		F09400000000000000000001 /* IOSAppStorePurchases.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09400000000000000000002 /* IOSAppStorePurchases.swift */; };
+		F09400000000000000000003 /* IOSAppStorePurchasesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09400000000000000000004 /* IOSAppStorePurchasesTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -127,6 +129,9 @@
 		F09000000000000000000002 /* IOSReceiptDocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSReceiptDocumentPicker.swift; sourceTree = "<group>"; };
 		F09100000000000000000002 /* IOSNotificationPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSNotificationPort.swift; sourceTree = "<group>"; };
 		F09200000000000000000002 /* IOSAnalyticsSink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAnalyticsSink.swift; sourceTree = "<group>"; };
+		F09400000000000000000002 /* IOSAppStorePurchases.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAppStorePurchases.swift; sourceTree = "<group>"; };
+		F09400000000000000000004 /* IOSAppStorePurchasesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAppStorePurchasesTests.swift; sourceTree = "<group>"; };
+		F09400000000000000000005 /* Saqz.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Saqz.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -193,6 +198,8 @@
 				F09000000000000000000002 /* IOSReceiptDocumentPicker.swift */,
 				F09100000000000000000002 /* IOSNotificationPort.swift */,
 				F09200000000000000000002 /* IOSAnalyticsSink.swift */,
+				F09400000000000000000002 /* IOSAppStorePurchases.swift */,
+				F09400000000000000000005 /* Saqz.storekit */,
 				E90000000000000000000011 /* GroupsInvite/IOSInviteAdapters.swift */,
 				A30000000000000000000013 /* SaqzIOS.entitlements */,
 				A10000000000000000000018 /* Assets.xcassets */,
@@ -245,6 +252,7 @@
 				C70000000000000000000012 /* IOSGroupDraftAdaptersTests.swift */,
 				E90000000000000000000012 /* IOSInviteUrlStoreTests.swift */,
 				D80000000000000000000012 /* IOSProfilePhotoAdapterTests.swift */,
+				F09400000000000000000004 /* IOSAppStorePurchasesTests.swift */,
 			);
 			path = SaqzIOSTests;
 			sourceTree = "<group>";
@@ -508,6 +516,7 @@
 				F09000000000000000000001 /* IOSReceiptDocumentPicker.swift in Sources */,
 				F09100000000000000000001 /* IOSNotificationPort.swift in Sources */,
 				F09200000000000000000001 /* IOSAnalyticsSink.swift in Sources */,
+				F09400000000000000000001 /* IOSAppStorePurchases.swift in Sources */,
 				E90000000000000000000001 /* GroupsInvite/IOSInviteAdapters.swift in Sources */,
 				EE0000000000000000000012 /* SaqzGameAttributes.swift in Sources */,
 			);
@@ -539,6 +548,7 @@
 				C70000000000000000000002 /* IOSGroupDraftAdaptersTests.swift in Sources */,
 				E90000000000000000000002 /* IOSInviteUrlStoreTests.swift in Sources */,
 				D80000000000000000000002 /* IOSProfilePhotoAdapterTests.swift in Sources */,
+				F09400000000000000000003 /* IOSAppStorePurchasesTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

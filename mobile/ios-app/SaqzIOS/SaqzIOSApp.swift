@@ -26,6 +26,7 @@ struct IOSAppComposition {
     let attendanceShare: IOSAttendanceShareAdapter
     let photos: IOSGroupPhotoAdapters
     let drafts: IOSGroupDraftAdapters
+    let appStore: IOSAppStorePurchases
     let dependencies: SaqzPlatformDependencies
 
     static func makeLive(configuration: IOSAppConfiguration = .bundled()) -> IOSAppComposition {
@@ -40,7 +41,9 @@ struct IOSAppComposition {
         let inviteShare = IOSInviteShareAdapter(presenter: { IOSPresentationRoot.current })
         let photos = IOSGroupPhotoAdapters.makeLive(presenter: { IOSPresentationRoot.current })
         let drafts = IOSGroupDraftAdapters.makeLive()
-        return make(configuration: configuration, auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, inviteUrlStore: inviteUrlStore, inviteShare: inviteShare, photos: photos, drafts: drafts)
+        // Criado na abertura do app: o listener de `Transaction.updates` não pode esperar a tela.
+        let appStore = IOSAppStorePurchases(client: LiveAppStoreClient())
+        return make(configuration: configuration, auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, inviteUrlStore: inviteUrlStore, inviteShare: inviteShare, photos: photos, drafts: drafts, appStore: appStore)
     }
 
     static func make(
@@ -54,7 +57,8 @@ struct IOSAppComposition {
         inviteUrlStore: IOSInviteUrlStore,
         inviteShare: IOSInviteShareAdapter,
         photos: IOSGroupPhotoAdapters,
-        drafts: IOSGroupDraftAdapters
+        drafts: IOSGroupDraftAdapters,
+        appStore: IOSAppStorePurchases
     ) -> IOSAppComposition {
         let profilePhoto = IOSProfilePhotoAdapter(selection: photos.selection, encoder: photos.encoder)
         let dependencies = SaqzPlatformDependencies(
@@ -91,9 +95,10 @@ struct IOSAppComposition {
             ),
             notifications: IOSNotificationPort(),
             financialDocuments: IOSReceiptDocumentPicker(presenter: { IOSPresentationRoot.current }),
-            analytics: IOSAnalyticsSink()
+            analytics: IOSAnalyticsSink(),
+            appStorePurchases: appStore
         )
-        return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, photos: photos, drafts: drafts, dependencies: dependencies)
+        return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, photos: photos, drafts: drafts, appStore: appStore, dependencies: dependencies)
     }
 }
 

@@ -37,6 +37,11 @@ final class IOSAppCompositionTests: XCTestCase {
         XCTAssertTrue((composition.dependencies.drafts.expenseDrafts as AnyObject) === composition.drafts.expense)
     }
 
+    func testCompositionInjectsExactAppStorePort() {
+        let composition = makeFixture().composition
+        XCTAssertTrue((composition.dependencies.appStorePurchases as AnyObject) === composition.appStore)
+    }
+
     func testInviteReceivedBeforeListenerSurvivesComposition() {
         let fixture = makeFixture(); fixture.composition.links.onOpenURL(URL(string: "https://links.saqz.app/invite?saqz_invite=\(Self.code)")!)
         let listener = RecordingInviteListener(); _ = fixture.composition.dependencies.groups.links.start(listener_: listener)
@@ -83,7 +88,8 @@ final class IOSAppCompositionTests: XCTestCase {
             configuration: IOSAppConfiguration(environment: "dev", apiBaseURL: "http://127.0.0.1:8080"),
             auth: auth, links: links, localState: local, groupState: groupState,
             share: shareAdapter, attendanceShare: attendanceShare, inviteUrlStore: inviteUrlStore,
-            inviteShare: inviteShare, photos: photos, drafts: drafts
+            inviteShare: inviteShare, photos: photos, drafts: drafts,
+            appStore: IOSAppStorePurchases(client: FakeAppStoreClient())
         )
         return Fixture(composition: composition, google: google)
     }

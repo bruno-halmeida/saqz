@@ -1,0 +1,172 @@
+{
+  "appPolicies": {
+    "eula": "",
+    "policies": [
+      {
+        "locale": "pt_BR",
+        "policyText": "",
+        "policyURL": "https://saqz.app/privacidade/"
+      }
+    ]
+  },
+  "identifier": "5A9C1E2B",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "pt_BR",
+    "_storefront": "BRA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [
+    {
+      "id": "21800001",
+      "localizations": [
+        {
+          "description": "Assinatura do Saqz",
+          "displayName": "Saqz",
+          "locale": "pt_BR"
+        }
+      ],
+      "name": "Saqz",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "89.90",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "6800000001",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Grupos ilimitados, vários administradores e relatórios.",
+              "displayName": "Ilimitado mensal",
+              "locale": "pt_BR"
+            }
+          ],
+          "productID": "app.saqz.ilimitado.mensal",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Ilimitado mensal",
+          "subscriptionGroupID": "21800001",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "809.10",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "6800000002",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Grupos ilimitados, vários administradores e relatórios.",
+              "displayName": "Ilimitado anual",
+              "locale": "pt_BR"
+            }
+          ],
+          "productID": "app.saqz.ilimitado.anual",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Ilimitado anual",
+          "subscriptionGroupID": "21800001",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "59.90",
+          "familyShareable": false,
+          "groupNumber": 2,
+          "internalID": "6800000003",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Até 3 grupos e atletas ilimitados.",
+              "displayName": "Organizador mensal",
+              "locale": "pt_BR"
+            }
+          ],
+          "productID": "app.saqz.organizador.mensal",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Organizador mensal",
+          "subscriptionGroupID": "21800001",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "539.10",
+          "familyShareable": false,
+          "groupNumber": 2,
+          "internalID": "6800000004",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Até 3 grupos e atletas ilimitados.",
+              "displayName": "Organizador anual",
+              "locale": "pt_BR"
+            }
+          ],
+          "productID": "app.saqz.organizador.anual",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Organizador anual",
+          "subscriptionGroupID": "21800001",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "39.90",
+          "familyShareable": false,
+          "groupNumber": 3,
+          "internalID": "6800000005",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "1 grupo com até 25 atletas.",
+              "displayName": "Titular mensal",
+              "locale": "pt_BR"
+            }
+          ],
+          "productID": "app.saqz.titular.mensal",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Titular mensal",
+          "subscriptionGroupID": "21800001",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "359.10",
+          "familyShareable": false,
+          "groupNumber": 3,
+          "internalID": "6800000006",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "1 grupo com até 25 atletas.",
+              "displayName": "Titular anual",
+              "locale": "pt_BR"
+            }
+          ],
+          "productID": "app.saqz.titular.anual",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Titular anual",
+          "subscriptionGroupID": "21800001",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 4,
+    "minor": 0
+  }
+}
