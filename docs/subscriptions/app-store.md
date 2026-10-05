@@ -154,3 +154,17 @@ as transações quando o usuário abre o app.
    Nas notas da revisão: a assinatura do Saqz é vendida pelo In-App Purchase; o
    pagamento de mensalidade dos grupos (quadra) é serviço presencial e está desligado
    nesta versão.
+
+## App (iOS)
+
+- O StoreKit 2 fica em `mobile/ios-app/SaqzIOS/IOSAppStorePurchases.swift`, atrás do
+  `AppStorePurchasesPort` (`:features:subscriptions:domain`). O Android passa `null`:
+  não vende pela loja.
+- `AppStoreTransactionSync` (`:features:subscriptions:presentation`) aplica a tabela de
+  `finish()` acima e reentrega `Transaction.unfinished` a cada login.
+- A tela de compra substitui o portão de assinatura quando há produtos; sem produtos,
+  sem permissão de compra no aparelho ou com assinatura web ativa, o portão de antes
+  volta. `StoreLaunchPolicy.appStorePurchases = false` desliga a compra no iOS.
+- Local: o scheme **SaqzDev** usa `SaqzIOS/Saqz.storekit` (preços só de referência) e o
+  backend de dev precisa aceitar `XCODE` em `SAQZ_APP_STORE_ENVIRONMENTS`. Os schemes de
+  produção usam o sandbox da App Store, com testador sandbox.
