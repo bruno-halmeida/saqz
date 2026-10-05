@@ -15,6 +15,7 @@ import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcCouponRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionsTransactionRunner
 import br.com.saqz.subscriptions.application.AppStoreSubscriptionRepository
+import br.com.saqz.subscriptions.application.GooglePlaySubscriptionRepository
 import br.com.saqz.subscriptions.application.CouponRepository
 import br.com.saqz.subscriptions.application.GetMySubscription
 import br.com.saqz.subscriptions.application.ListPlans
@@ -57,12 +58,14 @@ class SubscriptionsReadConfiguration {
         clock: Clock,
         recoverUnconfirmed: ObjectProvider<RecoverUnconfirmedPayment>,
         appStoreSubscriptions: AppStoreSubscriptionRepository,
+        googlePlaySubscriptions: GooglePlaySubscriptionRepository,
     ) = GetMySubscription(
         subscriptions,
         ownedGroups,
         clock,
         recoverUnconfirmed.getIfAvailable(),
         appStoreSubscriptions,
+        googlePlaySubscriptions,
     )
 
     @Bean

@@ -21,6 +21,7 @@ class ListReceipts(
     private val events: SubscriptionEventStore,
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
     private val appStoreSubscriptions: AppStoreSubscriptionRepository? = null,
+    private val googlePlaySubscriptions: GooglePlaySubscriptionRepository? = null,
 ) {
     /**
      * Lists receipts already scoped by owner in SQL. Historical rows without an owner are
@@ -39,10 +40,12 @@ class ListReceipts(
         if (limit <= 0 || offset < 0) {
             throw InvalidReceiptPaginationException()
         }
-        val appStore = appStoreSubscriptions?.listTransactionsForOwner(ownerUserId, limit + offset).orEmpty()
-        if (appStore.isEmpty()) return asaasReceipts(ownerUserId, limit, offset)
-        // Duas fontes: busca as primeiras `limit + offset` de cada uma e pagina depois de juntar.
-        return (asaasReceipts(ownerUserId, limit + offset, 0) + appStore.map { it.toReceipt() })
+        val stores = appStoreSubscriptions?.listTransactionsForOwner(ownerUserId, limit + offset).orEmpty()
+            .map { it.toReceipt() } +
+            googlePlaySubscriptions?.listOrdersForOwner(ownerUserId, limit + offset).orEmpty().map { it.toReceipt() }
+        if (stores.isEmpty()) return asaasReceipts(ownerUserId, limit, offset)
+        // Várias fontes: busca as primeiras `limit + offset` de cada uma e pagina depois de juntar.
+        return (asaasReceipts(ownerUserId, limit + offset, 0) + stores)
             .sortedByDescending { it.confirmedAt ?: it.processedAt }
             .drop(offset)
             .take(limit)
@@ -52,6 +55,15 @@ class ListReceipts(
         events.listProcessedByTypesForOwner(CONFIRMING_EVENT_TYPES, ownerUserId, limit, offset)
             .mapNotNull { event -> parseReceipt(event.asaasEventId, event.payload, event.processedAt) }
             .distinctBy { it.asaasPaymentId ?: it.asaasEventId }
+
+    /** O app lê `asaasEventId` como id do recibo; no Google Play é o order id, sem preço na API. */
+    private fun GooglePlayOrderRecord.toReceipt() = Receipt(
+        asaasEventId = orderId,
+        asaasPaymentId = null,
+        valueCents = null,
+        confirmedAt = recordedAt,
+        processedAt = recordedAt,
+    )
 
     /** O app lê `asaasEventId` como id do recibo; na App Store é o transaction ID. */
     private fun AppStoreTransactionRecord.toReceipt() = Receipt(

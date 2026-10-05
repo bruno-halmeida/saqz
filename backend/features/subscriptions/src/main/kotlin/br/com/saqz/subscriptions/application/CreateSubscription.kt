@@ -67,6 +67,7 @@ class CreateSubscription(
     private val usageLookup: OwnerPlanUsageLookup,
     private val creditCardTokens: CreditCardTokenStore = CreditCardTokenStore { _, _, _, _ -> },
     private val appStoreSubscriptions: AppStoreSubscriptionRepository? = null,
+    private val googlePlaySubscriptions: GooglePlaySubscriptionRepository? = null,
 ) {
     private val recoverUnconfirmed = RecoverUnconfirmedPayment(
         subscriptions,
@@ -87,8 +88,11 @@ class CreateSubscription(
         }
 
         val now = clock.instant()
-        // Assinante pela App Store não compra de novo na web: seriam duas cobranças pelo mesmo acesso.
-        if (appStoreSubscriptions?.findByOwner(command.ownerUserId)?.any { it.isEntitlingAt(now) } == true) {
+        // Assinante pela App Store ou pelo Google Play não compra de novo na web: seriam duas
+        // cobranças pelo mesmo acesso.
+        if (appStoreSubscriptions?.findByOwner(command.ownerUserId)?.any { it.isEntitlingAt(now) } == true ||
+            googlePlaySubscriptions?.findByOwner(command.ownerUserId)?.any { it.isEntitlingAt(now) } == true
+        ) {
             return CreateSubscriptionResult.AlreadySubscribed
         }
 

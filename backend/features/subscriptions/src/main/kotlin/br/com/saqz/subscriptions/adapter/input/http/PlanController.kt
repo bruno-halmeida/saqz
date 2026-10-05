@@ -17,6 +17,13 @@ data class PlanResponse(
     val reports: Boolean,
     val whatsappSla: Boolean,
     val appStoreProductIds: AppStoreProductIdsResponse,
+    val googlePlay: GooglePlayProductResponse,
+)
+
+data class GooglePlayProductResponse(
+    val productId: String,
+    val monthlyBasePlanId: String,
+    val annualBasePlanId: String,
 )
 
 data class AppStoreProductIdsResponse(
@@ -45,5 +52,10 @@ private fun PlanCatalogItem.toResponse() = PlanResponse(
     appStoreProductIds = AppStoreProductIdsResponse(
         monthly = appStoreMonthlyProductId,
         annual = appStoreAnnualProductId,
+    ),
+    googlePlay = GooglePlayProductResponse(
+        productId = googlePlayProductId,
+        monthlyBasePlanId = googlePlayMonthlyBasePlanId,
+        annualBasePlanId = googlePlayAnnualBasePlanId,
     ),
 )

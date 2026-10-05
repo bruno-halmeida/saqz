@@ -13,6 +13,7 @@ import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcCreditCardTokenStore
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionEventStore
 import br.com.saqz.subscriptions.application.AppStoreSubscriptionRepository
 import br.com.saqz.subscriptions.application.AsaasGateway
+import br.com.saqz.subscriptions.application.GooglePlaySubscriptionRepository
 import br.com.saqz.subscriptions.application.AsaasIdempotencyStore
 import br.com.saqz.subscriptions.application.CancelSubscription
 import br.com.saqz.subscriptions.application.ChangePlan
@@ -114,6 +115,7 @@ class AsaasWebhookConfiguration {
         creditCardTokens: CreditCardTokenStore,
         usageLookup: OwnerPlanUsageLookup,
         appStoreSubscriptions: AppStoreSubscriptionRepository,
+        googlePlaySubscriptions: GooglePlaySubscriptionRepository,
     ) = CreateSubscription(
         subscriptions,
         coupons,
@@ -123,6 +125,7 @@ class AsaasWebhookConfiguration {
         usageLookup,
         creditCardTokens,
         appStoreSubscriptions,
+        googlePlaySubscriptions,
     )
 
     @Bean
@@ -147,7 +150,12 @@ class AsaasWebhookConfiguration {
     fun listReceipts(
         events: SubscriptionEventStore,
         appStoreSubscriptions: AppStoreSubscriptionRepository,
-    ) = ListReceipts(events, appStoreSubscriptions = appStoreSubscriptions)
+        googlePlaySubscriptions: GooglePlaySubscriptionRepository,
+    ) = ListReceipts(
+        events,
+        appStoreSubscriptions = appStoreSubscriptions,
+        googlePlaySubscriptions = googlePlaySubscriptions,
+    )
 
     @Bean
     fun subscriptionCommandController(

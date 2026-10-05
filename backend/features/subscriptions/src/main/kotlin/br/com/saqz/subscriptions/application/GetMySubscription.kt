@@ -2,6 +2,8 @@ package br.com.saqz.subscriptions.application
 
 import br.com.saqz.sharedkernel.subscription.OwnedGroupCounter
 import br.com.saqz.subscriptions.domain.AppStoreSubscription
+import br.com.saqz.subscriptions.domain.GooglePlayState
+import br.com.saqz.subscriptions.domain.GooglePlaySubscription
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.Subscription
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
@@ -32,7 +34,7 @@ data class MySubscriptionView(
     val pastDueSince: Instant?,
     val canceledAt: Instant?,
     val provider: SubscriptionProvider = SubscriptionProvider.ASAAS,
-    /** Renovação automática da App Store; nulo para o Asaas e antes da primeira notificação. */
+    /** Renovação automática da loja (App Store ou Google Play); nulo para o Asaas. */
     val autoRenew: Boolean? = null,
 )
 
@@ -47,26 +49,29 @@ class GetMySubscription(
     private val clock: Clock = Clock.systemUTC(),
     private val recoverUnconfirmed: RecoverUnconfirmedPayment? = null,
     private val appStoreSubscriptions: AppStoreSubscriptionRepository? = null,
+    private val googlePlaySubscriptions: GooglePlaySubscriptionRepository? = null,
 ) {
+    private class Candidate(val entitled: Boolean, val periodEnd: Instant, val view: () -> MySubscriptionView)
+
     /**
-     * Com assinatura na web e na App Store, mostra a que dá acesso — a da App Store se as duas
-     * dão. Sem acesso por nenhuma, mostra a que venceu por último.
+     * Com assinatura em mais de um lugar, mostra a que dá acesso — a de loja (App Store ou Google
+     * Play) antes da web. Sem acesso por nenhuma, mostra a que venceu por último; no empate, a web.
      */
     fun execute(ownerUserId: UUID): GetMySubscriptionResult {
         val now = clock.instant()
-        val appStore = appStoreSubscriptions?.findByOwner(ownerUserId).orEmpty()
-        appStore.filter { it.isEntitlingAt(now) }.maxByOrNull { it.expiresAt }?.let {
-            return GetMySubscriptionResult.Found(appStoreView(ownerUserId, it, now))
+        val stores = appStoreSubscriptions?.findByOwner(ownerUserId).orEmpty().map {
+            Candidate(it.isEntitlingAt(now), it.expiresAt) { appStoreView(ownerUserId, it, now) }
+        } + googlePlaySubscriptions?.findByOwner(ownerUserId).orEmpty().map {
+            Candidate(it.isEntitlingAt(now), it.expiresAt) { googlePlayView(ownerUserId, it, now) }
         }
-        val latestAppStore = appStore.maxByOrNull { it.expiresAt }
-        val asaas = subscriptions.findByOwnerUserId(ownerUserId)?.let(::recoverIfNeeded)
-        val view = when {
-            asaas == null -> latestAppStore?.let { appStoreView(ownerUserId, it, now) }
-            latestAppStore == null || asaas.isEntitlingAt(now) ||
-                !latestAppStore.expiresAt.isAfter(asaas.currentPeriodEnd) -> asaasView(ownerUserId, asaas, now)
-            else -> appStoreView(ownerUserId, latestAppStore, now)
+        stores.filter { it.entitled }.maxByOrNull { it.periodEnd }?.let {
+            return GetMySubscriptionResult.Found(it.view())
         }
-        return view?.let(GetMySubscriptionResult::Found) ?: GetMySubscriptionResult.NotFound
+        val asaas = subscriptions.findByOwnerUserId(ownerUserId)?.let(::recoverIfNeeded)?.let {
+            Candidate(it.isEntitlingAt(now), it.currentPeriodEnd) { asaasView(ownerUserId, it, now) }
+        }
+        val chosen = asaas?.takeIf { it.entitled } ?: (listOfNotNull(asaas) + stores).maxByOrNull { it.periodEnd }
+        return chosen?.let { GetMySubscriptionResult.Found(it.view()) } ?: GetMySubscriptionResult.NotFound
     }
 
     private fun asaasView(ownerUserId: UUID, subscription: Subscription, now: Instant) = MySubscriptionView(
@@ -115,6 +120,41 @@ class GetMySubscription(
             pastDueSince = pastDueSince,
             canceledAt = canceledAt,
             provider = SubscriptionProvider.APP_STORE,
+            autoRenew = subscription.autoRenew,
+        )
+    }
+
+    /** Tabela de estados em docs/subscriptions/google-play.md. */
+    private fun googlePlayView(ownerUserId: UUID, subscription: GooglePlaySubscription, now: Instant): MySubscriptionView {
+        val status = when {
+            subscription.supersededAt != null -> SubscriptionStatus.CANCELED
+            else -> when (subscription.state) {
+                GooglePlayState.ACTIVE -> SubscriptionStatus.ACTIVE
+                GooglePlayState.IN_GRACE_PERIOD, GooglePlayState.ON_HOLD, GooglePlayState.PAUSED -> SubscriptionStatus.PAST_DUE
+                GooglePlayState.CANCELED, GooglePlayState.EXPIRED,
+                GooglePlayState.PENDING, GooglePlayState.PENDING_PURCHASE_CANCELED -> SubscriptionStatus.CANCELED
+            }
+        }
+        val pastDueSince = subscription.expiresAt.takeIf { status == SubscriptionStatus.PAST_DUE }
+        val canceledAt = if (status == SubscriptionStatus.CANCELED) {
+            subscription.canceledAt ?: subscription.supersededAt ?: subscription.expiresAt
+        } else {
+            null
+        }
+        return MySubscriptionView(
+            status = status,
+            entitled = subscription.isEntitlingAt(now),
+            plan = subscription.product.plan,
+            cycle = subscription.product.cycle,
+            pendingPlan = null,
+            pendingPlanEffectiveAt = null,
+            currentPeriodEnd = subscription.expiresAt,
+            paymentMethod = null,
+            usage = usageFor(ownerUserId, subscription.product.plan, null),
+            readOnly = isReadOnly(status, pastDueSince, canceledAt, now),
+            pastDueSince = pastDueSince,
+            canceledAt = canceledAt,
+            provider = SubscriptionProvider.GOOGLE_PLAY,
             autoRenew = subscription.autoRenew,
         )
     }

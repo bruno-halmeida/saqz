@@ -15,6 +15,7 @@ class JdbcPaidSubscriptionHistory(dataSource: DataSource) : PaidSubscriptionHist
         OR EXISTS (SELECT 1 FROM subscription_events WHERE owner_user_id = :owner
             AND processed_at IS NOT NULL AND type IN ('PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'))
         OR EXISTS (SELECT 1 FROM app_store_transactions WHERE owner_user_id = :owner)
+        OR EXISTS (SELECT 1 FROM google_play_orders WHERE owner_user_id = :owner)
         """.trimIndent(),
     ).param("owner", ownerId).query(Boolean::class.java).single()
 }

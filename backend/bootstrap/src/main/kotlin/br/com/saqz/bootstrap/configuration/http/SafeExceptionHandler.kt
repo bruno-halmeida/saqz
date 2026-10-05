@@ -53,6 +53,9 @@ import br.com.saqz.subscriptions.adapter.input.http.AppStoreNotificationInvalidE
 import br.com.saqz.subscriptions.adapter.input.http.AppStoreTransactionInvalidException
 import br.com.saqz.subscriptions.adapter.input.http.AppStoreTransactionOwnedByAnotherAccountException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookSubscriptionNotReadyException
+import br.com.saqz.subscriptions.adapter.input.http.GooglePlayNotificationUnauthorizedException
+import br.com.saqz.subscriptions.adapter.input.http.GooglePlayPurchaseInvalidException
+import br.com.saqz.subscriptions.adapter.input.http.GooglePlayPurchaseOwnedByAnotherAccountException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookUnauthorizedException
 import br.com.saqz.subscriptions.adapter.input.http.CheckoutLoginTokenInvalidException
 import br.com.saqz.subscriptions.adapter.input.http.CouponAlreadyRedeemedException
@@ -67,6 +70,7 @@ import br.com.saqz.subscriptions.adapter.input.http.SubscriptionConflictExceptio
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionNotFoundException
 import br.com.saqz.subscriptions.application.AppStoreVerificationUnavailableException
 import br.com.saqz.subscriptions.application.CheckoutIdentityUnavailable
+import br.com.saqz.subscriptions.application.GooglePlayUnavailableException
 import br.com.saqz.subscriptions.application.InvalidReceiptPaginationException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
@@ -502,6 +506,27 @@ class SafeExceptionHandler(
     @ExceptionHandler(AppStoreVerificationUnavailableException::class)
     fun appStoreVerificationUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 503)
+    }
+
+    @ExceptionHandler(GooglePlayNotificationUnauthorizedException::class)
+    fun googlePlayNotificationUnauthorized(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
+    }
+
+    /** 503: o app reenvia a compra na próxima abertura e o Pub/Sub reenvia a notificação. */
+    @ExceptionHandler(GooglePlayUnavailableException::class)
+    fun googlePlayUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 503)
+    }
+
+    @ExceptionHandler(GooglePlayPurchaseInvalidException::class)
+    fun googlePlayPurchaseInvalid(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 422, ErrorCode.GOOGLE_PLAY_PURCHASE_INVALID)
+    }
+
+    @ExceptionHandler(GooglePlayPurchaseOwnedByAnotherAccountException::class)
+    fun googlePlayPurchaseOwnedByAnotherAccount(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.GOOGLE_PLAY_PURCHASE_OWNED_BY_ANOTHER_ACCOUNT)
     }
 
     @ExceptionHandler(AppStoreTransactionInvalidException::class)

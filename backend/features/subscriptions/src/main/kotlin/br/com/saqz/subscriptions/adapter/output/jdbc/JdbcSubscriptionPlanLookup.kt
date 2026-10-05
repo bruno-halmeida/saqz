@@ -16,7 +16,7 @@ class JdbcSubscriptionPlanLookup(dataSource: DataSource) : SubscriptionPlanLooku
     ).param("owner", ownerId).query { result, _ -> Plan.valueOf(result.getString("plan")) }.optional().orElse(null)
 
     /**
-     * Web (Asaas) ou App Store; com as duas, vale o plano maior (enum do Postgres ordena pela
+     * Web (Asaas), App Store ou Google Play; com mais de uma, vale o plano maior (enum do Postgres ordena pela
      * declaração: TITULAR < ORGANIZADOR < ILIMITADO).
      */
     override fun findEntitlingPlan(ownerId: UUID): EntitlingSubscription? = jdbc.sql(
@@ -45,6 +45,14 @@ class JdbcSubscriptionPlanLookup(dataSource: DataSource) : SubscriptionPlanLooku
             WHERE owner_user_id = :ownerId
               AND revoked_at IS NULL
               AND (expires_at > now() OR grace_period_expires_at > now())
+            UNION ALL
+            -- Espelho de GooglePlaySubscription.isEntitlingAt.
+            SELECT plan, NULL::subscription_plan AS pending_plan
+            FROM google_play_subscriptions
+            WHERE owner_user_id = :ownerId
+              AND superseded_at IS NULL
+              AND state IN ('ACTIVE', 'CANCELED', 'IN_GRACE_PERIOD')
+              AND expires_at > now()
         ) entitling
         ORDER BY plan DESC
         LIMIT 1
