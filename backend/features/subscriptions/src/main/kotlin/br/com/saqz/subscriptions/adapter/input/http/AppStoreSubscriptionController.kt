@@ -8,6 +8,8 @@ import br.com.saqz.subscriptions.application.ProcessAppStoreNotification
 import br.com.saqz.subscriptions.application.ProcessAppStoreNotificationResult
 import br.com.saqz.subscriptions.application.SubmitAppStoreTransaction
 import br.com.saqz.subscriptions.application.SubmitAppStoreTransactionResult
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
@@ -21,12 +23,12 @@ data class AppStoreAccountTokenResponse(
     val appAccountToken: UUID,
 )
 
-data class SubmitAppStoreTransactionRequest(
-    val signedTransaction: String? = null,
+data class SubmitAppStoreTransactionRequest @JsonCreator constructor(
+    @JsonProperty("signedTransaction") val signedTransaction: String?,
 )
 
-data class AppStoreNotificationRequest(
-    val signedPayload: String? = null,
+data class AppStoreNotificationRequest @JsonCreator constructor(
+    @JsonProperty("signedPayload") val signedPayload: String?,
 )
 
 class AppStoreTransactionInvalidException : RuntimeException()
