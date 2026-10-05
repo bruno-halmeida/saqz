@@ -146,13 +146,14 @@ as transações quando o usuário abre o app.
    duração de 1 mês ou 1 ano, preço em BRL, nome e descrição em pt-BR e o nível de
    cada um. Cada produto precisa de captura de tela da tela de compra e nota para a
    revisão. Sem oferta introdutória.
-3. **Notificações do servidor (V2):** em Informações do app → App Store Server
-   Notifications, URL de produção **e** de sandbox =
-   `https://api.saqz.app/webhooks/app-store`. Depois, pedir uma notificação de teste:
-   a API responde 200 e grava uma linha `TEST` em `app_store_notifications`.
-4. **Apple ID do app:** `6812743525`, já em `SAQZ_APP_STORE_APP_APPLE_ID` no
-   `deploy/k8s/overlays/prod/kustomization.yaml`. Vale depois de publicar o backend;
-   antes disso, compras reais em produção recebem 422.
+3. **Notificações do servidor (V2):** feito em 05/10/2026 — URL de produção **e** de
+   sandbox = `https://api.saqz.app/webhooks/app-store` (App Information → App Store
+   Server Notifications). O App Store Connect não tem botão de teste: a notificação de
+   teste só sai pela App Store Server API (exige chave de In-App Purchase). A primeira
+   compra sandbox comprova: uma linha `SUBSCRIBED` em `app_store_notifications`.
+4. **Apple ID do app:** `6812743525`, em `SAQZ_APP_STORE_APP_APPLE_ID` no
+   `deploy/k8s/overlays/prod/kustomization.yaml`. Em produção desde o backend `v.0.0.5`
+   (05/10/2026).
 5. **Testadores sandbox:** Usuários e Acesso → Sandbox, para testar no iPhone e no
    TestFlight.
 6. **Envio para revisão:** a primeira assinatura só vai junto de uma versão nova do
