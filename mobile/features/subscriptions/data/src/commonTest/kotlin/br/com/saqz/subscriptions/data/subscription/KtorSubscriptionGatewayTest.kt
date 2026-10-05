@@ -38,6 +38,35 @@ class KtorSubscriptionGatewayTest {
     }
 
     @Test
+    fun `my subscription without provider is a web subscription`() = runTest {
+        val value = success(gateway { json(MY_SUBSCRIPTION) }.mySubscription())
+
+        assertEquals(SubscriptionProvider.Asaas, value.provider)
+        assertNull(value.autoRenew)
+    }
+
+    @Test
+    fun `my subscription maps app store provider and auto renew`() = runTest {
+        val value = success(gateway { json(APP_STORE_SUBSCRIPTION) }.mySubscription())
+
+        assertEquals(SubscriptionProvider.AppStore, value.provider)
+        assertEquals(false, value.autoRenew)
+        assertEquals(SubscriptionStatus.Canceled, value.status)
+        assertTrue(value.entitled)
+    }
+
+    @Test
+    fun `list plans maps app store product ids`() = runTest {
+        val value = success(gateway { json(PLANS_WITH_APP_STORE) }.listPlans())
+
+        assertEquals(
+            AppStoreProductIds(monthly = "app.saqz.organizador.mensal", annual = "app.saqz.organizador.anual"),
+            value.single().appStoreProductIds,
+        )
+        assertNull(success(gateway { json(PLANS) }.listPlans()).first().appStoreProductIds)
+    }
+
+    @Test
     fun `list plans maps catalog items`() = runTest {
         val value = success(gateway { request ->
             assertEquals(HttpMethod.Get, request.method)
@@ -257,6 +286,8 @@ class KtorSubscriptionGatewayTest {
         const val CANCELED = """{"status":"CANCELED","canceledAt":"2026-08-01T00:00:00Z","currentPeriodEnd":"2026-08-30T00:00:00Z"}"""
         const val RECEIPTS = """{"receipts":[{"asaasEventId":"evt-1","asaasPaymentId":"pay-1","valueCents":4990,"confirmedAt":"2026-07-01T00:00:00Z","processedAt":"2026-07-01T00:05:00Z"}]}"""
         const val PLANS = """[{"id":"TITULAR","name":"TITULAR","monthlyPriceCents":3990,"annualPriceCents":35910,"maxGroups":1,"maxAthletes":25,"multiAdmin":false,"reports":false,"whatsappSla":false},{"id":"ORGANIZADOR","name":"ORGANIZADOR","monthlyPriceCents":5990,"annualPriceCents":53910,"maxGroups":3,"maxAthletes":null,"multiAdmin":false,"reports":false,"whatsappSla":false},{"id":"ILIMITADO","name":"ILIMITADO","monthlyPriceCents":8990,"annualPriceCents":80910,"maxGroups":null,"maxAthletes":null,"multiAdmin":true,"reports":true,"whatsappSla":true}]"""
+        const val APP_STORE_SUBSCRIPTION = """{"status":"CANCELED","entitled":true,"plan":"ORGANIZADOR","cycle":"ANNUAL","currentPeriodEnd":"2026-08-30T00:00:00Z","usage":{"groupsUsed":1,"groupsLimit":3},"readOnly":false,"canceledAt":"2026-08-01T00:00:00Z","provider":"APP_STORE","autoRenew":false}"""
+        const val PLANS_WITH_APP_STORE = """[{"id":"ORGANIZADOR","monthlyPriceCents":5990,"annualPriceCents":53910,"maxGroups":3,"maxAthletes":null,"multiAdmin":false,"reports":false,"whatsappSla":false,"appStoreProductIds":{"monthly":"app.saqz.organizador.mensal","annual":"app.saqz.organizador.anual"}}]"""
         const val CHANGE_PLAN_UPGRADE = """{"planId":"ORGANIZADOR","pendingPlanId":null,"pendingPlanEffectiveAt":null,"pendingUpgradePlanId":"ILIMITADO","status":"ACTIVE","chargedCents":1500,"pixCopyPaste":"000201PIX","invoiceUrl":"https://pay.example/inv","pixQrCodeBase64":"QR"}"""
     }
 }

@@ -20,6 +20,12 @@ internal enum class SubscriptionCycleTransport { MONTHLY, ANNUAL }
 internal enum class SubscriptionStatusTransport { ACTIVE, PAST_DUE, CANCELED }
 
 @Serializable
+internal enum class SubscriptionProviderTransport { ASAAS, APP_STORE }
+
+@Serializable
+internal data class AppStoreProductIdsTransport(val monthly: String, val annual: String)
+
+@Serializable
 internal data class SubscriptionUsageTransport(
     val groupsUsed: Int,
     val groupsLimit: Int? = null,
@@ -36,6 +42,9 @@ internal data class MySubscriptionTransport(
     val canceledAt: String? = null,
     val pendingPlan: PlanTransport? = null,
     val pendingPlanEffectiveAt: String? = null,
+    // Backend anterior à App Store não manda o campo: toda assinatura dele é da web.
+    val provider: SubscriptionProviderTransport = SubscriptionProviderTransport.ASAAS,
+    val autoRenew: Boolean? = null,
 )
 
 @Serializable
@@ -48,6 +57,7 @@ internal data class PlanCatalogItemTransport(
     val multiAdmin: Boolean,
     val reports: Boolean,
     val whatsappSla: Boolean,
+    val appStoreProductIds: AppStoreProductIdsTransport? = null,
 )
 
 @Serializable
@@ -141,7 +151,7 @@ private inline fun <T, R> NetworkResult<T>.mapSubscription(mapper: (T) -> R): Sa
         is NetworkResult.Success -> SaqzResult.Success(mapper(value))
     }
 
-private fun MySubscriptionTransport.toDomain() = MySubscription(
+internal fun MySubscriptionTransport.toDomain() = MySubscription(
     status = status.toDomain(),
     entitled = entitled,
     plan = plan.toDomain(),
@@ -151,6 +161,11 @@ private fun MySubscriptionTransport.toDomain() = MySubscription(
     canceledAt = canceledAt,
     pendingPlan = pendingPlan?.toDomain(),
     pendingPlanEffectiveAt = pendingPlanEffectiveAt,
+    provider = when (provider) {
+        SubscriptionProviderTransport.ASAAS -> SubscriptionProvider.Asaas
+        SubscriptionProviderTransport.APP_STORE -> SubscriptionProvider.AppStore
+    },
+    autoRenew = autoRenew,
 )
 
 private fun PlanCatalogItemTransport.toDomain() = PlanCatalogItem(
@@ -162,6 +177,7 @@ private fun PlanCatalogItemTransport.toDomain() = PlanCatalogItem(
     multiAdmin = multiAdmin,
     reports = reports,
     whatsappSla = whatsappSla,
+    appStoreProductIds = appStoreProductIds?.let { AppStoreProductIds(monthly = it.monthly, annual = it.annual) },
 )
 
 private fun ChangePlanTransport.toDomain() = ChangedPlan(
@@ -230,7 +246,7 @@ internal fun NetworkError.toSubscriptionError(): SubscriptionError = when (this)
     NetworkError.Unknown -> SubscriptionError.Data(DataError.Unknown)
 }
 
-private fun Int.toDataError() = when (this) {
+internal fun Int.toDataError() = when (this) {
     401 -> DataError.Unauthenticated
     403 -> DataError.Forbidden
     404 -> DataError.NotFound
