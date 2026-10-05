@@ -2,6 +2,7 @@ package br.com.saqz.subscriptions.adapter.output.appstore
 
 import br.com.saqz.subscriptions.application.AppStoreNotification
 import br.com.saqz.subscriptions.application.AppStoreSignedDataVerifier
+import br.com.saqz.subscriptions.application.AppStoreVerificationUnavailableException
 import br.com.saqz.subscriptions.domain.AppStoreEnvironment
 import br.com.saqz.subscriptions.domain.AppStoreRenewalInfo
 import br.com.saqz.subscriptions.domain.AppStoreTransaction
@@ -11,6 +12,7 @@ import com.apple.itunes.storekit.model.JWSRenewalInfoDecodedPayload
 import com.apple.itunes.storekit.model.JWSTransactionDecodedPayload
 import com.apple.itunes.storekit.verification.SignedDataVerifier
 import com.apple.itunes.storekit.verification.VerificationException
+import com.apple.itunes.storekit.verification.VerificationStatus
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
@@ -89,6 +91,9 @@ class AppleSignedDataVerifier(
     private fun <T> verified(what: String, block: () -> T): T? = try {
         block()
     } catch (failure: VerificationException) {
+        if (failure.status == VerificationStatus.RETRYABLE_VERIFICATION_FAILURE) {
+            throw AppStoreVerificationUnavailableException(failure)
+        }
         log.warn("App Store: {} recusada ({})", what, failure.status)
         null
     } catch (failure: IllegalArgumentException) {

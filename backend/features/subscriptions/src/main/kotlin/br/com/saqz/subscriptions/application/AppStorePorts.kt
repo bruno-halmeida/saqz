@@ -19,8 +19,15 @@ data class AppStoreNotification(
 )
 
 /**
+ * A verificação não conseguiu concluir agora (OCSP da Apple fora do ar). O dado pode ser válido:
+ * quem chamou deve falhar de forma que o app e a Apple tentem de novo, nunca recusar.
+ */
+class AppStoreVerificationUnavailableException(cause: Throwable) : RuntimeException(cause)
+
+/**
  * Verifica o JWS da Apple: cadeia de certificados até a raiz da Apple, assinatura, bundle id e
- * ambiente aceito. Null quando o dado não passa — nunca devolve conteúdo não verificado.
+ * ambiente aceito. Null quando o dado não passa — nunca devolve conteúdo não verificado. Lança
+ * [AppStoreVerificationUnavailableException] quando não deu para verificar agora.
  */
 interface AppStoreSignedDataVerifier {
     fun verifyTransaction(signedTransaction: String): AppStoreTransaction?

@@ -65,6 +65,7 @@ import br.com.saqz.subscriptions.adapter.input.http.InvalidSubscriptionRequestEx
 import br.com.saqz.subscriptions.adapter.input.http.PendingCheckoutMismatchException
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionConflictException
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionNotFoundException
+import br.com.saqz.subscriptions.application.AppStoreVerificationUnavailableException
 import br.com.saqz.subscriptions.application.CheckoutIdentityUnavailable
 import br.com.saqz.subscriptions.application.InvalidReceiptPaginationException
 import br.com.saqz.sharedkernel.ErrorCode
@@ -495,6 +496,12 @@ class SafeExceptionHandler(
     @ExceptionHandler(AppStoreNotificationInvalidException::class)
     fun appStoreNotificationInvalid(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
+    }
+
+    /** 503: o app não finaliza a transação e a Apple reenvia a notificação. */
+    @ExceptionHandler(AppStoreVerificationUnavailableException::class)
+    fun appStoreVerificationUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 503)
     }
 
     @ExceptionHandler(AppStoreTransactionInvalidException::class)
