@@ -38,4 +38,6 @@
     <string name="subscription_gate_not_authorized_message">Sua conta ainda não tem acesso a este recurso. Você pode continuar usando as demais funções disponíveis.</string>
     <string name="subscription_gate_authorized_title">Assinatura confirmada</string>
     <string name="subscription_gate_authorized_message">Acesso confirmado. Finalizando.</string>
+    <string name="appstore_deletion_notice">Sua assinatura do Saqz pela App Store continua sendo cobrada pela Apple até você cancelar. Excluir a conta não cancela a assinatura.</string>
+    <string name="appstore_deletion_manage">Gerenciar assinatura</string>
 </resources>

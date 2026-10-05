@@ -29,6 +29,7 @@ internal val composePresentationModule = module {
     factoryOf(::AccessOrchestrator) { bind<AccessRuntimeContract>() }
     viewModelOf(::AccessViewModel)
     viewModel { SubscriptionGateViewModel(get(), get(), get()) }
+    viewModel { br.com.saqz.composeapp.subscriptiongate.AppStoreDeletionNoticeViewModel(get()) }
     viewModel(qualifier = paidSubscriptionGateQualifier) {
         SubscriptionGateViewModel(PaidSubscriptionEntitlement(get()), get(), get())
     }

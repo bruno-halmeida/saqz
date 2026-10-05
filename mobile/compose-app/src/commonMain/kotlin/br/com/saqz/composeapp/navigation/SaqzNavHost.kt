@@ -568,6 +568,7 @@ internal fun SaqzNavHost(
             entry<ProfileRoute.DeleteAccount> {
                 br.com.saqz.profile.presentation.deletion.AccountDeletionRoot(
                     onBack = pop, onDeletionComplete = { onIntent(AccessIntent.ConfirmLogout) },
+                    notice = { br.com.saqz.composeapp.subscriptiongate.AppStoreDeletionNotice() },
                 )
             }
             entry<ProfileRoute.Exit> {

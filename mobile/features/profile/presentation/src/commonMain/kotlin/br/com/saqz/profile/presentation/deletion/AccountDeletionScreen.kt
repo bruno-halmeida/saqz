@@ -45,6 +45,8 @@ fun AccountDeletionScreen(
     onIntent: (AccountDeletionIntent) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Aviso de quem compõe a tela (a assinatura da App Store não acaba com a conta). */
+    notice: @Composable () -> Unit = {},
 ) {
     Column(modifier.fillMaxSize().background(SaqzTheme.colors.background).navigationBarsPadding().imePadding()) {
         SaqzTopAppBar(title = stringResource(Res.string.profile_delete_title), onBack = { if (!state.isBusy) onBack() })
@@ -68,6 +70,7 @@ fun AccountDeletionScreen(
                         stringResource(Res.string.profile_delete_retention),
                         color = SaqzTheme.colors.textSecondary, style = SaqzTheme.typography.support,
                     )
+                    notice()
                     Row(
                         Modifier.fillMaxWidth().testTag(AccountDeletionTags.Confirm).toggleable(
                             value = state.confirmed, enabled = !state.isBusy, role = Role.Checkbox,
