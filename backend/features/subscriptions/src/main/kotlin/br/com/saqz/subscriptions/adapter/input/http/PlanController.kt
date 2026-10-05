@@ -16,6 +16,12 @@ data class PlanResponse(
     val multiAdmin: Boolean,
     val reports: Boolean,
     val whatsappSla: Boolean,
+    val appStoreProductIds: AppStoreProductIdsResponse,
+)
+
+data class AppStoreProductIdsResponse(
+    val monthly: String,
+    val annual: String,
 )
 
 @RestController
@@ -36,4 +42,8 @@ private fun PlanCatalogItem.toResponse() = PlanResponse(
     multiAdmin = multiAdmin,
     reports = reports,
     whatsappSla = whatsappSla,
+    appStoreProductIds = AppStoreProductIdsResponse(
+        monthly = appStoreMonthlyProductId,
+        annual = appStoreAnnualProductId,
+    ),
 )

@@ -9,6 +9,9 @@ zonky-embedded-postgres = "2.1.0"
 zonky-postgres-binaries = "16.9.0"
 twelvemonkeys = "3.13.1"
 greenmail = "2.1.3"
+# Verificação de JWS da App Store (In-App Purchase). Bouncy Castle só nos testes, para a cadeia falsa.
+app-store-server-library = "5.2.0"
+bouncycastle = "1.84"
 
 [libraries]
 firebase-admin = { module = "com.google.firebase:firebase-admin", version.ref = "firebase-admin" }
@@ -25,6 +28,8 @@ spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-star
 spring-jdbc = { module = "org.springframework:spring-jdbc" }
 zonky-embedded-postgres = { module = "io.zonky.test:embedded-postgres", version.ref = "zonky-embedded-postgres" }
 zonky-postgres-binaries-bom = { module = "io.zonky.test.postgres:embedded-postgres-binaries-bom", version.ref = "zonky-postgres-binaries" }
+app-store-server-library = { module = "com.apple.itunes.storekit:app-store-server-library", version.ref = "app-store-server-library" }
+bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
 twelvemonkeys-imageio-webp = { module = "com.twelvemonkeys.imageio:imageio-webp", version.ref = "twelvemonkeys" }
 
 [plugins]

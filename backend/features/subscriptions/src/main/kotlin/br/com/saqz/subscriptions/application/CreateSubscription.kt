@@ -66,6 +66,7 @@ class CreateSubscription(
     private val clock: Clock,
     private val usageLookup: OwnerPlanUsageLookup,
     private val creditCardTokens: CreditCardTokenStore = CreditCardTokenStore { _, _, _, _ -> },
+    private val appStoreSubscriptions: AppStoreSubscriptionRepository? = null,
 ) {
     private val recoverUnconfirmed = RecoverUnconfirmedPayment(
         subscriptions,
@@ -86,6 +87,10 @@ class CreateSubscription(
         }
 
         val now = clock.instant()
+        // Assinante pela App Store não compra de novo na web: seriam duas cobranças pelo mesmo acesso.
+        if (appStoreSubscriptions?.findByOwner(command.ownerUserId)?.any { it.isEntitlingAt(now) } == true) {
+            return CreateSubscriptionResult.AlreadySubscribed
+        }
 
         // Commit local row first (Asaas side effects + insert/reactivate). Checkout is best-effort after.
         // Coupon resolution only runs for a genuinely new Asaas subscription (new or reactivated) — an

@@ -15,6 +15,7 @@ dependencies {
     implementation("org.springframework:spring-web")
     implementation("org.springframework:spring-tx")
     implementation(libs.spring.boot.starter.mail)
+    implementation(libs.app.store.server.library)
     implementation("org.springframework.security:spring-security-core")
     compileOnly("jakarta.servlet:jakarta.servlet-api")
 
@@ -26,6 +27,7 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(project(":postgres-testing"))
     testImplementation(libs.greenmail)
+    testImplementation(libs.bouncycastle.pkix)
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("org.springframework:spring-test")
     testImplementation("jakarta.servlet:jakarta.servlet-api")

@@ -20,6 +20,7 @@ data class Receipt(
 class ListReceipts(
     private val events: SubscriptionEventStore,
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
+    private val appStoreSubscriptions: AppStoreSubscriptionRepository? = null,
 ) {
     /**
      * Lists receipts already scoped by owner in SQL. Historical rows without an owner are
@@ -38,10 +39,28 @@ class ListReceipts(
         if (limit <= 0 || offset < 0) {
             throw InvalidReceiptPaginationException()
         }
-        return events.listProcessedByTypesForOwner(CONFIRMING_EVENT_TYPES, ownerUserId, limit, offset)
+        val appStore = appStoreSubscriptions?.listTransactionsForOwner(ownerUserId, limit + offset).orEmpty()
+        if (appStore.isEmpty()) return asaasReceipts(ownerUserId, limit, offset)
+        // Duas fontes: busca as primeiras `limit + offset` de cada uma e pagina depois de juntar.
+        return (asaasReceipts(ownerUserId, limit + offset, 0) + appStore.map { it.toReceipt() })
+            .sortedByDescending { it.confirmedAt ?: it.processedAt }
+            .drop(offset)
+            .take(limit)
+    }
+
+    private fun asaasReceipts(ownerUserId: UUID, limit: Int, offset: Int): List<Receipt> =
+        events.listProcessedByTypesForOwner(CONFIRMING_EVENT_TYPES, ownerUserId, limit, offset)
             .mapNotNull { event -> parseReceipt(event.asaasEventId, event.payload, event.processedAt) }
             .distinctBy { it.asaasPaymentId ?: it.asaasEventId }
-    }
+
+    /** O app lê `asaasEventId` como id do recibo; na App Store é o transaction ID. */
+    private fun AppStoreTransactionRecord.toReceipt() = Receipt(
+        asaasEventId = transactionId,
+        asaasPaymentId = null,
+        valueCents = priceMillis?.takeIf { currency == BRL }?.let { it / MILLIS_PER_CENT },
+        confirmedAt = purchaseDate,
+        processedAt = recordedAt,
+    )
 
     private fun parseReceipt(
         asaasEventId: String,
@@ -92,5 +111,7 @@ class ListReceipts(
 
     companion object {
         const val DEFAULT_LIMIT = 20
+        private const val BRL = "BRL"
+        private const val MILLIS_PER_CENT = 10L
     }
 }

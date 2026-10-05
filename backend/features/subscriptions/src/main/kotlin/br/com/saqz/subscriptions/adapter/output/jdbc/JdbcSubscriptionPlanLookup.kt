@@ -15,22 +15,39 @@ class JdbcSubscriptionPlanLookup(dataSource: DataSource) : SubscriptionPlanLooku
             AND status='PAST_DUE' AND first_confirmed_at IS NULL""",
     ).param("owner", ownerId).query { result, _ -> Plan.valueOf(result.getString("plan")) }.optional().orElse(null)
 
+    /**
+     * Web (Asaas) ou App Store; com as duas, vale o plano maior (enum do Postgres ordena pela
+     * declaração: TITULAR < ORGANIZADOR < ILIMITADO).
+     */
     override fun findEntitlingPlan(ownerId: UUID): EntitlingSubscription? = jdbc.sql(
         """
-        SELECT plan, pending_plan
-        FROM subscriptions
-        WHERE owner_user_id = :ownerId
-          AND (
-            status = 'ACTIVE'
-            -- Espelho de Subscription.isEntitlingAt/PAST_DUE_GRACE (7 dias): inadimplente
-            -- perde o acesso apos a carencia. past_due_since nulo = linha legada, preservada.
-            OR (
-              status = 'PAST_DUE'
-              AND first_confirmed_at IS NOT NULL
-              AND (past_due_since IS NULL OR past_due_since > now() - interval '7 days')
-            )
-            OR (status = 'CANCELED' AND first_confirmed_at IS NOT NULL AND current_period_end > now())
-          )
+        SELECT plan, pending_plan FROM (
+            SELECT plan, pending_plan
+            FROM subscriptions
+            WHERE owner_user_id = :ownerId
+              AND (
+                status = 'ACTIVE'
+                -- Espelho de Subscription.isEntitlingAt/PAST_DUE_GRACE (7 dias): inadimplente
+                -- perde o acesso apos a carencia. past_due_since nulo = linha legada, preservada.
+                OR (
+                  status = 'PAST_DUE'
+                  AND first_confirmed_at IS NOT NULL
+                  AND (past_due_since IS NULL OR past_due_since > now() - interval '7 days')
+                )
+                OR (status = 'CANCELED' AND first_confirmed_at IS NOT NULL AND current_period_end > now())
+              )
+            UNION ALL
+            -- Espelho de AppStoreSubscription.isEntitlingAt/pendingPlan.
+            SELECT plan,
+                   CASE WHEN auto_renew IS DISTINCT FROM false AND auto_renew_plan <> plan
+                        THEN auto_renew_plan END AS pending_plan
+            FROM app_store_subscriptions
+            WHERE owner_user_id = :ownerId
+              AND revoked_at IS NULL
+              AND (expires_at > now() OR grace_period_expires_at > now())
+        ) entitling
+        ORDER BY plan DESC
+        LIMIT 1
         """.trimIndent(),
     )
         .param("ownerId", ownerId)

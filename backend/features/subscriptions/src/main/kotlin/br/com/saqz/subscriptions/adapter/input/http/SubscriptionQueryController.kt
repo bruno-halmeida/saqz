@@ -9,6 +9,7 @@ import br.com.saqz.subscriptions.application.MySubscriptionView
 import br.com.saqz.subscriptions.application.SubscriptionUsage
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
+import br.com.saqz.subscriptions.domain.SubscriptionProvider
 import br.com.saqz.subscriptions.domain.SubscriptionStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
@@ -33,6 +34,8 @@ data class MySubscriptionResponse(
     val readOnly: Boolean,
     val pastDueSince: Instant?,
     val canceledAt: Instant?,
+    val provider: SubscriptionProvider,
+    val autoRenew: Boolean?,
 )
 
 class SubscriptionNotFoundException : RuntimeException()
@@ -52,7 +55,7 @@ class SubscriptionQueryController(
     }
 }
 
-private fun MySubscriptionView.toResponse() = MySubscriptionResponse(
+internal fun MySubscriptionView.toResponse() = MySubscriptionResponse(
     status = status,
     entitled = entitled,
     plan = plan,
@@ -65,6 +68,8 @@ private fun MySubscriptionView.toResponse() = MySubscriptionResponse(
     readOnly = readOnly,
     pastDueSince = pastDueSince,
     canceledAt = canceledAt,
+    provider = provider,
+    autoRenew = autoRenew,
 )
 
 private fun SubscriptionUsage.toResponse() = SubscriptionUsageResponse(

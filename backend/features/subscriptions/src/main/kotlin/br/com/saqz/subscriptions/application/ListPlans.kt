@@ -1,6 +1,8 @@
 package br.com.saqz.subscriptions.application
 
+import br.com.saqz.subscriptions.domain.AppStoreProduct
 import br.com.saqz.subscriptions.domain.Plan
+import br.com.saqz.subscriptions.domain.SubscriptionCycle
 
 data class PlanCatalogItem(
     val id: Plan,
@@ -12,6 +14,8 @@ data class PlanCatalogItem(
     val multiAdmin: Boolean,
     val reports: Boolean,
     val whatsappSla: Boolean,
+    val appStoreMonthlyProductId: String,
+    val appStoreAnnualProductId: String,
 )
 
 class ListPlans {
@@ -26,6 +30,8 @@ class ListPlans {
             multiAdmin = plan.multiAdmin,
             reports = plan.reports,
             whatsappSla = plan.whatsappSla,
+            appStoreMonthlyProductId = AppStoreProduct.of(plan, SubscriptionCycle.MONTHLY).productId,
+            appStoreAnnualProductId = AppStoreProduct.of(plan, SubscriptionCycle.ANNUAL).productId,
         )
     }
 }
