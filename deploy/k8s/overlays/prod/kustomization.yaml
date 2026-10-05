@@ -24,7 +24,7 @@ configMapGenerator:
       - SAQZ_ASAAS_BASE_URL=https://api.asaas.com/v3
       # Apple ID numerico do app (App Store Connect > Informacoes do app). Vazio = a API recusa
       # compras de producao da App Store; sandbox (revisao e TestFlight) segue aceito.
-      - SAQZ_APP_STORE_APP_APPLE_ID=
+      - SAQZ_APP_STORE_APP_APPLE_ID=6812743525
       - SAQZ_ADMINWEB_ORIGINS=
       - SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED=false
       - SAQZ_NOTIFICATIONS_REMINDER_ENABLED=true

@@ -10,18 +10,25 @@ verificada e das notificações da App Store.
 
 ## Produtos
 
-Um único grupo de assinatura, **Saqz**, com seis assinaturas auto-renováveis. O
-nível define upgrade e downgrade dentro do grupo: a Apple aplica upgrade na hora
-(com reembolso proporcional) e downgrade só na renovação.
+Um único grupo de assinatura, **saqz** (ID 22443325, nome exibido "Saqz"), com seis
+assinaturas auto-renováveis, todas só no Brasil. Anuais só na modalidade "1 Year
+Upfront" (o ano pago à vista); "Monthly with a 12-Month Commitment" fica desligada,
+porque o backend trata `anual` como cobrança anual.
 
-| Product ID | Plano | Ciclo | Nível no grupo |
-|---|---|---|---|
-| `app.saqz.ilimitado.mensal` | `ILIMITADO` | `MONTHLY` | 1 |
-| `app.saqz.ilimitado.anual` | `ILIMITADO` | `ANNUAL` | 1 |
-| `app.saqz.organizador.mensal` | `ORGANIZADOR` | `MONTHLY` | 2 |
-| `app.saqz.organizador.anual` | `ORGANIZADOR` | `ANNUAL` | 2 |
-| `app.saqz.titular.mensal` | `TITULAR` | `MONTHLY` | 3 |
-| `app.saqz.titular.anual` | `TITULAR` | `ANNUAL` | 3 |
+| Product ID | Plano | Ciclo | Preço | Nível no grupo |
+|---|---|---|---|---|
+| `app.saqz.ilimitado.mensal` | `ILIMITADO` | `MONTHLY` | R$ 89,90 | 1 |
+| `app.saqz.ilimitado.anual` | `ILIMITADO` | `ANNUAL` | R$ 809,90 | 2 |
+| `app.saqz.organizador.mensal` | `ORGANIZADOR` | `MONTHLY` | R$ 59,90 | 3 |
+| `app.saqz.organizador.anual` | `ORGANIZADOR` | `ANNUAL` | R$ 539,90 | 4 |
+| `app.saqz.titular.mensal` | `TITULAR` | `MONTHLY` | R$ 39,90 | 5 |
+| `app.saqz.titular.anual` | `TITULAR` | `ANNUAL` | R$ 359,90 | 6 |
+
+O nível define upgrade e downgrade: subir de nível vale na hora (com reembolso
+proporcional), descer vale na renovação. Hoje cada assinatura tem um nível próprio;
+o ideal é mensal e anual do mesmo plano no mesmo nível (arrastar uma sobre a outra em
+"Edit Level"). O backend não depende dos níveis. Os anuais da web (9 mensalidades)
+não existem na tabela de preços da Apple; ficou o ponto ",90" mais próximo.
 
 O mapeamento product ID → plano/ciclo existe só no backend e chega ao app por
 `GET /plans`. O preço exibido no app vem sempre do StoreKit (`displayPrice`),
@@ -143,9 +150,9 @@ as transações quando o usuário abre o app.
    Notifications, URL de produção **e** de sandbox =
    `https://api.saqz.app/webhooks/app-store`. Depois, pedir uma notificação de teste:
    a API responde 200 e grava uma linha `TEST` em `app_store_notifications`.
-4. **Apple ID do app:** copiar de Informações do app → Apple ID para
-   `SAQZ_APP_STORE_APP_APPLE_ID` em `deploy/k8s/overlays/prod/kustomization.yaml` e
-   publicar o backend. Antes disso, compras reais em produção recebem 422.
+4. **Apple ID do app:** `6812743525`, já em `SAQZ_APP_STORE_APP_APPLE_ID` no
+   `deploy/k8s/overlays/prod/kustomization.yaml`. Vale depois de publicar o backend;
+   antes disso, compras reais em produção recebem 422.
 5. **Testadores sandbox:** Usuários e Acesso → Sandbox, para testar no iPhone e no
    TestFlight.
 6. **Envio para revisão:** a primeira assinatura só vai junto de uma versão nova do
