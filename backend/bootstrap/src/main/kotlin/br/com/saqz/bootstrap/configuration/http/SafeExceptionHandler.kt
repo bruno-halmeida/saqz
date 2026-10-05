@@ -49,6 +49,9 @@ import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
 import br.com.saqz.groups.adapter.input.http.AttendanceFrozenException
 import br.com.saqz.groups.adapter.input.http.AttendanceHostNotGoingException
 import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
+import br.com.saqz.subscriptions.adapter.input.http.AppStoreNotificationInvalidException
+import br.com.saqz.subscriptions.adapter.input.http.AppStoreTransactionInvalidException
+import br.com.saqz.subscriptions.adapter.input.http.AppStoreTransactionOwnedByAnotherAccountException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookSubscriptionNotReadyException
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookUnauthorizedException
 import br.com.saqz.subscriptions.adapter.input.http.CheckoutLoginTokenInvalidException
@@ -487,6 +490,21 @@ class SafeExceptionHandler(
     @ExceptionHandler(AsaasWebhookSubscriptionNotReadyException::class)
     fun asaasWebhookSubscriptionNotReady(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 503)
+    }
+
+    @ExceptionHandler(AppStoreNotificationInvalidException::class)
+    fun appStoreNotificationInvalid(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
+    }
+
+    @ExceptionHandler(AppStoreTransactionInvalidException::class)
+    fun appStoreTransactionInvalid(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 422, ErrorCode.APP_STORE_TRANSACTION_INVALID)
+    }
+
+    @ExceptionHandler(AppStoreTransactionOwnedByAnotherAccountException::class)
+    fun appStoreTransactionOwnedByAnotherAccount(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.APP_STORE_TRANSACTION_OWNED_BY_ANOTHER_ACCOUNT)
     }
 
     @ExceptionHandler(InvalidSubscriptionRequestException::class)

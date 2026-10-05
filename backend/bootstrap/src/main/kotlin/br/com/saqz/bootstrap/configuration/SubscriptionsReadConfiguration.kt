@@ -13,11 +13,14 @@ import br.com.saqz.subscriptions.adapter.input.http.PlanController
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionQueryController
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcCouponRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionRepository
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionsTransactionRunner
+import br.com.saqz.subscriptions.application.AppStoreSubscriptionRepository
 import br.com.saqz.subscriptions.application.CouponRepository
 import br.com.saqz.subscriptions.application.GetMySubscription
 import br.com.saqz.subscriptions.application.ListPlans
 import br.com.saqz.subscriptions.application.RecoverUnconfirmedPayment
 import br.com.saqz.subscriptions.application.SubscriptionRepository
+import br.com.saqz.subscriptions.application.SubscriptionsTransactionRunner
 import br.com.saqz.subscriptions.application.ValidateCoupon
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -32,6 +35,10 @@ class SubscriptionsReadConfiguration {
     @Bean
     fun subscriptionRepository(dataSource: DataSource): SubscriptionRepository =
         JdbcSubscriptionRepository(dataSource)
+
+    @Bean
+    fun subscriptionsTransactionRunner(dataSource: DataSource): SubscriptionsTransactionRunner =
+        JdbcSubscriptionsTransactionRunner(dataSource)
 
     @Bean
     fun couponRepository(dataSource: DataSource): CouponRepository =
@@ -49,11 +56,13 @@ class SubscriptionsReadConfiguration {
         ownedGroups: OwnedGroupCounter,
         clock: Clock,
         recoverUnconfirmed: ObjectProvider<RecoverUnconfirmedPayment>,
+        appStoreSubscriptions: AppStoreSubscriptionRepository,
     ) = GetMySubscription(
         subscriptions,
         ownedGroups,
         clock,
         recoverUnconfirmed.getIfAvailable(),
+        appStoreSubscriptions,
     )
 
     @Bean

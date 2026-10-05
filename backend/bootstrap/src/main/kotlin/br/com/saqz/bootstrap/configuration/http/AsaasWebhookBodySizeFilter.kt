@@ -13,7 +13,7 @@ import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
 /**
- * Caps anonymous Asaas webhook bodies before Spring materializes `@RequestBody String`.
+ * Caps anonymous webhook bodies (Asaas and App Store) before Spring materializes `@RequestBody`.
  * Multipart max-request-size does not apply to this raw JSON POST.
  */
 class AsaasWebhookBodySizeFilter(
@@ -21,7 +21,8 @@ class AsaasWebhookBodySizeFilter(
     private val onTooLarge: (HttpServletRequest, HttpServletResponse) -> Unit,
 ) : OncePerRequestFilter() {
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        request.requestURI != WEBHOOK_PATH && !request.requestURI.startsWith("/api/receivables/webhooks/asaas/")
+        request.requestURI != WEBHOOK_PATH && request.requestURI != APP_STORE_WEBHOOK_PATH &&
+            !request.requestURI.startsWith("/api/receivables/webhooks/asaas/")
 
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -57,6 +58,7 @@ class AsaasWebhookBodySizeFilter(
 
     companion object {
         const val WEBHOOK_PATH = "/webhooks/asaas"
+        const val APP_STORE_WEBHOOK_PATH = "/webhooks/app-store"
         const val DEFAULT_MAX_BYTES: Long = 64 * 1024
     }
 }

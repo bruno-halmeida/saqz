@@ -11,7 +11,7 @@ import br.com.saqz.sharedkernel.subscription.OwnerPlanUsageLookup
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAsaasIdempotencyStore
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcCreditCardTokenStore
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionEventStore
-import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionsTransactionRunner
+import br.com.saqz.subscriptions.application.AppStoreSubscriptionRepository
 import br.com.saqz.subscriptions.application.AsaasGateway
 import br.com.saqz.subscriptions.application.AsaasIdempotencyStore
 import br.com.saqz.subscriptions.application.CancelSubscription
@@ -69,10 +69,6 @@ class AsaasWebhookConfiguration {
         JdbcCreditCardTokenStore(dataSource)
 
     @Bean
-    fun subscriptionsTransactionRunner(dataSource: DataSource): SubscriptionsTransactionRunner =
-        JdbcSubscriptionsTransactionRunner(dataSource)
-
-    @Bean
     fun ownerPlanUsageLookup(dataSource: DataSource, clock: Clock): OwnerPlanUsageLookup =
         JdbcOwnerPlanUsageLookup(dataSource, clock)
 
@@ -117,7 +113,17 @@ class AsaasWebhookConfiguration {
         clock: Clock,
         creditCardTokens: CreditCardTokenStore,
         usageLookup: OwnerPlanUsageLookup,
-    ) = CreateSubscription(subscriptions, coupons, asaasGateway, transaction, clock, usageLookup, creditCardTokens)
+        appStoreSubscriptions: AppStoreSubscriptionRepository,
+    ) = CreateSubscription(
+        subscriptions,
+        coupons,
+        asaasGateway,
+        transaction,
+        clock,
+        usageLookup,
+        creditCardTokens,
+        appStoreSubscriptions,
+    )
 
     @Bean
     fun changePlan(
@@ -140,7 +146,8 @@ class AsaasWebhookConfiguration {
     @Bean
     fun listReceipts(
         events: SubscriptionEventStore,
-    ) = ListReceipts(events)
+        appStoreSubscriptions: AppStoreSubscriptionRepository,
+    ) = ListReceipts(events, appStoreSubscriptions = appStoreSubscriptions)
 
     @Bean
     fun subscriptionCommandController(

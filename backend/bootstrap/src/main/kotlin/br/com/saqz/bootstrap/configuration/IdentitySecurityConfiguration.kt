@@ -158,6 +158,7 @@ class IdentitySecurityConfiguration {
                 .requestMatchers("/api/session/app-link/redeem").permitAll()
                 .requestMatchers("/public/account-confirmation/*").permitAll()
                 .requestMatchers("/webhooks/asaas", "/api/receivables/webhooks/asaas/*").permitAll()
+                .requestMatchers("/webhooks/app-store").permitAll()
                 .anyRequest().authenticated()
         }
         .exceptionHandling {
@@ -184,6 +185,7 @@ class IdentitySecurityConfiguration {
             "/api/password-reset",
             "/subscriptions/checkout-login",
             "/webhooks/asaas",
+            "/webhooks/app-store",
             "/api/receivables/webhooks/asaas",
             "/public/account-confirmation",
         )
