@@ -166,8 +166,8 @@ as transações quando o usuário abre o app.
 ## App (iOS)
 
 - O StoreKit 2 fica em `mobile/ios-app/SaqzIOS/IOSAppStorePurchases.swift`, atrás do
-  `AppStorePurchasesPort` (`:features:subscriptions:domain`). O Android passa `null`:
-  não vende pela loja.
+  `AppStorePurchasesPort` (`:features:subscriptions:domain`). O Android passa `null`
+  nesta porta e vende pelo Google Play ([google-play.md](google-play.md)).
 - `AppStoreTransactionSync` (`:features:subscriptions:presentation`) aplica a tabela de
   `finish()` acima e reentrega `Transaction.unfinished` a cada login.
 - A tela de compra substitui o portão de assinatura quando há produtos; sem produtos,
