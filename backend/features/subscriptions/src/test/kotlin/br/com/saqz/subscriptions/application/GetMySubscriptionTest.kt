@@ -1,9 +1,13 @@
 package br.com.saqz.subscriptions.application
 
 import br.com.saqz.sharedkernel.subscription.OwnedGroupCounter
+import br.com.saqz.subscriptions.domain.AppStoreProduct
+import br.com.saqz.subscriptions.domain.AppStoreRenewalInfo
+import br.com.saqz.subscriptions.domain.AppStoreSubscription
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.Subscription
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
+import br.com.saqz.subscriptions.domain.SubscriptionProvider
 import br.com.saqz.subscriptions.domain.SubscriptionStatus
 import org.junit.jupiter.api.Test
 import java.time.Clock
@@ -231,6 +235,126 @@ class GetMySubscriptionTest {
         assertEquals(Plan.ORGANIZADOR, repo.findByOwnerUserId(ownerId)!!.plan)
         assertNull(repo.findByOwnerUserId(ownerId)!!.pendingUpgradeChargeId)
     }
+
+    @Test
+    fun `an App Store subscriber sees the App Store plan with auto renew`() {
+        val view = appStoreView(appStore())
+
+        assertEquals(SubscriptionProvider.APP_STORE, view.provider)
+        assertEquals(SubscriptionStatus.ACTIVE, view.status)
+        assertTrue(view.entitled)
+        assertEquals(Plan.ORGANIZADOR, view.plan)
+        assertEquals(3, view.usage.groupsLimit)
+        assertNull(view.autoRenew)
+    }
+
+    @Test
+    fun `App Store with auto renew off is canceled but keeps access until expiry`() {
+        val off = now.minusSeconds(3_600)
+        val view = appStoreView(appStore().applying(renewal(autoRenew = false, signedAt = off)))
+
+        assertEquals(SubscriptionStatus.CANCELED, view.status)
+        assertEquals(off, view.canceledAt)
+        assertTrue(view.entitled)
+        assertEquals(false, view.autoRenew)
+    }
+
+    @Test
+    fun `App Store in billing retry is past due and loses access without grace`() {
+        val expired = appStore(expiresAt = now.minusSeconds(60))
+        val view = appStoreView(expired.applying(renewal(inBillingRetry = true)))
+
+        assertEquals(SubscriptionStatus.PAST_DUE, view.status)
+        assertEquals(now.minusSeconds(60), view.pastDueSince)
+        assertFalse(view.entitled)
+    }
+
+    @Test
+    fun `a refunded App Store subscription is canceled at the refund`() {
+        val refundedAt = now.minusSeconds(600)
+        val view = appStoreView(appStore().copy(revokedAt = refundedAt))
+
+        assertEquals(SubscriptionStatus.CANCELED, view.status)
+        assertEquals(refundedAt, view.currentPeriodEnd)
+        assertFalse(view.entitled)
+    }
+
+    @Test
+    fun `a downgrade scheduled in the App Store is the pending plan at renewal`() {
+        val subscription = appStore().applying(renewal(autoRenewProductId = AppStoreProduct.TITULAR_MENSAL.productId))
+        val view = appStoreView(subscription)
+
+        assertEquals(Plan.TITULAR, view.pendingPlan)
+        assertEquals(subscription.expiresAt, view.pendingPlanEffectiveAt)
+        assertEquals(1, view.usage.groupsLimit)
+    }
+
+    @Test
+    fun `an entitling App Store subscription wins over an expired web one`() {
+        val web = baseSubscription().copy(
+            status = SubscriptionStatus.CANCELED,
+            canceledAt = now.minusSeconds(86_400),
+            currentPeriodEnd = now.minusSeconds(3_600),
+        )
+        val useCase = GetMySubscription(
+            MemorySubscriptions(web),
+            FixedOwnedGroups(0),
+            clock,
+            appStoreSubscriptions = appStoreRepository(appStore()),
+        )
+
+        val found = assertIs<GetMySubscriptionResult.Found>(useCase.execute(ownerId))
+
+        assertEquals(SubscriptionProvider.APP_STORE, found.subscription.provider)
+    }
+
+    @Test
+    fun `an active web subscription wins over an expired App Store one`() {
+        val useCase = GetMySubscription(
+            MemorySubscriptions(baseSubscription()),
+            FixedOwnedGroups(0),
+            clock,
+            appStoreSubscriptions = appStoreRepository(appStore(expiresAt = now.minusSeconds(60))),
+        )
+
+        val found = assertIs<GetMySubscriptionResult.Found>(useCase.execute(ownerId))
+
+        assertEquals(SubscriptionProvider.ASAAS, found.subscription.provider)
+        assertNull(found.subscription.autoRenew)
+    }
+
+    private fun appStoreView(subscription: AppStoreSubscription): MySubscriptionView {
+        val useCase = GetMySubscription(
+            MemorySubscriptions(null),
+            FixedOwnedGroups(0),
+            clock,
+            appStoreSubscriptions = appStoreRepository(subscription),
+        )
+        return assertIs<GetMySubscriptionResult.Found>(useCase.execute(ownerId)).subscription
+    }
+
+    private fun appStoreRepository(subscription: AppStoreSubscription) =
+        InMemoryAppStoreSubscriptions().apply { save(subscription) }
+
+    private fun appStore(expiresAt: Instant = now.plusSeconds(15L * 24 * 3600)) = AppStoreSubscription.startedBy(
+        appStoreTransaction(ownerId, purchaseDate = expiresAt.minusSeconds(30L * 24 * 3600), expiresDate = expiresAt),
+        AppStoreProduct.ORGANIZADOR_MENSAL,
+        ownerId,
+    )
+
+    private fun renewal(
+        autoRenew: Boolean = true,
+        autoRenewProductId: String = AppStoreProduct.ORGANIZADOR_MENSAL.productId,
+        inBillingRetry: Boolean = false,
+        signedAt: Instant = now.minusSeconds(60),
+    ) = AppStoreRenewalInfo(
+        originalTransactionId = "2000000001",
+        autoRenew = autoRenew,
+        autoRenewProductId = autoRenewProductId,
+        inBillingRetry = inBillingRetry,
+        gracePeriodExpiresAt = null,
+        signedAt = signedAt,
+    )
 
     private fun baseSubscription() = Subscription(
         ownerUserId = ownerId,
