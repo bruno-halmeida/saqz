@@ -4,6 +4,8 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>pt_BR</string>
 	<key>CFBundleDisplayName</key>
 	<string>Saqz</string>
 	<key>CFBundleExecutable</key>
@@ -12,10 +14,16 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>pt-BR</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -29,26 +37,41 @@
 			</array>
 		</dict>
 	</array>
-	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>SaqzLinksDomain</key>
-	<string>$(LINKS_DOMAIN)</string>
+	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS</key>
+	<false/>
+	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_STORAGE</key>
+	<false/>
+	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_USER_DATA</key>
+	<false/>
+	<key>GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED</key>
+	<false/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Use a câmera para adicionar uma foto ao seu perfil ou grupo.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Permita salvar a imagem do convite na sua fototeca.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>SaqzAPIBaseURL</key>
 	<string>$(SAQZ_API_BASE_URL)</string>
 	<key>SaqzEnvironment</key>
 	<string>$(SAQZ_ENVIRONMENT)</string>
+	<key>SaqzLinksDomain</key>
+	<string>$(LINKS_DOMAIN)</string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchSymbol</string>
+	</dict>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -57,28 +80,5 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
-	<key>UIRequiresFullScreen</key>
-	<true/>
-	<key>UILaunchScreen</key>
-	<dict>
-		<key>UIColorName</key>
-		<string>LaunchBackground</string>
-		<key>UIImageName</key>
-		<string>LaunchSymbol</string>
-	</dict>
-	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS</key>
-	<false/>
-	<key>GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED</key>
-	<false/>
-	<key>CFBundleLocalizations</key>
-	<array>
-		<string>pt-BR</string>
-	</array>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>pt_BR</string>
-	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_STORAGE</key>
-	<false/>
-	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_USER_DATA</key>
-	<false/>
 </dict>
 </plist>
