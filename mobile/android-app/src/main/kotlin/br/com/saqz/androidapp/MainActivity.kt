@@ -64,6 +64,8 @@ internal class MainActivityModel(
         if (coldStarted) return
         coldStarted = true
         composition.links.onColdStart(url)
+        // Convite de quem instalou pela página de links: chega depois, como um link tocado.
+        composition.installReferrer?.readOnce(composition.links::onWarmIntent)
         notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId) }
     }
 

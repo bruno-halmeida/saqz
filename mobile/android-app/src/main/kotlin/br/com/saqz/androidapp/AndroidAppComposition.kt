@@ -5,6 +5,7 @@ import android.content.Context
 import br.com.saqz.androidapp.access.AndroidAuthAdapter
 import br.com.saqz.androidapp.access.AndroidEncryptedAccessStateStore
 import br.com.saqz.androidapp.access.AndroidGoogleCredentialClient
+import br.com.saqz.androidapp.access.AndroidInstallReferrer
 import br.com.saqz.androidapp.access.AndroidIntentLinkPort
 import br.com.saqz.androidapp.access.AndroidLinkAdapter
 import br.com.saqz.androidapp.access.AndroidLocalGroupStateAdapter
@@ -32,6 +33,7 @@ internal data class AndroidAppComposition(
     val links: AndroidIntentLinkPort,
     val photos: AndroidGroupPhotoAdapters? = null,
     val documents: br.com.saqz.androidapp.receivables.AndroidReceiptDocumentPicker? = null,
+    val installReferrer: AndroidInstallReferrer? = null,
 )
 
 internal fun interface AndroidAppCompositionFactory {
@@ -114,6 +116,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
             links = links,
             photos = photos,
             documents = documents,
+            installReferrer = AndroidInstallReferrer(context.applicationContext, BuildConfig.LINKS_DOMAIN),
         )
     }
 }
