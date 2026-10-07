@@ -14,7 +14,7 @@ function setup() {
   }]));
   const requests = [];
   const user = { getIdToken: async () => 'test-token' };
-  const context = vm.createContext({ window: {}, document: { readyState: 'loading',
+  const context = vm.createContext({ window: {}, URL, URLSearchParams, document: { readyState: 'loading',
     addEventListener() {}, getElementById: id => {
       assert.ok(elements.has(id), `Missing element ${id}`); return elements.get(id);
     } }, fetch: (path, options) => new Promise((resolve, reject) => requests.push({ path, options, resolve, reject })) });
@@ -23,6 +23,7 @@ function setup() {
       setUser(user) { auth = { currentUser: user }; currentUser = user; generation++; profileReady = true; },
       load() { return loadTrial(currentUser, generation); },
       select: selectTrial,
+      validAppUrl,
       logout() { generation++; auth.currentUser = null; resetForLogout(); }
     };
     if (document.readyState`), context);
@@ -98,4 +99,17 @@ test('off mode hides enrollment and coupon; network errors allow retry', async (
     canCreateGroup: false, canRedeemCoupon: false, offerMode: 'OFF' }); await flush();
   assert.equal(element('enroll-trial').hidden, true);
   assert.equal(element('trial-coupon-form').hidden, true);
+});
+test('the onboarding link the backend issues opens the app; other shapes are refused', () => {
+  const { app } = setup();
+  const code = 'A'.repeat(43);
+  const origin = 'https://links.saqz.app';
+  assert.equal(app.validAppUrl(`${origin}/?saqz_onboarding=${code}`, origin), `${origin}/?saqz_onboarding=${code}`);
+  for (const url of [
+    `${origin}/?saqz_onboarding=${code}&$deeplink_path=onboarding`,
+    `${origin}/?saqz_onboarding=curto`,
+    `https://evil.test/?saqz_onboarding=${code}`,
+    `${origin}/outra?saqz_onboarding=${code}`,
+    `http://links.saqz.app/?saqz_onboarding=${code}`,
+  ]) assert.equal(app.validAppUrl(url, origin), null, url);
 });

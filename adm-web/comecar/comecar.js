@@ -411,8 +411,10 @@
       if (url.protocol !== "https:" || !url.hostname || url.username || url.password || url.port) return null;
       if ((url.pathname !== "/" && url.pathname !== "") || url.hash) return null;
       if ((expectedOrigin || config.branchOrigin) && url.origin !== (expectedOrigin || config.branchOrigin)) return null;
+      // O backend emite https://links.saqz.app/?saqz_onboarding=<código>, um parâmetro só (o
+      // formato antigo do Branch tinha três e fazia o botão falhar sempre).
       var parameters = new URLSearchParams(url.search);
-      if (parameters.size !== 3 || parameters.get("$deeplink_path") !== "onboarding" || parameters.get("$ios_nativelink") !== "true") return null;
+      if (Array.from(parameters.keys()).length !== 1) return null;
       if (!/^[A-Za-z0-9_-]{43}$/.test(parameters.get("saqz_onboarding") || "")) return null;
       return url.toString();
     } catch (ignored) { return null; }
