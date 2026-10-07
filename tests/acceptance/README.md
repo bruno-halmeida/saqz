@@ -1,5 +1,8 @@
 # Testes de aceitação: execução manual e base para automação
 
+> Para testar **em produção**, use o roteiro de caminhos felizes em [`tests/producao`](../producao/README.md):
+> este catálogo é de ambiente isolado (relógio controlado, Mailpit, sandbox).
+
 Catálogo das jornadas principais, com passos reproduzíveis e resultados observáveis. Os arquivos `.feature` são roteiros Gherkin em português: **ainda não existe um executor Cucumber ligado a estes arquivos**. A presença de um cenário não significa que ele foi executado ou aprovado.
 
 - [Autenticação: 12 jornadas com caminho principal e variações](../../fluxo-1-autenticacao.md)
