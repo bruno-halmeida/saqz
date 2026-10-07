@@ -65,6 +65,10 @@ services:
     volumes:
       - ./landing-page:/usr/share/nginx/html:ro
       - ./nginx-landing.conf:/etc/nginx/conf.d/default.conf:ro
+      # Cadastro e contratação na web em saqz.app (ver nginx-landing.conf).
+      - ./adm-web/comecar:/usr/share/nginx/web/comecar:ro
+      - ./adm-web/assinar:/usr/share/nginx/web/assinar:ro
+      - ./adm-web/assets:/usr/share/nginx/web/assets:ro
     security_opt:
       - no-new-privileges:true
     networks:

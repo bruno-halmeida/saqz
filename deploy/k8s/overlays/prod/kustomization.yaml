@@ -25,7 +25,8 @@ configMapGenerator:
       # Apple ID numerico do app (App Store Connect > Informacoes do app). Vazio = a API recusa
       # compras de producao da App Store; sandbox (revisao e TestFlight) segue aceito.
       - SAQZ_APP_STORE_APP_APPLE_ID=6812743525
-      - SAQZ_ADMINWEB_ORIGINS=
+      # Cadastro e contratação na web (saqz.app/comecar/ e /assinar/) chamam a API pelo navegador.
+      - SAQZ_ADMINWEB_ORIGINS=https://saqz.app
       - SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED=false
       - SAQZ_NOTIFICATIONS_REMINDER_ENABLED=true
       - SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS=25200000
