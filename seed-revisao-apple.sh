@@ -6,13 +6,15 @@
 # Cria (ou reaproveita) nove contas com e-mail fictício em @saqz.app, já com e-mail
 # confirmado, nome e celular, e monta em volta delas um grupo de vôlei como os de verdade:
 # plano ORGANIZADOR ativo para a organizadora, dois jogos publicados com presença
-# confirmada, avisos, mensalidades e despesas. Três contas vão para a Apple:
+# confirmada, avisos, mensalidades e despesas. Quatro contas vão para a Apple:
 #
 #   revisao.organizadora@saqz.app  dona do grupo, plano ativo (gestão completa)
 #   revisao.atleta@saqz.app        atleta do grupo (confirmar presença, denunciar, bloquear)
 #   revisao.exclusao@saqz.app      atleta do grupo, reservada para testar a exclusão de conta
+#   revisao.expirada@saqz.app      teste do Organizador vencido e sem assinatura (compra na App Store)
 #
-# As outras seis só povoam o grupo. A senha é a mesma para todas e NÃO mora aqui: o
+# As outras seis só povoam o grupo. A conta expirada volta ao estado vencido a cada execução:
+# as compras de loja dela (sandbox da revisão) são apagadas e o teste é refeito já vencido. A senha é a mesma para todas e NÃO mora aqui: o
 # repositório é público. Rodar de novo é seguro: as contas são atualizadas, a de exclusão
 # é recriada se a Apple a tiver excluído, e o grupo anterior é arquivado (deleted_at) e
 # refeito do zero — histórico de presença é append-only, então apagar não é opção.
@@ -109,6 +111,7 @@ readonly -a pessoas=(
     "revisao.organizadora@saqz.app|Marina Costa|+5511987650001|Marina|ORGANIZADORA"
     "revisao.atleta@saqz.app|Rafael Lima|+5511987650002|Rafa|ATLETA"
     "revisao.exclusao@saqz.app|Paula Souza|+5511987650003|Paula|ATLETA"
+    "revisao.expirada@saqz.app|Carla Mendes|+5511987650004|Carla|ATLETA"
     "revisao.membro1@saqz.app|Bruna Alves|+5511987650011|Bruna|ATLETA"
     "revisao.membro2@saqz.app|Diego Rocha|+5511987650012|Diego|ATLETA"
     "revisao.membro3@saqz.app|Fernanda Dias|+5511987650013|Nanda|ATLETA"
@@ -163,6 +166,22 @@ ON CONFLICT (owner_user_id) DO UPDATE SET plan = EXCLUDED.plan, cycle = EXCLUDED
     current_period_end = EXCLUDED.current_period_end, canceled_at = NULL, pending_plan = NULL,
     pending_plan_effective_at = NULL, past_due_since = NULL, pending_upgrade_plan = NULL,
     pending_upgrade_charge_id = NULL, updated_at = now();
+
+-- Conta expirada: sem compra de loja e com o teste de 14 dias vencido há 16 dias. Sem grupo próprio,
+-- a tela de compra aparece em Perfil → Meu plano, no "+" de Grupos e em Criar grupo.
+DELETE FROM app_store_transactions WHERE owner_user_id IN
+    (SELECT id FROM access_users WHERE email = 'revisao.expirada@saqz.app');
+DELETE FROM app_store_subscriptions WHERE owner_user_id IN
+    (SELECT id FROM access_users WHERE email = 'revisao.expirada@saqz.app');
+DELETE FROM google_play_orders WHERE owner_user_id IN
+    (SELECT id FROM access_users WHERE email = 'revisao.expirada@saqz.app');
+DELETE FROM google_play_subscriptions WHERE owner_user_id IN
+    (SELECT id FROM access_users WHERE email = 'revisao.expirada@saqz.app');
+INSERT INTO organizer_trials (owner_user_id, started_at, ends_at)
+SELECT id, now() - interval '30 days', now() - interval '16 days'
+FROM access_users WHERE email = 'revisao.expirada@saqz.app' AND deleted_at IS NULL
+ON CONFLICT (owner_user_id) DO UPDATE SET started_at = EXCLUDED.started_at, ends_at = EXCLUDED.ends_at,
+    coupon_id = NULL, coupon_code = NULL, campaign = NULL;
 
 UPDATE access_groups SET deleted_at = now(), updated_at = now()
 WHERE owner_user_id = (SELECT id FROM access_users WHERE email = 'revisao.organizadora@saqz.app' AND deleted_at IS NULL)
@@ -267,3 +286,4 @@ echo "Pronto. Contas para a Apple (senha em REVISAO_SENHA):"
 echo "  organizadora: revisao.organizadora@saqz.app"
 echo "  atleta:       revisao.atleta@saqz.app"
 echo "  exclusão:     revisao.exclusao@saqz.app"
+echo "  expirada:     revisao.expirada@saqz.app"
