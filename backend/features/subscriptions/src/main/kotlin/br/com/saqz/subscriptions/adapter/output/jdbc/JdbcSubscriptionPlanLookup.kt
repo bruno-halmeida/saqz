@@ -46,8 +46,8 @@ class JdbcSubscriptionPlanLookup(dataSource: DataSource) : SubscriptionPlanLooku
               AND revoked_at IS NULL
               AND (expires_at > now() OR grace_period_expires_at > now())
             UNION ALL
-            -- Espelho de GooglePlaySubscription.isEntitlingAt.
-            SELECT plan, NULL::subscription_plan AS pending_plan
+            -- Espelho de GooglePlaySubscription.isEntitlingAt/pendingPlan.
+            SELECT plan, pending_plan
             FROM google_play_subscriptions
             WHERE owner_user_id = :ownerId
               AND superseded_at IS NULL

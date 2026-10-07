@@ -73,7 +73,13 @@ class HttpGooglePlayPurchasesApi(
     private fun encode(value: String) = URLEncoder.encode(value, StandardCharsets.UTF_8)
 
     private fun parse(purchaseToken: String, root: JsonNode): GooglePlayPurchase {
-        val line = root.path("lineItems").firstOrNull() ?: mapper.createObjectNode()
+        // Troca adiada (DEFERRED) tem duas linhas até a renovação: a que vale agora, com expiryTime
+        // e deferredItemReplacement, e a que entra depois, ainda sem expiryTime. A que dá acesso é
+        // a primeira; a outra só diz o plano agendado.
+        val items = root.path("lineItems").toList()
+        val line = items.firstOrNull { it.text("expiryTime") != null } ?: items.firstOrNull() ?: mapper.createObjectNode()
+        val next = items.firstOrNull { it !== line && it.text("expiryTime") == null }
+        val pendingProductId = line.path("deferredItemReplacement").text("productId") ?: next?.text("productId")
         val canceled = root.path("canceledStateContext")
         return GooglePlayPurchase(
             purchaseToken = purchaseToken,
@@ -81,7 +87,14 @@ class HttpGooglePlayPurchasesApi(
             basePlanId = line.path("offerDetails").text("basePlanId"),
             state = GooglePlayState.fromApi(root.text("subscriptionState")) ?: GooglePlayState.PENDING,
             expiresAt = line.text("expiryTime")?.let(Instant::parse),
-            autoRenew = line.path("autoRenewingPlan").path("autoRenewEnabled").takeIf { it.isBoolean }?.booleanValue(),
+            // O item antigo vem com renovação desligada, mas a assinatura segue no plano novo.
+            autoRenew = if (pendingProductId != null) {
+                true
+            } else {
+                line.path("autoRenewingPlan").path("autoRenewEnabled").takeIf { it.isBoolean }?.booleanValue()
+            },
+            pendingProductId = pendingProductId,
+            pendingBasePlanId = next?.path("offerDetails")?.text("basePlanId"),
             canceledAt = (
                 canceled.path("userInitiatedCancellation").text("cancelTime")
                     ?: canceled.path("systemInitiatedCancellation").text("cancelTime")

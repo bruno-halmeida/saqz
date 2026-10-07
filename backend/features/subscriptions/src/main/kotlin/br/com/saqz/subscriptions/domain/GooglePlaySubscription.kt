@@ -62,7 +62,18 @@ data class GooglePlayPurchase(
     val latestOrderId: String?,
     val acknowledged: Boolean,
     val testPurchase: Boolean,
-)
+    /** Troca adiada (DEFERRED): produto e plano base que entram na renovação. */
+    val pendingProductId: String? = null,
+    val pendingBasePlanId: String? = null,
+) {
+    /** Plano que entra na renovação; troca só de ciclo no mesmo plano não conta, como na App Store. */
+    fun pendingPlanAfter(current: GooglePlayProduct): Plan? {
+        val pending = pendingProductId ?: return null
+        val plan = GooglePlayProduct.of(pending, pendingBasePlanId)?.plan
+            ?: GooglePlayProduct.entries.firstOrNull { it.productId == pending }?.plan
+        return plan?.takeIf { it != current.plan }
+    }
+}
 
 /**
  * Assinatura do Play gravada. O estado inteiro vem da API do Google a cada leitura, então não há
@@ -81,6 +92,7 @@ data class GooglePlaySubscription(
     val supersededAt: Instant? = null,
     val acknowledged: Boolean,
     val testPurchase: Boolean,
+    val pendingPlan: Plan? = null,
 ) {
     /**
      * Espelho do trecho Google Play de `JdbcSubscriptionPlanLookup.findEntitlingPlan` — mudou lá,
@@ -99,6 +111,7 @@ data class GooglePlaySubscription(
         linkedPurchaseToken = purchase.linkedPurchaseToken,
         acknowledged = purchase.acknowledged || acknowledged,
         testPurchase = purchase.testPurchase,
+        pendingPlan = purchase.pendingPlanAfter(product),
     )
 
     companion object {
@@ -116,6 +129,7 @@ data class GooglePlaySubscription(
             linkedPurchaseToken = purchase.linkedPurchaseToken,
             acknowledged = purchase.acknowledged,
             testPurchase = purchase.testPurchase,
+            pendingPlan = purchase.pendingPlanAfter(product),
         )
     }
 }

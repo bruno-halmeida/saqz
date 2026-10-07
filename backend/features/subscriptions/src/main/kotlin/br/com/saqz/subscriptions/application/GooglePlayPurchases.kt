@@ -36,7 +36,8 @@ class SubmitGooglePlayPurchase(
             GooglePlayLookup.NotFound -> return SubmitGooglePlayPurchaseResult.Invalid
             is GooglePlayLookup.Found -> lookup.purchase
         }
-        if (purchase.productId != productId) return SubmitGooglePlayPurchaseResult.Invalid
+        // Na troca adiada o app manda o produto novo, que só entra na renovação.
+        if (purchase.productId != productId && purchase.pendingProductId != productId) return SubmitGooglePlayPurchaseResult.Invalid
         val product = sync.recordable(purchase) ?: return SubmitGooglePlayPurchaseResult.Invalid
         val accountId = purchase.obfuscatedAccountId
         if (accountId != null && accountId != ownerUserId.toString()) {

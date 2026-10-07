@@ -6,6 +6,7 @@ import br.com.saqz.subscriptions.application.GooglePlaySubscriptionRepository
 import br.com.saqz.subscriptions.domain.GooglePlayProduct
 import br.com.saqz.subscriptions.domain.GooglePlayState
 import br.com.saqz.subscriptions.domain.GooglePlaySubscription
+import br.com.saqz.subscriptions.domain.Plan
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
 import java.sql.Timestamp
@@ -22,10 +23,12 @@ class JdbcGooglePlaySubscriptionRepository(dataSource: DataSource) : GooglePlayS
             """
             INSERT INTO google_play_subscriptions (
                 purchase_token, owner_user_id, product_id, base_plan_id, plan, cycle, state, expires_at,
-                auto_renew, canceled_at, latest_order_id, linked_purchase_token, acknowledged, test_purchase
+                auto_renew, canceled_at, latest_order_id, linked_purchase_token, acknowledged, test_purchase,
+                pending_plan
             ) VALUES (
                 :purchaseToken, :ownerUserId, :productId, :basePlanId, :plan, :cycle, :state, :expiresAt,
-                :autoRenew, :canceledAt, :latestOrderId, :linkedPurchaseToken, :acknowledged, :testPurchase
+                :autoRenew, :canceledAt, :latestOrderId, :linkedPurchaseToken, :acknowledged, :testPurchase,
+                :pendingPlan
             )
             ON CONFLICT (purchase_token) DO NOTHING
             """.trimIndent(),
@@ -43,7 +46,8 @@ class JdbcGooglePlaySubscriptionRepository(dataSource: DataSource) : GooglePlayS
                 product_id = :productId, base_plan_id = :basePlanId, plan = :plan, cycle = :cycle,
                 state = :state, expires_at = :expiresAt, auto_renew = :autoRenew, canceled_at = :canceledAt,
                 latest_order_id = :latestOrderId, linked_purchase_token = :linkedPurchaseToken,
-                acknowledged = :acknowledged, test_purchase = :testPurchase, updated_at = now()
+                acknowledged = :acknowledged, test_purchase = :testPurchase, pending_plan = :pendingPlan,
+                updated_at = now()
             WHERE purchase_token = :purchaseToken
             """.trimIndent(),
         ).bind(subscription).update()
@@ -118,6 +122,7 @@ class JdbcGooglePlaySubscriptionRepository(dataSource: DataSource) : GooglePlayS
         .param("linkedPurchaseToken", subscription.linkedPurchaseToken)
         .param("acknowledged", subscription.acknowledged)
         .param("testPurchase", subscription.testPurchase)
+        .param("pendingPlan", subscription.pendingPlan?.name, Types.OTHER)
 
     private fun map(rs: ResultSet) = GooglePlaySubscription(
         purchaseToken = rs.getString("purchase_token"),
@@ -132,12 +137,14 @@ class JdbcGooglePlaySubscriptionRepository(dataSource: DataSource) : GooglePlayS
         supersededAt = rs.getTimestamp("superseded_at")?.toInstant(),
         acknowledged = rs.getBoolean("acknowledged"),
         testPurchase = rs.getBoolean("test_purchase"),
+        pendingPlan = rs.getString("pending_plan")?.let(Plan::valueOf),
     )
 
     private companion object {
         const val COLUMNS = """
             purchase_token, owner_user_id, product_id, base_plan_id, state, expires_at, auto_renew,
-            canceled_at, latest_order_id, linked_purchase_token, superseded_at, acknowledged, test_purchase
+            canceled_at, latest_order_id, linked_purchase_token, superseded_at, acknowledged, test_purchase,
+            pending_plan
         """
     }
 }

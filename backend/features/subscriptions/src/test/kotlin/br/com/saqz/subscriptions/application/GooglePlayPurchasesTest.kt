@@ -4,6 +4,7 @@ import br.com.saqz.subscriptions.domain.GooglePlayProduct
 import br.com.saqz.subscriptions.domain.GooglePlayPurchase
 import br.com.saqz.subscriptions.domain.GooglePlayState
 import br.com.saqz.subscriptions.domain.GooglePlaySubscription
+import br.com.saqz.subscriptions.domain.Plan
 import org.junit.jupiter.api.Test
 import java.time.Clock
 import java.time.Instant
@@ -93,6 +94,33 @@ class GooglePlayPurchasesTest {
     }
 
     @Test
+    fun `a deferred downgrade keeps the current plan until renewal and schedules the next one`() {
+        api.purchases["old"] = purchase("old", accountId = owner.toString())
+        submit.execute(owner, "app.saqz.organizador", "old")
+        api.purchases["new"] = purchase(
+            "new", accountId = owner.toString(), linked = "old", orderId = "GPA.2",
+            pendingProductId = "app.saqz.titular",
+        )
+
+        assertEquals(SubmitGooglePlayPurchaseResult.Accepted, submit.execute(owner, "app.saqz.titular", "new"))
+
+        val row = store.rows.getValue("new")
+        assertEquals(GooglePlayProduct.ORGANIZADOR_MENSAL, row.product)
+        assertEquals(Plan.TITULAR, row.pendingPlan)
+        assertTrue(row.isEntitlingAt(now))
+        assertFalse(store.rows.getValue("old").isEntitlingAt(now))
+    }
+
+    @Test
+    fun `a deferred change of cycle in the same plan schedules nothing`() {
+        api.purchases["new"] = purchase("new", pendingProductId = "app.saqz.organizador", pendingBasePlanId = "anual")
+
+        submit.execute(owner, "app.saqz.organizador", "new")
+
+        assertEquals(null, store.rows.getValue("new").pendingPlan)
+    }
+
+    @Test
     fun `a notification refreshes the subscription from the API`() {
         api.purchases["tok1"] = purchase("tok1", accountId = owner.toString())
         submit.execute(owner, "app.saqz.organizador", "tok1")
@@ -156,6 +184,8 @@ class GooglePlayPurchasesTest {
         acknowledged: Boolean = false,
         linked: String? = null,
         orderId: String = "GPA.1",
+        pendingProductId: String? = null,
+        pendingBasePlanId: String? = null,
     ) = GooglePlayPurchase(
         purchaseToken = token,
         productId = productId,
@@ -169,6 +199,8 @@ class GooglePlayPurchasesTest {
         latestOrderId = orderId,
         acknowledged = acknowledged,
         testPurchase = true,
+        pendingProductId = pendingProductId,
+        pendingBasePlanId = pendingBasePlanId,
     )
 
     private class FakeGooglePlayApi : GooglePlayPurchasesApi {

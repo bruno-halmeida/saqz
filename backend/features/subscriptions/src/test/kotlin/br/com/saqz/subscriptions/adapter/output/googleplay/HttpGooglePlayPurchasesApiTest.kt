@@ -65,6 +65,44 @@ class HttpGooglePlayPurchasesApiTest {
     }
 
     @Test
+    fun `a deferred plan change keeps the current item and records the plan that comes next`() {
+        server.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                  "subscriptionState": "SUBSCRIPTION_STATE_ACTIVE",
+                  "linkedPurchaseToken": "antigo",
+                  "acknowledgementState": "ACKNOWLEDGEMENT_STATE_PENDING",
+                  "lineItems": [
+                    {
+                      "productId": "app.saqz.titular",
+                      "autoRenewingPlan": { "autoRenewEnabled": true },
+                      "offerDetails": { "basePlanId": "mensal" }
+                    },
+                    {
+                      "productId": "app.saqz.organizador",
+                      "expiryTime": "2026-11-05T12:00:00Z",
+                      "autoRenewingPlan": { "autoRenewEnabled": false },
+                      "offerDetails": { "basePlanId": "mensal" },
+                      "deferredItemReplacement": { "productId": "app.saqz.titular" }
+                    }
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        val purchase = assertIs<GooglePlayLookup.Found>(api.subscription("novo")).purchase
+
+        assertEquals("app.saqz.organizador", purchase.productId)
+        assertEquals(Instant.parse("2026-11-05T12:00:00Z"), purchase.expiresAt)
+        assertEquals("app.saqz.titular", purchase.pendingProductId)
+        assertEquals("mensal", purchase.pendingBasePlanId)
+        assertEquals(true, purchase.autoRenew)
+        assertEquals("antigo", purchase.linkedPurchaseToken)
+    }
+
+    @Test
     fun `tokens Google does not know are not found`() {
         listOf(400, 404, 410).forEach { server.enqueue(MockResponse().setResponseCode(it)) }
 

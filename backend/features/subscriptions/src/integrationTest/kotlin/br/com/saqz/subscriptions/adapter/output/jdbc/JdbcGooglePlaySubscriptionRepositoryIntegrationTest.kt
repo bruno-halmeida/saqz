@@ -90,6 +90,20 @@ class JdbcGooglePlaySubscriptionRepositoryIntegrationTest {
     }
 
     @Test
+    fun `a scheduled downgrade round trips and reaches the entitlement lookup`() {
+        val scheduled = subscription("tok1").copy(pendingPlan = Plan.TITULAR)
+        repository.insertIfAbsent(scheduled)
+        assertEquals(scheduled, repository.findForUpdate("tok1"))
+
+        val entitling = assertNotNull(JdbcSubscriptionPlanLookup(dataSource).findEntitlingPlan(ownerId))
+        assertEquals(Plan.ORGANIZADOR, entitling.plan)
+        assertEquals(Plan.TITULAR, entitling.pendingPlan)
+
+        repository.save(scheduled.copy(pendingPlan = null))
+        assertNull(repository.findForUpdate("tok1")?.pendingPlan)
+    }
+
+    @Test
     fun `an expired subscription grants nothing`() {
         repository.insertIfAbsent(subscription("tok1", expiresAt = now.minusSeconds(60)))
 
