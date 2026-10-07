@@ -26,9 +26,10 @@ internal class AndroidInstallReferrer(
     fun readOnce(onLink: (String) -> Unit) {
         if (preferences.getBoolean(CONSUMED, false)) return
         preferences.edit().putBoolean(CONSUMED, true).apply()
-        val client = InstallReferrerClient.newBuilder(context).build()
         val main = Handler(Looper.getMainLooper())
+        // Sem Play Store (ou com o serviço fora), o convite simplesmente não vem: nunca derruba a abertura.
         runCatching {
+            val client = InstallReferrerClient.newBuilder(context).build()
             client.startConnection(object : InstallReferrerStateListener {
                 override fun onInstallReferrerSetupFinished(responseCode: Int) {
                     val link = if (responseCode == InstallReferrerClient.InstallReferrerResponse.OK) {
