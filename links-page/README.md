@@ -73,10 +73,15 @@ para `app.saqz`; não substitui a verificação do domínio.
 
 ## Sem o app instalado
 
-No celular, o botão principal da página leva à loja do sistema e o secundário,
-"Já instalei, abrir o app", abre o app com o mesmo link. Só o link de presença
-tenta abrir o app sozinho no iPhone: no convite, quem chega costuma não ter o app,
-e o Safari responderia ao esquema `saqz://` com o alerta de endereço inválido.
+No celular a página redireciona sozinha, sem clique; os botões ficam de reserva.
+
+- **Android:** tenta abrir o app pelo `intent://` com o mesmo link. Sem o app, o Chrome
+  segue para o Google Play; se o navegador recusar o intent sem toque, a página vai
+  para a loja depois de 1,5 s.
+- **iPhone:** vai direto para a App Store. Só o link de presença tenta o esquema
+  `saqz://`: no convite quem chega costuma não ter o app, e o Safari responderia com
+  o alerta de endereço inválido.
+- **Computador:** fica na página, com o site e o pedido para abrir no celular.
 
 - **Google Play**, no ar desde 07/10/2026. Convite e onboarding seguem no `referrer`
   do Play para o app poder retomá-los depois da instalação; o app ainda não lê esse

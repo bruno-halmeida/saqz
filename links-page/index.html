@@ -82,14 +82,7 @@
       googlePlay + (kind === "invite" || kind === "onboarding" ? "&referrer=" + encodeURIComponent(route.slice(1)) : "");
     var storeLabel = isIOS ? "Baixar na App Store" : "Baixar no Google Play";
     var soon = "O app para iPhone chega em breve na App Store.";
-
-    if (!kind) {
-      if (store) link(primary, store, storeLabel);
-      else lead.textContent = soon;
-      return;
-    }
-
-    var open = isAndroid
+    var open = !kind ? null : isAndroid
       ? "intent://links.saqz.app/" + route + "#Intent;scheme=https;package=app.saqz;S.browser_fallback_url=" +
         encodeURIComponent(store) + ";end"
       : "saqz:///" + route;
@@ -98,19 +91,31 @@
       lead.textContent = "Toque em “Abrir o app” para responder.";
       link(primary, open, "Abrir o app");
       if (store) link(secondary, store, storeLabel);
-      // Só presença tenta abrir sozinha. No convite o leitor costuma não ter o app,
-      // e o Safari responderia ao esquema com o alerta de endereço inválido.
-      if (isIOS) location.href = open;
-      return;
+    } else if (store) {
+      if (kind) lead.textContent = "Baixe o app e, depois de instalar, toque de novo no link que você recebeu.";
+      link(primary, store, storeLabel);
+      if (open) link(secondary, open, "Já instalei, abrir o app");
+    } else {
+      lead.textContent = kind ? soon + " Guarde este link: ele vai funcionar assim que o app estiver disponível." : soon;
+      if (open) link(secondary, open, "Já instalei, abrir o app");
     }
 
-    if (store) {
-      lead.textContent = "Baixe o app e, depois de instalar, toque de novo no link que você recebeu.";
-      link(primary, store, storeLabel);
-    } else {
-      lead.textContent = soon + " Guarde este link: ele vai funcionar assim que o app estiver disponível.";
+    // Sem clique. No Android, o intent abre o app com o link ou, sem o app, o Chrome segue
+    // para o Play; se o navegador recusar o intent sem toque, a loja entra no lugar.
+    // No iPhone, só presença tenta o esquema: no convite quem chega costuma não ter o app,
+    // e o Safari responderia com o alerta de endereço inválido. Então vai direto à loja.
+    if (isAndroid) {
+      if (!open) return location.replace(store);
+      location.href = open;
+      var fallback = setTimeout(function () { if (!document.hidden) location.replace(store); }, 1500);
+      ["visibilitychange", "pagehide"].forEach(function (event) {
+        addEventListener(event, function () { clearTimeout(fallback); });
+      });
+    } else if (kind === "attendance") {
+      location.href = open;
+    } else if (store) {
+      location.replace(store);
     }
-    link(secondary, open, "Já instalei, abrir o app");
 
     function link(element, href, text) {
       element.href = href;
