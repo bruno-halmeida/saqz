@@ -877,6 +877,11 @@ class AccessSessionConfiguration {
     }
     @Bean fun extendGameSeriesJob(extend: br.com.saqz.groups.application.game.series.ExtendGameSeries) =
         br.com.saqz.groups.adapter.input.scheduling.ExtendGameSeriesJob(extend)
+    @Bean fun completeFinishedGames(dataSource: DataSource) = br.com.saqz.groups.application.game.CompleteFinishedGames(
+        br.com.saqz.groups.adapter.output.jdbc.game.JdbcFinishedGamesRepository(dataSource), Clock.systemUTC(),
+    )
+    @Bean fun completeFinishedGamesJob(complete: br.com.saqz.groups.application.game.CompleteFinishedGames) =
+        br.com.saqz.groups.adapter.input.scheduling.CompleteFinishedGamesJob(complete)
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
     @Bean fun chargeTransactionRepository(dataSource: DataSource, cancellation: br.com.saqz.sharedkernel.group.GroupChargePaymentCancellation) = JdbcChargeTransactionRepository(dataSource, cancellation)
     @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository, writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess) = ChargeTransactions(transaction, repository, Instant::now, writeAccess)
