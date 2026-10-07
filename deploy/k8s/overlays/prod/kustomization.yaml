@@ -26,6 +26,7 @@ configMapGenerator:
       # compras de producao da App Store; sandbox (revisao e TestFlight) segue aceito.
       - SAQZ_APP_STORE_APP_APPLE_ID=6812743525
       - SAQZ_ADMINWEB_ORIGINS=
+      # Padrões; qualquer chave igual no backend.env sobrepõe estes valores.
       - SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED=false
       - SAQZ_NOTIFICATIONS_REMINDER_ENABLED=true
       - SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS=25200000
