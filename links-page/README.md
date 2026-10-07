@@ -71,5 +71,16 @@ domínio. Repita no iOS pelo TestFlight, com Associated Domains e Sign in with A
 habilitados no App ID e no perfil. O fallback Android oferece um intent explícito
 para `app.saqz`; não substitui a verificação do domínio.
 
-Quando as fichas das lojas existirem, substitua o botão do site em `index.html`
-pelos destinos reais de cada loja. Não há App Store ID informado nesta entrega.
+## Sem o app instalado
+
+No celular, o botão principal da página leva à loja do sistema e o secundário,
+"Já instalei, abrir o app", abre o app com o mesmo link. Só o link de presença
+tenta abrir o app sozinho no iPhone: no convite, quem chega costuma não ter o app,
+e o Safari responderia ao esquema `saqz://` com o alerta de endereço inválido.
+
+- **Google Play**, no ar desde 07/10/2026. Convite e onboarding seguem no `referrer`
+  do Play para o app poder retomá-los depois da instalação; o app ainda não lê esse
+  `referrer`, então a página pede para tocar no link de novo.
+- **App Store**: quando a Apple aprovar, preencha `appStore` em `index.html` com
+  `https://apps.apple.com/br/app/id6812743525`. Até lá o iPhone mostra o site e
+  avisa que o app chega em breve.

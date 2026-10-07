@@ -24,53 +24,98 @@
   .primary { background:var(--blue); color:#fff; }
   .secondary { margin-top:12px; background:transparent; color:var(--ink); border:1.5px solid rgba(7,16,37,.18); }
   .primary:active, .secondary:active { transform:scale(.98); }
-  .note { display:block; margin-top:18px; font-size:13px; line-height:1.5; color:#6b7280; }
   [hidden] { display:none; }
 </style>
 </head>
 <body>
 <main>
   <img class="logo" src="/assets/saqz-logo.svg" alt="Saqz">
-  <h1>Este link abre no app Saqz</h1>
-  <p id="lead">Instale o app para entrar no grupo ou confirmar sua presença.</p>
-  <a id="open" class="primary" hidden>Abrir no app</a>
-  <!-- Quando publicados, trocar por https://apps.apple.com/app/id<APP_ID> e https://play.google.com/store/apps/details?id=app.saqz -->
-  <a id="download" class="primary" href="https://saqz.app">Acessar site do Saqz</a>
-  <span class="note">Já tem o app instalado? Toque em “Abrir no app”.</span>
+  <h1 id="heading">Este link abre no app Saqz</h1>
+  <p id="lead">Baixe o app para entrar no grupo ou confirmar sua presença.</p>
+  <a id="primary" class="primary" href="https://saqz.app">Acessar site do Saqz</a>
+  <a id="secondary" class="secondary" hidden></a>
 </main>
 <script>
   (function () {
+    // O celular vai direto para a loja do sistema dele. A App Store fica vazia até a Apple
+    // aprovar o app: preencher com https://apps.apple.com/br/app/id6812743525.
+    var appStore = "";
+    var googlePlay = "https://play.google.com/store/apps/details?id=app.saqz";
+    var site = "https://saqz.app";
     var code = "[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]";
     var path = location.pathname.match(new RegExp("^/attendance/(" + code + ")$"));
     var params = new URLSearchParams(location.search);
     var invite = params.get("saqz_invite");
     var onboarding = params.get("saqz_onboarding");
-    var scheme = null;
-    if (path) scheme = "saqz:///attendance/" + path[1] + (params.get("saqz_intent") === "decline" ? "?saqz_intent=decline" : "");
-    else if (invite && new RegExp("^" + code + "$").test(invite)) scheme = "saqz:///?saqz_invite=" + invite;
-    else if (onboarding && new RegExp("^" + code + "$").test(onboarding)) scheme = "saqz:///?saqz_onboarding=" + onboarding;
+    var kind = null;
+    var route = null;
+    if (path) {
+      kind = "attendance";
+      route = "attendance/" + path[1] + (params.get("saqz_intent") === "decline" ? "?saqz_intent=decline" : "");
+    } else if (invite && new RegExp("^" + code + "$").test(invite)) {
+      kind = "invite";
+      route = "?saqz_invite=" + invite;
+    } else if (onboarding && new RegExp("^" + code + "$").test(onboarding)) {
+      kind = "onboarding";
+      route = "?saqz_onboarding=" + onboarding;
+    }
     var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     var isAndroid = /Android/.test(navigator.userAgent);
-    if (!scheme || (!isIOS && !isAndroid)) return;
-    var open = document.getElementById("open");
-    if (isAndroid) {
-      open.href = "intent://links.saqz.app/" + scheme.slice("saqz:///".length) +
-        "#Intent;scheme=https;package=app.saqz;S.browser_fallback_url=" + encodeURIComponent("https://saqz.app") + ";end";
-      reveal();
+    var heading = document.getElementById("heading");
+    var lead = document.getElementById("lead");
+    var primary = document.getElementById("primary");
+    var secondary = document.getElementById("secondary");
+
+    if (kind === "invite") heading.textContent = "Entre no grupo pelo app Saqz";
+    if (kind === "onboarding") heading.textContent = "Continue no app Saqz";
+    if (kind === "attendance") heading.textContent = "Responda pelo app Saqz";
+
+    if (!isIOS && !isAndroid) {
+      if (kind) lead.textContent = "Abra este link no celular para continuar no app.";
       return;
     }
-    open.href = scheme;
-    var timer = setTimeout(reveal, 1600);
-    ["visibilitychange", "pagehide"].forEach(function (event) {
-      addEventListener(event, function () { clearTimeout(timer); });
-    });
-    location.href = scheme;
-    function reveal() {
-      open.hidden = false;
-      document.getElementById("download").className = "secondary";
-      document.getElementById("lead").textContent =
-        "Toque em “Abrir no app” para continuar ou acesse nosso site.";
+
+    // Convite e onboarding seguem para o Play no `referrer`, para o app poder retomá-los
+    // depois da instalação. Presença não precisa: quem recebe o lembrete já tem o app.
+    var store = isIOS ? appStore :
+      googlePlay + (kind === "invite" || kind === "onboarding" ? "&referrer=" + encodeURIComponent(route.slice(1)) : "");
+    var storeLabel = isIOS ? "Baixar na App Store" : "Baixar no Google Play";
+    var soon = "O app para iPhone chega em breve na App Store.";
+
+    if (!kind) {
+      if (store) link(primary, store, storeLabel);
+      else lead.textContent = soon;
+      return;
+    }
+
+    var open = isAndroid
+      ? "intent://links.saqz.app/" + route + "#Intent;scheme=https;package=app.saqz;S.browser_fallback_url=" +
+        encodeURIComponent(store) + ";end"
+      : "saqz:///" + route;
+
+    if (kind === "attendance") {
+      lead.textContent = "Toque em “Abrir o app” para responder.";
+      link(primary, open, "Abrir o app");
+      if (store) link(secondary, store, storeLabel);
+      // Só presença tenta abrir sozinha. No convite o leitor costuma não ter o app,
+      // e o Safari responderia ao esquema com o alerta de endereço inválido.
+      if (isIOS) location.href = open;
+      return;
+    }
+
+    if (store) {
+      lead.textContent = "Baixe o app e, depois de instalar, toque de novo no link que você recebeu.";
+      link(primary, store, storeLabel);
+    } else {
+      lead.textContent = soon + " Guarde este link: ele vai funcionar assim que o app estiver disponível.";
+    }
+    link(secondary, open, "Já instalei, abrir o app");
+
+    function link(element, href, text) {
+      element.href = href;
+      element.textContent = text;
+      element.hidden = false;
     }
   })();
 </script>
