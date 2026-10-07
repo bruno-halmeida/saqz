@@ -34,6 +34,9 @@ sealed interface GooglePlayPurchaseResult {
     /** Pagamento pendente: a compra conclui depois e chega por [GooglePlayPurchaseListener]. */
     data object Pending : GooglePlayPurchaseResult
     data object Cancelled : GooglePlayPurchaseResult
+
+    /** A conta Google já assina o Saqz por outra conta do app: trocar de plano mexeria na assinatura dela. */
+    data object OwnedByAnotherAccount : GooglePlayPurchaseResult
     data class Failed(val message: String) : GooglePlayPurchaseResult
 }
 

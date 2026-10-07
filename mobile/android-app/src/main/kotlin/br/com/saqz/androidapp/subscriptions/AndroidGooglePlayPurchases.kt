@@ -22,6 +22,7 @@ import com.android.billingclient.api.BillingClient.BillingResponseCode
 import com.android.billingclient.api.BillingClient.ProductType
 import com.android.billingclient.api.BillingClientStateListener
 import com.android.billingclient.api.BillingFlowParams
+import com.android.billingclient.api.BillingFlowParams.SubscriptionUpdateParams.ReplacementMode
 import com.android.billingclient.api.BillingResult
 import com.android.billingclient.api.PendingPurchasesParams
 import com.android.billingclient.api.ProductDetails
@@ -51,6 +52,9 @@ internal class AndroidGooglePlayPurchases(
     private val waitingForConnection = mutableListOf<Pair<() -> Unit, (String) -> Unit>>()
     private var connecting = false
     private var inFlightPurchase: GooglePlayPurchaseCallback? = null
+
+    /** Entre o toque e o fluxo do Play: a consulta da assinatura atual também é "compra em andamento". */
+    private var preparingPurchase = false
     private var listener: GooglePlayPurchaseListener? = null
     private val unclaimed = mutableListOf<GooglePlayPurchase>()
 
@@ -87,26 +91,68 @@ internal class AndroidGooglePlayPurchases(
     ) {
         val details = detailsByProduct[productId]
             ?: return done.onGooglePlayPurchase(GooglePlayPurchaseResult.Failed("produto não carregado: $productId"))
-        if (inFlightPurchase != null) {
+        if (inFlightPurchase != null || preparingPurchase) {
             return done.onGooglePlayPurchase(GooglePlayPurchaseResult.Failed("compra em andamento"))
         }
-        connected(onFailure = { done.onGooglePlayPurchase(GooglePlayPurchaseResult.Failed(it)) }) {
-            val params = BillingFlowParams.newBuilder()
-                .setProductDetailsParamsList(
-                    listOf(
-                        BillingFlowParams.ProductDetailsParams.newBuilder()
-                            .setProductDetails(details)
-                            .setOfferToken(offerToken)
-                            .build(),
-                    ),
-                )
-                .setObfuscatedAccountId(obfuscatedAccountId)
-                .build()
-            inFlightPurchase = done
-            val result = runCatching { client.launchBillingFlow(activity(), params) }
-                .getOrElse { failure -> return@connected finishInFlight(GooglePlayPurchaseResult.Failed(failure.message.orEmpty())) }
-            if (result.responseCode != BillingResponseCode.OK) finishInFlight(result.toPurchaseFailure())
+        preparingPurchase = true
+        connected(onFailure = {
+            preparingPurchase = false
+            done.onGooglePlayPurchase(GooglePlayPurchaseResult.Failed(it))
+        }) {
+            // Quem já assina pelo Play troca de plano: o Play substitui a assinatura em vez de abrir
+            // outra cobrada junto. A antiga sai pelo linkedPurchaseToken no backend.
+            val owned = QueryPurchasesParams.newBuilder().setProductType(ProductType.SUBS).build()
+            client.queryPurchasesAsync(owned) { result, purchases ->
+                main.post {
+                    preparingPurchase = false
+                    val current = purchases.firstOrNull { purchase ->
+                        purchase.purchaseState == Purchase.PurchaseState.PURCHASED && purchase.products.any(PLAN_RANKS::containsKey)
+                    }
+                    val owner = current?.accountIdentifiers?.obfuscatedAccountId
+                    when {
+                        result.responseCode != BillingResponseCode.OK ->
+                            done.onGooglePlayPurchase(GooglePlayPurchaseResult.Failed(result.describe()))
+                        owner != null && owner != obfuscatedAccountId ->
+                            done.onGooglePlayPurchase(GooglePlayPurchaseResult.OwnedByAnotherAccount)
+                        else -> launch(details, offerToken, obfuscatedAccountId, current, done)
+                    }
+                }
+            }
         }
+    }
+
+    private fun launch(
+        details: ProductDetails,
+        offerToken: String,
+        obfuscatedAccountId: String,
+        replacing: Purchase?,
+        done: GooglePlayPurchaseCallback,
+    ) {
+        val builder = BillingFlowParams.newBuilder()
+            .setProductDetailsParamsList(
+                listOf(
+                    BillingFlowParams.ProductDetailsParams.newBuilder()
+                        .setProductDetails(details)
+                        .setOfferToken(offerToken)
+                        .build(),
+                ),
+            )
+            .setObfuscatedAccountId(obfuscatedAccountId)
+        if (replacing != null) {
+            val basePlanId = details.subscriptionOfferDetails.orEmpty().firstOrNull { it.offerToken == offerToken }?.basePlanId
+            builder.setSubscriptionUpdateParams(
+                BillingFlowParams.SubscriptionUpdateParams.newBuilder()
+                    .setOldPurchaseToken(replacing.purchaseToken)
+                    .setSubscriptionReplacementMode(
+                        replacementMode(replacing.products.first(PLAN_RANKS::containsKey), details.productId, basePlanId),
+                    )
+                    .build(),
+            )
+        }
+        inFlightPurchase = done
+        val result = runCatching { client.launchBillingFlow(activity(), builder.build()) }
+            .getOrElse { failure -> return finishInFlight(GooglePlayPurchaseResult.Failed(failure.message.orEmpty())) }
+        if (result.responseCode != BillingResponseCode.OK) finishInFlight(result.toPurchaseFailure())
     }
 
     override fun onPurchasesUpdated(result: BillingResult, purchases: MutableList<Purchase>?) {
@@ -206,8 +252,25 @@ internal class AndroidGooglePlayPurchases(
         })
     }
 
-    private companion object {
-        fun productionClient(context: Context, listener: PurchasesUpdatedListener): BillingClient =
+    internal companion object {
+        private val PLAN_RANKS = mapOf("app.saqz.titular" to 1, "app.saqz.organizador" to 2, "app.saqz.ilimitado" to 3)
+        private const val MONTHLY_BASE_PLAN = "mensal"
+
+        /**
+         * Subir cobra a diferença na hora (CHARGE_PRORATED_PRICE, que o Play só aceita quando o preço
+         * por mês sobe); descer vale na renovação (DEFERRED), como na App Store. A ordem dos planos e o
+         * mensal acima do anual do mesmo plano batem com o preço por mês do catálogo.
+         */
+        fun replacementMode(currentProductId: String, productId: String, basePlanId: String?): Int {
+            val upgrade = if (currentProductId == productId) {
+                basePlanId == MONTHLY_BASE_PLAN
+            } else {
+                (PLAN_RANKS[productId] ?: 0) > (PLAN_RANKS[currentProductId] ?: 0)
+            }
+            return if (upgrade) ReplacementMode.CHARGE_PRORATED_PRICE else ReplacementMode.DEFERRED
+        }
+
+        private fun productionClient(context: Context, listener: PurchasesUpdatedListener): BillingClient =
             BillingClient.newBuilder(context.applicationContext)
                 .setListener(listener)
                 .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())

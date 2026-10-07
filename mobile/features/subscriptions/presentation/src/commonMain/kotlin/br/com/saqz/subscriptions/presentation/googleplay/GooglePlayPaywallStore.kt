@@ -74,6 +74,7 @@ class GooglePlayPaywallStore(
             }
             GooglePlayPurchaseResult.Pending -> StorePurchaseOutcome.Pending
             GooglePlayPurchaseResult.Cancelled -> StorePurchaseOutcome.Cancelled
+            GooglePlayPurchaseResult.OwnedByAnotherAccount -> StorePurchaseOutcome.Completed(StoreDelivery.OwnedByAnotherAccount)
             is GooglePlayPurchaseResult.Failed -> StorePurchaseOutcome.Failed
         }
     }

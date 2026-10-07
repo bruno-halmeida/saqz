@@ -83,6 +83,18 @@ class GooglePlayPaywallTest {
     }
 
     @Test
+    fun `a play subscription of another saqz account says so instead of a generic failure`() = runTest {
+        port.purchaseResult = GooglePlayPurchaseResult.OwnedByAnotherAccount
+        val viewModel = viewModel()
+        val offer = checkNotNull(viewModel.state.value.plans.single().offer(SubscriptionCycle.Monthly))
+
+        viewModel.onIntent(AppStorePaywallIntent.Purchase(offer.productId))
+
+        assertEquals(AppStorePaywallNotice.OwnedByAnotherAccount, viewModel.state.value.notice)
+        assertTrue(gateway.submitted.isEmpty())
+    }
+
+    @Test
     fun `an app store subscriber is not offered a second subscription on android`() = runTest {
         catalog.subscriptionResult = SaqzResult.Success(appStoreSubscription())
 

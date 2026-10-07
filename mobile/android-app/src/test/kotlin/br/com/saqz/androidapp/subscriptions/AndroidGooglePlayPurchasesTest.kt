@@ -23,6 +23,7 @@ import com.android.billingclient.api.BillingClient.BillingResponseCode
 import com.android.billingclient.api.BillingClientStateListener
 import com.android.billingclient.api.BillingConfigResponseListener
 import com.android.billingclient.api.BillingFlowParams
+import com.android.billingclient.api.BillingFlowParams.SubscriptionUpdateParams.ReplacementMode
 import com.android.billingclient.api.BillingProgramAvailabilityListener
 import com.android.billingclient.api.BillingProgramInformationDialogListener
 import com.android.billingclient.api.BillingProgramInformationDialogParams
@@ -49,6 +50,7 @@ import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryProductDetailsResult
 import com.android.billingclient.api.QueryPurchasesParams
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -163,6 +165,64 @@ class AndroidGooglePlayPurchasesTest {
     }
 
     @Test
+    fun anExistingSubscriptionIsReplacedInsteadOfBilledTwice() {
+        loadOrganizador()
+        client.purchases = listOf(purchase(token = "assinatura-atual", productId = TITULAR, accountId = ACCOUNT))
+        val results = mutableListOf<GooglePlayPurchaseResult>()
+
+        purchases.purchaseGooglePlayProduct(ORGANIZADOR, "token-mensal", ACCOUNT) { results += it }
+        idle()
+
+        assertEquals(1, client.launches)
+        val update = requireNotNull(client.lastFlow?.subscriptionUpdate())
+        assertTrue(update.has("assinatura-atual"))
+        assertTrue(update.has(ReplacementMode.CHARGE_PRORATED_PRICE))
+        assertTrue(results.isEmpty())
+    }
+
+    @Test
+    fun aNewSubscriberBuysWithoutReplacingAnything() {
+        loadOrganizador()
+
+        purchases.purchaseGooglePlayProduct(ORGANIZADOR, "token-mensal", ACCOUNT) {}
+        idle()
+
+        assertEquals(1, client.launches)
+        val update = client.lastFlow?.subscriptionUpdate()
+        assertFalse(update != null && (update.has(ReplacementMode.CHARGE_PRORATED_PRICE) || update.has(ReplacementMode.DEFERRED)))
+    }
+
+    @Test
+    fun aSubscriptionOfAnotherSaqzAccountIsNotTouched() {
+        loadOrganizador()
+        client.purchases = listOf(purchase(token = "de-outra-conta", productId = TITULAR, accountId = "outra-conta"))
+        val results = mutableListOf<GooglePlayPurchaseResult>()
+
+        purchases.purchaseGooglePlayProduct(ORGANIZADOR, "token-mensal", ACCOUNT) { results += it }
+        idle()
+
+        assertEquals(0, client.launches)
+        assertEquals(listOf<GooglePlayPurchaseResult>(GooglePlayPurchaseResult.OwnedByAnotherAccount), results)
+        // A vaga da compra foi liberada: a próxima tentativa segue.
+        client.purchases = emptyList()
+        purchases.purchaseGooglePlayProduct(ORGANIZADOR, "token-mensal", ACCOUNT) {}
+        idle()
+        assertEquals(1, client.launches)
+    }
+
+    @Test
+    fun upgradesChargeTheDifferenceNowAndDowngradesWaitForRenewal() {
+        val mode = AndroidGooglePlayPurchases::replacementMode
+        assertEquals(ReplacementMode.CHARGE_PRORATED_PRICE, mode(TITULAR, ORGANIZADOR, "anual"))
+        assertEquals(ReplacementMode.CHARGE_PRORATED_PRICE, mode(ORGANIZADOR, ILIMITADO, "mensal"))
+        assertEquals(ReplacementMode.DEFERRED, mode(ILIMITADO, ORGANIZADOR, "mensal"))
+        assertEquals(ReplacementMode.DEFERRED, mode(ORGANIZADOR, TITULAR, "anual"))
+        // Mesmo plano: o mensal custa mais por mês que o anual.
+        assertEquals(ReplacementMode.CHARGE_PRORATED_PRICE, mode(ORGANIZADOR, ORGANIZADOR, "mensal"))
+        assertEquals(ReplacementMode.DEFERRED, mode(ORGANIZADOR, ORGANIZADOR, "anual"))
+    }
+
+    @Test
     fun aProductThatWasNotLoadedIsNotPurchased() {
         val results = mutableListOf<GooglePlayPurchaseResult>()
 
@@ -226,16 +286,36 @@ class AndroidGooglePlayPurchasesTest {
 
     private companion object {
         const val ORGANIZADOR = "app.saqz.organizador"
+        const val TITULAR = "app.saqz.titular"
+        const val ILIMITADO = "app.saqz.ilimitado"
         const val ACCOUNT = "3f0c2a9e-0000-4000-8000-000000000001"
 
         fun result(code: Int): BillingResult = BillingResult.newBuilder().setResponseCode(code).build()
 
-        fun purchase(token: String = "compra-1", acknowledged: Boolean = false, pending: Boolean = false) = Purchase(
-            """{"orderId":"GPA.1","packageName":"app.saqz","productId":"$ORGANIZADOR","purchaseTime":1,""" +
+        fun purchase(
+            token: String = "compra-1",
+            acknowledged: Boolean = false,
+            pending: Boolean = false,
+            productId: String = ORGANIZADOR,
+            accountId: String? = null,
+        ) = Purchase(
+            """{"orderId":"GPA.1","packageName":"app.saqz","productId":"$productId","purchaseTime":1,""" +
                 """"purchaseState":${if (pending) 4 else 0},"purchaseToken":"$token","acknowledged":$acknowledged,""" +
+                (accountId?.let { """"obfuscatedAccountId":"$it",""" } ?: "") +
                 """"autoRenewing":true}""",
             "assinatura",
         )
+
+        /** Os getters do BillingFlowParams são ofuscados: a troca de assinatura é achada pelo tipo do campo. */
+        fun BillingFlowParams.subscriptionUpdate(): BillingFlowParams.SubscriptionUpdateParams? = javaClass.declaredFields
+            .firstOrNull { it.type == BillingFlowParams.SubscriptionUpdateParams::class.java }
+            ?.apply { isAccessible = true }
+            ?.get(this) as BillingFlowParams.SubscriptionUpdateParams?
+
+        /** Token substituído ou modo de troca, entre os campos da própria troca. */
+        fun BillingFlowParams.SubscriptionUpdateParams.has(value: Any): Boolean = javaClass.declaredFields
+            .filterNot { java.lang.reflect.Modifier.isStatic(it.modifiers) }
+            .any { field -> field.isAccessible = true; field.get(this) == value }
 
         /** Dois planos base e uma oferta, que o app ignora: o teste grátis é do backend. */
         fun organizador(): ProductDetails = productDetails(
@@ -271,6 +351,7 @@ private class FakeBillingClient(val updates: PurchasesUpdatedListener) : Billing
     var launchResult: BillingResult = BillingResult.newBuilder().setResponseCode(BillingResponseCode.OK).build()
     var connections = 0
     var launches = 0
+    var lastFlow: BillingFlowParams? = null
     private var ready = false
     private var heldSetup: BillingClientStateListener? = null
 
@@ -305,6 +386,7 @@ private class FakeBillingClient(val updates: PurchasesUpdatedListener) : Billing
 
     override fun launchBillingFlow(activity: Activity, params: BillingFlowParams): BillingResult {
         launches++
+        lastFlow = params
         return launchResult
     }
 
