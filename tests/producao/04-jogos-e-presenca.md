@@ -155,3 +155,25 @@ JG11 é criado logo no começo da rodada.
 - A despesa de R$ 120,00 aparece no extrato do grupo e no saldo.
 - No primeiro jogo encerrado do grupo, ORG também vê o cartão "Primeiro jogo encerrado. E o acerto?",
   que leva à mesma tela.
+
+## PROD-JG13 · Link de presença traz quem não é do grupo · P0
+
+**Quem:** pessoa fora do grupo QA no aparelho B, com o WhatsApp do Saqz ligado no servidor e o grupo
+QA vinculado a um grupo de WhatsApp de teste (Editar grupo → "WhatsApp" → "Configurar"). Exige o app
+0.0.5 (7) ou mais novo. Até o WhatsApp ser ligado, a jornada fica `BLOQUEADO`.
+
+1. No grupo de WhatsApp de teste, na mensagem do Saqz sobre o jogo, tocar "Confirmar".
+2. Repetir em três situações, com uma conta nova em cada:
+   - **sem o app:** a página vai sozinha ao Google Play; conferir a versão em "Sobre este app",
+     instalar, tocar "Abrir" e criar a conta;
+   - **com o app fechado e deslogado:** o app abre direto; criar a conta;
+   - **com o app fechado e logado:** o app abre direto.
+3. Numa quarta vez, tocar "Não vou" em vez de "Confirmar", com o app fechado e logado.
+
+**Conferir**
+- Nas três situações a pessoa entra no grupo QA, passa por "Cadastro de atleta" e termina confirmada no
+  jogo (ou na espera, se o PC-01 não foi contornado).
+- Com o app fechado, o link não se perde. Até a 0.0.4 o app só passava a ouvir o link de presença
+  depois da primeira tela, e o link que abria o app se perdia.
+- "Não vou" nunca vira confirmação: o app abre o aviso de "não vou" e só responde com o toque.
+- Grupo que exige aprovação de entrada: vira pedido ("Pedido enviado"), sem confirmação.

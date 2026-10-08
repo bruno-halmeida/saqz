@@ -13,7 +13,7 @@ Mailpit, sandbox) e não serve para produção como está.
 | [01-acesso.md](01-acesso.md) | PROD-AC01–AC08: cadastro, e-mail, login, Google/Apple, senha, sessão, troca de conta |
 | [02-inicio-e-perfil.md](02-inicio-e-perfil.md) | PROD-IN01–IN04 e PROD-PF01–PF08: Início, perfil, privacidade, exclusão de conta |
 | [03-grupos-e-convites.md](03-grupos-e-convites.md) | PROD-GR01–GR06, PROD-CV01–CV07 e PROD-MB01–MB05 |
-| [04-jogos-e-presenca.md](04-jogos-e-presenca.md) | PROD-JG01–JG12: marcar, responder, espera, convidado, encerramento e acerto |
+| [04-jogos-e-presenca.md](04-jogos-e-presenca.md) | PROD-JG01–JG13: marcar, responder, espera, convidado, encerramento, acerto e link de presença |
 | [05-avisos-e-notificacoes.md](05-avisos-e-notificacoes.md) | PROD-NT01–NT07: push, avisos, central, preferências, denúncia e bloqueio |
 | [06-financeiro.md](06-financeiro.md) | PROD-FI01–FI08: mensalidade, baixa, lançamentos, extrato, cobrança |
 | [07-assinatura.md](07-assinatura.md) | PROD-AS01–AS07: teste grátis, compra nas lojas, troca, cancelamento |
@@ -60,7 +60,7 @@ frequente que tem contorno.
 
 ## Ordem de execução (uma rodada)
 
-Os blocos dependem dos anteriores. São 79 jornadas: uma rodada completa leva umas 4 horas no primeiro
+Os blocos dependem dos anteriores. São 80 jornadas: uma rodada completa leva umas 4 horas no primeiro
 dia, mais as checagens e a limpeza do dia seguinte.
 
 | Bloco | Jornadas | Observação |
@@ -76,7 +76,7 @@ dia, mais as checagens e a limpeza do dia seguinte.
 | 8. Jogo que termina | JG11, JG12 | Até 5 min depois do fim do jogo |
 | 9. Assinatura | AS02 (ou AS03), MB03, AS04, AS06, AS07, AS05 | AS04 só com o app 0.0.4 (6) no Android; cancelar (AS05) por último |
 | 10. Perfil e conta | PF01–PF07, AC03, AC06, AC07, AC08, AC05 | AC05 só no iPhone |
-| 11. Site e links | WEB01, WEB02, WEB03, CV06, WEB05, WEB06, WEB07, CV03 | CV03 desinstala o app do aparelho B. WEB04 só com decisão de pagamento real |
+| 11. Site e links | WEB01, WEB02, WEB03, CV06, WEB05, WEB06, WEB07, CV03, JG13 | CV03 e JG13 desinstalam o app do aparelho B; antes de instalar, conferir a versão em "Sobre este app". JG13 só com o WhatsApp ligado. WEB04 só com decisão de pagamento real |
 | Dia seguinte | FI01, IN04, PF05 | Depois das 03:10: mensalidade automática e "Minhas cobranças" na Início |
 | 12. Limpeza | MB04, CV07, GR06, PF08 | Só depois do dia seguinte: apagar o grupo QA e as contas descartáveis |
 

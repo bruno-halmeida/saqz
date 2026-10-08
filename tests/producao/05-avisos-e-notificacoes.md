@@ -27,6 +27,8 @@ WhatsApp estão desligados em produção; só os avisos funcionam.
 - ATL e ATL2 recebem o push "Você recebeu um aviso do grupo. Abra o app para conferir." e o item na
   central; ORG não recebe o próprio aviso.
 - Para ATL, a tela de avisos mostra "Somente administradores publicam avisos." e não tem campo de envio.
+- Com o app fechado (fora dos recentes), tocar no push abre o app já na central. Até a 0.0.4 o app só
+  passava a ouvir o toque depois da primeira tela, e o toque com o app fechado se perdia.
 
 ## PROD-NT03 · Central de notificações · P0
 

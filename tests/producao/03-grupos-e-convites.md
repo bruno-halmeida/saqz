@@ -123,9 +123,11 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 
 **Quem:** pessoa sem o app (desinstalar no aparelho B), usando um link de convite válido.
 
-1. Tocar no link do convite.
+1. Tocar no link do convite, de preferência dentro do WhatsApp, que é por onde o atleta chega.
 2. **Android:**
    - a página vai sozinha ao Google Play (ou abre o app, se ele estiver instalado);
+   - antes de instalar, conferir em "Sobre este app" → "Versão" que é a mais nova (em 08/10 o Play
+     entregou a um aparelho a versão anterior, que ainda não lia o convite);
    - instalar e abrir o app.
 3. **iPhone:**
    - enquanto a Apple não aprovar, a página diz "O app para iPhone chega em breve na App Store.";
