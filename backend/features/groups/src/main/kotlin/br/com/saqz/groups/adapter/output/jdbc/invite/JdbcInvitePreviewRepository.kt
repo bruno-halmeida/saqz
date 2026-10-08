@@ -66,25 +66,43 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
         check(changed == 1) { "Invite preview attempt window was not locked" }
     }
 
+    /**
+     * O código é um convite do grupo ou o link de presença de uma mensagem do Saqz (os botões
+     * "Confirmar"/"Não vou" do WhatsApp), que o resgate também aceita como convite: quem chega por
+     * ele vê o mesmo cartão do grupo, com quem mandou a mensagem como quem convidou. O link de
+     * presença vale enquanto o jogo aceita resposta.
+     */
     override fun findInvite(digest: InviteTokenDigest, now: Instant): PreviewableInvite? = jdbc.sql(
         """
+        WITH target AS (
+            SELECT invites.group_id, creator.display_name AS inviter_name, NULL::timestamptz AS attendance_deadline
+            FROM group_invites invites
+            JOIN access_users creator ON creator.id = invites.created_by_user_id
+            WHERE invites.token_digest = :tokenDigest
+            UNION ALL
+            SELECT m.group_id, m.author_name AS inviter_name, game.confirmation_deadline AS attendance_deadline
+            FROM notification_attendance_links link
+            JOIN group_messages m ON m.id = link.message_id
+            JOIN games game ON game.id = m.game_id AND game.group_id = m.group_id
+            WHERE sha256(convert_to(link.code, 'UTF8')) = :tokenDigest AND game.status = 'PUBLISHED'
+        )
         SELECT
-            invites.group_id,
+            target.group_id,
             groups.deleted_at IS NOT NULL AS group_deleted,
             groups.name AS group_name,
             groups.city,
             groups.composition,
             groups.level,
-            creator.display_name AS inviter_name,
+            target.inviter_name,
+            target.attendance_deadline,
             (SELECT COUNT(*) FROM group_memberships memberships WHERE memberships.group_id = groups.id) AS member_count,
             slots.weekday AS slot_weekday,
             slots.start_time AS slot_start_time,
             next_game.starts_at AS next_game_starts_at,
             next_game.venue_name AS next_game_venue_name,
             next_game.venue_court AS next_game_court
-        FROM group_invites invites
-        JOIN access_groups groups ON groups.id = invites.group_id
-        JOIN access_users creator ON creator.id = invites.created_by_user_id
+        FROM target
+        JOIN access_groups groups ON groups.id = target.group_id
         LEFT JOIN group_regular_slots slots ON slots.group_id = groups.id
         LEFT JOIN LATERAL (
             SELECT games.starts_at, games.venue_name, games.venue_court
@@ -95,7 +113,6 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
             ORDER BY games.starts_at, games.id
             LIMIT 1
         ) next_game ON true
-        WHERE invites.token_digest = :tokenDigest
         ORDER BY slots.position, slots.weekday, slots.start_time
         """.trimIndent(),
     )
@@ -109,8 +126,8 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
             PreviewableInvite(
                 groupDeleted = first.groupDeleted,
                 // SPEC_DEVIATION: VUL-137's expires_at is not present in this base branch.
-                // The field stays null until that migration is available.
-                expiredAt = null,
+                // Só o link de presença expira: no prazo de confirmação do jogo, como no resgate.
+                expiredAt = first.attendanceDeadline?.takeUnless { it.isAfter(now) },
                 card = PreviewInviteCard(
                     groupName = first.groupName,
                     city = first.city,
@@ -121,7 +138,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
                     inviterName = first.inviterName,
                     // SPEC_DEVIATION: VUL-139's entry_requires_approval is not present yet.
                     entryRequiresApproval = false,
-                    expiresAt = null,
+                    expiresAt = first.attendanceDeadline,
                     nextGame = first.nextGame,
                 ),
             )
@@ -134,6 +151,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
         composition = getString("composition")?.let(GroupComposition::valueOf),
         level = getString("level")?.let(GroupLevel::valueOf),
         inviterName = getString("inviter_name"),
+        attendanceDeadline = getTimestamp("attendance_deadline")?.toInstant(),
         memberCount = getInt("member_count"),
         slot = getObject("slot_weekday", Integer::class.java)?.let {
             PreviewRegularSlot(
@@ -157,6 +175,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
         val composition: GroupComposition?,
         val level: GroupLevel?,
         val inviterName: String?,
+        val attendanceDeadline: Instant?,
         val memberCount: Int,
         val slot: PreviewRegularSlot?,
         val nextGame: PreviewNextGame?,

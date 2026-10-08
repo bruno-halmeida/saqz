@@ -108,6 +108,45 @@ class JdbcInvitePreviewRepositoryIntegrationTest {
     }
 
     @Test
+    fun `attendance link from a saqz message previews its group with the author as inviter`() {
+        val owner = insertUser("preview-attendance-owner", "Owner Display")
+        val group = insertCompleteGroup(owner)
+        insertMembership(group, owner, "ADMIN")
+        val deadline = now.plusSeconds(3_600)
+        insertAttendanceLink(group, insertGameWithDeadline(group, now.plusSeconds(7_200), deadline, "PUBLISHED"), owner, "Organizador")
+
+        val preview = requireNotNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code), now) })
+
+        assertFalse(preview.groupDeleted)
+        assertNull(preview.expiredAt)
+        assertEquals("Preview Group", preview.card.groupName)
+        assertEquals("Organizador", preview.card.inviterName)
+        assertEquals(1, preview.card.memberCount)
+        assertEquals(deadline, preview.card.expiresAt)
+    }
+
+    @Test
+    fun `attendance link past the confirmation deadline previews as expired`() {
+        val owner = insertUser("preview-attendance-expired", "Owner Display")
+        val group = insertCompleteGroup(owner)
+        val deadline = now.minusSeconds(60)
+        insertAttendanceLink(group, insertGameWithDeadline(group, now.plusSeconds(3_600), deadline, "PUBLISHED"), owner, "Organizador")
+
+        val preview = requireNotNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code), now) })
+
+        assertEquals(deadline, preview.expiredAt)
+    }
+
+    @Test
+    fun `attendance link of a game that is no longer published is not an invite`() {
+        val owner = insertUser("preview-attendance-cancelled", "Owner Display")
+        val group = insertCompleteGroup(owner)
+        insertAttendanceLink(group, insertGameWithDeadline(group, now.plusSeconds(7_200), now.plusSeconds(3_600), "CANCELLED"), owner, "Organizador")
+
+        assertNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code), now) })
+    }
+
+    @Test
     fun `unknown digest returns no invite`() {
         assertNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.from(ByteArray(32) { 99 }), now) })
     }
@@ -179,6 +218,35 @@ class JdbcInvitePreviewRepositoryIntegrationTest {
                 statement.executeUpdate()
             }
         }
+    }
+
+    private fun insertGameWithDeadline(group: UUID, startsAt: Instant, deadline: Instant, status: String): UUID {
+        val id = UUID.randomUUID()
+        connection().use { connection ->
+            connection.prepareStatement(
+                "INSERT INTO games (id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes, " +
+                    "confirmation_deadline, venue_name, venue_address, venue_court, capacity, status, created_at, updated_at) " +
+                    "VALUES (?, ?, 'Game', DATE '2026-08-12', TIME '19:30', 'UTC', ?, 90, ?, 'Arena', 'Address', NULL, 12, ?, now(), now())",
+            ).use { statement ->
+                statement.setObject(1, id)
+                statement.setObject(2, group)
+                statement.setTimestamp(3, Timestamp.from(startsAt))
+                statement.setTimestamp(4, Timestamp.from(deadline))
+                statement.setObject(5, status, java.sql.Types.OTHER)
+                statement.executeUpdate()
+            }
+        }
+        return id
+    }
+
+    /** O lembrete do jogo com o link de presença, como o Saqz manda no WhatsApp. */
+    private fun insertAttendanceLink(group: UUID, game: UUID, author: UUID, authorName: String) {
+        val message = UUID.randomUUID()
+        execute(
+            "INSERT INTO group_messages (id, group_id, author_id, author_name, channel, body, request_id, game_id) " +
+                "VALUES ('$message', '$group', '$author', '$authorName', 'REMINDER', 'Bora?', '${UUID.randomUUID()}', '$game')",
+        )
+        execute("INSERT INTO notification_attendance_links (message_id, code) VALUES ('$message', '${code.value}')")
     }
 
     private fun insertInvite(group: UUID, creator: UUID) {
