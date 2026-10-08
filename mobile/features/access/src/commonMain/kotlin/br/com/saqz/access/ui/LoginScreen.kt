@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.access.presentation.login.LoginIntent
 import br.com.saqz.access.presentation.login.LoginState
+import br.com.saqz.access.presentation.register.RegisterInviteContext
 import br.com.saqz.access.resources.login_terms
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.apple_logo
@@ -127,6 +128,7 @@ fun LoginScreen(
     onCreateAccount: () -> Unit,
     onForgotPassword: () -> Unit,
     modifier: Modifier = Modifier,
+    inviteContext: RegisterInviteContext? = null,
 ) {
     val colors = SaqzTheme.colors
     val alert = state.error?.asString()
@@ -134,12 +136,18 @@ fun LoginScreen(
     AccessScaffold(modifier = modifier, spacious = true) {
         AccessBrandMark(large = true)
         Spacer(Modifier.height(LoginMetrics.brandGap))
-        AccessHeader(
-            title = "${stringResource(Res.string.login_headline_first)}\n" +
-                stringResource(Res.string.login_headline_second),
-            emphasis = stringResource(Res.string.login_headline_emphasis),
-            spacious = true,
-        )
+        // Chegou por convite (ou link de presença) sem sessão: o grupo no lugar da saudação, o
+        // mesmo cabeçalho do cadastro, para quem já tem conta ver para onde está entrando.
+        if (inviteContext == null) {
+            AccessHeader(
+                title = "${stringResource(Res.string.login_headline_first)}\n" +
+                    stringResource(Res.string.login_headline_second),
+                emphasis = stringResource(Res.string.login_headline_emphasis),
+                spacious = true,
+            )
+        } else {
+            RegisterInviteHeader(context = inviteContext)
+        }
         Spacer(Modifier.height(LoginMetrics.headerGap))
 
         if (alert != null) {

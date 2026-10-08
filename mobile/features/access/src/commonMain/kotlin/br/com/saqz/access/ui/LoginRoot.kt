@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.access.presentation.login.LoginViewModel
+import br.com.saqz.access.presentation.register.RegisterInviteContext
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -15,6 +16,8 @@ import org.koin.compose.viewmodel.koinViewModel
 fun LoginRoot(
     onCreateAccount: () -> Unit,
     onForgotPassword: () -> Unit,
+    /** Convite (ou link de presença) guardado: o login mostra o grupo, como o cadastro. */
+    inviteContext: RegisterInviteContext? = null,
     viewModel: LoginViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -23,5 +26,6 @@ fun LoginRoot(
         onIntent = viewModel::onIntent,
         onCreateAccount = onCreateAccount,
         onForgotPassword = onForgotPassword,
+        inviteContext = inviteContext,
     )
 }

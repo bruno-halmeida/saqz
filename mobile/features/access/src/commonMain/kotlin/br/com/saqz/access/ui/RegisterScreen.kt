@@ -317,8 +317,9 @@ fun RegisterScreen(
     }
 }
 
+/** "Entrando no <grupo>" e quem convidou: o mesmo cabeçalho no cadastro e no login. */
 @Composable
-private fun RegisterInviteHeader(context: RegisterInviteContext) {
+internal fun RegisterInviteHeader(context: RegisterInviteContext) {
     val colors = SaqzTheme.colors
     val title = context.groupName?.let { groupName ->
         stringResource(Res.string.invite_register_group_header, groupName)

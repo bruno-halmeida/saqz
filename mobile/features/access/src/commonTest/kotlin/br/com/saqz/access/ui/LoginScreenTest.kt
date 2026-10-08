@@ -52,6 +52,30 @@ class LoginScreenTest {
         val FieldGap = 12.dp
     }
 
+    @Test fun `arriving by an invite the login shows the group instead of the greeting`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                LoginScreen(
+                    LoginState(), {}, {}, {},
+                    inviteContext = br.com.saqz.access.presentation.register.RegisterInviteContext.preview(
+                        groupName = "Jogo dos Cria",
+                        inviterName = "Bruno",
+                        entryRequiresApproval = false,
+                    ),
+                )
+            }
+        }
+        onNodeWithText("Entrando no Jogo dos Cria").assertExists()
+        onNodeWithText("Convite de Bruno · entrada liberada").assertExists()
+        onNodeWithText("Organize seu grupo.", substring = true).assertDoesNotExist()
+    }
+
+    @Test fun `without an invite the login keeps its greeting`() = runComposeUiTest {
+        content()
+        onNodeWithText("Organize seu grupo.", substring = true).assertExists()
+        onNodeWithTag(RegisterTags.InviteHeader).assertDoesNotExist()
+    }
+
     @Test fun `email input emits controlled value`() = runComposeUiTest {
         var intent: LoginIntent? = null
         content(onIntent = { intent = it })

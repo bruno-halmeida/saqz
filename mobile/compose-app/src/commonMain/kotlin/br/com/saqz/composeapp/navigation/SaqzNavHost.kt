@@ -306,12 +306,21 @@ internal fun SaqzNavHost(
             }
         }
     }
-    LaunchedEffect(pendingInviteCode) {
-        if (pendingInviteCode == null) {
-            inviteContext = null
-            return@LaunchedEffect
+    // Link de presença guardado sem sessão vale como convite: login e cadastro mostram o grupo, como
+    // no link de convite (o backend aceita o código de presença na prévia). Com sessão, quem cuida
+    // dele é a rota AttendanceLink, que entra no grupo e confirma.
+    val inviteGateway = koinInject<br.com.saqz.groups.domain.membership.InviteGateway>()
+    val attendanceInviteCode = attendanceLink?.code?.takeIf { state.session !is SessionAccessState.Ready }
+    LaunchedEffect(pendingInviteCode, attendanceInviteCode) {
+        val preview = when {
+            pendingInviteCode != null -> inviteCoordinator.previewPending()
+            attendanceInviteCode != null -> inviteGateway.preview(br.com.saqz.groups.domain.membership.InviteCode(attendanceInviteCode))
+            else -> {
+                inviteContext = null
+                return@LaunchedEffect
+            }
         }
-        inviteContext = when (val preview = inviteCoordinator.previewPending()) {
+        inviteContext = when (preview) {
             is SaqzResult.Success -> RegisterInviteContext.preview(
                 groupName = preview.value.groupName,
                 inviterName = preview.value.inviterName,
@@ -378,6 +387,7 @@ internal fun SaqzNavHost(
                 LoginRoot(
                     onCreateAccount = { backStack.add(AccessRoute.Register) },
                     onForgotPassword = { backStack.add(AccessRoute.ForgotPassword) },
+                    inviteContext = inviteContext,
                 )
             }
             entry<AccessRoute.Register> {
