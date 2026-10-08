@@ -58,7 +58,7 @@ class JdbcGroupSettingsRepository(
 
     private fun updateProfile(command: UpdateGroupSettingsCommand): SettingsWriteResult {
         val profile = requireNotNull(command.profile)
-        val updated = jdbc.sql(
+        val (updated, currentVenueId) = jdbc.sql(
             """
             UPDATE access_groups
             SET
@@ -89,13 +89,12 @@ class JdbcGroupSettingsRepository(
                     ELSE NULLIF(BTRIM(CAST(:pixLabel AS varchar)), '')
                 END,
                 entry_requires_approval = COALESCE(CAST(:entryRequiresApproval AS boolean), entry_requires_approval),
-                default_venue_id = null,
                 version = version + 1,
                 updated_at = now()
             WHERE id = :groupId
                 AND deleted_at IS NULL
                 AND version = :expectedVersion
-            RETURNING id, name, time_zone, version, profile_status, entry_requires_approval
+            RETURNING id, name, time_zone, version, profile_status, entry_requires_approval, default_venue_id
             """.trimIndent(),
         )
             .param("name", profile.name)
@@ -120,7 +119,9 @@ class JdbcGroupSettingsRepository(
             .param("entryRequiresApproval", command.entryRequiresApproval)
             .param("groupId", command.groupId)
             .param("expectedVersion", command.expectedVersion)
-            .query { result, _ -> result.toStoredSettings() }
+            .query { result, _ ->
+                result.toStoredSettings() to result.getObject("default_venue_id", UUID::class.java)
+            }
             .optional()
             .orElse(null)
             ?: return SettingsWriteResult.VersionConflict
@@ -128,20 +129,28 @@ class JdbcGroupSettingsRepository(
         jdbc.sql("DELETE FROM group_regular_slots WHERE group_id = :groupId")
             .param("groupId", command.groupId)
             .update()
-        jdbc.sql("DELETE FROM group_venues WHERE group_id = :groupId")
-            .param("groupId", command.groupId)
-            .update()
 
+        // Jogos e séries apontam para o local (fk_games_venue e fk_game_series_slots_venue, sem ON DELETE),
+        // então o local padrão é atualizado no lugar, nunca apagado e recriado. O id vem do app; sem ele,
+        // o grupo reaproveita o local padrão atual; só um grupo sem local ganha um id novo. Locais que
+        // deixarem de ser o padrão ficam na tabela sem efeito: tudo os lê por default_venue_id.
         val defaultVenueId = profile.defaultVenue?.let { venue ->
-            val venueId = command.defaultVenueId ?: UUID.randomUUID()
+            val venueId = command.defaultVenueId ?: currentVenueId ?: UUID.randomUUID()
             // O UPDATE ativo acima mantém o lock do grupo até todos os filhos serem gravados.
-            jdbc.sql(
+            val stored = jdbc.sql(
                 """
                 INSERT INTO group_venues (
                     id, group_id, name, address, court, version, created_at, updated_at
                 ) VALUES (
                     :id, :groupId, :name, :address, :court, 1, now(), now()
                 )
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    address = EXCLUDED.address,
+                    court = EXCLUDED.court,
+                    version = group_venues.version + 1,
+                    updated_at = now()
+                WHERE group_venues.group_id = EXCLUDED.group_id
                 """.trimIndent(),
             )
                 .param("id", venueId)
@@ -150,14 +159,15 @@ class JdbcGroupSettingsRepository(
                 .param("address", venue.address)
                 .param("court", venue.court)
                 .update()
+            check(stored == 1) { "venue $venueId belongs to another group and cannot be the default of ${command.groupId}" }
             venueId
         }
-        if (defaultVenueId != null) {
-            jdbc.sql("UPDATE access_groups SET default_venue_id = :venueId WHERE id = :groupId AND deleted_at IS NULL")
-                .param("venueId", defaultVenueId)
-                .param("groupId", command.groupId)
-                .update()
-        }
+        jdbc.sql(
+            "UPDATE access_groups SET default_venue_id = CAST(:venueId AS uuid) WHERE id = :groupId AND deleted_at IS NULL",
+        )
+            .param("venueId", defaultVenueId)
+            .param("groupId", command.groupId)
+            .update()
 
         profile.regularSlots.forEachIndexed { index, slot ->
             // O UPDATE ativo acima mantém o lock do grupo até todos os filhos serem gravados.

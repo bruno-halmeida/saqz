@@ -75,6 +75,8 @@ import br.com.saqz.subscriptions.application.InvalidReceiptPaginationException
 import br.com.saqz.sharedkernel.ErrorCode
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import java.sql.SQLException
+import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.HttpRequestMethodNotSupportedException
@@ -84,10 +86,14 @@ import org.springframework.web.multipart.MultipartException
 import org.springframework.web.multipart.support.MissingServletRequestPartException
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
+private const val MAX_CAUSE_DEPTH = 8
+
 @RestControllerAdvice
 class SafeExceptionHandler(
     private val problemWriter: ApiProblemWriter,
 ) {
+    private val logger = LoggerFactory.getLogger(SafeExceptionHandler::class.java)
+
     @ExceptionHandler(br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException::class)
     fun subscriptionRequired(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 403, ErrorCode.SUBSCRIPTION_REQUIRED)
@@ -640,11 +646,33 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 404)
     }
 
+    /**
+     * Registra classe, SQLSTATE e pilha da falha, nunca a mensagem: ela pode carregar segredo (chave do
+     * Firebase, corpo da requisição), e o SafeDiagnosticsIntegrationTest garante que nada disso vai ao log.
+     * O correlationId entra pelo MDC (`corr=` no padrão de log).
+     */
     @ExceptionHandler(Exception::class)
     fun unexpected(
+        failure: Exception,
         request: HttpServletRequest,
         response: HttpServletResponse,
     ) {
+        logger.error("unexpected_failure method={} path={}\n{}", request.method, request.requestURI, redactedTrace(failure))
         problemWriter.write(request, response, 500)
+    }
+
+    /** Mesma forma do stack trace padrão (classe, `at` por quadro, `Caused by:`), sem as mensagens. */
+    private fun redactedTrace(failure: Throwable): String = buildString {
+        var current: Throwable? = failure
+        var depth = 0
+        while (current != null && depth < MAX_CAUSE_DEPTH) {
+            if (depth > 0) append("Caused by: ")
+            append(current.javaClass.name)
+            if (current is SQLException) append(" [sqlState=").append(current.sqlState).append(']')
+            for (frame in current.stackTrace) append("\n\tat ").append(frame)
+            append('\n')
+            current = current.cause
+            depth++
+        }
     }
 }

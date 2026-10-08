@@ -45,6 +45,12 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         dataSource = TestPostgres.migrated(accessMigrationLocation()).dataSource
         execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
         execute("ALTER TABLE access_groups ADD COLUMN entry_requires_approval boolean NOT NULL DEFAULT false")
+        // As migrations de access não trazem games nem game_series_slots; esta tabela reproduz a FK sem
+        // ON DELETE que elas têm para group_venues (fk_games_venue, fk_game_series_slots_venue).
+        execute(
+            "CREATE TABLE venue_references (id uuid PRIMARY KEY, group_id uuid NOT NULL, venue_id uuid NOT NULL, " +
+                "CONSTRAINT fk_venue_references_venue FOREIGN KEY (group_id, venue_id) REFERENCES group_venues (group_id, id))",
+        )
         transaction = JdbcTransactionRunner(dataSource)
         useCase = UpdateGroupSettings(
             transaction,
@@ -437,6 +443,115 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
     }
 
     @Test
+    fun `profile update keeps the venue that games reference and bumps its version`() {
+        val owner = insertUser("profile-referenced-venue-owner")
+        val group = insertGroup(owner)
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(owner, group, 1, UpdateGroupProfileInput(profile(defaultVenue = arenaBeach("Quadra 2")))),
+        )
+        val venueId = uuid("SELECT default_venue_id FROM access_groups WHERE id = '$group'")
+        referenceVenue(group, venueId)
+
+        // Sem defaultVenueId (app antigo ou campo omitido): o local padrão atual é reaproveitado.
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(
+                owner,
+                group,
+                2,
+                UpdateGroupProfileInput(profile(defaultVenue = GroupVenueInput("Arena Beach Nova", "Rua Central 200", null))),
+            ),
+        )
+        assertEquals(venueId, uuid("SELECT default_venue_id FROM access_groups WHERE id = '$group'"))
+        assertEquals("Arena Beach Nova|Rua Central 200|null|2", venue(venueId))
+        assertEquals(1, number("SELECT count(*) FROM group_venues WHERE group_id = '$group'"))
+
+        // Com defaultVenueId: o id enviado é mantido.
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(
+                owner,
+                group,
+                3,
+                UpdateGroupProfileInput(profile(defaultVenue = arenaBeach("Quadra 3")), defaultVenueId = venueId),
+            ),
+        )
+        assertEquals(venueId, uuid("SELECT default_venue_id FROM access_groups WHERE id = '$group'"))
+        assertEquals("Arena Beach|Rua Central 100|Quadra 3|3", venue(venueId))
+        assertEquals(1, number("SELECT count(*) FROM group_venues WHERE group_id = '$group'"))
+        assertEquals("4", settings(group).substringAfterLast('|'))
+    }
+
+    @Test
+    fun `removing the venue from the profile keeps the referenced row and clears the default`() {
+        val owner = insertUser("profile-venue-removed-owner")
+        val group = insertGroup(owner)
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(owner, group, 1, UpdateGroupProfileInput(profile(defaultVenue = arenaBeach(null)))),
+        )
+        val venueId = uuid("SELECT default_venue_id FROM access_groups WHERE id = '$group'")
+        referenceVenue(group, venueId)
+
+        assertIs<UpdateGroupSettingsResult.Success>(useCase.execute(owner, group, 2, UpdateGroupProfileInput(profile())))
+
+        assertTrue(boolean("SELECT default_venue_id IS NULL FROM access_groups WHERE id = '$group'"))
+        assertEquals("Arena Beach|Rua Central 100|null|1", venue(venueId))
+    }
+
+    @Test
+    fun `a new venue id becomes the default while the referenced venue row stays`() {
+        val owner = insertUser("profile-new-venue-id-owner")
+        val group = insertGroup(owner)
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(owner, group, 1, UpdateGroupProfileInput(profile(defaultVenue = arenaBeach(null)))),
+        )
+        val oldVenueId = uuid("SELECT default_venue_id FROM access_groups WHERE id = '$group'")
+        referenceVenue(group, oldVenueId)
+        val newVenueId = UUID.randomUUID()
+
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(
+                owner,
+                group,
+                2,
+                UpdateGroupProfileInput(
+                    profile(defaultVenue = GroupVenueInput("Ginásio Central", "Avenida Norte 50", null)),
+                    defaultVenueId = newVenueId,
+                ),
+            ),
+        )
+
+        assertEquals(newVenueId, uuid("SELECT default_venue_id FROM access_groups WHERE id = '$group'"))
+        assertEquals("Ginásio Central|Avenida Norte 50|null|1", venue(newVenueId))
+        assertEquals("Arena Beach|Rua Central 100|null|1", venue(oldVenueId))
+    }
+
+    @Test
+    fun `venue id of another group cannot be taken over and nothing is written`() {
+        val owner = insertUser("profile-foreign-venue-owner")
+        val group = insertGroup(owner)
+        val other = insertGroup(owner)
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(owner, other, 1, UpdateGroupProfileInput(profile(defaultVenue = arenaBeach(null)))),
+        )
+        val foreignVenueId = uuid("SELECT default_venue_id FROM access_groups WHERE id = '$other'")
+
+        assertFailsWith<IllegalStateException> {
+            useCase.execute(
+                owner,
+                group,
+                1,
+                UpdateGroupProfileInput(
+                    profile(defaultVenue = GroupVenueInput("Ginásio Central", "Avenida Norte 50", null)),
+                    defaultVenueId = foreignVenueId,
+                ),
+            )
+        }
+
+        assertEquals("Original Group|America/Sao_Paulo|1", settings(group))
+        assertEquals("Arena Beach|Rua Central 100|null|1", venue(foreignVenueId))
+        assertEquals(0, number("SELECT count(*) FROM group_venues WHERE group_id = '$group'"))
+    }
+
+    @Test
     fun `profile failure after write rolls back scalar venue and slot replacement`() {
         val owner = insertUser("profile-rollback-owner")
         val group = insertGroup(owner)
@@ -503,6 +618,22 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
                 "'CUSTOM', 'Sem central fixo', now(), now())",
         )
         return id
+    }
+
+    private fun arenaBeach(court: String?) = GroupVenueInput("Arena Beach", "Rua Central 100", court)
+
+    /** Simula um jogo gerado para o local: a FK sem ON DELETE impede apagar a linha de group_venues. */
+    private fun referenceVenue(group: UUID, venue: UUID) = execute(
+        "INSERT INTO venue_references (id, group_id, venue_id) VALUES ('${UUID.randomUUID()}', '$group', '$venue')",
+    )
+
+    private fun venue(id: UUID): String = connection().use { connection ->
+        connection.createStatement().use { statement ->
+            statement.executeQuery("SELECT name, address, court, version FROM group_venues WHERE id = '$id'").use {
+                it.next()
+                "${it.getString(1)}|${it.getString(2)}|${it.getString(3)}|${it.getLong(4)}"
+            }
+        }
     }
 
     private fun insertMembership(group: UUID, user: UUID, role: String) = execute(
