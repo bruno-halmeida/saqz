@@ -22,6 +22,8 @@ import br.com.saqz.groups.domain.photo.GroupPhotoSelectionPort
 import br.com.saqz.groups.data.di.groupsDataModule
 import br.com.saqz.groups.data.di.inviteJourneyDataModule
 import br.com.saqz.groups.data.di.inviteManagementDataModule
+import br.com.saqz.composeapp.notifications.AttendanceLinkInbox
+import br.com.saqz.composeapp.notifications.NotificationOpenInbox
 import br.com.saqz.groups.invite.GroupInviteCoordinator
 import br.com.saqz.groups.invite.groupsInviteModule
 import br.com.saqz.groups.port.DefaultGroupSystemTimeZonePort
@@ -137,6 +139,8 @@ fun loadSaqzPlatformDependencies(
     }
     if (platformModules.isNotEmpty()) {
         koin.getOrNull<GroupInviteCoordinator>()?.stop()
+        koin.getOrNull<AttendanceLinkInbox>()?.stop()
+        koin.getOrNull<NotificationOpenInbox>()?.stop()
         unloadKoinModules(commonModules + platformModules)
         loadKoinModules(commonModules)
     }
@@ -150,6 +154,10 @@ fun loadSaqzPlatformDependencies(
         imageLoaderContext?.let(::authenticatedImageLoaderModule),
     ).filterNotNull().also(::loadKoinModules)
     koin.get<GroupInviteCoordinator>().start()
+    // Presença e toque em push chegam já na abertura, antes da primeira tela: quem guarda os dois
+    // ouve desde aqui, como o convite. Ligados só pela tela, o evento ia só para o convite e sumia.
+    koin.get<AttendanceLinkInbox>().start()
+    koin.get<NotificationOpenInbox>().start()
     // Desde a abertura: renovação, Ask to Buy aprovado e pagamento pendente que caiu chegam
     // por `Transaction.updates` (App Store) ou pelo `PurchasesUpdatedListener` (Play).
     koin.get<StoreCheckout>().sync?.start()
@@ -161,7 +169,10 @@ fun loadSaqzPlatformDependencies(
 
 internal fun stopSaqzKoin() {
     if (platformModules.isNotEmpty()) {
-        KoinPlatformTools.defaultContext().getOrNull()?.getOrNull<GroupInviteCoordinator>()?.stop()
+        val koin = KoinPlatformTools.defaultContext().getOrNull()
+        koin?.getOrNull<GroupInviteCoordinator>()?.stop()
+        koin?.getOrNull<AttendanceLinkInbox>()?.stop()
+        koin?.getOrNull<NotificationOpenInbox>()?.stop()
     }
     platformModules = emptyList()
     stopKoin()

@@ -91,7 +91,7 @@ class CommunicationScreenTest {
             whatsapp = WhatsAppPreferences(notices = true, reminders = true, charges = true))), intents.single())
         onNodeWithTag("preferences-whatsapp-messages").assertDoesNotExist()
     }
-    @Test fun whatsappChannelIsHiddenWhileTheLaunchPolicyKeepsItOff() = runComposeUiTest {
+    @Test fun whatsappChannelIsHiddenWhileTheServerKeepsItOff() = runComposeUiTest {
         var whatsApp by mutableStateOf(false)
         setContent { SaqzTheme {
             NotificationCenterScreen(NotificationCenterState(loading = false), true, {}, {}, whatsAppChannel = whatsApp)

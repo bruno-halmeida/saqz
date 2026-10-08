@@ -58,6 +58,7 @@ import br.com.saqz.groups.presentation.photo.groupPhotoUrl
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
+import br.com.saqz.groups.presentation.whatsappbinding.WhatsAppAvailability
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_details_cash_balance
 import br.com.saqz.groups.resources.onboarding_athlete_share_message
@@ -110,8 +111,8 @@ class GroupDetailsViewModel(
     private val notifications: NativeNotificationPort? = null,
     private val whatsApp: GroupWhatsAppGateway? = null,
     private val onboardingMemory: GroupOnboardingMemoryPort? = null,
-    /** Configuração de lançamento, não dependência: o teste liga para cobrir o vínculo. */
-    private val whatsAppGroupBinding: Boolean = br.com.saqz.domain.StoreLaunchPolicy.whatsAppGroupBinding,
+    /** Se o servidor está com o WhatsApp ligado; sem ela, o vínculo nem aparece. */
+    private val whatsAppAvailability: WhatsAppAvailability? = null,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(GroupDetailsState()) {
 
     private var loadGeneration = 0
@@ -129,6 +130,7 @@ class GroupDetailsViewModel(
     // Entradas de "Deixe o grupo redondo": chegam de chamadas separadas e se combinam em [recomputeChecklist].
     private var rosterHasMensalista = false
     private var whatsAppStatus: GroupWhatsAppStatus? = null
+    private var whatsAppEnabled = false
     private var memory = GroupOnboardingMemory()
 
     init {
@@ -159,7 +161,7 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.Invite,
             -> emit(GroupDetailsEffect.OpenInviteLink(groupId))
             GroupDetailsIntent.OpenCashbox -> emit(GroupDetailsEffect.OpenCashbox(groupId))
-            GroupDetailsIntent.OpenWhatsApp -> if (whatsAppGroupBinding) emit(GroupDetailsEffect.OpenWhatsApp(groupId))
+            GroupDetailsIntent.OpenWhatsApp -> if (whatsAppEnabled) emit(GroupDetailsEffect.OpenWhatsApp(groupId))
             is GroupDetailsIntent.ChecklistAction -> checklistAction(intent.item)
             GroupDetailsIntent.SnoozeChecklist -> snoozeChecklist()
             GroupDetailsIntent.OpenVenueMap -> openMap()
@@ -368,9 +370,18 @@ class GroupDetailsViewModel(
 
     /** Status do vínculo, só para quem administra: alimenta a linha de Gestão e a checklist. Falha cala. */
     private suspend fun loadWhatsApp(generation: Int, group: Group) {
-        if (!whatsAppGroupBinding) return
+        val availability = whatsAppAvailability ?: return
         val gateway = whatsApp ?: return
         if (group.role == GroupRole.ATHLETE) return
+        // Pergunta ao servidor a cada carga: ligar ou desligar lá aparece aqui sem versão nova.
+        val enabled = availability.refresh()
+        if (generation != loadGeneration) return
+        whatsAppEnabled = enabled
+        if (!enabled) {
+            whatsAppStatus = null
+            recomputeChecklist(generation)
+            return
+        }
         val result = gateway.binding(GroupId(groupId))
         if (generation != loadGeneration) return
         whatsAppStatus = (result as? SaqzResult.Success)?.value?.status
@@ -394,7 +405,7 @@ class GroupDetailsViewModel(
         } else {
             groupChecklist(
                 group, rosterHasMensalista, whatsAppStatus, memory, now.now().toEpochMilliseconds(),
-                whatsAppBinding = whatsAppGroupBinding,
+                whatsAppBinding = whatsAppEnabled,
             )
         }
         update { it.copy(checklist = checklist, whatsApp = whatsAppStatus) }
@@ -402,7 +413,7 @@ class GroupDetailsViewModel(
 
     private fun checklistAction(item: GroupChecklistItem) {
         when (item) {
-            GroupChecklistItem.WhatsApp -> if (whatsAppGroupBinding) emit(GroupDetailsEffect.OpenWhatsApp(groupId))
+            GroupChecklistItem.WhatsApp -> if (whatsAppEnabled) emit(GroupDetailsEffect.OpenWhatsApp(groupId))
             GroupChecklistItem.Mensalistas -> emit(GroupDetailsEffect.OpenMembers(groupId))
             GroupChecklistItem.Pix -> emit(GroupDetailsEffect.OpenEdit(groupId))
             GroupChecklistItem.Rules -> {

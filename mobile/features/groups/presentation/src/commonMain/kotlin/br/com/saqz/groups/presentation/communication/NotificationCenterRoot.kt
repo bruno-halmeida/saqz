@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,7 @@ import br.com.saqz.designsystem.theme.SaqzMotionPolicy
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.communication.CommunicationChannel
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
+import br.com.saqz.groups.presentation.whatsappbinding.WhatsAppAvailability
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.connected_load_failure_title
 import br.com.saqz.groups.resources.communication_notifications
@@ -64,6 +66,7 @@ import br.com.saqz.groups.resources.communication_inbox_empty
 import br.com.saqz.groups.resources.communication_more
 import br.com.saqz.groups.resources.communication_refresh
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import androidx.compose.ui.tooling.preview.Preview
@@ -82,8 +85,12 @@ fun NotificationCenterRoot(settings: Boolean, onBack: () -> Unit, onOpen: (Notif
         key = "notification-center/$settings", parameters = { parametersOf(settings) },
     )
     val state by vm.state.collectAsStateWithLifecycle()
+    // A aba de WhatsApp só existe com o WhatsApp ligado no servidor; a resposta vem a cada entrada.
+    val whatsApp = koinInject<WhatsAppAvailability>()
+    val whatsAppChannel by whatsApp.enabled.collectAsStateWithLifecycle()
+    LaunchedEffect(whatsApp) { whatsApp.refresh() }
     ObserveAsEvents(vm.effects) { effect -> when (effect) { is NotificationCenterEffect.Open -> onOpen(effect) } }
-    NotificationCenterScreen(state, settings, onBack, vm::onIntent)
+    NotificationCenterScreen(state, settings, onBack, vm::onIntent, whatsAppChannel)
 }
 
 @Composable
@@ -92,7 +99,7 @@ internal fun NotificationCenterScreen(
     settings: Boolean,
     onBack: () -> Unit,
     onIntent: (NotificationCenterIntent) -> Unit,
-    whatsAppChannel: Boolean = br.com.saqz.domain.StoreLaunchPolicy.whatsAppNotifications,
+    whatsAppChannel: Boolean = false,
 ) {
     val channels = NotificationSettingsChannel.entries
         .filter { it != NotificationSettingsChannel.WHATSAPP || whatsAppChannel }

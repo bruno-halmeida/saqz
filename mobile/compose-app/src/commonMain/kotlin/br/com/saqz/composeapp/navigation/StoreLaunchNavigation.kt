@@ -14,11 +14,14 @@ import br.com.saqz.receivables.presentation.ReceiptWalletRoute
 import br.com.saqz.receivables.presentation.RecurrenceRoute
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 
-/** Applied before composing destinations, including restored stacks and incoming links. */
+/**
+ * Applied before composing destinations, including restored stacks and incoming links.
+ * O vínculo com o grupo do WhatsApp não passa por aqui: quem decide é o servidor, e as entradas
+ * para a tela só aparecem com ele ligado.
+ */
 internal fun NavKey.isAvailableAtLaunch(): Boolean = when (this) {
     SubscriptionsRoute.ChangePlan -> StoreLaunchPolicy.purchases
     is GroupsRoute.Thread -> notices || StoreLaunchPolicy.chat
-    is GroupsRoute.WhatsApp -> StoreLaunchPolicy.whatsAppGroupBinding
     ReceiptFinanceHomeRoute, FinancialManagementRoute, FinancialOnboardingRoute,
     ReceiptWalletRoute, MemberPaymentHistoryRoute, is MemberPaymentRoute,
     is RecurrenceRoute, is ChargeApprovalRoute, is ReceiptConfigurationRoute -> StoreLaunchPolicy.receivables

@@ -33,6 +33,7 @@ import br.com.saqz.groups.domain.membership.GroupEntryRequest
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.presentation.FakeGroupOnboardingMemory
 import br.com.saqz.groups.presentation.FakeGroupWhatsAppGateway
+import br.com.saqz.groups.presentation.whatsappbinding.WhatsAppAvailability
 import kotlinx.coroutines.launch
 import br.com.saqz.groups.domain.group.GroupGameConfig
 import br.com.saqz.groups.domain.group.GroupTimeZone
@@ -1819,12 +1820,13 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
-    fun `with the binding off the admin never reaches the whatsapp group`() = runTest {
-        val whatsApp = FakeGroupWhatsAppGateway()
+    fun `with whatsapp off on the server the admin never reaches the whatsapp group`() = runTest {
+        val whatsApp = FakeGroupWhatsAppGateway(available = false)
         val effects = mutableListOf<GroupDetailsEffect>()
-        val viewModel = viewModel(whatsApp = whatsApp, onboardingMemory = FakeGroupOnboardingMemory(), whatsAppGroupBinding = false)
+        val viewModel = viewModel(whatsApp = whatsApp, onboardingMemory = FakeGroupOnboardingMemory())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.effects.collect { effects += it } }
 
+        assertEquals(1, whatsApp.availabilityCalls)
         assertTrue(whatsApp.bindingCalls.isEmpty())
         assertNull(viewModel.state.value.whatsApp)
         val checklist = checkNotNull(viewModel.state.value.checklist)
@@ -1834,6 +1836,36 @@ class GroupDetailsViewModelTest {
         viewModel.onIntent(GroupDetailsIntent.OpenWhatsApp)
         viewModel.onIntent(GroupDetailsIntent.ChecklistAction(br.com.saqz.groups.presentation.details.GroupChecklistItem.WhatsApp))
         assertTrue(effects.isEmpty())
+    }
+
+    @Test
+    fun `a server without the availability endpoint keeps whatsapp off`() = runTest {
+        val whatsApp = FakeGroupWhatsAppGateway(available = null)
+        val viewModel = viewModel(whatsApp = whatsApp, onboardingMemory = FakeGroupOnboardingMemory())
+
+        assertTrue(whatsApp.bindingCalls.isEmpty())
+        assertNull(viewModel.state.value.whatsApp)
+        assertTrue(checkNotNull(viewModel.state.value.checklist).rows.none {
+            it.item == br.com.saqz.groups.presentation.details.GroupChecklistItem.WhatsApp
+        })
+    }
+
+    @Test
+    fun `whatsapp turned on in the server shows up on the next load without a new app`() = runTest {
+        val whatsApp = FakeGroupWhatsAppGateway(available = false)
+        val viewModel = viewModel(whatsApp = whatsApp, onboardingMemory = FakeGroupOnboardingMemory())
+        assertNull(viewModel.state.value.whatsApp)
+
+        whatsApp.available = true
+        viewModel.onIntent(GroupDetailsIntent.Retry)
+
+        assertEquals(2, whatsApp.availabilityCalls)
+        assertEquals(listOf(GroupId(GROUP_ID)), whatsApp.bindingCalls)
+        assertEquals(br.com.saqz.groups.domain.communication.GroupWhatsAppStatus.NONE, viewModel.state.value.whatsApp)
+        assertEquals(
+            br.com.saqz.groups.presentation.details.GroupChecklistItem.WhatsApp,
+            viewModel.state.value.checklist?.current,
+        )
     }
 
     @Test
@@ -1901,8 +1933,6 @@ class GroupDetailsViewModelTest {
         notifications: NativeNotificationPort? = null,
         whatsApp: FakeGroupWhatsAppGateway? = null,
         onboardingMemory: FakeGroupOnboardingMemory? = null,
-        // O padrão dos testes cobre o vínculo ligado; o desligado (produção hoje) tem teste próprio.
-        whatsAppGroupBinding: Boolean = true,
     ) = GroupDetailsViewModel(
         GROUP_ID,
         groupGateway,
@@ -1919,7 +1949,8 @@ class GroupDetailsViewModelTest {
         notifications,
         whatsApp,
         onboardingMemory,
-        whatsAppGroupBinding,
+        // O servidor do fake responde "ligado" por padrão; o desligado tem testes próprios.
+        whatsApp?.let(::WhatsAppAvailability),
     )
 
     private fun athleteGroupGateway() = FakeGroupGateway(

@@ -24,8 +24,8 @@ data class GroupChecklistUi(val rows: List<GroupChecklistRowUi>) {
  * dá para ler do grupo: "regras abertas uma vez" e o "deixar para depois", que vêm da memória
  * local do aparelho. Com todos feitos, ou durante o "deixar para depois", devolve `null`.
  *
- * Sem [whatsAppBinding] (`StoreLaunchPolicy.whatsAppGroupBinding` desligado) o item do WhatsApp
- * nem existe: não aparece e não conta para a checklist ficar completa.
+ * Sem [whatsAppBinding] (WhatsApp desligado no servidor) o item do WhatsApp nem existe: não
+ * aparece e não conta para a checklist ficar completa.
  */
 internal fun groupChecklist(
     group: Group,

@@ -83,6 +83,7 @@ internal fun stopTestSaqzKoin() = stopSaqzKoin()
 internal fun testSaqzPlatformDependencies(
     appStorePurchases: br.com.saqz.subscriptions.domain.port.AppStorePurchasesPort? = null,
     googlePlayPurchases: br.com.saqz.subscriptions.domain.port.GooglePlayPurchasesPort? = null,
+    groupLinks: NativeGroupLinkPort = TestGroupLinkPort,
 ) = SaqzPlatformDependencies(
     notifications = object : br.com.saqz.groups.domain.communication.NativeNotificationPort {
         override fun device(done: (br.com.saqz.groups.domain.communication.NotificationDevice?) -> Unit) = done(null)
@@ -121,7 +122,7 @@ internal fun testSaqzPlatformDependencies(
             encoder = TestGroupPhotoEncoderPort,
             previews = GroupPhotoPreviewPort { null },
         ),
-        links = TestGroupLinkPort,
+        links = groupLinks,
         state = TestLocalGroupStatePort,
         inviteUrlStore = TestInviteUrlStorePort,
         inviteShare = TestInviteSharePort,

@@ -13,10 +13,18 @@ internal class FakeGroupWhatsAppGateway(
     var binding: GroupWhatsAppBinding = GroupWhatsAppBinding(bound = false),
     var linked: GroupWhatsAppBinding = GroupWhatsAppBinding(true, "123@g.us", "Vôlei do CERET", GroupWhatsAppStatus.ACTIVE),
     var shouldFail: Boolean = false,
+    /** O que o servidor responde em `/api/whatsapp/availability`; `null` é o servidor sem o endpoint. */
+    var available: Boolean? = true,
 ) : GroupWhatsAppGateway {
     val bindingCalls = mutableListOf<GroupId>()
     val linkCalls = mutableListOf<Pair<GroupId, String>>()
     val enabledCalls = mutableListOf<Pair<GroupId, Boolean>>()
+    var availabilityCalls = 0
+
+    override suspend fun availability(): SaqzResult<Boolean, CommunicationError> {
+        availabilityCalls++
+        return available?.let { SaqzResult.Success(it) } ?: SaqzResult.Failure(CommunicationError(DataError.NotFound))
+    }
 
     override suspend fun binding(groupId: GroupId): SaqzResult<GroupWhatsAppBinding, CommunicationError> {
         bindingCalls += groupId

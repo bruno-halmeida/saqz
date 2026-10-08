@@ -10,9 +10,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class StoreLaunchNavigationTest {
-    @Test fun `restored purchases chat whatsapp group and API payments cannot compose destinations`() {
+    @Test fun `restored purchases chat and API payments cannot compose destinations`() {
         val disabled = listOf<NavKey>(SubscriptionsRoute.ChangePlan, GroupsRoute.Thread("group", false),
-            GroupsRoute.WhatsApp("group"),
             ReceiptFinanceHomeRoute, FinancialOnboardingRoute, FinancialManagementRoute, ReceiptWalletRoute,
             MemberPaymentHistoryRoute, MemberPaymentRoute("order"), RecurrenceRoute("account", "group"),
             ChargeApprovalRoute("group", "charge"), ReceiptConfigurationRoute("group"))
@@ -20,8 +19,8 @@ class StoreLaunchNavigationTest {
         assertEquals(listOf(SaqzShellDestination.Home), restored.filter { it.isAvailableAtLaunch() })
     }
 
-    @Test fun `plan consumption profile deletion and notices remain available`() {
+    @Test fun `plan consumption profile deletion notices and the server-gated whatsapp remain available`() {
         listOf<NavKey>(SubscriptionsRoute.MyPlan, ProfileRoute.DeleteAccount, GroupsRoute.Thread("group", true),
-            SubscriptionRequired).forEach { assertTrue(it.isAvailableAtLaunch()) }
+            GroupsRoute.WhatsApp("group"), SubscriptionRequired).forEach { assertTrue(it.isAvailableAtLaunch()) }
     }
 }

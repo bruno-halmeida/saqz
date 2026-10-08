@@ -33,6 +33,28 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class KtorGroupWhatsAppGatewayTest {
+    @Test fun availabilityReadsTheServerFlag() = runTest {
+        for (enabled in listOf(true, false)) {
+            var captured: HttpRequestData? = null
+            val result = gateway { request ->
+                captured = request
+                respond("""{"enabled":$enabled}""", headers = jsonHeaders)
+            }.availability().success()
+            val request = checkNotNull(captured)
+            assertEquals(HttpMethod.Get, request.method)
+            assertEquals("/api/whatsapp/availability", request.url.encodedPath)
+            assertEquals("Bearer fake-token", request.headers[HttpHeaders.Authorization])
+            assertEquals(enabled, result)
+        }
+    }
+
+    @Test fun serverWithoutTheEndpointIsAFailureNotAnAnswer() = runTest {
+        assertEquals(
+            SaqzResult.Failure(CommunicationError(DataError.NotFound)),
+            gateway { respond("", HttpStatusCode.NotFound) }.availability(),
+        )
+    }
+
     @Test fun bindingReadsAuthenticatedBoundGroupAndEachStatus() = runTest {
         for (status in listOf("ACTIVE", "DISABLED", "BROKEN")) {
             var captured: HttpRequestData? = null

@@ -69,6 +69,31 @@ class SaqzKoinBootstrapTest {
     }
 
     @Test
+    fun linkEventsAtLaunchReachTheInboxesBeforeAnyScreen() {
+        stopSaqzKoin()
+        try {
+            val links = RecordingGroupLinkPort()
+            startSaqzKoin(testSaqzPlatformDependencies(groupLinks = links))
+            val koin = KoinPlatformTools.defaultContext().get()
+
+            // Abertura a frio: o link e o toque em push chegam antes de qualquer tela compor.
+            links.emit(br.com.saqz.groups.port.GroupLinkEvent.Attendance(ATTENDANCE_CODE))
+            links.emit(br.com.saqz.groups.port.GroupLinkEvent.NotificationOpen("group", "game"))
+
+            kotlin.test.assertEquals(
+                br.com.saqz.composeapp.notifications.PendingAttendanceLink(ATTENDANCE_CODE),
+                koin.get<br.com.saqz.composeapp.notifications.AttendanceLinkInbox>().pending.value,
+            )
+            kotlin.test.assertEquals(
+                br.com.saqz.groups.port.GroupLinkEvent.NotificationOpen("group", "game"),
+                koin.get<br.com.saqz.composeapp.notifications.NotificationOpenInbox>().pending.value,
+            )
+        } finally {
+            stopSaqzKoin()
+        }
+    }
+
+    @Test
     fun appStorePortRegistersThePaywallAndTheTransactionSync() {
         stopSaqzKoin()
         try {
@@ -196,4 +221,20 @@ private class TestGooglePlayPort : br.com.saqz.subscriptions.domain.port.GoogleP
     }
 
     override fun showGooglePlaySubscriptionManagement(productId: String?) = Unit
+}
+
+private const val ATTENDANCE_CODE = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abcdE"
+
+/** Porta de links que entrega a todos os ouvintes, como a do Android, para simular a abertura. */
+private class RecordingGroupLinkPort : br.com.saqz.groups.port.NativeGroupLinkPort {
+    private val listeners = mutableListOf<br.com.saqz.groups.port.GroupLinkEventListener>()
+
+    override fun start(listener: br.com.saqz.groups.port.GroupLinkEventListener): br.com.saqz.groups.port.GroupCancelable {
+        listeners += listener
+        return object : br.com.saqz.groups.port.GroupCancelable {
+            override fun cancel() { listeners -= listener }
+        }
+    }
+
+    fun emit(event: br.com.saqz.groups.port.GroupLinkEvent) = listeners.toList().forEach { it.onEvent(event) }
 }

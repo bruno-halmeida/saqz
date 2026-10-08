@@ -19,16 +19,7 @@ object StoreLaunchPolicy {
     const val chat = false
     const val receivables = false
 
-    /**
-     * Vínculo do grupo do WhatsApp (o Saqz no grupo da galera). Desligado no servidor de
-     * produção: a tela só mostraria "Não foi possível carregar o vínculo". "Cobrar no
-     * WhatsApp" (link wa.me) é outra coisa e continua valendo.
-     */
-    const val whatsAppGroupBinding = false
-
-    /**
-     * Lembrete de cobrança por WhatsApp (DM). O envio por WhatsApp está desligado no servidor
-     * de produção, então a aba "WhatsApp" das preferências prometeria algo que não chega.
-     */
-    const val whatsAppNotifications = false
+    // O WhatsApp (vínculo com o grupo da galera e a aba das preferências) não mora aqui: quem
+    // decide é o servidor, em `GET /api/whatsapp/availability`. "Cobrar no WhatsApp" (wa.me)
+    // é outra coisa e vale sempre.
 }

@@ -185,23 +185,26 @@ internal fun SaqzNavHost(
     var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
     var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
+    // Os dois já ouvem desde a abertura (SaqzKoinBootstrap): o link chega antes da primeira tela.
+    // Aqui só garante quem compõe sem o bootstrap; parar fica com o grafo, não com a tela.
     val attendanceLinks = koinInject<br.com.saqz.composeapp.notifications.AttendanceLinkInbox>()
     val attendanceLink by attendanceLinks.pending.collectAsStateWithLifecycle()
-    androidx.compose.runtime.DisposableEffect(attendanceLinks) {
-        attendanceLinks.start()
-        onDispose { attendanceLinks.stop() }
-    }
+    LaunchedEffect(attendanceLinks) { attendanceLinks.start() }
     val notificationOpen = koinInject<br.com.saqz.composeapp.notifications.NotificationOpenInbox>()
     val notificationOpenPending by notificationOpen.pending.collectAsStateWithLifecycle()
-    androidx.compose.runtime.DisposableEffect(notificationOpen) {
-        notificationOpen.start()
-        onDispose { notificationOpen.stop() }
-    }
+    LaunchedEffect(notificationOpen) { notificationOpen.start() }
     val inviteCoordinator = koinInject<GroupInviteCoordinator>()
     val receiptsCoordinator = koinInject<ReceivablesCoordinator>()
     val receipts = receiptsCoordinator.state.collectAsStateWithLifecycle().value
     val planAnalytics = koinInject<br.com.saqz.composeapp.analytics.PlanAnalytics>()
     val storeCheckout = koinInject<br.com.saqz.composeapp.subscriptiongate.StoreCheckout>()
+    // O servidor decide se o WhatsApp existe; o app só pergunta ao entrar na sessão.
+    val whatsAppAvailability = koinInject<br.com.saqz.groups.presentation.whatsappbinding.WhatsAppAvailability>()
+    val whatsAppEnabled by whatsAppAvailability.enabled.collectAsStateWithLifecycle()
+    val sessionReady = state.session is SessionAccessState.Ready
+    LaunchedEffect(whatsAppAvailability, sessionReady) {
+        if (sessionReady) whatsAppAvailability.refresh()
+    }
     // Uma linha para as ~45 rotas: rota nova entra sozinha. Só o nome da classe, nunca os campos.
     val topRoute = backStack.lastOrNull()
     val launchStack = backStack.filter { it.isAvailableAtLaunch() }.ifEmpty { listOf(AccessRoute.Starting) }
@@ -758,7 +761,7 @@ internal fun SaqzNavHost(
                 GroupSetupDestination(
                     mode = GroupSetupMode.Edit(route.groupId),
                     backStack = backStack,
-                    onOpenWhatsApp = if (br.com.saqz.domain.StoreLaunchPolicy.whatsAppGroupBinding) {
+                    onOpenWhatsApp = if (whatsAppEnabled) {
                         { backStack.add(GroupsRoute.WhatsApp(route.groupId)) }
                     } else {
                         null

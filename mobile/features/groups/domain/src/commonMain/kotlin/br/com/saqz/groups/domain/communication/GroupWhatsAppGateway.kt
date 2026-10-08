@@ -18,6 +18,9 @@ data class GroupWhatsAppBinding(
 )
 
 interface GroupWhatsAppGateway {
+    /** Se o WhatsApp do Saqz está ligado no servidor; quem decide é o backend, nunca o app. */
+    suspend fun availability(): SaqzResult<Boolean, CommunicationError>
+
     suspend fun binding(groupId: GroupId): SaqzResult<GroupWhatsAppBinding, CommunicationError>
 
     suspend fun link(groupId: GroupId, inviteLink: String): SaqzResult<GroupWhatsAppBinding, CommunicationError>

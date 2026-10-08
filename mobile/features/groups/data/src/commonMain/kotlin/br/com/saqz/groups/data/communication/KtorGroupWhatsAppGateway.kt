@@ -41,11 +41,20 @@ private data class WhatsAppBindingDto(
     }
 }
 
+@Serializable private data class AvailabilityDto(val enabled: Boolean)
+
 @Serializable private data class InviteLinkDto(val inviteLink: String)
 
 @Serializable private data class EnabledDto(val enabled: Boolean)
 
 class KtorGroupWhatsAppGateway(private val network: AuthenticatedNetworkClient) : GroupWhatsAppGateway {
+    // Backend sem o endpoint responde 404, que vira falha: o app fica com o WhatsApp desligado.
+    override suspend fun availability(): SaqzResult<Boolean, CommunicationError> =
+        when (val result = network.execute(HttpMethod.Get, "api/whatsapp/availability", AvailabilityDto.serializer())) {
+            is NetworkResult.Success -> SaqzResult.Success(result.value.enabled)
+            is NetworkResult.Failure -> SaqzResult.Failure(CommunicationError(result.error.toBindingError()))
+        }
+
     override suspend fun binding(groupId: GroupId) = network.execute(
         HttpMethod.Get, "api/groups/${groupId.value}/whatsapp-binding", WhatsAppBindingDto.serializer(),
     ).whatsAppBindingResult()
