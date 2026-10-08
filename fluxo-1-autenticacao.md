@@ -93,16 +93,18 @@ fundos no backend.
 
 ## J1.3 · Criar conta com e-mail e senha · **crítico**
 
-**Ator:** pessoa sem conta · **Telas:** 1a → 1b → 1c → Início
+**Ator:** pessoa sem conta · **Telas:** 1a → 1b → Início
 **Massa:** e-mail livre; para J1.3-c, um e-mail já cadastrado.
+
+A 1b já pergunta nome e telefone, então a 1c **não aparece** neste caminho: o app grava o
+perfil sozinho por baixo do spinner do bootstrap. A 1c só abre se o backend recusar o perfil
+(J1.3-h), e aí vem com os dois campos preenchidos e a recusa no campo certo.
 
 **Caminho principal**
 1. na 1a, tocar "Criar conta ›"
 2. preencher nome, telefone, e-mail e senha (mínimo 8)
 3. tocar criar
-4. na 1c, conferir nome e telefone; opcionalmente escolher foto
-5. confirmar
-6. → sessão criada → app abre na **Início**, com o aviso de e-mail não verificado no topo
+4. → sessão criada → app abre na **Início**, com o aviso de e-mail não verificado no topo
 
 **Variações**
 
@@ -115,10 +117,9 @@ fundos no backend.
 | J1.3-e | senha com 7 caracteres | recusa local, frase do mínimo de 8, **sem** ida ao provedor | |
 | J1.3-f | senha com 12 caracteres fracos | recusa do provedor; a frase **não** pode repetir "use no mínimo 8" | |
 | J1.3-g | sem rede no passo 3 | alerta de rede no lugar do resumo de campos | |
-| J1.3-h | passo 4 com foto que falha no envio | nome e telefone **gravam**; a foto vira aviso, não erro; o cadastro segue de pé e a foto sai do estado | ✅ |
-| J1.3-i | repetir o envio depois de J1.3-h | não retenta o upload que acabou de falhar | |
-| J1.3-j | foto sobe mas o perfil é recusado | a 1c volta com a imagem na tela e **não** reenvia o JPEG no próximo toque | |
-| J1.3-k | matar o app entre os passos 3 e 4 | ao reabrir, retoma na 1c (a conta existe, a identidade não fechou) | ✅ |
+| J1.3-h | a conta nasce, mas o perfil (nome e telefone) é recusado ou cai sem rede | a 1c abre **com** sessão, nome e telefone preenchidos, erro no campo ou alerta de rede; tocar "Concluir cadastro" reenvia sem redigitar | ✅ |
+| J1.3-i | matar o app depois do passo 3, antes de o perfil gravar | ao reabrir, a 1c pede o telefone (a conta existe, a identidade não fechou) | ✅ |
+| J1.3-j | foto | não há escolha de foto neste caminho: ela fica para o perfil, dentro do app | |
 
 ---
 

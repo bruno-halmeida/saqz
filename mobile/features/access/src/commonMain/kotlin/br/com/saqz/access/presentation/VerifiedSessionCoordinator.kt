@@ -114,11 +114,11 @@ sealed interface SessionIntent {
 
     /**
      * A 1b deposita o telefone (e o nome) **antes** do `createAccount`: o observe global
-     * autentica sozinho e o [Accept] seguinte precisa achar a pendência já no contexto,
-     * senão a 1c abre com o campo vazio que o backend devolveu.
+     * autentica sozinho e o [Accept] seguinte precisa achar a pendência já no contexto.
      *
-     * Não é o mesmo uso da pendência do caminho pré-bootstrap da 1c — aquela sobe o perfil
-     * sozinha quando a sessão existe; esta só **preenche** a 1c. Ver [PendingIdentity.submitWhenReady].
+     * A 1b já pediu os dois campos, então a pessoa **não passa pela 1c**: a pendência sobe
+     * o perfil sozinha assim que a sessão existe, por baixo do spinner do bootstrap. A 1c
+     * só abre se o backend recusar. Ver [PendingIdentity.fromRegistration].
      */
     data class StageRegistrationIdentity(val name: String, val phone: String) : SessionIntent
 
@@ -304,14 +304,14 @@ class SessionAccessStateMachine(
                     name = validName,
                     phone = validPhone,
                     photo = null,
-                    submitWhenReady = false,
+                    fromRegistration = true,
                 ),
             )
         }
     }
 
     /**
-     * Só a pendência de **preenchimento** da 1b — a do envio pós-bootstrap não é desta tela.
+     * Só a pendência da 1b — a do caminho pré-bootstrap da 1c não é desta tela.
      *
      * Só em [SessionAccessState.SignedOut]: se a conta já autenticou (bootstrap/1c), o
      * depósito passou a ser da sessão. Limpar aí — p.ex. no `onCleared` da 1b depois do
@@ -321,7 +321,7 @@ class SessionAccessStateMachine(
         begin { context ->
             if (context.state !is SessionAccessState.SignedOut) return@begin null
             val pending = context.pendingIdentity ?: return@begin null
-            if (pending.submitWhenReady) return@begin null
+            if (!pending.fromRegistration) return@begin null
             context.copy(pendingIdentity = null)
         }
     }
@@ -396,12 +396,17 @@ class SessionAccessStateMachine(
      * bootstrap seria pedi-lo numa tela que nunca abre: a pessoa ficaria presa no
      * `BootstrapError`. O nome sobe ao provedor primeiro, o token é renovado para carregá-lo
      * e só então o bootstrap acontece; o telefone viaja como pendência até haver sessão.
+     *
+     * [current] é a 1c de onde se partiu — ou, com [fromRegistration], a 1c que **só abre
+     * se algo falhar**: o depósito da 1b percorre o mesmo caminho por baixo do spinner do
+     * bootstrap, e a tela é publicada apenas para mostrar a recusa.
      */
     private fun claimNameThenBootstrap(
         current: SessionAccessState.CompletingIdentity,
         name: String,
         phone: String,
         turn: Turn,
+        fromRegistration: Boolean = false,
     ) {
         auth.updateDisplayName(name, authCallback { result ->
             when (result) {
@@ -409,7 +414,8 @@ class SessionAccessStateMachine(
                 is AuthResult.Failure -> turn.publish(
                     current.copy(isLoading = false, name = name, error = result.code.toUiError()),
                 )
-                is AuthResult.Success -> refreshTokenThenBootstrap(result.user, current, name, phone, turn)
+                is AuthResult.Success ->
+                    refreshTokenThenBootstrap(result.user, current, name, phone, turn, fromRegistration)
             }
         })
     }
@@ -420,6 +426,7 @@ class SessionAccessStateMachine(
         name: String,
         phone: String,
         turn: Turn,
+        fromRegistration: Boolean,
     ) {
         auth.idToken(true, object : TokenCallback {
             override fun complete(result: TokenResult) {
@@ -432,7 +439,7 @@ class SessionAccessStateMachine(
                     // seguinte consumir.
                     is TokenResult.Success -> turn.advance { context ->
                         context.copy(
-                            pendingIdentity = PendingIdentity(name, phone, current.photo),
+                            pendingIdentity = PendingIdentity(name, phone, current.photo, fromRegistration),
                             currentUser = user,
                             state = SessionAccessState.Bootstrapping,
                         )
@@ -631,16 +638,15 @@ class SessionAccessStateMachine(
         // troca e o destino entram na mesma operação, senão a conta nova existiria por um
         // instante sem estado próprio.
         //
-        // Exceção deliberada (VUL-101): a pendência de **preenchimento** da 1b — telefone
-        // validado antes do `createAccount` — precisa atravessar **este** Accept. O observe
-        // global autentica sozinho e o `switched()` zeraria o depósito; a pendência de envio
-        // (`submitWhenReady`) continua caindo, que é o que impede o vazamento entre contas.
+        // Exceção deliberada (VUL-101): o depósito da 1b — nome e telefone validados antes
+        // do `createAccount` — precisa atravessar **este** Accept. O observe global
+        // autentica sozinho e o `switched()` zeraria o depósito; a pendência do caminho
+        // pré-bootstrap da 1c continua caindo, que é o que impede o vazamento entre contas.
         //
         // O mesmo `subject` duas vezes não troca contexto: o observe do `AccessOrchestrator`
         // e o callback da 1b emitem os dois um `Accept` para a conta que acabou de nascer.
-        // Um segundo `switched()` mataria o turno do bootstrap e droparia o telefone já
-        // consumido na 1c. Conta **outra** continua trocando — a limpeza entre contas não
-        // enfraquece.
+        // Um segundo `switched()` mataria o turno do bootstrap e droparia o telefone em
+        // voo. Conta **outra** continua trocando — a limpeza entre contas não enfraquece.
         val nameless = normalizedDisplayName(user.displayName.orEmpty()) == null
         val switched = begin { context ->
             if (context.loggingOut) return@begin null
@@ -649,32 +655,43 @@ class SessionAccessStateMachine(
             ) {
                 return@begin null
             }
-            // Prefill da 1b só no Accept que **começa** o cadastro (SignedOut). Com o
+            // O depósito da 1b só no Accept que **começa** o cadastro (SignedOut). Com o
             // Accept idempotente acima, o re-Accept da 1b não chega aqui; carregar em
             // BootstrapError/Ready/1c seria levar o telefone da conta A para a B.
-            val registrationPrefill = context.pendingIdentity
-                ?.takeUnless { it.submitWhenReady }
+            val registration = context.pendingIdentity
+                ?.takeIf { it.fromRegistration }
                 ?.takeIf { context.state is SessionAccessState.SignedOut }
             context.switched().copy(
                 currentUser = user,
-                pendingIdentity = registrationPrefill,
-                state = if (nameless) {
-                    // Sem nome utilizável o bootstrap nem corre: a 1c pré-bootstrap herda o
-                    // telefone da 1b agora, e não depois de uma sessão que não vai existir.
-                    SessionAccessState.CompletingIdentity(
-                        session = null,
-                        name = registrationPrefill?.name ?: user.displayName.orEmpty(),
-                        phone = registrationPrefill?.phone.orEmpty(),
-                    )
+                pendingIdentity = registration,
+                // Sem nome utilizável o bootstrap nem corre. Quem vem da 1b já deu o nome,
+                // então o portão não abre tela nenhuma: o nome sobe ao provedor por baixo
+                // do spinner (abaixo). Só quem entrou por provedor sem nome vê a 1c.
+                state = if (nameless && registration == null) {
+                    SessionAccessState.CompletingIdentity(session = null, name = user.displayName.orEmpty())
                 } else {
                     SessionAccessState.Bootstrapping
                 },
-            ).let { next ->
-                // Prefill já foi para a tela: não precisa sobreviver a um segundo Accept.
-                if (nameless) next.copy(pendingIdentity = null) else next
-            }
+            )
         } ?: return
-        if (!nameless) bootstrap(switched.turn())
+        val registration = switched.pendingIdentity
+        when {
+            !nameless -> bootstrap(switched.turn())
+            // O observe do provedor pode entregar a conta recém-criada antes de o nome
+            // entrar (Android). O depósito da 1b tem o nome: é o mesmo caminho da 1c
+            // pré-bootstrap, com a tela publicada apenas se o provedor recusar.
+            registration != null -> claimNameThenBootstrap(
+                current = SessionAccessState.CompletingIdentity(
+                    session = null,
+                    name = registration.name,
+                    phone = registration.phone,
+                ),
+                name = registration.name,
+                phone = registration.phone,
+                turn = switched.turn(),
+                fromRegistration = true,
+            )
+        }
     }
 
     /** Só a parte assíncrona: quem já pôs o estado em `Bootstrapping` chama daqui. */
@@ -713,35 +730,38 @@ class SessionAccessStateMachine(
      * preserva para o `RetryBootstrap`, e um `completeProfile` que falha devolve a 1c já
      * **com** sessão — dali em diante o caminho normal, pós-bootstrap, dá conta.
      *
-     * Há dois tipos de pendência (VUL-101): a do envio (`submitWhenReady`) sobe o perfil
-     * sozinha; a do preenchimento da 1b só prefere o telefone no portão da 1c.
+     * As duas pendências sobem o perfil sozinhas; o que muda é a tela. A da 1c
+     * pré-bootstrap volta à 1c em "enviando", porque a pessoa partiu dela. A da 1b
+     * ([PendingIdentity.fromRegistration]) fica em `Bootstrapping`: a 1b já pediu nome e
+     * telefone, e a 1c só aparece se o backend recusar — é o `submitProfile` que a
+     * publica, com a recusa dentro.
      */
     private suspend fun resumePendingOrGate(session: AccessSession, turn: Turn) {
         // Consumir a pendência e entrar em "enviando" é a mesma operação que a guarda:
         // ler a pendência, conferir a geração e escrever o estado em três etapas era o que
         // deixava a identidade de uma conta ser aplicada pelo bootstrap da seguinte.
-        val resumed = turn.advance { context ->
+        //
+        // A identidade que vai subir sai pelo `var`, e não pelo estado, porque no caminho
+        // da 1b o estado não muda. A atribuição é derivada só do contexto recebido, então
+        // repetir o lambda sob disputa deixa nela o valor da tentativa que venceu.
+        var submission: SessionAccessState.CompletingIdentity? = null
+        turn.advance { context ->
             val pending = context.pendingIdentity
-            when {
-                pending == null -> context.copy(state = readyOrIdentityGate(session))
-                !pending.submitWhenReady -> context.copy(
-                    pendingIdentity = null,
-                    state = readyOrIdentityGate(session, pending),
-                )
-                else -> context.copy(
-                    pendingIdentity = null,
-                    state = SessionAccessState.CompletingIdentity(
-                        session = session,
-                        name = pending.name,
-                        phone = pending.phone,
-                        photo = pending.photo,
-                        isLoading = true,
-                    ),
-                )
-            }
+                ?: return@advance context.copy(state = readyOrIdentityGate(session))
+            val identity = SessionAccessState.CompletingIdentity(
+                session = session,
+                name = pending.name,
+                phone = pending.phone,
+                photo = pending.photo,
+                isLoading = true,
+            )
+            submission = identity
+            context.copy(
+                pendingIdentity = null,
+                state = if (pending.fromRegistration) context.state else identity,
+            )
         } ?: return
-        val base = resumed.state as? SessionAccessState.CompletingIdentity ?: return
-        if (!base.isLoading) return
+        val base = submission ?: return
         submitProfile(base, base.name, base.phone, turn)
     }
 
@@ -749,20 +769,13 @@ class SessionAccessStateMachine(
      * O portão pós-bootstrap é só o telefone. O nome não é checado aqui porque não pode
      * faltar: a sessão só existe se o backend aceitou o nome, e quem não tinha um passou
      * pelo portão pré-bootstrap do [routeIdentity].
-     *
-     * [prefill] é o que a 1b depositou: o backend devolve o telefone vazio para conta nova,
-     * e sem preferir o depósito a pessoa redigitaria o mesmo número duas telas depois.
      */
-    private fun readyOrIdentityGate(
-        session: AccessSession,
-        prefill: PendingIdentity? = null,
-    ): SessionAccessState =
+    private fun readyOrIdentityGate(session: AccessSession): SessionAccessState =
         if (session.user.phoneRequired) {
             SessionAccessState.CompletingIdentity(
                 session = session,
-                name = prefill?.name?.takeIf { it.isNotEmpty() } ?: session.user.displayName,
-                phone = prefill?.phone?.takeIf { it.isNotEmpty() } ?: session.user.phone.orEmpty(),
-                photo = prefill?.photo,
+                name = session.user.displayName,
+                phone = session.user.phone.orEmpty(),
             )
         } else {
             SessionAccessState.Ready(session)
@@ -778,18 +791,20 @@ class SessionAccessStateMachine(
 }
 
 /**
- * Identidade guardada entre um passo e o próximo do cadastro.
+ * Identidade guardada entre um passo e o próximo do cadastro. Quando a sessão existir, sobe
+ * o perfil sozinha.
  *
- * @param submitWhenReady `true` (caminho pré-bootstrap da 1c): quando a sessão existir, sobe
- * o perfil sozinho. `false` (depósito da 1b, VUL-101): só preenche a 1c — a pessoa ainda
- * escolhe foto e toca em concluir. Os dois compartilham o carregador; o bit é o que impede
- * o cadastro da 1b de autoenviar sem a pessoa ver a tela.
+ * @param fromRegistration `false` (caminho pré-bootstrap da 1c): a pessoa partiu da 1c, e a
+ * tela volta em "enviando" enquanto o perfil sobe. `true` (depósito da 1b, VUL-101): a 1b
+ * já pediu nome e telefone, então o envio corre por baixo do spinner do bootstrap e a 1c
+ * só abre se o backend recusar. O bit é o que impede a pessoa de ver a mesma pergunta duas
+ * vezes.
  */
 private data class PendingIdentity(
     val name: String,
     val phone: String,
     val photo: ProfilePhotoResult.Selected?,
-    val submitWhenReady: Boolean = true,
+    val fromRegistration: Boolean = false,
 )
 
 /**

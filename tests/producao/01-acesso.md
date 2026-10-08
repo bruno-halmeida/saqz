@@ -10,10 +10,10 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 2. Preencher nome `QA Org <data>`, celular de teste, o e-mail QA do organizador e uma senha de 8+ caracteres.
 3. Conferir que "Termos de uso" e "Política de privacidade" no rodapé abrem as páginas de `saqz.app`.
 4. Tocar "Criar conta".
-5. Na tela seguinte, com nome e celular já preenchidos, tocar "Concluir cadastro".
 
 **Conferir**
-- Abre a Início com "Fala, QA!" e a faixa "Confirme seu e-mail para não perder o acesso à sua conta.".
+- Não aparece nenhuma tela pedindo nome ou celular de novo: depois do spinner, abre a Início com
+  "Fala, QA!" e a faixa "Confirme seu e-mail para não perder o acesso à sua conta.".
 - Em até 1 min chega na **caixa de entrada** (não no spam) o e-mail "Confirme seu e-mail no Saqz", de um
   remetente `@saqz.app`, com o botão "Confirmar e-mail".
 

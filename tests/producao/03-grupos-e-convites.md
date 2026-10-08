@@ -111,7 +111,7 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 1. Tocar no link do convite (no WhatsApp ou na nota).
 2. O app abre na tela de entrada; tocar "Criar conta ›".
 3. Conferir que a tela mostra "Entrando no QA Vôlei…" e o convite de QA Org.
-4. Criar a conta com o e-mail QA do atleta e tocar "Concluir cadastro".
+4. Criar a conta com o e-mail QA do atleta (nome, celular, e-mail e senha) e tocar "Criar conta".
 5. Em "Cadastro de atleta", preencher "Seu apelido neste grupo", "Posição" e "Nível" e tocar
    "Salvar meu perfil".
 

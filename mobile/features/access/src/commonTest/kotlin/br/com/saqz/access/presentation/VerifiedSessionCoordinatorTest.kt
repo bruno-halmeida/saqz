@@ -359,12 +359,83 @@ class SessionAccessStateMachineTest {
         assertEquals("", state.phone)
     }
 
-    // VUL-101: a 1b deposita o telefone antes do createAccount; o portão da 1c prefere
-    // esse valor ao vazio que o backend devolve para conta nova. Não autoenvia — a pessoa
-    // ainda vê a 1c (foto, concluir).
+    // VUL-101: a 1b deposita nome e telefone antes do createAccount. A 1b já fez as duas
+    // perguntas, então a pessoa não passa pela 1c: o perfil sobe sozinho por baixo do
+    // spinner do bootstrap e o app abre na Início.
     @Test
-    fun `phone staged on register survives into identity completion after bootstrap`() = runTest {
+    fun `identity staged on register is submitted after bootstrap without opening the 1c`() = runTest {
         val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
+        val gate = CompletableDeferred<Unit>()
+        fixture.session.profileGate = gate
+        fixture.session.profileResult = SaqzResult.Success(session)
+
+        fixture.machine.onIntent(
+            SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
+        )
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        // Enquanto o perfil sobe, a tela continua sendo a do bootstrap — nunca a 1c.
+        assertIs<SessionAccessState.Bootstrapping>(fixture.machine.state.value)
+        assertEquals(listOf<Pair<String, String?>>("+5511999990000" to "Ana Souza"), fixture.session.profileCalls)
+
+        gate.complete(Unit)
+        runCurrent()
+
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+        assertTrue(fixture.session.photoUploads.isEmpty())
+    }
+
+    // O observe do provedor pode entregar a conta recém-criada antes de o nome entrar
+    // (Android). O depósito da 1b tem o nome: ele sobe ao provedor e o bootstrap corre, sem
+    // a 1c pré-bootstrap aparecer.
+    @Test
+    fun `a nameless accept with a staged registration claims the name without opening the 1c`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
+        fixture.session.profileResult = SaqzResult.Success(session)
+
+        fixture.machine.onIntent(
+            SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
+        )
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified.copy(displayName = null))))
+
+        assertIs<SessionAccessState.Bootstrapping>(fixture.machine.state.value)
+        assertEquals(listOf("Ana Souza"), fixture.auth.nameUpdates)
+        assertEquals(0, fixture.session.calls, "sem o nome no token o bootstrap não sai")
+
+        fixture.auth.completeAuth(AuthResult.Success(verified.copy(displayName = "Ana Souza")))
+        assertIs<SessionAccessState.Bootstrapping>(fixture.machine.state.value)
+        fixture.auth.completeToken(TokenResult.Success("fresh-token"))
+        runCurrent()
+
+        assertEquals(1, fixture.session.calls)
+        assertEquals(listOf<Pair<String, String?>>("+5511999990000" to "Ana Souza"), fixture.session.profileCalls)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
+    // Sem depósito, o Accept sem nome continua abrindo a 1c pré-bootstrap: é o caminho de
+    // quem entrou por provedor sem nome utilizável.
+    @Test
+    fun `a nameless accept without a staged registration still opens the 1c`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
+
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified.copy(displayName = null))))
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertNull(state.session)
+        assertTrue(fixture.auth.nameUpdates.isEmpty())
+    }
+
+    // A 1c só aparece se o backend recusar o perfil da 1b — e aí abre com sessão, com os
+    // valores depositados e a recusa no campo certo.
+    @Test
+    fun `a refused registration profile opens the 1c with the staged values`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
+        fixture.session.profileResult = SaqzResult.Failure(
+            AccessError.Validation(
+                ValidationDetails(globalMessages = emptyList(), fieldMessages = mapOf("phone" to listOf("inválido"))),
+            ),
+        )
 
         fixture.machine.onIntent(
             SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
@@ -376,8 +447,33 @@ class SessionAccessStateMachineTest {
         assertEquals(phoneRequiredSession, state.session)
         assertEquals("Ana Souza", state.name)
         assertEquals("+5511999990000", state.phone)
+        assertTrue(state.invalidPhone)
         assertFalse(state.isLoading)
-        assertTrue(fixture.session.profileCalls.isEmpty(), "prefill da 1b não autoenvia o perfil")
+    }
+
+    // Sem rede no envio do perfil da 1b: a 1c abre com sessão para a pessoa tentar de novo,
+    // sem redigitar nada.
+    @Test
+    fun `a registration profile lost to the network opens the 1c retryable in place`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
+        fixture.session.profileResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity))
+
+        fixture.machine.onIntent(
+            SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
+        )
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+        assertEquals(AuthUiError.NETWORK_UNAVAILABLE, state.error)
+        assertEquals("+5511999990000", state.phone)
+
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.CompleteIdentity)
+        runCurrent()
+
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+        assertEquals(2, fixture.session.profileCalls.size)
     }
 
     // A limpeza na troca de conta continua valendo para o depósito da 1b: a conta B não
@@ -411,6 +507,30 @@ class SessionAccessStateMachineTest {
         assertTrue(fixture.session.profileCalls.isEmpty())
     }
 
+    // O bootstrap caiu com o depósito da 1b guardado: o retry reencontra a pendência e
+    // sobe o perfil, ainda sem passar pela 1c.
+    @Test
+    fun `a bootstrap retry after registration still submits the staged identity`() = runTest {
+        val fixture = fixture(this, SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity)))
+
+        fixture.machine.onIntent(
+            SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
+        )
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        fixture.confirmProviderStillPresent()
+        assertIs<SessionAccessState.BootstrapError>(fixture.machine.state.value)
+
+        fixture.session.result = SaqzResult.Success(phoneRequiredSession)
+        fixture.session.profileResult = SaqzResult.Success(session)
+        fixture.machine.onIntent(SessionIntent.RetryBootstrap)
+        fixture.auth.completeToken(TokenResult.Success("fresh-token"))
+        runCurrent()
+
+        assertEquals(listOf<Pair<String, String?>>("+5511999990000" to "Ana Souza"), fixture.session.profileCalls)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
+    }
+
     @Test
     fun `clearing registration identity drops the staged phone before accept`() = runTest {
         val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
@@ -424,6 +544,7 @@ class SessionAccessStateMachineTest {
 
         val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
         assertEquals("", state.phone)
+        assertTrue(fixture.session.profileCalls.isEmpty())
     }
 
     // O onCleared da 1b depois do observe não pode apagar o depósito já em bootstrap —
@@ -433,6 +554,7 @@ class SessionAccessStateMachineTest {
         val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
         val gate = CompletableDeferred<Unit>()
         fixture.session.bootstrapGate = gate
+        fixture.session.profileResult = SaqzResult.Success(session)
 
         fixture.machine.onIntent(
             SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
@@ -445,8 +567,8 @@ class SessionAccessStateMachineTest {
         gate.complete(Unit)
         runCurrent()
 
-        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
-        assertEquals("+5511999990000", state.phone)
+        assertEquals(listOf<Pair<String, String?>>("+5511999990000" to "Ana Souza"), fixture.session.profileCalls)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
     }
 
     // observe global + callback da 1b: dois Accept da mesma conta. O segundo não pode
@@ -456,6 +578,7 @@ class SessionAccessStateMachineTest {
         val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
         val gate = CompletableDeferred<Unit>()
         fixture.session.bootstrapGate = gate
+        fixture.session.profileResult = SaqzResult.Success(session)
 
         fixture.machine.onIntent(
             SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
@@ -474,17 +597,17 @@ class SessionAccessStateMachineTest {
         gate.complete(Unit)
         runCurrent()
 
-        val state = assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
-        assertEquals("+5511999990000", state.phone)
-        assertEquals("Ana Souza", state.name)
+        assertEquals(listOf<Pair<String, String?>>("+5511999990000" to "Ana Souza"), fixture.session.profileCalls)
+        assertIs<SessionAccessState.Ready>(fixture.machine.state.value)
         assertEquals(1, fixture.session.calls)
     }
 
-    // A outra ordem: o primeiro Accept já abriu a 1c com o telefone consumido no state.
-    // O segundo não pode dropar o campo nem rebootstrapar.
+    // A outra ordem: o primeiro Accept já levou à 1c (perfil recusado) com o telefone no
+    // state. O segundo não pode dropar o campo nem rebootstrapar.
     @Test
-    fun `a duplicate Accept after identity completion keeps the filled phone`() = runTest {
+    fun `a duplicate Accept after a refused registration profile keeps the filled phone`() = runTest {
         val fixture = fixture(this, SaqzResult.Success(phoneRequiredSession))
+        fixture.session.profileResult = SaqzResult.Failure(AccessError.DataFailure(DataError.Connectivity))
 
         fixture.machine.onIntent(
             SessionIntent.StageRegistrationIdentity(name = "Ana Souza", phone = "(11) 99999-0000"),
@@ -503,6 +626,7 @@ class SessionAccessStateMachineTest {
         assertEquals("Ana Souza", second.name)
         assertEquals(phoneRequiredSession, second.session)
         assertEquals(1, fixture.session.calls, "mesma conta não rebootstrapa")
+        assertEquals(1, fixture.session.profileCalls.size, "o re-Accept não reenvia o perfil")
     }
 
     @Test

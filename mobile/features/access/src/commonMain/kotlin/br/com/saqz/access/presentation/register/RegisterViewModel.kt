@@ -34,10 +34,12 @@ const val REGISTER_MINIMUM_PASSWORD_LENGTH = 8
  *   máquina campo a campo, então escrever nela **é** preencher a 1a;
  * - [onSessionIntent] entrega à máquina de sessão o depósito do telefone (VUL-101) e a
  *   autenticação vitoriosa. O telefone sobe **antes** do `createAccount` porque o observe
- *   global autentica sozinho e a 1c precisa achar o número já guardado.
+ *   global autentica sozinho e a máquina precisa achar o número já guardado.
  *
  * O telefone é validado aqui e **não** vai no `createAccount` (nome, e-mail e senha): quem
- * grava telefone é o `completeProfile` da 1c. O depósito na sessão só evita redigitar.
+ * grava telefone é o `completeProfile`, que a máquina de sessão dispara sozinha assim que
+ * a sessão existe. Quem já respondeu nome e telefone aqui não passa pela 1c — ela só abre
+ * se o backend recusar o perfil.
  */
 class RegisterViewModel(
     private val savedState: SavedStateHandle,
@@ -112,7 +114,8 @@ class RegisterViewModel(
 
         update { it.copy(isLoading = true, emailError = null, passwordError = null, error = null) }
         // Antes do provedor: o observe global autentica no instante em que a conta nasce e
-        // a 1c precisa do telefone já depositado. Recusa ou cancelamento limpam o depósito.
+        // a máquina de sessão precisa do telefone já depositado para subir o perfil sem
+        // passar pela 1c. Recusa ou cancelamento limpam o depósito.
         onSessionIntent(SessionIntent.StageRegistrationIdentity(name, phone))
         // A senha continua no estado durante o envio, ao contrário do login: o 1j desenha o
         // campo ainda preenchido depois da recusa, e obrigar a redigitar oito caracteres por
@@ -130,7 +133,7 @@ class RegisterViewModel(
             is AuthResult.Success -> {
                 // O rascunho morre com a conta criada: a tela não volta, e o que sobreviveu
                 // até aqui não tem por que esperar a próxima instalação. O telefone depositado
-                // fica — a sessão é dona dele até a 1c consumir.
+                // fica — a sessão é dona dele até o perfil subir.
                 clearDraft()
                 // Só o cadastro por senha chega aqui (`createAccount`); sucesso, não submit.
                 SaqzAnalytics.event("sign_up", "method" to "password")
