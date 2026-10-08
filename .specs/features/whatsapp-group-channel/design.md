@@ -126,6 +126,12 @@ interface WhatsAppGroupDirectory {
 | `PUT /api/groups/{groupId}/whatsapp-binding` | `{inviteLink: string}` | `{groupJid, groupName, enabled: true, status: "ACTIVE"}` | 403 não-gestor; 422 invite inválido / sem admin resolvível; 409 JID já vinculado a outro grupo / entrada pendente; 502 instância desconectada ou provider indisponível |
 | `GET /api/groups/{groupId}/whatsapp-binding` | — | `{bound: false}` ou `{bound: true, groupJid, groupName, status: ACTIVE\|DISABLED\|BROKEN}` | 403 |
 | `PATCH /api/groups/{groupId}/whatsapp-binding` | `{enabled: boolean}` | igual ao GET (bound: true) | 403; 404 sem vínculo |
+| `GET /api/whatsapp/availability` | — | `{enabled: boolean}`, o valor de `saqz.notifications.whatsapp.enabled` | 401 sem sessão |
+
+As três rotas do vínculo só existem com `saqz.notifications.whatsapp.enabled=true`. A de
+disponibilidade existe sempre: é por ela que o app decide se mostra o vínculo e a aba de WhatsApp
+das preferências, sem valor fixo no app. Backend antigo, sem a rota, responde 404 e o app fica com
+o WhatsApp desligado.
 
 Extração do código do convite: aceitar URL completa ou código puro — regex
 `(?:chat\.whatsapp\.com/)?([A-Za-z0-9]{10,50})`.
