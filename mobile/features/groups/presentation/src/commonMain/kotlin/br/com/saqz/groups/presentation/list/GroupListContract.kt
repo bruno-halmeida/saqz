@@ -63,8 +63,14 @@ sealed interface GroupListIntent {
 
     data object Retry : GroupListIntent
 
-    /** Recarrega a lista sem esqueleto — a volta do 2a, com a ViewModel ainda viva. */
+    /** Recarrega a lista sem esqueleto, mantendo os grupos na tela enquanto busca. */
     data object Refresh : GroupListIntent
+
+    /**
+     * A lista apareceu: voltou de outra tela, da troca de aba ou do segundo plano. A primeira
+     * aparição é a carga do `init`; toda volta depois recarrega sem esqueleto.
+     */
+    data object Appeared : GroupListIntent
 
     // 2o · "Tenho um convite": a folha para colar o link, o mesmo caminho da Início sem grupo.
     data object OpenInviteSheet : GroupListInviteSheetIntent

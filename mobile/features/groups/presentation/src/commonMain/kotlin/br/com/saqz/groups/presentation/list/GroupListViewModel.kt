@@ -27,6 +27,7 @@ class GroupListViewModel(
 ) : MviViewModel<GroupListState, GroupListIntent, GroupListEffect>(GroupListState()) {
 
     private var loadGeneration = 0
+    private var appeared = false
 
     // O segundo toque enquanto a consulta do plano está em voo é descartado — rotear duas
     // vezes para a mesma decisão só piscaria a tela.
@@ -43,7 +44,8 @@ class GroupListViewModel(
             is GroupListIntent.AcceptInvite -> dismissInvite(intent.id)
             is GroupListIntent.DeclineInvite -> dismissInvite(intent.id)
             GroupListIntent.Retry -> load()
-            GroupListIntent.Refresh -> load(softRefresh = true)
+            GroupListIntent.Refresh -> refreshSilently()
+            GroupListIntent.Appeared -> if (appeared) refreshSilently() else appeared = true
             is GroupListInviteSheetIntent -> handleInviteSheet(intent)
         }
     }
@@ -83,6 +85,12 @@ class GroupListViewModel(
                 checkingPlan = false
             }
         }
+    }
+
+    // Com a carga cheia em voo (esqueleto na tela), ela já traz o estado novo: recarregar por cima
+    // descartaria a resposta dela e, se a recarga falhasse, o esqueleto ficaria preso.
+    private fun refreshSilently() {
+        if (!state.value.isLoading) load(softRefresh = true)
     }
 
     private fun load(softRefresh: Boolean = false) {

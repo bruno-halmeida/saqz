@@ -177,7 +177,6 @@ internal fun SaqzNavHost(
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var scheduleRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var groupDetailsRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
-    var groupListRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var groupCashboxRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var statementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var settlementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
@@ -553,7 +552,6 @@ internal fun SaqzNavHost(
                             onCreateGroup = { backStack.add(GroupsRoute.Create) },
                             onOpenPlans = { backStack.add(SubscriptionRequired) },
                             isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
-                            refreshVersion = groupListRefreshVersion,
                             onAcceptInviteCode = inviteCoordinator::acceptInvite,
                         )
                     },
@@ -751,7 +749,6 @@ internal fun SaqzNavHost(
                         showTrialOffer = false,
                         onGroupListChange = {
                             planAnalytics.refresh()
-                            groupListRefreshVersion++
                             onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
                         },
                     )
@@ -767,10 +764,9 @@ internal fun SaqzNavHost(
                         null
                     },
                     onGroupListChange = {
-                        // Edit empilha sobre Details: a lista já recarregava; o detalhe
-                        // ficava com foto e nome antigos porque a ViewModel sobrevive no
+                        // Edit empilha sobre Details: a lista recarrega sozinha ao reaparecer; o
+                        // detalhe ficava com foto e nome antigos porque a ViewModel sobrevive no
                         // fundo da pilha — o mesmo buraco do acerto (VUL-195).
-                        groupListRefreshVersion++
                         groupDetailsRefreshVersion++
                     },
                 )
@@ -791,7 +787,6 @@ internal fun SaqzNavHost(
                     onEffect = { effect ->
                         if (effect is GroupDetailsEffect.Left) {
                             onIntent(AccessIntent.Session(SessionIntent.MembershipRemoved(route.groupId)))
-                            groupListRefreshVersion++
                             profileRefreshVersion++
                             backStack.resetTo(SaqzShellDestination.Groups)
                         } else {
@@ -948,7 +943,6 @@ internal fun SaqzNavHost(
                     refreshVersion = scheduleRefreshVersion,
                     onSave = {
                         groupDetailsRefreshVersion++
-                        groupListRefreshVersion++
                         scheduleRefreshVersion++
                     },
                 )
@@ -961,7 +955,6 @@ internal fun SaqzNavHost(
                     onOpenGameDetail = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
                     onSave = {
                         groupDetailsRefreshVersion++
-                        groupListRefreshVersion++
                         scheduleRefreshVersion++
                     },
                 )
@@ -978,7 +971,6 @@ internal fun SaqzNavHost(
                     },
                     onCancel = {
                         scheduleRefreshVersion++
-                        groupListRefreshVersion++
                         groupDetailsRefreshVersion++
                         pop()
                     },

@@ -1,9 +1,8 @@
 package br.com.saqz.groups.presentation.ui.list
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.groups.presentation.list.GroupListEffect
@@ -24,17 +23,17 @@ fun GroupListRoot(
     onCreateGroup: () -> Unit,
     onOpenPlans: () -> Unit,
     isPlanOwner: Boolean = false,
-    refreshVersion: Int = 0,
     onAcceptInviteCode: (String) -> Unit = {},
     viewModel: GroupListViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // VUL-205: só recarrega se o contador mudou desde que esta ViewModel nasceu. O 2n
-    // mora no shell, então a ViewModel sobrevive ao 2a empilhado; sem o bump, criar um
-    // grupo e voltar mostrava a lista vazia de quando a aba montou.
-    val loadedVersion = rememberSaveable(viewModel) { refreshVersion }
-    LaunchedEffect(viewModel, refreshVersion) {
-        if (refreshVersion != loadedVersion) viewModel.onIntent(GroupListIntent.Refresh)
+    // O 2n mora no shell e a ViewModel sobrevive a tudo o que empilha por cima: toda vez que a
+    // lista reaparece (volta do 2a ou de um grupo, troca de aba, volta do segundo plano) ela
+    // recarrega sem esqueleto. Um contador de "mudou" deixava de fora qualquer caminho que
+    // esquecesse de incrementar, e a lista ficava com o estado antigo.
+    LifecycleResumeEffect(viewModel) {
+        viewModel.onIntent(GroupListIntent.Appeared)
+        onPauseOrDispose { }
     }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {

@@ -1,7 +1,6 @@
 package br.com.saqz.groups.presentation.ui.list
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -27,58 +26,13 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalTestApi::class)
 class GroupListRootTest {
     @Test
-    fun `refresh version reloads the retained list after creating a group`() = runComposeUiTest {
+    fun `the first appearance does not reload on top of the initial load`() = runComposeUiTest {
         val athlete = FakeAthleteGateway()
-        val viewModel = GroupListViewModel(
-            athlete,
-            FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())),
-            noPlan,
-            gameGateway = FakeGameGateway(),
-        )
-        var refreshVersion by mutableIntStateOf(0)
+        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(), noPlan, gameGateway = FakeGameGateway())
 
         setContent {
             SaqzTheme {
-                GroupListRoot(
-                    onOpenGroup = {},
-                    onCreateGroup = {},
-                    onOpenPlans = {},
-                    refreshVersion = refreshVersion,
-                    viewModel = viewModel,
-                )
-            }
-        }
-        waitForIdle()
-        assertTrue(viewModel.state.value.isEmpty)
-        assertEquals(1, athlete.ownProfileCalls)
-
-        athlete.ownProfileResult = SaqzResult.Success(membershipProfile())
-        runOnIdle { refreshVersion = 1 }
-        waitForIdle()
-
-        assertEquals(listOf("group-1"), viewModel.state.value.groups.map { it.id })
-        assertEquals(2, athlete.ownProfileCalls)
-    }
-
-    @Test
-    fun `a fresh view model does not reload on an already bumped refresh version`() = runComposeUiTest {
-        val athlete = FakeAthleteGateway()
-        val viewModel = GroupListViewModel(
-            athlete,
-            FakeGroupGateway(),
-            noPlan,
-            gameGateway = FakeGameGateway(),
-        )
-
-        setContent {
-            SaqzTheme {
-                GroupListRoot(
-                    onOpenGroup = {},
-                    onCreateGroup = {},
-                    onOpenPlans = {},
-                    refreshVersion = 3,
-                    viewModel = viewModel,
-                )
+                GroupListRoot(onOpenGroup = {}, onCreateGroup = {}, onOpenPlans = {}, viewModel = viewModel)
             }
         }
         waitForIdle()
@@ -87,7 +41,7 @@ class GroupListRootTest {
     }
 
     @Test
-    fun `returning to a stacked list reloads once for the bump it missed`() = runComposeUiTest {
+    fun `coming back to the list reloads it while the old groups stay on screen`() = runComposeUiTest {
         val athlete = FakeAthleteGateway()
         val viewModel = GroupListViewModel(
             athlete,
@@ -95,7 +49,6 @@ class GroupListRootTest {
             noPlan,
             gameGateway = FakeGameGateway(),
         )
-        var refreshVersion by mutableIntStateOf(0)
         var onScreen by mutableStateOf(true)
 
         setContent {
@@ -103,30 +56,49 @@ class GroupListRootTest {
             SaqzTheme {
                 if (onScreen) {
                     stateHolder.SaveableStateProvider("groups-list") {
-                        GroupListRoot(
-                            onOpenGroup = {},
-                            onCreateGroup = {},
-                            onOpenPlans = {},
-                            refreshVersion = refreshVersion,
-                            viewModel = viewModel,
-                        )
+                        GroupListRoot(onOpenGroup = {}, onCreateGroup = {}, onOpenPlans = {}, viewModel = viewModel)
                     }
                 }
             }
         }
         waitForIdle()
+        assertTrue(viewModel.state.value.isEmpty)
         assertEquals(1, athlete.ownProfileCalls)
 
+        // Saiu para criar o grupo (2a por cima do shell) e voltou: nenhum contador foi tocado.
         runOnIdle { onScreen = false }
         waitForIdle()
         athlete.ownProfileResult = SaqzResult.Success(membershipProfile())
-        runOnIdle { refreshVersion = 1 }
-        waitForIdle()
         runOnIdle { onScreen = true }
         waitForIdle()
 
         assertEquals(2, athlete.ownProfileCalls)
         assertEquals(listOf("group-1"), viewModel.state.value.groups.map { it.id })
+        assertEquals(false, viewModel.state.value.isLoading)
+    }
+
+    @Test
+    fun `every return reloads and not only the first one`() = runComposeUiTest {
+        val athlete = FakeAthleteGateway()
+        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(), noPlan, gameGateway = FakeGameGateway())
+        var onScreen by mutableStateOf(true)
+
+        setContent {
+            SaqzTheme {
+                if (onScreen) {
+                    GroupListRoot(onOpenGroup = {}, onCreateGroup = {}, onOpenPlans = {}, viewModel = viewModel)
+                }
+            }
+        }
+        waitForIdle()
+        repeat(2) {
+            runOnIdle { onScreen = false }
+            waitForIdle()
+            runOnIdle { onScreen = true }
+            waitForIdle()
+        }
+
+        assertEquals(3, athlete.ownProfileCalls)
     }
 
     private fun membershipProfile() = OwnAthleteProfile(
