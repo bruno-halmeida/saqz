@@ -110,6 +110,19 @@ class GroupWhatsAppBindingEndpointIntegrationTest {
     }
 
     @Test
+    fun `removing the saqz number from the whatsapp group shows broken on the next read`() {
+        assertEquals(200, request("PUT", bindingPath(), """{"inviteLink":"https://chat.whatsapp.com/AbCdEf123456"}""").statusCode())
+
+        directory.memberFailure = DirectoryError.Unavailable("timeout")
+        assertEquals("ACTIVE", json.readTree(request("GET", bindingPath()).body())["status"].stringValue())
+
+        directory.memberFailure = null
+        directory.member = false
+        assertEquals("BROKEN", json.readTree(request("GET", bindingPath()).body())["status"].stringValue())
+        assertEquals("BROKEN", json.readTree(request("GET", bindingPath()).body())["status"].stringValue())
+    }
+
+    @Test
     fun `unknown group is not found`() {
         val path = "/api/groups/${UUID.randomUUID()}/whatsapp-binding"
         assertEquals(404, request("GET", path).statusCode())
@@ -225,7 +238,7 @@ class GroupWhatsAppBindingEndpointIntegrationTest {
             return GroupWhatsAppBindingController(
                 VerifiedGroupActorResolver { UUID.fromString(it.subject) },
                 LinkGroupWhatsApp(JdbcTransactionRunner(dataSource), groups, bindings, directory),
-                ManageGroupWhatsAppBinding(groups, bindings),
+                ManageGroupWhatsAppBinding(groups, bindings, directory),
             )
         }
 
@@ -245,6 +258,7 @@ class TestGroupDirectory : WhatsAppGroupDirectory {
     var instanceFailure: DirectoryError? = null
     var inviteFailure: DirectoryError? = null
     var infoFailure: DirectoryError? = null
+    var memberFailure: DirectoryError? = null
     var member: Boolean = true
     var binding: WhatsAppGroupInfo = WhatsAppGroupInfo("120363000000000000@g.us", "Vôlei do CERET", emptyList())
     val joined = mutableListOf<String>()
@@ -254,6 +268,7 @@ class TestGroupDirectory : WhatsAppGroupDirectory {
         instanceFailure = null
         inviteFailure = null
         infoFailure = null
+        memberFailure = null
         member = true
         binding = WhatsAppGroupInfo(
             jid = "120363${UUID.randomUUID().toString().replace("-", "").take(15)}@g.us",
@@ -282,5 +297,8 @@ class TestGroupDirectory : WhatsAppGroupDirectory {
         return binding
     }
 
-    override fun isMember(jid: String): Boolean = member
+    override fun isMember(jid: String): Boolean {
+        memberFailure?.let { throw it }
+        return member
+    }
 }

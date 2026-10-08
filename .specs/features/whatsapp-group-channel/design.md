@@ -124,7 +124,7 @@ interface WhatsAppGroupDirectory {
 | Rota | Body | 200 | Erros |
 |---|---|---|---|
 | `PUT /api/groups/{groupId}/whatsapp-binding` | `{inviteLink: string}` | `{groupJid, groupName, enabled: true, status: "ACTIVE"}` | 403 não-gestor; 422 invite inválido / sem admin resolvível; 409 JID já vinculado a outro grupo / entrada pendente; 502 instância desconectada ou provider indisponível |
-| `GET /api/groups/{groupId}/whatsapp-binding` | — | `{bound: false}` ou `{bound: true, groupJid, groupName, status: ACTIVE\|DISABLED\|BROKEN}` | 403 |
+| `GET /api/groups/{groupId}/whatsapp-binding` | — | `{bound: false}` ou `{bound: true, groupJid, groupName, status: ACTIVE\|DISABLED\|BROKEN}` | 403. Revalida no WhatsApp (`isMember`): fora do grupo ou grupo inexistente quebra na hora; provedor fora mantém o gravado |
 | `PATCH /api/groups/{groupId}/whatsapp-binding` | `{enabled: boolean}` | igual ao GET (bound: true) | 403; 404 sem vínculo |
 | `GET /api/whatsapp/availability` | — | `{enabled: boolean}`, o valor de `saqz.notifications.whatsapp.enabled` | 401 sem sessão |
 

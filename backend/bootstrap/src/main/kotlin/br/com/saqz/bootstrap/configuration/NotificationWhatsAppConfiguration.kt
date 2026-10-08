@@ -73,7 +73,8 @@ class NotificationWhatsAppConfiguration {
     @Bean fun manageGroupWhatsAppBinding(
         groups: JdbcGroupReadRepository,
         bindings: GroupWhatsAppBindingRepository,
-    ) = ManageGroupWhatsAppBinding(groups, bindings)
+        directory: WhatsAppGroupDirectory,
+    ) = ManageGroupWhatsAppBinding(groups, bindings, directory)
 
     @Bean fun groupWhatsAppBindingController(
         actors: VerifiedGroupActorResolver,

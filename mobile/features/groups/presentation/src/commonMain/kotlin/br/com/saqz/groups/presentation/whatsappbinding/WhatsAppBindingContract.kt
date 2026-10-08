@@ -21,7 +21,8 @@ data class WhatsAppBindingState(
     /** Folha "Como funciona": abre sozinha na primeira visita e depois pelo link da tela. */
     val howItWorksOpen: Boolean = false,
 ) {
-    val canToggle: Boolean = bound && status != GroupWhatsAppStatus.NONE
+    // Quebrado não volta pelo toggle (o servidor nunca limpa a quebra): só colando o link de novo.
+    val canToggle: Boolean = bound && status != GroupWhatsAppStatus.NONE && status != GroupWhatsAppStatus.BROKEN
 }
 
 sealed interface WhatsAppBindingIntent {

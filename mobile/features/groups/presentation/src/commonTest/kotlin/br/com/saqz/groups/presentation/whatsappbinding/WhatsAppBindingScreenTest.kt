@@ -27,6 +27,33 @@ class WhatsAppBindingScreenTest {
     }
 
     @Test
+    fun `broken binding asks for the link again instead of re-enabling`() = runComposeUiTest {
+        val intents = mutableListOf<WhatsAppBindingIntent>()
+        setContent {
+            SaqzTheme {
+                WhatsAppBindingScreen(
+                    state = WhatsAppBindingState(
+                        loading = false,
+                        bound = true,
+                        groupName = "Vôlei do CERET",
+                        status = br.com.saqz.groups.domain.communication.GroupWhatsAppStatus.BROKEN,
+                        inviteLink = "https://chat.whatsapp.com/AbCdEf123456",
+                    ),
+                    onIntent = intents::add,
+                    onBack = {},
+                )
+            }
+        }
+
+        onNodeWithText("Quebrado").assertIsDisplayed()
+        onNodeWithTag(WhatsAppBindingTags.Toggle).assertDoesNotExist()
+        onNodeWithText("Vincular de novo").performScrollTo().assertIsDisplayed()
+        onNodeWithTag(WhatsAppBindingTags.Link).performScrollTo().performClick()
+
+        assertEquals(listOf<WhatsAppBindingIntent>(WhatsAppBindingIntent.Link), intents)
+    }
+
+    @Test
     fun `how it works shows the steps the caveat and the statuses and closes on got it`() = runComposeUiTest {
         val intents = mutableListOf<WhatsAppBindingIntent>()
         setContent {

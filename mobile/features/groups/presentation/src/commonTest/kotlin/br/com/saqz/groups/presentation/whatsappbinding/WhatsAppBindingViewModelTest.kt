@@ -147,13 +147,20 @@ class WhatsAppBindingViewModelTest {
         assertEquals(GroupWhatsAppStatus.NONE, viewModel.state.value.status)
     }
 
-    @Test fun brokenBindingCanBeRetaken() = runTest {
+    // O servidor nunca limpa a quebra ao reabilitar: o vínculo quebrado volta colando o link de novo.
+    @Test fun brokenBindingIsRetakenByLinkingAgainNotByToggling() = runTest {
         val gateway = FakeGroupWhatsAppGateway(
             binding = GroupWhatsAppBinding(true, "123@g.us", "Vôlei do CERET", GroupWhatsAppStatus.BROKEN),
         )
         val viewModel = WhatsAppBindingViewModel("group-1", gateway)
-        assertTrue(viewModel.state.value.canToggle)
+        assertEquals(false, viewModel.state.value.canToggle)
         viewModel.onIntent(WhatsAppBindingIntent.SetEnabled(true))
-        assertEquals(listOf(GroupId("group-1") to true), gateway.enabledCalls)
+        assertTrue(gateway.enabledCalls.isEmpty())
+
+        viewModel.onIntent(WhatsAppBindingIntent.ChangeInviteLink("https://chat.whatsapp.com/AbCdEf123456"))
+        viewModel.onIntent(WhatsAppBindingIntent.Link)
+
+        assertEquals(listOf(GroupId("group-1") to "https://chat.whatsapp.com/AbCdEf123456"), gateway.linkCalls)
+        assertEquals(GroupWhatsAppStatus.ACTIVE, viewModel.state.value.status)
     }
 }

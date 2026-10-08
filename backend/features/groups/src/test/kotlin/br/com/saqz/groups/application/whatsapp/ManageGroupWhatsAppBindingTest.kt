@@ -35,6 +35,52 @@ class ManageGroupWhatsAppBindingTest {
     }
 
     @Test
+    fun `number removed from the whatsapp group breaks the binding as soon as it is read`() {
+        val fixture = fixture(GroupRole.OWNER, binding = binding(), directory = FakeDirectory(member = false))
+
+        val result = assertIs<ManageGroupWhatsAppBindingResult.Bound>(fixture.useCase.get(actor, groupId))
+
+        assertEquals(GroupWhatsAppBindingStatus.BROKEN, result.binding.status())
+        assertEquals(listOf(groupId), fixture.bindings.broken)
+    }
+
+    @Test
+    fun `whatsapp group that no longer exists also breaks on read`() {
+        val fixture = fixture(GroupRole.OWNER, binding = binding(), directory = FakeDirectory(failure = DirectoryError.NotInGroup))
+
+        val result = assertIs<ManageGroupWhatsAppBindingResult.Bound>(fixture.useCase.get(actor, groupId))
+
+        assertEquals(GroupWhatsAppBindingStatus.BROKEN, result.binding.status())
+        assertEquals(listOf(groupId), fixture.bindings.broken)
+    }
+
+    @Test
+    fun `provider down or disconnected keeps what is stored`() {
+        for (failure in listOf(DirectoryError.Disconnected, DirectoryError.Unavailable("timeout"))) {
+            val fixture = fixture(GroupRole.OWNER, binding = binding(), directory = FakeDirectory(failure = failure))
+
+            val result = assertIs<ManageGroupWhatsAppBindingResult.Bound>(fixture.useCase.get(actor, groupId))
+
+            assertEquals(GroupWhatsAppBindingStatus.ACTIVE, result.binding.status())
+            assertTrue(fixture.bindings.broken.isEmpty())
+        }
+    }
+
+    @Test
+    fun `a binding already broken is not checked again`() {
+        val directory = FakeDirectory(member = true)
+        val fixture = fixture(
+            GroupRole.OWNER,
+            binding = binding().copy(brokenAt = Instant.parse("2026-09-16T12:00:00Z")),
+            directory = directory,
+        )
+
+        fixture.useCase.get(actor, groupId)
+
+        assertEquals(0, directory.checks)
+    }
+
+    @Test
     fun `group without binding reports not bound`() {
         assertSame(ManageGroupWhatsAppBindingResult.NotBound, fixture(GroupRole.OWNER, binding = null).useCase.get(actor, groupId))
     }
@@ -91,10 +137,33 @@ class ManageGroupWhatsAppBindingTest {
         role: GroupRole?,
         binding: GroupWhatsAppBinding?,
         groupExists: Boolean = true,
+        directory: WhatsAppGroupDirectory = FakeDirectory(member = true),
     ): Fixture {
         val bindings = RecordingBindings(binding)
         val read = FixedGroupReadRepository(role, groupExists)
-        return Fixture(ManageGroupWhatsAppBinding(read, bindings), bindings)
+        return Fixture(ManageGroupWhatsAppBinding(read, bindings, directory), bindings)
+    }
+
+    /** O WhatsApp como a leitura enxerga: o número está no grupo, saiu, ou o provedor falhou. */
+    private class FakeDirectory(
+        private val member: Boolean = true,
+        private val failure: DirectoryError? = null,
+    ) : WhatsAppGroupDirectory {
+        var checks = 0
+
+        override fun instanceStatus(): String = "551153040175"
+
+        override fun inviteInfo(inviteCode: String): WhatsAppGroupInfo = error("unused")
+
+        override fun join(inviteCode: String) = error("unused")
+
+        override fun groupInfo(jid: String): WhatsAppGroupInfo = error("unused")
+
+        override fun isMember(jid: String): Boolean {
+            checks++
+            failure?.let { throw it }
+            return member
+        }
     }
 
     private fun binding() = GroupWhatsAppBinding(
@@ -126,6 +195,7 @@ class ManageGroupWhatsAppBindingTest {
 
     private class RecordingBindings(private val binding: GroupWhatsAppBinding?) : GroupWhatsAppBindingRepository {
         val enabled = mutableListOf<Pair<UUID, Boolean>>()
+        val broken = mutableListOf<UUID>()
 
         override fun find(groupId: UUID): GroupWhatsAppBinding? = binding
 
@@ -139,7 +209,9 @@ class ManageGroupWhatsAppBindingTest {
             this.enabled += groupId to enabled
         }
 
-        override fun markBroken(groupId: UUID) = Unit
+        override fun markBroken(groupId: UUID) {
+            broken += groupId
+        }
 
         override fun memberPhones(groupId: UUID): List<String> = emptyList()
     }

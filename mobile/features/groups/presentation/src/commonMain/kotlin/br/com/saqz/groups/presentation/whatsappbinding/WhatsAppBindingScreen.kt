@@ -41,6 +41,8 @@ import br.com.saqz.groups.resources.whatsapp_binding_invite_placeholder
 import br.com.saqz.groups.resources.whatsapp_binding_link_action
 import br.com.saqz.groups.resources.whatsapp_binding_retry
 import br.com.saqz.groups.resources.whatsapp_binding_status_active
+import br.com.saqz.groups.resources.whatsapp_binding_relink_description
+import br.com.saqz.groups.resources.whatsapp_binding_relink_title
 import br.com.saqz.groups.resources.whatsapp_binding_status_broken
 import br.com.saqz.groups.resources.whatsapp_binding_status_disabled
 import br.com.saqz.groups.resources.whatsapp_binding_title
@@ -61,6 +63,7 @@ internal object WhatsAppBindingTags {
     const val Error = "whatsapp-binding-error"
     const val Retry = "whatsapp-binding-retry"
     const val Empty = "whatsapp-binding-empty"
+    const val Relink = "whatsapp-binding-relink"
     const val InviteLink = "whatsapp-binding-invite-link"
     const val Link = "whatsapp-binding-link"
     const val GroupName = "whatsapp-binding-group-name"
@@ -106,6 +109,8 @@ fun WhatsAppBindingScreen(
                     if (state.error) WhatsAppBindingError(onRetry = { onIntent(WhatsAppBindingIntent.Load) })
                     state.confirmedGroupName?.let { WhatsAppBindingConfirmation(it) }
                     if (state.bound) WhatsAppBindingBound(state, onIntent) else WhatsAppBindingEmpty(state, onIntent)
+                    // O número do Saqz saiu do grupo: reabilitar não traz de volta, colar o link sim.
+                    if (state.bound && state.status == GroupWhatsAppStatus.BROKEN) WhatsAppBindingRelink(state, onIntent)
                     SaqzButton(
                         label = stringResource(Res.string.how_it_works_link),
                         onClick = { onIntent(WhatsAppBindingIntent.OpenHowItWorks) },
@@ -175,11 +180,37 @@ private fun WhatsAppBindingConfirmation(groupName: String) {
 }
 
 @Composable
-private fun WhatsAppBindingEmpty(state: WhatsAppBindingState, onIntent: (WhatsAppBindingIntent) -> Unit) {
-    GroupFormCard(
+private fun WhatsAppBindingEmpty(state: WhatsAppBindingState, onIntent: (WhatsAppBindingIntent) -> Unit) =
+    WhatsAppBindingLinkForm(
+        state = state,
+        onIntent = onIntent,
         title = stringResource(Res.string.whatsapp_binding_empty_title),
         hint = stringResource(Res.string.whatsapp_binding_empty_description),
-        modifier = Modifier.testTag(WhatsAppBindingTags.Empty),
+        tag = WhatsAppBindingTags.Empty,
+    )
+
+@Composable
+private fun WhatsAppBindingRelink(state: WhatsAppBindingState, onIntent: (WhatsAppBindingIntent) -> Unit) =
+    WhatsAppBindingLinkForm(
+        state = state,
+        onIntent = onIntent,
+        title = stringResource(Res.string.whatsapp_binding_relink_title),
+        hint = stringResource(Res.string.whatsapp_binding_relink_description),
+        tag = WhatsAppBindingTags.Relink,
+    )
+
+@Composable
+private fun WhatsAppBindingLinkForm(
+    state: WhatsAppBindingState,
+    onIntent: (WhatsAppBindingIntent) -> Unit,
+    title: String,
+    hint: String,
+    tag: String,
+) {
+    GroupFormCard(
+        title = title,
+        hint = hint,
+        modifier = Modifier.testTag(tag),
     ) {
         SaqzInput(
             value = state.inviteLink,
@@ -216,7 +247,7 @@ private fun WhatsAppBindingBound(state: WhatsAppBindingState, onIntent: (WhatsAp
             modifier = Modifier.testTag(WhatsAppBindingTags.Status),
         )
         val active = state.status == GroupWhatsAppStatus.ACTIVE
-        SaqzButton(
+        if (state.canToggle) SaqzButton(
             label = stringResource(
                 if (active) Res.string.whatsapp_binding_disable_action else Res.string.whatsapp_binding_enable_action,
             ),

@@ -17,6 +17,8 @@
     <string name="whatsapp_binding_status_active">Ativo</string>
     <string name="whatsapp_binding_status_disabled">Desabilitado</string>
     <string name="whatsapp_binding_status_broken">Quebrado</string>
+    <string name="whatsapp_binding_relink_title">Vincular de novo</string>
+    <string name="whatsapp_binding_relink_description">O número do Saqz não está mais no grupo do WhatsApp. Cole o link de convite do grupo para ele voltar.</string>
     <string name="whatsapp_binding_status_none">Não vinculado</string>
     <string name="whatsapp_binding_disable_action">Desabilitar</string>
     <string name="whatsapp_binding_enable_action">Reabilitar</string>
