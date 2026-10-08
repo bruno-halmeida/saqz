@@ -107,8 +107,9 @@ interface WhatsAppGroupDirectory {
 
 1. Respostas de `create`/`inviteInfo`/`join`/`updateAnnounce`/`updateParticipants` **embrulham o
    Group em `{"group": ...}`** — desembrulhar antes de ler campos.
-2. **Fora do grupo/inexistente = HTTP 500 `{"error":"that group does not exist"}`** (não 404). O
-   adapter traduz esse 500 específico para `NotInGroup` — **nunca retry** (a política de DM trata
+2. **Fora do grupo/inexistente = HTTP 500 `{"error":"that group does not exist"}`** (não 404); número
+   removido de grupo que existe = HTTP 500 `{"error":"you're not participating in that group"}`. O
+   adapter traduz esses 500 específicos para `NotInGroup` — **nunca retry** (a política de DM trata
    5xx como transitório e o worker ficaria em loop num grupo que nos removeu).
 3. `Participants[].PhoneNumber` vem como JID completo (`551153040175@s.whatsapp.net`): normalizar
    removendo sufixo e não-dígitos antes de comparar com o telefone Saqz.

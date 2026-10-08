@@ -46,8 +46,10 @@ Worker (a cada `saqz.notifications.whatsapp.group-delay-ms`, default 15s, 20/rod
 6. Envio `sendText` ao JID (`track_id group-<messageId>`): `ACCEPTED` conclui; erro permanente
    `FAILED`; transitório retry com `maxOf(Retry-After, min(3600, 60·2^attempts))`, máx 10.
 
-**`NotInGroup` na prática**: o Uazapi responde HTTP 500 `{"error":"that group does not exist"}` —
-o `UazapiGroupDirectory` traduz esse 500 específico para quebra de vínculo e **nunca** para retry
+**`NotInGroup` na prática**: o Uazapi responde HTTP 500 `{"error":"that group does not exist"}` para
+grupo inexistente e `{"error":"you're not participating in that group"}` para grupo de onde o número
+do Saqz foi removido (visto em produção em 08/10/2026) — o `UazapiGroupDirectory` traduz esses 500
+específicos para quebra de vínculo e **nunca** para retry
 (a política de DM trataria 5xx como transitório e o worker ficaria em loop). Todos os contratos de
 parser validados no T0 estão em `evidence.md`.
 
