@@ -10,9 +10,10 @@ import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
 /**
- * Convite que atravessa a instalação. Sem o app, a página de links manda a pessoa ao Google Play
- * com o link no `referrer` (`saqz_invite=<código>`). Na primeira abertura o app lê esse valor e o
- * entrega ao mesmo caminho de um link tocado; antes, o convite se perdia na instalação.
+ * Convite e presença que atravessam a instalação. Sem o app, a página de links manda a pessoa ao
+ * Google Play com o link no `referrer` (`saqz_invite=<código>`, `saqz_attendance=<código>`). Na
+ * primeira abertura o app lê esse valor e o entrega ao mesmo caminho de um link tocado; antes, o
+ * link se perdia na instalação.
  */
 internal class AndroidInstallReferrer(
     context: Context,
@@ -34,7 +35,7 @@ internal class AndroidInstallReferrer(
                 override fun onInstallReferrerSetupFinished(responseCode: Int) {
                     val link = if (responseCode == InstallReferrerClient.InstallReferrerResponse.OK) {
                         runCatching { client.installReferrer }.getOrNull()?.let { details ->
-                            inviteLink(details.installReferrer, details.installBeginTimestampSeconds, clock() / 1000, linksDomain)
+                            deferredLink(details.installReferrer, details.installBeginTimestampSeconds, clock() / 1000, linksDomain)
                         }
                     } else {
                         null
@@ -51,16 +52,20 @@ internal class AndroidInstallReferrer(
     internal companion object {
         private const val FILE = "saqz_install_referrer"
         private const val CONSUMED = "consumed"
-        private val PARAMETERS = setOf("saqz_invite", "saqz_onboarding")
+        private val PARAMETERS = setOf("saqz_invite", "saqz_onboarding", "saqz_attendance")
+        private const val ATTENDANCE = "saqz_attendance"
+        private const val DECLINE = "saqz_intent=decline"
         private const val MAX_AGE_SECONDS = 7L * 24 * 60 * 60
 
         /**
-         * Só vale o que a página põe: um único parâmetro de convite ou de onboarding, de uma
-         * instalação recente. Ficam de fora o orgânico ("utm_source=google-play&utm_medium=organic")
-         * e quem instalou há tempo e só agora abre a versão que lê o referrer. O código em si é
-         * validado pelo [AndroidLinkAdapter], como em qualquer link.
+         * Só vale o que a página põe: um único parâmetro de convite, onboarding ou presença, de uma
+         * instalação recente; a presença pode trazer o "não vou" (`&saqz_intent=decline`), para
+         * nunca virar confirmação. Ficam de fora o orgânico
+         * ("utm_source=google-play&utm_medium=organic") e quem instalou há tempo e só agora abre a
+         * versão que lê o referrer. O código em si é validado pelo [AndroidLinkAdapter], como em
+         * qualquer link.
          */
-        fun inviteLink(referrer: String?, installBeginSeconds: Long, nowSeconds: Long, domain: String): String? {
+        fun deferredLink(referrer: String?, installBeginSeconds: Long, nowSeconds: Long, domain: String): String? {
             if (referrer.isNullOrBlank()) return null
             if (installBeginSeconds <= 0 || nowSeconds - installBeginSeconds > MAX_AGE_SECONDS) return null
             val decoded = if ('=' in referrer) {
@@ -68,8 +73,13 @@ internal class AndroidInstallReferrer(
             } else {
                 runCatching { URLDecoder.decode(referrer, StandardCharsets.UTF_8.name()) }.getOrNull() ?: return null
             }
-            if ('&' in decoded || decoded.substringBefore('=') !in PARAMETERS) return null
-            return "https://$domain/?$decoded"
+            val parameters = decoded.split('&')
+            val accepted = when (parameters.size) {
+                1 -> parameters[0].substringBefore('=') in PARAMETERS
+                2 -> parameters[0].substringBefore('=') == ATTENDANCE && parameters[1] == DECLINE
+                else -> false
+            }
+            return if (accepted) "https://$domain/?$decoded" else null
         }
     }
 }

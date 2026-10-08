@@ -47,11 +47,12 @@
     var params = new URLSearchParams(location.search);
     var invite = params.get("saqz_invite");
     var onboarding = params.get("saqz_onboarding");
+    var decline = params.get("saqz_intent") === "decline";
     var kind = null;
     var route = null;
     if (path) {
       kind = "attendance";
-      route = "attendance/" + path[1] + (params.get("saqz_intent") === "decline" ? "?saqz_intent=decline" : "");
+      route = "attendance/" + path[1] + (decline ? "?saqz_intent=decline" : "");
     } else if (invite && new RegExp("^" + code + "$").test(invite)) {
       kind = "invite";
       route = "?saqz_invite=" + invite;
@@ -76,10 +77,12 @@
       return;
     }
 
-    // Convite e onboarding seguem para o Play no `referrer`, para o app poder retomá-los
-    // depois da instalação. Presença não precisa: quem recebe o lembrete já tem o app.
-    var store = isIOS ? appStore :
-      googlePlay + (kind === "invite" || kind === "onboarding" ? "&referrer=" + encodeURIComponent(route.slice(1)) : "");
+    // Convite, onboarding e presença seguem para o Play no `referrer`, para o app retomá-los
+    // depois da instalação: o link de presença também traz quem ainda não está no grupo, que
+    // entra e já confirma. O "não vou" vai junto, para nunca virar confirmação.
+    var referrer = kind === "attendance" ? "saqz_attendance=" + path[1] + (decline ? "&saqz_intent=decline" : "")
+      : kind ? route.slice(1) : null;
+    var store = isIOS ? appStore : googlePlay + (referrer ? "&referrer=" + encodeURIComponent(referrer) : "");
     var storeLabel = isIOS ? "Baixar na App Store" : "Baixar no Google Play";
     var soon = "O app para iPhone chega em breve na App Store.";
     var open = !kind ? null : isAndroid
@@ -87,11 +90,7 @@
         encodeURIComponent(store) + ";end"
       : "saqz:///" + route;
 
-    if (kind === "attendance") {
-      lead.textContent = "Toque em “Abrir o app” para responder.";
-      link(primary, open, "Abrir o app");
-      if (store) link(secondary, store, storeLabel);
-    } else if (store) {
+    if (store) {
       if (kind) lead.textContent = "Baixe o app e, depois de instalar, toque de novo no link que você recebeu.";
       link(primary, store, storeLabel);
       if (open) link(secondary, open, "Já instalei, abrir o app");
@@ -102,8 +101,9 @@
 
     // Sem clique. No Android, o intent abre o app com o link ou, sem o app, o Chrome segue
     // para o Play; se o navegador recusar o intent sem toque, a loja entra no lugar.
-    // No iPhone, só presença tenta o esquema: no convite quem chega costuma não ter o app,
-    // e o Safari responderia com o alerta de endereço inválido. Então vai direto à loja.
+    // No iPhone nenhum link tenta o esquema sozinho: quem chega à página costuma não ter o app
+    // (com o app, o link universal já abriu direto), e o Safari responderia com o alerta de
+    // endereço inválido. Então vai direto à loja; "Já instalei, abrir o app" fica no botão.
     if (isAndroid) {
       if (!open) return location.replace(store);
       location.href = open;
@@ -111,8 +111,6 @@
       ["visibilitychange", "pagehide"].forEach(function (event) {
         addEventListener(event, function () { clearTimeout(fallback); });
       });
-    } else if (kind === "attendance") {
-      location.href = open;
     } else if (store) {
       location.replace(store);
     }

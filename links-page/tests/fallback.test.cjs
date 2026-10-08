@@ -59,22 +59,41 @@ test('Android does not leave for the store when the app took over the page', () 
   assert.equal(backgrounded.location.replaced, undefined);
 });
 
-test('attendance decline and onboarding reach the same Android routes', () => {
-  const attendance = page('Android', '/attendance/' + code, '?saqz_intent=decline');
-  assert.ok(attendance.location.href.startsWith(`intent://links.saqz.app/attendance/${code}?saqz_intent=decline#Intent;`));
-  assert.ok(attendance.location.href.endsWith(`S.browser_fallback_url=${encodeURIComponent(play)};end`));
-  assert.equal(attendance.primary.href, attendance.location.href);
-  assert.equal(attendance.secondary.href, play);
+test('Android attendance goes to Google Play with the link in the referrer, decline included', () => {
+  const attendance = page('Android', '/attendance/' + code);
+  const confirmStore = `${play}&referrer=saqz_attendance%3D${code}`;
+  const intent = `intent://links.saqz.app/attendance/${code}#Intent;scheme=https;package=app.saqz;S.browser_fallback_url=${encodeURIComponent(confirmStore)};end`;
+  assert.equal(attendance.location.href, intent);
+  assert.equal(attendance.heading.textContent, 'Responda pelo app Saqz');
+  assert.equal(attendance.primary.href, confirmStore);
+  assert.equal(attendance.secondary.href, intent);
+  attendance.elapse();
+  assert.equal(attendance.location.replaced, confirmStore);
+
+  const decline = page('Android', '/attendance/' + code, '?saqz_intent=decline');
+  const declineStore = `${play}&referrer=saqz_attendance%3D${code}%26saqz_intent%3Ddecline`;
+  assert.ok(decline.location.href.startsWith(`intent://links.saqz.app/attendance/${code}?saqz_intent=decline#Intent;`));
+  assert.ok(decline.location.href.endsWith(`S.browser_fallback_url=${encodeURIComponent(declineStore)};end`));
+  assert.equal(decline.primary.href, declineStore);
+});
+
+test('onboarding reaches the same Android route with its referrer', () => {
   const onboarding = page('Android', '/', '?saqz_onboarding=' + code);
   assert.ok(onboarding.location.href.startsWith(`intent://links.saqz.app/?saqz_onboarding=${code}#Intent;`));
   assert.equal(onboarding.primary.href, `${play}&referrer=saqz_onboarding%3D${code}`);
 });
 
-test('iOS attendance still tries the native route on its own', () => {
-  const result = page('iPhone', '/attendance/' + code, '?saqz_intent=decline');
-  assert.equal(result.location.href, 'saqz:///attendance/' + code + '?saqz_intent=decline');
-  assert.equal(result.primary.href, result.location.href);
-  assert.equal(result.location.replaced, undefined);
+test('iOS attendance behaves like the invite: never the scheme by itself, App Store once published', () => {
+  const waiting = page('iPhone', '/attendance/' + code, '?saqz_intent=decline');
+  assert.equal(waiting.location.href, undefined);
+  assert.equal(waiting.location.replaced, undefined);
+  assert.equal(waiting.secondary.href, 'saqz:///attendance/' + code + '?saqz_intent=decline');
+  assert.equal(waiting.secondary.textContent, 'Já instalei, abrir o app');
+
+  const published = page('iPhone', '/attendance/' + code, '', { source: withAppStore });
+  assert.equal(published.location.href, undefined);
+  assert.equal(published.location.replaced, appStore);
+  assert.equal(published.primary.href, appStore);
 });
 
 test('iOS invite never opens the scheme by itself and goes to the App Store once published', () => {

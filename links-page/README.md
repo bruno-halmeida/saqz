@@ -78,14 +78,18 @@ No celular a página redireciona sozinha, sem clique; os botões ficam de reserv
 - **Android:** tenta abrir o app pelo `intent://` com o mesmo link. Sem o app, o Chrome
   segue para o Google Play; se o navegador recusar o intent sem toque, a página vai
   para a loja depois de 1,5 s.
-- **iPhone:** vai direto para a App Store. Só o link de presença tenta o esquema
-  `saqz://`: no convite quem chega costuma não ter o app, e o Safari responderia com
-  o alerta de endereço inválido.
+- **iPhone:** vai direto para a App Store, também no link de presença. Nenhum link tenta
+  o esquema `saqz://` sozinho: com o app, o link universal já abriu direto; quem chega à
+  página costuma não ter o app, e o Safari responderia com o alerta de endereço inválido.
+  O esquema fica no botão "Já instalei, abrir o app".
 - **Computador:** fica na página, com o site e o pedido para abrir no celular.
 
-- **Google Play**, no ar desde 07/10/2026. Convite e onboarding seguem no `referrer`
-  do Play para o app poder retomá-los depois da instalação; o app ainda não lê esse
-  `referrer`, então a página pede para tocar no link de novo.
+- **Google Play**, no ar desde 07/10/2026. Convite, onboarding e presença seguem no
+  `referrer` do Play (`saqz_invite=…`, `saqz_onboarding=…`, `saqz_attendance=…`, com
+  `&saqz_intent=decline` no "não vou") e o app os retoma na primeira abertura: convite
+  desde a 0.0.4 (6), presença desde a 0.0.5 (7). Quem não é do grupo e chega pela presença
+  entra no grupo e já responde. A página ainda pede para tocar no link de novo, para
+  quem instalar por fora do Play.
 - **App Store**: quando a Apple aprovar, preencha `appStore` em `index.html` com
   `https://apps.apple.com/br/app/id6812743525`. Até lá o iPhone mostra o site e
   avisa que o app chega em breve.
