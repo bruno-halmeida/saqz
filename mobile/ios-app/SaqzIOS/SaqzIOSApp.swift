@@ -61,9 +61,13 @@ struct IOSAppComposition {
         appStore: IOSAppStorePurchases
     ) -> IOSAppComposition {
         let profilePhoto = IOSProfilePhotoAdapter(selection: photos.selection, encoder: photos.encoder)
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? ""
+        let build = info?["CFBundleVersion"] as? String ?? ""
         let dependencies = SaqzPlatformDependencies(
             environment: configuration.environment,
             apiBaseUrl: configuration.apiBaseURL,
+            appVersion: "\(version) (\(build))",
             access: AccessRuntimeDependencies(
                 auth: auth,
                 links: links,

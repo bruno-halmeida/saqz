@@ -5,15 +5,18 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.domain.AppVersion
 import br.com.saqz.profile.presentation.own.OwnProfileEffect
 import br.com.saqz.profile.presentation.own.OwnProfileIntent
 import br.com.saqz.profile.presentation.own.OwnProfileViewModel
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.mp.KoinPlatformTools
 
 internal const val PrivacyUrl = "https://saqz.app/privacidade/"
 internal const val TermsUrl = "https://saqz.app/termos/"
@@ -38,6 +41,8 @@ fun OwnProfileRoot(
     topBarWindowInsets: WindowInsets = WindowInsets.statusBars,
     viewModel: OwnProfileViewModel = koinViewModel(),
     imageLoader: ImageLoader = koinInject(),
+    // Sem Koin (testes e prévias) não há versão: o rodapé simplesmente não aparece.
+    appVersion: AppVersion? = remember { KoinPlatformTools.defaultContext().getOrNull()?.getOrNull<AppVersion>() },
 ) {
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -73,5 +78,6 @@ fun OwnProfileRoot(
         topBarWindowInsets = topBarWindowInsets,
         isPlanOwner = isPlanOwner,
         receiptsVisible = onOpenReceipts != null,
+        appVersion = appVersion?.label,
     )
 }

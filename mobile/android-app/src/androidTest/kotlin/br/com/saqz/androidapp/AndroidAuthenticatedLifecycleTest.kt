@@ -317,6 +317,7 @@ private class LifecycleCompositionFactory(
             googlePlayPurchases = null,
             environment = "dev",
             apiBaseUrl = "http://127.0.0.1:1",
+            appVersion = "0.0.0 (0)",
             access = AccessRuntimeDependencies(
                 auth = fixture.auth,
                 links = fixture.links,
@@ -334,6 +335,7 @@ private class LifecycleCompositionFactory(
                 inviteUrlStore = LifecycleInviteUrlStorePort,
                 inviteShare = LifecycleInviteSharePort,
                 inviteClipboard = LifecycleInviteClipboardPort,
+                onboardingMemory = br.com.saqz.androidapp.groups.onboarding.AndroidGroupOnboardingMemory(context.applicationContext),
             ),
             drafts = SaqzDraftStores(
                 groupDrafts = LifecycleGroupDraftStore,

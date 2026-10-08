@@ -81,6 +81,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
                 googlePlayPurchases = AndroidGooglePlayPurchases(context.applicationContext, activity),
                 environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,
+                appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                 access = AccessRuntimeDependencies(
                     auth = auth,
                     links = links,

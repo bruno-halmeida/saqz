@@ -9,7 +9,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.onNodeWithText
@@ -48,6 +51,25 @@ class OwnProfileRootTest {
         onNodeWithText("Termos de uso").performScrollTo().performClick()
         waitForIdle()
         assertEquals(listOf("mailto:contato@egysis.com?subject=Saqz%20-%20Ajuda", "https://saqz.app/termos/"), opened)
+    }
+
+    @Test
+    fun appVersionClosesTheProfileAndIsAbsentWithoutOne() = runComposeUiTest {
+        var version by mutableStateOf<br.com.saqz.domain.AppVersion?>(br.com.saqz.domain.AppVersion("0.0.5 (7)"))
+        setContent {
+            val context = LocalPlatformContext.current
+            val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
+            SaqzTheme {
+                OwnProfileRoot(onOpenEditor = {}, onOpenPasswordRecovery = {}, onSignOut = {},
+                    viewModel = OwnProfileViewModel(FakeProfileGateway()), imageLoader = imageLoader, appVersion = version)
+            }
+        }
+        // Último item da lista: só existe depois que a lista rola até ele.
+        onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag(OwnProfileTags.AppVersion))
+        onNodeWithText("Versão 0.0.5 (7)").assertExists()
+        version = null
+        waitForIdle()
+        onNodeWithTag(OwnProfileTags.AppVersion).assertDoesNotExist()
     }
 
     @Test

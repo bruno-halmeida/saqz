@@ -52,6 +52,8 @@ class GroupsRuntimeDependencies(
 class SaqzPlatformDependencies(
     val environment: String,
     val apiBaseUrl: String,
+    /** Versão instalada, "0.0.5 (7)", mostrada no rodapé do Perfil. */
+    val appVersion: String,
     val access: AccessRuntimeDependencies,
     val groups: GroupsRuntimeDependencies,
     val drafts: SaqzDraftStores,

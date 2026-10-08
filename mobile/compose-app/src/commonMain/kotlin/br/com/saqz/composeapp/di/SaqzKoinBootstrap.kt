@@ -180,6 +180,7 @@ internal fun stopSaqzKoin() {
 
 private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = module {
     single<br.com.saqz.receivables.domain.port.ReceiptDocumentPicker> { dependencies.financialDocuments }
+    single { br.com.saqz.domain.AppVersion(dependencies.appVersion) }
     single {
         NetworkConfig(
             environment = dependencies.environment.toNetworkEnvironment(),

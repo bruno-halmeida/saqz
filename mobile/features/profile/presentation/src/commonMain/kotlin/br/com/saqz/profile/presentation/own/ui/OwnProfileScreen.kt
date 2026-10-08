@@ -70,6 +70,7 @@ import br.com.saqz.profile.presentation.own.toOwnProfileGroupUi
 import br.com.saqz.profile.presentation.own.toOwnProfileStatsUi
 import br.com.saqz.profile.presentation.own.toOwnProfileUserUi
 import br.com.saqz.profile.presentation.photo.profilePhotoImageRequest
+import br.com.saqz.profile.resources.profile_app_version
 import br.com.saqz.profile.resources.profile_help
 import br.com.saqz.profile.resources.profile_privacy
 import br.com.saqz.profile.resources.profile_terms
@@ -117,6 +118,7 @@ internal object OwnProfileTags {
     const val Help = "profile-help"
     const val DeleteAccount = "profile-delete-account"
     const val SignOut = "own-profile-sign-out"
+    const val AppVersion = "own-profile-app-version"
 
     fun group(id: String) = "own-profile-group-$id"
 }
@@ -131,6 +133,7 @@ fun OwnProfileScreen(
     topBarWindowInsets: WindowInsets = WindowInsets.statusBars,
     isPlanOwner: Boolean = false,
     receiptsVisible: Boolean = false,
+    appVersion: String? = null,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -232,6 +235,18 @@ fun OwnProfileScreen(
                         }
                         item(key = "account-card") {
                             OwnProfileAccountCard(onIntent = onIntent, receiptsVisible = receiptsVisible)
+                        }
+                        // Rodapé discreto: é o que o suporte pede num print quando algo dá errado.
+                        appVersion?.takeIf(String::isNotBlank)?.let { version ->
+                            item(key = "app-version") {
+                                Text(
+                                    text = stringResource(Res.string.profile_app_version, version),
+                                    style = SaqzTheme.typography.caption,
+                                    color = colors.textSecondary,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth().testTag(OwnProfileTags.AppVersion),
+                                )
+                            }
                         }
                     }
                 }

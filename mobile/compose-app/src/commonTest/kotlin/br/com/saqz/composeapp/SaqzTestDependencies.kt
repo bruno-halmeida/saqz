@@ -107,6 +107,7 @@ internal fun testSaqzPlatformDependencies(
     googlePlayPurchases = googlePlayPurchases,
     environment = "test",
     apiBaseUrl = "https://api.invalid",
+    appVersion = "0.0.0 (0)",
     access = AccessRuntimeDependencies(
         auth = TestAuthPort,
         links = TestLinkPort,
