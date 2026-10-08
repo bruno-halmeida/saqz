@@ -18,7 +18,10 @@ sealed class DirectoryError(message: String) : RuntimeException(message) {
     /** Código de convite inexistente, expirado ou inutilizável. */
     data object InvalidInvite : DirectoryError("invalid invite")
 
-    /** Grupo inexistente ou fora dele — o HTTP 500 `that group does not exist` do Uazapi. */
+    /**
+     * Grupo inexistente ou fora dele: os HTTP 500 `that group does not exist` e `you're not
+     * participating in that group` do Uazapi.
+     */
     data object NotInGroup : DirectoryError("that group does not exist")
 
     /** Instância do WhatsApp desconectada. */

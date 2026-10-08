@@ -111,8 +111,16 @@ class UazapiGroupDirectory(private val client: UazapiClient) : WhatsAppGroupDire
     private fun digits(value: String) =
         value.substringBefore("@").substringBefore(":").filter(Char::isDigit)
 
-    private fun missingGroup(error: UazapiApiException) =
-        error.statusCode() == 500 && error.responseBody()?.contains("that group does not exist") == true
+    /**
+     * O 500 do Uazapi para grupo que não existe e para grupo de onde o número do Saqz saiu (foi
+     * removido ou saiu sozinho): "you're not participating in that group". Sem o segundo, o número
+     * removido virava falha transitória e o vínculo nunca quebrava.
+     */
+    private fun missingGroup(error: UazapiApiException): Boolean {
+        if (error.statusCode() != 500) return false
+        val body = error.responseBody() ?: return false
+        return MISSING_GROUP_ERRORS.any { body.contains(it, ignoreCase = true) }
+    }
 
     private fun inviteFailure(error: UazapiApiException): DirectoryError = when {
         missingGroup(error) -> DirectoryError.NotInGroup
@@ -130,3 +138,5 @@ class UazapiGroupDirectory(private val client: UazapiClient) : WhatsAppGroupDire
     private fun detail(error: UazapiApiException) =
         "HTTP ${error.statusCode()}: ${error.responseBody() ?: error.message ?: "unknown"}"
 }
+
+private val MISSING_GROUP_ERRORS = listOf("that group does not exist", "not participating in that group")

@@ -58,6 +58,30 @@ class UazapiGroupDirectoryTest {
     }
 
     @Test
+    fun `the saqz number removed from the group is NotInGroup too, for info and membership`() {
+        val server = Server()
+        server.on("/instance/status") { 200 to statusJson(connected = true) }
+        server.on("/group/info") { 500 to "{\"error\":\"you're not participating in that group\"}" }
+        try {
+            assertFailsWith<DirectoryError.NotInGroup> { directory(server).groupInfo(GROUP_JID) }
+            assertFailsWith<DirectoryError.NotInGroup> { directory(server).isMember(GROUP_JID) }
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun `an unknown 500 stays a transient failure`() {
+        val server = Server()
+        server.on("/group/info") { 500 to "{\"error\":\"internal error\"}" }
+        try {
+            assertFailsWith<DirectoryError.Unavailable> { directory(server).groupInfo(GROUP_JID) }
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
     fun `groupInfo maps a 404 to NotInGroup`() {
         val server = Server()
         server.on("/group/info") { 404 to "{}" }
