@@ -370,21 +370,20 @@ class GroupDetailsViewModel(
 
     /** Status do vínculo, só para quem administra: alimenta a linha de Gestão e a checklist. Falha cala. */
     private suspend fun loadWhatsApp(generation: Int, group: Group) {
-        val availability = whatsAppAvailability ?: return
-        val gateway = whatsApp ?: return
-        if (group.role == GroupRole.ATHLETE) return
+        val availability = whatsAppAvailability
+        val gateway = whatsApp
+        if (availability == null || gateway == null || group.role == GroupRole.ATHLETE) return
         // Pergunta ao servidor a cada carga: ligar ou desligar lá aparece aqui sem versão nova.
         val enabled = availability.refresh()
         if (generation != loadGeneration) return
         whatsAppEnabled = enabled
-        if (!enabled) {
-            whatsAppStatus = null
-            recomputeChecklist(generation)
-            return
+        whatsAppStatus = if (enabled) {
+            val result = gateway.binding(GroupId(groupId))
+            if (generation != loadGeneration) return
+            (result as? SaqzResult.Success)?.value?.status
+        } else {
+            null
         }
-        val result = gateway.binding(GroupId(groupId))
-        if (generation != loadGeneration) return
-        whatsAppStatus = (result as? SaqzResult.Success)?.value?.status
         recomputeChecklist(generation)
     }
 
