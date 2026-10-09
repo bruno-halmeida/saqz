@@ -60,7 +60,8 @@ data class GameDetailConfirmedUi(
     val id: String,
     val name: String,
     val isYou: Boolean,
-    val position: String,
+    /** `null` = convidado ou membro sem posição; a tela traduz pelo mesmo mapa da lista de espera. */
+    val position: AthletePosition?,
     /** `null` = membro. Convidado: de quem é e o que quem olha pode fazer com ele. */
     val guest: GameGuestRowUi? = null,
 )

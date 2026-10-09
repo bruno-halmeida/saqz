@@ -48,7 +48,7 @@ class GroupScheduleViewModelTest {
 
         assertFalse(viewModel.state.value.isLoading)
         assertEquals(listOf("game-1"), viewModel.state.value.upcoming.map { it.id })
-        assertEquals("19:30 · Jogo de terça", viewModel.state.value.upcoming.single().label)
+        assertEquals("19h30 · Jogo de terça", viewModel.state.value.upcoming.single().label)
         assertEquals("04", viewModel.state.value.upcoming.single().day)
         assertEquals("AGO", viewModel.state.value.upcoming.single().month)
     }

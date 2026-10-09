@@ -167,7 +167,7 @@ private fun Game.toUpcoming(): UpcomingGameUi {
         id = id,
         day = day,
         month = month,
-        label = "$localTime · $title",
+        label = "${localTime.toHourLabel()} · $title",
         venue = venue.name,
         status = if (status == GameStatus.Published) UpcomingGameStatus.Published else UpcomingGameStatus.Scheduled,
     )
@@ -198,3 +198,11 @@ private fun SlotDraft.toForm(durationMinutes: Int) = GroupRegularSlotForm(
 )
 
 private fun Int.padded() = toString().padStart(2, '0')
+
+/** `localTime` chega da API como `HH:mm` ou `HH:mm:ss`; a lista mostra `HHhmm`, como o resto do app. */
+private fun String.toHourLabel(): String {
+    val parts = split(':')
+    val hour = parts.getOrNull(0)?.padStart(2, '0') ?: return this
+    val minute = parts.getOrNull(1)?.take(2)?.padStart(2, '0') ?: "00"
+    return "${hour}h$minute"
+}

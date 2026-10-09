@@ -178,7 +178,7 @@ private fun GameWaitlistRow(
 }
 
 @Composable
-private fun AthletePosition?.positionResource() = when (this) {
+internal fun AthletePosition?.positionResource() = when (this) {
     AthletePosition.LIBERO -> Res.string.game_waitlist_position_libero
     AthletePosition.PONTA -> Res.string.game_waitlist_position_ponta
     AthletePosition.CENTRAL -> Res.string.game_waitlist_position_central

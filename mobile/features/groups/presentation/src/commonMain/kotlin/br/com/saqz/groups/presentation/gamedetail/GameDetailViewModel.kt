@@ -462,7 +462,7 @@ class GameDetailViewModel(
         id = rowKey,
         name = displayName,
         isYou = !isGuest && memberId == selfId,
-        position = if (isGuest) "" else athlete?.position?.name.orEmpty(),
+        position = if (isGuest) null else athlete?.position,
         guest = guestRow(isAdmin, open, tone),
     )
 

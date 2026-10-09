@@ -44,7 +44,7 @@
     <string name="home_no_game_action">Ver meus grupos</string>
     <string name="home_groups_title">Seus grupos</string>
     <string name="home_groups_view_all">Ver todos</string>
-    <string name="home_group_meta">%1$d pessoas · %2$d jogos</string>
+    <string name="home_group_meta">%1$d pessoas · %2$d jogos realizados</string>
     <string name="home_month_january">JAN</string>
     <string name="home_month_february">FEV</string>
     <string name="home_month_march">MAR</string>

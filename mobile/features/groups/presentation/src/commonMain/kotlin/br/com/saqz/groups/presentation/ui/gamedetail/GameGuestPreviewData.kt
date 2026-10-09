@@ -30,7 +30,7 @@ internal object GameGuestPreviewData {
         ),
     )
     val promoted = empty.copy(
-        confirmedRoster = base.confirmedRoster + GameDetailConfirmedUi("1#1", "Rafa Moreira", false, "", guest = mine),
+        confirmedRoster = base.confirmedRoster + GameDetailConfirmedUi("1#1", "Rafa Moreira", false, null, guest = mine),
     )
     val removeWaitlisted = inQueue.copy(
         guest = guestUi.copy(

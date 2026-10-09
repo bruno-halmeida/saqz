@@ -237,7 +237,7 @@ private fun GameDetailConfirmedList(
                     person.name
                 },
                 modifier = person.guest?.let { Modifier.testTag(GameGuestTags.row(person.id)) } ?: Modifier,
-                meta = person.guest?.metaLabel(feeLabel, confirmed = true) ?: person.position,
+                meta = person.guest?.metaLabel(feeLabel, confirmed = true) ?: stringResource(person.position.positionResource()),
                 photo = person.guest?.let { { GameGuestAvatar() } },
                 trailing = person.guest?.let { guest -> { GameGuestRemoveAction(person.id, guest, onIntent) } },
             )
@@ -354,9 +354,9 @@ internal object GameDetailPreviewData {
     )
     val attendance = GameDetailAttendanceUi(4, 12, 8, 1, 2)
     val confirmed = listOf(
-        GameDetailConfirmedUi("1", "Lucas Prado", true, "Levantadora"),
-        GameDetailConfirmedUi("2", "Bia Souza", false, "Ponteira"),
-        GameDetailConfirmedUi("3", "Thiago Melo", false, "Central"),
+        GameDetailConfirmedUi("1", "Lucas Prado", true, AthletePosition.LEVANTADOR),
+        GameDetailConfirmedUi("2", "Bia Souza", false, AthletePosition.PONTA),
+        GameDetailConfirmedUi("3", "Thiago Melo", false, AthletePosition.CENTRAL),
     )
     val waitlist = listOf(
         GameDetailWaitlistUi("wait-1", "Caio Lima", 1, AthletePosition.CENTRAL, true),
