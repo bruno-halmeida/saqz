@@ -65,6 +65,14 @@ coisas: por isso os builds apontam para 18080 em vez do default de `gradle.prope
   abrir uma tela nova ("Ver o jogo") ou reabrir o app.
 - Resultado de cada rodada vai num `rodada-<data>.md` nesta pasta.
 
+- Nos dois sistemas, `mobile_list_elements_on_screen` durante a animação do teclado devolve
+  coordenadas do estado anterior: o toque cai em tecla ou no scrim. Esperar 1 s depois de abrir ou
+  fechar o teclado e relistar antes de tocar.
+- Android 16 abre o assistente "Try out your stylus" no meio da digitação e engole o texto.
+  `aparelhos.sh subir` já desliga (`settings put secure stylus_handwriting_enabled 0`); em AVD
+  antiga, rodar à mão.
+- `mobile_type_keys` com texto vazio falha (`text is required`); para apagar, usar a tecla delete.
+
 ## Roteiro base
 
 As jornadas são as de [`tests/producao`](../producao/README.md), executadas nesta ordem com os quatro

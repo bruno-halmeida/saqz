@@ -54,6 +54,8 @@ subir() {
   for sim in "${SIMS[@]}"; do xcrun simctl boot "$sim" 2>/dev/null || true; done
   for i in 0 1; do
     "$ADB" -s "emulator-${PORTS[$i]}" wait-for-device shell 'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 2; done' 
+    # O assistente "Try out your stylus" do Android 16 abre no meio da digitação e rouba o texto do mobile-mcp.
+    "$ADB" -s "emulator-${PORTS[$i]}" shell settings put secure stylus_handwriting_enabled 0 >/dev/null 2>&1 || true
     echo "emulator-${PORTS[$i]} (${AVDS[$i]}) pronto"
   done
   for sim in "${SIMS[@]}"; do xcrun simctl bootstatus "$sim" -b >/dev/null 2>&1; echo "$sim pronto"; done
