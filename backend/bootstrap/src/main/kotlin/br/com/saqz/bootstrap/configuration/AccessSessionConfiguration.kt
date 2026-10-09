@@ -898,6 +898,30 @@ class AccessSessionConfiguration {
     )
     @Bean fun completeFinishedGamesJob(complete: br.com.saqz.groups.application.game.CompleteFinishedGames) =
         br.com.saqz.groups.adapter.input.scheduling.CompleteFinishedGamesJob(complete)
+    @Bean fun settleWaitlistAtDeadline(
+        transaction: JdbcTransactionRunner,
+        dataSource: DataSource,
+        repository: JdbcAttendanceCommandRepository,
+        charges: AttendanceChargeAdapter,
+        communication: br.com.saqz.groups.adapter.output.jdbc.communication.JdbcGroupCommunicationRepository,
+    ) = br.com.saqz.groups.application.attendance.SettleWaitlistAtDeadline(
+        transaction,
+        br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcDeadlineWaitlistRepository(dataSource),
+        repository,
+        charges,
+        { candidate, body ->
+            communication.publish(
+                candidate.groupId, candidate.ownerId, br.com.saqz.groups.application.communication.MessageChannel.WAITLIST_DEADLINE,
+                java.util.UUID.randomUUID(), body, candidate.gameId,
+            )
+        },
+        Instant::now,
+    ) { what, failure ->
+        org.slf4j.LoggerFactory.getLogger(br.com.saqz.groups.application.attendance.SettleWaitlistAtDeadline::class.java)
+            .warn("waitlist deadline settlement failed for {}", what, failure)
+    }
+    @Bean fun settleWaitlistAtDeadlineJob(settle: br.com.saqz.groups.application.attendance.SettleWaitlistAtDeadline) =
+        br.com.saqz.groups.adapter.input.scheduling.SettleWaitlistAtDeadlineJob(settle)
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
     @Bean fun chargeTransactionRepository(dataSource: DataSource, cancellation: br.com.saqz.sharedkernel.group.GroupChargePaymentCancellation) = JdbcChargeTransactionRepository(dataSource, cancellation)
     @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository, writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess) = ChargeTransactions(transaction, repository, Instant::now, writeAccess)

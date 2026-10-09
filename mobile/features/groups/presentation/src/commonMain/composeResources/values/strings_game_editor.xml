@@ -33,7 +33,7 @@
     <string name="game_editor_recurrence_already">Este dia e horário já se repetem toda semana.</string>
     <string name="game_editor_recurrence_venue_group">Os próximos jogos usam a quadra do grupo.</string>
     <string name="game_editor_recurrence_venue_new">A quadra acima passa a ser a quadra do grupo.</string>
-    <string name="game_editor_recurrence_drafts">Os próximos jogos nascem como rascunho. Publique cada um no detalhe do jogo.</string>
+    <string name="game_editor_recurrence_drafts">Os próximos jogos entram na agenda sozinhos: cada um é liberado 5 dias antes.</string>
 
     <!-- 4a · Ação -->
     <string name="game_editor_create_action">Marcar jogo</string>

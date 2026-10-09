@@ -52,13 +52,17 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         }
         // GAME_OPEN e a janela de presença não têm autor de verdade — o dono só assina o aviso do
         // sistema, e jogando como qualquer um também precisa recebê-los. Ver [firstGameOpenNotice].
-        val systemAuthored = channel == MessageChannel.GAME_OPEN || channel == MessageChannel.ATTENDANCE_WINDOW
+        val systemAuthored = channel == MessageChannel.GAME_OPEN || channel == MessageChannel.ATTENDANCE_WINDOW ||
+            channel == MessageChannel.WAITLIST_DEADLINE
+        // O prazo vencido é assunto de quem escolhe quem entra: dono e admins (o dono também tem linha ADMIN).
+        val adminsOnly = channel == MessageChannel.WAITLIST_DEADLINE
         jdbc.sql(
             """
             INSERT INTO group_notifications (recipient_id, message_id)
             SELECT membership.user_id, :message
             FROM group_memberships membership
             WHERE membership.group_id = :group AND membership.active
+              AND (NOT :adminsOnly OR membership.role = 'ADMIN')
               AND (:systemAuthored OR membership.user_id <> :actor)
               AND (NOT :personal OR NOT EXISTS (
                   SELECT 1 FROM user_blocks b WHERE b.blocker_id = membership.user_id AND b.blocked_id = :actor))
@@ -70,6 +74,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             """.trimIndent(),
         ).param("message", id).param("group", groupId).param("actor", actor)
             .param("systemAuthored", systemAuthored)
+            .param("adminsOnly", adminsOnly)
             .param("personal", channel in PERSONAL_CHANNELS)
             .param("everyone", channel == MessageChannel.GAME_OPEN && firstGameOpenNotice(id, gameId))
             .param("game", gameId, Types.OTHER).update()
