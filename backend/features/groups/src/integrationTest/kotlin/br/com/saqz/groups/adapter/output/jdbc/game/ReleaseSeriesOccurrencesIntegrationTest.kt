@@ -117,6 +117,70 @@ class ReleaseSeriesOccurrencesIntegrationTest {
         assertEquals(listOf("2026-09-23 20:00"), published())
     }
 
+    @Test fun `a published one-off adopted by the series stays the next game and the following week is not released`() {
+        slots(3 to "20:00")
+        oneOff("2026-09-23", "20:00", "2026-09-23T23:00:00Z")
+
+        sync(CLOCK)
+
+        assertEquals(listOf("2026-09-23 20:00"), published())
+        assertEquals("DRAFT", string("SELECT status::text FROM games WHERE group_id='$group' AND local_date='2026-09-30'"))
+
+        // Adicionar a quinta publica só a primeira quinta; as quartas seguintes não se mexem.
+        slots(3 to "20:00", 4 to "20:00")
+        sync(CLOCK)
+
+        assertEquals(listOf("2026-09-17 20:00", "2026-09-23 20:00"), published())
+        assertEquals("DRAFT", string("SELECT status::text FROM games WHERE group_id='$group' AND local_date='2026-09-30'"))
+        assertEquals("DRAFT", string("SELECT status::text FROM games WHERE group_id='$group' AND local_date='2026-09-24'"))
+    }
+
+    @Test fun `the routine does not release the following game while the next one of the slot is already published`() {
+        slots(3 to "20:00")
+        oneOff("2026-09-23", "20:00", "2026-09-23T23:00:00Z")
+        sync(CLOCK)
+
+        // Segunda 21/09 com janela de 10 dias: 30/09 (9 dias) caberia, mas o próximo do horário é 23/09, já publicado.
+        val monday = Clock.fixed(Instant.parse("2026-09-21T15:00:00Z"), ZoneOffset.UTC)
+        ReleaseSeriesOccurrences(
+            JdbcSeriesReleaseRepository(dataSource),
+            ChangeGameLifecycle(JdbcTransactionRunner(dataSource), JdbcGameOccurrenceRepository(dataSource), GameSideEffectPort { _, _, _ -> }),
+            horizon, Duration.ofDays(10), monday,
+        ) { what, failure -> throw AssertionError("release failed for $what", failure) }.releaseAll()
+
+        assertEquals(listOf("2026-09-23 20:00"), published())
+    }
+
+    @Test fun `a cancelled next game does not count and the following draft inside the window is released`() {
+        slots(3 to "20:00")
+        sync(CLOCK)
+        assertEquals(listOf("2026-09-23 20:00"), published())
+
+        execute("UPDATE games SET status='CANCELLED' WHERE group_id='$group' AND local_date='2026-09-23'")
+        // Segunda 21/09: 30/09 fica a 9 dias; com janela de 10 dias entra.
+        val monday = Clock.fixed(Instant.parse("2026-09-21T15:00:00Z"), ZoneOffset.UTC)
+        ReleaseSeriesOccurrences(
+            JdbcSeriesReleaseRepository(dataSource),
+            ChangeGameLifecycle(JdbcTransactionRunner(dataSource), JdbcGameOccurrenceRepository(dataSource), GameSideEffectPort { _, _, _ -> }),
+            horizon, Duration.ofDays(10), monday,
+        ) { what, failure -> throw AssertionError("release failed for $what", failure) }.releaseAll()
+
+        assertEquals(listOf("2026-09-30 20:00"), published())
+    }
+
+    private fun slots(vararg slots: Pair<Int, String>) {
+        execute("DELETE FROM group_regular_slots WHERE group_id='$group'")
+        slots.forEachIndexed { index, (weekday, time) ->
+            execute("INSERT INTO group_regular_slots (id,group_id,weekday,start_time,duration_minutes,position,version,created_at,updated_at) VALUES ('${UUID.randomUUID()}','$group',$weekday,TIME '$time',120,$index,1,now(),now())")
+        }
+    }
+
+    /** Jogo avulso publicado, como o editor de jogo cria antes de o horário regular existir. */
+    private fun oneOff(date: String, time: String, startsAt: String) = execute(
+        "INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,status,created_at,updated_at) " +
+            "VALUES ('${UUID.randomUUID()}','$group','Jogo extra',DATE '$date',TIME '$time','America/Sao_Paulo','$startsAt',120,TIMESTAMPTZ '$startsAt' - interval '6 hours','Arena Central','Rua das Flores 100',12,'PUBLISHED',now(),now())",
+    )
+
     /** Outro grupo do mesmo dono, com quinta 20h na agenda. */
     private fun otherGroup(): UUID {
         val other = UUID.randomUUID(); val venue = UUID.randomUUID()
