@@ -103,7 +103,7 @@
     <string name="group_setup_venue_address_label">Endereço da quadra</string>
     <string name="group_setup_venue_address_hint">R. Canuto Abreu, s/n · Tatuapé</string>
     <string name="group_setup_recurrence_label">Repetir toda semana</string>
-    <string name="group_setup_recurrence_hint">Os jogos acontecem nos mesmos dias e horários.</string>
+    <string name="group_setup_recurrence_hint">Os jogos acontecem nos mesmos dias e horários. O próximo de cada horário é liberado 5 dias antes.</string>
     <string name="group_setup_recurring_off">Você marca cada jogo quando quiser.</string>
     <string name="group_setup_add_slot">Adicionar dia e horário</string>
     <string name="group_setup_remove_slot">Remover dia e horário</string>
