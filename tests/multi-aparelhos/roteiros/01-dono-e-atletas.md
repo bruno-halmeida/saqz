@@ -1,9 +1,12 @@
 # Roteiro 01 · Dono cria o grupo, atletas entram, jogo e lista de espera
 
 Papéis: **ORG** em `Saqz_QA_A`, **ATL** no iPhone 17, **ATL2** em `Saqz_QA_B`, **ATL3** no iPhone 17e.
-Use `<data>` = dia de hoje (`DD/MM`). Contas: `qa-org+<data>@saqz.local` etc., senha `SenhaQA2026`,
-celulares `11900000001` a `11900000004`. Comece com `stack.sh reset` + `stack.sh up` se quiser um banco
-limpo, ou aceite o estado atual e troque `<data>` para não colidir com nomes existentes.
+Use `<data>` = dia de hoje (`DD/MM`) nos nomes e `<tag>` = `DDMM` (sem barra) nos e-mails. Contas:
+`qa-org+<tag>@saqz.local`, `qa-atl+<tag>@saqz.local`, `qa-atl2+<tag>@saqz.local`, `qa-atl3+<tag>@saqz.local`,
+senha `SenhaQA2026`, celulares `11900000001` a `11900000004`, nomes `QA Org <data>`, `QA Atl <data>`,
+`QA Atl2 <data>`, `QA Atl3 <data>`, apelidos no cadastro de atleta `Atl`, `Atl2`, `Atl3`. As conferências de
+banco pressupõem banco limpo: comece com `stack.sh reset` + `stack.sh up` (e apague os dados do app nos
+aparelhos: `adb shell pm clear app.saqz`; no iOS `simctl uninstall` + `simctl keychain <udid> reset` + reinstalar).
 
 | # | Jornada | Aparelho | Faça | Espere (texto exato na listagem) | Banco |
 | --- | --- | --- | --- | --- | --- |
@@ -13,8 +16,8 @@ limpo, ou aceite o estado atual e troque `<data>` para não colidir com nomes ex
 | 4 | CV01 | ORG | Rolar até Gestão → "Convidar por link" → "Criar novo link" | `Link não expira` e um texto iniciado por `https://links.saqz.app/?saqz_invite=`; anote o link | — |
 | 5 | CV02 | ATL | `xcrun simctl openurl <udid-17> "saqz://links.saqz.app/?saqz_invite=<código>"` → "Open" → "Entrar no grupo" → "Criar conta ›" | `Entrando no QA Vôlei <data>` e `Convite de QA Org <data> · entrada liberada`; após criar: `Cadastro de atleta` | `select count(*) from group_memberships` = 2 |
 | 6 | CV02 | ATL | Apelido `Atl`, "Ponteiro", "Intermediário", rolar, "Salvar meu perfil" | Tela do grupo com `PRÓXIMO JOGO` | — |
-| 7 | CV04 | ATL2 | Criar conta (como 1); `adb -s emulator-5556 shell am start -a android.intent.action.VIEW -d '<link>' app.saqz`; perfil como 6 | `Você entrou no QA Vôlei <data>` | `select count(*) from group_memberships` = 3 |
-| 8 | CV04 | ATL3 | Criar conta (como 1); Início → "Tenho um convite" → colar o link → "Entrar no grupo"; perfil como 6 | `Você entrou no QA Vôlei <data>` | = 4 |
+| 7 | CV04 | ATL2 | Criar conta (como 1, nome `QA Atl2 <data>`); `adb -s emulator-5556 shell am start -a android.intent.action.VIEW -d '<link>' app.saqz`; perfil como 6 com apelido `Atl2` | `Você entrou no QA Vôlei <data>` | `select count(*) from group_memberships` = 3 |
+| 8 | CV04 | ATL3 | Criar conta (como 1, nome `QA Atl3 <data>`); Início → "Tenho um convite" → colar o link → "Entrar no grupo"; perfil como 6 com apelido `Atl3` | `Você entrou no QA Vôlei <data>` | = 4 |
 | 9 | JG01 | ORG | Reabrir Início (trocar de aba); "Marcar jogo"; Data: amanhã; Horário 20h00; vagas 2 (Diminuir até `2`); "Marcar jogo" | No grupo: `PRÓXIMO JOGO`, `0 confirmados`, `3 pendentes`, placar com `Na espera` | `select capacity,status from games order by created_at desc limit 1` = `2|PUBLISHED` |
 | 10 | JG01 | ATL2 | Trocar de aba Grupos → Início | Cartão `PRÓXIMO JOGO` com `Vou` e `Não vou`, sem reabrir o app | — |
 | 11 | JG02 (prioridade ligada) | ATL2 | "Vou" | `Você entrou na lista de espera.` e `Os mensalistas entram primeiro.` com `Mensalistas têm prioridade até o fim do prazo de confirmação` | `select status,waitlist_sequence from game_attendance` → `WAITLISTED|1` |
@@ -26,6 +29,6 @@ limpo, ou aceite o estado atual e troque `<data>` para não colidir com nomes ex
 | 17 | Recarga | ATL2 | Trocar de aba Grupos → Início, sem reabrir o app | Cartão passa a `Você está confirmado.` | — |
 | 18 | Posição | ATL | Trocar de aba e voltar | `1º na lista · 2 confirmados` (era 2º) | — |
 | 19 | Prazo (ordem de chegada) | banco | `update games set confirmation_deadline=now()-interval '1 minute', capacity=3 where id=<jogo>`; esperar até 70 s | — | ATL vira `CONFIRMED` com `source='SYSTEM'` |
-| 20 | Prazo (escolha manual) | banco + ORG | `update access_groups set promotion_mode='MANUAL'`; inserir ATL3 `WAITLISTED` (seq seguinte) no jogo; esperar 70 s; ORG abre "Notificações" | Aviso `Prazo de confirmação encerrado: …` com `na lista de espera` e `vagas abertas` | `select count(*) from group_messages where channel='WAITLIST_DEADLINE'` = 1 |
+| 20 | Prazo (escolha manual) | banco + ORG | `update access_groups set promotion_mode='MANUAL' where name='QA Vôlei <data>'; update games set capacity=4 where id='<jogo>'; update game_attendance set status='WAITLISTED', waitlist_sequence=(select coalesce(max(waitlist_sequence),0)+1 from game_attendance where game_id='<jogo>'), updated_at=now(), version=version+1 where game_id='<jogo>' and member_display_name='Atl3' and guest_seq=0;` (ATL3 volta para a reserva com vaga aberta: 3 confirmados em 4); esperar 70 s; ORG abre "Notificações" | Aviso `Prazo de confirmação encerrado: …` com `na lista de espera` e `vagas abertas` | `select count(*) from group_messages where channel='WAITLIST_DEADLINE'` = 1 |
 
 Relate também o tempo total e qualquer passo em que precisou usar adb/simctl no lugar do mobile-mcp.

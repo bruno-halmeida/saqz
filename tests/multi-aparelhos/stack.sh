@@ -59,8 +59,11 @@ up() {
     local cfg="$RUN/firebase.json"
     printf '{"emulators":{"auth":{"host":"127.0.0.1","port":%s},"ui":{"enabled":false}}}' "$AUTH_PORT" > "$cfg"
     local import=(); [ -d "$AUTH_DATA/auth_export" ] && import=(--import "$AUTH_DATA")
-    (cd "$RUN" && nohup node "$FIREBASE_BIN" emulators:start --only auth --project saqz-local --config "$cfg" \
-      --export-on-exit "$AUTH_DATA" ${import[@]+"${import[@]}"} > "$LOGS/firebase.log" 2>&1 & echo $! > "$RUN/firebase.pid")
+    # `exec` faz o PID gravado ser o do próprio emulador: sem ele, `$!` é um bash intermediário que
+    # segura o stdout e sobrevive ao `down`, deixando o node órfão em $AUTH_PORT.
+    (cd "$RUN" && exec nohup node "$FIREBASE_BIN" emulators:start --only auth --project saqz-local --config "$cfg" \
+      --export-on-exit "$AUTH_DATA" ${import[@]+"${import[@]}"} > "$LOGS/firebase.log" 2>&1 < /dev/null) &
+    echo $! > "$RUN/firebase.pid"
   fi
   wait_for "http://127.0.0.1:$AUTH_PORT/emulator/v1/projects/saqz-local/config" "Firebase Auth Emulator"
 
@@ -87,6 +90,15 @@ down() {
     rm -f "$RUN/$svc.pid"
   done
   sleep 2
+  # O CLI do Firebase morre e deixa o emulador (node filho) escutando em $AUTH_PORT; a subida
+  # seguinte falha com "port taken" enquanto o wait_for ainda responde pelo processo velho.
+  local pids i
+  for i in 1 2 3 4 5; do
+    pids=$(lsof -nP -tiTCP:"$AUTH_PORT" -sTCP:LISTEN 2>/dev/null || true)
+    [ -z "$pids" ] && break
+    kill $pids 2>/dev/null || true; sleep 1
+    [ "$i" = 5 ] && kill -9 $pids 2>/dev/null || true
+  done
   docker rm -f "$DB" "$MAIL" >/dev/null 2>&1 || true
   echo "serviços parados; banco guardado no volume $VOLUME, contas em $AUTH_DATA"
 }
