@@ -32,3 +32,11 @@ tests/multi-aparelhos/aparelhos.sh listar    # 2 emuladores + 2 simuladores onli
 Contas descartáveis desta rodada e senha ficam no roteiro; e-mails caem no Mailpit
 (`http://127.0.0.1:18025`) e o link de confirmação em
 `http://127.0.0.1:9099/emulator/v1/projects/saqz-local/oobCodes`.
+
+## Roteiros
+
+| Arquivo | O que cobre | Aparelhos |
+| --- | --- | --- |
+| [01-dono-e-atletas.md](01-dono-e-atletas.md) | Conta, grupo, convites, jogo, lista de espera, prazo (20 passos) | 4 |
+| [02-recorrencia.md](02-recorrencia.md) | Horário fixo pelo editor e por "Jogos e horários": próximo jogo publicado e vinculado à série (8 passos) | 2 Android |
+
