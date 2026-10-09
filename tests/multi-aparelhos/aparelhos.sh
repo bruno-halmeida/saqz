@@ -57,7 +57,12 @@ subir() {
     echo "emulator-${PORTS[$i]} (${AVDS[$i]}) pronto"
   done
   for sim in "${SIMS[@]}"; do xcrun simctl bootstatus "$sim" -b >/dev/null 2>&1; echo "$sim pronto"; done
-  open -a Simulator >/dev/null 2>&1 || true
+  # Sem a janela ninguém vê o simulador bootado. No Xcode 27 o app é o DeviceHub (Contents/Applications);
+  # em versões anteriores é o Simulator.app. `open -a Simulator` falha com o xcode-select nas CLT.
+  XCODE_APPS="$(dirname "$(dirname "$DEVELOPER_DIR")")/Contents/Applications"
+  for ui in "$XCODE_APPS/Simulator.app" "$XCODE_APPS/DeviceHub.app" "$DEVELOPER_DIR/Applications/Simulator.app"; do
+    [ -d "$ui" ] && { open -a "$ui" >/dev/null 2>&1 || true; break; }
+  done
 }
 
 instalar() {
