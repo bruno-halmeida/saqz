@@ -67,6 +67,21 @@ data class AppStoreSubscription(
     fun isEntitlingAt(now: Instant): Boolean =
         revokedAt == null && (expiresAt.isAfter(now) || gracePeriodExpiresAt?.isAfter(now) == true)
 
+    /**
+     * Passa a assinatura para outra conta do Saqz: o mesmo Apple ID voltou a assinar depois de
+     * ela vencer, agora logado em outra conta. O renewal info antigo é descartado — o da compra
+     * nova chega pela notificação.
+     */
+    fun transferredTo(newOwnerUserId: UUID): AppStoreSubscription = copy(
+        ownerUserId = newOwnerUserId,
+        autoRenew = null,
+        autoRenewProductId = null,
+        autoRenewChangedAt = null,
+        inBillingRetry = false,
+        gracePeriodExpiresAt = null,
+        renewalSignedAt = null,
+    )
+
     fun applying(transaction: AppStoreTransaction, product: AppStoreProduct): AppStoreSubscription {
         val expires = transaction.expiresDate ?: return this
         return when {

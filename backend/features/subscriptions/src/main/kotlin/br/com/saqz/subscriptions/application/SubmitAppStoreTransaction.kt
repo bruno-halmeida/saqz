@@ -20,6 +20,10 @@ sealed interface SubmitAppStoreTransactionResult {
  *
  * Sem `appAccountToken` (compra feita fora do app, como código de oferta resgatado na App
  * Store), a assinatura fica com quem a enviou primeiro.
+ *
+ * A assinatura segue o pagamento: se o mesmo Apple ID volta a assinar (a Apple reaproveita a
+ * transação original) logado em outra conta, e a assinatura antiga já não dava acesso na data da
+ * compra nova, ela passa para a conta que comprou. Ativa, continua presa a quem a comprou.
  */
 class SubmitAppStoreTransaction(
     private val verifier: AppStoreSignedDataVerifier,
@@ -38,13 +42,14 @@ class SubmitAppStoreTransaction(
         return transaction.inTransaction {
             subscriptions.insertIfAbsent(AppStoreSubscription.startedBy(verified, product, ownerUserId))
             val current = checkNotNull(subscriptions.findForUpdate(verified.originalTransactionId))
-            if (current.ownerUserId != ownerUserId) {
-                SubmitAppStoreTransactionResult.OwnedByAnotherAccount
-            } else {
-                subscriptions.save(current.applying(verified, product))
-                subscriptions.recordTransaction(verified, ownerUserId)
-                SubmitAppStoreTransactionResult.Accepted
+            val owned = when {
+                current.ownerUserId == ownerUserId -> current
+                token == ownerUserId && !current.isEntitlingAt(verified.purchaseDate) -> current.transferredTo(ownerUserId)
+                else -> return@inTransaction SubmitAppStoreTransactionResult.OwnedByAnotherAccount
             }
+            subscriptions.save(owned.applying(verified, product))
+            subscriptions.recordTransaction(verified, ownerUserId)
+            SubmitAppStoreTransactionResult.Accepted
         }
     }
 }

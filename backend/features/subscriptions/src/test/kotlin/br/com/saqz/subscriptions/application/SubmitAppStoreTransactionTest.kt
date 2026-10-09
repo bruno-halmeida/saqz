@@ -2,6 +2,7 @@ package br.com.saqz.subscriptions.application
 
 import br.com.saqz.subscriptions.domain.AppStoreProduct
 import org.junit.jupiter.api.Test
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -54,6 +55,36 @@ class SubmitAppStoreTransactionTest {
 
         assertEquals(SubmitAppStoreTransactionResult.OwnedByAnotherAccount, useCase.execute(owner, "jws"))
         assertTrue(store.rows.isEmpty())
+    }
+
+    @Test
+    fun `an expired subscription bought again by another account moves to that account`() {
+        val expiredAt = Instant.parse("2026-10-01T12:00:00Z")
+        val boughtAgainAt = Instant.parse("2026-10-09T16:41:26Z")
+        verifier.transactions["first"] = appStoreTransaction(owner, purchaseDate = expiredAt.minusSeconds(30L * 24 * 3600))
+        verifier.transactions["again"] = appStoreTransaction(otherOwner, transactionId = "2000000002", purchaseDate = boughtAgainAt)
+        useCase.execute(owner, "first")
+
+        assertEquals(SubmitAppStoreTransactionResult.Accepted, useCase.execute(otherOwner, "again"))
+
+        val row = store.rows.getValue("2000000001")
+        assertEquals(otherOwner, row.ownerUserId)
+        assertEquals("2000000002", row.latestTransactionId)
+        assertTrue(row.isEntitlingAt(boughtAgainAt.plusSeconds(1)))
+        assertEquals(owner, store.transactions.getValue("2000000001").second)
+        assertEquals(otherOwner, store.transactions.getValue("2000000002").second)
+    }
+
+    @Test
+    fun `a subscription still giving access stays with the account that bought it`() {
+        val boughtAt = Instant.parse("2026-10-01T12:00:00Z")
+        verifier.transactions["first"] = appStoreTransaction(owner, purchaseDate = boughtAt)
+        verifier.transactions["again"] = appStoreTransaction(otherOwner, transactionId = "2000000002", purchaseDate = boughtAt.plusSeconds(3600))
+        useCase.execute(owner, "first")
+
+        assertEquals(SubmitAppStoreTransactionResult.OwnedByAnotherAccount, useCase.execute(otherOwner, "again"))
+        assertEquals(owner, store.rows.getValue("2000000001").ownerUserId)
+        assertEquals("2000000001", store.rows.getValue("2000000001").latestTransactionId)
     }
 
     @Test

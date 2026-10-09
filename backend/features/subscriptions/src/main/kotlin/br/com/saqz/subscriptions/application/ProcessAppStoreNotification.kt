@@ -2,6 +2,7 @@ package br.com.saqz.subscriptions.application
 
 import br.com.saqz.subscriptions.domain.AppStoreProduct
 import br.com.saqz.subscriptions.domain.AppStoreSubscription
+import br.com.saqz.subscriptions.domain.AppStoreTransaction
 
 sealed interface ProcessAppStoreNotificationResult {
     /** Processada, repetida ou sem nada para o Saqz (TEST, produto desconhecido, dono desconhecido). */
@@ -18,6 +19,10 @@ sealed interface ProcessAppStoreNotificationResult {
  *
  * Dono desconhecido (transação original nova sem `appAccountToken` de uma conta existente) é
  * aceito e ignorado: o app envia a transação quando o usuário abrir e a vincula.
+ *
+ * Mesma regra de [SubmitAppStoreTransaction] para o Apple ID que volta a assinar logado em outra
+ * conta: se a assinatura antiga já não dava acesso na data da compra, ela passa para a conta do
+ * `appAccountToken` novo.
  */
 class ProcessAppStoreNotification(
     private val verifier: AppStoreSignedDataVerifier,
@@ -38,7 +43,7 @@ class ProcessAppStoreNotification(
         val verified = notification.transaction ?: return
         val product = AppStoreProduct.fromProductId(verified.productId) ?: return
         if (verified.expiresDate == null) return
-        val existing = subscriptions.findForUpdate(verified.originalTransactionId)
+        val existing = subscriptions.findForUpdate(verified.originalTransactionId)?.let { claimed(it, verified) }
         val current = existing ?: run {
             val owner = verified.appAccountToken?.takeIf(subscriptions::ownerExists) ?: return
             subscriptions.insertIfAbsent(AppStoreSubscription.startedBy(verified, product, owner))
@@ -48,5 +53,12 @@ class ProcessAppStoreNotification(
         val updated = current.applying(verified, product).let { if (renewal != null) it.applying(renewal) else it }
         subscriptions.save(updated)
         subscriptions.recordTransaction(verified, current.ownerUserId)
+    }
+
+    private fun claimed(existing: AppStoreSubscription, verified: AppStoreTransaction): AppStoreSubscription {
+        val buyer = verified.appAccountToken ?: return existing
+        if (buyer == existing.ownerUserId || existing.isEntitlingAt(verified.purchaseDate)) return existing
+        if (!subscriptions.ownerExists(buyer)) return existing
+        return existing.transferredTo(buyer)
     }
 }

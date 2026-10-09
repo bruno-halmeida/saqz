@@ -13,8 +13,9 @@ import kotlin.test.assertTrue
 
 class ProcessAppStoreNotificationTest {
     private val owner = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+    private val otherOwner = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
     private val verifier = ScriptedAppStoreVerifier()
-    private val store = InMemoryAppStoreSubscriptions(owners = setOf(owner))
+    private val store = InMemoryAppStoreSubscriptions(owners = setOf(owner, otherOwner))
     private val useCase = ProcessAppStoreNotification(verifier, store, store, InlineTransactions)
 
     @Test
@@ -85,6 +86,42 @@ class ProcessAppStoreNotificationTest {
     @Test
     fun `an unverifiable payload is invalid`() {
         assertEquals(ProcessAppStoreNotificationResult.Invalid, useCase.execute("forged"))
+    }
+
+    @Test
+    fun `a resubscribe by another account after the subscription expired moves it to that account`() {
+        val firstBuy = Instant.parse("2026-09-01T12:00:00Z")
+        val boughtAgainAt = Instant.parse("2026-10-09T16:41:26Z")
+        verifier.notifications["n1"] = notification(appStoreTransaction(owner, purchaseDate = firstBuy), type = "SUBSCRIBED")
+        verifier.notifications["n2"] = notification(
+            appStoreTransaction(otherOwner, transactionId = "2000000002", purchaseDate = boughtAgainAt),
+            type = "SUBSCRIBED",
+            renewal = renewal(autoRenew = true),
+        )
+
+        useCase.execute("n1")
+        useCase.execute("n2")
+
+        val row = store.rows.getValue("2000000001")
+        assertEquals(otherOwner, row.ownerUserId)
+        assertEquals("2000000002", row.latestTransactionId)
+        assertEquals(true, row.autoRenew)
+        assertEquals(otherOwner, store.transactions.getValue("2000000002").second)
+    }
+
+    @Test
+    fun `a transaction carrying another account's token while the subscription still gives access keeps the owner`() {
+        val boughtAt = Instant.parse("2026-10-01T12:00:00Z")
+        verifier.notifications["n1"] = notification(appStoreTransaction(owner, purchaseDate = boughtAt), type = "SUBSCRIBED")
+        verifier.notifications["n2"] = notification(
+            appStoreTransaction(otherOwner, transactionId = "2000000002", purchaseDate = boughtAt.plusSeconds(3600)),
+        )
+
+        useCase.execute("n1")
+        useCase.execute("n2")
+
+        assertEquals(owner, store.rows.getValue("2000000001").ownerUserId)
+        assertEquals(owner, store.transactions.getValue("2000000002").second)
     }
 
     private fun notification(

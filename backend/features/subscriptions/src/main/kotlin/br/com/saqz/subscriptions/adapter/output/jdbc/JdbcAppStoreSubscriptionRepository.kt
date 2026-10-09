@@ -46,7 +46,7 @@ class JdbcAppStoreSubscriptionRepository(dataSource: DataSource) : AppStoreSubsc
         jdbc.sql(
             """
             UPDATE app_store_subscriptions SET
-                product_id = :productId, plan = :plan, cycle = :cycle,
+                owner_user_id = :ownerUserId, product_id = :productId, plan = :plan, cycle = :cycle,
                 latest_transaction_id = :latestTransactionId, latest_purchase_date = :latestPurchaseDate,
                 latest_signed_at = :latestSignedAt, expires_at = :expiresAt, revoked_at = :revokedAt,
                 auto_renew = :autoRenew, auto_renew_product_id = :autoRenewProductId,

@@ -159,6 +159,23 @@ class JdbcAppStoreSubscriptionRepositoryIntegrationTest {
         assertTrue(history.hasPaidHistory(ownerId))
     }
 
+    @Test
+    fun `saving a transferred subscription persists the new owner`() {
+        val newOwner = UUID.randomUUID()
+        jdbc.sql(
+            """
+            INSERT INTO access_users (id, firebase_subject, email_verified, display_name, created_at, updated_at)
+            VALUES (:id, :subject, true, 'Buyer', now(), now())
+            """.trimIndent(),
+        ).param("id", newOwner).param("subject", "subject-$newOwner").update()
+        repository.insertIfAbsent(subscription())
+
+        repository.save(subscription().transferredTo(newOwner))
+
+        assertEquals(newOwner, repository.findForUpdate("1000")?.ownerUserId)
+        assertTrue(repository.findByOwner(ownerId).isEmpty())
+    }
+
     private fun subscription(
         product: AppStoreProduct = AppStoreProduct.ORGANIZADOR_MENSAL,
         expiresAt: Instant = now.plus(Duration.ofDays(30)),
