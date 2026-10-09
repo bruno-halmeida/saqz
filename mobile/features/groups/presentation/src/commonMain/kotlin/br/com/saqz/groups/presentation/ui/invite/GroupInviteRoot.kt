@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.groups.presentation.invite.GroupInviteEffect
 import br.com.saqz.groups.presentation.invite.GroupInviteIntent
 import br.com.saqz.groups.presentation.invite.GroupInviteViewModel
@@ -30,6 +31,7 @@ fun GroupInviteRoot(
     ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    RefreshWhenVisible { viewModel.onIntent(GroupInviteIntent.Refresh) }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             is GroupInviteEffect.OpenMessagePreview -> onOpenMessagePreview(effect.groupName, effect.inviteUrl)

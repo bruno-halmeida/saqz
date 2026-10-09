@@ -15,6 +15,7 @@ class OwnProfileViewModel(
 ) : MviViewModel<OwnProfileState, OwnProfileIntent, OwnProfileEffect>(initialState) {
 
     private var loadGeneration = 0
+    private var loadInFlight = false
 
     init {
         load()
@@ -23,6 +24,7 @@ class OwnProfileViewModel(
     override fun handleIntent(intent: OwnProfileIntent) {
         when (intent) {
             OwnProfileIntent.Refresh -> load()
+            OwnProfileIntent.Appeared -> appeared()
             OwnProfileIntent.EditData -> emit(OwnProfileEffect.OpenEditor)
             OwnProfileIntent.ChangePassword -> emit(OwnProfileEffect.OpenPasswordRecovery)
             OwnProfileIntent.DeleteAccount -> emit(OwnProfileEffect.OpenAccountDeletion)
@@ -42,10 +44,23 @@ class OwnProfileViewModel(
         }
     }
 
-    private fun load() {
+    /**
+     * A aba reaparece (troca de aba, volta de filha, primeiro plano, edição salva): recarga por
+     * baixo, sem o indicador do puxar-para-atualizar e sem tela de erro — falha mantém o perfil
+     * que está na tela. Com carga em voo é ignorado; sem conteúdo (erro) carrega por inteiro.
+     */
+    private fun appeared() {
+        if (isFirstAppearance()) return
+        val current = state.value
+        if (loadInFlight || current.isLoading) return
+        load(softRefresh = !current.loadError)
+    }
+
+    private fun load(softRefresh: Boolean = false) {
         val generation = ++loadGeneration
-        update { it.copy(isLoading = true, loadError = false) }
-        viewModelScope.launch {
+        loadInFlight = true
+        if (!softRefresh) update { it.copy(isLoading = true, loadError = false) }
+        val job = viewModelScope.launch {
             val profileResult = gateway.bootstrap()
             val statsResult = gateway.stats()
             val athleteResult = gateway.athleteProfile()
@@ -55,7 +70,7 @@ class OwnProfileViewModel(
                 statsResult is SaqzResult.Failure ||
                 athleteResult is SaqzResult.Failure
             ) {
-                update { it.copy(isLoading = false, loadError = true) }
+                if (!softRefresh) update { it.copy(isLoading = false, loadError = true) }
                 return@launch
             }
 
@@ -74,6 +89,7 @@ class OwnProfileViewModel(
                 )
             }
         }
+        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
     }
 }
 

@@ -63,6 +63,9 @@ data class GameSettlementDiaristUi(
 
 sealed interface GameSettlementIntent {
     data object Retry : GameSettlementIntent
+
+    /** Volta à tela: recarga por baixo, sem esqueleto nem tela de erro. */
+    data object Refresh : GameSettlementIntent
     data object ChargeMissing : GameSettlementIntent
     data class ChargeIndividual(val chargeId: String) : GameSettlementIntent
     data class OpenReceipt(val chargeId: String) : GameSettlementIntent

@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzTopAppBar
@@ -56,6 +57,7 @@ object OwnMonthlyPaymentsTags {
 fun OwnMonthlyPaymentsRoot(onBack: () -> Unit, onOpenGroup: (String) -> Unit, onPayInApp: (() -> Unit)? = null) {
     val vm: OwnMonthlyPaymentsViewModel = koinViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
+    RefreshWhenVisible { vm.onIntent(OwnMonthlyPaymentsIntent.Refresh) }
     ObserveAsEvents(vm.effects) { effect ->
         when (effect) {
             is OwnMonthlyPaymentsEffect.OpenGroup -> onOpenGroup(effect.groupId)

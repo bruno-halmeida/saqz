@@ -95,6 +95,72 @@ class GroupScheduleViewModelTest {
     }
 
     @Test
+    fun `refresh reloads only the upcoming list and never touches the form`() = runTest {
+        val gateway = FakeGameGateway(SaqzResult.Success(listOf(sampleGame())))
+        val schedules = FakeScheduleGateway()
+        val viewModel = GroupScheduleViewModel("group-1", gateway, schedules, todayInZone = { "2026-08-02" })
+        val formBefore = viewModel.state.value.copy(upcoming = emptyList())
+
+        gateway.listResult = SaqzResult.Success(emptyList())
+        schedules.schedule = defaultSchedule.copy(durationMinutes = 45, confirmationLeadMinutes = 30)
+        viewModel.onIntent(GroupScheduleIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        viewModel.onIntent(GroupScheduleIntent.Refresh)
+
+        assertTrue(viewModel.state.value.upcoming.isEmpty())
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(formBefore, viewModel.state.value)
+    }
+
+    @Test
+    fun `refresh with a pending edit or an open slot sheet is ignored`() = runTest {
+        val gateway = FakeGameGateway(SaqzResult.Success(listOf(sampleGame())))
+        val viewModel = GroupScheduleViewModel("group-1", gateway, FakeScheduleGateway(), todayInZone = { "2026-08-02" })
+        gateway.listResult = SaqzResult.Success(emptyList())
+
+        viewModel.onIntent(GroupScheduleIntent.SelectDuration(60))
+        viewModel.onIntent(GroupScheduleIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        viewModel.onIntent(GroupScheduleIntent.Refresh)
+        assertEquals(listOf("game-1"), viewModel.state.value.upcoming.map { it.id })
+        assertEquals(60, viewModel.state.value.durationMinutes)
+
+        // De volta ao valor do servidor mas com a folha de horário aberta: continua edição.
+        viewModel.onIntent(GroupScheduleIntent.SelectDuration(defaultSchedule.durationMinutes))
+        viewModel.onIntent(GroupScheduleIntent.AddSlot)
+        viewModel.onIntent(GroupScheduleIntent.Refresh)
+        assertEquals(listOf("game-1"), viewModel.state.value.upcoming.map { it.id })
+    }
+
+    @Test
+    fun `refresh failure keeps the upcoming list and shows no error`() = runTest {
+        val gateway = FakeGameGateway(SaqzResult.Success(listOf(sampleGame())))
+        val viewModel = GroupScheduleViewModel("group-1", gateway, FakeScheduleGateway(), todayInZone = { "2026-08-02" })
+        gateway.listResult = SaqzResult.Failure(GameError.Data(DataError.Forbidden))
+
+        viewModel.onIntent(GroupScheduleIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        viewModel.onIntent(GroupScheduleIntent.Refresh)
+
+        assertEquals(listOf("game-1"), viewModel.state.value.upcoming.map { it.id })
+        assertFalse(viewModel.state.value.loadFailed)
+        assertEquals(null, viewModel.state.value.error)
+    }
+
+    @Test
+    fun `refresh is ignored while a load is in flight`() = runTest {
+        val gateway = FakeGameGateway(SaqzResult.Success(listOf(sampleGame())))
+        val pending = CompletableDeferred<SaqzResult<List<br.com.saqz.groups.domain.game.Game>, GameError>>()
+        gateway.listDeferred = pending
+        val viewModel = GroupScheduleViewModel("group-1", gateway, FakeScheduleGateway(), todayInZone = { "2026-08-02" })
+
+        viewModel.onIntent(GroupScheduleIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        viewModel.onIntent(GroupScheduleIntent.Refresh)
+        assertTrue(viewModel.state.value.isLoading)
+
+        pending.complete(SaqzResult.Success(listOf(sampleGame())))
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(listOf("game-1"), viewModel.state.value.upcoming.map { it.id })
+    }
+
+    @Test
     fun `retry refreshes the retained schedule after a game is cancelled`() = runTest {
         val gateway = FakeGameGateway(SaqzResult.Success(listOf(sampleGame())))
         val viewModel = GroupScheduleViewModel(

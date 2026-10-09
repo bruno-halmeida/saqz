@@ -58,6 +58,12 @@ internal enum class UpcomingGameStatus { Published, Scheduled }
 internal sealed interface GroupScheduleIntent {
     data object Retry : GroupScheduleIntent
 
+    /**
+     * Volta à tela: recarga por baixo só da lista `upcoming`. Nunca toca no formulário — com
+     * edição pendente, folha aberta, salvando ou carga em voo é ignorado.
+     */
+    data object Refresh : GroupScheduleIntent
+
     data class ToggleRecurring(val value: Boolean) : GroupScheduleIntent
 
     data object AddSlot : GroupScheduleIntent

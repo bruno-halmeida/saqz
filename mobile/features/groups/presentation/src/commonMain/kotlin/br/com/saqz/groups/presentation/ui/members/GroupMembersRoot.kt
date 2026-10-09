@@ -7,8 +7,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.groups.domain.moderation.ReportTargetType
 import br.com.saqz.groups.presentation.members.GroupMembersEffect
+import br.com.saqz.groups.presentation.members.GroupMembersIntent
 import br.com.saqz.groups.presentation.members.GroupMembersViewModel
 import br.com.saqz.groups.presentation.moderation.ModerationIntent
 import br.com.saqz.groups.presentation.moderation.ModerationViewModel
@@ -45,6 +47,7 @@ fun GroupMembersRoot(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val moderationState by moderation.state.collectAsStateWithLifecycle()
+    RefreshWhenVisible { viewModel.onIntent(GroupMembersIntent.Refresh) }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             is GroupMembersEffect.OpenMemberProfile -> onOpenProfile(effect.memberId)

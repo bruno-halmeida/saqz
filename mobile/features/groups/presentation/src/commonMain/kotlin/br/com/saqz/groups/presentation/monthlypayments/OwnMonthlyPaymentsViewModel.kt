@@ -26,22 +26,36 @@ class OwnMonthlyPaymentsViewModel(
     private val finance: AthleteFinanceGateway,
 ) : MviViewModel<OwnMonthlyPaymentsState, OwnMonthlyPaymentsIntent, OwnMonthlyPaymentsEffect>(OwnMonthlyPaymentsState()) {
     private var generation = 0
+    private var loadInFlight = false
 
     init { load() }
 
     override fun handleIntent(intent: OwnMonthlyPaymentsIntent) = when (intent) {
         OwnMonthlyPaymentsIntent.Retry -> load()
+        OwnMonthlyPaymentsIntent.Refresh -> refresh()
         is OwnMonthlyPaymentsIntent.OpenGroup -> emit(OwnMonthlyPaymentsEffect.OpenGroup(intent.groupId))
     }
 
-    private fun load() {
+    /**
+     * Volta à tela: recarga por baixo, sem esqueleto. Falha (da pessoa ou de qualquer grupo) mantém
+     * o que está na tela. Sem conteúdo (erro da primeira carga) tenta a carga completa de novo.
+     */
+    private fun refresh() {
+        if (isFirstAppearance()) return
+        val current = state.value
+        if (loadInFlight || current.loading) return
+        load(softRefresh = current.error == null)
+    }
+
+    private fun load(softRefresh: Boolean = false) {
         val request = ++generation
-        update { OwnMonthlyPaymentsState() }
-        viewModelScope.launch {
+        loadInFlight = true
+        if (!softRefresh) update { OwnMonthlyPaymentsState() }
+        val job = viewModelScope.launch {
             val profile = athletes.ownProfile()
             if (request != generation) return@launch
             if (profile is SaqzResult.Failure) {
-                update { it.copy(loading = false, error = profile.error.toUiError()) }
+                if (!softRefresh) update { it.copy(loading = false, error = profile.error.toUiError()) }
                 return@launch
             }
             val own = (profile as SaqzResult.Success).value
@@ -63,8 +77,10 @@ class OwnMonthlyPaymentsViewModel(
                 }
                 MonthlyPaymentsGroupUi(membership.groupId.value, membership.groupName, charges)
             }
+            if (softRefresh && groups.any { it.charges.failed }) return@launch
             if (request == generation) update { OwnMonthlyPaymentsState(loading = false, groups = groups) }
         }
+        job.invokeOnCompletion { if (request == generation) loadInFlight = false }
     }
 
     private suspend fun Charge.toUi() = OwnChargeUi(

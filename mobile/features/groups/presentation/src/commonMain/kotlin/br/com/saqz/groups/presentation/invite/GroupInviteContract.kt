@@ -49,6 +49,9 @@ sealed interface GroupInviteError {
 
 sealed interface GroupInviteIntent {
     data object Retry : GroupInviteIntent
+
+    /** Volta à tela: recarga por baixo, sem esqueleto nem tela de erro. */
+    data object Refresh : GroupInviteIntent
     data object GenerateInvite : GroupInviteIntent
     data object DeactivateInvite : GroupInviteIntent
     data class ToggleApproval(val enabled: Boolean) : GroupInviteIntent

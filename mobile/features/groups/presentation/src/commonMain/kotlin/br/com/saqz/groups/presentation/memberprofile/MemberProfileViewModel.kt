@@ -24,6 +24,7 @@ class MemberProfileViewModel(
     private val blocks: BlockedPeopleRepository,
 ) : MviViewModel<MemberProfileState, MemberProfileIntent, MemberProfileEffect>(MemberProfileState()) {
     private var generation = 0
+    private var loadInFlight = false
 
     init {
         load()
@@ -34,22 +35,35 @@ class MemberProfileViewModel(
 
     override fun handleIntent(intent: MemberProfileIntent) = when (intent) {
         MemberProfileIntent.Retry -> load()
+        MemberProfileIntent.Refresh -> refresh()
     }
 
-    private fun load() {
+    /**
+     * Volta à tela: recarga por baixo, sem esqueleto e sem tela de erro. Sem conteúdo (erro da
+     * primeira carga) tenta a carga completa de novo; com carga em voo é ignorado.
+     */
+    private fun refresh() {
+        if (isFirstAppearance()) return
+        val current = state.value
+        if (loadInFlight || current.loading) return
+        load(softRefresh = current.error == null)
+    }
+
+    private fun load(softRefresh: Boolean = false) {
         val request = ++generation
-        update { MemberProfileState(blocked = userId in blocks.blocked.value) }
+        loadInFlight = true
+        if (!softRefresh) update { MemberProfileState(blocked = userId in blocks.blocked.value) }
         viewModelScope.launch { blocks.refresh() }
-        viewModelScope.launch {
+        val job = viewModelScope.launch {
             val roster = athletes.roster(GroupId(groupId), AthleteRosterFilter(includeInactive = true))
             if (request != generation) return@launch
             if (roster is SaqzResult.Failure) {
-                update { it.copy(loading = false, error = roster.error.toUiError()) }
+                if (!softRefresh) update { it.copy(loading = false, error = roster.error.toUiError()) }
                 return@launch
             }
             val member = (roster as SaqzResult.Success).value.find { it.userId == userId }
             if (member == null) {
-                update { it.copy(loading = false, error = GroupUiError.NotFound) }
+                if (!softRefresh) update { it.copy(loading = false, error = GroupUiError.NotFound) }
                 return@launch
             }
             val stats = athletes.stats(GroupId(groupId), userId)
@@ -84,5 +98,6 @@ class MemberProfileViewModel(
                 )
             }
         }
+        job.invokeOnCompletion { if (request == generation) loadInFlight = false }
     }
 }

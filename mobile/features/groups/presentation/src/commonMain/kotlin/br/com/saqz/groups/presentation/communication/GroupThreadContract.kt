@@ -34,6 +34,9 @@ data class ThreadMessageUi(
 
 sealed interface GroupThreadIntent {
     data object Refresh : GroupThreadIntent
+
+    /** Volta à tela: recarga por baixo, sem esqueleto, sem tela de erro e sem tocar no rascunho. */
+    data object Appeared : GroupThreadIntent
     data object More : GroupThreadIntent
     data object Send : GroupThreadIntent
     data class Draft(val text: String) : GroupThreadIntent

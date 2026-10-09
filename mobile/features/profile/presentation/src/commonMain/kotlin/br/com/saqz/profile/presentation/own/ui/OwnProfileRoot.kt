@@ -3,13 +3,12 @@ package br.com.saqz.profile.presentation.own.ui
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.domain.AppVersion
 import br.com.saqz.profile.presentation.own.OwnProfileEffect
 import br.com.saqz.profile.presentation.own.OwnProfileIntent
@@ -46,14 +45,9 @@ fun OwnProfileRoot(
 ) {
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // VUL-205: só recarrega se o contador mudou desde que esta ViewModel nasceu. O contador é
-    // do host e sobrevive ao pop da entrada (`SaqzNavHost`), então `> 0` fazia a aba de perfil
-    // somar o `Refresh` ao `init { load() }` da ViewModel nova toda vez que o shell voltava a
-    // ser montado depois de uma edição salva.
-    val loadedVersion = rememberSaveable(viewModel) { refreshVersion }
-    LaunchedEffect(viewModel, refreshVersion) {
-        if (refreshVersion != loadedVersion) viewModel.onIntent(OwnProfileIntent.Refresh)
-    }
+    // Toda vez que a aba aparece (e quando o contador do host muda, VUL-205: edição salva), recarrega
+    // por baixo. A ViewModel ignora o pedido que chega com a carga do `init` ainda em voo.
+    RefreshWhenVisible(refreshVersion) { viewModel.onIntent(OwnProfileIntent.Appeared) }
     ObserveAsEvents(viewModel.effects, key = onOpenReceipts != null) { effect ->
         when (effect) {
             OwnProfileEffect.OpenEditor -> onOpenEditor()

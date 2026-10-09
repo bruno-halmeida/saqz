@@ -232,6 +232,90 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `refresh keeps the content on screen while reloading and swaps it when the server answers`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
+        val vm = viewModel(gameGateway = games)
+        assertEquals(GroupOnboarding.CreateGame, vm.state.value.onboarding)
+
+        games.listDeferred = CompletableDeferred()
+        vm.onIntent(GroupDetailsIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        vm.onIntent(GroupDetailsIntent.Refresh)
+
+        assertFalse(vm.state.value.isLoading)
+        assertFalse(vm.state.value.loadFailed)
+        assertEquals(GroupOnboarding.CreateGame, vm.state.value.onboarding)
+
+        games.listDeferred!!.complete(SaqzResult.Success(listOf(sampleGame())))
+        advanceUntilIdle()
+        assertFalse(vm.state.value.isLoading)
+        assertEquals(GroupOnboarding.InviteAthletes(sampleGame().id), vm.state.value.onboarding)
+    }
+
+    @Test
+    fun `refresh failure keeps the loaded content and shows no error screen`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
+        val vm = viewModel(gameGateway = games)
+        games.listResult = SaqzResult.Failure(br.com.saqz.groups.domain.game.GameError.HiddenResource)
+
+        vm.onIntent(GroupDetailsIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        vm.onIntent(GroupDetailsIntent.Refresh)
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.loadFailed)
+        assertNull(vm.state.value.error)
+        assertFalse(vm.state.value.isLoading)
+        assertEquals(GroupOnboarding.CreateGame, vm.state.value.onboarding)
+    }
+
+    @Test
+    fun `refresh does not reset the athlete introduction nor the once per screen guard`() = runTest {
+        val vm = viewModel(groupGateway = athleteGroupGateway(),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))))
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        assertTrue(vm.state.value.athleteIntroVisible)
+
+        vm.onIntent(GroupDetailsIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        vm.onIntent(GroupDetailsIntent.Refresh)
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.athleteIntroVisible)
+    }
+
+    @Test
+    fun `refresh is ignored while a load is in flight and runs again after it ends`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
+        val deferred = CompletableDeferred<SaqzResult<List<br.com.saqz.groups.domain.game.Game>, br.com.saqz.groups.domain.game.GameError>>()
+        games.listDeferred = deferred
+        val groups = FakeGroupGateway()
+        val vm = viewModel(groupGateway = groups, gameGateway = games)
+        assertEquals(1, groups.readCalls)
+
+        // Logo depois do `init { load() }`, o primeiro `resume` do Root não pode repetir a ida ao servidor.
+        vm.onIntent(GroupDetailsIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        vm.onIntent(GroupDetailsIntent.Refresh)
+        assertEquals(1, groups.readCalls)
+
+        deferred.complete(SaqzResult.Success(emptyList()))
+        advanceUntilIdle()
+        vm.onIntent(GroupDetailsIntent.Refresh)
+        assertEquals(2, groups.readCalls)
+    }
+
+    @Test
+    fun `first refresh after init does not reload and the second does`() = runTest {
+        val groups = FakeGroupGateway()
+        val vm = viewModel(groupGateway = groups)
+        assertEquals(1, groups.readCalls)
+
+        // A carga do `init` já terminou quando o primeiro `resume` do Root chega.
+        vm.onIntent(GroupDetailsIntent.Refresh)
+        assertEquals(1, groups.readCalls)
+
+        vm.onIntent(GroupDetailsIntent.Refresh)
+        assertEquals(2, groups.readCalls)
+    }
+
+    @Test
     fun `late reminder response cannot describe a different game`() = runTest {
         val response = CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.communication.CommunicationMessage, br.com.saqz.groups.domain.communication.CommunicationError>>()
         val gateway = br.com.saqz.groups.presentation.FakeCommunicationGateway().apply { remindBlock = { response.await() } }

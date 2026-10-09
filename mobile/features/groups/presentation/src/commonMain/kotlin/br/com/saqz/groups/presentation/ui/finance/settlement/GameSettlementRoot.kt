@@ -7,11 +7,11 @@ import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderViewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -38,12 +38,8 @@ fun GameSettlementRoot(
         if (!state.chargeSheetOpen) reminders.onIntent(ChargeReminderIntent.Reset)
     }
     val clipboard = LocalClipboardManager.current
-    // VUL-205: só recarrega se o contador mudou desde que esta ViewModel nasceu — ver
-    // `GroupDetailsRoot`.
-    val loadedVersion = rememberSaveable(viewModel) { refreshVersion }
-    LaunchedEffect(viewModel, refreshVersion) {
-        if (refreshVersion != loadedVersion) viewModel.onIntent(GameSettlementIntent.Retry)
-    }
+    // Toda volta à tela recarrega por baixo; o contador do host (VUL-205) é a segunda chave.
+    RefreshWhenVisible(refreshVersion) { viewModel.onIntent(GameSettlementIntent.Refresh) }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             GameSettlementEffect.Closed -> onBack()

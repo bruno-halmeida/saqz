@@ -3,15 +3,14 @@ package br.com.saqz.groups.presentation.ui.details
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalClipboardManager
 import br.com.saqz.groups.domain.map.GroupMapPort
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.groups.presentation.details.GroupDetailsEffect
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
@@ -62,14 +61,12 @@ fun GroupDetailsRoot(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val moderationState by moderation.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
-    // VUL-205: só recarrega se o contador mudou desde que esta ViewModel nasceu. O contador é
-    // do host e sobrevive ao pop da entrada (`SaqzNavHost`), então `> 0` fazia a entrada
-    // reempilhada somar o `Retry` ao `init { load() }` da ViewModel nova — duas cargas no
-    // mesmo quadro, e `groupDetailsRefreshVersion` é global, não por grupo.
-    val loadedVersion = rememberSaveable(viewModel) { refreshVersion }
-    LaunchedEffect(viewModel, refreshVersion) {
-        if (refreshVersion != loadedVersion) viewModel.onIntent(GroupDetailsIntent.Retry)
-    }
+    // Toda volta à tela recarrega por baixo (aba, filha, primeiro plano). O contador do host
+    // (`groupDetailsRefreshVersion`, VUL-205) entra como segunda chave: ele muda enquanto o caixa
+    // ou o lançamento estão por cima, e a volta recarrega uma vez só. A entrada reempilhada com o
+    // contador já acumulado não soma nada ao `init { load() }`: a ViewModel ignora o pedido que
+    // chega com carga em voo.
+    RefreshWhenVisible(refreshVersion) { viewModel.onIntent(GroupDetailsIntent.Refresh) }
     // Copiar o Pix (VUL-203) é área de transferência, não destino: morre aqui em vez de
     // subir para o `NavDisplay` como um efeito de navegação que ninguém navega.
     ObserveAsEvents(viewModel.effects) { effect ->

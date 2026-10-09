@@ -25,6 +25,9 @@ data class MemberProfileState(
 
 sealed interface MemberProfileIntent {
     data object Retry : MemberProfileIntent
+
+    /** Volta à tela: recarga por baixo, sem esqueleto nem tela de erro. */
+    data object Refresh : MemberProfileIntent
 }
 
 sealed interface MemberProfileEffect

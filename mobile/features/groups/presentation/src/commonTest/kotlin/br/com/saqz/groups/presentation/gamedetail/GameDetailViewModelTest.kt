@@ -167,6 +167,78 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun `refresh keeps the content on screen while reloading and swaps it when the server answers`() = runTest {
+        val first = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
+        val second = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
+        val gateway = FakeGameGateway(reads = ArrayDeque(listOf(first, second)))
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+        gateway.completeRead(0, SaqzResult.Success(sampleVersionedGame()))
+        assertEquals(GameDetailStatusTone.Published, viewModel.state.value.header?.statusTone)
+
+        viewModel.onIntent(GameDetailIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        viewModel.onIntent(GameDetailIntent.Refresh)
+
+        assertEquals(2, gateway.readCalls)
+        assertFalse(viewModel.state.value.isLoading)
+        assertFalse(viewModel.state.value.loadFailed)
+        assertNotNull(viewModel.state.value.header)
+        assertNotNull(viewModel.state.value.attendance)
+
+        gateway.completeRead(1, SaqzResult.Success(VersionedGame(sampleCancelledGame(), GameVersionToken("etag-2"))))
+        assertEquals(GameDetailStatusTone.Cancelled, viewModel.state.value.header?.statusTone)
+        assertFalse(viewModel.state.value.isLoading)
+    }
+
+    @Test
+    fun `refresh failure keeps the loaded content and shows no error screen`() = runTest {
+        val gateway = FakeGameGateway(
+            readResults = ArrayDeque(listOf(
+                SaqzResult.Success(sampleVersionedGame()),
+                SaqzResult.Failure(GameError.Data(DataError.Forbidden)),
+            )),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+
+        viewModel.onIntent(GameDetailIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        viewModel.onIntent(GameDetailIntent.Refresh)
+
+        assertEquals(2, gateway.readCalls)
+        assertFalse(viewModel.state.value.loadFailed)
+        assertNull(viewModel.state.value.error)
+        assertFalse(viewModel.state.value.isLoading)
+        assertNotNull(viewModel.state.value.header)
+    }
+
+    @Test
+    fun `refresh is ignored while a load is in flight and runs again after it ends`() = runTest {
+        val first = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
+        val gateway = FakeGameGateway(reads = ArrayDeque(listOf(first)))
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+
+        // Logo depois do `init { load() }`, o primeiro `resume` do Root não pode repetir a ida ao servidor.
+        viewModel.onIntent(GameDetailIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        viewModel.onIntent(GameDetailIntent.Refresh)
+        assertEquals(1, gateway.readCalls)
+
+        gateway.completeRead(0, SaqzResult.Success(sampleVersionedGame()))
+        viewModel.onIntent(GameDetailIntent.Refresh)
+        assertEquals(2, gateway.readCalls)
+    }
+
+    @Test
+    fun `first refresh after init does not reload and the second does`() = runTest {
+        val gateway = FakeGameGateway()
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+        assertEquals(1, gateway.readCalls)
+
+        viewModel.onIntent(GameDetailIntent.Refresh)
+        assertEquals(1, gateway.readCalls)
+
+        viewModel.onIntent(GameDetailIntent.Refresh)
+        assertEquals(2, gateway.readCalls)
+    }
+
+    @Test
     fun `cancel uses optimistic version and emits effect`() = runTest {
         val gateway = FakeGameGateway(
             lifecycleResult = SaqzResult.Success(VersionedGame(sampleCancelledGame(), GameVersionToken("etag-2"))),

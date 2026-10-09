@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
@@ -82,6 +83,7 @@ fun GroupThreadRoot(
     )
     val state by vm.state.collectAsStateWithLifecycle()
     val moderationState by moderation.state.collectAsStateWithLifecycle()
+    RefreshWhenVisible { vm.onIntent(GroupThreadIntent.Appeared) }
     ObserveAsEvents(vm.effects) { effect ->
         when (effect) {
             is GroupThreadEffect.ReportMessage -> moderation.onIntent(

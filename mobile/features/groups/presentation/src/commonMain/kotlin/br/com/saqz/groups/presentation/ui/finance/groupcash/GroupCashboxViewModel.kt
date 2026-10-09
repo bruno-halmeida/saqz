@@ -35,6 +35,7 @@ class GroupCashboxViewModel(
 
     private var loadGeneration = 0L
     private var receiptGeneration = 0L
+    private var loadInFlight = false
 
     init {
         load()
@@ -43,6 +44,7 @@ class GroupCashboxViewModel(
     override fun handleIntent(intent: GroupCashboxIntent) {
         when (intent) {
             GroupCashboxIntent.Retry -> load()
+            GroupCashboxIntent.Refresh -> refresh()
             GroupCashboxIntent.ChargeMissing -> openChargeSheet()
             is GroupCashboxIntent.ChargeIndividual -> openChargeSheet(intent.chargeId)
             GroupCashboxIntent.Register -> emit(GroupCashboxEffect.OpenNewEntry(groupId))
@@ -87,21 +89,39 @@ class GroupCashboxViewModel(
         update { it.copy(receiptSheetChargeId = chargeId, chargeSheetOpen = false, chargeSheetChargeId = null) }
     }
 
-    private fun load() {
+    private fun GroupCashboxState.interacting() =
+        chargeSheetOpen || receiptSheetChargeId != null || updatingChargeId != null
+
+    /**
+     * Volta à tela: recarga por baixo, sem esqueleto e sem tela de erro. Com carga em voo, folha
+     * aberta ou baixa em andamento é ignorado — a troca do estado inteiro fecharia a folha e
+     * descartaria o resultado da baixa. Sem conteúdo (erro da primeira carga) tenta de novo por inteiro.
+     */
+    private fun refresh() {
+        if (isFirstAppearance()) return
+        val current = state.value
+        if (loadInFlight || current.isLoading || current.interacting()) return
+        load(softRefresh = !current.loadFailed)
+    }
+
+    private fun load(softRefresh: Boolean = false) {
         val generation = ++loadGeneration
-        receiptGeneration++
-        update { it.copy(isLoading = true, loadFailed = false, operationFailed = false) }
-        viewModelScope.launch {
+        loadInFlight = true
+        if (!softRefresh) {
+            receiptGeneration++
+            update { it.copy(isLoading = true, loadFailed = false, operationFailed = false) }
+        }
+        val job = viewModelScope.launch {
             val groupResult = groupGateway.read(GroupId(groupId))
             if (generation != loadGeneration) return@launch
             val membershipResult = membershipGateway.listMemberships(GroupId(groupId))
             if (generation != loadGeneration) return@launch
             val group = when (groupResult) {
-                is SaqzResult.Failure -> return@launch failLoad(generation)
+                is SaqzResult.Failure -> return@launch failLoad(generation, softRefresh)
                 is SaqzResult.Success -> groupResult.value.group
             }
             val memberships = when (membershipResult) {
-                is SaqzResult.Failure -> return@launch failLoad(generation)
+                is SaqzResult.Failure -> return@launch failLoad(generation, softRefresh)
                 is SaqzResult.Success -> membershipResult.value
             }
             val date = currentDate(group.timeZone.id)
@@ -114,13 +134,15 @@ class GroupCashboxViewModel(
             val chargesResult = organizerFinanceGateway.charges(GroupId(groupId))
             if (generation != loadGeneration) return@launch
             val statement = when (statementResult) {
-                is SaqzResult.Failure -> return@launch failLoad(generation)
+                is SaqzResult.Failure -> return@launch failLoad(generation, softRefresh)
                 is SaqzResult.Success -> statementResult.value
             }
             val charges = when (chargesResult) {
-                is SaqzResult.Failure -> return@launch failLoad(generation)
+                is SaqzResult.Failure -> return@launch failLoad(generation, softRefresh)
                 is SaqzResult.Success -> chargesResult.value.charges
             }
+            // Por baixo, uma folha aberta depois do pedido não pode ser fechada pela troca do estado.
+            if (softRefresh && state.value.interacting()) return@launch
             updateIfCurrent(generation) {
                 toState(
                     groupName = group.name,
@@ -134,6 +156,7 @@ class GroupCashboxViewModel(
                 )
             }
         }
+        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
     }
 
     private fun markReceived(chargeId: String, paidMethod: PaidMethod) {
@@ -164,8 +187,9 @@ class GroupCashboxViewModel(
         }
     }
 
-    private fun failLoad(generation: Long) {
-        if (generation != loadGeneration) return
+    /** Por baixo ([softRefresh]) a falha não troca a tela por erro: o caixa que está na tela fica. */
+    private fun failLoad(generation: Long, softRefresh: Boolean) {
+        if (generation != loadGeneration || softRefresh) return
         update { it.copy(isLoading = false, loadFailed = true) }
     }
 

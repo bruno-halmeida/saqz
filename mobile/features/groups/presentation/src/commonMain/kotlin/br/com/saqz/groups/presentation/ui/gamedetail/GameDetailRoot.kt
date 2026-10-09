@@ -4,7 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.groups.presentation.gamedetail.GameDetailEffect
+import br.com.saqz.groups.presentation.gamedetail.GameDetailIntent
 import br.com.saqz.groups.presentation.gamedetail.GameDetailViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -23,6 +25,8 @@ fun GameDetailRoot(
     ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // Volta à tela (aba, filha, primeiro plano): recarga por baixo; a ViewModel ignora com carga em voo.
+    RefreshWhenVisible { viewModel.onIntent(GameDetailIntent.Refresh) }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             GameDetailEffect.OpenEditor -> onOpenEditor()

@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.groups.presentation.schedule.GroupScheduleEffect
 import br.com.saqz.groups.presentation.schedule.GroupScheduleIntent
 import br.com.saqz.groups.presentation.schedule.GroupScheduleViewModel
@@ -41,6 +42,8 @@ fun GroupScheduleRoot(
     LaunchedEffect(viewModel, refreshVersion) {
         if (refreshVersion != loadedVersion) viewModel.onIntent(GroupScheduleIntent.Retry)
     }
+    // Volta à tela (ex.: do detalhe do jogo): só a lista de próximos jogos, sem tocar no formulário.
+    RefreshWhenVisible { viewModel.onIntent(GroupScheduleIntent.Refresh) }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             // Salvar fecha a tela: o 2m é uma folha do Gerenciar do 2f.

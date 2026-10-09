@@ -7,11 +7,11 @@ import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderViewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -40,14 +40,10 @@ fun GroupCashboxRoot(
         if (!state.chargeSheetOpen) reminders.onIntent(ChargeReminderIntent.Reset)
     }
     val clipboard = LocalClipboardManager.current
-    // VUL-205: só recarrega se o contador mudou desde que esta ViewModel nasceu — ver
-    // `GroupDetailsRoot`. Aqui a volta do lançamento (`FinanceRoute.NewEntry`) é o caminho
-    // legítimo: a entrada do caixa continua na pilha, a ViewModel é a mesma e o contador
-    // mudou por baixo dela.
-    val loadedVersion = rememberSaveable(viewModel) { refreshVersion }
-    LaunchedEffect(viewModel, refreshVersion) {
-        if (refreshVersion != loadedVersion) viewModel.onIntent(GroupCashboxIntent.Retry)
-    }
+    // Toda volta à tela recarrega por baixo. O contador do host (VUL-205) entra como segunda chave:
+    // a volta do lançamento (`FinanceRoute.NewEntry`) muda por baixo desta entrada, e a ViewModel
+    // ignora o pedido que chega logo depois do `init { load() }`.
+    RefreshWhenVisible(refreshVersion) { viewModel.onIntent(GroupCashboxIntent.Refresh) }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             is GroupCashboxEffect.OpenStatement -> onOpenStatement(effect.groupId)

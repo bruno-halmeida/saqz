@@ -32,5 +32,18 @@ abstract class MviViewModel<S, I, E>(initialState: S) : ViewModel() {
         handleIntent(intent)
     }
 
+    private var appearedOnce = false
+
+    /**
+     * Para a recarga "a tela voltou a aparecer": a ViewModel nasce com `init { load() }` e o primeiro
+     * `resume` do Root chega logo depois (com a carga em voo ou já terminada). Esse primeiro pedido
+     * é sempre descartado — devolve `true` uma vez só; os seguintes devolvem `false`.
+     */
+    protected fun isFirstAppearance(): Boolean {
+        val first = !appearedOnce
+        appearedOnce = true
+        return first
+    }
+
     protected abstract fun handleIntent(intent: I)
 }

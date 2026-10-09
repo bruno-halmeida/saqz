@@ -123,6 +123,13 @@ class GroupDetailsViewModel(
     private var pixCopiedGeneration = 0L
     private var athleteIntroShown = false
 
+    /**
+     * Carga no ar. Só a recarga por baixo ([GroupDetailsIntent.Refresh]) é descartada por ela: na
+     * abertura o `init` dispara a carga e o primeiro `resume` do Root chega logo em seguida — sem a
+     * guarda seriam duas idas ao servidor. `Retry` é pedido explícito e passa por cima.
+     */
+    private var loadInFlight = false
+
     /** O grupo da carga corrente: a seção de cobranças sozinha precisa do fuso e do Pix. */
     private var loadedGroup: Group? = null
     private var reminderRequest: Pair<String, String>? = null
@@ -148,6 +155,7 @@ class GroupDetailsViewModel(
             }
             GroupDetailsIntent.OnboardingAction -> onboardingAction()
             GroupDetailsIntent.Retry -> load()
+            GroupDetailsIntent.Refresh -> refresh()
             GroupDetailsIntent.CreateNextGame -> emit(GroupDetailsEffect.OpenCreateGame(groupId))
             GroupDetailsIntent.EditGroup -> emit(GroupDetailsEffect.OpenEdit(groupId))
             GroupDetailsIntent.EditVenue -> emit(GroupDetailsEffect.OpenEdit(groupId))
@@ -292,8 +300,57 @@ class GroupDetailsViewModel(
         }
     }
 
-    private fun load() {
+    /**
+     * Recarga por baixo ([GroupDetailsIntent.Refresh]): mantém tudo o que está na tela — guia,
+     * checklist, toast, "chave copiada" — e só troca o conteúdo quando o servidor responde; falha
+     * não mostra nada. Com uma escrita em voo (resposta, auto-confirmação, saída, lembrete, roster)
+     * não recarrega: a guarda de geração das escritas descartaria o resultado delas e deixaria o
+     * botão travado em "enviando".
+     */
+    private fun refresh() {
+        if (isFirstAppearance()) return
+        val current = state.value
+        val answering = current.responding || current.autoConfirmationUpdating || current.rosterRefreshing
+        val busy = loadInFlight || answering || current.leaving || current.notifying
+        if (busy) return
+        load(softRefresh = true)
+    }
+
+    private fun load(softRefresh: Boolean = false) {
         val generation = ++loadGeneration
+        loadInFlight = true
+        if (!softRefresh) resetForFullLoad()
+        val job = viewModelScope.launch {
+            when (val groupResult = groupGateway.read(GroupId(groupId))) {
+                is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError(), softRefresh)
+                is SaqzResult.Success -> {
+                    val group = groupResult.value.group
+                    if (generation == loadGeneration) loadedGroup = group
+                    when (val gamesResult = gameGateway.list(GroupId(groupId))) {
+                        is SaqzResult.Failure -> showFailure(generation, gamesResult.error.toUiError(), softRefresh)
+                        is SaqzResult.Success -> {
+                            val games = gamesResult.value
+                            loadNextGame(generation, group, games, softRefresh)
+                            loadAgenda(generation, group, games)
+                            loadAdminCashbox(generation, group, games, softRefresh)
+                            loadOwnCharges(generation, group, softRefresh)
+                            loadPeople(generation)
+                            loadWhatsApp(generation, group)
+                            loadMemory(generation)
+                            loadLatestNotice(generation, softRefresh)
+                        }
+                    }
+                }
+            }
+        }
+        // Libera pelo fim do job, e não no corpo dele: os `return` da guarda de geração e um
+        // cancelamento do escopo também têm que devolver a chave. A checagem impede que uma carga
+        // velha destrave enquanto a nova ainda está no ar.
+        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
+    }
+
+    /** Carga completa (`init` e `Retry`): invalida as escritas em voo e volta a tela ao esqueleto. */
+    private fun resetForFullLoad() {
         responseGeneration++
         autoConfirmationGeneration++
         rosterGeneration++
@@ -310,29 +367,6 @@ class GroupDetailsViewModel(
             notifying = false, notificationFailed = false, notifiedCount = null,
             pixCopied = false,
         ) }
-        viewModelScope.launch {
-            when (val groupResult = groupGateway.read(GroupId(groupId))) {
-                is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError())
-                is SaqzResult.Success -> {
-                    val group = groupResult.value.group
-                    if (generation == loadGeneration) loadedGroup = group
-                    when (val gamesResult = gameGateway.list(GroupId(groupId))) {
-                        is SaqzResult.Failure -> showFailure(generation, gamesResult.error.toUiError())
-                        is SaqzResult.Success -> {
-                            val games = gamesResult.value
-                            loadNextGame(generation, group, games)
-                            loadAgenda(generation, group, games)
-                            loadAdminCashbox(generation, group, games)
-                            loadOwnCharges(generation, group)
-                            loadPeople(generation)
-                            loadWhatsApp(generation, group)
-                            loadMemory(generation)
-                            loadLatestNotice(generation)
-                        }
-                    }
-                }
-            }
-        }
     }
 
     /**
@@ -434,9 +468,11 @@ class GroupDetailsViewModel(
         onboardingMemory?.writeMemory(groupId, next) {}
     }
 
-    private suspend fun loadLatestNotice(generation: Int) {
+    private suspend fun loadLatestNotice(generation: Int, softRefresh: Boolean = false) {
         val result = communications.messages(GroupId(groupId), CommunicationChannel.NOTICE)
         if (generation != loadGeneration) return
+        // Por baixo, falha não apaga o último aviso que já estava na tela.
+        if (softRefresh && result is SaqzResult.Failure) return
         val latest = (result as? SaqzResult.Success)?.value?.items?.firstOrNull()
         update { it.copy(latestNotice = latest?.let { message ->
             NoticeUi(
@@ -458,14 +494,15 @@ class GroupDetailsViewModel(
      * mostra o próprio erro com "tentar novamente", e o resto do detalhe segue montado.
      */
     @Suppress("ReturnCount")
-    private suspend fun loadOwnCharges(generation: Int, group: Group) {
+    private suspend fun loadOwnCharges(generation: Int, group: Group, softRefresh: Boolean = false) {
         if (generation != loadGeneration) return
         val ownGeneration = ++ownChargesGeneration
-        update { it.copy(ownCharges = OwnChargesUi(isLoading = true)) }
+        // Por baixo, a seção não pisca em "carregando" nem vira erro: fica com o que tem.
+        if (!softRefresh) update { it.copy(ownCharges = OwnChargesUi(isLoading = true)) }
         val result = athleteFinanceGateway.ownCharges(GroupId(groupId))
         if (generation != loadGeneration || ownGeneration != ownChargesGeneration) return
         val ownCharges = when (result) {
-            is SaqzResult.Failure -> OwnChargesUi(failed = true)
+            is SaqzResult.Failure -> if (softRefresh) return else OwnChargesUi(failed = true)
             // Formatar suspende (`getString`): a guarda é re-checada depois, não antes.
             is SaqzResult.Success -> result.value.charges.toOwnCharges(group)
         }
@@ -550,7 +587,7 @@ class GroupDetailsViewModel(
      * finanças (pedidos para entrar). Atleta não tem nenhum dos dois.
      */
     @Suppress("ReturnCount")
-    private suspend fun loadAdminCashbox(generation: Int, group: Group, games: List<Game>) {
+    private suspend fun loadAdminCashbox(generation: Int, group: Group, games: List<Game>, softRefresh: Boolean) {
         if (generation != loadGeneration) return
         if (group.role == GroupRole.ATHLETE) {
             update { it.copy(cashbox = null, waiting = null) }
@@ -566,6 +603,8 @@ class GroupDetailsViewModel(
         if (generation != loadGeneration) return
         val requests = loadEntryRequests(group)
         if (generation != loadGeneration) return
+        // Por baixo, finanças que falharam não rebaixam o caixa e a espera que já estão na tela.
+        if (softRefresh && (statementResult is SaqzResult.Failure || chargesResult is SaqzResult.Failure)) return
         val cashbox: CashboxUi
         val charges: List<Charge>
         if (statementResult is SaqzResult.Success && chargesResult is SaqzResult.Success) {
@@ -591,7 +630,7 @@ class GroupDetailsViewModel(
     }
 
     @Suppress("ReturnCount")
-    private suspend fun loadNextGame(generation: Int, group: Group, games: List<Game>) {
+    private suspend fun loadNextGame(generation: Int, group: Group, games: List<Game>, softRefresh: Boolean) {
         if (generation != loadGeneration) return
         val game = games.nextPublishedGame(now.now())
         val onboarding = groupOnboarding(group.role, games, game?.id)
@@ -620,9 +659,9 @@ class GroupDetailsViewModel(
         if (generation != loadGeneration) return
 
         when {
-            detailResult is SaqzResult.Failure -> showFailure(generation, detailResult.error.toUiError())
-            rosterResult is SaqzResult.Failure -> showFailure(generation, rosterResult.error.toUiError())
-            profileResult is SaqzResult.Failure -> showFailure(generation, profileResult.error.toUiError())
+            detailResult is SaqzResult.Failure -> showFailure(generation, detailResult.error.toUiError(), softRefresh)
+            rosterResult is SaqzResult.Failure -> showFailure(generation, rosterResult.error.toUiError(), softRefresh)
+            profileResult is SaqzResult.Failure -> showFailure(generation, profileResult.error.toUiError(), softRefresh)
             else -> {
                 val detail = (detailResult as SaqzResult.Success).value
                 val roster = (rosterResult as SaqzResult.Success).value
@@ -844,8 +883,9 @@ class GroupDetailsViewModel(
         }
     }
 
-    private fun showFailure(generation: Int, error: GroupUiError) {
-        if (generation != loadGeneration) return
+    /** Por baixo ([softRefresh]) a falha não troca a tela por erro: o conteúdo fica e a próxima volta tenta de novo. */
+    private fun showFailure(generation: Int, error: GroupUiError, softRefresh: Boolean = false) {
+        if (generation != loadGeneration || softRefresh) return
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
     }
 

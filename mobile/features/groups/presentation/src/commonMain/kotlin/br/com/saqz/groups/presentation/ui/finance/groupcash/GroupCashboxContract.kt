@@ -64,6 +64,9 @@ data class PixUi(
 
 sealed interface GroupCashboxIntent {
     data object Retry : GroupCashboxIntent
+
+    /** Volta à tela: recarga por baixo, sem esqueleto nem tela de erro. */
+    data object Refresh : GroupCashboxIntent
     data object ChargeMissing : GroupCashboxIntent
     data class ChargeIndividual(val chargeId: String) : GroupCashboxIntent
     data object Register : GroupCashboxIntent

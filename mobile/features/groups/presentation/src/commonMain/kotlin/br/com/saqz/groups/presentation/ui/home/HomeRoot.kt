@@ -7,6 +7,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.groups.presentation.home.HomeEffect
 import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeOwnChargesUi
@@ -30,6 +31,9 @@ fun HomeRoot(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
+    // A aba Início reentra a cada troca de aba, volta de filha e primeiro plano: recarga por
+    // baixo (`softRefresh`); a ViewModel ignora o pedido que chega com carga em voo.
+    RefreshWhenVisible { viewModel.onIntent(HomeIntent.Refresh) }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             HomeEffect.OpenGroups -> onOpenGroups()

@@ -127,6 +127,13 @@ data class GameGuestUi(
 
 sealed interface GameDetailIntent {
     data object Retry : GameDetailIntent
+
+    /**
+     * Volta à tela (aba, volta de uma filha, primeiro plano): recarga por baixo — sem esqueleto,
+     * sem tela de erro, sem fechar folha nem descartar escrita em voo. É assim que a vaga de quem
+     * foi promovido da fila chega sem reabrir o app.
+     */
+    data object Refresh : GameDetailIntent
     data object Edit : GameDetailIntent
     data object OpenSettlement : GameDetailIntent
     data object RequestCancel : GameDetailIntent

@@ -64,12 +64,14 @@ class GroupInviteViewModel(
     private var versionToken: GroupVersionToken? = null
     private var groupName = ""
     private var timeZone = GroupTimeZone("")
+    private var loadInFlight = false
 
     init { load() }
 
     override fun handleIntent(intent: GroupInviteIntent) {
         when (intent) {
             GroupInviteIntent.Retry -> load()
+            GroupInviteIntent.Refresh -> refresh()
             GroupInviteIntent.GenerateInvite -> rotate()
             GroupInviteIntent.DeactivateInvite -> expire()
             is GroupInviteIntent.ToggleApproval -> toggleApproval(intent.enabled)
@@ -85,19 +87,32 @@ class GroupInviteViewModel(
         }
     }
 
-    private fun load() {
+    /**
+     * Recarga por baixo ([GroupInviteIntent.Refresh]): sem esqueleto, sem tela de erro, sem apagar
+     * o toast. Com carga ou escrita em voo (gerar, desativar, aprovação) é ignorado.
+     */
+    private fun refresh() {
+        if (isFirstAppearance()) return
+        val current = state.value
+        val writing = current.isGenerating || current.isDeactivating || current.isUpdatingApproval ||
+            current.pendingActionIds.isNotEmpty()
+        if (!loadInFlight && !writing) load(softRefresh = true)
+    }
+
+    private fun load(softRefresh: Boolean = false) {
         val operation = GenerationKey(GenerationOperation.Load)
         val requestGeneration = nextGeneration(operation)
-        update { it.copy(isLoading = true, loadFailed = false, error = null, toast = null) }
-        viewModelScope.launch {
+        loadInFlight = true
+        if (!softRefresh) update { it.copy(isLoading = true, loadFailed = false, error = null, toast = null) }
+        val job = viewModelScope.launch {
             val group = when (val result = groupGateway.read(GroupId(groupId))) {
                 is SaqzResult.Success -> result.value
-                is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration)
+                is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration, softRefresh)
             }
             if (!isCurrent(operation, requestGeneration)) return@launch
             val metadata = when (val result = membershipGateway.readInviteMetadata(GroupId(groupId))) {
                 is SaqzResult.Success -> result.value
-                is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration)
+                is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration, softRefresh)
             }
             val cachedInvite = readCachedInvite()
             val validCachedInvite = cachedInvite?.takeIf { metadata.isActiveNow() && it.matches(metadata) } ?: run {
@@ -106,11 +121,11 @@ class GroupInviteViewModel(
             }
             val requests = when (val result = entryRequestGateway.list(GroupId(groupId))) {
                 is SaqzResult.Success -> result.value
-                is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration)
+                is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration, softRefresh)
             }
             val roster = when (val result = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())) {
                 is SaqzResult.Success -> result.value
-                is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration)
+                is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration, softRefresh)
             }
             if (!isCurrent(operation, requestGeneration)) return@launch
             groupName = group.group.name
@@ -133,6 +148,7 @@ class GroupInviteViewModel(
                 )
             }
         }
+        job.invokeOnCompletion { if (isCurrent(operation, requestGeneration)) loadInFlight = false }
     }
 
     private suspend fun readCachedInvite(): GroupInviteUrlCache? {
@@ -358,8 +374,9 @@ class GroupInviteViewModel(
         }
     }
 
-    private fun failLoad(operation: GenerationKey, requestGeneration: Long) {
-        if (isCurrent(operation, requestGeneration)) update {
+    /** Por baixo ([softRefresh]) a falha não troca a tela por erro: o conteúdo fica. */
+    private fun failLoad(operation: GenerationKey, requestGeneration: Long, softRefresh: Boolean) {
+        if (!softRefresh && isCurrent(operation, requestGeneration)) update {
             it.copy(isLoading = false, loadFailed = true, error = GroupInviteError.Load)
         }
     }

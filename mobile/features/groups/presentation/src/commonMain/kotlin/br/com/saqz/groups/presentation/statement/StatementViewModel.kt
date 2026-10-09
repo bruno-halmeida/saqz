@@ -23,10 +23,13 @@ class StatementViewModel(
     private val gateway: FinanceStatementGateway,
 ) : MviViewModel<StatementState, StatementIntent, StatementEffect>(StatementState()) {
     private var loadGeneration = 0L
+    private var loadInFlight = false
+    private var loadedOnce = false
 
     override fun handleIntent(intent: StatementIntent) {
         when (intent) {
             StatementIntent.Retry -> load(reset = true)
+            StatementIntent.Refresh -> refresh()
             is StatementIntent.SelectFilter -> if (intent.filter != state.value.filter) {
                 update { it.copy(filter = intent.filter) }
                 load(reset = true)
@@ -38,11 +41,23 @@ class StatementViewModel(
         }
     }
 
-    private fun load(reset: Boolean) {
+    /**
+     * Volta à tela (e primeira abertura: esta tela não carrega no `init`). Já carregada, recarrega
+     * a primeira página por baixo — sem esqueleto, sem tela de erro, mantendo o filtro; ainda sem
+     * conteúdo, faz a carga completa. Com carga em voo é ignorado.
+     */
+    private fun refresh() {
+        val current = state.value
+        if (loadInFlight || current.isLoading && loadedOnce || current.isLoadingMore) return
+        load(reset = true, softRefresh = loadedOnce)
+    }
+
+    private fun load(reset: Boolean, softRefresh: Boolean = false) {
         val requestGeneration = ++loadGeneration
+        loadInFlight = true
         val offset = if (reset) 0 else state.value.nextOffset
         val filter = state.value.filter
-        update {
+        if (!softRefresh) update {
             it.copy(
                 isLoading = reset,
                 isLoadingMore = !reset,
@@ -53,7 +68,7 @@ class StatementViewModel(
                 nextOffset = if (reset) 0 else it.nextOffset,
             )
         }
-        viewModelScope.launch {
+        val job = viewModelScope.launch {
             when (
                 val result = gateway.statement(
                     groupId = GroupId(groupId),
@@ -64,7 +79,7 @@ class StatementViewModel(
                     ),
                 )
             ) {
-                is SaqzResult.Failure -> if (requestGeneration == loadGeneration) {
+                is SaqzResult.Failure -> if (requestGeneration == loadGeneration && !softRefresh) {
                     update {
                         it.copy(
                             isLoading = false,
@@ -80,9 +95,11 @@ class StatementViewModel(
                 }
             }
         }
+        job.invokeOnCompletion { if (requestGeneration == loadGeneration) loadInFlight = false }
     }
 
     private fun applyPage(page: FinanceStatementPage, reset: Boolean) {
+        loadedOnce = true
         update {
             it.copy(
                 isLoading = false,

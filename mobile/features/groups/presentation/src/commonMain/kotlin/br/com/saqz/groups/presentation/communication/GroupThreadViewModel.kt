@@ -35,6 +35,7 @@ class GroupThreadViewModel(
 ) : MviViewModel<GroupThreadState, GroupThreadIntent, GroupThreadEffect>(GroupThreadState(draft = saved["draft"] ?: "")) {
     private val channel = if (notices) CommunicationChannel.NOTICE else CommunicationChannel.CHAT
     private var generation = 0
+    private var loadInFlight = false
 
     /** Quem olha: tira o menu de denúncia das próprias mensagens. `null` = ainda não sabe. */
     private var ownUserId: String? = null
@@ -49,6 +50,7 @@ class GroupThreadViewModel(
     override fun handleIntent(intent: GroupThreadIntent) {
         when (intent) {
             GroupThreadIntent.Refresh -> if (!state.value.sending) load()
+            GroupThreadIntent.Appeared -> appeared()
             GroupThreadIntent.More -> if (!state.value.sending && !state.value.paging && state.value.nextCursor != null) load(more = true)
             GroupThreadIntent.Send -> send()
             is GroupThreadIntent.Draft -> if (!state.value.sending) {
@@ -75,16 +77,29 @@ class GroupThreadViewModel(
         }
     }
 
-    private fun load(more: Boolean = false) {
+    /**
+     * Volta à tela: recarga por baixo — mantém mensagens, rascunho e folha de opções; falha mantém a
+     * conversa. Com envio, paginação, folha aberta ou carga em voo é ignorado; sem conteúdo (erro da
+     * primeira carga) tenta a carga completa de novo.
+     */
+    private fun appeared() {
+        if (isFirstAppearance()) return
+        val current = state.value
+        val busy = loadInFlight || current.loading || current.sending || current.paging || current.actionsFor != null
+        if (!busy) load(softRefresh = current.error == null)
+    }
+
+    private fun load(more: Boolean = false, softRefresh: Boolean = false) {
         val request = ++generation
+        loadInFlight = true
         val before = if (more) state.value.nextCursor else null
-        update { it.copy(loading = !more, paging = more, error = null, pageFailed = false) }
-        viewModelScope.launch {
+        if (!softRefresh) update { it.copy(loading = !more, paging = more, error = null, pageFailed = false) }
+        val job = viewModelScope.launch {
             if (!more) {
                 val group = groups.read(GroupId(groupId))
                 if (request != generation) return@launch
                 if (group is SaqzResult.Failure) {
-                    update { it.copy(loading = false, canPost = false, error = group.error.toUiError()) }
+                    if (!softRefresh) update { it.copy(loading = false, canPost = false, error = group.error.toUiError()) }
                     return@launch
                 }
                 val role = (group as SaqzResult.Success).value.group.role
@@ -105,11 +120,12 @@ class GroupThreadViewModel(
                         nextCursor = result.value.nextCursor,
                     )
                 }
-                is SaqzResult.Failure -> if (request == generation) update {
+                is SaqzResult.Failure -> if (request == generation && !softRefresh) update {
                     it.copy(loading = false, paging = false, pageFailed = more, error = if (more) null else result.error.toUiError())
                 }
             }
         }
+        job.invokeOnCompletion { if (request == generation) loadInFlight = false }
     }
 
     private fun send() {

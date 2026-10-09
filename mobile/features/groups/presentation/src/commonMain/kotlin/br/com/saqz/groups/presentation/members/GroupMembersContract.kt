@@ -104,6 +104,9 @@ private fun MemberUi.moderationActions(): List<GroupMemberAction> = if (isSelf) 
 sealed interface GroupMembersIntent {
     data object Retry : GroupMembersIntent
 
+    /** Volta à tela: recarga por baixo, sem esqueleto nem tela de erro. */
+    data object Refresh : GroupMembersIntent
+
     data class UpdateQuery(val value: String) : GroupMembersIntent
 
     data class SelectFilter(val filter: GroupMembersFilter) : GroupMembersIntent

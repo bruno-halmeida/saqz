@@ -16,6 +16,9 @@ data class MonthlyPaymentsGroupUi(val id: String, val name: String, val charges:
 
 sealed interface OwnMonthlyPaymentsIntent {
     data object Retry : OwnMonthlyPaymentsIntent
+
+    /** Volta à tela: recarga por baixo, sem esqueleto nem tela de erro. */
+    data object Refresh : OwnMonthlyPaymentsIntent
     data class OpenGroup(val groupId: String) : OwnMonthlyPaymentsIntent
 }
 

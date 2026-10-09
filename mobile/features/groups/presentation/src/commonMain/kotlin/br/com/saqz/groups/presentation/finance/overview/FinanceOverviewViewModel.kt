@@ -23,7 +23,7 @@ class FinanceOverviewViewModel(
     initialState = financeOverviewInitialState(nowPort.now()),
 ) {
     private var loadGeneration = 0L
-    private var firstTabActivationHandled = false
+    private var loadInFlight = false
 
     init {
         load(FinanceOverviewPeriodSelection.CurrentMonth)
@@ -33,34 +33,40 @@ class FinanceOverviewViewModel(
         when (intent) {
             is FinanceOverviewIntent.SelectPeriod -> load(intent.selection)
             is FinanceOverviewIntent.OpenGroup -> emit(FinanceOverviewEffect.OpenGroup(intent.groupId))
-            FinanceOverviewIntent.TabActive -> {
-                if (firstTabActivationHandled) {
-                    load(state.value.selectedPeriod)
-                } else {
-                    firstTabActivationHandled = true
-                }
-            }
+            FinanceOverviewIntent.TabActive -> if (!isFirstAppearance()) refresh()
             FinanceOverviewIntent.Retry -> load(state.value.selectedPeriod)
         }
     }
 
-    private fun load(selection: FinanceOverviewPeriodSelection) {
+    /**
+     * A aba reaparece (troca de aba, volta de filha, primeiro plano): recarga por baixo — sem
+     * esqueleto e sem tela de erro. Com carga em voo é ignorado; sem conteúdo (erro) carrega por inteiro.
+     */
+    private fun refresh() {
+        val current = state.value
+        if (loadInFlight || current.isLoading) return
+        load(current.selectedPeriod, softRefresh = !current.loadFailed)
+    }
+
+    private fun load(selection: FinanceOverviewPeriodSelection, softRefresh: Boolean = false) {
         val periods = financeOverviewPeriodOptions(financeOverviewDate(nowPort.now()))
         val period = periods.first { it.selection == selection }
         val generation = ++loadGeneration
+        loadInFlight = true
+        // Por baixo o período escolhido fica, mas as opções são recalculadas: na virada do mês
+        // "Mês atual" passa a apontar para o mês novo.
         update {
-            it.copy(
-                isLoading = true,
-                loadFailed = false,
-                selectedPeriod = selection,
-                periods = periods,
-            )
+            if (softRefresh) {
+                it.copy(periods = periods)
+            } else {
+                it.copy(isLoading = true, loadFailed = false, selectedPeriod = selection, periods = periods)
+            }
         }
-        viewModelScope.launch {
+        val job = viewModelScope.launch {
             when (val result = gateway.overview(period.query)) {
                 is SaqzResult.Failure -> {
                     if (generation < loadGeneration) return@launch
-                    update { it.copy(isLoading = false, loadFailed = true) }
+                    if (!softRefresh) update { it.copy(isLoading = false, loadFailed = true) }
                 }
 
                 is SaqzResult.Success -> {
@@ -69,6 +75,7 @@ class FinanceOverviewViewModel(
                 }
             }
         }
+        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
     }
 }
 

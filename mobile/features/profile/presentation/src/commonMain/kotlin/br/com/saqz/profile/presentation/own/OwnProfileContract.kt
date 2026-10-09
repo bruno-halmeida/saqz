@@ -42,6 +42,9 @@ data class OwnProfileGroupUi(
 
 sealed interface OwnProfileIntent {
     data object Refresh : OwnProfileIntent
+
+    /** A aba reaparece: recarga por baixo, sem indicador nem tela de erro. */
+    data object Appeared : OwnProfileIntent
     data object EditData : OwnProfileIntent
     data object OpenPrivacy : OwnProfileIntent
     data object OpenTerms : OwnProfileIntent

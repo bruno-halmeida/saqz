@@ -56,12 +56,18 @@ class GameDetailViewModel(
     private var capacityGeneration = 0
     private var versionToken: GameVersionToken? = null
     private var selfId: String? = null
+
+    /**
+     * Carga no ar. Só a recarga por baixo ([GameDetailIntent.Refresh]) é descartada por ela: o
+     * primeiro `resume` do Root chega logo depois do `init { load() }`. `Retry` passa por cima.
+     */
+    private var loadInFlight = false
     init {
         load()
     }
     override fun handleIntent(intent: GameDetailIntent) {
         when (intent) {
-            GameDetailIntent.Retry -> load()
+            GameDetailIntent.Retry, GameDetailIntent.Refresh -> reload(intent)
             GameDetailIntent.Edit -> emit(GameDetailEffect.OpenEditor)
             GameDetailIntent.OpenSettlement -> if (
                 state.value.isAdmin && state.value.header?.statusTone == GameDetailStatusTone.Completed
@@ -112,34 +118,62 @@ class GameDetailViewModel(
         }
         return true
     }
-    private fun load() {
+    /**
+     * `Retry` recarrega por inteiro. `Refresh` é a volta à tela: recarga por baixo, e o primeiro,
+     * logo após o `init`, é descartado.
+     */
+    private fun reload(intent: GameDetailIntent) {
+        if (intent is GameDetailIntent.Retry) load() else if (!isFirstAppearance()) load(softRefresh = true)
+    }
+
+    private fun load(softRefresh: Boolean = false) {
+        // Recarga por baixo (volta à tela): não repete carga em voo nem atropela escrita ou folha aberta.
+        if (softRefresh && (loadInFlight || state.value.busy)) return
         val generation = ++loadGeneration
-        promotionGeneration++
-        capacityGeneration++
-        update { it.copy(isLoading = true, loadFailed = false, error = null) }
-        viewModelScope.launch {
+        loadInFlight = true
+        if (!softRefresh) {
+            promotionGeneration++
+            capacityGeneration++
+            update { it.copy(isLoading = true, loadFailed = false, error = null) }
+        }
+        val job = viewModelScope.launch {
             val gameResult = gameGateway.read(GroupId(groupId), gameId)
             if (generation != loadGeneration) return@launch
             when (gameResult) {
-                is SaqzResult.Failure -> showFailure(generation, gameResult.error.toUiError())
+                is SaqzResult.Failure -> showFailure(generation, gameResult.error.toUiError(), softRefresh)
                 is SaqzResult.Success -> {
                     versionToken = gameResult.value.version
                     val groupResult = groupGateway.read(GroupId(groupId))
                     if (generation != loadGeneration) return@launch
                     when (groupResult) {
-                        is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError())
+                        is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError(), softRefresh)
                         is SaqzResult.Success -> loadAttendance(
                             generation,
                             gameResult.value.game,
                             groupResult.value.group.role != GroupRole.ATHLETE,
                             groupResult.value.group.gameConfig.mensalistaPriority,
                             groupResult.value.group.gameConfig.promotionMode,
+                            softRefresh,
                         )
                     }
                 }
             }
         }
+        // Libera pelo fim do job: os `return` da guarda de geração e o cancelamento do escopo também
+        // devolvem a chave, e a checagem impede que uma carga velha destrave a nova.
+        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
     }
+
+    /**
+     * Escrita em voo ou folha/diálogo aberto: a recarga por baixo espera a próxima volta. Recarregar
+     * agora descartaria o resultado da escrita (guarda de geração) ou fecharia a folha no meio.
+     */
+    private val GameDetailState.busy: Boolean
+        get() {
+            val writing = cancelling || publishing || savingCapacity || promotingMemberId != null
+            val interacting = cancelDialogOpen || capacitySheetOpen || guest.sheetOpen || guest.removal != null
+            return writing || interacting || guest.adding || guest.removing
+        }
 
     private suspend fun loadAttendance(
         generation: Int,
@@ -147,6 +181,7 @@ class GameDetailViewModel(
         isAdmin: Boolean,
         mensalistaPriority: Boolean,
         promotionMode: PromotionMode,
+        softRefresh: Boolean,
     ) {
         val detailResult = attendanceGateway.read(GroupId(groupId), gameId)
         if (generation != loadGeneration) return
@@ -155,9 +190,9 @@ class GameDetailViewModel(
         val athletesResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
         if (generation != loadGeneration) return
         when {
-            detailResult is SaqzResult.Failure -> showFailure(generation, detailResult.error.toUiError())
-            rosterResult is SaqzResult.Failure -> showFailure(generation, rosterResult.error.toUiError())
-            athletesResult is SaqzResult.Failure -> showFailure(generation, athletesResult.error.toUiError())
+            detailResult is SaqzResult.Failure -> showFailure(generation, detailResult.error.toUiError(), softRefresh)
+            rosterResult is SaqzResult.Failure -> showFailure(generation, rosterResult.error.toUiError(), softRefresh)
+            athletesResult is SaqzResult.Failure -> showFailure(generation, athletesResult.error.toUiError(), softRefresh)
             else -> {
                 val detail = (detailResult as SaqzResult.Success).value
                 val roster = (rosterResult as SaqzResult.Success).value
@@ -410,8 +445,9 @@ class GameDetailViewModel(
         }
     }
 
-    private fun showFailure(generation: Int, error: GroupUiError) {
-        if (generation != loadGeneration) return
+    /** Por baixo ([softRefresh]) a falha não troca a tela por erro: o conteúdo fica e a próxima volta tenta de novo. */
+    private fun showFailure(generation: Int, error: GroupUiError, softRefresh: Boolean = false) {
+        if (generation != loadGeneration || softRefresh) return
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
     }
     private fun Game.toHeader(): GameDetailHeaderUi {

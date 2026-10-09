@@ -50,6 +50,7 @@ class GameSettlementViewModel(
     private var loadGeneration = 0L
     private var mutationGeneration = 0L
     private var closeEmitted = false
+    private var loadInFlight = false
 
     init {
         load()
@@ -58,6 +59,7 @@ class GameSettlementViewModel(
     override fun handleIntent(intent: GameSettlementIntent) {
         when (intent) {
             GameSettlementIntent.Retry -> load()
+            GameSettlementIntent.Refresh -> refresh()
             GameSettlementIntent.ChargeMissing -> openChargeSheet()
             is GameSettlementIntent.ChargeIndividual -> openChargeSheet(intent.chargeId)
             is GameSettlementIntent.OpenReceipt -> openReceiptSheet(intent.chargeId)
@@ -116,6 +118,7 @@ class GameSettlementViewModel(
 
     private suspend fun <T, E : SaqzError> requestOrFail(
         generation: Long,
+        softRefresh: Boolean,
         request: suspend () -> SaqzResult<T, E>,
         mapError: (E) -> GroupUiError,
     ): T? {
@@ -123,46 +126,66 @@ class GameSettlementViewModel(
         if (generation != loadGeneration) return null
         return when (result) {
             is SaqzResult.Failure -> {
-                failLoad(generation, mapError(result.error))
+                failLoad(generation, mapError(result.error), softRefresh)
                 null
             }
             is SaqzResult.Success -> result.value
         }
     }
 
-    private fun load() {
+    private fun GameSettlementState.interacting() =
+        chargeSheetOpen || receiptSheetChargeId != null || updatingChargeId != null
+
+    /**
+     * Volta à tela: recarga por baixo, sem esqueleto e sem tela de erro. Com carga em voo, folha
+     * aberta ou baixa em andamento é ignorado — a troca do estado inteiro fecharia a folha e
+     * descartaria o resultado da baixa. Sem conteúdo (erro da primeira carga) tenta de novo por inteiro.
+     */
+    private fun refresh() {
+        if (isFirstAppearance()) return
+        val current = state.value
+        if (loadInFlight || current.isLoading || current.interacting()) return
+        load(softRefresh = !current.loadFailed)
+    }
+
+    private fun load(softRefresh: Boolean = false) {
         val generation = ++loadGeneration
-        mutationGeneration++
-        update {
-            it.copy(
-                isLoading = true,
-                loadFailed = false,
-                error = null,
-                operationFailed = false,
-            )
+        loadInFlight = true
+        if (!softRefresh) {
+            mutationGeneration++
+            update {
+                it.copy(
+                    isLoading = true,
+                    loadFailed = false,
+                    error = null,
+                    operationFailed = false,
+                )
+            }
         }
-        viewModelScope.launch {
-            val game = requestOrFail(generation, { gameGateway.read(GroupId(groupId), gameId) }) {
+        val job = viewModelScope.launch {
+            val game = requestOrFail(generation, softRefresh, { gameGateway.read(GroupId(groupId), gameId) }) {
                 it.toSettlementUiError()
             }?.game ?: return@launch
-            val group = requestOrFail(generation, { groupGateway.read(GroupId(groupId)) }) {
+            val group = requestOrFail(generation, softRefresh, { groupGateway.read(GroupId(groupId)) }) {
                 it.toSettlementUiError()
             }?.group ?: return@launch
             if (group.role == GroupRole.ATHLETE) {
-                return@launch failLoad(generation, GroupUiError.AccessDenied)
+                return@launch failLoad(generation, GroupUiError.AccessDenied, softRefresh)
             }
-            val roster = requestOrFail(generation, { attendanceGateway.roster(GroupId(groupId), gameId) }) {
+            val roster = requestOrFail(generation, softRefresh, { attendanceGateway.roster(GroupId(groupId), gameId) }) {
                 it.toSettlementUiError()
             } ?: return@launch
-            val athletes = requestOrFail(generation, { athleteGateway.roster(GroupId(groupId), AthleteRosterFilter()) }) {
+            val athletes = requestOrFail(generation, softRefresh, { athleteGateway.roster(GroupId(groupId), AthleteRosterFilter()) }) {
                 it.toSettlementUiError()
             } ?: return@launch
-            val charges = requestOrFail(generation, { organizerFinanceGateway.charges(GroupId(groupId)) }) {
+            val charges = requestOrFail(generation, softRefresh, { organizerFinanceGateway.charges(GroupId(groupId)) }) {
                 it.toSettlementUiError()
             }?.charges ?: return@launch
-            val expenses = requestOrFail(generation, { organizerFinanceGateway.expenses(GroupId(groupId)) }) {
+            val expenses = requestOrFail(generation, softRefresh, { organizerFinanceGateway.expenses(GroupId(groupId)) }) {
                 it.toSettlementUiError()
             }?.expenses ?: return@launch
+            // Por baixo, uma folha aberta depois do pedido não pode ser fechada pela troca do estado.
+            if (softRefresh && state.value.interacting()) return@launch
             updateIfCurrent(generation) {
                 toState(
                     game = game,
@@ -180,6 +203,7 @@ class GameSettlementViewModel(
                 )
             }
         }
+        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
     }
 
     private fun markReceived(chargeId: String, paidMethod: PaidMethod) {
@@ -345,8 +369,9 @@ class GameSettlementViewModel(
         referenceLabel = referenceLabel,
     )
 
-    private fun failLoad(generation: Long, error: GroupUiError) {
-        if (generation != loadGeneration) return
+    /** Por baixo ([softRefresh]) a falha não troca a tela por erro: o fechamento que está na tela fica. */
+    private fun failLoad(generation: Long, error: GroupUiError, softRefresh: Boolean) {
+        if (generation != loadGeneration || softRefresh) return
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
     }
 

@@ -15,6 +15,7 @@ class NotificationCenterViewModel(
     private val blocks: BlockedPeopleRepository,
 ) : MviViewModel<NotificationCenterState, NotificationCenterIntent, NotificationCenterEffect>(NotificationCenterState()) {
     private var generation = 0
+    private var loadInFlight = false
     init {
         load()
         // O servidor deixa de entregar o que a pessoa bloqueada escreveu: a central recarrega e some com ela.
@@ -25,17 +26,31 @@ class NotificationCenterViewModel(
         when (intent) {
             is NotificationCenterIntent.SelectChannel -> update { it.copy(settingsChannel = intent.channel) }
             NotificationCenterIntent.Refresh -> load()
+            NotificationCenterIntent.Appeared -> appeared()
             NotificationCenterIntent.More -> if (!settings && state.value.nextCursor != null) load(more = true)
             NotificationCenterIntent.Save -> if (settings && !state.value.loading && state.value.error == null) save()
             is NotificationCenterIntent.Preferences -> update { it.copy(preferences = intent.value, saved = false, actionFailed = false) }
             is NotificationCenterIntent.Open -> open(intent.sequence)
         }
     }
-    private fun load(more: Boolean = false) {
+    /**
+     * Volta à tela: a caixa de entrada recarrega por baixo, sem esqueleto e sem apagar o que está
+     * na tela (falha mantém a lista). Preferências são formulário e ficam como estão. Sem conteúdo
+     * (erro da primeira carga) a volta tenta a carga completa de novo.
+     */
+    private fun appeared() {
+        if (isFirstAppearance()) return
+        val current = state.value
+        if (settings || loadInFlight || current.loading) return
+        load(softRefresh = current.error == null)
+    }
+
+    private fun load(more: Boolean = false, softRefresh: Boolean = false) {
         val request = ++generation
+        loadInFlight = true
         val before = if (more) state.value.nextCursor else null
-        update { it.copy(loading = !more, busy = more, error = null, actionFailed = false, saved = false) }
-        viewModelScope.launch {
+        if (!softRefresh) update { it.copy(loading = !more, busy = more, error = null, actionFailed = false, saved = false) }
+        val job = viewModelScope.launch {
             if (settings) {
                 when (val result = gateway.preferences()) {
                     is SaqzResult.Success -> if (request == generation) update { it.copy(loading = false, preferences = result.value) }
@@ -56,11 +71,12 @@ class NotificationCenterViewModel(
                             )
                         }).distinctBy { item -> item.sequence })
                 }
-                is SaqzResult.Failure -> if (request == generation) update {
+                is SaqzResult.Failure -> if (request == generation && !softRefresh) update {
                     it.copy(loading = false, busy = false, actionFailed = more, error = if (more) null else result.error.toUiError())
                 }
             }
         }
+        job.invokeOnCompletion { if (request == generation) loadInFlight = false }
     }
     private fun save() {
         val preferences = state.value.preferences

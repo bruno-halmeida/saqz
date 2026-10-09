@@ -29,6 +29,10 @@ internal class GroupScheduleViewModel(
 
     private var loadGeneration = 0
     private var versionToken: GroupVersionToken? = null
+    private var loadInFlight = false
+
+    /** O formulário como veio do servidor: o que difere dele é edição pendente. */
+    private var loadedForm: List<Any>? = null
 
     init {
         load()
@@ -38,6 +42,7 @@ internal class GroupScheduleViewModel(
         if (state.value.isSaving) return
         when (intent) {
             GroupScheduleIntent.Retry -> load()
+            GroupScheduleIntent.Refresh -> refresh()
             is GroupScheduleIntent.ToggleRecurring -> update { it.copy(recurring = intent.value, isPaused = it.isPaused && intent.value) }
             GroupScheduleIntent.AddSlot -> update {
                 it.copy(slotSheet = GroupScheduleState.NEW_SLOT, slotDraft = GroupScheduleState.NEW_SLOT_DRAFT)
@@ -66,10 +71,38 @@ internal class GroupScheduleViewModel(
         }
     }
 
+    private fun GroupScheduleState.form(): List<Any> =
+        listOf(recurring, isPaused, slots, durationMinutes, confirmationLeadMinutes)
+
+    /**
+     * Recarga por baixo ([GroupScheduleIntent.Refresh]): só a lista `upcoming`, e só sem edição
+     * pendente — o formulário nunca é sobrescrito. Falha mantém a lista que está na tela. Se a
+     * primeira carga falhou não há nada para preservar, e a volta tenta a carga completa de novo.
+     */
+    private fun refresh() {
+        if (isFirstAppearance()) return
+        val current = state.value
+        if (loadInFlight || current.isLoading) return
+        if (current.loadFailed) {
+            load()
+            return
+        }
+        if (current.slotSheet != null || current.form() != loadedForm) return
+        val generation = loadGeneration
+        loadInFlight = true
+        val job = viewModelScope.launch {
+            val result = gameGateway.list(GroupId(groupId))
+            if (generation != loadGeneration || result !is SaqzResult.Success) return@launch
+            update { it.copy(upcoming = result.value.filter { game -> game.isUpcoming(todayInZone) }.map(Game::toUpcoming)) }
+        }
+        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
+    }
+
     private fun load() {
         val generation = ++loadGeneration
+        loadInFlight = true
         update { it.copy(isLoading = true, loadFailed = false, error = null) }
-        viewModelScope.launch {
+        val job = viewModelScope.launch {
             val snapshot = when (val result = scheduleGateway.readSchedule(GroupId(groupId))) {
                 is SaqzResult.Failure -> {
                     showFailure(generation, result.error.toUiError())
@@ -105,10 +138,11 @@ internal class GroupScheduleViewModel(
                         upcoming = result.value
                             .filter { game -> game.isUpcoming(todayInZone) }
                             .map(Game::toUpcoming),
-                    )
+                    ).also { loaded -> loadedForm = loaded.form() }
                 }
             }
         }
+        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
     }
 
     private fun showFailure(generation: Int, error: GroupUiError) {

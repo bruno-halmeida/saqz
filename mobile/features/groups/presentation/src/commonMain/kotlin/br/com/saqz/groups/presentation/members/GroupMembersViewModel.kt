@@ -31,6 +31,7 @@ class GroupMembersViewModel(
     private var roster: List<MemberUi> = emptyList()
     private var requests: List<JoinRequestUi> = emptyList()
     private var actionInFlight = false
+    private var loadInFlight = false
 
     init {
         load()
@@ -46,6 +47,7 @@ class GroupMembersViewModel(
     override fun handleIntent(intent: GroupMembersIntent) {
         when (intent) {
             GroupMembersIntent.Retry -> load()
+            GroupMembersIntent.Refresh -> refresh()
             is GroupMembersIntent.UpdateQuery -> {
                 update { it.copy(query = intent.value) }
                 project()
@@ -63,21 +65,32 @@ class GroupMembersViewModel(
         }
     }
 
-    private fun load() {
+    /**
+     * Recarga por baixo ([GroupMembersIntent.Refresh]): lista na tela fica, sem esqueleto e sem
+     * tela de erro. Com carga em voo, ação em andamento ou ficha aberta, é ignorado.
+     */
+    private fun refresh() {
+        if (isFirstAppearance()) return
+        val busy = loadInFlight || actionInFlight || state.value.selected != null
+        if (!busy) load(softRefresh = true)
+    }
+
+    private fun load(softRefresh: Boolean = false) {
         val generation = ++loadGeneration
-        update { it.copy(isLoading = true, loadFailed = false, error = null) }
+        loadInFlight = true
+        if (!softRefresh) update { it.copy(isLoading = true, loadFailed = false, error = null) }
         viewModelScope.launch { blocks.refresh() }
-        viewModelScope.launch {
+        val job = viewModelScope.launch {
             val viewerRole = when (val result = groupGateway.read(GroupId(groupId))) {
                 is SaqzResult.Failure -> {
-                    showFailure(generation, result.error.toUiError())
+                    showFailure(generation, result.error.toUiError(), softRefresh)
                     return@launch
                 }
                 is SaqzResult.Success -> result.value.group.role
             }
             val ownProfile = when (val result = athleteGateway.ownProfile()) {
                 is SaqzResult.Failure -> {
-                    showFailure(generation, result.error.toUiError())
+                    showFailure(generation, result.error.toUiError(), softRefresh)
                     return@launch
                 }
                 is SaqzResult.Success -> result.value
@@ -87,7 +100,7 @@ class GroupMembersViewModel(
             val rosterResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
             if (generation != loadGeneration) return@launch
             if (rosterResult is SaqzResult.Failure) {
-                showFailure(generation, rosterResult.error.toUiError())
+                showFailure(generation, rosterResult.error.toUiError(), softRefresh)
                 return@launch
             }
 
@@ -104,11 +117,11 @@ class GroupMembersViewModel(
                     is GroupMembershipError.DataFailure -> if (membershipError.isExpectedRosterAccessFailure()) {
                         emptyMap()
                     } else {
-                        showFailure(generation, membershipError.toUiError())
+                        showFailure(generation, membershipError.toUiError(), softRefresh)
                         return@launch
                     }
                     else -> {
-                        showFailure(generation, membershipError.toUiError())
+                        showFailure(generation, membershipError.toUiError(), softRefresh)
                         return@launch
                     }
                     }
@@ -141,10 +154,12 @@ class GroupMembersViewModel(
             }
             project()
         }
+        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
     }
 
-    private fun showFailure(generation: Int, error: GroupUiError) {
-        if (generation != loadGeneration) return
+    /** Por baixo ([softRefresh]) a falha não troca a lista por erro: ela fica e a próxima volta tenta de novo. */
+    private fun showFailure(generation: Int, error: GroupUiError, softRefresh: Boolean = false) {
+        if (generation != loadGeneration || softRefresh) return
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
     }
 

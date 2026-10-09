@@ -43,6 +43,9 @@ data class StatementState(
 
 sealed interface StatementIntent {
     data object Retry : StatementIntent
+
+    /** Primeira abertura e volta à tela: carrega; já carregada, recarrega por baixo. */
+    data object Refresh : StatementIntent
     data class SelectFilter(val filter: StatementFilter) : StatementIntent
     data object LoadMore : StatementIntent
     data object NewEntry : StatementIntent

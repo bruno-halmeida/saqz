@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.designsystem.SaqzAvatar
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzButton
@@ -64,6 +65,7 @@ fun MemberProfileRoot(
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
     val moderationState by moderation.state.collectAsStateWithLifecycle()
+    RefreshWhenVisible { viewModel.onIntent(MemberProfileIntent.Refresh) }
     Box(modifier.fillMaxSize()) {
         MemberProfileScreen(
             state = state,

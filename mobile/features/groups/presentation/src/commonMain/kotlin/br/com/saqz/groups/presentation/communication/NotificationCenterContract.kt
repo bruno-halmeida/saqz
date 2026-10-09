@@ -26,6 +26,9 @@ data class NotificationUi(
 )
 sealed interface NotificationCenterIntent {
     data object Refresh : NotificationCenterIntent
+
+    /** Volta à tela: recarga por baixo da caixa de entrada, sem esqueleto nem tela de erro. */
+    data object Appeared : NotificationCenterIntent
     data object More : NotificationCenterIntent
     data class SelectChannel(val channel: NotificationSettingsChannel) : NotificationCenterIntent
     data object Save : NotificationCenterIntent

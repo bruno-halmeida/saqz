@@ -276,6 +276,13 @@ sealed interface GroupDetailsIntent {
     data object OnboardingAction : GroupDetailsIntent
     data object Retry : GroupDetailsIntent
 
+    /**
+     * Recarga por baixo quando a tela volta a aparecer (aba, volta de uma filha, primeiro plano):
+     * sem esqueleto, sem tela de erro e sem zerar o que é da UI — guia, checklist, toast,
+     * "chave copiada". Com carga ou escrita em voo é ignorado.
+     */
+    data object Refresh : GroupDetailsIntent
+
     // 2f — cabeçalho e gerenciamento
     data object CreateNextGame : GroupDetailsIntent
 

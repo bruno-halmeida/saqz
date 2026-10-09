@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.designsystem.SaqzAvatar
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonSize
@@ -89,6 +90,7 @@ fun NotificationCenterRoot(settings: Boolean, onBack: () -> Unit, onOpen: (Notif
     val whatsApp = koinInject<WhatsAppAvailability>()
     val whatsAppChannel by whatsApp.enabled.collectAsStateWithLifecycle()
     LaunchedEffect(whatsApp) { whatsApp.refresh() }
+    RefreshWhenVisible { vm.onIntent(NotificationCenterIntent.Appeared) }
     ObserveAsEvents(vm.effects) { effect -> when (effect) { is NotificationCenterEffect.Open -> onOpen(effect) } }
     NotificationCenterScreen(state, settings, onBack, vm::onIntent, whatsAppChannel)
 }
