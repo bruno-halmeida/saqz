@@ -488,6 +488,7 @@ class HomeViewModel(
             deadlineBellLabel = deadline?.gameBellLabel() ?: "",
             declinedCount = declinedCount,
             pendingCount = pendingCount,
+            waitlistCount = waitlistCount,
             adminHeroDeadlineLabel = adminHeroDeadline,
             display = display,
             meta = meta,

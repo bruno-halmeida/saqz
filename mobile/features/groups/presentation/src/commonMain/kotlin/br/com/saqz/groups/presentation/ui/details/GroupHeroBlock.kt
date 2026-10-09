@@ -150,6 +150,7 @@ private fun GroupGameHero(
             AttendanceScoreBoard(
                 going = attendance.going,
                 out = attendance.notGoing,
+                waiting = attendance.waiting,
                 pending = attendance.pending,
                 onClick = { onIntent(GroupDetailsIntent.ViewGame) },
                 tags = GroupScoreBoardTags,
@@ -447,6 +448,7 @@ private val GroupHeroAttendanceTags = HeroAttendanceTags(
 private val GroupScoreBoardTags = AttendanceScoreBoardTags(
     going = HomeAdminTags.ScoreGoing,
     out = HomeAdminTags.ScoreOut,
+    waiting = HomeAdminTags.ScoreWaiting,
     pending = HomeAdminTags.ScorePending,
 )
 

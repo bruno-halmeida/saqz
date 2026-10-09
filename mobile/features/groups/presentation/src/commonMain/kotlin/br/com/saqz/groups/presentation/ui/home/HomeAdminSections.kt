@@ -63,6 +63,7 @@ internal object HomeAdminTags {
     const val Hero = "home-admin-hero"
     const val ScoreGoing = "home-admin-score-going"
     const val ScoreOut = "home-admin-score-out"
+    const val ScoreWaiting = "home-admin-score-waiting"
     const val ScorePending = "home-admin-score-pending"
     const val Waiting = "home-admin-waiting"
     const val Shortcuts = "home-admin-shortcuts"
@@ -106,6 +107,7 @@ internal fun HomeAdminHero(
         AttendanceScoreBoard(
             going = game.confirmedCount,
             out = game.declinedCount,
+            waiting = game.waitlistCount,
             pending = game.pendingCount,
             // O placar é o dado que o admin mais quer detalhar — tocar abre o jogo,
             // onde mora a lista de quem respondeu (e a cobrança de presença).
@@ -165,6 +167,7 @@ internal fun HomeAdminNoGame(
 private val HomeScoreBoardTags = AttendanceScoreBoardTags(
     going = HomeAdminTags.ScoreGoing,
     out = HomeAdminTags.ScoreOut,
+    waiting = HomeAdminTags.ScoreWaiting,
     pending = HomeAdminTags.ScorePending,
 )
 

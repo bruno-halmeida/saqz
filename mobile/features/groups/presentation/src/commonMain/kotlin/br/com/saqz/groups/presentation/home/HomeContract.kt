@@ -125,6 +125,7 @@ data class HomeNextGameUi(
     val deadlineBellLabel: String = "",
     val declinedCount: Int = 0,
     val pendingCount: Int = 0,
+    val waitlistCount: Int = 0,
     val adminHeroDeadlineLabel: String = "",
     /** "Terça, 19h30" — título do hero (VUL-218). */
     val display: String = "",

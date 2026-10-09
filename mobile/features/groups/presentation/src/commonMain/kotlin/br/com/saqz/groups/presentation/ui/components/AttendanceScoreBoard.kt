@@ -32,23 +32,26 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.home_admin_cd_score_going
 import br.com.saqz.groups.resources.home_admin_cd_score_out
 import br.com.saqz.groups.resources.home_admin_cd_score_pending
+import br.com.saqz.groups.resources.home_admin_cd_score_waiting
 import br.com.saqz.groups.resources.home_admin_cd_scoreboard_open
 import br.com.saqz.groups.resources.home_admin_score_going
 import br.com.saqz.groups.resources.home_admin_score_out
 import br.com.saqz.groups.resources.home_admin_score_pending
+import br.com.saqz.groups.resources.home_admin_score_waiting
 import br.com.saqz.groups.resources.home_admin_score_value
 import org.jetbrains.compose.resources.stringResource
 
-/** `testTag` das três colunas do placar: cada tela responde pelo próprio inventário. */
+/** `testTag` das quatro colunas do placar: cada tela responde pelo próprio inventário. */
 @Immutable
 internal data class AttendanceScoreBoardTags(
     val going: String,
     val out: String,
+    val waiting: String,
     val pending: String,
 )
 
 /**
- * Placar em 3 colunas sobre o hero azul: painel branco a 10%, traços brancos a 18%,
+ * Placar em 4 colunas sobre o hero azul (Vão, Não vão, Na espera, Sem resposta): painel branco a 10%, traços brancos a 18%,
  * números em `display` 28sp — Vão em lima, Não vão em branco a 70%, Sem resposta em
  * warning. SEM Talvez (decisão do projeto). Nasceu no hero do gestor da Início (VUL-192);
  * rótulos e descrições continuam nas chaves `home_admin_score_*`/`home_admin_cd_*`.
@@ -57,6 +60,7 @@ internal data class AttendanceScoreBoardTags(
 internal fun AttendanceScoreBoard(
     going: Int,
     out: Int,
+    waiting: Int,
     pending: Int,
     onClick: () -> Unit,
     tags: AttendanceScoreBoardTags,
@@ -74,7 +78,7 @@ internal fun AttendanceScoreBoard(
                 role = Role.Button,
                 onClick = onClick,
             )
-            // Funde as descrições das três colunas num nó só: o placar inteiro é um botão.
+            // Funde as descrições das quatro colunas num nó só: o placar inteiro é um botão.
             .semantics(mergeDescendants = true) {}
             .height(IntrinsicSize.Min)
             .padding(vertical = metrics.blockGap),
@@ -93,6 +97,15 @@ internal fun AttendanceScoreBoard(
             color = colors.onPrimary.copy(alpha = ScoreOutAlpha),
             contentDescription = stringResource(Res.string.home_admin_cd_score_out, out),
             modifier = Modifier.testTag(tags.out),
+        )
+        ScoreDivider()
+        // A reserva entra no placar porque é o número que decide se o gestor abre vaga (rodada de 09/10/2026).
+        ScoreColumn(
+            value = waiting,
+            label = stringResource(Res.string.home_admin_score_waiting),
+            color = colors.onPrimary,
+            contentDescription = stringResource(Res.string.home_admin_cd_score_waiting, waiting),
+            modifier = Modifier.testTag(tags.waiting),
         )
         ScoreDivider()
         ScoreColumn(

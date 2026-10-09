@@ -78,6 +78,7 @@
     <string name="home_admin_score_going">Vão</string>
     <string name="home_admin_score_out">Não vão</string>
     <string name="home_admin_score_pending">Sem resposta</string>
+    <string name="home_admin_score_waiting">Na espera</string>
     <string name="home_admin_hero_deadline">Encerra %1$s · %2$s</string>
     <string name="home_admin_score_value">%1$d</string>
     <string name="home_admin_waiting_title">Esperando você</string>
@@ -94,6 +95,7 @@
     <string name="home_admin_cd_score_going">%1$d confirmados</string>
     <string name="home_admin_cd_score_out">%1$d não vão</string>
     <string name="home_admin_cd_score_pending">%1$d pendentes</string>
+    <string name="home_admin_cd_score_waiting">%1$d na lista de espera</string>
     <string name="home_admin_cd_scoreboard_open">Abrir a lista de presença do jogo</string>
     <string name="home_admin_cd_waiting_entry_requests">%1$d pedidos para entrar em %2$s</string>
     <string name="home_admin_cd_waiting_monthly">%1$d mensalidades a receber em %2$s</string>

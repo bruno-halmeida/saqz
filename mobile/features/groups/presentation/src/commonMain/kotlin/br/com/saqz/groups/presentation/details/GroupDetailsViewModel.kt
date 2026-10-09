@@ -856,6 +856,7 @@ class GroupDetailsViewModel(
         notGoing = declinedCount,
         pending = pendingCount,
         availableSpots = availableSpots,
+        waiting = waitlistCount,
     )
 
     private suspend fun Game.toNextGame(detail: AttendanceDetail, roster: AttendanceRoster): NextGameUi {

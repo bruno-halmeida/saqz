@@ -122,6 +122,8 @@ data class AttendanceSummaryUi(
     val notGoing: Int,
     val pending: Int,
     val availableSpots: Int = 0,
+    /** Quem está na reserva não é "Vão" nem "Sem resposta"; sem este número o gestor não vê a fila no resumo. */
+    val waiting: Int = 0,
 )
 
 @Immutable
