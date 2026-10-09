@@ -18,16 +18,22 @@ porque o backend trata `anual` como cobrança anual.
 | Product ID | Plano | Ciclo | Preço | Nível no grupo |
 |---|---|---|---|---|
 | `app.saqz.ilimitado.mensal` | `ILIMITADO` | `MONTHLY` | R$ 89,90 | 1 |
-| `app.saqz.ilimitado.anual` | `ILIMITADO` | `ANNUAL` | R$ 809,90 | 2 |
-| `app.saqz.organizador.mensal` | `ORGANIZADOR` | `MONTHLY` | R$ 59,90 | 3 |
-| `app.saqz.organizador.anual` | `ORGANIZADOR` | `ANNUAL` | R$ 539,90 | 4 |
-| `app.saqz.titular.mensal` | `TITULAR` | `MONTHLY` | R$ 39,90 | 5 |
-| `app.saqz.titular.anual` | `TITULAR` | `ANNUAL` | R$ 359,90 | 6 |
+| `app.saqz.ilimitado.anual` | `ILIMITADO` | `ANNUAL` | R$ 809,90 | 1 |
+| `app.saqz.organizador.mensal` | `ORGANIZADOR` | `MONTHLY` | R$ 59,90 | 2 |
+| `app.saqz.organizador.anual` | `ORGANIZADOR` | `ANNUAL` | R$ 539,90 | 2 |
+| `app.saqz.titular.mensal` | `TITULAR` | `MONTHLY` | R$ 39,90 | 3 |
+| `app.saqz.titular.anual` | `TITULAR` | `ANNUAL` | R$ 359,90 | 3 |
 
 O nível define upgrade e downgrade: subir de nível vale na hora (com reembolso
-proporcional), descer vale na renovação. Hoje cada assinatura tem um nível próprio;
-o ideal é mensal e anual do mesmo plano no mesmo nível (arrastar uma sobre a outra em
-"Edit Level"). O backend não depende dos níveis. Os anuais da web (9 mensalidades)
+proporcional), descer vale na renovação; trocar de ciclo dentro do mesmo nível (mensal
+↔ anual) é "crossgrade" e vale na renovação. Mensal e anual do mesmo plano ficam **no
+mesmo nível**: a revisão de 08/10/2026 rejeitou por 3.1.2(b) a configuração anterior,
+com um nível por assinatura. Para mudar: página do grupo → Edit → marcar a assinatura →
+Edit Level → arrastar uma linha sobre a outra → Save. Enquanto grupo e assinaturas
+estão numa submissão (mesmo rejeitada), as linhas vêm desabilitadas: é preciso "Cancel
+Submission" antes, e aí tudo volta a "Developer Rejected" até a próxima submissão.
+O backend não depende dos níveis (`pendingPlan` ignora troca de ciclo no mesmo plano) e
+o `Saqz.storekit` já usa `groupNumber` 1/2/3. Os anuais da web (9 mensalidades)
 não existem na tabela de preços da Apple; ficou o ponto ",90" mais próximo.
 
 O mapeamento product ID → plano/ciclo existe só no backend e chega ao app por
@@ -40,8 +46,15 @@ produtos **não** têm oferta introdutória.
 ## Vínculo com a conta
 
 Toda compra leva `appAccountToken` = id do usuário no Saqz (UUID), obtido em
-`GET /subscriptions/app-store/account-token`. A transação original fica presa à
-conta que a comprou: outra conta Saqz no mesmo Apple ID não herda a assinatura.
+`GET /subscriptions/app-store/account-token`. Enquanto a assinatura dá acesso
+(período pago ou carência de cobrança), a transação original fica presa à conta
+que a comprou: outra conta Saqz no mesmo Apple ID recebe "já vinculada a outra
+conta", inclusive em "Restaurar compras". Depois de vencer ou ser estornada, a
+assinatura segue o pagamento: se o mesmo Apple ID volta a assinar logado em outra
+conta (a Apple reaproveita o `originalTransactionId`), a assinatura passa para a
+conta do `appAccountToken` da compra nova, no envio pelo app e no webhook. Regra
+de 09/10/2026, depois que a revisora da Apple comprou com a conta de revisão e a
+compra de teste seguinte, com o mesmo Apple ID sandbox, caiu nesse bloqueio.
 
 ## Contrato HTTP
 
@@ -161,7 +174,8 @@ as transações quando o usuário abre o app.
    Nos metadados, link para os Termos de Uso (EULA) e para a Política de Privacidade.
    Nas notas da revisão: a assinatura do Saqz é vendida pelo In-App Purchase; o
    pagamento de mensalidade dos grupos (quadra) é serviço presencial e está desligado
-   nesta versão.
+   nesta versão. Dizer também que as seis assinaturas estão num único grupo, em três
+   níveis (Ilimitado 1, Organizador 2, Titular 3), com mensal e anual no mesmo nível.
 
 ## App (iOS)
 
