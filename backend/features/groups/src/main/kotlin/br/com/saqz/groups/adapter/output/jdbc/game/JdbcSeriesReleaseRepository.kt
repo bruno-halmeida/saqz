@@ -11,10 +11,10 @@ import javax.sql.DataSource
 class JdbcSeriesReleaseRepository(dataSource: DataSource) : ReleasableOccurrenceRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun nextOccurrences(after: Instant, until: Instant, groupId: UUID?): List<ReleasableOccurrence> =
+    override fun nextOccurrences(after: Instant, until: Instant?, groupId: UUID?): List<ReleasableOccurrence> =
         jdbc.sql(NEXT_OCCURRENCES)
             .param("after", Timestamp.from(after))
-            .param("until", Timestamp.from(until))
+            .param("until", until?.let(Timestamp::from))
             .param("groupId", groupId)
             .query { rs, _ ->
                 ReleasableOccurrence(
@@ -36,7 +36,7 @@ class JdbcSeriesReleaseRepository(dataSource: DataSource) : ReleasableOccurrence
             WHERE g.series_id IS NOT NULL
               AND g.status = 'DRAFT'
               AND g.starts_at > :after
-              AND g.starts_at <= :until
+              AND (CAST(:until AS timestamptz) IS NULL OR g.starts_at <= :until)
               AND (CAST(:groupId AS uuid) IS NULL OR g.group_id = CAST(:groupId AS uuid))
             ORDER BY g.group_id, g.series_id, g.slot_key, g.starts_at, g.id
         """

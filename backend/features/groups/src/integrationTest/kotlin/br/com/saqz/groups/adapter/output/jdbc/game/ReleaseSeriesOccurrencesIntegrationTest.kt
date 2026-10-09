@@ -103,6 +103,20 @@ class ReleaseSeriesOccurrencesIntegrationTest {
         assertEquals(1, int("SELECT count(*) FROM games WHERE group_id='$other' AND status='PUBLISHED'"))
     }
 
+    @Test fun `a new slot is born with its next game published even beyond the five day window`() {
+        // Só quarta 20h: com o relógio na quinta 17/09, a próxima quarta (23/09) fica a 6 dias.
+        execute("DELETE FROM group_regular_slots WHERE group_id='$group'")
+        execute("INSERT INTO group_regular_slots (id,group_id,weekday,start_time,duration_minutes,position,version,created_at,updated_at) VALUES ('${UUID.randomUUID()}','$group',3,TIME '20:00',120,0,1,now(),now())")
+
+        sync(CLOCK)
+
+        assertEquals(listOf("2026-09-23 20:00"), published())
+        assertEquals("DRAFT", string("SELECT status::text FROM games WHERE group_id='$group' AND local_date='2026-09-30'"))
+        // A rotina continua com a janela: 30/09 só sai a 5 dias de começar.
+        release(CLOCK).releaseAll()
+        assertEquals(listOf("2026-09-23 20:00"), published())
+    }
+
     /** Outro grupo do mesmo dono, com quinta 20h na agenda. */
     private fun otherGroup(): UUID {
         val other = UUID.randomUUID(); val venue = UUID.randomUUID()

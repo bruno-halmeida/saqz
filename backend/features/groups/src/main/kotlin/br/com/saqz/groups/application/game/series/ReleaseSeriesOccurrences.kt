@@ -26,17 +26,19 @@ data class ReleasableOccurrence(val groupId: UUID, val gameId: UUID, val version
 
 interface ReleasableOccurrenceRepository {
     /**
-     * O próximo rascunho de cada horário (grupo, série, slot) que começa depois de [after] e até
-     * [until], em grupo ativo. Um por horário: o seguinte só conta depois que este começar.
+     * O próximo rascunho de cada horário (grupo, série, slot) que começa depois de [after] e, se houver
+     * [until], até ele (nulo = sem limite), em grupo ativo. Um por horário: o seguinte só conta depois
+     * que este começar.
      */
-    fun nextOccurrences(after: Instant, until: Instant, groupId: UUID?): List<ReleasableOccurrence>
+    fun nextOccurrences(after: Instant, until: Instant?, groupId: UUID?): List<ReleasableOccurrence>
 }
 
 /**
- * Liberação da série: os jogos nascem mês a mês em rascunho e ficam invisíveis até aqui. O próximo
- * jogo de cada horário é publicado [lead] antes de começar, pelo mesmo caminho do "Publicar" manual
- * (presença aberta, mensalistas confirmados, aviso aos membros). É por estado: repetir não publica
- * duas vezes e um rascunho já publicado à mão não é tocado.
+ * Liberação da série: os jogos nascem mês a mês em rascunho e ficam invisíveis até aqui. A rotina
+ * publica o próximo jogo de cada horário [lead] antes de começar; já o horário recém-criado ou editado
+ * ([release] de um grupo) sai com o próximo jogo publicado na hora, qualquer que seja a distância.
+ * Vale o mesmo caminho do "Publicar" manual (presença aberta, mensalistas confirmados, aviso aos
+ * membros). É por estado: repetir não publica duas vezes e um rascunho publicado à mão não é tocado.
  */
 class ReleaseSeriesOccurrences(
     private val repository: ReleasableOccurrenceRepository,
@@ -48,12 +50,12 @@ class ReleaseSeriesOccurrences(
 ) : SeriesOccurrenceRelease {
     init { require(!lead.isNegative) { "lead must not be negative" } }
 
-    override fun release(groupId: UUID) = releaseWithin(groupId)
-    override fun releaseAll() = releaseWithin(groupId = null)
+    override fun release(groupId: UUID) = releaseWithin(groupId, withLead = false)
+    override fun releaseAll() = releaseWithin(groupId = null, withLead = true)
 
-    private fun releaseWithin(groupId: UUID?) {
+    private fun releaseWithin(groupId: UUID?, withLead: Boolean) {
         val now = clock.instant()
-        repository.nextOccurrences(now, now.plus(lead), groupId)
+        repository.nextOccurrences(now, if (withLead) now.plus(lead) else null, groupId)
             .groupBy { it.groupId }
             // Trial expirado sem assinatura: a rotina cancela o futuro da série; nada a liberar.
             .filterKeys { horizon.until(it) != null }

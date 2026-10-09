@@ -44,7 +44,7 @@ class ReleaseSeriesOccurrencesTest {
 
         release().releaseAll()
 
-        assertEquals(listOf(Triple<Instant, Instant, UUID?>(now, now.plus(lead), null)), repository.calls)
+        assertEquals(listOf(Triple<Instant, Instant?, UUID?>(now, now.plus(lead), null)), repository.calls)
         assertEquals(GameStatus.PUBLISHED, games.status(thursday))
         assertEquals(GameStatus.PUBLISHED, games.status(saturday))
         // Mesmo caminho do "Publicar" manual: presença aberta, aviso e confirmações em nome do dono.
@@ -58,9 +58,22 @@ class ReleaseSeriesOccurrencesTest {
         assertEquals(emptyList(), failures)
     }
 
-    @Test fun `release after a group sync is limited to that group`() {
+    @Test fun `release after a group sync is limited to that group and has no upper bound`() {
         release().release(groupId)
-        assertEquals(listOf(Triple(now, now.plus(lead), groupId)), repository.calls)
+        // Horário recém-criado ou editado sai com o próximo jogo publicado, por mais distante que seja.
+        assertEquals(listOf(Triple<Instant, Instant?, UUID?>(now, null, groupId)), repository.calls)
+    }
+
+    @Test fun `the routine keeps the lead window while the group release does not`() {
+        release().releaseAll()
+        release().release(groupId)
+        assertEquals(
+            listOf(
+                Triple<Instant, Instant?, UUID?>(now, now.plus(lead), null),
+                Triple<Instant, Instant?, UUID?>(now, null, groupId),
+            ),
+            repository.calls,
+        )
     }
 
     @Test fun `groups without a creation horizon are left alone`() {
@@ -115,12 +128,12 @@ class ReleaseSeriesOccurrencesTest {
     ) { what, _ -> failures += what }
 
     private class FakeReleasable(private val owner: UUID) : ReleasableOccurrenceRepository {
-        val calls = mutableListOf<Triple<Instant, Instant, UUID?>>()
+        val calls = mutableListOf<Triple<Instant, Instant?, UUID?>>()
         private val offered = mutableListOf<ReleasableOccurrence>()
         fun offer(vararg games: Game, version: Long? = null) {
             games.forEach { offered += ReleasableOccurrence(it.groupId, it.id, version ?: it.version, owner) }
         }
-        override fun nextOccurrences(after: Instant, until: Instant, groupId: UUID?): List<ReleasableOccurrence> {
+        override fun nextOccurrences(after: Instant, until: Instant?, groupId: UUID?): List<ReleasableOccurrence> {
             calls += Triple(after, until, groupId)
             return offered.toList()
         }
