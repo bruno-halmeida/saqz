@@ -220,6 +220,8 @@ data class Game(
     val version: Long = 1,
     val detachedFromSeries: Boolean = false,
     val financeReviewRequired: Boolean = false,
+    /** Linhagem da série semanal que gerou o jogo; nulo no jogo avulso. */
+    val seriesId: UUID? = null,
 )
 
 object GameLifecyclePolicy {
@@ -242,4 +244,14 @@ object GameLifecyclePolicy {
         status == GameStatus.DRAFT -> role == GroupRole.OWNER || role == GroupRole.ADMIN
         else -> true
     }
+
+    /**
+     * A série nasce mês a mês em rascunho e a rotina libera (publica) só o próximo jogo de cada
+     * horário. Até lá a ocorrência não existe para o app, nem para o gestor: ele só cancela o que
+     * já foi liberado. O rascunho avulso continua sendo do gestor.
+     */
+    fun visibleTo(game: Game, role: GroupRole?): Boolean =
+        visibleTo(game.status, role) && !isUnreleasedOccurrence(game)
+
+    fun isUnreleasedOccurrence(game: Game): Boolean = game.status == GameStatus.DRAFT && game.seriesId != null
 }

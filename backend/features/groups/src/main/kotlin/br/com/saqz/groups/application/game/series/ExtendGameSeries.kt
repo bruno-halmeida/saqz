@@ -8,7 +8,8 @@ import java.time.ZoneId
 
 /**
  * Rotina da recorrência: jogos nascem mês a mês, conforme o plano do dono renova
- * ([GameCreationHorizon]). Trial expirado sem assinatura cancela o futuro de toda série.
+ * ([GameCreationHorizon]), e o próximo de cada horário é liberado perto da data
+ * ([ReleaseSeriesOccurrences]). Trial expirado sem assinatura cancela o futuro de toda série.
  * Tudo aqui é por estado, então rodar duas vezes (ou em duas instâncias) não duplica nada.
  */
 class ExtendGameSeries(
@@ -20,6 +21,7 @@ class ExtendGameSeries(
     private val horizon: GameCreationHorizon,
     private val ids: () -> java.util.UUID,
     private val clock: Clock,
+    private val release: SeriesOccurrenceRelease = SeriesOccurrenceRelease.None,
     private val onFailure: (String, Throwable) -> Unit = { _, _ -> },
 ) {
     fun run() {
@@ -40,6 +42,8 @@ class ExtendGameSeries(
         }
         // Cobre quem voltou a ter plano (série cancelada no fim do trial renasce) e agenda que ficou sem série.
         schedules.groupsWithRegularSlots().forEach { groupId -> guarded("group $groupId") { scheduleSeries.sync(groupId) } }
+        // Também as séries sem horário regular (criadas pelo editor de jogo em grupos antigos).
+        guarded("release") { release.releaseAll() }
     }
 
     // Um grupo com conflito de horário não pode parar a rotina dos outros.

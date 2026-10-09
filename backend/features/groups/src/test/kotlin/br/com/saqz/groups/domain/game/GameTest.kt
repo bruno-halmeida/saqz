@@ -159,6 +159,18 @@ class GameTest {
         assertFalse(GameLifecyclePolicy.visibleTo(GameStatus.PUBLISHED, null))
     }
 
+    @Test fun `unreleased series occurrence is hidden even from organizers while their own draft stays`() {
+        val occurrence = Game(UUID.randomUUID(), UUID.randomUUID(), valid(validInput()), GameStatus.DRAFT, seriesId = UUID.randomUUID())
+        assertTrue(GameLifecyclePolicy.isUnreleasedOccurrence(occurrence))
+        assertFalse(GameLifecyclePolicy.visibleTo(occurrence, GroupRole.OWNER))
+        assertFalse(GameLifecyclePolicy.visibleTo(occurrence, GroupRole.ADMIN))
+        // Liberada (publicada), a ocorrência é um jogo como outro qualquer.
+        assertTrue(GameLifecyclePolicy.visibleTo(occurrence.copy(status = GameStatus.PUBLISHED), GroupRole.ATHLETE))
+        // Rascunho avulso continua sendo do gestor.
+        assertTrue(GameLifecyclePolicy.visibleTo(occurrence.copy(seriesId = null), GroupRole.OWNER))
+        assertFalse(GameLifecyclePolicy.visibleTo(occurrence.copy(seriesId = null), GroupRole.ATHLETE))
+    }
+
     private fun valid(input: GameDraftInput): GameSnapshot =
         assertIs<GameDraftValidation.Valid>(GameDraftValidator.validate(input)).snapshot
 

@@ -42,7 +42,7 @@ class ListGames(
 ) {
     fun execute(actor: UUID, groupId: UUID): GameListResult {
         val role = repository.role(actor, groupId) ?: return GameListResult.GroupNotFound
-        val games = repository.list(groupId).filter { GameLifecyclePolicy.visibleTo(it.status, role) }
+        val games = repository.list(groupId).filter { GameLifecyclePolicy.visibleTo(it, role) }
         val counts = attendance.counts(games.map(Game::id).toSet())
         return GameListResult.Success(games.map { it.view(counts[it.id]) })
     }
@@ -55,7 +55,7 @@ class GetGame(
     fun execute(actor: UUID, groupId: UUID, gameId: UUID): GameReadResult {
         val role = repository.role(actor, groupId) ?: return GameReadResult.GameNotFound
         val game = repository.find(groupId, gameId) ?: return GameReadResult.GameNotFound
-        if (!GameLifecyclePolicy.visibleTo(game.status, role)) return GameReadResult.GameNotFound
+        if (!GameLifecyclePolicy.visibleTo(game, role)) return GameReadResult.GameNotFound
         return GameReadResult.Success(game.view(attendance.counts(setOf(gameId))[gameId]))
     }
 }

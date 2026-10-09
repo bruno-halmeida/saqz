@@ -34,6 +34,26 @@ class GameQueriesTest {
         assertEquals(listOf(GameStatus.PUBLISHED, GameStatus.CANCELLED, GameStatus.COMPLETED), result.games.map { it.game.status })
     }
 
+    @Test fun `organizer list hides unreleased series occurrences and keeps own drafts`() {
+        val occurrence = game(GameStatus.DRAFT).copy(seriesId = UUID.randomUUID())
+        val released = game(GameStatus.PUBLISHED).copy(seriesId = occurrence.seriesId)
+        val ownDraft = game(GameStatus.DRAFT)
+        val result = assertIs<GameListResult.Success>(
+            ListGames(FakeQueries(GroupRole.OWNER, listOf(occurrence, released, ownDraft)), FakeCounts()).execute(actor, groupId),
+        )
+        assertEquals(listOf(released.id, ownDraft.id), result.games.map { it.game.id })
+    }
+
+    @Test fun `organizer read of an unreleased series occurrence is not found and does not request counts`() {
+        val occurrence = game(GameStatus.DRAFT).copy(seriesId = UUID.randomUUID())
+        val counts = FakeCounts()
+        assertSame(
+            GameReadResult.GameNotFound,
+            GetGame(FakeQueries(GroupRole.ADMIN, listOf(occurrence)), counts).execute(actor, groupId, occurrence.id),
+        )
+        assertEquals(0, counts.calls)
+    }
+
     @Test fun `nonmember list is privacy preserving and never reads games or counts`() {
         val repository = FakeQueries(null, listOf(game(GameStatus.PUBLISHED)))
         val counts = FakeCounts()

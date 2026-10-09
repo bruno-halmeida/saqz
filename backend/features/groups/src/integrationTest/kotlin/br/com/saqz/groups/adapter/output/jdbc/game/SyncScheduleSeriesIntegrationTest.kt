@@ -131,7 +131,7 @@ class SyncScheduleSeriesIntegrationTest {
     private fun extend(onFailure: (String, Throwable) -> Unit = { _, _ -> }) = ExtendGameSeries(
         JdbcWeeklySeriesRepository(dataSource), JdbcGroupScheduleRepository(dataSource),
         MaterializeWeeklySeries(JdbcTransactionRunner(dataSource), JdbcOccurrenceMaterializationRepository(dataSource), UUID::randomUUID, CLOCK, horizon = horizon),
-        boundary(), syncer(), horizon, UUID::randomUUID, CLOCK, onFailure,
+        boundary(), syncer(), horizon, UUID::randomUUID, CLOCK, onFailure = onFailure,
     ).run()
 
     /** Jogo avulso publicado, fora de qualquer série, como o editor de jogo cria. */

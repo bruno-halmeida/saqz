@@ -183,6 +183,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
         version = rs.getLong("version"),
         detachedFromSeries = rs.getBoolean("detached_from_series"),
         financeReviewRequired = rs.getBoolean("finance_review_required"),
+        seriesId = rs.getObject("series_id", UUID::class.java),
     )
 
     private companion object {
@@ -271,7 +272,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                    g.starts_at, g.duration_minutes, g.confirmation_deadline, g.venue_id,
                    g.venue_name, g.venue_address, g.venue_court, g.capacity,
                    g.game_fee_cents, g.notes, g.status, g.version, g.detached_from_series,
-                   g.finance_review_required
+                   g.finance_review_required, g.series_id
             FROM games g
             JOIN access_groups groups ON groups.id = g.group_id AND groups.deleted_at IS NULL
         """

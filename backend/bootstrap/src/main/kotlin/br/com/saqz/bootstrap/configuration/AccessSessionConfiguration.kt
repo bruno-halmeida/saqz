@@ -490,6 +490,7 @@ class AccessSessionConfiguration {
         ids: GameIdFactory,
         autoConfirm: AutoConfirmAttendance,
         horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
+        release: br.com.saqz.groups.application.game.series.ReleaseSeriesOccurrences,
     ) = br.com.saqz.groups.application.game.series.SyncScheduleSeries(
         schedules,
         series,
@@ -498,6 +499,7 @@ class AccessSessionConfiguration {
         Clock.systemUTC(),
         AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
         horizon,
+        release,
     )
 
     @Bean
@@ -856,6 +858,19 @@ class AccessSessionConfiguration {
         AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
         horizon,
     )
+    @Bean fun seriesReleaseRepository(dataSource: DataSource) =
+        br.com.saqz.groups.adapter.output.jdbc.game.JdbcSeriesReleaseRepository(dataSource)
+    @Bean fun releaseSeriesOccurrences(
+        repository: br.com.saqz.groups.adapter.output.jdbc.game.JdbcSeriesReleaseRepository,
+        lifecycle: ChangeGameLifecycle,
+        horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
+        @Value("\${saqz.games.series-release-lead-days:5}") leadDays: Long,
+    ) = br.com.saqz.groups.application.game.series.ReleaseSeriesOccurrences(
+        repository, lifecycle, horizon, java.time.Duration.ofDays(leadDays), Clock.systemUTC(),
+    ) { what, failure ->
+        org.slf4j.LoggerFactory.getLogger(br.com.saqz.groups.application.game.series.ReleaseSeriesOccurrences::class.java)
+            .warn("game series release failed for {}", what, failure)
+    }
     @Bean fun extendGameSeries(
         series: JdbcWeeklySeriesRepository,
         schedules: br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupScheduleRepository,
@@ -864,8 +879,9 @@ class AccessSessionConfiguration {
         scheduleSeries: br.com.saqz.groups.application.game.series.SyncScheduleSeries,
         horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
         ids: GameIdFactory,
+        release: br.com.saqz.groups.application.game.series.ReleaseSeriesOccurrences,
     ) = br.com.saqz.groups.application.game.series.ExtendGameSeries(
-        series, schedules, materialize, boundary, scheduleSeries, horizon, ids::create, Clock.systemUTC(),
+        series, schedules, materialize, boundary, scheduleSeries, horizon, ids::create, Clock.systemUTC(), release,
     ) { what, failure ->
         val log = org.slf4j.LoggerFactory.getLogger(br.com.saqz.groups.application.game.series.ExtendGameSeries::class.java)
         // Grupo antigo que já tem série do editor no mesmo horário: a série da agenda não nasce, e isso não é erro.

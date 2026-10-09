@@ -47,8 +47,15 @@ class SyncScheduleSeries(
     private val clock: Clock,
     private val autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { },
     private val horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
+    private val release: SeriesOccurrenceRelease = SeriesOccurrenceRelease.None,
 ) : ScheduleSeriesSync {
     override fun sync(groupId: UUID) {
+        syncSeries(groupId)
+        // A série recém-criada ou editada já sai com o próximo jogo de cada horário liberado.
+        release.release(groupId)
+    }
+
+    private fun syncSeries(groupId: UUID) {
         val group = defaults.seriesDefaults(groupId) ?: return
         // Pausa = "para de criar novos jogos; os já criados continuam" (group_schedule_pause_help).
         if (group.paused) return
