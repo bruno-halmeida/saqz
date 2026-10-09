@@ -52,6 +52,19 @@ coisas: por isso os builds apontam para 18080 em vez do default de `gradle.prope
 - **Banco.** `psql -h 127.0.0.1 -p 15432 -U saqz saqz` (senha `saqz-multidev-local-only`) para
   conferir o que a tela mostra. `stack.sh reset` apaga banco e contas.
 
+## Dicas de operação (aprendidas em 09/10/2026)
+
+- Android: `mobile_list_elements_on_screen` falha com "no XML content" enquanto a tela anima ou
+  carrega; nesses casos `adb shell input tap` e `adb exec-out screencap` resolvem. BACK fecha a folha
+  "Tenho um convite" inteira, não só o teclado: entregar o convite pelo `am start` é mais seguro.
+- iOS: `mobile_launch_app` nem sempre traz o app para frente; `xcrun simctl launch <udid> app.saqz`
+  sim. O teclado desloca o layout, então preencher um campo por vez e relistar; "next"/"done" do
+  teclado trocam de campo; para alcançar um botão coberto, rolar o conteúdo. Logs de rede do app
+  (`SaqzNetwork: …`) só aparecem com `simctl launch --console-pty`.
+- As telas de Início e grupo não recarregam ao trocar de aba: para ver o efeito de outro aparelho,
+  abrir uma tela nova ("Ver o jogo") ou reabrir o app.
+- Resultado de cada rodada vai num `rodada-<data>.md` nesta pasta.
+
 ## Roteiro base
 
 As jornadas são as de [`tests/producao`](../producao/README.md), executadas nesta ordem com os quatro

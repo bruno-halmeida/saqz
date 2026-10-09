@@ -4,6 +4,8 @@
 # Os dois usam o Firebase Auth Emulator (projeto saqz-local), porque não há google-services.json nem
 # GoogleService-Info.plist de dev no checkout. Demora alguns minutos na primeira vez.
 # O simulador é só arm64: o Gradle não tem o alvo ios_x64, e o destino genérico pediria os dois.
+# Assinatura ad-hoc (CODE_SIGN_IDENTITY=-), não CODE_SIGNING_ALLOWED=NO: sem assinatura o app perde os
+# entitlements e o Keychain recusa gravar sessão e convite pendente ("Não foi possível entrar").
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -23,7 +25,7 @@ echo "== iOS SaqzDev Debug, simulador ($IOS_URL)"
 "$ROOT/mobile/gradlew" -p "$ROOT/mobile" :compose-app:generateIosApiConfig "-Psaqz.api.devBaseUrl=$IOS_URL" --console=plain -q
 env "ORG_GRADLE_PROJECT_saqz.api.devBaseUrl=$IOS_URL" xcodebuild -project "$ROOT/mobile/ios-app/SaqzIOS.xcodeproj" -scheme SaqzDev \
   -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath "$HOME_DIR/DerivedData" \
-  ARCHS=arm64 EXCLUDED_ARCHS=x86_64 CODE_SIGNING_ALLOWED=NO build -quiet
+  ARCHS=arm64 EXCLUDED_ARCHS=x86_64 CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO build -quiet
 APP="$HOME_DIR/DerivedData/Build/Products/Debug-iphonesimulator/SaqzIOS.app"
 /usr/libexec/PlistBuddy -c "Print :SaqzAPIBaseURL" "$APP/Info.plist"
 echo "ok: $APP"
