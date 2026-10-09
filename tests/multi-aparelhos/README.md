@@ -41,7 +41,10 @@ coisas: por isso os builds apontam para 18080 em vez do default de `gradle.prope
   As contas sobrevivem a `stack.sh down` (exportadas em `~/.saqz-multidev/auth-emulator`).
 - **E-mail.** Tudo cai no Mailpit, em `http://127.0.0.1:18025`; nada sai da máquina.
 - **Push.** Não há FCM nem APNs: os cartões e contadores atualizam ao reabrir a tela, mas o push
-  "O jogo está liberado" (PROD-JG01) e os botões da notificação (PROD-JG03) não aparecem.
+  "O jogo está liberado" (PROD-JG01) e os botões da notificação (PROD-JG03) não aparecem. O stack
+  liga `saqz.notifications.reminder.enabled` (desligada por padrão), então os avisos "Jogo liberado"
+  (só para o próximo jogo do grupo), a janela de 24 h e o lembrete das 14h existem na central de
+  notificações e em `group_messages`, sem push.
 - **Links.** O backend gera `https://links.saqz.app/?saqz_invite=…`, mas os builds de dev não têm
   App Links verificados. Entregar o link ao outro aparelho direto no app:
   - Android: `adb -s emulator-5556 shell am start -a android.intent.action.VIEW -d '<link>' app.saqz`

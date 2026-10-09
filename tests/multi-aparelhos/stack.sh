@@ -77,6 +77,7 @@ up() {
       SAQZ_PASSWORD_RESET_SECRET=apenas-para-o-stack-multi-aparelho-local \
       SAQZ_ASAAS_API_KEY= SAQZ_ASAAS_WEBHOOK_TOKEN= \
       SAQZ_APP_STORE_ENVIRONMENTS=SANDBOX,XCODE \
+      SAQZ_NOTIFICATIONS_REMINDER_ENABLED=true \
       SAQZ_MAIL_HOST=127.0.0.1 SAQZ_MAIL_PORT="$SMTP_PORT" SAQZ_MAIL_STARTTLS=false SAQZ_MAIL_FROM=nao-responda@saqz.local \
       "$JDK21/bin/java" -jar "$jar" > "$LOGS/backend.log" 2>&1 & echo $! > "$RUN/backend.pid")
   fi
