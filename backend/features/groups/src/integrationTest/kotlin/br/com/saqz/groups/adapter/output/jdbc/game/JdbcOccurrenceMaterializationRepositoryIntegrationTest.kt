@@ -13,7 +13,10 @@ import br.com.saqz.postgrestesting.TestPostgres
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.springframework.jdbc.datasource.DelegatingDataSource
 import org.springframework.jdbc.datasource.DriverManagerDataSource
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Proxy
 import java.sql.Connection
 import java.time.Clock
 import java.time.DayOfWeek
@@ -22,6 +25,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
 import java.util.UUID
+import javax.sql.DataSource
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
@@ -94,19 +98,25 @@ class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
         assertEquals("Arena Central", string("SELECT venue_name FROM games ORDER BY local_date LIMIT 1"))
     }
 
-    @Test fun `schedule uniqueness violation is mapped to a game schedule conflict`() {
+    @Test fun `one-off game at an occurrence start counts as the occurrence instead of failing the batch`() {
         val fixture = fixture()
-        execute(
-            "INSERT INTO games (id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes, " +
-                "confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at) VALUES " +
-                "('${UUID.randomUUID()}', '${fixture.rule.groupId}', 'Jogo avulso', DATE '2026-01-07', TIME '19:30', " +
-                "'America/Sao_Paulo', TIMESTAMPTZ '2026-01-07 22:30Z', 90, TIMESTAMPTZ '2026-01-07 19:30Z', " +
-                "'Arena', 'Rua Central 100', 12, 'DRAFT', now(), now())",
-        )
+        val oneOff = insertOneOffGame(fixture.rule.groupId)
 
-        assertFailsWith<GameScheduleConflictWriteException> {
-            fixture.materializer.execute(fixture.rule, DATE)
-        }
+        val result = assertIs<MaterializeWeeklySeriesResult.Success>(fixture.materializer.execute(fixture.rule, DATE))
+
+        assertEquals(12, result.generated)
+        assertEquals(11, result.inserted)
+        assertEquals(12, int("SELECT count(*) FROM games"))
+        assertEquals(1, int("SELECT count(*) FROM games WHERE local_date = DATE '$DATE'"))
+        assertEquals("DRAFT", string("SELECT status::text FROM games WHERE id = '$oneOff'"))
+        assertEquals(0, int("SELECT count(*) FROM games WHERE id = '$oneOff' AND series_id IS NOT NULL"))
+    }
+
+    @Test fun `start taken between the occupancy read and the insert is mapped to a game schedule conflict`() {
+        val fixture = fixture()
+        val racing = materializer(writingBeforeBatchInsert { insertOneOffGame(fixture.rule.groupId) })
+
+        assertFailsWith<GameScheduleConflictWriteException> { racing.execute(fixture.rule, DATE) }
         assertEquals(1, int("SELECT count(*) FROM games"))
     }
 
@@ -158,13 +168,47 @@ class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
             )
         }
         val rule = WeeklySeriesRule(group, lineage, revision, zone, start, slots = rules)
-        val materializer = MaterializeWeeklySeries(
-            object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() },
-            JdbcOccurrenceMaterializationRepository(dataSource),
-            GameIdFactory(UUID::randomUUID),
-            Clock.fixed(Instant.parse("2026-01-01T12:00:00Z"), ZoneOffset.UTC),
+        return Fixture(materializer(dataSource), rule, venue)
+    }
+
+    private fun materializer(dataSource: DataSource) = MaterializeWeeklySeries(
+        object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() },
+        JdbcOccurrenceMaterializationRepository(dataSource),
+        GameIdFactory(UUID::randomUUID),
+        Clock.fixed(Instant.parse("2026-01-01T12:00:00Z"), ZoneOffset.UTC),
+    )
+
+    /** Jogo avulso no horário da primeira ocorrência da série (quarta 07/01 às 19:30 em São Paulo). */
+    private fun insertOneOffGame(group: UUID): UUID {
+        val id = UUID.randomUUID()
+        execute(
+            "INSERT INTO games (id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes, " +
+                "confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at) VALUES " +
+                "('$id', '$group', 'Jogo avulso', DATE '2026-01-07', TIME '19:30', " +
+                "'America/Sao_Paulo', TIMESTAMPTZ '2026-01-07 22:30Z', 90, TIMESTAMPTZ '2026-01-07 19:30Z', " +
+                "'Arena', 'Rua Central 100', 12, 'DRAFT', now(), now())",
         )
-        return Fixture(materializer, rule, venue)
+        return id
+    }
+
+    /**
+     * Outro escritor grava um jogo entre a leitura dos horários ocupados e o INSERT em lote: a única
+     * janela em que games_schedule_start_unique ainda dispara e precisa virar GameScheduleConflictWriteException.
+     */
+    private fun writingBeforeBatchInsert(write: () -> Unit): DataSource = object : DelegatingDataSource(dataSource) {
+        override fun getConnection(): Connection {
+            val real = super.getConnection()
+            return Proxy.newProxyInstance(Connection::class.java.classLoader, arrayOf(Connection::class.java)) { _, method, args ->
+                if (method.name == "prepareStatement" && (args?.firstOrNull() as? String)?.contains("INSERT INTO games") == true) {
+                    write()
+                }
+                try {
+                    method.invoke(real, *(args ?: emptyArray()))
+                } catch (failure: InvocationTargetException) {
+                    throw failure.targetException
+                }
+            } as Connection
+        }
     }
 
     private fun execute(sql: String) { connection().use { it.createStatement().use { statement -> statement.execute(sql) } } }
