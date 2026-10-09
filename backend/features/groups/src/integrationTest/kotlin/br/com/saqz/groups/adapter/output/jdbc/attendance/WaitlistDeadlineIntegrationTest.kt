@@ -77,6 +77,24 @@ class WaitlistDeadlineIntegrationTest {
             .param("r", admin).param("g", game).query(Boolean::class.javaObjectType).single())
     }
 
+    @Test fun `dono e admin que já confirmaram presença continuam recebendo o aviso de prazo vencido`() {
+        jdbc.sql("UPDATE access_groups SET promotion_mode = 'MANUAL' WHERE id = :g").param("g", group).update()
+        val game = game(deadlineInMinutes = -5, capacity = 3)
+        answer(game, owner, "CONFIRMED", null)
+        answer(game, admin, "CONFIRMED", null)
+        answer(game, first, "WAITLISTED", 1)
+
+        assertEquals(1, service.run())
+
+        val message = jdbc.sql("SELECT id FROM group_messages WHERE game_id = :g AND channel = 'WAITLIST_DEADLINE'")
+            .param("g", game).query(UUID::class.java).single()
+        assertEquals(setOf(owner, admin), recipients(message))
+        for (recipient in listOf(owner, admin)) {
+            assertEquals(true, jdbc.sql("SELECT push_enabled FROM notification_delivery_context WHERE recipient_id = :r AND game_id = :g")
+                .param("r", recipient).param("g", game).query(Boolean::class.javaObjectType).single())
+        }
+    }
+
     @Test fun `prazo aberto ou jogo lotado não é candidato`() {
         val open = game(deadlineInMinutes = 30, capacity = 2)
         answer(open, first, "WAITLISTED", 1)

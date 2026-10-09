@@ -52,6 +52,10 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         }
         // GAME_OPEN e a janela de presença não têm autor de verdade — o dono só assina o aviso do
         // sistema, e jogando como qualquer um também precisa recebê-los. Ver [firstGameOpenNotice].
+        // O filtro de "já respondeu" vale para lembrete e jogo liberado. O aviso de prazo vencido é para
+        // quem decide quem entra, tenha ou não respondido ao jogo.
+        val everyone = (channel == MessageChannel.GAME_OPEN && firstGameOpenNotice(id, gameId)) ||
+            channel == MessageChannel.WAITLIST_DEADLINE
         val systemAuthored = channel == MessageChannel.GAME_OPEN || channel == MessageChannel.ATTENDANCE_WINDOW ||
             channel == MessageChannel.WAITLIST_DEADLINE
         // O prazo vencido é assunto de quem escolhe quem entra: dono e admins (o dono também tem linha ADMIN).
@@ -76,7 +80,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             .param("systemAuthored", systemAuthored)
             .param("adminsOnly", adminsOnly)
             .param("personal", channel in PERSONAL_CHANNELS)
-            .param("everyone", channel == MessageChannel.GAME_OPEN && firstGameOpenNotice(id, gameId))
+            .param("everyone", everyone)
             .param("game", gameId, Types.OTHER).update()
         val recipients = jdbc.sql("SELECT count(*) FROM group_notifications WHERE message_id = :id AND in_app")
             .param("id", id).query(Int::class.java).single()
