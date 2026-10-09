@@ -64,6 +64,8 @@ class JdbcSeriesBoundaryRepository(
             moveCancelledFuture(connection, command)
         } else {
             regenerateFuture(connection, command)
+            // O avulso publicado do horário vira o jogo da série, na mesma transação da edição.
+            command.adopted.forEach { connection.adoptStandaloneGame(it) }
         }
         SeriesBoundaryResult.Applied
     }

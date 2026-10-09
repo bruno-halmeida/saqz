@@ -85,30 +85,64 @@ class SyncScheduleSeriesIntegrationTest {
         assertEquals(9, activeGames())
     }
 
-    @Test fun `one-off game at a slot time is kept and the series skips that occurrence`() {
+    @Test fun `published one-off game at a slot time is adopted as the first game of the series`() {
         // "Marcar jogo" com repetição: o jogo avulso já está publicado quando o horário regular chega.
         val oneOff = oneOffGame("2026-09-24", "20:00", "2026-09-24T23:00:00Z")
+        val versionBefore = int("SELECT version FROM games WHERE id='$oneOff'")
         slots(4 to "20:00")
         sync(); sync()
         assertEquals(1, int("SELECT count(*) FROM game_series WHERE group_id='$group'"))
         assertEquals(4, activeGames()) // 5 quintas no mês, menos a que o avulso ocupa
+        // Mesmo jogo, agora da série: linhagem, horário (slot) e título do horário; o resto fica.
+        assertEquals(1, int("SELECT count(*) FROM games WHERE id='$oneOff' AND series_id='${lineage()}' AND slot_key IS NOT NULL AND series_revision_id IS NOT NULL"))
+        assertEquals("Vôlei de quinta", string("SELECT title FROM games WHERE id='$oneOff'"))
         assertEquals("PUBLISHED", string("SELECT status::text FROM games WHERE id='$oneOff'"))
-        assertEquals(0, int("SELECT count(*) FROM games WHERE id='$oneOff' AND series_id IS NOT NULL"))
+        assertEquals(versionBefore + 1, int("SELECT version FROM games WHERE id='$oneOff'"))
+        assertEquals(12, int("SELECT capacity FROM games WHERE id='$oneOff'"))
+        assertEquals(5, int("SELECT count(*) FROM games WHERE group_id='$group' AND series_id='${lineage()}'"))
+        assertEquals(1, int("SELECT count(*) FROM games WHERE group_id='$group' AND local_date='2026-09-24'"))
+        // Repetir a sincronização não adota de novo.
+        assertEquals(versionBefore + 1, int("SELECT version FROM games WHERE id='$oneOff'"))
+    }
 
-        // Edição da agenda com outro avulso no horário novo: a revisão sucessora também pula.
-        oneOffGame("2026-09-26", "10:00", "2026-09-26T13:00:00Z")
+    @Test fun `one-off draft at a slot time is not adopted and the series only skips it`() {
+        val draft = oneOffGame("2026-09-24", "20:00", "2026-09-24T23:00:00Z", status = "DRAFT")
+        slots(4 to "20:00")
+        sync(); sync()
+        assertEquals(0, int("SELECT count(*) FROM games WHERE id='$draft' AND series_id IS NOT NULL"))
+        assertEquals("Jogo extra", string("SELECT title FROM games WHERE id='$draft'"))
+        assertEquals(1, int("SELECT count(*) FROM games WHERE group_id='$group' AND local_date='2026-09-24'"))
+        assertEquals(5, activeGames()) // o rascunho avulso é DRAFT e conta; a série tem 4
+        assertEquals(4, int("SELECT count(*) FROM games WHERE group_id='$group' AND series_id='${lineage()}'"))
+    }
+
+    @Test fun `a slot added to an existing series adopts the published one-off at that time`() {
+        slots(4 to "20:00")
+        sync()
+        val oneOff = oneOffGame("2026-09-26", "10:00", "2026-09-26T13:00:00Z")
+        val draft = oneOffGame("2026-10-03", "10:00", "2026-10-03T13:00:00Z", status = "DRAFT")
         slots(4 to "20:00", 6 to "10:00")
         sync(); sync()
-        assertEquals(4 + 4, activeGames()) // 5 sábados, menos o ocupado
+        // A edição abre uma revisão sucessora; o avulso passa para a série dela.
+        assertEquals(2, int("SELECT count(*) FROM game_series WHERE group_id='$group'"))
+        assertEquals(1, int("SELECT count(*) FROM games WHERE id='$oneOff' AND series_id='${lineage()}' AND slot_key IS NOT NULL AND status='PUBLISHED' AND title='Vôlei de quinta'"))
+        assertEquals(1, int("SELECT count(*) FROM games WHERE group_id='$group' AND local_date='2026-09-26'"))
+        // O rascunho avulso do sábado seguinte segue do gestor.
+        assertEquals(0, int("SELECT count(*) FROM games WHERE id='$draft' AND series_id IS NOT NULL"))
+        assertEquals(1, int("SELECT count(*) FROM games WHERE group_id='$group' AND local_date='2026-10-03'"))
+    }
 
-        // A rotina mensal idem: o avulso no horizonte novo não derruba a extensão.
-        oneOffGame("2026-10-22", "20:00", "2026-10-22T23:00:00Z")
+    @Test fun `the monthly routine adopts a published one-off in the new horizon`() {
+        slots(4 to "20:00")
+        sync()
+        val oneOff = oneOffGame("2026-10-22", "20:00", "2026-10-22T23:00:00Z")
         until = Instant.parse("2026-11-17T15:00:00Z")
         val failures = mutableListOf<String>()
         extend { what, _ -> failures += what }
         assertEquals(emptyList(), failures)
-        assertEquals(8 + 3 + 4, activeGames()) // quintas 29/10, 5/11, 12/11 + sábados 24/10 a 14/11
+        assertEquals(1, int("SELECT count(*) FROM games WHERE id='$oneOff' AND series_id='${lineage()}' AND status='PUBLISHED'"))
         assertEquals(1, int("SELECT count(*) FROM games WHERE group_id='$group' AND local_date='2026-10-22'"))
+        assertEquals(9, int("SELECT count(*) FROM games WHERE group_id='$group' AND series_id='${lineage()}'"))
     }
 
     @Test fun `paused schedule or missing venue generates nothing`() {
@@ -135,11 +169,11 @@ class SyncScheduleSeriesIntegrationTest {
     ).run()
 
     /** Jogo avulso publicado, fora de qualquer série, como o editor de jogo cria. */
-    private fun oneOffGame(date: String, time: String, startsAt: String): UUID {
+    private fun oneOffGame(date: String, time: String, startsAt: String, status: String = "PUBLISHED"): UUID {
         val id = UUID.randomUUID()
         execute(
             "INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,status,created_at,updated_at) " +
-                "VALUES ('$id','$group','Jogo extra',DATE '$date',TIME '$time','America/Sao_Paulo','$startsAt',120,TIMESTAMPTZ '$startsAt' - interval '6 hours','Arena Central','Rua das Flores 100',12,'PUBLISHED',now(),now())",
+                "VALUES ('$id','$group','Jogo extra',DATE '$date',TIME '$time','America/Sao_Paulo','$startsAt',120,TIMESTAMPTZ '$startsAt' - interval '6 hours','Arena Central','Rua das Flores 100',12,'$status',now(),now())",
         )
         return id
     }
@@ -150,6 +184,8 @@ class SyncScheduleSeriesIntegrationTest {
             execute("INSERT INTO group_regular_slots (id,group_id,weekday,start_time,duration_minutes,position,version,created_at,updated_at) VALUES ('${UUID.randomUUID()}','$group',$weekday,TIME '$time',120,$index,1,now(),now())")
         }
     }
+    /** Linhagem da série do grupo (a mesma em todas as revisões da geração atual). */
+    private fun lineage() = string("SELECT lineage_id::text FROM game_series WHERE group_id='$group' ORDER BY revision_number DESC LIMIT 1")
     private fun activeGames() = int("SELECT count(*) FROM games WHERE group_id='$group' AND status='DRAFT'")
     private fun execute(sql: String) = dataSource.connection.use { connection: Connection -> connection.createStatement().use { it.execute(sql) } }
     private fun int(sql: String): Int = query(sql) { it.getInt(1) }

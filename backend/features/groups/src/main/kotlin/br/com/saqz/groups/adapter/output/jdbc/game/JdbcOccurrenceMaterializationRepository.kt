@@ -20,6 +20,9 @@ class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource
                 // "Ausente" também vale para o horário: jogo avulso no mesmo `starts_at` (o "marcar
                 // jogo" com repetição) conta como a ocorrência, em vez de derrubar o lote inteiro.
                 val occupied = occupiedStartsAt(connection, occurrences)
+                // Se o jogo avulso do horário está publicado, ele passa a ser o jogo da série.
+                occurrences.filter { it.occurrence.startsAt in occupied }
+                    .forEach { connection.adoptStandaloneGame(it.occurrence) }
                 val inserted = connection.prepareStatement(INSERT).use { statement ->
                     occurrences.filterNot { it.occurrence.startsAt in occupied }
                         .forEach { occurrence -> statement.bind(occurrence).addBatch() }

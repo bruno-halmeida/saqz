@@ -28,7 +28,12 @@ sealed interface WeeklySeriesResult {
 
 interface WeeklySeriesRepository {
     fun role(actor: UUID, groupId: UUID): GroupRole?
-    fun create(rule: WeeklySeriesRule, occurrences: List<MaterializedGameOccurrence>): Boolean
+    /** [adopted]: ocorrências cujo horário já tem jogo avulso publicado; ele vira o jogo da série, sem criar outro. */
+    fun create(
+        rule: WeeklySeriesRule,
+        occurrences: List<MaterializedGameOccurrence>,
+        adopted: List<ResolvedWeeklyOccurrence> = emptyList(),
+    ): Boolean
     fun find(groupId: UUID, lineageId: UUID): WeeklySeriesView?
     /** (grupo, linhagem) de toda série cuja última revisão segue aberta em grupo ativo. */
     fun openSeries(): List<Pair<UUID, UUID>> = emptyList()
@@ -37,6 +42,11 @@ interface WeeklySeriesRepository {
      * [after]. Jogo avulso marcado num horário regular vale pela ocorrência: a série nasce sem ela.
      */
     fun occupiedStartsAt(groupId: UUID, lineageId: UUID, after: Instant): Set<Instant> = emptySet()
+    /**
+     * Subconjunto de [occupiedStartsAt] que a série adota: jogo avulso (sem série, não desvinculado) já
+     * PUBLICADO. Rascunho avulso é do gestor e segue só pulado; jogo de outra série também.
+     */
+    fun adoptableStartsAt(groupId: UUID, lineageId: UUID, after: Instant): Set<Instant> = emptySet()
 }
 
 class WeeklySeriesService(

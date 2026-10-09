@@ -34,7 +34,7 @@ class MaterializeWeeklySeriesTest {
         val persisted = mutableListOf<MaterializedGameOccurrence>()
         val repository = object : br.com.saqz.groups.application.game.series.WeeklySeriesRepository {
             override fun role(actor: UUID, groupId: UUID) = br.com.saqz.groups.domain.GroupRole.OWNER
-            override fun create(rule: WeeklySeriesRule, occurrences: List<MaterializedGameOccurrence>): Boolean {
+            override fun create(rule: WeeklySeriesRule, occurrences: List<MaterializedGameOccurrence>, adopted: List<br.com.saqz.groups.domain.game.recurrence.ResolvedWeeklyOccurrence>): Boolean {
                 persisted += occurrences
                 return true
             }

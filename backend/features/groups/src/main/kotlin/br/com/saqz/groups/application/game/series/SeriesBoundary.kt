@@ -5,6 +5,7 @@ import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
 import br.com.saqz.groups.domain.game.GameSnapshot
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.recurrence.RecurrenceValidationError
+import br.com.saqz.groups.domain.game.recurrence.ResolvedWeeklyOccurrence
 import br.com.saqz.groups.domain.game.recurrence.WeeklyRecurrenceResolver
 import br.com.saqz.groups.domain.game.recurrence.WeeklyRecurrenceResult
 import br.com.saqz.groups.domain.game.recurrence.WeeklySeriesRule
@@ -41,6 +42,8 @@ data class FutureBoundaryCommand(
     val now: Instant = Instant.EPOCH,
     /** Ocorrência existente é atualizada em qualquer data; nova só nasce antes deste instante. */
     val insertUntil: Instant = Instant.MAX,
+    /** Ocorrências cujo horário já tem jogo avulso publicado: ele é adotado pela série em vez de gerar outro. */
+    val adopted: List<ResolvedWeeklyOccurrence> = emptyList(),
 )
 
 sealed interface SeriesBoundaryResult {
@@ -82,6 +85,8 @@ class ApplySeriesBoundary(
         action: SeriesBoundaryAction,
         /** Horários já ocupados por jogo de fora da série: a ocorrência não nasce, e o jogo fica. */
         skipStartsAt: Set<Instant> = emptySet(),
+        /** Parte de [skipStartsAt] com jogo avulso publicado: esse vira o jogo da série (só em EDIT). */
+        adoptStartsAt: Set<Instant> = emptySet(),
     ): SeriesBoundaryResult {
         if (successorRule.groupId != groupId || successorRule.localStartDate != boundary) {
             return SeriesBoundaryResult.InvalidBoundary
@@ -96,6 +101,8 @@ class ApplySeriesBoundary(
         val command = FutureBoundaryCommand(
             groupId, currentRevisionId, expectedVersion, successorRule, revisionNumber,
             boundary, action, materialized, now, horizon.until(groupId) ?: now,
+            adopted = if (action == SeriesBoundaryAction.CANCEL) emptyList()
+            else resolved.filter { it.startsAt > now && it.startsAt in adoptStartsAt },
         )
         val result = repository.applyThisAndFuture(command)
         if (command.action != SeriesBoundaryAction.CANCEL &&
