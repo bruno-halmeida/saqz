@@ -9,6 +9,14 @@ open class DigitMaskVisualTransformation(
     private val maximumDigits: Int,
     private val format: (String) -> String,
 ) : VisualTransformation {
+    /**
+     * O que o campo pode guardar: só os dígitos que a máscara mostra. O [SaqzInput] de
+     * `String` passa cada edição por aqui. Sem isso o dígito além do limite entrava no valor
+     * sem aparecer — a tela mostrava um número completo e a validação o recusava (revisão da
+     * Apple de 09/10/2026: "(11) 99999-0000" na tela, 12 dígitos no valor).
+     */
+    open fun accept(input: String): String = input.filter(::isAsciiDigit).take(maximumDigits)
+
     override fun filter(text: AnnotatedString): TransformedText {
         val digits = text.text.filter(Char::isDigit).take(maximumDigits)
         val transformed = format(digits)
@@ -18,6 +26,10 @@ open class DigitMaskVisualTransformation(
         )
     }
 }
+
+// Só 0–9: as validações comparam com '9' ASCII, e um dígito de outro alfabeto passaria
+// pela máscara (`Char.isDigit`) sem passar por elas.
+internal fun isAsciiDigit(character: Char): Boolean = character in '0'..'9'
 
 private class DigitMaskOffsetMapping(
     private val original: String,

@@ -109,6 +109,10 @@ internal fun SaqzColorTokens.inputAccent(enabled: Boolean, wrong: Boolean, focus
  * [revealable] desliga o olho de mostrar/esconder **sem** desligar a máscara. Existe para
  * o "Confirmar nova senha" do 1g, onde o export tira o olho de propósito: confirmar é
  * digitar de novo, não conferir o que já se leu. Só faz sentido com [SaqzInputKind.Password].
+ *
+ * Com máscara de dígitos ([DigitMaskVisualTransformation]), [onValueChange] só recebe os
+ * dígitos que a máscara mostra ([DigitMaskVisualTransformation.accept]): o que passa do
+ * limite não entra no valor.
  */
 @Composable
 fun SaqzInput(
@@ -151,9 +155,10 @@ fun SaqzInput(
     revealable = revealable,
     visualTransformation = visualTransformation,
 ) { fieldModifier, textStyle, transformation ->
+    val mask = visualTransformation as? DigitMaskVisualTransformation
     BasicTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = if (mask == null) onValueChange else { input -> onValueChange(mask.accept(input)) },
         enabled = enabled,
         singleLine = singleLine,
         minLines = minLines,

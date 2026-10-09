@@ -103,4 +103,43 @@ class MaskedVisualTransformationTest {
 
         assertEquals("12345-678", transformed.text.text)
     }
+
+    // Revisão da Apple de 09/10/2026: o revisor digitou o exemplo do campo com um zero a
+    // mais. A máscara mostrava "(11) 99999-0000", o valor guardava 12 dígitos e a 1c
+    // recusava com "Telefone incompleto". O campo só guarda o que a máscara mostra.
+    @Test
+    fun phone_field_never_keeps_a_digit_the_mask_does_not_show() {
+        val mask = PhoneVisualTransformation()
+        val typed = "119999900000"
+
+        assertEquals("11999990000", mask.accept(typed))
+        assertEquals("(11) 99999-0000", mask.filter(AnnotatedString(mask.accept(typed))).text.text)
+    }
+
+    // O +55 não aparece nem se digita: colado ou preenchido com o código do país, o número
+    // chega ao campo só com os dígitos visíveis. Quem envia é que põe o +55 de volta.
+    @Test
+    fun phone_field_keeps_only_the_visible_digits_of_a_number_with_country_code() {
+        assertEquals("11987654321", PhoneVisualTransformation().accept("+55 (11) 98765-4321"))
+        assertEquals("11987654321", phoneFieldDigits("+5511987654321"))
+    }
+
+    @Test
+    fun phone_field_keeps_digits_only() {
+        assertEquals("11987654321", PhoneVisualTransformation().accept("(11) 9abc8765-4321#*"))
+        assertEquals("", PhoneVisualTransformation().accept("+"))
+    }
+
+    // DDD 55 (RS) digitado com um dígito a mais não perde o DDD: só os 13 dígitos de um
+    // número com código do país têm o 55 tirado da frente.
+    @Test
+    fun phone_field_does_not_mistake_area_code_55_for_the_country_code() {
+        assertEquals("55999990000", PhoneVisualTransformation().accept("559999900000"))
+    }
+
+    @Test
+    fun cpf_and_cep_fields_never_keep_a_digit_the_mask_does_not_show() {
+        assertEquals("12345678901", CpfVisualTransformation().accept("123.456.789-012"))
+        assertEquals("12345678", CepVisualTransformation().accept("12345-6789"))
+    }
 }

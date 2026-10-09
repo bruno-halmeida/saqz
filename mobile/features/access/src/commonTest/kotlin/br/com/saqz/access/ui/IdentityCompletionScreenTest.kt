@@ -1,5 +1,8 @@
 package br.com.saqz.access.ui
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -15,6 +18,7 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import br.com.saqz.access.presentation.identitycompletion.IdentityCompletionIntent
 import br.com.saqz.access.presentation.identitycompletion.IdentityCompletionState
+import br.com.saqz.access.presentation.normalizedBrMobilePhone
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.auth_error_network
 import br.com.saqz.designsystem.UiText
@@ -53,6 +57,44 @@ class IdentityCompletionScreenTest {
         content(onIntent = { intent = it })
         onAllNodes(hasSetTextAction(), useUnmergedTree = true)[1].performTextInput("11")
         assertEquals(IdentityCompletionIntent.UpdatePhone("11"), intent)
+    }
+
+    // Revisão da Apple de 09/10/2026 (2.1(a), "erro ao entrar com a Apple"): o revisor
+    // digitou o exemplo do campo com um zero a mais. A tela mostrava "(11) 99999-0000", o
+    // valor guardava 12 dígitos e "Concluir cadastro" respondia "Telefone incompleto" sem
+    // chamar o servidor. Tecla a tecla, como ele: o número que sobe é o da tela, com +55.
+    @Test fun `a digit beyond the mask never blocks the registration`() = runComposeUiTest {
+        var state by mutableStateOf(IdentityCompletionState(name = "John Apple"))
+        var sent: String? = null
+        setContent {
+            SaqzTheme {
+                IdentityCompletionScreen(
+                    state = state,
+                    onIntent = { intent ->
+                        when (intent) {
+                            is IdentityCompletionIntent.UpdatePhone -> state = state.copy(phone = intent.value)
+                            // A mesma validação que a máquina de sessão faz no "Concluir cadastro".
+                            IdentityCompletionIntent.Submit -> {
+                                sent = normalizedBrMobilePhone(state.phone)
+                                state = state.copy(invalidPhone = sent == null)
+                            }
+                            else -> Unit
+                        }
+                    },
+                    onPickPhoto = {},
+                )
+            }
+        }
+        val phone = onAllNodes(hasSetTextAction(), useUnmergedTree = true)[1]
+        "119999900000".forEach { digit ->
+            phone.performTextInput(digit.toString())
+            waitForIdle()
+        }
+        onNodeWithTag(Identity1cTags.Submit).performClick()
+        waitForIdle()
+
+        assertEquals("+5511999990000", sent)
+        onNodeWithText("Telefone incompleto. Use DDD + 9 dígitos.").assertDoesNotExist()
     }
 
     @Test fun `the primary action completes the registration`() = runComposeUiTest {

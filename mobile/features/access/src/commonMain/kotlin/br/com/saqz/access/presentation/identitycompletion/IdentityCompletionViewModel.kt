@@ -11,6 +11,7 @@ import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.message
 import br.com.saqz.core.common.mvi.MviViewModel
+import br.com.saqz.designsystem.phoneFieldDigits
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -134,12 +135,14 @@ private fun initialStateOf(state: SessionAccessState): IdentityCompletionState =
     (state as? SessionAccessState.CompletingIdentity)?.project(photo = null, pickFailed = false)
         ?: IdentityCompletionState()
 
+// O telefone da máquina pode vir com +55 (o que subiu, devolvido numa recusa); o campo
+// mostra só os dígitos visíveis, e o +55 volta no envio (`normalizedBrMobilePhone`).
 private fun SessionAccessState.CompletingIdentity.project(
     photo: ImageBitmap?,
     pickFailed: Boolean,
 ) = IdentityCompletionState(
     name = name,
-    phone = phone,
+    phone = phoneFieldDigits(phone),
     photo = photo,
     isLoading = isLoading,
     error = error?.message(),

@@ -65,10 +65,33 @@ class IdentityCompletionViewModelTest {
     @Test fun `editing a field reaches the shared session machine`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
-        fixture.viewModel.onIntent(IdentityCompletionIntent.UpdatePhone("(11) 99999-0000"))
+        fixture.viewModel.onIntent(IdentityCompletionIntent.UpdatePhone("11999990000"))
         runCurrent()
 
-        assertEquals("(11) 99999-0000", fixture.viewModel.state.value.phone)
+        assertEquals("11999990000", assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value).phone)
+        assertEquals("11999990000", fixture.viewModel.state.value.phone)
+    }
+
+    // O WhatsApp precisa do +55, o campo não: a máquina pode guardar o número com o código do
+    // país (é o que sobe, e o que volta numa recusa), e a tela mostra só os dígitos visíveis.
+    @Test fun `the field never shows the country code the number carries`() = runTest(mainDispatcher) {
+        val fixture = fixture()
+
+        fixture.viewModel.onIntent(IdentityCompletionIntent.UpdatePhone("+5511999990000"))
+        runCurrent()
+
+        assertEquals("11999990000", fixture.viewModel.state.value.phone)
+    }
+
+    // A outra metade da regra: o que o campo mostra sem o +55 chega ao servidor com ele.
+    @Test fun `the number reaches the server with the country code`() = runTest(mainDispatcher) {
+        val fixture = fixture()
+
+        fixture.viewModel.onIntent(IdentityCompletionIntent.UpdatePhone("11999990000"))
+        fixture.viewModel.onIntent(IdentityCompletionIntent.Submit)
+        runCurrent()
+
+        assertEquals(listOf("+5511999990000"), fixture.gateway.profilePhones)
     }
 
     // A imagem chega depois: decodificar é pesado e sai do caminho da coleta, então a tela
@@ -139,18 +162,20 @@ class IdentityCompletionViewModelTest {
     }
 
     private fun TestScope.fixture(): Fixture {
-        val machine = SessionAccessStateMachine(FakeAuthPort(), FakeLocalState(), FakeSessionGateway(), this)
+        val gateway = FakeSessionGateway()
+        val machine = SessionAccessStateMachine(FakeAuthPort(), FakeLocalState(), gateway, this)
         machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(user)))
         runCurrent()
         assertIs<SessionAccessState.CompletingIdentity>(machine.state.value)
         val photos = FakePhotoPort()
-        return Fixture(IdentityCompletionViewModel(machine, photos), machine, photos)
+        return Fixture(IdentityCompletionViewModel(machine, photos), machine, photos, gateway)
     }
 
     private class Fixture(
         val viewModel: IdentityCompletionViewModel,
         val machine: SessionAccessStateMachine,
         val photos: FakePhotoPort,
+        val gateway: FakeSessionGateway,
     )
 
     private class FakePhotoPort : NativeProfilePhotoPort {
@@ -174,13 +199,18 @@ class IdentityCompletionViewModelTest {
     }
 
     private class FakeSessionGateway : SessionGateway {
+        val profilePhones = mutableListOf<String>()
+
         override suspend fun bootstrap(): SaqzResult<AccessSession, AccessError> =
             SaqzResult.Success(phoneRequiredSession)
 
         override suspend fun completeProfile(
             phone: String,
             displayName: String?,
-        ): SaqzResult<AccessSession, AccessError> = SaqzResult.Success(phoneRequiredSession)
+        ): SaqzResult<AccessSession, AccessError> {
+            profilePhones += phone
+            return SaqzResult.Success(phoneRequiredSession)
+        }
 
         override suspend fun uploadPhoto(bytes: ByteArray, mediaType: String): SaqzResult<Unit, AccessError> =
             SaqzResult.Success(Unit)

@@ -1,5 +1,6 @@
 package br.com.saqz.designsystem
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -90,6 +91,33 @@ class SaqzInputTest {
         val selection = field.fetchSemanticsNode().config
             .getOrElseNullable(SemanticsProperties.TextSelectionRange) { null }
         assertEquals(TextRange(3), selection, "o cursor fica no fim depois da recomposição")
+    }
+
+    // Revisão da Apple de 09/10/2026: o 12º dígito entrava no valor sem aparecer na máscara,
+    // e a tela de completar cadastro recusava um número que parecia completo. Tecla a tecla,
+    // como o revisor digitou o exemplo "(11) 99999-0000" com um zero a mais.
+    @Test
+    fun maskedFieldNeverHoldsADigitItDoesNotShow() = runComposeUiTest {
+        var phone by mutableStateOf("")
+        setContent { SaqzTheme { PhoneInput(phone) { phone = it } } }
+        val field = onNode(hasSetTextAction(), useUnmergedTree = true)
+        "119999900000".forEach { digit ->
+            field.performTextInput(digit.toString())
+            waitForIdle()
+        }
+        assertEquals("11999990000", phone, "o dígito a mais não entra")
+        field.assertTextEquals("(11) 99999-0000")
+    }
+
+    // O +55 não se digita nem aparece: colado com o código do país, o número entra só com
+    // os dígitos visíveis.
+    @Test
+    fun phoneFieldTakesAPastedNumberWithoutTheCountryCode() = runComposeUiTest {
+        var phone by mutableStateOf("")
+        setContent { SaqzTheme { PhoneInput(phone) { phone = it } } }
+        onNode(hasSetTextAction(), useUnmergedTree = true).performTextInput("+55 (11) 98765-4321")
+        waitForIdle()
+        assertEquals("11987654321", phone)
     }
 
     @Test
@@ -320,3 +348,13 @@ class SaqzInputTest {
         onNodeWithContentDescription("Mostrar senha").assertWidthIsAtLeast(48.dp)
     }
 }
+
+/** O campo de telefone como as telas o montam: teclado de telefone e máscara `(XX) XXXXX-XXXX`. */
+@Composable
+private fun PhoneInput(value: String, onValueChange: (String) -> Unit) = SaqzInput(
+    value = value,
+    onValueChange = onValueChange,
+    label = "Telefone",
+    kind = SaqzInputKind.Phone,
+    visualTransformation = PhoneVisualTransformation(),
+)
