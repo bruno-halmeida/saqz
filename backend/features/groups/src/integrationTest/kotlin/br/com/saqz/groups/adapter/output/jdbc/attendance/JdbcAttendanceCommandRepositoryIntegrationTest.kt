@@ -59,6 +59,30 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     @Test fun `renaming a member changes only future attendance snapshots`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); execute("UPDATE access_users SET display_name='Renamed' WHERE id='${f.member}'"); assertEquals("User", string("SELECT member_display_name FROM game_attendance WHERE member_user_id='${f.member}'")); val secondGame = UUID.randomUUID(); execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$secondGame','${f.group}','Treino 2',(CURRENT_DATE + 3),TIME '19:30','America/Sao_Paulo',now() + interval '3 days',90,now() + interval '2 days','Arena','Rua Central 100',2,2500,'PUBLISHED',now(),now())"); success(f.service.execute(f.member, f.group, secondGame, intent = AttendanceIntent.CONFIRM)); assertEquals("Renamed", string("SELECT member_display_name FROM game_attendance WHERE game_id='$secondGame'")) }
     @Test fun `organizer override records the target member display name snapshot`() { val f = fixture(); val target = member(f.group, "target", name = "Alvo"); success(f.service.execute(f.owner, f.group, f.game, target, AttendanceIntent.CONFIRM, AttendanceSource.ORGANIZER, "Chegou após o prazo")); assertEquals("Alvo", snapshotName(target)) }
     @Test fun `withdrawal promotion keeps the snapshot taken when the member joined the queue`() { val f = fixture(capacity = 2); attendance(f, member(f.group, "occupied"), "CONFIRMED"); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); val waiting = member(f.group, "waiting", name = "Espera"); assertEquals(AttendanceStatus.WAITLISTED, success(f.service.execute(waiting, f.group, f.game, intent = AttendanceIntent.CONFIRM)).status); execute("UPDATE access_users SET display_name='Renomeado' WHERE id='$waiting'"); f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE); assertEquals("CONFIRMED", status(waiting)); assertEquals("Espera", snapshotName(waiting)) }
+    @Test fun `queue position is the rank in the promotion order, not the stored sequence`() {
+        val f = fullFixture()
+        val first = member(f.group, "first", "AVULSO", name = "Primeiro"); waitlist(f, first, 1, "Primeiro")
+        val second = member(f.group, "second", "AVULSO", name = "Segundo"); waitlist(f, second, 2, "Segundo")
+        val repository = JdbcAttendanceCommandRepository(dataSource)
+        assertEquals(listOf(1L, 2L), rosterOf(f, f.member)!!.waitlisted.map { it.waitlistPosition })
+        assertEquals(2L, repository.find(second, f.group, f.game)!!.own!!.waitlistPosition)
+        assertEquals(2L, repository.ownByGame(second, f.group).getValue(f.game).waitlistPosition)
+        execute("DELETE FROM game_attendance WHERE member_user_id='$first'")
+        assertEquals(listOf(1L), rosterOf(f, f.member)!!.waitlisted.map { it.waitlistPosition })
+        assertEquals(1L, repository.find(second, f.group, f.game)!!.own!!.waitlistPosition)
+        assertEquals(1L, repository.ownByGame(second, f.group).getValue(f.game).waitlistPosition)
+        assertEquals(2L, repository.find(second, f.group, f.game)!!.own!!.waitlistSequence)
+    }
+    @Test fun `queue position puts the mensalista ahead while the deadline is open`() {
+        val f = fullFixture()
+        val avulso = member(f.group, "avulso", "AVULSO", name = "Avulso"); waitlist(f, avulso, 1, "Avulso")
+        val mensalista = member(f.group, "mensalista", "MENSALISTA", name = "Mensalista"); waitlist(f, mensalista, 2, "Mensalista")
+        val repository = JdbcAttendanceCommandRepository(dataSource)
+        assertEquals(listOf("Mensalista", "Avulso"), rosterOf(f, f.member)!!.waitlisted.map { it.displayName })
+        assertEquals(listOf(1L, 2L), rosterOf(f, f.member)!!.waitlisted.map { it.waitlistPosition })
+        assertEquals(1L, repository.find(mensalista, f.group, f.game)!!.own!!.waitlistPosition)
+        assertEquals(2L, repository.find(avulso, f.group, f.game)!!.own!!.waitlistPosition)
+    }
     @Test fun `capacity promotion keeps the snapshot taken when the member joined the queue`() { val f = fullFixture(); val waiting = member(f.group, "waiting", name = "Espera"); assertEquals(AttendanceStatus.WAITLISTED, success(f.service.execute(waiting, f.group, f.game, intent = AttendanceIntent.CONFIRM)).status); execute("UPDATE access_users SET display_name='Renomeado' WHERE id='$waiting'"); assertIs<CapacityCommandResult.Success>(capacity(f).execute(f.owner, f.group, f.game, 1, 3)); assertEquals("CONFIRMED", status(waiting)); assertEquals("Espera", snapshotName(waiting)) }
     @Test fun `roster lists confirmed by name and waitlist in arrival order with snapshot names`() { val f = fixture(capacity = 2); attendance(f, member(f.group, "confirmed-b"), "CONFIRMED", "bruno"); attendance(f, member(f.group, "confirmed-a"), "CONFIRMED", "Ana"); waitlist(f, member(f.group, "waiting-1"), 1, "Zeca"); waitlist(f, member(f.group, "waiting-2"), 2, "Alice"); val roster = requireNotNull(rosterOf(f, f.member)); assertEquals(listOf("Ana", "bruno"), roster.confirmed.map { it.displayName }); assertEquals(listOf("Zeca", "Alice"), roster.waitlisted.map { it.displayName }); assertEquals(listOf(1L, 2L), roster.waitlisted.map { it.waitlistPosition }) }
     @Test fun `roster omits declined members and keeps confirmed positions empty`() { val f = fixture(); attendance(f, f.member, "CONFIRMED", "Ana"); attendance(f, member(f.group, "declined"), "DECLINED", "Zeca"); val roster = requireNotNull(rosterOf(f, f.member)); assertEquals(listOf("Ana"), roster.confirmed.map { it.displayName }); assertEquals(listOf(null), roster.confirmed.map { it.waitlistPosition }); assertEquals(emptyList(), roster.waitlisted) }
@@ -200,7 +224,8 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         waitlist(f, mensalistaEarly, 3, "Mensalista3")
         val roster = requireNotNull(rosterOf(f, f.member))
         assertEquals(listOf("Mensalista2", "Mensalista3", "Avulso1"), roster.waitlisted.map { it.displayName })
-        assertEquals(listOf(2L, 3L, 1L), roster.waitlisted.map { it.waitlistPosition })
+        // A posição é o lugar na fila como o app mostra, não a sequência gravada (2, 3, 1).
+        assertEquals(listOf(1L, 2L, 3L), roster.waitlisted.map { it.waitlistPosition })
     }
 
     @Test fun `roster with priority off collapses to single fifo tier`() {

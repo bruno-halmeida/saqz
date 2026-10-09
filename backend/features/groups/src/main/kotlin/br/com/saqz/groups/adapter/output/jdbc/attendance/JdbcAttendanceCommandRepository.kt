@@ -288,6 +288,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                         rs.getTimestamp("responded_at").toInstant(),
                         rs.getTimestamp("attendance_updated_at").toInstant(),
                         rs.getLong("attendance_version"),
+                        waitlistPosition = rs.getObject("own_waitlist_position", Long::class.javaObjectType),
                     )
                 }
                 val confirmed = rs.getInt("confirmed_count")
@@ -315,6 +316,7 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                     rs.getTimestamp("responded_at").toInstant(),
                     rs.getTimestamp("updated_at").toInstant(),
                     rs.getLong("version"),
+                    waitlistPosition = rs.getObject("own_waitlist_position", Long::class.javaObjectType),
                 )
             }
             .list()
@@ -342,7 +344,8 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         val responded = rows.filter { it.memberId != null }
         return AttendanceRoster(
             responded.filter { it.status == "CONFIRMED" }.map(RosterRow::member),
-            responded.filter { it.status == "WAITLISTED" }.map(RosterRow::member),
+            // A consulta já vem na ordem de promoção; a posição mostrada é essa ordem, não a sequência gravada.
+            responded.filter { it.status == "WAITLISTED" }.mapIndexed { index, row -> row.member(position = index + 1L) },
         )
     }
 
@@ -371,8 +374,8 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         val guestSeq: Int,
         val hostDisplayName: String?,
     ) {
-        fun member() = AttendanceRosterMember(
-            requireNotNull(memberId), requireNotNull(displayName), waitlistSequence, guestSeq, hostDisplayName,
+        fun member(position: Long? = waitlistSequence) = AttendanceRosterMember(
+            requireNotNull(memberId), requireNotNull(displayName), position, guestSeq, hostDisplayName,
         )
     }
 
@@ -535,9 +538,10 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             LIMIT 1
             FOR UPDATE OF attendance
         """
-        const val DETAIL = """
+        val DETAIL = """
             SELECT g.capacity,g.version AS game_version,a.status AS own_status,a.waitlist_sequence,
                    a.responded_at,a.updated_at AS attendance_updated_at,a.version AS attendance_version,
+                   ${WaitlistPositionSql.of("a", "member", "g", "ag")} AS own_waitlist_position,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count,
                    (SELECT count(*) FROM game_attendance w WHERE w.game_id=g.id AND w.status='WAITLISTED') AS waitlist_count,
                    (SELECT count(*) FROM game_attendance d WHERE d.game_id=g.id AND d.status='DECLINED' AND d.guest_seq=0) AS declined_count,
@@ -561,11 +565,13 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
         // ponytail: traz as respostas do ator em todos os jogos do grupo (uma linha por jogo
         // respondido), não só nos jogos visíveis; a listagem não pagina. Se paginar, filtrar
         // por a.game_id IN (:games).
-        const val OWN_BY_GAME = """
-            SELECT a.game_id,a.status,a.waitlist_sequence,a.responded_at,a.updated_at,a.version
+        val OWN_BY_GAME = """
+            SELECT a.game_id,a.status,a.waitlist_sequence,a.responded_at,a.updated_at,a.version,
+                   ${WaitlistPositionSql.of("a", "am", "g", "ag")} AS own_waitlist_position
             FROM games g
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
             JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=:actor AND a.guest_seq=0
+            LEFT JOIN group_memberships am ON am.group_id=g.group_id AND am.user_id=:actor
             WHERE g.group_id=:group
         """
         const val ROSTER = """

@@ -227,9 +227,15 @@ class AttendanceController(
         group: UUID,
         game: UUID,
     ): ResponseEntity<AttendanceMutationResponse> = when (result) {
-        is AttendanceCommandResult.Success -> ResponseEntity.ok().eTag(result.attendance.version.toString()).body(
-            AttendanceMutationResponse(result.attendance.response(), result.event?.response(), result.promoted.size, detail(actor, group, game)),
-        )
+        is AttendanceCommandResult.Success -> {
+            val detail = detail(actor, group, game)
+            val own = result.attendance
+            // Quem acabou de responder recebe a posição na fila, não a sequência gravada (WaitlistPositionSql).
+            val ownPosition = detail.ownAttendance?.waitlistPosition?.takeIf { own.memberId == actor && own.guestSeq == 0 }
+            ResponseEntity.ok().eTag(own.version.toString()).body(
+                AttendanceMutationResponse(own.response(ownPosition ?: own.waitlistPosition ?: own.waitlistSequence), result.event?.response(), result.promoted.size, detail),
+            )
+        }
         is AttendanceCommandResult.Denied -> when (result.reason) {
             AttendanceDenial.REASON_REQUIRED, AttendanceDenial.REASON_INVALID -> invalid("reason")
             AttendanceDenial.NOT_WAITLISTED, AttendanceDenial.NO_CAPACITY -> invalid("promotion")
@@ -261,7 +267,8 @@ class AttendanceController(
     private fun invalid(field: String): Nothing = throw InvalidGroupRequestException(mapOf(field to listOf("is required or invalid")))
 }
 
-private fun AttendanceRecord.response() = AttendanceEntryResponse(memberId, status.name, waitlistSequence, version)
+private fun AttendanceRecord.response(position: Long? = waitlistPosition ?: waitlistSequence) =
+    AttendanceEntryResponse(memberId, status.name, position, version)
 private fun AttendanceEvent.response() = AttendanceAuditResponse(actorId, source.name, oldStatus?.name, newStatus.name, reason, occurredAt)
 private fun AttendanceDetail.response() = AttendanceDetailResponse(
     own?.response(),

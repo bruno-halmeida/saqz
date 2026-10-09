@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.home
 
+import br.com.saqz.groups.adapter.output.jdbc.attendance.WaitlistPositionSql
 import br.com.saqz.groups.application.home.HomeAdminGroup
 import br.com.saqz.groups.application.home.HomeAdminReadModel
 import br.com.saqz.groups.application.home.HomeGameToSettle
@@ -251,7 +252,7 @@ class JdbcHomeRepository(
             ORDER BY groups.name, groups.id
         """
 
-        const val NEXT_GAME = """
+        val NEXT_GAME = """
             SELECT games.group_id,
                    groups.name AS group_name,
                    games.id AS game_id,
@@ -294,7 +295,7 @@ class JdbcHomeRepository(
                          AND attendance.status = 'WAITLISTED'
                    ) AS waitlist_count,
                    own.status AS own_status,
-                   own.waitlist_sequence AS own_waitlist_position,
+                   ${WaitlistPositionSql.of("own", "memberships", "games", "groups")} AS own_waitlist_position,
                    COALESCE(memberships.membership_type, 'AVULSO') AS membership_type,
                    groups.mensalista_priority
             FROM games
@@ -350,30 +351,35 @@ class JdbcHomeRepository(
             OFFSET 1 LIMIT 3
         """
 
-        const val NEXT_GAME_ROSTER = """
+        // Mesma ordem de promoção do elenco do jogo (WaitlistPositionSql): a posição mostrada é o lugar na fila.
+        val NEXT_GAME_ROSTER = """
             SELECT member_display_name AS display_name,
                    status,
-                   waitlist_sequence AS waitlist_position
+                   CASE WHEN status = 'WAITLISTED' THEN position END AS waitlist_position
             FROM (
                 SELECT attendance.member_display_name,
                        attendance.status,
-                       attendance.waitlist_sequence,
                        row_number() OVER (
                            PARTITION BY attendance.status
-                           ORDER BY attendance.waitlist_sequence NULLS FIRST,
+                           ORDER BY CASE WHEN attendance.status = 'WAITLISTED'
+                                         THEN (${WaitlistPositionSql.tier("attendance", "m", "g", "ag")}) ELSE 0 END,
+                                    attendance.waitlist_sequence NULLS FIRST,
                                     lower(attendance.member_display_name),
                                     attendance.member_display_name,
                                     attendance.member_user_id
                        ) AS position
                 FROM game_attendance attendance
+                JOIN games g ON g.id = attendance.game_id
+                JOIN access_groups ag ON ag.id = g.group_id
+                LEFT JOIN group_memberships m
+                    ON m.group_id = attendance.group_id
+                   AND m.user_id = attendance.member_user_id
                 WHERE attendance.game_id = :game
                   AND attendance.status IN ('CONFIRMED', 'WAITLISTED')
             ) roster
             WHERE position <= 5
             ORDER BY CASE WHEN status = 'CONFIRMED' THEN 0 ELSE 1 END,
-                     waitlist_position NULLS FIRST,
-                     lower(member_display_name),
-                     member_display_name
+                     position
         """
 
         const val LAST_COMPLETED_GAME = """

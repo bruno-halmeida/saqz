@@ -39,6 +39,11 @@ data class AttendanceRecord(
     val updatedAt: Instant,
     val version: Long,
     val guestSeq: Int = 0,
+    /**
+     * Posição na fila como o app mostra ("1º na fila"), calculada nas leituras (ver WaitlistPositionSql).
+     * `null` nas escritas e fora da fila; a sequência gravada nunca é renumerada e por isso não serve de posição.
+     */
+    val waitlistPosition: Long? = null,
 )
 
 data class AttendanceEvent(
