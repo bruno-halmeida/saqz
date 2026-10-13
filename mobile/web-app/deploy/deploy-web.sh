@@ -23,7 +23,15 @@ cp -R "$dist" "$stage/dist"
 cp "$deploy_dir/saqz-config.prod.js" "$stage/dist/saqz-config.js"
 cp "$deploy_dir/nginx.conf" "$deploy_dir/compose.yaml" "$stage/"
 
-# O servidor não tem rsync: vai um tar pelo ssh. O build novo é extraído ao lado (dist.new) e trocado
+# O Cloudflare guarda .js por 4 h no navegador, mesmo com no-cache na origem; o index.html ele não guarda.
+# Uma versão na URL dos scripts faz cada publicação chegar na hora (o webpack ignora a query ao achar o .wasm).
+version="$(cat "$stage/dist/saqz-web.js" "$stage/dist/saqz-config.js" "$stage/dist/saqz-bridge.js" | shasum | cut -c1-10)"
+for script in saqz-web.js saqz-config.js saqz-bridge.js; do
+  sed -i '' "s#\"$script\"#\"$script?v=$version\"#g" "$stage/dist/index.html"
+done
+grep -q "saqz-web.js?v=$version" "$stage/dist/index.html" || { echo "index.html sem a versão dos scripts" >&2; exit 1; }
+
+# O servidor não tem rsync: vai um tar pelo ssh. O build novo é extraído ao lado (incoming) e trocado
 # de uma vez; o container é recriado e passa a montar a pasta nova. O build anterior fica em dist.old
 # até a próxima publicação, para voltar rápido se precisar.
 COPYFILE_DISABLE=1 tar --no-mac-metadata -C "$stage" -czf - dist nginx.conf compose.yaml | ssh "$remote" "set -e
@@ -32,6 +40,12 @@ COPYFILE_DISABLE=1 tar --no-mac-metadata -C "$stage" -czf - dist nginx.conf comp
   rm -rf dist.old
   if [ -d dist ]; then mv dist dist.old; fi
   mv incoming/dist dist && mv incoming/nginx.conf incoming/compose.yaml . && rmdir incoming
+  # Quem está com o app aberto ainda pede o .wasm da versão anterior: ele continua servido por mais uma publicação.
+  if [ -f dist.old/saqz-web.js ]; then
+    for wasm in \$(grep -o '[0-9a-f]\{20\}\.wasm' dist.old/saqz-web.js | sort -u); do
+      [ -f dist/\$wasm ] || cp dist.old/\$wasm dist/
+    done
+  fi
   docker compose up -d --force-recreate
   docker compose ps"
 echo "Publicado: https://saqz.app/app/"
