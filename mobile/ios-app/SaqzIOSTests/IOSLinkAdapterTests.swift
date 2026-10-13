@@ -82,6 +82,22 @@ final class IOSLinkAdapterTests: XCTestCase {
         XCTAssertTrue(fixture.received.isEmpty)
     }
 
+    func testShortGroupCodeIsDeliveredNormalizedWithOrWithoutHyphen() {
+        let fixture = Fixture(); fixture.start()
+        ["44DF8SA8", "44DF-8SA8", "44df-8sa8", "44df8sa8"].forEach {
+            fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/?saqz_invite=\($0)")!)
+        }
+        XCTAssertEqual(fixture.received, Array(repeating: "44DF8SA8", count: 4))
+    }
+
+    func testShortCodeWithAmbiguousCharactersOrWrongSizeIsRejected() {
+        let fixture = Fixture(); fixture.start()
+        ["44DF8SA0", "44DF8SAO", "44DF8SA1", "44DF8SAI", "44DF8SAL", "44DF8SA", "44DF8SA88"].forEach {
+            fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/?saqz_invite=\($0)")!)
+        }
+        XCTAssertTrue(fixture.received.isEmpty)
+    }
+
     func testNonHTTPSDirectURLIsRejected() {
         let fixture = Fixture(); fixture.start()
         fixture.adapter.onOpenURL(URL(string: "http://links.saqz.app/invite?saqz_invite=\(Self.codeA)")!)

@@ -82,6 +82,10 @@ No celular a página redireciona sozinha, sem clique; os botões ficam de reserv
   o esquema `saqz://` sozinho: com o app, o link universal já abriu direto; quem chega à
   página costuma não ter o app, e o Safari responderia com o alerta de endereço inválido.
   O esquema fica no botão "Já instalei, abrir o app".
+- **Código do convite:** `?saqz_invite=` aceita o código curto do grupo (8 caracteres de
+  `23456789ABCDEFGHJKMNPQRSTUVWXYZ`, mostrado como `44DF-8SA8`) e o token longo dos links já
+  enviados. A página aceita minúsculas e hífen e segue adiante sempre com o código em maiúscula e
+  sem hífen (`?saqz_invite=44DF8SA8`); o que não for um dos dois formatos não é convite.
 - **Computador:** vai para o web app (`https://saqz.app/app/`) com o mesmo código na query; se o
   web app não responder, fica na página com o pedido para abrir no celular.
 - **iPhone sem App Store:** enquanto `appStore` estiver vazio, também vai para o web app

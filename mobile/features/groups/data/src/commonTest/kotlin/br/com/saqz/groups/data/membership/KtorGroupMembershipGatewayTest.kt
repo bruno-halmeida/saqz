@@ -155,6 +155,48 @@ class KtorGroupMembershipGatewayTest {
     }
 
     @Test
+    fun `rotation maps the short code`() = runTest {
+        val invite = fixture {
+            respond("""{"code":"44DF-8SA8","inviteUrl":"$INVITE_URL","expiresAt":null,"revision":"revision-1"}""", headers = jsonHeaders())
+        }.gateway.rotateInvite(GroupId(GROUP_ID)).success()
+
+        assertEquals("44DF-8SA8", invite.code)
+        assertEquals(INVITE_URL, invite.value)
+    }
+
+    @Test
+    fun `metadata maps the short code and url any admin reads from the api`() = runTest {
+        val metadata = fixture {
+            respond(
+                """{"active":true,"revision":"revision-1","createdAt":"2026-09-12T12:00:00Z","createdByName":"Owner","code":"44DF-8SA8","inviteUrl":"$INVITE_URL"}""",
+                headers = jsonHeaders(),
+            )
+        }.gateway.readInviteMetadata(GroupId(GROUP_ID)).success()
+
+        assertEquals("44DF-8SA8", metadata.code)
+        assertEquals(INVITE_URL, metadata.inviteUrl)
+    }
+
+    @Test
+    fun `metadata from a server without short code keeps code and url empty`() = runTest {
+        val metadata = fixture { inviteMetadata() }.gateway.readInviteMetadata(GroupId(GROUP_ID)).success()
+
+        assertEquals(null, metadata.code)
+        assertEquals(null, metadata.inviteUrl)
+    }
+
+    @Test
+    fun `blank short code or url in metadata is invalid`() = runTest {
+        for (field in listOf("\"code\":\"\"", "\"inviteUrl\":\"\"")) {
+            assertEquals(
+                DataError.InvalidResponse,
+                fixture { respond("""{"active":true,"revision":"revision-1",$field}""", headers = jsonHeaders()) }
+                    .gateway.readInviteMetadata(GroupId(GROUP_ID)).dataError(),
+            )
+        }
+    }
+
+    @Test
     fun `rotate maps invite URL and expiration`() = runTest {
         val invite = fixture { inviteUrl() }.gateway.rotateInvite(GroupId(GROUP_ID)).success()
 

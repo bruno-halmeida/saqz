@@ -78,7 +78,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
             SELECT invites.group_id, creator.display_name AS inviter_name, NULL::timestamptz AS attendance_deadline
             FROM group_invites invites
             JOIN access_users creator ON creator.id = invites.created_by_user_id
-            WHERE invites.token_digest = :tokenDigest
+            WHERE invites.token_digest = :tokenDigest OR invites.short_code_digest = :tokenDigest
             UNION ALL
             SELECT m.group_id, m.author_name AS inviter_name, game.confirmation_deadline AS attendance_deadline
             FROM notification_attendance_links link
@@ -90,6 +90,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
             target.group_id,
             groups.deleted_at IS NOT NULL AS group_deleted,
             groups.name AS group_name,
+            groups.entry_requires_approval,
             groups.city,
             groups.composition,
             groups.level,
@@ -136,8 +137,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
                     memberCount = first.memberCount,
                     regularSlots = rows.mapNotNull { it.slot },
                     inviterName = first.inviterName,
-                    // SPEC_DEVIATION: VUL-139's entry_requires_approval is not present yet.
-                    entryRequiresApproval = false,
+                    entryRequiresApproval = first.entryRequiresApproval,
                     expiresAt = first.attendanceDeadline,
                     nextGame = first.nextGame,
                 ),
@@ -147,6 +147,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
     private fun ResultSet.toRow() = Row(
         groupDeleted = getBoolean("group_deleted"),
         groupName = getString("group_name"),
+        entryRequiresApproval = getBoolean("entry_requires_approval"),
         city = getString("city"),
         composition = getString("composition")?.let(GroupComposition::valueOf),
         level = getString("level")?.let(GroupLevel::valueOf),
@@ -171,6 +172,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
     private data class Row(
         val groupDeleted: Boolean,
         val groupName: String,
+        val entryRequiresApproval: Boolean,
         val city: String?,
         val composition: GroupComposition?,
         val level: GroupLevel?,

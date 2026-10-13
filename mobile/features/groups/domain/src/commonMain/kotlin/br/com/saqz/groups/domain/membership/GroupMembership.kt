@@ -26,12 +26,16 @@ data class GroupInviteMetadata(
     val createdAt: String? = null,
     val createdByName: String? = null,
     val revision: String? = null,
+    /** Código curto do grupo para mostrar (`44DF-8SA8`); a API o devolve a qualquer admin. */
+    val code: String? = null,
+    val inviteUrl: String? = null,
 )
 
 data class GroupInviteUrl(
     val value: String,
     val expiresAt: String? = null,
     val revision: String? = null,
+    val code: String? = null,
 )
 
 data class ChangeMembershipRoleCommand(

@@ -3,6 +3,7 @@ package br.com.saqz.groups.application.invite.manage
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
+import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteLinkFactory
 import br.com.saqz.groups.application.invite.SecureTokenGenerator
 import br.com.saqz.groups.domain.GroupAccessDecision
@@ -27,10 +28,21 @@ class RotateInvite(
             GroupAccessDecision.Allowed -> Unit
         }
 
-        val token = tokenGenerator.generate()
-        val inviteUrl = linkFactory.create(token.code)
-        val command = RotateInviteCommand(groupId, token.digest, actor, expiresAt = null)
+        val code = newUniqueCode(tokenGenerator, inviteRepository)
+        val inviteUrl = linkFactory.create(code)
+        val command = RotateInviteCommand(groupId, code, actor, expiresAt = null)
         inviteRepository.rotate(command)
-        RotateInviteResult.Success(inviteUrl, command.expiresAt, command.revision)
+        RotateInviteResult.Success(code.display, inviteUrl, command.expiresAt, command.revision)
     }
 }
+
+/** Sorteia um código curto que nenhum convite ativo usa (colisão: sorteia de novo). */
+internal fun newUniqueCode(generator: SecureTokenGenerator, repository: InviteManagementRepository): InviteCode {
+    repeat(MAX_DRAWS) {
+        val code = generator.generate().code
+        if (!repository.isShortCodeTaken(code.value)) return code
+    }
+    error("Não foi possível sortear um código de convite livre")
+}
+
+private const val MAX_DRAWS = 20

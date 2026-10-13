@@ -39,6 +39,7 @@ fun GroupInviteRoot(
             is GroupInviteEffect.OpenMessagePreview -> onOpenMessagePreview(effect.groupName, effect.inviteUrl)
             is GroupInviteEffect.OpenQr -> onOpenQr(effect.groupName, effect.inviteUrl)
             GroupInviteEffect.LinkCopied -> onToast(GroupInviteToast.LinkCopied)
+            GroupInviteEffect.CodeCopied -> onToast(GroupInviteToast.CodeCopied)
         }
     }
     GroupInviteScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent, gameCreated = gameCreated)

@@ -57,8 +57,8 @@ class GroupInviteScreenshotTest {
                 isLoading = false,
                 groupName = "Vôlei do CERET",
                 inviteStatus = InviteStatus.Active,
-                expiresLabel = "09/08",
-                inviteUrl = "https://saqz.app/invite/ceret",
+                inviteCode = "44DF-8SA8",
+                inviteUrl = "https://links.saqz.app/?saqz_invite=44DF8SA8",
                 entryRequiresApproval = true,
                 pendingRequests = listOf(PendingEntryRequestUi("u1", "Ana Lima", "01/08 · 19:30")),
                 recentMembers = listOf(RecentMemberUi("u2", "Bruno", 2, JoinedAtUnit.Hours)),
@@ -73,10 +73,11 @@ class GroupInviteScreenshotTest {
         capture("invite-permanent") {
             GroupInviteScreen(
                 state = GroupInviteState(isLoading = false, groupName = "Vôlei do CERET", inviteStatus = InviteStatus.Active,
-                    inviteUrl = "https://saqz.app/invite/ceret"),
+                    inviteCode = "44DF-8SA8", inviteUrl = "https://links.saqz.app/?saqz_invite=44DF8SA8"),
                 onBack = {}, onIntent = {},
             )
         }
+        compose.onNodeWithText("44DF-8SA8").assertIsDisplayed()
         compose.onNodeWithText("Link não expira").assertIsDisplayed()
     }
 
@@ -88,7 +89,7 @@ class GroupInviteScreenshotTest {
                 onBack = {}, onIntent = {},
             )
         }
-        compose.onNodeWithText("O convite não expira. Você pode desativá-lo quando quiser.").assertIsDisplayed()
+        compose.onNodeWithText("O convite não expira. Você pode trocar o código quando quiser.").assertIsDisplayed()
     }
 
     @Test

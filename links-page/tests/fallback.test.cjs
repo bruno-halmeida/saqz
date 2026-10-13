@@ -238,3 +238,40 @@ test('an iPhone without WasmGC (iOS before 18.2) keeps the old page and never as
   assert.equal(result.location.replaced, undefined);
   assert.match(result.lead.textContent, /chega em breve na App Store/);
 });
+
+// Código curto do convite (44DF-8SA8): o link leva o código sem hífen.
+test('short invite code opens the app and keeps the code in the Play referrer', () => {
+  const short = '44DF8SA8';
+  const result = page('Android', '/', '?saqz_invite=' + short);
+  const store = `${play}&referrer=saqz_invite%3D${short}`;
+  const intent = `intent://links.saqz.app/?saqz_invite=${short}#Intent;scheme=https;package=app.saqz;S.browser_fallback_url=${encodeURIComponent(store)};end`;
+  assert.equal(result.heading.textContent, 'Entre no grupo no Saqz');
+  assert.equal(result.location.href, intent);
+  assert.equal(result.primary.href, store);
+});
+
+test('short invite code is normalized: lowercase and hyphen open the same invite', () => {
+  for (const typed of ['44df8sa8', '44DF-8SA8', '44df-8sa8']) {
+    const result = page('Android', '/', '?saqz_invite=' + typed);
+    assert.equal(result.heading.textContent, 'Entre no grupo no Saqz', typed);
+    assert.match(result.location.href, /^intent:\/\/links\.saqz\.app\/\?saqz_invite=44DF8SA8#Intent/, typed);
+  }
+  const phone = page('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)', '/', '?saqz_invite=44df-8sa8', { source: withAppStore });
+  assert.equal(phone.secondary.href, 'saqz:///?saqz_invite=44DF8SA8');
+});
+
+test('short invite code reaches the web app with the canonical code', async () => {
+  const iPhoneUa = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)';
+  const result = page(iPhoneUa, '/', '?saqz_invite=44df-8sa8', { fetch: () => Promise.resolve({ ok: true }) });
+  await settle();
+  assert.equal(result.location.replaced, 'https://saqz.app/app/?saqz_invite=44DF8SA8');
+});
+
+test('short invite codes with ambiguous characters or wrong size are not invites', () => {
+  for (const bad of ['44DF8SA0', '44DF8SAO', '44DF8SA1', '44DF8SAI', '44DF8SAL', '44DF8SA', '44DF8SA88', '44DF8SA8%23Intent']) {
+    const result = page('Android', '/', '?saqz_invite=' + bad);
+    assert.equal(result.secondary.hidden, true, bad);
+    assert.equal(result.location.href, undefined, bad);
+    assert.equal(result.primary.href, play, bad);
+  }
+});

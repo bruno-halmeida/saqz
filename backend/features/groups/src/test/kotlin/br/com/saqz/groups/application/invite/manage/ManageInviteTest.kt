@@ -20,7 +20,6 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
-import java.util.Base64
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -42,9 +41,9 @@ class ManageInviteTest {
 
         val result = assertIs<RotateInviteResult.Success>(fixture.rotate.execute(actor, groupId))
 
-        assertEquals(RotateInviteResult.Success(inviteUri(firstToken.code), null, result.revision), result)
+        assertEquals(RotateInviteResult.Success("2222-2222", inviteUri(firstToken.code), null, result.revision), result)
         assertEquals(
-            listOf(RotateInviteCommand(groupId, firstToken.digest, actor, null, result.revision)),
+            listOf(RotateInviteCommand(groupId, firstToken.code, actor, null, result.revision)),
             fixture.repository.rotations,
         )
         assertEquals(listOf(firstToken.code), fixture.links.codes)
@@ -57,7 +56,7 @@ class ManageInviteTest {
         val result = assertIs<RotateInviteResult.Success>(fixture.rotate.execute(actor, groupId))
 
         assertEquals(
-            RotateInviteResult.Success(inviteUri(firstToken.code), null, fixture.repository.rotations.single().revision),
+            RotateInviteResult.Success("2222-2222", inviteUri(firstToken.code), null, fixture.repository.rotations.single().revision),
             result,
         )
         assertEquals(1, fixture.repository.rotations.size)
@@ -94,8 +93,8 @@ class ManageInviteTest {
         fixture.rotate.execute(actor, groupId)
         fixture.rotate.execute(actor, groupId)
 
-        assertEquals(secondToken.digest, fixture.repository.activeDigest)
-        assertEquals(listOf(firstToken.digest, secondToken.digest), fixture.repository.rotations.map { it.digest })
+        assertEquals(secondToken.code, fixture.repository.activeCode)
+        assertEquals(listOf(firstToken.code, secondToken.code), fixture.repository.rotations.map { it.code })
     }
 
     @Test
@@ -119,7 +118,17 @@ class ManageInviteTest {
 
         assertFailsWith<IllegalStateException> { fixture.rotate.execute(actor, groupId) }
         assertTrue(fixture.repository.rotations.isEmpty())
-        assertEquals(null, fixture.repository.activeDigest)
+        assertEquals(null, fixture.repository.activeCode)
+    }
+
+    @Test
+    fun `rotation draws again when the code is already used by another active invite`() {
+        val fixture = fixture(GroupRole.OWNER, tokens = listOf(firstToken, secondToken))
+        fixture.repository.taken += firstToken.code.value
+
+        fixture.rotate.execute(actor, groupId)
+
+        assertEquals(secondToken.code, fixture.repository.rotations.single().code)
     }
 
     @Test
@@ -187,14 +196,12 @@ class ManageInviteTest {
     }
 
     private fun token(seed: Int): InviteToken {
-        val bytes = ByteArray(32)
-        bytes[31] = seed.toByte()
-        val raw = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+        val raw = (seed + 1).toString().repeat(8)
         val digest = MessageDigest.getInstance("SHA-256").digest(raw.toByteArray(Charsets.US_ASCII))
         return InviteToken(InviteCode.from(raw), InviteTokenDigest.from(digest))
     }
 
-    private fun inviteUri(code: InviteCode) = URI("https://join.saqz.app/invite/${code.value}")
+    private fun inviteUri(code: InviteCode) = URI("https://join.saqz.app/?saqz_invite=${code.value}")
 
     private data class Fixture(
         val rotate: RotateInvite,
@@ -234,18 +241,23 @@ class ManageInviteTest {
     private class RecordingInviteManagementRepository : InviteManagementRepository {
         val rotations = mutableListOf<RotateInviteCommand>()
         val expirations = mutableListOf<UUID>()
-        var activeDigest: InviteTokenDigest? = null
+        val taken = mutableSetOf<String>()
+        var activeCode: InviteCode? = null
 
         override fun rotate(command: RotateInviteCommand) {
             rotations += command
-            activeDigest = command.digest
+            activeCode = command.code
         }
+
+        override fun ensureShortCode(groupId: UUID, shortCode: String, createdByUserId: UUID) = Unit
+
+        override fun isShortCodeTaken(shortCode: String): Boolean = shortCode in taken
 
         override fun findMetadata(groupId: UUID): InviteMetadata? = null
 
         override fun expire(groupId: UUID) {
             expirations += groupId
-            activeDigest = null
+            activeCode = null
         }
     }
 

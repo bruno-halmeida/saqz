@@ -6,4 +6,5 @@
     <string name="invite_preview_whatsapp">Enviar no WhatsApp</string>
     <string name="invite_preview_back">Voltar ao convite</string>
     <string name="invite_preview_error">Não foi possível abrir o compartilhamento</string>
+    <string name="invite_share_code_hint">Já tem o app? Use o código %1$s em “Tenho um convite”.</string>
 </resources>

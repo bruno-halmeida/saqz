@@ -1,10 +1,15 @@
 <resources>
     <string name="group_invite_title">Convidar</string>
-    <string name="group_invite_active_expires">Link expira em %1$s</string>
+    <string name="group_invite_code_title">Código do grupo</string>
+    <string name="group_invite_copy_code">Copiar código</string>
+    <string name="group_invite_code_copied_toast">Código copiado.</string>
+    <string name="group_invite_link_title">Link do convite</string>
     <string name="group_invite_never_expires">Link não expira</string>
-    <string name="group_invite_generate_link">Criar novo link</string>
-    <string name="group_invite_generate_code">Criar novo código</string>
-    <string name="group_invite_rotate_warning">O antigo para de valer</string>
+    <string name="group_invite_generate_code">Criar código</string>
+    <string name="group_invite_rotate_code">Trocar código</string>
+    <string name="group_invite_rotate_title">Trocar o código?</string>
+    <string name="group_invite_rotate_body">Quem tem o código ou o link antigo não vai conseguir entrar.</string>
+    <string name="group_invite_rotate_cancel">Cancelar</string>
     <string name="group_invite_copy_link">Copiar link</string>
     <string name="group_invite_copied_toast">Link copiado.</string>
     <string name="group_invite_share">Compartilhar convite</string>
@@ -12,7 +17,6 @@
     <string name="group_invite_whatsapp">Enviar no WhatsApp</string>
     <string name="group_invite_show_qr">Mostrar QR Code</string>
     <string name="group_invite_share_image">Gerar imagem do convite</string>
-    <string name="group_invite_deactivate">Desativar link</string>
     <string name="group_invite_approval">Aprovar pedidos para entrar</string>
     <string name="group_invite_approval_hint">Ligado, quem abre o link pede para entrar e você aprova. Desligado, entra na hora.</string>
     <string name="group_invite_people">Quem entrou</string>
@@ -26,8 +30,8 @@
     <string name="group_invite_load_error">Não foi possível carregar os convites</string>
     <string name="group_invite_operation_error">Não foi possível concluir essa ação</string>
     <string name="group_invite_retry">Tentar novamente</string>
-    <string name="group_invite_empty_title">Crie um link para convidar a galera</string>
-    <string name="group_invite_empty_description">O convite não expira. Você pode desativá-lo quando quiser.</string>
+    <string name="group_invite_empty_title">Crie um código para convidar a galera</string>
+    <string name="group_invite_empty_description">O convite não expira. Você pode trocar o código quando quiser.</string>
     <string name="group_invite_game_created_title">Jogo marcado!</string>
     <string name="group_invite_game_created_text">Agora chame a galera: mande o link no WhatsApp e a lista começa a fechar sozinha.</string>
 </resources>

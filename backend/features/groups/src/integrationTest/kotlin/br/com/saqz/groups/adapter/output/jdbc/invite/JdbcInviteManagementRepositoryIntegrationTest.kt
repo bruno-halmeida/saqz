@@ -2,6 +2,7 @@ package br.com.saqz.groups.adapter.output.jdbc.invite
 
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
+import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.application.invite.manage.RotateInviteCommand
 import br.com.saqz.postgrestesting.TestPostgres
@@ -61,9 +62,9 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     }
 
     @Test
-    fun `permanent invite round trips with its revision and replacement invalidates old digest`() {
+    fun `permanent invite round trips with its revision and replacement invalidates old code`() {
         val fixture = fixture("permanent")
-        val first = command(fixture, digest(1), null)
+        val first = command(fixture, code(1), null)
         transaction.inTransaction { repository.rotate(first) }
 
         assertNull(invite(fixture.group)!!.expiresAt)
@@ -73,35 +74,95 @@ class JdbcInviteManagementRepositoryIntegrationTest {
         assertEquals(first.revision, metadata.revision)
         assertEquals("Owner Person", metadata.createdByName)
         val redemption = JdbcInviteRedemptionRepository(dataSource)
-        val redeemable = assertNotNull(redemption.findInvite(first.digest))
+        val redeemable = assertNotNull(redemption.findInvite(InviteTokenDigest.sha256(first.code)))
         assertEquals(fixture.group, redeemable.groupId)
         assertNull(redeemable.expiresAt)
 
-        val second = command(fixture, digest(2), null)
+        val second = command(fixture, code(2), null)
         transaction.inTransaction { repository.rotate(second) }
         assertNotEquals(first.revision, second.revision)
         assertEquals(second.revision, repository.findMetadata(fixture.group)!!.revision)
         assertEquals(1, inviteCount(fixture.group))
-        assertNull(redemption.findInvite(first.digest))
-        assertNull(assertNotNull(redemption.findInvite(second.digest)).expiresAt)
+        assertNull(redemption.findInvite(InviteTokenDigest.sha256(first.code)))
+        assertNull(assertNotNull(redemption.findInvite(InviteTokenDigest.sha256(second.code))).expiresAt)
 
         transaction.inTransaction { repository.expire(fixture.group) }
-        assertNull(redemption.findInvite(second.digest))
+        assertNull(redemption.findInvite(InviteTokenDigest.sha256(second.code)))
         assertNull(repository.findMetadata(fixture.group))
     }
 
     @Test
-    fun `first rotation inserts exact digest and creator`() {
+    fun `rotation drops the legacy long token and keeps only the new short code`() {
+        val fixture = fixture("legacy-rotate")
+        val legacy = InviteTokenDigest.from(ByteArray(32) { it.toByte() })
+        insertLegacy(fixture, legacy)
+        val redemption = JdbcInviteRedemptionRepository(dataSource)
+        assertNotNull(redemption.findInvite(legacy))
+
+        rotate(fixture, code(1))
+
+        assertNull(redemption.findInvite(legacy))
+        assertNull(invite(fixture.group)!!.digest)
+        assertNotNull(redemption.findInvite(InviteTokenDigest.sha256(code(1))))
+    }
+
+    @Test
+    fun `ensuring a short code keeps the legacy long token valid`() {
+        val fixture = fixture("legacy-ensure")
+        val legacy = InviteTokenDigest.from(ByteArray(32) { (it + 5).toByte() })
+        insertLegacy(fixture, legacy)
+        val revision = repository.findMetadata(fixture.group)!!.revision
+        assertNull(repository.findMetadata(fixture.group)!!.shortCode)
+
+        transaction.inTransaction { repository.ensureShortCode(fixture.group, code(3).value, fixture.owner) }
+        // Segunda chamada não troca o código já gravado.
+        transaction.inTransaction { repository.ensureShortCode(fixture.group, code(4).value, fixture.owner) }
+
+        val metadata = repository.findMetadata(fixture.group)!!
+        assertEquals(code(3).value, metadata.shortCode)
+        assertEquals(revision, metadata.revision)
+        val redemption = JdbcInviteRedemptionRepository(dataSource)
+        assertEquals(fixture.group, redemption.findInvite(legacy)!!.groupId)
+        assertEquals(fixture.group, redemption.findInvite(InviteTokenDigest.sha256(code(3)))!!.groupId)
+    }
+
+    @Test
+    fun `ensuring a short code on a group without invite creates one`() {
+        val fixture = fixture("ensure-new")
+
+        transaction.inTransaction { repository.ensureShortCode(fixture.group, code(1).value, fixture.owner) }
+
+        assertEquals(code(1).value, invite(fixture.group)!!.shortCode)
+        assertNull(invite(fixture.group)!!.digest)
+        assertNull(invite(fixture.group)!!.expiresAt)
+        assertEquals(fixture.owner, invite(fixture.group)!!.creator)
+    }
+
+    @Test
+    fun `short code is taken only while an active invite uses it`() {
+        val fixture = fixture("taken")
+        assertFalse(repository.isShortCodeTaken(code(1).value))
+
+        rotate(fixture, code(1))
+        assertTrue(repository.isShortCodeTaken(code(1).value))
+
+        rotate(fixture, code(2))
+        assertFalse(repository.isShortCodeTaken(code(1).value))
+    }
+
+    @Test
+    fun `first rotation inserts exact code and creator`() {
         val fixture = fixture("insert")
-        val digest = digest(1)
+        val code = code(1)
         val expiresAt = futureExpiry()
 
         transaction.inTransaction {
-            repository.rotate(command(fixture, digest, expiresAt))
+            repository.rotate(command(fixture, code, expiresAt))
         }
 
         val stored = requireNotNull(invite(fixture.group))
-        assertContentEquals(digest.toByteArray(), stored.digest)
+        assertEquals(code.value, stored.shortCode)
+        assertNull(stored.digest)
         assertEquals(fixture.owner, stored.creator)
         assertEquals(expiresAt, stored.expiresAt)
     }
@@ -111,7 +172,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
         val fixture = fixture("metadata")
         val expiresAt = futureExpiry()
 
-        rotate(fixture, digest(1), expiresAt)
+        rotate(fixture, code(1), expiresAt)
 
         val metadata = transaction.inTransaction { repository.findMetadata(fixture.group) }
 
@@ -121,31 +182,31 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     }
 
     @Test
-    fun `rotation replaces digest while preserving one row per group`() {
+    fun `rotation replaces code while preserving one row per group`() {
         val fixture = fixture("replace")
 
-        rotate(fixture, digest(1))
-        rotate(fixture, digest(2))
+        rotate(fixture, code(1))
+        rotate(fixture, code(2))
 
         assertEquals(1, inviteCount(fixture.group))
-        assertContentEquals(digest(2).toByteArray(), invite(fixture.group)?.digest)
+        assertEquals(code(2).value, invite(fixture.group)?.shortCode)
     }
 
     @Test
-    fun `old digest is absent after replacement commits`() {
+    fun `old code is absent after replacement commits`() {
         val fixture = fixture("old-digest")
-        val old = digest(1)
+        val old = code(1)
 
         rotate(fixture, old)
-        rotate(fixture, digest(2))
+        rotate(fixture, code(2))
 
-        assertEquals(0, digestCount(old))
+        assertEquals(0, codeCount(old))
     }
 
     @Test
     fun `expiration deletes the active invite`() {
         val fixture = fixture("expire")
-        rotate(fixture, digest(1))
+        rotate(fixture, code(1))
 
         transaction.inTransaction { repository.expire(fixture.group) }
 
@@ -169,7 +230,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
 
         assertFailsWith<IllegalArgumentException> {
             transaction.inTransaction {
-                repository.rotate(command(fixture, digest(1)))
+                repository.rotate(command(fixture, code(1)))
             }
         }
         assertFailsWith<IllegalArgumentException> {
@@ -182,20 +243,20 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     fun `expiration leaves another group invite untouched`() {
         val first = fixture("isolation-first")
         val second = fixture("isolation-second")
-        rotate(first, digest(1))
-        rotate(second, digest(2))
+        rotate(first, code(1))
+        rotate(second, code(2))
 
         transaction.inTransaction { repository.expire(first.group) }
 
         assertNull(invite(first.group))
-        assertContentEquals(digest(2).toByteArray(), invite(second.group)?.digest)
+        assertEquals(code(2).value, invite(second.group)?.shortCode)
     }
 
     @Test
-    fun `same digest cannot be active in two groups`() {
+    fun `same code cannot be active in two groups`() {
         val first = fixture("unique-first")
         val second = fixture("unique-second")
-        val shared = digest(3)
+        val shared = code(3)
         rotate(first, shared)
 
         assertFailsWith<RuntimeException> { rotate(second, shared) }
@@ -203,19 +264,19 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     }
 
     @Test
-    fun `transaction rollback preserves previous digest`() {
+    fun `transaction rollback preserves previous code`() {
         val fixture = fixture("rollback")
-        val previous = digest(1)
+        val previous = code(1)
         rotate(fixture, previous)
 
         assertFailsWith<IllegalStateException> {
             transaction.inTransaction {
-                repository.rotate(command(fixture, digest(2)))
+                repository.rotate(command(fixture, code(2)))
                 error("rollback")
             }
         }
 
-        assertContentEquals(previous.toByteArray(), invite(fixture.group)?.digest)
+        assertEquals(previous.value, invite(fixture.group)?.shortCode)
     }
 
     @Test
@@ -229,7 +290,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
         try {
             val first = pool.submit {
                 transaction.inTransaction {
-                    repository.rotate(command(fixture, digest(1)))
+                    repository.rotate(command(fixture, code(1)))
                     firstWritten.countDown()
                     releaseFirst.await()
                 }
@@ -238,7 +299,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
             val second = pool.submit {
                 transaction.inTransaction {
                     secondAttempted.countDown()
-                    repository.rotate(command(fixture, digest(2)))
+                    repository.rotate(command(fixture, code(2)))
                     secondFinished.countDown()
                 }
             }
@@ -249,7 +310,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
             second.get()
 
             assertEquals(1, inviteCount(fixture.group))
-            assertContentEquals(digest(2).toByteArray(), invite(fixture.group)?.digest)
+            assertEquals(code(2).value, invite(fixture.group)?.shortCode)
         } finally {
             releaseFirst.countDown()
             pool.shutdownNow()
@@ -264,7 +325,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
         assertFailsWith<RuntimeException> {
             transaction.inTransaction {
                 repository.rotate(
-                    RotateInviteCommand(missingGroup, digest(1), creator, futureExpiry()),
+                    RotateInviteCommand(missingGroup, code(1), creator, futureExpiry()),
                 )
             }
         }
@@ -272,7 +333,7 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     }
 
     private data class Fixture(val owner: UUID, val group: UUID)
-    private data class StoredInvite(val digest: ByteArray, val creator: UUID, val expiresAt: Instant?, val revision: UUID)
+    private data class StoredInvite(val shortCode: String?, val digest: ByteArray?, val creator: UUID, val expiresAt: Instant?, val revision: UUID)
 
     private fun fixture(prefix: String): Fixture {
         val owner = insertUser("$prefix-owner")
@@ -281,19 +342,19 @@ class JdbcInviteManagementRepositoryIntegrationTest {
 
     private fun rotate(
         fixture: Fixture,
-        digest: InviteTokenDigest,
+        code: InviteCode,
         expiresAt: Instant = futureExpiry(),
     ) = transaction.inTransaction {
-        repository.rotate(command(fixture, digest, expiresAt))
+        repository.rotate(command(fixture, code, expiresAt))
     }
 
     private fun command(
         fixture: Fixture,
-        digest: InviteTokenDigest,
+        code: InviteCode,
         expiresAt: Instant? = futureExpiry(),
     ) = RotateInviteCommand(
         groupId = fixture.group,
-        digest = digest,
+        code = code,
         createdByUserId = fixture.owner,
         expiresAt = expiresAt,
     )
@@ -301,7 +362,15 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     // timestamptz guarda microssegundos; sem truncar, Instant.now() (nanos) não bate no round-trip.
     private fun futureExpiry(): Instant = Instant.now().plus(Duration.ofDays(7)).truncatedTo(ChronoUnit.MICROS)
 
-    private fun digest(seed: Int) = InviteTokenDigest.from(ByteArray(32) { index -> (seed + index).toByte() })
+    private fun code(seed: Int) = InviteCode.from("23456789ABCDEFGHJKMNPQRSTUVWXYZ".substring(seed, seed + 8))
+
+    private fun insertLegacy(fixture: Fixture, digest: InviteTokenDigest) {
+        val hex = digest.toByteArray().joinToString("") { "%02x".format(it) }
+        execute(
+            "INSERT INTO group_invites (group_id, token_digest, created_by_user_id, created_at, expires_at) " +
+                "VALUES ('${fixture.group}', decode('$hex', 'hex'), '${fixture.owner}', now(), NULL)",
+        )
+    }
 
     private fun insertUser(subject: String): UUID {
         val id = UUID.randomUUID()
@@ -323,25 +392,26 @@ class JdbcInviteManagementRepositoryIntegrationTest {
 
     private fun invite(group: UUID): StoredInvite? = connection().use { connection ->
         connection.prepareStatement(
-            "SELECT token_digest, created_by_user_id, expires_at, revision FROM group_invites WHERE group_id = ?",
+            "SELECT short_code, token_digest, created_by_user_id, expires_at, revision FROM group_invites WHERE group_id = ?",
         ).use { statement ->
             statement.setObject(1, group)
             statement.executeQuery().use { result ->
                 if (result.next()) {
                     StoredInvite(
-                        result.getBytes(1),
-                        result.getObject(2, UUID::class.java),
-                        result.getTimestamp(3)?.toInstant(),
-                        result.getObject(4, UUID::class.java),
+                        result.getString(1),
+                        result.getBytes(2),
+                        result.getObject(3, UUID::class.java),
+                        result.getTimestamp(4)?.toInstant(),
+                        result.getObject(5, UUID::class.java),
                     )
                 } else null
             }
         }
     }
 
-    private fun digestCount(digest: InviteTokenDigest): Int = connection().use { connection ->
-        connection.prepareStatement("SELECT count(*) FROM group_invites WHERE token_digest = ?").use { statement ->
-            statement.setBytes(1, digest.toByteArray())
+    private fun codeCount(code: InviteCode): Int = connection().use { connection ->
+        connection.prepareStatement("SELECT count(*) FROM group_invites WHERE short_code = ?").use { statement ->
+            statement.setString(1, code.value)
             statement.executeQuery().use { result -> result.next(); result.getInt(1) }
         }
     }

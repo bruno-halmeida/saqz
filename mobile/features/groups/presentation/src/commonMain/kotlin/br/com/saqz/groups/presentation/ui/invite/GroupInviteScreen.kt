@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.sp
 import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonSize
@@ -31,25 +32,31 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.invite.GroupInviteError
 import br.com.saqz.groups.presentation.invite.GroupInviteIntent
 import br.com.saqz.groups.presentation.invite.GroupInviteState
+import br.com.saqz.groups.presentation.invite.GroupInviteToast
 import br.com.saqz.groups.presentation.invite.JoinedAtUnit
 import br.com.saqz.groups.presentation.invite.InviteStatus
 import br.com.saqz.groups.presentation.invite.PendingEntryRequestUi
 import br.com.saqz.groups.presentation.invite.RecentMemberUi
 import br.com.saqz.groups.resources.Res
-import br.com.saqz.groups.resources.group_invite_active_expires
 import br.com.saqz.groups.resources.group_invite_approval_hint
 import br.com.saqz.groups.resources.group_invite_never_expires
 import br.com.saqz.groups.resources.group_invite_approve
 import br.com.saqz.groups.resources.group_invite_approval
 import br.com.saqz.groups.resources.group_invite_copy_link
+import br.com.saqz.groups.resources.group_invite_code_copied_toast
+import br.com.saqz.groups.resources.group_invite_code_title
 import br.com.saqz.groups.resources.group_invite_copied_toast
-import br.com.saqz.groups.resources.group_invite_deactivate
+import br.com.saqz.groups.resources.group_invite_copy_code
+import br.com.saqz.groups.resources.group_invite_link_title
+import br.com.saqz.groups.resources.group_invite_rotate_body
+import br.com.saqz.groups.resources.group_invite_rotate_cancel
+import br.com.saqz.groups.resources.group_invite_rotate_code
+import br.com.saqz.groups.resources.group_invite_rotate_title
 import br.com.saqz.groups.resources.group_invite_empty_description
 import br.com.saqz.groups.resources.group_invite_empty_title
 import br.com.saqz.groups.resources.group_invite_game_created_text
 import br.com.saqz.groups.resources.group_invite_game_created_title
 import br.com.saqz.groups.resources.group_invite_generate_code
-import br.com.saqz.groups.resources.group_invite_generate_link
 import br.com.saqz.groups.resources.group_invite_joined_days
 import br.com.saqz.groups.resources.group_invite_joined_hours
 import br.com.saqz.groups.resources.group_invite_joined_minutes
@@ -60,7 +67,6 @@ import br.com.saqz.groups.resources.group_invite_people
 import br.com.saqz.groups.resources.group_invite_pending
 import br.com.saqz.groups.resources.group_invite_reject
 import br.com.saqz.groups.resources.group_invite_retry
-import br.com.saqz.groups.resources.group_invite_rotate_warning
 import br.com.saqz.groups.resources.group_invite_share
 import br.com.saqz.groups.resources.group_invite_share_image
 import br.com.saqz.groups.resources.group_invite_show_qr
@@ -72,6 +78,10 @@ import org.jetbrains.compose.resources.stringResource
 internal object GroupInviteTags {
     const val Screen = "group-invite"
     const val Generate = "group-invite-generate"
+    const val Code = "group-invite-code"
+    const val CopyCode = "group-invite-copy-code"
+    const val Rotate = "group-invite-rotate"
+    const val RotateConfirm = "group-invite-rotate-confirm"
     const val Copy = "group-invite-copy"
     const val Share = "group-invite-share"
     const val Approval = "group-invite-approval"
@@ -120,8 +130,8 @@ internal fun GroupInviteScreen(
                         SaqzEmptyState(
                             title = stringResource(Res.string.group_invite_empty_title),
                             description = stringResource(Res.string.group_invite_empty_description),
-                            action = stringResource(Res.string.group_invite_generate_link),
-                            onAction = { onIntent(GroupInviteIntent.GenerateInvite) },
+                            action = stringResource(Res.string.group_invite_generate_code),
+                            onAction = { onIntent(GroupInviteIntent.ConfirmRotate) },
                         )
                     }
                     ApprovalRow(state = state, onIntent = onIntent)
@@ -177,12 +187,37 @@ internal fun GroupInviteScreen(
                 modifier = Modifier.padding(top = SaqzTheme.metrics.grid),
             )
         }
+        SaqzBottomSheet(
+            open = state.isRotateConfirmVisible,
+            onClose = { onIntent(GroupInviteIntent.DismissRotate) },
+            title = stringResource(Res.string.group_invite_rotate_title),
+            description = stringResource(Res.string.group_invite_rotate_body),
+            splitFooter = {
+                SaqzButton(
+                    label = stringResource(Res.string.group_invite_rotate_cancel),
+                    onClick = { onIntent(GroupInviteIntent.DismissRotate) },
+                    variant = SaqzButtonVariant.Ghost,
+                    modifier = Modifier.weight(1f),
+                )
+                SaqzButton(
+                    label = stringResource(Res.string.group_invite_rotate_code),
+                    onClick = { onIntent(GroupInviteIntent.ConfirmRotate) },
+                    loading = state.isGenerating,
+                    modifier = Modifier.weight(1f).testTag(GroupInviteTags.RotateConfirm),
+                )
+            },
+        ) {}
         SaqzToast(
             visible = state.toast != null,
             onDismiss = { onIntent(GroupInviteIntent.ClearToast) },
             modifier = Modifier.align(Alignment.BottomCenter).padding(SaqzTheme.metrics.horizontalPadding),
         ) {
-            SaqzToastText(stringResource(Res.string.group_invite_copied_toast))
+            SaqzToastText(
+                stringResource(
+                    if (state.toast == GroupInviteToast.CodeCopied) Res.string.group_invite_code_copied_toast
+                    else Res.string.group_invite_copied_toast,
+                ),
+            )
         }
     }
 }
@@ -210,49 +245,52 @@ private fun GameCreatedHeader() {
 @Composable
 private fun InviteActiveCard(state: GroupInviteState, onIntent: (GroupInviteIntent) -> Unit) {
     SaqzCard {
-        Text(
-            state.expiresLabel?.let { stringResource(Res.string.group_invite_active_expires, it) }
-                ?: stringResource(Res.string.group_invite_never_expires),
-            style = SaqzTheme.typography.subtitle,
-        )
-        state.inviteUrl?.let {
+        state.inviteCode?.let { code ->
             Text(
-                it,
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.textSecondary,
-                modifier = Modifier.padding(vertical = SaqzTheme.metrics.grid),
-            )
-        }
-            Text(
-                stringResource(Res.string.group_invite_rotate_warning),
+                stringResource(Res.string.group_invite_code_title),
                 style = SaqzTheme.typography.support,
                 color = SaqzTheme.colors.textSecondary,
             )
-        Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
+            // O código que a galera digita em "Tenho um convite": grande, para ler e ditar sem erro.
+            Text(
+                code,
+                style = SaqzTheme.typography.title.copy(fontSize = CODE_FONT_SIZE, letterSpacing = CODE_LETTER_SPACING),
+                color = SaqzTheme.colors.textPrimary,
+                modifier = Modifier.padding(vertical = SaqzTheme.metrics.grid).testTag(GroupInviteTags.Code),
+            )
             SaqzButton(
-                label = stringResource(
-                    if (state.inviteUrl == null) Res.string.group_invite_generate_link
-                    else Res.string.group_invite_generate_code,
-                ),
-                onClick = { onIntent(GroupInviteIntent.GenerateInvite) },
-                loading = state.isGenerating,
-                modifier = Modifier.weight(1f).testTag(GroupInviteTags.Generate),
+                label = stringResource(Res.string.group_invite_copy_code),
+                onClick = { onIntent(GroupInviteIntent.CopyCode) },
+                variant = SaqzButtonVariant.Secondary,
+                fullWidth = true,
+                modifier = Modifier.testTag(GroupInviteTags.CopyCode),
             )
-            if (state.inviteUrl != null) {
-                SaqzButton(
-                    label = stringResource(Res.string.group_invite_copy_link),
-                    onClick = { onIntent(GroupInviteIntent.CopyLink) },
-                    variant = SaqzButtonVariant.Secondary,
-                    modifier = Modifier.weight(1f).testTag(GroupInviteTags.Copy),
-                )
-            }
         }
         state.inviteUrl?.let {
+            Text(
+                stringResource(Res.string.group_invite_link_title),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+                modifier = Modifier.padding(top = SaqzTheme.metrics.grid),
+            )
+            Text(it, style = SaqzTheme.typography.support, color = SaqzTheme.colors.textPrimary)
+            Text(
+                stringResource(Res.string.group_invite_never_expires),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+            SaqzButton(
+                label = stringResource(Res.string.group_invite_copy_link),
+                onClick = { onIntent(GroupInviteIntent.CopyLink) },
+                variant = SaqzButtonVariant.Secondary,
+                fullWidth = true,
+                modifier = Modifier.padding(top = SaqzTheme.metrics.grid).testTag(GroupInviteTags.Copy),
+            )
             SaqzButton(
                 label = stringResource(Res.string.group_invite_whatsapp_primary),
                 onClick = { onIntent(GroupInviteIntent.OpenMessagePreview) },
                 fullWidth = true,
-                modifier = Modifier.testTag(GroupInviteTags.Share),
+                modifier = Modifier.padding(top = SaqzTheme.metrics.grid).testTag(GroupInviteTags.Share),
             )
             SaqzButton(
                 label = stringResource(Res.string.group_invite_share),
@@ -262,16 +300,21 @@ private fun InviteActiveCard(state: GroupInviteState, onIntent: (GroupInviteInte
                 modifier = Modifier.padding(top = SaqzTheme.metrics.grid),
             )
         }
+        // Trocar o código derruba o que já foi enviado: fica fora do destaque e sempre pede confirmação.
         SaqzButton(
-            label = stringResource(Res.string.group_invite_deactivate),
-            onClick = { onIntent(GroupInviteIntent.DeactivateInvite) },
+            label = stringResource(Res.string.group_invite_rotate_code),
+            onClick = { onIntent(GroupInviteIntent.RequestRotate) },
             variant = SaqzButtonVariant.Ghost,
             size = SaqzButtonSize.Sm,
-            enabled = !state.isDeactivating,
+            enabled = !state.isGenerating,
             fullWidth = true,
+            modifier = Modifier.padding(top = SaqzTheme.metrics.grid).testTag(GroupInviteTags.Rotate),
         )
     }
 }
+
+private val CODE_FONT_SIZE = 36.sp
+private val CODE_LETTER_SPACING = 4.sp
 
 @Composable
 private fun ApprovalRow(state: GroupInviteState, onIntent: (GroupInviteIntent) -> Unit) {
@@ -361,5 +404,3 @@ private fun RecentMemberUi.joinedAtLabel(): String = when (joinedAtUnit) {
     JoinedAtUnit.Recently -> stringResource(Res.string.group_invite_joined_recently)
 }
 
-// SPEC_DEVIATION VUL-141: a digitação de código e o bloco “CERET-8K2P” foram cortados.
-// Esta tela mantém o foco em link, compartilhar e QR; não há “Copiar código”.

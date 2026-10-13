@@ -13,21 +13,17 @@ import br.com.saqz.groups.domain.group.GroupVersionToken
 import br.com.saqz.groups.domain.group.UpdateGroupSettingsCommand
 import br.com.saqz.groups.domain.membership.GroupEntryRequest
 import br.com.saqz.groups.domain.membership.GroupEntryRequestGateway
-import br.com.saqz.groups.domain.membership.GroupInviteMetadata
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
-import br.com.saqz.groups.port.GroupInviteUrlCache
-import br.com.saqz.groups.port.GroupInviteUrlReadResult
-import br.com.saqz.groups.port.GroupInviteUrlStorePort
-import br.com.saqz.groups.port.GroupInviteUrlWriteResult
 import br.com.saqz.groups.port.InviteNativeOperationResult
 import br.com.saqz.groups.port.InviteShareImage
 import br.com.saqz.groups.port.NativeInviteClipboardPort
 import br.com.saqz.groups.port.NativeInviteSharePort
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.presentation.home.InviteLinkParser
 import br.com.saqz.groups.presentation.setup.takeCodePoints
+import br.com.saqz.groups.resources.invite_share_code_hint
 import br.com.saqz.groups.resources.onboarding_invite_message
 import org.jetbrains.compose.resources.getString
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -40,19 +36,18 @@ class GroupInviteViewModel(
     private val membershipGateway: GroupMembershipGateway,
     private val entryRequestGateway: GroupEntryRequestGateway,
     private val athleteGateway: AthleteGateway,
-    private val urlStore: GroupInviteUrlStorePort,
     private val sharePort: NativeInviteSharePort,
     private val clipboardPort: NativeInviteClipboardPort,
 ) : MviViewModel<GroupInviteState, GroupInviteIntent, GroupInviteEffect>(GroupInviteState()) {
     private enum class GenerationOperation {
         Load,
         Rotate,
-        Expire,
         ToggleApproval,
         Approve,
         Reject,
         RefreshRequests,
         CopyLink,
+        CopyCode,
         ShareImage,
     }
 
@@ -67,23 +62,22 @@ class GroupInviteViewModel(
     private var timeZone = GroupTimeZone("")
     private var loadInFlight = false
 
-    // Só a primeira carga gera o link sozinho: depois disso, "Desativar" é escolha da pessoa.
-    private var autoGenerateChecked = false
-
     init { load() }
 
     override fun handleIntent(intent: GroupInviteIntent) {
         when (intent) {
             GroupInviteIntent.Retry -> load()
             GroupInviteIntent.Refresh -> refresh()
-            GroupInviteIntent.GenerateInvite -> rotate()
-            GroupInviteIntent.DeactivateInvite -> expire()
+            GroupInviteIntent.RequestRotate -> update { it.copy(isRotateConfirmVisible = true) }
+            GroupInviteIntent.DismissRotate -> update { it.copy(isRotateConfirmVisible = false) }
+            GroupInviteIntent.ConfirmRotate -> rotate()
             is GroupInviteIntent.ToggleApproval -> toggleApproval(intent.enabled)
             is GroupInviteIntent.ApproveRequest -> approve(intent.userId)
             is GroupInviteIntent.RejectRequest -> reject(intent.userId)
             GroupInviteIntent.OpenShareSheet -> update { it.copy(isShareSheetVisible = true, toast = null) }
             GroupInviteIntent.CloseShareSheet -> update { it.copy(isShareSheetVisible = false) }
             GroupInviteIntent.CopyLink -> copyLink()
+            GroupInviteIntent.CopyCode -> copyCode()
             GroupInviteIntent.OpenMessagePreview -> openPreview()
             GroupInviteIntent.OpenQr -> openQr()
             GroupInviteIntent.ShareImage -> shareImage()
@@ -93,12 +87,12 @@ class GroupInviteViewModel(
 
     /**
      * Recarga por baixo ([GroupInviteIntent.Refresh]): sem esqueleto, sem tela de erro, sem apagar
-     * o toast. Com carga ou escrita em voo (gerar, desativar, aprovação) é ignorado.
+     * o toast. Com carga ou escrita em voo (trocar código, aprovação) é ignorado.
      */
     private fun refresh() {
         if (isFirstAppearance()) return
         val current = state.value
-        val writing = current.isGenerating || current.isDeactivating || current.isUpdatingApproval ||
+        val writing = current.isGenerating || current.isUpdatingApproval ||
             current.pendingActionIds.isNotEmpty()
         if (!loadInFlight && !writing) load(softRefresh = true)
     }
@@ -118,11 +112,6 @@ class GroupInviteViewModel(
                 is SaqzResult.Success -> result.value
                 is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration, softRefresh)
             }
-            val cachedInvite = readCachedInvite()
-            val validCachedInvite = cachedInvite?.takeIf { metadata.isActiveNow() && it.matches(metadata) } ?: run {
-                if (cachedInvite != null) clearCachedInvite()
-                null
-            }
             val requests = when (val result = entryRequestGateway.list(GroupId(groupId))) {
                 is SaqzResult.Success -> result.value
                 is SaqzResult.Failure -> return@launch failLoad(operation, requestGeneration, softRefresh)
@@ -135,7 +124,8 @@ class GroupInviteViewModel(
             groupName = group.group.name
             timeZone = group.group.timeZone
             versionToken = group.versionToken
-            val active = metadata.isActiveNow()
+            // O código e o link vêm da API, iguais em qualquer aparelho e para qualquer admin: sem cache local.
+            val active = metadata.active
             update {
                 it.copy(
                     isLoading = false,
@@ -143,112 +133,37 @@ class GroupInviteViewModel(
                     error = null,
                     groupName = group.group.name,
                     inviteStatus = if (active) InviteStatus.Active else InviteStatus.Empty,
-                    expiresLabel = metadata.expiresAt?.takeIf { active }?.formatExpiry(),
-                    inviteUrl = validCachedInvite?.inviteUrl?.takeIf { active },
+                    inviteCode = metadata.code?.takeIf { active },
+                    inviteUrl = metadata.inviteUrl?.takeIf { active },
                     entryRequiresApproval = group.group.entryRequiresApproval,
                     pendingRequests = requests.map(GroupEntryRequest::toUi),
                     recentMembers = roster.sortedByDescending { it.joinedAt }
                         .map { member -> member.toUi() },
                 )
             }
-            generateOnFirstLoad(active, onlyOwner = roster.all { it.role == GroupRole.OWNER })
         }
         job.invokeOnCompletion { if (isCurrent(operation, requestGeneration)) loadInFlight = false }
     }
 
-    /**
-     * Grupo ainda sem ninguém além do dono e sem convite ativo: gera o link já, que é o passo
-     * "Chame a galera" do onboarding. Com atletas no grupo, convite inativo pode ser um "Desativar
-     * link" de propósito (o backend apaga o convite, então não dá para distinguir), e fica como está.
-     * Convite ativo (mesmo sem URL em cache) nunca é girado aqui; falha cai no vazio com "tentar".
-     */
-    private fun generateOnFirstLoad(active: Boolean, onlyOwner: Boolean) {
-        val first = !autoGenerateChecked
-        autoGenerateChecked = true
-        if (first && !active && onlyOwner) rotate()
-    }
-
-    private suspend fun readCachedInvite(): GroupInviteUrlCache? {
-        val result = CompletableDeferred<GroupInviteUrlReadResult>()
-        urlStore.read(groupId) { result.complete(it) }
-        return when (val value = result.await()) {
-            is GroupInviteUrlReadResult.Success -> value.cache?.takeIf { it.inviteUrl.isNotBlank() }
-            GroupInviteUrlReadResult.Failure -> null
-        }
-    }
-
-    private suspend fun clearCachedInvite() {
-        val result = CompletableDeferred<GroupInviteUrlWriteResult>()
-        urlStore.write(groupId, null) { result.complete(it) }
-        result.await()
-    }
-
     private fun rotate() {
-        if (state.value.isGenerating || state.value.isDeactivating) return
+        if (state.value.isGenerating) return
         val operation = GenerationKey(GenerationOperation.Rotate)
         val requestGeneration = nextGeneration(operation)
-        update { it.copy(isGenerating = true, isDeactivating = true, error = null) }
+        update { it.copy(isGenerating = true, isRotateConfirmVisible = false, error = null) }
         viewModelScope.launch {
             when (val result = membershipGateway.rotateInvite(GroupId(groupId))) {
                 is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) {
+                    update { it.copy(isGenerating = false, error = GroupInviteError.Operation) }
+                }
+                is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
                     update {
                         it.copy(
                             isGenerating = false,
-                            isDeactivating = false,
-                            error = GroupInviteError.Operation,
+                            inviteStatus = InviteStatus.Active,
+                            inviteCode = result.value.code,
+                            inviteUrl = result.value.value,
                         )
                     }
-                }
-                is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
-                    val url = result.value.value
-                    urlStore.write(groupId, GroupInviteUrlCache(url, result.value.expiresAt, result.value.revision)) { writeResult ->
-                        if (!isCurrent(operation, requestGeneration)) return@write
-                        update {
-                            it.copy(
-                                isGenerating = false,
-                                isDeactivating = false,
-                                inviteStatus = InviteStatus.Active,
-                                inviteUrl = url,
-                                expiresLabel = result.value.expiresAt?.formatExpiry(),
-                            )
-                        }
-                        if (writeResult is GroupInviteUrlWriteResult.Failure) {
-                            update { it.copy(error = GroupInviteError.Operation) }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun expire() {
-        if (state.value.isGenerating || state.value.isDeactivating) return
-        val operation = GenerationKey(GenerationOperation.Expire)
-        val requestGeneration = nextGeneration(operation)
-        update { it.copy(isGenerating = true, isDeactivating = true, error = null) }
-        viewModelScope.launch {
-            when (membershipGateway.expireInvite(GroupId(groupId))) {
-                is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) {
-                    update {
-                        it.copy(
-                            isGenerating = false,
-                            isDeactivating = false,
-                            error = GroupInviteError.Operation,
-                        )
-                    }
-                }
-                is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
-                    urlStore.write(groupId, null) { if (isCurrent(operation, requestGeneration)) {
-                        update {
-                            it.copy(
-                                isGenerating = false,
-                                isDeactivating = false,
-                                inviteStatus = InviteStatus.Empty,
-                                inviteUrl = null,
-                                expiresLabel = null,
-                            )
-                        }
-                    } }
                 }
             }
         }
@@ -371,6 +286,24 @@ class GroupInviteViewModel(
         }
     }
 
+    private fun copyCode() {
+        val code = state.value.inviteCode ?: return
+        val operation = GenerationKey(GenerationOperation.CopyCode)
+        val requestGeneration = nextGeneration(operation)
+        clipboardPort.copyText(code) { result ->
+            if (!isCurrent(operation, requestGeneration)) return@copyText
+            when (result) {
+                InviteNativeOperationResult.Success -> {
+                    update { it.copy(toast = GroupInviteToast.CodeCopied) }
+                    emit(GroupInviteEffect.CodeCopied)
+                }
+                InviteNativeOperationResult.Cancelled,
+                is InviteNativeOperationResult.Failure,
+                -> update { it.copy(error = GroupInviteError.Operation) }
+            }
+        }
+    }
+
     private fun openPreview() {
         val url = state.value.inviteUrl ?: return
         emit(GroupInviteEffect.OpenMessagePreview(state.value.groupName, url))
@@ -417,9 +350,14 @@ class InvitePreviewMessageViewModel(
 ) {
     private var shareGeneration = 0L
     private var messageEdited = false
+
+    // O link leva o código curto; a mensagem repete o código para quem já tem o app e prefere digitá-lo.
+    private val shortCode: String? = inviteUrl.shortInviteCodeOrNull()
+    private var codeHint = ""
     private val prepareMessage = viewModelScope.launch {
+        shortCode?.let { codeHint = getString(Res.string.invite_share_code_hint, InviteLinkParser.display(it)) }
         val message = getString(Res.string.onboarding_invite_message, groupName)
-        if (!messageEdited) updateMessage(message)
+        updateMessage(if (messageEdited) state.value.message else message)
     }
 
     override fun handleIntent(intent: InvitePreviewIntent) {
@@ -435,7 +373,7 @@ class InvitePreviewMessageViewModel(
 
     private fun updateMessage(value: String) {
         val message = value.takeCodePoints(MAX_MESSAGE_LENGTH)
-        update { it.copy(message = message, composedText = message.withLink(state.value.inviteUrl)) }
+        update { it.copy(message = message, composedText = message.withLink(state.value.inviteUrl, codeHint)) }
     }
 
     private fun share() {
@@ -524,24 +462,20 @@ internal fun renderQr(inviteUrl: String): ByteArray = QRCode.ofSquares().withSiz
 /** PNG do QR. No navegador o qrcode-kotlin devolve o `data:` URL em vez do PNG; cada plataforma acerta isso. */
 internal expect fun QRCode.renderToPngBytes(): ByteArray
 
-private fun String.withLink(inviteUrl: String): String = if (isBlank()) inviteUrl else "$this\n\n$inviteUrl"
-
-private fun GroupInviteMetadata.isActiveNow(): Boolean = active &&
-    (expiresAt?.let { runCatching { Instant.parse(it) > Clock.System.now() }.getOrDefault(false) } ?: true)
-
-private fun GroupInviteUrlCache.matches(metadata: GroupInviteMetadata): Boolean = when {
-    !metadata.revision.isNullOrBlank() -> revision == metadata.revision
-    // Compatibility with a legacy server/cache: only a real deadline identifies the old link.
-    metadata.revision == null && revision == null -> expiresAt != null && expiresAt == metadata.expiresAt
-    else -> false
+private fun String.withLink(inviteUrl: String, codeHint: String): String {
+    val link = if (isBlank()) inviteUrl else "$this\n\n$inviteUrl"
+    return if (codeHint.isBlank()) link else "$link\n\n$codeHint"
 }
+
+/** O código curto do link do grupo (`…?saqz_invite=44DF8SA8`); o token longo dos links antigos não tem o que mostrar. */
+private fun String.shortInviteCodeOrNull(): String? = substringAfter("saqz_invite=", missingDelimiterValue = "")
+    .substringBefore('&')
+    .let(InviteLinkParser::normalize)
+    ?.takeIf { it.length == SHORT_CODE_LENGTH }
+
+private const val SHORT_CODE_LENGTH = 8
 
 private fun GroupEntryRequest.toUi() = PendingEntryRequestUi(userId, displayName, requestedAt.formatDateTime())
-
-private fun String.formatExpiry(): String {
-    val date = take(10)
-    return if (date.length == 10) "${date.substring(8, 10)}/${date.substring(5, 7)}" else this
-}
 
 private fun String.formatDateTime(): String {
     val date = take(10)

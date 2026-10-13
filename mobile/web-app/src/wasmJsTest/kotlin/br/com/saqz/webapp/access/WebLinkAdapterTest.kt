@@ -28,6 +28,20 @@ class WebLinkAdapterTest {
     }
 
     @Test
+    fun shortGroupCodeIsDeliveredNormalizedAndAmbiguousOnesAreRejected() {
+        val fixture = Fixture().apply { listen() }
+
+        listOf("44DF8SA8", "44DF-8SA8", "44df-8sa8").forEach {
+            fixture.adapter.onColdStart("https://saqz.app/app/?saqz_invite=$it")
+        }
+        listOf("44DF8SA0", "44DF8SAO", "44DF8SA", "44DF8SA88").forEach {
+            fixture.adapter.onColdStart("https://saqz.app/app/?saqz_invite=$it")
+        }
+
+        assertEquals(listOf("44DF8SA8", "44DF8SA8", "44DF8SA8"), fixture.inviteCodes)
+    }
+
+    @Test
     fun attendanceInQueryWorksAndDeclineSelectsTheDeclineIntent() {
         val fixture = Fixture().apply { listen() }
 

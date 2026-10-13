@@ -57,7 +57,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
                invites.expires_at
         FROM group_invites invites
         JOIN access_groups groups ON groups.id = invites.group_id
-        WHERE invites.token_digest = :tokenDigest
+        WHERE invites.token_digest = :tokenDigest OR invites.short_code_digest = :tokenDigest
         UNION ALL
         SELECT m.group_id, groups.deleted_at IS NOT NULL AS group_deleted,
                groups.entry_requires_approval, game.confirmation_deadline AS expires_at

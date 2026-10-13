@@ -72,6 +72,38 @@ class AndroidLinkAdapterTest {
     }
 
     @Test
+    fun shortGroupCodeIsDeliveredNormalizedWithOrWithoutHyphen() {
+        val fixture = Fixture()
+        fixture.start()
+
+        listOf("44DF8SA8", "44DF-8SA8", "44df-8sa8", "44df8sa8")
+            .forEach { fixture.adapter.onWarmIntent("https://links.saqz.app/?saqz_invite=$it") }
+
+        assertEquals(List(4) { "44DF8SA8" }, fixture.received)
+    }
+
+    @Test
+    fun shortCodeWithAmbiguousCharactersOrWrongSizeIsRejected() {
+        val fixture = Fixture()
+        fixture.start()
+
+        listOf("44DF8SA0", "44DF8SAO", "44DF8SA1", "44DF8SAI", "44DF8SAL", "44DF8SA", "44DF8SA88")
+            .forEach { fixture.adapter.onWarmIntent("https://links.saqz.app/?saqz_invite=$it") }
+
+        assertTrue(fixture.received.isEmpty())
+    }
+
+    @Test
+    fun legacyLongTokenStillWorks() {
+        val fixture = Fixture()
+        fixture.start()
+
+        fixture.adapter.onWarmIntent("https://links.saqz.app/?saqz_invite=$CODE_A")
+
+        assertEquals(listOf(CODE_A), fixture.received)
+    }
+
+    @Test
     fun unrelatedParametersNeverBecomeInviteCodes() {
         val fixture = Fixture()
         fixture.start()

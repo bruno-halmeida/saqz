@@ -9,11 +9,13 @@ data class GroupInviteState(
     val error: GroupInviteError? = null,
     val groupName: String = "",
     val inviteStatus: InviteStatus = InviteStatus.Empty,
-    val expiresLabel: String? = null,
+    /** Código curto do grupo para mostrar (`44DF-8SA8`); vem da API, igual em qualquer aparelho. */
+    val inviteCode: String? = null,
     val inviteUrl: String? = null,
     val entryRequiresApproval: Boolean = false,
     val isGenerating: Boolean = false,
-    val isDeactivating: Boolean = false,
+    /** Diálogo "Trocar o código?" aberto: trocar invalida o código e o link antigos. */
+    val isRotateConfirmVisible: Boolean = false,
     val isUpdatingApproval: Boolean = false,
     val pendingActionIds: Set<String> = emptySet(),
     val pendingRequests: List<PendingEntryRequestUi> = emptyList(),
@@ -23,7 +25,7 @@ data class GroupInviteState(
 )
 
 enum class InviteStatus { Active, Empty }
-enum class GroupInviteToast { LinkCopied }
+enum class GroupInviteToast { LinkCopied, CodeCopied }
 
 @Immutable
 data class PendingEntryRequestUi(
@@ -52,14 +54,18 @@ sealed interface GroupInviteIntent {
 
     /** Volta à tela: recarga por baixo, sem esqueleto nem tela de erro. */
     data object Refresh : GroupInviteIntent
-    data object GenerateInvite : GroupInviteIntent
-    data object DeactivateInvite : GroupInviteIntent
+
+    /** "Trocar código" abre a confirmação; só [ConfirmRotate] chama a API. */
+    data object RequestRotate : GroupInviteIntent
+    data object DismissRotate : GroupInviteIntent
+    data object ConfirmRotate : GroupInviteIntent
     data class ToggleApproval(val enabled: Boolean) : GroupInviteIntent
     data class ApproveRequest(val userId: String) : GroupInviteIntent
     data class RejectRequest(val userId: String) : GroupInviteIntent
     data object OpenShareSheet : GroupInviteIntent
     data object CloseShareSheet : GroupInviteIntent
     data object CopyLink : GroupInviteIntent
+    data object CopyCode : GroupInviteIntent
     data object OpenMessagePreview : GroupInviteIntent
     data object OpenQr : GroupInviteIntent
     data object ShareImage : GroupInviteIntent
@@ -70,6 +76,7 @@ sealed interface GroupInviteEffect {
     data class OpenMessagePreview(val groupName: String, val inviteUrl: String) : GroupInviteEffect
     data class OpenQr(val groupName: String, val inviteUrl: String) : GroupInviteEffect
     data object LinkCopied : GroupInviteEffect
+    data object CodeCopied : GroupInviteEffect
 }
 
 @Immutable

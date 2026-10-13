@@ -51,6 +51,25 @@ class JdbcInvitePreviewRepositoryIntegrationTest {
     }
 
     @Test
+    fun `preview finds the invite by short code and reflects the group approval setting`() {
+        val owner = insertUser("short-owner", "Owner Display")
+        val group = insertCompleteGroup(owner)
+        execute(
+            "INSERT INTO group_invites (group_id, token_digest, short_code, created_by_user_id, created_at) " +
+                "VALUES ('$group', NULL, '44DF8SA8', '$owner', now())",
+        )
+        val digest = InviteTokenDigest.sha256(InviteCode.from("44df-8sa8"))
+
+        val open = requireNotNull(transaction.inTransaction { repository.findInvite(digest, now) })
+        assertFalse(open.card.entryRequiresApproval)
+        assertEquals("Owner Display", open.card.inviterName)
+
+        execute("UPDATE access_groups SET entry_requires_approval = true WHERE id = '$group'")
+        val approval = requireNotNull(transaction.inTransaction { repository.findInvite(digest, now) })
+        assertTrue(approval.card.entryRequiresApproval)
+    }
+
+    @Test
     fun `preview lookup assembles profile memberships inviter slots and next published game`() {
         val owner = insertUser("preview-owner", "Owner Display")
         val group = insertCompleteGroup(owner)

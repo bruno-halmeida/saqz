@@ -146,7 +146,7 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         if hasAttendancePath && components.queryItems?.contains(where: {
             $0.name == inviteParameter || $0.name == attendanceParameter || $0.name == onboardingParameter
         }) == true { return nil }
-        let inviteValues = inviteItems.compactMap(\.value).filter(isValidInviteCode)
+        let inviteValues = inviteItems.compactMap(\.value).compactMap(normalizeInviteCode)
         let attendanceValues = attendanceItems.compactMap(\.value).filter(isValidInviteCode)
         let hasOnboardingParameter = components.queryItems?.contains { $0.name == onboardingParameter } == true
         if hasOnboardingParameter ||
@@ -178,6 +178,14 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         let attendance = components.queryItems?.contains { $0.name == attendanceParameter } == true
         guard !invite, !attendance, values.count == 1 else { return nil }
         return values.last
+    }
+
+    /// Convite de grupo: o token longo dos links antigos (como está) ou o código curto de 8
+    /// caracteres (`44DF-8SA8`, aceito em minúscula e com hífen; segue adiante em maiúscula, sem hífen).
+    static func normalizeInviteCode(_ value: String) -> String? {
+        if isValidInviteCode(value) { return value }
+        let short = value.filter { $0 != "-" && !$0.isWhitespace }.uppercased()
+        return short.range(of: "^[2-9A-HJKMNP-Z]{8}$", options: .regularExpression) != nil ? short : nil
     }
 
     static func isValidInviteCode(_ value: String?) -> Bool {

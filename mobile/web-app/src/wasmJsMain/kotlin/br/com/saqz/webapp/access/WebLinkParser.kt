@@ -28,7 +28,7 @@ internal class WebLinkParser(allowedHosts: Set<String>, linksHost: String) {
         } else {
             AttendanceIntent.Confirm
         }
-        val inviteCodes = inviteEntries.map { it.second }.filter(::isValidInviteCode)
+        val inviteCodes = inviteEntries.mapNotNull { normalizeInviteCode(it.second) }
         val attendanceCodes = attendanceEntries.map { it.second }.filter(::isValidInviteCode)
         val duplicated = inviteEntries.size > 1 || attendanceEntries.size > 1 || intentEntries.size > 1
         val mixed = link.query.any { it.first == ONBOARDING_PARAMETER } ||
@@ -108,7 +108,20 @@ internal class WebLinkParser(allowedHosts: Set<String>, linksHost: String) {
         val LOOPBACK_HOSTS = setOf("localhost", "127.0.0.1")
         val INVITE_CODE = Regex("[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]")
 
+        val SHORT_INVITE_CODE = Regex("[2-9A-HJKMNP-Z]{8}")
+
         fun isValidInviteCode(value: String?): Boolean = value?.matches(INVITE_CODE) == true
+
+        /**
+         * Convite de grupo: o token longo dos links antigos (como está) ou o código curto de 8
+         * caracteres (`44DF-8SA8`, aceito em minúscula e com hífen; segue adiante em maiúscula, sem hífen).
+         */
+        fun normalizeInviteCode(value: String?): String? {
+            if (value == null) return null
+            if (isValidInviteCode(value)) return value
+            val short = value.filterNot { it == '-' || it.isWhitespace() }.uppercase()
+            return short.takeIf { it.matches(SHORT_INVITE_CODE) }
+        }
     }
 }
 

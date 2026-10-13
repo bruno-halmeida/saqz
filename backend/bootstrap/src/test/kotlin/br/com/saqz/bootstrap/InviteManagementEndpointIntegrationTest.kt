@@ -52,7 +52,6 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
-import java.util.Base64
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -84,7 +83,8 @@ class InviteManagementEndpointIntegrationTest {
         val body = json(response)
 
         assertEquals(200, response.statusCode())
-        assertEquals(setOf("inviteUrl", "expiresAt", "revision"), body.propertyNames().asSequence().toSet())
+        assertEquals(setOf("code", "inviteUrl", "expiresAt", "revision"), body.propertyNames().asSequence().toSet())
+        assertEquals("44DF-8SA8", body["code"].stringValue())
         assertEquals(InviteTestConfiguration.INVITE_URL.toString(), body["inviteUrl"].stringValue())
         assertTrue(body["expiresAt"].isNull)
         assertEquals(repository.rotations.single().revision.toString(), body["revision"].stringValue())
@@ -102,7 +102,7 @@ class InviteManagementEndpointIntegrationTest {
         val code = uri.query.substringAfter("saqz_invite=")
 
         assertEquals(setOf("saqz_invite"), queryKeys)
-        assertEquals(43, code.length)
+        assertEquals("44DF8SA8", code)
         assertFalse(inviteUrl.contains(groupId.toString()))
         assertFalse(inviteUrl.contains(InviteTestConfiguration.USER_ID.toString()))
         assertFalse(inviteUrl.contains("OWNER"))
@@ -110,11 +110,13 @@ class InviteManagementEndpointIntegrationTest {
     }
 
     @Test
-    fun `owner reads active invite metadata without the invite link`() {
+    fun `admin reads the short code and url of the active invite`() {
+        read.role = GroupRole.ADMIN
         repository.metadata = InviteMetadata(
-            expiresAt = InviteTestConfiguration.NOW.plus(Duration.ofDays(7)),
+            expiresAt = null,
             createdAt = InviteTestConfiguration.NOW.minusSeconds(3_600),
             createdByName = "Lucas Prado",
+            shortCode = "44DF8SA8",
         )
 
         val response = get(groupId)
@@ -122,55 +124,38 @@ class InviteManagementEndpointIntegrationTest {
 
         assertEquals(200, response.statusCode())
         assertEquals(
-            setOf("active", "expiresAt", "createdAt", "createdByName", "revision"),
+            setOf("active", "createdAt", "createdByName", "revision", "code", "inviteUrl"),
             body.propertyNames().asSequence().toSet(),
         )
         assertEquals(true, body["active"].booleanValue())
-        assertEquals(InviteTestConfiguration.NOW.plus(Duration.ofDays(7)).toString(), body["expiresAt"].stringValue())
+        assertEquals("44DF-8SA8", body["code"].stringValue())
+        assertEquals(InviteTestConfiguration.INVITE_URL.toString(), body["inviteUrl"].stringValue())
         assertEquals(InviteTestConfiguration.NOW.minusSeconds(3_600).toString(), body["createdAt"].stringValue())
         assertEquals("Lucas Prado", body["createdByName"].stringValue())
         assertEquals(repository.metadata!!.revision.toString(), body["revision"].stringValue())
-        assertFalse(response.body().contains("inviteUrl"))
+        assertTrue(repository.ensured.isEmpty())
     }
 
     @Test
-    fun `permanent invite metadata is active without a deadline`() {
-        repository.metadata = InviteMetadata(null, Instant.parse("2000-01-01T00:00:00Z"), "Lucas Prado")
+    fun `legacy invite without short code gets one on first read`() {
+        repository.metadata = InviteMetadata(null, InviteTestConfiguration.NOW.minusSeconds(3_600), "Lucas Prado")
 
+        val body = json(get(groupId))
+
+        assertEquals("44DF-8SA8", body["code"].stringValue())
+        assertEquals(listOf("44DF8SA8"), repository.ensured)
+        assertTrue(repository.rotations.isEmpty())
+    }
+
+    @Test
+    fun `group without invite is born with a short code`() {
         val response = get(groupId)
         val body = json(response)
 
         assertEquals(200, response.statusCode())
-        assertEquals(setOf("active", "createdAt", "createdByName", "revision"), body.propertyNames().asSequence().toSet())
         assertEquals(true, body["active"].booleanValue())
-        assertEquals("2000-01-01T00:00:00Z", body["createdAt"].stringValue())
-        assertEquals("Lucas Prado", body["createdByName"].stringValue())
-        assertEquals(repository.metadata!!.revision.toString(), body["revision"].stringValue())
-    }
-
-    @Test
-    fun `expired invite metadata is inactive and keeps its expiration`() {
-        val expiresAt = InviteTestConfiguration.NOW.minusSeconds(1)
-        repository.metadata = InviteMetadata(expiresAt, InviteTestConfiguration.NOW.minusSeconds(3_600), "Lucas Prado")
-
-        val response = get(groupId)
-        val body = json(response)
-
-        assertEquals(200, response.statusCode())
-        assertEquals(setOf("active", "expiresAt"), body.propertyNames().asSequence().toSet())
-        assertEquals(false, body["active"].booleanValue())
-        assertEquals(expiresAt.toString(), body["expiresAt"].stringValue())
-        assertFalse(response.body().contains("createdByName"))
-    }
-
-    @Test
-    fun `missing invite metadata is inactive without returning not found`() {
-        val response = get(groupId)
-        val body = json(response)
-
-        assertEquals(200, response.statusCode())
-        assertEquals(setOf("active"), body.propertyNames().asSequence().toSet())
-        assertEquals(false, body["active"].booleanValue())
+        assertEquals("44DF-8SA8", body["code"].stringValue())
+        assertEquals(InviteTestConfiguration.INVITE_URL.toString(), body["inviteUrl"].stringValue())
     }
 
     @Test
@@ -327,7 +312,9 @@ class InviteManagementEndpointIntegrationTest {
             read: RecordingInviteGroupReadRepository,
             repository: RecordingHttpInviteRepository,
             clock: Clock,
-        ) = GetInviteMetadata(transaction, read, repository, GroupAccessPolicy(), clock)
+            generator: SecureTokenGenerator,
+            links: ConfigurableHttpInviteLinkFactory,
+        ) = GetInviteMetadata(transaction, read, repository, GroupAccessPolicy(), clock, generator, links)
         @Bean fun accessInviteManagementController(
             bootstrap: BootstrapSession,
             rotate: RotateInvite,
@@ -337,7 +324,7 @@ class InviteManagementEndpointIntegrationTest {
 
         companion object {
             val USER_ID: UUID = UUID.randomUUID()
-            private val RAW_CODE = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32) { 7 })
+            private const val RAW_CODE = "44DF8SA8"
             val INVITE_CODE = InviteCode.from(RAW_CODE)
             val INVITE_TOKEN = InviteToken(INVITE_CODE, InviteTokenDigest.from(ByteArray(32) { 9 }))
             val INVITE_URL: URI = URI("https://join.saqz.app/?saqz_invite=$RAW_CODE")
@@ -372,13 +359,22 @@ class InviteManagementEndpointIntegrationTest {
     class RecordingHttpInviteRepository : InviteManagementRepository {
         val rotations = mutableListOf<RotateInviteCommand>()
         val expirations = mutableListOf<UUID>()
+        val ensured = mutableListOf<String>()
         var metadata: InviteMetadata? = null
         fun reset() {
+            ensured.clear()
             rotations.clear()
             expirations.clear()
             metadata = null
         }
         override fun rotate(command: RotateInviteCommand) { rotations += command }
+
+        override fun ensureShortCode(groupId: UUID, shortCode: String, createdByUserId: UUID) {
+            ensured += shortCode
+            metadata = (metadata ?: InviteMetadata(null, InviteTestConfiguration.NOW, "Lucas Prado")).copy(shortCode = shortCode)
+        }
+
+        override fun isShortCodeTaken(shortCode: String) = false
 
         override fun findMetadata(groupId: UUID) = metadata
 

@@ -58,7 +58,7 @@
     var code = "[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]";
     var path = location.pathname.match(new RegExp("^/attendance/(" + code + ")$"));
     var params = new URLSearchParams(location.search);
-    var invite = params.get("saqz_invite");
+    var invite = inviteCode(params.get("saqz_invite"));
     var onboarding = params.get("saqz_onboarding");
     var decline = params.get("saqz_intent") === "decline";
     var kind = null;
@@ -66,12 +66,20 @@
     if (path) {
       kind = "attendance";
       route = "attendance/" + path[1] + (decline ? "?saqz_intent=decline" : "");
-    } else if (invite && new RegExp("^" + code + "$").test(invite)) {
+    } else if (invite) {
       kind = "invite";
       route = "?saqz_invite=" + invite;
     } else if (onboarding && new RegExp("^" + code + "$").test(onboarding)) {
       kind = "onboarding";
       route = "?saqz_onboarding=" + onboarding;
+    }
+    // Convite: código curto de 8 caracteres (44DF8SA8; aceita 44DF-8SA8 e minúsculas, e vai adiante sem
+    // hífen) ou o token longo dos links já enviados. Qualquer outra coisa não é convite.
+    function inviteCode(value) {
+      if (!value) return null;
+      if (new RegExp("^" + code + "$").test(value)) return value;
+      var short = value.replace(/[-\s]/g, "").toUpperCase();
+      return /^[2-9A-HJKMNP-Z]{8}$/.test(short) ? short : null;
     }
     var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);

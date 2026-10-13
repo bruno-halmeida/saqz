@@ -35,12 +35,6 @@ import br.com.saqz.groups.domain.membership.GroupInviteUrl
 import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
-import br.com.saqz.groups.port.GroupInviteUrlCache
-import br.com.saqz.groups.port.GroupInviteUrlReadCallback
-import br.com.saqz.groups.port.GroupInviteUrlReadResult
-import br.com.saqz.groups.port.GroupInviteUrlStorePort
-import br.com.saqz.groups.port.GroupInviteUrlWriteCallback
-import br.com.saqz.groups.port.GroupInviteUrlWriteResult
 import br.com.saqz.groups.port.InviteNativeFailureCode
 import br.com.saqz.groups.port.InviteNativeOperationResult
 import br.com.saqz.groups.port.InviteShareImage
@@ -61,218 +55,81 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupInviteViewModelsTest {
     @Test
-    fun `load empty metadata lists no people`() = runTest {
-        val viewModel = groupViewModel(
-            membership = FakeMembershipGateway(
-                rotateResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Connectivity)),
-            ),
-            metadata = SaqzResult.Success(GroupInviteMetadata(active = false)),
-        )
-        advanceUntilIdle()
-
-        assertEquals(InviteStatus.Empty, viewModel.state.value.inviteStatus)
-        assertNull(viewModel.state.value.inviteUrl)
-        assertTrue(viewModel.state.value.pendingRequests.isEmpty())
-        assertTrue(viewModel.state.value.recentMembers.isEmpty())
-    }
-
-    @Test
-    fun `without an active invite the link is generated on its own`() = runTest {
-        val membership = FakeMembershipGateway()
-        val store = FakeUrlStore()
-        val viewModel = groupViewModel(
-            membership = membership,
-            urlStore = store,
-            metadata = SaqzResult.Success(GroupInviteMetadata(active = false)),
-        )
-        advanceUntilIdle()
-
-        assertEquals(1, membership.rotateCalls)
-        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
-        assertEquals("https://saqz.app/invite/rotated", viewModel.state.value.inviteUrl)
-        assertFalse(viewModel.state.value.isGenerating)
-        assertEquals("https://saqz.app/invite/rotated", store.value)
-    }
-
-    @Test
-    fun `a group that already has athletes keeps the deactivated link off`() = runTest {
-        val membership = FakeMembershipGateway()
-        val viewModel = groupViewModel(
-            membership = membership,
-            metadata = SaqzResult.Success(GroupInviteMetadata(active = false)),
-            athleteGateway = FakeAthleteGateway(listOf(roster("a1", "2026-10-01T10:00:00Z"))),
-        )
-        advanceUntilIdle()
-
-        assertEquals(0, membership.rotateCalls)
-        assertEquals(InviteStatus.Empty, viewModel.state.value.inviteStatus)
-    }
-
-    @Test
-    fun `an active invite is never rotated on open even without a cached url`() = runTest {
-        val membership = FakeMembershipGateway()
-        val viewModel = groupViewModel(
-            membership = membership,
-            urlStore = FakeUrlStore(),
-            metadata = SaqzResult.Success(GroupInviteMetadata(active = true, revision = "r1")),
-        )
-        advanceUntilIdle()
-
-        assertEquals(0, membership.rotateCalls)
-        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
-        assertNull(viewModel.state.value.inviteUrl)
-    }
-
-    @Test
-    fun `automatic generation failure keeps the empty state and retries only on request`() = runTest {
-        val membership = FakeMembershipGateway(
-            rotateResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Connectivity)),
-        )
-        val viewModel = groupViewModel(
-            membership = membership,
-            metadata = SaqzResult.Success(GroupInviteMetadata(active = false)),
-        )
-        advanceUntilIdle()
-        viewModel.onIntent(GroupInviteIntent.Refresh)
-        advanceUntilIdle()
-
-        assertEquals(1, membership.rotateCalls)
-        assertEquals(InviteStatus.Empty, viewModel.state.value.inviteStatus)
-        assertEquals(GroupInviteError.Operation, viewModel.state.value.error)
-        assertFalse(viewModel.state.value.isGenerating)
-    }
-
-    @Test
-    fun `load active metadata consumes cached url and sorts roster by joinedAt`() = runTest {
-        val store = FakeUrlStore("https://saqz.app/invite/new")
+    fun `any admin sees the group code and link straight from the api without local cache`() = runTest {
         val athletes = FakeAthleteGateway(
             listOf(
                 roster("old", "2025-01-01T10:00:00Z"),
                 roster("new", "2026-07-31T10:00:00Z"),
             ),
         )
-        val viewModel = groupViewModel(urlStore = store, athleteGateway = athletes)
+        val viewModel = groupViewModel(athleteGateway = athletes)
         advanceUntilIdle()
 
         assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
-        assertEquals("https://saqz.app/invite/new", viewModel.state.value.inviteUrl)
+        assertEquals(CODE, viewModel.state.value.inviteCode)
+        assertEquals(URL, viewModel.state.value.inviteUrl)
         assertEquals(listOf("new", "old"), viewModel.state.value.recentMembers.map { it.userId })
     }
 
     @Test
-    fun `permanent rotation persists revision and reopening restores the same shareable URL`() = runTest {
-        val url = "https://saqz.app/invite/permanent"
-        val store = FakeUrlStore()
-        val viewModel = groupViewModel(
-            urlStore = store,
-            membership = FakeMembershipGateway(rotateResult = SaqzResult.Success(GroupInviteUrl(url, null, "new-revision"))),
-        )
+    fun `opening the screen never rotates the invite`() = runTest {
+        val membership = FakeMembershipGateway()
+        groupViewModel(membership = membership)
         advanceUntilIdle()
-        viewModel.onIntent(GroupInviteIntent.GenerateInvite)
-        advanceUntilIdle()
-        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
-        assertNull(viewModel.state.value.expiresLabel)
-        assertEquals("new-revision", store.revision)
 
-        val clipboard = FakeClipboard()
-        val reopened = groupViewModel(
-            urlStore = store, clipboard = clipboard,
-            metadata = SaqzResult.Success(GroupInviteMetadata(true, revision = "new-revision")),
-        )
-        advanceUntilIdle()
-        assertEquals(InviteStatus.Active, reopened.state.value.inviteStatus)
-        assertEquals(url, reopened.state.value.inviteUrl)
-        assertNull(reopened.state.value.expiresLabel)
-        reopened.onIntent(GroupInviteIntent.CopyLink)
-        assertEquals(url, clipboard.value)
+        assertEquals(0, membership.rotateCalls)
     }
 
     @Test
-    fun `remote permanent rotation clears the previous URL and prevents copying it`() = runTest {
-        val store = FakeUrlStore("https://saqz.app/invite/old", expiresAt = null, revision = "old-revision")
-        val clipboard = FakeClipboard()
+    fun `a server without short code leaves the code empty and offers to create one`() = runTest {
+        val membership = FakeMembershipGateway()
         val viewModel = groupViewModel(
-            urlStore = store, clipboard = clipboard,
-            metadata = SaqzResult.Success(GroupInviteMetadata(true, revision = "new-revision")),
+            membership = membership,
+            metadata = SaqzResult.Success(GroupInviteMetadata(active = true, revision = "r1")),
         )
         advanceUntilIdle()
+
         assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
+        assertNull(viewModel.state.value.inviteCode)
         assertNull(viewModel.state.value.inviteUrl)
-        assertNull(store.value)
-        assertNull(store.revision)
-        viewModel.onIntent(GroupInviteIntent.CopyLink)
-        assertNull(clipboard.value)
+        assertEquals(0, membership.rotateCalls)
     }
 
     @Test
-    fun `missing permanent cache revision never matches even when both expirations are null`() = runTest {
-        for (revision in listOf(null, "new-revision")) {
-            val store = FakeUrlStore("https://saqz.app/invite/unknown", expiresAt = null)
-            val viewModel = groupViewModel(
-                urlStore = store,
-                metadata = SaqzResult.Success(GroupInviteMetadata(true, revision = revision)),
-            )
-            advanceUntilIdle()
-            assertNull(viewModel.state.value.inviteUrl)
-            assertNull(store.value)
-        }
-    }
-
-    @Test
-    fun `legacy server deadline cannot validate cache that already has a revision`() = runTest {
-        val store = FakeUrlStore(
-            "https://saqz.app/invite/unmatched",
-            expiresAt = DEFAULT_EXPIRES_AT,
-            revision = "cached-revision",
-        )
-        val clipboard = FakeClipboard()
-        val viewModel = groupViewModel(
-            urlStore = store,
-            clipboard = clipboard,
-            metadata = SaqzResult.Success(GroupInviteMetadata(true, expiresAt = DEFAULT_EXPIRES_AT)),
-        )
+    fun `inactive metadata shows no code`() = runTest {
+        val viewModel = groupViewModel(metadata = SaqzResult.Success(GroupInviteMetadata(active = false)))
         advanceUntilIdle()
 
-        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
-        assertNull(viewModel.state.value.inviteUrl)
-        assertNull(store.value)
-        assertNull(store.revision)
-        viewModel.onIntent(GroupInviteIntent.CopyLink)
-        assertNull(clipboard.value)
-    }
-
-    @Test
-    fun `inactive permanent metadata clears cache even when revision matches`() = runTest {
-        val store = FakeUrlStore("https://saqz.app/invite/revoked", expiresAt = null, revision = "revision-1")
-        // A geração automática falha: sobra só o que a carga fez com o cache revogado.
-        val viewModel = groupViewModel(
-            urlStore = store,
-            membership = FakeMembershipGateway(
-                rotateResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Connectivity)),
-            ),
-            metadata = SaqzResult.Success(GroupInviteMetadata(false, revision = "revision-1")),
-        )
-        advanceUntilIdle()
         assertEquals(InviteStatus.Empty, viewModel.state.value.inviteStatus)
+        assertNull(viewModel.state.value.inviteCode)
         assertNull(viewModel.state.value.inviteUrl)
-        assertNull(store.value)
     }
 
     @Test
-    fun `load discards cached link when metadata expiration changed`() = runTest {
-        val store = FakeUrlStore(
-            initial = "https://saqz.app/invite/old",
-            expiresAt = "2099-08-07T23:59:00Z",
-        )
-        val viewModel = groupViewModel(
-            urlStore = store,
-            metadata = SaqzResult.Success(GroupInviteMetadata(active = true, expiresAt = "2099-08-08T23:59:00Z")),
-        )
+    fun `load empty metadata lists no people`() = runTest {
+        val viewModel = groupViewModel(metadata = SaqzResult.Success(GroupInviteMetadata(active = false)))
         advanceUntilIdle()
 
-        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
-        assertNull(viewModel.state.value.inviteUrl)
-        assertNull(store.value)
+        assertTrue(viewModel.state.value.pendingRequests.isEmpty())
+        assertTrue(viewModel.state.value.recentMembers.isEmpty())
+    }
+
+    @Test
+    fun `refresh reloads the code another admin rotated`() = runTest {
+        val membership = FakeMembershipGateway()
+        val viewModel = groupViewModel(membership = membership)
+        advanceUntilIdle()
+        assertEquals(CODE, viewModel.state.value.inviteCode)
+
+        membership.metadataResult = SaqzResult.Success(
+            GroupInviteMetadata(active = true, revision = "r2", code = "ZZZZ-2222", inviteUrl = "https://links.saqz.app/?saqz_invite=ZZZZ2222"),
+        )
+        viewModel.onIntent(GroupInviteIntent.Refresh) // o primeiro é a abertura da tela e é descartado
+        viewModel.onIntent(GroupInviteIntent.Refresh)
+        advanceUntilIdle()
+
+        assertEquals("ZZZZ-2222", viewModel.state.value.inviteCode)
+        assertEquals("https://links.saqz.app/?saqz_invite=ZZZZ2222", viewModel.state.value.inviteUrl)
     }
 
     @Test
@@ -285,60 +142,68 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
-    fun `rotate success replaces url and writes local cache`() = runTest {
-        val membership = FakeMembershipGateway(rotateResult = SaqzResult.Success(GroupInviteUrl("https://saqz.app/invite/rotated")))
-        val store = FakeUrlStore()
-        val viewModel = groupViewModel(membership = membership, urlStore = store)
+    fun `trocar codigo only asks for confirmation and does not call the api`() = runTest {
+        val membership = FakeMembershipGateway()
+        val viewModel = groupViewModel(membership = membership)
         advanceUntilIdle()
 
-        viewModel.onIntent(GroupInviteIntent.GenerateInvite)
+        viewModel.onIntent(GroupInviteIntent.RequestRotate)
         advanceUntilIdle()
 
-        assertEquals("https://saqz.app/invite/rotated", viewModel.state.value.inviteUrl)
-        assertEquals("https://saqz.app/invite/rotated", store.value)
-        assertFalse(viewModel.state.value.isGenerating)
+        assertTrue(viewModel.state.value.isRotateConfirmVisible)
+        assertEquals(0, membership.rotateCalls)
+        assertEquals(CODE, viewModel.state.value.inviteCode)
+
+        viewModel.onIntent(GroupInviteIntent.DismissRotate)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isRotateConfirmVisible)
+        assertEquals(0, membership.rotateCalls)
+        assertEquals(CODE, viewModel.state.value.inviteCode)
     }
 
     @Test
-    fun `rotate success updates expiration without reload`() = runTest {
-        val viewModel = groupViewModel(
-            membership = FakeMembershipGateway(
-                rotateResult = SaqzResult.Success(
-                    GroupInviteUrl("https://saqz.app/invite/rotated", "2099-08-10T23:59:00Z"),
-                ),
+    fun `confirming the rotation replaces the code and link`() = runTest {
+        val membership = FakeMembershipGateway(
+            rotateResult = SaqzResult.Success(
+                GroupInviteUrl("https://links.saqz.app/?saqz_invite=9999AAAA", null, "r2", "9999-AAAA"),
             ),
         )
+        val viewModel = groupViewModel(membership = membership)
         advanceUntilIdle()
 
-        viewModel.onIntent(GroupInviteIntent.GenerateInvite)
+        viewModel.onIntent(GroupInviteIntent.RequestRotate)
+        viewModel.onIntent(GroupInviteIntent.ConfirmRotate)
         advanceUntilIdle()
 
-        assertEquals("10/08", viewModel.state.value.expiresLabel)
+        assertEquals(1, membership.rotateCalls)
+        assertEquals("9999-AAAA", viewModel.state.value.inviteCode)
+        assertEquals("https://links.saqz.app/?saqz_invite=9999AAAA", viewModel.state.value.inviteUrl)
+        assertFalse(viewModel.state.value.isGenerating)
+        assertFalse(viewModel.state.value.isRotateConfirmVisible)
     }
 
     @Test
-    fun `rotate and expire serialize invite mutation`() = runTest {
+    fun `a rotation in flight ignores a second confirmation`() = runTest {
         val membership = ConcurrentInviteMutationGateway()
         val viewModel = groupViewModel(membership = membership)
         advanceUntilIdle()
 
-        viewModel.onIntent(GroupInviteIntent.GenerateInvite)
-        viewModel.onIntent(GroupInviteIntent.DeactivateInvite)
+        viewModel.onIntent(GroupInviteIntent.ConfirmRotate)
+        viewModel.onIntent(GroupInviteIntent.ConfirmRotate)
         advanceUntilIdle()
 
         assertEquals(1, membership.rotateCalls)
-        assertEquals(0, membership.expireCalls)
 
         membership.completeRotate()
         advanceUntilIdle()
 
         assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
         assertFalse(viewModel.state.value.isGenerating)
-        assertFalse(viewModel.state.value.isDeactivating)
     }
 
     @Test
-    fun `rotate failure leaves operation error`() = runTest {
+    fun `rotate failure keeps the previous code and leaves operation error`() = runTest {
         val viewModel = groupViewModel(
             membership = FakeMembershipGateway(
                 rotateResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Connectivity)),
@@ -346,39 +211,12 @@ class GroupInviteViewModelsTest {
         )
         advanceUntilIdle()
 
-        viewModel.onIntent(GroupInviteIntent.GenerateInvite)
+        viewModel.onIntent(GroupInviteIntent.ConfirmRotate)
         advanceUntilIdle()
 
         assertEquals(GroupInviteError.Operation, viewModel.state.value.error)
+        assertEquals(CODE, viewModel.state.value.inviteCode)
         assertFalse(viewModel.state.value.isGenerating)
-    }
-
-    @Test
-    fun `expire success clears active cache`() = runTest {
-        val store = FakeUrlStore("https://saqz.app/invite/active")
-        val viewModel = groupViewModel(urlStore = store, membership = FakeMembershipGateway(expireResult = SaqzResult.Success(Unit)))
-        advanceUntilIdle()
-
-        viewModel.onIntent(GroupInviteIntent.DeactivateInvite)
-        advanceUntilIdle()
-
-        assertEquals(InviteStatus.Empty, viewModel.state.value.inviteStatus)
-        assertNull(viewModel.state.value.inviteUrl)
-        assertNull(store.value)
-    }
-
-    @Test
-    fun `expire failure keeps active invite`() = runTest {
-        val viewModel = groupViewModel(
-            membership = FakeMembershipGateway(expireResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Timeout))),
-        )
-        advanceUntilIdle()
-
-        viewModel.onIntent(GroupInviteIntent.DeactivateInvite)
-        advanceUntilIdle()
-
-        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
-        assertEquals(GroupInviteError.Operation, viewModel.state.value.error)
     }
 
     @Test
@@ -512,19 +350,45 @@ class GroupInviteViewModelsTest {
     @Test
     fun `copy link success stores requested toast`() = runTest {
         val clipboard = FakeClipboard()
-        val viewModel = groupViewModel(urlStore = FakeUrlStore("https://saqz.app/invite/active"), clipboard = clipboard)
+        val viewModel = groupViewModel(clipboard = clipboard)
         advanceUntilIdle()
 
         viewModel.onIntent(GroupInviteIntent.CopyLink)
 
-        assertEquals("https://saqz.app/invite/active", clipboard.value)
+        assertEquals(URL, clipboard.value)
         assertEquals(GroupInviteToast.LinkCopied, viewModel.state.value.toast)
+    }
+
+    @Test
+    fun `copy code puts the readable code on the clipboard`() = runTest {
+        val clipboard = FakeClipboard()
+        val viewModel = groupViewModel(clipboard = clipboard)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.CopyCode)
+
+        assertEquals(CODE, clipboard.value)
+        assertEquals(GroupInviteToast.CodeCopied, viewModel.state.value.toast)
+    }
+
+    @Test
+    fun `copy without a code does nothing`() = runTest {
+        val clipboard = FakeClipboard()
+        val viewModel = groupViewModel(
+            clipboard = clipboard,
+            metadata = SaqzResult.Success(GroupInviteMetadata(active = true, revision = "r1")),
+        )
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.CopyCode)
+        viewModel.onIntent(GroupInviteIntent.CopyLink)
+
+        assertNull(clipboard.value)
     }
 
     @Test
     fun `copy link failure exposes operation error`() = runTest {
         val viewModel = groupViewModel(
-            urlStore = FakeUrlStore("https://saqz.app/invite/active"),
             clipboard = FakeClipboard(InviteNativeOperationResult.Failure(InviteNativeFailureCode.PROVIDER_UNAVAILABLE)),
         )
         advanceUntilIdle()
@@ -570,6 +434,39 @@ class GroupInviteViewModelsTest {
         assertEquals(expected, vm.state.value.message)
         vm.onIntent(InvitePreviewIntent.Share)
         assertEquals("$expected\n\nhttps://saqz.app/invite/1", share.text)
+    }
+
+    @Test
+    fun `message with the group link also gives the code to type in tenho um convite`() = runTest {
+        val share = FakeShare()
+        val vm = InvitePreviewMessageViewModel("CERET", URL, share)
+        advanceUntilIdle()
+        val message = vm.state.value.message
+
+        vm.onIntent(InvitePreviewIntent.Share)
+
+        assertEquals(
+            "$message\n\n$URL\n\nJá tem o app? Use o código $CODE em “Tenho um convite”.",
+            share.text,
+        )
+    }
+
+    @Test
+    fun `edited message keeps the link and the code hint`() = runTest {
+        val vm = InvitePreviewMessageViewModel("CERET", URL, FakeShare())
+        vm.onIntent(InvitePreviewIntent.MessageChanged("Bora!"))
+        advanceUntilIdle()
+
+        assertEquals("Bora!\n\n$URL\n\nJá tem o app? Use o código $CODE em “Tenho um convite”.", vm.state.value.composedText)
+    }
+
+    @Test
+    fun `legacy long link has no code line`() = runTest {
+        val longUrl = "https://links.saqz.app/?saqz_invite=" + "A".repeat(43)
+        val vm = InvitePreviewMessageViewModel("CERET", longUrl, FakeShare())
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.composedText.endsWith("\n\n$longUrl"))
     }
 
     @Test
@@ -636,15 +533,12 @@ class GroupInviteViewModelsTest {
         membership: GroupMembershipGateway = FakeMembershipGateway(),
         entryGateway: GroupEntryRequestGateway = FakeEntryGateway(),
         athleteGateway: AthleteGateway = FakeAthleteGateway(),
-        urlStore: GroupInviteUrlStorePort = FakeUrlStore("https://saqz.app/invite/active"),
         share: NativeInviteSharePort = FakeShare(),
         clipboard: NativeInviteClipboardPort = FakeClipboard(),
-        metadata: SaqzResult<GroupInviteMetadata, GroupMembershipError> = SaqzResult.Success(
-            GroupInviteMetadata(active = true, expiresAt = "2099-08-07T23:59:00Z"),
-        ),
+        metadata: SaqzResult<GroupInviteMetadata, GroupMembershipError> = SaqzResult.Success(ACTIVE_METADATA),
     ): GroupInviteViewModel {
         val resolvedMembership = (membership as? FakeMembershipGateway)?.also { it.metadataResult = metadata } ?: membership
-        return GroupInviteViewModel("group-1", groupGateway, resolvedMembership, entryGateway, athleteGateway, urlStore, share, clipboard)
+        return GroupInviteViewModel("group-1", groupGateway, resolvedMembership, entryGateway, athleteGateway, share, clipboard)
     }
 
     private class DelayedToggleGroupGateway : GroupGateway {
@@ -688,8 +582,10 @@ class GroupInviteViewModelsTest {
     }
 
     private class FakeMembershipGateway(
-        var metadataResult: SaqzResult<GroupInviteMetadata, GroupMembershipError> = SaqzResult.Success(GroupInviteMetadata(true)),
-        private val rotateResult: SaqzResult<GroupInviteUrl, GroupMembershipError> = SaqzResult.Success(GroupInviteUrl("https://saqz.app/invite/rotated")),
+        var metadataResult: SaqzResult<GroupInviteMetadata, GroupMembershipError> = SaqzResult.Success(ACTIVE_METADATA),
+        private val rotateResult: SaqzResult<GroupInviteUrl, GroupMembershipError> = SaqzResult.Success(
+            GroupInviteUrl("https://links.saqz.app/?saqz_invite=9999AAAA", null, "r2", "9999-AAAA"),
+        ),
         private val expireResult: EmptyResult<GroupMembershipError> = SaqzResult.Success(Unit),
     ) : GroupMembershipGateway {
         override suspend fun listMemberships(groupId: GroupId) = SaqzResult.Success(emptyList<GroupMembership>())
@@ -715,11 +611,11 @@ class GroupInviteViewModelsTest {
         override suspend fun rotateInvite(groupId: GroupId): SaqzResult<GroupInviteUrl, GroupMembershipError> {
             rotateCalls += 1
             rotateGate.await()
-            return SaqzResult.Success(GroupInviteUrl("https://saqz.app/invite/rotated", "2099-08-10T23:59:00Z"))
+            return SaqzResult.Success(GroupInviteUrl("https://links.saqz.app/?saqz_invite=9999AAAA", null, "r2", "9999-AAAA"))
         }
 
         override suspend fun readInviteMetadata(groupId: GroupId) =
-            SaqzResult.Success(GroupInviteMetadata(active = true, expiresAt = "2099-08-07T23:59:00Z"))
+            SaqzResult.Success(ACTIVE_METADATA)
 
         override suspend fun expireInvite(groupId: GroupId): EmptyResult<GroupMembershipError> {
             expireCalls += 1
@@ -781,27 +677,6 @@ class GroupInviteViewModelsTest {
         override suspend fun ownProfile() = error("unused")
     }
 
-    private class FakeUrlStore(
-        initial: String? = null,
-        private var expiresAt: String? = DEFAULT_EXPIRES_AT,
-        var revision: String? = null,
-    ) : GroupInviteUrlStorePort {
-        var value: String? = initial
-        override fun read(groupId: String, done: GroupInviteUrlReadCallback) {
-            done.complete(
-                GroupInviteUrlReadResult.Success(
-                    value?.let { GroupInviteUrlCache(it, expiresAt, revision) },
-                ),
-            )
-        }
-        override fun write(groupId: String, cache: GroupInviteUrlCache?, done: GroupInviteUrlWriteCallback) {
-            value = cache?.inviteUrl
-            expiresAt = cache?.expiresAt
-            revision = cache?.revision
-            done.complete(GroupInviteUrlWriteResult.Success)
-        }
-    }
-
     private class FakeShare(
         private val result: InviteNativeOperationResult = InviteNativeOperationResult.Success,
     ) : NativeInviteSharePort {
@@ -822,7 +697,9 @@ class GroupInviteViewModelsTest {
     private companion object {
         fun sampleGroup() = Group("group-1", "CERET", "America/Sao_Paulo", 2, GroupRole.OWNER)
         fun sampleVersionedGroup() = VersionedGroup(sampleGroup(), GroupVersionToken("etag-2"))
-        const val DEFAULT_EXPIRES_AT = "2099-08-07T23:59:00Z"
+        const val CODE = "44DF-8SA8"
+        const val URL = "https://links.saqz.app/?saqz_invite=44DF8SA8"
+        val ACTIVE_METADATA = GroupInviteMetadata(active = true, revision = "r1", code = CODE, inviteUrl = URL)
         fun roster(id: String, joinedAt: String) = AthleteRosterEntry(id, id, null, null, br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO, true, br.com.saqz.groups.domain.athlete.AthleteFinancialStatus.DESCONHECIDO, joinedAt = joinedAt)
         fun request(id: String) = GroupEntryRequest(id, "Pessoa $id", "2026-08-01T10:00:00Z")
     }

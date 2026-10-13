@@ -15,9 +15,11 @@ headers {
 }
 
 tests {
-  test("invite returns opaque URL", function () {
+  test("rotation returns the new short code and the link that carries it", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody().inviteUrl).to.be.a("string").and.not.empty;
-    expect(res.getBody()).not.to.have.property("code");
+    expect(res.getBody().code).to.match(/^[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}$/);
+    expect(res.getBody().inviteUrl).to.equal(
+      "https://links.saqz.app/?saqz_invite=" + res.getBody().code.replace("-", "")
+    );
   });
 }

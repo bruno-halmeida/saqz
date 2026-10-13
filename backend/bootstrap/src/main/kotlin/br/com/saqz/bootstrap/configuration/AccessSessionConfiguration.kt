@@ -699,7 +699,17 @@ class AccessSessionConfiguration {
         readRepository: JdbcGroupReadRepository,
         inviteRepository: JdbcInviteManagementRepository,
         clock: Clock,
-    ) = GetInviteMetadata(transaction, readRepository, inviteRepository, GroupAccessPolicy(), clock)
+        tokenGenerator: JcaSecureTokenGenerator,
+        linkFactory: PublicInviteLinkFactory,
+    ) = GetInviteMetadata(
+        transaction,
+        readRepository,
+        inviteRepository,
+        GroupAccessPolicy(),
+        clock,
+        tokenGenerator,
+        linkFactory,
+    )
 
     @Bean
     fun accessInviteManagementController(

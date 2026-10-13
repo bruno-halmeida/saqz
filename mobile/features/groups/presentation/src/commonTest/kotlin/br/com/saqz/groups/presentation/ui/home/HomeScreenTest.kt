@@ -126,7 +126,7 @@ class HomeScreenTest {
         )
 
         onNodeWithText("Recebeu um convite?").assertIsDisplayed()
-        onNodeWithText("Não achei um convite nesse link. Confira e cole de novo.").assertIsDisplayed()
+        onNodeWithText("Não achei um convite aí. Confira o link ou o código e tente de novo.").assertIsDisplayed()
         onNodeWithTag(HomeTags.InviteSheetSubmit).assertIsEnabled().performClick()
 
         assertEquals(listOf<HomeIntent>(HomeIntent.SubmitInviteLink), intents)

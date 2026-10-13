@@ -16,7 +16,6 @@ fun inviteManagementPresentationModule(): Module = module {
             membershipGateway = get(),
             entryRequestGateway = get(),
             athleteGateway = get(),
-            urlStore = get(),
             sharePort = get(),
             clipboardPort = get(),
         )

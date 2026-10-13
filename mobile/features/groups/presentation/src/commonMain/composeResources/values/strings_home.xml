@@ -167,9 +167,9 @@
     <string name="home_admin_no_game_description">Marque o próximo jogo e a galera confirma em um toque.</string>
     <!-- Folha "Tenho um convite" -->
     <string name="home_invite_sheet_title">Recebeu um convite?</string>
-    <string name="home_invite_sheet_body">Abra o link que mandaram no WhatsApp. Ele abre direto no Saqz. Se preferir, cole o link aqui.</string>
-    <string name="home_invite_sheet_field">Link do convite</string>
-    <string name="home_invite_sheet_placeholder">https://links.saqz.app/…</string>
+    <string name="home_invite_sheet_body">Abra o link que mandaram no WhatsApp. Ele abre direto no Saqz. Se preferir, cole o link ou digite o código do convite aqui.</string>
+    <string name="home_invite_sheet_field">Link ou código do convite</string>
+    <string name="home_invite_sheet_placeholder">https://links.saqz.app/… ou 44DF-8SA8</string>
     <string name="home_invite_sheet_action">Entrar no grupo</string>
-    <string name="home_invite_sheet_invalid">Não achei um convite nesse link. Confira e cole de novo.</string>
+    <string name="home_invite_sheet_invalid">Não achei um convite aí. Confira o link ou o código e tente de novo.</string>
 </resources>

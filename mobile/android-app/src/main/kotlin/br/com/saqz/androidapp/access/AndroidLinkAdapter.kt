@@ -121,7 +121,7 @@ internal class AndroidLinkAdapter(
             } else {
                 AttendanceIntent.Confirm
             }
-            val inviteCodes = inviteEntries.map { it.second }.filter(::isValidInviteCode)
+            val inviteCodes = inviteEntries.mapNotNull { normalizeInviteCode(it.second) }
             val attendanceCodes = attendanceEntries.map { it.second }.filter(::isValidInviteCode)
             val duplicated = inviteEntries.size > 1 || attendanceEntries.size > 1 || intentEntries.size > 1
             val mixed = link.query.any { it.first == ONBOARDING_PARAMETER } ||
@@ -171,6 +171,17 @@ internal class AndroidLinkAdapter(
 
         fun isValidInviteCode(value: String?): Boolean =
             value?.matches(Regex("[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]")) == true
+
+        /**
+         * Convite de grupo: o token longo dos links antigos (como está) ou o código curto de 8
+         * caracteres (`44DF-8SA8`, aceito em minúscula e com hífen; segue adiante em maiúscula, sem hífen).
+         */
+        fun normalizeInviteCode(value: String?): String? {
+            if (value == null) return null
+            if (isValidInviteCode(value)) return value
+            val short = value.filterNot { it == '-' || it.isWhitespace() }.uppercase()
+            return short.takeIf { it.matches(Regex("[2-9A-HJKMNP-Z]{8}")) }
+        }
     }
 }
 
