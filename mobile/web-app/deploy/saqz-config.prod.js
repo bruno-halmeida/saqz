@@ -9,7 +9,10 @@ window.SAQZ_WEB_CONFIG = {
   checkoutUrl: "/assinar/",
   firebase: {
     apiKey: "AIzaSyC1wV54ox6S6Mp81STbUMLXBxtH0GCYH-A",
-    authDomain: "saquz-app.firebaseapp.com",
+    // O próprio saqz.app (o nginx do web app repassa /__/auth/ para saquz-app.firebaseapp.com): a volta do
+    // login com Google fica first-party. Exige https://saqz.app/__/auth/handler entre os URIs de
+    // redirecionamento do cliente OAuth web no Google Cloud.
+    authDomain: "saqz.app",
     projectId: "saquz-app",
     appId: "1:641280788616:web:6da100b9e2a884304bb73d",
   },

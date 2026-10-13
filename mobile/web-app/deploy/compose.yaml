@@ -18,6 +18,13 @@ services:
       - "traefik.http.routers.saqz-web-app.priority=100"
       - "traefik.http.routers.saqz-web-app.entrypoints=websecure"
       - "traefik.http.routers.saqz-web-app.tls=true"
+      - "traefik.http.routers.saqz-web-app.service=saqz-web-app"
+      # /__/auth/ e /__/firebase/ do login com Google (ver nginx.conf): mesmo container.
+      - "traefik.http.routers.saqz-web-auth.rule=Host(`saqz.app`) && PathPrefix(`/__/`)"
+      - "traefik.http.routers.saqz-web-auth.priority=100"
+      - "traefik.http.routers.saqz-web-auth.entrypoints=websecure"
+      - "traefik.http.routers.saqz-web-auth.tls=true"
+      - "traefik.http.routers.saqz-web-auth.service=saqz-web-app"
       - "traefik.http.services.saqz-web-app.loadbalancer.server.port=80"
 
 networks:
