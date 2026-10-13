@@ -209,6 +209,66 @@ class SessionAccessStateMachineTest {
         assertFalse(ready.emailVerified)
     }
 
+    /**
+     * O achado do QA de 13/10: na volta do plano de fundo saem o reload e o `RefreshAccess`;
+     * o bootstrap sai com o token anterior à confirmação e, chegando por último, republicava
+     * a sessão como não confirmada.
+     */
+    @Test
+    fun `a late bootstrap with the stale token never takes the confirmation back`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(session))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
+        runCurrent()
+        val gate = CompletableDeferred<Unit>()
+        fixture.session.bootstrapGate = gate
+
+        fixture.machine.onIntent(SessionIntent.RefreshEmailVerification)
+        fixture.machine.onIntent(SessionIntent.RefreshAccess)
+        runCurrent()
+        fixture.auth.completeAuth(AuthResult.Success(verified))
+        assertTrue(assertIs<SessionAccessState.Ready>(fixture.machine.state.value).emailVerified)
+
+        // O bootstrap atrasado volta com email_verified=false.
+        gate.complete(Unit)
+        runCurrent()
+
+        assertTrue(assertIs<SessionAccessState.Ready>(fixture.machine.state.value).emailVerified)
+    }
+
+    @Test
+    fun `after the provider confirms the token is renewed and the backend asked again`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(session))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
+        runCurrent()
+        assertEquals(1, fixture.session.calls)
+
+        fixture.machine.onIntent(SessionIntent.RefreshEmailVerification)
+        fixture.auth.completeAuth(AuthResult.Success(verified))
+        assertEquals(listOf(true), fixture.auth.tokenCalls)
+        assertEquals(1, fixture.session.calls)
+
+        fixture.session.result = SaqzResult.Success(session.copy(user = session.user.copy(emailVerified = true)))
+        fixture.auth.completeToken(TokenResult.Success("fresh-token"))
+        runCurrent()
+
+        assertEquals(2, fixture.session.calls)
+        assertTrue(assertIs<SessionAccessState.Ready>(fixture.machine.state.value).emailVerified)
+    }
+
+    @Test
+    fun `account confirmed through WhatsApp hides the banner on the next access refresh`() = runTest {
+        val fixture = fixture(this, SaqzResult.Success(session))
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(unverified)))
+        runCurrent()
+        assertFalse(assertIs<SessionAccessState.Ready>(fixture.machine.state.value).accountVerified)
+
+        fixture.session.result = SaqzResult.Success(session.copy(user = session.user.copy(accountVerified = true)))
+        fixture.machine.onIntent(SessionIntent.RefreshAccess)
+        runCurrent()
+
+        assertTrue(assertIs<SessionAccessState.Ready>(fixture.machine.state.value).accountVerified)
+    }
+
     // Sem faixa não há o que recarregar: a volta do plano de fundo é frequente e o provedor
     // cobra rede por reload.
     @Test

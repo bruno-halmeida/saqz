@@ -187,5 +187,12 @@ private fun PlanCatalogItem.toPaywallPlan(
     val monthly = offer(SubscriptionCycle.Monthly)
     val annual = offer(SubscriptionCycle.Annual)
     if (monthly == null && annual == null) return null
-    return AppStorePaywallPlanUi(plan = id, name = id.name, benefits = benefits(), monthly = monthly, annual = annual)
+    return AppStorePaywallPlanUi(
+        plan = id,
+        name = id.name,
+        benefits = benefits(),
+        monthly = monthly,
+        annual = annual,
+        maxGroups = maxGroups,
+    )
 }

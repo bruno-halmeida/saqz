@@ -13,6 +13,7 @@ import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateScreen
 import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateStatus
 import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateViewModel
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.subscriptions.presentation.limit.PaywallGroupLimit
 import br.com.saqz.subscriptions.presentation.ui.appstore.AppStorePaywallRoot
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
@@ -21,6 +22,16 @@ import org.koin.compose.viewmodel.koinViewModel
 /** App-owned entry point for the shared subscription authorization gate. */
 @Serializable
 data object SubscriptionRequired : NavKey
+
+/**
+ * A assinatura aberta porque o "+" de Grupos bateu no limite de grupos do plano (ou do teste):
+ * leva o que a tela precisa dizer — quantos grupos a pessoa tem, o teto e o nome do plano.
+ * Escalares, como toda rota. Se a pessoa assinar um plano maior, segue para criar o grupo.
+ */
+@Serializable
+data class SubscriptionLimitReached(val groupsUsed: Int, val groupsLimit: Int, val planName: String) : NavKey {
+    fun toLimit() = PaywallGroupLimit(groupsUsed, groupsLimit, planName)
+}
 
 /** Payment for current access returns to the caller, never to a new group form. */
 @Serializable
@@ -41,6 +52,7 @@ internal fun SubscriptionRequiredDestination(
     onAuthorizationSuccess: () -> Unit,
     viewModel: SubscriptionGateViewModel = koinViewModel(),
     store: StoreCheckout = koinInject(),
+    groupLimit: PaywallGroupLimit? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -78,6 +90,7 @@ internal fun SubscriptionRequiredDestination(
     if (store.purchasesAvailable && state.status != SubscriptionGateStatus.Authorized) {
         AppStorePaywallRoot(
             onBack = onBack,
+            groupLimit = groupLimit,
             onSubscriptionConfirm = { viewModel.onIntent(SubscriptionGateIntent.RefreshAuthorization) },
             fallback = gate,
         )

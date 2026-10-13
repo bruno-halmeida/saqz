@@ -56,6 +56,7 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(AccessRoute.AppOnboarding::class, AccessRoute.AppOnboarding.serializer())
             subclass(SaqzShellDestination::class, SaqzShellDestination.serializer())
             subclass(SubscriptionRequired::class, SubscriptionRequired.serializer())
+            subclass(SubscriptionLimitReached::class, SubscriptionLimitReached.serializer())
             // As rotas de grupo entram no VUL-72: agora que o stack tem profundidade, é
             // este registro que faz um `Details` sobreviver à rotação e ao Recents.
             subclass(GroupsRoute.Create::class, GroupsRoute.Create.serializer())

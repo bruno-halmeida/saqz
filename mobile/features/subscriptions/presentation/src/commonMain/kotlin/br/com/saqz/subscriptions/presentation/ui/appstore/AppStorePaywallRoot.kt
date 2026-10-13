@@ -8,6 +8,7 @@ import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallEffect
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallPhase
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallViewModel
+import br.com.saqz.subscriptions.presentation.limit.PaywallGroupLimit
 import org.koin.compose.viewmodel.koinViewModel
 
 const val AppStoreTermsUrl = "https://saqz.app/termos/"
@@ -22,6 +23,7 @@ fun AppStorePaywallRoot(
     onBack: () -> Unit,
     onSubscriptionConfirm: () -> Unit,
     fallback: @Composable () -> Unit,
+    groupLimit: PaywallGroupLimit? = null,
     viewModel: AppStorePaywallViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -38,6 +40,7 @@ fun AppStorePaywallRoot(
             state = state,
             onIntent = viewModel::onIntent,
             onBack = onBack,
+            groupLimit = groupLimit,
             onOpenTerms = { uriHandler.openUri(AppStoreTermsUrl) },
             onOpenPrivacy = { uriHandler.openUri(AppStorePrivacyUrl) },
         )

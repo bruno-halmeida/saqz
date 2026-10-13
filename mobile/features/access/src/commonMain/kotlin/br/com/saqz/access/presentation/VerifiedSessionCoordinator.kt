@@ -538,10 +538,35 @@ class SessionAccessStateMachine(
             if (!turn.current() || refresh != accessRefreshGeneration) return@launch
             when (result) {
                 is SaqzResult.Success -> if (result.value.user.id == ready.session.user.id) {
-                    turn.publish(readyOrIdentityGate(result.value))
+                    publishWithoutDowngrade(turn, result.value)
                 }
                 is SaqzResult.Failure -> if (result.error == AccessError.Unauthenticated) logout()
             }
+        }
+    }
+
+    /**
+     * Publica a sessão que o backend devolveu sem rebaixar a confirmação que o app já viu.
+     *
+     * O bootstrap pode ter saído com o ID token anterior à confirmação do e-mail (claim
+     * `email_verified=false`) e chegar **depois** do reload do provedor; republicar a sessão
+     * como veio faria a faixa "Confirme seu e-mail" voltar na mesma sessão. Confirmação só
+     * sobe: a leitura do estado mais recente e a escrita são uma operação só.
+     */
+    private fun publishWithoutDowngrade(turn: Turn, fresh: AccessSession) {
+        turn.advance { ctx ->
+            val before = (ctx.state as? SessionAccessState.Ready)?.session?.user
+            val merged = if (before != null && before.id == fresh.user.id) {
+                fresh.copy(
+                    user = fresh.user.copy(
+                        emailVerified = fresh.user.emailVerified || before.emailVerified,
+                        accountVerified = fresh.user.accountVerified || before.accountVerified,
+                    ),
+                )
+            } else {
+                fresh
+            }
+            ctx.copy(state = readyOrIdentityGate(merged))
         }
     }
 
@@ -571,10 +596,10 @@ class SessionAccessStateMachine(
      * Só age com faixa na tela: fora de [SessionAccessState.Ready], ou com o e-mail já
      * confirmado, não há o que recarregar e a volta do plano de fundo não custa nada.
      *
-     * ponytail: não refaz o bootstrap. O backend lê `email_verified` do mesmo token e se
-     * acerta no próximo `PUT /api/session`; nada além da faixa depende do valor persistido,
-     * e a faixa não bloqueia nada (é o ponto do ticket). Refaça o bootstrap aqui no dia em
-     * que alguma decisão do app depender do campo do backend.
+     * Depois de ver o e-mail confirmado, o ID token é renovado e o bootstrap refeito com ele:
+     * o token em cache foi emitido antes da confirmação (`email_verified=false`) e é com ele
+     * que o `RefreshAccess` da mesma volta ao app iria ao backend, que gravaria o e-mail como
+     * não confirmado e o republicaria na sessão. A faixa já some antes, pelo espelho local.
      */
     private fun refreshEmailVerification() {
         val snapshot = context.value
@@ -599,7 +624,19 @@ class SessionAccessStateMachine(
                         ready.session.copy(user = ready.session.user.copy(emailVerified = true)),
                     ),
                 )
-            }
+            } ?: return@authCallback
+            val turn = Turn(token)
+            auth.idToken(true, object : TokenCallback {
+                override fun complete(result: TokenResult) {
+                    if (!turn.current()) return
+                    scope.launch {
+                        val response = turn.emit { session.bootstrap() } ?: return@launch
+                        if (response is SaqzResult.Success && response.value.user.id == asked) {
+                            publishWithoutDowngrade(turn, response.value)
+                        }
+                    }
+                }
+            })
         })
     }
 

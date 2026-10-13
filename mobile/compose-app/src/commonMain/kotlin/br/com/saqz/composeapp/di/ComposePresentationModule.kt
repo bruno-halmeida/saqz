@@ -26,6 +26,7 @@ internal val composePresentationModule = module {
     single { br.com.saqz.composeapp.notifications.AttendanceLinkInbox(get(), get(), get()) }
     single { br.com.saqz.composeapp.notifications.NotificationOpenInbox(get()) }
     single { br.com.saqz.composeapp.analytics.PlanAnalytics(get(), get()) }
+    single { br.com.saqz.subscriptions.presentation.limit.GroupLimitResolver(get(), get()) }
     factoryOf(::AccessOrchestrator) { bind<AccessRuntimeContract>() }
     viewModelOf(::AccessViewModel)
     viewModel { SubscriptionGateViewModel(get(), get(), get()) }

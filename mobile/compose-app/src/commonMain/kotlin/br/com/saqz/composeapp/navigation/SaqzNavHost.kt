@@ -97,6 +97,8 @@ import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.subscriptions.presentation.ui.changeplan.ChangePlanRoot
+import br.com.saqz.subscriptions.presentation.ui.limit.PaywallGroupLimitWebScreen
+import kotlinx.coroutines.launch
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
 import br.com.saqz.receivables.presentation.ReceiptFinanceHomeRoute
 import br.com.saqz.receivables.presentation.ReceiptFinanceHomeRoot
@@ -202,6 +204,8 @@ internal fun SaqzNavHost(
     val receipts = receiptsCoordinator.state.collectAsStateWithLifecycle().value
     val planAnalytics = koinInject<br.com.saqz.composeapp.analytics.PlanAnalytics>()
     val storeCheckout = koinInject<br.com.saqz.composeapp.subscriptiongate.StoreCheckout>()
+    val groupLimitResolver = koinInject<br.com.saqz.subscriptions.presentation.limit.GroupLimitResolver>()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     // O servidor decide se o WhatsApp existe; o app só pergunta ao entrar na sessão.
     val whatsAppAvailability = koinInject<br.com.saqz.groups.presentation.whatsappbinding.WhatsAppAvailability>()
     val whatsAppEnabled by whatsAppAvailability.enabled.collectAsStateWithLifecycle()
@@ -217,7 +221,7 @@ internal fun SaqzNavHost(
         if (topRoute == null) return@LaunchedEffect
         SaqzAnalytics.screen(analyticsName(topRoute))
         // Evento próprio, além do screen_view: meta de A/B no Firebase é nome de evento.
-        if (topRoute is SubscriptionRequired || topRoute is SubscribeForAccess) {
+        if (topRoute is SubscriptionRequired || topRoute is SubscriptionLimitReached || topRoute is SubscribeForAccess) {
             val origin = backStack.getOrNull(backStack.lastIndex - 1)?.let(::analyticsName) ?: "none"
             SaqzAnalytics.event("paywall_shown", "origin" to origin)
         }
@@ -587,11 +591,22 @@ internal fun SaqzNavHost(
                                 onCreateGroup = { backStack.add(GroupsRoute.Create) },
                                 // No web app não há loja: assinar abre o checkout do site.
                                 onOpenPlans = {
-                                    val openedWeb = storeCheckout.openWebCheckout {
-                                        planAnalytics.refresh()
-                                        onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                                    // Se foi o limite de grupos, a assinatura diz isso: no app, no topo da
+                                    // tela de planos; no web, numa tela antes de abrir o site.
+                                    scope.launch {
+                                        val limit = groupLimitResolver.resolve()
+                                        if (limit != null && (storeCheckout.hasWebCheckout || storeCheckout.purchasesAvailable)) {
+                                            backStack.add(
+                                                SubscriptionLimitReached(limit.groupsUsed, limit.groupsLimit, limit.planName),
+                                            )
+                                        } else {
+                                            val openedWeb = storeCheckout.openWebCheckout {
+                                                planAnalytics.refresh()
+                                                onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                                            }
+                                            if (!openedWeb) backStack.add(SubscriptionRequired)
+                                        }
                                     }
-                                    if (!openedWeb) backStack.add(SubscriptionRequired)
                                 },
                                 isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
                                 onAcceptInviteCode = inviteCoordinator::acceptInvite,
@@ -771,6 +786,29 @@ internal fun SaqzNavHost(
                             backStack.replaceSubscriptionRequiredWithGroupCreation()
                         },
                     )
+                }
+                entry<SubscriptionLimitReached> { route ->
+                    if (storeCheckout.hasWebCheckout) {
+                        PaywallGroupLimitWebScreen(
+                            limit = route.toLimit(),
+                            onOpenPlans = {
+                                storeCheckout.openWebCheckout {
+                                    planAnalytics.refresh()
+                                    onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                                }
+                            },
+                            onBack = pop,
+                        )
+                    } else {
+                        SubscriptionRequiredDestination(
+                            onBack = pop,
+                            onAuthorizationSuccess = {
+                                planAnalytics.purchased()
+                                backStack.replaceSubscriptionRequiredWithGroupCreation()
+                            },
+                            groupLimit = route.toLimit(),
+                        )
+                    }
                 }
                 entry<SubscribeForAccess> {
                     SubscriptionRequiredDestination(
@@ -1119,7 +1157,7 @@ internal fun NavBackStack<NavKey>.openInviteExplore() {
 
 /** Replace the gate entry with the group form after the shared entitlement is granted. */
 internal fun MutableList<NavKey>.replaceSubscriptionRequiredWithGroupCreation() {
-    if (lastOrNull() == SubscriptionRequired) removeLastOrNull()
+    if (lastOrNull() == SubscriptionRequired || lastOrNull() is SubscriptionLimitReached) removeLastOrNull()
     add(GroupsRoute.Create)
 }
 

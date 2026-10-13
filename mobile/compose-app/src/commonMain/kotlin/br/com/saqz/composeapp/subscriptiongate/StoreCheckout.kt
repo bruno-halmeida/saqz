@@ -48,6 +48,9 @@ internal class StoreCheckout(
         return true
     }
 
+    /** Só o web app tem: não há loja, e o limite de grupos é dito numa tela própria antes de abrir o site. */
+    val hasWebCheckout: Boolean get() = webCheckout != null
+
     val canManageSubscriptions: Boolean get() = manage != null
 
     fun manageSubscriptions(done: () -> Unit) {

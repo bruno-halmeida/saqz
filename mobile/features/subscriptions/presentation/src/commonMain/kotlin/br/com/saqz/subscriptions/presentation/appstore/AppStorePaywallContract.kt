@@ -47,6 +47,8 @@ data class AppStorePaywallPlanUi(
     val benefits: List<UiText>,
     val monthly: AppStorePaywallOfferUi?,
     val annual: AppStorePaywallOfferUi?,
+    /** Teto de grupos do plano; nulo é sem teto. Diz a quem bateu o limite quais planos não cabem. */
+    val maxGroups: Int? = null,
 ) {
     fun offer(cycle: SubscriptionCycle): AppStorePaywallOfferUi? =
         if (cycle == SubscriptionCycle.Annual) annual else monthly

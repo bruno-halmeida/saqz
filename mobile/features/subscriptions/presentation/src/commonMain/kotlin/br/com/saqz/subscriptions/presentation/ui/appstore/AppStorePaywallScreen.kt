@@ -42,7 +42,9 @@ import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallOfferUi
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallPhase
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallPlanUi
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallState
+import br.com.saqz.subscriptions.presentation.limit.PaywallGroupLimit
 import br.com.saqz.subscriptions.presentation.store.PaywallStoreKind
+import br.com.saqz.subscriptions.presentation.ui.limit.PaywallGroupLimitNotice
 import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.paywall_confirm_retry
 import br.com.saqz.subscriptions.resources.paywall_cta
@@ -54,6 +56,7 @@ import br.com.saqz.subscriptions.resources.paywall_disclosure_play
 import br.com.saqz.subscriptions.resources.paywall_duration_annual
 import br.com.saqz.subscriptions.resources.paywall_duration_monthly
 import br.com.saqz.subscriptions.resources.paywall_load_error
+import br.com.saqz.subscriptions.resources.paywall_plan_too_small
 import br.com.saqz.subscriptions.resources.paywall_notice_confirmation
 import br.com.saqz.subscriptions.resources.paywall_notice_confirmation_play
 import br.com.saqz.subscriptions.resources.paywall_notice_failed
@@ -81,6 +84,7 @@ object AppStorePaywallTags {
     const val Cycle = "paywall-cycle"
     const val PlanPrefix = "paywall-plan-"
     const val PurchasePrefix = "paywall-purchase-"
+    const val TooSmallPrefix = "paywall-too-small-"
     const val Notice = "paywall-notice"
     const val ConfirmRetry = "paywall-confirm-retry"
     const val Restore = "paywall-restore"
@@ -104,6 +108,7 @@ fun AppStorePaywallScreen(
     onOpenTerms: () -> Unit,
     onOpenPrivacy: () -> Unit,
     modifier: Modifier = Modifier,
+    groupLimit: PaywallGroupLimit? = null,
 ) {
     Column(
         modifier = modifier
@@ -133,6 +138,7 @@ fun AppStorePaywallScreen(
             }
             state.phase == AppStorePaywallPhase.Ready -> AppStorePaywallCatalog(
                 state = state,
+                groupLimit = groupLimit,
                 onIntent = onIntent,
                 onOpenTerms = onOpenTerms,
                 onOpenPrivacy = onOpenPrivacy,
@@ -154,6 +160,7 @@ private fun AppStorePaywallCentered(content: @Composable () -> Unit) {
 @Composable
 private fun AppStorePaywallCatalog(
     state: AppStorePaywallState,
+    groupLimit: PaywallGroupLimit?,
     onIntent: (AppStorePaywallIntent) -> Unit,
     onOpenTerms: () -> Unit,
     onOpenPrivacy: () -> Unit,
@@ -167,6 +174,7 @@ private fun AppStorePaywallCatalog(
             .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
         verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
     ) {
+        groupLimit?.let { PaywallGroupLimitNotice(it) }
         Text(
             text = stringResource(if (state.store == PaywallStoreKind.GooglePlay) Res.string.paywall_sub_play else Res.string.paywall_sub),
             style = SaqzTheme.typography.support,
@@ -190,6 +198,7 @@ private fun AppStorePaywallCatalog(
                 cycle = state.cycle,
                 purchasing = state.purchasingProductId == offer.productId,
                 enabled = !state.isBusy,
+                tooSmallFor = groupLimit?.takeUnless { it.fits(plan.maxGroups) },
                 onPurchase = { onIntent(AppStorePaywallIntent.Purchase(offer.productId)) },
             )
         }
@@ -240,6 +249,7 @@ private fun AppStorePaywallPlanCard(
     purchasing: Boolean,
     enabled: Boolean,
     onPurchase: () -> Unit,
+    tooSmallFor: PaywallGroupLimit? = null,
 ) {
     val colors = SaqzTheme.colors
     SaqzCard(
@@ -274,12 +284,20 @@ private fun AppStorePaywallPlanCard(
         plan.benefits.forEach { benefit ->
             Text(text = "• ${benefit.asString()}", style = SaqzTheme.typography.support, color = colors.textPrimary)
         }
+        if (tooSmallFor != null) {
+            Text(
+                text = stringResource(Res.string.paywall_plan_too_small, tooSmallFor.groupsUsed),
+                style = SaqzTheme.typography.support,
+                color = colors.errorForeground,
+                modifier = Modifier.testTag(AppStorePaywallTags.TooSmallPrefix + plan.plan.name),
+            )
+        }
         if (!offer.isCurrent) {
             SaqzButton(
                 label = stringResource(Res.string.paywall_cta, plan.name),
                 onClick = onPurchase,
                 fullWidth = true,
-                enabled = enabled,
+                enabled = enabled && tooSmallFor == null,
                 loading = purchasing,
                 modifier = Modifier.testTag(AppStorePaywallTags.PurchasePrefix + offer.productId),
             )
@@ -329,20 +347,28 @@ private fun AppStorePaywallNotice.message(store: PaywallStoreKind) = when (this)
 }
 
 internal object AppStorePaywallPreviewData {
-    private fun plan(plan: Plan, monthly: String, annual: String, benefits: List<String>, current: Boolean = false) =
+    private fun plan(
+        plan: Plan,
+        monthly: String,
+        annual: String,
+        benefits: List<String>,
+        current: Boolean = false,
+        maxGroups: Int? = null,
+    ) =
         AppStorePaywallPlanUi(
             plan = plan,
             name = plan.name,
             benefits = benefits.map(UiText::Raw),
             monthly = AppStorePaywallOfferUi("app.saqz.${plan.name.lowercase()}.mensal", monthly, current),
             annual = AppStorePaywallOfferUi("app.saqz.${plan.name.lowercase()}.anual", annual, false),
+            maxGroups = maxGroups,
         )
 
     val ready = AppStorePaywallState(
         phase = AppStorePaywallPhase.Ready,
         plans = listOf(
-            plan(Plan.Titular, "R$ 39,90", "R$ 359,90", listOf("1 grupo", "Até 25 atletas por grupo")),
-            plan(Plan.Organizador, "R$ 59,90", "R$ 539,90", listOf("3 grupos", "Atletas ilimitados")),
+            plan(Plan.Titular, "R$ 39,90", "R$ 359,90", listOf("1 grupo", "Até 25 atletas por grupo"), maxGroups = 1),
+            plan(Plan.Organizador, "R$ 59,90", "R$ 539,90", listOf("3 grupos", "Atletas ilimitados"), maxGroups = 3),
             plan(Plan.Ilimitado, "R$ 89,90", "R$ 809,90", listOf("Grupos ilimitados", "Vários administradores", "Relatórios")),
         ),
     )
@@ -384,6 +410,16 @@ private fun AppStorePaywallConfirmationPreview() = AppStorePaywallPreview(
 private fun AppStorePaywallOwnedPreview() = AppStorePaywallPreview(
     AppStorePaywallPreviewData.ready.copy(notice = AppStorePaywallNotice.OwnedByAnotherAccount),
 )
+
+@Preview(name = "Limite de grupos")
+@Composable
+private fun AppStorePaywallLimitPreview() = SaqzTheme {
+    AppStorePaywallScreen(
+        state = AppStorePaywallPreviewData.ready,
+        onIntent = {}, onBack = {}, onOpenTerms = {}, onOpenPrivacy = {},
+        groupLimit = PaywallGroupLimit(groupsUsed = 3, groupsLimit = 3, planName = "Organizador"),
+    )
+}
 
 @Preview(name = "Carregando")
 @Composable

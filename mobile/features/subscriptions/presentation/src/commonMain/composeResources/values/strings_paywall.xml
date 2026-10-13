@@ -30,4 +30,9 @@
     <string name="paywall_notice_owned_play">Esta assinatura do Google Play já está vinculada a outra conta do Saqz. Entre com essa conta ou use outra conta Google.</string>
     <string name="paywall_notice_confirmation_play">O Google Play confirmou a compra, mas o Saqz ainda não liberou o acesso. Tente confirmar de novo em instantes.</string>
     <string name="paywall_notice_nothing_play">Nenhuma assinatura ativa encontrada nesta conta Google.</string>
+    <string name="paywall_limit_title">Você chegou ao limite de %1$d grupos do plano %2$s.</string>
+    <string name="paywall_limit_title_one">Você chegou ao limite de 1 grupo do plano %1$s.</string>
+    <string name="paywall_limit_hint">Para criar mais grupos, escolha um plano com mais espaço.</string>
+    <string name="paywall_plan_too_small">Não comporta seus %1$d grupos</string>
+    <string name="paywall_limit_web_cta">Ver planos</string>
 </resources>
