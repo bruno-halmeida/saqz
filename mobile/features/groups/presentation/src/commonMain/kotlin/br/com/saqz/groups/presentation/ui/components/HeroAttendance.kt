@@ -73,11 +73,13 @@ internal data class HeroAttendanceTags(
     val change: String,
     val cancel: String,
     val error: String,
+    val lateNotice: String = "hero-late-notice",
 )
 
 /** Linha do prazo do RSVP: relógio + texto; com o prazo encerrado fica mais apagada. */
 @Composable
 internal fun HeroDeadlineLine(text: String, open: Boolean, modifier: Modifier = Modifier) {
+    if (text.isBlank()) return
     val color = SaqzTheme.colors.onPrimary.copy(alpha = if (open) HeroTextAlpha else HeroMutedAlpha)
     Row(
         modifier = modifier,
@@ -157,7 +159,8 @@ internal fun HeroRosterRow(
 }
 
 /**
- * Seletor de presença sobre o hero azul. Nasceu na Início (VUL-191/218); o detalhe do grupo é
+ * Seletor de presença sobre o hero azul. [confirmationOpen] diz se dá para responder (jogo por
+ * começar); [lateNotice] explica, depois do prazo, que o "Vou" entra pela espera. Nasceu na Início (VUL-191/218); o detalhe do grupo é
  * o segundo uso, por isso textos e `testTag` chegam por parâmetro.
  *
  * Sem resposta é o momento do toque: "Vou" (lima) e "Não vou" (contorno) grandes. Depois de
@@ -181,6 +184,7 @@ internal fun ColumnScope.HeroAttendanceControls(
     onViewGame: (() -> Unit)?,
     texts: HeroAttendanceTexts,
     tags: HeroAttendanceTags,
+    lateNotice: String? = null,
 ) {
     when {
         status == AttendanceStatus.Waitlisted -> {
@@ -214,6 +218,16 @@ internal fun ColumnScope.HeroAttendanceControls(
             onRespond = onRespond,
             texts = texts,
             tags = tags,
+        )
+    }
+    // Depois do prazo o "Vou" continua valendo, mas entra pela lista de espera. Quem já está
+    // na espera tem a caixa própria, que explica o motivo.
+    if (lateNotice != null && status != AttendanceStatus.Waitlisted && confirmationOpen) {
+        Text(
+            text = lateNotice,
+            style = SaqzTheme.typography.support,
+            color = SaqzTheme.colors.onPrimary.copy(alpha = HeroTextAlpha),
+            modifier = Modifier.testTag(tags.lateNotice),
         )
     }
     if (responseFailed) {

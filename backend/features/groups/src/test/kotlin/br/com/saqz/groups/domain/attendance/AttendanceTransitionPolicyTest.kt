@@ -2,6 +2,7 @@ package br.com.saqz.groups.domain.attendance
 
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.group.PromotionMode
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import kotlin.test.*
@@ -28,7 +29,12 @@ class AttendanceTransitionPolicyTest {
     @Test fun `completed game freezes organizer override`() = denied(organizer(status = GameStatus.COMPLETED), AttendanceIntent.CONFIRM, AttendanceDenial.FROZEN)
     @Test fun `athlete may respond before deadline`() = transition(context(now = DEADLINE.minusSeconds(1)), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true)
     @Test fun `athlete may respond exactly at deadline`() = transition(context(now = DEADLINE), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true)
-    @Test fun `athlete cannot respond after deadline`() = denied(context(now = DEADLINE.plusNanos(1)), AttendanceIntent.CONFIRM, AttendanceDenial.DEADLINE_PASSED)
+    @Test fun `athlete after deadline is accepted into the waitlist`() = transition(context(now = DEADLINE.plusNanos(1)), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true)
+    @Test fun `athlete cannot respond once the game started`() {
+        denied(context(now = STARTS), AttendanceIntent.CONFIRM, AttendanceDenial.FROZEN)
+        denied(context(now = STARTS.plusSeconds(60), current = AttendanceStatus.CONFIRMED), AttendanceIntent.DECLINE, AttendanceDenial.FROZEN)
+    }
+    @Test fun `organizer may still override once the game started`() = transition(organizer(now = STARTS.plusSeconds(1), reason = "Chegou no jogo"), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true, reason = "Chegou no jogo")
     @Test fun `organizer may override after deadline`() = transition(organizer(now = DEADLINE.plusSeconds(1), reason = "Presença confirmada"), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true, reason = "Presença confirmada")
     @Test fun `organizer override requires reason`() = denied(organizer(reason = null), AttendanceIntent.CONFIRM, AttendanceDenial.REASON_REQUIRED)
     @Test fun `organizer override rejects blank reason`() = denied(organizer(reason = "  "), AttendanceIntent.CONFIRM, AttendanceDenial.REASON_REQUIRED)
@@ -87,8 +93,7 @@ class AttendanceTransitionPolicyTest {
     @Test fun `prioridade on - organizador confirma avulso com vaga`() = transition(organizer(membership = AthleteMembershipType.AVULSO, confirmed = 0, capacity = 2, reason = "Autorizado"), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true, reason = "Autorizado")
     @Test fun `prioridade off - organizador confirma mensalista sem vaga espera`() = transition(organizer(membership = AthleteMembershipType.MENSALISTA, confirmed = 2, capacity = 2, mensalistaPriority = false, reason = "Sem vaga"), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true, reason = "Sem vaga")
 
-    // A virada do prazo afeta apenas a ordenação da reserva (roster/promoção), não o confirmationTarget:
-    // self response já é barrada pelo DEADLINE_PASSED antes de chegar aqui; organizer não enxerga faixa.
+    // Organizer não enxerga a faixa do prazo.
     @Test fun `prioridade on - mensalista promovido mantem confirmado apos prazo via organizer`() = transition(organizer(now = DEADLINE.plusSeconds(1), current = AttendanceStatus.CONFIRMED, confirmed = 1, capacity = 2, reason = "Pós-prazo"), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, reason = "Pós-prazo")
 
     @Test fun `only a newly confirmed transition requests a charge`() { transition(context(current = AttendanceStatus.DECLINED), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true); transition(context(current = AttendanceStatus.CONFIRMED), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, charge = false) }
@@ -96,6 +101,51 @@ class AttendanceTransitionPolicyTest {
     // --- VUL-239: convidado de jogo ---
     @Test fun guestAlwaysJoinsTheWaitlistEvenWithRoom() = transition(context(capacity = 12, confirmed = 3, guest = true), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED, changed = true, allocate = true)
     @Test fun guestPromotionCreatesTheCharge() = transition(context(current = AttendanceStatus.WAITLISTED, guest = true), AttendanceIntent.PROMOTE, AttendanceStatus.CONFIRMED, changed = true, charge = true)
+
+
+    // --- Regra de 13/10/2026: a configuração do grupo decide, antes do prazo ---
+    private val mensalista = AthleteMembershipType.MENSALISTA
+    private val avulso = AthleteMembershipType.AVULSO
+
+    private fun vou(mode: PromotionMode, priority: Boolean, membership: AthleteMembershipType, confirmed: Int = 0, now: Instant = DEADLINE.minusSeconds(1), current: AttendanceStatus? = null, guest: Boolean = false) =
+        context(membership = membership, confirmed = confirmed, mensalistaPriority = priority, promotionMode = mode, now = now, current = current, guest = guest)
+
+    private fun goesTo(status: AttendanceStatus, ctx: AttendanceDecisionContext) =
+        if (status == AttendanceStatus.CONFIRMED) transition(ctx, AttendanceIntent.CONFIRM, status, changed = true, charge = true)
+        else transition(ctx, AttendanceIntent.CONFIRM, status, changed = true, allocate = true)
+
+    @Test fun `FIFO com prioridade - mensalista com vaga confirma`() = goesTo(AttendanceStatus.CONFIRMED, vou(PromotionMode.FIFO, true, mensalista))
+    @Test fun `FIFO com prioridade - mensalista sem vaga espera`() = goesTo(AttendanceStatus.WAITLISTED, vou(PromotionMode.FIFO, true, mensalista, confirmed = 2))
+    @Test fun `FIFO com prioridade - avulso com vaga espera`() = goesTo(AttendanceStatus.WAITLISTED, vou(PromotionMode.FIFO, true, avulso))
+    @Test fun `FIFO sem prioridade - mensalista com vaga confirma`() = goesTo(AttendanceStatus.CONFIRMED, vou(PromotionMode.FIFO, false, mensalista))
+    @Test fun `FIFO sem prioridade - mensalista sem vaga espera`() = goesTo(AttendanceStatus.WAITLISTED, vou(PromotionMode.FIFO, false, mensalista, confirmed = 2))
+    @Test fun `FIFO sem prioridade - avulso com vaga confirma`() = goesTo(AttendanceStatus.CONFIRMED, vou(PromotionMode.FIFO, false, avulso))
+    @Test fun `FIFO sem prioridade - avulso sem vaga espera`() = goesTo(AttendanceStatus.WAITLISTED, vou(PromotionMode.FIFO, false, avulso, confirmed = 2))
+    @Test fun `MANUAL com prioridade - mensalista com vaga confirma`() = goesTo(AttendanceStatus.CONFIRMED, vou(PromotionMode.MANUAL, true, mensalista))
+    @Test fun `MANUAL com prioridade - mensalista sem vaga espera`() = goesTo(AttendanceStatus.WAITLISTED, vou(PromotionMode.MANUAL, true, mensalista, confirmed = 2))
+    @Test fun `MANUAL com prioridade - avulso espera`() = goesTo(AttendanceStatus.WAITLISTED, vou(PromotionMode.MANUAL, true, avulso))
+    @Test fun `MANUAL sem prioridade - mensalista espera`() = goesTo(AttendanceStatus.WAITLISTED, vou(PromotionMode.MANUAL, false, mensalista))
+    @Test fun `MANUAL sem prioridade - avulso espera`() = goesTo(AttendanceStatus.WAITLISTED, vou(PromotionMode.MANUAL, false, avulso))
+
+    @Test fun `depois do prazo todo Vou vai para a espera em qualquer configuracao`() {
+        for (mode in PromotionMode.entries) for (priority in listOf(true, false)) for (membership in listOf(mensalista, avulso)) {
+            goesTo(AttendanceStatus.WAITLISTED, vou(mode, priority, membership, now = DEADLINE.plusSeconds(1)))
+            goesTo(AttendanceStatus.WAITLISTED, vou(mode, priority, membership, now = DEADLINE.plusSeconds(1), current = AttendanceStatus.DECLINED))
+        }
+    }
+    @Test fun `depois do prazo Vou de quem ja esta confirmado ou na espera nao muda`() {
+        transition(vou(PromotionMode.FIFO, true, mensalista, now = DEADLINE.plusSeconds(1), current = AttendanceStatus.CONFIRMED), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED)
+        transition(vou(PromotionMode.MANUAL, true, avulso, now = DEADLINE.plusSeconds(1), current = AttendanceStatus.WAITLISTED), AttendanceIntent.CONFIRM, AttendanceStatus.WAITLISTED)
+    }
+    @Test fun `depois do prazo Nao vou e aceito para confirmado e para quem espera`() {
+        for (mode in PromotionMode.entries) for (current in listOf(AttendanceStatus.CONFIRMED, AttendanceStatus.WAITLISTED)) {
+            transition(vou(mode, true, mensalista, now = DEADLINE.plusSeconds(1), current = current), AttendanceIntent.DECLINE, AttendanceStatus.DECLINED, changed = true)
+        }
+    }
+    @Test fun `convidado entra pela espera antes e depois do prazo`() {
+        goesTo(AttendanceStatus.WAITLISTED, vou(PromotionMode.FIFO, false, avulso, guest = true))
+        goesTo(AttendanceStatus.WAITLISTED, vou(PromotionMode.MANUAL, true, mensalista, now = DEADLINE.plusSeconds(1), guest = true))
+    }
 
     private fun transition(
         context: AttendanceDecisionContext,
@@ -127,7 +177,8 @@ class AttendanceTransitionPolicyTest {
         membership: AthleteMembershipType = AthleteMembershipType.MENSALISTA,
         mensalistaPriority: Boolean = true,
         guest: Boolean = false,
-    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.SELF, reason, membership, mensalistaPriority, guest)
+        promotionMode: PromotionMode = PromotionMode.FIFO,
+    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.SELF, reason, membership, mensalistaPriority, guest, promotionMode, STARTS)
 
     private fun organizer(
         status: GameStatus = GameStatus.PUBLISHED,
@@ -138,7 +189,10 @@ class AttendanceTransitionPolicyTest {
         reason: String? = "Ajuste do organizador",
         membership: AthleteMembershipType = AthleteMembershipType.MENSALISTA,
         mensalistaPriority: Boolean = true,
-    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.ORGANIZER, reason, membership, mensalistaPriority)
+    ) = AttendanceDecisionContext(status, DEADLINE, now, capacity, confirmed, current, AttendanceSource.ORGANIZER, reason, membership, mensalistaPriority, startsAt = STARTS)
 
-    private companion object { val DEADLINE: Instant = Instant.parse("2026-08-11T22:30:00Z") }
+    private companion object {
+        val DEADLINE: Instant = Instant.parse("2026-08-11T22:30:00Z")
+        val STARTS: Instant = Instant.parse("2026-08-12T01:00:00Z")
+    }
 }

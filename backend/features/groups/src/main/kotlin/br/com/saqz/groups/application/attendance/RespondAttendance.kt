@@ -63,6 +63,8 @@ class RespondAttendance(
                 reason,
                 aggregate.membershipType,
                 aggregate.mensalistaPriority,
+                promotionMode = aggregate.promotionMode,
+                startsAt = aggregate.startsAt,
             ),
             intent,
         )) {
@@ -164,8 +166,16 @@ class RespondAttendance(
         // promoveria um convidado que cai no passo seguinte.
         val freedByGuests = if (leaving && aggregate.guestSeq == 0) dropGuests(aggregate, timestamp) else 0
         val freed = freedByGuests + if (leaving && wasConfirmed) 1 else 0
-        val promoted = if (aggregate.promotionMode == PromotionMode.FIFO) promoteFreed(aggregate, freed, repository, charges, timestamp, ids) else emptyList()
-        return AttendanceCommandResult.Success(record, promoted, event)
+        // "Vou" depois do prazo cai na espera; em ordem de chegada a fila ocupa na hora as vagas livres
+        // (a fila vem antes de quem acabou de entrar), sem esperar o job de cada minuto.
+        val lateJoin = decision.newStatus == AttendanceStatus.WAITLISTED && timestamp > aggregate.confirmationDeadline
+        val promoted = when {
+            aggregate.promotionMode != PromotionMode.FIFO -> emptyList()
+            lateJoin -> promoteFreed(aggregate, (aggregate.capacity - aggregate.confirmedCount).coerceAtLeast(0), repository, charges, timestamp, ids, aggregate.confirmedCount)
+            else -> promoteFreed(aggregate, freed, repository, charges, timestamp, ids)
+        }
+        val own = promoted.firstOrNull { it.memberId == record.memberId && it.guestSeq == record.guestSeq } ?: record
+        return AttendanceCommandResult.Success(own, promoted, event)
     }
 
     /** Derruba os convidados ativos do anfitrião; devolve quantas vagas CONFIRMADAS eles liberaram. */

@@ -41,6 +41,8 @@ internal fun promoteAttendance(
             reason,
             aggregate.membershipType,
             aggregate.mensalistaPriority,
+            promotionMode = aggregate.promotionMode,
+            startsAt = aggregate.startsAt,
         ),
         AttendanceIntent.PROMOTE,
     )
@@ -82,8 +84,9 @@ internal fun promoteFreed(
     charges: AttendanceChargePort,
     timestamp: Instant,
     ids: () -> UUID,
+    startConfirmed: Int = (aggregate.confirmedCount - freed).coerceAtLeast(0),
 ): List<AttendanceRecord> {
-    var confirmed = (aggregate.confirmedCount - freed).coerceAtLeast(0)
+    var confirmed = startConfirmed
     return buildList {
         repeat(freed) {
             val waiting = repository.earliestWaitlisted(aggregate.groupId, aggregate.gameId) ?: return@buildList

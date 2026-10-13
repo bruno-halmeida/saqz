@@ -34,6 +34,7 @@ import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.PromotionMode
+import br.com.saqz.groups.presentation.attendance.AttendanceRule
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
@@ -70,6 +71,8 @@ class GameDetailViewModel(
     /** Do vínculo e do prazo carregados: o tipo da fila e a re-checagem do prazo no "Vou" dependem deles. */
     private var membershipType: AthleteMembershipType? = null
     private var confirmationDeadline: Instant? = null
+    private var startsAt: Instant? = null
+    private var groupPromotionMode: PromotionMode = PromotionMode.FIFO
 
     /**
      * Carga no ar. Só a recarga por baixo ([GameDetailIntent.Refresh]) é descartada por ela: o
@@ -201,6 +204,7 @@ class GameDetailViewModel(
         promotionMode: PromotionMode,
         softRefresh: Boolean,
     ) {
+        groupPromotionMode = promotionMode
         val detailResult = attendanceGateway.read(GroupId(groupId), gameId)
         if (generation != loadGeneration) return
         val rosterResult = attendanceGateway.roster(GroupId(groupId), gameId)
@@ -222,6 +226,7 @@ class GameDetailViewModel(
                 membershipType = (profileResult as? SaqzResult.Success)?.value?.memberships
                     ?.firstOrNull { it.groupId == GroupId(groupId) }?.membershipType
                 confirmationDeadline = runCatching { Instant.parse(game.confirmationDeadline) }.getOrNull()
+                startsAt = runCatching { Instant.parse(game.startsAt) }.getOrNull()
                 val header = game.toHeader()
                 val open = header.confirmationOpen
                 val tone = header.statusTone
@@ -433,7 +438,7 @@ class GameDetailViewModel(
         val current = state.value
         val response = current.response
         if (!current.canRespond(intent)) return
-        if (!deadlineIsOpen()) {
+        if (!startIsAhead()) {
             closeConfirmation()
             return
         }
@@ -481,7 +486,7 @@ class GameDetailViewModel(
     /** Quem já está na fila só pode sair dela: um segundo "Vou" não muda nada no servidor. */
     private fun GameDetailState.canRespond(intent: AttendanceIntent): Boolean {
         val queuedAgain = response.status == AttendanceStatus.Waitlisted && intent == AttendanceIntent.Confirm
-        return response.visible && header?.confirmationOpen == true && !response.responding && !queuedAgain
+        return response.visible && header?.responseOpen == true && !response.responding && !queuedAgain
     }
 
     /** O que a resposta aceita já traz: placar, vagas, a própria linha e o "Levar convidado" (só quem vai pode levar). */
@@ -498,7 +503,7 @@ class GameDetailViewModel(
     /** Prazo vencido (ou jogo congelado): os botões desabilitam e o convidado fecha junto. */
     private fun closeConfirmation() = update {
         it.copy(
-            header = it.header?.copy(confirmationOpen = false),
+            header = it.header?.copy(confirmationOpen = false, responseOpen = false),
             guest = it.guest.copy(enabled = false, hint = GameGuestHint.Closed),
         )
     }
@@ -506,23 +511,23 @@ class GameDetailViewModel(
     /** Re-checa o relógio: o `confirmationOpen` do cabeçalho é de quando a tela carregou. */
     private fun deadlineIsOpen(): Boolean = confirmationDeadline?.let { it > Clock.System.now() } ?: true
 
+    /** Depois do prazo o "Vou" ainda vale (entra pela espera); só o início do jogo fecha a resposta. */
+    private fun startIsAhead(): Boolean = startsAt?.let { it > Clock.System.now() } ?: true
+
     // Recusar é sempre recusa; quem já está confirmado continua; avulso sob prioridade de mensalista
     // e jogo lotado caem na fila. O servidor confirma (mesma previsão do hero da Início).
     private fun GameDetailState.optimisticStatus(intent: AttendanceIntent): AttendanceStatus = when {
         intent == AttendanceIntent.Decline -> AttendanceStatus.Declined
         response.status == AttendanceStatus.Confirmed -> AttendanceStatus.Confirmed
-        waitlistKind(mensalistaPriority) == HomeWaitlistKind.AvulsoList -> AttendanceStatus.Waitlisted
+        !AttendanceRule.entersDirectly(membershipType, mensalistaPriority, promotionMode, !deadlineIsOpen()) ->
+            AttendanceStatus.Waitlisted
         attendance?.let { it.confirmed >= it.capacity } == true -> AttendanceStatus.Waitlisted
         else -> AttendanceStatus.Confirmed
     }
 
     /** Ponto único do tipo de espera, com a regra da Início: avulso + prioridade ⇒ lista do avulso. */
     private fun waitlistKind(mensalistaPriority: Boolean): HomeWaitlistKind =
-        if (membershipType == AthleteMembershipType.AVULSO && mensalistaPriority) {
-            HomeWaitlistKind.AvulsoList
-        } else {
-            HomeWaitlistKind.Reserva
-        }
+        AttendanceRule.waitlistKind(membershipType, mensalistaPriority, groupPromotionMode, !deadlineIsOpen())
 
     private fun responseUi(
         published: Boolean,
@@ -649,6 +654,8 @@ class GameDetailViewModel(
             availableSpots = availableSpots,
             confirmationOpen = status == GameStatus.Published &&
                 (deadlineLocal?.let { it.toInstant(zone) > Clock.System.now() } ?: true),
+            responseOpen = status == GameStatus.Published &&
+                (runCatching { Instant.parse(startsAt) > Clock.System.now() }.getOrDefault(true)),
         )
     }
     private fun AttendanceDetail.toAttendance() = GameDetailAttendanceUi(

@@ -47,6 +47,8 @@ data class GameDetailHeaderUi(
     val durationMinutes: Int,
     val availableSpots: Int,
     val confirmationOpen: Boolean = true,
+    /** Ainda dá para responder: jogo publicado e por começar. Depois do prazo o "Vou" entra pela espera. */
+    val responseOpen: Boolean = true,
     val confirmationDeadlineWeekday: GroupWeekday? = null,
 )
 enum class GameDetailStatusTone { Draft, Published, Cancelled, Completed }

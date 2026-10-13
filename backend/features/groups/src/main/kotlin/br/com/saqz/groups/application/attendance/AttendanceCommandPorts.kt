@@ -27,6 +27,7 @@ data class AttendanceAggregate(
     val promotionMode: PromotionMode = PromotionMode.FIFO,
     val guestSeq: Int = 0,
     val guestName: String? = null,
+    val startsAt: Instant? = null,
 )
 
 data class AttendanceRecord(

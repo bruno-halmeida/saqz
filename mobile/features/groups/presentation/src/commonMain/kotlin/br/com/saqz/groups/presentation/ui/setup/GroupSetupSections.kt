@@ -62,10 +62,14 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_game_config_auto_confirm_hint
 import br.com.saqz.groups.resources.group_game_config_auto_confirm_label
 import br.com.saqz.groups.resources.group_game_config_confirmation_lead_label
-import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint
+import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint_fifo_off
+import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint_fifo_on
+import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint_manual_off
+import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint_manual_on
 import br.com.saqz.groups.resources.group_game_config_mensalista_priority_label
 import br.com.saqz.groups.resources.group_game_config_promotion_fifo
-import br.com.saqz.groups.resources.group_game_config_promotion_hint
+import br.com.saqz.groups.resources.group_game_config_promotion_hint_fifo
+import br.com.saqz.groups.resources.group_game_config_promotion_hint_manual
 import br.com.saqz.groups.resources.group_game_config_promotion_label
 import br.com.saqz.groups.resources.group_game_config_promotion_manual
 import br.com.saqz.groups.resources.group_game_config_title
@@ -773,14 +777,29 @@ internal fun GroupGameConfigSection(
                 modifier = Modifier.testTag(GroupSetupTags.MensalistaPriority),
             )
             Text(
-                text = stringResource(Res.string.group_game_config_mensalista_priority_hint),
+                text = stringResource(
+                    when {
+                        promotionMode == PromotionMode.FIFO && mensalistaPriority ->
+                            Res.string.group_game_config_mensalista_priority_hint_fifo_on
+                        promotionMode == PromotionMode.FIFO ->
+                            Res.string.group_game_config_mensalista_priority_hint_fifo_off
+                        mensalistaPriority -> Res.string.group_game_config_mensalista_priority_hint_manual_on
+                        else -> Res.string.group_game_config_mensalista_priority_hint_manual_off
+                    },
+                ),
                 style = SaqzTheme.typography.support,
                 color = SaqzTheme.colors.textSecondary,
             )
         }
         GroupFormCard(
             title = stringResource(Res.string.group_game_config_promotion_label),
-            hint = stringResource(Res.string.group_game_config_promotion_hint),
+            hint = stringResource(
+                if (promotionMode == PromotionMode.FIFO) {
+                    Res.string.group_game_config_promotion_hint_fifo
+                } else {
+                    Res.string.group_game_config_promotion_hint_manual
+                },
+            ),
         ) {
             SaqzSegmented(
                 options = PromotionModeOptions.map { it.label() },

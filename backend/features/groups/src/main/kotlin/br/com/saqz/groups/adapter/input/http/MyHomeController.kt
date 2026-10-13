@@ -63,6 +63,7 @@ data class HomeNextGameResponse(
     val membershipType: String,
     val mensalistaPriority: Boolean,
     val rosterPreview: HomeRosterPreviewResponse,
+    val promotionMode: String = "FIFO",
 )
 
 data class HomeLastCompletedGameResponse(
@@ -226,6 +227,7 @@ private fun HomeNextGame.toResponse() = HomeNextGameResponse(
     ownAttendance = ownAttendance?.toResponse(),
     membershipType = membershipType.name,
     mensalistaPriority = mensalistaPriority,
+    promotionMode = promotionMode.name,
     rosterPreview = rosterPreview.let {
         HomeRosterPreviewResponse(
             confirmed = it.confirmed.map(HomeRosterMember::toResponse),

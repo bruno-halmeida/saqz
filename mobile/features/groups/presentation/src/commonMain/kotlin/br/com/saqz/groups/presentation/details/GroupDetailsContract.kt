@@ -100,6 +100,9 @@ data class NextGameUi(
     val confirmedNames: List<String> = emptyList(),
     val availableSpots: Int = 0,
     val confirmationOpen: Boolean = true,
+    /** Ainda dá para responder: jogo publicado e por começar. Depois do prazo o "Vou" entra pela espera. */
+    val responseOpen: Boolean = true,
+    val startsAt: String = "",
     val hasGameFee: Boolean = false,
     /** "Terça, 19h30" — título do hero. */
     val display: String = "",
@@ -148,7 +151,7 @@ data class GroupWaitlistUi(
     val rows: List<HomeWaitlistRowUi> = emptyList(),
 )
 
-enum class GroupDetailsToast { Confirmed, Declined, Waitlisted, PixCopied, GameCreated }
+enum class GroupDetailsToast { Confirmed, Declined, Waitlisted, WaitlistedManual, WaitlistedAfterDeadline, PixCopied, GameCreated }
 
 /** A linha de caixa do gestor — só o saldo ("Saldo R$ 380,00"). As mensalidades a receber moram em [GroupWaitingUi]. */
 @Immutable

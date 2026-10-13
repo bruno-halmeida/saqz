@@ -3,9 +3,13 @@
     <!-- VUL-157 · Configurações de jogo no editar grupo -->
     <string name="group_game_config_title">Como preencher as vagas</string>
     <string name="group_game_config_mensalista_priority_label">Prioridade de mensalista</string>
-    <string name="group_game_config_mensalista_priority_hint">Mensalista confirma direto e fica no topo da lista de espera. Desligado, todo mundo disputa igual.</string>
+    <string name="group_game_config_mensalista_priority_hint_fifo_on">Mensalista confirma direto; avulso espera até o prazo de confirmação.</string>
+    <string name="group_game_config_mensalista_priority_hint_fifo_off">Desligada: mensalista e avulso confirmam direto enquanto houver vaga.</string>
+    <string name="group_game_config_mensalista_priority_hint_manual_on">Mensalista confirma direto; avulso entra na lista de espera e você escolhe.</string>
+    <string name="group_game_config_mensalista_priority_hint_manual_off">Desligada: todo "Vou" entra na lista de espera e você escolhe quem joga.</string>
     <string name="group_game_config_promotion_label">Quem entra quando surge uma vaga?</string>
-    <string name="group_game_config_promotion_hint">Quem entrou primeiro na lista de espera é chamado primeiro. Na escolha manual, você decide quem entra.</string>
+    <string name="group_game_config_promotion_hint_fifo">Ordem de chegada: quem entrou primeiro na lista de espera é chamado primeiro. Depois do prazo, o "Vou" entra na lista de espera e a vaga livre vai para o primeiro da fila.</string>
+    <string name="group_game_config_promotion_hint_manual">Escolha manual: todo "Vou" entra na lista de espera e você escolhe quem joga. Com a prioridade ligada, só o mensalista confirma direto.</string>
     <string name="group_game_config_promotion_fifo">Ordem de chegada</string>
     <string name="group_game_config_promotion_manual">Escolha manual</string>
     <string name="group_game_config_confirmation_lead_label">Prazo de confirmação padrão</string>

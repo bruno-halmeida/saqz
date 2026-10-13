@@ -41,5 +41,9 @@ internal object GameDetailResponsePreviewData {
         response = pending,
     )
     val memberClosedConfirmed: GameDetailState = memberClosed.copy(response = confirmed)
+    val memberStarted: GameDetailState = memberClosed.copy(
+        header = GameDetailPreviewData.header.copy(confirmationOpen = false, responseOpen = false),
+    )
+    val memberStartedConfirmed: GameDetailState = memberStarted.copy(response = confirmed)
     val admin = GameDetailPreviewData.admin.copy(response = pending)
 }

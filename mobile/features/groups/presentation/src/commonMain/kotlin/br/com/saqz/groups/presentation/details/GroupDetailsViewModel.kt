@@ -8,6 +8,8 @@ import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.group.PromotionMode
+import br.com.saqz.groups.presentation.attendance.AttendanceRule
 import br.com.saqz.groups.domain.communication.AppDownloadPort
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteGateway
@@ -715,9 +717,9 @@ class GroupDetailsViewModel(
         // Quem já está na fila só pode sair dela: um segundo "Vou" não muda nada no servidor
         // e o otimista piscaria "confirmado" (mesma guarda da Início).
         val alreadyQueued = current.memberResponse?.status == GroupDetailsResponseStatus.Waitlisted
-        if (!game.confirmationOpen || current.responding || (alreadyQueued && intent == AttendanceIntent.Confirm)) return
-        if (!game.confirmationIsOpen()) {
-            update { it.copy(nextGame = game.copy(confirmationOpen = false)) }
+        if (!game.responseOpen || current.responding || (alreadyQueued && intent == AttendanceIntent.Confirm)) return
+        if (!game.responseIsOpen()) {
+            update { it.copy(nextGame = game.copy(responseOpen = false)) }
             return
         }
         val generation = ++responseGeneration
@@ -762,7 +764,7 @@ class GroupDetailsViewModel(
                             attendance = detail.toAttendance(),
                             memberResponse = reconciled,
                             waitlist = reconciled.toWaitlist(roster, it.waitlist?.rows.orEmpty(), it.membershipType),
-                            toast = reconciled.status.toToast(),
+                            toast = reconciled.status.toToast(waitlistKind(it.membershipType)),
                             responding = false,
                             athleteIntroVisible = it.athleteIntroVisible || showIntroduction,
                             responseFailed = false,
@@ -778,7 +780,7 @@ class GroupDetailsViewModel(
                         responding = false,
                         responseFailed = result.error != AttendanceError.Frozen,
                         nextGame = if (result.error == AttendanceError.DeadlinePassed || result.error == AttendanceError.Frozen) {
-                            it.nextGame?.copy(confirmationOpen = false)
+                            it.nextGame?.copy(responseOpen = false)
                         } else it.nextGame,
                     )
                 }
@@ -924,6 +926,8 @@ class GroupDetailsViewModel(
             confirmedNames = roster.confirmed.map { it.displayName },
             availableSpots = detail.availableSpots,
             confirmationOpen = status == GameStatus.Published && deadlineIsOpen(),
+            responseOpen = status == GameStatus.Published && startIsAhead(),
+            startsAt = startsAt,
             hasGameFee = gameFeeCents != null,
             display = startsAtLocal?.gameHeroDisplay() ?: displayDate(),
             meta = startsAtLocal?.gameHeroMeta(place) ?: place,
@@ -957,9 +961,9 @@ class GroupDetailsViewModel(
         } else null,
     )
 
-    private fun NextGameUi.confirmationIsOpen() = runCatching {
-        Instant.parse(confirmationDeadline) > now.now()
-    }.getOrDefault(false)
+    private fun NextGameUi.responseIsOpen() = runCatching {
+        Instant.parse(startsAt) > now.now()
+    }.getOrDefault(true)
 
     private fun GroupDetailsResponseUi.reconcileRoster(roster: AttendanceRoster): GroupDetailsResponseUi {
         val id = memberId ?: return this
@@ -991,10 +995,14 @@ class GroupDetailsViewModel(
         AttendanceStatus.Waitlisted -> GroupDetailsResponseStatus.Waitlisted
     }
 
-    private fun GroupDetailsResponseStatus.toToast() = when (this) {
+    private fun GroupDetailsResponseStatus.toToast(kind: HomeWaitlistKind) = when (this) {
         GroupDetailsResponseStatus.Confirmed -> GroupDetailsToast.Confirmed
         GroupDetailsResponseStatus.Declined -> GroupDetailsToast.Declined
-        GroupDetailsResponseStatus.Waitlisted -> GroupDetailsToast.Waitlisted
+        GroupDetailsResponseStatus.Waitlisted -> when (kind) {
+            HomeWaitlistKind.Manual -> GroupDetailsToast.WaitlistedManual
+            HomeWaitlistKind.AfterDeadline -> GroupDetailsToast.WaitlistedAfterDeadline
+            else -> GroupDetailsToast.Waitlisted
+        }
     }
 
     // A mesma previsão da Início: recusar é sempre recusa; quem já está confirmado continua;
@@ -1002,18 +1010,23 @@ class GroupDetailsViewModel(
     private fun GroupDetailsState.optimisticStatus(game: NextGameUi, intent: AttendanceIntent) = when {
         intent == AttendanceIntent.Decline -> GroupDetailsResponseStatus.Declined
         memberResponse?.status == GroupDetailsResponseStatus.Confirmed -> GroupDetailsResponseStatus.Confirmed
-        waitlistKind(membershipType) == HomeWaitlistKind.AvulsoList -> GroupDetailsResponseStatus.Waitlisted
+        !AttendanceRule.entersDirectly(membershipType, mensalistaPriority(), promotionMode(), deadlinePassed()) ->
+            GroupDetailsResponseStatus.Waitlisted
         game.confirmedCount >= game.capacity -> GroupDetailsResponseStatus.Waitlisted
         else -> GroupDetailsResponseStatus.Confirmed
     }
 
     /** Ponto único do tipo de espera, com a regra da Início: avulso + prioridade ⇒ lista do avulso. */
     private fun waitlistKind(membershipType: AthleteMembershipType?): HomeWaitlistKind =
-        if (membershipType == AthleteMembershipType.AVULSO && loadedGroup?.gameConfig?.mensalistaPriority == true) {
-            HomeWaitlistKind.AvulsoList
-        } else {
-            HomeWaitlistKind.Reserva
-        }
+        AttendanceRule.waitlistKind(membershipType, mensalistaPriority(), promotionMode(), deadlinePassed())
+
+    private fun mensalistaPriority() = loadedGroup?.gameConfig?.mensalistaPriority == true
+
+    private fun promotionMode() = loadedGroup?.gameConfig?.promotionMode ?: PromotionMode.FIFO
+
+    private fun deadlinePassed(): Boolean = state.value.nextGame?.let {
+        runCatching { now.now() > Instant.parse(it.confirmationDeadline) }.getOrDefault(false)
+    } ?: false
 
     /** Fora da fila não há espera. Sem roster novo (otimista), a fila anterior é mantida. */
     private fun GroupDetailsResponseUi?.toWaitlist(
@@ -1043,6 +1056,9 @@ class GroupDetailsViewModel(
         return local?.let { "${it.hour.toString().padStart(2, '0')}h${it.minute.toString().padStart(2, '0')}" }
             ?: confirmationDeadline
     }
+
+    private fun Game.startIsAhead(): Boolean =
+        runCatching { Instant.parse(startsAt) > now.now() }.getOrDefault(true)
 
     private fun Game.deadlineIsOpen(): Boolean {
         return runCatching { Instant.parse(confirmationDeadline) > now.now() }

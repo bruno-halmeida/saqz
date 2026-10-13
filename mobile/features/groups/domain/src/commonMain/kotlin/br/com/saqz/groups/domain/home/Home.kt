@@ -48,6 +48,7 @@ data class HomeNextGame(
     val membershipType: AthleteMembershipType,
     val mensalistaPriority: Boolean,
     val rosterPreview: HomeRosterPreview,
+    val promotionMode: br.com.saqz.groups.domain.group.PromotionMode = br.com.saqz.groups.domain.group.PromotionMode.FIFO,
 )
 
 /** Um jogo depois do hero (até 3, todos os grupos) — só o que a linha de "Próximos jogos" mostra. */

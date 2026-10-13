@@ -62,6 +62,7 @@ class GameGuests(
         AttendanceDecisionContext(
             aggregate.gameStatus, aggregate.confirmationDeadline, now(), aggregate.capacity, aggregate.confirmedCount,
             aggregate.current?.status, source, reason, aggregate.membershipType, aggregate.mensalistaPriority, guest = true,
+            promotionMode = aggregate.promotionMode, startsAt = aggregate.startsAt,
         ),
         intent,
     )) {

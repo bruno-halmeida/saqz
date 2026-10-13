@@ -55,14 +55,25 @@ class GameGuestsTest {
     }
 
     @Test
-    fun afterTheDeadlineTheHostCannotAddOrRemove() {
+    fun afterTheDeadlineTheGuestStillEntersTheWaitlistAndFifoFillsTheFreeSpot() {
         repository.deadline = NOW.minusSeconds(1)
         repository.record(host, AttendanceStatus.CONFIRMED)
+        val added = assertIs<AttendanceCommandResult.Success>(guests.add(host, group, game, "Rafa Moreira", UUID.randomUUID()))
+        assertEquals(AttendanceStatus.CONFIRMED, added.attendance.status)
+        assertEquals(1, added.promoted.size)
+        val removed = assertIs<AttendanceCommandResult.Success>(guests.remove(host, group, game, host, 1))
+        assertEquals(AttendanceStatus.DECLINED, removed.attendance.status)
+    }
+
+    @Test
+    fun onceTheGameStartedTheHostCannotAddOrRemove() {
+        repository.startsAt = NOW.minusSeconds(1)
+        repository.record(host, AttendanceStatus.CONFIRMED)
         val addResult = assertIs<AttendanceCommandResult.Denied>(guests.add(host, group, game, "Rafa Moreira", UUID.randomUUID()))
-        assertEquals(AttendanceDenial.DEADLINE_PASSED, addResult.reason)
+        assertEquals(AttendanceDenial.FROZEN, addResult.reason)
         repository.record(host, AttendanceStatus.WAITLISTED, guestSeq = 1)
         val removeResult = assertIs<AttendanceCommandResult.Denied>(guests.remove(host, group, game, host, 1))
-        assertEquals(AttendanceDenial.DEADLINE_PASSED, removeResult.reason)
+        assertEquals(AttendanceDenial.FROZEN, removeResult.reason)
     }
 
     @Test
@@ -102,6 +113,7 @@ class GameGuestsTest {
         val records = mutableMapOf<Pair<UUID, Int>, AttendanceRecord>()
         val events = mutableListOf<AttendanceEvent>()
         var deadline = NOW.plusSeconds(60)
+        var startsAt: Instant = NOW.plusSeconds(3600)
         var allocator = 0L
         private val status = GameStatus.PUBLISHED
         private val capacity = 12
@@ -117,7 +129,7 @@ class GameGuestsTest {
             return AttendanceAggregate(
                 group, game, memberId, actorId, actorRole, status, deadline, capacity, confirmedCount(),
                 records[memberId to guestSeq], 2500L, LocalDate.of(2026, 8, 11),
-                AthleteMembershipType.MENSALISTA, true, PromotionMode.FIFO, guestSeq,
+                AthleteMembershipType.MENSALISTA, true, PromotionMode.FIFO, guestSeq, startsAt = startsAt,
             )
         }
 

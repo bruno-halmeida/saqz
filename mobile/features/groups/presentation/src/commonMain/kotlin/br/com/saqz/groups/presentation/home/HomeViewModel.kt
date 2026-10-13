@@ -10,6 +10,7 @@ import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
+import br.com.saqz.groups.presentation.attendance.AttendanceRule
 import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
@@ -307,14 +308,14 @@ class HomeViewModel(
         val game = home?.member?.nextGame
         val member = current.member
         val gameUi = member?.nextGame
-        val deadline = game?.let { runCatching { Instant.parse(it.confirmationDeadline) }.getOrNull() }
+        val startsAt = game?.let { runCatching { Instant.parse(it.startsAt) }.getOrNull() }
         return when {
             home == null -> null
             game == null -> null
             member == null -> null
             gameUi == null -> null
-            deadline == null -> null
-            !canRespond(current, game, gameUi, deadline, intent) -> null
+            startsAt == null -> null
+            !canRespond(current, game, gameUi, startsAt, intent) -> null
             else -> HomeResponseContext(home, member, game, gameUi)
         }
     }
@@ -323,12 +324,12 @@ class HomeViewModel(
         current: HomeState,
         game: br.com.saqz.groups.domain.home.HomeNextGame,
         gameUi: HomeNextGameUi,
-        deadline: Instant,
+        startsAt: Instant,
         intent: AttendanceIntent,
     ): Boolean = when {
-        now.now() >= deadline -> false
+        now.now() >= startsAt -> false
         current.responding -> false
-        !gameUi.confirmationOpen -> false
+        !gameUi.responseOpen -> false
         game.ownAttendance?.status == AttendanceStatus.Waitlisted &&
             intent != AttendanceIntent.Decline -> false
         else -> true
@@ -395,18 +396,26 @@ class HomeViewModel(
                             ),
                         ),
                         responding = false,
-                        toast = actualStatus.toToast(),
+                        toast = actualStatus.toToast(reconciledKind),
                     )
                 }
                 load(softRefresh = true)
             }
-            is SaqzResult.Failure -> update {
-                it.copy(
-                    home = context.home,
-                    member = context.member,
-                    responding = false,
-                    responseFailed = true,
-                )
+            is SaqzResult.Failure -> {
+                // Jogo já começado ou encerrado: a linha do cartão explica, não o erro genérico.
+                val closed = result.error == AttendanceError.Frozen || result.error == AttendanceError.DeadlinePassed
+                update {
+                    it.copy(
+                        home = context.home,
+                        member = if (closed) {
+                            context.member.copy(nextGame = context.gameUi.copy(responseOpen = false))
+                        } else {
+                            context.member
+                        },
+                        responding = false,
+                        responseFailed = !closed,
+                    )
+                }
             }
         }
     }
@@ -445,6 +454,7 @@ class HomeViewModel(
         val time = startsAtLocal?.gameTimeLabel() ?: startsAt
         val weekday = startsAtLocal?.let { getString(it.date.dayOfWeek.longResource()) } ?: ""
         val confirmationOpen = deadlineInstant?.let { now.now() < it } == true
+        val responseOpen = startsAtIsAhead()
         val (display, meta) = heroLabels(startsAtLocal, dateTime, local)
         val ownPosition = ownAttendance
             ?.takeIf { it.status == AttendanceStatus.Waitlisted }
@@ -471,13 +481,14 @@ class HomeViewModel(
             groupName = groupName,
             dateTime = dateTime,
             local = local,
-            deadline = if (confirmationOpen) deadlineLabel(deadline, zone) else getString(Res.string.home_deadline_closed),
+            deadline = deadlineText(confirmationOpen, responseOpen, deadline, zone),
             confirmedSummary = getString(Res.string.home_confirmed_summary, confirmedCount, capacity),
             confirmedCount = confirmedCount,
             capacity = capacity,
             rosterNames = rosterPreview.confirmed.map { it.displayName },
             ownAttendance = ownAttendance?.status,
             confirmationOpen = confirmationOpen,
+            responseOpen = responseOpen,
             weekday = weekday,
             time = time,
             waitlistKind = ownAttendance?.status?.let { waitlistKind() },
@@ -657,13 +668,33 @@ class HomeViewModel(
 
     private fun String.firstName() = trim().substringBefore(' ').ifBlank { trim() }
 
-    private fun HomeNextGame.optimisticStatus(intent: AttendanceIntent) = when {
-        intent == AttendanceIntent.Decline -> AttendanceStatus.Declined
-        ownAttendance?.status == AttendanceStatus.Confirmed -> AttendanceStatus.Confirmed
-        membershipType == AthleteMembershipType.AVULSO && mensalistaPriority -> AttendanceStatus.Waitlisted
-        confirmedCount >= capacity -> AttendanceStatus.Waitlisted
-        else -> AttendanceStatus.Confirmed
+    private fun HomeNextGame.optimisticStatus(intent: AttendanceIntent) = AttendanceRule.predict(
+        intent = intent,
+        current = ownAttendance?.status,
+        membershipType = membershipType,
+        mensalistaPriority = mensalistaPriority,
+        promotionMode = promotionMode,
+        deadlinePassed = deadlinePassed(),
+        full = confirmedCount >= capacity,
+    )
+
+    private fun HomeNextGame.startsAtIsAhead(): Boolean =
+        runCatching { Instant.parse(startsAt) }.getOrNull()?.let { now.now() < it } ?: true
+
+    /** Depois do prazo e antes do jogo, o aviso do seletor explica; a linha só fecha com o jogo. */
+    private suspend fun deadlineText(
+        confirmationOpen: Boolean,
+        responseOpen: Boolean,
+        deadline: kotlinx.datetime.LocalDateTime?,
+        zone: TimeZone,
+    ): String = when {
+        confirmationOpen -> deadlineLabel(deadline, zone)
+        responseOpen -> ""
+        else -> getString(Res.string.home_deadline_closed)
     }
+
+    private fun HomeNextGame.deadlinePassed(): Boolean =
+        runCatching { now.now() > Instant.parse(confirmationDeadline) }.getOrDefault(false)
 
     /**
      * Ponto único de derivação do tipo de espera: `Avulso` com `mensalistaPriority`
@@ -671,16 +702,16 @@ class HomeViewModel(
      * cabeçalho e o `optimisticStatus` usam a mesma regra.
      */
     private fun HomeNextGame.waitlistKind(): HomeWaitlistKind =
-        if (membershipType == AthleteMembershipType.AVULSO && mensalistaPriority) {
-            HomeWaitlistKind.AvulsoList
-        } else {
-            HomeWaitlistKind.Reserva
-        }
+        AttendanceRule.waitlistKind(membershipType, mensalistaPriority, promotionMode, deadlinePassed())
 
-    private fun AttendanceStatus.toToast() = when (this) {
+    private fun AttendanceStatus.toToast(kind: HomeWaitlistKind?) = when (this) {
         AttendanceStatus.Confirmed -> HomeToast.Confirmed
         AttendanceStatus.Declined -> HomeToast.Declined
-        AttendanceStatus.Waitlisted -> HomeToast.Waitlisted
+        AttendanceStatus.Waitlisted -> when (kind) {
+            HomeWaitlistKind.Manual -> HomeToast.WaitlistedManual
+            HomeWaitlistKind.AfterDeadline -> HomeToast.WaitlistedAfterDeadline
+            else -> HomeToast.Waitlisted
+        }
     }
 }
 

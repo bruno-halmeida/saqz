@@ -240,17 +240,33 @@ class GameDetailScreenTest {
     }
 
     @Test
-    fun `closed confirmation disables the buttons and says why`() = runComposeUiTest {
+    fun `after the deadline the buttons stay enabled and the card explains the waitlist`() = runComposeUiTest {
         setScreen(state = GameDetailResponsePreviewData.memberClosed)
 
-        onNodeWithText("As confirmações estão encerradas.").assertExists()
+        onNodeWithText("O prazo acabou: quem confirmar agora entra na lista de espera.").assertExists()
+        onNodeWithTag(GameDetailAttendanceTags.Going).assertIsEnabled()
+        onNodeWithTag(GameDetailAttendanceTags.NotGoing).assertIsEnabled()
+    }
+
+    @Test
+    fun `after the deadline change stays enabled`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberClosedConfirmed)
+
+        onNodeWithTag(GameDetailAttendanceTags.Change).assertIsEnabled()
+    }
+
+    @Test
+    fun `once the game started the buttons are disabled and the card says why`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberStarted)
+
+        onNodeWithText("O jogo já começou ou foi encerrado. Não dá mais para responder.").assertExists()
         onNodeWithTag(GameDetailAttendanceTags.Going).assertIsNotEnabled()
         onNodeWithTag(GameDetailAttendanceTags.NotGoing).assertIsNotEnabled()
     }
 
     @Test
-    fun `closed confirmation disables change`() = runComposeUiTest {
-        setScreen(state = GameDetailResponsePreviewData.memberClosedConfirmed)
+    fun `once the game started change is disabled`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberStartedConfirmed)
 
         onNodeWithTag(GameDetailAttendanceTags.Change).assertIsNotEnabled()
     }
@@ -260,7 +276,7 @@ class GameDetailScreenTest {
         setScreen(state = GameDetailResponsePreviewData.memberPending)
 
         onAllNodesWithText("Confirmações até 17h30").assertCountEquals(2)
-        onAllNodesWithText("As confirmações estão encerradas.").assertCountEquals(0)
+        onAllNodesWithText("O jogo já começou ou foi encerrado. Não dá mais para responder.").assertCountEquals(0)
     }
 
     @Test

@@ -19,6 +19,7 @@ import br.com.saqz.groups.resources.game_detail_confirmation_deadline
 import br.com.saqz.groups.resources.game_detail_response_kicker
 import br.com.saqz.groups.resources.game_response_confirmed
 import br.com.saqz.groups.resources.game_response_deadline_closed
+import br.com.saqz.groups.resources.game_response_late_notice
 import br.com.saqz.groups.resources.game_response_declined
 import br.com.saqz.groups.resources.game_response_no
 import br.com.saqz.groups.resources.game_response_question
@@ -57,17 +58,20 @@ internal fun GameDetailResponse(
         title = stringResource(Res.string.game_response_question),
         modifier = modifier.testTag(GameDetailAttendanceTags.Block),
     ) {
-        HeroDeadlineLine(
-            text = if (header.confirmationOpen) {
-                stringResource(Res.string.game_detail_confirmation_deadline, header.deadlineLabel())
-            } else {
-                stringResource(Res.string.game_response_deadline_closed)
-            },
-            open = header.confirmationOpen,
-        )
+        if (header.confirmationOpen || !header.responseOpen) {
+            HeroDeadlineLine(
+                text = if (header.confirmationOpen) {
+                    stringResource(Res.string.game_detail_confirmation_deadline, header.deadlineLabel())
+                } else {
+                    stringResource(Res.string.game_response_deadline_closed)
+                },
+                open = header.confirmationOpen,
+            )
+        }
         HeroAttendanceControls(
             status = response.status,
-            confirmationOpen = header.confirmationOpen,
+            confirmationOpen = header.responseOpen,
+            lateNotice = if (!header.confirmationOpen) stringResource(Res.string.game_response_late_notice) else null,
             responding = response.responding,
             responseFailed = response.failed,
             waitlistKind = response.waitlistKind,

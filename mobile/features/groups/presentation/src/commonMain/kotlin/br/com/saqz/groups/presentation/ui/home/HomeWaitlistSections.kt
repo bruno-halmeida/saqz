@@ -40,6 +40,9 @@ import br.com.saqz.groups.resources.home_waitlist_avulso_box_title
 import br.com.saqz.groups.resources.home_waitlist_avulso_chip
 import br.com.saqz.groups.resources.home_waitlist_avulso_leave
 import br.com.saqz.groups.resources.home_waitlist_avulso_position
+import br.com.saqz.groups.resources.home_waitlist_joined_box_title
+import br.com.saqz.groups.resources.home_waitlist_late_box_body
+import br.com.saqz.groups.resources.home_waitlist_manual_box_body
 import br.com.saqz.groups.resources.home_waitlist_avulso_upsell_body
 import br.com.saqz.groups.resources.home_waitlist_avulso_upsell_title
 import br.com.saqz.groups.resources.home_waitlist_position
@@ -77,7 +80,7 @@ internal object HomeWaitlistTags {
 @Composable
 internal fun HomeWaitlistChip(kind: HomeWaitlistKind, position: Long?, modifier: Modifier = Modifier) {
     val text = when (kind) {
-        HomeWaitlistKind.Reserva -> position?.let {
+        HomeWaitlistKind.Reserva, HomeWaitlistKind.Manual, HomeWaitlistKind.AfterDeadline -> position?.let {
             stringResource(Res.string.home_waitlist_reserva_chip, it.toInt())
         } ?: stringResource(Res.string.home_waitlist_reserva_chip_no_position)
         HomeWaitlistKind.AvulsoList -> stringResource(Res.string.home_waitlist_avulso_chip)
@@ -87,7 +90,7 @@ internal fun HomeWaitlistChip(kind: HomeWaitlistKind, position: Long?, modifier:
         tone = SaqzChipTone.Inverse,
         dot = true,
         modifier = modifier.testTag(
-            if (kind == HomeWaitlistKind.Reserva) HomeWaitlistTags.ReservaChip else HomeWaitlistTags.AvulsoChip,
+            if (kind != HomeWaitlistKind.AvulsoList) HomeWaitlistTags.ReservaChip else HomeWaitlistTags.AvulsoChip,
         ),
     )
 }
@@ -100,15 +103,18 @@ internal fun HomeWaitlistChip(kind: HomeWaitlistKind, position: Long?, modifier:
 internal fun HomeWaitlistInfoBox(kind: HomeWaitlistKind, modifier: Modifier = Modifier) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    val icon = if (kind == HomeWaitlistKind.Reserva) SaqzIcons.Clock else SaqzIcons.CircleAlert
+    val icon = if (kind != HomeWaitlistKind.AvulsoList) SaqzIcons.Clock else SaqzIcons.CircleAlert
     val iconColor = colors.onPrimary
     val title = when (kind) {
         HomeWaitlistKind.Reserva -> Res.string.home_waitlist_reserva_box_title
         HomeWaitlistKind.AvulsoList -> Res.string.home_waitlist_avulso_box_title
+        HomeWaitlistKind.Manual, HomeWaitlistKind.AfterDeadline -> Res.string.home_waitlist_joined_box_title
     }
     val body = when (kind) {
         HomeWaitlistKind.Reserva -> Res.string.home_waitlist_reserva_box_body
         HomeWaitlistKind.AvulsoList -> Res.string.home_waitlist_avulso_box_body
+        HomeWaitlistKind.Manual -> Res.string.home_waitlist_manual_box_body
+        HomeWaitlistKind.AfterDeadline -> Res.string.home_waitlist_late_box_body
     }
     Row(
         modifier = modifier
@@ -159,12 +165,12 @@ internal fun HomeWaitlistActions(
 ) {
     val metrics = SaqzTheme.metrics
     val leaveLabel = when (kind) {
-        HomeWaitlistKind.Reserva -> stringResource(Res.string.home_waitlist_reserva_leave)
         HomeWaitlistKind.AvulsoList -> stringResource(Res.string.home_waitlist_avulso_leave)
+        else -> stringResource(Res.string.home_waitlist_reserva_leave)
     }
     val viewLabel = stringResource(Res.string.home_waitlist_view_game)
-    val leaveTag = if (kind == HomeWaitlistKind.Reserva) HomeWaitlistTags.ReservaLeave else HomeWaitlistTags.AvulsoLeave
-    val viewTag = if (kind == HomeWaitlistKind.Reserva) HomeWaitlistTags.ReservaViewGame else HomeWaitlistTags.AvulsoViewGame
+    val leaveTag = if (kind != HomeWaitlistKind.AvulsoList) HomeWaitlistTags.ReservaLeave else HomeWaitlistTags.AvulsoLeave
+    val viewTag = if (kind != HomeWaitlistKind.AvulsoList) HomeWaitlistTags.ReservaViewGame else HomeWaitlistTags.AvulsoViewGame
     val colors = SaqzTheme.colors
     Column(
         modifier = modifier.fillMaxWidth(),

@@ -634,7 +634,7 @@ class GameDetailViewModelTest {
         SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = br.com.saqz.groups.domain.group.GroupRole.ATHLETE))),
     )
 
-    private fun openGame() = sampleGame().copy(confirmationDeadline = "2030-01-01T12:00:00-03:00")
+    private fun openGame() = sampleGame().copy(confirmationDeadline = "2030-01-01T12:00:00-03:00", startsAt = "2030-01-01T20:00:00-03:00")
 
     private fun goingDetail(status: AttendanceStatus, memberId: String = "me") =
         sampleAttendanceDetail().copy(ownAttendance = AttendanceEntry(memberId, status, null, 1L))
@@ -1248,7 +1248,7 @@ class GameDetailViewModelTest {
     fun respondChecksTheClockAgainBeforeCalling() = runTest {
         val attendance = FakeAttendanceGateway(readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed)))
         val soon = (Clock.System.now() + 2.seconds).toString()
-        val viewModel = responder(attendance, game = openGame().copy(confirmationDeadline = soon))
+        val viewModel = responder(attendance, game = openGame().copy(confirmationDeadline = soon, startsAt = soon))
         assertTrue(viewModel.state.value.header?.confirmationOpen == true)
         assertTrue(viewModel.state.value.guest.enabled)
 

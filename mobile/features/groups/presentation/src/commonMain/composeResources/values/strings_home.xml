@@ -23,7 +23,10 @@
     <string name="home_waitlist_reserva_chip">Lista de espera · %1$dº</string>
     <string name="home_waitlist_reserva_chip_no_position">Lista de espera</string>
     <string name="home_waitlist_reserva_box_title">As vagas acabaram. Você entrou na lista de espera.</string>
-    <string name="home_waitlist_reserva_box_body">Se alguém desistir, você entra e a gente avisa na hora.</string>
+    <string name="home_waitlist_reserva_box_body">Se alguém desistir, você entra pela ordem da fila.</string>
+    <string name="home_waitlist_joined_box_title">Você entrou na lista de espera.</string>
+    <string name="home_waitlist_manual_box_body">O organizador escolhe quem entra.</string>
+    <string name="home_waitlist_late_box_body">Se abrir vaga, você entra pela ordem da fila.</string>
     <string name="home_waitlist_reserva_leave">Sair da lista de espera</string>
     <string name="home_waitlist_reserva_bell">Avisamos você se abrir vaga até %1$s de %2$s.</string>
     <string name="home_waitlist_section_confirmed">Confirmados</string>
@@ -74,6 +77,8 @@
     <string name="home_toast_confirmed">Presença confirmada. Bom jogo!</string>
     <string name="home_toast_declined">Sua vaga foi liberada.</string>
     <string name="home_toast_waitlisted">Você entrou na lista de espera.</string>
+    <string name="home_toast_waitlisted_manual">Você entrou na lista de espera. O organizador escolhe quem entra.</string>
+    <string name="home_toast_waitlisted_late">Você entrou na lista de espera. Se abrir vaga, você entra pela ordem da fila.</string>
     <string name="home_admin_subtitle">%1$d grupos · %2$d coisas esperando você</string>
     <string name="home_admin_score_going">Vão</string>
     <string name="home_admin_score_out">Não vão</string>
@@ -111,7 +116,7 @@
     <string name="home_game_display">%1$s, %2$s</string>
     <string name="home_game_meta">%1$s de %2$s · %3$s</string>
     <string name="home_no_game_hero_title">Sem jogo marcado</string>
-    <string name="home_deadline_closed">Confirmações encerradas.</string>
+    <string name="home_deadline_closed">O jogo já começou ou foi encerrado.</string>
     <string name="home_admin_hero_deadline_closed">Encerrou %1$s · %2$s</string>
     <!-- Home nova · cabeçalho -->
     <string name="home_notifications_cd">Notificações</string>

@@ -188,11 +188,20 @@ class HomeScreenTest {
     }
 
     @Test
-    fun `closed confirmation deadline disables the two response buttons`() = runComposeUiTest {
-        setScreen(nextGameState(nextGame = nextGame().copy(confirmationOpen = false)))
+    fun `once the game started the two response buttons are disabled`() = runComposeUiTest {
+        setScreen(nextGameState(nextGame = nextGame().copy(confirmationOpen = false, responseOpen = false)))
 
         onNodeWithText("Vou").assertIsNotEnabled()
         onNodeWithText("Não vou").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `after the deadline the buttons stay enabled and the card explains the waitlist`() = runComposeUiTest {
+        setScreen(nextGameState(nextGame = nextGame().copy(confirmationOpen = false, deadline = "")))
+
+        onNodeWithText("Vou").assertIsEnabled()
+        onNodeWithText("Não vou").assertIsEnabled()
+        onNodeWithText("O prazo acabou: quem confirmar agora entra na lista de espera.").assertIsDisplayed()
     }
 
     @Test
@@ -225,10 +234,10 @@ class HomeScreenTest {
     }
 
     @Test
-    fun `closed deadline keeps the answered panel with change disabled`() = runComposeUiTest {
+    fun `started game keeps the answered panel with change disabled`() = runComposeUiTest {
         setScreen(
             nextGameState(
-                nextGame = nextGame(AttendanceStatus.Declined).copy(confirmationOpen = false),
+                nextGame = nextGame(AttendanceStatus.Declined).copy(confirmationOpen = false, responseOpen = false),
             ),
         )
 
@@ -237,13 +246,14 @@ class HomeScreenTest {
     }
 
     @Test
-    fun `closed deadline disables the waitlist leave button but keeps view game enabled`() = runComposeUiTest {
+    fun `started game disables the waitlist leave button but keeps view game enabled`() = runComposeUiTest {
         setScreen(
             nextGameState(
                 nextGame = nextGame(AttendanceStatus.Waitlisted).copy(
                     waitlistKind = HomeWaitlistKind.Reserva,
                     waitlistPosition = 1,
                     confirmationOpen = false,
+                    responseOpen = false,
                 ),
             ),
         )

@@ -127,6 +127,7 @@ class JdbcHomeRepository(
         membershipType = AthleteMembershipType.valueOf(result.getString("membership_type")),
         mensalistaPriority = result.getBoolean("mensalista_priority"),
         rosterPreview = HomeRosterPreview(emptyList(), emptyList()),
+        promotionMode = br.com.saqz.groups.domain.group.PromotionMode.valueOf(result.getString("promotion_mode")),
     )
 
     private fun mapRosterMember(result: ResultSet, @Suppress("UNUSED_PARAMETER") row: Int) = RosterRow(
@@ -297,7 +298,8 @@ class JdbcHomeRepository(
                    own.status AS own_status,
                    ${WaitlistPositionSql.of("own", "memberships", "games", "groups")} AS own_waitlist_position,
                    COALESCE(memberships.membership_type, 'AVULSO') AS membership_type,
-                   groups.mensalista_priority
+                   groups.mensalista_priority,
+                   groups.promotion_mode
             FROM games
             JOIN access_groups groups
                 ON groups.id = games.group_id

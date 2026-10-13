@@ -226,7 +226,9 @@ class HomeViewModelTest {
 
         val game = viewModel.state.value.member?.nextGame
         assertEquals(false, game?.confirmationOpen)
-        assertEquals("Confirmações encerradas.", game?.deadline)
+        // Prazo vencido com o jogo por começar: o "Vou" segue aberto e o cartão explica a espera.
+        assertEquals(true, game?.responseOpen)
+        assertEquals("", game?.deadline)
         assertEquals("Encerrou 27/07 · 18h00", game?.adminHeroDeadlineLabel)
     }
 
@@ -448,6 +450,7 @@ class HomeViewModelTest {
                     sampleHome(
                         nextGame = sampleNextGame(
                             confirmationDeadline = "2026-07-28T11:00:00Z",
+                            startsAt = "2026-07-28T11:30:00Z",
                         ),
                     ),
                 ),
@@ -455,7 +458,7 @@ class HomeViewModelTest {
             attendanceGateway = attendance,
         )
 
-        assertFalse(viewModel.state.value.member?.nextGame?.confirmationOpen == true)
+        assertFalse(viewModel.state.value.member?.nextGame?.responseOpen == true)
         viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
         advanceUntilIdle()
 
@@ -477,7 +480,7 @@ class HomeViewModelTest {
         )
 
         assertTrue(viewModel.state.value.member?.nextGame?.confirmationOpen == true)
-        currentNow = Instant.parse("2026-07-28T22:00:00Z")
+        currentNow = Instant.parse("2026-07-28T23:00:00Z")
         viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
         advanceUntilIdle()
 
@@ -518,6 +521,54 @@ class HomeViewModelTest {
         assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
         assertEquals(HomeToast.Waitlisted, viewModel.state.value.toast)
         assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.home?.member?.nextGame?.ownAttendance?.status)
+    }
+
+    @Test
+    fun `manual promotion sends the Vou to the waitlist with the organizer-chooses toast`() = runTest {
+        val initial = sampleHome(
+            nextGame = sampleNextGame().copy(
+                membershipType = AthleteMembershipType.MENSALISTA,
+                mensalistaPriority = false,
+                promotionMode = br.com.saqz.groups.domain.group.PromotionMode.MANUAL,
+            ),
+        )
+        waitlistedFlow(initial, HomeWaitlistKind.Manual, HomeToast.WaitlistedManual)
+    }
+
+    @Test
+    fun `after the deadline the Vou is still sent and lands in the waitlist`() = runTest {
+        val initial = sampleHome(nextGame = sampleNextGame(confirmationDeadline = "2026-07-28T11:00:00Z"))
+        waitlistedFlow(initial, HomeWaitlistKind.AfterDeadline, HomeToast.WaitlistedAfterDeadline)
+    }
+
+    private fun kotlinx.coroutines.test.TestScope.waitlistedFlow(
+        initial: HomeReadModel,
+        kind: HomeWaitlistKind,
+        toast: HomeToast,
+    ) {
+        val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway()
+        attendance.respondDeferred = response
+        val refreshed = initial.copy(
+            member = initial.member.copy(
+                nextGame = initial.member.nextGame?.copy(ownAttendance = HomeOwnAttendance(AttendanceStatus.Waitlisted, 1)),
+            ),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(initial), SaqzResult.Success(refreshed)),
+            attendanceGateway = attendance,
+        )
+
+        assertTrue(viewModel.state.value.member?.nextGame?.responseOpen == true)
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.member?.nextGame?.ownAttendance)
+        assertEquals(kind, viewModel.state.value.member?.nextGame?.waitlistKind)
+
+        response.complete(SaqzResult.Success(serverMutation(AttendanceStatus.Waitlisted, 1)))
+        advanceUntilIdle()
+
+        assertEquals(1, attendance.respondCalls)
+        assertEquals(toast, viewModel.state.value.toast)
     }
 
     @Test

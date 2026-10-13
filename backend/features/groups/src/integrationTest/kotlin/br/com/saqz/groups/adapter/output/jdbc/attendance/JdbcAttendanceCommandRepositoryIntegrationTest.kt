@@ -559,6 +559,58 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         } finally { executor.shutdownNow() }
     }
 
+    // --- Regra de 13/10/2026: depois do prazo o "Vou" entra pela espera e o grupo decide ---
+    @Test fun `after the deadline a late Vou goes to the waitlist and FIFO fills the free spot at once`() {
+        val f = fixtureWithDeadline("past", capacity = 2)
+        val result = f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)
+        val saved = success(result)
+        assertEquals(AttendanceStatus.CONFIRMED, saved.status)
+        assertEquals(1, assertIs<AttendanceCommandResult.Success>(result).promoted.size)
+        assertEquals("CONFIRMED", status(f.member))
+        assertEquals(listOf("WAITLISTED", "CONFIRMED"), queryStrings("SELECT new_status FROM attendance_events WHERE member_user_id='${f.member}' ORDER BY occurred_at, id").sortedDescending())
+    }
+    @Test fun `after the deadline FIFO respects the queue order when the late Vou arrives with a free spot`() {
+        val f = fixtureWithDeadline("past", capacity = 2)
+        attendance(f, member(f.group, "occupied"), "CONFIRMED")
+        val ahead = member(f.group, "ahead", "AVULSO"); waitlist(f, ahead, 1)
+        execute("UPDATE games SET capacity=2 WHERE id='${f.game}'")
+        execute("DELETE FROM game_attendance WHERE game_id='${f.game}' AND status='CONFIRMED'")
+        attendance(f, member(f.group, "occupied2"), "CONFIRMED")
+        val saved = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM))
+        assertEquals("CONFIRMED", status(ahead))
+        assertEquals(AttendanceStatus.WAITLISTED, saved.status)
+        assertEquals(2, int("SELECT count(*) FROM game_attendance WHERE game_id='${f.game}' AND status='CONFIRMED'"))
+    }
+    @Test fun `after the deadline with MANUAL the late Vou waits for the organizer even with a free spot`() {
+        val f = fixtureWithDeadline("past", capacity = 2)
+        execute("UPDATE access_groups SET promotion_mode='MANUAL' WHERE id='${f.group}'")
+        val result = f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)
+        assertEquals(AttendanceStatus.WAITLISTED, success(result).status)
+        assertEquals(0, assertIs<AttendanceCommandResult.Success>(result).promoted.size)
+        assertEquals("WAITLISTED", status(f.member))
+    }
+    @Test fun `after the deadline Nao vou frees the spot and FIFO promotes the first in line while MANUAL does not`() {
+        val f = fixtureWithDeadline("past", capacity = 2)
+        attendance(f, f.member, "CONFIRMED"); attendance(f, member(f.group, "occupied-a"), "CONFIRMED")
+        val waiting = member(f.group, "waiting", "AVULSO"); waitlist(f, waiting, 1)
+        val result = f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)
+        assertEquals(AttendanceStatus.DECLINED, success(result).status)
+        assertEquals("CONFIRMED", status(waiting))
+        val g = fixtureWithDeadline("past", capacity = 2)
+        execute("UPDATE access_groups SET promotion_mode='MANUAL' WHERE id='${g.group}'")
+        attendance(g, g.member, "CONFIRMED"); attendance(g, member(g.group, "occupied-b"), "CONFIRMED")
+        val waitingManual = member(g.group, "waiting-manual", "AVULSO"); waitlist(g, waitingManual, 1)
+        assertEquals(AttendanceStatus.DECLINED, success(g.service.execute(g.member, g.group, g.game, intent = AttendanceIntent.DECLINE)).status)
+        assertEquals("WAITLISTED", status(waitingManual))
+    }
+    @Test fun `once the game started the athlete response is frozen`() {
+        val f = fixtureWithDeadline("past", capacity = 2)
+        execute("ALTER TABLE games DISABLE TRIGGER ALL")
+        execute("UPDATE games SET starts_at = now() - interval '1 minute' WHERE id='${f.game}'")
+        val result = f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)
+        assertEquals(AttendanceDenial.FROZEN, assertIs<AttendanceCommandResult.Denied>(result).reason)
+    }
+
     private fun promotionFixture(): PromotionFixture {
         val f = fixture(capacity = 2)
         f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)
@@ -581,7 +633,7 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         val member = member(group, "$subject-member")
         val game = UUID.randomUUID()
         // Deadline and start stay ahead of Postgres now() so SELF responses never trip
-        // DEADLINE_PASSED; ck_games_deadline still holds because deadline < starts_at.
+        // the deadline/started rules; ck_games_deadline still holds because deadline < starts_at.
         execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$game','$group','Treino',(CURRENT_DATE + 2),TIME '19:30','America/Sao_Paulo',now() + interval '2 days',90,now() + interval '1 day','Arena','Rua Central 100',$capacity,${fee ?: "NULL"},'PUBLISHED',now(),now())")
         return Fixture(owner, member, group, game, service())
     }

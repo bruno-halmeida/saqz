@@ -907,7 +907,7 @@ class GroupDetailsViewModelTest {
 
         vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
 
-        assertFalse(vm.state.value.nextGame?.confirmationOpen ?: true)
+        assertFalse(vm.state.value.nextGame?.responseOpen ?: true)
         assertFalse(vm.state.value.responseFailed)
     }
 

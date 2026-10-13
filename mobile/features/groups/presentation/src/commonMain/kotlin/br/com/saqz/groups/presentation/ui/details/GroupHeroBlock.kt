@@ -56,6 +56,7 @@ import br.com.saqz.groups.presentation.ui.home.HomeWaitlistQueueSection
 import br.com.saqz.groups.presentation.ui.home.HomeWaitlistUpsellCard
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.game_response_auto_confirmation
+import br.com.saqz.groups.resources.game_response_late_notice
 import br.com.saqz.groups.resources.game_response_auto_confirmation_failed
 import br.com.saqz.groups.resources.game_response_confirmed
 import br.com.saqz.groups.resources.game_response_confirmed_summary
@@ -156,15 +157,19 @@ private fun GroupGameHero(
                 tags = GroupScoreBoardTags,
             )
         }
-        HeroDeadlineLine(
-            text = if (game.confirmationOpen) game.deadlineLine else stringResource(Res.string.game_response_deadline_closed),
-            open = game.confirmationOpen,
-        )
+        // Depois do prazo, com o jogo por começar, quem explica é o aviso do seletor.
+        if (game.confirmationOpen || !game.responseOpen) {
+            HeroDeadlineLine(
+                text = if (game.confirmationOpen) game.deadlineLine else stringResource(Res.string.game_response_deadline_closed),
+                open = game.confirmationOpen,
+            )
+        }
         // Dono e admin respondem presença no mesmo lugar que o atleta: o papel administrativo
         // muda o que ele gerencia, não o fato de que ele joga.
         HeroAttendanceControls(
             status = state.memberResponse?.status?.toAttendanceStatus(),
-            confirmationOpen = game.confirmationOpen && !state.rosterRefreshing,
+            confirmationOpen = game.responseOpen && !state.rosterRefreshing,
+            lateNotice = if (!game.confirmationOpen) stringResource(Res.string.game_response_late_notice) else null,
             responding = state.responding,
             responseFailed = state.responseFailed,
             waitlistKind = state.waitlist?.kind,
@@ -411,13 +416,13 @@ private fun GroupAutoConfirmationCard(
 private fun ColumnScope.GroupWaitlistExtras(state: GroupDetailsState, game: NextGameUi) {
     val waitlist = state.waitlist ?: return
     when (waitlist.kind) {
-        HomeWaitlistKind.Reserva -> {
+        HomeWaitlistKind.Reserva, HomeWaitlistKind.Manual, HomeWaitlistKind.AfterDeadline -> {
             HomeWaitlistConfirmedSection(
                 confirmedRoster = game.confirmedNames,
                 confirmedCount = game.confirmedCount,
                 capacity = game.capacity,
             )
-            if (game.bellLabel.isNotEmpty()) HomeWaitlistBellCard(label = game.bellLabel)
+            if (waitlist.kind == HomeWaitlistKind.Reserva && game.bellLabel.isNotEmpty()) HomeWaitlistBellCard(label = game.bellLabel)
         }
         HomeWaitlistKind.AvulsoList -> {
             state.memberResponse?.waitlistPosition?.let { position ->

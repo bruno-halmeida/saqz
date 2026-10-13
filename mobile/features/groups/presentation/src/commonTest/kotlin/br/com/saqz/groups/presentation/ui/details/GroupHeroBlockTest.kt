@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
@@ -76,18 +77,37 @@ class GroupHeroBlockTest {
     }
 
     @Test
-    fun closedDeadlineSaysSoAndDisablesTheAnswer() = runComposeUiTest {
+    fun afterTheDeadlineTheAnswerStaysOpenAndExplainsTheWaitlist() = runComposeUiTest {
         setDetailsScreen(GroupHeroPreviewData.closedPending)
 
-        onNodeWithText("As confirmações estão encerradas.").assertExists()
+        onNodeWithText("O prazo acabou: quem confirmar agora entra na lista de espera.").assertExists()
+        onAllNodesWithText("O jogo já começou ou foi encerrado. Não dá mais para responder.").assertCountEquals(0)
         onAllNodesWithText("As confirmações encerram hoje às 18h00.").assertCountEquals(0)
+        onNodeWithTag(GroupGameResponseTags.Going).assertIsEnabled()
+        onNodeWithTag(GroupGameResponseTags.NotGoing).assertIsEnabled()
+    }
+
+    @Test
+    fun onceTheGameStartedTheAnswerIsClosed() = runComposeUiTest {
+        setDetailsScreen(GroupHeroPreviewData.startedPending)
+
+        onNodeWithText("O jogo já começou ou foi encerrado. Não dá mais para responder.").assertExists()
+        onAllNodesWithText("O prazo acabou: quem confirmar agora entra na lista de espera.").assertCountEquals(0)
         onNodeWithTag(GroupGameResponseTags.Going).assertIsNotEnabled()
         onNodeWithTag(GroupGameResponseTags.NotGoing).assertIsNotEnabled()
     }
 
     @Test
-    fun closedDeadlineDisablesChangeForWhoAnswered() = runComposeUiTest {
+    fun afterTheDeadlineChangeStaysEnabledForWhoAnswered() = runComposeUiTest {
         setDetailsScreen(GroupHeroPreviewData.closed)
+
+        onNodeWithText("Sua presença está confirmada.").assertExists()
+        onNodeWithTag(GroupGameResponseTags.Change).assertIsEnabled()
+    }
+
+    @Test
+    fun onceTheGameStartedChangeIsDisabledForWhoAnswered() = runComposeUiTest {
+        setDetailsScreen(GroupHeroPreviewData.started)
 
         onNodeWithText("Sua presença está confirmada.").assertExists()
         onNodeWithTag(GroupGameResponseTags.Change).assertIsNotEnabled()

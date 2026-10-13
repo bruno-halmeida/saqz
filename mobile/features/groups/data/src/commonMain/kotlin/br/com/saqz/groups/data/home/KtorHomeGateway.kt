@@ -77,6 +77,7 @@ internal data class HomeNextGameTransport(
     val membershipType: String,
     val mensalistaPriority: Boolean,
     val rosterPreview: HomeRosterPreviewTransport,
+    val promotionMode: String = "FIFO",
 )
 
 @Serializable
@@ -304,6 +305,11 @@ private fun HomeNextGameTransport.toDomain(): HomeNextGame? {
         membershipType = membershipTypeDomain,
         mensalistaPriority = mensalistaPriority,
         rosterPreview = rosterPreviewDomain,
+        promotionMode = if (promotionMode == "MANUAL") {
+            br.com.saqz.groups.domain.group.PromotionMode.MANUAL
+        } else {
+            br.com.saqz.groups.domain.group.PromotionMode.FIFO
+        },
     )
 }
 

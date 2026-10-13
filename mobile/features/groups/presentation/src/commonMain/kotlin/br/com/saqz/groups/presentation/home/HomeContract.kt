@@ -83,11 +83,11 @@ data class HomeMemberUi(
 }
 
 /**
- * Tipo de espera do membro no próximo jogo, derivado num único ponto do ViewModel:
- * `membershipType == Avulso && mensalistaPriority == true` ⇒ [AvulsoList]; caso
- * contrário ⇒ [Reserva]. O hero e o subtítulo do cabeçalho consomem o mesmo valor.
+ * Por que o membro está na espera do próximo jogo, derivado num único ponto (`AttendanceRule`):
+ * escolha manual ⇒ [Manual]; prazo vencido ⇒ [AfterDeadline]; avulso com prioridade de
+ * mensalista ⇒ [AvulsoList]; jogo lotado ⇒ [Reserva]. O hero e o aviso consomem o mesmo valor.
  */
-enum class HomeWaitlistKind { Reserva, AvulsoList }
+enum class HomeWaitlistKind { Reserva, AvulsoList, Manual, AfterDeadline }
 
 /**
  * Linha da lista de espera (6e): nome, posição na fila e flag do próprio usuário
@@ -117,6 +117,8 @@ data class HomeNextGameUi(
     val weekday: String,
     val time: String,
     val confirmationOpen: Boolean = true,
+    /** Ainda dá para responder: jogo por começar. Depois do prazo o "Vou" entra pela espera. */
+    val responseOpen: Boolean = true,
     val waitlistKind: HomeWaitlistKind? = null,
     val waitlistPosition: Long? = null,
     val confirmedRoster: List<String> = emptyList(),
@@ -166,6 +168,8 @@ enum class HomeToast {
     Confirmed,
     Declined,
     Waitlisted,
+    WaitlistedManual,
+    WaitlistedAfterDeadline,
     PixCopied,
 }
 

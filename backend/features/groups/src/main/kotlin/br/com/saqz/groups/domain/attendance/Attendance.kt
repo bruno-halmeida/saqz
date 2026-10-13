@@ -2,6 +2,7 @@ package br.com.saqz.groups.domain.attendance
 
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.group.PromotionMode
 import java.time.Instant
 
 enum class AttendanceStatus { CONFIRMED, DECLINED, WAITLISTED }
@@ -20,12 +21,14 @@ data class AttendanceDecisionContext(
     val membershipType: AthleteMembershipType,
     val mensalistaPriority: Boolean = true,
     val guest: Boolean = false,
+    val promotionMode: PromotionMode = PromotionMode.FIFO,
+    /** Início do jogo; depois dele a resposta do próprio atleta é negada. `null` = sem checagem. */
+    val startsAt: Instant? = null,
 )
 
 enum class AttendanceDenial {
     NOT_PUBLISHED,
     FROZEN,
-    DEADLINE_PASSED,
     REASON_REQUIRED,
     REASON_INVALID,
     NOT_WAITLISTED,
@@ -59,8 +62,10 @@ object AttendanceTransitionPolicy {
                 return AttendanceDecision.Denied(AttendanceDenial.FROZEN)
             GameStatus.PUBLISHED -> Unit
         }
-        if (context.source == AttendanceSource.SELF && context.now > context.confirmationDeadline) {
-            return AttendanceDecision.Denied(AttendanceDenial.DEADLINE_PASSED)
+        // Depois do início do jogo ninguém mais responde por conta própria; antes disso o prazo
+        // só muda para onde vai o "Vou" (sempre para a espera), nunca nega a resposta.
+        if (context.source == AttendanceSource.SELF && context.startsAt != null && context.now >= context.startsAt) {
+            return AttendanceDecision.Denied(AttendanceDenial.FROZEN)
         }
         val reason = when (context.source) {
             AttendanceSource.ORGANIZER -> validateOrganizerReason(context.reason)
@@ -93,19 +98,30 @@ object AttendanceTransitionPolicy {
         )
     }
 
+    /**
+     * Regra do grupo (decisão de 13/10/2026), valendo para o "Vou" do próprio atleta:
+     * - depois do prazo: sempre a espera, mensalista inclusive; a promoção segue o grupo (FIFO/MANUAL);
+     * - antes do prazo, FIFO: com prioridade ligada o avulso espera até o prazo; sem ela todos entram se houver vaga;
+     * - antes do prazo, MANUAL: com prioridade ligada só o mensalista confirma direto; desligada, todos esperam.
+     */
     private fun confirmationTarget(context: AttendanceDecisionContext): AttendanceStatus = when (context.currentStatus) {
         AttendanceStatus.CONFIRMED -> AttendanceStatus.CONFIRMED
         AttendanceStatus.WAITLISTED -> AttendanceStatus.WAITLISTED
         AttendanceStatus.DECLINED, null -> when {
             // Convidado entra sempre pela lista de espera (VUL-239), mesmo com vaga.
             context.guest -> AttendanceStatus.WAITLISTED
-            // A promoção é responsabilidade do motor FIFO/MANUAL (VUL-155); a política de
-            // confirmação apenas decide quem toma vaga direto e quem entra na reserva.
-            context.source == AttendanceSource.SELF && context.membershipType == AthleteMembershipType.AVULSO &&
-                context.mensalistaPriority ->
-                AttendanceStatus.WAITLISTED
+            context.source == AttendanceSource.SELF && !entersDirectly(context) -> AttendanceStatus.WAITLISTED
             context.confirmedCount < context.capacity -> AttendanceStatus.CONFIRMED
             else -> AttendanceStatus.WAITLISTED
+        }
+    }
+
+    private fun entersDirectly(context: AttendanceDecisionContext): Boolean {
+        if (context.now > context.confirmationDeadline) return false
+        val mensalista = context.membershipType == AthleteMembershipType.MENSALISTA
+        return when (context.promotionMode) {
+            PromotionMode.FIFO -> mensalista || !context.mensalistaPriority
+            PromotionMode.MANUAL -> mensalista && context.mensalistaPriority
         }
     }
 

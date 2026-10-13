@@ -129,7 +129,8 @@ class AttendanceControllerTest {
     @Test fun `self response rejects unknown intent`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(intent = "WAITLISTED")) } }
     @Test fun `self response rejects promotion intent`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(intent = "PROMOTE")) } }
     @Test fun `self response retry replays the original mutation without another audit`() { actor = member; val request = self(); val first = controller.respond(ID, "$group", "$game", request); val retry = controller.respond(ID, "$group", "$game", request); assertEquals(first.body, retry.body); assertEquals(1, repository.events.size) }
-    @Test fun `self response after deadline is distinct`() { actor = member; repository.deadline = NOW.minusSeconds(1); assertFailsWith<AttendanceDeadlinePassedException> { controller.respond(ID, "$group", "$game", self()) } }
+    @Test fun `self response after deadline is accepted into the waitlist`() { actor = member; repository.deadline = NOW.minusSeconds(1); repository.capacity = 1; repository.record(second, AttendanceStatus.CONFIRMED); val response = controller.respond(ID, "$group", "$game", self()); assertEquals("WAITLISTED", response.body!!.attendance.status) }
+    @Test fun `self response after the game started is frozen`() { actor = member; repository.startsAt = NOW.minusSeconds(1); assertFailsWith<AttendanceFrozenException> { controller.respond(ID, "$group", "$game", self()) } }
     @Test fun `cancelled game response is distinctly frozen`() { actor = member; repository.status = GameStatus.CANCELLED; assertFailsWith<AttendanceFrozenException> { controller.respond(ID, "$group", "$game", self()) } }
     @Test fun `organizer override returns target and exact audit reason`() { val response = controller.override(ID, "$group", "$game", override()); assertEquals(member, response.body!!.attendance.memberId); assertEquals("ORGANIZER", response.body!!.audit!!.source); assertEquals("Chegou após o prazo", response.body!!.audit!!.reason) }
     @Test fun `athlete cannot override another member`() { actor = member; assertFailsWith<AccessForbiddenException> { controller.override(ID, "$group", "$game", override().copy(memberId = second)) } }
@@ -201,7 +202,7 @@ class AttendanceControllerTest {
         val names = mutableMapOf<UUID, String>()
         val hostNames = mutableMapOf<UUID, String>()
         val membership = linkedMapOf<UUID, AthleteMembershipType>()
-        var status = GameStatus.PUBLISHED; var deadline = NOW.plusSeconds(60); var capacity = 2; var version = 1L; var allocator = 0L
+        var status = GameStatus.PUBLISHED; var startsAt: Instant? = null; var deadline = NOW.plusSeconds(60); var capacity = 2; var version = 1L; var allocator = 0L
         var mensalistaPriority = true
         var promotionMode = PromotionMode.FIFO
         var lastLockGuestSeq: Int? = null
@@ -224,6 +225,7 @@ class AttendanceControllerTest {
                     membership[memberId] ?: AthleteMembershipType.MENSALISTA,
                     mensalistaPriority,
                     promotionMode,
+                    startsAt = startsAt,
                 )
             } else null
         }

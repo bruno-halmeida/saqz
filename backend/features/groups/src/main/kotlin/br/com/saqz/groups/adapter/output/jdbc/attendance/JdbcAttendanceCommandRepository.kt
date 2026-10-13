@@ -450,12 +450,13 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             PromotionMode.valueOf(rs.getString("promotion_mode")),
             guestSeq = rs.getInt("guest_seq"),
             guestName = rs.getString("guest_name").takeIf { rs.getInt("guest_seq") > 0 },
+            startsAt = rs.getTimestamp("starts_at").toInstant(),
         )
     }
 
     private companion object {
         const val AGGREGATE = """
-            SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
+            SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.starts_at,g.capacity,
                    g.game_fee_cents,g.local_date,target.user_id AS target_user_id,target.membership_type,
                    ag.mensalista_priority,ag.promotion_mode,
                    :actor::uuid AS actor_id,

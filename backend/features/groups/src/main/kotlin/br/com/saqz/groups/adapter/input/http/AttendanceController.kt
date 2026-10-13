@@ -240,7 +240,6 @@ class AttendanceController(
             AttendanceDenial.REASON_REQUIRED, AttendanceDenial.REASON_INVALID -> invalid("reason")
             AttendanceDenial.NOT_WAITLISTED, AttendanceDenial.NO_CAPACITY -> invalid("promotion")
             AttendanceDenial.MANUAL_PROMOTION_ONLY -> invalid("promotionMode")
-            AttendanceDenial.DEADLINE_PASSED -> throw AttendanceDeadlinePassedException()
             AttendanceDenial.NOT_PUBLISHED, AttendanceDenial.FROZEN -> throw AttendanceFrozenException()
             AttendanceDenial.HOST_NOT_GOING -> throw AttendanceHostNotGoingException()
         }
@@ -250,7 +249,6 @@ class AttendanceController(
 
     private fun denied(reason: AttendanceDenial, field: String): Nothing = when (reason) {
         AttendanceDenial.HOST_NOT_GOING -> throw AttendanceHostNotGoingException()
-        AttendanceDenial.DEADLINE_PASSED -> throw AttendanceDeadlinePassedException()
         AttendanceDenial.NOT_PUBLISHED, AttendanceDenial.FROZEN -> throw AttendanceFrozenException()
         else -> invalid(field)
     }
