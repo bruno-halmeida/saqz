@@ -88,6 +88,9 @@ interface AttendanceCommandRepository {
     /** Convidados do anfitrião ainda no jogo (CONFIRMED ou WAITLISTED), travados para escrita. */
     fun activeGuests(groupId: UUID, gameId: UUID, hostId: UUID): List<AttendanceRecord> = emptyList()
 
+    /** Jogos futuros (PUBLISHED/DRAFT, ainda não começados) em que a pessoa ou um convidado dela ocupa vaga ou espera. */
+    fun futureGamesWithActiveAttendance(groupId: UUID, memberId: UUID, after: Instant): List<UUID> = emptyList()
+
     /** Como [save], mas gravando o nome digitado do convidado. */
     fun saveGuest(record: AttendanceRecord, guestName: String) = save(record)
 }

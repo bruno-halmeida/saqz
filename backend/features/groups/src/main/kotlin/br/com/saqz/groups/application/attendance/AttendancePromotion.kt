@@ -73,3 +73,24 @@ internal fun promoteAttendance(
     if (transition.createGameCharge) charges.promoted(aggregate, aggregate.actorId)
     return AttendancePromotionResult.Success(promoted, event)
 }
+
+/** Promove até [freed] pessoas da fila; [aggregate].confirmedCount é a contagem ANTES das saídas. */
+internal fun promoteFreed(
+    aggregate: AttendanceAggregate,
+    freed: Int,
+    repository: AttendanceCommandRepository,
+    charges: AttendanceChargePort,
+    timestamp: Instant,
+    ids: () -> UUID,
+): List<AttendanceRecord> {
+    var confirmed = (aggregate.confirmedCount - freed).coerceAtLeast(0)
+    return buildList {
+        repeat(freed) {
+            val waiting = repository.earliestWaitlisted(aggregate.groupId, aggregate.gameId) ?: return@buildList
+            val target = aggregate.copy(memberId = waiting.memberId, guestSeq = waiting.guestSeq, guestName = null, current = waiting, confirmedCount = confirmed)
+            val result = promoteAttendance(target, AttendanceSource.SYSTEM, reason = null, repository = repository, charges = charges, timestamp = timestamp, ids = ids)
+            if (result !is AttendancePromotionResult.Success) return@buildList
+            add(result.attendance); confirmed++
+        }
+    }
+}

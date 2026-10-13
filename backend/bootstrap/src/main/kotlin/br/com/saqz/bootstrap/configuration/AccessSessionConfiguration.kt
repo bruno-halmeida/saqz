@@ -236,6 +236,7 @@ class AccessSessionConfiguration {
         repository: JdbcSessionRepository,
         deleteGroup: DeleteGroup,
         athleteRepository: JdbcAthleteRepository,
+        attendanceRelease: br.com.saqz.groups.application.attendance.AttendanceRelease,
         dataSource: DataSource,
     ): DeleteAccount {
         val jdbc = JdbcClient.create(dataSource)
@@ -254,6 +255,7 @@ class AccessSessionConfiguration {
 
             override fun removeMemberships(userId: UUID) {
                 membershipGroupIds(userId).forEach { groupId ->
+                    attendanceRelease.release(groupId, userId, userId)
                     athleteRepository.remove(groupId, userId)
                 }
                 jdbc.sql("DELETE FROM group_entry_requests WHERE user_id = :userId")
@@ -958,6 +960,8 @@ class AccessSessionConfiguration {
         charges: AttendanceChargeAdapter,
         onboardingNotices: br.com.saqz.groups.adapter.output.jdbc.communication.JdbcOnboardingNotices,
     ) = RespondAttendance(transaction, repository, charges, Instant::now, firstConfirmation = onboardingNotices)
+    @Bean fun attendanceRelease(repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter): br.com.saqz.groups.application.attendance.AttendanceRelease =
+        br.com.saqz.groups.application.attendance.ReleaseMemberAttendance(repository, charges, Instant::now)
     @Bean fun gameGuests(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, responses: RespondAttendance) = GameGuests(transaction, repository, responses, Instant::now)
     @Bean fun adjustGameCapacity(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = AdjustGameCapacity(transaction, repository, charges, Instant::now)
     @Bean fun attendanceController(actor: VerifiedGroupActorResolver, responses: RespondAttendance, capacities: AdjustGameCapacity, details: AttendanceDetailQuery, rosters: AttendanceRosterQuery, guests: GameGuests) = AttendanceController(actor, responses, capacities, details, rosters, guests)
@@ -1006,7 +1010,7 @@ class AccessSessionConfiguration {
     @Bean fun athleteStatsRepository(dataSource: DataSource) = JdbcAthleteStatsRepository(dataSource)
     @Bean fun updateOwnAthleteProfile(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository) = UpdateOwnAthleteProfile(transaction, readRepository, athletes)
     @Bean fun updateAthlete(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository) = UpdateAthlete(transaction, readRepository, athletes, GroupAccessPolicy())
-    @Bean fun removeAthlete(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository, administrationRevocation: GroupAdministrationRevocation) = RemoveAthlete(transaction, readRepository, athletes, GroupAccessPolicy(), administrationRevocation)
+    @Bean fun removeAthlete(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository, administrationRevocation: GroupAdministrationRevocation, attendanceRelease: br.com.saqz.groups.application.attendance.AttendanceRelease) = RemoveAthlete(transaction, readRepository, athletes, GroupAccessPolicy(), administrationRevocation, attendanceRelease)
     @Bean fun listAthletes(readRepository: JdbcGroupReadRepository, roster: JdbcAthleteRosterRepository) = ListAthletes(readRepository, roster, GroupAccessPolicy())
     @Bean fun getOwnAthleteProfile(roster: JdbcAthleteRosterRepository) = GetOwnAthleteProfile(roster)
     @Bean fun getAthleteStats(readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository, stats: JdbcAthleteStatsRepository) = GetAthleteStats(readRepository, athletes, stats)

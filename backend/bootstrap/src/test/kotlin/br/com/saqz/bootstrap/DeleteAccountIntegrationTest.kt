@@ -12,6 +12,12 @@ import br.com.saqz.groups.adapter.output.jdbc.athlete.JdbcAthleteRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.delete.JdbcGroupDeletionRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.delete.DeleteGroup
+import br.com.saqz.groups.adapter.output.jdbc.attendance.AttendanceChargeAdapter
+import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAttendanceCommandRepository
+import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
+import br.com.saqz.groups.application.attendance.ReleaseMemberAttendance
+import br.com.saqz.groups.application.finance.charge.ChargeTransactions
+import java.time.Instant
 import br.com.saqz.groups.adapter.input.http.FinanceStatementController
 import br.com.saqz.groups.adapter.input.http.GameNotFoundException
 import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
@@ -147,11 +153,59 @@ class DeleteAccountIntegrationTest {
         assertEquals(0, count("SELECT count(*) FROM group_charges WHERE member_user_id = '${replacement.user.id}'"))
     }
 
+    @Test
+    fun `deleting an account frees its future spots and promotes the waitlist but keeps finished games`() {
+        val leaving = sessionRepository.upsertAndLoad(
+            SessionUpsert("leaving-subject", "leaving@example.test", true, AccessName.from("Leaving Person")),
+        )
+        val owner = sessionRepository.upsertAndLoad(
+            SessionUpsert("future-owner", "future-owner@example.test", true, AccessName.from("Future Owner")),
+        )
+        val waiting = sessionRepository.upsertAndLoad(
+            SessionUpsert("waiting-subject", "waiting@example.test", true, AccessName.from("Waiting Person")),
+        )
+        val group = insertGroup(owner.user.id, "Future Group")
+        insertMembership(group, leaving.user.id, "ATHLETE")
+        insertMembership(group, waiting.user.id, "ATHLETE")
+        val future = insertFutureGame(group, 2)
+        val past = insertGame(group)
+        insertAttendance(future, group, leaving.user.id, "Leaving Person")
+        insertAttendance(past, group, leaving.user.id, "Leaving Person")
+        execute("""INSERT INTO game_attendance (game_id, group_id, member_user_id, status, waitlist_sequence, responded_at, updated_at,
+            version, member_display_name) VALUES ('$future', '$group', '${waiting.user.id}', 'CONFIRMED', NULL, now(), now(), 1, 'Filler')""")
+        execute("""UPDATE game_attendance SET status = 'WAITLISTED', waitlist_sequence = 1 WHERE game_id = '$future' AND member_user_id = '${waiting.user.id}'""")
+        val filler = sessionRepository.upsertAndLoad(
+            SessionUpsert("filler-subject", "filler@example.test", true, AccessName.from("Filler Person")),
+        )
+        insertMembership(group, filler.user.id, "ATHLETE")
+        insertAttendance(future, group, filler.user.id, "Filler Person")
+
+        deleteAccount.execute("leaving-subject")
+
+        assertEquals("DECLINED", text("SELECT status FROM game_attendance WHERE game_id = '$future' AND member_user_id = '${leaving.user.id}'"))
+        assertEquals("CONFIRMED", text("SELECT status FROM game_attendance WHERE game_id = '$future' AND member_user_id = '${waiting.user.id}'"))
+        assertEquals("CONFIRMED", text("SELECT status FROM game_attendance WHERE game_id = '$past' AND member_user_id = '${leaving.user.id}'"))
+        assertEquals(1, count("SELECT count(*) FROM attendance_events WHERE game_id = '$future' AND member_user_id = '${leaving.user.id}' AND source = 'SYSTEM' AND new_status = 'DECLINED'"))
+    }
+
+    private fun insertFutureGame(group: UUID, capacity: Int): UUID {
+        val id = UUID.randomUUID()
+        execute(
+            "INSERT INTO games (id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes, " +
+                "confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at) VALUES " +
+                "('$id', '$group', 'Future', CURRENT_DATE + 3, TIME '19:30', 'UTC', now() + interval '3 days', 90, " +
+                "now() + interval '2 days', 'Arena', 'Rua Central 100', $capacity, 'PUBLISHED', now(), now())",
+        )
+        return id
+    }
+
     private fun accountDeletion(): DeleteAccount {
         val transaction = JdbcTransactionRunner(dataSource)
         val deleteGroup = DeleteGroup(transaction, JdbcGroupDeletionRepository(dataSource))
         val athletes = JdbcAthleteRepository(dataSource)
-        return AccessSessionConfiguration().deleteAccount(transaction, sessionRepository, deleteGroup, athletes, dataSource)
+        val charges = AttendanceChargeAdapter(ChargeTransactions(transaction, JdbcChargeTransactionRepository(dataSource)) { Instant.now() })
+        val release = ReleaseMemberAttendance(JdbcAttendanceCommandRepository(dataSource), charges, Instant::now)
+        return AccessSessionConfiguration().deleteAccount(transaction, sessionRepository, deleteGroup, athletes, release, dataSource)
     }
 
     private fun insertGroup(owner: UUID, name: String): UUID {

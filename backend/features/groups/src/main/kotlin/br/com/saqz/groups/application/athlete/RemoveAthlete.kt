@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.athlete
 
+import br.com.saqz.groups.application.attendance.AttendanceRelease
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
@@ -16,12 +17,14 @@ class RemoveAthlete(
     private val athleteRepository: AthleteRepository,
     private val accessPolicy: GroupAccessPolicy,
     private val administrationRevocation: GroupAdministrationRevocation = GroupAdministrationRevocation { _, _ -> },
+    private val attendanceRelease: AttendanceRelease = AttendanceRelease { _, _, _ -> },
 ) {
     /** Self-service departure never grants the management permission to remove another athlete. */
     fun leave(actor: UUID, groupId: UUID): RemoveAthleteResult = transactionRunner.inTransaction {
         val membership = athleteRepository.find(groupId, actor)
             ?: return@inTransaction RemoveAthleteResult.Success
         if (membership.role == GroupRole.OWNER) return@inTransaction RemoveAthleteResult.OwnerImmutable
+        attendanceRelease.release(groupId, actor, actor)
         athleteRepository.remove(groupId, actor)
         if (membership.role == GroupRole.ADMIN) administrationRevocation.revoked(groupId, actor)
         RemoveAthleteResult.Success
@@ -38,6 +41,7 @@ class RemoveAthlete(
         val target = athleteRepository.find(groupId, userId)
             ?: return@inTransaction RemoveAthleteResult.Success
         if (target.role == GroupRole.OWNER) return@inTransaction RemoveAthleteResult.OwnerImmutable
+        attendanceRelease.release(groupId, userId, actor)
         athleteRepository.remove(groupId, userId)
         if (target.role == GroupRole.ADMIN) administrationRevocation.revoked(groupId, userId)
         RemoveAthleteResult.Success

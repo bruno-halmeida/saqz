@@ -11,6 +11,7 @@ import br.com.saqz.groups.application.game.GameAttendanceCountSource
 import br.com.saqz.groups.application.game.GameAttendanceCounts
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
+import java.time.Instant
 import java.sql.Timestamp
 import java.sql.Types
 import java.util.UUID
@@ -268,6 +269,23 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                 )
             }
             .list()
+
+    override fun futureGamesWithActiveAttendance(groupId: UUID, memberId: UUID, after: Instant): List<UUID> =
+        jdbc.sql(
+            """
+            SELECT DISTINCT g.id FROM games g
+            JOIN game_attendance a ON a.game_id=g.id AND a.group_id=g.group_id AND a.member_user_id=:member
+                AND a.status IN ('CONFIRMED','WAITLISTED')
+            WHERE g.group_id=:group AND g.status IN ('PUBLISHED','DRAFT') AND g.starts_at > :after
+            ORDER BY g.id
+            """.trimIndent(),
+        )
+            .param("group", groupId)
+            .param("member", memberId)
+            .param("after", Timestamp.from(after))
+            .query(UUID::class.java)
+            .list()
+            .filterNotNull()
 
     override fun append(event: AttendanceEvent) {
         val appended = jdbc.sql(APPEND)
