@@ -11,9 +11,10 @@ const appStore = 'https://apps.apple.com/br/app/id6812743525';
 function page(userAgent, pathname, search = '', { source = script, hidden = false, fetch, wasm = WebAssembly } = {}) {
   const elements = {
     heading: { textContent: 'Este link abre no app Saqz' },
-    lead: { textContent: 'Baixe o app para entrar no grupo ou confirmar sua presença.' },
+    lead: { textContent: 'Entre no grupo ou confirme sua presença no Saqz.' },
     primary: { href: 'https://saqz.app', textContent: 'Acessar site do Saqz', hidden: false },
     secondary: { hidden: true },
+    tertiary: { hidden: true },
   };
   const location = { pathname, search, replace(url) { this.replaced = url; } };
   const timers = [];
@@ -46,7 +47,7 @@ test('Android invite opens the app by itself or falls back to Google Play with t
   assert.equal(result.primary.textContent, 'Baixar no Google Play');
   assert.equal(result.secondary.href, intent);
   assert.equal(result.secondary.textContent, 'Já instalei, abrir o app');
-  assert.equal(result.heading.textContent, 'Entre no grupo pelo app Saqz');
+  assert.equal(result.heading.textContent, 'Entre no grupo no Saqz');
   assert.equal(result.timers[0].delay, 1500);
   assert.equal(result.location.replaced, undefined);
   result.elapse();
@@ -68,7 +69,7 @@ test('Android attendance goes to Google Play with the link in the referrer, decl
   const confirmStore = `${play}&referrer=saqz_attendance%3D${code}`;
   const intent = `intent://links.saqz.app/attendance/${code}#Intent;scheme=https;package=app.saqz;S.browser_fallback_url=${encodeURIComponent(confirmStore)};end`;
   assert.equal(attendance.location.href, intent);
-  assert.equal(attendance.heading.textContent, 'Responda pelo app Saqz');
+  assert.equal(attendance.heading.textContent, 'Responda no Saqz');
   assert.equal(attendance.primary.href, confirmStore);
   assert.equal(attendance.secondary.href, intent);
   attendance.elapse();
@@ -177,10 +178,56 @@ test('once the App Store is set the iPhone goes to the store without asking for 
   assert.equal(result.location.replaced, appStore);
 });
 
-test('Android never asks for the web app', async () => {
-  const result = page('Android', '/', '?saqz_invite=' + code, { fetch: webUp });
+test('Android onboarding and the bare link never ask for the web app', async () => {
+  for (const search of ['?saqz_onboarding=' + code, '']) {
+    const result = page('Android', '/', search, { fetch: webUp });
+    await settle();
+    assert.deepEqual(result.requests, []);
+  }
+});
+
+const android = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/130';
+
+test('Android invite tries the app and falls back to the web app, keeping the stores as buttons', async () => {
+  const result = page(android, '/', '?saqz_invite=' + code, { fetch: webUp });
+  assert.deepEqual(result.requests, ['https://saqz.app/app/disponivel.json']);
+  assert.equal(result.location.href, undefined);
   await settle();
-  assert.deepEqual(result.requests, []);
+  const web = 'https://saqz.app/app/?saqz_invite=' + code;
+  const intent = `intent://links.saqz.app/?saqz_invite=${code}#Intent;scheme=https;package=app.saqz;S.browser_fallback_url=${encodeURIComponent(web)};end`;
+  assert.equal(result.location.href, intent);
+  assert.equal(result.primary.href, web);
+  assert.equal(result.primary.textContent, 'Continuar no navegador');
+  assert.equal(result.secondary.href, `${play}&referrer=saqz_invite%3D${code}`);
+  assert.equal(result.secondary.textContent, 'Baixar o app');
+  assert.equal(result.tertiary.href, intent);
+  assert.equal(result.tertiary.textContent, 'Já instalei, abrir o app');
+  result.elapse();
+  assert.equal(result.location.replaced, web);
+});
+
+test('Android attendance falls back to the web app, decline included', async () => {
+  const result = page(android, '/attendance/' + code, '?saqz_intent=decline', { fetch: webUp });
+  await settle();
+  const web = `https://saqz.app/app/?saqz_attendance=${code}&saqz_intent=decline`;
+  assert.ok(result.location.href.startsWith(`intent://links.saqz.app/attendance/${code}?saqz_intent=decline#Intent;`));
+  assert.ok(result.location.href.endsWith(`S.browser_fallback_url=${encodeURIComponent(web)};end`));
+  assert.equal(result.primary.href, web);
+  assert.equal(result.secondary.href, `${play}&referrer=saqz_attendance%3D${code}%26saqz_intent%3Ddecline`);
+  result.elapse();
+  assert.equal(result.location.replaced, web);
+});
+
+test('Android with the web app down or without WasmGC keeps the Google Play fallback', async () => {
+  const store = `${play}&referrer=saqz_invite%3D${code}`;
+  const down = page(android, '/', '?saqz_invite=' + code, { fetch: webDown });
+  await settle();
+  assert.ok(down.location.href.endsWith(`S.browser_fallback_url=${encodeURIComponent(store)};end`));
+  assert.equal(down.primary.href, store);
+  const noGc = page(android, '/', '?saqz_invite=' + code, { fetch: webUp, wasm: { validate: () => false } });
+  await settle();
+  assert.deepEqual(noGc.requests, []);
+  assert.equal(noGc.primary.href, store);
 });
 
 test('an iPhone without WasmGC (iOS before 18.2) keeps the old page and never asks for the web app', async () => {

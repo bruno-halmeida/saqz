@@ -73,6 +73,23 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 **Conferir**
 - O app abre direto no grupo, sem passar pela página do navegador.
 
+## PROD-WEB05b · Link de convite ou presença no Android sem o app · P0
+
+**Quem:** ATL no Android (Chrome) sem o app instalado, em aparelho com WasmGC (Chrome atual).
+
+1. Num chat de teste do WhatsApp, tocar no link do convite do grupo QA (repetir com o link de presença,
+   e com o "não vou").
+
+**Conferir**
+- A página tenta abrir o app e, sem ele, segue para `saqz.app/app/` com o mesmo código na query
+  (`saqz_invite` ou `saqz_attendance`, com `saqz_intent=decline` no "não vou"), não para o Google Play.
+- Se a página ficar visível, o botão principal é "Continuar no navegador", o secundário "Baixar o app"
+  (Play com `referrer`) e há "Já instalei, abrir o app".
+- Com o web app fora do ar (`saqz.app/app/disponivel.json` indisponível) ou Android sem WasmGC, o caminho
+  continua sendo o Google Play com `referrer`.
+- O link de onboarding (`saqz_onboarding`) e o link sem parâmetro continuam indo ao Play.
+- Depois da primeira resposta, o web app oferece "Baixar o app" (lembrete no celular).
+
 ## PROD-WEB06 · Link de convite no computador · P1
 
 **Quem:** visitante, no navegador do computador.
@@ -80,7 +97,7 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 1. Abrir o link do convite.
 
 **Conferir**
-- A página mostra "Entre no grupo pelo app Saqz" e "Abra este link no celular para continuar no app.",
+- A página mostra "Entre no grupo no Saqz" e "Abra este link no celular para continuar no app.",
   com o botão "Acessar site do Saqz", sem redirecionar sozinha.
 
 ## PROD-WEB07 · Página de exclusão de conta · P1

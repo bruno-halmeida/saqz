@@ -42,3 +42,14 @@ Bugs achados e corrigidos nesta rodada: fuso `SYSTEM` no navegador (faltava `@js
 convite vazio (o qrcode-kotlin devolve data URL no wasm).
 
 Não testado aqui: Google (o emulador não faz o popup), push (não existe no web), comprovante financeiro.
+
+## Link de convite e de presença no Android sem o app
+
+A `links-page` manda o Android sem o app para o web app (`/app/?saqz_invite=` ou `?saqz_attendance=`,
+com `saqz_intent=decline` no "não vou") em vez do Google Play, desde que haja WasmGC e
+`/app/disponivel.json` responda. Sem isso, o Play com `referrer` continua sendo o destino. Onboarding e
+link sem parâmetro seguem para o Play. Coberto por `links-page/tests/fallback.test.cjs`; no aparelho,
+conferir pelo roteiro PROD-WEB05b (`tests/producao/08-site-e-links.md`).
+
+Depois da resposta, o web app no Android oferece "Baixar o app" (Google Play); no iPhone e no computador
+não aparece oferta enquanto a App Store não estiver liberada.
