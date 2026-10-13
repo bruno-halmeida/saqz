@@ -720,7 +720,7 @@ private fun reservaPreviewGame() = HomeNextGameUi(
     waitlistKind = HomeWaitlistKind.Reserva,
     waitlistPosition = 1,
     confirmedRoster = listOf("Ana Souza", "Bruna Lima", "Caio", "Duda", "Eva", "Tiago"),
-    deadlineBellLabel = "Avisamos você se abrir vaga até 18h00 de 28/07.",
+    deadlineBellLabel = "Se você subir, aparece aqui como confirmado. Confira antes do jogo.",
 )
 
 private fun avulsoListPreviewGame() = HomeNextGameUi(

@@ -50,7 +50,7 @@ import br.com.saqz.groups.domain.communication.CommunicationChannel
 import br.com.saqz.groups.port.GroupOnboardingMemory
 import br.com.saqz.groups.port.GroupOnboardingMemoryPort
 import br.com.saqz.groups.presentation.GroupUiError
-import br.com.saqz.groups.presentation.game.gameBellLabel
+import br.com.saqz.groups.presentation.game.waitlistBellLabel
 import br.com.saqz.groups.presentation.game.gameDeadlineSentence
 import br.com.saqz.groups.presentation.game.gameDeadlineShort
 import br.com.saqz.groups.presentation.game.gameHeroDisplay
@@ -968,7 +968,7 @@ class GroupDetailsViewModel(
             address = venue.address,
             deadlineLine = deadlineLocal?.gameDeadlineSentence(now.now().toLocalDateTime(zone).date).orEmpty(),
             deadlineShort = deadlineLocal?.gameDeadlineShort().orEmpty(),
-            bellLabel = deadlineLocal?.gameBellLabel().orEmpty(),
+            bellLabel = deadlineLocal?.let { waitlistBellLabel() }.orEmpty(),
         )
     }
 

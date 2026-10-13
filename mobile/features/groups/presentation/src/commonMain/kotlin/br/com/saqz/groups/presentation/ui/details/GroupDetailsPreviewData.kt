@@ -48,7 +48,7 @@ internal object GroupDetailsPreviewData {
         address = "R. Canuto Abreu, s/n · Tatuapé",
         deadlineLine = "As confirmações encerram hoje às 18h00.",
         deadlineShort = "Encerra 28/07 · 18h00",
-        bellLabel = "Avisamos você se abrir vaga até 18h00 de 28/07.",
+        bellLabel = "Se você subir, aparece aqui como confirmado. Confira antes do jogo.",
         confirmedCount = 9,
         capacity = 12,
         confirmedNames = listOf(

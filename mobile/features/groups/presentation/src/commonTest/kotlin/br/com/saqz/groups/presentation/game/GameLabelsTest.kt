@@ -32,7 +32,7 @@ class GameLabelsTest {
     @Test
     fun `short deadline and bell reuse the home keys`() = runTest {
         assertEquals("Encerra 04/08 · 12h00", deadline.gameDeadlineShort())
-        assertEquals("Avisamos você se abrir vaga até 12h00 de 04/08.", deadline.gameBellLabel())
+        assertEquals("Se você subir, aparece aqui como confirmado. Confira antes do jogo.", waitlistBellLabel())
     }
 
     @Test

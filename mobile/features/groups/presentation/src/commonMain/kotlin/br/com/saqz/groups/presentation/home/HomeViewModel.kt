@@ -32,7 +32,7 @@ import br.com.saqz.groups.domain.home.HomeOwnChargeOldest
 import br.com.saqz.groups.domain.home.HomeOwnCharges
 import br.com.saqz.groups.domain.home.HomeReadModel
 import br.com.saqz.groups.domain.home.HomeUpcomingGame
-import br.com.saqz.groups.presentation.game.gameBellLabel
+import br.com.saqz.groups.presentation.game.waitlistBellLabel
 import br.com.saqz.groups.presentation.game.gameDateLabel
 import br.com.saqz.groups.presentation.game.gameDeadlineSentence
 import br.com.saqz.groups.presentation.game.gameDeadlineShort
@@ -520,7 +520,7 @@ class HomeViewModel(
             confirmedRoster = rosterPreview.confirmed.map { it.displayName },
             waitlistedRoster = waitlistedRows,
             confirmedCountTotal = confirmedCount,
-            deadlineBellLabel = deadline?.gameBellLabel() ?: "",
+            deadlineBellLabel = deadline?.let { waitlistBellLabel() } ?: "",
             declinedCount = declinedCount,
             pendingCount = pendingCount,
             waitlistCount = waitlistCount,

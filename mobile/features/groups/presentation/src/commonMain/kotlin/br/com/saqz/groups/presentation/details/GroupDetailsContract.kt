@@ -122,7 +122,7 @@ data class NextGameUi(
     val deadlineLine: String = "",
     /** "Encerra 04/08 · 12h00" — a meta da linha de quórum do gestor. */
     val deadlineShort: String = "",
-    /** "Avisamos você se abrir vaga até 12h00 de 04/08." — o card do sino da reserva. */
+    /** "Se você subir, aparece aqui como confirmado. Confira antes do jogo." — o card do sino da reserva. */
     val bellLabel: String = "",
 )
 

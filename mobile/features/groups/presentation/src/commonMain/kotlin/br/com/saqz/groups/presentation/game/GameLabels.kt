@@ -94,9 +94,11 @@ internal suspend fun LocalDateTime.gameDeadlineSentence(today: LocalDate): Strin
 internal suspend fun LocalDateTime.gameDeadlineShort(): String =
     getString(Res.string.home_admin_hero_deadline, date.gameDateLabel(), gameTimeLabel())
 
-/** "Avisamos você se abrir vaga até 12h00 de 04/08." */
-internal suspend fun LocalDateTime.gameBellLabel(): String =
-    getString(Res.string.home_waitlist_reserva_bell, gameTimeLabel(), date.gameDateLabel())
+/**
+ * Card da reserva. Não promete aviso: ninguém é avisado sozinho ao subir da fila (a lista vai ao grupo do
+ * WhatsApp nos lembretes), então o card diz onde conferir.
+ */
+internal suspend fun waitlistBellLabel(): String = getString(Res.string.home_waitlist_reserva_bell)
 
 private fun Int.shortMonthResource(): StringResource = when (this) {
     1 -> Res.string.home_month_january

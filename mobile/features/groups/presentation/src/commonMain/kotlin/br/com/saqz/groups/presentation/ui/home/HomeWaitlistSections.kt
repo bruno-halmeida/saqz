@@ -209,7 +209,7 @@ internal fun HomeWaitlistActions(
 }
 
 /**
- * Card informativo com ícone sino: "Avisamos você se abrir vaga até {hora} de {dia}."
+ * Card informativo da reserva: onde conferir se subiu da fila (sem prometer aviso).
  * Só aparece na reserva (6b).
  */
 @Composable
@@ -225,7 +225,7 @@ internal fun HomeWaitlistBellCard(label: String, modifier: Modifier = Modifier) 
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(metrics.subGrid * 2),
     ) {
-        SaqzIcon(icon = SaqzIcons.Bell, tint = colors.primary)
+        SaqzIcon(icon = SaqzIcons.Clock, tint = colors.primary)
         Text(
             text = label,
             style = SaqzTheme.typography.support,
