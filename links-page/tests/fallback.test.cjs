@@ -8,7 +8,7 @@ const code = 'A'.repeat(43);
 const play = 'https://play.google.com/store/apps/details?id=app.saqz';
 const appStore = 'https://apps.apple.com/br/app/id6812743525';
 
-function page(userAgent, pathname, search = '', { source = script, hidden = false } = {}) {
+function page(userAgent, pathname, search = '', { source = script, hidden = false, fetch } = {}) {
   const elements = {
     heading: { textContent: 'Este link abre no app Saqz' },
     lead: { textContent: 'Baixe o app para entrar no grupo ou confirmar sua presença.' },
@@ -19,16 +19,20 @@ function page(userAgent, pathname, search = '', { source = script, hidden = fals
   const timers = [];
   const cleared = new Set();
   const listeners = {};
-  vm.runInNewContext(source, {
+  const requests = [];
+  const context = {
     location, navigator: { userAgent }, URLSearchParams, encodeURIComponent,
     document: { getElementById: id => elements[id], hidden },
     setTimeout: (callback, delay) => timers.push({ callback, delay }),
     clearTimeout: id => cleared.add(id),
     addEventListener: (event, callback) => { listeners[event] = callback; },
-  });
+  };
+  // Sem `fetch` no contexto o script segue o caminho do app, como num navegador sem a API.
+  if (fetch) context.fetch = (url, options) => { requests.push(url); return fetch(url, options); };
+  vm.runInNewContext(source, context);
   // Roda o relógio: só dispara o que não foi cancelado (ids são as posições + 1).
   const elapse = () => timers.forEach((timer, index) => { if (!cleared.has(index + 1)) timer.callback(); });
-  return { ...elements, location, timers, listeners, elapse };
+  return { ...elements, location, timers, listeners, elapse, requests };
 }
 
 const withAppStore = script.replace('var appStore = "";', `var appStore = "${appStore}";`);
@@ -130,4 +134,51 @@ test('malformed codes cannot inject an Android intent or a destination', () => {
     assert.equal(result.location.href, undefined);
     assert.equal(result.location.replaced, play);
   }
+});
+
+// Web app (saqz.app/app/) enquanto o app de iPhone não está na App Store.
+const webUp = () => Promise.resolve({ ok: true });
+const webDown = () => Promise.resolve({ ok: false });
+const settle = () => new Promise(resolve => setImmediate(resolve));
+const iPhone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)';
+const desktop = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)';
+
+test('iPhone without the App Store goes to the web app with the invite in the query', async () => {
+  const result = page(iPhone, '/', '?saqz_invite=' + code, { fetch: webUp });
+  assert.deepEqual(result.requests, ['https://saqz.app/app/disponivel.json']);
+  await settle();
+  assert.equal(result.location.replaced, 'https://saqz.app/app/?saqz_invite=' + code);
+});
+
+test('iPhone attendance "não vou" keeps the decline when it goes to the web app', async () => {
+  const result = page(iPhone, '/attendance/' + code, '?saqz_intent=decline', { fetch: webUp });
+  await settle();
+  assert.equal(result.location.replaced, `https://saqz.app/app/?saqz_attendance=${code}&saqz_intent=decline`);
+});
+
+test('desktop onboarding opens the web app too', async () => {
+  const result = page(desktop, '/', '?saqz_onboarding=' + code, { fetch: webUp });
+  await settle();
+  assert.equal(result.location.replaced, 'https://saqz.app/app/?saqz_onboarding=' + code);
+});
+
+test('with the web app down the iPhone keeps the "em breve" page and never leaves', async () => {
+  const result = page(iPhone, '/', '?saqz_invite=' + code, { fetch: webDown });
+  await settle();
+  assert.equal(result.location.replaced, undefined);
+  assert.match(result.lead.textContent, /chega em breve na App Store/);
+});
+
+test('once the App Store is set the iPhone goes to the store without asking for the web app', async () => {
+  const source = withAppStore;
+  const result = page(iPhone, '/', '?saqz_invite=' + code, { source, fetch: webUp });
+  await settle();
+  assert.deepEqual(result.requests, []);
+  assert.equal(result.location.replaced, appStore);
+});
+
+test('Android never asks for the web app', async () => {
+  const result = page('Android', '/', '?saqz_invite=' + code, { fetch: webUp });
+  await settle();
+  assert.deepEqual(result.requests, []);
 });

@@ -72,47 +72,73 @@
     if (kind === "onboarding") heading.textContent = "Continue no app Saqz";
     if (kind === "attendance") heading.textContent = "Responda pelo app Saqz";
 
-    if (!isIOS && !isAndroid) {
-      if (kind) lead.textContent = "Abra este link no celular para continuar no app.";
-      return;
-    }
-
-    // Convite, onboarding e presença seguem para o Play no `referrer`, para o app retomá-los
-    // depois da instalação: o link de presença também traz quem ainda não está no grupo, que
-    // entra e já confirma. O "não vou" vai junto, para nunca virar confirmação.
-    var referrer = kind === "attendance" ? "saqz_attendance=" + path[1] + (decline ? "&saqz_intent=decline" : "")
-      : kind ? route.slice(1) : null;
-    var store = isIOS ? appStore : googlePlay + (referrer ? "&referrer=" + encodeURIComponent(referrer) : "");
-    var storeLabel = isIOS ? "Baixar na App Store" : "Baixar no Google Play";
-    var soon = "O app para iPhone chega em breve na App Store.";
-    var open = !kind ? null : isAndroid
-      ? "intent://links.saqz.app/" + route + "#Intent;scheme=https;package=app.saqz;S.browser_fallback_url=" +
-        encodeURIComponent(store) + ";end"
-      : "saqz:///" + route;
-
-    if (store) {
-      if (kind) lead.textContent = "Baixe o app e, depois de instalar, toque de novo no link que você recebeu.";
-      link(primary, store, storeLabel);
-      if (open) link(secondary, open, "Já instalei, abrir o app");
+    // Sem o app de iPhone na App Store, o iPhone e o computador seguem para o web app
+    // (saqz.app/app/), com o mesmo código na query. Só se ele responder: fora do ar, vale o
+    // caminho de antes (aviso no iPhone, pedido para abrir no celular no computador).
+    var webApp = "https://saqz.app/app/";
+    var webQuery = kind === "attendance" ? "?saqz_attendance=" + path[1] + (decline ? "&saqz_intent=decline" : "")
+      : kind ? route : "";
+    var wantsWebApp = (isIOS && !appStore) || (!isIOS && !isAndroid);
+    if (wantsWebApp && typeof fetch === "function") {
+      var waiting = lead.textContent;
+      lead.textContent = "Abrindo o Saqz no navegador…";
+      fetch(webApp + "disponivel.json", { cache: "no-store" })
+        .then(function (response) {
+          if (!response.ok) throw new Error("web app fora do ar");
+          location.replace(webApp + webQuery);
+        })
+        .catch(function () {
+          lead.textContent = waiting;
+          appFlow();
+        });
     } else {
-      lead.textContent = kind ? soon + " Guarde este link: ele vai funcionar assim que o app estiver disponível." : soon;
-      if (open) link(secondary, open, "Já instalei, abrir o app");
+      appFlow();
     }
 
-    // Sem clique. No Android, o intent abre o app com o link ou, sem o app, o Chrome segue
-    // para o Play; se o navegador recusar o intent sem toque, a loja entra no lugar.
-    // No iPhone nenhum link tenta o esquema sozinho: quem chega à página costuma não ter o app
-    // (com o app, o link universal já abriu direto), e o Safari responderia com o alerta de
-    // endereço inválido. Então vai direto à loja; "Já instalei, abrir o app" fica no botão.
-    if (isAndroid) {
-      if (!open) return location.replace(store);
-      location.href = open;
-      var fallback = setTimeout(function () { if (!document.hidden) location.replace(store); }, 1500);
-      ["visibilitychange", "pagehide"].forEach(function (event) {
-        addEventListener(event, function () { clearTimeout(fallback); });
-      });
-    } else if (store) {
-      location.replace(store);
+    function appFlow() {
+      if (!isIOS && !isAndroid) {
+        if (kind) lead.textContent = "Abra este link no celular para continuar no app.";
+        return;
+      }
+
+      // Convite, onboarding e presença seguem para o Play no `referrer`, para o app retomá-los
+      // depois da instalação: o link de presença também traz quem ainda não está no grupo, que
+      // entra e já confirma. O "não vou" vai junto, para nunca virar confirmação.
+      var referrer = kind === "attendance" ? "saqz_attendance=" + path[1] + (decline ? "&saqz_intent=decline" : "")
+        : kind ? route.slice(1) : null;
+      var store = isIOS ? appStore : googlePlay + (referrer ? "&referrer=" + encodeURIComponent(referrer) : "");
+      var storeLabel = isIOS ? "Baixar na App Store" : "Baixar no Google Play";
+      var soon = "O app para iPhone chega em breve na App Store.";
+      var open = !kind ? null : isAndroid
+        ? "intent://links.saqz.app/" + route + "#Intent;scheme=https;package=app.saqz;S.browser_fallback_url=" +
+          encodeURIComponent(store) + ";end"
+        : "saqz:///" + route;
+
+      if (store) {
+        if (kind) lead.textContent = "Baixe o app e, depois de instalar, toque de novo no link que você recebeu.";
+        link(primary, store, storeLabel);
+        if (open) link(secondary, open, "Já instalei, abrir o app");
+      } else {
+        lead.textContent = kind ? soon + " Guarde este link: ele vai funcionar assim que o app estiver disponível." : soon;
+        if (open) link(secondary, open, "Já instalei, abrir o app");
+      }
+
+      // Sem clique. No Android, o intent abre o app com o link ou, sem o app, o Chrome segue
+      // para o Play; se o navegador recusar o intent sem toque, a loja entra no lugar.
+      // No iPhone nenhum link tenta o esquema sozinho: quem chega à página costuma não ter o app
+      // (com o app, o link universal já abriu direto), e o Safari responderia com o alerta de
+      // endereço inválido. Então vai direto à loja; "Já instalei, abrir o app" fica no botão.
+      if (isAndroid) {
+        if (!open) return location.replace(store);
+        location.href = open;
+        var fallback = setTimeout(function () { if (!document.hidden) location.replace(store); }, 1500);
+        ["visibilitychange", "pagehide"].forEach(function (event) {
+          addEventListener(event, function () { clearTimeout(fallback); });
+        });
+      } else if (store) {
+        location.replace(store);
+      }
+
     }
 
     function link(element, href, text) {

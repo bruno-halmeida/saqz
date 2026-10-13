@@ -82,7 +82,12 @@ No celular a página redireciona sozinha, sem clique; os botões ficam de reserv
   o esquema `saqz://` sozinho: com o app, o link universal já abriu direto; quem chega à
   página costuma não ter o app, e o Safari responderia com o alerta de endereço inválido.
   O esquema fica no botão "Já instalei, abrir o app".
-- **Computador:** fica na página, com o site e o pedido para abrir no celular.
+- **Computador:** vai para o web app (`https://saqz.app/app/`) com o mesmo código na query; se o
+  web app não responder, fica na página com o pedido para abrir no celular.
+- **iPhone sem App Store:** enquanto `appStore` estiver vazio, também vai para o web app
+  (`/app/?saqz_invite=…`, `?saqz_onboarding=…`, `?saqz_attendance=…[&saqz_intent=decline]`). A página
+  só redireciona depois que `https://saqz.app/app/disponivel.json` responde; fora do ar, vale o aviso
+  de "em breve". Preenchido o `appStore`, o iPhone volta a ir para a loja.
 
 - **Google Play**, no ar desde 07/10/2026. Convite, onboarding e presença seguem no
   `referrer` do Play (`saqz_invite=…`, `saqz_onboarding=…`, `saqz_attendance=…`, com
