@@ -28,5 +28,8 @@ configMapGenerator:
       # Cadastro e contratação na web (saqz.app/comecar/ e /assinar/) chamam a API pelo navegador.
       - SAQZ_ADMINWEB_ORIGINS=https://saqz.app
       - SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED=true
+      # Imagem no topo do lembrete do grupo. A Uazapi/WhatsApp guarda a imagem pelo endereço: ao trocar
+      # a imagem, publique com nome novo em links-page/assets e aponte aqui (design/whatsapp/render.sh).
+      - SAQZ_NOTIFICATIONS_WHATSAPP_GROUP_REMINDER_IMAGE_URL=https://links.saqz.app/assets/whatsapp-lembrete-v2.jpg
       - SAQZ_NOTIFICATIONS_REMINDER_ENABLED=true
       - SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS=25200000

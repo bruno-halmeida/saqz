@@ -1,5 +1,7 @@
 #!/bin/sh
 # Gera os JPGs das imagens de WhatsApp a partir do HTML desta pasta.
+# O WhatsApp guarda a imagem pelo endereço: ao mudar uma imagem já usada, copie o JPG para um nome
+# novo (ex.: whatsapp-lembrete-v3.jpg) e aponte o overlay de prod / a og:image para ele.
 # Uso: design/whatsapp/render.sh   (precisa do Chrome headless do HyperFrames ou CHROME=<binário>)
 set -eu
 cd "$(dirname "$0")"
