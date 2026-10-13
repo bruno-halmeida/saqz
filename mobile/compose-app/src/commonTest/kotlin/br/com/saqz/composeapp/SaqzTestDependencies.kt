@@ -106,6 +106,7 @@ internal fun testSaqzPlatformDependencies(
     appStorePurchases = appStorePurchases,
     googlePlayPurchases = googlePlayPurchases,
     webCheckout = null,
+    appDownload = null,
     environment = "test",
     apiBaseUrl = "https://api.invalid",
     appVersion = "0.0.0 (0)",

@@ -7,6 +7,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.attendance.share.*
+import br.com.saqz.groups.domain.communication.AppDownloadPort
 import br.com.saqz.groups.domain.communication.NativeNotificationPort
 import br.com.saqz.groups.domain.membership.*
 import kotlinx.coroutines.launch
@@ -20,7 +21,11 @@ class AttendanceLinkViewModel(
     private val attendance: AttendanceGateway,
     private val invites: InviteGateway,
     private val notifications: NativeNotificationPort? = null,
+    /** Só no web app: a loja do app oferecida depois da resposta. */
+    private val appDownload: AppDownloadPort? = null,
 ) : MviViewModel<AttendanceLinkState, AttendanceLinkIntent, AttendanceLinkEffect>(AttendanceLinkState()) {
+    /** Há loja do app para oferecer depois da resposta (confirmada ou lista de espera). */
+    val appDownloadAvailable: Boolean = appDownload?.appDownloadUrl() != null
     private var generation = 0
     init { resolve() }
 
@@ -28,6 +33,7 @@ class AttendanceLinkViewModel(
         when (intent) {
             AttendanceLinkIntent.Retry -> retry()
             AttendanceLinkIntent.Decline -> decline()
+            AttendanceLinkIntent.OpenAppDownload -> appDownload?.appDownloadUrl()?.let(appDownload::openAppDownload)
         }
     }
 

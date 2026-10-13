@@ -80,6 +80,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
                 appStorePurchases = null,
                 googlePlayPurchases = AndroidGooglePlayPurchases(context.applicationContext, activity),
                 webCheckout = null,
+                appDownload = null,
                 environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,
                 appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",

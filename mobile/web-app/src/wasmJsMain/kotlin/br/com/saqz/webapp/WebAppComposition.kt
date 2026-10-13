@@ -17,6 +17,7 @@ import br.com.saqz.webapp.groups.WebAttendanceShareAdapter
 import br.com.saqz.webapp.groups.WebGroupDraftStores
 import br.com.saqz.webapp.groups.WebGroupOnboardingMemory
 import br.com.saqz.webapp.groups.WebGroupPhotoAdapters
+import br.com.saqz.webapp.groups.WebAppDownloadAdapter
 import br.com.saqz.webapp.groups.WebInviteAdapters
 import br.com.saqz.webapp.groups.WebMapAdapter
 import br.com.saqz.webapp.notifications.WebNotificationPort
@@ -86,6 +87,7 @@ internal class WebAppComposition(
                 appStorePurchases = null,
                 googlePlayPurchases = null,
                 webCheckout = WebCheckoutAdapter(config.checkoutUrl),
+                appDownload = WebAppDownloadAdapter(),
             )
             return WebAppComposition(dependencies, links)
         }

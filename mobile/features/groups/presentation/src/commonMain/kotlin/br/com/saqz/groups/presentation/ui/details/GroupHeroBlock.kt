@@ -112,7 +112,7 @@ internal fun GroupHeroBlock(
             GroupAutoConfirmationCard(state = state, onIntent = onIntent)
         }
         if (state.athleteIntroVisible && !state.isAdmin && !state.responding) {
-            AthleteOnboardingCard(state.athleteShareFailed, onIntent)
+            AthleteOnboardingCard(state.athleteShareFailed, onIntent, state.appDownloadAvailable)
         }
         // Onboarding de organizador só no primeiro grupo criado pela conta. A lista de passos
         // continua a da Início (passo 1 feito) e some quando os três estão feitos; o acerto do

@@ -188,6 +188,9 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
         )
     }
     single<br.com.saqz.groups.domain.communication.NativeNotificationPort> { dependencies.notifications }
+    dependencies.appDownload?.let { appDownload ->
+        single<br.com.saqz.groups.domain.communication.AppDownloadPort> { appDownload }
+    }
     single { SaqzNativePorts(access = dependencies.access, groups = dependencies.groups) }
     single<NativeAuthPort>(named("raw-native-auth")) {
         BackendEmailVerificationAuth(

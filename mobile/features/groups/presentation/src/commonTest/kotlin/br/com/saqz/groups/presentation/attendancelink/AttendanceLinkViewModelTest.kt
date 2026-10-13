@@ -141,6 +141,24 @@ class AttendanceLinkViewModelTest {
         assertEquals(1, gateway.commands.size)
     }
 
+    @Test fun appDownloadIsOfferedOnlyWhenThePortHasAStoreAndOpensIt() = runTest {
+        val port = br.com.saqz.groups.presentation.FakeAppDownload()
+        val offered = AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake(), appDownload = port)
+        assertTrue(offered.appDownloadAvailable)
+        offered.onIntent(AttendanceLinkIntent.OpenAppDownload)
+        assertEquals(listOf("https://play.example/saqz"), port.opened)
+
+        val noStore = br.com.saqz.groups.presentation.FakeAppDownload(url = null)
+        val withoutStore = AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake(), appDownload = noStore)
+        assertFalse(withoutStore.appDownloadAvailable)
+        withoutStore.onIntent(AttendanceLinkIntent.OpenAppDownload)
+        assertTrue(noStore.opened.isEmpty())
+
+        val native = AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake())
+        assertFalse(native.appDownloadAvailable)
+        native.onIntent(AttendanceLinkIntent.OpenAppDownload)
+    }
+
     private class InviteFake(private val status: InviteRedeemStatus? = null) : InviteGateway {
         val codes = mutableListOf<InviteCode>()
         override suspend fun preview(code: InviteCode) = error("unused")

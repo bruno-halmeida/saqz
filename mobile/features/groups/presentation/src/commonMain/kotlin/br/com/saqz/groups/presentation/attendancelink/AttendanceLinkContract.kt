@@ -20,6 +20,6 @@ data class AttendanceLinkState(
     val destination: AttendanceLinkDestination? = null,
 )
 
-enum class AttendanceLinkIntent { Retry, Decline }
+enum class AttendanceLinkIntent { Retry, Decline, OpenAppDownload }
 
 sealed interface AttendanceLinkEffect { data class Register(val groupId: String) : AttendanceLinkEffect }

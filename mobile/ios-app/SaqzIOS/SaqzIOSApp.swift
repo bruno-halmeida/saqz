@@ -102,7 +102,8 @@ struct IOSAppComposition {
             analytics: IOSAnalyticsSink(),
             appStorePurchases: appStore,
             googlePlayPurchases: nil,
-            webCheckout: nil
+            webCheckout: nil,
+            appDownload: nil
         )
         return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, photos: photos, drafts: drafts, appStore: appStore, dependencies: dependencies)
     }
