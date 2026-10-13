@@ -44,11 +44,40 @@
     if (bar && meta && readConsent() === null) bar.hidden = false;
   });
 
+  // Eventos padrão da Meta para os marcos do funil; o resto vai como evento customizado.
+  var META_STANDARD = { sign_up: 'CompleteRegistration', trial_released: 'StartTrial', begin_checkout: 'InitiateCheckout', purchase: 'Purchase' };
   function send(name, params) {
+    params = params || {};
     if (ga4 && window.gtag) window.gtag('event', name, params);
     if (clarity && window.clarity) window.clarity('event', name + (params.cta_position ? '_' + params.cta_position : ''));
-    if (metaOn && window.fbq) window.fbq('trackCustom', name, params);
+    if (metaOn && window.fbq) {
+      var standard = META_STANDARD[name];
+      if (standard) window.fbq('track', standard, { value: params.value, currency: params.currency, content_name: params.plan });
+      else window.fbq('trackCustom', name, params);
+    }
   }
+  // Usados pelas páginas /comecar/ e /assinar/ para marcar o funil (ver docs/medicao-web.md).
+  window.saqzTrack = send;
+  // user_id = id interno da conta (o mesmo que o app manda ao Firebase), para o GA4 ligar site e app.
+  // O cadastro conhece esse id pela sessão e guarda o par com o uid do Firebase; a assinatura só
+  // conhece o uid do Firebase e reaproveita o par quando ele bate.
+  var USER_KEY = 'saqz_analytics_user';
+  function applyUser(uid) {
+    if (ga4 && window.gtag) window.gtag('config', ga4, { user_id: uid, send_page_view: false });
+    if (clarity && window.clarity) window.clarity('identify', uid);
+  }
+  window.saqzIdentify = function (uid, firebaseUid) {
+    if (!uid) return;
+    applyUser(uid);
+    try { localStorage.setItem(USER_KEY, JSON.stringify({ uid: uid, fb: firebaseUid || null })); } catch (e) {}
+  };
+  window.saqzIdentifyFirebase = function (firebaseUid) {
+    if (!firebaseUid) return;
+    try {
+      var saved = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+      if (saved && saved.uid && saved.fb === firebaseUid) applyUser(saved.uid);
+    } catch (e) {}
+  };
 
   function position(el) {
     if (el.closest('header')) return 'nav';

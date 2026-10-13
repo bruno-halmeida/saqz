@@ -19,6 +19,9 @@
   var trialGeneration = 0;
 
   function $(id) { return document.getElementById(id); }
+  // Funil de medição (docs/medicao-web.md): sem o carregador da landing, vira no-op.
+  function track(name, params) { try { if (window.saqzTrack) window.saqzTrack(name, params || {}); } catch (ignored) {} }
+  function identify(accountId, firebaseUid) { try { if (accountId && window.saqzIdentify) window.saqzIdentify(accountId, firebaseUid); } catch (ignored) {} }
   function show(id) { $(id).hidden = false; }
   function hide(id) { $(id).hidden = true; }
   function setMessage(id, message, kind) {
@@ -203,6 +206,8 @@
         if (!validGeneration(user, expectedGeneration)) return;
         session = response;
         profileRetry = false;
+        identify(response.user && response.user.id, user.uid);
+        track("account_ready", { phone_required: !(response.user && response.user.phoneRequired === false) });
         hide("auth-card");
         displayProfile(response, requestedName);
       })
@@ -239,9 +244,11 @@
     var authRequest = { generation: intentGeneration, canceled: false };
     activeAuthRequest = authRequest;
     setBusy(true);
+    track("signup_start", { method: "email", mode: intentMode });
     auth[method](email, password)
       .then(function (credential) {
         if (generation !== intentGeneration || auth.currentUser !== credential.user) return staleProvider(credential, intentGeneration);
+        track(intentMode === "signup" ? "sign_up" : "login", { method: "email" });
         return finishAccount(credential.user, intentMode === "signup" ? intentName : null, intentGeneration);
       })
       .catch(function (error) {
@@ -277,9 +284,12 @@
     var authRequest = { generation: intentGeneration, canceled: false };
     activeAuthRequest = authRequest;
     setBusy(true);
+    track("signup_start", { method: "google", mode: mode });
     auth.signInWithPopup(provider)
       .then(function (credential) {
         if (generation !== intentGeneration || auth.currentUser !== credential.user) return staleProvider(credential, intentGeneration);
+        var novo = Boolean(credential.additionalUserInfo && credential.additionalUserInfo.isNewUser);
+        track(novo ? "sign_up" : "login", { method: "google" });
         return finishAccount(credential.user, credential.user.displayName || null, intentGeneration);
       })
       .catch(function (error) {
@@ -338,6 +348,7 @@
         if (!response.user) throw safeError("Não foi possível confirmar o perfil. Tente novamente.");
         profileReady = response.user.phoneRequired === false;
         if (profileReady) {
+          track("profile_completed", {});
           hide("profile-card");
           show("ready-card");
           loadTrial(currentUser, expectedGeneration);
@@ -369,7 +380,10 @@
         if (!response.ok) throw safeError("Não foi possível consultar seu teste. Atualize as opções.");
         return response.json();
       }).then(function (access) {
-        if (request === trialGeneration && validGeneration(user, expectedGeneration)) displayTrial(access);
+        if (request === trialGeneration && validGeneration(user, expectedGeneration)) {
+          track("trial_options", { status: access.status, offer_mode: access.offerMode, preauthorized: Boolean(access.preauthorized) });
+          displayTrial(access);
+        }
       }).catch(function (error) {
         if (request === trialGeneration && validGeneration(user, expectedGeneration)) setMessage("trial-status", error.safeMessage || "Não foi possível consultar seu teste. Atualize as opções.", "error");
       });
@@ -392,7 +406,10 @@
           : "Não foi possível liberar este teste. Atualize as opções e tente novamente.");
         return response.json();
       }).then(function (access) {
-        if (request === trialGeneration && validGeneration(user, expectedGeneration)) displayTrial(access);
+        if (request === trialGeneration && validGeneration(user, expectedGeneration)) {
+          track("trial_released", { via: coupon ? "coupon" : "enrollment", status: access.status });
+          displayTrial(access);
+        }
       }).catch(function (error) {
         if (request === trialGeneration && validGeneration(user, expectedGeneration)) setMessage("trial-status", error.safeMessage || "Não foi possível liberar seu teste. Tente novamente.", "error");
       }).finally(function () { if (request === trialGeneration && validGeneration(user, expectedGeneration)) setBusy(false); });
@@ -483,6 +500,7 @@
         var url = validAppUrl(packet.body && packet.body.url, packet.expectedOrigin);
         if (!url) throw safeError("O link do app não está disponível neste ambiente. Entre manualmente com a mesma conta.");
         $("app-link").href = url;
+        track("app_link_ready", {});
         show("app-link");
         setMessage("app-link-help", "Link pronto. Toque em Continuar no app para abrir o Saqz; se expirar, gere outro link.");
       })
@@ -521,6 +539,12 @@
     $("google-auth").addEventListener("click", authenticateWithGoogle);
     $("profile-form").addEventListener("submit", saveProfile);
     $("request-app-link").addEventListener("click", requestAppLink);
+    $("app-link").addEventListener("click", function () { track("app_open", { via: "link" }); });
+    ["ios-store", "android-store"].forEach(function (id) {
+      $(id).addEventListener("click", function () {
+        if (!$(id).classList.contains("is-soon")) track("store_click", { store: id === "ios-store" ? "ios" : "android" });
+      });
+    });
     $("cancel-auth").addEventListener("click", function () {
       if (signOutPending && signOutFailed) {
         setMessage("auth-error", "Tentando encerrar a sessão anterior…");

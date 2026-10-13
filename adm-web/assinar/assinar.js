@@ -64,6 +64,18 @@
   var trocaAlvo = null;
 
   function $(id) { return document.getElementById(id); }
+  // Funil de medição (docs/medicao-web.md): sem o carregador da landing, vira no-op.
+  function track(name, params) { try { if (window.saqzTrack) window.saqzTrack(name, params || {}); } catch (ignored) {} }
+  function identify(user) { try { if (user && window.saqzIdentifyFirebase) window.saqzIdentifyFirebase(user.uid); } catch (ignored) {} }
+  var ultimoValorPendente = null;
+  var compraRegistrada = null;
+  // Dois ticks do poll podem voltar "entitled" juntos: a compra só é contada uma vez por checkout.
+  function registrarCompra(me, upgrade) {
+    var id = checkoutAtual ? checkoutAtual.requestId : (me.plan + ":" + me.cycle);
+    if (compraRegistrada === id) return;
+    compraRegistrada = id;
+    track("purchase", { transaction_id: id, plan: me.plan, cycle: me.cycle, upgrade: upgrade, value: ultimoValorPendente, currency: "BRL", items: [{ item_id: me.plan, item_name: "Saqz " + me.plan, price: ultimoValorPendente, quantity: 1 }] });
+  }
 
   function mostrar(estado) {
     ["carregando", "login", "assinante", "planos", "dados", "pix", "cartao", "sucesso", "erro"].forEach(function (nome) {
@@ -196,6 +208,7 @@
         planos = lista;
         atualizarCabecalhoPlanos();
         renderizarPlanos();
+        track("checkout_view", { mode: modoTroca() ? "change" : "new", cycle: cicloEscolhido });
         mostrar("planos");
       });
   }
@@ -299,6 +312,7 @@
   function trocarPlano(plano) {
     planoEscolhido = { plano: plano, ciclo: assinaturaAtual.cycle };
     trocaAlvo = plano.id;
+    track("plan_change_requested", { plan: plano.id, from: assinaturaAtual.plan, cycle: assinaturaAtual.cycle });
     mostrarErro("planos-erro", "");
     mostrar("carregando");
     checkoutAtual = checkoutPara(plano.id, assinaturaAtual.cycle);
@@ -322,6 +336,7 @@
           }
           trocaAlvo = null;
           localStorage.removeItem(CHECKOUT_KEY);
+          track("plan_changed", { plan: resposta.planId, pending_plan: resposta.pendingPlanId || null });
           assinaturaAtual = Object.assign({}, assinaturaAtual, {
             plan: resposta.planId,
             pendingPlan: resposta.pendingPlanId || null,
@@ -352,6 +367,10 @@
     // trocar de plano não pode carregar dado de cartão da tentativa anterior.
     limparFormCartao();
     selecionarMetodo("PIX");
+    track(titulo === "Retomar pagamento" ? "checkout_resumed" : "plan_selected", {
+      plan: plano.id, cycle: ciclo, currency: "BRL",
+      value: (ciclo === "ANNUAL" ? plano.annualPriceCents : plano.monthlyPriceCents) / 100,
+    });
     $("dados-titulo").textContent = titulo;
     $("dados-resumo-plano").textContent =
       "Plano " + plano.name + " · " + (ciclo === "ANNUAL" ? "anual" : "mensal");
@@ -403,6 +422,7 @@
       .then(function (resultado) {
         if (resultado.status === "APPLIED") {
           cupomAplicado = { code: codigo, finalPriceCents: resultado.finalPriceCents };
+          track("coupon_applied", { plan: planoEscolhido.plano.id, cycle: planoEscolhido.ciclo, discount_percent: resultado.discountPercent, value: resultado.finalPriceCents / 100, currency: "BRL" });
           var ok = $("cupom-ok");
           ok.textContent = "Cupom aplicado: -" + resultado.discountPercent + "%";
           ok.classList.add("visivel");
@@ -471,6 +491,11 @@
     mostrarErro("dados-erro", "");
     var botao = $("botao-pagar");
     botao.disabled = true;
+    track("begin_checkout", {
+      plan: planoEscolhido.plano.id, cycle: planoEscolhido.ciclo, payment_method: metodoEscolhido,
+      coupon: Boolean(cupomAplicado), currency: "BRL",
+      value: (cupomAplicado ? cupomAplicado.finalPriceCents : precoLista()) / 100,
+    });
     // Antifraude é lento e o backend espera até 60s nesse caminho: rótulo honesto e
     // nenhum reenvio automático. Retry é sempre manual, com o mesmo requestId — o
     // backend compara o payload e rotaciona a chave de idempotência sozinho.
@@ -505,6 +530,7 @@
         // não o ApiProblem — por isso vem antes do tratamento genérico.
         if (response.status === 402) {
           return response.json().catch(function () { return {}; }).then(function (recusa) {
+            track("payment_refused", { payment_method: "CREDIT_CARD", plan: planoEscolhido.plano.id });
             // A descrição da Asaas já vem em PT-BR e já diz que foi recusa: prefixar
             // "Cartão recusado:" só faria a frase gaguejar.
             mostrarErro("dados-erro", recusa.message ||
@@ -554,6 +580,8 @@
       (planoEscolhido.ciclo === "ANNUAL" ? "/ano" : "/mês");
     // Autorizado: os dados do cartão não servem mais para nada nesta aba.
     limparFormCartao();
+    ultimoValorPendente = total / 100;
+    track("payment_pending", { payment_method: "CREDIT_CARD", plan: planoEscolhido.plano.id, cycle: planoEscolhido.ciclo, value: ultimoValorPendente, currency: "BRL" });
     mostrar("cartao");
     iniciarPoll();
   }
@@ -576,6 +604,8 @@
     // O backend devolve pixCopyPaste e invoiceUrl sempre; a UI segue o método escolhido.
     $("pix-codigo").textContent = resposta.pixCopyPaste || "Código indisponível — gere um novo.";
     mostrarErro("pix-erro", "");
+    ultimoValorPendente = total / 100;
+    track("payment_pending", { payment_method: "PIX", plan: trocaAlvo || planoEscolhido.plano.id, cycle: planoEscolhido.ciclo, upgrade: totalCents != null, value: ultimoValorPendente, currency: "BRL" });
     mostrar("pix");
     iniciarPoll();
   }
@@ -617,6 +647,7 @@
             localStorage.removeItem(CHECKOUT_KEY);
             trocaAlvo = null;
             assinaturaAtual = me;
+            registrarCompra(me, true);
             mostrarCatalogoAtualizado("Pagamento confirmado. Seu plano já está em vigor.");
           }
           return;
@@ -624,6 +655,7 @@
         if (me.entitled) {
           pararPoll();
           localStorage.removeItem(CHECKOUT_KEY);
+          registrarCompra(me, false);
           mostrarSucesso("Assinatura ativa.", "Pagamento confirmado. Volte ao app Saqz e crie seu grupo.");
         }
       })
@@ -704,6 +736,7 @@
 
   auth.onAuthStateChanged(function (user) {
     pararPoll();
+    identify(user);
     if (redimindoLink) return;
     if (user) iniciar();
     else mostrar("login");
