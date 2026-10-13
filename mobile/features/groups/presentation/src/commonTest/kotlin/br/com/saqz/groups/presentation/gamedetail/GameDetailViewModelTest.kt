@@ -28,6 +28,17 @@ import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.domain.group.GroupGameConfig
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
+import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
+import br.com.saqz.core.common.analytics.SaqzAnalytics
+import br.com.saqz.domain.GroupId
+import br.com.saqz.groups.presentation.FakeNativeNotifications
+import br.com.saqz.groups.presentation.home.HomeWaitlistKind
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeAthleteGateway
@@ -911,6 +922,418 @@ class GameDetailViewModelTest {
         assertNull(viewModel.state.value.promotingMemberId)
     }
 
+    // --- Resposta de presença na tela do jogo (jogos depois do próximo só se respondem aqui) ---
+
+    private fun mutation(
+        status: AttendanceStatus,
+        position: Long? = null,
+        confirmed: Int = 9,
+    ) = SaqzResult.Success(
+        VersionedAttendanceMutation(
+            value = AttendanceMutation(
+                attendance = AttendanceEntry("me", status, position, 2),
+                promotedCount = 0,
+                detail = AttendanceDetail(null, confirmed, 12 - confirmed, 0, 12),
+            ),
+            version = AttendanceVersionToken("etag-2"),
+        ),
+    )
+
+    private fun responder(
+        attendance: FakeAttendanceGateway = FakeAttendanceGateway(),
+        game: br.com.saqz.groups.domain.game.Game = openGame(),
+        athletes: FakeAthleteGateway = FakeAthleteGateway(),
+        groupGateway: FakeGroupGateway = FakeGroupGateway(),
+        notifications: FakeNativeNotifications? = null,
+    ) = GameDetailViewModel(
+        "group-1", "game-1",
+        FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(game))),
+        groupGateway, attendance, athletes, notifications,
+    )
+
+    private fun avulsoProfile(type: AthleteMembershipType) = FakeAthleteGateway(
+        ownProfileResult = SaqzResult.Success(
+            OwnAthleteProfile(
+                "me", "Bruno", null,
+                listOf(
+                    OwnAthleteMembership(
+                        groupId = GroupId("group-1"),
+                        groupName = "Vôlei do CERET",
+                        role = GroupRole.ATHLETE,
+                        position = null,
+                        membershipType = type,
+                        active = true,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    @Test
+    fun responseBlockAsksPublishedGamesOnlyToAnyRole() = runTest {
+        val athlete = responder(groupGateway = athleteGroupGateway())
+        val admin = responder()
+        val draft = responder(game = openGame().copy(status = GameStatus.Draft))
+        val cancelled = responder(game = openGame().copy(status = GameStatus.Cancelled))
+        val completed = responder(game = openGame().copy(status = GameStatus.Completed))
+
+        assertTrue(athlete.state.value.response.visible)
+        assertTrue(admin.state.value.response.visible)
+        assertNull(athlete.state.value.response.status)
+        assertFalse(draft.state.value.response.visible)
+        assertFalse(cancelled.state.value.response.visible)
+        assertFalse(completed.state.value.response.visible)
+    }
+
+    @Test
+    fun goingWithRoomConfirmsAndEnablesTheGuestButton() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = mutation(AttendanceStatus.Confirmed))
+        val notifications = FakeNativeNotifications()
+        val recorded = mutableListOf<Pair<String, Map<String, String>>>()
+        SaqzAnalytics.track = { name, params -> recorded += name to params }
+        val viewModel = try {
+            responder(attendance, notifications = notifications).also {
+                assertEquals(GameGuestHint.NeedAnswer, it.state.value.guest.hint)
+                assertFalse(it.state.value.guest.enabled)
+                it.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+            }
+        } finally {
+            SaqzAnalytics.reset()
+        }
+
+        val state = viewModel.state.value
+        assertEquals(AttendanceIntent.Confirm, attendance.lastResponse?.intent)
+        assertEquals(AttendanceStatus.Confirmed, state.response.status)
+        assertNull(state.response.waitlistKind)
+        assertFalse(state.response.responding)
+        assertFalse(state.response.failed)
+        assertTrue(state.guest.enabled)
+        assertEquals(GameGuestHint.Default, state.guest.hint)
+        assertEquals(9, state.attendance?.confirmed)
+        assertEquals(3, state.header?.availableSpots)
+        assertEquals(2, attendance.rosterCalls)
+        assertEquals(listOf("game-1"), notifications.dismissed)
+        assertEquals(
+            listOf("attendance_answered" to mapOf("surface" to "app", "answer" to "confirm")),
+            recorded.filter { it.first == "attendance_answered" },
+        )
+    }
+
+    @Test
+    fun goingWithAFullGameLandsInTheWaitlistAndStillEnablesTheGuestButton() = runTest {
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(sampleAttendanceDetail().copy(confirmedCount = 12, availableSpots = 0)),
+            respondResult = mutation(AttendanceStatus.Waitlisted, position = 3, confirmed = 12),
+        )
+        val viewModel = responder(attendance, athletes = avulsoProfile(AthleteMembershipType.MENSALISTA))
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        val state = viewModel.state.value
+        assertEquals(AttendanceStatus.Waitlisted, state.response.status)
+        assertEquals(HomeWaitlistKind.Reserva, state.response.waitlistKind)
+        assertEquals(3L, state.response.waitlistPosition)
+        assertTrue(state.guest.enabled)
+        assertEquals(GameGuestHint.Default, state.guest.hint)
+    }
+
+    @Test
+    fun anAvulsoUnderMensalistaPriorityWaitsInTheAvulsoList() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = mutation(AttendanceStatus.Waitlisted, position = 1))
+        val viewModel = responder(attendance, athletes = avulsoProfile(AthleteMembershipType.AVULSO))
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.response.status)
+        assertEquals(HomeWaitlistKind.AvulsoList, viewModel.state.value.response.waitlistKind)
+    }
+
+    @Test
+    fun theOptimisticStatusFollowsTheSameForecastAsTheGroupHero() = runTest {
+        val deferred = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(sampleAttendanceDetail().copy(confirmedCount = 12, availableSpots = 0)),
+        ).also { it.respondDeferred = deferred }
+        val full = responder(attendance)
+        full.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+        assertEquals(AttendanceStatus.Waitlisted, full.state.value.response.status)
+        assertTrue(full.state.value.response.responding)
+
+        val avulsoAttendance = FakeAttendanceGateway().also { it.respondDeferred = deferred }
+        val avulso = responder(avulsoAttendance, athletes = avulsoProfile(AthleteMembershipType.AVULSO))
+        avulso.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+        assertEquals(AttendanceStatus.Waitlisted, avulso.state.value.response.status)
+        assertEquals(HomeWaitlistKind.AvulsoList, avulso.state.value.response.waitlistKind)
+
+        val roomAttendance = FakeAttendanceGateway().also { it.respondDeferred = deferred }
+        val room = responder(roomAttendance)
+        room.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+        assertEquals(AttendanceStatus.Confirmed, room.state.value.response.status)
+
+        val declining = responder(FakeAttendanceGateway().also { it.respondDeferred = deferred })
+        declining.onIntent(GameDetailIntent.Respond(AttendanceIntent.Decline))
+        assertEquals(AttendanceStatus.Declined, declining.state.value.response.status)
+    }
+
+    @Test
+    fun notGoingMarksDeclinedAndKeepsTheGuestButtonOffWithTheHint() = runTest {
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed)),
+            respondResult = mutation(AttendanceStatus.Declined, confirmed = 7),
+        )
+        val viewModel = responder(attendance)
+        assertTrue(viewModel.state.value.guest.enabled)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Decline))
+
+        val state = viewModel.state.value
+        assertEquals(AttendanceIntent.Decline, attendance.lastResponse?.intent)
+        assertEquals(AttendanceStatus.Declined, state.response.status)
+        assertNull(state.response.waitlistKind)
+        assertFalse(state.guest.enabled)
+        assertEquals(GameGuestHint.NeedAnswer, state.guest.hint)
+        assertEquals(7, state.attendance?.confirmed)
+    }
+
+    @Test
+    fun leavingTheWaitlistIsADeclineAndDropsTheQueueData() = runTest {
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(
+                sampleAttendanceDetail().copy(
+                    ownAttendance = AttendanceEntry("me", AttendanceStatus.Waitlisted, 3L, 1),
+                ),
+            ),
+            respondResult = mutation(AttendanceStatus.Declined),
+        )
+        val viewModel = responder(attendance)
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.response.status)
+        assertEquals(3L, viewModel.state.value.response.waitlistPosition)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Decline))
+
+        assertEquals(AttendanceStatus.Declined, viewModel.state.value.response.status)
+        assertNull(viewModel.state.value.response.waitlistKind)
+        assertNull(viewModel.state.value.response.waitlistPosition)
+    }
+
+    @Test
+    fun theQueuePositionComesFromTheRefreshedRoster() = runTest {
+        val roster = AttendanceRoster(
+            confirmed = listOf(AttendanceRosterMember("confirmed-1", "Ana")),
+            waitlisted = listOf(
+                AttendanceRosterMember("wait-1", "Caio", 1),
+                AttendanceRosterMember("me", "Bruno", 2),
+            ),
+        )
+        val attendance = FakeAttendanceGateway(respondResult = mutation(AttendanceStatus.Waitlisted, position = 9))
+        val viewModel = responder(attendance)
+        attendance.rosterResult = SaqzResult.Success(roster)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        assertEquals(2L, viewModel.state.value.response.waitlistPosition)
+        assertEquals(listOf("wait-1", "me"), viewModel.state.value.waitlist.map { it.id })
+        assertEquals("Bruno", viewModel.state.value.waitlist.last().name)
+    }
+
+    @Test
+    fun aPromotedRosterTurnsTheWaitlistIntoConfirmed() = runTest {
+        val roster = AttendanceRoster(
+            confirmed = listOf(AttendanceRosterMember("me", "Bruno")),
+            waitlisted = emptyList(),
+        )
+        val attendance = FakeAttendanceGateway(respondResult = mutation(AttendanceStatus.Waitlisted, position = 1))
+        val viewModel = responder(attendance)
+        attendance.rosterResult = SaqzResult.Success(roster)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        assertEquals(AttendanceStatus.Confirmed, viewModel.state.value.response.status)
+        assertNull(viewModel.state.value.response.waitlistPosition)
+        assertTrue(viewModel.state.value.confirmedRoster.single().isYou)
+    }
+
+    @Test
+    fun aFailedRosterAfterTheAnswerKeepsTheScreenAndTheAnswer() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = mutation(AttendanceStatus.Confirmed))
+        val viewModel = responder(attendance)
+        attendance.rosterResult = SaqzResult.Failure(AttendanceError.Data(DataError.Server))
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        assertFalse(viewModel.state.value.loadFailed)
+        assertEquals(AttendanceStatus.Confirmed, viewModel.state.value.response.status)
+        assertTrue(viewModel.state.value.guest.enabled)
+    }
+
+    @Test
+    fun aFailedAnswerRevertsTheStatusAndFlagsTheFailure() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.Data(DataError.Server)))
+        val notifications = FakeNativeNotifications()
+        val viewModel = responder(attendance, notifications = notifications)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        val state = viewModel.state.value
+        assertNull(state.response.status)
+        assertFalse(state.response.responding)
+        assertTrue(state.response.failed)
+        assertTrue(state.header?.confirmationOpen == true)
+        assertFalse(state.guest.enabled)
+        assertTrue(notifications.dismissed.isEmpty())
+        assertEquals(1, attendance.rosterCalls)
+
+        attendance.respondResult = mutation(AttendanceStatus.Confirmed)
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+        assertFalse(viewModel.state.value.response.failed)
+        assertEquals(AttendanceStatus.Confirmed, viewModel.state.value.response.status)
+    }
+
+    @Test
+    fun aDeadlineRefusalClosesTheConfirmationAndTheGuestButton() = runTest {
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed)),
+            respondResult = SaqzResult.Failure(AttendanceError.DeadlinePassed),
+        )
+        val viewModel = responder(attendance)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Decline))
+
+        val state = viewModel.state.value
+        assertEquals(AttendanceStatus.Confirmed, state.response.status)
+        assertTrue(state.response.failed)
+        assertFalse(state.header?.confirmationOpen == true)
+        assertFalse(state.guest.enabled)
+        assertEquals(GameGuestHint.Closed, state.guest.hint)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Decline))
+        assertEquals(1, attendance.respondCalls)
+    }
+
+    @Test
+    fun aFrozenGameClosesTheConfirmationWithoutAFailureWarning() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.Frozen))
+        val viewModel = responder(attendance)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        assertFalse(viewModel.state.value.response.failed)
+        assertNull(viewModel.state.value.response.status)
+        assertFalse(viewModel.state.value.header?.confirmationOpen == true)
+        assertEquals(GameGuestHint.Closed, viewModel.state.value.guest.hint)
+    }
+
+    @Test
+    fun respondIsIgnoredOnDraftCancelledAndClosedGames() = runTest {
+        listOf(GameStatus.Draft, GameStatus.Cancelled, GameStatus.Completed).forEach { status ->
+            val attendance = FakeAttendanceGateway()
+            val viewModel = responder(attendance, game = openGame().copy(status = status))
+
+            viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+            assertEquals(0, attendance.respondCalls)
+            assertNull(viewModel.state.value.response.status)
+        }
+        val closedGame = FakeAttendanceGateway()
+        val closed = responder(closedGame, game = sampleGame())
+
+        closed.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        assertEquals(0, closedGame.respondCalls)
+        assertNull(closed.state.value.response.status)
+        assertFalse(closed.state.value.response.responding)
+    }
+
+    @Test
+    fun respondChecksTheClockAgainBeforeCalling() = runTest {
+        val attendance = FakeAttendanceGateway(readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed)))
+        val soon = (Clock.System.now() + 2.seconds).toString()
+        val viewModel = responder(attendance, game = openGame().copy(confirmationDeadline = soon))
+        assertTrue(viewModel.state.value.header?.confirmationOpen == true)
+        assertTrue(viewModel.state.value.guest.enabled)
+
+        withContext(Dispatchers.Default) { delay(2.5.seconds) }
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Decline))
+
+        assertEquals(0, attendance.respondCalls)
+        assertFalse(viewModel.state.value.header?.confirmationOpen == true)
+        assertFalse(viewModel.state.value.guest.enabled)
+        assertEquals(GameGuestHint.Closed, viewModel.state.value.guest.hint)
+        assertEquals(AttendanceStatus.Confirmed, viewModel.state.value.response.status)
+        assertFalse(viewModel.state.value.response.failed)
+    }
+
+    @Test
+    fun aSecondAnswerWhileOneIsInFlightIsIgnored() = runTest {
+        val deferred = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway().also { it.respondDeferred = deferred }
+        val viewModel = responder(attendance)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+        assertTrue(viewModel.state.value.response.responding)
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Decline))
+
+        assertEquals(1, attendance.respondCalls)
+        assertEquals(AttendanceStatus.Confirmed, viewModel.state.value.response.status)
+
+        deferred.complete(mutation(AttendanceStatus.Confirmed))
+
+        assertFalse(viewModel.state.value.response.responding)
+        assertEquals(1, attendance.respondCalls)
+    }
+
+    @Test
+    fun someoneAlreadyInTheQueueCannotSendGoingAgainButCanLeave() = runTest {
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(
+                sampleAttendanceDetail().copy(ownAttendance = AttendanceEntry("me", AttendanceStatus.Waitlisted, 1L, 1)),
+            ),
+            respondResult = mutation(AttendanceStatus.Declined),
+        )
+        val viewModel = responder(attendance)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        assertEquals(0, attendance.respondCalls)
+        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.response.status)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Decline))
+
+        assertEquals(1, attendance.respondCalls)
+        assertEquals(AttendanceStatus.Declined, viewModel.state.value.response.status)
+    }
+
+    @Test
+    fun refreshWaitsWhileAnAnswerIsInFlight() = runTest {
+        val deferred = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway().also { it.respondDeferred = deferred }
+        val viewModel = responder(attendance)
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+        val readsBefore = attendance.readCalls
+
+        viewModel.onIntent(GameDetailIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        viewModel.onIntent(GameDetailIntent.Refresh)
+
+        assertEquals(readsBefore, attendance.readCalls)
+        assertTrue(viewModel.state.value.response.responding)
+    }
+
+    @Test
+    fun anAnswerThatArrivesAfterAFullReloadIsIgnored() = runTest {
+        val deferred = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway().also { it.respondDeferred = deferred }
+        val viewModel = responder(attendance)
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        viewModel.onIntent(GameDetailIntent.Retry)
+        deferred.complete(mutation(AttendanceStatus.Confirmed))
+
+        // A recarga trouxe o servidor como ele estava (sem resposta) e a resposta velha não a atropela.
+        assertNull(viewModel.state.value.response.status)
+        assertFalse(viewModel.state.value.response.responding)
+        assertEquals(2, attendance.rosterCalls)
+    }
+
     @Test
     fun staleGuestResultAfterAReloadIsIgnored() = runTest {
         val attendance = FakeAttendanceGateway(readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed)))
@@ -973,6 +1396,7 @@ private class FakeAttendanceGateway(
     var lastRemoveGuestHostId: String? = null
     var lastRemoveGuestSeq: Int? = null
     var promoteDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>? = null
+    var respondDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>? = null
     var capacityDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceCapacity, AttendanceError>>? = null
     var addGuestDeferred: CompletableDeferred<SaqzResult<AttendanceRosterMember, AttendanceError>>? = null
     var removeGuestDeferred: CompletableDeferred<SaqzResult<Unit, AttendanceError>>? = null
@@ -989,7 +1413,7 @@ private class FakeAttendanceGateway(
     ): SaqzResult<VersionedAttendanceMutation, AttendanceError> {
         respondCalls++
         lastResponse = command
-        return respondResult
+        return respondDeferred?.await() ?: respondResult
     }
 
     override suspend fun roster(

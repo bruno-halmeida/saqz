@@ -2,9 +2,12 @@ package br.com.saqz.groups.presentation.gamedetail
 
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.athlete.AthletePosition
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 
 /** 4c — detalhe do jogo. Roster nominal e contagens ausentes ficam vazios/nulos até o domínio expô-los. */
 @Immutable
@@ -32,6 +35,7 @@ data class GameDetailState(
     val savingCapacity: Boolean = false,
     val capacityFailed: Boolean = false,
     val guest: GameGuestUi = GameGuestUi(),
+    val response: GameDetailResponseUi = GameDetailResponseUi(),
 )
 @Immutable
 data class GameDetailHeaderUi(
@@ -46,6 +50,24 @@ data class GameDetailHeaderUi(
     val confirmationDeadlineWeekday: GroupWeekday? = null,
 )
 enum class GameDetailStatusTone { Draft, Published, Cancelled, Completed }
+
+/**
+ * A resposta de presença de quem olha ("Vou"/"Não vou"), no mesmo desenho do hero da Início e do
+ * grupo. Todo membro joga, então vale para qualquer papel; o prazo (`header.confirmationOpen`)
+ * fica no cabeçalho, que é de onde o convidado também o lê.
+ */
+@Immutable
+data class GameDetailResponseUi(
+    /** Só em jogo publicado. Rascunho, cancelado e encerrado não perguntam nada. */
+    val visible: Boolean = false,
+    /** `null` = sem resposta. */
+    val status: AttendanceStatus? = null,
+    /** Só preenchido em espera: o tipo muda a explicação e o texto do botão de sair. */
+    val waitlistKind: HomeWaitlistKind? = null,
+    val waitlistPosition: Long? = null,
+    val responding: Boolean = false,
+    val failed: Boolean = false,
+)
 
 @Immutable
 data class GameDetailAttendanceUi(
@@ -134,6 +156,8 @@ sealed interface GameDetailIntent {
      * foi promovido da fila chega sem reabrir o app.
      */
     data object Refresh : GameDetailIntent
+    /** "Vou" / "Não vou" (e "Sair da lista", que é um "Não vou"): a resposta de quem olha. */
+    data class Respond(val intent: AttendanceIntent) : GameDetailIntent
     data object Edit : GameDetailIntent
     data object OpenSettlement : GameDetailIntent
     data object RequestCancel : GameDetailIntent

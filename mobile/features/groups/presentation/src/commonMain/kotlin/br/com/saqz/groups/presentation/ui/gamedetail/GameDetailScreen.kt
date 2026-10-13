@@ -102,6 +102,7 @@ internal fun GameDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(metrics.grid * 2),
                 ) {
                     state.header?.let { GameDetailHeader(it) }
+                    state.header?.let { GameDetailResponse(it, state.response, onIntent) }
                     state.attendance?.let { GameDetailAttendance(it) }
                     GameGuestAction(state.guest, onIntent)
                     state.confirmedRoster.takeIf { it.isNotEmpty() }?.let {
@@ -141,12 +142,7 @@ private fun GameDetailHeader(header: GameDetailHeaderUi) {
             tone = header.statusTone.chipTone(),
         )
         Text(
-            stringResource(
-                Res.string.game_detail_confirmation_deadline,
-                header.confirmationDeadlineWeekday?.shortLabel()?.let {
-                    "$it, ${header.confirmationDeadline}"
-                } ?: header.confirmationDeadline,
-            ),
+            stringResource(Res.string.game_detail_confirmation_deadline, header.deadlineLabel()),
             color = colors.textSecondary,
             style = SaqzTheme.typography.support,
         )
@@ -170,6 +166,11 @@ private fun GameDetailHeader(header: GameDetailHeaderUi) {
         }
     }
 }
+/** "Qua, 17:30" quando o prazo cai noutro dia que o jogo; só a hora quando é no mesmo dia. */
+@Composable
+internal fun GameDetailHeaderUi.deadlineLabel(): String =
+    confirmationDeadlineWeekday?.shortLabel()?.let { "$it, $confirmationDeadline" } ?: confirmationDeadline
+
 @Composable
 private fun GameDetailAttendance(attendance: GameDetailAttendanceUi) {
     val colors = SaqzTheme.colors

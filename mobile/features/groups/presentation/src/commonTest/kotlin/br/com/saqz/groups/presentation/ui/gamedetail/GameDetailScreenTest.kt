@@ -3,17 +3,26 @@ package br.com.saqz.groups.presentation.ui.gamedetail
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.athlete.AthletePosition
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.group.PromotionMode
+import br.com.saqz.groups.presentation.gamedetail.GameDetailIntent
+import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseUi
 import br.com.saqz.groups.presentation.gamedetail.GameDetailState
 import br.com.saqz.groups.presentation.gamedetail.GameDetailStatusTone
 import br.com.saqz.groups.presentation.gamedetail.GameDetailWaitlistUi
+import br.com.saqz.groups.presentation.ui.home.HomeWaitlistTags
 import kotlin.test.Test
+import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class GameDetailScreenTest {
@@ -147,11 +156,167 @@ class GameDetailScreenTest {
     }
 
     @Test
-    fun `game detail does not render member response controls`() = runComposeUiTest {
+    fun `response block stays hidden when the state does not offer it`() = runComposeUiTest {
         setScreen(state = GameDetailPreviewData.admin.copy(isAdmin = false))
 
+        onAllNodesWithTag(GameDetailAttendanceTags.Block).assertCountEquals(0)
         onAllNodesWithText("Você vai jogar?").assertCountEquals(0)
         onAllNodesWithText("Confirmar presença automaticamente").assertCountEquals(0)
+    }
+
+    @Test
+    fun `published game without an answer shows going and not going`() = runComposeUiTest {
+        val intents = mutableListOf<GameDetailIntent>()
+        setScreen(state = GameDetailResponsePreviewData.memberPending, onIntent = intents::add)
+
+        onNodeWithTag(GameDetailAttendanceTags.Block).assertExists()
+        onNodeWithText("Você vai jogar?").assertExists()
+        onNodeWithTag(GameDetailAttendanceTags.Going).assertIsEnabled().performClick()
+        onNodeWithTag(GameDetailAttendanceTags.NotGoing).assertIsEnabled().performClick()
+
+        assertEquals<List<GameDetailIntent>>(
+            listOf(
+                GameDetailIntent.Respond(AttendanceIntent.Confirm),
+                GameDetailIntent.Respond(AttendanceIntent.Decline),
+            ),
+            intents,
+        )
+        // O convidado continua pedindo a resposta que o bloco acabou de oferecer.
+        onNodeWithText("Responda “Vou” para poder levar alguém.").assertExists()
+    }
+
+    @Test
+    fun `admin answers in the same place as the athlete`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.admin)
+
+        onNodeWithTag(GameDetailAttendanceTags.Going).assertExists()
+        onNodeWithTag(GameDetailAttendanceTags.NotGoing).assertExists()
+    }
+
+    @Test
+    fun `answered game swaps the buttons for the answer and change`() = runComposeUiTest {
+        val intents = mutableListOf<GameDetailIntent>()
+        setScreen(state = GameDetailResponsePreviewData.memberConfirmed, onIntent = intents::add)
+
+        onNodeWithText("Sua presença está confirmada.").assertExists()
+        onAllNodesWithTag(GameDetailAttendanceTags.Going).assertCountEquals(0)
+        onNodeWithTag(GameDetailAttendanceTags.Change).assertIsEnabled().performClick()
+        onNodeWithTag(GameDetailAttendanceTags.NotGoing).performClick()
+
+        assertEquals(listOf<GameDetailIntent>(GameDetailIntent.Respond(AttendanceIntent.Decline)), intents)
+    }
+
+    @Test
+    fun `declined game says so`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberDeclined)
+
+        onNodeWithText("Você não vai jogar.").assertExists()
+        onNodeWithTag(GameDetailAttendanceTags.Change).assertExists()
+    }
+
+    @Test
+    fun `waitlisted game shows the queue and only offers to leave`() = runComposeUiTest {
+        val intents = mutableListOf<GameDetailIntent>()
+        setScreen(state = GameDetailResponsePreviewData.memberReserva, onIntent = intents::add)
+
+        onNodeWithTag(HomeWaitlistTags.ReservaChip).assertExists()
+        onNodeWithText("Lista de espera · 3º").assertExists()
+        onAllNodesWithTag(HomeWaitlistTags.ReservaViewGame).assertCountEquals(0)
+        onAllNodesWithText("Ver o jogo").assertCountEquals(0)
+        onAllNodesWithTag(GameDetailAttendanceTags.Going).assertCountEquals(0)
+        onNodeWithTag(HomeWaitlistTags.ReservaLeave).assertIsEnabled().performClick()
+
+        assertEquals(listOf<GameDetailIntent>(GameDetailIntent.Respond(AttendanceIntent.Decline)), intents)
+    }
+
+    @Test
+    fun `avulso waitlist has no view game button either`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberAvulso)
+
+        onNodeWithTag(HomeWaitlistTags.AvulsoChip).assertExists()
+        onAllNodesWithTag(HomeWaitlistTags.AvulsoViewGame).assertCountEquals(0)
+        onNodeWithTag(HomeWaitlistTags.AvulsoLeave).assertExists()
+        onNodeWithText("Sair da lista").assertExists()
+    }
+
+    @Test
+    fun `closed confirmation disables the buttons and says why`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberClosed)
+
+        onNodeWithText("As confirmações estão encerradas.").assertExists()
+        onNodeWithTag(GameDetailAttendanceTags.Going).assertIsNotEnabled()
+        onNodeWithTag(GameDetailAttendanceTags.NotGoing).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `closed confirmation disables change`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberClosedConfirmed)
+
+        onNodeWithTag(GameDetailAttendanceTags.Change).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `open confirmation shows the deadline in the header and in the response card`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberPending)
+
+        onAllNodesWithText("Confirmações até 17h30").assertCountEquals(2)
+        onAllNodesWithText("As confirmações estão encerradas.").assertCountEquals(0)
+    }
+
+    @Test
+    fun `failed answer shows the warning`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberFailed)
+
+        onNodeWithTag(GameDetailAttendanceTags.Error).assertExists()
+        onNodeWithText("Não foi possível salvar sua resposta. Tente novamente.").assertExists()
+    }
+
+    @Test
+    fun `answer in flight blocks both buttons`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberResponding)
+
+        onNodeWithTag(GameDetailAttendanceTags.Change).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `draft game hides the block even if the state still carries an answer`() = runComposeUiTest {
+        setScreen(
+            state = GameDetailResponsePreviewData.memberPending.copy(
+                header = GameDetailPreviewData.header.copy(statusTone = GameDetailStatusTone.Draft),
+            ),
+        )
+
+        onAllNodesWithTag(GameDetailAttendanceTags.Block).assertCountEquals(0)
+        onAllNodesWithTag(GameDetailAttendanceTags.Going).assertCountEquals(0)
+    }
+
+    @Test
+    fun `cancelled game hides the block`() = runComposeUiTest {
+        setScreen(
+            state = GameDetailResponsePreviewData.memberConfirmed.copy(
+                header = GameDetailPreviewData.header.copy(statusTone = GameDetailStatusTone.Cancelled),
+            ),
+        )
+
+        onAllNodesWithTag(GameDetailAttendanceTags.Block).assertCountEquals(0)
+    }
+
+    @Test
+    fun `completed game hides the block`() = runComposeUiTest {
+        setScreen(
+            state = GameDetailResponsePreviewData.memberConfirmed.copy(
+                header = GameDetailPreviewData.header.copy(statusTone = GameDetailStatusTone.Completed),
+            ),
+        )
+
+        onAllNodesWithTag(GameDetailAttendanceTags.Block).assertCountEquals(0)
+    }
+
+    @Test
+    fun `a state that does not offer the answer hides the block on a published game`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberPending.copy(response = GameDetailResponseUi()))
+
+        onAllNodesWithTag(GameDetailAttendanceTags.Block).assertCountEquals(0)
     }
 
     @Test
@@ -177,6 +342,7 @@ class GameDetailScreenTest {
         cancelDialogOpen: Boolean = false,
         waitlist: List<GameDetailWaitlistUi> = GameDetailPreviewData.admin.waitlist,
         state: GameDetailState? = null,
+        onIntent: (GameDetailIntent) -> Unit = {},
     ) = setContent {
         SaqzTheme {
             GameDetailScreen(
@@ -187,7 +353,7 @@ class GameDetailScreenTest {
                     promotionMode = PromotionMode.FIFO,
                 ),
                 onBack = {},
-                onIntent = {},
+                onIntent = onIntent,
             )
         }
     }

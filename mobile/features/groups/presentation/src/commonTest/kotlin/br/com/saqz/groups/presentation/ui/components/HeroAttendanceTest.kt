@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -148,6 +149,23 @@ class HeroAttendanceTest {
     }
 
     @Test
+    fun withoutAViewGameActionTheWaitlistOnlyOffersToLeave() = runComposeUiTest {
+        val responses = mutableListOf<AttendanceIntent>()
+        setControls(
+            status = AttendanceStatus.Waitlisted,
+            waitlistKind = HomeWaitlistKind.AvulsoList,
+            onRespond = responses::add,
+            onViewGame = null,
+        )
+
+        onAllNodesWithTag(HomeWaitlistTags.AvulsoViewGame).assertCountEquals(0)
+        onAllNodesWithText("Ver o jogo").assertCountEquals(0)
+        onNodeWithTag(HomeWaitlistTags.AvulsoLeave).performClick()
+
+        assertEquals(listOf(AttendanceIntent.Decline), responses)
+    }
+
+    @Test
     fun alertLineComposesTheActionSlot() = runComposeUiTest {
         setContent {
             SaqzTheme {
@@ -169,7 +187,7 @@ class HeroAttendanceTest {
         waitlistKind: HomeWaitlistKind? = null,
         waitlistPosition: Long? = null,
         onRespond: (AttendanceIntent) -> Unit = {},
-        onViewGame: () -> Unit = {},
+        onViewGame: (() -> Unit)? = {},
     ) = setContent {
         SaqzTheme {
             Column {

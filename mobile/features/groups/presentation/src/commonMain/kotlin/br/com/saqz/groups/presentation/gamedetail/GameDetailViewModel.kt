@@ -1,9 +1,11 @@
 package br.com.saqz.groups.presentation.gamedetail
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
@@ -12,13 +14,17 @@ import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.attendance.AddGuestCommand
 import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
 import br.com.saqz.groups.domain.attendance.AttendanceDetail
+import br.com.saqz.groups.domain.attendance.AttendanceEntry
 import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
+import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
+import br.com.saqz.groups.domain.communication.NativeNotificationPort
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
@@ -30,6 +36,7 @@ import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -42,7 +49,7 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalUuidApi::class)
-@Suppress("LargeClass")
+@Suppress("LargeClass", "LongParameterList")
 class GameDetailViewModel(
     val groupId: String,
     val gameId: String,
@@ -50,12 +57,19 @@ class GameDetailViewModel(
     private val groupGateway: GroupGateway,
     private val attendanceGateway: AttendanceGateway,
     private val athleteGateway: AthleteGateway,
+    /** Resposta pelo app limpa o aviso das 24 h do jogo no aparelho; sem a porta (web, teste) não há o que limpar. */
+    private val notifications: NativeNotificationPort? = null,
 ) : MviViewModel<GameDetailState, GameDetailIntent, GameDetailEffect>(GameDetailState()) {
     private var loadGeneration = 0
     private var promotionGeneration = 0
     private var capacityGeneration = 0
+    private var responseGeneration = 0
     private var versionToken: GameVersionToken? = null
     private var selfId: String? = null
+
+    /** Do vínculo e do prazo carregados: o tipo da fila e a re-checagem do prazo no "Vou" dependem deles. */
+    private var membershipType: AthleteMembershipType? = null
+    private var confirmationDeadline: Instant? = null
 
     /**
      * Carga no ar. Só a recarga por baixo ([GameDetailIntent.Refresh]) é descartada por ela: o
@@ -91,13 +105,17 @@ class GameDetailViewModel(
             GameDetailIntent.DismissCapacitySheet -> if (!state.value.savingCapacity) {
                 update { it.copy(capacitySheetOpen = false, capacityFailed = false) }
             }
-            else -> onGuestIntent(intent)
+            else -> onAttendanceIntent(intent)
         }
     }
 
-    /** Ramos do convidado, extraídos para manter a complexidade ciclomática de [onIntent] no teto. */
-    private fun onGuestIntent(intent: GameDetailIntent): Boolean {
+    /**
+     * Ramos da presença de quem olha: a resposta e o convidado dela (que só habilita depois do "Vou").
+     * Extraídos para manter a complexidade ciclomática de [onIntent] no teto.
+     */
+    private fun onAttendanceIntent(intent: GameDetailIntent): Boolean {
         when (intent) {
+            is GameDetailIntent.Respond -> respond(intent.intent)
             GameDetailIntent.OpenGuestSheet -> if (state.value.guest.enabled) {
                 updateGuest { it.copy(sheetOpen = true, name = "", addFailed = false) }
             }
@@ -170,7 +188,7 @@ class GameDetailViewModel(
      */
     private val GameDetailState.busy: Boolean
         get() {
-            val writing = cancelling || publishing || savingCapacity || promotingMemberId != null
+            val writing = cancelling || publishing || savingCapacity || promotingMemberId != null || response.responding
             val interacting = cancelDialogOpen || capacitySheetOpen || guest.sheetOpen || guest.removal != null
             return writing || interacting || guest.adding || guest.removing
         }
@@ -189,6 +207,8 @@ class GameDetailViewModel(
         if (generation != loadGeneration) return
         val athletesResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
         if (generation != loadGeneration) return
+        val profileResult = athleteGateway.ownProfile()
+        if (generation != loadGeneration) return
         when {
             detailResult is SaqzResult.Failure -> showFailure(generation, detailResult.error.toUiError(), softRefresh)
             rosterResult is SaqzResult.Failure -> showFailure(generation, rosterResult.error.toUiError(), softRefresh)
@@ -198,14 +218,19 @@ class GameDetailViewModel(
                 val roster = (rosterResult as SaqzResult.Success).value
                 val athletes = (athletesResult as SaqzResult.Success).value.associateBy(AthleteRosterEntry::userId)
                 selfId = detail.ownAttendance?.memberId
-                val open = game.toHeader().confirmationOpen
-                val tone = game.toHeader().statusTone
+                // Só diz o tipo da fila de espera: sem o vínculo a explicação cai na da reserva.
+                membershipType = (profileResult as? SaqzResult.Success)?.value?.memberships
+                    ?.firstOrNull { it.groupId == GroupId(groupId) }?.membershipType
+                confirmationDeadline = runCatching { Instant.parse(game.confirmationDeadline) }.getOrNull()
+                val header = game.toHeader()
+                val open = header.confirmationOpen
+                val tone = header.statusTone
                 update {
                     it.copy(
                         isLoading = false,
                         loadFailed = false,
                         error = null,
-                        header = game.toHeader().copy(availableSpots = detail.availableSpots),
+                        header = header.copy(availableSpots = detail.availableSpots),
                         attendance = detail.toAttendance(),
                         confirmedRoster = roster.confirmed.map { member ->
                             member.toConfirmed(athletes[member.memberId], isAdmin, open, tone)
@@ -214,6 +239,7 @@ class GameDetailViewModel(
                             member.toWaitlist(athletes[member.memberId], isAdmin, open, tone)
                         },
                         guest = guestUi(game, detail, open, it.guest),
+                        response = responseUi(tone == GameDetailStatusTone.Published, detail.ownAttendance, roster, mensalistaPriority),
                         mensalistaPriority = mensalistaPriority,
                         promotionMode = promotionMode,
                         isAdmin = isAdmin,
@@ -363,9 +389,11 @@ class GameDetailViewModel(
             val rosterResult = attendanceGateway.roster(GroupId(groupId), gameId)
             val athletesResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
             if (!isCurrent(operation, generation, loadAtStart)) return@launch
+            // Depois do "Vou" a resposta já valeu e o placar já mudou: se só a lista falha, a tela fica como está.
+            val quiet = operation == Operation.Response
             when {
-                rosterResult is SaqzResult.Failure -> showFailure(loadAtStart, rosterResult.error.toUiError())
-                athletesResult is SaqzResult.Failure -> showFailure(loadAtStart, athletesResult.error.toUiError())
+                rosterResult is SaqzResult.Failure -> showFailure(loadAtStart, rosterResult.error.toUiError(), quiet)
+                athletesResult is SaqzResult.Failure -> showFailure(loadAtStart, athletesResult.error.toUiError(), quiet)
                 else -> {
                     val roster = (rosterResult as SaqzResult.Success).value
                     val athletes = (athletesResult as SaqzResult.Success).value.associateBy(AthleteRosterEntry::userId)
@@ -380,6 +408,7 @@ class GameDetailViewModel(
                             waitlist = roster.waitlisted.map { member ->
                                 member.toWaitlist(athletes[member.memberId], isAdmin, open, tone)
                             },
+                            response = it.response.reconcile(roster, it.mensalistaPriority),
                         )
                     }
                 }
@@ -391,9 +420,150 @@ class GameDetailViewModel(
         generation == when (operation) {
             Operation.Promotion -> promotionGeneration
             Operation.Capacity -> capacityGeneration
+            Operation.Response -> responseGeneration
         } && loadAtStart == loadGeneration
 
-    private enum class Operation { Promotion, Capacity }
+    private enum class Operation { Promotion, Capacity, Response }
+
+    /**
+     * "Vou"/"Não vou" de quem olha, com a mesma regra do hero da Início e do grupo: o status muda na
+     * hora (previsão) e o servidor tem a palavra final. Quem já está na fila só pode sair dela.
+     */
+    private fun respond(intent: AttendanceIntent) {
+        val current = state.value
+        val response = current.response
+        if (!current.canRespond(intent)) return
+        if (!deadlineIsOpen()) {
+            closeConfirmation()
+            return
+        }
+        val loadAtStart = loadGeneration
+        val generation = ++responseGeneration
+        val optimistic = current.optimisticStatus(intent)
+        update {
+            it.copy(
+                response = it.response.copy(
+                    status = optimistic,
+                    waitlistKind = if (optimistic == AttendanceStatus.Waitlisted) waitlistKind(it.mensalistaPriority) else null,
+                    waitlistPosition = if (optimistic == AttendanceStatus.Waitlisted) it.response.waitlistPosition else null,
+                    responding = true,
+                    failed = false,
+                ),
+            )
+        }
+        viewModelScope.launch {
+            val result = attendanceGateway.respond(
+                GroupId(groupId),
+                gameId,
+                SelfAttendanceCommand(Uuid.random().toString(), intent),
+            ).onSuccess {
+                SaqzAnalytics.attendanceAnswered("app", intent == AttendanceIntent.Confirm)
+                notifications?.dismissAttendance(gameId)
+            }
+            if (!isCurrent(Operation.Response, generation, loadAtStart)) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    val mutation = result.value.value
+                    selfId = mutation.attendance.memberId
+                    applyResponse(mutation.attendance, mutation.detail)
+                    refreshRoster(Operation.Response, generation, loadAtStart)
+                }
+                is SaqzResult.Failure -> {
+                    update { it.copy(response = response.copy(responding = false, failed = result.error != AttendanceError.Frozen)) }
+                    if (result.error == AttendanceError.DeadlinePassed || result.error == AttendanceError.Frozen) {
+                        closeConfirmation()
+                    }
+                }
+            }
+        }
+    }
+
+    /** Quem já está na fila só pode sair dela: um segundo "Vou" não muda nada no servidor. */
+    private fun GameDetailState.canRespond(intent: AttendanceIntent): Boolean {
+        val queuedAgain = response.status == AttendanceStatus.Waitlisted && intent == AttendanceIntent.Confirm
+        return response.visible && header?.confirmationOpen == true && !response.responding && !queuedAgain
+    }
+
+    /** O que a resposta aceita já traz: placar, vagas, a própria linha e o "Levar convidado" (só quem vai pode levar). */
+    private fun applyResponse(entry: AttendanceEntry, detail: AttendanceDetail) = update {
+        val open = it.header?.confirmationOpen == true
+        it.copy(
+            attendance = detail.toAttendance(),
+            header = it.header?.copy(availableSpots = detail.availableSpots),
+            response = responseUi(it.response.visible, entry, null, it.mensalistaPriority),
+            guest = it.guest.withAccess(open, going = entry.status != AttendanceStatus.Declined),
+        )
+    }
+
+    /** Prazo vencido (ou jogo congelado): os botões desabilitam e o convidado fecha junto. */
+    private fun closeConfirmation() = update {
+        it.copy(
+            header = it.header?.copy(confirmationOpen = false),
+            guest = it.guest.copy(enabled = false, hint = GameGuestHint.Closed),
+        )
+    }
+
+    /** Re-checa o relógio: o `confirmationOpen` do cabeçalho é de quando a tela carregou. */
+    private fun deadlineIsOpen(): Boolean = confirmationDeadline?.let { it > Clock.System.now() } ?: true
+
+    // Recusar é sempre recusa; quem já está confirmado continua; avulso sob prioridade de mensalista
+    // e jogo lotado caem na fila. O servidor confirma (mesma previsão do hero da Início).
+    private fun GameDetailState.optimisticStatus(intent: AttendanceIntent): AttendanceStatus = when {
+        intent == AttendanceIntent.Decline -> AttendanceStatus.Declined
+        response.status == AttendanceStatus.Confirmed -> AttendanceStatus.Confirmed
+        waitlistKind(mensalistaPriority) == HomeWaitlistKind.AvulsoList -> AttendanceStatus.Waitlisted
+        attendance?.let { it.confirmed >= it.capacity } == true -> AttendanceStatus.Waitlisted
+        else -> AttendanceStatus.Confirmed
+    }
+
+    /** Ponto único do tipo de espera, com a regra da Início: avulso + prioridade ⇒ lista do avulso. */
+    private fun waitlistKind(mensalistaPriority: Boolean): HomeWaitlistKind =
+        if (membershipType == AthleteMembershipType.AVULSO && mensalistaPriority) {
+            HomeWaitlistKind.AvulsoList
+        } else {
+            HomeWaitlistKind.Reserva
+        }
+
+    private fun responseUi(
+        published: Boolean,
+        own: AttendanceEntry?,
+        roster: AttendanceRoster?,
+        mensalistaPriority: Boolean,
+    ): GameDetailResponseUi {
+        val queued = own?.status == AttendanceStatus.Waitlisted
+        return GameDetailResponseUi(
+            visible = published,
+            status = own?.status,
+            waitlistKind = if (queued) waitlistKind(mensalistaPriority) else null,
+            waitlistPosition = if (queued) own.queuePosition(roster) else null,
+        )
+    }
+
+    private fun AttendanceEntry.queuePosition(roster: AttendanceRoster?): Long? = roster?.waitlisted
+        ?.indexOfFirst { !it.isGuest && it.memberId == memberId }
+        ?.takeIf { it >= 0 }
+        ?.let { it + 1L }
+        ?: waitlistPosition
+
+    /**
+     * A fila é do servidor: depois de uma lista nova, quem olha fica confirmado ou com a posição dele.
+     * Com a própria resposta em voo a lista é anterior a ela e não manda no status.
+     */
+    private fun GameDetailResponseUi.reconcile(roster: AttendanceRoster, mensalistaPriority: Boolean): GameDetailResponseUi {
+        val id = selfId
+        if (id == null || status == null || responding) return this
+        val position = roster.waitlisted.indexOfFirst { !it.isGuest && it.memberId == id }
+        return when {
+            roster.confirmed.any { !it.isGuest && it.memberId == id } ->
+                copy(status = AttendanceStatus.Confirmed, waitlistKind = null, waitlistPosition = null)
+            position >= 0 -> copy(
+                status = AttendanceStatus.Waitlisted,
+                waitlistKind = waitlistKind(mensalistaPriority),
+                waitlistPosition = position + 1L,
+            )
+            else -> this
+        }
+    }
     private fun cancel() {
         if (state.value.cancelling) return
         val token = versionToken ?: return
@@ -539,19 +709,23 @@ class GameDetailViewModel(
             detail.ownAttendance?.status == AttendanceStatus.Waitlisted
         return previous.copy(
             visible = game.status == GameStatus.Published,
-            enabled = open && going,
-            hint = when {
-                !open -> GameGuestHint.Closed
-                !going -> GameGuestHint.NeedAnswer
-                else -> GameGuestHint.Default
-            },
             feeLabel = game.gameFeeCents?.let(::formatBrl),
             sheetOpen = false,
             adding = false,
             removal = null,
             removing = false,
-        )
+        ).withAccess(open, going)
     }
+
+    /** O botão só habilita para quem já disse "Vou" (confirmado ou na fila), com as confirmações abertas. */
+    private fun GameGuestUi.withAccess(open: Boolean, going: Boolean) = copy(
+        enabled = open && going,
+        hint = when {
+            !open -> GameGuestHint.Closed
+            !going -> GameGuestHint.NeedAnswer
+            else -> GameGuestHint.Default
+        },
+    )
 
     private fun updateGuest(block: (GameGuestUi) -> GameGuestUi) = update { it.copy(guest = block(it.guest)) }
 

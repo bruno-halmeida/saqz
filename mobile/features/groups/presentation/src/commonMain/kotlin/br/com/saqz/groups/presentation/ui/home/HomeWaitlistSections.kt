@@ -145,7 +145,8 @@ internal fun HomeWaitlistInfoBox(kind: HomeWaitlistKind, modifier: Modifier = Mo
 
 /**
  * Ver o jogo (branco sólido) em cima, Sair (fantasma branco) embaixo; Sair desabilita com o
- * prazo encerrado, Ver o jogo continua habilitado — navegação, não resposta.
+ * prazo encerrado, Ver o jogo continua habilitado — navegação, não resposta. [onViewGame] nulo
+ * tira o botão: na própria tela do jogo ele levaria a lugar nenhum.
  */
 @Composable
 internal fun HomeWaitlistActions(
@@ -153,7 +154,7 @@ internal fun HomeWaitlistActions(
     responding: Boolean,
     confirmationOpen: Boolean,
     onLeave: () -> Unit,
-    onViewGame: () -> Unit,
+    onViewGame: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
@@ -169,18 +170,20 @@ internal fun HomeWaitlistActions(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
     ) {
-        SaqzButton(
-            label = viewLabel,
-            onClick = onViewGame,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag(viewTag)
-                .semantics { contentDescription = viewLabel },
-            variant = SaqzButtonVariant.Inverse,
-            size = SaqzButtonSize.Sm,
-            fullWidth = true,
-            enabled = !responding,
-        )
+        if (onViewGame != null) {
+            SaqzButton(
+                label = viewLabel,
+                onClick = onViewGame,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(viewTag)
+                    .semantics { contentDescription = viewLabel },
+                variant = SaqzButtonVariant.Inverse,
+                size = SaqzButtonSize.Sm,
+                fullWidth = true,
+                enabled = !responding,
+            )
+        }
         SaqzButton(
             label = leaveLabel,
             onClick = onLeave,

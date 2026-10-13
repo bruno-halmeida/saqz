@@ -118,6 +118,52 @@ class GameDetailScreenshotTest {
         GameDetailPreviewData.admin.copy(cancelDialogOpen = true, cancelFailed = true),
     )
 
+    // A resposta de presença na tela do jogo: um estado por cena, o convidado junto (ele depende da resposta).
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responsePending() = captureResponse("game-detail-response-pending", GameDetailResponsePreviewData.memberPending)
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responseConfirmed() = captureResponse("game-detail-response-confirmed", GameDetailResponsePreviewData.memberConfirmed)
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responseDeclined() = captureResponse("game-detail-response-declined", GameDetailResponsePreviewData.memberDeclined)
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responseWaitlistReserva() = captureResponse("game-detail-response-waitlist-reserva", GameDetailResponsePreviewData.memberReserva)
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responseWaitlistAvulso() = captureResponse("game-detail-response-waitlist-avulso", GameDetailResponsePreviewData.memberAvulso)
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responseResponding() = captureResponse("game-detail-response-responding", GameDetailResponsePreviewData.memberResponding)
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responseFailed() = captureResponse("game-detail-response-failed", GameDetailResponsePreviewData.memberFailed)
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responseClosed() = captureResponse("game-detail-response-closed", GameDetailResponsePreviewData.memberClosed)
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responseClosedConfirmed() = captureResponse(
+        "game-detail-response-closed-confirmed",
+        GameDetailResponsePreviewData.memberClosedConfirmed,
+    )
+
+    @Test
+    @Config(qualifiers = "+h1400dp")
+    fun responseAdmin() = captureResponse("game-detail-response-admin", GameDetailResponsePreviewData.admin)
+
+    private fun captureResponse(name: String, state: GameDetailState) = capture(name, state, directory = "game-detail-response")
+
     private fun capture(name: String, state: GameDetailState, directory: String = "vul-154") = capture(name, directory) {
         GameDetailScreen(state = state, onBack = {}, onIntent = {})
     }

@@ -163,7 +163,8 @@ internal fun HeroRosterRow(
  * Sem resposta é o momento do toque: "Vou" (lima) e "Não vou" (contorno) grandes. Depois de
  * respondido os botões somem e fica o painel com a resposta e "Alterar". Em espera entram o
  * chip, a caixa e as ações da fila (`HomeWaitlist*`, com as tags de `HomeWaitlistTags`, que as
- * duas telas compartilham). [responseFailed] acrescenta o aviso branco no fim.
+ * duas telas compartilham). [responseFailed] acrescenta o aviso branco no fim. [onViewGame] nulo
+ * tira o "Ver o jogo" da espera: a tela do jogo (terceiro uso) já é o jogo.
  *
  * É extensão de `ColumnScope` porque emite irmãos direto na coluna do `SaqzHeroCard`: o
  * espaço entre eles é o do hero.
@@ -177,7 +178,7 @@ internal fun ColumnScope.HeroAttendanceControls(
     waitlistKind: HomeWaitlistKind?,
     waitlistPosition: Long?,
     onRespond: (AttendanceIntent) -> Unit,
-    onViewGame: () -> Unit,
+    onViewGame: (() -> Unit)?,
     texts: HeroAttendanceTexts,
     tags: HeroAttendanceTags,
 ) {

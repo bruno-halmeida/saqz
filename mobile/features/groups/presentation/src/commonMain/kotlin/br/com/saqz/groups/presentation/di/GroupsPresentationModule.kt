@@ -103,7 +103,7 @@ fun groupsPresentationModule(): Module = module {
         val (groupId, gameId) = gameEditorRouteArguments(params)
         GameEditorViewModel(groupId, gameId, params.get(), get(), get(), get(), getOrNull())
     }
-    viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get(), get(), get()) }
+    viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get(), get(), get(), getOrNull()) }
     viewModel {
         GroupPhotoViewModel(
             profileGateway = get(),
