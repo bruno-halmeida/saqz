@@ -36,7 +36,10 @@ internal class WebAppComposition(
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
             // O próprio origin do web app também é um host confiável: a página de links manda
             // o iPhone para cá com o mesmo código na URL.
-            val links = WebLinkAdapter(allowedHosts = setOf(config.linksHost, window.location.host))
+            val links = WebLinkAdapter(
+                allowedHosts = setOf(config.linksHost, window.location.host),
+                linksHost = config.linksHost,
+            )
             val store = WebAccessStateStore()
             val photos = WebGroupPhotoAdapters()
             val profilePhoto = WebProfilePhotoAdapter(photos, scope)

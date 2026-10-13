@@ -16,6 +16,12 @@ plugins.withType<org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsPlugi
     the<org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec>().downloadBaseUrl.set(null as String?)
 }
 
+// O executável de teste leva o app inteiro e importa o skiko.mjs (Compose), que tenta carregar o skiko.wasm e
+// aborta no Node. O hook (src/wasmJsTest/node) troca só esse módulo por um vazio; as portas testadas não desenham.
+tasks.withType<org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest>().configureEach {
+    environment("NODE_OPTIONS", "--import=${layout.projectDirectory.file("src/wasmJsTest/node/stub-skiko.mjs").asFile.toURI()}")
+}
+
 kotlin {
     wasmJs {
         outputModuleName.set("saqz-web")
