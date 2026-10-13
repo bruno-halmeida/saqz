@@ -20,6 +20,7 @@ import br.com.saqz.groups.resources.home_admin_waiting_settle
 import br.com.saqz.groups.resources.home_admin_waiting_settle_meta
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.getString
 import kotlin.time.Instant
 
@@ -56,7 +57,7 @@ private suspend fun List<Charge>.toMonthlyRow(monthKey: String): GroupWaitingRow
     val open = filter { it.kind == ChargeKind.Monthly && it.month == monthKey }
     if (open.isEmpty()) return null
     val month = runCatching { LocalDate.parse("$monthKey-01") }.getOrNull()?.let { gameShortMonthLabel(it.month.ordinal + 1) }.orEmpty()
-    val title = getString(Res.string.home_admin_waiting_monthly, open.size)
+    val title = getPluralString(Res.plurals.home_admin_waiting_monthly, open.size, open.size)
     val meta = getString(Res.string.home_admin_waiting_monthly_meta, formatBrl(open.sumOf { it.amountCents }), month)
     return GroupWaitingRowUi(title = title, meta = meta, contentDescription = "$title. $meta", count = open.size)
 }
@@ -71,14 +72,16 @@ private suspend fun List<Game>.toSettleRow(pending: List<Charge>, reviewingGameI
     val open = dayCharges.filter { it.gameId == game.id }
     val date = startsAt.toLocalDateTime(gameTimeZone(game.zoneId)).date.gameDateLabel()
     val title = getString(Res.string.home_admin_waiting_settle, date)
-    val meta = getString(Res.string.home_admin_waiting_settle_meta, open.size, formatBrl(open.sumOf { it.amountCents }))
+    val meta = getPluralString(
+        Res.plurals.home_admin_waiting_settle_meta, open.size, open.size, formatBrl(open.sumOf { it.amountCents }),
+    )
     return GroupSettleRowUi(gameId = game.id, title = title, meta = meta, contentDescription = "$title. $meta")
 }
 
 private suspend fun List<GroupEntryRequest>.toEntryRequestsRow(): GroupWaitingRowUi? {
     if (isEmpty()) return null
     val names = map { it.displayName }
-    val title = getString(Res.string.home_admin_waiting_entry_requests, size)
+    val title = getPluralString(Res.plurals.home_admin_waiting_entry_requests, size, size)
     val meta = when (size) {
         1 -> names.single()
         2 -> getString(Res.string.group_details_names_two, names[0], names[1])

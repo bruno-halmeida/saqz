@@ -58,6 +58,7 @@ import br.com.saqz.groups.resources.home_waitlist_section_confirmed_action
 import br.com.saqz.groups.resources.home_waitlist_section_queue
 import br.com.saqz.groups.resources.home_waitlist_view_game
 import br.com.saqz.groups.resources.home_waitlist_you
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object HomeWaitlistTags {
@@ -271,7 +272,7 @@ internal fun HomeWaitlistUpsellCard(modifier: Modifier = Modifier) {
 @Composable
 internal fun HomeWaitlistPositionLine(position: Long, confirmedCount: Int, modifier: Modifier = Modifier) {
     Text(
-        text = stringResource(Res.string.home_waitlist_avulso_position, position.toInt(), confirmedCount),
+        text = pluralStringResource(Res.plurals.home_waitlist_avulso_position, confirmedCount, position.toInt(), confirmedCount),
         style = SaqzTheme.typography.support,
         color = SaqzTheme.colors.textSecondary,
         modifier = modifier.fillMaxWidth(),

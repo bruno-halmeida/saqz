@@ -11,6 +11,8 @@ data class GroupTrialAccessInfo(
     val planActive: Boolean = false,
     /** O teste do organizador acabou e não há plano: distingue "teste terminou" de "plano inativo". */
     val trialEnded: Boolean = false,
+    /** Dias do teste em curso; `null` quando o grupo não está em teste (plano pago, vencido). */
+    val activeTrialDays: Int? = null,
 )
 
 fun interface GroupTrialAccessPort {

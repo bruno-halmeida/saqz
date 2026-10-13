@@ -309,6 +309,14 @@ class GroupHeroBlockTest {
     }
 
     @Test
+    fun firstGameHeroSaysTheTrialHasStarted() = runComposeUiTest {
+        setDetailsScreen(GroupHeroPreviewData.adminFirstGame.copy(trialDays = 14), onboardingGroup = true)
+
+        onNodeWithText("Grupo criado!").assertExists()
+        onNodeWithText("Seus 14 dias grátis começaram.", substring = true).assertExists()
+    }
+
+    @Test
     fun secondGroupHasNoGuideEvenWhenBrandNew() = runComposeUiTest {
         setDetailsScreen(GroupHeroPreviewData.adminFirstGame)
 

@@ -38,6 +38,8 @@ data class GroupDetailsState(
     val responseFailed: Boolean = false,
     /** O organizador está sem plano: o aviso próprio substitui o "Tente novamente". */
     val responsePlanPaused: Boolean = false,
+    /** A resposta falhou por falta de rede ("Sem conexão. Sua resposta não foi enviada."). */
+    val responseOffline: Boolean = false,
     val rosterStale: Boolean = false,
     val rosterRefreshing: Boolean = false,
     val membershipType: AthleteMembershipType? = null,
@@ -53,6 +55,8 @@ data class GroupDetailsState(
     val notificationFailed: Boolean = false,
     val notifiedCount: String? = null,
     val onboarding: GroupOnboarding? = null,
+    /** Dias do teste grátis em curso (só dono); alimenta o "Grupo criado!" do primeiro grupo. */
+    val trialDays: Int? = null,
     val athleteIntroVisible: Boolean = false,
     val athleteShareFailed: Boolean = false,
     /** Há loja do app para oferecer a quem respondeu pelo navegador (só no web app, Android). */

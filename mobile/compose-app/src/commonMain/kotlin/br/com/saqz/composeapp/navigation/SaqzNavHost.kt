@@ -1022,9 +1022,10 @@ internal fun SaqzNavHost(
                             // Fim do teste: leva à mesma tela de planos do diálogo de assinatura.
                             openSubscriptionPlans()
                         } else if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.CHARGE ||
-                            effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.FIRST_MEMBER
+                            effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.FIRST_MEMBER ||
+                            effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.AUTO_CONFIRMATION
                         ) {
-                            // Cobrança e "primeiro atleta" não têm jogo: abrem o grupo (o detalhe mostra a galera).
+                            // Cobrança, "primeiro atleta" e confirmação automática não têm jogo: abrem o grupo.
                             backStack.add(GroupsRoute.Details(effect.groupId))
                         } else if (effect.gameId != null) backStack.add(GroupsRoute.GameDetail(effect.groupId, effect.gameId!!))
                         else backStack.add(GroupsRoute.Thread(

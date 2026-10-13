@@ -39,6 +39,7 @@ import br.com.saqz.groups.resources.home_admin_score_out
 import br.com.saqz.groups.resources.home_admin_score_pending
 import br.com.saqz.groups.resources.home_admin_score_waiting
 import br.com.saqz.groups.resources.home_admin_score_value
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /** `testTag` das quatro colunas do placar: cada tela responde pelo próprio inventário. */
@@ -87,7 +88,7 @@ internal fun AttendanceScoreBoard(
             value = going,
             label = stringResource(Res.string.home_admin_score_going),
             color = colors.accent,
-            contentDescription = stringResource(Res.string.home_admin_cd_score_going, going),
+            contentDescription = pluralStringResource(Res.plurals.home_admin_cd_score_going, going, going),
             modifier = Modifier.testTag(tags.going),
         )
         ScoreDivider()
@@ -95,7 +96,7 @@ internal fun AttendanceScoreBoard(
             value = out,
             label = stringResource(Res.string.home_admin_score_out),
             color = colors.onPrimary.copy(alpha = ScoreOutAlpha),
-            contentDescription = stringResource(Res.string.home_admin_cd_score_out, out),
+            contentDescription = pluralStringResource(Res.plurals.home_admin_cd_score_out, out, out),
             modifier = Modifier.testTag(tags.out),
         )
         ScoreDivider()
@@ -112,7 +113,7 @@ internal fun AttendanceScoreBoard(
             value = pending,
             label = stringResource(Res.string.home_admin_score_pending),
             color = colors.warning,
-            contentDescription = stringResource(Res.string.home_admin_cd_score_pending, pending),
+            contentDescription = pluralStringResource(Res.plurals.home_admin_cd_score_pending, pending, pending),
             modifier = Modifier.testTag(tags.pending),
         )
     }

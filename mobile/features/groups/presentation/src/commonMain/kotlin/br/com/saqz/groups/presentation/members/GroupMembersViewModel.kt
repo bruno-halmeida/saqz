@@ -278,7 +278,7 @@ private fun AthleteRosterEntry.toUi(
 
 private fun br.com.saqz.groups.domain.athlete.AthletePosition.label(): String = when (this) {
     br.com.saqz.groups.domain.athlete.AthletePosition.LIBERO -> "Líbero"
-    br.com.saqz.groups.domain.athlete.AthletePosition.PONTA -> "Ponta"
+    br.com.saqz.groups.domain.athlete.AthletePosition.PONTA -> "Ponteiro"
     br.com.saqz.groups.domain.athlete.AthletePosition.CENTRAL -> "Central"
     br.com.saqz.groups.domain.athlete.AthletePosition.OPOSTO -> "Oposto"
     br.com.saqz.groups.domain.athlete.AthletePosition.LEVANTADOR -> "Levantador"

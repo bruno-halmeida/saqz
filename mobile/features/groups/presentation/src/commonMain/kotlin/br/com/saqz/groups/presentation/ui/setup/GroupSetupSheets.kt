@@ -47,6 +47,7 @@ import br.com.saqz.groups.resources.group_setup_modality_hint
 import br.com.saqz.groups.resources.group_setup_modality_label
 import br.com.saqz.groups.resources.group_slot_save
 import br.com.saqz.groups.resources.group_slot_title
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 private const val SoftTintAlpha = 0.1f
@@ -177,7 +178,7 @@ private fun GroupDeleteSheet(
             color = colors.textPrimary,
         )
         Text(
-            text = stringResource(Res.string.group_delete_body, memberCount),
+            text = pluralStringResource(Res.plurals.group_delete_body, memberCount, memberCount),
             style = SaqzTheme.typography.body,
             color = colors.textSecondary,
         )

@@ -70,6 +70,7 @@ import br.com.saqz.groups.resources.game_detail_title
 import br.com.saqz.groups.resources.game_detail_you
 import br.com.saqz.groups.resources.game_settlement_open
 import br.com.saqz.groups.resources.group_details_pending
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 internal object GameDetailTags {
     const val Screen = "game-detail"
@@ -159,7 +160,7 @@ private fun GameDetailHeader(header: GameDetailHeaderUi) {
                 style = SaqzTheme.typography.support,
             )
             Text(
-                stringResource(Res.string.game_detail_spots, header.availableSpots),
+                pluralStringResource(Res.plurals.game_detail_spots, header.availableSpots, header.availableSpots),
                 color = colors.textSecondary,
                 style = SaqzTheme.typography.support,
             )
@@ -176,8 +177,9 @@ private fun GameDetailAttendance(attendance: GameDetailAttendanceUi) {
     val colors = SaqzTheme.colors
     SaqzCard {
         Text(
-            stringResource(
-                Res.string.game_detail_confirmed_summary,
+            pluralStringResource(
+                Res.plurals.game_detail_confirmed_summary,
+                attendance.availableSpots,
                 attendance.confirmed,
                 attendance.capacity,
                 attendance.availableSpots,
@@ -237,6 +239,7 @@ private fun GameDetailConfirmedList(
                 } else {
                     person.name
                 },
+                avatarName = person.name,
                 modifier = person.guest?.let { Modifier.testTag(GameGuestTags.row(person.id)) } ?: Modifier,
                 meta = person.guest?.metaLabel(feeLabel, confirmed = true) ?: stringResource(person.position.positionResource()),
                 photo = person.guest?.let { { GameGuestAvatar() } },

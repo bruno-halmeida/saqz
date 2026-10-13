@@ -18,6 +18,8 @@ data class HomeState(
     val responseFailed: Boolean = false,
     /** O organizador está sem plano: o aviso próprio substitui o "Tente novamente". */
     val responsePlanPaused: Boolean = false,
+    /** A resposta falhou por falta de rede ("Sem conexão. Sua resposta não foi enviada."). */
+    val responseOffline: Boolean = false,
     val toast: HomeToast? = null,
     /**
      * VUL-202 — o que **o usuário deve**. Fora de [HomeMemberUi] porque o aviso do shell lê

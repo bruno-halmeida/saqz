@@ -24,28 +24,13 @@ import org.junit.Assert.assertEquals
 @Config(sdk = [35], qualifiers = RobolectricDeviceQualifiers.Pixel7, application = Application::class)
 class TrialEntryScreenshotTest {
     @get:Rule val compose = createComposeRule()
-    @Test fun trialConsentStatesAndActions() {
+    @Test fun trialEntryStatesAndActions() {
         val state = mutableStateOf(TrialEntryState())
         val intents = mutableListOf<TrialEntryIntent>()
         compose.setContent { SaqzTheme { TrialEntryScreen(state.value, intents::add, {}, {}) } }
         capture("loading")
         val access = TrialAccess(TrialStatus.Available, null, null, "2026-09-15T12:00:00Z",
             false, true, 3, null, true, null, canRedeemCoupon = true)
-        compose.runOnIdle { state.value = TrialEntryState(loading = false, access = access) }
-        compose.onNodeWithText("14 dias grátis").assertExists()
-        compose.onNodeWithText("EXPERIMENTE O ORGANIZADOR").assertExists()
-        compose.onNodeWithText("Até 3 grupos · atletas ilimitados").assertExists()
-        compose.onNodeWithTag(TrialEntryTags.Code).assertDoesNotExist()
-        compose.onNodeWithTag(TrialEntryTags.Apply).assertDoesNotExist()
-        compose.onNodeWithTag(TrialEntryTags.Refresh).assertDoesNotExist()
-        compose.onNodeWithTag(TrialEntryTags.Continue).performClick()
-        assertEquals(listOf<TrialEntryIntent>(TrialEntryIntent.Continue), intents)
-        capture("public-14-days")
-        compose.onNodeWithText("E depois do teste?").performScrollTo()
-        capture("trial-terms")
-        compose.runOnIdle { state.value = state.value.copy(loading = true) }
-        compose.onNodeWithTag(TrialEntryTags.Continue).assertIsNotEnabled()
-        capture("accepting")
         compose.runOnIdle { state.value = TrialEntryState(loading = false, failure = TrialEntryFailure.Load) }
         compose.onNodeWithTag(TrialEntryTags.Error).assertExists()
         compose.onNodeWithTag(TrialEntryTags.Refresh).performClick()
@@ -53,12 +38,9 @@ class TrialEntryScreenshotTest {
         capture("network-error")
         compose.runOnIdle { state.value = TrialEntryState(loading = false, access = access.copy(
             status = TrialStatus.Ineligible, canCreateGroup = false, offerMode = "COUPON_ONLY")) }
-        compose.onNodeWithTag(TrialEntryTags.Code).assertDoesNotExist()
-        compose.onNodeWithTag(TrialEntryTags.Continue).assertDoesNotExist()
+        compose.onNodeWithText("EXPERIMENTE O ORGANIZADOR").assertDoesNotExist()
+        compose.onNodeWithTag(TrialEntryTags.Refresh).assertExists()
         capture("web-access-required")
-        compose.runOnIdle { state.value = TrialEntryState(loading = false, access = access.copy(trialDays = 45)) }
-        compose.onNodeWithText("45 dias grátis").assertExists()
-        capture("custom-duration")
     }
     private fun capture(name:String) {
         compose.waitForIdle()

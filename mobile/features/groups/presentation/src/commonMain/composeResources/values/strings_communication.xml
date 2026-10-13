@@ -22,7 +22,6 @@
     <string name="communication_open">Abrir</string>
     <string name="communication_unread">Não lida</string>
     <string name="communication_inbox_empty">Nenhuma notificação.</string>
-    <string name="communication_reminded">Lembrete enviado no Saqz para %1$s pessoa(s).</string>
     <string name="communication_channel_app">No app</string>
     <string name="communication_channel_push">Push</string>
     <string name="communication_channel_whatsapp">WhatsApp</string>

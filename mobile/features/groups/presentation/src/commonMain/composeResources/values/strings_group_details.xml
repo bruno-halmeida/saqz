@@ -3,6 +3,10 @@
     <!-- Detalhe do grupo novo · hero sem jogo -->
     <string name="group_details_hero_empty_admin">Marque o próximo e a galera confirma em um toque.</string>
     <string name="group_details_hero_first_title">Grupo criado!</string>
+    <plurals name="group_details_hero_first_trial_body">
+        <item quantity="one">Seu %1$d dia grátis começou. Vamos marcar o primeiro jogo? Defina data, local e vagas — depois é só chamar a galera.</item>
+        <item quantity="other">Seus %1$d dias grátis começaram. Vamos marcar o primeiro jogo? Defina data, local e vagas — depois é só chamar a galera.</item>
+    </plurals>
     <string name="group_details_hero_first_body">Vamos marcar o primeiro jogo? Defina data, local e vagas — depois é só chamar a galera.</string>
     <!-- Detalhe do grupo novo · minhas cobranças -->
     <string name="group_details_own_charges_history_show">Ver histórico (%1$d)</string>

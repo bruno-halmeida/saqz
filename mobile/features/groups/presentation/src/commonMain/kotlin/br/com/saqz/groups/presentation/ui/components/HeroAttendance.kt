@@ -35,6 +35,9 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
+import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.home_response_offline
+import org.jetbrains.compose.resources.stringResource
 import br.com.saqz.groups.presentation.ui.home.HomeWaitlistActions
 import br.com.saqz.groups.presentation.ui.home.HomeWaitlistChip
 import br.com.saqz.groups.presentation.ui.home.HomeWaitlistInfoBox
@@ -185,6 +188,8 @@ internal fun ColumnScope.HeroAttendanceControls(
     texts: HeroAttendanceTexts,
     tags: HeroAttendanceTags,
     lateNotice: String? = null,
+    /** A resposta falhou por falta de rede: o aviso diz isso em vez do erro genérico. */
+    responseOffline: Boolean = false,
 ) {
     when {
         status == AttendanceStatus.Waitlisted -> {
@@ -231,7 +236,10 @@ internal fun ColumnScope.HeroAttendanceControls(
         )
     }
     if (responseFailed) {
-        HeroAlertLine(text = texts.error, tag = tags.error)
+        HeroAlertLine(
+            text = if (responseOffline) stringResource(Res.string.home_response_offline) else texts.error,
+            tag = tags.error,
+        )
     }
 }
 

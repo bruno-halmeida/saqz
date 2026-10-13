@@ -54,7 +54,7 @@ class OwnProfileScreenshotTest {
     @Test
     fun athleteAccountHidesReceipts() = capture(
         "perfil-7a-conta-atleta",
-        OwnProfilePreviewData.filled.copy(groups = OwnProfilePreviewData.filled.groups.map { it.copy(details = "Ponta") }),
+        OwnProfilePreviewData.filled.copy(groups = OwnProfilePreviewData.filled.groups.map { it.copy(details = "Ponteiro") }),
         showAccount = true,
     )
 

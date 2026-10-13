@@ -2,7 +2,6 @@
 <resources>
     <string name="invite_landing_title">Convite recebido</string>
     <string name="invite_landing_eyebrow">Você foi convidado</string>
-    <string name="invite_landing_members">%1$d membros</string>
     <string name="invite_landing_schedule_empty">Sem dia regular informado</string>
     <string name="invite_landing_invited_by">Convite de %1$s</string>
     <string name="invite_landing_next_game">Próximo jogo</string>

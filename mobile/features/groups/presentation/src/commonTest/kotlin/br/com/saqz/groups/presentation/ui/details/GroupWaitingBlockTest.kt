@@ -75,8 +75,8 @@ class GroupWaitingBlockTest {
         val nobodyPending = GroupDetailsPreviewData.attendance.copy(pending = 0)
         setDetailsScreen(GroupWaitingPreviewData.notified.copy(attendance = nobodyPending))
 
-        onNodeWithText("Lembrete enviado no Saqz para 2 pessoa(s).").assertExists()
-        onNodeWithTag(GroupDetailsTags.WaitingQuorum).assertTextContains("Lembrete enviado no Saqz para 2 pessoa(s).")
+        onNodeWithText("Lembrete enviado no Saqz para 2 pessoas.").assertExists()
+        onNodeWithTag(GroupDetailsTags.WaitingQuorum).assertTextContains("Lembrete enviado no Saqz para 2 pessoas.")
         onAllNodesWithTag(GroupDetailsTags.NotifyPending).assertCountEquals(0)
     }
 

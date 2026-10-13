@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Contagens: um plural por frase, para "1 vaga" / "2 vagas" não depender de quem escreve a tela. -->
+    <plurals name="communication_reminded">
+        <item quantity="one">Lembrete enviado no Saqz para %1$d pessoa.</item>
+        <item quantity="other">Lembrete enviado no Saqz para %1$d pessoas.</item>
+    </plurals>
+    <plurals name="game_detail_spots">
+        <item quantity="one">%1$d vaga</item>
+        <item quantity="other">%1$d vagas</item>
+    </plurals>
+    <plurals name="game_detail_confirmed_summary">
+        <item quantity="one">%1$d de %2$d confirmados · %3$d vaga aberta</item>
+        <item quantity="other">%1$d de %2$d confirmados · %3$d vagas abertas</item>
+    </plurals>
+    <plurals name="home_spots_left">
+        <item quantity="one">Resta %1$d vaga</item>
+        <item quantity="other">Restam %1$d vagas</item>
+    </plurals>
+    <plurals name="home_group_people">
+        <item quantity="one">%1$d pessoa</item>
+        <item quantity="other">%1$d pessoas</item>
+    </plurals>
+    <plurals name="home_group_games_played">
+        <item quantity="one">%1$d jogo realizado</item>
+        <item quantity="other">%1$d jogos realizados</item>
+    </plurals>
+    <plurals name="home_admin_groups">
+        <item quantity="one">%1$d grupo</item>
+        <item quantity="other">%1$d grupos</item>
+    </plurals>
+    <plurals name="home_admin_things_waiting">
+        <item quantity="one">%1$d coisa esperando você</item>
+        <item quantity="other">%1$d coisas esperando você</item>
+    </plurals>
+    <plurals name="home_waitlist_avulso_position">
+        <item quantity="one">%1$dº na lista · %2$d confirmado</item>
+        <item quantity="other">%1$dº na lista · %2$d confirmados</item>
+    </plurals>
+    <plurals name="home_upcoming_row_meta">
+        <item quantity="one">%1$s · %2$d confirmado</item>
+        <item quantity="other">%1$s · %2$d confirmados</item>
+    </plurals>
+    <plurals name="home_admin_cd_score_going">
+        <item quantity="one">%1$d confirmado</item>
+        <item quantity="other">%1$d confirmados</item>
+    </plurals>
+    <plurals name="home_admin_cd_score_out">
+        <item quantity="one">%1$d não vai</item>
+        <item quantity="other">%1$d não vão</item>
+    </plurals>
+    <plurals name="home_admin_cd_score_pending">
+        <item quantity="one">%1$d pendente</item>
+        <item quantity="other">%1$d pendentes</item>
+    </plurals>
+    <plurals name="home_admin_waiting_entry_requests">
+        <item quantity="one">%1$d pedido para entrar</item>
+        <item quantity="other">%1$d pedidos para entrar</item>
+    </plurals>
+    <plurals name="home_admin_waiting_monthly">
+        <item quantity="one">%1$d mensalidade a receber</item>
+        <item quantity="other">%1$d mensalidades a receber</item>
+    </plurals>
+    <plurals name="home_admin_cd_waiting_entry_requests">
+        <item quantity="one">%1$d pedido para entrar em %2$s</item>
+        <item quantity="other">%1$d pedidos para entrar em %2$s</item>
+    </plurals>
+    <plurals name="home_admin_cd_waiting_monthly">
+        <item quantity="one">%1$d mensalidade a receber em %2$s</item>
+        <item quantity="other">%1$d mensalidades a receber em %2$s</item>
+    </plurals>
+    <plurals name="home_admin_waiting_settle_meta">
+        <item quantity="one">%1$d avulso · %2$s a receber</item>
+        <item quantity="other">%1$d avulsos · %2$s a receber</item>
+    </plurals>
+    <plurals name="group_delete_body">
+        <item quantity="one">O %1$d membro perde o acesso e o histórico de jogos, avisos e caixa do grupo somem. Isso não pode ser desfeito.</item>
+        <item quantity="other">Os %1$d membros perdem o acesso e o histórico de jogos, avisos e caixa do grupo somem. Isso não pode ser desfeito.</item>
+    </plurals>
+    <plurals name="invite_landing_members">
+        <item quantity="one">%1$d membro</item>
+        <item quantity="other">%1$d membros</item>
+    </plurals>
+    <plurals name="member_editor_joined">
+        <item quantity="one">No grupo desde %1$s · %2$d jogo</item>
+        <item quantity="other">No grupo desde %1$s · %2$d jogos</item>
+    </plurals>
+</resources>

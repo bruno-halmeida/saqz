@@ -52,6 +52,10 @@ fun GameError.toUiError(): GroupUiError = when (this) {
     is GameError.Data -> error.toUiError()
 }
 
+/** Sem rede de verdade (falha de conexão ou tempo esgotado): a resposta de presença não saiu do aparelho. */
+fun AttendanceError.isOffline(): Boolean =
+    this is AttendanceError.Data && (error == DataError.Connectivity || error == DataError.Timeout)
+
 fun HomeError.toUiError(): GroupUiError = when (this) {
     is HomeError.Data -> error.toUiError()
 }

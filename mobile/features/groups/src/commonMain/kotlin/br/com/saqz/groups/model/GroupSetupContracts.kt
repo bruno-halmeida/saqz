@@ -47,7 +47,7 @@ data class GroupSetupForm(
     val monthlyDueDay: Int? = null,
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionMode = PromotionMode.FIFO,
-    val autoConfirmEnabled: Boolean = true,
+    val autoConfirmEnabled: Boolean = false,
 ) {
     fun cleaned(): GroupSetupForm = copy(
         name = name.trim(),

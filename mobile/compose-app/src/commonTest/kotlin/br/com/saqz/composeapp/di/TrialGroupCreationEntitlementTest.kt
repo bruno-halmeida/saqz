@@ -76,12 +76,10 @@ class TrialGroupCreationEntitlementTest {
             ))
             entry.onIntent(TrialEntryIntent.Refresh)
             assertTrue(entry.state.value.access?.canRedeemCoupon == true)
-            assertFalse(entry.state.value.canContinue)
             assertFalse(entry.state.value.ready)
             gateway.result = SaqzResult.Success(access(TrialStatus.Ineligible, false).copy(offerMode = "OFF"))
             entry.onIntent(TrialEntryIntent.Refresh)
             assertEquals("OFF", entry.state.value.access?.offerMode)
-            assertFalse(entry.state.value.canContinue)
             assertFalse(entry.state.value.ready)
         } finally {
             Dispatchers.resetMain()

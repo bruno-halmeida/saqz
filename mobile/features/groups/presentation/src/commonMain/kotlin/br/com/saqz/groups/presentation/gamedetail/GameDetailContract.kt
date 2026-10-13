@@ -71,6 +71,8 @@ data class GameDetailResponseUi(
     val failed: Boolean = false,
     /** O organizador está sem plano: o aviso próprio substitui o "Tente novamente". */
     val planPaused: Boolean = false,
+    /** Falhou por falta de rede ("Sem conexão. Sua resposta não foi enviada."). */
+    val offline: Boolean = false,
 )
 
 @Immutable

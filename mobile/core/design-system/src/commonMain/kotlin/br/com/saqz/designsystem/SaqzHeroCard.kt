@@ -2,10 +2,13 @@ package br.com.saqz.designsystem
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -38,6 +41,7 @@ import org.jetbrains.compose.resources.painterResource
  * Reason: redesenho da Home aprovado pelo usuário em 2026-09-16 (VUL-217). O
  * `SaqzGameSummaryCard` do export continua intacto para o detalhe do grupo e o convite.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SaqzHeroCard(
     kicker: String,
@@ -45,12 +49,15 @@ fun SaqzHeroCard(
     modifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
     meta: String? = null,
+    /** Quando presente, o cartão inteiro é tocável (os botões de dentro continuam com o próprio toque). */
+    onClick: (() -> Unit)? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     val shape = RoundedCornerShape(metrics.blockRadius)
-    Box(modifier = modifier.fillMaxWidth().clip(shape).background(colors.primary, shape)) {
+    val tap = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+    Box(modifier = modifier.fillMaxWidth().clip(shape).background(colors.primary, shape).then(tap)) {
         // Marca d'água antes do conteúdo: quem vem depois desenha por cima dela.
         Image(
             painter = painterResource(Res.drawable.saqz_volleyball),
@@ -67,13 +74,15 @@ fun SaqzHeroCard(
             modifier = Modifier.fillMaxWidth().padding(HERO_PADDING),
             verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
         ) {
-            Row(
+            // FlowRow: com fonte grande o chip desce para a linha de baixo em vez de espremer o kicker
+            // (que quebrava letra a letra); em fonte normal segue o kicker à esquerda e o chip à direita.
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(metrics.grid),
-                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = Arrangement.spacedBy(metrics.grid),
+                itemVerticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(
-                    modifier = Modifier.weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(HERO_DOT_GAP),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

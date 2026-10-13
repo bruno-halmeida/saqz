@@ -20,7 +20,7 @@ internal suspend fun List<Game>.nextGroupCardGame(role: GroupRole, now: Instant)
     val game = next.first
     val local = next.second.toLocalDateTime(TimeZone.of(game.zoneId))
     val date = "${local.day.twoDigits()}/${(local.month.ordinal + 1).twoDigits()}"
-    val time = "${local.hour.twoDigits()}:${local.minute.twoDigits()}"
+    val time = "${local.hour.twoDigits()}h${local.minute.twoDigits()}"
     return GroupCardGameUi(
         label = getString(Res.string.groups_next_game_summary, date, time, game.confirmedCount, game.capacity),
         // The games endpoint has counts, but does not return the user's attendance.

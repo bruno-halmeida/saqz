@@ -414,7 +414,7 @@ class GameDetailViewModelTest {
         )
 
         val header = viewModel.state.value.header
-        assertEquals("03/08/2026 · 19:30", header?.confirmationDeadline)
+        assertEquals("03/08/2026 · 19h30", header?.confirmationDeadline)
         assertEquals(GroupWeekday.MONDAY, header?.confirmationDeadlineWeekday)
     }
 

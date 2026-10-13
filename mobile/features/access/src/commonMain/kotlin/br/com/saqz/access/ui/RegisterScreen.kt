@@ -1,5 +1,6 @@
 package br.com.saqz.access.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,8 +9,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -97,6 +100,9 @@ internal object RegisterTags {
 // `Float` porque o objeto guarda tamanho de texto sem unidade (como `TITLE_SIZE` e
 // `SUBTITLE_SIZE`), e quem o consome escolhe `sp`.
 private val TermsFontSize = AccessMetrics.TERMS_SIZE.sp
+
+/** Quase opaco: a onda não transparece por trás da frase dos termos. */
+private const val TermsBackdropAlpha = 0.94f
 
 /**
  * Os dois trechos que o export sublinha dentro da frase dos termos. São **localizadores**,
@@ -297,8 +303,14 @@ fun RegisterScreen(
                 lineHeight = TermsFontSize * AccessMetrics.TERMS_LINE_HEIGHT_RATIO,
                 textAlign = TextAlign.Center,
             ),
-            color = colors.textPlaceholder,
-            modifier = Modifier.widthIn(max = AccessMetrics.termsMaxWidth).testTag(RegisterTags.Terms),
+            color = colors.textSecondary,
+            // Em tela baixa (ou com o alerta de erro empurrando o conteúdo) a frase passa por cima da onda
+            // azul, que é fixa ao fundo: o fundo da superfície garante o contraste em qualquer posição.
+            modifier = Modifier
+                .widthIn(max = AccessMetrics.termsMaxWidth)
+                .background(colors.surface.copy(alpha = TermsBackdropAlpha), RoundedCornerShape(SaqzTheme.metrics.cardRadius))
+                .padding(horizontal = SaqzTheme.metrics.blockGap, vertical = SaqzTheme.metrics.subGrid)
+                .testTag(RegisterTags.Terms),
         )
         if (inviteContext != null) {
             Spacer(Modifier.height(AccessMetrics.fieldGap))

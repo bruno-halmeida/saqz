@@ -59,6 +59,8 @@ import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.presentation.home.HomeWaitlistRowUi
 import br.com.saqz.groups.presentation.photo.groupPhotoUrl
 import br.com.saqz.groups.presentation.isPlanPaused
+import br.com.saqz.groups.presentation.AutoRetry
+import br.com.saqz.groups.presentation.isOffline
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
@@ -119,9 +121,15 @@ class GroupDetailsViewModel(
     private val whatsAppAvailability: WhatsAppAvailability? = null,
     /** Só no web app: a loja do app oferecida depois da primeira resposta. */
     private val appDownload: AppDownloadPort? = null,
+    /** Dias do teste em curso, para o aviso do grupo recém-criado. */
+    private val trialAccess: br.com.saqz.groups.domain.group.GroupTrialAccessPort? = null,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(
     GroupDetailsState(appDownloadAvailable = appDownload?.appDownloadUrl() != null),
 ) {
+
+
+    /** Erro de rede na carga: tenta de novo sozinha até a rede voltar. */
+    private val autoRetry = AutoRetry(viewModelScope) { load() }
 
     private var loadGeneration = 0
     private var responseGeneration = 0L
@@ -163,8 +171,14 @@ class GroupDetailsViewModel(
                 if (state.value.athleteIntroVisible) update { it.copy(athleteShareFailed = true) }
             }
             GroupDetailsIntent.OnboardingAction -> onboardingAction()
-            GroupDetailsIntent.Retry -> load()
-            GroupDetailsIntent.Refresh -> refresh()
+            GroupDetailsIntent.Retry -> {
+                autoRetry.reset()
+                load()
+            }
+            GroupDetailsIntent.Refresh -> {
+                autoRetry.reset()
+                refresh()
+            }
             GroupDetailsIntent.CreateNextGame -> emit(
                 GroupDetailsEffect.OpenCreateGame(groupId, firstGame = state.value.onboarding == GroupOnboarding.CreateGame),
             )
@@ -350,6 +364,7 @@ class GroupDetailsViewModel(
                             loadWhatsApp(generation, group)
                             loadMemory(generation)
                             loadLatestNotice(generation, softRefresh)
+                            if (!softRefresh) loadTrial(generation)
                         }
                     }
                 }
@@ -431,6 +446,13 @@ class GroupDetailsViewModel(
             null
         }
         recomputeChecklist(generation)
+    }
+
+    private suspend fun loadTrial(generation: Int) {
+        val port = trialAccess ?: return
+        val days = port.read(GroupId(groupId))?.takeIf { it.isOwner }?.activeTrialDays
+        if (generation != loadGeneration) return
+        update { it.copy(trialDays = days) }
     }
 
     private fun loadMemory(generation: Int) {
@@ -696,6 +718,7 @@ class GroupDetailsViewModel(
                         waitlist = response.toWaitlist(roster, emptyList(), membershipType),
                         responding = false,
                         responseFailed = false,
+                        responseOffline = false,
                         membershipType = membershipType,
                         // Dono e admin também são atletas do grupo: quem é mensalista tem
                         // direito à auto-confirmação independente do papel administrativo.
@@ -738,6 +761,7 @@ class GroupDetailsViewModel(
                 athleteIntroVisible = false,
                 responseFailed = false,
                 responsePlanPaused = false,
+                responseOffline = false,
             )
         }
         viewModelScope.launch {
@@ -770,6 +794,7 @@ class GroupDetailsViewModel(
                             responding = false,
                             athleteIntroVisible = it.athleteIntroVisible || showIntroduction,
                             responseFailed = false,
+                            responseOffline = false,
                             rosterStale = rosterResult is SaqzResult.Failure,
                             rosterRefreshing = false,
                         )
@@ -892,6 +917,7 @@ class GroupDetailsViewModel(
     private fun showFailure(generation: Int, error: GroupUiError, softRefresh: Boolean = false) {
         if (generation != loadGeneration || softRefresh) return
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
+        if (error == GroupUiError.Network) autoRetry.schedule()
     }
 
     private fun AttendanceDetail.toAttendance() = AttendanceSummaryUi(
@@ -1039,9 +1065,9 @@ class GroupDetailsViewModel(
         val date = runCatching { LocalDate.parse(localDate) }.getOrNull()
         return date?.let {
             "${it.day.toString().padStart(2, '0')}/${it.month.ordinal.plus(1).toString().padStart(2, '0')} · " +
-                localTime.take(5)
+                localTime.take(5).replace(':', 'h')
         }
-            ?: "$localDate · ${localTime.take(5)}"
+            ?: "$localDate · ${localTime.take(5).replace(':', 'h')}"
     }
 
     private fun Game.displayDeadline(): String {
@@ -1194,6 +1220,7 @@ private fun GroupDetailsState.afterResponseFailure(
         responding = false,
         responseFailed = !paused && error != AttendanceError.Frozen,
         responsePlanPaused = paused,
+        responseOffline = error.isOffline(),
         nextGame = if (closed) nextGame?.copy(responseOpen = false) else nextGame,
     )
 }

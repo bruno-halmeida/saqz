@@ -71,6 +71,7 @@ import br.com.saqz.groups.resources.game_response_roster_stale
 import br.com.saqz.groups.resources.game_response_yes
 import br.com.saqz.groups.resources.group_details_hero_empty_admin
 import br.com.saqz.groups.resources.group_details_hero_first_body
+import br.com.saqz.groups.resources.group_details_hero_first_trial_body
 import br.com.saqz.groups.resources.group_details_hero_first_title
 import br.com.saqz.groups.resources.group_details_map_failure
 import br.com.saqz.groups.resources.group_details_venue_map
@@ -84,6 +85,7 @@ import br.com.saqz.groups.resources.home_no_game_description
 import br.com.saqz.groups.resources.home_no_game_hero_title
 import br.com.saqz.groups.resources.home_spots_left
 import br.com.saqz.groups.resources.onboarding_create_action
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -173,6 +175,7 @@ private fun GroupGameHero(
             lateNotice = if (!game.confirmationOpen) stringResource(Res.string.game_response_late_notice) else null,
             responding = state.responding,
             responseFailed = state.responseFailed || state.responsePlanPaused,
+            responseOffline = state.responseOffline,
             waitlistKind = state.waitlist?.kind,
             waitlistPosition = state.memberResponse?.waitlistPosition,
             onRespond = { onIntent(GroupDetailsIntent.Respond(it)) },
@@ -204,7 +207,11 @@ private fun GroupGameHero(
             HeroRosterRow(
                 names = game.confirmedNames,
                 summary = stringResource(Res.string.game_response_confirmed_summary, game.confirmedCount, game.capacity),
-                spotsChip = if (scarce) stringResource(Res.string.home_spots_left, game.availableSpots) else null,
+                spotsChip = if (scarce) {
+                    pluralStringResource(Res.plurals.home_spots_left, game.availableSpots, game.availableSpots)
+                } else {
+                    null
+                },
             )
         }
     }
@@ -332,15 +339,17 @@ private fun GroupNoGameHero(
 ) {
     val first = state.isAdmin && onboardingGroup && state.onboarding == GroupOnboarding.CreateGame
     val title = if (first) Res.string.group_details_hero_first_title else Res.string.home_no_game_hero_title
+    val trialDays = state.trialDays.takeIf { first }
     val meta = when {
-        first -> Res.string.group_details_hero_first_body
-        state.isAdmin -> Res.string.group_details_hero_empty_admin
-        else -> Res.string.home_no_game_description
+        trialDays != null -> pluralStringResource(Res.plurals.group_details_hero_first_trial_body, trialDays, trialDays)
+        first -> stringResource(Res.string.group_details_hero_first_body)
+        state.isAdmin -> stringResource(Res.string.group_details_hero_empty_admin)
+        else -> stringResource(Res.string.home_no_game_description)
     }
     SaqzHeroCard(
         kicker = stringResource(Res.string.home_game_next),
         title = stringResource(title),
-        meta = stringResource(meta),
+        meta = meta,
         modifier = Modifier.testTag(GroupDetailsTags.Hero),
         content = if (state.isAdmin) {
             { HeroNoGameActions(first = first, onIntent = onIntent) }

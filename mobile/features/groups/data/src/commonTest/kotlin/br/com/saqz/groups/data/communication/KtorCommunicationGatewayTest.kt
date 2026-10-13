@@ -107,6 +107,13 @@ class KtorCommunicationGatewayTest {
         )
         assertEquals("game-1", inbox.items[1].message.gameId)
     }
+    @Test fun inboxMapsTheAutoConfirmationNotice() = runTest {
+        val item = """{"sequence":5,"message":${
+            message.replace("\"channel\":\"NOTICE\"", "\"channel\":\"AUTO_CONFIRMATION\"")
+        },"read":false}"""
+        val inbox = gateway { respond("""{"items":[$item],"nextCursor":null}""", headers = jsonHeaders) }.inbox().success()
+        assertEquals(listOf(CommunicationChannel.AUTO_CONFIRMATION), inbox.items.map { it.message.channel })
+    }
     @Test fun preferencesRoundTripAllFlagsAndErrorsDoNotBecomeSuccess() = runTest {
         val value = NotificationPreferences(false, true, false)
         val result = gateway { request ->

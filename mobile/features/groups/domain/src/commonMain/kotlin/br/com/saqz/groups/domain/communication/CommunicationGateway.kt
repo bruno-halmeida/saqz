@@ -17,6 +17,7 @@ enum class CommunicationChannel {
     FIRST_CONFIRMATION,
     ENTRY_REQUEST,
     TRIAL_ENDING,
+    AUTO_CONFIRMATION,
 }
 data class CommunicationMessage(
     val id: String, val sequence: Long, val groupId: GroupId, val authorId: String, val authorName: String,

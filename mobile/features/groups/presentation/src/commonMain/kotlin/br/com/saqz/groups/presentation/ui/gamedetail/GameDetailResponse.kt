@@ -75,6 +75,7 @@ internal fun GameDetailResponse(
             lateNotice = if (!header.confirmationOpen) stringResource(Res.string.game_response_late_notice) else null,
             responding = response.responding,
             responseFailed = response.failed || response.planPaused,
+            responseOffline = response.offline,
             waitlistKind = response.waitlistKind,
             waitlistPosition = response.waitlistPosition,
             onRespond = { onIntent(GameDetailIntent.Respond(it)) },

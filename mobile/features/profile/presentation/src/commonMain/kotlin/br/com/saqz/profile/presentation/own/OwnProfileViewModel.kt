@@ -119,7 +119,7 @@ internal fun AthleteMembership.toOwnProfileGroupUi() = OwnProfileGroupUi(
 
 private fun String.toPositionLabel(): String? = when (uppercase()) {
     "LIBERO" -> "Líbero"
-    "PONTA" -> "Ponta"
+    "PONTA" -> "Ponteiro"
     "CENTRAL" -> "Central"
     "OPOSTO" -> "Oposto"
     "LEVANTADOR" -> "Levantador"

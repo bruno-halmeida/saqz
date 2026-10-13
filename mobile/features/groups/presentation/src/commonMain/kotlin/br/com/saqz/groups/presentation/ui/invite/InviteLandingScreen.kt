@@ -94,6 +94,7 @@ import br.com.saqz.groups.resources.invite_request_sent_other_group
 import br.com.saqz.groups.resources.invite_request_sent_title
 import br.com.saqz.groups.resources.invite_request_sent_waiting
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object InviteLandingTags {
@@ -224,7 +225,7 @@ private fun InviteGroupCard(preview: InvitePreviewUi) {
             preview.levelCode?.toLevelResource()?.let { stringResource(it) }?.let { InviteDetailText(it) }
         }
         Text(
-            text = stringResource(Res.string.invite_landing_members, preview.memberCount),
+            text = pluralStringResource(Res.plurals.invite_landing_members, preview.memberCount, preview.memberCount),
             style = SaqzTheme.typography.body,
             color = SaqzTheme.colors.textPrimary,
         )

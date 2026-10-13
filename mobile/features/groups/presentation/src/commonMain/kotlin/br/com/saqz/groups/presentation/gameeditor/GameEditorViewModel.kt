@@ -145,7 +145,7 @@ class GameEditorViewModel(
             val group = (groupResult as SaqzResult.Success).value.group
             val trial = trialAccess?.read(GroupId(groupId))
             val profile = group.profile
-            val defaultForm = defaultForm(profile)
+            val defaultForm = defaultForm(profile, group.name)
             if (gameId == null) {
                 update {
                     it.copy(
@@ -197,8 +197,8 @@ class GameEditorViewModel(
         }
     }
 
-    private fun defaultForm(profile: GroupProfile?) = GameEditorFields(
-        title = if (gameId == null) DEFAULT_TITLE else "",
+    private fun defaultForm(profile: GroupProfile?, groupName: String) = GameEditorFields(
+        title = if (gameId == null) groupName else "",
         durationMinutes = profile?.regularSlots?.firstOrNull()?.durationMinutes
             ?: profile?.defaultDurationMinutes ?: DEFAULT_DURATION,
         venue = profile?.defaultVenue?.toGameVenue(),
@@ -522,7 +522,6 @@ class GameEditorViewModel(
         const val KeyPendingGameId = "game-editor-pending-game-id"
         const val KeyPendingVersion = "game-editor-pending-version"
         const val KeyPendingFingerprint = "game-editor-pending-fingerprint"
-        const val DEFAULT_TITLE = "Jogo extra"
     }
 }
 

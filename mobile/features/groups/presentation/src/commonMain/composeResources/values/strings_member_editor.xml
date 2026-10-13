@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="member_editor_title">Editar jogador</string>
-    <string name="member_editor_joined">No grupo desde %1$s · %2$d jogos</string>
     <string name="member_editor_list_name">Como aparece na lista</string>
     <string name="member_editor_nickname">Apelido</string>
     <string name="member_editor_nickname_hint">Como a galera chama essa pessoa</string>

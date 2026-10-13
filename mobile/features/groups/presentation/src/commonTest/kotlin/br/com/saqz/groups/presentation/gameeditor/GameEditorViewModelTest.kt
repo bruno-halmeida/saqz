@@ -245,6 +245,7 @@ class GameEditorViewModelTest {
         assertFalse(vm.state.value.isLoading)
         assertEquals(0, gateway.readCalls)
         assertEquals("Vôlei do CERET", vm.state.value.groupName)
+        assertEquals("Vôlei do CERET", vm.state.value.form.title)
         assertEquals(12, vm.state.value.form.capacity)
     }
 
@@ -473,7 +474,7 @@ class GameEditorViewModelTest {
     @Test
     fun `retry with group default fee recognizes own published draft`() = runTest {
         val submittedGame = sampleGame().copy(
-            title = "Jogo extra",
+            title = "Vôlei do CERET",
             startsAt = "2026-08-04T22:30:00Z",
             confirmationDeadline = "2026-08-04T16:30:00Z",
             gameFeeCents = 2500,

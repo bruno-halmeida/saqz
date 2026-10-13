@@ -105,7 +105,7 @@ class HomeViewModelTest {
             ),
         )
 
-        assertEquals("1 grupos · 3 coisas esperando você", viewModel.state.value.member?.adminSubtitle)
+        assertEquals("1 grupo · 3 coisas esperando você", viewModel.state.value.member?.adminSubtitle)
         assertEquals("R$ 640,00", viewModel.state.value.member?.admin?.groups?.single()?.monthlyCharges?.formattedTotal)
         assertEquals("JUL", viewModel.state.value.member?.admin?.groups?.single()?.monthlyCharges?.month)
         assertEquals("27/07", viewModel.state.value.member?.admin?.groups?.single()?.gameToSettle?.formattedDate)

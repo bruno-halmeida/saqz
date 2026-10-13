@@ -169,7 +169,7 @@ class GameSettlementViewModelTest {
         assertEquals(2, state.totalDiaristCount)
         assertEquals(1, state.pendingDiaristCount)
         assertEquals(0.5f, state.progress)
-        assertEquals("04/08/2026 · 19:30", state.header?.dateTime)
+        assertEquals("04/08/2026 · 19h30", state.header?.dateTime)
         assertEquals(3, state.header?.playersCount)
         assertEquals(8_000L, state.costCents)
         assertEquals(listOf("member-avulso-paid", "member-avulso-pending"), state.diarists.map { it.memberId })

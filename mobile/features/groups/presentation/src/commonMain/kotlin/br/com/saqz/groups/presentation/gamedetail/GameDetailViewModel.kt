@@ -39,6 +39,8 @@ import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.presentation.isPlanPaused
+import br.com.saqz.groups.presentation.AutoRetry
+import br.com.saqz.groups.presentation.isOffline
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -80,6 +82,10 @@ class GameDetailViewModel(
      * primeiro `resume` do Root chega logo depois do `init { load() }`. `Retry` passa por cima.
      */
     private var loadInFlight = false
+
+    /** Erro de rede na carga: tenta de novo sozinha até a rede voltar. */
+    private val autoRetry = AutoRetry(viewModelScope) { load() }
+
     init {
         load()
     }
@@ -145,8 +151,10 @@ class GameDetailViewModel(
      * logo após o `init`, é descartado.
      */
     private fun reload(intent: GameDetailIntent) {
+        autoRetry.reset()
         if (intent is GameDetailIntent.Retry) load() else if (!isFirstAppearance()) load(softRefresh = true)
     }
+
 
     private fun load(softRefresh: Boolean = false) {
         // Recarga por baixo (volta à tela): não repete carga em voo nem atropela escrita ou folha aberta.
@@ -455,6 +463,7 @@ class GameDetailViewModel(
                     responding = true,
                     failed = false,
                     planPaused = false,
+                    offline = false,
                 ),
             )
         }
@@ -483,6 +492,7 @@ class GameDetailViewModel(
                                 responding = false,
                                 failed = !paused && result.error != AttendanceError.Frozen,
                                 planPaused = paused,
+                                offline = result.error.isOffline(),
                             ),
                         )
                     }
@@ -635,12 +645,13 @@ class GameDetailViewModel(
     private fun showFailure(generation: Int, error: GroupUiError, softRefresh: Boolean = false) {
         if (generation != loadGeneration || softRefresh) return
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
+        if (error == GroupUiError.Network) autoRetry.schedule()
     }
     private fun Game.toHeader(): GameDetailHeaderUi {
         val zone = runCatching { TimeZone.of(zoneId) }.getOrElse { TimeZone.UTC }
         val local = runCatching { Instant.parse(startsAt) }.getOrNull()?.toLocalDateTime(zone)
         val dateTime = if (local != null) {
-            "${formatDatePtBr(local.date)} · ${local.hour.pad()}:${local.minute.pad()}"
+            "${formatDatePtBr(local.date)} · ${local.hour.pad()}h${local.minute.pad()}"
         } else {
             title
         }
@@ -649,7 +660,7 @@ class GameDetailViewModel(
         val deadlineDateDiffers = deadlineLocal?.date != local?.date
         val deadline = deadlineLocal?.let {
             val date = if (deadlineDateDiffers) "${formatDatePtBr(it.date)} · " else ""
-            "$date${it.hour.pad()}:${it.minute.pad()}"
+            "$date${it.hour.pad()}h${it.minute.pad()}"
         } ?: confirmationDeadline
         val venueLine = listOfNotNull(venue.name, venue.court).joinToString(" — ")
         return GameDetailHeaderUi(

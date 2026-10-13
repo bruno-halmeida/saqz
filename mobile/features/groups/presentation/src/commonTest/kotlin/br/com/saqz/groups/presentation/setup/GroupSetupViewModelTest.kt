@@ -47,6 +47,12 @@ class GroupSetupViewModelTest {
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
     @Test
+    fun `grupo novo nasce com a confirmacao automatica desligada`() = runTest(mainDispatcher) {
+        assertEquals(false, GroupSetupForm().autoConfirmEnabled)
+        assertEquals(false, viewModel(form = GroupSetupForm()).state.value.form.autoConfirmEnabled)
+    }
+
+    @Test
     fun `criar com campo faltando marca o erro e nao cria`() = runTest(mainDispatcher) {
         val viewModel = viewModel(form = completeForm.copy(name = ""))
         val effects = collectEffects(viewModel)

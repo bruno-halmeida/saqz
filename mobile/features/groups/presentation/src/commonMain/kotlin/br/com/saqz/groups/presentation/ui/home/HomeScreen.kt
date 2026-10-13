@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -92,6 +93,7 @@ import br.com.saqz.groups.resources.home_toast_waitlisted
 import br.com.saqz.groups.resources.home_toast_waitlisted_late
 import br.com.saqz.groups.resources.home_toast_waitlisted_manual
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object HomeTags {
@@ -244,6 +246,7 @@ private fun HomeContent(
                             responding = state.responding,
                             responseFailed = state.responseFailed,
                             planPaused = state.responsePlanPaused,
+                            responseOffline = state.responseOffline,
                             onIntent = onIntent,
                         )
                     } else {
@@ -252,6 +255,7 @@ private fun HomeContent(
                             responding = state.responding,
                             responseFailed = state.responseFailed,
                             planPaused = state.responsePlanPaused,
+                            responseOffline = state.responseOffline,
                             onIntent = onIntent,
                         )
                     }
@@ -365,6 +369,7 @@ private fun HomeHero(
     responding: Boolean,
     responseFailed: Boolean,
     planPaused: Boolean,
+    responseOffline: Boolean = false,
     onIntent: (HomeIntent) -> Unit,
 ) {
     SaqzHeroCard(
@@ -373,6 +378,8 @@ private fun HomeHero(
         meta = game.meta,
         trailing = { SaqzStatusChip(text = game.groupName, tone = SaqzChipTone.Inverse) },
         modifier = Modifier.testTag(HomeTags.NextGame),
+        // Tocar no cartão abre a tela do jogo, como o placar do gestor.
+        onClick = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) },
     ) {
         HeroDeadlineLine(text = game.deadline, open = game.confirmationOpen)
         HomeAttendanceControls(
@@ -380,6 +387,7 @@ private fun HomeHero(
             responding = responding,
             responseFailed = responseFailed,
             planPaused = planPaused,
+            responseOffline = responseOffline,
             onIntent = onIntent,
         )
         // Em espera, as seções abaixo do hero já mostram o roster: a linha some.
@@ -389,7 +397,7 @@ private fun HomeHero(
                 names = game.rosterNames,
                 summary = game.confirmedSummary,
                 spotsChip = if (spotsLeft in 1..SpotsLeftMax) {
-                    stringResource(Res.string.home_spots_left, spotsLeft)
+                    pluralStringResource(Res.plurals.home_spots_left, spotsLeft, spotsLeft)
                 } else {
                     null
                 },
@@ -413,6 +421,7 @@ internal fun ColumnScope.HomeAttendanceControls(
     responding: Boolean,
     responseFailed: Boolean,
     planPaused: Boolean = false,
+    responseOffline: Boolean = false,
     onIntent: (HomeIntent) -> Unit,
 ) {
     HeroAttendanceControls(
@@ -421,6 +430,7 @@ internal fun ColumnScope.HomeAttendanceControls(
         lateNotice = if (!game.confirmationOpen) stringResource(Res.string.game_response_late_notice) else null,
         responding = responding,
         responseFailed = responseFailed || planPaused,
+        responseOffline = responseOffline,
         waitlistKind = game.waitlistKind,
         waitlistPosition = game.waitlistPosition,
         onRespond = { onIntent(HomeIntent.Respond(it)) },
@@ -528,6 +538,7 @@ private fun HomeGroups(groups: List<HomeGroupUi>, onIntent: (HomeIntent) -> Unit
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun HomeGroupRow(group: HomeGroupUi, onClick: () -> Unit) {
     val metrics = SaqzTheme.metrics
@@ -558,9 +569,11 @@ private fun HomeGroupRow(group: HomeGroupUi, onClick: () -> Unit) {
         // Chip ao lado do nome, meta embaixo: no fim da linha ele espremia a coluna e a
         // meta quebrava em duas linhas.
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid / 2)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            // FlowRow: com fonte grande o chip "Administrador" desce para a linha de baixo, inteiro.
+            FlowRow(
+                itemVerticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(metrics.grid),
+                verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
             ) {
                 Text(
                     text = group.name,

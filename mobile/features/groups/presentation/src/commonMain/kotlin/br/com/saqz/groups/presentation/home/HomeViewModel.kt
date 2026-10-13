@@ -44,13 +44,17 @@ import br.com.saqz.groups.presentation.game.gameTimeZone
 import br.com.saqz.groups.presentation.game.gameWeekdayLabel
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.isPlanPaused
+import br.com.saqz.groups.presentation.AutoRetry
+import br.com.saqz.groups.presentation.isOffline
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.home_admin_hero_deadline_closed
 import br.com.saqz.groups.resources.home_admin_score_pending
+import br.com.saqz.groups.resources.home_admin_groups
 import br.com.saqz.groups.resources.home_admin_subtitle
+import br.com.saqz.groups.resources.home_admin_things_waiting
 import br.com.saqz.groups.resources.home_admin_waiting_entry_requests_meta
 import br.com.saqz.groups.resources.home_admin_waiting_monthly_meta
 import br.com.saqz.groups.resources.home_admin_waiting_settle
@@ -58,7 +62,9 @@ import br.com.saqz.groups.resources.home_admin_waiting_settle_meta
 import br.com.saqz.groups.resources.home_confirmed_summary
 import br.com.saqz.groups.resources.home_deadline_closed
 import br.com.saqz.groups.resources.home_game_date_time
+import br.com.saqz.groups.resources.home_group_games_played
 import br.com.saqz.groups.resources.home_group_meta
+import br.com.saqz.groups.resources.home_group_people
 import br.com.saqz.groups.resources.home_month_april_long
 import br.com.saqz.groups.resources.home_month_august_long
 import br.com.saqz.groups.resources.home_month_december_long
@@ -110,6 +116,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.getString
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
@@ -140,14 +147,23 @@ class HomeViewModel(
      */
     private var loadInFlight = false
 
+    /** Erro de rede na carga: tenta de novo sozinha até a rede voltar. */
+    private val autoRetry = AutoRetry(viewModelScope) { load() }
+
     init {
         load()
     }
 
     override fun handleIntent(intent: HomeIntent) {
         when (intent) {
-            HomeIntent.Retry -> load()
-            HomeIntent.Refresh -> load(softRefresh = true)
+            HomeIntent.Retry -> {
+                autoRetry.reset()
+                load()
+            }
+            HomeIntent.Refresh -> {
+                autoRetry.reset()
+                load(softRefresh = true)
+            }
             is HomeIntent.Respond -> respond(intent.intent)
             HomeIntent.DismissToast -> update { it.copy(toast = null) }
             HomeIntent.OpenGroups -> emit(HomeEffect.OpenGroups)
@@ -193,7 +209,7 @@ class HomeViewModel(
         loadInFlight = true
         update {
             if (softRefresh) {
-                it.copy(loadFailed = false, error = null, responseFailed = false, responsePlanPaused = false)
+                it.copy(loadFailed = false, error = null, responseFailed = false, responsePlanPaused = false, responseOffline = false)
             } else {
                 it.copy(
                     isLoading = true,
@@ -201,6 +217,7 @@ class HomeViewModel(
                     error = null,
                     responding = false,
                     responseFailed = false,
+                    responseOffline = false,
                 )
             }
         }
@@ -243,6 +260,7 @@ class HomeViewModel(
                                 ),
                                 responding = false,
                                 responseFailed = false,
+                                responseOffline = false,
                                 ownCharges = ownCharges,
                             )
                         }
@@ -356,6 +374,7 @@ class HomeViewModel(
                 ),
                 responding = true,
                 responseFailed = false,
+                responseOffline = false,
             )
         }
     }
@@ -417,6 +436,7 @@ class HomeViewModel(
                         responding = false,
                         responseFailed = !closed && !paused,
                         responsePlanPaused = paused,
+                        responseOffline = result.error.isOffline(),
                     )
                 }
             }
@@ -433,6 +453,7 @@ class HomeViewModel(
     private fun showFailure(generation: Long, error: GroupUiError) {
         if (generation < loadGeneration) return
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
+        if (error == GroupUiError.Network) autoRetry.schedule()
     }
 
     private suspend fun HomeMemberReadModel.toUi(): HomeMemberUi = HomeMemberUi(
@@ -512,7 +533,11 @@ class HomeViewModel(
     private suspend fun HomeMemberGroup.toUi() = HomeGroupUi(
         id = id.value,
         name = name,
-        meta = getString(Res.string.home_group_meta, memberCount, gamesPlayed),
+        meta = getString(
+            Res.string.home_group_meta,
+            getPluralString(Res.plurals.home_group_people, memberCount, memberCount),
+            getPluralString(Res.plurals.home_group_games_played, gamesPlayed, gamesPlayed),
+        ),
         isAdmin = role == GroupRole.OWNER || role == GroupRole.ADMIN,
     )
 
@@ -542,7 +567,7 @@ class HomeViewModel(
             day = local?.day?.toString() ?: "",
             month = local?.let { gameShortMonthLabel(it.month.ordinal + 1) } ?: "",
             title = getString(Res.string.home_upcoming_row_title, groupName, time),
-            meta = getString(Res.string.home_upcoming_row_meta, weekday, confirmedCount),
+            meta = getPluralString(Res.plurals.home_upcoming_row_meta, confirmedCount, weekday, confirmedCount),
             status = status,
             statusLabel = statusLabel,
             contentDescription = getString(Res.string.home_upcoming_cd_row, groupName, dateLabel, time, statusLabel),
@@ -664,7 +689,11 @@ class HomeViewModel(
     private suspend fun deriveAdminSubtitle(admin: HomeAdminReadModelUi, groupCount: Int): String? {
         val pending = admin.totalPendingItems
         if (pending == 0) return null
-        return getString(Res.string.home_admin_subtitle, groupCount, pending)
+        return getString(
+            Res.string.home_admin_subtitle,
+            getPluralString(Res.plurals.home_admin_groups, groupCount, groupCount),
+            getPluralString(Res.plurals.home_admin_things_waiting, pending, pending),
+        )
     }
 
     private fun Int.twoDigits() = toString().padStart(2, '0')

@@ -34,6 +34,9 @@ internal val groupCreationEntitlementModule = module {
                         isOwner = result.value.isOwner,
                         planActive = result.value.status == TrialStatus.Subscribed,
                         trialEnded = result.value.status == TrialStatus.Expired,
+                        activeTrialDays = result.value.trialDays.takeIf {
+                            result.value.status == br.com.saqz.subscriptions.domain.trial.TrialStatus.Active
+                        },
                     )
                 is br.com.saqz.domain.SaqzResult.Failure -> null
             }

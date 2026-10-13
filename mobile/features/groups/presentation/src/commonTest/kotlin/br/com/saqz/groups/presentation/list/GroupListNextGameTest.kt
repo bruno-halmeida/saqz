@@ -30,7 +30,7 @@ class GroupListNextGameTest {
     @Test fun `nearest future game is shown in the group time zone`() = runTest {
         val next = sampleGame().copy(startsAt = "2026-08-04T22:30:00Z", confirmedCount = 9, capacity = 12)
         val games = listOf(next.copy(startsAt = "2026-08-10T22:30:00Z"), next)
-        assertEquals("04/08 · 19:30 · 9 de 12", games.nextGroupCardGame(GroupRole.ADMIN, now)?.label)
+        assertEquals("04/08 · 19h30 · 9 de 12", games.nextGroupCardGame(GroupRole.ADMIN, now)?.label)
     }
 
     @Test fun `cancelled completed and past games are excluded`() = runTest {

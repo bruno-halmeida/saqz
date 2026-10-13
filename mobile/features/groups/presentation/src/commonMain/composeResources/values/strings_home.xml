@@ -12,13 +12,13 @@
     <string name="home_deadline_tomorrow">As confirmações encerram amanhã às %1$s.</string>
     <string name="home_deadline_date">As confirmações encerram em %1$s às %2$s.</string>
     <string name="home_confirmed_summary">%1$d de %2$d confirmados</string>
-    <string name="home_spots_left">Restam %1$d vagas</string>
     <string name="home_status_confirmed">Você está confirmado.</string>
     <string name="home_status_declined">Tudo bem, na próxima. Sua vaga já foi liberada.</string>
     <string name="home_response_yes">Vou</string>
     <string name="home_response_no">Não vou</string>
     <string name="home_attendance_change">Alterar</string>
     <string name="home_attendance_cancel">Cancelar</string>
+    <string name="home_response_offline">Sem conexão. Sua resposta não foi enviada.</string>
     <string name="home_response_error">Não foi possível atualizar sua presença. Tente novamente.</string>
     <string name="home_waitlist_reserva_chip">Lista de espera · %1$dº</string>
     <string name="home_waitlist_reserva_chip_no_position">Lista de espera</string>
@@ -35,7 +35,6 @@
     <string name="home_waitlist_avulso_chip">Lista de espera</string>
     <string name="home_waitlist_avulso_box_title">Os mensalistas entram primeiro.</string>
     <string name="home_waitlist_avulso_box_body">Você está na lista de espera porque joga como avulso. Mensalistas têm prioridade até o fim do prazo de confirmação; depois, as vagas que sobrarem vão para a fila e a gente te avisa.</string>
-    <string name="home_waitlist_avulso_position">%1$dº na lista · %2$d confirmados</string>
     <string name="home_waitlist_avulso_leave">Sair da lista</string>
     <string name="home_waitlist_avulso_upsell_title">Quer entrar direto nos próximos?</string>
     <string name="home_waitlist_avulso_upsell_body">Mensalistas têm vaga garantida. Peça pro admin te incluir.</string>
@@ -47,7 +46,7 @@
     <string name="home_no_game_action">Ver meus grupos</string>
     <string name="home_groups_title">Seus grupos</string>
     <string name="home_groups_view_all">Ver todos</string>
-    <string name="home_group_meta">%1$d pessoas · %2$d jogos realizados</string>
+    <string name="home_group_meta">%1$s · %2$s</string>
     <string name="home_month_january">JAN</string>
     <string name="home_month_february">FEV</string>
     <string name="home_month_march">MAR</string>
@@ -79,7 +78,7 @@
     <string name="home_toast_waitlisted">Você entrou na lista de espera.</string>
     <string name="home_toast_waitlisted_manual">Você entrou na lista de espera. O organizador escolhe quem entra.</string>
     <string name="home_toast_waitlisted_late">Você entrou na lista de espera. Se abrir vaga, você entra pela ordem da fila.</string>
-    <string name="home_admin_subtitle">%1$d grupos · %2$d coisas esperando você</string>
+    <string name="home_admin_subtitle">%1$s · %2$s</string>
     <string name="home_admin_score_going">Vão</string>
     <string name="home_admin_score_out">Não vão</string>
     <string name="home_admin_score_pending">Sem resposta</string>
@@ -87,23 +86,15 @@
     <string name="home_admin_hero_deadline">Encerra %1$s · %2$s</string>
     <string name="home_admin_score_value">%1$d</string>
     <string name="home_admin_waiting_title">Esperando você</string>
-    <string name="home_admin_waiting_entry_requests">%1$d pedidos para entrar</string>
     <string name="home_admin_waiting_entry_requests_meta">%1$s</string>
-    <string name="home_admin_waiting_monthly">%1$d mensalidades a receber</string>
     <string name="home_admin_waiting_monthly_meta">%1$s · %2$s</string>
     <string name="home_admin_waiting_settle">Acertar o jogo de %1$s</string>
-    <string name="home_admin_waiting_settle_meta">%1$d avulsos · %2$s a receber</string>
     <string name="home_admin_waiting_entry_chip">%1$d</string>
     <string name="home_admin_shortcuts_create_game">Marcar jogo</string>
     <string name="home_admin_shortcuts_invite">Convidar</string>
     <string name="home_admin_group_chip">Administrador</string>
-    <string name="home_admin_cd_score_going">%1$d confirmados</string>
-    <string name="home_admin_cd_score_out">%1$d não vão</string>
-    <string name="home_admin_cd_score_pending">%1$d pendentes</string>
     <string name="home_admin_cd_score_waiting">%1$d na lista de espera</string>
     <string name="home_admin_cd_scoreboard_open">Abrir a lista de presença do jogo</string>
-    <string name="home_admin_cd_waiting_entry_requests">%1$d pedidos para entrar em %2$s</string>
-    <string name="home_admin_cd_waiting_monthly">%1$d mensalidades a receber em %2$s</string>
     <string name="home_admin_cd_waiting_settle">Acertar o jogo de %1$s em %2$s</string>
     <string name="home_admin_cd_shortcut_create_game">Marcar jogo</string>
     <string name="home_admin_cd_shortcut_invite">Convidar</string>
@@ -136,7 +127,6 @@
     <!-- Home nova · próximos jogos -->
     <string name="home_upcoming_title">Próximos jogos</string>
     <string name="home_upcoming_row_title">%1$s · %2$s</string>
-    <string name="home_upcoming_row_meta">%1$s · %2$d confirmados</string>
     <string name="home_upcoming_status_going">Você vai</string>
     <string name="home_upcoming_status_out">Não vai</string>
     <string name="home_upcoming_status_waitlisted">Na espera</string>

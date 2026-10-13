@@ -152,6 +152,8 @@ fun SaqzMemberRow(
     photo: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    /** Nome de onde saem as iniciais do avatar; difere de [name] quando este ganha um sufixo ("· você"). */
+    avatarName: String = name,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -167,7 +169,7 @@ fun SaqzMemberRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        SaqzAvatar(name = name, initialsColor = colors.primary, photo = photo)
+        SaqzAvatar(name = avatarName, initialsColor = colors.primary, photo = photo)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = name,

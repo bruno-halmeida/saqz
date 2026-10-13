@@ -8,10 +8,7 @@ data class TrialEntryState(
     val access: TrialAccess? = null,
     val failure: TrialEntryFailure? = null,
     val ready: Boolean = false,
-) {
-    val canContinue: Boolean get() = !loading && failure == null && access?.canCreateGroup == true
-}
+)
 sealed interface TrialEntryIntent {
     data object Refresh : TrialEntryIntent
-    data object Continue : TrialEntryIntent
 }

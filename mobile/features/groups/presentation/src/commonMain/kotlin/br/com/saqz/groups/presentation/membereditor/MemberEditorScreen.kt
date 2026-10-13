@@ -113,6 +113,7 @@ import br.com.saqz.groups.resources.member_editor_position_outside_male
 import br.com.saqz.groups.resources.member_editor_position_setter_female
 import br.com.saqz.groups.resources.member_editor_position_setter_male
 import br.com.saqz.groups.resources.member_editor_retry
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 object MemberEditorTags {
@@ -225,8 +226,9 @@ private fun MemberEditorHeader(state: MemberEditorState) {
                     color = SaqzTheme.colors.textPrimary,
                 )
                 Text(
-                    text = stringResource(
-                        Res.string.member_editor_joined,
+                    text = pluralStringResource(
+                        Res.plurals.member_editor_joined,
+                        state.games,
                         state.joinedAtLabel.ifBlank { stringResource(Res.string.member_editor_unknown_value) },
                         state.games,
                     ),

@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +26,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -150,30 +153,40 @@ fun SaqzStatusChip(
         SaqzChipTone.Error -> colors.errorForeground to colors.errorForeground.copy(alpha = 0.10f)
         SaqzChipTone.Inverse -> colors.onPrimary to colors.onPrimary.copy(alpha = 0.14f)
     }
-    Row(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(container, CircleShape)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    // O chip é rótulo curto de apoio: com a fonte do sistema no máximo ("Administrador" a 3x) ele não cabe nem
+    // quebrando por palavra e a palavra única se parte. O texto cresce até [CHIP_MAX_FONT_SCALE] e para aí.
+    val density = LocalDensity.current
+    CompositionLocalProvider(
+        LocalDensity provides Density(density.density, minOf(density.fontScale, CHIP_MAX_FONT_SCALE)),
     ) {
-        if (dot) {
-            // `.saqz-chip__dot{background:currentColor}` — o ponto é sempre o primeiro
-            // plano, inclusive no accent, que antes acendia em primary sem o export pedir.
-            Box(
-                Modifier
-                    .size(6.dp)
-                    .background(foreground, CircleShape),
+        Row(
+            modifier = modifier
+                .clip(CircleShape)
+                .background(container, CircleShape)
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (dot) {
+                // `.saqz-chip__dot{background:currentColor}` — o ponto é sempre o primeiro
+                // plano, inclusive no accent, que antes acendia em primary sem o export pedir.
+                Box(
+                    Modifier
+                        .size(6.dp)
+                        .background(foreground, CircleShape),
+                )
+            }
+            Text(
+                text = text,
+                style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.SemiBold),
+                color = foreground,
             )
         }
-        Text(
-            text = text,
-            style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.SemiBold),
-            color = foreground,
-        )
     }
 }
+
+/** Teto da escala de fonte do chip de status; acima disso o rótulo deixaria de caber na linha. */
+private const val CHIP_MAX_FONT_SCALE = 1.3f
 
 @Preview
 @Composable

@@ -1,6 +1,15 @@
 package br.com.saqz.groups.presentation.ui.home
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -49,6 +58,41 @@ class HomeScreenTest {
         onNodeWithText("Não foi possível carregar sua Home").assertIsDisplayed()
         onNodeWithText("Tentar novamente").performClick()
         assertEquals(listOf<HomeIntent>(HomeIntent.Retry), intents)
+    }
+
+    @Test
+    fun `tocar no cartao do proximo jogo abre a tela do jogo`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(nextGameState(), intents::add)
+
+        onNodeWithText("Terça, 19h30").performClick()
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.OpenGame("ceret", "game-1")), intents)
+    }
+
+    @Test
+    fun `fonte grande quebra o hero e o chip por palavra sem partir letras`() = runComposeUiTest {
+        val adminGroup = HomeGroupUi(id = "ceret", name = "Vôlei do CERET", meta = "12 atletas", isAdmin = true)
+        setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 3f)) {
+                SaqzTheme {
+                    // Largura de iPhone: a janela de teste padrão é de tablet e esconderia a quebra.
+                    Box(Modifier.width(390.dp)) {
+                        HomeScreen(
+                            state = nextGameState().copy(
+                                member = nextGameState().member?.copy(groups = listOf(adminGroup)),
+                            ),
+                            onIntent = {},
+                        )
+                    }
+                }
+            }
+        }
+
+        // "Administrador" é uma palavra só: tem que ficar numa linha, e o "PRÓXIMO JOGO" quebra no máximo
+        // entre as palavras (2 linhas), nunca letra a letra.
+        assertTrue(lineCounts("PRÓXIMO JOGO").all { it <= 2 }, "kicker partido: ${lineCounts("PRÓXIMO JOGO")}")
     }
 
     @Test
@@ -442,6 +486,13 @@ class HomeScreenTest {
         onNodeWithTag(HomeTags.OwnChargesBanner).performClick()
         assertEquals(1, opened)
     }
+
+    private fun ComposeUiTest.lineCounts(text: String): List<Int> =
+        onAllNodesWithText(text).fetchSemanticsNodes().map { node ->
+            val results = mutableListOf<TextLayoutResult>()
+            node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+            results.first().lineCount
+        }
 
     private fun ComposeUiTest.setScreen(
         state: HomeState,

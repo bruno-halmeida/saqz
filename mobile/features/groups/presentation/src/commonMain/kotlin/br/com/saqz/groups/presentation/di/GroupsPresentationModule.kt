@@ -78,6 +78,7 @@ fun groupsPresentationModule(): Module = module {
             params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>(), get(), get(), get(),
             getOrNull(), get(), get(), whatsAppAvailability = getOrNull(),
             appDownload = getOrNull(),
+            trialAccess = getOrNull(),
         )
     }
     viewModel { params -> GroupCashboxViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>()) }

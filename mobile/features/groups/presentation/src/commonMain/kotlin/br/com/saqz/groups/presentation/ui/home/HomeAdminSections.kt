@@ -57,6 +57,7 @@ import br.com.saqz.groups.resources.home_admin_waiting_settle_meta
 import br.com.saqz.groups.resources.home_admin_waiting_title
 import br.com.saqz.groups.resources.home_admin_no_game_description
 import br.com.saqz.groups.resources.home_no_game_hero_title
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object HomeAdminTags {
@@ -93,6 +94,7 @@ internal fun HomeAdminHero(
     responding: Boolean,
     responseFailed: Boolean,
     planPaused: Boolean,
+    responseOffline: Boolean,
     onIntent: (HomeIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -121,6 +123,7 @@ internal fun HomeAdminHero(
             responding = responding,
             responseFailed = responseFailed,
             planPaused = planPaused,
+            responseOffline = responseOffline,
             onIntent = onIntent,
         )
     }
@@ -227,16 +230,18 @@ private fun buildWaitingItems(group: HomeAdminGroupUi): List<HomeWaitingItem> = 
                 groupId = group.id,
                 groupName = group.name,
                 icon = SaqzIcons.Users,
-                title = stringResource(
-                    Res.string.home_admin_waiting_entry_requests,
+                title = pluralStringResource(
+                    Res.plurals.home_admin_waiting_entry_requests,
+                    group.entryRequestCount,
                     group.entryRequestCount,
                 ),
                 meta = stringResource(
                     Res.string.home_admin_waiting_entry_requests_meta,
                     group.name,
                 ),
-                a11y = stringResource(
-                    Res.string.home_admin_cd_waiting_entry_requests,
+                a11y = pluralStringResource(
+                    Res.plurals.home_admin_cd_waiting_entry_requests,
+                    group.entryRequestCount,
                     group.entryRequestCount,
                     group.name,
                 ),
@@ -254,8 +259,9 @@ private fun buildWaitingItems(group: HomeAdminGroupUi): List<HomeWaitingItem> = 
                 groupId = group.id,
                 groupName = group.name,
                 icon = SaqzIcons.CreditCard,
-                title = stringResource(
-                    Res.string.home_admin_waiting_monthly,
+                title = pluralStringResource(
+                    Res.plurals.home_admin_waiting_monthly,
+                    charges.count,
                     charges.count,
                 ),
                 meta = stringResource(
@@ -263,8 +269,9 @@ private fun buildWaitingItems(group: HomeAdminGroupUi): List<HomeWaitingItem> = 
                     charges.formattedTotal,
                     charges.month,
                 ),
-                a11y = stringResource(
-                    Res.string.home_admin_cd_waiting_monthly,
+                a11y = pluralStringResource(
+                    Res.plurals.home_admin_cd_waiting_monthly,
+                    charges.count,
                     charges.count,
                     group.name,
                 ),
@@ -284,8 +291,9 @@ private fun buildWaitingItems(group: HomeAdminGroupUi): List<HomeWaitingItem> = 
                     Res.string.home_admin_waiting_settle,
                     game.formattedDate,
                 ),
-                meta = stringResource(
-                    Res.string.home_admin_waiting_settle_meta,
+                meta = pluralStringResource(
+                    Res.plurals.home_admin_waiting_settle_meta,
+                    game.diaristCount,
                     game.diaristCount,
                     game.formattedTotal,
                 ),

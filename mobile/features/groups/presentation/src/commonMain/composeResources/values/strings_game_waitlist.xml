@@ -6,7 +6,7 @@
     <string name="game_waitlist_queue_unknown">Posição indisponível</string>
     <string name="game_waitlist_position_unknown">Posição não informada</string>
     <string name="game_waitlist_position_libero">Líbero</string>
-    <string name="game_waitlist_position_ponta">Ponta</string>
+    <string name="game_waitlist_position_ponta">Ponteiro</string>
     <string name="game_waitlist_position_central">Central</string>
     <string name="game_waitlist_position_oposto">Oposto</string>
     <string name="game_waitlist_position_levantador">Levantador</string>

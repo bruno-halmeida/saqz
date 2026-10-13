@@ -301,7 +301,7 @@ class GameSettlementViewModel(
         }.getOrNull()
         val dateTime = (localDateTime ?: fallbackDateTime)?.let {
             "${it.day.toString().padStart(2, '0')}/${it.month.ordinal.plus(1).toString().padStart(2, '0')}/${it.year} · " +
-                "${it.hour.toString().padStart(2, '0')}:${it.minute.toString().padStart(2, '0')}"
+                "${it.hour.toString().padStart(2, '0')}h${it.minute.toString().padStart(2, '0')}"
         } ?: game.localDate
         val monthlyMemberCount = roster.confirmed.filterNot { it.isGuest }.count {
             athleteById[it.memberId]?.membershipType == AthleteMembershipType.MENSALISTA

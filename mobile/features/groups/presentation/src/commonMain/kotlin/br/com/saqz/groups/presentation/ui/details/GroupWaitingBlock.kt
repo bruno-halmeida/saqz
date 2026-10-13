@@ -34,6 +34,7 @@ import br.com.saqz.groups.resources.group_details_waiting_quorum
 import br.com.saqz.groups.resources.group_details_waiting_quorum_one
 import br.com.saqz.groups.resources.home_admin_waiting_entry_chip
 import br.com.saqz.groups.resources.home_admin_waiting_title
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 // Mesmo véu do `SaqzStatusChip` no tom Success.
@@ -139,7 +140,8 @@ private fun QuorumRow(
         else stringResource(Res.string.group_details_waiting_quorum, pending)
     val notified = state.notifiedCount
     val meta = when {
-        notified != null -> stringResource(Res.string.communication_reminded, notified)
+        notified != null -> notified.toIntOrNull()?.let { pluralStringResource(Res.plurals.communication_reminded, it, it) }
+            ?: stringResource(Res.string.communication_failure)
         state.notificationFailed -> stringResource(Res.string.communication_failure)
         else -> state.nextGame?.deadlineShort?.ifEmpty { null }
     }

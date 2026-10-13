@@ -22,41 +22,30 @@ class TrialEntryViewModelTest {
         vm.onIntent(TrialEntryIntent.Refresh)
         assertFalse(vm.state.value.ready)
     }
-    @Test fun publicTrialRequiresContinueAndRechecksAvailability() = runTest {
+    @Test fun publicTrialGoesStraightToGroupCreationWithoutAnOfferScreen() = runTest {
         val gateway = Fake(); val vm = TrialEntryViewModel(gateway)
         assertEquals(14, vm.state.value.access?.trialDays)
-        assertFalse(vm.state.value.ready)
+        assertTrue(vm.state.value.ready)
         gateway.access = access(false, false, "OFF")
-        vm.onIntent(TrialEntryIntent.Continue)
+        vm.onIntent(TrialEntryIntent.Refresh)
         assertFalse(vm.state.value.ready)
         assertEquals("OFF", vm.state.value.access?.offerMode)
     }
     @Test fun couponOnlyRequiresWebAuthorizationBeforeOpeningGroupCreation() = runTest {
         val gateway = Fake().apply { access = access(false, true, "COUPON_ONLY") }
         val vm = TrialEntryViewModel(gateway)
-        vm.onIntent(TrialEntryIntent.Continue)
         assertFalse(vm.state.value.ready)
         gateway.access = access(true, true, "COUPON_ONLY").copy(trialDays = 45, preauthorized = true)
         vm.onIntent(TrialEntryIntent.Refresh)
         assertTrue(vm.state.value.ready)
         assertEquals(45, vm.state.value.access?.trialDays)
     }
-    @Test fun changedDurationRequiresAcceptingTheUpdatedOffer() = runTest {
-        val gateway = Fake(); val vm = TrialEntryViewModel(gateway)
-        gateway.access = gateway.access.copy(trialDays = 7)
-        vm.onIntent(TrialEntryIntent.Continue)
-        assertFalse(vm.state.value.ready)
-        assertEquals(7, vm.state.value.access?.trialDays)
-        vm.onIntent(TrialEntryIntent.Continue)
-        assertTrue(vm.state.value.ready)
-    }
-    @Test fun lateAcceptanceCannotOverrideANewerDeniedLookup() = runTest {
+    @Test fun lateLookupCannotOverrideANewerDeniedLookup() = runTest {
         val gateway = Fake(); val vm = TrialEntryViewModel(gateway)
         val pending = CompletableDeferred<SaqzResult<TrialAccess, TrialError>>()
         gateway.pending = pending
-        vm.onIntent(TrialEntryIntent.Continue)
+        vm.onIntent(TrialEntryIntent.Refresh)
         assertTrue(vm.state.value.loading)
-        vm.onIntent(TrialEntryIntent.Continue)
         gateway.pending = null
         gateway.access = access(false, false, "OFF")
         vm.onIntent(TrialEntryIntent.Refresh)
@@ -70,7 +59,6 @@ class TrialEntryViewModelTest {
         assertFalse(vm.state.value.ready)
         gateway.offline=false;vm.onIntent(TrialEntryIntent.Refresh)
         assertNull(vm.state.value.failure)
-        vm.onIntent(TrialEntryIntent.Continue)
         assertTrue(vm.state.value.ready)
     }
     private fun access(create:Boolean, redeem:Boolean, mode:String)=TrialAccess(

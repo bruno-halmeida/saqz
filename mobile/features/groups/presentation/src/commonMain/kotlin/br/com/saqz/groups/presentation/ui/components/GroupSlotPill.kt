@@ -36,7 +36,7 @@ internal fun GroupSlotPill(
     ) {
         SaqzIcon(SaqzIcons.Calendar, tint = SaqzTheme.colors.primary)
         Text(
-            text = "${slot.weekday.label()} · ${slot.startTime.replace(':', 'h')}",
+            text = "${slot.weekday.label()} · ${slot.startTime.take(5).replace(':', 'h')}",
             style = SaqzTheme.typography.label,
             color = SaqzTheme.colors.textPrimary,
             modifier = Modifier.weight(1f),
