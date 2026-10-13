@@ -25,7 +25,11 @@ sealed interface GroupsRoute : NavKey {
 
     /** 3a, with 3b/3c stacked as child destinations. */
     @Serializable
-    data class Invite(val groupId: String) : GroupsRoute
+    data class Invite(
+        val groupId: String,
+        /** Chegou logo após marcar o primeiro jogo: abre com o cabeçalho "Jogo marcado!". */
+        val gameCreated: Boolean = false,
+    ) : GroupsRoute
 
     /** 3b: WhatsApp/message preview. */
     @Serializable
@@ -71,7 +75,12 @@ sealed interface GroupsRoute : NavKey {
 
     /** 4: editor de jogo. `gameId` null cria; presente edita. */
     @Serializable
-    data class GameEditor(val groupId: String, val gameId: String? = null) : GroupsRoute
+    data class GameEditor(
+        val groupId: String,
+        val gameId: String? = null,
+        /** Aberto pelo guia do primeiro grupo: criar o jogo leva direto ao convite. */
+        val firstGame: Boolean = false,
+    ) : GroupsRoute
 
     /** 4: detalhe do jogo. */
     @Serializable

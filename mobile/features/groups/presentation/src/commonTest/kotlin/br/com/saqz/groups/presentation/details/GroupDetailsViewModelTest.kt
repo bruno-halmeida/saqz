@@ -190,7 +190,7 @@ class GroupDetailsViewModelTest {
         val vm = viewModel(gameGateway = games)
         assertEquals(GroupOnboarding.CreateGame, vm.state.value.onboarding)
         vm.onIntent(GroupDetailsIntent.OnboardingAction)
-        assertEquals(GroupDetailsEffect.OpenCreateGame(GROUP_ID), vm.effects.first())
+        assertEquals(GroupDetailsEffect.OpenCreateGame(GROUP_ID, firstGame = true), vm.effects.first())
         games.listResult = SaqzResult.Success(listOf(sampleGame()))
         vm.onIntent(GroupDetailsIntent.Retry)
         assertEquals(GroupOnboarding.InviteAthletes(sampleGame().id), vm.state.value.onboarding)
@@ -1463,6 +1463,30 @@ class GroupDetailsViewModelTest {
 
         assertEquals(before, viewModel.state.value.waitlist)
         assertTrue(viewModel.state.value.responseFailed)
+    }
+
+    @Test
+    fun `creating a game is the first one only while the guide still waits for it`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
+        val vm = viewModel(gameGateway = games)
+        vm.onIntent(GroupDetailsIntent.CreateNextGame)
+        assertEquals(GroupDetailsEffect.OpenCreateGame(GROUP_ID, firstGame = true), vm.effects.first())
+
+        games.listResult = SaqzResult.Success(listOf(sampleGame()))
+        vm.onIntent(GroupDetailsIntent.Retry)
+        vm.onIntent(GroupDetailsIntent.CreateNextGame)
+        assertEquals(GroupDetailsEffect.OpenCreateGame(GROUP_ID, firstGame = false), vm.effects.first())
+    }
+
+    @Test
+    fun `game created confirmation toasts once and dismiss clears it`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupDetailsIntent.ShowGameCreated)
+        assertEquals(GroupDetailsToast.GameCreated, viewModel.state.value.toast)
+
+        viewModel.onIntent(GroupDetailsIntent.DismissToast)
+        assertNull(viewModel.state.value.toast)
     }
 
     @Test

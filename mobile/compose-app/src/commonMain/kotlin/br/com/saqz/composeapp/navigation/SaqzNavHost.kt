@@ -177,6 +177,9 @@ internal fun SaqzNavHost(
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var scheduleRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var groupDetailsRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
+    // Grupo cujo detalhe deve confirmar "Jogo marcado." na volta do editor; some ao ser mostrado,
+    // então sair e voltar ao detalhe não repete o aviso.
+    var gameCreatedToastGroupId by rememberSaveable { mutableStateOf<String?>(null) }
     var groupCashboxRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var statementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var settlementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
@@ -330,6 +333,12 @@ internal fun SaqzNavHost(
         }
     }
     val onboardingCoordinator = koinInject<br.com.saqz.access.presentation.appaccess.AppOnboardingAuthCoordinator>()
+    // Onboarding é uma vez por conta e só no primeiro grupo criado: o guia aparece enquanto este
+    // for o único grupo de que a conta é dona. Com um segundo grupo, ou em grupo em que a pessoa
+    // só entrou, não há guia.
+    val isOnlyOwnedGroup: (String) -> Boolean = { groupId ->
+        (state.session as? SessionAccessState.Ready)?.session?.isOnlyOwnedGroup(groupId) == true
+    }
     val pop: () -> Unit = {
         if (backStack.lastOrNull() != AccessRoute.AppOnboarding) {
             backStack.removeLastOrNull()
@@ -812,14 +821,23 @@ internal fun SaqzNavHost(
                     // Onboarding é uma vez por conta e só no primeiro grupo criado: o guia
                     // aparece enquanto este for o único grupo de que a conta é dona. Com um
                     // segundo grupo, ou em grupo em que a pessoa só entrou, não há guia.
-                    onboardingGroup = (state.session as? SessionAccessState.Ready)
-                        ?.session?.isOnlyOwnedGroup(route.groupId) == true,
+                    onboardingGroup = isOnlyOwnedGroup(route.groupId),
                     onBack = pop,
+                    gameCreatedToast = gameCreatedToastGroupId == route.groupId,
+                    onConsumeGameCreatedToast = { gameCreatedToastGroupId = null },
                     onEffect = { effect ->
                         if (effect is GroupDetailsEffect.Left) {
                             onIntent(AccessIntent.Session(SessionIntent.MembershipRemoved(route.groupId)))
                             profileRefreshVersion++
                             backStack.resetTo(SaqzShellDestination.Groups)
+                        } else if (effect is GroupDetailsEffect.OpenCreateGame) {
+                            // Só o guia do primeiro grupo leva do jogo criado ao convite.
+                            backStack.add(
+                                GroupsRoute.GameEditor(
+                                    effect.groupId,
+                                    firstGame = effect.firstGame && isOnlyOwnedGroup(route.groupId),
+                                ),
+                            )
                         } else {
                             backStack.onDetailsEffect(effect, pop)
                         }
@@ -830,6 +848,7 @@ internal fun SaqzNavHost(
             entry<GroupsRoute.Invite> { route ->
                 GroupInviteRoot(
                     groupId = route.groupId,
+                    gameCreated = route.gameCreated,
                     // Pedido aprovado muda "Esperando você" e a contagem da galera do detalhe.
                     onBack = { groupDetailsRefreshVersion++; pop() },
                     onOpenMessagePreview = { groupName, inviteUrl ->
@@ -990,6 +1009,18 @@ internal fun SaqzNavHost(
                     onSave = {
                         groupDetailsRefreshVersion++
                         scheduleRefreshVersion++
+                    },
+                    // Aviso só quando o detalhe é quem está logo abaixo; pela Agenda ela recarrega.
+                    onGameCreate = {
+                        if (backStack.getOrNull(backStack.lastIndex - 1) is GroupsRoute.Details) {
+                            gameCreatedToastGroupId = route.groupId
+                        }
+                    },
+                    firstGame = route.firstGame,
+                    // O editor sai da pilha: voltar do convite cai no detalhe, já recarregado.
+                    onFirstGameCreate = {
+                        backStack.removeLastOrNull()
+                        backStack.add(GroupsRoute.Invite(route.groupId, gameCreated = true))
                     },
                 )
             }

@@ -148,7 +148,7 @@ data class GroupWaitlistUi(
     val rows: List<HomeWaitlistRowUi> = emptyList(),
 )
 
-enum class GroupDetailsToast { Confirmed, Declined, Waitlisted, PixCopied }
+enum class GroupDetailsToast { Confirmed, Declined, Waitlisted, PixCopied, GameCreated }
 
 /** A linha de caixa do gestor — só o saldo ("Saldo R$ 380,00"). As mensalidades a receber moram em [GroupWaitingUi]. */
 @Immutable
@@ -355,6 +355,9 @@ sealed interface GroupDetailsIntent {
 
     data object DismissToast : GroupDetailsIntent
 
+    /** Volta do editor com um jogo novo: confirma uma vez, no detalhe. */
+    data object ShowGameCreated : GroupDetailsIntent
+
     data class Respond(val intent: AttendanceIntent) : GroupDetailsIntent
 
     data class ToggleAutoConfirmation(val enabled: Boolean) : GroupDetailsIntent
@@ -375,7 +378,8 @@ sealed interface GroupDetailsEffect {
 
     data class OpenSchedule(val groupId: String) : GroupDetailsEffect
 
-    data class OpenCreateGame(val groupId: String) : GroupDetailsEffect
+    /** [firstGame]: o guia do primeiro grupo ainda espera o primeiro jogo (leva ao convite depois). */
+    data class OpenCreateGame(val groupId: String, val firstGame: Boolean = false) : GroupDetailsEffect
 
     data class OpenGame(val groupId: String, val gameId: String) : GroupDetailsEffect
 

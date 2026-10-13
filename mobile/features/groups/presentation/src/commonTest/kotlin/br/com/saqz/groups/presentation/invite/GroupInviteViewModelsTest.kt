@@ -61,14 +61,71 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupInviteViewModelsTest {
     @Test
-    fun `load empty metadata hides url and lists no people`() = runTest {
-        val viewModel = groupViewModel(metadata = SaqzResult.Success(GroupInviteMetadata(active = false)))
+    fun `load empty metadata lists no people`() = runTest {
+        val viewModel = groupViewModel(
+            membership = FakeMembershipGateway(
+                rotateResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Connectivity)),
+            ),
+            metadata = SaqzResult.Success(GroupInviteMetadata(active = false)),
+        )
         advanceUntilIdle()
 
         assertEquals(InviteStatus.Empty, viewModel.state.value.inviteStatus)
         assertNull(viewModel.state.value.inviteUrl)
         assertTrue(viewModel.state.value.pendingRequests.isEmpty())
         assertTrue(viewModel.state.value.recentMembers.isEmpty())
+    }
+
+    @Test
+    fun `without an active invite the link is generated on its own`() = runTest {
+        val membership = FakeMembershipGateway()
+        val store = FakeUrlStore()
+        val viewModel = groupViewModel(
+            membership = membership,
+            urlStore = store,
+            metadata = SaqzResult.Success(GroupInviteMetadata(active = false)),
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, membership.rotateCalls)
+        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
+        assertEquals("https://saqz.app/invite/rotated", viewModel.state.value.inviteUrl)
+        assertFalse(viewModel.state.value.isGenerating)
+        assertEquals("https://saqz.app/invite/rotated", store.value)
+    }
+
+    @Test
+    fun `an active invite is never rotated on open even without a cached url`() = runTest {
+        val membership = FakeMembershipGateway()
+        val viewModel = groupViewModel(
+            membership = membership,
+            urlStore = FakeUrlStore(),
+            metadata = SaqzResult.Success(GroupInviteMetadata(active = true, revision = "r1")),
+        )
+        advanceUntilIdle()
+
+        assertEquals(0, membership.rotateCalls)
+        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
+        assertNull(viewModel.state.value.inviteUrl)
+    }
+
+    @Test
+    fun `automatic generation failure keeps the empty state and retries only on request`() = runTest {
+        val membership = FakeMembershipGateway(
+            rotateResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Connectivity)),
+        )
+        val viewModel = groupViewModel(
+            membership = membership,
+            metadata = SaqzResult.Success(GroupInviteMetadata(active = false)),
+        )
+        advanceUntilIdle()
+        viewModel.onIntent(GroupInviteIntent.Refresh)
+        advanceUntilIdle()
+
+        assertEquals(1, membership.rotateCalls)
+        assertEquals(InviteStatus.Empty, viewModel.state.value.inviteStatus)
+        assertEquals(GroupInviteError.Operation, viewModel.state.value.error)
+        assertFalse(viewModel.state.value.isGenerating)
     }
 
     @Test
@@ -173,8 +230,12 @@ class GroupInviteViewModelsTest {
     @Test
     fun `inactive permanent metadata clears cache even when revision matches`() = runTest {
         val store = FakeUrlStore("https://saqz.app/invite/revoked", expiresAt = null, revision = "revision-1")
+        // A geração automática falha: sobra só o que a carga fez com o cache revogado.
         val viewModel = groupViewModel(
             urlStore = store,
+            membership = FakeMembershipGateway(
+                rotateResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Connectivity)),
+            ),
             metadata = SaqzResult.Success(GroupInviteMetadata(false, revision = "revision-1")),
         )
         advanceUntilIdle()
@@ -619,7 +680,11 @@ class GroupInviteViewModelsTest {
     ) : GroupMembershipGateway {
         override suspend fun listMemberships(groupId: GroupId) = SaqzResult.Success(emptyList<GroupMembership>())
         override suspend fun changeRole(command: ChangeMembershipRoleCommand) = SaqzResult.Success(GroupMembership("u", "U", GroupRole.ATHLETE))
-        override suspend fun rotateInvite(groupId: GroupId) = rotateResult
+        var rotateCalls = 0
+        override suspend fun rotateInvite(groupId: GroupId): SaqzResult<GroupInviteUrl, GroupMembershipError> {
+            rotateCalls += 1
+            return rotateResult
+        }
         override suspend fun readInviteMetadata(groupId: GroupId) = metadataResult
         override suspend fun expireInvite(groupId: GroupId) = expireResult
     }

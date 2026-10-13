@@ -28,4 +28,6 @@
     <string name="group_invite_retry">Tentar novamente</string>
     <string name="group_invite_empty_title">Crie um link para convidar a galera</string>
     <string name="group_invite_empty_description">O convite não expira. Você pode desativá-lo quando quiser.</string>
+    <string name="group_invite_game_created_title">Jogo marcado!</string>
+    <string name="group_invite_game_created_text">Agora chame a galera: mande o link no WhatsApp e a lista começa a fechar sozinha.</string>
 </resources>

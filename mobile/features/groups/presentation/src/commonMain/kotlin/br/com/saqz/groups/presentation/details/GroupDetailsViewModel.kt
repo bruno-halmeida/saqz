@@ -162,7 +162,9 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.OnboardingAction -> onboardingAction()
             GroupDetailsIntent.Retry -> load()
             GroupDetailsIntent.Refresh -> refresh()
-            GroupDetailsIntent.CreateNextGame -> emit(GroupDetailsEffect.OpenCreateGame(groupId))
+            GroupDetailsIntent.CreateNextGame -> emit(
+                GroupDetailsEffect.OpenCreateGame(groupId, firstGame = state.value.onboarding == GroupOnboarding.CreateGame),
+            )
             GroupDetailsIntent.EditGroup -> emit(GroupDetailsEffect.OpenEdit(groupId))
             GroupDetailsIntent.EditVenue -> emit(GroupDetailsEffect.OpenEdit(groupId))
             GroupDetailsIntent.ManageMembers,
@@ -188,6 +190,7 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.RetryOwnCharges -> retryOwnCharges()
             GroupDetailsIntent.CopyPix -> copyPix()
             GroupDetailsIntent.DismissToast -> update { it.copy(toast = null) }
+            GroupDetailsIntent.ShowGameCreated -> update { it.copy(toast = GroupDetailsToast.GameCreated) }
             GroupDetailsIntent.ViewGame -> viewGame()
             GroupDetailsIntent.ConfirmAttendance -> viewGame()
             GroupDetailsIntent.NotifyPending -> notifyPending()
@@ -216,7 +219,7 @@ class GroupDetailsViewModel(
         val current = state.value
         if (current.isLoading || current.loadFailed || !current.isAdmin) return
         when (val guide = current.onboarding) {
-            GroupOnboarding.CreateGame -> emit(GroupDetailsEffect.OpenCreateGame(groupId))
+            GroupOnboarding.CreateGame -> emit(GroupDetailsEffect.OpenCreateGame(groupId, firstGame = true))
             is GroupOnboarding.InviteAthletes -> emit(GroupDetailsEffect.OpenInviteLink(groupId))
             is GroupOnboarding.ReviewFinances -> emit(GroupDetailsEffect.OpenSettlement(groupId, guide.gameId))
             null -> Unit

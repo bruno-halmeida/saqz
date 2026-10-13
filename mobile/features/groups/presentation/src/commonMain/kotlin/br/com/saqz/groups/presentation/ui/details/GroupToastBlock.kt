@@ -11,6 +11,7 @@ import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import br.com.saqz.groups.presentation.details.GroupDetailsState
 import br.com.saqz.groups.presentation.details.GroupDetailsToast
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.group_details_toast_game_created
 import br.com.saqz.groups.resources.home_toast_confirmed
 import br.com.saqz.groups.resources.home_toast_declined
 import br.com.saqz.groups.resources.home_toast_pix_copied
@@ -42,6 +43,7 @@ internal fun GroupToastBlock(
                     GroupDetailsToast.Declined -> Res.string.home_toast_declined
                     GroupDetailsToast.Waitlisted -> Res.string.home_toast_waitlisted
                     GroupDetailsToast.PixCopied -> Res.string.home_toast_pix_copied
+                    GroupDetailsToast.GameCreated -> Res.string.group_details_toast_game_created
                 },
             ),
         )

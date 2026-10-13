@@ -16,6 +16,13 @@ fun GameEditorRoot(
     onBack: () -> Unit,
     onOpenGameDetail: (String) -> Unit,
     onSave: () -> Unit = {},
+    /**
+     * Jogo novo salvo. Quando o editor veio do guia do primeiro grupo ([firstGame]), o host leva
+     * direto ao convite em vez de voltar; senão devolve [onBack] depois de registrar o aviso.
+     */
+    onGameCreate: () -> Unit = {},
+    firstGame: Boolean = false,
+    onFirstGameCreate: () -> Unit = onBack,
     viewModel: GameEditorViewModel? = null,
 ) {
     // VUL-204: chave determinística. Antes era `"…-${Random.nextLong()}"` guardado num
@@ -31,9 +38,16 @@ fun GameEditorRoot(
     val state by resolvedViewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(resolvedViewModel.effects) { effect ->
         when (effect) {
-            GameEditorEffect.Saved -> {
+            is GameEditorEffect.Saved -> {
                 onSave()
-                onBack()
+                when {
+                    !effect.created -> onBack()
+                    firstGame -> onFirstGameCreate()
+                    else -> {
+                        onGameCreate()
+                        onBack()
+                    }
+                }
             }
             is GameEditorEffect.OpenGameDetail -> onOpenGameDetail(effect.gameId)
         }

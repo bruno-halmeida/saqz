@@ -25,6 +25,8 @@ fun GroupInviteRoot(
     onOpenMessagePreview: (groupName: String, inviteUrl: String) -> Unit,
     onOpenQr: (groupName: String, inviteUrl: String) -> Unit,
     onToast: (GroupInviteToast) -> Unit = {},
+    /** Veio logo após marcar o primeiro jogo: o topo comemora e manda chamar a galera. */
+    gameCreated: Boolean = false,
     viewModel: GroupInviteViewModel = koinViewModel(
         key = "invite/$groupId",
         parameters = { parametersOf(groupId) },
@@ -39,7 +41,7 @@ fun GroupInviteRoot(
             GroupInviteEffect.LinkCopied -> onToast(GroupInviteToast.LinkCopied)
         }
     }
-    GroupInviteScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)
+    GroupInviteScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent, gameCreated = gameCreated)
 }
 
 @Composable

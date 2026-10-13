@@ -208,7 +208,7 @@ class GameEditorViewModel(
                     clearPendingDraft()
                     savedState.remove<String>(KeyCommand)
                     update { it.copy(isSaving = false, saveFailed = false) }
-                    emit(GameEditorEffect.Saved)
+                    emit(GameEditorEffect.Saved(created = gameId == null))
                 }
                 is SaqzResult.Failure -> {
                     val error = result.error

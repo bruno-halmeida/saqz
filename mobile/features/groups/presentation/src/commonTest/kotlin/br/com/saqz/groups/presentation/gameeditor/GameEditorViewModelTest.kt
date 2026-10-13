@@ -159,7 +159,7 @@ class GameEditorViewModelTest {
 
         assertNull(profileGateway.lastUpdateCommand)
         assertFalse(vm.state.value.recurrenceFailed)
-        assertTrue(vm.effects.first() is GameEditorEffect.Saved)
+        assertEquals(GameEditorEffect.Saved(created = true), vm.effects.first())
     }
 
     @Test
@@ -254,6 +254,21 @@ class GameEditorViewModelTest {
         assertEquals("Jogo de terça", vm.state.value.form.title)
         assertEquals("2026-08-04", vm.state.value.form.localDate)
         assertEquals("19:30", vm.state.value.form.localTime)
+    }
+
+    @Test
+    fun `saving a new game reports created and saving an edit does not`() = runTest {
+        val creating = viewModel()
+        creating.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
+        creating.onIntent(GameEditorIntent.Submit)
+        assertEquals(GameEditorEffect.Saved(created = true), creating.effects.first())
+
+        val editing = viewModel(
+            gameId = "game-1",
+            gameGateway = FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame())),
+        )
+        editing.onIntent(GameEditorIntent.Submit)
+        assertEquals(GameEditorEffect.Saved(created = false), editing.effects.first())
     }
 
     @Test

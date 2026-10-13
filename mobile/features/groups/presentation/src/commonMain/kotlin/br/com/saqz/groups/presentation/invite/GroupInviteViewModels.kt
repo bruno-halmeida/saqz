@@ -66,6 +66,9 @@ class GroupInviteViewModel(
     private var timeZone = GroupTimeZone("")
     private var loadInFlight = false
 
+    // Só a primeira carga gera o link sozinho: depois disso, "Desativar" é escolha da pessoa.
+    private var autoGenerateChecked = false
+
     init { load() }
 
     override fun handleIntent(intent: GroupInviteIntent) {
@@ -147,8 +150,19 @@ class GroupInviteViewModel(
                         .map { member -> member.toUi() },
                 )
             }
+            generateOnFirstLoad(active)
         }
         job.invokeOnCompletion { if (isCurrent(operation, requestGeneration)) loadInFlight = false }
+    }
+
+    /**
+     * Sem convite ativo não há o que mostrar além do botão: gera o link já. Convite ativo (mesmo
+     * sem URL em cache) nunca é girado aqui; falha cai no vazio com "tentar".
+     */
+    private fun generateOnFirstLoad(active: Boolean) {
+        val first = !autoGenerateChecked
+        autoGenerateChecked = true
+        if (first && !active) rotate()
     }
 
     private suspend fun readCachedInvite(): GroupInviteUrlCache? {

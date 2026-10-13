@@ -3,7 +3,9 @@ package br.com.saqz.groups.presentation.ui.details
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalClipboardManager
 import br.com.saqz.groups.domain.map.GroupMapPort
 import androidx.compose.ui.Modifier
@@ -54,6 +56,9 @@ fun GroupDetailsRoot(
     photoFailed: Boolean = false,
     /** Este é o primeiro grupo que a conta criou: o único que mostra o guia de organizador. */
     onboardingGroup: Boolean = false,
+    /** Voltou de um jogo recém-criado: mostra a confirmação e avisa o host para não repetir. */
+    gameCreatedToast: Boolean = false,
+    onConsumeGameCreatedToast: () -> Unit = {},
     mapPort: GroupMapPort = koinInject(),
     sharePort: NativeInviteSharePort = koinInject(),
     moderation: ModerationViewModel = koinViewModel(key = "moderation/details/$groupId"),
@@ -67,6 +72,13 @@ fun GroupDetailsRoot(
     // contador já acumulado não soma nada ao `init { load() }`: a ViewModel ignora o pedido que
     // chega com carga em voo.
     RefreshWhenVisible(refreshVersion) { viewModel.onIntent(GroupDetailsIntent.Refresh) }
+    val consumeGameCreatedToast by rememberUpdatedState(onConsumeGameCreatedToast)
+    LaunchedEffect(gameCreatedToast) {
+        if (gameCreatedToast) {
+            viewModel.onIntent(GroupDetailsIntent.ShowGameCreated)
+            consumeGameCreatedToast()
+        }
+    }
     // Copiar o Pix (VUL-203) é área de transferência, não destino: morre aqui em vez de
     // subir para o `NavDisplay` como um efeito de navegação que ninguém navega.
     ObserveAsEvents(viewModel.effects) { effect ->

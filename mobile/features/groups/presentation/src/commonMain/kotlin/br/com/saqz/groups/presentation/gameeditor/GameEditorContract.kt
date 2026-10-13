@@ -86,6 +86,7 @@ sealed interface GameEditorIntent {
 }
 
 sealed interface GameEditorEffect {
-    data object Saved : GameEditorEffect
+    /** [created] separa jogo novo de edição: só o primeiro leva à confirmação de "Jogo marcado". */
+    data class Saved(val created: Boolean) : GameEditorEffect
     data class OpenGameDetail(val gameId: String) : GameEditorEffect
 }

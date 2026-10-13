@@ -38,4 +38,5 @@
     <string name="group_details_manage_invite_meta">Link, QR e pedidos de entrada</string>
     <string name="group_details_cash_balance">Saldo %1$s</string>
     <string name="group_details_home_court_title">Onde a gente joga</string>
+    <string name="group_details_toast_game_created">Jogo marcado.</string>
 </resources>

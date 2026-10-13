@@ -46,6 +46,8 @@ import br.com.saqz.groups.resources.group_invite_copied_toast
 import br.com.saqz.groups.resources.group_invite_deactivate
 import br.com.saqz.groups.resources.group_invite_empty_description
 import br.com.saqz.groups.resources.group_invite_empty_title
+import br.com.saqz.groups.resources.group_invite_game_created_text
+import br.com.saqz.groups.resources.group_invite_game_created_title
 import br.com.saqz.groups.resources.group_invite_generate_code
 import br.com.saqz.groups.resources.group_invite_generate_link
 import br.com.saqz.groups.resources.group_invite_joined_days
@@ -74,6 +76,7 @@ internal object GroupInviteTags {
     const val Share = "group-invite-share"
     const val Approval = "group-invite-approval"
     const val Qr = "group-invite-qr"
+    const val GameCreated = "group-invite-game-created"
 }
 
 @Composable
@@ -82,6 +85,7 @@ internal fun GroupInviteScreen(
     onBack: () -> Unit,
     onIntent: (GroupInviteIntent) -> Unit,
     modifier: Modifier = Modifier,
+    gameCreated: Boolean = false,
 ) {
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(GroupInviteTags.Screen)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -102,9 +106,16 @@ internal fun GroupInviteScreen(
                         .padding(SaqzTheme.metrics.horizontalPadding),
                     verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
                 ) {
+                    if (gameCreated) GameCreatedHeader()
                     Text(state.groupName, style = SaqzTheme.typography.title, color = SaqzTheme.colors.textPrimary)
                     if (state.inviteStatus == InviteStatus.Active) {
                         InviteActiveCard(state = state, onIntent = onIntent)
+                    } else if (state.isGenerating) {
+                        // O link nasce sozinho ao abrir sem convite ativo: carregamento, não o vazio.
+                        Box(
+                            Modifier.fillMaxWidth().padding(vertical = SaqzTheme.metrics.blockGap),
+                            contentAlignment = Alignment.Center,
+                        ) { SaqzSpinner() }
                     } else {
                         SaqzEmptyState(
                             title = stringResource(Res.string.group_invite_empty_title),
@@ -173,6 +184,26 @@ internal fun GroupInviteScreen(
         ) {
             SaqzToastText(stringResource(Res.string.group_invite_copied_toast))
         }
+    }
+}
+
+/** Sucesso de quem acabou de marcar o primeiro jogo; o próximo passo é o link logo abaixo. */
+@Composable
+private fun GameCreatedHeader() {
+    Column(
+        modifier = Modifier.fillMaxWidth().testTag(GroupInviteTags.GameCreated),
+        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+    ) {
+        Text(
+            stringResource(Res.string.group_invite_game_created_title),
+            style = SaqzTheme.typography.title,
+            color = SaqzTheme.colors.textPrimary,
+        )
+        Text(
+            stringResource(Res.string.group_invite_game_created_text),
+            style = SaqzTheme.typography.support,
+            color = SaqzTheme.colors.textSecondary,
+        )
     }
 }
 
