@@ -82,3 +82,12 @@ As jornadas são as de [`tests/producao`](../producao/README.md), executadas nes
 aparelhos: AC01 (ORG), GR01, CV01, CV02 (ATL, ATL2 e ATL3 pelo link), JG01, JG02 em cada atleta,
 JG04/JG05 (vagas e reserva), MB01/MB05 (membros) e JG08/JG09 (editar e cancelar). O que depende de
 push, loja ou WhatsApp fica registrado como `BLOQUEADO` aqui e vai para a rodada em produção.
+
+## Web e WhatsApp no stack local
+
+- `ferramentas/saqz-app-local.mjs` imita saqz.app (8787: landing, /comecar, /assinar e /app com o build de produção do
+  web app) e links.saqz.app (8788) contra este stack, com analytics desligado. Safari do simulador em
+  `http://localhost:8787/app/`; convite em `http://localhost:8788/?saqz_invite=<código>`.
+- `ferramentas/uazapi-falso.mjs` é um Uazapi falso em HTTPS que grava cada mensagem que o backend mandaria ao WhatsApp
+  (vínculo de grupo, lembretes, avisos, confirmação de conta). Preparação do certificado e variáveis do backend no topo
+  do arquivo. Rodada de exemplo: [rodada-2026-10-13.md](rodada-2026-10-13.md).
