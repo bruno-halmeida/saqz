@@ -2,6 +2,7 @@ package br.com.saqz.groups.adapter.output.whatsapp
 
 import br.com.saqz.groups.application.communication.WhatsAppDelivery
 import br.com.saqz.groups.application.communication.WhatsAppGroupButton
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sun.net.httpserver.HttpServer
 import com.uazapi.sdk.UazapiClient
@@ -69,6 +70,20 @@ class UazapiGroupNotificationSenderTest {
         assertFalse(payload["async"].asBoolean())
     }
 
+    @Test fun `a configured reminder image goes in the menu as imageButton`() {
+        val payload = sentMenuPayload("https://links.saqz.app/assets/whatsapp-lembrete.jpg")
+        assertEquals("https://links.saqz.app/assets/whatsapp-lembrete.jpg", payload["imageButton"].asText())
+        assertEquals(2, payload["choices"].size())
+    }
+
+    @Test fun `without a reminder image the menu body has no imageButton`() {
+        for (imageUrl in listOf(null, "", "  ")) {
+            val payload = sentMenuPayload(imageUrl)
+            assertFalse(payload.hasNonNull("imageButton"), "imageUrl=$imageUrl: $payload")
+            assertEquals(2, payload["choices"].size())
+        }
+    }
+
     @Test fun `a permanently rejected menu falls back to text with every button`() = server { server ->
         val paths = mutableListOf<String>()
         val bodies = mutableListOf<String>()
@@ -133,6 +148,27 @@ class UazapiGroupNotificationSenderTest {
             server.stop(0)
             assertEquals(WhatsAppDelivery.Retry(), UazapiGroupNotificationSender(client).send(groupJid, UUID.randomUUID(), text, emptyList()))
         }
+    }
+
+    private fun sentMenuPayload(imageUrl: String?): JsonNode {
+        var path = ""
+        var body = ""
+        server { server ->
+            server.createContext("/") { exchange ->
+                path = exchange.requestURI.path
+                body = exchange.requestBody.bufferedReader().readText()
+                exchange.sendResponseHeaders(200, 2)
+                exchange.responseBody.use { it.write("{}".toByteArray()) }
+            }
+            client(server).use { client ->
+                assertEquals(
+                    WhatsAppDelivery.Accepted,
+                    UazapiGroupNotificationSender(client, imageUrl).send(groupJid, UUID.randomUUID(), text, attendanceButtons()),
+                )
+            }
+        }
+        assertEquals("/send/menu", path)
+        return ObjectMapper().readTree(body)
     }
 
     private val groupJid = "120363000000000000@g.us"

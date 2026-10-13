@@ -16,9 +16,13 @@ import java.util.UUID
  * Entrega ao grupo por `/send/text` e, quando há botões (lembrete de presença), por `/send/menu`
  * com botões CTA de URL — a URL crua não aparece no texto. O destino é o JID do grupo
  * (`...@g.us`), então não há regex de telefone: JID não é número. A classificação de erro é
- * idêntica à do sender DM.
+ * idêntica à do sender DM. Com [reminderImageUrl] o menu leva uma imagem de marca no topo; sem ela
+ * (nula ou vazia) sai como antes, só com texto e botões.
  */
-class UazapiGroupNotificationSender(private val client: UazapiClient) : NotificationWhatsAppGroupSender {
+class UazapiGroupNotificationSender(
+    private val client: UazapiClient,
+    private val reminderImageUrl: String? = null,
+) : NotificationWhatsAppGroupSender {
     override fun send(jid: String, messageId: UUID, text: String, buttons: List<WhatsAppGroupButton>): WhatsAppDelivery =
         if (buttons.isEmpty()) sendText(jid, messageId, text) else sendMenu(jid, messageId, text, buttons)
 
@@ -28,12 +32,10 @@ class UazapiGroupNotificationSender(private val client: UazapiClient) : Notifica
         text: String,
         buttons: List<WhatsAppGroupButton>,
     ): WhatsAppDelivery {
-        val result = deliver {
-            client.messages().sendMenu(
-                MenuMessage.builder(jid, MenuType.BUTTON, text, buttons.map { "${it.label}|${it.url}" })
-                    .trackSource("saqz").trackId("group-$messageId").asyncSend(false).build(),
-            )
-        }
+        val menu = MenuMessage.builder(jid, MenuType.BUTTON, text, buttons.map { "${it.label}|${it.url}" })
+            .trackSource("saqz").trackId("group-$messageId").asyncSend(false)
+        reminderImageUrl?.takeIf { it.isNotBlank() }?.let(menu::imageButton)
+        val result = deliver { client.messages().sendMenu(menu.build()) }
         // Botão recusado de forma permanente (provider/cliente sem suporte): não perder o
         // lembrete — reenvia como texto com as URLs ao final.
         return if (result == WhatsAppDelivery.Failed) {

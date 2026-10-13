@@ -50,8 +50,12 @@ class NotificationWhatsAppConfiguration {
     @Bean fun notificationWhatsAppGroupQueue(dataSource: DataSource, transaction: JdbcTransactionRunner,
         links: br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory) =
         JdbcNotificationWhatsAppGroup(dataSource, transaction, links)
-    @Bean fun notificationWhatsAppGroupSender(client: UazapiClient): NotificationWhatsAppGroupSender =
-        UazapiGroupNotificationSender(client)
+    @Bean fun notificationWhatsAppGroupSender(
+        client: UazapiClient,
+        @Value("\${saqz.links.domain}") linksDomain: String,
+        @Value("\${saqz.notifications.whatsapp.group-reminder-image-url:#{null}}") reminderImageUrl: String?,
+    ): NotificationWhatsAppGroupSender =
+        UazapiGroupNotificationSender(client, groupReminderImageUrl(linksDomain, reminderImageUrl))
     @Bean fun notificationWhatsAppGroupWorker(
         queue: JdbcNotificationWhatsAppGroup,
         sender: NotificationWhatsAppGroupSender,
@@ -81,6 +85,21 @@ class NotificationWhatsAppConfiguration {
         link: LinkGroupWhatsApp,
         manage: ManageGroupWhatsAppBinding,
     ) = GroupWhatsAppBindingController(actors, link, manage)
+}
+
+/**
+ * Imagem de marca no topo do lembrete de presença no grupo. Propriedade ausente = imagem hospedada
+ * no domínio de links (sem barra dupla, com ou sem `/` no fim do domínio); presente e vazia = sem
+ * imagem; preenchida precisa ser HTTPS, porque o provider baixa a URL.
+ */
+internal fun groupReminderImageUrl(linksDomain: String, configured: String?): String? {
+    val url = (configured ?: "${linksDomain.trimEnd('/')}/assets/whatsapp-lembrete.jpg").trim()
+    if (url.isEmpty()) return null
+    val uri = URI(url)
+    require(uri.scheme == "https" && !uri.host.isNullOrBlank() && uri.userInfo == null) {
+        "WhatsApp reminder image requires an HTTPS URL"
+    }
+    return url
 }
 
 class NotificationWhatsAppWorker(private val queue: JdbcNotificationWhatsApp, private val sender: NotificationWhatsAppSender) {
