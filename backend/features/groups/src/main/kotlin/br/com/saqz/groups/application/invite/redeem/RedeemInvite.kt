@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.invite.redeem
 
+import br.com.saqz.groups.application.communication.FirstMemberNotice
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
@@ -17,6 +18,7 @@ class RedeemInvite(
     private val subscriptionLimits: SubscriptionLimits,
     private val clock: Clock,
     private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
+    private val firstMember: FirstMemberNotice = FirstMemberNotice { _, _ -> },
 ) {
     fun execute(actor: UUID, rawCode: String): RedeemInviteResult = transactionRunner.inTransaction {
         val now = clock.instant()
@@ -72,6 +74,9 @@ class RedeemInvite(
         }
 
         val role = repository.redeemMembership(RedeemMembershipCommand(invite.groupId, actor))
+        // Entrada imediata por conta própria (convite ou link de presença); pedido pendente e entrada feita
+        // pelo organizador não passam por aqui. Na mesma transação, sem poder desfazê-la.
+        firstMember.joined(invite.groupId, actor)
         RedeemInviteResult.Success(invite.groupId, role)
     }
 

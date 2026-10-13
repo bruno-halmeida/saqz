@@ -2,6 +2,7 @@ package br.com.saqz.bootstrap
 
 import br.com.saqz.bootstrap.configuration.data
 import br.com.saqz.bootstrap.configuration.liveActivityAps
+import br.com.saqz.bootstrap.configuration.offersAttendanceActions
 import br.com.saqz.groups.application.communication.LiveActivityGame
 import br.com.saqz.groups.application.communication.NotificationPush
 import org.junit.jupiter.api.Test
@@ -9,6 +10,7 @@ import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /** O fim da janela das 24 h viaja no `data` do push para o app expirar a notificação (VUL-263). */
 class NotificationPushPayloadTest {
@@ -21,6 +23,12 @@ class NotificationPushPayloadTest {
         val end = Instant.parse("2026-09-26T22:00:00Z")
 
         assertEquals(end.toEpochMilli().toString(), push.copy(windowEndsAt = end).data()["windowEndsAt"])
+    }
+
+    @Test fun `first confirmation notice opens the game without attendance actions`() {
+        assertTrue(push.offersAttendanceActions())
+        assertFalse(push.copy(channel = "FIRST_CONFIRMATION").offersAttendanceActions())
+        assertFalse(push.copy(channel = "FIRST_MEMBER", gameId = null).offersAttendanceActions())
     }
 
     @Test fun `pushes without a window keep the payload they had`() {

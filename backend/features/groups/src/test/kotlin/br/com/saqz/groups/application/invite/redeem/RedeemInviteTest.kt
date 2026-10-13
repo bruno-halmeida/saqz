@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.invite.redeem
 
+import br.com.saqz.groups.application.communication.FirstMemberNotice
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
@@ -403,10 +404,35 @@ class RedeemInviteTest {
         assertEquals(role, fixture.repository.roles[actor])
     }
 
+    @Test
+    fun `entrada imediata avisa o primeiro atleta com grupo e pessoa, dentro da transacao`() {
+        val joined = mutableListOf<Pair<UUID, UUID>>()
+        val fixture = fixture(firstMember = FirstMemberNotice { group, user -> joined += group to user })
+
+        assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ATHLETE), fixture.useCase.execute(actor, code.value))
+
+        assertEquals(listOf(groupId to actor), joined)
+    }
+
+    @Test
+    fun `quem ja e membro, pedido pendente e convite invalido nao avisam`() {
+        val joined = mutableListOf<Pair<UUID, UUID>>()
+        val notice = FirstMemberNotice { group, user -> joined += group to user }
+        val member = fixture(firstMember = notice).also { it.repository.roles[actor] = GroupRole.ATHLETE }
+        member.useCase.execute(actor, code.value)
+        val pending = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = true), firstMember = notice)
+        pending.useCase.execute(actor, code.value)
+        val invalid = fixture(target = null, firstMember = notice)
+        invalid.useCase.execute(actor, code.value)
+
+        assertTrue(joined.isEmpty())
+    }
+
     private fun fixture(
         clockNow: Instant = now,
         target: RedeemableInvite? = RedeemableInvite(groupId, clockNow.plusSeconds(60), groupDeleted = false),
         athleteLimit: Int? = null,
+        firstMember: FirstMemberNotice = FirstMemberNotice { _, _ -> },
     ): Fixture {
         val repository = RecordingRedemptionRepository(target, ownerId)
         val transaction = RecordingTransactionRunner()
@@ -417,6 +443,7 @@ class RedeemInviteTest {
                 repository,
                 FixedSubscriptionLimits(athleteLimit = athleteLimit),
                 clock,
+                firstMember = firstMember,
             ),
             repository,
             transaction,

@@ -52,7 +52,7 @@ class FirebaseNotificationPushSender(private val app: FirebaseApp) : Notificatio
         // com os botões de presença mesmo em segundo plano; no iOS o alerta vai explícito no `aps`.
         val aps = Aps.builder().setSound("default")
             .setAlert(ApsAlert.builder().setTitle(message.title).setBody(message.body).build())
-        if (message.gameId != null) aps.setCategory(ATTENDANCE_CATEGORY)
+        if (message.offersAttendanceActions()) aps.setCategory(ATTENDANCE_CATEGORY)
         val android = AndroidConfig.builder().setPriority(AndroidConfig.Priority.HIGH)
         val apns = ApnsConfig.builder()
         message.windowEndsAt?.let { end ->
@@ -75,6 +75,9 @@ class FirebaseNotificationPushSender(private val app: FirebaseApp) : Notificatio
         return Message.builder().setToken(token).setApnsConfig(apns.build()).build()
     }
 }
+
+/** O aviso ao organizador de primeira confirmação traz o jogo só para abrir o detalhe: sem "Confirmar" / "Não vou". */
+fun NotificationPush.offersAttendanceActions() = gameId != null && channel != "FIRST_CONFIRMATION"
 
 /** Categoria APNs registrada no app iOS com as ações "Confirmar" / "Não vou". */
 const val ATTENDANCE_CATEGORY = "SAQZ_ATTENDANCE"

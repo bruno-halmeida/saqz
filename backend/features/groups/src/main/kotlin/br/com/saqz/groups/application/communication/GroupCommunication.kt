@@ -5,7 +5,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 
-enum class MessageChannel { CHAT, NOTICE, REMINDER, GAME_OPEN, CHARGE, ATTENDANCE_WINDOW, WAITLIST_DEADLINE }
+enum class MessageChannel { CHAT, NOTICE, REMINDER, GAME_OPEN, CHARGE, ATTENDANCE_WINDOW, WAITLIST_DEADLINE, FIRST_MEMBER, FIRST_CONFIRMATION }
 
 data class GroupMessage(
     val id: UUID,

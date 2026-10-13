@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.attendance
 
+import br.com.saqz.groups.application.communication.FirstConfirmationNotice
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.*
@@ -24,6 +25,7 @@ class RespondAttendance(
     private val charges: AttendanceChargePort,
     private val now: () -> Instant,
     private val ids: () -> UUID = UUID::randomUUID,
+    private val firstConfirmation: FirstConfirmationNotice = FirstConfirmationNotice { _, _, _, _ -> },
 ) {
     fun execute(
         actorId: UUID,
@@ -148,6 +150,12 @@ class RespondAttendance(
             guestSeq = aggregate.guestSeq,
         )
         repository.append(event)
+        // Resposta do próprio atleta (não do organizador nem do sistema), sem convidado, de quem não é o dono.
+        if (event.source == AttendanceSource.SELF && event.newStatus == AttendanceStatus.CONFIRMED &&
+            aggregate.guestSeq == 0 && aggregate.actorRole != GroupRole.OWNER
+        ) {
+            firstConfirmation.confirmed(aggregate.groupId, aggregate.gameId, aggregate.memberId, event.id)
+        }
         if (decision.createGameCharge) charges.confirmed(aggregate, aggregate.actorId)
         val leaving = decision.newStatus == AttendanceStatus.DECLINED
         val wasConfirmed = decision.oldStatus == AttendanceStatus.CONFIRMED

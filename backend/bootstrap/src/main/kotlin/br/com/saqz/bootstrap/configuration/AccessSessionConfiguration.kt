@@ -717,7 +717,14 @@ class AccessSessionConfiguration {
         subscriptionLimits: SubscriptionLimits,
         clock: Clock,
         writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
-    ) = RedeemInvite(transaction, repository, subscriptionLimits, clock, writeAccess)
+        onboardingNotices: br.com.saqz.groups.adapter.output.jdbc.communication.JdbcOnboardingNotices,
+    ) = RedeemInvite(transaction, repository, subscriptionLimits, clock, writeAccess, onboardingNotices)
+
+    @Bean
+    fun onboardingNotices(
+        dataSource: DataSource,
+        communication: br.com.saqz.groups.adapter.output.jdbc.communication.JdbcGroupCommunicationRepository,
+    ) = br.com.saqz.groups.adapter.output.jdbc.communication.JdbcOnboardingNotices(dataSource, communication)
 
     @Bean
     fun accessInviteRedemptionController(
@@ -945,7 +952,12 @@ class AccessSessionConfiguration {
     ): GameSideEffectPort =
         GameSideEffects(listOf(GameFinanceSideEffects(charges), autoConfirm, GameOpenOnPublish(communication, reminders)))
     @Bean fun attendanceCharges(charges: ChargeTransactions) = AttendanceChargeAdapter(charges)
-    @Bean fun respondAttendance(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = RespondAttendance(transaction, repository, charges, Instant::now)
+    @Bean fun respondAttendance(
+        transaction: JdbcTransactionRunner,
+        repository: JdbcAttendanceCommandRepository,
+        charges: AttendanceChargeAdapter,
+        onboardingNotices: br.com.saqz.groups.adapter.output.jdbc.communication.JdbcOnboardingNotices,
+    ) = RespondAttendance(transaction, repository, charges, Instant::now, firstConfirmation = onboardingNotices)
     @Bean fun gameGuests(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, responses: RespondAttendance) = GameGuests(transaction, repository, responses, Instant::now)
     @Bean fun adjustGameCapacity(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = AdjustGameCapacity(transaction, repository, charges, Instant::now)
     @Bean fun attendanceController(actor: VerifiedGroupActorResolver, responses: RespondAttendance, capacities: AdjustGameCapacity, details: AttendanceDetailQuery, rosters: AttendanceRosterQuery, guests: GameGuests) = AttendanceController(actor, responses, capacities, details, rosters, guests)

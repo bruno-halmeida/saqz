@@ -50,16 +50,42 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         if (channel == MessageChannel.REMINDER) {
             jdbc.sql("INSERT INTO notification_attendance_links(message_id) VALUES (:id)").param("id", id).update()
         }
+        deliver(id, groupId, actor, channel, gameId)
+        return checkNotNull(findRequest(groupId, actor, channel, requestId))
+    }
+
+    /**
+     * Grava um aviso de sistema que vale uma vez por grupo (FIRST_MEMBER, FIRST_CONFIRMATION). O índice único
+     * decide a corrida: `ON CONFLICT DO NOTHING` devolve false, sem erro, e a transação de quem chamou segue.
+     */
+    fun publishOnce(groupId: UUID, actor: UUID, channel: MessageChannel, body: String, gameId: UUID?): Boolean {
+        val id = UUID.randomUUID()
+        val inserted = jdbc.sql(
+            """
+            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, game_id)
+            SELECT :id, :group, :actor, display_name, :channel, :request, :body, :game FROM access_users WHERE id = :actor
+            ON CONFLICT DO NOTHING
+            """.trimIndent(),
+        ).param("id", id).param("group", groupId).param("actor", actor).param("channel", channel.name, Types.OTHER)
+            .param("request", UUID.randomUUID()).param("body", body).param("game", gameId, Types.OTHER).update()
+        if (inserted == 0) return false
+        deliver(id, groupId, actor, channel, gameId)
+        return true
+    }
+
+    private fun deliver(id: UUID, groupId: UUID, actor: UUID, channel: MessageChannel, gameId: UUID?) {
         // GAME_OPEN e a janela de presença não têm autor de verdade — o dono só assina o aviso do
         // sistema, e jogando como qualquer um também precisa recebê-los. Ver [firstGameOpenNotice].
         // O filtro de "já respondeu" vale para lembrete e jogo liberado. O aviso de prazo vencido é para
         // quem decide quem entra, tenha ou não respondido ao jogo.
         val everyone = (channel == MessageChannel.GAME_OPEN && firstGameOpenNotice(id, gameId)) ||
-            channel == MessageChannel.WAITLIST_DEADLINE
+            channel == MessageChannel.WAITLIST_DEADLINE || channel == MessageChannel.FIRST_CONFIRMATION
+        // Os avisos do primeiro atleta e da primeira confirmação NÃO são systemAuthored: o autor é quem causou o
+        // evento e não recebe o próprio aviso (se for admin).
         val systemAuthored = channel == MessageChannel.GAME_OPEN || channel == MessageChannel.ATTENDANCE_WINDOW ||
             channel == MessageChannel.WAITLIST_DEADLINE
-        // O prazo vencido é assunto de quem escolhe quem entra: dono e admins (o dono também tem linha ADMIN).
-        val adminsOnly = channel == MessageChannel.WAITLIST_DEADLINE
+        // Prazo vencido e avisos de onboarding são assunto de quem organiza: dono e admins (o dono também tem linha ADMIN).
+        val adminsOnly = channel in ADMINS_ONLY_CHANNELS
         jdbc.sql(
             """
             INSERT INTO group_notifications (recipient_id, message_id)
@@ -86,7 +112,6 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             .param("id", id).query(Int::class.java).single()
         jdbc.sql("UPDATE group_messages SET recipient_count = :count WHERE id = :id")
             .param("count", recipients).param("id", id).update()
-        return checkNotNull(findRequest(groupId, actor, channel, requestId))
     }
 
     /**
@@ -267,6 +292,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
     )
 
     private companion object {
+        val ADMINS_ONLY_CHANNELS = setOf(MessageChannel.WAITLIST_DEADLINE, MessageChannel.FIRST_MEMBER, MessageChannel.FIRST_CONFIRMATION)
         /** Canais escritos por uma pessoa: são os que o bloqueio esconde. Os do sistema seguem chegando. */
         val PERSONAL_CHANNELS = setOf(MessageChannel.NOTICE, MessageChannel.CHAT)
         const val NOT_FROM_BLOCKED = "(m.channel NOT IN ('NOTICE', 'CHAT') OR NOT EXISTS (" +
