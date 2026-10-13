@@ -27,6 +27,7 @@ internal fun VersionCatalog.library(alias: String): Provider<MinimalExternalModu
  * O `namespace` fica no módulo — é a única parte legitimamente diferente entre eles.
  */
 class KmpLibraryConventionPlugin : Plugin<Project> {
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
     override fun apply(target: Project) = with(target) {
         val compileSdkVersion = libs.intVersion("compile-sdk")
         val minSdkVersion = libs.intVersion("min-sdk")
@@ -35,6 +36,9 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
             jvmToolchain(JVM_TOOLCHAIN)
             iosArm64()
             iosSimulatorArm64()
+            // Web app (Kotlin/Wasm): mesmo commonMain dos apps Android e iOS; o hospedeiro
+            // web implementa as mesmas portas nativas em `:web-app`.
+            wasmJs { browser() }
             applyDefaultHierarchyTemplate()
             targets.withType(KotlinMultiplatformAndroidLibraryTarget::class.java).configureEach {
                 compileSdk = compileSdkVersion
