@@ -20,14 +20,13 @@ import kotlin.test.assertNull
 @OptIn(ExperimentalTestApi::class)
 class GroupMembersScreenTest {
 
-    @Test fun `the own row is not clickable and opens no sheet`() = runComposeUiTest {
+    @Test fun `the own row opens the sheet so owner and admin can edit themselves`() = runComposeUiTest {
         var intent: GroupMembersIntent? = null
         content(onIntent = { intent = it })
 
-        onNodeWithTag(GroupMembersTags.member("lucas")).assertHasNoClickAction()
         onNodeWithTag(GroupMembersTags.member("lucas")).performClick()
 
-        assertNull(intent)
+        assertEquals(GroupMembersIntent.OpenMember("lucas"), intent)
     }
 
     @Test fun `the row of another member opens the sheet on that person`() = runComposeUiTest {
@@ -50,13 +49,13 @@ class GroupMembersScreenTest {
         onNodeWithText("Retirar acesso de administrador").assertDoesNotExist()
     }
 
-    @Test fun `the sheet of an admin offers the profile and the demotion`() = runComposeUiTest {
+    @Test fun `the sheet of an admin offers the profile the edit and the demotion`() = runComposeUiTest {
         content(state = state.copy(selected = bia))
 
         onNodeWithText("Ver perfil").assertExists()
+        onNodeWithText("Editar jogador").assertExists()
         onNodeWithText("Retirar acesso de administrador").assertExists()
         onNodeWithText("Remover do grupo").assertExists()
-        onNodeWithText("Editar jogador").assertDoesNotExist()
         onNodeWithText("Tornar administrador").assertDoesNotExist()
     }
 
@@ -86,7 +85,7 @@ class GroupMembersScreenTest {
         )
     }
 
-    @Test fun `the sheet of the group owner offers only the profile report and block`() = runComposeUiTest {
+    @Test fun `the sheet of the group owner offers edit but never demote or remove`() = runComposeUiTest {
         content(state = state.copy(selected = lucas.copy(isSelf = false, isOwner = true)))
 
         onNodeWithText("Ver perfil").assertExists()
@@ -95,7 +94,7 @@ class GroupMembersScreenTest {
         onNodeWithText("Retirar acesso de administrador").assertDoesNotExist()
         onNodeWithText("Remover do grupo").assertDoesNotExist()
         onNodeWithText("Tornar administrador").assertDoesNotExist()
-        onNodeWithText("Editar jogador").assertDoesNotExist()
+        onNodeWithText("Editar jogador").assertExists()
     }
 
     @Test fun `the sheet acts on whoever was touched`() = runComposeUiTest {

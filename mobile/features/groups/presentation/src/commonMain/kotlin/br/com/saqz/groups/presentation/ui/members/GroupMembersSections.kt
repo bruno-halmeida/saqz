@@ -257,14 +257,10 @@ private fun GroupMemberRow(member: MemberUi, onOpen: (String) -> Unit) {
         } else {
             null
         },
-        // A própria linha não abre sheet no 2k; a ViewModel repete a guarda.
-        onClick = if (member.isSelf) {
-            null
-        } else {
-            {
-                dismissKeyboard()
-                onOpen(member.id)
-            }
+        // A própria linha também abre o sheet: dono e admin editam o próprio jogador (mensalista etc.).
+        onClick = {
+            dismissKeyboard()
+            onOpen(member.id)
         },
         modifier = Modifier.testTag(GroupMembersTags.member(member.id)),
         trailing = {

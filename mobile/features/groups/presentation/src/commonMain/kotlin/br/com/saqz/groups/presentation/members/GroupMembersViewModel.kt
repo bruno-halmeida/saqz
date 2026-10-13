@@ -165,7 +165,6 @@ class GroupMembersViewModel(
 
     private fun openMember(memberId: String) {
         val member = roster.firstOrNull { it.id == memberId } ?: return
-        if (member.isSelf) return
         update { it.copy(selected = member) }
     }
 
@@ -248,9 +247,8 @@ class GroupMembersViewModel(
     }
 }
 
-/** O que mexe no papel ou no elenco: nunca sobre o dono. Denunciar e bloquear valem para ele também. */
+/** O que muda o papel ou tira do grupo: nunca sobre o dono. Editar jogador vale para ele; denunciar e bloquear também. */
 private val OwnerProtectedActions = setOf(
-    GroupMemberAction.EditMember,
     GroupMemberAction.Promote,
     GroupMemberAction.Demote,
     GroupMemberAction.Remove,

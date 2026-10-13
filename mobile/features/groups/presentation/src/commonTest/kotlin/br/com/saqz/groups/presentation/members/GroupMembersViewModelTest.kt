@@ -62,7 +62,7 @@ class GroupMembersViewModelTest {
     }
 
     @Test
-    fun `signed in member is marked self and cannot open its action sheet`() = runTest {
+    fun `signed in member is marked self and its sheet only edits the profile`() = runTest {
         val athlete = FakeAthleteGateway(
             ownProfileResult = SaqzResult.Success(
                 br.com.saqz.groups.domain.athlete.OwnAthleteProfile("me", "Me", null, emptyList()),
@@ -81,11 +81,55 @@ class GroupMembersViewModelTest {
         val self = viewModel.state.value.admins.single()
         assertTrue(self.isSelf)
 
+        assertEquals(listOf(GroupMemberAction.ViewProfile, GroupMemberAction.EditMember), self.sheetActions())
         viewModel.onIntent(GroupMembersIntent.OpenMember(self.id))
         viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
 
-        assertEquals(null, viewModel.state.value.selected)
+        assertEquals(self.id, viewModel.state.value.selected?.id)
         assertEquals(null, athlete.lastRemovedUserId)
+    }
+
+    @Test
+    fun `dono e admin editam jogador de dono e de admin inclusive o proprio`() {
+        val base = MemberUi("x", "X", "", isAdmin = true, isSelf = false, stats = "")
+        val ownerSelf = base.copy(isOwner = true, isSelf = true)
+        val ownerTarget = base.copy(isOwner = true, canManageRoles = false)
+        val adminTarget = base.copy(canManageRoles = false)
+        val adminTargetByOwner = base.copy()
+        assertEquals(
+            listOf(GroupMemberAction.ViewProfile, GroupMemberAction.EditMember),
+            ownerSelf.sheetActions(),
+        )
+        assertEquals(
+            listOf(
+                GroupMemberAction.ViewProfile,
+                GroupMemberAction.EditMember,
+                GroupMemberAction.Report,
+                GroupMemberAction.Block,
+            ),
+            ownerTarget.sheetActions(),
+        )
+        assertEquals(
+            listOf(
+                GroupMemberAction.ViewProfile,
+                GroupMemberAction.EditMember,
+                GroupMemberAction.Remove,
+                GroupMemberAction.Report,
+                GroupMemberAction.Block,
+            ),
+            adminTarget.sheetActions(),
+        )
+        assertEquals(
+            listOf(
+                GroupMemberAction.ViewProfile,
+                GroupMemberAction.EditMember,
+                GroupMemberAction.Demote,
+                GroupMemberAction.Remove,
+                GroupMemberAction.Report,
+                GroupMemberAction.Block,
+            ),
+            adminTargetByOwner.sheetActions(),
+        )
     }
 
     @Test
@@ -254,7 +298,12 @@ class GroupMembersViewModelTest {
 
         val owner = viewModel.state.value.admins.single()
         assertEquals(
-            listOf(GroupMemberAction.ViewProfile, GroupMemberAction.Report, GroupMemberAction.Block),
+            listOf(
+                GroupMemberAction.ViewProfile,
+                GroupMemberAction.EditMember,
+                GroupMemberAction.Report,
+                GroupMemberAction.Block,
+            ),
             owner.sheetActions(),
         )
         viewModel.onIntent(GroupMembersIntent.OpenMember(owner.id))
