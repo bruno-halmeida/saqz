@@ -10,9 +10,12 @@ Campo vazio no config desliga aquele serviço.
 | Microsoft Clarity | `yx3xoevhh7` | clarity.microsoft.com, projeto do site saqz.app |
 | Pixel da Meta | `1093367840008038` | conjunto de dados "Saqz", negócio Egysis IA |
 
-GA4 e Clarity carregam para todo visitante, como estatística de uso. O pixel da Meta só carrega depois do
-"Aceitar" no aviso da landing; a escolha fica em `localStorage` (`saqz_consent_ads`) e vale para as três
-páginas, que estão no mesmo domínio. A política de privacidade descreve os três.
+Nada carrega antes da escolha no aviso de cookies (aparece na landing, em /comecar/ e em /assinar/):
+"Aceitar todos" liga GA4, Clarity e o pixel da Meta; "Só estatísticas" liga GA4 e Clarity; "Recusar" não liga
+nenhum (e `saqzTrack` vira no-op). A escolha fica em `localStorage` (`saqz_consent_ads` = `all`, `stats` ou
+`none`; `yes`/`no` do formato antigo valem como `all`/`stats`) e vale para as três páginas, que estão no
+mesmo domínio. O link "Cookies" no rodapé (`data-saqz-cookies`) reabre o aviso; reduzir a escolha limpa os
+cookies de medição e recarrega a página. A política de privacidade descreve os três.
 
 ## Funil
 

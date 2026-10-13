@@ -75,107 +75,24 @@
       background: var(--navy);
       color: var(--white);
     }
-    .download-kicker {
-      margin: 0 0 8px;
-      color: var(--lime);
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: .16em;
-      text-transform: uppercase;
-    }
-    .download-title {
-      margin: 0;
-      font-size: 20px;
-      line-height: 1.2;
-      letter-spacing: -.03em;
-    }
-    .download-steps {
-      margin: 16px 0 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      gap: 10px;
-    }
-    .download-steps li {
-      display: grid;
-      grid-template-columns: 22px 1fr;
-      gap: 10px;
-      align-items: start;
-      color: rgba(255,255,255,.82);
-      font-size: 14px;
-      line-height: 1.45;
-    }
-    .download-steps li::before {
-      content: counter(step);
-      counter-increment: step;
-      display: grid;
-      place-items: center;
-      width: 22px;
-      height: 22px;
-      margin-top: 1px;
-      border-radius: 50%;
-      background: var(--lime);
-      color: var(--navy);
-      font-size: 12px;
-      font-weight: 800;
-    }
-    .download-steps { counter-reset: step; }
+    .download-title { margin: 0; font-size: 20px; line-height: 1.2; letter-spacing: -.03em; }
     .store-row {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 10px;
-      margin-top: 18px;
+      margin-top: 14px;
     }
     /* Selos oficiais (Apple Marketing Tools e Google Play Badges): sem recolorir nem selo por cima.
        Loja sem link publicado não mostra selo nenhum. */
     .store-official { display: inline-flex; line-height: 0; border-radius: 8px; }
     .store-official img { display: block; height: 44px; width: auto; }
     .store-official:focus-visible { outline: 3px solid rgba(199,243,0,.35); outline-offset: 2px; }
-    .iphone-web {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      height: 44px;
-      padding: 0 14px;
-      border: 1px solid rgba(255,255,255,.22);
-      border-radius: 8px;
-      color: var(--white);
-      text-decoration: none;
-    }
-    .iphone-web svg { width: 20px; height: 20px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
-    .iphone-web small { display: block; color: rgba(255,255,255,.62); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-    .iphone-web strong { display: block; margin-top: 1px; font-size: 14px; letter-spacing: -.01em; }
-    .iphone-web:hover { border-color: var(--lime); }
-    .iphone-web:focus-visible { outline: 3px solid rgba(199,243,0,.35); outline-offset: 2px; }
-    .download-soon {
-      margin: 12px 0 0;
-      color: rgba(255,255,255,.62);
-      font-size: 13px;
-      line-height: 1.45;
-    }
-    .download-open {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid rgba(255,255,255,.12);
-    }
-    .download-open-label {
-      margin: 0;
-      color: rgba(255,255,255,.72);
-      font-size: 13px;
-      font-weight: 700;
-    }
-    .download-panel .btn { margin-top: 12px; }
-    .download-panel .btn-quiet {
-      background: transparent;
-      color: var(--white);
-      border-color: rgba(255,255,255,.22);
-    }
-    .download-panel .btn-quiet:hover { background: rgba(255,255,255,.06); }
-    .download-panel .notice { background: rgba(255,255,255,.08); color: rgba(255,255,255,.88); }
-    .download-panel .notice.error { background: rgba(229,72,77,.16); color: #FFD2D3; }
-    .trial-block { margin-top: 18px; padding-top: 4px; }
-    .trial-block h3 { margin: 0 0 6px; font-size: 16px; letter-spacing: -.02em; }
+    .open-app { margin-top: 14px; }
+    .open-app .btn { margin-top: 10px; }
+    .open-app .btn:first-child { margin-top: 0; }
+    .more { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+    .more summary { cursor: pointer; color: var(--muted); font-size: 14px; font-weight: 700; }
     footer { grid-column: 1 / -1; color: var(--muted); font-size: 13px; text-align: center; }
     @media (max-width:419px) {
       .shell { width:min(100% - 24px, 440px); }
@@ -267,14 +184,8 @@
       <p class="sub" id="ready-copy">Baixe o app e entre com esta mesma conta. O teste começa quando você criar o primeiro grupo no celular.</p>
       <a class="btn" id="web-app-cta" href="/app/" hidden>Continuar no Saqz</a>
       <p class="fine" id="web-app-ios-tip" hidden>No iPhone, o Saqz funciona direto no navegador. Para abrir como um app, toque em Compartilhar › Adicionar à Tela de Início.</p>
-      <div class="download-panel" id="download-panel">
-        <p class="download-kicker">Próximo passo</p>
-        <h3 class="download-title">Use o Saqz no celular</h3>
-        <ol class="download-steps">
-          <li id="step-get">No Android, baixe o app na Google Play. No iPhone, o Saqz abre no navegador, sem instalar.</li>
-          <li>Entre com o mesmo e-mail ou Google deste cadastro</li>
-          <li>Crie o primeiro grupo para começar o teste</li>
-        </ol>
+      <div class="download-panel" id="download-panel" hidden>
+        <h3 class="download-title" id="download-title">Baixe o app</h3>
         <div class="store-row">
           <a class="store-official" id="android-store" data-label="Disponível no Google Play" hidden>
             <img src="badges/google-play-pt-br.png" alt="Disponível no Google Play" width="148" height="44">
@@ -282,38 +193,30 @@
           <a class="store-official" id="ios-store" data-label="Baixar na App Store" hidden>
             <img src="badges/app-store-pt-br.svg" alt="Baixar na App Store" width="132" height="44">
           </a>
-          <a class="iphone-web" id="iphone-web" href="/app/">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>
-            <span><small>No iPhone</small><strong>Use pelo navegador</strong></span>
-          </a>
-        </div>
-        <p class="download-soon" id="store-soon-note">No iPhone, abra saqz.app/app e toque em Compartilhar › Adicionar à Tela de Início: o Saqz ganha um ícone, como um app. O app da App Store chega em breve.</p>
-        <div class="download-open">
-          <p class="download-open-label">Já tem o app instalado?</p>
-          <button class="btn" id="request-app-link" type="button">Abrir o app neste celular</button>
-          <a class="btn btn-quiet app-link" id="app-link" href="#" target="_blank" rel="noopener" hidden>Continuar no app</a>
-          <div class="notice" id="app-link-help">O link é temporário. Se expirar, gere outro ou entre no app com esta mesma conta.</div>
-          <div class="notice error" id="app-link-error" role="alert" hidden></div>
         </div>
       </div>
-      <div class="trial-block" id="trial-options">
-        <h3>Teste desta conta</h3>
-        <p class="notice" id="trial-status" role="status">Consultando as opções de teste…</p>
-        <button class="btn" id="enroll-trial" type="button" hidden>Liberar meu teste</button>
+      <div class="open-app" id="download-open" hidden>
+        <button class="btn btn-quiet" id="request-app-link" type="button">Já tem o app? Abrir neste celular</button>
+        <a class="btn app-link" id="app-link" href="#" target="_blank" rel="noopener" hidden>Continuar no app</a>
+        <div class="notice error" id="app-link-error" role="alert" hidden></div>
+        <div class="notice" id="app-link-help" hidden></div>
+      </div>
+      <p class="notice" id="trial-status" role="status" hidden></p>
+      <details class="more" id="more-options">
+        <summary>Mais opções</summary>
         <form id="trial-coupon-form" hidden>
           <label for="trial-coupon">Tem um cupom de teste?</label>
           <input id="trial-coupon" name="trial-coupon" maxlength="32" autocomplete="off" autocapitalize="characters" placeholder="Código da campanha">
           <button class="btn btn-quiet" id="apply-trial-coupon" type="submit">Aplicar cupom</button>
         </form>
-        <button class="btn btn-quiet" id="refresh-trial" type="button">Atualizar opções</button>
+        <button class="btn btn-quiet" id="refresh-trial" type="button">Atualizar opções do teste</button>
         <p class="fine"><a href="../assinar/">Conhecer os planos pagos</a></p>
-      </div>
-      <p class="fine">O teste do Organizador inclui até 3 grupos e atletas ilimitados, sem cartão. O prazo só começa na criação do primeiro grupo.</p>
-      <button class="btn btn-quiet" id="logout" type="button">Sair e entrar com outra conta</button>
+        <button class="btn btn-quiet" id="logout" type="button">Sair e entrar com outra conta</button>
+      </details>
     </section>
     </div>
 
-    <footer>O teste começa apenas ao criar seu primeiro grupo no app. Após o teste, escolha um plano pago compatível para continuar. Não há cobrança automática.</footer>
+    <footer>O teste começa apenas ao criar seu primeiro grupo no app. Após o teste, escolha um plano pago compatível para continuar. Não há cobrança automática. <a href="#cookies" data-saqz-cookies>Cookies</a></footer>
   </main>
 </body>
 </html>

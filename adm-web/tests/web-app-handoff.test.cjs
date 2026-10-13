@@ -50,6 +50,7 @@ test('iPhone: depois do cadastro, "Continuar no Saqz" leva ao web app e o painel
   page.ready(); await flush(); await flush();
   assert.equal(page.el('web-app-cta').hidden, false);
   assert.equal(page.el('download-panel').hidden, true);
+  assert.equal(page.el('download-open').hidden, true, '"Abrir o app" não faz sentido sem app no iPhone');
   assert.match(page.el('ready-copy').textContent, /Continue no Saqz/);
   assert.ok(page.fetched.includes('/app/disponivel.json'));
 });
@@ -58,7 +59,8 @@ test('computador: oferece o web app e mantém o painel para quem vai instalar no
   const page = comecar(DESKTOP);
   page.ready(); await flush(); await flush();
   assert.equal(page.el('web-app-cta').hidden, false);
-  assert.notEqual(page.el('download-panel').hidden, true);
+  assert.equal(page.el('download-panel').hidden, false);
+  assert.equal(page.el('download-open').hidden, true, '"Abrir o app neste celular" só aparece no celular');
 });
 
 test('Android: segue nas lojas, sem consultar o web app', async () => {
@@ -67,6 +69,9 @@ test('Android: segue nas lojas, sem consultar o web app', async () => {
   assert.equal(page.el('web-app-cta').hidden, true);
   assert.ok(!page.fetched.includes('/app/disponivel.json'));
   assert.match(page.el('ready-copy').textContent, /Baixe o app/);
+  assert.equal(page.el('download-panel').hidden, false, 'principal: o selo da Google Play');
+  assert.equal(page.el('android-store').hidden, false);
+  assert.equal(page.el('download-open').hidden, false, 'secundária: já tem o app? abrir neste celular');
 });
 
 test('web app fora do ar: a página fica como era', async () => {
@@ -74,6 +79,8 @@ test('web app fora do ar: a página fica como era', async () => {
   page.ready(); await flush(); await flush();
   assert.equal(page.el('web-app-cta').hidden, true);
   assert.match(page.el('ready-copy').textContent, /Baixe o app/);
+  assert.equal(page.el('android-store').hidden, true, 'iPhone nunca vê o selo da Google Play');
+  assert.equal(page.el('download-panel').hidden, true);
 });
 
 test('assinatura: sucesso e "já é assinante" oferecem o web app no iPhone', () => {
@@ -93,18 +100,16 @@ test('iPhone: abaixo do "Continuar no Saqz" vem a dica de adicionar à Tela de I
   assert.equal(page.el('web-app-ios-tip').hidden, false);
 });
 
-test('computador: selo oficial do Google Play, sem selo da App Store, e o bloco "No iPhone" com a nota', async () => {
+test('computador: selo oficial do Google Play como secundária, sem selo da App Store e sem dica de iPhone', async () => {
   const page = comecar(DESKTOP);
   page.ready();
   await flush(); await flush();
   assert.equal(page.el('android-store').hidden, false);
   assert.equal(page.el('ios-store').hidden, true);
-  assert.equal(page.el('iphone-web').hidden, false);
-  assert.equal(page.el('store-soon-note').hidden, false);
   assert.equal(page.el('web-app-ios-tip').hidden, true);
 });
 
-test('com link da App Store: o selo oficial aparece e o bloco "No iPhone" e a nota somem', async () => {
+test('com link da App Store: o selo oficial aparece no computador', async () => {
   const page = comecar(DESKTOP, true, {
     androidPlayStoreUrl: 'https://play.google.com/store/apps/details?id=app.saqz',
     iosAppStoreUrl: 'https://apps.apple.com/br/app/id6812743525',
@@ -113,7 +118,14 @@ test('com link da App Store: o selo oficial aparece e o bloco "No iPhone" e a no
   await flush(); await flush();
   assert.equal(page.el('ios-store').hidden, false);
   assert.equal(page.el('ios-store').href, 'https://apps.apple.com/br/app/id6812743525');
-  assert.equal(page.el('iphone-web').hidden, true);
-  assert.equal(page.el('store-soon-note').hidden, true);
-  assert.equal(page.el('step-get').textContent, 'Baixe o app na loja do iPhone ou Android');
+});
+
+test('cartão final: só uma ação principal visível e o resto atrás de "Mais opções"', () => {
+  const html = fs.readFileSync(require.resolve('../comecar/index.html'), 'utf8');
+  const card = html.slice(html.indexOf('id="ready-card"'), html.indexOf('</section>', html.indexOf('id="ready-card"')));
+  const details = card.slice(card.indexOf('<details'), card.indexOf('</details>'));
+  for (const id of ['trial-coupon-form', 'refresh-trial', 'logout']) assert.ok(details.includes(`id="${id}"`), `${id} em Mais opções`);
+  assert.match(details, /Conhecer os planos pagos/);
+  assert.ok(!card.slice(0, card.indexOf('<details')).includes('id="logout"'));
+  assert.doesNotMatch(card, /Experimentar o Organizador|iphone-web|Use pelo navegador|enroll-trial/);
 });

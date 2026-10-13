@@ -42,19 +42,19 @@ test('Google is the first auth action and keeps the official mark', () => {
   assert.match(html, /fill="#4285F4"/);
   assert.match(html, /Mais rápido · sem criar senha/);
 });
-test('public availability offers enrollment without claiming it is already selected', async () => {
+test('an available trial is informative: no enrollment button, the first group releases it', async () => {
   const { app, requests, element } = setup();
   app.load(); await flush(); respond(requests[0], available); await flush();
-  assert.equal(element('enroll-trial').hidden, false);
-  assert.match(element('trial-status').textContent, /pode liberar/);
-  app.select(false); app.select(false); await flush();
-  assert.equal(requests.length, 2);
-  assert.equal(requests[1].path, '/subscriptions/trial/enrollment');
-  assert.equal(requests[1].options.method, 'POST');
-  respond(requests[1], { ...available, preauthorized: true }); await flush();
-  assert.equal(element('enroll-trial').hidden, true);
-  assert.match(element('trial-status').textContent, /prazo começa ao criar/);
-  assert.equal(element('enroll-trial').disabled, false);
+  assert.doesNotMatch(html, /id="enroll-trial"/);
+  assert.match(element('trial-status').textContent, /liberado ao criar o primeiro grupo/);
+  assert.equal(element('trial-coupon-form').hidden, false);
+  assert.equal(element('more-options').open, undefined, 'options stay closed when nothing is required');
+});
+test('coupon-only offers open "Mais opções" so the visitor can apply the coupon', async () => {
+  const { app, requests, element } = setup();
+  app.load(); await flush(); respond(requests[0], { ...available, offerMode: 'COUPON_ONLY' }); await flush();
+  assert.match(element('trial-status').textContent, /aplique um cupom/);
+  assert.equal(element('more-options').open, true);
 });
 test('coupon is normalized on web and custom duration is confirmed from server', async () => {
   const { app, requests, element } = setup();
@@ -64,7 +64,6 @@ test('coupon is normalized on web and custom duration is confirmed from server',
   assert.deepEqual(JSON.parse(requests[0].options.body), { code: 'ARENA' });
   respond(requests[0], { ...available, offerMode: 'COUPON_ONLY', trialDays: 45, preauthorized: true }); await flush();
   assert.match(element('trial-status').textContent, /45 dias liberado/);
-  assert.equal(element('enroll-trial').hidden, true);
 });
 test('invalid and rejected coupons never display a granted trial', async () => {
   const { app, requests, element } = setup();
@@ -78,26 +77,25 @@ test('invalid and rejected coupons never display a granted trial', async () => {
 });
 test('stale lookup cannot overwrite a successful selection', async () => {
   const { app, requests, element } = setup();
-  app.load(); await flush(); app.select(false); await flush();
+  element('trial-coupon').value = 'ARENA';
+  app.load(); await flush(); app.select(true); await flush();
   respond(requests[1], { ...available, preauthorized: true }); await flush();
   respond(requests[0], available); await flush();
   assert.match(element('trial-status').textContent, /liberado para esta conta/);
 });
-test('logout discards a late enrollment response and clears coupon', async () => {
+test('logout discards a late coupon response and clears coupon', async () => {
   const { app, requests, element } = setup();
-  element('trial-coupon').value = 'PRIVATE'; app.select(false); await flush(); app.logout();
+  element('trial-coupon').value = 'PRIVATE'; app.select(true); await flush(); app.logout();
   respond(requests[0], { ...available, preauthorized: true }); await flush();
   assert.equal(element('trial-coupon').value, '');
-  assert.equal(element('enroll-trial').hidden, true);
   assert.doesNotMatch(element('trial-status').textContent, /liberado para esta conta/);
 });
-test('off mode hides enrollment and coupon; network errors allow retry', async () => {
+test('off mode hides the coupon form; network errors allow retry', async () => {
   const { app, requests, element } = setup();
   app.load(); await flush(); requests[0].reject(Error('offline')); await flush();
   assert.match(element('trial-status').textContent, /Atualize/);
   app.load(); await flush(); respond(requests[1], { ...available, status: 'INELIGIBLE',
     canCreateGroup: false, canRedeemCoupon: false, offerMode: 'OFF' }); await flush();
-  assert.equal(element('enroll-trial').hidden, true);
   assert.equal(element('trial-coupon-form').hidden, true);
 });
 test('the onboarding link the backend issues opens the app; other shapes are refused', () => {

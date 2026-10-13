@@ -61,7 +61,6 @@
     $("google-auth").disabled = controlsDisabled;
     $("save-profile").disabled = value;
     $("request-app-link").disabled = value;
-    $("enroll-trial").disabled = value;
     $("apply-trial-coupon").disabled = value;
     $("trial-coupon").disabled = value;
     $("refresh-trial").disabled = value;
@@ -145,10 +144,14 @@
   }
   function resetReady() {
     trialGeneration += 1;
-    hide("enroll-trial");
     hide("trial-coupon-form");
     $("trial-coupon").value = "";
-    setMessage("trial-status", "Consultando as opções de teste…");
+    setMessage("trial-status", "");
+    $("more-options").open = false;
+    hide("web-app-cta");
+    hide("web-app-ios-tip");
+    hide("download-panel");
+    hide("download-open");
     session = null;
     profileReady = false;
     profileRetry = false;
@@ -157,7 +160,7 @@
     hide("app-link");
     $("app-link").removeAttribute("href");
     setMessage("app-link-error", "");
-    setMessage("app-link-help", "O link é temporário. Se expirar, gere outro ou entre no app com esta mesma conta.");
+    setMessage("app-link-help", "");
     $("auth-form").reset();
     $("profile-form").reset();
   }
@@ -198,15 +201,32 @@
   // Os dois caminhos que mostram o cartão final (sessão já completa e perfil recém-salvo) passam por aqui.
   function offerWebAppOnReady() {
     offerWebApp().then(function (available) {
-      if (!available || $("ready-card").hidden) return;
-      setMessage("ready-copy", "Continue no Saqz e crie seu primeiro grupo agora, com esta mesma conta. O teste começa no primeiro grupo.");
-      show("web-app-cta");
-      // No iPhone o app ainda não está na App Store: o painel de instalação só confundiria.
-      if (isIPhone()) {
-        hide("download-panel");
-        show("web-app-ios-tip");
-      }
+      if ($("ready-card").hidden) return;
+      layoutReady(available);
     });
+  }
+  function isAndroid() {
+    return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+  }
+  // Uma ação principal por aparelho; o resto fica atrás de "Mais opções".
+  //  - computador e iPhone (web app no ar): "Continuar no Saqz"; no computador, as lojas como secundária;
+  //    no iPhone, a dica de Tela de Início.
+  //  - Android (ou web app fora do ar): o selo da loja; secundária "Já tem o app? Abrir neste celular".
+  function layoutReady(webAvailable) {
+    var iphone = isIPhone();
+    var mobile = iphone || isAndroid();
+    // Cada aparelho só vê o selo da própria loja; o computador vê as duas.
+    if (iphone) hide("android-store");
+    if (isAndroid()) hide("ios-store");
+    var androidLive = !$("android-store").hidden;
+    var iosLive = !$("ios-store").hidden;
+    var storeLive = androidLive || iosLive;
+    $("web-app-cta").hidden = !webAvailable;
+    $("web-app-ios-tip").hidden = !(webAvailable && iphone);
+    if (webAvailable) setMessage("ready-copy", "Continue no Saqz e crie seu primeiro grupo agora, com esta mesma conta. O teste começa no primeiro grupo.");
+    $("download-title").textContent = webAvailable ? "Prefere usar no celular?" : "Baixe o app";
+    $("download-panel").hidden = !storeLive || (webAvailable && iphone);
+    $("download-open").hidden = !mobile || (webAvailable && iphone && !iosLive);
   }
   function bootstrap(user, requestedName, expectedGeneration) {
     if (!validGeneration(user, expectedGeneration)) return Promise.reject({ stale: true });
@@ -259,6 +279,19 @@
       })
       .finally(function () { if (validGeneration(user, expectedGeneration)) setBusy(false); });
   }
+  // Conta criada por e-mail recebe o "Confirme seu e-mail no Saqz", como no app (POST sem corpo, autenticado
+  // pelo mesmo token do Firebase). Melhor esforço: falha, limite de reenvio ou rede não travam o cadastro.
+  // fetch direto, e não api(): um 401 aqui não pode derrubar a sessão que acabou de ser criada.
+  function requestEmailVerification(user) {
+    try {
+      Promise.resolve(user.getIdToken()).then(function (token) {
+        return fetch(String(config.apiBaseUrl || "").replace(/\/$/, "") + "/api/email-verification/request", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + token },
+        });
+      }).catch(function () {});
+    } catch (ignored) {}
+  }
   function authenticateWithCredentials(event) {
     event.preventDefault();
     if (busy || providerSettling) return;
@@ -286,6 +319,7 @@
       .then(function (credential) {
         if (generation !== intentGeneration || auth.currentUser !== credential.user) return staleProvider(credential, intentGeneration);
         track(intentMode === "signup" ? "sign_up" : "login", { method: "email" });
+        if (intentMode === "signup") requestEmailVerification(credential.user);
         return finishAccount(credential.user, intentMode === "signup" ? intentName : null, intentGeneration);
       })
       .catch(function (error) {
@@ -399,17 +433,19 @@
       .finally(function () { if (validGeneration(currentUser, expectedGeneration)) setBusy(false); });
   }
   function displayTrial(access) {
-    $("enroll-trial").hidden = access.offerMode !== "ON" || !access.canRedeemCoupon || access.preauthorized;
+    var needsCoupon = access.offerMode !== "ON" && access.canRedeemCoupon && !access.preauthorized
+      && access.status !== "ACTIVE" && access.status !== "SUBSCRIBED";
     $("trial-coupon-form").hidden = !access.canRedeemCoupon;
-    $("enroll-trial").textContent = "Experimentar o Organizador por " + access.trialDays + " dias";
+    // O teste já é liberado sozinho no primeiro grupo: aqui só informamos. Cupom exige a ação, então abre as opções.
     var message = access.status === "AVAILABLE" && access.preauthorized
-      ? "Organizador: teste de " + access.trialDays + " dias liberado para esta conta. O prazo começa ao criar seu primeiro grupo no app."
-      : access.status === "ACTIVE" ? "Seu teste do Organizador já está em andamento. Continue no app."
-      : access.status === "SUBSCRIBED" ? "Sua conta já tem uma assinatura. Continue no app."
-      : access.offerMode === "ON" && access.canRedeemCoupon ? "Você pode liberar seu teste de " + access.trialDays + " dias ou aplicar um cupom de campanha."
-      : access.canRedeemCoupon ? "Aplique um cupom válido para liberar seu teste."
-      : "Não há um novo teste disponível para esta conta. Confira os planos pagos.";
+      ? "Organizador: teste de " + access.trialDays + " dias liberado para esta conta. O prazo começa ao criar seu primeiro grupo."
+      : access.status === "ACTIVE" ? "Seu teste do Organizador já está em andamento."
+      : access.status === "SUBSCRIBED" ? "Sua conta já tem uma assinatura."
+      : needsCoupon ? "Para liberar seu teste, aplique um cupom válido em Mais opções."
+      : access.status === "AVAILABLE" && access.offerMode === "ON" ? "Seu teste de " + access.trialDays + " dias é liberado ao criar o primeiro grupo. Sem cartão."
+      : "Não há um novo teste disponível para esta conta. Confira os planos pagos em Mais opções.";
     setMessage("trial-status", message, access.canCreateGroup ? "success" : null);
+    if (needsCoupon) $("more-options").open = true;
   }
   function loadTrial(user, expectedGeneration) {
     var request = ++trialGeneration;
@@ -426,18 +462,18 @@
         if (request === trialGeneration && validGeneration(user, expectedGeneration)) setMessage("trial-status", error.safeMessage || "Não foi possível consultar seu teste. Atualize as opções.", "error");
       });
   }
-  function selectTrial(coupon) {
+  function selectTrial() {
     if (busy || !currentUser || !profileReady) return;
     var user = currentUser;
     var expectedGeneration = generation;
     var code = $("trial-coupon").value.trim().toUpperCase();
-    if (coupon && !/^[A-Z0-9]{1,32}$/.test(code)) {
+    if (!/^[A-Z0-9]{1,32}$/.test(code)) {
       setMessage("trial-status", "Informe um cupom válido, com letras e números.", "error");
       return;
     }
     var request = ++trialGeneration;
     setBusy(true);
-    jsonApi(coupon ? "/subscriptions/trial/coupon" : "/subscriptions/trial/enrollment", user, expectedGeneration, "POST", coupon ? { code: code } : {})
+    jsonApi("/subscriptions/trial/coupon", user, expectedGeneration, "POST", { code: code })
       .then(function (response) {
         if (!response.ok) throw safeError(response.status === 400
           ? "Cupom inválido, expirado ou sem usos disponíveis. Confira o código."
@@ -445,7 +481,7 @@
         return response.json();
       }).then(function (access) {
         if (request === trialGeneration && validGeneration(user, expectedGeneration)) {
-          track("trial_released", { via: coupon ? "coupon" : "enrollment", status: access.status });
+          track("trial_released", { via: "coupon", status: access.status });
           displayTrial(access);
         }
       }).catch(function (error) {
@@ -496,14 +532,9 @@
     element.rel = "noopener noreferrer";
     element.setAttribute("aria-label", label);
   }
-  // Sem App Store, o iPhone usa o web app: o bloco "No iPhone" e a nota tomam o lugar do selo.
   function bindStoreBadges() {
     bindStoreBadge("ios-store", config.iosAppStoreUrl);
     bindStoreBadge("android-store", config.androidPlayStoreUrl);
-    var iosLive = !$("ios-store").classList.contains("is-soon");
-    $("iphone-web").hidden = iosLive;
-    $("store-soon-note").hidden = iosLive;
-    if (iosLive) $("step-get").textContent = "Baixe o app na loja do iPhone ou Android";
   }
   function requestAppLink() {
     if (busy || !currentUser || !profileReady) return;
@@ -568,8 +599,7 @@
     setMessage("auth-error", "");
   }
   function bind() {
-    $("enroll-trial").addEventListener("click", function () { selectTrial(false); });
-    $("trial-coupon-form").addEventListener("submit", function (event) { event.preventDefault(); selectTrial(true); });
+    $("trial-coupon-form").addEventListener("submit", function (event) { event.preventDefault(); selectTrial(); });
     $("refresh-trial").addEventListener("click", function () {
       if (!busy && currentUser && profileReady) loadTrial(currentUser, generation);
     });
@@ -581,7 +611,6 @@
     $("request-app-link").addEventListener("click", requestAppLink);
     $("app-link").addEventListener("click", function () { track("app_open", { via: "link" }); });
     $("web-app-cta").addEventListener("click", function () { track("app_open", { via: "web" }); });
-    $("iphone-web").addEventListener("click", function () { track("app_open", { via: "web", origem: "painel" }); });
     ["ios-store", "android-store"].forEach(function (id) {
       $(id).addEventListener("click", function () {
         if (!$(id).classList.contains("is-soon")) track("store_click", { store: id === "ios-store" ? "ios" : "android" });
