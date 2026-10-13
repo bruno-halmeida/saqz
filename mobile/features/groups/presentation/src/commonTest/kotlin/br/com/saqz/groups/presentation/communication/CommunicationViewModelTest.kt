@@ -119,6 +119,30 @@ class CommunicationViewModelTest {
         assertEquals(listOf(8L), vm.state.value.items.map { it.sequence })
         assertEquals(CommunicationChannel.NOTICE, vm.state.value.items.single().channel)
     }
+    @Test fun organizerOnboardingNoticesShowInTheCenterAndOpenTheirTarget() = runTest {
+        val joined = sampleCommunicationMessage().copy(channel = CommunicationChannel.FIRST_MEMBER, body = "Rafa entrou no QA Vôlei. A galera começou a chegar.")
+        val confirmed = joined.copy(
+            channel = CommunicationChannel.FIRST_CONFIRMATION, gameId = "game-1",
+            body = "Rafa confirmou presença no jogo de ter, 11/08 às 20:00. A lista começou a fechar sozinha.",
+        )
+        val gateway = FakeCommunicationGateway().apply {
+            inboxResult = SaqzResult.Success(CommunicationPage(listOf(InAppNotification(7, joined, false), InAppNotification(8, confirmed, false)), null))
+        }
+        val vm = NotificationCenterViewModel(false, gateway, fakeBlocks())
+        assertEquals(listOf(7L, 8L), vm.state.value.items.map { it.sequence })
+        assertEquals(listOf(joined.body, confirmed.body), vm.state.value.items.map { it.content.body })
+        val effects = mutableListOf<NotificationCenterEffect>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.effects.collect { effects += it } }
+        vm.onIntent(NotificationCenterIntent.Open(7))
+        vm.onIntent(NotificationCenterIntent.Open(8))
+        assertEquals(
+            listOf<NotificationCenterEffect>(
+                NotificationCenterEffect.Open("group-1", CommunicationChannel.FIRST_MEMBER, null),
+                NotificationCenterEffect.Open("group-1", CommunicationChannel.FIRST_CONFIRMATION, "game-1"),
+            ),
+            effects,
+        )
+    }
     @Test fun openingNotificationMarksOnlySelectedItemAndDoesNotNavigateOnFailure() = runTest {
         val message = sampleCommunicationMessage().copy(channel = CommunicationChannel.REMINDER, gameId = "game-1")
         val gateway = FakeCommunicationGateway().apply {

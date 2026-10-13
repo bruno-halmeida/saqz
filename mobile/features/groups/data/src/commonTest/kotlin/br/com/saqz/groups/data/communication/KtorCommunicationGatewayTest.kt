@@ -89,6 +89,21 @@ class KtorCommunicationGatewayTest {
             respond("", HttpStatusCode.NoContent)
         }.markRead(7))
     }
+    @Test fun inboxMapsOnboardingChannelsAndIgnoresChannelsFromNewerServers() = runTest {
+        fun item(sequence: Int, channel: String, gameId: String?) = """{"sequence":$sequence,"message":${
+            message.replace("\"channel\":\"NOTICE\"", "\"channel\":\"$channel\"")
+                .replace("\"gameId\":null", "\"gameId\":${gameId?.let { "\"$it\"" }}")
+        },"read":false}"""
+        val inbox = gateway {
+            respond(
+                """{"items":[${item(9, "FIRST_MEMBER", null)},${item(8, "FIRST_CONFIRMATION", "game-1")},${item(7, "FUTURE_CHANNEL", null)}],"nextCursor":null}""",
+                headers = jsonHeaders,
+            )
+        }.inbox().success()
+        assertEquals(listOf(9L, 8L), inbox.items.map { it.sequence })
+        assertEquals(listOf(CommunicationChannel.FIRST_MEMBER, CommunicationChannel.FIRST_CONFIRMATION), inbox.items.map { it.message.channel })
+        assertEquals("game-1", inbox.items.last().message.gameId)
+    }
     @Test fun preferencesRoundTripAllFlagsAndErrorsDoNotBecomeSuccess() = runTest {
         val value = NotificationPreferences(false, true, false)
         val result = gateway { request ->

@@ -37,6 +37,15 @@ class AttendanceNotificationsTest {
     }
 
     @Test
+    fun organizerFirstConfirmationOpensTheGameWithoutAttendanceButtons() {
+        val organizer = regular.copy(channel = "FIRST_CONFIRMATION")
+
+        assertNull(context.attendanceNotification(organizer).build().actions)
+        assertEquals(2, context.attendanceNotification(regular).build().actions.size)
+        assertEquals("FIRST_CONFIRMATION", AttendancePush.from(mapOf("channel" to "FIRST_CONFIRMATION", "gameId" to "game1"), "Saqz", "Corpo", "m").channel)
+    }
+
+    @Test
     fun regularPushResultKeepsTheOldBehavior() {
         val result = context.attendanceOutcome(regular, failed = true, text = "Não deu para registrar.").build()
 

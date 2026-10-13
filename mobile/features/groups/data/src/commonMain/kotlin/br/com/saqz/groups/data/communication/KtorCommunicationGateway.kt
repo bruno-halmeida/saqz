@@ -70,7 +70,11 @@ class KtorCommunicationGateway(private val network: AuthenticatedNetworkClient) 
 
     override suspend fun inbox(before: Long?) = network.execute(
         HttpMethod.Get, "api/me/notifications", PageDto.serializer(NotificationDto.serializer()), NetworkRequest(query = cursor(before)),
-    ).communicationResult { page -> page.domain { dto -> dto.message.domain()?.let { InAppNotification(dto.sequence, it, dto.read) } } }
+    ).communicationResult { page ->
+        // Canal que esta versão não conhece (servidor mais novo) some da lista; item malformado continua invalidando a página.
+        page.copy(items = page.items.filter { dto -> CommunicationChannel.entries.any { it.name == dto.message.channel } })
+            .domain { dto -> dto.message.domain()?.let { InAppNotification(dto.sequence, it, dto.read) } }
+    }
 
     override suspend fun markRead(sequence: Long) = network.executeNoContent(
         HttpMethod.Put, "api/me/notifications/$sequence/read",

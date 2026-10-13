@@ -942,7 +942,10 @@ internal fun SaqzNavHost(
             }
             entry<GroupsRoute.Notifications> { route ->
                 br.com.saqz.groups.presentation.communication.NotificationCenterRoot(route.settings, onBack = pop) { effect ->
-                    if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.CHARGE) {
+                    if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.CHARGE ||
+                        effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.FIRST_MEMBER
+                    ) {
+                        // Cobrança e "primeiro atleta" não têm jogo: abrem o grupo (o detalhe mostra a galera).
                         backStack.add(GroupsRoute.Details(effect.groupId))
                     } else if (effect.gameId != null) backStack.add(GroupsRoute.GameDetail(effect.groupId, effect.gameId!!))
                     else backStack.add(GroupsRoute.Thread(

@@ -14,6 +14,7 @@ internal data class AttendancePush(
     val body: String,
     val recipient: String?,
     val windowEndsAt: Long?,
+    val channel: String? = null,
 ) {
     /** Janela de presença das 24 h: expira sozinha e, no Android 16+, vira Live Update. */
     val isWindow get() = windowEndsAt != null && gameId != null
@@ -26,10 +27,13 @@ internal data class AttendancePush(
             val windowEndsAt = data["windowEndsAt"]?.toLongOrNull()
             val id = if (windowEndsAt != null && gameId != null) attendanceWindowId(gameId)
                 else (data["notificationId"] ?: fallbackId).hashCode()
-            return AttendancePush(id, data["groupId"], gameId, title, body, data["recipient"], windowEndsAt)
+            return AttendancePush(id, data["groupId"], gameId, title, body, data["recipient"], windowEndsAt, data["channel"])
         }
     }
 }
+
+/** Aviso ao organizador: traz o jogo só para abrir o detalhe, sem os botões de presença. */
+internal const val FIRST_CONFIRMATION_CHANNEL = "FIRST_CONFIRMATION"
 
 /** Push de presença montado pelo app: botões quando há jogo e, na janela, Live Update que expira sozinho. */
 internal fun Context.attendanceNotification(
@@ -44,7 +48,7 @@ internal fun Context.attendanceNotification(
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setTimeoutAfter((push.remaining() ?: 0).coerceAtLeast(1))
     }
-    if (buttons && push.gameId != null) {
+    if (buttons && push.gameId != null && push.channel != FIRST_CONFIRMATION_CHANNEL) {
         builder.addAction(0, getString(R.string.notification_action_confirm), attendanceAction(ACTION_CONFIRM, push))
             .addAction(0, getString(R.string.notification_action_decline), attendanceAction(ACTION_DECLINE, push))
     }
