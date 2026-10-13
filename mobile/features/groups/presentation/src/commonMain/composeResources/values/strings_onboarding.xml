@@ -2,7 +2,7 @@
     <string name="onboarding_setup_simple">A foto é opcional. Depois de criar o grupo, marque o primeiro jogo e convide a galera. Você pode ajustar os outros detalhes depois.</string>
     <string name="onboarding_setup_advanced">Outras configurações (opcional)</string>
     <string name="onboarding_create_title">Grupo criado. Vamos marcar o primeiro jogo?</string>
-    <string name="onboarding_create_body">Defina data, local e vagas. Depois, compartilhe o convite no WhatsApp para a galera responder pelo app.</string>
+    <string name="onboarding_create_body">Defina data, local e vagas. Depois, compartilhe o convite no WhatsApp para a galera responder presença.</string>
     <string name="onboarding_create_action">Marcar primeiro jogo</string>
     <string name="onboarding_invite_title">Jogo marcado. Chame a galera.</string>
     <string name="onboarding_invite_body">Envie o convite no grupo do WhatsApp. Os atletas entram pelo Saqz e você acompanha as confirmações e a lista de espera.</string>
@@ -11,7 +11,7 @@
     <string name="onboarding_finance_title">Primeiro jogo encerrado. E o acerto?</string>
     <string name="onboarding_finance_body">Veja quem ainda precisa pagar e registre os recebimentos do jogo. O caixa reúne entradas e saídas para você acompanhar o saldo do grupo.</string>
     <string name="onboarding_finance_action">Ver acerto do primeiro jogo</string>
-    <string name="onboarding_invite_message">Entre no %1$s pelo Saqz para responder presença. Abra o link, baixe o app e entre na sua conta. Atletas não precisam assinar o Saqz; os valores dos jogos são combinados com o grupo.</string>
+    <string name="onboarding_invite_message">Entre no %1$s pelo Saqz para responder presença nos jogos. É só abrir o link e entrar com sua conta, pelo navegador ou pelo app. Atletas não pagam nada ao Saqz; os valores dos jogos são combinados com o grupo.</string>
     <string name="app_download_offer">Quer lembrete no celular? Baixe o app Saqz e entre com a mesma conta.</string>
     <string name="app_download_action">Baixar o app</string>
     <string name="onboarding_athlete_title">Sua resposta foi salva. Conheça o Saqz.</string>
@@ -20,7 +20,7 @@
     <string name="onboarding_athlete_dismiss">Agora não</string>
     <string name="onboarding_athlete_share_message">Nosso grupo usa o Saqz para organizar jogos, presenças e o caixa. Que tal levar para o seu grupo também? https://saqz.app/</string>
     <string name="onboarding_athlete_share_failed">Não foi possível abrir o compartilhamento. Tente novamente.</string>
-    <string name="onboarding_athlete_entry">Você participa pelo app sem assinar o Saqz. Os valores dos jogos são combinados com o grupo.</string>
+    <string name="onboarding_athlete_entry">Você participa do grupo sem assinar o Saqz. Os valores dos jogos são combinados com o grupo.</string>
     <!-- "Deixe o grupo redondo": os cinco ajustes depois dos três passos, só no primeiro grupo da conta -->
     <string name="checklist_title">Deixe o grupo redondo</string>
     <string name="checklist_whatsapp_title">Grupo do WhatsApp</string>

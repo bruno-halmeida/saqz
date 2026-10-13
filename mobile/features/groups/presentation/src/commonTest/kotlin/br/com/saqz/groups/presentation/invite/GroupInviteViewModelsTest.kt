@@ -487,11 +487,11 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
-    fun `default invitation names group and explains native app and athlete pricing before sharing`() = runTest {
+    fun `default invitation names group and explains browser or app entry and athlete pricing before sharing`() = runTest {
         val share = FakeShare()
         val vm = InvitePreviewMessageViewModel("CERET", "https://saqz.app/invite/1", share)
         advanceUntilIdle()
-        val expected = "Entre no CERET pelo Saqz para responder presença. Abra o link, baixe o app e entre na sua conta. Atletas não precisam assinar o Saqz; os valores dos jogos são combinados com o grupo."
+        val expected = "Entre no CERET pelo Saqz para responder presença nos jogos. É só abrir o link e entrar com sua conta, pelo navegador ou pelo app. Atletas não pagam nada ao Saqz; os valores dos jogos são combinados com o grupo."
         assertEquals(expected, vm.state.value.message)
         vm.onIntent(InvitePreviewIntent.Share)
         assertEquals("$expected\n\nhttps://saqz.app/invite/1", share.text)
@@ -503,7 +503,7 @@ class GroupInviteViewModelsTest {
         val share = FakeShare()
         val vm = InvitePreviewMessageViewModel(name, "https://saqz.app/invite/1", share)
         advanceUntilIdle()
-        val expected = "Entre no $name pelo Saqz para responder presença. Abra o link, baixe o app e entre na sua conta. Atletas não precisam assinar o Saqz; os valores dos jogos são combinados com o grupo."
+        val expected = "Entre no $name pelo Saqz para responder presença nos jogos. É só abrir o link e entrar com sua conta, pelo navegador ou pelo app. Atletas não pagam nada ao Saqz; os valores dos jogos são combinados com o grupo."
         assertEquals(expected, vm.state.value.message)
         vm.onIntent(InvitePreviewIntent.Share)
         assertEquals("$expected\n\nhttps://saqz.app/invite/1", share.text)
