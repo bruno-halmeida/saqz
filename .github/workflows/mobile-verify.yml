@@ -1,0 +1,60 @@
+# Verificação rápida do app: detekt e testes de unidade na JVM. Roda a cada push na main que
+# toque em mobile/, à mão, e dentro do mobile-rc.yml (workflow_call) no commit da RC.
+# Os testes de simulador iOS ficam na esteira completa do mobile-release.yml para não serem gargalo.
+name: Mobile · verificar
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile-verify.yml"
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Commit a verificar (vazio = o do evento)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  jvm:
+    name: detekt e testes na JVM
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # No job, e não no topo, porque este workflow também é chamado pelo mobile-rc.yml.
+    concurrency:
+      group: mobile-verify-${{ inputs.ref || github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Obter o código
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+      - name: JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Gradle com cache
+        uses: gradle/actions/setup-gradle@v6
+      - name: detekt
+        working-directory: mobile
+        run: ./gradlew detektAll
+      - name: Testes de unidade (devDebug)
+        working-directory: mobile
+        run: ./gradlew :android-app:testDevDebugUnitTest
+      - name: Guardar relatórios
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorios-jvm-${{ github.run_id }}
+          path: |
+            mobile/**/build/reports/detekt/
+            mobile/android-app/build/reports/tests/
+          if-no-files-found: ignore
+          retention-days: 14

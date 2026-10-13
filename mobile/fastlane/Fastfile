@@ -66,9 +66,9 @@ platform :android do
     aab = required_env("SAQZ_AAB_PATH")
     UI.user_error!("AAB não encontrado: #{aab}") unless File.file?(aab)
 
-    # O changelog do Play vem de metadata/android/<locale>/changelogs/<build>.txt; monta fora do repositório.
+    # O changelog do Play vem de <metadata_path>/<locale>/changelogs/<build>.txt; monta fora do repositório.
     metadata = Dir.mktmpdir("play-metadata")
-    changelog_dir = File.join(metadata, "android", LOCALE, "changelogs")
+    changelog_dir = File.join(metadata, LOCALE, "changelogs")
     FileUtils.mkdir_p(changelog_dir)
     File.write(File.join(changelog_dir, "#{build}.txt"), release_notes[0, PLAY_CHANGELOG_LIMIT])
 

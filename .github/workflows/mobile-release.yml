@@ -1,0 +1,195 @@
+# Publicação do app, só à mão e sempre a partir de uma tag rc-app-vX.Y.Z ("Use workflow from" →
+# Tags). Não rebuilda: promove no Play o build que já está na trilha interna para produção (100%)
+# e, na App Store, anexa o build já processado à versão, grava as novidades e submete à revisão
+# com liberação automática. As lojas não dependem uma da outra; a tag app-vX.Y.Z só nasce quando
+# as duas terminam. Opcionalmente roda antes a esteira completa de testes.
+name: Mobile · publicar
+
+on:
+  workflow_dispatch:
+    inputs:
+      full_tests:
+        description: "Rodar a esteira completa de testes antes (simulador iOS, Swift e Node; demora)"
+        type: boolean
+        default: false
+      notes:
+        description: "Novidades desta versão (vazio = notas da tag rc-app-v*)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mobile-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Conferir a tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      build: ${{ steps.read.outputs.build }}
+      sha: ${{ steps.read.outputs.sha }}
+      notes: ${{ steps.read.outputs.notes }}
+    steps:
+      - name: Obter o código e as tags
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Ler versão, build e notas da tag
+        id: read
+        env:
+          INPUT_NOTES: ${{ inputs.notes }}
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" =~ ^refs/tags/rc-app-v([0-9]+\.[0-9]+\.[0-9]+)$ ]] || {
+            echo "Rode este workflow a partir de uma tag rc-app-vX.Y.Z (Use workflow from → Tags); veio de $GITHUB_REF." >&2; exit 1
+          }
+          version="${BASH_REMATCH[1]}"
+          current=$(mobile/ci/version.sh show)
+          [[ "$current" == "version=$version build="* ]] || { echo "O código na tag diz '$current', não a versão $version." >&2; exit 1; }
+          build=${current##*build=}
+          if git rev-parse -q --verify "refs/tags/app-v$version" >/dev/null; then
+            echo "A tag app-v$version já existe: esta versão já foi publicada." >&2; exit 1
+          fi
+          notes="$INPUT_NOTES"
+          [[ -n "$notes" ]] || notes=$(git tag -l --format='%(contents:body)' "rc-app-v$version")
+          [[ -n "${notes//[[:space:]]/}" ]] || { echo "Sem novidades: informe no campo ou na tag." >&2; exit 1; }
+          {
+            echo "version=$version"
+            echo "build=$build"
+            echo "sha=$(git rev-parse HEAD)"
+            echo "notes<<SAQZ_NOTES_EOF"
+            echo "$notes"
+            echo "SAQZ_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "Publicar **$version** (build **$build**) a partir de \`rc-app-v$version\`" >> "$GITHUB_STEP_SUMMARY"
+
+  full-tests:
+    name: Esteira completa de testes
+    needs: prepare
+    if: inputs.full_tests
+    runs-on: macos-26
+    timeout-minutes: 120
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - name: Obter o commit da tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - name: JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Gradle com cache
+        uses: gradle/actions/setup-gradle@v6
+      - name: Cache do Kotlin/Native
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('mobile/gradle/libs.versions.toml') }}
+      - name: Ajustar o Gradle ao runner
+        run: |
+          mkdir -p ~/.gradle
+          printf 'org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g\nkotlin.daemon.jvmargs=-Xmx3g\n' >> ~/.gradle/gradle.properties
+      - name: Testes comuns no simulador iOS (Kotlin)
+        working-directory: mobile
+        run: ./gradlew iosSimulatorArm64Test
+      - name: Testes Swift (SaqzIOSTests)
+        working-directory: mobile/ios-app
+        run: |
+          set -euo pipefail
+          device=$(xcrun simctl list devices available | grep -m1 -oE 'iPhone [^(]+' | sed 's/ *$//')
+          echo "Simulador: $device"
+          xcodebuild test -project SaqzIOS.xcodeproj -scheme SaqzIOS -destination "platform=iOS Simulator,name=$device" \
+            -only-testing:SaqzIOSTests CODE_SIGNING_ALLOWED=NO | tee xcodebuild-test.log | xcbeautify
+      - name: Testes Node do projeto iOS
+        run: node --test mobile/ios-app/tests/
+
+  android:
+    name: Play → produção (100%)
+    needs: [prepare, full-tests]
+    if: ${{ !cancelled() && needs.prepare.result == 'success' && (needs.full-tests.result == 'success' || needs.full-tests.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: mobile
+    steps:
+      - name: Obter o commit da tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - name: Ruby e fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: mobile
+      - name: Promover a trilha interna para produção
+        working-directory: mobile
+        env:
+          SAQZ_VERSION_NAME: ${{ needs.prepare.outputs.version }}
+          SAQZ_VERSION_CODE: ${{ needs.prepare.outputs.build }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: bundle exec fastlane android promote
+
+  ios:
+    name: App Store → revisão com liberação automática
+    needs: [prepare, full-tests]
+    if: ${{ !cancelled() && needs.prepare.result == 'success' && (needs.full-tests.result == 'success' || needs.full-tests.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: mobile
+    steps:
+      - name: Obter o commit da tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - name: Ruby e fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: mobile
+      - name: Anexar o build, gravar as novidades e submeter
+        working-directory: mobile
+        env:
+          SAQZ_VERSION_NAME: ${{ needs.prepare.outputs.version }}
+          SAQZ_VERSION_CODE: ${{ needs.prepare.outputs.build }}
+          SAQZ_RELEASE_NOTES: ${{ needs.prepare.outputs.notes }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: bundle exec fastlane ios release
+
+  tag:
+    name: Tag app-vX.Y.Z
+    needs: [prepare, android, ios]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Obter o commit da tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+      - name: Criar e enviar a tag
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD: ${{ needs.prepare.outputs.build }}
+          NOTES: ${{ needs.prepare.outputs.notes }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "app-v$VERSION" -m "App $VERSION (build $BUILD)" -m "$NOTES"
+          git push origin "refs/tags/app-v$VERSION"
+          echo "Publicado **$VERSION** (build **$BUILD**): tag \`app-v$VERSION\`" >> "$GITHUB_STEP_SUMMARY"

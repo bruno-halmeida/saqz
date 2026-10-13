@@ -1,0 +1,235 @@
+# Release candidate do app, só à mão. Calcula a versão (última tag app-v*/rc-app-v* + 0.0.1, ou a
+# informada) e o build, grava os dois no Gradle e no pbxproj, commita na main, cria a tag
+# rc-app-vX.Y.Z com as notas e então, em paralelo e sem depender um do outro: verifica (detekt e
+# testes na JVM), sobe o AAB para a trilha interna do Play e o IPA para os testadores internos do
+# TestFlight. Publicar em produção é o mobile-release.yml, rodado a partir da tag.
+name: Mobile · release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versão X.Y.Z (vazio = última tag app-v*/rc-app-v* + 0.0.1)"
+        required: false
+        type: string
+      notes:
+        description: "O que testar nesta RC (vai para o TestFlight, o Play interno e a tag)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mobile-rc
+  cancel-in-progress: false
+
+env:
+  # Os builds manuais chegaram ao 9 nas duas lojas em 13/10/2026; build = run_number + run_attempt + este valor.
+  BUILD_NUMBER_OFFSET: 10
+
+jobs:
+  prepare:
+    name: Versão, build e tag
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+      build: ${{ steps.compute.outputs.build }}
+      tag: ${{ steps.compute.outputs.tag }}
+      sha: ${{ steps.push.outputs.sha }}
+    steps:
+      - name: Obter o código e as tags
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Calcular versão e build
+        id: compute
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          current=$(mobile/ci/version.sh show)
+          current_version=${current#version=}; current_version=${current_version%% *}
+          current_build=${current##*build=}
+          if [[ -n "$INPUT_VERSION" ]]; then
+            [[ "$INPUT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Versão deve ser X.Y.Z (recebi '$INPUT_VERSION')." >&2; exit 1; }
+            version="$INPUT_VERSION"
+          else
+            last=$(git tag -l 'app-v*' 'rc-app-v*' | sed -E 's/^(rc-)?app-v//' | sort -t. -k1,1n -k2,2n -k3,3n | tail -n1)
+            [[ -n "$last" ]] || last="$current_version"
+            IFS=. read -r major minor patch <<< "$last"
+            version="$major.$minor.$((patch + 1))"
+          fi
+          tag="rc-app-v$version"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "A tag $tag já existe. Para refazer só o que falhou, use 'Re-run failed jobs'; para uma RC nova, informe outra versão." >&2; exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/app-v$version" >/dev/null; then
+            echo "A versão $version já foi publicada (tag app-v$version)." >&2; exit 1
+          fi
+          build=$(( GITHUB_RUN_NUMBER + GITHUB_RUN_ATTEMPT + BUILD_NUMBER_OFFSET ))
+          (( build > current_build )) || { echo "Build $build não passa do atual ($current_build)." >&2; exit 1; }
+          {
+            echo "version=$version"
+            echo "build=$build"
+            echo "tag=$tag"
+          } >> "$GITHUB_OUTPUT"
+          echo "RC **$version** (build **$build**), tag \`$tag\`, a partir de $current" >> "$GITHUB_STEP_SUMMARY"
+      - name: Gravar no Gradle e no pbxproj, commitar e etiquetar
+        id: push
+        env:
+          VERSION: ${{ steps.compute.outputs.version }}
+          BUILD: ${{ steps.compute.outputs.build }}
+          TAG: ${{ steps.compute.outputs.tag }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          set -euo pipefail
+          mobile/ci/version.sh set "$VERSION" "$BUILD"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mobile/android-app/build.gradle.kts mobile/ios-app/SaqzIOS.xcodeproj/project.pbxproj
+          git commit -m "chore(mobile): RC $VERSION (build $BUILD)" -m "$NOTES"
+          git tag -a "$TAG" -m "RC $VERSION (build $BUILD)" -m "$NOTES"
+          git push origin HEAD:main "refs/tags/$TAG"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  verify:
+    name: Verificar
+    needs: prepare
+    uses: ./.github/workflows/mobile-verify.yml
+    with:
+      ref: ${{ needs.prepare.outputs.sha }}
+
+  android:
+    name: Android → Play (trilha interna)
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: mobile
+    env:
+      SAQZ_VERSION_NAME: ${{ needs.prepare.outputs.version }}
+      SAQZ_VERSION_CODE: ${{ needs.prepare.outputs.build }}
+    steps:
+      - name: Obter o commit da RC
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - name: JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Gradle com cache
+        uses: gradle/actions/setup-gradle@v6
+      - name: Materializar o Firebase de produção e a chave de upload
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+          KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GOOGLE_SERVICES_JSON_B64" | openssl base64 -d -A > mobile/android-app/src/prod/google-services.json
+          keystore="$RUNNER_TEMP/upload.jks"
+          printf '%s' "$KEYSTORE_B64" | openssl base64 -d -A > "$keystore"
+          # local.properties fica fora do git e é de onde o build lê a chave de upload: senha nenhuma na linha de comando.
+          {
+            echo "saqz.upload.storeFile=$keystore"
+            echo "saqz.upload.storePassword=$STORE_PASSWORD"
+            echo "saqz.upload.keyAlias=$KEY_ALIAS"
+            echo "saqz.upload.keyPassword=$KEY_PASSWORD"
+          } > mobile/local.properties
+      - name: Gerar o AAB prod assinado
+        working-directory: mobile
+        run: ./gradlew :android-app:bundleProdRelease "-Psaqz.versionName=$SAQZ_VERSION_NAME" "-Psaqz.versionCode=$SAQZ_VERSION_CODE"
+      - name: Ruby e fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: mobile
+      - name: Enviar para a trilha interna do Play
+        working-directory: mobile
+        env:
+          SAQZ_AAB_PATH: ${{ github.workspace }}/mobile/android-app/build/outputs/bundle/prodRelease/android-app-prod-release.aab
+          SAQZ_RELEASE_NOTES: ${{ inputs.notes }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: bundle exec fastlane android internal
+      - name: Guardar o AAB e o mapping
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-${{ needs.prepare.outputs.version }}-${{ needs.prepare.outputs.build }}
+          path: |
+            mobile/android-app/build/outputs/bundle/prodRelease/*.aab
+            mobile/android-app/build/outputs/mapping/prodRelease/mapping.txt
+          if-no-files-found: ignore
+          retention-days: 30
+
+  ios:
+    name: iOS → TestFlight (internos)
+    needs: prepare
+    runs-on: macos-26
+    timeout-minutes: 120
+    environment: mobile
+    env:
+      SAQZ_VERSION_NAME: ${{ needs.prepare.outputs.version }}
+      SAQZ_VERSION_CODE: ${{ needs.prepare.outputs.build }}
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - name: Obter o commit da RC
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - name: JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Gradle com cache
+        uses: gradle/actions/setup-gradle@v6
+      - name: Cache do Kotlin/Native
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('mobile/gradle/libs.versions.toml') }}
+      - name: Ajustar o Gradle ao runner
+        run: |
+          # O runner macOS tem menos memória que a máquina de desenvolvimento; o home do Gradle ganha do gradle.properties do projeto.
+          mkdir -p ~/.gradle
+          printf 'org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g\nkotlin.daemon.jvmargs=-Xmx3g\n' >> ~/.gradle/gradle.properties
+          xcodebuild -version
+      - name: Materializar o Firebase de produção
+        env:
+          PLIST_B64: ${{ secrets.FIREBASE_GOOGLE_SERVICE_INFO_PLIST_B64 }}
+        run: printf '%s' "$PLIST_B64" | openssl base64 -d -A > mobile/ios-app/SaqzIOS/Config/Prod/GoogleService-Info.plist
+      - name: Ruby e fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: mobile
+      - name: Arquivar e enviar ao TestFlight
+        working-directory: mobile
+        env:
+          SAQZ_RELEASE_NOTES: ${{ inputs.notes }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: bundle exec fastlane ios testflight
+      - name: Guardar o IPA, os símbolos e o log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-${{ needs.prepare.outputs.version }}-${{ needs.prepare.outputs.build }}
+          path: |
+            mobile/build/ios/*.ipa
+            mobile/build/ios/*.dSYM.zip
+            mobile/build/ios/logs/
+          if-no-files-found: ignore
+          retention-days: 30
