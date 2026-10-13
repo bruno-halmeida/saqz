@@ -187,6 +187,7 @@ finish() {
 REPO="bruno-halmeida/saqz"
 GH_ENV="mobile"
 GCP_PROJECT="saquz-app"
+PLAY_PACKAGE="app.saqz"
 SAQZ_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Memória de re-execução fora do repositório (o .env da raiz é do servidor).
@@ -222,6 +223,40 @@ ask_path() {
     if [[ -f "$value" ]]; then printf -v "$key" '%s' "$value"; return; fi
     warn "não achei o arquivo: $value"
   done
+}
+
+# play_api_probe JSON_PATH: assina um JWT com a chave da conta de serviço e tenta
+# abrir (e apagar em seguida) uma edição vazia do app no Play. Sucesso significa
+# que a permissão dada no Play Console já vale na API, seja qual for o status
+# mostrado na lista de usuários.
+play_api_probe() {
+  local json="$1" email key header claim sig now token resp code edit_id
+  email=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["client_email"])' "$json") || return 1
+  key=$(mktemp); chmod 600 "$key"
+  python3 -c 'import json,sys;sys.stdout.write(json.load(open(sys.argv[1]))["private_key"])' "$json" > "$key" || { rm -f "$key"; return 1; }
+  _b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+  now=$(date +%s)
+  header=$(printf '{"alg":"RS256","typ":"JWT"}' | _b64url)
+  claim=$(printf '{"iss":"%s","scope":"https://www.googleapis.com/auth/androidpublisher","aud":"https://oauth2.googleapis.com/token","iat":%d,"exp":%d}' \
+    "$email" "$now" $((now + 600)) | _b64url)
+  sig=$(printf '%s.%s' "$header" "$claim" | openssl dgst -sha256 -sign "$key" | _b64url)
+  rm -f "$key"
+  token=$(curl -s https://oauth2.googleapis.com/token \
+    --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer' \
+    --data-urlencode "assertion=$header.$claim.$sig" \
+    | python3 -c 'import json,sys;print(json.load(sys.stdin).get("access_token",""))') || return 1
+  [[ -n "$token" ]] || { warn "não consegui um token OAuth com essa chave"; return 1; }
+  resp=$(curl -s -w '\n%{http_code}' -X POST -H "Authorization: Bearer $token" -H 'Content-Length: 0' \
+    "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/$PLAY_PACKAGE/edits")
+  code="${resp##*$'\n'}"
+  if [[ "$code" == "200" ]]; then
+    edit_id=$(printf '%s' "${resp%$'\n'*}" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("id",""))')
+    [[ -n "$edit_id" ]] && curl -s -o /dev/null -X DELETE -H "Authorization: Bearer $token" \
+      "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/$PLAY_PACKAGE/edits/$edit_id"
+    return 0
+  fi
+  warn "a API do Play respondeu HTTP $code: $(printf '%s' "${resp%$'\n'*}" | tr -d '\n' | cut -c1-160)"
+  return 1
 }
 
 TOTAL_STAGES=6
@@ -314,9 +349,21 @@ step "Em Permissões do app › Adicionar app › Saqz (app.saqz). Marque, no gr
 step "  - 'Lançar para produção, excluir dispositivos e usar a Assinatura de apps do Google Play'"
 step "  - 'Lançar apps nas faixas de teste'"
 step "  - 'Gerenciar faixas de teste e editar listas de testadores'"
-step "Enviar convite. Conta de serviço não precisa aceitar; aparece como ativa na hora."
-warn "A permissão pode levar até 24 h para valer na API. Se o primeiro upload falhar com 'permission', espere ou salve qualquer rascunho no Console do app, que costuma destravar."
-pause "Convite enviado?"
+step "Enviar convite. O status pode ficar em 'Convite enviado': conta de serviço não tem quem aceite, e a API funciona mesmo assim."
+if [[ -z "${PLAY_SKIP:-}" ]]; then
+  while true; do
+    pause "Convite enviado? (Enter testa a permissão na API)"
+    say "Testando: abrir e apagar uma edição vazia de $PLAY_PACKAGE em nome da conta…"
+    if play_api_probe "$PLAY_SA_JSON_PATH"; then
+      printf '  %s✓ a API do Play aceita%s %s\n' "$GREEN" "$RESET" "${PLAY_SA_EMAIL:-a conta}"
+      break
+    fi
+    warn "A permissão pode levar até 24 h para valer. Salvar qualquer rascunho no Console do app costuma destravar."
+    confirm "Testar de novo? (N segue sem a confirmação)" || { SKIPPED+=("permissão da conta de serviço no Play Console: a API ainda respondia sem permissão"); break; }
+  done
+else
+  pause "Convite enviado?"
+fi
 
 # ── 5. Android: chave de upload ───────────────────────────────────────────
 stage "Android: chave de upload (Play App Signing)"
