@@ -55,10 +55,13 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
     }
 
     /**
-     * Grava um aviso de sistema que vale uma vez por grupo (FIRST_MEMBER, FIRST_CONFIRMATION). O índice único
-     * decide a corrida: `ON CONFLICT DO NOTHING` devolve false, sem erro, e a transação de quem chamou segue.
+     * Grava um aviso de sistema que vale uma vez (FIRST_MEMBER e FIRST_CONFIRMATION por grupo, ENTRY_REQUEST por
+     * pedido, via [requestId] fixo). O índice único decide a corrida: `ON CONFLICT DO NOTHING` devolve false, sem erro, e a transação de quem chamou segue.
      */
-    fun publishOnce(groupId: UUID, actor: UUID, channel: MessageChannel, body: String, gameId: UUID?): Boolean {
+    fun publishOnce(
+        groupId: UUID, actor: UUID, channel: MessageChannel, body: String, gameId: UUID?,
+        requestId: UUID = UUID.randomUUID(),
+    ): Boolean {
         val id = UUID.randomUUID()
         val inserted = jdbc.sql(
             """
@@ -67,7 +70,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             ON CONFLICT DO NOTHING
             """.trimIndent(),
         ).param("id", id).param("group", groupId).param("actor", actor).param("channel", channel.name, Types.OTHER)
-            .param("request", UUID.randomUUID()).param("body", body).param("game", gameId, Types.OTHER).update()
+            .param("request", requestId).param("body", body).param("game", gameId, Types.OTHER).update()
         if (inserted == 0) return false
         deliver(id, groupId, actor, channel, gameId)
         return true
@@ -299,7 +302,12 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
     )
 
     private companion object {
-        val ADMINS_ONLY_CHANNELS = setOf(MessageChannel.WAITLIST_DEADLINE, MessageChannel.FIRST_MEMBER, MessageChannel.FIRST_CONFIRMATION)
+        val ADMINS_ONLY_CHANNELS = setOf(
+            MessageChannel.WAITLIST_DEADLINE,
+            MessageChannel.FIRST_MEMBER,
+            MessageChannel.FIRST_CONFIRMATION,
+            MessageChannel.ENTRY_REQUEST,
+        )
         /** Canais escritos por uma pessoa: são os que o bloqueio esconde. Os do sistema seguem chegando. */
         val PERSONAL_CHANNELS = setOf(MessageChannel.NOTICE, MessageChannel.CHAT)
         const val NOT_FROM_BLOCKED = "(m.channel NOT IN ('NOTICE', 'CHAT') OR NOT EXISTS (" +

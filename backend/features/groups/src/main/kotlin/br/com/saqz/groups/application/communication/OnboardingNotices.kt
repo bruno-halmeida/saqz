@@ -20,6 +20,16 @@ fun interface FirstConfirmationNotice {
     fun confirmed(groupId: UUID, gameId: UUID, memberId: UUID, eventId: UUID)
 }
 
+/**
+ * Aviso ao dono e admins quando alguém pede para entrar num grupo com "Aprovar pedidos para entrar" (canal
+ * ENTRY_REQUEST). Chamado na mesma transação do pedido; pedido repetido (ainda pendente) não gera outro aviso.
+ */
+fun interface EntryRequestNotice {
+    fun requested(groupId: UUID, userId: UUID)
+}
+
+fun entryRequestBody(who: String, groupName: String): String = "$who pediu para entrar no $groupName."
+
 fun firstMemberBody(who: String, groupName: String): String =
     "$who entrou no $groupName. A galera começou a chegar."
 

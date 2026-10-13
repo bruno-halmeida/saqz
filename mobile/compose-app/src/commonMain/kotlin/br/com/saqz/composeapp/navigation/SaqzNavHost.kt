@@ -1015,7 +1015,10 @@ internal fun SaqzNavHost(
                 }
                 entry<GroupsRoute.Notifications> { route ->
                     br.com.saqz.groups.presentation.communication.NotificationCenterRoot(route.settings, onBack = pop) { effect ->
-                        if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.CHARGE ||
+                        if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.ENTRY_REQUEST) {
+                            // Pedido para entrar: abre Convidar, onde ficam os pedidos para aprovar.
+                            backStack.add(GroupsRoute.Invite(effect.groupId))
+                        } else if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.CHARGE ||
                             effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.FIRST_MEMBER
                         ) {
                             // Cobrança e "primeiro atleta" não têm jogo: abrem o grupo (o detalhe mostra a galera).

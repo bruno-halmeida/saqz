@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.invite.redeem
 
+import br.com.saqz.groups.application.communication.EntryRequestNotice
 import br.com.saqz.groups.application.communication.FirstMemberNotice
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
@@ -19,6 +20,7 @@ class RedeemInvite(
     private val clock: Clock,
     private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
     private val firstMember: FirstMemberNotice = FirstMemberNotice { _, _ -> },
+    private val entryRequest: EntryRequestNotice = EntryRequestNotice { _, _ -> },
 ) {
     fun execute(actor: UUID, rawCode: String): RedeemInviteResult = transactionRunner.inTransaction {
         val now = clock.instant()
@@ -70,6 +72,8 @@ class RedeemInvite(
 
         if (invite.entryRequiresApproval) {
             repository.createEntryRequest(CreateEntryRequestCommand(invite.groupId, actor, now))
+            // Um aviso por pedido; o pedido repetido (ainda pendente) cai no mesmo request_id e não avisa de novo.
+            entryRequest.requested(invite.groupId, actor)
             return@inTransaction RedeemInviteResult.Pending(invite.groupId)
         }
 

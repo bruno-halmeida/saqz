@@ -79,7 +79,7 @@ class CommunicationScreenTest {
         val intents = mutableListOf<NotificationCenterIntent>()
         val preferences = NotificationPreferences(
             push = PushPreferences(messages = false),
-            whatsapp = WhatsAppPreferences(notices = true, reminders = true))
+            whatsapp = WhatsAppPreferences(notices = true, reminders = true, charges = false))
         setContent { SaqzTheme {
             NotificationCenterScreen(NotificationCenterState(loading = false, preferences = preferences,
                 settingsChannel = NotificationSettingsChannel.WHATSAPP), true, {}, { intents += it })

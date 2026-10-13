@@ -5,7 +5,18 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 
-enum class MessageChannel { CHAT, NOTICE, REMINDER, GAME_OPEN, CHARGE, ATTENDANCE_WINDOW, WAITLIST_DEADLINE, FIRST_MEMBER, FIRST_CONFIRMATION }
+enum class MessageChannel {
+    CHAT,
+    NOTICE,
+    REMINDER,
+    GAME_OPEN,
+    CHARGE,
+    ATTENDANCE_WINDOW,
+    WAITLIST_DEADLINE,
+    FIRST_MEMBER,
+    FIRST_CONFIRMATION,
+    ENTRY_REQUEST,
+}
 
 data class GroupMessage(
     val id: UUID,
@@ -56,7 +67,8 @@ data class AttendanceWindowCandidate(
     val waitlisted: Int,
 )
 data class PushPreferences(val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true, val charges: Boolean = true)
-data class WhatsAppPreferences(val notices: Boolean = false, val reminders: Boolean = false, val charges: Boolean = false)
+/** Cobrança no WhatsApp particular nasce ligada (decisão de 13/10/2026); os outros canais de DM seguem inertes. */
+data class WhatsAppPreferences(val notices: Boolean = false, val reminders: Boolean = false, val charges: Boolean = true)
 data class NotificationPreferences(
     val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true,
     val push: PushPreferences = PushPreferences(notices, messages, reminders, reminders),

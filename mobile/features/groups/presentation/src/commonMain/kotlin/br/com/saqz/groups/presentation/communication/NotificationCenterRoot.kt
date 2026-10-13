@@ -57,6 +57,7 @@ import br.com.saqz.groups.resources.communication_push_note
 import br.com.saqz.groups.resources.communication_whatsapp_note
 import br.com.saqz.groups.resources.communication_pref_charges
 import br.com.saqz.groups.resources.communication_pref_notices
+import br.com.saqz.groups.resources.communication_pref_whatsapp_charges
 import br.com.saqz.groups.resources.communication_pref_reminders
 import br.com.saqz.groups.resources.communication_save
 import br.com.saqz.groups.resources.communication_saved
@@ -292,7 +293,7 @@ private fun DeliveryChannelSettings(state: NotificationCenterState, onIntent: (N
     }
     } else {
     Text(stringResource(Res.string.communication_whatsapp_note), style = SaqzTheme.typography.support)
-    PreferenceSwitch("whatsapp-charges", stringResource(Res.string.communication_pref_charges), whatsapp.charges, state.busy) {
+    PreferenceSwitch("whatsapp-charges", stringResource(Res.string.communication_pref_whatsapp_charges), whatsapp.charges, state.busy) {
         onIntent(NotificationCenterIntent.Preferences(preferences.copy(whatsapp = whatsapp.copy(charges = it))))
     }
     }

@@ -38,6 +38,7 @@ class OnboardingNoticesIntegrationTest {
     private val code = InviteCode.from(Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32) { 7 }))
     private val redeem = RedeemInvite(
         transaction, JdbcInviteRedemptionRepository(source), Unlimited, Clock.systemUTC(), firstMember = notices,
+        entryRequest = notices,
     )
     private val respond = RespondAttendance(
         transaction,
@@ -112,6 +113,49 @@ class OnboardingNoticesIntegrationTest {
         val message = jdbc.sql("SELECT id FROM group_messages WHERE channel = 'FIRST_MEMBER'").query(UUID::class.java).single()
         assertEquals(emptySet(), recipients(message))
         assertEquals(false, pushEnabled(owner, "FIRST_MEMBER"))
+    }
+
+    @Test fun `pedido de entrada avisa dono e admins, sem quem pediu, e o pedido repetido nao avisa de novo`() {
+        membership(admin, "ADMIN")
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa Moreira")
+
+        assertIs<RedeemInviteResult.Pending>(redeem.execute(rafa, code.value))
+        assertIs<RedeemInviteResult.Pending>(redeem.execute(rafa, code.value))
+
+        val message = jdbc.sql("SELECT id, body, game_id, author_id FROM group_messages WHERE group_id = :g AND channel = 'ENTRY_REQUEST'")
+            .param("g", group).query { rs, _ -> listOf(rs.getObject("id", UUID::class.java), rs.getString("body"), rs.getObject("game_id"), rs.getObject("author_id")) }.single()
+        assertEquals("Rafa Moreira pediu para entrar no QA Vôlei.", message[1])
+        assertEquals(null, message[2])
+        assertEquals(rafa, message[3])
+        assertEquals(setOf(owner, admin), recipients(message[0] as UUID))
+        assertTrue(pushEnabled(owner, "ENTRY_REQUEST"))
+        assertTrue(pushEnabled(admin, "ENTRY_REQUEST"))
+        assertEquals(0, count("FIRST_MEMBER"))
+    }
+
+    @Test fun `novo pedido depois de aprovado ou recusado avisa de novo`() {
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa")
+
+        redeem.execute(rafa, code.value)
+        jdbc.sql("DELETE FROM group_entry_requests WHERE user_id = :u").param("u", rafa).update()
+        Thread.sleep(5)
+        redeem.execute(rafa, code.value)
+
+        assertEquals(2, count("ENTRY_REQUEST"))
+    }
+
+    @Test fun `pedido de entrada segue a preferencia de avisos do gestor`() {
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        jdbc.sql("INSERT INTO group_notification_preferences (user_id, notices, push_notices) VALUES (:u, false, false)")
+            .param("u", owner).update()
+
+        redeem.execute(user("Rafa"), code.value)
+
+        val message = jdbc.sql("SELECT id FROM group_messages WHERE channel = 'ENTRY_REQUEST'").query(UUID::class.java).single()
+        assertEquals(emptySet(), recipients(message))
+        assertEquals(false, pushEnabled(owner, "ENTRY_REQUEST"))
     }
 
     @Test fun `duas entradas simultaneas geram um aviso so`() {

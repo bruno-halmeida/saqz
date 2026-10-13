@@ -44,6 +44,15 @@ class KtorChargeReminderGatewayTest {
         }.send(GroupId("group-1"), "retry-key", listOf("a", "b")).success()
         assertEquals(2, receipt.notificationCount)
     }
+    @Test fun blockedChargesComeBackAsAlreadyRemindedAndMustAddUpToTheSelection() = runTest {
+        val receipt = gateway { respond("""{"notificationCount":0,"alreadyRemindedCount":1}""", headers = jsonHeaders) }
+            .send(GroupId("g"), "r", listOf("a")).success()
+        assertEquals(0, receipt.notificationCount)
+        assertEquals(1, receipt.alreadyRemindedCount)
+        assertEquals(SaqzResult.Failure(CommunicationError(DataError.InvalidResponse)),
+            gateway { respond("""{"notificationCount":1,"alreadyRemindedCount":1}""", headers = jsonHeaders) }
+                .send(GroupId("g"), "r", listOf("a")))
+    }
     @Test fun conflictAndMalformedCountsDoNotBecomeSuccess() = runTest {
         assertEquals(SaqzResult.Failure(CommunicationError(DataError.Conflict)),
             gateway { respond("", HttpStatusCode.Conflict) }.send(GroupId("g"), "r", listOf("a")))

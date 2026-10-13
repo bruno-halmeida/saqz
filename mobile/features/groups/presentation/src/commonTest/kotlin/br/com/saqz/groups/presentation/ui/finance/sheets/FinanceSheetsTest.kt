@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.ui.finance.sheets
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
@@ -27,6 +28,24 @@ class FinanceSheetsTest {
         onNodeWithTag(FinanceSheetsTags.chargeRecipient("pedro")).performClick()
         onNodeWithTag(FinanceSheetsTags.ChargeSend).performClick()
         assertEquals(listOf("ana", "pedro"), sent)
+    }
+
+    @Test
+    fun `charge sheet shows already reminded today instead of the sent count when the server blocked it`() = runComposeUiTest {
+        setContent { SaqzTheme {
+            ChargeSheet(true, listOf(debtor("ana", "Ana", 7000, "Julho")), {}, {}, ChargeReminderState(sent = 0, alreadyReminded = 1))
+        } }
+        onNodeWithText("Já cobrado hoje").assertExists()
+        onNodeWithTag(FinanceSheetsTags.ChargeSuccess).assertDoesNotExist()
+        onNodeWithTag(FinanceSheetsTags.ChargeSend).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `charge sheet disables the send button while sending`() = runComposeUiTest {
+        setContent { SaqzTheme {
+            ChargeSheet(true, listOf(debtor("ana", "Ana", 7000, "Julho")), {}, {}, ChargeReminderState(sending = true))
+        } }
+        onNodeWithTag(FinanceSheetsTags.ChargeSend).assertIsNotEnabled()
     }
 
     @Test

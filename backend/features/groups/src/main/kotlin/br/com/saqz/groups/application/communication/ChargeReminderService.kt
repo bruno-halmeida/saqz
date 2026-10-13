@@ -6,14 +6,22 @@ import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.domain.GroupRole
 import java.util.UUID
 
-data class ChargeReminderReceipt(val notificationCount: Int)
+/** [notificationCount] avisos saíram agora; [alreadyRemindedCount] cobranças já tinham sido cobradas nas últimas 12 h. */
+data class ChargeReminderReceipt(val notificationCount: Int, val alreadyRemindedCount: Int = 0)
 data class PendingReminderCharge(val id: UUID, val memberId: UUID, val amountCents: Long)
 data class ChargeReminderRequest(val chargeIds: Set<UUID>, val receipt: ChargeReminderReceipt)
 interface ChargeReminderStore {
     fun previous(group: UUID, actor: UUID, request: UUID): ChargeReminderRequest?
     fun pending(group: UUID, ids: Set<UUID>): List<PendingReminderCharge>
-    fun create(group: UUID, actor: UUID, request: UUID, charges: List<PendingReminderCharge>): ChargeReminderReceipt
+
+    /** Cobranças da lista que já geraram aviso ao devedor dentro da janela de [REMINDER_COOLDOWN_HOURS] horas. */
+    fun recentlyReminded(ids: Set<UUID>): Set<UUID>
+
+    /** Grava o pedido com todas as [charges] e avisa só as que não estão em [skipped]. */
+    fun create(group: UUID, actor: UUID, request: UUID, charges: List<PendingReminderCharge>, skipped: Set<UUID> = emptySet()): ChargeReminderReceipt
 }
+
+const val REMINDER_COOLDOWN_HOURS = 12
 
 class ChargeReminderService(
     private val transaction: TransactionRunner,
@@ -35,7 +43,7 @@ class ChargeReminderService(
             }
             val charges = store.pending(group, selection)
             if (charges.size != ids.size) return@inTransaction failure(CommunicationError.CONFLICT)
-            CommunicationResult.Success(store.create(group, actor, request, charges))
+            CommunicationResult.Success(store.create(group, actor, request, charges, store.recentlyReminded(selection)))
         }
     private fun failure(error: CommunicationError) = CommunicationResult.Failure(error)
 }

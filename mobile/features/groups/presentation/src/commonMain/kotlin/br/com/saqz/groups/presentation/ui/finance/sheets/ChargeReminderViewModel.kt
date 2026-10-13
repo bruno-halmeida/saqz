@@ -10,7 +10,13 @@ import kotlinx.coroutines.launch
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-data class ChargeReminderState(val sending: Boolean = false, val failed: Boolean = false, val sent: Int? = null)
+/** [sent]: avisos enviados agora; [alreadyReminded]: cobranças que o servidor barrou por já terem sido cobradas hoje. */
+data class ChargeReminderState(
+    val sending: Boolean = false,
+    val failed: Boolean = false,
+    val sent: Int? = null,
+    val alreadyReminded: Int = 0,
+)
 sealed interface ChargeReminderIntent {
     data class Send(val chargeIds: List<String>) : ChargeReminderIntent
     data object Reset : ChargeReminderIntent
@@ -42,7 +48,9 @@ class ChargeReminderViewModel(
         update { ChargeReminderState(sending = true) }
         viewModelScope.launch {
             when (val result = gateway.send(GroupId(groupId), requestId, selection)) {
-                is SaqzResult.Success -> update { ChargeReminderState(sent = result.value.notificationCount) }
+                is SaqzResult.Success -> update {
+                    ChargeReminderState(sent = result.value.notificationCount, alreadyReminded = result.value.alreadyRemindedCount)
+                }
                 is SaqzResult.Failure -> update { ChargeReminderState(failed = true) }
             }
         }

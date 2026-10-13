@@ -1,8 +1,10 @@
 package br.com.saqz.groups.adapter.output.jdbc.communication
 
+import br.com.saqz.groups.application.communication.EntryRequestNotice
 import br.com.saqz.groups.application.communication.FirstConfirmationNotice
 import br.com.saqz.groups.application.communication.FirstMemberNotice
 import br.com.saqz.groups.application.communication.MessageChannel
+import br.com.saqz.groups.application.communication.entryRequestBody
 import br.com.saqz.groups.application.communication.firstConfirmationBody
 import br.com.saqz.groups.application.communication.firstMemberBody
 import org.springframework.jdbc.core.simple.JdbcClient
@@ -19,7 +21,7 @@ import javax.sql.DataSource
 class JdbcOnboardingNotices(
     dataSource: DataSource,
     private val communication: JdbcGroupCommunicationRepository,
-) : FirstMemberNotice, FirstConfirmationNotice {
+) : FirstMemberNotice, FirstConfirmationNotice, EntryRequestNotice {
     private val jdbc = JdbcClient.create(dataSource)
 
     /**
@@ -69,6 +71,28 @@ class JdbcOnboardingNotices(
         communication.publishOnce(
             groupId, memberId, MessageChannel.FIRST_CONFIRMATION, firstConfirmationBody(row.first, row.second, row.third), gameId,
         )
+        Unit
+    }
+
+    /**
+     * Pedido de entrada: um aviso por pedido. O `request_id` sai do grupo, da pessoa e do instante do pedido
+     * pendente (que um pedido repetido não muda), então o UNIQUE de group_messages derruba o segundo aviso.
+     * Quem pediu não recebe o próprio aviso (se for admin); dono e admins recebem, central e push.
+     */
+    override fun requested(groupId: UUID, userId: UUID) = guarded {
+        val row = jdbc.sql(
+            """
+            SELECT g.name AS group_name, coalesce(u.nickname, u.display_name) AS who, r.requested_at
+            FROM group_entry_requests r
+            JOIN access_groups g ON g.id = r.group_id AND g.deleted_at IS NULL
+            JOIN access_users u ON u.id = r.user_id
+            WHERE r.group_id = :group AND r.user_id = :user
+            """.trimIndent(),
+        ).param("group", groupId).param("user", userId)
+            .query { rs, _ -> Triple(rs.getString("who"), rs.getString("group_name"), rs.getTimestamp("requested_at").toInstant()) }
+            .optional().orElse(null) ?: return@guarded
+        val request = UUID.nameUUIDFromBytes("entry-request:$groupId:$userId:${row.third}".toByteArray())
+        communication.publishOnce(groupId, userId, MessageChannel.ENTRY_REQUEST, entryRequestBody(row.first, row.second), null, request)
         Unit
     }
 

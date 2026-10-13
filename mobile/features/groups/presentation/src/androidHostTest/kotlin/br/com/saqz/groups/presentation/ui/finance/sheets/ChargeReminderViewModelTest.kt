@@ -41,6 +41,19 @@ class ChargeReminderViewModelTest {
             assertEquals(2, requests.size)
         } finally { Dispatchers.resetMain() }
     }
+    @Test fun blockedReminderReportsAlreadyRemindedWithoutFailing() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            val vm = ChargeReminderViewModel("group", ChargeReminderGateway { _, _, _ ->
+                SaqzResult.Success(ChargeReminderReceipt(notificationCount = 0, alreadyRemindedCount = 1))
+            }, SavedStateHandle())
+            vm.onIntent(ChargeReminderIntent.Send(listOf("a")))
+            advanceUntilIdle()
+            assertEquals(0, vm.state.value.sent)
+            assertEquals(1, vm.state.value.alreadyReminded)
+            assertFalse(vm.state.value.failed)
+        } finally { Dispatchers.resetMain() }
+    }
     @Test fun inFlightRequestsAreNotDuplicatedAndEmptySelectionDoesNothing() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         try {

@@ -163,6 +163,7 @@ class ChargeReminderIntegrationTest {
         assertEquals(1, service.inbox(member, null).success().items.size)
         push.register(member, installation, "token", "ANDROID")
         service.savePreferences(member, NotificationPreferences(reminders = false))
+        jdbc.sql("UPDATE group_messages SET created_at = now() - interval '13 hours'").update()
         reminders.send(owner, group, UUID.randomUUID(), listOf(jdbc.sql("SELECT id FROM group_charges").query(UUID::class.java).single())).success()
         push.drain(br.com.saqz.groups.application.communication.NotificationPushSender { _, _ -> error("muted") })
         assertEquals(2, service.inbox(member, null).success().items.size)

@@ -6,7 +6,16 @@ import br.com.saqz.domain.SaqzError
 import br.com.saqz.domain.SaqzResult
 
 enum class CommunicationChannel {
-    CHAT, NOTICE, REMINDER, GAME_OPEN, CHARGE, ATTENDANCE_WINDOW, WAITLIST_DEADLINE, FIRST_MEMBER, FIRST_CONFIRMATION,
+    CHAT,
+    NOTICE,
+    REMINDER,
+    GAME_OPEN,
+    CHARGE,
+    ATTENDANCE_WINDOW,
+    WAITLIST_DEADLINE,
+    FIRST_MEMBER,
+    FIRST_CONFIRMATION,
+    ENTRY_REQUEST,
 }
 data class CommunicationMessage(
     val id: String, val sequence: Long, val groupId: GroupId, val authorId: String, val authorName: String,
@@ -18,7 +27,8 @@ data class InAppNotification(val sequence: Long, val message: CommunicationMessa
 data class PushPreferences(
     val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true, val charges: Boolean = true,
 )
-data class WhatsAppPreferences(val notices: Boolean = false, val reminders: Boolean = false, val charges: Boolean = false)
+// Cobrança no WhatsApp particular nasce ligada; os outros dois ficam inertes no servidor.
+data class WhatsAppPreferences(val notices: Boolean = false, val reminders: Boolean = false, val charges: Boolean = true)
 data class NotificationPreferences(
     val notices: Boolean = true, val messages: Boolean = true, val reminders: Boolean = true,
     // Null represents a server/client predating delivery-channel preferences.

@@ -29,6 +29,7 @@ class NotificationChannelsIntegrationTest {
         jdbc.sql("""INSERT INTO access_groups (id, owner_user_id, creation_key, name, time_zone, created_at, updated_at)
             VALUES (:id, :owner, :key, 'Futebol', 'UTC', now(), now())""")
             .param("id", group).param("owner", owner).param("key", UUID.randomUUID()).update()
+        jdbc.sql("UPDATE access_groups SET pix_key = 'pix@futebol.app', pix_label = 'Tesouraria' WHERE id = :id").param("id", group).update()
         for (user in listOf(owner, member)) jdbc.sql("""
             INSERT INTO group_memberships(group_id, user_id, role, membership_type, active, created_at, updated_at)
             VALUES (:g, :u, 'ADMIN', 'AVULSO', true, now(), now())
@@ -70,8 +71,60 @@ class NotificationChannelsIntegrationTest {
         drain { error("accepted delivery was repeated") }
         assertEquals(1, sent.size)
         assertEquals("+5511999999999", sent.single().phone)
-        assertTrue(sent.single().body.startsWith("Saqz · Futebol\nVocê tem uma cobrança de"))
-        assertTrue(sent.single().body.contains("em aberto. Abra o grupo para conferir sua cobrança."))
+        assertEquals(
+            "Saqz · Futebol\nVocê tem uma cobrança de R$ 70,00 em aberto (venceu em 10/09).\n" +
+                "Pix: pix@futebol.app (Tesouraria)\nDepois de pagar, o organizador dá baixa.",
+            sent.single().body,
+        )
+    }
+
+    @Test fun `charge WhatsApp is on by default for a member without preference row and omits Pix when the group has none`() {
+        jdbc.sql("UPDATE access_groups SET pix_key = null, pix_label = null WHERE id = :g").param("g", group).update()
+        assertEquals(WhatsAppPreferences(charges = true), service.preferences(member).whatsapp)
+        remindCharges(charge())
+        assertEquals(1L, count("notification_whatsapp_queue"))
+        val sent = mutableListOf<WhatsAppNotification>()
+        drain { sent += it; WhatsAppDelivery.Accepted }
+        assertEquals(
+            "Saqz · Futebol\nVocê tem uma cobrança de R$ 70,00 em aberto (venceu em 10/09).\nDepois de pagar, o organizador dá baixa.",
+            sent.single().body,
+        )
+    }
+
+    @Test fun `charge WhatsApp turned off in the preference does not enqueue and a member without phone is skipped`() {
+        service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(charges = false)))
+        remindCharges(charge())
+        assertEquals(0L, count("notification_whatsapp_queue"))
+        assertEquals(1, inbox().size)
+        service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(charges = true)))
+        jdbc.sql("UPDATE access_users SET phone = null WHERE id = :u").param("u", member).update()
+        remindCharges(charge())
+        assertEquals(0L, count("notification_whatsapp_queue"))
+    }
+
+    @Test fun `the same charge is not reminded twice to the debtor within 12 hours`() {
+        val charge = charge()
+        val first = remindCharges(charge)
+        assertEquals(ChargeReminderReceipt(1, 0), first)
+        val second = remindCharges(charge)
+        assertEquals(ChargeReminderReceipt(0, 1), second)
+        assertEquals(1, inbox().size)
+        assertEquals(1L, count("notification_whatsapp_queue"))
+        val another = charge()
+        assertEquals(ChargeReminderReceipt(1, 1), remindCharges(charge, another))
+        assertEquals(2, inbox().size)
+        jdbc.sql("UPDATE group_messages SET created_at = now() - interval '13 hours'").update()
+        assertEquals(ChargeReminderReceipt(2, 0), remindCharges(charge, another))
+        assertEquals(4, inbox().size)
+    }
+
+    @Test fun `replaying a blocked reminder returns the same result`() {
+        val charge = charge()
+        remindCharges(charge)
+        val request = UUID.randomUUID()
+        assertEquals(ChargeReminderReceipt(0, 1), remindCharges(charge, request = request))
+        assertEquals(ChargeReminderReceipt(0, 1), remindCharges(charge, request = request))
+        assertEquals(1, inbox().size)
     }
 
     @Test fun `charge WhatsApp failure cannot lose inbox or block push and respects retry after`() {
@@ -101,7 +154,7 @@ class NotificationChannelsIntegrationTest {
             service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(charges = true)))
             remindCharges(charge())
             when (change) {
-                "mute" -> service.savePreferences(member, NotificationPreferences())
+                "mute" -> service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(charges = false)))
                 "departure" -> jdbc.sql("UPDATE group_memberships SET active = false WHERE user_id = :u").param("u", member).update()
                 "phone" -> jdbc.sql("UPDATE access_users SET phone = '+5511988888888' WHERE id = :u").param("u", member).update()
             }

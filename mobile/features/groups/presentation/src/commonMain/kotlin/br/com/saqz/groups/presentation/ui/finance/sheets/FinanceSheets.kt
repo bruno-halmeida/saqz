@@ -28,6 +28,7 @@ import br.com.saqz.groups.resources.sheet_charge_close
 import br.com.saqz.groups.resources.sheet_charge_notification_title
 import br.com.saqz.groups.resources.sheet_charge_notification_note
 import br.com.saqz.groups.resources.sheet_charge_failure
+import br.com.saqz.groups.resources.sheet_charge_already_reminded
 import br.com.saqz.groups.resources.sheet_charge_success
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.sheet_charge_all
@@ -60,6 +61,7 @@ internal object FinanceSheetsTags {
     const val ChargeAll = "finance-charge-all"
     const val ChargeClear = "finance-charge-clear"
     const val ChargeSelection = "finance-charge-selection"
+    const val ChargeAlreadyReminded = "finance-charge-already-reminded"
     const val Receipt = "finance-receipt-sheet"
     const val ReceiptAvatar = "finance-receipt-avatar"
     const val ReceiptAmount = "finance-receipt-amount"
@@ -147,8 +149,17 @@ internal fun ChargeSheet(
             Text(stringResource(Res.string.sheet_charge_notification_note), style = SaqzTheme.typography.support)
         }
         if (delivery.failed) Text(stringResource(Res.string.sheet_charge_failure), color = SaqzTheme.colors.errorForeground)
-        delivery.sent?.let {
-            Text(stringResource(Res.string.sheet_charge_success, it), modifier = Modifier.testTag(FinanceSheetsTags.ChargeSuccess))
+        if (delivery.sent != null && delivery.sent > 0) {
+            Text(
+                stringResource(Res.string.sheet_charge_success, delivery.sent),
+                modifier = Modifier.testTag(FinanceSheetsTags.ChargeSuccess),
+            )
+        }
+        if (delivery.alreadyReminded > 0) {
+            Text(
+                stringResource(Res.string.sheet_charge_already_reminded),
+                modifier = Modifier.testTag(FinanceSheetsTags.ChargeAlreadyReminded),
+            )
         }
     }
 }

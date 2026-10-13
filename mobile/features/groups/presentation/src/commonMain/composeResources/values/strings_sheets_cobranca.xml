@@ -4,6 +4,7 @@
     <string name="sheet_charge_notification_note">Cada pessoa recebe um aviso com suas cobranças. O push aparece nos aparelhos com notificações ativadas.</string>
     <string name="sheet_charge_failure">Não foi possível confirmar o envio. Tente novamente.</string>
     <string name="sheet_charge_success">Avisos enviados: %1$d</string>
+    <string name="sheet_charge_already_reminded">Já cobrado hoje</string>
     <string name="sheet_charge_all">Cobrar todos</string>
     <string name="sheet_charge_clear">Limpar seleção</string>
     <string name="sheet_charge_selected">Selecionadas: %1$d · %2$s</string>

@@ -13,8 +13,9 @@ class JdbcChargeReminderStore(dataSource: DataSource) : ChargeReminderStore {
     override fun previous(group: UUID, actor: UUID, request: UUID): ChargeReminderRequest? = jdbc.sql(
         "SELECT charge_ids, notification_count FROM charge_reminder_requests WHERE group_id = :g AND actor_id = :a AND request_id = :r",
     ).param("g", group).param("a", actor).param("r", request).query { rs, _ ->
-        ChargeReminderRequest(rs.getString("charge_ids").split(",").map(UUID::fromString).toSet(),
-            ChargeReminderReceipt(rs.getInt("notification_count")))
+        val ids = rs.getString("charge_ids").split(",").map(UUID::fromString).toSet()
+        val sent = rs.getInt("notification_count")
+        ChargeReminderRequest(ids, ChargeReminderReceipt(sent, ids.size - sent))
     }.optional().orElse(null)
 
     override fun pending(group: UUID, ids: Set<UUID>): List<PendingReminderCharge> = jdbc.sql("""
@@ -26,8 +27,17 @@ class JdbcChargeReminderStore(dataSource: DataSource) : ChargeReminderStore {
         PendingReminderCharge(rs.getObject("id", UUID::class.java), rs.getObject("member_user_id", UUID::class.java), rs.getLong("amount_cents"))
     }.list()
 
-    override fun create(group: UUID, actor: UUID, request: UUID, charges: List<PendingReminderCharge>): ChargeReminderReceipt {
-        charges.forEach { charge ->
+    override fun recentlyReminded(ids: Set<UUID>): Set<UUID> = jdbc.sql("""
+        SELECT DISTINCT charge_id FROM group_messages
+        WHERE channel = 'CHARGE' AND charge_id IN (:ids) AND created_at > now() - make_interval(hours => :hours)
+    """).param("ids", ids).param("hours", REMINDER_COOLDOWN_HOURS)
+        .query { rs, _ -> rs.getObject("charge_id", UUID::class.java) }.list().toSet()
+
+    override fun create(
+        group: UUID, actor: UUID, request: UUID, charges: List<PendingReminderCharge>, skipped: Set<UUID>,
+    ): ChargeReminderReceipt {
+        val toSend = charges.filter { it.id !in skipped }
+        toSend.forEach { charge ->
             val message = UUID.randomUUID()
             val amount = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(BigDecimal.valueOf(charge.amountCents, 2))
             jdbc.sql("""
@@ -44,7 +54,7 @@ class JdbcChargeReminderStore(dataSource: DataSource) : ChargeReminderStore {
             INSERT INTO charge_reminder_requests (group_id, actor_id, request_id, charge_ids, notification_count)
             VALUES (:g, :a, :r, :ids, :count)
         """).param("g", group).param("a", actor).param("r", request)
-            .param("ids", charges.map { it.id.toString() }.sorted().joinToString(",")).param("count", charges.size).update()
-        return ChargeReminderReceipt(charges.size)
+            .param("ids", charges.map { it.id.toString() }.sorted().joinToString(",")).param("count", toSend.size).update()
+        return ChargeReminderReceipt(toSend.size, charges.size - toSend.size)
     }
 }
