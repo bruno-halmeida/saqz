@@ -5,6 +5,7 @@ import br.com.saqz.groups.domain.group.GroupTrialAccessInfo
 import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.domain.GroupId
 import br.com.saqz.subscriptions.domain.trial.TrialGateway
+import br.com.saqz.subscriptions.domain.trial.TrialStatus
 import org.koin.dsl.module
 
 /**
@@ -27,7 +28,13 @@ internal val groupCreationEntitlementModule = module {
         GroupTrialAccessPort { groupId: GroupId ->
             when (val result = gateway.groupTrial(groupId)) {
                 is br.com.saqz.domain.SaqzResult.Success ->
-                    GroupTrialAccessInfo(result.value.endsAt, result.value.readOnly, result.value.isOwner)
+                    GroupTrialAccessInfo(
+                        endsAt = result.value.endsAt,
+                        readOnly = result.value.readOnly,
+                        isOwner = result.value.isOwner,
+                        planActive = result.value.status == TrialStatus.Subscribed,
+                        trialEnded = result.value.status == TrialStatus.Expired,
+                    )
                 is br.com.saqz.domain.SaqzResult.Failure -> null
             }
         }

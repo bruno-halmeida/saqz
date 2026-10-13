@@ -390,6 +390,7 @@ private fun NetworkError.toDomain(): AttendanceError = when (this) {
         "VERSION_CONFLICT" -> AttendanceError.Conflict
         "ATTENDANCE_HOST_NOT_GOING" -> AttendanceError.Conflict
         "AUTHENTICATION_REQUIRED" -> AttendanceError.Authentication
+        "SUBSCRIPTION_REQUIRED" -> AttendanceError.Data(DataError.SubscriptionRequired)
         else -> AttendanceError.Data(problem.status.toDataError())
     }
     is NetworkError.HttpStatus -> AttendanceError.Data(status.toDataError())

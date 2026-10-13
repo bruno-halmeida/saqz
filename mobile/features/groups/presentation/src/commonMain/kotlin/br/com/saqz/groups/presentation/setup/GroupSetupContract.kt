@@ -101,6 +101,10 @@ data class GroupSetupState(
     val isDeleting: Boolean = false,
     val saveFailed: Boolean = false,
     val gatewayError: GroupUiError? = null,
+    /** O backend recusou a gravação por falta de plano: a UI abre o diálogo com a oferta. */
+    val subscriptionRequired: Boolean = false,
+    /** Distingue "o teste terminou" de "o plano não está ativo" no título do diálogo. */
+    val trialEnded: Boolean = false,
     /** Chave de idempotência do payload atual; qualquer edição a descarta antes do retry. */
     val creationCommandKey: String? = null,
     val isOffline: Boolean = false,
@@ -194,6 +198,8 @@ sealed interface GroupSetupIntent {
     data object Retry : GroupSetupIntent
 
     data object SaveDraft : GroupSetupIntent
+
+    data object DismissSubscriptionRequired : GroupSetupIntent
 }
 
 sealed interface GroupSetupEffect {

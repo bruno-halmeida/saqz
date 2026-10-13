@@ -368,6 +368,7 @@ private fun NetworkError.toAthleteError(): AthleteError = when (this) {
         problem.code == "VALIDATION_FAILED" || problem.status == 400 -> AthleteError.Validation(
             ValidationDetails(emptyList(), problem.fieldErrors.orEmpty()),
         )
+        problem.code == "SUBSCRIPTION_REQUIRED" -> AthleteError.DataFailure(DataError.SubscriptionRequired)
         else -> AthleteError.DataFailure(problem.status.toDataError())
     }
     is NetworkError.HttpStatus -> AthleteError.DataFailure(status.toDataError())

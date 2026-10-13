@@ -4,7 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
+import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.groups.presentation.gameeditor.GameEditorEffect
+import br.com.saqz.groups.presentation.gameeditor.GameEditorIntent
 import br.com.saqz.groups.presentation.gameeditor.GameEditorViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -52,5 +54,7 @@ fun GameEditorRoot(
             is GameEditorEffect.OpenGameDetail -> onOpenGameDetail(effect.gameId)
         }
     }
+    // Ao voltar de "Ver planos" o plano pode ter mudado: o aviso do fim do teste some depois de assinar.
+    RefreshWhenVisible { resolvedViewModel.onIntent(GameEditorIntent.RefreshPlan) }
     GameEditorScreen(state = state, onBack = onBack, onIntent = resolvedViewModel::onIntent)
 }

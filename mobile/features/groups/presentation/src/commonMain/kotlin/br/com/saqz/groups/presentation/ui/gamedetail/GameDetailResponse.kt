@@ -24,6 +24,7 @@ import br.com.saqz.groups.resources.game_response_declined
 import br.com.saqz.groups.resources.game_response_no
 import br.com.saqz.groups.resources.game_response_question
 import br.com.saqz.groups.resources.game_response_request_failed
+import br.com.saqz.groups.resources.subscription_paused_athlete
 import br.com.saqz.groups.resources.game_response_yes
 import br.com.saqz.groups.resources.home_attendance_cancel
 import br.com.saqz.groups.resources.home_attendance_change
@@ -73,7 +74,7 @@ internal fun GameDetailResponse(
             confirmationOpen = header.responseOpen,
             lateNotice = if (!header.confirmationOpen) stringResource(Res.string.game_response_late_notice) else null,
             responding = response.responding,
-            responseFailed = response.failed,
+            responseFailed = response.failed || response.planPaused,
             waitlistKind = response.waitlistKind,
             waitlistPosition = response.waitlistPosition,
             onRespond = { onIntent(GameDetailIntent.Respond(it)) },
@@ -85,7 +86,9 @@ internal fun GameDetailResponse(
                 declined = stringResource(Res.string.game_response_declined),
                 change = stringResource(Res.string.home_attendance_change),
                 cancel = stringResource(Res.string.home_attendance_cancel),
-                error = stringResource(Res.string.game_response_request_failed),
+                error = stringResource(
+                    if (response.planPaused) Res.string.subscription_paused_athlete else Res.string.game_response_request_failed,
+                ),
             ),
             tags = GameDetailHeroAttendanceTags,
         )

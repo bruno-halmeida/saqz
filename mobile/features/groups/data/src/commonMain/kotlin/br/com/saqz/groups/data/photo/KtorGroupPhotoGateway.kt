@@ -98,6 +98,7 @@ private fun NetworkError.toPhotoError(): GroupPhotoError = when (this) {
         problem.status == 409 || problem.code == "VERSION_CONFLICT" -> GroupPhotoError.StaleVersion
         problem.status == 404 -> GroupPhotoError.NotFound
         problem.status == 413 -> GroupPhotoError.MediaLimit
+        problem.code == "SUBSCRIPTION_REQUIRED" -> GroupPhotoError.DataFailure(DataError.SubscriptionRequired)
         else -> GroupPhotoError.DataFailure(problem.status.toDataError())
     }
 

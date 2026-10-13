@@ -65,6 +65,7 @@ fun groupsPresentationModule(): Module = module {
             groupGateway = get(),
             profileGateway = get(),
             timeZonePort = get<GroupSystemTimeZonePort>(),
+            trialAccess = getOrNull(),
         )
     }
     viewModel { params -> StatementViewModel(params.get(), get()) }

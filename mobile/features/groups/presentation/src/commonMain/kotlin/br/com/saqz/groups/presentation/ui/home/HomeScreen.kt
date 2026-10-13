@@ -77,6 +77,7 @@ import br.com.saqz.groups.resources.home_no_game_description
 import br.com.saqz.groups.resources.home_no_game_hero_title
 import br.com.saqz.groups.resources.home_notifications_cd
 import br.com.saqz.groups.resources.home_response_error
+import br.com.saqz.groups.resources.subscription_paused_athlete
 import br.com.saqz.groups.resources.home_response_no
 import br.com.saqz.groups.resources.home_response_yes
 import br.com.saqz.groups.resources.home_retry
@@ -242,6 +243,7 @@ private fun HomeContent(
                             game = it,
                             responding = state.responding,
                             responseFailed = state.responseFailed,
+                            planPaused = state.responsePlanPaused,
                             onIntent = onIntent,
                         )
                     } else {
@@ -249,6 +251,7 @@ private fun HomeContent(
                             game = it,
                             responding = state.responding,
                             responseFailed = state.responseFailed,
+                            planPaused = state.responsePlanPaused,
                             onIntent = onIntent,
                         )
                     }
@@ -361,6 +364,7 @@ private fun HomeHero(
     game: HomeNextGameUi,
     responding: Boolean,
     responseFailed: Boolean,
+    planPaused: Boolean,
     onIntent: (HomeIntent) -> Unit,
 ) {
     SaqzHeroCard(
@@ -375,6 +379,7 @@ private fun HomeHero(
             game = game,
             responding = responding,
             responseFailed = responseFailed,
+            planPaused = planPaused,
             onIntent = onIntent,
         )
         // Em espera, as seções abaixo do hero já mostram o roster: a linha some.
@@ -407,6 +412,7 @@ internal fun ColumnScope.HomeAttendanceControls(
     game: HomeNextGameUi,
     responding: Boolean,
     responseFailed: Boolean,
+    planPaused: Boolean = false,
     onIntent: (HomeIntent) -> Unit,
 ) {
     HeroAttendanceControls(
@@ -414,7 +420,7 @@ internal fun ColumnScope.HomeAttendanceControls(
         confirmationOpen = game.responseOpen,
         lateNotice = if (!game.confirmationOpen) stringResource(Res.string.game_response_late_notice) else null,
         responding = responding,
-        responseFailed = responseFailed,
+        responseFailed = responseFailed || planPaused,
         waitlistKind = game.waitlistKind,
         waitlistPosition = game.waitlistPosition,
         onRespond = { onIntent(HomeIntent.Respond(it)) },
@@ -426,7 +432,9 @@ internal fun ColumnScope.HomeAttendanceControls(
             declined = stringResource(Res.string.home_status_declined),
             change = stringResource(Res.string.home_attendance_change),
             cancel = stringResource(Res.string.home_attendance_cancel),
-            error = stringResource(Res.string.home_response_error),
+            error = stringResource(
+                if (planPaused) Res.string.subscription_paused_athlete else Res.string.home_response_error,
+            ),
         ),
         tags = HomeHeroAttendanceTags,
     )

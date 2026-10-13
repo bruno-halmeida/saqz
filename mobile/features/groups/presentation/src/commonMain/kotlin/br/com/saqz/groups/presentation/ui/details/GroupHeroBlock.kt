@@ -65,6 +65,7 @@ import br.com.saqz.groups.resources.game_response_deadline_closed
 import br.com.saqz.groups.resources.game_response_declined
 import br.com.saqz.groups.resources.game_response_no
 import br.com.saqz.groups.resources.game_response_request_failed
+import br.com.saqz.groups.resources.subscription_paused_athlete
 import br.com.saqz.groups.resources.game_response_retry_roster
 import br.com.saqz.groups.resources.game_response_roster_stale
 import br.com.saqz.groups.resources.game_response_yes
@@ -171,7 +172,7 @@ private fun GroupGameHero(
             confirmationOpen = game.responseOpen && !state.rosterRefreshing,
             lateNotice = if (!game.confirmationOpen) stringResource(Res.string.game_response_late_notice) else null,
             responding = state.responding,
-            responseFailed = state.responseFailed,
+            responseFailed = state.responseFailed || state.responsePlanPaused,
             waitlistKind = state.waitlist?.kind,
             waitlistPosition = state.memberResponse?.waitlistPosition,
             onRespond = { onIntent(GroupDetailsIntent.Respond(it)) },
@@ -183,7 +184,9 @@ private fun GroupGameHero(
                 declined = stringResource(Res.string.game_response_declined),
                 change = stringResource(Res.string.home_attendance_change),
                 cancel = stringResource(Res.string.home_attendance_cancel),
-                error = stringResource(Res.string.game_response_request_failed),
+                error = stringResource(
+                    if (state.responsePlanPaused) Res.string.subscription_paused_athlete else Res.string.game_response_request_failed,
+                ),
             ),
             tags = GroupHeroAttendanceTags,
         )

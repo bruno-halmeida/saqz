@@ -100,3 +100,6 @@ Compose:
       - LocalSaqzTypography
       - LocalSaqzMotion
       - LocalSaqzChrome
+      # Ação de navegação do host ("Ver planos" dos diálogos de assinatura): as telas de grupos não
+      # conhecem a feature de assinaturas, então o app a injeta em vez de repassar por ~6 Roots.
+      - LocalOpenSubscriptionPlans

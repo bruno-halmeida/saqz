@@ -596,6 +596,7 @@ internal fun NetworkError.toFinanceError(): FinanceError = when (this) {
         "PRECONDITION_REQUIRED" -> FinanceError.PreconditionRequired
         "INVALID_GAME_TRANSITION" -> FinanceError.InvalidLifecycle
         "AUTHENTICATION_REQUIRED" -> FinanceError.Authentication
+        "SUBSCRIPTION_REQUIRED" -> FinanceError.Data(DataError.SubscriptionRequired)
         else -> FinanceError.Data(problem.status.toDataError())
     }
     is NetworkError.HttpStatus -> FinanceError.Data(status.toDataError())

@@ -389,6 +389,25 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `athlete answering in a group with a paused plan gets the paused notice and no retry banner`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            respondResult = SaqzResult.Failure(AttendanceError.Data(DataError.SubscriptionRequired)),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = sampleNextGame()))),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        assertNull(viewModel.state.value.member?.nextGame?.ownAttendance)
+        assertTrue(viewModel.state.value.responsePlanPaused)
+        assertFalse(viewModel.state.value.responseFailed)
+        assertFalse(viewModel.state.value.responding)
+    }
+
+    @Test
     fun `recorded response reports attendance_answered from the app surface and a failed one does not`() = runTest {
         val recorded = mutableListOf<Pair<String, Map<String, String>>>()
         SaqzAnalytics.track = { name, params -> recorded += name to params }

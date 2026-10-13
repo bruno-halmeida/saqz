@@ -303,6 +303,14 @@ class KtorGroupGatewayTest {
             assertEquals(listOf("required"), assertIs<GroupProfileError.Validation>(e).details.fieldMessages["regularSlots[0].startTime"])
         }
 
+    @Test fun `subscription required maps to the typed plan error`() =
+        runTest {
+            assertEquals(
+                DataError.SubscriptionRequired,
+                fixture { problem(403, "SUBSCRIPTION_REQUIRED") }.gateway.read(GroupId(ID)).dataError(),
+            )
+        }
+
     @Test fun `forbidden maps shared forbidden`() =
         runTest {
             assertEquals(DataError.Forbidden, fixture { problem(403, "FORBIDDEN") }.gateway.read(GroupId(ID)).dataError())

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.gameeditor
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -15,6 +16,8 @@ import br.com.saqz.groups.domain.group.GroupWeekday
 import br.com.saqz.groups.presentation.gameeditor.GameEditorFields
 import br.com.saqz.groups.presentation.gameeditor.GameEditorIntent
 import br.com.saqz.groups.presentation.gameeditor.GameEditorState
+import br.com.saqz.groups.presentation.ui.LocalOpenSubscriptionPlans
+import br.com.saqz.groups.presentation.ui.SubscriptionRequiredTags
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -74,6 +77,65 @@ class GameEditorScreenTest {
         onNodeWithText("Tentar").performClick()
 
         assertEquals(listOf<GameEditorIntent>(GameEditorIntent.Submit), intents)
+    }
+
+    @Test
+    fun `subscription required dialog offers the plans and keeps the form on not now`() = runComposeUiTest {
+        val intents = mutableListOf<GameEditorIntent>()
+        var plansOpened = 0
+        setContent {
+            SaqzTheme {
+                CompositionLocalProvider(LocalOpenSubscriptionPlans provides { plansOpened++ }) {
+                    GameEditorScreen(
+                        state = create().copy(subscriptionRequired = true, trialEnded = true),
+                        onBack = {},
+                        onIntent = { intents += it },
+                    )
+                }
+            }
+        }
+
+        onNodeWithText("Seu teste do Organizador terminou").assertExists()
+        onNodeWithText(
+            "Seus grupos e o histórico continuam aqui. Para marcar jogos e mexer no grupo, assine um plano.",
+        ).assertExists()
+        onNodeWithTag(SubscriptionRequiredTags.NotNow).performClick()
+        assertEquals(listOf<GameEditorIntent>(GameEditorIntent.DismissSubscriptionRequired), intents)
+        onNodeWithTag(SubscriptionRequiredTags.ViewPlans).performClick()
+        assertEquals(1, plansOpened)
+    }
+
+    @Test
+    fun `inactive plan dialog uses the neutral title`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GameEditorScreen(state = create().copy(subscriptionRequired = true), onBack = {}, onIntent = {})
+            }
+        }
+
+        onNodeWithText("Seu plano não está ativo").assertExists()
+    }
+
+    @Test
+    fun `trial warning prints the game date and time and not the trial instant`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GameEditorScreen(
+                    state = create().copy(
+                        trialEndsAt = "2026-10-13T19:05:36.796387Z",
+                        trialWarningVisible = true,
+                        form = create().form.copy(localDate = "2026-10-17", localTime = "19:00"),
+                    ),
+                    onBack = {},
+                    onIntent = {},
+                )
+            }
+        }
+
+        onNodeWithText(
+            "Este jogo começa sábado, 17/10 às 19h00, depois do fim do teste. " +
+                "O acesso ao grupo nessa data depende do plano ativo da conta.",
+        ).performScrollTo().assertExists()
     }
 
     private fun create(recurring: Boolean = false) = GameEditorState(

@@ -179,6 +179,12 @@ class KtorGameGatewayTest {
     }
     @Test fun `invalid lifecycle maps safely`() = errorCase(409, "INVALID_GAME_TRANSITION", GameError.InvalidLifecycle::class.simpleName)
     @Test fun `authentication maps safely`() = errorCase(401, "AUTHENTICATION_REQUIRED", GameError.Authentication::class.simpleName)
+    @Test fun `subscription required maps to the typed plan error`() = runTest {
+        val result = gateway {
+            respond("""{"status":403,"code":"SUBSCRIPTION_REQUIRED","correlationId":"safe"}""", HttpStatusCode.Forbidden, jsonHeaders())
+        }.read(GROUP, GAME)
+        assertEquals(GameError.Data(DataError.SubscriptionRequired), assertIs<SaqzResult.Failure<*>>(result).error)
+    }
     @Test fun `forbidden maps safely`() = errorCase(403, "FORBIDDEN", GameError.Data(DataError.Forbidden)::class.simpleName)
     @Test fun `not found maps safely`() = errorCase(404, "OTHER_NOT_FOUND", GameError.Data(DataError.NotFound)::class.simpleName)
     @Test fun `payload limit maps safely`() = errorCase(413, "PAYLOAD_TOO_LARGE", GameError.Data(DataError.PayloadTooLarge)::class.simpleName)

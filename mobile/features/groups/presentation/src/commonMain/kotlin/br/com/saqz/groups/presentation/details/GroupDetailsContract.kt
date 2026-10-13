@@ -36,6 +36,8 @@ data class GroupDetailsState(
     val memberResponse: GroupDetailsResponseUi? = null,
     val responding: Boolean = false,
     val responseFailed: Boolean = false,
+    /** O organizador está sem plano: o aviso próprio substitui o "Tente novamente". */
+    val responsePlanPaused: Boolean = false,
     val rosterStale: Boolean = false,
     val rosterRefreshing: Boolean = false,
     val membershipType: AthleteMembershipType? = null,

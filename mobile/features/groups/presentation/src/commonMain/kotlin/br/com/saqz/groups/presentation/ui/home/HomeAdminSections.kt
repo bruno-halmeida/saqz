@@ -92,6 +92,7 @@ internal fun HomeAdminHero(
     game: HomeNextGameUi,
     responding: Boolean,
     responseFailed: Boolean,
+    planPaused: Boolean,
     onIntent: (HomeIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -119,6 +120,7 @@ internal fun HomeAdminHero(
             game = game,
             responding = responding,
             responseFailed = responseFailed,
+            planPaused = planPaused,
             onIntent = onIntent,
         )
     }

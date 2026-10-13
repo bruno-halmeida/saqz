@@ -23,6 +23,12 @@ data class GameEditorState(
     val zoneId: String = "",
     val trialEndsAt: String? = null,
     val trialWarningVisible: Boolean = false,
+    /** Há plano pago ativo: o aviso do fim do teste não se aplica. */
+    val planActive: Boolean = false,
+    /** O backend recusou a gravação por falta de plano: a UI abre o diálogo com a oferta. */
+    val subscriptionRequired: Boolean = false,
+    /** Distingue "o teste terminou" de "o plano não está ativo" no título do diálogo. */
+    val trialEnded: Boolean = false,
     val form: GameEditorFields = GameEditorFields(),
     /** Só na criação, e só com perfil completo: na edição a recorrência é da agenda do grupo. */
     val recurrenceOffered: Boolean = false,
@@ -82,6 +88,9 @@ sealed interface GameEditorIntent {
     data class UpdateNotes(val notes: String) : GameEditorIntent
     data class ToggleRecurring(val value: Boolean) : GameEditorIntent
     data object DismissConflict : GameEditorIntent
+    data object DismissSubscriptionRequired : GameEditorIntent
+    /** Releitura do plano ao voltar de "Ver planos": o aviso do teste some depois de assinar. */
+    data object RefreshPlan : GameEditorIntent
     data object OpenExistingGame : GameEditorIntent
 }
 

@@ -16,6 +16,8 @@ data class HomeState(
     val member: HomeMemberUi? = null,
     val responding: Boolean = false,
     val responseFailed: Boolean = false,
+    /** O organizador está sem plano: o aviso próprio substitui o "Tente novamente". */
+    val responsePlanPaused: Boolean = false,
     val toast: HomeToast? = null,
     /**
      * VUL-202 — o que **o usuário deve**. Fora de [HomeMemberUi] porque o aviso do shell lê

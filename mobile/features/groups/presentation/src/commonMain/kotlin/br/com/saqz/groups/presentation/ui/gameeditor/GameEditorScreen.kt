@@ -54,7 +54,9 @@ import br.com.saqz.groups.presentation.gameeditor.GameEditorIntent
 import br.com.saqz.groups.presentation.gameeditor.GameEditorState
 import br.com.saqz.groups.presentation.gameeditor.hasSlotAt
 import br.com.saqz.groups.presentation.gameeditor.recurrenceSlotFor
+import br.com.saqz.groups.presentation.game.longWeekdayResource
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
+import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.game_editor_capacity_helper
@@ -125,6 +127,7 @@ import br.com.saqz.groups.resources.game_editor_subtitle
 import br.com.saqz.groups.resources.game_editor_time_label
 import br.com.saqz.groups.resources.game_editor_time_placeholder
 import br.com.saqz.groups.resources.game_editor_trial_warning
+import br.com.saqz.groups.resources.game_editor_trial_warning_when
 import br.com.saqz.groups.resources.game_editor_venue_address_hint
 import br.com.saqz.groups.resources.game_editor_venue_address_label
 import br.com.saqz.groups.resources.game_editor_venue_helper
@@ -215,7 +218,26 @@ internal fun GameEditorScreen(
                 pickerOpen = false
             },
         )
+        if (state.subscriptionRequired) {
+            SubscriptionRequiredDialog(
+                trialEnded = state.trialEnded,
+                onDismiss = { onIntent(GameEditorIntent.DismissSubscriptionRequired) },
+            )
+        }
     }
+}
+
+/** "sábado, 17/10 às 19h00": a data e a hora do jogo, como o resto do app, nunca o instante em ISO. */
+@Composable
+private fun gameWhenLabel(form: GameEditorFields): String {
+    val date = runCatching { LocalDate.parse(form.localDate) }.getOrNull()
+        ?: return formatDisplayDate(form.localDate)
+    return stringResource(
+        Res.string.game_editor_trial_warning_when,
+        stringResource(date.dayOfWeek.longWeekdayResource()),
+        "${date.day.toString().padStart(2, '0')}/${date.monthNumber.toString().padStart(2, '0')}",
+        formatDisplayTime(form.localTime),
+    )
 }
 
 @Composable
@@ -279,7 +301,7 @@ private fun FormScroll(
         if (state.trialWarningVisible) {
             SaqzCard(modifier = Modifier.testTag("game-editor-trial-warning"), tone = SaqzCardTone.Soft) {
                 Text(
-                    text = stringResource(Res.string.game_editor_trial_warning, state.trialEndsAt ?: ""),
+                    text = stringResource(Res.string.game_editor_trial_warning, gameWhenLabel(state.form)),
                     style = SaqzTheme.typography.support,
                     color = SaqzTheme.colors.textPrimary,
                 )

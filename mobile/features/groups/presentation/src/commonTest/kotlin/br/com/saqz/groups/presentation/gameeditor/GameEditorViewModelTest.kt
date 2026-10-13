@@ -12,6 +12,8 @@ import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.group.GroupFinanceDefaults
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.domain.group.GroupTrialAccessInfo
+import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.group.GroupWeekday
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
@@ -58,7 +60,8 @@ class GameEditorViewModelTest {
         gameGateway: FakeGameGateway = FakeGameGateway(),
         groupGateway: FakeGroupGateway = FakeGroupGateway(),
         profileGateway: FakeGroupProfileGateway = FakeGroupProfileGateway(),
-    ) = GameEditorViewModel("group-1", gameId, savedState, gameGateway, groupGateway, profileGateway)
+        trialAccess: GroupTrialAccessPort? = null,
+    ) = GameEditorViewModel("group-1", gameId, savedState, gameGateway, groupGateway, profileGateway, trialAccess)
 
     private fun groupGateway(
         transform: (br.com.saqz.groups.domain.group.Group) -> br.com.saqz.groups.domain.group.Group,
@@ -712,6 +715,53 @@ class GameEditorViewModelTest {
         vm.onIntent(GameEditorIntent.Submit)
         assertTrue(vm.state.value.saveFailed)
         assertEquals(GroupUiError.Network, vm.state.value.error)
+    }
+
+    @Test
+    fun `subscription required on create opens the plan dialog instead of the retry banner`() = runTest {
+        val gateway = FakeGameGateway(createResult = SaqzResult.Failure(GameError.Data(DataError.SubscriptionRequired)))
+        val vm = viewModel(
+            gameGateway = gateway,
+            trialAccess = GroupTrialAccessPort { GroupTrialAccessInfo("2026-08-01T00:00:00Z", true, true, trialEnded = true) },
+        )
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+        assertTrue(vm.state.value.subscriptionRequired)
+        assertTrue(vm.state.value.trialEnded)
+        assertFalse(vm.state.value.saveFailed)
+        assertFalse(vm.state.value.isSaving)
+        // "Agora não" fecha e mantém o formulário preenchido.
+        vm.onIntent(GameEditorIntent.DismissSubscriptionRequired)
+        assertFalse(vm.state.value.subscriptionRequired)
+        assertEquals("2026-08-04", vm.state.value.form.localDate)
+        assertEquals("19:30", vm.state.value.form.localTime)
+    }
+
+    @Test
+    fun `subscription required on edit opens the plan dialog`() = runTest {
+        val gateway = FakeGameGateway(editResult = SaqzResult.Failure(GameError.Data(DataError.SubscriptionRequired)))
+        val vm = viewModel(gameId = "game-1", gameGateway = gateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+        assertEquals(1, gateway.editCalls)
+        assertTrue(vm.state.value.subscriptionRequired)
+        assertFalse(vm.state.value.trialEnded)
+        assertFalse(vm.state.value.saveFailed)
+    }
+
+    @Test
+    fun `trial warning shows only when the game is after the trial end and no plan is active`() = runTest {
+        var info = GroupTrialAccessInfo("2026-08-01T00:00:00Z", false, true)
+        val vm = viewModel(trialAccess = GroupTrialAccessPort { info })
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-07-20", "19:30"))
+        assertFalse(vm.state.value.trialWarningVisible)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        assertTrue(vm.state.value.trialWarningVisible)
+        // Assinou e voltou de "Ver planos": o aviso some sem recarregar o formulário.
+        info = info.copy(planActive = true)
+        vm.onIntent(GameEditorIntent.RefreshPlan)
+        assertFalse(vm.state.value.trialWarningVisible)
+        assertEquals("2026-08-04", vm.state.value.form.localDate)
     }
 
     @Test

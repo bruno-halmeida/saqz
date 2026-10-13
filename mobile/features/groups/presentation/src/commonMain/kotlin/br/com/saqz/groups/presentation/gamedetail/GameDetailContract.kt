@@ -69,6 +69,8 @@ data class GameDetailResponseUi(
     val waitlistPosition: Long? = null,
     val responding: Boolean = false,
     val failed: Boolean = false,
+    /** O organizador está sem plano: o aviso próprio substitui o "Tente novamente". */
+    val planPaused: Boolean = false,
 )
 
 @Immutable

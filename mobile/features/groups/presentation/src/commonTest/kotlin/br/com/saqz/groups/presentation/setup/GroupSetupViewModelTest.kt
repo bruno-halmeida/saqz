@@ -11,6 +11,8 @@ import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.domain.group.GroupProfileError
+import br.com.saqz.groups.domain.group.GroupTrialAccessInfo
+import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.FakeGroupProfileGateway
 import br.com.saqz.groups.presentation.FakeGroupSystemTimeZonePort
@@ -173,6 +175,33 @@ class GroupSetupViewModelTest {
         runCurrent()
 
         assertEquals(false, viewModel.state.value.canDelete)
+    }
+
+    @Test
+    fun `plano inativo ao salvar o grupo abre o dialogo e mantem o formulario`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(
+            mode = GroupSetupMode.Edit(groupId = "grp-1"),
+            profileGateway = FakeGroupProfileGateway(
+                updateResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.SubscriptionRequired)),
+            ),
+            trialAccess = GroupTrialAccessPort { GroupTrialAccessInfo("2026-08-01T00:00:00Z", true, true, trialEnded = true) },
+        )
+        val effects = collectEffects(viewModel)
+        val nameBefore = viewModel.state.value.form.name
+
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertTrue(viewModel.state.value.subscriptionRequired)
+        assertTrue(viewModel.state.value.trialEnded)
+        assertTrue(!viewModel.state.value.saveFailed)
+        assertNull(viewModel.state.value.gatewayError)
+        assertTrue(!viewModel.state.value.isSaving)
+        assertTrue(effects.isEmpty())
+
+        viewModel.onIntent(GroupSetupIntent.DismissSubscriptionRequired)
+        assertTrue(!viewModel.state.value.subscriptionRequired)
+        assertEquals(nameBefore, viewModel.state.value.form.name)
     }
 
     @Test
@@ -828,6 +857,7 @@ class GroupSetupViewModelTest {
         savedState: SavedStateHandle = SavedStateHandle(),
         groupGateway: FakeGroupGateway = FakeGroupGateway(),
         profileGateway: FakeGroupProfileGateway = FakeGroupProfileGateway(),
+        trialAccess: GroupTrialAccessPort? = null,
     ) = GroupSetupViewModel(
         initialState = GroupSetupState(
             mode = mode,
@@ -839,6 +869,7 @@ class GroupSetupViewModelTest {
         groupGateway = groupGateway,
         profileGateway = profileGateway,
         timeZonePort = FakeGroupSystemTimeZonePort(),
+        trialAccess = trialAccess,
     )
 
     private companion object {

@@ -34,13 +34,6 @@ import br.com.saqz.groups.resources.home_month_september
 import br.com.saqz.groups.resources.home_month_september_long
 import br.com.saqz.groups.resources.home_time
 import br.com.saqz.groups.resources.home_waitlist_reserva_bell
-import br.com.saqz.groups.resources.home_weekday_friday
-import br.com.saqz.groups.resources.home_weekday_monday
-import br.com.saqz.groups.resources.home_weekday_saturday
-import br.com.saqz.groups.resources.home_weekday_sunday
-import br.com.saqz.groups.resources.home_weekday_thursday
-import br.com.saqz.groups.resources.home_weekday_tuesday
-import br.com.saqz.groups.resources.home_weekday_wednesday
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -104,16 +97,6 @@ internal suspend fun LocalDateTime.gameDeadlineShort(): String =
 /** "Avisamos você se abrir vaga até 12h00 de 04/08." */
 internal suspend fun LocalDateTime.gameBellLabel(): String =
     getString(Res.string.home_waitlist_reserva_bell, gameTimeLabel(), date.gameDateLabel())
-
-private fun DayOfWeek.longWeekdayResource(): StringResource = when (this) {
-    DayOfWeek.MONDAY -> Res.string.home_weekday_monday
-    DayOfWeek.TUESDAY -> Res.string.home_weekday_tuesday
-    DayOfWeek.WEDNESDAY -> Res.string.home_weekday_wednesday
-    DayOfWeek.THURSDAY -> Res.string.home_weekday_thursday
-    DayOfWeek.FRIDAY -> Res.string.home_weekday_friday
-    DayOfWeek.SATURDAY -> Res.string.home_weekday_saturday
-    DayOfWeek.SUNDAY -> Res.string.home_weekday_sunday
-}
 
 private fun Int.shortMonthResource(): StringResource = when (this) {
     1 -> Res.string.home_month_january

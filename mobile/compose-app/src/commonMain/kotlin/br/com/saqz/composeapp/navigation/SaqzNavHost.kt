@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -85,6 +86,7 @@ import br.com.saqz.groups.presentation.ui.invite.InviteLandingRoot
 import br.com.saqz.groups.presentation.ui.invite.InvitePreviewMessageRoot
 import br.com.saqz.groups.presentation.ui.invite.InviteQrRoot
 import br.com.saqz.groups.presentation.ui.list.GroupListRoot
+import br.com.saqz.groups.presentation.ui.LocalOpenSubscriptionPlans
 import br.com.saqz.groups.presentation.ui.members.GroupMembersRoot
 import br.com.saqz.groups.presentation.ui.schedule.GroupScheduleRoot
 import br.com.saqz.groups.presentation.ui.setup.GroupSetupRoot
@@ -347,703 +349,718 @@ internal fun SaqzNavHost(
             backStack.removeLastOrNull()
         }
     }
-    NavDisplay(
-        backStack = launchStack,
-        // O `NavDisplay` só habilita o back quando há entrada anterior
-        // (`isBackEnabled = scene.previousEntries.isNotEmpty()`, NavDisplay.kt:557 do
-        // navigation3-ui 1.1.1), então isto nunca esvazia a base que o gate garante — é o
-        // mesmo corpo do `onBack` padrão da própria biblioteca.
-        onBack = pop,
-        // VUL-204: sem isto o `LocalViewModelStoreOwner` de dentro de uma entrada é a
-        // Activity, e toda ViewModel de `koinViewModel()` é singleton **de processo**.
-        //
-        // Os decorators, nesta ordem — `foldRight` deixa o **primeiro** como o mais
-        // externo (DecoratedNavEntries.kt:224-229):
-        //
-        // - o fundo opaco envolve cada destino para o slide do iOS não vazar o shell.
-        //   O `SaqzApp` só pinta atrás da pilha; no `AnimatedContent` as duas cenas
-        //   estão uma sobre a outra, e a que entra oca deixa a barra deslocada ¼
-        //   visível nos ~500 ms da transição;
-        // - `entryDecorators` **substitui** a lista padrão do `navigation3-ui`, que é
-        //   `listOf(rememberSaveableStateHolderNavEntryDecorator())` (NavDisplay.kt:259 e
-        //   343 do 1.1.1). Omitir o saveable não custa só o `rememberSaveable` do app: sem
-        //   ele não há `LocalSavedStateRegistryOwner` por entrada, e o
-        //   `ViewModelStoreNavEntryDecorator` estoura no primeiro quadro ("The Lifecycle
-        //   state is already beyond INITIALIZED"). **Quem provê esse owner é o Compose, não
-        //   o navigation3**: o decorator só chama `SaveableStateProvider`/`removeState`, e
-        //   é o `SaveableStateHolderImpl` do `compose runtime-saveable` que faz o
-        //   `LocalSavedStateRegistryOwner provides registry` (SaveableStateHolder.kt:82-86
-        //   do 1.11.2). O requisito é da versão do Compose: baixar `runtime-saveable`
-        //   derruba o app com esse mesmo erro, com os decorators no lugar;
-        // - saveable **antes** de ViewModel. Trocar os dois de lugar deixa o decorator de
-        //   ViewModel lendo o owner de fora da entrada — o mesmo estouro. Os dois casos
-        //   estão travados em `SaqzNavHostViewModelScopeTest`.
-        entryDecorators = listOf(
-            rememberSaqzOpaqueEntryDecorator(),
-            rememberSaveableStateHolderNavEntryDecorator(),
-            rememberViewModelStoreNavEntryDecorator(),
-        ),
-        entryProvider = entryProvider {
-            entry<AccessRoute.Starting> {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    SaqzSpinner()
+    // "Ver planos" dos diálogos de assinatura em Marcar jogo/Editar grupo: a mesma tela de
+    // Perfil → Meu plano → "Continuar com o Organizador" (checkout do site no web app, a loja
+    // do aparelho nos demais). Ao voltar, o plano e o acesso se atualizam.
+    val openSubscriptionPlans: () -> Unit = {
+        val openedWeb = storeCheckout.openWebCheckout {
+            myPlanRefreshVersion++
+            planAnalytics.refresh()
+            onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+        }
+        if (!openedWeb) backStack.add(SubscribeForAccess)
+    }
+    CompositionLocalProvider(
+        LocalOpenSubscriptionPlans provides openSubscriptionPlans,
+    ) {
+        NavDisplay(
+            backStack = launchStack,
+            // O `NavDisplay` só habilita o back quando há entrada anterior
+            // (`isBackEnabled = scene.previousEntries.isNotEmpty()`, NavDisplay.kt:557 do
+            // navigation3-ui 1.1.1), então isto nunca esvazia a base que o gate garante — é o
+            // mesmo corpo do `onBack` padrão da própria biblioteca.
+            onBack = pop,
+            // VUL-204: sem isto o `LocalViewModelStoreOwner` de dentro de uma entrada é a
+            // Activity, e toda ViewModel de `koinViewModel()` é singleton **de processo**.
+            //
+            // Os decorators, nesta ordem — `foldRight` deixa o **primeiro** como o mais
+            // externo (DecoratedNavEntries.kt:224-229):
+            //
+            // - o fundo opaco envolve cada destino para o slide do iOS não vazar o shell.
+            //   O `SaqzApp` só pinta atrás da pilha; no `AnimatedContent` as duas cenas
+            //   estão uma sobre a outra, e a que entra oca deixa a barra deslocada ¼
+            //   visível nos ~500 ms da transição;
+            // - `entryDecorators` **substitui** a lista padrão do `navigation3-ui`, que é
+            //   `listOf(rememberSaveableStateHolderNavEntryDecorator())` (NavDisplay.kt:259 e
+            //   343 do 1.1.1). Omitir o saveable não custa só o `rememberSaveable` do app: sem
+            //   ele não há `LocalSavedStateRegistryOwner` por entrada, e o
+            //   `ViewModelStoreNavEntryDecorator` estoura no primeiro quadro ("The Lifecycle
+            //   state is already beyond INITIALIZED"). **Quem provê esse owner é o Compose, não
+            //   o navigation3**: o decorator só chama `SaveableStateProvider`/`removeState`, e
+            //   é o `SaveableStateHolderImpl` do `compose runtime-saveable` que faz o
+            //   `LocalSavedStateRegistryOwner provides registry` (SaveableStateHolder.kt:82-86
+            //   do 1.11.2). O requisito é da versão do Compose: baixar `runtime-saveable`
+            //   derruba o app com esse mesmo erro, com os decorators no lugar;
+            // - saveable **antes** de ViewModel. Trocar os dois de lugar deixa o decorator de
+            //   ViewModel lendo o owner de fora da entrada — o mesmo estouro. Os dois casos
+            //   estão travados em `SaqzNavHostViewModelScopeTest`.
+            entryDecorators = listOf(
+                rememberSaqzOpaqueEntryDecorator(),
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(),
+            ),
+            entryProvider = entryProvider {
+                entry<AccessRoute.Starting> {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        SaqzSpinner()
+                    }
                 }
-            }
-            entry<AccessRoute.Login> {
-                LoginRoot(
-                    onCreateAccount = { backStack.add(AccessRoute.Register) },
-                    onForgotPassword = { backStack.add(AccessRoute.ForgotPassword) },
-                    inviteContext = inviteContext,
-                )
-            }
-            entry<AccessRoute.Register> {
-                // As duas saídas para a 1a são o mesmo desempilhar — a 1b só é alcançável
-                // por cima do login. O que muda entre elas ("Entrar?" do e-mail duplicado
-                // leva o e-mail junto) já aconteceu na ViewModel, no formulário que a 1a
-                // projeta. Cadastrar não empilha a 1c: vira sessão, e quem reage a sessão é
-                // o `reconcileAccessStack`.
-                RegisterRoot(
-                    onBack = pop,
-                    onOpenLogin = pop,
-                    inviteContext = inviteContext,
-                )
-            }
-            entry<AccessRoute.IdentityCompletion> { IdentityCompletionRoot() }
-            entry<AccessRoute.ForgotPassword> {
-                ForgotPasswordRoot(
-                    onBack = pop,
-                    onOpenResetCode = { email -> backStack.add(AccessRoute.ResetCode(email)) },
-                )
-            }
-            entry<AccessRoute.ResetCode> { route ->
-                ResetCodeRoot(
-                    email = route.email,
-                    onBack = pop,
-                    // "Lembrou a senha? Entrar ›" desiste da troca: o stack volta à base.
-                    onSignIn = { backStack.resetTo(AccessRoute.Login) },
-                    onOpenNewPassword = { email, token ->
-                        backStack.add(AccessRoute.NewPassword(email, token))
-                    },
-                )
-            }
-            entry<AccessRoute.NewPassword> { route ->
-                NewPasswordRoot(
-                    token = route.token,
-                    onBack = pop,
-                    onFinish = { backStack.completePasswordReset(state.session) },
-                    // Ticket morto pede o código de novo, e o 1e é exatamente a entrada
-                    // anterior — é para ela reaparecer intacta que a rota do 1g carrega o
-                    // e-mail. Empilhar um `ResetCode` novo deixaria dois na pilha.
-                    onRestartCode = pop,
-                )
-            }
-            entry<AccessRoute.PasswordChanged> {
-                // Quem chega aqui já teve o stack colapsado por [completePasswordReset]:
-                // a recuperação consumida saiu, e a base depende de a sessão estar viva.
-                PasswordChangedScreen(
-                    onSignIn = { backStack.finishPasswordChanged(state.session) },
-                    onBack = pop,
-                )
-            }
-            entry<AccessRoute.Bootstrap> {
-                BootstrapAccessScreen(
-                    state = state.session,
-                    onIntent = { onIntent(AccessIntent.Session(it)) },
-                )
-            }
-            entry<AccessRoute.AppOnboarding> {
-                AppOnboardingRoot(
-                    session = state.session,
-                    onClose = { backStack.removeAll { it == AccessRoute.AppOnboarding } },
-                    onOpenLogin = { backStack.resetTo(AccessRoute.Login) },
-                    onCreateGroup = {
-                        backStack.removeAll { it == AccessRoute.AppOnboarding }
-                        backStack.add(GroupsRoute.Create)
-                    },
-                )
-            }
-            entry<SaqzShellDestination> { route ->
-                SaqzAppShell(
-                    catalogEnabled = catalogEnabled,
-                    initialTab = route.resolvedTab(),
-                    financeTabVisible = state.session.isAccountOwner(),
-                    financeTab = {
-                        FinanceOverviewRoot(onOpenGroup = { backStack.add(FinanceRoute.GroupCashbox(it)) })
-                    },
-                    homeTab = { onOpenGroups ->
-                        HomeRoot(
-                            onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
-                            onOpenGroups = onOpenGroups,
-                            onOpenGame = { groupId, gameId ->
-                                backStack.add(GroupsRoute.GameDetail(groupId, gameId))
-                            },
-                            onOpenMembers = { backStack.add(GroupsRoute.Members(it)) },
-                            onOpenCashbox = { backStack.add(FinanceRoute.GroupCashbox(it)) },
-                            onOpenGameSettlement = { groupId, gameId ->
-                                backStack.add(FinanceRoute.GameSettlement(groupId, gameId))
-                            },
-                            onOpenGameEditor = { backStack.add(GroupsRoute.GameEditor(it)) },
-                            onOpenInvite = { backStack.add(GroupsRoute.Invite(it)) },
-                            onOpenNotifications = { backStack.add(GroupsRoute.Notifications()) },
-                            onCreateGroup = { backStack.add(GroupsRoute.Create) },
-                            // Link colado na folha "Tenho um convite": mesmo caminho do deep link.
-                            onAcceptInviteCode = inviteCoordinator::acceptInvite,
-                        )
-                    },
-                    profileTab = {
-                        OwnProfileRoot(
-                            onOpenEditor = { backStack.add(ProfileRoute.Edit) },
-                            onOpenPasswordRecovery = { backStack.add(AccessRoute.ForgotPassword) },
-                            onOpenAccountDeletion = { backStack.add(ProfileRoute.DeleteAccount) },
-                            onSignOut = { backStack.add(ProfileRoute.Exit) },
-                            onOpenMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
-                            onOpenAthleteProfile = { backStack.add(GroupsRoute.AthleteRegistration(it, fromProfile = true)) },
-                            onOpenMonthlyPayments = { backStack.add(FinanceRoute.OwnMonthlyPayments) },
-                            onOpenReceipts = if (state.session.canOpenReceipts(receipts)) {
-                                { backStack.add(ReceiptFinanceHomeRoute) }
-                            } else null,
-                            onOpenSettings = { backStack.add(GroupsRoute.Notifications(settings = true)) },
-                            onOpenNotifications = { backStack.add(GroupsRoute.Notifications()) },
-                            isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
-                            refreshVersion = profileRefreshVersion,
-                            // O shell já aplicou a status bar: sem isto o `SaqzTopAppBar`
-                            // descia de novo e o título Perfil ficava um inset abaixo da faixa.
-                            topBarWindowInsets = WindowInsets(),
-                        )
-                    },
-                    banner = { onOpenHome ->
-                        // Uma faixa por vez — duas seriam dois blocos escuros sobre o
-                        // conteúdo —, e o desempate é por **estado da dívida**, não por
-                        // ordem fixa (VUL-202):
-                        //
-                        // - **cobrança vencida ganha de tudo.** A ordem fixa "e-mail
-                        //   primeiro" partia de que a faixa de e-mail acaba, e ela não
-                        //   acaba: o VUL-76 tirou a trava do backend de propósito, então
-                        //   quem nunca confirma entra e fica. Quem entrou por convite, não
-                        //   abriu o e-mail e vive na aba Grupos passaria meses devendo sem
-                        //   um sinal fora da Início — exatamente a aba que não visita;
-                        // - **no prazo, o e-mail passa na frente.** Aí o argumento de
-                        //   duração continua valendo, e a cobrança não se perde: a seção da
-                        //   Home fica lá o tempo todo, e a faixa aparece assim que a
-                        //   pendência vence ou o e-mail sai da frente.
-                        //
-                        // Quem decide é o `HomeOwnChargesBannerRoot`, porque `overdue` só
-                        // existe no estado da Home; a faixa de e-mail entra lá como slot. O
-                        // Root é montado sempre — inclusive com o e-mail na frente —, e é
-                        // dele o recarregamento na volta ao app.
-                        val ready = state.session as? SessionAccessState.Ready
-                        // Dispensar a faixa de e-mail vale para **esta** sessão. O estado
-                        // vive aqui, na composição do shell autenticado, então sair derruba
-                        // junto e o próximo login lembra de novo — que é o ponto: o aviso
-                        // não some para sempre, só sai da frente de quem já entendeu.
-                        // `rememberSaveable` porque girar o aparelho não pode ressuscitá-lo.
-                        var emailBannerDismissed by rememberSaveable { mutableStateOf(false) }
-                        HomeOwnChargesBannerRoot(
-                            onOpenHome = onOpenHome,
-                            emailBanner = if (ready != null && !ready.accountVerified && !emailBannerDismissed) {
-                                {
-                                    EmailVerificationBanner(
-                                        onRefresh = {
-                                            onIntent(AccessIntent.Session(SessionIntent.RefreshEmailVerification))
-                                            onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
-                                        },
-                                        onDismiss = { emailBannerDismissed = true },
-                                    )
-                                }
-                            } else {
-                                null
-                            },
-                        )
-                    },
-                    groupsTab = {
-                        // A aba Grupos é o 2n. `GroupsRoute.List` não vira `entry` porque
-                        // seria um segundo host da mesma tela — e a barra do 10q fica sob
-                        // a lista só enquanto o shell é quem a desenha.
-                        GroupListRoot(
-                            onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
-                            // Com plano ativo com vaga de grupo o "+" de 2n atalha direto
-                            // para o 2a (`GroupListEffect.OpenCreateGroup`); sem plano
-                            // entitulador — ou limite atingido — ele abre o gate de assinatura;
-                            // quando autorizado, o gate substitui a si mesmo pelo 2a.
-                            onCreateGroup = { backStack.add(GroupsRoute.Create) },
-                            // No web app não há loja: assinar abre o checkout do site.
-                            onOpenPlans = {
-                                val openedWeb = storeCheckout.openWebCheckout {
-                                    planAnalytics.refresh()
-                                    onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
-                                }
-                                if (!openedWeb) backStack.add(SubscriptionRequired)
-                            },
-                            isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
-                            onAcceptInviteCode = inviteCoordinator::acceptInvite,
-                        )
-                    },
-                )
-            }
-            entry<ProfileRoute.Edit> {
-                EditProfileRoot(
-                    onSave = {
-                        pop()
-                        profileRefreshVersion++
-                    },
-                    onBack = pop,
-                )
-            }
-            entry<ProfileRoute.DeleteAccount> {
-                br.com.saqz.profile.presentation.deletion.AccountDeletionRoot(
-                    onBack = pop, onDeletionComplete = { onIntent(AccessIntent.ConfirmLogout) },
-                    notice = { br.com.saqz.composeapp.subscriptiongate.AppStoreDeletionNotice() },
-                )
-            }
-            entry<ProfileRoute.Exit> {
-                ProfileExitRoot(
-                    onClose = pop,
-                    onLogout = { onIntent(AccessIntent.ConfirmLogout) },
-                )
-            }
-            entry<ReceiptFinanceHomeRoute> {
-                ReceiptFinanceHomeRoot(onBack = pop, onWallet = { backStack.add(ReceiptWalletRoute) },
-                    onRegistration = { backStack.add(FinancialOnboardingRoute) })
-            }
-            entry<FinancialOnboardingRoute> {
-                FinancialOnboardingRoot(onBack = { receiptsCoordinator.refresh(); profileRefreshVersion++; pop() },
-                    onChange = { receiptsCoordinator.refresh(); profileRefreshVersion++ },
-                    onOpenWallet = { backStack.add(ReceiptWalletRoute) },
-                    onOpenManagement = { backStack.add(FinancialManagementRoute) })
-            }
-            entry<FinancialManagementRoute> {
-                FinancialManagementRoot(onBack = pop, onChange = {
-                    receiptsCoordinator.refresh(); profileRefreshVersion++
-                })
-            }
-            entry<RecurrenceRoute> { route ->
-                RecurrenceRoot(route.accountId, route.groupId, onBack = pop)
-            }
-            entry<ReceiptWalletRoute> { ReceiptWalletRoot(onBack = pop) }
-            entry<MemberPaymentHistoryRoute> {
-                MemberPaymentHistoryRoot(onBack = pop, onOpen = { backStack.add(MemberPaymentRoute(it)) })
-            }
-            entry<MemberPaymentRoute> { route ->
-                MemberPaymentRoot(route.orderId, onBack = pop, onOpenRecurrence = { accountId, groupId ->
-                    backStack.add(RecurrenceRoute(accountId, groupId))
-                })
-            }
-            entry<ChargeApprovalRoute> { route ->
-                ChargeApprovalRoot(route.groupId, route.chargeId,
-                    onBack = { groupCashboxRefreshVersion++; groupDetailsRefreshVersion++; pop() },
-                    onMutationSuccess = { groupCashboxRefreshVersion++; groupDetailsRefreshVersion++ })
-            }
-            entry<ReceiptConfigurationRoute> { route ->
-                ReceiptConfigurationRoot(route.groupId, onBack = pop)
-            }
-            entry<FinanceRoute.GroupCashbox> { route ->
-                GroupCashboxRoot(
-                    groupId = route.groupId,
-                    onBack = pop,
-                    onMutationSuccess = { groupDetailsRefreshVersion++ },
-                    onOpenReceivables = if (state.session.canOpenReceipts(receipts)) {
-                        { backStack.add(ReceiptConfigurationRoute(route.groupId)) }
-                    } else null,
-                    refreshVersion = groupCashboxRefreshVersion,
-                    onOpenChargePayment = if (state.session.canOpenReceipts(receipts)) {
-                        { chargeId -> backStack.add(ChargeApprovalRoute(route.groupId, chargeId)) }
-                    } else null,
-                    onOpenMonthlyGeneration = { backStack.add(FinanceRoute.MonthlyGeneration(it)) },
-                    onOpenNewEntry = { groupId ->
-                        backStack.add(FinanceRoute.NewEntry(groupId))
-                    },
-                    onOpenStatement = { groupId ->
-                        backStack.add(FinanceRoute.Statement(groupId))
-                    },
-                )
-            }
-            entry<FinanceRoute.Statement> { route ->
-                StatementRoot(
-                    groupId = route.groupId,
-                    onBack = pop,
-                    onEffect = { effect ->
-                        when (effect) {
-                            is StatementEffect.OpenNewEntry -> backStack.add(
-                                FinanceRoute.NewEntry(effect.groupId),
-                            )
-                        }
-                    },
-                    refreshVersion = statementRefreshVersion,
-                )
-            }
-            entry<FinanceRoute.NewEntry> { route ->
-                NewEntryRoot(
-                    groupId = route.groupId,
-                    onBack = pop,
-                    prefill = route.prefill,
-                    onEffect = { effect ->
-                        when (effect) {
-                            NewEntryEffect.Saved -> {
-                                pop()
-                                statementRefreshVersion++
-                                groupCashboxRefreshVersion++
-                                settlementRefreshVersion++
-                                groupDetailsRefreshVersion++
-                            }
-                        }
-                    },
-                )
-            }
-            entry<FinanceRoute.MonthlyGeneration> { route ->
-                MonthlyGenerationRoot(
-                    groupId = route.groupId,
-                    onBack = pop,
-                    onGenerationSuccess = {
-                        pop()
-                        groupCashboxRefreshVersion++
-                        groupDetailsRefreshVersion++
-                    },
-                )
-            }
-            entry<FinanceRoute.GameSettlement> { route ->
-                GameSettlementRoot(
-                    groupId = route.groupId,
-                    gameId = route.gameId,
-                    onBack = pop,
-                    onMutationSuccess = { groupDetailsRefreshVersion++ },
-                    refreshVersion = settlementRefreshVersion,
-                    onOpenNewEntry = { groupId, localDate ->
-                        backStack.add(FinanceRoute.NewEntry(groupId, NewEntryPrefill.GameCourt(localDate)))
-                    },
-                    onOpenCashbox = { groupId -> backStack.add(FinanceRoute.GroupCashbox(groupId)) },
-                )
-            }
-            entry<SubscriptionsRoute.MyPlan> {
-                MyPlanRoot(
-                    onBack = pop,
-                    onOpenChangePlan = { backStack.add(SubscriptionsRoute.ChangePlan) },
-                    // Trial vencido ou assinatura encerrada ("Assinar de novo"): a loja do aparelho
-                    // pelo portão; no web app, o checkout do site, e o plano recarrega na volta.
-                    onOpenSubscribe = {
-                        val openedWeb = storeCheckout.openWebCheckout {
-                            myPlanRefreshVersion++
-                            onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
-                        }
-                        if (!openedWeb) backStack.add(SubscribeForAccess)
-                    },
-                    refreshVersion = myPlanRefreshVersion,
-                    onManageStoreSubscription = if (storeCheckout.canManageSubscriptions) {
-                        { storeCheckout.manageSubscriptions { myPlanRefreshVersion++ } }
-                    } else {
-                        null
-                    },
-                    deviceStore = storeCheckout.deviceStore,
-                    purchasesAvailable = storeCheckout.anyPurchaseAvailable,
-                )
-            }
-            entry<SubscriptionsRoute.ChangePlan> {
-                ChangePlanRoot(
-                    onBack = {
-                        myPlanRefreshVersion++
-                        pop()
-                    },
-                )
-            }
-            entry<SubscriptionRequired> {
-                SubscriptionRequiredDestination(
-                    onBack = pop,
-                    onAuthorizationSuccess = {
-                        planAnalytics.purchased()
-                        backStack.replaceSubscriptionRequiredWithGroupCreation()
-                    },
-                )
-            }
-            entry<SubscribeForAccess> {
-                SubscriptionRequiredDestination(
-                    onBack = pop,
-                    onAuthorizationSuccess = {
-                        planAnalytics.purchased()
-                        myPlanRefreshVersion++
-                        groupDetailsRefreshVersion++
-                        onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
-                        backStack.returnFromAccessSubscription()
-                    },
-                    viewModel = org.koin.compose.viewmodel.koinViewModel(
-                        qualifier = br.com.saqz.composeapp.subscriptiongate.paidSubscriptionGateQualifier,
-                    ),
-                )
-            }
-            entry<GroupsRoute.Create> {
-                br.com.saqz.subscriptions.presentation.trial.TrialEntryRoot(
-                    onBack = pop,
-                    onSubscribe = {
-                        val openedWeb = storeCheckout.openWebCheckout {
-                            planAnalytics.refresh()
-                            onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
-                        }
-                        if (!openedWeb) backStack.add(SubscriptionRequired)
-                    },
-                    purchasesAvailable = storeCheckout.anyPurchaseAvailable,
-                ) {
-                    GroupSetupDestination(
-                        mode = GroupSetupMode.Create,
-                        backStack = backStack,
-                        showTrialOffer = false,
-                        onGroupListChange = {
-                            planAnalytics.refresh()
-                            onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                entry<AccessRoute.Login> {
+                    LoginRoot(
+                        onCreateAccount = { backStack.add(AccessRoute.Register) },
+                        onForgotPassword = { backStack.add(AccessRoute.ForgotPassword) },
+                        inviteContext = inviteContext,
+                    )
+                }
+                entry<AccessRoute.Register> {
+                    // As duas saídas para a 1a são o mesmo desempilhar — a 1b só é alcançável
+                    // por cima do login. O que muda entre elas ("Entrar?" do e-mail duplicado
+                    // leva o e-mail junto) já aconteceu na ViewModel, no formulário que a 1a
+                    // projeta. Cadastrar não empilha a 1c: vira sessão, e quem reage a sessão é
+                    // o `reconcileAccessStack`.
+                    RegisterRoot(
+                        onBack = pop,
+                        onOpenLogin = pop,
+                        inviteContext = inviteContext,
+                    )
+                }
+                entry<AccessRoute.IdentityCompletion> { IdentityCompletionRoot() }
+                entry<AccessRoute.ForgotPassword> {
+                    ForgotPasswordRoot(
+                        onBack = pop,
+                        onOpenResetCode = { email -> backStack.add(AccessRoute.ResetCode(email)) },
+                    )
+                }
+                entry<AccessRoute.ResetCode> { route ->
+                    ResetCodeRoot(
+                        email = route.email,
+                        onBack = pop,
+                        // "Lembrou a senha? Entrar ›" desiste da troca: o stack volta à base.
+                        onSignIn = { backStack.resetTo(AccessRoute.Login) },
+                        onOpenNewPassword = { email, token ->
+                            backStack.add(AccessRoute.NewPassword(email, token))
                         },
                     )
                 }
-            }
-            entry<GroupsRoute.Edit> { route ->
-                GroupSetupDestination(
-                    mode = GroupSetupMode.Edit(route.groupId),
-                    backStack = backStack,
-                    onOpenWhatsApp = if (whatsAppEnabled) {
-                        { backStack.add(GroupsRoute.WhatsApp(route.groupId)) }
-                    } else {
-                        null
-                    },
-                    onGroupListChange = {
-                        // Edit empilha sobre Details: a lista recarrega sozinha ao reaparecer; o
-                        // detalhe ficava com foto e nome antigos porque a ViewModel sobrevive no
-                        // fundo da pilha — o mesmo buraco do acerto (VUL-195).
-                        groupDetailsRefreshVersion++
-                    },
-                )
-            }
-            entry<GroupsRoute.WhatsApp> { route ->
-                WhatsAppBindingRoot(groupId = route.groupId, onBack = pop)
-            }
-            entry<GroupsRoute.Details> { route ->
-                GroupDetailsRoot(
-                    groupId = route.groupId,
-                    photoFailed = route.photoFailed,
-                    // Onboarding é uma vez por conta e só no primeiro grupo criado: o guia
-                    // aparece enquanto este for o único grupo de que a conta é dona. Com um
-                    // segundo grupo, ou em grupo em que a pessoa só entrou, não há guia.
-                    onboardingGroup = isOnlyOwnedGroup(route.groupId),
-                    onBack = pop,
-                    gameCreatedToast = gameCreatedToastGroupId == route.groupId,
-                    onConsumeGameCreatedToast = { gameCreatedToastGroupId = null },
-                    onEffect = { effect ->
-                        if (effect is GroupDetailsEffect.Left) {
-                            onIntent(AccessIntent.Session(SessionIntent.MembershipRemoved(route.groupId)))
+                entry<AccessRoute.NewPassword> { route ->
+                    NewPasswordRoot(
+                        token = route.token,
+                        onBack = pop,
+                        onFinish = { backStack.completePasswordReset(state.session) },
+                        // Ticket morto pede o código de novo, e o 1e é exatamente a entrada
+                        // anterior — é para ela reaparecer intacta que a rota do 1g carrega o
+                        // e-mail. Empilhar um `ResetCode` novo deixaria dois na pilha.
+                        onRestartCode = pop,
+                    )
+                }
+                entry<AccessRoute.PasswordChanged> {
+                    // Quem chega aqui já teve o stack colapsado por [completePasswordReset]:
+                    // a recuperação consumida saiu, e a base depende de a sessão estar viva.
+                    PasswordChangedScreen(
+                        onSignIn = { backStack.finishPasswordChanged(state.session) },
+                        onBack = pop,
+                    )
+                }
+                entry<AccessRoute.Bootstrap> {
+                    BootstrapAccessScreen(
+                        state = state.session,
+                        onIntent = { onIntent(AccessIntent.Session(it)) },
+                    )
+                }
+                entry<AccessRoute.AppOnboarding> {
+                    AppOnboardingRoot(
+                        session = state.session,
+                        onClose = { backStack.removeAll { it == AccessRoute.AppOnboarding } },
+                        onOpenLogin = { backStack.resetTo(AccessRoute.Login) },
+                        onCreateGroup = {
+                            backStack.removeAll { it == AccessRoute.AppOnboarding }
+                            backStack.add(GroupsRoute.Create)
+                        },
+                    )
+                }
+                entry<SaqzShellDestination> { route ->
+                    SaqzAppShell(
+                        catalogEnabled = catalogEnabled,
+                        initialTab = route.resolvedTab(),
+                        financeTabVisible = state.session.isAccountOwner(),
+                        financeTab = {
+                            FinanceOverviewRoot(onOpenGroup = { backStack.add(FinanceRoute.GroupCashbox(it)) })
+                        },
+                        homeTab = { onOpenGroups ->
+                            HomeRoot(
+                                onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
+                                onOpenGroups = onOpenGroups,
+                                onOpenGame = { groupId, gameId ->
+                                    backStack.add(GroupsRoute.GameDetail(groupId, gameId))
+                                },
+                                onOpenMembers = { backStack.add(GroupsRoute.Members(it)) },
+                                onOpenCashbox = { backStack.add(FinanceRoute.GroupCashbox(it)) },
+                                onOpenGameSettlement = { groupId, gameId ->
+                                    backStack.add(FinanceRoute.GameSettlement(groupId, gameId))
+                                },
+                                onOpenGameEditor = { backStack.add(GroupsRoute.GameEditor(it)) },
+                                onOpenInvite = { backStack.add(GroupsRoute.Invite(it)) },
+                                onOpenNotifications = { backStack.add(GroupsRoute.Notifications()) },
+                                onCreateGroup = { backStack.add(GroupsRoute.Create) },
+                                // Link colado na folha "Tenho um convite": mesmo caminho do deep link.
+                                onAcceptInviteCode = inviteCoordinator::acceptInvite,
+                            )
+                        },
+                        profileTab = {
+                            OwnProfileRoot(
+                                onOpenEditor = { backStack.add(ProfileRoute.Edit) },
+                                onOpenPasswordRecovery = { backStack.add(AccessRoute.ForgotPassword) },
+                                onOpenAccountDeletion = { backStack.add(ProfileRoute.DeleteAccount) },
+                                onSignOut = { backStack.add(ProfileRoute.Exit) },
+                                onOpenMyPlan = { backStack.add(SubscriptionsRoute.MyPlan) },
+                                onOpenAthleteProfile = { backStack.add(GroupsRoute.AthleteRegistration(it, fromProfile = true)) },
+                                onOpenMonthlyPayments = { backStack.add(FinanceRoute.OwnMonthlyPayments) },
+                                onOpenReceipts = if (state.session.canOpenReceipts(receipts)) {
+                                    { backStack.add(ReceiptFinanceHomeRoute) }
+                                } else null,
+                                onOpenSettings = { backStack.add(GroupsRoute.Notifications(settings = true)) },
+                                onOpenNotifications = { backStack.add(GroupsRoute.Notifications()) },
+                                isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
+                                refreshVersion = profileRefreshVersion,
+                                // O shell já aplicou a status bar: sem isto o `SaqzTopAppBar`
+                                // descia de novo e o título Perfil ficava um inset abaixo da faixa.
+                                topBarWindowInsets = WindowInsets(),
+                            )
+                        },
+                        banner = { onOpenHome ->
+                            // Uma faixa por vez — duas seriam dois blocos escuros sobre o
+                            // conteúdo —, e o desempate é por **estado da dívida**, não por
+                            // ordem fixa (VUL-202):
+                            //
+                            // - **cobrança vencida ganha de tudo.** A ordem fixa "e-mail
+                            //   primeiro" partia de que a faixa de e-mail acaba, e ela não
+                            //   acaba: o VUL-76 tirou a trava do backend de propósito, então
+                            //   quem nunca confirma entra e fica. Quem entrou por convite, não
+                            //   abriu o e-mail e vive na aba Grupos passaria meses devendo sem
+                            //   um sinal fora da Início — exatamente a aba que não visita;
+                            // - **no prazo, o e-mail passa na frente.** Aí o argumento de
+                            //   duração continua valendo, e a cobrança não se perde: a seção da
+                            //   Home fica lá o tempo todo, e a faixa aparece assim que a
+                            //   pendência vence ou o e-mail sai da frente.
+                            //
+                            // Quem decide é o `HomeOwnChargesBannerRoot`, porque `overdue` só
+                            // existe no estado da Home; a faixa de e-mail entra lá como slot. O
+                            // Root é montado sempre — inclusive com o e-mail na frente —, e é
+                            // dele o recarregamento na volta ao app.
+                            val ready = state.session as? SessionAccessState.Ready
+                            // Dispensar a faixa de e-mail vale para **esta** sessão. O estado
+                            // vive aqui, na composição do shell autenticado, então sair derruba
+                            // junto e o próximo login lembra de novo — que é o ponto: o aviso
+                            // não some para sempre, só sai da frente de quem já entendeu.
+                            // `rememberSaveable` porque girar o aparelho não pode ressuscitá-lo.
+                            var emailBannerDismissed by rememberSaveable { mutableStateOf(false) }
+                            HomeOwnChargesBannerRoot(
+                                onOpenHome = onOpenHome,
+                                emailBanner = if (ready != null && !ready.accountVerified && !emailBannerDismissed) {
+                                    {
+                                        EmailVerificationBanner(
+                                            onRefresh = {
+                                                onIntent(AccessIntent.Session(SessionIntent.RefreshEmailVerification))
+                                                onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                                            },
+                                            onDismiss = { emailBannerDismissed = true },
+                                        )
+                                    }
+                                } else {
+                                    null
+                                },
+                            )
+                        },
+                        groupsTab = {
+                            // A aba Grupos é o 2n. `GroupsRoute.List` não vira `entry` porque
+                            // seria um segundo host da mesma tela — e a barra do 10q fica sob
+                            // a lista só enquanto o shell é quem a desenha.
+                            GroupListRoot(
+                                onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
+                                // Com plano ativo com vaga de grupo o "+" de 2n atalha direto
+                                // para o 2a (`GroupListEffect.OpenCreateGroup`); sem plano
+                                // entitulador — ou limite atingido — ele abre o gate de assinatura;
+                                // quando autorizado, o gate substitui a si mesmo pelo 2a.
+                                onCreateGroup = { backStack.add(GroupsRoute.Create) },
+                                // No web app não há loja: assinar abre o checkout do site.
+                                onOpenPlans = {
+                                    val openedWeb = storeCheckout.openWebCheckout {
+                                        planAnalytics.refresh()
+                                        onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                                    }
+                                    if (!openedWeb) backStack.add(SubscriptionRequired)
+                                },
+                                isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
+                                onAcceptInviteCode = inviteCoordinator::acceptInvite,
+                            )
+                        },
+                    )
+                }
+                entry<ProfileRoute.Edit> {
+                    EditProfileRoot(
+                        onSave = {
+                            pop()
                             profileRefreshVersion++
-                            backStack.resetTo(SaqzShellDestination.Groups)
-                        } else if (effect is GroupDetailsEffect.OpenCreateGame) {
-                            // Só o guia do primeiro grupo leva do jogo criado ao convite.
+                        },
+                        onBack = pop,
+                    )
+                }
+                entry<ProfileRoute.DeleteAccount> {
+                    br.com.saqz.profile.presentation.deletion.AccountDeletionRoot(
+                        onBack = pop, onDeletionComplete = { onIntent(AccessIntent.ConfirmLogout) },
+                        notice = { br.com.saqz.composeapp.subscriptiongate.AppStoreDeletionNotice() },
+                    )
+                }
+                entry<ProfileRoute.Exit> {
+                    ProfileExitRoot(
+                        onClose = pop,
+                        onLogout = { onIntent(AccessIntent.ConfirmLogout) },
+                    )
+                }
+                entry<ReceiptFinanceHomeRoute> {
+                    ReceiptFinanceHomeRoot(onBack = pop, onWallet = { backStack.add(ReceiptWalletRoute) },
+                        onRegistration = { backStack.add(FinancialOnboardingRoute) })
+                }
+                entry<FinancialOnboardingRoute> {
+                    FinancialOnboardingRoot(onBack = { receiptsCoordinator.refresh(); profileRefreshVersion++; pop() },
+                        onChange = { receiptsCoordinator.refresh(); profileRefreshVersion++ },
+                        onOpenWallet = { backStack.add(ReceiptWalletRoute) },
+                        onOpenManagement = { backStack.add(FinancialManagementRoute) })
+                }
+                entry<FinancialManagementRoute> {
+                    FinancialManagementRoot(onBack = pop, onChange = {
+                        receiptsCoordinator.refresh(); profileRefreshVersion++
+                    })
+                }
+                entry<RecurrenceRoute> { route ->
+                    RecurrenceRoot(route.accountId, route.groupId, onBack = pop)
+                }
+                entry<ReceiptWalletRoute> { ReceiptWalletRoot(onBack = pop) }
+                entry<MemberPaymentHistoryRoute> {
+                    MemberPaymentHistoryRoot(onBack = pop, onOpen = { backStack.add(MemberPaymentRoute(it)) })
+                }
+                entry<MemberPaymentRoute> { route ->
+                    MemberPaymentRoot(route.orderId, onBack = pop, onOpenRecurrence = { accountId, groupId ->
+                        backStack.add(RecurrenceRoute(accountId, groupId))
+                    })
+                }
+                entry<ChargeApprovalRoute> { route ->
+                    ChargeApprovalRoot(route.groupId, route.chargeId,
+                        onBack = { groupCashboxRefreshVersion++; groupDetailsRefreshVersion++; pop() },
+                        onMutationSuccess = { groupCashboxRefreshVersion++; groupDetailsRefreshVersion++ })
+                }
+                entry<ReceiptConfigurationRoute> { route ->
+                    ReceiptConfigurationRoot(route.groupId, onBack = pop)
+                }
+                entry<FinanceRoute.GroupCashbox> { route ->
+                    GroupCashboxRoot(
+                        groupId = route.groupId,
+                        onBack = pop,
+                        onMutationSuccess = { groupDetailsRefreshVersion++ },
+                        onOpenReceivables = if (state.session.canOpenReceipts(receipts)) {
+                            { backStack.add(ReceiptConfigurationRoute(route.groupId)) }
+                        } else null,
+                        refreshVersion = groupCashboxRefreshVersion,
+                        onOpenChargePayment = if (state.session.canOpenReceipts(receipts)) {
+                            { chargeId -> backStack.add(ChargeApprovalRoute(route.groupId, chargeId)) }
+                        } else null,
+                        onOpenMonthlyGeneration = { backStack.add(FinanceRoute.MonthlyGeneration(it)) },
+                        onOpenNewEntry = { groupId ->
+                            backStack.add(FinanceRoute.NewEntry(groupId))
+                        },
+                        onOpenStatement = { groupId ->
+                            backStack.add(FinanceRoute.Statement(groupId))
+                        },
+                    )
+                }
+                entry<FinanceRoute.Statement> { route ->
+                    StatementRoot(
+                        groupId = route.groupId,
+                        onBack = pop,
+                        onEffect = { effect ->
+                            when (effect) {
+                                is StatementEffect.OpenNewEntry -> backStack.add(
+                                    FinanceRoute.NewEntry(effect.groupId),
+                                )
+                            }
+                        },
+                        refreshVersion = statementRefreshVersion,
+                    )
+                }
+                entry<FinanceRoute.NewEntry> { route ->
+                    NewEntryRoot(
+                        groupId = route.groupId,
+                        onBack = pop,
+                        prefill = route.prefill,
+                        onEffect = { effect ->
+                            when (effect) {
+                                NewEntryEffect.Saved -> {
+                                    pop()
+                                    statementRefreshVersion++
+                                    groupCashboxRefreshVersion++
+                                    settlementRefreshVersion++
+                                    groupDetailsRefreshVersion++
+                                }
+                            }
+                        },
+                    )
+                }
+                entry<FinanceRoute.MonthlyGeneration> { route ->
+                    MonthlyGenerationRoot(
+                        groupId = route.groupId,
+                        onBack = pop,
+                        onGenerationSuccess = {
+                            pop()
+                            groupCashboxRefreshVersion++
+                            groupDetailsRefreshVersion++
+                        },
+                    )
+                }
+                entry<FinanceRoute.GameSettlement> { route ->
+                    GameSettlementRoot(
+                        groupId = route.groupId,
+                        gameId = route.gameId,
+                        onBack = pop,
+                        onMutationSuccess = { groupDetailsRefreshVersion++ },
+                        refreshVersion = settlementRefreshVersion,
+                        onOpenNewEntry = { groupId, localDate ->
+                            backStack.add(FinanceRoute.NewEntry(groupId, NewEntryPrefill.GameCourt(localDate)))
+                        },
+                        onOpenCashbox = { groupId -> backStack.add(FinanceRoute.GroupCashbox(groupId)) },
+                    )
+                }
+                entry<SubscriptionsRoute.MyPlan> {
+                    MyPlanRoot(
+                        onBack = pop,
+                        onOpenChangePlan = { backStack.add(SubscriptionsRoute.ChangePlan) },
+                        // Trial vencido ou assinatura encerrada ("Assinar de novo"): a loja do aparelho
+                        // pelo portão; no web app, o checkout do site, e o plano recarrega na volta.
+                        onOpenSubscribe = {
+                            val openedWeb = storeCheckout.openWebCheckout {
+                                myPlanRefreshVersion++
+                                onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                            }
+                            if (!openedWeb) backStack.add(SubscribeForAccess)
+                        },
+                        refreshVersion = myPlanRefreshVersion,
+                        onManageStoreSubscription = if (storeCheckout.canManageSubscriptions) {
+                            { storeCheckout.manageSubscriptions { myPlanRefreshVersion++ } }
+                        } else {
+                            null
+                        },
+                        deviceStore = storeCheckout.deviceStore,
+                        purchasesAvailable = storeCheckout.anyPurchaseAvailable,
+                    )
+                }
+                entry<SubscriptionsRoute.ChangePlan> {
+                    ChangePlanRoot(
+                        onBack = {
+                            myPlanRefreshVersion++
+                            pop()
+                        },
+                    )
+                }
+                entry<SubscriptionRequired> {
+                    SubscriptionRequiredDestination(
+                        onBack = pop,
+                        onAuthorizationSuccess = {
+                            planAnalytics.purchased()
+                            backStack.replaceSubscriptionRequiredWithGroupCreation()
+                        },
+                    )
+                }
+                entry<SubscribeForAccess> {
+                    SubscriptionRequiredDestination(
+                        onBack = pop,
+                        onAuthorizationSuccess = {
+                            planAnalytics.purchased()
+                            myPlanRefreshVersion++
+                            groupDetailsRefreshVersion++
+                            onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                            backStack.returnFromAccessSubscription()
+                        },
+                        viewModel = org.koin.compose.viewmodel.koinViewModel(
+                            qualifier = br.com.saqz.composeapp.subscriptiongate.paidSubscriptionGateQualifier,
+                        ),
+                    )
+                }
+                entry<GroupsRoute.Create> {
+                    br.com.saqz.subscriptions.presentation.trial.TrialEntryRoot(
+                        onBack = pop,
+                        onSubscribe = {
+                            val openedWeb = storeCheckout.openWebCheckout {
+                                planAnalytics.refresh()
+                                onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                            }
+                            if (!openedWeb) backStack.add(SubscriptionRequired)
+                        },
+                        purchasesAvailable = storeCheckout.anyPurchaseAvailable,
+                    ) {
+                        GroupSetupDestination(
+                            mode = GroupSetupMode.Create,
+                            backStack = backStack,
+                            showTrialOffer = false,
+                            onGroupListChange = {
+                                planAnalytics.refresh()
+                                onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                            },
+                        )
+                    }
+                }
+                entry<GroupsRoute.Edit> { route ->
+                    GroupSetupDestination(
+                        mode = GroupSetupMode.Edit(route.groupId),
+                        backStack = backStack,
+                        onOpenWhatsApp = if (whatsAppEnabled) {
+                            { backStack.add(GroupsRoute.WhatsApp(route.groupId)) }
+                        } else {
+                            null
+                        },
+                        onGroupListChange = {
+                            // Edit empilha sobre Details: a lista recarrega sozinha ao reaparecer; o
+                            // detalhe ficava com foto e nome antigos porque a ViewModel sobrevive no
+                            // fundo da pilha — o mesmo buraco do acerto (VUL-195).
+                            groupDetailsRefreshVersion++
+                        },
+                    )
+                }
+                entry<GroupsRoute.WhatsApp> { route ->
+                    WhatsAppBindingRoot(groupId = route.groupId, onBack = pop)
+                }
+                entry<GroupsRoute.Details> { route ->
+                    GroupDetailsRoot(
+                        groupId = route.groupId,
+                        photoFailed = route.photoFailed,
+                        // Onboarding é uma vez por conta e só no primeiro grupo criado: o guia
+                        // aparece enquanto este for o único grupo de que a conta é dona. Com um
+                        // segundo grupo, ou em grupo em que a pessoa só entrou, não há guia.
+                        onboardingGroup = isOnlyOwnedGroup(route.groupId),
+                        onBack = pop,
+                        gameCreatedToast = gameCreatedToastGroupId == route.groupId,
+                        onConsumeGameCreatedToast = { gameCreatedToastGroupId = null },
+                        onEffect = { effect ->
+                            if (effect is GroupDetailsEffect.Left) {
+                                onIntent(AccessIntent.Session(SessionIntent.MembershipRemoved(route.groupId)))
+                                profileRefreshVersion++
+                                backStack.resetTo(SaqzShellDestination.Groups)
+                            } else if (effect is GroupDetailsEffect.OpenCreateGame) {
+                                // Só o guia do primeiro grupo leva do jogo criado ao convite.
+                                backStack.add(
+                                    GroupsRoute.GameEditor(
+                                        effect.groupId,
+                                        firstGame = effect.firstGame && isOnlyOwnedGroup(route.groupId),
+                                    ),
+                                )
+                            } else {
+                                backStack.onDetailsEffect(effect, pop)
+                            }
+                        },
+                        refreshVersion = groupDetailsRefreshVersion,
+                    )
+                }
+                entry<GroupsRoute.Invite> { route ->
+                    GroupInviteRoot(
+                        groupId = route.groupId,
+                        gameCreated = route.gameCreated,
+                        // Pedido aprovado muda "Esperando você" e a contagem da galera do detalhe.
+                        onBack = { groupDetailsRefreshVersion++; pop() },
+                        onOpenMessagePreview = { groupName, inviteUrl ->
+                            backStack.add(GroupsRoute.InviteMessagePreview(groupName, inviteUrl))
+                        },
+                        onOpenQr = { groupName, inviteUrl ->
+                            backStack.add(GroupsRoute.InviteQr(groupName, inviteUrl))
+                        },
+                    )
+                }
+                entry<GroupsRoute.InviteMessagePreview> { route ->
+                    InvitePreviewMessageRoot(
+                        groupName = route.groupName,
+                        inviteUrl = route.inviteUrl,
+                        onBack = pop,
+                    )
+                }
+                entry<GroupsRoute.InviteQr> { route ->
+                    InviteQrRoot(
+                        groupName = route.groupName,
+                        inviteUrl = route.inviteUrl,
+                        onBack = pop,
+                    )
+                }
+                entry<GroupsRoute.InviteLanding> { route ->
+                    InviteLandingRoot(
+                        code = route.code,
+                        onJoin = { groupId ->
+                            inviteCoordinator.clearPendingInvite(route.code) {
+                                pendingInviteCode = null
+                                inviteContext = null
+                                pop()
+                                backStack.add(GroupsRoute.AthleteRegistration(groupId))
+                            }
+                        },
+                        onRequest = {},
+                        onBrowseOtherGroups = {
+                            backStack.openInviteOtherGroups()
+                        },
+                        onExploreApp = {
+                            backStack.openInviteExplore()
+                        },
+                        onOpenAnotherGroup = {
+                            backStack.openInviteOtherGroups()
+                        },
+                        onRequestNewInvite = pop,
+                        initialRequestSent = route.requestSent,
+                        initialRedeemError = route.redeemError,
+                    )
+                }
+                entry<GroupsRoute.AthleteRegistration> { route ->
+                    AthleteRegistrationRoot(
+                        groupId = route.groupId,
+                        onSave = {
+                            profileRefreshVersion++
+                            groupDetailsRefreshVersion++
+                            pop()
+                            val attendanceCode = route.attendanceCode
+                            if (attendanceCode != null) {
+                                backStack.add(GroupsRoute.AttendanceLink(attendanceCode, decline = route.attendanceDecline))
+                            } else if (!route.fromProfile) backStack.add(GroupsRoute.Details(route.groupId))
+                        },
+                        onBack = pop,
+                    )
+                }
+                entry<GroupsRoute.MemberEditor> { route ->
+                    MemberEditorRoot(
+                        groupId = route.groupId,
+                        userId = route.userId,
+                        onBack = pop,
+                        onRemove = pop,
+                    )
+                }
+                entry<FinanceRoute.OwnMonthlyPayments> {
+                    LifecycleResumeEffect(receiptsCoordinator) {
+                        receiptsCoordinator.refresh()
+                        onPauseOrDispose { }
+                    }
+                    OwnMonthlyPaymentsRoot(onBack = pop, onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
+                        onPayInApp = if (br.com.saqz.domain.StoreLaunchPolicy.receivables && receipts.paymentEntryAvailable) {
+                            { backStack.add(MemberPaymentHistoryRoute) }
+                        } else null)
+                }
+                entry<GroupsRoute.MemberProfile> { route ->
+                    MemberProfileRoot(route.groupId, route.userId, onBack = pop)
+                }
+                entry<GroupsRoute.Thread> { route ->
+                    br.com.saqz.groups.presentation.communication.GroupThreadRoot(route.groupId, route.notices, onBack = {
+                        groupDetailsRefreshVersion++
+                        pop()
+                    })
+                }
+                entry<GroupsRoute.AttendanceLink> { route ->
+                    br.com.saqz.groups.presentation.attendancelink.AttendanceLinkRoot(
+                        route.code, route.decline, pop,
+                        onRegister = { groupId ->
+                            pop()
                             backStack.add(
-                                GroupsRoute.GameEditor(
-                                    effect.groupId,
-                                    firstGame = effect.firstGame && isOnlyOwnedGroup(route.groupId),
+                                GroupsRoute.AthleteRegistration(
+                                    groupId,
+                                    attendanceCode = route.code,
+                                    attendanceDecline = route.decline,
                                 ),
                             )
-                        } else {
-                            backStack.onDetailsEffect(effect, pop)
-                        }
-                    },
-                    refreshVersion = groupDetailsRefreshVersion,
-                )
-            }
-            entry<GroupsRoute.Invite> { route ->
-                GroupInviteRoot(
-                    groupId = route.groupId,
-                    gameCreated = route.gameCreated,
-                    // Pedido aprovado muda "Esperando você" e a contagem da galera do detalhe.
-                    onBack = { groupDetailsRefreshVersion++; pop() },
-                    onOpenMessagePreview = { groupName, inviteUrl ->
-                        backStack.add(GroupsRoute.InviteMessagePreview(groupName, inviteUrl))
-                    },
-                    onOpenQr = { groupName, inviteUrl ->
-                        backStack.add(GroupsRoute.InviteQr(groupName, inviteUrl))
-                    },
-                )
-            }
-            entry<GroupsRoute.InviteMessagePreview> { route ->
-                InvitePreviewMessageRoot(
-                    groupName = route.groupName,
-                    inviteUrl = route.inviteUrl,
-                    onBack = pop,
-                )
-            }
-            entry<GroupsRoute.InviteQr> { route ->
-                InviteQrRoot(
-                    groupName = route.groupName,
-                    inviteUrl = route.inviteUrl,
-                    onBack = pop,
-                )
-            }
-            entry<GroupsRoute.InviteLanding> { route ->
-                InviteLandingRoot(
-                    code = route.code,
-                    onJoin = { groupId ->
-                        inviteCoordinator.clearPendingInvite(route.code) {
-                            pendingInviteCode = null
-                            inviteContext = null
+                        },
+                    ) { destination ->
+                        pop()
+                        backStack.add(GroupsRoute.GameDetail(destination.groupId.value, destination.gameId))
+                    }
+                }
+                entry<GroupsRoute.Notifications> { route ->
+                    br.com.saqz.groups.presentation.communication.NotificationCenterRoot(route.settings, onBack = pop) { effect ->
+                        if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.CHARGE ||
+                            effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.FIRST_MEMBER
+                        ) {
+                            // Cobrança e "primeiro atleta" não têm jogo: abrem o grupo (o detalhe mostra a galera).
+                            backStack.add(GroupsRoute.Details(effect.groupId))
+                        } else if (effect.gameId != null) backStack.add(GroupsRoute.GameDetail(effect.groupId, effect.gameId!!))
+                        else backStack.add(GroupsRoute.Thread(
+                            effect.groupId,
+                            effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.NOTICE,
+                        ))
+                    }
+                }
+                entry<GroupsRoute.Members> { route ->
+                    GroupMembersRoot(
+                        groupId = route.groupId,
+                        // Membro removido muda a contagem e a prévia da galera do detalhe.
+                        onBack = { groupDetailsRefreshVersion++; pop() },
+                        onOpenProfile = { userId -> backStack.add(GroupsRoute.MemberProfile(route.groupId, userId)) },
+                        onOpenMemberEditor = { userId ->
+                            backStack.add(GroupsRoute.MemberEditor(route.groupId, userId))
+                        },
+                        onOpenInvite = { groupId ->
+                            backStack.add(GroupsRoute.Invite(groupId))
+                        },
+                    )
+                }
+                entry<GroupsRoute.Schedule> { route ->
+                    GroupScheduleRoot(
+                        groupId = route.groupId,
+                        onBack = pop,
+                        // 4 · Detalhe do jogo da agenda.
+                        onOpenGame = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
+                        refreshVersion = scheduleRefreshVersion,
+                        onSave = {
+                            groupDetailsRefreshVersion++
+                            scheduleRefreshVersion++
+                        },
+                    )
+                }
+                entry<GroupsRoute.GameEditor> { route ->
+                    GameEditorRoot(
+                        groupId = route.groupId,
+                        gameId = route.gameId,
+                        onBack = pop,
+                        onOpenGameDetail = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
+                        onSave = {
+                            groupDetailsRefreshVersion++
+                            scheduleRefreshVersion++
+                        },
+                        // Aviso só quando o detalhe é quem está logo abaixo; pela Agenda ela recarrega.
+                        onGameCreate = {
+                            if (backStack.getOrNull(backStack.lastIndex - 1) is GroupsRoute.Details) {
+                                gameCreatedToastGroupId = route.groupId
+                            }
+                        },
+                        firstGame = route.firstGame,
+                        // O editor sai da pilha: voltar do convite cai no detalhe, já recarregado.
+                        onFirstGameCreate = {
+                            backStack.removeLastOrNull()
+                            backStack.add(GroupsRoute.Invite(route.groupId, gameCreated = true))
+                        },
+                    )
+                }
+                entry<GroupsRoute.GameDetail> { route ->
+                    GameDetailRoot(
+                        groupId = route.groupId,
+                        gameId = route.gameId,
+                        // Resposta dada no jogo muda o placar do hero e o chip da agenda do detalhe.
+                        onBack = { groupDetailsRefreshVersion++; pop() },
+                        onOpenEditor = { backStack.add(GroupsRoute.GameEditor(route.groupId, route.gameId)) },
+                        onOpenSettlement = {
+                            backStack.add(FinanceRoute.GameSettlement(route.groupId, route.gameId))
+                        },
+                        onCancel = {
+                            scheduleRefreshVersion++
+                            groupDetailsRefreshVersion++
                             pop()
-                            backStack.add(GroupsRoute.AthleteRegistration(groupId))
-                        }
-                    },
-                    onRequest = {},
-                    onBrowseOtherGroups = {
-                        backStack.openInviteOtherGroups()
-                    },
-                    onExploreApp = {
-                        backStack.openInviteExplore()
-                    },
-                    onOpenAnotherGroup = {
-                        backStack.openInviteOtherGroups()
-                    },
-                    onRequestNewInvite = pop,
-                    initialRequestSent = route.requestSent,
-                    initialRedeemError = route.redeemError,
-                )
-            }
-            entry<GroupsRoute.AthleteRegistration> { route ->
-                AthleteRegistrationRoot(
-                    groupId = route.groupId,
-                    onSave = {
-                        profileRefreshVersion++
-                        groupDetailsRefreshVersion++
-                        pop()
-                        val attendanceCode = route.attendanceCode
-                        if (attendanceCode != null) {
-                            backStack.add(GroupsRoute.AttendanceLink(attendanceCode, decline = route.attendanceDecline))
-                        } else if (!route.fromProfile) backStack.add(GroupsRoute.Details(route.groupId))
-                    },
-                    onBack = pop,
-                )
-            }
-            entry<GroupsRoute.MemberEditor> { route ->
-                MemberEditorRoot(
-                    groupId = route.groupId,
-                    userId = route.userId,
-                    onBack = pop,
-                    onRemove = pop,
-                )
-            }
-            entry<FinanceRoute.OwnMonthlyPayments> {
-                LifecycleResumeEffect(receiptsCoordinator) {
-                    receiptsCoordinator.refresh()
-                    onPauseOrDispose { }
+                        },
+                    )
                 }
-                OwnMonthlyPaymentsRoot(onBack = pop, onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
-                    onPayInApp = if (br.com.saqz.domain.StoreLaunchPolicy.receivables && receipts.paymentEntryAvailable) {
-                        { backStack.add(MemberPaymentHistoryRoute) }
-                    } else null)
-            }
-            entry<GroupsRoute.MemberProfile> { route ->
-                MemberProfileRoot(route.groupId, route.userId, onBack = pop)
-            }
-            entry<GroupsRoute.Thread> { route ->
-                br.com.saqz.groups.presentation.communication.GroupThreadRoot(route.groupId, route.notices, onBack = {
-                    groupDetailsRefreshVersion++
-                    pop()
-                })
-            }
-            entry<GroupsRoute.AttendanceLink> { route ->
-                br.com.saqz.groups.presentation.attendancelink.AttendanceLinkRoot(
-                    route.code, route.decline, pop,
-                    onRegister = { groupId ->
-                        pop()
-                        backStack.add(
-                            GroupsRoute.AthleteRegistration(
-                                groupId,
-                                attendanceCode = route.code,
-                                attendanceDecline = route.decline,
-                            ),
-                        )
-                    },
-                ) { destination ->
-                    pop()
-                    backStack.add(GroupsRoute.GameDetail(destination.groupId.value, destination.gameId))
-                }
-            }
-            entry<GroupsRoute.Notifications> { route ->
-                br.com.saqz.groups.presentation.communication.NotificationCenterRoot(route.settings, onBack = pop) { effect ->
-                    if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.CHARGE ||
-                        effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.FIRST_MEMBER
-                    ) {
-                        // Cobrança e "primeiro atleta" não têm jogo: abrem o grupo (o detalhe mostra a galera).
-                        backStack.add(GroupsRoute.Details(effect.groupId))
-                    } else if (effect.gameId != null) backStack.add(GroupsRoute.GameDetail(effect.groupId, effect.gameId!!))
-                    else backStack.add(GroupsRoute.Thread(
-                        effect.groupId,
-                        effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.NOTICE,
-                    ))
-                }
-            }
-            entry<GroupsRoute.Members> { route ->
-                GroupMembersRoot(
-                    groupId = route.groupId,
-                    // Membro removido muda a contagem e a prévia da galera do detalhe.
-                    onBack = { groupDetailsRefreshVersion++; pop() },
-                    onOpenProfile = { userId -> backStack.add(GroupsRoute.MemberProfile(route.groupId, userId)) },
-                    onOpenMemberEditor = { userId ->
-                        backStack.add(GroupsRoute.MemberEditor(route.groupId, userId))
-                    },
-                    onOpenInvite = { groupId ->
-                        backStack.add(GroupsRoute.Invite(groupId))
-                    },
-                )
-            }
-            entry<GroupsRoute.Schedule> { route ->
-                GroupScheduleRoot(
-                    groupId = route.groupId,
-                    onBack = pop,
-                    // 4 · Detalhe do jogo da agenda.
-                    onOpenGame = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
-                    refreshVersion = scheduleRefreshVersion,
-                    onSave = {
-                        groupDetailsRefreshVersion++
-                        scheduleRefreshVersion++
-                    },
-                )
-            }
-            entry<GroupsRoute.GameEditor> { route ->
-                GameEditorRoot(
-                    groupId = route.groupId,
-                    gameId = route.gameId,
-                    onBack = pop,
-                    onOpenGameDetail = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
-                    onSave = {
-                        groupDetailsRefreshVersion++
-                        scheduleRefreshVersion++
-                    },
-                    // Aviso só quando o detalhe é quem está logo abaixo; pela Agenda ela recarrega.
-                    onGameCreate = {
-                        if (backStack.getOrNull(backStack.lastIndex - 1) is GroupsRoute.Details) {
-                            gameCreatedToastGroupId = route.groupId
-                        }
-                    },
-                    firstGame = route.firstGame,
-                    // O editor sai da pilha: voltar do convite cai no detalhe, já recarregado.
-                    onFirstGameCreate = {
-                        backStack.removeLastOrNull()
-                        backStack.add(GroupsRoute.Invite(route.groupId, gameCreated = true))
-                    },
-                )
-            }
-            entry<GroupsRoute.GameDetail> { route ->
-                GameDetailRoot(
-                    groupId = route.groupId,
-                    gameId = route.gameId,
-                    // Resposta dada no jogo muda o placar do hero e o chip da agenda do detalhe.
-                    onBack = { groupDetailsRefreshVersion++; pop() },
-                    onOpenEditor = { backStack.add(GroupsRoute.GameEditor(route.groupId, route.gameId)) },
-                    onOpenSettlement = {
-                        backStack.add(FinanceRoute.GameSettlement(route.groupId, route.gameId))
-                    },
-                    onCancel = {
-                        scheduleRefreshVersion++
-                        groupDetailsRefreshVersion++
-                        pop()
-                    },
-                )
-            }
-        },
-        modifier = modifier.testTag(SaqzDestinationHostTag),
-    )
+            },
+            modifier = modifier.testTag(SaqzDestinationHostTag),
+        )
+    }
 }
 
 /**

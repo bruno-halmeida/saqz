@@ -43,6 +43,7 @@ import br.com.saqz.groups.presentation.game.gameTimeLabel
 import br.com.saqz.groups.presentation.game.gameTimeZone
 import br.com.saqz.groups.presentation.game.gameWeekdayLabel
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.isPlanPaused
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
@@ -192,7 +193,7 @@ class HomeViewModel(
         loadInFlight = true
         update {
             if (softRefresh) {
-                it.copy(loadFailed = false, error = null, responseFailed = false)
+                it.copy(loadFailed = false, error = null, responseFailed = false, responsePlanPaused = false)
             } else {
                 it.copy(
                     isLoading = true,
@@ -404,6 +405,7 @@ class HomeViewModel(
             is SaqzResult.Failure -> {
                 // Jogo já começado ou encerrado: a linha do cartão explica, não o erro genérico.
                 val closed = result.error == AttendanceError.Frozen || result.error == AttendanceError.DeadlinePassed
+                val paused = result.error.isPlanPaused()
                 update {
                     it.copy(
                         home = context.home,
@@ -413,7 +415,8 @@ class HomeViewModel(
                             context.member
                         },
                         responding = false,
-                        responseFailed = !closed,
+                        responseFailed = !closed && !paused,
+                        responsePlanPaused = paused,
                     )
                 }
             }

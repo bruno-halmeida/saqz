@@ -18,6 +18,7 @@ import br.com.saqz.groups.domain.game.VersionedGame
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfile
 import br.com.saqz.groups.domain.group.GroupProfileGateway
+import br.com.saqz.groups.domain.group.GroupTrialAccessInfo
 import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.group.GroupVenue
 import br.com.saqz.groups.model.GameEditorDraft
@@ -77,6 +78,8 @@ class GameEditorViewModel(
             }
             GameEditorIntent.DismissConflict -> update { it.copy(hasConflict = false, conflictGameId = null) }
             GameEditorIntent.OpenExistingGame -> openExistingGame()
+            GameEditorIntent.DismissSubscriptionRequired -> update { it.copy(subscriptionRequired = false) }
+            GameEditorIntent.RefreshPlan -> refreshPlan()
         }
     }
 
@@ -111,13 +114,12 @@ class GameEditorViewModel(
                         isLoading = false,
                         groupName = group.name,
                         zoneId = group.timeZone.id,
-                        trialEndsAt = trial?.endsAt,
                         form = restoreForm(defaultForm),
                         // Perfil incompleto não aceita o `PUT` do grupo: aí o toggle nem aparece.
                         recurrenceOffered = profile?.modality != null && profile.composition != null,
                         regularSlots = profile?.regularSlots.orEmpty(),
                         groupHasVenue = profile?.defaultVenue != null,
-                    )
+                    ).withTrial(trial)
                 }
                 return@launch
             }
@@ -147,10 +149,9 @@ class GameEditorViewModel(
                             loadFailed = false,
                         groupName = group.name,
                         zoneId = group.timeZone.id,
-                        trialEndsAt = trial?.endsAt,
                         form = restoreForm(serverForm),
                             versionToken = gameResult.value.version.value,
-                        )
+                        ).withTrial(trial)
                     }
                 }
             }
@@ -225,12 +226,24 @@ class GameEditorViewModel(
                         } else {
                             load()
                         }
-                        else -> update {
-                            it.copy(isSaving = false, saveFailed = true, error = error.toUiError())
+                        else -> if (error.toUiError() == GroupUiError.SubscriptionRequired) {
+                            // Sem plano ativo "tentar de novo" nunca resolve: o diálogo oferece a assinatura.
+                            update { it.copy(isSaving = false, subscriptionRequired = true) }
+                        } else {
+                            update { it.copy(isSaving = false, saveFailed = true, error = error.toUiError()) }
                         }
                     }
                 }
             }
+        }
+    }
+
+    private fun refreshPlan() {
+        val current = state.value
+        if (current.isLoading || current.zoneId.isBlank()) return
+        viewModelScope.launch {
+            val trial = trialAccess?.read(GroupId(groupId)) ?: return@launch
+            update { it.withTrial(trial) }
         }
     }
 
@@ -394,7 +407,7 @@ class GameEditorViewModel(
                 form = form,
                 validationErrors = emptySet(),
                 recurrenceFailed = false,
-                trialWarningVisible = trialWarning(form, state.trialEndsAt, state.zoneId),
+                trialWarningVisible = trialWarning(form, state.trialEndsAt, state.zoneId, state.planActive),
             )
         }
     }
@@ -489,12 +502,23 @@ private fun buildCommand(draft: GameEditorDraft): GameWriteCommand =
         notes = draft.form.notes.takeIf(String::isNotBlank),
     )
 
+/** Fatos do plano lidos do servidor; o aviso do fim do teste depende do jogo e do plano. */
+private fun GameEditorState.withTrial(trial: GroupTrialAccessInfo?): GameEditorState {
+    val active = trial?.planActive == true
+    return copy(
+        trialEndsAt = trial?.endsAt,
+        planActive = active,
+        trialEnded = trial?.trialEnded == true,
+        trialWarningVisible = trialWarning(form, trial?.endsAt, zoneId, active),
+    )
+}
+
 private fun localStart(date: String, time: String, zoneId: String): String? = runCatching {
     LocalDateTime.parse("${date}T$time").toInstant(TimeZone.of(zoneId)).toString()
 }.getOrNull()
 
-private fun trialWarning(form: GameEditorFields, endsAt: String?, zoneId: String): Boolean {
-    if (endsAt.isNullOrBlank() || !form.hasDateTime || zoneId.isBlank()) return false
+private fun trialWarning(form: GameEditorFields, endsAt: String?, zoneId: String, planActive: Boolean): Boolean {
+    if (planActive || endsAt.isNullOrBlank() || !form.hasDateTime || zoneId.isBlank()) return false
     val starts = localStart(form.localDate, form.localTime, zoneId) ?: return false
     return runCatching { Instant.parse(starts) >= Instant.parse(endsAt) }.getOrDefault(false)
 }

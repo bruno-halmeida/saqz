@@ -306,6 +306,8 @@ class KtorAttendanceGatewayTest {
     @Test fun `invalid transition maps frozen`() = errorCase(409, "INVALID_GAME_TRANSITION", AttendanceError.Frozen::class.simpleName)
     @Test fun `conflict maps safely`() = errorCase(409, "VERSION_CONFLICT", AttendanceError.Conflict::class.simpleName)
     @Test fun `authentication maps safely`() = errorCase(401, "AUTHENTICATION_REQUIRED", AttendanceError.Authentication::class.simpleName)
+    @Test fun `subscription required maps to the typed plan error`() =
+        dataErrorCase(403, "SUBSCRIPTION_REQUIRED", DataError.SubscriptionRequired)
     @Test fun `forbidden maps safely`() = dataErrorCase(403, "FORBIDDEN", DataError.Forbidden)
     @Test fun `not found maps safely`() = dataErrorCase(404, "OTHER_NOT_FOUND", DataError.NotFound)
     @Test fun `payload limit maps safely`() = dataErrorCase(413, "PAYLOAD_TOO_LARGE", DataError.PayloadTooLarge)

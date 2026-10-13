@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.group.GroupTimeZone as DomainGroupTimeZone
 import br.com.saqz.groups.domain.group.GroupVersionToken
 import br.com.saqz.groups.domain.group.UpdateGroupProfileCommand
@@ -37,6 +38,7 @@ class GroupSetupViewModel(
     private val groupGateway: GroupGateway,
     private val profileGateway: GroupProfileGateway,
     private val timeZonePort: GroupSystemTimeZonePort,
+    private val trialAccess: GroupTrialAccessPort? = null,
 ) : MviViewModel<GroupSetupState, GroupSetupIntent, GroupSetupEffect>(
     initialState.withSavedText(savedState),
 ) {
@@ -112,6 +114,7 @@ class GroupSetupViewModel(
             GroupSetupIntent.Retry -> onRetry()
             GroupSetupIntent.ConfirmDelete -> onConfirmDelete()
             GroupSetupIntent.SaveDraft -> onSaveDraft()
+            GroupSetupIntent.DismissSubscriptionRequired -> update { it.copy(subscriptionRequired = false) }
         }
     }
 
@@ -258,6 +261,10 @@ class GroupSetupViewModel(
     }
 
     private fun showOperationFailure(error: GroupUiError) {
+        if (error == GroupUiError.SubscriptionRequired) {
+            showSubscriptionRequired()
+            return
+        }
         update {
             it.copy(
                 isLoading = false,
@@ -266,6 +273,25 @@ class GroupSetupViewModel(
                 saveFailed = true,
                 gatewayError = error,
             )
+        }
+    }
+
+    /** Sem plano ativo "tentar de novo" nunca resolve: o diálogo oferece a assinatura. */
+    private fun showSubscriptionRequired() {
+        val groupId = (state.value.mode as? GroupSetupMode.Edit)?.groupId
+        viewModelScope.launch {
+            val trialEnded = groupId?.let { trialAccess?.read(GroupId(it)) }?.trialEnded == true
+            update {
+                it.copy(
+                    isLoading = false,
+                    isSaving = false,
+                    isDeleting = false,
+                    saveFailed = false,
+                    gatewayError = null,
+                    subscriptionRequired = true,
+                    trialEnded = trialEnded,
+                )
+            }
         }
     }
 

@@ -58,6 +58,7 @@ import br.com.saqz.groups.presentation.game.gameTimeZone
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.presentation.home.HomeWaitlistRowUi
 import br.com.saqz.groups.presentation.photo.groupPhotoUrl
+import br.com.saqz.groups.presentation.isPlanPaused
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
@@ -736,6 +737,7 @@ class GroupDetailsViewModel(
                 responding = true,
                 athleteIntroVisible = false,
                 responseFailed = false,
+                responsePlanPaused = false,
             )
         }
         viewModelScope.launch {
@@ -774,15 +776,7 @@ class GroupDetailsViewModel(
                     }
                 }
                 is SaqzResult.Failure -> update {
-                    it.copy(
-                        memberResponse = previousResponse,
-                        waitlist = previousWaitlist,
-                        responding = false,
-                        responseFailed = result.error != AttendanceError.Frozen,
-                        nextGame = if (result.error == AttendanceError.DeadlinePassed || result.error == AttendanceError.Frozen) {
-                            it.nextGame?.copy(responseOpen = false)
-                        } else it.nextGame,
-                    )
+                    it.afterResponseFailure(result.error, previousResponse, previousWaitlist)
                 }
             }
         }
@@ -1184,4 +1178,22 @@ private fun AttendanceError.toUiError(): GroupUiError = when (this) {
 private fun AthleteError.toUiError(): GroupUiError = when (this) {
     is AthleteError.Validation -> GroupUiError.Validation
     is AthleteError.DataFailure -> GroupUiError.Network
+}
+
+/** A resposta falhou: volta ao que havia antes e escolhe o aviso (plano pausado não é "tente de novo"). */
+private fun GroupDetailsState.afterResponseFailure(
+    error: AttendanceError,
+    previousResponse: GroupDetailsResponseUi?,
+    previousWaitlist: GroupWaitlistUi?,
+): GroupDetailsState {
+    val paused = error.isPlanPaused()
+    val closed = error == AttendanceError.DeadlinePassed || error == AttendanceError.Frozen
+    return copy(
+        memberResponse = previousResponse,
+        waitlist = previousWaitlist,
+        responding = false,
+        responseFailed = !paused && error != AttendanceError.Frozen,
+        responsePlanPaused = paused,
+        nextGame = if (closed) nextGame?.copy(responseOpen = false) else nextGame,
+    )
 }

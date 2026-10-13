@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="subscription_required_title_trial_ended">Seu teste do Organizador terminou</string>
+    <string name="subscription_required_title_inactive">Seu plano não está ativo</string>
+    <string name="subscription_required_body">Seus grupos e o histórico continuam aqui. Para marcar jogos e mexer no grupo, assine um plano.</string>
+    <string name="subscription_required_view_plans">Ver planos</string>
+    <string name="subscription_required_not_now">Agora não</string>
+    <string name="subscription_paused_athlete">O plano deste grupo está pausado. Avise o organizador para voltar a confirmar presença.</string>
+</resources>

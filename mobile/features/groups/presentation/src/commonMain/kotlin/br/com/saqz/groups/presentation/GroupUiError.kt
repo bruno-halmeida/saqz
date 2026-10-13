@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation
 
 import br.com.saqz.domain.DataError
 import br.com.saqz.groups.domain.athlete.AthleteError
+import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.domain.home.HomeError
@@ -10,6 +11,9 @@ import br.com.saqz.groups.domain.membership.GroupMembershipError
 /** Erros que a apresentação conhece; o detalhe de transporte morre antes de chegar à UI. */
 enum class GroupUiError {
     AccessDenied,
+
+    /** 403 `SUBSCRIPTION_REQUIRED`: sem plano ativo; o organizador vê a oferta, o atleta, um aviso. */
+    SubscriptionRequired,
     NotFound,
     Conflict,
     Validation,
@@ -35,6 +39,9 @@ fun GroupMembershipError.toUiError(): GroupUiError = when (this) {
     is GroupMembershipError.DataFailure -> error.toUiError()
 }
 
+/** O organizador está sem plano: quem responde presença recebe um aviso próprio, sem oferta de assinatura. */
+fun AttendanceError.isPlanPaused(): Boolean = this == AttendanceError.Data(DataError.SubscriptionRequired)
+
 fun GameError.toUiError(): GroupUiError = when (this) {
     is GameError.Validation -> GroupUiError.Validation
     GameError.HiddenResource -> GroupUiError.NotFound
@@ -51,6 +58,7 @@ fun HomeError.toUiError(): GroupUiError = when (this) {
 
 private fun DataError.toUiError(): GroupUiError = when (this) {
     DataError.Forbidden -> GroupUiError.AccessDenied
+    DataError.SubscriptionRequired -> GroupUiError.SubscriptionRequired
     DataError.NotFound -> GroupUiError.NotFound
     DataError.Conflict -> GroupUiError.Conflict
     is DataError.Validation -> GroupUiError.Validation

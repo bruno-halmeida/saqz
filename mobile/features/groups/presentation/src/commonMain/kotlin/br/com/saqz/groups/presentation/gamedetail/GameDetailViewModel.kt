@@ -38,6 +38,7 @@ import br.com.saqz.groups.presentation.attendance.AttendanceRule
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
+import br.com.saqz.groups.presentation.isPlanPaused
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -453,6 +454,7 @@ class GameDetailViewModel(
                     waitlistPosition = if (optimistic == AttendanceStatus.Waitlisted) it.response.waitlistPosition else null,
                     responding = true,
                     failed = false,
+                    planPaused = false,
                 ),
             )
         }
@@ -474,7 +476,16 @@ class GameDetailViewModel(
                     refreshRoster(Operation.Response, generation, loadAtStart)
                 }
                 is SaqzResult.Failure -> {
-                    update { it.copy(response = response.copy(responding = false, failed = result.error != AttendanceError.Frozen)) }
+                    val paused = result.error.isPlanPaused()
+                    update {
+                        it.copy(
+                            response = response.copy(
+                                responding = false,
+                                failed = !paused && result.error != AttendanceError.Frozen,
+                                planPaused = paused,
+                            ),
+                        )
+                    }
                     if (result.error == AttendanceError.DeadlinePassed || result.error == AttendanceError.Frozen) {
                         closeConfirmation()
                     }

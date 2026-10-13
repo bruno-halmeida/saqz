@@ -40,6 +40,7 @@ import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.presentation.setup.GroupSetupDefaults
+import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
 import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
@@ -175,6 +176,12 @@ fun GroupSetupScreen(
             GroupSetupFooter(state, onIntent)
         }
         GroupSetupSheets(state = state, onIntent = onIntent)
+        if (state.subscriptionRequired) {
+            SubscriptionRequiredDialog(
+                trialEnded = state.trialEnded,
+                onDismiss = { onIntent(GroupSetupIntent.DismissSubscriptionRequired) },
+            )
+        }
     }
 }
 

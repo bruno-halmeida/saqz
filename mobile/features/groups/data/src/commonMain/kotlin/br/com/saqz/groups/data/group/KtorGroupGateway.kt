@@ -348,6 +348,7 @@ internal fun NetworkError.toDomainError(): GroupProfileError = when (this) {
         problem.code == "VALIDATION_FAILED" || problem.status == 400 -> GroupProfileError.Validation(
             ValidationDetails(emptyList(), problem.fieldErrors.orEmpty()),
         )
+        problem.code == "SUBSCRIPTION_REQUIRED" -> GroupProfileError.DataFailure(DataError.SubscriptionRequired)
         else -> GroupProfileError.DataFailure(problem.status.toDataError())
     }
     is NetworkError.HttpStatus -> GroupProfileError.DataFailure(status.toDataError())
