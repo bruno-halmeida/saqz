@@ -49,6 +49,10 @@ internal object LifecycleAttendanceSharePort : NativeAttendanceSharePort {
     override fun shareImage(image: AttendanceShareImage, done: (NativeAttendanceShareResult) -> Unit) {
         done(NativeAttendanceShareResult.Success)
     }
+
+    override fun shareFile(fileName: String, mimeType: String, content: String, done: (NativeAttendanceShareResult) -> Unit) {
+        done(NativeAttendanceShareResult.Success)
+    }
 }
 
 internal object LifecycleGroupDraftStore : GroupDraftStorePort {

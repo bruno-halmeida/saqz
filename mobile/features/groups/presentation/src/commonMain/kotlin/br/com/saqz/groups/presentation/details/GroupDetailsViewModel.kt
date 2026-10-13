@@ -35,6 +35,7 @@ import br.com.saqz.groups.domain.finance.Charge
 import br.com.saqz.groups.domain.finance.ChargeKind
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.FinanceStatementGateway
+import br.com.saqz.groups.domain.finance.GroupReportGateway
 import br.com.saqz.groups.domain.finance.FinanceStatementQuery
 import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
 import br.com.saqz.groups.domain.group.Group
@@ -123,6 +124,8 @@ class GroupDetailsViewModel(
     private val appDownload: AppDownloadPort? = null,
     /** Dias do teste em curso, para o aviso do grupo recém-criado. */
     private val trialAccess: br.com.saqz.groups.domain.group.GroupTrialAccessPort? = null,
+    /** Pergunta ao servidor se o plano do dono inclui relatórios; sem ela a linha nem aparece. */
+    private val reports: GroupReportGateway? = null,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(
     GroupDetailsState(appDownloadAvailable = appDownload?.appDownloadUrl() != null),
 ) {
@@ -194,6 +197,7 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.Invite,
             -> emit(GroupDetailsEffect.OpenInviteLink(groupId))
             GroupDetailsIntent.OpenCashbox -> emit(GroupDetailsEffect.OpenCashbox(groupId))
+            GroupDetailsIntent.OpenReports -> if (state.value.reportsEnabled == true) emit(GroupDetailsEffect.OpenReports(groupId))
             GroupDetailsIntent.OpenWhatsApp -> if (whatsAppEnabled) emit(GroupDetailsEffect.OpenWhatsApp(groupId))
             is GroupDetailsIntent.ChecklistAction -> checklistAction(intent.item)
             GroupDetailsIntent.SnoozeChecklist -> snoozeChecklist()
@@ -362,6 +366,7 @@ class GroupDetailsViewModel(
                             loadOwnCharges(generation, group, softRefresh)
                             loadPeople(generation)
                             loadWhatsApp(generation, group)
+                            loadReports(generation, group)
                             loadMemory(generation)
                             loadLatestNotice(generation, softRefresh)
                             if (!softRefresh) loadTrial(generation)
@@ -389,7 +394,7 @@ class GroupDetailsViewModel(
         memory = GroupOnboardingMemory()
         update { it.copy(
             isLoading = true, loadFailed = false, error = null,
-            onboarding = null, checklist = null, whatsApp = null,
+            onboarding = null, checklist = null, whatsApp = null, reportsEnabled = null,
             athleteIntroVisible = false, athleteShareFailed = false,
             notifying = false, notificationFailed = false, notifiedCount = null,
             pixCopied = false,
@@ -453,6 +458,15 @@ class GroupDetailsViewModel(
         val days = port.read(GroupId(groupId))?.takeIf { it.isOwner }?.activeTrialDays
         if (generation != loadGeneration) return
         update { it.copy(trialDays = days) }
+    }
+
+    /** Disponibilidade dos relatórios, só para quem administra. Falha cala: a linha simplesmente não aparece. */
+    private suspend fun loadReports(generation: Int, group: Group) {
+        val gateway = reports ?: return
+        if (group.role == GroupRole.ATHLETE) return
+        val result = gateway.availability(GroupId(groupId))
+        if (generation != loadGeneration) return
+        update { it.copy(reportsEnabled = (result as? SaqzResult.Success)?.value) }
     }
 
     private fun loadMemory(generation: Int) {

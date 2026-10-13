@@ -62,6 +62,32 @@ internal class AndroidAttendanceShareAdapter(
         }
     }
 
+    override fun shareFile(
+        fileName: String,
+        mimeType: String,
+        content: String,
+        done: (NativeAttendanceShareResult) -> Unit,
+    ) {
+        runCatching {
+            directory.mkdirs()
+            val safeName = fileName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+            val file = File(directory, "${UUID.randomUUID()}-$safeName")
+            file.writeText(content, Charsets.UTF_8)
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.group-photo-files", file)
+            val send = Intent(Intent.ACTION_SEND)
+                .setType(mimeType)
+                .putExtra(Intent.EXTRA_STREAM, uri)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            val chooser = Intent.createChooser(send, null)
+            if (context !is android.app.Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(chooser)
+        }.onSuccess {
+            done(NativeAttendanceShareResult.Success)
+        }.onFailure {
+            done(NativeAttendanceShareResult.Failure)
+        }
+    }
+
     private fun render(image: AttendanceShareImage): File {
         directory.mkdirs()
         val layout = AndroidAttendanceShareLayoutCalculator.calculate(image)

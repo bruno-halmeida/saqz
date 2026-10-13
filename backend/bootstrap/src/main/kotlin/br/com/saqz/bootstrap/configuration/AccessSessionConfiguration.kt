@@ -1000,6 +1000,16 @@ class AccessSessionConfiguration {
     @Bean fun financeStatementRepository(dataSource: DataSource) = JdbcFinanceStatementRepository(dataSource)
     @Bean fun financeStatementService(repository: JdbcFinanceStatementRepository) = FinanceStatementService(repository)
     @Bean fun financeStatementController(actor: VerifiedGroupActorResolver, service: FinanceStatementService) = FinanceStatementController(actor, service)
+    @Bean fun groupReportRepository(dataSource: DataSource) = br.com.saqz.groups.adapter.output.jdbc.report.JdbcGroupReportRepository(dataSource)
+    @Bean fun reportsEntitlement(lookup: br.com.saqz.subscriptions.application.SubscriptionPlanLookup): br.com.saqz.sharedkernel.subscription.ReportsEntitlement =
+        br.com.saqz.subscriptions.application.PlanReportsEntitlement(lookup)
+    @Bean fun groupReportService(
+        repository: br.com.saqz.groups.adapter.output.jdbc.report.JdbcGroupReportRepository,
+        entitlement: br.com.saqz.sharedkernel.subscription.ReportsEntitlement,
+        clock: Clock,
+    ) = br.com.saqz.groups.application.report.GroupReportService(repository, entitlement, clock)
+    @Bean fun groupReportController(actor: VerifiedGroupActorResolver, service: br.com.saqz.groups.application.report.GroupReportService) =
+        br.com.saqz.groups.adapter.input.http.GroupReportController(actor, service)
     @Bean fun monthlyChargeSchedule(
         repository: JdbcChargeTransactionRepository,
         charges: ChargeTransactions,

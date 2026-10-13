@@ -233,6 +233,50 @@ class GroupShellBlocksTest {
     }
 
     @Test
+    fun reportsRowOpensReportsWhenPlanAllowsIt() = runComposeUiTest {
+        val intents = mutableListOf<GroupDetailsIntent>()
+        setDetailsScreen(GroupShellPreviewData.manager.copy(reportsEnabled = true)) { intents += it }
+
+        onNodeWithText("Relatórios").assertExists()
+        onNodeWithText("Presença, financeiro e CSV").assertExists()
+        onNodeWithTag(GroupDetailsTags.ManageReports).performScrollTo().performClick()
+
+        assertEquals(listOf<GroupDetailsIntent>(GroupDetailsIntent.OpenReports), intents)
+    }
+
+    @Test
+    fun lockedReportsRowShowsThePlanAndLeadsToPlansInsteadOfReports() = runComposeUiTest {
+        val intents = mutableListOf<GroupDetailsIntent>()
+        var plansOpened = 0
+        setContent {
+            androidx.compose.runtime.CompositionLocalProvider(
+                br.com.saqz.groups.presentation.ui.LocalOpenSubscriptionPlans provides { plansOpened++ },
+            ) {
+                br.com.saqz.designsystem.theme.SaqzTheme {
+                    br.com.saqz.groups.presentation.ui.details.GroupDetailsScreen(
+                        state = GroupShellPreviewData.manager.copy(reportsEnabled = false),
+                        onBack = {},
+                        onIntent = { intents += it },
+                    )
+                }
+            }
+        }
+
+        onNodeWithText("Plano Ilimitado").assertExists()
+        onNodeWithTag(GroupDetailsTags.ManageReports).performScrollTo().performClick()
+
+        assertEquals(1, plansOpened)
+        assertEquals(emptyList<GroupDetailsIntent>(), intents)
+    }
+
+    @Test
+    fun reportsRowIsAbsentUntilTheServerAnswers() = runComposeUiTest {
+        setDetailsScreen(GroupShellPreviewData.manager)
+
+        onAllNodesWithTag(GroupDetailsTags.ManageReports).assertCountEquals(0)
+    }
+
+    @Test
     fun manageRowsShowCountScheduleInviteAndBalance() = runComposeUiTest {
         setDetailsScreen(GroupShellPreviewData.manager)
 

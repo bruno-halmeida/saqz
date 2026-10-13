@@ -68,6 +68,7 @@ import br.com.saqz.groups.presentation.newentry.NewEntryEffect
 import br.com.saqz.groups.presentation.newentry.NewEntryRoot
 import br.com.saqz.groups.presentation.monthlygeneration.MonthlyGenerationRoot
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
+import br.com.saqz.groups.presentation.reports.ReportsRoot
 import br.com.saqz.groups.presentation.statement.StatementEffect
 import br.com.saqz.groups.presentation.statement.StatementRoot
 import br.com.saqz.groups.presentation.ui.athleteregistration.AthleteRegistrationRoot
@@ -705,6 +706,9 @@ internal fun SaqzNavHost(
                         refreshVersion = statementRefreshVersion,
                     )
                 }
+                entry<FinanceRoute.Reports> { route ->
+                    ReportsRoot(groupId = route.groupId, onBack = pop)
+                }
                 entry<FinanceRoute.NewEntry> { route ->
                     NewEntryRoot(
                         groupId = route.groupId,
@@ -1312,6 +1316,7 @@ internal fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop
         // 4c · O card do próximo jogo e a agenda abrem o mesmo detalhe.
         is GroupDetailsEffect.OpenGame -> add(GroupsRoute.GameDetail(effect.groupId, effect.gameId))
         is GroupDetailsEffect.OpenCashbox -> add(FinanceRoute.GroupCashbox(effect.groupId))
+        is GroupDetailsEffect.OpenReports -> add(FinanceRoute.Reports(effect.groupId))
         is GroupDetailsEffect.OpenSettlement -> add(FinanceRoute.GameSettlement(effect.groupId, effect.gameId))
         is GroupDetailsEffect.OpenInviteLink -> add(GroupsRoute.Invite(effect.groupId))
         is GroupDetailsEffect.OpenWhatsApp -> add(GroupsRoute.WhatsApp(effect.groupId))

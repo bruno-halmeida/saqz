@@ -71,4 +71,10 @@ sealed interface NativeAttendanceShareResult {
 interface NativeAttendanceSharePort {
     fun shareLink(url: String, done: (NativeAttendanceShareResult) -> Unit)
     fun shareImage(image: AttendanceShareImage, done: (NativeAttendanceShareResult) -> Unit)
+
+    /**
+     * Compartilha um arquivo de texto (hoje, o CSV dos relatórios) pela folha do sistema; no web,
+     * baixa. O nome do port é histórico: é o único canal de arquivos nativo do app.
+     */
+    fun shareFile(fileName: String, mimeType: String, content: String, done: (NativeAttendanceShareResult) -> Unit)
 }

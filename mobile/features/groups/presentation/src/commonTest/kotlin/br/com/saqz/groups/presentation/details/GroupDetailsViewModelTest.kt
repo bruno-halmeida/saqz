@@ -2042,6 +2042,7 @@ class GroupDetailsViewModelTest {
         whatsApp: FakeGroupWhatsAppGateway? = null,
         onboardingMemory: FakeGroupOnboardingMemory? = null,
         appDownload: br.com.saqz.groups.domain.communication.AppDownloadPort? = null,
+        reports: br.com.saqz.groups.domain.finance.GroupReportGateway? = null,
     ) = GroupDetailsViewModel(
         GROUP_ID,
         groupGateway,
@@ -2061,6 +2062,7 @@ class GroupDetailsViewModelTest {
         // O servidor do fake responde "ligado" por padrão; o desligado tem testes próprios.
         whatsApp?.let(::WhatsAppAvailability),
         appDownload,
+        reports = reports,
     )
 
     @Test
@@ -2078,6 +2080,40 @@ class GroupDetailsViewModelTest {
         assertTrue(noStore.opened.isEmpty())
 
         assertFalse(viewModel(groupGateway = athleteGroupGateway()).state.value.appDownloadAvailable)
+    }
+
+    @Test
+    fun `reports row follows the plan the server reports and stays hidden for athletes`() = runTest {
+        val enabled = viewModel(reports = FakeReportsAvailability(true))
+        assertEquals(true, enabled.state.value.reportsEnabled)
+        enabled.onIntent(GroupDetailsIntent.OpenReports)
+        assertEquals(GroupDetailsEffect.OpenReports(GROUP_ID), enabled.effects.first())
+
+        val locked = viewModel(reports = FakeReportsAvailability(false))
+        assertEquals(false, locked.state.value.reportsEnabled)
+
+        val failed = viewModel(reports = FakeReportsAvailability(null))
+        assertEquals(null, failed.state.value.reportsEnabled)
+
+        val athlete = viewModel(groupGateway = athleteGroupGateway(), reports = FakeReportsAvailability(true))
+        assertEquals(null, athlete.state.value.reportsEnabled)
+
+        assertEquals(null, viewModel().state.value.reportsEnabled)
+    }
+
+    private class FakeReportsAvailability(private val enabled: Boolean?) : br.com.saqz.groups.domain.finance.GroupReportGateway {
+        override suspend fun availability(groupId: br.com.saqz.domain.GroupId) = enabled
+            ?.let { SaqzResult.Success(it) }
+            ?: SaqzResult.Failure(br.com.saqz.groups.domain.finance.FinanceError.Data(br.com.saqz.domain.DataError.Connectivity))
+
+        override suspend fun report(groupId: br.com.saqz.domain.GroupId, period: br.com.saqz.groups.domain.finance.ReportPeriod) =
+            error("não usado")
+
+        override suspend fun export(
+            groupId: br.com.saqz.domain.GroupId,
+            period: br.com.saqz.groups.domain.finance.ReportPeriod,
+            kind: br.com.saqz.groups.domain.finance.ReportExportKind,
+        ) = error("não usado")
     }
 
     private fun athleteGroupGateway() = FakeGroupGateway(

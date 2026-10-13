@@ -27,6 +27,8 @@ data class GroupDetailsState(
     val nextGame: NextGameUi? = null,
     val attendance: AttendanceSummaryUi? = null,
     val cashbox: CashboxUi? = null,
+    /** Relatórios na Gestão: `null` esconde a linha; `false` mostra com cadeado (plano do dono, decidido pelo servidor). */
+    val reportsEnabled: Boolean? = null,
     val ownCharges: OwnChargesUi? = null,
     val venue: VenueUi? = null,
     val latestNotice: NoticeUi? = null,
@@ -340,6 +342,9 @@ sealed interface GroupDetailsIntent {
 
     data object OpenWhatsApp : GroupDetailsIntent
 
+    /** Linha "Relatórios" da Gestão, só com o plano liberado; sem ele a linha abre "Ver planos" na tela. */
+    data object OpenReports : GroupDetailsIntent
+
     /** Toque numa linha de "Deixe o grupo redondo": vai direto à tela da ação. */
     data class ChecklistAction(val item: GroupChecklistItem) : GroupDetailsIntent
 
@@ -393,6 +398,8 @@ sealed interface GroupDetailsEffect {
     data class OpenGame(val groupId: String, val gameId: String) : GroupDetailsEffect
 
     data class OpenCashbox(val groupId: String) : GroupDetailsEffect
+
+    data class OpenReports(val groupId: String) : GroupDetailsEffect
 
     data class OpenInviteLink(val groupId: String) : GroupDetailsEffect
 

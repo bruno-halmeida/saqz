@@ -29,6 +29,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import br.com.saqz.groups.presentation.details.GroupDetailsState
+import br.com.saqz.groups.presentation.ui.LocalOpenSubscriptionPlans
 import br.com.saqz.groups.presentation.ui.components.WaitingRow
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_details_group_cash
@@ -49,6 +50,9 @@ import br.com.saqz.groups.resources.group_details_people_fallback
 import br.com.saqz.groups.resources.group_details_people_title
 import br.com.saqz.groups.resources.group_details_venue_map
 import br.com.saqz.groups.resources.moderation_report_group
+import br.com.saqz.groups.resources.reports_row_meta
+import br.com.saqz.groups.resources.reports_row_meta_locked
+import br.com.saqz.groups.resources.reports_title
 import br.com.saqz.groups.resources.whatsapp_binding_status_active
 import br.com.saqz.groups.resources.whatsapp_binding_status_broken
 import br.com.saqz.groups.resources.whatsapp_binding_status_disabled
@@ -216,6 +220,21 @@ private fun GroupManageSection(
                     meta = cashbox.summary,
                     tag = GroupDetailsTags.Cashbox,
                     onClick = { onIntent(GroupDetailsIntent.OpenCashbox) },
+                )
+            }
+            // Relatórios são do plano Ilimitado: o servidor diz se o grupo tem direito. Sem ele a linha
+            // aparece com cadeado e leva a "Ver planos".
+            state.reportsEnabled?.let { enabled ->
+                val openPlans = LocalOpenSubscriptionPlans.current
+                SaqzDivider()
+                GroupShellRow(
+                    icon = if (enabled) SaqzIcons.FileText else SaqzIcons.Lock,
+                    title = stringResource(Res.string.reports_title),
+                    meta = stringResource(
+                        if (enabled) Res.string.reports_row_meta else Res.string.reports_row_meta_locked,
+                    ),
+                    tag = GroupDetailsTags.ManageReports,
+                    onClick = { if (enabled) onIntent(GroupDetailsIntent.OpenReports) else openPlans() },
                 )
             }
         }

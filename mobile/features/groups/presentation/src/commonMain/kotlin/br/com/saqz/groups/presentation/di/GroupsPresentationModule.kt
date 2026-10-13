@@ -31,6 +31,7 @@ import br.com.saqz.groups.presentation.schedule.GroupScheduleViewModel
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
 import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
+import br.com.saqz.groups.presentation.reports.ReportsViewModel
 import br.com.saqz.groups.presentation.statement.StatementViewModel
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxViewModel
 import br.com.saqz.groups.presentation.ui.finance.settlement.GameSettlementViewModel
@@ -70,13 +71,14 @@ fun groupsPresentationModule(): Module = module {
         )
     }
     viewModel { params -> StatementViewModel(params.get(), get()) }
+    viewModel { params -> ReportsViewModel(params.get(), get(), get()) }
     viewModel { params -> NewEntryViewModel(params.get(), params.get(), get(), get<GroupNowPort>()) }
     viewModel { params -> MonthlyGenerationViewModel(params.get(), params.get(), get(), get(), get(), get<GroupNowPort>()) }
     viewModel {
         params ->
         GroupDetailsViewModel(
             params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>(), get(), get(), get(),
-            getOrNull(), get(), get(), whatsAppAvailability = getOrNull(),
+            getOrNull(), get(), get(), whatsAppAvailability = getOrNull(), reports = getOrNull(),
             appDownload = getOrNull(),
             trialAccess = getOrNull(),
         )

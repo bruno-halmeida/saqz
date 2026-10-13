@@ -60,6 +60,7 @@ internal object GroupDetailsTags {
     const val AgendaCreate = "group-details-agenda-create"
     const val AgendaMore = "group-details-agenda-more"
     const val ManageWhatsApp = "group-details-manage-whatsapp"
+    const val ManageReports = "group-details-manage-reports"
     const val Checklist = "group-details-checklist"
     const val ChecklistSnooze = "group-details-checklist-snooze"
 

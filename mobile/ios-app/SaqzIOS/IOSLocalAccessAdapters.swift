@@ -229,6 +229,19 @@ final class IOSAttendanceShareAdapter: @preconcurrency NativeAttendanceSharePort
         }
     }
 
+    func shareFile(fileName: String, mimeType: String, content: String, done: @escaping (any NativeAttendanceShareResult) -> Void) {
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let safeName = fileName.replacingOccurrences(of: "[^A-Za-z0-9._-]", with: "_", options: .regularExpression)
+            let url = directory.appendingPathComponent("\(UUID().uuidString)-\(safeName)")
+            try Data(content.utf8).write(to: url, options: [.atomic, .completeFileProtection])
+            try present(items: [url])
+            done(NativeAttendanceShareResultSuccess.shared)
+        } catch {
+            done(NativeAttendanceShareResultFailure.shared)
+        }
+    }
+
     private func present(items: [Any]) throws {
         guard let presenter = presenter() else { throw IOSAccessStateStoreError.unavailable }
         let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)

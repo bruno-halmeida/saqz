@@ -209,6 +209,7 @@ private object TestProfilePhotoPort : NativeProfilePhotoPort, ProfilePhotoSelect
 private object TestAttendanceSharePort : br.com.saqz.groups.domain.attendance.share.NativeAttendanceSharePort {
     override fun shareLink(url: String, done: (br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult) -> Unit) = done(br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult.Success)
     override fun shareImage(image: br.com.saqz.groups.domain.attendance.share.AttendanceShareImage, done: (br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult) -> Unit) = done(br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult.Success)
+    override fun shareFile(fileName: String, mimeType: String, content: String, done: (br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult) -> Unit) = done(br.com.saqz.groups.domain.attendance.share.NativeAttendanceShareResult.Success)
 }
 
 private object TestGroupPhotoSelectionPort : GroupPhotoSelectionPort {

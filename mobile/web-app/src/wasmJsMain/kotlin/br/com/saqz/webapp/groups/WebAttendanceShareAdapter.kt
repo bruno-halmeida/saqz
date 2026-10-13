@@ -26,6 +26,16 @@ internal class WebAttendanceShareAdapter(@Suppress("UnusedPrivateProperty") scop
         BrowserShare.shareFile(png, "saqz-presenca.png", "image/png") { done(it.toResult()) }
     }
 
+    /** No web o relatório é baixado (`<a download>`), sem folha de compartilhamento. */
+    override fun shareFile(
+        fileName: String,
+        mimeType: String,
+        content: String,
+        done: (NativeAttendanceShareResult) -> Unit,
+    ) {
+        BrowserShare.downloadFile(content.encodeToByteArray(), fileName, mimeType) { done(it.toResult()) }
+    }
+
     private fun BrowserOutcome.toResult(): NativeAttendanceShareResult = when (this) {
         BrowserOutcome.DONE -> NativeAttendanceShareResult.Success
         // Como no convite: fechar a folha não é erro (a folha nativa nem informa a desistência).
