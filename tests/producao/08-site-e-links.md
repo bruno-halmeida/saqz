@@ -8,12 +8,13 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 **Quem:** visitante, no computador e no celular.
 
 1. Abrir `https://saqz.app`.
-2. Tocar "Testar grátis por 14 dias"; voltar e tocar "Já decidiu? Assinar".
+2. Tocar "Criar meu grupo grátis"; voltar e, no plano Titular, tocar "Assinar o Titular".
 3. No rodapé, abrir "Termos de uso", "Política de privacidade" e "Excluir conta".
 
 **Conferir**
-- "Testar grátis" abre `saqz.app/comecar/`, e "Assinar" abre `saqz.app/assinar/`. Nada aponta para
-  `brunoalmeida.dev`.
+- "Criar meu grupo grátis" abre `saqz.app/comecar/`, e "Assinar o Titular" abre `saqz.app/assinar/`.
+  Nada aponta para `brunoalmeida.dev`.
+- A prévia do link no WhatsApp mostra a imagem do Saqz (celular azul com o título), não a foto de banco.
 - Preços: Titular R$ 39,90/mês (R$ 359,10/ano), Organizador R$ 59,90 (R$ 539,10), Ilimitado R$ 89,90
   (R$ 809,10).
 - As páginas do rodapé abrem. "Termos de recebimentos" ainda lê os termos de staging: é o PC-16.
