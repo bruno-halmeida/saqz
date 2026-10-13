@@ -1,0 +1,166 @@
+# Lanes chamadas pelos workflows mobile-rc.yml e mobile-release.yml. Os segredos chegam por
+# variável de ambiente (Environment "mobile" do GitHub); nada aqui lê segredo do repositório.
+#
+#   SAQZ_VERSION_NAME / SAQZ_VERSION_CODE   versão X.Y.Z e build inteiro, os mesmos que ci/version.sh gravou
+#   SAQZ_RELEASE_NOTES                      notas da RC: "O que testar" no TestFlight, changelog no Play,
+#                                           "Novidades" na App Store
+#   SAQZ_AAB_PATH                           AAB prod assinado, gerado pelo workflow com bundleProdRelease
+#   PLAY_SERVICE_ACCOUNT_JSON               conteúdo do JSON da conta de serviço do Play
+#   ASC_ISSUER_ID / ASC_KEY_ID / ASC_KEY_P8 chave da App Store Connect API (o .p8 inteiro em ASC_KEY_P8)
+
+opt_out_usage
+skip_docs
+
+MOBILE_ROOT = File.expand_path("..", __dir__)
+IOS_PROJECT = File.join(MOBILE_ROOT, "ios-app", "SaqzIOS.xcodeproj")
+IOS_SCHEME = "SaqzProd"
+TEAM_ID = "8JG4JP8VMT"
+APP_ID = "app.saqz"
+LOCALE = "pt-BR"
+PLAY_CHANGELOG_LIMIT = 500 # limite do Play para o texto de uma release
+
+def required_env(name)
+  value = ENV.fetch(name, "").strip
+  UI.user_error!("Falta a variável de ambiente #{name}") if value.empty?
+  value
+end
+
+def release_version
+  version = required_env("SAQZ_VERSION_NAME")
+  build = required_env("SAQZ_VERSION_CODE")
+  UI.user_error!("SAQZ_VERSION_NAME deve ser X.Y.Z (recebi '#{version}')") unless version.match?(/\A\d+\.\d+\.\d+\z/)
+  UI.user_error!("SAQZ_VERSION_CODE deve ser inteiro (recebi '#{build}')") unless build.match?(/\A\d+\z/)
+  [version, build.to_i]
+end
+
+def release_notes
+  required_env("SAQZ_RELEASE_NOTES")
+end
+
+# Grava o .p8 num arquivo temporário (o xcodebuild só aceita caminho), registra a chave no contexto da
+# lane, de onde pilot e deliver a pegam sozinhos, e devolve os flags de assinatura na nuvem do xcodebuild.
+def connect_to_app_store
+  key_id = required_env("ASC_KEY_ID")
+  issuer_id = required_env("ASC_ISSUER_ID")
+  key_path = File.join(Dir.tmpdir, "AuthKey_#{key_id}.p8")
+  File.write(key_path, required_env("ASC_KEY_P8"), perm: 0o600)
+  app_store_connect_api_key(key_id: key_id, issuer_id: issuer_id, key_filepath: key_path, in_house: false)
+  "-allowProvisioningUpdates -authenticationKeyPath #{key_path} " \
+    "-authenticationKeyID #{key_id} -authenticationKeyIssuerID #{issuer_id}"
+end
+
+def play_options
+  {
+    package_name: APP_ID,
+    json_key_data: required_env("PLAY_SERVICE_ACCOUNT_JSON"),
+    skip_upload_metadata: true,
+    skip_upload_images: true,
+    skip_upload_screenshots: true,
+  }
+end
+
+platform :android do
+  desc "Envia o AAB prod (SAQZ_AAB_PATH) para a trilha interna do Play, já liberado para os testadores"
+  lane :internal do
+    version, build = release_version
+    aab = required_env("SAQZ_AAB_PATH")
+    UI.user_error!("AAB não encontrado: #{aab}") unless File.file?(aab)
+
+    # O changelog do Play vem de metadata/android/<locale>/changelogs/<build>.txt; monta fora do repositório.
+    metadata = Dir.mktmpdir("play-metadata")
+    changelog_dir = File.join(metadata, "android", LOCALE, "changelogs")
+    FileUtils.mkdir_p(changelog_dir)
+    File.write(File.join(changelog_dir, "#{build}.txt"), release_notes[0, PLAY_CHANGELOG_LIMIT])
+
+    supply(
+      **play_options,
+      track: "internal",
+      aab: aab,
+      skip_upload_apk: true,
+      release_status: "completed",
+      version_name: "#{build} (#{version})",
+      metadata_path: metadata,
+      skip_upload_changelogs: false,
+    )
+  end
+
+  desc "Promove o build da versão, já na trilha interna, para produção com 100% dos usuários"
+  lane :promote do
+    _version, build = release_version
+    supply(
+      **play_options,
+      track: "internal",
+      track_promote_to: "production",
+      track_promote_release_status: "completed",
+      version_code: build,
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      skip_upload_changelogs: true,
+    )
+  end
+end
+
+platform :ios do
+  desc "Arquiva o scheme SaqzProd com assinatura na nuvem e envia ao TestFlight para os testadores internos"
+  lane :testflight do
+    version, build = release_version
+    notes = release_notes
+    auth = connect_to_app_store
+    output_dir = File.join(MOBILE_ROOT, "build", "ios")
+
+    gym(
+      project: IOS_PROJECT,
+      scheme: IOS_SCHEME,
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: { signingStyle: "automatic", teamID: TEAM_ID, uploadSymbols: true },
+      # A versão já está no pbxproj (ci/version.sh), mas o override garante o mesmo número em qualquer checkout.
+      xcargs: "#{auth} MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build}",
+      export_xcargs: auth,
+      output_directory: output_dir,
+      output_name: "Saqz.ipa",
+      buildlog_path: File.join(output_dir, "logs"),
+      disable_package_automatic_updates: true,
+    )
+
+    pilot(
+      app_identifier: APP_ID,
+      ipa: lane_context[SharedValues::IPA_OUTPUT_PATH],
+      app_version: version,
+      build_number: build.to_s,
+      changelog: notes,
+      distribute_external: false,
+      notify_external_testers: false,
+      skip_waiting_for_build_processing: false,
+      wait_processing_timeout_duration: 2700,
+    )
+  end
+
+  desc "Anexa o build já processado à versão X.Y.Z, grava as novidades e submete à revisão com liberação automática"
+  lane :release do
+    version, build = release_version
+    notes = release_notes
+    connect_to_app_store
+
+    deliver(
+      app_identifier: APP_ID,
+      platform: "ios",
+      app_version: version,
+      build_number: build.to_s,
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      # Pasta vazia: só as novidades abaixo sobem; o resto da ficha fica como está no App Store Connect.
+      metadata_path: Dir.mktmpdir("asc-metadata"),
+      release_notes: { LOCALE => notes },
+      submit_for_review: true,
+      automatic_release: true,
+      phased_release: false,
+      reset_ratings: false,
+      # O precheck não consegue olhar compras no app com chave de API e reprovaria à toa.
+      run_precheck_before_submit: false,
+      precheck_include_in_app_purchases: false,
+      force: true,
+      submission_information: { add_id_info_uses_idfa: false, export_compliance_uses_encryption: false },
+    )
+  end
+end

@@ -1,0 +1,4 @@
+# Identidade do app nas duas lojas. Nada de segredo aqui: chaves e senhas chegam por variável de ambiente.
+app_identifier("app.saqz")
+team_id("8JG4JP8VMT")
+package_name("app.saqz")

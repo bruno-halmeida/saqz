@@ -54,3 +54,7 @@ mobile/android-app/prod/
 # As tasks `recordRoborazzi*` regravam catálogos inteiros — versionar aqui é
 # conflito binário garantido entre PRs paralelos.
 mobile/**/screenshots/
+
+# fastlane (CI das lojas mobile): relatório de execução gerado a cada run
+mobile/fastlane/report.xml
+mobile/fastlane/README.md

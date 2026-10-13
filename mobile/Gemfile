@@ -1,0 +1,4 @@
+# Só o fastlane, usado pelos workflows mobile-rc.yml e mobile-release.yml (bundle exec fastlane ...).
+source "https://rubygems.org"
+
+gem "fastlane", "~> 2.238"
