@@ -1,39 +1,21 @@
-/* Base das imagens de WhatsApp (1200x630). Renderizar com render.sh. */
-:root { --blue:#0638df; --lime:#c7f300; --ink:#0e1738; --muted:#667085; --border:#d8dde8; --soft:#f4f8fb; --green:#17b26a; --red:#e5484d; }
+/* Base das imagens de WhatsApp (1200x630). No WhatsApp a imagem aparece com ~1/4 do tamanho:
+   poucos elementos e grandes (logo, uma frase, um destaque). Renderizar com render.sh. */
+:root { --blue:#0638df; --lime:#c7f300; --ink:#071025; }
 * { box-sizing:border-box; }
 html, body { margin:0; width:1200px; height:630px; overflow:hidden; background:var(--blue); }
 body { font-family:-apple-system,"SF Pro Display",system-ui,sans-serif; color:#fff; -webkit-font-smoothing:antialiased; }
 .canvas { position:relative; width:1200px; height:630px; overflow:hidden;
   background:
-    radial-gradient(circle at 88% 12%, rgba(255,255,255,.16), transparent 46%),
-    radial-gradient(circle at 0% 100%, rgba(7,16,37,.32), transparent 52%),
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,.18), transparent 60%),
+    radial-gradient(circle at 50% 120%, rgba(7,16,37,.38), transparent 60%),
     var(--blue); }
-.ball { position:absolute; width:620px; height:620px; right:-150px; top:-120px; opacity:.07; }
-.copy { position:absolute; left:84px; top:0; bottom:0; width:600px; display:flex; flex-direction:column; justify-content:center; }
-.logo { width:230px; height:auto; display:block; }
-h1 { margin:34px 0 0; font-size:84px; font-weight:700; line-height:1; letter-spacing:-.045em; }
-h1.long { font-size:66px; line-height:1.03; }
-.lead { margin:22px 0 0; max-width:540px; font-size:30px; line-height:1.32; letter-spacing:-.012em; color:rgba(255,255,255,.84); }
-.lead b { color:#fff; font-weight:700; }
-.foot { position:absolute; left:84px; bottom:40px; display:flex; align-items:center; gap:10px; font-size:22px; font-weight:600; letter-spacing:-.005em; color:rgba(255,255,255,.72); }
-.foot::before { content:""; width:10px; height:10px; border-radius:50%; background:var(--lime); }
-
-/* Cartão no visual do app */
-.card { position:absolute; right:86px; top:50%; width:384px; padding:30px 28px 26px; border-radius:30px; background:#fff; color:var(--ink);
-  transform:translateY(-50%) rotate(-4deg); box-shadow:0 40px 90px rgba(4,14,60,.45), 0 0 0 1px rgba(255,255,255,.5); }
-.eyebrow { font-size:14px; font-weight:700; letter-spacing:.08em; color:var(--blue); }
-.card h3 { margin:10px 0 0; font-size:34px; font-weight:700; letter-spacing:-.03em; }
-.faces { display:flex; align-items:center; margin-top:20px; }
-.face { position:relative; width:58px; height:58px; margin-right:-12px; border-radius:50%; border:3px solid #fff; background:#dfe5f0 center/cover; }
-.face.ok::after { content:"✓"; position:absolute; right:-4px; bottom:-4px; width:22px; height:22px; border-radius:50%; border:2px solid #fff; background:var(--green); color:#fff; font-size:12px; font-weight:800; display:grid; place-items:center; }
-.faces small { margin-left:24px; font-size:16px; font-weight:600; color:var(--muted); }
-.response { display:flex; gap:10px; margin-top:24px; }
-.response span { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; height:56px; border:1.5px solid var(--border); border-radius:999px; font-size:21px; font-weight:700; }
-.response .yes { color:var(--green); }
-.response .no { color:var(--red); }
-.hint { margin:14px 0 0; font-size:14px; line-height:1.4; color:var(--muted); text-align:center; }
-.rows { margin-top:22px; border-top:1px solid var(--border); }
-.row { display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid var(--border); font-size:19px; font-weight:600; letter-spacing:-.01em; }
-.row i { width:38px; height:38px; flex:none; display:grid; place-items:center; border-radius:50%; background:var(--soft); color:var(--blue); font-style:normal; }
-.row svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-.join { display:flex; align-items:center; justify-content:center; height:58px; margin-top:22px; border-radius:999px; background:var(--blue); color:#fff; font-size:21px; font-weight:700; letter-spacing:-.01em; }
+.ball { position:absolute; width:560px; height:560px; opacity:.08; }
+.ball.right { right:-190px; bottom:-170px; }
+.ball.left { left:-210px; top:-200px; transform:rotate(140deg); }
+.stack { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+.logo { width:400px; height:auto; display:block; }
+h1 { margin:34px 0 0; font-size:150px; font-weight:800; line-height:.98; letter-spacing:-.05em; }
+h1.two { font-size:118px; line-height:1; }
+.pill { display:inline-flex; align-items:center; gap:14px; margin-top:38px; padding:18px 36px; border-radius:999px;
+  background:var(--lime); color:var(--ink); font-size:42px; font-weight:700; letter-spacing:-.02em; }
+.pill svg { width:40px; height:40px; fill:none; stroke:currentColor; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; }
