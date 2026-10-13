@@ -190,9 +190,11 @@ GCP_PROJECT="saquz-app"
 PLAY_PACKAGE="app.saqz"
 SAQZ_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-# Memória de re-execução fora do repositório (o .env da raiz é do servidor).
-# Guarda só ids, aliases e caminhos; senha e chave nunca são gravadas aqui.
-ENV_FILE="${ENV_FILE:-$HOME/.config/saqz/mobile-ci.env}"
+# Memória de re-execução fora do repositório. A biblioteca acima já deixou
+# ENV_FILE=.env, então o padrão tem de ser imposto aqui, sem ":-"; quem quiser
+# outro caminho passa SAQZ_CI_ENV_FILE. Guarda só ids, aliases e caminhos;
+# senha e chave nunca são gravadas aqui.
+ENV_FILE="${SAQZ_CI_ENV_FILE:-$HOME/.config/saqz/mobile-ci.env}"
 mkdir -p "$(dirname "$ENV_FILE")"
 touch "$ENV_FILE" && chmod 600 "$ENV_FILE"
 
