@@ -20,9 +20,6 @@ sealed interface GroupSetupMode {
     data class Edit(val groupId: String) : GroupSetupMode
 }
 
-/** `2d` é passo, não rota: a revisão lê o mesmo formulário já preenchido. */
-enum class GroupSetupStep { Form, Review }
-
 sealed interface GroupSetupSheet {
     data object Modality : GroupSetupSheet
 
@@ -78,7 +75,6 @@ internal object GroupPixTextLimits {
 @Immutable
 data class GroupSetupState(
     val mode: GroupSetupMode,
-    val step: GroupSetupStep = GroupSetupStep.Form,
     val form: GroupSetupForm = GroupSetupDefaults.Form,
     val pixKey: String? = null,
     val pixLabel: String? = null,
@@ -192,10 +188,6 @@ sealed interface GroupSetupIntent {
     data object PickPhoto : GroupSetupIntent
 
     data object Submit : GroupSetupIntent
-
-    data object ConfirmCreate : GroupSetupIntent
-
-    data object BackToForm : GroupSetupIntent
 
     data object ConfirmDelete : GroupSetupIntent
 

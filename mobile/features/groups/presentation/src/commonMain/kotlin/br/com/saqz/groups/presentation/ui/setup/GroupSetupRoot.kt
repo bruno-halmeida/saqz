@@ -15,7 +15,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.groups.presentation.setup.GroupSetupEffect
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
-import br.com.saqz.groups.presentation.setup.GroupSetupStep
 import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
 import br.com.saqz.groups.presentation.photo.GroupPhotoIntent
 import br.com.saqz.groups.presentation.photo.GroupPhotoViewModel
@@ -134,17 +133,13 @@ fun GroupSetupRoot(
         isSaving = state.isSaving || pendingLeave != null,
     )
     Box(modifier.fillMaxSize()) {
-        when (state.step) {
-            GroupSetupStep.Form -> GroupSetupScreen(
-                state = screenState,
-                showTrialOffer = showTrialOffer,
-                onIntent = viewModel::onIntent,
-                onBack = onBack,
-                onOpenWhatsApp = onOpenWhatsApp,
-            )
-
-            GroupSetupStep.Review -> GroupReviewScreen(state = screenState, onIntent = viewModel::onIntent)
-        }
+        GroupSetupScreen(
+            state = screenState,
+            showTrialOffer = showTrialOffer,
+            onIntent = viewModel::onIntent,
+            onBack = onBack,
+            onOpenWhatsApp = onOpenWhatsApp,
+        )
         GroupPhotoSelectionSheet(
             open = photoSheetOpen,
             photoUrl = photoState.photoUrl,

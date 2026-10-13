@@ -45,7 +45,7 @@ class GroupSetupViewModelTest {
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun `criar com campo faltando marca o erro e nao avanca para a revisao`() = runTest(mainDispatcher) {
+    fun `criar com campo faltando marca o erro e nao cria`() = runTest(mainDispatcher) {
         val viewModel = viewModel(form = completeForm.copy(name = ""))
         val effects = collectEffects(viewModel)
 
@@ -53,7 +53,6 @@ class GroupSetupViewModelTest {
         runCurrent()
 
         assertEquals(setOf(GroupSetupError.NameRequired), viewModel.state.value.errors)
-        assertEquals(GroupSetupStep.Form, viewModel.state.value.step)
         assertTrue(effects.isEmpty())
     }
 
@@ -79,26 +78,11 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `criar valido leva para a revisao e a volta preserva o formulario`() = runTest(mainDispatcher) {
-        val viewModel = viewModel()
-
-        viewModel.onIntent(GroupSetupIntent.Submit)
-        runCurrent()
-        assertEquals(GroupSetupStep.Review, viewModel.state.value.step)
-
-        viewModel.onIntent(GroupSetupIntent.BackToForm)
-        runCurrent()
-
-        assertEquals(GroupSetupStep.Form, viewModel.state.value.step)
-        assertEquals(completeForm, viewModel.state.value.form)
-    }
-
-    @Test
-    fun `confirmar a criacao marca o envio e emite Created`() = runTest(mainDispatcher) {
+    fun `enviar o formulario valido cria direto e emite Created`() = runTest(mainDispatcher) {
         val viewModel = viewModel()
         val effects = collectEffects(viewModel)
 
-        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
         assertTrue(!viewModel.state.value.isSaving)
@@ -114,7 +98,7 @@ class GroupSetupViewModelTest {
         )
         val effects = collectEffects(viewModel)
 
-        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
         assertTrue(viewModel.state.value.saveFailed)
@@ -138,9 +122,8 @@ class GroupSetupViewModelTest {
         val effects = collectEffects(viewModel)
 
         viewModel.onIntent(GroupSetupIntent.Submit)
-        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
         runCurrent()
-        assertEquals(GroupSetupStep.Form, viewModel.state.value.step)
+        assertTrue(viewModel.state.value.saveFailed)
 
         viewModel.onIntent(GroupSetupIntent.Retry)
         runCurrent()
@@ -169,7 +152,7 @@ class GroupSetupViewModelTest {
         }
         val viewModel = viewModel(profileGateway = profileGateway, savedState = handle)
 
-        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
         val firstKey = profileGateway.createCommands.single().commandKey
 
@@ -177,7 +160,6 @@ class GroupSetupViewModelTest {
         assertEquals(null, viewModel.state.value.creationCommandKey)
         assertEquals(null, handle.get<String>("group-setup-create-command-key"))
         viewModel.onIntent(GroupSetupIntent.Submit)
-        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
         runCurrent()
 
         assertEquals(2, profileGateway.createCommands.size)
@@ -194,14 +176,13 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `editar salva direto sem passar pela revisao`() = runTest(mainDispatcher) {
+    fun `editar salva direto`() = runTest(mainDispatcher) {
         val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
         val effects = collectEffects(viewModel)
 
         viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
-        assertEquals(GroupSetupStep.Form, viewModel.state.value.step)
         assertTrue(!viewModel.state.value.isSaving)
         assertEquals(listOf(GroupSetupEffect.Saved), effects)
     }
@@ -212,7 +193,6 @@ class GroupSetupViewModelTest {
             val createGateway = FakeGroupProfileGateway()
             val creating = viewModel(recurring = false, profileGateway = createGateway)
             creating.onIntent(GroupSetupIntent.Submit)
-            creating.onIntent(GroupSetupIntent.ConfirmCreate)
             runCurrent()
 
             assertEquals(emptyList(), createGateway.lastCreateCommand?.form?.regularSlots)
@@ -233,6 +213,7 @@ class GroupSetupViewModelTest {
 
     @Test
     fun `criar comeca sem recorrencia e aceita so os tres campos a vista`() = runTest(mainDispatcher) {
+        val creatingGateway = FakeGroupProfileGateway()
         val creating = GroupSetupViewModel(
             initialState = GroupSetupState(
                 mode = GroupSetupMode.Create,
@@ -243,7 +224,7 @@ class GroupSetupViewModelTest {
             ),
             savedState = SavedStateHandle(),
             groupGateway = FakeGroupGateway(),
-            profileGateway = FakeGroupProfileGateway(),
+            profileGateway = creatingGateway,
             timeZonePort = FakeGroupSystemTimeZonePort(),
         )
 
@@ -252,7 +233,7 @@ class GroupSetupViewModelTest {
 
         assertEquals(false, creating.state.value.recurring)
         assertEquals(emptySet(), creating.state.value.errors)
-        assertEquals(GroupSetupStep.Review, creating.state.value.step)
+        assertEquals(1, creatingGateway.createCommands.size)
     }
 
     @Test
@@ -693,7 +674,7 @@ class GroupSetupViewModelTest {
         val viewModel = viewModel(profileGateway = profileGateway)
         viewModel.onIntent(GroupSetupIntent.UpdatePixKey(""))
         viewModel.onIntent(GroupSetupIntent.UpdatePixLabel(""))
-        viewModel.onIntent(GroupSetupIntent.ConfirmCreate)
+        viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
         val form = profileGateway.lastCreateCommand?.form

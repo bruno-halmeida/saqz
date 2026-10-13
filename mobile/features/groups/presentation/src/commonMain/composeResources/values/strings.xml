@@ -167,19 +167,6 @@
     <string name="group_slot_time">Horário</string>
     <string name="group_slot_save">Salvar</string>
 
-    <!-- 2d · revisão -->
-    <string name="group_review_title">Revisar grupo</string>
-    <string name="group_review_players">%1$d jogadores</string>
-    <string name="group_review_modality">Esporte</string>
-    <string name="group_review_composition">Público</string>
-    <string name="group_review_level">Nível do grupo</string>
-    <string name="group_review_play_style">Sistema de jogo</string>
-    <string name="group_review_capacity">Máx. por jogo</string>
-    <string name="group_review_duration">Duração</string>
-    <string name="group_review_confirmation_lead">Confirmar até</string>
-    <string name="group_review_weekly_schedule">Dias e horários</string>
-    <string name="group_review_create">Criar grupo</string>
-    <string name="group_review_edit">Editar informações</string>
 
     <!-- 2j · exclusão -->
     <string name="group_delete_title">Excluir o %1$s?</string>

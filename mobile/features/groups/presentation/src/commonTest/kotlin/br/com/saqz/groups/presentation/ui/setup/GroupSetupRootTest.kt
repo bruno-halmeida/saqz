@@ -72,7 +72,7 @@ class GroupSetupRootTest {
         waitUntil(timeoutMillis = 10_000) { photo.state.value.hasPending && !photo.state.value.isLoading }
         assertEquals(0, photos.uploadCalls)
 
-        setup.onIntent(GroupSetupIntent.ConfirmCreate)
+        setup.onIntent(GroupSetupIntent.Submit)
         waitUntil(timeoutMillis = 10_000) { created.isNotEmpty() }
 
         assertEquals(1, photos.uploadCalls)
@@ -101,7 +101,7 @@ class GroupSetupRootTest {
             }
         }
         waitForIdle()
-        setup.onIntent(GroupSetupIntent.ConfirmCreate)
+        setup.onIntent(GroupSetupIntent.Submit)
         waitForIdle()
 
         assertEquals(0, photos.uploadCalls)
@@ -133,7 +133,7 @@ class GroupSetupRootTest {
         photo.onIntent(GroupPhotoIntent.ChooseCamera)
         waitUntil(timeoutMillis = 10_000) { photo.state.value.hasPending && !photo.state.value.isLoading }
 
-        setup.onIntent(GroupSetupIntent.ConfirmCreate)
+        setup.onIntent(GroupSetupIntent.Submit)
         waitUntil(timeoutMillis = 10_000) { created.isNotEmpty() }
 
         assertEquals(1, photos.uploadCalls)

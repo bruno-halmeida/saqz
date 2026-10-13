@@ -110,8 +110,6 @@ class GroupSetupViewModel(
             GroupSetupIntent.PickPhoto -> emit(GroupSetupEffect.PickPhoto)
             GroupSetupIntent.Submit -> onSubmit()
             GroupSetupIntent.Retry -> onRetry()
-            GroupSetupIntent.ConfirmCreate -> onConfirmCreate()
-            GroupSetupIntent.BackToForm -> onBackToForm()
             GroupSetupIntent.ConfirmDelete -> onConfirmDelete()
             GroupSetupIntent.SaveDraft -> onSaveDraft()
         }
@@ -120,7 +118,6 @@ class GroupSetupViewModel(
     private fun onRetry() {
         when {
             retryDelete -> onConfirmDelete()
-            !state.value.isEditing && state.value.creationCommandKey != null -> onConfirmCreate()
             versionToken == null && state.value.isEditing -> load()
             else -> onSubmit()
         }
@@ -172,7 +169,8 @@ class GroupSetupViewModel(
             retryDelete = false
             saveEdit()
         } else {
-            update { it.copy(step = GroupSetupStep.Review, errors = emptySet(), saveFailed = false, gatewayError = null) }
+            update { it.copy(errors = emptySet(), saveFailed = false, gatewayError = null) }
+            createGroup()
         }
     }
 
@@ -200,7 +198,7 @@ class GroupSetupViewModel(
         }
     }
 
-    private fun onConfirmCreate() {
+    private fun createGroup() {
         val current = state.value
         val commandKey = current.creationCommandKey ?: newCommandKey()
         val zone = timeZone
@@ -219,8 +217,8 @@ class GroupSetupViewModel(
             )
         }
         viewModelScope.launch {
-            // ponytail: seam de create; createProfile persiste a mesma carga completa que a
-            // revisão apresenta e devolve o id autoritativo para o efeito de saída.
+            // ponytail: seam de create; createProfile persiste a carga completa do formulário
+            // e devolve o id autoritativo para o efeito de saída.
             when (val result = profileGateway.createProfile(
                 CreateGroupProfileCommand(commandKey, zone, commandForm),
             )) {
@@ -267,9 +265,6 @@ class GroupSetupViewModel(
                 isDeleting = false,
                 saveFailed = true,
                 gatewayError = error,
-                // O erro de create acontece na revisão, mas o card de erro existente vive no
-                // formulário e já oferece Retry/Salvar rascunho.
-                step = if (it.mode is GroupSetupMode.Create) GroupSetupStep.Form else it.step,
             )
         }
     }
@@ -284,11 +279,6 @@ class GroupSetupViewModel(
         retryDelete = false
         update { it.copy(saveFailed = false, gatewayError = null, creationCommandKey = null) }
         emit(GroupSetupEffect.DraftSaved)
-    }
-
-    private fun onBackToForm() {
-        discardCreationKey()
-        update { it.copy(step = GroupSetupStep.Form, creationCommandKey = null) }
     }
 
     private fun discardCreationKey() {

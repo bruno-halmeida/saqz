@@ -18,7 +18,6 @@ import br.com.saqz.groups.presentation.setup.GroupSetupDefaults
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupSheet
 import br.com.saqz.groups.presentation.setup.GroupSetupState
-import br.com.saqz.groups.presentation.setup.GroupSetupStep
 import br.com.saqz.groups.presentation.setup.validate
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -73,14 +72,6 @@ class GroupSetupScreenshotTest {
             state = createState(sheet = GroupSetupSheet.Slot(index = null)),
             onIntent = {},
             onBack = {},
-        )
-    }
-
-    @Test
-    fun review() = capture("2d-revisao") {
-        GroupReviewScreen(
-            state = createState(step = GroupSetupStep.Review),
-            onIntent = {},
         )
     }
 
@@ -169,14 +160,12 @@ class GroupSetupScreenshotTest {
 
     private fun createState(
         mode: GroupSetupMode = GroupSetupMode.Create,
-        step: GroupSetupStep = GroupSetupStep.Form,
         photoUrl: String? = null,
         sheet: GroupSetupSheet? = null,
         form: GroupSetupForm = PreviewCourtForm,
         durationMinutes: Int = GroupSetupDefaults.DurationMinutes,
     ) = GroupSetupState(
         mode = mode,
-        step = step,
         form = form,
         photoUrl = photoUrl,
         memberCount = 26,
