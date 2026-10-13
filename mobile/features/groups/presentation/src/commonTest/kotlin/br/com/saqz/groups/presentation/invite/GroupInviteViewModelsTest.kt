@@ -95,6 +95,20 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
+    fun `a group that already has athletes keeps the deactivated link off`() = runTest {
+        val membership = FakeMembershipGateway()
+        val viewModel = groupViewModel(
+            membership = membership,
+            metadata = SaqzResult.Success(GroupInviteMetadata(active = false)),
+            athleteGateway = FakeAthleteGateway(listOf(roster("a1", "2026-10-01T10:00:00Z"))),
+        )
+        advanceUntilIdle()
+
+        assertEquals(0, membership.rotateCalls)
+        assertEquals(InviteStatus.Empty, viewModel.state.value.inviteStatus)
+    }
+
+    @Test
     fun `an active invite is never rotated on open even without a cached url`() = runTest {
         val membership = FakeMembershipGateway()
         val viewModel = groupViewModel(

@@ -6,6 +6,7 @@ import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupTimeZone
 import br.com.saqz.groups.domain.group.GroupVersionToken
@@ -150,19 +151,21 @@ class GroupInviteViewModel(
                         .map { member -> member.toUi() },
                 )
             }
-            generateOnFirstLoad(active)
+            generateOnFirstLoad(active, onlyOwner = roster.all { it.role == GroupRole.OWNER })
         }
         job.invokeOnCompletion { if (isCurrent(operation, requestGeneration)) loadInFlight = false }
     }
 
     /**
-     * Sem convite ativo não há o que mostrar além do botão: gera o link já. Convite ativo (mesmo
-     * sem URL em cache) nunca é girado aqui; falha cai no vazio com "tentar".
+     * Grupo ainda sem ninguém além do dono e sem convite ativo: gera o link já, que é o passo
+     * "Chame a galera" do onboarding. Com atletas no grupo, convite inativo pode ser um "Desativar
+     * link" de propósito (o backend apaga o convite, então não dá para distinguir), e fica como está.
+     * Convite ativo (mesmo sem URL em cache) nunca é girado aqui; falha cai no vazio com "tentar".
      */
-    private fun generateOnFirstLoad(active: Boolean) {
+    private fun generateOnFirstLoad(active: Boolean, onlyOwner: Boolean) {
         val first = !autoGenerateChecked
         autoGenerateChecked = true
-        if (first && !active) rotate()
+        if (first && !active && onlyOwner) rotate()
     }
 
     private suspend fun readCachedInvite(): GroupInviteUrlCache? {
