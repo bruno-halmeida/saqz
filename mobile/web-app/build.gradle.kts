@@ -10,6 +10,12 @@ plugins {
     id("saqz.detekt")
 }
 
+// O alvo nodejs() aplica o plugin do Node por projeto, com o repositório Ivy padrão; como o da raiz,
+// ele precisa usar o que o settings.gradle.kts já declara (FAIL_ON_PROJECT_REPOS).
+plugins.withType<org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsPlugin> {
+    the<org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec>().downloadBaseUrl.set(null as String?)
+}
+
 kotlin {
     wasmJs {
         outputModuleName.set("saqz-web")
@@ -30,6 +36,8 @@ kotlin {
                 )
             }
         }
+        // Os testes das portas (parser de links, rascunhos) rodam no Node, sem navegador: ./gradlew :web-app:wasmJsNodeTest.
+        nodejs()
         binaries.executable()
     }
 
@@ -43,6 +51,11 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.koin.core)
             implementation(libs.coil.core)
+            implementation(libs.navigationevent.compose)
+        }
+        wasmJsTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }
