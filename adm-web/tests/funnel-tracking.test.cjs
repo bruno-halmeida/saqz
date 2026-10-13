@@ -1,4 +1,4 @@
-// Funil de medição do cadastro (/comecar/) e da assinatura (/assinar/). Ver docs/medicao-web.md.
+// Funil de medição do cadastro (/comecar/) e da assinatura (/assinar/). Ver deploy/medicao-web.md.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');

@@ -19,7 +19,7 @@
   var trialGeneration = 0;
 
   function $(id) { return document.getElementById(id); }
-  // Funil de medição (docs/medicao-web.md): sem o carregador da landing, vira no-op.
+  // Funil de medição (deploy/medicao-web.md): sem o carregador da landing, vira no-op.
   function track(name, params) { try { if (window.saqzTrack) window.saqzTrack(name, params || {}); } catch (ignored) {} }
   function identify(accountId, firebaseUid) { try { if (accountId && window.saqzIdentify) window.saqzIdentify(accountId, firebaseUid); } catch (ignored) {} }
   function show(id) { $(id).hidden = false; }

@@ -64,7 +64,7 @@
   var trocaAlvo = null;
 
   function $(id) { return document.getElementById(id); }
-  // Funil de medição (docs/medicao-web.md): sem o carregador da landing, vira no-op.
+  // Funil de medição (deploy/medicao-web.md): sem o carregador da landing, vira no-op.
   function track(name, params) { try { if (window.saqzTrack) window.saqzTrack(name, params || {}); } catch (ignored) {} }
   function identify(user) { try { if (user && window.saqzIdentifyFirebase) window.saqzIdentifyFirebase(user.uid); } catch (ignored) {} }
   var ultimoValorPendente = null;

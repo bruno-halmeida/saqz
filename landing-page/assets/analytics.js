@@ -56,7 +56,7 @@
       else window.fbq('trackCustom', name, params);
     }
   }
-  // Usados pelas páginas /comecar/ e /assinar/ para marcar o funil (ver docs/medicao-web.md).
+  // Usados pelas páginas /comecar/ e /assinar/ para marcar o funil (ver deploy/medicao-web.md).
   window.saqzTrack = send;
   // user_id = id interno da conta (o mesmo que o app manda ao Firebase), para o GA4 ligar site e app.
   // O cadastro conhece esse id pela sessão e guarda o par com o uid do Firebase; a assinatura só
