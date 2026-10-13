@@ -202,7 +202,10 @@
       setMessage("ready-copy", "Continue no Saqz e crie seu primeiro grupo agora, com esta mesma conta. O teste começa no primeiro grupo.");
       show("web-app-cta");
       // No iPhone o app ainda não está na App Store: o painel de instalação só confundiria.
-      if (isIPhone()) hide("download-panel");
+      if (isIPhone()) {
+        hide("download-panel");
+        show("web-app-ios-tip");
+      }
     });
   }
   function bootstrap(user, requestedName, expectedGeneration) {
@@ -474,31 +477,33 @@
   function storeUrl(value) {
     return typeof value === "string" && /^https:\/\//.test(value.trim()) ? value.trim() : "";
   }
+  // Selo oficial só com link publicado: a Apple e o Google não permitem selo alterado nem "em breve".
   function bindStoreBadge(id, url) {
     var element = $(id);
     var href = storeUrl(url);
     var label = element.getAttribute("data-label") || "";
     var soon = !href;
     element.classList.toggle("is-soon", soon);
+    element.hidden = soon;
     if (soon) {
       element.removeAttribute("href");
       element.removeAttribute("target");
       element.removeAttribute("rel");
-      element.setAttribute("aria-disabled", "true");
-      element.setAttribute("aria-label", label + " — em breve");
       return;
     }
     element.href = href;
     element.target = "_blank";
     element.rel = "noopener noreferrer";
-    element.removeAttribute("aria-disabled");
     element.setAttribute("aria-label", label);
   }
+  // Sem App Store, o iPhone usa o web app: o bloco "No iPhone" e a nota tomam o lugar do selo.
   function bindStoreBadges() {
     bindStoreBadge("ios-store", config.iosAppStoreUrl);
     bindStoreBadge("android-store", config.androidPlayStoreUrl);
-    var waiting = $("ios-store").classList.contains("is-soon") && $("android-store").classList.contains("is-soon");
-    $("store-soon-note").hidden = !waiting;
+    var iosLive = !$("ios-store").classList.contains("is-soon");
+    $("iphone-web").hidden = iosLive;
+    $("store-soon-note").hidden = iosLive;
+    if (iosLive) $("step-get").textContent = "Baixe o app na loja do iPhone ou Android";
   }
   function requestAppLink() {
     if (busy || !currentUser || !profileReady) return;
@@ -576,6 +581,7 @@
     $("request-app-link").addEventListener("click", requestAppLink);
     $("app-link").addEventListener("click", function () { track("app_open", { via: "link" }); });
     $("web-app-cta").addEventListener("click", function () { track("app_open", { via: "web" }); });
+    $("iphone-web").addEventListener("click", function () { track("app_open", { via: "web", origem: "painel" }); });
     ["ios-store", "android-store"].forEach(function (id) {
       $(id).addEventListener("click", function () {
         if (!$(id).classList.contains("is-soon")) track("store_click", { store: id === "ios-store" ? "ios" : "android" });

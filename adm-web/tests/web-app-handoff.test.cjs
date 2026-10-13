@@ -19,7 +19,7 @@ function elementsOf(html) {
   }]));
 }
 
-function context(userAgent, elements, available) {
+function context(userAgent, elements, available, storeConfig) {
   const fetched = [];
   const fetch = (path) => {
     fetched.push(path);
@@ -27,18 +27,18 @@ function context(userAgent, elements, available) {
     return new Promise(() => {}); // trial e afins: não importam aqui
   };
   return { fetched, ctx: vm.createContext({
-    window: { SAQZ_FIREBASE_CONFIG: { androidPlayStoreUrl: 'https://play.google.com/store/apps/details?id=app.saqz' } },
+    window: { SAQZ_FIREBASE_CONFIG: storeConfig || { androidPlayStoreUrl: 'https://play.google.com/store/apps/details?id=app.saqz' } },
     URL, URLSearchParams, WebAssembly, fetch,
     navigator: { userAgent, platform: userAgent.includes('Macintosh') ? 'MacIntel' : 'Linux', maxTouchPoints: 0 },
     document: { readyState: 'loading', addEventListener() {}, getElementById: (id) => elements.get(id) },
   }) };
 }
 
-function comecar(userAgent, available = true) {
+function comecar(userAgent, available = true, storeConfig) {
   const html = fs.readFileSync(require.resolve('../comecar/index.html'), 'utf8');
   const source = fs.readFileSync(require.resolve('../comecar/comecar.js'), 'utf8');
   const elements = elementsOf(html);
-  const { ctx, fetched } = context(userAgent, elements, available);
+  const { ctx, fetched } = context(userAgent, elements, available, storeConfig);
   vm.runInContext(source.replace('  if (document.readyState', `
     window.handoffTest = { ready() { displayProfile({ user: { phoneRequired: false } }); } };
     if (document.readyState`), ctx);
@@ -84,4 +84,36 @@ test('assinatura: sucesso e "já é assinante" oferecem o web app no iPhone', ()
   const source = fs.readFileSync(require.resolve('../assinar/assinar.js'), 'utf8');
   assert.match(source, /estado === "sucesso" \|\| estado === "assinante"/);
   assert.match(source, /Continue no Saqz e crie seu grupo\./);
+});
+
+test('iPhone: abaixo do "Continuar no Saqz" vem a dica de adicionar à Tela de Início', async () => {
+  const page = comecar(IPHONE);
+  page.ready();
+  await flush(); await flush();
+  assert.equal(page.el('web-app-ios-tip').hidden, false);
+});
+
+test('computador: selo oficial do Google Play, sem selo da App Store, e o bloco "No iPhone" com a nota', async () => {
+  const page = comecar(DESKTOP);
+  page.ready();
+  await flush(); await flush();
+  assert.equal(page.el('android-store').hidden, false);
+  assert.equal(page.el('ios-store').hidden, true);
+  assert.equal(page.el('iphone-web').hidden, false);
+  assert.equal(page.el('store-soon-note').hidden, false);
+  assert.equal(page.el('web-app-ios-tip').hidden, true);
+});
+
+test('com link da App Store: o selo oficial aparece e o bloco "No iPhone" e a nota somem', async () => {
+  const page = comecar(DESKTOP, true, {
+    androidPlayStoreUrl: 'https://play.google.com/store/apps/details?id=app.saqz',
+    iosAppStoreUrl: 'https://apps.apple.com/br/app/id6812743525',
+  });
+  page.ready();
+  await flush(); await flush();
+  assert.equal(page.el('ios-store').hidden, false);
+  assert.equal(page.el('ios-store').href, 'https://apps.apple.com/br/app/id6812743525');
+  assert.equal(page.el('iphone-web').hidden, true);
+  assert.equal(page.el('store-soon-note').hidden, true);
+  assert.equal(page.el('step-get').textContent, 'Baixe o app na loja do iPhone ou Android');
 });

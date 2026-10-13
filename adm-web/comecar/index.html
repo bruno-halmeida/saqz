@@ -10,7 +10,7 @@
   <script src="../assets/firebase-config.js"></script>
   <script src="../assets/analytics-config.js"></script>
   <script src="../assets/analytics.js" defer></script>
-  <script src="comecar.js?v=web-app" defer></script>
+  <script src="comecar.js?v=selos" defer></script>
   <style>
     @font-face { font-family: Inter; src: url("../assets/inter-var.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
     :root { --blue:#0638DF; --pressed:#052BB3; --lime:#C7F300; --navy:#0E1738; --paper:#F5F5F7; --white:#FFF; --line:#D8DDE8; --muted:#667085; --error:#E5484D; --success:#17B26A; --google:#1F1F1F; --google-line:#747775; }
@@ -121,56 +121,33 @@
     }
     .download-steps { counter-reset: step; }
     .store-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
       gap: 10px;
       margin-top: 18px;
     }
-    .store-badge {
-      position: relative;
+    /* Selos oficiais (Apple Marketing Tools e Google Play Badges): sem recolorir nem selo por cima.
+       Loja sem link publicado não mostra selo nenhum. */
+    .store-official { display: inline-flex; line-height: 0; border-radius: 8px; }
+    .store-official img { display: block; height: 44px; width: auto; }
+    .store-official:focus-visible { outline: 3px solid rgba(199,243,0,.35); outline-offset: 2px; }
+    .iphone-web {
       display: flex;
       align-items: center;
       gap: 10px;
-      min-height: 56px;
-      padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,.16);
-      border-radius: 14px;
-      background: #050A1C;
+      height: 44px;
+      padding: 0 14px;
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 8px;
       color: var(--white);
       text-decoration: none;
-      font-weight: 700;
     }
-    .store-badge svg { width: 22px; height: 22px; flex: 0 0 auto; fill: currentColor; }
-    .store-badge small {
-      display: block;
-      color: rgba(255,255,255,.62);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
-    .store-badge strong { display: block; margin-top: 1px; font-size: 14px; letter-spacing: -.02em; }
-    .store-badge:focus-visible { outline: 3px solid rgba(199,243,0,.35); outline-offset: 2px; }
-    .store-badge:not(.is-soon):hover { border-color: var(--lime); }
-    .store-badge.is-soon {
-      cursor: default;
-      pointer-events: none;
-      opacity: .78;
-    }
-    .store-badge .soon {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      padding: 3px 7px;
-      border-radius: 999px;
-      background: var(--lime);
-      color: var(--navy);
-      font-size: 9px;
-      font-weight: 800;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
-    .store-badge:not(.is-soon) .soon { display: none; }
+    .iphone-web svg { width: 20px; height: 20px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+    .iphone-web small { display: block; color: rgba(255,255,255,.62); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .iphone-web strong { display: block; margin-top: 1px; font-size: 14px; letter-spacing: -.01em; }
+    .iphone-web:hover { border-color: var(--lime); }
+    .iphone-web:focus-visible { outline: 3px solid rgba(199,243,0,.35); outline-offset: 2px; }
     .download-soon {
       margin: 12px 0 0;
       color: rgba(255,255,255,.62);
@@ -200,13 +177,11 @@
     .trial-block { margin-top: 18px; padding-top: 4px; }
     .trial-block h3 { margin: 0 0 6px; font-size: 16px; letter-spacing: -.02em; }
     footer { grid-column: 1 / -1; color: var(--muted); font-size: 13px; text-align: center; }
-    .download-panel a.store-badge { color: var(--white); font-weight: 700; text-decoration: none; }
     @media (max-width:419px) {
       .shell { width:min(100% - 24px, 440px); }
       main { padding-top:16px; }
       .card { padding:18px; }
       h1 { font-size:28px; }
-      .store-row { grid-template-columns: 1fr; }
     }
     @media (max-width:1099px) { .intro .offer { display:none; } }
     @media (min-width:1100px) {
@@ -291,27 +266,28 @@
       <h2 id="ready-title">Sua conta está pronta.</h2>
       <p class="sub" id="ready-copy">Baixe o app e entre com esta mesma conta. O teste começa quando você criar o primeiro grupo no celular.</p>
       <a class="btn" id="web-app-cta" href="/app/" hidden>Continuar no Saqz</a>
+      <p class="fine" id="web-app-ios-tip" hidden>No iPhone, o Saqz funciona direto no navegador. Para abrir como um app, toque em Compartilhar › Adicionar à Tela de Início.</p>
       <div class="download-panel" id="download-panel">
         <p class="download-kicker">Próximo passo</p>
-        <h3 class="download-title">Instale o Saqz no celular</h3>
+        <h3 class="download-title">Use o Saqz no celular</h3>
         <ol class="download-steps">
-          <li>Baixe o app na loja do iPhone ou Android</li>
+          <li id="step-get">No Android, baixe o app na Google Play. No iPhone, o Saqz abre no navegador, sem instalar.</li>
           <li>Entre com o mesmo e-mail ou Google deste cadastro</li>
           <li>Crie o primeiro grupo para começar o teste</li>
         </ol>
         <div class="store-row">
-          <a class="store-badge is-soon" id="ios-store" data-label="Baixar na App Store" aria-disabled="true" aria-label="Baixar na App Store — em breve">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16.18 12.55c.03-2.08 1.7-3.08 1.78-3.13-1-.1-2.12.58-2.66.58-.56 0-1.4-.56-2.31-.55-1.19.02-2.29.69-2.9 1.76-1.25 2.16-.32 5.35.88 7.1.6.86 1.3 1.82 2.22 1.78.9-.04 1.23-.57 2.31-.57s1.38.57 2.32.55c.96-.02 1.57-.86 2.15-1.73.68-1 .96-1.96.98-2.01-.02 0-1.86-.71-1.89-2.83zM14.7 8.4c.48-.59.81-1.4.72-2.22-.7.03-1.55.47-2.05 1.05-.45.52-.85 1.36-.74 2.16.78.06 1.58-.4 2.07-.99z"/></svg>
-            <span><small>Baixar na</small><strong>App Store</strong></span>
-            <span class="soon">Em breve</span>
+          <a class="store-official" id="android-store" data-label="Disponível no Google Play" hidden>
+            <img src="badges/google-play-pt-br.png" alt="Disponível no Google Play" width="148" height="44">
           </a>
-          <a class="store-badge is-soon" id="android-store" data-label="Disponível no Google Play" aria-disabled="true" aria-label="Disponível no Google Play — em breve">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.6 2.8v18.4c0 .5.4.7.8.4l10.2-9.2c.3-.3.3-.8 0-1.1L4.4 2.3c-.4-.3-.8-.1-.8.5zm12.3 7.2 2.3-2.1c.7-.6.7-1.8 0-2.4L15.3 3c-.3-.3-.8-.1-.8.3v4.3l1.4 2.4zm0 4.8-1.4 2.4v4.3c0 .4.5.6.8.3l2.9-2.6c.7-.6.7-1.8 0-2.4l-2.3-2z"/></svg>
-            <span><small>Disponível no</small><strong>Google Play</strong></span>
-            <span class="soon">Em breve</span>
+          <a class="store-official" id="ios-store" data-label="Baixar na App Store" hidden>
+            <img src="badges/app-store-pt-br.svg" alt="Baixar na App Store" width="132" height="44">
+          </a>
+          <a class="iphone-web" id="iphone-web" href="/app/">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>
+            <span><small>No iPhone</small><strong>Use pelo navegador</strong></span>
           </a>
         </div>
-        <p class="download-soon" id="store-soon-note">Os links das lojas entram neste layout assim que o app for publicado.</p>
+        <p class="download-soon" id="store-soon-note">No iPhone, abra saqz.app/app e toque em Compartilhar › Adicionar à Tela de Início: o Saqz ganha um ícone, como um app. O app da App Store chega em breve.</p>
         <div class="download-open">
           <p class="download-open-label">Já tem o app instalado?</p>
           <button class="btn" id="request-app-link" type="button">Abrir o app neste celular</button>
