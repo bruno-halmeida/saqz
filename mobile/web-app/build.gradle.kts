@@ -22,6 +22,15 @@ tasks.withType<org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest>().co
     environment("NODE_OPTIONS", "--import=${layout.projectDirectory.file("src/wasmJsTest/node/stub-skiko.mjs").asFile.toURI()}")
 }
 
+// Scripts do hospedeiro (tela leve de carregamento e service worker): JS puro, testado direto no Node do sistema.
+val hostScriptsTest = tasks.register<Exec>("hostScriptsTest") {
+    group = "verification"
+    description = "Testes de saqz-loader.js e saqz-sw.js (node --test)."
+    workingDir = layout.projectDirectory.asFile
+    commandLine("node", "--test", "src/wasmJsTest/node")
+}
+tasks.matching { it.name == "check" }.configureEach { dependsOn(hostScriptsTest) }
+
 kotlin {
     wasmJs {
         outputModuleName.set("saqz-web")

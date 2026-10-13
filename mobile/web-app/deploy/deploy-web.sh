@@ -25,8 +25,8 @@ cp "$deploy_dir/nginx.conf" "$deploy_dir/compose.yaml" "$stage/"
 
 # O Cloudflare guarda .js por 4 h no navegador, mesmo com no-cache na origem; o index.html ele não guarda.
 # Uma versão na URL dos scripts faz cada publicação chegar na hora (o webpack ignora a query ao achar o .wasm).
-version="$(cat "$stage/dist/saqz-web.js" "$stage/dist/saqz-config.js" "$stage/dist/saqz-bridge.js" | shasum | cut -c1-10)"
-for script in saqz-web.js saqz-config.js saqz-bridge.js; do
+version="$(cat "$stage/dist/saqz-web.js" "$stage/dist/saqz-config.js" "$stage/dist/saqz-bridge.js" "$stage/dist/saqz-loader.js" "$stage/dist/saqz-sw.js" | shasum | cut -c1-10)"
+for script in saqz-web.js saqz-config.js saqz-bridge.js saqz-loader.js saqz-sw.js; do
   sed -i '' "s#\"$script\"#\"$script?v=$version\"#g" "$stage/dist/index.html"
 done
 grep -q "saqz-web.js?v=$version" "$stage/dist/index.html" || { echo "index.html sem a versão dos scripts" >&2; exit 1; }
