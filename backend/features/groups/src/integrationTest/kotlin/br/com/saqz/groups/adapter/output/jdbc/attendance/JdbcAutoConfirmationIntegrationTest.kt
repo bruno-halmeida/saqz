@@ -5,6 +5,7 @@ import br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameOccurrenceRepository
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcOccurrenceMaterializationRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.attendance.AttendanceChargePort
+import br.com.saqz.groups.application.attendance.AttendanceRecord
 import br.com.saqz.groups.application.attendance.AutoConfirmAttendance
 import br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort
 import br.com.saqz.groups.application.attendance.AutoConfirmationOptInUpdate
@@ -19,6 +20,7 @@ import br.com.saqz.groups.application.game.recurrence.GameIdFactory
 import br.com.saqz.groups.application.game.recurrence.MaterializeWeeklySeries
 import br.com.saqz.groups.application.game.recurrence.MaterializeWeeklySeriesResult
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.game.GameMutation
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVenueSnapshot
@@ -39,6 +41,7 @@ import java.time.LocalTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -166,6 +169,62 @@ class JdbcAutoConfirmationIntegrationTest {
             repository.updateOwnOptIn(fixture.group, fixture.early, false),
         )
         assertEquals(true, bool("SELECT auto_confirm_enabled FROM group_memberships WHERE user_id='${fixture.early}'"))
+    }
+
+    @Test
+    fun `auto confirmed member who declined returns to the full game and waits with the next sequence`() {
+        val fixture = publishFixture()
+        execute(
+            "UPDATE games SET status='PUBLISHED', starts_at=now() + interval '2 days', " +
+                "confirmation_deadline=now() + interval '1 day', local_date=current_date + 2 WHERE id='${fixture.game}'",
+        )
+        assertEquals(3, autoConfirm().applyOpenGames())
+        val self = RespondAttendance(
+            JdbcTransactionRunner(dataSource),
+            JdbcAttendanceCommandRepository(dataSource),
+            AttendanceChargePort { _, _ -> },
+            { FIXED_NOW },
+        )
+        self.execute(fixture.early, fixture.group, fixture.game, fixture.early, AttendanceIntent.DECLINE)
+        assertEquals("DECLINED", status(fixture.early, fixture.game))
+        assertEquals("CONFIRMED", status(fixture.late, fixture.game))
+
+        self.execute(fixture.early, fixture.group, fixture.game, fixture.early, AttendanceIntent.CONFIRM)
+
+        assertEquals("WAITLISTED", status(fixture.early, fixture.game))
+        assertEquals(2, count("SELECT waitlist_sequence FROM game_attendance WHERE game_id='${fixture.game}' AND member_user_id='${fixture.early}'"))
+        assertEquals(2, count("SELECT waitlist_sequence_allocator FROM games WHERE id='${fixture.game}'"))
+        assertEquals(0, autoConfirm().applyOpenGames())
+        assertEquals("WAITLISTED", status(fixture.early, fixture.game))
+    }
+
+    @Test
+    fun `saving over an existing answer updates it in place and takes the next waitlist position`() {
+        val fixture = publishFixture()
+        val repository = JdbcAutoConfirmationRepository(dataSource)
+        execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,responded_at,updated_at,member_display_name) VALUES ('${fixture.game}','${fixture.group}','${fixture.early}','DECLINED',TIMESTAMPTZ '2026-08-03T12:00:00Z',TIMESTAMPTZ '2026-08-03T12:00:00Z','early')")
+        val sequence = repository.nextWaitlistSequence(fixture.group, fixture.game)
+
+        repository.save(AttendanceRecord(fixture.game, fixture.group, fixture.early, AttendanceStatus.WAITLISTED, sequence, FIXED_NOW, FIXED_NOW, 2))
+
+        assertEquals("WAITLISTED", status(fixture.early, fixture.game))
+        assertEquals(1, count("SELECT waitlist_sequence FROM game_attendance WHERE member_user_id='${fixture.early}'"))
+        assertEquals(2, count("SELECT version FROM game_attendance WHERE member_user_id='${fixture.early}'"))
+        assertEquals(1, count("SELECT count(*) FROM game_attendance WHERE member_user_id='${fixture.early}'"))
+    }
+
+    @Test
+    fun `saving a first version over an existing answer loses the write`() {
+        val fixture = publishFixture()
+        val repository = JdbcAutoConfirmationRepository(dataSource)
+        execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,responded_at,updated_at,member_display_name) VALUES ('${fixture.game}','${fixture.group}','${fixture.early}','DECLINED',TIMESTAMPTZ '2026-08-03T12:00:00Z',TIMESTAMPTZ '2026-08-03T12:00:00Z','early')")
+
+        val failure = assertFailsWith<IllegalStateException> {
+            repository.save(AttendanceRecord(fixture.game, fixture.group, fixture.early, AttendanceStatus.CONFIRMED, null, FIXED_NOW, FIXED_NOW, 1))
+        }
+
+        assertEquals("attendance optimistic write lost", failure.message)
+        assertEquals("DECLINED", status(fixture.early, fixture.game))
     }
 
     private fun autoConfirm() = AutoConfirmAttendance(

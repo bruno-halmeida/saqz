@@ -203,22 +203,42 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
 
     override fun saveGuest(record: AttendanceRecord, guestName: String) = write(record, guestName)
 
+    /**
+     * Versão 1 é a linha nova (INSERT); versão maior é a resposta que já existe (UPDATE com a versão anterior).
+     * Os dois comandos ficam separados de propósito: um `INSERT ... ON CONFLICT DO UPDATE` dispara o gatilho
+     * `enforce_monotonic_waitlist_sequence` duas vezes (BEFORE INSERT e depois BEFORE UPDATE), e a segunda
+     * confere a sequência contra o alocador que a primeira já avançou, o que quebrava toda volta à espera.
+     */
     private fun write(record: AttendanceRecord, guestName: String?) {
-        check(
-            jdbc.sql(SAVE)
-                .param("game", record.gameId)
-                .param("group", record.groupId)
-                .param("member", record.memberId)
-                .param("status", record.status.name, Types.OTHER)
-                .param("sequence", record.waitlistSequence, java.sql.Types.BIGINT)
-                .param("responded", Timestamp.from(record.respondedAt))
-                .param("updated", Timestamp.from(record.updatedAt))
-                .param("version", record.version)
-                .param("guest", record.guestSeq)
-                .param("guestName", guestName, java.sql.Types.VARCHAR)
-                .update() == 1,
-        ) { "attendance optimistic write lost" }
+        val written = if (record.version == 1L) insert(record, guestName) else update(record)
+        check(written == 1) { "attendance optimistic write lost" }
     }
+
+    private fun insert(record: AttendanceRecord, guestName: String?): Int =
+        jdbc.sql(INSERT)
+            .param("game", record.gameId)
+            .param("group", record.groupId)
+            .param("member", record.memberId)
+            .param("status", record.status.name, Types.OTHER)
+            .param("sequence", record.waitlistSequence, java.sql.Types.BIGINT)
+            .param("responded", Timestamp.from(record.respondedAt))
+            .param("updated", Timestamp.from(record.updatedAt))
+            .param("version", record.version)
+            .param("guest", record.guestSeq)
+            .param("guestName", guestName, java.sql.Types.VARCHAR)
+            .update()
+
+    private fun update(record: AttendanceRecord): Int =
+        jdbc.sql(UPDATE)
+            .param("game", record.gameId)
+            .param("group", record.groupId)
+            .param("member", record.memberId)
+            .param("status", record.status.name, Types.OTHER)
+            .param("sequence", record.waitlistSequence, java.sql.Types.BIGINT)
+            .param("updated", Timestamp.from(record.updatedAt))
+            .param("version", record.version)
+            .param("guest", record.guestSeq)
+            .update()
 
     override fun nextGuestSeq(gameId: UUID, hostId: UUID): Int =
         requireNotNull(
@@ -433,7 +453,8 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             LEFT JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=:member AND a.guest_seq=:guest
             WHERE g.group_id=:group AND g.id=:game
         """
-        const val SAVE = """
+        // Linha nova: sem ON CONFLICT DO UPDATE (ver [write]). Conflito = 0 linhas = escrita perdida.
+        const val INSERT = """
             INSERT INTO game_attendance
                 (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version,member_display_name,guest_seq)
             SELECT :game,:group,:member,:status,:sequence,:responded,:updated,:version,
@@ -444,10 +465,14 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
                 SELECT 1 FROM access_groups
                 WHERE id=:group AND deleted_at IS NULL
             )
-            ON CONFLICT (game_id,member_user_id,guest_seq) DO UPDATE SET
-                status=EXCLUDED.status,waitlist_sequence=EXCLUDED.waitlist_sequence,
-                updated_at=EXCLUDED.updated_at,version=EXCLUDED.version
-            WHERE game_attendance.version=EXCLUDED.version-1
+            ON CONFLICT (game_id,member_user_id,guest_seq) DO NOTHING
+        """
+        // Resposta existente: só status, fila, data e versão; nome do snapshot e responded_at ficam como foram gravados.
+        const val UPDATE = """
+            UPDATE game_attendance
+            SET status=:status,waitlist_sequence=:sequence,updated_at=:updated,version=:version
+            WHERE game_id=:game AND member_user_id=:member AND guest_seq=:guest AND group_id=:group
+              AND version=:version-1
               AND EXISTS (
                   SELECT 1 FROM access_groups
                   WHERE id=:group AND deleted_at IS NULL

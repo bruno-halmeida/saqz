@@ -100,20 +100,34 @@ class JdbcAutoConfirmationRepository(dataSource: DataSource) : AutoConfirmationR
             .orElse(null),
     )
 
+    /** Versão 1 é a linha nova (INSERT); maior é resposta existente (UPDATE). Ver o motivo em [JdbcAttendanceCommandRepository]. */
     override fun save(record: AttendanceRecord) {
-        check(
-            jdbc.sql(SAVE)
-                .param("game", record.gameId)
-                .param("group", record.groupId)
-                .param("member", record.memberId)
-                .param("status", record.status.name, Types.OTHER)
-                .param("sequence", record.waitlistSequence, Types.BIGINT)
-                .param("responded", Timestamp.from(record.respondedAt))
-                .param("updated", Timestamp.from(record.updatedAt))
-                .param("version", record.version)
-                .update() == 1,
-        ) { "attendance optimistic write lost" }
+        val written = if (record.version == 1L) insert(record) else update(record)
+        check(written == 1) { "attendance optimistic write lost" }
     }
+
+    private fun insert(record: AttendanceRecord): Int =
+        jdbc.sql(INSERT)
+            .param("game", record.gameId)
+            .param("group", record.groupId)
+            .param("member", record.memberId)
+            .param("status", record.status.name, Types.OTHER)
+            .param("sequence", record.waitlistSequence, Types.BIGINT)
+            .param("responded", Timestamp.from(record.respondedAt))
+            .param("updated", Timestamp.from(record.updatedAt))
+            .param("version", record.version)
+            .update()
+
+    private fun update(record: AttendanceRecord): Int =
+        jdbc.sql(UPDATE)
+            .param("game", record.gameId)
+            .param("group", record.groupId)
+            .param("member", record.memberId)
+            .param("status", record.status.name, Types.OTHER)
+            .param("sequence", record.waitlistSequence, Types.BIGINT)
+            .param("updated", Timestamp.from(record.updatedAt))
+            .param("version", record.version)
+            .update()
 
     override fun append(event: AttendanceEvent) {
         check(
@@ -157,16 +171,19 @@ class JdbcAutoConfirmationRepository(dataSource: DataSource) : AutoConfirmationR
             FROM games g
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
         """
-        const val SAVE = """
+        const val INSERT = """
             INSERT INTO game_attendance
                 (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version,member_display_name,guest_seq)
             SELECT :game,:group,:member,:status,:sequence,:responded,:updated,:version,
                    (SELECT coalesce(nickname, display_name) FROM access_users WHERE id=:member),0
             WHERE EXISTS (SELECT 1 FROM access_groups WHERE id=:group AND deleted_at IS NULL)
-            ON CONFLICT (game_id,member_user_id,guest_seq) DO UPDATE SET
-                status=EXCLUDED.status,waitlist_sequence=EXCLUDED.waitlist_sequence,
-                updated_at=EXCLUDED.updated_at,version=EXCLUDED.version
-            WHERE game_attendance.version=EXCLUDED.version-1
+            ON CONFLICT (game_id,member_user_id,guest_seq) DO NOTHING
+        """
+        const val UPDATE = """
+            UPDATE game_attendance
+            SET status=:status,waitlist_sequence=:sequence,updated_at=:updated,version=:version
+            WHERE game_id=:game AND member_user_id=:member AND guest_seq=0 AND group_id=:group
+              AND version=:version-1
               AND EXISTS (SELECT 1 FROM access_groups WHERE id=:group AND deleted_at IS NULL)
         """
         const val APPEND = """

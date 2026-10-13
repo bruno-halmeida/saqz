@@ -460,6 +460,85 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     @Test fun `concurrent withdraw and confirm preserve capacity and earliest promotion`() { val f = fullFixture(); val waiting = member(f.group, "waiting"); waitlist(f, waiting, 1); val newcomer = member(f.group, "newcomer"); race({ f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE) }, { f.service.execute(newcomer, f.group, f.game, intent = AttendanceIntent.CONFIRM) }); assertEquals(2, int("SELECT count(*) FROM game_attendance WHERE status='CONFIRMED'")); assertEquals("CONFIRMED", status(waiting)); assertEquals("WAITLISTED", status(newcomer)) }
     @Test fun `concurrent capacity increase and confirm preserve fifo and capacity`() { val f = fullFixture(); val waiting = member(f.group, "waiting"); waitlist(f, waiting, 1); val newcomer = member(f.group, "newcomer"); race({ capacity(f).execute(f.owner, f.group, f.game, 1, 3) }, { f.service.execute(newcomer, f.group, f.game, intent = AttendanceIntent.CONFIRM) }); assertEquals(3, int("SELECT count(*) FROM game_attendance WHERE status='CONFIRMED'")); assertEquals("CONFIRMED", status(waiting)); assertEquals("WAITLISTED", status(newcomer)) }
 
+    // --- Voltar à espera: a linha já existe (DECLINED) e o gatilho monotônico não pode rodar duas vezes ---
+    @Test fun `declined member returning to a full game waits again with the next monotonic sequence`() {
+        val f = fixture(capacity = 2)
+        repeat(2) { attendance(f, member(f.group, "occupied-$it"), "CONFIRMED") }
+
+        val waiting = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM))
+        assertEquals(AttendanceStatus.WAITLISTED, waiting.status)
+        assertEquals(1L, waiting.waitlistSequence)
+        val declined = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE))
+        assertEquals(AttendanceStatus.DECLINED, declined.status)
+        assertNull(declined.waitlistSequence)
+
+        val again = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM))
+
+        assertEquals(AttendanceStatus.WAITLISTED, again.status)
+        assertEquals(2L, again.waitlistSequence)
+        assertEquals(3L, again.version)
+        assertEquals("WAITLISTED", status(f.member))
+        assertEquals(2, int("SELECT waitlist_sequence_allocator FROM games WHERE id='${f.game}'"))
+        assertEquals(1, int("SELECT count(*) FROM game_attendance WHERE member_user_id='${f.member}'"))
+        assertEquals(3, int("SELECT count(*) FROM attendance_events WHERE member_user_id='${f.member}'"))
+    }
+
+    @Test fun `confirmed member who declined returns to a game that filled up meanwhile and waits`() {
+        val f = fixture(capacity = 2)
+        assertEquals(AttendanceStatus.CONFIRMED, success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)).status)
+        assertEquals(AttendanceStatus.DECLINED, success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)).status)
+        repeat(2) { attendance(f, member(f.group, "filled-$it"), "CONFIRMED") }
+
+        val again = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM))
+
+        assertEquals(AttendanceStatus.WAITLISTED, again.status)
+        assertEquals(1L, again.waitlistSequence)
+        assertEquals(3L, again.version)
+        assertEquals(1, int("SELECT waitlist_sequence_allocator FROM games WHERE id='${f.game}'"))
+    }
+
+    @Test fun `saving an answer that already has a row as a first version loses the write`() {
+        val f = fixture()
+        attendance(f, f.member, "DECLINED")
+        val stamp = now()
+
+        val failure = assertFailsWith<IllegalStateException> {
+            JdbcAttendanceCommandRepository(dataSource).save(AttendanceRecord(f.game, f.group, f.member, AttendanceStatus.CONFIRMED, null, stamp, stamp, 1))
+        }
+
+        assertEquals("attendance optimistic write lost", failure.message)
+        assertEquals("DECLINED", status(f.member))
+    }
+
+    @Test fun `saving an answer over a stale version loses the write`() {
+        val f = fixture()
+        attendance(f, f.member, "DECLINED")
+        val stamp = now()
+
+        val failure = assertFailsWith<IllegalStateException> {
+            JdbcAttendanceCommandRepository(dataSource).save(AttendanceRecord(f.game, f.group, f.member, AttendanceStatus.CONFIRMED, null, stamp, stamp, 3))
+        }
+
+        assertEquals("attendance optimistic write lost", failure.message)
+        assertEquals("DECLINED", status(f.member))
+        assertEquals(1, int("SELECT version FROM game_attendance WHERE member_user_id='${f.member}'"))
+    }
+
+    @Test fun `saving a first version writes the row and a next version updates it in place`() {
+        val f = fixture()
+        val repository = JdbcAttendanceCommandRepository(dataSource)
+        val stamp = now()
+
+        repository.save(AttendanceRecord(f.game, f.group, f.member, AttendanceStatus.CONFIRMED, null, stamp, stamp, 1))
+        assertEquals("CONFIRMED", status(f.member))
+        assertEquals(1, int("SELECT version FROM game_attendance WHERE member_user_id='${f.member}'"))
+
+        repository.save(AttendanceRecord(f.game, f.group, f.member, AttendanceStatus.DECLINED, null, stamp, stamp.plusSeconds(5), 2))
+        assertEquals("DECLINED", status(f.member))
+        assertEquals(2, int("SELECT version FROM game_attendance WHERE member_user_id='${f.member}'"))
+        assertEquals(1, int("SELECT count(*) FROM game_attendance WHERE member_user_id='${f.member}'"))
+    }
+
     private fun concurrent(f: Fixture, members: List<UUID>): List<AttendanceRecord> {
         val barrier = CyclicBarrier(members.size + 1)
         val executor = Executors.newFixedThreadPool(members.size)
