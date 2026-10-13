@@ -4,6 +4,7 @@ import br.com.saqz.subscriptions.domain.subscription.SubscriptionProvider
 import androidx.compose.runtime.Immutable
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.subscriptions.domain.trial.TrialStatus
+import br.com.saqz.subscriptions.domain.trial.TrialUsage
 
 /**
  * 8e — plano atual, uso, recibos e o menu Gerenciar. Todo texto composto (modelo + valor
@@ -47,6 +48,9 @@ data class MyPlanTrialUi(
     val isOwner: Boolean,
     val canSubscribe: Boolean,
     val trialDays: Int = 14,
+    /** Dias de calendário até o fim; só no teste ativo do dono. */
+    val daysLeft: Int? = null,
+    val usage: TrialUsage? = null,
 )
 
 enum class MyPlanStatusTone { Active, PastDue, Canceled }

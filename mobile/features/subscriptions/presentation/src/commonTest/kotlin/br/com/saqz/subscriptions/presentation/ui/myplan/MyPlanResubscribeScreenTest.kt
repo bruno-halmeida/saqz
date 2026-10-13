@@ -14,7 +14,7 @@ import br.com.saqz.subscriptions.presentation.myplan.MyPlanStatusTone
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/** "Assinar de novo" no cartão da assinatura encerrada (a revisão da Apple não achava as compras). */
+/** "Reativar" no cartão da assinatura encerrada (a revisão da Apple não achava as compras). */
 @OptIn(ExperimentalTestApi::class)
 class MyPlanResubscribeScreenTest {
     @Test
@@ -22,7 +22,7 @@ class MyPlanResubscribeScreenTest {
         val intents = mutableListOf<MyPlanIntent>()
         setContent { SaqzTheme { MyPlanScreen(ended(canResubscribe = true), {}, intents::add, purchasesAvailable = true) } }
 
-        onNodeWithText("Assinar de novo").assertExists()
+        onNodeWithText("Reativar").assertExists()
         onNodeWithTag(MyPlanTags.Resubscribe).performClick()
 
         assertEquals(listOf<MyPlanIntent>(MyPlanIntent.OpenSubscribe), intents)

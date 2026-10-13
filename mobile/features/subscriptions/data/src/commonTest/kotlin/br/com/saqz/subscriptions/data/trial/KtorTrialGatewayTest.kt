@@ -183,6 +183,31 @@ class KtorTrialGatewayTest {
     }
 
     @Test
+    fun activeOwnerTrialMapsCountdownAndUsage() = runTest {
+        val value = success(gateway {
+            json(ACTIVE_OWNER.trim().dropLast(1) + ",\"daysLeft\":2,\"countdownSeenToday\":true,\"usage\":{\"games\":3,\"confirmedAthletes\":12,\"cashCents\":45000}}")
+        }.ownerTrial())
+
+        assertEquals(2, value.daysLeft)
+        assertEquals(true, value.countdownSeenToday)
+        assertEquals(br.com.saqz.subscriptions.domain.trial.TrialUsage(3, 12, 45_000), value.usage)
+        assertNull(success(gateway { json(ACTIVE_OWNER) }.ownerTrial()).daysLeft)
+    }
+
+    @Test
+    fun countdownSeenPostsWithoutBodyAndReportsConflictWithoutTrial() = runTest {
+        val posted = gateway { request ->
+            assertEquals(HttpMethod.Post, request.method)
+            assertEquals("/subscriptions/trial/countdown-prompt", request.url.encodedPath)
+            respond("", HttpStatusCode.NoContent)
+        }.markCountdownSeen()
+        assertEquals(SaqzResult.Success(Unit), posted)
+
+        val conflict = gateway { problemResponse(HttpStatusCode.Conflict, "NO_TRIAL") }.markCountdownSeen()
+        assertEquals(SaqzResult.Failure(TrialError.OfferUnavailable), conflict)
+    }
+
+    @Test
     fun couponRejectionAndChangedOfferHaveTypedErrors() = runTest {
         val invalid = gateway { problemResponse(HttpStatusCode.BadRequest, "INVALID") }.applyCoupon("INVALID")
         assertEquals(SaqzResult.Failure(TrialError.CouponUnavailable), invalid)

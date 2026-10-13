@@ -71,6 +71,9 @@ class OrganizerTrialConfiguration {
         groups: br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup,
         campaigns: TrialCampaignStore,
         eligibility: StartOrganizerTrial,
+        usage: br.com.saqz.sharedkernel.subscription.TrialUsageLookup,
+        prompts: br.com.saqz.subscriptions.application.TrialPromptStore,
+        clock: Clock,
         @org.springframework.beans.factory.annotation.Value("\${saqz.links.domain}") linksDomain: String,
     ): br.com.saqz.trials.http.OrganizerTrialController {
         val domain = java.net.URI(linksDomain)
@@ -78,12 +81,20 @@ class OrganizerTrialConfiguration {
         require(domain.path.isNullOrEmpty() || domain.path == "/")
         require(domain.query == null && domain.fragment == null)
         return br.com.saqz.trials.http.OrganizerTrialController(
-            actors, trials, groups, domain.toString().trimEnd('/') + "/", campaigns, eligibility,
+            actors, trials, groups, domain.toString().trimEnd('/') + "/", campaigns, eligibility, usage, prompts, clock,
         )
     }
 
     @Bean
     fun organizerTrialRepository(dataSource: DataSource): OrganizerTrialRepository = JdbcOrganizerTrialRepository(dataSource)
+
+    @Bean
+    fun trialUsageLookup(dataSource: DataSource): br.com.saqz.sharedkernel.subscription.TrialUsageLookup =
+        br.com.saqz.groups.adapter.output.jdbc.plan.JdbcTrialUsage(dataSource)
+
+    @Bean
+    fun trialPromptStore(dataSource: DataSource): br.com.saqz.subscriptions.application.TrialPromptStore =
+        br.com.saqz.subscriptions.adapter.output.jdbc.JdbcTrialPromptStore(dataSource)
 
     @Bean
     fun ownerGroupHistory(dataSource: DataSource): OwnerGroupHistory = JdbcOwnerGroupHistory(dataSource)

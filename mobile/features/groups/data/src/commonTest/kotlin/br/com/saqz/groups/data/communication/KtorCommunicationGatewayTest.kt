@@ -96,13 +96,13 @@ class KtorCommunicationGatewayTest {
         },"read":false}"""
         val inbox = gateway {
             respond(
-                """{"items":[${item(9, "FIRST_MEMBER", null)},${item(8, "FIRST_CONFIRMATION", "game-1")},${item(7, "FUTURE_CHANNEL", null)},${item(6, "ENTRY_REQUEST", null)},${item(5, "ANOTHER_FUTURE_CHANNEL", null)}],"nextCursor":null}""",
+                """{"items":[${item(9, "FIRST_MEMBER", null)},${item(8, "FIRST_CONFIRMATION", "game-1")},${item(7, "FUTURE_CHANNEL", null)},${item(6, "ENTRY_REQUEST", null)},${item(4, "TRIAL_ENDING", null)},${item(5, "ANOTHER_FUTURE_CHANNEL", null)}],"nextCursor":null}""",
                 headers = jsonHeaders,
             )
         }.inbox().success()
-        assertEquals(listOf(9L, 8L, 6L), inbox.items.map { it.sequence })
+        assertEquals(listOf(9L, 8L, 6L, 4L), inbox.items.map { it.sequence })
         assertEquals(
-            listOf(CommunicationChannel.FIRST_MEMBER, CommunicationChannel.FIRST_CONFIRMATION, CommunicationChannel.ENTRY_REQUEST),
+            listOf(CommunicationChannel.FIRST_MEMBER, CommunicationChannel.FIRST_CONFIRMATION, CommunicationChannel.ENTRY_REQUEST, CommunicationChannel.TRIAL_ENDING),
             inbox.items.map { it.message.channel },
         )
         assertEquals("game-1", inbox.items[1].message.gameId)

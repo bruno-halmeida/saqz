@@ -50,12 +50,17 @@
     <string name="myplan_trial_name">Organizador</string>
     <string name="myplan_no_plan">Vamos organizar o próximo jogo?</string>
     <string name="myplan_choose_plan">Conhecer os planos</string>
-    <string name="myplan_resubscribe">Assinar de novo</string>
-    <string name="myplan_included">Espaço para o seu futebol crescer</string>
+    <string name="myplan_resubscribe">Reativar</string>
+    <string name="myplan_included">Espaço para o seu grupo crescer</string>
     <string name="myplan_groups_benefit">Até 3 grupos</string>
     <string name="myplan_athletes_benefit">Atletas ilimitados</string>
     <string name="myplan_trial_next">Acesso da conta</string>
     <string name="myplan_trial_no_charge">O teste termina sem cobrança automática. O acesso depois dele depende do plano ativo da conta.</string>
+    <plurals name="myplan_trial_days_left">
+        <item quantity="one">Falta %1$d dia</item>
+        <item quantity="other">Faltam %1$d dias</item>
+    </plurals>
+    <string name="myplan_trial_last_day">Último dia do teste</string>
     <string name="myplan_trial_ended_label">TESTE ENCERRADO</string>
     <string name="myplan_choose_help">Consulte aqui o status e os recursos disponíveis para sua conta.</string>
 </resources>

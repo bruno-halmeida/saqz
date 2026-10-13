@@ -232,6 +232,8 @@ private fun br.com.saqz.subscriptions.domain.trial.TrialAccess.toUi() = MyPlanTr
     isOwner = isOwner,
     canSubscribe = isOwner && status != TrialStatus.Subscribed,
     trialDays = trialDays,
+    daysLeft = daysLeft,
+    usage = usage,
 )
 
 /**

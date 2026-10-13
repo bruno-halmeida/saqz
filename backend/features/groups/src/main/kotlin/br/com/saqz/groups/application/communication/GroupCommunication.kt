@@ -16,6 +16,7 @@ enum class MessageChannel {
     FIRST_MEMBER,
     FIRST_CONFIRMATION,
     ENTRY_REQUEST,
+    TRIAL_ENDING,
 }
 
 data class GroupMessage(

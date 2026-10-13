@@ -1,12 +1,15 @@
 package br.com.saqz.subscriptions.presentation.ui.myplan
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.subscriptions.domain.trial.TrialStatus
+import br.com.saqz.subscriptions.domain.trial.TrialUsage
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanIntent
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanState
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanTrialUi
@@ -27,6 +30,38 @@ class MyPlanTrialScreenTest {
         onNodeWithTag(MyPlanTags.ChangePlan).assertDoesNotExist()
         onNodeWithTag(MyPlanTags.Subscribe).assertDoesNotExist()
         assertEquals(emptyList(), intents)
+    }
+
+    @Test
+    fun expiredTrialDropsTheNoChargeNoteAndTheRawTimeZone() = runComposeUiTest {
+        setContent { SaqzTheme { MyPlanScreen(trialState(TrialStatus.Expired), {}, {}) } }
+        onNodeWithText("O teste termina sem cobrança automática. O acesso depois dele depende do plano ativo da conta.").assertDoesNotExist()
+        onAllNodes(hasText("America/", substring = true)).assertCountEquals(0)
+    }
+
+    @Test
+    fun activeTrialShowsTheCountdownAndTheUsageSummary() = runComposeUiTest {
+        val trial = MyPlanTrialUi(
+            TrialStatus.Active, "2026-09-26T12:30:00Z", true, true,
+            daysLeft = 3, usage = TrialUsage(games = 3, confirmedAthletes = 12, cashCents = 45_000),
+        )
+        setContent { SaqzTheme { MyPlanScreen(MyPlanState(isLoading = false, trial = trial), {}, {}) } }
+        onNodeWithText("Faltam 3 dias").assertExists()
+        onNodeWithText("3 jogos").assertExists()
+        onNodeWithText("12 atletas confirmados").assertExists()
+        onNodeWithText("R$\u00A0450,00 no caixa").assertExists()
+        onNodeWithText("Espaço para o seu grupo crescer").assertExists()
+    }
+
+    @Test
+    fun lastDayAndSingularDaysReadNaturally() = runComposeUiTest {
+        fun trial(days: Int) = MyPlanState(isLoading = false, trial = MyPlanTrialUi(TrialStatus.Active, "2026-09-26T12:30:00Z", true, true, daysLeft = days))
+        val days = androidx.compose.runtime.mutableIntStateOf(1)
+        setContent { SaqzTheme { MyPlanScreen(trial(days.intValue), {}, {}) } }
+        onNodeWithText("Falta 1 dia").assertExists()
+        days.intValue = 0
+        waitForIdle()
+        onNodeWithText("Último dia do teste").assertExists()
     }
 
     @Test

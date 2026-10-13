@@ -12,6 +12,7 @@ import br.com.saqz.subscriptions.domain.trial.TrialAccess
 import br.com.saqz.subscriptions.domain.trial.TrialError
 import br.com.saqz.subscriptions.domain.trial.TrialGateway
 import br.com.saqz.subscriptions.domain.trial.TrialStatus
+import br.com.saqz.subscriptions.domain.trial.TrialUsage
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -43,7 +44,13 @@ internal data class TrialAccessTransport(
     val selectedCouponCode: String? = null,
     val trialDays: Int = 14,
     val preauthorized: Boolean = false,
+    val daysLeft: Int? = null,
+    val usage: TrialUsageTransport? = null,
+    val countdownSeenToday: Boolean = false,
 )
+
+@Serializable
+internal data class TrialUsageTransport(val games: Int, val confirmedAthletes: Int, val cashCents: Long)
 
 @Serializable
 internal data class ApplyTrialCouponTransport(val code: String)
@@ -58,6 +65,11 @@ class KtorTrialGateway(
     }.mapTrial { it.toDomain() }
 
     override suspend fun ownerTrial() = fetch("subscriptions/trial")
+
+    override suspend fun markCountdownSeen(): SaqzResult<Unit, TrialError> =
+        retryTransport(RetrySafety.Never, delayMillis = retryDelay) {
+            network.executeNoContent(HttpMethod.Post, "subscriptions/trial/countdown-prompt")
+        }.mapTrial { }
 
     override suspend fun groupTrial(groupId: GroupId) = fetch("api/groups/${groupId.value}/trial")
 
@@ -88,6 +100,9 @@ private fun TrialAccessTransport.toDomain() = TrialAccess(
     selectedCouponCode = selectedCouponCode,
     trialDays = trialDays,
     preauthorized = preauthorized,
+    daysLeft = daysLeft,
+    usage = usage?.let { TrialUsage(it.games, it.confirmedAthletes, it.cashCents) },
+    countdownSeenToday = countdownSeenToday,
 )
 
 private fun TrialStatusTransport.toDomain() = when (this) {

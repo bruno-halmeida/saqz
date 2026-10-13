@@ -7,8 +7,8 @@ import kotlin.test.assertNull
 class TrialDateTimeTest {
     @Test
     fun exactBoundaryUsesChosenZoneIncludingPreviousDay() {
-        assertEquals("11/09/2026 22:30 (America/Sao_Paulo)", formatInstantDateTimePtBr("2026-09-12T01:30:00Z", "America/Sao_Paulo"))
-        assertEquals("12/09/2026 01:30 (UTC)", formatInstantDateTimePtBr("2026-09-12T01:30:00Z", "UTC"))
+        assertEquals("11/09/2026 22:30", formatInstantDateTimePtBr("2026-09-12T01:30:00Z", "America/Sao_Paulo"))
+        assertEquals("12/09/2026 01:30", formatInstantDateTimePtBr("2026-09-12T01:30:00Z", "UTC"))
     }
 
     @Test

@@ -1018,6 +1018,9 @@ internal fun SaqzNavHost(
                         if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.ENTRY_REQUEST) {
                             // Pedido para entrar: abre Convidar, onde ficam os pedidos para aprovar.
                             backStack.add(GroupsRoute.Invite(effect.groupId))
+                        } else if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.TRIAL_ENDING) {
+                            // Fim do teste: leva à mesma tela de planos do diálogo de assinatura.
+                            openSubscriptionPlans()
                         } else if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.CHARGE ||
                             effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.FIRST_MEMBER
                         ) {
@@ -1101,6 +1104,8 @@ internal fun SaqzNavHost(
             },
             modifier = modifier.testTag(SaqzDestinationHostTag),
         )
+        // Faltam N dias do teste: sobreposição, por isso depois da pilha.
+        TrialCountdownHost(sessionReady = sessionReady, onViewPlans = openSubscriptionPlans)
     }
 }
 

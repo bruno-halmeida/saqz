@@ -48,6 +48,7 @@ internal object MyPlanTags {
     const val ReceiptsSheet = "myplan-receipts-sheet"
     const val CancelSheet = "myplan-cancel-sheet"
     const val TrialCard = "myplan-trial-card"
+    const val TrialCountdown = "myplan-trial-countdown"
     const val Subscribe = "myplan-trial-subscribe"
     const val Resubscribe = "myplan-resubscribe"
 }

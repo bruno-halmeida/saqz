@@ -30,7 +30,17 @@ data class TrialAccess(
     val selectedCouponCode: String? = null,
     val trialDays: Int = 14,
     val preauthorized: Boolean = false,
+    /** Dias de calendário até o fim do teste (0 no último dia); só no teste ativo do dono. */
+    val daysLeft: Int? = null,
+    /** O que o dono já fez no teste; só no teste ativo do dono. */
+    val usage: TrialUsage? = null,
+    /** A folha de contagem já abriu hoje em algum aparelho do dono. */
+    val countdownSeenToday: Boolean = false,
 )
+
+data class TrialUsage(val games: Int, val confirmedAthletes: Int, val cashCents: Long) {
+    val isEmpty: Boolean get() = games == 0 && confirmedAthletes == 0 && cashCents == 0L
+}
 
 sealed interface TrialError : SaqzError {
     data object CouponUnavailable : TrialError
@@ -43,6 +53,9 @@ interface TrialGateway {
     suspend fun applyCoupon(code: String): SaqzResult<TrialAccess, TrialError> = SaqzResult.Failure(TrialError.OfferUnavailable)
 
     suspend fun ownerTrial(): SaqzResult<TrialAccess, TrialError>
+
+    /** Avisa o servidor de que a folha de contagem abriu hoje, para não abrir de novo no mesmo dia. */
+    suspend fun markCountdownSeen(): SaqzResult<Unit, TrialError> = SaqzResult.Success(Unit)
 
     suspend fun groupTrial(groupId: GroupId): SaqzResult<TrialAccess, TrialError>
 }

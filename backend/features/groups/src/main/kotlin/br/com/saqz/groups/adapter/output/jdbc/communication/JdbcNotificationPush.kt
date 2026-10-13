@@ -59,7 +59,7 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
                     else "Confirme sua presença no próximo jogo. Abra o app para conferir."
                 "GAME_OPEN" -> "O jogo está liberado. Abra o app para confirmar sua presença."
                 "ATTENDANCE_WINDOW" -> rs.getString("body")
-                "WAITLIST_DEADLINE", "FIRST_MEMBER", "FIRST_CONFIRMATION", "ENTRY_REQUEST" -> rs.getString("body")
+                "WAITLIST_DEADLINE", "FIRST_MEMBER", "FIRST_CONFIRMATION", "ENTRY_REQUEST", "TRIAL_ENDING" -> rs.getString("body")
                 else -> "Você recebeu um lembrete de cobrança. Abra o app para conferir."
             }
             NotificationPush(

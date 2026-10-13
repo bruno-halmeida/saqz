@@ -11,7 +11,11 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RestController
+import br.com.saqz.sharedkernel.subscription.TrialUsageLookup
 import br.com.saqz.subscriptions.application.TrialCampaignStore
+import br.com.saqz.subscriptions.application.TRIAL_ZONE
+import br.com.saqz.subscriptions.application.TrialPromptStore
+import br.com.saqz.subscriptions.application.trialDaysLeft
 import br.com.saqz.subscriptions.application.TrialCouponSelection
 import br.com.saqz.subscriptions.application.TrialOfferMode
 import br.com.saqz.subscriptions.application.StartOrganizerTrial
@@ -19,6 +23,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 data class TrialAccessResponse(
@@ -37,7 +42,15 @@ data class TrialAccessResponse(
     val selectedCouponCode: String? = null,
     val trialDays: Int = 14,
     val preauthorized: Boolean = false,
+    /** Dias de calendário (São Paulo) até o fim do teste; só no teste ativo, para o dono. */
+    val daysLeft: Int? = null,
+    /** Uso real do teste até agora; só no teste ativo, para o dono. */
+    val usage: TrialUsageResponse? = null,
+    /** A folha de contagem do app já abriu hoje (dia de São Paulo) em algum aparelho do dono. */
+    val countdownSeenToday: Boolean = false,
 )
+
+data class TrialUsageResponse(val games: Int, val confirmedAthletes: Int, val cashCents: Long)
 
 class ApplyTrialCouponRequest { var code: String? = null }
 
@@ -49,6 +62,9 @@ class OrganizerTrialController(
     private val appUrl: String,
     private val campaigns: TrialCampaignStore? = null,
     private val eligibility: StartOrganizerTrial? = null,
+    private val usageLookup: TrialUsageLookup? = null,
+    private val prompts: TrialPromptStore? = null,
+    private val clock: java.time.Clock = java.time.Clock.systemUTC(),
 ) {
     @GetMapping("/subscriptions/trial")
     fun mine(@AuthenticationPrincipal identity: RequestIdentity): TrialAccessResponse =
@@ -59,9 +75,28 @@ class OrganizerTrialController(
         val mode = campaigns?.mode() ?: TrialOfferMode.ON
         val canApply = mode != TrialOfferMode.OFF && eligibility?.isFirstTrialEligible(owner) == true
         val selected = if (canApply) campaigns?.selected(owner) else null
-        return access.copy(offerMode = mode, canRedeemCoupon = canApply, selectedCouponCode = selected?.code,
+        val countdown = countdown(owner, access)
+        val seenToday = countdown != null && prompts?.lastPromptDate(owner) == LocalDate.now(clock.withZone(TRIAL_ZONE))
+        return access.copy(daysLeft = countdown?.first, usage = countdown?.second, countdownSeenToday = seenToday, offerMode = mode, canRedeemCoupon = canApply, selectedCouponCode = selected?.code,
             trialDays = selected?.trialDays ?: access.trialDays,
             preauthorized = access.canCreateGroup && campaigns?.isPreauthorized(owner) == true)
+    }
+
+    /** O app abriu a folha de contagem: vale por hoje, para este dono, em qualquer aparelho. */
+    @PostMapping("/subscriptions/trial/countdown-prompt")
+    fun countdownPrompted(@AuthenticationPrincipal identity: RequestIdentity): ResponseEntity<Void> {
+        val owner = actors.resolve(identity).userId
+        val marked = prompts?.markPrompted(owner, LocalDate.now(clock.withZone(TRIAL_ZONE))) == true
+        return if (marked) ResponseEntity.noContent().build() else ResponseEntity.status(409).build()
+    }
+
+    private fun countdown(owner: UUID, access: TrialAccessResponse): Pair<Int, TrialUsageResponse>? {
+        val started = access.startedAt
+        val ends = access.endsAt
+        if (access.status != TrialStatus.ACTIVE || started == null || ends == null || usageLookup == null) return null
+        val now = clock.instant()
+        val usage = usageLookup.usageOf(owner, started, now)
+        return trialDaysLeft(now, ends) to TrialUsageResponse(usage.games, usage.confirmedAthletes, usage.cashCents)
     }
 
     @org.springframework.web.bind.annotation.ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException::class)

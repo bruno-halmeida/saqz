@@ -364,6 +364,8 @@ class MyPlanViewModelTest {
             maxAthletes = 25,
             isOwner = true,
             appUrl = null,
+            daysLeft = 2,
+            usage = br.com.saqz.subscriptions.domain.trial.TrialUsage(3, 12, 45_000),
         )
         val viewModel = MyPlanViewModel(
             gateway = FakeSubscriptionGateway(subscriptionResult = SaqzResult.Failure(SubscriptionError.NotFound)),
@@ -376,6 +378,8 @@ class MyPlanViewModelTest {
         assertNull(viewModel.state.value.plan)
         assertEquals(trial.endsAt, viewModel.state.value.trial?.endsAt)
         assertEquals(true, viewModel.state.value.trial?.canSubscribe)
+        assertEquals(2, viewModel.state.value.trial?.daysLeft)
+        assertEquals(br.com.saqz.subscriptions.domain.trial.TrialUsage(3, 12, 45_000), viewModel.state.value.trial?.usage)
         assertEquals(emptyList(), viewModel.state.value.receipts)
     }
 

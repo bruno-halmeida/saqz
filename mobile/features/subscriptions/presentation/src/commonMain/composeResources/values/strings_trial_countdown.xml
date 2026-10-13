@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Folha de contagem do teste do Organizador e o resumo de uso (também no cartão do teste em Meu plano) -->
+    <string name="trial_countdown_last_day">Hoje é o último dia do seu teste</string>
+    <plurals name="trial_countdown_title">
+        <item quantity="one">Falta %1$d dia do seu teste</item>
+        <item quantity="other">Faltam %1$d dias do seu teste</item>
+    </plurals>
+    <string name="trial_countdown_description">Assine para continuar marcando jogos.</string>
+    <string name="trial_countdown_view_plans">Ver planos</string>
+    <string name="trial_countdown_not_now">Agora não</string>
+    <string name="trial_usage_title">Até aqui no teste</string>
+    <plurals name="trial_usage_games">
+        <item quantity="one">%1$d jogo</item>
+        <item quantity="other">%1$d jogos</item>
+    </plurals>
+    <plurals name="trial_usage_athletes">
+        <item quantity="one">%1$d atleta confirmado</item>
+        <item quantity="other">%1$d atletas confirmados</item>
+    </plurals>
+    <string name="trial_usage_cash">%1$s no caixa</string>
+</resources>
