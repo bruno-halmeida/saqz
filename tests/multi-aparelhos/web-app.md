@@ -88,7 +88,7 @@ web app, Auth Emulator no mesmo origin), Safari do simulador iPhone 17 (iOS 27).
 | Atleta logado, Safari encerrado, link de presença (`?saqz_attendance=`) | OK: vai direto a "Confirmar presença", sem login |
 | Mesmo link com `saqz_intent=decline` | OK: folha "Não conseguirá ir?" e, depois do "Sim, não vou", DECLINED no banco |
 | Atleta sem sessão abre o link de presença | OK até o login: "Você foi convidado para um grupo", e depois do login segue para "Confirmando sua presença…" |
-| Atleta que recusou volta para "Vou" com o jogo na espera | FALHA no backend: 500 com `waitlist sequence must be the next monotonic value` (vale para todas as plataformas) |
+| Atleta que recusou volta para "Vou" com o jogo na espera | Dava 500 no backend (`waitlist sequence must be the next monotonic value`, em todas as plataformas). Corrigido em `857510d8`; retestado: volta à espera na posição 1 |
 
 Notas:
 - O leitor de links do web app só aceita `http` em `localhost` e `127.0.0.1`. Para uma terceira sessão separada
