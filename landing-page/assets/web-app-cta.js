@@ -4,6 +4,8 @@
 // E só se o web app responder, para a landing nunca apontar para um /app/ fora do ar.
 (function () {
   if (/Android/i.test(navigator.userAgent)) return;
+  // Sem WasmGC (iOS antes do 18.2) o web app não roda: fica o /comecar/ de sempre.
+  try { if (!(typeof WebAssembly === 'object' && WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 127, 0])))) return; } catch (e) { return; }
   var ready = false;
   fetch('/app/disponivel.json', { cache: 'no-store' })
     .then(function (response) { ready = response.ok; })

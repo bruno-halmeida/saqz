@@ -8,7 +8,7 @@ const code = 'A'.repeat(43);
 const play = 'https://play.google.com/store/apps/details?id=app.saqz';
 const appStore = 'https://apps.apple.com/br/app/id6812743525';
 
-function page(userAgent, pathname, search = '', { source = script, hidden = false, fetch } = {}) {
+function page(userAgent, pathname, search = '', { source = script, hidden = false, fetch, wasm = WebAssembly } = {}) {
   const elements = {
     heading: { textContent: 'Este link abre no app Saqz' },
     lead: { textContent: 'Baixe o app para entrar no grupo ou confirmar sua presença.' },
@@ -21,7 +21,7 @@ function page(userAgent, pathname, search = '', { source = script, hidden = fals
   const listeners = {};
   const requests = [];
   const context = {
-    location, navigator: { userAgent }, URLSearchParams, encodeURIComponent,
+    location, navigator: { userAgent }, URLSearchParams, encodeURIComponent, WebAssembly: wasm,
     document: { getElementById: id => elements[id], hidden },
     setTimeout: (callback, delay) => timers.push({ callback, delay }),
     clearTimeout: id => cleared.add(id),
@@ -181,4 +181,13 @@ test('Android never asks for the web app', async () => {
   const result = page('Android', '/', '?saqz_invite=' + code, { fetch: webUp });
   await settle();
   assert.deepEqual(result.requests, []);
+});
+
+test('an iPhone without WasmGC (iOS before 18.2) keeps the old page and never asks for the web app', async () => {
+  const noGc = { validate: () => false };
+  const result = page(iPhone, '/', '?saqz_invite=' + code, { fetch: webUp, wasm: noGc });
+  await settle();
+  assert.deepEqual(result.requests, []);
+  assert.equal(result.location.replaced, undefined);
+  assert.match(result.lead.textContent, /chega em breve na App Store/);
 });

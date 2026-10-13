@@ -39,6 +39,21 @@
 </head>
 <body>
   <div id="saqz-loading">Carregando o Saqz…</div>
-  <script src="saqz-web.js"></script>
+  <script>
+    // Kotlin/Wasm precisa de WasmGC (iOS 18.2+, Chrome 119+, Firefox 120+). Sem ele o .wasm nem compila:
+    // em vez de tela branca, a pessoa vê o que fazer. O módulo validado é o menor possível com um tipo struct.
+    (function () {
+      var gc = false;
+      try { gc = typeof WebAssembly === "object" && WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 127, 0])); } catch (e) { gc = false; }
+      if (gc) {
+        var script = document.createElement("script");
+        script.src = "saqz-web.js";
+        document.body.appendChild(script);
+        return;
+      }
+      document.getElementById("saqz-loading").textContent =
+        "Este navegador ainda não abre o Saqz. No iPhone, atualize o iOS (18.2 ou mais novo); no Android, baixe o app no Google Play.";
+    })();
+  </script>
 </body>
 </html>
