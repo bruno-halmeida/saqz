@@ -22,6 +22,7 @@ Duas sessões ao mesmo tempo no mesmo navegador: abrir uma em `http://localhost:
 | --- | --- | --- |
 | ORG | org.web@saqz.test | Webabf60ba2!a |
 | ORG2 (build de produção) | org2.web@saqz.test | Web5a70328f!c |
+| ORG3 (/comecar/ → web app) | org3.web@saqz.test | Web78f1f40c!d |
 | ATL | atl.web@saqz.test | Webc8863879!b |
 
 ## Rodada de 13/10/2026 (Safari do iOS 27, simulador iPhone 17)
@@ -73,3 +74,26 @@ Com login, no build de produção (o mesmo .wasm publicado) contra este stack, e
 organizador por e-mail → grupo com foto → jogo → convite (copiar e QR) → atleta pelo link entrando com Google
 (redirecionamento) → "Quase lá!" → cadastro de atleta → "Não vou" → Meu plano com "Continuar com o
 Organizador". Tudo OK; o convite sobrevive ao redirecionamento do Google.
+
+## Organizador de iPhone pelo /comecar/ e sessão do web app (13/10/2026)
+
+Stack local servido como em produção (`/comecar/`, `/assinar/` e `/app/` no mesmo origin, build de produção do
+web app, Auth Emulator no mesmo origin), Safari do simulador iPhone 17 (iOS 27).
+
+| Jornada | Resultado |
+| --- | --- |
+| /comecar/: cadastro por e-mail, celular, cartão final | OK: "Continuar no Saqz" no lugar do painel da App Store |
+| Toque em "Continuar no Saqz" | OK: /app/ já logado ("Fala, Org!"); a sessão do SDK compat da página vale no web app |
+| Safari encerrado à força e reaberto em /app/ | OK: continua logado |
+| Atleta logado, Safari encerrado, link de presença (`?saqz_attendance=`) | OK: vai direto a "Confirmar presença", sem login |
+| Mesmo link com `saqz_intent=decline` | OK: folha "Não conseguirá ir?" e, depois do "Sim, não vou", DECLINED no banco |
+| Atleta sem sessão abre o link de presença | OK até o login: "Você foi convidado para um grupo", e depois do login segue para "Confirmando sua presença…" |
+| Atleta que recusou volta para "Vou" com o jogo na espera | FALHA no backend: 500 com `waitlist sequence must be the next monotonic value` (vale para todas as plataformas) |
+
+Notas:
+- O leitor de links do web app só aceita `http` em `localhost` e `127.0.0.1`. Para uma terceira sessão separada
+  no simulador, saia da conta em vez de usar o IP da rede: pelo IP o código é descartado de propósito.
+- Digitação pelo mobile-mcp nos campos do Compose: tocar e digitar no mesmo `mobile_batch_commands`; tocar e
+  digitar em chamadas separadas costuma perder ou duplicar o texto.
+- Com a folha "Não conseguirá ir?" aberta, o fundo já mostra "Avisamos o grupo que você não vai" antes da
+  confirmação. É o mesmo código do app nativo (`AttendanceLinkRoot`), nada é gravado antes do toque.

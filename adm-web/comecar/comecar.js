@@ -21,6 +21,29 @@
   function $(id) { return document.getElementById(id); }
   // Funil de medição (deploy/medicao-web.md): sem o carregador da landing, vira no-op.
   function track(name, params) { try { if (window.saqzTrack) window.saqzTrack(name, params || {}); } catch (ignored) {} }
+
+  // iPhone (sem app na App Store) e computador: o web app em saqz.app/app/ é onde o organizador cria o
+  // grupo, logado com a mesma conta (mesmo domínio e mesmo Firebase). Android segue nas lojas. Só oferece
+  // se o navegador roda o web app (WasmGC, iOS 18.2+) e ele responde: fora do ar, a página fica como era.
+  function isIPhone() {
+    return typeof navigator !== "undefined" && (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+  }
+  var webAppOffer = null;
+  function offerWebApp() {
+    if (webAppOffer) return webAppOffer;
+    webAppOffer = new Promise(function (resolve) {
+      if (typeof navigator === "undefined" || typeof fetch !== "function") return resolve(false);
+      if (/Android/i.test(navigator.userAgent)) return resolve(false);
+      try {
+        if (!(typeof WebAssembly === "object" && WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 127, 0])))) return resolve(false);
+      } catch (e) { return resolve(false); }
+      fetch("/app/disponivel.json", { cache: "no-store" })
+        .then(function (response) { resolve(response.ok); })
+        .catch(function () { resolve(false); });
+    });
+    return webAppOffer;
+  }
   function identify(accountId, firebaseUid) { try { if (accountId && window.saqzIdentify) window.saqzIdentify(accountId, firebaseUid); } catch (ignored) {} }
   function show(id) { $(id).hidden = false; }
   function hide(id) { $(id).hidden = true; }
@@ -170,6 +193,17 @@
     setMessage("ready-copy", "Baixe o app e entre com esta mesma conta. O teste começa quando você criar o primeiro grupo no celular.");
     bindStoreBadges();
     loadTrial(currentUser, generation);
+    offerWebAppOnReady();
+  }
+  // Os dois caminhos que mostram o cartão final (sessão já completa e perfil recém-salvo) passam por aqui.
+  function offerWebAppOnReady() {
+    offerWebApp().then(function (available) {
+      if (!available || $("ready-card").hidden) return;
+      setMessage("ready-copy", "Continue no Saqz e crie seu primeiro grupo agora, com esta mesma conta. O teste começa no primeiro grupo.");
+      show("web-app-cta");
+      // No iPhone o app ainda não está na App Store: o painel de instalação só confundiria.
+      if (isIPhone()) hide("download-panel");
+    });
   }
   function bootstrap(user, requestedName, expectedGeneration) {
     if (!validGeneration(user, expectedGeneration)) return Promise.reject({ stale: true });
@@ -352,6 +386,7 @@
           hide("profile-card");
           show("ready-card");
           loadTrial(currentUser, expectedGeneration);
+          offerWebAppOnReady();
         }
       })
       .catch(function (error) {
@@ -540,6 +575,7 @@
     $("profile-form").addEventListener("submit", saveProfile);
     $("request-app-link").addEventListener("click", requestAppLink);
     $("app-link").addEventListener("click", function () { track("app_open", { via: "link" }); });
+    $("web-app-cta").addEventListener("click", function () { track("app_open", { via: "web" }); });
     ["ios-store", "android-store"].forEach(function (id) {
       $(id).addEventListener("click", function () {
         if (!$(id).classList.contains("is-soon")) track("store_click", { store: id === "ios-store" ? "ios" : "android" });

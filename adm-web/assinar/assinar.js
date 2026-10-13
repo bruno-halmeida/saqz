@@ -66,6 +66,29 @@
   function $(id) { return document.getElementById(id); }
   // Funil de medição (deploy/medicao-web.md): sem o carregador da landing, vira no-op.
   function track(name, params) { try { if (window.saqzTrack) window.saqzTrack(name, params || {}); } catch (ignored) {} }
+
+  // iPhone (sem app na App Store) e computador: o web app em saqz.app/app/ é onde o organizador cria o
+  // grupo, logado com a mesma conta (mesmo domínio e mesmo Firebase). Android segue nas lojas. Só oferece
+  // se o navegador roda o web app (WasmGC, iOS 18.2+) e ele responde: fora do ar, a página fica como era.
+  function isIPhone() {
+    return typeof navigator !== "undefined" && (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+  }
+  var webAppOffer = null;
+  function offerWebApp() {
+    if (webAppOffer) return webAppOffer;
+    webAppOffer = new Promise(function (resolve) {
+      if (typeof navigator === "undefined" || typeof fetch !== "function") return resolve(false);
+      if (/Android/i.test(navigator.userAgent)) return resolve(false);
+      try {
+        if (!(typeof WebAssembly === "object" && WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 127, 0])))) return resolve(false);
+      } catch (e) { return resolve(false); }
+      fetch("/app/disponivel.json", { cache: "no-store" })
+        .then(function (response) { resolve(response.ok); })
+        .catch(function () { resolve(false); });
+    });
+    return webAppOffer;
+  }
   function identify(user) { try { if (user && window.saqzIdentifyFirebase) window.saqzIdentifyFirebase(user.uid); } catch (ignored) {} }
   var ultimoValorPendente = null;
   var compraRegistrada = null;
@@ -81,6 +104,15 @@
     ["carregando", "login", "assinante", "planos", "dados", "pix", "cartao", "sucesso", "erro"].forEach(function (nome) {
       $("estado-" + nome).hidden = nome !== estado;
     });
+    if (estado === "sucesso" || estado === "assinante") {
+      offerWebApp().then(function (available) {
+        if (!available || $("estado-" + estado).hidden) return;
+        $(estado + "-web-app").hidden = false;
+        var sub = $(estado + "-sub");
+        sub.textContent = sub.textContent.replace("Volte ao app Saqz e crie seu grupo.", "Continue no Saqz e crie seu grupo.")
+          .replace("Volte ao app para continuar.", "Continue no Saqz.");
+      });
+    }
     var user = auth.currentUser;
     var rodape = $("rodape-sessao");
     if (user && estado !== "carregando") {
@@ -731,6 +763,9 @@
     pagar();
   });
   $("botao-tentar-novamente").addEventListener("click", iniciar);
+  ["sucesso-web-app", "assinante-web-app"].forEach(function (id) {
+    $(id).addEventListener("click", function () { track("app_open", { via: "web", origem: id.split("-")[0] }); });
+  });
 
   if (loginPorLink) entrarComLink(loginPorLink);
 

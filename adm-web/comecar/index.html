@@ -10,7 +10,7 @@
   <script src="../assets/firebase-config.js"></script>
   <script src="../assets/analytics-config.js"></script>
   <script src="../assets/analytics.js" defer></script>
-  <script src="comecar.js" defer></script>
+  <script src="comecar.js?v=web-app" defer></script>
   <style>
     @font-face { font-family: Inter; src: url("../assets/inter-var.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
     :root { --blue:#0638DF; --pressed:#052BB3; --lime:#C7F300; --navy:#0E1738; --paper:#F5F5F7; --white:#FFF; --line:#D8DDE8; --muted:#667085; --error:#E5484D; --success:#17B26A; --google:#1F1F1F; --google-line:#747775; }
@@ -38,6 +38,7 @@
     .btn:hover { background:var(--pressed); }
     .btn[disabled] { background:#C9CED8; color:#7A8291; cursor:default; }
     .btn-quiet { background:var(--white); color:var(--navy); border:1px solid var(--line); }
+    a.btn { display:flex; align-items:center; justify-content:center; text-decoration:none; box-sizing:border-box; }
     .btn-quiet:hover { background:#F8F9FC; }
     .btn-google {
       display:flex; align-items:center; justify-content:center; gap:12px;
@@ -289,7 +290,8 @@
     <section class="card" id="ready-card" hidden>
       <h2 id="ready-title">Sua conta está pronta.</h2>
       <p class="sub" id="ready-copy">Baixe o app e entre com esta mesma conta. O teste começa quando você criar o primeiro grupo no celular.</p>
-      <div class="download-panel">
+      <a class="btn" id="web-app-cta" href="/app/" hidden>Continuar no Saqz</a>
+      <div class="download-panel" id="download-panel">
         <p class="download-kicker">Próximo passo</p>
         <h3 class="download-title">Instale o Saqz no celular</h3>
         <ol class="download-steps">

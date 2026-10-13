@@ -139,6 +139,7 @@ button { font: inherit; cursor: pointer; }
   padding: 14px;
 }
 .btn:active { filter: brightness(.96); }
+a.btn { display: flex; align-items: center; justify-content: center; text-decoration: none; box-sizing: border-box; }
 .btn[disabled] { background: var(--saqz-disabled-bg); color: var(--saqz-disabled-fg); cursor: default; filter: none; }
 .btn-secundario {
   width: 100%;
@@ -455,7 +456,8 @@ button { font: inherit; cursor: pointer; }
   <div class="card centro">
     <div class="marca" aria-hidden="true"></div>
     <h1>Você já é assinante</h1>
-    <p class="sub">Sua assinatura está ativa. Volte ao app para continuar.</p>
+    <p class="sub" id="assinante-sub">Sua assinatura está ativa. Volte ao app para continuar.</p>
+    <a class="btn" id="assinante-web-app" href="/app/" hidden>Continuar no Saqz</a>
   </div>
 </section>
 
@@ -557,6 +559,7 @@ button { font: inherit; cursor: pointer; }
     <div class="marca" aria-hidden="true"></div>
     <h1 id="sucesso-titulo">Assinatura ativa.</h1>
     <p class="sub" id="sucesso-sub">Pagamento confirmado. Volte ao app Saqz e crie seu grupo.</p>
+    <a class="btn" id="sucesso-web-app" href="/app/" hidden>Continuar no Saqz</a>
   </div>
 </section>
 
@@ -572,5 +575,5 @@ button { font: inherit; cursor: pointer; }
 <p class="rodape-sessao" id="rodape-sessao" hidden></p>
 </main>
 <script src="cartao.js?v=confirm"></script>
-<script src="assinar.js?v=downgrade-agendado"></script>
+<script src="assinar.js?v=web-app"></script>
 </body></html>
