@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#f4f5f0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Saqz">
+  <meta name="robots" content="noindex">
+  <title>Saqz</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #f4f5f0;
+      overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+    body { position: fixed; inset: 0; }
+    canvas { outline: none; }
+    #saqz-loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 15px; color: #3c4257; }
+  </style>
+  <script src="saqz-config.js"></script>
+  <script>
+    // O bridge do Firebase carrega como módulo ES (assíncrono); o Kotlin espera esta promessa.
+    window.saqzBridgeReady = new Promise(function (resolve) { window.__saqzResolveBridge = resolve; });
+  </script>
+  <script type="module" src="saqz-bridge.js"></script>
+</head>
+<body>
+  <div id="saqz-loading">Carregando o Saqz…</div>
+  <script src="saqz-web.js"></script>
+</body>
+</html>

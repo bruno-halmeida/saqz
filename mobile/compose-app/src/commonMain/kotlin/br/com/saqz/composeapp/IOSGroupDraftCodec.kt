@@ -1,5 +1,8 @@
 package br.com.saqz.composeapp
 
+// Nasceu em iosMain para o Swift gravar os rascunhos em arquivo; o hospedeiro web usa o mesmo
+// codec (localStorage), por isso vive em commonMain. O nome ficou para não mexer no Swift.
+
 import br.com.saqz.groups.domain.finance.ExpenseCategory
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
