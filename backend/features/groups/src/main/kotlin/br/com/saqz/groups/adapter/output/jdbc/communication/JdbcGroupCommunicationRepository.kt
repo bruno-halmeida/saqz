@@ -164,22 +164,27 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
     }
 
     /** `DISTINCT ON`: um grupo com agenda recorrente tem vários jogos abertos, mas só o mais próximo é lembrado. */
-    override fun reminderCandidates(): List<ReminderCandidate> = jdbc.sql(
+    override fun reminderCandidates(): List<ReminderCandidate> = candidates(deadlineOpen = false)
+
+    override fun openGameCandidates(): List<ReminderCandidate> = candidates(deadlineOpen = true)
+
+    private fun candidates(deadlineOpen: Boolean): List<ReminderCandidate> = jdbc.sql(
         """
         SELECT DISTINCT ON (games.group_id)
                games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
-               groups.owner_user_id
+               games.confirmation_deadline, games.capacity, groups.owner_user_id
         FROM games
         JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
-        WHERE games.status = 'PUBLISHED' AND games.starts_at > now() AND games.confirmation_deadline > now()
+        WHERE games.status = 'PUBLISHED' AND games.starts_at > now()
+          AND (NOT :deadlineOpen OR games.confirmation_deadline > now())
         ORDER BY games.group_id, games.starts_at, games.id
         """.trimIndent(),
-    ).query { rs, _ -> candidate(rs) }.list()
+    ).param("deadlineOpen", deadlineOpen).query { rs, _ -> candidate(rs) }.list()
 
     override fun reminderCandidate(groupId: UUID): ReminderCandidate? = jdbc.sql(
         """
         SELECT games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
-               groups.owner_user_id
+               games.confirmation_deadline, games.capacity, groups.owner_user_id
         FROM games
         JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
         WHERE games.group_id = :group AND games.status = 'PUBLISHED'
@@ -234,6 +239,8 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             localDate = rs.getObject("local_date", LocalDate::class.java),
             localTime = rs.getObject("local_time", LocalTime::class.java),
             venue = rs.getString("venue_name"),
+            confirmationDeadline = rs.getTimestamp("confirmation_deadline").toInstant(),
+            capacity = rs.getInt("capacity"),
         ),
     )
 

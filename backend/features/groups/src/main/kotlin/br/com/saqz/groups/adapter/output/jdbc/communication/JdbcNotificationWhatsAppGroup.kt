@@ -100,7 +100,7 @@ class JdbcNotificationWhatsAppGroup(
 
     private fun reminderOpen(gameId: UUID?, groupId: UUID): Boolean = gameId != null && jdbc.sql("""
         SELECT count(*) FROM games WHERE id = :game AND group_id = :group
-          AND status = 'PUBLISHED' AND starts_at > now() AND confirmation_deadline > now()
+          AND status = 'PUBLISHED' AND starts_at > now()
     """).param("game", gameId).param("group", groupId).query(Int::class.java).single() == 1
 
     private fun content(message: PendingMessage, binding: Binding): GroupContent? {

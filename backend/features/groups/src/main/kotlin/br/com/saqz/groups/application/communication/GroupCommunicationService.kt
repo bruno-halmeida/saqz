@@ -5,6 +5,7 @@ import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.sharedkernel.moderation.ObjectionableText
+import java.time.Instant
 import java.util.UUID
 
 class GroupCommunicationService(
@@ -48,8 +49,9 @@ class GroupCommunicationService(
         }
 
     /**
-     * Lembrete automático para o próximo jogo com confirmação aberta de cada grupo — agenda
-     * recorrente deixa vários jogos abertos ao mesmo tempo e o grupo não quer um lembrete por
+     * Lembrete automático (a cada 3 h, das 8h às 22h) com a lista do próximo jogo de cada grupo, do
+     * jogo publicado até o início — inclusive depois do prazo, para a lista final chegar ao grupo.
+     * Agenda recorrente deixa vários jogos abertos ao mesmo tempo e o grupo não quer um lembrete por
      * jogo. O autor é o dono do grupo, então ele fica fora dos destinatários da notificação;
      * cada execução cria mensagem nova.
      */
@@ -58,7 +60,7 @@ class GroupCommunicationService(
         candidates.forEach { candidate ->
             repository.publish(
                 candidate.groupId, candidate.ownerId, MessageChannel.REMINDER, UUID.randomUUID(),
-                reminderBody(candidate.game, repository.reminderRoster(candidate.groupId, candidate.gameId)),
+                reminderBody(candidate.game, repository.reminderRoster(candidate.groupId, candidate.gameId), Instant.now()),
                 candidate.gameId,
             )
         }
@@ -73,7 +75,7 @@ class GroupCommunicationService(
      * GAME_OPEN nunca vira WhatsApp: é push e central.
      */
     fun announceOpenGames(): Int = transaction.inTransaction {
-        val candidates = repository.reminderCandidates()
+        val candidates = repository.openGameCandidates()
         candidates.forEach { candidate ->
             repository.publish(
                 candidate.groupId, candidate.ownerId, MessageChannel.GAME_OPEN, UUID.randomUUID(),

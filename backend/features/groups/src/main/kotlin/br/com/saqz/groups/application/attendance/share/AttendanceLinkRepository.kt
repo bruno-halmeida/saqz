@@ -35,6 +35,8 @@ data class AttendanceLinkResolvableTarget(
     val status: GameStatus,
     val confirmationDeadline: Instant,
     val registrationRequired: Boolean = false,
+    /** O link vale até o início do jogo: depois do prazo "Vou" cai na lista de espera e "Não vou" libera a vaga. */
+    val startsAt: Instant = Instant.MAX,
 )
 
 data class RecordInvalidAttendanceLinkAttempt(

@@ -42,6 +42,7 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
         val message = jdbc.sql("""
             SELECT c.group_id, c.channel, c.body, c.game_id, c.window_ends_at, u.firebase_subject,
                    game.venue_name, game.starts_at, game.capacity,
+                   coalesce((SELECT g.confirmation_deadline <= now() FROM games g WHERE g.id = c.game_id), false) AS deadline_passed,
                    (SELECT count(*) FROM game_attendance a WHERE a.game_id = game.id AND a.status = 'CONFIRMED') AS confirmed,
                    (SELECT count(*) FROM game_attendance a WHERE a.game_id = game.id AND a.status = 'WAITLISTED') AS waitlisted
             FROM notification_delivery_context c
@@ -53,7 +54,9 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
             val body = when (channel) {
                 "NOTICE" -> "Você recebeu um aviso do grupo. Abra o app para conferir."
                 "CHAT" -> "Você recebeu uma mensagem no grupo. Abra o app para conferir."
-                "REMINDER" -> "Confirme sua presença no próximo jogo. Abra o app para conferir."
+                "REMINDER" ->
+                    if (rs.getBoolean("deadline_passed")) "Lista do jogo atualizada. Abra o app para conferir."
+                    else "Confirme sua presença no próximo jogo. Abra o app para conferir."
                 "GAME_OPEN" -> "O jogo está liberado. Abra o app para confirmar sua presença."
                 "ATTENDANCE_WINDOW" -> rs.getString("body")
                 "WAITLIST_DEADLINE", "FIRST_MEMBER", "FIRST_CONFIRMATION" -> rs.getString("body")

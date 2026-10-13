@@ -81,6 +81,7 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
                 GameStatus.valueOf(result.getString("status")),
                 result.getTimestamp("confirmation_deadline").toInstant(),
                 result.getBoolean("registration_required"),
+                result.getTimestamp("starts_at").toInstant(),
             )
         }
         .optional()
@@ -189,7 +190,7 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
         """
 
         const val RESOLVABLE_TARGET = """
-            SELECT g.group_id, g.id AS game_id, g.status, g.confirmation_deadline, false AS registration_required
+            SELECT g.group_id, g.id AS game_id, g.status, g.confirmation_deadline, false AS registration_required, g.starts_at
             FROM game_attendance_links link
             JOIN games g ON g.id = link.game_id AND g.group_id = link.group_id
             JOIN access_groups ag ON ag.id = link.group_id AND ag.deleted_at IS NULL
@@ -198,7 +199,7 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
               AND (ag.owner_user_id = :actor OR member.user_id IS NOT NULL)
             UNION ALL
             SELECT m.group_id, game.id AS game_id, game.status, game.confirmation_deadline,
-                   NOT member.athlete_registration_completed AS registration_required
+                   NOT member.athlete_registration_completed AS registration_required, game.starts_at
             FROM notification_attendance_links link
             JOIN group_messages m ON m.id = link.message_id
             JOIN games game ON game.id = m.game_id AND game.group_id = m.group_id

@@ -58,8 +58,24 @@ class ResolveAttendanceLinkTest {
     }
 
     @Test
-    fun `deadline plus one instant is terminal`() {
-        val fixture = fixture(target = AttendanceLinkResolvableTarget(groupId, gameId, GameStatus.PUBLISHED, now.minusNanos(1)))
+    fun `resolution succeeds after the deadline while the game has not started`() {
+        val fixture = fixture(
+            target = AttendanceLinkResolvableTarget(
+                groupId, gameId, GameStatus.PUBLISHED, now.minusSeconds(3600), startsAt = now.plusNanos(1),
+            ),
+        )
+
+        assertEquals(ResolveAttendanceLinkResult.Success(groupId, gameId), fixture.useCase.execute(actor, code.value))
+        assertEquals(0, fixture.repository.invalidAttempts.size)
+    }
+
+    @Test
+    fun `game start instant is terminal`() {
+        val fixture = fixture(
+            target = AttendanceLinkResolvableTarget(
+                groupId, gameId, GameStatus.PUBLISHED, now.minusSeconds(3600), startsAt = now,
+            ),
+        )
 
         assertSame(ResolveAttendanceLinkResult.InvalidOrExpired, fixture.useCase.execute(actor, code.value))
         assertEquals(1, fixture.repository.invalidAttempts.single().invalidCount)

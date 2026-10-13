@@ -51,7 +51,7 @@ Não reative indiscriminadamente jobs FAILED: primeiro corrija credencial/conex�
 
 ## Lembrete automático de presença
 
-- `SAQZ_NOTIFICATIONS_REMINDER_ENABLED=true` liga o worker; `SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS` é o intervalo (propriedades canônicas `saqz.notifications.reminder.enabled` e `delay-ms`, default 25200000).
+- `SAQZ_NOTIFICATIONS_REMINDER_ENABLED=true` liga o worker; `SAQZ_NOTIFICATIONS_REMINDER_CRON` define o horário (propriedades canônicas `saqz.notifications.reminder.enabled` e `cron`; padrão `0 0 8,11,14,17,20 * * *`, fuso `America/Sao_Paulo`: a lista vai a cada 3 h das 8h às 22h, do jogo publicado até o início, inclusive depois do prazo). `SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS` (fixedDelay de 7 h) deixou de valer e pode ser apagada.
 - Antes de publicar, roda o auto-confirm dos jogos abertos: mensalistas com opt-in entram como confirmados (ou lista de espera, se lotado), inclusive em jogos publicados antes da feature ligada e para quem entrou no grupo depois do publish.
 - A cada execução publica um REMINDER novo para todo jogo `PUBLISHED` com `starts_at` e `confirmation_deadline` no futuro. Sem vínculo de WhatsApp o lembrete continua virando push/central; o envio ao grupo exige vínculo ativo. O autor é o dono do grupo, então ele fica fora dos destinatários da notificação.
 - Intervalo atual: `25200000` (7h). Cada execução cria mensagem nova, sem dedup entre execuções — o intervalo é o único limitador de frequência.

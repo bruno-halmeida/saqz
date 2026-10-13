@@ -35,7 +35,7 @@ class ResolveAttendanceLink(
 
             val code = runCatching { AttendanceLinkCode.from(rawCode) }.getOrNull()
             val target = code?.let { repository.findResolvableTarget(actorId, AttendanceLinkTokenDigest.sha256(it)) }
-            if (target == null || target.status != GameStatus.PUBLISHED || now > target.confirmationDeadline) {
+            if (target == null || target.status != GameStatus.PUBLISHED || now >= target.startsAt) {
                 repository.recordInvalidAttempt(
                     RecordInvalidAttendanceLinkAttempt(
                         actorId,

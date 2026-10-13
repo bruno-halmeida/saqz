@@ -191,13 +191,23 @@ class NotificationWhatsAppGroupIntegrationTest {
         drain { _, _, _, _ -> error("failed delivery retried") }
     }
 
-    @Test fun `an expired reminder is cancelled without losing the in-app notification`() {
+    @Test fun `a reminder after the deadline still reaches the group with the answer buttons`() {
         binding()
         val game = publishedGame()
         service.remind(owner, group, game, UUID.randomUUID()).success()
         jdbc.sql("UPDATE games SET confirmation_deadline = now() - interval '1 minute' WHERE id = :id")
             .param("id", game).update()
-        drain { _, _, _, _ -> error("expired reminder must not send") }
+        drain { _, _, _, buttons -> assertEquals(2, buttons.size); WhatsAppDelivery.Accepted }
+        assertEquals("ACCEPTED", status())
+    }
+
+    @Test fun `a reminder of a game that already started is cancelled without losing the in-app notification`() {
+        binding()
+        val game = publishedGame()
+        service.remind(owner, group, game, UUID.randomUUID()).success()
+        jdbc.sql("UPDATE games SET confirmation_deadline = now() - interval '2 hours', starts_at = now() - interval '1 minute' WHERE id = :id")
+            .param("id", game).update()
+        drain { _, _, _, _ -> error("started game must not send") }
         assertEquals("CANCELLED", status())
         assertEquals(1, service.inbox(member, null).success().items.size)
     }

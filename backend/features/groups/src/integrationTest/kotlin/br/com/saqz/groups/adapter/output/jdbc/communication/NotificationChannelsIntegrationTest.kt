@@ -126,14 +126,16 @@ class NotificationChannelsIntegrationTest {
         drain { error("terminal delivery retried") }
     }
 
-    @Test fun `presence reminder never enqueues a WhatsApp DM and is dropped once the deadline closes`() {
+    @Test fun `presence reminder never enqueues a WhatsApp DM and pushes the updated list text once the deadline closes`() {
         service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(reminders = true)))
         val game = publishedGame()
         service.remind(owner, group, game, UUID.randomUUID()).success()
         assertEquals(0L, count("notification_whatsapp_queue"))
         drain { error("REMINDER must not enqueue a WhatsApp DM") }
         jdbc.sql("UPDATE games SET confirmation_deadline = now() - interval '1 minute' WHERE id = :id").param("id", game).update()
-        push.drain(NotificationPushSender { _, _ -> error("expired reminder") })
+        val sent = mutableListOf<String>()
+        push.drain(NotificationPushSender { _, message -> sent += message.body; PushDelivery.SENT })
+        assertEquals(listOf("Lista do jogo atualizada. Abra o app para conferir."), sent)
         assertEquals(1, inbox().size)
     }
 

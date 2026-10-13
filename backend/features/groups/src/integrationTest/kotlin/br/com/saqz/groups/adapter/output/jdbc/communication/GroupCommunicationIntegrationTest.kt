@@ -192,7 +192,8 @@ class GroupCommunicationIntegrationTest {
         val open = game("Treino aberto")
         // Agenda recorrente: os dois estão abertos, mas só o mais próximo vira lembrete.
         game("Treino da semana seguinte", startsInHours = 168, deadlineInHours = 144)
-        game("Treino sem prazo", deadlineInHours = -1)
+        // Prazo vencido com início no futuro também é lembrado (lista final), mas só quando é o próximo do grupo.
+        game("Treino com prazo vencido", startsInHours = 72, deadlineInHours = -1)
         game("Treino já iniciado", startsInHours = -1, deadlineInHours = -2)
         game("Treino concluído", status = "COMPLETED")
         assertEquals(1, service.remindAutomatically())
@@ -200,7 +201,10 @@ class GroupCommunicationIntegrationTest {
         assertEquals(open, reminder.gameId)
         assertEquals(MessageChannel.REMINDER, reminder.channel)
         assertEquals(owner, reminder.authorId)
-        assertEquals("Jogo: domingo, 20/09 às 12:00\nLocal: Arena", reminder.body)
+        assertTrue(
+            Regex("Jogo: domingo, 20/09 às 12:00\nLocal: Arena\nConfirmações até \\S+ \\d{2}h\\d{2}\nVagas: 0/12").matches(reminder.body),
+            reminder.body,
+        )
         assertEquals(1, service.remindAutomatically())
         assertEquals(2, service.inbox(member, null).success().items.size)
         assertTrue(service.inbox(owner, null).success().items.isEmpty())

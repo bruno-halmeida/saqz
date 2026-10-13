@@ -26,7 +26,17 @@ data class GroupNotification(val sequence: Long, val message: GroupMessage, val 
 /** Ordem das seções no corpo: confirmados, lista de espera e fora. */
 data class ReminderRoster(val confirmed: List<String>, val waitlisted: List<String>, val declined: List<String>)
 
-data class ReminderGame(val localDate: LocalDate, val localTime: LocalTime, val venue: String)
+/**
+ * [confirmationDeadline] e [capacity] só vêm preenchidos nos candidatos do lembrete automático; sem eles o
+ * corpo do lembrete omite as linhas de prazo e vagas (aviso manual, prazo vencido e janela de 24 h).
+ */
+data class ReminderGame(
+    val localDate: LocalDate,
+    val localTime: LocalTime,
+    val venue: String,
+    val confirmationDeadline: Instant? = null,
+    val capacity: Int? = null,
+)
 
 data class ReminderCandidate(
     val gameId: UUID,
@@ -66,7 +76,11 @@ interface GroupCommunicationRepository {
     fun publish(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID, body: String, gameId: UUID?): GroupMessage
     fun reminderGame(groupId: UUID, gameId: UUID): ReminderGame?
     fun reminderRoster(groupId: UUID, gameId: UUID): ReminderRoster
+    /** Próximo jogo publicado de cada grupo com início no futuro, mesmo com o prazo vencido: o lembrete de 3 h. */
     fun reminderCandidates(): List<ReminderCandidate>
+
+    /** Próximo jogo publicado de cada grupo com prazo E início no futuro: o aviso de jogo liberado (GAME_OPEN). */
+    fun openGameCandidates(): List<ReminderCandidate>
 
     /** O próximo jogo aberto de um grupo: a mesma regra de [reminderCandidates], para um grupo só. */
     fun reminderCandidate(groupId: UUID): ReminderCandidate?
