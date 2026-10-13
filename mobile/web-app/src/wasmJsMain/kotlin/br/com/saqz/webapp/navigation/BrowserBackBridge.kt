@@ -55,5 +55,8 @@ private external fun jsPushGuard()
 private external fun jsHistoryBack()
 
 /** Registra o popstate e devolve a função que o remove. */
-@JsFun("(callback) => { const handler = () => callback(); window.addEventListener('popstate', handler); return () => window.removeEventListener('popstate', handler); }")
+@JsFun(
+    "(callback) => { const handler = () => callback(); window.addEventListener('popstate', handler); " +
+        "return () => window.removeEventListener('popstate', handler); }",
+)
 private external fun jsOnPopState(callback: () -> Unit): () -> Unit
