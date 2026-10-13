@@ -38,7 +38,13 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
             iosSimulatorArm64()
             // Web app (Kotlin/Wasm): mesmo commonMain dos apps Android e iOS; o hospedeiro
             // web implementa as mesmas portas nativas em `:web-app`.
-            wasmJs { browser() }
+            wasmJs {
+                browser {
+                    // Os testes comuns já rodam no simulador iOS e na JVM; no wasm eles pediriam um Chrome
+                    // headless em cada módulo. Os testes do web app (portas do navegador) ficam no :web-app.
+                    testTask { enabled = false }
+                }
+            }
             applyDefaultHierarchyTemplate()
             targets.withType(KotlinMultiplatformAndroidLibraryTarget::class.java).configureEach {
                 compileSdk = compileSdkVersion
