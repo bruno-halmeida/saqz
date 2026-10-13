@@ -6,6 +6,7 @@ window.SAQZ_WEB_CONFIG = {
   apiBaseUrl: window.location.origin + "/app/api",
   linksHost: "links.saqz.app",
   appVersion: "web",
+  checkoutUrl: "/assinar/",
   firebase: {
     apiKey: "AIzaSyC1wV54ox6S6Mp81STbUMLXBxtH0GCYH-A",
     authDomain: "saquz-app.firebaseapp.com",

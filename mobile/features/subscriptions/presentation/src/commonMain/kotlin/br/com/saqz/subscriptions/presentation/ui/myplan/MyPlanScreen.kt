@@ -29,7 +29,9 @@ import br.com.saqz.subscriptions.presentation.myplan.MyPlanState
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanStatusTone
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanUsageUi
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanTrialUi
+import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.myplan_resubscribe
 import br.com.saqz.subscriptions.resources.myplan_retry
 import br.com.saqz.subscriptions.resources.myplan_title
 import org.jetbrains.compose.resources.stringResource
@@ -47,6 +49,7 @@ internal object MyPlanTags {
     const val CancelSheet = "myplan-cancel-sheet"
     const val TrialCard = "myplan-trial-card"
     const val Subscribe = "myplan-trial-subscribe"
+    const val Resubscribe = "myplan-resubscribe"
 }
 
 /** 8e — plano atual, uso, recibos e o menu Gerenciar. A tela só empilha; cada bloco é uma
@@ -93,6 +96,16 @@ fun MyPlanScreen(
                 verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
             ) {
                 state.plan?.let { MyPlanCurrentCard(it) }
+                // Assinatura encerrada: a loja do aparelho (App Store, Google Play) ou, no web app, o
+                // checkout do site. Sem nenhum dos dois o botão some, como o do teste.
+                if (state.canResubscribe && purchasesAvailable) {
+                    SaqzButton(
+                        stringResource(Res.string.myplan_resubscribe),
+                        onClick = { onIntent(MyPlanIntent.OpenSubscribe) },
+                        fullWidth = true,
+                        modifier = Modifier.testTag(MyPlanTags.Resubscribe),
+                    )
+                }
                 state.trial?.let { trial ->
                     MyPlanTrialCard(
                         trial,

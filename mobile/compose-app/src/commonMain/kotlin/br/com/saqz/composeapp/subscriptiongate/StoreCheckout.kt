@@ -5,6 +5,7 @@ import br.com.saqz.subscriptions.domain.appstore.AppStoreSubscriptionGateway
 import br.com.saqz.subscriptions.domain.googleplay.GooglePlaySubscriptionGateway
 import br.com.saqz.subscriptions.domain.port.AppStorePurchasesPort
 import br.com.saqz.subscriptions.domain.port.GooglePlayPurchasesPort
+import br.com.saqz.subscriptions.domain.port.WebCheckoutPort
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionProvider
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallStore
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallViewModel
@@ -29,11 +30,23 @@ internal class StoreCheckout(
     val sync: StorePurchaseSync?,
     private val enabled: Boolean,
     private val manage: ((() -> Unit) -> Unit)?,
+    /** Só no web app: o checkout do site no lugar da loja que o navegador não tem. */
+    private val webCheckout: WebCheckoutPort? = null,
 ) {
     val purchasesAvailable: Boolean get() = sync != null && enabled
 
-    /** Contratar pela web (Asaas) ou pela loja: é o que libera "Conhecer planos" e afins. */
-    val anyPurchaseAvailable: Boolean get() = StoreLaunchPolicy.purchases || purchasesAvailable
+    /** Contratar pela web (Asaas), pela loja ou pelo checkout do site: libera "Conhecer planos" e afins. */
+    val anyPurchaseAvailable: Boolean get() = StoreLaunchPolicy.purchases || purchasesAvailable || webCheckout != null
+
+    /**
+     * No web app, assinar abre o checkout do site em vez do portão com a loja. Devolve `false` onde não
+     * há checkout web (Android e iOS), para quem chamou seguir para o portão de sempre.
+     */
+    fun openWebCheckout(done: () -> Unit): Boolean {
+        val checkout = webCheckout ?: return false
+        checkout.open(done)
+        return true
+    }
 
     val canManageSubscriptions: Boolean get() = manage != null
 
@@ -46,6 +59,7 @@ internal class StoreCheckout(
 internal fun storeCheckoutModule(
     appStore: AppStorePurchasesPort?,
     googlePlay: GooglePlayPurchasesPort?,
+    webCheckout: WebCheckoutPort? = null,
 ): Module = module {
     when {
         appStore != null -> {
@@ -78,7 +92,7 @@ internal fun storeCheckoutModule(
                 )
             }
         }
-        else -> single { StoreCheckout(deviceStore = null, sync = null, enabled = false, manage = null) }
+        else -> single { StoreCheckout(deviceStore = null, sync = null, enabled = false, manage = null, webCheckout = webCheckout) }
     }
     if (appStore != null || googlePlay != null) {
         viewModel { AppStorePaywallViewModel(store = get(), subscriptions = get()) }

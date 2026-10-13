@@ -209,6 +209,46 @@ class MyPlanViewModelTest {
     }
 
     @Test
+    fun `an ended subscription without access offers to subscribe again on every store`() = runTest {
+        // A conta da revisão da Apple: assinatura da App Store vencida sem renovar (CANCELED) e sem direito.
+        listOf(SubscriptionProvider.AppStore, SubscriptionProvider.GooglePlay, SubscriptionProvider.Asaas).forEach { provider ->
+            val gateway = FakeSubscriptionGateway(
+                subscriptionResult = SaqzResult.Success(
+                    ACTIVE_SUBSCRIPTION.copy(status = SubscriptionStatus.Canceled, entitled = false, provider = provider),
+                ),
+            )
+            val viewModel = MyPlanViewModel(gateway)
+
+            assertEquals(true, viewModel.state.value.canResubscribe, "provider $provider")
+            assertEquals(MyPlanStatusTone.Canceled, viewModel.state.value.plan?.statusTone)
+            viewModel.onIntent(MyPlanIntent.OpenSubscribe)
+            assertEquals(MyPlanEffect.OpenSubscribe, viewModel.effects.first())
+        }
+    }
+
+    @Test
+    fun `a canceled plan still inside the paid period and a past due plan do not offer a second subscription`() = runTest {
+        val stillPaid = MyPlanViewModel(
+            FakeSubscriptionGateway(
+                subscriptionResult = SaqzResult.Success(
+                    ACTIVE_SUBSCRIPTION.copy(canceledAt = "2026-08-01T00:00:00Z", entitled = true),
+                ),
+            ),
+        )
+        val pastDue = MyPlanViewModel(
+            FakeSubscriptionGateway(
+                subscriptionResult = SaqzResult.Success(
+                    ACTIVE_SUBSCRIPTION.copy(status = SubscriptionStatus.PastDue, entitled = false),
+                ),
+            ),
+        )
+
+        assertEquals(false, stillPaid.state.value.canResubscribe)
+        assertEquals(false, pastDue.state.value.canResubscribe)
+        assertEquals(false, MyPlanViewModel(FakeSubscriptionGateway()).state.value.canResubscribe)
+    }
+
+    @Test
     fun `receipts failure surfaces an error instead of an empty list and retry recovers`() = runTest {
         val gateway = FakeSubscriptionGateway(receiptsResult = SaqzResult.Failure(SubscriptionError.Conflict))
         val viewModel = MyPlanViewModel(gateway)

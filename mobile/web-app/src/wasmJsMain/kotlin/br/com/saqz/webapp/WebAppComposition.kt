@@ -21,6 +21,7 @@ import br.com.saqz.webapp.groups.WebInviteAdapters
 import br.com.saqz.webapp.groups.WebMapAdapter
 import br.com.saqz.webapp.notifications.WebNotificationPort
 import br.com.saqz.webapp.receivables.WebReceiptDocumentPicker
+import br.com.saqz.webapp.subscriptions.WebCheckoutAdapter
 import kotlinx.browser.window
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -81,9 +82,10 @@ internal class WebAppComposition(
                 notifications = WebNotificationPort(),
                 financialDocuments = WebReceiptDocumentPicker(scope),
                 analytics = WebAnalyticsSink(config.environment),
-                // Sem loja no navegador: a contratação é pela web (Asaas), pelo portão de assinatura.
+                // Sem loja no navegador: assinar abre o checkout do site (Asaas).
                 appStorePurchases = null,
                 googlePlayPurchases = null,
+                webCheckout = WebCheckoutAdapter(config.checkoutUrl),
             )
             return WebAppComposition(dependencies, links)
         }

@@ -64,6 +64,8 @@ class SaqzPlatformDependencies(
     val appStorePurchases: br.com.saqz.subscriptions.domain.port.AppStorePurchasesPort?,
     /** Play Billing no Android; `null` explícito no iOS. */
     val googlePlayPurchases: br.com.saqz.subscriptions.domain.port.GooglePlayPurchasesPort?,
+    /** Checkout do site (saqz.app/assinar/) no web app; `null` explícito no Android e no iOS. */
+    val webCheckout: br.com.saqz.subscriptions.domain.port.WebCheckoutPort?,
 ) {
     init {
         require(environment.isNotBlank()) { "environment must not be blank" }

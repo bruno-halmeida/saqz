@@ -5,9 +5,11 @@ import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.onFailure
 import br.com.saqz.domain.onSuccess
+import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionError
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionProvider
+import br.com.saqz.subscriptions.domain.subscription.SubscriptionStatus
 import br.com.saqz.subscriptions.domain.trial.TrialGateway
 import br.com.saqz.subscriptions.domain.trial.TrialStatus
 import kotlinx.coroutines.launch
@@ -62,7 +64,9 @@ class MyPlanViewModel(
             MyPlanIntent.ManageStoreSubscription -> if (canManagePaidPlan() && state.value.managedByStore) {
                 emit(MyPlanEffect.ManageStoreSubscription)
             }
-            MyPlanIntent.OpenSubscribe -> if (!state.value.isLoading && state.value.trial?.canSubscribe == true) {
+            MyPlanIntent.OpenSubscribe -> if (!state.value.isLoading &&
+                (state.value.trial?.canSubscribe == true || state.value.canResubscribe)
+            ) {
                 emit(MyPlanEffect.OpenSubscribe)
             }
             else -> Unit
@@ -107,6 +111,7 @@ class MyPlanViewModel(
                         receipts = emptyList(),
                         hasMoreReceipts = false,
                         managingStore = null,
+                        canResubscribe = false,
                     )
                 }
                 return@launch
@@ -124,6 +129,7 @@ class MyPlanViewModel(
                     usage = loadedSubscription.toUsageUi(),
                     trial = null,
                     managingStore = loadedSubscription.provider.takeIf { it != SubscriptionProvider.Asaas },
+                    canResubscribe = loadedSubscription.canResubscribe(),
                     // Falha aqui não pode virar "nenhum recibo ainda" (achado do Codex no
                     // PR #93): mantém a última lista boa e guarda o erro à parte.
                     receipts = (receiptsResult as? SaqzResult.Success)?.value?.map { r -> r.toUi() } ?: it.receipts,
@@ -227,3 +233,11 @@ private fun br.com.saqz.subscriptions.domain.trial.TrialAccess.toUi() = MyPlanTr
     canSubscribe = isOwner && status != TrialStatus.Subscribed,
     trialDays = trialDays,
 )
+
+/**
+ * Só a assinatura que acabou de vez: cancelada (ou vencida sem renovar, CANCELED na App Store) e já
+ * sem direito. Em atraso de pagamento a saída é regularizar na loja ou no Asaas, não abrir uma
+ * segunda assinatura; cancelada mas ainda no período pago, o acesso continua e não há o que assinar.
+ */
+internal fun MySubscription.canResubscribe(): Boolean =
+    !entitled && (canceledAt != null || status == SubscriptionStatus.Canceled)

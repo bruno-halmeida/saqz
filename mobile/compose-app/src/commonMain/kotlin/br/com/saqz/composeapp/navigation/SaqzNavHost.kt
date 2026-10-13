@@ -560,7 +560,14 @@ internal fun SaqzNavHost(
                             // entitulador — ou limite atingido — ele abre o gate de assinatura;
                             // quando autorizado, o gate substitui a si mesmo pelo 2a.
                             onCreateGroup = { backStack.add(GroupsRoute.Create) },
-                            onOpenPlans = { backStack.add(SubscriptionRequired) },
+                            // No web app não há loja: assinar abre o checkout do site.
+                            onOpenPlans = {
+                                val openedWeb = storeCheckout.openWebCheckout {
+                                    planAnalytics.refresh()
+                                    onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                                }
+                                if (!openedWeb) backStack.add(SubscriptionRequired)
+                            },
                             isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
                             onAcceptInviteCode = inviteCoordinator::acceptInvite,
                         )
@@ -704,7 +711,15 @@ internal fun SaqzNavHost(
                 MyPlanRoot(
                     onBack = pop,
                     onOpenChangePlan = { backStack.add(SubscriptionsRoute.ChangePlan) },
-                    onOpenSubscribe = { backStack.add(SubscribeForAccess) },
+                    // Trial vencido ou assinatura encerrada ("Assinar de novo"): a loja do aparelho
+                    // pelo portão; no web app, o checkout do site, e o plano recarrega na volta.
+                    onOpenSubscribe = {
+                        val openedWeb = storeCheckout.openWebCheckout {
+                            myPlanRefreshVersion++
+                            onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                        }
+                        if (!openedWeb) backStack.add(SubscribeForAccess)
+                    },
                     refreshVersion = myPlanRefreshVersion,
                     onManageStoreSubscription = if (storeCheckout.canManageSubscriptions) {
                         { storeCheckout.manageSubscriptions { myPlanRefreshVersion++ } }
@@ -750,7 +765,13 @@ internal fun SaqzNavHost(
             entry<GroupsRoute.Create> {
                 br.com.saqz.subscriptions.presentation.trial.TrialEntryRoot(
                     onBack = pop,
-                    onSubscribe = { backStack.add(SubscriptionRequired) },
+                    onSubscribe = {
+                        val openedWeb = storeCheckout.openWebCheckout {
+                            planAnalytics.refresh()
+                            onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                        }
+                        if (!openedWeb) backStack.add(SubscriptionRequired)
+                    },
                     purchasesAvailable = storeCheckout.anyPurchaseAvailable,
                 ) {
                     GroupSetupDestination(

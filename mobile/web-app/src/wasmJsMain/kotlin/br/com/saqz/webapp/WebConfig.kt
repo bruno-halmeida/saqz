@@ -20,6 +20,8 @@ internal data class WebConfig(
     val apiBaseUrl: String,
     val linksHost: String = "links.saqz.app",
     val appVersion: String = "web",
+    /** Página de assinatura do site (Asaas). Relativa ao origin: em produção vira saqz.app/assinar/. */
+    val checkoutUrl: String = "/assinar/",
     val firebase: WebFirebaseConfig,
 ) {
     companion object {

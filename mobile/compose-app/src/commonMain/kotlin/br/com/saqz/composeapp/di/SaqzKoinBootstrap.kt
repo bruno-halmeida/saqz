@@ -146,7 +146,7 @@ fun loadSaqzPlatformDependencies(
     }
     platformModules = listOf(
         platformBindingsModule(dependencies),
-        storeCheckoutModule(dependencies.appStorePurchases, dependencies.googlePlayPurchases),
+        storeCheckoutModule(dependencies.appStorePurchases, dependencies.googlePlayPurchases, dependencies.webCheckout),
         profilePhotoPresentationModule(
             selection = dependencies.access.profilePhotoSelection,
             initialPhotoUrl = null,

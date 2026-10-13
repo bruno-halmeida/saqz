@@ -31,6 +31,11 @@ data class MyPlanState(
     val cancelError: UiText? = null,
     /** Loja que cobra (App Store ou Google Play): troca e cancelamento acontecem lá, não no backend. */
     val managingStore: SubscriptionProvider? = null,
+    /**
+     * Assinatura encerrada que já não dá acesso: o backend devolve a última, vencida, e a tela mostra
+     * "Cancelado". Sem isto não havia como assinar de novo (a revisão da Apple não achou as compras).
+     */
+    val canResubscribe: Boolean = false,
 ) {
     val managedByStore: Boolean get() = managingStore != null
 }
