@@ -105,6 +105,8 @@ import br.com.saqz.groups.resources.group_setup_photo_label
 import br.com.saqz.groups.resources.group_setup_play_style_hint
 import br.com.saqz.groups.resources.group_setup_play_style_label
 import br.com.saqz.groups.resources.group_setup_play_style_not_applicable
+import br.com.saqz.groups.domain.place.PlaceSuggestion
+import br.com.saqz.groups.presentation.ui.components.VenueSearchField
 import br.com.saqz.groups.resources.group_setup_venue_address_hint
 import br.com.saqz.groups.resources.group_setup_venue_address_label
 import br.com.saqz.groups.resources.group_setup_venue_name_hint
@@ -479,19 +481,28 @@ internal fun GroupVenueSection(
     onNameChange: (String) -> Unit,
     onAddressChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    suggestions: List<PlaceSuggestion> = emptyList(),
+    onSelectSuggestion: (PlaceSuggestion) -> Unit = {},
+    onDismissSuggestions: () -> Unit = {},
 ) {
     val nameLabel = stringResource(Res.string.group_setup_venue_name_label)
     val addressLabel = stringResource(Res.string.group_setup_venue_address_label)
     GroupFormCard(title = nameLabel, modifier = modifier) {
-        SaqzInput(
-            value = name,
-            onValueChange = onNameChange,
-            label = nameLabel,
-            showLabel = false,
-            placeholder = stringResource(Res.string.group_setup_venue_name_hint),
-            errorText = nameError,
-            modifier = Modifier.testTag(GroupSetupTags.VenueName),
-        )
+        VenueSearchField(
+            suggestions = suggestions,
+            onSelect = onSelectSuggestion,
+            onDismiss = onDismissSuggestions,
+        ) {
+            SaqzInput(
+                value = name,
+                onValueChange = onNameChange,
+                label = nameLabel,
+                showLabel = false,
+                placeholder = stringResource(Res.string.group_setup_venue_name_hint),
+                errorText = nameError,
+                modifier = Modifier.testTag(GroupSetupTags.VenueName),
+            )
+        }
         Text(
             text = addressLabel,
             style = SaqzTheme.typography.label,

@@ -14,9 +14,10 @@
     <string name="game_editor_duration_label">Duração</string>
     <string name="game_editor_venue_label">Quadra</string>
     <string name="game_editor_venue_name_hint">Ex.: CERET — Quadra 2</string>
-    <string name="game_editor_venue_address_label">Endereço</string>
+    <string name="game_editor_venue_address_label">Endereço (opcional)</string>
     <string name="game_editor_venue_address_hint">R. Canuto Abreu, s/n · Tatuapé</string>
     <string name="game_editor_venue_helper">Usamos a quadra do grupo. Você pode escolher outra só para este jogo.</string>
+    <string name="game_editor_venue_helper_new">Esta quadra fica salva como a do grupo para os próximos jogos.</string>
     <string name="game_editor_capacity_label">Vagas neste jogo</string>
     <string name="game_editor_capacity_helper">Quando as vagas acabarem, quem confirmar entra na lista de espera.</string>
     <string name="game_editor_confirmation_lead_label">Confirmar presença até</string>
@@ -59,12 +60,18 @@
     <string name="game_picker_month_december">dezembro</string>
 
     <!-- 4e · Erros -->
-    <string name="game_editor_error_missing_title">Faltam informações</string>
-    <string name="game_editor_error_missing_body">Preencha a data, o horário e os dados da quadra para criar o jogo.</string>
+    <string name="game_editor_error_missing_title">Confira as informações</string>
+    <string name="game_editor_error_missing_body">Corrija %1$s para continuar.</string>
+    <string name="game_editor_missing_item_date">a data</string>
+    <string name="game_editor_missing_item_time">o horário</string>
+    <string name="game_editor_missing_item_venue_name">o nome da quadra</string>
+    <string name="game_editor_missing_item_venue_address">o endereço da quadra</string>
+    <string name="game_editor_missing_item_notes">o recado</string>
+    <string name="game_editor_missing_and">e</string>
     <string name="game_editor_error_date">Escolha um dia para o jogo.</string>
     <string name="game_editor_error_time">Escolha a hora de início.</string>
     <string name="game_editor_error_venue_name">Informe o nome da quadra.</string>
-    <string name="game_editor_error_venue_address">Informe o endereço da quadra.</string>
+    <string name="game_editor_error_venue_address">O endereço, se informado, precisa de pelo menos 5 caracteres.</string>
     <string name="game_editor_error_venue_name_too_long">O nome da quadra deve ter no máximo 120 caracteres.</string>
     <string name="game_editor_error_venue_address_too_long">O endereço da quadra deve ter no máximo 300 caracteres.</string>
     <string name="game_editor_error_notes_length">O recado deve ter entre 2 e 500 caracteres.</string>

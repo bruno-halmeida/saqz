@@ -101,6 +101,16 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         assertNull(nullableUuid("SELECT series_id FROM games"))
     }
 
+    @Test fun `game created from a default venue without address stores and reads back empty address`() {
+        val fixture = fixture()
+        execute("UPDATE group_venues SET address = ''")
+
+        val game = create(fixture)
+
+        assertEquals("", string("SELECT venue_address FROM games"))
+        assertEquals("", fixture.repository.find(fixture.group, game.id)?.snapshot?.venue?.address)
+    }
+
     @Test fun `athlete create is forbidden without game write`() {
         val fixture = fixture()
         assertSame(

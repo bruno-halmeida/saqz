@@ -107,9 +107,9 @@ object GameDraftValidator {
             return null
         }
         val name = requiredText(input.name, "venue.name", 2, 120, errors)
-        val address = requiredText(input.address, "venue.address", 5, 300, errors)
+        val address = optionalText(input.address, "venue.address", 5, 300, errors).orEmpty()
         val court = optionalText(input.court, "venue.court", 1, 80, errors)
-        return if (name != null && address != null) GameVenueSnapshot(input.venueId, name, address, court) else null
+        return if (name != null) GameVenueSnapshot(input.venueId, name, address, court) else null
     }
 
     private fun requiredText(

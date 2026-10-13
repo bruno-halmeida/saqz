@@ -66,6 +66,7 @@ fun groupsPresentationModule(): Module = module {
             profileGateway = get(),
             timeZonePort = get<GroupSystemTimeZonePort>(),
             trialAccess = getOrNull(),
+            placesGateway = getOrNull(),
         )
     }
     viewModel { params -> StatementViewModel(params.get(), get()) }
@@ -102,7 +103,7 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
     viewModel { params ->
         val (groupId, gameId) = gameEditorRouteArguments(params)
-        GameEditorViewModel(groupId, gameId, params.get(), get(), get(), get(), getOrNull())
+        GameEditorViewModel(groupId, gameId, params.get(), get(), get(), get(), getOrNull(), getOrNull())
     }
     viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get(), get(), get(), getOrNull()) }
     viewModel {

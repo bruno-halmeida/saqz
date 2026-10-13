@@ -45,6 +45,12 @@ import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.game.GameVenue
+import br.com.saqz.groups.domain.place.PlaceSuggestion
+import br.com.saqz.groups.presentation.ui.components.VenueSearchField
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import br.com.saqz.groups.domain.group.GroupRegularSlot
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.gameeditor.GameEditorEffect
@@ -131,6 +137,13 @@ import br.com.saqz.groups.resources.game_editor_trial_warning_when
 import br.com.saqz.groups.resources.game_editor_venue_address_hint
 import br.com.saqz.groups.resources.game_editor_venue_address_label
 import br.com.saqz.groups.resources.game_editor_venue_helper
+import br.com.saqz.groups.resources.game_editor_venue_helper_new
+import br.com.saqz.groups.resources.game_editor_missing_and
+import br.com.saqz.groups.resources.game_editor_missing_item_date
+import br.com.saqz.groups.resources.game_editor_missing_item_notes
+import br.com.saqz.groups.resources.game_editor_missing_item_time
+import br.com.saqz.groups.resources.game_editor_missing_item_venue_address
+import br.com.saqz.groups.resources.game_editor_missing_item_venue_name
 import br.com.saqz.groups.resources.game_editor_venue_label
 import br.com.saqz.groups.resources.game_editor_venue_name_hint
 import br.com.saqz.groups.resources.group_duration_one_hour
@@ -164,6 +177,8 @@ internal object GameEditorTags {
     const val Recurrence = "game-editor-recurrence"
     const val RecurrenceToggle = "game-editor-recurrence-toggle"
     const val RecurrenceFailure = "game-editor-recurrence-failure"
+    const val VenueName = "game-editor-venue-name"
+    const val VenueAddress = "game-editor-venue-address"
 }
 
 private val DurationOptions = listOf(60, 90, 120, 150)
@@ -254,10 +269,17 @@ private fun FormScroll(
 ) {
     val metrics = SaqzTheme.metrics
     val errors = state.validationErrors
+    val scrollState = rememberScrollState()
+    val targets = remember { EditorScrollTargets() }
+    // A tela rola até o primeiro campo com erro a cada toque em "Marcar jogo": o erro aparece no
+    // campo, não só no topo. `submitAttempts` faz o mesmo erro rolar de novo no segundo toque.
+    LaunchedEffect(state.submitAttempts) {
+        if (state.submitAttempts > 0) targets.firstFor(errors)?.bringIntoView()
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
         verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
@@ -268,7 +290,7 @@ private fun FormScroll(
         if (errors.isNotEmpty()) {
             MissingInfoBanner(
                 title = stringResource(Res.string.game_editor_error_missing_title),
-                body = stringResource(Res.string.game_editor_error_missing_body),
+                body = stringResource(Res.string.game_editor_error_missing_body, missingItems(errors)),
             )
         }
         if (state.hasConflict) {
@@ -291,6 +313,7 @@ private fun FormScroll(
             form = state.form,
             errors = errors,
             onOpenPicker = onOpenPicker,
+            modifier = Modifier.bringIntoViewRequester(targets.dateTime),
         )
         if (state.recurrenceOffered) {
             RecurrenceSection(
@@ -314,8 +337,14 @@ private fun FormScroll(
         VenueFields(
             venue = state.form.venue,
             errors = errors,
+            groupHasVenue = state.groupHasVenue,
+            creating = state.versionToken == null,
+            suggestions = state.venueSearch.suggestions,
+            targets = targets,
             onNameChange = { onIntent(GameEditorIntent.UpdateVenueName(it)) },
             onAddressChange = { onIntent(GameEditorIntent.UpdateVenueAddress(it)) },
+            onSelectSuggestion = { onIntent(GameEditorIntent.SelectPlaceSuggestion(it)) },
+            onDismissSuggestions = { onIntent(GameEditorIntent.DismissPlaceSuggestions) },
         )
         SaqzCard(padded = false) {
             Column(
@@ -336,7 +365,7 @@ private fun FormScroll(
             selected = state.form.confirmationLeadMinutes,
             onSelect = { onIntent(GameEditorIntent.SelectConfirmationLead(it)) },
         )
-        SaqzCard {
+        SaqzCard(modifier = Modifier.bringIntoViewRequester(targets.notes)) {
             SaqzSectionHeader(title = stringResource(Res.string.game_editor_notes_label))
             SaqzInput(
                 value = state.form.notes,
@@ -575,13 +604,14 @@ private fun DateTimeFields(
     form: GameEditorFields,
     errors: Set<GameEditorFieldError>,
     onOpenPicker: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
     val dateError = if (GameEditorFieldError.DateMissing in errors) stringResource(Res.string.game_editor_error_date) else null
     val timeError = if (GameEditorFieldError.TimeMissing in errors) stringResource(Res.string.game_editor_error_time) else null
     val dateDisplay = if (form.localDate.isNotBlank()) formatDisplayDate(form.localDate) else ""
     val timeDisplay = if (form.localTime.isNotBlank()) formatDisplayTime(form.localTime) else ""
-    Column(verticalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
         SaqzCard(padded = false) {
             PickerRow(
                 label = stringResource(Res.string.game_editor_date_label),
@@ -695,8 +725,14 @@ private fun DurationChips(selected: Int, onSelect: (Int) -> Unit) {
 private fun VenueFields(
     venue: GameVenue?,
     errors: Set<GameEditorFieldError>,
+    groupHasVenue: Boolean,
+    creating: Boolean,
+    suggestions: List<PlaceSuggestion>,
+    targets: EditorScrollTargets,
     onNameChange: (String) -> Unit,
     onAddressChange: (String) -> Unit,
+    onSelectSuggestion: (PlaceSuggestion) -> Unit,
+    onDismissSuggestions: () -> Unit,
 ) {
     val metrics = SaqzTheme.metrics
     val nameError = when {
@@ -705,7 +741,7 @@ private fun VenueFields(
         else -> null
     }
     val addressError = when {
-        GameEditorFieldError.VenueAddressMissing in errors -> stringResource(Res.string.game_editor_error_venue_address)
+        GameEditorFieldError.VenueAddressTooShort in errors -> stringResource(Res.string.game_editor_error_venue_address)
         GameEditorFieldError.VenueAddressTooLong in errors -> stringResource(Res.string.game_editor_error_venue_address_too_long)
         else -> null
     }
@@ -715,14 +751,22 @@ private fun VenueFields(
             verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
         ) {
             SaqzSectionHeader(title = stringResource(Res.string.game_editor_venue_label))
-            SaqzInput(
-                value = venue?.name.orEmpty(),
-                onValueChange = onNameChange,
-                label = stringResource(Res.string.game_editor_venue_label),
-                showLabel = false,
-                placeholder = stringResource(Res.string.game_editor_venue_name_hint),
-                errorText = nameError,
-            )
+            VenueSearchField(
+                suggestions = suggestions,
+                onSelect = onSelectSuggestion,
+                onDismiss = onDismissSuggestions,
+                modifier = Modifier.bringIntoViewRequester(targets.venueName),
+            ) {
+                SaqzInput(
+                    value = venue?.name.orEmpty(),
+                    onValueChange = onNameChange,
+                    label = stringResource(Res.string.game_editor_venue_label),
+                    showLabel = false,
+                    placeholder = stringResource(Res.string.game_editor_venue_name_hint),
+                    errorText = nameError,
+                    modifier = Modifier.testTag(GameEditorTags.VenueName),
+                )
+            }
             SaqzInput(
                 value = venue?.address.orEmpty(),
                 onValueChange = onAddressChange,
@@ -730,9 +774,54 @@ private fun VenueFields(
                 showLabel = false,
                 placeholder = stringResource(Res.string.game_editor_venue_address_hint),
                 errorText = addressError,
+                modifier = Modifier.bringIntoViewRequester(targets.venueAddress).testTag(GameEditorTags.VenueAddress),
             )
-            HelperText(stringResource(Res.string.game_editor_venue_helper))
+            // "Usamos a quadra do grupo" só é verdade quando o grupo tem uma; sem ela, a que a
+            // pessoa digita aqui vira a do grupo ao marcar o jogo.
+            when {
+                groupHasVenue -> HelperText(stringResource(Res.string.game_editor_venue_helper))
+                creating -> HelperText(stringResource(Res.string.game_editor_venue_helper_new))
+            }
         }
+    }
+}
+
+/** Onde a tela rola quando "Marcar jogo" acusa erro: o primeiro campo com problema, de cima para baixo. */
+@Stable
+private class EditorScrollTargets {
+    val dateTime = BringIntoViewRequester()
+    val venueName = BringIntoViewRequester()
+    val venueAddress = BringIntoViewRequester()
+    val notes = BringIntoViewRequester()
+
+    fun firstFor(errors: Set<GameEditorFieldError>): BringIntoViewRequester? = when {
+        GameEditorFieldError.DateMissing in errors || GameEditorFieldError.TimeMissing in errors -> dateTime
+        GameEditorFieldError.VenueNameMissing in errors || GameEditorFieldError.VenueNameTooLong in errors -> venueName
+        GameEditorFieldError.VenueAddressTooShort in errors ||
+            GameEditorFieldError.VenueAddressTooLong in errors -> venueAddress
+        GameEditorFieldError.NotesInvalid in errors -> notes
+        else -> null
+    }
+}
+
+/** "a data, o horário e o nome da quadra": só o que falta de verdade, na ordem da tela. */
+@Composable
+private fun missingItems(errors: Set<GameEditorFieldError>): String {
+    val items = buildList {
+        if (GameEditorFieldError.DateMissing in errors) add(stringResource(Res.string.game_editor_missing_item_date))
+        if (GameEditorFieldError.TimeMissing in errors) add(stringResource(Res.string.game_editor_missing_item_time))
+        if (GameEditorFieldError.VenueNameMissing in errors || GameEditorFieldError.VenueNameTooLong in errors) {
+            add(stringResource(Res.string.game_editor_missing_item_venue_name))
+        }
+        if (GameEditorFieldError.VenueAddressTooShort in errors || GameEditorFieldError.VenueAddressTooLong in errors) {
+            add(stringResource(Res.string.game_editor_missing_item_venue_address))
+        }
+        if (GameEditorFieldError.NotesInvalid in errors) add(stringResource(Res.string.game_editor_missing_item_notes))
+    }
+    val and = stringResource(Res.string.game_editor_missing_and)
+    return when (items.size) {
+        0, 1 -> items.joinToString()
+        else -> items.dropLast(1).joinToString(", ") + " $and " + items.last()
     }
 }
 

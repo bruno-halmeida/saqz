@@ -636,7 +636,74 @@ class GameEditorViewModelTest {
         )
 
         assertTrue(GameEditorFieldError.VenueNameMissing in errors)
-        assertTrue(GameEditorFieldError.VenueAddressMissing in errors)
+        assertTrue(GameEditorFieldError.VenueAddressTooShort in errors)
+    }
+
+    @Test
+    fun `venue address is optional`() {
+        val blank = GameEditorFields(localDate = "2026-08-04", localTime = "19:30", venue = GameVenue(name = "CERET", address = ""))
+        val absent = blank.copy(venue = null)
+
+        assertTrue(validateGameEditor(blank).isEmpty())
+        assertEquals(setOf(GameEditorFieldError.VenueNameMissing), validateGameEditor(absent))
+    }
+
+    @Test
+    fun `a group without a venue gets the first game's venue even without recurrence`() = runTest {
+        val profileGateway = FakeGroupProfileGateway()
+        val vm = viewModel(
+            groupGateway = groupGateway { it.copy(profile = it.profile?.copy(defaultVenue = null)) },
+            profileGateway = profileGateway,
+        )
+
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
+        vm.onIntent(GameEditorIntent.UpdateVenueName("Quadra da praça"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        val form = assertNotNull(profileGateway.lastUpdateCommand?.form)
+        assertEquals("Quadra da praça", form.defaultVenue?.name)
+        assertEquals("", form.defaultVenue?.address)
+        assertTrue(vm.effects.first() is GameEditorEffect.Saved)
+    }
+
+    @Test
+    fun `a group that has a venue is left alone`() = runTest {
+        val profileGateway = FakeGroupProfileGateway()
+        val vm = viewModel(profileGateway = profileGateway)
+
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertNull(profileGateway.lastUpdateCommand)
+    }
+
+    @Test
+    fun `failing to save the default venue does not fail the game`() = runTest {
+        val profileGateway = FakeGroupProfileGateway(
+            updateResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Connectivity)),
+        )
+        val vm = viewModel(
+            groupGateway = groupGateway { it.copy(profile = it.profile?.copy(defaultVenue = null)) },
+            profileGateway = profileGateway,
+        )
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
+        vm.onIntent(GameEditorIntent.UpdateVenueName("Quadra da praça"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertFalse(vm.state.value.recurrenceFailed)
+        assertTrue(vm.effects.first() is GameEditorEffect.Saved)
+    }
+
+    @Test
+    fun `an invalid submit counts the attempt so the screen scrolls again`() = runTest {
+        val vm = viewModel(
+            groupGateway = groupGateway { it.copy(profile = it.profile?.copy(defaultVenue = null)) },
+        )
+        vm.onIntent(GameEditorIntent.Submit)
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(2, vm.state.value.submitAttempts)
+        assertTrue(GameEditorFieldError.VenueNameMissing in vm.state.value.validationErrors)
     }
 
     @Test

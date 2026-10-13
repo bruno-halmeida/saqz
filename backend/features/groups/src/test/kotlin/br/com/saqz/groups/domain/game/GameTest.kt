@@ -47,6 +47,11 @@ class GameTest {
         assertEquals(setOf("venue.name", "venue.address", "venue.court"), result.errors.map { it.field }.toSet())
     }
 
+    @Test fun `venue address is optional and blank becomes empty`() {
+        assertEquals("", valid(validInput(venue = validVenue().copy(address = null))).venue.address)
+        assertEquals("", valid(validInput(venue = validVenue().copy(address = "   "))).venue.address)
+    }
+
     @Test fun `duration and capacity report both invalid ranges`() {
         val result = assertIs<GameDraftValidation.Invalid>(
             GameDraftValidator.validate(validInput(durationMinutes = 14, capacity = 101)),

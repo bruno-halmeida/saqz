@@ -60,7 +60,7 @@ class GameEditorScreenshotTest {
                 ),
                 validationErrors = setOf(
                     GameEditorFieldError.VenueNameMissing,
-                    GameEditorFieldError.VenueAddressMissing,
+                    GameEditorFieldError.VenueAddressTooShort,
                 ),
             ),
             onBack = {},

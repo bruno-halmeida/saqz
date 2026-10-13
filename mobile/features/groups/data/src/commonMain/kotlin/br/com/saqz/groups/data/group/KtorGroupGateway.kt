@@ -283,7 +283,8 @@ private fun GroupDto.toDomain(): Group? {
 }
 
 private fun GroupProfileDto.toDomain(): GroupProfile? {
-    if (defaultVenue?.let { it.name.isBlank() || it.address.isBlank() } == true) return null
+    // O endereço é opcional: só uma quadra sem nome é resposta inválida.
+    if (defaultVenue?.name?.isBlank() == true) return null
     if (regularSlots.any { it.weekday == null || it.startTime.isBlank() || it.durationMinutes <= 0 }) return null
     return GroupProfile(
         modality = modality?.let { GroupModality.valueOf(it.name) },

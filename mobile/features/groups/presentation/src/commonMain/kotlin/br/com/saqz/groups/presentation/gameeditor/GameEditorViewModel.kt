@@ -21,10 +21,12 @@ import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.domain.group.GroupTrialAccessInfo
 import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.group.GroupVenue
+import br.com.saqz.groups.domain.place.PlacesGateway
 import br.com.saqz.groups.model.GameEditorDraft
 import br.com.saqz.groups.model.GameEditorForm
 import br.com.saqz.groups.model.GameEditorMode
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.place.VenueSearch
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
@@ -34,6 +36,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
+@Suppress("LargeClass", "LongParameterList")
 class GameEditorViewModel(
     val groupId: String,
     private val gameId: String?,
@@ -42,12 +45,19 @@ class GameEditorViewModel(
     private val groupGateway: GroupGateway,
     private val profileGateway: GroupProfileGateway,
     private val trialAccess: GroupTrialAccessPort? = null,
+    placesGateway: PlacesGateway? = null,
 ) : MviViewModel<GameEditorState, GameEditorIntent, GameEditorEffect>(
     initialState = GameEditorState(isLoading = true),
 ) {
     private var loadGeneration = 0
     private var pendingDraft: PendingDraft? = restorePendingDraft()
+    private val venueSearch = VenueSearch(viewModelScope, placesGateway)
+
     init {
+        viewModelScope.launch {
+            venueSearch.state.collect { search -> update { it.copy(venueSearch = search) } }
+        }
+        venueSearch.refreshAvailability()
         load()
     }
 
@@ -60,12 +70,11 @@ class GameEditorViewModel(
                 copy(localDate = intent.date, localTime = intent.time)
             }
             is GameEditorIntent.SelectDuration -> updateForm { copy(durationMinutes = intent.minutes) }
-            is GameEditorIntent.UpdateVenueName -> updateForm {
-                copy(venue = (venue ?: emptyVenue()).copy(name = intent.name), venueEditable = true)
-            }
-            is GameEditorIntent.UpdateVenueAddress -> updateForm {
-                copy(venue = (venue ?: emptyVenue()).copy(address = intent.address), venueEditable = true)
-            }
+            is GameEditorIntent.UpdateVenueName,
+            is GameEditorIntent.SelectPlaceSuggestion,
+            GameEditorIntent.DismissPlaceSuggestions,
+            is GameEditorIntent.UpdateVenueAddress,
+            -> handleVenueIntent(intent)
             is GameEditorIntent.UpdateCapacity -> updateForm {
                 copy(capacity = intent.capacity.coerceAtLeast(MIN_CAPACITY))
             }
@@ -80,6 +89,35 @@ class GameEditorViewModel(
             GameEditorIntent.OpenExistingGame -> openExistingGame()
             GameEditorIntent.DismissSubscriptionRequired -> update { it.copy(subscriptionRequired = false) }
             GameEditorIntent.RefreshPlan -> refreshPlan()
+        }
+    }
+
+    /** Quadra do jogo: digitação, sugestões do Google Places e endereço. */
+    private fun handleVenueIntent(intent: GameEditorIntent) {
+        when (intent) {
+            is GameEditorIntent.UpdateVenueName -> {
+                updateForm {
+                    copy(venue = (venue ?: emptyVenue()).copy(name = intent.name), venueEditable = true)
+                }
+                venueSearch.onQuery(intent.name)
+            }
+            is GameEditorIntent.SelectPlaceSuggestion -> venueSearch.select(intent.suggestion) { place ->
+                // Um lugar do Google não é uma quadra salva do grupo: sem `venueId`, só os textos.
+                updateForm {
+                    copy(
+                        venue = GameVenue(
+                            name = place.name.take(VENUE_NAME_LIMIT),
+                            address = place.address.take(VENUE_ADDRESS_LIMIT),
+                        ),
+                        venueEditable = true,
+                    )
+                }
+            }
+            GameEditorIntent.DismissPlaceSuggestions -> venueSearch.dismiss()
+            is GameEditorIntent.UpdateVenueAddress -> updateForm {
+                copy(venue = (venue ?: emptyVenue()).copy(address = intent.address), venueEditable = true)
+            }
+            else -> Unit
         }
     }
 
@@ -150,6 +188,7 @@ class GameEditorViewModel(
                         groupName = group.name,
                         zoneId = group.timeZone.id,
                         form = restoreForm(serverForm),
+                        groupHasVenue = profile?.defaultVenue != null,
                             versionToken = gameResult.value.version.value,
                         ).withTrial(trial)
                     }
@@ -171,7 +210,7 @@ class GameEditorViewModel(
         val current = state.value
         val errors = validateGameEditor(current.form)
         if (errors.isNotEmpty()) {
-            update { it.copy(validationErrors = errors) }
+            update { it.copy(validationErrors = errors, submitAttempts = it.submitAttempts + 1) }
             return
         }
         if (current.isSaving) return
@@ -201,7 +240,7 @@ class GameEditorViewModel(
                 is SaqzResult.Success -> {
                     // O jogo já existe e está publicado; o rascunho pendente fica guardado para o
                     // retry resumir sem criar outro jogo caso só a repetição falhe.
-                    val recurrence = saveRecurrence(groupId, current, groupGateway, profileGateway)
+                    val recurrence = saveGroupDefaults(groupId, current, gameId == null, groupGateway, profileGateway)
                     if (recurrence is SaqzResult.Failure) {
                         update { it.copy(isSaving = false, recurrenceFailed = true, error = recurrence.error.toUiError()) }
                         return@launch
@@ -464,6 +503,8 @@ class GameEditorViewModel(
 
     private companion object {
         const val MIN_CAPACITY = 2
+        const val VENUE_NAME_LIMIT = 120
+        const val VENUE_ADDRESS_LIMIT = 300
         const val DEFAULT_CAPACITY = 12
         const val DEFAULT_DURATION = 120
         const val DEFAULT_LEAD = 360

@@ -14,6 +14,7 @@ import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.group.GroupTimeZone as DomainGroupTimeZone
 import br.com.saqz.groups.domain.group.GroupVersionToken
 import br.com.saqz.groups.domain.group.UpdateGroupProfileCommand
+import br.com.saqz.groups.domain.place.PlacesGateway
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
@@ -27,6 +28,7 @@ import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.place.VenueSearch
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
 import kotlin.uuid.ExperimentalUuidApi
@@ -39,6 +41,7 @@ class GroupSetupViewModel(
     private val profileGateway: GroupProfileGateway,
     private val timeZonePort: GroupSystemTimeZonePort,
     private val trialAccess: GroupTrialAccessPort? = null,
+    placesGateway: PlacesGateway? = null,
 ) : MviViewModel<GroupSetupState, GroupSetupIntent, GroupSetupEffect>(
     initialState.withSavedText(savedState),
 ) {
@@ -47,8 +50,13 @@ class GroupSetupViewModel(
     private var versionToken: GroupVersionToken? = null
     private var timeZone: DomainGroupTimeZone? = null
     private var retryDelete = false
+    private val venueSearch = VenueSearch(viewModelScope, placesGateway)
 
     init {
+        viewModelScope.launch {
+            venueSearch.state.collect { search -> update { it.copy(venueSearch = search) } }
+        }
+        venueSearch.refreshAvailability()
         timeZonePort.detect { result ->
             timeZone = (result as? GroupSystemTimeZoneResult.Available)?.value?.toDomain()
         }
@@ -78,10 +86,21 @@ class GroupSetupViewModel(
                 onTextChange(KeyCustomLevel, intent.value, GroupTextLimits.CustomLevelMax) {
                     copy(customLevel = it)
                 }
-            is GroupSetupIntent.UpdateVenueName ->
+            is GroupSetupIntent.UpdateVenueName -> {
                 onTextChange(KeyVenueName, intent.value, GroupTextLimits.VenueNameMax) { value ->
                     withVenue { copy(name = value) }
                 }
+                venueSearch.onQuery(intent.value)
+            }
+            is GroupSetupIntent.SelectPlaceSuggestion -> venueSearch.select(intent.suggestion) { place ->
+                // Um lugar do Google vira só os dois textos do formulário; `id` e `court` seguem os de antes.
+                val name = place.name.withoutControlChars().takeCodePoints(GroupTextLimits.VenueNameMax)
+                val address = place.address.withoutControlChars().takeCodePoints(GroupTextLimits.VenueAddressMax)
+                savedState[KeyVenueName] = name
+                savedState[KeyVenueAddress] = address
+                onFormChange { withVenue { copy(name = name, address = address) } }
+            }
+            GroupSetupIntent.DismissPlaceSuggestions -> venueSearch.dismiss()
             is GroupSetupIntent.UpdateVenueAddress ->
                 onTextChange(KeyVenueAddress, intent.value, GroupTextLimits.VenueAddressMax) { value ->
                     withVenue { copy(address = value) }

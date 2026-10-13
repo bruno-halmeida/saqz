@@ -317,6 +317,9 @@ private fun GroupSetupAdvancedCards(
         ),
         onNameChange = { onIntent(GroupSetupIntent.UpdateVenueName(it)) },
         onAddressChange = { onIntent(GroupSetupIntent.UpdateVenueAddress(it)) },
+        suggestions = state.venueSearch.suggestions,
+        onSelectSuggestion = { onIntent(GroupSetupIntent.SelectPlaceSuggestion(it)) },
+        onDismissSuggestions = { onIntent(GroupSetupIntent.DismissPlaceSuggestions) },
     )
     GroupRecurrenceCard(
         recurring = state.recurring,

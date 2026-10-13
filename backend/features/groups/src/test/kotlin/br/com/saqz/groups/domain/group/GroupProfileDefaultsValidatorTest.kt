@@ -172,6 +172,13 @@ class GroupProfileDefaultsValidatorTest {
     }
 
     @Test
+    fun `default venue address is optional and blank becomes empty`() {
+        assertEquals("", valid(input(defaultVenue = GroupVenueInput("Arena", null, null))).defaultVenue!!.address)
+        assertEquals("", valid(input(defaultVenue = GroupVenueInput("Arena", "   ", null))).defaultVenue!!.address)
+        assertFields(input(defaultVenue = GroupVenueInput("Arena", "Rua\tX 100", null)), "defaultVenue.address")
+    }
+
+    @Test
     fun `default venue court blank becomes null and present court is trimmed`() {
         assertNull(valid(input(defaultVenue = GroupVenueInput("Arena", "Rua Teste 123", "   "))).defaultVenue!!.court)
         assertEquals("Quadra 2", valid(input(defaultVenue = GroupVenueInput("Arena", "Rua Teste 123", " Quadra 2 "))).defaultVenue!!.court)
@@ -259,7 +266,6 @@ class GroupProfileDefaultsValidatorTest {
             "playStyle",
             "customPlayStyle",
             "defaultVenue.name",
-            "defaultVenue.address",
             "regularSlots[0].weekday",
             "regularSlots[0].startTime",
             "regularSlots[0].durationMinutes",

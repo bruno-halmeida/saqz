@@ -122,7 +122,7 @@ object WeeklyRecurrenceResolver {
         rule.slots.forEachIndexed { index, slot ->
             validateText(slot.title, "slots[$index].title", 2, 120)?.let(::add)
             validateText(slot.venue.name, "slots[$index].venue.name", 2, 120)?.let(::add)
-            validateText(slot.venue.address, "slots[$index].venue.address", 5, 300)?.let(::add)
+            if (slot.venue.address.isNotEmpty()) validateText(slot.venue.address, "slots[$index].venue.address", 5, 300)?.let(::add)
             slot.venue.court?.let { validateText(it, "slots[$index].venue.court", 1, 80)?.let(::add) }
             if (slot.durationMinutes !in 15..480) add(RecurrenceValidationError("slots[$index].durationMinutes", "must be between 15 and 480"))
             if (slot.capacity !in 2..100) add(RecurrenceValidationError("slots[$index].capacity", "must be between 2 and 100"))

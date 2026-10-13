@@ -20,7 +20,8 @@ import kotlinx.datetime.LocalTime
 
 /**
  * "Repetir toda semana" no editor (4a): o dia e a hora do jogo viram horário regular do grupo.
- * Regra densa fora do ViewModel (AGENTS.md §4).
+ * E, ao marcar o primeiro jogo de um grupo sem quadra, a quadra do jogo vira a quadra padrão
+ * do grupo. Regra densa fora do ViewModel (AGENTS.md §4).
  */
 
 /** O horário regular que o formulário pede; `null` sem data ou hora válidas. */
@@ -39,11 +40,12 @@ fun List<GroupRegularSlot>.hasSlotAt(slot: GroupRegularSlot): Boolean =
     any { it.weekday == slot.weekday && it.startTime == slot.startTime }
 
 /**
- * O perfil do grupo com o horário novo no fim da lista e, se o grupo ainda não tem quadra, a
- * quadra deste jogo como padrão — sem ela o backend não gera os jogos da semana. `null` quando o
- * perfil está incompleto (sem modalidade ou composição), que o `PUT` do grupo recusaria.
+ * O perfil do grupo com o horário novo (se houver) no fim da lista e, se o grupo ainda não tem
+ * quadra, a quadra deste jogo como padrão — sem ela o backend não gera os jogos da semana e o
+ * próximo jogo pediria a quadra de novo. `null` quando o perfil está incompleto (sem modalidade
+ * ou composição), que o `PUT` do grupo recusaria.
  */
-fun recurrenceProfileForm(group: Group, venue: GameVenue?, slot: GroupRegularSlot): GroupSetupForm? {
+fun recurrenceProfileForm(group: Group, venue: GameVenue?, slot: GroupRegularSlot?): GroupSetupForm? {
     val profile = group.profile ?: return null
     val modality = profile.modality ?: return null
     val composition = profile.composition ?: return null
@@ -58,7 +60,7 @@ fun recurrenceProfileForm(group: Group, venue: GameVenue?, slot: GroupRegularSlo
         playStyle = profile.playStyle,
         customPlayStyle = profile.customPlayStyle,
         defaultVenue = profile.defaultVenue ?: venue?.let { GroupVenue(it.venueId, it.name, it.address, it.court) },
-        regularSlots = profile.regularSlots + slot,
+        regularSlots = profile.regularSlots + listOfNotNull(slot),
         defaultCapacity = profile.defaultCapacity,
         defaultConfirmationLeadMinutes = profile.defaultConfirmationLeadMinutes,
         defaultGameFeeCents = group.financeDefaults?.defaultGameFeeCents,
@@ -73,32 +75,45 @@ fun recurrenceProfileForm(group: Group, venue: GameVenue?, slot: GroupRegularSlo
 }
 
 /**
- * Grava o dia e a hora do jogo como horário regular do grupo. Lê o grupo de novo porque o token de
- * versão pode ter envelhecido desde a abertura da tela. Sem repetição pedida, não faz nada.
+ * Grava no grupo o que o jogo recém-marcado pede: o dia e a hora como horário regular (com
+ * "Repetir toda semana") e a quadra como padrão, quando o grupo não tem uma e o jogo é novo. Lê
+ * o grupo de novo porque o token de versão pode ter envelhecido desde a abertura da tela e porque
+ * é ele, não a tela, que sabe se já há quadra. Nada a gravar, nada feito.
+ *
+ * Só a repetição é falha para quem chama: a quadra padrão é cortesia para o próximo jogo, e o
+ * jogo já está marcado — se ela não gravar, a próxima criação pede a quadra de novo.
  */
-internal suspend fun saveRecurrence(
+internal suspend fun saveGroupDefaults(
     groupId: String,
     state: GameEditorState,
+    creating: Boolean,
     groupGateway: GroupGateway,
     profileGateway: GroupProfileGateway,
 ): SaqzResult<Unit, GroupProfileError> {
-    val slot = recurrenceSlotFor(state.form)
-    if (!state.recurrenceOffered || !state.form.recurring || slot == null) return SaqzResult.Success(Unit)
-    return when (val read = groupGateway.read(GroupId(groupId))) {
+    val slot = recurrenceSlotFor(state.form).takeIf { state.recurrenceOffered && state.form.recurring }
+    val venue = state.form.venue?.takeIf { creating && it.name.isNotBlank() }
+    if (slot == null && venue == null) return SaqzResult.Success(Unit)
+    val read = groupGateway.read(GroupId(groupId))
+    val saved = when (read) {
         is SaqzResult.Failure -> SaqzResult.Failure(read.error)
-        is SaqzResult.Success -> addRegularSlot(groupId, read.value, state.form.venue, slot, profileGateway)
+        is SaqzResult.Success -> writeGroupDefaults(groupId, read.value, venue, slot, profileGateway)
     }
+    // Sem repetição pedida, a quadra padrão é cortesia: falhar não falha o jogo.
+    return if (saved is SaqzResult.Failure && slot == null) SaqzResult.Success(Unit) else saved
 }
 
-private suspend fun addRegularSlot(
+private suspend fun writeGroupDefaults(
     groupId: String,
     versioned: VersionedGroup,
     venue: GameVenue?,
-    slot: GroupRegularSlot,
+    slot: GroupRegularSlot?,
     profileGateway: GroupProfileGateway,
 ): SaqzResult<Unit, GroupProfileError> {
-    if (versioned.group.profile?.regularSlots.orEmpty().hasSlotAt(slot)) return SaqzResult.Success(Unit)
-    val form = recurrenceProfileForm(versioned.group, venue, slot)
+    val profile = versioned.group.profile
+    val newSlot = slot?.takeUnless { profile?.regularSlots.orEmpty().hasSlotAt(it) }
+    val newVenue = venue?.takeIf { profile?.defaultVenue == null }
+    if (newSlot == null && newVenue == null) return SaqzResult.Success(Unit)
+    val form = recurrenceProfileForm(versioned.group, newVenue, newSlot)
         ?: return SaqzResult.Failure(GroupProfileError.DataFailure(DataError.InvalidResponse))
     return profileGateway.updateProfile(
         UpdateGroupProfileCommand(GroupId(groupId), versioned.versionToken, form),

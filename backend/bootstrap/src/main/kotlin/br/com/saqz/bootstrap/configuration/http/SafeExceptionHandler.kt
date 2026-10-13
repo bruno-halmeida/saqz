@@ -19,6 +19,9 @@ import br.com.saqz.access.adapter.input.http.WeakPasswordException
 import br.com.saqz.access.application.emailverification.VerificationLinksUnavailable
 import br.com.saqz.access.application.passwordreset.PasswordAccountsUnavailable
 import br.com.saqz.groups.adapter.input.http.AthleteLimitExceededException
+import br.com.saqz.groups.application.places.PlacesRateLimitedException
+import br.com.saqz.groups.application.places.PlacesUnavailableException
+import br.com.saqz.groups.application.places.PlacesUpstreamException
 import br.com.saqz.groups.adapter.input.http.EntryRequestAthleteLimitExceededException
 import br.com.saqz.groups.adapter.input.http.EntryRequestNotFoundException
 import br.com.saqz.groups.adapter.input.http.GroupLimitExceededException
@@ -302,6 +305,27 @@ class SafeExceptionHandler(
     @ExceptionHandler(WhatsAppGroupBindingConflictException::class)
     fun whatsAppGroupBindingConflict(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 409)
+    }
+
+    @ExceptionHandler(PlacesUnavailableException::class)
+    fun placesUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 503)
+    }
+
+    @ExceptionHandler(PlacesUpstreamException::class)
+    fun placesUpstream(failure: PlacesUpstreamException, request: HttpServletRequest, response: HttpServletResponse) {
+        // Só a mensagem (sem URL nem chave) vai ao log.
+        logger.warn("Google Places falhou: {}", failure.message)
+        problemWriter.write(request, response, 502)
+    }
+
+    @ExceptionHandler(PlacesRateLimitedException::class)
+    fun placesRateLimited(
+        failure: PlacesRateLimitedException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(request, response, 429, retryAfterSeconds = failure.retryAfterSeconds)
     }
 
     @ExceptionHandler(WhatsAppGroupBindingUnavailableException::class)

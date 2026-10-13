@@ -146,7 +146,8 @@ O `backend.env` contém os três `SPRING_DATASOURCE_*`, os campos `SAQZ_MAIL_*`,
 `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true`, e, para SMTP 465,
 `SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE=true` e `SAQZ_MAIL_STARTTLS=false`.
 Inclua também `SAQZ_ASAAS_BASE_URL=https://api.asaas.com/v3`, `SAQZ_ASAAS_API_KEY`,
-`SAQZ_ASAAS_WEBHOOK_TOKEN` e `SAQZ_PASSWORD_RESET_SECRET`.
+`SAQZ_ASAAS_WEBHOOK_TOKEN` e `SAQZ_PASSWORD_RESET_SECRET`. `SAQZ_PLACES_GOOGLE_API_KEY` (Google Places API
+(New), busca de endereço da quadra) é opcional: vazia, o recurso fica desligado.
 
 Defina `SAQZ_SUBSCRIPTION_PURCHASE_URL=https://saqz.app/assinar/`, endereço no domínio
 de produção aprovado para os e-mails de contratação. O backend exige o caminho

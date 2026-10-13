@@ -197,9 +197,9 @@ object GroupProfileDefaultsValidator {
     private fun validateVenue(input: GroupVenueInput?, errors: MutableList<GroupValidationError>): ValidGroupVenue? {
         if (input == null) return null
         val name = requiredText(input.name, "defaultVenue.name", 2, 120, errors)
-        val address = requiredText(input.address, "defaultVenue.address", 5, 300, errors)
+        val address = optionalText(input.address, "defaultVenue.address", 5, 300, errors).orEmpty()
         val court = optionalText(input.court, "defaultVenue.court", 1, 80, errors)
-        return if (name != null && address != null) ValidGroupVenue(name, address, court) else null
+        return if (name != null) ValidGroupVenue(name, address, court) else null
     }
 
     private fun validateSlots(

@@ -11,7 +11,9 @@ import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.model.PromotionMode
+import br.com.saqz.groups.domain.place.PlaceSuggestion
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.place.VenueSearchState
 
 /** `2a` cria e `2i` edita: mesma tela, mesmos doze cards, modos diferentes. */
 sealed interface GroupSetupMode {
@@ -108,6 +110,8 @@ data class GroupSetupState(
     /** Chave de idempotência do payload atual; qualquer edição a descarta antes do retry. */
     val creationCommandKey: String? = null,
     val isOffline: Boolean = false,
+    /** Sugestões de endereço do Google; indisponível quando o backend desliga a busca. */
+    val venueSearch: VenueSearchState = VenueSearchState(),
 ) {
     val isEditing: Boolean = mode is GroupSetupMode.Edit
     val showsPlayStyle: Boolean = form.modality == GroupModality.COURT_VOLLEYBALL
@@ -154,6 +158,10 @@ sealed interface GroupSetupIntent {
     data class UpdateVenueName(val value: String) : GroupSetupIntent
 
     data class UpdateVenueAddress(val value: String) : GroupSetupIntent
+
+    data class SelectPlaceSuggestion(val suggestion: PlaceSuggestion) : GroupSetupIntent
+
+    data object DismissPlaceSuggestions : GroupSetupIntent
 
     data class SelectModality(val value: GroupModality) : GroupSetupIntent
 

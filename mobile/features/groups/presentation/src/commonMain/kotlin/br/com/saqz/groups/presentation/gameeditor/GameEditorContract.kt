@@ -3,7 +3,9 @@ package br.com.saqz.groups.presentation.gameeditor
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.group.GroupRegularSlot
+import br.com.saqz.groups.domain.place.PlaceSuggestion
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.place.VenueSearchState
 
 /**
  * 4a/4b/4e — editor de jogo. `gameId == null` cria; presente edita.
@@ -34,11 +36,15 @@ data class GameEditorState(
     val recurrenceOffered: Boolean = false,
     /** Horários regulares que o grupo já tem; a pílula deste jogo entra ao lado deles. */
     val regularSlots: List<GroupRegularSlot> = emptyList(),
-    /** Sem quadra padrão, a quadra deste jogo vira a do grupo quando a repetição liga. */
+    /** Sem quadra padrão, o editor pede o nome da quadra, e ela vira a do grupo ao marcar o jogo. */
     val groupHasVenue: Boolean = false,
     /** O jogo foi marcado, mas o horário regular não foi gravado; o retry resume o rascunho. */
     val recurrenceFailed: Boolean = false,
     val validationErrors: Set<GameEditorFieldError> = emptySet(),
+    /** Cada toque em "Marcar jogo" com erro soma um: faz a tela rolar até o campo mesmo com o mesmo erro. */
+    val submitAttempts: Int = 0,
+    /** Sugestões de endereço do Google; vazio e indisponível quando o backend desliga a busca. */
+    val venueSearch: VenueSearchState = VenueSearchState(),
     val versionToken: String? = null,
     val isSaving: Boolean = false,
     val saveFailed: Boolean = false,
@@ -69,7 +75,7 @@ enum class GameEditorFieldError {
     DateMissing,
     TimeMissing,
     VenueNameMissing,
-    VenueAddressMissing,
+    VenueAddressTooShort,
     VenueNameTooLong,
     VenueAddressTooLong,
     NotesInvalid,
@@ -82,6 +88,8 @@ sealed interface GameEditorIntent {
     data class SaveDateTime(val date: String, val time: String) : GameEditorIntent
     data class SelectDuration(val minutes: Int) : GameEditorIntent
     data class UpdateVenueName(val name: String) : GameEditorIntent
+    data class SelectPlaceSuggestion(val suggestion: PlaceSuggestion) : GameEditorIntent
+    data object DismissPlaceSuggestions : GameEditorIntent
     data class UpdateVenueAddress(val address: String) : GameEditorIntent
     data class UpdateCapacity(val capacity: Int) : GameEditorIntent
     data class SelectConfirmationLead(val minutes: Int) : GameEditorIntent

@@ -204,6 +204,26 @@ class GameMigrationIntegrationTest {
     @Test fun `game rejects duration limit`() = invalidGame("duration_minutes", "481")
     @Test fun `game rejects capacity limit`() = invalidGame("capacity", "1")
     @Test fun `game rejects non positive fee`() = invalidGame("game_fee_cents", "0")
+    @Test fun `venue address is optional as empty string in venue game and slot but still bounded when given`() {
+        val group = completeGroup("empty-address")
+        val venue = UUID.randomUUID()
+        execute(
+            "INSERT INTO group_venues (id, group_id, name, address, created_at, updated_at) " +
+                "VALUES ('$venue', '$group', 'Arena sem endereço', '', now(), now())",
+        )
+        val series = series(group)
+        slot(group, series.revision, venue, "venue_address = ''")
+        val game = game(group, venue, override = "venue_address = ''")
+
+        assertEquals("", string("SELECT venue_address FROM games WHERE id = '$game'"))
+        assertFails { game(group, venue, override = "venue_address = 'Rua'") }
+        assertFails { game(group, venue, override = "venue_address = ' '") }
+        assertFails { slot(group, series.revision, venue, "venue_address = 'Rua'") }
+        assertFails {
+            execute("INSERT INTO group_venues (id, group_id, name, address, created_at, updated_at) VALUES ('${UUID.randomUUID()}', '$group', 'Arena', 'Rua', now(), now())")
+        }
+    }
+
     @Test fun `game rejects blank notes`() = invalidGame("notes", "' '")
 
     @Test fun `game rejects deadline after resolved start`() = invalidGame(

@@ -160,7 +160,7 @@ class GroupSetupValidatorTest {
     fun `recorrente sem quadra pede nome e endereco`() {
         val errors = validate(state(recurring = true) { copy(defaultVenue = null) })
 
-        assertEquals(setOf(GroupSetupError.VenueNameRequired, GroupSetupError.VenueAddressNotFound), errors)
+        assertEquals(setOf(GroupSetupError.VenueNameRequired), errors)
         assertEquals(emptySet(), validate(state(recurring = false) { copy(defaultVenue = null, regularSlots = emptyList()) }))
     }
 
@@ -172,12 +172,12 @@ class GroupSetupValidatorTest {
     }
 
     @Test
-    fun `quadra com nome e sem endereco acusa endereco`() {
+    fun `quadra com nome e sem endereco e valida`() {
         val errors = validate(
-            state { copy(defaultVenue = GroupVenueForm(name = "CERET — Quadra 2", address = " ")) },
+            state { copy(defaultVenue = GroupVenueForm(name = "CERET — Quadra 2", address = "")) },
         )
 
-        assertEquals(setOf(GroupSetupError.VenueAddressNotFound), errors)
+        assertTrue(errors.isEmpty())
     }
 
     @Test
@@ -215,7 +215,8 @@ class GroupSetupValidatorTest {
             ),
         )
 
-        assertEquals(GroupSetupError.entries.toSet(), errors)
+        // O endereço é opcional: em branco não acusa `VenueAddressNotFound`.
+        assertEquals(GroupSetupError.entries.toSet() - GroupSetupError.VenueAddressNotFound, errors)
     }
 
     private fun state(

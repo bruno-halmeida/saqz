@@ -2,7 +2,8 @@ package br.com.saqz.groups.presentation.gameeditor
 
 /**
  * 4e — validação do formulário de jogo. Regra densa fora do ViewModel (AGENTS.md §4).
- * Data, horário e quadra são obrigatórios; os defaults do grupo são apenas um preenchimento inicial.
+ * Data, horário e o nome da quadra são obrigatórios; o endereço é opcional, mas, se vier, precisa ter
+ * o mínimo do backend. Os defaults do grupo são apenas um preenchimento inicial.
  */
 fun validateGameEditor(form: GameEditorFields): Set<GameEditorFieldError> {
     val errors = mutableSetOf<GameEditorFieldError>()
@@ -16,8 +17,8 @@ fun validateGameEditor(form: GameEditorFields): Set<GameEditorFieldError> {
     if (venueNameLength > VENUE_NAME_MAX) {
         errors += GameEditorFieldError.VenueNameTooLong
     }
-    if (venueAddressLength < VENUE_ADDRESS_MIN) {
-        errors += GameEditorFieldError.VenueAddressMissing
+    if (venueAddressLength in 1 until VENUE_ADDRESS_MIN) {
+        errors += GameEditorFieldError.VenueAddressTooShort
     }
     if (venueAddressLength > VENUE_ADDRESS_MAX) {
         errors += GameEditorFieldError.VenueAddressTooLong

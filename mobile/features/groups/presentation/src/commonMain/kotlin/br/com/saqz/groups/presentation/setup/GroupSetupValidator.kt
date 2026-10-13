@@ -10,7 +10,7 @@ import br.com.saqz.groups.model.GroupVenueForm
  * `KtorGroupGateway.toRequest` faz `requireNotNull` nos dois: sem eles a revisão deixaria
  * confirmar um comando que estoura na camada de dados. `VenueNameRequired` veio da mesma
  * conferência, um nível abaixo — `GroupProfileDefaultsValidator.validateVenue` exige nome
- * **e** endereço sempre que a quadra vem preenchida.
+ * sempre que a quadra vem preenchida. O endereço é opcional (só vale o mínimo se informado).
  */
 enum class GroupSetupError {
     NameRequired,
@@ -39,7 +39,7 @@ enum class GroupSetupError {
  * | `pixLabel` | 115 | `optionalPixText(2, 80)` | mínimo valida, máximo corta |
  * | `customLevel` | 112 | `optionalText(2, 40)` | mínimo valida, máximo corta |
  * | `defaultVenue.name` | 171 | `requiredText(2, 120)` | mínimo valida, máximo corta |
- * | `defaultVenue.address` | 172 | `requiredText(5, 300)` | mínimo valida, máximo corta |
+ * | `defaultVenue.address` | 172 | `optionalText(5, 300)` | mínimo valida (se informado), máximo corta |
  *
  * Fora desta tela e por isso fora daqui: `city` (2..80), `customPlayStyle` (2..40) e
  * `defaultVenue.court` (1..80) não têm campo no formulário e nunca são preenchidos.
@@ -145,23 +145,19 @@ private fun validatePix(state: GroupSetupState): Set<GroupSetupError> = buildSet
 
 private fun validateVenue(recurring: Boolean, venue: GroupVenueForm?): Set<GroupSetupError> = buildSet {
     // Recorrência ligada gera os jogos na criação, e jogo não existe sem local: o backend
-    // (`CreateGroup`) recusa horário regular sem quadra padrão. Os dois erros já têm campo dono.
-    if (recurring && venue == null) {
-        add(GroupSetupError.VenueNameRequired)
-        add(GroupSetupError.VenueAddressNotFound)
-    }
-    // A quadra inteira é opcional, mas pela metade não existe: o
-    // `GroupProfileDefaultsValidator.validateVenue` do backend exige nome **e**
-    // endereço sempre que `defaultVenue` vem preenchido. A ViewModel devolve a
-    // quadra a `null` quando os dois campos ficam vazios, então aqui só sobra o
-    // preenchimento parcial.
+    // (`CreateGroup`) recusa horário regular sem quadra padrão. Só o nome é exigido.
+    if (recurring && venue == null) add(GroupSetupError.VenueNameRequired)
+    // A quadra inteira é opcional e, preenchida, só o nome é obrigatório (2..120): o endereço é
+    // opcional, mas, se vier, tem o mínimo do backend. A ViewModel devolve a quadra a `null`
+    // quando os dois campos ficam vazios, então aqui só sobra o preenchimento parcial.
     if (venue != null && venue.name.codePointLength() < GroupTextLimits.VenueNameMin) {
         add(GroupSetupError.VenueNameRequired)
     }
-    // ponytail: sem geocodificação, "não encontramos esse endereço" é a ausência do
-    // endereço de uma quadra que já começou a ser preenchida. A checagem real nasce
-    // junto do gateway de local, que é quem sabe resolver a rua.
-    if (venue != null && venue.address.codePointLength() < GroupTextLimits.VenueAddressMin) {
+    // ponytail: sem geocodificação, "não encontramos esse endereço" é um endereço curto demais
+    // para existir. A checagem real nasce junto de um gateway que resolva a rua.
+    if (venue != null && venue.address.isNotEmpty() &&
+        venue.address.codePointLength() < GroupTextLimits.VenueAddressMin
+    ) {
         add(GroupSetupError.VenueAddressNotFound)
     }
 }

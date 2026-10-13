@@ -364,7 +364,6 @@ class JdbcGroupCreationRepositoryIntegrationTest {
                 "modality",
                 "composition",
                 "defaultVenue.name",
-                "defaultVenue.address",
                 "regularSlots[0].weekday",
                 "regularSlots[0].startTime",
                 "regularSlots[0].durationMinutes",
