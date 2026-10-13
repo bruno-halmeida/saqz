@@ -24,6 +24,12 @@
       padding: 24px; text-align: center;
       font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 15px; color: #3c4257; }
   </style>
+  <!-- A Inter vem dos compose resources e só seria pedida depois do .wasm subir: o preload
+       baixa as quatro em paralelo e os textos não aparecem em branco no primeiro quadro. -->
+  <link rel="preload" href="composeResources/br.com.saqz.designsystem.resources/font/inter_regular.ttf" as="fetch" type="font/ttf" crossorigin>
+  <link rel="preload" href="composeResources/br.com.saqz.designsystem.resources/font/inter_semibold.ttf" as="fetch" type="font/ttf" crossorigin>
+  <link rel="preload" href="composeResources/br.com.saqz.designsystem.resources/font/inter_bold.ttf" as="fetch" type="font/ttf" crossorigin>
+  <link rel="preload" href="composeResources/br.com.saqz.designsystem.resources/font/inter_light.ttf" as="fetch" type="font/ttf" crossorigin>
   <script src="saqz-config.js"></script>
   <script>
     // O bridge do Firebase carrega como módulo ES (assíncrono); o Kotlin espera esta promessa.
