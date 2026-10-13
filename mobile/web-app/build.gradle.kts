@@ -58,6 +58,11 @@ kotlin {
             implementation(libs.koin.core)
             implementation(libs.coil.core)
             implementation(libs.navigationevent.compose)
+            implementation(libs.kotlinx.datetime)
+            // Banco de fusos IANA do kotlinx-datetime no navegador: sem ele só existe o fuso "SYSTEM" e o
+            // backend recusa o grupo ("timeZone must be a valid IANA identifier"). 2.23.0 é a última que
+            // aceita o @js-joda/core 3.2.0 que o kotlinx-datetime 0.8.0 traz (as seguintes pedem 5.7+).
+            implementation(npm("@js-joda/timezone", "2.23.0"))
         }
         wasmJsTest.dependencies {
             implementation(kotlin("test"))

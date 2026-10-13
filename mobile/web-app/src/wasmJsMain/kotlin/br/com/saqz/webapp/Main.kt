@@ -7,6 +7,7 @@ import br.com.saqz.composeapp.di.installSaqzKoinModules
 import br.com.saqz.composeapp.di.loadSaqzPlatformDependencies
 import br.com.saqz.webapp.interop.awaitAuthBridge
 import br.com.saqz.webapp.interop.jsPrefersReducedMotion
+import br.com.saqz.webapp.interop.loadTimeZoneDatabase
 import br.com.saqz.webapp.navigation.BrowserBackBridge
 import coil3.PlatformContext
 import kotlinx.browser.document
@@ -25,6 +26,8 @@ fun main() {
             return@launch
         }
         val config = WebConfig.read()
+        val zone = loadTimeZoneDatabase()
+        if (config.environment != "prod") println("saqz: fuso do aparelho $zone")
         // Mesma ordem do SaqzApplication do Android: Koin, módulos comuns, depois as portas da plataforma.
         startKoin { }
         installSaqzKoinModules()
