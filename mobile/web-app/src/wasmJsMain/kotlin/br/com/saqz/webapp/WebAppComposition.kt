@@ -38,7 +38,7 @@ internal class WebAppComposition(
             // o iPhone para cá com o mesmo código na URL.
             val links = WebLinkAdapter(allowedHosts = setOf(config.linksHost, window.location.host))
             val store = WebAccessStateStore()
-            val photos = WebGroupPhotoAdapters(scope)
+            val photos = WebGroupPhotoAdapters()
             val profilePhoto = WebProfilePhotoAdapter(photos, scope)
             val invites = WebInviteAdapters(scope)
             val drafts = WebGroupDraftStores()
