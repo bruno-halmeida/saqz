@@ -115,8 +115,9 @@ platform :ios do
       export_method: "app-store",
       export_options: { signingStyle: "automatic", teamID: TEAM_ID, uploadSymbols: true },
       # A versão já está no pbxproj (ci/version.sh), mas o override garante o mesmo número em qualquer checkout.
+      # O gym repassa o xcargs também ao -exportArchive: um export_xcargs com a mesma chave duplica
+      # -authenticationKeyPath e o xcodebuild recusa (RC 1.0.3, 14/10/2026).
       xcargs: "#{auth} MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build}",
-      export_xcargs: auth,
       output_directory: output_dir,
       output_name: "Saqz.ipa",
       buildlog_path: File.join(output_dir, "logs"),
