@@ -10,7 +10,8 @@ import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzButtonVariant
-import br.com.saqz.groups.resources.monthly_payments_summary_title
+import br.com.saqz.groups.resources.monthly_payments_summary_title_clear
+import br.com.saqz.groups.resources.monthly_payments_summary_title_open
 import br.com.saqz.groups.resources.monthly_payments_summary_help
 import br.com.saqz.groups.resources.monthly_payments_empty_help
 import androidx.compose.foundation.layout.Arrangement
@@ -102,7 +103,11 @@ internal fun OwnMonthlyPaymentsScreen(
                         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
                     ) {
                         SaqzIcon(SaqzIcons.Calendar, tint = SaqzTheme.colors.accent, size = SaqzTheme.metrics.iconButtonSize)
-                        Text(stringResource(Res.string.monthly_payments_summary_title),
+                        val hasOpen = state.groups.any { it.charges.pending.isNotEmpty() }
+                        Text(stringResource(
+                            if (hasOpen) Res.string.monthly_payments_summary_title_open
+                            else Res.string.monthly_payments_summary_title_clear,
+                        ),
                             style = SaqzTheme.typography.headline, color = SaqzTheme.colors.onPrimary)
                         Text(stringResource(Res.string.monthly_payments_summary_help),
                             style = SaqzTheme.typography.support, color = SaqzTheme.colors.onPrimary)

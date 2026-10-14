@@ -319,6 +319,34 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
+    fun `recusar pede confirmacao antes de agir`() = runTest {
+        val entryGateway = FakeEntryGateway(requests = mutableListOf(request("pending")))
+        val viewModel = groupViewModel(entryGateway = entryGateway)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.RequestReject("pending"))
+        advanceUntilIdle()
+
+        assertEquals("pending", viewModel.state.value.rejectCandidate?.userId)
+        assertEquals(null, entryGateway.rejectedUserId)
+
+        viewModel.onIntent(GroupInviteIntent.DismissReject)
+        assertEquals(null, viewModel.state.value.rejectCandidate)
+        assertEquals(null, entryGateway.rejectedUserId)
+    }
+
+    @Test
+    fun `hora do pedido sai no fuso do grupo e nao em UTC`() = runTest {
+        val entryGateway = FakeEntryGateway(requests = mutableListOf(request("pending")))
+        val viewModel = groupViewModel(entryGateway = entryGateway)
+        advanceUntilIdle()
+
+        // O pedido foi gravado como 10:00Z; o rótulo nunca pode repetir a hora crua do UTC com fuso diferente.
+        val label = viewModel.state.value.pendingRequests.single().requestedAtLabel
+        assertTrue(label.startsWith("01/08 · "), label)
+    }
+
+    @Test
     fun `reject success removes request`() = runTest {
         val entryGateway = FakeEntryGateway(requests = mutableListOf(request("pending")))
         val viewModel = groupViewModel(entryGateway = entryGateway)

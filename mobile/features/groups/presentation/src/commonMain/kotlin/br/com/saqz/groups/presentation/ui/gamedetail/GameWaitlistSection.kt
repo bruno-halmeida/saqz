@@ -48,6 +48,10 @@ import br.com.saqz.groups.resources.game_waitlist_position_oposto
 import br.com.saqz.groups.resources.game_waitlist_position_ponta
 import br.com.saqz.groups.resources.game_waitlist_position_unknown
 import br.com.saqz.groups.resources.game_waitlist_promotion_reason
+import br.com.saqz.groups.resources.game_waitlist_reason_avulso
+import br.com.saqz.groups.resources.game_waitlist_reason_full
+import br.com.saqz.groups.resources.game_waitlist_reason_late
+import br.com.saqz.groups.resources.game_waitlist_reason_manual
 import br.com.saqz.groups.resources.game_waitlist_promotion_failed
 import br.com.saqz.groups.resources.game_waitlist_promote
 import br.com.saqz.groups.resources.game_waitlist_queue_position
@@ -61,6 +65,8 @@ internal object GameWaitlistTags {
     const val CapacitySheet = "game-detail-capacity-sheet"
 
     fun promote(memberId: String) = "game-detail-promote-$memberId"
+
+    fun reason(memberId: String) = "game-detail-waitlist-reason-$memberId"
 }
 
 @Composable
@@ -151,6 +157,14 @@ private fun GameWaitlistRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            waitReasonResource(state, person)?.let { reason ->
+                Text(
+                    text = stringResource(reason),
+                    color = SaqzTheme.colors.textSecondary,
+                    style = SaqzTheme.typography.support,
+                    modifier = Modifier.testTag(GameWaitlistTags.reason(person.id)),
+                )
+            }
             if (state.mensalistaPriority && person.isMensalista) {
                 SaqzStatusChip(
                     text = stringResource(Res.string.game_waitlist_mensalista),
@@ -175,6 +189,19 @@ private fun GameWaitlistRow(
         }
         person.guest?.let { GameGuestRemoveAction(person.id, it, onIntent) }
     }
+}
+
+/**
+ * Por que esta pessoa espera, do ponto de vista de quem gerencia: o organizador escolhe quem
+ * entra, a confirmação veio depois do prazo, o avulso aguarda a prioridade dos mensalistas
+ * ou, simplesmente, as vagas estão cheias.
+ */
+private fun waitReasonResource(state: GameDetailState, person: GameDetailWaitlistUi) = when {
+    state.promotionMode == PromotionMode.MANUAL -> Res.string.game_waitlist_reason_manual
+    state.header?.confirmationOpen == false -> Res.string.game_waitlist_reason_late
+    state.mensalistaPriority && !person.isMensalista && person.guest == null ->
+        Res.string.game_waitlist_reason_avulso
+    else -> Res.string.game_waitlist_reason_full
 }
 
 @Composable

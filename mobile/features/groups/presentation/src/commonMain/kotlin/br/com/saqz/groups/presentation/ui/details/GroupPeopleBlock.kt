@@ -15,9 +15,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzAvatarStack
 import br.com.saqz.designsystem.SaqzCard
@@ -298,21 +300,39 @@ internal fun GroupLeaveBlock(
     modifier: Modifier = Modifier,
 ) {
     if (state.isOwner) return
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    val report: @Composable () -> Unit = {
         GroupFooterLink(
             label = stringResource(Res.string.moderation_report_group),
             tag = GroupDetailsTags.ReportGroup,
             onClick = { onIntent(GroupDetailsIntent.ReportGroup) },
         )
+    }
+    val leave: @Composable () -> Unit = {
         GroupFooterLink(
             label = stringResource(Res.string.group_details_leave),
             tag = GroupDetailsTags.Leave,
             onClick = { onIntent(GroupDetailsIntent.Leave) },
         )
+    }
+    // Fonte grande: os dois links lado a lado não cabem e "Sair do grupo" quebrava/cortava.
+    // Um embaixo do outro, cada um com a largura inteira para quebrar por palavra.
+    if (LocalDensity.current.fontScale >= 1.3f) {
+        Column(
+            modifier = modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            report()
+            leave()
+        }
+    } else {
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            report()
+            leave()
+        }
     }
 }
 
@@ -328,7 +348,12 @@ private fun GroupFooterLink(label: String, tag: String, onClick: () -> Unit) {
             .padding(horizontal = metrics.horizontalPadding),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = label, style = SaqzTheme.typography.label, color = SaqzTheme.colors.textSecondary)
+        Text(
+            text = label,
+            style = SaqzTheme.typography.label,
+            color = SaqzTheme.colors.textSecondary,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

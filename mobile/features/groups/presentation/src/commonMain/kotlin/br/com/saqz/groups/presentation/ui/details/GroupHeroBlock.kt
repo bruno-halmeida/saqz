@@ -177,6 +177,7 @@ private fun GroupGameHero(
             responseFailed = state.responseFailed || state.responsePlanPaused,
             responseOffline = state.responseOffline,
             waitlistKind = state.waitlist?.kind,
+            spotsOpen = game.confirmedCount < game.capacity,
             waitlistPosition = state.memberResponse?.waitlistPosition,
             onRespond = { onIntent(GroupDetailsIntent.Respond(it)) },
             onViewGame = { onIntent(GroupDetailsIntent.ViewGame) },
@@ -347,7 +348,8 @@ private fun GroupNoGameHero(
         else -> stringResource(Res.string.home_no_game_description)
     }
     SaqzHeroCard(
-        kicker = stringResource(Res.string.home_game_next),
+        // "Grupo criado!" não é um próximo jogo: sem eyebrow nesse estado.
+        kicker = if (first) null else stringResource(Res.string.home_game_next),
         title = stringResource(title),
         meta = meta,
         modifier = Modifier.testTag(GroupDetailsTags.Hero),

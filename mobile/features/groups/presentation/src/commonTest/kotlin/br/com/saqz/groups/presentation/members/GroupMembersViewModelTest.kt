@@ -251,6 +251,7 @@ class GroupMembersViewModelTest {
 
         viewModel.onIntent(GroupMembersIntent.OpenMember(member.id))
         viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
+        viewModel.onIntent(GroupMembersIntent.ConfirmRemove)
         assertEquals("member-1", athlete.lastRemovedUserId)
     }
 
@@ -358,7 +359,69 @@ class GroupMembersViewModelTest {
         viewModel.onIntent(GroupMembersIntent.OpenMember("member-1"))
         viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
 
+        // Remover pede confirmação: nada some no primeiro toque.
+        assertEquals(null, athlete.lastRemovedUserId)
+        assertEquals("member-1", viewModel.state.value.confirmRemove?.id)
+
+        viewModel.onIntent(GroupMembersIntent.ConfirmRemove)
+
         assertEquals("member-1", athlete.lastRemovedUserId)
+        assertEquals(null, viewModel.state.value.confirmRemove)
+    }
+
+    @Test
+    fun `cancelar a confirmacao nao remove ninguem`() = runTest {
+        val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
+        val viewModel = membersViewModel(
+            "group-1",
+            athlete,
+            FakeGroupMembershipGateway(),
+            FakeGroupGateway(
+                readResult = SaqzResult.Success(
+                    br.com.saqz.groups.presentation.sampleVersionedGroup(
+                        br.com.saqz.groups.presentation.sampleGroup(role = GroupRole.OWNER),
+                    ),
+                ),
+            ),
+        )
+
+        viewModel.onIntent(GroupMembersIntent.OpenMember("member-1"))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
+        viewModel.onIntent(GroupMembersIntent.DismissRemove)
+
+        assertEquals(null, athlete.lastRemovedUserId)
+        assertEquals(null, viewModel.state.value.confirmRemove)
+    }
+
+    @Test
+    fun `trocar papel com plano pausado abre a folha da assinatura e mantem a lista`() = runTest {
+        val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
+        val membership = FakeGroupMembershipGateway(
+            changeRoleResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.SubscriptionRequired)),
+        )
+        val viewModel = membersViewModel(
+            "group-1",
+            athlete,
+            membership,
+            FakeGroupGateway(
+                readResult = SaqzResult.Success(
+                    br.com.saqz.groups.presentation.sampleVersionedGroup(
+                        br.com.saqz.groups.presentation.sampleGroup(role = GroupRole.OWNER),
+                    ),
+                ),
+            ),
+        )
+
+        viewModel.onIntent(GroupMembersIntent.OpenMember("member-1"))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Promote))
+
+        val state = viewModel.state.value
+        assertTrue(state.subscriptionRequired)
+        assertEquals(false, state.loadFailed)
+        assertEquals(1, state.members.size)
+
+        viewModel.onIntent(GroupMembersIntent.DismissSubscriptionRequired)
+        assertEquals(false, viewModel.state.value.subscriptionRequired)
     }
 
     @Test

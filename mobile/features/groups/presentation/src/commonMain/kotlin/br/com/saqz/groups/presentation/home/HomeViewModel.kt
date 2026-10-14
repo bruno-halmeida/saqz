@@ -18,6 +18,7 @@ import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
 import br.com.saqz.groups.domain.communication.NativeNotificationPort
 import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.home.HomeAdminGroup
 import br.com.saqz.groups.domain.home.HomeAdminReadModel
 import br.com.saqz.groups.domain.home.HomeGameToSettle
@@ -130,6 +131,7 @@ class HomeViewModel(
     private val attendanceGateway: AttendanceGateway,
     private val now: GroupNowPort,
     private val notifications: NativeNotificationPort? = null,
+    private val trialAccess: GroupTrialAccessPort? = null,
 ) : MviViewModel<HomeState, HomeIntent, HomeEffect>(HomeState()) {
     private var loadGeneration = 0L
     private var responseGeneration = 0L
@@ -264,6 +266,7 @@ class HomeViewModel(
                                 ownCharges = ownCharges,
                             )
                         }
+                        checkOwnerTrial(generation, homeResult.value.member.groups)
                     }
                 }
             }
@@ -272,6 +275,19 @@ class HomeViewModel(
         // geração e um cancelamento do escopo também têm que devolver a chave. A checagem
         // impede que uma carga velha destrave enquanto a nova ainda está no ar.
         job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
+    }
+
+    /**
+     * Dono com o teste encerrado e sem plano não pode marcar jogo nem mexer no grupo, e a Início
+     * não dizia nada. Um grupo seu basta: o aviso é da conta, não de cada grupo.
+     */
+    private suspend fun checkOwnerTrial(generation: Long, groups: List<HomeMemberGroup>) {
+        val port = trialAccess ?: return
+        val owned = groups.filter { it.role == GroupRole.OWNER }
+        val ended = owned.any { group ->
+            port.read(group.id)?.let { it.isOwner && it.trialEnded && !it.planActive } == true
+        }
+        if (generation == loadGeneration) update { it.copy(ownerTrialEnded = ended) }
     }
 
     private fun handleInviteSheet(intent: HomeInviteSheetIntent) {

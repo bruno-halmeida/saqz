@@ -22,22 +22,25 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.designsystem.theme.SaqzTheme
 
 /**
- * Iniciais de um nome: primeira letra do primeiro nome + primeira do último.
- * Nome único devolve uma letra; nome vazio devolve string vazia (o avatar fica
- * só com o fundo, sem inventar um "?" que ninguém pediu).
+ * Iniciais de um nome, a única regra do app: primeira letra do primeiro nome + primeira do
+ * último. Palavras sem letra ("13/10", "-", "2") não contam e símbolos no começo da palavra
+ * são ignorados, então "QA Vôlei B 13/10" vira "QB". Nome único devolve uma letra; nome sem
+ * letra devolve string vazia (o avatar fica só com o fundo, sem inventar um "?").
  */
 fun saqzInitials(name: String): String {
-    val parts = name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
-    return when (parts.size) {
+    val letters = name.trim().split(Regex("\\s+")).mapNotNull { word -> word.firstOrNull { it.isLetter() } }
+    return when (letters.size) {
         0 -> ""
-        1 -> parts.first().take(1).uppercase()
-        else -> (parts.first().take(1) + parts.last().take(1)).uppercase()
+        1 -> letters.first().toString().uppercase()
+        else -> (letters.first().toString() + letters.last()).uppercase()
     }
 }
 
@@ -45,6 +48,13 @@ fun saqzInitials(name: String): String {
 // não sai da tabela, porque 30/40/44 são 3 tamanhos. O "+N" da pilha usa a mesma
 // proporção das iniciais vizinhas — no 10k os quatro círculos são `font:700 10.5px`.
 private const val AvatarTextRatio = 0.36f
+
+/**
+ * As iniciais moram num círculo de tamanho fixo: com "Texto Maior" o `sp` cresceria e as letras
+ * vazariam para o vizinho. O corpo sai do diâmetro em dp, convertido sem o fator de fonte.
+ */
+@Composable
+private fun avatarTextSize(size: Dp): TextUnit = with(LocalDensity.current) { (size * AvatarTextRatio).toSp() }
 
 // Sobreposição do 10k: `margin-left:-8px` fixo, e não uma fração do diâmetro.
 private val AvatarStackOverlap = 8.dp
@@ -84,10 +94,12 @@ fun SaqzAvatar(
         } else {
             Text(
                 text = saqzInitials(name),
-                fontSize = (size.value * AvatarTextRatio).sp,
-                lineHeight = (size.value * AvatarTextRatio).sp,
+                fontSize = avatarTextSize(size),
+                lineHeight = avatarTextSize(size),
                 fontWeight = FontWeight.SemiBold,
                 color = initialsColor,
+                maxLines = 1,
+                softWrap = false,
             )
         }
     }
@@ -131,10 +143,12 @@ fun SaqzAvatarStack(
             ) {
                 Text(
                     text = "+$overflow",
-                    fontSize = (size.value * AvatarTextRatio).sp,
-                    lineHeight = (size.value * AvatarTextRatio).sp,
+                    fontSize = avatarTextSize(size),
+                    lineHeight = avatarTextSize(size),
                     fontWeight = FontWeight.SemiBold,
                     color = overflowContent,
+                    maxLines = 1,
+                    softWrap = false,
                 )
             }
         }
@@ -154,6 +168,8 @@ fun SaqzMemberRow(
     trailing: (@Composable () -> Unit)? = null,
     /** Nome de onde saem as iniciais do avatar; difere de [name] quando este ganha um sufixo ("· você"). */
     avatarName: String = name,
+    /** Com fonte grande, [trailing] (um chip de texto) desce para baixo do nome em vez de espremê-lo. */
+    stackTrailingOnLargeFont: Boolean = false,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -170,12 +186,16 @@ fun SaqzMemberRow(
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
         SaqzAvatar(name = avatarName, initialsColor = colors.primary, photo = photo)
+        // Fonte grande: o chip à direita espremia o nome até ele sumir. Ele desce para baixo do
+        // texto e o nome quebra por palavra em vez de virar reticências.
+        val largeFont = LocalDensity.current.fontScale >= LargeFontScale
+        val stackTrailing = largeFont && stackTrailingOnLargeFont
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = name,
                 style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
                 color = colors.textPrimary,
-                maxLines = 1,
+                maxLines = if (largeFont) Int.MAX_VALUE else 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (meta != null) {
@@ -183,14 +203,17 @@ fun SaqzMemberRow(
                     text = meta,
                     style = SaqzTheme.typography.support,
                     color = colors.textSecondary,
-                    maxLines = 1,
+                    maxLines = if (largeFont) Int.MAX_VALUE else 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            if (stackTrailing) trailing?.invoke()
         }
-        trailing?.invoke()
+        if (!stackTrailing) trailing?.invoke()
     }
 }
+
+private const val LargeFontScale = 1.3f
 
 @Preview
 @Composable

@@ -48,6 +48,7 @@ import br.com.saqz.groups.resources.athlete_registration_height
 import br.com.saqz.groups.resources.athlete_registration_height_hint
 import br.com.saqz.groups.resources.athlete_registration_identity_title
 import br.com.saqz.groups.resources.athlete_registration_joined_subtitle
+import br.com.saqz.groups.resources.athlete_registration_edit_title
 import br.com.saqz.groups.resources.athlete_registration_joined_title
 import br.com.saqz.groups.resources.athlete_registration_lead
 import br.com.saqz.groups.resources.athlete_registration_level
@@ -175,7 +176,11 @@ private fun AthleteRegistrationHeader(state: AthleteRegistrationState) {
     val city = state.city.ifBlank { stringResource(Res.string.athlete_registration_city_unknown) }
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
         Text(
-            text = stringResource(Res.string.athlete_registration_joined_title, state.groupName),
+            text = if (state.isEditing) {
+                stringResource(Res.string.athlete_registration_edit_title, state.groupName)
+            } else {
+                stringResource(Res.string.athlete_registration_joined_title, state.groupName)
+            },
             style = SaqzTheme.typography.title,
             color = SaqzTheme.colors.textPrimary,
         )
@@ -367,7 +372,7 @@ private fun SideChips(
 private fun AthleteSummary(state: AthleteRegistrationState) {
     val position = state.position?.let { stringResource(positionLabel(it, state.composition)) }
         ?: stringResource(Res.string.athlete_registration_undefined_position)
-    val level = state.level?.let { stringResource(levelLabel(it)).lowercase() }
+    val level = state.level?.let { stringResource(levelLabel(it)) }
         ?: stringResource(Res.string.athlete_registration_undefined_level)
     val summary = if (state.secondaryPosition != null) {
         stringResource(

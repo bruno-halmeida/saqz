@@ -27,13 +27,14 @@ fun HomeRoot(
     onOpenNotifications: () -> Unit = {},
     onCreateGroup: () -> Unit = {},
     onAcceptInviteCode: (String) -> Unit = {},
+    refreshVersion: Int = 0,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
     // A aba Início reentra a cada troca de aba, volta de filha e primeiro plano: recarga por
     // baixo (`softRefresh`); a ViewModel ignora o pedido que chega com carga em voo.
-    RefreshWhenVisible { viewModel.onIntent(HomeIntent.Refresh) }
+    RefreshWhenVisible(trigger = refreshVersion) { viewModel.onIntent(HomeIntent.Refresh) }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             HomeEffect.OpenGroups -> onOpenGroups()

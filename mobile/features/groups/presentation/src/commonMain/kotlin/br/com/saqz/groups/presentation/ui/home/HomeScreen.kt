@@ -227,6 +227,7 @@ private fun HomeContent(
                     ?: stringResource(Res.string.home_first_access_subtitle).takeIf { firstAccess },
                 onIntent = onIntent,
             )
+            if (state.ownerTrialEnded) HomeTrialEndedNotice()
             if (member == null) {
                 Text(
                     text = stringResource(Res.string.home_error_message),
@@ -432,6 +433,7 @@ internal fun ColumnScope.HomeAttendanceControls(
         responseFailed = responseFailed || planPaused,
         responseOffline = responseOffline,
         waitlistKind = game.waitlistKind,
+        spotsOpen = game.confirmedCount < game.capacity,
         waitlistPosition = game.waitlistPosition,
         onRespond = { onIntent(HomeIntent.Respond(it)) },
         onViewGame = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) },

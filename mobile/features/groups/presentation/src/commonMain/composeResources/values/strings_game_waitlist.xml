@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="game_waitlist_reason_manual">O organizador escolhe quem entra.</string>
+    <string name="game_waitlist_reason_late">Confirmou depois do prazo.</string>
+    <string name="game_waitlist_reason_avulso">Avulso: mensalistas entram primeiro até o prazo.</string>
+    <string name="game_waitlist_reason_full">Vagas cheias: entra pela ordem da fila.</string>
     <!-- VUL-158 · reserva no detalhe do jogo -->
     <string name="game_waitlist_section">Lista de espera</string>
     <string name="game_waitlist_queue_position">%1$dº na fila</string>

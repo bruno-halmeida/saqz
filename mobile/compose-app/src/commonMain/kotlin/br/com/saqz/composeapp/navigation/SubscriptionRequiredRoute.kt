@@ -15,6 +15,7 @@ import br.com.saqz.composeapp.subscriptiongate.SubscriptionGateViewModel
 import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.subscriptions.presentation.limit.PaywallGroupLimit
 import br.com.saqz.subscriptions.presentation.ui.appstore.AppStorePaywallRoot
+import br.com.saqz.subscriptions.presentation.ui.limit.PaywallGroupLimitNotice
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -83,6 +84,7 @@ internal fun SubscriptionRequiredDestination(
             state = state,
             onIntent = viewModel::onIntent,
             onBack = onBack,
+            header = groupLimit?.let { limit -> { PaywallGroupLimitNotice(limit) } },
         )
     }
     // O portão continua dono da autorização (e do polling); a loja só vende. Confirmada a

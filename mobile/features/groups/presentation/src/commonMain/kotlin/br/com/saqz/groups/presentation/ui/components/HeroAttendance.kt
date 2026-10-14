@@ -188,6 +188,8 @@ internal fun ColumnScope.HeroAttendanceControls(
     texts: HeroAttendanceTexts,
     tags: HeroAttendanceTags,
     lateNotice: String? = null,
+    /** Ainda há vaga aberta: o texto da espera não pode dizer que as vagas acabaram. */
+    spotsOpen: Boolean = false,
     /** A resposta falhou por falta de rede: o aviso diz isso em vez do erro genérico. */
     responseOffline: Boolean = false,
 ) {
@@ -195,7 +197,7 @@ internal fun ColumnScope.HeroAttendanceControls(
         status == AttendanceStatus.Waitlisted -> {
             val kind = waitlistKind ?: HomeWaitlistKind.Reserva
             HomeWaitlistChip(kind = kind, position = waitlistPosition)
-            HomeWaitlistInfoBox(kind = kind)
+            HomeWaitlistInfoBox(kind = kind, spotsOpen = spotsOpen)
             HomeWaitlistActions(
                 kind = kind,
                 responding = responding,
@@ -227,7 +229,7 @@ internal fun ColumnScope.HeroAttendanceControls(
     }
     // Depois do prazo o "Vou" continua valendo, mas entra pela lista de espera. Quem já está
     // na espera tem a caixa própria, que explica o motivo.
-    if (lateNotice != null && status != AttendanceStatus.Waitlisted && confirmationOpen) {
+    if (lateNotice != null && (status == null || status == AttendanceStatus.Declined) && confirmationOpen) {
         Text(
             text = lateNotice,
             style = SaqzTheme.typography.support,

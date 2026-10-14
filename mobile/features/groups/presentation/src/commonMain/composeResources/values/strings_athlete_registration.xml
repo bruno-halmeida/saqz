@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="athlete_registration_title">Cadastro de atleta</string>
+    <string name="athlete_registration_edit_title">Seu cadastro no %1$s</string>
     <string name="athlete_registration_joined_title">Você entrou no %1$s</string>
     <string name="athlete_registration_joined_subtitle">%1$s · %2$s</string>
     <string name="athlete_registration_city_unknown">Cidade não informada</string>

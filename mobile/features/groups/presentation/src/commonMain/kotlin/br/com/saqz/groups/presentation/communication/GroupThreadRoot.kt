@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
@@ -140,14 +141,31 @@ private fun GroupThreadContent(
                 SaqzButton(
                     stringResource(Res.string.communication_refresh),
                     { onIntent(GroupThreadIntent.Refresh) }, enabled = !state.sending,
+                    variant = SaqzButtonVariant.Secondary, fullWidth = true,
                     modifier = Modifier.padding(horizontal = SaqzTheme.metrics.horizontalPadding),
                 )
-                if (state.pageFailed) Text(stringResource(Res.string.communication_failure))
+                if (state.pageFailed) {
+                    Text(
+                        stringResource(Res.string.communication_failure),
+                        style = SaqzTheme.typography.support,
+                        color = SaqzTheme.colors.errorForeground,
+                        modifier = Modifier.padding(SaqzTheme.metrics.horizontalPadding),
+                    )
+                }
                 LazyColumn(
                     modifier = Modifier.weight(1f).padding(horizontal = SaqzTheme.metrics.horizontalPadding),
+                    contentPadding = PaddingValues(vertical = SaqzTheme.metrics.blockGap),
                     verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
                 ) {
-                    if (state.messages.isEmpty()) item { Text(stringResource(Res.string.communication_empty)) }
+                    if (state.messages.isEmpty()) {
+                        item {
+                            Text(
+                                stringResource(Res.string.communication_empty),
+                                style = SaqzTheme.typography.body,
+                                color = SaqzTheme.colors.textSecondary,
+                            )
+                        }
+                    }
                     items(state.messages, key = { it.id }) { message ->
                         ThreadMessageCard(message, onOptions = { onIntent(GroupThreadIntent.OpenMessageActions(message.id)) })
                     }
@@ -171,11 +189,13 @@ private fun GroupThreadContent(
                     )
                     SaqzButton(
                         stringResource(Res.string.communication_send), { onIntent(GroupThreadIntent.Send) },
-                        loading = state.sending, enabled = state.draft.isNotBlank(),
+                        loading = state.sending, enabled = state.draft.isNotBlank(), fullWidth = true,
                         modifier = Modifier.testTag(GroupThreadTags.Send),
                     )
                 } else Text(
                     stringResource(Res.string.communication_read_only),
+                    style = SaqzTheme.typography.support,
+                    color = SaqzTheme.colors.textSecondary,
                     modifier = Modifier.padding(SaqzTheme.metrics.horizontalPadding),
                 )
             }
@@ -189,8 +209,8 @@ private fun ThreadMessageCard(message: ThreadMessageUi, onOptions: () -> Unit) {
     SaqzCard(modifier = Modifier.testTag(GroupThreadTags.message(message.id))) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
-                Text(message.author, color = SaqzTheme.colors.textPrimary, style = SaqzTheme.typography.body)
-                Text(message.body, color = SaqzTheme.colors.textPrimary)
+                Text(message.author, color = SaqzTheme.colors.textPrimary, style = SaqzTheme.typography.subtitle)
+                Text(message.body, color = SaqzTheme.colors.textPrimary, style = SaqzTheme.typography.body)
                 Text(message.time, color = SaqzTheme.colors.textSecondary, style = SaqzTheme.typography.support)
             }
             if (!message.own) {

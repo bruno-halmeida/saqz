@@ -53,7 +53,7 @@ import org.koin.dsl.module
 fun groupsPresentationModule(): Module = module {
     viewModel { params -> ChargeReminderViewModel(params.get(), get(), get()) }
     viewModel { GroupListViewModel(get(), get(), get(), get()) }
-    viewModel { HomeViewModel(get(), get(), get(), get<GroupNowPort>(), getOrNull()) }
+    viewModel { HomeViewModel(get(), get(), get(), get<GroupNowPort>(), getOrNull(), getOrNull()) }
     viewModel { FinanceOverviewViewModel(get(), get()) }
     viewModel { params ->
         val mode = params.get<GroupSetupMode>()
@@ -91,7 +91,7 @@ fun groupsPresentationModule(): Module = module {
     // Uma lista de bloqueados para o app inteiro: o bloqueio feito no perfil some com o aviso na thread.
     singleOf(::BlockedPeopleRepository)
     viewModelOf(::ModerationViewModel)
-    viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get(), get()) }
+    viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get(), get(), getOrNull()) }
     viewModel { params -> MemberProfileViewModel(params[0], params[1], get(), get()) }
     viewModel { OwnMonthlyPaymentsViewModel(get(), get()) }
     viewModel { params ->

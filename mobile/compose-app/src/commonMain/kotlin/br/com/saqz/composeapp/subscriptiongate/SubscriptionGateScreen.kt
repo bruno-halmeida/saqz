@@ -66,6 +66,8 @@ fun SubscriptionGateScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     purchasesEnabled: Boolean = br.com.saqz.domain.StoreLaunchPolicy.purchases,
+    /** Explicação que vem antes de tudo (ex.: o limite de grupos do plano), mesmo sem lista de planos. */
+    header: (@Composable () -> Unit)? = null,
 ) {
     val metrics = SaqzTheme.metrics
     Column(
@@ -88,6 +90,7 @@ fun SubscriptionGateScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            header?.invoke()
             SubscriptionGateBody(state = state, onIntent = onIntent, purchasesEnabled = purchasesEnabled)
         }
     }

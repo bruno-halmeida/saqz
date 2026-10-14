@@ -51,6 +51,7 @@ internal fun GameDetailResponse(
     response: GameDetailResponseUi,
     onIntent: (GameDetailIntent) -> Unit,
     modifier: Modifier = Modifier,
+    spotsOpen: Boolean = false,
 ) {
     // O estado já só liga `visible` em jogo publicado; o tom do cabeçalho fecha a porta se os dois divergirem.
     if (!response.visible || header.statusTone != GameDetailStatusTone.Published) return
@@ -77,6 +78,7 @@ internal fun GameDetailResponse(
             responseFailed = response.failed || response.planPaused,
             responseOffline = response.offline,
             waitlistKind = response.waitlistKind,
+            spotsOpen = spotsOpen,
             waitlistPosition = response.waitlistPosition,
             onRespond = { onIntent(GameDetailIntent.Respond(it)) },
             onViewGame = null,

@@ -46,6 +46,7 @@ import br.com.saqz.groups.resources.statement_new_entry
 import br.com.saqz.groups.resources.statement_out_accessibility
 import br.com.saqz.groups.resources.statement_summary
 import br.com.saqz.groups.resources.statement_title
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object StatementTags {
@@ -99,8 +100,9 @@ internal fun StatementScreen(
                         .semantics { contentDescription = statementTitle },
                 )
                 Text(
-                    text = stringResource(
-                        Res.string.statement_summary,
+                    text = pluralStringResource(
+                        Res.plurals.statement_summary,
+                        state.items.size,
                         state.items.size,
                         formatStatementBalance(state.summary.periodBalanceCents),
                     ),

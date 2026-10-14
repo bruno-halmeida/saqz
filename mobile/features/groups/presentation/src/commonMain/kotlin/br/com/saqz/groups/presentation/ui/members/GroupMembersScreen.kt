@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.ui.members
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -29,7 +31,9 @@ import br.com.saqz.groups.presentation.members.JoinRequestUi
 import br.com.saqz.groups.presentation.members.MemberUi
 import br.com.saqz.groups.presentation.members.memberCount
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
+import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.group_members_action_failed
 import br.com.saqz.groups.resources.group_members_admins
 import br.com.saqz.groups.resources.group_members_invite
 import br.com.saqz.groups.resources.group_members_members
@@ -43,6 +47,9 @@ internal object GroupMembersTags {
     const val Sheet = "group-members-sheet"
     const val Cancel = "group-members-cancel"
     const val Loading = "group-members-loading"
+    const val ActionFailed = "group-members-action-failed"
+    const val ConfirmRemove = "group-members-confirm-remove"
+    const val ConfirmRemoveCancel = "group-members-confirm-remove-cancel"
 
     fun filter(filter: GroupMembersFilter) = "group-members-filter-${filter.name}"
 
@@ -98,6 +105,18 @@ fun GroupMembersScreen(
                         onSelect = { onIntent(GroupMembersIntent.SelectFilter(it)) },
                     )
                 }
+                if (state.actionFailed) {
+                    item(key = "action-failed") {
+                        Text(
+                            text = stringResource(Res.string.group_members_action_failed),
+                            style = SaqzTheme.typography.support,
+                            color = SaqzTheme.colors.errorForeground,
+                            modifier = Modifier.testTag(GroupMembersTags.ActionFailed).clickable {
+                                onIntent(GroupMembersIntent.DismissActionFailed)
+                            },
+                        )
+                    }
+                }
                 if (state.isLoading) {
                     item(key = "loading") { GroupMembersLoading() }
                 } else if (state.loadFailed) {
@@ -114,6 +133,13 @@ fun GroupMembersScreen(
             GroupMembersFooter(onInvite = { onIntent(GroupMembersIntent.Invite) })
         }
         GroupMemberActionsSheet(selected = state.selected, onIntent = onIntent)
+        GroupMemberRemoveConfirmation(member = state.confirmRemove, onIntent = onIntent)
+        if (state.subscriptionRequired) {
+            SubscriptionRequiredDialog(
+                trialEnded = state.trialEnded,
+                onDismiss = { onIntent(GroupMembersIntent.DismissSubscriptionRequired) },
+            )
+        }
     }
 }
 

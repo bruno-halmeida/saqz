@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -135,7 +137,8 @@ fun SaqzBottomSheet(
                     .saqzShadow(SaqzTheme.shadows.sheet, shape)
                     .clip(shape)
                     .background(colors.surface)
-                    .windowInsetsPadding(WindowInsets.navigationBars),
+                    // O teclado empurra o painel para cima: o botão do rodapé nunca fica atrás dele.
+                    .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
             ) {
                 // `.saqz-sheet__handle-area{min-height:36px;place-items:center}` com a
                 // `.saqz-sheet__handle{width:42px;height:5px;border-radius:var(--radius-pill)}`.

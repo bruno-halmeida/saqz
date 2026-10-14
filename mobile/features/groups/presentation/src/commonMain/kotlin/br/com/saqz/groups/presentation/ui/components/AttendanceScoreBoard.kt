@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,7 +70,47 @@ internal fun AttendanceScoreBoard(
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    Row(
+    val goingColumn: @Composable RowScope.() -> Unit = {
+        ScoreColumn(
+            value = going,
+            label = stringResource(Res.string.home_admin_score_going),
+            color = colors.accent,
+            contentDescription = pluralStringResource(Res.plurals.home_admin_cd_score_going, going, going),
+            modifier = Modifier.testTag(tags.going),
+        )
+    }
+    val outColumn: @Composable RowScope.() -> Unit = {
+        ScoreColumn(
+            value = out,
+            label = stringResource(Res.string.home_admin_score_out),
+            color = colors.onPrimary.copy(alpha = ScoreOutAlpha),
+            contentDescription = pluralStringResource(Res.plurals.home_admin_cd_score_out, out, out),
+            modifier = Modifier.testTag(tags.out),
+        )
+    }
+    // A reserva entra no placar porque é o número que decide se o gestor abre vaga (rodada de 09/10/2026).
+    val waitingColumn: @Composable RowScope.() -> Unit = {
+        ScoreColumn(
+            value = waiting,
+            label = stringResource(Res.string.home_admin_score_waiting),
+            color = colors.onPrimary,
+            contentDescription = stringResource(Res.string.home_admin_cd_score_waiting, waiting),
+            modifier = Modifier.testTag(tags.waiting),
+        )
+    }
+    val pendingColumn: @Composable RowScope.() -> Unit = {
+        ScoreColumn(
+            value = pending,
+            label = stringResource(Res.string.home_admin_score_pending),
+            color = colors.warning,
+            contentDescription = pluralStringResource(Res.plurals.home_admin_cd_score_pending, pending, pending),
+            modifier = Modifier.testTag(tags.pending),
+        )
+    }
+    // Fonte grande: quatro colunas estreitas quebram "Sem resposta" letra a letra. Em 2 x 2 cada
+    // coluna ganha o dobro da largura e a palavra cabe inteira.
+    val largeFont = LocalDensity.current.fontScale >= LargeFontScale
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(metrics.inputRadius))
@@ -81,41 +122,31 @@ internal fun AttendanceScoreBoard(
             )
             // Funde as descrições das quatro colunas num nó só: o placar inteiro é um botão.
             .semantics(mergeDescendants = true) {}
-            .height(IntrinsicSize.Min)
             .padding(vertical = metrics.blockGap),
+        verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        ScoreColumn(
-            value = going,
-            label = stringResource(Res.string.home_admin_score_going),
-            color = colors.accent,
-            contentDescription = pluralStringResource(Res.plurals.home_admin_cd_score_going, going, going),
-            modifier = Modifier.testTag(tags.going),
-        )
-        ScoreDivider()
-        ScoreColumn(
-            value = out,
-            label = stringResource(Res.string.home_admin_score_out),
-            color = colors.onPrimary.copy(alpha = ScoreOutAlpha),
-            contentDescription = pluralStringResource(Res.plurals.home_admin_cd_score_out, out, out),
-            modifier = Modifier.testTag(tags.out),
-        )
-        ScoreDivider()
-        // A reserva entra no placar porque é o número que decide se o gestor abre vaga (rodada de 09/10/2026).
-        ScoreColumn(
-            value = waiting,
-            label = stringResource(Res.string.home_admin_score_waiting),
-            color = colors.onPrimary,
-            contentDescription = stringResource(Res.string.home_admin_cd_score_waiting, waiting),
-            modifier = Modifier.testTag(tags.waiting),
-        )
-        ScoreDivider()
-        ScoreColumn(
-            value = pending,
-            label = stringResource(Res.string.home_admin_score_pending),
-            color = colors.warning,
-            contentDescription = pluralStringResource(Res.plurals.home_admin_cd_score_pending, pending, pending),
-            modifier = Modifier.testTag(tags.pending),
-        )
+        if (largeFont) {
+            Row(Modifier.height(IntrinsicSize.Min)) {
+                goingColumn()
+                ScoreDivider()
+                outColumn()
+            }
+            Row(Modifier.height(IntrinsicSize.Min)) {
+                waitingColumn()
+                ScoreDivider()
+                pendingColumn()
+            }
+        } else {
+            Row(Modifier.height(IntrinsicSize.Min)) {
+                goingColumn()
+                ScoreDivider()
+                outColumn()
+                ScoreDivider()
+                waitingColumn()
+                ScoreDivider()
+                pendingColumn()
+            }
+        }
     }
 }
 
@@ -155,6 +186,7 @@ private fun RowScope.ScoreColumn(
     }
 }
 
+private const val LargeFontScale = 1.3f
 private const val ScorePanelAlpha = 0.10f
 private const val ScoreDividerAlpha = 0.18f
 private const val ScoreOutAlpha = 0.7f

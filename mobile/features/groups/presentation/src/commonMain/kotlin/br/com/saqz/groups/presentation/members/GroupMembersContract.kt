@@ -62,6 +62,13 @@ data class GroupMembersState(
     val shownCount: Int = 0,
     /** != null abre o sheet do 2l. */
     val selected: MemberUi? = null,
+    /** != null abre a confirmação de "Remover do grupo": remover nunca age no primeiro toque. */
+    val confirmRemove: MemberUi? = null,
+    /** Trocar papel/remover bateu em 403 SUBSCRIPTION_REQUIRED: abre a folha da assinatura. */
+    val subscriptionRequired: Boolean = false,
+    val trialEnded: Boolean = false,
+    /** A ação falhou por outro motivo: a lista fica na tela e um aviso explica. */
+    val actionFailed: Boolean = false,
 )
 
 /**
@@ -123,6 +130,14 @@ sealed interface GroupMembersIntent {
 
     /** Age sobre `state.selected`; sem ninguém selecionado, não faz nada. */
     data class PerformAction(val action: GroupMemberAction) : GroupMembersIntent
+
+    data object ConfirmRemove : GroupMembersIntent
+
+    data object DismissRemove : GroupMembersIntent
+
+    data object DismissSubscriptionRequired : GroupMembersIntent
+
+    data object DismissActionFailed : GroupMembersIntent
 
     data class AcceptRequest(val requestId: String) : GroupMembersIntent
 

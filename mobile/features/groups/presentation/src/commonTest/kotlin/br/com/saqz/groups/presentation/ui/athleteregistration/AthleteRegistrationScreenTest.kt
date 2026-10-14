@@ -78,7 +78,7 @@ class AthleteRegistrationScreenTest {
         setScreen(AthleteRegistrationSamples.womenCourt)
 
         onNodeWithTag(AthleteRegistrationTags.Summary).assertExists()
-        onNodeWithText("Vai aparecer como Levantadora · também joga de ponteira · intermediário")
+        onNodeWithText("Vai aparecer como Levantadora · também joga de ponteira · Intermediário")
             .assertExists()
     }
 

@@ -66,6 +66,8 @@ import br.com.saqz.groups.resources.group_invite_operation_error
 import br.com.saqz.groups.resources.group_invite_people
 import br.com.saqz.groups.resources.group_invite_pending
 import br.com.saqz.groups.resources.group_invite_reject
+import br.com.saqz.groups.resources.group_invite_reject_body
+import br.com.saqz.groups.resources.group_invite_reject_title
 import br.com.saqz.groups.resources.group_invite_retry
 import br.com.saqz.groups.resources.group_invite_share
 import br.com.saqz.groups.resources.group_invite_share_image
@@ -82,6 +84,8 @@ internal object GroupInviteTags {
     const val CopyCode = "group-invite-copy-code"
     const val Rotate = "group-invite-rotate"
     const val RotateConfirm = "group-invite-rotate-confirm"
+    const val RejectConfirm = "group-invite-reject-confirm"
+    const val RejectConfirmAction = "group-invite-reject-confirm-action"
     const val Copy = "group-invite-copy"
     const val Share = "group-invite-share"
     const val Approval = "group-invite-approval"
@@ -204,6 +208,27 @@ internal fun GroupInviteScreen(
                     onClick = { onIntent(GroupInviteIntent.ConfirmRotate) },
                     loading = state.isGenerating,
                     modifier = Modifier.weight(1f).testTag(GroupInviteTags.RotateConfirm),
+                )
+            },
+        ) {}
+        SaqzBottomSheet(
+            open = state.rejectCandidate != null,
+            onClose = { onIntent(GroupInviteIntent.DismissReject) },
+            modifier = Modifier.testTag(GroupInviteTags.RejectConfirm),
+            title = stringResource(Res.string.group_invite_reject_title, state.rejectCandidate?.displayName.orEmpty()),
+            description = stringResource(Res.string.group_invite_reject_body),
+            splitFooter = {
+                SaqzButton(
+                    label = stringResource(Res.string.group_invite_rotate_cancel),
+                    onClick = { onIntent(GroupInviteIntent.DismissReject) },
+                    variant = SaqzButtonVariant.Ghost,
+                    modifier = Modifier.weight(1f),
+                )
+                SaqzButton(
+                    label = stringResource(Res.string.group_invite_reject),
+                    onClick = { state.rejectCandidate?.let { onIntent(GroupInviteIntent.RejectRequest(it.userId)) } },
+                    variant = SaqzButtonVariant.Danger,
+                    modifier = Modifier.weight(1f).testTag(GroupInviteTags.RejectConfirmAction),
                 )
             },
         ) {}
@@ -364,7 +389,7 @@ private fun EntryRequests(
                     )
                     SaqzButton(
                         label = stringResource(Res.string.group_invite_reject),
-                        onClick = { onIntent(GroupInviteIntent.RejectRequest(request.userId)) },
+                        onClick = { onIntent(GroupInviteIntent.RequestReject(request.userId)) },
                         size = SaqzButtonSize.Sm,
                         variant = SaqzButtonVariant.Ghost,
                         enabled = request.userId !in pendingActions,

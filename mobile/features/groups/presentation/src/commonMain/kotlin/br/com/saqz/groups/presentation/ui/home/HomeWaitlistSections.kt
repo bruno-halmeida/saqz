@@ -43,6 +43,7 @@ import br.com.saqz.groups.resources.home_waitlist_avulso_position
 import br.com.saqz.groups.resources.home_waitlist_joined_box_title
 import br.com.saqz.groups.resources.home_waitlist_late_box_body
 import br.com.saqz.groups.resources.home_waitlist_manual_box_body
+import br.com.saqz.groups.resources.home_waitlist_open_spots_box_title
 import br.com.saqz.groups.resources.home_waitlist_avulso_upsell_body
 import br.com.saqz.groups.resources.home_waitlist_avulso_upsell_title
 import br.com.saqz.groups.resources.home_waitlist_position
@@ -101,18 +102,30 @@ internal fun HomeWaitlistChip(kind: HomeWaitlistKind, position: Long?, modifier:
  * (6b), circle-alert na lista do avulso (6e).
  */
 @Composable
-internal fun HomeWaitlistInfoBox(kind: HomeWaitlistKind, modifier: Modifier = Modifier) {
+internal fun HomeWaitlistInfoBox(
+    kind: HomeWaitlistKind,
+    modifier: Modifier = Modifier,
+    spotsOpen: Boolean = false,
+) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     val icon = if (kind != HomeWaitlistKind.AvulsoList) SaqzIcons.Clock else SaqzIcons.CircleAlert
     val iconColor = colors.onPrimary
     val title = when (kind) {
-        HomeWaitlistKind.Reserva -> Res.string.home_waitlist_reserva_box_title
+        HomeWaitlistKind.Reserva -> if (spotsOpen) {
+            Res.string.home_waitlist_open_spots_box_title
+        } else {
+            Res.string.home_waitlist_reserva_box_title
+        }
         HomeWaitlistKind.AvulsoList -> Res.string.home_waitlist_avulso_box_title
         HomeWaitlistKind.Manual, HomeWaitlistKind.AfterDeadline -> Res.string.home_waitlist_joined_box_title
     }
     val body = when (kind) {
-        HomeWaitlistKind.Reserva -> Res.string.home_waitlist_reserva_box_body
+        HomeWaitlistKind.Reserva -> if (spotsOpen) {
+            Res.string.home_waitlist_late_box_body
+        } else {
+            Res.string.home_waitlist_reserva_box_body
+        }
         HomeWaitlistKind.AvulsoList -> Res.string.home_waitlist_avulso_box_body
         HomeWaitlistKind.Manual -> Res.string.home_waitlist_manual_box_body
         HomeWaitlistKind.AfterDeadline -> Res.string.home_waitlist_late_box_body

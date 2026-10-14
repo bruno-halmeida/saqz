@@ -6,9 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -27,8 +27,10 @@ internal fun DateTile(day: String, month: String, modifier: Modifier = Modifier)
     val colors = SaqzTheme.colors
     Column(
         modifier = modifier
-            .size(DateTileSize)
-            .background(colors.surfaceSoft, RoundedCornerShape(SaqzTheme.metrics.inputRadius)),
+            // Mínimo, não tamanho fixo: com fonte grande o mês ("OUT") cresce e o tile cresce junto.
+            .defaultMinSize(minWidth = DateTileSize, minHeight = DateTileSize)
+            .background(colors.surfaceSoft, RoundedCornerShape(SaqzTheme.metrics.inputRadius))
+            .padding(horizontal = 4.dp, vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

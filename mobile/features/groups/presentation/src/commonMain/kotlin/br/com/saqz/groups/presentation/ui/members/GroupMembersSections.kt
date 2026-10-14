@@ -59,6 +59,10 @@ import br.com.saqz.groups.resources.group_members_join_requests
 import br.com.saqz.groups.resources.group_members_pending
 import br.com.saqz.groups.resources.group_members_search
 import br.com.saqz.groups.resources.group_members_you
+import br.com.saqz.groups.resources.member_editor_cancel
+import br.com.saqz.groups.resources.member_editor_remove_body
+import br.com.saqz.groups.resources.member_editor_remove_confirm
+import br.com.saqz.groups.resources.member_editor_remove_title
 import br.com.saqz.groups.resources.groups_invite_accept
 import br.com.saqz.groups.resources.groups_invite_decline
 import br.com.saqz.groups.resources.moderation_action_block
@@ -263,6 +267,7 @@ private fun GroupMemberRow(member: MemberUi, onOpen: (String) -> Unit) {
             onOpen(member.id)
         },
         modifier = Modifier.testTag(GroupMembersTags.member(member.id)),
+        stackTrailingOnLargeFont = member.isAdmin,
         trailing = {
             if (member.isAdmin) {
                 SaqzStatusChip(text = stringResource(Res.string.group_members_admin), tone = SaqzChipTone.Brand)
@@ -364,6 +369,40 @@ internal fun GroupMemberActionsSheet(
             }
         }
     }
+}
+
+/**
+ * "Remover do grupo" tira a pessoa na hora e não tem volta pelo app: pede confirmação antes,
+ * com o mesmo texto do editor de jogador.
+ */
+@Composable
+internal fun GroupMemberRemoveConfirmation(
+    member: MemberUi?,
+    onIntent: (GroupMembersIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SaqzBottomSheet(
+        open = member != null,
+        onClose = { onIntent(GroupMembersIntent.DismissRemove) },
+        modifier = modifier.testTag(GroupMembersTags.ConfirmRemove),
+        title = stringResource(Res.string.member_editor_remove_title, member?.name.orEmpty()),
+        description = stringResource(Res.string.member_editor_remove_body),
+        splitFooter = {
+            SaqzButton(
+                stringResource(Res.string.member_editor_cancel),
+                { onIntent(GroupMembersIntent.DismissRemove) },
+                Modifier.weight(1f).testTag(GroupMembersTags.ConfirmRemoveCancel),
+                SaqzButtonVariant.Secondary,
+            )
+            SaqzButton(
+                stringResource(Res.string.member_editor_remove_confirm),
+                { onIntent(GroupMembersIntent.ConfirmRemove) },
+                Modifier.weight(1f),
+                SaqzButtonVariant.Danger,
+            )
+        },
+        content = {},
+    )
 }
 
 /**

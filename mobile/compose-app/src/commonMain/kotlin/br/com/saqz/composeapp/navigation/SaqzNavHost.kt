@@ -180,6 +180,8 @@ internal fun SaqzNavHost(
     // salvo volta e o store não, então a primeira reentrada naquela tela carrega duas vezes.
     // Se incomodar, a referência passa a viver no `SavedStateHandle` da própria ViewModel.
     var profileRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
+    // Entrar num grupo por link muda a Início (some o "Seu grupo em 1 minuto"): recarrega ao voltar.
+    var homeRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var scheduleRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var groupDetailsRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     // Grupo cujo detalhe deve confirmar "Jogo marcado." na volta do editor; some ao ser mostrado,
@@ -296,6 +298,7 @@ internal fun SaqzNavHost(
                     InviteRedeemStatus.JOINED -> {
                         pendingInviteCode = null
                         inviteContext = null
+                        homeRefreshVersion++
                         backStack.add(GroupsRoute.AthleteRegistration(effect.groupId))
                     }
                     InviteRedeemStatus.PENDING -> {
@@ -496,6 +499,7 @@ internal fun SaqzNavHost(
                         },
                         homeTab = { onOpenGroups ->
                             HomeRoot(
+                                refreshVersion = homeRefreshVersion,
                                 onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
                                 onOpenGroups = onOpenGroups,
                                 onOpenGame = { groupId, gameId ->
@@ -596,7 +600,7 @@ internal fun SaqzNavHost(
                                     // tela de planos; no web, numa tela antes de abrir o site.
                                     scope.launch {
                                         val limit = groupLimitResolver.resolve()
-                                        if (limit != null && (storeCheckout.hasWebCheckout || storeCheckout.purchasesAvailable)) {
+                                        if (limit != null) {
                                             backStack.add(
                                                 SubscriptionLimitReached(limit.groupsUsed, limit.groupsLimit, limit.planName),
                                             )
@@ -833,11 +837,21 @@ internal fun SaqzNavHost(
                     br.com.saqz.subscriptions.presentation.trial.TrialEntryRoot(
                         onBack = pop,
                         onSubscribe = {
-                            val openedWeb = storeCheckout.openWebCheckout {
-                                planAnalytics.refresh()
-                                onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                            scope.launch {
+                                // Limite de grupos: a explicação vem antes dos planos, por qualquer caminho.
+                                val limit = groupLimitResolver.resolve()
+                                if (limit != null) {
+                                    backStack.add(
+                                        SubscriptionLimitReached(limit.groupsUsed, limit.groupsLimit, limit.planName),
+                                    )
+                                } else {
+                                    val openedWeb = storeCheckout.openWebCheckout {
+                                        planAnalytics.refresh()
+                                        onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                                    }
+                                    if (!openedWeb) backStack.add(SubscriptionRequired)
+                                }
                             }
-                            if (!openedWeb) backStack.add(SubscriptionRequired)
                         },
                         purchasesAvailable = storeCheckout.anyPurchaseAvailable,
                     ) {

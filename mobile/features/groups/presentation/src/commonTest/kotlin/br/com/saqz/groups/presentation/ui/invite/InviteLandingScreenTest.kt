@@ -48,7 +48,7 @@ class InviteLandingScreenTest {
         setScreen(InviteLandingSamples.requestSent) { intents += it }
 
         onNodeWithTag(InviteLandingTags.RequestSent).assertExists()
-        onNodeWithText("Ana Lima já recebeu seu pedido. Você recebe um aviso quando for aceito.").assertExists()
+        onNodeWithText("Ana Lima já recebeu seu pedido. Quando o organizador aceitar, o grupo aparece na sua Início.").assertExists()
         onNodeWithText("Explorar o app").performClick()
         onNodeWithText("Entrar em outro grupo").performClick()
         assertEquals(listOf(InviteLandingIntent.ExploreApp, InviteLandingIntent.OpenAnotherGroup), intents)

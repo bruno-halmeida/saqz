@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -89,7 +90,8 @@ internal fun WaitingRow(
                     text = meta,
                     style = SaqzTheme.typography.compactMeta,
                     color = colors.textSecondary,
-                    maxLines = metaMaxLines,
+                    // Fonte grande: o subtítulo cresce em linhas em vez de virar reticências.
+                    maxLines = if (LocalDensity.current.fontScale >= 1.3f) Int.MAX_VALUE else metaMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
             }

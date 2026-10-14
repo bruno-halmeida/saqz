@@ -25,6 +25,8 @@ data class AthleteRegistrationState(
     val preferredSide: AthletePreferredSide? = null,
     val heightText: String = "",
     val isSaving: Boolean = false,
+    /** O cadastro já tinha nível, posição ou lado: é edição, não a primeira entrada no grupo. */
+    val isEditing: Boolean = false,
 ) {
     val isCourt: Boolean get() = modality == GroupModality.COURT_VOLLEYBALL
 }

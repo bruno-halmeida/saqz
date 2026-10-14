@@ -36,6 +36,9 @@ class SaqzComponentsTest {
         assertEquals("LP", saqzInitials("Lucas Pereira"))
         assertEquals("BS", saqzInitials("bruna silva"))
         assertEquals("AS", saqzInitials("  Ana   Maria  Souza  "))
+        assertEquals("QB", saqzInitials("QA Vôlei B 13/10"))
+        assertEquals("DB", saqzInitials("Duda Silva Bastos"))
+        assertEquals("", saqzInitials("13/10"))
         assertEquals("T", saqzInitials("Tiago"))
         assertEquals("", saqzInitials("   "))
     }

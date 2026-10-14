@@ -44,7 +44,8 @@ import org.jetbrains.compose.resources.painterResource
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SaqzHeroCard(
-    kicker: String,
+    /** `null` tira o eyebrow (ex.: "Grupo criado!" não é um próximo jogo). */
+    kicker: String?,
     title: String,
     modifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
@@ -76,13 +77,13 @@ fun SaqzHeroCard(
         ) {
             // FlowRow: com fonte grande o chip desce para a linha de baixo em vez de espremer o kicker
             // (que quebrava letra a letra); em fonte normal segue o kicker à esquerda e o chip à direita.
-            FlowRow(
+            if (kicker != null || trailing != null) FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalArrangement = Arrangement.spacedBy(metrics.grid),
                 itemVerticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
+                if (kicker != null) Row(
                     horizontalArrangement = Arrangement.spacedBy(HERO_DOT_GAP),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

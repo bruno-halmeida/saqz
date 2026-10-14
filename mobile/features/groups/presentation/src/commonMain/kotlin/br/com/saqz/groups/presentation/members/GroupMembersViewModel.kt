@@ -14,6 +14,7 @@ import br.com.saqz.groups.domain.membership.ChangeMembershipRoleCommand
 import br.com.saqz.groups.domain.membership.isExpectedRosterAccessFailure
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.moderation.BlockedPeopleRepository
 import br.com.saqz.groups.presentation.toUiError
@@ -25,6 +26,7 @@ class GroupMembersViewModel(
     private val membershipGateway: GroupMembershipGateway,
     private val groupGateway: GroupGateway,
     private val blocks: BlockedPeopleRepository,
+    private val trialAccess: GroupTrialAccessPort? = null,
 ) : MviViewModel<GroupMembersState, GroupMembersIntent, GroupMembersEffect>(GroupMembersState()) {
 
     private var loadGeneration = 0
@@ -59,6 +61,10 @@ class GroupMembersViewModel(
             is GroupMembersIntent.OpenMember -> openMember(intent.memberId)
             GroupMembersIntent.DismissSheet -> update { it.copy(selected = null) }
             is GroupMembersIntent.PerformAction -> perform(intent.action)
+            GroupMembersIntent.ConfirmRemove -> state.value.confirmRemove?.let { remove(it) }
+            GroupMembersIntent.DismissRemove -> update { it.copy(confirmRemove = null) }
+            GroupMembersIntent.DismissSubscriptionRequired -> update { it.copy(subscriptionRequired = false) }
+            GroupMembersIntent.DismissActionFailed -> update { it.copy(actionFailed = false) }
             is GroupMembersIntent.AcceptRequest -> accept(intent.requestId)
             is GroupMembersIntent.DeclineRequest -> decline(intent.requestId)
             GroupMembersIntent.Invite -> emit(GroupMembersEffect.OpenInvite(groupId))
@@ -177,7 +183,7 @@ class GroupMembersViewModel(
             GroupMemberAction.EditMember -> emit(GroupMembersEffect.OpenMemberEditor(selected.id))
             GroupMemberAction.Promote -> changeRole(selected, AssignableGroupRole.ADMIN)
             GroupMemberAction.Demote -> changeRole(selected, AssignableGroupRole.ATHLETE)
-            GroupMemberAction.Remove -> remove(selected)
+            GroupMemberAction.Remove -> update { it.copy(selected = null, confirmRemove = selected) }
             GroupMemberAction.Report -> emit(GroupMembersEffect.ReportMember(groupId, selected.id, selected.name))
             GroupMemberAction.Block -> emit(GroupMembersEffect.BlockMember(groupId, selected.id, selected.name))
             GroupMemberAction.Unblock -> emit(GroupMembersEffect.UnblockMember(selected.id))
@@ -197,20 +203,33 @@ class GroupMembersViewModel(
                 ChangeMembershipRoleCommand(GroupId(groupId), member.id, role),
             )) {
                 is SaqzResult.Success -> load()
-                is SaqzResult.Failure -> showFailure(loadGeneration, result.error.toUiError())
+                is SaqzResult.Failure -> showActionFailure(result.error.toUiError())
             }
             actionInFlight = false
         }
     }
 
+    /**
+     * Trocar papel ou remover que falha não derruba a lista: plano pausado abre a folha da
+     * assinatura (tentar de novo nunca resolve); o resto vira um aviso e a tela continua.
+     */
+    private suspend fun showActionFailure(error: GroupUiError) {
+        if (error == GroupUiError.SubscriptionRequired) {
+            val trialEnded = trialAccess?.read(GroupId(groupId))?.trialEnded == true
+            update { it.copy(subscriptionRequired = true, trialEnded = trialEnded) }
+        } else {
+            update { it.copy(actionFailed = true) }
+        }
+    }
+
     private fun remove(member: MemberUi) {
-        if (member.isOwner) return
+        if (member.isOwner || actionInFlight) return
         actionInFlight = true
-        update { it.copy(selected = null) }
+        update { it.copy(selected = null, confirmRemove = null) }
         viewModelScope.launch {
             when (val result = athleteGateway.removeAthlete(GroupId(groupId), member.id)) {
                 is SaqzResult.Success -> load()
-                is SaqzResult.Failure -> showFailure(loadGeneration, result.error.toUiError())
+                is SaqzResult.Failure -> showActionFailure(result.error.toUiError())
             }
             actionInFlight = false
         }

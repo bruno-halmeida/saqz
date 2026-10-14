@@ -35,6 +35,8 @@ data class HomeState(
     val inviteSheetOpen: Boolean = false,
     val inviteLink: String = "",
     val inviteLinkInvalid: Boolean = false,
+    /** Dono de algum grupo cujo teste do Organizador acabou sem plano: a Início avisa e oferece "Ver planos". */
+    val ownerTrialEnded: Boolean = false,
 )
 
 /**

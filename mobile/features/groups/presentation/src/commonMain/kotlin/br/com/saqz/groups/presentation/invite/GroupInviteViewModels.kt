@@ -27,6 +27,8 @@ import org.jetbrains.compose.resources.getString
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import qrcode.QRCode
 
 @Suppress("LongParameterList")
@@ -73,6 +75,10 @@ class GroupInviteViewModel(
             GroupInviteIntent.ConfirmRotate -> rotate()
             is GroupInviteIntent.ToggleApproval -> toggleApproval(intent.enabled)
             is GroupInviteIntent.ApproveRequest -> approve(intent.userId)
+            is GroupInviteIntent.RequestReject -> update { current ->
+                current.copy(rejectCandidate = current.pendingRequests.firstOrNull { it.userId == intent.userId })
+            }
+            GroupInviteIntent.DismissReject -> update { it.copy(rejectCandidate = null) }
             is GroupInviteIntent.RejectRequest -> reject(intent.userId)
             GroupInviteIntent.OpenShareSheet -> update { it.copy(isShareSheetVisible = true, toast = null) }
             GroupInviteIntent.CloseShareSheet -> update { it.copy(isShareSheetVisible = false) }
@@ -136,7 +142,7 @@ class GroupInviteViewModel(
                     inviteCode = metadata.code?.takeIf { active },
                     inviteUrl = metadata.inviteUrl?.takeIf { active },
                     entryRequiresApproval = group.group.entryRequiresApproval,
-                    pendingRequests = requests.map(GroupEntryRequest::toUi),
+                    pendingRequests = requests.map { it.toUi(timeZone.id) },
                     recentMembers = roster.sortedByDescending { it.joinedAt }
                         .map { member -> member.toUi() },
                 )
@@ -232,7 +238,7 @@ class GroupInviteViewModel(
         if (userId in state.value.pendingActionIds) return
         val operation = GenerationKey(GenerationOperation.Reject, userId)
         val requestGeneration = nextGeneration(operation)
-        update { it.copy(pendingActionIds = it.pendingActionIds + userId, error = null) }
+        update { it.copy(pendingActionIds = it.pendingActionIds + userId, error = null, rejectCandidate = null) }
         viewModelScope.launch {
             when (entryRequestGateway.reject(GroupId(groupId), userId)) {
                 is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) update {
@@ -262,7 +268,7 @@ class GroupInviteViewModel(
                     update { it.copy(error = GroupInviteError.Operation) }
                 }
                 is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
-                    update { it.copy(pendingRequests = result.value.map(GroupEntryRequest::toUi)) }
+                    update { it.copy(pendingRequests = result.value.map { it.toUi(timeZone.id) }) }
                 }
             }
         }
@@ -475,12 +481,16 @@ private fun String.shortInviteCodeOrNull(): String? = substringAfter("saqz_invit
 
 private const val SHORT_CODE_LENGTH = 8
 
-private fun GroupEntryRequest.toUi() = PendingEntryRequestUi(userId, displayName, requestedAt.formatDateTime())
+private fun GroupEntryRequest.toUi(zoneId: String) =
+    PendingEntryRequestUi(userId, displayName, requestedAt.formatDateTime(zoneId))
 
-private fun String.formatDateTime(): String {
-    val date = take(10)
-    if (date.length != 10) return this
-    return "${date.substring(8, 10)}/${date.substring(5, 7)} · ${substringAfter('T', "").take(5)}"
+/** O instante do pedido vem em UTC; a tela mostra a hora do fuso do grupo (ou do aparelho, se faltar). */
+private fun String.formatDateTime(zoneId: String): String {
+    val instant = runCatching { Instant.parse(this) }.getOrNull() ?: return this
+    val zone = runCatching { TimeZone.of(zoneId) }.getOrElse { TimeZone.currentSystemDefault() }
+    val local = instant.toLocalDateTime(zone)
+    fun Int.pad() = toString().padStart(2, '0')
+    return "${local.day.pad()}/${(local.month.ordinal + 1).pad()} · ${local.hour.pad()}:${local.minute.pad()}"
 }
 
 private fun br.com.saqz.groups.domain.athlete.AthleteRosterEntry.toUi(): RecentMemberUi {

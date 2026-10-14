@@ -23,6 +23,8 @@
     <string name="group_invite_pending">Pedidos para entrar</string>
     <string name="group_invite_approve">Aprovar</string>
     <string name="group_invite_reject">Recusar</string>
+    <string name="group_invite_reject_title">Recusar o pedido de %1$s?</string>
+    <string name="group_invite_reject_body">A pessoa não entra no grupo. Ela precisa pedir de novo se quiser tentar outra vez.</string>
     <string name="group_invite_joined_recently">Entrou · recentemente</string>
     <string name="group_invite_joined_minutes">Entrou · há %1$dmin</string>
     <string name="group_invite_joined_hours">Entrou · há %1$dh</string>

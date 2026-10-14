@@ -187,7 +187,7 @@ class HomeScreenTest {
     fun `waitlisted reserva state renders the reserva chip box and leave and view game actions`() = runComposeUiTest {
         val intents = mutableListOf<HomeIntent>()
         setScreen(
-            nextGameState(nextGame = nextGame(AttendanceStatus.Waitlisted).copy(waitlistKind = HomeWaitlistKind.Reserva, waitlistPosition = 1)),
+            nextGameState(nextGame = nextGame(AttendanceStatus.Waitlisted).copy(waitlistKind = HomeWaitlistKind.Reserva, waitlistPosition = 1, confirmedCount = 12, capacity = 12)),
             intents::add,
         )
 
@@ -200,6 +200,17 @@ class HomeScreenTest {
         onNodeWithTag(HomeWaitlistTags.ConfirmedSection).assertIsDisplayed()
 
         assertEquals(listOf<HomeIntent>(HomeIntent.OpenGame("ceret", "game-1")), intents)
+    }
+
+    @Test
+    fun `waitlisted reserva com vaga aberta nao diz que as vagas acabaram`() = runComposeUiTest {
+        setScreen(
+            nextGameState(nextGame = nextGame(AttendanceStatus.Waitlisted).copy(waitlistKind = HomeWaitlistKind.Reserva, waitlistPosition = 1, confirmedCount = 0, capacity = 4)),
+            {},
+        )
+
+        onNodeWithText("Você está na lista de espera.").assertIsDisplayed()
+        onAllNodesWithText("As vagas acabaram. Você entrou na lista de espera.").assertCountEquals(0)
     }
 
     @Test

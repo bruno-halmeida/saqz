@@ -65,6 +65,8 @@ import br.com.saqz.groups.resources.game_detail_stat_going
 import br.com.saqz.groups.resources.game_detail_status_cancelled
 import br.com.saqz.groups.resources.game_detail_status_completed
 import br.com.saqz.groups.resources.game_detail_status_draft
+import br.com.saqz.groups.resources.game_detail_status_deadline_closed
+import br.com.saqz.groups.resources.game_detail_status_in_progress
 import br.com.saqz.groups.resources.game_detail_status_published
 import br.com.saqz.groups.resources.game_detail_title
 import br.com.saqz.groups.resources.game_detail_you
@@ -103,7 +105,12 @@ internal fun GameDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(metrics.grid * 2),
                 ) {
                     state.header?.let { GameDetailHeader(it) }
-                    state.header?.let { GameDetailResponse(it, state.response, onIntent) }
+                    state.header?.let { GameDetailResponse(
+                        header = it,
+                        response = state.response,
+                        onIntent = onIntent,
+                        spotsOpen = (state.attendance?.availableSpots ?: 0) > 0,
+                    ) }
                     state.attendance?.let { GameDetailAttendance(it) }
                     GameGuestAction(state.guest, onIntent)
                     state.confirmedRoster.takeIf { it.isNotEmpty() }?.let {
@@ -139,7 +146,7 @@ private fun GameDetailHeader(header: GameDetailHeaderUi) {
     val colors = SaqzTheme.colors
     SaqzCard {
         SaqzStatusChip(
-            text = stringResource(header.statusTone.resource()),
+            text = stringResource(header.statusResource()),
             tone = header.statusTone.chipTone(),
         )
         Text(
@@ -333,6 +340,11 @@ private fun GameDetailStatusTone.chipTone() = when (this) {
     GameDetailStatusTone.Published -> SaqzChipTone.Brand
     GameDetailStatusTone.Cancelled -> SaqzChipTone.Error
     GameDetailStatusTone.Completed -> SaqzChipTone.Success
+}
+private fun GameDetailHeaderUi.statusResource() = when {
+    statusTone == GameDetailStatusTone.Published && !responseOpen -> Res.string.game_detail_status_in_progress
+    statusTone == GameDetailStatusTone.Published && !confirmationOpen -> Res.string.game_detail_status_deadline_closed
+    else -> statusTone.resource()
 }
 private fun GameDetailStatusTone.resource() = when (this) {
     GameDetailStatusTone.Draft -> Res.string.game_detail_status_draft

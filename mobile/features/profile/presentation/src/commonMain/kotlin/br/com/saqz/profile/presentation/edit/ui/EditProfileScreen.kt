@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import br.com.saqz.designsystem.SaqzSpinner
+import br.com.saqz.designsystem.saqzInitials
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -442,12 +443,7 @@ private fun EditProfileState.fieldError(
     vararg errors: EditProfileFieldError,
 ): String? = if (errors.any { it in fieldErrors }) stringResource(resource) else null
 
-private fun String.initials(): String = trim()
-    .split(Regex("\\s+"))
-    .filter(String::isNotEmpty)
-    .take(2)
-    .joinToString("") { it.take(1).uppercase() }
-    .ifEmpty { "?" }
+private fun String.initials(): String = saqzInitials(this).ifEmpty { "?" }
 
 @Preview
 @Composable

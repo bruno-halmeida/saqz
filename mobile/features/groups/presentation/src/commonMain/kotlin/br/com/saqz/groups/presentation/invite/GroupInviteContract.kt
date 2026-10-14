@@ -17,6 +17,8 @@ data class GroupInviteState(
     /** Diálogo "Trocar o código?" aberto: trocar invalida o código e o link antigos. */
     val isRotateConfirmVisible: Boolean = false,
     val isUpdatingApproval: Boolean = false,
+    /** Pedido que o gestor está prestes a recusar; != null abre o diálogo de confirmação. */
+    val rejectCandidate: PendingEntryRequestUi? = null,
     val pendingActionIds: Set<String> = emptySet(),
     val pendingRequests: List<PendingEntryRequestUi> = emptyList(),
     val recentMembers: List<RecentMemberUi> = emptyList(),
@@ -61,6 +63,9 @@ sealed interface GroupInviteIntent {
     data object ConfirmRotate : GroupInviteIntent
     data class ToggleApproval(val enabled: Boolean) : GroupInviteIntent
     data class ApproveRequest(val userId: String) : GroupInviteIntent
+    /** Abre a confirmação; recusar só age em [RejectRequest], depois do "Recusar" do diálogo. */
+    data class RequestReject(val userId: String) : GroupInviteIntent
+    data object DismissReject : GroupInviteIntent
     data class RejectRequest(val userId: String) : GroupInviteIntent
     data object OpenShareSheet : GroupInviteIntent
     data object CloseShareSheet : GroupInviteIntent

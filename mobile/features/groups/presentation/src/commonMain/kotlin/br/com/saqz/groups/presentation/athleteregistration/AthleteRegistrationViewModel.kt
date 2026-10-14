@@ -96,6 +96,8 @@ class AthleteRegistrationViewModel(
                     level = membership.level,
                     preferredSide = membership.preferredSide,
                     heightText = membership.heightCm?.toString().orEmpty(),
+                    isEditing = membership.level != null || membership.position != null ||
+                        membership.preferredSide != null,
                 ).restoreDraft(savedState)
             }
         }
