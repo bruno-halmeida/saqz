@@ -127,8 +127,13 @@ fun AppStorePaywallScreen(
                     textAlign = TextAlign.Center,
                 )
             }
-            state.phase == AppStorePaywallPhase.Loading -> AppStorePaywallCentered { SaqzSpinner() }
+            // O limite de grupos se explica sempre, carregando ou não os planos.
+            state.phase == AppStorePaywallPhase.Loading -> AppStorePaywallCentered {
+                groupLimit?.let { PaywallGroupLimitNotice(it) }
+                SaqzSpinner()
+            }
             state.phase == AppStorePaywallPhase.LoadFailed -> AppStorePaywallCentered {
+                groupLimit?.let { PaywallGroupLimitNotice(it) }
                 SaqzEmptyState(
                     title = stringResource(Res.string.paywall_load_error),
                     icon = SaqzIcons.CircleAlert,

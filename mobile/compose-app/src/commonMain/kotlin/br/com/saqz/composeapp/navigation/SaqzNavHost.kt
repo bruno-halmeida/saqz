@@ -220,6 +220,17 @@ internal fun SaqzNavHost(
     val topRoute = backStack.lastOrNull()
     val launchStack = backStack.filter { it.isAvailableAtLaunch() }.ifEmpty { listOf(AccessRoute.Starting) }
     LaunchedEffect(backStack.toList()) { backStack.removeAll { !it.isAvailableAtLaunch() } }
+    // Voltar de qualquer tela (botão do app, gesto ou tecla do sistema) deixa Início e grupo com dado
+    // velho por baixo, e nem todo caminho de volta tinha o seu contador. Qualquer volta pede a recarga
+    // por baixo das duas: elas são silenciosas (sem esqueleto) e a ViewModel ignora o pedido repetido.
+    var lastStackSize by remember { mutableIntStateOf(backStack.size) }
+    LaunchedEffect(backStack.size) {
+        if (backStack.size < lastStackSize) {
+            homeRefreshVersion++
+            groupDetailsRefreshVersion++
+        }
+        lastStackSize = backStack.size
+    }
     LaunchedEffect(topRoute) {
         if (topRoute == null) return@LaunchedEffect
         SaqzAnalytics.screen(analyticsName(topRoute))
@@ -298,8 +309,10 @@ internal fun SaqzNavHost(
                     InviteRedeemStatus.JOINED -> {
                         pendingInviteCode = null
                         inviteContext = null
+                        // Uma navegação só: o cadastro de atleta abre primeiro, no lugar do que a pessoa
+                        // já tenha aberto por cima da Início; a Início recarrega depois, por baixo.
+                        backStack.openAthleteRegistrationAfterJoin(effect.groupId)
                         homeRefreshVersion++
-                        backStack.add(GroupsRoute.AthleteRegistration(effect.groupId))
                     }
                     InviteRedeemStatus.PENDING -> {
                         backStack.add(GroupsRoute.InviteLanding(effect.inviteCode, requestSent = true))

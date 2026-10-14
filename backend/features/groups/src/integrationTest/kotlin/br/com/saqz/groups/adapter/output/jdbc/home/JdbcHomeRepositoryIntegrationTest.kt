@@ -180,6 +180,25 @@ class JdbcHomeRepositoryIntegrationTest {
     }
 
     @Test
+    fun keepsAGameInProgressAsTheNextGameUntilItEnds() {
+        val actor = user("in-progress", "In Progress")
+        val owner = user("in-progress-owner", "In Progress Owner")
+        val groupA = group("In progress", owner)
+        membership(groupA, actor)
+        // Começou às 11h e dura 90 minutos: às 12h ainda está em andamento.
+        val running = game(groupA, "2026-08-01T11:00:00Z", "PUBLISHED", capacity = 12)
+
+        fun nextAt(now: String) = repository().find(
+            actorId = actor,
+            now = Instant.parse(now),
+            today = LocalDate.of(2026, 8, 1),
+        ).member.nextGame?.gameId
+
+        assertEquals(running, nextAt("2026-08-01T12:00:00Z"))
+        assertNull(nextAt("2026-08-01T12:31:00Z"))
+    }
+
+    @Test
     fun returnsNoUpcomingGamesWithoutAFutureGame() {
         val actor = user("upcoming-none", "No Upcoming")
         val owner = user("upcoming-none-owner", "No Upcoming Owner")
@@ -376,6 +395,27 @@ class JdbcHomeRepositoryIntegrationTest {
         assertNull(home.member.lastCompletedGame)
         assertNull(home.admin)
         assertNull(home.ownCharges)
+    }
+
+    @Test
+    fun listsTheActorOwnPendingEntryRequestsAndNobodyElses() {
+        val actor = user("home-requester", "Home Requester")
+        val other = user("home-other-requester", "Other Requester")
+        val owner = user("home-request-owner", "Request Owner")
+        val groupA = group("Pedido A", owner)
+        val groupB = group("Pedido B", owner)
+        entryRequest(groupA, actor)
+        entryRequest(groupB, other)
+
+        val home = repository().find(
+            actorId = actor,
+            now = Instant.parse("2026-08-01T12:00:00Z"),
+            today = LocalDate.of(2026, 8, 1),
+        )
+
+        assertEquals(listOf(groupA), home.member.pendingEntryRequests.map { it.groupId })
+        assertEquals(listOf("Pedido A"), home.member.pendingEntryRequests.map { it.groupName })
+        assertTrue(home.member.groups.isEmpty())
     }
 
     private fun repository() = JdbcHomeRepository(dataSource)

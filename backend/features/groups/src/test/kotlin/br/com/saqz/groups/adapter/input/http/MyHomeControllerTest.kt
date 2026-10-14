@@ -178,6 +178,29 @@ class MyHomeControllerTest {
     }
 
     @Test
+    fun exposesThePendingEntryRequestsOfTheActor() {
+        val controller = controller(
+            fixed = HomeReadModel(
+                member = HomeMemberReadModel(
+                    null,
+                    null,
+                    emptyList(),
+                    pendingEntryRequests = listOf(
+                        br.com.saqz.groups.application.home.HomePendingEntryRequest(group, "Grupo Praia", now),
+                    ),
+                ),
+                admin = null,
+            ),
+        )
+
+        val pending = controller.home(identity).member.pendingEntryRequests.single()
+
+        assertEquals(group, pending.groupId)
+        assertEquals("Grupo Praia", pending.groupName)
+        assertEquals(now, pending.requestedAt)
+    }
+
+    @Test
     fun preservesAnEmptyMemberHomeAndNullAdminBlock() {
         val controller = controller(
             fixed = HomeReadModel(

@@ -14,6 +14,7 @@ import br.com.saqz.groups.domain.home.HomeGateway
 import br.com.saqz.groups.domain.home.HomeLastCompletedGame
 import br.com.saqz.groups.domain.home.HomeMemberGroup
 import br.com.saqz.groups.domain.home.HomeMemberReadModel
+import br.com.saqz.groups.domain.home.HomePendingEntryRequest
 import br.com.saqz.groups.domain.home.HomeMonthlyCharges
 import br.com.saqz.groups.domain.home.HomeNextGame
 import br.com.saqz.groups.domain.home.HomeOwnAttendance
@@ -105,11 +106,19 @@ internal data class HomeUpcomingGameTransport(
 )
 
 @Serializable
+internal data class HomePendingEntryRequestTransport(
+    val groupId: String,
+    val groupName: String,
+    val requestedAt: String,
+)
+
+@Serializable
 internal data class HomeMemberTransport(
     val nextGame: HomeNextGameTransport?,
     val lastCompletedGame: HomeLastCompletedGameTransport?,
     val groups: List<HomeGroupTransport>,
     val upcomingGames: List<HomeUpcomingGameTransport> = emptyList(),
+    val pendingEntryRequests: List<HomePendingEntryRequestTransport> = emptyList(),
 )
 
 @Serializable
@@ -272,6 +281,9 @@ private fun HomeMemberTransport.toDomain(): HomeMemberReadModel? {
             ?: if (lastCompletedGame == null) null else return null,
         groups = groupsDomain.filterNotNull(),
         upcomingGames = upcomingGames.mapNotNull(HomeUpcomingGameTransport::toDomain),
+        pendingEntryRequests = pendingEntryRequests.map {
+            HomePendingEntryRequest(GroupId(it.groupId), it.groupName, it.requestedAt)
+        },
     )
 }
 

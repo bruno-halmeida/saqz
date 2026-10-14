@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.whatsappbinding
 
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
+import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.communication.CommunicationError
@@ -45,7 +46,7 @@ class WhatsAppBindingViewModel(
 
     private fun load() {
         val current = ++generation
-        update { it.copy(loading = true, error = false) }
+        update { it.copy(loading = true, error = false, saveFailed = false, conflict = false) }
         viewModelScope.launch {
             val result = gateway.binding(GroupId(groupId))
             if (current != generation) return@launch
@@ -58,7 +59,7 @@ class WhatsAppBindingViewModel(
         val inviteLink = state.value.inviteLink.trim()
         if (inviteLink.isEmpty()) return
         val current = ++generation
-        update { it.copy(saving = true, error = false, confirmedGroupName = null) }
+        update { it.copy(saving = true, error = false, saveFailed = false, conflict = false, confirmedGroupName = null) }
         viewModelScope.launch {
             val result = gateway.link(GroupId(groupId), inviteLink)
             if (current != generation) return@launch
@@ -68,7 +69,9 @@ class WhatsAppBindingViewModel(
                     update { it.copy(inviteLink = "", confirmedGroupName = result.value.groupName) }
                     emit(WhatsAppBindingEffect.Saved)
                 }
-                is SaqzResult.Failure -> update { it.copy(saving = false, error = true) }
+                is SaqzResult.Failure -> update {
+                    it.copy(saving = false, error = true, saveFailed = true, conflict = result.error.cause == DataError.Conflict)
+                }
             }
         }
     }
@@ -77,7 +80,7 @@ class WhatsAppBindingViewModel(
         val current = state.value
         if (!current.canToggle || current.saving) return
         val currentGeneration = ++generation
-        update { it.copy(saving = true, error = false) }
+        update { it.copy(saving = true, error = false, saveFailed = false, conflict = false) }
         viewModelScope.launch {
             val result = gateway.setEnabled(GroupId(groupId), enabled)
             if (currentGeneration != generation) return@launch
@@ -86,7 +89,9 @@ class WhatsAppBindingViewModel(
                     applyBinding(result)
                     emit(WhatsAppBindingEffect.Saved)
                 }
-                is SaqzResult.Failure -> update { it.copy(saving = false, error = true) }
+                is SaqzResult.Failure -> update {
+                    it.copy(saving = false, error = true, saveFailed = true, conflict = result.error.cause == DataError.Conflict)
+                }
             }
         }
     }

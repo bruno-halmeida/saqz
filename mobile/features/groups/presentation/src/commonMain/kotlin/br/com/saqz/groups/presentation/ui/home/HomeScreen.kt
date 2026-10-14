@@ -228,6 +228,7 @@ private fun HomeContent(
                 onIntent = onIntent,
             )
             if (state.ownerTrialEnded) HomeTrialEndedNotice()
+            member?.pendingRequestGroupNames?.forEach { HomePendingRequestNotice(it) }
             if (member == null) {
                 Text(
                     text = stringResource(Res.string.home_error_message),

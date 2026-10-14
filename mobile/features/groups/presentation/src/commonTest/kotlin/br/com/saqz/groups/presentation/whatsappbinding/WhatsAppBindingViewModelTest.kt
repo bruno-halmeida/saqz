@@ -42,6 +42,20 @@ class WhatsAppBindingViewModelTest {
         assertEquals(GroupWhatsAppStatus.ACTIVE, state.status)
     }
 
+    @Test fun conflictOnLinkExplainsTheGroupIsAlreadyLinked() = runTest {
+        val gateway = FakeGroupWhatsAppGateway(shouldFail = false)
+        val viewModel = WhatsAppBindingViewModel("group-1", gateway)
+        gateway.shouldFail = true
+        gateway.failureCause = DataError.Conflict
+        viewModel.onIntent(WhatsAppBindingIntent.ChangeInviteLink("https://chat.whatsapp.com/ABC"))
+        viewModel.onIntent(WhatsAppBindingIntent.Link)
+
+        val state = viewModel.state.value
+        assertTrue(state.error)
+        assertTrue(state.saveFailed)
+        assertTrue(state.conflict)
+    }
+
     @Test fun firstVisitOpensHowItWorksAndRemembersIt() = runTest {
         val memory = FakeGroupOnboardingMemory()
         val viewModel = WhatsAppBindingViewModel("group-1", FakeGroupWhatsAppGateway(), memory)

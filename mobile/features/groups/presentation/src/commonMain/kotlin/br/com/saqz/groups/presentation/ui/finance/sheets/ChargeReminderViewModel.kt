@@ -16,6 +16,8 @@ data class ChargeReminderState(
     val failed: Boolean = false,
     val sent: Int? = null,
     val alreadyReminded: Int = 0,
+    /** Cobranças já lembradas nesta sessão: a linha do devedor mostra "Já cobrado hoje". Sobrevive ao fechar a folha. */
+    val remindedChargeIds: Set<String> = emptySet(),
 )
 sealed interface ChargeReminderIntent {
     data class Send(val chargeIds: List<String>) : ChargeReminderIntent
@@ -33,7 +35,7 @@ class ChargeReminderViewModel(
         when (intent) {
             ChargeReminderIntent.Reset -> {
                 if (state.value.sent != null) { saved["request"] = null; saved["charges"] = null }
-                update { ChargeReminderState() }
+                update { ChargeReminderState(remindedChargeIds = it.remindedChargeIds) }
             }
             is ChargeReminderIntent.Send -> send(intent.chargeIds)
         }
@@ -45,13 +47,17 @@ class ChargeReminderViewModel(
         val requestId = request ?: Uuid.random().toString()
         saved["charges"] = selection
         saved["request"] = requestId
-        update { ChargeReminderState(sending = true) }
+        update { ChargeReminderState(sending = true, remindedChargeIds = it.remindedChargeIds) }
         viewModelScope.launch {
             when (val result = gateway.send(GroupId(groupId), requestId, selection)) {
                 is SaqzResult.Success -> update {
-                    ChargeReminderState(sent = result.value.notificationCount, alreadyReminded = result.value.alreadyRemindedCount)
+                    ChargeReminderState(
+                        sent = result.value.notificationCount,
+                        alreadyReminded = result.value.alreadyRemindedCount,
+                        remindedChargeIds = it.remindedChargeIds + selection,
+                    )
                 }
-                is SaqzResult.Failure -> update { ChargeReminderState(failed = true) }
+                is SaqzResult.Failure -> update { ChargeReminderState(failed = true, remindedChargeIds = it.remindedChargeIds) }
             }
         }
     }

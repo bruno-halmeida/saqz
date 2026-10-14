@@ -476,6 +476,7 @@ class HomeViewModel(
         nextGame = nextGame?.toUi(),
         groups = groups.map { it.toUi() },
         upcomingGames = upcomingGames.map { it.toUi() },
+        pendingRequestGroupNames = pendingEntryRequests.map { it.groupName },
     )
 
     private suspend fun HomeNextGame.toUi(): HomeNextGameUi {

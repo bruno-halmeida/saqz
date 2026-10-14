@@ -33,4 +33,6 @@
     <string name="whatsapp_how_not">O Saqz não lê nem guarda as conversas do grupo. Cobrança nunca vai no grupo: vai no privado, só para quem ativou.</string>
     <string name="whatsapp_how_status_label">Status</string>
     <string name="whatsapp_how_status_pending">Aguardando aprovação</string>
+    <string name="whatsapp_binding_save_error">Não foi possível salvar o vínculo. Tente novamente.</string>
+    <string name="whatsapp_binding_conflict">Este grupo do WhatsApp já está vinculado a outro grupo do Saqz. Cada grupo do WhatsApp só pode ser vinculado a um grupo do Saqz: use outro grupo do WhatsApp ou desfaça o vínculo no outro grupo.</string>
 </resources>

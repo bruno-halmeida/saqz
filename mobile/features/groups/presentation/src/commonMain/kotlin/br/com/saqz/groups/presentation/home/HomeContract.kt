@@ -78,6 +78,8 @@ data class HomeMemberUi(
     val admin: HomeAdminReadModelUi? = null,
     val adminSubtitle: String? = null,
     val upcomingGames: List<HomeUpcomingGameUi> = emptyList(),
+    /** Nomes dos grupos para os quais a pessoa pediu entrada e o organizador ainda não respondeu. */
+    val pendingRequestGroupNames: List<String> = emptyList(),
 ) {
     /**
      * Primeiro acesso: a conta não participa de grupo nenhum. É o único estado em que a

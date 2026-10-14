@@ -13,6 +13,7 @@ import br.com.saqz.groups.application.home.HomeOwnAttendance
 import br.com.saqz.groups.application.home.HomeOwnChargeGroup
 import br.com.saqz.groups.application.home.HomeOwnChargeOldest
 import br.com.saqz.groups.application.home.HomeOwnChargesReadModel
+import br.com.saqz.groups.application.home.HomePendingEntryRequest
 import br.com.saqz.groups.application.home.HomeReadModel
 import br.com.saqz.groups.application.home.HomeRepository
 import br.com.saqz.groups.application.home.HomeRosterMember
@@ -41,6 +42,16 @@ class JdbcHomeRepository(
             .param("actor", actorId)
             .param("now", Timestamp.from(now))
             .query(::mapMemberGroup)
+            .list()
+        val pendingEntryRequests = jdbc.sql(PENDING_ENTRY_REQUESTS)
+            .param("actor", actorId)
+            .query { rs, _ ->
+                HomePendingEntryRequest(
+                    groupId = rs.getObject("group_id", UUID::class.java),
+                    groupName = rs.getString("group_name"),
+                    requestedAt = rs.getTimestamp("requested_at").toInstant(),
+                )
+            }
             .list()
         val nextGame = jdbc.sql(NEXT_GAME)
             .param("actor", actorId)
@@ -85,6 +96,7 @@ class JdbcHomeRepository(
                 lastCompletedGame = lastCompleted,
                 groups = memberGroups,
                 upcomingGames = upcomingGames,
+                pendingEntryRequests = pendingEntryRequests,
             ),
             admin = adminGroups.takeIf { it.isNotEmpty() }?.let(::HomeAdminReadModel),
             ownCharges = ownChargeGroups.takeIf { it.isNotEmpty() }?.let {
@@ -224,6 +236,14 @@ class JdbcHomeRepository(
     )
 
     private companion object {
+        const val PENDING_ENTRY_REQUESTS = """
+            SELECT requests.group_id, groups.name AS group_name, requests.requested_at
+            FROM group_entry_requests requests
+            JOIN access_groups groups ON groups.id = requests.group_id AND groups.deleted_at IS NULL
+            WHERE requests.user_id = :actor
+            ORDER BY requests.requested_at DESC, requests.group_id
+        """
+
         const val MEMBER_GROUPS = """
             SELECT groups.id AS group_id,
                    groups.name AS group_name,
@@ -312,7 +332,8 @@ class JdbcHomeRepository(
                AND own.member_user_id = :actor
                AND own.guest_seq = 0
             WHERE games.status = 'PUBLISHED'
-              AND games.starts_at >= :now
+              -- Jogo que já começou continua na Início ("Em andamento") até o fim: início + duração.
+              AND games.starts_at + make_interval(mins => games.duration_minutes) > :now
               AND (groups.owner_user_id = :actor OR memberships.user_id IS NOT NULL)
             ORDER BY games.starts_at, games.id
             LIMIT 1
@@ -347,7 +368,8 @@ class JdbcHomeRepository(
                AND own.member_user_id = :actor
                AND own.guest_seq = 0
             WHERE games.status = 'PUBLISHED'
-              AND games.starts_at >= :now
+              -- Jogo que já começou continua na Início ("Em andamento") até o fim: início + duração.
+              AND games.starts_at + make_interval(mins => games.duration_minutes) > :now
               AND (groups.owner_user_id = :actor OR memberships.user_id IS NOT NULL)
             ORDER BY games.starts_at, games.id
             OFFSET 1 LIMIT 3

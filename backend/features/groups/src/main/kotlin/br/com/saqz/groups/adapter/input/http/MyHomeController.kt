@@ -8,6 +8,7 @@ import br.com.saqz.groups.application.home.HomeMemberReadModel
 import br.com.saqz.groups.application.home.HomeMonthlyCharges
 import br.com.saqz.groups.application.home.HomeNextGame
 import br.com.saqz.groups.application.home.HomeOwnAttendance
+import br.com.saqz.groups.application.home.HomePendingEntryRequest
 import br.com.saqz.groups.application.home.HomeOwnChargeGroup
 import br.com.saqz.groups.application.home.HomeOwnChargeOldest
 import br.com.saqz.groups.application.home.HomeOwnChargesReadModel
@@ -88,11 +89,18 @@ data class HomeUpcomingGameResponse(
     val ownStatus: String?,
 )
 
+data class HomePendingEntryRequestResponse(
+    val groupId: UUID,
+    val groupName: String,
+    val requestedAt: Instant,
+)
+
 data class HomeMemberResponse(
     val nextGame: HomeNextGameResponse?,
     val lastCompletedGame: HomeLastCompletedGameResponse?,
     val groups: List<HomeGroupResponse>,
     val upcomingGames: List<HomeUpcomingGameResponse>,
+    val pendingEntryRequests: List<HomePendingEntryRequestResponse> = emptyList(),
 )
 
 data class HomeMonthlyChargesResponse(
@@ -201,6 +209,9 @@ private fun HomeMemberReadModel.toResponse() = HomeMemberResponse(
     lastCompletedGame = lastCompletedGame?.toResponse(),
     groups = groups.map(HomeMemberGroup::toResponse),
     upcomingGames = upcomingGames.map(HomeUpcomingGame::toResponse),
+    pendingEntryRequests = pendingEntryRequests.map {
+        HomePendingEntryRequestResponse(it.groupId, it.groupName, it.requestedAt)
+    },
 )
 
 private fun HomeMemberGroup.toResponse() = HomeGroupResponse(

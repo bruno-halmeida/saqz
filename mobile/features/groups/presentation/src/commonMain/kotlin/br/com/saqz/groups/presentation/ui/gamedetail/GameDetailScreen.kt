@@ -58,6 +58,8 @@ import br.com.saqz.groups.resources.game_detail_publish
 import br.com.saqz.groups.resources.game_detail_publish_failed
 import br.com.saqz.groups.resources.game_detail_publish_hint
 import br.com.saqz.groups.resources.game_detail_confirmation_deadline
+import br.com.saqz.groups.resources.game_detail_confirmed_full
+import br.com.saqz.groups.resources.game_detail_confirmed_over_capacity
 import br.com.saqz.groups.resources.game_detail_confirmed_summary
 import br.com.saqz.groups.resources.game_detail_confirmed_section
 import br.com.saqz.groups.resources.game_detail_duration
@@ -73,6 +75,9 @@ import br.com.saqz.groups.resources.game_detail_status_deadline_closed
 import br.com.saqz.groups.resources.game_detail_status_in_progress
 import br.com.saqz.groups.resources.game_detail_status_published
 import br.com.saqz.groups.resources.game_detail_title
+import br.com.saqz.groups.resources.game_load_access_denied
+import br.com.saqz.groups.resources.game_load_failure_title
+import br.com.saqz.groups.resources.game_load_not_found
 import br.com.saqz.groups.resources.game_detail_you
 import br.com.saqz.groups.resources.game_settlement_open
 import br.com.saqz.groups.resources.group_details_pending
@@ -100,6 +105,9 @@ internal fun GameDetailScreen(
                     error = state.error,
                     onRetry = { onIntent(GameDetailIntent.Retry) },
                     modifier = Modifier.fillMaxSize(),
+                    failureTitle = stringResource(Res.string.game_load_failure_title),
+                    accessDeniedTitle = stringResource(Res.string.game_load_access_denied),
+                    notFoundTitle = stringResource(Res.string.game_load_not_found),
                 )
                 else -> Column(
                     Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(
@@ -188,13 +196,27 @@ private fun GameDetailAttendance(attendance: GameDetailAttendanceUi) {
     val colors = SaqzTheme.colors
     SaqzCard {
         Text(
-            pluralStringResource(
-                Res.plurals.game_detail_confirmed_summary,
-                attendance.availableSpots,
-                attendance.confirmed,
-                attendance.capacity,
-                attendance.availableSpots,
-            ),
+            when {
+                // Vagas reduzidas abaixo do número de confirmados: "3 de 2" não faz sentido.
+                attendance.confirmed > attendance.capacity -> pluralStringResource(
+                    Res.plurals.game_detail_confirmed_over_capacity,
+                    attendance.capacity,
+                    attendance.confirmed,
+                    attendance.capacity,
+                )
+                attendance.availableSpots <= 0 -> stringResource(
+                    Res.string.game_detail_confirmed_full,
+                    attendance.confirmed,
+                    attendance.capacity,
+                )
+                else -> pluralStringResource(
+                    Res.plurals.game_detail_confirmed_summary,
+                    attendance.availableSpots,
+                    attendance.confirmed,
+                    attendance.capacity,
+                    attendance.availableSpots,
+                )
+            },
             color = colors.textPrimary,
             style = SaqzTheme.typography.body,
         )

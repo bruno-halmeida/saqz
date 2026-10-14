@@ -24,6 +24,11 @@ data class NetworkConfig(
     val environment: NetworkEnvironment,
     val baseUrl: String,
     val requestTimeoutMillis: Long = 10_000,
+    /**
+     * Prazo só para abrir a conexão. Sem rede o app esperava o prazo inteiro de cada tentativa antes de
+     * mostrar o erro; a leitura e o envio de arquivos seguem no [requestTimeoutMillis].
+     */
+    val connectTimeoutMillis: Long = 8_000,
     val maxErrorBodyBytes: Int = 16_384,
     val maxBinaryBodyBytes: Int = 5 * 1024 * 1024,
 ) {
@@ -33,6 +38,7 @@ data class NetworkConfig(
             "base URL must use HTTP or HTTPS"
         }
         require(requestTimeoutMillis > 0) { "request timeout must be positive" }
+        require(connectTimeoutMillis > 0) { "connect timeout must be positive" }
         require(maxErrorBodyBytes > 0) { "error body limit must be positive" }
         require(maxBinaryBodyBytes > 0) { "binary body limit must be positive" }
     }

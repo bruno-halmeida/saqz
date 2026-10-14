@@ -24,4 +24,8 @@
     <string name="game_detail_cancel_title">Cancelar o jogo?</string>
     <string name="game_detail_cancel_body">Os confirmados recebem um aviso e o jogo some da agenda. Isso não pode ser desfeito.</string>
     <string name="game_detail_cancel_failed">Não foi possível cancelar o jogo. Tente novamente.</string>
+    <string name="game_load_failure_title">Não foi possível carregar este jogo</string>
+    <string name="game_load_access_denied">Você não tem acesso a este jogo</string>
+    <string name="game_load_not_found">Jogo não encontrado</string>
+    <string name="game_detail_confirmed_full">%1$d de %2$d confirmados · lotado</string>
 </resources>

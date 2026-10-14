@@ -75,6 +75,21 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `pending entry requests reach the member block by group name`() = runTest {
+        val base = sampleHome()
+        val home = base.copy(
+            member = base.member.copy(
+                pendingEntryRequests = listOf(
+                    br.com.saqz.groups.domain.home.HomePendingEntryRequest(GroupId("g-9"), "Volei RV A", "2026-10-13T02:36:00Z"),
+                ),
+            ),
+        )
+        val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(home)))
+
+        assertEquals(listOf("Volei RV A"), viewModel.state.value.member?.pendingRequestGroupNames)
+    }
+
+    @Test
     fun `home without next game keeps the member block without a hero`() = runTest {
         val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome())))
 

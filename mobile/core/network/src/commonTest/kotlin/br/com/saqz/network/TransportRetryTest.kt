@@ -18,6 +18,23 @@ class TransportRetryTest {
         assertEquals(listOf(500L, 1_000L, 2_000L), fixture.delays)
     }
 
+    @Test fun `retries stop once the time budget is spent`() = runTest {
+        var calls = 0
+        val delays = mutableListOf<Long>()
+        val result = retryTransport(
+            RetrySafety.Read,
+            policy = TransportRetryPolicy(maxElapsedMillis = 0),
+            delayMillis = delays::add,
+        ) {
+            calls++
+            connectivity
+        }
+
+        assertEquals(1, calls)
+        assertEquals(emptyList(), delays)
+        assertEquals(connectivity, result)
+    }
+
     @Test fun `exhaustion returns the exact last failure`() = runTest {
         val final = NetworkResult.Failure(NetworkError.Timeout)
         val fixture = execute(listOf(connectivity, connectivity, connectivity, final))

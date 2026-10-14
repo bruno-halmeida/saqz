@@ -47,6 +47,7 @@ import br.com.saqz.groups.resources.group_cashbox_payment_app
 import br.com.saqz.groups.resources.group_cashbox_receivables
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_cashbox_charge
+import br.com.saqz.groups.resources.sheet_charge_already_reminded
 import br.com.saqz.groups.resources.group_cashbox_charge_missing
 import br.com.saqz.groups.resources.group_cashbox_debtors_title
 import br.com.saqz.groups.resources.group_cashbox_empty_action
@@ -91,6 +92,7 @@ internal object GroupCashboxTags {
 
     fun chargePayment(chargeId: String) = "group-cashbox-payment-$chargeId"
     fun chargeIndividual(chargeId: String) = "group-cashbox-charge-$chargeId"
+    fun chargeReminded(chargeId: String) = "group-cashbox-reminded-$chargeId"
 }
 
 @Composable
@@ -119,7 +121,12 @@ internal fun GroupCashboxScreen(
             when {
                 state.isLoading -> LoadingContent()
                 state.loadFailed -> LoadFailure(onRetry = { onIntent(Retry) })
-                else -> LoadedContent(state = state, onIntent = onIntent, onOpenChargePayment = onOpenChargePayment)
+                else -> LoadedContent(
+                    state = state,
+                    onIntent = onIntent,
+                    onOpenChargePayment = onOpenChargePayment,
+                    remindedChargeIds = reminder.remindedChargeIds,
+                )
             }
         }
         ChargeSheet(
@@ -167,7 +174,7 @@ private fun LoadFailure(onRetry: () -> Unit) = Column(
 
 @Composable
 private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxIntent) -> Unit,
-    onOpenChargePayment: ((String) -> Unit)? = null) {
+    onOpenChargePayment: ((String) -> Unit)? = null, remindedChargeIds: Set<String> = emptySet()) {
     val metrics = SaqzTheme.metrics
     val canCharge = state.debtors.isNotEmpty()
     Column(
@@ -196,7 +203,13 @@ private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxInten
             modifier = Modifier.testTag(GroupCashboxTags.GenerateMonthly),
         )
         if (state.debtors.isNotEmpty()) {
-            DebtorsSection(state = state, canCharge = canCharge, onIntent = onIntent, onOpenChargePayment = onOpenChargePayment)
+            DebtorsSection(
+                state = state,
+                canCharge = canCharge,
+                onIntent = onIntent,
+                onOpenChargePayment = onOpenChargePayment,
+                remindedChargeIds = remindedChargeIds,
+            )
         }
         state.pix?.let {
             PixCard(
@@ -363,6 +376,7 @@ private fun DebtorsSection(
     canCharge: Boolean,
     onIntent: (GroupCashboxIntent) -> Unit,
     onOpenChargePayment: ((String) -> Unit)? = null,
+    remindedChargeIds: Set<String> = emptySet(),
 ) = Column(
     modifier = Modifier.testTag(GroupCashboxTags.Debtors),
     verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
@@ -370,7 +384,13 @@ private fun DebtorsSection(
     SaqzSectionHeader(title = stringResource(Res.string.group_cashbox_debtors_title))
     SaqzCard(padded = false) {
         state.debtors.forEachIndexed { index, debtor ->
-            DebtorRow(debtor = debtor, canCharge = canCharge, onIntent = onIntent, onOpenChargePayment = onOpenChargePayment)
+            DebtorRow(
+                debtor = debtor,
+                canCharge = canCharge,
+                onIntent = onIntent,
+                onOpenChargePayment = onOpenChargePayment,
+                reminded = debtor.chargeId in remindedChargeIds,
+            )
             if (index < state.debtors.lastIndex) {
                 br.com.saqz.designsystem.SaqzDivider()
             }
@@ -384,6 +404,7 @@ private fun DebtorRow(
     canCharge: Boolean,
     onIntent: (GroupCashboxIntent) -> Unit,
     onOpenChargePayment: ((String) -> Unit)? = null,
+    reminded: Boolean = false,
 ) {
     val metrics = SaqzTheme.metrics
     Column {
@@ -404,6 +425,14 @@ private fun DebtorRow(
                 style = SaqzTheme.typography.caption,
                 color = SaqzTheme.colors.textSecondary,
             )
+            if (reminded) {
+                Text(
+                    text = stringResource(Res.string.sheet_charge_already_reminded),
+                    style = SaqzTheme.typography.caption,
+                    color = SaqzTheme.colors.textSecondary,
+                    modifier = Modifier.testTag(GroupCashboxTags.chargeReminded(debtor.chargeId)),
+                )
+            }
         }
         Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
             SaqzButton(

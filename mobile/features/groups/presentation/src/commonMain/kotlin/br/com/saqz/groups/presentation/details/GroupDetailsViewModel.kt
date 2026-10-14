@@ -96,6 +96,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -1139,7 +1140,8 @@ private fun List<Game>.nextPublishedGame(now: Instant): Game? {
     val published = filter { it.status == GameStatus.Published }
     return published
         .mapNotNull { game -> runCatching { Instant.parse(game.startsAt) to game }.getOrNull() }
-        .filter { it.first >= now }
+        // Jogo que já começou segue como o próximo ("Em andamento") até o fim: início + duração.
+        .filter { (startsAt, game) -> startsAt + game.durationMinutes.minutes > now }
         .minByOrNull { it.first }
         ?.second
 }

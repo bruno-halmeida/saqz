@@ -34,7 +34,9 @@ import br.com.saqz.groups.resources.whatsapp_binding_disable_action
 import br.com.saqz.groups.resources.whatsapp_binding_empty_description
 import br.com.saqz.groups.resources.whatsapp_binding_empty_title
 import br.com.saqz.groups.resources.whatsapp_binding_enable_action
+import br.com.saqz.groups.resources.whatsapp_binding_conflict
 import br.com.saqz.groups.resources.whatsapp_binding_error
+import br.com.saqz.groups.resources.whatsapp_binding_save_error
 import br.com.saqz.groups.resources.whatsapp_binding_group_label
 import br.com.saqz.groups.resources.whatsapp_binding_invite_label
 import br.com.saqz.groups.resources.whatsapp_binding_invite_placeholder
@@ -106,7 +108,7 @@ fun WhatsAppBindingScreen(
                         .padding(horizontal = metrics.horizontalPadding, vertical = metrics.grid),
                     verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
                 ) {
-                    if (state.error) WhatsAppBindingError(onRetry = { onIntent(WhatsAppBindingIntent.Load) })
+                    if (state.error) WhatsAppBindingError(state, onRetry = { onIntent(WhatsAppBindingIntent.Load) })
                     state.confirmedGroupName?.let { WhatsAppBindingConfirmation(it) }
                     if (state.bound) WhatsAppBindingBound(state, onIntent) else WhatsAppBindingEmpty(state, onIntent)
                     // O número do Saqz saiu do grupo: reabilitar não traz de volta, colar o link sim.
@@ -150,17 +152,23 @@ private fun whatsAppHowItWorks() = HowItWorksContent(
 )
 
 @Composable
-private fun WhatsAppBindingError(onRetry: () -> Unit) {
+private fun WhatsAppBindingError(state: WhatsAppBindingState, onRetry: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().testTag(WhatsAppBindingTags.Error),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
     ) {
         Text(
-            text = stringResource(Res.string.whatsapp_binding_error),
+            text = stringResource(
+                when {
+                    state.conflict -> Res.string.whatsapp_binding_conflict
+                    state.saveFailed -> Res.string.whatsapp_binding_save_error
+                    else -> Res.string.whatsapp_binding_error
+                },
+            ),
             style = SaqzTheme.typography.support,
             color = SaqzTheme.colors.errorForeground,
         )
-        SaqzButton(
+        if (!state.conflict) SaqzButton(
             label = stringResource(Res.string.whatsapp_binding_retry),
             onClick = onRetry,
             variant = SaqzButtonVariant.Secondary,

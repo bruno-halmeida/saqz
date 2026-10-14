@@ -4,6 +4,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -25,6 +27,11 @@ enum class RetrySafety {
 
 data class TransportRetryPolicy(
     val retryDelaysMillis: List<Long> = listOf(500L, 1_000L, 2_000L),
+    /**
+     * Depois deste tempo desde a primeira tentativa não se tenta de novo: sem rede, cada tentativa
+     * gasta o prazo de conexão e a tela ficava no esqueleto por minutos antes de mostrar o erro.
+     */
+    val maxElapsedMillis: Long = 20_000L,
 )
 
 @OptIn(ExperimentalUuidApi::class)
@@ -38,11 +45,13 @@ suspend fun <T> retryTransport(
     // vira três requests sem parentesco.
     val correlationId = Uuid.random().toString()
     var attempt = 1
+    val started = TimeSource.Monotonic.markNow()
     var result = withContext(CorrelationContext(correlationId, attempt)) { call() }
     if (safety == RetrySafety.Never) return result
 
     for (backoff in policy.retryDelaysMillis) {
         if (!result.isRetryableFailure()) return result
+        if (started.elapsedNow() >= policy.maxElapsedMillis.milliseconds) return result
         delayMillis(backoff)
         attempt += 1
         result = withContext(CorrelationContext(correlationId, attempt)) { call() }

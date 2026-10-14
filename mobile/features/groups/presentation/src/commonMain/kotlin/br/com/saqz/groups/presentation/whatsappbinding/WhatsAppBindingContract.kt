@@ -13,6 +13,10 @@ data class WhatsAppBindingState(
     val loading: Boolean = true,
     val saving: Boolean = false,
     val error: Boolean = false,
+    /** O erro veio de gravar (vincular/ligar), não de carregar: o texto muda. */
+    val saveFailed: Boolean = false,
+    /** 409: o grupo do WhatsApp já está vinculado a outro grupo do Saqz. */
+    val conflict: Boolean = false,
     val bound: Boolean = false,
     val groupName: String? = null,
     val status: GroupWhatsAppStatus = GroupWhatsAppStatus.NONE,

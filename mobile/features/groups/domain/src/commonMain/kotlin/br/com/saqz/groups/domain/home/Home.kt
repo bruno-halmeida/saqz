@@ -75,11 +75,19 @@ data class HomeLastCompletedGame(
     val ownPlayed: Boolean,
 )
 
+/** Pedido de entrada do próprio usuário que o organizador ainda não respondeu. */
+data class HomePendingEntryRequest(
+    val groupId: GroupId,
+    val groupName: String,
+    val requestedAt: String,
+)
+
 data class HomeMemberReadModel(
     val nextGame: HomeNextGame?,
     val lastCompletedGame: HomeLastCompletedGame?,
     val groups: List<HomeMemberGroup>,
     val upcomingGames: List<HomeUpcomingGame> = emptyList(),
+    val pendingEntryRequests: List<HomePendingEntryRequest> = emptyList(),
 )
 
 data class HomeMonthlyCharges(

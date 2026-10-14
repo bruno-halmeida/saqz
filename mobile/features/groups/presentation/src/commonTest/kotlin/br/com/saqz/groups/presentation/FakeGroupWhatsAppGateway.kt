@@ -13,6 +13,7 @@ internal class FakeGroupWhatsAppGateway(
     var binding: GroupWhatsAppBinding = GroupWhatsAppBinding(bound = false),
     var linked: GroupWhatsAppBinding = GroupWhatsAppBinding(true, "123@g.us", "Vôlei do CERET", GroupWhatsAppStatus.ACTIVE),
     var shouldFail: Boolean = false,
+    var failureCause: DataError = DataError.Connectivity,
     /** O que o servidor responde em `/api/whatsapp/availability`; `null` é o servidor sem o endpoint. */
     var available: Boolean? = true,
 ) : GroupWhatsAppGateway {
@@ -46,5 +47,5 @@ internal class FakeGroupWhatsAppGateway(
     }
 
     private fun failure(): SaqzResult.Failure<CommunicationError>? =
-        if (shouldFail) SaqzResult.Failure(CommunicationError(DataError.Connectivity)) else null
+        if (shouldFail) SaqzResult.Failure(CommunicationError(failureCause)) else null
 }

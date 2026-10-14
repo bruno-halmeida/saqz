@@ -47,7 +47,7 @@ internal class HttpTransport(
         install(ContentNegotiation) { json(json) }
         install(HttpTimeout) {
             requestTimeoutMillis = config.requestTimeoutMillis
-            connectTimeoutMillis = config.requestTimeoutMillis
+            connectTimeoutMillis = config.connectTimeoutMillis
             socketTimeoutMillis = config.requestTimeoutMillis
         }
     }
