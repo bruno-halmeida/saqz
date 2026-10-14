@@ -21,10 +21,12 @@ class GroupCommunicationService(
 
     fun publish(actor: UUID, groupId: UUID, channel: MessageChannel, requestId: UUID, body: String): CommunicationResult<GroupMessage> =
         inGroup(actor, groupId) { role ->
-            if (channel in setOf(MessageChannel.REMINDER, MessageChannel.GAME_OPEN, MessageChannel.CHARGE, MessageChannel.ATTENDANCE_WINDOW, MessageChannel.WAITLIST_DEADLINE, MessageChannel.FIRST_MEMBER, MessageChannel.FIRST_CONFIRMATION, MessageChannel.TRIAL_ENDING, MessageChannel.AUTO_CONFIRMATION)) return@inGroup invalid()
+            if (channel in setOf(MessageChannel.REMINDER, MessageChannel.GAME_OPEN, MessageChannel.CHARGE, MessageChannel.ATTENDANCE_WINDOW, MessageChannel.WAITLIST_DEADLINE, MessageChannel.FIRST_MEMBER, MessageChannel.FIRST_CONFIRMATION, MessageChannel.TRIAL_ENDING, MessageChannel.AUTO_CONFIRMATION)) return@inGroup CommunicationResult.Failure(CommunicationError.CHANNEL_NOT_PUBLISHABLE)
             if (channel == MessageChannel.NOTICE && role == GroupRole.ATHLETE) return@inGroup forbidden()
             val text = body.trim()
-            if (text.length !in 1..2000 || text.any { it.isISOControl() && it !in "\n\t\r" }) return@inGroup invalid()
+            if (text.isEmpty()) return@inGroup CommunicationResult.Failure(CommunicationError.BODY_BLANK)
+            if (text.length > 2000) return@inGroup CommunicationResult.Failure(CommunicationError.BODY_TOO_LONG)
+            if (text.any { it.isISOControl() && it !in "\n\t\r" }) return@inGroup CommunicationResult.Failure(CommunicationError.BODY_CONTROL_CHARACTERS)
             if (ObjectionableText.contains(text)) return@inGroup CommunicationResult.Failure(CommunicationError.OBJECTIONABLE)
             val existing = repository.findRequest(groupId, actor, channel, requestId)
             when {

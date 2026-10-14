@@ -73,6 +73,12 @@ object GameDraftValidator {
         if (input.zoneId.isNullOrBlank()) errors += required("zoneId")
         else if (zone == null) errors += GameValidationError("zoneId", "must be a valid IANA timezone")
         if (input.startsAt == null) errors += required("startsAt")
+        else if (input.localDate != null && input.localTime != null && zone != null) {
+            val expected = java.time.ZonedDateTime.of(input.localDate, input.localTime, java.time.ZoneId.of(zone.value)).toInstant()
+            if (expected.truncatedTo(java.time.temporal.ChronoUnit.SECONDS) != input.startsAt.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)) {
+                errors += GameValidationError("startsAt", "must match localDate and localTime in zoneId")
+            }
+        }
         range(input.durationMinutes, "durationMinutes", 15, 480, errors)
         range(input.capacity, "capacity", 2, 100, errors)
         if (input.confirmationDeadline == null) errors += required("confirmationDeadline")
@@ -157,6 +163,18 @@ object GameDraftValidator {
     private fun required(field: String) = GameValidationError(field, "is required")
 }
 
+/** Regras que dependem do relógio: o jogo novo ou publicado não nasce no passado. */
+object GameTimingValidator {
+    fun startsAtInFuture(startsAt: Instant, now: Instant): List<GameValidationError> =
+        if (startsAt.isAfter(now)) emptyList() else listOf(GameValidationError("startsAt", "must be in the future"))
+
+    fun deadlineNotInPast(deadline: Instant, now: Instant): List<GameValidationError> =
+        if (deadline.isBefore(now)) listOf(GameValidationError("confirmationDeadline", "must not be in the past")) else emptyList()
+
+    fun check(snapshot: GameSnapshot, now: Instant): List<GameValidationError> =
+        startsAtInFuture(snapshot.startsAt, now) + deadlineNotInPast(snapshot.confirmationDeadline, now)
+}
+
 data class GroupGameDefaults(
     val title: String? = null,
     val venue: GameVenueSnapshot? = null,
@@ -228,7 +246,7 @@ object GameLifecyclePolicy {
     fun canMutate(status: GameStatus, mutation: GameMutation): Boolean = when (mutation) {
         GameMutation.EDIT -> status == GameStatus.DRAFT || status == GameStatus.PUBLISHED
         GameMutation.PUBLISH -> status == GameStatus.DRAFT
-        GameMutation.CANCEL -> status == GameStatus.PUBLISHED
+        GameMutation.CANCEL -> status == GameStatus.DRAFT || status == GameStatus.PUBLISHED
         GameMutation.COMPLETE -> status == GameStatus.PUBLISHED
     }
 

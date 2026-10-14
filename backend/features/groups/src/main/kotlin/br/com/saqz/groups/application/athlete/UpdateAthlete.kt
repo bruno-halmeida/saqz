@@ -6,6 +6,7 @@ import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.domain.GroupAccessDecision
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.GroupAction
+import br.com.saqz.groups.domain.AthleteMembershipType
 import java.util.UUID
 
 class UpdateAthlete(
@@ -24,6 +25,13 @@ class UpdateAthlete(
         }
         athleteRepository.find(command.groupId, command.userId)
             ?: return@inTransaction UpdateAthleteResult.GroupNotFound
+        // Mensalidade só existe para mensalista. Quem vira avulso perde o valor e o dia (o app reenvia os
+        // antigos ao trocar o tipo); sem isso o avulso ficaria com cobrança mensal que ninguém vê.
+        val effective = if (command.membershipType == AthleteMembershipType.AVULSO) {
+            command.copy(monthlyFeeCents = null, monthlyDueDay = null)
+        } else {
+            command
+        }
         val errors = AthleteAttributeValidator.validate(
             group.profile?.modality,
             command.nickname,
@@ -32,10 +40,23 @@ class UpdateAthlete(
             command.level,
             command.preferredSide,
             command.heightCm,
-            command.monthlyFeeCents,
-            command.monthlyDueDay,
+            effective.monthlyFeeCents,
+            effective.monthlyDueDay,
         )
-        if (errors.isNotEmpty()) return@inTransaction UpdateAthleteResult.Invalid(errors)
-        UpdateAthleteResult.Success(athleteRepository.update(command))
+        val membershipErrors = if (command.membershipType == AthleteMembershipType.MENSALISTA) {
+            buildMap<String, List<String>> {
+                if ((command.monthlyFeeCents ?: group.financeDefaults?.monthlyFeeCents) == null) {
+                    put("monthlyFeeCents", listOf("is required for MENSALISTA"))
+                }
+                if ((command.monthlyDueDay ?: group.financeDefaults?.monthlyDueDay) == null) {
+                    put("monthlyDueDay", listOf("is required for MENSALISTA"))
+                }
+            }
+        } else {
+            emptyMap()
+        }
+        val allErrors = errors + membershipErrors.filterKeys { it !in errors }
+        if (allErrors.isNotEmpty()) return@inTransaction UpdateAthleteResult.Invalid(allErrors)
+        UpdateAthleteResult.Success(athleteRepository.update(effective))
     }
 }

@@ -11,6 +11,7 @@ import br.com.saqz.groups.domain.game.GameDraftValidator
 import br.com.saqz.groups.domain.game.GameLifecyclePolicy
 import br.com.saqz.groups.domain.game.GameMutation
 import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.domain.game.GameTimingValidator
 import br.com.saqz.groups.domain.game.GameValidationError
 import br.com.saqz.groups.domain.game.GroupGameDefaults
 import java.util.UUID
@@ -67,14 +68,25 @@ sealed interface GameCommandResult {
 class CreateGame(
     private val transactionRunner: TransactionRunner,
     private val repository: GameCommandRepository,
+    private val clock: java.time.Clock = java.time.Clock.systemUTC(),
 ) {
     fun execute(actor: UUID, groupId: UUID, gameId: UUID, input: CreateGameInput): GameCommandResult =
         transactionRunner.inTransaction {
             val context = repository.creationContext(actor, groupId) ?: return@inTransaction GameCommandResult.GroupNotFound
             if (!context.role.isOrganizer()) return@inTransaction context.role.denied()
-            when (val validation = GameDraftValidator.validate(GameDefaultSnapshotFactory.copy(context.defaults, input))) {
+            val now = clock.instant()
+            val draft = GameDefaultSnapshotFactory.copy(context.defaults, input).let { copied ->
+                // Prazo derivado do padrão do grupo que já passou (jogo marcado em cima da hora): fecha agora.
+                val deadline = copied.confirmationDeadline
+                if (input.confirmationDeadline == null && deadline != null && deadline.isBefore(now) &&
+                    copied.startsAt != null && copied.startsAt.isAfter(now)
+                ) copied.copy(confirmationDeadline = now) else copied
+            }
+            when (val validation = GameDraftValidator.validate(draft)) {
                 is GameDraftValidation.Invalid -> GameCommandResult.Invalid(validation.errors)
-                is GameDraftValidation.Valid -> repository.recurringConflict(groupId, validation.snapshot.startsAt, excludingGameId = null)
+                is GameDraftValidation.Valid -> GameTimingValidator.check(validation.snapshot, now).takeIf { it.isNotEmpty() }
+                    ?.let(GameCommandResult::Invalid)
+                    ?: repository.recurringConflict(groupId, validation.snapshot.startsAt, excludingGameId = null)
                     ?.let(GameCommandResult::ScheduleConflict)
                     ?: repository.create(Game(gameId, groupId, validation.snapshot)).toResult()
             }
@@ -107,6 +119,12 @@ class EditGame(
             is GameDraftValidation.Invalid -> return@inTransaction GameCommandResult.Invalid(validation.errors)
             is GameDraftValidation.Valid -> validation.snapshot
         }
+        // Só o que mudou é checado contra o relógio: reenviar o prazo antigo ao editar outro campo segue valendo.
+        val current = context.game.snapshot
+        val now = clock.instant()
+        val timing = (if (snapshot.startsAt != current.startsAt) GameTimingValidator.startsAtInFuture(snapshot.startsAt, now) else emptyList()) +
+            (if (snapshot.confirmationDeadline != current.confirmationDeadline) GameTimingValidator.deadlineNotInPast(snapshot.confirmationDeadline, now) else emptyList())
+        if (timing.isNotEmpty()) return@inTransaction GameCommandResult.Invalid(timing)
         repository.recurringConflict(groupId, snapshot.startsAt, excludingGameId = gameId)
             ?.let { return@inTransaction GameCommandResult.ScheduleConflict(it) }
         when (val write = repository.update(context.game.copy(snapshot = snapshot), expectedVersion)) {
@@ -125,6 +143,7 @@ class ChangeGameLifecycle(
     private val transactionRunner: TransactionRunner,
     private val repository: GameCommandRepository,
     private val sideEffects: GameSideEffectPort,
+    private val clock: java.time.Clock = java.time.Clock.systemUTC(),
 ) {
     fun execute(
         actor: UUID,
@@ -132,6 +151,8 @@ class ChangeGameLifecycle(
         gameId: UUID,
         expectedVersion: Long,
         mutation: GameMutation,
+        /** A rotina de liberação da série publica dentro da janela do prazo; só o "Publicar" manual confere o relógio. */
+        enforceTiming: Boolean = true,
     ): GameCommandResult {
         require(mutation != GameMutation.EDIT)
         return transactionRunner.inTransaction {
@@ -141,11 +162,17 @@ class ChangeGameLifecycle(
             if (!GameLifecyclePolicy.canMutate(context.game.status, mutation)) {
                 return@inTransaction GameCommandResult.InvalidTransition(context.game.status, mutation)
             }
+            if (mutation == GameMutation.PUBLISH && enforceTiming) {
+                val timing = GameTimingValidator.check(context.game.snapshot, clock.instant())
+                if (timing.isNotEmpty()) return@inTransaction GameCommandResult.Invalid(timing)
+            }
             val changed = context.game.copy(status = requireNotNull(GameLifecyclePolicy.target(mutation)))
             when (val write = repository.update(changed, expectedVersion)) {
                 is GameWriteResult.Saved -> {
-                    sideEffects.apply(write.game, actor, mutation.effects())
-                    val responseGame = if (mutation == GameMutation.CANCEL) {
+                    // Rascunho cancelado nunca foi visto por ninguém: não há o que avisar, congelar nem cobrar.
+                    val unpublishedDraftCancelled = mutation == GameMutation.CANCEL && context.game.status == GameStatus.DRAFT
+                    if (!unpublishedDraftCancelled) sideEffects.apply(write.game, actor, mutation.effects())
+                    val responseGame = if (mutation == GameMutation.CANCEL && !unpublishedDraftCancelled) {
                         repository.find(actor, groupId, gameId)?.game ?: write.game
                     } else {
                         write.game

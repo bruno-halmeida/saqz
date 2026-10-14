@@ -214,6 +214,28 @@ class JdbcInviteManagementRepositoryIntegrationTest {
     }
 
     @Test
+    fun `deactivation is remembered until a new code is generated`() {
+        val fixture = fixture("deactivation")
+        assertFalse(repository.wasDeactivated(fixture.group))
+
+        val old = code(1)
+        rotate(fixture, old)
+        assertFalse(repository.wasDeactivated(fixture.group))
+
+        transaction.inTransaction { repository.expire(fixture.group) }
+        assertTrue(repository.wasDeactivated(fixture.group))
+        assertNull(repository.findMetadata(fixture.group))
+        assertNull(JdbcInviteRedemptionRepository(dataSource).findInvite(InviteTokenDigest.sha256(old)))
+
+        val fresh = code(2)
+        rotate(fixture, fresh)
+        assertFalse(repository.wasDeactivated(fixture.group))
+        assertEquals(fresh.value, repository.findMetadata(fixture.group)!!.shortCode)
+        assertNull(JdbcInviteRedemptionRepository(dataSource).findInvite(InviteTokenDigest.sha256(old)))
+        assertNotNull(JdbcInviteRedemptionRepository(dataSource).findInvite(InviteTokenDigest.sha256(fresh)))
+    }
+
+    @Test
     fun `repeated expiration remains successful`() {
         val fixture = fixture("repeat-expire")
 

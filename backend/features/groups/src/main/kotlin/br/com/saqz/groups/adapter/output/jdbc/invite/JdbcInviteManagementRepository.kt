@@ -35,6 +35,9 @@ class JdbcInviteManagementRepository(dataSource: DataSource) : InviteManagementR
             .param("expiresAt", command.expiresAt?.let(Timestamp::from))
             .param("revision", command.revision)
             .update()
+        jdbc.sql("DELETE FROM group_invite_deactivations WHERE group_id = :groupId")
+            .param("groupId", command.groupId)
+            .update()
     }
 
     override fun ensureShortCode(groupId: UUID, shortCode: String, createdByUserId: UUID) {
@@ -87,7 +90,22 @@ class JdbcInviteManagementRepository(dataSource: DataSource) : InviteManagementR
         jdbc.sql("DELETE FROM group_invites WHERE group_id = :groupId")
             .param("groupId", groupId)
             .update()
+        jdbc.sql(
+            """
+            INSERT INTO group_invite_deactivations (group_id, deactivated_at) VALUES (:groupId, now())
+            ON CONFLICT (group_id) DO UPDATE SET deactivated_at = EXCLUDED.deactivated_at
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .update()
     }
+
+    override fun wasDeactivated(groupId: UUID): Boolean = jdbc.sql(
+        "SELECT EXISTS (SELECT 1 FROM group_invite_deactivations WHERE group_id = :groupId)",
+    )
+        .param("groupId", groupId)
+        .query(Boolean::class.java)
+        .single()
 
     private fun lockGroup(groupId: UUID) {
         val locked = jdbc.sql(

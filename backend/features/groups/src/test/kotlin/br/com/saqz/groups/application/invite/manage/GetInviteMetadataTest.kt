@@ -75,6 +75,18 @@ class GetInviteMetadataTest {
     }
 
     @Test
+    fun `deactivated invite is not recreated by reading`() {
+        val fixture = fixture(GroupRole.OWNER, null)
+        fixture.repository.deactivated = true
+
+        val result = fixture.useCase.execute(actor, groupId) as GetInviteMetadataResult.Success
+
+        assertEquals(InviteMetadataView(active = false, expiresAt = null, createdAt = null, createdByName = null), result.metadata)
+        assertTrue(fixture.repository.ensured.isEmpty())
+        assertTrue(fixture.repository.rotations.isEmpty())
+    }
+
+    @Test
     fun `the drawn code is redrawn when another group already uses it`() {
         val fixture = fixture(GroupRole.OWNER, null)
         fixture.repository.taken += "22222222"
@@ -165,6 +177,7 @@ class GetInviteMetadataTest {
         val ensured = mutableListOf<String>()
         val rotations = mutableListOf<RotateInviteCommand>()
         val taken = mutableSetOf<String>()
+        var deactivated = false
 
         override fun rotate(command: RotateInviteCommand) {
             rotations += command
@@ -184,5 +197,7 @@ class GetInviteMetadataTest {
         }
 
         override fun expire(groupId: UUID) = Unit
+
+        override fun wasDeactivated(groupId: UUID): Boolean = deactivated
     }
 }

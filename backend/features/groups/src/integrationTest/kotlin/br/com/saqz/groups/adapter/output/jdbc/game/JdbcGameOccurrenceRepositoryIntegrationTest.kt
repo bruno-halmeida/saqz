@@ -82,7 +82,7 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         assertNull(fixture.repository.creationContext(fixture.owner, fixture.group))
         assertEquals(
             GameCommandResult.GroupNotFound,
-            CreateGame(transaction(), fixture.repository).execute(
+            CreateGame(transaction(), fixture.repository, CLOCK).execute(
                 fixture.owner, fixture.group, UUID.randomUUID(), createInput(),
             ),
         )
@@ -91,7 +91,7 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
 
     @Test fun `organizer create persists exactly one draft snapshot`() {
         val fixture = fixture()
-        val result = CreateGame(transaction(), fixture.repository).execute(
+        val result = CreateGame(transaction(), fixture.repository, CLOCK).execute(
             fixture.owner, fixture.group, UUID.randomUUID(), createInput(),
         )
 
@@ -115,7 +115,7 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         val fixture = fixture()
         assertSame(
             GameCommandResult.AccessForbidden,
-            CreateGame(transaction(), fixture.repository).execute(
+            CreateGame(transaction(), fixture.repository, CLOCK).execute(
                 fixture.athlete, fixture.group, UUID.randomUUID(), createInput(),
             ),
         )
@@ -131,7 +131,7 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
     @Test fun `organizer list includes draft while athlete list hides it`() {
         val fixture = fixture()
         val created = assertIs<GameCommandResult.Success>(
-            CreateGame(transaction(), fixture.repository).execute(fixture.owner, fixture.group, UUID.randomUUID(), createInput()),
+            CreateGame(transaction(), fixture.repository, CLOCK).execute(fixture.owner, fixture.group, UUID.randomUUID(), createInput()),
         ).game
         val noCounts = GameAttendanceCountSource { emptyMap() }
 
@@ -273,7 +273,7 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
     private fun create(fixture: Fixture, id: UUID = UUID.randomUUID(), start: Instant = START): Game {
         val input = createInput(start)
         return assertIs<GameCommandResult.Success>(
-            CreateGame(transaction(), fixture.repository).execute(fixture.owner, fixture.group, id, input),
+            CreateGame(transaction(), fixture.repository, CLOCK).execute(fixture.owner, fixture.group, id, input),
         ).game
     }
 
@@ -311,12 +311,15 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         )
     }
 
-    private fun createInput(start: Instant = START) = CreateGameInput(
-        localDate = LocalDate.of(2026, 8, 12),
-        localTime = LocalTime.of(19, 30),
-        zoneId = "America/Sao_Paulo",
-        startsAt = start,
-    )
+    private fun createInput(start: Instant = START): CreateGameInput {
+        val local = start.atZone(java.time.ZoneId.of("America/Sao_Paulo"))
+        return CreateGameInput(
+            localDate = local.toLocalDate(),
+            localTime = local.toLocalTime(),
+            zoneId = "America/Sao_Paulo",
+            startsAt = start,
+        )
+    }
 
     private fun transaction() = object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() }
     private fun execute(sql: String) { connection().use { it.createStatement().use { statement -> statement.execute(sql) } } }
@@ -336,5 +339,8 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         val venue: UUID,
     )
 
-    private companion object { val START: Instant = Instant.parse("2026-08-12T22:30:00Z") }
+    private companion object {
+        val START: Instant = Instant.parse("2026-08-12T22:30:00Z")
+        val CLOCK: java.time.Clock = java.time.Clock.fixed(Instant.parse("2026-08-01T12:00:00Z"), java.time.ZoneOffset.UTC)
+    }
 }

@@ -162,13 +162,19 @@ class AthleteManagementTest {
     @Test
     fun `owner updates any athlete attributes`() {
         val fixture = fixture(GroupRole.OWNER)
-        val command = UpdateAthleteCommand(groupId, member.userId, AthletePosition.LEVANTADOR, AthleteMembershipType.MENSALISTA, active = false)
+        val command = UpdateAthleteCommand(
+            groupId, member.userId, AthletePosition.LEVANTADOR, AthleteMembershipType.MENSALISTA, active = false,
+            monthlyFeeCents = 15000, monthlyDueDay = 10,
+        )
 
         val result = fixture.update.execute(actor, command)
 
         assertEquals(
             UpdateAthleteResult.Success(
-                member.copy(position = AthletePosition.LEVANTADOR, membershipType = AthleteMembershipType.MENSALISTA, active = false),
+                member.copy(
+                    position = AthletePosition.LEVANTADOR, membershipType = AthleteMembershipType.MENSALISTA, active = false,
+                    monthlyFeeCents = 15000, monthlyDueDay = 10,
+                ),
             ),
             result,
         )
@@ -226,7 +232,7 @@ class AthleteManagementTest {
             groupId,
             member.userId,
             position = null,
-            membershipType = AthleteMembershipType.AVULSO,
+            membershipType = AthleteMembershipType.MENSALISTA,
             active = true,
             monthlyFeeCents = 0,
             monthlyDueDay = 29,
@@ -239,6 +245,35 @@ class AthleteManagementTest {
             assertIs<UpdateAthleteResult.Invalid>(result).fieldErrors.keys,
         )
         assertTrue(fixture.athletes.updateCommands.isEmpty())
+    }
+
+    @Test
+    fun `mensalista without fee or due day is rejected when the group has no default`() {
+        val fixture = fixture(GroupRole.OWNER)
+        val command = UpdateAthleteCommand(groupId, member.userId, null, AthleteMembershipType.MENSALISTA, active = true)
+
+        val result = fixture.update.execute(actor, command)
+
+        assertEquals(
+            setOf("monthlyFeeCents", "monthlyDueDay"),
+            assertIs<UpdateAthleteResult.Invalid>(result).fieldErrors.keys,
+        )
+        assertTrue(fixture.athletes.updateCommands.isEmpty())
+    }
+
+    @Test
+    fun `avulso drops any monthly fee and due day explicitly`() {
+        val fixture = fixture(GroupRole.OWNER)
+        val command = UpdateAthleteCommand(
+            groupId, member.userId, null, AthleteMembershipType.AVULSO, active = true,
+            monthlyFeeCents = 9000, monthlyDueDay = 5,
+        )
+
+        assertIs<UpdateAthleteResult.Success>(fixture.update.execute(actor, command))
+
+        val written = fixture.athletes.updateCommands.single()
+        assertEquals(null, written.monthlyFeeCents)
+        assertEquals(null, written.monthlyDueDay)
     }
 
     // RemoveAthlete

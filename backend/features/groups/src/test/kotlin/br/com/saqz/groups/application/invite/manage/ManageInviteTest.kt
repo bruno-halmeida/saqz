@@ -259,6 +259,8 @@ class ManageInviteTest {
             expirations += groupId
             activeCode = null
         }
+
+        override fun wasDeactivated(groupId: UUID): Boolean = groupId in expirations
     }
 
     private class QueuedTokenGenerator(tokens: List<InviteToken>) : SecureTokenGenerator {

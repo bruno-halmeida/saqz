@@ -71,6 +71,7 @@ class ReleaseSeriesOccurrences(
                         gameId = occurrence.gameId,
                         expectedVersion = occurrence.version,
                         mutation = GameMutation.PUBLISH,
+                        enforceTiming = false,
                     )
                 }.onFailure { onFailure("game ${occurrence.gameId}", it) }
             }

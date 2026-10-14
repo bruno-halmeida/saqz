@@ -114,6 +114,17 @@ class GroupCreationEndpointIntegrationTest {
     }
 
     @Test
+    fun `unknown modality and malformed json are validation problems not server errors`() {
+        val modality = postRaw("""{"requestId":"${UUID.randomUUID()}","name":"Training Club","modality":"XADREZ","composition":"MIXED","timeZone":"UTC"}""")
+        assertProblem(modality, 400, "VALIDATION_FAILED")
+        assertEquals(setOf("modality"), json(modality)["fieldErrors"].propertyNames().asSequence().toSet())
+
+        val malformed = postRaw("""{"requestId": """)
+        assertProblem(malformed, 400, "VALIDATION_FAILED")
+        assertTrue(repository.commands.isEmpty())
+    }
+
+    @Test
     fun `invalid timezone returns a timeZone field problem without mutation`() {
         val response = postGroup(UUID.randomUUID(), "Training Club", "Mars/Olympus")
 

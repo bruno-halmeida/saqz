@@ -16,5 +16,9 @@ interface InviteManagementRepository {
 
     fun findMetadata(groupId: UUID): InviteMetadata?
 
+    /** Desativa o convite e lembra que foi desativado: a leitura não recria sozinha um convite depois disso. */
     fun expire(groupId: UUID)
+
+    /** True se o grupo já teve o convite desativado por um admin (e ainda não gerou outro). */
+    fun wasDeactivated(groupId: UUID): Boolean
 }

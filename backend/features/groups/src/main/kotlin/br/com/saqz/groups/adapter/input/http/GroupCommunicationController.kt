@@ -63,7 +63,7 @@ class GroupCommunicationController(
         @PathVariable groupId: UUID,
         @RequestParam channel: String,
         @RequestBody request: PublishGroupMessageRequest,
-    ) = service.publish(actors.resolve(identity), groupId, channel(channel), requestId(request.requestId), request.body ?: invalid()).value()
+    ) = service.publish(actors.resolve(identity), groupId, channel(channel), requestId(request.requestId), request.body ?: invalid("body", "is required")).value()
 
     @PostMapping("/api/groups/{groupId}/games/{gameId}/notify-pending")
     fun remind(
@@ -97,9 +97,13 @@ class GroupCommunicationController(
                 ?: service.preferences(actors.resolve(identity)).whatsapp,
         ))
 
-    private fun channel(raw: String) = runCatching { MessageChannel.valueOf(raw) }.getOrNull() ?: invalid()
-    private fun requestId(raw: String?) = raw?.let { runCatching { UUID.fromString(it) }.getOrNull() } ?: invalid()
+    private fun channel(raw: String) = runCatching { MessageChannel.valueOf(raw) }.getOrNull()
+        ?: invalid("channel", "must be one of ${MessageChannel.entries.joinToString()}")
+    private fun requestId(raw: String?) = raw?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+        ?: invalid("requestId", "must be a valid UUID")
     private fun invalid(): Nothing = throw InvalidGroupRequestException(mapOf("message" to listOf("is invalid")), 422)
+    private fun invalid(field: String, message: String): Nothing =
+        throw InvalidGroupRequestException(mapOf(field to listOf(message)), 422)
     private fun <T> CommunicationResult<T>.value(): T = when (this) {
         is CommunicationResult.Success -> value
         is CommunicationResult.Failure -> when (reason) {
@@ -107,6 +111,10 @@ class GroupCommunicationController(
             CommunicationError.FORBIDDEN -> throw AccessForbiddenException()
             CommunicationError.INVALID -> invalid()
             CommunicationError.CONFLICT -> throw VersionConflictException()
+            CommunicationError.BODY_BLANK -> invalid("body", "must not be blank")
+            CommunicationError.BODY_TOO_LONG -> invalid("body", "must be at most 2000 characters")
+            CommunicationError.BODY_CONTROL_CHARACTERS -> invalid("body", "must not contain control characters")
+            CommunicationError.CHANNEL_NOT_PUBLISHABLE -> invalid("channel", "is not available for publishing")
             CommunicationError.OBJECTIONABLE -> throw InvalidGroupRequestException(mapOf("body" to listOf("objectionable")), 422)
         }
     }

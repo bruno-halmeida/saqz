@@ -70,7 +70,7 @@ class ChargeReminderIntegrationTest {
         assertEquals(2L, count("notification_push_queue"))
         assertEquals(2L, jdbc.sql("SELECT count(*) FROM group_charges WHERE status = 'PENDING'").query(Long::class.java).single())
         assertEquals(CommunicationResult.Failure(CommunicationError.INVALID), service.messages(member, group, MessageChannel.CHARGE, null))
-        assertEquals(CommunicationResult.Failure(CommunicationError.INVALID), service.publish(owner, group, MessageChannel.CHARGE, UUID.randomUUID(), "private"))
+        assertEquals(CommunicationResult.Failure(CommunicationError.CHANNEL_NOT_PUBLISHABLE), service.publish(owner, group, MessageChannel.CHARGE, UUID.randomUUID(), "private"))
     }
     @Test fun `replay returns original receipt and conflicting selection does not notify again`() {
         val first = charge(member); val request = UUID.randomUUID()

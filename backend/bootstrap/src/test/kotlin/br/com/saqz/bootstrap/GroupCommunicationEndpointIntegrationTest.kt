@@ -161,7 +161,7 @@ class GroupCommunicationEndpointIntegrationTest {
     @Test fun `leaving revokes game list and detail while owner retains the persisted game`() {
         val games = "/api/groups/$group/games"
         val gameId = UUID.randomUUID()
-        val payload = """{"requestId":"$gameId","title":"Treino de saída","venue":{"name":"Arena","address":"Rua Teste 10"},"localDate":"2026-10-12","localTime":"19:00","zoneId":"UTC","startsAt":"2026-10-12T19:00:00Z","durationMinutes":90,"capacity":12,"confirmationDeadline":"2026-10-12T17:00:00Z","useDefaultGameFee":true}"""
+        val payload = """{"requestId":"$gameId","title":"Treino de saída","venue":{"name":"Arena","address":"Rua Teste 10"},"localDate":"2030-10-12","localTime":"19:00","zoneId":"UTC","startsAt":"2030-10-12T19:00:00Z","durationMinutes":90,"capacity":12,"confirmationDeadline":"2030-10-12T17:00:00Z","useDefaultGameFee":true}"""
         val created = request("POST", games, payload)
         assertEquals(201, created.statusCode(), created.body())
         // Fixture publicada no banco; todos os checks de leitura e saída passam por HTTP real.
@@ -176,6 +176,60 @@ class GroupCommunicationEndpointIntegrationTest {
         assertEquals(404, request("GET", "$games/$gameId", actor = member).statusCode())
         assertEquals(gameId.toString(), json.readTree(request("GET", games).body())[0]["id"].stringValue())
         assertEquals(200, request("GET", "$games/$gameId").statusCode())
+    }
+
+    @Test fun `bad request bodies become validation problems with the field instead of 500`() {
+        val games = "/api/groups/$group/games"
+        fun game(extra: String) = """{"requestId":"${UUID.randomUUID()}","title":"Treino","venue":{"name":"Arena","address":"Rua Teste 10"},"localDate":"2030-10-12","localTime":"19:00","zoneId":"UTC","startsAt":"2030-10-12T19:00:00Z","durationMinutes":90,"confirmationDeadline":"2030-10-12T17:00:00Z",$extra}"""
+        val wrongType = request("POST", games, game(""""capacity":"dez""""))
+        assertEquals(400, wrongType.statusCode(), wrongType.body())
+        assertEquals("VALIDATION_FAILED", json.readTree(wrongType.body())["code"].stringValue())
+        assertTrue(json.readTree(wrongType.body())["fieldErrors"].has("capacity"))
+        val malformed = request("POST", games, "{\"title\": ")
+        assertEquals(400, malformed.statusCode(), malformed.body())
+        assertEquals("VALIDATION_FAILED", json.readTree(malformed.body())["code"].stringValue())
+        assertEquals(201, request("POST", games, game(""""capacity":10""")).statusCode())
+    }
+
+    @Test fun `games with impossible dates are refused with the right field and drafts can be cancelled`() {
+        val games = "/api/groups/$group/games"
+        fun game(start: String, deadline: String, date: String = start.substring(0, 10), time: String = start.substring(11, 16)) =
+            """{"requestId":"${UUID.randomUUID()}","title":"Treino","venue":{"name":"Arena","address":"Rua Teste 10"},"localDate":"$date","localTime":"$time","zoneId":"UTC","startsAt":"${start}:00Z","durationMinutes":90,"capacity":10,"confirmationDeadline":"${deadline}:00Z"}"""
+        fun fields(response: HttpResponse<String>): Set<String> {
+            assertEquals(400, response.statusCode(), response.body())
+            return json.readTree(response.body())["fieldErrors"].propertyNames().asSequence().toSet()
+        }
+        assertEquals(setOf("startsAt"), fields(request("POST", games, game("2020-01-02T19:00", "2020-01-02T17:00")))
+            .intersect(setOf("startsAt")))
+        assertEquals(setOf("confirmationDeadline"), fields(request("POST", games, game("2030-10-12T19:00", "2020-01-01T10:00"))))
+        assertEquals(setOf("startsAt"), fields(request("POST", games, game("2030-10-12T19:00", "2030-10-12T17:00", time = "20:00"))))
+
+        val created = request("POST", games, game("2030-10-12T19:00", "2030-10-12T17:00"))
+        assertEquals(201, created.statusCode(), created.body())
+        val id = json.readTree(created.body())["id"].stringValue()
+        val etag = created.headers().firstValue("ETag").get()
+        val cancel = HttpRequest.newBuilder(URI("http://127.0.0.1:$port$games/$id/cancel")).header("Authorization", "Bearer $owner")
+            .header("If-Match", etag).POST(HttpRequest.BodyPublishers.noBody()).build()
+        val cancelled = HttpClient.newHttpClient().send(cancel, HttpResponse.BodyHandlers.ofString())
+        assertEquals(200, cancelled.statusCode(), cancelled.body())
+        assertEquals("CANCELLED", json.readTree(cancelled.body())["status"].stringValue())
+    }
+
+    @Test fun `notice errors name the cause and the field`() {
+        val path = "/api/groups/$group/messages"
+        fun post(channel: String, body: String) = request("POST", "$path?channel=$channel", body)
+        fun errors(response: HttpResponse<String>): Map<String, String> {
+            assertEquals(422, response.statusCode(), response.body())
+            val node = json.readTree(response.body())["fieldErrors"]
+            return node.propertyNames().asSequence().associateWith { node[it][0].stringValue() }
+        }
+        val id = UUID.randomUUID()
+        assertEquals(mapOf("body" to "must not be blank"), errors(post("NOTICE", """{"requestId":"$id","body":"  "}""")))
+        assertEquals(mapOf("body" to "must be at most 2000 characters"), errors(post("NOTICE", """{"requestId":"$id","body":"${"x".repeat(2001)}"}""")))
+        assertEquals(mapOf("body" to "is required"), errors(post("NOTICE", """{"requestId":"$id"}""")))
+        assertEquals(mapOf("requestId" to "must be a valid UUID"), errors(post("NOTICE", """{"requestId":"nope","body":"oi"}""")))
+        assertEquals(setOf("channel"), errors(post("NAO_EXISTE", """{"requestId":"$id","body":"oi"}""")).keys)
+        assertEquals(mapOf("channel" to "is not available for publishing"), errors(post("GAME_OPEN", """{"requestId":"$id","body":"oi"}""")))
     }
 
     private fun request(method: String, path: String, body: String? = null, actor: UUID? = owner): HttpResponse<String> {

@@ -159,6 +159,25 @@ class InviteManagementEndpointIntegrationTest {
     }
 
     @Test
+    fun `deactivated invite is reported inactive and not recreated by the next read`() {
+        assertEquals(204, expire(groupId).statusCode())
+
+        repeat(2) {
+            val response = get(groupId)
+            val body = json(response)
+
+            assertEquals(200, response.statusCode())
+            assertEquals(false, body["active"].booleanValue())
+            assertEquals(setOf("active"), body.propertyNames().asSequence().toSet())
+        }
+        assertTrue(repository.ensured.isEmpty())
+
+        assertEquals(200, rotate(groupId).statusCode())
+        assertEquals(1, repository.rotations.size)
+        assertFalse(repository.deactivated)
+    }
+
+    @Test
     fun `athlete cannot read invite metadata`() {
         read.role = GroupRole.ATHLETE
 
@@ -361,13 +380,15 @@ class InviteManagementEndpointIntegrationTest {
         val expirations = mutableListOf<UUID>()
         val ensured = mutableListOf<String>()
         var metadata: InviteMetadata? = null
+        var deactivated = false
         fun reset() {
+            deactivated = false
             ensured.clear()
             rotations.clear()
             expirations.clear()
             metadata = null
         }
-        override fun rotate(command: RotateInviteCommand) { rotations += command }
+        override fun rotate(command: RotateInviteCommand) { rotations += command; deactivated = false }
 
         override fun ensureShortCode(groupId: UUID, shortCode: String, createdByUserId: UUID) {
             ensured += shortCode
@@ -378,7 +399,9 @@ class InviteManagementEndpointIntegrationTest {
 
         override fun findMetadata(groupId: UUID) = metadata
 
-        override fun expire(groupId: UUID) { expirations += groupId }
+        override fun expire(groupId: UUID) { expirations += groupId; deactivated = true; metadata = null }
+
+        override fun wasDeactivated(groupId: UUID) = deactivated
     }
 
     class ConfigurableHttpInviteLinkFactory : InviteLinkFactory {

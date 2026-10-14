@@ -15,7 +15,7 @@ import java.util.UUID
 
 /**
  * Lê o convite do grupo para qualquer admin, em qualquer aparelho: devolve o código curto e a URL.
- * Grupo novo (sem convite) ou antigo (só com o token longo) ganha o código curto aqui, na primeira
+ * Grupo que nunca teve convite ou antigo (só com o token longo) ganha o código curto aqui, na primeira
  * leitura, sem invalidar o token longo já enviado.
  */
 class GetInviteMetadata(
@@ -34,6 +34,13 @@ class GetInviteMetadata(
             GroupAccessDecision.GroupNotFound -> return@inTransaction GetInviteMetadataResult.GroupNotFound
             GroupAccessDecision.Forbidden -> return@inTransaction GetInviteMetadataResult.AccessForbidden
             GroupAccessDecision.Allowed -> Unit
+        }
+
+        // Convite desativado de propósito não renasce na leitura: só "Gerar código" cria outro.
+        if (inviteRepository.findMetadata(groupId) == null && inviteRepository.wasDeactivated(groupId)) {
+            return@inTransaction GetInviteMetadataResult.Success(
+                InviteMetadataView(active = false, expiresAt = null, createdAt = null, createdByName = null),
+            )
         }
 
         GetInviteMetadataResult.Success(ensured(actor, groupId, clock.instant()).toView())

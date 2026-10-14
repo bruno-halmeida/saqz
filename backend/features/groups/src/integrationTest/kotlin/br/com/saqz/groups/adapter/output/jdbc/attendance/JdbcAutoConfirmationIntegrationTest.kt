@@ -63,6 +63,7 @@ class JdbcAutoConfirmationIntegrationTest {
             JdbcTransactionRunner(dataSource),
             JdbcGameOccurrenceRepository(dataSource),
             GameSideEffects(listOf(auto)),
+            java.time.Clock.fixed(java.time.Instant.parse("2026-08-01T12:00:00Z"), java.time.ZoneOffset.UTC),
         )
 
         assertEquals(

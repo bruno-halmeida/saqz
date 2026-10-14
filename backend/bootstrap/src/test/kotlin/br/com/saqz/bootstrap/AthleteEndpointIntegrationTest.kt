@@ -294,12 +294,33 @@ class AthleteEndpointIntegrationTest {
     fun `organizer updates athlete attributes`() {
         val response = patch(
             "/api/groups/$groupId/athletes/$memberId",
-            mapOf("position" to "OPOSTO", "membershipType" to "MENSALISTA", "active" to false),
+            mapOf("position" to "OPOSTO", "membershipType" to "MENSALISTA", "active" to false, "monthlyFeeCents" to 12000, "monthlyDueDay" to 8),
         )
 
         assertEquals(200, response.statusCode())
         assertEquals("MENSALISTA", json(response)["membershipType"].stringValue())
         assertFalse(json(response)["active"].booleanValue())
+    }
+
+    @Test
+    fun `mensalista without fee and due day is refused while avulso drops leftover fees`() {
+        val refused = patch(
+            "/api/groups/$groupId/athletes/$memberId",
+            mapOf("position" to "OPOSTO", "membershipType" to "MENSALISTA", "active" to true),
+        )
+        assertProblem(refused, 422, "VALIDATION_FAILED")
+        assertEquals(
+            setOf("monthlyFeeCents", "monthlyDueDay"),
+            json(refused)["fieldErrors"].propertyNames().asSequence().toSet(),
+        )
+
+        val avulso = patch(
+            "/api/groups/$groupId/athletes/$memberId",
+            mapOf("position" to "OPOSTO", "membershipType" to "AVULSO", "active" to true, "monthlyFeeCents" to 9000, "monthlyDueDay" to 5),
+        )
+        assertEquals(200, avulso.statusCode())
+        assertEquals("AVULSO", json(avulso)["membershipType"].stringValue())
+        assertTrue(json(avulso)["monthlyFeeCents"] == null || json(avulso)["monthlyFeeCents"].isNull)
     }
 
     @Test

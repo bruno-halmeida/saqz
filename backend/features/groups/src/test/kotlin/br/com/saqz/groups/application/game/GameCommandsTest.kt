@@ -229,14 +229,67 @@ class GameCommandsTest {
         assertTrue(fixture.effects.calls.isEmpty())
     }
 
-    @Test fun `unpublished draft cannot be cancelled into member history`() {
+    @Test fun `draft can be cancelled without notifying anyone`() {
         val fixture = fixture(GroupRole.OWNER)
-        assertEquals(
-            GameCommandResult.InvalidTransition(GameStatus.DRAFT, GameMutation.CANCEL),
-            fixture.lifecycle.execute(actor, groupId, gameId, 1, GameMutation.CANCEL),
-        )
-        assertTrue(fixture.repository.updates.isEmpty())
+        val result = fixture.lifecycle.execute(actor, groupId, gameId, 1, GameMutation.CANCEL)
+
+        assertEquals(GameStatus.CANCELLED, assertIs<GameCommandResult.Success>(result).game.status)
+        assertEquals(1, fixture.repository.updates.size)
         assertTrue(fixture.effects.calls.isEmpty())
+    }
+
+    @Test fun `publish refuses an elapsed confirmation deadline but the series release does not`() {
+        val late = java.time.Clock.fixed(START.minusSeconds(1800), java.time.ZoneOffset.UTC)
+        val manual = fixture(GroupRole.OWNER, clock = late)
+        val refused = manual.lifecycle.execute(actor, groupId, gameId, 1, GameMutation.PUBLISH)
+        assertEquals(listOf("confirmationDeadline"), assertIs<GameCommandResult.Invalid>(refused).errors.map { it.field })
+        assertTrue(manual.repository.updates.isEmpty())
+
+        val release = fixture(GroupRole.OWNER, clock = late)
+        val released = release.lifecycle.execute(actor, groupId, gameId, 1, GameMutation.PUBLISH, enforceTiming = false)
+        assertEquals(GameStatus.PUBLISHED, assertIs<GameCommandResult.Success>(released).game.status)
+    }
+
+    @Test fun `edit checks the clock only for the fields it changes`() {
+        val clock = java.time.Clock.fixed(START.minusSeconds(1800), java.time.ZoneOffset.UTC)
+        val fixture = fixture(GroupRole.OWNER, clock = clock)
+        val untouched = fixture.edit.execute(actor, groupId, gameId, 1, validDraft("Novo título"))
+        assertIs<GameCommandResult.Success>(untouched)
+
+        val moved = fixture.edit.execute(actor, groupId, gameId, 1, validDraft().copy(confirmationDeadline = START.minusSeconds(7200)))
+        assertEquals(listOf("confirmationDeadline"), assertIs<GameCommandResult.Invalid>(moved).errors.map { it.field })
+    }
+
+    @Test fun `create refuses a game that starts in the past`() {
+        val fixture = fixture(GroupRole.OWNER, clock = java.time.Clock.fixed(START.plusSeconds(60), java.time.ZoneOffset.UTC))
+        val result = fixture.create.execute(actor, groupId, gameId, createInput(deadline = START.minusSeconds(7200)))
+
+        val errors = assertIs<GameCommandResult.Invalid>(result).errors
+        assertTrue(errors.any { it.field == "startsAt" })
+        assertTrue(errors.any { it.field == "confirmationDeadline" })
+        assertTrue(fixture.repository.creates.isEmpty())
+    }
+
+    @Test fun `create refuses an explicit deadline in the past`() {
+        val fixture = fixture(GroupRole.OWNER, clock = java.time.Clock.fixed(START.minusSeconds(3600), java.time.ZoneOffset.UTC))
+        val result = fixture.create.execute(actor, groupId, gameId, createInput(deadline = START.minusSeconds(7200)))
+
+        assertEquals(listOf("confirmationDeadline"), assertIs<GameCommandResult.Invalid>(result).errors.map { it.field })
+    }
+
+    @Test fun `derived default deadline that already passed closes now instead of failing`() {
+        val now = START.minusSeconds(3600)
+        val fixture = fixture(GroupRole.OWNER, clock = java.time.Clock.fixed(now, java.time.ZoneOffset.UTC))
+        val result = fixture.create.execute(actor, groupId, gameId, createInput())
+
+        assertEquals(now, assertIs<GameCommandResult.Success>(result).game.snapshot.confirmationDeadline)
+    }
+
+    @Test fun `create refuses startsAt that disagrees with local date time and zone`() {
+        val fixture = fixture(GroupRole.OWNER)
+        val result = fixture.create.execute(actor, groupId, gameId, createInput(startsAt = START.plusSeconds(3600)))
+
+        assertEquals(listOf("startsAt"), assertIs<GameCommandResult.Invalid>(result).errors.map { it.field })
     }
 
     @Test fun `published game cannot publish twice`() {
@@ -282,9 +335,9 @@ class GameCommandsTest {
         )
         val effects = FakeEffects()
         return Fixture(
-            CreateGame(transaction, repository),
+            CreateGame(transaction, repository, clock),
             EditGame(transaction, repository, effects, clock),
-            ChangeGameLifecycle(transaction, repository, effects),
+            ChangeGameLifecycle(transaction, repository, effects, clock),
             repository,
             effects,
         )
@@ -348,13 +401,19 @@ class GameCommandsTest {
 
     private fun emptyDraft() = GameDraftInput(null, null, null, null, null, null, null, null, null)
 
-    private fun createInput(title: String? = null, capacity: Int? = null) = CreateGameInput(
+    private fun createInput(
+        title: String? = null,
+        capacity: Int? = null,
+        startsAt: Instant = START,
+        deadline: Instant? = null,
+    ) = CreateGameInput(
         title = title,
         localDate = LocalDate.of(2026, 8, 12),
         localTime = LocalTime.of(19, 30),
         zoneId = "America/Sao_Paulo",
-        startsAt = START,
+        startsAt = startsAt,
         capacity = capacity,
+        confirmationDeadline = deadline,
     )
 
     private fun defaults() = GroupGameDefaults(

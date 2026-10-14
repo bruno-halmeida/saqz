@@ -74,8 +74,12 @@ class GroupCommunicationIntegrationTest {
         assertEquals(1, message.recipientCount)
         assertEquals(1, service.messages(member, group, MessageChannel.NOTICE, null).success().items.size)
         assertEquals(1, service.inbox(member, null).success().items.size)
-        for (body in listOf("   ", "x".repeat(2001), "bad\u0000text")) {
-            assertEquals(CommunicationResult.Failure(CommunicationError.INVALID), service.publish(owner, group, MessageChannel.CHAT, UUID.randomUUID(), body))
+        mapOf(
+            "   " to CommunicationError.BODY_BLANK,
+            "x".repeat(2001) to CommunicationError.BODY_TOO_LONG,
+            "bad\u0000text" to CommunicationError.BODY_CONTROL_CHARACTERS,
+        ).forEach { (body, reason) ->
+            assertEquals(CommunicationResult.Failure(reason), service.publish(owner, group, MessageChannel.CHAT, UUID.randomUUID(), body))
         }
     }
     @Test fun `concurrent retries all return the one committed message and notification`() {
@@ -184,7 +188,7 @@ class GroupCommunicationIntegrationTest {
         // GAME_OPEN é canal de sistema: nem aparece na thread, nem aceita publicação pela API.
         assertEquals(CommunicationResult.Failure(CommunicationError.INVALID), service.messages(member, group, MessageChannel.GAME_OPEN, null))
         assertEquals(
-            CommunicationResult.Failure(CommunicationError.INVALID),
+            CommunicationResult.Failure(CommunicationError.CHANNEL_NOT_PUBLISHABLE),
             service.publish(owner, group, MessageChannel.GAME_OPEN, UUID.randomUUID(), "Jogo liberado"),
         )
     }

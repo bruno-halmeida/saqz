@@ -77,7 +77,11 @@ data class NotificationPreferences(
     val whatsapp: WhatsAppPreferences = WhatsAppPreferences(),
 )
 /** OBJECTIONABLE: o texto passou na validação de formato mas caiu no filtro de conteúdo ofensivo. */
-enum class CommunicationError { NOT_FOUND, FORBIDDEN, INVALID, CONFLICT, OBJECTIONABLE }
+enum class CommunicationError {
+    NOT_FOUND, FORBIDDEN, INVALID, CONFLICT, OBJECTIONABLE,
+    /** Causas de corpo/canal recusado que o cliente precisa distinguir (campo `body` ou `channel`). */
+    BODY_BLANK, BODY_TOO_LONG, BODY_CONTROL_CHARACTERS, CHANNEL_NOT_PUBLISHABLE,
+}
 sealed interface CommunicationResult<out T> {
     data class Success<T>(val value: T) : CommunicationResult<T>
     data class Failure(val reason: CommunicationError) : CommunicationResult<Nothing>

@@ -83,6 +83,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.HttpRequestMethodNotSupportedException
+import tools.jackson.core.JacksonException
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.multipart.MaxUploadSizeExceededException
 import org.springframework.web.multipart.MultipartException
@@ -594,16 +595,35 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 400, ErrorCode.VALIDATION_FAILED)
     }
 
+    /**
+     * Corpo ilegível (JSON malformado, tipo errado, enum desconhecido) é erro do cliente: 400 com o código de
+     * validação e, quando o Jackson sabe, o campo. Só o caminho do campo é registrado/devolvido, nunca o valor
+     * enviado (pode carregar dado pessoal).
+     */
     @ExceptionHandler(HttpMessageNotReadableException::class)
-    fun messageNotReadable(request: HttpServletRequest, response: HttpServletResponse) {
+    fun messageNotReadable(failure: HttpMessageNotReadableException, request: HttpServletRequest, response: HttpServletResponse) {
         if (request.requestURI == "/api/session/app-link/redeem") {
             problemWriter.write(request, response, 400, ErrorCode.APP_ONBOARDING_CODE_INVALID)
-        } else if (request.requestURI.startsWith("/api/me/notification-devices/") ||
-            request.requestURI.matches(Regex("/api/groups/[^/]+/charges/notify"))) {
-            problemWriter.write(request, response, 400, ErrorCode.VALIDATION_FAILED)
-        } else {
-            problemWriter.write(request, response, 500)
+            return
         }
+        val field = (failure.cause as? JacksonException)?.path
+            ?.mapNotNull { it.propertyName }
+            ?.joinToString(".")
+            ?.takeIf { it.isNotBlank() }
+        logger.warn(
+            "invalid_request_body method={} path={} field={} cause={}",
+            request.method,
+            request.requestURI,
+            field ?: "-",
+            failure.cause?.javaClass?.simpleName ?: failure.javaClass.simpleName,
+        )
+        problemWriter.write(
+            request,
+            response,
+            400,
+            ErrorCode.VALIDATION_FAILED,
+            fieldErrors = field?.let { mapOf(it to listOf("valor inválido")) },
+        )
     }
 
     @ExceptionHandler(SubscriptionNotFoundException::class)

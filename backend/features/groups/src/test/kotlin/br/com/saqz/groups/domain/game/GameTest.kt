@@ -150,7 +150,7 @@ class GameTest {
         GameMutation.entries.forEach { assertFalse(GameLifecyclePolicy.canMutate(GameStatus.CANCELLED, it)) }
         GameMutation.entries.forEach { assertFalse(GameLifecyclePolicy.canMutate(GameStatus.COMPLETED, it)) }
         assertFalse(GameLifecyclePolicy.canMutate(GameStatus.DRAFT, GameMutation.COMPLETE))
-        assertFalse(GameLifecyclePolicy.canMutate(GameStatus.DRAFT, GameMutation.CANCEL))
+        assertTrue(GameLifecyclePolicy.canMutate(GameStatus.DRAFT, GameMutation.CANCEL))
         assertFalse(GameLifecyclePolicy.canMutate(GameStatus.PUBLISHED, GameMutation.PUBLISH))
     }
 
