@@ -13,6 +13,7 @@ import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
 import br.com.saqz.groups.domain.group.GroupVenueInput
+import br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.domain.group.RegularSlotInput
 import br.com.saqz.groups.domain.GroupRole
@@ -68,6 +69,8 @@ data class UpdateGroupProfileRequest @JsonCreator constructor(
     @JsonProperty("pixKey") val pixKey: String? = null,
     @JsonProperty("pixLabel") val pixLabel: String? = null,
     @JsonProperty("entryRequiresApproval") val entryRequiresApproval: Boolean? = null,
+    // Ausente = não muda (app antigo segue funcionando).
+    @JsonProperty("monthlyLateJoinPolicy") val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
 )
 
 data class UpdateGroupVenueRequest @JsonCreator constructor(
@@ -211,6 +214,7 @@ private fun UpdateGroupProfileRequest.toInput() = UpdateGroupProfileInput(
     defaultVenueId = defaultVenue?.id,
     regularSlotIds = regularSlots.orEmpty().map { it.id },
     entryRequiresApproval = entryRequiresApproval,
+    monthlyLateJoinPolicy = monthlyLateJoinPolicy,
 )
 
 private fun UpdatedGroupSettings.toResponse() = GroupSettingsResponse(

@@ -82,6 +82,8 @@ internal data class GroupFinanceDefaultsDto(
     val defaultGameFeeCents: Long? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    // String e não enum: um valor novo do backend não pode derrubar a leitura do grupo.
+    val monthlyLateJoinPolicy: String? = null,
 )
 
 @Serializable
@@ -152,6 +154,7 @@ private data class CompleteGroupRequestDto(
     val defaultGameFeeCents: Long? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    val monthlyLateJoinPolicy: String? = null,
     val timeZone: String? = null,
     val mensalistaPriority: Boolean? = null,
     val promotionMode: String? = null,
@@ -271,7 +274,12 @@ private fun GroupDto.toDomain(): Group? {
         currency = GroupCurrency.valueOf(currency.name),
         profile = domainProfile,
         financeDefaults = financeDefaults?.let {
-            GroupFinanceDefaults(it.defaultGameFeeCents, it.monthlyFeeCents, it.monthlyDueDay)
+            GroupFinanceDefaults(
+                it.defaultGameFeeCents,
+                it.monthlyFeeCents,
+                it.monthlyDueDay,
+                it.monthlyLateJoinPolicy?.let { name -> MonthlyLateJoinPolicy.entries.firstOrNull { it.name == name } },
+            )
         },
         gameConfig = GroupGameConfig(
             mensalistaPriority = gameConfig.mensalistaPriority,
@@ -334,6 +342,7 @@ private fun GroupSetupForm.toRequest(requestId: String? = null, timeZone: String
         defaultGameFeeCents = form.defaultGameFeeCents,
         monthlyFeeCents = form.monthlyFeeCents,
         monthlyDueDay = form.monthlyDueDay,
+        monthlyLateJoinPolicy = form.monthlyLateJoinPolicy?.name,
         timeZone = timeZone,
         mensalistaPriority = form.mensalistaPriority,
         promotionMode = form.promotionMode.name,

@@ -9,10 +9,12 @@ import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.domain.group.GroupTrialAccessInfo
 import br.com.saqz.groups.domain.group.GroupTrialAccessPort
+import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.FakeGroupProfileGateway
 import br.com.saqz.groups.presentation.FakeGroupSystemTimeZonePort
@@ -669,6 +671,150 @@ class GroupSetupViewModelTest {
         assertEquals(true, form?.autoConfirmEnabled)
     }
 
+    private fun groupWithMonthly(
+        fee: Long? = 5_000,
+        policy: br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy? =
+            br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy.GROUP_DUE_DATE,
+    ) = br.com.saqz.groups.presentation.sampleGroup().copy(
+        financeDefaults = br.com.saqz.groups.domain.group.GroupFinanceDefaults(
+            defaultGameFeeCents = null,
+            monthlyFeeCents = fee,
+            monthlyDueDay = 10,
+            monthlyLateJoinPolicy = policy,
+        ),
+    )
+
+    private fun TestScope.editViewModel(
+        group: br.com.saqz.groups.domain.group.Group,
+        profileGateway: FakeGroupProfileGateway = FakeGroupProfileGateway(
+            readResult = SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedGroup(group)),
+        ),
+        savedState: SavedStateHandle = SavedStateHandle(),
+        athleteGateway: FakeAthleteGateway? = null,
+    ) = viewModel(
+        mode = GroupSetupMode.Edit(groupId = "grp-1"),
+        profileGateway = profileGateway,
+        savedState = savedState,
+        athleteGateway = athleteGateway,
+    ).also { runCurrent() }
+
+    private fun rosterGateway(vararg entries: br.com.saqz.groups.domain.athlete.AthleteRosterEntry) =
+        FakeAthleteGateway(rosterResult = SaqzResult.Success(entries.toList()))
+
+    @Test
+    fun `seletor da primeira mensalidade aparece com mensalidade e politica vindas do backend`() = runTest(mainDispatcher) {
+        val viewModel = editViewModel(groupWithMonthly())
+
+        assertEquals(MonthlyLateJoinPolicy.GROUP_DUE_DATE, viewModel.state.value.form.monthlyLateJoinPolicy)
+        assertTrue(viewModel.state.value.showsMonthlyLateJoinPolicy)
+    }
+
+    @Test
+    fun `com mensalidade padrao o seletor aparece sem buscar os membros`() = runTest(mainDispatcher) {
+        val athletes = rosterGateway()
+        val viewModel = editViewModel(groupWithMonthly(fee = 5_000), athleteGateway = athletes)
+
+        assertTrue(viewModel.state.value.showsMonthlyLateJoinPolicy)
+        assertNull(athletes.lastRosterFilter)
+    }
+
+    @Test
+    fun `sem mensalidade padrao o seletor aparece se algum mensalista tem valor proprio`() = runTest(mainDispatcher) {
+        val athletes = rosterGateway(
+            br.com.saqz.groups.presentation.sampleRosterEntry("sem-valor"),
+            br.com.saqz.groups.presentation.sampleRosterEntry("com-valor").copy(monthlyFeeCents = 7_000),
+        )
+        val viewModel = editViewModel(groupWithMonthly(fee = null), athleteGateway = athletes)
+
+        assertEquals(null, viewModel.state.value.form.monthlyFeeCents)
+        assertTrue(viewModel.state.value.rosterHasMensalista)
+        assertTrue(viewModel.state.value.showsMonthlyLateJoinPolicy)
+        assertEquals(br.com.saqz.groups.domain.athlete.AthleteRosterFilter(), athletes.lastRosterFilter)
+    }
+
+    @Test
+    fun `sem mensalidade padrao o seletor fica escondido se nenhum mensalista tem valor proprio`() = runTest(mainDispatcher) {
+        val semValor = br.com.saqz.groups.presentation.sampleRosterEntry("sem-valor")
+        val avulsoComValor = br.com.saqz.groups.presentation.sampleRosterEntry("avulso").copy(
+            membershipType = br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO,
+            monthlyFeeCents = 7_000,
+        )
+        listOf(rosterGateway(), rosterGateway(semValor), rosterGateway(avulsoComValor)).forEach { athletes ->
+            val viewModel = editViewModel(groupWithMonthly(fee = null), athleteGateway = athletes)
+
+            assertEquals(false, viewModel.state.value.showsMonthlyLateJoinPolicy)
+        }
+    }
+
+    @Test
+    fun `falha ao buscar os membros esconde o seletor sem derrubar o formulario`() = runTest(mainDispatcher) {
+        val athletes = FakeAthleteGateway(
+            rosterResult = SaqzResult.Failure(br.com.saqz.groups.domain.athlete.AthleteError.DataFailure(DataError.Connectivity)),
+        )
+        val viewModel = editViewModel(groupWithMonthly(fee = null), athleteGateway = athletes)
+
+        assertEquals(false, viewModel.state.value.isLoading)
+        assertNull(viewModel.state.value.gatewayError)
+        assertEquals(false, viewModel.state.value.showsMonthlyLateJoinPolicy)
+    }
+
+    @Test
+    fun `sem o campo do backend o seletor fica escondido e os membros nem sao buscados`() = runTest(mainDispatcher) {
+        val athletes = rosterGateway(
+            br.com.saqz.groups.presentation.sampleRosterEntry("com-valor").copy(monthlyFeeCents = 7_000),
+        )
+        val viewModel = editViewModel(groupWithMonthly(fee = null, policy = null), athleteGateway = athletes)
+
+        assertEquals(false, viewModel.state.value.showsMonthlyLateJoinPolicy)
+        assertNull(athletes.lastRosterFilter)
+    }
+
+    @Test
+    fun `sem o campo do backend o seletor fica escondido mesmo com mensalidade padrao`() = runTest(mainDispatcher) {
+        assertEquals(false, editViewModel(groupWithMonthly(policy = null)).state.value.showsMonthlyLateJoinPolicy)
+    }
+
+    @Test
+    fun `seletor da primeira mensalidade fica escondido na criacao`() = runTest(mainDispatcher) {
+        assertEquals(false, viewModel(mode = GroupSetupMode.Create).state.value.showsMonthlyLateJoinPolicy)
+    }
+
+    @Test
+    fun `escolher a politica vai no comando de update e sobrevive a recriacao`() = runTest(mainDispatcher) {
+        val handle = SavedStateHandle()
+        val profileGateway = FakeGroupProfileGateway(
+            readResult = SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedGroup(groupWithMonthly())),
+        )
+        val viewModel = editViewModel(groupWithMonthly(), profileGateway, handle)
+
+        viewModel.onIntent(GroupSetupIntent.SelectMonthlyLateJoinPolicy(MonthlyLateJoinPolicy.NEXT_MONTH))
+        assertEquals("NEXT_MONTH", handle.get<String>("group-setup-monthly-late-join-policy"))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(
+            br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy.NEXT_MONTH,
+            profileGateway.lastUpdateCommand?.form?.monthlyLateJoinPolicy,
+        )
+        val restored = editViewModel(groupWithMonthly(), profileGateway, handle)
+        assertEquals(MonthlyLateJoinPolicy.NEXT_MONTH, restored.state.value.form.monthlyLateJoinPolicy)
+    }
+
+    @Test
+    fun `sem o campo do backend o update nao envia politica`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway(
+            readResult = SaqzResult.Success(
+                br.com.saqz.groups.presentation.sampleVersionedGroup(groupWithMonthly(policy = null)),
+            ),
+        )
+        val viewModel = editViewModel(groupWithMonthly(policy = null), profileGateway)
+
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(null, profileGateway.lastUpdateCommand?.form?.monthlyLateJoinPolicy)
+    }
+
     @Test
     fun `editar envia Pix com trim sem validar o formato da chave`() = runTest(mainDispatcher) {
         val profileGateway = FakeGroupProfileGateway()
@@ -864,6 +1010,7 @@ class GroupSetupViewModelTest {
         groupGateway: FakeGroupGateway = FakeGroupGateway(),
         profileGateway: FakeGroupProfileGateway = FakeGroupProfileGateway(),
         trialAccess: GroupTrialAccessPort? = null,
+        athleteGateway: FakeAthleteGateway? = null,
     ) = GroupSetupViewModel(
         initialState = GroupSetupState(
             mode = mode,
@@ -876,6 +1023,7 @@ class GroupSetupViewModelTest {
         profileGateway = profileGateway,
         timeZonePort = FakeGroupSystemTimeZonePort(),
         trialAccess = trialAccess,
+        athleteGateway = athleteGateway,
     )
 
     private companion object {

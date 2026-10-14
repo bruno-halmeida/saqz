@@ -8,6 +8,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
@@ -141,5 +142,51 @@ class GroupSetupScreenTest {
 
         onNodeWithText("Não foi possível salvar o grupo").assertExists()
         onNodeWithText("Não foi possível criar o grupo").assertDoesNotExist()
+    }
+
+    private fun monthlyState(
+        policy: MonthlyLateJoinPolicy? = MonthlyLateJoinPolicy.GROUP_DUE_DATE,
+        fee: Long? = 5_000,
+        rosterHasMensalista: Boolean = false,
+    ) = GroupSetupState(
+        mode = GroupSetupMode.Edit(groupId = "grp-1"),
+        form = PreviewCourtForm.copy(monthlyFeeCents = fee, monthlyLateJoinPolicy = policy),
+        canManageGameConfig = true,
+        rosterHasMensalista = rosterHasMensalista,
+    )
+
+    @Test
+    fun monthlyPolicyShowsThreeOptionsAndReportsTheChosenOne() = runComposeUiTest {
+        val intents = mutableListOf<GroupSetupIntent>()
+        setContent { SaqzTheme { GroupSetupScreen(monthlyState(), { intents += it }, {}) } }
+
+        onNodeWithTag(GroupSetupTags.MonthlyLateJoinPolicy).performScrollTo().assertExists()
+        onNodeWithText("Quem vira mensalista depois do vencimento").assertExists()
+        onNodeWithText("Paga este mês, já vencida").assertExists()
+        onNodeWithText("Paga este mês, sem atraso").assertExists()
+        onNodeWithText("Começa a pagar no mês seguinte").performScrollTo().performClick()
+        waitForIdle()
+
+        assertTrue(GroupSetupIntent.SelectMonthlyLateJoinPolicy(MonthlyLateJoinPolicy.NEXT_MONTH) in intents)
+    }
+
+    @Test
+    fun monthlyPolicyShowsWhenOnlyAMensalistaHasTheirOwnFee() = runComposeUiTest {
+        setContent { SaqzTheme { GroupSetupScreen(monthlyState(fee = null, rosterHasMensalista = true), {}, {}) } }
+        onNodeWithTag(GroupSetupTags.MonthlyLateJoinPolicy).performScrollTo().assertExists()
+    }
+
+    @Test
+    fun monthlyPolicyIsHiddenWhenTheGroupChargesNoMonthlyFeeAtAll() = runComposeUiTest {
+        setContent { SaqzTheme { GroupSetupScreen(monthlyState(fee = null, rosterHasMensalista = false), {}, {}) } }
+        onNodeWithTag(GroupSetupTags.MonthlyLateJoinPolicy).assertDoesNotExist()
+    }
+
+    @Test
+    fun monthlyPolicyIsHiddenWhenTheBackendDoesNotSendIt() = runComposeUiTest {
+        setContent {
+            SaqzTheme { GroupSetupScreen(monthlyState(policy = null, rosterHasMensalista = true), {}, {}) }
+        }
+        onNodeWithTag(GroupSetupTags.MonthlyLateJoinPolicy).assertDoesNotExist()
     }
 }

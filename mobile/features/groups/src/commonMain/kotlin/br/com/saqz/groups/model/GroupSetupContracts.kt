@@ -14,6 +14,8 @@ enum class GroupWeekday { MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY
 
 enum class PromotionMode { FIFO, MANUAL }
 
+enum class MonthlyLateJoinPolicy { GROUP_DUE_DATE, JOIN_DATE, NEXT_MONTH }
+
 data class GroupVenueForm(
     val id: String? = null,
     val name: String,
@@ -48,6 +50,8 @@ data class GroupSetupForm(
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionMode = PromotionMode.FIFO,
     val autoConfirmEnabled: Boolean = false,
+    /** Nulo quando o backend não manda o campo: a tela esconde o seletor e o PUT não o envia. */
+    val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
 ) {
     fun cleaned(): GroupSetupForm = copy(
         name = name.trim(),

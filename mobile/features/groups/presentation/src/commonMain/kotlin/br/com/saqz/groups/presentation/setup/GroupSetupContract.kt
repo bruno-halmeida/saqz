@@ -10,6 +10,7 @@ import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.domain.place.PlaceSuggestion
 import br.com.saqz.groups.presentation.GroupUiError
@@ -112,10 +113,24 @@ data class GroupSetupState(
     val isOffline: Boolean = false,
     /** Sugestões de endereço do Google; indisponível quando o backend desliga a busca. */
     val venueSearch: VenueSearchState = VenueSearchState(),
+    /**
+     * Algum mensalista tem mensalidade própria (a mesma regra do "Mensalistas" da checklist da Início).
+     * Chega depois do formulário, em uma busca à parte, e só na edição.
+     */
+    val rosterHasMensalista: Boolean = false,
 ) {
     val isEditing: Boolean = mode is GroupSetupMode.Edit
     val showsPlayStyle: Boolean = form.modality == GroupModality.COURT_VOLLEYBALL
     val showsCustomLevel: Boolean = form.level == GroupLevel.CUSTOM
+
+    /**
+     * O seletor de "quem vira mensalista depois do vencimento" só existe na edição, para quem gere o
+     * grupo, se o backend mandou o campo e o grupo cobra mensalidade: tem mensalidade padrão **ou** algum
+     * mensalista com valor próprio, como o item "Mensalistas" da checklist da Início.
+     */
+    val showsMonthlyLateJoinPolicy: Boolean =
+        isEditing && canManageGameConfig && form.monthlyLateJoinPolicy != null &&
+            (form.monthlyFeeCents != null || rosterHasMensalista)
 
     /**
      * O que vai para o comando. `GroupSetupForm` não tem campo de recorrência e o
@@ -182,6 +197,8 @@ sealed interface GroupSetupIntent {
     data class SelectPromotionMode(val value: PromotionMode) : GroupSetupIntent
 
     data class ToggleAutoConfirm(val value: Boolean) : GroupSetupIntent
+
+    data class SelectMonthlyLateJoinPolicy(val value: MonthlyLateJoinPolicy) : GroupSetupIntent
 
     data class ToggleRecurring(val value: Boolean) : GroupSetupIntent
 

@@ -89,6 +89,7 @@ class JdbcGroupSettingsRepository(
                     ELSE NULLIF(BTRIM(CAST(:pixLabel AS varchar)), '')
                 END,
                 entry_requires_approval = COALESCE(CAST(:entryRequiresApproval AS boolean), entry_requires_approval),
+                monthly_late_join_policy = COALESCE(CAST(:monthlyLateJoinPolicy AS varchar), monthly_late_join_policy),
                 version = version + 1,
                 updated_at = now()
             WHERE id = :groupId
@@ -117,6 +118,7 @@ class JdbcGroupSettingsRepository(
             .param("pixKey", profile.pixKey)
             .param("pixLabel", profile.pixLabel)
             .param("entryRequiresApproval", command.entryRequiresApproval)
+            .param("monthlyLateJoinPolicy", command.monthlyLateJoinPolicy?.name)
             .param("groupId", command.groupId)
             .param("expectedVersion", command.expectedVersion)
             .query { result, _ ->

@@ -184,6 +184,41 @@ class GroupSettingsEndpointIntegrationTest {
     }
 
     @Test
+    fun `profile update maps the late join policy and returns it in the finance defaults`() {
+        val response = putProfile(
+            """{"name":"Beach Club","modality":"BEACH_VOLLEYBALL","composition":"WOMEN","monthlyFeeCents":7000,"monthlyDueDay":10,"monthlyLateJoinPolicy":"JOIN_DATE"}""",
+        )
+
+        assertEquals(200, response.statusCode())
+        assertEquals(
+            br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy.JOIN_DATE,
+            write.commands.single().monthlyLateJoinPolicy,
+        )
+        assertEquals("JOIN_DATE", json(response)["financeDefaults"]["monthlyLateJoinPolicy"].stringValue())
+    }
+
+    @Test
+    fun `profile update without the late join policy leaves it unchanged for old apps`() {
+        val response = putProfile(
+            """{"name":"Beach Club","modality":"BEACH_VOLLEYBALL","composition":"WOMEN","monthlyFeeCents":7000,"monthlyDueDay":10}""",
+        )
+
+        assertEquals(200, response.statusCode())
+        assertEquals(null, write.commands.single().monthlyLateJoinPolicy)
+        assertEquals("GROUP_DUE_DATE", json(response)["financeDefaults"]["monthlyLateJoinPolicy"].stringValue())
+    }
+
+    @Test
+    fun `profile update rejects an unknown late join policy`() {
+        val response = putProfile(
+            """{"name":"Beach Club","modality":"BEACH_VOLLEYBALL","composition":"WOMEN","monthlyLateJoinPolicy":"PRORATA"}""",
+        )
+
+        assertEquals(400, response.statusCode())
+        assertTrue(write.commands.isEmpty())
+    }
+
+    @Test
     fun `profile update accepts omitted optional collections`() {
         val response = putProfile(
             """{"name":"Minimal Group","modality":"FOOTVOLLEY","composition":"MIXED"}""",
@@ -370,6 +405,9 @@ class GroupSettingsEndpointIntegrationTest {
                         profile.defaultGameFeeCents,
                         profile.monthlyFeeCents,
                         profile.monthlyDueDay,
+                        command.monthlyLateJoinPolicy
+                            ?: current.financeDefaults?.monthlyLateJoinPolicy
+                            ?: br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy.GROUP_DUE_DATE,
                     ),
                 )
             }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primeira mensalidade de quem vira mensalista depois do dia de vencimento -->
+    <string name="group_monthly_policy_title">Quem vira mensalista depois do vencimento</string>
+    <string name="group_monthly_policy_hint">Vale só para o mês em que a pessoa vira mensalista, se for depois do dia de vencimento. Nos meses seguintes nada muda.</string>
+    <string name="group_monthly_policy_group_due_date">Paga este mês, já vencida</string>
+    <string name="group_monthly_policy_join_date">Paga este mês, sem atraso</string>
+    <string name="group_monthly_policy_next_month">Começa a pagar no mês seguinte</string>
+</resources>

@@ -18,6 +18,9 @@ enum class GroupCurrency { BRL }
 enum class GroupWeekday { MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY }
 enum class PromotionMode { FIFO, MANUAL }
 
+/** O que cobrar de quem vira mensalista depois do dia de vencimento do mês em que entrou. */
+enum class MonthlyLateJoinPolicy { GROUP_DUE_DATE, JOIN_DATE, NEXT_MONTH }
+
 @JvmInline value class GroupVersionToken(val value: String)
 @JvmInline value class GroupTimeZone(val id: String)
 
@@ -63,6 +66,8 @@ data class GroupFinanceDefaults(
     val defaultGameFeeCents: Long?,
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
+    /** Nulo quando o backend não manda o campo (versão antiga): a tela esconde o seletor. */
+    val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
 )
 
 data class Group(
@@ -112,6 +117,8 @@ data class GroupSetupForm(
     val autoConfirmEnabled: Boolean = false,
     val pixKey: String? = null,
     val pixLabel: String? = null,
+    /** Nulo = não enviar (o backend mantém o que já tem). */
+    val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
 ) {
     fun cleaned(): GroupSetupForm = copy(
         name = name.trim(),

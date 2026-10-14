@@ -6,6 +6,7 @@ import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.groups.application.create.GroupProfileStatus
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
 import br.com.saqz.groups.domain.group.GroupValidationError
+import br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy
 import br.com.saqz.groups.domain.group.ValidGroupProfileDefaults
 import java.util.UUID
 
@@ -18,6 +19,7 @@ data class UpdateGroupSettingsCommand(
     val defaultVenueId: UUID? = null,
     val regularSlotIds: List<UUID?> = emptyList(),
     val entryRequiresApproval: Boolean? = null,
+    val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
 )
 
 data class UpdateGroupProfileInput(
@@ -25,6 +27,7 @@ data class UpdateGroupProfileInput(
     val defaultVenueId: UUID? = null,
     val regularSlotIds: List<UUID?> = emptyList(),
     val entryRequiresApproval: Boolean? = null,
+    val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
 )
 
 data class StoredGroupSettings(

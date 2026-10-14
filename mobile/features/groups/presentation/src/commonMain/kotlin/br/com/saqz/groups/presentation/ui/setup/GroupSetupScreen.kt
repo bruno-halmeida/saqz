@@ -92,6 +92,9 @@ internal object GroupSetupTags {
     const val GameConfigConfirmationLead = "group-game-config-confirmation-lead"
     const val MensalistaPriority = "group-game-config-mensalista-priority"
     const val PromotionMode = "group-game-config-promotion-mode"
+    const val MonthlyLateJoinPolicy = "group-monthly-late-join-policy"
+    fun monthlyLateJoinPolicyOption(policy: br.com.saqz.groups.model.MonthlyLateJoinPolicy) =
+        "group-monthly-late-join-policy-${policy.name}"
     const val AutoConfirm = "group-game-config-auto-confirm"
     const val PixKey = "group-setup-pix-key"
     const val PixLabel = "group-setup-pix-label"
@@ -340,6 +343,12 @@ private fun GroupSetupAdvancedCards(
             onConfirmationLeadSelect = { onIntent(GroupSetupIntent.SelectConfirmationLead(it)) },
             onAutoConfirmChange = { onIntent(GroupSetupIntent.ToggleAutoConfirm(it)) },
         )
+        if (state.showsMonthlyLateJoinPolicy) {
+            GroupMonthlyLateJoinPolicySection(
+                policy = requireNotNull(form.monthlyLateJoinPolicy),
+                onSelect = { onIntent(GroupSetupIntent.SelectMonthlyLateJoinPolicy(it)) },
+            )
+        }
         GroupPixSection(
             pixKey = state.pixKey,
             pixLabel = state.pixLabel,

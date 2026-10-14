@@ -176,6 +176,39 @@ class KtorGroupGatewayTest {
             }.gateway.updateProfile(UpdateGroupProfileCommand(GroupId(ID), GroupVersionToken("\"6\""), form))
         }
 
+    @Test fun `profile update sends the monthly late join policy`() =
+        runTest {
+            fixture { req ->
+                assertEquals("NEXT_MONTH", req.bodyJson()["monthlyLateJoinPolicy"]?.jsonPrimitive?.content)
+                group()
+            }.gateway.updateProfile(
+                profileUpdate().copy(form = form().copy(monthlyLateJoinPolicy = MonthlyLateJoinPolicy.NEXT_MONTH)),
+            )
+        }
+
+    @Test fun `profile update omits the monthly late join policy when the backend never sent it`() =
+        runTest {
+            fixture { req ->
+                assertTrue("monthlyLateJoinPolicy" !in req.bodyJson())
+                group()
+            }.gateway.updateProfile(profileUpdate())
+        }
+
+    @Test fun `read maps the monthly late join policy from the finance defaults`() =
+        runTest {
+            val json = """{"id":"$ID","name":"Group","timeZone":"UTC","version":7,"role":"OWNER","financeDefaults":{"monthlyFeeCents":5000,"monthlyDueDay":10,"monthlyLateJoinPolicy":"JOIN_DATE"}}"""
+            val g = fixture { group(json) }.gateway.read(GroupId(ID)).success<VersionedGroup>().group
+            assertEquals(MonthlyLateJoinPolicy.JOIN_DATE, g.financeDefaults?.monthlyLateJoinPolicy)
+        }
+
+    @Test fun `read leaves the policy null when the backend does not send it or sends an unknown one`() =
+        runTest {
+            val old = """{"id":"$ID","name":"Group","timeZone":"UTC","version":7,"role":"OWNER","financeDefaults":{"monthlyFeeCents":5000,"monthlyDueDay":10}}"""
+            val future = """{"id":"$ID","name":"Group","timeZone":"UTC","version":7,"role":"OWNER","financeDefaults":{"monthlyFeeCents":5000,"monthlyLateJoinPolicy":"PRORATA"}}"""
+            assertEquals(null, fixture { group(old) }.gateway.read(GroupId(ID)).success<VersionedGroup>().group.financeDefaults?.monthlyLateJoinPolicy)
+            assertEquals(null, fixture { group(future) }.gateway.read(GroupId(ID)).success<VersionedGroup>().group.financeDefaults?.monthlyLateJoinPolicy)
+        }
+
     @Test fun `profile update sends pix fields`() =
         runTest {
             fixture { req ->

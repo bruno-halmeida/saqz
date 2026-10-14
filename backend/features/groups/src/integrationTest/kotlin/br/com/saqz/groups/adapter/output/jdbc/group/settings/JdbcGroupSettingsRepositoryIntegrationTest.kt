@@ -13,6 +13,7 @@ import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsInput
 import br.com.saqz.groups.domain.group.GroupVenueInput
+import br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy
 import br.com.saqz.groups.domain.group.PromotionMode as GroupPromotionMode
 import br.com.saqz.groups.domain.group.RegularSlotInput
 import br.com.saqz.postgrestesting.TestPostgres
@@ -45,6 +46,7 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         dataSource = TestPostgres.migrated(accessMigrationLocation()).dataSource
         execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
         execute("ALTER TABLE access_groups ADD COLUMN entry_requires_approval boolean NOT NULL DEFAULT false")
+        execute("ALTER TABLE access_groups ADD COLUMN monthly_late_join_policy varchar(32) NOT NULL DEFAULT 'GROUP_DUE_DATE'")
         // As migrations de access não trazem games nem game_series_slots; esta tabela reproduz a FK sem
         // ON DELETE que elas têm para group_venues (fk_games_venue, fk_game_series_slots_venue).
         execute(
@@ -330,6 +332,28 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         )
 
         assertEquals(true, boolean("SELECT entry_requires_approval FROM access_groups WHERE id = '$group'"))
+    }
+
+    @Test
+    fun `profile update stores the late join policy and omitting it preserves it`() {
+        val owner = insertUser("policy-owner")
+        val group = insertGroup(owner)
+        assertEquals("GROUP_DUE_DATE", text("SELECT monthly_late_join_policy FROM access_groups WHERE id = '$group'"))
+
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(
+                owner,
+                group,
+                1,
+                UpdateGroupProfileInput(profile(), monthlyLateJoinPolicy = MonthlyLateJoinPolicy.NEXT_MONTH),
+            ),
+        )
+        assertEquals("NEXT_MONTH", text("SELECT monthly_late_join_policy FROM access_groups WHERE id = '$group'"))
+
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(owner, group, 2, UpdateGroupProfileInput(profile())),
+        )
+        assertEquals("NEXT_MONTH", text("SELECT monthly_late_join_policy FROM access_groups WHERE id = '$group'"))
     }
 
     @Test

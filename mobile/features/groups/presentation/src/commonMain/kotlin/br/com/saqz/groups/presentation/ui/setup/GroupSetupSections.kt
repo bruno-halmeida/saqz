@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
@@ -49,6 +50,7 @@ import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupPlayStyle
 import br.com.saqz.groups.model.GroupRegularSlotForm
+import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.presentation.photo.GroupRemotePhotoRoot
 import br.com.saqz.groups.presentation.setup.GroupSetupDefaults
@@ -73,6 +75,11 @@ import br.com.saqz.groups.resources.group_game_config_promotion_hint_manual
 import br.com.saqz.groups.resources.group_game_config_promotion_label
 import br.com.saqz.groups.resources.group_game_config_promotion_manual
 import br.com.saqz.groups.resources.group_game_config_title
+import br.com.saqz.groups.resources.group_monthly_policy_group_due_date
+import br.com.saqz.groups.resources.group_monthly_policy_hint
+import br.com.saqz.groups.resources.group_monthly_policy_join_date
+import br.com.saqz.groups.resources.group_monthly_policy_next_month
+import br.com.saqz.groups.resources.group_monthly_policy_title
 import br.com.saqz.groups.resources.group_pix_key_hint
 import br.com.saqz.groups.resources.group_pix_key_label
 import br.com.saqz.groups.resources.group_pix_label_hint
@@ -845,6 +852,69 @@ internal fun GroupGameConfigSection(
         }
     }
 }
+
+private val MonthlyLateJoinPolicyOptions = listOf(
+    MonthlyLateJoinPolicy.GROUP_DUE_DATE,
+    MonthlyLateJoinPolicy.JOIN_DATE,
+    MonthlyLateJoinPolicy.NEXT_MONTH,
+)
+
+/**
+ * Edição, só quando há mensalidade configurada e o backend mandou a política. Três frases longas não
+ * cabem num segmentado: ficam em linhas de rádio, uma por opção, que quebram linha em vez de cortar
+ * quando a fonte do sistema está grande.
+ */
+@Composable
+internal fun GroupMonthlyLateJoinPolicySection(
+    policy: MonthlyLateJoinPolicy,
+    onSelect: (MonthlyLateJoinPolicy) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val metrics = SaqzTheme.metrics
+    Column(
+        modifier = modifier.fillMaxWidth().testTag(GroupSetupTags.MonthlyLateJoinPolicy),
+        verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
+    ) {
+        SaqzSectionHeader(title = stringResource(Res.string.group_monthly_policy_title))
+        SaqzCard {
+            Text(
+                text = stringResource(Res.string.group_monthly_policy_hint),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+            MonthlyLateJoinPolicyOptions.forEach { option ->
+                val label = option.label()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = metrics.buttonHeight)
+                        .testTag(GroupSetupTags.monthlyLateJoinPolicyOption(option))
+                        .selectable(selected = option == policy, role = Role.RadioButton) { onSelect(option) }
+                        .padding(vertical = metrics.blockGap),
+                    horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = label,
+                        style = SaqzTheme.typography.label,
+                        color = SaqzTheme.colors.textPrimary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (option == policy) SaqzIcon(SaqzIcons.Check, tint = SaqzTheme.colors.primary)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthlyLateJoinPolicy.label(): String = stringResource(
+    when (this) {
+        MonthlyLateJoinPolicy.GROUP_DUE_DATE -> Res.string.group_monthly_policy_group_due_date
+        MonthlyLateJoinPolicy.JOIN_DATE -> Res.string.group_monthly_policy_join_date
+        MonthlyLateJoinPolicy.NEXT_MONTH -> Res.string.group_monthly_policy_next_month
+    },
+)
 
 @Composable
 private fun PromotionMode.label(): String = stringResource(

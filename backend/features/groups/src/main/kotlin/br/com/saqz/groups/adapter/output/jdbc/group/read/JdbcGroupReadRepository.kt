@@ -16,6 +16,7 @@ import br.com.saqz.groups.domain.group.CourtPlayStyle
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy
 import br.com.saqz.groups.domain.group.PromotionMode
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
@@ -67,6 +68,7 @@ class JdbcGroupReadRepository(
                     THEN groups.monthly_due_day
                 ELSE NULL
             END AS monthly_due_day,
+            groups.monthly_late_join_policy,
             groups.mensalista_priority,
             groups.promotion_mode,
             groups.auto_confirm_enabled,
@@ -178,6 +180,7 @@ class JdbcGroupReadRepository(
             defaultGameFeeCents = getNullableLong("default_game_fee_cents"),
             monthlyFeeCents = getNullableLong("monthly_fee_cents"),
             monthlyDueDay = getNullableInt("monthly_due_day"),
+            monthlyLateJoinPolicy = MonthlyLateJoinPolicy.valueOf(getString("monthly_late_join_policy")),
         ),
         mensalistaPriority = getBoolean("mensalista_priority"),
         promotionMode = PromotionMode.valueOf(getString("promotion_mode")),

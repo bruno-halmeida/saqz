@@ -14,6 +14,7 @@ import br.com.saqz.groups.domain.group.CourtPlayStyle
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.sharedkernel.RequestIdentity
 import java.time.DayOfWeek
@@ -76,6 +77,7 @@ data class GroupFinanceDefaultsReadResponse(
     val defaultGameFeeCents: Long?,
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
+    val monthlyLateJoinPolicy: MonthlyLateJoinPolicy,
 )
 
 data class GroupGameConfigReadResponse(
@@ -155,4 +157,4 @@ private fun GroupRegularSlotReadModel.toResponse() =
     GroupRegularSlotReadResponse(id, weekday, startTime, durationMinutes)
 
 private fun GroupFinanceDefaultsReadModel.toResponse() =
-    GroupFinanceDefaultsReadResponse(defaultGameFeeCents, monthlyFeeCents, monthlyDueDay)
+    GroupFinanceDefaultsReadResponse(defaultGameFeeCents, monthlyFeeCents, monthlyDueDay, monthlyLateJoinPolicy)

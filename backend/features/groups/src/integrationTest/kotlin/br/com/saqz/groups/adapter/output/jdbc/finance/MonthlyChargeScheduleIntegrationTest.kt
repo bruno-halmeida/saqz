@@ -107,6 +107,74 @@ class MonthlyChargeScheduleIntegrationTest{
         assertEquals(1,count("group_charges"))
     }
 
+    /** Vencimento do grupo dia 10; [since] e o dia em que a pessoa virou mensalista e [today] o dia em que o job roda. */
+    private fun lateJoinerDueDates(policy:String,since:LocalDate,today:LocalDate):List<LocalDate>{
+        reset();val f=fixture();groupDefaults(f.group,feeCents=3000,dueDay=10)
+        monthly(f.group,f.member,feeCents=null,dueDay=null)
+        execute("UPDATE access_groups SET monthly_late_join_policy='$policy' WHERE id='${f.group}'")
+        execute("UPDATE group_memberships SET mensalista_since='$since' WHERE group_id='${f.group}'")
+        schedule(today=today).run()
+        return dataSource.connection.use{c->c.createStatement().use{s->s.executeQuery("SELECT due_date FROM group_charges").use{r->buildList{while(r.next())add(r.getObject(1,LocalDate::class.java))}}}}
+    }
+
+    @Test fun `a late joiner follows the group policy and everyone else is untouched`(){
+        // Vencimento dia 10, entrou dia 12 (as 15h) e o job de madrugada roda dia 13.
+        val since=LocalDate.of(2026,8,12);val today=LocalDate.of(2026,8,13)
+        assertEquals(listOf(LocalDate.of(2026,8,10)),lateJoinerDueDates("GROUP_DUE_DATE",since,today))
+        assertEquals(listOf(today),lateJoinerDueDates("JOIN_DATE",since,today))
+        assertEquals(emptyList(),lateJoinerDueDates("NEXT_MONTH",since,today))
+    }
+
+    @Test fun `JOIN_DATE never generates a charge that is already overdue`(){
+        val since=LocalDate.of(2026,8,12)
+        // No proprio dia em que entrou.
+        assertEquals(listOf(since),lateJoinerDueDates("JOIN_DATE",since,since))
+        // No dia seguinte, que e quando o job de madrugada realmente roda.
+        assertEquals(listOf(since.plusDays(1)),lateJoinerDueDates("JOIN_DATE",since,since.plusDays(1)))
+        // Dias depois, com o job fora do ar.
+        assertEquals(listOf(since.plusDays(5)),lateJoinerDueDates("JOIN_DATE",since,since.plusDays(5)))
+    }
+
+    @Test fun `the next month charges a late joiner normally even under NEXT_MONTH`(){
+        val f=fixture();groupDefaults(f.group,feeCents=3000,dueDay=10);monthly(f.group,f.member,feeCents=null,dueDay=null)
+        execute("UPDATE access_groups SET monthly_late_join_policy='NEXT_MONTH' WHERE id='${f.group}'")
+        execute("UPDATE group_memberships SET mensalista_since='2026-08-12' WHERE group_id='${f.group}'")
+        assertEquals(listOf(f.member),schedule(today=LocalDate.of(2026,9,10)).run().map{it.memberId})
+        assertEquals(LocalDate.of(2026,9,10),date("SELECT due_date FROM group_charges"))
+    }
+
+    @Test fun `the group policy defaults to the current behaviour and rejects unknown values`(){
+        val f=fixture()
+        assertEquals("GROUP_DUE_DATE",string("SELECT monthly_late_join_policy FROM access_groups WHERE id='${f.group}'"))
+        kotlin.test.assertFailsWith<java.sql.SQLException>{execute("UPDATE access_groups SET monthly_late_join_policy='PRORATA' WHERE id='${f.group}'")}
+    }
+
+    @Test fun `mensalista since is stamped when joining as mensalista or becoming one`(){
+        val f=fixture();val joiner=user("joiner")
+        fun since(user:UUID)=query("SELECT mensalista_since IS NOT NULL AND mensalista_since=(now() AT TIME ZONE 'America/Sao_Paulo')::date FROM group_memberships WHERE group_id='${f.group}' AND user_id='$user'"){it.getBoolean(1)}
+        fun isNull(user:UUID)=query("SELECT mensalista_since IS NULL FROM group_memberships WHERE group_id='${f.group}' AND user_id='$user'"){it.getBoolean(1)}
+        assertTrue(isNull(f.member),"avulso nao tem data")
+        execute("INSERT INTO group_memberships (group_id,user_id,role,membership_type,created_at,updated_at) VALUES ('${f.group}','$joiner','ATHLETE','MENSALISTA',now(),now())")
+        assertTrue(since(joiner),"entrar ja como mensalista")
+        execute("UPDATE group_memberships SET membership_type='MENSALISTA' WHERE group_id='${f.group}' AND user_id='${f.member}'")
+        assertTrue(since(f.member),"virar mensalista")
+    }
+
+    @Test fun `mensalista since is kept while nothing changes and reset when the person comes back or stops`(){
+        val f=fixture();monthly(f.group,f.member,feeCents=null,dueDay=null)
+        fun setSince(){execute("UPDATE group_memberships SET mensalista_since='2026-01-05' WHERE group_id='${f.group}' AND user_id='${f.member}'")}
+        fun since()=date("SELECT mensalista_since FROM group_memberships WHERE group_id='${f.group}' AND user_id='${f.member}'")
+        setSince()
+        execute("UPDATE group_memberships SET membership_type='MENSALISTA',monthly_fee_cents=100 WHERE group_id='${f.group}' AND user_id='${f.member}'")
+        assertEquals(LocalDate.of(2026,1,5),since(),"continuar mensalista nao muda a data")
+        execute("UPDATE group_memberships SET active=false WHERE group_id='${f.group}' AND user_id='${f.member}'")
+        assertEquals(LocalDate.of(2026,1,5),since(),"sair nao muda a data")
+        execute("UPDATE group_memberships SET active=true WHERE group_id='${f.group}' AND user_id='${f.member}'")
+        assertTrue(since().isAfter(LocalDate.of(2026,1,5)),"voltar recomeca a contagem")
+        execute("UPDATE group_memberships SET membership_type='AVULSO' WHERE group_id='${f.group}' AND user_id='${f.member}'")
+        assertTrue(query("SELECT mensalista_since IS NULL FROM group_memberships WHERE group_id='${f.group}' AND user_id='${f.member}'"){it.getBoolean(1)})
+    }
+
     private fun schedule(today:LocalDate=TODAY,onSkipped:(MonthlyDueMembership,String)->Unit={_,_->}):MonthlyChargeSchedule{
         val repository=JdbcChargeTransactionRepository(dataSource)
         return MonthlyChargeSchedule(repository,ChargeTransactions(JdbcTransactionRunner(dataSource),repository){NOW},{today},onSkipped)

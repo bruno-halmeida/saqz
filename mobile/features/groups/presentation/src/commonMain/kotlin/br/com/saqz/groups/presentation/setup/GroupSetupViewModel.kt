@@ -6,6 +6,8 @@ import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.athlete.AthleteGateway
+import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileGateway
@@ -24,10 +26,12 @@ import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupTimeZone
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.details.hasMensalista
 import br.com.saqz.groups.presentation.place.VenueSearch
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
@@ -42,6 +46,8 @@ class GroupSetupViewModel(
     private val timeZonePort: GroupSystemTimeZonePort,
     private val trialAccess: GroupTrialAccessPort? = null,
     placesGateway: PlacesGateway? = null,
+    // Só para saber se o grupo cobra mensalidade por membro (ver `loadRosterHasMensalista`).
+    private val athleteGateway: AthleteGateway? = null,
 ) : MviViewModel<GroupSetupState, GroupSetupIntent, GroupSetupEffect>(
     initialState.withSavedText(savedState),
 ) {
@@ -118,6 +124,10 @@ class GroupSetupViewModel(
                 onGameConfigChange { copy(promotionMode = intent.value) }
             is GroupSetupIntent.ToggleAutoConfirm ->
                 onGameConfigChange { copy(autoConfirmEnabled = intent.value) }
+            is GroupSetupIntent.SelectMonthlyLateJoinPolicy -> {
+                onFormChange { copy(monthlyLateJoinPolicy = intent.value) }
+                savedState[KeyMonthlyLateJoinPolicy] = intent.value.name
+            }
             is GroupSetupIntent.SelectDuration -> onDurationChange(intent.minutes)
             is GroupSetupIntent.ToggleRecurring -> onRecurringChange(intent.value)
             is GroupSetupIntent.OpenSheet -> onOpenSheet(intent.sheet)
@@ -148,7 +158,7 @@ class GroupSetupViewModel(
     private fun load() {
         val mode = state.value.mode as? GroupSetupMode.Edit ?: return
         val generation = ++loadGeneration
-        update { it.copy(isLoading = true, gatewayError = null, saveFailed = false) }
+        update { it.copy(isLoading = true, gatewayError = null, saveFailed = false, rosterHasMensalista = false) }
         viewModelScope.launch {
             when (val result = profileGateway.readProfile(GroupId(mode.groupId))) {
                 is SaqzResult.Failure -> showFailure(generation, result.error.toUiError())
@@ -173,9 +183,27 @@ class GroupSetupViewModel(
                             pixLabel = group.profile?.pixLabel,
                         ).withSavedText(savedState)
                     }
+                    if (group.needsRosterToShowMonthlyPolicy()) {
+                        loadRosterHasMensalista(generation, GroupId(mode.groupId))
+                    }
                 }
             }
         }
+    }
+
+    /**
+     * Na prática a mensalidade é definida por membro, no editor de membro, e o grupo quase nunca tem valor
+     * padrão. Por isso o seletor da política de quem vira mensalista depois do vencimento segue a regra do
+     * "Mensalistas" da checklist da Início: o grupo cobra mensalidade se tem valor padrão **ou** algum
+     * mensalista com valor próprio (`hasMensalista`). Roda depois de o formulário aparecer e só quando pode
+     * mudar o resultado; falha cala, como na Início, e o seletor fica escondido.
+     */
+    private suspend fun loadRosterHasMensalista(generation: Int, groupId: GroupId) {
+        val gateway = athleteGateway ?: return
+        val result = gateway.roster(groupId, AthleteRosterFilter())
+        if (generation != loadGeneration) return
+        val roster = (result as? SaqzResult.Success)?.value ?: return
+        update { it.copy(rosterHasMensalista = roster.hasMensalista()) }
     }
 
     private fun onSubmit() {
@@ -435,6 +463,12 @@ private fun GroupSetupForm.withSavedText(handle: SavedStateHandle): GroupSetupFo
     val venueAddress = handle.get<String>(KeyVenueAddress)
     val promotionMode = handle.get<String>(KeyPromotionMode)
         ?.let { runCatching { PromotionMode.valueOf(it) }.getOrNull() }
+    // Só restaura se o backend mandou o campo: sem ele a tela não mostra o seletor nem envia nada.
+    val lateJoinPolicy = monthlyLateJoinPolicy?.let {
+        handle.get<String>(KeyMonthlyLateJoinPolicy)
+            ?.let { saved -> MonthlyLateJoinPolicy.entries.firstOrNull { it.name == saved } }
+            ?: it
+    }
     val venue = when {
         venueName == null && venueAddress == null -> defaultVenue
         else -> (defaultVenue ?: EmptyVenue).copy(
@@ -449,6 +483,7 @@ private fun GroupSetupForm.withSavedText(handle: SavedStateHandle): GroupSetupFo
         defaultVenue = venue,
         mensalistaPriority = handle.get<Boolean>(KeyMensalistaPriority) ?: this.mensalistaPriority,
         promotionMode = promotionMode ?: this.promotionMode,
+        monthlyLateJoinPolicy = lateJoinPolicy,
         autoConfirmEnabled = handle.get<Boolean>(KeyAutoConfirm) ?: this.autoConfirmEnabled,
     )
 }
@@ -490,6 +525,9 @@ private fun GroupSetupForm.toDomain(
     defaultGameFeeCents = defaultGameFeeCents,
     monthlyFeeCents = monthlyFeeCents,
     monthlyDueDay = monthlyDueDay,
+    monthlyLateJoinPolicy = monthlyLateJoinPolicy?.let {
+        br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy.valueOf(it.name)
+    },
     mensalistaPriority = mensalistaPriority,
     promotionMode = br.com.saqz.groups.domain.group.PromotionMode.valueOf(promotionMode.name),
     autoConfirmEnabled = autoConfirmEnabled,
@@ -516,10 +554,20 @@ private fun br.com.saqz.groups.domain.group.Group.toForm() = GroupSetupForm(
     defaultGameFeeCents = financeDefaults?.defaultGameFeeCents,
     monthlyFeeCents = financeDefaults?.monthlyFeeCents,
     monthlyDueDay = financeDefaults?.monthlyDueDay,
+    monthlyLateJoinPolicy = financeDefaults?.monthlyLateJoinPolicy?.let { MonthlyLateJoinPolicy.valueOf(it.name) },
     mensalistaPriority = gameConfig.mensalistaPriority,
     promotionMode = PromotionMode.valueOf(gameConfig.promotionMode.name),
     autoConfirmEnabled = gameConfig.autoConfirmEnabled,
 )
+
+/**
+ * Só o gestor recebe a política (`financeDefaults`), e com valor padrão do grupo o seletor já aparece sem
+ * olhar os membros: buscar o roster só adianta quando o grupo tem a política e não tem o valor padrão.
+ */
+private fun br.com.saqz.groups.domain.group.Group.needsRosterToShowMonthlyPolicy(): Boolean {
+    val finance = financeDefaults ?: return false
+    return role != GroupRole.ATHLETE && finance.monthlyLateJoinPolicy != null && finance.monthlyFeeCents == null
+}
 
 private fun GroupTimeZone.toDomain() = DomainGroupTimeZone(id)
 
@@ -546,4 +594,5 @@ private const val KeyVenueAddress = "group-setup-venue-address"
 private const val KeyMensalistaPriority = "group-setup-mensalista-priority"
 private const val KeyPromotionMode = "group-setup-promotion-mode"
 private const val KeyAutoConfirm = "group-setup-auto-confirm"
+private const val KeyMonthlyLateJoinPolicy = "group-setup-monthly-late-join-policy"
 private const val KeyCreationCommand = "group-setup-create-command-key"

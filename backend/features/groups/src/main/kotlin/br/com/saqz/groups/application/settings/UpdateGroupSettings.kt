@@ -72,6 +72,7 @@ class UpdateGroupSettings(
                         defaultVenueId = input.defaultVenueId,
                         regularSlotIds = input.regularSlotIds,
                         entryRequiresApproval = input.entryRequiresApproval,
+                        monthlyLateJoinPolicy = input.monthlyLateJoinPolicy,
                     ),
                 )
             ) {

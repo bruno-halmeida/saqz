@@ -8,6 +8,7 @@ import br.com.saqz.groups.domain.group.CourtPlayStyle
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy
 import br.com.saqz.groups.domain.group.PromotionMode
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -80,6 +81,7 @@ data class GroupFinanceDefaultsReadModel(
     val defaultGameFeeCents: Long?,
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
+    val monthlyLateJoinPolicy: MonthlyLateJoinPolicy = MonthlyLateJoinPolicy.GROUP_DUE_DATE,
 )
 
 data class GroupGameConfigReadModel(
