@@ -42,6 +42,7 @@ enum class GameSideEffect {
     ATTENDANCE_FROZEN,
     PENDING_CHARGES_CANCELLED,
     FINANCE_REVIEW_MARKED,
+    PARTICIPANTS_NOTIFIED_OF_CANCELLATION,
 }
 
 fun interface GameSideEffectPort {
@@ -205,6 +206,7 @@ private fun GameMutation.effects(): Set<GameSideEffect> = when (this) {
         GameSideEffect.ATTENDANCE_FROZEN,
         GameSideEffect.PENDING_CHARGES_CANCELLED,
         GameSideEffect.FINANCE_REVIEW_MARKED,
+        GameSideEffect.PARTICIPANTS_NOTIFIED_OF_CANCELLATION,
     )
     GameMutation.COMPLETE -> setOf(GameSideEffect.ATTENDANCE_FROZEN)
     GameMutation.EDIT -> error("edit effects are applied by EditGame")

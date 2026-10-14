@@ -52,7 +52,9 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
         """).param("id", id).query { rs, _ ->
             val channel = rs.getString("channel")
             val body = when (channel) {
-                "NOTICE" -> "Você recebeu um aviso do grupo. Abra o app para conferir."
+                // Aviso de jogo cancelado nasce no canal NOTICE com o jogo vinculado e vai com o texto; o mural não.
+                "NOTICE" -> if (rs.getObject("game_id") != null) rs.getString("body")
+                    else "Você recebeu um aviso do grupo. Abra o app para conferir."
                 "CHAT" -> "Você recebeu uma mensagem no grupo. Abra o app para conferir."
                 "REMINDER" ->
                     if (rs.getBoolean("deadline_passed")) "Lista do jogo atualizada. Abra o app para conferir."

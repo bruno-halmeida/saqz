@@ -42,6 +42,20 @@ class AttendanceConcurrencySensorIntegrationTest {
     @Test fun `sensor cancellation race freezes final history and reconciles charge`() { val f = fixture(2); val charges = ChargeTransactions(JdbcTransactionRunner(dataSource), JdbcChargeTransactionRepository(dataSource)) { now() }; val lifecycle = ChangeGameLifecycle(JdbcTransactionRunner(dataSource), JdbcGameOccurrenceRepository(dataSource), br.com.saqz.groups.application.finance.charge.GameFinanceSideEffects(charges)); race(listOf({ lifecycle.execute(f.owner, f.group, f.game, 1, GameMutation.CANCEL) }, { f.responses.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM) })); assertEquals("CANCELLED", string("SELECT status FROM games")); assertEquals(count("game_attendance"), count("attendance_events")); assertEquals(0, int("SELECT count(*) FROM group_charges WHERE status='PENDING'")); assertEquals(count("group_charges") * 2, count("group_charge_events")) }
     @Test fun `sensor competing rollback consumes no spot sequence charge or audit`() { val f = fixture(2); val failingMember = f.member; val successful = member(f.group, "successful"); val real = chargePort(); val failingCharges = AttendanceChargePort { aggregate, actor -> real.confirmed(aggregate, actor); error("injected") }; val failing = RespondAttendance(JdbcTransactionRunner(dataSource), JdbcAttendanceCommandRepository(dataSource), failingCharges, { now() }); val barrier = CyclicBarrier(3); val executor = Executors.newFixedThreadPool(2); try { val failed = executor.submit { barrier.await(); assertFailsWith<IllegalStateException> { failing.execute(failingMember, f.group, f.game, intent = AttendanceIntent.CONFIRM) } }; val passed = executor.submit { barrier.await(); f.responses.execute(successful, f.group, f.game, intent = AttendanceIntent.CONFIRM) }; barrier.await(); failed.get(); passed.get() } finally { executor.shutdownNow() }; assertEquals(1, countStatus("CONFIRMED")); assertEquals("CONFIRMED", status(successful)); assertEquals(0, int("SELECT count(*) FROM game_attendance WHERE member_user_id='$failingMember'")); assertEquals(1, count("attendance_events")); assertEquals(1, count("group_charges")) }
 
+    @Test fun `before the deadline a withdrawal promotes the waiting mensalista and leaves the earlier avulso waiting`() {
+        val f = fullWithWaiter(waiters = 2)
+        execute("UPDATE group_memberships SET membership_type='AVULSO' WHERE user_id='${f.waiters[0]}'")
+        f.responses.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)
+        assertEquals("WAITLISTED", status(f.waiters[0])); assertEquals("CONFIRMED", status(f.waiters[1]))
+    }
+
+    @Test fun `before the deadline a withdrawal with only avulsos waiting promotes nobody`() {
+        val f = fullWithWaiter(waiters = 1)
+        execute("UPDATE group_memberships SET membership_type='AVULSO' WHERE user_id='${f.waiters[0]}'")
+        f.responses.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)
+        assertEquals("WAITLISTED", status(f.waiters[0]))
+    }
+
     private fun race(commands: List<() -> Any>) {
         val barrier = CyclicBarrier(commands.size + 1); val executor = Executors.newFixedThreadPool(commands.size)
         try { val futures = commands.map { command -> executor.submit<Any> { barrier.await(); command() } }; barrier.await(); futures.forEach { it.get() } } finally { executor.shutdownNow() }

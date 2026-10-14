@@ -2,7 +2,7 @@
 <resources>
     <string name="reports_title">Relatórios</string>
     <string name="reports_row_meta">Presença, financeiro e CSV</string>
-    <string name="reports_row_meta_locked">Plano Ilimitado</string>
+    <string name="reports_row_meta_locked">Plano Ilimitado · Ver planos</string>
     <string name="reports_period_current">Este mês</string>
     <string name="reports_period_previous">Mês passado</string>
     <string name="reports_period_year">Ano</string>
@@ -15,6 +15,7 @@
     <string name="reports_most_present">Quem mais foi</string>
     <string name="reports_most_declined">Quem mais recusou</string>
     <string name="reports_never_responded">Nunca responderam</string>
+    <string name="reports_attendance_basis">Conta só os jogos que já aconteceram no período. A taxa de confirmação é de quem confirmou entre os membros do grupo em cada jogo, sem contar a lista de espera.</string>
     <string name="reports_none">Ninguém por aqui ainda.</string>
     <string name="reports_games_one">1 jogo</string>
     <string name="reports_games_many">%1$d jogos</string>

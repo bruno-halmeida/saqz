@@ -93,7 +93,9 @@ class GroupReportEndpointIntegrationTest {
 
         val export = mapper.readTree(request("GET", "/api/groups/$group/reports/export?kind=LEDGER").body())
         assertEquals("saqz-lancamentos-2026-09-01-2026-09-30.csv", export["fileName"].stringValue())
-        assertTrue(export["csv"].stringValue().contains("05/09/2026;Entrada;Racha recebido;RACHA;;20,00"))
+        assertTrue(export["csv"].stringValue().contains("05/09/2026;Entrada;Racha recebido;Racha;;20,00"))
+        assertEquals(400, request("GET", "/api/groups/$group/reports/export").statusCode())
+        assertEquals(400, request("GET", "/api/groups/$group/reports/export?kind=NOPE").statusCode())
         val attendance = mapper.readTree(request("GET", "/api/groups/$group/reports/export?kind=ATTENDANCE").body())
         assertEquals("saqz-presenca-2026-09-01-2026-09-30.csv", attendance["fileName"].stringValue())
     }

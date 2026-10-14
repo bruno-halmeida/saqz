@@ -181,7 +181,8 @@ class JdbcGroupReportRepository(dataSource: DataSource) : GroupReportRepository 
                            WHEN 'MONTHLY' THEN 'Mensalidade · ' || COALESCE(charges.member_display_name, '')
                            ELSE 'Cobrança · ' || COALESCE(charges.member_display_name, '')
                        END AS title,
-                       charges.kind::text AS category, charges.paid_method::text AS paid_method,
+                       CASE charges.kind::text WHEN 'MONTHLY' THEN 'Mensalidade' ELSE 'Jogo' END AS category,
+                       charges.paid_method::text AS paid_method,
                        charges.amount_cents
                 FROM paid_events paid
                 JOIN group_charges charges ON charges.id = paid.charge_id
@@ -189,7 +190,11 @@ class JdbcGroupReportRepository(dataSource: DataSource) : GroupReportRepository 
                 UNION ALL
                 SELECT expenses.expense_date::timestamp AT TIME ZONE groups.time_zone AS occurred_at,
                        expenses.direction::text, 'EXPENSE', expenses.description,
-                       expenses.category::text, NULL::text, expenses.amount_cents
+                       CASE expenses.category::text
+                           WHEN 'VENUE' THEN 'Quadra' WHEN 'EQUIPMENT' THEN 'Material'
+                           WHEN 'REFEREE' THEN 'Arbitragem' WHEN 'RACHA' THEN 'Racha'
+                           ELSE COALESCE(expenses.custom_category, 'Outros')
+                       END, NULL::text, expenses.amount_cents
                 FROM group_expenses expenses
                 JOIN access_groups groups ON groups.id = expenses.group_id AND groups.deleted_at IS NULL
                 WHERE expenses.group_id = :group AND expenses.status = 'ACTIVE'

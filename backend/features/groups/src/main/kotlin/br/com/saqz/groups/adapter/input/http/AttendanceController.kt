@@ -1,5 +1,9 @@
 package br.com.saqz.groups.adapter.input.http
 
+import org.springframework.web.context.request.RequestAttributes
+import org.springframework.web.context.request.RequestContextHolder
+import br.com.saqz.sharedkernel.subscription.PLAN_READ_ONLY_REQUEST_ATTRIBUTE
+import br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException
 import br.com.saqz.groups.application.attendance.*
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.sharedkernel.RequestIdentity
@@ -125,6 +129,7 @@ class AttendanceController(
         @PathVariable gameId: String,
         @RequestBody request: AttendanceSelfRequest,
     ): ResponseEntity<AttendanceMutationResponse> {
+        if (planPaused() && request.intent != AttendanceIntent.DECLINE.name) throw SubscriptionRequiredException()
         val requestId = required(request.requestId, "requestId")
         val actor = actors.resolve(identity)
         return mutation(
@@ -255,6 +260,8 @@ class AttendanceController(
 
     private fun detail(actor: UUID, group: UUID, game: UUID): AttendanceDetailResponse =
         details.find(actor, group, game)?.response() ?: throw GameNotFoundException()
+    private fun planPaused(): Boolean =
+        RequestContextHolder.getRequestAttributes()?.getAttribute(PLAN_READ_ONLY_REQUEST_ATTRIBUTE, RequestAttributes.SCOPE_REQUEST) == true
     private fun intent(value: String?): AttendanceIntent = value
         ?.let { runCatching { AttendanceIntent.valueOf(it) }.getOrNull() }
         ?.takeUnless { it == AttendanceIntent.PROMOTE }

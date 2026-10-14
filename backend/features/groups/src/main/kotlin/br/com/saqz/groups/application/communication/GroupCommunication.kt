@@ -92,6 +92,11 @@ interface GroupCommunicationRepository {
     fun messages(viewer: UUID, groupId: UUID, channel: MessageChannel, before: Long?): List<GroupMessage>
     fun findRequest(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID): GroupMessage?
     fun publish(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID, body: String, gameId: UUID?): GroupMessage
+    /**
+     * Aviso de jogo cancelado (canal NOTICE, com o jogo vinculado): vai para a central e o push de quem estava
+     * confirmado ou na espera, menos quem cancelou, e o trigger da fila leva o texto ao grupo do WhatsApp vinculado.
+     */
+    fun publishGameCancelled(groupId: UUID, actor: UUID, gameId: UUID, body: String): GroupMessage
     fun reminderGame(groupId: UUID, gameId: UUID): ReminderGame?
     fun reminderRoster(groupId: UUID, gameId: UUID): ReminderRoster
     /** Próximo jogo publicado de cada grupo com início no futuro, mesmo com o prazo vencido: o lembrete de 3 h. */

@@ -6,6 +6,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceDenial
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceSource
 import br.com.saqz.groups.domain.attendance.AttendanceTransitionPolicy
+import br.com.saqz.groups.domain.group.PromotionMode
 import java.time.Instant
 import java.util.UUID
 
@@ -76,6 +77,25 @@ internal fun promoteAttendance(
     return AttendancePromotionResult.Success(promoted, event)
 }
 
+/**
+ * Próximo da espera a subir numa vaga liberada. Antes do prazo, em ordem de chegada e com a prioridade de
+ * mensalista ligada, só mensalista sobe (se houver na espera); os avulsos esperam o prazo, quando o job
+ * [SettleWaitlistAtDeadline] preenche o que sobrou em ordem. Depois do prazo, ou sem prioridade, é FIFO puro.
+ */
+internal fun AttendanceCommandRepository.nextToPromote(
+    groupId: UUID,
+    gameId: UUID,
+    promotionMode: PromotionMode,
+    mensalistaPriority: Boolean,
+    confirmationDeadline: Instant,
+    timestamp: Instant,
+): AttendanceRecord? =
+    if (promotionMode == PromotionMode.FIFO && mensalistaPriority && timestamp < confirmationDeadline) {
+        earliestWaitlistedMensalista(groupId, gameId)
+    } else {
+        earliestWaitlisted(groupId, gameId)
+    }
+
 /** Promove até [freed] pessoas da fila; [aggregate].confirmedCount é a contagem ANTES das saídas. */
 internal fun promoteFreed(
     aggregate: AttendanceAggregate,
@@ -89,7 +109,7 @@ internal fun promoteFreed(
     var confirmed = startConfirmed
     return buildList {
         repeat(freed) {
-            val waiting = repository.earliestWaitlisted(aggregate.groupId, aggregate.gameId) ?: return@buildList
+            val waiting = repository.nextToPromote(aggregate.groupId, aggregate.gameId, aggregate.promotionMode, aggregate.mensalistaPriority, aggregate.confirmationDeadline, timestamp) ?: return@buildList
             val target = aggregate.copy(memberId = waiting.memberId, guestSeq = waiting.guestSeq, guestName = null, current = waiting, confirmedCount = confirmed)
             val result = promoteAttendance(target, AttendanceSource.SYSTEM, reason = null, repository = repository, charges = charges, timestamp = timestamp, ids = ids)
             if (result !is AttendancePromotionResult.Success) return@buildList

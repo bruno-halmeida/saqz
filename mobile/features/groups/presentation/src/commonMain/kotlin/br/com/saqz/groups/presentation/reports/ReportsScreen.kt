@@ -36,6 +36,7 @@ import br.com.saqz.groups.presentation.statement.formatStatementCurrency
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.LocalOpenSubscriptionPlans
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.reports_attendance_basis
 import br.com.saqz.groups.resources.reports_attendance_title
 import br.com.saqz.groups.resources.reports_average
 import br.com.saqz.groups.resources.reports_average_value
@@ -76,6 +77,7 @@ object ReportsTags {
     const val Screen = "reports-screen"
     const val Period = "reports-period"
     const val Locked = "reports-locked"
+    const val AttendanceBasis = "reports-attendance-basis"
     const val Content = "reports-content"
     const val ExportAttendance = "reports-export-attendance"
     const val ExportLedger = "reports-export-ledger"
@@ -170,6 +172,12 @@ private fun AttendanceSection(attendance: AttendanceReport) {
             )
         }
     }
+    Text(
+        stringResource(Res.string.reports_attendance_basis),
+        style = SaqzTheme.typography.caption,
+        color = SaqzTheme.colors.textSecondary,
+        modifier = Modifier.testTag(ReportsTags.AttendanceBasis),
+    )
     RankingCard(stringResource(Res.string.reports_most_present), attendance.mostPresent)
     RankingCard(stringResource(Res.string.reports_most_declined), attendance.mostDeclined)
     RankingCard(stringResource(Res.string.reports_never_responded), attendance.neverResponded)

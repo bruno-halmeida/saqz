@@ -125,6 +125,7 @@ import br.com.saqz.groups.application.attendance.AttendanceDetailQuery
 import br.com.saqz.groups.application.attendance.AttendanceRosterQuery
 import br.com.saqz.groups.application.attendance.GameGuests
 import br.com.saqz.groups.application.attendance.RespondAttendance
+import br.com.saqz.groups.application.communication.GameCancelledNotice
 import br.com.saqz.groups.application.communication.GameOpenOnPublish
 import br.com.saqz.groups.application.communication.GroupCommunicationService
 import br.com.saqz.groups.application.game.ChangeGameLifecycle
@@ -962,7 +963,7 @@ class AccessSessionConfiguration {
         communication: GroupCommunicationService,
         @Value("\${saqz.notifications.reminder.enabled:false}") reminders: Boolean,
     ): GameSideEffectPort =
-        GameSideEffects(listOf(GameFinanceSideEffects(charges), autoConfirm, GameOpenOnPublish(communication, reminders)))
+        GameSideEffects(listOf(GameFinanceSideEffects(charges), autoConfirm, GameOpenOnPublish(communication, reminders), GameCancelledNotice(communication)))
     @Bean fun attendanceCharges(charges: ChargeTransactions) = AttendanceChargeAdapter(charges)
     @Bean fun respondAttendance(
         transaction: JdbcTransactionRunner,

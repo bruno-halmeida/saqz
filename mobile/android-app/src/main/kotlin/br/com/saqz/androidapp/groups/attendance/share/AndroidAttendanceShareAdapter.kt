@@ -71,7 +71,9 @@ internal class AndroidAttendanceShareAdapter(
         runCatching {
             directory.mkdirs()
             val safeName = fileName.replace(Regex("[^A-Za-z0-9._-]"), "_")
-            val file = File(directory, "${UUID.randomUUID()}-$safeName")
+            // Pasta própria por envio: o arquivo mantém o nome do servidor (saqz-presenca-...csv) sem colidir.
+            val folder = File(directory, UUID.randomUUID().toString()).also { it.mkdirs() }
+            val file = File(folder, safeName)
             file.writeText(content, Charsets.UTF_8)
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.group-photo-files", file)
             val send = Intent(Intent.ACTION_SEND)

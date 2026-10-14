@@ -262,7 +262,7 @@ class GroupShellBlocksTest {
             }
         }
 
-        onNodeWithText("Plano Ilimitado").assertExists()
+        onNodeWithText("Plano Ilimitado · Ver planos").assertExists()
         onNodeWithTag(GroupDetailsTags.ManageReports).performScrollTo().performClick()
 
         assertEquals(1, plansOpened)

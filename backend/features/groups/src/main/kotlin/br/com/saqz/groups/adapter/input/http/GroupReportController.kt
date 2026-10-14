@@ -80,9 +80,9 @@ class GroupReportController(
         @AuthenticationPrincipal identity: RequestIdentity,
         @PathVariable groupId: String,
         @RequestParam(required = false) period: String? = null,
-        @RequestParam kind: String,
+        @RequestParam(required = false) kind: String? = null,
     ): ReportExportResponse {
-        val parsedKind = runCatching { ReportExportKind.valueOf(kind) }.getOrElse { invalid("kind") }
+        val parsedKind = kind?.let { runCatching { ReportExportKind.valueOf(it) }.getOrNull() } ?: invalid("kind")
         val export = unwrap(service.export(actors.resolve(identity), uuid(groupId), period(period), parsedKind))
         return ReportExportResponse(export.fileName, export.csv)
     }

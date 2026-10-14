@@ -206,6 +206,7 @@ class GameCommandsTest {
                 GameSideEffect.ATTENDANCE_FROZEN,
                 GameSideEffect.PENDING_CHARGES_CANCELLED,
                 GameSideEffect.FINANCE_REVIEW_MARKED,
+                GameSideEffect.PARTICIPANTS_NOTIFIED_OF_CANCELLATION,
             ),
             fixture.effects.calls.single().second,
         )

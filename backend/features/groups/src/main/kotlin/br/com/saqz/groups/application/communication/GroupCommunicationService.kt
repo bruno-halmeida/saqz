@@ -6,6 +6,8 @@ import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.sharedkernel.moderation.ObjectionableText
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 
 class GroupCommunicationService(
@@ -119,6 +121,12 @@ class GroupCommunicationService(
         }
         candidates.size
     }
+
+    /** Cancelamento de jogo publicado: avisa confirmados e lista de espera (e o grupo do WhatsApp, se vinculado). */
+    fun announceGameCancelled(groupId: UUID, actor: UUID, gameId: UUID, localDate: LocalDate, localTime: LocalTime): GroupMessage =
+        transaction.inTransaction {
+            repository.publishGameCancelled(groupId, actor, gameId, gameCancelledBody(localDate, localTime))
+        }
 
     fun inbox(actor: UUID, before: Long?): CommunicationResult<CommunicationPage<GroupNotification>> =
         if (before != null && before <= 0) invalid()

@@ -97,7 +97,13 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
     }
 
     override fun earliestWaitlisted(groupId: UUID, gameId: UUID): AttendanceRecord? =
-        jdbc.sql(EARLIEST_WAITLISTED)
+        earliestWaitlisted(EARLIEST_WAITLISTED, groupId, gameId)
+
+    override fun earliestWaitlistedMensalista(groupId: UUID, gameId: UUID): AttendanceRecord? =
+        earliestWaitlisted(EARLIEST_WAITLISTED_MENSALISTA, groupId, gameId)
+
+    private fun earliestWaitlisted(sql: String, groupId: UUID, gameId: UUID): AttendanceRecord? =
+        jdbc.sql(sql)
             .param("group", groupId)
             .param("game", gameId)
             .query { rs, _ ->
@@ -582,6 +588,10 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             LIMIT 1
             FOR UPDATE OF attendance
         """
+        val EARLIEST_WAITLISTED_MENSALISTA = EARLIEST_WAITLISTED.replace(
+            "attendance.status='WAITLISTED'",
+            "attendance.status='WAITLISTED' AND membership.membership_type='MENSALISTA' AND attendance.guest_seq=0",
+        )
         val DETAIL = """
             SELECT g.capacity,g.version AS game_version,a.status AS own_status,a.waitlist_sequence,
                    a.responded_at,a.updated_at AS attendance_updated_at,a.version AS attendance_version,

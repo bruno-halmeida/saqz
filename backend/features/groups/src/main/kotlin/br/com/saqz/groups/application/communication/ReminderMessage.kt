@@ -14,6 +14,11 @@ fun gameSchedule(localDate: LocalDate, localTime: LocalTime): String =
     "${WEEKDAYS[localDate.dayOfWeek.value - 1]}, ${two(localDate.dayOfMonth)}/${two(localDate.monthValue)}" +
         " às ${two(localTime.hour)}:${two(localTime.minute)}"
 
+/** Aviso de cancelamento: "O jogo de quarta 14/10 às 20h30 foi cancelado." */
+fun gameCancelledBody(localDate: LocalDate, localTime: LocalTime): String =
+    "O jogo de ${WEEKDAYS[localDate.dayOfWeek.value - 1]} ${two(localDate.dayOfMonth)}/${two(localDate.monthValue)}" +
+        " às ${two(localTime.hour)}h${two(localTime.minute)} foi cancelado."
+
 /**
  * Corpo do aviso de jogo liberado: o toque diário por push para quem ainda não respondeu.
  * Mesmo cabeçalho do lembrete, sem as listas nominais.

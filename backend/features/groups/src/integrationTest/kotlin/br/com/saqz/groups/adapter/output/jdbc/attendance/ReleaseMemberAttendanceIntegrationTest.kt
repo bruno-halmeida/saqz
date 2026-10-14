@@ -36,6 +36,12 @@ class ReleaseMemberAttendanceIntegrationTest {
         assertEquals(0, int("SELECT count(*) FROM group_memberships WHERE user_id='${w.leaver}'"))
     }
 
+    @Test fun `leaving before the deadline with mensalista priority leaves a waiting avulso waiting`() {
+        val w = world(priority = true)
+        remove().leave(w.leaver, w.group)
+        assertEquals("WAITLISTED", status(w.game, w.waiting))
+    }
+
     @Test fun `organizer removal frees the spot and records the organizer as actor`() {
         val w = world()
         remove().execute(w.owner, w.group, w.leaver)
@@ -111,10 +117,11 @@ class ReleaseMemberAttendanceIntegrationTest {
     )
 
     /** Game with the leaver CONFIRMED (filling it) and one person WAITLISTED. */
-    private fun world(capacity: Int = 2): World {
+    private fun world(capacity: Int = 2, priority: Boolean = false): World {
         val owner = user("owner")
         val group = UUID.randomUUID()
         execute("INSERT INTO access_groups (id,owner_user_id,creation_key,name,time_zone,profile_status,modality,composition,created_at,updated_at) VALUES ('$group','$owner','${UUID.randomUUID()}','Grupo','America/Sao_Paulo','COMPLETE','COURT_VOLLEYBALL','MIXED',now(),now())")
+        execute("UPDATE access_groups SET mensalista_priority = $priority WHERE id = '$group'")
         val leaver = user("leaver"); membership(group, leaver)
         val waiting = user("waiting"); membership(group, waiting)
         val g = game(group, "PUBLISHED", "now() + interval '2 days'", 2, capacity)

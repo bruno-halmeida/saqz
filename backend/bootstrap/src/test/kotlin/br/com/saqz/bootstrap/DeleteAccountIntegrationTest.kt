@@ -165,6 +165,8 @@ class DeleteAccountIntegrationTest {
             SessionUpsert("waiting-subject", "waiting@example.test", true, AccessName.from("Waiting Person")),
         )
         val group = insertGroup(owner.user.id, "Future Group")
+        // Avulsos na espera só sobem no prazo quando a prioridade de mensalista está ligada; aqui ela fica desligada.
+        execute("UPDATE access_groups SET mensalista_priority = false WHERE id = '$group'")
         insertMembership(group, leaving.user.id, "ATHLETE")
         insertMembership(group, waiting.user.id, "ATHLETE")
         val future = insertFutureGame(group, 2)

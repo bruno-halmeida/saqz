@@ -53,6 +53,7 @@ class ReportsScreenTest {
         onNodeWithText("Jogos no período").assertExists()
         onNodeWithText("8,5 de 12 vagas").assertExists()
         onNodeWithText("80%").assertExists()
+        onNodeWithTag(ReportsTags.AttendanceBasis).assertExists()
         onNodeWithText("Ana Souza").assertExists()
         onAllNodesWithText("4 jogos").assertCountEquals(2)
         onNodeWithText("1 jogo").assertExists()

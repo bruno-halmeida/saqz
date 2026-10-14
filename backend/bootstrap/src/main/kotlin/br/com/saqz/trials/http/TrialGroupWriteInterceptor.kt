@@ -6,7 +6,7 @@ import br.com.saqz.sharedkernel.actor.AuthenticatedActorResolver
 import br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup
 import br.com.saqz.sharedkernel.subscription.OrganizerTrialAccessLookup
 import br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException
-import br.com.saqz.sharedkernel.subscription.TrialStatus
+import br.com.saqz.sharedkernel.subscription.PLAN_READ_ONLY_REQUEST_ATTRIBUTE
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.security.core.context.SecurityContextHolder
@@ -31,8 +31,13 @@ class TrialGroupWriteInterceptor(
         val actor = actors.resolve(identity).userId
         val owner = groups.ownerForMember(groupId, actor) ?: throw GroupNotFoundException()
         val access = trials.forOwner(owner)
-        val trialRoleChange = access.status == TrialStatus.ACTIVE && pattern == "/api/groups/{groupId}/memberships/{userId}/role"
-        if (access.readOnly || trialRoleChange) throw SubscriptionRequiredException()
-        return true
+        if (!access.readOnly) return true
+        // "Não vou" (and leaving the waitlist) must work with a paused plan so the athlete frees the spot; the
+        // controller reads the body and refuses every other intent.
+        if (request.method == "PUT" && pattern == "/api/groups/{groupId}/games/{gameId}/attendance") {
+            request.setAttribute(PLAN_READ_ONLY_REQUEST_ATTRIBUTE, true)
+            return true
+        }
+        throw SubscriptionRequiredException()
     }
 }

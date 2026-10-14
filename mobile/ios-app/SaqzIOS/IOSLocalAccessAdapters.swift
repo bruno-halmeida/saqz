@@ -233,7 +233,10 @@ final class IOSAttendanceShareAdapter: @preconcurrency NativeAttendanceSharePort
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let safeName = fileName.replacingOccurrences(of: "[^A-Za-z0-9._-]", with: "_", options: .regularExpression)
-            let url = directory.appendingPathComponent("\(UUID().uuidString)-\(safeName)")
+            // Pasta própria por envio: o arquivo mantém o nome do servidor sem colidir.
+            let folder = directory.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let url = folder.appendingPathComponent(safeName)
             try Data(content.utf8).write(to: url, options: [.atomic, .completeFileProtection])
             try present(items: [url])
             done(NativeAttendanceShareResultSuccess.shared)

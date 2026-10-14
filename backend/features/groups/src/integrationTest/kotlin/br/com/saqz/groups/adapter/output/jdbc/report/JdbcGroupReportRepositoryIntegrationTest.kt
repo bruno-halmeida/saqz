@@ -115,6 +115,25 @@ class JdbcGroupReportRepositoryIntegrationTest {
         assertEquals(14_000L, rows.filter { it.direction == "IN" }.sumOf { it.amountCents })
         assertEquals(30_000L, rows.filter { it.direction == "OUT" }.sumOf { it.amountCents })
         assertEquals("PIX", rows.single { it.type == "CHARGE" }.paidMethod)
+        assertEquals("Mensalidade", rows.single { it.type == "CHARGE" }.category)
+        assertEquals("Quadra", rows.single { it.title == "Aluguel" }.category)
+    }
+
+    @Test
+    fun `ledger shows portuguese labels and the custom category of other expenses`() {
+        val f = fixture()
+        execute(
+            """
+            INSERT INTO group_expenses (id, group_id, description, amount_cents, expense_date, category, custom_category, status, direction, created_by_user_id, changed_by_user_id, version, created_at, updated_at)
+            VALUES ('${UUID.randomUUID()}', '${f.group}', 'Carne', 8000, DATE '2026-08-18', 'OTHER', 'Churrasco', 'ACTIVE', 'OUT', '${f.owner}', '${f.owner}', 1, now(), now()),
+                   ('${UUID.randomUUID()}', '${f.group}', 'Bolas', 9000, DATE '2026-08-19', 'EQUIPMENT', NULL, 'ACTIVE', 'OUT', '${f.owner}', '${f.owner}', 1, now(), now())
+            """.trimIndent(),
+        )
+
+        val rows = repository().ledger(f.group, august)
+
+        assertEquals("Churrasco", rows.single { it.title == "Carne" }.category)
+        assertEquals("Material", rows.single { it.title == "Bolas" }.category)
     }
 
     @Test

@@ -76,6 +76,35 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         return true
     }
 
+    override fun publishGameCancelled(groupId: UUID, actor: UUID, gameId: UUID, body: String): GroupMessage {
+        val id = UUID.randomUUID()
+        val requestId = UUID.randomUUID()
+        jdbc.sql(
+            """
+            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, game_id)
+            SELECT :id, :group, :actor, display_name, 'NOTICE', :request, :body, :game FROM access_users WHERE id = :actor
+            """.trimIndent(),
+        ).param("id", id).param("group", groupId).param("actor", actor)
+            .param("request", requestId).param("body", body).param("game", gameId, Types.OTHER).update()
+        jdbc.sql(
+            """
+            INSERT INTO group_notifications (recipient_id, message_id)
+            SELECT membership.user_id, :message
+            FROM group_memberships membership
+            WHERE membership.group_id = :group AND membership.active AND membership.user_id <> :actor
+              AND EXISTS (
+                  SELECT 1 FROM game_attendance a
+                  WHERE a.group_id = :group AND a.game_id = :game AND a.member_user_id = membership.user_id
+                    AND a.guest_seq = 0 AND a.status IN ('CONFIRMED', 'WAITLISTED'))
+            """.trimIndent(),
+        ).param("message", id).param("group", groupId).param("actor", actor).param("game", gameId, Types.OTHER).update()
+        val recipients = jdbc.sql("SELECT count(*) FROM group_notifications WHERE message_id = :id AND in_app")
+            .param("id", id).query(Int::class.java).single()
+        jdbc.sql("UPDATE group_messages SET recipient_count = :count WHERE id = :id")
+            .param("count", recipients).param("id", id).update()
+        return checkNotNull(findRequest(groupId, actor, MessageChannel.NOTICE, requestId))
+    }
+
     private fun deliver(id: UUID, groupId: UUID, actor: UUID, channel: MessageChannel, gameId: UUID?) {
         // GAME_OPEN e a janela de presença não têm autor de verdade — o dono só assina o aviso do
         // sistema, e jogando como qualquer um também precisa recebê-los. Ver [firstGameOpenNotice].

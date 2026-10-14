@@ -58,7 +58,7 @@ class AdjustGameCapacity(
         var confirmedCount = aggregate.confirmedCount
         return buildList {
             repeat(spots) {
-                val waiting = repository.earliestWaitlisted(aggregate.groupId, aggregate.gameId) ?: return@buildList
+                val waiting = repository.nextToPromote(aggregate.groupId, aggregate.gameId, aggregate.promotionMode, aggregate.mensalistaPriority, aggregate.confirmationDeadline, timestamp) ?: return@buildList
                 when (val result = promoteAttendance(
                     aggregate.forMember(waiting).copy(capacity = targetCapacity, confirmedCount = confirmedCount),
                     AttendanceSource.SYSTEM,

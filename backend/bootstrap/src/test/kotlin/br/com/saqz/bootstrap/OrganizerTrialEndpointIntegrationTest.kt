@@ -298,18 +298,32 @@ class OrganizerTrialEndpointIntegrationTest {
     }
 
     @Test
-    fun `active trial cannot grant an additional administrator`() {
+    fun `active trial lets the owner promote and demote an administrator`() {
         val group = createGroup()
         val member = UUID.randomUUID().toString()
         request("GET", "/subscriptions/trial", actor = member)
         jdbc().sql("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at) SELECT :group,id,'ATHLETE',now(),now() FROM access_users WHERE firebase_subject=:subject")
             .param("group", group).param("subject", member).update()
         val user = jdbc().sql("SELECT id FROM access_users WHERE firebase_subject=:subject").param("subject", member).query(UUID::class.java).single()
-        val result = request("PUT", "/api/groups/$group/memberships/$user/role", """{"role":"ADMIN"}""")
-        assertEquals(403, result.statusCode())
-        assertEquals("SUBSCRIPTION_REQUIRED", mapper.readTree(result.body())["code"].stringValue())
-        assertEquals("ATHLETE", jdbc().sql("SELECT role::text FROM group_memberships WHERE group_id=:group AND user_id=:user")
-            .param("group", group).param("user", user).query(String::class.java).single())
+        fun role() = jdbc().sql("SELECT role::text FROM group_memberships WHERE group_id=:group AND user_id=:user")
+            .param("group", group).param("user", user).query(String::class.java).single()
+
+        assertEquals(200, request("PUT", "/api/groups/$group/memberships/$user/role", """{"role":"ADMIN"}""").statusCode())
+        assertEquals("ADMIN", role())
+        assertEquals(200, request("PUT", "/api/groups/$group/memberships/$user/role", """{"role":"ATHLETE"}""").statusCode())
+        assertEquals("ATHLETE", role())
+    }
+
+    @Test
+    fun `paused plan still accepts the not going answer but refuses going`() {
+        val group = createGroup()
+        val game = UUID.randomUUID()
+        clock.now = now.plus(Duration.ofDays(14))
+        val going = request("PUT", "/api/groups/$group/games/$game/attendance", """{"intent":"CONFIRM","requestId":"${UUID.randomUUID()}"}""")
+        assertEquals(403, going.statusCode())
+        assertEquals("SUBSCRIPTION_REQUIRED", mapper.readTree(going.body())["code"].stringValue())
+        val notGoing = request("PUT", "/api/groups/$group/games/$game/attendance", """{"intent":"DECLINE","requestId":"${UUID.randomUUID()}"}""")
+        assertEquals(404, notGoing.statusCode(), notGoing.body())
     }
 
     private fun jdbc() = JdbcClient.create(ds)
@@ -352,9 +366,9 @@ class OrganizerTrialEndpointIntegrationTest {
         val state = jdbc().sql("SELECT status::text FROM game_attendance WHERE game_id=:game").param("game", game).query(String::class.java).single()
         assertEquals("CONFIRMED", state)
         clock.now = now.plus(Duration.ofDays(14))
-        val declined = request("PUT", "/api/groups/$group/games/$game/attendance", """{"requestId":"${UUID.randomUUID()}","intent":"DECLINE"}""")
-        assertEquals(403, declined.statusCode(), declined.body())
-        assertEquals("SUBSCRIPTION_REQUIRED", mapper.readTree(declined.body())["code"].stringValue())
+        val going = request("PUT", "/api/groups/$group/games/$game/attendance", """{"requestId":"${UUID.randomUUID()}","intent":"CONFIRM"}""")
+        assertEquals(403, going.statusCode(), going.body())
+        assertEquals("SUBSCRIPTION_REQUIRED", mapper.readTree(going.body())["code"].stringValue())
         assertEquals("CONFIRMED", jdbc().sql("SELECT status::text FROM game_attendance WHERE game_id=:game").param("game", game).query(String::class.java).single())
         assertEquals(1, jdbc().sql("SELECT count(*)::int FROM attendance_events WHERE game_id=:game").param("game", game).query(Int::class.java).single())
         assertEquals(200, request("GET", "/api/groups/$group/games/$game/attendance").statusCode())
@@ -363,15 +377,19 @@ class OrganizerTrialEndpointIntegrationTest {
             SELECT id,'TITULAR','MONTHLY','PAST_DUE','customer',:sub,now()+interval '30 days',now(),now() FROM access_users WHERE firebase_subject=:subject""")
             .param("sub", UUID.randomUUID().toString()).param("subject", token).update()
         assertEquals("EXPIRED", mapper.readTree(request("GET", "/api/groups/$group/trial").body())["status"].stringValue())
-        assertEquals(403, request("PUT", "/api/groups/$group/games/$game/attendance", """{"requestId":"${UUID.randomUUID()}","intent":"DECLINE"}""").statusCode())
+        assertEquals(403, request("PUT", "/api/groups/$group/games/$game/attendance", """{"requestId":"${UUID.randomUUID()}","intent":"CONFIRM"}""").statusCode())
+        // "Não vou" frees the spot even with the plan paused.
+        val freed = request("PUT", "/api/groups/$group/games/$game/attendance", """{"requestId":"${UUID.randomUUID()}","intent":"DECLINE"}""")
+        assertEquals(200, freed.statusCode(), freed.body())
+        assertEquals("DECLINED", jdbc().sql("SELECT status::text FROM game_attendance WHERE game_id=:game").param("game", game).query(String::class.java).single())
         // Mirror the persisted state emitted by the existing verified PAYMENT_CONFIRMED processor.
         jdbc().sql("UPDATE subscriptions SET status='ACTIVE', first_confirmed_at=now() WHERE owner_user_id=(SELECT id FROM access_users WHERE firebase_subject=:subject)")
             .param("subject", token).update()
         assertEquals("SUBSCRIBED", mapper.readTree(request("GET", "/api/groups/$group/trial").body())["status"].stringValue())
-        val paidResponse = request("PUT", "/api/groups/$group/games/$game/attendance", """{"requestId":"${UUID.randomUUID()}","intent":"DECLINE"}""")
+        val paidResponse = request("PUT", "/api/groups/$group/games/$game/attendance", """{"requestId":"${UUID.randomUUID()}","intent":"CONFIRM"}""")
         assertEquals(200, paidResponse.statusCode(), paidResponse.body())
-        assertEquals("DECLINED", jdbc().sql("SELECT status::text FROM game_attendance WHERE game_id=:game").param("game", game).query(String::class.java).single())
-        assertEquals(2, jdbc().sql("SELECT count(*)::int FROM attendance_events WHERE game_id=:game").param("game", game).query(Int::class.java).single())
+        assertEquals("CONFIRMED", jdbc().sql("SELECT status::text FROM game_attendance WHERE game_id=:game").param("game", game).query(String::class.java).single())
+        assertEquals(3, jdbc().sql("SELECT count(*)::int FROM attendance_events WHERE game_id=:game").param("game", game).query(Int::class.java).single())
     }
 
     @Test
