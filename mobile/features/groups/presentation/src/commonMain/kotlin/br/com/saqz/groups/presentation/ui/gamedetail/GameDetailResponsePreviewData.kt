@@ -45,5 +45,11 @@ internal object GameDetailResponsePreviewData {
         header = GameDetailPreviewData.header.copy(confirmationOpen = false, responseOpen = false),
     )
     val memberStartedConfirmed: GameDetailState = memberStarted.copy(response = confirmed)
+
+    // Prazo vencido num backend que recusa a resposta tardia (v.0.0.17): o jogo não começou, e as respostas fecham.
+    val memberClosedByDeadline: GameDetailState = memberClosed.copy(
+        header = GameDetailPreviewData.header.copy(confirmationOpen = false, closedByDeadline = true),
+    )
+    val memberClosedByDeadlineConfirmed: GameDetailState = memberClosedByDeadline.copy(response = confirmed)
     val admin = GameDetailPreviewData.admin.copy(response = pending)
 }

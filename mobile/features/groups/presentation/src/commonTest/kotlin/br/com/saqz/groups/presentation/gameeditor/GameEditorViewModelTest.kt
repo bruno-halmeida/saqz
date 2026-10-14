@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.gameeditor
 import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.ValidationDetails
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameLifecycleAction
 import br.com.saqz.groups.domain.game.GameStatus
@@ -947,5 +948,97 @@ class GameEditorViewModelTest {
                 itemCount = 24,
             ),
         )
+    }
+
+    // ---- Backend v.0.0.17: quadra sem endereço volta como 400 VALIDATION_FAILED `venue.address` ----
+
+    /** Grupo sem quadra padrão: o formulário pede nome e endereço, e a pessoa só digita o nome. */
+    private fun groupWithoutVenue() = groupGateway { it.copy(profile = it.profile?.copy(defaultVenue = null)) }
+
+    private fun refusedBy(field: String) = SaqzResult.Failure(
+        GameError.Validation(DataError.Validation(ValidationDetails(emptyList(), mapOf(field to listOf("is required"))))),
+    )
+
+    @Test
+    fun `a venue without address refused by the old backend lands on the address field when creating`() = runTest {
+        val gateway = FakeGameGateway(createResult = refusedBy("venue.address"))
+        val vm = viewModel(gameGateway = gateway, groupGateway = groupWithoutVenue())
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.UpdateVenueName("Quadra do Parque"))
+        val formBefore = vm.state.value.form
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        val state = vm.state.value
+        assertEquals(setOf(GameEditorFieldError.VenueAddressRequired), state.validationErrors)
+        assertFalse(state.saveFailed, "o erro cai no campo, não no cartão genérico")
+        assertNull(state.error)
+        assertFalse(state.isSaving)
+        assertEquals(1, state.submitAttempts, "a tela rola até o campo")
+        assertEquals(formBefore, state.form, "o formulário fica como estava")
+        assertEquals(1, gateway.createCalls)
+    }
+
+    @Test
+    fun `a venue without address refused by the old backend lands on the address field when editing`() = runTest {
+        val gateway = FakeGameGateway(editResult = refusedBy("venue.address"))
+        val vm = viewModel(gameId = "game-1", gameGateway = gateway)
+        val formBefore = vm.state.value.form
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        val state = vm.state.value
+        assertEquals(1, gateway.editCalls)
+        assertEquals(setOf(GameEditorFieldError.VenueAddressRequired), state.validationErrors)
+        assertFalse(state.saveFailed)
+        assertFalse(state.isSaving)
+        assertEquals(formBefore, state.form)
+    }
+
+    @Test
+    fun `filling the address after the refusal clears the error and the next submit goes through`() = runTest {
+        val gateway = FakeGameGateway(createResult = refusedBy("venue.address"))
+        val vm = viewModel(gameGateway = gateway, groupGateway = groupWithoutVenue())
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.UpdateVenueName("Quadra do Parque"))
+        vm.onIntent(GameEditorIntent.Submit)
+        val refusedKey = gateway.lastCreateCommand?.requestId
+
+        gateway.createResult = SaqzResult.Success(sampleVersionedGame())
+        vm.onIntent(GameEditorIntent.UpdateVenueAddress("R. Canuto Abreu, s/n"))
+        assertTrue(vm.state.value.validationErrors.isEmpty())
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals("R. Canuto Abreu, s/n", gateway.lastCreateCommand?.venue?.address)
+        assertNotEquals(refusedKey, gateway.lastCreateCommand?.requestId)
+        assertTrue(vm.effects.first() is GameEditorEffect.Saved)
+    }
+
+    @Test
+    fun `a refused field the form cannot point at keeps the generic failure`() = runTest {
+        val gateway = FakeGameGateway(createResult = refusedBy("title"))
+        val vm = viewModel(gameGateway = gateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        val state = vm.state.value
+        assertTrue(state.saveFailed)
+        assertEquals(GroupUiError.Validation, state.error)
+        assertTrue(state.validationErrors.isEmpty())
+        assertEquals(0, state.submitAttempts)
+    }
+
+    @Test
+    fun `the current backend accepts a venue without address and nothing changes`() = runTest {
+        val gateway = FakeGameGateway()
+        val vm = viewModel(gameGateway = gateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertTrue(vm.state.value.validationErrors.isEmpty())
+        assertFalse(vm.state.value.saveFailed)
+        assertTrue(vm.effects.first() is GameEditorEffect.Saved)
     }
 }

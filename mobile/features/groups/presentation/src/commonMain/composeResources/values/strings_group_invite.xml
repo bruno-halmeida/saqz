@@ -6,6 +6,8 @@
     <string name="group_invite_link_title">Link do convite</string>
     <string name="group_invite_never_expires">Link não expira</string>
     <string name="group_invite_generate_code">Criar código</string>
+    <string name="group_invite_generate_link">Gerar link de convite</string>
+    <string name="group_invite_generate_link_note">O link anterior deixa de funcionar.</string>
     <string name="group_invite_rotate_code">Trocar código</string>
     <string name="group_invite_rotate_title">Trocar o código?</string>
     <string name="group_invite_rotate_body">Quem tem o código ou o link antigo não vai conseguir entrar.</string>

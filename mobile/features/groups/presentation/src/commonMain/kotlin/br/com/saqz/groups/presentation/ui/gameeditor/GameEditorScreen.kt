@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -32,7 +35,6 @@ import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzCardTone
-import br.com.saqz.designsystem.SaqzChoiceChip
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzSectionHeader
@@ -46,6 +48,7 @@ import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.place.PlaceSuggestion
+import br.com.saqz.groups.presentation.ui.components.GroupChoiceChipRow
 import br.com.saqz.groups.presentation.ui.components.VenueSearchField
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -63,6 +66,8 @@ import br.com.saqz.groups.presentation.gameeditor.recurrenceSlotFor
 import br.com.saqz.groups.presentation.game.longWeekdayResource
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
+import br.com.saqz.groups.presentation.ui.confirmationLeadLabel
+import br.com.saqz.groups.presentation.ui.durationLabel
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.game_capacity_below_confirmed
@@ -85,8 +90,10 @@ import br.com.saqz.groups.resources.game_editor_error_missing_title
 import br.com.saqz.groups.resources.game_editor_error_retry
 import br.com.saqz.groups.resources.game_editor_error_save_body
 import br.com.saqz.groups.resources.game_editor_error_save_title
+import br.com.saqz.groups.resources.game_editor_error_save_title_edit
 import br.com.saqz.groups.resources.game_editor_error_time
 import br.com.saqz.groups.resources.game_editor_error_venue_address
+import br.com.saqz.groups.resources.game_editor_error_venue_address_required
 import br.com.saqz.groups.resources.game_editor_error_venue_address_too_long
 import br.com.saqz.groups.resources.game_editor_error_venue_name
 import br.com.saqz.groups.resources.game_editor_error_venue_name_too_long
@@ -147,14 +154,6 @@ import br.com.saqz.groups.resources.game_editor_missing_item_venue_address
 import br.com.saqz.groups.resources.game_editor_missing_item_venue_name
 import br.com.saqz.groups.resources.game_editor_venue_label
 import br.com.saqz.groups.resources.game_editor_venue_name_hint
-import br.com.saqz.groups.resources.group_duration_one_hour
-import br.com.saqz.groups.resources.group_duration_one_hour_thirty
-import br.com.saqz.groups.resources.group_duration_two_hours
-import br.com.saqz.groups.resources.group_duration_two_hours_thirty
-import br.com.saqz.groups.resources.group_lead_six_hours
-import br.com.saqz.groups.resources.group_lead_three_hours
-import br.com.saqz.groups.resources.group_lead_twelve_hours
-import br.com.saqz.groups.resources.group_lead_twenty_four_hours
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.TimeZone
@@ -181,6 +180,8 @@ internal object GameEditorTags {
     const val RecurrenceFailure = "game-editor-recurrence-failure"
     const val VenueName = "game-editor-venue-name"
     const val VenueAddress = "game-editor-venue-address"
+    const val Duration = "game-editor-duration"
+    const val ConfirmationLead = "game-editor-confirmation-lead"
 }
 
 private val DurationOptions = listOf(60, 90, 120, 150)
@@ -196,6 +197,11 @@ internal fun GameEditorScreen(
 ) {
     val metrics = SaqzTheme.metrics
     val isEditing = state.versionToken != null
+    // Com o teclado aberto e as sugestões do Google na tela, o botão fixo sai da frente: o teclado já
+    // come metade da altura, e com o botão sobrava pouco mais que o campo, com a lista atrás dos dois.
+    // Fora desse caso (digitando o recado, por exemplo) o botão segue onde sempre esteve.
+    val keyboardOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val suggestionsOverKeyboard = keyboardOpen && state.venueSearch.suggestions.isNotEmpty()
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
         Column(modifier = Modifier.fillMaxSize().imePadding().testTag(GameEditorTags.Screen)) {
@@ -217,7 +223,7 @@ internal fun GameEditorScreen(
                     modifier = Modifier.weight(1f),
                 )
             }
-            if (!state.isLoading && !state.loadFailed) {
+            if (!state.isLoading && !state.loadFailed && !suggestionsOverKeyboard) {
                 SubmitButton(
                     isEditing = isEditing,
                     isSaving = state.isSaving,
@@ -303,6 +309,7 @@ private fun FormScroll(
         }
         if (state.saveFailed) {
             SaveFailureBanner(
+                isEditing = state.versionToken != null,
                 onRetry = { onIntent(GameEditorIntent.Submit) },
             )
         }
@@ -466,7 +473,7 @@ private fun ConflictBanner(onPickOther: () -> Unit, onOpenExisting: () -> Unit) 
 }
 
 @Composable
-private fun SaveFailureBanner(onRetry: () -> Unit) {
+private fun SaveFailureBanner(isEditing: Boolean, onRetry: () -> Unit) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     Column(
@@ -478,7 +485,10 @@ private fun SaveFailureBanner(onRetry: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
         Text(
-            stringResource(Res.string.game_editor_error_save_title),
+            // Numa edição o jogo já existe: "criar" seria o texto errado.
+            stringResource(
+                if (isEditing) Res.string.game_editor_error_save_title_edit else Res.string.game_editor_error_save_title,
+            ),
             style = SaqzTheme.typography.subtitle,
             color = colors.errorForeground,
         )
@@ -707,30 +717,23 @@ private fun PickerRow(
     }
 }
 
+/**
+ * Os chips quebram de linha em vez de dividir a largura em partes iguais: o texto do chip não quebra nem
+ * cede, e uma fatia igual de uma tela estreita (ou com fonte grande) o cortava ("24h ante"). É a mesma
+ * fileira que o grupo usa para as mesmas opções.
+ */
 @Composable
 private fun DurationChips(selected: Int, onSelect: (Int) -> Unit) {
     val metrics = SaqzTheme.metrics
-    val labels = listOf(
-        stringResource(Res.string.group_duration_one_hour),
-        stringResource(Res.string.group_duration_one_hour_thirty),
-        stringResource(Res.string.group_duration_two_hours),
-        stringResource(Res.string.group_duration_two_hours_thirty),
-    )
     Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
         SaqzSectionHeader(title = stringResource(Res.string.game_editor_duration_label))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
-        ) {
-            DurationOptions.forEachIndexed { index, minutes ->
-                SaqzChoiceChip(
-                    label = labels[index],
-                    selected = selected == minutes,
-                    onClick = { onSelect(minutes) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
+        GroupChoiceChipRow(
+            values = DurationOptions,
+            selectedValue = selected,
+            label = { durationLabel(it) },
+            onSelect = onSelect,
+            modifier = Modifier.fillMaxWidth().testTag(GameEditorTags.Duration),
+        )
     }
 }
 
@@ -754,6 +757,7 @@ private fun VenueFields(
         else -> null
     }
     val addressError = when {
+        GameEditorFieldError.VenueAddressRequired in errors -> stringResource(Res.string.game_editor_error_venue_address_required)
         GameEditorFieldError.VenueAddressTooShort in errors -> stringResource(Res.string.game_editor_error_venue_address)
         GameEditorFieldError.VenueAddressTooLong in errors -> stringResource(Res.string.game_editor_error_venue_address_too_long)
         else -> null
@@ -810,7 +814,8 @@ private class EditorScrollTargets {
     fun firstFor(errors: Set<GameEditorFieldError>): BringIntoViewRequester? = when {
         GameEditorFieldError.DateMissing in errors || GameEditorFieldError.TimeMissing in errors -> dateTime
         GameEditorFieldError.VenueNameMissing in errors || GameEditorFieldError.VenueNameTooLong in errors -> venueName
-        GameEditorFieldError.VenueAddressTooShort in errors ||
+        GameEditorFieldError.VenueAddressRequired in errors ||
+            GameEditorFieldError.VenueAddressTooShort in errors ||
             GameEditorFieldError.VenueAddressTooLong in errors -> venueAddress
         GameEditorFieldError.NotesInvalid in errors -> notes
         else -> null
@@ -826,7 +831,11 @@ private fun missingItems(errors: Set<GameEditorFieldError>): String {
         if (GameEditorFieldError.VenueNameMissing in errors || GameEditorFieldError.VenueNameTooLong in errors) {
             add(stringResource(Res.string.game_editor_missing_item_venue_name))
         }
-        if (GameEditorFieldError.VenueAddressTooShort in errors || GameEditorFieldError.VenueAddressTooLong in errors) {
+        if (
+            GameEditorFieldError.VenueAddressRequired in errors ||
+            GameEditorFieldError.VenueAddressTooShort in errors ||
+            GameEditorFieldError.VenueAddressTooLong in errors
+        ) {
             add(stringResource(Res.string.game_editor_missing_item_venue_address))
         }
         if (GameEditorFieldError.NotesInvalid in errors) add(stringResource(Res.string.game_editor_missing_item_notes))
@@ -841,30 +850,18 @@ private fun missingItems(errors: Set<GameEditorFieldError>): String {
 @Composable
 private fun ConfirmationLeadChips(selected: Int, onSelect: (Int) -> Unit) {
     val metrics = SaqzTheme.metrics
-    val labels = listOf(
-        stringResource(Res.string.group_lead_three_hours),
-        stringResource(Res.string.group_lead_six_hours),
-        stringResource(Res.string.group_lead_twelve_hours),
-        stringResource(Res.string.group_lead_twenty_four_hours),
-    )
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
     ) {
         SaqzSectionHeader(title = stringResource(Res.string.game_editor_confirmation_lead_label))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
-        ) {
-            LeadOptions.forEachIndexed { index, minutes ->
-                SaqzChoiceChip(
-                    label = labels[index],
-                    selected = selected == minutes,
-                    onClick = { onSelect(minutes) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
+        GroupChoiceChipRow(
+            values = LeadOptions,
+            selectedValue = selected,
+            label = { confirmationLeadLabel(it) },
+            onSelect = onSelect,
+            modifier = Modifier.fillMaxWidth().testTag(GameEditorTags.ConfirmationLead),
+        )
     }
 }
 

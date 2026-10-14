@@ -178,6 +178,21 @@ class KtorGroupMembershipGatewayTest {
     }
 
     @Test
+    fun `metadata from backend v0_0_17 is active but carries neither code nor link`() = runTest {
+        // O v.0.0.17 só devolve o link na hora em que ele é criado; a leitura seguinte vem sem ele.
+        val metadata = fixture {
+            respond(
+                """{"active":true,"createdAt":"2026-10-14T14:20:00Z","createdByName":"CV Organizador","revision":"4"}""",
+                headers = jsonHeaders(),
+            )
+        }.gateway.readInviteMetadata(GroupId(GROUP_ID)).success()
+
+        assertTrue(metadata.active)
+        assertEquals(null, metadata.code)
+        assertEquals(null, metadata.inviteUrl)
+    }
+
+    @Test
     fun `metadata from a server without short code keeps code and url empty`() = runTest {
         val metadata = fixture { inviteMetadata() }.gateway.readInviteMetadata(GroupId(GROUP_ID)).success()
 
@@ -262,6 +277,15 @@ class KtorGroupMembershipGatewayTest {
             DataError.Forbidden,
             fixture { problem(403, "ACCESS_FORBIDDEN") }
                 .gateway.listMemberships(GroupId(GROUP_ID)).dataError(),
+        )
+    }
+
+    @Test
+    fun `promoting during the trial on the old backend maps to the typed plan error`() = runTest {
+        // Backend v.0.0.17: `PUT .../memberships/{id}/role` responde 403 SUBSCRIPTION_REQUIRED com o teste ativo.
+        assertEquals(
+            DataError.SubscriptionRequired,
+            fixture { problem(403, "SUBSCRIPTION_REQUIRED") }.gateway.changeRole(change()).dataError(),
         )
     }
 

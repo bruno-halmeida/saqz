@@ -78,6 +78,13 @@ class GameDetailViewModel(
     private var groupPromotionMode: PromotionMode = PromotionMode.FIFO
 
     /**
+     * O servidor recusou a resposta por prazo vencido (`ATTENDANCE_DEADLINE_PASSED`, backend v.0.0.17). A
+     * recarga reconstrói o cabeçalho do zero; sem esta memória os botões voltariam a valer e o aviso do
+     * prazo voltaria a prometer a lista de espera, até o próximo toque recusado.
+     */
+    private var deadlineRefused = false
+
+    /**
      * Carga no ar. Só a recarga por baixo ([GameDetailIntent.Refresh]) é descartada por ela: o
      * primeiro `resume` do Root chega logo depois do `init { load() }`. `Retry` passa por cima.
      */
@@ -455,7 +462,7 @@ class GameDetailViewModel(
         val response = current.response
         if (!current.canRespond(intent)) return
         if (!startIsAhead()) {
-            closeConfirmation()
+            closeStarted()
             return
         }
         val loadAtStart = loadGeneration
@@ -494,20 +501,23 @@ class GameDetailViewModel(
                 }
                 is SaqzResult.Failure -> {
                     val paused = result.error.isPlanPaused()
+                    // Dois fechamentos: o jogo que começou ("Em andamento") e o prazo que o servidor não
+                    // perdoa. Nenhum é "tente de novo": a tela explica e os botões desabilitam.
+                    val started = result.error == AttendanceError.Frozen
+                    val deadline = result.error == AttendanceError.DeadlinePassed
                     update {
                         it.copy(
                             response = response.copy(
                                 responding = false,
-                                failed = !paused && result.error != AttendanceError.Frozen,
+                                failed = !paused && !started && !deadline,
                                 planPaused = paused,
                                 offline = result.error.isOffline(),
                             ),
                         )
                     }
                     if (result.error.isOffline()) responseRetry.schedule()
-                    if (result.error == AttendanceError.DeadlinePassed || result.error == AttendanceError.Frozen) {
-                        closeConfirmation()
-                    }
+                    if (started) closeStarted()
+                    if (deadline) closeByDeadline()
                 }
             }
         }
@@ -516,7 +526,7 @@ class GameDetailViewModel(
     /** Quem já está na fila só pode sair dela: um segundo "Vou" não muda nada no servidor. */
     private fun GameDetailState.canRespond(intent: AttendanceIntent): Boolean {
         val queuedAgain = response.status == AttendanceStatus.Waitlisted && intent == AttendanceIntent.Confirm
-        return response.visible && header?.responseOpen == true && !response.responding && !queuedAgain
+        return response.visible && header?.canRespond == true && !response.responding && !queuedAgain
     }
 
     /** O que a resposta aceita já traz: placar, vagas, a própria linha e o "Levar convidado" (só quem vai pode levar). */
@@ -530,12 +540,28 @@ class GameDetailViewModel(
         )
     }
 
-    /** Prazo vencido (ou jogo congelado): os botões desabilitam e o convidado fecha junto. */
-    private fun closeConfirmation() = update {
+    /** Jogo começado (ou congelado): os botões desabilitam, o selo vira "Em andamento" e o convidado fecha junto. */
+    private fun closeStarted() = update {
         it.copy(
             header = it.header?.copy(confirmationOpen = false, responseOpen = false),
             guest = it.guest.copy(enabled = false, hint = GameGuestHint.Closed),
         )
+    }
+
+    /**
+     * O servidor recusou a resposta por prazo vencido: os botões desabilitam e o convidado fecha junto, mas o
+     * jogo não começou. O selo segue "Prazo encerrado", e a tela diz que as confirmações encerraram.
+     */
+    private fun closeByDeadline() {
+        deadlineRefused = true
+        update {
+            it.copy(
+                header = it.header?.let { header ->
+                    header.copy(confirmationOpen = false, closedByDeadline = header.responseOpen)
+                },
+                guest = it.guest.copy(enabled = false, hint = GameGuestHint.Closed),
+            )
+        }
     }
 
     /** Re-checa o relógio: o `confirmationOpen` do cabeçalho é de quando a tela carregou. */
@@ -676,6 +702,8 @@ class GameDetailViewModel(
             "$date${it.hour.pad()}h${it.minute.pad()}"
         } ?: confirmationDeadline
         val venueLine = listOfNotNull(venue.name, venue.court).joinToString(" — ")
+        val responseOpen = status == GameStatus.Published &&
+            (runCatching { Instant.parse(startsAt) > Clock.System.now() }.getOrDefault(true))
         return GameDetailHeaderUi(
             statusTone = status.toTone(),
             confirmationDeadline = deadline,
@@ -687,10 +715,11 @@ class GameDetailViewModel(
             venue = venueLine.ifBlank { venue.name },
             durationMinutes = durationMinutes,
             availableSpots = availableSpots,
-            confirmationOpen = status == GameStatus.Published &&
+            // A palavra do servidor vale mais que o relógio do aparelho: prazo recusado é prazo vencido.
+            confirmationOpen = status == GameStatus.Published && !deadlineRefused &&
                 (deadlineLocal?.let { it.toInstant(zone) > Clock.System.now() } ?: true),
-            responseOpen = status == GameStatus.Published &&
-                (runCatching { Instant.parse(startsAt) > Clock.System.now() }.getOrDefault(true)),
+            responseOpen = responseOpen,
+            closedByDeadline = deadlineRefused && responseOpen,
         )
     }
     private fun AttendanceDetail.toAttendance() = GameDetailAttendanceUi(

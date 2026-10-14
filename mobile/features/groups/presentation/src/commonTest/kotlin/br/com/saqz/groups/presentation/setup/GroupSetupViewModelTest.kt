@@ -23,6 +23,7 @@ import br.com.saqz.groups.presentation.sampleGroup
 import br.com.saqz.groups.presentation.sampleVersionedGroup
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.ValidationDetails
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
@@ -222,6 +223,101 @@ class GroupSetupViewModelTest {
 
         assertTrue(!viewModel.state.value.isSaving)
         assertEquals(listOf(GroupSetupEffect.Saved), effects)
+    }
+
+    // ---- Backend v.0.0.17: quadra sem endereço volta como 400 VALIDATION_FAILED `defaultVenue.address` ----
+
+    private fun refusedBy(field: String) = GroupProfileError.Validation(
+        ValidationDetails(emptyList(), mapOf(field to listOf("is required"))),
+    )
+
+    private val venueWithoutAddress = GroupVenueForm(name = "Quadra do Parque", address = "")
+
+    @Test
+    fun `criar com quadra sem endereco recusada pelo backend antigo marca o campo e nao mostra o cartao generico`() =
+        runTest(mainDispatcher) {
+            val viewModel = viewModel(
+                form = completeForm.copy(defaultVenue = venueWithoutAddress),
+                profileGateway = FakeGroupProfileGateway(
+                    createResult = SaqzResult.Failure(refusedBy("defaultVenue.address")),
+                ),
+            )
+            val effects = collectEffects(viewModel)
+            val formBefore = viewModel.state.value.form
+
+            viewModel.onIntent(GroupSetupIntent.Submit)
+            runCurrent()
+
+            val state = viewModel.state.value
+            assertEquals(setOf(GroupSetupError.VenueAddressRequired), state.errors)
+            assertTrue(!state.saveFailed, "o erro cai no campo, não no cartão genérico")
+            assertNull(state.gatewayError)
+            assertTrue(!state.isSaving)
+            assertEquals(formBefore, state.form, "o formulário fica como estava")
+            assertTrue(effects.isEmpty())
+        }
+
+    @Test
+    fun `editar com quadra sem endereco recusada pelo backend antigo marca o campo e nao mostra o cartao generico`() =
+        runTest(mainDispatcher) {
+            val viewModel = viewModel(
+                mode = GroupSetupMode.Edit(groupId = "grp-1"),
+                profileGateway = FakeGroupProfileGateway(
+                    updateResult = SaqzResult.Failure(refusedBy("defaultVenue.address")),
+                ),
+            )
+            val effects = collectEffects(viewModel)
+            runCurrent()
+            val formBefore = viewModel.state.value.form
+
+            viewModel.onIntent(GroupSetupIntent.Submit)
+            runCurrent()
+
+            val state = viewModel.state.value
+            assertEquals(setOf(GroupSetupError.VenueAddressRequired), state.errors)
+            assertTrue(!state.saveFailed)
+            assertNull(state.gatewayError)
+            assertTrue(!state.isSaving)
+            assertEquals(formBefore, state.form)
+            assertTrue(effects.isEmpty())
+        }
+
+    @Test
+    fun `preencher o endereco depois da recusa limpa o erro e o proximo envio cria`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway(createResult = SaqzResult.Failure(refusedBy("defaultVenue.address")))
+        val viewModel = viewModel(
+            form = completeForm.copy(defaultVenue = venueWithoutAddress),
+            profileGateway = profileGateway,
+        )
+        val effects = collectEffects(viewModel)
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+        val refusedKey = profileGateway.lastCreateCommand?.commandKey
+
+        profileGateway.createResult = SaqzResult.Success(sampleGroup())
+        viewModel.onIntent(GroupSetupIntent.UpdateVenueAddress("R. Canuto Abreu, s/n"))
+        assertTrue(viewModel.state.value.errors.isEmpty())
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals("R. Canuto Abreu, s/n", profileGateway.lastCreateCommand?.form?.defaultVenue?.address)
+        assertTrue(refusedKey != profileGateway.lastCreateCommand?.commandKey)
+        assertEquals(listOf(GroupSetupEffect.Created(groupId = "group-1")), effects)
+    }
+
+    @Test
+    fun `campo recusado que o formulario nao sabe apontar segue como falha generica`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(
+            profileGateway = FakeGroupProfileGateway(createResult = SaqzResult.Failure(refusedBy("description"))),
+        )
+
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        val state = viewModel.state.value
+        assertTrue(state.saveFailed)
+        assertEquals(GroupUiError.Validation, state.gatewayError)
+        assertTrue(state.errors.isEmpty())
     }
 
     @Test

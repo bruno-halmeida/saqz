@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.ui.invite
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -96,5 +97,56 @@ class GroupInviteScreenTest {
         onNodeWithTag(GroupInviteTags.RotateConfirm).performClick()
 
         assertEquals(listOf(GroupInviteIntent.DismissRotate, GroupInviteIntent.ConfirmRotate), intents)
+    }
+
+    // ---- Backend v.0.0.17: o GET do convite não devolve o link nem o código ----
+
+    private val activeWithoutLink = loaded.copy(inviteStatus = InviteStatus.Active, inviteCode = null, inviteUrl = null)
+
+    @Test
+    fun `an invite reopened without link or code offers to generate a link and warns about the old one`() =
+        runComposeUiTest {
+            val intents = mutableListOf<GroupInviteIntent>()
+            setContent {
+                SaqzTheme { GroupInviteScreen(state = activeWithoutLink, onBack = {}, onIntent = intents::add) }
+            }
+
+            onNodeWithText("Gerar link de convite").assertExists()
+            onNodeWithText("O link anterior deixa de funcionar.").assertExists()
+            onNodeWithTag(GroupInviteTags.Rotate).assertDoesNotExist()
+            onNodeWithText("Trocar código").assertDoesNotExist()
+            onNodeWithTag(GroupInviteTags.Copy).assertDoesNotExist()
+            onNodeWithTag(GroupInviteTags.GenerateLink).performScrollTo().performClick()
+
+            assertEquals(listOf<GroupInviteIntent>(GroupInviteIntent.ConfirmRotate), intents)
+        }
+
+    @Test
+    fun `generating the link shows progress on the action and does not offer it twice`() = runComposeUiTest {
+        val intents = mutableListOf<GroupInviteIntent>()
+        setContent {
+            SaqzTheme {
+                GroupInviteScreen(
+                    state = activeWithoutLink.copy(isGenerating = true),
+                    onBack = {},
+                    onIntent = intents::add,
+                )
+            }
+        }
+
+        onNodeWithTag(GroupInviteTags.GenerateLink).performScrollTo().assertIsNotEnabled()
+        onNodeWithTag(GroupInviteTags.GenerateLink).performClick()
+
+        assertEquals(emptyList<GroupInviteIntent>(), intents)
+    }
+
+    @Test
+    fun `with the current backend the link comes back and the generate action never shows`() = runComposeUiTest {
+        setContent { SaqzTheme { GroupInviteScreen(state = active, onBack = {}, onIntent = {}) } }
+
+        onNodeWithTag(GroupInviteTags.GenerateLink).assertDoesNotExist()
+        onNodeWithText("Gerar link de convite").assertDoesNotExist()
+        onNodeWithText("O link anterior deixa de funcionar.").assertDoesNotExist()
+        onNodeWithTag(GroupInviteTags.Rotate).assertExists()
     }
 }

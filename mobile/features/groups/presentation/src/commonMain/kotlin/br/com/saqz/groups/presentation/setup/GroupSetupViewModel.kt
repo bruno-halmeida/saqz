@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
 import br.com.saqz.groups.domain.group.GroupGateway
+import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.domain.group.GroupProfileGateway
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupTrialAccessPort
@@ -243,7 +244,7 @@ class GroupSetupViewModel(
                     update { it.copy(isSaving = false, saveFailed = false, gatewayError = null) }
                     emit(GroupSetupEffect.Saved)
                 }
-                is SaqzResult.Failure -> showOperationFailure(result.error.toUiError())
+                is SaqzResult.Failure -> showSaveFailure(result.error)
             }
         }
     }
@@ -285,7 +286,7 @@ class GroupSetupViewModel(
                     SaqzAnalytics.event("group_created")
                     emit(GroupSetupEffect.Created(result.value.id.value))
                 }
-                is SaqzResult.Failure -> showOperationFailure(result.error.toUiError())
+                is SaqzResult.Failure -> showSaveFailure(result.error)
             }
         }
     }
@@ -304,6 +305,22 @@ class GroupSetupViewModel(
                 }
                 is SaqzResult.Failure -> showOperationFailure(result.error.toUiError())
             }
+        }
+    }
+
+    /**
+     * Falha ao gravar o grupo. Um campo que o servidor recusou e o formulário não barrou (o endereço da
+     * quadra no backend v.0.0.17) vira erro do próprio campo, com o formulário como estava; o resto cai
+     * no aviso genérico, ou na folha do plano.
+     */
+    private fun showSaveFailure(error: GroupProfileError) {
+        val fieldErrors = (error as? GroupProfileError.Validation)?.toSetupFieldErrors().orEmpty()
+        if (fieldErrors.isEmpty()) {
+            showOperationFailure(error.toUiError())
+            return
+        }
+        update {
+            it.copy(isLoading = false, isSaving = false, saveFailed = false, gatewayError = null, errors = fieldErrors)
         }
     }
 

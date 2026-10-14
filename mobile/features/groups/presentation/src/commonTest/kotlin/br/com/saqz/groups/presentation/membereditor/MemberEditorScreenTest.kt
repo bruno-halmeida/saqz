@@ -1,15 +1,20 @@
 package br.com.saqz.groups.presentation.membereditor
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.athlete.AthleteLevel
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.athlete.AthletePreferredSide
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.ui.LocalOpenSubscriptionPlans
+import br.com.saqz.groups.presentation.ui.SubscriptionRequiredTags
 import kotlin.test.Test
+import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class MemberEditorScreenTest {
@@ -62,5 +67,57 @@ class MemberEditorScreenTest {
         }
 
         onNodeWithTag(MemberEditorTags.Remove).assertDoesNotExist()
+    }
+
+    // ---- Backend v.0.0.17: promover durante o teste responde 403 SUBSCRIPTION_REQUIRED ----
+
+    @Test
+    fun `refused promotion opens the plan sheet that offers the plans`() = runComposeUiTest {
+        val intents = mutableListOf<MemberEditorIntent>()
+        var plansOpened = 0
+        setContent {
+            SaqzTheme {
+                CompositionLocalProvider(LocalOpenSubscriptionPlans provides { plansOpened++ }) {
+                    MemberEditorScreen(
+                        state = memberEditorPreviewState.copy(subscriptionRequired = true),
+                        onIntent = { intents += it },
+                        onBack = {},
+                    )
+                }
+            }
+        }
+
+        onNodeWithTag(SubscriptionRequiredTags.Dialog).assertExists()
+        onNodeWithText("Seu plano não está ativo").assertExists()
+        onNodeWithTag(SubscriptionRequiredTags.ViewPlans).performClick()
+        assertEquals(1, plansOpened)
+        assertEquals(listOf<MemberEditorIntent>(MemberEditorIntent.DismissSubscriptionRequired), intents)
+    }
+
+    @Test
+    fun `plan sheet after the trial ended says so and not now only closes it`() = runComposeUiTest {
+        val intents = mutableListOf<MemberEditorIntent>()
+        setContent {
+            SaqzTheme {
+                MemberEditorScreen(
+                    state = memberEditorPreviewState.copy(subscriptionRequired = true, trialEnded = true),
+                    onIntent = { intents += it },
+                    onBack = {},
+                )
+            }
+        }
+
+        onNodeWithText("Seu teste do Organizador terminou").assertExists()
+        onNodeWithTag(SubscriptionRequiredTags.NotNow).performClick()
+        assertEquals(listOf<MemberEditorIntent>(MemberEditorIntent.DismissSubscriptionRequired), intents)
+    }
+
+    @Test
+    fun `without a plan failure there is no plan sheet`() = runComposeUiTest {
+        setContent {
+            SaqzTheme { MemberEditorScreen(state = memberEditorPreviewState, onIntent = {}, onBack = {}) }
+        }
+
+        onNodeWithTag(SubscriptionRequiredTags.Dialog).assertDoesNotExist()
     }
 }

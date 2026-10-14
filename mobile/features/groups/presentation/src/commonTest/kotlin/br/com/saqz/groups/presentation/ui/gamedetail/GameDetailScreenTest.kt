@@ -266,6 +266,29 @@ class GameDetailScreenTest {
         onNodeWithTag(GameDetailAttendanceTags.NotGoing).assertIsNotEnabled()
     }
 
+    // ---- Backend v.0.0.17: depois do prazo o servidor recusa o "Vou"/"Não vou" ----
+
+    @Test
+    fun `a deadline refused by the server closes the answers and the badge stays deadline closed`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberClosedByDeadline)
+
+        onNodeWithText("As confirmações deste jogo encerraram. Fale com o organizador.").assertExists()
+        onNodeWithText("Prazo encerrado").assertExists()
+        onAllNodesWithText("Em andamento").assertCountEquals(0)
+        onAllNodesWithText("Em andamento. Não dá mais para responder.").assertCountEquals(0)
+        onAllNodesWithText("O prazo acabou: quem confirmar agora entra na lista de espera e o gestor escolhe quem sobe.").assertCountEquals(0)
+        onAllNodesWithText("Não foi possível salvar sua resposta. Tente novamente.").assertCountEquals(0)
+        onNodeWithTag(GameDetailAttendanceTags.Going).assertIsNotEnabled()
+        onNodeWithTag(GameDetailAttendanceTags.NotGoing).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a deadline refused by the server also closes change for who answered`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberClosedByDeadlineConfirmed)
+
+        onNodeWithTag(GameDetailAttendanceTags.Change).assertIsNotEnabled()
+    }
+
     @Test
     fun `game in progress does not show the confirmation deadline anywhere`() = runComposeUiTest {
         setScreen(state = GameDetailResponsePreviewData.memberStarted)

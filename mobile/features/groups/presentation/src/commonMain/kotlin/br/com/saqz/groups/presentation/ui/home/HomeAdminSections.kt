@@ -35,7 +35,6 @@ import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
 import br.com.saqz.groups.presentation.ui.components.AttendanceScoreBoard
 import br.com.saqz.groups.presentation.ui.components.AttendanceScoreBoardTags
-import br.com.saqz.groups.presentation.ui.components.HeroDeadlineLine
 import br.com.saqz.groups.presentation.ui.components.HeroOutlineAlpha
 import br.com.saqz.groups.presentation.ui.components.WaitingRow
 import br.com.saqz.groups.resources.Res
@@ -117,7 +116,7 @@ internal fun HomeAdminHero(
             onClick = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) },
             tags = HomeScoreBoardTags,
         )
-        HeroDeadlineLine(text = game.deadline, open = game.confirmationOpen)
+        HomeHeroResponseLine(game)
         HomeAttendanceControls(
             game = game,
             responding = responding,

@@ -87,6 +87,29 @@ class GroupHeroBlockTest {
         onNodeWithTag(GroupGameResponseTags.NotGoing).assertIsEnabled()
     }
 
+    // ---- Backend v.0.0.17: depois do prazo o servidor recusa o "Vou"/"Não vou" ----
+
+    @Test
+    fun aDeadlineRefusedByTheServerClosesTheAnswerWithoutSayingTheGameStarted() = runComposeUiTest {
+        setDetailsScreen(GroupHeroPreviewData.closedByDeadlinePending)
+
+        onNodeWithText("As confirmações deste jogo encerraram. Fale com o organizador.").assertExists()
+        onAllNodesWithText("Em andamento. Não dá mais para responder.").assertCountEquals(0)
+        onAllNodesWithText("O prazo acabou: quem confirmar agora entra na lista de espera e sobe pela ordem se houver vaga.").assertCountEquals(0)
+        onAllNodesWithText("Não foi possível salvar sua resposta. Tente novamente.").assertCountEquals(0)
+        onNodeWithTag(GroupGameResponseTags.Going).assertIsNotEnabled()
+        onNodeWithTag(GroupGameResponseTags.NotGoing).assertIsNotEnabled()
+    }
+
+    @Test
+    fun aDeadlineRefusedByTheServerAlsoClosesChangeForWhoAnswered() = runComposeUiTest {
+        setDetailsScreen(GroupHeroPreviewData.closedByDeadline)
+
+        onNodeWithText("Sua presença está confirmada.").assertExists()
+        onNodeWithText("As confirmações deste jogo encerraram. Fale com o organizador.").assertExists()
+        onNodeWithTag(GroupGameResponseTags.Change).assertIsNotEnabled()
+    }
+
     @Test
     fun onceTheGameStartedTheAnswerIsClosed() = runComposeUiTest {
         setDetailsScreen(GroupHeroPreviewData.startedPending)

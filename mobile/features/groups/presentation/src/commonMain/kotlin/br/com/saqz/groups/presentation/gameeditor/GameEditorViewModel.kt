@@ -251,29 +251,53 @@ class GameEditorViewModel(
                     update { it.copy(isSaving = false, saveFailed = false) }
                     emit(GameEditorEffect.Saved(created = gameId == null))
                 }
-                is SaqzResult.Failure -> {
-                    val error = result.error
-                    when (error) {
-                        is GameError.Conflict -> update {
-                            it.copy(
-                                isSaving = false,
-                                hasConflict = true,
-                                conflictGameId = error.conflictGameId,
-                            )
-                        }
-                        GameError.VersionConflict -> if (gameId == null) {
-                            update { it.copy(isSaving = false, saveFailed = true, error = error.toUiError()) }
-                        } else {
-                            load()
-                        }
-                        else -> if (error.toUiError() == GroupUiError.SubscriptionRequired) {
-                            // Sem plano ativo "tentar de novo" nunca resolve: o diálogo oferece a assinatura.
-                            update { it.copy(isSaving = false, subscriptionRequired = true) }
-                        } else {
-                            update { it.copy(isSaving = false, saveFailed = true, error = error.toUiError()) }
-                        }
-                    }
-                }
+                is SaqzResult.Failure -> showSubmitFailure(result.error)
+            }
+        }
+    }
+
+    private fun showSubmitFailure(error: GameError) {
+        when (error) {
+            is GameError.Conflict -> update {
+                it.copy(
+                    isSaving = false,
+                    hasConflict = true,
+                    conflictGameId = error.conflictGameId,
+                )
+            }
+            GameError.VersionConflict -> if (gameId == null) {
+                update { it.copy(isSaving = false, saveFailed = true, error = error.toUiError()) }
+            } else {
+                load()
+            }
+            is GameError.Validation -> showValidationFailure(error)
+            else -> if (error.toUiError() == GroupUiError.SubscriptionRequired) {
+                // Sem plano ativo "tentar de novo" nunca resolve: o diálogo oferece a assinatura.
+                update { it.copy(isSaving = false, subscriptionRequired = true) }
+            } else {
+                update { it.copy(isSaving = false, saveFailed = true, error = error.toUiError()) }
+            }
+        }
+    }
+
+    /**
+     * O servidor recusou um campo que o formulário não barrou (hoje, o endereço da quadra no backend
+     * v.0.0.17): o erro cai no campo e a tela rola até ele, com o formulário como estava. Sem campo
+     * para apontar, vale o aviso genérico.
+     */
+    private fun showValidationFailure(error: GameError.Validation) {
+        val fieldErrors = error.toGameEditorFieldErrors()
+        update {
+            if (fieldErrors.isEmpty()) {
+                it.copy(isSaving = false, saveFailed = true, error = error.toUiError())
+            } else {
+                it.copy(
+                    isSaving = false,
+                    saveFailed = false,
+                    error = null,
+                    validationErrors = fieldErrors,
+                    submitAttempts = it.submitAttempts + 1,
+                )
             }
         }
     }

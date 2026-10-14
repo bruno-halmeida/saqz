@@ -48,6 +48,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -403,6 +404,101 @@ class HomeViewModelTest {
         assertNull(viewModel.state.value.member?.nextGame?.ownAttendance)
         assertTrue(viewModel.state.value.responseFailed)
         assertFalse(viewModel.state.value.responding)
+    }
+
+    // ---- Backend v.0.0.17: depois do prazo, "Vou"/"Não vou" voltam 409 ATTENDANCE_DEADLINE_PASSED ----
+
+    /** Prazo das 08h (11h UTC) já passou às 12h UTC; o jogo, às 19h30, ainda não começou. */
+    private fun lateGame() = sampleNextGame(confirmationDeadline = "2026-07-28T08:00:00-03:00")
+
+    @Test
+    fun `a late answer refused for the deadline closes the answers without saying the game started`() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.DeadlinePassed))
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = lateGame()))),
+            attendanceGateway = attendance,
+        )
+        val before = assertNotNull(viewModel.state.value.member?.nextGame)
+        assertTrue(before.canRespond, "backend novo: depois do prazo o Vou entra pela espera")
+        assertFalse(before.confirmationOpen)
+        assertFalse(before.closedByDeadline)
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        val game = assertNotNull(viewModel.state.value.member?.nextGame)
+        assertTrue(game.closedByDeadline)
+        assertTrue(game.responseOpen, "o jogo não começou: nada de \"Em andamento\"")
+        assertFalse(game.confirmationOpen)
+        assertFalse(game.canRespond)
+        assertNull(game.ownAttendance, "a previsão otimista volta atrás")
+        assertFalse(viewModel.state.value.responseFailed, "sem o erro genérico")
+        assertFalse(viewModel.state.value.responding)
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Decline))
+        advanceUntilIdle()
+        assertEquals(1, attendance.respondCalls, "fechado, o toque seguinte nem sai do aparelho")
+    }
+
+    @Test
+    fun `the deadline closure survives a reload of the same game`() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.DeadlinePassed))
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = lateGame()))),
+            attendanceGateway = attendance,
+        )
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        viewModel.onIntent(HomeIntent.Refresh)
+        advanceUntilIdle()
+
+        val game = assertNotNull(viewModel.state.value.member?.nextGame)
+        assertTrue(game.closedByDeadline, "a carga reconstrói a tela; o servidor já disse que o prazo fechou")
+        assertFalse(game.canRespond)
+        assertFalse(game.confirmationOpen)
+    }
+
+    @Test
+    fun `a game that started is closed as in progress and not as closed by the deadline`() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.Frozen))
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = lateGame()))),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        val game = assertNotNull(viewModel.state.value.member?.nextGame)
+        assertFalse(game.responseOpen)
+        assertFalse(game.closedByDeadline)
+        assertFalse(game.canRespond)
+        assertFalse(viewModel.state.value.responseFailed)
+    }
+
+    @Test
+    fun `the current backend takes the late answer into the waitlist and nothing closes`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            respondResult = SaqzResult.Success(serverMutation(AttendanceStatus.Waitlisted, 1)),
+        )
+        val viewModel = viewModel(
+            // A recarga por baixo que se segue falha: o que fica na tela é a resposta reconciliada.
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(sampleHome(nextGame = lateGame())),
+                SaqzResult.Failure(HomeError.Data(DataError.Server)),
+            ),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        val game = assertNotNull(viewModel.state.value.member?.nextGame)
+        assertEquals(AttendanceStatus.Waitlisted, game.ownAttendance)
+        assertFalse(game.closedByDeadline)
+        assertTrue(game.responseOpen)
+        assertFalse(viewModel.state.value.responseFailed)
     }
 
     @Test

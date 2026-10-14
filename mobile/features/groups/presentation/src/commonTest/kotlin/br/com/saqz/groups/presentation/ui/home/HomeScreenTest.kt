@@ -278,6 +278,39 @@ class HomeScreenTest {
         onNodeWithText("O prazo acabou: quem confirmar agora entra na lista de espera e sobe pela ordem se houver vaga.").assertIsDisplayed()
     }
 
+    // ---- Backend v.0.0.17: depois do prazo o servidor recusa o "Vou"/"Não vou" ----
+
+    private fun closedByDeadline() = nextGame().copy(confirmationOpen = false, closedByDeadline = true, deadline = "")
+
+    @Test
+    fun `a deadline refused by the server closes the answers without saying the game started`() = runComposeUiTest {
+        setScreen(nextGameState(nextGame = closedByDeadline()))
+
+        onNodeWithText("As confirmações deste jogo encerraram. Fale com o organizador.").assertIsDisplayed()
+        onAllNodesWithText("Em andamento. Não dá mais para responder.").assertCountEquals(0)
+        onAllNodesWithText(
+            "O prazo acabou: quem confirmar agora entra na lista de espera e sobe pela ordem se houver vaga.",
+        ).assertCountEquals(0)
+        onNodeWithText("Vou").assertIsNotEnabled()
+        onNodeWithText("Não vou").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a deadline refused by the server has no remaining spots chip`() = runComposeUiTest {
+        val almostFull = closedByDeadline().copy(confirmedCount = 11, confirmedSummary = "11 de 12 confirmados")
+        setScreen(nextGameState(nextGame = almostFull))
+
+        onAllNodesWithText("Resta 1 vaga").assertCountEquals(0)
+    }
+
+    @Test
+    fun `a game in progress still says in progress and not the closed by deadline sentence`() = runComposeUiTest {
+        setScreen(nextGameState(nextGame = nextGame().copy(confirmationOpen = false, responseOpen = false, deadline = "")))
+
+        onNodeWithText("Em andamento. Não dá mais para responder.").assertIsDisplayed()
+        onAllNodesWithText("As confirmações deste jogo encerraram. Fale com o organizador.").assertCountEquals(0)
+    }
+
     @Test
     fun `answered game shows the status panel instead of the enabled buttons`() = runComposeUiTest {
         val intents = mutableListOf<HomeIntent>()

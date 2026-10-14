@@ -45,6 +45,14 @@ data class MemberEditorState(
     val billingSheetOpen: Boolean = false,
     val removeSheetOpen: Boolean = false,
     val operation: MemberEditorOperation? = null,
+    /**
+     * O backend recusou a gravação por falta de plano (403 `SUBSCRIPTION_REQUIRED`: teste acabou, plano
+     * vencido ou, no backend v.0.0.17, trocar papel durante o teste): a UI abre a folha da assinatura
+     * em vez de um erro que "tentar de novo" nunca resolve.
+     */
+    val subscriptionRequired: Boolean = false,
+    /** Distingue "o teste terminou" de "o plano não está ativo" no título da folha. */
+    val trialEnded: Boolean = false,
 ) {
     val effectiveMonthlyFeeCents: Long? get() = monthlyFeeOverrideCents ?: defaultMonthlyFeeCents
     val effectiveMonthlyDueDay: Int? get() = monthlyDueDayOverride ?: defaultMonthlyDueDay
@@ -71,6 +79,7 @@ sealed interface MemberEditorIntent {
     data object OpenRemove : MemberEditorIntent
     data object DismissRemove : MemberEditorIntent
     data object ConfirmRemove : MemberEditorIntent
+    data object DismissSubscriptionRequired : MemberEditorIntent
 }
 
 sealed interface MemberEditorEffect {

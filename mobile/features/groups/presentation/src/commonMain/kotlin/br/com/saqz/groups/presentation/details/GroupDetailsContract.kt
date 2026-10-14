@@ -110,6 +110,11 @@ data class NextGameUi(
     val confirmationOpen: Boolean = true,
     /** Ainda dá para responder: jogo publicado e por começar. Depois do prazo o "Vou" entra pela espera. */
     val responseOpen: Boolean = true,
+    /**
+     * O servidor recusou a resposta por prazo vencido (`ATTENDANCE_DEADLINE_PASSED`, backend v.0.0.17):
+     * as respostas fecham com a frase do prazo, sem dizer "Em andamento" — o jogo não começou.
+     */
+    val closedByDeadline: Boolean = false,
     val startsAt: String = "",
     val hasGameFee: Boolean = false,
     /** "Terça, 19h30" — título do hero. */
@@ -126,7 +131,10 @@ data class NextGameUi(
     val bellLabel: String = "",
     /** Escolhe o aviso do prazo vencido: ordem de chegada sobe sozinho, manual espera o gestor. */
     val promotionMode: br.com.saqz.groups.domain.group.PromotionMode = br.com.saqz.groups.domain.group.PromotionMode.FIFO,
-)
+) {
+    /** Os botões de resposta valem: o jogo não começou e o servidor não fechou as respostas pelo prazo. */
+    val canRespond: Boolean get() = responseOpen && !closedByDeadline
+}
 
 /** Os contadores 9 / 3 / 4 do 2f, com o título da própria linha e o "9/12" azul. */
 @Immutable

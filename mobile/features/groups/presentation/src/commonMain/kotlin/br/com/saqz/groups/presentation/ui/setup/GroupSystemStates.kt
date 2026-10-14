@@ -34,7 +34,9 @@ import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_setup_error_banner
+import br.com.saqz.groups.resources.group_setup_error_banner_edit
 import br.com.saqz.groups.resources.group_setup_error_banner_one
+import br.com.saqz.groups.resources.group_setup_error_banner_one_edit
 import br.com.saqz.groups.resources.group_system_creating
 import br.com.saqz.groups.resources.group_system_offline
 import br.com.saqz.groups.resources.group_system_offline_title
@@ -55,9 +57,12 @@ import org.jetbrains.compose.resources.stringResource
 
 private const val SoftTintAlpha = 0.1f
 
-/** `2g` — quantas informações faltam. O plural vira singular com um só erro. */
+/**
+ * `2g` — quantas informações faltam. O plural vira singular com um só erro. Na edição o grupo já
+ * existe: o texto fala em salvar, não em criar.
+ */
 @Composable
-internal fun GroupErrorBanner(count: Int, modifier: Modifier = Modifier) {
+internal fun GroupErrorBanner(count: Int, modifier: Modifier = Modifier, isEditing: Boolean = false) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     Row(
@@ -71,10 +76,11 @@ internal fun GroupErrorBanner(count: Int, modifier: Modifier = Modifier) {
     ) {
         SaqzIcon(SaqzIcons.CircleAlert, tint = colors.errorForeground)
         Text(
-            text = if (count == 1) {
-                stringResource(Res.string.group_setup_error_banner_one, count)
-            } else {
-                stringResource(Res.string.group_setup_error_banner, count)
+            text = when {
+                count == 1 && isEditing -> stringResource(Res.string.group_setup_error_banner_one_edit, count)
+                count == 1 -> stringResource(Res.string.group_setup_error_banner_one, count)
+                isEditing -> stringResource(Res.string.group_setup_error_banner_edit, count)
+                else -> stringResource(Res.string.group_setup_error_banner, count)
             },
             style = SaqzTheme.typography.support,
             color = colors.errorForeground,

@@ -28,6 +28,9 @@ internal object GroupHeroPreviewData {
     // Prazo vencido, jogo por começar: o "Vou" ainda vale e entra pela espera.
     private val closedGame = game.copy(confirmationOpen = false)
     private val startedGame = game.copy(confirmationOpen = false, responseOpen = false)
+
+    // Prazo vencido num backend que recusa a resposta tardia (v.0.0.17): o jogo não começou, e as respostas fecham.
+    private val closedByDeadlineGame = game.copy(confirmationOpen = false, closedByDeadline = true)
     private val fullGame = game.copy(confirmedCount = 12, availableSpots = 0)
     private val confirmedResponse = GroupDetailsResponseUi(GroupDetailsResponseStatus.Confirmed)
 
@@ -42,6 +45,8 @@ internal object GroupHeroPreviewData {
     val closedPending = pending.copy(nextGame = closedGame)
     val started = confirmed.copy(nextGame = startedGame)
     val startedPending = pending.copy(nextGame = startedGame)
+    val closedByDeadline = confirmed.copy(nextGame = closedByDeadlineGame)
+    val closedByDeadlinePending = pending.copy(nextGame = closedByDeadlineGame)
     val noAddress = pending.copy(nextGame = game.copy(address = ""))
     val dayMemberFee = pending.copy(
         membershipType = AthleteMembershipType.AVULSO,

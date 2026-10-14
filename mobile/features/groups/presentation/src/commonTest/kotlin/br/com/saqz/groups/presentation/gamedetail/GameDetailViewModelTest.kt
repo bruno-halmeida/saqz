@@ -1201,8 +1201,10 @@ class GameDetailViewModelTest {
 
         val state = viewModel.state.value
         assertEquals(AttendanceStatus.Confirmed, state.response.status)
-        assertTrue(state.response.failed)
+        assertFalse(state.response.failed, "o prazo fecha as respostas com a frase do prazo, sem o erro genérico")
         assertFalse(state.header?.confirmationOpen == true)
+        assertTrue(state.header?.closedByDeadline == true)
+        assertTrue(state.header?.responseOpen == true, "o jogo não começou: o selo não vira \"Em andamento\"")
         assertFalse(state.guest.enabled)
         assertEquals(GameGuestHint.Closed, state.guest.hint)
 
@@ -1220,7 +1222,71 @@ class GameDetailViewModelTest {
         assertFalse(viewModel.state.value.response.failed)
         assertNull(viewModel.state.value.response.status)
         assertFalse(viewModel.state.value.header?.confirmationOpen == true)
+        assertFalse(viewModel.state.value.header?.responseOpen == true, "jogo começado é \"Em andamento\"")
+        assertFalse(viewModel.state.value.header?.closedByDeadline == true)
         assertEquals(GameGuestHint.Closed, viewModel.state.value.guest.hint)
+    }
+
+    // ---- Backend v.0.0.17: depois do prazo, "Vou"/"Não vou" voltam 409 ATTENDANCE_DEADLINE_PASSED ----
+
+    /** O prazo venceu e o jogo, amanhã, não começou: no backend novo o "Vou" ainda vale e entra pela espera. */
+    private fun lateGame() = sampleGame().copy(
+        confirmationDeadline = "2020-01-01T12:00:00-03:00",
+        startsAt = "2030-01-01T20:00:00-03:00",
+    )
+
+    @Test
+    fun aLateAnswerRefusedForTheDeadlineClosesTheAnswersWithoutSayingTheGameStarted() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.DeadlinePassed))
+        val viewModel = responder(attendance, game = lateGame())
+        val before = assertNotNull(viewModel.state.value.header)
+        assertFalse(before.confirmationOpen)
+        assertTrue(before.canRespond, "backend novo: depois do prazo o Vou entra pela espera")
+        assertFalse(before.closedByDeadline)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        val state = viewModel.state.value
+        val header = assertNotNull(state.header)
+        assertTrue(header.closedByDeadline)
+        assertTrue(header.responseOpen, "sem \"Em andamento\": o jogo não começou")
+        assertFalse(header.confirmationOpen)
+        assertFalse(header.canRespond)
+        assertNull(state.response.status, "a previsão otimista volta atrás")
+        assertFalse(state.response.failed, "sem o erro genérico")
+        assertFalse(state.response.responding)
+        assertEquals(GameGuestHint.Closed, state.guest.hint)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Decline))
+        assertEquals(1, attendance.respondCalls, "fechado, o toque seguinte nem sai do aparelho")
+    }
+
+    @Test
+    fun theDeadlineClosureSurvivesAReloadOfTheGame() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.DeadlinePassed))
+        val viewModel = responder(attendance, game = lateGame())
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        viewModel.onIntent(GameDetailIntent.Retry)
+
+        val header = assertNotNull(viewModel.state.value.header)
+        assertTrue(header.closedByDeadline, "a carga reconstrói o cabeçalho; o servidor já disse que o prazo fechou")
+        assertFalse(header.canRespond)
+        assertFalse(header.confirmationOpen)
+    }
+
+    @Test
+    fun theCurrentBackendTakesTheLateAnswerIntoTheWaitlistAndNothingCloses() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = mutation(AttendanceStatus.Waitlisted, position = 1))
+        val viewModel = responder(attendance, game = lateGame())
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+
+        val state = viewModel.state.value
+        assertEquals(AttendanceStatus.Waitlisted, state.response.status)
+        assertFalse(state.header?.closedByDeadline == true)
+        assertTrue(state.header?.responseOpen == true)
+        assertFalse(state.response.failed)
     }
 
     @Test

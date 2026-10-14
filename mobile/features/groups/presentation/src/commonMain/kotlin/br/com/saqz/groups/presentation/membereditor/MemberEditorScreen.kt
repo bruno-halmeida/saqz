@@ -52,6 +52,7 @@ import br.com.saqz.groups.domain.athlete.AthletePreferredSide
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.member_editor_absences
 import br.com.saqz.groups.resources.member_editor_admin
@@ -195,6 +196,12 @@ fun MemberEditorScreen(
         }
         MemberEditorBillingSheet(state, onIntent)
         MemberEditorRemoveSheet(state, onIntent)
+        if (state.subscriptionRequired) {
+            SubscriptionRequiredDialog(
+                trialEnded = state.trialEnded,
+                onDismiss = { onIntent(MemberEditorIntent.DismissSubscriptionRequired) },
+            )
+        }
     }
 }
 

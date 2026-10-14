@@ -8,13 +8,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.material.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +70,7 @@ import br.com.saqz.groups.resources.group_setup_error_description
 import br.com.saqz.groups.resources.group_setup_error_modality
 import br.com.saqz.groups.resources.group_setup_error_name
 import br.com.saqz.groups.resources.group_setup_error_venue_address
+import br.com.saqz.groups.resources.group_setup_error_venue_address_required
 import br.com.saqz.groups.resources.group_setup_error_venue_name
 import br.com.saqz.groups.resources.group_setup_save_action
 import br.com.saqz.groups.resources.group_system_creating
@@ -194,7 +200,7 @@ private fun GroupSetupNotices(state: GroupSetupState, onIntent: (GroupSetupInten
         SaqzOfflineBanner(message = stringResource(Res.string.group_system_offline))
     }
     if (state.errors.isNotEmpty()) {
-        GroupErrorBanner(count = state.errors.size)
+        GroupErrorBanner(count = state.errors.size, isEditing = state.isEditing)
     }
     if (state.saveFailed) {
         GroupSaveFailureCard(
@@ -264,6 +270,15 @@ private fun GroupSetupAdvancedCards(
     onOpenWhatsApp: (() -> Unit)?,
 ) {
     val form = state.form
+    // O servidor recusou a quadra sem endereço: a tela rola até o campo, que pode estar longe do topo.
+    val venueRequester = remember { BringIntoViewRequester() }
+    val addressRequired = GroupSetupError.VenueAddressRequired in state.errors
+    LaunchedEffect(addressRequired) {
+        if (!addressRequired) return@LaunchedEffect
+        // Na criação os cartões avançados acabam de abrir: o pedido espera o layout do quadro seguinte.
+        withFrameNanos { }
+        venueRequester.bringIntoView()
+    }
     GroupLevelSection(
         levelLabel = form.level?.label(),
         customLevel = form.customLevel,
@@ -315,9 +330,13 @@ private fun GroupSetupAdvancedCards(
             Res.string.group_setup_error_venue_name,
         ),
         addressError = state.errorText(
+            GroupSetupError.VenueAddressRequired,
+            Res.string.group_setup_error_venue_address_required,
+        ) ?: state.errorText(
             GroupSetupError.VenueAddressNotFound,
             Res.string.group_setup_error_venue_address,
         ),
+        modifier = Modifier.bringIntoViewRequester(venueRequester),
         onNameChange = { onIntent(GroupSetupIntent.UpdateVenueName(it)) },
         onAddressChange = { onIntent(GroupSetupIntent.UpdateVenueAddress(it)) },
         suggestions = state.venueSearch.suggestions,

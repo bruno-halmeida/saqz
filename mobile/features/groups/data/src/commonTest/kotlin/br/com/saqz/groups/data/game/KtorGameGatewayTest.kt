@@ -162,6 +162,19 @@ class KtorGameGatewayTest {
     }
 
     @Test fun `validation maps safely`() = errorCase(400, "VALIDATION_FAILED", GameError.Validation::class.simpleName)
+    @Test
+    fun `a venue without address refused by the old backend keeps the field path for the form`() = runTest {
+        // Backend v.0.0.17: `venue.address: is required` no POST e no PUT do jogo.
+        val refusal = """{"status":400,"code":"VALIDATION_FAILED","correlationId":"safe","fieldErrors":{"venue.address":["is required"]}}"""
+        val created = gateway { respond(refusal, HttpStatusCode.BadRequest, jsonHeaders()) }.create(GROUP, gameCommand())
+        val edited = gateway { respond(refusal, HttpStatusCode.BadRequest, jsonHeaders()) }
+            .edit(GROUP, GAME, GameVersionToken("\"7\""), gameCommand())
+
+        listOf(created, edited).forEach { result ->
+            val error = assertIs<GameError.Validation>(assertIs<SaqzResult.Failure<*>>(result).error)
+            assertEquals(listOf("is required"), error.error.details.fieldMessages["venue.address"])
+        }
+    }
     @Test fun `hidden game maps safely`() = errorCase(404, "GAME_NOT_FOUND", GameError.HiddenResource::class.simpleName)
     @Test fun `hidden group maps safely`() = errorCase(404, "GROUP_NOT_FOUND", GameError.HiddenResource::class.simpleName)
     @Test fun `version conflict maps safely`() = errorCase(409, "VERSION_CONFLICT", GameError.VersionConflict::class.simpleName)

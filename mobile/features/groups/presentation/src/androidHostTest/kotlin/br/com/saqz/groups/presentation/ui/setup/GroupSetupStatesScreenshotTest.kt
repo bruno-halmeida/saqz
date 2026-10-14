@@ -16,7 +16,9 @@ import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzOfflineBanner
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.presentation.setup.GroupSetupDefaults
+import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
 import br.com.saqz.groups.resources.Res
@@ -104,6 +106,20 @@ class GroupSetupStatesScreenshotTest {
                 form = PreviewCourtForm,
                 isOffline = true,
                 saveFailed = true,
+            ),
+            onIntent = {},
+            onBack = {},
+        )
+    }
+
+    // Backend v.0.0.17: a quadra sem endereço volta como 400 e o erro cai no campo, com o formulário como estava.
+    @Test
+    fun addressRefusedByTheServer() = capture("compat-setup-address-required") {
+        GroupSetupScreen(
+            state = GroupSetupState(
+                mode = GroupSetupMode.Create,
+                form = PreviewCourtForm.copy(defaultVenue = GroupVenueForm(name = "Quadra do Parque", address = "")),
+                errors = setOf(GroupSetupError.VenueAddressRequired),
             ),
             onIntent = {},
             onBack = {},

@@ -42,11 +42,11 @@ import br.com.saqz.groups.presentation.ui.components.HeroAlertLine
 import br.com.saqz.groups.presentation.ui.components.HeroAttendanceControls
 import br.com.saqz.groups.presentation.ui.components.HeroAttendanceTags
 import br.com.saqz.groups.presentation.ui.components.HeroAttendanceTexts
-import br.com.saqz.groups.presentation.ui.components.HeroDeadlineLine
 import br.com.saqz.groups.presentation.ui.components.HeroIconGap
 import br.com.saqz.groups.presentation.ui.components.HeroInlineIconSize
 import br.com.saqz.groups.presentation.ui.components.HeroLineIconSize
 import br.com.saqz.groups.presentation.ui.components.HeroOutlineAlpha
+import br.com.saqz.groups.presentation.ui.components.HeroResponseLine
 import br.com.saqz.groups.presentation.ui.components.HeroRosterRow
 import br.com.saqz.groups.presentation.ui.home.HomeAdminTags
 import br.com.saqz.groups.presentation.ui.home.HomeWaitlistBellCard
@@ -62,7 +62,6 @@ import br.com.saqz.groups.resources.game_response_confirmed
 import br.com.saqz.groups.resources.game_detail_confirmed_over_capacity
 import br.com.saqz.groups.resources.game_response_confirmed_summary
 import br.com.saqz.groups.resources.game_response_day_member_fee
-import br.com.saqz.groups.resources.game_response_deadline_closed
 import br.com.saqz.groups.resources.game_response_declined
 import br.com.saqz.groups.resources.game_response_no
 import br.com.saqz.groups.resources.game_response_request_failed
@@ -162,17 +161,17 @@ private fun GroupGameHero(
             )
         }
         // Depois do prazo, com o jogo por começar, quem explica é o aviso do seletor.
-        if (game.confirmationOpen || !game.responseOpen) {
-            HeroDeadlineLine(
-                text = if (game.confirmationOpen) game.deadlineLine else stringResource(Res.string.game_response_deadline_closed),
-                open = game.confirmationOpen,
-            )
-        }
+        HeroResponseLine(
+            confirmationOpen = game.confirmationOpen,
+            responseOpen = game.responseOpen,
+            closedByDeadline = game.closedByDeadline,
+            openText = game.deadlineLine,
+        )
         // Dono e admin respondem presença no mesmo lugar que o atleta: o papel administrativo
         // muda o que ele gerencia, não o fato de que ele joga.
         HeroAttendanceControls(
             status = state.memberResponse?.status?.toAttendanceStatus(),
-            confirmationOpen = game.responseOpen && !state.rosterRefreshing,
+            confirmationOpen = game.canRespond && !state.rosterRefreshing,
             lateNotice = if (!game.confirmationOpen) lateNoticeText(game.promotionMode) else null,
             responding = state.responding,
             responseFailed = state.responseFailed || state.responsePlanPaused,

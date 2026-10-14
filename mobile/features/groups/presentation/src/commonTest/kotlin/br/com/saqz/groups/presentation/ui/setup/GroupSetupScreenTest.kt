@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.ui.setup
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -8,7 +9,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.MonthlyLateJoinPolicy
+import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
@@ -36,6 +39,39 @@ class GroupSetupScreenTest {
         onNodeWithTag(GroupSetupTags.CustomLevel).assertExists()
         onNodeWithTag(GroupSetupTags.VenueAddress).assertExists()
     }
+
+    // ---- Backend v.0.0.17: quadra sem endereço volta como 400 `defaultVenue.address` ----
+
+    private fun refusedAddress(mode: GroupSetupMode) = GroupSetupState(
+        mode = mode,
+        form = PreviewCourtForm.copy(defaultVenue = GroupVenueForm(name = "Quadra do Parque", address = "")),
+        errors = setOf(GroupSetupError.VenueAddressRequired),
+    )
+
+    // O dispatcher v2 enfileira os efeitos como na produção: o pedido de rolagem espera o layout do quadro.
+    @Test
+    fun aRefusedVenueAddressOpensTheAdvancedCardsAndMarksTheAddressWhenCreating() =
+        androidx.compose.ui.test.v2.runComposeUiTest {
+            setContent { SaqzTheme { GroupSetupScreen(refusedAddress(GroupSetupMode.Create), {}, {}) } }
+            waitForIdle()
+
+            onNodeWithTag(GroupSetupTags.Advanced).assertDoesNotExist()
+            onNodeWithText("Informe o endereço da quadra.").assertIsDisplayed()
+            onNodeWithText("Falta 1 informação para criar o grupo. Ela está marcada abaixo.").assertExists()
+            onNodeWithTag(GroupSetupTags.SaveFailure).assertDoesNotExist()
+        }
+
+    @Test
+    fun aRefusedVenueAddressMarksTheAddressAndTalksAboutSavingWhenEditing() =
+        androidx.compose.ui.test.v2.runComposeUiTest {
+            setContent { SaqzTheme { GroupSetupScreen(refusedAddress(GroupSetupMode.Edit("grp-1")), {}, {}) } }
+            waitForIdle()
+
+            onNodeWithText("Informe o endereço da quadra.").assertIsDisplayed()
+            onNodeWithText("Falta 1 informação para salvar o grupo. Ela está marcada abaixo.").assertExists()
+            onNodeWithText("Falta 1 informação para criar o grupo. Ela está marcada abaixo.").assertDoesNotExist()
+            onNodeWithTag(GroupSetupTags.SaveFailure).assertDoesNotExist()
+        }
 
     @Test
     fun editingWithoutErrorsKeepsAdvancedFieldsExpanded() = runComposeUiTest {

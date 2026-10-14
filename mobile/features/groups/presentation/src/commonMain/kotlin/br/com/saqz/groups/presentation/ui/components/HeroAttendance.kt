@@ -37,6 +37,8 @@ import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.domain.group.PromotionMode
+import br.com.saqz.groups.resources.game_response_closed_by_deadline
+import br.com.saqz.groups.resources.game_response_deadline_closed
 import br.com.saqz.groups.resources.game_response_late_notice_fifo
 import br.com.saqz.groups.resources.game_response_late_notice_manual
 import br.com.saqz.groups.resources.home_response_offline
@@ -99,6 +101,30 @@ internal fun HeroDeadlineLine(text: String, open: Boolean, modifier: Modifier = 
             color = color,
         )
     }
+}
+
+/**
+ * A linha do prazo no topo do hero, nas quatro telas que o têm. [openText] é a frase do prazo aberto.
+ * Fechada por prazo ([closedByDeadline]: o servidor recusou a resposta, backend v.0.0.17), diz que as
+ * confirmações encerraram; com o jogo já começado ([responseOpen] falso), diz "Em andamento". Depois do
+ * prazo com o jogo por começar e o servidor aceitando a resposta tardia, a linha cala: quem explica é o
+ * aviso do seletor, que promete a lista de espera.
+ */
+@Composable
+internal fun HeroResponseLine(
+    confirmationOpen: Boolean,
+    responseOpen: Boolean,
+    closedByDeadline: Boolean,
+    openText: String,
+    modifier: Modifier = Modifier,
+) {
+    val text = when {
+        closedByDeadline -> stringResource(Res.string.game_response_closed_by_deadline)
+        confirmationOpen -> openText
+        !responseOpen -> stringResource(Res.string.game_response_deadline_closed)
+        else -> ""
+    }
+    HeroDeadlineLine(text = text, open = confirmationOpen, modifier = modifier)
 }
 
 /**

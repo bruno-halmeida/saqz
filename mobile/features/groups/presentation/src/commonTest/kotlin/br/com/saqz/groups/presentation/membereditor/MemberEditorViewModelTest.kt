@@ -12,6 +12,8 @@ import br.com.saqz.groups.domain.athlete.AthletePreferredSide
 import br.com.saqz.groups.domain.athlete.AthleteStats
 import br.com.saqz.groups.domain.group.GroupFinanceDefaults
 import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.GroupTrialAccessInfo
+import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.membership.AssignableGroupRole
 import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.membership.GroupMembershipError
@@ -331,6 +333,100 @@ class MemberEditorViewModelTest {
         assertNull(viewModel.state.value.operation)
     }
 
+    // ---- Backend v.0.0.17: promover durante o teste responde 403 SUBSCRIPTION_REQUIRED ----
+
+    private val activeTrial = GroupTrialAccessPort {
+        GroupTrialAccessInfo(endsAt = "2026-10-28T00:00:00Z", readOnly = false, isOwner = true)
+    }
+
+    @Test
+    fun `promoting during the trial on the old backend opens the plan sheet and the toggle stays off`() = runTest {
+        val membership = FakeGroupMembershipGateway(
+            listResult = SaqzResult.Success(listOf(GroupMembership(USER_ID, "Member", GroupRole.ATHLETE))),
+            changeRoleResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.SubscriptionRequired)),
+        )
+        val viewModel = editor(
+            FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry()))),
+            membership,
+            trialAccess = activeTrial,
+        )
+
+        viewModel.onIntent(MemberEditorIntent.AdminChanged(true))
+
+        val state = viewModel.state.value
+        assertEquals(AssignableGroupRole.ADMIN, membership.lastRoleCommand?.role)
+        assertTrue(state.subscriptionRequired)
+        assertFalse(state.trialEnded, "o teste ainda está ativo: o título é o do plano inativo")
+        assertNull(state.error, "sem o cartão genérico, que ficava fora da vista com a tela rolada")
+        assertNull(state.operation)
+        assertEquals(GroupRole.ATHLETE, state.role, "o toggle volta desligado, agora com a folha explicando")
+
+        viewModel.onIntent(MemberEditorIntent.DismissSubscriptionRequired)
+
+        assertFalse(viewModel.state.value.subscriptionRequired)
+        assertEquals(GroupRole.ATHLETE, viewModel.state.value.role)
+    }
+
+    @Test
+    fun `the plan sheet tells that the trial is over when it is`() = runTest {
+        val membership = FakeGroupMembershipGateway(
+            listResult = SaqzResult.Success(listOf(GroupMembership(USER_ID, "Member", GroupRole.ATHLETE))),
+            changeRoleResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.SubscriptionRequired)),
+        )
+        val viewModel = editor(
+            FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry()))),
+            membership,
+            trialAccess = GroupTrialAccessPort {
+                GroupTrialAccessInfo(endsAt = "2026-10-01T00:00:00Z", readOnly = true, isOwner = true, trialEnded = true)
+            },
+        )
+
+        viewModel.onIntent(MemberEditorIntent.AdminChanged(true))
+
+        assertTrue(viewModel.state.value.subscriptionRequired)
+        assertTrue(viewModel.state.value.trialEnded)
+    }
+
+    @Test
+    fun `saving and removing without an active plan open the plan sheet too`() = runTest {
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())),
+            updateResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.SubscriptionRequired)),
+            removeResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.SubscriptionRequired)),
+        )
+        val viewModel = editor(athlete, trialAccess = activeTrial)
+
+        viewModel.onIntent(MemberEditorIntent.Save)
+        assertTrue(viewModel.state.value.subscriptionRequired)
+        assertNull(viewModel.state.value.error)
+        assertNull(viewModel.state.value.operation)
+
+        viewModel.onIntent(MemberEditorIntent.DismissSubscriptionRequired)
+        viewModel.onIntent(MemberEditorIntent.OpenRemove)
+        viewModel.onIntent(MemberEditorIntent.ConfirmRemove)
+        assertTrue(viewModel.state.value.subscriptionRequired)
+        assertNull(viewModel.state.value.error)
+        assertNull(viewModel.state.value.operation)
+    }
+
+    @Test
+    fun `a role failure that is not about the plan keeps the generic warning and no sheet`() = runTest {
+        val membership = FakeGroupMembershipGateway(
+            listResult = SaqzResult.Success(listOf(GroupMembership(USER_ID, "Member", GroupRole.ATHLETE))),
+            changeRoleResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Forbidden)),
+        )
+        val viewModel = editor(
+            FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry()))),
+            membership,
+            trialAccess = activeTrial,
+        )
+
+        viewModel.onIntent(MemberEditorIntent.AdminChanged(true))
+
+        assertFalse(viewModel.state.value.subscriptionRequired)
+        assertEquals(GroupUiError.AccessDenied, viewModel.state.value.error)
+    }
+
     @Test
     fun `typed save failure clears operation and exposes error in normal state`() = runTest {
         val athlete = FakeAthleteGateway(
@@ -384,6 +480,7 @@ class MemberEditorViewModelTest {
         ),
         savedState: SavedStateHandle = SavedStateHandle(),
         viewerRole: GroupRole = GroupRole.OWNER,
+        trialAccess: GroupTrialAccessPort? = null,
     ) = MemberEditorViewModel(
         GROUP_ID,
         USER_ID,
@@ -399,6 +496,7 @@ class MemberEditorViewModelTest {
                 ),
             ),
         ),
+        trialAccess,
     )
 
     companion object {

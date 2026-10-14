@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.ui.gameeditor
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,6 +14,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.group.GroupRegularSlot
 import br.com.saqz.groups.domain.group.GroupWeekday
+import br.com.saqz.groups.presentation.gameeditor.GameEditorFieldError
 import br.com.saqz.groups.presentation.gameeditor.GameEditorFields
 import br.com.saqz.groups.presentation.gameeditor.GameEditorIntent
 import br.com.saqz.groups.presentation.gameeditor.GameEditorState
@@ -136,6 +138,52 @@ class GameEditorScreenTest {
             "Este jogo começa sábado, 17/10 às 19h00, depois do fim do teste. " +
                 "O acesso ao grupo nessa data depende do plano ativo da conta.",
         ).performScrollTo().assertExists()
+    }
+
+    // ---- Backend v.0.0.17: quadra sem endereço volta como 400 `venue.address`, e o erro cai no campo ----
+
+    private fun refusedAddress(state: GameEditorState = create()) = state.copy(
+        form = state.form.copy(venue = GameVenue(name = "Quadra do Parque", address = "")),
+        groupHasVenue = false,
+        validationErrors = setOf(GameEditorFieldError.VenueAddressRequired),
+        submitAttempts = 1,
+    )
+
+    @Test
+    fun `a refused venue address is marked on the address field and the form stays as it was`() = runComposeUiTest {
+        setContent { SaqzTheme { GameEditorScreen(state = refusedAddress(), onBack = {}, onIntent = {}) } }
+        waitForIdle()
+
+        onNodeWithText("Informe o endereço da quadra.").assertIsDisplayed()
+        onNodeWithText("Corrija o endereço da quadra para continuar.").assertExists()
+        onNodeWithTag(GameEditorTags.SaveFailure).assertDoesNotExist()
+        onNodeWithText("Quadra do Parque").assertExists()
+    }
+
+    @Test
+    fun `the generic save failure says create when creating`() = runComposeUiTest {
+        setContent {
+            SaqzTheme { GameEditorScreen(state = create().copy(saveFailed = true), onBack = {}, onIntent = {}) }
+        }
+
+        onNodeWithText("Não foi possível criar o jogo").assertExists()
+        onNodeWithText("Não foi possível salvar o jogo").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the generic save failure says save when editing`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GameEditorScreen(
+                    state = create().copy(versionToken = "etag-1", saveFailed = true),
+                    onBack = {},
+                    onIntent = {},
+                )
+            }
+        }
+
+        onNodeWithText("Não foi possível salvar o jogo").assertExists()
+        onNodeWithText("Não foi possível criar o jogo").assertDoesNotExist()
     }
 
     private fun create(recurring: Boolean = false) = GameEditorState(

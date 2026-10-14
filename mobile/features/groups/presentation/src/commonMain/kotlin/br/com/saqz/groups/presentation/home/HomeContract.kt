@@ -127,6 +127,13 @@ data class HomeNextGameUi(
     val confirmationOpen: Boolean = true,
     /** Ainda dá para responder: jogo por começar. Depois do prazo o "Vou" entra pela espera. */
     val responseOpen: Boolean = true,
+    /**
+     * O servidor recusou a resposta por prazo vencido (`ATTENDANCE_DEADLINE_PASSED`): o backend que
+     * não aceita "Vou" depois do prazo (v.0.0.17). As respostas fecham com a frase do prazo, sem dizer
+     * "Em andamento": o jogo não começou. Com o backend atual a resposta tardia entra pela espera e
+     * isto nunca liga.
+     */
+    val closedByDeadline: Boolean = false,
     val waitlistKind: HomeWaitlistKind? = null,
     /** Escolhe o aviso do prazo vencido: ordem de chegada sobe sozinho, manual espera o gestor. */
     val promotionMode: br.com.saqz.groups.domain.group.PromotionMode = br.com.saqz.groups.domain.group.PromotionMode.FIFO,
@@ -143,7 +150,10 @@ data class HomeNextGameUi(
     val display: String = "",
     /** "28 de julho · CERET — Quadra 2 · Tatuapé" — linha abaixo do título (VUL-218). */
     val meta: String = "",
-)
+) {
+    /** Os botões de resposta valem: o jogo não começou e o servidor não fechou as respostas pelo prazo. */
+    val canRespond: Boolean get() = responseOpen && !closedByDeadline
+}
 
 @Immutable
 data class HomeGroupUi(

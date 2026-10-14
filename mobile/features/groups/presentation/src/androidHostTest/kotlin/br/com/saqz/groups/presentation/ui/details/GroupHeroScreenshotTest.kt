@@ -64,6 +64,13 @@ class GroupHeroScreenshotTest {
 
     @Test fun closedPending() = capture("group-hero-closed-pending", GroupHeroPreviewData.closedPending)
 
+    // Backend v.0.0.17: depois do prazo o servidor recusa a resposta. O jogo não começou: nada de "Em andamento".
+    @Test fun closedByDeadlinePending() =
+        capture("group-hero-closed-by-deadline-pending", GroupHeroPreviewData.closedByDeadlinePending)
+
+    @Test fun closedByDeadlineConfirmed() =
+        capture("group-hero-closed-by-deadline-confirmed", GroupHeroPreviewData.closedByDeadline)
+
     @Test fun dayMemberFee() = capture("group-hero-day-member-fee", GroupHeroPreviewData.dayMemberFee)
 
     @Test fun rosterStale() = capture("group-hero-roster-stale", GroupHeroPreviewData.rosterStale)

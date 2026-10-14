@@ -7,12 +7,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -38,6 +42,10 @@ internal object VenueSuggestionTags {
 /**
  * Campo de nome da quadra com as sugestões do Google logo abaixo. Sem sugestões, é só o campo:
  * o texto livre segue valendo (muitas quadras não estão no Google). Perder o foco fecha a lista.
+ *
+ * As sugestões chegam depois do teclado aberto e crescem para baixo do campo: sem rolar, ficam atrás
+ * do teclado (ou do botão fixo do rodapé), e só aparecem ao fechá-lo. Cada lista nova pede que o campo
+ * e a lista inteira entrem na vista, e a tela que rola (o formulário) sobe até caberem.
  */
 @Composable
 internal fun VenueSearchField(
@@ -49,8 +57,15 @@ internal fun VenueSearchField(
 ) {
     // Só a perda de foco fecha a lista; o evento inicial (sem foco) não é intenção de ninguém.
     var hadFocus by remember { mutableStateOf(false) }
+    val requester = remember { BringIntoViewRequester() }
+    LaunchedEffect(suggestions) {
+        if (suggestions.isEmpty()) return@LaunchedEffect
+        // A lista nova só tem tamanho depois do layout do quadro em que chegou: o pedido espera o próximo.
+        withFrameNanos { }
+        requester.bringIntoView()
+    }
     Column(
-        modifier = modifier.onFocusChanged {
+        modifier = modifier.bringIntoViewRequester(requester).onFocusChanged {
             if (hadFocus && !it.hasFocus) onDismiss()
             hadFocus = it.hasFocus
         },

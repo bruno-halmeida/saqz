@@ -911,6 +911,84 @@ class GroupDetailsViewModelTest {
         assertFalse(vm.state.value.responseFailed)
     }
 
+    // ---- Backend v.0.0.17: depois do prazo, "Vou"/"Não vou" voltam 409 ATTENDANCE_DEADLINE_PASSED ----
+
+    /** 04/08 às 18h UTC: o prazo do jogo de exemplo (12h -03:00 = 15h UTC) venceu; o jogo (22h30 UTC) não começou. */
+    private val afterTheDeadline = GroupNowPort { kotlin.time.Instant.parse("2026-08-04T18:00:00Z") }
+
+    private fun lateAthleteViewModel(attendance: FakeAttendanceGateway) = viewModel(
+        groupGateway = athleteGroupGateway(),
+        gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+        attendanceGateway = attendance,
+        athleteGateway = monthlyAthleteGateway(),
+        now = afterTheDeadline,
+    )
+
+    @Test
+    fun `a late response refused for the deadline closes the answers without saying the game started`() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.DeadlinePassed))
+        val vm = lateAthleteViewModel(attendance)
+        val before = assertNotNull(vm.state.value.nextGame)
+        assertTrue(before.canRespond, "backend novo: depois do prazo o Vou entra pela espera")
+        assertFalse(before.confirmationOpen)
+        assertFalse(before.closedByDeadline)
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+
+        val game = assertNotNull(vm.state.value.nextGame)
+        assertTrue(game.closedByDeadline)
+        assertTrue(game.responseOpen, "o jogo não começou: nada de \"Em andamento\"")
+        assertFalse(game.confirmationOpen)
+        assertFalse(game.canRespond)
+        assertFalse(vm.state.value.responseFailed, "sem o erro genérico")
+        assertFalse(vm.state.value.responding)
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Decline))
+        assertEquals(1, attendance.respondCalls, "fechado, o toque seguinte nem sai do aparelho")
+    }
+
+    @Test
+    fun `the deadline closure survives a reload of the group`() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.DeadlinePassed))
+        val vm = lateAthleteViewModel(attendance)
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+
+        vm.onIntent(GroupDetailsIntent.Retry)
+
+        val game = assertNotNull(vm.state.value.nextGame)
+        assertTrue(game.closedByDeadline, "a carga reconstrói o hero; o servidor já disse que o prazo fechou")
+        assertFalse(game.canRespond)
+        assertFalse(game.confirmationOpen)
+    }
+
+    @Test
+    fun `a game that started is closed as in progress and not as closed by the deadline`() = runTest {
+        val attendance = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.Frozen))
+        val vm = lateAthleteViewModel(attendance)
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+
+        val game = assertNotNull(vm.state.value.nextGame)
+        assertFalse(game.responseOpen)
+        assertFalse(game.closedByDeadline)
+        assertFalse(game.canRespond)
+        assertFalse(vm.state.value.responseFailed)
+    }
+
+    @Test
+    fun `the current backend takes the late response into the waitlist and nothing closes`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val vm = lateAthleteViewModel(attendance)
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+
+        val game = assertNotNull(vm.state.value.nextGame)
+        assertFalse(game.closedByDeadline)
+        assertTrue(game.responseOpen)
+        assertFalse(vm.state.value.responseFailed)
+        assertEquals(1, attendance.respondCalls)
+    }
+
     @Test
     fun `auto confirmation failure rolls back optimistic switch`() = runTest {
         val group = sampleGroup(role = GroupRole.ATHLETE).copy(

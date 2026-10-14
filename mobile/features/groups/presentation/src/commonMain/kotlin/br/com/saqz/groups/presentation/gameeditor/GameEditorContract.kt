@@ -77,6 +77,12 @@ enum class GameEditorFieldError {
     DateMissing,
     TimeMissing,
     VenueNameMissing,
+
+    /**
+     * Só o servidor produz este erro: o endereço é opcional, mas o backend que ainda o exige (v.0.0.17)
+     * responde `400 VALIDATION_FAILED` com `venue.address`. O erro cai no campo, não num cartão genérico.
+     */
+    VenueAddressRequired,
     VenueAddressTooShort,
     VenueNameTooLong,
     VenueAddressTooLong,

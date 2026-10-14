@@ -150,6 +150,13 @@ class GroupDetailsViewModel(
     private var athleteIntroShown = false
 
     /**
+     * Jogos em que o servidor recusou a resposta por prazo vencido (`ATTENDANCE_DEADLINE_PASSED`, backend
+     * v.0.0.17). A carga seguinte reconstrói o hero do zero; sem esta memória os botões voltariam a valer
+     * e o aviso do prazo voltaria a prometer a lista de espera, até o próximo toque recusado.
+     */
+    private val lateRefusedGames = mutableSetOf<String>()
+
+    /**
      * Carga no ar. Só a recarga por baixo ([GroupDetailsIntent.Refresh]) é descartada por ela: na
      * abertura o `init` dispara a carga e o primeiro `resume` do Root chega logo em seguida — sem a
      * guarda seriam duas idas ao servidor. `Retry` é pedido explícito e passa por cima.
@@ -764,7 +771,7 @@ class GroupDetailsViewModel(
         // Quem já está na fila só pode sair dela: um segundo "Vou" não muda nada no servidor
         // e o otimista piscaria "confirmado" (mesma guarda da Início).
         val alreadyQueued = current.memberResponse?.status == GroupDetailsResponseStatus.Waitlisted
-        if (!game.responseOpen || current.responding || (alreadyQueued && intent == AttendanceIntent.Confirm)) return
+        if (!game.canRespond || current.responding || (alreadyQueued && intent == AttendanceIntent.Confirm)) return
         if (!game.responseIsOpen()) {
             update { it.copy(nextGame = game.copy(responseOpen = false)) }
             return
@@ -825,6 +832,7 @@ class GroupDetailsViewModel(
                     }
                 }
                 is SaqzResult.Failure -> {
+                    if (result.error == AttendanceError.DeadlinePassed) lateRefusedGames += game.gameId
                     update { it.afterResponseFailure(result.error, previousResponse, previousWaitlist) }
                     if (result.error.isOffline()) responseRetry.schedule()
                 }
@@ -964,6 +972,8 @@ class GroupDetailsViewModel(
         val startsAtLocal = runCatching { Instant.parse(startsAt).toLocalDateTime(zone) }.getOrNull()
         val deadlineLocal = runCatching { Instant.parse(confirmationDeadline).toLocalDateTime(zone) }.getOrNull()
         val place = listOfNotNull(venue.name, venue.court).joinToString(" — ")
+        val lateRefused = id in lateRefusedGames
+        val responseOpen = status == GameStatus.Published && startIsAhead()
         return NextGameUi(
             gameId = id,
             date = displayDate(),
@@ -974,8 +984,10 @@ class GroupDetailsViewModel(
             capacity = detail.capacity,
             confirmedNames = roster.confirmed.map { it.displayName },
             availableSpots = detail.availableSpots,
-            confirmationOpen = status == GameStatus.Published && deadlineIsOpen(),
-            responseOpen = status == GameStatus.Published && startIsAhead(),
+            // A palavra do servidor vale mais que o relógio do aparelho: prazo recusado é prazo vencido.
+            confirmationOpen = status == GameStatus.Published && deadlineIsOpen() && !lateRefused,
+            responseOpen = responseOpen,
+            closedByDeadline = lateRefused && responseOpen,
             startsAt = startsAt,
             hasGameFee = gameFeeCents != null,
             display = startsAtLocal?.gameHeroDisplay() ?: displayDate(),
@@ -1244,14 +1256,21 @@ private fun GroupDetailsState.afterResponseFailure(
     previousWaitlist: GroupWaitlistUi?,
 ): GroupDetailsState {
     val paused = error.isPlanPaused()
-    val closed = error == AttendanceError.DeadlinePassed || error == AttendanceError.Frozen
+    // Dois fechamentos: o jogo que começou ("Em andamento") e o prazo que o servidor não perdoa. A linha do
+    // hero explica os dois; nenhum é "tente de novo".
+    val started = error == AttendanceError.Frozen
+    val deadline = error == AttendanceError.DeadlinePassed
     return copy(
         memberResponse = previousResponse,
         waitlist = previousWaitlist,
         responding = false,
-        responseFailed = !paused && error != AttendanceError.Frozen,
+        responseFailed = !paused && !started && !deadline,
         responsePlanPaused = paused,
         responseOffline = error.isOffline(),
-        nextGame = if (closed) nextGame?.copy(responseOpen = false) else nextGame,
+        nextGame = when {
+            started -> nextGame?.copy(responseOpen = false)
+            deadline -> nextGame?.copy(confirmationOpen = false, closedByDeadline = true)
+            else -> nextGame
+        },
     )
 }

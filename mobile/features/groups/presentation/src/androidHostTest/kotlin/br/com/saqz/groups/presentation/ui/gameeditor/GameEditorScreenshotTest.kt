@@ -5,11 +5,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.Density
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.group.GroupRegularSlot
@@ -66,6 +69,39 @@ class GameEditorScreenshotTest {
             onBack = {},
             onIntent = {},
         )
+    }
+
+    // Backend v.0.0.17: a quadra sem endereço volta como 400 e o erro cai no campo, sem cartão genérico.
+    @Test
+    fun venueAddressRefusedByTheServer() = capture("compat-editor-venue-address-required") {
+        GameEditorScreen(
+            state = previewState().copy(
+                form = previewState().form.copy(venue = GameVenue(name = "Quadra do Parque", address = "")),
+                groupHasVenue = false,
+                validationErrors = setOf(GameEditorFieldError.VenueAddressRequired),
+                submitAttempts = 1,
+            ),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
+    // Numa edição o jogo já existe: o cartão genérico diz "salvar", não "criar".
+    @Test
+    fun saveFailureWhenEditing() = capture("compat-editor-save-failure-edit") {
+        GameEditorScreen(
+            state = previewState().copy(versionToken = "etag-1", saveFailed = true),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
+    // Chips de duração e de prazo com a fonte maior: o texto inteiro, quebrando de linha se preciso.
+    @Test
+    fun chipsWithLargeFont() = capture("compat-editor-chips-font-1-3") {
+        CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 1.3f)) {
+            GameEditorScreen(state = previewState(), onBack = {}, onIntent = {})
+        }
     }
 
     @Test

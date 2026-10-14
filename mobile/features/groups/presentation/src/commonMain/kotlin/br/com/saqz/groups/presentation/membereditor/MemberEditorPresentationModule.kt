@@ -17,6 +17,7 @@ fun memberEditorPresentationModule(): Module = module {
             athleteGateway = get<AthleteGateway>(),
             membershipGateway = get<GroupMembershipGateway>(),
             groupGateway = get<GroupGateway>(),
+            trialAccess = getOrNull(),
         )
     }
 }

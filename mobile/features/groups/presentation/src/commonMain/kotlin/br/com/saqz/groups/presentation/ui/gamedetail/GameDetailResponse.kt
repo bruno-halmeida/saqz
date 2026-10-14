@@ -13,12 +13,11 @@ import br.com.saqz.groups.presentation.gamedetail.GameDetailStatusTone
 import br.com.saqz.groups.presentation.ui.components.HeroAttendanceControls
 import br.com.saqz.groups.presentation.ui.components.HeroAttendanceTags
 import br.com.saqz.groups.presentation.ui.components.HeroAttendanceTexts
-import br.com.saqz.groups.presentation.ui.components.HeroDeadlineLine
+import br.com.saqz.groups.presentation.ui.components.HeroResponseLine
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.game_detail_confirmation_deadline
 import br.com.saqz.groups.resources.game_detail_response_kicker
 import br.com.saqz.groups.resources.game_response_confirmed
-import br.com.saqz.groups.resources.game_response_deadline_closed
 import br.com.saqz.groups.presentation.ui.components.lateNoticeText
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.resources.game_response_declined
@@ -66,19 +65,15 @@ internal fun GameDetailResponse(
         ),
         modifier = modifier.testTag(GameDetailAttendanceTags.Block),
     ) {
-        if (header.confirmationOpen || !header.responseOpen) {
-            HeroDeadlineLine(
-                text = if (header.confirmationOpen) {
-                    stringResource(Res.string.game_detail_confirmation_deadline, header.deadlineLabel())
-                } else {
-                    stringResource(Res.string.game_response_deadline_closed)
-                },
-                open = header.confirmationOpen,
-            )
-        }
+        HeroResponseLine(
+            confirmationOpen = header.confirmationOpen,
+            responseOpen = header.responseOpen,
+            closedByDeadline = header.closedByDeadline,
+            openText = stringResource(Res.string.game_detail_confirmation_deadline, header.deadlineLabel()),
+        )
         HeroAttendanceControls(
             status = response.status,
-            confirmationOpen = header.responseOpen,
+            confirmationOpen = header.canRespond,
             lateNotice = if (!header.confirmationOpen) lateNoticeText(promotionMode) else null,
             responding = response.responding,
             responseFailed = response.failed || response.planPaused,

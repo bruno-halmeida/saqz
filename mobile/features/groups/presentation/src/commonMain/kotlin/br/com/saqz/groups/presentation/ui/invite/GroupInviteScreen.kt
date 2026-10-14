@@ -57,6 +57,8 @@ import br.com.saqz.groups.resources.group_invite_empty_title
 import br.com.saqz.groups.resources.group_invite_game_created_text
 import br.com.saqz.groups.resources.group_invite_game_created_title
 import br.com.saqz.groups.resources.group_invite_generate_code
+import br.com.saqz.groups.resources.group_invite_generate_link
+import br.com.saqz.groups.resources.group_invite_generate_link_note
 import br.com.saqz.groups.resources.group_invite_joined_days
 import br.com.saqz.groups.resources.group_invite_joined_hours
 import br.com.saqz.groups.resources.group_invite_joined_minutes
@@ -80,6 +82,8 @@ import org.jetbrains.compose.resources.stringResource
 internal object GroupInviteTags {
     const val Screen = "group-invite"
     const val Generate = "group-invite-generate"
+    const val GenerateLink = "group-invite-generate-link"
+    const val GenerateLinkNote = "group-invite-generate-link-note"
     const val Code = "group-invite-code"
     const val CopyCode = "group-invite-copy-code"
     const val Rotate = "group-invite-rotate"
@@ -325,15 +329,48 @@ private fun InviteActiveCard(state: GroupInviteState, onIntent: (GroupInviteInte
                 modifier = Modifier.padding(top = SaqzTheme.metrics.grid),
             )
         }
-        // Trocar o código derruba o que já foi enviado: fica fora do destaque e sempre pede confirmação.
+        if (state.inviteCode == null && state.inviteUrl == null) {
+            GenerateLinkAction(state, onIntent)
+        } else {
+            // Trocar o código derruba o que já foi enviado: fica fora do destaque e sempre pede confirmação.
+            SaqzButton(
+                label = stringResource(Res.string.group_invite_rotate_code),
+                onClick = { onIntent(GroupInviteIntent.RequestRotate) },
+                variant = SaqzButtonVariant.Ghost,
+                size = SaqzButtonSize.Sm,
+                enabled = !state.isGenerating,
+                fullWidth = true,
+                modifier = Modifier.padding(top = SaqzTheme.metrics.grid).testTag(GroupInviteTags.Rotate),
+            )
+        }
+    }
+}
+
+/**
+ * Convite ativo, mas sem link nem código para mostrar: o backend v.0.0.17 só devolve o link na hora em
+ * que ele é criado e a leitura seguinte vem sem ele. Sem nada para copiar ou compartilhar, a ação
+ * principal é gerar um link novo, e a nota avisa o que isso custa (como no app antigo). Com o backend
+ * atual a leitura traz o link e esta ação nunca aparece.
+ */
+@Composable
+private fun GenerateLinkAction(state: GroupInviteState, onIntent: (GroupInviteIntent) -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = SaqzTheme.metrics.grid),
+        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
+    ) {
         SaqzButton(
-            label = stringResource(Res.string.group_invite_rotate_code),
-            onClick = { onIntent(GroupInviteIntent.RequestRotate) },
-            variant = SaqzButtonVariant.Ghost,
-            size = SaqzButtonSize.Sm,
+            label = stringResource(Res.string.group_invite_generate_link),
+            onClick = { onIntent(GroupInviteIntent.ConfirmRotate) },
             enabled = !state.isGenerating,
+            loading = state.isGenerating,
             fullWidth = true,
-            modifier = Modifier.padding(top = SaqzTheme.metrics.grid).testTag(GroupInviteTags.Rotate),
+            modifier = Modifier.testTag(GroupInviteTags.GenerateLink),
+        )
+        Text(
+            stringResource(Res.string.group_invite_generate_link_note),
+            style = SaqzTheme.typography.support,
+            color = SaqzTheme.colors.textSecondary,
+            modifier = Modifier.testTag(GroupInviteTags.GenerateLinkNote),
         )
     }
 }

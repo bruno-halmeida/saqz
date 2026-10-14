@@ -59,7 +59,7 @@ import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.presentation.ui.components.HeroAttendanceControls
 import br.com.saqz.groups.presentation.ui.components.HeroAttendanceTags
 import br.com.saqz.groups.presentation.ui.components.HeroAttendanceTexts
-import br.com.saqz.groups.presentation.ui.components.HeroDeadlineLine
+import br.com.saqz.groups.presentation.ui.components.HeroResponseLine
 import br.com.saqz.groups.presentation.ui.components.HeroOutlineAlpha
 import br.com.saqz.groups.presentation.ui.components.HeroRosterRow
 import br.com.saqz.groups.resources.Res
@@ -387,7 +387,7 @@ private fun HomeHero(
         // Tocar no cartão abre a tela do jogo, como o placar do gestor.
         onClick = { onIntent(HomeIntent.OpenGame(game.groupId, game.gameId)) },
     ) {
-        HeroDeadlineLine(text = game.deadline, open = game.confirmationOpen)
+        HomeHeroResponseLine(game)
         HomeAttendanceControls(
             game = game,
             responding = responding,
@@ -403,7 +403,7 @@ private fun HomeHero(
                 names = game.rosterNames,
                 summary = game.confirmedSummary,
                 // Jogo já começado não tem "vaga restante": ninguém mais entra pela confirmação.
-                spotsChip = if (game.responseOpen && spotsLeft in 1..SpotsLeftMax) {
+                spotsChip = if (game.canRespond && spotsLeft in 1..SpotsLeftMax) {
                     pluralStringResource(Res.plurals.home_spots_left, spotsLeft, spotsLeft)
                 } else {
                     null
@@ -415,6 +415,15 @@ private fun HomeHero(
 
 /** Escassez que muda comportamento: abaixo disso o "9 de 12" vira "restam N". */
 private const val SpotsLeftMax = 3
+
+/** A linha do prazo no topo do hero da Início (e do hero do gestor): o adaptador do `HeroResponseLine`. */
+@Composable
+internal fun HomeHeroResponseLine(game: HomeNextGameUi) = HeroResponseLine(
+    confirmationOpen = game.confirmationOpen,
+    responseOpen = game.responseOpen,
+    closedByDeadline = game.closedByDeadline,
+    openText = game.deadline,
+)
 
 /**
  * Seletor de presença do hero: o adaptador da Início para o `HeroAttendanceControls` — traduz
@@ -433,7 +442,7 @@ internal fun ColumnScope.HomeAttendanceControls(
 ) {
     HeroAttendanceControls(
         status = game.ownAttendance,
-        confirmationOpen = game.responseOpen,
+        confirmationOpen = game.canRespond,
         lateNotice = if (!game.confirmationOpen) lateNoticeText(game.promotionMode) else null,
         responding = responding,
         responseFailed = responseFailed || planPaused,

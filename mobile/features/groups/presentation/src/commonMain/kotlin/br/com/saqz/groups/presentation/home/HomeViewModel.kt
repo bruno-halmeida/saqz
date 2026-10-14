@@ -138,6 +138,13 @@ class HomeViewModel(
     private var pixCopiedGeneration = 0L
 
     /**
+     * Jogos em que o servidor recusou a resposta por prazo vencido (`ATTENDANCE_DEADLINE_PASSED`, backend
+     * v.0.0.17). A carga seguinte reconstrói a tela do zero; sem esta memória os botões voltariam a
+     * valer e o aviso do prazo voltaria a prometer a lista de espera, até o próximo toque recusado.
+     */
+    private val lateRefusedGames = mutableSetOf<String>()
+
+    /**
      * Há carga no ar. Existe para a recarga por baixo (VUL-202) não repetir o que já está
      * acontecendo: na abertura do app o `init` dispara a carga e o primeiro `resume` da
      * faixa chega microssegundos depois — sem esta guarda seriam **duas** idas ao
@@ -377,7 +384,7 @@ class HomeViewModel(
     ): Boolean = when {
         now.now() >= startsAt -> false
         current.responding -> false
-        !gameUi.responseOpen -> false
+        !gameUi.canRespond -> false
         game.ownAttendance?.status == AttendanceStatus.Waitlisted &&
             intent != AttendanceIntent.Decline -> false
         else -> true
@@ -451,19 +458,25 @@ class HomeViewModel(
                 load(softRefresh = true)
             }
             is SaqzResult.Failure -> {
-                // Jogo já começado ou encerrado: a linha do cartão explica, não o erro genérico.
-                val closed = result.error == AttendanceError.Frozen || result.error == AttendanceError.DeadlinePassed
+                // Jogo já começado, ou prazo vencido num backend que não aceita resposta tardia: a linha do
+                // cartão explica, não o erro genérico. São dois fechamentos: "Em andamento" é só do jogo que
+                // começou.
+                val started = result.error == AttendanceError.Frozen
+                val deadline = result.error == AttendanceError.DeadlinePassed
                 val paused = result.error.isPlanPaused()
+                if (deadline) lateRefusedGames += context.game.gameId
                 update {
                     it.copy(
                         home = context.home,
-                        member = if (closed) {
-                            context.member.copy(nextGame = context.gameUi.copy(responseOpen = false))
-                        } else {
-                            context.member
+                        member = when {
+                            started -> context.member.copy(nextGame = context.gameUi.copy(responseOpen = false))
+                            deadline -> context.member.copy(
+                                nextGame = context.gameUi.copy(confirmationOpen = false, closedByDeadline = true),
+                            )
+                            else -> context.member
                         },
                         responding = false,
-                        responseFailed = !closed && !paused,
+                        responseFailed = !started && !deadline && !paused,
                         responsePlanPaused = paused,
                         responseOffline = result.error.isOffline(),
                     )
@@ -512,7 +525,9 @@ class HomeViewModel(
         } ?: startsAt
         val time = startsAtLocal?.gameTimeLabel() ?: startsAt
         val weekday = startsAtLocal?.let { getString(it.date.dayOfWeek.longResource()) } ?: ""
-        val confirmationOpen = deadlineInstant?.let { now.now() < it } == true
+        val lateRefused = gameId in lateRefusedGames
+        // A palavra do servidor vale mais que o relógio do aparelho: prazo recusado é prazo vencido.
+        val confirmationOpen = !lateRefused && deadlineInstant?.let { now.now() < it } == true
         val responseOpen = startsAtIsAhead()
         val (display, meta) = heroLabels(startsAtLocal, dateTime, local)
         val ownPosition = ownAttendance
@@ -552,6 +567,7 @@ class HomeViewModel(
             ownAttendance = ownAttendance?.status,
             confirmationOpen = confirmationOpen,
             responseOpen = responseOpen,
+            closedByDeadline = lateRefused && responseOpen,
             weekday = weekday,
             time = time,
             waitlistKind = ownAttendance?.status?.let { waitlistKind() },

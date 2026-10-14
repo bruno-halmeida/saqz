@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.gameeditor
 
+import br.com.saqz.groups.domain.game.GameError
+
 /**
  * 4e — validação do formulário de jogo. Regra densa fora do ViewModel (AGENTS.md §4).
  * Data, horário e o nome da quadra são obrigatórios; o endereço é opcional, mas, se vier, precisa ter
@@ -29,6 +31,17 @@ fun validateGameEditor(form: GameEditorFields): Set<GameEditorFieldError> {
     return errors
 }
 
+/**
+ * O que o servidor recusou, traduzido para os campos do formulário. O backend que ainda exige o
+ * endereço da quadra (v.0.0.17) responde `400 VALIDATION_FAILED` com `venue.address: is required`;
+ * com o backend atual o endereço é opcional e isto devolve vazio. Vazio quer dizer "sem campo para
+ * apontar": quem chama cai no aviso genérico.
+ */
+internal fun GameError.Validation.toGameEditorFieldErrors(): Set<GameEditorFieldError> = buildSet {
+    if (VENUE_ADDRESS_FIELD in error.details.fieldMessages) add(GameEditorFieldError.VenueAddressRequired)
+}
+
+private const val VENUE_ADDRESS_FIELD = "venue.address"
 private const val VENUE_NAME_MIN = 2
 private const val VENUE_NAME_MAX = 120
 private const val VENUE_ADDRESS_MIN = 5

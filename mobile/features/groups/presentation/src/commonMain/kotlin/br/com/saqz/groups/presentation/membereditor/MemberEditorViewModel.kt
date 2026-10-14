@@ -12,6 +12,7 @@ import br.com.saqz.groups.domain.athlete.AthleteRosterEntry
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.athlete.UpdateAthleteCommand
 import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.membership.AssignableGroupRole
 import br.com.saqz.groups.domain.membership.ChangeMembershipRoleCommand
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
@@ -31,6 +32,7 @@ class MemberEditorViewModel(
     private val athleteGateway: AthleteGateway,
     private val membershipGateway: GroupMembershipGateway,
     private val groupGateway: GroupGateway,
+    private val trialAccess: GroupTrialAccessPort? = null,
 ) : MviViewModel<MemberEditorState, MemberEditorIntent, MemberEditorEffect>(
     MemberEditorState().restoreDraft(savedState),
 ) {
@@ -67,7 +69,6 @@ class MemberEditorViewModel(
             }
             is MemberEditorIntent.MembershipSelected -> selectMembership(intent.value)
             MemberEditorIntent.OpenBilling -> openBilling()
-            MemberEditorIntent.DismissBilling -> update { it.copy(billingSheetOpen = false) }
             is MemberEditorIntent.BillingAmountChanged -> {
                 savedState[KEY_BILLING_AMOUNT] = intent.value
                 update { it.copy(billingAmountText = intent.value, error = null) }
@@ -80,8 +81,20 @@ class MemberEditorViewModel(
             is MemberEditorIntent.AdminChanged -> changeRole(intent.value)
             MemberEditorIntent.Save -> save()
             MemberEditorIntent.OpenRemove -> openRemove()
-            MemberEditorIntent.DismissRemove -> update { it.copy(removeSheetOpen = false) }
             MemberEditorIntent.ConfirmRemove -> remove()
+            MemberEditorIntent.DismissBilling,
+            MemberEditorIntent.DismissRemove,
+            MemberEditorIntent.DismissSubscriptionRequired,
+            -> dismissSheet(intent)
+        }
+    }
+
+    /** As três folhas que a tela abre por cima do formulário fecham da mesma forma: baixando a bandeira. */
+    private fun dismissSheet(intent: MemberEditorIntent) = update {
+        when (intent) {
+            MemberEditorIntent.DismissBilling -> it.copy(billingSheetOpen = false)
+            MemberEditorIntent.DismissRemove -> it.copy(removeSheetOpen = false)
+            else -> it.copy(subscriptionRequired = false)
         }
     }
 
@@ -239,7 +252,7 @@ class MemberEditorViewModel(
             when (val result = athleteGateway.updateAthlete(command)) {
                 is SaqzResult.Failure -> {
                     if (requestGeneration != generation) return@launch
-                    update { it.copy(operation = null, error = result.error.toUiError()) }
+                    showOperationFailure(result.error.toUiError())
                 }
                 is SaqzResult.Success -> {
                     if (requestGeneration != generation) return@launch
@@ -308,7 +321,7 @@ class MemberEditorViewModel(
             )) {
                 is SaqzResult.Failure -> {
                     if (requestGeneration != generation) return@launch
-                    update { it.copy(operation = null, error = result.error.toUiError()) }
+                    showOperationFailure(result.error.toUiError())
                 }
                 is SaqzResult.Success -> {
                     if (requestGeneration != generation) return@launch
@@ -326,7 +339,7 @@ class MemberEditorViewModel(
             when (val result = athleteGateway.removeAthlete(GroupId(groupId), userId)) {
                 is SaqzResult.Failure -> {
                     if (requestGeneration != generation) return@launch
-                    update { it.copy(operation = null, error = result.error.toUiError()) }
+                    showOperationFailure(result.error.toUiError())
                 }
                 is SaqzResult.Success -> {
                     if (requestGeneration != generation) return@launch
@@ -334,6 +347,23 @@ class MemberEditorViewModel(
                     emit(MemberEditorEffect.Removed)
                 }
             }
+        }
+    }
+
+    /**
+     * Gravar, trocar papel ou remover que falha não derruba a tela. Sem plano ativo "tentar de novo"
+     * nunca resolve (e o aviso do topo some da vista quando a tela está rolada, deixando o toggle
+     * voltar calado): a folha da assinatura abre, como na lista de membros. O resto vira o aviso.
+     */
+    private fun showOperationFailure(error: GroupUiError) {
+        if (error != GroupUiError.SubscriptionRequired) {
+            update { it.copy(operation = null, error = error) }
+            return
+        }
+        update { it.copy(operation = null, error = null) }
+        viewModelScope.launch {
+            val trialEnded = trialAccess?.read(GroupId(groupId))?.trialEnded == true
+            update { it.copy(subscriptionRequired = true, trialEnded = trialEnded) }
         }
     }
 

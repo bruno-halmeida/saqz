@@ -49,8 +49,17 @@ data class GameDetailHeaderUi(
     val confirmationOpen: Boolean = true,
     /** Ainda dá para responder: jogo publicado e por começar. Depois do prazo o "Vou" entra pela espera. */
     val responseOpen: Boolean = true,
+    /**
+     * O servidor recusou a resposta por prazo vencido (`ATTENDANCE_DEADLINE_PASSED`, backend v.0.0.17):
+     * as respostas fecham com a frase do prazo, e o selo segue "Prazo encerrado" — "Em andamento" é só
+     * do jogo que começou.
+     */
+    val closedByDeadline: Boolean = false,
     val confirmationDeadlineWeekday: GroupWeekday? = null,
-)
+) {
+    /** Os botões de resposta valem: o jogo não começou e o servidor não fechou as respostas pelo prazo. */
+    val canRespond: Boolean get() = responseOpen && !closedByDeadline
+}
 enum class GameDetailStatusTone { Draft, Published, Cancelled, Completed }
 
 /**

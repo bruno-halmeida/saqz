@@ -68,6 +68,16 @@ class GroupInviteScreenshotTest {
         )
     }
 
+    // Backend v.0.0.17: o GET do convite não devolve o link nem o código; a ação principal é gerar um link novo.
+    @Test
+    fun reopenedWithoutLink() = capture("invite-reopened-without-link") {
+        GroupInviteScreen(
+            state = GroupInviteState(isLoading = false, groupName = "Vôlei do CERET", inviteStatus = InviteStatus.Active),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
     @Test
     fun permanentInvite() {
         capture("invite-permanent") {

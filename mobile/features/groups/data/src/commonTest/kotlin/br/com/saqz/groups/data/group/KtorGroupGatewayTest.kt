@@ -336,6 +336,21 @@ class KtorGroupGatewayTest {
             assertEquals(listOf("required"), assertIs<GroupProfileError.Validation>(e).details.fieldMessages["regularSlots[0].startTime"])
         }
 
+    @Test fun `a default venue without address refused by the old backend keeps the field path for the form`() =
+        runTest {
+            // Backend v.0.0.17: `defaultVenue.address: is required` no POST e no PUT do grupo.
+            val refusal = "\"defaultVenue.address\":[\"is required\"]"
+            val created = fixture { problem(400, "VALIDATION_FAILED", refusal) }.gateway.createProfile(profileCreate()).failure()
+            val updated = fixture { problem(400, "VALIDATION_FAILED", refusal) }.gateway.updateProfile(profileUpdate()).failure()
+
+            listOf(created, updated).forEach { error ->
+                assertEquals(
+                    listOf("is required"),
+                    assertIs<GroupProfileError.Validation>(error).details.fieldMessages["defaultVenue.address"],
+                )
+            }
+        }
+
     @Test fun `subscription required maps to the typed plan error`() =
         runTest {
             assertEquals(
