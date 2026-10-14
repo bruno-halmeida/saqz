@@ -133,6 +133,8 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
         run: |
           set -euo pipefail
+          # A pasta do flavor prod só tem o arquivo ignorado pelo git: no checkout ela não existe.
+          mkdir -p mobile/android-app/src/prod
           printf '%s' "$GOOGLE_SERVICES_JSON_B64" | openssl base64 -d -A > mobile/android-app/src/prod/google-services.json
           keystore="$RUNNER_TEMP/upload.jks"
           printf '%s' "$KEYSTORE_B64" | openssl base64 -d -A > "$keystore"
@@ -207,7 +209,11 @@ jobs:
       - name: Materializar o Firebase de produção
         env:
           PLIST_B64: ${{ secrets.FIREBASE_GOOGLE_SERVICE_INFO_PLIST_B64 }}
-        run: printf '%s' "$PLIST_B64" | openssl base64 -d -A > mobile/ios-app/SaqzIOS/Config/Prod/GoogleService-Info.plist
+        # Config/Prod só tem o arquivo ignorado pelo git: no checkout a pasta não existe.
+        run: |
+          set -euo pipefail
+          mkdir -p mobile/ios-app/SaqzIOS/Config/Prod
+          printf '%s' "$PLIST_B64" | openssl base64 -d -A > mobile/ios-app/SaqzIOS/Config/Prod/GoogleService-Info.plist
       - name: Ruby e fastlane
         uses: ruby/setup-ruby@v1
         with:
