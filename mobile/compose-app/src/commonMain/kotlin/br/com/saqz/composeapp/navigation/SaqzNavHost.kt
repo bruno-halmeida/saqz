@@ -217,6 +217,35 @@ internal fun SaqzNavHost(
     LaunchedEffect(whatsAppAvailability, sessionReady) {
         if (sessionReady) whatsAppAvailability.refresh()
     }
+    // Convite pendente sendo tratado, ou ainda na tela do convite: o shell fica só no carregando.
+    val inviteHandoffActive = isInviteHandoffPending(
+        sessionReady = sessionReady,
+        hasPendingInvite = pendingInviteCode != null,
+        coordinatorAuthenticated = coordinatorAuthenticated,
+        redeeming = inviteRedeeming,
+    )
+    var inviteHeld by remember { mutableStateOf(false) }
+    var inviteHoldExpired by remember { mutableStateOf(false) }
+    val signedOutNow = state.session is SessionAccessState.SignedOut
+    LaunchedEffect(inviteHandoffActive, sessionReady, signedOutNow, backStack.lastOrNull()) {
+        inviteHeld = nextInviteHold(
+            held = inviteHeld,
+            active = inviteHandoffActive,
+            sessionReady = sessionReady,
+            signedOut = signedOutNow,
+            topIsInviteScreen = isInviteScreen(backStack.lastOrNull()),
+        )
+    }
+    // Saída garantida: nunca prende a pessoa no carregando.
+    LaunchedEffect(inviteHandoffActive || inviteHeld) {
+        if (inviteHandoffActive || inviteHeld) {
+            kotlinx.coroutines.delay(INVITE_HANDOFF_TIMEOUT_MILLIS)
+            inviteHoldExpired = true
+            inviteHeld = false
+        } else {
+            inviteHoldExpired = false
+        }
+    }
     // Uma linha para as ~45 rotas: rota nova entra sozinha. Só o nome da classe, nunca os campos.
     val topRoute = backStack.lastOrNull()
     val launchStack = backStack.filter { it.isAvailableAtLaunch() }.ifEmpty { listOf(AccessRoute.Starting) }
@@ -505,15 +534,9 @@ internal fun SaqzNavHost(
                     )
                 }
                 entry<SaqzShellDestination> { route ->
-                    // Convite pendente ainda sendo tratado: a Início de quem não tem grupo não é composta
-                    // nem recebe toque até a tela do convite (cadastro, pedido enviado ou erro) abrir.
-                    if (isInviteHandoffPending(
-                            sessionReady = state.session is SessionAccessState.Ready,
-                            hasPendingInvite = pendingInviteCode != null,
-                            coordinatorAuthenticated = coordinatorAuthenticated,
-                            redeeming = inviteRedeeming,
-                        )
-                    ) {
+                    // Convite sendo tratado (ou tela do convite ainda aberta): a Início não é composta nem
+                    // recebe toque, só o carregando, até a pessoa sair da tela do convite.
+                    if (!inviteHoldExpired && (inviteHandoffActive || inviteHeld)) {
                         Box(
                             modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background),
                             contentAlignment = Alignment.Center,

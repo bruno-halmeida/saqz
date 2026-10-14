@@ -30,3 +30,33 @@ internal fun isInviteHandoffPending(
     coordinatorAuthenticated: Boolean,
     redeeming: Boolean,
 ): Boolean = sessionReady && hasPendingInvite && (!coordinatorAuthenticated || redeeming)
+
+/** Tempo máximo que o shell fica só no carregando por causa de um convite: nunca prende a pessoa. */
+internal const val INVITE_HANDOFF_TIMEOUT_MILLIS = 15_000L
+
+/** Telas do convite (cadastro de atleta depois de entrar, pedido enviado ou erro). */
+internal fun isInviteScreen(route: NavKey?): Boolean = when (route) {
+    is GroupsRoute.InviteLanding -> true
+    is GroupsRoute.AthleteRegistration -> !route.fromProfile
+    else -> false
+}
+
+/**
+ * A retenção do shell em "carregando" começa quando o convite começa a ser tratado ([active]) e só
+ * termina quando a pessoa sai da tela do convite. Depois de o efeito navegar o convite já não está
+ * pendente, mas a Início ainda é composta por baixo durante a transição; segurar até a tela do
+ * convite sair do topo evita Início, esqueleto e toque nesse intervalo. Sessão que oscila no meio
+ * não solta a retenção; só sair da conta ([signedOut]) solta.
+ */
+internal fun nextInviteHold(
+    held: Boolean,
+    active: Boolean,
+    sessionReady: Boolean,
+    signedOut: Boolean,
+    topIsInviteScreen: Boolean,
+): Boolean = when {
+    signedOut -> false
+    active -> true
+    held && sessionReady && !topIsInviteScreen -> false
+    else -> held
+}

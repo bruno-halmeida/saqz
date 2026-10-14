@@ -241,6 +241,8 @@
     <string name="group_system_reload">Recarregar</string>
     <string name="groups_next_game_summary">%1$s · %2$s · %3$d de %4$d</string>
     <string name="groups_next_game_in_progress">%1$s · %2$s · Em andamento · %3$d de %4$d</string>
+    <string name="groups_next_game_over_capacity">%1$s · %2$s · %3$s</string>
+    <string name="groups_next_game_in_progress_over_capacity">%1$s · %2$s · Em andamento · %3$s</string>
     <string name="group_schedule_pause_help">Toque aqui e salve as alterações para parar de criar novos jogos nos dias e horários definidos. Os jogos já criados continuam como estão.</string>
     <string name="group_schedule_resume_help">Toque aqui e salve as alterações para voltar a criar jogos nos dias e horários definidos.</string>
 </resources>

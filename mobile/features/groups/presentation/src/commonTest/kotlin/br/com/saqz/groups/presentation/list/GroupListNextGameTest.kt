@@ -33,6 +33,13 @@ class GroupListNextGameTest {
         assertEquals("04/08 · 19h30 · 9 de 12", games.nextGroupCardGame(GroupRole.ADMIN, now)?.label)
     }
 
+    @Test fun `confirmed above capacity reads as confirmed for spots never as x of y`() = runTest {
+        val next = sampleGame().copy(startsAt = "2026-08-04T22:30:00Z", confirmedCount = 3, capacity = 2)
+        assertEquals("04/08 · 19h30 · 3 confirmados para 2 vagas", listOf(next).nextGroupCardGame(GroupRole.ADMIN, now)?.label)
+        val running = sampleGame().copy(startsAt = "2026-08-01T11:50:00Z", durationMinutes = 120, confirmedCount = 3, capacity = 1)
+        assertEquals("01/08 · 08h50 · Em andamento · 3 confirmados para 1 vaga", listOf(running).nextGroupCardGame(GroupRole.ADMIN, now)?.label)
+    }
+
     @Test fun `game in progress stays as the next one with the same state as the home`() = runTest {
         // Começou 10 min antes de "now" e dura 2 h.
         val running = sampleGame().copy(startsAt = "2026-08-01T11:50:00Z", durationMinutes = 120, confirmedCount = 1, capacity = 4)

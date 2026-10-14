@@ -56,9 +56,10 @@ private const val AvatarTextRatio = 0.36f
 @Composable
 private fun avatarTextSize(size: Dp): TextUnit = with(LocalDensity.current) { (size * AvatarTextRatio).toSp() }
 
-// Sobreposição do 10k: `margin-left:-8px` fixo, e não uma fração do diâmetro.
-private val AvatarStackOverlap = 8.dp
-private val AvatarStackOverlapLargeText = 3.dp
+// Sobreposição curta e fixa (não uma fração do diâmetro): o círculo seguinte só encosta na borda do
+// anterior, sem passar por cima das iniciais (com 8dp o "BA"/"CU" de 30dp perdia a ponta da letra).
+private val AvatarStackOverlap = 4.dp
+private val AvatarStackOverlapLargeText = 0.dp
 
 /**
  * 10k — círculo ice com as iniciais e o anel de 1px (`box-shadow:inset 0 0 0 1px`

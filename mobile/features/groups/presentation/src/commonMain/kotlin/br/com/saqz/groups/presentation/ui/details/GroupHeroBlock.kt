@@ -205,7 +205,8 @@ private fun GroupGameHero(
         }
         // O gestor já tem o placar; em espera, as seções abaixo do hero já mostram o roster.
         if (!state.isAdmin && state.waitlist == null) {
-            val scarce = game.availableSpots in 1..SpotsLeftMax && state.memberResponse == null && game.confirmationOpen
+            val scarce = game.availableSpots in 1..SpotsLeftMax && state.memberResponse == null &&
+                game.confirmationOpen && game.responseOpen
             HeroRosterRow(
                 names = game.confirmedNames,
                 summary = if (game.confirmedCount > game.capacity) {

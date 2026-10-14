@@ -267,6 +267,14 @@ class GameDetailScreenTest {
     }
 
     @Test
+    fun `game in progress does not show the confirmation deadline anywhere`() = runComposeUiTest {
+        setScreen(state = GameDetailResponsePreviewData.memberStarted)
+
+        onAllNodesWithText("Confirmações até 17h30").assertCountEquals(0)
+        onNodeWithText("Em andamento. Não dá mais para responder.").assertExists()
+    }
+
+    @Test
     fun `once the game started change is disabled`() = runComposeUiTest {
         setScreen(state = GameDetailResponsePreviewData.memberStartedConfirmed)
 

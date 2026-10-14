@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import br.com.saqz.designsystem.SaqzAvatar
 import br.com.saqz.designsystem.SaqzBottomSheet
@@ -135,15 +136,28 @@ private fun GameWaitlistRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        Text(
-            text = person.queuePosition?.let { stringResource(Res.string.game_waitlist_queue_position, it) }
-                ?: stringResource(Res.string.game_waitlist_queue_unknown),
-            color = SaqzTheme.colors.primary,
-            style = SaqzTheme.typography.caption,
-            modifier = Modifier.width(metrics.iconButtonSize),
-        )
+        // Fonte grande: a coluna estreita quebrava "1º na fila" em três linhas; a posição desce para
+        // cima do nome, em uma linha, e a coluna da esquerda some.
+        val largeFont = LocalDensity.current.fontScale > 1.2f
+        val queueLabel = person.queuePosition?.let { stringResource(Res.string.game_waitlist_queue_position, it) }
+            ?: stringResource(Res.string.game_waitlist_queue_unknown)
+        if (!largeFont) {
+            Text(
+                text = queueLabel,
+                color = SaqzTheme.colors.primary,
+                style = SaqzTheme.typography.caption,
+                modifier = Modifier.width(metrics.iconButtonSize),
+            )
+        }
         if (person.guest != null) GameGuestAvatar() else SaqzAvatar(name = person.name, initialsColor = SaqzTheme.colors.primary)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+            if (largeFont) {
+                Text(
+                    text = queueLabel,
+                    color = SaqzTheme.colors.primary,
+                    style = SaqzTheme.typography.caption,
+                )
+            }
             Text(
                 text = person.name,
                 color = SaqzTheme.colors.textPrimary,

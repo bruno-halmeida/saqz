@@ -251,6 +251,25 @@ class HomeScreenTest {
     }
 
     @Test
+    fun `remaining spots chip shows before the game starts`() = runComposeUiTest {
+        val twoLeft = nextGame().copy(confirmedCount = 10, confirmedSummary = "10 de 12 confirmados")
+        setScreen(nextGameState(nextGame = twoLeft))
+        onNodeWithText("Restam 2 vagas").assertExists()
+    }
+
+    @Test
+    fun `game in progress has no remaining spots chip`() = runComposeUiTest {
+        val started = nextGame().copy(
+            confirmedCount = 11,
+            confirmedSummary = "11 de 12 confirmados",
+            confirmationOpen = false,
+            responseOpen = false,
+        )
+        setScreen(nextGameState(nextGame = started))
+        onAllNodesWithText("Resta 1 vaga").assertCountEquals(0)
+    }
+
+    @Test
     fun `after the deadline the buttons stay enabled and the card explains the waitlist`() = runComposeUiTest {
         setScreen(nextGameState(nextGame = nextGame().copy(confirmationOpen = false, deadline = "")))
 

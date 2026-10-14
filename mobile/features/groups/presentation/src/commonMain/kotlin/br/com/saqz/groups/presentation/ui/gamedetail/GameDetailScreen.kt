@@ -166,11 +166,15 @@ private fun GameDetailHeader(header: GameDetailHeaderUi) {
             text = stringResource(header.statusResource()),
             tone = header.statusTone.chipTone(),
         )
-        Text(
-            stringResource(Res.string.game_detail_confirmation_deadline, header.deadlineLabel()),
-            color = colors.textSecondary,
-            style = SaqzTheme.typography.support,
-        )
+        // Jogo em andamento: o prazo não faz sentido; o selo "Em andamento" e o cartão de resposta dizem o estado.
+        val started = header.statusTone == GameDetailStatusTone.Published && !header.responseOpen
+        if (!started) {
+            Text(
+                stringResource(Res.string.game_detail_confirmation_deadline, header.deadlineLabel()),
+                color = colors.textSecondary,
+                style = SaqzTheme.typography.support,
+            )
+        }
         Text(
             header.weekday?.shortLabel()?.let { "$it, ${header.dateTime}" } ?: header.dateTime,
             color = colors.textPrimary,
