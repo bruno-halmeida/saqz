@@ -61,7 +61,7 @@ import br.com.saqz.groups.resources.home_admin_waiting_monthly_meta
 import br.com.saqz.groups.resources.home_admin_waiting_settle
 import br.com.saqz.groups.resources.home_admin_waiting_settle_meta
 import br.com.saqz.groups.resources.home_confirmed_summary
-import br.com.saqz.groups.resources.home_deadline_closed
+import br.com.saqz.groups.resources.game_response_deadline_closed
 import br.com.saqz.groups.resources.home_game_date_time
 import br.com.saqz.groups.resources.home_group_games_played
 import br.com.saqz.groups.resources.home_group_meta
@@ -152,6 +152,12 @@ class HomeViewModel(
     /** Erro de rede na carga: tenta de novo sozinha até a rede voltar. */
     private val autoRetry = AutoRetry(viewModelScope) { load() }
 
+    /**
+     * A resposta que falhou sem rede deixa o aviso "Sem conexão" na tela; quando a rede volta, uma recarga
+     * por baixo que dá certo o apaga. Sem monitor de conectividade, a volta é detectada tentando de novo.
+     */
+    private val responseRetry = AutoRetry(viewModelScope) { load(softRefresh = true) }
+
     init {
         load()
     }
@@ -211,7 +217,7 @@ class HomeViewModel(
         loadInFlight = true
         update {
             if (softRefresh) {
-                it.copy(loadFailed = false, error = null, responseFailed = false, responsePlanPaused = false, responseOffline = false)
+                it.copy(loadFailed = false, error = null)
             } else {
                 it.copy(
                     isLoading = true,
@@ -233,10 +239,14 @@ class HomeViewModel(
             when (homeResult) {
                 is SaqzResult.Failure -> if (!softRefresh) {
                     showFailure(generation, homeResult.error.toUiError())
+                } else {
+                    retryOfflineResponse()
                 }
                 is SaqzResult.Success -> when (profileResult) {
                     is SaqzResult.Failure -> if (!softRefresh) {
                         showFailure(generation, profileResult.error.toUiError())
+                    } else {
+                        retryOfflineResponse()
                     }
                     is SaqzResult.Success -> {
                         val member = homeResult.value.member.toUi()
@@ -262,10 +272,12 @@ class HomeViewModel(
                                 ),
                                 responding = false,
                                 responseFailed = false,
+                                responsePlanPaused = false,
                                 responseOffline = false,
                                 ownCharges = ownCharges,
                             )
                         }
+                        responseRetry.reset()
                         checkOwnerTrial(generation, homeResult.value.member.groups)
                     }
                 }
@@ -320,6 +332,7 @@ class HomeViewModel(
         val context = responseContext(current, intent) ?: return
         val game = context.game
         val generation = ++responseGeneration
+        responseRetry.reset()
         val loadAtStart = loadGeneration
         val optimisticStatus = game.optimisticStatus(intent)
         updateOptimisticAttendance(context, optimisticStatus)
@@ -455,6 +468,7 @@ class HomeViewModel(
                         responseOffline = result.error.isOffline(),
                     )
                 }
+                if (result.error.isOffline()) responseRetry.schedule()
             }
         }
     }
@@ -465,6 +479,10 @@ class HomeViewModel(
         val game: br.com.saqz.groups.domain.home.HomeNextGame,
         val gameUi: HomeNextGameUi,
     )
+
+    private fun retryOfflineResponse() {
+        if (state.value.responseOffline) responseRetry.schedule()
+    }
 
     private fun showFailure(generation: Long, error: GroupUiError) {
         if (generation < loadGeneration) return
@@ -537,6 +555,7 @@ class HomeViewModel(
             weekday = weekday,
             time = time,
             waitlistKind = ownAttendance?.status?.let { waitlistKind() },
+            promotionMode = promotionMode,
             waitlistPosition = ownPosition,
             confirmedRoster = rosterPreview.confirmed.map { it.displayName },
             waitlistedRoster = waitlistedRows,
@@ -743,7 +762,7 @@ class HomeViewModel(
     ): String = when {
         confirmationOpen -> deadlineLabel(deadline, zone)
         responseOpen -> ""
-        else -> getString(Res.string.home_deadline_closed)
+        else -> getString(Res.string.game_response_deadline_closed)
     }
 
     private fun HomeNextGame.deadlinePassed(): Boolean =

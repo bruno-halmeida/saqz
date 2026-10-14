@@ -86,6 +86,12 @@ class GameDetailViewModel(
     /** Erro de rede na carga: tenta de novo sozinha até a rede voltar. */
     private val autoRetry = AutoRetry(viewModelScope) { load() }
 
+    /**
+     * A resposta que falhou sem rede deixa o aviso "Sem conexão" na tela; quando a rede volta, uma recarga
+     * por baixo que dá certo o apaga. Sem monitor de conectividade, a volta é detectada tentando de novo.
+     */
+    private val responseRetry = AutoRetry(viewModelScope) { load(softRefresh = true) }
+
     init {
         load()
     }
@@ -264,6 +270,7 @@ class GameDetailViewModel(
                         capacityFailed = false,
                     )
                 }
+                responseRetry.reset()
             }
         }
     }
@@ -453,6 +460,7 @@ class GameDetailViewModel(
         }
         val loadAtStart = loadGeneration
         val generation = ++responseGeneration
+        responseRetry.reset()
         val optimistic = current.optimisticStatus(intent)
         update {
             it.copy(
@@ -496,6 +504,7 @@ class GameDetailViewModel(
                             ),
                         )
                     }
+                    if (result.error.isOffline()) responseRetry.schedule()
                     if (result.error == AttendanceError.DeadlinePassed || result.error == AttendanceError.Frozen) {
                         closeConfirmation()
                     }
@@ -643,7 +652,11 @@ class GameDetailViewModel(
 
     /** Por baixo ([softRefresh]) a falha não troca a tela por erro: o conteúdo fica e a próxima volta tenta de novo. */
     private fun showFailure(generation: Int, error: GroupUiError, softRefresh: Boolean = false) {
-        if (generation != loadGeneration || softRefresh) return
+        if (generation != loadGeneration) return
+        if (softRefresh) {
+            if (state.value.response.offline) responseRetry.schedule()
+            return
+        }
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
         if (error == GroupUiError.Network) autoRetry.schedule()
     }

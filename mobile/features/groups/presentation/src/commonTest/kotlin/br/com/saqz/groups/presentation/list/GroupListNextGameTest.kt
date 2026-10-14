@@ -33,6 +33,15 @@ class GroupListNextGameTest {
         assertEquals("04/08 · 19h30 · 9 de 12", games.nextGroupCardGame(GroupRole.ADMIN, now)?.label)
     }
 
+    @Test fun `game in progress stays as the next one with the same state as the home`() = runTest {
+        // Começou 10 min antes de "now" e dura 2 h.
+        val running = sampleGame().copy(startsAt = "2026-08-01T11:50:00Z", durationMinutes = 120, confirmedCount = 1, capacity = 4)
+        val later = sampleGame().copy(startsAt = "2026-08-04T22:30:00Z")
+        assertEquals("01/08 · 08h50 · Em andamento · 1 de 4", listOf(later, running).nextGroupCardGame(GroupRole.ADMIN, now)?.label)
+        val over = running.copy(durationMinutes = 5)
+        assertTrue(listOf(over, later).nextGroupCardGame(GroupRole.ADMIN, now)!!.label.startsWith("04/08 · 19h30"))
+    }
+
     @Test fun `cancelled completed and past games are excluded`() = runTest {
         val games = listOf(
             sampleGame().copy(status = GameStatus.Cancelled),

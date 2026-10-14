@@ -9,7 +9,7 @@ import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 /**
  * Regra de presença do grupo (decisão de 13/10/2026), espelho da política do servidor, que tem a
  * palavra final. Serve à previsão otimista do "Vou" e ao motivo mostrado quando a resposta cai na espera:
- * - depois do prazo o "Vou" sempre vai para a espera;
+ * - depois do prazo, em ordem de chegada o "Vou" confirma se houver vaga e senão espera; em escolha manual espera sempre;
  * - antes do prazo, em ordem de chegada: com prioridade o avulso espera; sem ela, todos entram se houver vaga;
  * - antes do prazo, em escolha manual: com prioridade só o mensalista entra direto; sem ela, todos esperam.
  */
@@ -20,7 +20,9 @@ internal object AttendanceRule {
         promotionMode: PromotionMode,
         deadlinePassed: Boolean,
     ): Boolean {
-        if (deadlinePassed) return false
+        // Depois do prazo o "Vou" passa pela espera e a promoção segue o grupo: em ordem de chegada o
+        // servidor sobe na hora se houver vaga (a previsão só falta olhar a lotação); manual espera o gestor.
+        if (deadlinePassed) return promotionMode == PromotionMode.FIFO
         val mensalista = membershipType != AthleteMembershipType.AVULSO
         return when (promotionMode) {
             PromotionMode.FIFO -> mensalista || !mensalistaPriority

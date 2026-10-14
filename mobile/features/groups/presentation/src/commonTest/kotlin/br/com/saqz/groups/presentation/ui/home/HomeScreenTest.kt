@@ -256,7 +256,7 @@ class HomeScreenTest {
 
         onNodeWithText("Vou").assertIsEnabled()
         onNodeWithText("Não vou").assertIsEnabled()
-        onNodeWithText("O prazo acabou: quem confirmar agora entra na lista de espera.").assertIsDisplayed()
+        onNodeWithText("O prazo acabou: quem confirmar agora entra na lista de espera e sobe pela ordem se houver vaga.").assertIsDisplayed()
     }
 
     @Test
@@ -423,6 +423,22 @@ class HomeScreenTest {
         onNodeWithText("Fala, Bruna!").assertIsDisplayed()
         onNodeWithText("1 grupos · 3 coisas esperando você").assertIsDisplayed()
         onNodeWithTag(HomeTags.Notifications).assertIsDisplayed()
+    }
+
+    @Test
+    fun `pending request gets its own card and creating a group becomes secondary`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        val base = firstAccessState()
+        setScreen(base.copy(member = base.member!!.copy(pendingRequestGroupNames = listOf("RV Aprova B"))), intents::add)
+
+        onNodeWithTag(HomePendingRequestTag).assertIsDisplayed()
+        onNodeWithText("RV Aprova B").assertIsDisplayed()
+        onNodeWithText("Pedido enviado · aguardando o organizador").assertIsDisplayed()
+        onNodeWithTag(HomeTags.FirstAccess).assertDoesNotExist()
+        onNodeWithTag(HomeTags.Steps).assertDoesNotExist()
+        onNodeWithText("Seu grupo em 1 minuto").assertDoesNotExist()
+        onNodeWithTag(HomePendingCreateButtonTag).performClick()
+        assertEquals(listOf<HomeIntent>(HomeIntent.CreateGroup), intents)
     }
 
     @Test

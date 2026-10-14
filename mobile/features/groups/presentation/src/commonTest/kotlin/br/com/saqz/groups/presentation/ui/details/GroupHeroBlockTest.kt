@@ -80,8 +80,8 @@ class GroupHeroBlockTest {
     fun afterTheDeadlineTheAnswerStaysOpenAndExplainsTheWaitlist() = runComposeUiTest {
         setDetailsScreen(GroupHeroPreviewData.closedPending)
 
-        onNodeWithText("O prazo acabou: quem confirmar agora entra na lista de espera.").assertExists()
-        onAllNodesWithText("O jogo já começou ou foi encerrado. Não dá mais para responder.").assertCountEquals(0)
+        onNodeWithText("O prazo acabou: quem confirmar agora entra na lista de espera e sobe pela ordem se houver vaga.").assertExists()
+        onAllNodesWithText("Em andamento. Não dá mais para responder.").assertCountEquals(0)
         onAllNodesWithText("As confirmações encerram hoje às 18h00.").assertCountEquals(0)
         onNodeWithTag(GroupGameResponseTags.Going).assertIsEnabled()
         onNodeWithTag(GroupGameResponseTags.NotGoing).assertIsEnabled()
@@ -91,8 +91,8 @@ class GroupHeroBlockTest {
     fun onceTheGameStartedTheAnswerIsClosed() = runComposeUiTest {
         setDetailsScreen(GroupHeroPreviewData.startedPending)
 
-        onNodeWithText("O jogo já começou ou foi encerrado. Não dá mais para responder.").assertExists()
-        onAllNodesWithText("O prazo acabou: quem confirmar agora entra na lista de espera.").assertCountEquals(0)
+        onNodeWithText("Em andamento. Não dá mais para responder.").assertExists()
+        onAllNodesWithText("O prazo acabou: quem confirmar agora entra na lista de espera e sobe pela ordem se houver vaga.").assertCountEquals(0)
         onNodeWithTag(GroupGameResponseTags.Going).assertIsNotEnabled()
         onNodeWithTag(GroupGameResponseTags.NotGoing).assertIsNotEnabled()
     }

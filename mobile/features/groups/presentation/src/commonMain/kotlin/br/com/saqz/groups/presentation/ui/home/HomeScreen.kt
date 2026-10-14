@@ -88,7 +88,7 @@ import br.com.saqz.groups.resources.home_status_declined
 import br.com.saqz.groups.resources.home_toast_confirmed
 import br.com.saqz.groups.resources.home_toast_declined
 import br.com.saqz.groups.resources.home_toast_pix_copied
-import br.com.saqz.groups.resources.game_response_late_notice
+import br.com.saqz.groups.presentation.ui.components.lateNoticeText
 import br.com.saqz.groups.resources.home_toast_waitlisted
 import br.com.saqz.groups.resources.home_toast_waitlisted_late
 import br.com.saqz.groups.resources.home_toast_waitlisted_manual
@@ -238,8 +238,12 @@ private fun HomeContent(
             } else if (firstAccess) {
                 // Onboarding da Início: só enquanto não há grupo. Com o primeiro grupo a
                 // tela volta ao normal e o guia passa a morar no grupo.
-                HomeFirstAccessHero(onIntent)
-                HomeFirstAccessSteps(onIntent)
+                if (member.pendingRequestGroupNames.isNotEmpty()) {
+                    HomePendingCreateGroup(onIntent)
+                } else {
+                    HomeFirstAccessHero(onIntent)
+                    HomeFirstAccessSteps(onIntent)
+                }
             } else {
                 member.nextGame?.let {
                     if (isAdminOfNextGame(it, member.admin)) {
@@ -429,7 +433,7 @@ internal fun ColumnScope.HomeAttendanceControls(
     HeroAttendanceControls(
         status = game.ownAttendance,
         confirmationOpen = game.responseOpen,
-        lateNotice = if (!game.confirmationOpen) stringResource(Res.string.game_response_late_notice) else null,
+        lateNotice = if (!game.confirmationOpen) lateNoticeText(game.promotionMode) else null,
         responding = responding,
         responseFailed = responseFailed || planPaused,
         responseOffline = responseOffline,

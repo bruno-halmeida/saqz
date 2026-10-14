@@ -80,7 +80,13 @@ internal object GameGuestTags {
 
 /** Botão "Levar convidado" + a dica do porquê (regras A e C). Some fora de jogo publicado. */
 @Composable
-internal fun GameGuestAction(guest: GameGuestUi, onIntent: (GameDetailIntent) -> Unit, modifier: Modifier = Modifier) {
+internal fun GameGuestAction(
+    guest: GameGuestUi,
+    onIntent: (GameDetailIntent) -> Unit,
+    modifier: Modifier = Modifier,
+    /** O jogo já começou: o cartão de resposta explica, então a dica "Fale com o gestor" não aparece. */
+    gameStarted: Boolean = false,
+) {
     if (!guest.visible) return
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -96,19 +102,22 @@ internal fun GameGuestAction(guest: GameGuestUi, onIntent: (GameDetailIntent) ->
             enabled = guest.enabled,
             leadingContent = { tint -> SaqzIcon(SaqzIcons.Users, tint = tint, size = GuestButtonIconSize) },
         )
-        Text(
-            text = stringResource(
-                when (guest.hint) {
-                    GameGuestHint.Default -> Res.string.game_guest_hint_default
-                    GameGuestHint.NeedAnswer -> Res.string.game_guest_hint_need_answer
-                    GameGuestHint.Closed -> Res.string.game_guest_hint_closed
-                },
-            ),
-            color = SaqzTheme.colors.textSecondary,
-            style = SaqzTheme.typography.caption,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.testTag(GameGuestTags.Hint),
-        )
+        // Jogo em andamento: o cartão de resposta já diz "Em andamento"; repetir aqui só duplicaria o texto.
+        if (!(gameStarted && guest.hint == GameGuestHint.Closed)) {
+            Text(
+                text = stringResource(
+                    when (guest.hint) {
+                        GameGuestHint.Default -> Res.string.game_guest_hint_default
+                        GameGuestHint.NeedAnswer -> Res.string.game_guest_hint_need_answer
+                        GameGuestHint.Closed -> Res.string.game_guest_hint_closed
+                    },
+                ),
+                color = SaqzTheme.colors.textSecondary,
+                style = SaqzTheme.typography.caption,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.testTag(GameGuestTags.Hint),
+            )
+        }
     }
 }
 

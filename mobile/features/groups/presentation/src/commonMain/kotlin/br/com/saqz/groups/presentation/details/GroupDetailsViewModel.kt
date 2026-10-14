@@ -135,6 +135,12 @@ class GroupDetailsViewModel(
     /** Erro de rede na carga: tenta de novo sozinha até a rede voltar. */
     private val autoRetry = AutoRetry(viewModelScope) { load() }
 
+    /**
+     * A resposta que falhou sem rede deixa o aviso "Sem conexão" na tela; quando a rede volta, uma recarga
+     * por baixo que dá certo o apaga. Sem monitor de conectividade, a volta é detectada tentando de novo.
+     */
+    private val responseRetry = AutoRetry(viewModelScope) { if (!loadInFlight) load(softRefresh = true) }
+
     private var loadGeneration = 0
     private var responseGeneration = 0L
     private var autoConfirmationGeneration = 0L
@@ -733,6 +739,7 @@ class GroupDetailsViewModel(
                         waitlist = response.toWaitlist(roster, emptyList(), membershipType),
                         responding = false,
                         responseFailed = false,
+                        responsePlanPaused = false,
                         responseOffline = false,
                         membershipType = membershipType,
                         // Dono e admin também são atletas do grupo: quem é mensalista tem
@@ -746,6 +753,7 @@ class GroupDetailsViewModel(
                         rosterRefreshing = false,
                     ).from(group)
                 }
+                responseRetry.reset()
             }
         }
     }
@@ -762,6 +770,7 @@ class GroupDetailsViewModel(
             return
         }
         val generation = ++responseGeneration
+        responseRetry.reset()
         rosterGeneration++
         val loadAtStart = loadGeneration
         val previousResponse = current.memberResponse
@@ -815,8 +824,9 @@ class GroupDetailsViewModel(
                         )
                     }
                 }
-                is SaqzResult.Failure -> update {
-                    it.afterResponseFailure(result.error, previousResponse, previousWaitlist)
+                is SaqzResult.Failure -> {
+                    update { it.afterResponseFailure(result.error, previousResponse, previousWaitlist) }
+                    if (result.error.isOffline()) responseRetry.schedule()
                 }
             }
         }
@@ -930,7 +940,11 @@ class GroupDetailsViewModel(
 
     /** Por baixo ([softRefresh]) a falha não troca a tela por erro: o conteúdo fica e a próxima volta tenta de novo. */
     private fun showFailure(generation: Int, error: GroupUiError, softRefresh: Boolean = false) {
-        if (generation != loadGeneration || softRefresh) return
+        if (generation != loadGeneration) return
+        if (softRefresh) {
+            if (state.value.responseOffline) responseRetry.schedule()
+            return
+        }
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
         if (error == GroupUiError.Network) autoRetry.schedule()
     }
@@ -970,6 +984,7 @@ class GroupDetailsViewModel(
             deadlineLine = deadlineLocal?.gameDeadlineSentence(now.now().toLocalDateTime(zone).date).orEmpty(),
             deadlineShort = deadlineLocal?.gameDeadlineShort().orEmpty(),
             bellLabel = deadlineLocal?.let { waitlistBellLabel() }.orEmpty(),
+            promotionMode = promotionMode(),
         )
     }
 

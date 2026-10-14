@@ -122,9 +122,14 @@ internal fun GameDetailScreen(
                         response = state.response,
                         onIntent = onIntent,
                         spotsOpen = (state.attendance?.availableSpots ?: 0) > 0,
+                        promotionMode = state.promotionMode,
                     ) }
                     state.attendance?.let { GameDetailAttendance(it) }
-                    GameGuestAction(state.guest, onIntent)
+                    GameGuestAction(
+                        state.guest,
+                        onIntent,
+                        gameStarted = state.header?.let { !it.responseOpen && it.statusTone == GameDetailStatusTone.Published } == true,
+                    )
                     state.confirmedRoster.takeIf { it.isNotEmpty() }?.let {
                         GameDetailConfirmedList(it, state.guest.feeLabel, onIntent)
                     }

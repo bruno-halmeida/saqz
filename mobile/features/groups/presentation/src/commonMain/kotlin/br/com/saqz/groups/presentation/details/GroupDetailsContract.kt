@@ -124,6 +124,8 @@ data class NextGameUi(
     val deadlineShort: String = "",
     /** "Se você subir, aparece aqui como confirmado. Confira antes do jogo." — o card do sino da reserva. */
     val bellLabel: String = "",
+    /** Escolhe o aviso do prazo vencido: ordem de chegada sobe sozinho, manual espera o gestor. */
+    val promotionMode: br.com.saqz.groups.domain.group.PromotionMode = br.com.saqz.groups.domain.group.PromotionMode.FIFO,
 )
 
 /** Os contadores 9 / 3 / 4 do 2f, com o título da própria linha e o "9/12" azul. */

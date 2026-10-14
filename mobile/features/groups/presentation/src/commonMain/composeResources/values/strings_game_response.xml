@@ -10,8 +10,9 @@
     <string name="game_response_declined">Você não vai jogar.</string>
     <string name="game_response_waitlisted">Você está em %1$dº na lista de espera.</string>
     <string name="game_response_waitlisted_unknown">Você está na lista de espera.</string>
-    <string name="game_response_deadline_closed">O jogo já começou ou foi encerrado. Não dá mais para responder.</string>
-    <string name="game_response_late_notice">O prazo acabou: quem confirmar agora entra na lista de espera.</string>
+    <string name="game_response_deadline_closed">Em andamento. Não dá mais para responder.</string>
+    <string name="game_response_late_notice_fifo">O prazo acabou: quem confirmar agora entra na lista de espera e sobe pela ordem se houver vaga.</string>
+    <string name="game_response_late_notice_manual">O prazo acabou: quem confirmar agora entra na lista de espera e o gestor escolhe quem sobe.</string>
     <string name="game_response_day_member_fee">Ao confirmar, a cobrança deste jogo será gerada.</string>
     <string name="game_response_auto_confirmation">Confirmar presença automaticamente</string>
     <string name="game_response_request_failed">Não foi possível salvar sua resposta. Tente novamente.</string>

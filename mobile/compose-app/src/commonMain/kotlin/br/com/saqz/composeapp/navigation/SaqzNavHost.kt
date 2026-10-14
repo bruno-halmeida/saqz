@@ -203,6 +203,7 @@ internal fun SaqzNavHost(
     val notificationOpenPending by notificationOpen.pending.collectAsStateWithLifecycle()
     LaunchedEffect(notificationOpen) { notificationOpen.start() }
     val inviteCoordinator = koinInject<GroupInviteCoordinator>()
+    val inviteRedeeming by inviteCoordinator.redeeming.collectAsStateWithLifecycle()
     val receiptsCoordinator = koinInject<ReceivablesCoordinator>()
     val receipts = receiptsCoordinator.state.collectAsStateWithLifecycle().value
     val planAnalytics = koinInject<br.com.saqz.composeapp.analytics.PlanAnalytics>()
@@ -330,6 +331,7 @@ internal fun SaqzNavHost(
                     backStack.add(pendingInviteStorageFailureRoute(effect.code, pendingInviteCode))
                 }
             }
+            inviteCoordinator.redeemHandled()
         }
     }
     // Link de presença guardado sem sessão vale como convite: login e cadastro mostram o grupo, como
@@ -503,6 +505,23 @@ internal fun SaqzNavHost(
                     )
                 }
                 entry<SaqzShellDestination> { route ->
+                    // Convite pendente ainda sendo tratado: a Início de quem não tem grupo não é composta
+                    // nem recebe toque até a tela do convite (cadastro, pedido enviado ou erro) abrir.
+                    if (isInviteHandoffPending(
+                            sessionReady = state.session is SessionAccessState.Ready,
+                            hasPendingInvite = pendingInviteCode != null,
+                            coordinatorAuthenticated = coordinatorAuthenticated,
+                            redeeming = inviteRedeeming,
+                        )
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            SaqzSpinner()
+                        }
+                        return@entry
+                    }
                     SaqzAppShell(
                         catalogEnabled = catalogEnabled,
                         initialTab = route.resolvedTab(),

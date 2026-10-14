@@ -19,3 +19,14 @@ internal fun MutableList<NavKey>.openAthleteRegistrationAfterJoin(groupId: Strin
     }
 }
 
+
+/**
+ * Enquanto há convite para tratar depois do login, a Início não é o destino intermediário: da sessão
+ * pronta até o coordenador entregar a tela do convite, a pessoa vê só o carregando.
+ */
+internal fun isInviteHandoffPending(
+    sessionReady: Boolean,
+    hasPendingInvite: Boolean,
+    coordinatorAuthenticated: Boolean,
+    redeeming: Boolean,
+): Boolean = sessionReady && hasPendingInvite && (!coordinatorAuthenticated || redeeming)

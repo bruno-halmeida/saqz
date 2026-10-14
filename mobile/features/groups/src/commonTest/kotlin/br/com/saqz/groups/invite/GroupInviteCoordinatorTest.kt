@@ -60,6 +60,21 @@ class GroupInviteCoordinatorTest {
     }
 
     @Test
+    fun `redeeming stays on until the screen handles the effect`() = runTest {
+        val fixture = fixture()
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+        // Sem convite guardado não há nada a esperar.
+        assertEquals(false, fixture.coordinator.redeeming.value)
+
+        fixture.coordinator.acceptInvite("invite-authenticated")
+        runCurrent()
+        assertEquals(true, fixture.coordinator.redeeming.value)
+        fixture.coordinator.redeemHandled()
+        assertEquals(false, fixture.coordinator.redeeming.value)
+    }
+
+    @Test
     fun `signed out invite survives until fake login then redeems`() = runTest {
         val fixture = fixture()
         fixture.gateway.redeemResult = SaqzResult.Success(

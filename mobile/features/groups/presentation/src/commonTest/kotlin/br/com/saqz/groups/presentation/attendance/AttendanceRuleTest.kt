@@ -48,9 +48,11 @@ class AttendanceRuleTest {
     }
 
     @Test
-    fun afterTheDeadlineEveryVouWaits() {
-        for (mode in PromotionMode.entries) for (priority in listOf(true, false)) for (membership in listOf(mensalista, avulso)) {
-            assertEquals(AttendanceStatus.Waitlisted, vou(membership, priority, mode, late = true))
+    fun afterTheDeadlineManualWaitsAndFifoConfirmsWhileThereIsRoom() {
+        for (priority in listOf(true, false)) for (membership in listOf(mensalista, avulso)) {
+            assertEquals(AttendanceStatus.Waitlisted, vou(membership, priority, PromotionMode.MANUAL, late = true))
+            assertEquals(AttendanceStatus.Confirmed, vou(membership, priority, PromotionMode.FIFO, late = true))
+            assertEquals(AttendanceStatus.Waitlisted, vou(membership, priority, PromotionMode.FIFO, late = true, full = true))
         }
         assertEquals(AttendanceStatus.Confirmed, vou(mensalista, true, PromotionMode.FIFO, late = true, current = AttendanceStatus.Confirmed))
     }

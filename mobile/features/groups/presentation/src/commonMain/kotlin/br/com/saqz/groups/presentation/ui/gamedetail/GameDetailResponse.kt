@@ -19,7 +19,8 @@ import br.com.saqz.groups.resources.game_detail_confirmation_deadline
 import br.com.saqz.groups.resources.game_detail_response_kicker
 import br.com.saqz.groups.resources.game_response_confirmed
 import br.com.saqz.groups.resources.game_response_deadline_closed
-import br.com.saqz.groups.resources.game_response_late_notice
+import br.com.saqz.groups.presentation.ui.components.lateNoticeText
+import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.resources.game_response_declined
 import br.com.saqz.groups.resources.game_response_no
 import br.com.saqz.groups.resources.game_response_answered_title
@@ -53,6 +54,7 @@ internal fun GameDetailResponse(
     onIntent: (GameDetailIntent) -> Unit,
     modifier: Modifier = Modifier,
     spotsOpen: Boolean = false,
+    promotionMode: PromotionMode = PromotionMode.FIFO,
 ) {
     // O estado já só liga `visible` em jogo publicado; o tom do cabeçalho fecha a porta se os dois divergirem.
     if (!response.visible || header.statusTone != GameDetailStatusTone.Published) return
@@ -77,7 +79,7 @@ internal fun GameDetailResponse(
         HeroAttendanceControls(
             status = response.status,
             confirmationOpen = header.responseOpen,
-            lateNotice = if (!header.confirmationOpen) stringResource(Res.string.game_response_late_notice) else null,
+            lateNotice = if (!header.confirmationOpen) lateNoticeText(promotionMode) else null,
             responding = response.responding,
             responseFailed = response.failed || response.planPaused,
             responseOffline = response.offline,

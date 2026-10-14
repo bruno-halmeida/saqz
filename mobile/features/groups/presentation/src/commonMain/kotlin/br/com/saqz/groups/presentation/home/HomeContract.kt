@@ -128,6 +128,8 @@ data class HomeNextGameUi(
     /** Ainda dá para responder: jogo por começar. Depois do prazo o "Vou" entra pela espera. */
     val responseOpen: Boolean = true,
     val waitlistKind: HomeWaitlistKind? = null,
+    /** Escolhe o aviso do prazo vencido: ordem de chegada sobe sozinho, manual espera o gestor. */
+    val promotionMode: br.com.saqz.groups.domain.group.PromotionMode = br.com.saqz.groups.domain.group.PromotionMode.FIFO,
     val waitlistPosition: Long? = null,
     val confirmedRoster: List<String> = emptyList(),
     val waitlistedRoster: List<HomeWaitlistRowUi> = emptyList(),

@@ -25,4 +25,16 @@ class JoinByLinkNavigationTest {
         stack.openAthleteRegistrationAfterJoin("g1")
         assertEquals(2, stack.size)
     }
+
+    @Test fun pendingInviteNeverLetsTheHomeBeTheIntermediateDestination() {
+        // Sessão pronta, convite guardado, coordenador ainda não começou: carregando, não Início.
+        assertEquals(true, isInviteHandoffPending(true, true, coordinatorAuthenticated = false, redeeming = false))
+        // Coordenador trabalhando no convite.
+        assertEquals(true, isInviteHandoffPending(true, true, coordinatorAuthenticated = true, redeeming = true))
+        // Tela do convite já aberta e tratada: a Início volta (Explorar o app).
+        assertEquals(false, isInviteHandoffPending(true, true, coordinatorAuthenticated = true, redeeming = false))
+        // Sem convite ou sem sessão: nada muda.
+        assertEquals(false, isInviteHandoffPending(true, false, coordinatorAuthenticated = false, redeeming = false))
+        assertEquals(false, isInviteHandoffPending(false, true, coordinatorAuthenticated = false, redeeming = false))
+    }
 }

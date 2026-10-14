@@ -245,7 +245,7 @@ class GameDetailScreenTest {
     fun `after the deadline the buttons stay enabled and the card explains the waitlist`() = runComposeUiTest {
         setScreen(state = GameDetailResponsePreviewData.memberClosed)
 
-        onNodeWithText("O prazo acabou: quem confirmar agora entra na lista de espera.").assertExists()
+        onNodeWithText("O prazo acabou: quem confirmar agora entra na lista de espera e o gestor escolhe quem sobe.").assertExists()
         onNodeWithTag(GameDetailAttendanceTags.Going).assertIsEnabled()
         onNodeWithTag(GameDetailAttendanceTags.NotGoing).assertIsEnabled()
     }
@@ -261,7 +261,7 @@ class GameDetailScreenTest {
     fun `once the game started the buttons are disabled and the card says why`() = runComposeUiTest {
         setScreen(state = GameDetailResponsePreviewData.memberStarted)
 
-        onNodeWithText("O jogo já começou ou foi encerrado. Não dá mais para responder.").assertExists()
+        onNodeWithText("Em andamento. Não dá mais para responder.").assertExists()
         onNodeWithTag(GameDetailAttendanceTags.Going).assertIsNotEnabled()
         onNodeWithTag(GameDetailAttendanceTags.NotGoing).assertIsNotEnabled()
     }
@@ -278,7 +278,7 @@ class GameDetailScreenTest {
         setScreen(state = GameDetailResponsePreviewData.memberPending)
 
         onAllNodesWithText("Confirmações até 17h30").assertCountEquals(2)
-        onAllNodesWithText("O jogo já começou ou foi encerrado. Não dá mais para responder.").assertCountEquals(0)
+        onAllNodesWithText("Em andamento. Não dá mais para responder.").assertCountEquals(0)
     }
 
     @Test

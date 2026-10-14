@@ -37,6 +37,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import br.com.saqz.groups.presentation.AutoRetry
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -570,9 +572,62 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `after the deadline the Vou is still sent and lands in the waitlist`() = runTest {
-        val initial = sampleHome(nextGame = sampleNextGame(confirmationDeadline = "2026-07-28T11:00:00Z"))
+    fun `after the deadline with the game full the Vou is still sent and lands in the waitlist`() = runTest {
+        val initial = sampleHome(
+            nextGame = sampleNextGame(confirmationDeadline = "2026-07-28T11:00:00Z").copy(confirmedCount = 12),
+        )
         waitlistedFlow(initial, HomeWaitlistKind.AfterDeadline, HomeToast.WaitlistedAfterDeadline)
+    }
+
+    @Test
+    fun `the offline notice stays until a reload succeeds and then disappears by itself`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        attendance.respondResult = SaqzResult.Failure(AttendanceError.Data(DataError.Connectivity))
+        val initial = sampleHome(nextGame = sampleNextGame(confirmationDeadline = "2099-07-28T11:00:00Z", startsAt = "2099-07-28T19:30:00-03:00"))
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(initial),
+                SaqzResult.Failure(HomeError.Data(DataError.Connectivity)),
+                SaqzResult.Success(initial),
+            ),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        runCurrent()
+        assertTrue(viewModel.state.value.responseOffline)
+        // A rede ainda não voltou: a recarga automática por baixo falha em silêncio e o aviso fica.
+        advanceTimeBy(AutoRetry.DEFAULT_INTERVAL_MILLIS + 1)
+        runCurrent()
+        assertTrue(viewModel.state.value.responseOffline)
+        // A rede voltou: a próxima recarga dá certo e limpa o aviso sozinha.
+        advanceTimeBy(AutoRetry.DEFAULT_INTERVAL_MILLIS + 1)
+        runCurrent()
+        assertFalse(viewModel.state.value.responseOffline)
+        assertFalse(viewModel.state.value.responseFailed)
+    }
+
+    @Test
+    fun `after the deadline in order-of-arrival mode with room the screen never predicts a waitlist`() = runTest {
+        val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway()
+        attendance.respondDeferred = response
+        val initial = sampleHome(nextGame = sampleNextGame(confirmationDeadline = "2026-07-28T11:00:00Z"))
+        val refreshed = initial.copy(
+            member = initial.member.copy(
+                nextGame = initial.member.nextGame?.copy(ownAttendance = HomeOwnAttendance(AttendanceStatus.Confirmed, null)),
+            ),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(initial), SaqzResult.Success(refreshed)),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        assertEquals(AttendanceStatus.Confirmed, viewModel.state.value.member?.nextGame?.ownAttendance)
+        response.complete(SaqzResult.Success(serverMutation(AttendanceStatus.Confirmed, null)))
+        advanceUntilIdle()
+        assertEquals(AttendanceStatus.Confirmed, viewModel.state.value.member?.nextGame?.ownAttendance)
     }
 
     private fun kotlinx.coroutines.test.TestScope.waitlistedFlow(

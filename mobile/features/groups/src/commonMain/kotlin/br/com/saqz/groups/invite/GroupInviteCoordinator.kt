@@ -73,6 +73,20 @@ class GroupInviteCoordinator(
         .map { it.effect }
     val isAuthenticated = authenticated.asStateFlow()
 
+    private val redeemingState = MutableStateFlow(false)
+
+    /**
+     * Verdadeiro do momento em que o convite pendente começa a ser tratado até a tela dele (cadastro
+     * de atleta, pedido enviado ou erro) ser aberta. Enquanto isso a Início não deve aparecer nem
+     * receber toque. Quem trata o efeito chama [redeemHandled].
+     */
+    val redeeming = redeemingState.asStateFlow()
+
+    /** A navegação do efeito já aconteceu: a Início pode voltar a ser a tela de baixo. */
+    fun redeemHandled() {
+        redeemingState.value = false
+    }
+
     fun start() {
         if (started) return
         started = true
@@ -87,6 +101,7 @@ class GroupInviteCoordinator(
         if (!started) return
         started = false
         generation++
+        redeemingState.value = false
         linkCancelable?.cancel()
         linkCancelable = null
     }
@@ -94,6 +109,7 @@ class GroupInviteCoordinator(
     fun onSignedOut() {
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             authenticated.value = false
+            redeemingState.value = false
             generation++
         }
     }
@@ -104,7 +120,9 @@ class GroupInviteCoordinator(
             if (authenticated.value) return@launch
             authenticated.value = true
             val token = nextGeneration()
+            redeemingState.value = true
             redeemPending(token)
+            settleRedeeming(token)
         }
     }
 
@@ -125,7 +143,9 @@ class GroupInviteCoordinator(
             if (!persistPending(token, code)) return@launch
             if (!isCurrent(token)) return@launch
             if (authenticated.value) {
+                redeemingState.value = true
                 redeem(token, InviteCode(code))
+                settleRedeeming(token)
             } else {
                 emitIfCurrent(token, GroupInviteEffect.OpenInviteLanding(code))
             }
@@ -262,8 +282,16 @@ class GroupInviteCoordinator(
         })
     }
 
+    private var lastEmittedToken = -1L
+
+    /** Terminou sem efeito para a tela (sem convite guardado, por exemplo): nada a esperar. */
+    private fun settleRedeeming(token: Long) {
+        if (isCurrent(token) && lastEmittedToken != token) redeemingState.value = false
+    }
+
     private fun emitIfCurrent(token: Long, effect: GroupInviteEffect) {
         if (isCurrent(token)) {
+            lastEmittedToken = token
             effectChannel.trySend(QueuedEffect(token, effect))
             effectSink(effect)
         }

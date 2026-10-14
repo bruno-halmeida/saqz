@@ -56,7 +56,7 @@ import br.com.saqz.groups.presentation.ui.home.HomeWaitlistQueueSection
 import br.com.saqz.groups.presentation.ui.home.HomeWaitlistUpsellCard
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.game_response_auto_confirmation
-import br.com.saqz.groups.resources.game_response_late_notice
+import br.com.saqz.groups.presentation.ui.components.lateNoticeText
 import br.com.saqz.groups.resources.game_response_auto_confirmation_failed
 import br.com.saqz.groups.resources.game_response_confirmed
 import br.com.saqz.groups.resources.game_detail_confirmed_over_capacity
@@ -173,7 +173,7 @@ private fun GroupGameHero(
         HeroAttendanceControls(
             status = state.memberResponse?.status?.toAttendanceStatus(),
             confirmationOpen = game.responseOpen && !state.rosterRefreshing,
-            lateNotice = if (!game.confirmationOpen) stringResource(Res.string.game_response_late_notice) else null,
+            lateNotice = if (!game.confirmationOpen) lateNoticeText(game.promotionMode) else null,
             responding = state.responding,
             responseFailed = state.responseFailed || state.responsePlanPaused,
             responseOffline = state.responseOffline,

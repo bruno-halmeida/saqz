@@ -108,7 +108,6 @@
     <string name="home_game_display">%1$s, %2$s</string>
     <string name="home_game_meta">%1$s de %2$s · %3$s</string>
     <string name="home_no_game_hero_title">Sem jogo marcado</string>
-    <string name="home_deadline_closed">Em andamento. Não dá mais para responder.</string>
     <string name="home_admin_hero_deadline_closed">Encerrou %1$s · %2$s</string>
     <!-- Home nova · cabeçalho -->
     <string name="home_notifications_cd">Notificações</string>
@@ -163,5 +162,6 @@
     <string name="home_invite_sheet_placeholder">https://links.saqz.app/… ou 44DF-8SA8</string>
     <string name="home_invite_sheet_action">Entrar no grupo</string>
     <string name="home_invite_sheet_invalid">Não achei um convite aí. Confira o link ou o código e tente de novo.</string>
-    <string name="home_pending_request">Pedido enviado para %1$s · aguardando o organizador</string>
+    <string name="home_pending_request_status">Pedido enviado · aguardando o organizador</string>
+    <string name="home_pending_create_title">Quer organizar o seu próprio grupo?</string>
 </resources>

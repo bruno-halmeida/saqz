@@ -36,6 +36,9 @@ import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.domain.group.PromotionMode
+import br.com.saqz.groups.resources.game_response_late_notice_fifo
+import br.com.saqz.groups.resources.game_response_late_notice_manual
 import br.com.saqz.groups.resources.home_response_offline
 import org.jetbrains.compose.resources.stringResource
 import br.com.saqz.groups.presentation.ui.home.HomeWaitlistActions
@@ -411,3 +414,12 @@ private fun HeroResponseButton(
         },
     )
 }
+
+/** O aviso do prazo vencido vale nos dois modos: quem confirma entra pela espera e a promoção segue o grupo. */
+@Composable
+internal fun lateNoticeText(promotionMode: PromotionMode): String = stringResource(
+    when (promotionMode) {
+        PromotionMode.FIFO -> Res.string.game_response_late_notice_fifo
+        PromotionMode.MANUAL -> Res.string.game_response_late_notice_manual
+    },
+)
