@@ -1,6 +1,7 @@
 package br.com.saqz.access.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ColumnScope
@@ -8,7 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -279,7 +282,13 @@ fun LoginScreen(
             style = SaqzTheme.typography.caption,
             color = colors.textSecondary,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().testTag(LoginTags.Legal),
+            // A frase cai sobre a onda azul fixa ao fundo (no web, com a tela mais baixa, por inteiro):
+            // o fundo quase opaco, como o do cadastro, mantém o contraste em qualquer posição.
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.surface.copy(alpha = TermsBackdropAlpha), RoundedCornerShape(SaqzTheme.metrics.cardRadius))
+                .padding(horizontal = SaqzTheme.metrics.blockGap, vertical = SaqzTheme.metrics.subGrid)
+                .testTag(LoginTags.Legal),
         )
         Spacer(Modifier.height(LoginMetrics.bottomGap))
     }

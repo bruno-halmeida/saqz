@@ -47,10 +47,10 @@ import br.com.saqz.access.resources.action_back
 import br.com.saqz.access.resources.login_error_email_invalid
 import br.com.saqz.access.resources.register_email_placeholder
 import br.com.saqz.access.resources.register_error_email_taken
+import br.com.saqz.access.resources.register_error_summary
 import br.com.saqz.access.resources.register_error_name
 import br.com.saqz.access.resources.register_error_password
 import br.com.saqz.access.resources.register_error_phone
-import br.com.saqz.access.resources.register_error_summary
 import br.com.saqz.access.resources.register_headline
 import br.com.saqz.access.resources.register_headline_emphasis
 import br.com.saqz.access.resources.register_name_placeholder
@@ -77,6 +77,7 @@ import br.com.saqz.designsystem.rememberSaqzFormScope
 import br.com.saqz.designsystem.PhoneVisualTransformation
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object RegisterTags {
@@ -102,7 +103,7 @@ internal object RegisterTags {
 private val TermsFontSize = AccessMetrics.TERMS_SIZE.sp
 
 /** Quase opaco: a onda não transparece por trás da frase dos termos. */
-private const val TermsBackdropAlpha = 0.94f
+internal const val TermsBackdropAlpha = 0.94f
 
 /**
  * Os dois trechos que o export sublinha dentro da frase dos termos. São **localizadores**,
@@ -384,7 +385,7 @@ internal data class RegisterAlert(val text: String, val emphasis: String?)
 private fun registerAlert(state: RegisterState): RegisterAlert? {
     val count = state.invalidFieldCount
     if (count > 0) {
-        val text = stringResource(Res.string.register_error_summary, count)
+        val text = pluralStringResource(Res.plurals.register_error_summary, count, count)
         return RegisterAlert(text, registerSummaryEmphasis(text, count))
     }
     return state.error?.let { RegisterAlert(it.asString(), emphasis = null) }

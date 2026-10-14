@@ -21,7 +21,7 @@
        (botão "Criar conta" e aceite dos Termos). 100dvh acompanha a barra; 100vh é só o plano B.
        Sem viewport-fit=cover o Safari já mantém o conteúdo fora do entalhe e do indicador inicial. */
     body { position: fixed; top: 0; left: 0; right: 0; margin: 0 auto; padding: 0;
-      height: 100%; height: 100vh; height: 100dvh;
+      height: 100%; height: 100vh; height: 100dvh; height: var(--saqz-vh, 100dvh);
       width: 100%; max-width: 480px; overflow: hidden; background: #f5f5f7;
       overscroll-behavior: none; -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
     @media (min-width: 520px) {
@@ -55,6 +55,22 @@
   <link rel="preload" href="composeResources/br.com.saqz.designsystem.resources/font/inter_bold.ttf" as="fetch" type="font/ttf" crossorigin>
   <link rel="preload" href="composeResources/br.com.saqz.designsystem.resources/font/inter_light.ttf" as="fetch" type="font/ttf" crossorigin>
   <script src="saqz-config.js"></script>
+  <script>
+    // Altura que a pessoa enxerga de fato. No Safari do iPhone 100dvh ainda conta a faixa atrás da barra
+    // inferior flutuante e o fim da tela (aceite dos Termos, "Criar conta") fica coberto: visualViewport
+    // desconta as barras e avisa quando elas encolhem ou voltam. Sem a API, o CSS cai em 100dvh.
+    (function () {
+      var viewport = window.visualViewport;
+      if (!viewport) return;
+      function sync() {
+        var height = Math.round(viewport.height);
+        if (height > 0) document.documentElement.style.setProperty("--saqz-vh", height + "px");
+      }
+      sync();
+      viewport.addEventListener("resize", sync);
+      window.addEventListener("orientationchange", sync);
+    })();
+  </script>
   <script>
     // O bridge do Firebase carrega como módulo ES (assíncrono); o Kotlin espera esta promessa.
     window.saqzBridgeReady = new Promise(function (resolve) { window.__saqzResolveBridge = resolve; });

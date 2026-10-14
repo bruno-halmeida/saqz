@@ -56,7 +56,10 @@
     <string name="register_terms">Ao criar sua conta, você concorda com os Termos de uso e a Política de privacidade.</string>
 
     <!-- 1j · criar conta, recusado -->
-    <string name="register_error_summary">Revise %1$d campos para criar sua conta.</string>
+    <plurals name="register_error_summary">
+        <item quantity="one">Revise %1$d campo para criar sua conta.</item>
+        <item quantity="other">Revise %1$d campos para criar sua conta.</item>
+    </plurals>
     <string name="register_error_name">Informe seu nome.</string>
     <string name="register_error_email_taken">Esse e-mail já tem conta no Saqz. Entrar?</string>
     <string name="register_error_phone">Telefone incompleto. Use DDD + 9 dígitos.</string>

@@ -129,7 +129,7 @@ class RegisterScreenTest {
 
     @Test fun `the alert counts only what is lit`() = runComposeUiTest {
         content(state = RegisterState(invalidPhone = true))
-        onNodeWithText("Revise 1 campos para criar sua conta.").assertExists()
+        onNodeWithText("Revise 1 campo para criar sua conta.").assertExists()
     }
 
     // A pergunta do e-mail duplicado tem de ter resposta: a linha inteira leva à 1a.

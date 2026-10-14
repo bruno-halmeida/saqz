@@ -29,4 +29,27 @@ class BootstrapAccessScreenTest {
         assertEquals(SessionIntent.RetryBootstrap, intent)
         onNodeWithText("Entrar").assertDoesNotExist()
     }
+
+    @Test fun `bootstrap error reloads by itself until the cap`() = runComposeUiTest {
+        var retries = 0
+        setContent {
+            SaqzTheme {
+                BootstrapAccessScreen(
+                    SessionAccessState.BootstrapError,
+                    onIntent = { retries++ },
+                    autoRetryIntervalMillis = 1_000,
+                    autoRetryMaxAttempts = 2,
+                )
+            }
+        }
+        mainClock.advanceTimeBy(1_100)
+        waitForIdle()
+        assertEquals(1, retries)
+        mainClock.advanceTimeBy(1_100)
+        waitForIdle()
+        assertEquals(2, retries)
+        mainClock.advanceTimeBy(10_000)
+        waitForIdle()
+        assertEquals(2, retries)
+    }
 }

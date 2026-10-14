@@ -103,7 +103,11 @@ internal class HttpTransport(
         } catch (_: MediaLimitException) {
             failure(method, logStyle, started, NetworkError.PayloadTooLarge, correlationId)
         } catch (failure: Throwable) {
-            failure(method, logStyle, started, NetworkError.Unknown, correlationId, failure::class.simpleName)
+            failure(
+                method, logStyle, started,
+                failure.toTransportFailure() ?: NetworkError.Unknown,
+                correlationId, failure::class.simpleName,
+            )
         }
     }
 
