@@ -33,6 +33,7 @@ import br.com.saqz.groups.presentation.gamedetail.GameDetailState
 import br.com.saqz.groups.presentation.gamedetail.GameDetailStatusTone
 import br.com.saqz.groups.presentation.gamedetail.GameDetailWaitlistUi
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.game_capacity_below_confirmed
 import br.com.saqz.groups.resources.game_waitlist_adjust_capacity
 import br.com.saqz.groups.resources.game_waitlist_capacity_cancel
 import br.com.saqz.groups.resources.game_waitlist_capacity_description
@@ -57,6 +58,7 @@ import br.com.saqz.groups.resources.game_waitlist_promote
 import br.com.saqz.groups.resources.game_waitlist_queue_position
 import br.com.saqz.groups.resources.game_waitlist_queue_unknown
 import br.com.saqz.groups.resources.game_waitlist_section
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object GameWaitlistTags {
@@ -242,10 +244,21 @@ internal fun GameWaitlistCapacitySheet(
     onClose = { onIntent(GameDetailIntent.DismissCapacitySheet) },
     modifier = Modifier.testTag(GameWaitlistTags.CapacitySheet),
     title = stringResource(Res.string.game_waitlist_capacity_title),
-    description = stringResource(
-        if (state.capacityFailed) Res.string.game_waitlist_capacity_failed
-        else Res.string.game_waitlist_capacity_description,
-    ),
+    description = run {
+        val confirmed = state.attendance?.confirmed ?: 0
+        val overflow = confirmed - state.capacityDraft
+        when {
+            state.capacityFailed -> stringResource(Res.string.game_waitlist_capacity_failed)
+            overflow > 0 -> pluralStringResource(
+                Res.plurals.game_capacity_below_confirmed,
+                overflow,
+                confirmed,
+                state.capacityDraft,
+                overflow,
+            )
+            else -> stringResource(Res.string.game_waitlist_capacity_description)
+        }
+    },
     splitFooter = {
         SaqzButton(
             label = stringResource(Res.string.game_waitlist_capacity_cancel),

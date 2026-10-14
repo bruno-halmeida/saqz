@@ -11,6 +11,7 @@ import br.com.saqz.groups.presentation.game.gameTimeLabel
 import br.com.saqz.groups.presentation.game.gameTimeZone
 import br.com.saqz.groups.presentation.game.gameWeekdayLabel
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.game_detail_confirmed_over_capacity
 import br.com.saqz.groups.resources.group_details_agenda_meta
 import br.com.saqz.groups.resources.group_details_agenda_meta_draft
 import br.com.saqz.groups.resources.group_details_agenda_meta_full
@@ -24,6 +25,7 @@ import br.com.saqz.groups.resources.home_upcoming_status_out
 import br.com.saqz.groups.resources.home_upcoming_status_waitlisted
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.getString
 import kotlin.time.Instant
 
@@ -89,11 +91,16 @@ private suspend fun Game.toAgendaRow(startsAt: Instant, defaultVenueName: String
 // Sem quadra padrão no grupo (`null`), todo jogo mostra o próprio local.
 private suspend fun Game.agendaMeta(defaultVenueName: String?): String = when {
     status == GameStatus.Draft -> getString(Res.string.group_details_agenda_meta_draft)
+    confirmedCount > capacity -> overCapacityLabel(confirmedCount, capacity)
     availableSpots <= 0 -> getString(Res.string.group_details_agenda_meta_full, confirmedCount, capacity)
     venue.name != defaultVenueName ->
         getString(Res.string.group_details_agenda_meta_venue, confirmedCount, capacity, venue.name)
     else -> getString(Res.string.group_details_agenda_meta, confirmedCount, capacity)
 }
+
+/** Vagas reduzidas abaixo dos confirmados: "3 confirmados para 2 vagas", nunca "3 de 2". */
+internal suspend fun overCapacityLabel(confirmed: Int, capacity: Int): String =
+    getPluralString(Res.plurals.game_detail_confirmed_over_capacity, capacity, confirmed, capacity)
 
 private fun Game.agendaStatus(): GroupAgendaStatus = when {
     status == GameStatus.Draft -> GroupAgendaStatus.Draft

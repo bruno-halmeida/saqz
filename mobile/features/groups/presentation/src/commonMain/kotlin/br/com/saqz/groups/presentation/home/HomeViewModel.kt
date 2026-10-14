@@ -523,7 +523,11 @@ class HomeViewModel(
             dateTime = dateTime,
             local = local,
             deadline = deadlineText(confirmationOpen, responseOpen, deadline, zone),
-            confirmedSummary = getString(Res.string.home_confirmed_summary, confirmedCount, capacity),
+            confirmedSummary = if (confirmedCount > capacity) {
+                br.com.saqz.groups.presentation.details.overCapacityLabel(confirmedCount, capacity)
+            } else {
+                getString(Res.string.home_confirmed_summary, confirmedCount, capacity)
+            },
             confirmedCount = confirmedCount,
             capacity = capacity,
             rosterNames = rosterPreview.confirmed.map { it.displayName },

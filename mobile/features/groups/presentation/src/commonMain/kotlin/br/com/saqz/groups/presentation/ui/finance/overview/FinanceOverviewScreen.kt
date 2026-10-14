@@ -21,6 +21,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -328,20 +329,59 @@ private fun FinanceOverviewBalanceCard(state: FinanceOverviewState) {
     }
 }
 
+/** Acima disto os três valores não cabem lado a lado: o "R$ 1.250,00" cortaria para "R$". */
+private const val MetricsStackFontScale = 1.3f
+
 @Composable
 private fun FinanceOverviewMetrics(state: FinanceOverviewState) {
+    val entered = stringResource(Res.string.finance_overview_entered)
+    val left = stringResource(Res.string.finance_overview_left)
+    val receivable = stringResource(Res.string.finance_overview_receivable)
     SaqzCard(modifier = Modifier.testTag(FinanceOverviewTags.Metrics), padded = false) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(SaqzTheme.metrics.horizontalPadding),
-            horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FinanceOverviewMetric(state.entered, stringResource(Res.string.finance_overview_entered))
-            SaqzDivider(modifier = Modifier.height(SaqzTheme.metrics.buttonHeight), vertical = true)
-            FinanceOverviewMetric(state.left, stringResource(Res.string.finance_overview_left))
-            SaqzDivider(modifier = Modifier.height(SaqzTheme.metrics.buttonHeight), vertical = true)
-            FinanceOverviewMetric(state.receivable, stringResource(Res.string.finance_overview_receivable))
+        if (LocalDensity.current.fontScale > MetricsStackFontScale) {
+            // Fonte grande: uma métrica por linha, rótulo à esquerda e valor inteiro à direita.
+            Column(modifier = Modifier.fillMaxWidth().padding(SaqzTheme.metrics.horizontalPadding)) {
+                FinanceOverviewMetricLine(state.entered, entered)
+                SaqzDivider()
+                FinanceOverviewMetricLine(state.left, left)
+                SaqzDivider()
+                FinanceOverviewMetricLine(state.receivable, receivable)
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(SaqzTheme.metrics.horizontalPadding),
+                horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FinanceOverviewMetric(state.entered, entered)
+                SaqzDivider(modifier = Modifier.height(SaqzTheme.metrics.buttonHeight), vertical = true)
+                FinanceOverviewMetric(state.left, left)
+                SaqzDivider(modifier = Modifier.height(SaqzTheme.metrics.buttonHeight), vertical = true)
+                FinanceOverviewMetric(state.receivable, receivable)
+            }
         }
+    }
+}
+
+@Composable
+private fun FinanceOverviewMetricLine(value: String, label: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = SaqzTheme.metrics.subGrid),
+        horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = SaqzTheme.typography.caption,
+            color = SaqzTheme.colors.textSecondary,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = value,
+            style = SaqzTheme.typography.support.copy(fontWeight = SaqzTheme.typography.label.fontWeight),
+            color = SaqzTheme.colors.textPrimary,
+            softWrap = false,
+        )
     }
 }
 

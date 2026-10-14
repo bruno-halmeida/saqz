@@ -17,6 +17,8 @@ data class WhatsAppBindingState(
     val saveFailed: Boolean = false,
     /** 409: o grupo do WhatsApp já está vinculado a outro grupo do Saqz. */
     val conflict: Boolean = false,
+    /** 422 ao vincular: o link colado não é um convite de grupo do WhatsApp; repetir não adianta. */
+    val invalidLink: Boolean = false,
     val bound: Boolean = false,
     val groupName: String? = null,
     val status: GroupWhatsAppStatus = GroupWhatsAppStatus.NONE,

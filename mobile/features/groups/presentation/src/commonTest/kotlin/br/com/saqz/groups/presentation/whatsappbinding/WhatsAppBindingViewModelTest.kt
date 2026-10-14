@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.whatsappbinding
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.domain.ValidationDetails
 import br.com.saqz.groups.domain.communication.CommunicationError
 import br.com.saqz.groups.domain.communication.GroupWhatsAppBinding
 import br.com.saqz.groups.domain.communication.GroupWhatsAppGateway
@@ -54,6 +55,19 @@ class WhatsAppBindingViewModelTest {
         assertTrue(state.error)
         assertTrue(state.saveFailed)
         assertTrue(state.conflict)
+    }
+
+    @Test fun validationOnLinkSaysTheLinkIsInvalid() = runTest {
+        val gateway = FakeGroupWhatsAppGateway(shouldFail = false)
+        val viewModel = WhatsAppBindingViewModel("group-1", gateway)
+        gateway.shouldFail = true
+        gateway.failureCause = DataError.Validation(ValidationDetails(emptyList(), emptyMap()))
+        viewModel.onIntent(WhatsAppBindingIntent.ChangeInviteLink("htt"))
+        viewModel.onIntent(WhatsAppBindingIntent.Link)
+
+        val state = viewModel.state.value
+        assertTrue(state.invalidLink)
+        assertFalse(state.conflict)
     }
 
     @Test fun firstVisitOpensHowItWorksAndRemembersIt() = runTest {

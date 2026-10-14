@@ -55,6 +55,7 @@ import br.com.saqz.groups.resources.home_waitlist_reserva_chip_no_position
 import br.com.saqz.groups.resources.home_waitlist_reserva_leave
 import br.com.saqz.groups.resources.home_waitlist_row_a11y
 import br.com.saqz.groups.resources.home_waitlist_section_confirmed
+import br.com.saqz.groups.resources.game_detail_confirmed_over_capacity
 import br.com.saqz.groups.resources.home_waitlist_section_confirmed_action
 import br.com.saqz.groups.resources.home_waitlist_section_queue
 import br.com.saqz.groups.resources.home_waitlist_view_game
@@ -310,7 +311,11 @@ internal fun HomeWaitlistConfirmedSection(
     ) {
         SaqzSectionHeader(
             title = stringResource(Res.string.home_waitlist_section_confirmed),
-            action = stringResource(Res.string.home_waitlist_section_confirmed_action, confirmedCount, capacity),
+            action = if (confirmedCount > capacity) {
+                pluralStringResource(Res.plurals.game_detail_confirmed_over_capacity, capacity, confirmedCount, capacity)
+            } else {
+                stringResource(Res.string.home_waitlist_section_confirmed_action, confirmedCount, capacity)
+            },
         )
         SaqzCard {
             if (confirmedRoster.isEmpty()) {

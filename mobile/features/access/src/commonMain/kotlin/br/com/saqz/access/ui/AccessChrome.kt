@@ -134,10 +134,6 @@ internal object AccessMetrics {
     const val TERMS_LINE_HEIGHT_RATIO = 1.45f
     const val LINK_WEIGHT = 600
 
-    // `margin-top:-4px` da regra do helper da 1b: o texto sobe 4 em relação ao espaçamento
-    // normal. Também não versionado — é regra de CSS de uma tela, não medida do bloco.
-    val helperLift = (-4).dp
-
     // Os dois glifos que as telas de formulário desenham por conta própria: o ícone à
     // esquerda de cada campo e a seta do botão primário. O contrato versiona o glifo do
     // alerta (`alertaInline.icone`) e o do voltar (`voltar.chevron`), mas não estes — e

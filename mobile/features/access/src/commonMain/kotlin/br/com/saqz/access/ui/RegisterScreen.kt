@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
@@ -88,7 +87,6 @@ internal object RegisterTags {
     const val EmailTaken = "register-email-taken"
     const val Phone = "register-phone"
     const val Password = "register-password"
-    const val PasswordHint = "register-password-hint"
     const val Submit = "register-submit"
     const val SignIn = "register-signin"
     const val Terms = "register-terms"
@@ -264,21 +262,9 @@ fun RegisterScreen(
                     RegisterPasswordError.TooWeak -> stringResource(Res.string.auth_error_weak_password)
                     null -> null
                 },
+                helperText = stringResource(Res.string.access_password_hint),
                 tag = RegisterTags.Password,
                 ime = form.imeDone(),
-            )
-        }
-        // O helper mora fora do `SaqzInput` só por causa do `margin-top:-4px` do export; o
-        // erro da senha o substitui, que é o que o 1j mostra.
-        if (state.passwordError == null) {
-            Text(
-                text = stringResource(Res.string.access_password_hint),
-                style = SaqzTheme.typography.caption,
-                color = colors.textSecondary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = AccessMetrics.helperLift)
-                    .testTag(RegisterTags.PasswordHint),
             )
         }
         Spacer(Modifier.height(AccessMetrics.fieldGap))
@@ -447,6 +433,7 @@ private fun RegisterInput(
     enabled: Boolean = true,
     invalid: Boolean = false,
     errorText: String? = null,
+    helperText: String? = null,
     ime: SaqzFormIme? = null,
 ) = SaqzInput(
     value = value,
@@ -457,6 +444,7 @@ private fun RegisterInput(
     enabled = enabled,
     invalid = invalid,
     errorText = errorText,
+    helperText = helperText,
     // Sem rótulo acima: o export desenha só o placeholder dentro do campo.
     inlineLabel = true,
     leadingContent = { SaqzIcon(icon, tint = SaqzTheme.colors.primary, size = AccessMetrics.fieldIcon) },

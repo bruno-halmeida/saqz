@@ -2,6 +2,7 @@
 <resources>
     <!-- VUL-159 · resposta do membro no jogo -->
     <string name="game_response_question">Você vai jogar?</string>
+    <string name="game_response_answered_title">Sua resposta</string>
     <string name="game_response_yes">Vou</string>
     <string name="game_response_no">Não vou</string>
     <string name="game_response_spots">%1$d vagas</string>

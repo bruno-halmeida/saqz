@@ -72,6 +72,14 @@ class GroupAgendaTest {
     }
 
     @Test
+    fun `meta says confirmed for fewer spots when confirmed exceed capacity`() = runTest {
+        val base = game("g", "2026-08-06T19:30:00-03:00")
+        val over = base.copy(confirmedCount = 3, capacity = 2, availableSpots = 0, venue = GameVenue(name = "Arena Mooca", address = "x"))
+
+        assertEquals("3 confirmados para 2 vagas", meta(over))
+    }
+
+    @Test
     fun `group without a default venue always names the game venue`() = runTest {
         val row = groupAgenda(listOf(game("g", "2026-08-06T19:30:00-03:00")), null, now, defaultVenueName = null).single()
 

@@ -92,7 +92,7 @@ class RegisterScreenTest {
     @Test fun `the quiet screen shows the subtitle and the password hint`() = runComposeUiTest {
         content()
         onNodeWithText("Crie sua conta para participar dos grupos e organizar jogos.").assertExists()
-        onNodeWithTag(RegisterTags.PasswordHint).assertExists()
+        onNodeWithText("Mínimo de 8 caracteres.").assertExists()
         onNodeWithTag(RegisterTags.Alert).assertDoesNotExist()
     }
 
@@ -124,7 +124,7 @@ class RegisterScreenTest {
         content(state = refused())
         onNodeWithText("Crie sua conta para participar dos grupos e organizar jogos.").assertDoesNotExist()
         onNodeWithText("Revise 4 campos para criar sua conta.").assertExists()
-        onNodeWithTag(RegisterTags.PasswordHint).assertDoesNotExist()
+        onNodeWithText("Mínimo de 8 caracteres.").assertDoesNotExist()
     }
 
     @Test fun `the alert counts only what is lit`() = runComposeUiTest {

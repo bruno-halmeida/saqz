@@ -59,6 +59,7 @@ import br.com.saqz.groups.resources.game_response_auto_confirmation
 import br.com.saqz.groups.resources.game_response_late_notice
 import br.com.saqz.groups.resources.game_response_auto_confirmation_failed
 import br.com.saqz.groups.resources.game_response_confirmed
+import br.com.saqz.groups.resources.game_detail_confirmed_over_capacity
 import br.com.saqz.groups.resources.game_response_confirmed_summary
 import br.com.saqz.groups.resources.game_response_day_member_fee
 import br.com.saqz.groups.resources.game_response_deadline_closed
@@ -207,7 +208,16 @@ private fun GroupGameHero(
             val scarce = game.availableSpots in 1..SpotsLeftMax && state.memberResponse == null && game.confirmationOpen
             HeroRosterRow(
                 names = game.confirmedNames,
-                summary = stringResource(Res.string.game_response_confirmed_summary, game.confirmedCount, game.capacity),
+                summary = if (game.confirmedCount > game.capacity) {
+                    pluralStringResource(
+                        Res.plurals.game_detail_confirmed_over_capacity,
+                        game.capacity,
+                        game.confirmedCount,
+                        game.capacity,
+                    )
+                } else {
+                    stringResource(Res.string.game_response_confirmed_summary, game.confirmedCount, game.capacity)
+                },
                 spotsChip = if (scarce) {
                     pluralStringResource(Res.plurals.home_spots_left, game.availableSpots, game.availableSpots)
                 } else {
@@ -259,23 +269,15 @@ private fun HeroAddress(
                 color = muted,
                 modifier = Modifier.weight(1f),
             )
-            Box(
-                modifier = Modifier
-                    .testTag(GroupDetailsTags.HeroMap)
-                    .clickable(onClickLabel = mapLabel, role = Role.Button, onClick = onOpenMap)
-                    .heightIn(min = metrics.minimumTouchTarget)
-                    .padding(start = metrics.grid),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = mapLabel,
-                    style = SaqzTheme.typography.support.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        textDecoration = TextDecoration.Underline,
-                    ),
-                    color = colors.onPrimary,
-                )
-            }
+            // Mesmo estilo do "Ver jogo ›": o sublinhado do Text vinha preto e grosso no iOS.
+            SaqzButton(
+                label = mapLabel,
+                onClick = onOpenMap,
+                modifier = Modifier.testTag(GroupDetailsTags.HeroMap),
+                variant = SaqzButtonVariant.Ghost,
+                size = SaqzButtonSize.Sm,
+                contentColor = colors.onPrimary,
+            )
         }
         if (mapFailed) {
             HeroAlertLine(

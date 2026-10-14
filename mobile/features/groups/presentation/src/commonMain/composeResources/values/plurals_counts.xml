@@ -21,6 +21,10 @@
         <item quantity="one">%1$d confirmados para %2$d vaga</item>
         <item quantity="other">%1$d confirmados para %2$d vagas</item>
     </plurals>
+    <plurals name="game_capacity_below_confirmed">
+        <item quantity="one">Há %1$d confirmados; com %2$d vagas, %3$d fica além do limite.</item>
+        <item quantity="other">Há %1$d confirmados; com %2$d vagas, %3$d ficam além do limite.</item>
+    </plurals>
     <plurals name="home_spots_left">
         <item quantity="one">Resta %1$d vaga</item>
         <item quantity="other">Restam %1$d vagas</item>

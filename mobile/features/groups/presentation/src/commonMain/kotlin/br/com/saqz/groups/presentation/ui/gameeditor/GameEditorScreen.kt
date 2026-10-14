@@ -65,6 +65,7 @@ import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.game_capacity_below_confirmed
 import br.com.saqz.groups.resources.game_editor_capacity_helper
 import br.com.saqz.groups.resources.game_editor_capacity_label
 import br.com.saqz.groups.resources.game_editor_confirmation_lead_label
@@ -163,6 +164,7 @@ import kotlinx.datetime.todayIn
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.Instant
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object GameEditorTags {
@@ -359,6 +361,17 @@ private fun FormScroll(
                     label = stringResource(Res.string.game_editor_capacity_label),
                 )
                 HelperText(stringResource(Res.string.game_editor_capacity_helper))
+                if (state.confirmedCount > state.form.capacity) {
+                    HelperText(
+                        pluralStringResource(
+                            Res.plurals.game_capacity_below_confirmed,
+                            state.confirmedCount - state.form.capacity,
+                            state.confirmedCount,
+                            state.form.capacity,
+                            state.confirmedCount - state.form.capacity,
+                        ),
+                    )
+                }
             }
         }
         ConfirmationLeadChips(

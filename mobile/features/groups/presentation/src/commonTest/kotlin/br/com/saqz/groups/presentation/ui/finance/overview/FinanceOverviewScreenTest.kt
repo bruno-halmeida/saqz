@@ -1,5 +1,18 @@
 package br.com.saqz.groups.presentation.ui.finance.overview
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
+import kotlin.test.assertTrue
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithTag
@@ -16,6 +29,26 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class FinanceOverviewScreenTest {
+    @Test
+    fun `summary with font scale 2 keeps every amount whole`() = runComposeUiTest {
+        setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                SaqzTheme {
+                    Box(Modifier.width(360.dp)) { FinanceOverviewScreen(FinanceOverviewSamples.filled, onIntent = {}) }
+                }
+            }
+        }
+
+        val filled = FinanceOverviewSamples.filled
+        listOf(filled.entered, filled.left, filled.receivable).forEach { amount ->
+            val bounds = onNode(hasText(amount) and hasAnyAncestor(hasTestTag(FinanceOverviewTags.Metrics)), useUnmergedTree = true).getBoundsInRoot()
+            // Valor inteiro: "R$ 120.000,00" não cabe em menos que isso a 2x; "R$" sozinho caberia.
+            assertTrue(bounds.width >= 80.dp, "valor cortado ($amount): ${bounds.width}")
+            assertTrue(bounds.right <= 360.dp, "valor para fora da tela ($amount): $bounds")
+        }
+    }
+
     @Test
     fun `filled state shows balance structured group status and recent transaction`() = runComposeUiTest {
         setContent {

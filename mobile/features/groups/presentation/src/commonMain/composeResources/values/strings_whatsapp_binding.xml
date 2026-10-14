@@ -34,5 +34,6 @@
     <string name="whatsapp_how_status_label">Status</string>
     <string name="whatsapp_how_status_pending">Aguardando aprovação</string>
     <string name="whatsapp_binding_save_error">Não foi possível salvar o vínculo. Tente novamente.</string>
+    <string name="whatsapp_binding_invalid_link">Esse link não é de um grupo do WhatsApp. Cole o link de convite do grupo, no formato https://chat.whatsapp.com/…</string>
     <string name="whatsapp_binding_conflict">Este grupo do WhatsApp já está vinculado a outro grupo do Saqz. Cada grupo do WhatsApp só pode ser vinculado a um grupo do Saqz: use outro grupo do WhatsApp ou desfaça o vínculo no outro grupo.</string>
 </resources>

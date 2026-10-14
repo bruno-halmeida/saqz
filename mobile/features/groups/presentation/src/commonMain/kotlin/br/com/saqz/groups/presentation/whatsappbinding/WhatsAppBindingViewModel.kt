@@ -46,7 +46,7 @@ class WhatsAppBindingViewModel(
 
     private fun load() {
         val current = ++generation
-        update { it.copy(loading = true, error = false, saveFailed = false, conflict = false) }
+        update { it.copy(loading = true, error = false, saveFailed = false, conflict = false, invalidLink = false) }
         viewModelScope.launch {
             val result = gateway.binding(GroupId(groupId))
             if (current != generation) return@launch
@@ -59,7 +59,16 @@ class WhatsAppBindingViewModel(
         val inviteLink = state.value.inviteLink.trim()
         if (inviteLink.isEmpty()) return
         val current = ++generation
-        update { it.copy(saving = true, error = false, saveFailed = false, conflict = false, confirmedGroupName = null) }
+        update {
+            it.copy(
+                saving = true,
+                error = false,
+                saveFailed = false,
+                conflict = false,
+                invalidLink = false,
+                confirmedGroupName = null,
+            )
+        }
         viewModelScope.launch {
             val result = gateway.link(GroupId(groupId), inviteLink)
             if (current != generation) return@launch
@@ -70,7 +79,13 @@ class WhatsAppBindingViewModel(
                     emit(WhatsAppBindingEffect.Saved)
                 }
                 is SaqzResult.Failure -> update {
-                    it.copy(saving = false, error = true, saveFailed = true, conflict = result.error.cause == DataError.Conflict)
+                    it.copy(
+                        saving = false,
+                        error = true,
+                        saveFailed = true,
+                        conflict = result.error.cause == DataError.Conflict,
+                        invalidLink = result.error.cause is DataError.Validation,
+                    )
                 }
             }
         }
@@ -80,7 +95,7 @@ class WhatsAppBindingViewModel(
         val current = state.value
         if (!current.canToggle || current.saving) return
         val currentGeneration = ++generation
-        update { it.copy(saving = true, error = false, saveFailed = false, conflict = false) }
+        update { it.copy(saving = true, error = false, saveFailed = false, conflict = false, invalidLink = false) }
         viewModelScope.launch {
             val result = gateway.setEnabled(GroupId(groupId), enabled)
             if (currentGeneration != generation) return@launch

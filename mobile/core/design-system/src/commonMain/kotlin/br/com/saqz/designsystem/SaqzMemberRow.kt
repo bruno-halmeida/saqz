@@ -58,6 +58,7 @@ private fun avatarTextSize(size: Dp): TextUnit = with(LocalDensity.current) { (s
 
 // Sobreposição do 10k: `margin-left:-8px` fixo, e não uma fração do diâmetro.
 private val AvatarStackOverlap = 8.dp
+private val AvatarStackOverlapLargeText = 3.dp
 
 /**
  * 10k — círculo ice com as iniciais e o anel de 1px (`box-shadow:inset 0 0 0 1px`
@@ -126,7 +127,10 @@ fun SaqzAvatarStack(
     val colors = SaqzTheme.colors
     val shown = names.take(max)
     val overflow = names.size - shown.size
-    Row(horizontalArrangement = Arrangement.spacedBy(-AvatarStackOverlap), modifier = modifier) {
+    // Com "Texto Maior" o círculo não cresce e as iniciais largas ("CB") ficavam sob o vizinho:
+    // a sobreposição diminui para a letra caber inteira.
+    val overlap = if (LocalDensity.current.fontScale > 1.2f) AvatarStackOverlapLargeText else AvatarStackOverlap
+    Row(horizontalArrangement = Arrangement.spacedBy(-overlap), modifier = modifier) {
         // Sem zIndex: a ordem de pintura é a do Row, que é a do DOM no export —
         // cada círculo cobre a borda esquerda do anterior e o "+N" fica inteiro.
         shown.forEach { name ->

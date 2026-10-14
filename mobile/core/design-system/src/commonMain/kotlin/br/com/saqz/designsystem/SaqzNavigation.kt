@@ -82,7 +82,8 @@ fun SaqzTopAppBar(
                     text = title,
                     style = SaqzTheme.typography.subtitle,
                     color = colors.textPrimary,
-                    maxLines = 1,
+                    // Fonte grande: o título quebra em vez de virar "Membros e permis…".
+                    maxLines = if (LocalDensity.current.fontScale > 1.2f) 3 else 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }

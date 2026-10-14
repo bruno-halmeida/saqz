@@ -46,6 +46,8 @@ data class GameEditorState(
     /** Sugestões de endereço do Google; vazio e indisponível quando o backend desliga a busca. */
     val venueSearch: VenueSearchState = VenueSearchState(),
     val versionToken: String? = null,
+    /** Confirmados do jogo em edição; serve para avisar quando as vagas ficam abaixo deles. */
+    val confirmedCount: Int = 0,
     val isSaving: Boolean = false,
     val saveFailed: Boolean = false,
     val hasConflict: Boolean = false,

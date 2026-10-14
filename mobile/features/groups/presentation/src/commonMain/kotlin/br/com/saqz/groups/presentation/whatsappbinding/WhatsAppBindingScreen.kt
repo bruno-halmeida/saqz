@@ -35,6 +35,7 @@ import br.com.saqz.groups.resources.whatsapp_binding_empty_description
 import br.com.saqz.groups.resources.whatsapp_binding_empty_title
 import br.com.saqz.groups.resources.whatsapp_binding_enable_action
 import br.com.saqz.groups.resources.whatsapp_binding_conflict
+import br.com.saqz.groups.resources.whatsapp_binding_invalid_link
 import br.com.saqz.groups.resources.whatsapp_binding_error
 import br.com.saqz.groups.resources.whatsapp_binding_save_error
 import br.com.saqz.groups.resources.whatsapp_binding_group_label
@@ -161,6 +162,7 @@ private fun WhatsAppBindingError(state: WhatsAppBindingState, onRetry: () -> Uni
             text = stringResource(
                 when {
                     state.conflict -> Res.string.whatsapp_binding_conflict
+                    state.invalidLink -> Res.string.whatsapp_binding_invalid_link
                     state.saveFailed -> Res.string.whatsapp_binding_save_error
                     else -> Res.string.whatsapp_binding_error
                 },
@@ -168,7 +170,7 @@ private fun WhatsAppBindingError(state: WhatsAppBindingState, onRetry: () -> Uni
             style = SaqzTheme.typography.support,
             color = SaqzTheme.colors.errorForeground,
         )
-        if (!state.conflict) SaqzButton(
+        if (!state.conflict && !state.invalidLink) SaqzButton(
             label = stringResource(Res.string.whatsapp_binding_retry),
             onClick = onRetry,
             variant = SaqzButtonVariant.Secondary,

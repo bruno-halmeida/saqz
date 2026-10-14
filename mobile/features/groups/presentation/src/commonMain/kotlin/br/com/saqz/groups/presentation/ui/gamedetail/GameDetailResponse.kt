@@ -22,6 +22,7 @@ import br.com.saqz.groups.resources.game_response_deadline_closed
 import br.com.saqz.groups.resources.game_response_late_notice
 import br.com.saqz.groups.resources.game_response_declined
 import br.com.saqz.groups.resources.game_response_no
+import br.com.saqz.groups.resources.game_response_answered_title
 import br.com.saqz.groups.resources.game_response_question
 import br.com.saqz.groups.resources.game_response_request_failed
 import br.com.saqz.groups.resources.subscription_paused_athlete
@@ -57,7 +58,10 @@ internal fun GameDetailResponse(
     if (!response.visible || header.statusTone != GameDetailStatusTone.Published) return
     SaqzHeroCard(
         kicker = stringResource(Res.string.game_detail_response_kicker),
-        title = stringResource(Res.string.game_response_question),
+        // Respondido: o estado abaixo já diz o que vale; perguntar de novo contradiz ("Você não vai jogar.").
+        title = stringResource(
+            if (response.status == null) Res.string.game_response_question else Res.string.game_response_answered_title,
+        ),
         modifier = modifier.testTag(GameDetailAttendanceTags.Block),
     ) {
         if (header.confirmationOpen || !header.responseOpen) {

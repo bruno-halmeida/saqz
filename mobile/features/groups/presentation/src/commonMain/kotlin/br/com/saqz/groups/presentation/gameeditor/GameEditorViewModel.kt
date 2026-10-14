@@ -190,6 +190,7 @@ class GameEditorViewModel(
                         form = restoreForm(serverForm),
                         groupHasVenue = profile?.defaultVenue != null,
                             versionToken = gameResult.value.version.value,
+                            confirmedCount = game.confirmedCount,
                         ).withTrial(trial)
                     }
                 }

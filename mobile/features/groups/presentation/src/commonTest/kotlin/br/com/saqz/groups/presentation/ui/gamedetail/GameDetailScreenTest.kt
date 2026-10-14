@@ -211,6 +211,8 @@ class GameDetailScreenTest {
         setScreen(state = GameDetailResponsePreviewData.memberDeclined)
 
         onNodeWithText("Você não vai jogar.").assertExists()
+        onAllNodesWithText("Você vai jogar?").assertCountEquals(0)
+        onNodeWithText("Sua resposta").assertExists()
         onNodeWithTag(GameDetailAttendanceTags.Change).assertExists()
     }
 
