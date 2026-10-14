@@ -85,8 +85,8 @@ android {
         // O Play exige versionCode inteiro e maior a cada upload; versionName é só o texto que o usuário vê.
         // Os literais abaixo são a fonte local; o CI os reescreve a cada RC (mobile/ci/version.sh set X.Y.Z N).
         // -Psaqz.versionCode / -Psaqz.versionName sobrescrevem sem tocar no arquivo.
-        versionCode = environmentProperty(name = "saqz.versionCode", required = false, fallback = "14").toInt()
-        versionName = environmentProperty(name = "saqz.versionName", required = false, fallback = "1.0.3")
+        versionCode = environmentProperty(name = "saqz.versionCode", required = false, fallback = "15").toInt()
+        versionName = environmentProperty(name = "saqz.versionName", required = false, fallback = "1.0.4")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["linksDomain"] = linksDomain
         buildConfigField("String", "LINKS_DOMAIN", linksDomain.toBuildConfigString())
