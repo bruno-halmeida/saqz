@@ -132,6 +132,7 @@ internal fun GroupOwnChargesSettledBlock(
                     contentDescription = "$title. $meta",
                     onClick = { expanded = !expanded },
                     tag = GroupDetailsTags.OwnChargesSettled,
+                    stackTrailingOnLargeFont = true,
                 ) {
                     Text(
                         text = toggleLabel,

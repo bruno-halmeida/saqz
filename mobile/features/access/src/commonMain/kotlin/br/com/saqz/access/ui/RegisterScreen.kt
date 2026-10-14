@@ -136,6 +136,9 @@ fun RegisterScreen(
 ) {
     val colors = SaqzTheme.colors
     val alert = registerAlert(state)
+    // Tela baixa (Safari do iPhone): sem a marca e com respiros menores o aceite dos Termos cabe acima da barra.
+    val compact = accessCompactHeight()
+    val gap = if (compact) AccessMetrics.compactBlockGap else AccessMetrics.blockGap
 
     // A quarta saída, a que não se vê: o back do sistema, incluindo o preditivo. As três
     // visíveis fecham por `enabled`, mas o `NavDisplay.onBack` do host é um `pop`
@@ -162,9 +165,11 @@ fun RegisterScreen(
                 SaqzIcon(SaqzIcons.ChevronLeft)
             }
         }
-        Spacer(Modifier.height(AccessMetrics.blockGap))
-        AccessBrandMark()
-        Spacer(Modifier.height(AccessMetrics.blockGap))
+        Spacer(Modifier.height(gap))
+        if (!compact) {
+            AccessBrandMark()
+            Spacer(Modifier.height(gap))
+        }
         if (inviteContext == null) {
             AccessHeader(
                 title = stringResource(Res.string.register_headline),
@@ -175,7 +180,7 @@ fun RegisterScreen(
         } else {
             RegisterInviteHeader(context = inviteContext)
         }
-        Spacer(Modifier.height(AccessMetrics.blockGap))
+        Spacer(Modifier.height(gap))
         if (alert != null) {
             SaqzInlineAlert(
                 text = alert.text,
@@ -183,7 +188,7 @@ fun RegisterScreen(
                 tone = SaqzInlineAlertTone.Error,
                 modifier = Modifier.testTag(RegisterTags.Alert),
             )
-            Spacer(Modifier.height(AccessMetrics.blockGap))
+            Spacer(Modifier.height(gap))
         }
 
         Column(
@@ -285,7 +290,7 @@ fun RegisterScreen(
             trailingContent = { color -> SaqzIcon(SaqzIcons.ArrowRight, tint = color, size = AccessMetrics.primaryActionIcon) },
             modifier = Modifier.fillMaxWidth().clip(CircleShape).testTag(RegisterTags.Submit),
         )
-        Spacer(Modifier.height(AccessMetrics.blockGap))
+        Spacer(Modifier.height(gap))
         Text(
             text = signInLink(stringResource(Res.string.register_signin_link), colors.primary),
             style = SaqzTheme.typography.support,
@@ -324,9 +329,8 @@ fun RegisterScreen(
                     .testTag(RegisterTags.InviteFooter),
             )
         }
-        // A onda sangra por cima do que estiver embaixo dela; sem este piso os termos
-        // ficariam sob o azul numa tela curta.
-        Spacer(Modifier.height(AccessMetrics.waveHeight))
+        // Respiro antes da onda, que agora vem logo abaixo do conteúdo.
+        Spacer(Modifier.height(AccessMetrics.fieldGap))
     }
 }
 

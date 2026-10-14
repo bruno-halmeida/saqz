@@ -142,3 +142,32 @@ test("presença mostra só o que está abrindo, sem chamar a API", () => {
   assert.equal(contextNode.textContent, "Abrindo a lista de presença");
   assert.equal(win.calls.length, 0);
 });
+
+test("depois de 20 s na tela de carregamento aparece o Recarregar, que recarrega a página", () => {
+  const win = fakeWindow({ wasmBody: new Uint8Array(1) });
+  const timers = [];
+  win.setTimeout = (fn, ms) => { timers.push({ fn, ms }); return 0; };
+  let reloaded = false;
+  win.location.reload = () => { reloaded = true; };
+  let click = null;
+  const reload = { hidden: true };
+  const button = { addEventListener: (_, fn) => { click = fn; } };
+  const bar = { style: {} };
+  const track = { classList: { toggle() {} }, setAttribute() {} };
+  const host = {
+    isConnected: true,
+    querySelector: (sel) => ({ ".sq-bar > i": bar, ".sq-bar": track, ".sq-reload": reload })[sel] ?? null,
+  };
+  const doc = {
+    getElementById: () => host,
+    querySelector: (sel) => (sel === "#saqz-loading .sq-reload button" ? button : null),
+  };
+  loader.start(win, doc);
+  const timer = timers.find((t) => t.ms === loader.RELOAD_AFTER_MS);
+  assert.ok(timer, "agenda o aviso");
+  assert.equal(reload.hidden, true);
+  timer.fn();
+  assert.equal(reload.hidden, false);
+  click();
+  assert.equal(reloaded, true);
+});

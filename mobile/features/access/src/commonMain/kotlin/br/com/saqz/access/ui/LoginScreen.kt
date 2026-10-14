@@ -136,8 +136,9 @@ fun LoginScreen(
     val colors = SaqzTheme.colors
     val alert = state.error?.asString()
 
+    // Tela baixa (Safari do iPhone): a marca pequena, sem lettering, devolve ~50dp ao fim do formulário.
     AccessScaffold(modifier = modifier, spacious = true) {
-        AccessBrandMark(large = true)
+        AccessBrandMark(large = !accessCompactHeight())
         Spacer(Modifier.height(LoginMetrics.brandGap))
         // Chegou por convite (ou link de presença) sem sessão: o grupo no lugar da saudação, o
         // mesmo cabeçalho do cadastro, para quem já tem conta ver para onde está entrando.

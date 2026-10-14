@@ -22,7 +22,10 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -156,12 +159,19 @@ private fun NavTab(
             tint = if (selected) colors.primary else colors.textSecondary,
             size = 24.dp,
         )
-        Text(
-            text = item.label,
-            style = SaqzTheme.typography.navigation,
-            color = if (selected) colors.primary else colors.textSecondary,
-            maxLines = 1,
-        )
+        // A barra tem altura fixa e rótulo de uma linha: ele cresce com a fonte do sistema só até
+        // NAV_LABEL_MAX_FONT_SCALE, senão "Financeiro" virava "Financeir".
+        val density = LocalDensity.current
+        CompositionLocalProvider(
+            LocalDensity provides Density(density.density, minOf(density.fontScale, NAV_LABEL_MAX_FONT_SCALE)),
+        ) {
+            Text(
+                text = item.label,
+                style = SaqzTheme.typography.navigation,
+                color = if (selected) colors.primary else colors.textSecondary,
+                maxLines = 1,
+            )
+        }
         // Último filho no `.saqz-bottomnav__item`: o lime sublinha o rótulo, não encima o
         // ícone. Reserva os 3dp mesmo inativo para a aba não pular ao ser selecionada.
         Box(
@@ -172,6 +182,8 @@ private fun NavTab(
         )
     }
 }
+
+private const val NAV_LABEL_MAX_FONT_SCALE = 1.2f
 
 @Preview
 @Composable

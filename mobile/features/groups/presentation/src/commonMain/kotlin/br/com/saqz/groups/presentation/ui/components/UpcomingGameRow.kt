@@ -12,13 +12,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import br.com.saqz.designsystem.SaqzLargeFontScale
 import br.com.saqz.designsystem.theme.SaqzTheme
 
 /** Tile de data ice 44dp: dia em `dateDay`, mês em `dateMonth` azul. */
@@ -70,11 +76,20 @@ internal fun UpcomingGameRow(
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
         DateTile(day = day, month = month)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = SaqzTheme.typography.compactTitle, color = colors.textPrimary)
-            Text(text = meta, style = SaqzTheme.typography.compactMeta, color = colors.textSecondary)
+        // Fonte grande: o chip à direita tomava a largura e o texto quebrava letra a letra ("confirmad/os").
+        // Ele desce para baixo do texto e a coluna ganha a linha inteira.
+        val stackTrailing = LocalDensity.current.fontScale >= SaqzLargeFontScale
+        // Um único ponto de chamada do slot: ele se move entre a coluna e a linha sem perder estado.
+        val currentTrailing by rememberUpdatedState(trailing)
+        val trailingSlot = remember { movableContentOf { currentTrailing() } }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.grid)) {
+            Column {
+                Text(text = title, style = SaqzTheme.typography.compactTitle, color = colors.textPrimary)
+                Text(text = meta, style = SaqzTheme.typography.compactMeta, color = colors.textSecondary)
+            }
+            if (stackTrailing) trailingSlot()
         }
-        trailing()
+        if (!stackTrailing) trailingSlot()
     }
 }
 

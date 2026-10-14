@@ -3,7 +3,10 @@ package br.com.saqz.composeapp.shell
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.Text
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
@@ -25,9 +28,34 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class EmailVerificationBannerTest {
+
+    /** Fonte no máximo: "Reenviar" desce para a própria linha e a mensagem ganha a largura toda. */
+    @Test
+    fun largeFontStacksResendBelowTheMessage() = runComposeUiTest {
+        setContent {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(
+                    density.density,
+                    fontScale = 2f,
+                ),
+            ) {
+                SaqzTheme {
+                    androidx.compose.foundation.layout.Box(Modifier.width(360.dp)) {
+                        EmailVerificationBanner(onRefresh = {}, onDismiss = {}, auth = FakeAuthPort())
+                    }
+                }
+            }
+        }
+        val message = onNodeWithText(Unverified).getBoundsInRoot()
+        val resend = onNodeWithTag(SaqzEmailBannerResendTag).getBoundsInRoot()
+        assertTrue(resend.top >= message.bottom, "Reenviar deveria ficar abaixo da mensagem")
+        assertTrue(message.width >= 180.dp, "mensagem espremida: ${message.width}")
+    }
 
     @Test
     fun resendCallsTheProviderAndConfirms() = runComposeUiTest {

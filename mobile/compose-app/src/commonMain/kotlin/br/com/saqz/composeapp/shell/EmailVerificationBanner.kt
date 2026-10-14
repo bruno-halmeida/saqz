@@ -2,6 +2,7 @@ package br.com.saqz.composeapp.shell
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,6 +18,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -35,6 +37,7 @@ import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIconButton
+import br.com.saqz.designsystem.SaqzLargeFontScale
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -177,28 +180,10 @@ fun EmailVerificationBannerContent(
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = metrics.horizontalPadding, vertical = metrics.grid)
-            .background(colors.textPrimary, RoundedCornerShape(metrics.cardRadius))
-            // 12 na vertical é o do `SaqzOfflineBanner`; o fim é menor porque o botão traz
-            // o próprio respiro dentro da pílula.
-            .padding(start = metrics.horizontalPadding, end = metrics.grid, top = metrics.blockGap, bottom = metrics.blockGap)
-            .testTag(SaqzEmailBannerTag),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(metrics.grid),
-    ) {
-        // O envelope no lime que o VUL-47 pôs sobre o navy, nos mesmos 16 do spinner da
-        // faixa offline: é o par de cores de lá, sem o giro que aqui não faria sentido.
-        SaqzIcon(SaqzIcons.Mail, tint = colors.accent, size = metrics.grid * 2)
-        SaqzToastText(message, modifier = Modifier.weight(1f))
-        // A ação some enquanto a trava dura, em vez de ficar desabilitada: o desabilitado
-        // do design system pinta a pílula de cinza claro, e um retângulo cinza no meio do
-        // navy lê como peça quebrada. Sem ela o aviso já diz o que aconteceu.
-        //
-        // Ghost com rótulo lime porque nenhuma variante serve de fábrica sobre o navy —
-        // Secondary desenharia um bloco branco. O tamanho Sm guarda os 44 do alvo de toque.
+    // Fonte grande: "Reenviar" ao lado do texto deixava a mensagem numa coluna estreita (uma palavra por
+    // linha). Com texto maior a ação desce para uma linha própria, abaixo da mensagem.
+    val stackResend = LocalDensity.current.fontScale >= SaqzLargeFontScale
+    val resend: @Composable () -> Unit = {
         if (onResend != null) {
             SaqzButton(
                 label = stringResource(Res.string.shell_email_resend),
@@ -210,21 +195,51 @@ fun EmailVerificationBannerContent(
                 modifier = Modifier.testTag(SaqzEmailBannerResendTag),
             )
         }
-        // Dispensar é da pessoa, não do sistema. A faixa não acaba sozinha — o VUL-76 tirou
-        // a trava do backend de propósito —, então quem já sabe que deve confirmar precisa
-        // de um jeito de tirar o aviso da frente. Quem guarda o dispensado é o shell, e o
-        // estado morre com a sessão: o próximo login lembra de novo, e quem confirmou não
-        // vê a faixa de jeito nenhum. O rótulo mora neste módulo: no iOS o `stringResource`
-        // do Compose não aceita o `Res` de outro source set (receiver type mismatch).
-        if (onDismiss != null) {
-            SaqzIconButton(
-                onClick = onDismiss,
-                contentDescription = stringResource(Res.string.shell_email_dismiss),
-                modifier = Modifier.testTag(SaqzEmailBannerDismissTag),
-            ) {
-                SaqzIcon(SaqzIcons.Close, tint = colors.accent, size = metrics.grid * 2)
+    }
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = metrics.horizontalPadding, vertical = metrics.grid)
+            .background(colors.textPrimary, RoundedCornerShape(metrics.cardRadius))
+            // 12 na vertical é o do `SaqzOfflineBanner`; o fim é menor porque o botão traz
+            // o próprio respiro dentro da pílula.
+            .padding(start = metrics.horizontalPadding, end = metrics.grid, top = metrics.blockGap, bottom = metrics.blockGap)
+            .testTag(SaqzEmailBannerTag),
+        horizontalAlignment = Alignment.End,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(metrics.grid),
+        ) {
+            // O envelope no lime que o VUL-47 pôs sobre o navy, nos mesmos 16 do spinner da
+            // faixa offline: é o par de cores de lá, sem o giro que aqui não faria sentido.
+            SaqzIcon(SaqzIcons.Mail, tint = colors.accent, size = metrics.grid * 2)
+            SaqzToastText(message, modifier = Modifier.weight(1f))
+            // A ação some enquanto a trava dura, em vez de ficar desabilitada: o desabilitado
+            // do design system pinta a pílula de cinza claro, e um retângulo cinza no meio do
+            // navy lê como peça quebrada. Sem ela o aviso já diz o que aconteceu.
+            //
+            // Ghost com rótulo lime porque nenhuma variante serve de fábrica sobre o navy —
+            // Secondary desenharia um bloco branco. O tamanho Sm guarda os 44 do alvo de toque.
+            if (!stackResend) resend()
+            // Dispensar é da pessoa, não do sistema. A faixa não acaba sozinha — o VUL-76 tirou
+            // a trava do backend de propósito —, então quem já sabe que deve confirmar precisa
+            // de um jeito de tirar o aviso da frente. Quem guarda o dispensado é o shell, e o
+            // estado morre com a sessão: o próximo login lembra de novo, e quem confirmou não
+            // vê a faixa de jeito nenhum. O rótulo mora neste módulo: no iOS o `stringResource`
+            // do Compose não aceita o `Res` de outro source set (receiver type mismatch).
+            if (onDismiss != null) {
+                SaqzIconButton(
+                    onClick = onDismiss,
+                    contentDescription = stringResource(Res.string.shell_email_dismiss),
+                    modifier = Modifier.testTag(SaqzEmailBannerDismissTag),
+                ) {
+                    SaqzIcon(SaqzIcons.Close, tint = colors.accent, size = metrics.grid * 2)
+                }
             }
         }
+        if (stackResend) resend()
     }
 }
 

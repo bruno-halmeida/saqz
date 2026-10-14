@@ -28,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -144,6 +146,10 @@ internal object AccessMetrics {
     val fieldIcon = 20.dp
     val primaryActionIcon = 18.dp
 
+    // Abaixo disto a tela de entrada compacta a marca e os respiros (não versionado no contrato).
+    const val COMPACT_HEIGHT_DP = 740f
+    val compactBlockGap = 12.dp
+
     const val WAVE_VIEWPORT_WIDTH = 390f
     const val WAVE_VIEWPORT_HEIGHT = 130f
     const val WAVE_BACK_LAYER_ALPHA = 0.16f
@@ -186,22 +192,42 @@ fun AccessScaffold(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.surface)) {
-        AccessWave(Modifier.align(Alignment.BottomCenter))
+        // A onda é o fim do conteúdo que rola, e não uma camada fixa atrás dele: fixa, ela passava por cima
+        // do fim do formulário em tela baixa (Safari do iPhone) e deixava "Já tem uma conta? Entrar" ilegível.
+        // Em tela alta o `weight` empurra a onda para a borda de baixo, como antes.
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                 .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = AccessMetrics.horizontalPadding)
-                .padding(
-                    top = if (spacious) AccessMetrics.spaciousTopPadding else AccessMetrics.topPadding,
-                )
-                .testTag(AccessChromeTags.Content),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            content = content,
-        )
+                .verticalScroll(rememberScrollState()),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = AccessMetrics.horizontalPadding)
+                    .padding(
+                        top = if (spacious) AccessMetrics.spaciousTopPadding else AccessMetrics.topPadding,
+                    )
+                    .testTag(AccessChromeTags.Content),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                content = content,
+            )
+            // Sobra de altura (tela alta) vai para este espaço; sem sobra ele some e a onda segue o conteúdo.
+            Spacer(Modifier.weight(1f))
+            AccessWave()
+        }
     }
+}
+
+/**
+ * Tela baixa (iPhone com a barra do Safari, celular pequeno com fonte grande): o fim do formulário só
+ * cabe sem rolar se a marca e os respiros encolherem.
+ */
+@Composable
+internal fun accessCompactHeight(): Boolean {
+    val heightPx = LocalWindowInfo.current.containerSize.height
+    return heightPx > 0 && heightPx / LocalDensity.current.density < AccessMetrics.COMPACT_HEIGHT_DP
 }
 
 /**

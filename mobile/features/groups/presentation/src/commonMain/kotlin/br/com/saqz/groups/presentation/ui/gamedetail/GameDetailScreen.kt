@@ -2,6 +2,10 @@ package br.com.saqz.groups.presentation.ui.gamedetail
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.platform.LocalDensity
+import br.com.saqz.designsystem.SaqzLargeFontScale
+import br.com.saqz.designsystem.saqzColumnsFit
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -194,27 +198,39 @@ private fun GameDetailAttendance(attendance: GameDetailAttendanceUi) {
             color = colors.textPrimary,
             style = SaqzTheme.typography.body,
         )
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(vertical = SaqzTheme.metrics.blockGap)) {
-            Counter(
-                attendance.confirmed,
-                stringResource(Res.string.game_detail_stat_going),
-                colors.success,
-                Modifier.weight(1f),
+        val goingLabel = stringResource(Res.string.game_detail_stat_going)
+        val declinedLabel = stringResource(DsRes.string.attendance_out)
+        val pendingLabel = stringResource(Res.string.group_details_pending)
+        val fontScale = LocalDensity.current.fontScale
+        // A largura disponível decide, não só o fontScale: no iPhone 17e "Sem resposta" quebrava em 3 colunas.
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val stacked = fontScale >= SaqzLargeFontScale || !saqzColumnsFit(
+                maxWidth,
+                columns = 3,
+                longestLabelChars = maxOf(goingLabel.length, declinedLabel.length, pendingLabel.length),
+                fontScale = fontScale,
             )
-            SaqzDivider(vertical = true)
-            Counter(
-                attendance.declined,
-                stringResource(DsRes.string.attendance_out),
-                colors.textSecondary,
-                Modifier.weight(1f),
-            )
-            SaqzDivider(vertical = true)
-            Counter(
-                attendance.pending,
-                stringResource(Res.string.group_details_pending),
-                colors.textSecondary,
-                Modifier.weight(1f),
-            )
+            Column(
+                modifier = Modifier.padding(vertical = SaqzTheme.metrics.blockGap),
+                verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+            ) {
+                if (stacked) {
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                        Counter(attendance.confirmed, goingLabel, colors.success, Modifier.weight(1f))
+                        SaqzDivider(vertical = true)
+                        Counter(attendance.declined, declinedLabel, colors.textSecondary, Modifier.weight(1f))
+                    }
+                    Counter(attendance.pending, pendingLabel, colors.textSecondary, Modifier.fillMaxWidth())
+                } else {
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                        Counter(attendance.confirmed, goingLabel, colors.success, Modifier.weight(1f))
+                        SaqzDivider(vertical = true)
+                        Counter(attendance.declined, declinedLabel, colors.textSecondary, Modifier.weight(1f))
+                        SaqzDivider(vertical = true)
+                        Counter(attendance.pending, pendingLabel, colors.textSecondary, Modifier.weight(1f))
+                    }
+                }
+            }
         }
     }
 }

@@ -43,6 +43,11 @@
       transform: scaleX(0); transform-origin: left center; transition: transform .25s ease-out; }
     #saqz-loading .sq-bar.sq-indeterminate > i { width: 40%; transform: none; transition: none;
       animation: sq-slide 1.2s ease-in-out infinite; }
+    #saqz-loading .sq-reload { margin-top: 20px; font-size: 14px; color: #3c4257; }
+    #saqz-loading .sq-reload[hidden] { display: none; }
+    #saqz-loading .sq-reload p { margin: 0 0 10px; }
+    #saqz-loading .sq-reload button { min-height: 44px; padding: 0 22px; border: 0; border-radius: 22px;
+      background: #0638df; color: #fff; font: 600 15px Inter, system-ui, -apple-system, sans-serif; }
     @keyframes sq-slide { from { left: -40%; } to { left: 100%; } }
     @media (prefers-reduced-motion: reduce) {
       #saqz-loading .sq-bar.sq-indeterminate > i { animation: none; width: 100%; opacity: .35; }
@@ -84,6 +89,11 @@
       <div class="sq-brand">Saqz</div>
       <p class="sq-context" hidden></p>
       <div class="sq-bar" role="progressbar" aria-label="Carregando o Saqz" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+      <!-- Aparece depois de ~20 s (saqz-loader.js): primeira carga lenta ou travada. -->
+      <div class="sq-reload" hidden>
+        <p>Está demorando mais que o normal.</p>
+        <button type="button">Recarregar</button>
+      </div>
     </div>
   </div>
   <!-- Antes do script que baixa o app: instala a contagem de bytes do .wasm e busca o convite. -->

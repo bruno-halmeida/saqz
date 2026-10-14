@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +27,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import br.com.saqz.designsystem.SaqzIcon
+import br.com.saqz.designsystem.SaqzLargeFontScale
 import br.com.saqz.designsystem.theme.SaqzTheme
 
 /**
@@ -45,7 +50,8 @@ internal fun WaitingRow(
     tag: String,
     modifier: Modifier = Modifier,
     metaMaxLines: Int = 1,
-    leading: (@Composable () -> Unit)? = null,
+    stackTrailingOnLargeFont: Boolean = false,
+    leading:(@Composable () -> Unit)? = null,
     trailing: @Composable () -> Unit,
 ) {
     val colors = SaqzTheme.colors
@@ -79,6 +85,12 @@ internal fun WaitingRow(
                 SaqzIcon(icon = icon, tint = colors.textSecondary)
             }
         }
+        // Fonte grande: uma ação textual à direita ("Ver histórico (1)") espremia o título numa palavra
+        // por linha; com [stackTrailingOnLargeFont] ela desce para baixo do texto.
+        val stackTrailing = stackTrailingOnLargeFont && LocalDensity.current.fontScale >= SaqzLargeFontScale
+        // Um único ponto de chamada do slot: ele se move entre a coluna e a linha sem perder estado.
+        val currentTrailing by rememberUpdatedState(trailing)
+        val trailingSlot = remember { movableContentOf { currentTrailing() } }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid / 2)) {
             Text(
                 text = title,
@@ -95,7 +107,8 @@ internal fun WaitingRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            if (stackTrailing) trailingSlot()
         }
-        trailing()
+        if (!stackTrailing) trailingSlot()
     }
 }

@@ -4,6 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import br.com.saqz.designsystem.SaqzLargeFontScale
+import br.com.saqz.designsystem.saqzColumnsFit
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -109,9 +112,13 @@ internal fun AttendanceScoreBoard(
     }
     // Fonte grande: quatro colunas estreitas quebram "Sem resposta" letra a letra. Em 2 x 2 cada
     // coluna ganha o dobro da largura e a palavra cabe inteira.
-    val largeFont = LocalDensity.current.fontScale >= LargeFontScale
+    // A largura disponível também decide (iPhone 17e: o fontScale sozinho deixou 3 colunas com "Sem resposta" partido).
+    val fontScale = LocalDensity.current.fontScale
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+    val largeFont = fontScale >= SaqzLargeFontScale ||
+        !saqzColumnsFit(maxWidth, columns = 4, longestLabelChars = ScoreLongestLabel, fontScale = fontScale)
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(metrics.inputRadius))
             .background(colors.onPrimary.copy(alpha = ScorePanelAlpha))
@@ -147,6 +154,7 @@ internal fun AttendanceScoreBoard(
                 pendingColumn()
             }
         }
+    }
     }
 }
 
@@ -186,7 +194,7 @@ private fun RowScope.ScoreColumn(
     }
 }
 
-private const val LargeFontScale = 1.3f
+private const val ScoreLongestLabel = 12 // "Sem resposta"
 private const val ScorePanelAlpha = 0.10f
 private const val ScoreDividerAlpha = 0.18f
 private const val ScoreOutAlpha = 0.7f

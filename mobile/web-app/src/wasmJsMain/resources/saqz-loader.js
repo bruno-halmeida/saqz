@@ -11,6 +11,8 @@
   // referência é o que a própria pessoa baixou na visita anterior; sem ele, estima-se pela razão típica.
   var TYPICAL_GZIP_RATIO = 2.6;
   var STORAGE_PREFIX = "saqz.wasmBytes.";
+  // Passado este tempo na tela de carregamento, aparece "Recarregar".
+  var RELOAD_AFTER_MS = 20000;
 
   function queryParam(search, name) {
     var entries = String(search || "").replace(/^\?/, "").split("&");
@@ -72,7 +74,13 @@
     var bar = host.querySelector(".sq-bar > i");
     var track = host.querySelector(".sq-bar");
     var context = host.querySelector(".sq-context");
+    var reload = host.querySelector(".sq-reload");
     return {
+      /** Depois de ~20 s ainda aqui: a 1ª carga travou (rede lenta, servidor sem compressão) e recarregar costuma resolver. */
+      showReload: function () {
+        if (!host.isConnected || !reload) return;
+        reload.hidden = false;
+      },
       setProgress: function (fraction) {
         if (!host.isConnected || !bar) return;
         bar.style.transform = "scaleX(" + fraction.toFixed(3) + ")";
@@ -186,6 +194,11 @@
     var ui = mount(doc);
     if (!ui) return;
     ui.setProgress(0);
+    var button = typeof doc.querySelector === "function" ? doc.querySelector("#saqz-loading .sq-reload button") : null;
+    if (button && typeof button.addEventListener === "function") {
+      button.addEventListener("click", function () { win.location.reload(); });
+    }
+    if (typeof win.setTimeout === "function") win.setTimeout(ui.showReload, RELOAD_AFTER_MS);
     trackWasm(win, ui.setProgress);
     loadContext(win, ui);
   }
@@ -196,6 +209,7 @@
     attendanceLine: attendanceLine,
     progressFraction: progressFraction,
     expectedBytes: expectedBytes,
+    RELOAD_AFTER_MS: RELOAD_AFTER_MS,
     trackWasm: trackWasm,
     start: start,
   };
