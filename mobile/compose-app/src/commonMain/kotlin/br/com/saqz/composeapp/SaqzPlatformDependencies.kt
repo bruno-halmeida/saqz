@@ -52,8 +52,12 @@ class GroupsRuntimeDependencies(
 class SaqzPlatformDependencies(
     val environment: String,
     val apiBaseUrl: String,
-    /** Versão instalada, "0.0.5 (7)", mostrada no rodapé do Perfil. */
+    /** "android", "ios" ou "web": vai em toda chamada à API (X-Saqz-Platform). */
+    val platform: String,
+    /** Versão publicada, "1.0.3" (versionName / CFBundleShortVersionString): X-Saqz-App-Version e rodapé do Perfil. */
     val appVersion: String,
+    /** Build, "14" (versionCode / CFBundleVersion): X-Saqz-App-Build e rodapé do Perfil; `null` onde não existe (web). */
+    val appBuild: String?,
     val access: AccessRuntimeDependencies,
     val groups: GroupsRuntimeDependencies,
     val drafts: SaqzDraftStores,
@@ -74,4 +78,7 @@ class SaqzPlatformDependencies(
         require(apiBaseUrl.isNotBlank()) { "API base URL must not be blank" }
     }
 
+    /** A versão como a loja mostra, "1.0.3 (14)"; só "1.0.3" onde não há build. É o rodapé do Perfil. */
+    internal val appVersionLabel: String
+        get() = if (appBuild.isNullOrBlank()) appVersion else "$appVersion ($appBuild)"
 }

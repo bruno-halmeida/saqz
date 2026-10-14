@@ -31,6 +31,8 @@ data class NetworkConfig(
     val connectTimeoutMillis: Long = 8_000,
     val maxErrorBodyBytes: Int = 16_384,
     val maxBinaryBodyBytes: Int = 5 * 1024 * 1024,
+    /** Plataforma, versão e build que vão em toda requisição; `null` não manda os cabeçalhos X-Saqz-*. */
+    val appClient: AppClient? = null,
 ) {
     init {
         val protocol = Url(baseUrl).protocol

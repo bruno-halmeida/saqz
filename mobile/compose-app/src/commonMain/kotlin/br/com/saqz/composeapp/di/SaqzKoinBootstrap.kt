@@ -42,6 +42,7 @@ import br.com.saqz.groups.presentation.di.inviteLandingPresentationModule
 import br.com.saqz.groups.presentation.di.inviteManagementPresentationModule
 import br.com.saqz.groups.presentation.di.whatsAppBindingPresentationModule
 import br.com.saqz.groups.presentation.membereditor.memberEditorPresentationModule
+import br.com.saqz.network.AppClient
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.authenticatedImageLoaderModule
 import br.com.saqz.network.toNetworkEnvironment
@@ -180,11 +181,13 @@ internal fun stopSaqzKoin() {
 
 private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = module {
     single<br.com.saqz.receivables.domain.port.ReceiptDocumentPicker> { dependencies.financialDocuments }
-    single { br.com.saqz.domain.AppVersion(dependencies.appVersion) }
+    single { br.com.saqz.domain.AppVersion(dependencies.appVersionLabel) }
     single {
         NetworkConfig(
             environment = dependencies.environment.toNetworkEnvironment(),
             baseUrl = dependencies.apiBaseUrl,
+            // Toda chamada diz qual app é; o backend põe a versão em cada linha de log.
+            appClient = AppClient(dependencies.platform, dependencies.appVersion, dependencies.appBuild),
         )
     }
     single<br.com.saqz.groups.domain.communication.NativeNotificationPort> { dependencies.notifications }

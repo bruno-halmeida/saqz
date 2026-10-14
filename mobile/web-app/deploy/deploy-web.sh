@@ -23,6 +23,17 @@ cp -R "$dist" "$stage/dist"
 cp "$deploy_dir/saqz-config.prod.js" "$stage/dist/saqz-config.js"
 cp "$deploy_dir/nginx.conf" "$deploy_dir/compose.yaml" "$stage/"
 
+# A versão do app vai no saqz-config.js: o web app a manda em X-Saqz-App-Version, e o backend a põe em cada linha de
+# log. É a versão que ci/version.sh lê do commit publicado (a mesma do Android e do iOS). Se não der para ler, o config
+# fica com "web" e o web app se identifica só pela plataforma.
+app_version="$(bash "$repo/mobile/ci/version.sh" show 2>/dev/null | sed -n 's/^version=\([0-9][0-9.]*\) .*/\1/p')" || app_version=""
+if [[ "$app_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  sed -i '' "s#appVersion: \"web\"#appVersion: \"$app_version\"#" "$stage/dist/saqz-config.js"
+  grep -q "appVersion: \"$app_version\"" "$stage/dist/saqz-config.js" || { echo "saqz-config.js sem a versão do app" >&2; exit 1; }
+else
+  echo "Aviso: não consegui ler a versão do app em mobile/ci/version.sh; o web app vai sem versão." >&2
+fi
+
 # O Cloudflare guarda .js por 4 h no navegador, mesmo com no-cache na origem; o index.html ele não guarda.
 # Uma versão na URL dos scripts faz cada publicação chegar na hora (o webpack ignora a query ao achar o .wasm).
 version="$(cat "$stage/dist/saqz-web.js" "$stage/dist/saqz-config.js" "$stage/dist/saqz-bridge.js" "$stage/dist/saqz-loader.js" "$stage/dist/saqz-sw.js" | shasum | cut -c1-10)"

@@ -69,6 +69,40 @@ class SaqzKoinBootstrapTest {
     }
 
     @Test
+    fun theAppIdentityReachesTheNetworkConfigAndTheProfileLabel() {
+        stopSaqzKoin()
+        try {
+            startSaqzKoin(testSaqzPlatformDependencies(platform = "ios", appVersion = "1.0.3", appBuild = "14"))
+            val koin = KoinPlatformTools.defaultContext().get()
+
+            kotlin.test.assertEquals(
+                br.com.saqz.network.AppClient(platform = "ios", version = "1.0.3", build = "14"),
+                koin.get<br.com.saqz.network.NetworkConfig>().appClient,
+            )
+            kotlin.test.assertEquals("1.0.3 (14)", koin.get<br.com.saqz.domain.AppVersion>().label)
+        } finally {
+            stopSaqzKoin()
+        }
+    }
+
+    @Test
+    fun anAppWithoutABuildKeepsTheVersionAloneInTheProfileLabel() {
+        stopSaqzKoin()
+        try {
+            startSaqzKoin(testSaqzPlatformDependencies(platform = "web", appVersion = "web", appBuild = null))
+            val koin = KoinPlatformTools.defaultContext().get()
+
+            kotlin.test.assertEquals(
+                br.com.saqz.network.AppClient(platform = "web", version = "web", build = null),
+                koin.get<br.com.saqz.network.NetworkConfig>().appClient,
+            )
+            kotlin.test.assertEquals("web", koin.get<br.com.saqz.domain.AppVersion>().label)
+        } finally {
+            stopSaqzKoin()
+        }
+    }
+
+    @Test
     fun linkEventsAtLaunchReachTheInboxesBeforeAnyScreen() {
         stopSaqzKoin()
         try {

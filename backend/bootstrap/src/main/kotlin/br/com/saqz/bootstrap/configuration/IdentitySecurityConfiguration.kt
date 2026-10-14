@@ -2,9 +2,11 @@ package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.bootstrap.configuration.http.ApiProblemWriter
 import br.com.saqz.bootstrap.configuration.http.AsaasWebhookBodySizeFilter
+import br.com.saqz.bootstrap.configuration.http.ClientAppFilter
 import br.com.saqz.bootstrap.configuration.http.RequestCorrelationFilter
 import br.com.saqz.access.adapter.input.http.PlatformAdminGuardFilter
 import br.com.saqz.access.application.admin.PlatformAdminLookup
+import br.com.saqz.access.application.clientapp.RecordClientApp
 import br.com.saqz.identity.adapter.input.http.BearerAuthenticationFilter
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.ErrorCode
@@ -29,6 +31,14 @@ class IdentitySecurityConfiguration {
 
     @Bean
     fun requestCorrelationFilter() = RequestCorrelationFilter()
+
+    /**
+     * Sem banco (testes de endpoint) não há [RecordClientApp]: o filtro segue logando a versão do app e
+     * só deixa de guardá-la.
+     */
+    @Bean
+    fun clientAppFilter(recordClientApp: ObjectProvider<RecordClientApp>) =
+        ClientAppFilter { recordClientApp.getIfAvailable() }
 
     @Bean
     fun asaasWebhookBodySizeFilter(problemWriter: ApiProblemWriter) =
@@ -87,6 +97,11 @@ class IdentitySecurityConfiguration {
     fun platformAdminGuardFilterRegistration(filter: PlatformAdminGuardFilter) =
         FilterRegistrationBean(filter).apply { isEnabled = false }
 
+    /** Também só na cadeia de segurança: o registro depende de o Bearer já ter autenticado a requisição. */
+    @Bean
+    fun clientAppFilterRegistration(filter: ClientAppFilter) =
+        FilterRegistrationBean(filter).apply { isEnabled = false }
+
     /** Origens do adm-web (lista separada por vírgula); vazio = nenhum CORS liberado. */
     @Bean
     fun corsConfigurationSource(
@@ -139,6 +154,7 @@ class IdentitySecurityConfiguration {
         bearerAuthenticationFilter: BearerAuthenticationFilter,
         platformAdminGuardFilter: PlatformAdminGuardFilter,
         requestCorrelationFilter: RequestCorrelationFilter,
+        clientAppFilter: ClientAppFilter,
         asaasWebhookBodySizeFilter: AsaasWebhookBodySizeFilter,
         problemWriter: ApiProblemWriter,
     ): SecurityFilterChain = http
@@ -169,6 +185,10 @@ class IdentitySecurityConfiguration {
         .addFilterBefore(bearerAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
         .addFilterAfter(platformAdminGuardFilter, BearerAuthenticationFilter::class.java)
         .addFilterBefore(requestCorrelationFilter, BearerAuthenticationFilter::class.java)
+        // Mesma posição do RequestCorrelationFilter, logo depois dele (o Spring Security mantém a ordem de
+        // inserção entre filtros de mesma posição): dentro do MDC dele e antes do Bearer, para o 401 também
+        // sair no log com a versão do app.
+        .addFilterBefore(clientAppFilter, BearerAuthenticationFilter::class.java)
         .addFilterAfter(asaasWebhookBodySizeFilter, RequestCorrelationFilter::class.java)
         .build()
 

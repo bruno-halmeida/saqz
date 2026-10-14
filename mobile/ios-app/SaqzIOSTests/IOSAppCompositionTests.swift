@@ -9,6 +9,15 @@ final class IOSAppCompositionTests: XCTestCase {
     func testCompositionInjectsExactEnvironment() { XCTAssertEqual(makeFixture().composition.dependencies.environment, "dev") }
     func testCompositionInjectsExactAPIBaseURL() { XCTAssertEqual(makeFixture().composition.dependencies.apiBaseUrl, "http://127.0.0.1:8080") }
 
+    // O backend lê estes três valores em X-Saqz-Platform, X-Saqz-App-Version e X-Saqz-App-Build de toda chamada.
+    func testCompositionIdentifiesTheInstalledAppForTheBackend() {
+        let dependencies = makeFixture().composition.dependencies
+        let info = Bundle.main.infoDictionary
+        XCTAssertEqual(dependencies.platform, "ios")
+        XCTAssertEqual(dependencies.appVersion, info?["CFBundleShortVersionString"] as? String ?? "")
+        XCTAssertEqual(dependencies.appBuild, info?["CFBundleVersion"] as? String)
+    }
+
     func testCompositionInjectsExactAuthPort() {
         let fixture = makeFixture(); XCTAssertTrue((fixture.composition.dependencies.access.auth as AnyObject) === fixture.composition.auth)
     }

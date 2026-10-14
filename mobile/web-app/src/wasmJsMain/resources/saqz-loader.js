@@ -161,6 +161,20 @@
     };
   }
 
+  /**
+   * Os cabeçalhos X-Saqz-* que o web app manda em toda chamada à API (o mesmo que o HttpTransport faz depois que o
+   * Kotlin sobe): a plataforma "web" e, se o deploy gravou uma versão X.Y.Z no saqz-config.js, a versão. Sem isso
+   * o backend leria esta chamada como de um app antigo. Valor fora do padrão é omitido, nunca quebra a chamada.
+   */
+  function appHeaders(config) {
+    var headers = { "X-Saqz-Platform": "web" };
+    var version = config && config.appVersion;
+    if (typeof version === "string" && version.length <= 32 && /^[0-9]+\.[0-9]+\.[0-9]+$/.test(version)) {
+      headers["X-Saqz-App-Version"] = version;
+    }
+    return headers;
+  }
+
   function loadContext(win, ui) {
     var link = linkContext(win.location.search);
     if (!link) return;
@@ -174,9 +188,11 @@
     var controller = typeof win.AbortController === "function" ? new win.AbortController() : null;
     var timer = controller ? win.setTimeout(function () { controller.abort(); }, 5000) : null;
     // Chamada anônima e sem efeito: só inválidos entram no limite de tentativas do backend.
+    var headers = appHeaders(config);
+    headers["Content-Type"] = "application/json";
     win.fetch(base + "/api/invites/preview", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: JSON.stringify({ code: link.code }),
       signal: controller ? controller.signal : undefined,
     }).then(function (response) {
@@ -209,6 +225,7 @@
     attendanceLine: attendanceLine,
     progressFraction: progressFraction,
     expectedBytes: expectedBytes,
+    appHeaders: appHeaders,
     RELOAD_AFTER_MS: RELOAD_AFTER_MS,
     trackWasm: trackWasm,
     start: start,

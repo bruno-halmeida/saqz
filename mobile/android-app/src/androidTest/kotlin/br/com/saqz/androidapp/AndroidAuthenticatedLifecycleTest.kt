@@ -319,7 +319,9 @@ private class LifecycleCompositionFactory(
             appDownload = null,
             environment = "dev",
             apiBaseUrl = "http://127.0.0.1:1",
-            appVersion = "0.0.0 (0)",
+            platform = "android",
+            appVersion = "0.0.0",
+            appBuild = "0",
             access = AccessRuntimeDependencies(
                 auth = fixture.auth,
                 links = fixture.links,

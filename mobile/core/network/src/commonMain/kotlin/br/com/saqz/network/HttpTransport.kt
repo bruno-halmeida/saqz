@@ -80,6 +80,8 @@ internal class HttpTransport(
                 if (bearerToken != null) bearerAuth(bearerToken)
                 header(CORRELATION_HEADER, operationId)
                 header(CORRELATION_ATTEMPT_HEADER, attempt.toString())
+                // Toda requisição diz qual app é: o backend põe a versão em cada linha de log.
+                config.appClient?.headers()?.forEach { (name, value) -> header(name, value) }
                 request.headers.forEach { (name, value) ->
                     header(name, if (isEntityTagHeader(name)) value.toStrongEntityTag() else value)
                 }

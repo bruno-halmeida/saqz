@@ -39,7 +39,7 @@ test("tamanho esperado: lembrado, direto ou estimado quando vem comprimido", () 
   assert.equal(loader.expectedBytes(NaN, false, 0), 0);
 });
 
-function fakeWindow({ origin = "https://saqz.app", search = "", wasmBody, preview }) {
+function fakeWindow({ origin = "https://saqz.app", search = "", wasmBody, preview, appVersion }) {
   const storage = new Map();
   const calls = [];
   return {
@@ -48,7 +48,7 @@ function fakeWindow({ origin = "https://saqz.app", search = "", wasmBody, previe
     AbortController,
     localStorage: { getItem: (k) => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v) },
     location: { origin, search },
-    SAQZ_WEB_CONFIG: { apiBaseUrl: origin + "/app/api" },
+    SAQZ_WEB_CONFIG: { apiBaseUrl: origin + "/app/api", appVersion },
     setTimeout: () => 0,
     clearTimeout: () => {},
     storage,
@@ -125,6 +125,46 @@ test("start busca a prévia do convite e mostra o contexto", async () => {
   assert.deepEqual(JSON.parse(call.init.body), { code: CODE });
   assert.equal(contextNode.textContent, "Entrando no Vôlei de Quinta · convite de Bruno");
   assert.equal(contextNode.hidden, false);
+});
+
+test("a prévia se identifica como o web app, com a versão que o deploy gravou", async () => {
+  const win = fakeWindow({
+    search: `?saqz_invite=${CODE}`,
+    wasmBody: new Uint8Array(1),
+    preview: { groupName: "Vôlei de Quinta" },
+    appVersion: "1.0.3",
+  });
+  loader.start(win, fakeDocument().doc);
+  await new Promise((r) => setTimeout(r, 10));
+  const call = win.calls.find((c) => c.url.endsWith("/api/invites/preview"));
+  assert.deepEqual(call.init.headers, {
+    "X-Saqz-Platform": "web",
+    "X-Saqz-App-Version": "1.0.3",
+    "Content-Type": "application/json",
+  });
+});
+
+test("sem versão no config a prévia manda só a plataforma", async () => {
+  for (const appVersion of [undefined, "web", "web (dev)"]) {
+    const win = fakeWindow({ search: `?saqz_invite=${CODE}`, wasmBody: new Uint8Array(1), preview: {}, appVersion });
+    loader.start(win, fakeDocument().doc);
+    await new Promise((r) => setTimeout(r, 10));
+    const call = win.calls.find((c) => c.url.endsWith("/api/invites/preview"));
+    assert.deepEqual(call.init.headers, { "X-Saqz-Platform": "web", "Content-Type": "application/json" }, String(appVersion));
+  }
+});
+
+test("appHeaders só aceita X.Y.Z de até 32 caracteres e nunca lança", () => {
+  assert.deepEqual(loader.appHeaders({ appVersion: "10.20.30" }), { "X-Saqz-Platform": "web", "X-Saqz-App-Version": "10.20.30" });
+  const limit = "1." + "0".repeat(28) + ".3";
+  assert.equal(limit.length, 32);
+  assert.equal(loader.appHeaders({ appVersion: limit })["X-Saqz-App-Version"], limit);
+  const invalid = ["", "1.0", "1.0.3.4", "v1.0.3", "1.0.3-beta", " 1.0.3", "1.0.3 ", "1.0.3\n", "1." + "0".repeat(29) + ".3", 103, null, {}];
+  for (const appVersion of invalid) {
+    assert.deepEqual(loader.appHeaders({ appVersion }), { "X-Saqz-Platform": "web" }, JSON.stringify(appVersion));
+  }
+  assert.deepEqual(loader.appHeaders(undefined), { "X-Saqz-Platform": "web" });
+  assert.deepEqual(loader.appHeaders({}), { "X-Saqz-Platform": "web" });
 });
 
 test("prévia que falha deixa só a marca", async () => {

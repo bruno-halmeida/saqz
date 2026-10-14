@@ -1,6 +1,7 @@
 package br.com.saqz.access
 
 import br.com.saqz.postgrestesting.TestPostgres
+import br.com.saqz.sharedkernel.client.AppVersion
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
@@ -25,7 +26,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(database.jdbcUrl, database.username, database.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(18, flyway.migrate().migrationsExecuted)
+        assertEquals(19, flyway.migrate().migrationsExecuted)
     }
 
     @BeforeEach
@@ -55,6 +56,7 @@ class AccessSchemaIntegrationTest {
                 "access_user_photos",
                 "app_onboarding_login_tokens",
                 "access_phone_confirmations",
+                "access_user_app_versions",
             ),
             queryStrings(
                 "SELECT table_name FROM information_schema.tables " +
@@ -216,6 +218,61 @@ class AccessSchemaIntegrationTest {
         assertSqlFails { execute("UPDATE access_groups SET pix_key = ' espaco' WHERE id = '$group'") }
         assertSqlFails { execute("UPDATE access_groups SET pix_key = 'x' WHERE id = '$group'") }
         assertSqlFails { execute("UPDATE access_groups SET pix_label = 'quebra\nlinha' WHERE id = '$group'") }
+    }
+
+    @Test
+    fun `v128 keeps one row per user and platform and rejects a second one`() {
+        val user = insertUser("app-version-owner")
+
+        insertAppVersion(user, "IOS", "1.0.3", 14)
+        insertAppVersion(user, "ANDROID", "1.0.3", 14)
+
+        assertSqlFails { insertAppVersion(user, "IOS", "1.0.4", 15) }
+        assertEquals(2, queryInt("SELECT count(*) FROM access_user_app_versions WHERE user_id = '$user'"))
+    }
+
+    @Test
+    fun `v128 accepts only the three platforms the app reports`() {
+        val user = insertUser("app-version-platform")
+
+        listOf("ANDROID", "IOS", "WEB").forEach { insertAppVersion(user, it, "1.0.3", 14) }
+
+        listOf("ios", "Android", "WINDOWS", "", "WEB ").forEach { platform ->
+            assertSqlFails { insertAppVersion(user, platform, "1.0.3", 14) }
+        }
+    }
+
+    @Test
+    fun `v128 accepts only an X dot Y dot Z version of up to 32 characters, or none`() {
+        val user = insertUser("app-version-format")
+
+        insertAppVersion(user, "WEB", null, null)
+        execute("DELETE FROM access_user_app_versions WHERE user_id = '$user'")
+        insertAppVersion(user, "WEB", "1." + "0".repeat(AppVersion.MAX_LENGTH - 4) + ".3", 1)
+        listOf("web", "1.0", "1.0.3.4", "v1.0.3", "1.0.3-beta", "1.0.3 ", " 1.0.3", "", "1.0.x", "1.0.3\n").forEach { version ->
+            assertSqlFails { insertAppVersion(user, "IOS", version, 1) }
+        }
+        assertSqlFails { insertAppVersion(user, "IOS", "1." + "0".repeat(AppVersion.MAX_LENGTH - 3) + ".3", 1) }
+    }
+
+    @Test
+    fun `v128 build is a non negative number or none`() {
+        val user = insertUser("app-version-build")
+
+        insertAppVersion(user, "IOS", "1.0.3", null)
+        insertAppVersion(user, "ANDROID", "1.0.3", 0)
+        assertSqlFails { insertAppVersion(user, "WEB", "1.0.3", -1) }
+    }
+
+    @Test
+    fun `v128 row must reference an existing user and goes away with the user`() {
+        assertSqlFails { insertAppVersion(UUID.randomUUID(), "IOS", "1.0.3", 14) }
+
+        val user = insertUser("app-version-cascade")
+        insertAppVersion(user, "IOS", "1.0.3", 14)
+        execute("DELETE FROM access_users WHERE id = '$user'")
+
+        assertEquals(0, queryInt("SELECT count(*) FROM access_user_app_versions"))
     }
 
     @Test
@@ -402,6 +459,13 @@ class AccessSchemaIntegrationTest {
         }
 
         assertEquals(0, queryInt("SELECT count(*) FROM access_users WHERE id = '$id'"))
+    }
+
+    private fun insertAppVersion(userId: UUID, platform: String, version: String?, build: Int?) {
+        execute(
+            "INSERT INTO access_user_app_versions (user_id, platform, app_version, app_build, first_seen_at, last_seen_at) " +
+                "VALUES ('$userId', '$platform', ${version?.let { "'$it'" } ?: "NULL"}, ${build ?: "NULL"}, now(), now())",
+        )
     }
 
     private fun insertUser(

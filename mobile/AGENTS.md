@@ -119,6 +119,12 @@ Três disciplinas que **ficam** — cada uma evitou bug real:
 O `HttpClient` é criado **uma vez** em `:core:network`, recebendo o engine por parâmetro para que o
 teste injete `MockEngine`.
 
+Toda requisição sai com `X-Correlation-ID`/`X-Correlation-Attempt` e com `X-Saqz-Platform`,
+`X-Saqz-App-Version` e `X-Saqz-App-Build` (o `AppClient` de `NetworkConfig`, que cada plataforma
+preenche em `SaqzPlatformDependencies`): o backend põe a versão do app em cada linha de log e guarda a
+última por usuário. Valor fora do padrão (`X.Y.Z` na versão, só dígitos no build) é omitido, nunca
+quebra a chamada.
+
 ---
 
 ## 4. Camada `presentation`

@@ -84,6 +84,9 @@ internal fun testSaqzPlatformDependencies(
     appStorePurchases: br.com.saqz.subscriptions.domain.port.AppStorePurchasesPort? = null,
     googlePlayPurchases: br.com.saqz.subscriptions.domain.port.GooglePlayPurchasesPort? = null,
     groupLinks: NativeGroupLinkPort = TestGroupLinkPort,
+    platform: String = "android",
+    appVersion: String = "0.0.0",
+    appBuild: String? = "0",
 ) = SaqzPlatformDependencies(
     notifications = object : br.com.saqz.groups.domain.communication.NativeNotificationPort {
         override fun device(done: (br.com.saqz.groups.domain.communication.NotificationDevice?) -> Unit) = done(null)
@@ -109,7 +112,9 @@ internal fun testSaqzPlatformDependencies(
     appDownload = null,
     environment = "test",
     apiBaseUrl = "https://api.invalid",
-    appVersion = "0.0.0 (0)",
+    platform = platform,
+    appVersion = appVersion,
+    appBuild = appBuild,
     access = AccessRuntimeDependencies(
         auth = TestAuthPort,
         links = TestLinkPort,

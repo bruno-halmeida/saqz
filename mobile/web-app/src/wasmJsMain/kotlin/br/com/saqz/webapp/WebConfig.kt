@@ -19,6 +19,10 @@ internal data class WebConfig(
     val environment: String,
     val apiBaseUrl: String,
     val linksHost: String = "links.saqz.app",
+    /**
+     * Versão X.Y.Z do web app (a do Gradle no commit publicado): o deploy-web.sh a grava aqui. Sem ela fica
+     * "web", que não é versão; a chamada à API vai sem X-Saqz-App-Version, só com X-Saqz-Platform: web.
+     */
     val appVersion: String = "web",
     /** Página de assinatura do site (Asaas). Relativa ao origin: em produção vira saqz.app/assinar/. */
     val checkoutUrl: String = "/assinar/",

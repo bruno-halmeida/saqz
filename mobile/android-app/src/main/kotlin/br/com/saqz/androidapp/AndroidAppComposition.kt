@@ -83,7 +83,9 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
                 appDownload = null,
                 environment = BuildConfig.ENVIRONMENT,
                 apiBaseUrl = BuildConfig.API_BASE_URL,
-                appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                platform = "android",
+                appVersion = BuildConfig.VERSION_NAME,
+                appBuild = BuildConfig.VERSION_CODE.toString(),
                 access = AccessRuntimeDependencies(
                     auth = auth,
                     links = links,

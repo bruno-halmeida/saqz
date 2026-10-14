@@ -50,7 +50,10 @@ internal class WebAppComposition(
             val dependencies = SaqzPlatformDependencies(
                 environment = config.environment,
                 apiBaseUrl = config.apiBaseUrl,
+                platform = "web",
                 appVersion = config.appVersion,
+                // O navegador não tem build: o deploy grava só a versão em saqz-config.js.
+                appBuild = null,
                 access = AccessRuntimeDependencies(
                     auth = WebAuthAdapter(scope),
                     links = links,

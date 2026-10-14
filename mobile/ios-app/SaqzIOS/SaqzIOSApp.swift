@@ -67,7 +67,9 @@ struct IOSAppComposition {
         let dependencies = SaqzPlatformDependencies(
             environment: configuration.environment,
             apiBaseUrl: configuration.apiBaseURL,
-            appVersion: "\(version) (\(build))",
+            platform: "ios",
+            appVersion: version,
+            appBuild: build.isEmpty ? nil : build,
             access: AccessRuntimeDependencies(
                 auth: auth,
                 links: links,

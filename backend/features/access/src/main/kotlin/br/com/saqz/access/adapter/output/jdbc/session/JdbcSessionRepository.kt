@@ -145,6 +145,9 @@ class JdbcSessionRepository(
         jdbc.sql("DELETE FROM access_user_photos WHERE user_id = :userId")
             .param("userId", userId)
             .update()
+        jdbc.sql("DELETE FROM access_user_app_versions WHERE user_id = :userId")
+            .param("userId", userId)
+            .update()
 
         jdbc.sql(
             """

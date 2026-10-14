@@ -43,6 +43,8 @@ class AccountDeletionPersistenceTest {
             VALUES ('${UUID.randomUUID()}', '$user', 'private-push-token', 'IOS')""")
         execute("""INSERT INTO access_user_photos(user_id, photo_bytes, byte_size, width, height, sha256_digest, created_at, updated_at)
             VALUES ('$user', decode('01','hex'), 1, 1, 1, decode(repeat('ab',32),'hex'), now(), now())""")
+        for (id in listOf(user, peer)) execute("""INSERT INTO access_user_app_versions(user_id, platform, app_version, app_build, first_seen_at, last_seen_at)
+            VALUES ('$id', 'IOS', '1.0.3', 14, now(), now())""")
         execute("""INSERT INTO group_charges(id, group_id, member_user_id, member_display_name, kind,
             billing_month, amount_cents, due_date, status, created_by_user_id, changed_by_user_id, created_at, updated_at)
             VALUES ('$charge', '$group', '$user', 'Private Name', 'MONTHLY', '2026-09-01', 4500,
@@ -60,6 +62,8 @@ class AccountDeletionPersistenceTest {
             assertEquals(0, jdbc.sql("SELECT count(*) FROM $table").query(Int::class.java).single(), table)
         }
         assertEquals(0, jdbc.sql("SELECT count(*) FROM group_memberships WHERE user_id = '$user'").query(Int::class.java).single())
+        assertEquals(0, jdbc.sql("SELECT count(*) FROM access_user_app_versions WHERE user_id = '$user'").query(Int::class.java).single())
+        assertEquals(1, jdbc.sql("SELECT count(*) FROM access_user_app_versions WHERE user_id = '$peer'").query(Int::class.java).single())
         assertEquals("Private Name", jdbc.sql("SELECT display_name FROM access_users WHERE id = '$peer'").query(String::class.java).single())
         assertEquals("Conta excluída", jdbc.sql("SELECT member_display_name FROM group_charges WHERE id = '$charge'").query(String::class.java).single())
         assertEquals(4500L, jdbc.sql("SELECT amount_cents FROM group_charges WHERE id = '$charge'").query(Long::class.java).single())
