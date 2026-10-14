@@ -202,9 +202,11 @@ jobs:
           key: konan-${{ runner.os }}-${{ hashFiles('mobile/gradle/libs.versions.toml') }}
       - name: Ajustar o Gradle ao runner
         run: |
-          # O runner macOS tem menos memória que a máquina de desenvolvimento; o home do Gradle ganha do gradle.properties do projeto.
+          # O runner macOS tem 7 GB; o home do Gradle ganha do gradle.properties do projeto (8 GB e paralelo).
+          # Com 4 GB, paralelo e o daemon do Kotlin à parte, a RC 1.0.2 estourou o heap ao ligar o framework de
+          # release. 5 GB, sem paralelo e com o compilador no próprio daemon ligam em ~8 min (conferido em 14/10/2026).
           mkdir -p ~/.gradle
-          printf 'org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g\nkotlin.daemon.jvmargs=-Xmx3g\n' >> ~/.gradle/gradle.properties
+          printf 'org.gradle.jvmargs=-Xmx5g -XX:MaxMetaspaceSize=768m\norg.gradle.parallel=false\norg.gradle.workers.max=2\nkotlin.compiler.execution.strategy=in-process\n' >> ~/.gradle/gradle.properties
           xcodebuild -version
       - name: Materializar o Firebase de produção
         env:
