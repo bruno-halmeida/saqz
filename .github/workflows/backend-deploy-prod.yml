@@ -18,3 +18,5 @@ jobs:
     with:
       target: prod
       version: ${{ inputs.version }}
+    # Segredo de Environment não atravessa workflow_call encadeado sem isto: a chave SSH chegava vazia.
+    secrets: inherit

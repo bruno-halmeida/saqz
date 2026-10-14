@@ -115,3 +115,4 @@ jobs:
     uses: ./.github/workflows/backend-deploy-dev.yml
     with:
       version: ${{ needs.publish.outputs.version }}
+    secrets: inherit
