@@ -128,7 +128,9 @@ jobs:
   tag:
     name: Tag app-vX.Y.Z
     needs: [prepare, stores]
-    if: ${{ !inputs.simular }}
+    # Sem o !cancelled(), o job some quando a esteira completa é pulada (full_tests desligado): o GitHub pula quem
+    # depende, mesmo indiretamente, de um job pulado. Foi o que deixou a 1.0.6 sem tag em 15/10/2026.
+    if: ${{ !cancelled() && !inputs.simular && needs.stores.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
