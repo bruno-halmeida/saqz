@@ -376,6 +376,108 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
+    fun `aprovar avisa quem entrou e a pessoa aparece em Quem entrou na hora`() = runTest {
+        val athletes = FakeAthleteGateway()
+        val entryGateway = FakeEntryGateway(requests = mutableListOf(request("pending")))
+        entryGateway.onApproved = { athletes.roster = athletes.roster + roster(it, "2026-08-01T10:05:00Z") }
+        val viewModel = groupViewModel(entryGateway = entryGateway, athleteGateway = athletes)
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.recentMembers.isEmpty())
+
+        viewModel.onIntent(GroupInviteIntent.ApproveRequest("pending"))
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(GroupInviteToast.RequestApproved("Pessoa pending"), state.toast)
+        assertTrue(state.pendingRequests.isEmpty())
+        assertEquals(listOf("pending"), state.recentMembers.map { it.userId })
+        assertTrue(state.pendingActionIds.isEmpty())
+        assertNull(state.error)
+    }
+
+    @Test
+    fun `recusar avisa pedido recusado e tira o pedido da lista`() = runTest {
+        val entryGateway = FakeEntryGateway(requests = mutableListOf(request("pending")))
+        val viewModel = groupViewModel(entryGateway = entryGateway)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.RejectRequest("pending"))
+        advanceUntilIdle()
+
+        assertEquals(GroupInviteToast.RequestRejected, viewModel.state.value.toast)
+        assertTrue(viewModel.state.value.pendingRequests.isEmpty())
+        assertTrue(viewModel.state.value.recentMembers.isEmpty())
+    }
+
+    @Test
+    fun `aprovar com falha nao avisa sucesso e devolve os botoes do pedido`() = runTest {
+        val entryGateway = FakeEntryGateway(
+            requests = mutableListOf(request("pending")),
+            approveResult = SaqzResult.Failure(EntryRequestError.DataFailure(DataError.Timeout)),
+        )
+        val viewModel = groupViewModel(entryGateway = entryGateway)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.ApproveRequest("pending"))
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertNull(state.toast)
+        assertEquals(GroupInviteError.Operation, state.error)
+        assertEquals(listOf("pending"), state.pendingRequests.map { it.userId })
+        assertTrue(state.pendingActionIds.isEmpty())
+    }
+
+    @Test
+    fun `recusar com falha nao avisa sucesso e devolve os botoes do pedido`() = runTest {
+        val entryGateway = FakeEntryGateway(
+            requests = mutableListOf(request("pending")),
+            rejectResult = SaqzResult.Failure(EntryRequestError.DataFailure(DataError.Timeout)),
+        )
+        val viewModel = groupViewModel(entryGateway = entryGateway)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.RejectRequest("pending"))
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertNull(state.toast)
+        assertEquals(GroupInviteError.Operation, state.error)
+        assertEquals(listOf("pending"), state.pendingRequests.map { it.userId })
+        assertTrue(state.pendingActionIds.isEmpty())
+    }
+
+    @Test
+    fun `toque duplo em aprovar chama a API uma vez so`() = runTest {
+        val entryGateway = ConcurrentApproveEntryGateway(mutableListOf(request("pending")))
+        val viewModel = groupViewModel(entryGateway = entryGateway)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.ApproveRequest("pending"))
+        viewModel.onIntent(GroupInviteIntent.ApproveRequest("pending"))
+        advanceUntilIdle()
+        entryGateway.complete("pending")
+        advanceUntilIdle()
+
+        assertEquals(1, entryGateway.approveCalls)
+    }
+
+    @Test
+    fun `toque duplo em recusar chama a API uma vez so`() = runTest {
+        val entryGateway = ConcurrentApproveEntryGateway(mutableListOf(request("pending")))
+        val viewModel = groupViewModel(entryGateway = entryGateway)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.RejectRequest("pending"))
+        viewModel.onIntent(GroupInviteIntent.RejectRequest("pending"))
+        advanceUntilIdle()
+        entryGateway.completeReject()
+        advanceUntilIdle()
+
+        assertEquals(1, entryGateway.rejectCalls)
+    }
+
+    @Test
     fun `copy link success stores requested toast`() = runTest {
         val clipboard = FakeClipboard()
         val viewModel = groupViewModel(clipboard = clipboard)
@@ -662,8 +764,18 @@ class GroupInviteViewModelsTest {
     ) : GroupEntryRequestGateway {
         var approvedUserId: String? = null
         var rejectedUserId: String? = null
+
+        /** Quem aprova passa a constar no elenco, como na API. */
+        var onApproved: (String) -> Unit = {}
         override suspend fun list(groupId: GroupId) = SaqzResult.Success(requests.toList())
-        override suspend fun approve(groupId: GroupId, userId: String): SaqzResult<GroupMembership, EntryRequestError> { approvedUserId = userId; requests.removeAll { it.userId == userId }; return approveResult }
+        override suspend fun approve(groupId: GroupId, userId: String): SaqzResult<GroupMembership, EntryRequestError> {
+            approvedUserId = userId
+            if (approveResult is SaqzResult.Success) {
+                requests.removeAll { it.userId == userId }
+                onApproved(userId)
+            }
+            return approveResult
+        }
         override suspend fun reject(groupId: GroupId, userId: String): EmptyResult<EntryRequestError> { rejectedUserId = userId; if (rejectResult is SaqzResult.Success) requests.removeAll { it.userId == userId }; return rejectResult }
     }
 
@@ -672,6 +784,9 @@ class GroupInviteViewModelsTest {
     ) : GroupEntryRequestGateway {
         private val gates = mutableMapOf<String, CompletableDeferred<Unit>>()
         val approvedUserIds = mutableListOf<String>()
+        var approveCalls = 0
+        var rejectCalls = 0
+        private val rejectGate = CompletableDeferred<Unit>()
 
         override suspend fun list(groupId: GroupId) = SaqzResult.Success(requests.toList())
 
@@ -679,6 +794,7 @@ class GroupInviteViewModelsTest {
             groupId: GroupId,
             userId: String,
         ): SaqzResult<GroupMembership, EntryRequestError> {
+            approveCalls++
             val gate = CompletableDeferred<Unit>()
             gates[userId] = gate
             gate.await()
@@ -691,11 +807,19 @@ class GroupInviteViewModelsTest {
             gates.getValue(userId).complete(Unit)
         }
 
-        override suspend fun reject(groupId: GroupId, userId: String): EmptyResult<EntryRequestError> =
-            SaqzResult.Success(Unit)
+        fun completeReject() {
+            rejectGate.complete(Unit)
+        }
+
+        override suspend fun reject(groupId: GroupId, userId: String): EmptyResult<EntryRequestError> {
+            rejectCalls++
+            rejectGate.await()
+            requests.removeAll { it.userId == userId }
+            return SaqzResult.Success(Unit)
+        }
     }
 
-    private class FakeAthleteGateway(private val roster: List<AthleteRosterEntry> = emptyList()) : AthleteGateway {
+    private class FakeAthleteGateway(var roster: List<AthleteRosterEntry> = emptyList()) : AthleteGateway {
         override suspend fun roster(groupId: GroupId, filter: AthleteRosterFilter) = SaqzResult.Success(roster)
         override suspend fun updateOwnPosition(groupId: GroupId, position: AthletePosition?) = error("unused")
         override suspend fun updateOwnProfile(command: UpdateOwnAthleteProfileCommand) = error("unused")

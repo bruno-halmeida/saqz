@@ -217,6 +217,7 @@ class GroupInviteViewModel(
         if (userId in state.value.pendingActionIds) return
         val operation = GenerationKey(GenerationOperation.Approve, userId)
         val requestGeneration = nextGeneration(operation)
+        val name = state.value.pendingRequests.firstOrNull { it.userId == userId }?.displayName.orEmpty()
         update { it.copy(pendingActionIds = it.pendingActionIds + userId, error = null) }
         viewModelScope.launch {
             when (entryRequestGateway.approve(GroupId(groupId), userId)) {
@@ -227,8 +228,11 @@ class GroupInviteViewModel(
                     )
                 }
                 is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
-                    update { it.copy(pendingActionIds = it.pendingActionIds - userId) }
-                    refreshPendingRequests()
+                    update {
+                        it.copy(pendingActionIds = it.pendingActionIds - userId, toast = GroupInviteToast.RequestApproved(name))
+                    }
+                    // Quem entrou aparece em "Quem entrou" na hora, sem recarregar a tela.
+                    refreshPeople()
                 }
             }
         }
@@ -249,27 +253,34 @@ class GroupInviteViewModel(
                 }
                 is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
                     update {
-                        it.copy(
-                            pendingActionIds = it.pendingActionIds - userId,
-                        )
+                        it.copy(pendingActionIds = it.pendingActionIds - userId, toast = GroupInviteToast.RequestRejected)
                     }
-                    refreshPendingRequests()
+                    refreshPeople()
                 }
             }
         }
     }
 
-    private fun refreshPendingRequests() {
+    /** Depois de aprovar ou recusar: recarrega os pedidos e quem entrou. Cada lista falha sozinha. */
+    private fun refreshPeople() {
         val operation = GenerationKey(GenerationOperation.RefreshRequests)
         val requestGeneration = nextGeneration(operation)
         viewModelScope.launch {
-            when (val result = entryRequestGateway.list(GroupId(groupId))) {
-                is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) {
-                    update { it.copy(error = GroupInviteError.Operation) }
-                }
-                is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
-                    update { it.copy(pendingRequests = result.value.map { it.toUi(timeZone.id) }) }
-                }
+            val requests = entryRequestGateway.list(GroupId(groupId))
+            val roster = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
+            if (!isCurrent(operation, requestGeneration)) return@launch
+            update { current ->
+                current.copy(
+                    pendingRequests = (requests as? SaqzResult.Success)
+                        ?.value?.map { it.toUi(timeZone.id) } ?: current.pendingRequests,
+                    recentMembers = (roster as? SaqzResult.Success)
+                        ?.value?.sortedByDescending { it.joinedAt }?.map { it.toUi() } ?: current.recentMembers,
+                    error = if (requests is SaqzResult.Failure || roster is SaqzResult.Failure) {
+                        GroupInviteError.Operation
+                    } else {
+                        current.error
+                    },
+                )
             }
         }
     }

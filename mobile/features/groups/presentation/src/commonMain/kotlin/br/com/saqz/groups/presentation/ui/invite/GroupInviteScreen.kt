@@ -43,7 +43,9 @@ import br.com.saqz.groups.resources.group_invite_never_expires
 import br.com.saqz.groups.resources.group_invite_approve
 import br.com.saqz.groups.resources.group_invite_approval
 import br.com.saqz.groups.resources.group_invite_copy_link
+import br.com.saqz.groups.resources.group_invite_approved_toast
 import br.com.saqz.groups.resources.group_invite_code_copied_toast
+import br.com.saqz.groups.resources.group_invite_rejected_toast
 import br.com.saqz.groups.resources.group_invite_code_title
 import br.com.saqz.groups.resources.group_invite_copied_toast
 import br.com.saqz.groups.resources.group_invite_copy_code
@@ -242,10 +244,13 @@ internal fun GroupInviteScreen(
             modifier = Modifier.align(Alignment.BottomCenter).padding(SaqzTheme.metrics.horizontalPadding),
         ) {
             SaqzToastText(
-                stringResource(
-                    if (state.toast == GroupInviteToast.CodeCopied) Res.string.group_invite_code_copied_toast
-                    else Res.string.group_invite_copied_toast,
-                ),
+                when (val toast = state.toast) {
+                    GroupInviteToast.CodeCopied -> stringResource(Res.string.group_invite_code_copied_toast)
+                    is GroupInviteToast.RequestApproved ->
+                        stringResource(Res.string.group_invite_approved_toast, toast.name)
+                    GroupInviteToast.RequestRejected -> stringResource(Res.string.group_invite_rejected_toast)
+                    else -> stringResource(Res.string.group_invite_copied_toast)
+                },
             )
         }
     }

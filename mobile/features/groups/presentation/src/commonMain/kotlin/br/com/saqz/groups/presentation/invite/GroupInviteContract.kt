@@ -27,7 +27,14 @@ data class GroupInviteState(
 )
 
 enum class InviteStatus { Active, Empty }
-enum class GroupInviteToast { LinkCopied, CodeCopied }
+sealed interface GroupInviteToast {
+    data object LinkCopied : GroupInviteToast
+    data object CodeCopied : GroupInviteToast
+
+    /** Retorno de "Aprovar": [name] é o nome que já estava no pedido. */
+    data class RequestApproved(val name: String) : GroupInviteToast
+    data object RequestRejected : GroupInviteToast
+}
 
 @Immutable
 data class PendingEntryRequestUi(

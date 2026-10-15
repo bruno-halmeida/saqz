@@ -14,6 +14,8 @@
     <string name="group_invite_rotate_cancel">Cancelar</string>
     <string name="group_invite_copy_link">Copiar link</string>
     <string name="group_invite_copied_toast">Link copiado.</string>
+    <string name="group_invite_approved_toast">%1$s entrou no grupo.</string>
+    <string name="group_invite_rejected_toast">Pedido recusado.</string>
     <string name="group_invite_share">Compartilhar convite</string>
     <string name="group_invite_whatsapp_primary">Compartilhar no WhatsApp</string>
     <string name="group_invite_whatsapp">Enviar no WhatsApp</string>

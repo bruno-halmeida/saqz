@@ -10,6 +10,8 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.invite.GroupInviteIntent
 import br.com.saqz.groups.presentation.invite.GroupInviteState
+import br.com.saqz.groups.presentation.invite.GroupInviteToast
+import br.com.saqz.groups.presentation.invite.RecentMemberUi
 import br.com.saqz.groups.presentation.invite.InviteStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -148,5 +150,25 @@ class GroupInviteScreenTest {
         onNodeWithText("Gerar link de convite").assertDoesNotExist()
         onNodeWithText("O link anterior deixa de funcionar.").assertDoesNotExist()
         onNodeWithTag(GroupInviteTags.Rotate).assertExists()
+    }
+
+    @Test
+    fun `aprovar mostra o retorno com o nome e a pessoa aparece em Quem entrou`() = runComposeUiTest {
+        val state = active.copy(
+            toast = GroupInviteToast.RequestApproved("Ana"),
+            recentMembers = listOf(RecentMemberUi("u1", "Ana")),
+        )
+        setContent { SaqzTheme { GroupInviteScreen(state = state, onBack = {}, onIntent = {}) } }
+
+        onNodeWithText("Ana entrou no grupo.").assertExists()
+        onNodeWithText("Ana").performScrollTo().assertExists()
+    }
+
+    @Test
+    fun `recusar mostra pedido recusado`() = runComposeUiTest {
+        val state = active.copy(toast = GroupInviteToast.RequestRejected)
+        setContent { SaqzTheme { GroupInviteScreen(state = state, onBack = {}, onIntent = {}) } }
+
+        onNodeWithText("Pedido recusado.").assertExists()
     }
 }
