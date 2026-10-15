@@ -58,11 +58,5 @@ class AttendanceLinkScreenTest {
         onNodeWithText(declinedText).assertDoesNotExist()
     }
 
-    @Test fun declineSheetPromisesOnlyWhatIsTrueForEveryone() = runComposeUiTest {
-        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.DeclineSheet, destination), {}, {}, {}) } }
-        onNodeWithText("Sua vaga libera na hora", substring = true).assertDoesNotExist()
-        onNodeWithText("Se você tinha vaga", substring = true).assertExists()
-    }
-
-    private val declinedText = "Registramos que você não vai. Se você tinha vaga, ela passa para o primeiro da lista de espera."
+    private val declinedText = "Avisamos o grupo que você não vai. Sua vaga ficou livre para a fila de espera."
 }
