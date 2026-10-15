@@ -503,7 +503,7 @@ internal fun SaqzNavHost(
                         email = route.email,
                         onBack = pop,
                         // "Lembrou a senha? Entrar ›" desiste da troca: o stack volta à base.
-                        onSignIn = { backStack.resetTo(AccessRoute.Login) },
+                        onSignIn = { backStack.abandonPasswordRecovery(state.session) },
                         onOpenNewPassword = { email, token ->
                             backStack.add(AccessRoute.NewPassword(email, token))
                         },
@@ -1328,6 +1328,24 @@ internal fun MutableList<NavKey>.completePasswordReset(session: SessionAccessSta
     clear()
     add(session.passwordChangedDestination())
     add(AccessRoute.PasswordChanged)
+}
+
+/**
+ * PC-04: "Lembrou a senha? Entrar ›" do 1e desiste da recuperação. Deslogado, a base é o login.
+ * Logado (Perfil → trocar senha), a base é o que estava embaixo: mandar para o login com a
+ * sessão viva prendia a pessoa ali, porque o [reconcileAccessStack] só roda quando a sessão
+ * muda — e ela não mudou.
+ */
+internal fun MutableList<NavKey>.abandonPasswordRecovery(session: SessionAccessState) {
+    if (session !is SessionAccessState.Ready) {
+        clear()
+        add(AccessRoute.Login)
+        return
+    }
+    while (lastOrNull().let { it is AccessRoute.ForgotPassword || it is AccessRoute.ResetCode }) {
+        removeLast()
+    }
+    if (isEmpty()) add(session.passwordChangedDestination())
 }
 
 internal fun MutableList<NavKey>.finishPasswordChanged(session: SessionAccessState) {

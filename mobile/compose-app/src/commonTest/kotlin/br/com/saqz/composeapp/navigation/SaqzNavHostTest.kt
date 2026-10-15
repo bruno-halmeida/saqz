@@ -335,6 +335,47 @@ class SaqzNavHostTest {
         assertEquals(listOf<NavKey>(SaqzShellDestination.Home, AccessRoute.PasswordChanged), stack)
     }
 
+    // PC-04: logado, "Lembrou a senha? Entrar ›" volta para o Perfil, nunca para o login.
+    @Test
+    fun abandoningTheAuthenticatedRecoveryReturnsToWhereThePersonWas() {
+        val stack = mutableListOf<NavKey>(
+            SaqzShellDestination.Home,
+            AccessRoute.ForgotPassword,
+            AccessRoute.ResetCode("ana@exemplo.com"),
+        )
+
+        stack.abandonPasswordRecovery(SessionAccessState.Ready(session))
+
+        assertEquals(listOf<NavKey>(SaqzShellDestination.Home), stack)
+    }
+
+    @Test
+    fun abandoningTheAuthenticatedRecoveryKeepsWhatWasUnderTheShell() {
+        val stack = mutableListOf<NavKey>(
+            SaqzShellDestination.Home,
+            ProfileRoute.Edit,
+            AccessRoute.ForgotPassword,
+            AccessRoute.ResetCode("ana@exemplo.com"),
+        )
+
+        stack.abandonPasswordRecovery(SessionAccessState.Ready(session))
+
+        assertEquals(listOf<NavKey>(SaqzShellDestination.Home, ProfileRoute.Edit), stack)
+    }
+
+    @Test
+    fun abandoningTheSignedOutRecoveryStillGoesToLogin() {
+        val stack = mutableListOf<NavKey>(
+            AccessRoute.Login,
+            AccessRoute.ForgotPassword,
+            AccessRoute.ResetCode("ana@exemplo.com"),
+        )
+
+        stack.abandonPasswordRecovery(SessionAccessState.SignedOut)
+
+        assertEquals(listOf<NavKey>(AccessRoute.Login), stack)
+    }
+
     @Test
     fun passwordChangedSignInReturnsToTheLiveSessionDestination() {
         val authenticated = mutableListOf<NavKey>(AccessRoute.PasswordChanged)
