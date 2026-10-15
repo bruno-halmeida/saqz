@@ -204,7 +204,6 @@ fun SaqzCatalogScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     variant = SaqzButtonVariant.Danger,
                 )
             },
-            content = {},
         )
     }
 }

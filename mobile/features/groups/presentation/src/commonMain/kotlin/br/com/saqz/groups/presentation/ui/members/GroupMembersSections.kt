@@ -402,7 +402,6 @@ internal fun GroupMemberRemoveConfirmation(
                 SaqzButtonVariant.Danger,
             )
         },
-        content = {},
     )
 }
 
@@ -433,7 +432,6 @@ internal fun GroupJoinRequestDeclineConfirmation(
                 SaqzButtonVariant.Danger,
             )
         },
-        content = {},
     )
 }
 

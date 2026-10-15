@@ -390,7 +390,6 @@ private fun GameDetailCancelSheet(state: GameDetailState, onIntent: (GameDetailI
             enabled = !state.cancelling,
         )
     },
-    content = {},
 )
 private fun GameDetailStatusTone.chipTone() = when (this) {
     GameDetailStatusTone.Draft -> SaqzChipTone.Neutral
