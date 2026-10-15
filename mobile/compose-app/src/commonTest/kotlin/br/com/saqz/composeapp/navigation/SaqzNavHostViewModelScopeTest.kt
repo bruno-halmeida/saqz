@@ -450,7 +450,8 @@ class SaqzNavHostViewModelScopeTest {
             waitForIdle()
             assertEquals(FinanceRoute.GroupCashbox("grupo-mensal"), backStack.last())
             assertTrue(finance.charges.isEmpty())
-            assertEquals(1, finance.reads)
+            // Carga inicial + uma recarga silenciosa do caixa por cada volta (duas voltas).
+            assertEquals(3, finance.reads)
         }
     }
 
