@@ -1,21 +1,36 @@
-# Publicação do app, só à mão e sempre a partir de uma tag rc-app-vX.Y.Z ("Use workflow from" →
-# Tags). Não rebuilda: promove no Play o build que já está na trilha interna para produção (100%)
-# e, na App Store, anexa o build já processado à versão, grava as novidades e submete à revisão
-# com liberação automática. As lojas não dependem uma da outra; a tag app-vX.Y.Z só nasce quando
-# as duas terminam. Opcionalmente roda antes a esteira completa de testes.
+# Publicação do app, só à mão, rodando sempre da main ("Use workflow from" = main). A RC é
+# escolhida pela tag rc-app-vX.Y.Z (entrada `tag`): o job lê versão e build dela, então correções
+# deste workflow valem para RCs já criadas. Não rebuilda: promove no Play o build que está na
+# trilha interna para produção (100%) com as notas PÚBLICAS e, na App Store, anexa o build já
+# processado à versão, grava as novidades e submete à revisão com liberação automática. A lógica
+# das lojas está em mobile/ci/publish_stores.py. Com `simular` valida tudo e não publica nada.
 name: Mobile · publicar
 
 on:
   workflow_dispatch:
     inputs:
+      tag:
+        description: "Tag da RC a publicar (rc-app-vX.Y.Z)"
+        required: true
+        type: string
+      lojas:
+        description: "Em quais lojas publicar"
+        required: true
+        type: choice
+        options: [ambas, android, ios]
+        default: ambas
+      notas_publicas:
+        description: "Novidades públicas, pt-BR, até 500 caracteres (não são as notas de teste da RC)"
+        required: true
+        type: string
+      simular:
+        description: "Simulação: valida tudo, mas não faz commit no Play nem envia à Apple"
+        type: boolean
+        default: false
       full_tests:
         description: "Rodar a esteira completa de testes antes (simulador iOS, Swift e Node; demora)"
         type: boolean
         default: false
-      notes:
-        description: "Novidades desta versão (vazio = notas da tag rc-app-v*)"
-        required: false
-        type: string
 
 permissions:
   contents: write
@@ -27,47 +42,43 @@ concurrency:
 jobs:
   prepare:
     name: Conferir a tag
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
       version: ${{ steps.read.outputs.version }}
       build: ${{ steps.read.outputs.build }}
       sha: ${{ steps.read.outputs.sha }}
-      notes: ${{ steps.read.outputs.notes }}
     steps:
       - name: Obter o código e as tags
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Ler versão, build e notas da tag
+      - name: Ler versão e build da tag
         id: read
         env:
-          INPUT_NOTES: ${{ inputs.notes }}
+          TAG: ${{ inputs.tag }}
+          NOTAS: ${{ inputs.notas_publicas }}
         run: |
           set -euo pipefail
-          [[ "$GITHUB_REF" =~ ^refs/tags/rc-app-v([0-9]+\.[0-9]+\.[0-9]+)$ ]] || {
-            echo "Rode este workflow a partir de uma tag rc-app-vX.Y.Z (Use workflow from → Tags); veio de $GITHUB_REF." >&2; exit 1
-          }
+          [[ "$TAG" =~ ^rc-app-v([0-9]+\.[0-9]+\.[0-9]+)$ ]] || { echo "A tag deve ser rc-app-vX.Y.Z (recebi '$TAG')." >&2; exit 1; }
           version="${BASH_REMATCH[1]}"
+          git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || { echo "A tag $TAG não existe." >&2; exit 1; }
+          trimmed=$(printf '%s' "$NOTAS" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+          [[ -n "$trimmed" ]] || { echo "Informe as notas públicas." >&2; exit 1; }
+          (( ${#trimmed} <= 500 )) || { echo "Notas públicas com ${#trimmed} caracteres; o Play aceita até 500." >&2; exit 1; }
+          sha=$(git rev-list -n1 "$TAG")
+          git checkout -q --detach "$sha"
           current=$(mobile/ci/version.sh show)
           [[ "$current" == "version=$version build="* ]] || { echo "O código na tag diz '$current', não a versão $version." >&2; exit 1; }
           build=${current##*build=}
-          if git rev-parse -q --verify "refs/tags/app-v$version" >/dev/null; then
-            echo "A tag app-v$version já existe: esta versão já foi publicada." >&2; exit 1
-          fi
-          notes="$INPUT_NOTES"
-          [[ -n "$notes" ]] || notes=$(git tag -l --format='%(contents:body)' "rc-app-v$version")
-          [[ -n "${notes//[[:space:]]/}" ]] || { echo "Sem novidades: informe no campo ou na tag." >&2; exit 1; }
           {
             echo "version=$version"
             echo "build=$build"
-            echo "sha=$(git rev-parse HEAD)"
-            echo "notes<<SAQZ_NOTES_EOF"
-            echo "$notes"
-            echo "SAQZ_NOTES_EOF"
+            echo "sha=$sha"
           } >> "$GITHUB_OUTPUT"
-          echo "Publicar **$version** (build **$build**) a partir de \`rc-app-v$version\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Publicar **$version** (build **$build**) a partir de \`$TAG\` — lojas: **${{ inputs.lojas }}**${{ inputs.simular && ' (simulação)' || '' }}" >> "$GITHUB_STEP_SUMMARY"
 
   full-tests:
     name: Esteira completa de testes
@@ -113,83 +124,67 @@ jobs:
       - name: Testes Node do projeto iOS
         run: node --test mobile/ios-app/tests/
 
-  android:
-    name: Play → produção (100%)
+  stores:
+    name: ${{ inputs.simular && 'Lojas (simulação)' || 'Lojas → produção' }}
     needs: [prepare, full-tests]
     if: ${{ !cancelled() && needs.prepare.result == 'success' && (needs.full-tests.result == 'success' || needs.full-tests.result == 'skipped') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     environment: mobile
     steps:
-      - name: Obter o commit da tag
+      - name: Obter o script (main)
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.prepare.outputs.sha }}
           persist-credentials: false
-      - name: Ruby e fastlane
-        uses: ruby/setup-ruby@v1
+      - uses: actions/setup-python@v6
         with:
-          ruby-version: "3.4"
-          bundler-cache: true
-          working-directory: mobile
-      - name: Promover a trilha interna para produção
-        working-directory: mobile
+          python-version: "3.13"
+      - name: Dependências
+        run: pip install -r mobile/ci/requirements.txt
+      - name: Testes do script
+        working-directory: mobile/ci
+        run: python -m unittest test_publish_stores
+      - name: Publicar nas lojas
         env:
-          SAQZ_VERSION_NAME: ${{ needs.prepare.outputs.version }}
-          SAQZ_VERSION_CODE: ${{ needs.prepare.outputs.build }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD: ${{ needs.prepare.outputs.build }}
+          LOJAS: ${{ inputs.lojas }}
+          NOTAS: ${{ inputs.notas_publicas }}
+          SIMULAR: ${{ inputs.simular }}
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-        run: bundle exec fastlane android promote
-
-  ios:
-    name: App Store → revisão com liberação automática
-    needs: [prepare, full-tests]
-    if: ${{ !cancelled() && needs.prepare.result == 'success' && (needs.full-tests.result == 'success' || needs.full-tests.result == 'skipped') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    environment: mobile
-    steps:
-      - name: Obter o commit da tag
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.prepare.outputs.sha }}
-          persist-credentials: false
-      - name: Ruby e fastlane
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "3.4"
-          bundler-cache: true
-          working-directory: mobile
-      - name: Anexar o build, gravar as novidades e submeter
-        working-directory: mobile
-        env:
-          SAQZ_VERSION_NAME: ${{ needs.prepare.outputs.version }}
-          SAQZ_VERSION_CODE: ${{ needs.prepare.outputs.build }}
-          SAQZ_RELEASE_NOTES: ${{ needs.prepare.outputs.notes }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-        run: bundle exec fastlane ios release
+        run: |
+          set -euo pipefail
+          args=(--version "$VERSION" --build "$BUILD" --lojas "$LOJAS" --notas "$NOTAS")
+          [[ "$SIMULAR" == "true" ]] && args+=(--simular)
+          python mobile/ci/publish_stores.py "${args[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
 
   tag:
     name: Tag app-vX.Y.Z
-    needs: [prepare, android, ios]
+    needs: [prepare, stores]
+    if: ${{ !inputs.simular }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Obter o commit da tag
+      - name: Obter o commit da RC
         uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.sha }}
           fetch-depth: 0
-      - name: Criar e enviar a tag
+      - name: Criar e enviar a tag (se ainda não existir)
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
           BUILD: ${{ needs.prepare.outputs.build }}
-          NOTES: ${{ needs.prepare.outputs.notes }}
+          NOTAS: ${{ inputs.notas_publicas }}
         run: |
           set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/app-v$VERSION" >/dev/null 2>&1; then
+            echo "A tag app-v$VERSION já existe (publicação anterior em outra loja)."; exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "app-v$VERSION" -m "App $VERSION (build $BUILD)" -m "$NOTES"
+          git tag -a "app-v$VERSION" -m "App $VERSION (build $BUILD)" -m "$NOTAS"
           git push origin "refs/tags/app-v$VERSION"
           echo "Publicado **$VERSION** (build **$BUILD**): tag \`app-v$VERSION\`" >> "$GITHUB_STEP_SUMMARY"

@@ -1,4 +1,4 @@
-# Lanes chamadas pelos workflows mobile-rc.yml e mobile-release.yml. Os segredos chegam por
+# Lanes chamadas pelo workflow mobile-rc.yml (a publicação em produção é mobile/ci/publish_stores.py). Os segredos chegam por
 # variável de ambiente (Environment "mobile" do GitHub); nada aqui lê segredo do repositório.
 #
 #   SAQZ_VERSION_NAME / SAQZ_VERSION_CODE   versão X.Y.Z e build inteiro, os mesmos que ci/version.sh gravou
@@ -83,21 +83,6 @@ platform :android do
       skip_upload_changelogs: false,
     )
   end
-
-  desc "Promove o build da versão, já na trilha interna, para produção com 100% dos usuários"
-  lane :promote do
-    _version, build = release_version
-    supply(
-      **play_options,
-      track: "internal",
-      track_promote_to: "production",
-      track_promote_release_status: "completed",
-      version_code: build,
-      skip_upload_aab: true,
-      skip_upload_apk: true,
-      skip_upload_changelogs: true,
-    )
-  end
 end
 
 platform :ios do
@@ -134,34 +119,6 @@ platform :ios do
       notify_external_testers: false,
       skip_waiting_for_build_processing: false,
       wait_processing_timeout_duration: 2700,
-    )
-  end
-
-  desc "Anexa o build já processado à versão X.Y.Z, grava as novidades e submete à revisão com liberação automática"
-  lane :release do
-    version, build = release_version
-    notes = release_notes
-    connect_to_app_store
-
-    deliver(
-      app_identifier: APP_ID,
-      platform: "ios",
-      app_version: version,
-      build_number: build.to_s,
-      skip_binary_upload: true,
-      skip_screenshots: true,
-      # Pasta vazia: só as novidades abaixo sobem; o resto da ficha fica como está no App Store Connect.
-      metadata_path: Dir.mktmpdir("asc-metadata"),
-      release_notes: { LOCALE => notes },
-      submit_for_review: true,
-      automatic_release: true,
-      phased_release: false,
-      reset_ratings: false,
-      # O precheck não consegue olhar compras no app com chave de API e reprovaria à toa.
-      run_precheck_before_submit: false,
-      precheck_include_in_app_purchases: false,
-      force: true,
-      submission_information: { add_id_info_uses_idfa: false, export_compliance_uses_encryption: false },
     )
   end
 end
