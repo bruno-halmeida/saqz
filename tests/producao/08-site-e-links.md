@@ -97,8 +97,11 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 1. Abrir o link do convite.
 
 **Conferir**
-- A página mostra "Entre no grupo no Saqz" e "Abra este link no celular para continuar no app.",
-  com o botão "Acessar site do Saqz", sem redirecionar sozinha.
+- No navegador com WasmGC (Chrome ou Safari atuais), a página mostra "Abrindo o Saqz…" e vai sozinha ao web
+  app, `saqz.app/app/?saqz_invite=…`, já com o convite.
+- Só se o web app estiver fora do ar (`saqz.app/app/disponivel.json` não responde) ou o navegador não tiver
+  WasmGC vale o caminho antigo: "Entre no grupo no Saqz" e "Abra este link no celular para continuar no app.",
+  com o botão "Acessar site do Saqz", sem redirecionar.
 
 ## PROD-WEB07 · Página de exclusão de conta · P1
 

@@ -22,6 +22,11 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
   criação do grupo), "Até 3 grupos" e "Atletas ilimitados", com "Continuar com o Organizador".
 - Antes de criar o grupo, "Meu plano" nem aparecia no Perfil (PROD-PF07).
 
+**Variação: teste já vencido** (conta de rodada anterior, sem plano). "Criar meu grupo" abre "Seu teste do
+Organizador terminou" com "Seu teste terminou em <data>. Assine para criar e organizar seus grupos." e "Ver
+planos"; "Meu plano" mostra "TESTE ENCERRADO" e "Seu teste do Organizador terminou em <data>". Não aparece
+mais "Seu próximo grupo começa aqui" nem "Conhecer planos" para quem teve o teste.
+
 ## PROD-AS02 · Assinar pelo Google Play · P0
 
 **Quem:** ORG no Android, com a conta Google de testador de licença. **Deixa pronto:** assinatura do
@@ -75,6 +80,10 @@ Exige o app 0.0.4 (6) ou mais novo.
 - O botão abre a gestão de assinaturas da loja certa.
 - "Meu plano" passa a mostrar a assinatura cancelada e "Acesso garantido até <data>". O acesso continua
   até essa data, sem apagar grupos nem histórico.
+- Enquanto o acesso dura, "Meu plano" mostra "Reativar". Assinatura da loja: o botão abre a gestão da loja,
+  só no aparelho daquela loja. Assinatura feita pelo site: "Reativar" volta para "Ativo · próxima cobrança em
+  <data>", com a primeira cobrança no fim do período já pago (no site, só com decisão prévia e reembolso: ver
+  as regras de dinheiro no README).
 
 ## PROD-AS06 · Recibos · P1
 

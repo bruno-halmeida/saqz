@@ -24,14 +24,17 @@ só registro: nada aqui move dinheiro. O caixa fica em Gestão → "Caixa do gru
 
 1. No caixa, tocar "Criar cobranças do mês".
 2. Preencher:
-   - "Mês (AAAA-MM)": o mês **seguinte**, para não bater com PROD-FI01;
-   - "Vencimento (DD/MM/AAAA)": um dia desse mês;
+   - "Mês": tocar "Próximo mês" até chegar ao mês **seguinte**, para não bater com PROD-FI01 (o seletor
+     tem "Mês anterior" e "Próximo mês", nada de data digitada);
+   - "Vencimento": tocar no campo, escolher na roda um dia desse mês e tocar "Salvar vencimento"
+     (trocar o mês leva o vencimento ao dia do grupo, ou ao último dia do mês quando o dia não existe);
    - "Valor por pessoa (R$)": 10,00.
 3. Em "Selecione os mensalistas ativos", ligar só ATL.
 4. Tocar "Conferir cobranças", conferir o resumo e tocar "Criar cobranças".
 
 **Conferir**
 - Abrir a tela e conferir não cria nada; a cobrança só nasce no "Criar cobranças".
+- O resumo diz "Mês <mês> · Vencimento <dd/mm/aaaa>" com o mês e o dia escolhidos.
 - Volta ao caixa, e ATL vê a cobrança nova em Perfil → "Minhas mensalidades".
 - Repetir a geração para o mesmo mês não cria uma segunda cobrança.
 

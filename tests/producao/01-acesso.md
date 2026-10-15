@@ -101,3 +101,5 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 - Depois de sair, o app fica na tela de entrada mesmo se for fechado e reaberto.
 - Com ATL2, nenhuma tela mostra nome, foto, grupo, cobrança ou notificação de ATL.
 - O botão voltar não reabre telas da conta anterior.
+- Sair da conta apaga o convite guardado: se ATL tinha aberto um link de convite sem concluir, ATL2 não
+  cai em "Entrando no …" nem no grupo daquele convite.
