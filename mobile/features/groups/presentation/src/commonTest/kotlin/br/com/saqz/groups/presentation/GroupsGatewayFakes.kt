@@ -661,6 +661,12 @@ fun sampleVersionedAttendanceCapacity() = VersionedAttendanceCapacity(
 
 fun sampleCancelledGame() = sampleGame().copy(status = GameStatus.Cancelled, version = 2)
 
+/** Guarda as ofertas de pré-pedido de aviso feitas pelos ViewModels. */
+class RecordingNotificationPromptOffer : br.com.saqz.groups.presentation.communication.NotificationPromptOffer {
+    val offered = mutableListOf<br.com.saqz.groups.presentation.communication.NotificationPromptAudience>()
+    override fun offer(audience: br.com.saqz.groups.presentation.communication.NotificationPromptAudience) { offered += audience }
+}
+
 /** Registra os jogos cuja janela das 24 h foi dispensada depois de uma resposta pelo app (VUL-267). */
 class FakeNativeNotifications : NativeNotificationPort {
     val dismissed = mutableListOf<String>()

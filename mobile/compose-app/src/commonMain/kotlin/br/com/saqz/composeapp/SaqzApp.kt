@@ -19,6 +19,7 @@ import br.com.saqz.composeapp.navigation.SaqzNavHost
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.NetworkEnvironment
+import br.com.saqz.composeapp.notifications.NotificationPromptHost
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -50,6 +51,7 @@ fun SaqzApp(
                 .background(SaqzTheme.colors.background),
         ) {
             AccessGate()
+            NotificationPromptHost()
         }
     }
 }

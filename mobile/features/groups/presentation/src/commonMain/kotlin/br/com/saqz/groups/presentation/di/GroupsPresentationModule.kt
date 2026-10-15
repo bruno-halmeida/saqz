@@ -53,7 +53,7 @@ import org.koin.dsl.module
 fun groupsPresentationModule(): Module = module {
     viewModel { params -> ChargeReminderViewModel(params.get(), get(), get()) }
     viewModel { GroupListViewModel(get(), get(), get(), get()) }
-    viewModel { HomeViewModel(get(), get(), get(), get<GroupNowPort>(), getOrNull(), getOrNull()) }
+    viewModel { HomeViewModel(get(), get(), get(), get<GroupNowPort>(), getOrNull(), getOrNull(), getOrNull()) }
     viewModel { FinanceOverviewViewModel(get(), get()) }
     viewModel { params ->
         val mode = params.get<GroupSetupMode>()
@@ -82,6 +82,7 @@ fun groupsPresentationModule(): Module = module {
             getOrNull(), get(), get(), whatsAppAvailability = getOrNull(), reports = getOrNull(),
             appDownload = getOrNull(),
             trialAccess = getOrNull(),
+            notificationPrompt = getOrNull(),
         )
     }
     viewModel { params -> GroupCashboxViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>()) }
@@ -107,9 +108,9 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
     viewModel { params ->
         val (groupId, gameId) = gameEditorRouteArguments(params)
-        GameEditorViewModel(groupId, gameId, params.get(), get(), get(), get(), getOrNull(), getOrNull())
+        GameEditorViewModel(groupId, gameId, params.get(), get(), get(), get(), getOrNull(), getOrNull(), getOrNull())
     }
-    viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get(), get(), get(), getOrNull()) }
+    viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get(), get(), get(), getOrNull(), getOrNull()) }
     viewModel {
         GroupPhotoViewModel(
             profileGateway = get(),

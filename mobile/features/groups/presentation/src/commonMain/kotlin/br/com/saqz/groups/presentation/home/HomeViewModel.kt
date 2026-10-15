@@ -17,6 +17,8 @@ import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
 import br.com.saqz.groups.domain.communication.NativeNotificationPort
+import br.com.saqz.groups.presentation.communication.NotificationPromptAudience
+import br.com.saqz.groups.presentation.communication.NotificationPromptOffer
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.home.HomeAdminGroup
@@ -132,6 +134,8 @@ class HomeViewModel(
     private val now: GroupNowPort,
     private val notifications: NativeNotificationPort? = null,
     private val trialAccess: GroupTrialAccessPort? = null,
+    /** Depois da resposta de presença é a hora de explicar os avisos; sem a porta (teste, web) não há folha. */
+    private val notificationPrompt: NotificationPromptOffer? = null,
 ) : MviViewModel<HomeState, HomeIntent, HomeEffect>(HomeState()) {
     private var loadGeneration = 0L
     private var responseGeneration = 0L
@@ -351,6 +355,7 @@ class HomeViewModel(
             ).onSuccess {
                 SaqzAnalytics.attendanceAnswered("app", intent == AttendanceIntent.Confirm)
                 notifications?.dismissAttendance(game.gameId)
+                notificationPrompt?.offer(NotificationPromptAudience.Athlete)
             }
             if (generation >= responseGeneration && loadAtStart >= loadGeneration) {
                 applyAttendanceResult(result, context)

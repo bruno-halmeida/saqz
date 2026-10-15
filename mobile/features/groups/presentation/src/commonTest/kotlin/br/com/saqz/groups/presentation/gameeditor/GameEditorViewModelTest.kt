@@ -62,7 +62,11 @@ class GameEditorViewModelTest {
         groupGateway: FakeGroupGateway = FakeGroupGateway(),
         profileGateway: FakeGroupProfileGateway = FakeGroupProfileGateway(),
         trialAccess: GroupTrialAccessPort? = null,
-    ) = GameEditorViewModel("group-1", gameId, savedState, gameGateway, groupGateway, profileGateway, trialAccess)
+        notificationPrompt: br.com.saqz.groups.presentation.communication.NotificationPromptOffer? = null,
+    ) = GameEditorViewModel(
+        "group-1", gameId, savedState, gameGateway, groupGateway, profileGateway, trialAccess,
+        notificationPrompt = notificationPrompt,
+    )
 
     private fun groupGateway(
         transform: (br.com.saqz.groups.domain.group.Group) -> br.com.saqz.groups.domain.group.Group,
@@ -274,6 +278,26 @@ class GameEditorViewModelTest {
         )
         editing.onIntent(GameEditorIntent.Submit)
         assertEquals(GameEditorEffect.Saved(created = false), editing.effects.first())
+    }
+
+    @Test
+    fun `creating a game offers the notification prompt to the organizer and editing one does not`() = runTest {
+        val offers = br.com.saqz.groups.presentation.RecordingNotificationPromptOffer()
+        val editing = viewModel(
+            gameId = "game-1",
+            gameGateway = FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame())),
+            notificationPrompt = offers,
+        )
+        editing.onIntent(GameEditorIntent.Submit)
+        assertTrue(offers.offered.isEmpty())
+
+        val creating = viewModel(notificationPrompt = offers)
+        creating.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
+        creating.onIntent(GameEditorIntent.Submit)
+        assertEquals(
+            listOf(br.com.saqz.groups.presentation.communication.NotificationPromptAudience.Organizer),
+            offers.offered,
+        )
     }
 
     @Test

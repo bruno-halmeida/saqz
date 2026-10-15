@@ -44,20 +44,57 @@ final class IOSNotificationPort: NSObject, @preconcurrency NativeNotificationPor
             }
         }
     }
+    /// Só registra o aparelho de quem já permitiu: o pedido do sistema sai por `requestPermission`, depois da folha do app.
     func device(done: @escaping (NotificationDevice?) -> Void) {
         NSLog("[SaqzPush] device: chamado")
         guard let app = FirebaseApp.app(), app.options.projectID != "saqz-local" else {
             NSLog("[SaqzPush] device: guard falhou (app=\(FirebaseApp.app() != nil) project=\(FirebaseApp.app()?.options.projectID ?? "-"))")
             done(nil); return
         }
-        pending = done
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { [weak self] granted, _ in
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            let granted = Self.permission(from: settings) == .granted
             NSLog("[SaqzPush] device: permissao concedida=\(granted)")
             Task { @MainActor in
-                guard granted else { self?.finish(nil); return }
+                guard granted else { done(nil); return }
+                self?.pending = done
                 UIApplication.shared.registerForRemoteNotifications()
                 if Messaging.messaging().apnsToken != nil { self?.readToken() }
             }
+        }
+    }
+    func permission(done: @escaping (NotificationPermission) -> Void) {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let state = Self.permission(from: settings)
+            Task { @MainActor in done(state) }
+        }
+    }
+    func requestPermission(done: @escaping (NotificationPermission) -> Void) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+            NSLog("[SaqzPush] requestPermission: concedida=\(granted)")
+            Task { @MainActor in done(granted ? .granted : .denied) }
+        }
+    }
+    func openSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+    func promptMemory(done: @escaping (NotificationPromptMemory) -> Void) {
+        let defaults = UserDefaults.standard
+        done(NotificationPromptMemory(
+            declined: Int32(defaults.integer(forKey: "saqz.notificationPromptDeclined")),
+            lastDeclinedAtMillis: Int64(defaults.double(forKey: "saqz.notificationPromptDeclinedAt"))
+        ))
+    }
+    func savePromptMemory(memory: NotificationPromptMemory) {
+        let defaults = UserDefaults.standard
+        defaults.set(Int(memory.declined), forKey: "saqz.notificationPromptDeclined")
+        defaults.set(Double(memory.lastDeclinedAtMillis), forKey: "saqz.notificationPromptDeclinedAt")
+    }
+    nonisolated private static func permission(from settings: UNNotificationSettings) -> NotificationPermission {
+        switch settings.authorizationStatus {
+        case .notDetermined: return .notAsked
+        case .denied: return .denied
+        default: return .granted
         }
     }
     private func readToken() {

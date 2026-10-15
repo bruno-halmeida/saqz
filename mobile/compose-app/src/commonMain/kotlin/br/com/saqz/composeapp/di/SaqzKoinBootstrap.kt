@@ -88,6 +88,17 @@ private val commonModules = listOf(
             get<br.com.saqz.access.presentation.SessionAccessStateMachine>().activeSessionKey, get(), get(), get(),
         ) }
         singleOf(::PushAttendance)
+        // O pedido do sistema só sai pela folha do app; ao conceder, o registro do aparelho é religado.
+        single {
+            br.com.saqz.groups.presentation.communication.NotificationPrompt(
+                get(), get<kotlinx.coroutines.CoroutineScope>(),
+                { kotlin.time.Clock.System.now().toEpochMilliseconds() },
+                { get<br.com.saqz.composeapp.notifications.NotificationSessionBinding>().refresh() },
+            )
+        }
+        single<br.com.saqz.groups.presentation.communication.NotificationPromptOffer> {
+            get<br.com.saqz.groups.presentation.communication.NotificationPrompt>()
+        }
     },
     groupsPresentationModule(),
     inviteJourneyDataModule(),

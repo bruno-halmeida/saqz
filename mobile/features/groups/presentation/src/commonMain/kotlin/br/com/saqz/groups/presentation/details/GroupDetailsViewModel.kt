@@ -26,6 +26,8 @@ import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.communication.GroupWhatsAppGateway
 import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
 import br.com.saqz.groups.domain.communication.NativeNotificationPort
+import br.com.saqz.groups.presentation.communication.NotificationPromptAudience
+import br.com.saqz.groups.presentation.communication.NotificationPromptOffer
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
@@ -127,6 +129,7 @@ class GroupDetailsViewModel(
     private val trialAccess: br.com.saqz.groups.domain.group.GroupTrialAccessPort? = null,
     /** Pergunta ao servidor se o plano do dono inclui relatórios; sem ela a linha nem aparece. */
     private val reports: GroupReportGateway? = null,
+    private val notificationPrompt: NotificationPromptOffer? = null,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(
     GroupDetailsState(appDownloadAvailable = appDownload?.appDownloadUrl() != null),
 ) {
@@ -803,6 +806,7 @@ class GroupDetailsViewModel(
             ).onSuccess {
                 SaqzAnalytics.attendanceAnswered("app", intent == AttendanceIntent.Confirm)
                 notifications?.dismissAttendance(game.gameId)
+                notificationPrompt?.offer(NotificationPromptAudience.Athlete)
             }
             if (generation != responseGeneration || loadAtStart != loadGeneration) return@launch
             when (result) {

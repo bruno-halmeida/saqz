@@ -574,6 +574,34 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `recorded response offers the notification prompt to the athlete and a failed one does not`() = runTest {
+        val offers = br.com.saqz.groups.presentation.RecordingNotificationPromptOffer()
+        val failed = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = sampleNextGame()))),
+            attendanceGateway = FakeAttendanceGateway(respondResult = SaqzResult.Failure(AttendanceError.Data(DataError.Server))),
+            notificationPrompt = offers,
+        )
+        failed.onIntent(HomeIntent.Respond(AttendanceIntent.Decline))
+        advanceUntilIdle()
+        assertTrue(offers.offered.isEmpty())
+
+        val confirmed = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(sampleHome(nextGame = sampleNextGame())),
+                SaqzResult.Success(sampleHome(nextGame = sampleNextGame(HomeOwnAttendance(AttendanceStatus.Confirmed, null)))),
+            ),
+            notificationPrompt = offers,
+        )
+        confirmed.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(br.com.saqz.groups.presentation.communication.NotificationPromptAudience.Athlete),
+            offers.offered,
+        )
+    }
+
+    @Test
     fun `closed confirmation deadline does not mutate or send attendance response`() = runTest {
         val attendance = FakeAttendanceGateway()
         val viewModel = viewModel(
@@ -1253,6 +1281,7 @@ class HomeViewModelTest {
         attendanceGateway: FakeAttendanceGateway = FakeAttendanceGateway(),
         now: GroupNowPort = this.now,
         notifications: NativeNotificationPort? = null,
+        notificationPrompt: br.com.saqz.groups.presentation.communication.NotificationPromptOffer? = null,
     ) = HomeViewModel(
         homeGateway = homeGateway,
         athleteGateway = FakeAthleteGateway(
@@ -1261,6 +1290,7 @@ class HomeViewModelTest {
         attendanceGateway = attendanceGateway,
         now = now,
         notifications = notifications,
+        notificationPrompt = notificationPrompt,
     )
 }
 

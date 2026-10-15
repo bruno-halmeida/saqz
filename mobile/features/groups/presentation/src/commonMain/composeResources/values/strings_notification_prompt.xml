@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_prompt_title">Quer saber quando tem jogo?</string>
+    <string name="notification_prompt_body_athlete">A gente avisa quando a lista abrir, quando o prazo estiver acabando e se o jogo mudar. Nada de spam.</string>
+    <string name="notification_prompt_body_organizer">A gente avisa quando alguém pedir pra entrar, quando a galera confirmar e quando o prazo estiver acabando.</string>
+    <string name="notification_prompt_enable">Ligar avisos</string>
+    <string name="notification_prompt_not_now">Agora não</string>
+    <string name="notification_off_title">Avisos desligados</string>
+    <string name="notification_off_body">Sem eles, você não recebe lembrete de jogo.</string>
+    <string name="notification_off_action">Ligar nos ajustes</string>
+</resources>

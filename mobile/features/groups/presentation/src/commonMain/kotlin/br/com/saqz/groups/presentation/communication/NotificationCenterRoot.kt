@@ -43,6 +43,7 @@ import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzMotionPolicy
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.communication.CommunicationChannel
+import br.com.saqz.groups.domain.communication.NotificationPermission
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.whatsappbinding.WhatsAppAvailability
 import br.com.saqz.groups.resources.Res
@@ -67,6 +68,9 @@ import br.com.saqz.groups.resources.communication_unread
 import br.com.saqz.groups.resources.communication_inbox_empty
 import br.com.saqz.groups.resources.communication_more
 import br.com.saqz.groups.resources.communication_refresh
+import br.com.saqz.groups.resources.notification_off_action
+import br.com.saqz.groups.resources.notification_off_body
+import br.com.saqz.groups.resources.notification_off_title
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -78,6 +82,8 @@ object NotificationCenterTags {
     const val Notices = "preferences-notices"
     const val Messages = "preferences-messages"
     const val Reminders = "preferences-reminders"
+    const val NotificationsOff = "notifications-off"
+    const val NotificationsOffAction = "notifications-off-action"
     fun notification(sequence: Long) = "notification-$sequence"
 }
 
@@ -93,7 +99,16 @@ fun NotificationCenterRoot(settings: Boolean, onBack: () -> Unit, onOpen: (Notif
     LaunchedEffect(whatsApp) { whatsApp.refresh() }
     RefreshWhenVisible { vm.onIntent(NotificationCenterIntent.Appeared) }
     ObserveAsEvents(vm.effects) { effect -> when (effect) { is NotificationCenterEffect.Open -> onOpen(effect) } }
-    NotificationCenterScreen(state, settings, onBack, vm::onIntent, whatsAppChannel)
+    // Quem recusou no sistema não recebe mais o pedido; o caminho de volta são os ajustes do aparelho.
+    // A pessoa pode voltar dos ajustes com o aviso ligado, então relê o estado a cada volta à tela.
+    val prompt = koinInject<NotificationPrompt>()
+    val permission by prompt.permission.collectAsStateWithLifecycle()
+    RefreshWhenVisible { prompt.refreshPermission() }
+    NotificationCenterScreen(
+        state, settings, onBack, vm::onIntent, whatsAppChannel,
+        notificationsOff = permission == NotificationPermission.Denied,
+        onOpenNotificationSettings = prompt::openSettings,
+    )
 }
 
 @Composable
@@ -103,6 +118,8 @@ internal fun NotificationCenterScreen(
     onBack: () -> Unit,
     onIntent: (NotificationCenterIntent) -> Unit,
     whatsAppChannel: Boolean = false,
+    notificationsOff: Boolean = false,
+    onOpenNotificationSettings: () -> Unit = {},
 ) {
     val channels = NotificationSettingsChannel.entries
         .filter { it != NotificationSettingsChannel.WHATSAPP || whatsAppChannel }
@@ -111,6 +128,7 @@ internal fun NotificationCenterScreen(
             title = stringResource(if (settings) Res.string.communication_settings else Res.string.communication_notifications),
             onBack = onBack,
         )
+        if (notificationsOff) NotificationsOffCard(onOpenNotificationSettings)
         when {
             state.loading && !settings -> NotificationInboxSkeleton()
             state.loading -> SaqzSpinner()
@@ -180,6 +198,34 @@ internal fun NotificationCenterScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/** "Avisos desligados · Ligar nos ajustes": o pedido do sistema não volta depois da recusa, então o app aponta os ajustes. */
+@Composable
+private fun NotificationsOffCard(onOpenSettings: () -> Unit) {
+    SaqzCard(
+        modifier = Modifier
+            .padding(horizontal = SaqzTheme.metrics.horizontalPadding)
+            .padding(bottom = SaqzTheme.metrics.blockGap)
+            .testTag(NotificationCenterTags.NotificationsOff),
+    ) {
+        Text(
+            stringResource(Res.string.notification_off_title),
+            style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
+            color = SaqzTheme.colors.textPrimary,
+        )
+        Text(
+            stringResource(Res.string.notification_off_body),
+            style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary,
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            SaqzButton(
+                stringResource(Res.string.notification_off_action), onOpenSettings,
+                Modifier.testTag(NotificationCenterTags.NotificationsOffAction),
+                variant = SaqzButtonVariant.Secondary, size = SaqzButtonSize.Sm,
+            )
         }
     }
 }

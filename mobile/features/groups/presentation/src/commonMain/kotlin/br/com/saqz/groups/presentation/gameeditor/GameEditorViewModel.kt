@@ -33,6 +33,8 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlin.time.Duration.Companion.minutes
+import br.com.saqz.groups.presentation.communication.NotificationPromptAudience
+import br.com.saqz.groups.presentation.communication.NotificationPromptOffer
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
@@ -46,6 +48,8 @@ class GameEditorViewModel(
     private val profileGateway: GroupProfileGateway,
     private val trialAccess: GroupTrialAccessPort? = null,
     placesGateway: PlacesGateway? = null,
+    /** Jogo criado é a hora de explicar os avisos ao organizador (pedidos de entrada, confirmações, prazo). */
+    private val notificationPrompt: NotificationPromptOffer? = null,
 ) : MviViewModel<GameEditorState, GameEditorIntent, GameEditorEffect>(
     initialState = GameEditorState(isLoading = true),
 ) {
@@ -249,6 +253,7 @@ class GameEditorViewModel(
                     clearPendingDraft()
                     savedState.remove<String>(KeyCommand)
                     update { it.copy(isSaving = false, saveFailed = false) }
+                    if (gameId == null) notificationPrompt?.offer(NotificationPromptAudience.Organizer)
                     emit(GameEditorEffect.Saved(created = gameId == null))
                 }
                 is SaqzResult.Failure -> showSubmitFailure(result.error)

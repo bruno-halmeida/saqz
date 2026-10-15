@@ -25,6 +25,8 @@ import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.communication.NativeNotificationPort
+import br.com.saqz.groups.presentation.communication.NotificationPromptAudience
+import br.com.saqz.groups.presentation.communication.NotificationPromptOffer
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameGateway
@@ -63,6 +65,7 @@ class GameDetailViewModel(
     private val athleteGateway: AthleteGateway,
     /** Resposta pelo app limpa o aviso das 24 h do jogo no aparelho; sem a porta (web, teste) não há o que limpar. */
     private val notifications: NativeNotificationPort? = null,
+    private val notificationPrompt: NotificationPromptOffer? = null,
 ) : MviViewModel<GameDetailState, GameDetailIntent, GameDetailEffect>(GameDetailState()) {
     private var loadGeneration = 0
     private var promotionGeneration = 0
@@ -490,6 +493,7 @@ class GameDetailViewModel(
             ).onSuccess {
                 SaqzAnalytics.attendanceAnswered("app", intent == AttendanceIntent.Confirm)
                 notifications?.dismissAttendance(gameId)
+                notificationPrompt?.offer(NotificationPromptAudience.Athlete)
             }
             if (!isCurrent(Operation.Response, generation, loadAtStart)) return@launch
             when (result) {
