@@ -8,22 +8,23 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 
 **Quem:** ORG, sem grupo. **Deixa pronto:** o grupo `QA Vôlei <data>` e o teste grátis (PROD-AS01).
 
-1. Na Início, tocar "Criar meu grupo".
-2. Na tela "EXPERIMENTE O ORGANIZADOR" ("14 dias grátis", "O prazo começa ao criar seu primeiro grupo."),
-   tocar "Entendi, quero experimentar".
-3. Em "Criar grupo", preencher:
+1. Na Início, tocar "Criar meu grupo". Não há tela de oferta antes: abre direto "Criar grupo", com a nota
+   "Teste o Organizador com até 3 grupos e atletas ilimitados. O prazo começa no primeiro grupo…".
+2. Preencher:
    - "Nome do grupo": `QA Vôlei <data>`;
    - "Esporte": Vôlei de quadra;
    - "Público": Misto.
-4. Abrir "Outras configurações (opcional)" e preencher:
+3. Tocar "Outras configurações (opcional)" e preencher:
    - "Limite de jogadores por jogo": 12;
    - "Duração do jogo": 2h;
    - "Confirmar presença até": 6h antes;
-   - "Nome da quadra" e "Endereço da quadra": um endereço público real (o mapa usa).
-5. Avançar para a revisão, conferir os dados e tocar "Criar grupo".
+   - "Nome da quadra" e "Endereço da quadra (opcional)": um endereço público real (o mapa usa); as
+     sugestões vêm do Google ("powered by Google").
+4. Tocar "Criar grupo". Não há tela de revisão: o grupo é criado nesse toque.
 
 **Conferir**
-- Abre o grupo com "Grupo criado!" e "Marcar primeiro jogo".
+- Abre o grupo com "Grupo criado!", "Seus 14 dias grátis começaram. Vamos marcar o primeiro jogo?…" e
+  "Marcar primeiro jogo".
 - A aba Grupos mostra um único `QA Vôlei <data>`, com o chip "Administrador".
 
 ### PROD-GR02 · Detalhe do grupo para quem organiza · P1
@@ -42,7 +43,8 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 
 **Quem:** ORG. Este cenário também aplica o contorno do PC-01 antes dos testes de presença.
 
-1. No grupo, tocar "Editar".
+1. No grupo, tocar "Editar". "Editar grupo" é uma lista só, sem revisão e sem "Outras configurações" separada:
+   "Como preencher as vagas", "Pix do grupo" e o resto estão na mesma rolagem.
 2. Em "Pix do grupo", preencher "Chave Pix" com uma chave de teste e "O que é" com `QA Pix`.
 3. Em "Como preencher as vagas", desligar "Prioridade de mensalista".
 4. Tocar "Salvar alterações".
@@ -74,8 +76,11 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 3. Tocar "Salvar alterações".
 
 **Conferir**
-- Em "Próximos jogos", ORG vê os jogos novos com "Rascunho" e "Só você vê até publicar".
-- ATL não vê os rascunhos.
+- Em "Próximos jogos", aparece já publicado o próximo jogo do novo horário; os seguintes da série não
+  aparecem para ninguém: cada um é liberado sozinho 5 dias antes (rotina de hora em hora), em nome do dono
+  do grupo, com o aviso de jogo liberado.
+- Os rascunhos da série são invisíveis, também para ORG (desenho de 09/10): não reprova a agenda futura
+  não aparecer.
 
 ### PROD-GR06 · Excluir o grupo · P0 (limpeza)
 
@@ -90,19 +95,22 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 
 ## Convites e entrada
 
-### PROD-CV01 · Criar e compartilhar o link de convite · P0
+### PROD-CV01 · Ver e compartilhar o link de convite · P0
 
-**Quem:** ORG. **Deixa pronto:** o link do convite, enviado para o aparelho B (WhatsApp de teste ou nota).
+**Quem:** ORG, ou qualquer admin. **Deixa pronto:** o link do convite, enviado para o aparelho B (WhatsApp de teste ou nota).
 
-1. Gestão → "Convidar por link" → "Criar novo link".
-2. Tocar "Copiar link" e colar numa nota.
-3. Tocar "Compartilhar no WhatsApp" e cancelar o envio na folha do sistema.
-4. Em "Compartilhar convite", abrir "Mostrar QR Code" e ler o código com o outro aparelho.
+1. Gestão → "Convidar por link". O convite já nasce criado: não há "Criar novo link".
+2. Conferir o "Código do grupo" (8 caracteres, tipo `44DF-8SA8`) e tocar "Copiar código".
+3. Tocar "Copiar link" e colar numa nota.
+4. Tocar "Compartilhar no WhatsApp", conferir a mensagem (ela traz "Já tem o app? Use o código … em
+   “Tenho um convite”.") e voltar sem enviar ("Voltar ao convite").
+5. Tocar "Compartilhar convite" → "Mostrar QR Code" e ler o código com o outro aparelho.
 
 **Conferir**
-- Aparece "Link não expira" e um endereço `https://links.saqz.app/?saqz_invite=…`; o toast diz "Link copiado.".
-- O link colado, o compartilhado e o do QR são o mesmo.
-- O QR diz "O convite vale por 7 dias", mas o link não expira: é o PC-07, não reprova.
+- Aparecem o código, "Link do convite" com "Link não expira" e um endereço
+  `https://links.saqz.app/?saqz_invite=…`; os toasts dizem "Código copiado." e "Link copiado.".
+- Outro admin do grupo vê o mesmo código e o mesmo link.
+- O link colado, o compartilhado e o do QR são o mesmo; o QR diz "O convite vale até você trocar o código".
 
 ### PROD-CV02 · Entrar pelo convite sem conta, com o app instalado · P0
 
@@ -118,6 +126,8 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 **Conferir**
 - Termina dentro do grupo QA, e não na Início genérica.
 - ORG vê ATL em Membros e permissões.
+- O convite guardado some depois de usado: sair da conta ou pedir entrada também o apaga, então uma conta
+  que entrar depois no mesmo aparelho não vê "Entrando no QA Vôlei…" (ver PROD-AC08).
 
 ### PROD-CV03 · Convite sem o app: loja e volta ao convite · P0
 
@@ -164,26 +174,34 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 **Quem:** ORG, mais a conta WEB (PROD-WEB02), que ainda não é do grupo.
 
 1. ORG: em "Convidar por link", ligar "Aprovar pedidos para entrar".
-2. WEB: logado no app, tocar no link do convite.
-3. ORG: em "Pedidos para entrar", tocar "Aprovar".
-4. WEB: reabrir a aba Grupos.
-5. ORG: desligar "Aprovar pedidos para entrar".
+2. WEB: logado no app, tocar no link do convite e em "Pedir pra entrar".
+3. WEB: preencher o "Cadastro de atleta" ("Pedido enviado para o QA Vôlei…") e tocar "Salvar meu perfil".
+4. ORG: tocar no aviso na central (ou Gestão → "Convidar por link") e, em "Pedidos para entrar", tocar "Aprovar".
+5. WEB: reabrir a aba Grupos.
+6. ORG: desligar "Aprovar pedidos para entrar".
 
 **Conferir**
-- WEB vê "Pedido enviado" e fica sem acesso até a aprovação.
-- Depois de aprovado, o grupo aparece em Grupos. Ninguém é avisado e não aparece "Cadastro de atleta":
-  é o PC-11, não reprova.
+- Pedir entrada abre o "Cadastro de atleta" antes da aprovação, e depois a Início de WEB diz "Pedido enviado ·
+  aguardando o organizador". WEB fica sem acesso ao grupo até a aprovação.
+- ORG recebe o aviso "<Nome> pediu para entrar no <grupo>." (central e push), um por pedido; tocar abre
+  "Convidar", em "Pedidos para entrar".
+- Os dados do cadastro entram com WEB na aprovação, sem novo "Cadastro de atleta"; o grupo aparece em Grupos.
+  Ninguém é avisado da aprovação (decisão do dono: nenhum texto promete aviso individual).
+- Pedir entrada apaga o convite guardado no aparelho de WEB.
 
-### PROD-CV07 · Desativar o link · P1 (limpeza)
+### PROD-CV07 · Trocar o código do convite · P1 (limpeza)
 
 **Quem:** ORG.
 
-1. Em "Convidar por link", tocar "Desativar link".
-2. Uma conta de fora do grupo toca no link antigo.
+1. Em "Convidar por link", anotar o código e tocar "Trocar código".
+2. Em "Trocar o código?", tocar "Trocar código".
+3. Uma conta de fora do grupo toca no link antigo.
 
 **Conferir**
-- A tela volta a oferecer "Criar novo link".
+- A tela mostra um código novo e um link novo; o código e o link antigos deixam de funcionar.
 - O link antigo dá "Convite inválido", e quem já é membro continua no grupo.
+- Não existe "Desativar link": o convite fica sempre ativo, e a troca do código é o jeito de derrubar o
+  que já foi enviado.
 
 ## Membros
 
@@ -210,12 +228,12 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 
 **Conferir**
 - O cartão mostra "R$ 10,00 / mês · vence dia N", e o valor continua lá ao reabrir o editor.
-- A lista de membros só mostra "Mensalista" depois de sair e entrar de novo: é o PC-10.
+- A lista de membros mostra "Mensalista" ao voltar para ela, sem sair do grupo (a tela recarrega ao reaparecer).
 
 ### PROD-MB03 · Promover e rebaixar administrador · P1
 
-**Quem:** ORG **com plano pago** (depois de PROD-AS02 ou PROD-AS03). Durante o teste grátis a promoção é
-bloqueada: é o PC-09.
+**Quem:** ORG, no teste grátis ou com plano pago. Durante o teste a promoção e o rebaixamento são
+liberados; só plano vencido ou pausado abre a folha de assinatura.
 
 1. Membros e permissões → ATL → "Tornar administrador".
 2. ATL reabre o grupo.
@@ -241,5 +259,5 @@ bloqueada: é o PC-09.
 1. Membros e permissões → ATL2 → "Remover do grupo".
 
 **Conferir**
+- Antes de remover, o app pergunta "Remover … do grupo?" e só remove ao confirmar "Remover do grupo".
 - ATL2 some da lista e, depois de atualizar, perde o acesso ao grupo.
-- A remoção acontece sem pedir confirmação: é o PC-15.
