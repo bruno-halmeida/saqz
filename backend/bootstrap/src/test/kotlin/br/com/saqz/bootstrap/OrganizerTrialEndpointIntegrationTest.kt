@@ -71,6 +71,21 @@ class OrganizerTrialEndpointIntegrationTest {
     }
 
     @Test
+    fun `my subscription reports the billing type of an asaas subscription as payment method`() {
+        assertEquals(200, request("PUT", "/api/session").statusCode())
+        val owner = jdbc().sql("SELECT id FROM access_users WHERE firebase_subject=:token").param("token", token)
+            .query(UUID::class.java).single()
+        jdbc().sql("""INSERT INTO subscriptions (owner_user_id,plan,cycle,status,billing_type,asaas_customer_id,asaas_subscription_id,current_period_end,first_confirmed_at,created_at,updated_at)
+            VALUES (:owner,'TITULAR','MONTHLY','ACTIVE','CREDIT_CARD','customer',:subscription,now()+interval '30 days',now(),now(),now())""")
+            .param("owner", owner).param("subscription", UUID.randomUUID().toString()).update()
+
+        val me = request("GET", "/subscriptions/me")
+
+        assertEquals(200, me.statusCode(), me.body())
+        assertEquals("CREDIT_CARD", mapper.readTree(me.body())["paymentMethod"].stringValue())
+    }
+
+    @Test
     fun `organizador trial shares one deadline across three groups and blocks the fourth`() {
         val first = createGroup()
         val original = mapper.readTree(request("GET", "/subscriptions/trial").body())

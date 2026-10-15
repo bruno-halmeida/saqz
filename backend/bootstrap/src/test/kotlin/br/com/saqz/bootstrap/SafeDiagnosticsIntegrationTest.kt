@@ -7,6 +7,7 @@ import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.RequestIdentity
 import br.com.saqz.subscriptions.adapter.input.http.CreditCardDeclinedException
+import br.com.saqz.subscriptions.adapter.input.http.PaymentMethodUnavailableHttpException
 import br.com.saqz.subscriptions.adapter.input.http.ReceiptController
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionActorResolver
 import br.com.saqz.subscriptions.application.ListReceipts
@@ -124,6 +125,17 @@ class SafeDiagnosticsIntegrationTest {
         assertEquals("Transação não autorizada. Verifique os dados do cartão.", body["message"].stringValue())
         assertFalse(body.has("status"))
         assertFalse(body.has("correlationId"))
+    }
+
+    @Test
+    fun `payment method unavailable has a 422 problem with its own code`() {
+        verifier.result = TokenVerification.Verified(RequestIdentity("payment-unavailable-subject"))
+
+        assertProblem(
+            get("/test/payment-method-unavailable", "payment-unavailable-token"),
+            422,
+            "PAYMENT_METHOD_UNAVAILABLE",
+        )
     }
 
     @Test
@@ -405,6 +417,9 @@ class SafeDiagnosticsIntegrationTest {
             reason = "invalid_creditCard",
             description = "Transação não autorizada. Verifique os dados do cartão.",
         )
+
+        @GetMapping("/test/payment-method-unavailable")
+        fun paymentMethodUnavailable(): Nothing = throw PaymentMethodUnavailableHttpException()
 
         @PostMapping("/test/unexpected")
         fun failWithBody(): Nothing = error("unexpected failure")

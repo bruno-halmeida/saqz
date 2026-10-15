@@ -181,6 +181,21 @@ class CreateSubscriptionTest {
     }
 
     @Test
+    fun `payment method refused by asaas maps to PaymentMethodUnavailable and stores nothing`() {
+        gateway.unavailableWith = PaymentMethodUnavailableException(
+            billingType = AsaasBillingType.PIX,
+            asaasCode = "invalid_billingType",
+            cause = AsaasException(statusCode = 400, message = "not allowed"),
+        )
+
+        val result = useCase.execute(baseCommand())
+
+        val unavailable = assertIs<CreateSubscriptionResult.PaymentMethodUnavailable>(result)
+        assertEquals(AsaasBillingType.PIX, unavailable.billingType)
+        assertNull(subscriptions.findByOwnerUserId(ownerId))
+    }
+
+    @Test
     fun `card declined by asaas maps to CardDeclined with the mapped reason`() {
         gateway.declineWith = CardDeclinedException(
             asaasCode = "invalid_creditCard",
@@ -703,6 +718,7 @@ class CreateSubscriptionTest {
         var lastSubscriptionValueCents: Long? = null
         var creditCardResult: AsaasCreditCardInfo? = null
         var declineWith: CardDeclinedException? = null
+        var unavailableWith: PaymentMethodUnavailableException? = null
         var lastCreditCard: CreditCardDetails? = null
         var lastCreditCardHolderInfo: CreditCardHolderInfo? = null
         var lastRemoteIp: String? = null
@@ -724,6 +740,7 @@ class CreateSubscriptionTest {
             remoteIp: String?,
         ): AsaasSubscriptionCreation {
             declineWith?.let { throw it }
+            unavailableWith?.let { throw it }
             lastSubscriptionValueCents = valueCents
             subscriptionIdempotencyKeys += idempotencyKey
             lastCreditCard = creditCard

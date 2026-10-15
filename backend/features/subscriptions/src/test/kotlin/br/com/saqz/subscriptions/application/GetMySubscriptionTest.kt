@@ -48,6 +48,21 @@ class GetMySubscriptionTest {
     }
 
     @Test
+    fun `asaas subscription reports the billing type as payment method`() {
+        for (billingType in listOf(AsaasBillingType.PIX, AsaasBillingType.CREDIT_CARD, null)) {
+            val useCase = GetMySubscription(
+                MemorySubscriptions(baseSubscription().copy(billingType = billingType)),
+                FixedOwnedGroups(0),
+                clock,
+            )
+
+            val found = assertIs<GetMySubscriptionResult.Found>(useCase.execute(ownerId))
+
+            assertEquals(billingType, found.subscription.paymentMethod)
+        }
+    }
+
+    @Test
     fun `unlimited plan reports null groups limit`() {
         val subscriptions = MemorySubscriptions(baseSubscription().copy(plan = Plan.ILIMITADO))
         val useCase = GetMySubscription(subscriptions, FixedOwnedGroups(5), clock)

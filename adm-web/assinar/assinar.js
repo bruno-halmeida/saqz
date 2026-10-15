@@ -587,6 +587,12 @@
             mostrarErro("dados-erro", "O cupom não pôde ser aplicado. Remova ou troque o cupom.");
             return;
           }
+          if (problema.code === "PAYMENT_METHOD_UNAVAILABLE") {
+            mostrarErro("dados-erro", comCartao
+              ? "Cartão indisponível no momento. Use o Pix."
+              : "Pix indisponível no momento. Use o cartão.");
+            return;
+          }
           if (problema.fieldErrors) {
             mostrarErro("dados-erro", "Confira os dados informados e tente de novo.");
             return;

@@ -8,6 +8,8 @@ import br.com.saqz.subscriptions.application.AsaasIdempotencyStore
 import br.com.saqz.subscriptions.application.AsaasPaymentSnapshot
 import br.com.saqz.subscriptions.application.AsaasSubscriptionCreation
 import br.com.saqz.subscriptions.application.CardDeclinedException
+import br.com.saqz.subscriptions.application.PaymentMethodUnavailableException
+import org.slf4j.LoggerFactory
 import br.com.saqz.subscriptions.application.CreditCardDetails
 import br.com.saqz.subscriptions.application.CreditCardHolderInfo
 import br.com.saqz.subscriptions.application.PixCode
@@ -143,6 +145,15 @@ class HttpAsaasGateway(
                     cause = ex,
                 )
             }
+            val asaasCode = ex.errorCode
+            if (ex.statusCode == 400 && asaasCode != null && asaasCode.lowercase() == BILLING_TYPE_NOT_ALLOWED_CODE) {
+                // Só código da Asaas e forma de pagamento: sem dado pessoal no log.
+                log.warn(
+                    "Asaas recusou a forma de pagamento {} para assinatura (code={})",
+                    billingType, asaasCode,
+                )
+                throw PaymentMethodUnavailableException(billingType, asaasCode, ex)
+            }
             throw ex
         }
     }
@@ -156,7 +167,11 @@ class HttpAsaasGateway(
     private fun isCardDeclineError(ex: AsaasException): Boolean {
         if (ex.statusCode !in 400..499) return false
         val code = ex.errorCode?.lowercase() ?: return false
-        return CARD_DECLINE_ERROR_CODES.any { code.contains(it) }
+        if (CARD_DECLINE_ERROR_CODES.any { code.contains(it) }) return true
+        // A Asaas devolve a recusa do emissor como 400 invalid_action; o texto distingue de outras
+        // falhas com o mesmo código. só o 400 conta: 401/429 ficam de fora.
+        return ex.statusCode == 400 && code == INVALID_ACTION_CODE &&
+            ex.errorDescription?.lowercase()?.contains(NOT_AUTHORIZED_TEXT) == true
     }
 
     private fun creditCardInfoOf(response: JsonNode): AsaasCreditCardInfo? {
@@ -375,7 +390,8 @@ class HttpAsaasGateway(
     }
 
     private fun isDefinitiveClientRejection(ex: Exception): Boolean =
-        (ex is AsaasException && ex.statusCode in 400..499) || ex is CardDeclinedException
+        (ex is AsaasException && ex.statusCode in 400..499) ||
+            ex is CardDeclinedException || ex is PaymentMethodUnavailableException
 
     private fun customerIdempotencyKey(ownerUserId: UUID): String = "customer:$ownerUserId"
 
@@ -487,6 +503,8 @@ class HttpAsaasGateway(
         BigDecimal.valueOf(valueCents).divide(BigDecimal(100), 2, RoundingMode.HALF_UP)
 
     companion object {
+        private val log = LoggerFactory.getLogger(HttpAsaasGateway::class.java)
+
         val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(5)
         val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(15)
 
@@ -499,6 +517,9 @@ class HttpAsaasGateway(
          * com o gerente de conta). `contains` cobre variantes tipo "invalid_creditCardHolderInfo".
          */
         private val CARD_DECLINE_ERROR_CODES = setOf("invalid_creditcard")
+        private const val INVALID_ACTION_CODE = "invalid_action"
+        private const val NOT_AUTHORIZED_TEXT = "não autorizada"
+        private const val BILLING_TYPE_NOT_ALLOWED_CODE = "invalid_billingtype"
 
         val DEFAULT_ABANDON_AFTER: Duration = Duration.ofSeconds(30)
         const val DEFAULT_MAX_IDEMPOTENCY_POLLS: Int = 3

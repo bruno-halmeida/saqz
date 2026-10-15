@@ -7,6 +7,7 @@ import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.application.AsaasGateway
 import br.com.saqz.subscriptions.application.AsaasSubscriptionCreation
 import br.com.saqz.subscriptions.application.CardDeclinedException
+import br.com.saqz.subscriptions.application.PaymentMethodUnavailableException
 import br.com.saqz.subscriptions.application.CancelSubscription
 import br.com.saqz.subscriptions.application.ReactivateSubscription
 import br.com.saqz.subscriptions.application.ChangePlan
@@ -100,6 +101,19 @@ class SubscriptionCommandControllerTest {
 
         assertEquals("invalid_creditCard", error.reason)
         assertEquals("Transação não autorizada.", error.description)
+    }
+
+    @Test
+    fun `payment method refused by asaas maps to its own exception`() {
+        val controller = controllerForNewSubscription(PixUnavailableAsaasGateway)
+
+        assertThrows<PaymentMethodUnavailableHttpException> {
+            controller.create(
+                identity,
+                createRequest(planId = Plan.TITULAR.name, cycle = SubscriptionCycle.MONTHLY.name),
+                MockHttpServletRequest(),
+            )
+        }
     }
 
     @Test
@@ -341,7 +355,23 @@ class SubscriptionCommandControllerTest {
         override fun save(subscription: Subscription) = Unit
     }
 
-    private object DecliningAsaasGateway : AsaasGateway {
+    private object DecliningAsaasGateway : AsaasGateway by FailingAsaasGateway(
+        CardDeclinedException(
+            asaasCode = "invalid_creditCard",
+            asaasDescription = "Transação não autorizada.",
+            cause = AsaasException(statusCode = 400, message = "declined"),
+        ),
+    )
+
+    private object PixUnavailableAsaasGateway : AsaasGateway by FailingAsaasGateway(
+        PaymentMethodUnavailableException(
+            billingType = AsaasBillingType.PIX,
+            asaasCode = "invalid_billingType",
+            cause = AsaasException(statusCode = 400, message = "not allowed"),
+        ),
+    )
+
+    private class FailingAsaasGateway(private val failure: RuntimeException) : AsaasGateway {
         override fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String) = "cus_1"
         override fun createSubscription(
             asaasCustomerId: String,
@@ -353,11 +383,7 @@ class SubscriptionCommandControllerTest {
             creditCard: CreditCardDetails?,
             creditCardHolderInfo: CreditCardHolderInfo?,
             remoteIp: String?,
-        ): AsaasSubscriptionCreation = throw CardDeclinedException(
-            asaasCode = "invalid_creditCard",
-            asaasDescription = "Transação não autorizada.",
-            cause = AsaasException(statusCode = 400, message = "declined"),
-        )
+        ): AsaasSubscriptionCreation = throw failure
         override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) = error("unused")
         override fun cancelSubscription(asaasSubscriptionId: String) = error("unused")
         override fun createOneOffCharge(

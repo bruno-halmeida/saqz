@@ -82,7 +82,7 @@ class GetMySubscription(
         pendingPlan = subscription.pendingPlan,
         pendingPlanEffectiveAt = subscription.pendingPlanEffectiveAt,
         currentPeriodEnd = subscription.currentPeriodEnd,
-        paymentMethod = null,
+        paymentMethod = subscription.billingType,
         usage = usageFor(ownerUserId, subscription.plan, subscription.pendingPlan),
         readOnly = isReadOnly(subscription, now),
         pastDueSince = subscription.pastDueSince,

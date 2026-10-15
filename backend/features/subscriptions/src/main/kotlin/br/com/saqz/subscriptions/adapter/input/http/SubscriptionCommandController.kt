@@ -135,6 +135,9 @@ class CreditCardDeclinedException(
     val description: String,
 ) : RuntimeException()
 
+/** A forma de pagamento escolhida não está disponível na conta do provedor (ex.: Pix sem chave). */
+class PaymentMethodUnavailableHttpException : RuntimeException()
+
 @RestController
 class SubscriptionCommandController(
     private val actors: SubscriptionActorResolver,
@@ -215,6 +218,7 @@ class SubscriptionCommandController(
                 throw InvalidSubscriptionRequestException(result.fieldErrors)
             is CreateSubscriptionResult.CardDeclined ->
                 throw CreditCardDeclinedException(result.reason, result.asaasDescription)
+            is CreateSubscriptionResult.PaymentMethodUnavailable -> throw PaymentMethodUnavailableHttpException()
         }
     }
 

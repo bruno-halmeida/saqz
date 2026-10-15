@@ -55,6 +55,7 @@ class SubscriptionQueryControllerTest {
         assertEquals(Plan.ORGANIZADOR, response.plan)
         assertEquals(2, response.usage.groupsUsed)
         assertEquals(3, response.usage.groupsLimit)
+        assertEquals(AsaasBillingType.PIX, response.paymentMethod)
         assertTrue(response.readOnly)
     }
 

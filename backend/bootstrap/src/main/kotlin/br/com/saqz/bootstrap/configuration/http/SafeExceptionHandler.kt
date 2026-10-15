@@ -65,6 +65,7 @@ import br.com.saqz.subscriptions.adapter.input.http.CouponAlreadyRedeemedExcepti
 import br.com.saqz.subscriptions.adapter.input.http.CouponExpiredException
 import br.com.saqz.subscriptions.adapter.input.http.CouponNotFoundException
 import br.com.saqz.subscriptions.adapter.input.http.CreditCardDeclinedException
+import br.com.saqz.subscriptions.adapter.input.http.PaymentMethodUnavailableHttpException
 import br.com.saqz.subscriptions.adapter.input.http.DowngradeBlockedException
 import br.com.saqz.subscriptions.adapter.input.http.InvalidCouponRequestException
 import br.com.saqz.subscriptions.adapter.input.http.InvalidSubscriptionRequestException
@@ -659,6 +660,11 @@ class SafeExceptionHandler(
     @ExceptionHandler(DowngradeBlockedException::class)
     fun downgradeBlocked(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 409, ErrorCode.DOWNGRADE_BLOCKED)
+    }
+
+    @ExceptionHandler(PaymentMethodUnavailableHttpException::class)
+    fun paymentMethodUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 422, ErrorCode.PAYMENT_METHOD_UNAVAILABLE)
     }
 
     /** Shape pinado com o mobile (VUL-196) — não o `ApiProblem` genérico. Ver [ApiProblemWriter.writeCardDeclined]. */

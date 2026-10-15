@@ -54,6 +54,9 @@ sealed interface CreateSubscriptionResult {
      */
     data class CardDeclined(val reason: String, val asaasDescription: String) : CreateSubscriptionResult
 
+    /** A Asaas não aceita a forma de pagamento nesta conta (ex.: Pix sem chave) — nada foi gravado. */
+    data class PaymentMethodUnavailable(val billingType: AsaasBillingType) : CreateSubscriptionResult
+
     /** An unconfirmed subscription is pending for a DIFFERENT plan/cycle than this request. */
     data object PendingCheckoutMismatch : CreateSubscriptionResult
 }
@@ -128,6 +131,8 @@ class CreateSubscription(
             }
         } catch (ex: CardDeclinedException) {
             return CreateSubscriptionResult.CardDeclined(reason = ex.asaasCode, asaasDescription = ex.asaasDescription)
+        } catch (ex: PaymentMethodUnavailableException) {
+            return CreateSubscriptionResult.PaymentMethodUnavailable(ex.billingType)
         }
 
         val committedOutcome = when (outcome) {
@@ -200,6 +205,8 @@ class CreateSubscription(
             }
         } catch (ex: CardDeclinedException) {
             return CreateSubscriptionResult.CardDeclined(reason = ex.asaasCode, asaasDescription = ex.asaasDescription)
+        } catch (ex: PaymentMethodUnavailableException) {
+            return CreateSubscriptionResult.PaymentMethodUnavailable(ex.billingType)
         }
         return successOf(resolveCheckout(replaced), command.billingType)
     }

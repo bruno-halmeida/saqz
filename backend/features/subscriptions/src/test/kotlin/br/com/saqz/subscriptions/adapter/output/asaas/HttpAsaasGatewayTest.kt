@@ -4,6 +4,7 @@ import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.application.AsaasConcurrentOperationException
 import br.com.saqz.subscriptions.application.AsaasGateway
 import br.com.saqz.subscriptions.application.CardDeclinedException
+import br.com.saqz.subscriptions.application.PaymentMethodUnavailableException
 import br.com.saqz.subscriptions.application.CreditCardDetails
 import br.com.saqz.subscriptions.application.CreditCardHolderInfo
 import br.com.saqz.subscriptions.domain.Plan
@@ -278,6 +279,91 @@ class HttpAsaasGatewayTest {
         assertEquals(401, asaasError.statusCode)
         assertFalse(CardDeclinedException::class.java.isInstance(error))
     }
+
+    @Test
+    fun `createSubscription maps the issuer refusal 400 invalid_action to CardDeclinedException`() {
+        server.enqueue(
+            json(
+                400,
+                """{"errors":[{"code":"invalid_action","description":"Transação não autorizada. Verifique os dados do cartão de crédito e tente novamente."}]}""",
+            ),
+        )
+
+        val error = assertThrows<CardDeclinedException> { createCardSubscription("sub-card-invalid-action-1") }
+
+        assertEquals("invalid_action", error.asaasCode)
+        assertTrue(error.asaasDescription.startsWith("Transação não autorizada"))
+        assertNull(store.find("sub-card-invalid-action-1"))
+    }
+
+    @Test
+    fun `createSubscription keeps an invalid_action with another description as a generic AsaasException`() {
+        server.enqueue(
+            json(400, """{"errors":[{"code":"invalid_action","description":"Não foi possível executar esta ação."}]}"""),
+        )
+
+        val error = assertThrows<AsaasException> { createCardSubscription("sub-card-invalid-action-2") }
+
+        assertEquals(400, error.statusCode)
+    }
+
+    @Test
+    fun `createSubscription does not map 429 with a not-authorized text to CardDeclinedException`() {
+        server.enqueue(
+            json(429, """{"errors":[{"code":"invalid_action","description":"Transação não autorizada."}]}"""),
+        )
+
+        val error = assertThrows<AsaasException> { createCardSubscription("sub-card-ratelimit-1") }
+
+        assertEquals(429, error.statusCode)
+    }
+
+    @Test
+    fun `createSubscription maps 400 invalid_billingType to PaymentMethodUnavailableException for pix`() {
+        server.enqueue(
+            json(
+                400,
+                """{"errors":[{"code":"invalid_billingType","description":"A forma de pagamento não é permitida para assinaturas."}]}""",
+            ),
+        )
+
+        val error = assertThrows<PaymentMethodUnavailableException> {
+            gateway.createSubscription(
+                "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 3_990, AsaasBillingType.PIX, "sub-pix-unavailable-1",
+            )
+        }
+
+        assertEquals(AsaasBillingType.PIX, error.billingType)
+        assertEquals("invalid_billingType", error.asaasCode)
+        assertNull(store.find("sub-pix-unavailable-1"))
+    }
+
+    @Test
+    fun `createSubscription does not map 401 to PaymentMethodUnavailableException`() {
+        server.enqueue(
+            json(401, """{"errors":[{"code":"invalid_billingType","description":"x"}]}"""),
+        )
+
+        val error = assertThrows<AsaasException> {
+            gateway.createSubscription(
+                "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 3_990, AsaasBillingType.PIX, "sub-pix-401",
+            )
+        }
+
+        assertEquals(401, error.statusCode)
+    }
+
+    private fun createCardSubscription(idempotencyKey: String) = gateway.createSubscription(
+        asaasCustomerId = "cus_CARD",
+        plan = Plan.TITULAR,
+        cycle = SubscriptionCycle.MONTHLY,
+        valueCents = 3_990,
+        billingType = AsaasBillingType.CREDIT_CARD,
+        idempotencyKey = idempotencyKey,
+        creditCard = sampleCreditCard(),
+        creditCardHolderInfo = sampleCreditCardHolderInfo(),
+        remoteIp = "203.0.113.5",
+    )
 
     @Test
     fun `createSubscription uses 60s timeout for credit card billing but 15s for pix`() {
