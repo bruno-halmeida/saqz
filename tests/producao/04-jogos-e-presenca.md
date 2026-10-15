@@ -3,7 +3,9 @@
 Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela.
 
 **Antes de testar presença:** aplique o contorno do PC-01 (PROD-GR03 desliga "Prioridade de
-mensalista"). Sem isso, todo "Vou" de avulso cai na lista de espera mesmo com vaga.
+mensalista"). Com a prioridade no padrão (ligada), o "Vou" de avulso vai para a lista de espera até o
+prazo de confirmação, mesmo com vaga; o prazo vencido e "Não vou" seguem a configuração do grupo
+("Quem entra quando surge uma vaga?"): depois do prazo "Vou" vai sempre para a espera e "Não vou" libera a vaga.
 
 Ordem dentro do bloco: JG01, JG07 (antes de alguém responder), JG02, JG03, JG04, JG05, JG06. O jogo de
 JG11 é criado logo no começo da rodada.
@@ -25,13 +27,19 @@ JG11 é criado logo no começo da rodada.
 
 ## PROD-JG02 · Confirmar presença pela Início · P0
 
-**Quem:** ATL.
+**Quem:** ATL (avulso).
 
 1. Na Início, no cartão do jogo, tocar "Vou".
 
 **Conferir**
-- Aparece "Presença confirmada. Bom jogo!", e o cartão passa a mostrar a confirmação com "Alterar".
-- No grupo, ORG vê "Vão" com 1 e ATL em "Confirmados" na tela do jogo.
+- Com a prioridade desligada (contorno do PC-01): aparece "Presença confirmada. Bom jogo!", e o cartão
+  vira "Sua resposta" com a confirmação e "Alterar". No grupo, ORG vê "Vão" com 1 e ATL em "Confirmados"
+  na tela do jogo.
+- Com a prioridade ligada (padrão), o esperado é a espera até o prazo: o toast diz "Você entrou na lista de
+  espera.", o cartão mostra "Lista de espera" com "Os mensalistas entram primeiro." e ORG vê ATL em "Na espera".
+  Registrar qual dos dois casos foi testado.
+- Depois de um "Vou" (confirmado ou espera) pode aparecer o cartão "Sua resposta foi salva. Conheça o Saqz.",
+  com "Indicar o Saqz a outro grupo" e "Agora não". Depois de "Não vou" ele nunca aparece.
 
 ## PROD-JG03 · Responder pelo botão da notificação · P0
 
@@ -90,21 +98,26 @@ JG11 é criado logo no começo da rodada.
 1. No grupo, em "Esperando você", tocar "Avisar".
 
 **Conferir**
-- Aparece "Lembrete enviado no Saqz para N pessoa(s).", com N contando só quem não respondeu.
+- Ao lado do "Avisar" a linha diz, por exemplo, "2 pessoas sem resposta · e você" ("· e você" quando ORG
+  também não respondeu); o número é o de quem recebe o lembrete, sem contar ORG, e a linha some se só ORG falta.
+- Aparece "Lembrete enviado no Saqz para N pessoa(s).", com o mesmo N.
 - ATL e ATL2 recebem o push "Confirme sua presença no próximo jogo. Abra o app para conferir." e o
   aviso na central; ORG não recebe cópia.
 
-## PROD-JG08 · "Repetir toda semana" e publicar um rascunho · P1
+## PROD-JG08 · "Repetir toda semana" e a agenda da série · P1
 
 **Quem:** ORG.
 
 1. Tocar "Marcar jogo", escolher outro dia da semana, ligar "Repetir toda semana" e tocar "Marcar jogo".
-2. Em "Próximos jogos", abrir um jogo com "Rascunho" e tocar "Publicar jogo".
+2. Em "Próximos jogos", conferir a agenda.
 
 **Conferir**
-- O editor avisa que os próximos jogos nascem como rascunho.
-- O jogo marcado sai publicado e os das semanas seguintes ficam em rascunho, visíveis só para ORG.
-- O rascunho publicado vira "Jogo criado" e aparece para ATL em "Próximos jogos".
+- O editor explica "Vira horário fixo do grupo: os próximos jogos entram na agenda sozinhos." e "cada um é
+  liberado 5 dias antes."
+- O jogo marcado sai publicado e vira o primeiro jogo do horário fixo (o dia aparece em Gestão → "Jogos e
+  horários"). Os das semanas seguintes não aparecem para ninguém, nem para ORG, até serem liberados
+  sozinhos 5 dias antes: rascunhos da série são invisíveis por desenho (09/10).
+- "Publicar jogo" só existe para rascunho avulso do gestor; sem um à vista, esse passo fica sem cobertura.
 
 ## PROD-JG09 · Editar um jogo · P1
 
@@ -118,14 +131,15 @@ JG11 é criado logo no começo da rodada.
 
 ## PROD-JG10 · Cancelar um jogo · P1
 
-**Quem:** ORG, no jogo publicado em PROD-JG08.
+**Quem:** ORG, no jogo publicado em PROD-JG08, com ATL confirmado ou na espera nele.
 
 1. Abrir o jogo → "Cancelar jogo".
 2. Em "Cancelar o jogo?", tocar "Cancelar jogo".
 
 **Conferir**
 - O jogo some das agendas de ORG e ATL.
-- Ninguém recebe aviso, apesar do texto da confirmação: é o PC-02.
+- Confirmados e lista de espera recebem o aviso "O jogo de <dia> dd/mm às HHhMM foi cancelado." na central e
+  no push (e no grupo do WhatsApp vinculado, se houver). Rascunho cancelado não avisa ninguém.
 
 ## PROD-JG11 · O jogo encerra sozinho · P0
 
@@ -146,12 +160,14 @@ JG11 é criado logo no começo da rodada.
 **Quem:** ORG, no jogo de PROD-JG11.
 
 1. No jogo, tocar "Encerrar jogo e acertar".
-2. Em "Acerto do jogo", tocar "Registrar aluguel da quadra", preencher o valor (R$ 120,00) e tocar
-   "Salvar lançamento".
-3. Tocar "Encerrar acerto".
+2. Em "Acerto do jogo", conferir a tela. Com avulsos para acertar ela traz "Custo do jogo" e "Registrar
+   aluguel da quadra". Sem avulsos esse botão não existe: ir a Gestão → "Caixa do grupo" → "Registrar" e
+   lançar a saída de R$ 120,00 (como em PROD-FI04, descrição "Aluguel da quadra", categoria Quadra).
+3. Tocar "Encerrar acerto" (com avulsos, só depois de registrar o pagamento de todos).
 
 **Conferir**
-- A tela mostra "JOGO ENCERRADO" e os mensalistas como cobertos pela mensalidade.
+- A tela mostra "JOGO ENCERRADO" e os mensalistas como cobertos pela mensalidade ("Já estão cobertos pela
+  mensalidade.").
 - A despesa de R$ 120,00 aparece no extrato do grupo e no saldo.
 - No primeiro jogo encerrado do grupo, ORG também vê o cartão "Primeiro jogo encerrado. E o acerto?",
   que leva à mesma tela.
@@ -175,5 +191,7 @@ QA vinculado a um grupo de WhatsApp de teste (Editar grupo → "WhatsApp" → "C
   jogo (ou na espera, se o PC-01 não foi contornado).
 - Com o app fechado, o link não se perde. Até a 0.0.4 o app só passava a ouvir o link de presença
   depois da primeira tela, e o link que abria o app se perdia.
-- "Não vou" nunca vira confirmação: o app abre o aviso de "não vou" e só responde com o toque.
+- "Não vou" nunca vira confirmação: o app abre o aviso "Confirme abaixo se você não vai." com a folha "Não
+  conseguirá ir?", e só grava ao tocar "Sim, não vou" (depois: "Avisamos o grupo que você não vai. Sua vaga
+  ficou livre para a fila de espera."). Fechar a folha ("Voltar") deixa a presença como estava.
 - Grupo que exige aprovação de entrada: vira pedido ("Pedido enviado"), sem confirmação.
