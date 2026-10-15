@@ -9,10 +9,17 @@ import br.com.saqz.subscriptions.resources.myplan_pending_note
 import br.com.saqz.subscriptions.resources.myplan_status_active
 import br.com.saqz.subscriptions.resources.myplan_status_canceled
 import br.com.saqz.subscriptions.resources.myplan_status_past_due
-import br.com.saqz.subscriptions.resources.myplan_usage_helper
+import br.com.saqz.subscriptions.resources.myplan_usage_at_limit
+import br.com.saqz.subscriptions.resources.myplan_usage_can_create
 import br.com.saqz.subscriptions.resources.myplan_usage_pending_helper
 import br.com.saqz.subscriptions.resources.myplan_usage_ratio
 import br.com.saqz.subscriptions.resources.myplan_usage_unlimited
+import kotlin.time.Clock
+import kotlin.time.Instant
+
+/** O fim do período pago já passou. Data ilegível não afirma nada: segue como "garantido". */
+private fun MySubscription.periodEndedAt(now: Instant): Boolean =
+    runCatching { Instant.parse(currentPeriodEnd) <= now }.getOrDefault(false)
 
 internal fun SubscriptionStatus.toTone(): MyPlanStatusTone = when (this) {
     SubscriptionStatus.Active -> MyPlanStatusTone.Active
@@ -26,7 +33,7 @@ internal fun SubscriptionStatus.toUiText(): UiText = when (this) {
     SubscriptionStatus.Canceled -> UiText.Res(Res.string.myplan_status_canceled)
 }
 
-internal fun MySubscription.toCardUi(): MyPlanCardUi {
+internal fun MySubscription.toCardUi(now: Instant = Clock.System.now()): MyPlanCardUi {
     // O backend marca `canceledAt` sem tocar em `status` — o acesso segue até
     // `currentPeriodEnd`, e é o webhook quem migra o status pra CANCELED depois (achado
     // do Codex no PR #93, confirmado em CancelSubscriptionTest). A tela não pode esperar
@@ -46,6 +53,7 @@ internal fun MySubscription.toCardUi(): MyPlanCardUi {
         // still follows currentPeriodEnd"). Mostrar como próxima cobrança seria falso.
         nextChargeDate = if (canceled) null else isoDateToPtBr(currentPeriodEnd),
         accessUntilDate = if (canceled) isoDateToPtBr(currentPeriodEnd) else null,
+        accessEnded = canceled && periodEndedAt(now),
         pendingNote = if (pending != null && pendingAt != null) {
             UiText.Res(Res.string.myplan_pending_note, listOf(pending.name, isoDateToPtBr(pendingAt)))
         } else {
@@ -60,15 +68,19 @@ internal fun MySubscription.toUsageUi(): MyPlanUsageUi {
     val pendingAt = pendingPlanEffectiveAt
     return MyPlanUsageUi(
         ratioLabel = if (limit != null) {
-            UiText.Res(Res.string.myplan_usage_ratio, listOf(usage.groupsUsed, limit))
+            UiText.Plural(Res.plurals.myplan_usage_ratio, limit, listOf(usage.groupsUsed, limit))
         } else {
             UiText.Res(Res.string.myplan_usage_unlimited)
         },
         progress = limit?.let { if (it == 0) 0f else usage.groupsUsed.toFloat() / it },
         helperText = if (pending != null && pendingAt != null) {
             UiText.Res(Res.string.myplan_usage_pending_helper, listOf(pending.name, isoDateToPtBr(pendingAt)))
+        } else if (limit == null) {
+            null
+        } else if (usage.groupsUsed < limit) {
+            (limit - usage.groupsUsed).let { UiText.Plural(Res.plurals.myplan_usage_can_create, it, listOf(it)) }
         } else {
-            UiText.Res(Res.string.myplan_usage_helper)
+            UiText.Res(Res.string.myplan_usage_at_limit)
         },
     )
 }

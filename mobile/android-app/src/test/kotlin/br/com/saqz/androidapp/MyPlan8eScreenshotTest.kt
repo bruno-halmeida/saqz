@@ -195,7 +195,7 @@ private val ACTIVE = MyPlanState(
     usage = MyPlanUsageUi(
         ratioLabel = UiText.Raw("2 de 3 grupos"),
         progress = 2f / 3f,
-        helperText = UiText.Raw("Perto do limite? Acompanhe seu uso para planejar os próximos grupos."),
+        helperText = UiText.Raw("Você ainda pode criar 1 grupo."),
     ),
     receipts = listOf(
         MyPlanReceiptUi("evt-1", "01/07/2026", "R$ 19,90"),

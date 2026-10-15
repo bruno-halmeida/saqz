@@ -37,6 +37,7 @@ import br.com.saqz.subscriptions.presentation.myplan.MyPlanState
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanStatusTone
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanUsageUi
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.myplan_access_ended
 import br.com.saqz.subscriptions.resources.myplan_access_until
 import br.com.saqz.subscriptions.resources.myplan_app_store_elsewhere
 import br.com.saqz.subscriptions.resources.myplan_app_store_helper
@@ -111,7 +112,10 @@ internal fun MyPlanCurrentCard(plan: MyPlanCardUi, modifier: Modifier = Modifier
                     .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
             ) {
                 Text(
-                    text = stringResource(Res.string.myplan_access_until, plan.accessUntilDate),
+                    text = stringResource(
+                        if (plan.accessEnded) Res.string.myplan_access_ended else Res.string.myplan_access_until,
+                        plan.accessUntilDate,
+                    ),
                     style = SaqzTheme.typography.support,
                     color = colors.textSecondary,
                 )
@@ -136,7 +140,9 @@ internal fun MyPlanUsageCard(usage: MyPlanUsageUi, modifier: Modifier = Modifier
         if (usage.progress != null) {
             SaqzProgressBar(value = usage.progress)
         }
-        Text(text = usage.helperText.asString(), style = SaqzTheme.typography.support, color = colors.textSecondary)
+        usage.helperText?.let {
+            Text(text = it.asString(), style = SaqzTheme.typography.support, color = colors.textSecondary)
+        }
     }
 }
 

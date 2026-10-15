@@ -74,6 +74,8 @@ data class MyPlanCardUi(
     // porque o cancelamento já parou a cobrança no Asaas. `nextChargeDate` fica nulo nesse
     // caso e este campo assume, com um rótulo diferente ("acesso garantido até").
     val accessUntilDate: String? = null,
+    // `accessUntilDate` já passou: a tela diz que o acesso terminou, em vez de garanti-lo.
+    val accessEnded: Boolean = false,
     val pendingNote: UiText? = null,
 )
 
@@ -82,7 +84,7 @@ data class MyPlanCardUi(
 data class MyPlanUsageUi(
     val ratioLabel: UiText,
     val progress: Float?,
-    val helperText: UiText,
+    val helperText: UiText?,
 )
 
 @Immutable

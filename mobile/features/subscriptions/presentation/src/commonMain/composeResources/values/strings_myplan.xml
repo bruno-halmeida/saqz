@@ -10,10 +10,18 @@
     <string name="myplan_status_canceled">Cancelado</string>
     <string name="myplan_next_charge">Próxima cobrança em %1$s</string>
     <string name="myplan_access_until">Acesso garantido até %1$s</string>
+    <string name="myplan_access_ended">Seu acesso terminou em %1$s.</string>
     <string name="myplan_usage_title">Uso do plano</string>
-    <string name="myplan_usage_ratio">%1$d de %2$d grupos</string>
+    <plurals name="myplan_usage_ratio">
+        <item quantity="one">%1$d de %2$d grupo</item>
+        <item quantity="other">%1$d de %2$d grupos</item>
+    </plurals>
     <string name="myplan_usage_unlimited">Grupos ilimitados</string>
-    <string name="myplan_usage_helper">Perto do limite? Acompanhe seu uso para planejar os próximos grupos.</string>
+    <plurals name="myplan_usage_can_create">
+        <item quantity="one">Você ainda pode criar %1$d grupo.</item>
+        <item quantity="other">Você ainda pode criar %1$d grupos.</item>
+    </plurals>
+    <string name="myplan_usage_at_limit">Você usa todos os grupos do plano. Para criar outro, mude de plano.</string>
     <string name="myplan_manage_title">Gerenciar</string>
     <string name="myplan_manage_change_plan">Trocar de plano</string>
     <string name="myplan_manage_app_store">Trocar de plano ou cancelar</string>

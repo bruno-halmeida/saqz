@@ -11,12 +11,17 @@ import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.myplan_pending_note
 import br.com.saqz.subscriptions.resources.myplan_status_active
 import br.com.saqz.subscriptions.resources.myplan_status_canceled
+import br.com.saqz.subscriptions.resources.myplan_usage_at_limit
+import br.com.saqz.subscriptions.resources.myplan_usage_can_create
 import br.com.saqz.subscriptions.resources.myplan_usage_pending_helper
 import br.com.saqz.subscriptions.resources.myplan_usage_ratio
 import br.com.saqz.subscriptions.resources.myplan_usage_unlimited
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 class MyPlanMappersTest {
     @Test
@@ -53,7 +58,7 @@ class MyPlanMappersTest {
             pendingPlanEffectiveAt = "2026-08-30T00:00:00Z",
         ).toUsageUi()
 
-        assertEquals(UiText.Res(Res.string.myplan_usage_ratio, listOf(1, 1)), usage.ratioLabel)
+        assertEquals(UiText.Plural(Res.plurals.myplan_usage_ratio, 1, listOf(1, 1)), usage.ratioLabel)
         assertEquals(
             UiText.Res(Res.string.myplan_usage_pending_helper, listOf("Titular", "30/08/2026")),
             usage.helperText,
@@ -71,6 +76,28 @@ class MyPlanMappersTest {
     }
 
     @Test
+    fun `canceled access still running keeps the guaranteed-until wording`() {
+        val card = subscription(canceledAt = "2026-08-01T00:00:00Z").toCardUi(now = Instant.parse("2026-08-29T12:00:00Z"))
+
+        assertFalse(card.accessEnded)
+    }
+
+    @Test
+    fun `canceled access whose date has passed says it ended`() {
+        val card = subscription(canceledAt = "2026-08-01T00:00:00Z").toCardUi(now = Instant.parse("2026-09-01T00:00:00Z"))
+
+        assertTrue(card.accessEnded)
+        assertEquals("30/08/2026", card.accessUntilDate)
+    }
+
+    @Test
+    fun `active subscription never reports ended access`() {
+        val card = subscription().toCardUi(now = Instant.parse("2030-01-01T00:00:00Z"))
+
+        assertFalse(card.accessEnded)
+    }
+
+    @Test
     fun `expired subscription without cancel date has no next charge`() {
         val card = subscription(status = SubscriptionStatus.Canceled).toCardUi()
 
@@ -83,8 +110,36 @@ class MyPlanMappersTest {
     fun `subscription maps bounded usage`() {
         val usage = subscription(usage = SubscriptionUsage(groupsUsed = 2, groupsLimit = 3)).toUsageUi()
 
-        assertEquals(UiText.Res(Res.string.myplan_usage_ratio, listOf(2, 3)), usage.ratioLabel)
+        assertEquals(UiText.Plural(Res.plurals.myplan_usage_ratio, 3, listOf(2, 3)), usage.ratioLabel)
         assertEquals(2f / 3f, usage.progress)
+    }
+
+    @Test
+    fun `usage below the limit says how many groups can still be created`() {
+        val usage = subscription(usage = SubscriptionUsage(groupsUsed = 2, groupsLimit = 3)).toUsageUi()
+
+        assertEquals(UiText.Plural(Res.plurals.myplan_usage_can_create, 1, listOf(1)), usage.helperText)
+    }
+
+    @Test
+    fun `usage below the limit pluralizes the remaining groups`() {
+        val usage = subscription(usage = SubscriptionUsage(groupsUsed = 1, groupsLimit = 4)).toUsageUi()
+
+        assertEquals(UiText.Plural(Res.plurals.myplan_usage_can_create, 3, listOf(3)), usage.helperText)
+    }
+
+    @Test
+    fun `usage at the limit asks to change plan`() {
+        val usage = subscription(usage = SubscriptionUsage(groupsUsed = 3, groupsLimit = 3)).toUsageUi()
+
+        assertEquals(UiText.Res(Res.string.myplan_usage_at_limit), usage.helperText)
+    }
+
+    @Test
+    fun `unlimited usage has no helper text`() {
+        val usage = subscription(usage = SubscriptionUsage(groupsUsed = 4, groupsLimit = null)).toUsageUi()
+
+        assertNull(usage.helperText)
     }
 
     @Test
