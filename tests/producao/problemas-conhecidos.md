@@ -12,9 +12,7 @@ aceitar ou só documentar.
 | --- | --- | --- | --- |
 | [PC-01](#pc-01--em-grupo-novo-todo-vou-vai-para-a-lista-de-espera) | Em grupo novo, o "Vou" do avulso vai para a lista de espera até o prazo | Risco aceito por enquanto | 07/10/2026 |
 | [PC-02](#pc-02--quem-sobe-da-lista-de-espera-não-recebe-aviso-individual) | Quem sobe da lista de espera não recebe aviso individual (cancelar jogo já avisa) | Decisão do dono: a lista vai ao grupo do WhatsApp a cada 3 h | 07/10/2026 |
-| [PC-03](#pc-03-a-pc-16--achados-abertos) | Foto do perfil só aparece para o dono | A triar | 07/10/2026 |
-| PC-05 | "Salvar rascunho" ao criar grupo não salva nada | A triar | 07/10/2026 |
-| PC-06 | Aba Grupos sem chip de presença e "0 pedindo confirmação" fixo | A triar | 07/10/2026 |
+| [PC-06](#pc-06-a-pc-16--achados-abertos) | Aba Grupos sem chip de presença e "0 pedindo confirmação" fixo | A triar | 07/10/2026 |
 | PC-08 | "Recado para a galera" do jogo não aparece para ninguém | A triar | 07/10/2026 |
 | PC-11 | Quem teve o pedido de entrada aprovado não recebe aviso individual | Decisão do dono: nenhum texto promete aviso | 07/10/2026 |
 | PC-12 | Android 13+ pede permissão de notificação uma vez só por instalação | A triar | 07/10/2026 |
@@ -61,11 +59,7 @@ do WhatsApp vinculado (`b6b86f7eb`).
 **Nos testes de produção.** Conferir só o estado no app (promovido aparece como confirmado). A ausência de
 aviso individual não reprova o cenário enquanto este item estiver aqui.
 
-## PC-03 a PC-16 · Achados abertos
-- **PC-03 · Foto do perfil só para o dono.** A foto é servida só em `/api/session/photo`; os outros
-  membros veem as iniciais, embora a dica diga "Aparece nas listas de presença e nos grupos.".
-- **PC-05 · "Salvar rascunho".** No erro ao criar grupo, "Salvar rascunho" só fecha a tela e descarta
-  os dados (`GroupSetupViewModel.onSaveDraft`).
+## PC-06 a PC-16 · Achados abertos
 - **PC-06 · Aba Grupos.** Os cartões não mostram a presença da pessoa e o cabeçalho sempre diz
   "0 pedindo confirmação" (`GroupListNextGame.kt` ignora a resposta da API).
 - **PC-08 · "Recado para a galera".** O campo do editor de jogo é gravado, mas não aparece em nenhuma
@@ -91,3 +85,5 @@ Saíram da lista acima. Se um cenário ainda reproduzir o defeito, é regressão
 | PC-11 (cadastro) | Pedir entrada abre o "Cadastro de atleta" antes da aprovação, aplicado na aprovação; hora do pedido no fuso do grupo | `8a48fdf3d`, `457b21784`, `414ee347b` |
 | PC-15 | "Remover do grupo" pede confirmação na lista de membros | `414ee347b` |
 | PC-04 | Logado, "Lembrou a senha? Entrar" na recuperação volta para onde a pessoa estava (Perfil) | `4c6868543` |
+| PC-03 | A dica da foto diz só onde ela aparece de fato ("Aparece no seu perfil.") | `7c2fe2939` |
+| PC-05 | Erro ao criar grupo não descarta o que foi digitado; saiu o "Salvar rascunho" | `461f867d2` |
