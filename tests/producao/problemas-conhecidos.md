@@ -12,7 +12,6 @@ aceitar ou só documentar.
 | --- | --- | --- | --- |
 | [PC-01](#pc-01--em-grupo-novo-todo-vou-vai-para-a-lista-de-espera) | Em grupo novo, o "Vou" do avulso vai para a lista de espera até o prazo | Risco aceito por enquanto | 07/10/2026 |
 | [PC-02](#pc-02--quem-sobe-da-lista-de-espera-não-recebe-aviso-individual) | Quem sobe da lista de espera não recebe aviso individual (cancelar jogo já avisa) | Decisão do dono: a lista vai ao grupo do WhatsApp a cada 3 h | 07/10/2026 |
-| [PC-06](#pc-06-a-pc-14--achados-abertos) | Aba Grupos sem chip de presença e "0 pedindo confirmação" fixo | A triar | 07/10/2026 |
 | PC-08 | "Recado para a galera" do jogo não aparece para ninguém | A triar | 07/10/2026 |
 | PC-11 | Quem teve o pedido de entrada aprovado não recebe aviso individual | Decisão do dono: nenhum texto promete aviso | 07/10/2026 |
 | PC-13 | Extrato do grupo sem seletor de mês | A triar | 07/10/2026 |
@@ -57,9 +56,7 @@ do WhatsApp vinculado (`b6b86f7eb`).
 **Nos testes de produção.** Conferir só o estado no app (promovido aparece como confirmado). A ausência de
 aviso individual não reprova o cenário enquanto este item estiver aqui.
 
-## PC-06 a PC-14 · Achados abertos
-- **PC-06 · Aba Grupos.** Os cartões não mostram a presença da pessoa e o cabeçalho sempre diz
-  "0 pedindo confirmação" (`GroupListNextGame.kt` ignora a resposta da API).
+## PC-08 a PC-14 · Achados abertos
 - **PC-08 · "Recado para a galera".** O campo do editor de jogo é gravado, mas não aparece em nenhuma
   tela nem notificação.
 - **PC-11 · Aprovação de pedido.** Quem teve o pedido aprovado não recebe aviso individual, por decisão do
@@ -84,3 +81,4 @@ Saíram da lista acima. Se um cenário ainda reproduzir o defeito, é regressão
 | PC-05 | Erro ao criar grupo não descarta o que foi digitado; saiu o "Salvar rascunho" | `461f867d2` |
 | PC-16 | "Termos de recebimentos" leem a API de produção | `67fefed91` |
 | PC-12 | Folha do app explica os avisos antes do pedido do sistema (depois da 1ª resposta do atleta ou do 1º jogo do organizador) e a central mostra "Avisos desligados · Ligar nos ajustes" para quem recusou. Diálogo do sistema conferido só no build da loja | `7d89b1bd5` |
+| PC-06 | Aba Grupos mostra a presença do próximo jogo ("Você vai", "Na espera", "Não vai", "Confirme") e conta os jogos abertos sem resposta | `18dece790` |
