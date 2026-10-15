@@ -48,6 +48,30 @@ final class IOSLocalAccessAdaptersTests: XCTestCase {
         XCTAssertNil(try restarted.readSelectedGroupID()); XCTAssertNil(try restarted.readPendingInvite())
     }
 
+    // A regra do convite guardado depende de acesso (logout) e grupos (coordinator) usarem o mesmo
+    // armazenamento do convite: na composição os dois adapters recebem o mesmo store.
+    func testAccessAndGroupsShareThePendingInvite() throws {
+        let fixture = try StoreFixture()
+        let access = IOSLocalAccessStateAdapter(store: fixture.store)
+        let groups = IOSLocalGroupStateAdapter(store: fixture.store)
+        func groupsRead() -> String? {
+            let callback = RecordingGroupValueCallback(); groups.readPendingInvite(done_: callback)
+            return (callback.result as? GroupValueResultSuccess)?.value as? String
+        }
+        func accessRead() -> String? {
+            let callback = RecordingValueCallback(); access.readPendingInvite(done: callback)
+            return (callback.result as? ValueResultSuccess)?.value as? String
+        }
+        access.writePendingInvite(value: "convite", done: RecordingResultCallback())
+        XCTAssertEqual(groupsRead(), "convite")
+        access.writePendingInvite(value: nil, done: RecordingResultCallback())
+        XCTAssertNil(groupsRead())
+        groups.writePendingInvite(value: "convite", done_: RecordingGroupResultCallback())
+        XCTAssertEqual(accessRead(), "convite")
+        groups.writePendingInvite(value: nil, done_: RecordingGroupResultCallback())
+        XCTAssertNil(accessRead())
+    }
+
     func testStorageReadFailureMapsToProviderNeutralError() {
         let store = FakeAccessStateStore(); store.failReads = true; let adapter = IOSLocalAccessStateAdapter(store: store)
         let callback = RecordingValueCallback(); adapter.readPendingInvite(done: callback)
@@ -122,4 +146,14 @@ private final class RecordingValueCallback: @preconcurrency ValueCallback {
 @MainActor
 private final class RecordingResultCallback: @preconcurrency ResultCallback {
     var result: OperationResult?; func complete(result__: OperationResult) { result = result__ }
+}
+
+@MainActor
+private final class RecordingGroupValueCallback: @preconcurrency GroupValueCallback {
+    var result: GroupValueResult?; func complete(result________: GroupValueResult) { result = result________ }
+}
+
+@MainActor
+private final class RecordingGroupResultCallback: @preconcurrency GroupResultCallback {
+    var result: GroupOperationResult?; func complete(result_______: GroupOperationResult) { result = result_______ }
 }
