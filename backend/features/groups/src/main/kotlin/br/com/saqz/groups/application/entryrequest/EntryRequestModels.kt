@@ -6,6 +6,8 @@ import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.AthleteLevel
 import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.AthletePreferredSide
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupModality
 import java.time.Instant
 import java.util.UUID
 
@@ -26,10 +28,34 @@ data class SaveEntryRequestAthleteProfileCommand(
     val heightCm: Int?,
 )
 
+/** Cadastro guardado no pedido; some quando o pedido é aprovado, recusado ou cancelado. */
+data class EntryRequestAthleteProfile(
+    val nickname: String?,
+    val position: AthletePosition?,
+    val secondaryPosition: AthletePosition?,
+    val level: AthleteLevel?,
+    val preferredSide: AthletePreferredSide?,
+    val heightCm: Int?,
+)
+
+/** O que quem pediu entrada pode ver do grupo para preencher o cadastro (nada além da prévia do convite e da modalidade). */
+data class OwnEntryRequest(
+    val groupId: UUID,
+    val groupName: String,
+    val modality: GroupModality?,
+    val composition: GroupComposition?,
+    val city: String?,
+    val requestedAt: Instant,
+    val athleteProfile: EntryRequestAthleteProfile?,
+)
+
 interface EntryRequestRepository {
     fun list(groupId: UUID): List<GroupEntryRequest>
 
     fun find(groupId: UUID, userId: UUID): GroupEntryRequest?
+
+    /** Cadastro já guardado no pedido; nulo se ainda não foi enviado ou não há pedido. */
+    fun findAthleteProfile(groupId: UUID, userId: UUID): EntryRequestAthleteProfile?
 
     /** Stores the athlete registration on the pending request; false when the user has no pending request. */
     fun saveAthleteProfile(command: SaveEntryRequestAthleteProfileCommand): Boolean
@@ -78,4 +104,12 @@ sealed interface SaveEntryRequestAthleteProfileResult {
     data object RequestNotFound : SaveEntryRequestAthleteProfileResult
 
     data class Invalid(val fieldErrors: Map<String, List<String>>) : SaveEntryRequestAthleteProfileResult
+}
+
+sealed interface GetOwnEntryRequestResult {
+    data class Success(val request: OwnEntryRequest) : GetOwnEntryRequestResult
+
+    data object GroupNotFound : GetOwnEntryRequestResult
+
+    data object RequestNotFound : GetOwnEntryRequestResult
 }

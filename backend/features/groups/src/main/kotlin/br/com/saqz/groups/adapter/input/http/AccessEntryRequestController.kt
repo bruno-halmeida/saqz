@@ -2,7 +2,11 @@ package br.com.saqz.groups.adapter.input.http
 
 import br.com.saqz.groups.application.entryrequest.ApproveEntryRequest
 import br.com.saqz.groups.application.entryrequest.ApproveEntryRequestResult
+import br.com.saqz.groups.application.entryrequest.EntryRequestAthleteProfile
+import br.com.saqz.groups.application.entryrequest.GetOwnEntryRequest
+import br.com.saqz.groups.application.entryrequest.GetOwnEntryRequestResult
 import br.com.saqz.groups.application.entryrequest.GroupEntryRequest
+import br.com.saqz.groups.application.entryrequest.OwnEntryRequest
 import br.com.saqz.groups.application.entryrequest.ListEntryRequests
 import br.com.saqz.groups.application.entryrequest.ListEntryRequestsResult
 import br.com.saqz.groups.application.entryrequest.RejectEntryRequest
@@ -46,6 +50,25 @@ data class EntryRequestAthleteProfileRequest @JsonCreator constructor(
     @JsonProperty("heightCm") val heightCm: Int?,
 )
 
+data class OwnEntryRequestResponse(
+    val groupId: UUID,
+    val groupName: String,
+    val modality: String?,
+    val composition: String?,
+    val city: String?,
+    val requestedAt: Instant,
+    val athleteProfile: EntryRequestAthleteProfileResponse?,
+)
+
+data class EntryRequestAthleteProfileResponse(
+    val nickname: String?,
+    val position: String?,
+    val secondaryPosition: String?,
+    val level: String?,
+    val preferredSide: String?,
+    val heightCm: Int?,
+)
+
 class EntryRequestNotFoundException : RuntimeException()
 
 class EntryRequestAthleteLimitExceededException : RuntimeException()
@@ -57,6 +80,7 @@ class AccessEntryRequestController(
     private val approveEntryRequest: ApproveEntryRequest,
     private val rejectEntryRequest: RejectEntryRequest,
     private val saveEntryRequestAthleteProfile: SaveEntryRequestAthleteProfile,
+    private val getOwnEntryRequest: GetOwnEntryRequest,
 ) {
     @GetMapping("/api/groups/{groupId}/entry-requests")
     fun list(
@@ -87,6 +111,18 @@ class AccessEntryRequestController(
         ApproveEntryRequestResult.RequestNotFound -> throw EntryRequestNotFoundException()
         ApproveEntryRequestResult.AthleteLimitExceeded -> throw EntryRequestAthleteLimitExceededException()
         is ApproveEntryRequestResult.Success -> result.membership.toEntryMembershipResponse()
+    }
+
+    @GetMapping("/api/groups/{groupId}/entry-requests/me")
+    fun own(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @PathVariable groupId: String,
+    ): OwnEntryRequestResponse = when (
+        val result = getOwnEntryRequest.execute(actorResolver.resolve(identity), parseId(groupId))
+    ) {
+        GetOwnEntryRequestResult.GroupNotFound -> throw GroupNotFoundException()
+        GetOwnEntryRequestResult.RequestNotFound -> throw EntryRequestNotFoundException()
+        is GetOwnEntryRequestResult.Success -> result.request.toResponse()
     }
 
     @PutMapping("/api/groups/{groupId}/entry-requests/me/athlete-profile")
@@ -151,3 +187,22 @@ class AccessEntryRequestController(
 private fun GroupEntryRequest.toResponse() = EntryRequestResponse(userId, displayName.value, requestedAt)
 
 private fun AccessMembership.toEntryMembershipResponse() = AccessMembershipResponse(userId, displayName.value, role)
+
+private fun OwnEntryRequest.toResponse() = OwnEntryRequestResponse(
+    groupId = groupId,
+    groupName = groupName,
+    modality = modality?.name,
+    composition = composition?.name,
+    city = city,
+    requestedAt = requestedAt,
+    athleteProfile = athleteProfile?.toResponse(),
+)
+
+private fun EntryRequestAthleteProfile.toResponse() = EntryRequestAthleteProfileResponse(
+    nickname = nickname,
+    position = position?.name,
+    secondaryPosition = secondaryPosition?.name,
+    level = level?.name,
+    preferredSide = preferredSide?.name,
+    heightCm = heightCm,
+)

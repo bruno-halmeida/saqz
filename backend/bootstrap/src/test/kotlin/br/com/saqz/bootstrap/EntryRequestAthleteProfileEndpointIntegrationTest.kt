@@ -93,6 +93,26 @@ class EntryRequestAthleteProfileEndpointIntegrationTest {
     }
 
     @Test
+    fun `applicant reads its pending request with the group context and the saved registration`() {
+        val path = "/api/groups/$group/entry-requests/me"
+        assertEquals(404, send("applicant", "GET", path).statusCode())
+        redeem("applicant")
+
+        val before = json.readTree(send("applicant", "GET", path).body())
+        assertEquals("Grupo", before["groupName"].stringValue())
+        assertEquals("COURT_VOLLEYBALL", before["modality"].stringValue())
+        assertTrue(before["athleteProfile"].isNull)
+
+        put("applicant", "$path/athlete-profile", profile)
+        val after = json.readTree(send("applicant", "GET", path).body())
+        assertEquals("Bia", after["athleteProfile"]["nickname"].stringValue())
+        assertEquals("LEVANTADOR", after["athleteProfile"]["position"].stringValue())
+        assertEquals(178, after["athleteProfile"]["heightCm"].intValue())
+
+        assertEquals(404, send("owner", "GET", path).statusCode())
+    }
+
+    @Test
     fun `saving again overwrites the stored registration`() {
         redeem("applicant")
         val path = "/api/groups/$group/entry-requests/me/athlete-profile"

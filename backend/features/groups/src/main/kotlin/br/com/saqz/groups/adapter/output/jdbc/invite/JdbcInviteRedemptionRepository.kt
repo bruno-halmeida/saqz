@@ -9,9 +9,13 @@ import br.com.saqz.groups.application.invite.redeem.RecordInvalidInviteAttempt
 import br.com.saqz.groups.application.invite.redeem.RedeemMembershipCommand
 import br.com.saqz.groups.application.invite.redeem.RedeemableInvite
 import br.com.saqz.groups.application.entryrequest.EntryRequestRepository
+import br.com.saqz.groups.application.entryrequest.EntryRequestAthleteProfile
 import br.com.saqz.groups.application.entryrequest.GroupEntryRequest
 import br.com.saqz.groups.application.entryrequest.SaveEntryRequestAthleteProfileCommand
 import br.com.saqz.groups.domain.AccessName
+import br.com.saqz.groups.domain.AthleteLevel
+import br.com.saqz.groups.domain.AthletePosition
+import br.com.saqz.groups.domain.AthletePreferredSide
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.plan.ClosedAthleteOccupancy
 import org.springframework.jdbc.core.simple.JdbcClient
@@ -143,6 +147,28 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         .param("groupId", groupId)
         .param("userId", userId)
         .query(::mapEntryRequest)
+        .optional()
+        .orElse(null)
+
+    override fun findAthleteProfile(groupId: UUID, userId: UUID): EntryRequestAthleteProfile? = jdbc.sql(
+        """
+        SELECT nickname, position::text, secondary_position::text, level::text, preferred_side::text, height_cm
+        FROM group_entry_requests
+        WHERE group_id = :groupId AND user_id = :userId AND athlete_registration_completed
+        """.trimIndent(),
+    )
+        .param("groupId", groupId)
+        .param("userId", userId)
+        .query { result, _ ->
+            EntryRequestAthleteProfile(
+                nickname = result.getString("nickname"),
+                position = result.getString("position")?.let(AthletePosition::valueOf),
+                secondaryPosition = result.getString("secondary_position")?.let(AthletePosition::valueOf),
+                level = result.getString("level")?.let(AthleteLevel::valueOf),
+                preferredSide = result.getString("preferred_side")?.let(AthletePreferredSide::valueOf),
+                heightCm = result.getInt("height_cm").takeUnless { result.wasNull() },
+            )
+        }
         .optional()
         .orElse(null)
 

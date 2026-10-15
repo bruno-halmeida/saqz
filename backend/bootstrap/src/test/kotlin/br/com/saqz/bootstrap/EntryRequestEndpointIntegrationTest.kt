@@ -10,6 +10,8 @@ import br.com.saqz.groups.adapter.input.http.AccessEntryRequestController
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.entryrequest.ApproveEntryRequest
 import br.com.saqz.groups.application.entryrequest.EntryRequestRepository
+import br.com.saqz.groups.application.entryrequest.EntryRequestAthleteProfile
+import br.com.saqz.groups.application.entryrequest.GetOwnEntryRequest
 import br.com.saqz.groups.application.entryrequest.GroupEntryRequest
 import br.com.saqz.groups.application.entryrequest.ListEntryRequests
 import br.com.saqz.groups.application.entryrequest.RejectEntryRequest
@@ -227,13 +229,20 @@ class EntryRequestEndpointIntegrationTest {
         ) = SaveEntryRequestAthleteProfile(transaction, read, repository)
 
         @Bean
+        fun getOwnEntryRequest(
+            read: RecordingEntryRequestGroupReadRepository,
+            repository: RecordingEntryRequestRepository,
+        ) = GetOwnEntryRequest(read, repository)
+
+        @Bean
         fun accessEntryRequestController(
             bootstrap: BootstrapSession,
             list: ListEntryRequests,
             approve: ApproveEntryRequest,
             reject: RejectEntryRequest,
             saveProfile: SaveEntryRequestAthleteProfile,
-        ) = AccessEntryRequestController(verifiedGroupActorResolver(bootstrap), list, approve, reject, saveProfile)
+            own: GetOwnEntryRequest,
+        ) = AccessEntryRequestController(verifiedGroupActorResolver(bootstrap), list, approve, reject, saveProfile, own)
 
         companion object {
             val NOW: Instant = Instant.parse("2026-08-02T10:00:00Z")
@@ -358,6 +367,8 @@ class EntryRequestEndpointIntegrationTest {
                 command.requestedAt,
             )
         }
+
+        override fun findAthleteProfile(groupId: UUID, userId: UUID): EntryRequestAthleteProfile? = null
 
         override fun saveAthleteProfile(command: SaveEntryRequestAthleteProfileCommand) = command.userId in entryRequests
 

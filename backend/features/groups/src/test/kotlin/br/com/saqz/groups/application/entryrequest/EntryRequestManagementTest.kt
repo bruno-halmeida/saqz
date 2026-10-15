@@ -190,6 +190,32 @@ class EntryRequestManagementTest {
         assertTrue(fixture.entries.savedProfiles.isEmpty())
     }
 
+    @Test
+    fun `applicant reads its own pending request with the group context and the stored registration`() {
+        val fixture = fixture(role = null)
+        fixture.saveProfile.execute(applicantId, groupId, profile(nickname = "Bia", level = AthleteLevel.AVANCADO))
+
+        val result = fixture.own.execute(applicantId, groupId)
+
+        val request = assertIs<GetOwnEntryRequestResult.Success>(result).request
+        assertEquals(groupId, request.groupId)
+        assertEquals("Group", request.groupName)
+        assertEquals(now, request.requestedAt)
+        assertEquals("Bia", request.athleteProfile?.nickname)
+        assertEquals(AthleteLevel.AVANCADO, request.athleteProfile?.level)
+    }
+
+    @Test
+    fun `reading the own request has no registration until one is saved and is not found without a request`() {
+        val fixture = fixture(role = null)
+
+        assertEquals(null, assertIs<GetOwnEntryRequestResult.Success>(fixture.own.execute(applicantId, groupId)).request.athleteProfile)
+
+        fixture.entries.requests.clear()
+        assertIs<GetOwnEntryRequestResult.RequestNotFound>(fixture.own.execute(applicantId, groupId))
+        assertIs<GetOwnEntryRequestResult.GroupNotFound>(fixture.own.execute(applicantId, UUID.randomUUID()))
+    }
+
     private fun profile(nickname: String?, level: AthleteLevel? = null) = SaveEntryRequestAthleteProfileCommand(
         groupId = groupId,
         userId = applicantId,
@@ -219,7 +245,7 @@ class EntryRequestManagementTest {
         val list = ListEntryRequests(read, entries, br.com.saqz.groups.domain.GroupAccessPolicy())
         val reject = RejectEntryRequest(transaction, read, entries, br.com.saqz.groups.domain.GroupAccessPolicy())
         val saveProfile = SaveEntryRequestAthleteProfile(transaction, read, entries)
-        return Fixture(list, approve, reject, saveProfile, transaction, entries, membership, order)
+        return Fixture(list, approve, reject, saveProfile, GetOwnEntryRequest(read, entries), transaction, entries, membership, order)
     }
 
     private fun occupancy(openMembers: Set<UUID> = emptySet()) = GroupAthleteOccupancy(
@@ -234,6 +260,7 @@ class EntryRequestManagementTest {
         val approve: ApproveEntryRequest,
         val reject: RejectEntryRequest,
         val saveProfile: SaveEntryRequestAthleteProfile,
+        val own: GetOwnEntryRequest,
         val transaction: RecordingTransactionRunner,
         val entries: MemoryEntryRequestRepository,
         val membership: MemoryMembershipRepository,
@@ -293,6 +320,11 @@ class EntryRequestManagementTest {
 
         override fun find(groupId: UUID, userId: UUID): GroupEntryRequest? =
             requests[userId].takeUnless { userId in deletedUsers }
+
+        override fun findAthleteProfile(groupId: UUID, userId: UUID): EntryRequestAthleteProfile? =
+            savedProfiles.lastOrNull { it.userId == userId }?.let {
+                EntryRequestAthleteProfile(it.nickname, it.position, it.secondaryPosition, it.level, it.preferredSide, it.heightCm)
+            }
 
         override fun saveAthleteProfile(command: SaveEntryRequestAthleteProfileCommand): Boolean {
             if (command.userId !in requests) return false

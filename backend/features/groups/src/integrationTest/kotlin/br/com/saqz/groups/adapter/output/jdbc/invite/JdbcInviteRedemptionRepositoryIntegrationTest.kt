@@ -11,6 +11,7 @@ import br.com.saqz.groups.application.invite.redeem.RecordInvalidInviteAttempt
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInviteResult
 import br.com.saqz.groups.application.invite.redeem.RedeemMembershipCommand
+import br.com.saqz.groups.application.entryrequest.EntryRequestAthleteProfile
 import br.com.saqz.groups.application.entryrequest.GroupEntryRequest
 import br.com.saqz.groups.application.entryrequest.SaveEntryRequestAthleteProfileCommand
 import br.com.saqz.groups.domain.AthleteLevel
@@ -170,6 +171,21 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
         assertEquals("AVANCADO", text("SELECT level::text FROM group_entry_requests WHERE user_id = '$user'"))
         assertEquals(178, number("SELECT height_cm FROM group_entry_requests WHERE user_id = '$user'"))
         assertEquals(true, flag("SELECT athlete_registration_completed FROM group_entry_requests WHERE user_id = '$user'"))
+    }
+
+    @Test
+    fun `reading the stored registration returns what was saved and nothing before that`() {
+        val fixture = inviteFixture("entry-request-read-profile")
+        val user = insertUser("entry-request-read-profile-user")
+        transaction.inTransaction { repository.createEntryRequest(CreateEntryRequestCommand(fixture.group, user, now)) }
+
+        assertNull(transaction.inTransaction { repository.findAthleteProfile(fixture.group, user) })
+        transaction.inTransaction { repository.saveAthleteProfile(profile(fixture.group, user, "Bia")) }
+
+        assertEquals(
+            EntryRequestAthleteProfile("Bia", AthletePosition.LEVANTADOR, AthletePosition.OPOSTO, AthleteLevel.AVANCADO, null, 178),
+            transaction.inTransaction { repository.findAthleteProfile(fixture.group, user) },
+        )
     }
 
     @Test
