@@ -43,7 +43,7 @@
     <string name="myplan_trial_organizer">Fale com o organizador para continuar.</string>
     <string name="myplan_trial_available">Teste o Organizador por %1$s dias. O prazo começa ao criar o primeiro grupo.</string>
     <string name="myplan_trial_ineligible">Esta conta não tem um teste gratuito disponível.</string>
-    <string name="myplan_trial_readonly">Seu histórico está preservado. Os recursos disponíveis dependem do acesso ativo da conta.</string>
+    <string name="myplan_trial_readonly">Sem plano, você não marca jogos e a galera não confirma presença. Grupos e histórico estão guardados.</string>
     <string name="myplan_trial_date_unavailable">data indisponível</string>
     <string name="myplan_trial_limits">Até 3 grupos e atletas ilimitados durante o teste.</string>
     <string name="myplan_trial_eyebrow">SEU TESTE GRATUITO</string>
@@ -56,7 +56,7 @@
     <string name="myplan_groups_benefit">Até 3 grupos</string>
     <string name="myplan_athletes_benefit">Atletas ilimitados</string>
     <string name="myplan_trial_next">Acesso da conta</string>
-    <string name="myplan_trial_no_charge">O teste termina sem cobrança automática. O acesso depois dele depende do plano ativo da conta.</string>
+    <string name="myplan_trial_no_charge">O teste termina sem cobrança automática. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Grupos e histórico ficam guardados.</string>
     <plurals name="myplan_trial_days_left">
         <item quantity="one">Falta %1$d dia</item>
         <item quantity="other">Faltam %1$d dias</item>

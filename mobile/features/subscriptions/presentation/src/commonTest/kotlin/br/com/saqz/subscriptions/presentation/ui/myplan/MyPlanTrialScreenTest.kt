@@ -24,7 +24,7 @@ class MyPlanTrialScreenTest {
         setContent {
             SaqzTheme { MyPlanScreen(trialState(TrialStatus.Expired), {}, intents::add) }
         }
-        onNodeWithText("Seu histórico está preservado. Os recursos disponíveis dependem do acesso ativo da conta.").assertExists()
+        onNodeWithText("Sem plano, você não marca jogos e a galera não confirma presença. Grupos e histórico estão guardados.").assertExists()
         onNodeWithTag(MyPlanTags.CancelButton).assertDoesNotExist()
         onNodeWithTag(MyPlanTags.Receipts).assertDoesNotExist()
         onNodeWithTag(MyPlanTags.ChangePlan).assertDoesNotExist()
@@ -35,7 +35,7 @@ class MyPlanTrialScreenTest {
     @Test
     fun expiredTrialDropsTheNoChargeNoteAndTheRawTimeZone() = runComposeUiTest {
         setContent { SaqzTheme { MyPlanScreen(trialState(TrialStatus.Expired), {}, {}) } }
-        onNodeWithText("O teste termina sem cobrança automática. O acesso depois dele depende do plano ativo da conta.").assertDoesNotExist()
+        onNodeWithText("O teste termina sem cobrança automática. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Grupos e histórico ficam guardados.").assertDoesNotExist()
         onAllNodes(hasText("America/", substring = true)).assertCountEquals(0)
     }
 
@@ -51,6 +51,7 @@ class MyPlanTrialScreenTest {
         onNodeWithText("12 atletas confirmados").assertExists()
         onNodeWithText("R$\u00A0450,00 no caixa").assertExists()
         onNodeWithText("Espaço para o seu grupo crescer").assertExists()
+        onNodeWithText("O teste termina sem cobrança automática. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Grupos e histórico ficam guardados.").assertExists()
     }
 
     @Test

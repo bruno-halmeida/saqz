@@ -6,7 +6,7 @@
         <item quantity="one">Falta %1$d dia do seu teste</item>
         <item quantity="other">Faltam %1$d dias do seu teste</item>
     </plurals>
-    <string name="trial_countdown_description">Assine para continuar marcando jogos.</string>
+    <string name="trial_countdown_description">Quando o teste acabar, você não marca jogos e a galera não confirma presença. Grupos e histórico ficam guardados.</string>
     <string name="trial_countdown_view_plans">Ver planos</string>
     <string name="trial_countdown_not_now">Agora não</string>
     <string name="trial_usage_title">Até aqui no teste</string>

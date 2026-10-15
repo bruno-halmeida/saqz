@@ -19,7 +19,7 @@ class TrialCountdownSheetTest {
         setContent { SaqzTheme { TrialCountdownSheet(3, usage, {}, {}) } }
 
         onNodeWithText("Faltam 3 dias do seu teste").assertExists()
-        onNodeWithText("Assine para continuar marcando jogos.").assertExists()
+        onNodeWithText("Quando o teste acabar, você não marca jogos e a galera não confirma presença. Grupos e histórico ficam guardados.").assertExists()
         onNodeWithText("3 jogos").assertExists()
         onNodeWithText("12 atletas confirmados").assertExists()
         onNodeWithText("R$ 450,00 no caixa").assertExists()
