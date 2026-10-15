@@ -24,6 +24,8 @@ class TrialGroupWriteInterceptor(
         if (request.method in setOf("GET", "HEAD", "OPTIONS")) return true
         val pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE)?.toString()
         if (request.method == "DELETE" && pattern == "/api/groups/{groupId}/memberships/me") return true
+        // Quem ainda só pediu entrada não é membro: o cadastro de atleta do pedido não pode exigir vínculo.
+        if (request.method == "PUT" && pattern == "/api/groups/{groupId}/entry-requests/me/athlete-profile") return true
         val variables = request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE) as? Map<*, *>
         val rawGroup = variables?.get("groupId")?.toString() ?: return true
         val groupId = runCatching { UUID.fromString(rawGroup) }.getOrNull() ?: return true

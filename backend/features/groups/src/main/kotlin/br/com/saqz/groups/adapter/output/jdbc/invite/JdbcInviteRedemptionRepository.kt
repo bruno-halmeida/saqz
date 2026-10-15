@@ -10,11 +10,13 @@ import br.com.saqz.groups.application.invite.redeem.RedeemMembershipCommand
 import br.com.saqz.groups.application.invite.redeem.RedeemableInvite
 import br.com.saqz.groups.application.entryrequest.EntryRequestRepository
 import br.com.saqz.groups.application.entryrequest.GroupEntryRequest
+import br.com.saqz.groups.application.entryrequest.SaveEntryRequestAthleteProfileCommand
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.plan.ClosedAthleteOccupancy
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.Timestamp
+import java.sql.Types
 import java.time.Instant
 import java.util.UUID
 import javax.sql.DataSource
@@ -143,6 +145,53 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         .query(::mapEntryRequest)
         .optional()
         .orElse(null)
+
+    override fun saveAthleteProfile(command: SaveEntryRequestAthleteProfileCommand): Boolean = jdbc.sql(
+        """
+        UPDATE group_entry_requests
+        SET nickname = :nickname,
+            position = :position,
+            secondary_position = :secondaryPosition,
+            level = :level,
+            preferred_side = :preferredSide,
+            height_cm = :heightCm,
+            athlete_registration_completed = true
+        WHERE group_id = :groupId AND user_id = :userId
+        """.trimIndent(),
+    )
+        .param("groupId", command.groupId)
+        .param("userId", command.userId)
+        .param("nickname", command.nickname, Types.VARCHAR)
+        .param("position", command.position?.name, Types.OTHER)
+        .param("secondaryPosition", command.secondaryPosition?.name, Types.OTHER)
+        .param("level", command.level?.name, Types.OTHER)
+        .param("preferredSide", command.preferredSide?.name, Types.OTHER)
+        .param("heightCm", command.heightCm, Types.SMALLINT)
+        .update() == 1
+
+    override fun applyAthleteProfileToMembership(groupId: UUID, userId: UUID) {
+        jdbc.sql(
+            """
+            UPDATE group_memberships memberships
+            SET nickname = requests.nickname,
+                position = requests.position,
+                secondary_position = requests.secondary_position,
+                level = requests.level,
+                preferred_side = requests.preferred_side,
+                height_cm = requests.height_cm,
+                athlete_registration_completed = true,
+                updated_at = now()
+            FROM group_entry_requests requests
+            WHERE requests.group_id = :groupId AND requests.user_id = :userId
+              AND requests.athlete_registration_completed
+              AND memberships.group_id = requests.group_id
+              AND memberships.user_id = requests.user_id
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .param("userId", userId)
+            .update()
+    }
 
     override fun delete(groupId: UUID, userId: UUID) {
         jdbc.sql(
