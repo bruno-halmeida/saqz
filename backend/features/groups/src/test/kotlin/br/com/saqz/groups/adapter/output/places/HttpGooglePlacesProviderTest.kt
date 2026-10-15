@@ -133,6 +133,12 @@ class HttpGooglePlacesProviderTest {
         assertFailsWith<PlacesUpstreamException> {
             provider(readTimeout = Duration.ofMillis(100)).details("abc", "s")
         }
+        // O servidor registra a chamada na própria thread: em máquina lenta (runner do CI) ela pode ainda não ter
+        // sido registrada quando o cliente desiste. Espera o atraso inteiro passar e só então confere que houve uma
+        // chamada e nenhuma nova tentativa.
+        val deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos()
+        while (seen.isEmpty() && System.nanoTime() < deadline) Thread.sleep(20)
+        Thread.sleep(delayMs + 200)
         assertEquals(1, seen.size)
     }
 
