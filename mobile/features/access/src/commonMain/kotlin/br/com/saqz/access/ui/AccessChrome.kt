@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -25,6 +25,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +55,7 @@ import br.com.saqz.access.resources.saqz_lettering
 import br.com.saqz.access.resources.saqz_symbol_foreground
 import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.theme.SaqzTheme
+import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -193,11 +196,19 @@ internal object AccessMetrics {
 fun AccessScaffold(
     modifier: Modifier = Modifier,
     spacious: Boolean = false,
+    keyboard: WindowInsets = WindowInsets.ime,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Teclado numérico (telefone, código) não tem tecla de confirmar no iPhone: tocar no vazio ou
     // arrastar a tela fecha o teclado, como nos formulários do resto do app.
     val dismissKeyboard = rememberSaqzDismissKeyboard()
+    val scroll = rememberScrollState()
+    // Com o teclado aberto a onda some (não serve a ninguém ali) e a tela rola até o fim do conteúdo:
+    // o botão principal (o último item) fica logo acima do teclado, sem faixa vazia.
+    val keyboardOpen = keyboard.getBottom(LocalDensity.current) > 0
+    LaunchedEffect(keyboardOpen) {
+        if (keyboardOpen) snapshotFlow { scroll.maxValue }.collectLatest { scroll.animateScrollTo(it) }
+    }
     val dragToDismiss = remember(dismissKeyboard) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -220,8 +231,8 @@ fun AccessScaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                .imePadding()
-                .verticalScroll(rememberScrollState()),
+                .windowInsetsPadding(keyboard)
+                .verticalScroll(scroll),
         ) {
             Column(
                 modifier = Modifier
@@ -236,7 +247,7 @@ fun AccessScaffold(
             )
             // Sobra de altura (tela alta) vai para este espaço; sem sobra ele some e a onda segue o conteúdo.
             Spacer(Modifier.weight(1f))
-            AccessWave()
+            if (!keyboardOpen) AccessWave()
         }
     }
 }

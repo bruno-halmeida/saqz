@@ -8,7 +8,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.getBoundsInRoot
+import kotlin.test.assertEquals
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertHeightIsEqualTo
@@ -136,6 +142,25 @@ class AccessChromeTest {
         })
         onNodeWithTag("campo").performClick()
         onNodeWithTag("campo").assertIsFocused()
+    }
+
+    // P3-4c: com o teclado aberto, o botão do fim do formulário fica logo acima dele (a tela rola até lá
+    // e a onda sai), mesmo quando o formulário é mais alto que a área que sobra.
+    @Test fun `keyboard open scrolls the last item right above it and hides the wave`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                Box(Modifier.size(390.dp, 844.dp)) {
+                    AccessScaffold(keyboard = WindowInsets(bottom = 300.dp)) {
+                        Box(Modifier.fillMaxWidth().height(700.dp))
+                        Box(Modifier.fillMaxWidth().height(52.dp).testTag("botao"))
+                    }
+                }
+            }
+        }
+        waitForIdle()
+        val bottom = onNodeWithTag("botao").getBoundsInRoot().bottom
+        assertEquals(onRoot().getBoundsInRoot().bottom - 300.dp, bottom)
+        onAllNodesWithTag(AccessChromeTags.Wave).assertCountEquals(0)
     }
 
     private fun ComposeUiTest.scaffold(
