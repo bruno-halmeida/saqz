@@ -18,8 +18,10 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
@@ -72,6 +74,10 @@ import br.com.saqz.profile.domain.ProfileStats
 import br.com.saqz.profile.domain.AthleteProfile
 import br.com.saqz.profile.domain.AthleteMembership
 import org.koin.mp.KoinPlatform
+import br.com.saqz.groups.domain.communication.CommunicationError
+import br.com.saqz.groups.domain.communication.GroupWhatsAppBinding
+import br.com.saqz.groups.domain.communication.GroupWhatsAppGateway
+import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
 import br.com.saqz.groups.domain.home.HomeError
 import br.com.saqz.groups.domain.home.HomeGateway
 import br.com.saqz.groups.domain.home.HomeMemberReadModel
@@ -463,6 +469,70 @@ class SaqzNavHostViewModelScopeTest {
         }
     }
 
+    @OptIn(InternalComposeUiApi::class)
+    @Test
+    fun backFromTheWhatsAppBindingMakesTheGroupDetailsReloadTheGroupAndTheBinding() = withProbes { _, groups ->
+        groups.payload = Group("grupo-w", "Grupo WhatsApp", "UTC", 1, GroupRole.OWNER)
+        val whatsApp = CountingWhatsAppGateway()
+        val originalGames = KoinPlatform.getKoin().get<GameGateway>()
+        loadKoinModules(module {
+            single<GroupWhatsAppGateway> { whatsApp }
+            single<GameGateway> { object : GameGateway by originalGames {
+                override suspend fun list(groupId: GroupId) = SaqzResult.Success(emptyList<br.com.saqz.groups.domain.game.Game>())
+            } }
+        })
+        val dispatcher = NavigationEventDispatcher()
+        val input = MonthlyBackInput().also(dispatcher::addInput)
+        val owner = object : NavigationEventDispatcherOwner { override val navigationEventDispatcher = dispatcher }
+        runComposeUiTest {
+            val backStack = NavBackStack<NavKey>(SaqzShellDestination.Home)
+            setContent {
+                CompositionLocalProvider(
+                    LocalNavigationEventDispatcherOwner provides owner,
+                    LocalCompatNavigationEventDispatcherOwner provides owner,
+                ) { NavHostUnderTest(mutableStateOf(ready(ana)), backStack) }
+            }
+            awaitText(AnaBanner)
+            backStack.add(GroupsRoute.Details("grupo-w"))
+            waitUntil(timeoutMillis = 10_000) { whatsApp.bindingReads >= 1 }
+            waitForIdle()
+
+            // Vincula na tela do WhatsApp e volta pelo voltar do sistema.
+            backStack.add(GroupsRoute.WhatsApp("grupo-w"))
+            waitForIdle()
+            whatsApp.status = GroupWhatsAppStatus.ACTIVE
+            val readsAfterScreenBack = groups.reads.size
+            val bindingReadsBeforeSystemBack = whatsApp.bindingReads
+            // O primeiro voltar logo depois de empilhar a tela cai antes de o NavDisplay registrar
+            // o handler da entrada nova; repete até sair, sem passar do detalhe.
+            var presses = 0
+            while (backStack.last() is GroupsRoute.WhatsApp && presses++ < 5) {
+                runOnIdle { input.pressBack() }
+                waitForIdle()
+            }
+            assertEquals(GroupsRoute.Details("grupo-w"), backStack.last())
+            waitUntil(timeoutMillis = 10_000) { groups.reads.size > readsAfterScreenBack }
+            waitUntil(timeoutMillis = 10_000) { whatsApp.bindingReads > bindingReadsBeforeSystemBack }
+            assertEquals(GroupsRoute.Details("grupo-w"), backStack.last())
+            val readsAfterSystemBack = groups.reads.size
+            // O mesmo pelo botão da tela.
+            backStack.add(GroupsRoute.WhatsApp("grupo-w"))
+            waitForIdle()
+            val bindingReadsBeforeBack = whatsApp.bindingReads
+            waitUntil(timeoutMillis = 10_000) {
+                onAllNodesWithContentDescription("Voltar").fetchSemanticsNodes().isNotEmpty()
+            }
+            val backButtons = onAllNodesWithContentDescription("Voltar")
+            backButtons[backButtons.fetchSemanticsNodes().size - 1]
+                .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            waitForIdle()
+            assertEquals(GroupsRoute.Details("grupo-w"), backStack.last())
+            waitUntil(timeoutMillis = 10_000) { groups.reads.size > readsAfterSystemBack }
+            waitUntil(timeoutMillis = 10_000) { whatsApp.bindingReads > bindingReadsBeforeBack }
+            assertEquals(GroupsRoute.Details("grupo-w"), backStack.last())
+        }
+    }
+
     /**
      * Sobe o Koin do app e sobrescreve **duas** definições: a da [HomeViewModel], para
      * contar instâncias e servir a carga de cada sessão, e a do [GroupGateway], para
@@ -675,6 +745,32 @@ private fun installConnectedJourney(groups: RecordingGroupGateway): ConnectedJou
         } }
     })
     return data
+}
+
+/** Vínculo do WhatsApp ligado no servidor; conta as leituras do status (detalhe e tela de vínculo juntos). */
+private class CountingWhatsAppGateway : GroupWhatsAppGateway {
+    var status = GroupWhatsAppStatus.NONE
+    var bindingReads = 0
+
+    override suspend fun availability(): SaqzResult<Boolean, CommunicationError> = SaqzResult.Success(true)
+
+    override suspend fun binding(groupId: GroupId): SaqzResult<GroupWhatsAppBinding, CommunicationError> {
+        bindingReads++
+        return SaqzResult.Success(binding())
+    }
+
+    override suspend fun link(groupId: GroupId, inviteLink: String): SaqzResult<GroupWhatsAppBinding, CommunicationError> =
+        SaqzResult.Success(binding())
+
+    override suspend fun setEnabled(groupId: GroupId, enabled: Boolean): SaqzResult<GroupWhatsAppBinding, CommunicationError> =
+        SaqzResult.Success(binding())
+
+    private fun binding() = GroupWhatsAppBinding(
+        bound = status != GroupWhatsAppStatus.NONE,
+        groupJid = "123@g.us".takeIf { status != GroupWhatsAppStatus.NONE },
+        groupName = "Vôlei".takeIf { status != GroupWhatsAppStatus.NONE },
+        status = status,
+    )
 }
 
 private class MonthlyBackInput : NavigationEventInput() {
