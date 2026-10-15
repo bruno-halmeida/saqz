@@ -27,5 +27,12 @@ env "ORG_GRADLE_PROJECT_saqz.api.devBaseUrl=$IOS_URL" xcodebuild -project "$ROOT
   -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath "$HOME_DIR/DerivedData" \
   ARCHS=arm64 EXCLUDED_ARCHS=x86_64 CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO build -quiet
 APP="$HOME_DIR/DerivedData/Build/Products/Debug-iphonesimulator/SaqzIOS.app"
-/usr/libexec/PlistBuddy -c "Print :SaqzAPIBaseURL" "$APP/Info.plist"
+# Build incremental já gravou o endereço padrão no Info.plist: o app falava com o que estivesse em
+# 127.0.0.1:8080 e mostrava "Não foi possível carregar sua conta" (15/10). Para aqui em vez de seguir.
+api_url=$(/usr/libexec/PlistBuddy -c "Print :SaqzAPIBaseURL" "$APP/Info.plist")
+echo "$api_url"
+if [ "$api_url" != "$IOS_URL" ]; then
+  echo "erro: o app aponta para $api_url, não para $IOS_URL; rode de novo com um build limpo" >&2
+  exit 1
+fi
 echo "ok: $APP"
