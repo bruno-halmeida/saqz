@@ -4,7 +4,7 @@
     <string name="athlete_registration_edit_title">Seu cadastro no %1$s</string>
     <string name="athlete_registration_joined_title">Você entrou no %1$s</string>
     <string name="athlete_registration_pending_title">Pedido enviado para o %1$s</string>
-    <string name="athlete_registration_pending_lead">Seu pedido já foi pro organizador. Conta como você joga: quando ele aprovar, esses dados já entram com você no grupo.</string>
+    <string name="athlete_registration_pending_lead">Seu pedido já foi pro organizador. Conta como você joga: quando o pedido for aprovado, esses dados já entram com você no grupo.</string>
     <string name="athlete_registration_joined_subtitle">%1$s · %2$s</string>
     <string name="athlete_registration_city_unknown">Cidade não informada</string>
     <string name="athlete_registration_modality_court">Vôlei de quadra</string>

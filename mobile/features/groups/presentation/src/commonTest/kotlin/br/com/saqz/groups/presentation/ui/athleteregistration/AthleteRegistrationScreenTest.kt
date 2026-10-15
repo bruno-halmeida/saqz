@@ -88,7 +88,7 @@ class AthleteRegistrationScreenTest {
 
         onNodeWithText("Pedido enviado para o Vôlei do CERET").assertExists()
         onNodeWithText(
-            "Seu pedido já foi pro organizador. Conta como você joga: quando ele aprovar, esses dados já entram com você no grupo.",
+            "Seu pedido já foi pro organizador. Conta como você joga: quando o pedido for aprovado, esses dados já entram com você no grupo.",
         ).assertExists()
         onNodeWithText("Conta pra galera como você joga. Isso ajuda a montar os times.").assertDoesNotExist()
         onNodeWithTag(AthleteRegistrationTags.Position).assertExists()
