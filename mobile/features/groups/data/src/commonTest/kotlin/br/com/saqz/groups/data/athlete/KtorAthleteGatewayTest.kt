@@ -12,6 +12,8 @@ import br.com.saqz.groups.domain.athlete.AthletePreferredSide
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.athlete.AthleteRosterEntry
 import br.com.saqz.groups.domain.athlete.AthleteStats
+import br.com.saqz.groups.domain.athlete.OwnEntryRequest
+import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.athlete.UpdateAthleteCommand
 import br.com.saqz.groups.domain.athlete.UpdateOwnAthleteProfileCommand
 import br.com.saqz.network.AuthenticatedNetworkClient
@@ -140,6 +142,85 @@ class KtorAthleteGatewayTest {
                 heightCm = 185,
             ),
         )
+    }
+
+    @Test
+    fun `entry request profile is put on the pending request route with the member body`() = runTest {
+        val result = fixture { request ->
+            assertEquals(HttpMethod.Put, request.method)
+            assertEquals("/api/groups/$GROUP_ID/entry-requests/me/athlete-profile", request.url.encodedPath)
+            assertEquals(
+                setOf("nickname", "position", "secondaryPosition", "level", "preferredSide", "heightCm"),
+                request.bodyJson().keys,
+            )
+            assertEquals("Bia", request.bodyJson().getValue("nickname").jsonPrimitive.content)
+            respond("", HttpStatusCode.NoContent)
+        }.gateway.saveEntryRequestProfile(
+            UpdateOwnAthleteProfileCommand(
+                GroupId(GROUP_ID), "Bia", AthletePosition.LEVANTADOR, AthletePosition.OPOSTO, AthleteLevel.AVANCADO,
+                AthletePreferredSide.TANTO_FAZ, 178,
+            ),
+        )
+
+        assertIs<SaqzResult.Success<Unit>>(result)
+    }
+
+    @Test
+    fun `entry request profile keeps 422 field errors typed`() = runTest {
+        val error = fixture {
+            respond(
+                """{"status":422,"code":"VALIDATION_FAILED","correlationId":"private","fieldErrors":{"nickname":["must be between 2 and 40 characters"]}}""",
+                HttpStatusCode.UnprocessableEntity,
+                jsonHeaders(),
+            )
+        }.gateway.saveEntryRequestProfile(
+            UpdateOwnAthleteProfileCommand(GroupId(GROUP_ID), "a", null, null, null, null, null),
+        ).failure()
+
+        val validation = assertIs<AthleteError.Validation>(error)
+        assertEquals(listOf("must be between 2 and 40 characters"), validation.details.fieldMessages["nickname"])
+    }
+
+    @Test
+    fun `entry request routes missing on an old backend map to not found for 404 and 405`() = runTest {
+        for (status in listOf(404, 405)) {
+            val command = UpdateOwnAthleteProfileCommand(GroupId(GROUP_ID), null, null, null, null, null, null)
+            val gateway = fixture { problem(status, "NOT_FOUND") }.gateway
+
+            assertEquals(DataError.NotFound, assertIs<AthleteError.DataFailure>(gateway.saveEntryRequestProfile(command).failure()).error)
+            assertEquals(DataError.NotFound, assertIs<AthleteError.DataFailure>(gateway.ownEntryRequest(GroupId(GROUP_ID)).failure()).error)
+        }
+    }
+
+    @Test
+    fun `own entry request maps the group context and the stored registration`() = runTest {
+        val request = fixture { request ->
+            assertEquals(HttpMethod.Get, request.method)
+            assertEquals("/api/groups/$GROUP_ID/entry-requests/me", request.url.encodedPath)
+            respond(
+                """{"groupId":"$GROUP_ID","groupName":"Terça","modality":"COURT_VOLLEYBALL","composition":"MIXED","city":"Recife","requestedAt":"2026-10-15T10:00:00Z","athleteProfile":{"nickname":"Bia","position":"LEVANTADOR","secondaryPosition":null,"level":"AVANCADO","preferredSide":null,"heightCm":178}}""",
+                headers = jsonHeaders(),
+            )
+        }.gateway.ownEntryRequest(GroupId(GROUP_ID)).success<OwnEntryRequest>()
+
+        assertEquals("Terça", request.groupName)
+        assertEquals(GroupModality.COURT_VOLLEYBALL, request.modality)
+        assertEquals("Bia", request.athleteProfile?.nickname)
+        assertEquals(AthletePosition.LEVANTADOR, request.athleteProfile?.position)
+        assertEquals(178, request.athleteProfile?.heightCm)
+    }
+
+    @Test
+    fun `own entry request without a stored registration has none and an unknown modality is invalid`() = runTest {
+        val none = fixture {
+            respond("""{"groupId":"$GROUP_ID","groupName":"Terça","modality":"BEACH_VOLLEYBALL","athleteProfile":null}""", headers = jsonHeaders())
+        }.gateway.ownEntryRequest(GroupId(GROUP_ID)).success<OwnEntryRequest>()
+        assertEquals(null, none.athleteProfile)
+
+        val invalid = fixture {
+            respond("""{"groupId":"$GROUP_ID","groupName":"Terça","modality":"CHESS"}""", headers = jsonHeaders())
+        }.gateway.ownEntryRequest(GroupId(GROUP_ID)).failure()
+        assertEquals(DataError.InvalidResponse, assertIs<AthleteError.DataFailure>(invalid).error)
     }
 
     @Test

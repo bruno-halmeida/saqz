@@ -139,6 +139,9 @@ class FakeAthleteGateway(
     var updateOwnProfileResult: SaqzResult<Athlete, AthleteError>? = null,
     var removeResult: SaqzResult<Unit, AthleteError> = SaqzResult.Success(Unit),
     var statsResult: SaqzResult<AthleteStats, AthleteError> = SaqzResult.Success(AthleteStats(0, null, 0)),
+    var ownEntryRequestResult: SaqzResult<br.com.saqz.groups.domain.athlete.OwnEntryRequest, AthleteError> =
+        SaqzResult.Failure(AthleteError.DataFailure(br.com.saqz.domain.DataError.NotFound)),
+    var saveEntryRequestProfileResult: SaqzResult<Unit, AthleteError> = SaqzResult.Success(Unit),
 ) : AthleteGateway {
     var lastRosterFilter: AthleteRosterFilter? = null
     var lastUpdateOwnProfileCommand: UpdateOwnAthleteProfileCommand? = null
@@ -146,6 +149,8 @@ class FakeAthleteGateway(
     var lastUpdateCommand: br.com.saqz.groups.domain.athlete.UpdateAthleteCommand? = null
     var lastStatsUserId: String? = null
     var ownProfileCalls = 0
+    var ownEntryRequestCalls = 0
+    var lastSaveEntryRequestProfileCommand: UpdateOwnAthleteProfileCommand? = null
 
     override suspend fun roster(
         groupId: GroupId,
@@ -179,6 +184,20 @@ class FakeAthleteGateway(
                 heightCm = command.heightCm,
             ),
         )
+    }
+
+    override suspend fun ownEntryRequest(
+        groupId: GroupId,
+    ): SaqzResult<br.com.saqz.groups.domain.athlete.OwnEntryRequest, AthleteError> {
+        ownEntryRequestCalls += 1
+        return ownEntryRequestResult
+    }
+
+    override suspend fun saveEntryRequestProfile(
+        command: UpdateOwnAthleteProfileCommand,
+    ): SaqzResult<Unit, AthleteError> {
+        lastSaveEntryRequestProfileCommand = command
+        return saveEntryRequestProfileResult
     }
 
     override suspend fun updateAthlete(command: br.com.saqz.groups.domain.athlete.UpdateAthleteCommand): SaqzResult<Athlete, AthleteError> {

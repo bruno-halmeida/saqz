@@ -9,6 +9,8 @@ import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteLevel
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.athlete.AthletePreferredSide
+import br.com.saqz.groups.domain.athlete.EntryRequestAthleteProfile
+import br.com.saqz.groups.domain.athlete.OwnEntryRequest
 import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
 import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
 import br.com.saqz.groups.domain.group.GroupComposition
@@ -184,6 +186,136 @@ class AthleteRegistrationViewModelTest {
 
         assertEquals(GroupUiError.Validation, viewModel.state.value.error)
     }
+
+    @Test
+    fun `pending request loads the group context from the request and not from the group or the membership`() = runTest(dispatcher) {
+        val athleteGateway = pendingGateway()
+        val groupGateway = FakeGroupGateway()
+        val viewModel = pendingViewModel(athleteGateway, groupGateway)
+
+        val state = viewModel.state.value
+        assertFalse(state.isLoading)
+        assertTrue(state.isPendingRequest)
+        assertTrue(state.isCourt)
+        assertEquals("Vôlei do CERET", state.groupName)
+        assertEquals("Recife", state.city)
+        assertFalse(state.isEditing)
+        assertEquals(1, athleteGateway.ownEntryRequestCalls)
+        assertEquals(0, athleteGateway.ownProfileCalls)
+        assertEquals(0, groupGateway.readCalls)
+    }
+
+    @Test
+    fun `pending request reopens with the registration already stored on the request`() = runTest(dispatcher) {
+        val viewModel = pendingViewModel(
+            pendingGateway(
+                profile = EntryRequestAthleteProfile(
+                    nickname = "Bia",
+                    position = AthletePosition.LEVANTADOR,
+                    level = AthleteLevel.AVANCADO,
+                    heightCm = 178,
+                ),
+            ),
+        )
+
+        val state = viewModel.state.value
+        assertTrue(state.isEditing)
+        assertEquals("Bia", state.nickname)
+        assertEquals(AthletePosition.LEVANTADOR, state.position)
+        assertEquals("178", state.heightText)
+    }
+
+    @Test
+    fun `pending request saves on the entry request method and never on the member method`() = runTest(dispatcher) {
+        val athleteGateway = pendingGateway()
+        val viewModel = pendingViewModel(athleteGateway)
+        val effects = viewModel.effects
+
+        viewModel.onIntent(AthleteRegistrationIntent.NicknameChanged("  Bia  "))
+        viewModel.onIntent(AthleteRegistrationIntent.PositionSelected(AthletePosition.LEVANTADOR))
+        viewModel.onIntent(AthleteRegistrationIntent.LevelSelected(AthleteLevel.AVANCADO))
+        viewModel.onIntent(AthleteRegistrationIntent.HeightChanged("178"))
+        viewModel.onIntent(AthleteRegistrationIntent.Save)
+
+        assertEquals(AthleteRegistrationEffect.Saved, effects.first())
+        val command = athleteGateway.lastSaveEntryRequestProfileCommand
+        assertEquals("Bia", command?.nickname)
+        assertEquals(AthletePosition.LEVANTADOR, command?.position)
+        assertEquals(178, command?.heightCm)
+        assertEquals(GroupId(GROUP_ID), command?.groupId)
+        assertNull(athleteGateway.lastUpdateOwnProfileCommand)
+    }
+
+    @Test
+    fun `old backend without the request route continues to request sent instead of blocking on load`() = runTest(dispatcher) {
+        val viewModel = pendingViewModel(FakeAthleteGateway()) // ownEntryRequest: NotFound (404/405 do gateway)
+
+        assertEquals(AthleteRegistrationEffect.Unavailable, viewModel.effects.first())
+    }
+
+    @Test
+    fun `old backend answering not found when saving continues to request sent and drops the draft`() = runTest(dispatcher) {
+        val athleteGateway = pendingGateway()
+        athleteGateway.saveEntryRequestProfileResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.NotFound))
+        val viewModel = pendingViewModel(athleteGateway)
+
+        viewModel.onIntent(AthleteRegistrationIntent.Save)
+
+        assertEquals(AthleteRegistrationEffect.Unavailable, viewModel.effects.first())
+        assertFalse(viewModel.state.value.isSaving)
+        assertNull(viewModel.state.value.error)
+    }
+
+    @Test
+    fun `pending request keeps other save failures visible and does not complete`() = runTest(dispatcher) {
+        val athleteGateway = pendingGateway()
+        athleteGateway.saveEntryRequestProfileResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Server))
+        val viewModel = pendingViewModel(athleteGateway)
+
+        viewModel.onIntent(AthleteRegistrationIntent.Save)
+
+        assertFalse(viewModel.state.value.isSaving)
+        assertEquals(GroupUiError.Network, viewModel.state.value.error)
+    }
+
+    @Test
+    fun `pending request load failure other than missing route can retry`() = runTest(dispatcher) {
+        val athleteGateway = pendingGateway()
+        athleteGateway.ownEntryRequestResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Connectivity))
+        val viewModel = pendingViewModel(athleteGateway)
+        assertTrue(viewModel.state.value.loadFailed)
+
+        athleteGateway.ownEntryRequestResult = pendingRequest()
+        viewModel.onIntent(AthleteRegistrationIntent.Retry)
+
+        assertFalse(viewModel.state.value.loadFailed)
+        assertEquals("Vôlei do CERET", viewModel.state.value.groupName)
+    }
+
+    private fun pendingRequest(profile: EntryRequestAthleteProfile? = null) = SaqzResult.Success(
+        OwnEntryRequest(
+            groupId = GroupId(GROUP_ID),
+            groupName = "Vôlei do CERET",
+            modality = GroupModality.COURT_VOLLEYBALL,
+            composition = GroupComposition.MIXED,
+            city = "Recife",
+            athleteProfile = profile,
+        ),
+    )
+
+    private fun pendingGateway(profile: EntryRequestAthleteProfile? = null) =
+        FakeAthleteGateway(ownEntryRequestResult = pendingRequest(profile))
+
+    private fun pendingViewModel(
+        athleteGateway: FakeAthleteGateway,
+        groupGateway: FakeGroupGateway = FakeGroupGateway(),
+    ) = AthleteRegistrationViewModel(
+        groupId = GROUP_ID,
+        savedState = SavedStateHandle(),
+        groupGateway = groupGateway,
+        athleteGateway = athleteGateway,
+        pendingRequest = true,
+    )
 
     private fun viewModel(
         group: br.com.saqz.groups.domain.group.Group = sampleGroup(),

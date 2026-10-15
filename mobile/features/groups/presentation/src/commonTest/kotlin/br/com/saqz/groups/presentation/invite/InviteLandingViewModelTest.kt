@@ -114,7 +114,7 @@ class InviteLandingViewModelTest {
 
         viewModel.onIntent(InviteLandingIntent.PrimaryAction)
 
-        assertEquals(InviteLandingEffect.RequestSent, viewModel.effects.first())
+        assertEquals(InviteLandingEffect.RequestSent("group-1"), viewModel.effects.first())
         assertTrue(viewModel.state.value.requestSent)
     }
 

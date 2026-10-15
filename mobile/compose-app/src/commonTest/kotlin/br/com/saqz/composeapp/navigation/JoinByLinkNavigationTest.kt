@@ -29,6 +29,46 @@ class JoinByLinkNavigationTest {
         assertEquals(2, stack.size)
     }
 
+    @Test fun requestingByLinkShowsRequestSentUnderThePendingRegistration() {
+        val stack = NavBackStack<NavKey>(SaqzShellDestination.Home)
+        stack.openRequestSentWithAthleteRegistration("convite", "g1")
+        assertEquals(
+            listOf(
+                SaqzShellDestination.Home,
+                GroupsRoute.InviteLanding("convite", requestSent = true),
+                GroupsRoute.AthleteRegistration("g1", pendingRequest = true),
+            ),
+            stack.toList(),
+        )
+        // Terminar, pular ou voltar do cadastro (pop) devolve o "Pedido enviado".
+        stack.removeLast()
+        assertEquals(GroupsRoute.InviteLanding("convite", requestSent = true), stack.last())
+    }
+
+    @Test fun requestingFromTheInviteScreenOpensThePendingRegistrationOnTopOfIt() {
+        val stack = NavBackStack<NavKey>(SaqzShellDestination.Home, GroupsRoute.InviteLanding("convite"))
+        stack.openAthleteRegistrationAfterRequest("g1")
+        stack.openAthleteRegistrationAfterRequest("g1")
+        assertEquals(
+            listOf(
+                SaqzShellDestination.Home,
+                GroupsRoute.InviteLanding("convite"),
+                GroupsRoute.AthleteRegistration("g1", pendingRequest = true),
+            ),
+            stack.toList(),
+        )
+    }
+
+    @Test fun joinedStillOpensTheRegularRegistrationNotThePendingOne() {
+        val stack = NavBackStack<NavKey>(SaqzShellDestination.Home)
+        stack.openAthleteRegistrationAfterJoin("g1")
+        assertEquals(false, (stack.last() as GroupsRoute.AthleteRegistration).pendingRequest)
+    }
+
+    @Test fun pendingRegistrationKeepsTheInviteHoldLikeAnyInviteScreen() {
+        assertEquals(true, isInviteScreen(GroupsRoute.AthleteRegistration("g1", pendingRequest = true)))
+    }
+
     @Test fun pendingInviteNeverLetsTheHomeBeTheIntermediateDestination() {
         // Sessão pronta, convite guardado, coordenador ainda não começou: carregando, não Início.
         assertEquals(true, isInviteHandoffPending(true, true, coordinatorAuthenticated = false, redeeming = false))
