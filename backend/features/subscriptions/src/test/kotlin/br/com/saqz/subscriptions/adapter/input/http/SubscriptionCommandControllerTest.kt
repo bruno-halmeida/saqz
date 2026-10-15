@@ -8,6 +8,7 @@ import br.com.saqz.subscriptions.application.AsaasGateway
 import br.com.saqz.subscriptions.application.AsaasSubscriptionCreation
 import br.com.saqz.subscriptions.application.CardDeclinedException
 import br.com.saqz.subscriptions.application.CancelSubscription
+import br.com.saqz.subscriptions.application.ReactivateSubscription
 import br.com.saqz.subscriptions.application.ChangePlan
 import br.com.saqz.subscriptions.application.CouponRepository
 import br.com.saqz.subscriptions.application.CreateSubscription
@@ -102,6 +103,78 @@ class SubscriptionCommandControllerTest {
     }
 
     @Test
+    fun `reactivate answers with the status and the period end that becomes the next charge`() {
+        val controller = reactivateController(canceledSubscription())
+
+        val response = controller.reactivate(identity, MockHttpServletRequest())
+
+        assertEquals("ACTIVE", response.status)
+        assertEquals(fixedNow.plusSeconds(86_400), response.currentPeriodEnd)
+    }
+
+    @Test
+    fun `reactivate without a cancellation is the generic 409 conflict, without a subscription it is 404`() {
+        assertThrows<SubscriptionConflictException> {
+            reactivateController(canceledSubscription().copy(canceledAt = null)).reactivate(identity, MockHttpServletRequest())
+        }
+        assertThrows<SubscriptionNotFoundException> {
+            reactivateController(null).reactivate(identity, MockHttpServletRequest())
+        }
+    }
+
+    private fun canceledSubscription() = Subscription(
+        ownerUserId = ownerId, plan = Plan.TITULAR, cycle = SubscriptionCycle.MONTHLY,
+        asaasCustomerId = "cus_1", asaasSubscriptionId = "sub_old", billingType = AsaasBillingType.PIX,
+        currentPeriodEnd = fixedNow.plusSeconds(86_400), canceledAt = fixedNow.minusSeconds(60),
+        firstConfirmedAt = fixedNow.minusSeconds(3_600),
+    )
+
+    private fun reactivateController(existing: Subscription?): SubscriptionCommandController {
+        val transaction = object : SubscriptionsTransactionRunner {
+            override fun <T> inTransaction(block: () -> T): T = block()
+        }
+        val repo = object : SubscriptionRepository by UnusedSubscriptionRepository {
+            private var current = existing
+            override fun findByOwnerUserIdForUpdate(ownerUserId: UUID) = current
+            override fun lockOwner(ownerUserId: UUID) = Unit
+            override fun save(subscription: Subscription) { current = subscription }
+        }
+        val gateway = object : AsaasGateway by UnusedAsaasGateway {
+            override fun createSubscriptionStartingAt(
+                asaasCustomerId: String, plan: Plan, cycle: SubscriptionCycle, valueCents: Long,
+                billingType: AsaasBillingType, nextDueDate: java.time.LocalDate, idempotencyKey: String,
+                creditCardToken: String?, remoteIp: String?,
+            ) = "sub_new"
+        }
+        return SubscriptionCommandController(
+            actors = SubscriptionActorResolver { ownerId },
+            createSubscription = CreateSubscription(
+                usageLookup = { br.com.saqz.sharedkernel.subscription.OwnerPlanUsage(0, 0) },
+                subscriptions = UnusedSubscriptionRepository,
+                coupons = UnusedCouponRepository,
+                asaasGateway = UnusedAsaasGateway,
+                transaction = transaction,
+                clock = clock,
+            ),
+            changePlan = ChangePlan(
+                subscriptions = UnusedSubscriptionRepository,
+                asaasGateway = UnusedAsaasGateway,
+                usageLookup = OwnerPlanUsageLookup { error("unused") },
+                coupons = UnusedCouponRepository,
+                transaction = transaction,
+                clock = clock,
+            ),
+            cancelSubscription = CancelSubscription(
+                subscriptions = UnusedSubscriptionRepository,
+                asaasGateway = UnusedAsaasGateway,
+                transaction = transaction,
+                clock = clock,
+            ),
+            reactivateSubscription = ReactivateSubscription(repo, gateway, transaction, clock),
+        )
+    }
+
+    @Test
     fun `missing credit card fields become a structured validation exception, not a 500`() {
         val controller = controllerForNewSubscription(UnusedAsaasGateway)
 
@@ -157,6 +230,12 @@ class SubscriptionCommandControllerTest {
                 transaction = transaction,
                 clock = clock,
             ),
+            reactivateSubscription = ReactivateSubscription(
+                subscriptions = UnusedSubscriptionRepository,
+                asaasGateway = UnusedAsaasGateway,
+                transaction = transaction,
+                clock = clock,
+            ),
         )
     }
 
@@ -185,6 +264,12 @@ class SubscriptionCommandControllerTest {
                 clock = clock,
             ),
             cancelSubscription = CancelSubscription(
+                subscriptions = UnusedSubscriptionRepository,
+                asaasGateway = UnusedAsaasGateway,
+                transaction = transaction,
+                clock = clock,
+            ),
+            reactivateSubscription = ReactivateSubscription(
                 subscriptions = UnusedSubscriptionRepository,
                 asaasGateway = UnusedAsaasGateway,
                 transaction = transaction,

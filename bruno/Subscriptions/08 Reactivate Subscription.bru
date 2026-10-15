@@ -1,0 +1,22 @@
+meta {
+  name: Reactivate Subscription
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{backendUrl}}/subscriptions/me/reactivate
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{idToken}}
+}
+
+tests {
+  test("subscription is active again", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().status).to.equal("ACTIVE");
+  });
+}

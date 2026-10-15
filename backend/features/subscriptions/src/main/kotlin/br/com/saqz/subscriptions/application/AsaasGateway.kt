@@ -2,6 +2,7 @@ package br.com.saqz.subscriptions.application
 
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
+import java.time.LocalDate
 import java.util.UUID
 
 interface AsaasGateway {
@@ -23,6 +24,24 @@ interface AsaasGateway {
         creditCardHolderInfo: CreditCardHolderInfo? = null,
         remoteIp: String? = null,
     ): AsaasSubscriptionCreation
+    /**
+     * Assinatura nova cuja primeira cobrança só vence em [nextDueDate] — a reativação de uma
+     * assinatura cancelada (o cancelamento apaga a do Asaas, que não tem como ser desfeito).
+     * No cartão, [creditCardToken] substitui os dados do cartão e o Asaas só cobra no vencimento.
+     * Devolve o id da assinatura nova.
+     */
+    fun createSubscriptionStartingAt(
+        asaasCustomerId: String,
+        plan: Plan,
+        cycle: SubscriptionCycle,
+        valueCents: Long,
+        billingType: AsaasBillingType,
+        nextDueDate: LocalDate,
+        idempotencyKey: String,
+        creditCardToken: String? = null,
+        remoteIp: String? = null,
+    ): String = throw UnsupportedOperationException("createSubscriptionStartingAt")
+
     fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long)
 
     /** Stops future Asaas billing; local access still follows currentPeriodEnd / grace. */

@@ -151,6 +151,46 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
+    fun `createSubscriptionStartingAt sends the future nextDueDate and the card token without card data`() {
+        server.enqueue(json(200, """{"id":"sub_REACT"}"""))
+
+        val id = gateway.createSubscriptionStartingAt(
+            asaasCustomerId = "cus_ABC", plan = Plan.TITULAR, cycle = SubscriptionCycle.MONTHLY,
+            valueCents = 3_990, billingType = AsaasBillingType.CREDIT_CARD,
+            nextDueDate = java.time.LocalDate.parse("2026-11-12"), idempotencyKey = "subscription-reactivate:o:sub_old",
+            creditCardToken = "tok_123", remoteIp = "203.0.113.9",
+        )
+
+        assertEquals("sub_REACT", id)
+        val request = server.takeRequest()
+        assertEquals("/v3/subscriptions", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"nextDueDate\":\"2026-11-12\""))
+        assertTrue(body.contains("\"creditCardToken\":\"tok_123\""))
+        assertTrue(body.contains("\"remoteIp\":\"203.0.113.9\""))
+        assertFalse(body.contains("\"creditCard\":"))
+        assertEquals("sub_REACT", store.find("subscription-reactivate:o:sub_old")?.resourceId)
+    }
+
+    @Test
+    fun `createSubscriptionStartingAt with PIX has no card fields and a retry does not post twice`() {
+        server.enqueue(json(200, """{"id":"sub_PIX"}"""))
+        fun call() = gateway.createSubscriptionStartingAt(
+            "cus_ABC", Plan.TITULAR, SubscriptionCycle.ANNUAL, 39_990, AsaasBillingType.PIX,
+            java.time.LocalDate.parse("2027-01-10"), "subscription-reactivate:o:sub_pix",
+        )
+
+        assertEquals("sub_PIX", call())
+        assertEquals("sub_PIX", call())
+
+        assertEquals(1, server.requestCount)
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("\"billingType\":\"PIX\""))
+        assertTrue(body.contains("\"cycle\":\"YEARLY\""))
+        assertFalse(body.contains("creditCardToken"))
+    }
+
+    @Test
     fun `createSubscription posts CREDIT_CARD billing type when requested`() {
         server.enqueue(json(200, """{"id":"sub_CARD"}"""))
 

@@ -16,6 +16,7 @@ import br.com.saqz.subscriptions.application.AsaasGateway
 import br.com.saqz.subscriptions.application.GooglePlaySubscriptionRepository
 import br.com.saqz.subscriptions.application.AsaasIdempotencyStore
 import br.com.saqz.subscriptions.application.CancelSubscription
+import br.com.saqz.subscriptions.application.ReactivateSubscription
 import br.com.saqz.subscriptions.application.ChangePlan
 import br.com.saqz.subscriptions.application.CouponRepository
 import br.com.saqz.subscriptions.application.CreateSubscription
@@ -147,6 +148,27 @@ class AsaasWebhookConfiguration {
     ) = CancelSubscription(subscriptions, asaasGateway, transaction, clock)
 
     @Bean
+    fun reactivateSubscription(
+        subscriptions: SubscriptionRepository,
+        asaasGateway: AsaasGateway,
+        transaction: SubscriptionsTransactionRunner,
+        clock: Clock,
+        coupons: CouponRepository,
+        dataSource: DataSource,
+        appStoreSubscriptions: AppStoreSubscriptionRepository,
+        googlePlaySubscriptions: GooglePlaySubscriptionRepository,
+    ) = ReactivateSubscription(
+        subscriptions,
+        asaasGateway,
+        transaction,
+        clock,
+        coupons,
+        JdbcCreditCardTokenStore(dataSource),
+        appStoreSubscriptions,
+        googlePlaySubscriptions,
+    )
+
+    @Bean
     fun listReceipts(
         events: SubscriptionEventStore,
         appStoreSubscriptions: AppStoreSubscriptionRepository,
@@ -163,7 +185,8 @@ class AsaasWebhookConfiguration {
         createSubscription: CreateSubscription,
         changePlan: ChangePlan,
         cancelSubscription: CancelSubscription,
-    ) = SubscriptionCommandController(actors, createSubscription, changePlan, cancelSubscription)
+        reactivateSubscription: ReactivateSubscription,
+    ) = SubscriptionCommandController(actors, createSubscription, changePlan, cancelSubscription, reactivateSubscription)
 
     @Bean
     fun receiptController(

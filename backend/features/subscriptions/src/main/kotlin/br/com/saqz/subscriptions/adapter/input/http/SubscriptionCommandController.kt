@@ -12,6 +12,8 @@ import br.com.saqz.subscriptions.application.CreateSubscriptionCommand
 import br.com.saqz.subscriptions.application.CreateSubscriptionResult
 import br.com.saqz.subscriptions.application.CreditCardDetails
 import br.com.saqz.subscriptions.application.CreditCardHolderInfo
+import br.com.saqz.subscriptions.application.ReactivateSubscription
+import br.com.saqz.subscriptions.application.ReactivateSubscriptionResult
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import com.fasterxml.jackson.annotation.JsonCreator
@@ -100,6 +102,12 @@ data class CancelSubscriptionResponse(
     val currentPeriodEnd: Instant,
 )
 
+/** O próximo vencimento é o fim do período já pago; é o que o app mostra como "próxima cobrança". */
+data class ReactivateSubscriptionResponse(
+    val status: String,
+    val currentPeriodEnd: Instant,
+)
+
 class InvalidSubscriptionRequestException(
     val fieldErrors: Map<String, List<String>>,
 ) : RuntimeException()
@@ -133,6 +141,7 @@ class SubscriptionCommandController(
     private val createSubscription: CreateSubscription,
     private val changePlan: ChangePlan,
     private val cancelSubscription: CancelSubscription,
+    private val reactivateSubscription: ReactivateSubscription,
 ) {
     @PostMapping("/subscriptions")
     fun create(
@@ -265,6 +274,26 @@ class SubscriptionCommandController(
             )
             CancelSubscriptionResult.NotFound -> throw SubscriptionNotFoundException()
             CancelSubscriptionResult.AlreadyCanceled -> throw SubscriptionConflictException()
+        }
+    }
+
+    @PostMapping("/subscriptions/me/reactivate")
+    fun reactivate(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        servletRequest: HttpServletRequest,
+    ): ReactivateSubscriptionResponse {
+        val ownerUserId = actors.resolve(identity)
+        return when (val result = reactivateSubscription.execute(ownerUserId, resolveRemoteIp(servletRequest))) {
+            is ReactivateSubscriptionResult.Success -> ReactivateSubscriptionResponse(
+                status = result.subscription.status.name,
+                currentPeriodEnd = result.subscription.currentPeriodEnd,
+            )
+            ReactivateSubscriptionResult.NotFound -> throw SubscriptionNotFoundException()
+            ReactivateSubscriptionResult.NotCanceled,
+            ReactivateSubscriptionResult.AccessEnded,
+            ReactivateSubscriptionResult.CardUnavailable,
+            ReactivateSubscriptionResult.AlreadySubscribed,
+            -> throw SubscriptionConflictException()
         }
     }
 

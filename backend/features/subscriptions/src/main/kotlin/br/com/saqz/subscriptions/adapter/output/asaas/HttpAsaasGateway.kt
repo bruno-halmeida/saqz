@@ -99,6 +99,37 @@ class HttpAsaasGateway(
         return AsaasSubscriptionCreation(id, createdCreditCard)
     }
 
+    override fun createSubscriptionStartingAt(
+        asaasCustomerId: String,
+        plan: Plan,
+        cycle: SubscriptionCycle,
+        valueCents: Long,
+        billingType: AsaasBillingType,
+        nextDueDate: LocalDate,
+        idempotencyKey: String,
+        creditCardToken: String?,
+        remoteIp: String?,
+    ): String = withIdempotency(
+        storeKey = idempotencyKey,
+        collectionPath = "/subscriptions",
+        externalReference = idempotencyKey,
+    ) {
+        val body = mutableMapOf<String, Any?>(
+            "customer" to asaasCustomerId,
+            "billingType" to asaasBillingType(billingType),
+            "value" to centsToDecimal(valueCents),
+            "nextDueDate" to nextDueDate.toString(),
+            "cycle" to asaasCycle(cycle),
+            "description" to "Assinatura Saqz ${plan.name}",
+            "externalReference" to idempotencyKey,
+        )
+        if (billingType == AsaasBillingType.CREDIT_CARD) {
+            creditCardToken?.let { body["creditCardToken"] = it }
+            remoteIp?.let { body["remoteIp"] = it }
+        }
+        requireId(postSubscriptionCreate(body, billingType), "subscription")
+    }
+
     /** 60s only on the card path — Asaas recommends it for authorization+antifraude round trips. */
     private fun postSubscriptionCreate(body: Map<String, Any?>, billingType: AsaasBillingType): JsonNode {
         val timeout = if (billingType == AsaasBillingType.CREDIT_CARD) CARD_REQUEST_TIMEOUT else requestTimeout

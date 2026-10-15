@@ -1,12 +1,13 @@
 package br.com.saqz.subscriptions.adapter.output.jdbc
 
+import br.com.saqz.subscriptions.application.CreditCardTokenLookup
 import br.com.saqz.subscriptions.application.CreditCardTokenStore
 import org.springframework.jdbc.core.simple.JdbcClient
 import javax.sql.DataSource
 
 class JdbcCreditCardTokenStore(
     dataSource: DataSource,
-) : CreditCardTokenStore {
+) : CreditCardTokenStore, CreditCardTokenLookup {
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun save(asaasSubscriptionId: String, token: String?, lastFourDigits: String?, brand: String?) {
@@ -25,4 +26,11 @@ class JdbcCreditCardTokenStore(
             .param("asaasSubscriptionId", asaasSubscriptionId)
             .update()
     }
+
+    override fun tokenFor(asaasSubscriptionId: String): String? =
+        jdbc.sql("SELECT asaas_credit_card_token FROM subscriptions WHERE asaas_subscription_id = :id")
+            .param("id", asaasSubscriptionId)
+            .query(String::class.java)
+            .optional()
+            .orElse(null)
 }
