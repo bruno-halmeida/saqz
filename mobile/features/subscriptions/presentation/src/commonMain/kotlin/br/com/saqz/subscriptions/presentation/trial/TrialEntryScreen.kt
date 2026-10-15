@@ -113,8 +113,8 @@ private fun TrialEnded(endsAt: String, purchasesAvailable: Boolean) {
         SaqzIcon(SaqzIcons.Users, tint = SaqzTheme.colors.primary, size = SaqzTheme.metrics.iconButtonSize)
         Text(stringResource(Res.string.trial_entry_ended_title), style = SaqzTheme.typography.title,
             color = SaqzTheme.colors.textPrimary)
-        Text(stringResource(if (purchasesAvailable) Res.string.trial_entry_ended_help else Res.string.trial_entry_ended_help_no_plans, date),
-            style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
+        val help = if (purchasesAvailable) Res.string.trial_entry_ended_help else Res.string.trial_entry_ended_help_no_plans
+        Text(stringResource(help, date), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
     }
 }
 

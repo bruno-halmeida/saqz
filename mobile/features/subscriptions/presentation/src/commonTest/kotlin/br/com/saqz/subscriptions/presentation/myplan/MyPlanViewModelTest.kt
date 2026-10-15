@@ -1,10 +1,12 @@
 package br.com.saqz.subscriptions.presentation.myplan
 
+import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.subscriptions.domain.subscription.CanceledSubscription
 import br.com.saqz.subscriptions.domain.subscription.ChangedPlan
 import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.Plan
+import br.com.saqz.subscriptions.domain.subscription.ReactivatedSubscription
 import br.com.saqz.subscriptions.domain.subscription.PlanCatalogItem
 import br.com.saqz.subscriptions.domain.subscription.Receipt
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
@@ -206,6 +208,98 @@ class MyPlanViewModelTest {
         assertEquals(MyPlanStatusTone.Canceled, plan?.statusTone)
         assertNull(plan?.nextChargeDate)
         assertEquals("30/08/2026", plan?.accessUntilDate)
+    }
+
+    private val canceledWithAccess = ACTIVE_SUBSCRIPTION.copy(canceledAt = "2026-08-01T00:00:00Z", entitled = true)
+
+    @Test
+    fun `reactivate is offered only on a canceled plan that still gives access`() = runTest {
+        assertEquals(true, MyPlanViewModel(FakeSubscriptionGateway(subscriptionResult = SaqzResult.Success(canceledWithAccess))).state.value.canReactivate)
+        assertEquals(false, MyPlanViewModel(FakeSubscriptionGateway()).state.value.canReactivate)
+        val ended = canceledWithAccess.copy(status = SubscriptionStatus.Canceled, entitled = false)
+        assertEquals(false, MyPlanViewModel(FakeSubscriptionGateway(subscriptionResult = SaqzResult.Success(ended))).state.value.canReactivate)
+        val pastDue = ACTIVE_SUBSCRIPTION.copy(status = SubscriptionStatus.PastDue, entitled = true)
+        assertEquals(false, MyPlanViewModel(FakeSubscriptionGateway(subscriptionResult = SaqzResult.Success(pastDue))).state.value.canReactivate)
+    }
+
+    @Test
+    fun `reactivating a web plan calls the backend and reloads into active with the next charge`() = runTest {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResult = SaqzResult.Success(canceledWithAccess),
+            subscriptionAfterReactivate = ACTIVE_SUBSCRIPTION,
+        )
+        val viewModel = MyPlanViewModel(gateway)
+
+        viewModel.onIntent(MyPlanIntent.Reactivate)
+
+        assertEquals(1, gateway.reactivateCalls)
+        val state = viewModel.state.value
+        assertEquals(false, state.canReactivate)
+        assertEquals(false, state.isReactivating)
+        assertEquals(MyPlanStatusTone.Active, state.plan?.statusTone)
+        assertEquals("30/08/2026", state.plan?.nextChargeDate)
+        assertNull(state.plan?.accessUntilDate)
+    }
+
+    @Test
+    fun `reactivating a store plan opens the store management and never calls the backend`() = runTest {
+        listOf(SubscriptionProvider.AppStore, SubscriptionProvider.GooglePlay).forEach { provider ->
+            val gateway = FakeSubscriptionGateway(
+                subscriptionResult = SaqzResult.Success(canceledWithAccess.copy(provider = provider, autoRenew = false)),
+            )
+            val viewModel = MyPlanViewModel(gateway)
+
+            viewModel.onIntent(MyPlanIntent.Reactivate)
+
+            assertEquals(MyPlanEffect.ManageStoreSubscription, viewModel.effects.first(), "provider $provider")
+            assertEquals(0, gateway.reactivateCalls)
+        }
+    }
+
+    @Test
+    fun `a reactivation that fails keeps the plan and shows the error and a retry can succeed`() = runTest {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResult = SaqzResult.Success(canceledWithAccess),
+            reactivateResult = SaqzResult.Failure(SubscriptionError.Data(DataError.Connectivity)),
+            subscriptionAfterReactivate = ACTIVE_SUBSCRIPTION,
+        )
+        val viewModel = MyPlanViewModel(gateway)
+
+        viewModel.onIntent(MyPlanIntent.Reactivate)
+
+        assertEquals(true, viewModel.state.value.canReactivate)
+        assertEquals(false, viewModel.state.value.isReactivating)
+        assertNotNull(viewModel.state.value.reactivateError)
+        gateway.reactivateResult = SaqzResult.Success(ReactivatedSubscription(SubscriptionStatus.Active, "2026-08-30T00:00:00Z"))
+        viewModel.onIntent(MyPlanIntent.Reactivate)
+        assertNull(viewModel.state.value.reactivateError)
+        assertEquals(MyPlanStatusTone.Active, viewModel.state.value.plan?.statusTone)
+    }
+
+    @Test
+    fun `a conflict on reactivate resyncs with the server instead of showing an error`() = runTest {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResult = SaqzResult.Success(canceledWithAccess),
+            reactivateResult = SaqzResult.Failure(SubscriptionError.Conflict),
+            subscriptionAfterReactivate = null,
+        )
+        val viewModel = MyPlanViewModel(gateway)
+        gateway.subscriptionResult = SaqzResult.Success(ACTIVE_SUBSCRIPTION)
+
+        viewModel.onIntent(MyPlanIntent.Reactivate)
+
+        assertNull(viewModel.state.value.reactivateError)
+        assertEquals(MyPlanStatusTone.Active, viewModel.state.value.plan?.statusTone)
+    }
+
+    @Test
+    fun `reactivate without a canceled plan does nothing`() = runTest {
+        val gateway = FakeSubscriptionGateway()
+        val viewModel = MyPlanViewModel(gateway)
+
+        viewModel.onIntent(MyPlanIntent.Reactivate)
+
+        assertEquals(0, gateway.reactivateCalls)
     }
 
     @Test
@@ -471,7 +565,12 @@ private class FakeSubscriptionGateway(
     var receiptPages: List<SaqzResult<List<Receipt>, SubscriptionError>> = emptyList(),
     var cancelResult: SaqzResult<CanceledSubscription, SubscriptionError> = SaqzResult.Failure(SubscriptionError.Conflict),
     var subscriptionAfterMutation: MySubscription? = null,
+    var reactivateResult: SaqzResult<ReactivatedSubscription, SubscriptionError> =
+        SaqzResult.Success(ReactivatedSubscription(SubscriptionStatus.Active, "2026-08-30T00:00:00Z")),
+    var subscriptionAfterReactivate: MySubscription? = null,
 ) : SubscriptionGateway {
+    var reactivateCalls = 0
+
     val receiptRequests = mutableListOf<ReceiptRequest>()
     var cancelCalls = 0
     private var receiptPageIndex = 0
@@ -490,6 +589,12 @@ private class FakeSubscriptionGateway(
         cancelCalls++
         subscriptionAfterMutation?.let { subscriptionResult = SaqzResult.Success(it) }
         return cancelResult
+    }
+
+    override suspend fun reactivate(): SaqzResult<ReactivatedSubscription, SubscriptionError> {
+        reactivateCalls++
+        if (reactivateResult is SaqzResult.Success) subscriptionAfterReactivate?.let { subscriptionResult = SaqzResult.Success(it) }
+        return reactivateResult
     }
 
     override suspend fun receipts(limit: Int, offset: Int): SaqzResult<List<Receipt>, SubscriptionError> {

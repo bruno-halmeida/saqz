@@ -19,6 +19,7 @@ import br.com.saqz.designsystem.SaqzEmptyState
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzTopAppBar
+import androidx.compose.material.Text
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -31,6 +32,7 @@ import br.com.saqz.subscriptions.presentation.myplan.MyPlanUsageUi
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanTrialUi
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.myplan_reactivate
 import br.com.saqz.subscriptions.resources.myplan_resubscribe
 import br.com.saqz.subscriptions.resources.myplan_retry
 import br.com.saqz.subscriptions.resources.myplan_title
@@ -51,6 +53,8 @@ internal object MyPlanTags {
     const val TrialCountdown = "myplan-trial-countdown"
     const val Subscribe = "myplan-trial-subscribe"
     const val Resubscribe = "myplan-resubscribe"
+    const val Reactivate = "myplan-reactivate"
+    const val ReactivateError = "myplan-reactivate-error"
 }
 
 /** 8e — plano atual, uso, recibos e o menu Gerenciar. A tela só empilha; cada bloco é uma
@@ -106,6 +110,26 @@ fun MyPlanScreen(
                         fullWidth = true,
                         modifier = Modifier.testTag(MyPlanTags.Resubscribe),
                     )
+                }
+                // Cancelada com acesso até o fim do período: na web o backend reativa; na loja o botão abre a
+                // gestão da assinatura (só quando é a loja deste aparelho, como a linha de gerenciar).
+                val reactivateAvailable = if (state.managedByStore) state.managingStore == deviceStore else purchasesAvailable
+                if (state.canReactivate && reactivateAvailable) {
+                    SaqzButton(
+                        stringResource(Res.string.myplan_reactivate),
+                        onClick = { onIntent(MyPlanIntent.Reactivate) },
+                        fullWidth = true,
+                        loading = state.isReactivating,
+                        modifier = Modifier.testTag(MyPlanTags.Reactivate),
+                    )
+                    state.reactivateError?.let {
+                        Text(
+                            text = it.asString(),
+                            style = SaqzTheme.typography.support,
+                            color = SaqzTheme.colors.errorForeground,
+                            modifier = Modifier.testTag(MyPlanTags.ReactivateError),
+                        )
+                    }
                 }
                 state.trial?.let { trial ->
                     MyPlanTrialCard(

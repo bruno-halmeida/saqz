@@ -51,6 +51,7 @@ class MyPlanViewModel(
             MyPlanIntent.OpenCancel -> if (canManageWebPlan()) update { it.copy(isCancelSheetOpen = true, cancelError = null) }
             MyPlanIntent.DismissCancel -> update { it.copy(isCancelSheetOpen = false, cancelError = null) }
             MyPlanIntent.ConfirmCancel -> cancel()
+            MyPlanIntent.Reactivate -> reactivate()
             MyPlanIntent.OpenChangePlan,
             MyPlanIntent.ManageStoreSubscription,
             MyPlanIntent.OpenSubscribe,
@@ -112,6 +113,9 @@ class MyPlanViewModel(
                         hasMoreReceipts = false,
                         managingStore = null,
                         canResubscribe = false,
+                        canReactivate = false,
+                        isReactivating = false,
+                        reactivateError = null,
                     )
                 }
                 return@launch
@@ -130,6 +134,9 @@ class MyPlanViewModel(
                     trial = null,
                     managingStore = loadedSubscription.provider.takeIf { it != SubscriptionProvider.Asaas },
                     canResubscribe = loadedSubscription.canResubscribe(),
+                    canReactivate = loadedSubscription.canReactivate(),
+                    isReactivating = false,
+                    reactivateError = null,
                     // Falha aqui não pode virar "nenhum recibo ainda" (achado do Codex no
                     // PR #93): mantém a última lista boa e guarda o erro à parte.
                     receipts = (receiptsResult as? SaqzResult.Success)?.value?.map { r -> r.toUi() } ?: it.receipts,
@@ -219,6 +226,28 @@ class MyPlanViewModel(
         }
     }
 
+    private fun reactivate() {
+        val current = state.value
+        if (!canManagePaidPlan() || !current.canReactivate || current.isReactivating) return
+        // Na loja o app não reativa sozinho: abre a gestão da assinatura na conta da loja.
+        if (current.managedByStore) {
+            emit(MyPlanEffect.ManageStoreSubscription)
+            return
+        }
+        update { it.copy(isReactivating = true, reactivateError = null) }
+        viewModelScope.launch {
+            when (val result = gateway.reactivate()) {
+                is SaqzResult.Success -> load()
+                // 409/404: o plano mudou por outro caminho (outro aparelho, período vencido); a recarga mostra o estado real.
+                is SaqzResult.Failure -> if (result.error == SubscriptionError.Conflict || result.error == SubscriptionError.NotFound) {
+                    load()
+                } else {
+                    update { it.copy(isReactivating = false, reactivateError = result.error.toUiText()) }
+                }
+            }
+        }
+    }
+
     private fun canManagePaidPlan(): Boolean =
         !state.value.isLoading && state.value.loadError == null && state.value.plan != null && state.value.trial == null
 
@@ -243,3 +272,6 @@ private fun br.com.saqz.subscriptions.domain.trial.TrialAccess.toUi() = MyPlanTr
  */
 internal fun MySubscription.canResubscribe(): Boolean =
     !entitled && (canceledAt != null || status == SubscriptionStatus.Canceled)
+
+/** Cancelada que ainda dá acesso até o fim do período pago: é o que o "Reativar" desfaz. */
+internal fun MySubscription.canReactivate(): Boolean = entitled && canceledAt != null

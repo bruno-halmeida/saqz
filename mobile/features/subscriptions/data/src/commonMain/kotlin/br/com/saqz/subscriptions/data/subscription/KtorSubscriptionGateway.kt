@@ -95,6 +95,12 @@ internal data class CanceledSubscriptionTransport(
 )
 
 @Serializable
+internal data class ReactivatedSubscriptionTransport(
+    val status: SubscriptionStatusTransport,
+    val currentPeriodEnd: String,
+)
+
+@Serializable
 internal data class ReceiptTransport(
     val asaasEventId: String,
     val asaasPaymentId: String? = null,
@@ -141,6 +147,12 @@ class KtorSubscriptionGateway(
         "subscriptions/me/cancel",
         CanceledSubscriptionTransport.serializer(),
     ).mapSubscription { it.toDomain() }
+
+    override suspend fun reactivate() = network.execute(
+        HttpMethod.Post,
+        "subscriptions/me/reactivate",
+        ReactivatedSubscriptionTransport.serializer(),
+    ).mapSubscription { ReactivatedSubscription(it.status.toDomain(), it.currentPeriodEnd) }
 
     override suspend fun receipts(limit: Int, offset: Int) =
         retryTransport(RetrySafety.Read, delayMillis = retryDelay) {

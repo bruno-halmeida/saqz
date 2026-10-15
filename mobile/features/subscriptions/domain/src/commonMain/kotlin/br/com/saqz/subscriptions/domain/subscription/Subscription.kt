@@ -68,6 +68,12 @@ data class CanceledSubscription(
     val currentPeriodEnd: String,
 )
 
+/** Assinatura da web reativada: o fim do período pago passa a ser a próxima cobrança. */
+data class ReactivatedSubscription(
+    val status: SubscriptionStatus,
+    val currentPeriodEnd: String,
+)
+
 data class Receipt(
     val asaasEventId: String,
     val asaasPaymentId: String?,
@@ -95,6 +101,10 @@ interface SubscriptionGateway {
     ): SaqzResult<ChangedPlan, SubscriptionError>
 
     suspend fun cancel(): SaqzResult<CanceledSubscription, SubscriptionError>
+
+    /** Desfaz o cancelamento da assinatura da web enquanto o período pago vale; sem efeito nas lojas. */
+    suspend fun reactivate(): SaqzResult<ReactivatedSubscription, SubscriptionError> =
+        SaqzResult.Failure(SubscriptionError.NotFound)
 
     /**
      * Uma página de recibos, do mais recente para o mais antigo. Sem tipo de página: quem

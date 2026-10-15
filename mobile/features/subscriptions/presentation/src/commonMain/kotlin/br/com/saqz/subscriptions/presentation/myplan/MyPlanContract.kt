@@ -37,6 +37,13 @@ data class MyPlanState(
      * "Cancelado". Sem isto não havia como assinar de novo (a revisão da Apple não achou as compras).
      */
     val canResubscribe: Boolean = false,
+    /**
+     * Cancelada, mas o período pago ainda dá acesso: o "Reativar" aparece para reengajar. Na web
+     * o backend reativa; na loja o botão leva à gestão da assinatura, onde a renovação se religa.
+     */
+    val canReactivate: Boolean = false,
+    val isReactivating: Boolean = false,
+    val reactivateError: UiText? = null,
 ) {
     val managedByStore: Boolean get() = managingStore != null
 }
@@ -94,6 +101,7 @@ sealed interface MyPlanIntent {
     data object DismissCancel : MyPlanIntent
     data object ConfirmCancel : MyPlanIntent
     data object OpenChangePlan : MyPlanIntent
+    data object Reactivate : MyPlanIntent
     data object OpenSubscribe : MyPlanIntent
     data object ManageStoreSubscription : MyPlanIntent
 }

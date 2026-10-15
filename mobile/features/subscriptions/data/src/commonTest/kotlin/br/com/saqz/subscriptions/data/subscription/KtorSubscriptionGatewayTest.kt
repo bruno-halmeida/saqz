@@ -162,6 +162,30 @@ class KtorSubscriptionGatewayTest {
     }
 
     @Test
+    fun `reactivate posts without body and does not retry then maps the next charge date`() = runTest {
+        var calls = 0
+        val failed = gateway { request ->
+            calls++
+            assertEquals(HttpMethod.Post, request.method)
+            assertEquals("/subscriptions/me/reactivate", request.url.encodedPath)
+            assertTrue(request.body !is TextContent)
+            unavailable()
+        }.reactivate()
+        assertEquals(1, calls)
+        assertIs<SaqzResult.Failure<SubscriptionError>>(failed)
+
+        val value = success(gateway { json(REACTIVATED) }.reactivate())
+        assertEquals(SubscriptionStatus.Active, value.status)
+        assertEquals("2026-11-12T12:00:00Z", value.currentPeriodEnd)
+    }
+
+    @Test
+    fun `reactivate conflict maps to Conflict so the app can resync`() = runTest {
+        val result = gateway { problemResponse(409, "SUBSCRIPTION_CONFLICT") }.reactivate()
+        assertEquals(SubscriptionError.Conflict, assertIs<SaqzResult.Failure<SubscriptionError>>(result).error)
+    }
+
+    @Test
     fun `cancel maps canceled status and dates`() = runTest {
         val value = success(gateway { json(CANCELED) }.cancel())
         assertEquals(SubscriptionStatus.Canceled, value.status)
@@ -303,6 +327,7 @@ class KtorSubscriptionGatewayTest {
     private companion object {
         const val MY_SUBSCRIPTION = """{"status":"ACTIVE","entitled":true,"plan":"ORGANIZADOR","cycle":"MONTHLY","pendingPlan":"ILIMITADO","pendingPlanEffectiveAt":"2026-09-01T00:00:00Z","currentPeriodEnd":"2026-08-30T00:00:00Z","paymentMethod":"PIX","usage":{"groupsUsed":2,"groupsLimit":3},"readOnly":false,"pastDueSince":null,"cardLast4":"4242","cardBrand":"visa","canceledAt":null}"""
         const val CANCELED = """{"status":"CANCELED","canceledAt":"2026-08-01T00:00:00Z","currentPeriodEnd":"2026-08-30T00:00:00Z"}"""
+        const val REACTIVATED = """{"status":"ACTIVE","currentPeriodEnd":"2026-11-12T12:00:00Z"}"""
         const val RECEIPTS = """{"receipts":[{"asaasEventId":"evt-1","asaasPaymentId":"pay-1","valueCents":4990,"confirmedAt":"2026-07-01T00:00:00Z","processedAt":"2026-07-01T00:05:00Z"}]}"""
         const val PLANS = """[{"id":"TITULAR","name":"TITULAR","monthlyPriceCents":3990,"annualPriceCents":35910,"maxGroups":1,"maxAthletes":25,"multiAdmin":false,"reports":false,"whatsappSla":false},{"id":"ORGANIZADOR","name":"ORGANIZADOR","monthlyPriceCents":5990,"annualPriceCents":53910,"maxGroups":3,"maxAthletes":null,"multiAdmin":false,"reports":false,"whatsappSla":false},{"id":"ILIMITADO","name":"ILIMITADO","monthlyPriceCents":8990,"annualPriceCents":80910,"maxGroups":null,"maxAthletes":null,"multiAdmin":true,"reports":true,"whatsappSla":true}]"""
         const val APP_STORE_SUBSCRIPTION = """{"status":"CANCELED","entitled":true,"plan":"ORGANIZADOR","cycle":"ANNUAL","currentPeriodEnd":"2026-08-30T00:00:00Z","usage":{"groupsUsed":1,"groupsLimit":3},"readOnly":false,"canceledAt":"2026-08-01T00:00:00Z","provider":"APP_STORE","autoRenew":false}"""
