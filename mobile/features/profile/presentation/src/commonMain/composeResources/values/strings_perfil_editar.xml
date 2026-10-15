@@ -2,7 +2,7 @@
 <resources>
     <string name="profile_edit_title">Editar dados</string>
     <string name="profile_edit_photo_title">Sua foto</string>
-    <string name="profile_edit_photo_hint">Aparece nas listas de presença e nos grupos.</string>
+    <string name="profile_edit_photo_hint">Aparece no seu perfil.</string>
     <string name="profile_edit_photo_action">Trocar foto</string>
     <string name="profile_edit_name">Nome completo</string>
     <string name="profile_edit_nickname">Apelido</string>
