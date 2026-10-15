@@ -51,9 +51,9 @@ class TrialEndingRemindersTest {
         assertEquals(1, runAt("2026-10-15T13:00:00Z"))
         assertEquals(
             listOf(
-                "Faltam 3 dias do seu teste do Organizador. Até aqui: 3 jogos, 12 atletas confirmados, R\$ 450,00 no caixa. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Grupos e histórico ficam guardados.",
-                "Falta 1 dia do seu teste do Organizador. Até aqui: 3 jogos, 12 atletas confirmados, R\$ 450,00 no caixa. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Grupos e histórico ficam guardados.",
-                "Hoje é o último dia do seu teste do Organizador. Até aqui: 3 jogos, 12 atletas confirmados, R\$ 450,00 no caixa. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Grupos e histórico ficam guardados.",
+                "Faltam 3 dias do seu teste do Organizador. Até aqui: 3 jogos, 12 atletas confirmados, R\$ 450,00 no caixa. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Assine para continuar.",
+                "Falta 1 dia do seu teste do Organizador. Até aqui: 3 jogos, 12 atletas confirmados, R\$ 450,00 no caixa. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Assine para continuar.",
+                "Hoje é o último dia do seu teste do Organizador. Até aqui: 3 jogos, 12 atletas confirmados, R\$ 450,00 no caixa. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Assine para continuar.",
             ),
             published,
         )
@@ -109,7 +109,7 @@ class TrialEndingRemindersTest {
     @Test
     fun `sem uso o aviso so traz a contagem`() {
         assertEquals(
-            "Faltam 2 dias do seu teste do Organizador. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Grupos e histórico ficam guardados.",
+            "Faltam 2 dias do seu teste do Organizador. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Assine para continuar.",
             trialEndingBody(2, TrialUsage(0, 0, 0)),
         )
     }

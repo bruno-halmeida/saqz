@@ -56,7 +56,7 @@
     <string name="myplan_groups_benefit">Até 3 grupos</string>
     <string name="myplan_athletes_benefit">Atletas ilimitados</string>
     <string name="myplan_trial_next">Acesso da conta</string>
-    <string name="myplan_trial_no_charge">O teste termina sem cobrança automática. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Grupos e histórico ficam guardados.</string>
+    <string name="myplan_trial_no_charge">Sem cobrança automática. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Grupos e histórico ficam guardados.</string>
     <plurals name="myplan_trial_days_left">
         <item quantity="one">Falta %1$d dia</item>
         <item quantity="other">Faltam %1$d dias</item>

@@ -78,7 +78,7 @@ fun trialEndingBody(daysLeft: Int, usage: TrialUsage): String {
         else -> "Faltam $daysLeft dias do seu teste do Organizador."
     }
     val summary = if (usage.isEmpty) "" else " Até aqui: ${trialUsageSummary(usage)}."
-    return "$countdown$summary Quando o teste acabar, você não marca jogos e a galera não confirma presença. Grupos e histórico ficam guardados."
+    return "$countdown$summary Quando o teste acabar, você não marca jogos e a galera não confirma presença. Assine para continuar."
 }
 
 /** "3 jogos, 12 atletas confirmados, R$ 450,00 no caixa". */
