@@ -1,0 +1,42 @@
+# Testes do site (landing-page, adm-web, links-page) a cada push ou PR que mexa nele. O
+# deploy-pages.yml chama este workflow e só publica se passar. O teste de endereço de
+# desenvolvimento (landing-page/tests/no-dev-addresses.test.cjs) varre as três pastas.
+name: Site · verificar
+
+on:
+  push:
+    paths:
+      - "landing-page/**"
+      - "adm-web/**"
+      - "links-page/**"
+      - ".github/workflows/site-verify.yml"
+  pull_request:
+    paths:
+      - "landing-page/**"
+      - "adm-web/**"
+      - "links-page/**"
+      - ".github/workflows/site-verify.yml"
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    name: Testes de ${{ matrix.site }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        site: [landing-page, adm-web, links-page]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+      - name: Testes
+        run: node --test ${{ matrix.site }}/tests/*.test.cjs

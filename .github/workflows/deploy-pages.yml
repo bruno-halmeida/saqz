@@ -18,7 +18,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  testes:
+    name: Testes do site
+    uses: ./.github/workflows/site-verify.yml
+
   deploy:
+    needs: testes
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
