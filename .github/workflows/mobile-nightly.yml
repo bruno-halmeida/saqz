@@ -1,5 +1,8 @@
-# Testes do app toda madrugada, só na main: simulador iOS (Kotlin), Swift e Node, em
-# mobile-tests.yml. Pula a noite se a main não mudou desde a última execução que passou.
+# Testes do app toda madrugada, só na main: os de unidade e tela (detekt, JVM, simulador iOS, Swift e
+# Node, para pegar quebra antes da RC) e os CAROS, que não rodam na RC: instrumentados do Android
+# (androidTest) e E2E instalado (tests/e2e/android, com backend, Postgres e Firebase Auth Emulator
+# descartáveis) em emulador no Ubuntu, e os testes do web app (wasmJsNodeTest e scripts Node).
+# Pula a noite se a main não mudou desde a última execução que passou.
 # Se falhar, abre (ou comenta em) a issue "Testes noturnos do app falharam"; quando volta a
 # passar, comenta e fecha. Não trava RC nem release. Execução à mão: Actions → Mobile · testes
 # noturnos → Run workflow (ou `gh workflow run mobile-nightly.yml`), que não pula.
@@ -44,18 +47,147 @@ jobs:
             echo "executar=true" >> "$GITHUB_OUTPUT"
           fi
 
-  testes:
-    name: Esteira completa de testes
+  verificar:
+    name: detekt e testes na JVM
+    needs: checar
+    if: needs.checar.outputs.executar == 'true'
+    uses: ./.github/workflows/mobile-verify.yml
+
+  testes-ios:
+    name: Simulador iOS, Swift e Node
     needs: checar
     if: needs.checar.outputs.executar == 'true'
     uses: ./.github/workflows/mobile-tests.yml
     with:
       keep_going: true
 
+  instrumentados:
+    name: Instrumentados do Android (emulador)
+    needs: checar
+    if: needs.checar.outputs.executar == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Gradle com cache
+        uses: gradle/actions/setup-gradle@v6
+      - name: Liberar o KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: connectedDevDebugAndroidTest
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          working-directory: mobile
+          script: ./gradlew :android-app:connectedDevDebugAndroidTest
+      - name: Guardar os relatórios
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorios-instrumentados
+          retention-days: 14
+          if-no-files-found: ignore
+          path: |
+            mobile/android-app/build/reports/androidTests/
+            mobile/android-app/build/outputs/androidTest-results/
+
+  e2e-android:
+    name: E2E instalado do Android (emulador e stack descartável)
+    needs: checar
+    if: needs.checar.outputs.executar == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+      - name: Gradle com cache
+        uses: gradle/actions/setup-gradle@v6
+      - name: Firebase CLI na versão que o runner exige
+        run: |
+          set -euo pipefail
+          tools="$RUNNER_TEMP/e2e-tools"
+          mkdir -p "$tools"
+          npm install --prefix "$tools" firebase-tools@15.25.1
+          echo "SAQZ_E2E_FIREBASE_BIN=$tools/node_modules/firebase-tools/lib/bin/firebase.js" >> "$GITHUB_ENV"
+      - name: Liberar o KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Jornadas E2E (tests/e2e/android/run.mjs)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: node tests/e2e/android/run.mjs --serial emulator-5554
+      - name: Guardar os relatórios
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorios-e2e-android
+          retention-days: 14
+          if-no-files-found: ignore
+          path: |
+            mobile/android-app/build/reports/androidTests/
+            mobile/android-app/build/outputs/androidTest-results/
+            ${{ runner.temp }}/saqz-e2e-*/
+
+  web-app:
+    name: Web app (Kotlin/Wasm no Node)
+    needs: checar
+    if: needs.checar.outputs.executar == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Gradle com cache
+        uses: gradle/actions/setup-gradle@v6
+      - name: wasmJsNodeTest e scripts do loader e do service worker
+        working-directory: mobile
+        run: ./gradlew :web-app:wasmJsNodeTest :web-app:hostScriptsTest --continue
+      - name: Guardar os relatórios
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorios-web-app
+          retention-days: 14
+          if-no-files-found: ignore
+          path: mobile/web-app/build/reports/
+
   relatar:
     name: Issue de acompanhamento
-    needs: [checar, testes]
-    if: ${{ !cancelled() && needs.testes.result != 'skipped' }}
+    needs: [checar, verificar, testes-ios, instrumentados, e2e-android, web-app]
+    if: ${{ !cancelled() && needs.checar.outputs.executar == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -63,25 +195,33 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       TITULO: Testes noturnos do app falharam
-      RESULTADO: ${{ needs.testes.result }}
-      FALHAS: ${{ needs.testes.outputs.falhas }}
+      FALHAS_IOS: ${{ needs.testes-ios.outputs.falhas }}
       EXECUCAO: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      R_VERIFICAR: ${{ needs.verificar.result }}
+      R_IOS: ${{ needs.testes-ios.result }}
+      R_INSTRUMENTADOS: ${{ needs.instrumentados.result }}
+      R_E2E: ${{ needs.e2e-android.result }}
+      R_WEB: ${{ needs.web-app.result }}
     steps:
       - name: Abrir, comentar ou fechar a issue
         run: |
           set -euo pipefail
           numero=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$TITULO\" in:title" \
             --json number,title --jq "[.[] | select(.title == \"$TITULO\")][0].number // \"\"")
-          if [[ "$RESULTADO" == "success" ]]; then
+          falhou=""
+          for par in "detekt e testes na JVM=$R_VERIFICAR" "Simulador iOS, Swift e Node=$R_IOS" \
+                     "Instrumentados do Android=$R_INSTRUMENTADOS" "E2E instalado do Android=$R_E2E" "Web app=$R_WEB"; do
+            [[ "${par##*=}" == "success" ]] || falhou+="- ${par%=*}: ${par##*=}"$'\n'
+          done
+          if [[ -z "$falhou" ]]; then
             [[ -n "$numero" ]] || { echo "Passou e não há issue aberta."; exit 0; }
             gh issue close "$numero" --repo "$GITHUB_REPOSITORY" \
               --comment "Os testes noturnos voltaram a passar no commit \`${GITHUB_SHA:0:9}\`: $EXECUCAO"
             exit 0
           fi
-          lista=${FALHAS:-"(a lista não ficou disponível; veja o resumo da execução)"}
           cerca='```'
-          corpo=$(printf 'Execução: %s\nCommit: %s\n\nTestes que falharam:\n\n%s\n%s\n%s\n\nOs relatórios ficam como artefato relatorios-de-teste da execução.' \
-            "$EXECUCAO" "${GITHUB_SHA:0:9}" "$cerca" "$lista" "$cerca")
+          corpo=$(printf 'Execução: %s\nCommit: %s\n\nEtapas que não passaram:\n\n%s\nTestes do simulador iOS, Swift e Node que falharam:\n\n%s\n%s\n%s\n\nOs relatórios ficam como artefatos da execução (relatorios-*).' \
+            "$EXECUCAO" "${GITHUB_SHA:0:9}" "$falhou" "$cerca" "${FALHAS_IOS:-(nenhum listado)}" "$cerca")
           if [[ -n "$numero" ]]; then
             gh issue comment "$numero" --repo "$GITHUB_REPOSITORY" --body "$corpo"
           else

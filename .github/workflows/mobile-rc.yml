@@ -1,8 +1,9 @@
 # Release candidate do app, só à mão. Calcula a versão (última tag app-v*/rc-app-v* + 0.0.1, ou a
 # informada) e o build, grava os dois no Gradle e no pbxproj, commita na main, cria a tag
-# rc-app-vX.Y.Z com as notas e então, em paralelo e sem depender um do outro: verifica (detekt e
-# testes na JVM), sobe o AAB para a trilha interna do Play e o IPA para os testadores internos do
-# TestFlight. Publicar em produção é o mobile-release.yml, rodado a partir da tag.
+# rc-app-vX.Y.Z com as notas e então, em paralelo: verifica (detekt e testes na JVM), roda os
+# testes do simulador iOS/Swift/Node e gera o AAB e o IPA. O ENVIO às lojas (trilha interna do Play
+# e TestFlight) só acontece se TODOS os testes passarem: os jobs "enviar" têm needs nos testes, e
+# os builds não esperam por eles. Publicar em produção é o mobile-release.yml, rodado a partir da tag.
 name: Mobile · release candidate
 
 on:
@@ -102,8 +103,15 @@ jobs:
     with:
       ref: ${{ needs.prepare.outputs.sha }}
 
+  tests-ios:
+    name: Testes do simulador iOS, Swift e Node
+    needs: prepare
+    uses: ./.github/workflows/mobile-tests.yml
+    with:
+      ref: ${{ needs.prepare.outputs.sha }}
+
   android:
-    name: Android → Play (trilha interna)
+    name: Android · gerar o AAB
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -148,19 +156,13 @@ jobs:
       - name: Gerar o AAB prod assinado
         working-directory: mobile
         run: ./gradlew :android-app:bundleProdRelease "-Psaqz.versionName=$SAQZ_VERSION_NAME" "-Psaqz.versionCode=$SAQZ_VERSION_CODE"
-      - name: Ruby e fastlane
-        uses: ruby/setup-ruby@v1
+      - name: Guardar o AAB para o envio
+        uses: actions/upload-artifact@v7
         with:
-          ruby-version: "3.4"
-          bundler-cache: true
-          working-directory: mobile
-      - name: Enviar para a trilha interna do Play
-        working-directory: mobile
-        env:
-          SAQZ_AAB_PATH: ${{ github.workspace }}/mobile/android-app/build/outputs/bundle/prodRelease/android-app-prod-release.aab
-          SAQZ_RELEASE_NOTES: ${{ inputs.notes }}
-          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-        run: bundle exec fastlane android internal
+          name: aab-para-envio
+          path: mobile/android-app/build/outputs/bundle/prodRelease/android-app-prod-release.aab
+          if-no-files-found: error
+          retention-days: 1
       - name: Guardar o AAB e o mapping
         if: always()
         uses: actions/upload-artifact@v7
@@ -172,8 +174,42 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+  android-enviar:
+    name: Android → Play (trilha interna)
+    needs: [prepare, android, verify, tests-ios]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: mobile
+    env:
+      SAQZ_VERSION_NAME: ${{ needs.prepare.outputs.version }}
+      SAQZ_VERSION_CODE: ${{ needs.prepare.outputs.build }}
+    steps:
+      - name: Obter o commit da RC
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - name: Baixar o AAB
+        uses: actions/download-artifact@v7
+        with:
+          name: aab-para-envio
+          path: ${{ runner.temp }}/aab
+      - name: Ruby e fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: mobile
+      - name: Enviar para a trilha interna do Play
+        working-directory: mobile
+        env:
+          SAQZ_AAB_PATH: ${{ runner.temp }}/aab/android-app-prod-release.aab
+          SAQZ_RELEASE_NOTES: ${{ inputs.notes }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: bundle exec fastlane android internal
+
   ios:
-    name: iOS → TestFlight (internos)
+    name: iOS · gerar o IPA
     needs: prepare
     runs-on: macos-26
     timeout-minutes: 120
@@ -222,14 +258,21 @@ jobs:
           ruby-version: "3.4"
           bundler-cache: true
           working-directory: mobile
-      - name: Arquivar e enviar ao TestFlight
+      - name: Arquivar e gerar o IPA
         working-directory: mobile
         env:
           SAQZ_RELEASE_NOTES: ${{ inputs.notes }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-        run: bundle exec fastlane ios testflight
+        run: bundle exec fastlane ios archive
+      - name: Guardar o IPA para o envio
+        uses: actions/upload-artifact@v7
+        with:
+          name: ipa-para-envio
+          path: mobile/build/ios/Saqz.ipa
+          if-no-files-found: error
+          retention-days: 1
       - name: Guardar o IPA, os símbolos e o log
         if: always()
         uses: actions/upload-artifact@v7
@@ -241,3 +284,40 @@ jobs:
             mobile/build/ios/logs/
           if-no-files-found: ignore
           retention-days: 30
+
+  ios-enviar:
+    name: iOS → TestFlight (internos)
+    needs: [prepare, ios, verify, tests-ios]
+    runs-on: macos-26
+    timeout-minutes: 90
+    environment: mobile
+    env:
+      SAQZ_VERSION_NAME: ${{ needs.prepare.outputs.version }}
+      SAQZ_VERSION_CODE: ${{ needs.prepare.outputs.build }}
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - name: Obter o commit da RC
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - name: Baixar o IPA
+        uses: actions/download-artifact@v7
+        with:
+          name: ipa-para-envio
+          path: ${{ runner.temp }}/ipa
+      - name: Ruby e fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: mobile
+      - name: Enviar ao TestFlight
+        working-directory: mobile
+        env:
+          SAQZ_IPA_PATH: ${{ runner.temp }}/ipa/Saqz.ipa
+          SAQZ_RELEASE_NOTES: ${{ inputs.notes }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: bundle exec fastlane ios upload

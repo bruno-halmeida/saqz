@@ -1,6 +1,6 @@
 # Verificação rápida do app: detekt e testes de unidade na JVM. Roda a cada push na main que
 # toque em mobile/, à mão, e dentro do mobile-rc.yml (workflow_call) no commit da RC.
-# Os testes de simulador iOS ficam na esteira completa do mobile-release.yml para não serem gargalo.
+# Os testes de simulador iOS rodam em mobile-tests.yml (RC, noturno e release); os caros, só no mobile-nightly.yml.
 name: Mobile · verificar
 
 on:
