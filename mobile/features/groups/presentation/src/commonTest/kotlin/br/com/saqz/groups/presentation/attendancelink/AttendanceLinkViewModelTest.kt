@@ -141,6 +141,24 @@ class AttendanceLinkViewModelTest {
         assertEquals(1, gateway.commands.size)
     }
 
+    @Test fun declineLinkOpensTheSheetWithoutWritingAndLeavingItWritesNothing() = runTest {
+        val gateway = AttendanceFake()
+        val vm = AttendanceLinkViewModel(declineCode, true, SharingFake(), gateway, InviteFake())
+        assertEquals(AttendanceLinkPhase.DeclineSheet, vm.state.value.phase)
+        // Fechar a folha (alça, scrim, voltar) é navegação da tela: não há intent que escreva.
+        vm.onIntent(AttendanceLinkIntent.Retry)
+        assertEquals(AttendanceLinkPhase.DeclineSheet, vm.state.value.phase)
+        assertTrue(gateway.commands.isEmpty())
+    }
+
+    @Test fun declineServerFailureNeverReachesTheDeclinedPhase() = runTest {
+        val gateway = AttendanceFake().apply { error = AttendanceError.Conflict }
+        val vm = AttendanceLinkViewModel(declineCode, true, SharingFake(), gateway, InviteFake())
+        vm.onIntent(AttendanceLinkIntent.Decline)
+        assertEquals(1, gateway.commands.size)
+        assertEquals(AttendanceLinkPhase.Failed, vm.state.value.phase)
+    }
+
     @Test fun appDownloadIsOfferedOnlyWhenThePortHasAStoreAndOpensIt() = runTest {
         val port = br.com.saqz.groups.presentation.FakeAppDownload()
         val offered = AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake(), appDownload = port)

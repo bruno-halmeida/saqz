@@ -1,6 +1,8 @@
 package br.com.saqz.groups.presentation.attendancelink
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -39,4 +41,28 @@ class AttendanceLinkScreenTest {
             onNodeWithTag(AttendanceLinkTags.Download).assertDoesNotExist()
         }
     }
+
+    @Test fun declineSheetNeverClaimsTheGroupWasNotifiedBeforeTheTap() = runComposeUiTest {
+        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.DeclineSheet, destination), {}, {}, {}) } }
+        onNodeWithText(declinedText).assertDoesNotExist()
+        onAllNodesWithText("Confirme abaixo se você não vai.").assertCountEquals(1)
+    }
+
+    @Test fun declinedShowsTheFinalTextOnlyAfterTheServerRecorded() = runComposeUiTest {
+        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Declined, destination), {}, {}, {}) } }
+        onNodeWithText(declinedText).assertExists()
+    }
+
+    @Test fun failedAfterDeclineTapDoesNotShowTheDeclinedText() = runComposeUiTest {
+        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Failed, destination), {}, {}, {}) } }
+        onNodeWithText(declinedText).assertDoesNotExist()
+    }
+
+    @Test fun declineSheetPromisesOnlyWhatIsTrueForEveryone() = runComposeUiTest {
+        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.DeclineSheet, destination), {}, {}, {}) } }
+        onNodeWithText("Sua vaga libera na hora", substring = true).assertDoesNotExist()
+        onNodeWithText("Se você tinha vaga", substring = true).assertExists()
+    }
+
+    private val declinedText = "Registramos que você não vai. Se você tinha vaga, ela passa para o primeiro da lista de espera."
 }

@@ -55,7 +55,9 @@ internal fun AttendanceLinkScreen(
                     AttendanceLinkPhase.Loading -> Res.string.attendance_link_loading
                     AttendanceLinkPhase.Confirmed -> Res.string.attendance_link_confirmed
                     AttendanceLinkPhase.Waitlisted -> Res.string.attendance_link_waitlisted
-                    AttendanceLinkPhase.DeclineSheet, AttendanceLinkPhase.Declined -> Res.string.attendance_link_declined
+                    // Antes do toque nada foi gravado: o texto de fundo não pode dizer que o grupo foi avisado.
+                    AttendanceLinkPhase.DeclineSheet -> Res.string.attendance_link_decline_pending
+                    AttendanceLinkPhase.Declined -> Res.string.attendance_link_declined
                     AttendanceLinkPhase.Invalid -> Res.string.attendance_link_invalid
                     AttendanceLinkPhase.Failed -> Res.string.communication_failure
                     AttendanceLinkPhase.Registration -> Res.string.attendance_link_registration
