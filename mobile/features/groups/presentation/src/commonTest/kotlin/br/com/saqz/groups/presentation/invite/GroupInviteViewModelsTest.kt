@@ -454,11 +454,11 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
-    fun `default invitation names group and explains browser or app entry and athlete pricing before sharing`() = runTest {
+    fun `default invitation names group and calls athletes to confirm presence before sharing`() = runTest {
         val share = FakeShare()
         val vm = InvitePreviewMessageViewModel("CERET", "https://saqz.app/invite/1", share)
         advanceUntilIdle()
-        val expected = "Entre no CERET pelo Saqz para responder presença nos jogos. É só abrir o link e entrar com sua conta, pelo navegador ou pelo app. Atletas não pagam nada ao Saqz; os valores dos jogos são combinados com o grupo."
+        val expected = "CERET: agora a lista de presença é pelo Saqz. Abra o link, entre com sua conta e confirme se vai no próximo jogo. Bora jogar!"
         assertEquals(expected, vm.state.value.message)
         vm.onIntent(InvitePreviewIntent.Share)
         assertEquals("$expected\n\nhttps://saqz.app/invite/1", share.text)
@@ -498,12 +498,12 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
-    fun `longest emoji group name preserves the complete pricing explanation and shared link`() = runTest {
+    fun `longest emoji group name preserves the complete invitation and shared link`() = runTest {
         val name = "🏐".repeat(80)
         val share = FakeShare()
         val vm = InvitePreviewMessageViewModel(name, "https://saqz.app/invite/1", share)
         advanceUntilIdle()
-        val expected = "Entre no $name pelo Saqz para responder presença nos jogos. É só abrir o link e entrar com sua conta, pelo navegador ou pelo app. Atletas não pagam nada ao Saqz; os valores dos jogos são combinados com o grupo."
+        val expected = "$name: agora a lista de presença é pelo Saqz. Abra o link, entre com sua conta e confirme se vai no próximo jogo. Bora jogar!"
         assertEquals(expected, vm.state.value.message)
         vm.onIntent(InvitePreviewIntent.Share)
         assertEquals("$expected\n\nhttps://saqz.app/invite/1", share.text)

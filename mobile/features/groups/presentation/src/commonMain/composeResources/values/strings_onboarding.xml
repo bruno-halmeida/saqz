@@ -11,7 +11,7 @@
     <string name="onboarding_finance_title">Primeiro jogo encerrado. E o acerto?</string>
     <string name="onboarding_finance_body">Veja quem ainda precisa pagar e registre os recebimentos do jogo. O caixa reúne entradas e saídas para você acompanhar o saldo do grupo.</string>
     <string name="onboarding_finance_action">Ver acerto do primeiro jogo</string>
-    <string name="onboarding_invite_message">Entre no %1$s pelo Saqz para responder presença nos jogos. É só abrir o link e entrar com sua conta, pelo navegador ou pelo app. Atletas não pagam nada ao Saqz; os valores dos jogos são combinados com o grupo.</string>
+    <string name="onboarding_invite_message">%1$s: agora a lista de presença é pelo Saqz. Abra o link, entre com sua conta e confirme se vai no próximo jogo. Bora jogar!</string>
     <string name="app_download_offer">Quer lembrete no celular? Baixe o app Saqz e entre com a mesma conta.</string>
     <string name="app_download_action">Baixar o app</string>
     <string name="onboarding_athlete_title">Sua resposta foi salva. Conheça o Saqz.</string>
