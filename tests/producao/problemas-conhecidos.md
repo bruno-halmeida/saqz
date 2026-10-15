@@ -15,7 +15,6 @@ aceitar ou só documentar.
 | [PC-06](#pc-06-a-pc-14--achados-abertos) | Aba Grupos sem chip de presença e "0 pedindo confirmação" fixo | A triar | 07/10/2026 |
 | PC-08 | "Recado para a galera" do jogo não aparece para ninguém | A triar | 07/10/2026 |
 | PC-11 | Quem teve o pedido de entrada aprovado não recebe aviso individual | Decisão do dono: nenhum texto promete aviso | 07/10/2026 |
-| PC-12 | Android 13+ pede permissão de notificação uma vez só por instalação | A triar | 07/10/2026 |
 | PC-13 | Extrato do grupo sem seletor de mês | A triar | 07/10/2026 |
 | PC-14 | Recibos do Google Play aparecem com valor "—" | A triar | 07/10/2026 |
 
@@ -65,8 +64,6 @@ aviso individual não reprova o cenário enquanto este item estiver aqui.
   tela nem notificação.
 - **PC-11 · Aprovação de pedido.** Quem teve o pedido aprovado não recebe aviso individual, por decisão do
   dono; o texto de "Pedido enviado" já não promete aviso. O cadastro de atleta agora abre ao pedir entrada.
-- **PC-12 · Permissão no Android.** No Android 13+ o app pede permissão de notificação uma vez só por
-  instalação; quem recusou precisa ligar nos ajustes do sistema.
 - **PC-13 · Extrato.** Mostra só o mês atual; o seletor de período existe só na "Caixa geral".
 - **PC-14 · Recibos do Play.** A API do Google não devolve preço, e os recibos aparecem com "—".
 
@@ -86,3 +83,4 @@ Saíram da lista acima. Se um cenário ainda reproduzir o defeito, é regressão
 | PC-03 | A dica da foto diz só onde ela aparece de fato ("Aparece no seu perfil.") | `7c2fe2939` |
 | PC-05 | Erro ao criar grupo não descarta o que foi digitado; saiu o "Salvar rascunho" | `461f867d2` |
 | PC-16 | "Termos de recebimentos" leem a API de produção | `67fefed91` |
+| PC-12 | Folha do app explica os avisos antes do pedido do sistema (depois da 1ª resposta do atleta ou do 1º jogo do organizador) e a central mostra "Avisos desligados · Ligar nos ajustes" para quem recusou. Diálogo do sistema conferido só no build da loja | `7d89b1bd5` |
