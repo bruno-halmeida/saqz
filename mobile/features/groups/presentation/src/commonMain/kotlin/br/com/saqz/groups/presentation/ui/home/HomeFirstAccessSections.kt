@@ -75,16 +75,17 @@ internal fun HomeFirstAccessHero(
         meta = stringResource(Res.string.home_first_access_body),
         modifier = modifier.testTag(HomeTags.FirstAccess),
     ) {
-        Row(
+        // Rótulo de botão não quebra: empilhados, o principal em cima, cabem em qualquer tela e fonte.
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
+            verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
         ) {
             SaqzButton(
                 label = stringResource(Res.string.home_first_access_create),
                 onClick = { onIntent(HomeIntent.CreateGroup) },
                 variant = SaqzButtonVariant.Accent,
                 fullWidth = true,
-                modifier = Modifier.weight(1f).testTag(HomeTags.FirstAccessCreate),
+                modifier = Modifier.testTag(HomeTags.FirstAccessCreate),
             )
             SaqzButton(
                 label = stringResource(Res.string.home_first_access_invite),
@@ -93,7 +94,7 @@ internal fun HomeFirstAccessHero(
                 contentColor = colors.onPrimary,
                 borderColor = colors.onPrimary.copy(alpha = HeroOutlineAlpha),
                 fullWidth = true,
-                modifier = Modifier.weight(1f).testTag(HomeTags.FirstAccessInvite),
+                modifier = Modifier.testTag(HomeTags.FirstAccessInvite),
             )
         }
     }

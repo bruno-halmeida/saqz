@@ -137,6 +137,18 @@ class HomeScreenTest {
     }
 
     @Test
+    fun `first access stacks the two buttons so labels never wrap`() = runComposeUiTest {
+        setScreen(firstAccessState(), {})
+
+        val create = onNodeWithTag(HomeTags.FirstAccessCreate).getUnclippedBoundsInRoot()
+        val invite = onNodeWithTag(HomeTags.FirstAccessInvite).getUnclippedBoundsInRoot()
+
+        // O principal fica em cima e o convite embaixo, cada um com a largura toda.
+        assertTrue(invite.top >= create.bottom)
+        assertEquals(create.width, invite.width)
+    }
+
+    @Test
     fun `first access renders the onboarding hero and steps and routes both paths`() = runComposeUiTest {
         val intents = mutableListOf<HomeIntent>()
         setScreen(firstAccessState(), intents::add)
