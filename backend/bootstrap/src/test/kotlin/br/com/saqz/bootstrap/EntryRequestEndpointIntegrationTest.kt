@@ -13,6 +13,8 @@ import br.com.saqz.groups.application.entryrequest.EntryRequestRepository
 import br.com.saqz.groups.application.entryrequest.GroupEntryRequest
 import br.com.saqz.groups.application.entryrequest.ListEntryRequests
 import br.com.saqz.groups.application.entryrequest.RejectEntryRequest
+import br.com.saqz.groups.application.entryrequest.SaveEntryRequestAthleteProfile
+import br.com.saqz.groups.application.entryrequest.SaveEntryRequestAthleteProfileCommand
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.application.invite.redeem.CreateEntryRequestCommand
 import br.com.saqz.groups.application.invite.redeem.GroupAthleteOccupancy
@@ -218,12 +220,20 @@ class EntryRequestEndpointIntegrationTest {
         ) = RejectEntryRequest(transaction, read, repository, GroupAccessPolicy())
 
         @Bean
+        fun saveEntryRequestAthleteProfile(
+            transaction: RecordingEntryRequestTransaction,
+            read: RecordingEntryRequestGroupReadRepository,
+            repository: RecordingEntryRequestRepository,
+        ) = SaveEntryRequestAthleteProfile(transaction, read, repository)
+
+        @Bean
         fun accessEntryRequestController(
             bootstrap: BootstrapSession,
             list: ListEntryRequests,
             approve: ApproveEntryRequest,
             reject: RejectEntryRequest,
-        ) = AccessEntryRequestController(verifiedGroupActorResolver(bootstrap), list, approve, reject)
+            saveProfile: SaveEntryRequestAthleteProfile,
+        ) = AccessEntryRequestController(verifiedGroupActorResolver(bootstrap), list, approve, reject, saveProfile)
 
         companion object {
             val NOW: Instant = Instant.parse("2026-08-02T10:00:00Z")
@@ -348,6 +358,10 @@ class EntryRequestEndpointIntegrationTest {
                 command.requestedAt,
             )
         }
+
+        override fun saveAthleteProfile(command: SaveEntryRequestAthleteProfileCommand) = command.userId in entryRequests
+
+        override fun applyAthleteProfileToMembership(groupId: UUID, userId: UUID) = Unit
 
         override fun delete(groupId: UUID, userId: UUID) {
             entryRequests.remove(userId)

@@ -12,6 +12,9 @@ import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInviteResult
 import br.com.saqz.groups.application.invite.redeem.RedeemMembershipCommand
 import br.com.saqz.groups.application.entryrequest.GroupEntryRequest
+import br.com.saqz.groups.application.entryrequest.SaveEntryRequestAthleteProfileCommand
+import br.com.saqz.groups.domain.AthleteLevel
+import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.postgrestesting.TestPostgres
@@ -149,6 +152,87 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
 
         assertTrue(transaction.inTransaction { repository.list(fixture.group) }.isEmpty())
         assertNull(transaction.inTransaction { repository.find(fixture.group, user) })
+    }
+
+    @Test
+    fun `entry request stores the athlete registration and overwrites it idempotently`() {
+        val fixture = inviteFixture("entry-request-profile")
+        val user = insertUser("entry-request-profile-user")
+        transaction.inTransaction { repository.createEntryRequest(CreateEntryRequestCommand(fixture.group, user, now)) }
+
+        assertEquals(false, flag("SELECT athlete_registration_completed FROM group_entry_requests WHERE user_id = '$user'"))
+        assertTrue(transaction.inTransaction { repository.saveAthleteProfile(profile(fixture.group, user, "Bia")) })
+        assertTrue(transaction.inTransaction { repository.saveAthleteProfile(profile(fixture.group, user, "Bia Lima")) })
+
+        assertEquals("Bia Lima", text("SELECT nickname FROM group_entry_requests WHERE user_id = '$user'"))
+        assertEquals("LEVANTADOR", text("SELECT position::text FROM group_entry_requests WHERE user_id = '$user'"))
+        assertEquals("OPOSTO", text("SELECT secondary_position::text FROM group_entry_requests WHERE user_id = '$user'"))
+        assertEquals("AVANCADO", text("SELECT level::text FROM group_entry_requests WHERE user_id = '$user'"))
+        assertEquals(178, number("SELECT height_cm FROM group_entry_requests WHERE user_id = '$user'"))
+        assertEquals(true, flag("SELECT athlete_registration_completed FROM group_entry_requests WHERE user_id = '$user'"))
+    }
+
+    @Test
+    fun `saving the athlete registration without a pending request changes nothing`() {
+        val fixture = inviteFixture("entry-request-no-profile")
+        val user = insertUser("entry-request-no-profile-user")
+
+        assertFalse(transaction.inTransaction { repository.saveAthleteProfile(profile(fixture.group, user, "Bia")) })
+        assertEquals(0, number("SELECT count(*) FROM group_entry_requests"))
+    }
+
+    @Test
+    fun `applying the stored registration fills the membership created on approval`() {
+        val fixture = inviteFixture("entry-request-apply")
+        val user = insertUser("entry-request-apply-user")
+        transaction.inTransaction {
+            repository.createEntryRequest(CreateEntryRequestCommand(fixture.group, user, now))
+            repository.saveAthleteProfile(profile(fixture.group, user, "Bia"))
+        }
+        insertMembership(fixture.group, user, "ATHLETE")
+
+        transaction.inTransaction { repository.applyAthleteProfileToMembership(fixture.group, user) }
+
+        val sql = "FROM group_memberships WHERE group_id = '${fixture.group}' AND user_id = '$user'"
+        assertEquals("Bia", text("SELECT nickname $sql"))
+        assertEquals("LEVANTADOR", text("SELECT position::text $sql"))
+        assertEquals("OPOSTO", text("SELECT secondary_position::text $sql"))
+        assertEquals("AVANCADO", text("SELECT level::text $sql"))
+        assertEquals(178, number("SELECT height_cm $sql"))
+        assertEquals(true, flag("SELECT athlete_registration_completed $sql"))
+    }
+
+    @Test
+    fun `applying without a stored registration leaves the membership untouched`() {
+        val fixture = inviteFixture("entry-request-apply-empty")
+        val user = insertUser("entry-request-apply-empty-user")
+        transaction.inTransaction { repository.createEntryRequest(CreateEntryRequestCommand(fixture.group, user, now)) }
+        insertMembership(fixture.group, user, "ATHLETE")
+
+        transaction.inTransaction { repository.applyAthleteProfileToMembership(fixture.group, user) }
+
+        val sql = "FROM group_memberships WHERE group_id = '${fixture.group}' AND user_id = '$user'"
+        assertNull(text("SELECT nickname $sql"))
+        assertEquals(false, flag("SELECT athlete_registration_completed $sql"))
+    }
+
+    @Test
+    fun `rejecting or deleting the group discards the stored registration with the request`() {
+        val fixture = inviteFixture("entry-request-discard")
+        val rejected = insertUser("entry-request-discard-rejected")
+        val orphaned = insertUser("entry-request-discard-orphaned")
+        transaction.inTransaction {
+            repository.createEntryRequest(CreateEntryRequestCommand(fixture.group, rejected, now))
+            repository.saveAthleteProfile(profile(fixture.group, rejected, "Bia"))
+            repository.createEntryRequest(CreateEntryRequestCommand(fixture.group, orphaned, now))
+            repository.saveAthleteProfile(profile(fixture.group, orphaned, "Caio"))
+        }
+
+        transaction.inTransaction { repository.delete(fixture.group, rejected) }
+        assertEquals(1, number("SELECT count(*) FROM group_entry_requests"))
+        execute("DELETE FROM access_groups WHERE id = '${fixture.group}'")
+
+        assertEquals(0, number("SELECT count(*) FROM group_entry_requests"))
     }
 
     @Test
@@ -392,6 +476,19 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
             pool.shutdownNow()
         }
     }
+
+    private fun profile(group: UUID, user: UUID, nickname: String) = SaveEntryRequestAthleteProfileCommand(
+        groupId = group,
+        userId = user,
+        nickname = nickname,
+        position = AthletePosition.LEVANTADOR,
+        secondaryPosition = AthletePosition.OPOSTO,
+        level = AthleteLevel.AVANCADO,
+        preferredSide = null,
+        heightCm = 178,
+    )
+
+    private fun flag(sql: String): Boolean? = connection().use { it.createStatement().use { statement -> statement.executeQuery(sql).use { result -> result.next(); result.getBoolean(1) } } }
 
     private fun insertUser(subject: String): UUID {
         val id = UUID.randomUUID()

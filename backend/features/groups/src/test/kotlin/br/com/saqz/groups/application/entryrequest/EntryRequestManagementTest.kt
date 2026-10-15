@@ -9,6 +9,7 @@ import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.application.read.GroupReadSnapshot
 import br.com.saqz.groups.domain.AccessName
+import br.com.saqz.groups.domain.AthleteLevel
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.groups.domain.PersistedMembershipRole
@@ -126,9 +127,84 @@ class EntryRequestManagementTest {
         assertEquals(listOf(applicantId, applicantId), fixture.entries.deleted)
     }
 
+    @Test
+    fun `applicant saves the athlete registration on the pending request`() {
+        val fixture = fixture(role = null)
+        val command = profile(nickname = "Bia", level = AthleteLevel.AVANCADO)
+
+        val result = fixture.saveProfile.execute(applicantId, groupId, command)
+
+        assertIs<SaveEntryRequestAthleteProfileResult.Success>(result)
+        assertEquals(listOf(command), fixture.entries.savedProfiles)
+        assertEquals(1, fixture.transaction.calls)
+    }
+
+    @Test
+    fun `saving the registration validates like the member endpoint`() {
+        val fixture = fixture(role = null)
+
+        val result = fixture.saveProfile.execute(applicantId, groupId, profile(nickname = "a"))
+
+        val invalid = assertIs<SaveEntryRequestAthleteProfileResult.Invalid>(result)
+        assertEquals(listOf("nickname"), invalid.fieldErrors.keys.toList())
+        assertTrue(fixture.entries.savedProfiles.isEmpty())
+    }
+
+    @Test
+    fun `saving the registration without a pending request is not found`() {
+        val fixture = fixture(role = null)
+        fixture.entries.requests.clear()
+
+        val result = fixture.saveProfile.execute(applicantId, groupId, profile(nickname = "Bia"))
+
+        assertIs<SaveEntryRequestAthleteProfileResult.RequestNotFound>(result)
+        assertTrue(fixture.entries.savedProfiles.isEmpty())
+    }
+
+    @Test
+    fun `saving the registration for a missing group is not found`() {
+        val fixture = fixture(role = null)
+
+        val result = fixture.saveProfile.execute(applicantId, UUID.randomUUID(), profile(nickname = "Bia"))
+
+        assertIs<SaveEntryRequestAthleteProfileResult.GroupNotFound>(result)
+    }
+
+    @Test
+    fun `approval copies the stored registration to the membership before dropping the request`() {
+        val fixture = fixture(role = GroupRole.OWNER)
+
+        fixture.approve.execute(ownerId, groupId, applicantId)
+
+        assertEquals(listOf(applicantId), fixture.entries.applied)
+        assertEquals(listOf("change", "apply", "delete"), fixture.order)
+    }
+
+    @Test
+    fun `approval without a stored registration succeeds as before`() {
+        val fixture = fixture(role = GroupRole.OWNER)
+
+        val result = fixture.approve.execute(ownerId, groupId, applicantId)
+
+        assertIs<ApproveEntryRequestResult.Success>(result)
+        assertTrue(fixture.entries.savedProfiles.isEmpty())
+    }
+
+    private fun profile(nickname: String?, level: AthleteLevel? = null) = SaveEntryRequestAthleteProfileCommand(
+        groupId = groupId,
+        userId = applicantId,
+        nickname = nickname,
+        position = null,
+        secondaryPosition = null,
+        level = level,
+        preferredSide = null,
+        heightCm = null,
+    )
+
     private fun fixture(role: GroupRole?, athleteLimit: Int? = null): Fixture {
-        val entries = MemoryEntryRequestRepository()
-        val membership = MemoryMembershipRepository()
+        val order = mutableListOf<String>()
+        val entries = MemoryEntryRequestRepository(order)
+        val membership = MemoryMembershipRepository(order)
         val transaction = RecordingTransactionRunner()
         val read = MemoryGroupReadRepository(role)
         val approve = ApproveEntryRequest(
@@ -142,7 +218,8 @@ class EntryRequestManagementTest {
         )
         val list = ListEntryRequests(read, entries, br.com.saqz.groups.domain.GroupAccessPolicy())
         val reject = RejectEntryRequest(transaction, read, entries, br.com.saqz.groups.domain.GroupAccessPolicy())
-        return Fixture(list, approve, reject, transaction, entries, membership)
+        val saveProfile = SaveEntryRequestAthleteProfile(transaction, read, entries)
+        return Fixture(list, approve, reject, saveProfile, transaction, entries, membership, order)
     }
 
     private fun occupancy(openMembers: Set<UUID> = emptySet()) = GroupAthleteOccupancy(
@@ -156,9 +233,11 @@ class EntryRequestManagementTest {
         val list: ListEntryRequests,
         val approve: ApproveEntryRequest,
         val reject: RejectEntryRequest,
+        val saveProfile: SaveEntryRequestAthleteProfile,
         val transaction: RecordingTransactionRunner,
         val entries: MemoryEntryRequestRepository,
         val membership: MemoryMembershipRepository,
+        val order: List<String>,
     )
 
     private class FixedSubscriptionLimits(private val athleteLimit: Int?) : SubscriptionLimits {
@@ -191,7 +270,7 @@ class EntryRequestManagementTest {
 
     }
 
-    private inner class MemoryEntryRequestRepository : EntryRequestRepository {
+    private inner class MemoryEntryRequestRepository(private val order: MutableList<String>) : EntryRequestRepository {
         val request = GroupEntryRequest(
             userId = applicantId,
             displayName = AccessName.from("Applicant"),
@@ -200,6 +279,8 @@ class EntryRequestManagementTest {
         val requests = mutableMapOf(applicantId to request)
         val deletedUsers = mutableSetOf<UUID>()
         val deleted = mutableListOf<UUID>()
+        val savedProfiles = mutableListOf<SaveEntryRequestAthleteProfileCommand>()
+        val applied = mutableListOf<UUID>()
         var occupancy: GroupAthleteOccupancy? = GroupAthleteOccupancy(
             ownerUserId = ownerId,
             openMemberIds = emptySet(),
@@ -213,8 +294,22 @@ class EntryRequestManagementTest {
         override fun find(groupId: UUID, userId: UUID): GroupEntryRequest? =
             requests[userId].takeUnless { userId in deletedUsers }
 
+        override fun saveAthleteProfile(command: SaveEntryRequestAthleteProfileCommand): Boolean {
+            if (command.userId !in requests) return false
+            savedProfiles += command
+            return true
+        }
+
+        override fun applyAthleteProfileToMembership(groupId: UUID, userId: UUID) {
+            order += "apply"
+            applied += userId
+        }
+
         override fun delete(groupId: UUID, userId: UUID) {
-            if (requests.remove(userId) != null) deleted += userId
+            if (requests.remove(userId) != null) {
+                order += "delete"
+                deleted += userId
+            }
         }
 
         override fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy? {
@@ -223,7 +318,7 @@ class EntryRequestManagementTest {
         }
     }
 
-    private inner class MemoryMembershipRepository : MembershipRepository {
+    private inner class MemoryMembershipRepository(private val order: MutableList<String>) : MembershipRepository {
         val memberships = mutableMapOf<UUID, AccessMembership>()
         val changes = mutableListOf<ChangeMemberRoleCommand>()
 
@@ -233,6 +328,7 @@ class EntryRequestManagementTest {
 
         override fun change(command: ChangeMemberRoleCommand): AccessMembership {
             changes += command
+            order += "change"
             return AccessMembership(
                 userId = command.userId,
                 displayName = AccessName.from("Applicant"),
