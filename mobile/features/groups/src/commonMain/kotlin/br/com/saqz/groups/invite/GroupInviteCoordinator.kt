@@ -243,25 +243,27 @@ class GroupInviteCoordinator(
     private suspend fun redeem(token: Long, code: InviteCode) {
         when (val preview = inviteGateway.preview(code)) {
             is SaqzResult.Failure -> finishFailure(token, code, preview.error)
-            is SaqzResult.Success -> if (!isCurrent(token)) {
-                // Resposta velha: saiu da conta (ou chegou outro link) enquanto o preview andava.
-                return
-            } else when (val result = inviteGateway.redeem(code)) {
-                is SaqzResult.Failure -> finishFailure(token, code, result.error)
-                is SaqzResult.Success -> {
-                    if (!clearPending(token)) {
-                        emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code.value))
-                        return
-                    }
-                    emitIfCurrent(
-                        token,
-                        GroupInviteEffect.NavigateToGroup(
-                            groupId = result.value.groupId.value,
-                            status = result.value.status,
-                            inviteCode = code.value,
-                        ),
-                    )
+            // Resposta velha: saiu da conta (ou chegou outro link) enquanto o preview andava.
+            is SaqzResult.Success -> if (isCurrent(token)) redeemAfterPreview(token, code)
+        }
+    }
+
+    private suspend fun redeemAfterPreview(token: Long, code: InviteCode) {
+        when (val result = inviteGateway.redeem(code)) {
+            is SaqzResult.Failure -> finishFailure(token, code, result.error)
+            is SaqzResult.Success -> {
+                if (!clearPending(token)) {
+                    emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code.value))
+                    return
                 }
+                emitIfCurrent(
+                    token,
+                    GroupInviteEffect.NavigateToGroup(
+                        groupId = result.value.groupId.value,
+                        status = result.value.status,
+                        inviteCode = code.value,
+                    ),
+                )
             }
         }
     }
