@@ -117,7 +117,6 @@ JG11 é criado logo no começo da rodada.
 - O jogo marcado sai publicado e vira o primeiro jogo do horário fixo (o dia aparece em Gestão → "Jogos e
   horários"). Os das semanas seguintes não aparecem para ninguém, nem para ORG, até serem liberados
   sozinhos 5 dias antes: rascunhos da série são invisíveis por desenho (09/10).
-- "Publicar jogo" só existe para rascunho avulso do gestor; sem um à vista, esse passo fica sem cobertura.
 
 ## PROD-JG09 · Editar um jogo · P1
 
@@ -139,7 +138,7 @@ JG11 é criado logo no começo da rodada.
 **Conferir**
 - O jogo some das agendas de ORG e ATL.
 - Confirmados e lista de espera recebem o aviso "O jogo de <dia> dd/mm às HHhMM foi cancelado." na central e
-  no push (e no grupo do WhatsApp vinculado, se houver). Rascunho cancelado não avisa ninguém.
+  no push (e no grupo do WhatsApp vinculado, se houver).
 
 ## PROD-JG11 · O jogo encerra sozinho · P0
 
