@@ -51,27 +51,28 @@ final class IOSNotificationPort: NSObject, @preconcurrency NativeNotificationPor
             NSLog("[SaqzPush] device: guard falhou (app=\(FirebaseApp.app() != nil) project=\(FirebaseApp.app()?.options.projectID ?? "-"))")
             done(nil); return
         }
-        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+        Task { [weak self] in
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
             let granted = Self.permission(from: settings) == .granted
             NSLog("[SaqzPush] device: permissao concedida=\(granted)")
-            Task { @MainActor in
-                guard granted else { done(nil); return }
-                self?.pending = done
-                UIApplication.shared.registerForRemoteNotifications()
-                if Messaging.messaging().apnsToken != nil { self?.readToken() }
-            }
+            guard granted else { done(nil); return }
+            self?.pending = done
+            UIApplication.shared.registerForRemoteNotifications()
+            if Messaging.messaging().apnsToken != nil { self?.readToken() }
         }
     }
     func permission(done: @escaping (NotificationPermission) -> Void) {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            let state = Self.permission(from: settings)
-            Task { @MainActor in done(state) }
+        Task {
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            done(Self.permission(from: settings))
         }
     }
     func requestPermission(done: @escaping (NotificationPermission) -> Void) {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+        Task {
+            let granted = (try? await UNUserNotificationCenter.current()
+                .requestAuthorization(options: [.alert, .badge, .sound])) ?? false
             NSLog("[SaqzPush] requestPermission: concedida=\(granted)")
-            Task { @MainActor in done(granted ? .granted : .denied) }
+            done(granted ? .granted : .denied)
         }
     }
     func openSettings() {
@@ -90,9 +91,9 @@ final class IOSNotificationPort: NSObject, @preconcurrency NativeNotificationPor
         defaults.set(Int(memory.declined), forKey: "saqz.notificationPromptDeclined")
         defaults.set(Double(memory.lastDeclinedAtMillis), forKey: "saqz.notificationPromptDeclinedAt")
     }
-    nonisolated private static func permission(from settings: UNNotificationSettings) -> NotificationPermission {
+    private static func permission(from settings: UNNotificationSettings) -> NotificationPermission {
         switch settings.authorizationStatus {
-        case .notDetermined: return .notAsked
+        case .notDetermined: return .notasked
         case .denied: return .denied
         default: return .granted
         }
