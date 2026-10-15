@@ -56,6 +56,5 @@ fun NotificationPromptSheet(
                 Modifier.weight(1f).testTag(NotificationPromptTags.Enable),
             )
         },
-        content = {},
     )
 }

@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -13,7 +14,9 @@ import br.com.saqz.groups.presentation.communication.NotificationCenterState
 import br.com.saqz.groups.presentation.communication.NotificationCenterTags
 import br.com.saqz.groups.presentation.communication.NotificationPromptAudience
 import kotlin.test.Test
+import androidx.compose.ui.unit.dp
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class NotificationPromptSheetTest {
@@ -28,6 +31,17 @@ class NotificationPromptSheetTest {
         onNodeWithTag(NotificationPromptTags.NotNow).performClick()
         assertEquals(1, enabled)
         assertEquals(1, notNow)
+    }
+
+    @Test
+    fun buttonsSitRightBelowTheTextWithoutAnEmptyBand() = runComposeUiTest {
+        setContent { SaqzTheme { NotificationPromptSheet(NotificationPromptAudience.Athlete, {}, {}) } }
+        val textBottom = onNodeWithText(
+            "A gente avisa quando a lista abrir, quando o prazo estiver acabando e se o jogo mudar. Nada de spam.",
+        ).getBoundsInRoot().bottom
+        val buttonTop = onNodeWithTag(NotificationPromptTags.Enable).getBoundsInRoot().top
+        // Cabeçalho 16 + divisória + rodapé 12: antes da correção havia mais ~40dp de conteúdo vazio no meio.
+        assertTrue(buttonTop - textBottom < 36.dp, "faixa vazia entre texto e botões: ${buttonTop - textBottom}")
     }
 
     @Test

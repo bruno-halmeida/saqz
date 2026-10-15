@@ -67,6 +67,5 @@ fun SubscriptionRequiredDialog(
                 Modifier.weight(1f).testTag(SubscriptionRequiredTags.ViewPlans),
             )
         },
-        content = {},
     )
 }

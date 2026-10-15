@@ -78,7 +78,7 @@ fun SaqzBottomSheet(
     description: String? = null,
     footer: (@Composable () -> Unit)? = null,
     splitFooter: (@Composable RowScope.() -> Unit)? = null,
-    content: @Composable ColumnScope.() -> Unit,
+    content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -198,7 +198,8 @@ fun SaqzBottomSheet(
                             SaqzIcon(SaqzIcons.Close, size = 20.dp)
                         }
                     }
-                    SaqzDivider()
+                    // Sem conteúdo, o rodapé traz a única divisória: o texto fica logo acima dos botões.
+                    if (content != null) SaqzDivider()
                 }
                 // `.saqz-sheet__content{overflow-y:auto;padding:16px 20px 24px;flex:1 1 auto}`.
                 // As três outras faixas são fixas, então esta é a que cede: `weight(fill = false)`
@@ -206,7 +207,7 @@ fun SaqzBottomSheet(
                 // scroll é o que impede conteúdo alto — ou fonte ampliada, ou tela baixa — de
                 // empurrar o rodapé para fora da tela, onde o `clipToBounds` o cortaria e as
                 // ações ficariam inalcançáveis.
-                Column(
+                if (content != null) Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f, fill = false)
