@@ -12,13 +12,12 @@ aceitar ou só documentar.
 | --- | --- | --- | --- |
 | [PC-01](#pc-01--em-grupo-novo-todo-vou-vai-para-a-lista-de-espera) | Em grupo novo, o "Vou" do avulso vai para a lista de espera até o prazo | Risco aceito por enquanto | 07/10/2026 |
 | [PC-02](#pc-02--quem-sobe-da-lista-de-espera-não-recebe-aviso-individual) | Quem sobe da lista de espera não recebe aviso individual (cancelar jogo já avisa) | Decisão do dono: a lista vai ao grupo do WhatsApp a cada 3 h | 07/10/2026 |
-| [PC-06](#pc-06-a-pc-16--achados-abertos) | Aba Grupos sem chip de presença e "0 pedindo confirmação" fixo | A triar | 07/10/2026 |
+| [PC-06](#pc-06-a-pc-14--achados-abertos) | Aba Grupos sem chip de presença e "0 pedindo confirmação" fixo | A triar | 07/10/2026 |
 | PC-08 | "Recado para a galera" do jogo não aparece para ninguém | A triar | 07/10/2026 |
 | PC-11 | Quem teve o pedido de entrada aprovado não recebe aviso individual | Decisão do dono: nenhum texto promete aviso | 07/10/2026 |
 | PC-12 | Android 13+ pede permissão de notificação uma vez só por instalação | A triar | 07/10/2026 |
 | PC-13 | Extrato do grupo sem seletor de mês | A triar | 07/10/2026 |
 | PC-14 | Recibos do Google Play aparecem com valor "—" | A triar | 07/10/2026 |
-| PC-16 | "Termos de recebimentos" no site lê os termos de staging | A triar | 07/10/2026 |
 
 ## PC-01 · Em grupo novo, todo "Vou" vai para a lista de espera
 
@@ -59,7 +58,7 @@ do WhatsApp vinculado (`b6b86f7eb`).
 **Nos testes de produção.** Conferir só o estado no app (promovido aparece como confirmado). A ausência de
 aviso individual não reprova o cenário enquanto este item estiver aqui.
 
-## PC-06 a PC-16 · Achados abertos
+## PC-06 a PC-14 · Achados abertos
 - **PC-06 · Aba Grupos.** Os cartões não mostram a presença da pessoa e o cabeçalho sempre diz
   "0 pedindo confirmação" (`GroupListNextGame.kt` ignora a resposta da API).
 - **PC-08 · "Recado para a galera".** O campo do editor de jogo é gravado, mas não aparece em nenhuma
@@ -70,7 +69,6 @@ aviso individual não reprova o cenário enquanto este item estiver aqui.
   instalação; quem recusou precisa ligar nos ajustes do sistema.
 - **PC-13 · Extrato.** Mostra só o mês atual; o seletor de período existe só na "Caixa geral".
 - **PC-14 · Recibos do Play.** A API do Google não devolve preço, e os recibos aparecem com "—".
-- **PC-16 · Termos de recebimentos.** `saqz.app/termos/recebimentos/` busca os termos na API de staging.
 
 ## Corrigidos
 
@@ -87,3 +85,4 @@ Saíram da lista acima. Se um cenário ainda reproduzir o defeito, é regressão
 | PC-04 | Logado, "Lembrou a senha? Entrar" na recuperação volta para onde a pessoa estava (Perfil) | `4c6868543` |
 | PC-03 | A dica da foto diz só onde ela aparece de fato ("Aparece no seu perfil.") | `7c2fe2939` |
 | PC-05 | Erro ao criar grupo não descarta o que foi digitado; saiu o "Salvar rascunho" | `461f867d2` |
+| PC-16 | "Termos de recebimentos" leem a API de produção | `67fefed91` |
