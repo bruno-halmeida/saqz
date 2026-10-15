@@ -3,6 +3,7 @@ package br.com.saqz.access.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -24,10 +25,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
@@ -44,6 +51,7 @@ import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.access_brand
 import br.com.saqz.access.resources.saqz_lettering
 import br.com.saqz.access.resources.saqz_symbol_foreground
+import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -168,7 +176,7 @@ internal object AccessMetrics {
 
 /**
  * A coluna que as 11 telas compartilham: fundo branco (não o canvas cinza), a onda atrás,
- * padding lateral de 26, rolagem vertical e `imePadding`.
+ * padding lateral de 26, rolagem vertical e `imePadding`. Tocar no vazio ou arrastar fecha o teclado.
  *
  * `spacious` é o par 1a/1i: topo de 36 em vez de 20 (e, no cabeçalho, título de 29).
  *
@@ -187,7 +195,24 @@ fun AccessScaffold(
     spacious: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.surface)) {
+    // Teclado numérico (telefone, código) não tem tecla de confirmar no iPhone: tocar no vazio ou
+    // arrastar a tela fecha o teclado, como nos formulários do resto do app.
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
+    val dragToDismiss = remember(dismissKeyboard) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y != 0f) dismissKeyboard()
+                return Offset.Zero
+            }
+        }
+    }
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(SaqzTheme.colors.surface)
+            .nestedScroll(dragToDismiss)
+            .pointerInput(dismissKeyboard) { detectTapGestures { dismissKeyboard() } },
+    ) {
         // A onda é o fim do conteúdo que rola, e não uma camada fixa atrás dele: fixa, ela passava por cima
         // do fim do formulário em tela baixa (Safari do iPhone) e deixava "Já tem uma conta? Entrar" ilegível.
         // Em tela alta o `weight` empurra a onda para a borda de baixo, como antes.

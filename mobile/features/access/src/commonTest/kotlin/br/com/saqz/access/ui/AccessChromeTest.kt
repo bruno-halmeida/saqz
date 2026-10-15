@@ -8,9 +8,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.assertLeftPositionInRootIsEqualTo
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertTopPositionInRootIsEqualTo
@@ -110,6 +115,27 @@ class AccessChromeTest {
     @Test fun `subtitle is absent on the error screens`() = runComposeUiTest {
         setContent { SaqzTheme { AccessHeader(title = "Digite o", emphasis = "código.") } }
         onNodeWithTag(AccessChromeTags.Subtitle).assertDoesNotExist()
+    }
+
+    // P3-4c: teclado numérico do iPhone não tem tecla de confirmar; tocar no vazio fecha (tira o foco).
+    @Test fun `tapping the empty area clears the focus of a field`() = runComposeUiTest {
+        scaffold(content = {
+            BasicTextField("", {}, Modifier.fillMaxWidth().height(40.dp).testTag("campo"))
+            Box(Modifier.fillMaxWidth().height(200.dp).testTag("vazio"))
+        })
+        onNodeWithTag("campo").requestFocus()
+        onNodeWithTag("campo").assertIsFocused()
+        onNodeWithTag("vazio").performClick()
+        onNodeWithTag("campo").assertIsNotFocused()
+    }
+
+    // Tocar no próprio campo não pode fechar o teclado que acabou de abrir.
+    @Test fun `tapping the field itself keeps the focus`() = runComposeUiTest {
+        scaffold(content = {
+            BasicTextField("", {}, Modifier.fillMaxWidth().height(40.dp).testTag("campo"))
+        })
+        onNodeWithTag("campo").performClick()
+        onNodeWithTag("campo").assertIsFocused()
     }
 
     private fun ComposeUiTest.scaffold(
