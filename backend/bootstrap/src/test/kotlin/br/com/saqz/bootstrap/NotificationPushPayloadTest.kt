@@ -56,3 +56,24 @@ class NotificationPushPayloadTest {
         assertEquals(mapOf("title" to "Saqz", "body" to "Corpo", "sound" to "default"), aps["alert"])
     }
 }
+
+class NotificationPushClassificationTest {
+    @org.junit.jupiter.api.Test
+    fun `token morto ou de outro projeto e descartado e o resto tenta de novo`() {
+        val tokenMorto = listOf(
+            com.google.firebase.messaging.MessagingErrorCode.UNREGISTERED,
+            com.google.firebase.messaging.MessagingErrorCode.SENDER_ID_MISMATCH,
+        )
+        tokenMorto.forEach {
+            kotlin.test.assertEquals(br.com.saqz.groups.application.communication.PushDelivery.INVALID_TOKEN,
+                br.com.saqz.bootstrap.configuration.classify(it, false))
+            kotlin.test.assertEquals(br.com.saqz.groups.application.communication.PushDelivery.INVALID_START_TOKEN,
+                br.com.saqz.bootstrap.configuration.classify(it, true))
+        }
+        (com.google.firebase.messaging.MessagingErrorCode.values().toList<com.google.firebase.messaging.MessagingErrorCode?>() + null)
+            .filterNot { it in tokenMorto }.forEach {
+                kotlin.test.assertEquals(br.com.saqz.groups.application.communication.PushDelivery.RETRY,
+                    br.com.saqz.bootstrap.configuration.classify(it, false), "$it")
+            }
+    }
+}

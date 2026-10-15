@@ -32,6 +32,7 @@ class NotificationPushWorker(private val queue: JdbcNotificationPush, private va
     }
 }
 class FirebaseNotificationPushSender(private val app: FirebaseApp) : NotificationPushSender {
+    private val log = org.slf4j.LoggerFactory.getLogger(FirebaseNotificationPushSender::class.java)
     override fun send(token: String, message: NotificationPush): PushDelivery {
         // O Auth Emulator não oferece FCM: preservar a fila para diagnóstico, nunca fingir entrega.
         if (app.options.projectId == "saqz-local") return PushDelivery.RETRY
@@ -41,12 +42,9 @@ class FirebaseNotificationPushSender(private val app: FirebaseApp) : Notificatio
             FirebaseMessaging.getInstance(app).send(built)
             PushDelivery.SENT
         } catch (error: FirebaseMessagingException) {
-            when {
-                error.messagingErrorCode != MessagingErrorCode.UNREGISTERED -> PushDelivery.RETRY
-                // O FCM não diz qual token recusou: começa pelo de start; se era o FCM, o reenvio comum descobre.
-                startToken != null -> PushDelivery.INVALID_START_TOKEN
-                else -> PushDelivery.INVALID_TOKEN
-            }
+            // Só o código do FCM (nunca token nem mensagem): sem ele o log mostrava RETRY sem dizer o porquê.
+            log.warn("push_fcm_error code={} startToken={}", error.messagingErrorCode, startToken != null)
+            classify(error.messagingErrorCode, startToken != null)
         }
     }
 
@@ -77,6 +75,17 @@ class FirebaseNotificationPushSender(private val app: FirebaseApp) : Notificatio
         message.windowEndsAt?.let { apns.putHeader("apns-expiration", it.epochSecond.toString()) }
         return Message.builder().setToken(token).setApnsConfig(apns.build()).build()
     }
+}
+
+/**
+ * Token que o FCM nunca vai aceitar (app desinstalado ou token de outro projeto) é descartado; o resto
+ * (cota, indisponibilidade, chave APNs, argumento) é temporário e a fila tenta de novo.
+ * O FCM não diz qual token recusou: com start token, começa por ele; se era o FCM, o reenvio comum descobre.
+ */
+fun classify(code: MessagingErrorCode?, hasStartToken: Boolean): PushDelivery = when {
+    code != MessagingErrorCode.UNREGISTERED && code != MessagingErrorCode.SENDER_ID_MISMATCH -> PushDelivery.RETRY
+    hasStartToken -> PushDelivery.INVALID_START_TOKEN
+    else -> PushDelivery.INVALID_TOKEN
 }
 
 /** O aviso ao organizador de primeira confirmação traz o jogo só para abrir o detalhe: sem "Confirmar" / "Não vou". */
