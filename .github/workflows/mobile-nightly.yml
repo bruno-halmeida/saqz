@@ -1,0 +1,89 @@
+# Testes do app toda madrugada, só na main: simulador iOS (Kotlin), Swift e Node, em
+# mobile-tests.yml. Pula a noite se a main não mudou desde a última execução que passou.
+# Se falhar, abre (ou comenta em) a issue "Testes noturnos do app falharam"; quando volta a
+# passar, comenta e fecha. Não trava RC nem release. Execução à mão: Actions → Mobile · testes
+# noturnos → Run workflow (ou `gh workflow run mobile-nightly.yml`), que não pula.
+name: Mobile · testes noturnos
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # 03:00 em Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-nightly
+  cancel-in-progress: false
+
+jobs:
+  checar:
+    name: A main mudou?
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      executar: ${{ steps.decidir.outputs.executar }}
+    steps:
+      - name: Comparar com a última execução que passou
+        id: decidir
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENTO: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          ultimo=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow mobile-nightly.yml --branch main \
+            --status success --limit 1 --json headSha --jq '.[0].headSha // ""')
+          if [[ "$EVENTO" == "schedule" && "$ultimo" == "$GITHUB_SHA" ]]; then
+            echo "executar=false" >> "$GITHUB_OUTPUT"
+            echo "A main (\`${GITHUB_SHA:0:9}\`) não mudou desde a última noite que passou; nada a testar." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "executar=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  testes:
+    name: Esteira completa de testes
+    needs: checar
+    if: needs.checar.outputs.executar == 'true'
+    uses: ./.github/workflows/mobile-tests.yml
+    with:
+      keep_going: true
+
+  relatar:
+    name: Issue de acompanhamento
+    needs: [checar, testes]
+    if: ${{ !cancelled() && needs.testes.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TITULO: Testes noturnos do app falharam
+      RESULTADO: ${{ needs.testes.result }}
+      FALHAS: ${{ needs.testes.outputs.falhas }}
+      EXECUCAO: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Abrir, comentar ou fechar a issue
+        run: |
+          set -euo pipefail
+          numero=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$TITULO\" in:title" \
+            --json number,title --jq "[.[] | select(.title == \"$TITULO\")][0].number // \"\"")
+          if [[ "$RESULTADO" == "success" ]]; then
+            [[ -n "$numero" ]] || { echo "Passou e não há issue aberta."; exit 0; }
+            gh issue close "$numero" --repo "$GITHUB_REPOSITORY" \
+              --comment "Os testes noturnos voltaram a passar no commit \`${GITHUB_SHA:0:9}\`: $EXECUCAO"
+            exit 0
+          fi
+          lista=${FALHAS:-"(a lista não ficou disponível; veja o resumo da execução)"}
+          cerca='```'
+          corpo=$(printf 'Execução: %s\nCommit: %s\n\nTestes que falharam:\n\n%s\n%s\n%s\n\nOs relatórios ficam como artefato relatorios-de-teste da execução.' \
+            "$EXECUCAO" "${GITHUB_SHA:0:9}" "$cerca" "$lista" "$cerca")
+          if [[ -n "$numero" ]]; then
+            gh issue comment "$numero" --repo "$GITHUB_REPOSITORY" --body "$corpo"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITULO" --body "$corpo"
+          fi

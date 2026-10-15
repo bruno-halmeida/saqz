@@ -84,45 +84,9 @@ jobs:
     name: Esteira completa de testes
     needs: prepare
     if: inputs.full_tests
-    runs-on: macos-26
-    timeout-minutes: 120
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-    steps:
-      - name: Obter o commit da tag
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.prepare.outputs.sha }}
-          persist-credentials: false
-      - name: JDK 21
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-      - name: Gradle com cache
-        uses: gradle/actions/setup-gradle@v6
-      - name: Cache do Kotlin/Native
-        uses: actions/cache@v6
-        with:
-          path: ~/.konan
-          key: konan-${{ runner.os }}-${{ hashFiles('mobile/gradle/libs.versions.toml') }}
-      - name: Ajustar o Gradle ao runner
-        run: |
-          mkdir -p ~/.gradle
-          printf 'org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g\nkotlin.daemon.jvmargs=-Xmx3g\n' >> ~/.gradle/gradle.properties
-      - name: Testes comuns no simulador iOS (Kotlin)
-        working-directory: mobile
-        run: ./gradlew iosSimulatorArm64Test
-      - name: Testes Swift (SaqzIOSTests)
-        working-directory: mobile/ios-app
-        run: |
-          set -euo pipefail
-          device=$(xcrun simctl list devices available | grep -m1 -oE 'iPhone [^(]+' | sed 's/ *$//')
-          echo "Simulador: $device"
-          xcodebuild test -project SaqzIOS.xcodeproj -scheme SaqzIOS -destination "platform=iOS Simulator,name=$device" \
-            -only-testing:SaqzIOSTests CODE_SIGNING_ALLOWED=NO | tee xcodebuild-test.log | xcbeautify
-      - name: Testes Node do projeto iOS
-        run: node --test mobile/ios-app/tests/
+    uses: ./.github/workflows/mobile-tests.yml
+    with:
+      ref: ${{ needs.prepare.outputs.sha }}
 
   stores:
     name: ${{ inputs.simular && 'Lojas (simulação)' || 'Lojas → produção' }}

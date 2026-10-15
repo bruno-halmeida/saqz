@@ -1,0 +1,96 @@
+# Esteira completa de testes do app, reutilizável: testes comuns no simulador iOS (Kotlin), Swift
+# (SaqzIOSTests) e Node do projeto iOS. Chamada pelo mobile-release.yml (opção full_tests) e pelo
+# mobile-nightly.yml. Com `keep_going` roda todas as etapas e lista todas as falhas; sem ele, para
+# na primeira etapa que falha (como o release sempre fez).
+name: Mobile · testes completos
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Commit a testar (vazio = o do evento)"
+        required: false
+        type: string
+      keep_going:
+        description: "Seguir após a primeira falha e listar todas"
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      falhas:
+        description: "Testes que falharam, um por linha"
+        value: ${{ jobs.tests.outputs.falhas }}
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Esteira completa de testes
+    runs-on: macos-26
+    timeout-minutes: 120
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    outputs:
+      falhas: ${{ steps.falhas.outputs.lista }}
+    steps:
+      - name: Obter o commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - name: JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Gradle com cache
+        uses: gradle/actions/setup-gradle@v6
+      - name: Cache do Kotlin/Native
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('mobile/gradle/libs.versions.toml') }}
+      - name: Ajustar o Gradle ao runner
+        run: |
+          mkdir -p ~/.gradle
+          printf 'org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g\nkotlin.daemon.jvmargs=-Xmx3g\n' >> ~/.gradle/gradle.properties
+      - name: Testes comuns no simulador iOS (Kotlin)
+        working-directory: mobile
+        run: ./gradlew iosSimulatorArm64Test ${{ inputs.keep_going && '--continue' || '' }}
+      - name: Testes Swift (SaqzIOSTests)
+        if: ${{ !cancelled() && (inputs.keep_going || success()) }}
+        working-directory: mobile/ios-app
+        run: |
+          set -euo pipefail
+          device=$(xcrun simctl list devices available | grep -m1 -oE 'iPhone [^(]+' | sed 's/ *$//')
+          echo "Simulador: $device"
+          xcodebuild test -project SaqzIOS.xcodeproj -scheme SaqzIOS -destination "platform=iOS Simulator,name=$device" \
+            -only-testing:SaqzIOSTests CODE_SIGNING_ALLOWED=NO | tee xcodebuild-test.log | xcbeautify
+      - name: Testes Node do projeto iOS
+        if: ${{ !cancelled() && (inputs.keep_going || success()) }}
+        run: node --test mobile/ios-app/tests/ | tee node-test.log
+      - name: Listar os testes que falharam
+        id: falhas
+        if: ${{ failure() }}
+        run: |
+          set -uo pipefail
+          {
+            python3 mobile/ci/failed_tests.py mobile
+            grep -E "Test Case .* failed" mobile/ios-app/xcodebuild-test.log 2>/dev/null | sed -E 's/^.*Test Case .(.*). failed.*$/Swift · \1/'
+            grep -E "^[[:space:]]*✖" node-test.log 2>/dev/null | sed -E 's/^[[:space:]]*✖ (.*) \([0-9.]+ms\)$/Node · \1/' | sort -u
+          } | awk 'NF' | sort -u | head -100 > falhas.txt
+          { echo "### Testes que falharam"; echo; sed 's/^/- /' falhas.txt; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "lista<<FALHAS_EOF"; cat falhas.txt; echo "FALHAS_EOF"; } >> "$GITHUB_OUTPUT"
+      - name: Guardar os relatórios de teste
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorios-de-teste
+          retention-days: 14
+          if-no-files-found: ignore
+          path: |
+            mobile/**/build/test-results/**
+            mobile/**/build/reports/tests/**
+            mobile/ios-app/xcodebuild-test.log
+            node-test.log
