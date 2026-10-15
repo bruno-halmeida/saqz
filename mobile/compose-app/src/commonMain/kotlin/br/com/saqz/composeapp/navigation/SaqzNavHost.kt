@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -21,6 +23,7 @@ import androidx.compose.runtime.saveable.rememberSerializable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -459,7 +462,7 @@ internal fun SaqzNavHost(
                 rememberViewModelStoreNavEntryDecorator(),
             ),
             entryProvider = entryProvider {
-                entry<AccessRoute.Starting> {
+                entry<AccessRoute.Starting>(metadata = OwnsNavigationInset) {
                     Box(
                         modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background),
                         contentAlignment = Alignment.Center,
@@ -467,14 +470,14 @@ internal fun SaqzNavHost(
                         SaqzSpinner()
                     }
                 }
-                entry<AccessRoute.Login> {
+                entry<AccessRoute.Login>(metadata = OwnsNavigationInset) {
                     LoginRoot(
                         onCreateAccount = { backStack.add(AccessRoute.Register) },
                         onForgotPassword = { backStack.add(AccessRoute.ForgotPassword) },
                         inviteContext = inviteContext,
                     )
                 }
-                entry<AccessRoute.Register> {
+                entry<AccessRoute.Register>(metadata = OwnsNavigationInset) {
                     // As duas saídas para a 1a são o mesmo desempilhar — a 1b só é alcançável
                     // por cima do login. O que muda entre elas ("Entrar?" do e-mail duplicado
                     // leva o e-mail junto) já aconteceu na ViewModel, no formulário que a 1a
@@ -486,14 +489,14 @@ internal fun SaqzNavHost(
                         inviteContext = inviteContext,
                     )
                 }
-                entry<AccessRoute.IdentityCompletion> { IdentityCompletionRoot() }
-                entry<AccessRoute.ForgotPassword> {
+                entry<AccessRoute.IdentityCompletion>(metadata = OwnsNavigationInset) { IdentityCompletionRoot() }
+                entry<AccessRoute.ForgotPassword>(metadata = OwnsNavigationInset) {
                     ForgotPasswordRoot(
                         onBack = pop,
                         onOpenResetCode = { email -> backStack.add(AccessRoute.ResetCode(email)) },
                     )
                 }
-                entry<AccessRoute.ResetCode> { route ->
+                entry<AccessRoute.ResetCode>(metadata = OwnsNavigationInset) { route ->
                     ResetCodeRoot(
                         email = route.email,
                         onBack = pop,
@@ -504,7 +507,7 @@ internal fun SaqzNavHost(
                         },
                     )
                 }
-                entry<AccessRoute.NewPassword> { route ->
+                entry<AccessRoute.NewPassword>(metadata = OwnsNavigationInset) { route ->
                     NewPasswordRoot(
                         token = route.token,
                         onBack = pop,
@@ -515,7 +518,7 @@ internal fun SaqzNavHost(
                         onRestartCode = pop,
                     )
                 }
-                entry<AccessRoute.PasswordChanged> {
+                entry<AccessRoute.PasswordChanged>(metadata = OwnsNavigationInset) {
                     // Quem chega aqui já teve o stack colapsado por [completePasswordReset]:
                     // a recuperação consumida saiu, e a base depende de a sessão estar viva.
                     PasswordChangedScreen(
@@ -523,13 +526,13 @@ internal fun SaqzNavHost(
                         onBack = pop,
                     )
                 }
-                entry<AccessRoute.Bootstrap> {
+                entry<AccessRoute.Bootstrap>(metadata = OwnsNavigationInset) {
                     BootstrapAccessScreen(
                         state = state.session,
                         onIntent = { onIntent(AccessIntent.Session(it)) },
                     )
                 }
-                entry<AccessRoute.AppOnboarding> {
+                entry<AccessRoute.AppOnboarding>(metadata = OwnsNavigationInset) {
                     AppOnboardingRoot(
                         session = state.session,
                         onClose = { backStack.removeAll { it == AccessRoute.AppOnboarding } },
@@ -540,7 +543,7 @@ internal fun SaqzNavHost(
                         },
                     )
                 }
-                entry<SaqzShellDestination> { route ->
+                entry<SaqzShellDestination>(metadata = OwnsNavigationInset) { route ->
                     // Convite sendo tratado (ou tela do convite ainda aberta): a Início não é composta nem
                     // recebe toque, só o carregando, até a pessoa sair da tela do convite.
                     if (!inviteHoldExpired && (inviteHandoffActive || inviteHeld)) {
@@ -1197,6 +1200,11 @@ internal fun SaqzNavHost(
     }
 }
 
+private const val OWNS_NAVIGATION_INSET_KEY = "saqz.ownsNavigationInset"
+
+/** Metadata das entradas que cuidam sozinhas do inset de navegação (shell e acesso). */
+private val OwnsNavigationInset: Map<String, Any> = mapOf(OWNS_NAVIGATION_INSET_KEY to true)
+
 /**
  * Fundo opaco em volta de cada destino. Sem isto o slide do iOS deixa o shell
  * visível pelos buracos da tela que entra — o conteúdo frequentemente não chega
@@ -1207,9 +1215,36 @@ private fun rememberSaqzOpaqueEntryDecorator(): NavEntryDecorator<NavKey> {
     val background = SaqzTheme.colors.background
     return remember(background) {
         NavEntryDecorator { entry ->
-            Box(Modifier.fillMaxSize().background(background)) {
-                entry.Content()
-            }
+            SaqzEntryFrame(
+                background = background,
+                ownsNavigationInset = entry.metadata[OWNS_NAVIGATION_INSET_KEY] == true,
+            ) { entry.Content() }
+        }
+    }
+}
+
+/**
+ * Fundo opaco + inset de navegação de um destino. Rodapé fixo de tela empilhada (Marcar jogo,
+ * Salvar, Convidar…) não aplica o inset sozinho: o app é edge-to-edge e, sem isto, a barra de
+ * gestos (ou os 3 botões) do Android cobre o botão. O padding fica **dentro** do fundo — a faixa
+ * continua pintada — e consome o inset para os filhos, então quem já aplica
+ * (`navigationBarsPadding` da conversa, a folha) não soma duas vezes. Ficam de fora o shell, cuja
+ * `SaqzBottomNav` já é dona do inset, e o acesso, com a curva do rodapé encostada na borda
+ * ([ownsNavigationInset]). [insets] existe para o teste injetar uma barra.
+ */
+@Composable
+internal fun SaqzEntryFrame(
+    background: Color,
+    ownsNavigationInset: Boolean,
+    insets: WindowInsets = WindowInsets.navigationBars,
+    content: @Composable () -> Unit,
+) {
+    Box(Modifier.fillMaxSize().background(background)) {
+        Box(
+            if (ownsNavigationInset) Modifier.fillMaxSize()
+            else Modifier.fillMaxSize().windowInsetsPadding(insets),
+        ) {
+            content()
         }
     }
 }
