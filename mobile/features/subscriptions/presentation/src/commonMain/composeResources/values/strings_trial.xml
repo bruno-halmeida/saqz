@@ -1,10 +1,13 @@
 <resources>
     <string name="trial_entry_title">Criar meu grupo</string>
     <string name="trial_entry_loading">Consultando opções…</string>
-    <string name="trial_entry_plans">Conhecer planos</string>
+    <string name="trial_entry_plans">Ver planos</string>
     <string name="trial_entry_refresh">Já liberei meu acesso · Atualizar</string>
     <string name="trial_entry_load_error">Não foi possível consultar as opções. Tente novamente.</string>
     <string name="trial_entry_setup_title">Seu próximo grupo começa aqui</string>
     <string name="trial_entry_setup_help">Não há acesso disponível para criar um grupo nesta conta. Você pode atualizar a verificação ou voltar para as demais funções.</string>
+    <string name="trial_entry_ended_title">Seu teste do Organizador terminou</string>
+    <string name="trial_entry_ended_help">Seu teste terminou em %1$s. Assine para criar e organizar seus grupos.</string>
+    <string name="trial_entry_ended_help_no_plans">Seu teste terminou em %1$s. Você pode atualizar a verificação ou voltar para as demais funções.</string>
     <string name="trial_entry_retry">Tentar novamente</string>
 </resources>
