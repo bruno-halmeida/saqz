@@ -277,6 +277,18 @@ internal fun SaqzNavHost(
             pendingInviteCode = inviteCoordinator.readPendingInviteCode()
         }
     }
+    // Sair da conta apaga o convite guardado e a cópia daqui (o login não pode seguir mostrando
+    // "Entrando no <grupo>" do convite anterior). Só a transição para SignedOut conta: Ready →
+    // Bootstrapping acontece sem logout e não pode perder o convite.
+    var previousSession by remember { mutableStateOf<SessionAccessState?>(null) }
+    LaunchedEffect(state.session) {
+        if (isLogoutTransition(previousSession, state.session)) {
+            pendingInviteCode = null
+            inviteContext = null
+            inviteCoordinator.onLoggedOut()
+        }
+        previousSession = state.session
+    }
     LaunchedEffect(state.session, state.appOnboarding) {
         SaqzAnalytics.setUser((state.session as? SessionAccessState.Ready)?.session?.user?.id)
         reconcileAccessStack(backStack, state.session, restoring = restoring[0])
@@ -345,6 +357,9 @@ internal fun SaqzNavHost(
                         homeRefreshVersion++
                     }
                     InviteRedeemStatus.PENDING -> {
+                        // Pedir entrada conta como aceitar: o convite já foi usado.
+                        pendingInviteCode = null
+                        inviteContext = null
                         backStack.add(GroupsRoute.InviteLanding(effect.inviteCode, requestSent = true))
                     }
                 }
@@ -1011,7 +1026,12 @@ internal fun SaqzNavHost(
                                 backStack.add(GroupsRoute.AthleteRegistration(groupId))
                             }
                         },
-                        onRequest = {},
+                        onRequest = {
+                            inviteCoordinator.clearPendingInvite(route.code) {
+                                pendingInviteCode = null
+                                inviteContext = null
+                            }
+                        },
                         onBrowseOtherGroups = {
                             backStack.openInviteOtherGroups()
                         },

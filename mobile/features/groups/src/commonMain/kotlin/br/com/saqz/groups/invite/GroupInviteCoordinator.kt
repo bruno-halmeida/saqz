@@ -68,6 +68,13 @@ class GroupInviteCoordinator(
     private var linkCancelable: br.com.saqz.groups.port.GroupCancelable? = null
     private var started = false
 
+    /**
+     * Sair da conta não conseguiu apagar o convite guardado. Enquanto a marca estiver de pé o
+     * próximo login não resgata nada (o convite é da conta que saiu) e tenta apagar de novo; um
+     * link novo gravado com sucesso desliga a marca, porque esse sim é de quem entrar.
+     */
+    private var discardPending = false
+
     val effects: Flow<GroupInviteEffect> = effectChannel.receiveAsFlow()
         .filter { it.generation == generation }
         .map { it.effect }
@@ -114,6 +121,28 @@ class GroupInviteCoordinator(
         }
     }
 
+    /**
+     * Sair da conta apaga o convite guardado, com garantia: a geração sobe (um `persistPending` que
+     * ainda espera a trava desiste) e a escrita roda dentro de [storageWrites], então uma gravação
+     * em voo termina antes e é apagada depois, nunca o contrário. Se apagar falhar, [discardPending]
+     * impede o próximo login de resgatar o convite da conta anterior.
+     */
+    fun onLoggedOut() {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            authenticated.value = false
+            redeemingState.value = false
+            nextGeneration()
+            discardPending = true
+            clearDiscarded()
+        }
+    }
+
+    private suspend fun clearDiscarded() {
+        storageWrites.withLock {
+            if (writePending(null)) discardPending = false
+        }
+    }
+
     /** Chamado pelo fecho depois que login ou registro entrega uma sessão. */
     fun onAuthenticated() {
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -121,7 +150,11 @@ class GroupInviteCoordinator(
             authenticated.value = true
             val token = nextGeneration()
             redeemingState.value = true
-            redeemPending(token)
+            if (discardPending) {
+                clearDiscarded()
+            } else {
+                redeemPending(token)
+            }
             settleRedeeming(token)
         }
     }
@@ -210,7 +243,10 @@ class GroupInviteCoordinator(
     private suspend fun redeem(token: Long, code: InviteCode) {
         when (val preview = inviteGateway.preview(code)) {
             is SaqzResult.Failure -> finishFailure(token, code, preview.error)
-            is SaqzResult.Success -> when (val result = inviteGateway.redeem(code)) {
+            is SaqzResult.Success -> if (!isCurrent(token)) {
+                // Resposta velha: saiu da conta (ou chegou outro link) enquanto o preview andava.
+                return
+            } else when (val result = inviteGateway.redeem(code)) {
                 is SaqzResult.Failure -> finishFailure(token, code, result.error)
                 is SaqzResult.Success -> {
                     if (!clearPending(token)) {
@@ -250,6 +286,7 @@ class GroupInviteCoordinator(
             if (!result) emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code))
             return@withLock false
         }
+        discardPending = false
         true
     }
 

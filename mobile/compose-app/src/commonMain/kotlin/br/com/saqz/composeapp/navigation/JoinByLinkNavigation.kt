@@ -1,6 +1,7 @@
 package br.com.saqz.composeapp.navigation
 
 import androidx.navigation3.runtime.NavKey
+import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 
 /**
@@ -60,3 +61,11 @@ internal fun nextInviteHold(
     held && sessionReady && !topIsInviteScreen -> false
     else -> held
 }
+
+/**
+ * Só `logout()` leva a sessão a [SessionAccessState.SignedOut] vinda de outro estado; Ready →
+ * Bootstrapping (nova tentativa) não é sair e não pode perder o convite. [previous] nulo é o
+ * estado inicial da composição, que não conta.
+ */
+internal fun isLogoutTransition(previous: SessionAccessState?, current: SessionAccessState): Boolean =
+    previous != null && previous !is SessionAccessState.SignedOut && current is SessionAccessState.SignedOut

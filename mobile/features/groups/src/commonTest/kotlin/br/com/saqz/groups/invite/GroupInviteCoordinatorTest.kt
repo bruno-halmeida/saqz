@@ -304,6 +304,110 @@ class GroupInviteCoordinatorTest {
         assertNull(fixture.local.pending)
     }
 
+    @Test
+    fun `logging out erases the stored invite`() = runTest {
+        val fixture = fixture()
+        fixture.local.pending = "invite-out"
+        fixture.coordinator.onAuthenticated()
+        fixture.local.pending = "invite-out"
+        fixture.coordinator.onLoggedOut()
+        runCurrent()
+
+        assertNull(fixture.local.pending)
+    }
+
+    @Test
+    fun `failed erase on logout makes the next login skip preview and redeem and retry the erase`() = runTest {
+        val fixture = fixture()
+        fixture.local.pending = "invite-out"
+        fixture.local.writeSucceeds = false
+        fixture.coordinator.onLoggedOut()
+        runCurrent()
+        assertEquals("invite-out", fixture.local.pending)
+
+        fixture.local.writeSucceeds = true
+        fixture.gateway.actions.clear()
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+
+        assertEquals(emptyList(), fixture.gateway.actions)
+        assertNull(fixture.local.pending)
+        assertEquals(false, fixture.coordinator.redeeming.value)
+    }
+
+    @Test
+    fun `a new link after a failed erase is redeemed normally`() = runTest {
+        val fixture = fixture()
+        fixture.local.pending = "invite-out"
+        fixture.local.writeSucceeds = false
+        fixture.coordinator.onLoggedOut()
+        runCurrent()
+
+        fixture.local.writeSucceeds = true
+        fixture.coordinator.acceptInvite("invite-new")
+        runCurrent()
+        assertEquals("invite-new", fixture.local.pending)
+
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.JOINED, "invite-new"),
+            fixture.coordinator.effects.first(),
+        )
+        assertNull(fixture.local.pending)
+    }
+
+    @Test
+    fun `a persist in flight during logout does not survive it`() = runTest {
+        val fixture = fixture()
+        fixture.local.holdWrites = true
+        fixture.coordinator.acceptInvite("invite-flight")
+        runCurrent()
+        // A gravação do link está em voo (trava tomada); o logout espera a vez dela.
+        fixture.coordinator.onLoggedOut()
+        runCurrent()
+        fixture.local.holdWrites = false
+        fixture.local.releaseHeld()
+        runCurrent()
+
+        assertNull(fixture.local.pending)
+        assertEquals(listOf("write:invite-flight", "write:null"), fixture.local.actions)
+    }
+
+    @Test
+    fun `a preview that answers after logout never calls redeem`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val fixture = fixture(previewGate = gate)
+        fixture.local.pending = "invite-slow"
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+
+        fixture.coordinator.onLoggedOut()
+        runCurrent()
+        gate.complete(Unit)
+        runCurrent()
+
+        assertEquals(listOf("preview"), fixture.gateway.actions)
+        assertNull(fixture.local.pending)
+    }
+
+    @Test
+    fun `entry request answered as pending clears the stored invite`() = runTest {
+        val fixture = fixture(
+            redeemResult = SaqzResult.Success(InviteRedeem(InviteRedeemStatus.PENDING, GroupId("group-1"), "ATHLETE")),
+        )
+        fixture.local.pending = "invite-request"
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+
+        assertEquals(
+            GroupInviteEffect.NavigateToGroup("group-1", InviteRedeemStatus.PENDING, "invite-request"),
+            fixture.coordinator.effects.first(),
+        )
+        assertNull(fixture.local.pending)
+    }
+
     private fun TestScope.fixture(
         previewResult: SaqzResult<InvitePreview, InviteError> = SaqzResult.Success(
             InvitePreview("Vôlei do CERET", "Ana", entryRequiresApproval = false),
@@ -312,11 +416,12 @@ class GroupInviteCoordinatorTest {
             InviteRedeem(InviteRedeemStatus.JOINED, GroupId("group-1"), "ATHLETE"),
         ),
         redeem: (suspend (InviteCode) -> SaqzResult<InviteRedeem, InviteError>)? = null,
+        previewGate: CompletableDeferred<Unit>? = null,
     ): Fixture {
         val events = mutableListOf<String>()
         val sinkEffects = mutableListOf<GroupInviteEffect>()
         val local = FakeLocalState(events)
-        val gateway = FakeInviteGateway(previewResult, redeemResult, redeem, events)
+        val gateway = FakeInviteGateway(previewResult, redeemResult, redeem, events, previewGate)
         return Fixture(
             local = local,
             gateway = gateway,
@@ -352,6 +457,10 @@ class GroupInviteCoordinatorTest {
     private class FakeLocalState(private val events: MutableList<String>) : LocalGroupStatePort {
         var pending: String? = null
         var writeSucceeds = true
+
+        /** Gravação "em voo": o callback só volta em [releaseHeld], com a trava do coordinator tomada. */
+        var holdWrites = false
+        private val held = mutableListOf<() -> Unit>()
         val actions = mutableListOf<String>()
 
         override fun readSelectedGroupId(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
@@ -366,12 +475,21 @@ class GroupInviteCoordinatorTest {
         override fun writePendingInvite(value: String?, done: GroupResultCallback) {
             actions += "write:${value ?: "null"}"
             events += "write:${value ?: "null"}"
-            if (writeSucceeds) {
-                pending = value
-                done.complete(GroupOperationResult.Success)
-            } else {
-                done.complete(GroupOperationResult.Failure(GroupNativeFailureCode.UNKNOWN))
+            val finish = {
+                if (writeSucceeds) {
+                    pending = value
+                    done.complete(GroupOperationResult.Success)
+                } else {
+                    done.complete(GroupOperationResult.Failure(GroupNativeFailureCode.UNKNOWN))
+                }
             }
+            if (holdWrites) held += finish else finish()
+        }
+
+        fun releaseHeld() {
+            val toRun = held.toList()
+            held.clear()
+            toRun.forEach { it() }
         }
 
         override fun readPendingAttendanceLink(done: GroupValueCallback) = done.complete(GroupValueResult.Success(null))
@@ -384,12 +502,14 @@ class GroupInviteCoordinatorTest {
         var redeemResult: SaqzResult<InviteRedeem, InviteError>,
         private val redeemHandler: (suspend (InviteCode) -> SaqzResult<InviteRedeem, InviteError>)?,
         private val events: MutableList<String>,
+        private val previewGate: CompletableDeferred<Unit>? = null,
     ) : InviteGateway {
         val actions = mutableListOf<String>()
 
         override suspend fun preview(code: InviteCode): SaqzResult<InvitePreview, InviteError> {
             actions += "preview"
             events += "preview"
+            previewGate?.await()
             return previewResult
         }
 
