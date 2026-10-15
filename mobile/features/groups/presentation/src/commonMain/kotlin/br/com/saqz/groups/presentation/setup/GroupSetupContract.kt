@@ -222,7 +222,6 @@ sealed interface GroupSetupIntent {
 
     data object Retry : GroupSetupIntent
 
-    data object SaveDraft : GroupSetupIntent
 
     data object DismissSubscriptionRequired : GroupSetupIntent
 }
@@ -234,7 +233,6 @@ sealed interface GroupSetupEffect {
 
     data object Deleted : GroupSetupEffect
 
-    data object DraftSaved : GroupSetupEffect
 
     data object PickPhoto : GroupSetupEffect
 }

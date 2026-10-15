@@ -151,7 +151,6 @@
     <string name="group_system_save_failure_edit">Não foi possível salvar o grupo</string>
     <string name="group_system_save_failure_body">Suas informações continuam salvas aqui. Tente novamente.</string>
     <string name="group_system_retry">Tentar novamente</string>
-    <string name="group_system_save_draft">Salvar rascunho</string>
     <string name="group_system_sending_title">Enviando</string>
     <string name="group_system_creating">Criando grupo…</string>
     <string name="group_system_session_expired_title">Sessão expirada</string>

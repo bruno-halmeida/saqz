@@ -1388,7 +1388,6 @@ private fun GroupSetupDestination(
             onGroupListChange()
             while (backStack.size > 1) backStack.removeLastOrNull()
         },
-        onDraftSave = pop,
         onBack = pop,
     )
 }

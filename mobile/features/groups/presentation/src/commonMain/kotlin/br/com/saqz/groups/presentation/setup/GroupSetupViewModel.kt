@@ -143,7 +143,6 @@ class GroupSetupViewModel(
             GroupSetupIntent.Submit -> onSubmit()
             GroupSetupIntent.Retry -> onRetry()
             GroupSetupIntent.ConfirmDelete -> onConfirmDelete()
-            GroupSetupIntent.SaveDraft -> onSaveDraft()
             GroupSetupIntent.DismissSubscriptionRequired -> update { it.copy(subscriptionRequired = false) }
         }
     }
@@ -362,13 +361,6 @@ class GroupSetupViewModel(
     private fun showFailure(generation: Int, error: GroupUiError) {
         if (generation != loadGeneration) return
         showOperationFailure(error)
-    }
-
-    private fun onSaveDraft() {
-        discardCreationKey()
-        retryDelete = false
-        update { it.copy(saveFailed = false, gatewayError = null, creationCommandKey = null) }
-        emit(GroupSetupEffect.DraftSaved)
     }
 
     private fun discardCreationKey() {

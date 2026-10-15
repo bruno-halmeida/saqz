@@ -1080,15 +1080,21 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `salvar rascunho emite o efeito e limpa a falha`() = runTest(mainDispatcher) {
-        val viewModel = viewModel(saveFailed = true)
+    fun `falha ao criar nunca descarta o que foi digitado`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(
+            profileGateway = FakeGroupProfileGateway(
+                createResult = SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Connectivity)),
+            ),
+        )
         val effects = collectEffects(viewModel)
 
-        viewModel.onIntent(GroupSetupIntent.SaveDraft)
+        viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
-        assertTrue(!viewModel.state.value.saveFailed)
-        assertEquals(listOf(GroupSetupEffect.DraftSaved), effects)
+        // A pessoa segue no formulário preenchido, com "Tentar de novo"; nada fecha a tela.
+        assertTrue(viewModel.state.value.saveFailed)
+        assertEquals(completeForm, viewModel.state.value.form)
+        assertTrue(effects.isEmpty())
     }
 
     private fun TestScope.collectEffects(viewModel: GroupSetupViewModel): List<GroupSetupEffect> {

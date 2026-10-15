@@ -78,7 +78,7 @@ class GroupSetupStatesScreenshotTest {
             SaqzSectionHeader(title = stringResource(Res.string.group_system_offline_title))
             SaqzOfflineBanner(message = stringResource(Res.string.group_system_offline))
             SaqzSectionHeader(title = stringResource(Res.string.group_system_save_failure_title))
-            GroupSaveFailureCard(onRetry = {}, onSaveDraft = {})
+            GroupSaveFailureCard(onRetry = {})
             SaqzSectionHeader(title = stringResource(Res.string.group_system_sending_title))
             SaqzButton(
                 label = stringResource(Res.string.group_system_creating),

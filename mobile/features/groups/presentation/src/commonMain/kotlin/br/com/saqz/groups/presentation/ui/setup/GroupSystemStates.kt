@@ -41,7 +41,6 @@ import br.com.saqz.groups.resources.group_system_creating
 import br.com.saqz.groups.resources.group_system_offline
 import br.com.saqz.groups.resources.group_system_offline_title
 import br.com.saqz.groups.resources.group_system_retry
-import br.com.saqz.groups.resources.group_system_save_draft
 import br.com.saqz.groups.resources.group_system_save_failure
 import br.com.saqz.groups.resources.group_system_save_failure_body
 import br.com.saqz.groups.resources.group_system_save_failure_edit
@@ -88,11 +87,10 @@ internal fun GroupErrorBanner(count: Int, modifier: Modifier = Modifier, isEditi
     }
 }
 
-/** `2h` — falha ao salvar: o formulário continua na tela, com as duas saídas. */
+/** `2h` — falha ao salvar: o formulário continua na tela, com "Tentar de novo". */
 @Composable
 internal fun GroupSaveFailureCard(
     onRetry: () -> Unit,
-    onSaveDraft: () -> Unit,
     modifier: Modifier = Modifier,
     isEditing: Boolean = false,
 ) {
@@ -116,14 +114,6 @@ internal fun GroupSaveFailureCard(
                 size = SaqzButtonSize.Sm,
                 fullWidth = true,
                 modifier = Modifier.weight(1f).testTag(GroupSetupTags.Retry),
-            )
-            SaqzButton(
-                label = stringResource(Res.string.group_system_save_draft),
-                onClick = onSaveDraft,
-                variant = SaqzButtonVariant.Secondary,
-                size = SaqzButtonSize.Sm,
-                fullWidth = true,
-                modifier = Modifier.weight(1f).testTag(GroupSetupTags.SaveDraft),
             )
         }
     }
@@ -217,7 +207,7 @@ private fun GroupSystemStatesPreview() = SaqzTheme {
         SaqzSectionHeader(title = stringResource(Res.string.group_system_offline_title))
         SaqzOfflineBanner(message = stringResource(Res.string.group_system_offline))
         SaqzSectionHeader(title = stringResource(Res.string.group_system_save_failure_title))
-        GroupSaveFailureCard(onRetry = {}, onSaveDraft = {})
+        GroupSaveFailureCard(onRetry = {})
         SaqzSectionHeader(title = stringResource(Res.string.group_system_sending_title))
         SaqzButton(
             label = stringResource(Res.string.group_system_creating),

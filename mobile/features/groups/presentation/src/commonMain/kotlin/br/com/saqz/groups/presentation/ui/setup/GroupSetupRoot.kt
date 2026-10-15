@@ -47,7 +47,6 @@ fun GroupSetupRoot(
     onGroupCreate: (groupId: String, photoFailed: Boolean) -> Unit,
     onGroupSave: () -> Unit,
     onGroupDelete: () -> Unit,
-    onDraftSave: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     showTrialOffer: Boolean = false,
@@ -123,7 +122,6 @@ fun GroupSetupRoot(
                 }
             }
             GroupSetupEffect.Deleted -> onGroupDelete()
-            GroupSetupEffect.DraftSaved -> onDraftSave()
             GroupSetupEffect.PickPhoto -> photoSheetOpen = true
         }
     }

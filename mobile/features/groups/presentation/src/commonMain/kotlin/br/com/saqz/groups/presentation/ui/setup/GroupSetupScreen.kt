@@ -112,7 +112,6 @@ internal object GroupSetupTags {
     const val ErrorBanner = "group-setup-error-banner"
     const val SaveFailure = "group-setup-save-failure"
     const val Retry = "group-setup-retry"
-    const val SaveDraft = "group-setup-save-draft"
     const val ToastAction = "group-setup-toast-action"
     const val Delete = "group-setup-delete"
     const val DeleteConfirm = "group-setup-delete-confirm"
@@ -205,7 +204,6 @@ private fun GroupSetupNotices(state: GroupSetupState, onIntent: (GroupSetupInten
     if (state.saveFailed) {
         GroupSaveFailureCard(
             onRetry = { onIntent(GroupSetupIntent.Retry) },
-            onSaveDraft = { onIntent(GroupSetupIntent.SaveDraft) },
             isEditing = state.isEditing,
         )
     }
