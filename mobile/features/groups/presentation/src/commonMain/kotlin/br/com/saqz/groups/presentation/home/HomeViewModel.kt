@@ -559,7 +559,7 @@ class HomeViewModel(
             confirmedSummary = if (confirmedCount > capacity) {
                 br.com.saqz.groups.presentation.details.overCapacityLabel(confirmedCount, capacity)
             } else {
-                getString(Res.string.home_confirmed_summary, confirmedCount, capacity)
+                getPluralString(Res.plurals.home_confirmed_summary, capacity, confirmedCount, capacity)
             },
             confirmedCount = confirmedCount,
             capacity = capacity,

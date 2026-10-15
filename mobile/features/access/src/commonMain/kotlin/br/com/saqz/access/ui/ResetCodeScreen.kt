@@ -44,6 +44,7 @@ import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.asString
 import br.com.saqz.designsystem.theme.SaqzTheme
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object ResetCodeTags {
@@ -114,7 +115,7 @@ fun ResetCodeScreen(
                 // título da tela, que é literalmente o que se pede ali.
                 label = codeFieldLabel(),
                 errorText = state.remainingAttempts?.let {
-                    stringResource(Res.string.reset_code_error_invalid, it)
+                    pluralStringResource(Res.plurals.reset_code_error_invalid, it, it)
                 },
                 enabled = !state.busy,
                 modifier = Modifier.testTag(ResetCodeTags.Code),

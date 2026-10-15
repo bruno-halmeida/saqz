@@ -24,6 +24,16 @@ import kotlin.test.assertNull
 @OptIn(ExperimentalTestApi::class)
 class GroupMembersScreenTest {
 
+    @Test fun `the footer counts members in the singular and in the plural`() = runComposeUiTest {
+        content(state = state.copy(totalCount = 3, adminCount = 2, shownCount = 1))
+        onNodeWithText("Mostrando 1 de 1 membro").assertExists()
+    }
+
+    @Test fun `the footer keeps the plural when there are several members`() = runComposeUiTest {
+        content(state = state.copy(totalCount = 6, adminCount = 2, shownCount = 1))
+        onNodeWithText("Mostrando 1 de 4 membros").assertExists()
+    }
+
     @Test fun `the own row opens the sheet so owner and admin can edit themselves`() = runComposeUiTest {
         var intent: GroupMembersIntent? = null
         content(onIntent = { intent = it })

@@ -11,7 +11,10 @@
     <string name="home_deadline_today">As confirmações encerram hoje às %1$s.</string>
     <string name="home_deadline_tomorrow">As confirmações encerram amanhã às %1$s.</string>
     <string name="home_deadline_date">As confirmações encerram em %1$s às %2$s.</string>
-    <string name="home_confirmed_summary">%1$d de %2$d confirmados</string>
+    <plurals name="home_confirmed_summary">
+        <item quantity="one">%1$d de %2$d confirmado</item>
+        <item quantity="other">%1$d de %2$d confirmados</item>
+    </plurals>
     <string name="home_status_confirmed">Presença confirmada.</string>
     <string name="home_status_declined">Tudo bem, na próxima. Sua vaga já foi liberada.</string>
     <string name="home_response_yes">Vou</string>

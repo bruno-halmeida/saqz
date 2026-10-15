@@ -46,6 +46,7 @@ import br.com.saqz.groups.resources.group_members_members
 import br.com.saqz.groups.resources.group_members_requests_failed
 import br.com.saqz.groups.resources.group_members_showing
 import br.com.saqz.groups.resources.group_members_title
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object GroupMembersTags {
@@ -226,7 +227,7 @@ private fun LazyListScope.membersContent(
                 members = state.members,
                 onOpen = { onIntent(GroupMembersIntent.OpenMember(it)) },
                 action = state.memberCount.toString(),
-                footer = stringResource(Res.string.group_members_showing, state.shownCount, state.memberCount),
+                footer = pluralStringResource(Res.plurals.group_members_showing, state.memberCount, state.shownCount, state.memberCount),
             )
         }
     }

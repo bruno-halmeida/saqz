@@ -59,8 +59,9 @@ import br.com.saqz.groups.resources.game_detail_publish_failed
 import br.com.saqz.groups.resources.game_detail_publish_hint
 import br.com.saqz.groups.resources.game_detail_confirmation_deadline
 import br.com.saqz.groups.resources.game_detail_confirmed_full
+import br.com.saqz.groups.resources.game_detail_open_spots
+import br.com.saqz.groups.resources.game_response_confirmed_summary
 import br.com.saqz.groups.resources.game_detail_confirmed_over_capacity
-import br.com.saqz.groups.resources.game_detail_confirmed_summary
 import br.com.saqz.groups.resources.game_detail_confirmed_section
 import br.com.saqz.groups.resources.game_detail_duration
 import br.com.saqz.groups.resources.game_detail_duration_hours
@@ -213,18 +214,27 @@ private fun GameDetailAttendance(attendance: GameDetailAttendanceUi) {
                     attendance.confirmed,
                     attendance.capacity,
                 )
-                attendance.availableSpots <= 0 -> stringResource(
-                    Res.string.game_detail_confirmed_full,
+                attendance.availableSpots <= 0 -> pluralStringResource(
+                    Res.plurals.game_detail_confirmed_full,
+                    attendance.capacity,
                     attendance.confirmed,
                     attendance.capacity,
                 )
-                else -> pluralStringResource(
-                    Res.plurals.game_detail_confirmed_summary,
-                    attendance.availableSpots,
-                    attendance.confirmed,
-                    attendance.capacity,
-                    attendance.availableSpots,
-                )
+                else -> {
+                    // Cada número concorda com o seu substantivo: "0 de 1 confirmado · 1 vaga aberta".
+                    val confirmedOf = pluralStringResource(
+                        Res.plurals.game_response_confirmed_summary,
+                        attendance.capacity,
+                        attendance.confirmed,
+                        attendance.capacity,
+                    )
+                    val open = pluralStringResource(
+                        Res.plurals.game_detail_open_spots,
+                        attendance.availableSpots,
+                        attendance.availableSpots,
+                    )
+                    "$confirmedOf · $open"
+                }
             },
             color = colors.textPrimary,
             style = SaqzTheme.typography.body,

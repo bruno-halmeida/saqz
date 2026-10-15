@@ -21,6 +21,9 @@
     <string name="game_response_roster_stale">A lista de presença pode estar desatualizada.</string>
     <string name="game_response_retry_roster">Tentar novamente</string>
     <string name="game_response_next_game">Próximo jogo</string>
-    <string name="game_response_confirmed_summary">%1$d de %2$d confirmados</string>
+    <plurals name="game_response_confirmed_summary">
+        <item quantity="one">%1$d de %2$d confirmado</item>
+        <item quantity="other">%1$d de %2$d confirmados</item>
+    </plurals>
     <string name="game_response_confirmed_ratio">%1$d/%2$d</string>
 </resources>

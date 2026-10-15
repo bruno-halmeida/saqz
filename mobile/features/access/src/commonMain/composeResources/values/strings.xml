@@ -93,7 +93,10 @@
     <string name="reset_code_submit">Verificar código</string>
     <string name="reset_code_resent">Enviamos um novo código para o seu e-mail.</string>
     <string name="reset_code_resend_wait">Reenviar código em %1$s</string>
-    <string name="reset_code_error_invalid">Código incorreto. Restam %1$d tentativas.</string>
+    <plurals name="reset_code_error_invalid">
+        <item quantity="one">Código incorreto. Resta %1$d tentativa.</item>
+        <item quantity="other">Código incorreto. Restam %1$d tentativas.</item>
+    </plurals>
     <string name="reset_code_error_expired">Esse código expirou. Peça um novo para continuar.</string>
     <string name="reset_code_resend">Reenviar código</string>
 

@@ -95,7 +95,7 @@ private suspend fun Game.agendaMeta(defaultVenueName: String?): String = when {
     availableSpots <= 0 -> getString(Res.string.group_details_agenda_meta_full, confirmedCount, capacity)
     venue.name != defaultVenueName ->
         getString(Res.string.group_details_agenda_meta_venue, confirmedCount, capacity, venue.name)
-    else -> getString(Res.string.group_details_agenda_meta, confirmedCount, capacity)
+    else -> getPluralString(Res.plurals.group_details_agenda_meta, capacity, confirmedCount, capacity)
 }
 
 /** Vagas reduzidas abaixo dos confirmados: "3 confirmados para 2 vagas", nunca "3 de 2". */

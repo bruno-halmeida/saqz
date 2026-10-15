@@ -145,7 +145,8 @@ class HomeScreenTest {
 
         // O principal fica em cima e o convite embaixo, cada um com a largura toda.
         assertTrue(invite.top >= create.bottom)
-        assertEquals(create.width, invite.width)
+        assertEquals(create.left, invite.left)
+        assertEquals(create.right, invite.right)
     }
 
     @Test

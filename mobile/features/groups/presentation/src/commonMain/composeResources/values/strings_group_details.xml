@@ -23,7 +23,10 @@
     <string name="group_details_names_two">%1$s e %2$s</string>
     <string name="group_details_names_more">%1$s, %2$s e mais %3$d</string>
     <!-- Detalhe do grupo novo · próximos jogos -->
-    <string name="group_details_agenda_meta">%1$d de %2$d confirmados</string>
+    <plurals name="group_details_agenda_meta">
+        <item quantity="one">%1$d de %2$d confirmado</item>
+        <item quantity="other">%1$d de %2$d confirmados</item>
+    </plurals>
     <string name="group_details_agenda_meta_venue">%1$d de %2$d · %3$s</string>
     <string name="group_details_agenda_meta_full">Lotado · %1$d de %2$d</string>
     <string name="group_details_agenda_meta_draft">Só você vê até publicar</string>

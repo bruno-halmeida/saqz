@@ -59,6 +59,12 @@ class ResetCodeScreenTest {
         onNodeWithText("Verificar código").assertExists()
     }
 
+    @Test fun `the last attempt is announced in the singular`() = runComposeUiTest {
+        content(state = ResetCodeState(email = EMAIL, code = "1359", remainingAttempts = 1))
+
+        onNodeWithText("Código incorreto. Resta 1 tentativa.").assertExists()
+    }
+
     @Test fun `1k invalid code keeps the digits and the verify action`() = runComposeUiTest {
         content(
             state = ResetCodeState(email = EMAIL, code = "1359", remainingAttempts = 2),

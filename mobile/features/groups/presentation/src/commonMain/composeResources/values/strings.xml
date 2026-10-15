@@ -201,7 +201,10 @@
     <string name="group_members_pending_section">Pendentes</string>
     <string name="group_members_admins">Administradores</string>
     <string name="group_members_members">Membros</string>
-    <string name="group_members_showing">Mostrando %1$d de %2$d membros</string>
+    <plurals name="group_members_showing">
+        <item quantity="one">Mostrando %1$d de %2$d membro</item>
+        <item quantity="other">Mostrando %1$d de %2$d membros</item>
+    </plurals>
     <string name="group_members_invite">Convidar mais gente</string>
     <string name="group_members_you">você</string>
     <string name="group_members_admin">Administrador</string>

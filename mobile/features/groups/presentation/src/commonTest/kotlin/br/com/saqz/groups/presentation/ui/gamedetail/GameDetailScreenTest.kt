@@ -15,6 +15,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.group.PromotionMode
+import br.com.saqz.groups.presentation.gamedetail.GameDetailAttendanceUi
 import br.com.saqz.groups.presentation.gamedetail.GameDetailIntent
 import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseUi
 import br.com.saqz.groups.presentation.gamedetail.GameDetailState
@@ -60,6 +61,27 @@ class GameDetailScreenTest {
         )
 
         onAllNodesWithText("Encerrar jogo e acertar").assertCountEquals(0)
+    }
+
+    @Test
+    fun `attendance with capacity one agrees with the singular`() = runComposeUiTest {
+        setScreen(state = GameDetailPreviewData.admin.copy(attendance = GameDetailAttendanceUi(confirmed = 0, capacity = 1, availableSpots = 1)))
+
+        onNodeWithText("0 de 1 confirmado · 1 vaga aberta").assertExists()
+    }
+
+    @Test
+    fun `full game with capacity one says confirmado in the singular`() = runComposeUiTest {
+        setScreen(state = GameDetailPreviewData.admin.copy(attendance = GameDetailAttendanceUi(confirmed = 1, capacity = 1, availableSpots = 0)))
+
+        onNodeWithText("1 de 1 confirmado · lotado").assertExists()
+    }
+
+    @Test
+    fun `attendance with several spots keeps the plural`() = runComposeUiTest {
+        setScreen(state = GameDetailPreviewData.admin.copy(attendance = GameDetailAttendanceUi(confirmed = 10, capacity = 12, availableSpots = 2)))
+
+        onNodeWithText("10 de 12 confirmados · 2 vagas abertas").assertExists()
     }
 
     @Test

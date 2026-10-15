@@ -13,9 +13,9 @@
         <item quantity="one">%1$d vaga</item>
         <item quantity="other">%1$d vagas</item>
     </plurals>
-    <plurals name="game_detail_confirmed_summary">
-        <item quantity="one">%1$d de %2$d confirmados · %3$d vaga aberta</item>
-        <item quantity="other">%1$d de %2$d confirmados · %3$d vagas abertas</item>
+    <plurals name="game_detail_open_spots">
+        <item quantity="one">%1$d vaga aberta</item>
+        <item quantity="other">%1$d vagas abertas</item>
     </plurals>
     <plurals name="game_detail_confirmed_over_capacity">
         <item quantity="one">%1$d confirmados para %2$d vaga</item>
