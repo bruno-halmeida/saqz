@@ -9,8 +9,8 @@ WhatsApp estão desligados em produção; só os avisos funcionam.
 
 1. Quando o sistema pedir permissão de notificações, tocar "Permitir".
 
-**Só vale no app de produção** (loja ou TestFlight). Builds locais ou de desenvolvimento, que usam o
-Firebase de teste, nunca pedem a permissão: lá a ausência do pedido não reprova.
+**Só vale no app de produção** (loja ou TestFlight). Builds locais, que usam o emulador
+do Firebase, nunca pedem a permissão: lá a ausência do pedido não reprova.
 
 **Conferir**
 - O pedido aparece logo na primeira vez que a Início abre.
