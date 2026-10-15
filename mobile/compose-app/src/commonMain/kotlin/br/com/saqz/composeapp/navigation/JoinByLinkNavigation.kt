@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.navigation3.runtime.NavKey
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.register.RegisterInviteContext
+import br.com.saqz.groups.domain.membership.InviteRedeemStatus
 import br.com.saqz.groups.invite.GroupInviteCoordinator
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 
@@ -94,7 +95,10 @@ internal class InviteCopy(code: String? = null) {
     }
 
     /** Entrar no grupo e pedir entrada contam igual: o convite já foi usado. */
-    fun onRedeemed() = clear()
+    fun onRedeemed(status: InviteRedeemStatus) = when (status) {
+        InviteRedeemStatus.JOINED -> clear()
+        InviteRedeemStatus.PENDING -> clear()
+    }
 
     /**
      * Sessão mudou: só a transição para SignedOut é sair da conta. Aí a cópia cai e o coordinator
@@ -108,12 +112,17 @@ internal class InviteCopy(code: String? = null) {
         previousSession = session
     }
 
-    /** Ação da tela do convite (entrar ou pedir entrada): só depois do guardado apagado a cópia cai. */
-    fun clearAfterAction(coordinator: GroupInviteCoordinator, inviteCode: String, then: () -> Unit = {}) {
+    /** "Entrar" na tela do convite: só depois do guardado apagado a cópia cai e a navegação segue. */
+    fun joinFromLanding(coordinator: GroupInviteCoordinator, inviteCode: String, then: () -> Unit) {
         coordinator.clearPendingInvite(inviteCode) {
             clear()
             then()
         }
+    }
+
+    /** "Pedir para entrar" na tela do convite: conta como aceitar, igual a entrar. */
+    fun requestFromLanding(coordinator: GroupInviteCoordinator, inviteCode: String) {
+        coordinator.clearPendingInvite(inviteCode) { clear() }
     }
 
     companion object {

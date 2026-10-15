@@ -111,7 +111,7 @@ class PendingInviteLifecycleTest {
         assertEquals("convite", f.store.value)
 
         // Tela do convite: "Pedir para entrar" = onRequest do SaqzNavHost (mesmo InviteCopy).
-        f.driver.copy.clearAfterAction(f.coordinator, "convite")
+        f.driver.copy.requestFromLanding(f.coordinator, "convite")
         runCurrent()
         assertNull(f.store.value)
         assertNull(f.driver.navCopy)
@@ -225,7 +225,7 @@ class PendingInviteLifecycleTest {
         fun onEffect(effect: GroupInviteEffect) {
             when (effect) {
                 is GroupInviteEffect.OpenInviteLanding -> copy.code = effect.code
-                is GroupInviteEffect.NavigateToGroup -> copy.onRedeemed()
+                is GroupInviteEffect.NavigateToGroup -> copy.onRedeemed(effect.status)
                 else -> Unit
             }
             coordinator.redeemHandled()

@@ -344,14 +344,14 @@ internal fun SaqzNavHost(
                 }
                 is GroupInviteEffect.NavigateToGroup -> when (effect.status) {
                     InviteRedeemStatus.JOINED -> {
-                        inviteCopy.onRedeemed()
+                        inviteCopy.onRedeemed(effect.status)
                         // Uma navegação só: o cadastro de atleta abre primeiro, no lugar do que a pessoa
                         // já tenha aberto por cima da Início; a Início recarrega depois, por baixo.
                         backStack.openAthleteRegistrationAfterJoin(effect.groupId)
                         homeRefreshVersion++
                     }
                     InviteRedeemStatus.PENDING -> {
-                        inviteCopy.onRedeemed()
+                        inviteCopy.onRedeemed(effect.status)
                         backStack.add(GroupsRoute.InviteLanding(effect.inviteCode, requestSent = true))
                     }
                 }
@@ -1011,12 +1011,12 @@ internal fun SaqzNavHost(
                     InviteLandingRoot(
                         code = route.code,
                         onJoin = { groupId ->
-                            inviteCopy.clearAfterAction(inviteCoordinator, route.code) {
+                            inviteCopy.joinFromLanding(inviteCoordinator, route.code) {
                                 pop()
                                 backStack.add(GroupsRoute.AthleteRegistration(groupId))
                             }
                         },
-                        onRequest = { inviteCopy.clearAfterAction(inviteCoordinator, route.code) },
+                        onRequest = { inviteCopy.requestFromLanding(inviteCoordinator, route.code) },
                         onBrowseOtherGroups = {
                             backStack.openInviteOtherGroups()
                         },
