@@ -47,7 +47,7 @@ data class GroupCardGameUi(
     val needsConfirmation: Boolean = attendance == GroupCardAttendance.Pending
 }
 
-enum class GroupCardAttendance { Pending, Going, Maybe, Out }
+enum class GroupCardAttendance { Pending, Going, Waitlisted, Out }
 
 @Immutable
 data class GroupInviteUi(val id: String, val groupName: String, val invitedBy: String)

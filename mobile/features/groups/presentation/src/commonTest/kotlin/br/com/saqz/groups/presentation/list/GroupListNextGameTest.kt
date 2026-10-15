@@ -4,6 +4,7 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.*
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.group.GroupCreationEntitlement
@@ -63,6 +64,44 @@ class GroupListNextGameTest {
         assertNotNull(games.nextGroupCardGame(GroupRole.ADMIN, now))
         assertNull(games.nextGroupCardGame(GroupRole.ATHLETE, now))
         assertFalse(games.nextGroupCardGame(GroupRole.OWNER, now)!!.needsConfirmation)
+    }
+
+    @Test fun `own attendance of the next game becomes the card attendance`() = runTest {
+        suspend fun attendance(own: AttendanceStatus?) =
+            listOf(sampleGame().copy(ownAttendance = own)).nextGroupCardGame(GroupRole.ATHLETE, now)?.attendance
+        assertEquals(GroupCardAttendance.Going, attendance(AttendanceStatus.Confirmed))
+        assertEquals(GroupCardAttendance.Waitlisted, attendance(AttendanceStatus.Waitlisted))
+        assertEquals(GroupCardAttendance.Out, attendance(AttendanceStatus.Declined))
+        assertEquals(GroupCardAttendance.Pending, attendance(null))
+    }
+
+    @Test fun `only an open game without answer asks for confirmation`() = runTest {
+        suspend fun card(game: br.com.saqz.groups.domain.game.Game) = listOf(game).nextGroupCardGame(GroupRole.ATHLETE, now)!!
+        assertTrue(card(sampleGame()).needsConfirmation)
+        // Prazo vencido: o jogo está no cartão, mas não pede nada.
+        val late = card(sampleGame().copy(confirmationDeadline = "2026-07-31T12:00:00Z"))
+        assertNull(late.attendance)
+        assertFalse(late.needsConfirmation)
+        // Em andamento sem resposta: respostas fechadas.
+        val running = card(sampleGame().copy(startsAt = "2026-08-01T11:50:00Z", confirmationDeadline = "2026-07-31T12:00:00Z"))
+        assertFalse(running.needsConfirmation)
+        // Prazo ilegível não vira "pedindo".
+        assertFalse(card(sampleGame().copy(confirmationDeadline = "?")).needsConfirmation)
+        // Já respondido (mesmo com prazo vencido) mostra a resposta, sem pedir.
+        val answered = card(sampleGame().copy(confirmationDeadline = "2026-07-31T12:00:00Z", ownAttendance = AttendanceStatus.Confirmed))
+        assertEquals(GroupCardAttendance.Going, answered.attendance)
+        assertFalse(answered.needsConfirmation)
+    }
+
+    @Test fun `refresh after answering drops the awaiting count and shows the answer`() = runTest {
+        val games = FakeGameGateway(SaqzResult.Success(listOf(sampleGame())))
+        val vm = viewModel(games)
+        assertEquals(1, vm.state.value.awaitingConfirmation)
+        games.listResult = SaqzResult.Success(listOf(sampleGame().copy(ownAttendance = AttendanceStatus.Confirmed)))
+        vm.onIntent(GroupListIntent.Appeared) // primeira aparição: a carga do init já cobre
+        vm.onIntent(GroupListIntent.Appeared) // volta à aba depois de responder
+        assertEquals(0, vm.state.value.awaitingConfirmation)
+        assertEquals(GroupCardAttendance.Going, vm.state.value.groups.single().nextGame?.attendance)
     }
 
     @Test fun `refresh shows newly created game and removes cancelled game`() = runTest {

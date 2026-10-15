@@ -7,6 +7,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.model.GroupModality
+import br.com.saqz.groups.presentation.list.GroupCardAttendance
+import br.com.saqz.groups.presentation.list.GroupCardGameUi
+import br.com.saqz.groups.presentation.list.GroupCardUi
 import br.com.saqz.groups.presentation.list.GroupListIntent
 import br.com.saqz.groups.presentation.list.GroupListState
 import kotlin.test.Test
@@ -43,5 +47,29 @@ class GroupListScreenTest {
         onNodeWithTag(GroupListTags.InviteSheetSubmit).performClick()
 
         assertEquals(listOf<GroupListIntent>(GroupListIntent.SubmitInviteLink), intents)
+    }
+
+    @Test
+    fun `header counts groups awaiting confirmation and each card shows its attendance`() = runComposeUiTest {
+        fun card(id: String, attendance: GroupCardAttendance?) = GroupCardUi(
+            id = id, name = "Grupo $id", meta = "Quadra", modality = GroupModality.COURT_VOLLEYBALL, isAdmin = false,
+            nextGame = GroupCardGameUi(label = "04/08 · 19h30 · 8 de 12", attendance = attendance),
+        )
+        val state = GroupListState(
+            isLoading = false,
+            groups = listOf(
+                card("a", GroupCardAttendance.Pending),
+                card("b", GroupCardAttendance.Going),
+                card("c", GroupCardAttendance.Waitlisted),
+                card("d", GroupCardAttendance.Out),
+            ),
+        )
+        setContent { SaqzTheme { GroupListScreen(state = state, onIntent = {}) } }
+
+        onNodeWithText("4 grupos · 1 pedindo confirmação").assertIsDisplayed()
+        onNodeWithText("Confirme").assertIsDisplayed()
+        onNodeWithText("Você vai").assertIsDisplayed()
+        onNodeWithText("Na espera").assertIsDisplayed()
+        onNodeWithText("Não vai").assertIsDisplayed()
     }
 }

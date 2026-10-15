@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.list
 
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.group.GroupRole
@@ -41,9 +42,24 @@ internal suspend fun List<Game>.nextGroupCardGame(role: GroupRole, now: Instant)
     }
     return GroupCardGameUi(
         label = label,
-        // The games endpoint has counts, but does not return the user's attendance.
-        attendance = null,
+        attendance = game.cardAttendance(start = next.second, now = now),
     )
+}
+
+/**
+ * A presença de quem olha, como na Início. Sem resposta só vira "Confirme" (e conta em "pedindo
+ * confirmação") com o jogo publicado, ainda por começar e dentro do prazo; fora disso não há
+ * o que pedir, então nenhum chip.
+ */
+private fun Game.cardAttendance(start: Instant, now: Instant): GroupCardAttendance? = when (ownAttendance) {
+    AttendanceStatus.Confirmed -> GroupCardAttendance.Going
+    AttendanceStatus.Waitlisted -> GroupCardAttendance.Waitlisted
+    AttendanceStatus.Declined -> GroupCardAttendance.Out
+    null -> {
+        val deadline = runCatching { Instant.parse(confirmationDeadline) }.getOrNull()
+        val open = status == GameStatus.Published && start > now && deadline != null && now < deadline
+        if (open) GroupCardAttendance.Pending else null
+    }
 }
 private fun Int.twoDigits() = toString().padStart(2, '0')
 

@@ -47,9 +47,7 @@ import br.com.saqz.groups.presentation.list.GroupInviteUi
 import br.com.saqz.groups.presentation.photo.GroupRemotePhotoRoot
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.resources.Res
-import br.com.saqz.groups.resources.group_member_attendance_maybe
 import br.com.saqz.groups.resources.group_system_retry
-import br.com.saqz.groups.resources.groups_attendance_going
 import br.com.saqz.groups.resources.groups_confirm
 import br.com.saqz.groups.resources.groups_empty_body
 import br.com.saqz.groups.resources.groups_empty_create
@@ -66,6 +64,9 @@ import br.com.saqz.groups.resources.groups_role_admin
 import br.com.saqz.groups.resources.groups_summary
 import br.com.saqz.groups.resources.groups_summary_one
 import br.com.saqz.groups.resources.groups_title
+import br.com.saqz.groups.resources.home_upcoming_status_going
+import br.com.saqz.groups.resources.home_upcoming_status_out
+import br.com.saqz.groups.resources.home_upcoming_status_waitlisted
 import org.jetbrains.compose.resources.stringResource
 
 // Medidas de tela do export que não são token do fluxo 10 (mesmo caminho do fluxo 1).
@@ -224,24 +225,22 @@ private fun GroupCardAttendanceChip(attendance: GroupCardAttendance) = when (att
         tone = SaqzChipTone.Brand,
     )
 
+    // Mesmos rótulos e tons da lista "Próximos jogos" da Início.
     GroupCardAttendance.Going -> SaqzStatusChip(
-        text = stringResource(Res.string.groups_attendance_going),
+        text = stringResource(Res.string.home_upcoming_status_going),
         tone = SaqzChipTone.Success,
         dot = true,
     )
 
-    // TODO(VUL-66): falta `groups_attendance_maybe`; o rótulo de 2e diz o mesmo "Talvez".
-    GroupCardAttendance.Maybe -> SaqzStatusChip(
-        text = stringResource(Res.string.group_member_attendance_maybe),
+    GroupCardAttendance.Waitlisted -> SaqzStatusChip(
+        text = stringResource(Res.string.home_upcoming_status_waitlisted),
         tone = SaqzChipTone.Warning,
         dot = true,
     )
 
-    // TODO(VUL-66): falta `groups_attendance_out`; 2n não desenha o caso, mas o estado existe.
     GroupCardAttendance.Out -> SaqzStatusChip(
-        text = "Não vou",
-        tone = SaqzChipTone.Error,
-        dot = true,
+        text = stringResource(Res.string.home_upcoming_status_out),
+        tone = SaqzChipTone.Neutral,
     )
 }
 

@@ -12,7 +12,6 @@
     <string name="groups_summary_one">%1$d grupo · %2$d pedindo confirmação</string>
     <string name="groups_confirm">Confirme</string>
     <string name="groups_role_admin">Administrador</string>
-    <string name="groups_attendance_going">Vou</string>
     <string name="groups_no_game">Nenhum jogo marcado por enquanto.</string>
     <string name="groups_invite_title">Convite recebido</string>
     <string name="groups_invite_from">%1$s te convidou</string>
