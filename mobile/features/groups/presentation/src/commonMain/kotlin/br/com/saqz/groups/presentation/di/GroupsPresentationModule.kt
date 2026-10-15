@@ -92,7 +92,7 @@ fun groupsPresentationModule(): Module = module {
     // Uma lista de bloqueados para o app inteiro: o bloqueio feito no perfil some com o aviso na thread.
     singleOf(::BlockedPeopleRepository)
     viewModelOf(::ModerationViewModel)
-    viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get(), get(), getOrNull()) }
+    viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get(), get(), get(), getOrNull()) }
     viewModel { params -> MemberProfileViewModel(params[0], params[1], get(), get()) }
     viewModel { OwnMonthlyPaymentsViewModel(get(), get()) }
     viewModel { params ->

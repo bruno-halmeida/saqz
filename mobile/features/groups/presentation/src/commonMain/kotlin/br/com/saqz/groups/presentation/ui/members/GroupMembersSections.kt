@@ -56,13 +56,16 @@ import br.com.saqz.groups.resources.group_members_filter_admins
 import br.com.saqz.groups.resources.group_members_filter_all
 import br.com.saqz.groups.resources.group_members_filter_pending
 import br.com.saqz.groups.resources.group_members_join_requests
-import br.com.saqz.groups.resources.group_members_pending
 import br.com.saqz.groups.resources.group_members_search
 import br.com.saqz.groups.resources.group_members_you
 import br.com.saqz.groups.resources.member_editor_cancel
 import br.com.saqz.groups.resources.member_editor_remove_body
 import br.com.saqz.groups.resources.member_editor_remove_confirm
 import br.com.saqz.groups.resources.member_editor_remove_title
+import br.com.saqz.groups.resources.group_invite_reject
+import br.com.saqz.groups.resources.group_invite_reject_body
+import br.com.saqz.groups.resources.group_invite_reject_title
+import br.com.saqz.groups.resources.group_invite_rotate_cancel
 import br.com.saqz.groups.resources.groups_invite_accept
 import br.com.saqz.groups.resources.groups_invite_decline
 import br.com.saqz.groups.resources.moderation_action_block
@@ -105,13 +108,15 @@ internal fun GroupMembersFilters(
     totalCount: Int,
     adminCount: Int,
     pendingCount: Int,
+    showPending: Boolean,
     onSelect: (GroupMembersFilter) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val labels = listOf(
+    val labels = listOfNotNull(
         GroupMembersFilter.All to stringResource(Res.string.group_members_filter_all, totalCount),
         GroupMembersFilter.Admins to stringResource(Res.string.group_members_filter_admins, adminCount),
-        GroupMembersFilter.Pending to stringResource(Res.string.group_members_filter_pending, pendingCount),
+        (GroupMembersFilter.Pending to stringResource(Res.string.group_members_filter_pending, pendingCount))
+            .takeIf { showPending },
     )
     FlowRow(
         modifier = modifier.fillMaxWidth(),
@@ -130,9 +135,8 @@ internal fun GroupMembersFilters(
 }
 
 /**
- * Linha de pedido para entrar. Quem ainda espera triagem (`awaitingReview`) mostra só o
- * chip "Pendente"; quem já pode ser decidido mostra os dois círculos do export — recusar
- * branco com borda, aceitar azul sólido.
+ * Linha de pedido para entrar: os dois círculos do export — recusar branco com borda,
+ * aceitar azul sólido. Com a chamada em voo ([busy]) os dois ficam desligados.
  */
 @Composable
 internal fun GroupJoinRequestRow(
@@ -140,6 +144,7 @@ internal fun GroupJoinRequestRow(
     onAccept: () -> Unit,
     onDecline: () -> Unit,
     modifier: Modifier = Modifier,
+    busy: Boolean = false,
 ) {
     val metrics = SaqzTheme.metrics
     SaqzMemberRow(
@@ -147,36 +152,30 @@ internal fun GroupJoinRequestRow(
         meta = request.meta,
         modifier = modifier.testTag(GroupMembersTags.request(request.id)),
         trailing = {
-            if (request.awaitingReview) {
-                SaqzStatusChip(
-                    text = stringResource(Res.string.group_members_pending),
-                    tone = SaqzChipTone.Warning,
-                    dot = true,
-                )
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(metrics.grid)) {
-                    // TODO(VUL-66): faltam `group_members_accept`/`group_members_decline`
-                    // com o nome de quem pediu. Até lá, o verbo solto já distingue os dois
-                    // botões para o leitor de tela.
-                    SaqzIconButton(
-                        onClick = onDecline,
-                        contentDescription = stringResource(Res.string.groups_invite_decline),
-                        outlined = true,
-                        // 40 no export; a grade de 8 do design system não tem o número.
-                        size = metrics.grid * 5,
-                        modifier = Modifier.testTag(GroupMembersTags.decline(request.id)),
-                    ) {
-                        SaqzIcon(SaqzIcons.Close, tint = SaqzTheme.colors.textSecondary, size = metrics.grid * 2)
-                    }
-                    SaqzIconButton(
-                        onClick = onAccept,
-                        contentDescription = stringResource(Res.string.groups_invite_accept),
-                        filled = true,
-                        size = metrics.grid * 5,
-                        modifier = Modifier.testTag(GroupMembersTags.accept(request.id)),
-                    ) {
-                        SaqzIcon(SaqzIcons.Check, tint = SaqzTheme.colors.onPrimary, size = metrics.grid * 2)
-                    }
+            Row(horizontalArrangement = Arrangement.spacedBy(metrics.grid)) {
+                // TODO(VUL-66): faltam `group_members_accept`/`group_members_decline`
+                // com o nome de quem pediu. Até lá, o verbo solto já distingue os dois
+                // botões para o leitor de tela.
+                SaqzIconButton(
+                    onClick = onDecline,
+                    contentDescription = stringResource(Res.string.groups_invite_decline),
+                    outlined = true,
+                    enabled = !busy,
+                    // 40 no export; a grade de 8 do design system não tem o número.
+                    size = metrics.grid * 5,
+                    modifier = Modifier.testTag(GroupMembersTags.decline(request.id)),
+                ) {
+                    SaqzIcon(SaqzIcons.Close, tint = SaqzTheme.colors.textSecondary, size = metrics.grid * 2)
+                }
+                SaqzIconButton(
+                    onClick = onAccept,
+                    contentDescription = stringResource(Res.string.groups_invite_accept),
+                    filled = true,
+                    enabled = !busy,
+                    size = metrics.grid * 5,
+                    modifier = Modifier.testTag(GroupMembersTags.accept(request.id)),
+                ) {
+                    SaqzIcon(SaqzIcons.Check, tint = SaqzTheme.colors.onPrimary, size = metrics.grid * 2)
                 }
             }
         },
@@ -187,6 +186,7 @@ internal fun GroupJoinRequestRow(
 @Composable
 internal fun GroupJoinRequestsSection(
     requests: List<JoinRequestUi>,
+    busyIds: Set<String>,
     onAccept: (String) -> Unit,
     onDecline: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -203,6 +203,7 @@ internal fun GroupJoinRequestsSection(
                     request = request,
                     onAccept = { onAccept(request.id) },
                     onDecline = { onDecline(request.id) },
+                    busy = request.id in busyIds,
                 )
             }
         }
@@ -398,6 +399,37 @@ internal fun GroupMemberRemoveConfirmation(
                 stringResource(Res.string.member_editor_remove_confirm),
                 { onIntent(GroupMembersIntent.ConfirmRemove) },
                 Modifier.weight(1f),
+                SaqzButtonVariant.Danger,
+            )
+        },
+        content = {},
+    )
+}
+
+/** "Recusar" nunca age no primeiro toque: a pessoa não entra e precisa pedir de novo. */
+@Composable
+internal fun GroupJoinRequestDeclineConfirmation(
+    request: JoinRequestUi?,
+    onIntent: (GroupMembersIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SaqzBottomSheet(
+        open = request != null,
+        onClose = { onIntent(GroupMembersIntent.DismissDecline) },
+        modifier = modifier.testTag(GroupMembersTags.ConfirmDecline),
+        title = stringResource(Res.string.group_invite_reject_title, request?.name.orEmpty()),
+        description = stringResource(Res.string.group_invite_reject_body),
+        splitFooter = {
+            SaqzButton(
+                stringResource(Res.string.group_invite_rotate_cancel),
+                { onIntent(GroupMembersIntent.DismissDecline) },
+                Modifier.weight(1f),
+                SaqzButtonVariant.Ghost,
+            )
+            SaqzButton(
+                stringResource(Res.string.group_invite_reject),
+                { onIntent(GroupMembersIntent.ConfirmDecline) },
+                Modifier.weight(1f).testTag(GroupMembersTags.ConfirmDeclineAction),
                 SaqzButtonVariant.Danger,
             )
         },

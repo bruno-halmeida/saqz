@@ -4,13 +4,17 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.members.GroupMemberAction
+import br.com.saqz.groups.presentation.members.GroupMembersFilter
 import br.com.saqz.groups.presentation.members.GroupMembersIntent
+import br.com.saqz.groups.presentation.members.GroupMembersNotice
+import br.com.saqz.groups.presentation.members.JoinRequestUi
 import br.com.saqz.groups.presentation.members.GroupMembersState
 import br.com.saqz.groups.presentation.members.MemberUi
 import kotlin.test.Test
@@ -136,6 +140,90 @@ class GroupMembersScreenTest {
         onNodeWithText("Tornar administrador").assertDoesNotExist()
         onNodeWithText("Ver perfil").assertDoesNotExist()
     }
+
+    @Test fun `the pending filter shows the real number and the section lists the request`() = runComposeUiTest {
+        content(state = state.copy(canReviewRequests = true, pendingCount = 1, joinRequests = listOf(ana)))
+
+        onNodeWithText("Pendentes · 1").assertExists()
+        onNodeWithText("Pedidos para entrar").assertExists()
+        onNodeWithText("Ana Lima").assertExists()
+        onNodeWithText("Pediu há 5 min").assertExists()
+    }
+
+    @Test fun `accept and decline of a request dispatch their own intents`() = runComposeUiTest {
+        val intents = mutableListOf<GroupMembersIntent>()
+        content(
+            state = state.copy(canReviewRequests = true, pendingCount = 1, joinRequests = listOf(ana)),
+            onIntent = { intents += it },
+        )
+
+        onNodeWithTag(GroupMembersTags.accept("ana")).performClick()
+        onNodeWithTag(GroupMembersTags.decline("ana")).performClick()
+
+        assertEquals(
+            listOf(GroupMembersIntent.AcceptRequest("ana"), GroupMembersIntent.DeclineRequest("ana")),
+            intents,
+        )
+    }
+
+    @Test fun `a request with the call in flight cannot be tapped again`() = runComposeUiTest {
+        content(
+            state = state.copy(
+                canReviewRequests = true,
+                pendingCount = 1,
+                joinRequests = listOf(ana),
+                busyRequestIds = setOf("ana"),
+            ),
+        )
+
+        onNodeWithTag(GroupMembersTags.accept("ana")).assertIsNotEnabled()
+        onNodeWithTag(GroupMembersTags.decline("ana")).assertIsNotEnabled()
+    }
+
+    @Test fun `without permission there is no pending filter`() = runComposeUiTest {
+        content()
+
+        onNodeWithTag(GroupMembersTags.filter(GroupMembersFilter.Pending)).assertDoesNotExist()
+        onNodeWithTag(GroupMembersTags.filter(GroupMembersFilter.All)).assertExists()
+    }
+
+    @Test fun `the approval notice names the person`() = runComposeUiTest {
+        content(state = state.copy(notice = GroupMembersNotice.RequestApproved("Ana")))
+
+        onNodeWithText("Ana entrou no grupo.").assertExists()
+    }
+
+    @Test fun `the decline notice and the confirmation use the invite texts`() = runComposeUiTest {
+        var intent: GroupMembersIntent? = null
+        content(
+            state = state.copy(notice = GroupMembersNotice.RequestRejected, declineCandidate = ana),
+            onIntent = { intent = it },
+        )
+
+        onNodeWithText("Pedido recusado.").assertExists()
+        onNodeWithText("Recusar o pedido de Ana Lima?").assertExists()
+        onNodeWithTag(GroupMembersTags.ConfirmDeclineAction).performClick()
+
+        assertEquals(GroupMembersIntent.ConfirmDecline, intent)
+    }
+
+    @Test fun `a failed list keeps the other one on screen`() = runComposeUiTest {
+        content(
+            state = state.copy(
+                canReviewRequests = true,
+                pendingCount = 1,
+                joinRequests = listOf(ana),
+                rosterFailed = true,
+                members = emptyList(),
+                admins = emptyList(),
+            ),
+        )
+
+        onNodeWithTag(GroupMembersTags.RosterFailed).assertExists()
+        onNodeWithText("Ana Lima").assertExists()
+    }
+
+    private val ana = JoinRequestUi("ana", "Ana Lima", "Pediu há 5 min")
 
     private fun ComposeUiTest.content(
         state: GroupMembersState = this@GroupMembersScreenTest.state,

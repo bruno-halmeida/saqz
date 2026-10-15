@@ -6,6 +6,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.game.GameError
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.domain.home.HomeError
+import br.com.saqz.groups.domain.membership.EntryRequestError
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 
 /** Erros que a apresentação conhece; o detalhe de transporte morre antes de chegar à UI. */
@@ -37,6 +38,10 @@ fun GroupMembershipError.toUiError(): GroupUiError = when (this) {
     is GroupMembershipError.AttemptLimit -> GroupUiError.Network
     is GroupMembershipError.Validation -> GroupUiError.Validation
     is GroupMembershipError.DataFailure -> error.toUiError()
+}
+
+fun EntryRequestError.toUiError(): GroupUiError = when (this) {
+    is EntryRequestError.DataFailure -> error.toUiError()
 }
 
 /** O organizador está sem plano: quem responde presença recebe um aviso próprio, sem oferta de assinatura. */

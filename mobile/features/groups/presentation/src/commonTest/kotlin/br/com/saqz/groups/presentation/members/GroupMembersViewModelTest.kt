@@ -6,10 +6,13 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.membership.AssignableGroupRole
+import br.com.saqz.groups.domain.membership.EntryRequestError
+import br.com.saqz.groups.domain.membership.GroupEntryRequest
 import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeGroupMembershipGateway
+import br.com.saqz.groups.presentation.FakeGroupEntryRequestGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.FakeModerationGateway
 import br.com.saqz.groups.presentation.GroupUiError
@@ -17,6 +20,7 @@ import br.com.saqz.groups.presentation.blockedPerson
 import br.com.saqz.groups.presentation.fakeBlocks
 import br.com.saqz.groups.presentation.moderation.BlockedPeopleRepository
 import br.com.saqz.groups.presentation.sampleRosterEntry
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -24,6 +28,8 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -500,6 +506,186 @@ class GroupMembersViewModelTest {
         assertTrue(viewModel.state.value.members.single { it.id == "leo" }.isBlocked)
     }
 
+    @Test
+    fun `loads the join requests and the pending filter shows the real number`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(
+            SaqzResult.Success(
+                listOf(
+                    request("a", "Ana", (Clock.System.now() - 3.hours).toString()),
+                    request("b", "Beto"),
+                ),
+            ),
+        )
+        val viewModel = requestsViewModel(entry)
+
+        assertTrue(viewModel.state.value.canReviewRequests)
+        assertEquals(2, viewModel.state.value.pendingCount)
+        assertEquals(listOf("Ana", "Beto"), viewModel.state.value.joinRequests.map { it.name })
+        assertEquals("Pediu há 3 h", viewModel.state.value.joinRequests.first().meta)
+        assertEquals("Pediu agora", viewModel.state.value.joinRequests.last().meta)
+
+        viewModel.onIntent(GroupMembersIntent.SelectFilter(GroupMembersFilter.Pending))
+        assertEquals(2, viewModel.state.value.joinRequests.size)
+        assertTrue(viewModel.state.value.members.isEmpty())
+    }
+
+    @Test
+    fun `approving warns then drops the request and puts the person in the members list`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(SaqzResult.Success(listOf(request("new", "Ana"))))
+        val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("member-1"))))
+        entry.onApproved = {
+            athlete.rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("member-1"), sampleRosterEntry("new")))
+        }
+        val viewModel = requestsViewModel(entry, athlete = athlete)
+
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+
+        assertEquals(listOf("new"), entry.approvedUserIds)
+        assertEquals(GroupMembersNotice.RequestApproved("Ana"), viewModel.state.value.notice)
+        assertTrue(viewModel.state.value.joinRequests.isEmpty())
+        assertEquals(0, viewModel.state.value.pendingCount)
+        assertEquals(2, viewModel.state.value.totalCount)
+        assertTrue(viewModel.state.value.members.any { it.id == "new" })
+        assertTrue(viewModel.state.value.busyRequestIds.isEmpty())
+    }
+
+    @Test
+    fun `declining asks first then warns and drops the request`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(SaqzResult.Success(listOf(request("new", "Ana"))))
+        val viewModel = requestsViewModel(entry)
+
+        viewModel.onIntent(GroupMembersIntent.DeclineRequest("new"))
+        assertEquals("Ana", viewModel.state.value.declineCandidate?.name)
+        assertTrue(entry.rejectedUserIds.isEmpty())
+
+        viewModel.onIntent(GroupMembersIntent.DismissDecline)
+        assertEquals(null, viewModel.state.value.declineCandidate)
+        assertTrue(entry.rejectedUserIds.isEmpty())
+
+        viewModel.onIntent(GroupMembersIntent.DeclineRequest("new"))
+        viewModel.onIntent(GroupMembersIntent.ConfirmDecline)
+
+        assertEquals(listOf("new"), entry.rejectedUserIds)
+        assertEquals(GroupMembersNotice.RequestRejected, viewModel.state.value.notice)
+        assertEquals(null, viewModel.state.value.declineCandidate)
+        assertTrue(viewModel.state.value.joinRequests.isEmpty())
+        assertEquals(0, viewModel.state.value.pendingCount)
+        assertTrue(viewModel.state.value.members.none { it.id == "new" })
+    }
+
+    @Test
+    fun `a failed approval keeps the request and shows the error and allows another try`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(
+            SaqzResult.Success(listOf(request("new", "Ana"))),
+            approveResult = SaqzResult.Failure(EntryRequestError.DataFailure(DataError.Server)),
+        )
+        val viewModel = requestsViewModel(entry)
+
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+
+        assertTrue(viewModel.state.value.actionFailed)
+        assertEquals(null, viewModel.state.value.notice)
+        assertEquals(listOf("new"), viewModel.state.value.joinRequests.map { it.id })
+        assertEquals(1, viewModel.state.value.pendingCount)
+        assertTrue(viewModel.state.value.busyRequestIds.isEmpty())
+
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+        assertEquals(listOf("new", "new"), entry.approvedUserIds)
+    }
+
+    @Test
+    fun `a failed decline keeps the request and shows the error`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(
+            SaqzResult.Success(listOf(request("new", "Ana"))),
+            rejectResult = SaqzResult.Failure(EntryRequestError.DataFailure(DataError.Connectivity)),
+        )
+        val viewModel = requestsViewModel(entry)
+
+        viewModel.onIntent(GroupMembersIntent.DeclineRequest("new"))
+        viewModel.onIntent(GroupMembersIntent.ConfirmDecline)
+
+        assertTrue(viewModel.state.value.actionFailed)
+        assertEquals(null, viewModel.state.value.notice)
+        assertEquals(listOf("new"), viewModel.state.value.joinRequests.map { it.id })
+    }
+
+    @Test
+    fun `a double tap on accept calls the api once`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(SaqzResult.Success(listOf(request("new", "Ana"))))
+        entry.decisionDeferred = CompletableDeferred()
+        val viewModel = requestsViewModel(entry)
+
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+        viewModel.onIntent(GroupMembersIntent.DeclineRequest("new"))
+        viewModel.onIntent(GroupMembersIntent.ConfirmDecline)
+
+        assertEquals(setOf("new"), viewModel.state.value.busyRequestIds)
+        assertEquals(listOf("new"), entry.approvedUserIds)
+        assertTrue(entry.rejectedUserIds.isEmpty())
+        entry.decisionDeferred?.complete(Unit)
+    }
+
+    @Test
+    fun `a common athlete gets no pending filter and the api is not asked`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(SaqzResult.Success(listOf(request("new", "Ana"))))
+        val viewModel = requestsViewModel(entry, role = GroupRole.ATHLETE)
+
+        assertFalse(viewModel.state.value.canReviewRequests)
+        assertEquals(0, entry.listCalls)
+        assertEquals(0, viewModel.state.value.pendingCount)
+        assertTrue(viewModel.state.value.joinRequests.isEmpty())
+        assertEquals(listOf("member-1"), viewModel.state.value.members.map { it.id })
+    }
+
+    @Test
+    fun `when the requests fail the roster stays and the notice offers a retry`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(
+            SaqzResult.Failure(EntryRequestError.DataFailure(DataError.Server)),
+        )
+        val viewModel = requestsViewModel(entry)
+
+        assertFalse(viewModel.state.value.loadFailed)
+        assertTrue(viewModel.state.value.requestsFailed)
+        assertEquals(listOf("member-1"), viewModel.state.value.members.map { it.id })
+
+        entry.listResult = SaqzResult.Success(listOf(request("new")))
+        viewModel.onIntent(GroupMembersIntent.Retry)
+        assertFalse(viewModel.state.value.requestsFailed)
+        assertEquals(1, viewModel.state.value.pendingCount)
+    }
+
+    @Test
+    fun `when the roster fails the requests stay and the notice offers a retry`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(SaqzResult.Success(listOf(request("new", "Ana"))))
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Server)),
+        )
+        val viewModel = requestsViewModel(entry, athlete = athlete)
+
+        assertFalse(viewModel.state.value.loadFailed)
+        assertTrue(viewModel.state.value.rosterFailed)
+        assertEquals(listOf("new"), viewModel.state.value.joinRequests.map { it.id })
+
+        athlete.rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("member-1")))
+        viewModel.onIntent(GroupMembersIntent.Retry)
+        assertFalse(viewModel.state.value.rosterFailed)
+        assertEquals(listOf("member-1"), viewModel.state.value.members.map { it.id })
+    }
+
+    @Test
+    fun `when both lists fail the screen shows the load failure`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(
+            SaqzResult.Failure(EntryRequestError.DataFailure(DataError.Server)),
+        )
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Server)),
+        )
+        val viewModel = requestsViewModel(entry, athlete = athlete)
+
+        assertTrue(viewModel.state.value.loadFailed)
+    }
+
     private suspend fun assertProfileAndEditorNavigation(role: GroupRole, actions: List<GroupMemberAction>) {
         val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("member-1"))))
         val membership = FakeGroupMembershipGateway()
@@ -529,7 +715,19 @@ class GroupMembersViewModelTest {
         memberships: FakeGroupMembershipGateway,
         group: FakeGroupGateway,
         blocks: BlockedPeopleRepository = fakeBlocks(),
-    ) = GroupMembersViewModel(groupId, athlete, memberships, group, blocks)
+        entryRequests: FakeGroupEntryRequestGateway = FakeGroupEntryRequestGateway(),
+    ) = GroupMembersViewModel(groupId, athlete, memberships, group, entryRequests, blocks)
+
+    private fun request(userId: String, name: String = "Ana", requestedAt: String = Clock.System.now().toString()) =
+        GroupEntryRequest(userId, name, requestedAt)
+
+    private fun requestsViewModel(
+        entryRequests: FakeGroupEntryRequestGateway,
+        role: GroupRole = GroupRole.ADMIN,
+        athlete: FakeAthleteGateway = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("member-1"))),
+        ),
+    ) = membersViewModel("group-1", athlete, FakeGroupMembershipGateway(), groupAs(role), entryRequests = entryRequests)
 
     private fun groupAs(role: GroupRole) = FakeGroupGateway(
         readResult = SaqzResult.Success(

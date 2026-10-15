@@ -7,6 +7,8 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.AthleteRosterEntry
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
+import br.com.saqz.groups.domain.membership.GroupEntryRequest
+import br.com.saqz.groups.domain.membership.GroupEntryRequestGateway
 import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
 import br.com.saqz.groups.domain.membership.AssignableGroupRole
@@ -19,12 +21,18 @@ import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.moderation.BlockedPeopleRepository
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class GroupMembersViewModel(
     private val groupId: String,
     private val athleteGateway: AthleteGateway,
     private val membershipGateway: GroupMembershipGateway,
     private val groupGateway: GroupGateway,
+    private val entryRequestGateway: GroupEntryRequestGateway,
     private val blocks: BlockedPeopleRepository,
     private val trialAccess: GroupTrialAccessPort? = null,
 ) : MviViewModel<GroupMembersState, GroupMembersIntent, GroupMembersEffect>(GroupMembersState()) {
@@ -32,6 +40,8 @@ class GroupMembersViewModel(
     private var loadGeneration = 0
     private var roster: List<MemberUi> = emptyList()
     private var requests: List<JoinRequestUi> = emptyList()
+    private var viewerCanManageAthletes = false
+    private var viewerCanManageRoles = false
     private var actionInFlight = false
     private var loadInFlight = false
 
@@ -65,9 +75,26 @@ class GroupMembersViewModel(
             GroupMembersIntent.DismissRemove -> update { it.copy(confirmRemove = null) }
             GroupMembersIntent.DismissSubscriptionRequired -> update { it.copy(subscriptionRequired = false) }
             GroupMembersIntent.DismissActionFailed -> update { it.copy(actionFailed = false) }
-            is GroupMembersIntent.AcceptRequest -> accept(intent.requestId)
-            is GroupMembersIntent.DeclineRequest -> decline(intent.requestId)
+            is GroupMembersIntent.AcceptRequest,
+            is GroupMembersIntent.DeclineRequest,
+            GroupMembersIntent.ConfirmDecline,
+            GroupMembersIntent.DismissDecline,
+            GroupMembersIntent.ClearNotice,
+            -> handleRequestIntent(intent)
             GroupMembersIntent.Invite -> emit(GroupMembersEffect.OpenInvite(groupId))
+        }
+    }
+
+    private fun handleRequestIntent(intent: GroupMembersIntent) {
+        when (intent) {
+            is GroupMembersIntent.AcceptRequest -> accept(intent.requestId)
+            is GroupMembersIntent.DeclineRequest -> update { current ->
+                current.copy(declineCandidate = requests.firstOrNull { it.id == intent.requestId })
+            }
+            GroupMembersIntent.ConfirmDecline -> state.value.declineCandidate?.let { decline(it) }
+            GroupMembersIntent.DismissDecline -> update { it.copy(declineCandidate = null) }
+            GroupMembersIntent.ClearNotice -> update { it.copy(notice = null) }
+            else -> Unit
         }
     }
 
@@ -87,13 +114,14 @@ class GroupMembersViewModel(
         if (!softRefresh) update { it.copy(isLoading = true, loadFailed = false, error = null) }
         viewModelScope.launch { blocks.refresh() }
         val job = viewModelScope.launch {
-            val viewerRole = when (val result = groupGateway.read(GroupId(groupId))) {
+            val group = when (val result = groupGateway.read(GroupId(groupId))) {
                 is SaqzResult.Failure -> {
                     showFailure(generation, result.error.toUiError(), softRefresh)
                     return@launch
                 }
-                is SaqzResult.Success -> result.value.group.role
+                is SaqzResult.Success -> result.value.group
             }
+            val viewerRole = group.role
             val ownProfile = when (val result = athleteGateway.ownProfile()) {
                 is SaqzResult.Failure -> {
                     showFailure(generation, result.error.toUiError(), softRefresh)
@@ -103,64 +131,114 @@ class GroupMembersViewModel(
             }
             if (generation != loadGeneration) return@launch
 
-            val rosterResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
-            if (generation != loadGeneration) return@launch
-            if (rosterResult is SaqzResult.Failure) {
-                showFailure(generation, rosterResult.error.toUiError(), softRefresh)
-                return@launch
-            }
-
-            // O endpoint de memberships é de gestão: atleta comum recebe 403. Esse 403
-            // esperado não esconde o roster desde o VUL-134. Papel de cada linha vem do
-            // próprio roster (e do lookup, quando o dono/admin consegue lê-lo).
-            val memberships = membershipGateway.listMemberships(GroupId(groupId))
-            if (generation != loadGeneration) return@launch
-            val roles = when (memberships) {
-                is SaqzResult.Success -> memberships.value.associate { it.userId to it.role }
-                is SaqzResult.Failure -> {
-                    val membershipError = memberships.error
-                    when (membershipError) {
-                    is GroupMembershipError.DataFailure -> if (membershipError.isExpectedRosterAccessFailure()) {
-                        emptyMap()
-                    } else {
-                        showFailure(generation, membershipError.toUiError(), softRefresh)
-                        return@launch
-                    }
-                    else -> {
-                        showFailure(generation, membershipError.toUiError(), softRefresh)
-                        return@launch
-                    }
-                    }
-                }
-            }
             val canManageAthletes = viewerRole == GroupRole.OWNER || viewerRole == GroupRole.ADMIN
             val canManageRoles = viewerRole == GroupRole.OWNER
+            viewerCanManageAthletes = canManageAthletes
+            viewerCanManageRoles = canManageRoles
 
-            val blocked = blocks.blocked.value
-            roster = (rosterResult as SaqzResult.Success).value.map { entry ->
-                entry.toUi(
-                    role = roles[entry.userId]
-                        ?: viewerRole.takeIf { entry.userId == ownProfile.userId }
-                        ?: entry.role,
-                    ownUserId = ownProfile.userId,
-                    canManageAthletes = canManageAthletes,
-                    canManageRoles = canManageRoles,
-                ).copy(isBlocked = entry.userId in blocked)
+            // Os pedidos são de gestão (mesma regra do backend): quem não gerencia nem pergunta.
+            val requestsResult = if (canManageAthletes) entryRequestGateway.list(GroupId(groupId)) else null
+            if (generation != loadGeneration) return@launch
+            val loadedRequests = (requestsResult as? SaqzResult.Success)?.value?.map { it.toUi(group.timeZone.id) }
+
+            var rosterError: GroupUiError? = null
+            val loadedRoster = when (
+                val outcome = loadRoster(generation, viewerRole, ownProfile.userId, canManageAthletes, canManageRoles)
+            ) {
+                null -> return@launch
+                is RosterOutcome.Loaded -> outcome.members
+                is RosterOutcome.Failed -> {
+                    // Cada lista falha sozinha: com pedidos na mão, eles aparecem mesmo sem o elenco.
+                    if (loadedRequests.isNullOrEmpty() || softRefresh) {
+                        showRosterFailure(generation, outcome.error, loadedRequests, canManageAthletes, softRefresh)
+                        return@launch
+                    }
+                    rosterError = outcome.error
+                    null
+                }
             }
-            requests = emptyList()
+            if (loadedRoster != null) roster = loadedRoster
+            if (loadedRequests != null) requests = loadedRequests
+            val requestsFailed = requestsResult is SaqzResult.Failure
             update {
                 it.copy(
                     isLoading = false,
                     loadFailed = false,
-                    error = null,
+                    error = rosterError,
+                    rosterFailed = loadedRoster == null,
+                    requestsFailed = keepWhenSoft(softRefresh, requestsFailed, it.requestsFailed),
                     totalCount = roster.size,
                     adminCount = roster.count(MemberUi::isAdmin),
-                    pendingCount = 0,
-                )
+                ).withRequests(requests, canManageAthletes)
             }
             project()
         }
         job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
+    }
+
+    private sealed interface RosterOutcome {
+        data class Loaded(val members: List<MemberUi>) : RosterOutcome
+
+        data class Failed(val error: GroupUiError) : RosterOutcome
+    }
+
+    /** Elenco com o papel de cada pessoa; `null` quando uma recarga mais nova tomou o lugar desta. */
+    private suspend fun loadRoster(
+        generation: Int,
+        viewerRole: GroupRole,
+        ownUserId: String,
+        canManageAthletes: Boolean,
+        canManageRoles: Boolean,
+    ): RosterOutcome? {
+        val rosterResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
+        val memberships = if (rosterResult is SaqzResult.Success) membershipGateway.listMemberships(GroupId(groupId)) else null
+        if (generation != loadGeneration) return null
+        if (rosterResult is SaqzResult.Failure) return RosterOutcome.Failed(rosterResult.error.toUiError())
+
+        // O endpoint de memberships é de gestão: atleta comum recebe 403. Esse 403
+        // esperado não esconde o roster desde o VUL-134. Papel de cada linha vem do
+        // próprio roster (e do lookup, quando o dono/admin consegue lê-lo).
+        val roles = when (memberships) {
+            is SaqzResult.Success -> memberships.value.associate { it.userId to it.role }
+            is SaqzResult.Failure -> {
+                val membershipError = memberships.error
+                if (membershipError is GroupMembershipError.DataFailure && membershipError.isExpectedRosterAccessFailure()) {
+                    emptyMap()
+                } else {
+                    return RosterOutcome.Failed(membershipError.toUiError())
+                }
+            }
+            null -> emptyMap()
+        }
+        val blocked = blocks.blocked.value
+        return RosterOutcome.Loaded(
+            (rosterResult as SaqzResult.Success).value.map { entry ->
+                entry.toUi(
+                    role = roles[entry.userId]
+                        ?: viewerRole.takeIf { entry.userId == ownUserId }
+                        ?: entry.role,
+                    ownUserId = ownUserId,
+                    canManageAthletes = canManageAthletes,
+                    canManageRoles = canManageRoles,
+                ).copy(isBlocked = entry.userId in blocked)
+            },
+        )
+    }
+
+    /** Sem pedidos para mostrar a tela inteira falha; por baixo ([softRefresh]) o elenco fica, mas os pedidos novos entram. */
+    private fun showRosterFailure(
+        generation: Int,
+        error: GroupUiError,
+        loadedRequests: List<JoinRequestUi>?,
+        canReview: Boolean,
+        softRefresh: Boolean,
+    ) {
+        if (softRefresh && loadedRequests != null) {
+            requests = loadedRequests
+            update { it.withRequests(requests, canReview) }
+            project()
+        }
+        showFailure(generation, error, softRefresh)
     }
 
     /** Por baixo ([softRefresh]) a falha não troca a lista por erro: ela fica e a próxima volta tenta de novo. */
@@ -236,18 +314,65 @@ class GroupMembersViewModel(
     }
 
     private fun accept(requestId: String) {
-        val request = requests.firstOrNull { it.id == requestId }?.takeIf { !it.awaitingReview } ?: return
-        requests = requests - request
-        roster = roster + MemberUi(request.id, request.name, request.meta, false, false, "")
-        update { it.copy(totalCount = it.totalCount + 1, pendingCount = it.pendingCount - 1) }
-        project()
+        val request = requests.firstOrNull { it.id == requestId } ?: return
+        if (!beginRequestAction(request.id)) return
+        viewModelScope.launch {
+            when (val result = entryRequestGateway.approve(GroupId(groupId), request.id)) {
+                is SaqzResult.Failure -> endRequestAction(request.id, failure = result.error.toUiError())
+                is SaqzResult.Success -> {
+                    // A pessoa entra no elenco na hora; a recarga logo abaixo traz o dado do servidor.
+                    roster = roster.filterNot { it.id == request.id } + MemberUi(
+                        id = request.id,
+                        name = request.name,
+                        meta = "",
+                        isAdmin = false,
+                        isSelf = false,
+                        stats = "",
+                        canManageAthletes = viewerCanManageAthletes,
+                        canManageRoles = viewerCanManageRoles,
+                    )
+                    endRequestAction(request, GroupMembersNotice.RequestApproved(request.name))
+                }
+            }
+        }
     }
 
-    private fun decline(requestId: String) {
-        val request = requests.firstOrNull { it.id == requestId }?.takeIf { !it.awaitingReview } ?: return
+    private fun decline(request: JoinRequestUi) {
+        update { it.copy(declineCandidate = null) }
+        if (!beginRequestAction(request.id)) return
+        viewModelScope.launch {
+            when (val result = entryRequestGateway.reject(GroupId(groupId), request.id)) {
+                is SaqzResult.Failure -> endRequestAction(request.id, failure = result.error.toUiError())
+                is SaqzResult.Success -> endRequestAction(request, GroupMembersNotice.RequestRejected)
+            }
+        }
+    }
+
+    /** Falso quando já há uma chamada em voo para este pedido: o segundo toque não chama a API. */
+    private fun beginRequestAction(requestId: String): Boolean {
+        if (requestId in state.value.busyRequestIds) return false
+        update { it.copy(busyRequestIds = it.busyRequestIds + requestId, actionFailed = false) }
+        return true
+    }
+
+    private suspend fun endRequestAction(requestId: String, failure: GroupUiError) {
+        update { it.copy(busyRequestIds = it.busyRequestIds - requestId) }
+        showActionFailure(failure)
+    }
+
+    /** Decidido: o pedido sai da lista, o aviso aparece e as duas listas recarregam por baixo. */
+    private fun endRequestAction(request: JoinRequestUi, notice: GroupMembersNotice) {
         requests = requests - request
-        update { it.copy(pendingCount = it.pendingCount - 1) }
+        update {
+            it.copy(
+                busyRequestIds = it.busyRequestIds - request.id,
+                notice = notice,
+                totalCount = roster.size,
+                adminCount = roster.count(MemberUi::isAdmin),
+            ).withRequests(requests, canReview = true)
+        }
         project()
+        load(softRefresh = true)
     }
 
     private fun project() = update { state ->
@@ -274,6 +399,31 @@ private val OwnerProtectedActions = setOf(
 )
 
 private val RemoteActions = setOf(GroupMemberAction.Promote, GroupMemberAction.Demote, GroupMemberAction.Remove)
+
+/** Por baixo uma falha nova não acende o aviso: vale o que já estava na tela. */
+private fun keepWhenSoft(softRefresh: Boolean, failed: Boolean, previous: Boolean) =
+    if (softRefresh && failed) previous else failed
+
+private fun GroupMembersState.withRequests(requests: List<JoinRequestUi>, canReview: Boolean) =
+    copy(canReviewRequests = canReview, pendingCount = if (canReview) requests.size else 0)
+
+private fun GroupEntryRequest.toUi(zoneId: String) = JoinRequestUi(userId, displayName, "Pediu ${requestedAt.agoLabel(zoneId)}")
+
+/** "há 5 min", "há 3 h", "ontem", "há 4 dias"; o dia conta no fuso do grupo (ou do aparelho, se faltar). */
+private fun String.agoLabel(zoneId: String): String {
+    val asked = runCatching { Instant.parse(this) }.getOrNull() ?: return "há pouco"
+    val now = Clock.System.now()
+    val minutes = (now - asked).inWholeMinutes.coerceAtLeast(0)
+    val zone = runCatching { TimeZone.of(zoneId) }.getOrElse { TimeZone.currentSystemDefault() }
+    val days = asked.toLocalDateTime(zone).date.daysUntil(now.toLocalDateTime(zone).date)
+    return when {
+        minutes < 1 -> "agora"
+        minutes < 60 -> "há $minutes min"
+        minutes < 24 * 60 && days == 0 -> "há ${minutes / 60} h"
+        days <= 1 -> "ontem"
+        else -> "há $days dias"
+    }
+}
 
 private fun AthleteRosterEntry.toUi(
     role: GroupRole?,

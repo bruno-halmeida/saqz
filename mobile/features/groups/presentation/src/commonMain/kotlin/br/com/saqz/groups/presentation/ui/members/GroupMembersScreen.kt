@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
@@ -21,11 +22,14 @@ import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
+import br.com.saqz.designsystem.SaqzToast
+import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.members.GroupMemberAction
 import br.com.saqz.groups.presentation.members.GroupMembersFilter
 import br.com.saqz.groups.presentation.members.GroupMembersIntent
+import br.com.saqz.groups.presentation.members.GroupMembersNotice
 import br.com.saqz.groups.presentation.members.GroupMembersState
 import br.com.saqz.groups.presentation.members.JoinRequestUi
 import br.com.saqz.groups.presentation.members.MemberUi
@@ -33,10 +37,13 @@ import br.com.saqz.groups.presentation.members.memberCount
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.group_invite_approved_toast
+import br.com.saqz.groups.resources.group_invite_rejected_toast
 import br.com.saqz.groups.resources.group_members_action_failed
 import br.com.saqz.groups.resources.group_members_admins
 import br.com.saqz.groups.resources.group_members_invite
 import br.com.saqz.groups.resources.group_members_members
+import br.com.saqz.groups.resources.group_members_requests_failed
 import br.com.saqz.groups.resources.group_members_showing
 import br.com.saqz.groups.resources.group_members_title
 import org.jetbrains.compose.resources.stringResource
@@ -50,6 +57,11 @@ internal object GroupMembersTags {
     const val ActionFailed = "group-members-action-failed"
     const val ConfirmRemove = "group-members-confirm-remove"
     const val ConfirmRemoveCancel = "group-members-confirm-remove-cancel"
+    const val ConfirmDecline = "group-members-confirm-decline"
+    const val ConfirmDeclineAction = "group-members-confirm-decline-action"
+    const val RequestsFailed = "group-members-requests-failed"
+    const val RosterFailed = "group-members-roster-failed"
+    const val Notice = "group-members-notice"
 
     fun filter(filter: GroupMembersFilter) = "group-members-filter-${filter.name}"
 
@@ -102,6 +114,7 @@ fun GroupMembersScreen(
                         totalCount = state.totalCount,
                         adminCount = state.adminCount,
                         pendingCount = state.pendingCount,
+                        showPending = state.canReviewRequests,
                         onSelect = { onIntent(GroupMembersIntent.SelectFilter(it)) },
                     )
                 }
@@ -134,6 +147,21 @@ fun GroupMembersScreen(
         }
         GroupMemberActionsSheet(selected = state.selected, onIntent = onIntent)
         GroupMemberRemoveConfirmation(member = state.confirmRemove, onIntent = onIntent)
+        GroupJoinRequestDeclineConfirmation(request = state.declineCandidate, onIntent = onIntent)
+        SaqzToast(
+            visible = state.notice != null,
+            onDismiss = { onIntent(GroupMembersIntent.ClearNotice) },
+            modifier = Modifier.align(Alignment.BottomCenter).padding(SaqzTheme.metrics.horizontalPadding)
+                .testTag(GroupMembersTags.Notice),
+        ) {
+            SaqzToastText(
+                when (val notice = state.notice) {
+                    is GroupMembersNotice.RequestApproved ->
+                        stringResource(Res.string.group_invite_approved_toast, notice.name)
+                    else -> stringResource(Res.string.group_invite_rejected_toast)
+                },
+            )
+        }
         if (state.subscriptionRequired) {
             SubscriptionRequiredDialog(
                 trialEnded = state.trialEnded,
@@ -153,10 +181,30 @@ private fun LazyListScope.membersContent(
     state: GroupMembersState,
     onIntent: (GroupMembersIntent) -> Unit,
 ) {
+    if (state.rosterFailed) {
+        item(key = "roster-failed") {
+            GroupLoadFailure(
+                error = state.error,
+                onRetry = { onIntent(GroupMembersIntent.Retry) },
+                testTag = GroupMembersTags.RosterFailed,
+            )
+        }
+    }
+    if (state.requestsFailed) {
+        item(key = "requests-failed") {
+            GroupLoadFailure(
+                error = null,
+                onRetry = { onIntent(GroupMembersIntent.Retry) },
+                testTag = GroupMembersTags.RequestsFailed,
+                failureTitle = stringResource(Res.string.group_members_requests_failed),
+            )
+        }
+    }
     if (state.joinRequests.isNotEmpty()) {
         item(key = "join-requests") {
             GroupJoinRequestsSection(
                 requests = state.joinRequests,
+                busyIds = state.busyRequestIds,
                 onAccept = { onIntent(GroupMembersIntent.AcceptRequest(it)) },
                 onDecline = { onIntent(GroupMembersIntent.DeclineRequest(it)) },
             )
@@ -240,9 +288,10 @@ internal val previewMembersState = GroupMembersState(
     totalCount = 26,
     adminCount = 2,
     pendingCount = 2,
+    canReviewRequests = true,
     joinRequests = listOf(
-        JoinRequestUi("julia", "Julia Martins", "Entrou pelo código · há 2h", awaitingReview = false),
-        JoinRequestUi("rafael", "Rafael Costa", "Entrou pelo link · ontem", awaitingReview = true),
+        JoinRequestUi("julia", "Julia Martins", "Pediu há 2 h"),
+        JoinRequestUi("rafael", "Rafael Costa", "Pediu ontem"),
     ),
     admins = sampleAdmins,
     members = sampleMembers,

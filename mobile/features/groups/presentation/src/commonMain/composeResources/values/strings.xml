@@ -206,7 +206,7 @@
     <string name="group_members_invite">Convidar mais gente</string>
     <string name="group_members_you">você</string>
     <string name="group_members_admin">Administrador</string>
-    <string name="group_members_pending">Pendente</string>
+    <string name="group_members_requests_failed">Não foi possível carregar os pedidos.</string>
     <string name="group_member_joined_by_code">Entrou pelo código · %1$s</string>
     <string name="group_member_joined_by_link">Entrou pelo link · %1$s</string>
     <string name="group_member_created_group">Criou o grupo</string>

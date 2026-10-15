@@ -429,20 +429,48 @@ class FakeGroupMembershipGateway(
 
 class FakeGroupEntryRequestGateway(
     var listResult: SaqzResult<List<GroupEntryRequest>, EntryRequestError> = SaqzResult.Success(emptyList()),
+    var approveResult: SaqzResult<GroupMembership, EntryRequestError>? = null,
+    var rejectResult: EmptyResult<EntryRequestError> = SaqzResult.Success(Unit),
 ) : GroupEntryRequestGateway {
     var listCalls = 0
     var listDeferred: CompletableDeferred<SaqzResult<List<GroupEntryRequest>, EntryRequestError>>? = null
+    val approvedUserIds = mutableListOf<String>()
+    val rejectedUserIds = mutableListOf<String>()
+
+    /** Quando preenchido, aprovar e recusar esperam aqui: o teste segura a chamada em voo. */
+    var decisionDeferred: CompletableDeferred<Unit>? = null
+
+    /** O servidor muda o elenco quando alguém entra; o teste reproduz isso aqui. */
+    var onApproved: (String) -> Unit = {}
 
     override suspend fun list(groupId: GroupId): SaqzResult<List<GroupEntryRequest>, EntryRequestError> {
         listCalls++
         return listDeferred?.await() ?: listResult
     }
 
-    override suspend fun approve(groupId: GroupId, userId: String): SaqzResult<GroupMembership, EntryRequestError> =
-        error("not used in this screen")
+    override suspend fun approve(groupId: GroupId, userId: String): SaqzResult<GroupMembership, EntryRequestError> {
+        approvedUserIds += userId
+        decisionDeferred?.await()
+        val result = approveResult ?: SaqzResult.Success(GroupMembership(userId, userId, GroupRole.ATHLETE))
+        if (result is SaqzResult.Success) {
+            removeRequest(userId)
+            onApproved(userId)
+        }
+        return result
+    }
 
-    override suspend fun reject(groupId: GroupId, userId: String): EmptyResult<EntryRequestError> =
-        error("not used in this screen")
+    override suspend fun reject(groupId: GroupId, userId: String): EmptyResult<EntryRequestError> {
+        rejectedUserIds += userId
+        decisionDeferred?.await()
+        if (rejectResult is SaqzResult.Success) removeRequest(userId)
+        return rejectResult
+    }
+
+    private fun removeRequest(userId: String) {
+        (listResult as? SaqzResult.Success)?.let { current ->
+            listResult = SaqzResult.Success(current.value.filterNot { it.userId == userId })
+        }
+    }
 }
 
 class FakeGroupSystemTimeZonePort : GroupSystemTimeZonePort {

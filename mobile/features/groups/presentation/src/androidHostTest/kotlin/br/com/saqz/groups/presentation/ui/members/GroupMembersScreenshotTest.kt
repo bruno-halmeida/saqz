@@ -87,9 +87,10 @@ class GroupMembersScreenshotTest {
         totalCount = 26,
         adminCount = 2,
         pendingCount = 2,
+        canReviewRequests = true,
         joinRequests = listOf(
-            JoinRequestUi("julia", "Julia Martins", "Entrou pelo código · há 2h", awaitingReview = false),
-            JoinRequestUi("rafael", "Rafael Costa", "Entrou pelo link · ontem", awaitingReview = true),
+            JoinRequestUi("julia", "Julia Martins", "Pediu há 2 h"),
+            JoinRequestUi("rafael", "Rafael Costa", "Pediu ontem"),
         ),
         admins = sampleAdmins,
         members = sampleMembers,

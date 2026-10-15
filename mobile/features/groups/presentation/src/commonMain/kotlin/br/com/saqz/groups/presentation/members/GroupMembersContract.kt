@@ -38,11 +38,16 @@ data class MemberUi(
 data class JoinRequestUi(
     val id: String,
     val name: String,
-    /** "Entrou pelo código · há 2h". */
+    /** "Pediu há 2 h": quanto tempo faz, contado no fuso do grupo. */
     val meta: String,
-    /** true → chip "Pendente"; false → botões de aceitar e recusar. */
-    val awaitingReview: Boolean,
 )
+
+/** Aviso de retorno depois de decidir um pedido, os mesmos de Convidar. */
+sealed interface GroupMembersNotice {
+    data class RequestApproved(val name: String) : GroupMembersNotice
+
+    data object RequestRejected : GroupMembersNotice
+}
 
 @Immutable
 data class GroupMembersState(
@@ -55,6 +60,17 @@ data class GroupMembersState(
     val totalCount: Int = 0,
     val adminCount: Int = 0,
     val pendingCount: Int = 0,
+    /** Só dono e admin decidem pedidos (a mesma regra do backend); para os outros não há "Pendentes". */
+    val canReviewRequests: Boolean = false,
+    /** A lista de pedidos não veio: o elenco continua na tela e um aviso oferece tentar de novo. */
+    val requestsFailed: Boolean = false,
+    /** O elenco não veio, mas os pedidos sim: eles ficam e o aviso oferece tentar de novo. */
+    val rosterFailed: Boolean = false,
+    /** Pedidos com aprovar/recusar em andamento: o segundo toque não chama a API de novo. */
+    val busyRequestIds: Set<String> = emptySet(),
+    /** != null abre a confirmação de "Recusar": recusar nunca age no primeiro toque. */
+    val declineCandidate: JoinRequestUi? = null,
+    val notice: GroupMembersNotice? = null,
     val joinRequests: List<JoinRequestUi> = emptyList(),
     val admins: List<MemberUi> = emptyList(),
     val members: List<MemberUi> = emptyList(),
@@ -142,6 +158,12 @@ sealed interface GroupMembersIntent {
     data class AcceptRequest(val requestId: String) : GroupMembersIntent
 
     data class DeclineRequest(val requestId: String) : GroupMembersIntent
+
+    data object ConfirmDecline : GroupMembersIntent
+
+    data object DismissDecline : GroupMembersIntent
+
+    data object ClearNotice : GroupMembersIntent
 
     data object Invite : GroupMembersIntent
 }
