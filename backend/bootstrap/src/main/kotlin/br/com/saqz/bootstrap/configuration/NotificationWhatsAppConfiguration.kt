@@ -16,6 +16,7 @@ import br.com.saqz.groups.application.whatsapp.GroupWhatsAppBindingRepository
 import br.com.saqz.groups.application.whatsapp.LinkGroupWhatsApp
 import br.com.saqz.groups.application.whatsapp.ManageGroupWhatsAppBinding
 import br.com.saqz.groups.application.whatsapp.WhatsAppGroupDirectory
+import br.com.saqz.sharedkernel.job.JobLog
 import com.uazapi.sdk.UazapiClient
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -104,7 +105,9 @@ internal fun groupReminderImageUrl(linksDomain: String, configured: String?): St
 
 class NotificationWhatsAppWorker(private val queue: JdbcNotificationWhatsApp, private val sender: NotificationWhatsAppSender) {
     @Scheduled(fixedDelayString = "\${saqz.notifications.whatsapp.delay-ms:15000}")
-    fun run() = queue.drain(sender)
+    fun run() {
+        JobLog.frequent("notification_whatsapp", { queue.drain(sender) }) { mapOf("processed" to it.processed, "delivered" to it.delivered, "failed" to it.failed) }
+    }
 }
 
 class NotificationWhatsAppGroupWorker(
@@ -113,5 +116,7 @@ class NotificationWhatsAppGroupWorker(
     private val directory: WhatsAppGroupDirectory,
 ) {
     @Scheduled(fixedDelayString = "\${saqz.notifications.whatsapp.group-delay-ms:15000}")
-    fun run() = queue.drain(sender, directory)
+    fun run() {
+        JobLog.frequent("notification_whatsapp_group", { queue.drain(sender, directory) }) { mapOf("processed" to it.processed, "delivered" to it.delivered, "failed" to it.failed) }
+    }
 }

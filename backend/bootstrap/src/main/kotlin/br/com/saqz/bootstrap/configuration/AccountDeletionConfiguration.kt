@@ -3,6 +3,7 @@ package br.com.saqz.bootstrap.configuration
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcAccountDeletionJobs
 import br.com.saqz.access.application.session.AccountDeletionProviders
 import br.com.saqz.access.application.session.CompleteAccountDeletion
+import br.com.saqz.sharedkernel.job.JobLog
 import br.com.saqz.subscriptions.application.CancelSubscription
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.AuthErrorCode
@@ -70,5 +71,11 @@ internal fun cancelDeletedAccountSubscription(jdbc: JdbcClient, userId: UUID, ca
 
 class AccountDeletionWorker(private val useCase: CompleteAccountDeletion, private val clock: Clock) {
     @Scheduled(fixedDelayString = "\${saqz.account-deletion.delay-ms:15000}")
-    fun run() { repeat(10) { if (!useCase.runNext(clock.instant())) return } }
+    fun run() {
+        JobLog.frequent("account_deletion", {
+            var processed = 0
+            repeat(10) { if (!useCase.runNext(clock.instant())) return@frequent processed else processed++ }
+            processed
+        }) { mapOf("processed" to it) }
+    }
 }

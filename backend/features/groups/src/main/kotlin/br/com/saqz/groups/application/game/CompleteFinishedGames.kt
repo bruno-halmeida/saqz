@@ -1,11 +1,15 @@
 package br.com.saqz.groups.application.game
 
 import java.time.Clock
+import br.com.saqz.sharedkernel.job.JobLog
 import java.time.Instant
+import java.util.UUID
 
-/** Encerra todo jogo publicado que já terminou; devolve quantos mudaram. */
+data class FinishedGame(val groupId: UUID, val gameId: UUID)
+
+/** Encerra todo jogo publicado que já terminou; devolve quais mudaram. */
 fun interface FinishedGamesRepository {
-    fun completeFinished(now: Instant): Int
+    fun completeFinished(now: Instant): List<FinishedGame>
 }
 
 /**
@@ -18,5 +22,9 @@ class CompleteFinishedGames(
     private val games: FinishedGamesRepository,
     private val clock: Clock,
 ) {
-    fun run(): Int = games.completeFinished(clock.instant())
+    fun run(): Int {
+        val finished = games.completeFinished(clock.instant())
+        finished.forEach { JobLog.item("complete_finished_games", "game_completed", "groupId" to it.groupId, "gameId" to it.gameId) }
+        return finished.size
+    }
 }

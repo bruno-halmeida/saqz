@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.recurrence.ResolvedWeeklyOccurrence
 import java.time.Instant
 import java.util.UUID
+import br.com.saqz.sharedkernel.job.JobLog
 import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 
 data class AutoConfirmationGame(
@@ -74,11 +75,14 @@ class AutoConfirmAttendance(
      * ligada e mensalistas que entraram no grupo depois do publish; idempotente por candidato.
      */
     fun applyOpenGames(): Int = repository.openGames().sumOf { open ->
-        transaction.inTransaction {
-            val game = repository.lockGame(open.groupId, open.gameId) ?: return@inTransaction 0
-            if (!game.autoConfirmEnabled || game.status != GameStatus.PUBLISHED) return@inTransaction 0
-            confirm(game, game.ownerId)
+        val members = transaction.inTransaction {
+            val game = repository.lockGame(open.groupId, open.gameId) ?: return@inTransaction emptyList()
+            if (!game.autoConfirmEnabled || game.status != GameStatus.PUBLISHED) return@inTransaction emptyList()
+            assign(game, game.ownerId)
         }
+        // Um `job_item` por mensalista confirmado, depois do commit do jogo; só ids.
+        members.forEach { JobLog.item("auto_confirm", "member_confirmed", "groupId" to open.groupId, "gameId" to open.gameId, "memberId" to it) }
+        members.size
     }
 
     private fun applyGame(groupId: UUID, gameId: UUID, actorId: UUID): Int =
@@ -101,14 +105,17 @@ class AutoConfirmAttendance(
         confirm(game, game.ownerId)
     }
 
-    private fun confirm(game: AutoConfirmationGame, actorId: UUID): Int {
-        if (!writeAccess.canWrite(game.groupId)) return 0
+    private fun confirm(game: AutoConfirmationGame, actorId: UUID): Int = assign(game, actorId).size
+
+    /** Devolve os membros que receberam vaga ou fila, para o log do job. */
+    private fun assign(game: AutoConfirmationGame, actorId: UUID): List<UUID> {
+        if (!writeAccess.canWrite(game.groupId)) return emptyList()
         val assignments = AutoConfirmationPolicy.decide(
             repository.candidates(game.gameId),
             game.capacity,
             game.confirmedCount,
         )
-        if (assignments.isEmpty()) return 0
+        if (assignments.isEmpty()) return emptyList()
         val timestamp = now()
         assignments.forEach { assignment ->
             val waitlistSequence = if (assignment.status == AttendanceStatus.WAITLISTED) {
@@ -141,6 +148,6 @@ class AutoConfirmAttendance(
                 ),
             )
         }
-        return assignments.size
+        return assignments.map { it.memberId }
     }
 }

@@ -1,6 +1,7 @@
 package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.groups.application.communication.GroupCommunicationService
+import br.com.saqz.sharedkernel.job.JobLog
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -20,6 +21,6 @@ class AttendanceWindowJob(private val communication: GroupCommunicationService) 
     /** A cada minuto: a janela dura 2 h, então abrir com até 1 min de atraso basta. */
     @Scheduled(fixedDelayString = "\${saqz.notifications.attendance-window.delay-ms:60000}")
     fun run() {
-        communication.openAttendanceWindows()
+        JobLog.frequent("attendance_window", { communication.openAttendanceWindows() }) { mapOf("opened" to it) }
     }
 }

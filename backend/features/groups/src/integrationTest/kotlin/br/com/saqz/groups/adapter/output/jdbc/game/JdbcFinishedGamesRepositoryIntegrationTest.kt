@@ -26,7 +26,7 @@ class JdbcFinishedGamesRepositoryIntegrationTest {
         val draft = game(group, "DRAFT", startsAt = NOW.minus(Duration.ofHours(5)), minutes = 120)
         val cancelled = game(group, "CANCELLED", startsAt = NOW.minus(Duration.ofHours(7)), minutes = 120)
 
-        assertEquals(2, JdbcFinishedGamesRepository(dataSource).completeFinished(NOW))
+        assertEquals(2, JdbcFinishedGamesRepository(dataSource).completeFinished(NOW).size)
 
         assertEquals("COMPLETED" to 2L, state(ended))
         assertEquals("COMPLETED" to 2L, state(endsNow))
@@ -40,8 +40,8 @@ class JdbcFinishedGamesRepositoryIntegrationTest {
         val ended = game(group(), "PUBLISHED", startsAt = NOW.minus(Duration.ofHours(3)), minutes = 120)
         val repository = JdbcFinishedGamesRepository(dataSource)
 
-        assertEquals(1, repository.completeFinished(NOW))
-        assertEquals(0, repository.completeFinished(NOW.plus(Duration.ofMinutes(5))))
+        assertEquals(1, repository.completeFinished(NOW).size)
+        assertEquals(0, repository.completeFinished(NOW.plus(Duration.ofMinutes(5))).size)
         assertEquals("COMPLETED" to 2L, state(ended))
     }
 
@@ -50,7 +50,7 @@ class JdbcFinishedGamesRepositoryIntegrationTest {
         val ended = game(group, "PUBLISHED", startsAt = NOW.minus(Duration.ofHours(3)), minutes = 120)
         execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$group'")
 
-        assertEquals(0, JdbcFinishedGamesRepository(dataSource).completeFinished(NOW))
+        assertEquals(0, JdbcFinishedGamesRepository(dataSource).completeFinished(NOW).size)
         assertEquals("PUBLISHED" to 1L, state(ended))
     }
 

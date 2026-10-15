@@ -6,6 +6,7 @@ import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcNotificationPush
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.communication.*
 import com.google.firebase.FirebaseApp
+import br.com.saqz.sharedkernel.job.JobLog
 import com.google.firebase.messaging.*
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -26,7 +27,9 @@ class NotificationPushConfiguration {
 }
 class NotificationPushWorker(private val queue: JdbcNotificationPush, private val sender: NotificationPushSender) {
     @Scheduled(fixedDelayString = "\${saqz.notifications.push-delay-ms:15000}")
-    fun run() = queue.drain(sender)
+    fun run() {
+        JobLog.frequent("notification_push", { queue.drain(sender) }) { mapOf("processed" to it.processed, "delivered" to it.delivered, "failed" to it.failed) }
+    }
 }
 class FirebaseNotificationPushSender(private val app: FirebaseApp) : NotificationPushSender {
     override fun send(token: String, message: NotificationPush): PushDelivery {

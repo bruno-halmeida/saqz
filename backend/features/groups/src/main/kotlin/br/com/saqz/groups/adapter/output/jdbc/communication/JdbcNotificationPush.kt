@@ -2,6 +2,7 @@ package br.com.saqz.groups.adapter.output.jdbc.communication
 
 import br.com.saqz.groups.application.communication.*
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.sharedkernel.job.JobLog
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.util.UUID
 import javax.sql.DataSource
@@ -29,18 +30,21 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
             .param("actor", actor).param("id", installation).update()
     }
 
-    fun drain(sender: NotificationPushSender, limit: Int = 20) {
-        repeat(limit) { if (!deliverOne(sender)) return }
+    fun drain(sender: NotificationPushSender, limit: Int = 20): QueueRun {
+        var run = QueueRun()
+        repeat(limit) { run += deliverOne(sender) ?: return run }
+        return run
     }
 
-    private fun deliverOne(sender: NotificationPushSender): Boolean = transaction.inTransaction {
+    private fun deliverOne(sender: NotificationPushSender): QueueStep? = transaction.inTransaction {
         val id = jdbc.sql("""
             SELECT notification_id FROM notification_push_queue
             WHERE completed_at IS NULL AND next_attempt_at <= now() AND attempts < 10
             ORDER BY notification_id LIMIT 1 FOR UPDATE SKIP LOCKED
-        """).query(Long::class.java).optional().orElse(null) ?: return@inTransaction false
+        """).query(Long::class.java).optional().orElse(null) ?: return@inTransaction null
+        var recipientId: UUID? = null
         val message = jdbc.sql("""
-            SELECT c.group_id, c.channel, c.body, c.game_id, c.window_ends_at, u.firebase_subject,
+            SELECT c.group_id, c.recipient_id, c.channel, c.body, c.game_id, c.window_ends_at, u.firebase_subject,
                    game.venue_name, game.starts_at, game.capacity,
                    coalesce((SELECT g.confirmation_deadline <= now() FROM games g WHERE g.id = c.game_id), false) AS deadline_passed,
                    (SELECT count(*) FROM game_attendance a WHERE a.game_id = game.id AND a.status = 'CONFIRMED') AS confirmed,
@@ -51,6 +55,7 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
             WHERE c.sequence = :id AND c.push_enabled
         """).param("id", id).query { rs, _ ->
             val channel = rs.getString("channel")
+            recipientId = rs.getObject("recipient_id", UUID::class.java)
             val body = when (channel) {
                 // Aviso de jogo cancelado nasce no canal NOTICE com o jogo vinculado e vai com o texto; o mural não.
                 "NOTICE" -> if (rs.getObject("game_id") != null) rs.getString("body")
@@ -78,6 +83,8 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
             )
         }.optional().orElse(null)
         var retry = false
+        var delivered = 0
+        var failed = 0
         if (message != null) {
             val devices = jdbc.sql("""
                 SELECT d.installation_id, d.token, d.live_activity_start_token FROM notification_devices d
@@ -98,11 +105,23 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
                     delivery = sender.send(token, message)
                 }
                 when (delivery) {
-                    PushDelivery.SENT -> jdbc.sql("INSERT INTO notification_push_deliveries VALUES (:n, :d) ON CONFLICT DO NOTHING")
-                        .param("n", id).param("d", installation).update()
-                    PushDelivery.INVALID_TOKEN -> jdbc.sql("DELETE FROM notification_devices WHERE installation_id = :id AND token = :token")
-                        .param("id", installation).param("token", token).update()
-                    PushDelivery.RETRY, PushDelivery.INVALID_START_TOKEN -> retry = true
+                    PushDelivery.SENT -> {
+                        jdbc.sql("INSERT INTO notification_push_deliveries VALUES (:n, :d) ON CONFLICT DO NOTHING")
+                            .param("n", id).param("d", installation).update()
+                        delivered++
+                        JobLog.item("notification_push", "push_sent", *itemIds(id, message, recipientId, installation))
+                    }
+                    PushDelivery.INVALID_TOKEN -> {
+                        jdbc.sql("DELETE FROM notification_devices WHERE installation_id = :id AND token = :token")
+                            .param("id", installation).param("token", token).update()
+                        failed++
+                        JobLog.itemFailed("notification_push", "push_failed", delivery.name, *itemIds(id, message, recipientId, installation))
+                    }
+                    PushDelivery.RETRY, PushDelivery.INVALID_START_TOKEN -> {
+                        retry = true
+                        failed++
+                        JobLog.itemFailed("notification_push", "push_failed", delivery.name, *itemIds(id, message, recipientId, installation))
+                    }
                 }
             }
         }
@@ -112,6 +131,12 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
             WHERE notification_id = :id
         """).param("id", id).update()
         else jdbc.sql("UPDATE notification_push_queue SET completed_at = now() WHERE notification_id = :id").param("id", id).update()
-        true
+        QueueStep(delivered, failed)
     }
+
+    // Só ids: a mensagem e o token nunca vão para o log.
+    private fun itemIds(notificationId: Long, message: NotificationPush, userId: UUID?, installation: UUID) = arrayOf<Pair<String, Any?>>(
+        "notificationId" to notificationId, "groupId" to message.groupId, "gameId" to message.gameId,
+        "userId" to userId, "installationId" to installation,
+    )
 }

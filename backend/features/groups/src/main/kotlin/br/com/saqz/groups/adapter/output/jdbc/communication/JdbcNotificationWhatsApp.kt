@@ -4,12 +4,14 @@ import br.com.saqz.groups.application.communication.*
 import br.com.saqz.groups.application.attendance.share.AttendanceLinkCode
 import br.com.saqz.groups.application.attendance.share.AttendanceLinkFactory
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.sharedkernel.job.JobLog
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.UUID
 import javax.sql.DataSource
 
 class JdbcNotificationWhatsApp(
@@ -17,20 +19,25 @@ class JdbcNotificationWhatsApp(
 ) {
     private val jdbc = JdbcClient.create(dataSource)
 
-    fun drain(sender: NotificationWhatsAppSender, limit: Int = 20) {
-        repeat(limit) { if (!deliverOne(sender)) return }
+    fun drain(sender: NotificationWhatsAppSender, limit: Int = 20): QueueRun {
+        var run = QueueRun()
+        repeat(limit) { run += deliverOne(sender) ?: return run }
+        return run
     }
 
-    private fun deliverOne(sender: NotificationWhatsAppSender): Boolean = transaction.inTransaction {
+    private fun deliverOne(sender: NotificationWhatsAppSender): QueueStep? = transaction.inTransaction {
         val job = jdbc.sql("""
             SELECT notification_id, attempts FROM notification_whatsapp_queue
             WHERE status = 'PENDING' AND next_attempt_at <= now()
             ORDER BY notification_id LIMIT 1 FOR UPDATE SKIP LOCKED
         """).query { rs, _ -> rs.getLong("notification_id") to rs.getInt("attempts") }.optional().orElse(null)
-            ?: return@inTransaction false
+            ?: return@inTransaction null
         val (id, attempts) = job
+        var groupId: UUID? = null
+        var userId: UUID? = null
+        var messageId: UUID? = null
         val message = jdbc.sql("""
-            SELECT c.phone, c.group_name, c.body, c.channel, link.code,
+            SELECT c.phone, c.group_name, c.group_id, c.recipient_id, n.message_id, c.body, c.channel, link.code,
                    charge.amount_cents, charge.due_date, owner.pix_key, owner.pix_label
             FROM notification_delivery_context c
             JOIN group_notifications n ON n.sequence = c.sequence
@@ -41,6 +48,9 @@ class JdbcNotificationWhatsApp(
             JOIN notification_whatsapp_queue q ON q.notification_id = c.sequence AND q.phone = c.phone
             WHERE c.sequence = :id AND c.whatsapp_enabled
         """).param("id", id).query { rs, _ ->
+            groupId = rs.getObject("group_id", UUID::class.java)
+            userId = rs.getObject("recipient_id", UUID::class.java)
+            messageId = rs.getObject("message_id", UUID::class.java)
             val link = rs.getString("code")?.let { "\nConfirmar minha presença no Saqz: ${links.confirm(AttendanceLinkCode.from(it))}" }.orEmpty()
             val body = if (rs.getString("channel") == "CHARGE" && rs.getObject("amount_cents") != null) {
                 chargeBody(
@@ -52,20 +62,35 @@ class JdbcNotificationWhatsApp(
         }.optional().orElse(null)
         if (message == null) {
             finish(id, "CANCELLED")
-            return@inTransaction true
+            return@inTransaction QueueStep()
         }
+        // Só ids: telefone, nome do grupo e texto da mensagem nunca vão para o log.
+        val ids = arrayOf<Pair<String, Any?>>("notificationId" to id, "groupId" to groupId, "userId" to userId, "messageId" to messageId)
+        var step = QueueStep()
         when (val result = sender.send(message)) {
-            WhatsAppDelivery.Accepted -> finish(id, "ACCEPTED")
-            WhatsAppDelivery.Failed -> finish(id, "FAILED")
-            is WhatsAppDelivery.Retry -> if (attempts + 1 >= 10) finish(id, "FAILED") else {
-                val delay = maxOf(result.afterSeconds, minOf(3600L, 60L shl attempts))
-                jdbc.sql("""
-                    UPDATE notification_whatsapp_queue SET attempts = attempts + 1,
-                        next_attempt_at = now() + (:delay * interval '1 second') WHERE notification_id = :id
-                """).param("id", id).param("delay", delay).update()
+            WhatsAppDelivery.Accepted -> {
+                finish(id, "ACCEPTED")
+                step = QueueStep(delivered = 1)
+                JobLog.item("notification_whatsapp", "whatsapp_accepted", *ids)
+            }
+            WhatsAppDelivery.Failed -> {
+                finish(id, "FAILED")
+                step = QueueStep(failed = 1)
+                JobLog.itemFailed("notification_whatsapp", "whatsapp_failed", "FAILED", *ids)
+            }
+            is WhatsAppDelivery.Retry -> {
+                step = QueueStep(failed = 1)
+                JobLog.itemFailed("notification_whatsapp", "whatsapp_failed", if (attempts + 1 >= 10) "RETRY_EXHAUSTED" else "RETRY", *ids)
+                if (attempts + 1 >= 10) finish(id, "FAILED") else {
+                    val delay = maxOf(result.afterSeconds, minOf(3600L, 60L shl attempts))
+                    jdbc.sql("""
+                        UPDATE notification_whatsapp_queue SET attempts = attempts + 1,
+                            next_attempt_at = now() + (:delay * interval '1 second') WHERE notification_id = :id
+                    """).param("id", id).param("delay", delay).update()
+                }
             }
         }
-        true
+        step
     }
 
     private fun finish(id: Long, status: String) {

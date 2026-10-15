@@ -1,5 +1,6 @@
 package br.com.saqz.access.application.session
 
+import br.com.saqz.sharedkernel.job.JobLog
 import java.time.Instant
 import java.util.UUID
 
@@ -27,8 +28,10 @@ class CompleteAccountDeletion(
             providers.cancelSubscription(work.userId)
             providers.deleteIdentity(work.subject)
             jobs.complete(work, now)
+            JobLog.item("account_deletion", "account_deleted", "userId" to work.userId, "attempt" to work.attempt)
         } catch (failure: Exception) {
             jobs.retry(work, now.plusSeconds(60))
+            JobLog.itemFailed("account_deletion", "deletion_failed", failure, "userId" to work.userId, "attempt" to work.attempt)
             if (failure is InterruptedException) Thread.currentThread().interrupt()
         }
         return true

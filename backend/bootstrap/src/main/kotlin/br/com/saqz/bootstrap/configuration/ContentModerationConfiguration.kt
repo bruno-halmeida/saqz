@@ -7,7 +7,7 @@ import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.adapter.output.mail.SmtpContentReportAlertSender
 import br.com.saqz.groups.application.moderation.ContentModerationService
 import br.com.saqz.groups.application.moderation.ContentReportAlertSender
-import org.slf4j.LoggerFactory
+import br.com.saqz.sharedkernel.job.JobLog
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -47,12 +47,6 @@ class ContentReportAlertDispatcher(
         fixedDelayString = "\${saqz.moderation.alert-delay-ms}",
     )
     fun run() {
-        val result = service.dispatchAlerts(sender)
-        if (result.failed > 0) log.warn("content_report_alert_failed sent={} failed={}", result.sent, result.failed)
-        else if (result.sent > 0) log.info("content_report_alert_sent sent={}", result.sent)
-    }
-
-    private companion object {
-        val log = LoggerFactory.getLogger(ContentReportAlertDispatcher::class.java)
+        JobLog.frequent("content_report_alert", { service.dispatchAlerts(sender) }) { mapOf("sent" to it.sent, "failed" to it.failed) }
     }
 }

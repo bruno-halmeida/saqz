@@ -7,6 +7,7 @@ import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.attendance.AttendanceSource
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.group.PromotionMode
+import br.com.saqz.sharedkernel.job.JobLog
 import java.time.Instant
 import java.util.UUID
 
@@ -51,34 +52,43 @@ class SettleWaitlistAtDeadline(
     /** Devolve quantas pessoas subiram mais quantos avisos saíram. */
     fun run(): Int = candidates.expired(now()).sumOf { candidate ->
         try {
-            settle(candidate)
+            val settled = settle(candidate)
+            // Um `job_item` por promovido (ou pelo aviso da escolha manual), depois do commit; só ids.
+            settled.promotedMemberIds.forEach {
+                JobLog.item("waitlist_deadline", "waitlist_promoted", "groupId" to candidate.groupId, "gameId" to candidate.gameId, "memberId" to it)
+            }
+            if (settled.noticed) JobLog.item("waitlist_deadline", "manual_choice_notified", "groupId" to candidate.groupId, "gameId" to candidate.gameId)
+            settled.promotedMemberIds.size + if (settled.noticed) 1 else 0
         } catch (@Suppress("TooGenericExceptionCaught") failure: Exception) {
             onFailure("game ${candidate.gameId}", failure)
+            JobLog.itemFailed("waitlist_deadline", "settle_failed", failure, "groupId" to candidate.groupId, "gameId" to candidate.gameId)
             0
         }
     }
 
-    private fun settle(candidate: DeadlineWaitlistCandidate): Int = transaction.inTransaction {
+    private class Settled(val promotedMemberIds: List<UUID> = emptyList(), val noticed: Boolean = false)
+
+    private fun settle(candidate: DeadlineWaitlistCandidate): Settled = transaction.inTransaction {
         val aggregate = repository.lockCapacity(candidate.groupId, candidate.gameId, candidate.ownerId)
-            ?: return@inTransaction 0
+            ?: return@inTransaction Settled()
         val timestamp = now()
         if (aggregate.gameStatus != GameStatus.PUBLISHED || aggregate.confirmationDeadline > timestamp) {
-            return@inTransaction 0
+            return@inTransaction Settled()
         }
         val spots = aggregate.capacity - aggregate.confirmedCount
-        if (spots <= 0) return@inTransaction 0
+        if (spots <= 0) return@inTransaction Settled()
         when (aggregate.promotionMode) {
-            PromotionMode.FIFO -> promote(aggregate, spots, timestamp)
+            PromotionMode.FIFO -> Settled(promotedMemberIds = promote(aggregate, spots, timestamp))
             PromotionMode.MANUAL -> {
                 notice.publish(candidate, waitlistDeadlineBody(candidate.game, candidate.waitlisted, spots))
-                1
+                Settled(noticed = true)
             }
         }
     }
 
-    private fun promote(aggregate: CapacityAggregate, spots: Int, timestamp: Instant): Int {
+    private fun promote(aggregate: CapacityAggregate, spots: Int, timestamp: Instant): List<UUID> {
         var confirmedCount = aggregate.confirmedCount
-        var promoted = 0
+        val promoted = mutableListOf<UUID>()
         repeat(spots) {
             val waiting = repository.earliestWaitlisted(aggregate.groupId, aggregate.gameId) ?: return promoted
             val result = promoteAttendance(
@@ -91,7 +101,7 @@ class SettleWaitlistAtDeadline(
                 ids = ids,
             )
             if (result !is AttendancePromotionResult.Success) return promoted
-            promoted++
+            promoted += waiting.memberId
             confirmedCount++
         }
         return promoted

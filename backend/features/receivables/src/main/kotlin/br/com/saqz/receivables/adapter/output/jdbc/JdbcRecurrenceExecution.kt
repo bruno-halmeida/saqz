@@ -1,6 +1,7 @@
 package br.com.saqz.receivables.adapter.output.jdbc
 
 import br.com.saqz.receivables.application.*
+import br.com.saqz.sharedkernel.job.JobLog
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
@@ -38,25 +39,44 @@ class JdbcRecurrenceExecution(private val store: RecurrenceStore, private val pr
     }
 
     override fun recoverDue() {
-        store.recoveryDue(clock.instant(), 100).forEach { id ->
-            val status = store.transaction { store.find(id)?.recurrence?.status }
-            if (status == "STOP_PENDING") stop(id) else start(id)
-        }
+        JobLog.frequent("recurrence_recovery", {
+            val due = store.recoveryDue(clock.instant(), 100)
+            due.forEach { id ->
+                val status = store.transaction { store.find(id)?.recurrence?.status }
+                if (status == "STOP_PENDING") stop(id) else start(id)
+                JobLog.item("recurrence_recovery", if (status == "STOP_PENDING") "recurrence_stop_retried" else "recurrence_start_retried", "recurrenceId" to id)
+            }
+            due.size
+        }) { mapOf("processed" to it) }
     }
 
     override fun synchronize() {
-        store.active(100).forEach { id ->
-            try {
-                val recurrence = store.transaction { store.find(id) } ?: return@forEach
-                val instruments = provider.payments(recurrence).let { payments ->
-                    store.transaction { store.materialize(recurrence, payments, clock.instant()) }
+        JobLog.frequent("recurrence_sync", {
+            var synced = 0; var failed = 0
+            store.active(100).forEach { id ->
+                try {
+                    val recurrence = store.transaction { store.find(id) } ?: return@forEach
+                    val instruments = provider.payments(recurrence).let { payments ->
+                        store.transaction { store.materialize(recurrence, payments, clock.instant()) }
+                    }
+                    instruments.forEach(paymentExecution::reconcile)
+                    synced++
+                    if (instruments.isNotEmpty()) JobLog.item("recurrence_sync", "instruments_materialized", "recurrenceId" to id, "instruments" to instruments.size)
+                } catch (error: Exception) { /* next bounded schedule retries by stable provider identifiers */
+                    failed++
+                    JobLog.itemFailed("recurrence_sync", "sync_failed", error, "recurrenceId" to id)
                 }
-                instruments.forEach(paymentExecution::reconcile)
-            } catch (_: Exception) { /* next bounded schedule retries by stable provider identifiers */ }
-        }
+            }
+            synced to failed
+        }) { mapOf("synced" to it.first, "failed" to it.second) }
     }
 
     override fun enforceCutoffs() {
+        JobLog.frequent("recurrence_cutoff", { enforceDueCutoffs() }) { mapOf("stopped" to it) }
+    }
+
+    private fun enforceDueCutoffs(): Int {
+        var stopped = 0
         val now = clock.instant()
         val candidates = store.cutoffCandidates(now, 100).toMutableList()
         store.active(100).forEach { id ->
@@ -70,7 +90,10 @@ class JdbcRecurrenceExecution(private val store: RecurrenceStore, private val pr
             try {
                 store.transaction { store.requestStop(id, request, reason, paymentDigest("STOP:$id:$reason"), now) }
                 stop(id)
+                stopped++
+                JobLog.item("recurrence_cutoff", "recurrence_stopped", "recurrenceId" to id, "reason" to reason)
             } catch (_: FinancialRequestConflict) { /* a concurrent cutoff already owns this transition */ }
         }
+        return stopped
     }
 }

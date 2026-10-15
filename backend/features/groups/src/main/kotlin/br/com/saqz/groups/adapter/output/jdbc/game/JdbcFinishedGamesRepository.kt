@@ -1,16 +1,19 @@
 package br.com.saqz.groups.adapter.output.jdbc.game
 
+import br.com.saqz.groups.application.game.FinishedGame
 import br.com.saqz.groups.application.game.FinishedGamesRepository
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.Timestamp
 import java.time.Instant
+import java.util.UUID
 import javax.sql.DataSource
 
 class JdbcFinishedGamesRepository(dataSource: DataSource) : FinishedGamesRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun completeFinished(now: Instant): Int =
-        jdbc.sql(COMPLETE_FINISHED).param("now", Timestamp.from(now)).update()
+    override fun completeFinished(now: Instant): List<FinishedGame> =
+        jdbc.sql(COMPLETE_FINISHED).param("now", Timestamp.from(now))
+            .query { rs, _ -> FinishedGame(rs.getObject("group_id", UUID::class.java), rs.getObject("id", UUID::class.java)) }.list()
 
     private companion object {
         // Mesma versão e carimbo do UPDATE_GAME: quem tinha o jogo aberto recebe conflito de
@@ -23,6 +26,7 @@ class JdbcFinishedGamesRepository(dataSource: DataSource) : FinishedGamesReposit
                   SELECT 1 FROM access_groups
                   WHERE access_groups.id = games.group_id AND access_groups.deleted_at IS NULL
               )
+            RETURNING group_id, id
         """
     }
 }

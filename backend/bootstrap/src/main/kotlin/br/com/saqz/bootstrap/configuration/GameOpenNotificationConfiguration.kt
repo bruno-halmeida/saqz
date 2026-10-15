@@ -1,6 +1,7 @@
 package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.groups.application.communication.GroupCommunicationService
+import br.com.saqz.sharedkernel.job.JobLog
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -25,6 +26,6 @@ class DailyGameOpenNotification(private val communication: GroupCommunicationSer
     /** 14h de São Paulo, todos os dias. */
     @Scheduled(cron = "\${saqz.notifications.game-open.cron:0 0 14 * * *}", zone = "America/Sao_Paulo")
     fun run() {
-        communication.announceOpenGames()
+        JobLog.cron("game_open", { communication.announceOpenGames() }) { mapOf("published" to it) }
     }
 }

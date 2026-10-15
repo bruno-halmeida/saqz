@@ -1,5 +1,6 @@
 package br.com.saqz.subscriptions.application
 
+import br.com.saqz.sharedkernel.job.JobLog
 import br.com.saqz.sharedkernel.subscription.TrialEndingNotice
 import br.com.saqz.sharedkernel.subscription.TrialUsage
 import br.com.saqz.sharedkernel.subscription.TrialUsageLookup
@@ -59,9 +60,11 @@ class TrialEndingReminders(
             val published = runCatching { notice.publish(trial.ownerUserId, body) }.getOrDefault(false)
             if (!published) {
                 trials.release(trial.ownerUserId, due.min())
+                JobLog.itemFailed("trial_ending", "reminder_not_published", "NOT_PUBLISHED", "userId" to trial.ownerUserId, "milestone" to daysLeft)
                 return@forEach
             }
             runCatching { whatsApp.send(trial.ownerUserId, body) }
+            JobLog.item("trial_ending", "reminder_sent", "userId" to trial.ownerUserId, "milestone" to daysLeft)
             sent++
         }
         return sent

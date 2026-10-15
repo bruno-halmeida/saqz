@@ -2,6 +2,7 @@ package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.groups.application.attendance.AutoConfirmAttendance
 import br.com.saqz.groups.application.communication.GroupCommunicationService
+import br.com.saqz.sharedkernel.job.JobLog
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -31,7 +32,8 @@ class AutomaticAttendanceReminder(
         zone = "America/Sao_Paulo",
     )
     fun run() {
-        autoConfirm.applyOpenGames()
-        reminders.remindAutomatically()
+        JobLog.cron("attendance_reminder", { autoConfirm.applyOpenGames() to reminders.remindAutomatically() }) {
+            mapOf("autoConfirmed" to it.first, "published" to it.second)
+        }
     }
 }

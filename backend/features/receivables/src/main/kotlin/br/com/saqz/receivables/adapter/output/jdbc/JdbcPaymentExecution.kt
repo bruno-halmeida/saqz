@@ -4,6 +4,7 @@ import br.com.saqz.receivables.application.*
 import br.com.saqz.receivables.domain.PaymentMethod
 import br.com.saqz.receivables.adapter.output.crypto.FinancialSecrets
 import br.com.saqz.sharedkernel.group.GroupChargePayments
+import br.com.saqz.sharedkernel.job.JobLog
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.Timestamp
@@ -149,10 +150,15 @@ class JdbcPaymentExecution(dataSource: DataSource, private val store: JdbcPaymen
         executePixRenewal(renewalId)
     }
     fun recoverPixRenewals() {
+        JobLog.frequent("pix_renewals", { recoverDuePixRenewals() }) { mapOf("processed" to it) }
+    }
+    private fun recoverDuePixRenewals(): Int =
         jdbc.sql("""SELECT id FROM receivable_pix_renewals WHERE status IN ('READY','UNKNOWN') AND next_attempt_at<=:at
             ORDER BY next_attempt_at,id LIMIT 100""").param("at", Timestamp.from(clock.instant())).query(UUID::class.java).list()
-            .filterNotNull().forEach(::executePixRenewal)
-    }
+            .filterNotNull().onEach { renewalId ->
+                executePixRenewal(renewalId)
+                JobLog.item("pix_renewals", "renewal_attempted", "renewalId" to renewalId)
+            }.size
     private fun executePixRenewal(renewalId: UUID) {
         data class Renewal(val instrumentId: UUID, val dueDate: LocalDate, val token: UUID, val recoveryOnly: Boolean)
         val renewal = store.transaction {

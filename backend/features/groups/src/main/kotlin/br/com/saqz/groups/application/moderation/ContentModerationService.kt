@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.moderation
 
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.sharedkernel.job.JobLog
 import java.util.UUID
 
 /**
@@ -57,13 +58,15 @@ class ContentModerationService(
         var sent = 0
         var failed = 0
         repository.pendingAlerts(ALERT_BATCH).forEach { alert ->
-            val delivered = runCatching { sender.send(alert) }.isSuccess
-            if (delivered) {
+            val delivery = runCatching { sender.send(alert) }
+            if (delivery.isSuccess) {
                 repository.markAlerted(alert.id)
                 sent++
+                JobLog.item("content_report_alert", "alert_sent", "groupId" to alert.groupId, "reportId" to alert.id)
             } else {
                 repository.markAlertFailed(alert.id)
                 failed++
+                JobLog.itemFailed("content_report_alert", "alert_failed", delivery.exceptionOrNull(), "groupId" to alert.groupId, "reportId" to alert.id)
             }
         }
         return AlertDispatch(sent, failed)

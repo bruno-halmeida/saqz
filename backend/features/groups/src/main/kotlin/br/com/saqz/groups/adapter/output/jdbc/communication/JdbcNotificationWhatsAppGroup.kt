@@ -3,9 +3,12 @@ package br.com.saqz.groups.adapter.output.jdbc.communication
 import br.com.saqz.groups.application.attendance.share.AttendanceLinkCode
 import br.com.saqz.groups.application.attendance.share.AttendanceLinkFactory
 import br.com.saqz.groups.application.communication.NotificationWhatsAppGroupSender
+import br.com.saqz.groups.application.communication.QueueRun
+import br.com.saqz.groups.application.communication.QueueStep
 import br.com.saqz.groups.application.communication.WhatsAppDelivery
 import br.com.saqz.groups.application.communication.WhatsAppGroupButton
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.sharedkernel.job.JobLog
 import br.com.saqz.groups.application.whatsapp.DirectoryError
 import br.com.saqz.groups.application.whatsapp.WhatsAppGroupDirectory
 import org.springframework.jdbc.core.simple.JdbcClient
@@ -27,11 +30,13 @@ class JdbcNotificationWhatsAppGroup(
 ) {
     private val jdbc = JdbcClient.create(dataSource)
 
-    fun drain(sender: NotificationWhatsAppGroupSender, directory: WhatsAppGroupDirectory, limit: Int = 20) {
-        repeat(limit) { if (!deliverOne(sender, directory)) return }
+    fun drain(sender: NotificationWhatsAppGroupSender, directory: WhatsAppGroupDirectory, limit: Int = 20): QueueRun {
+        var run = QueueRun()
+        repeat(limit) { run += deliverOne(sender, directory) ?: return run }
+        return run
     }
 
-    private fun deliverOne(sender: NotificationWhatsAppGroupSender, directory: WhatsAppGroupDirectory): Boolean =
+    private fun deliverOne(sender: NotificationWhatsAppGroupSender, directory: WhatsAppGroupDirectory): QueueStep? =
         transaction.inTransaction {
             val job = jdbc.sql("""
                 SELECT message_id, attempts FROM notification_whatsapp_group_queue
@@ -39,35 +44,51 @@ class JdbcNotificationWhatsAppGroup(
                 ORDER BY next_attempt_at, message_id LIMIT 1 FOR UPDATE SKIP LOCKED
             """).query { rs, _ -> Job(rs.getObject("message_id", UUID::class.java), rs.getInt("attempts")) }
                 .optional().orElse(null)
-                ?: return@inTransaction false
+                ?: return@inTransaction null
 
-            val message = load(job.messageId) ?: run { finish(job.messageId, "CANCELLED"); return@inTransaction true }
+            val message = load(job.messageId) ?: run { finish(job.messageId, "CANCELLED"); return@inTransaction QueueStep() }
             val binding = message.binding
             if (binding == null || !binding.enabled || binding.brokenAt != null) {
                 finish(job.messageId, "CANCELLED")
-                return@inTransaction true
+                return@inTransaction QueueStep()
             }
             if (message.channel == "REMINDER" && !reminderOpen(message.gameId, message.groupId)) {
                 finish(job.messageId, "CANCELLED")
-                return@inTransaction true
+                return@inTransaction QueueStep()
             }
+            // Só ids: JID, nome do grupo e texto da mensagem nunca vão para o log.
+            val ids = arrayOf<Pair<String, Any?>>("messageId" to job.messageId, "groupId" to message.groupId, "gameId" to message.gameId)
             try {
                 directory.groupInfo(binding.whatsappJid)
                 if (!directory.isMember(binding.whatsappJid)) {
                     breakBinding(binding.groupId)
-                    return@inTransaction true
+                    JobLog.itemFailed("notification_whatsapp_group", "binding_broken", "NOT_MEMBER", *ids)
+                    return@inTransaction QueueStep(failed = 1)
                 }
             } catch (error: DirectoryError) {
-                if (error is DirectoryError.NotInGroup) breakBinding(binding.groupId) else scheduleRetry(job)
-                return@inTransaction true
+                val broken = error is DirectoryError.NotInGroup
+                if (broken) breakBinding(binding.groupId) else scheduleRetry(job)
+                JobLog.itemFailed("notification_whatsapp_group", if (broken) "binding_broken" else "directory_failed", error, *ids)
+                return@inTransaction QueueStep(failed = 1)
             }
-            val content = content(message, binding) ?: run { finish(job.messageId, "CANCELLED"); return@inTransaction true }
+            val content = content(message, binding) ?: run { finish(job.messageId, "CANCELLED"); return@inTransaction QueueStep() }
             when (val result = sender.send(binding.whatsappJid, job.messageId, content.text, content.buttons)) {
-                WhatsAppDelivery.Accepted -> finish(job.messageId, "ACCEPTED")
-                WhatsAppDelivery.Failed -> finish(job.messageId, "FAILED")
-                is WhatsAppDelivery.Retry -> scheduleRetry(job, result.afterSeconds)
+                WhatsAppDelivery.Accepted -> {
+                    finish(job.messageId, "ACCEPTED")
+                    JobLog.item("notification_whatsapp_group", "whatsapp_group_accepted", *ids)
+                    QueueStep(delivered = 1)
+                }
+                WhatsAppDelivery.Failed -> {
+                    finish(job.messageId, "FAILED")
+                    JobLog.itemFailed("notification_whatsapp_group", "whatsapp_group_failed", "FAILED", *ids)
+                    QueueStep(failed = 1)
+                }
+                is WhatsAppDelivery.Retry -> {
+                    scheduleRetry(job, result.afterSeconds)
+                    JobLog.itemFailed("notification_whatsapp_group", "whatsapp_group_failed", "RETRY", *ids)
+                    QueueStep(failed = 1)
+                }
             }
-            true
         }
 
     private fun load(messageId: UUID): PendingMessage? = jdbc.sql("""

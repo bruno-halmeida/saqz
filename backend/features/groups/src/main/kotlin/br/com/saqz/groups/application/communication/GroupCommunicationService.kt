@@ -4,6 +4,7 @@ import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.domain.GroupRole
+import br.com.saqz.sharedkernel.job.JobLog
 import br.com.saqz.sharedkernel.moderation.ObjectionableText
 import java.time.Instant
 import java.time.LocalDate
@@ -59,17 +60,15 @@ class GroupCommunicationService(
      * jogo. O autor é o dono do grupo, então ele fica fora dos destinatários da notificação;
      * cada execução cria mensagem nova.
      */
-    fun remindAutomatically(): Int = transaction.inTransaction {
-        val candidates = repository.reminderCandidates()
-        candidates.forEach { candidate ->
+    fun remindAutomatically(): Int = logPublished("attendance_reminder", "reminder_published", transaction.inTransaction {
+        repository.reminderCandidates().map { candidate ->
             repository.publish(
                 candidate.groupId, candidate.ownerId, MessageChannel.REMINDER, UUID.randomUUID(),
                 reminderBody(candidate.game, repository.reminderRoster(candidate.groupId, candidate.gameId), Instant.now()),
                 candidate.gameId,
             )
         }
-        candidates.size
-    }
+    })
 
     /**
      * Aviso diário de jogo liberado. Usa os mesmos candidatos do lembrete: o próximo jogo
@@ -78,16 +77,14 @@ class GroupCommunicationService(
      * inclusive o mensalista que já nasce confirmado; os seguintes tocam só quem não respondeu.
      * GAME_OPEN nunca vira WhatsApp: é push e central.
      */
-    fun announceOpenGames(): Int = transaction.inTransaction {
-        val candidates = repository.openGameCandidates()
-        candidates.forEach { candidate ->
+    fun announceOpenGames(): Int = logPublished("game_open", "game_open_published", transaction.inTransaction {
+        repository.openGameCandidates().map { candidate ->
             repository.publish(
                 candidate.groupId, candidate.ownerId, MessageChannel.GAME_OPEN, UUID.randomUUID(),
                 openGameBody(candidate.game), candidate.gameId,
             )
         }
-        candidates.size
-    }
+    })
 
     /**
      * Aviso de jogo liberado na hora da publicação, sem esperar o cron das 14h — só quando o jogo
@@ -110,17 +107,15 @@ class GroupCommunicationService(
      * janela, para quem ainda não respondeu (dono incluído). A view revalida a entrega até o fim
      * da janela — T-22h ou o prazo, o que vier antes.
      */
-    fun openAttendanceWindows(): Int = transaction.inTransaction {
-        val candidates = repository.attendanceWindowCandidates()
-        candidates.forEach { candidate ->
+    fun openAttendanceWindows(): Int = logPublished("attendance_window", "window_opened", transaction.inTransaction {
+        repository.attendanceWindowCandidates().map { candidate ->
             repository.publish(
                 candidate.groupId, candidate.ownerId, MessageChannel.ATTENDANCE_WINDOW, UUID.randomUUID(),
                 attendanceWindowBody(candidate.game, candidate.confirmed, candidate.capacity, candidate.waitlisted),
                 candidate.gameId,
             )
         }
-        candidates.size
-    }
+    })
 
     /** Cancelamento de jogo publicado: avisa confirmados e lista de espera (e o grupo do WhatsApp, se vinculado). */
     fun announceGameCancelled(groupId: UUID, actor: UUID, gameId: UUID, localDate: LocalDate, localTime: LocalTime): GroupMessage =
@@ -135,6 +130,12 @@ class GroupCommunicationService(
     fun markRead(actor: UUID, sequence: Long) = repository.markRead(actor, sequence)
     fun preferences(actor: UUID) = repository.preferences(actor)
     fun savePreferences(actor: UUID, preferences: NotificationPreferences) = repository.savePreferences(actor, preferences)
+
+    // Um `job_item` por mensagem, depois do commit: só ids, nunca o texto nem o nome do autor.
+    private fun logPublished(job: String, event: String, messages: List<GroupMessage>): Int {
+        messages.forEach { JobLog.item(job, event, "groupId" to it.groupId, "gameId" to it.gameId, "messageId" to it.id) }
+        return messages.size
+    }
 
     private fun <T> inGroup(actor: UUID, groupId: UUID, block: (GroupRole) -> CommunicationResult<T>): CommunicationResult<T> =
         transaction.inTransaction {

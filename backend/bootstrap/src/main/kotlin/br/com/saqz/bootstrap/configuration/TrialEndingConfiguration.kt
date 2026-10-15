@@ -3,6 +3,7 @@ package br.com.saqz.bootstrap.configuration
 import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcTrialEndingNotice
 import br.com.saqz.groups.application.communication.NotificationWhatsAppSender
 import br.com.saqz.groups.application.communication.WhatsAppNotification
+import br.com.saqz.sharedkernel.job.JobLog
 import br.com.saqz.sharedkernel.subscription.TrialEndingNotice
 import br.com.saqz.sharedkernel.subscription.TrialUsageLookup
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcTrialEndingRepository
@@ -49,12 +50,7 @@ class DailyTrialEndingReminders(private val reminders: TrialEndingReminders) {
     /** 10h de São Paulo, todos os dias. */
     @Scheduled(cron = "\${saqz.notifications.trial-ending.cron:0 0 10 * * *}", zone = "America/Sao_Paulo")
     fun run() {
-        val sent = reminders.run()
-        if (sent > 0) log.info("trial_ending_reminders_sent count={}", sent)
-    }
-
-    private companion object {
-        val log = LoggerFactory.getLogger(DailyTrialEndingReminders::class.java)
+        JobLog.cron("trial_ending", { reminders.run() }) { mapOf("sent" to it) }
     }
 }
 
