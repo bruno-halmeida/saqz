@@ -13,7 +13,6 @@ aceitar ou só documentar.
 | [PC-01](#pc-01--em-grupo-novo-todo-vou-vai-para-a-lista-de-espera) | Em grupo novo, o "Vou" do avulso vai para a lista de espera até o prazo | Risco aceito por enquanto | 07/10/2026 |
 | [PC-02](#pc-02--quem-sobe-da-lista-de-espera-não-recebe-aviso-individual) | Quem sobe da lista de espera não recebe aviso individual (cancelar jogo já avisa) | Decisão do dono: a lista vai ao grupo do WhatsApp a cada 3 h | 07/10/2026 |
 | [PC-03](#pc-03-a-pc-16--achados-abertos) | Foto do perfil só aparece para o dono | A triar | 07/10/2026 |
-| PC-04 | "Trocar senha" com a conta logada pode prender na tela de entrada | A triar | 07/10/2026 |
 | PC-05 | "Salvar rascunho" ao criar grupo não salva nada | A triar | 07/10/2026 |
 | PC-06 | Aba Grupos sem chip de presença e "0 pedindo confirmação" fixo | A triar | 07/10/2026 |
 | PC-08 | "Recado para a galera" do jogo não aparece para ninguém | A triar | 07/10/2026 |
@@ -65,9 +64,6 @@ aviso individual não reprova o cenário enquanto este item estiver aqui.
 ## PC-03 a PC-16 · Achados abertos
 - **PC-03 · Foto do perfil só para o dono.** A foto é servida só em `/api/session/photo`; os outros
   membros veem as iniciais, embora a dica diga "Aparece nas listas de presença e nos grupos.".
-- **PC-04 · "Trocar senha" logado.** Em "Digite o código.", o link "Lembrou a senha? Entrar ›" leva à
-  tela de entrada com a sessão ainda ativa, e entrar de novo com a mesma conta não sai dali
-  (`SaqzNavHost.kt`). Contorno: recuperar a senha deslogado (PROD-AC06) ou reabrir o app.
 - **PC-05 · "Salvar rascunho".** No erro ao criar grupo, "Salvar rascunho" só fecha a tela e descarta
   os dados (`GroupSetupViewModel.onSaveDraft`).
 - **PC-06 · Aba Grupos.** Os cartões não mostram a presença da pessoa e o cabeçalho sempre diz
@@ -94,3 +90,4 @@ Saíram da lista acima. Se um cenário ainda reproduzir o defeito, é regressão
 | PC-10 | Toda tela, inclusive Membros, recarrega ao voltar a aparecer | `6fe2d98ca` |
 | PC-11 (cadastro) | Pedir entrada abre o "Cadastro de atleta" antes da aprovação, aplicado na aprovação; hora do pedido no fuso do grupo | `8a48fdf3d`, `457b21784`, `414ee347b` |
 | PC-15 | "Remover do grupo" pede confirmação na lista de membros | `414ee347b` |
+| PC-04 | Logado, "Lembrou a senha? Entrar" na recuperação volta para onde a pessoa estava (Perfil) | `4c6868543` |
