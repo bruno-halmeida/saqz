@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -1230,13 +1232,16 @@ private fun rememberSaqzOpaqueEntryDecorator(): NavEntryDecorator<NavKey> {
  * continua pintada — e consome o inset para os filhos, então quem já aplica
  * (`navigationBarsPadding` da conversa, a folha) não soma duas vezes. Ficam de fora o shell, cuja
  * `SaqzBottomNav` já é dona do inset, e o acesso, com a curva do rodapé encostada na borda
- * ([ownsNavigationInset]). [insets] existe para o teste injetar uma barra.
+ * ([ownsNavigationInset]). O teclado entra na mesma união (`navigationBars ∪ ime`, que é o maior
+ * dos dois, não a soma): sem isso o "Salvar" e o campo focado ficam atrás do teclado nas telas que
+ * não lembraram de pôr `imePadding`. Quem já aplica `imePadding` não soma, porque o quadro consome.
+ * [insets] existe para o teste injetar uma barra e um teclado.
  */
 @Composable
 internal fun SaqzEntryFrame(
     background: Color,
     ownsNavigationInset: Boolean,
-    insets: WindowInsets = WindowInsets.navigationBars,
+    insets: WindowInsets = WindowInsets.navigationBars.union(WindowInsets.ime),
     content: @Composable () -> Unit,
 ) {
     Box(Modifier.fillMaxSize().background(background)) {
