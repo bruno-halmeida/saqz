@@ -1518,7 +1518,7 @@ class GroupDetailsViewModelTest {
         assertEquals("Rua Canuto Abreu", game.address)
         assertEquals("As confirmações encerram em 04/08 às 12h00.", game.deadlineLine)
         assertEquals("Encerra 04/08 · 12h00", game.deadlineShort)
-        assertEquals("Se você subir, aparece aqui como confirmado. Confira antes do jogo.", game.bellLabel)
+        assertEquals("Se você subir, sua presença aparece aqui. Confira antes do jogo.", game.bellLabel)
     }
 
     @Test

@@ -12,7 +12,7 @@
     <string name="home_deadline_tomorrow">As confirmações encerram amanhã às %1$s.</string>
     <string name="home_deadline_date">As confirmações encerram em %1$s às %2$s.</string>
     <string name="home_confirmed_summary">%1$d de %2$d confirmados</string>
-    <string name="home_status_confirmed">Você está confirmado.</string>
+    <string name="home_status_confirmed">Presença confirmada.</string>
     <string name="home_status_declined">Tudo bem, na próxima. Sua vaga já foi liberada.</string>
     <string name="home_response_yes">Vou</string>
     <string name="home_response_no">Não vou</string>
@@ -29,7 +29,7 @@
     <string name="home_waitlist_manual_box_body">O organizador escolhe quem entra.</string>
     <string name="home_waitlist_late_box_body">Se abrir vaga, você entra pela ordem da fila.</string>
     <string name="home_waitlist_reserva_leave">Sair da lista de espera</string>
-    <string name="home_waitlist_reserva_bell">Se você subir, aparece aqui como confirmado. Confira antes do jogo.</string>
+    <string name="home_waitlist_reserva_bell">Se você subir, sua presença aparece aqui. Confira antes do jogo.</string>
     <string name="home_waitlist_section_confirmed">Confirmados</string>
     <string name="home_waitlist_section_confirmed_action">%1$d de %2$d</string>
     <string name="home_waitlist_section_queue">Como está a lista</string>

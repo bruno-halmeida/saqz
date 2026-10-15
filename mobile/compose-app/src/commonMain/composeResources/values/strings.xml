@@ -1,5 +1,5 @@
 <resources>
-    <string name="shell_signed_in">Você está conectado.</string>
+    <string name="shell_signed_in">Sessão iniciada.</string>
     <string name="shell_logout">Sair</string>
     <string name="shell_nav_home">Início</string>
     <string name="shell_nav_games">Jogos</string>

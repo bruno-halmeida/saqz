@@ -46,7 +46,7 @@ class AppOnboardingScreenTest {
             }
         }
 
-        onNodeWithText("Você está conectado como Ana. O link pertence a outra conta. Deseja trocar de conta?").assertExists()
+        onNodeWithText("Você entrou como Ana. O link pertence a outra conta. Deseja trocar de conta?").assertExists()
         onNodeWithTag(AppOnboardingTags.Continue).performClick()
         onNodeWithTag(AppOnboardingTags.Cancel).performClick()
 

@@ -50,7 +50,7 @@ final class SaqzIOSUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Entrar com Google"].waitForExistence(timeout: 5))
         // O conteúdo protegido é o shell autenticado — Início/Componentes/catálogo já não
         // existem em composable nenhum, então negá-los deixou de provar qualquer coisa.
-        XCTAssertFalse(app.staticTexts["Você está conectado."].exists)
+        XCTAssertFalse(app.staticTexts["Sessão iniciada."].exists)
         XCTAssertFalse(app.buttons["Sair"].exists)
     }
 

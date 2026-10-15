@@ -241,7 +241,7 @@ class HomeScreenshotTest {
         waitlistKind = HomeWaitlistKind.Reserva,
         waitlistPosition = 1,
         confirmedRoster = listOf("Ana Souza", "Bruna Lima", "Caio", "Duda", "Eva Lima", "Tiago Moraes"),
-        deadlineBellLabel = "Se você subir, aparece aqui como confirmado. Confira antes do jogo.",
+        deadlineBellLabel = "Se você subir, sua presença aparece aqui. Confira antes do jogo.",
     )
 
     private fun avulsoListGame() = nextGame(AttendanceStatus.Waitlisted).copy(

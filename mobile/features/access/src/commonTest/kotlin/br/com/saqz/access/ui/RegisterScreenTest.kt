@@ -114,7 +114,7 @@ class RegisterScreenTest {
     @Test fun `invite registration falls back to generic header without preview`() = runComposeUiTest {
         content(inviteContext = RegisterInviteContext.Generic)
 
-        onNodeWithText("Você foi convidado para um grupo").assertExists()
+        onNodeWithText("Você recebeu um convite para um grupo").assertExists()
         onNodeWithText("Depois disso você escolhe apelido, posição e nível no grupo.").assertExists()
     }
 

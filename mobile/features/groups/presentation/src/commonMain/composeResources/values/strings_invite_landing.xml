@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="invite_landing_title">Convite recebido</string>
-    <string name="invite_landing_eyebrow">Você foi convidado</string>
+    <string name="invite_landing_eyebrow">Você recebeu um convite</string>
     <string name="invite_landing_schedule_empty">Sem dia regular informado</string>
     <string name="invite_landing_invited_by">Convite de %1$s</string>
     <string name="invite_landing_next_game">Próximo jogo</string>

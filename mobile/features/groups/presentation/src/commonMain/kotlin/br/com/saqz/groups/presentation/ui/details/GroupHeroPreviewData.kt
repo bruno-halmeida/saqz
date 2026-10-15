@@ -23,7 +23,7 @@ internal object GroupHeroPreviewData {
         address = "R. Canuto Abreu, s/n · Tatuapé",
         deadlineLine = "As confirmações encerram hoje às 18h00.",
         deadlineShort = "Encerra 28/07 · 18h00",
-        bellLabel = "Se você subir, aparece aqui como confirmado. Confira antes do jogo.",
+        bellLabel = "Se você subir, sua presença aparece aqui. Confira antes do jogo.",
     )
     // Prazo vencido, jogo por começar: o "Vou" ainda vale e entra pela espera.
     private val closedGame = game.copy(confirmationOpen = false)

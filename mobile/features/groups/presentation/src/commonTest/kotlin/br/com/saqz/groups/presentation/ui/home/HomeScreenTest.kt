@@ -328,7 +328,7 @@ class HomeScreenTest {
         val intents = mutableListOf<HomeIntent>()
         setScreen(nextGameState(nextGame = nextGame(AttendanceStatus.Confirmed)), intents::add)
 
-        onNodeWithText("Você está confirmado.").assertIsDisplayed()
+        onNodeWithText("Presença confirmada.").assertIsDisplayed()
         onAllNodesWithTag(HomeTags.ResponseYes).assertCountEquals(0)
         onAllNodesWithTag(HomeTags.ResponseNo).assertCountEquals(0)
 

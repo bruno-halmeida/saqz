@@ -264,7 +264,7 @@ class GroupHeroBlockTest {
 
         onNodeWithText("Lista de espera · 1º").assertExists()
         onNodeWithTag(HomeWaitlistTags.ConfirmedSection).assertExists()
-        onNodeWithText("Se você subir, aparece aqui como confirmado. Confira antes do jogo.").assertExists()
+        onNodeWithText("Se você subir, sua presença aparece aqui. Confira antes do jogo.").assertExists()
         onAllNodesWithTag(GroupGameResponseTags.Going).assertCountEquals(0)
         onAllNodesWithText("12 de 12 confirmados").assertCountEquals(0)
         onNodeWithTag(HomeWaitlistTags.ReservaLeave).performScrollTo().performClick()

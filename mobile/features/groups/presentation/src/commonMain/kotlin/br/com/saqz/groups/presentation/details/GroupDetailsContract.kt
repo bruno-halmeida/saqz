@@ -138,7 +138,7 @@ data class NextGameUi(
     val deadlineLine: String = "",
     /** "Encerra 04/08 · 12h00" — a meta da linha de quórum do gestor. */
     val deadlineShort: String = "",
-    /** "Se você subir, aparece aqui como confirmado. Confira antes do jogo." — o card do sino da reserva. */
+    /** "Se você subir, sua presença aparece aqui. Confira antes do jogo." — o card do sino da reserva. */
     val bellLabel: String = "",
     /** Escolhe o aviso do prazo vencido: ordem de chegada sobe sozinho, manual espera o gestor. */
     val promotionMode: br.com.saqz.groups.domain.group.PromotionMode = br.com.saqz.groups.domain.group.PromotionMode.FIFO,
