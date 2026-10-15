@@ -110,8 +110,8 @@ class PendingInviteLifecycleTest {
         runCurrent()
         assertEquals("convite", f.store.value)
 
-        // Tela do convite: "Pedir para entrar" = onRequest do SaqzNavHost.
-        f.coordinator.clearPendingInvite("convite") { f.driver.navCopy = null }
+        // Tela do convite: "Pedir para entrar" = onRequest do SaqzNavHost (mesmo InviteCopy).
+        f.driver.copy.clearAfterAction(f.coordinator, "convite")
         runCurrent()
         assertNull(f.store.value)
         assertNull(f.driver.navCopy)
@@ -170,11 +170,7 @@ class PendingInviteLifecycleTest {
         val driver = Driver(machine, coordinator)
         scope.launch { driver.observe() }
         scope.launch {
-            coordinator.effects.collect { effect ->
-                if (effect is GroupInviteEffect.OpenInviteLanding) driver.navCopy = effect.code
-                if (effect is GroupInviteEffect.NavigateToGroup) driver.navCopy = null
-                coordinator.redeemHandled()
-            }
+            coordinator.effects.collect(driver::onEffect)
         }
         return Fixture(machine, coordinator, store, gateway, driver) { id ->
             sessions.current = AccessSession(AccessUser(id, null, "Pessoa"), emptyList())
@@ -199,22 +195,20 @@ class PendingInviteLifecycleTest {
         fun logout() = machine.onIntent(SessionIntent.Logout)
     }
 
-    /** O que o `SaqzNavHost` faz com a sessão: transição de sair da conta e autenticação do coordinator. */
+    /** O que o `SaqzNavHost` faz com a sessão, usando o mesmo [InviteCopy] dele. */
     private class Driver(
         private val machine: SessionAccessStateMachine,
         private val coordinator: GroupInviteCoordinator,
     ) {
-        var navCopy: String? = null
-        private var previous: SessionAccessState? = null
+        val copy = InviteCopy()
+        var navCopy: String?
+            get() = copy.code
+            set(value) { copy.code = value }
         private var authenticated = false
 
         suspend fun observe() {
             machine.state.collect { session ->
-                if (isLogoutTransition(previous, session)) {
-                    navCopy = null
-                    coordinator.onLoggedOut()
-                }
-                previous = session
+                copy.onSessionChanged(session, coordinator)
                 if (session is SessionAccessState.Ready && !authenticated) {
                     authenticated = true
                     coordinator.onAuthenticated()
@@ -222,10 +216,19 @@ class PendingInviteLifecycleTest {
                     authenticated = false
                     coordinator.onSignedOut()
                 }
-                if (navCopy == null && session is SessionAccessState.Ready) {
-                    navCopy = (coordinator.readPendingInviteCode())
+                if (copy.code == null && session is SessionAccessState.Ready) {
+                    copy.code = coordinator.readPendingInviteCode()
                 }
             }
+        }
+
+        fun onEffect(effect: GroupInviteEffect) {
+            when (effect) {
+                is GroupInviteEffect.OpenInviteLanding -> copy.code = effect.code
+                is GroupInviteEffect.NavigateToGroup -> copy.onRedeemed()
+                else -> Unit
+            }
+            coordinator.redeemHandled()
         }
     }
 

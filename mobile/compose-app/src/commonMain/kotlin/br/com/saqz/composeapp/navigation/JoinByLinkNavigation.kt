@@ -1,7 +1,13 @@
 package br.com.saqz.composeapp.navigation
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.setValue
 import androidx.navigation3.runtime.NavKey
 import br.com.saqz.access.presentation.SessionAccessState
+import br.com.saqz.access.presentation.register.RegisterInviteContext
+import br.com.saqz.groups.invite.GroupInviteCoordinator
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 
 /**
@@ -69,3 +75,51 @@ internal fun nextInviteHold(
  */
 internal fun isLogoutTransition(previous: SessionAccessState?, current: SessionAccessState): Boolean =
     previous != null && previous !is SessionAccessState.SignedOut && current is SessionAccessState.SignedOut
+
+/**
+ * A cópia que a navegação guarda do convite: o código (sobrevive à recriação) e o nome do grupo
+ * usado em "Entrando no <grupo>". As decisões de quando ela cai moram aqui, sem Compose, para o
+ * `SaqzNavHost` e os testes usarem o mesmo código. O armazenamento do aparelho continua sendo do
+ * [GroupInviteCoordinator].
+ */
+internal class InviteCopy(code: String? = null) {
+    var code by mutableStateOf(code)
+    var context by mutableStateOf<RegisterInviteContext?>(null)
+
+    private var previousSession: SessionAccessState? = null
+
+    fun clear() {
+        code = null
+        context = null
+    }
+
+    /** Entrar no grupo e pedir entrada contam igual: o convite já foi usado. */
+    fun onRedeemed() = clear()
+
+    /**
+     * Sessão mudou: só a transição para SignedOut é sair da conta. Aí a cópia cai e o coordinator
+     * apaga o guardado; Ready → Bootstrapping (nova tentativa) não toca em nada.
+     */
+    fun onSessionChanged(session: SessionAccessState, coordinator: GroupInviteCoordinator) {
+        if (isLogoutTransition(previousSession, session)) {
+            clear()
+            coordinator.onLoggedOut()
+        }
+        previousSession = session
+    }
+
+    /** Ação da tela do convite (entrar ou pedir entrada): só depois do guardado apagado a cópia cai. */
+    fun clearAfterAction(coordinator: GroupInviteCoordinator, inviteCode: String, then: () -> Unit = {}) {
+        coordinator.clearPendingInvite(inviteCode) {
+            clear()
+            then()
+        }
+    }
+
+    companion object {
+        val Saver: Saver<InviteCopy, String> = Saver(
+            save = { it.code },
+            restore = { InviteCopy(it) },
+        )
+    }
+}

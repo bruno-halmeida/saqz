@@ -191,8 +191,9 @@ internal fun SaqzNavHost(
     var statementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var settlementRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
     var myPlanRefreshVersion by rememberSaveable { mutableIntStateOf(0) }
-    var pendingInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
-    var inviteContext by remember { mutableStateOf<RegisterInviteContext?>(null) }
+    val inviteCopy = rememberSaveable(saver = InviteCopy.Saver) { InviteCopy() }
+    var pendingInviteCode by inviteCopy::code
+    var inviteContext by inviteCopy::context
     var coordinatorAuthenticated by remember { mutableStateOf(false) }
     // Os dois já ouvem desde a abertura (SaqzKoinBootstrap): o link chega antes da primeira tela.
     // Aqui só garante quem compõe sem o bootstrap; parar fica com o grafo, não com a tela.
@@ -280,14 +281,8 @@ internal fun SaqzNavHost(
     // Sair da conta apaga o convite guardado e a cópia daqui (o login não pode seguir mostrando
     // "Entrando no <grupo>" do convite anterior). Só a transição para SignedOut conta: Ready →
     // Bootstrapping acontece sem logout e não pode perder o convite.
-    var previousSession by remember { mutableStateOf<SessionAccessState?>(null) }
     LaunchedEffect(state.session) {
-        if (isLogoutTransition(previousSession, state.session)) {
-            pendingInviteCode = null
-            inviteContext = null
-            inviteCoordinator.onLoggedOut()
-        }
-        previousSession = state.session
+        inviteCopy.onSessionChanged(state.session, inviteCoordinator)
     }
     LaunchedEffect(state.session, state.appOnboarding) {
         SaqzAnalytics.setUser((state.session as? SessionAccessState.Ready)?.session?.user?.id)
@@ -349,17 +344,14 @@ internal fun SaqzNavHost(
                 }
                 is GroupInviteEffect.NavigateToGroup -> when (effect.status) {
                     InviteRedeemStatus.JOINED -> {
-                        pendingInviteCode = null
-                        inviteContext = null
+                        inviteCopy.onRedeemed()
                         // Uma navegação só: o cadastro de atleta abre primeiro, no lugar do que a pessoa
                         // já tenha aberto por cima da Início; a Início recarrega depois, por baixo.
                         backStack.openAthleteRegistrationAfterJoin(effect.groupId)
                         homeRefreshVersion++
                     }
                     InviteRedeemStatus.PENDING -> {
-                        // Pedir entrada conta como aceitar: o convite já foi usado.
-                        pendingInviteCode = null
-                        inviteContext = null
+                        inviteCopy.onRedeemed()
                         backStack.add(GroupsRoute.InviteLanding(effect.inviteCode, requestSent = true))
                     }
                 }
@@ -1019,19 +1011,12 @@ internal fun SaqzNavHost(
                     InviteLandingRoot(
                         code = route.code,
                         onJoin = { groupId ->
-                            inviteCoordinator.clearPendingInvite(route.code) {
-                                pendingInviteCode = null
-                                inviteContext = null
+                            inviteCopy.clearAfterAction(inviteCoordinator, route.code) {
                                 pop()
                                 backStack.add(GroupsRoute.AthleteRegistration(groupId))
                             }
                         },
-                        onRequest = {
-                            inviteCoordinator.clearPendingInvite(route.code) {
-                                pendingInviteCode = null
-                                inviteContext = null
-                            }
-                        },
+                        onRequest = { inviteCopy.clearAfterAction(inviteCoordinator, route.code) },
                         onBrowseOtherGroups = {
                             backStack.openInviteOtherGroups()
                         },
