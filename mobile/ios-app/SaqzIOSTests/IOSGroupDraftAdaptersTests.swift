@@ -105,7 +105,7 @@ final class IOSGroupDraftAdaptersTests: XCTestCase {
     private func setupKey() -> GroupDraftKey { GroupDraftKey(resource: .updateGroup, groupId: group) }
     private func setup() -> GroupSetupDraft {
         GroupSetupDraft(schemaVersion: 1, resource: .updateGroup, groupId: group, groupVersion: KotlinLong(value: 7), etag: "\"7\"", commandKey: commandKey,
-            form: GroupSetupForm_(name: "Vôlei", modality: .courtVolleyball, composition: .mixed, description: nil, city: "Recife", level: .custom, customLevel: "Intermediário +", playStyle: .fiveOne, customPlayStyle: nil, defaultVenue: nil, regularSlots: [], defaultCapacity: KotlinInt(value: 24), defaultConfirmationLeadMinutes: nil, defaultGameFeeCents: nil, monthlyFeeCents: KotlinLong(value: 7000), monthlyDueDay: KotlinInt(value: 10), mensalistaPriority: true, promotionMode: .fifo, autoConfirmEnabled: false))
+            form: GroupSetupForm_(name: "Vôlei", modality: .courtVolleyball, composition: .mixed, description: nil, city: "Recife", level: .custom, customLevel: "Intermediário +", playStyle: .fiveOne, customPlayStyle: nil, defaultVenue: nil, regularSlots: [], defaultCapacity: KotlinInt(value: 24), defaultConfirmationLeadMinutes: nil, defaultGameFeeCents: nil, monthlyFeeCents: KotlinLong(value: 7000), monthlyDueDay: KotlinInt(value: 10), mensalistaPriority: true, promotionMode: .fifo, autoConfirmEnabled: false, monthlyLateJoinPolicy: nil))
     }
     private func gameDraft() -> GameEditorDraft {
         GameEditorDraft(schemaVersion: 1, groupId: group, gameId: game, seriesId: nil, commandKey: commandKey, version: GameVersionToken(value: "\"4\""), mode: .oneTime,
