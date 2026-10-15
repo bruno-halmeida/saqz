@@ -3,8 +3,10 @@ package br.com.saqz.groups.presentation.athleteregistration
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
+import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.athlete.UpdateOwnAthleteProfileCommand
@@ -19,8 +21,9 @@ class AthleteRegistrationViewModel(
     private val savedState: SavedStateHandle,
     private val groupGateway: GroupGateway,
     private val athleteGateway: AthleteGateway,
+    private val pendingRequest: Boolean = false,
 ) : MviViewModel<AthleteRegistrationState, AthleteRegistrationIntent, AthleteRegistrationEffect>(
-    AthleteRegistrationState().restoreDraft(savedState),
+    AthleteRegistrationState(isPendingRequest = pendingRequest).restoreDraft(savedState),
 ) {
     private var generation = 0L
 
@@ -61,6 +64,7 @@ class AthleteRegistrationViewModel(
     private fun load() {
         val requestGeneration = nextGeneration()
         update { it.copy(isLoading = true, loadFailed = false, error = null, isSaving = false) }
+        if (pendingRequest) return loadPendingRequest(requestGeneration)
         viewModelScope.launch {
             val group = when (val result = groupGateway.read(GroupId(groupId))) {
                 is SaqzResult.Failure -> return@launch showLoadFailure(requestGeneration, result.error.toUiError())
@@ -103,6 +107,45 @@ class AthleteRegistrationViewModel(
         }
     }
 
+    /** Quem só pediu entrada ainda não lê o grupo nem tem vínculo: o contexto vem do próprio pedido. */
+    private fun loadPendingRequest(requestGeneration: Long) {
+        viewModelScope.launch {
+            val request = when (val result = athleteGateway.ownEntryRequest(GroupId(groupId))) {
+                is SaqzResult.Failure -> {
+                    if (requestGeneration != generation) return@launch
+                    if (result.error.isMissing()) return@launch emit(AthleteRegistrationEffect.Unavailable)
+                    return@launch showLoadFailure(requestGeneration, result.error.toUiError())
+                }
+                is SaqzResult.Success -> result.value
+            }
+            if (requestGeneration != generation) return@launch
+            // Sem modalidade não dá para saber quais campos valem: não inventa formulário.
+            val modality = request.modality
+                ?: return@launch showLoadFailure(requestGeneration, GroupUiError.Unknown)
+            val saved = request.athleteProfile
+            update {
+                it.copy(
+                    isLoading = false,
+                    loadFailed = false,
+                    error = null,
+                    groupName = request.groupName,
+                    modality = modality,
+                    composition = request.composition,
+                    city = request.city.orEmpty(),
+                    nickname = saved?.nickname.orEmpty(),
+                    position = saved?.position,
+                    secondaryPosition = saved?.secondaryPosition,
+                    level = saved?.level,
+                    preferredSide = saved?.preferredSide,
+                    heightText = saved?.heightCm?.toString().orEmpty(),
+                    isEditing = saved != null,
+                ).restoreDraft(savedState)
+            }
+        }
+    }
+
+    private fun AthleteError.isMissing() = this is AthleteError.DataFailure && error == DataError.NotFound
+
     private fun selectPosition(value: AthletePosition) {
         savedState[KEY_POSITION] = value.name
         savedState[KEY_SECONDARY_POSITION] = null
@@ -130,27 +173,33 @@ class AthleteRegistrationViewModel(
         val requestGeneration = nextGeneration()
         update { it.copy(isSaving = true, error = null) }
         viewModelScope.launch {
-            val result = athleteGateway.updateOwnProfile(
-                UpdateOwnAthleteProfileCommand(
-                    groupId = GroupId(groupId),
-                    nickname = current.nickname.trim().takeIf(String::isNotEmpty),
-                    position = current.position.takeIf { current.isCourt },
-                    secondaryPosition = current.secondaryPosition.takeIf { current.isCourt },
-                    level = current.level,
-                    preferredSide = current.preferredSide.takeUnless { current.isCourt },
-                    heightCm = heightCm.takeIf { current.isCourt },
-                ),
+            val command = UpdateOwnAthleteProfileCommand(
+                groupId = GroupId(groupId),
+                nickname = current.nickname.trim().takeIf(String::isNotEmpty),
+                position = current.position.takeIf { current.isCourt },
+                secondaryPosition = current.secondaryPosition.takeIf { current.isCourt },
+                level = current.level,
+                preferredSide = current.preferredSide.takeUnless { current.isCourt },
+                heightCm = heightCm.takeIf { current.isCourt },
             )
+            val failure = if (pendingRequest) {
+                (athleteGateway.saveEntryRequestProfile(command) as? SaqzResult.Failure)?.error
+            } else {
+                (athleteGateway.updateOwnProfile(command) as? SaqzResult.Failure)?.error
+            }
             if (requestGeneration != generation) return@launch
-            when (result) {
-                is SaqzResult.Failure -> update {
-                    it.copy(isSaving = false, error = result.error.toUiError())
-                }
-                is SaqzResult.Success -> {
+            when {
+                failure == null -> {
                     clearDraft()
                     update { it.copy(isSaving = false, error = null) }
                     emit(AthleteRegistrationEffect.Saved)
                 }
+                pendingRequest && failure.isMissing() -> {
+                    clearDraft()
+                    update { it.copy(isSaving = false, error = null) }
+                    emit(AthleteRegistrationEffect.Unavailable)
+                }
+                else -> update { it.copy(isSaving = false, error = failure.toUiError()) }
             }
         }
     }

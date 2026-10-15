@@ -15,7 +15,7 @@ import org.koin.core.parameter.parametersOf
 fun InviteLandingRoot(
     code: String,
     onJoin: (String) -> Unit,
-    onRequest: () -> Unit,
+    onRequest: (String) -> Unit,
     onBrowseOtherGroups: () -> Unit,
     onExploreApp: () -> Unit,
     onOpenAnotherGroup: () -> Unit,
@@ -31,7 +31,7 @@ fun InviteLandingRoot(
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             is InviteLandingEffect.Joined -> onJoin(effect.groupId)
-            InviteLandingEffect.RequestSent -> onRequest()
+            is InviteLandingEffect.RequestSent -> onRequest(effect.groupId)
             InviteLandingEffect.BrowseOtherGroups -> onBrowseOtherGroups()
             InviteLandingEffect.ExploreApp -> onExploreApp()
             InviteLandingEffect.OpenAnotherGroup -> onOpenAnotherGroup()

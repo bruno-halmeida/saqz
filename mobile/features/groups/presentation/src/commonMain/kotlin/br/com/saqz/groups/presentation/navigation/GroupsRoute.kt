@@ -54,6 +54,8 @@ sealed interface GroupsRoute : NavKey {
         val fromProfile: Boolean = false,
         val attendanceCode: String? = null,
         val attendanceDecline: Boolean = false,
+        /** Pedido de entrada ainda sem aprovação: o cadastro fica guardado no pedido. */
+        val pendingRequest: Boolean = false,
     ) : GroupsRoute
 
     @Serializable

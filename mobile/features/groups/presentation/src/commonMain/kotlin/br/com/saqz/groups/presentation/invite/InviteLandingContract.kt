@@ -52,7 +52,8 @@ sealed interface InviteLandingIntent {
 
 sealed interface InviteLandingEffect {
     data class Joined(val groupId: String) : InviteLandingEffect
-    data object RequestSent : InviteLandingEffect
+    /** [groupId] abre o cadastro de atleta guardado no pedido, sem esperar a aprovação. */
+    data class RequestSent(val groupId: String) : InviteLandingEffect
     data object BrowseOtherGroups : InviteLandingEffect
     data object ExploreApp : InviteLandingEffect
     data object OpenAnotherGroup : InviteLandingEffect

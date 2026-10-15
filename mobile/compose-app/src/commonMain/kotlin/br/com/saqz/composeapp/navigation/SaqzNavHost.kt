@@ -352,7 +352,7 @@ internal fun SaqzNavHost(
                     }
                     InviteRedeemStatus.PENDING -> {
                         inviteCopy.onRedeemed(effect.status)
-                        backStack.add(GroupsRoute.InviteLanding(effect.inviteCode, requestSent = true))
+                        backStack.openRequestSentWithAthleteRegistration(effect.inviteCode, effect.groupId)
                     }
                 }
                 is GroupInviteEffect.RedeemFailed -> {
@@ -1016,7 +1016,10 @@ internal fun SaqzNavHost(
                                 backStack.add(GroupsRoute.AthleteRegistration(groupId))
                             }
                         },
-                        onRequest = { inviteCopy.requestFromLanding(inviteCoordinator, route.code) },
+                        onRequest = { groupId ->
+                            inviteCopy.requestFromLanding(inviteCoordinator, route.code)
+                            backStack.openAthleteRegistrationAfterRequest(groupId)
+                        },
                         onBrowseOtherGroups = {
                             backStack.openInviteOtherGroups()
                         },
@@ -1035,6 +1038,11 @@ internal fun SaqzNavHost(
                     AthleteRegistrationRoot(
                         groupId = route.groupId,
                         onSave = {
+                            // Pedido pendente: ainda não há vínculo; voltar mostra o "Pedido enviado".
+                            if (route.pendingRequest) {
+                                pop()
+                                return@AthleteRegistrationRoot
+                            }
                             profileRefreshVersion++
                             groupDetailsRefreshVersion++
                             pop()
@@ -1044,6 +1052,7 @@ internal fun SaqzNavHost(
                             } else if (!route.fromProfile) backStack.add(GroupsRoute.Details(route.groupId))
                         },
                         onBack = pop,
+                        pendingRequest = route.pendingRequest,
                     )
                 }
                 entry<GroupsRoute.MemberEditor> { route ->

@@ -15,10 +15,14 @@ import br.com.saqz.groups.domain.athlete.AthletePreferredSide
 import br.com.saqz.groups.domain.athlete.AthleteRosterEntry
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.athlete.AthleteStats
+import br.com.saqz.groups.domain.athlete.EntryRequestAthleteProfile
 import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
+import br.com.saqz.groups.domain.athlete.OwnEntryRequest
 import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
 import br.com.saqz.groups.domain.athlete.UpdateAthleteCommand
 import br.com.saqz.groups.domain.athlete.UpdateOwnAthleteProfileCommand
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkError
@@ -122,6 +126,26 @@ private data class UpdateAthleteRequestDto(
 )
 
 @Serializable
+private data class EntryRequestProfileDto(
+    val nickname: String? = null,
+    val position: String? = null,
+    val secondaryPosition: String? = null,
+    val level: String? = null,
+    val preferredSide: String? = null,
+    val heightCm: Int? = null,
+)
+
+@Serializable
+private data class OwnEntryRequestDto(
+    val groupId: String = "",
+    val groupName: String = "",
+    val modality: String? = null,
+    val composition: String? = null,
+    val city: String? = null,
+    val athleteProfile: EntryRequestProfileDto? = null,
+)
+
+@Serializable
 private data class AthleteStatsDto(
     val games: Int = 0,
     val attendanceRate: Int? = null,
@@ -181,6 +205,34 @@ class KtorAthleteGateway(
         ),
     ).mapResult { it.toDomain() ?: return@mapResult null }
 
+    override suspend fun ownEntryRequest(groupId: GroupId): SaqzResult<OwnEntryRequest, AthleteError> =
+        retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
+            network.execute(
+                HttpMethod.Get,
+                "api/groups/${groupId.value}/entry-requests/me",
+                OwnEntryRequestDto.serializer(),
+            )
+        }.mapResult(legacyBackendAsNotFound = true) { it.toDomain() ?: return@mapResult null }
+
+    override suspend fun saveEntryRequestProfile(
+        command: UpdateOwnAthleteProfileCommand,
+    ): SaqzResult<Unit, AthleteError> = network.executeNoContent(
+        HttpMethod.Put,
+        "api/groups/${command.groupId.value}/entry-requests/me/athlete-profile",
+        NetworkRequest(
+            json.encodeToString(
+                UpdateOwnProfileRequestDto(
+                    nickname = command.nickname,
+                    position = command.position?.name,
+                    secondaryPosition = command.secondaryPosition?.name,
+                    level = command.level?.name,
+                    preferredSide = command.preferredSide?.name,
+                    heightCm = command.heightCm,
+                ),
+            ),
+        ),
+    ).mapResult(legacyBackendAsNotFound = true) { }
+
     override suspend fun updateAthlete(
         command: UpdateAthleteCommand,
     ): SaqzResult<Athlete, AthleteError> = network.execute(
@@ -238,10 +290,21 @@ private fun AthleteRosterFilter.toQuery(): Map<String, String> = buildMap {
     if (includeInactive) put("includeInactive", "true")
 }
 
+/**
+ * [legacyBackendAsNotFound]: backend sem a rota do pedido de entrada responde 404 (caminho
+ * desconhecido) ou 405 (o caminho existe só para outro verbo); os dois contam como "não existe".
+ */
 private inline fun <T, R> NetworkResult<T>.mapResult(
+    legacyBackendAsNotFound: Boolean = false,
     transform: (T) -> R?,
 ): SaqzResult<R, AthleteError> = when (this) {
-    is NetworkResult.Failure -> SaqzResult.Failure(error.toAthleteError())
+    is NetworkResult.Failure -> SaqzResult.Failure(
+        if (legacyBackendAsNotFound && error.isMethodNotAllowed()) {
+            AthleteError.DataFailure(DataError.NotFound)
+        } else {
+            error.toAthleteError()
+        },
+    )
     is NetworkResult.Success -> transform(value)
         ?.let { SaqzResult.Success(it) }
         ?: SaqzResult.Failure(AthleteError.DataFailure(DataError.InvalidResponse))
@@ -361,6 +424,31 @@ private fun OwnProfileDto.toDomain(): OwnAthleteProfile? {
     if (userId.isBlank() || displayName.isBlank()) return null
     val mapped = memberships.mapNotNullOrInvalid { it.toDomain() } ?: return null
     return OwnAthleteProfile(userId, displayName, phone, mapped)
+}
+
+private fun NetworkError.isMethodNotAllowed(): Boolean = when (this) {
+    is NetworkError.ApiProblemError -> problem.status == 405
+    is NetworkError.HttpStatus -> status == 405
+    else -> false
+}
+
+private fun OwnEntryRequestDto.toDomain(): OwnEntryRequest? {
+    if (groupId.isBlank() || groupName.isBlank()) return null
+    val parsedModality = modality?.let { enumOrNull<GroupModality>(it) }
+    val parsedComposition = composition?.let { enumOrNull<GroupComposition>(it) }
+    if (unparsed(modality, parsedModality) || unparsed(composition, parsedComposition)) return null
+    val profile = athleteProfile?.let { dto ->
+        val position = dto.position?.let { enumOrNull<AthletePosition>(it) }
+        val secondary = dto.secondaryPosition?.let { enumOrNull<AthletePosition>(it) }
+        val level = dto.level?.let { enumOrNull<AthleteLevel>(it) }
+        val side = dto.preferredSide?.let { enumOrNull<AthletePreferredSide>(it) }
+        if (
+            unparsed(dto.position, position) || unparsed(dto.secondaryPosition, secondary) ||
+            unparsed(dto.level, level) || unparsed(dto.preferredSide, side)
+        ) return null
+        EntryRequestAthleteProfile(dto.nickname, position, secondary, level, side, dto.heightCm)
+    }
+    return OwnEntryRequest(GroupId(groupId), groupName, parsedModality, parsedComposition, city, profile)
 }
 
 private fun NetworkError.toAthleteError(): AthleteError = when (this) {

@@ -93,7 +93,7 @@ class InviteLandingViewModel(
                         InviteRedeemStatus.JOINED -> emit(InviteLandingEffect.Joined(result.value.groupId.value))
                         InviteRedeemStatus.PENDING -> {
                             update { it.copy(requestSent = true) }
-                            emit(InviteLandingEffect.RequestSent)
+                            emit(InviteLandingEffect.RequestSent(result.value.groupId.value))
                         }
                     }
                 }

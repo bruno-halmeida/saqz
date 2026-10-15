@@ -13,6 +13,7 @@ fun athleteRegistrationPresentationModule(): Module = module {
             savedState = params.get(),
             groupGateway = get(),
             athleteGateway = get(),
+            pendingRequest = params.getOrNull<Boolean>() ?: false,
         )
     }
 }

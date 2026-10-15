@@ -27,6 +27,24 @@ internal fun MutableList<NavKey>.openAthleteRegistrationAfterJoin(groupId: Strin
     }
 }
 
+/**
+ * Pediu entrada num grupo com aprovação (link do convite): "Pedido enviado" fica por baixo e o
+ * cadastro de atleta guardado no pedido abre por cima, numa única mudança da pilha. Voltar ou
+ * terminar o cadastro devolve a pessoa ao "Pedido enviado".
+ */
+internal fun MutableList<NavKey>.openRequestSentWithAthleteRegistration(inviteCode: String, groupId: String) {
+    androidx.compose.runtime.snapshots.Snapshot.withMutableSnapshot {
+        add(GroupsRoute.InviteLanding(inviteCode, requestSent = true))
+        add(GroupsRoute.AthleteRegistration(groupId, pendingRequest = true))
+    }
+}
+
+/** Pediu entrada pela tela do convite: ela já mostra "Pedido enviado"; o cadastro abre por cima. */
+internal fun MutableList<NavKey>.openAthleteRegistrationAfterRequest(groupId: String) {
+    val target = GroupsRoute.AthleteRegistration(groupId, pendingRequest = true)
+    if (lastOrNull() == target) return
+    add(target)
+}
 
 /**
  * Enquanto há convite para tratar depois do login, a Início não é o destino intermediário: da sessão

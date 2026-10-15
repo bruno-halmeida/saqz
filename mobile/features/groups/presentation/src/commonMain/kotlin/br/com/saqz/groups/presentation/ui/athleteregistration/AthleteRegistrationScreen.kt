@@ -58,6 +58,8 @@ import br.com.saqz.groups.resources.athlete_registration_level_intermediate
 import br.com.saqz.groups.resources.athlete_registration_load_error_body
 import br.com.saqz.groups.resources.athlete_registration_load_error_title
 import br.com.saqz.groups.resources.athlete_registration_modality_beach
+import br.com.saqz.groups.resources.athlete_registration_pending_lead
+import br.com.saqz.groups.resources.athlete_registration_pending_title
 import br.com.saqz.groups.resources.athlete_registration_modality_court
 import br.com.saqz.groups.resources.athlete_registration_modality_footvolley
 import br.com.saqz.groups.resources.athlete_registration_nickname_hint
@@ -176,7 +178,9 @@ private fun AthleteRegistrationHeader(state: AthleteRegistrationState) {
     val city = state.city.ifBlank { stringResource(Res.string.athlete_registration_city_unknown) }
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
         Text(
-            text = if (state.isEditing) {
+            text = if (state.isPendingRequest) {
+                stringResource(Res.string.athlete_registration_pending_title, state.groupName)
+            } else if (state.isEditing) {
                 stringResource(Res.string.athlete_registration_edit_title, state.groupName)
             } else {
                 stringResource(Res.string.athlete_registration_joined_title, state.groupName)
@@ -190,7 +194,9 @@ private fun AthleteRegistrationHeader(state: AthleteRegistrationState) {
             color = SaqzTheme.colors.primary,
         )
         Text(
-            text = stringResource(Res.string.athlete_registration_lead),
+            text = stringResource(
+                if (state.isPendingRequest) Res.string.athlete_registration_pending_lead else Res.string.athlete_registration_lead,
+            ),
             style = SaqzTheme.typography.body,
             color = SaqzTheme.colors.textSecondary,
         )

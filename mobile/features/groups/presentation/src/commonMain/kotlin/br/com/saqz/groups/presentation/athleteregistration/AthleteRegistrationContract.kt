@@ -27,6 +27,8 @@ data class AthleteRegistrationState(
     val isSaving: Boolean = false,
     /** O cadastro já tinha nível, posição ou lado: é edição, não a primeira entrada no grupo. */
     val isEditing: Boolean = false,
+    /** Pedido de entrada ainda sem aprovação: o cadastro fica guardado no pedido, não num vínculo. */
+    val isPendingRequest: Boolean = false,
 ) {
     val isCourt: Boolean get() = modality == GroupModality.COURT_VOLLEYBALL
 }
@@ -44,4 +46,10 @@ sealed interface AthleteRegistrationIntent {
 
 sealed interface AthleteRegistrationEffect {
     data object Saved : AthleteRegistrationEffect
+
+    /**
+     * Pedido pendente sem a rota do cadastro (backend antigo) ou já sem pedido: segue para o "Pedido
+     * enviado" sem travar e sem perder o pedido.
+     */
+    data object Unavailable : AthleteRegistrationEffect
 }

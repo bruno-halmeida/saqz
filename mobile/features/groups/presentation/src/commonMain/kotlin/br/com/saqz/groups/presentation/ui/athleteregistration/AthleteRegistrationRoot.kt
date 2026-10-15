@@ -14,15 +14,16 @@ fun AthleteRegistrationRoot(
     groupId: String,
     onSave: () -> Unit,
     onBack: () -> Unit,
+    pendingRequest: Boolean = false,
     viewModel: AthleteRegistrationViewModel = koinViewModel(
-        key = "athlete-registration/$groupId",
-        parameters = { parametersOf(groupId) },
+        key = "athlete-registration/$groupId${if (pendingRequest) "/pending" else ""}",
+        parameters = { parametersOf(groupId, pendingRequest) },
     ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
-            AthleteRegistrationEffect.Saved -> onSave()
+            AthleteRegistrationEffect.Saved, AthleteRegistrationEffect.Unavailable -> onSave()
         }
     }
     AthleteRegistrationScreen(state = state, onIntent = viewModel::onIntent, onBack = onBack)

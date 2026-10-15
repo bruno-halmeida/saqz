@@ -5,6 +5,8 @@ import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.ValidationDetails
+import br.com.saqz.groups.domain.group.GroupComposition
+import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.group.GroupRole
 
 enum class AthletePosition { LIBERO, PONTA, CENTRAL, OPOSTO, LEVANTADOR }
@@ -86,6 +88,26 @@ data class UpdateOwnAthleteProfileCommand(
     val heightCm: Int?,
 )
 
+/** Cadastro de atleta guardado no pedido de entrada, antes de o organizador aprovar. */
+data class EntryRequestAthleteProfile(
+    val nickname: String? = null,
+    val position: AthletePosition? = null,
+    val secondaryPosition: AthletePosition? = null,
+    val level: AthleteLevel? = null,
+    val preferredSide: AthletePreferredSide? = null,
+    val heightCm: Int? = null,
+)
+
+/** O pedido de entrada da própria pessoa: o que ela pode ver do grupo antes de ser membro. */
+data class OwnEntryRequest(
+    val groupId: GroupId,
+    val groupName: String,
+    val modality: GroupModality?,
+    val composition: GroupComposition?,
+    val city: String?,
+    val athleteProfile: EntryRequestAthleteProfile?,
+)
+
 data class AthleteStats(
     val games: Int,
     val attendanceRate: Int?,
@@ -136,6 +158,18 @@ interface AthleteGateway {
     suspend fun updateOwnProfile(
         command: UpdateOwnAthleteProfileCommand,
     ): SaqzResult<Athlete, AthleteError> = updateOwnPosition(command.groupId, command.position)
+
+    /**
+     * Pedido de entrada pendente da pessoa neste grupo. `NotFound` também quando o backend ainda não
+     * tem a rota (404/405): quem chama segue sem o cadastro, sem perder o pedido.
+     */
+    suspend fun ownEntryRequest(groupId: GroupId): SaqzResult<OwnEntryRequest, AthleteError> =
+        SaqzResult.Failure(AthleteError.DataFailure(DataError.NotFound))
+
+    /** Guarda o cadastro no pedido pendente; o organizador o recebe junto com a aprovação. */
+    suspend fun saveEntryRequestProfile(
+        command: UpdateOwnAthleteProfileCommand,
+    ): SaqzResult<Unit, AthleteError> = SaqzResult.Failure(AthleteError.DataFailure(DataError.NotFound))
 
     suspend fun updateAthlete(command: UpdateAthleteCommand): SaqzResult<Athlete, AthleteError>
 
