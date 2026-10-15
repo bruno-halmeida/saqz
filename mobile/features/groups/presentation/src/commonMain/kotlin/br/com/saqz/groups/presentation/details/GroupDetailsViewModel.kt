@@ -813,8 +813,7 @@ class GroupDetailsViewModel(
                     val detail = result.value.value.detail
                     val response = result.value.value.attendance.toResponse(roster)
                     val reconciled = if (roster != null) response.reconcileRoster(roster) else response
-                    val showIntroduction = !state.value.isAdmin && !athleteIntroShown
-                    if (showIntroduction) athleteIntroShown = true
+                    val showIntroduction = takeAthleteIntroduction(reconciled.status)
                     update {
                         it.copy(
                             nextGame = it.nextGame?.reconcile(detail, roster),
@@ -838,6 +837,13 @@ class GroupDetailsViewModel(
                 }
             }
         }
+    }
+
+    /** Só depois de um "Vou" (confirmado ou na espera), uma vez por tela; "Não vou" não gasta a vez do cartão. */
+    private fun takeAthleteIntroduction(answer: GroupDetailsResponseStatus): Boolean {
+        val due = !state.value.isAdmin && !athleteIntroShown && answer != GroupDetailsResponseStatus.Declined
+        if (due) athleteIntroShown = true
+        return due
     }
 
     private fun retryRoster() {

@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.ui.details
 
+import br.com.saqz.groups.presentation.details.GroupDetailsResponseStatus
+import br.com.saqz.groups.presentation.details.GroupDetailsResponseUi
 import br.com.saqz.groups.presentation.details.GroupSettleRowUi
 import br.com.saqz.groups.presentation.details.GroupWaitingRowUi
 import br.com.saqz.groups.presentation.details.GroupWaitingUi
@@ -35,7 +37,18 @@ internal object GroupWaitingPreviewData {
     )
 
     /** As quatro linhas, aviso parado. */
-    val idle = GroupDetailsPreviewData.admin.copy(nextGame = nextGame, waiting = waiting)
+    // O gestor já respondeu: os 2 pendentes são os 2 que recebem o lembrete.
+    val idle = GroupDetailsPreviewData.admin.copy(
+        nextGame = nextGame,
+        waiting = waiting,
+        memberResponse = GroupDetailsResponseUi(GroupDetailsResponseStatus.Confirmed),
+    )
+
+    /** O gestor também não respondeu: 3 pendentes no servidor, 2 recebem o lembrete. */
+    val viewerPending = idle.copy(
+        memberResponse = null,
+        attendance = GroupDetailsPreviewData.attendance.copy(pending = 3),
+    )
 
     val notifying = idle.copy(notifying = true)
 

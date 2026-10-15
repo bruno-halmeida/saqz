@@ -17,6 +17,8 @@
     <!-- Detalhe do grupo novo · esperando você -->
     <string name="group_details_waiting_quorum">%1$d pessoas sem resposta</string>
     <string name="group_details_waiting_quorum_one">1 pessoa sem resposta</string>
+    <string name="group_details_waiting_quorum_you">%1$d pessoas sem resposta · e você</string>
+    <string name="group_details_waiting_quorum_one_you">1 pessoa sem resposta · e você</string>
     <string name="group_details_waiting_notify">Avisar</string>
     <string name="group_details_names_two">%1$s e %2$s</string>
     <string name="group_details_names_more">%1$s, %2$s e mais %3$d</string>

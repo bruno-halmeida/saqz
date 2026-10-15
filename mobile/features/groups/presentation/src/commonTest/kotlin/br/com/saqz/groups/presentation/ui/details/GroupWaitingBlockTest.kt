@@ -53,6 +53,30 @@ class GroupWaitingBlockTest {
     }
 
     @Test
+    fun quorumLeavesTheViewerOutAndSaysSoInPlural() = runComposeUiTest {
+        setDetailsScreen(GroupWaitingPreviewData.viewerPending)
+
+        onNodeWithTag(GroupDetailsTags.WaitingQuorum).assertTextContains("2 pessoas sem resposta · e você")
+    }
+
+    @Test
+    fun quorumSaysAndYouInTheSingular() = runComposeUiTest {
+        val viewerAndOne = GroupDetailsPreviewData.attendance.copy(pending = 2)
+        setDetailsScreen(GroupWaitingPreviewData.viewerPending.copy(attendance = viewerAndOne))
+
+        onNodeWithTag(GroupDetailsTags.WaitingQuorum).assertTextContains("1 pessoa sem resposta · e você")
+    }
+
+    @Test
+    fun quorumHidesWhenOnlyTheViewerIsPending() = runComposeUiTest {
+        val onlyViewer = GroupDetailsPreviewData.attendance.copy(pending = 1)
+        setDetailsScreen(GroupWaitingPreviewData.viewerPending.copy(attendance = onlyViewer))
+
+        onAllNodesWithTag(GroupDetailsTags.WaitingQuorum).assertCountEquals(0)
+        onAllNodesWithTag(GroupDetailsTags.NotifyPending).assertCountEquals(0)
+    }
+
+    @Test
     fun notifyButtonEmitsNotifyPending() = runComposeUiTest {
         val intents = mutableListOf<GroupDetailsIntent>()
         setDetailsScreen(GroupWaitingPreviewData.idle) { intents += it }

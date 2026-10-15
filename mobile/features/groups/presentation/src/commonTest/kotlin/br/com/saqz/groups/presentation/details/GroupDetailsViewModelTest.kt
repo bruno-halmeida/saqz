@@ -112,6 +112,110 @@ class GroupDetailsViewModelTest {
         assertFalse(vm.state.value.athleteIntroVisible)
     }
 
+    private fun respondedAs(status: br.com.saqz.groups.domain.attendance.AttendanceStatus) =
+        sampleVersionedAttendanceMutation().let { base ->
+            base.copy(value = base.value.copy(attendance = base.value.attendance.copy(memberId = "me", status = status)))
+        }
+
+    // O servidor manda a verdade na lista (roster): quem responde "Vou" aparece nela como "me".
+    private fun FakeAttendanceGateway.answersAs(status: br.com.saqz.groups.domain.attendance.AttendanceStatus) {
+        val me = br.com.saqz.groups.domain.attendance.AttendanceRosterMember("me", "Eu")
+        val base = sampleAttendanceRoster()
+        respondResult = SaqzResult.Success(respondedAs(status))
+        rosterResult = SaqzResult.Success(
+            when (status) {
+                br.com.saqz.groups.domain.attendance.AttendanceStatus.Confirmed -> base.copy(confirmed = base.confirmed + me)
+                br.com.saqz.groups.domain.attendance.AttendanceStatus.Waitlisted -> base.copy(waitlisted = base.waitlisted + me)
+                br.com.saqz.groups.domain.attendance.AttendanceStatus.Declined -> base
+            },
+        )
+    }
+
+    @Test
+    fun `athlete introduction never shows after a Nao vou and shows on the next Vou`() = runTest {
+        val attendance = FakeAttendanceGateway().apply {
+            answersAs(br.com.saqz.groups.domain.attendance.AttendanceStatus.Declined)
+        }
+        val vm = viewModel(groupGateway = athleteGroupGateway(), attendanceGateway = attendance,
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))))
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Decline))
+        advanceUntilIdle()
+        assertEquals(GroupDetailsResponseStatus.Declined, vm.state.value.memberResponse?.status)
+        assertFalse(vm.state.value.athleteIntroVisible)
+
+        attendance.answersAs(br.com.saqz.groups.domain.attendance.AttendanceStatus.Confirmed)
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+        assertTrue(vm.state.value.athleteIntroVisible)
+    }
+
+    @Test
+    fun `athlete introduction shows after a Vou that lands on the waitlist`() = runTest {
+        val attendance = FakeAttendanceGateway().apply {
+            answersAs(br.com.saqz.groups.domain.attendance.AttendanceStatus.Waitlisted)
+        }
+        val vm = viewModel(groupGateway = athleteGroupGateway(), attendanceGateway = attendance,
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))))
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        assertEquals(GroupDetailsResponseStatus.Waitlisted, vm.state.value.memberResponse?.status)
+        assertTrue(vm.state.value.athleteIntroVisible)
+    }
+
+    private fun reminderViewModel(
+        pending: Int,
+        own: br.com.saqz.groups.domain.attendance.AttendanceEntry?,
+        recipients: Int,
+    ) = viewModel(
+        gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+        attendanceGateway = FakeAttendanceGateway(
+            detailResult = SaqzResult.Success(sampleAttendanceDetail().copy(pendingCount = pending, ownAttendance = own)),
+        ),
+        communications = br.com.saqz.groups.presentation.FakeCommunicationGateway().apply {
+            reminderResult = SaqzResult.Success(
+                br.com.saqz.groups.presentation.sampleCommunicationMessage().copy(recipientCount = recipients),
+            )
+        },
+    )
+
+    @Test
+    fun `reminder count leaves out the viewer who has not answered and matches the Avisar result`() = runTest {
+        val vm = reminderViewModel(pending = 3, own = null, recipients = 2)
+        assertTrue(vm.state.value.viewerPending)
+        assertEquals(2, vm.state.value.reminderRecipients)
+
+        vm.onIntent(GroupDetailsIntent.NotifyPending)
+
+        assertEquals(vm.state.value.reminderRecipients.toString(), vm.state.value.notifiedCount)
+    }
+
+    @Test
+    fun `reminder count keeps everyone when the viewer already answered`() = runTest {
+        val own = br.com.saqz.groups.domain.attendance.AttendanceEntry(
+            memberId = "me",
+            status = br.com.saqz.groups.domain.attendance.AttendanceStatus.Confirmed,
+            version = 1,
+        )
+        val vm = reminderViewModel(pending = 3, own = own, recipients = 3)
+        assertFalse(vm.state.value.viewerPending)
+        assertEquals(3, vm.state.value.reminderRecipients)
+
+        vm.onIntent(GroupDetailsIntent.NotifyPending)
+
+        assertEquals("3", vm.state.value.notifiedCount)
+    }
+
+    @Test
+    fun `reminder count is zero when the viewer is the only one without an answer`() = runTest {
+        val vm = reminderViewModel(pending = 1, own = null, recipients = 0)
+
+        assertTrue(vm.state.value.viewerPending)
+        assertEquals(0, vm.state.value.reminderRecipients)
+    }
+
     @Test
     fun `recorded response reports attendance_answered from the app surface`() = runTest {
         val recorded = mutableListOf<Pair<String, Map<String, String>>>()

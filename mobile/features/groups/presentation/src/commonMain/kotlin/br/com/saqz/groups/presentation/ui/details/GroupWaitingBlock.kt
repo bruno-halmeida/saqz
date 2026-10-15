@@ -32,6 +32,8 @@ import br.com.saqz.groups.resources.communication_reminded
 import br.com.saqz.groups.resources.group_details_waiting_notify
 import br.com.saqz.groups.resources.group_details_waiting_quorum
 import br.com.saqz.groups.resources.group_details_waiting_quorum_one
+import br.com.saqz.groups.resources.group_details_waiting_quorum_one_you
+import br.com.saqz.groups.resources.group_details_waiting_quorum_you
 import br.com.saqz.groups.resources.home_admin_waiting_entry_chip
 import br.com.saqz.groups.resources.home_admin_waiting_title
 import org.jetbrains.compose.resources.pluralStringResource
@@ -122,11 +124,12 @@ internal fun GroupWaitingBlock(
 }
 
 /**
- * A linha existe enquanto dá para avisar (confirmações abertas e alguém sem resposta) e
- * continua depois de um aviso enviado, mesmo que o pendente zere: o retorno é contrato do e2e.
+ * A linha existe enquanto dá para avisar: confirmações abertas e alguém sem resposta que não seja
+ * quem olha (a resposta dele já é pedida no card do jogo). Continua depois de um aviso enviado,
+ * mesmo que o pendente zere: o retorno é contrato do e2e.
  */
 private fun GroupDetailsState.showsQuorum(): Boolean =
-    notifiedCount != null || (nextGame?.confirmationOpen == true && (attendance?.pending ?: 0) > 0)
+    notifiedCount != null || (nextGame?.confirmationOpen == true && reminderRecipients > 0)
 
 @Composable
 private fun QuorumRow(
@@ -134,10 +137,13 @@ private fun QuorumRow(
     onIntent: (GroupDetailsIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val pending = state.attendance?.pending ?: 0
-    val title =
-        if (pending == 1) stringResource(Res.string.group_details_waiting_quorum_one)
-        else stringResource(Res.string.group_details_waiting_quorum, pending)
+    val recipients = state.reminderRecipients
+    val title = when {
+        recipients == 1 && state.viewerPending -> stringResource(Res.string.group_details_waiting_quorum_one_you)
+        recipients == 1 -> stringResource(Res.string.group_details_waiting_quorum_one)
+        state.viewerPending -> stringResource(Res.string.group_details_waiting_quorum_you, recipients)
+        else -> stringResource(Res.string.group_details_waiting_quorum, recipients)
+    }
     val notified = state.notifiedCount
     val meta = when {
         notified != null -> notified.toIntOrNull()?.let { pluralStringResource(Res.plurals.communication_reminded, it, it) }

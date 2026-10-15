@@ -77,7 +77,18 @@ data class GroupDetailsState(
     val whatsApp: GroupWhatsAppStatus? = null,
     /** "Deixe o grupo redondo"; `null` = feita, adiada ou não se aplica. Só o primeiro grupo da conta a desenha. */
     val checklist: GroupChecklistUi? = null,
-)
+) {
+    /**
+     * Quem olha (gestor) também joga e entra na contagem de "sem resposta" do servidor, mas o
+     * lembrete nunca vai para quem toca em "Avisar". Sem resposta registrada, ele é um dos pendentes.
+     */
+    val viewerPending: Boolean
+        get() = isAdmin && nextGame != null && attendance != null && memberResponse == null
+
+    /** Quantas pessoas recebem o lembrete: o pendente do servidor sem quem está vendo. */
+    val reminderRecipients: Int
+        get() = ((attendance?.pending ?: 0) - if (viewerPending) 1 else 0).coerceAtLeast(0)
+}
 
 /** Nome, linha de resumo e — só no 2e — os chips de bairro/modalidade/agenda. */
 @Immutable
