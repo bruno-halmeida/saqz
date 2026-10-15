@@ -2,6 +2,9 @@ package br.com.saqz.composeapp.navigation
 
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import br.com.saqz.access.domain.session.AccessSession
+import br.com.saqz.access.domain.session.AccessUser
+import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -97,5 +100,29 @@ class JoinByLinkNavigationTest {
         // pessoa sai do cadastro
         held = hold(held, active = false, top = SaqzShellDestination.Home)
         assertEquals(false, held)
+    }
+
+    private val accessSession = AccessSession(
+        user = AccessUser(id = "user-1", email = "atleta@example.test", displayName = "Atleta"),
+        memberships = emptyList(),
+    )
+
+    @Test fun signedOutTransitionIsDetectedFromEveryOtherState() {
+        listOf(
+            SessionAccessState.Ready(accessSession),
+            SessionAccessState.Bootstrapping,
+            SessionAccessState.BootstrapError,
+            SessionAccessState.CompletingIdentity(accessSession),
+        ).forEach { assertEquals(true, isLogoutTransition(it, SessionAccessState.SignedOut), "$it") }
+    }
+
+    @Test fun signedOutToSignedOutAndTheInitialStateDoNotCount() {
+        assertEquals(false, isLogoutTransition(SessionAccessState.SignedOut, SessionAccessState.SignedOut))
+        assertEquals(false, isLogoutTransition(null, SessionAccessState.SignedOut))
+    }
+
+    @Test fun readyToBootstrappingIsARetryNotALogout() {
+        assertEquals(false, isLogoutTransition(SessionAccessState.Ready(accessSession), SessionAccessState.Bootstrapping))
+        assertEquals(false, isLogoutTransition(SessionAccessState.SignedOut, SessionAccessState.Bootstrapping))
     }
 }
