@@ -10,8 +10,11 @@ import org.junit.runner.RunWith
 /** APP-MG01/MG02-selection/F01 subsets: no provider payment or lost-response simulation. */
 @RunWith(AndroidJUnit4::class)
 internal class MonthlyGenerationE2eTest : InstalledE2e("finance") {
-    private val month = "2026-08"
-    private val due = "12/08/2026"
+    // Os seletores abrem no mês atual; o vencimento padrão é o dia de hoje (o grupo do roteiro não tem dia fixo).
+    private val today = java.time.LocalDate.now()
+    private val month = today.toString().take(7)
+    private val due = "%02d/%02d/%d".format(today.dayOfMonth, today.monthValue, today.year)
+    private val monthTitle = "${java.time.Month.of(today.monthValue).getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale("pt", "BR"))} de ${today.year}"
     private val amount = "R$\u00A0123,45"
 
     @Test
@@ -67,8 +70,8 @@ internal class MonthlyGenerationE2eTest : InstalledE2e("finance") {
         ui.onNodeWithTag(unselected).assertIsOff()
         ui.onNodeWithTag("monthly-generation-member-${actor("owner").getString("id")}").assertDoesNotExist()
         ui.onNodeWithTag("monthly-generation-review").assertIsNotEnabled()
-        input("monthly-generation-month", month)
-        input("monthly-generation-due", due)
+        ui.onNodeWithText(monthTitle).assertIsDisplayed()
+        ui.onNodeWithText(due).assertIsDisplayed()
         input("monthly-generation-amount", value)
         click(selected, scroll = true)
         ui.onNodeWithTag(selected).assertIsOn()
@@ -79,7 +82,7 @@ internal class MonthlyGenerationE2eTest : InstalledE2e("finance") {
     }
 
     private fun assertReview(reviewAmount: String = amount) {
-        ui.onNodeWithText("Mês $month · Vencimento $due\n$reviewAmount por pessoa · Pessoas selecionadas: 1")
+        ui.onNodeWithText("Mês $monthTitle · Vencimento $due\n$reviewAmount por pessoa · Pessoas selecionadas: 1")
             .performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("E2E finance-athlete").assertIsDisplayed()
         ui.onNodeWithText("E2E finance-other").assertDoesNotExist()
@@ -103,7 +106,7 @@ internal class MonthlyGenerationE2eTest : InstalledE2e("finance") {
             assertEquals(actor("athlete").getString("id"), charge.getString("memberId"))
             assertEquals("MONTHLY", charge.getString("kind"))
             assertEquals(month, charge.getString("month"))
-            assertEquals("2026-08-12", charge.getString("dueDate"))
+            assertEquals(today.toString(), charge.getString("dueDate"))
             assertEquals(12345L, charge.getLong("amountCents"))
             assertEquals("PENDING", charge.getString("status"))
         }

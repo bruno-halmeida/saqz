@@ -78,6 +78,7 @@ internal fun GameDateTimeWheel(
     onHourChange: (Int) -> Unit,
     onMinuteChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    showTime: Boolean = true,
 ) {
     val metrics = SaqzTheme.metrics
     val itemHeight = WheelItemHeight
@@ -95,6 +96,7 @@ internal fun GameDateTimeWheel(
             wheelHeight = wheelHeight,
             modifier = Modifier.weight(1f),
         )
+        if (!showTime) return@Row
         WheelColumn(
             items = state.hours.map { it.toString().padStart(2, '0') },
             selectedIndex = state.selectedHour,

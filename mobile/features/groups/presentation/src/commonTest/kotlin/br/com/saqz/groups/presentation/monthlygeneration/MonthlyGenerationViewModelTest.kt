@@ -89,8 +89,7 @@ class MonthlyGenerationViewModelTest {
         )
         invalid.forEach { form ->
             val gateway = MonthlyRecordingGateway()
-            val vm = monthlyVm(gateway)
-            vm.fill(form)
+            val vm = monthlyVm(gateway, seeded(form))
             vm.onIntent(MonthlyGenerationIntent.Review)
             vm.onIntent(MonthlyGenerationIntent.Confirm)
             assertFalse(vm.state.value.reviewing, form.toString())
@@ -164,8 +163,76 @@ class MonthlyGenerationViewModelTest {
         assertEquals(4500L, gateway.commands[2].second.amountCents)
     }
 
+    @Test fun `due date defaults to the group due day in the current month`() {
+        val vm = monthlyVm(groups = groupWithDueDay(10))
+        assertEquals("2026-08", vm.state.value.form.month)
+        assertEquals("10/08/2026", vm.state.value.form.dueDate)
+    }
+
+    @Test fun `without a group due day the default due date is today`() {
+        val vm = monthlyVm(groups = groupWithDueDay(null), now = Instant.parse("2026-08-12T15:00:00Z"))
+        assertEquals("2026-08", vm.state.value.form.month)
+        assertEquals("12/08/2026", vm.state.value.form.dueDate)
+    }
+
+    @Test fun `changing the month moves the due date to the group due day and clamps at month end`() {
+        val vm = monthlyVm(groups = groupWithDueDay(31))
+        vm.onIntent(MonthlyGenerationIntent.NextMonth)
+        assertEquals("2026-09", vm.state.value.form.month)
+        assertEquals("30/09/2026", vm.state.value.form.dueDate)
+        repeat(5) { vm.onIntent(MonthlyGenerationIntent.NextMonth) }
+        assertEquals("2027-02", vm.state.value.form.month)
+        assertEquals("28/02/2027", vm.state.value.form.dueDate)
+        repeat(7) { vm.onIntent(MonthlyGenerationIntent.PreviousMonth) }
+        assertEquals("2026-07", vm.state.value.form.month)
+        assertEquals("31/07/2026", vm.state.value.form.dueDate)
+    }
+
+    @Test fun `without a group due day the chosen day follows the month`() {
+        val vm = monthlyVm(groups = groupWithDueDay(null))
+        vm.onIntent(MonthlyGenerationIntent.DueDateChanged("12/08/2026"))
+        vm.onIntent(MonthlyGenerationIntent.NextMonth)
+        assertEquals("12/09/2026", vm.state.value.form.dueDate)
+    }
+
+    @Test fun `month selector stops a year before and after the current month`() {
+        val vm = monthlyVm()
+        repeat(20) { vm.onIntent(MonthlyGenerationIntent.PreviousMonth) }
+        assertEquals("2025-08", vm.state.value.form.month)
+        assertFalse(vm.state.value.canGoToPreviousMonth)
+        assertTrue(vm.state.value.canGoToNextMonth)
+        repeat(30) { vm.onIntent(MonthlyGenerationIntent.NextMonth) }
+        assertEquals("2027-08", vm.state.value.form.month)
+        assertTrue(vm.state.value.canGoToPreviousMonth)
+        assertFalse(vm.state.value.canGoToNextMonth)
+    }
+
+    @Test fun `request keeps the same wire formats after choosing another month`() {
+        val gateway = MonthlyRecordingGateway()
+        val vm = monthlyVm(gateway, groups = groupWithDueDay(10))
+        vm.onIntent(MonthlyGenerationIntent.AmountChanged("80,00"))
+        vm.onIntent(MonthlyGenerationIntent.ToggleMember("ana"))
+        vm.onIntent(MonthlyGenerationIntent.NextMonth)
+        vm.onIntent(MonthlyGenerationIntent.Review)
+        vm.onIntent(MonthlyGenerationIntent.Confirm)
+        val sent = gateway.commands.single().second
+        assertEquals(MonthlyChargeCommand(sent.requestId, "2026-09", 8000, "2026-09-10", setOf("ana")), sent)
+    }
+
+    @Test fun `changing the month rotates the request key and leaves review`() {
+        val gateway = MonthlyRecordingGateway()
+        val vm = monthlyVm(gateway)
+        vm.fill(validForm)
+        vm.onIntent(MonthlyGenerationIntent.Review)
+        assertTrue(vm.state.value.reviewing)
+        vm.onIntent(MonthlyGenerationIntent.NextMonth)
+        assertFalse(vm.state.value.reviewing)
+        vm.onIntent(MonthlyGenerationIntent.Review)
+        vm.onIntent(MonthlyGenerationIntent.Confirm)
+        assertEquals("2026-09", gateway.commands.single().second.month)
+    }
+
     private fun MonthlyGenerationViewModel.fill(form: MonthlyForm) {
-        onIntent(MonthlyGenerationIntent.MonthChanged(form.month))
         onIntent(MonthlyGenerationIntent.AmountChanged(form.amount))
         onIntent(MonthlyGenerationIntent.DueDateChanged(form.dueDate))
         form.selectedIds.forEach { onIntent(MonthlyGenerationIntent.ToggleMember(it)) }
@@ -174,12 +241,24 @@ class MonthlyGenerationViewModelTest {
 
 internal val validForm = MonthlyForm("2026-08", "123,45", "12/08/2026", setOf("ana"))
 
+internal fun seeded(form: MonthlyForm) = SavedStateHandle().apply {
+    set("monthly-generation-month", form.month)
+    set("monthly-generation-amount", form.amount)
+    set("monthly-generation-due", form.dueDate)
+    set("monthly-generation-members", form.selectedIds.toList())
+}
+
+internal fun groupWithDueDay(day: Int?) = FakeGroupGateway(SaqzResult.Success(sampleVersionedGroup(
+    sampleGroup().copy(financeDefaults = GroupFinanceDefaults(null, 8000, day)),
+)))
+
 internal fun monthlyVm(
     gateway: MonthlyRecordingGateway = MonthlyRecordingGateway(),
     saved: SavedStateHandle = SavedStateHandle(),
     groups: FakeGroupGateway = FakeGroupGateway(SaqzResult.Success(sampleVersionedGroup(
         sampleGroup().copy(financeDefaults = GroupFinanceDefaults(null, 8000, 31)),
     ))),
+    now: Instant = Instant.parse("2026-09-01T01:00:00Z"),
     athletes: FakeAthleteGateway = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(
         sampleRosterEntry("ana").copy(displayName = "Ana"),
         sampleRosterEntry("bia").copy(displayName = "Bia"),
@@ -188,7 +267,7 @@ internal fun monthlyVm(
     ))),
 ) = MonthlyGenerationViewModel(
     "selected-group", saved, groups, athletes, gateway,
-    GroupNowPort { Instant.parse("2026-09-01T01:00:00Z") },
+    GroupNowPort { now },
 )
 
 internal class MonthlyRecordingGateway : OrganizerFinanceGateway by FakeOrganizerFinanceGateway() {

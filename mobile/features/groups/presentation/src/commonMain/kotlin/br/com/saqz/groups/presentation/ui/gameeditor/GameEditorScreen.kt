@@ -658,7 +658,7 @@ private fun DateTimeFields(
 }
 
 @Composable
-private fun PickerRow(
+internal fun PickerRow(
     label: String,
     value: String,
     placeholder: String,

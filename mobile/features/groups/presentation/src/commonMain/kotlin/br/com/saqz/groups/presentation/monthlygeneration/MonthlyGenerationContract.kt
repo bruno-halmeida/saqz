@@ -21,14 +21,21 @@ data class MonthlyGenerationState(
     val loadFailed: Boolean = false,
     val members: List<MonthlyMemberUi> = emptyList(),
     val form: MonthlyForm = MonthlyForm(),
+    /** Primeiro e último mês (AAAA-MM) que o seletor oferece. */
+    val earliestMonth: String = "",
+    val latestMonth: String = "",
     val reviewing: Boolean = false,
     val isSaving: Boolean = false,
     val error: GroupUiError? = null,
-)
+) {
+    val canGoToPreviousMonth: Boolean get() = form.month > earliestMonth
+    val canGoToNextMonth: Boolean get() = form.month < latestMonth
+}
 
 sealed interface MonthlyGenerationIntent {
     data object Retry : MonthlyGenerationIntent
-    data class MonthChanged(val value: String) : MonthlyGenerationIntent
+    data object PreviousMonth : MonthlyGenerationIntent
+    data object NextMonth : MonthlyGenerationIntent
     data class AmountChanged(val value: String) : MonthlyGenerationIntent
     data class DueDateChanged(val value: String) : MonthlyGenerationIntent
     data class ToggleMember(val id: String) : MonthlyGenerationIntent

@@ -1,8 +1,11 @@
 <resources>
     <string name="monthly_generation_title">Criar cobranças do mês</string>
     <string name="monthly_generation_note">Cada pessoa selecionada terá uma cobrança com o valor informado. As cobranças que já existem neste mês serão mantidas.\n\nCriar as cobranças não registra pagamentos nem envia mensagens. A criação automática de cobranças continua como está.</string>
-    <string name="monthly_generation_month">Mês (AAAA-MM)</string>
-    <string name="monthly_generation_due">Vencimento (DD/MM/AAAA)</string>
+    <string name="monthly_generation_month">Mês</string>
+    <string name="monthly_generation_due">Vencimento</string>
+    <string name="monthly_generation_previous_month">Mês anterior</string>
+    <string name="monthly_generation_next_month">Próximo mês</string>
+    <string name="monthly_generation_due_save">Salvar vencimento</string>
     <string name="monthly_generation_amount">Valor por pessoa (R$)</string>
     <string name="monthly_generation_members">Selecione os mensalistas ativos</string>
     <string name="monthly_generation_empty">Não há mensalistas ativos neste grupo.</string>

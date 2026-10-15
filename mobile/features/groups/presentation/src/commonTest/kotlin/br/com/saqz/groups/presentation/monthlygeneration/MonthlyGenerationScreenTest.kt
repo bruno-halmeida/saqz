@@ -1,7 +1,12 @@
 package br.com.saqz.groups.presentation.monthlygeneration
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -45,7 +50,7 @@ class MonthlyGenerationScreenTest {
                 )
             }
         }
-        onNodeWithText("Mês 2026-08 · Vencimento 12/08/2026\nR$\u00A0123,45 por pessoa · Pessoas selecionadas: 1").assertExists()
+        onNodeWithText("Mês agosto de 2026 · Vencimento 12/08/2026\nR$\u00A0123,45 por pessoa · Pessoas selecionadas: 1").assertExists()
         onNodeWithText("Ana").assertExists()
         onNodeWithText("Bia").assertDoesNotExist()
         onNodeWithTag(MonthlyGenerationTags.Confirm).assertIsNotEnabled()
@@ -75,7 +80,6 @@ class MonthlyGenerationScreenTest {
         var backed = 0
         setContent { SaqzTheme { MonthlyGenerationRoot("selected-group", { backed++ }, { generated++ }, vm) } }
         onNodeWithText("80,00").performTextReplacement("123,45")
-        onNodeWithText("31/08/2026").performTextReplacement("12/08/2026")
         onNodeWithTag(MonthlyGenerationTags.member("ana")).performScrollTo().performClick()
         onNodeWithTag(MonthlyGenerationTags.Review).performScrollTo().performClick()
         onNodeWithTag(MonthlyGenerationTags.Summary).assertExists()
@@ -95,6 +99,40 @@ class MonthlyGenerationScreenTest {
         assertEquals(gateway.commands[0], gateway.commands[1])
         assertEquals(setOf("ana"), gateway.commands[1].second.memberIds)
         assertEquals(12345L, gateway.commands[1].second.amountCents)
+        assertEquals("2026-08", gateway.commands[1].second.month)
+        assertEquals("2026-08-31", gateway.commands[1].second.dueDate)
+    }
+
+    @Test fun `month and due date are pickers with default values and no text field`() = runComposeUiTest {
+        setContent { SaqzTheme { MonthlyGenerationScreen(MonthlyGenerationState(isLoading = false, form = validForm), {}, {}) } }
+        onNodeWithTag(MonthlyGenerationTags.Month).assertExists()
+        onNodeWithText("agosto de 2026").assertExists()
+        onNodeWithText("12/08/2026").assertExists()
+        onNodeWithTag(MonthlyGenerationTags.Month).assert(!hasSetTextAction())
+        onNodeWithTag(MonthlyGenerationTags.Due).assert(!hasSetTextAction())
+        onNodeWithText("Mês (AAAA-MM)").assertDoesNotExist()
+        onNodeWithText("Vencimento (DD/MM/AAAA)").assertDoesNotExist()
+    }
+
+    @Test fun `month buttons send intents and respect the limits`() = runComposeUiTest {
+        val intents = mutableListOf<MonthlyGenerationIntent>()
+        var state by mutableStateOf(MonthlyGenerationState(isLoading = false, form = validForm, earliestMonth = "2026-08", latestMonth = "2027-08"))
+        setContent { SaqzTheme { MonthlyGenerationScreen(state, {}, { intents += it }) } }
+        onNodeWithTag(MonthlyGenerationTags.PreviousMonth).performScrollTo().assertIsNotEnabled()
+        onNodeWithTag(MonthlyGenerationTags.NextMonth).performScrollTo().performClick()
+        assertEquals(listOf<MonthlyGenerationIntent>(MonthlyGenerationIntent.NextMonth), intents)
+        state = state.copy(form = validForm.copy(month = "2027-08"))
+        onNodeWithTag(MonthlyGenerationTags.NextMonth).assertIsNotEnabled()
+    }
+
+    @Test fun `due picker opens on the chosen month and saves the selected day`() = runComposeUiTest {
+        val intents = mutableListOf<MonthlyGenerationIntent>()
+        setContent { SaqzTheme { MonthlyGenerationScreen(MonthlyGenerationState(isLoading = false, form = validForm), {}, { intents += it }) } }
+        onNodeWithTag(MonthlyGenerationTags.Due).performScrollTo().performClick()
+        onNodeWithTag(MonthlyGenerationTags.DuePicker).assertExists()
+        onNodeWithTag(MonthlyGenerationTags.DueSave).performClick()
+        waitForIdle()
+        assertEquals(listOf<MonthlyGenerationIntent>(MonthlyGenerationIntent.DueDateChanged("12/08/2026")), intents)
     }
 
     @Test fun `cashbox button opens monthly generation for selected group without writes`() = runComposeUiTest {

@@ -20,8 +20,10 @@ import br.com.saqz.groups.presentation.newentry.formatEntryCents
 import br.com.saqz.groups.presentation.newentry.parseEntryCents
 import br.com.saqz.groups.presentation.newentry.parseEntryDate
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -37,6 +39,8 @@ class MonthlyGenerationViewModel(
 ) : MviViewModel<MonthlyGenerationState, MonthlyGenerationIntent, MonthlyGenerationEffect>(MonthlyGenerationState()) {
     private var generation = 0
     private var completed = false
+    private var dueDay: Int? = null
+    private var months = "" to ""
     private var requestId = saved.get<String>(KEY_REQUEST) ?: newRequestId()
 
     init { load() }
@@ -47,7 +51,8 @@ class MonthlyGenerationViewModel(
         if (state.value.isLoading || state.value.loadFailed) return
         val form = state.value.form
         when (intent) {
-            is MonthlyGenerationIntent.MonthChanged -> edit(form.copy(month = intent.value))
+            MonthlyGenerationIntent.PreviousMonth -> shiftMonth(-1)
+            MonthlyGenerationIntent.NextMonth -> shiftMonth(1)
             is MonthlyGenerationIntent.AmountChanged -> edit(form.copy(amount = intent.value))
             is MonthlyGenerationIntent.DueDateChanged -> edit(form.copy(dueDate = intent.value))
             is MonthlyGenerationIntent.ToggleMember -> toggleMember(intent.id)
@@ -73,26 +78,39 @@ class MonthlyGenerationViewModel(
                 ?.filter { it.active && it.membershipType == AthleteMembershipType.MENSALISTA }
                 ?.map { MonthlyMemberUi(it.userId, it.displayName) }
                 ?: return@launch failLoad(GroupUiError.Network)
-            val restored = restoredForm() ?: defaults(group)
+            dueDay = group.financeDefaults?.monthlyDueDay
+            val today = now.now().toLocalDateTime(TimeZone.of(group.timeZone.id)).date
+            months = today.shiftMonths(-MONTHS_BACK).toString().take(MONTH_LENGTH) to
+                today.shiftMonths(MONTHS_AHEAD).toString().take(MONTH_LENGTH)
+            val restored = restoredForm() ?: defaults(group, today)
             val form = restored.copy(selectedIds = restored.selectedIds.intersect(members.map { it.id }.toSet()))
             if (form != restored) requestId = newRequestId()
             persist(form)
-            update { MonthlyGenerationState(isLoading = false, members = members, form = form) }
+            update {
+                MonthlyGenerationState(
+                    isLoading = false, members = members, form = form,
+                    earliestMonth = months.first, latestMonth = months.second,
+                )
+            }
         }
     }
 
-    private fun defaults(group: Group): MonthlyForm {
-        val date = now.now().toLocalDateTime(TimeZone.of(group.timeZone.id)).date
-        val month = date.toString().take(MONTH_LENGTH)
-        val day = group.financeDefaults?.monthlyDueDay ?: date.day
-        val dueDate = (day.coerceIn(1, MAX_DAY) downTo 1).firstNotNullOf { candidate ->
-            runCatching { LocalDate.parse("$month-${candidate.toString().padStart(2, '0')}") }.getOrNull()
-        }
+    private fun defaults(group: Group, today: LocalDate): MonthlyForm {
+        val month = today.toString().take(MONTH_LENGTH)
         return MonthlyForm(
             month = month,
             amount = group.financeDefaults?.monthlyFeeCents?.let(::formatEntryCents).orEmpty(),
-            dueDate = dueDate.toString().split('-').reversed().joinToString("/"),
+            dueDate = dueDateIn(month, dueDay ?: today.day),
         )
+    }
+
+    private fun shiftMonth(delta: Int) {
+        val form = state.value.form
+        val start = runCatching { LocalDate.parse("${form.month}-01") }.getOrNull() ?: return
+        val month = start.shiftMonths(delta).toString().take(MONTH_LENGTH)
+        if (month < months.first || month > months.second) return
+        val day = dueDay ?: parseEntryDate(form.dueDate)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.day
+        edit(form.copy(month = month, dueDate = dueDateIn(month, day ?: 1)))
     }
 
     private fun failLoad(error: GroupUiError) = update { it.copy(isLoading = false, loadFailed = true, error = error) }
@@ -146,6 +164,16 @@ class MonthlyGenerationViewModel(
     }
 }
 
+private fun LocalDate.shiftMonths(delta: Int): LocalDate = plus(DatePeriod(months = delta))
+
+/** Vencimento (DD/MM/AAAA) no [month] (AAAA-MM); o dia vai para o último do mês quando não existe. */
+private fun dueDateIn(month: String, day: Int): String {
+    val date = (day.coerceIn(1, MAX_DAY) downTo 1).firstNotNullOf { candidate ->
+        runCatching { LocalDate.parse("$month-${candidate.toString().padStart(2, '0')}") }.getOrNull()
+    }
+    return date.toString().split('-').reversed().joinToString("/")
+}
+
 internal fun MonthlyForm.command(requestId: String): MonthlyChargeCommand? {
     val monthStart = month.takeIf { Regex("[0-9]{4}-[0-9]{2}").matches(it) }
         ?.let { runCatching { LocalDate.parse("$it-01") }.getOrNull() }
@@ -175,5 +203,7 @@ private const val KEY_MEMBERS = "monthly-generation-members"
 private const val KEY_REQUEST = "monthly-generation-request"
 private const val MONTH_LENGTH = 7
 private const val MAX_DAY = 31
+private const val MONTHS_BACK = 12
+private const val MONTHS_AHEAD = 12
 private const val MAX_YEAR = 9999
 private const val MAX_CENTS = 99_999_999L
