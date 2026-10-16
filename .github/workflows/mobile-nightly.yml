@@ -162,7 +162,11 @@ jobs:
           cores: 4
           ram-size: 4096M
           disable-animations: true
-          script: node tests/e2e/android/run.mjs --serial emulator-5554
+          # O AVD do runner não tem teclado físico: o Gboard sobe a cada campo e cobre a lista, e os testes que
+          # rolam ou conferem "visível" estouram. Sem método de entrada, o teclado não abre (o texto entra pela semântica).
+          script: |
+            adb -s emulator-5554 shell 'for ime in $(ime list -s | tr -d "\r"); do ime disable "$ime"; done'
+            node tests/e2e/android/run.mjs --serial emulator-5554
       - name: Listar os testes que falharam
         id: falhas
         if: ${{ failure() }}
