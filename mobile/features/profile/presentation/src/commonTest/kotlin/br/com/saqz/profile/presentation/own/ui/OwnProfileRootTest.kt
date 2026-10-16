@@ -139,6 +139,9 @@ class OwnProfileRootTest {
             }
         }
 
+        // A carga do `init` roda na ViewModel, fora do relógio do Compose: sem esperar por ela, o pedido de
+        // recarga cai junto dela (é ignorado) ou o estado muda no meio de uma recomposição.
+        waitUntil { viewModel.state.value.user != null }
         waitForIdle()
         gateway.profile = gateway.profile.copy(
             user = gateway.profile.user.copy(
@@ -149,6 +152,7 @@ class OwnProfileRootTest {
             ),
         )
         runOnIdle { refreshVersion = 1 }
+        waitUntil { viewModel.state.value.user?.displayName == "Novo nome" }
         waitForIdle()
 
         onNodeWithText("Novo nome").assertExists()
