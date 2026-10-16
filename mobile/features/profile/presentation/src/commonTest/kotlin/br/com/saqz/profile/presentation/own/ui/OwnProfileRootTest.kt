@@ -18,16 +18,30 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.runComposeUiTest
 import coil3.ImageLoader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import coil3.compose.LocalPlatformContext
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.profile.fake.FakeProfileGateway
 import br.com.saqz.profile.presentation.own.OwnProfileViewModel
 import br.com.saqz.profile.presentation.own.OwnProfileIntent
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-@OptIn(ExperimentalTestApi::class)
+@OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class OwnProfileRootTest {
+    // A ViewModel lança na Main. Com a Main real do iOS, a carga muda o estado numa fila que o relógio do
+    // Compose não controla e, às vezes, no meio de uma recomposição ("Unsupported concurrent change").
+    // Com a Main de teste, ela corre na mesma thread que o teste, em ordem.
+    @BeforeTest fun setMain() = Dispatchers.setMain(UnconfinedTestDispatcher())
+
+    @AfterTest fun resetMain() = Dispatchers.resetMain()
+
     @Test
     fun helpAndTermsOpenThePublishedContactAndTerms() = runComposeUiTest {
         val viewModel = OwnProfileViewModel(FakeProfileGateway())
