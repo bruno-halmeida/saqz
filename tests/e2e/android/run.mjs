@@ -93,6 +93,8 @@ try {
     SAQZ_PASSWORD_RESET_SECRET: 'disposable-local-e2e-password-reset-secret',
     SAQZ_MONTHLY_CHARGES_CRON: '-', SAQZ_ASAAS_API_KEY: '', SAQZ_ASAAS_WEBHOOK_TOKEN: '',
     SAQZ_NOTIFICATIONS_REMINDER_ENABLED: 'false',
+    // O servidor nasce com cobranças travadas (lançamento); as jornadas financeiras precisam delas abertas.
+    SAQZ_RECEIVABLES_LAUNCH_ENABLED: 'true',
     SAQZ_MAIL_HOST: '127.0.0.1', SAQZ_MAIL_PORT: '1', SAQZ_MAIL_STARTTLS: 'false',
   });
   await until(() => healthy('http://127.0.0.1:18080/actuator/health'), 'Spring/Flyway');

@@ -42,7 +42,7 @@ internal class GroupLeaveE2eTest : InstalledE2e("leave") {
         waitTag("group-list-group-$secondGroup")
         ui.onNodeWithTag("group-list-group-$group").assertDoesNotExist()
         openGroup(secondGroup)
-        waitTag("group-details-shortcut-chat")
+        waitTag("group-details-shortcut-notices")
         ui.onNodeWithTag("group-details").assertIsDisplayed()
         back()
         logout()
