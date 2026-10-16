@@ -41,7 +41,13 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
     protected val auth get() = AndroidFirebaseBootstrap.initialize(InstrumentationRegistry.getInstrumentation().targetContext)
 
     protected fun waitTag(tag: String) {
-        ui.waitUntil(20_000) { ui.onAllNodesWithTag(tag).fetchSemanticsNodes().size == 1 }
+        try {
+            ui.waitUntil(20_000) { ui.onAllNodesWithTag(tag).fetchSemanticsNodes().size == 1 }
+        } catch (failure: ComposeTimeoutException) {
+            // Mostra o que havia na tela: sem isso, o timeout não diz se faltou carga, rolagem ou outra tela.
+            ui.onRoot(useUnmergedTree = true).printToLog("E2eFailure[$tag]")
+            throw failure
+        }
     }
 
     protected fun waitText(text: String) {
