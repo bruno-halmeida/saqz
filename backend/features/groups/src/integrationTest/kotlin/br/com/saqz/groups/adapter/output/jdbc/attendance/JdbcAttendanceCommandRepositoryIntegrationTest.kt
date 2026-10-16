@@ -54,6 +54,57 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         assertEquals(1, count("attendance_events"))
         assertEquals(1, int("SELECT count(*) FROM group_charges WHERE member_user_id='${f.member}'"))
     }
+    @Test fun `vou, nao vou, vou with the same two request ids ends confirmed with three events`() {
+        val f = fixture()
+        val going = UUID.randomUUID()
+        val notGoing = UUID.randomUUID()
+
+        f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM, requestId = going)
+        f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE, requestId = notGoing)
+        val last = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM, requestId = going))
+        val retry = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM, requestId = going))
+
+        assertEquals(AttendanceStatus.CONFIRMED, last.status)
+        assertEquals(last, retry)
+        assertEquals("CONFIRMED", status(f.member))
+        assertEquals(3, count("attendance_events"))
+    }
+
+    @Test fun `vou after nao vou on a full game with the same request id goes to the waitlist`() {
+        val f = fixture(capacity = 2)
+        repeat(2) { attendance(f, member(f.group, "confirmed-$it"), "CONFIRMED") }
+        val going = UUID.randomUUID()
+        val notGoing = UUID.randomUUID()
+
+        f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM, requestId = going)
+        f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE, requestId = notGoing)
+        val last = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM, requestId = going))
+
+        assertEquals(AttendanceStatus.WAITLISTED, last.status)
+        assertEquals(3, count("attendance_events"))
+    }
+
+    @Test fun `two identical simultaneous responses record a single event`() {
+        val f = fixture()
+        val requestId = UUID.randomUUID()
+        val barrier = CyclicBarrier(3)
+        val executor = Executors.newFixedThreadPool(2)
+        val results = try {
+            val futures = (1..2).map {
+                executor.submit<AttendanceCommandResult> {
+                    barrier.await()
+                    f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM, requestId = requestId)
+                }
+            }
+            barrier.await()
+            futures.map { it.get() }
+        } finally { executor.shutdownNow() }
+
+        assertEquals(1, results.map { success(it) }.toSet().size)
+        assertEquals(1, count("attendance_events"))
+        assertEquals(1, count("game_attendance"))
+    }
+
     @Test fun `attendance row stores member nickname snapshot at creation`() { val f = fixture(); execute("UPDATE access_users SET nickname='Apelido' WHERE id='${f.member}'"); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals("Apelido", string("SELECT member_display_name FROM game_attendance WHERE member_user_id='${f.member}'")) }
     @Test fun `a status update never rewrites the attendance row's member display name snapshot`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); execute("UPDATE access_users SET display_name='Renamed' WHERE id='${f.member}'"); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals("User", string("SELECT member_display_name FROM game_attendance WHERE member_user_id='${f.member}'")) }
     @Test fun `renaming a member changes only future attendance snapshots`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); execute("UPDATE access_users SET display_name='Renamed' WHERE id='${f.member}'"); assertEquals("User", string("SELECT member_display_name FROM game_attendance WHERE member_user_id='${f.member}'")); val secondGame = UUID.randomUUID(); execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$secondGame','${f.group}','Treino 2',(CURRENT_DATE + 3),TIME '19:30','America/Sao_Paulo',now() + interval '3 days',90,now() + interval '2 days','Arena','Rua Central 100',2,2500,'PUBLISHED',now(),now())"); success(f.service.execute(f.member, f.group, secondGame, intent = AttendanceIntent.CONFIRM)); assertEquals("Renamed", string("SELECT member_display_name FROM game_attendance WHERE game_id='$secondGame'")) }

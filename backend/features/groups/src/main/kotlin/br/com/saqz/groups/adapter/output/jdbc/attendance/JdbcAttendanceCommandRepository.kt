@@ -549,7 +549,12 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             WHERE event.group_id=:group AND event.game_id=:game
               AND event.actor_user_id=:actor AND event.request_id=:request
               AND event.source='SELF'
-            ORDER BY event.occurred_at,event.id
+              AND NOT EXISTS (
+                  SELECT 1 FROM attendance_events later
+                  WHERE later.game_id=event.game_id AND later.member_user_id=event.member_user_id
+                    AND later.guest_seq=event.guest_seq AND later.seq>event.seq
+              )
+            ORDER BY event.seq DESC
             LIMIT 1
         """
         const val CAPACITY_AGGREGATE = """
