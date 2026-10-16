@@ -74,11 +74,12 @@ jobs:
         id: falhas
         if: ${{ failure() }}
         run: |
+          # Sem `-e`: grep sem resultado devolve 1 e, com pipefail, derrubava o passo antes de gravar a lista.
           set -uo pipefail
           {
             python3 mobile/ci/failed_tests.py mobile
-            grep -E "Test Case .* failed" mobile/ios-app/xcodebuild-test.log 2>/dev/null | sed -E 's/^.*Test Case .(.*). failed.*$/Swift · \1/'
-            grep -E "^[[:space:]]*✖" node-test.log 2>/dev/null | sed -E 's/^[[:space:]]*✖ (.*) \([0-9.]+ms\)$/Node · \1/' | sort -u
+            grep -E "Test Case .* failed" mobile/ios-app/xcodebuild-test.log 2>/dev/null | sed -E 's/^.*Test Case .(.*). failed.*$/Swift · \1/' || true
+            grep -E "^[[:space:]]*✖" node-test.log 2>/dev/null | sed -E 's/^[[:space:]]*✖ (.*) \([0-9.]+ms\)$/Node · \1/' | sort -u || true
           } | awk 'NF' | sort -u | head -100 > falhas.txt
           { echo "### Testes que falharam"; echo; sed 's/^/- /' falhas.txt; } >> "$GITHUB_STEP_SUMMARY"
           { echo "lista<<FALHAS_EOF"; cat falhas.txt; echo "FALHAS_EOF"; } >> "$GITHUB_OUTPUT"

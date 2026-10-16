@@ -27,7 +27,8 @@ val hostScriptsTest = tasks.register<Exec>("hostScriptsTest") {
     group = "verification"
     description = "Testes de saqz-loader.js e saqz-sw.js (node --test)."
     workingDir = layout.projectDirectory.asFile
-    commandLine("node", "--test", "src/wasmJsTest/node")
+    // Arquivos explícitos: o Node 22+ não aceita diretório em --test (o 20 aceitava).
+    commandLine("node", "--test", "src/wasmJsTest/node/saqz-loader.test.mjs", "src/wasmJsTest/node/saqz-sw.test.mjs")
 }
 tasks.matching { it.name == "check" }.configureEach { dependsOn(hostScriptsTest) }
 

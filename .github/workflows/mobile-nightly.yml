@@ -23,7 +23,6 @@ concurrency:
 jobs:
   checar:
     name: A main mudou?
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -40,6 +39,7 @@ jobs:
           set -euo pipefail
           ultimo=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow mobile-nightly.yml --branch main \
             --status success --limit 1 --json headSha --jq '.[0].headSha // ""')
+          # O agendamento só vale para a main (o cron roda no branch padrão); o disparo à mão roda em qualquer branch.
           if [[ "$EVENTO" == "schedule" && "$ultimo" == "$GITHUB_SHA" ]]; then
             echo "executar=false" >> "$GITHUB_OUTPUT"
             echo "A main (\`${GITHUB_SHA:0:9}\`) não mudou desde a última noite que passou; nada a testar." >> "$GITHUB_STEP_SUMMARY"
@@ -66,6 +66,8 @@ jobs:
     needs: checar
     if: needs.checar.outputs.executar == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      falhas: ${{ steps.falhas.outputs.lista }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -89,9 +91,21 @@ jobs:
           api-level: 30
           target: google_apis
           arch: x86_64
+          # Sem perfil o AVD nasce com a tela de 320x480, onde a lista do Perfil não compõe "Sair" e os E2E estouram.
+          profile: pixel_6
+          cores: 4
+          ram-size: 4096M
           disable-animations: true
           working-directory: mobile
           script: ./gradlew :android-app:connectedDevDebugAndroidTest
+      - name: Listar os testes que falharam
+        id: falhas
+        if: ${{ failure() }}
+        run: |
+          set -uo pipefail
+          python3 mobile/ci/failed_tests.py mobile | awk 'NF' | sort -u | head -100 > falhas.txt
+          { echo "### Testes que falharam"; echo; sed 's/^/- /' falhas.txt; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "lista<<FALHAS_EOF"; cat falhas.txt; echo "FALHAS_EOF"; } >> "$GITHUB_OUTPUT"
       - name: Guardar os relatórios
         if: ${{ failure() }}
         uses: actions/upload-artifact@v7
@@ -108,6 +122,8 @@ jobs:
     needs: checar
     if: needs.checar.outputs.executar == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      falhas: ${{ steps.falhas.outputs.lista }}
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
@@ -141,8 +157,20 @@ jobs:
           api-level: 30
           target: google_apis
           arch: x86_64
+          # Sem perfil o AVD nasce com a tela de 320x480, onde a lista do Perfil não compõe "Sair" e os E2E estouram.
+          profile: pixel_6
+          cores: 4
+          ram-size: 4096M
           disable-animations: true
           script: node tests/e2e/android/run.mjs --serial emulator-5554
+      - name: Listar os testes que falharam
+        id: falhas
+        if: ${{ failure() }}
+        run: |
+          set -uo pipefail
+          python3 mobile/ci/failed_tests.py mobile | awk 'NF' | sort -u | head -100 > falhas.txt
+          { echo "### Testes que falharam"; echo; sed 's/^/- /' falhas.txt; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "lista<<FALHAS_EOF"; cat falhas.txt; echo "FALHAS_EOF"; } >> "$GITHUB_OUTPUT"
       - name: Guardar os relatórios
         if: ${{ failure() }}
         uses: actions/upload-artifact@v7
@@ -160,6 +188,8 @@ jobs:
     needs: checar
     if: needs.checar.outputs.executar == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      falhas: ${{ steps.falhas.outputs.lista }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
@@ -170,11 +200,22 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
       - name: Gradle com cache
         uses: gradle/actions/setup-gradle@v6
       - name: wasmJsNodeTest e scripts do loader e do service worker
         working-directory: mobile
         run: ./gradlew :web-app:wasmJsNodeTest :web-app:hostScriptsTest --continue
+      - name: Listar os testes que falharam
+        id: falhas
+        if: ${{ failure() }}
+        run: |
+          set -uo pipefail
+          python3 mobile/ci/failed_tests.py mobile | awk 'NF' | sort -u | head -100 > falhas.txt
+          { echo "### Testes que falharam"; echo; sed 's/^/- /' falhas.txt; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "lista<<FALHAS_EOF"; cat falhas.txt; echo "FALHAS_EOF"; } >> "$GITHUB_OUTPUT"
       - name: Guardar os relatórios
         if: ${{ failure() }}
         uses: actions/upload-artifact@v7
@@ -187,7 +228,8 @@ jobs:
   relatar:
     name: Issue de acompanhamento
     needs: [checar, verificar, testes-ios, instrumentados, e2e-android, web-app]
-    if: ${{ !cancelled() && needs.checar.outputs.executar == 'true' }}
+    # Só a main abre ou fecha a issue; execuções à mão em outros branches (validação) não mexem nela.
+    if: ${{ !cancelled() && needs.checar.outputs.executar == 'true' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -196,6 +238,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TITULO: Testes noturnos do app falharam
       FALHAS_IOS: ${{ needs.testes-ios.outputs.falhas }}
+      FALHAS_INSTRUMENTADOS: ${{ needs.instrumentados.outputs.falhas }}
+      FALHAS_E2E: ${{ needs.e2e-android.outputs.falhas }}
+      FALHAS_WEB: ${{ needs.web-app.outputs.falhas }}
       EXECUCAO: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       R_VERIFICAR: ${{ needs.verificar.result }}
       R_IOS: ${{ needs.testes-ios.result }}
@@ -220,8 +265,9 @@ jobs:
             exit 0
           fi
           cerca='```'
-          corpo=$(printf 'Execução: %s\nCommit: %s\n\nEtapas que não passaram:\n\n%s\nTestes do simulador iOS, Swift e Node que falharam:\n\n%s\n%s\n%s\n\nOs relatórios ficam como artefatos da execução (relatorios-*).' \
-            "$EXECUCAO" "${GITHUB_SHA:0:9}" "$falhou" "$cerca" "${FALHAS_IOS:-(nenhum listado)}" "$cerca")
+          testes=$(printf '%s\n%s\n%s\n%s' "$FALHAS_IOS" "$FALHAS_INSTRUMENTADOS" "$FALHAS_E2E" "$FALHAS_WEB" | awk 'NF')
+          corpo=$(printf 'Execução: %s\nCommit: %s\n\nEtapas que não passaram:\n\n%s\nTestes que falharam (iOS, Swift, Node, instrumentados, E2E e web app):\n\n%s\n%s\n%s\n\nOs relatórios ficam como artefatos da execução (relatorios-*).' \
+            "$EXECUCAO" "${GITHUB_SHA:0:9}" "$falhou" "$cerca" "${testes:-(nenhum listado)}" "$cerca")
           if [[ -n "$numero" ]]; then
             gh issue comment "$numero" --repo "$GITHUB_REPOSITORY" --body "$corpo"
           else
