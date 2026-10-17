@@ -36,12 +36,12 @@ data class GroupMessage(
 data class CommunicationPage<T>(val items: List<T>, val nextCursor: Long?)
 data class GroupNotification(val sequence: Long, val message: GroupMessage, val read: Boolean)
 
-/** Ordem das seções no corpo: confirmados, lista de espera e fora. */
+/** Ordem das seções no corpo: confirmados, lista de espera e fora. A espera vem na ordem de promoção. */
 data class ReminderRoster(val confirmed: List<String>, val waitlisted: List<String>, val declined: List<String>)
 
 /**
- * [confirmationDeadline] e [capacity] só vêm preenchidos nos candidatos do lembrete automático; sem eles o
- * corpo do lembrete omite as linhas de prazo e vagas (aviso manual, prazo vencido e janela de 24 h).
+ * [confirmationDeadline] e [capacity] vêm preenchidos no lembrete automático e no "Avisar" manual; sem eles o
+ * corpo do lembrete omite as linhas de prazo e vagas (janela de 24 h).
  */
 data class ReminderGame(
     val localDate: LocalDate,

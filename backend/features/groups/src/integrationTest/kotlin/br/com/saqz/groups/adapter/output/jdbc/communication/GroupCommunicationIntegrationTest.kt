@@ -173,8 +173,9 @@ class GroupCommunicationIntegrationTest {
         val request = UUID.randomUUID()
         val reminder = service.remind(owner, group, game, request).success()
         assertEquals(1, reminder.recipientCount)
-        assertEquals(
-            "Jogo: domingo, 20/09 às 19:30\nLocal: Arena\n\n✅ Confirmados:\nAna\n\n🕒 Lista de espera:\nCaio\n\n❌ Fora:\nBia",
+        assertTrue(
+            Regex("Jogo: domingo, 20/09 às 19:30\nLocal: Arena\nConfirmações até \\S+ \\d{2}h\\d{2}\nVagas: 1/12\n\n" +
+                "✅ Confirmados:\nAna\n\n🕒 Lista de espera:\nCaio\n\n❌ Fora:\nBia").matches(reminder.body),
             reminder.body,
         )
         assertFalse(reminder.body.contains("Inactive Person"))

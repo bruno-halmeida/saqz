@@ -89,6 +89,13 @@ class ReminderMessageTest {
         )
     }
 
+    @Test fun `keeps the waitlist in the order it is given, which is the promotion order`() {
+        assertEquals(
+            "Jogo: domingo, 20/09 às 19:30\nLocal: Arena Central\n\n🕒 Lista de espera:\nZilda\nAna\nBruno",
+            reminderBody(game(), ReminderRoster(emptyList(), listOf("Zilda", "Ana", "Bruno"), emptyList())),
+        )
+    }
+
     @Test fun `treats the exact deadline instant as over`() {
         val deadline = Instant.parse("2026-09-17T17:00:00Z")
         assertEquals("Prazo encerrado", deadlineLine(deadline, deadline))

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.communication
 
+import br.com.saqz.groups.adapter.output.jdbc.attendance.WaitlistPositionSql
 import br.com.saqz.groups.application.communication.AttendanceWindowCandidate
 import br.com.saqz.groups.application.communication.GroupCommunicationRepository
 import br.com.saqz.groups.application.communication.GroupMessage
@@ -162,12 +163,15 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
     ).param("game", gameId).param("id", messageId).query(Boolean::class.java).single()
 
     override fun reminderGame(groupId: UUID, gameId: UUID): ReminderGame? = jdbc.sql(
-        "SELECT local_date, local_time, venue_name FROM games WHERE group_id = :group AND id = :game " +
+        "SELECT local_date, local_time, venue_name, confirmation_deadline, capacity FROM games " +
+            "WHERE group_id = :group AND id = :game " +
             "AND status = 'PUBLISHED' AND starts_at > now() AND confirmation_deadline > now()",
     ).param("group", groupId).param("game", gameId).query { rs, _ -> ReminderGame(
         localDate = rs.getObject("local_date", LocalDate::class.java),
         localTime = rs.getObject("local_time", LocalTime::class.java),
         venue = rs.getString("venue_name"),
+        confirmationDeadline = rs.getTimestamp("confirmation_deadline").toInstant(),
+        capacity = rs.getInt("capacity"),
     ) }.optional().orElse(null)
 
     override fun reminderRoster(groupId: UUID, gameId: UUID): ReminderRoster {
@@ -182,9 +186,14 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             JOIN group_memberships membership
                 ON membership.group_id = attendance.group_id
                 AND membership.user_id = attendance.member_user_id AND membership.active
+            JOIN games game ON game.id = attendance.game_id AND game.group_id = attendance.group_id
+            JOIN access_groups ag ON ag.id = game.group_id
             WHERE attendance.game_id = :game AND attendance.group_id = :group
               AND (attendance.guest_seq = 0 OR attendance.status <> 'DECLINED')
-            ORDER BY lower(attendance.member_display_name), attendance.member_display_name
+            ORDER BY CASE WHEN attendance.status = 'WAITLISTED'
+                          THEN ${WaitlistPositionSql.tier("attendance", "membership", "game", "ag")} ELSE 0 END,
+                     CASE WHEN attendance.status = 'WAITLISTED' THEN attendance.waitlist_sequence END NULLS FIRST,
+                     lower(attendance.member_display_name), attendance.member_display_name
             """.trimIndent(),
         ).param("group", groupId).param("game", gameId)
             .query { rs, _ -> rs.getString("bucket") to rs.getString("name") }.list()
