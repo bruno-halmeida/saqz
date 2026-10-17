@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.invite.redeem
 
+import br.com.saqz.groups.application.communication.EntryRequestNotice
 import br.com.saqz.groups.application.communication.FirstMemberNotice
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
@@ -75,6 +76,49 @@ class RedeemInviteTest {
         assertEquals(RedeemInviteResult.Pending(groupId), fixture.useCase.execute(actor, code.value))
         assertEquals(listOf(CreateEntryRequestCommand(groupId, actor, future)), fixture.repository.entryRequests)
         assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
+    @Test
+    fun `quem saiu ou foi removido volta por pedido mesmo com convite que entra direto`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = false))
+        fixture.repository.returnMarked += actor
+        val requested = mutableListOf<Pair<UUID, UUID>>()
+        val service = RedeemInvite(fixture.transaction, fixture.repository, FixedSubscriptionLimits(), fixture.clock,
+            entryRequest = EntryRequestNotice { group, user -> requested += group to user })
+
+        assertEquals(RedeemInviteResult.Pending(groupId), service.execute(actor, code.value))
+
+        assertEquals(listOf(CreateEntryRequestCommand(groupId, actor, now)), fixture.repository.entryRequests)
+        assertTrue(fixture.repository.redemptions.isEmpty())
+        assertEquals(listOf(groupId to actor), requested)
+    }
+
+    @Test
+    fun `saida antiga sem marca entra direto como antes`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = false))
+
+        assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ATHLETE), fixture.useCase.execute(actor, code.value))
+
+        assertTrue(fixture.repository.entryRequests.isEmpty())
+        assertEquals(listOf(RedeemMembershipCommand(groupId, actor)), fixture.repository.redemptions)
+    }
+
+    @Test
+    fun `quem voltou com a marca ainda confere o limite de atletas antes do pedido`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60)), athleteLimit = 0)
+        fixture.repository.returnMarked += actor
+
+        assertEquals(RedeemInviteResult.AthleteLimitExceeded, fixture.useCase.execute(actor, code.value))
+
+        assertTrue(fixture.repository.entryRequests.isEmpty())
+    }
+
+    @Test
+    fun `a marca de saida de outra pessoa nao afeta quem nunca saiu`() {
+        val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60)))
+        fixture.repository.returnMarked += UUID.randomUUID()
+
+        assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ATHLETE), fixture.useCase.execute(actor, code.value))
     }
 
     @Test
@@ -498,6 +542,7 @@ class RedeemInviteTest {
         val openMembers = mutableSetOf<UUID>()
         val openWaitlist = mutableSetOf<UUID>()
         val closed = mutableListOf<ClosedAthleteOccupancy>()
+        val returnMarked = mutableSetOf<UUID>()
 
         override fun lockAttemptWindow(userId: UUID, initializedAt: Instant): InviteAttemptWindow =
             windows[userId] ?: InviteAttemptWindow(initializedAt, 0)
@@ -528,6 +573,8 @@ class RedeemInviteTest {
             entryRequests += command
             persistedRequestAt.putIfAbsent(command.userId, command.requestedAt)
         }
+
+        override fun mustRequestReturn(groupId: UUID, userId: UUID): Boolean = userId in returnMarked
 
         override fun redeemMembership(command: RedeemMembershipCommand): GroupRole {
             redemptions += command

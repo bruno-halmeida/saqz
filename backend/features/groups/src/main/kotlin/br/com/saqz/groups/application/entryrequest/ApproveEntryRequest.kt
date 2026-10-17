@@ -66,6 +66,7 @@ class ApproveEntryRequest(
         check(membership.role == GroupRole.ATHLETE) { "Entry approval must create an athlete membership" }
         entryRequestRepository.applyAthleteProfileToMembership(groupId, userId)
         entryRequestRepository.delete(groupId, userId)
+        entryRequestRepository.clearReturnMark(groupId, userId)
         ApproveEntryRequestResult.Success(membership)
     }
 }

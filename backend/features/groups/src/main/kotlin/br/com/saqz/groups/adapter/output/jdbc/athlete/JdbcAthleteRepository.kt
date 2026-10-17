@@ -183,11 +183,11 @@ class JdbcAthleteRepository(
         check(activeGroup != null) { "Grupo excluído ou inexistente" }
         jdbc.sql(
             """
-            INSERT INTO group_membership_removals (group_id, user_id, removed_at)
-            SELECT :groupId, :userId, now()
+            INSERT INTO group_membership_removals (group_id, user_id, removed_at, requires_approval)
+            SELECT :groupId, :userId, now(), true
             FROM access_groups
             WHERE id = :groupId AND deleted_at IS NULL
-            ON CONFLICT (group_id, user_id) DO UPDATE SET removed_at = now()
+            ON CONFLICT (group_id, user_id) DO UPDATE SET removed_at = now(), requires_approval = true
             """.trimIndent(),
         )
             .param("groupId", groupId)

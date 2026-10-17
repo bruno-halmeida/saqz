@@ -66,6 +66,27 @@ class EntryRequestManagementTest {
     }
 
     @Test
+    fun `aprovar o pedido de volta limpa a marca de saida`() {
+        val fixture = fixture(role = GroupRole.OWNER)
+        fixture.entries.returnMarked += applicantId
+
+        assertIs<ApproveEntryRequestResult.Success>(fixture.approve.execute(ownerId, groupId, applicantId))
+
+        assertTrue(applicantId !in fixture.entries.returnMarked)
+        assertEquals(listOf("change", "apply", "delete", "clear"), fixture.order)
+    }
+
+    @Test
+    fun `recusar o pedido de volta mantem a marca de saida`() {
+        val fixture = fixture(role = GroupRole.OWNER)
+        fixture.entries.returnMarked += applicantId
+
+        assertIs<RejectEntryRequestResult.Success>(fixture.reject.execute(ownerId, groupId, applicantId))
+
+        assertTrue(applicantId in fixture.entries.returnMarked)
+    }
+
+    @Test
     fun `approval rechecks plan limit before creating membership`() {
         val fixture = fixture(role = GroupRole.OWNER, athleteLimit = 1)
         fixture.entries.occupancy = occupancy(openMembers = setOf(UUID.randomUUID()))
@@ -177,7 +198,7 @@ class EntryRequestManagementTest {
         fixture.approve.execute(ownerId, groupId, applicantId)
 
         assertEquals(listOf(applicantId), fixture.entries.applied)
-        assertEquals(listOf("change", "apply", "delete"), fixture.order)
+        assertEquals(listOf("change", "apply", "delete", "clear"), fixture.order)
     }
 
     @Test
@@ -308,6 +329,7 @@ class EntryRequestManagementTest {
         val deleted = mutableListOf<UUID>()
         val savedProfiles = mutableListOf<SaveEntryRequestAthleteProfileCommand>()
         val applied = mutableListOf<UUID>()
+        val returnMarked = mutableSetOf<UUID>()
         var occupancy: GroupAthleteOccupancy? = GroupAthleteOccupancy(
             ownerUserId = ownerId,
             openMemberIds = emptySet(),
@@ -342,6 +364,11 @@ class EntryRequestManagementTest {
                 order += "delete"
                 deleted += userId
             }
+        }
+
+        override fun clearReturnMark(groupId: UUID, userId: UUID) {
+            order += "clear"
+            returnMarked -= userId
         }
 
         override fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy? {

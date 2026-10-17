@@ -371,6 +371,8 @@ class InviteRedemptionEndpointIntegrationTest {
             entryRequests += command
         }
 
+        override fun mustRequestReturn(groupId: UUID, userId: UUID): Boolean = false
+
         override fun redeemMembership(command: RedeemMembershipCommand): GroupRole =
             roles.getOrPut(command.userId) { GroupRole.ATHLETE }
     }

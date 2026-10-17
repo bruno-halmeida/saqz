@@ -347,6 +347,8 @@ class EntryRequestEndpointIntegrationTest {
             entryRequests.putIfAbsent(command.userId, command)
         }
 
+        override fun mustRequestReturn(groupId: UUID, userId: UUID): Boolean = false
+
         override fun redeemMembership(command: RedeemMembershipCommand): GroupRole {
             roles[command.userId] = GroupRole.ATHLETE
             return GroupRole.ATHLETE
@@ -373,6 +375,8 @@ class EntryRequestEndpointIntegrationTest {
         override fun saveAthleteProfile(command: SaveEntryRequestAthleteProfileCommand) = command.userId in entryRequests
 
         override fun applyAthleteProfileToMembership(groupId: UUID, userId: UUID) = Unit
+
+        override fun clearReturnMark(groupId: UUID, userId: UUID) = Unit
 
         override fun delete(groupId: UUID, userId: UUID) {
             entryRequests.remove(userId)

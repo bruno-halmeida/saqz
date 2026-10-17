@@ -65,6 +65,9 @@ interface EntryRequestRepository {
 
     fun delete(groupId: UUID, userId: UUID)
 
+    /** Aprovado o pedido de volta, a marca de saída (DEB-027) deixa de exigir aprovação; a linha da saída continua. */
+    fun clearReturnMark(groupId: UUID, userId: UUID)
+
     fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy?
 }
 

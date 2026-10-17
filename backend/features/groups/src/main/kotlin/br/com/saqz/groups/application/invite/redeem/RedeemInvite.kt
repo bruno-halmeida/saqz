@@ -70,7 +70,8 @@ class RedeemInvite(
             }
         }
 
-        if (invite.entryRequiresApproval) {
+        // SAI-007: quem saiu ou foi removido não volta direto, nem por convite que normalmente entra na hora.
+        if (invite.entryRequiresApproval || repository.mustRequestReturn(invite.groupId, actor)) {
             repository.createEntryRequest(CreateEntryRequestCommand(invite.groupId, actor, now))
             // Um aviso por pedido; o pedido repetido (ainda pendente) cai no mesmo request_id e não avisa de novo.
             entryRequest.requested(invite.groupId, actor)

@@ -122,6 +122,31 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             .update()
     }
 
+    override fun mustRequestReturn(groupId: UUID, userId: UUID): Boolean = jdbc.sql(
+        """
+        SELECT EXISTS (
+            SELECT 1 FROM group_membership_removals
+            WHERE group_id = :groupId AND user_id = :userId AND requires_approval
+        )
+        """.trimIndent(),
+    )
+        .param("groupId", groupId)
+        .param("userId", userId)
+        .query(Boolean::class.java)
+        .single()
+
+    override fun clearReturnMark(groupId: UUID, userId: UUID) {
+        jdbc.sql(
+            """
+            UPDATE group_membership_removals SET requires_approval = false
+            WHERE group_id = :groupId AND user_id = :userId AND requires_approval
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .param("userId", userId)
+            .update()
+    }
+
     override fun list(groupId: UUID): List<GroupEntryRequest> = jdbc.sql(
         """
         SELECT requests.user_id, users.display_name, requests.requested_at

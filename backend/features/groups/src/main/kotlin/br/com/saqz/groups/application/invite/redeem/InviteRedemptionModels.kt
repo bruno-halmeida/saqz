@@ -73,5 +73,8 @@ interface InviteRedemptionRepository {
 
     fun createEntryRequest(command: CreateEntryRequestCommand)
 
+    /** Saiu do grupo ou foi removido depois da marca de DEB-027: só volta com aprovação (saídas antigas não têm a marca). */
+    fun mustRequestReturn(groupId: UUID, userId: UUID): Boolean
+
     fun redeemMembership(command: RedeemMembershipCommand): GroupRole
 }
