@@ -176,8 +176,6 @@ class ResolveAttendanceLinkTest {
         var resolutionLookups = 0
         var failure: RuntimeException? = null
 
-        override fun lockRotatableTarget(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceLinkRotatableTarget? = error("unused")
-        override fun rotate(command: RotateAttendanceLinkCommand) = error("unused")
         override fun lockAttemptWindow(userId: UUID, initializedAt: Instant): AttendanceLinkAttemptWindow = window
 
         override fun findResolvableTarget(actorId: UUID, digest: AttendanceLinkTokenDigest): AttendanceLinkResolvableTarget? {

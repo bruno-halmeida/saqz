@@ -280,7 +280,7 @@ class OrganizerTrialEndpointIntegrationTest {
             "POST" to "$base/games/$id/publish", "POST" to "$base/games/$id/cancel", "POST" to "$base/games/$id/complete",
             "PUT" to "$base/games/$id/attendance", "POST" to "$base/games/$id/attendance/override",
             "POST" to "$base/games/$id/attendance/promote", "PUT" to "$base/games/$id/capacity",
-            "POST" to "$base/games/$id/attendance-link", "POST" to "$base/games/$id/notify-pending",
+            "POST" to "$base/games/$id/notify-pending",
             "POST" to "$base/game-series", "POST" to "$base/game-series/$id/boundaries",
             "POST" to "$base/charges/monthly", "POST" to "$base/charges/$id/status",
             "POST" to "$base/expenses", "PUT" to "$base/expenses/$id", "POST" to "$base/expenses/$id/void",

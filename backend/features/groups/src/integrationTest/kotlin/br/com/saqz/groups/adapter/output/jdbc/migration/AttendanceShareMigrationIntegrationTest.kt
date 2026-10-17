@@ -9,10 +9,8 @@ import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import java.sql.Connection
 import java.util.UUID
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class AttendanceShareMigrationIntegrationTest {
@@ -24,105 +22,38 @@ class AttendanceShareMigrationIntegrationTest {
     }
 
     @Test
-    fun `v7 creates attendance link and limit tables`() {
+    fun `v136 drops the game attendance links table and keeps the reminder links and the limits`() {
+        assertEquals(
+            0,
+            int("SELECT count(*) FROM information_schema.tables WHERE table_name = 'game_attendance_links'"),
+        )
         assertEquals(
             2,
             int(
                 "SELECT count(*) FROM information_schema.tables WHERE table_name IN " +
-                    "('game_attendance_links', 'attendance_link_resolution_limits')",
+                    "('notification_attendance_links', 'attendance_link_resolution_limits')",
             ),
         )
     }
 
     @Test
-    fun `v6 to v7 upgrade preserves existing attendance data`() {
+    fun `v133 to v136 upgrade preserves attendance data and reminder links`() {
         flyway().clean()
-        flyway("6").migrate()
+        flyway("133").migrate()
         val fixture = fixture("upgrade")
         insertAttendance(fixture)
+        val message = UUID.randomUUID()
+        execute(
+            "INSERT INTO group_messages (id, group_id, author_id, author_name, channel, body, request_id, game_id) VALUES " +
+                "('$message', '${fixture.group}', '${fixture.owner}', 'Organizador', 'REMINDER', 'Bora?', '${UUID.randomUUID()}', '${fixture.game}')",
+        )
+        execute("INSERT INTO notification_attendance_links (message_id) VALUES ('$message')")
 
         flyway().migrate()
 
         assertEquals(1, int("SELECT count(*) FROM game_attendance WHERE game_id = '${fixture.game}'"))
         assertEquals(1, int("SELECT count(*) FROM attendance_events WHERE game_id = '${fixture.game}'"))
-        assertEquals(0, int("SELECT count(*) FROM game_attendance_links"))
-    }
-
-    @Test
-    fun `attendance link row stores only digest timestamps and constrained references`() {
-        val fixture = fixture("stored-row")
-        val digest = digest(1)
-        insertAttendanceLink(fixture, digest)
-
-        assertContentEquals(digest, bytes("SELECT token_digest FROM game_attendance_links WHERE game_id = '${fixture.game}'"))
-        assertEquals(fixture.group, uuid("SELECT group_id FROM game_attendance_links WHERE game_id = '${fixture.game}'"))
-        assertEquals(fixture.owner, uuid("SELECT created_by_user_id FROM game_attendance_links WHERE game_id = '${fixture.game}'"))
-        assertFalse(columns("game_attendance_links").contains("code"))
-        assertFalse(columns("game_attendance_links").contains("raw_code"))
-    }
-
-    @Test
-    fun `one game has at most one active attendance link row`() {
-        val fixture = fixture("one-row")
-        insertAttendanceLink(fixture, digest(1))
-
-        assertFails { insertAttendanceLink(fixture, digest(2)) }
-    }
-
-    @Test
-    fun `attendance link digests are globally unique`() {
-        val first = fixture("first-link")
-        val second = fixture("second-link")
-        val shared = digest(3)
-        insertAttendanceLink(first, shared)
-
-        assertFails { insertAttendanceLink(second, shared) }
-    }
-
-    @Test
-    fun `attendance link digest must contain exactly 32 bytes`() {
-        val fixture = fixture("digest-size")
-
-        assertFails { insertAttendanceLink(fixture, ByteArray(31)) }
-        assertFails { insertAttendanceLink(fixture, ByteArray(33)) }
-    }
-
-    @Test
-    fun `attendance link group and game identity must match`() {
-        val first = fixture("first-identity")
-        val second = fixture("second-identity")
-
-        assertFails {
-            execute(
-                "INSERT INTO game_attendance_links (game_id, group_id, token_digest, created_by_user_id, created_at, updated_at) VALUES " +
-                    "('${first.game}', '${second.group}', decode('${digestHex(4)}', 'hex'), '${first.owner}', now(), now())",
-            )
-        }
-    }
-
-    @Test
-    fun `attendance link creator must reference an existing user`() {
-        val fixture = fixture("creator-ref")
-        val missingCreator = UUID.randomUUID()
-
-        assertFails {
-            execute(
-                "INSERT INTO game_attendance_links (game_id, group_id, token_digest, created_by_user_id, created_at, updated_at) VALUES " +
-                    "('${fixture.game}', '${fixture.group}', decode('${digestHex(5)}', 'hex'), '$missingCreator', now(), now())",
-            )
-        }
-    }
-
-    @Test
-    fun `attendance link timestamps must move forward`() {
-        val fixture = fixture("time-order")
-
-        assertFails {
-            execute(
-                "INSERT INTO game_attendance_links (game_id, group_id, token_digest, created_by_user_id, created_at, updated_at) VALUES " +
-                    "('${fixture.game}', '${fixture.group}', decode('${digestHex(6)}', 'hex'), '${fixture.owner}', now(), now() - interval '1 second')",
-            )
-        }
+        assertEquals(1, int("SELECT count(*) FROM notification_attendance_links WHERE message_id = '$message'"))
     }
 
     @Test
@@ -179,27 +110,13 @@ class AttendanceShareMigrationIntegrationTest {
 
     private fun insertAttendance(fixture: Fixture) {
         execute(
-            "INSERT INTO game_attendance (game_id, group_id, member_user_id, status, waitlist_sequence, responded_at, updated_at, version) VALUES " +
-                "('${fixture.game}', '${fixture.group}', '${fixture.member}', 'CONFIRMED', NULL, now(), now(), 1)",
+            "INSERT INTO game_attendance (game_id, group_id, member_user_id, status, waitlist_sequence, responded_at, updated_at, version, member_display_name) VALUES " +
+                "('${fixture.game}', '${fixture.group}', '${fixture.member}', 'CONFIRMED', NULL, now(), now(), 1, 'Atleta')",
         )
         execute(
             "INSERT INTO attendance_events (id, game_id, group_id, member_user_id, actor_user_id, source, old_status, new_status, reason, occurred_at) VALUES " +
                 "('${UUID.randomUUID()}', '${fixture.game}', '${fixture.group}', '${fixture.member}', '${fixture.owner}', 'SELF', NULL, 'CONFIRMED', NULL, now())",
         )
-    }
-
-    private fun insertAttendanceLink(fixture: Fixture, digest: ByteArray) {
-        connection().use { connection ->
-            connection.prepareStatement(
-                "INSERT INTO game_attendance_links (game_id, group_id, token_digest, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, now(), now())",
-            ).use { statement ->
-                statement.setObject(1, fixture.game)
-                statement.setObject(2, fixture.group)
-                statement.setBytes(3, digest)
-                statement.setObject(4, fixture.owner)
-                statement.executeUpdate()
-            }
-        }
     }
 
     private fun insertLimit(user: UUID, count: Int) {
@@ -218,28 +135,11 @@ class AttendanceShareMigrationIntegrationTest {
         return id
     }
 
-    private fun digest(seed: Int): ByteArray = ByteArray(32) { index -> (seed + index).toByte() }
-    private fun digestHex(seed: Int): String = digest(seed).joinToString(separator = "") { "%02x".format(it) }
-
-    private fun columns(table: String): Set<String> = connection().use { connection ->
-        connection.createStatement().use { statement ->
-            statement.executeQuery(
-                "SELECT column_name FROM information_schema.columns WHERE table_name = '$table'",
-            ).use { result ->
-                buildSet {
-                    while (result.next()) add(result.getString(1))
-                }
-            }
-        }
-    }
-
     private fun execute(sql: String) {
         connection().use { connection -> connection.createStatement().use { it.execute(sql) } }
     }
 
     private fun int(sql: String): Int = query(sql) { it.getInt(1) }
-    private fun uuid(sql: String): UUID = query(sql) { it.getObject(1, UUID::class.java) }
-    private fun bytes(sql: String): ByteArray = query(sql) { it.getBytes(1) }
 
     private fun <T> query(sql: String, read: (java.sql.ResultSet) -> T): T = connection().use { connection ->
         connection.createStatement().use { statement ->

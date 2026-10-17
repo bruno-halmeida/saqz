@@ -1,24 +1,8 @@
 package br.com.saqz.groups.application.attendance.share
 
-import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.game.GameStatus
 import java.time.Instant
 import java.util.UUID
-
-data class AttendanceLinkRotatableTarget(
-    val groupId: UUID,
-    val gameId: UUID,
-    val actorRole: GroupRole,
-    val status: GameStatus,
-    val confirmationDeadline: Instant,
-)
-
-data class RotateAttendanceLinkCommand(
-    val groupId: UUID,
-    val gameId: UUID,
-    val digest: AttendanceLinkTokenDigest,
-    val createdByUserId: UUID,
-)
 
 data class AttendanceLinkAttemptWindow(
     val windowStartedAt: Instant,
@@ -46,10 +30,6 @@ data class RecordInvalidAttendanceLinkAttempt(
 )
 
 interface AttendanceLinkRepository {
-    fun lockRotatableTarget(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceLinkRotatableTarget?
-
-    fun rotate(command: RotateAttendanceLinkCommand)
-
     fun lockAttemptWindow(userId: UUID, initializedAt: Instant): AttendanceLinkAttemptWindow
 
     fun findResolvableTarget(actorId: UUID, digest: AttendanceLinkTokenDigest): AttendanceLinkResolvableTarget?

@@ -47,7 +47,7 @@ class JdbcAttendanceLinkResolutionIntegrationTest {
     @BeforeEach
     fun clearData() {
         execute(
-            "TRUNCATE game_attendance_links, attendance_link_resolution_limits, attendance_events, game_attendance, games, group_memberships, access_groups, access_users CASCADE",
+            "TRUNCATE attendance_link_resolution_limits, attendance_events, game_attendance, games, group_memberships, access_groups, access_users CASCADE",
         )
     }
 
@@ -88,15 +88,16 @@ class JdbcAttendanceLinkResolutionIntegrationTest {
     }
 
     @Test
-    fun `owner resolves without a membership row`() {
-        val fixture = fixture("owner-resolve")
+    fun `member without the athlete registration resolves asking for it`() {
+        val fixture = fixture("registration-required")
+        insertMembership(fixture.group, fixture.member, "ATHLETE", registered = false)
         insertLink(fixture, code)
 
         val resolved = transaction.inTransaction {
-            repository.findResolvableTarget(fixture.owner, AttendanceLinkTokenDigest.sha256(code))
+            repository.findResolvableTarget(fixture.member, AttendanceLinkTokenDigest.sha256(code))
         }
 
-        assertEquals(fixture.game, resolved?.gameId)
+        assertEquals(true, resolved?.registrationRequired)
     }
 
     @Test
@@ -277,25 +278,21 @@ class JdbcAttendanceLinkResolutionIntegrationTest {
         return id
     }
 
-    private fun insertMembership(group: UUID, user: UUID, role: String) {
+    private fun insertMembership(group: UUID, user: UUID, role: String, registered: Boolean = true) {
         execute(
-            "INSERT INTO group_memberships (group_id, user_id, role, created_at, updated_at) VALUES " +
-                "('$group', '$user', '$role', now(), now())",
+            "INSERT INTO group_memberships (group_id, user_id, role, athlete_registration_completed, created_at, updated_at) VALUES " +
+                "('$group', '$user', '$role', $registered, now(), now())",
         )
     }
 
+    /** O lembrete do jogo com o link de presença, como o Saqz manda no WhatsApp. */
     private fun insertLink(fixture: Fixture, attendanceCode: AttendanceLinkCode) {
-        connection().use { connection ->
-            connection.prepareStatement(
-                "INSERT INTO game_attendance_links (game_id, group_id, token_digest, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, now(), now())",
-            ).use { statement ->
-                statement.setObject(1, fixture.game)
-                statement.setObject(2, fixture.group)
-                statement.setBytes(3, AttendanceLinkTokenDigest.sha256(attendanceCode).toByteArray())
-                statement.setObject(4, fixture.owner)
-                statement.executeUpdate()
-            }
-        }
+        val message = UUID.randomUUID()
+        execute(
+            "INSERT INTO group_messages (id, group_id, author_id, author_name, channel, body, request_id, game_id) VALUES " +
+                "('$message', '${fixture.group}', '${fixture.owner}', 'Organizador', 'REMINDER', 'Bora?', '${UUID.randomUUID()}', '${fixture.game}')",
+        )
+        execute("INSERT INTO notification_attendance_links (message_id, code) VALUES ('$message', '${attendanceCode.value}')")
     }
 
     private fun insertWindow(user: UUID, startedAt: Instant, count: Int) {

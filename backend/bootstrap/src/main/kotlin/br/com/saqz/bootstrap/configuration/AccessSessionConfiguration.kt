@@ -33,7 +33,6 @@ import br.com.saqz.access.application.passwordreset.ResetSecretHasher
 import br.com.saqz.access.application.passwordreset.SecureResetSecrets
 import com.google.firebase.FirebaseApp
 import org.slf4j.LoggerFactory
-import br.com.saqz.groups.adapter.output.crypto.JcaAttendanceLinkTokenGenerator
 import br.com.saqz.groups.adapter.output.crypto.JcaSecureTokenGenerator
 import br.com.saqz.groups.adapter.output.jdbc.attendance.share.JdbcAttendanceLinkRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.create.JdbcGroupCreationRepository
@@ -58,9 +57,7 @@ import br.com.saqz.access.adapter.output.mail.VerificationCodeMailer
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory
 import br.com.saqz.groups.adapter.output.link.PublicInviteLinkFactory
-import br.com.saqz.groups.application.attendance.share.ReadAttendanceShareSnapshot
 import br.com.saqz.groups.application.attendance.share.ResolveAttendanceLink
-import br.com.saqz.groups.application.attendance.share.RotateAttendanceLink
 import br.com.saqz.groups.application.create.CreateGroup
 import br.com.saqz.groups.application.delete.DeleteGroup
 import br.com.saqz.groups.application.delete.DeleteGroupResult
@@ -794,26 +791,8 @@ class AccessSessionConfiguration {
     fun attendanceLinkRepository(dataSource: DataSource) = JdbcAttendanceLinkRepository(dataSource)
 
     @Bean
-    fun attendanceLinkTokenGenerator() = JcaAttendanceLinkTokenGenerator()
-
-    @Bean
     fun attendanceLinkFactory(@Value("\${saqz.links.domain}") linksDomain: String) =
         PublicAttendanceLinkFactory(URI(linksDomain))
-
-    @Bean
-    fun rotateAttendanceLink(
-        transaction: JdbcTransactionRunner,
-        repository: JdbcAttendanceLinkRepository,
-        tokenGenerator: JcaAttendanceLinkTokenGenerator,
-        linkFactory: PublicAttendanceLinkFactory,
-    ) = RotateAttendanceLink(
-        transaction,
-        repository,
-        GroupAccessPolicy(),
-        tokenGenerator,
-        linkFactory,
-        Clock.systemUTC(),
-    )
 
     @Bean
     fun resolveAttendanceLink(
@@ -822,23 +801,10 @@ class AccessSessionConfiguration {
     ) = ResolveAttendanceLink(transaction, repository, Clock.systemUTC())
 
     @Bean
-    fun readAttendanceShareSnapshot(
-        transaction: JdbcTransactionRunner,
-        repository: JdbcAttendanceLinkRepository,
-    ) = ReadAttendanceShareSnapshot(transaction, repository, GroupAccessPolicy())
-
-    @Bean
     fun attendanceShareController(
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
-        rotateAttendanceLink: RotateAttendanceLink,
         resolveAttendanceLink: ResolveAttendanceLink,
-        readAttendanceShareSnapshot: ReadAttendanceShareSnapshot,
-    ) = AttendanceShareController(
-        verifiedGroupActorResolver,
-        rotateAttendanceLink,
-        resolveAttendanceLink,
-        readAttendanceShareSnapshot,
-    )
+    ) = AttendanceShareController(verifiedGroupActorResolver, resolveAttendanceLink)
 
     @Bean fun gameRepository(dataSource: DataSource) = JdbcGameOccurrenceRepository(dataSource)
     @Bean fun attendanceRepository(dataSource: DataSource) =

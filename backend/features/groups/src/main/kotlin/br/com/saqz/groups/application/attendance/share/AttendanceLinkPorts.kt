@@ -43,15 +43,6 @@ class AttendanceLinkTokenDigest private constructor(private val bytes: ByteArray
     }
 }
 
-data class AttendanceLinkToken(
-    val code: AttendanceLinkCode,
-    val digest: AttendanceLinkTokenDigest,
-)
-
-fun interface AttendanceLinkTokenGenerator {
-    fun generate(): AttendanceLinkToken
-}
-
 /**
  * URLs públicas do link de presença. Confirmar é o caminho nu (`/attendance/<code>`) — o app
  * trata a ausência de intenção como confirmação desde os links já enviados; o declínio é

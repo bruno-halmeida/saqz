@@ -1,78 +1,19 @@
 package br.com.saqz.groups.adapter.output.attendance.share
 
-import br.com.saqz.groups.adapter.output.crypto.JcaAttendanceLinkTokenGenerator
 import br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory
 import br.com.saqz.groups.application.attendance.share.AttendanceLinkCode
 import org.junit.jupiter.api.Test
 import java.net.URI
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
 import java.util.Base64
 import java.util.UUID
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class AttendanceSharePrimitivesTest {
     private val bytes = ByteArray(32) { it.toByte() }
     private val code = AttendanceLinkCode.from(Base64.getUrlEncoder().withoutPadding().encodeToString(bytes))
-
-    @Test
-    fun `generator requests exactly 32 random bytes`() {
-        var requestedSize = 0
-        val generator = JcaAttendanceLinkTokenGenerator { target ->
-            requestedSize = target.size
-            bytes.copyInto(target)
-        }
-
-        generator.generate()
-
-        assertEquals(32, requestedSize)
-    }
-
-    @Test
-    fun `generated code has the fixed 43 character length`() {
-        assertEquals(43, deterministicGenerator().generate().code.value.length)
-    }
-
-    @Test
-    fun `generated code uses only the Base64URL alphabet`() {
-        assertTrue(deterministicGenerator().generate().code.value.matches(Regex("[A-Za-z0-9_-]+")))
-    }
-
-    @Test
-    fun `generated code has no Base64 padding`() {
-        assertFalse('=' in deterministicGenerator().generate().code.value)
-    }
-
-    @Test
-    fun `generated code decodes to the original 32 bytes`() {
-        assertContentEquals(bytes, Base64.getUrlDecoder().decode(deterministicGenerator().generate().code.value))
-    }
-
-    @Test
-    fun `generated digest is SHA-256 of the raw code`() {
-        val token = deterministicGenerator().generate()
-        val expected = MessageDigest.getInstance("SHA-256")
-            .digest(token.code.value.toByteArray(StandardCharsets.US_ASCII))
-
-        assertContentEquals(expected, token.digest.toByteArray())
-    }
-
-    @Test
-    fun `digest and token diagnostics redact raw capability bytes`() {
-        val token = deterministicGenerator().generate()
-        val exposed = token.digest.toByteArray()
-        exposed.fill(0)
-
-        assertFalse(token.digest.toByteArray().all { it == 0.toByte() })
-        assertFalse(token.code.toString().contains(token.code.value))
-        assertFalse(token.digest.toString().contains(token.code.value))
-        assertFalse(token.toString().contains(token.code.value))
-    }
 
     @Test
     fun `attendance link code rejects values outside the generated format`() {
@@ -141,6 +82,4 @@ class AttendanceSharePrimitivesTest {
             }
         }
     }
-
-    private fun deterministicGenerator() = JcaAttendanceLinkTokenGenerator { target -> bytes.copyInto(target) }
 }
