@@ -280,10 +280,12 @@ class GameDetailViewModel(
         generation: Int,
         game: Game,
         isAdmin: Boolean,
-        mensalistaPriority: Boolean,
+        groupMensalistaPriority: Boolean,
         promotionMode: PromotionMode,
         softRefresh: Boolean,
     ) {
+        // Jogo com prazo no início não tem janela de prioridade de mensalista (DEB-045).
+        val mensalistaPriority = AttendanceRule.priorityWindow(groupMensalistaPriority, game.confirmationDeadline, game.startsAt)
         groupPromotionMode = promotionMode
         val detailResult = attendanceGateway.read(GroupId(groupId), gameId)
         if (generation != loadGeneration) return

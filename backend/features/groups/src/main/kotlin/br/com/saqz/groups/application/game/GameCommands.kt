@@ -77,11 +77,12 @@ class CreateGame(
             if (!context.role.isOrganizer()) return@inTransaction context.role.denied()
             val now = clock.instant()
             val draft = GameDefaultSnapshotFactory.copy(context.defaults, input).let { copied ->
-                // Prazo derivado do padrão do grupo que já passou (jogo marcado em cima da hora): fecha agora.
+                // Prazo derivado do padrão do grupo que já passou (jogo marcado em cima da hora): vira o início do jogo,
+                // sem janela de prioridade de mensalista (DEB-045).
                 val deadline = copied.confirmationDeadline
                 if (input.confirmationDeadline == null && deadline != null && deadline.isBefore(now) &&
                     copied.startsAt != null && copied.startsAt.isAfter(now)
-                ) copied.copy(confirmationDeadline = now) else copied
+                ) copied.copy(confirmationDeadline = copied.startsAt) else copied
             }
             when (val validation = GameDraftValidator.validate(draft)) {
                 is GameDraftValidation.Invalid -> GameCommandResult.Invalid(validation.errors)

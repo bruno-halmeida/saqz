@@ -2,14 +2,14 @@ package br.com.saqz.groups.adapter.output.jdbc.attendance
 
 /**
  * Posição na fila como o app mostra ("1º na fila"). A ordem é a mesma de `EARLIEST_WAITLISTED`, que é
- * quem sobe primeiro: mensalista na frente enquanto o prazo está aberto e a prioridade ligada, depois
+ * quem sobe primeiro: mensalista na frente enquanto o prazo está aberto (e antes do início) e a prioridade ligada, depois
  * ordem de chegada (`waitlist_sequence`). A sequência gravada nunca é renumerada, então não serve de
  * posição (rodada multi-aparelho de 09/10/2026: "2º na fila" sendo o único da lista).
  */
 internal object WaitlistPositionSql {
     /** 0 para quem tem prioridade de mensalista neste momento, 1 para o resto. */
     fun tier(attendance: String, membership: String, game: String, group: String): String =
-        "CASE WHEN $game.confirmation_deadline >= now() AND $group.mensalista_priority " +
+        "CASE WHEN $game.confirmation_deadline >= now() AND $game.confirmation_deadline < $game.starts_at AND $group.mensalista_priority " +
             "AND $membership.membership_type='MENSALISTA' AND $attendance.guest_seq=0 THEN 0 ELSE 1 END"
 
     /**

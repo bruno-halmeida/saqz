@@ -312,12 +312,12 @@ class GameCommandsTest {
         assertEquals(listOf("confirmationDeadline"), assertIs<GameCommandResult.Invalid>(result).errors.map { it.field })
     }
 
-    @Test fun `derived default deadline that already passed closes now instead of failing`() {
+    @Test fun `derived default deadline that already passed becomes the game start without priority window`() {
         val now = START.minusSeconds(3600)
         val fixture = fixture(GroupRole.OWNER, clock = java.time.Clock.fixed(now, java.time.ZoneOffset.UTC))
         val result = fixture.create.execute(actor, groupId, gameId, createInput())
 
-        assertEquals(now, assertIs<GameCommandResult.Success>(result).game.snapshot.confirmationDeadline)
+        assertEquals(START, assertIs<GameCommandResult.Success>(result).game.snapshot.confirmationDeadline)
     }
 
     @Test fun `create refuses startsAt that disagrees with local date time and zone`() {

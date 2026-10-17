@@ -995,7 +995,7 @@ class GroupDetailsViewModel(
     private fun GroupDetailsState.optimisticStatus(game: NextGameUi, intent: AttendanceIntent) = when {
         intent == AttendanceIntent.Decline -> GroupDetailsResponseStatus.Declined
         memberResponse?.status == GroupDetailsResponseStatus.Confirmed -> GroupDetailsResponseStatus.Confirmed
-        !AttendanceRule.entersDirectly(membershipType, mensalistaPriority(), promotionMode(), deadlinePassed()) ->
+        !AttendanceRule.entersDirectly(membershipType, mensalistaPriority(game), promotionMode(), deadlinePassed()) ->
             GroupDetailsResponseStatus.Waitlisted
         game.confirmedCount >= game.capacity -> GroupDetailsResponseStatus.Waitlisted
         else -> GroupDetailsResponseStatus.Confirmed
@@ -1003,9 +1003,13 @@ class GroupDetailsViewModel(
 
     /** Ponto único do tipo de espera, com a regra da Início: avulso + prioridade ⇒ lista do avulso. */
     private fun waitlistKind(membershipType: AthleteMembershipType?): HomeWaitlistKind =
-        AttendanceRule.waitlistKind(membershipType, mensalistaPriority(), promotionMode(), deadlinePassed())
+        AttendanceRule.waitlistKind(membershipType, mensalistaPriority(state.value.nextGame), promotionMode(), deadlinePassed())
 
-    private fun mensalistaPriority() = loadedGroup?.gameConfig?.mensalistaPriority == true
+    /** A prioridade do grupo, só se o próximo jogo tem janela para ela (prazo antes do início, DEB-045). */
+    private fun mensalistaPriority(game: NextGameUi?): Boolean {
+        val priority = loadedGroup?.gameConfig?.mensalistaPriority == true
+        return if (game == null) priority else AttendanceRule.priorityWindow(priority, game.confirmationDeadline, game.startsAt)
+    }
 
     private fun promotionMode() = loadedGroup?.gameConfig?.promotionMode ?: PromotionMode.FIFO
 

@@ -105,6 +105,7 @@ object AttendanceTransitionPolicy {
     /**
      * Regra do grupo (decisão de 13/10/2026), valendo para o "Vou" do próprio atleta:
      * - depois do prazo: sempre a espera, mensalista inclusive; a promoção segue o grupo (FIFO/MANUAL);
+     * - prazo no início do jogo ou depois (DEB-045): a prioridade não vale, vale o que a regra diz para prioridade desligada;
      * - antes do prazo, FIFO: com prioridade ligada o avulso espera até o prazo; sem ela todos entram se houver vaga;
      * - antes do prazo, MANUAL: com prioridade ligada só o mensalista confirma direto; desligada, todos esperam.
      */
@@ -123,9 +124,11 @@ object AttendanceTransitionPolicy {
     private fun entersDirectly(context: AttendanceDecisionContext): Boolean {
         if (context.now > context.confirmationDeadline) return false
         val mensalista = context.membershipType == AthleteMembershipType.MENSALISTA
+        // Prazo no início do jogo (ou depois, jogo marcado em cima da hora) não tem janela de prioridade (DEB-045).
+        val priority = context.mensalistaPriority && context.confirmationDeadline < context.startsAt
         return when (context.promotionMode) {
-            PromotionMode.FIFO -> mensalista || !context.mensalistaPriority
-            PromotionMode.MANUAL -> mensalista && context.mensalistaPriority
+            PromotionMode.FIFO -> mensalista || !priority
+            PromotionMode.MANUAL -> mensalista && priority
         }
     }
 

@@ -806,7 +806,7 @@ class HomeViewModel(
         intent = intent,
         current = ownAttendance?.status,
         membershipType = membershipType,
-        mensalistaPriority = mensalistaPriority,
+        mensalistaPriority = priorityWindow(),
         promotionMode = promotionMode,
         deadlinePassed = deadlinePassed(),
         full = confirmedCount >= capacity,
@@ -827,6 +827,10 @@ class HomeViewModel(
         else -> getString(Res.string.game_response_deadline_closed)
     }
 
+    /** Jogo com prazo no início não tem janela de prioridade de mensalista (DEB-045). */
+    private fun HomeNextGame.priorityWindow(): Boolean =
+        AttendanceRule.priorityWindow(mensalistaPriority, confirmationDeadline, startsAt)
+
     private fun HomeNextGame.deadlinePassed(): Boolean =
         runCatching { now.now() > Instant.parse(confirmationDeadline) }.getOrDefault(false)
 
@@ -836,7 +840,7 @@ class HomeViewModel(
      * cabeçalho e o `optimisticStatus` usam a mesma regra.
      */
     private fun HomeNextGame.waitlistKind(): HomeWaitlistKind =
-        AttendanceRule.waitlistKind(membershipType, mensalistaPriority, promotionMode, deadlinePassed())
+        AttendanceRule.waitlistKind(membershipType, priorityWindow(), promotionMode, deadlinePassed())
 
     private fun AttendanceStatus.toToast(kind: HomeWaitlistKind?) = when (this) {
         AttendanceStatus.Confirmed -> HomeToast.Confirmed

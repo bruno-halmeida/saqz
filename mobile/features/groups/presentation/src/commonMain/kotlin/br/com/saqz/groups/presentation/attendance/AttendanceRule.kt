@@ -5,6 +5,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
+import kotlin.time.Instant
 
 /**
  * Regra de presença do grupo (decisão de 13/10/2026), espelho da política do servidor, que tem a
@@ -12,8 +13,21 @@ import br.com.saqz.groups.presentation.home.HomeWaitlistKind
  * - depois do prazo, em ordem de chegada o "Vou" confirma se houver vaga e senão espera; em escolha manual espera sempre;
  * - antes do prazo, em ordem de chegada: com prioridade o avulso espera; sem ela, todos entram se houver vaga;
  * - antes do prazo, em escolha manual: com prioridade só o mensalista entra direto; sem ela, todos esperam.
+ * Jogo com prazo no início (marcado em cima da hora, DEB-045) não tem janela de prioridade: vale [priorityWindow].
  */
 internal object AttendanceRule {
+    /** A prioridade do grupo só vale em jogo cujo prazo vem antes do início; senão todos entram por ordem de chegada. */
+    fun priorityWindow(mensalistaPriority: Boolean, confirmationDeadline: Instant?, startsAt: Instant?): Boolean =
+        mensalistaPriority && (confirmationDeadline == null || startsAt == null || confirmationDeadline < startsAt)
+
+    /** Mesma regra com os instantes ainda em texto ISO (modelos da Início e do grupo); texto ilegível mantém a prioridade. */
+    fun priorityWindow(mensalistaPriority: Boolean, confirmationDeadline: String, startsAt: String): Boolean =
+        priorityWindow(
+            mensalistaPriority,
+            runCatching { Instant.parse(confirmationDeadline) }.getOrNull(),
+            runCatching { Instant.parse(startsAt) }.getOrNull(),
+        )
+
     fun entersDirectly(
         membershipType: AthleteMembershipType?,
         mensalistaPriority: Boolean,

@@ -585,7 +585,7 @@ class JdbcAttendanceCommandRepository(
                 ON membership.group_id = attendance.group_id AND membership.user_id = attendance.member_user_id
             WHERE attendance.group_id=:group AND attendance.game_id=:game AND attendance.status='WAITLISTED'
             ORDER BY CASE
-                       WHEN game.confirmation_deadline >= :now AND ag.mensalista_priority
+                       WHEN game.confirmation_deadline >= :now AND game.confirmation_deadline < game.starts_at AND ag.mensalista_priority
                             AND membership.membership_type='MENSALISTA' AND attendance.guest_seq=0 THEN 0
                        ELSE 1
                      END,

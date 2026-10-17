@@ -155,6 +155,26 @@ class AttendanceTransitionPolicyTest {
         goesTo(AttendanceStatus.WAITLISTED, vou(PromotionMode.MANUAL, true, mensalista, now = DEADLINE.plusSeconds(1), guest = true))
     }
 
+    // --- DEB-045: prazo no início do jogo (ou depois) não tem janela de prioridade ---
+    private fun emCimaDaHora(membership: AthleteMembershipType, mode: PromotionMode = PromotionMode.FIFO, confirmed: Int = 0, deadline: Instant = STARTS) =
+        vou(mode, true, membership, confirmed = confirmed, now = STARTS.minusSeconds(60)).copy(confirmationDeadline = deadline)
+
+    @Test fun `prazo no inicio - avulso com vaga confirma por ordem de chegada mesmo com prioridade ligada`() =
+        goesTo(AttendanceStatus.CONFIRMED, emCimaDaHora(avulso))
+    @Test fun `prazo no inicio - mensalista com vaga confirma`() = goesTo(AttendanceStatus.CONFIRMED, emCimaDaHora(mensalista))
+    @Test fun `prazo no inicio - sem vaga todos esperam`() {
+        goesTo(AttendanceStatus.WAITLISTED, emCimaDaHora(avulso, confirmed = 2))
+        goesTo(AttendanceStatus.WAITLISTED, emCimaDaHora(mensalista, confirmed = 2))
+    }
+    @Test fun `prazo depois do inicio tambem nao tem prioridade`() =
+        goesTo(AttendanceStatus.CONFIRMED, emCimaDaHora(avulso, deadline = STARTS.plusSeconds(60)))
+    @Test fun `prazo no inicio em escolha manual - todos esperam`() {
+        goesTo(AttendanceStatus.WAITLISTED, emCimaDaHora(avulso, PromotionMode.MANUAL))
+        goesTo(AttendanceStatus.WAITLISTED, emCimaDaHora(mensalista, PromotionMode.MANUAL))
+    }
+    @Test fun `prazo antes do inicio segue com prioridade como antes`() =
+        goesTo(AttendanceStatus.WAITLISTED, emCimaDaHora(avulso, deadline = STARTS.minusSeconds(30)).copy(now = STARTS.minusSeconds(60)))
+
     private fun transition(
         context: AttendanceDecisionContext,
         intent: AttendanceIntent,

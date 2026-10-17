@@ -72,4 +72,22 @@ class AttendanceRuleTest {
         assertEquals(HomeWaitlistKind.Reserva, AttendanceRule.waitlistKind(mensalista, true, PromotionMode.FIFO, false))
         assertEquals(HomeWaitlistKind.Reserva, AttendanceRule.waitlistKind(avulso, false, PromotionMode.FIFO, false))
     }
+
+    @Test
+    fun priorityWindowOnlyWhenTheDeadlineComesBeforeTheStart() {
+        val start = "2026-10-20T22:00:00Z"
+        assertEquals(true, AttendanceRule.priorityWindow(true, "2026-10-20T19:00:00Z", start))
+        assertEquals(false, AttendanceRule.priorityWindow(true, start, start))
+        assertEquals(false, AttendanceRule.priorityWindow(true, "2026-10-20T23:00:00Z", start))
+        assertEquals(false, AttendanceRule.priorityWindow(false, "2026-10-20T19:00:00Z", start))
+        assertEquals(true, AttendanceRule.priorityWindow(true, "", start), "texto ilegível mantém a prioridade do grupo")
+    }
+
+    @Test
+    fun lastMinuteGameLetsAvulsoInByArrivalAndExplainsNoPriority() {
+        val start = "2026-10-20T22:00:00Z"
+        val priority = AttendanceRule.priorityWindow(true, start, start)
+        assertEquals(AttendanceStatus.Confirmed, vou(avulso, priority, PromotionMode.FIFO))
+        assertEquals(HomeWaitlistKind.Reserva, AttendanceRule.waitlistKind(avulso, priority, PromotionMode.FIFO, false))
+    }
 }
