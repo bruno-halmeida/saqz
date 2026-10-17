@@ -2,7 +2,6 @@ package br.com.saqz.groups.application.invite.redeem
 
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.domain.GroupRole
-import br.com.saqz.groups.domain.plan.ClosedAthleteOccupancy
 import java.time.Instant
 import java.util.UUID
 
@@ -41,9 +40,7 @@ data class CreateEntryRequestCommand(
 
 data class GroupAthleteOccupancy(
     val ownerUserId: UUID,
-    val openMemberIds: Set<UUID>,
-    val openWaitlistIds: Set<UUID>,
-    val closedOccupancies: List<ClosedAthleteOccupancy>,
+    val memberIds: Set<UUID>,
 )
 
 sealed interface RedeemInviteResult {

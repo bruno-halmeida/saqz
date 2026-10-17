@@ -401,9 +401,7 @@ class InviteRedemptionEndpointIntegrationTest {
             if (target?.groupId != groupId) return null
             return GroupAthleteOccupancy(
                 ownerUserId = ownerId,
-                openMemberIds = roles.keys.toSet(),
-                openWaitlistIds = emptySet(),
-                closedOccupancies = emptyList(),
+                memberIds = roles.keys.toSet(),
             )
         }
 

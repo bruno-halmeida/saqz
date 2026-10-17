@@ -341,9 +341,7 @@ class EntryRequestManagementTest {
 
     private fun occupancy(openMembers: Set<UUID> = emptySet()) = GroupAthleteOccupancy(
         ownerUserId = ownerId,
-        openMemberIds = openMembers,
-        openWaitlistIds = emptySet(),
-        closedOccupancies = emptyList(),
+        memberIds = openMembers,
     )
 
     private data class Fixture(
@@ -402,9 +400,7 @@ class EntryRequestManagementTest {
         val returnMarked = mutableSetOf<UUID>()
         var occupancy: GroupAthleteOccupancy? = GroupAthleteOccupancy(
             ownerUserId = ownerId,
-            openMemberIds = emptySet(),
-            openWaitlistIds = emptySet(),
-            closedOccupancies = emptyList(),
+            memberIds = emptySet(),
         )
         var occupancyWasLoaded = false
 

@@ -17,7 +17,6 @@ import br.com.saqz.groups.domain.AthleteLevel
 import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.AthletePreferredSide
 import br.com.saqz.groups.domain.GroupRole
-import br.com.saqz.groups.domain.plan.ClosedAthleteOccupancy
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.Timestamp
 import java.sql.Types
@@ -283,7 +282,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             .orElse(null)
             ?: return null
 
-        val openMemberIds = jdbc.sql(
+        val memberIds = jdbc.sql(
             """
             SELECT user_id
             FROM group_memberships
@@ -301,53 +300,9 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             .list()
             .toSet()
 
-        val openWaitlistIds = jdbc.sql(
-            """
-            SELECT DISTINCT member_user_id
-            FROM game_attendance
-            WHERE group_id = :groupId
-              AND status = 'WAITLISTED'
-              AND member_user_id <> :ownerUserId
-              AND EXISTS (
-                  SELECT 1 FROM access_groups
-                  WHERE id = :groupId AND deleted_at IS NULL
-              )
-            """.trimIndent(),
-        )
-            .param("groupId", groupId)
-            .param("ownerUserId", ownerUserId)
-            .query { result, _ -> result.getObject("member_user_id", UUID::class.java) }
-            .list()
-            .toSet()
-
-        val closedOccupancies = jdbc.sql(
-            """
-            SELECT user_id, removed_at
-            FROM group_membership_removals
-            WHERE group_id = :groupId
-              AND user_id <> :ownerUserId
-              AND removed_at > now() - interval '30 days'
-              AND EXISTS (
-                  SELECT 1 FROM access_groups
-                  WHERE id = :groupId AND deleted_at IS NULL
-              )
-            """.trimIndent(),
-        )
-            .param("groupId", groupId)
-            .param("ownerUserId", ownerUserId)
-            .query { result, _ ->
-                ClosedAthleteOccupancy(
-                    athleteId = result.getObject("user_id", UUID::class.java),
-                    closedAt = result.getTimestamp("removed_at").toInstant(),
-                )
-            }
-            .list()
-
         return GroupAthleteOccupancy(
             ownerUserId = ownerUserId,
-            openMemberIds = openMemberIds,
-            openWaitlistIds = openWaitlistIds,
-            closedOccupancies = closedOccupancies,
+            memberIds = memberIds,
         )
     }
 

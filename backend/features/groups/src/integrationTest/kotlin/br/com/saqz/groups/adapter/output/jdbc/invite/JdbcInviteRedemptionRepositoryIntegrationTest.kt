@@ -438,7 +438,7 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
     }
 
     @Test
-    fun `removed member still waitlisted on a group game occupies an athlete slot`() {
+    fun `removed member still waitlisted on a group game no longer occupies an athlete slot`() {
         val fixture = inviteFixture("waitlist-occupancy")
         val removed = insertUser("waitlist-removed")
         insertMembership(fixture.group, removed, "ATHLETE")
@@ -448,8 +448,7 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
 
         val occupancy = transaction.inTransaction { repository.loadAthleteOccupancy(fixture.group) }
 
-        assertEquals(setOf(removed), occupancy!!.openWaitlistIds)
-        assertTrue(removed !in occupancy.openMemberIds)
+        assertTrue(occupancy!!.memberIds.isEmpty())
     }
 
     private data class InviteFixture(val owner: UUID, val group: UUID)

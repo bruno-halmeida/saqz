@@ -360,9 +360,7 @@ class EntryRequestEndpointIntegrationTest {
 
         override fun loadAthleteOccupancy(groupId: UUID) = GroupAthleteOccupancy(
             ownerUserId = ownerId,
-            openMemberIds = roles.filterValues { it != GroupRole.OWNER }.keys,
-            openWaitlistIds = emptySet(),
-            closedOccupancies = emptyList(),
+            memberIds = roles.filterValues { it != GroupRole.OWNER }.keys,
         )
 
         override fun findMembershipRole(groupId: UUID, userId: UUID): GroupRole? = roles[userId]

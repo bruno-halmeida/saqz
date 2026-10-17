@@ -55,15 +55,8 @@ class ApproveEntryRequest(
 
         val occupancy = entryRequestRepository.loadAthleteOccupancy(groupId)
             ?: return@inTransaction ApproveEntryRequestResult.GroupNotFound
-        val currentlyOpen = occupancy.openMemberIds + occupancy.openWaitlistIds
-        val occupying = PlanLimitPolicy.occupyingAthletes(
-            openMemberIds = occupancy.openMemberIds,
-            openWaitlistIds = occupancy.openWaitlistIds,
-            closedOccupancies = occupancy.closedOccupancies,
-            now = clock.instant(),
-        )
         val athleteLimit = subscriptionLimits.athleteLimitFor(occupancy.ownerUserId)
-        if (!PlanLimitPolicy.canEnterAsAthlete(currentlyOpen, occupying, userId, athleteLimit)) {
+        if (!PlanLimitPolicy.canEnterAsAthlete(occupancy.memberIds, userId, athleteLimit)) {
             return@inTransaction ApproveEntryRequestResult.AthleteLimitExceeded
         }
 

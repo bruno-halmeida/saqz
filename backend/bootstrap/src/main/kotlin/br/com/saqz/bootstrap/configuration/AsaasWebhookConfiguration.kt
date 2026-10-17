@@ -71,8 +71,8 @@ class AsaasWebhookConfiguration {
         JdbcCreditCardTokenStore(dataSource)
 
     @Bean
-    fun ownerPlanUsageLookup(dataSource: DataSource, clock: Clock): OwnerPlanUsageLookup =
-        JdbcOwnerPlanUsageLookup(dataSource, clock)
+    fun ownerPlanUsageLookup(dataSource: DataSource): OwnerPlanUsageLookup =
+        JdbcOwnerPlanUsageLookup(dataSource)
 
     @Bean
     fun processAsaasWebhook(

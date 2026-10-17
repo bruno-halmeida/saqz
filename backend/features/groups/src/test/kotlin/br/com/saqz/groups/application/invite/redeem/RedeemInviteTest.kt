@@ -6,7 +6,6 @@ import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.domain.GroupRole
-import br.com.saqz.groups.domain.plan.ClosedAthleteOccupancy
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import org.junit.jupiter.api.Test
 import java.time.Clock
@@ -23,7 +22,7 @@ class RedeemInviteTest {
     @Test
     fun `expired trial refuses pending athlete even if their occupied slot would bypass the limit`() {
         val fixture = fixture(target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = true))
-        fixture.repository.openWaitlist += actor
+        fixture.repository.openMembers += actor
         val original = now.minusSeconds(30)
         fixture.repository.persistedRequestAt[actor] = original
         val service = RedeemInvite(fixture.transaction, fixture.repository, FixedSubscriptionLimits(athleteLimit = 0), fixture.clock,
@@ -287,32 +286,18 @@ class RedeemInviteTest {
     }
 
     @Test
-    fun `waitlist occupants count toward the athlete cap and block entry`() {
+    fun `athletes who left the group no longer count toward the cap`() {
+        // Quem saiu não está em group_memberships: 24 membros agora num limite de 25 deixam a vaga livre.
         val fixture = fixture(athleteLimit = 25).also {
-            it.repository.openMembers += (1..20).map { UUID.randomUUID() }
-            it.repository.openWaitlist += (1..5).map { UUID.randomUUID() }
+            it.repository.openMembers += (1..24).map { UUID.randomUUID() }
         }
 
-        assertEquals(RedeemInviteResult.AthleteLimitExceeded, fixture.useCase.execute(actor, code.value))
-        assertTrue(fixture.repository.redemptions.isEmpty())
+        assertTrue(fixture.useCase.execute(actor, code.value) is RedeemInviteResult.Success)
     }
 
     @Test
-    fun `recently closed athletes still block entry under the cap`() {
-        val fixture = fixture(athleteLimit = 25).also {
-            it.repository.closed += (1..25).map {
-                ClosedAthleteOccupancy(UUID.randomUUID(), now.minusSeconds(3_600))
-            }
-        }
-
-        assertEquals(RedeemInviteResult.AthleteLimitExceeded, fixture.useCase.execute(actor, code.value))
-    }
-
-    @Test
-    fun `recently closed athlete cannot reenter when owner has no subscription`() {
-        val fixture = fixture(athleteLimit = 0).also {
-            it.repository.closed += ClosedAthleteOccupancy(actor, now.minusSeconds(3_600))
-        }
+    fun `athlete cap of zero blocks entry for an owner without subscription`() {
+        val fixture = fixture(athleteLimit = 0)
 
         assertEquals(RedeemInviteResult.AthleteLimitExceeded, fixture.useCase.execute(actor, code.value))
         assertTrue(fixture.repository.redemptions.isEmpty())
@@ -556,8 +541,6 @@ class RedeemInviteTest {
         val persistedRequestAt = mutableMapOf<UUID, Instant>()
         val roles = mutableMapOf<UUID, GroupRole>()
         val openMembers = mutableSetOf<UUID>()
-        val openWaitlist = mutableSetOf<UUID>()
-        val closed = mutableListOf<ClosedAthleteOccupancy>()
         val returnMarked = mutableSetOf<UUID>()
 
         override fun lockAttemptWindow(userId: UUID, initializedAt: Instant): InviteAttemptWindow =
@@ -577,9 +560,7 @@ class RedeemInviteTest {
             if (target == null || target.groupId != groupId) return null
             return GroupAthleteOccupancy(
                 ownerUserId = ownerUserId,
-                openMemberIds = openMembers.toSet(),
-                openWaitlistIds = openWaitlist.toSet(),
-                closedOccupancies = closed.toList(),
+                memberIds = openMembers.toSet(),
             )
         }
 
