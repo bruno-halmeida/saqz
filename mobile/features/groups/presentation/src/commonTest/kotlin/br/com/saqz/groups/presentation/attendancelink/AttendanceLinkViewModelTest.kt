@@ -107,6 +107,46 @@ class AttendanceLinkViewModelTest {
         assertEquals(AttendanceLinkPhase.NotReceiving, vm.state.value.phase)
     }
 
+    @Test fun eachClosedReasonShowsItsOwnPhaseWithoutTryingToJoinOrAnswer() = runTest {
+        mapOf(
+            AttendanceLinkClosedReason.GameStarted to AttendanceLinkPhase.GameStarted,
+            AttendanceLinkClosedReason.GameCancelled to AttendanceLinkPhase.GameCancelled,
+            AttendanceLinkClosedReason.GameUnpublished to AttendanceLinkPhase.GameUnpublished,
+        ).forEach { (reason, phase) ->
+            val gateway = AttendanceFake()
+            val invites = InviteFake(InviteRedeemStatus.JOINED)
+            val vm = AttendanceLinkViewModel(code, false, SharingFake(closed = reason), gateway, invites)
+            assertEquals(phase, vm.state.value.phase, reason.name)
+            assertNull(vm.state.value.destination)
+            assertTrue(gateway.commands.isEmpty())
+            assertTrue(invites.codes.isEmpty())
+        }
+    }
+
+    @Test fun errorWithoutReasonKeepsTheGenericInvalidMessageAndStillTriesTheInvite() = runTest {
+        val invites = InviteFake()
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true), AttendanceFake(), invites)
+        assertEquals(AttendanceLinkPhase.Invalid, vm.state.value.phase)
+        assertEquals(listOf(InviteCode(code)), invites.codes)
+    }
+
+    @Test fun closedReasonAfterJoiningTheGroupShowsItsOwnPhase() = runTest {
+        val vm = AttendanceLinkViewModel(code, false,
+            SharingFake(expired = true, firstOnly = true, closed = AttendanceLinkClosedReason.GameCancelled),
+            AttendanceFake(), InviteFake(InviteRedeemStatus.JOINED))
+        assertEquals(AttendanceLinkPhase.GameCancelled, vm.state.value.phase)
+    }
+
+    @Test fun closedReasonWinsOverANotReceivingGroupAndNotReceivingStillWorksWithoutReason() = runTest {
+        val invites = InviteFake(failure = InviteError.GroupNotReceiving)
+        val closed = AttendanceLinkViewModel(code, false,
+            SharingFake(closed = AttendanceLinkClosedReason.GameStarted), AttendanceFake(), invites)
+        assertEquals(AttendanceLinkPhase.GameStarted, closed.state.value.phase)
+        assertTrue(invites.codes.isEmpty())
+        val notReceiving = AttendanceLinkViewModel(code, false, SharingFake(expired = true), AttendanceFake(), invites)
+        assertEquals(AttendanceLinkPhase.NotReceiving, notReceiving.state.value.phase)
+    }
+
     @Test fun retryPreservesRequestIdentityAndSuccessfulStateDoesNotResubmit() = runTest {
         val gateway = AttendanceFake().apply { error = AttendanceError.Data(DataError.Connectivity) }
         val vm = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
@@ -264,10 +304,13 @@ class AttendanceLinkViewModelTest {
 
     private class SharingFake(
         private val expired: Boolean = false, private val registration: Boolean = false, private val firstOnly: Boolean = false,
+        private val closed: AttendanceLinkClosedReason? = null,
     ) : AttendanceSharingGateway {
         private var resolutions = 0
         override suspend fun resolveLink(code: AttendanceLinkCode): SaqzResult<AttendanceLinkDestination, AttendanceSharingError> {
             resolutions++
+            val genericFirst = expired && firstOnly && resolutions == 1
+            if (closed != null && !genericFirst) return SaqzResult.Failure(AttendanceSharingError.GameClosed(closed))
             return if (expired && (!firstOnly || resolutions == 1)) SaqzResult.Failure(AttendanceSharingError.InvalidOrExpired)
             else SaqzResult.Success(destination.copy(registrationRequired = registration))
         }

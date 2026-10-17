@@ -64,5 +64,20 @@ class AttendanceLinkScreenTest {
         onNodeWithText(declinedText).assertDoesNotExist()
     }
 
+    @Test fun closedGamePhasesShowTheirOwnTextAndNotTheGenericOne() {
+        val generic = "Não foi possível confirmar. O prazo pode ter encerrado ou este jogo não está disponível para sua conta."
+        mapOf(
+            AttendanceLinkPhase.GameStarted to "O jogo já começou.",
+            AttendanceLinkPhase.GameCancelled to "Esse jogo foi cancelado.",
+            AttendanceLinkPhase.GameUnpublished to "Esse jogo não está mais aberto.",
+        ).forEach { (phase, text) ->
+            runComposeUiTest {
+                setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(phase), {}, {}, {}) } }
+                onNodeWithText(text).assertExists()
+                onNodeWithText(generic).assertDoesNotExist()
+            }
+        }
+    }
+
     private val declinedText = "Avisamos o grupo que você não vai. Sua vaga ficou livre para a fila de espera."
 }
