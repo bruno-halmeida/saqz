@@ -140,8 +140,8 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
      entregou a um aparelho a versão anterior, que ainda não lia o convite);
    - instalar e abrir o app.
 3. **iPhone:**
-   - enquanto a Apple não aprovar, a página diz "O app para iPhone chega em breve na App Store.";
-   - depois da aprovação, ela vai sozinha à App Store.
+   - sem o app, a página vai sozinha à App Store (apps.apple.com/br/app/id6812743525), sem passar pelo web app;
+   - com o app instalado, o link universal abre o app direto.
 
 **Conferir**
 - Nenhum clique é preciso para chegar à loja.

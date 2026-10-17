@@ -16,9 +16,14 @@ class WebAppDownloadAdapterTest {
     }
 
     @Test
-    fun iPhoneHasNothingToOfferUntilTheAppStoreIsSet() {
-        assertNull(appDownloadUrlFor(iPhone))
-        assertNull(WebAppDownloadAdapter { iPhone }.appDownloadUrl())
+    fun iPhoneBrowserGetsTheAppStorePage() {
+        assertEquals("https://apps.apple.com/br/app/id6812743525", appDownloadUrlFor(iPhone))
+        assertEquals(APP_STORE_URL, WebAppDownloadAdapter { iPhone }.appDownloadUrl())
+    }
+
+    @Test
+    fun iPhoneHasNothingToOfferWithoutAnAppStoreUrl() {
+        assertNull(appDownloadUrlFor(iPhone, ""))
         assertEquals("https://apps.apple.com/br/app/id1", appDownloadUrlFor(iPhone, "https://apps.apple.com/br/app/id1"))
     }
 

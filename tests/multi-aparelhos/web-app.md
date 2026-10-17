@@ -53,8 +53,8 @@ com `saqz_intent=decline` no "não vou") em vez do Google Play, desde que haja W
 link sem parâmetro seguem para o Play. Coberto por `links-page/tests/fallback.test.cjs`; no aparelho,
 conferir pelo roteiro PROD-WEB05b (`tests/producao/08-site-e-links.md`).
 
-Depois da resposta, o web app no Android oferece "Baixar o app" (Google Play); no iPhone e no computador
-não aparece oferta enquanto a App Store não estiver liberada.
+Depois da resposta, o web app no Android oferece "Baixar o app" (Google Play); no iPhone
+oferece a App Store (`APP_STORE_URL`) e no computador não aparece oferta.
 
 ## Validação em produção (13/10/2026, depois do pull no servidor)
 

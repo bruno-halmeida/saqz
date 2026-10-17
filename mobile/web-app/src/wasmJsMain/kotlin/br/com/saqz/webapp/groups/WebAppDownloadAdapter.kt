@@ -5,13 +5,12 @@ import kotlinx.browser.window
 
 internal const val GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=app.saqz"
 
-// Preencher com https://apps.apple.com/br/app/id6812743525 quando a Apple liberar o app
-// (o mesmo ponto de `appStore` em links-page/index.html).
-internal const val APP_STORE_URL = ""
+// O mesmo endereço de `appStore` em links-page/index.html.
+internal const val APP_STORE_URL = "https://apps.apple.com/br/app/id6812743525"
 
 /**
- * A loja do app para o aparelho do navegador: Google Play no Android, App Store no iPhone (vazia até
- * a liberação, então sem oferta) e nada no computador.
+ * A loja do app para o aparelho do navegador: Google Play no Android, App Store no iPhone (vazia
+ * quando não configurada, então sem oferta) e nada no computador.
  */
 internal fun appDownloadUrlFor(userAgent: String, appStoreUrl: String = APP_STORE_URL): String? = when {
     "Android" in userAgent -> GOOGLE_PLAY_URL
