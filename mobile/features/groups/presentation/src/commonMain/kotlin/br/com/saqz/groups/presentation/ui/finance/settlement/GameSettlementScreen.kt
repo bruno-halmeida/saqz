@@ -38,6 +38,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
+import br.com.saqz.groups.presentation.ui.finance.sheets.WaiveSheet
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.PaidMethod
 import br.com.saqz.groups.resources.Res
@@ -66,7 +67,10 @@ import br.com.saqz.groups.resources.game_settlement_summary_diarists_one
 import br.com.saqz.groups.resources.game_settlement_summary_diarists_other
 import br.com.saqz.groups.resources.game_settlement_title
 import br.com.saqz.groups.resources.game_settlement_view_cashbox
+import br.com.saqz.groups.resources.game_settlement_waive
+import br.com.saqz.groups.resources.game_settlement_waive_failure
 import br.com.saqz.groups.resources.game_settlement_waived_status
+import br.com.saqz.groups.resources.game_settlement_withdrew_status
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -82,8 +86,11 @@ internal object GameSettlementTags {
     const val End = "game-settlement-end"
     const val Cashbox = "game-settlement-cashbox"
     const val Failure = "game-settlement-failure"
+    const val WaiveFailure = "game-settlement-waive-failure"
 
     fun receipt(chargeId: String) = "game-settlement-receipt-$chargeId"
+    fun waive(chargeId: String) = "game-settlement-waive-$chargeId"
+    fun withdrew(chargeId: String) = "game-settlement-withdrew-$chargeId"
     fun charge(chargeId: String) = "game-settlement-charge-$chargeId"
 }
 
@@ -97,6 +104,7 @@ internal fun GameSettlementScreen(
     onSendReminders: (List<String>) -> Unit = {},
 ) {
     val receiptDebtor = state.debtors.firstOrNull { it.chargeId == state.receiptSheetChargeId }
+    val waiveDebtor = state.debtors.firstOrNull { it.chargeId == state.waiveSheetChargeId }
     val chargeDebtors = state.debtors.filter {
         state.chargeSheetChargeId == null || it.chargeId == state.chargeSheetChargeId
     }
@@ -131,6 +139,12 @@ internal fun GameSettlementScreen(
                     onIntent(GameSettlementIntent.MarkReceived(it.chargeId, paidMethod))
                 }
             },
+        )
+        WaiveSheet(
+            open = state.waiveSheetChargeId != null,
+            debtor = waiveDebtor,
+            onClose = { onIntent(GameSettlementIntent.DismissWaiveSheet) },
+            onConfirm = { waiveDebtor?.let { onIntent(GameSettlementIntent.Waive(it.chargeId)) } },
         )
     }
 }
@@ -168,6 +182,14 @@ private fun LoadedContent(state: GameSettlementState, onIntent: (GameSettlementI
                 text = stringResource(Res.string.game_settlement_receipt_failure),
                 style = SaqzTheme.typography.support,
                 color = SaqzTheme.colors.errorForeground,
+            )
+        }
+        if (state.waiveFailed) {
+            Text(
+                text = stringResource(Res.string.game_settlement_waive_failure),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.errorForeground,
+                modifier = Modifier.testTag(GameSettlementTags.WaiveFailure),
             )
         }
         SaqzButton(
@@ -377,16 +399,35 @@ private fun DiaristRow(
             )
             Text(text = diarist.meta, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
             Text(text = diarist.amountLabel, style = SaqzTheme.typography.support, color = SaqzTheme.colors.textPrimary)
+            if (diarist.withdrew) {
+                SaqzStatusChip(
+                    text = stringResource(Res.string.game_settlement_withdrew_status),
+                    tone = SaqzChipTone.Warning,
+                    modifier = Modifier.testTag(GameSettlementTags.withdrew(diarist.chargeId)),
+                )
+            }
         }
         when (diarist.status) {
-            ChargeStatus.Pending -> SaqzButton(
-                label = stringResource(Res.string.game_settlement_receipt),
-                onClick = { onIntent(GameSettlementIntent.OpenReceipt(diarist.chargeId)) },
-                size = SaqzButtonSize.Sm,
-                loading = diarist.isUpdating,
-                enabled = !diarist.isUpdating,
-                modifier = Modifier.testTag(GameSettlementTags.receipt(diarist.chargeId)),
-            )
+            ChargeStatus.Pending -> Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
+                SaqzButton(
+                    label = stringResource(Res.string.game_settlement_receipt),
+                    onClick = { onIntent(GameSettlementIntent.OpenReceipt(diarist.chargeId)) },
+                    size = SaqzButtonSize.Sm,
+                    loading = diarist.isUpdating,
+                    enabled = !diarist.isUpdating,
+                    modifier = Modifier.testTag(GameSettlementTags.receipt(diarist.chargeId)),
+                )
+                if (diarist.withdrew) {
+                    SaqzButton(
+                        label = stringResource(Res.string.game_settlement_waive),
+                        onClick = { onIntent(GameSettlementIntent.OpenWaive(diarist.chargeId)) },
+                        variant = SaqzButtonVariant.Secondary,
+                        size = SaqzButtonSize.Sm,
+                        enabled = !diarist.isUpdating,
+                        modifier = Modifier.testTag(GameSettlementTags.waive(diarist.chargeId)),
+                    )
+                }
+            }
             ChargeStatus.Paid -> SaqzStatusChip(
                 text = stringResource(Res.string.game_settlement_received_status),
                 tone = SaqzChipTone.Success,

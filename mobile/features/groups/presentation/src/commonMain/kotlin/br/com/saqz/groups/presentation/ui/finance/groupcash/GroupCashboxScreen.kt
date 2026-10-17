@@ -31,6 +31,7 @@ import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzProgressBar
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSpinner
+import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -72,6 +73,10 @@ import br.com.saqz.groups.resources.monthly_generation_title
 import br.com.saqz.groups.presentation.ui.finance.PixCard
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
+import br.com.saqz.groups.presentation.ui.finance.sheets.WaiveSheet
+import br.com.saqz.groups.resources.group_cashbox_waive_action
+import br.com.saqz.groups.resources.group_cashbox_waive_failure
+import br.com.saqz.groups.resources.group_cashbox_withdrew_status
 import org.jetbrains.compose.resources.stringResource
 
 internal object GroupCashboxTags {
@@ -89,10 +94,13 @@ internal object GroupCashboxTags {
     const val Failure = "group-cashbox-failure"
     const val Retry = "group-cashbox-retry"
     const val Statement = "group-cashbox-statement"
+    const val WaiveFailure = "group-cashbox-waive-failure"
 
     fun chargePayment(chargeId: String) = "group-cashbox-payment-$chargeId"
     fun chargeIndividual(chargeId: String) = "group-cashbox-charge-$chargeId"
     fun chargeReminded(chargeId: String) = "group-cashbox-reminded-$chargeId"
+    fun chargeWaive(chargeId: String) = "group-cashbox-waive-$chargeId"
+    fun chargeWithdrew(chargeId: String) = "group-cashbox-withdrew-$chargeId"
 }
 
 @Composable
@@ -107,6 +115,7 @@ internal fun GroupCashboxScreen(
     onOpenChargePayment: ((String) -> Unit)? = null,
 ) {
     val receiptDebtor = state.debtors.firstOrNull { it.chargeId == state.receiptSheetChargeId }
+    val waiveDebtor = state.debtors.firstOrNull { it.chargeId == state.waiveSheetChargeId }
     val chargeDebtors = state.debtors.filter {
         state.chargeSheetChargeId == null || it.chargeId == state.chargeSheetChargeId
     }
@@ -143,6 +152,12 @@ internal fun GroupCashboxScreen(
             onConfirm = { paidMethod ->
                 receiptDebtor?.let { onIntent(MarkReceived(it.chargeId, paidMethod)) }
             },
+        )
+        WaiveSheet(
+            open = state.waiveSheetChargeId != null,
+            debtor = waiveDebtor,
+            onClose = { onIntent(GroupCashboxIntent.DismissWaiveSheet) },
+            onConfirm = { waiveDebtor?.let { onIntent(GroupCashboxIntent.Waive(it.chargeId)) } },
         )
     }
 }
@@ -279,6 +294,14 @@ private fun CashboxHeader(
                 text = stringResource(Res.string.group_cashbox_operation_failure),
                 style = SaqzTheme.typography.support,
                 color = colors.errorForeground,
+            )
+        }
+        if (state.waiveFailed) {
+            Text(
+                text = stringResource(Res.string.group_cashbox_waive_failure),
+                style = SaqzTheme.typography.support,
+                color = colors.errorForeground,
+                modifier = Modifier.testTag(GroupCashboxTags.WaiveFailure),
             )
         }
     }
@@ -425,6 +448,13 @@ private fun DebtorRow(
                 style = SaqzTheme.typography.caption,
                 color = SaqzTheme.colors.textSecondary,
             )
+            if (debtor.withdrew) {
+                SaqzStatusChip(
+                    text = stringResource(Res.string.group_cashbox_withdrew_status),
+                    tone = SaqzChipTone.Warning,
+                    modifier = Modifier.testTag(GroupCashboxTags.chargeWithdrew(debtor.chargeId)),
+                )
+            }
             if (reminded) {
                 Text(
                     text = stringResource(Res.string.sheet_charge_already_reminded),
@@ -449,6 +479,16 @@ private fun DebtorRow(
                 size = SaqzButtonSize.Sm,
                 loading = debtor.isUpdating,
             )
+            if (debtor.withdrew) {
+                SaqzButton(
+                    label = stringResource(Res.string.group_cashbox_waive_action),
+                    onClick = { onIntent(GroupCashboxIntent.OpenWaive(debtor.chargeId)) },
+                    variant = SaqzButtonVariant.Secondary,
+                    size = SaqzButtonSize.Sm,
+                    enabled = !debtor.isUpdating,
+                    modifier = Modifier.testTag(GroupCashboxTags.chargeWaive(debtor.chargeId)),
+                )
+            }
         }
     }
     onOpenChargePayment?.let { open ->

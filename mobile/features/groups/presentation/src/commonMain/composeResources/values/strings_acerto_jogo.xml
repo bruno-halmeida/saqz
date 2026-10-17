@@ -14,6 +14,8 @@
     <string name="game_settlement_receipt">Recebi</string>
     <string name="game_settlement_received_status">Recebido</string>
     <string name="game_settlement_waived_status">Dispensado</string>
+    <string name="game_settlement_withdrew_status">Desistiu</string>
+    <string name="game_settlement_waive">Dispensar</string>
     <string name="game_settlement_end">Encerrar acerto</string>
     <string name="game_settlement_end_helper">Registre o pagamento de todos os avulsos para encerrar o acerto.</string>
     <string name="game_settlement_view_cashbox">Ver o caixa do grupo</string>
@@ -24,6 +26,7 @@
     <string name="game_settlement_negative_result">A diferença saiu do saldo. Considere ajustar o valor do avulso.</string>
     <string name="game_settlement_court_expense_description_prefill">Aluguel da quadra</string>
     <string name="game_settlement_receipt_failure">Não foi possível registrar o recebimento. Tente novamente.</string>
+    <string name="game_settlement_waive_failure">Não foi possível dispensar a cobrança. Tente novamente.</string>
     <string name="game_settlement_summary_diarists_one">1 avulso × %1$s</string>
     <string name="game_settlement_summary_diarists_other">%1$d avulsos × %2$s</string>
     <plurals name="game_settlement_players">

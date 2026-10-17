@@ -64,6 +64,9 @@ class GameSettlementViewModel(
             is GameSettlementIntent.ChargeIndividual -> openChargeSheet(intent.chargeId)
             is GameSettlementIntent.OpenReceipt -> openReceiptSheet(intent.chargeId)
             is GameSettlementIntent.MarkReceived -> markReceived(intent.chargeId, intent.paidMethod)
+            is GameSettlementIntent.OpenWaive -> openWaiveSheet(intent.chargeId)
+            is GameSettlementIntent.Waive -> waive(intent.chargeId)
+            GameSettlementIntent.DismissWaiveSheet -> update { it.copy(waiveSheetChargeId = null) }
             GameSettlementIntent.DismissChargeSheet -> update {
                 it.copy(chargeSheetOpen = false, chargeSheetChargeId = null)
             }
@@ -97,6 +100,7 @@ class GameSettlementViewModel(
                 chargeSheetOpen = true,
                 chargeSheetChargeId = chargeId,
                 receiptSheetChargeId = null,
+                waiveSheetChargeId = null,
             )
         }
     }
@@ -110,6 +114,24 @@ class GameSettlementViewModel(
         update {
             it.copy(
                 receiptSheetChargeId = chargeId,
+                chargeSheetOpen = false,
+                chargeSheetChargeId = null,
+                waiveSheetChargeId = null,
+            )
+        }
+    }
+
+    /** Só quem desistiu tem "Dispensar": cobrança comum segue o caminho do "Recebi". */
+    private fun openWaiveSheet(chargeId: String) {
+        val current = state.value
+        if (
+            current.isLoading || current.updatingChargeId != null ||
+            current.diarists.none { it.chargeId == chargeId && it.withdrew && it.status == ChargeStatus.Pending }
+        ) return
+        update {
+            it.copy(
+                waiveSheetChargeId = chargeId,
+                receiptSheetChargeId = null,
                 chargeSheetOpen = false,
                 chargeSheetChargeId = null,
             )
@@ -134,7 +156,7 @@ class GameSettlementViewModel(
     }
 
     private fun GameSettlementState.interacting() =
-        chargeSheetOpen || receiptSheetChargeId != null || updatingChargeId != null
+        chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null || updatingChargeId != null
 
     /**
      * Volta à tela: recarga por baixo, sem esqueleto e sem tela de erro. Com carga em voo, folha
@@ -237,6 +259,60 @@ class GameSettlementViewModel(
         }
     }
 
+    private fun waive(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null) return
+        val diarist = current.diarists.firstOrNull {
+            it.chargeId == chargeId && it.withdrew && it.status == ChargeStatus.Pending
+        } ?: return
+        val debtor = current.debtors.firstOrNull { it.chargeId == chargeId } ?: return
+        val generation = ++mutationGeneration
+        val loadAtStart = loadGeneration
+        val previous = current
+        update { it.optimisticallyWaive(diarist) }
+        viewModelScope.launch {
+            val result = organizerFinanceGateway.updateChargeStatus(
+                groupId = GroupId(groupId),
+                chargeId = debtor.chargeId,
+                version = FinanceVersionToken("\"${debtor.chargeVersion}\""),
+                command = ChargeStatusCommand(ChargeStatus.Waived),
+            )
+            if (generation != mutationGeneration || loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    load()
+                    emit(GameSettlementEffect.MutationSucceeded)
+                }
+                is SaqzResult.Failure -> update {
+                    previous.copy(waiveFailed = true, updatingChargeId = null, waiveSheetChargeId = null)
+                }
+            }
+        }
+    }
+
+    /** Dispensada sai do que falta, mas não entra no recebido nem no resultado. */
+    private fun GameSettlementState.optimisticallyWaive(
+        diarist: GameSettlementDiaristUi,
+    ): GameSettlementState {
+        val pendingCount = (pendingDiaristCount - 1).coerceAtLeast(0)
+        return copy(
+            diarists = diarists.map {
+                if (it.chargeId == diarist.chargeId) {
+                    it.copy(status = ChargeStatus.Waived, withdrew = false, isUpdating = true)
+                } else {
+                    it
+                }
+            },
+            debtors = debtors.filterNot { it.chargeId == diarist.chargeId },
+            pendingDiaristCount = pendingCount,
+            pendingDiaristCents = (pendingDiaristCents - diarist.amountCents).coerceAtLeast(0L),
+            updatingChargeId = diarist.chargeId,
+            waiveSheetChargeId = null,
+            operationFailed = false,
+            waiveFailed = false,
+        )
+    }
+
     private fun GameSettlementState.optimisticallyReceive(
         diarist: GameSettlementDiaristUi,
     ): GameSettlementState {
@@ -262,6 +338,7 @@ class GameSettlementViewModel(
             updatingChargeId = diarist.chargeId,
             receiptSheetChargeId = null,
             operationFailed = false,
+            waiveFailed = false,
         )
     }
 
@@ -349,6 +426,7 @@ class GameSettlementViewModel(
             dueDate = dueDate,
             chargeVersion = version,
             status = status,
+            withdrew = withdrew,
             referenceLabel = if (guest != null) {
                 "Convidado $guest · jogo de ${formatDate(dueDate)}"
             } else {
@@ -367,6 +445,7 @@ class GameSettlementViewModel(
         chargeVersion = chargeVersion,
         month = null,
         referenceLabel = referenceLabel,
+        withdrew = withdrew,
     )
 
     /** Por baixo ([softRefresh]) a falha não troca a tela por erro: o fechamento que está na tela fica. */

@@ -22,4 +22,7 @@
     <string name="group_cashbox_load_failure_body">Verifique sua conexão e tente de novo.</string>
     <string name="group_cashbox_retry">Tentar novamente</string>
     <string name="group_cashbox_operation_failure">Não foi possível registrar o recebimento. Tente novamente.</string>
+    <string name="group_cashbox_withdrew_status">Desistiu</string>
+    <string name="group_cashbox_waive_action">Dispensar</string>
+    <string name="group_cashbox_waive_failure">Não foi possível dispensar a cobrança. Tente novamente.</string>
 </resources>

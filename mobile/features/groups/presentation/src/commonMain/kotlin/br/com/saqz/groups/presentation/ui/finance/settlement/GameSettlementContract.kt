@@ -34,6 +34,8 @@ data class GameSettlementState(
     val chargeSheetOpen: Boolean = false,
     val chargeSheetChargeId: String? = null,
     val receiptSheetChargeId: String? = null,
+    val waiveSheetChargeId: String? = null,
+    val waiveFailed: Boolean = false,
 ) {
     val isSummary: Boolean
         get() = !isLoading && !loadFailed && updatingChargeId == null && pendingDiaristCount == 0
@@ -59,6 +61,7 @@ data class GameSettlementDiaristUi(
     val status: ChargeStatus,
     val referenceLabel: String,
     val isUpdating: Boolean = false,
+    val withdrew: Boolean = false,
 )
 
 sealed interface GameSettlementIntent {
@@ -70,6 +73,9 @@ sealed interface GameSettlementIntent {
     data class ChargeIndividual(val chargeId: String) : GameSettlementIntent
     data class OpenReceipt(val chargeId: String) : GameSettlementIntent
     data class MarkReceived(val chargeId: String, val paidMethod: br.com.saqz.groups.domain.finance.PaidMethod) : GameSettlementIntent
+    data class OpenWaive(val chargeId: String) : GameSettlementIntent
+    data class Waive(val chargeId: String) : GameSettlementIntent
+    data object DismissWaiveSheet : GameSettlementIntent
     data object DismissChargeSheet : GameSettlementIntent
     data object DismissReceiptSheet : GameSettlementIntent
     data object CopyPix : GameSettlementIntent

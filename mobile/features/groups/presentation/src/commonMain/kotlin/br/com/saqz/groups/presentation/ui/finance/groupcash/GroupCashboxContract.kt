@@ -33,6 +33,8 @@ data class GroupCashboxState(
     val chargeSheetOpen: Boolean = false,
     val chargeSheetChargeId: String? = null,
     val receiptSheetChargeId: String? = null,
+    val waiveSheetChargeId: String? = null,
+    val waiveFailed: Boolean = false,
 )
 
 @Immutable
@@ -48,6 +50,8 @@ data class DebtorUi(
     val isOverdue: Boolean = false,
     val isUpdating: Boolean = false,
     val referenceLabel: String = "",
+    /** Desistiu depois de confirmar e a diária segue pendente: o organizador cobra ou dispensa. */
+    val withdrew: Boolean = false,
 )
 
 @Immutable
@@ -77,6 +81,9 @@ sealed interface GroupCashboxIntent {
         val chargeId: String,
         val paidMethod: PaidMethod = PaidMethod.Pix,
     ) : GroupCashboxIntent
+    data class OpenWaive(val chargeId: String) : GroupCashboxIntent
+    data class Waive(val chargeId: String) : GroupCashboxIntent
+    data object DismissWaiveSheet : GroupCashboxIntent
     data object DismissChargeSheet : GroupCashboxIntent
     data object DismissReceiptSheet : GroupCashboxIntent
     data object CopyPix : GroupCashboxIntent

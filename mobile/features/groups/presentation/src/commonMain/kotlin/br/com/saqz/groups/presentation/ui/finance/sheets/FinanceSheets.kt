@@ -38,6 +38,11 @@ import br.com.saqz.groups.resources.sheet_charge_cancel
 import br.com.saqz.groups.resources.sheet_charge_description
 import br.com.saqz.groups.resources.sheet_charge_send
 import br.com.saqz.groups.resources.sheet_charge_title
+import br.com.saqz.groups.resources.sheet_waive_amount
+import br.com.saqz.groups.resources.sheet_waive_cancel
+import br.com.saqz.groups.resources.sheet_waive_confirm
+import br.com.saqz.groups.resources.sheet_waive_note
+import br.com.saqz.groups.resources.sheet_waive_title
 import br.com.saqz.groups.resources.sheet_receipt_amount
 import br.com.saqz.groups.resources.sheet_receipt_cancel
 import br.com.saqz.groups.resources.sheet_receipt_confirm
@@ -67,6 +72,10 @@ internal object FinanceSheetsTags {
     const val ReceiptAmount = "finance-receipt-amount"
     const val ReceiptMethod = "finance-receipt-method"
     const val ReceiptConfirm = "finance-receipt-confirm"
+    const val Waive = "finance-waive-sheet"
+    const val WaiveAmount = "finance-waive-amount"
+    const val WaiveNote = "finance-waive-note"
+    const val WaiveConfirm = "finance-waive-confirm"
 
     fun chargeRecipient(chargeId: String) = "$ChargeRecipient-$chargeId"
 }
@@ -256,6 +265,77 @@ internal fun ReceiptSheet(
                     onSelect = { selectedMethod = PaidMethod.entries[it] },
                 )
             }
+        }
+    }
+}
+
+/** Confirmação de "Dispensar": perdoar a diária de quem desistiu não tem volta. */
+@Composable
+internal fun WaiveSheet(
+    open: Boolean,
+    debtor: DebtorUi?,
+    onClose: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    SaqzBottomSheet(
+        open = open,
+        onClose = onClose,
+        modifier = Modifier.testTag(FinanceSheetsTags.Waive),
+        title = stringResource(Res.string.sheet_waive_title),
+        description = debtor?.referenceLabel,
+        splitFooter = {
+            SaqzButton(
+                label = stringResource(Res.string.sheet_waive_cancel),
+                onClick = onClose,
+                variant = SaqzButtonVariant.Secondary,
+                modifier = Modifier.weight(1f),
+            )
+            SaqzButton(
+                label = stringResource(Res.string.sheet_waive_confirm),
+                onClick = onConfirm,
+                enabled = debtor != null,
+                modifier = Modifier.weight(1f).testTag(FinanceSheetsTags.WaiveConfirm),
+            )
+        },
+    ) {
+        debtor?.let { waived ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+            ) {
+                SaqzAvatar(name = waived.name)
+                Column {
+                    Text(
+                        text = waived.name,
+                        style = SaqzTheme.typography.subtitle,
+                        color = SaqzTheme.colors.textPrimary,
+                    )
+                    Text(
+                        text = waived.referenceLabel,
+                        style = SaqzTheme.typography.support,
+                        color = SaqzTheme.colors.textSecondary,
+                    )
+                }
+            }
+            SaqzCard(modifier = Modifier.testTag(FinanceSheetsTags.WaiveAmount)) {
+                Text(
+                    text = stringResource(Res.string.sheet_waive_amount),
+                    style = SaqzTheme.typography.support,
+                    color = SaqzTheme.colors.textSecondary,
+                )
+                Text(
+                    text = waived.amountLabel,
+                    style = SaqzTheme.typography.title,
+                    color = SaqzTheme.colors.textPrimary,
+                )
+            }
+            Text(
+                text = stringResource(Res.string.sheet_waive_note),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+                modifier = Modifier.testTag(FinanceSheetsTags.WaiveNote),
+            )
         }
     }
 }

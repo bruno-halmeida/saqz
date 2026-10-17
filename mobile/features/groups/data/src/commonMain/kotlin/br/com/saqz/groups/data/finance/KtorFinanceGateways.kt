@@ -49,6 +49,7 @@ internal data class ChargeTransport(
     val events: List<ChargeAuditTransport>,
     val paidMethod: String? = null,
     val guestDisplayName: String? = null,
+    val withdrew: Boolean = false,
 )
 
 @Serializable
@@ -430,6 +431,7 @@ private fun ChargeTransport.toDomain() = Charge(
     dueDate, status.toDomain(), reviewRequired, version, events.map(ChargeAuditTransport::toDomain),
     paidMethod.toPaidMethod(),
     guestDisplayName = guestDisplayName,
+    withdrew = withdrew,
 )
 
 private fun ChargeAuditTransport.toDomain() =

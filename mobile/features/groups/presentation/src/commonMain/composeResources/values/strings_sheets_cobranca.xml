@@ -34,4 +34,10 @@
     <string name="sheet_receipt_method_other">Outro</string>
     <string name="sheet_receipt_confirm">Confirmar recebimento</string>
     <string name="sheet_receipt_cancel">Cancelar</string>
+
+    <string name="sheet_waive_title">Dispensar cobrança</string>
+    <string name="sheet_waive_amount">Valor que deixa de ser cobrado</string>
+    <string name="sheet_waive_note">Quem desistiu não paga esta diária. A pessoa não recebe aviso e não dá para desfazer.</string>
+    <string name="sheet_waive_confirm">Dispensar</string>
+    <string name="sheet_waive_cancel">Cancelar</string>
 </resources>

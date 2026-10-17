@@ -75,6 +75,8 @@ data class Charge(
     val paidMethod: PaidMethod? = null,
     /** Nome do convidado quando a cobrança de jogo é de um "+1" do membro; senão `null`. */
     val guestDisplayName: String? = null,
+    /** A pessoa desistiu depois de confirmada e a cobrança segue pendente; o organizador decide. */
+    val withdrew: Boolean = false,
 )
 
 data class ChargeTotals(

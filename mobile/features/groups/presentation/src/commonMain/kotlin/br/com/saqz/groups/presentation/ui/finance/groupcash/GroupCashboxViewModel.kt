@@ -53,6 +53,9 @@ class GroupCashboxViewModel(
             }
             GroupCashboxIntent.ViewFullStatement -> emit(GroupCashboxEffect.OpenStatement(groupId))
             is GroupCashboxIntent.OpenReceipt -> openReceiptSheet(intent.chargeId)
+            is GroupCashboxIntent.OpenWaive -> openWaiveSheet(intent.chargeId)
+            is GroupCashboxIntent.Waive -> waive(intent.chargeId)
+            GroupCashboxIntent.DismissWaiveSheet -> update { it.copy(waiveSheetChargeId = null) }
             GroupCashboxIntent.DismissChargeSheet -> update {
                 it.copy(chargeSheetOpen = false, chargeSheetChargeId = null)
             }
@@ -77,6 +80,7 @@ class GroupCashboxViewModel(
                 chargeSheetOpen = true,
                 chargeSheetChargeId = chargeId,
                 receiptSheetChargeId = null,
+                waiveSheetChargeId = null,
             )
         }
     }
@@ -86,11 +90,34 @@ class GroupCashboxViewModel(
         if (current.isLoading || current.updatingChargeId != null ||
             current.debtors.none { it.chargeId == chargeId }
         ) return
-        update { it.copy(receiptSheetChargeId = chargeId, chargeSheetOpen = false, chargeSheetChargeId = null) }
+        update {
+            it.copy(
+                receiptSheetChargeId = chargeId,
+                chargeSheetOpen = false,
+                chargeSheetChargeId = null,
+                waiveSheetChargeId = null,
+            )
+        }
+    }
+
+    /** Só quem desistiu tem "Dispensar": cobrança comum segue o caminho do "Recebi". */
+    private fun openWaiveSheet(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null ||
+            current.debtors.none { it.chargeId == chargeId && it.withdrew }
+        ) return
+        update {
+            it.copy(
+                waiveSheetChargeId = chargeId,
+                receiptSheetChargeId = null,
+                chargeSheetOpen = false,
+                chargeSheetChargeId = null,
+            )
+        }
     }
 
     private fun GroupCashboxState.interacting() =
-        chargeSheetOpen || receiptSheetChargeId != null || updatingChargeId != null
+        chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null || updatingChargeId != null
 
     /**
      * Volta à tela: recarga por baixo, sem esqueleto e sem tela de erro. Com carga em voo, folha
@@ -187,6 +214,47 @@ class GroupCashboxViewModel(
         }
     }
 
+    private fun waive(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null) return
+        val debtor = current.debtors.firstOrNull { it.chargeId == chargeId && it.withdrew } ?: return
+        val generation = ++receiptGeneration
+        val loadAtStart = loadGeneration
+        val previous = current
+        update { current.optimisticallyWaive(debtor) }
+        viewModelScope.launch {
+            val result = organizerFinanceGateway.updateChargeStatus(
+                groupId = GroupId(groupId),
+                chargeId = debtor.chargeId,
+                version = FinanceVersionToken("\"${debtor.chargeVersion}\""),
+                command = ChargeStatusCommand(ChargeStatus.Waived),
+            )
+            if (generation != receiptGeneration || loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    update { it.copy(updatingChargeId = null, operationFailed = false, waiveFailed = false) }
+                    emit(GroupCashboxEffect.MutationSucceeded)
+                }
+                is SaqzResult.Failure -> update {
+                    previous.copy(waiveFailed = true, updatingChargeId = null, waiveSheetChargeId = null)
+                }
+            }
+        }
+    }
+
+    /** Dispensar não entra no saldo nem no recebido: só tira a cobrança da lista de quem deve. */
+    private fun GroupCashboxState.optimisticallyWaive(debtor: DebtorUi): GroupCashboxState {
+        val remainingDebtors = debtors.filterNot { it.chargeId == debtor.chargeId }
+        return copy(
+            debtors = remainingDebtors,
+            overdueBanner = buildOverdueBanner(remainingDebtors),
+            updatingChargeId = debtor.chargeId,
+            operationFailed = false,
+            waiveFailed = false,
+            waiveSheetChargeId = null,
+        )
+    }
+
     /** Por baixo ([softRefresh]) a falha não troca a tela por erro: o caixa que está na tela fica. */
     private fun failLoad(generation: Long, softRefresh: Boolean) {
         if (generation != loadGeneration || softRefresh) return
@@ -261,6 +329,7 @@ class GroupCashboxViewModel(
         chargeVersion = version,
         month = month,
         isOverdue = isOverdue,
+        withdrew = withdrew,
         referenceLabel = when (kind) {
             ChargeKind.Game -> "Diarista · jogo de ${formatDate(dueDate)}"
             ChargeKind.Monthly -> "Mensalista · ${month?.let(::monthNameOnlyFromKey) ?: "mês"}"
@@ -291,6 +360,7 @@ class GroupCashboxViewModel(
             updatingChargeId = debtor.chargeId,
             cashboxEmpty = false,
             operationFailed = false,
+            waiveFailed = false,
             receiptSheetChargeId = null,
         )
     }
