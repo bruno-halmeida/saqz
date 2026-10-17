@@ -11,7 +11,9 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 internal class MonthlyGenerationE2eTest : InstalledE2e("finance") {
     // Os seletores abrem no mês atual; o vencimento padrão é o dia de hoje (o grupo do roteiro não tem dia fixo).
-    private val today = java.time.LocalDate.now()
+    // "Hoje" é o do fuso do grupo (America/Sao_Paulo): o emulador do CI está em UTC e, das 21h às 24h de Brasília,
+    // já é outro dia por lá.
+    private val today = java.time.LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"))
     private val month = today.toString().take(7)
     private val due = "%02d/%02d/%d".format(today.dayOfMonth, today.monthValue, today.year)
     private val monthTitle = "${java.time.Month.of(today.monthValue).getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale("pt", "BR"))} de ${today.year}"
@@ -71,7 +73,7 @@ internal class MonthlyGenerationE2eTest : InstalledE2e("finance") {
         ui.onNodeWithTag("monthly-generation-member-${actor("owner").getString("id")}").assertDoesNotExist()
         ui.onNodeWithTag("monthly-generation-review").assertIsNotEnabled()
         ui.onNodeWithText(monthTitle).assertIsDisplayed()
-        ui.onNodeWithText(due).performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText(due).assertIsDisplayed()
         input("monthly-generation-amount", value)
         click(selected, scroll = true)
         ui.onNodeWithTag(selected).assertIsOn()

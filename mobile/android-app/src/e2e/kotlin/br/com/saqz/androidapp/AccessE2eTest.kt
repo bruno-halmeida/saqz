@@ -39,9 +39,7 @@ internal class AccessE2eTest : InstalledE2e("access") {
     @Test
     fun invalidPasswordCannotOpenProtectedContentAndCorrectionWorks() {
         enterCredentials("athlete", "Definitely-wrong-password")
-        ui.waitUntil(20_000) {
-            ui.onAllNodesWithText("E-mail ou senha incorretos. Confira os dados e tente de novo.").fetchSemanticsNodes().size == 1
-        }
+        waitText("E-mail ou senha incorretos. Confira os dados e tente de novo.")
         // O erro fica abaixo do botão; a lista só o mostra depois de rolar até ele.
         ui.onNodeWithText("E-mail ou senha incorretos. Confira os dados e tente de novo.").performScrollTo().assertIsDisplayed()
         ui.onNodeWithTag("saqz-shell-content").assertDoesNotExist()
