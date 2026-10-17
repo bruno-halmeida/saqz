@@ -389,6 +389,31 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `second Vou or Nao vou while the first is in flight is ignored and answers again once it ends`() = runTest {
+        val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway()
+        attendance.respondDeferred = response
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = sampleNextGame()))),
+            attendanceGateway = attendance,
+        )
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Decline))
+        assertTrue(viewModel.state.value.responding)
+        assertEquals(1, attendance.respondCalls)
+
+        response.complete(SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedAttendanceMutation()))
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.responding)
+        assertEquals(1, attendance.respondCalls)
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Decline))
+        assertEquals(2, attendance.respondCalls)
+    }
+
+    @Test
     fun `failed response restores the previous attendance and exposes the standard response error`() = runTest {
         val attendance = FakeAttendanceGateway(
             respondResult = SaqzResult.Failure(AttendanceError.Data(DataError.Server)),

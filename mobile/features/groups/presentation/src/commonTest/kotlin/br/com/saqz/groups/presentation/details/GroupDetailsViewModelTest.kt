@@ -112,6 +112,27 @@ class GroupDetailsViewModelTest {
         assertFalse(vm.state.value.athleteIntroVisible)
     }
 
+    @Test
+    fun `second Vou or Nao vou while the first is in flight is ignored and answers again once it ends`() = runTest {
+        val attendance = FakeAttendanceGateway().apply { respondDeferred = CompletableDeferred() }
+        val vm = viewModel(groupGateway = athleteGroupGateway(), attendanceGateway = attendance,
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))))
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Decline))
+        assertTrue(vm.state.value.responding)
+        assertEquals(1, attendance.respondCalls)
+
+        attendance.respondDeferred!!.complete(SaqzResult.Success(sampleVersionedAttendanceMutation()))
+        advanceUntilIdle()
+        assertFalse(vm.state.value.responding)
+        assertEquals(1, attendance.respondCalls)
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Decline))
+        assertEquals(2, attendance.respondCalls)
+    }
+
     private fun respondedAs(status: br.com.saqz.groups.domain.attendance.AttendanceStatus) =
         sampleVersionedAttendanceMutation().let { base ->
             base.copy(value = base.value.copy(attendance = base.value.attendance.copy(memberId = "me", status = status)))

@@ -1076,6 +1076,26 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun secondVouOrNaoVouWhileTheFirstIsInFlightIsIgnoredAndAnswersAgainOnceItEnds() = runTest {
+        val deferred = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
+        val attendance = FakeAttendanceGateway().also { it.respondDeferred = deferred }
+        val viewModel = responder(attendance)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Decline))
+        assertTrue(viewModel.state.value.response.responding)
+        assertEquals(1, attendance.respondCalls)
+
+        deferred.complete(mutation(AttendanceStatus.Confirmed))
+        assertFalse(viewModel.state.value.response.responding)
+        assertEquals(1, attendance.respondCalls)
+
+        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Decline))
+        assertEquals(2, attendance.respondCalls)
+    }
+
+    @Test
     fun notGoingMarksDeclinedAndKeepsTheGuestButtonOffWithTheHint() = runTest {
         val attendance = FakeAttendanceGateway(
             readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed)),
