@@ -220,6 +220,88 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
+    fun `asking to deactivate only opens the confirmation and dismissing it calls nothing`() = runTest {
+        val membership = FakeMembershipGateway()
+        val viewModel = groupViewModel(membership = membership)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.RequestDeactivate)
+        assertTrue(viewModel.state.value.isDeactivateConfirmVisible)
+        viewModel.onIntent(GroupInviteIntent.DismissDeactivate)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isDeactivateConfirmVisible)
+        assertEquals(0, membership.expireCalls)
+        assertEquals(InviteStatus.Active, viewModel.state.value.inviteStatus)
+        assertEquals(CODE, viewModel.state.value.inviteCode)
+    }
+
+    @Test
+    fun `confirming deactivation clears the code and link and keeps the pending requests`() = runTest {
+        val membership = FakeMembershipGateway()
+        val entries = FakeEntryGateway(
+            mutableListOf(GroupEntryRequest("u1", "Ana", "2026-07-31T10:00:00Z")),
+        )
+        val viewModel = groupViewModel(membership = membership, entryGateway = entries)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.RequestDeactivate)
+        viewModel.onIntent(GroupInviteIntent.ConfirmDeactivate)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(1, membership.expireCalls)
+        assertEquals(InviteStatus.Empty, state.inviteStatus)
+        assertNull(state.inviteCode)
+        assertNull(state.inviteUrl)
+        assertFalse(state.isDeactivating)
+        assertFalse(state.isDeactivateConfirmVisible)
+        assertEquals(GroupInviteToast.InviteDeactivated, state.toast)
+        assertEquals(listOf("u1"), state.pendingRequests.map { it.userId })
+    }
+
+    @Test
+    fun `a deactivation in flight ignores a second confirmation`() = runTest {
+        val membership = GatedExpireMembershipGateway()
+        val viewModel = groupViewModel(membership = membership)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.ConfirmDeactivate)
+        viewModel.onIntent(GroupInviteIntent.ConfirmDeactivate)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.isDeactivating)
+        assertEquals(1, membership.expireCalls)
+
+        membership.complete()
+        advanceUntilIdle()
+
+        assertEquals(1, membership.expireCalls)
+        assertFalse(viewModel.state.value.isDeactivating)
+        assertEquals(InviteStatus.Empty, viewModel.state.value.inviteStatus)
+    }
+
+    @Test
+    fun `deactivation failure keeps the code and link and leaves operation error`() = runTest {
+        val membership = FakeMembershipGateway(
+            expireResult = SaqzResult.Failure(GroupMembershipError.DataFailure(DataError.Connectivity)),
+        )
+        val viewModel = groupViewModel(membership = membership)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.ConfirmDeactivate)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(GroupInviteError.Operation, state.error)
+        assertEquals(InviteStatus.Active, state.inviteStatus)
+        assertEquals(CODE, state.inviteCode)
+        assertEquals(URL, state.inviteUrl)
+        assertFalse(state.isDeactivating)
+        assertNull(state.toast)
+    }
+
+    @Test
     fun `toggle approval success sends group update`() = runTest {
         val groupGateway = FakeInviteGroupGateway()
         val viewModel = groupViewModel(groupGateway = groupGateway)
@@ -726,7 +808,32 @@ class GroupInviteViewModelsTest {
             return rotateResult
         }
         override suspend fun readInviteMetadata(groupId: GroupId) = metadataResult
-        override suspend fun expireInvite(groupId: GroupId) = expireResult
+        var expireCalls = 0
+        override suspend fun expireInvite(groupId: GroupId): EmptyResult<GroupMembershipError> {
+            expireCalls += 1
+            return expireResult
+        }
+    }
+
+    private class GatedExpireMembershipGateway : GroupMembershipGateway {
+        private val gate = CompletableDeferred<Unit>()
+        var expireCalls = 0
+
+        override suspend fun listMemberships(groupId: GroupId) = SaqzResult.Success(emptyList<GroupMembership>())
+        override suspend fun changeRole(command: ChangeMembershipRoleCommand) =
+            SaqzResult.Success(GroupMembership("u", "U", GroupRole.ATHLETE))
+        override suspend fun rotateInvite(groupId: GroupId): SaqzResult<GroupInviteUrl, GroupMembershipError> =
+            error("rotate must not run")
+        override suspend fun readInviteMetadata(groupId: GroupId) = SaqzResult.Success(ACTIVE_METADATA)
+        override suspend fun expireInvite(groupId: GroupId): EmptyResult<GroupMembershipError> {
+            expireCalls += 1
+            gate.await()
+            return SaqzResult.Success(Unit)
+        }
+
+        fun complete() {
+            gate.complete(Unit)
+        }
     }
 
     private class ConcurrentInviteMutationGateway : GroupMembershipGateway {

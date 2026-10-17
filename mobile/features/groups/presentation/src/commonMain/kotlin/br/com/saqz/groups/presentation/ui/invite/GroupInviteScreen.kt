@@ -50,6 +50,10 @@ import br.com.saqz.groups.resources.group_invite_code_title
 import br.com.saqz.groups.resources.group_invite_copied_toast
 import br.com.saqz.groups.resources.group_invite_copy_code
 import br.com.saqz.groups.resources.group_invite_link_title
+import br.com.saqz.groups.resources.group_invite_deactivate
+import br.com.saqz.groups.resources.group_invite_deactivate_body
+import br.com.saqz.groups.resources.group_invite_deactivate_title
+import br.com.saqz.groups.resources.group_invite_deactivated_toast
 import br.com.saqz.groups.resources.group_invite_rotate_body
 import br.com.saqz.groups.resources.group_invite_rotate_cancel
 import br.com.saqz.groups.resources.group_invite_rotate_code
@@ -90,6 +94,9 @@ internal object GroupInviteTags {
     const val CopyCode = "group-invite-copy-code"
     const val Rotate = "group-invite-rotate"
     const val RotateConfirm = "group-invite-rotate-confirm"
+    const val Deactivate = "group-invite-deactivate"
+    const val DeactivateConfirm = "group-invite-deactivate-confirm"
+    const val DeactivateConfirmAction = "group-invite-deactivate-confirm-action"
     const val RejectConfirm = "group-invite-reject-confirm"
     const val RejectConfirmAction = "group-invite-reject-confirm-action"
     const val Copy = "group-invite-copy"
@@ -218,6 +225,28 @@ internal fun GroupInviteScreen(
             },
         ) {}
         SaqzBottomSheet(
+            open = state.isDeactivateConfirmVisible,
+            onClose = { onIntent(GroupInviteIntent.DismissDeactivate) },
+            modifier = Modifier.testTag(GroupInviteTags.DeactivateConfirm),
+            title = stringResource(Res.string.group_invite_deactivate_title),
+            description = stringResource(Res.string.group_invite_deactivate_body),
+            splitFooter = {
+                SaqzButton(
+                    label = stringResource(Res.string.group_invite_rotate_cancel),
+                    onClick = { onIntent(GroupInviteIntent.DismissDeactivate) },
+                    variant = SaqzButtonVariant.Ghost,
+                    modifier = Modifier.weight(1f),
+                )
+                SaqzButton(
+                    label = stringResource(Res.string.group_invite_deactivate),
+                    onClick = { onIntent(GroupInviteIntent.ConfirmDeactivate) },
+                    variant = SaqzButtonVariant.Danger,
+                    loading = state.isDeactivating,
+                    modifier = Modifier.weight(1f).testTag(GroupInviteTags.DeactivateConfirmAction),
+                )
+            },
+        ) {}
+        SaqzBottomSheet(
             open = state.rejectCandidate != null,
             onClose = { onIntent(GroupInviteIntent.DismissReject) },
             modifier = Modifier.testTag(GroupInviteTags.RejectConfirm),
@@ -249,6 +278,7 @@ internal fun GroupInviteScreen(
                     is GroupInviteToast.RequestApproved ->
                         stringResource(Res.string.group_invite_approved_toast, toast.name)
                     GroupInviteToast.RequestRejected -> stringResource(Res.string.group_invite_rejected_toast)
+                    GroupInviteToast.InviteDeactivated -> stringResource(Res.string.group_invite_deactivated_toast)
                     else -> stringResource(Res.string.group_invite_copied_toast)
                 },
             )
@@ -343,9 +373,19 @@ private fun InviteActiveCard(state: GroupInviteState, onIntent: (GroupInviteInte
                 onClick = { onIntent(GroupInviteIntent.RequestRotate) },
                 variant = SaqzButtonVariant.Ghost,
                 size = SaqzButtonSize.Sm,
-                enabled = !state.isGenerating,
+                enabled = !state.isGenerating && !state.isDeactivating,
                 fullWidth = true,
                 modifier = Modifier.padding(top = SaqzTheme.metrics.grid).testTag(GroupInviteTags.Rotate),
+            )
+            // Fecha a entrada sem trocar o código: quem tem o link ou o código deixa de entrar.
+            SaqzButton(
+                label = stringResource(Res.string.group_invite_deactivate),
+                onClick = { onIntent(GroupInviteIntent.RequestDeactivate) },
+                variant = SaqzButtonVariant.Ghost,
+                size = SaqzButtonSize.Sm,
+                enabled = !state.isGenerating && !state.isDeactivating,
+                fullWidth = true,
+                modifier = Modifier.testTag(GroupInviteTags.Deactivate),
             )
         }
     }

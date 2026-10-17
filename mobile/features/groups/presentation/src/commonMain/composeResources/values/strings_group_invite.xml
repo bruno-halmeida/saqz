@@ -12,6 +12,10 @@
     <string name="group_invite_rotate_title">Trocar o código?</string>
     <string name="group_invite_rotate_body">Quem tem o código ou o link antigo não vai conseguir entrar.</string>
     <string name="group_invite_rotate_cancel">Cancelar</string>
+    <string name="group_invite_deactivate">Desativar convite</string>
+    <string name="group_invite_deactivate_title">Desativar o convite?</string>
+    <string name="group_invite_deactivate_body">Quem tem o código ou o link não vai conseguir entrar.</string>
+    <string name="group_invite_deactivated_toast">Convite desativado.</string>
     <string name="group_invite_copy_link">Copiar link</string>
     <string name="group_invite_copied_toast">Link copiado.</string>
     <string name="group_invite_approved_toast">%1$s entrou no grupo.</string>

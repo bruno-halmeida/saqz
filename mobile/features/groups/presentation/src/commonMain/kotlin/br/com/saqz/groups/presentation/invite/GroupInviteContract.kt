@@ -16,6 +16,9 @@ data class GroupInviteState(
     val isGenerating: Boolean = false,
     /** Diálogo "Trocar o código?" aberto: trocar invalida o código e o link antigos. */
     val isRotateConfirmVisible: Boolean = false,
+    /** Diálogo "Desativar o convite?" aberto: desativar fecha o código e o link atuais até gerar outro. */
+    val isDeactivateConfirmVisible: Boolean = false,
+    val isDeactivating: Boolean = false,
     val isUpdatingApproval: Boolean = false,
     /** Pedido que o gestor está prestes a recusar; != null abre o diálogo de confirmação. */
     val rejectCandidate: PendingEntryRequestUi? = null,
@@ -34,6 +37,7 @@ sealed interface GroupInviteToast {
     /** Retorno de "Aprovar": [name] é o nome que já estava no pedido. */
     data class RequestApproved(val name: String) : GroupInviteToast
     data object RequestRejected : GroupInviteToast
+    data object InviteDeactivated : GroupInviteToast
 }
 
 @Immutable
@@ -68,6 +72,10 @@ sealed interface GroupInviteIntent {
     data object RequestRotate : GroupInviteIntent
     data object DismissRotate : GroupInviteIntent
     data object ConfirmRotate : GroupInviteIntent
+    /** "Desativar convite" abre a confirmação; só [ConfirmDeactivate] chama a API. */
+    data object RequestDeactivate : GroupInviteIntent
+    data object DismissDeactivate : GroupInviteIntent
+    data object ConfirmDeactivate : GroupInviteIntent
     data class ToggleApproval(val enabled: Boolean) : GroupInviteIntent
     data class ApproveRequest(val userId: String) : GroupInviteIntent
     /** Abre a confirmação; recusar só age em [RejectRequest], depois do "Recusar" do diálogo. */

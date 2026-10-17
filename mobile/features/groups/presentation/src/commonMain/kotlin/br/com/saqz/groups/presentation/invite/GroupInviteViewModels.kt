@@ -44,6 +44,7 @@ class GroupInviteViewModel(
     private enum class GenerationOperation {
         Load,
         Rotate,
+        Deactivate,
         ToggleApproval,
         Approve,
         Reject,
@@ -73,6 +74,9 @@ class GroupInviteViewModel(
             GroupInviteIntent.RequestRotate -> update { it.copy(isRotateConfirmVisible = true) }
             GroupInviteIntent.DismissRotate -> update { it.copy(isRotateConfirmVisible = false) }
             GroupInviteIntent.ConfirmRotate -> rotate()
+            GroupInviteIntent.RequestDeactivate -> update { it.copy(isDeactivateConfirmVisible = true) }
+            GroupInviteIntent.DismissDeactivate -> update { it.copy(isDeactivateConfirmVisible = false) }
+            GroupInviteIntent.ConfirmDeactivate -> deactivate()
             is GroupInviteIntent.ToggleApproval -> toggleApproval(intent.enabled)
             is GroupInviteIntent.ApproveRequest -> approve(intent.userId)
             is GroupInviteIntent.RequestReject -> update { current ->
@@ -98,7 +102,7 @@ class GroupInviteViewModel(
     private fun refresh() {
         if (isFirstAppearance()) return
         val current = state.value
-        val writing = current.isGenerating || current.isUpdatingApproval ||
+        val writing = current.isGenerating || current.isDeactivating || current.isUpdatingApproval ||
             current.pendingActionIds.isNotEmpty()
         if (!loadInFlight && !writing) load(softRefresh = true)
     }
@@ -168,6 +172,33 @@ class GroupInviteViewModel(
                             inviteStatus = InviteStatus.Active,
                             inviteCode = result.value.code,
                             inviteUrl = result.value.value,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /** Desativa o convite: o código e o link deixam de valer; os pedidos de entrada pendentes continuam. */
+    private fun deactivate() {
+        if (state.value.isDeactivating || state.value.isGenerating) return
+        val operation = GenerationKey(GenerationOperation.Deactivate)
+        val requestGeneration = nextGeneration(operation)
+        update { it.copy(isDeactivating = true, isDeactivateConfirmVisible = false, error = null) }
+        viewModelScope.launch {
+            when (membershipGateway.expireInvite(GroupId(groupId))) {
+                is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) {
+                    update { it.copy(isDeactivating = false, error = GroupInviteError.Operation) }
+                }
+                is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
+                    update {
+                        it.copy(
+                            isDeactivating = false,
+                            inviteStatus = InviteStatus.Empty,
+                            inviteCode = null,
+                            inviteUrl = null,
+                            isShareSheetVisible = false,
+                            toast = GroupInviteToast.InviteDeactivated,
                         )
                     }
                 }

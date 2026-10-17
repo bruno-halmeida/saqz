@@ -101,6 +101,55 @@ class GroupInviteScreenTest {
         assertEquals(listOf(GroupInviteIntent.DismissRotate, GroupInviteIntent.ConfirmRotate), intents)
     }
 
+    @Test
+    fun `desativar convite only asks for confirmation`() = runComposeUiTest {
+        val intents = mutableListOf<GroupInviteIntent>()
+        setContent { SaqzTheme { GroupInviteScreen(state = active, onBack = {}, onIntent = intents::add) } }
+
+        onNodeWithTag(GroupInviteTags.Deactivate).performScrollTo().performClick()
+
+        assertEquals(listOf<GroupInviteIntent>(GroupInviteIntent.RequestDeactivate), intents)
+    }
+
+    @Test
+    fun `deactivate confirmation explains the consequence and offers desativar and cancelar`() = runComposeUiTest {
+        val intents = mutableListOf<GroupInviteIntent>()
+        setContent {
+            SaqzTheme {
+                GroupInviteScreen(
+                    state = active.copy(isDeactivateConfirmVisible = true),
+                    onBack = {},
+                    onIntent = intents::add,
+                )
+            }
+        }
+
+        onNodeWithText("Desativar o convite?").assertExists()
+        onNodeWithText("Quem tem o código ou o link não vai conseguir entrar.").assertExists()
+        onNodeWithText("Cancelar").performClick()
+        onNodeWithTag(GroupInviteTags.DeactivateConfirmAction).performClick()
+
+        assertEquals(listOf(GroupInviteIntent.DismissDeactivate, GroupInviteIntent.ConfirmDeactivate), intents)
+    }
+
+    @Test
+    fun `deactivating disables both invite actions so a double tap cannot repeat`() = runComposeUiTest {
+        setContent {
+            SaqzTheme { GroupInviteScreen(state = active.copy(isDeactivating = true), onBack = {}, onIntent = {}) }
+        }
+
+        onNodeWithTag(GroupInviteTags.Deactivate).performScrollTo().assertIsNotEnabled()
+        onNodeWithTag(GroupInviteTags.Rotate).performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test
+    fun `without an active invite there is nothing to deactivate`() = runComposeUiTest {
+        setContent { SaqzTheme { GroupInviteScreen(state = loaded, onBack = {}, onIntent = {}) } }
+
+        onNodeWithTag(GroupInviteTags.Deactivate).assertDoesNotExist()
+        onNodeWithText("Desativar convite").assertDoesNotExist()
+    }
+
     // ---- Backend v.0.0.17: o GET do convite não devolve o link nem o código ----
 
     private val activeWithoutLink = loaded.copy(inviteStatus = InviteStatus.Active, inviteCode = null, inviteUrl = null)
