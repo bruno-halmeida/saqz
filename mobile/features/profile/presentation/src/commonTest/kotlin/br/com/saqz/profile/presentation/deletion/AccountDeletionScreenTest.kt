@@ -23,4 +23,9 @@ class AccountDeletionScreenTest {
         onNodeWithTag(AccountDeletionTags.delete(AccountDeletionMethod.APPLE)).performScrollTo().performClick()
         assertEquals(AccountDeletionIntent.Delete(AccountDeletionMethod.APPLE), selected)
     }
+
+    @Test fun `confirmation text tells to cancel the store subscription too`() = runComposeUiTest {
+        setContent { SaqzTheme { AccountDeletionScreen(AccountDeletionState(userId = "profile", isLoading = false), {}, {}) } }
+        onNodeWithText("Se você assinou pela App Store ou pelo Google Play, cancele também na loja.", substring = true).assertExists()
+    }
 }

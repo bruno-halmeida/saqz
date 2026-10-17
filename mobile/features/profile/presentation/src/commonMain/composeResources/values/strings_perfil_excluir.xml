@@ -1,6 +1,6 @@
 <resources>
     <string name="profile_delete_title">Excluir conta</string>
-    <string name="profile_delete_body">Esta ação é permanente. Seu perfil, fotos e vínculos serão removidos. Os grupos que você criou serão encerrados, e os participantes perderão acesso a eles. A assinatura da plataforma será cancelada.</string>
+    <string name="profile_delete_body">Esta ação é permanente. Seu perfil, fotos e vínculos serão removidos. Os grupos que você criou serão encerrados, e os participantes perderão acesso a eles. A assinatura da plataforma será cancelada. Se você assinou pela App Store ou pelo Google Play, cancele também na loja.</string>
     <string name="profile_delete_retention">Registros financeiros e fiscais exigidos por lei serão mantidos com acesso restrito. A limpeza nos serviços de autenticação e pagamento será concluída em segundo plano.</string>
     <string name="profile_delete_confirm">Entendo as consequências e quero excluir minha conta.</string>
     <string name="profile_delete_identity">Confirme sua identidade usando o mesmo método de entrada da conta.</string>
