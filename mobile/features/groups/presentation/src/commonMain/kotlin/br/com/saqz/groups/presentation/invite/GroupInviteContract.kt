@@ -69,21 +69,21 @@ sealed interface GroupInviteIntent {
     data object Refresh : GroupInviteIntent
 
     /** "Trocar código" abre a confirmação; só [ConfirmRotate] chama a API. */
-    data object RequestRotate : GroupInviteIntent
-    data object DismissRotate : GroupInviteIntent
+    data object RequestRotate : GroupInviteSheetIntent
+    data object DismissRotate : GroupInviteSheetIntent
     data object ConfirmRotate : GroupInviteIntent
     /** "Desativar convite" abre a confirmação; só [ConfirmDeactivate] chama a API. */
-    data object RequestDeactivate : GroupInviteIntent
-    data object DismissDeactivate : GroupInviteIntent
-    data object ConfirmDeactivate : GroupInviteIntent
+    data object RequestDeactivate : GroupInviteDeactivateIntent
+    data object DismissDeactivate : GroupInviteDeactivateIntent
+    data object ConfirmDeactivate : GroupInviteDeactivateIntent
     data class ToggleApproval(val enabled: Boolean) : GroupInviteIntent
     data class ApproveRequest(val userId: String) : GroupInviteIntent
     /** Abre a confirmação; recusar só age em [RejectRequest], depois do "Recusar" do diálogo. */
     data class RequestReject(val userId: String) : GroupInviteIntent
     data object DismissReject : GroupInviteIntent
     data class RejectRequest(val userId: String) : GroupInviteIntent
-    data object OpenShareSheet : GroupInviteIntent
-    data object CloseShareSheet : GroupInviteIntent
+    data object OpenShareSheet : GroupInviteSheetIntent
+    data object CloseShareSheet : GroupInviteSheetIntent
     data object CopyLink : GroupInviteIntent
     data object CopyCode : GroupInviteIntent
     data object OpenMessagePreview : GroupInviteIntent
@@ -91,6 +91,12 @@ sealed interface GroupInviteIntent {
     data object ShareImage : GroupInviteIntent
     data object ClearToast : GroupInviteIntent
 }
+
+/** Abrir e fechar a folha de compartilhar e a confirmação de trocar o código. */
+sealed interface GroupInviteSheetIntent : GroupInviteIntent
+
+/** Os intents de "Desativar convite", agrupados para a ViewModel tratá-los num bloco só. */
+sealed interface GroupInviteDeactivateIntent : GroupInviteIntent
 
 sealed interface GroupInviteEffect {
     data class OpenMessagePreview(val groupName: String, val inviteUrl: String) : GroupInviteEffect

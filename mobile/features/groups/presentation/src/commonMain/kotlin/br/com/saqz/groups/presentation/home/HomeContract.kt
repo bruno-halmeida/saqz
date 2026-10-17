@@ -262,9 +262,9 @@ sealed interface HomeIntent {
     data class CopyPix(val groupId: String) : HomeIntent
 
     /** "Cancelar pedido" abre a confirmação; só [ConfirmCancelEntryRequest] chama a API. */
-    data class RequestCancelEntryRequest(val groupId: String) : HomeIntent
-    data object DismissCancelEntryRequest : HomeIntent
-    data object ConfirmCancelEntryRequest : HomeIntent
+    data class RequestCancelEntryRequest(val groupId: String) : HomeCancelEntryIntent
+    data object DismissCancelEntryRequest : HomeCancelEntryIntent
+    data object ConfirmCancelEntryRequest : HomeCancelEntryIntent
 
     // Primeiro acesso (sem grupo): os dois caminhos do hero e a folha de convite.
     data object CreateGroup : HomeIntent
@@ -276,6 +276,9 @@ sealed interface HomeIntent {
 
 /** Os intents da folha "Tenho um convite", agrupados para a ViewModel tratá-los num bloco só. */
 sealed interface HomeInviteSheetIntent : HomeIntent
+
+/** Os intents de "Cancelar pedido", agrupados pelo mesmo motivo. */
+sealed interface HomeCancelEntryIntent : HomeIntent
 
 sealed interface HomeEffect {
     data object OpenGroups : HomeEffect

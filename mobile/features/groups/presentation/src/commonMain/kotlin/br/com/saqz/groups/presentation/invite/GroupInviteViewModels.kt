@@ -71,12 +71,8 @@ class GroupInviteViewModel(
         when (intent) {
             GroupInviteIntent.Retry -> load()
             GroupInviteIntent.Refresh -> refresh()
-            GroupInviteIntent.RequestRotate -> update { it.copy(isRotateConfirmVisible = true) }
-            GroupInviteIntent.DismissRotate -> update { it.copy(isRotateConfirmVisible = false) }
             GroupInviteIntent.ConfirmRotate -> rotate()
-            GroupInviteIntent.RequestDeactivate -> update { it.copy(isDeactivateConfirmVisible = true) }
-            GroupInviteIntent.DismissDeactivate -> update { it.copy(isDeactivateConfirmVisible = false) }
-            GroupInviteIntent.ConfirmDeactivate -> deactivate()
+            is GroupInviteDeactivateIntent -> handleDeactivate(intent)
             is GroupInviteIntent.ToggleApproval -> toggleApproval(intent.enabled)
             is GroupInviteIntent.ApproveRequest -> approve(intent.userId)
             is GroupInviteIntent.RequestReject -> update { current ->
@@ -84,8 +80,7 @@ class GroupInviteViewModel(
             }
             GroupInviteIntent.DismissReject -> update { it.copy(rejectCandidate = null) }
             is GroupInviteIntent.RejectRequest -> reject(intent.userId)
-            GroupInviteIntent.OpenShareSheet -> update { it.copy(isShareSheetVisible = true, toast = null) }
-            GroupInviteIntent.CloseShareSheet -> update { it.copy(isShareSheetVisible = false) }
+            is GroupInviteSheetIntent -> handleSheet(intent)
             GroupInviteIntent.CopyLink -> copyLink()
             GroupInviteIntent.CopyCode -> copyCode()
             GroupInviteIntent.OpenMessagePreview -> openPreview()
@@ -176,6 +171,23 @@ class GroupInviteViewModel(
                     }
                 }
             }
+        }
+    }
+
+    private fun handleSheet(intent: GroupInviteSheetIntent) {
+        when (intent) {
+            GroupInviteIntent.RequestRotate -> update { it.copy(isRotateConfirmVisible = true) }
+            GroupInviteIntent.DismissRotate -> update { it.copy(isRotateConfirmVisible = false) }
+            GroupInviteIntent.OpenShareSheet -> update { it.copy(isShareSheetVisible = true, toast = null) }
+            GroupInviteIntent.CloseShareSheet -> update { it.copy(isShareSheetVisible = false) }
+        }
+    }
+
+    private fun handleDeactivate(intent: GroupInviteDeactivateIntent) {
+        when (intent) {
+            GroupInviteIntent.RequestDeactivate -> update { it.copy(isDeactivateConfirmVisible = true) }
+            GroupInviteIntent.DismissDeactivate -> update { it.copy(isDeactivateConfirmVisible = false) }
+            GroupInviteIntent.ConfirmDeactivate -> deactivate()
         }
     }
 

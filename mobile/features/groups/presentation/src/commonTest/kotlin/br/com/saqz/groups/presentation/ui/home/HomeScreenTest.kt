@@ -537,7 +537,7 @@ class HomeScreenTest {
         onNodeWithTag(HomePendingCancelConfirmTag).performClick()
 
         assertEquals(
-            listOf(HomeIntent.DismissCancelEntryRequest, HomeIntent.ConfirmCancelEntryRequest),
+            listOf<HomeIntent>(HomeIntent.DismissCancelEntryRequest, HomeIntent.ConfirmCancelEntryRequest),
             intents,
         )
     }

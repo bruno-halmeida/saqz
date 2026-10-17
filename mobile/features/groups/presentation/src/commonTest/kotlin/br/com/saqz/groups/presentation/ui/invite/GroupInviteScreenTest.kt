@@ -129,7 +129,7 @@ class GroupInviteScreenTest {
         onNodeWithText("Cancelar").performClick()
         onNodeWithTag(GroupInviteTags.DeactivateConfirmAction).performClick()
 
-        assertEquals(listOf(GroupInviteIntent.DismissDeactivate, GroupInviteIntent.ConfirmDeactivate), intents)
+        assertEquals(listOf<GroupInviteIntent>(GroupInviteIntent.DismissDeactivate, GroupInviteIntent.ConfirmDeactivate), intents)
     }
 
     @Test

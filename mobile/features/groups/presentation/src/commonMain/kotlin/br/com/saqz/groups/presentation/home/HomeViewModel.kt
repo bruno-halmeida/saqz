@@ -198,6 +198,14 @@ class HomeViewModel(
             is HomeIntent.OpenGameEditor -> emit(HomeEffect.OpenGameEditor(intent.groupId))
             is HomeIntent.OpenInvite -> emit(HomeEffect.OpenInvite(intent.groupId))
             is HomeIntent.CopyPix -> copyPix(intent.groupId)
+            is HomeCancelEntryIntent -> handleCancelEntry(intent)
+            HomeIntent.CreateGroup -> emit(HomeEffect.OpenCreateGroup)
+            is HomeInviteSheetIntent -> handleInviteSheet(intent)
+        }
+    }
+
+    private fun handleCancelEntry(intent: HomeCancelEntryIntent) {
+        when (intent) {
             is HomeIntent.RequestCancelEntryRequest -> update { current ->
                 current.copy(
                     cancelEntryCandidate = current.member?.pendingRequests
@@ -206,8 +214,6 @@ class HomeViewModel(
             }
             HomeIntent.DismissCancelEntryRequest -> update { it.copy(cancelEntryCandidate = null) }
             HomeIntent.ConfirmCancelEntryRequest -> cancelEntryRequest()
-            HomeIntent.CreateGroup -> emit(HomeEffect.OpenCreateGroup)
-            is HomeInviteSheetIntent -> handleInviteSheet(intent)
         }
     }
 
