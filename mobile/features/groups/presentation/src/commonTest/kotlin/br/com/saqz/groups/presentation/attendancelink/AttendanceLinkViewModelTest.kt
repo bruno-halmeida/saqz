@@ -30,6 +30,37 @@ class AttendanceLinkViewModelTest {
         assertEquals("00000000-0000-0000-0000-000000000000", gateway.commands.first().requestId)
     }
 
+    @Test fun confirmThenDeclineThenConfirmAgainByLinkShowsTheWaitlistTheServerReturnedNotAConfirmation() = runTest {
+        val gateway = AttendanceFake()
+        assertEquals(AttendanceLinkPhase.Confirmed, AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake()).state.value.phase)
+        gateway.status = AttendanceStatus.Declined
+        val declined = AttendanceLinkViewModel(code, true, SharingFake(), gateway, InviteFake())
+        declined.onIntent(AttendanceLinkIntent.Decline)
+        assertEquals(AttendanceLinkPhase.Declined, declined.state.value.phase)
+        // Prazo vencido ou jogo cheio: o servidor devolve a espera no segundo "Vou".
+        gateway.status = AttendanceStatus.Waitlisted
+        val again = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
+        assertEquals(AttendanceLinkPhase.Waitlisted, again.state.value.phase)
+        assertNotEquals(AttendanceLinkPhase.Confirmed, again.state.value.phase)
+        // Com vaga, o mesmo caminho confirma de verdade.
+        gateway.status = AttendanceStatus.Confirmed
+        assertEquals(AttendanceLinkPhase.Confirmed, AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake()).state.value.phase)
+    }
+
+    @Test fun repeatedConfirmRequestShowsWhateverTheServerReturnsAndNeverAssumesConfirmed() = runTest {
+        val gateway = AttendanceFake().apply { status = AttendanceStatus.Waitlisted }
+        val first = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
+        assertEquals(AttendanceLinkPhase.Waitlisted, first.state.value.phase)
+        // Repetição do mesmo requestId: o servidor responde o estado atual, e é ele que a tela mostra.
+        val repeated = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
+        assertEquals(AttendanceLinkPhase.Waitlisted, repeated.state.value.phase)
+        assertEquals(gateway.commands.first().requestId, gateway.commands.last().requestId)
+        // Se o último estado já é "não vou", o "Vou" repetido não vira confirmação.
+        gateway.status = AttendanceStatus.Declined
+        val afterDecline = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
+        assertEquals(AttendanceLinkPhase.Failed, afterDecline.state.value.phase)
+    }
+
     @Test fun recordedLinkAnswerReportsAttendanceAnsweredFromTheLinkSurfaceAndAFailureDoesNot() = runTest {
         val recorded = mutableListOf<Pair<String, Map<String, String>>>()
         SaqzAnalytics.track = { name, params -> recorded += name to params }
