@@ -64,6 +64,16 @@ class OwnProfileViewModelTest {
     }
 
     @Test
+    fun `games played come from the server number without local counting`() = runTest(dispatcher) {
+        val gateway = FakeProfileGateway().apply { stats = stats.copy(games = 0) }
+        val viewModel = OwnProfileViewModel(gateway)
+
+        advanceUntilIdle()
+
+        assertEquals("0", viewModel.state.value.stats?.gamesLabel)
+    }
+
+    @Test
     fun `empty memberships expose the empty groups state`() = runTest(dispatcher) {
         val gateway = FakeProfileGateway().apply {
             athleteProfile = athleteProfile.copy(memberships = emptyList())
