@@ -356,6 +356,107 @@ class GroupCashboxViewModelTest {
         assertTrue(viewModel.state.value.debtors.isEmpty())
     }
 
+    @Test
+    fun `only the charge of someone who withdrew carries the withdrew mark`() = runTest {
+        val viewModel = viewModel(organizer = FakeOrganizerFinanceGateway(chargesResult = withdrewCharges()))
+
+        val debtors = viewModel.state.value.debtors.associateBy { it.chargeId }
+        assertTrue(debtors.getValue("game-pending").withdrew)
+        assertFalse(debtors.getValue("monthly-pending").withdrew)
+    }
+
+    @Test
+    fun `waive opens a confirmation only for the charge of someone who withdrew`() = runTest {
+        val viewModel = viewModel(organizer = FakeOrganizerFinanceGateway(chargesResult = withdrewCharges()))
+
+        viewModel.onIntent(GroupCashboxIntent.OpenWaive("monthly-pending"))
+        assertNull(viewModel.state.value.waiveSheetChargeId)
+
+        viewModel.onIntent(GroupCashboxIntent.OpenWaive("game-pending"))
+        assertEquals("game-pending", viewModel.state.value.waiveSheetChargeId)
+
+        viewModel.onIntent(GroupCashboxIntent.DismissWaiveSheet)
+        assertNull(viewModel.state.value.waiveSheetChargeId)
+    }
+
+    @Test
+    fun `waive sends the waived status with the charge version and takes the charge off the debtors`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway(chargesResult = withdrewCharges())
+        val viewModel = viewModel(organizer = organizer)
+        val before = viewModel.state.value
+        viewModel.onIntent(GroupCashboxIntent.OpenWaive("game-pending"))
+
+        viewModel.onIntent(GroupCashboxIntent.Waive("game-pending"))
+
+        assertEquals(FinanceVersionToken("\"4\""), organizer.lastVersion)
+        assertEquals(ChargeStatusCommand(ChargeStatus.Waived), organizer.lastCommand)
+        val after = viewModel.state.value
+        assertEquals(listOf("monthly-pending", "monthly-thiago"), after.debtors.map { it.chargeId })
+        assertNull(after.waiveSheetChargeId)
+        assertNull(after.updatingChargeId)
+        assertFalse(after.waiveFailed)
+        assertEquals(before.balanceCents, after.balanceCents)
+        assertEquals(before.receivedCents, after.receivedCents)
+    }
+
+    @Test
+    fun `waive success announces the mutation`() = runTest {
+        val viewModel = viewModel(organizer = FakeOrganizerFinanceGateway(chargesResult = withdrewCharges()))
+
+        viewModel.onIntent(GroupCashboxIntent.Waive("game-pending"))
+
+        assertEquals(GroupCashboxEffect.MutationSucceeded, viewModel.effects.first())
+    }
+
+    @Test
+    fun `waive failure brings the charge back and says it failed`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway(
+            chargesResult = withdrewCharges(),
+            updateResult = SaqzResult.Failure(FinanceError.Conflict),
+        )
+        val viewModel = viewModel(organizer = organizer)
+        val before = viewModel.state.value
+        viewModel.onIntent(GroupCashboxIntent.OpenWaive("game-pending"))
+
+        viewModel.onIntent(GroupCashboxIntent.Waive("game-pending"))
+
+        val after = viewModel.state.value
+        assertEquals(before.debtors, after.debtors)
+        assertTrue(after.waiveFailed)
+        assertFalse(after.operationFailed)
+        assertNull(after.waiveSheetChargeId)
+        assertNull(after.updatingChargeId)
+    }
+
+    @Test
+    fun `waive of a charge that did not withdraw does nothing`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway(chargesResult = withdrewCharges())
+        val viewModel = viewModel(organizer = organizer)
+        val before = viewModel.state.value
+
+        viewModel.onIntent(GroupCashboxIntent.Waive("monthly-pending"))
+
+        assertEquals(before, viewModel.state.value)
+        assertEquals(0, organizer.updateCalls)
+    }
+
+    @Test
+    fun `double tap on waive sends one write while the first is in flight`() = runTest {
+        val reply = CompletableDeferred<Unit>()
+        val organizer = FakeOrganizerFinanceGateway(chargesResult = withdrewCharges())
+        organizer.beforeUpdate = { reply.await() }
+        val viewModel = viewModel(organizer = organizer)
+
+        viewModel.onIntent(GroupCashboxIntent.Waive("game-pending"))
+        viewModel.onIntent(GroupCashboxIntent.Waive("game-pending"))
+        assertEquals("game-pending", viewModel.state.value.updatingChargeId)
+        viewModel.onIntent(GroupCashboxIntent.OpenWaive("game-pending"))
+        assertNull(viewModel.state.value.waiveSheetChargeId)
+        reply.complete(Unit)
+
+        assertEquals(1, organizer.updateCalls)
+    }
+
     private fun viewModel(
         group: FakeGroupGateway = FakeGroupGateway(
             readResult = SaqzResult.Success(
@@ -412,6 +513,8 @@ class GroupCashboxViewModelTest {
     ) : OrganizerFinanceGateway {
         var lastVersion: FinanceVersionToken? = null
         var lastCommand: ChargeStatusCommand? = null
+        var updateCalls = 0
+        var beforeUpdate: suspend () -> Unit = {}
 
         override suspend fun charges(groupId: GroupId) = chargesResult
 
@@ -421,8 +524,10 @@ class GroupCashboxViewModelTest {
             version: FinanceVersionToken,
             command: ChargeStatusCommand,
         ): SaqzResult<VersionedCharge, FinanceError> {
+            updateCalls++
             lastVersion = version
             lastCommand = command
+            beforeUpdate()
             return updateResult
         }
 
@@ -444,6 +549,11 @@ class GroupCashboxViewModelTest {
     }
 
     private companion object {
+        /** A diária de Camila é de quem confirmou e depois desistiu; as mensalidades não. */
+        fun withdrewCharges() = SaqzResult.Success(
+            chargeList(defaultCharges.map { if (it.id == "game-pending") it.copy(withdrew = true) else it }),
+        )
+
         fun chargeList(charges: List<Charge>) = ChargeList(
             charges = charges,
             totals = ChargeTotals(14_000L, 7_000L, 0L, 0L),

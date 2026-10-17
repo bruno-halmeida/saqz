@@ -6,8 +6,10 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.presentation.ui.finance.sheets.FinanceSheetsTags
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -95,6 +97,48 @@ class GroupCashboxScreenTest {
         assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.Retry), intents)
     }
 
+    @Test
+    fun `withdrawn debtor shows the withdrew tag and a waive action beside received`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(withdrewState, intents::add)
+
+        onNodeWithTag(GroupCashboxTags.chargeWithdrew("charge-1")).assertExists()
+        onNodeWithText("Desistiu").assertExists()
+        onNodeWithText("Recebi").assertExists()
+        onNodeWithTag(GroupCashboxTags.chargeWaive("charge-1")).performScrollTo().assertIsEnabled().performClick()
+
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.OpenWaive("charge-1")), intents)
+    }
+
+    @Test
+    fun `debtor who did not withdraw has neither the tag nor the waive action`() = runComposeUiTest {
+        setScreen(loadedState, {})
+
+        onNodeWithTag(GroupCashboxTags.chargeWithdrew("charge-1")).assertDoesNotExist()
+        onNodeWithTag(GroupCashboxTags.chargeWaive("charge-1")).assertDoesNotExist()
+        onNodeWithText("Desistiu").assertDoesNotExist()
+    }
+
+    @Test
+    fun `waive confirmation says nobody is notified and confirms the waive`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(withdrewState.copy(waiveSheetChargeId = "charge-1"), intents::add)
+
+        onNodeWithTag(FinanceSheetsTags.Waive).assertExists()
+        onNodeWithText("Quem desistiu não paga esta diária. A pessoa não recebe aviso e não dá para desfazer.").assertExists()
+        onNodeWithTag(FinanceSheetsTags.WaiveConfirm).performClick()
+
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.Waive("charge-1")), intents)
+    }
+
+    @Test
+    fun `waive failure shows its own message`() = runComposeUiTest {
+        setScreen(withdrewState.copy(waiveFailed = true), {})
+
+        onNodeWithTag(GroupCashboxTags.WaiveFailure).assertExists()
+        onNodeWithText("Não foi possível dispensar a cobrança. Tente novamente.").assertExists()
+    }
+
     private fun androidx.compose.ui.test.ComposeUiTest.setScreen(
         state: GroupCashboxState,
         onIntent: (GroupCashboxIntent) -> Unit,
@@ -105,6 +149,9 @@ class GroupCashboxScreenTest {
     }
 
     private companion object {
+        val withdrewState get() = loadedState.copy(
+            debtors = loadedState.debtors.map { it.copy(withdrew = true) },
+        )
         val loadedState = GroupCashboxState(
             isLoading = false,
             groupName = "Vôlei do CERET",

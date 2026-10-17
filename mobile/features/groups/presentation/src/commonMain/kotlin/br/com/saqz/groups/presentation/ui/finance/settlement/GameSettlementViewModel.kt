@@ -426,7 +426,7 @@ class GameSettlementViewModel(
             dueDate = dueDate,
             chargeVersion = version,
             status = status,
-            withdrew = withdrew,
+            withdrew = withdrew && status == ChargeStatus.Pending,
             referenceLabel = if (guest != null) {
                 "Convidado $guest · jogo de ${formatDate(dueDate)}"
             } else {

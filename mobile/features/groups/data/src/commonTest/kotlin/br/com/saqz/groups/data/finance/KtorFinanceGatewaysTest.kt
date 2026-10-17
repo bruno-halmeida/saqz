@@ -36,6 +36,17 @@ class KtorFinanceGatewaysTest {
     }
 
     @Test
+    fun `withdrew mark is read when present and defaults to false when the server omits it`() = runTest {
+        val marked = CHARGES.replaceFirst("\"reviewRequired\":true", "\"withdrew\":true,\"reviewRequired\":true")
+        val withMark = success(organizer { json(marked) }.charges(GROUP)).charges
+        val withoutMark = success(organizer { json(CHARGES) }.charges(GROUP)).charges
+
+        assertTrue(withMark.first().withdrew)
+        assertFalse(withMark.last().withdrew)
+        assertTrue(withoutMark.none { it.withdrew })
+    }
+
+    @Test
     fun `monthly charge maps month member and cancelled status`() = runTest {
         val value = success(organizer { json(CHARGES) }.charges(GROUP)).charges.last()
 

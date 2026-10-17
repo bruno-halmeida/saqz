@@ -384,6 +384,104 @@ class GameSettlementViewModelTest {
         assertEquals(null, viewModel.state.value.pix)
     }
 
+    @Test
+    fun `only the diarist who withdrew carries the withdrew mark`() = runTest {
+        val finance = SettlementFinanceGateway(withdrewCharges(), expenses())
+        val viewModel = viewModel(finance)
+
+        val diarists = viewModel.state.value.diarists.associateBy { it.chargeId }
+        assertTrue(diarists.getValue("game-pending").withdrew)
+        assertFalse(diarists.getValue("game-paid").withdrew)
+        assertTrue(viewModel.state.value.debtors.single().withdrew)
+    }
+
+    @Test
+    fun `waive opens a confirmation only for a pending charge of someone who withdrew`() = runTest {
+        val viewModel = viewModel(SettlementFinanceGateway(withdrewCharges(), expenses()))
+
+        viewModel.onIntent(GameSettlementIntent.OpenWaive("game-paid"))
+        assertEquals(null, viewModel.state.value.waiveSheetChargeId)
+
+        viewModel.onIntent(GameSettlementIntent.OpenWaive("game-pending"))
+        assertEquals("game-pending", viewModel.state.value.waiveSheetChargeId)
+        assertEquals(null, viewModel.state.value.receiptSheetChargeId)
+
+        viewModel.onIntent(GameSettlementIntent.DismissWaiveSheet)
+        assertEquals(null, viewModel.state.value.waiveSheetChargeId)
+    }
+
+    @Test
+    fun `waive sends the waived status with the version and settles the game without counting it as received`() = runTest {
+        val finance = SettlementFinanceGateway(withdrewCharges(), expenses())
+        val viewModel = viewModel(finance)
+        val effects = mutableListOf<GameSettlementEffect>()
+        backgroundScope.launch(dispatcher) { viewModel.effects.collect { effects += it } }
+        viewModel.onIntent(GameSettlementIntent.OpenWaive("game-pending"))
+
+        viewModel.onIntent(GameSettlementIntent.Waive("game-pending"))
+
+        assertEquals(FinanceVersionToken("\"2\""), finance.lastVersion)
+        assertEquals(ChargeStatusCommand(ChargeStatus.Waived), finance.lastCommand)
+        val after = viewModel.state.value
+        assertTrue(after.isSummary)
+        assertEquals(0, after.pendingDiaristCount)
+        assertEquals(7_000L, after.receivedDiaristCents)
+        assertEquals(ChargeStatus.Waived, after.diarists.first { it.chargeId == "game-pending" }.status)
+        assertFalse(after.diarists.first { it.chargeId == "game-pending" }.withdrew)
+        assertEquals(null, after.waiveSheetChargeId)
+        assertFalse(after.waiveFailed)
+        assertEquals(listOf<GameSettlementEffect>(GameSettlementEffect.MutationSucceeded), effects)
+    }
+
+    @Test
+    fun `waive failure brings the charge back and cannot conclude`() = runTest {
+        val finance = SettlementFinanceGateway(
+            withdrewCharges(), expenses(),
+            updateResult = SaqzResult.Failure(FinanceError.Conflict),
+        )
+        val viewModel = viewModel(finance)
+        viewModel.onIntent(GameSettlementIntent.OpenWaive("game-pending"))
+
+        viewModel.onIntent(GameSettlementIntent.Waive("game-pending"))
+
+        val failed = viewModel.state.value
+        assertTrue(failed.waiveFailed)
+        assertFalse(failed.operationFailed)
+        assertFalse(failed.isSummary)
+        assertEquals(1, failed.pendingDiaristCount)
+        assertEquals(listOf("game-pending"), failed.debtors.map { it.chargeId })
+        assertEquals(null, failed.updatingChargeId)
+        assertEquals(null, failed.waiveSheetChargeId)
+    }
+
+    @Test
+    fun `waive of a charge that did not withdraw does nothing`() = runTest {
+        val finance = SettlementFinanceGateway(charges(), expenses())
+        val viewModel = viewModel(finance)
+        val before = viewModel.state.value
+
+        viewModel.onIntent(GameSettlementIntent.Waive("game-pending"))
+
+        assertEquals(before, viewModel.state.value)
+        assertEquals(0, finance.updateCalls)
+    }
+
+    @Test
+    fun `double tap on waive sends one write while the first is in flight`() = runTest {
+        val reply = CompletableDeferred<Unit>()
+        val finance = SettlementFinanceGateway(withdrewCharges(), expenses())
+        finance.beforeUpdate = { reply.await() }
+        val viewModel = viewModel(finance)
+
+        viewModel.onIntent(GameSettlementIntent.Waive("game-pending"))
+        viewModel.onIntent(GameSettlementIntent.Waive("game-pending"))
+        viewModel.onIntent(GameSettlementIntent.OpenWaive("game-pending"))
+        assertEquals(null, viewModel.state.value.waiveSheetChargeId)
+        reply.complete(Unit)
+
+        assertEquals(1, finance.updateCalls)
+    }
+
     private fun viewModel(
         finance: SettlementFinanceGateway,
         group: br.com.saqz.groups.domain.group.Group = sampleGroup(
@@ -425,6 +523,9 @@ class GameSettlementViewModelTest {
         ),
         organizerFinanceGateway = finance,
     )
+
+    /** Pedro confirmou, desistiu e a diária dele segue pendente. */
+    private fun withdrewCharges() = charges().map { if (it.id == "game-pending") it.copy(withdrew = true) else it }
 
     private fun charges() = listOf(
         Charge(
@@ -503,6 +604,7 @@ private class SettlementFinanceGateway(
     var lastVersion: FinanceVersionToken? = null
     var lastCommand: ChargeStatusCommand? = null
     var chargeReads = 0
+    var updateCalls = 0
     var beforeUpdate: suspend () -> Unit = {}
     var readFailure: FinanceError? = null
 
@@ -518,6 +620,7 @@ private class SettlementFinanceGateway(
         version: FinanceVersionToken,
         command: ChargeStatusCommand,
     ): SaqzResult<VersionedCharge, FinanceError> {
+        updateCalls++
         lastVersion = version
         lastCommand = command
         beforeUpdate()
