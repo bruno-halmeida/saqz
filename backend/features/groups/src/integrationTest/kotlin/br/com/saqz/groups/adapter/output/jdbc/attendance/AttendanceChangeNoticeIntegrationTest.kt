@@ -4,6 +4,9 @@ import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcAttendanceChange
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.attendance.AdjustGameCapacity
+import br.com.saqz.groups.application.attendance.AttendanceChangeKind
+import br.com.saqz.groups.application.attendance.AttendanceEvent
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.application.attendance.GameGuests
 import br.com.saqz.groups.application.attendance.ReleaseMemberAttendance
 import br.com.saqz.groups.application.attendance.RespondAttendance
@@ -159,6 +162,55 @@ class AttendanceChangeNoticeIntegrationTest {
         responses().execute(w.going, w.group, w.game, intent = AttendanceIntent.DECLINE)
         assertEquals(0, int("SELECT count(*) FROM group_messages WHERE channel IN ('NOTICE','CHAT')"))
         assertEquals("AUTO_CONFIRMATION", string("SELECT channel::text FROM group_messages WHERE group_id='${w.group}'"))
+    }
+
+    @Test fun `se o aviso falhar a mudanca de presenca e a promocao continuam gravadas`() {
+        val w = world()
+        execute("""
+            CREATE FUNCTION fail_notice() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'aviso quebrado'; END; $$;
+            CREATE TRIGGER fail_notice BEFORE INSERT ON group_messages FOR EACH ROW EXECUTE FUNCTION fail_notice();
+        """.trimIndent())
+        responses().execute(w.going, w.group, w.game, intent = AttendanceIntent.DECLINE)
+        assertEquals("DECLINED", status(w, w.going))
+        assertEquals("CONFIRMED", status(w, w.waiting))
+        assertEquals(1, int("SELECT count(*) FROM attendance_events WHERE member_user_id='${w.waiting}' AND new_status='CONFIRMED'"))
+        assertEquals(0, notices(w.waiting))
+    }
+
+    @Test fun `controle - jogo publicado e futuro com membro ativo gera o aviso`() {
+        val w = world()
+        assertEquals(1, direct(w, w.waiting))
+    }
+
+    @Test fun `jogo que ja comecou ou passou nao avisa`() {
+        val w = world()
+        execute("UPDATE games SET confirmation_deadline = now() - interval '2 hours', starts_at = now() - interval '1 hour' WHERE id='${w.game}'")
+        assertEquals(0, direct(w, w.waiting))
+    }
+
+    @Test fun `jogo em rascunho nao avisa`() {
+        val w = world()
+        execute("UPDATE games SET status = 'DRAFT' WHERE id='${w.game}'")
+        assertEquals(0, direct(w, w.waiting))
+    }
+
+    @Test fun `jogo cancelado nao avisa`() {
+        val w = world()
+        execute("UPDATE games SET status = 'CANCELLED' WHERE id='${w.game}'")
+        assertEquals(0, direct(w, w.waiting))
+    }
+
+    @Test fun `pessoa que nao e mais membro ativa nao recebe`() {
+        val w = world()
+        execute("UPDATE group_memberships SET active = false WHERE group_id='${w.group}' AND user_id='${w.waiting}'")
+        assertEquals(0, direct(w, w.waiting))
+    }
+
+    /** Chama o aviso direto, dentro de transacao (o SAVEPOINT exige), e devolve quantos avisos a pessoa tem. */
+    private fun direct(w: World, member: UUID): Int {
+        val event = AttendanceEvent(UUID.randomUUID(), w.game, w.group, member, w.owner, AttendanceSource.ORGANIZER, AttendanceStatus.WAITLISTED, AttendanceStatus.CONFIRMED, null, now())
+        JdbcTransactionRunner(dataSource).inTransaction { JdbcAttendanceChangeNotice(dataSource).changed(event, AttendanceChangeKind.CONFIRMED) }
+        return notices(member)
     }
 
     private fun raise(w: World, capacity: Int) {
