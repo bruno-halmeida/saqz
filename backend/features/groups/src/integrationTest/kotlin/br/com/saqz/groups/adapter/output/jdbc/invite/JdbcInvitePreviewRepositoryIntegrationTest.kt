@@ -45,7 +45,7 @@ class JdbcInvitePreviewRepositoryIntegrationTest {
     @BeforeEach
     fun clearData() {
         execute(
-            "TRUNCATE games, group_regular_slots, group_venues, group_invites, group_memberships, " +
+            "TRUNCATE games, group_regular_slots, group_venues, group_invites, group_invite_deactivations, group_memberships, " +
                 "access_groups, invite_redemption_limits, access_users CASCADE",
         )
     }
@@ -141,26 +141,66 @@ class JdbcInvitePreviewRepositoryIntegrationTest {
         assertEquals("Preview Group", preview.card.groupName)
         assertEquals("Organizador", preview.card.inviterName)
         assertEquals(1, preview.card.memberCount)
-        assertEquals(deadline, preview.card.expiresAt)
+        assertNull(preview.card.expiresAt)
     }
 
     @Test
-    fun `attendance link past the confirmation deadline previews as expired`() {
+    fun `attendance link past the confirmation deadline still previews as an invite`() {
         val owner = insertUser("preview-attendance-expired", "Owner Display")
         val group = insertCompleteGroup(owner)
-        val deadline = now.minusSeconds(60)
-        insertAttendanceLink(group, insertGameWithDeadline(group, now.plusSeconds(3_600), deadline, "PUBLISHED"), owner, "Organizador")
+        insertAttendanceLink(group, insertGameWithDeadline(group, now.plusSeconds(3_600), now.minusSeconds(60), "PUBLISHED"), owner, "Organizador")
 
         val preview = requireNotNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code), now) })
 
-        assertEquals(deadline, preview.expiredAt)
+        assertNull(preview.expiredAt)
+        assertEquals("Preview Group", preview.card.groupName)
     }
 
     @Test
-    fun `attendance link of a game that is no longer published is not an invite`() {
+    fun `attendance link of a finished or cancelled game still previews as an invite`() {
         val owner = insertUser("preview-attendance-cancelled", "Owner Display")
         val group = insertCompleteGroup(owner)
-        insertAttendanceLink(group, insertGameWithDeadline(group, now.plusSeconds(7_200), now.plusSeconds(3_600), "CANCELLED"), owner, "Organizador")
+        insertAttendanceLink(group, insertGameWithDeadline(group, now.minusSeconds(7_200), now.minusSeconds(9_000), "CANCELLED"), owner, "Organizador")
+
+        val preview = requireNotNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code), now) })
+
+        assertEquals("Preview Group", preview.card.groupName)
+    }
+
+    @Test
+    fun `attendance link sent before the invite was rotated is not an invite and a later one is`() {
+        val owner = insertUser("preview-attendance-rotated", "Owner Display")
+        val group = insertCompleteGroup(owner)
+        val game = insertGameWithDeadline(group, now.plusSeconds(7_200), now.plusSeconds(3_600), "PUBLISHED")
+        insertAttendanceLink(group, game, owner, "Organizador", createdAt = "now() - interval '2 hours'")
+        execute(
+            "INSERT INTO group_invites (group_id, token_digest, short_code, created_by_user_id, created_at) " +
+                "VALUES ('$group', NULL, '44DF8SA8', '$owner', now() - interval '1 hour')",
+        )
+
+        assertNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code), now) })
+
+        execute("DELETE FROM notification_attendance_links")
+        insertAttendanceLink(group, game, owner, "Organizador", createdAt = "now()")
+
+        assertEquals(
+            "Preview Group",
+            requireNotNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code), now) }).card.groupName,
+        )
+    }
+
+    @Test
+    fun `attendance link sent before the invite was deactivated is not an invite`() {
+        val owner = insertUser("preview-attendance-deactivated", "Owner Display")
+        val group = insertCompleteGroup(owner)
+        insertAttendanceLink(
+            group,
+            insertGameWithDeadline(group, now.plusSeconds(7_200), now.plusSeconds(3_600), "PUBLISHED"),
+            owner,
+            "Organizador",
+            createdAt = "now() - interval '2 hours'",
+        )
+        execute("INSERT INTO group_invite_deactivations (group_id, deactivated_at) VALUES ('$group', now() - interval '1 hour')")
 
         assertNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code), now) })
     }
@@ -259,11 +299,17 @@ class JdbcInvitePreviewRepositoryIntegrationTest {
     }
 
     /** O lembrete do jogo com o link de presença, como o Saqz manda no WhatsApp. */
-    private fun insertAttendanceLink(group: UUID, game: UUID, author: UUID, authorName: String) {
+    private fun insertAttendanceLink(
+        group: UUID,
+        game: UUID,
+        author: UUID,
+        authorName: String,
+        createdAt: String = "now()",
+    ) {
         val message = UUID.randomUUID()
         execute(
-            "INSERT INTO group_messages (id, group_id, author_id, author_name, channel, body, request_id, game_id) " +
-                "VALUES ('$message', '$group', '$author', '$authorName', 'REMINDER', 'Bora?', '${UUID.randomUUID()}', '$game')",
+            "INSERT INTO group_messages (id, group_id, author_id, author_name, channel, body, request_id, game_id, created_at) " +
+                "VALUES ('$message', '$group', '$author', '$authorName', 'REMINDER', 'Bora?', '${UUID.randomUUID()}', '$game', $createdAt)",
         )
         execute("INSERT INTO notification_attendance_links (message_id, code) VALUES ('$message', '${code.value}')")
     }

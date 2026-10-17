@@ -62,7 +62,7 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
     @BeforeEach
     fun clearData() {
         execute(
-            "TRUNCATE game_attendance, games, group_invites, group_entry_requests, group_membership_removals, group_memberships, " +
+            "TRUNCATE game_attendance, games, group_invites, group_invite_deactivations, group_entry_requests, group_membership_removals, group_memberships, " +
                 "access_groups, invite_redemption_limits, access_users CASCADE",
         )
     }
@@ -107,6 +107,65 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
         val found = transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }
 
         assertEquals(true, found?.entryRequiresApproval)
+    }
+
+    @Test
+    fun `attendance link has no time limit and works after the game was cancelled`() {
+        val owner = insertUser("link-no-limit-owner")
+        val group = insertGroup(owner)
+        val game = insertGame(group)
+        execute("UPDATE games SET status = 'CANCELLED', starts_at = TIMESTAMPTZ '2020-01-01 10:00Z', confirmation_deadline = TIMESTAMPTZ '2020-01-01 08:00Z' WHERE id = '$game'")
+        insertAttendanceLink(group, game, owner, "now() - interval '3 hours'")
+
+        val found = transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }
+
+        assertEquals(group, found?.groupId)
+        assertNull(found?.expiresAt)
+    }
+
+    @Test
+    fun `attendance link sent before the invite was rotated stops working and a later one works`() {
+        val owner = insertUser("link-rotated-owner")
+        val group = insertGroup(owner)
+        val game = insertGame(group)
+        insertAttendanceLink(group, game, owner, "now() - interval '2 hours'")
+        execute(
+            "INSERT INTO group_invites (group_id, token_digest, short_code, created_by_user_id, created_at) " +
+                "VALUES ('$group', NULL, '44DF8SA8', '$owner', now() - interval '1 hour')",
+        )
+
+        assertNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) })
+
+        execute("DELETE FROM notification_attendance_links")
+        insertAttendanceLink(group, game, owner, "now()")
+
+        assertEquals(group, transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }?.groupId)
+    }
+
+    @Test
+    fun `attendance link sent before the invite was deactivated stops working and a later one works`() {
+        val owner = insertUser("link-deactivated-owner")
+        val group = insertGroup(owner)
+        val game = insertGame(group)
+        insertAttendanceLink(group, game, owner, "now() - interval '2 hours'")
+        execute("INSERT INTO group_invite_deactivations (group_id, deactivated_at) VALUES ('$group', now() - interval '1 hour')")
+
+        assertNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) })
+
+        execute("DELETE FROM notification_attendance_links")
+        insertAttendanceLink(group, game, owner, "now()")
+
+        assertEquals(group, transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }?.groupId)
+    }
+
+    @Test
+    fun `attendance link of a deleted group still finds the group so the use case can say it was deleted`() {
+        val owner = insertUser("link-deleted-owner")
+        val group = insertGroup(owner)
+        insertAttendanceLink(group, insertGame(group), owner, "now()")
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$group'")
+
+        assertEquals(true, transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }?.groupDeleted)
     }
 
     @Test
@@ -545,6 +604,16 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
             "responded_at, updated_at, version, member_display_name) VALUES " +
             "('$game', '$group', '$member', 'WAITLISTED', $sequence, now(), now(), 1, 'Waitlisted Person')",
     )
+
+    /** O lembrete do jogo com o link de presença (o mesmo `code` do convite de teste), criado em `createdAt`. */
+    private fun insertAttendanceLink(group: UUID, game: UUID, author: UUID, createdAt: String) {
+        val message = UUID.randomUUID()
+        execute(
+            "INSERT INTO group_messages (id, group_id, author_id, author_name, channel, body, request_id, game_id, created_at) " +
+                "VALUES ('$message', '$group', '$author', 'Organizador', 'REMINDER', 'Bora?', '${UUID.randomUUID()}', '$game', $createdAt)",
+        )
+        execute("INSERT INTO notification_attendance_links (message_id, code) VALUES ('$message', '${code.value}')")
+    }
 
     private fun insertInvite(group: UUID, creator: UUID, digest: InviteTokenDigest) {
         connection().use { connection ->

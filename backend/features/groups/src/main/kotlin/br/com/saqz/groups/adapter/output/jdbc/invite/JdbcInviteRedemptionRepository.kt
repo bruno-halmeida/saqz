@@ -55,6 +55,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
 
     override fun findInvite(digest: InviteTokenDigest): RedeemableInvite? = jdbc.sql(
         // Deliberately includes deleted groups so the use case can return its specific error.
+        // O link do lembrete vale sem prazo, mas só se a mensagem é posterior à última troca ou desativação do convite.
         """
         SELECT invites.group_id,
                groups.deleted_at IS NOT NULL AS group_deleted,
@@ -65,12 +66,15 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         WHERE invites.token_digest = :tokenDigest OR invites.short_code_digest = :tokenDigest
         UNION ALL
         SELECT m.group_id, groups.deleted_at IS NOT NULL AS group_deleted,
-               groups.entry_requires_approval, game.confirmation_deadline AS expires_at
+               groups.entry_requires_approval, NULL::timestamptz AS expires_at
         FROM notification_attendance_links link
         JOIN group_messages m ON m.id = link.message_id
         JOIN access_groups groups ON groups.id = m.group_id
-        JOIN games game ON game.id = m.game_id AND game.group_id = m.group_id
-        WHERE sha256(convert_to(link.code, 'UTF8')) = :tokenDigest AND game.status = 'PUBLISHED'
+        WHERE sha256(convert_to(link.code, 'UTF8')) = :tokenDigest
+          AND m.created_at >= GREATEST(
+              COALESCE((SELECT created_at FROM group_invites WHERE group_id = m.group_id), '-infinity'),
+              COALESCE((SELECT deactivated_at FROM group_invite_deactivations WHERE group_id = m.group_id), '-infinity')
+          )
         """.trimIndent(),
     )
         .param("tokenDigest", digest.toByteArray())

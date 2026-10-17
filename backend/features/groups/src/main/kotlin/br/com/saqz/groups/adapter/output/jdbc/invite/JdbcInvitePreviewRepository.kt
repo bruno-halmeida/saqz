@@ -70,7 +70,8 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
      * O código é um convite do grupo ou o link de presença de uma mensagem do Saqz (os botões
      * "Confirmar"/"Não vou" do WhatsApp), que o resgate também aceita como convite: quem chega por
      * ele vê o mesmo cartão do grupo, com quem mandou a mensagem como quem convidou. O link de
-     * presença vale enquanto o jogo aceita resposta.
+     * presença vale sem prazo (LINK-003), mas só se a mensagem é posterior à última troca ou desativação do
+     * convite do grupo.
      */
     override fun findInvite(digest: InviteTokenDigest, now: Instant): PreviewableInvite? = jdbc.sql(
         """
@@ -80,11 +81,14 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
             JOIN access_users creator ON creator.id = invites.created_by_user_id
             WHERE invites.token_digest = :tokenDigest OR invites.short_code_digest = :tokenDigest
             UNION ALL
-            SELECT m.group_id, m.author_name AS inviter_name, game.confirmation_deadline AS attendance_deadline
+            SELECT m.group_id, m.author_name AS inviter_name, NULL::timestamptz AS attendance_deadline
             FROM notification_attendance_links link
             JOIN group_messages m ON m.id = link.message_id
-            JOIN games game ON game.id = m.game_id AND game.group_id = m.group_id
-            WHERE sha256(convert_to(link.code, 'UTF8')) = :tokenDigest AND game.status = 'PUBLISHED'
+            WHERE sha256(convert_to(link.code, 'UTF8')) = :tokenDigest
+              AND m.created_at >= GREATEST(
+                  COALESCE((SELECT created_at FROM group_invites WHERE group_id = m.group_id), '-infinity'),
+                  COALESCE((SELECT deactivated_at FROM group_invite_deactivations WHERE group_id = m.group_id), '-infinity')
+              )
         )
         SELECT
             target.group_id,
@@ -126,8 +130,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
             val first = rows.first()
             PreviewableInvite(
                 groupDeleted = first.groupDeleted,
-                // SPEC_DEVIATION: VUL-137's expires_at is not present in this base branch.
-                // Só o link de presença expira: no prazo de confirmação do jogo, como no resgate.
+                // O link de presença não expira por prazo; o que invalida é a troca ou desativação do convite.
                 expiredAt = first.attendanceDeadline?.takeUnless { it.isAfter(now) },
                 card = PreviewInviteCard(
                     groupName = first.groupName,
