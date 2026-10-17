@@ -70,9 +70,11 @@ class AttendanceLinkViewModel(
 
     private fun decline() {
         val destination = state.value.destination ?: return
-        if (state.value.phase != AttendanceLinkPhase.DeclineSheet) return
+        if (state.value.phase != AttendanceLinkPhase.DeclineSheet || state.value.declining) return
         val current = generation
         val requestId = requestId(code) ?: return show(AttendanceLinkPhase.Invalid)
+        // Toda resposta troca o estado inteiro, então a marca some sozinha quando ela volta.
+        update { it.copy(declining = true) }
         viewModelScope.launch { respond(destination, requestId, current, AttendanceIntent.Decline) }
     }
 

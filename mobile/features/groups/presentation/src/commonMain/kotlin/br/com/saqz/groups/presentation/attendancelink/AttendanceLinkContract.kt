@@ -18,6 +18,8 @@ enum class AttendanceLinkPhase {
 data class AttendanceLinkState(
     val phase: AttendanceLinkPhase = AttendanceLinkPhase.Loading,
     val destination: AttendanceLinkDestination? = null,
+    /** O "não vou" já foi enviado e a resposta não voltou: o botão da folha não aceita outro toque. */
+    val declining: Boolean = false,
 )
 
 enum class AttendanceLinkIntent { Retry, Decline, OpenAppDownload }

@@ -100,6 +100,8 @@ internal fun AttendanceLinkScreen(
                     label = stringResource(Res.string.attendance_link_decline_sheet_confirm),
                     onClick = { onIntent(AttendanceLinkIntent.Decline) },
                     variant = SaqzButtonVariant.Danger,
+                    enabled = !state.declining,
+                    loading = state.declining,
                     modifier = Modifier.weight(1f),
                 )
             },

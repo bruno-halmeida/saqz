@@ -6,6 +6,7 @@ import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.attendance.share.*
 import br.com.saqz.groups.domain.membership.*
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.*
 import kotlin.test.*
@@ -141,6 +142,35 @@ class AttendanceLinkViewModelTest {
         assertEquals(1, gateway.commands.size)
     }
 
+    @Test fun secondDeclineWhileTheFirstIsInFlightIsIgnoredAndTheSheetStaysLockedUntilTheAnswer() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val gateway = AttendanceFake().apply { status = AttendanceStatus.Declined; hold = gate }
+        val vm = AttendanceLinkViewModel(declineCode, true, SharingFake(), gateway, InviteFake())
+        vm.onIntent(AttendanceLinkIntent.Decline)
+        vm.onIntent(AttendanceLinkIntent.Decline)
+        vm.onIntent(AttendanceLinkIntent.Decline)
+        assertEquals(1, gateway.commands.size)
+        assertTrue(vm.state.value.declining)
+        assertEquals(AttendanceLinkPhase.DeclineSheet, vm.state.value.phase)
+        gate.complete(Unit)
+        assertEquals(AttendanceLinkPhase.Declined, vm.state.value.phase)
+        assertFalse(vm.state.value.declining)
+        assertEquals(1, gateway.commands.size)
+    }
+
+    @Test fun declineFailureReleasesTheSheetToTryAgainWithTheSameRequestId() = runTest {
+        val gateway = AttendanceFake().apply { error = AttendanceError.Data(DataError.Connectivity) }
+        val vm = AttendanceLinkViewModel(declineCode, true, SharingFake(), gateway, InviteFake())
+        vm.onIntent(AttendanceLinkIntent.Decline)
+        assertEquals(AttendanceLinkPhase.Failed, vm.state.value.phase)
+        assertFalse(vm.state.value.declining)
+        vm.onIntent(AttendanceLinkIntent.Retry)
+        assertEquals(AttendanceLinkPhase.DeclineSheet, vm.state.value.phase)
+        vm.onIntent(AttendanceLinkIntent.Decline)
+        assertEquals(2, gateway.commands.size)
+        assertEquals(gateway.commands.first().requestId, gateway.commands.last().requestId)
+    }
+
     @Test fun declineLinkOpensTheSheetWithoutWritingAndLeavingItWritesNothing() = runTest {
         val gateway = AttendanceFake()
         val vm = AttendanceLinkViewModel(declineCode, true, SharingFake(), gateway, InviteFake())
@@ -204,10 +234,13 @@ class AttendanceLinkViewModelTest {
         val targets = mutableListOf<AttendanceLinkDestination>()
         var status = AttendanceStatus.Confirmed
         var error: AttendanceError? = null
+        /** Segura a resposta até o teste liberar: é o que mantém a primeira chamada em voo. */
+        var hold: CompletableDeferred<Unit>? = null
         override suspend fun respond(groupId: GroupId, gameId: String, command: SelfAttendanceCommand):
             SaqzResult<VersionedAttendanceMutation, AttendanceError> {
             commands += command
             targets += AttendanceLinkDestination(groupId, gameId)
+            hold?.await()
             error?.let { return SaqzResult.Failure(it) }
             return SaqzResult.Success(VersionedAttendanceMutation(
                 AttendanceMutation(AttendanceEntry("logged-user", status, version = 1), promotedCount = 0,
