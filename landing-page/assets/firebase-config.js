@@ -7,8 +7,7 @@ window.SAQZ_FIREBASE_CONFIG = {
   projectId: "saquz-app",
   appId: "1:641280788616:web:6da100b9e2a884304bb73d",
   apiBaseUrl: "https://api.saqz.app",
-  // App Store: preencher com https://apps.apple.com/br/app/id6812743525 quando a Apple aprovar;
-  // vazio mantém o selo "Em breve".
-  iosAppStoreUrl: "",
+  // App Store (1.0.6 liberada em 16/10/2026); vazio mantém o selo "Em breve".
+  iosAppStoreUrl: "https://apps.apple.com/br/app/id6812743525",
   androidPlayStoreUrl: "https://play.google.com/store/apps/details?id=app.saqz",
 };

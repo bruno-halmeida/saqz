@@ -67,9 +67,9 @@
   // Funil de medição (deploy/medicao-web.md): sem o carregador da landing, vira no-op.
   function track(name, params) { try { if (window.saqzTrack) window.saqzTrack(name, params || {}); } catch (ignored) {} }
 
-  // iPhone (sem app na App Store) e computador: o web app em saqz.app/app/ é onde o organizador cria o
-  // grupo, logado com a mesma conta (mesmo domínio e mesmo Firebase). Android segue nas lojas. Só oferece
-  // se o navegador roda o web app (WasmGC, iOS 18.2+) e ele responde: fora do ar, a página fica como era.
+  // Computador: o web app em saqz.app/app/ é onde o organizador cria o grupo, logado com a mesma conta
+  // (mesmo domínio e mesmo Firebase). iPhone e Android seguem nas lojas (App Store e Google Play). Só
+  // oferece se o navegador roda o web app (WasmGC) e ele responde: fora do ar, a página fica como era.
   function isIPhone() {
     return typeof navigator !== "undefined" && (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
@@ -79,7 +79,7 @@
     if (webAppOffer) return webAppOffer;
     webAppOffer = new Promise(function (resolve) {
       if (typeof navigator === "undefined" || typeof fetch !== "function") return resolve(false);
-      if (/Android/i.test(navigator.userAgent)) return resolve(false);
+      if (/Android/i.test(navigator.userAgent) || isIPhone()) return resolve(false);
       try {
         if (!(typeof WebAssembly === "object" && WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 127, 0])))) return resolve(false);
       } catch (e) { return resolve(false); }

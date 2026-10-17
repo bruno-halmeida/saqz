@@ -26,7 +26,7 @@ window.SAQZ_FIREBASE_CONFIG = {
   projectId: "saqz-local",
   authEmulatorUrl: "http://127.0.0.1:9099",
   apiBaseUrl: "http://127.0.0.1:8080",
-  // Preencha quando as lojas publicarem o app; vazio mantém o estado "Em breve".
-  iosAppStoreUrl: "",
+  // Lojas: App Store e Google Play; vazio mantém o estado "Em breve".
+  iosAppStoreUrl: "https://apps.apple.com/br/app/id6812743525",
   androidPlayStoreUrl: "",
 };

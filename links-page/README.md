@@ -99,6 +99,6 @@ No celular a página redireciona sozinha, sem clique; os botões ficam de reserv
   desde a 0.0.4 (6), presença desde a 0.0.5 (7). Quem não é do grupo e chega pela presença
   entra no grupo e já responde. A página ainda pede para tocar no link de novo, para
   quem instalar por fora do Play.
-- **App Store**: quando a Apple aprovar, preencha `appStore` em `index.html` com
-  `https://apps.apple.com/br/app/id6812743525`. Até lá o iPhone mostra o site e
-  avisa que o app chega em breve.
+- **App Store**: `appStore` em `index.html` já aponta para
+  `https://apps.apple.com/br/app/id6812743525`. O iPhone sem o app vai à App Store; com o app,
+  o link universal abre o app. O web app (`saqz.app/app/`) fica para o computador.
