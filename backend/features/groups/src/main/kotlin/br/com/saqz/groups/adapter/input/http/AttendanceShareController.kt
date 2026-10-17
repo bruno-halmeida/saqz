@@ -49,7 +49,8 @@ data class AttendanceShareSnapshotResponse(
     val declined: List<AttendanceShareSnapshotPersonResponse>,
 )
 
-class AttendanceLinkInvalidOrExpiredException : RuntimeException()
+/** [reason] só existe quando o código é conhecido: código desconhecido segue sem ele. */
+class AttendanceLinkInvalidOrExpiredException(val reason: String? = null) : RuntimeException()
 
 class AttendanceLinkAttemptLimitException(val retryAfterSeconds: Int) : RuntimeException()
 
@@ -85,6 +86,7 @@ class AttendanceShareController(
         val result = resolveAttendanceLink.execute(actor(identity), required(request.code, "code"))
     ) {
         ResolveAttendanceLinkResult.InvalidOrExpired -> throw AttendanceLinkInvalidOrExpiredException()
+        is ResolveAttendanceLinkResult.GameClosed -> throw AttendanceLinkInvalidOrExpiredException(result.reason.name)
         is ResolveAttendanceLinkResult.AttemptLimit -> throw AttendanceLinkAttemptLimitException(result.retryAfterSeconds)
         ResolveAttendanceLinkResult.Unavailable -> throw AttendanceLinkUnavailableException()
         is ResolveAttendanceLinkResult.Success -> ResolvedAttendanceLinkResponse(result.groupId, result.gameId, result.registrationRequired)

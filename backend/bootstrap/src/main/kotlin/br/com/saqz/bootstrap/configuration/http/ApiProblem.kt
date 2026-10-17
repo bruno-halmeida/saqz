@@ -15,4 +15,6 @@ data class ApiProblem(
     val remainingAttempts: Int? = null,
     val expiredAt: Instant? = null,
     val conflictGameId: String? = null,
+    /** Motivo aditivo de um erro de código conhecido (link de presença: jogo começou, cancelado, despublicado). */
+    val reason: String? = null,
 )

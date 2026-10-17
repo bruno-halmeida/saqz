@@ -450,8 +450,12 @@ class SafeExceptionHandler(
     }
 
     @ExceptionHandler(AttendanceLinkInvalidOrExpiredException::class)
-    fun attendanceLinkInvalidOrExpired(request: HttpServletRequest, response: HttpServletResponse) {
-        problemWriter.write(request, response, 404, ErrorCode.ATTENDANCE_LINK_INVALID_OR_EXPIRED)
+    fun attendanceLinkInvalidOrExpired(
+        failure: AttendanceLinkInvalidOrExpiredException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(request, response, 404, ErrorCode.ATTENDANCE_LINK_INVALID_OR_EXPIRED, reason = failure.reason)
     }
 
     @ExceptionHandler(AttendanceLinkAttemptLimitException::class)

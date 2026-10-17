@@ -14,8 +14,14 @@ sealed interface ResolveAttendanceLinkResult {
 
     data object InvalidOrExpired : ResolveAttendanceLinkResult
 
+    /** O código existe e o ator o enxerga, mas o jogo não aceita mais resposta: a tela diz o motivo. */
+    data class GameClosed(val reason: AttendanceLinkClosedReason) : ResolveAttendanceLinkResult
+
     data object Unavailable : ResolveAttendanceLinkResult
 }
+
+/** Por que um link de jogo conhecido não vale mais. Vai no corpo do erro como `reason`. */
+enum class AttendanceLinkClosedReason { GAME_STARTED, GAME_CANCELLED, GAME_UNPUBLISHED }
 
 class ResolveAttendanceLink(
     private val transactionRunner: TransactionRunner,
@@ -35,7 +41,8 @@ class ResolveAttendanceLink(
 
             val code = runCatching { AttendanceLinkCode.from(rawCode) }.getOrNull()
             val target = code?.let { repository.findResolvableTarget(actorId, AttendanceLinkTokenDigest.sha256(it)) }
-            if (target == null || target.status != GameStatus.PUBLISHED || now >= target.startsAt) {
+            val closedReason = target?.closedReason(now)
+            if (target == null || closedReason != null) {
                 repository.recordInvalidAttempt(
                     RecordInvalidAttendanceLinkAttempt(
                         actorId,
@@ -43,13 +50,21 @@ class ResolveAttendanceLink(
                         currentWindow.invalidCount + 1,
                     ),
                 )
-                return@inTransaction ResolveAttendanceLinkResult.InvalidOrExpired
+                return@inTransaction closedReason?.let(ResolveAttendanceLinkResult::GameClosed)
+                    ?: ResolveAttendanceLinkResult.InvalidOrExpired
             }
 
             ResolveAttendanceLinkResult.Success(target.groupId, target.gameId, target.registrationRequired)
         }
     }.getOrElse {
         ResolveAttendanceLinkResult.Unavailable
+    }
+
+    private fun AttendanceLinkResolvableTarget.closedReason(now: Instant): AttendanceLinkClosedReason? = when {
+        status == GameStatus.CANCELLED -> AttendanceLinkClosedReason.GAME_CANCELLED
+        status == GameStatus.DRAFT -> AttendanceLinkClosedReason.GAME_UNPUBLISHED
+        status == GameStatus.COMPLETED || now >= startsAt -> AttendanceLinkClosedReason.GAME_STARTED
+        else -> null
     }
 
     private fun retryAfterSeconds(now: Instant, window: AttendanceLinkAttemptWindow): Int {

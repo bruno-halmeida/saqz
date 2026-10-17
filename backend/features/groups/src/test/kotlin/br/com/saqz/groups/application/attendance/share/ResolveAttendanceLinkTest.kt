@@ -49,12 +49,34 @@ class ResolveAttendanceLinkTest {
     }
 
     @Test
-    fun `non published targets are terminal`() {
-        listOf(GameStatus.DRAFT, GameStatus.CANCELLED, GameStatus.COMPLETED).forEach { status ->
-            val fixture = fixture(target = AttendanceLinkResolvableTarget(groupId, gameId, status, now.plusSeconds(60)))
+    fun `cancelled game is closed with the cancelled reason`() {
+        val fixture = fixture(target = AttendanceLinkResolvableTarget(groupId, gameId, GameStatus.CANCELLED, now.plusSeconds(60)))
 
-            assertSame(ResolveAttendanceLinkResult.InvalidOrExpired, fixture.useCase.execute(actor, code.value), status.name)
-        }
+        assertEquals(ResolveAttendanceLinkResult.GameClosed(AttendanceLinkClosedReason.GAME_CANCELLED), fixture.useCase.execute(actor, code.value))
+        assertEquals(1, fixture.repository.invalidAttempts.single().invalidCount)
+    }
+
+    @Test
+    fun `draft game is closed with the unpublished reason`() {
+        val fixture = fixture(target = AttendanceLinkResolvableTarget(groupId, gameId, GameStatus.DRAFT, now.plusSeconds(60)))
+
+        assertEquals(ResolveAttendanceLinkResult.GameClosed(AttendanceLinkClosedReason.GAME_UNPUBLISHED), fixture.useCase.execute(actor, code.value))
+    }
+
+    @Test
+    fun `completed game is closed with the started reason`() {
+        val fixture = fixture(target = AttendanceLinkResolvableTarget(groupId, gameId, GameStatus.COMPLETED, now.plusSeconds(60)))
+
+        assertEquals(ResolveAttendanceLinkResult.GameClosed(AttendanceLinkClosedReason.GAME_STARTED), fixture.useCase.execute(actor, code.value))
+    }
+
+    @Test
+    fun `cancelled game that already started keeps the cancelled reason`() {
+        val fixture = fixture(
+            target = AttendanceLinkResolvableTarget(groupId, gameId, GameStatus.CANCELLED, now.minusSeconds(3600), startsAt = now.minusSeconds(60)),
+        )
+
+        assertEquals(ResolveAttendanceLinkResult.GameClosed(AttendanceLinkClosedReason.GAME_CANCELLED), fixture.useCase.execute(actor, code.value))
     }
 
     @Test
@@ -70,14 +92,14 @@ class ResolveAttendanceLinkTest {
     }
 
     @Test
-    fun `game start instant is terminal`() {
+    fun `game start instant is closed with the started reason`() {
         val fixture = fixture(
             target = AttendanceLinkResolvableTarget(
                 groupId, gameId, GameStatus.PUBLISHED, now.minusSeconds(3600), startsAt = now,
             ),
         )
 
-        assertSame(ResolveAttendanceLinkResult.InvalidOrExpired, fixture.useCase.execute(actor, code.value))
+        assertEquals(ResolveAttendanceLinkResult.GameClosed(AttendanceLinkClosedReason.GAME_STARTED), fixture.useCase.execute(actor, code.value))
         assertEquals(1, fixture.repository.invalidAttempts.single().invalidCount)
     }
 
