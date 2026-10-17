@@ -633,6 +633,7 @@ class AccessSessionConfiguration {
         repository: JdbcInviteRedemptionRepository,
         membershipRepository: JdbcMembershipRepository,
         subscriptionLimits: SubscriptionLimits,
+        dataSource: DataSource,
     ) = ApproveEntryRequest(
         transaction,
         readRepository,
@@ -641,6 +642,7 @@ class AccessSessionConfiguration {
         subscriptionLimits,
         GroupAccessPolicy(),
         Clock.systemUTC(),
+        br.com.saqz.groups.adapter.output.jdbc.communication.JdbcEntryApprovalNotice(dataSource),
     )
 
     @Bean

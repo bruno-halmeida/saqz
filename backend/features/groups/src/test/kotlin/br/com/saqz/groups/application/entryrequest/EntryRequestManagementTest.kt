@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.entryrequest
 
+import br.com.saqz.groups.application.communication.EntryApprovalNotice
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.invite.redeem.GroupAthleteOccupancy
 import br.com.saqz.groups.application.membership.AccessMembership
@@ -84,6 +85,39 @@ class EntryRequestManagementTest {
         assertIs<RejectEntryRequestResult.Success>(fixture.reject.execute(ownerId, groupId, applicantId))
 
         assertTrue(applicantId in fixture.entries.returnMarked)
+    }
+
+    @Test
+    fun `aprovar avisa a pessoa uma vez, depois do vinculo, com o instante do pedido`() {
+        val notices = mutableListOf<Triple<UUID, UUID, Instant>>()
+        val fixture = fixture(role = GroupRole.OWNER, approvalNotice = EntryApprovalNotice { g, u, at -> notices += Triple(g, u, at) })
+
+        assertIs<ApproveEntryRequestResult.Success>(fixture.approve.execute(ownerId, groupId, applicantId))
+
+        assertEquals(listOf(Triple(groupId, applicantId, now)), notices)
+        assertEquals(1, fixture.transaction.calls)
+    }
+
+    @Test
+    fun `aprovar quem ja e membro, pedido sumido, limite cheio ou sem permissao nao avisa`() {
+        val notices = mutableListOf<UUID>()
+        val notice = EntryApprovalNotice { _, u, _ -> notices += u }
+
+        val member = fixture(role = GroupRole.OWNER, approvalNotice = notice)
+        member.membership.memberships[applicantId] = AccessMembership(applicantId, AccessName.from("Applicant"), GroupRole.ATHLETE)
+        member.approve.execute(ownerId, groupId, applicantId)
+
+        val missing = fixture(role = GroupRole.OWNER, approvalNotice = notice)
+        missing.entries.requests.clear()
+        missing.approve.execute(ownerId, groupId, applicantId)
+
+        val full = fixture(role = GroupRole.OWNER, athleteLimit = 1, approvalNotice = notice)
+        full.entries.occupancy = occupancy(openMembers = setOf(UUID.randomUUID()))
+        full.approve.execute(ownerId, groupId, applicantId)
+
+        fixture(role = GroupRole.ATHLETE, approvalNotice = notice).approve.execute(athleteId, groupId, applicantId)
+
+        assertTrue(notices.isEmpty())
     }
 
     @Test
@@ -248,7 +282,11 @@ class EntryRequestManagementTest {
         heightCm = null,
     )
 
-    private fun fixture(role: GroupRole?, athleteLimit: Int? = null): Fixture {
+    private fun fixture(
+        role: GroupRole?,
+        athleteLimit: Int? = null,
+        approvalNotice: EntryApprovalNotice = EntryApprovalNotice { _, _, _ -> },
+    ): Fixture {
         val order = mutableListOf<String>()
         val entries = MemoryEntryRequestRepository(order)
         val membership = MemoryMembershipRepository(order)
@@ -262,6 +300,7 @@ class EntryRequestManagementTest {
             FixedSubscriptionLimits(athleteLimit),
             br.com.saqz.groups.domain.GroupAccessPolicy(),
             Clock.fixed(now, ZoneOffset.UTC),
+            approvalNotice,
         )
         val list = ListEntryRequests(read, entries, br.com.saqz.groups.domain.GroupAccessPolicy())
         val reject = RejectEntryRequest(transaction, read, entries, br.com.saqz.groups.domain.GroupAccessPolicy())

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.communication
 
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
@@ -27,6 +28,17 @@ fun interface FirstConfirmationNotice {
 fun interface EntryRequestNotice {
     fun requested(groupId: UUID, userId: UUID)
 }
+
+/**
+ * Aviso direto à pessoa cujo pedido de entrada foi aprovado (CONV-007), no canal AUTO_CONFIRMATION que os apps das
+ * lojas já conhecem. Chamado na mesma transação da aprovação; [requestedAt] identifica o pedido, então aprovar de
+ * novo o mesmo pedido não avisa duas vezes (um pedido novo, depois de sair de novo, avisa).
+ */
+fun interface EntryApprovalNotice {
+    fun approved(groupId: UUID, userId: UUID, requestedAt: Instant)
+}
+
+fun entryApprovedBody(groupName: String): String = "Você entrou no $groupName."
 
 fun entryRequestBody(who: String, groupName: String): String = "$who pediu para entrar no $groupName."
 

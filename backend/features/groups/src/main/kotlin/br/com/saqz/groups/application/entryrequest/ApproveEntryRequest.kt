@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.entryrequest
 
+import br.com.saqz.groups.application.communication.EntryApprovalNotice
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.membership.ChangeMemberRoleCommand
 import br.com.saqz.groups.application.membership.MembershipRepository
@@ -23,6 +24,7 @@ class ApproveEntryRequest(
     private val subscriptionLimits: SubscriptionLimits,
     private val accessPolicy: GroupAccessPolicy,
     private val clock: Clock,
+    private val approvalNotice: EntryApprovalNotice = EntryApprovalNotice { _, _, _ -> },
 ) {
     fun execute(actor: UUID, groupId: UUID, userId: UUID): ApproveEntryRequestResult = transactionRunner.inTransaction {
         val group = groupReadRepository.find(GroupReadKey(actor, groupId))
@@ -39,7 +41,8 @@ class ApproveEntryRequest(
             return@inTransaction ApproveEntryRequestResult.Success(existingMembership)
         }
 
-        if (entryRequestRepository.find(groupId, userId) == null) {
+        val request = entryRequestRepository.find(groupId, userId)
+        if (request == null) {
             // The repository hides requests whose account was soft-deleted; clean that
             // orphan as well as handling an actually missing request idempotently.
             entryRequestRepository.delete(groupId, userId)
@@ -67,6 +70,8 @@ class ApproveEntryRequest(
         entryRequestRepository.applyAthleteProfileToMembership(groupId, userId)
         entryRequestRepository.delete(groupId, userId)
         entryRequestRepository.clearReturnMark(groupId, userId)
+        // Aviso à pessoa aprovada, na mesma transação; não repete o aviso quando o pedido já virou vínculo (retorno acima).
+        approvalNotice.approved(groupId, userId, request.requestedAt)
         ApproveEntryRequestResult.Success(membership)
     }
 }
