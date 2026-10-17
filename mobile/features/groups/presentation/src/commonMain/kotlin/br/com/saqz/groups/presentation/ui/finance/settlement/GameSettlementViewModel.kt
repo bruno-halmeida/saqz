@@ -124,10 +124,8 @@ class GameSettlementViewModel(
     /** Só quem desistiu tem "Dispensar": cobrança comum segue o caminho do "Recebi". */
     private fun openWaiveSheet(chargeId: String) {
         val current = state.value
-        if (
-            current.isLoading || current.updatingChargeId != null ||
-            current.diarists.none { it.chargeId == chargeId && it.withdrew && it.status == ChargeStatus.Pending }
-        ) return
+        if (current.isLoading || current.updatingChargeId != null) return
+        if (current.diarists.none { it.chargeId == chargeId && it.withdrew && it.status == ChargeStatus.Pending }) return
         update {
             it.copy(
                 waiveSheetChargeId = chargeId,
