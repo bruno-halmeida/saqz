@@ -170,8 +170,8 @@ internal class ReminderE2eTest : InstalledE2e("reminders") {
         val inboxes = inboxIds()
         openGroup()
         click("group-details-notify-pending", scroll = true)
-        waitText("Lembrete enviado no Saqz para 1 pessoa(s).")
-        ui.onNodeWithText("Lembrete enviado no Saqz para 1 pessoa(s).").performScrollTo().assertIsDisplayed()
+        waitText("Lembrete enviado no Saqz para 1 pessoa.")
+        ui.onNodeWithText("Lembrete enviado no Saqz para 1 pessoa.").performScrollTo().assertIsDisplayed()
         val peerInbox = api("peer", "/api/me/notifications").getJSONArray("items")
         val peerNew = peerInbox.objects().filter { it.getJSONObject("message").getString("id") !in inboxes.getValue("peer") }
         assertEquals(1, peerNew.size)

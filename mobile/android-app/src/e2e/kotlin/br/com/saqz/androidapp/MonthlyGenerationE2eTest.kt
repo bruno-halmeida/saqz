@@ -71,7 +71,7 @@ internal class MonthlyGenerationE2eTest : InstalledE2e("finance") {
         ui.onNodeWithTag("monthly-generation-member-${actor("owner").getString("id")}").assertDoesNotExist()
         ui.onNodeWithTag("monthly-generation-review").assertIsNotEnabled()
         ui.onNodeWithText(monthTitle).assertIsDisplayed()
-        ui.onNodeWithText(due).assertIsDisplayed()
+        ui.onNodeWithText(due).performScrollTo().assertIsDisplayed()
         input("monthly-generation-amount", value)
         click(selected, scroll = true)
         ui.onNodeWithTag(selected).assertIsOn()
