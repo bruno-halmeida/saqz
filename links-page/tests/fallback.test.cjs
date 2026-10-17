@@ -92,8 +92,10 @@ test('iOS attendance never opens the scheme by itself and goes to the App Store'
   assert.equal(result.location.href, undefined);
   assert.equal(result.location.replaced, appStore);
   assert.equal(result.primary.href, appStore);
-  assert.equal(result.secondary.href, 'saqz:///attendance/' + code + '?saqz_intent=decline');
-  assert.equal(result.secondary.textContent, 'Já instalei, abrir o app');
+  assert.equal(result.secondary.href, `${play}&referrer=saqz_attendance%3D${code}%26saqz_intent%3Ddecline`);
+  assert.equal(result.secondary.textContent, 'Baixar no Google Play');
+  assert.equal(result.tertiary.href, 'saqz:///attendance/' + code + '?saqz_intent=decline');
+  assert.equal(result.tertiary.textContent, 'Já instalei, abrir o app');
 });
 
 test('iOS invite never opens the scheme by itself and goes to the App Store', () => {
@@ -103,7 +105,18 @@ test('iOS invite never opens the scheme by itself and goes to the App Store', ()
   assert.equal(result.primary.href, appStore);
   assert.equal(result.primary.textContent, 'Baixar na App Store');
   assert.doesNotMatch(result.lead.textContent, /em breve/);
-  assert.equal(result.secondary.href, 'saqz:///?saqz_invite=' + code);
+  assert.equal(result.secondary.href, `${play}&referrer=saqz_invite%3D${code}`);
+  assert.equal(result.secondary.textContent, 'Baixar no Google Play');
+  assert.equal(result.tertiary.href, 'saqz:///?saqz_invite=' + code);
+});
+
+test('iPhone shows both store links, App Store first, even without a link code', () => {
+  const result = page('iPhone', '/', '');
+  assert.equal(result.location.replaced, appStore);
+  assert.equal(result.primary.href, appStore);
+  assert.equal(result.primary.textContent, 'Baixar na App Store');
+  assert.equal(result.secondary.href, play);
+  assert.equal(result.secondary.textContent, 'Baixar no Google Play');
 });
 
 test('desktop keeps the site, asks for the phone and never redirects', () => {
@@ -233,7 +246,7 @@ test('short invite code is normalized: lowercase and hyphen open the same invite
     assert.match(result.location.href, /^intent:\/\/links\.saqz\.app\/\?saqz_invite=44DF8SA8#Intent/, typed);
   }
   const phone = page('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)', '/', '?saqz_invite=44df-8sa8');
-  assert.equal(phone.secondary.href, 'saqz:///?saqz_invite=44DF8SA8');
+  assert.equal(phone.tertiary.href, 'saqz:///?saqz_invite=44DF8SA8');
 });
 
 test('short invite code reaches the web app (desktop) with the canonical code', async () => {

@@ -209,13 +209,12 @@
   }
   // Uma ação principal por aparelho; o resto fica atrás de "Mais opções".
   //  - computador (web app no ar): "Continuar no Saqz", com as lojas como secundária.
-  //  - iPhone e Android (ou web app fora do ar): o selo da loja (App Store / Google Play); secundária
+  //  - iPhone (App Store e Google Play), Android (Google Play) ou web app fora do ar: os selos; secundária
   //    "Já tem o app? Abrir neste celular".
   function layoutReady(webAvailable) {
     var iphone = isIPhone();
     var mobile = iphone || isAndroid();
-    // Cada aparelho só vê o selo da própria loja; o computador vê as duas.
-    if (iphone) hide("android-store");
+    // iPhone e computador veem os dois selos (App Store primeiro); o Android só vê o do Google Play.
     if (isAndroid()) hide("ios-store");
     var storeLive = !$("android-store").hidden || !$("ios-store").hidden;
     $("web-app-cta").hidden = !webAvailable;

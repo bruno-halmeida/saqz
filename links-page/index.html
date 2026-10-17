@@ -153,7 +153,13 @@
       } else {
         if (kind) lead.textContent = "Baixe o app e, depois de instalar, toque de novo no link que você recebeu.";
         link(primary, store, storeLabel);
-        if (open) link(secondary, open, "Já instalei, abrir o app");
+        // iPhone: os dois selos, App Store primeiro (o redirecionamento automático segue indo à App Store).
+        if (isIOS) {
+          link(secondary, googlePlay + (referrer ? "&referrer=" + encodeURIComponent(referrer) : ""), "Baixar no Google Play");
+          if (open) link(tertiary, open, "Já instalei, abrir o app");
+        } else if (open) {
+          link(secondary, open, "Já instalei, abrir o app");
+        }
       }
 
       // Sem clique. No Android, o intent abre o app com o link ou, sem o app, o Chrome segue

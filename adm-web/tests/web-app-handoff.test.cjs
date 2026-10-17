@@ -55,7 +55,8 @@ test('iPhone: depois do cadastro, o selo da App Store é a ação principal e o 
   assert.equal(page.el('download-panel').hidden, false);
   assert.equal(page.el('ios-store').hidden, false);
   assert.equal(page.el('ios-store').href, APP_STORE);
-  assert.equal(page.el('android-store').hidden, true, 'iPhone nunca vê o selo da Google Play');
+  assert.equal(page.el('android-store').hidden, false, 'iPhone também vê o selo do Google Play');
+  assert.equal(page.el('android-store').href, PLAY);
   assert.equal(page.el('download-open').hidden, false, 'secundária: já tem o app? abrir neste celular');
   assert.match(page.el('ready-copy').textContent, /Baixe o app/);
 });
@@ -97,6 +98,15 @@ test('assinatura: sucesso e "já é assinante" oferecem o web app (só computado
   assert.match(source, /Continue no Saqz e crie seu grupo\./);
 });
 
+test('selos: App Store vem antes do Google Play; Android só vê o do Google Play', async () => {
+  const html = fs.readFileSync(require.resolve('../comecar/index.html'), 'utf8');
+  assert.ok(html.indexOf('id="ios-store"') < html.indexOf('id="android-store"'));
+  const android = comecar(ANDROID);
+  android.ready(); await flush(); await flush();
+  assert.equal(android.el('android-store').hidden, false);
+  assert.equal(android.el('ios-store').hidden, true);
+});
+
 test('a dica de Tela de Início do iPhone não existe mais', () => {
   const html = fs.readFileSync(require.resolve('../comecar/index.html'), 'utf8');
   assert.doesNotMatch(html, /web-app-ios-tip|Adicionar à Tela de Início/);
@@ -116,12 +126,12 @@ test('assinatura: o iPhone não é oferecido ao web app (App Store primeiro)', (
   assert.match(source, /\/Android\/i\.test\(navigator\.userAgent\) \|\| isIPhone\(\)\) return resolve\(false\)/);
 });
 
-test('sem link da App Store configurado, o selo do iPhone fica escondido', async () => {
+test('sem link da App Store configurado, o selo da App Store fica escondido no iPhone', async () => {
   const page = comecar(IPHONE, true, { androidPlayStoreUrl: PLAY });
   page.ready();
   await flush(); await flush();
   assert.equal(page.el('ios-store').hidden, true);
-  assert.equal(page.el('download-panel').hidden, true);
+  assert.equal(page.el('android-store').hidden, false);
 });
 
 test('cartão final: só uma ação principal visível e o resto atrás de "Mais opções"', () => {
