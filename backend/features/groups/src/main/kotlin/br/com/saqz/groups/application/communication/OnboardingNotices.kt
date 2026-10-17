@@ -44,3 +44,6 @@ fun attendanceConfirmedBody(localDate: LocalDate, localTime: LocalTime, venue: S
 fun attendanceRemovedBody(localDate: LocalDate, localTime: LocalTime, guestName: String? = null): String =
     (if (guestName == null) "Sua vaga" else "A vaga de $guestName") +
         " no jogo de ${gameSchedule(localDate, localTime)} foi removida pela organização."
+
+/** Sem nome do grupo: na exclusão da conta do dono o nome vira "Grupo excluído" e o aviso guardado não o recoloca. */
+const val GROUP_DELETED_BODY = "Um dos seus grupos foi excluído pelo organizador."

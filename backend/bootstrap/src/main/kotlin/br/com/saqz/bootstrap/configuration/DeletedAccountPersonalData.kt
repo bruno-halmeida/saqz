@@ -5,7 +5,10 @@ import java.util.UUID
 
 /** Runs in DeleteAccount's transaction, after owned groups become inaccessible. */
 internal fun removeDeletedAccountPersonalData(jdbc: JdbcClient, userId: UUID) {
-    val messages = "SELECT id FROM group_messages WHERE author_id = :id OR group_id IN (SELECT id FROM access_groups WHERE owner_user_id = :id)"
+    // O aviso "grupo excluído" (DEB-028) é do sistema, não conteúdo da pessoa: fica até o push sair, sem nome nem texto dela.
+    val messages = """SELECT id FROM group_messages
+        WHERE (author_id = :id OR group_id IN (SELECT id FROM access_groups WHERE owner_user_id = :id))
+          AND NOT (channel = 'AUTO_CONFIRMATION' AND request_id = md5('group-deleted:' || group_id::text)::uuid)"""
     val notifications = "SELECT sequence FROM group_notifications WHERE recipient_id = :id OR message_id IN ($messages)"
     fun execute(sql: String) { jdbc.sql(sql).param("id", userId).update() }
 

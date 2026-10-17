@@ -217,6 +217,37 @@ class DeleteAccountIntegrationTest {
         assertEquals(1, count("SELECT count(*) FROM access_groups WHERE id = '$group' AND deleted_at IS NULL"))
     }
 
+    @Test
+    fun `deleting the owner account still pushes the group deleted notice to members`() {
+        val owner = sessionRepository.upsertAndLoad(
+            SessionUpsert("notice-owner", "notice-owner@example.test", true, AccessName.from("Notice Owner")),
+        )
+        val member = sessionRepository.upsertAndLoad(
+            SessionUpsert("notice-member", "notice-member@example.test", true, AccessName.from("Notice Member")),
+        )
+        val group = insertGroup(owner.user.id, "Private owner group")
+        insertMembership(group, member.user.id, "ATHLETE")
+        val push = br.com.saqz.groups.adapter.output.jdbc.communication.JdbcNotificationPush(dataSource, JdbcTransactionRunner(dataSource))
+        push.register(member.user.id, UUID.randomUUID(), "member-device", "ANDROID")
+
+        deleteAccount.execute("notice-owner")
+
+        assertEquals(1, count("SELECT count(*) FROM access_groups WHERE id = '$group' AND deleted_at IS NOT NULL"))
+        assertEquals("Grupo excluído", text("SELECT name FROM access_groups WHERE id = '$group'"))
+        // O resto das mensagens do dono some, mas o aviso do sistema fica até o push sair.
+        assertEquals(1, count("SELECT count(*) FROM group_messages WHERE group_id = '$group'"))
+        assertEquals("Saqz", text("SELECT author_name FROM group_messages WHERE group_id = '$group'"))
+        val sent = mutableListOf<br.com.saqz.groups.application.communication.NotificationPush>()
+        push.drain(br.com.saqz.groups.application.communication.NotificationPushSender { _, message ->
+            sent += message
+            br.com.saqz.groups.application.communication.PushDelivery.SENT
+        })
+        assertEquals(1, sent.size)
+        assertEquals(br.com.saqz.groups.application.communication.GROUP_DELETED_BODY, sent.single().body)
+        assertEquals(group, sent.single().groupId)
+        assertEquals("notice-member", sent.single().recipient)
+    }
+
     private fun insertFutureGame(group: UUID, capacity: Int): UUID {
         val id = UUID.randomUUID()
         execute(
