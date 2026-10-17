@@ -79,8 +79,9 @@ internal fun promoteAttendance(
 
 /**
  * Próximo da espera a subir numa vaga liberada. Antes do prazo, em ordem de chegada e com a prioridade de
- * mensalista ligada, só mensalista sobe (se houver na espera); os avulsos esperam o prazo, quando o job
- * [SettleWaitlistAtDeadline] preenche o que sobrou em ordem. Depois do prazo, ou sem prioridade, é FIFO puro.
+ * mensalista ligada, o mensalista mais antigo da espera sobe primeiro; sem mensalista na espera, sobe o avulso
+ * mais antigo. Depois do prazo, ou sem prioridade, é FIFO puro. O job [SettleWaitlistAtDeadline] continua
+ * preenchendo no prazo o que sobrar.
  */
 internal fun AttendanceCommandRepository.nextToPromote(
     groupId: UUID,
@@ -91,7 +92,7 @@ internal fun AttendanceCommandRepository.nextToPromote(
     timestamp: Instant,
 ): AttendanceRecord? =
     if (promotionMode == PromotionMode.FIFO && mensalistaPriority && timestamp < confirmationDeadline) {
-        earliestWaitlistedMensalista(groupId, gameId)
+        earliestWaitlistedMensalista(groupId, gameId) ?: earliestWaitlisted(groupId, gameId)
     } else {
         earliestWaitlisted(groupId, gameId)
     }

@@ -49,11 +49,11 @@ class AttendanceConcurrencySensorIntegrationTest {
         assertEquals("WAITLISTED", status(f.waiters[0])); assertEquals("CONFIRMED", status(f.waiters[1]))
     }
 
-    @Test fun `before the deadline a withdrawal with only avulsos waiting promotes nobody`() {
+    @Test fun `before the deadline a withdrawal with only avulsos waiting promotes the earliest avulso`() {
         val f = fullWithWaiter(waiters = 1)
         execute("UPDATE group_memberships SET membership_type='AVULSO' WHERE user_id='${f.waiters[0]}'")
         f.responses.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)
-        assertEquals("WAITLISTED", status(f.waiters[0]))
+        assertEquals("CONFIRMED", status(f.waiters[0]))
     }
 
     private fun race(commands: List<() -> Any>) {

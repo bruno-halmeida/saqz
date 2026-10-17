@@ -36,10 +36,10 @@ class ReleaseMemberAttendanceIntegrationTest {
         assertEquals(0, int("SELECT count(*) FROM group_memberships WHERE user_id='${w.leaver}'"))
     }
 
-    @Test fun `leaving before the deadline with mensalista priority leaves a waiting avulso waiting`() {
+    @Test fun `leaving before the deadline with mensalista priority promotes a waiting avulso when no mensalista waits`() {
         val w = world(priority = true)
         remove().leave(w.leaver, w.group)
-        assertEquals("WAITLISTED", status(w.game, w.waiting))
+        assertEquals("CONFIRMED", status(w.game, w.waiting))
     }
 
     @Test fun `organizer removal frees the spot and records the organizer as actor`() {
