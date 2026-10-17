@@ -35,3 +35,12 @@ fun firstMemberBody(who: String, groupName: String): String =
 
 fun firstConfirmationBody(who: String, localDate: LocalDate, localTime: LocalTime): String =
     "$who confirmou presença no jogo de ${gameSchedule(localDate, localTime)}. A lista começou a fechar sozinha."
+
+/** Aviso direto de mudança de presença; [guestName] preenchido quando o aviso é do anfitrião sobre um convidado. */
+fun attendanceConfirmedBody(localDate: LocalDate, localTime: LocalTime, venue: String, guestName: String? = null): String =
+    (if (guestName == null) "Sua vaga está confirmada" else "A vaga de $guestName está confirmada") +
+        " no jogo de ${gameSchedule(localDate, localTime)}, em $venue."
+
+fun attendanceRemovedBody(localDate: LocalDate, localTime: LocalTime, guestName: String? = null): String =
+    (if (guestName == null) "Sua vaga" else "A vaga de $guestName") +
+        " no jogo de ${gameSchedule(localDate, localTime)} foi removida pela organização."

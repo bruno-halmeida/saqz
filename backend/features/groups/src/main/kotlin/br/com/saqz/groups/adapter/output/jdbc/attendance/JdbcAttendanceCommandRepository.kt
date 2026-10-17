@@ -17,7 +17,10 @@ import java.sql.Types
 import java.util.UUID
 import javax.sql.DataSource
 
-class JdbcAttendanceCommandRepository(dataSource: DataSource) :
+class JdbcAttendanceCommandRepository(
+    dataSource: DataSource,
+    private val changeNotice: AttendanceChangeNotice = AttendanceChangeNotice { _, _ -> },
+) :
     AttendanceCommandRepository, AttendanceDetailQuery, AttendanceRosterQuery, GameAttendanceCountSource {
     private val jdbc = JdbcClient.create(dataSource)
 
@@ -309,6 +312,8 @@ class JdbcAttendanceCommandRepository(dataSource: DataSource) :
             .param("guest", event.guestSeq)
             .update()
         check(appended == 1) { "Grupo de presença excluído ou inexistente" }
+        // Ponto único de toda mudança de presença (resposta, override, promoção, prazo, capacidade, saída).
+        event.changeKind()?.let { changeNotice.changed(event, it) }
     }
 
     override fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean =

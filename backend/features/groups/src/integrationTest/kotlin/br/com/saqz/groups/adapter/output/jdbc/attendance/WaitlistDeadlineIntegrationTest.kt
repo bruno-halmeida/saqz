@@ -23,7 +23,7 @@ class WaitlistDeadlineIntegrationTest {
     private val service = SettleWaitlistAtDeadline(
         transaction,
         JdbcDeadlineWaitlistRepository(source),
-        JdbcAttendanceCommandRepository(source),
+        JdbcAttendanceCommandRepository(source, br.com.saqz.groups.adapter.output.jdbc.communication.JdbcAttendanceChangeNotice(source)),
         AttendanceChargeAdapter(ChargeTransactions(transaction, JdbcChargeTransactionRepository(source)) { Instant.now() }),
         { candidate, body ->
             communication.publish(candidate.groupId, candidate.ownerId, MessageChannel.WAITLIST_DEADLINE, UUID.randomUUID(), body, candidate.gameId)
@@ -58,6 +58,21 @@ class WaitlistDeadlineIntegrationTest {
         assertEquals("WAITLISTED", status(game, second))
         assertEquals(listOf("SYSTEM"), jdbc.sql("SELECT source::text FROM attendance_events WHERE game_id = :g").param("g", game).query(String::class.java).list())
         assertEquals(0, service.run())
+    }
+
+    @Test fun `quem sobe no prazo recebe o aviso direto e quem continua na espera nao`() {
+        val game = game(deadlineInMinutes = -5, capacity = 2)
+        answer(game, confirmed, "CONFIRMED", null)
+        answer(game, first, "WAITLISTED", 1)
+        answer(game, second, "WAITLISTED", 2)
+
+        service.run()
+
+        fun notices(user: UUID) = jdbc.sql("SELECT count(*) FROM group_notifications n JOIN group_messages m ON m.id = n.message_id WHERE n.recipient_id = :u AND m.channel = 'AUTO_CONFIRMATION'")
+            .param("u", user).query(Int::class.java).single()
+        assertEquals(1, notices(first))
+        assertEquals(0, notices(second))
+        assertEquals(0, notices(confirmed))
     }
 
     @Test fun `escolha manual avisa só dono e admins, uma vez por jogo`() {
