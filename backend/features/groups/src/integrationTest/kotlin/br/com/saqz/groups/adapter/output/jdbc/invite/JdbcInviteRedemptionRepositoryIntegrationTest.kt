@@ -130,8 +130,8 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
         val game = insertGame(group)
         insertAttendanceLink(group, game, owner, "now() - interval '2 hours'")
         execute(
-            "INSERT INTO group_invites (group_id, token_digest, short_code, created_by_user_id, created_at) " +
-                "VALUES ('$group', NULL, '44DF8SA8', '$owner', now() - interval '1 hour')",
+            "INSERT INTO group_invites (group_id, token_digest, short_code, created_by_user_id, created_at, rotated_at) " +
+                "VALUES ('$group', NULL, '44DF8SA8', '$owner', now() - interval '1 hour', now() - interval '1 hour')",
         )
 
         assertNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) })
@@ -155,6 +155,58 @@ class JdbcInviteRedemptionRepositoryIntegrationTest {
         execute("DELETE FROM notification_attendance_links")
         insertAttendanceLink(group, game, owner, "now()")
 
+        assertEquals(group, transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }?.groupId)
+    }
+
+    @Test
+    fun `first invite created lazily does not invalidate earlier reminder links`() {
+        val owner = insertUser("link-lazy-owner")
+        val group = insertGroup(owner)
+        insertAttendanceLink(group, insertGame(group), owner, "now() - interval '2 hours'")
+        assertEquals(group, transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }?.groupId)
+
+        JdbcInviteManagementRepository(dataSource).ensureShortCode(group, "44DF8SA8", owner)
+
+        assertEquals(1, inviteCount(group))
+        assertEquals(group, transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }?.groupId)
+    }
+
+    @Test
+    fun `explicit rotation after a lazy invite invalidates earlier links only`() {
+        val owner = insertUser("link-lazy-rotate-owner")
+        val group = insertGroup(owner)
+        val game = insertGame(group)
+        val management = JdbcInviteManagementRepository(dataSource)
+        insertAttendanceLink(group, game, owner, "now() - interval '2 hours'")
+        management.ensureShortCode(group, "44DF8SA8", owner)
+        assertEquals(group, transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }?.groupId)
+
+        management.rotate(
+            br.com.saqz.groups.application.invite.manage.RotateInviteCommand(
+                group, InviteCode.from("55EG9TB9"), owner, null,
+            ),
+        )
+
+        assertNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) })
+        execute("DELETE FROM notification_attendance_links")
+        insertAttendanceLink(group, game, owner, "now()")
+        assertEquals(group, transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }?.groupId)
+    }
+
+    @Test
+    fun `deactivating the invite after a lazy one invalidates earlier links only`() {
+        val owner = insertUser("link-lazy-deactivate-owner")
+        val group = insertGroup(owner)
+        val game = insertGame(group)
+        val management = JdbcInviteManagementRepository(dataSource)
+        insertAttendanceLink(group, game, owner, "now() - interval '2 hours'")
+        management.ensureShortCode(group, "44DF8SA8", owner)
+
+        management.expire(group)
+
+        assertNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) })
+        execute("DELETE FROM notification_attendance_links")
+        insertAttendanceLink(group, game, owner, "now()")
         assertEquals(group, transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code)) }?.groupId)
     }
 

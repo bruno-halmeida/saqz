@@ -55,7 +55,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
 
     override fun findInvite(digest: InviteTokenDigest): RedeemableInvite? = jdbc.sql(
         // Deliberately includes deleted groups so the use case can return its specific error.
-        // O link do lembrete vale sem prazo, mas só se a mensagem é posterior à última troca ou desativação do convite.
+        // O link do lembrete vale sem prazo, mas só se a mensagem é posterior à última troca (rotated_at, não a criação preguiçosa) ou desativação do convite.
         """
         SELECT invites.group_id,
                groups.deleted_at IS NOT NULL AS group_deleted,
@@ -72,7 +72,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         JOIN access_groups groups ON groups.id = m.group_id
         WHERE sha256(convert_to(link.code, 'UTF8')) = :tokenDigest
           AND m.created_at >= GREATEST(
-              COALESCE((SELECT created_at FROM group_invites WHERE group_id = m.group_id), '-infinity'),
+              COALESCE((SELECT rotated_at FROM group_invites WHERE group_id = m.group_id), '-infinity'),
               COALESCE((SELECT deactivated_at FROM group_invite_deactivations WHERE group_id = m.group_id), '-infinity')
           )
         """.trimIndent(),

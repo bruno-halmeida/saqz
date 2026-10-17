@@ -174,8 +174,8 @@ class JdbcInvitePreviewRepositoryIntegrationTest {
         val game = insertGameWithDeadline(group, now.plusSeconds(7_200), now.plusSeconds(3_600), "PUBLISHED")
         insertAttendanceLink(group, game, owner, "Organizador", createdAt = "now() - interval '2 hours'")
         execute(
-            "INSERT INTO group_invites (group_id, token_digest, short_code, created_by_user_id, created_at) " +
-                "VALUES ('$group', NULL, '44DF8SA8', '$owner', now() - interval '1 hour')",
+            "INSERT INTO group_invites (group_id, token_digest, short_code, created_by_user_id, created_at, rotated_at) " +
+                "VALUES ('$group', NULL, '44DF8SA8', '$owner', now() - interval '1 hour', now() - interval '1 hour')",
         )
 
         assertNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code), now) })

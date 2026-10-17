@@ -86,7 +86,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
             JOIN group_messages m ON m.id = link.message_id
             WHERE sha256(convert_to(link.code, 'UTF8')) = :tokenDigest
               AND m.created_at >= GREATEST(
-                  COALESCE((SELECT created_at FROM group_invites WHERE group_id = m.group_id), '-infinity'),
+                  COALESCE((SELECT rotated_at FROM group_invites WHERE group_id = m.group_id), '-infinity'),
                   COALESCE((SELECT deactivated_at FROM group_invite_deactivations WHERE group_id = m.group_id), '-infinity')
               )
         )

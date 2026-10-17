@@ -16,15 +16,16 @@ class JdbcInviteManagementRepository(dataSource: DataSource) : InviteManagementR
         jdbc.sql(
             """
             INSERT INTO group_invites (
-                group_id, token_digest, short_code, created_by_user_id, created_at, expires_at, revision
+                group_id, token_digest, short_code, created_by_user_id, created_at, rotated_at, expires_at, revision
             ) VALUES (
-                :groupId, NULL, :shortCode, :createdByUserId, now(), :expiresAt, :revision
+                :groupId, NULL, :shortCode, :createdByUserId, now(), now(), :expiresAt, :revision
             )
             ON CONFLICT (group_id) DO UPDATE SET
                 token_digest = NULL,
                 short_code = EXCLUDED.short_code,
                 created_by_user_id = EXCLUDED.created_by_user_id,
                 created_at = EXCLUDED.created_at,
+                rotated_at = EXCLUDED.rotated_at,
                 expires_at = EXCLUDED.expires_at,
                 revision = EXCLUDED.revision
             """.trimIndent(),
