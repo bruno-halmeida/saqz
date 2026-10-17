@@ -305,6 +305,23 @@ class GroupCreationEndpointIntegrationTest {
         assertEquals(1, repository.groups.size)
     }
 
+    @Test
+    fun `default capacity of an old app is raised to 4 without error and out of range is refused`() {
+        mapOf(2 to 4, 3 to 4, 4 to 4, 100 to 100).forEach { (sent, stored) ->
+            val response = postRaw(completeRequest(UUID.randomUUID()).replace("\"defaultCapacity\":18", "\"defaultCapacity\":$sent"))
+            assertEquals(201, response.statusCode(), "capacity $sent")
+            assertEquals(stored, repository.commands.last().profile.defaultCapacity, "capacity $sent")
+            assertEquals(stored, json(response)["profile"]["defaultCapacity"].intValue(), "capacity $sent")
+        }
+        val stored = repository.commands.size
+        listOf(1, 101).forEach { sent ->
+            val response = postRaw(completeRequest(UUID.randomUUID()).replace("\"defaultCapacity\":18", "\"defaultCapacity\":$sent"))
+            assertEquals(400, response.statusCode(), "capacity $sent")
+            assertTrue(json(response)["fieldErrors"].has("defaultCapacity"))
+        }
+        assertEquals(stored, repository.commands.size)
+    }
+
     private fun completeRequest(requestId: UUID) =
         """{"requestId":"$requestId","name":"Beach Club","modality":"BEACH_VOLLEYBALL","composition":"WOMEN","description":"Training group","city":"Santos","level":"INTERMEDIATE","defaultVenue":{"name":"Arena Beach","address":"Rua Central 100","court":"Quadra 2"},"regularSlots":[{"weekday":"MONDAY","startTime":"20:00:00","durationMinutes":120}],"defaultCapacity":18,"defaultConfirmationLeadMinutes":180,"defaultGameFeeCents":1500,"monthlyFeeCents":7000,"monthlyDueDay":10,"timeZone":"America/Sao_Paulo"}"""
 

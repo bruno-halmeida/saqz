@@ -1,5 +1,6 @@
 package br.com.saqz.groups.domain.group
 
+import br.com.saqz.groups.domain.game.GameCapacity
 import br.com.saqz.sharedkernel.moderation.ObjectionableText
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -163,7 +164,8 @@ object GroupProfileDefaultsValidator {
                     customPlayStyle = customPlayStyle,
                     defaultVenue = venue,
                     regularSlots = slots,
-                    defaultCapacity = input.defaultCapacity,
+                    // App antigo (1.0.4 a 1.0.6) ainda manda 2 ou 3: grava o mínimo de hoje em vez de travar o grupo.
+                    defaultCapacity = input.defaultCapacity?.coerceAtLeast(GameCapacity.MIN),
                     defaultConfirmationLeadMinutes = input.defaultConfirmationLeadMinutes,
                     defaultGameFeeCents = input.defaultGameFeeCents,
                     monthlyFeeCents = input.monthlyFeeCents,

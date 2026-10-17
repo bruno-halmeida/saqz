@@ -161,6 +161,25 @@ class GroupSettingsEndpointIntegrationTest {
     }
 
     @Test
+    fun `saving settings with 2 or 3 default spots stores 4 and refuses out of range`() {
+        fun profile(capacity: Int) = """{"name":"Beach Club","modality":"BEACH_VOLLEYBALL","composition":"WOMEN","description":"Training group","city":"Santos","level":"INTERMEDIATE","defaultVenue":{"id":"${UUID.randomUUID()}","name":"Arena Beach","address":"Rua Central 100","court":"Quadra 2"},"regularSlots":[{"id":"${UUID.randomUUID()}","weekday":"MONDAY","startTime":"20:00:00","durationMinutes":120}],"defaultCapacity":$capacity,"defaultConfirmationLeadMinutes":180,"defaultGameFeeCents":1500,"monthlyFeeCents":7000,"monthlyDueDay":10}"""
+        var version = 7
+        mapOf(2 to 4, 3 to 4, 4 to 4, 100 to 100).forEach { (sent, stored) ->
+            val response = putProfile(profile(sent), etag = "\"${version++}\"")
+            assertEquals(200, response.statusCode(), "capacity $sent")
+            assertEquals(stored, write.commands.last().profile!!.defaultCapacity, "capacity $sent")
+            assertEquals(stored, json(response)["profile"]["defaultCapacity"].intValue(), "capacity $sent")
+        }
+        val stored = write.commands.size
+        listOf(1, 101).forEach { sent ->
+            val response = putProfile(profile(sent), etag = "\"$version\"")
+            assertProblem(response, 400, "VALIDATION_FAILED")
+            assertTrue(json(response)["fieldErrors"].has("defaultCapacity"))
+        }
+        assertEquals(stored, write.commands.size)
+    }
+
+    @Test
     fun `complete profile update maps nested ids and returns the complete aggregate`() {
         val venueId = UUID.randomUUID()
         val slotId = UUID.randomUUID()

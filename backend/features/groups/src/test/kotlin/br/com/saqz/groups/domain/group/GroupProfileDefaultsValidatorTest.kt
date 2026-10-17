@@ -205,7 +205,9 @@ class GroupProfileDefaultsValidatorTest {
     fun `default capacity enforces available spot limits`() {
         assertFields(input(defaultCapacity = 1), "defaultCapacity")
         assertFields(input(defaultCapacity = 101), "defaultCapacity")
-        assertEquals(2, valid(input(defaultCapacity = 2)).defaultCapacity)
+        assertEquals(4, valid(input(defaultCapacity = 2)).defaultCapacity)
+        assertEquals(4, valid(input(defaultCapacity = 3)).defaultCapacity)
+        assertEquals(4, valid(input(defaultCapacity = 4)).defaultCapacity)
         assertEquals(100, valid(input(defaultCapacity = 100)).defaultCapacity)
     }
 
