@@ -78,8 +78,6 @@ interface AttendanceCommandRepository {
     fun nextWaitlistSequence(groupId: UUID, gameId: UUID): Long
     /** Quem sobe primeiro; [now] (relógio injetado) decide se a prioridade de mensalista ainda vale (até o instante do prazo). */
     fun earliestWaitlisted(groupId: UUID, gameId: UUID, now: Instant): AttendanceRecord?
-    /** Primeiro da espera que é mensalista (sem convidados); usado enquanto a prioridade vale, antes do prazo. */
-    fun earliestWaitlistedMensalista(groupId: UUID, gameId: UUID, now: Instant): AttendanceRecord? = null
     fun save(record: AttendanceRecord)
     fun append(event: AttendanceEvent)
     fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean

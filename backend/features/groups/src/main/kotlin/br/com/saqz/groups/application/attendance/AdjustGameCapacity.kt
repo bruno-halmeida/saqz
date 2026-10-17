@@ -52,7 +52,7 @@ class AdjustGameCapacity(
         CapacityCommandResult.Success(capacity, expectedVersion + 1, promoted)
     }
 
-    private fun CapacityAggregate.startedAt(timestamp: Instant) = startsAt != null && timestamp >= startsAt
+    private fun CapacityAggregate.startedAt(timestamp: Instant) = timestamp >= startsAt
 
     private fun promote(aggregate: CapacityAggregate, spots: Int, targetCapacity: Int): List<AttendanceRecord> {
         if (spots == 0 || aggregate.promotionMode != PromotionMode.FIFO) {
@@ -62,7 +62,7 @@ class AdjustGameCapacity(
         var confirmedCount = aggregate.confirmedCount
         return buildList {
             repeat(spots) {
-                val waiting = repository.nextToPromote(aggregate.groupId, aggregate.gameId, aggregate.promotionMode, aggregate.mensalistaPriority, aggregate.confirmationDeadline, timestamp) ?: return@buildList
+                val waiting = repository.nextToPromote(aggregate.groupId, aggregate.gameId, timestamp) ?: return@buildList
                 when (val result = promoteAttendance(
                     aggregate.forMember(waiting).copy(capacity = targetCapacity, confirmedCount = confirmedCount),
                     AttendanceSource.SYSTEM,

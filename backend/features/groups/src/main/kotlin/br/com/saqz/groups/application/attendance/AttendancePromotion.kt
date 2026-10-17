@@ -80,22 +80,14 @@ internal fun promoteAttendance(
 /**
  * Próximo da espera a subir numa vaga liberada. Antes do prazo, em ordem de chegada e com a prioridade de
  * mensalista ligada, o mensalista mais antigo da espera sobe primeiro; sem mensalista na espera, sobe o avulso
- * mais antigo. Depois do prazo, ou sem prioridade, é FIFO puro. O job [SettleWaitlistAtDeadline] continua
- * preenchendo no prazo o que sobrar.
+ * mais antigo. Depois do prazo, ou sem prioridade, é FIFO puro. Quem decide é a ordenação da query, pelo instante
+ * [timestamp]. O job [SettleWaitlistAtDeadline] continua preenchendo no prazo o que sobrar.
  */
 internal fun AttendanceCommandRepository.nextToPromote(
     groupId: UUID,
     gameId: UUID,
-    promotionMode: PromotionMode,
-    mensalistaPriority: Boolean,
-    confirmationDeadline: Instant,
     timestamp: Instant,
-): AttendanceRecord? =
-    if (promotionMode == PromotionMode.FIFO && mensalistaPriority && timestamp < confirmationDeadline) {
-        earliestWaitlistedMensalista(groupId, gameId, timestamp) ?: earliestWaitlisted(groupId, gameId, timestamp)
-    } else {
-        earliestWaitlisted(groupId, gameId, timestamp)
-    }
+): AttendanceRecord? = earliestWaitlisted(groupId, gameId, timestamp)
 
 /** Promove até [freed] pessoas da fila; [aggregate].confirmedCount é a contagem ANTES das saídas. */
 internal fun promoteFreed(
@@ -110,7 +102,7 @@ internal fun promoteFreed(
     var confirmed = startConfirmed
     return buildList {
         repeat(freed) {
-            val waiting = repository.nextToPromote(aggregate.groupId, aggregate.gameId, aggregate.promotionMode, aggregate.mensalistaPriority, aggregate.confirmationDeadline, timestamp) ?: return@buildList
+            val waiting = repository.nextToPromote(aggregate.groupId, aggregate.gameId, timestamp) ?: return@buildList
             val target = aggregate.copy(memberId = waiting.memberId, guestSeq = waiting.guestSeq, guestName = null, current = waiting, confirmedCount = confirmed)
             val result = promoteAttendance(target, AttendanceSource.SYSTEM, reason = null, repository = repository, charges = charges, timestamp = timestamp, ids = ids)
             if (result !is AttendancePromotionResult.Success) return@buildList
