@@ -7,34 +7,12 @@ import br.com.saqz.groups.domain.attendance.share.*
 import br.com.saqz.network.*
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Serializable
-internal data class AttendanceLinkUrlDto(val url: String)
-
-@Serializable
 internal data class ResolvedAttendanceLinkDto(
     val groupId: String, val gameId: String, val registrationRequired: Boolean = false,
-)
-
-@Serializable
-internal data class AttendanceShareSnapshotPersonDto(
-    val displayName: String,
-    val waitlistPosition: Long? = null,
-)
-
-@Serializable
-internal data class AttendanceShareSnapshotDto(
-    val title: String,
-    val startsAt: String,
-    val timeZone: String,
-    val venue: String,
-    val capacity: Int,
-    val confirmed: List<AttendanceShareSnapshotPersonDto>,
-    val waitlisted: List<AttendanceShareSnapshotPersonDto>,
-    val declined: List<AttendanceShareSnapshotPersonDto>,
 )
 
 @Serializable
@@ -43,70 +21,19 @@ private data class ResolveAttendanceLinkRequestDto(val code: String)
 class KtorAttendanceSharingGateway(
     private val network: AuthenticatedNetworkClient,
     private val json: Json = Json { explicitNulls = false },
-    private val retryDelay: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
 ) : AttendanceSharingGateway {
-    override suspend fun rotateLink(groupId: GroupId, gameId: String) = network.execute(
-        HttpMethod.Post,
-        "api/groups/${groupId.value}/games/$gameId/attendance-link",
-        AttendanceLinkUrlDto.serializer(),
-    ).toLinkResult()
-
     override suspend fun resolveLink(code: AttendanceLinkCode) = network.execute(
         HttpMethod.Post,
         "api/attendance-links/resolve",
         ResolvedAttendanceLinkDto.serializer(),
         NetworkRequest(json.encodeToString(ResolveAttendanceLinkRequestDto(code.value))),
     ).toDestinationResult()
-
-    override suspend fun readSnapshot(groupId: GroupId, gameId: String) =
-        retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
-            network.execute(
-                HttpMethod.Get,
-                "api/groups/${groupId.value}/games/$gameId/attendance-share",
-                AttendanceShareSnapshotDto.serializer(),
-            )
-        }.toSnapshotResult()
-}
-
-private fun NetworkResult<AttendanceLinkUrlDto>.toLinkResult() = when (this) {
-    is NetworkResult.Failure -> SaqzResult.Failure(error.toSharingError())
-    is NetworkResult.Success -> value.url.takeIf(String::isNotBlank)
-        ?.let(::AttendanceLinkUrl)?.let { SaqzResult.Success(it) } ?: invalidResponse()
 }
 
 private fun NetworkResult<ResolvedAttendanceLinkDto>.toDestinationResult() = when (this) {
     is NetworkResult.Failure -> SaqzResult.Failure(error.toSharingError())
     is NetworkResult.Success -> if (value.groupId.isBlank() || value.gameId.isBlank()) invalidResponse()
     else SaqzResult.Success(AttendanceLinkDestination(GroupId(value.groupId), value.gameId, value.registrationRequired))
-}
-
-private fun NetworkResult<AttendanceShareSnapshotDto>.toSnapshotResult() = when (this) {
-    is NetworkResult.Failure -> SaqzResult.Failure(error.toSharingError())
-    is NetworkResult.Success -> value.toDomain()?.let { SaqzResult.Success(it) } ?: invalidResponse()
-}
-
-private fun AttendanceShareSnapshotDto.toDomain(): AttendanceShareSnapshot? {
-    val identityValid = title.isNotBlank() && startsAt.isNotBlank() && timeZone.isNotBlank()
-    val payloadValid = venue.isNotBlank() && capacity >= 0
-    if (!identityValid || !payloadValid) return null
-    fun List<AttendanceShareSnapshotPersonDto>.people(): List<AttendanceSharePerson>? =
-        takeIf { list ->
-            list.all { it.displayName.isNotBlank() && (it.waitlistPosition == null || it.waitlistPosition > 0) }
-        }?.map { AttendanceSharePerson(it.displayName, it.waitlistPosition) }
-    val confirmedPeople = confirmed.people()
-    val waitlistedPeople = waitlisted.people()
-    val declinedPeople = declined.people()
-    if (confirmedPeople == null || waitlistedPeople == null || declinedPeople == null) return null
-    return AttendanceShareSnapshot(
-        title,
-        startsAt,
-        timeZone,
-        venue,
-        capacity,
-        confirmedPeople,
-        waitlistedPeople,
-        declinedPeople,
-    )
 }
 
 private fun NetworkError.toSharingError(): AttendanceSharingError = when (this) {

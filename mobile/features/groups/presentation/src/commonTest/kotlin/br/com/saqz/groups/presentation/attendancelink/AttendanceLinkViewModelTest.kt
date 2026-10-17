@@ -314,8 +314,6 @@ class AttendanceLinkViewModelTest {
             return if (expired && (!firstOnly || resolutions == 1)) SaqzResult.Failure(AttendanceSharingError.InvalidOrExpired)
             else SaqzResult.Success(destination.copy(registrationRequired = registration))
         }
-        override suspend fun rotateLink(groupId: GroupId, gameId: String) = error("unused")
-        override suspend fun readSnapshot(groupId: GroupId, gameId: String) = error("unused")
     }
     private class AttendanceFake : AttendanceGateway {
         val commands = mutableListOf<SelfAttendanceCommand>()
