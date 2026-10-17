@@ -1,5 +1,6 @@
 package br.com.saqz.androidapp
 
+import androidx.compose.ui.semantics.CollectionInfo
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -289,7 +290,8 @@ internal abstract class ProfileFlowE2e(scenario: String) : InstalledE2e(scenario
         // Pronta = a lista existe e já tem linhas: durante a carga ela fica no ar com zero linhas.
         ui.waitUntil(20_000) {
             ui.onAllNodes(scrollable).fetchSemanticsNodes().singleOrNull()
-                ?.config?.getOrNull(SemanticsProperties.CollectionInfo)?.let { it.rowCount > 0 } == true
+                ?.config?.getOrElse(SemanticsProperties.CollectionInfo) { CollectionInfo(0, 0) }
+                ?.let { it.rowCount > 0 } == true
         }
         try {
             ui.onNode(scrollable).performScrollToNode(hasTestTag(tag))
