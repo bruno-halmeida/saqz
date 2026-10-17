@@ -44,7 +44,8 @@ class JdbcGameGuestIntegrationTest {
         assertEquals(AttendanceStatus.DECLINED, removed.status)
         assertEquals("CANCELLED", string("SELECT status FROM group_charges WHERE member_user_id='${f.member}' AND guest_seq=1"))
         assertEquals("CONFIRMED", status(waiting))
-        assertEquals(1, int("SELECT count(*) FROM group_charges WHERE member_user_id='$waiting'"))
+        // O mensalista que sobe da espera não gera diária.
+        assertEquals(0, int("SELECT count(*) FROM group_charges WHERE member_user_id='$waiting'"))
     }
 
     @Test
@@ -105,7 +106,8 @@ class JdbcGameGuestIntegrationTest {
         assertEquals(AttendanceStatus.CONFIRMED, result.promoted.single().status)
         assertEquals(1, result.promoted.single().guestSeq)
         assertEquals(1, int("SELECT count(*) FROM group_charges WHERE member_user_id='${f.member}' AND guest_seq=1"))
-        assertEquals(1, int("SELECT count(*) FROM group_charges WHERE member_user_id='${f.member}' AND guest_seq=0"))
+        // Anfitrião mensalista não paga diária; o convidado cobra no nome dele.
+        assertEquals(0, int("SELECT count(*) FROM group_charges WHERE member_user_id='${f.member}' AND guest_seq=0"))
     }
 
     private fun fixture(capacity: Int = 2, fee: Long? = 2500): Fixture {

@@ -16,6 +16,8 @@ sealed interface MonthlyGenerationResult{data class Success(val charges:List<Cha
 interface ChargeTransactionRepository{
     fun createGameCharge(input:GameChargeInput,actorId:UUID,now:Instant):Charge
     fun reconcileGameCancellation(groupId:UUID,gameId:UUID,actorId:UUID,now:Instant)
+    /** Diária (kind GAME) é só do avulso; convidado cobra do anfitrião, seja qual for o vínculo dele. Vínculo lido na hora da entrada no jogo. */
+    fun billsGameCharge(groupId:UUID,memberId:UUID,guestSeq:Int):Boolean=true
     fun members(groupId:UUID):GroupMembers?
     fun createMonthlyCharge(command:MonthlyGenerationCommand,memberId:UUID,now:Instant):Charge
     fun cancelGuestCharge(groupId:UUID,gameId:UUID,memberId:UUID,guestSeq:Int,actorId:UUID,now:Instant){}
@@ -25,6 +27,7 @@ class ChargeTransactions(private val transaction:TransactionRunner,private val r
     fun attendance(input:GameChargeInput,actorId:UUID):Charge?=transaction.inTransaction{
         writeAccess.requireWrite(input.groupId)
         if(input.outcome !in setOf(AttendanceBillingOutcome.CONFIRMED,AttendanceBillingOutcome.PROMOTED)||input.gameFeeCents==null)return@inTransaction null
+        if(!repository.billsGameCharge(input.groupId,input.memberId,input.guestSeq))return@inTransaction null
         repository.createGameCharge(input,actorId,now())
     }
     fun cancelGame(groupId:UUID,gameId:UUID,actorId:UUID)=transaction.inTransaction{writeAccess.requireWrite(groupId);repository.reconcileGameCancellation(groupId,gameId,actorId,now())}

@@ -38,6 +38,10 @@ class JdbcChargeTransactionRepository(dataSource:DataSource, private val electro
         jdbc.sql("UPDATE group_charges SET status='CANCELLED',changed_by_user_id=:actor,version=version+1,updated_at=:now WHERE id=:id").param("actor",actorId).param("now",Timestamp.from(now)).param("id",id).update()
         event(find(id)!!,ChargeStatus.PENDING,ChargeStatus.CANCELLED,actorId,now)
     }
+    override fun billsGameCharge(groupId:UUID,memberId:UUID,guestSeq:Int):Boolean{
+        if(guestSeq>0)return true
+        return jdbc.sql("SELECT membership_type FROM group_memberships WHERE group_id=:group AND user_id=:member").param("group",groupId).param("member",memberId).query(String::class.java).optional().orElse(null)!="MENSALISTA"
+    }
     override fun members(groupId:UUID):GroupMembers?{
         val exists=jdbc.sql("SELECT count(*) FROM access_groups WHERE id=:group AND deleted_at IS NULL").param("group",groupId).query(Int::class.java).single()>0;if(!exists)return null
         val rows=jdbc.sql("SELECT memberships.user_id,memberships.active FROM group_memberships memberships JOIN access_groups groups ON groups.id=memberships.group_id AND groups.deleted_at IS NULL WHERE memberships.group_id=:group").param("group",groupId).query{rs,_->rs.getObject("user_id",UUID::class.java) to rs.getBoolean("active")}.list()

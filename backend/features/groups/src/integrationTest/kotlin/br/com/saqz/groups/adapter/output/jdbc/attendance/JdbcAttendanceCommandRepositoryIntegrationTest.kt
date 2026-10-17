@@ -325,11 +325,11 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         assertEquals(listOf("Mensalista2", "Avulso1", "Removido3"), roster.waitlisted.map { it.displayName })
     }
 
-    @Test fun `paid confirmation creates exactly one pending charge`() { val f = fixture(fee = 2500); f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM); assertEquals(1, count("group_charges")); assertEquals("PENDING", string("SELECT status FROM group_charges")) }
-    @Test fun `paid confirmation retry creates no duplicate charge or charge audit`() { val f = fixture(fee = 2500); repeat(2) { f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM) }; assertEquals(1, count("group_charges")); assertEquals(1, count("group_charge_events")) }
+    @Test fun `paid confirmation creates exactly one pending charge`() { val f = fixture(fee = 2500); todosAvulsos(f.group); f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM); assertEquals(1, count("group_charges")); assertEquals("PENDING", string("SELECT status FROM group_charges")) }
+    @Test fun `paid confirmation retry creates no duplicate charge or charge audit`() { val f = fixture(fee = 2500); todosAvulsos(f.group); repeat(2) { f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM) }; assertEquals(1, count("group_charges")); assertEquals(1, count("group_charge_events")) }
     @Test fun `free game confirmation creates no charge`() { val f = fixture(fee = null); f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM); assertEquals(0, count("group_charges")) }
     @Test fun `waitlisted paid game response creates no charge`() { val f = fixture(capacity = 2, fee = 2500); repeat(2) { attendance(f, member(f.group, "confirmed-$it"), "CONFIRMED") }; f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM); assertEquals(0, count("group_charges")) }
-    @Test fun `declined member becoming confirmed receives one charge`() { val f = fixture(fee = 2500); attendance(f, f.member, "DECLINED"); val saved = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(AttendanceStatus.CONFIRMED, saved.status); assertEquals(2, saved.version); assertEquals(1, count("group_charges")) }
+    @Test fun `declined member becoming confirmed receives one charge`() { val f = fixture(fee = 2500); todosAvulsos(f.group); attendance(f, f.member, "DECLINED"); val saved = success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(AttendanceStatus.CONFIRMED, saved.status); assertEquals(2, saved.version); assertEquals(1, count("group_charges")) }
     @Test fun `avulso self confirmation waits even with free spots`() { val f = fixture(); val avulso = member(f.group, "avulso", "AVULSO"); val saved = success(f.service.execute(avulso, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(AttendanceStatus.WAITLISTED, saved.status); assertEquals(1, saved.waitlistSequence); assertEquals(0, int("SELECT count(*) FROM game_attendance WHERE status='CONFIRMED'")) }
     @Test fun `avulso self confirmation takes a free spot when priority is off`() { val f = fixture(); execute("UPDATE access_groups SET mensalista_priority = false WHERE id = '${f.group}'"); val avulso = member(f.group, "avulso", "AVULSO"); val saved = success(f.service.execute(avulso, f.group, f.game, intent = AttendanceIntent.CONFIRM)); assertEquals(AttendanceStatus.CONFIRMED, saved.status); assertNull(saved.waitlistSequence) }
     @Test fun `waiting avulso is promoted when a confirmed member withdraws and priority is off`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); val avulso = member(f.group, "avulso", "AVULSO"); success(f.service.execute(avulso, f.group, f.game, intent = AttendanceIntent.CONFIRM)); execute("UPDATE access_groups SET mensalista_priority = false WHERE id = '${f.group}'"); val result = assertIs<AttendanceCommandResult.Success>(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)); assertEquals(listOf(avulso), result.promoted.map { it.memberId }); assertEquals("CONFIRMED", status(avulso)) }
@@ -432,7 +432,7 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         assertEquals("WAITLISTED", status(waiting.last()))
         assertEquals(2, count("attendance_events"))
     }
-    @Test fun `capacity increase charges every paid game promotion once`() { val f = fullFixture(); val waiting = (1..2).map { member(f.group, "waiting-$it").also { id -> waitlist(f, id, it.toLong()) } }; capacity(f).execute(f.owner, f.group, f.game, 1, 4); assertEquals(waiting.toSet(), queryStrings("SELECT member_user_id::text FROM group_charges").map(UUID::fromString).toSet()) }
+    @Test fun `capacity increase charges every paid game promotion once`() { val f = fullFixture(); val waiting = (1..2).map { member(f.group, "waiting-$it").also { id -> waitlist(f, id, it.toLong()) } }; todosAvulsos(f.group); capacity(f).execute(f.owner, f.group, f.game, 1, 4); assertEquals(waiting.toSet(), queryStrings("SELECT member_user_id::text FROM group_charges").map(UUID::fromString).toSet()) }
     @Test
     fun `manual mode does not auto promote on withdrawal or capacity increase`() {
         val f = fullFixture(capacity = 4)
@@ -669,11 +669,19 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         assertEquals(AttendanceDenial.FROZEN, assertIs<AttendanceCommandResult.Denied>(result).reason)
     }
 
-    private fun promotionFixture(): PromotionFixture {
+    // A diária é só do avulso: estes casos conferem a cobrança, então o grupo inteiro vira avulso e sem prioridade (a espera fica FIFO).
+    private fun todosAvulsos(group: UUID) {
+        execute("UPDATE group_memberships SET membership_type='AVULSO' WHERE group_id='$group'")
+        execute("UPDATE access_groups SET mensalista_priority=false WHERE id='$group'")
+    }
+
+    private fun promotionFixture(avulso: Boolean = true): PromotionFixture {
         val f = fixture(capacity = 2)
+        if (avulso) todosAvulsos(f.group)
         f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)
         attendance(f, member(f.group, "occupied"), "CONFIRMED")
         val waiting = (1..2).map { member(f.group, "waiting-$it").also { id -> waitlist(f, id, it.toLong()) } }
+        if (avulso) todosAvulsos(f.group)
         return PromotionFixture(f.owner, f.member, f.group, f.game, f.service, waiting)
     }
 
