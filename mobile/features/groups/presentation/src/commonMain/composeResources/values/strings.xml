@@ -132,8 +132,8 @@
     <string name="group_setup_error_custom_level">Dê um nome para o nível personalizado.</string>
     <string name="group_setup_error_description">A descrição precisa de pelo menos 2 caracteres.</string>
     <string name="group_setup_error_play_style">Escolha o sistema de jogo.</string>
-    <string name="group_setup_error_capacity">O grupo precisa de pelo menos 2 jogadores.</string>
-    <string name="group_setup_error_capacity_hint">Mínimo de 2 jogadores.</string>
+    <string name="group_setup_error_capacity">O grupo precisa de pelo menos 4 jogadores.</string>
+    <string name="group_setup_error_capacity_hint">Mínimo de 4 jogadores.</string>
     <string name="group_setup_error_duration">Escolha a duração do jogo.</string>
     <string name="group_setup_error_confirmation_lead">Escolha até quando confirmar presença.</string>
     <string name="group_setup_error_slot">Adicione ao menos um dia e horário.</string>

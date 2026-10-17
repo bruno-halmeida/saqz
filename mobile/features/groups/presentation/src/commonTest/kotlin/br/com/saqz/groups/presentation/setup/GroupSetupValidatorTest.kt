@@ -117,7 +117,7 @@ class GroupSetupValidatorTest {
         assertTrue(errors.isEmpty())
     }
 
-    /** `validateRange(defaultCapacity, 2, 100)` do backend, nas duas fronteiras. */
+    /** Piso de 4 do app (o backend recusa `2..100` e grava 4 para 2 ou 3), nas duas fronteiras. */
     @Test
     fun `capacidade fora da faixa do backend acusa erro`() {
         assertEquals(

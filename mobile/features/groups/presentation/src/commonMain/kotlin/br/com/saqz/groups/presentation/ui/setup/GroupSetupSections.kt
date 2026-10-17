@@ -417,7 +417,7 @@ internal fun GroupCapacitySection(
         SaqzStepper(
             value = capacity,
             onValueChange = onChange,
-            // O teto é do backend (`2..100`), como o dos campos de texto: entra como
+            // O teto é do backend (`4..100`), como o dos campos de texto: entra como
             // limite de entrada, não como mensagem de erro depois do envio.
             min = GroupSetupDefaults.MinCapacity,
             max = GroupSetupDefaults.MaxCapacity,

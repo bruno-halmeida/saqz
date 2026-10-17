@@ -116,7 +116,9 @@ class GroupSetupViewModel(
             is GroupSetupIntent.SelectComposition -> onFormChange { copy(composition = intent.value) }
             is GroupSetupIntent.SelectLevel -> onFormChange(closeSheet = true) { copy(level = intent.value) }
             is GroupSetupIntent.SelectPlayStyle -> onFormChange { copy(playStyle = intent.value) }
-            is GroupSetupIntent.UpdateCapacity -> onFormChange { copy(defaultCapacity = intent.value) }
+            is GroupSetupIntent.UpdateCapacity -> onFormChange {
+                copy(defaultCapacity = intent.value.coerceAtLeast(GroupSetupDefaults.MinCapacity))
+            }
             is GroupSetupIntent.SelectConfirmationLead ->
                 onFormChange { copy(defaultConfirmationLeadMinutes = intent.minutes) }
             is GroupSetupIntent.ToggleMensalistaPriority ->
@@ -558,7 +560,8 @@ private fun br.com.saqz.groups.domain.group.Group.toForm() = GroupSetupForm(
     regularSlots = profile?.regularSlots.orEmpty().map {
         GroupRegularSlotForm(it.id, GroupWeekday.valueOf(it.weekday.name), it.startTime, it.durationMinutes)
     },
-    defaultCapacity = profile?.defaultCapacity,
+    // Grupo antigo com padrão 2 ou 3 abre no mínimo; só muda no servidor quando salvar de novo.
+    defaultCapacity = profile?.defaultCapacity?.coerceAtLeast(GroupSetupDefaults.MinCapacity),
     defaultConfirmationLeadMinutes = profile?.defaultConfirmationLeadMinutes,
     defaultGameFeeCents = financeDefaults?.defaultGameFeeCents,
     monthlyFeeCents = financeDefaults?.monthlyFeeCents,

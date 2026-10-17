@@ -13,6 +13,7 @@ import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.domain.place.PlaceSuggestion
+import br.com.saqz.groups.presentation.GameCapacityLimits
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.place.VenueSearchState
 
@@ -46,8 +47,9 @@ data class GroupSlotDraft(
 )
 
 object GroupSetupDefaults {
-    // `validateRange(defaultCapacity, 2, 100)` — GroupProfileDefaults.kt:121 do backend.
-    const val MinCapacity = 2
+    // O backend recusa fora de `2..100`, mas grava 4 quando um app antigo manda 2 ou 3
+    // (GroupProfileDefaults.kt); o piso de hoje é o mesmo das vagas de um jogo.
+    const val MinCapacity = GameCapacityLimits.Min
     const val MaxCapacity = 100
     const val Capacity = 12
     const val DurationMinutes = 120

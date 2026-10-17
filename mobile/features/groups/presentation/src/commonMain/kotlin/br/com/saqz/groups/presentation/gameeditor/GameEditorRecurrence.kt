@@ -5,6 +5,7 @@ import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.map
 import br.com.saqz.groups.domain.game.GameVenue
+import br.com.saqz.groups.presentation.GameCapacityLimits
 import br.com.saqz.groups.domain.group.Group
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileError
@@ -61,7 +62,7 @@ fun recurrenceProfileForm(group: Group, venue: GameVenue?, slot: GroupRegularSlo
         customPlayStyle = profile.customPlayStyle,
         defaultVenue = profile.defaultVenue ?: venue?.let { GroupVenue(it.venueId, it.name, it.address, it.court) },
         regularSlots = profile.regularSlots + listOfNotNull(slot),
-        defaultCapacity = profile.defaultCapacity,
+        defaultCapacity = profile.defaultCapacity?.coerceAtLeast(GameCapacityLimits.Min),
         defaultConfirmationLeadMinutes = profile.defaultConfirmationLeadMinutes,
         defaultGameFeeCents = group.financeDefaults?.defaultGameFeeCents,
         monthlyFeeCents = group.financeDefaults?.monthlyFeeCents,

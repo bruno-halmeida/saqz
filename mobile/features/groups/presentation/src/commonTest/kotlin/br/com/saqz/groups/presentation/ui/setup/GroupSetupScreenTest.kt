@@ -34,6 +34,17 @@ class GroupSetupScreenTest {
     }
 
     @Test
+    fun capacityBelowTheMinimumShowsTheMinimumOf4() = runComposeUiTest {
+        val state = GroupSetupState(mode = GroupSetupMode.Create).let {
+            val form = it.form.copy(defaultCapacity = 3)
+            it.copy(form = form, errors = setOf(GroupSetupError.CapacityOutOfRange))
+        }
+        setContent { SaqzTheme { GroupSetupScreen(state, {}, {}) } }
+
+        onNodeWithText("Mínimo de 4 jogadores.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun editingAndValidationKeepAdvancedFieldsAccessible() = runComposeUiTest {
         setContent { SaqzTheme { GroupSetupScreen(PreviewErrorState, {}, {}) } }
         onNodeWithTag(GroupSetupTags.CustomLevel).assertExists()

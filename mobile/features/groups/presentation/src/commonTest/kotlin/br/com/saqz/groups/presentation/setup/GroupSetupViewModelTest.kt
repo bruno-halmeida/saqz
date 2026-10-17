@@ -179,6 +179,48 @@ class GroupSetupViewModelTest {
     }
 
     @Test
+    fun `o padrao de vagas do grupo nao desce de 4`() = runTest(mainDispatcher) {
+        val viewModel = viewModel()
+        listOf(0, 2, 3).forEach { value ->
+            viewModel.onIntent(GroupSetupIntent.UpdateCapacity(value))
+            assertEquals(4, viewModel.state.value.form.defaultCapacity)
+        }
+        viewModel.onIntent(GroupSetupIntent.UpdateCapacity(4))
+        assertEquals(4, viewModel.state.value.form.defaultCapacity)
+        viewModel.onIntent(GroupSetupIntent.UpdateCapacity(100))
+        assertEquals(100, viewModel.state.value.form.defaultCapacity)
+    }
+
+    @Test
+    fun `criar grupo com o padrao no minimo envia 4`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val viewModel = viewModel(profileGateway = profileGateway)
+        viewModel.onIntent(GroupSetupIntent.UpdateCapacity(2))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(4, profileGateway.createCommands.last().form.defaultCapacity)
+    }
+
+    @Test
+    fun `grupo antigo com padrao de 2 ou 3 vagas abre nos ajustes com 4`() = runTest(mainDispatcher) {
+        listOf(2, 3).forEach { old ->
+            val group = br.com.saqz.groups.presentation.sampleGroup().let {
+                it.copy(profile = it.profile?.copy(defaultCapacity = old))
+            }
+            val viewModel = viewModel(
+                mode = GroupSetupMode.Edit(groupId = "grp-1"),
+                profileGateway = FakeGroupProfileGateway(
+                    readResult = SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedGroup(group)),
+                ),
+            )
+            runCurrent()
+
+            assertEquals(4, viewModel.state.value.form.defaultCapacity)
+        }
+    }
+
+    @Test
     fun `admin nao recebe a acao de excluir no formulario de edicao`() = runTest(mainDispatcher) {
         val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
         runCurrent()
