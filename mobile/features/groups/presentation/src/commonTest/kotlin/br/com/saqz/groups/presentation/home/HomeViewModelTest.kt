@@ -31,6 +31,7 @@ import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeAttendanceGateway
 import br.com.saqz.groups.port.GroupNowPort
+import br.com.saqz.groups.presentation.FakeGroupEntryRequestGateway
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -78,7 +79,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `pending entry requests reach the member block by group name`() = runTest {
+    fun `pending entry requests reach the member block with group id and name`() = runTest {
         val base = sampleHome()
         val home = base.copy(
             member = base.member.copy(
@@ -89,7 +90,102 @@ class HomeViewModelTest {
         )
         val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(home)))
 
-        assertEquals(listOf("Volei RV A"), viewModel.state.value.member?.pendingRequestGroupNames)
+        assertEquals(
+            listOf(HomePendingRequestUi("g-9", "Volei RV A")),
+            viewModel.state.value.member?.pendingRequests,
+        )
+    }
+
+    private fun homeWithPendingRequest(): HomeReadModel {
+        val base = sampleHome()
+        return base.copy(
+            member = base.member.copy(
+                pendingEntryRequests = listOf(
+                    br.com.saqz.groups.domain.home.HomePendingEntryRequest(GroupId("g-9"), "Volei RV A", "2026-10-13T02:36:00Z"),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `asking to cancel only opens the confirmation and dismissing it calls nothing`() = runTest {
+        val entries = FakeGroupEntryRequestGateway()
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(homeWithPendingRequest())),
+            entryRequests = entries,
+        )
+
+        viewModel.onIntent(HomeIntent.RequestCancelEntryRequest("g-9"))
+        assertEquals("g-9", viewModel.state.value.cancelEntryCandidate?.groupId)
+        viewModel.onIntent(HomeIntent.DismissCancelEntryRequest)
+
+        assertNull(viewModel.state.value.cancelEntryCandidate)
+        assertTrue(entries.canceledOwnGroupIds.isEmpty())
+        assertEquals(1, viewModel.state.value.member?.pendingRequests?.size)
+    }
+
+    @Test
+    fun `confirming the cancellation calls the api once and drops the card and toasts`() = runTest {
+        val entries = FakeGroupEntryRequestGateway()
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(homeWithPendingRequest())),
+            entryRequests = entries,
+        )
+
+        viewModel.onIntent(HomeIntent.RequestCancelEntryRequest("g-9"))
+        viewModel.onIntent(HomeIntent.ConfirmCancelEntryRequest)
+        advanceUntilIdle()
+
+        assertEquals(listOf("g-9"), entries.canceledOwnGroupIds)
+        assertTrue(viewModel.state.value.member?.pendingRequests.orEmpty().isEmpty())
+        assertEquals(HomeToast.EntryRequestCanceled, viewModel.state.value.toast)
+        assertFalse(viewModel.state.value.cancelingEntry)
+        assertNull(viewModel.state.value.cancelEntryCandidate)
+    }
+
+    @Test
+    fun `a second confirmation while the cancellation is in flight is ignored`() = runTest {
+        val entries = FakeGroupEntryRequestGateway().apply { cancelOwnDeferred = CompletableDeferred() }
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(homeWithPendingRequest())),
+            entryRequests = entries,
+        )
+
+        viewModel.onIntent(HomeIntent.RequestCancelEntryRequest("g-9"))
+        viewModel.onIntent(HomeIntent.ConfirmCancelEntryRequest)
+        viewModel.onIntent(HomeIntent.RequestCancelEntryRequest("g-9"))
+        viewModel.onIntent(HomeIntent.ConfirmCancelEntryRequest)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.cancelingEntry)
+        assertEquals(listOf("g-9"), entries.canceledOwnGroupIds)
+
+        entries.cancelOwnDeferred!!.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(listOf("g-9"), entries.canceledOwnGroupIds)
+        assertFalse(viewModel.state.value.cancelingEntry)
+    }
+
+    @Test
+    fun `cancellation failure keeps the card and warns`() = runTest {
+        val entries = FakeGroupEntryRequestGateway(
+            cancelOwnResult = SaqzResult.Failure(
+                br.com.saqz.groups.domain.membership.EntryRequestError.DataFailure(br.com.saqz.domain.DataError.Connectivity),
+            ),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(homeWithPendingRequest())),
+            entryRequests = entries,
+        )
+
+        viewModel.onIntent(HomeIntent.RequestCancelEntryRequest("g-9"))
+        viewModel.onIntent(HomeIntent.ConfirmCancelEntryRequest)
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.state.value.member?.pendingRequests?.size)
+        assertEquals(HomeToast.EntryRequestCancelFailed, viewModel.state.value.toast)
+        assertFalse(viewModel.state.value.cancelingEntry)
     }
 
     @Test
@@ -1307,6 +1403,7 @@ class HomeViewModelTest {
         now: GroupNowPort = this.now,
         notifications: NativeNotificationPort? = null,
         notificationPrompt: br.com.saqz.groups.presentation.communication.NotificationPromptOffer? = null,
+        entryRequests: br.com.saqz.groups.domain.membership.GroupEntryRequestGateway? = null,
     ) = HomeViewModel(
         homeGateway = homeGateway,
         athleteGateway = FakeAthleteGateway(
@@ -1316,6 +1413,7 @@ class HomeViewModelTest {
         now = now,
         notifications = notifications,
         notificationPrompt = notificationPrompt,
+        entryRequests = entryRequests,
     )
 }
 

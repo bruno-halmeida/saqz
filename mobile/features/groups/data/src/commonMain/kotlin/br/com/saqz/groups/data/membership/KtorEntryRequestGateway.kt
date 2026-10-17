@@ -64,6 +64,11 @@ class KtorEntryRequestGateway(
         HttpMethod.Delete,
         "api/groups/${groupId.value}/entry-requests/$userId",
     ).toEmptyResult()
+
+    override suspend fun cancelOwn(groupId: GroupId) = network.executeNoContent(
+        HttpMethod.Delete,
+        "api/groups/${groupId.value}/entry-requests/me",
+    ).toEmptyResult()
 }
 
 private fun NetworkResult<List<EntryRequestTransport>>.toListResult() = when (this) {

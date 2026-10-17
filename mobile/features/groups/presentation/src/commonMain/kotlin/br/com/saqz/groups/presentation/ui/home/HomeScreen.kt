@@ -87,6 +87,8 @@ import br.com.saqz.groups.resources.home_status_confirmed
 import br.com.saqz.groups.resources.home_status_declined
 import br.com.saqz.groups.resources.home_toast_confirmed
 import br.com.saqz.groups.resources.home_toast_declined
+import br.com.saqz.groups.resources.home_toast_entry_request_cancel_failed
+import br.com.saqz.groups.resources.home_toast_entry_request_canceled
 import br.com.saqz.groups.resources.home_toast_pix_copied
 import br.com.saqz.groups.presentation.ui.components.lateNoticeText
 import br.com.saqz.groups.resources.home_toast_waitlisted
@@ -228,7 +230,9 @@ private fun HomeContent(
                 onIntent = onIntent,
             )
             if (state.ownerTrialEnded) HomeTrialEndedNotice()
-            member?.pendingRequestGroupNames?.forEach { HomePendingRequestNotice(it) }
+            member?.pendingRequests?.forEach {
+                HomePendingRequestNotice(it, cancelEnabled = !state.cancelingEntry, onIntent = onIntent)
+            }
             if (member == null) {
                 Text(
                     text = stringResource(Res.string.home_error_message),
@@ -238,7 +242,7 @@ private fun HomeContent(
             } else if (firstAccess) {
                 // Onboarding da Início: só enquanto não há grupo. Com o primeiro grupo a
                 // tela volta ao normal e o guia passa a morar no grupo.
-                if (member.pendingRequestGroupNames.isNotEmpty()) {
+                if (member.pendingRequests.isNotEmpty()) {
                     HomePendingCreateGroup(onIntent)
                 } else {
                     HomeFirstAccessHero(onIntent)
@@ -287,6 +291,7 @@ private fun HomeContent(
             }
         }
         HomeInviteSheet(state = state, onIntent = onIntent)
+        HomeCancelEntryRequestSheet(state = state, onIntent = onIntent)
         state.toast?.let { toast ->
             SaqzToast(
                 visible = true,
@@ -305,6 +310,8 @@ private fun HomeContent(
                             HomeToast.WaitlistedManual -> Res.string.home_toast_waitlisted_manual
                             HomeToast.WaitlistedAfterDeadline -> Res.string.home_toast_waitlisted_late
                             HomeToast.PixCopied -> Res.string.home_toast_pix_copied
+                            HomeToast.EntryRequestCanceled -> Res.string.home_toast_entry_request_canceled
+                            HomeToast.EntryRequestCancelFailed -> Res.string.home_toast_entry_request_cancel_failed
                         },
                     ),
                 )

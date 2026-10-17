@@ -65,6 +65,24 @@ class KtorEntryRequestGatewayTest {
     }
 
     @Test
+    fun `cancelOwn uses the me delete route and maps empty success`() = runTest {
+        fixture { request ->
+            assertEquals(HttpMethod.Delete, request.method)
+            assertEquals("/api/groups/$GROUP_ID/entry-requests/me", request.url.encodedPath)
+            respond("", HttpStatusCode.NoContent)
+        }.gateway.cancelOwn(GroupId(GROUP_ID))
+            .let { assertIs<SaqzResult.Success<Unit>>(it).value }
+    }
+
+    @Test
+    fun `cancelOwn maps connectivity failure`() = runTest {
+        val error = assertIs<SaqzResult.Failure<EntryRequestError>>(fixture(MockEngine { throw UnresolvedAddressException() })
+            .gateway.cancelOwn(GroupId(GROUP_ID))).error
+
+        assertEquals(DataError.Connectivity, assertIs<EntryRequestError.DataFailure>(error).error)
+    }
+
+    @Test
     fun `malformed request maps invalid response`() = runTest {
         val error = assertIs<SaqzResult.Failure<EntryRequestError>>(fixture {
             respond("[{\"userId\":\"\",\"displayName\":\"Ana\",\"requestedAt\":\"now\"}]", headers = jsonHeaders())

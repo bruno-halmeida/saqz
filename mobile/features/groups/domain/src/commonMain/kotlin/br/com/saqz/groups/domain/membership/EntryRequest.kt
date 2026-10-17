@@ -25,4 +25,7 @@ interface GroupEntryRequestGateway {
     ): SaqzResult<GroupMembership, EntryRequestError>
 
     suspend fun reject(groupId: GroupId, userId: String): EmptyResult<EntryRequestError>
+
+    /** A pessoa desiste do próprio pedido de entrada; repetir não dá erro (o servidor responde 204 de novo). */
+    suspend fun cancelOwn(groupId: GroupId): EmptyResult<EntryRequestError>
 }

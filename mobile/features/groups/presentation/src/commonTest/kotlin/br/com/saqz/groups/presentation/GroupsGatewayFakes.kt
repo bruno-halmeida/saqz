@@ -422,7 +422,19 @@ class FakeGroupEntryRequestGateway(
     var listResult: SaqzResult<List<GroupEntryRequest>, EntryRequestError> = SaqzResult.Success(emptyList()),
     var approveResult: SaqzResult<GroupMembership, EntryRequestError>? = null,
     var rejectResult: EmptyResult<EntryRequestError> = SaqzResult.Success(Unit),
+    var cancelOwnResult: EmptyResult<EntryRequestError> = SaqzResult.Success(Unit),
 ) : GroupEntryRequestGateway {
+    val canceledOwnGroupIds = mutableListOf<String>()
+
+    /** Quando preenchido, cancelar o próprio pedido espera aqui: o teste segura a chamada em voo. */
+    var cancelOwnDeferred: CompletableDeferred<Unit>? = null
+
+    override suspend fun cancelOwn(groupId: GroupId): EmptyResult<EntryRequestError> {
+        canceledOwnGroupIds += groupId.value
+        cancelOwnDeferred?.await()
+        return cancelOwnResult
+    }
+
     var listCalls = 0
     var listDeferred: CompletableDeferred<SaqzResult<List<GroupEntryRequest>, EntryRequestError>>? = null
     val approvedUserIds = mutableListOf<String>()

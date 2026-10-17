@@ -871,6 +871,7 @@ class GroupInviteViewModelsTest {
     ) : GroupEntryRequestGateway {
         var approvedUserId: String? = null
         var rejectedUserId: String? = null
+        override suspend fun cancelOwn(groupId: GroupId): EmptyResult<EntryRequestError> = SaqzResult.Success(Unit)
 
         /** Quem aprova passa a constar no elenco, como na API. */
         var onApproved: (String) -> Unit = {}
@@ -893,6 +894,7 @@ class GroupInviteViewModelsTest {
         val approvedUserIds = mutableListOf<String>()
         var approveCalls = 0
         var rejectCalls = 0
+        override suspend fun cancelOwn(groupId: GroupId): EmptyResult<EntryRequestError> = SaqzResult.Success(Unit)
         private val rejectGate = CompletableDeferred<Unit>()
 
         override suspend fun list(groupId: GroupId) = SaqzResult.Success(requests.toList())

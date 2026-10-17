@@ -33,6 +33,7 @@ import br.com.saqz.groups.presentation.home.HomeGameToSettleUi
 import br.com.saqz.groups.presentation.home.HomeMonthlyChargesUi
 import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeMemberUi
+import br.com.saqz.groups.presentation.home.HomePendingRequestUi
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
 import br.com.saqz.groups.presentation.home.HomeState
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
@@ -494,7 +495,7 @@ class HomeScreenTest {
     fun `pending request gets its own card and creating a group becomes secondary`() = runComposeUiTest {
         val intents = mutableListOf<HomeIntent>()
         val base = firstAccessState()
-        setScreen(base.copy(member = base.member!!.copy(pendingRequestGroupNames = listOf("RV Aprova B"))), intents::add)
+        setScreen(base.copy(member = base.member!!.copy(pendingRequests = listOf(HomePendingRequestUi("g-b", "RV Aprova B")))), intents::add)
 
         onNodeWithTag(HomePendingRequestTag).assertIsDisplayed()
         onNodeWithText("RV Aprova B").assertIsDisplayed()
@@ -504,6 +505,54 @@ class HomeScreenTest {
         onNodeWithText("Seu grupo em 1 minuto").assertDoesNotExist()
         onNodeWithTag(HomePendingCreateButtonTag).performClick()
         assertEquals(listOf<HomeIntent>(HomeIntent.CreateGroup), intents)
+    }
+
+    @Test
+    fun `pending request card offers cancelar pedido and it only asks for confirmation`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        val base = firstAccessState()
+        setScreen(base.copy(member = base.member!!.copy(pendingRequests = listOf(HomePendingRequestUi("g-b", "RV Aprova B")))), intents::add)
+
+        onNodeWithTag(HomePendingCancelTag).performClick()
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.RequestCancelEntryRequest("g-b")), intents)
+    }
+
+    @Test
+    fun `cancel confirmation explains the consequence and offers voltar and cancelar pedido`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        val base = firstAccessState()
+        val request = HomePendingRequestUi("g-b", "RV Aprova B")
+        setScreen(
+            base.copy(
+                member = base.member!!.copy(pendingRequests = listOf(request)),
+                cancelEntryCandidate = request,
+            ),
+            intents::add,
+        )
+
+        onNodeWithText("Cancelar o pedido para entrar em RV Aprova B?").assertIsDisplayed()
+        onNodeWithText("Você sai da fila de aprovação. Para entrar depois, peça de novo pelo convite.").assertIsDisplayed()
+        onNodeWithText("Voltar").performClick()
+        onNodeWithTag(HomePendingCancelConfirmTag).performClick()
+
+        assertEquals(
+            listOf(HomeIntent.DismissCancelEntryRequest, HomeIntent.ConfirmCancelEntryRequest),
+            intents,
+        )
+    }
+
+    @Test
+    fun `cancelling in flight disables the cancel button so a double tap cannot repeat`() = runComposeUiTest {
+        val base = firstAccessState()
+        setScreen(
+            base.copy(
+                member = base.member!!.copy(pendingRequests = listOf(HomePendingRequestUi("g-b", "RV Aprova B"))),
+                cancelingEntry = true,
+            ),
+        )
+
+        onNodeWithTag(HomePendingCancelTag).assertIsNotEnabled()
     }
 
     @Test

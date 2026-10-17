@@ -37,6 +37,9 @@ data class HomeState(
     val inviteLinkInvalid: Boolean = false,
     /** Dono de algum grupo cujo teste do Organizador acabou sem plano: a Início avisa e oferece "Ver planos". */
     val ownerTrialEnded: Boolean = false,
+    /** Pedido de entrada que a pessoa está prestes a cancelar; != null abre a confirmação. */
+    val cancelEntryCandidate: HomePendingRequestUi? = null,
+    val cancelingEntry: Boolean = false,
 )
 
 /**
@@ -72,14 +75,20 @@ data class HomeOwnChargeGroupUi(
 )
 
 @Immutable
+data class HomePendingRequestUi(
+    val groupId: String,
+    val groupName: String,
+)
+
+@Immutable
 data class HomeMemberUi(
     val nextGame: HomeNextGameUi?,
     val groups: List<HomeGroupUi>,
     val admin: HomeAdminReadModelUi? = null,
     val adminSubtitle: String? = null,
     val upcomingGames: List<HomeUpcomingGameUi> = emptyList(),
-    /** Nomes dos grupos para os quais a pessoa pediu entrada e o organizador ainda não respondeu. */
-    val pendingRequestGroupNames: List<String> = emptyList(),
+    /** Grupos para os quais a pessoa pediu entrada e o organizador ainda não respondeu. */
+    val pendingRequests: List<HomePendingRequestUi> = emptyList(),
 ) {
     /**
      * Primeiro acesso: a conta não participa de grupo nenhum. É o único estado em que a
@@ -191,6 +200,8 @@ enum class HomeToast {
     WaitlistedManual,
     WaitlistedAfterDeadline,
     PixCopied,
+    EntryRequestCanceled,
+    EntryRequestCancelFailed,
 }
 
 @Immutable
@@ -249,6 +260,11 @@ sealed interface HomeIntent {
     data class OpenGameEditor(val groupId: String) : HomeIntent
     data class OpenInvite(val groupId: String) : HomeIntent
     data class CopyPix(val groupId: String) : HomeIntent
+
+    /** "Cancelar pedido" abre a confirmação; só [ConfirmCancelEntryRequest] chama a API. */
+    data class RequestCancelEntryRequest(val groupId: String) : HomeIntent
+    data object DismissCancelEntryRequest : HomeIntent
+    data object ConfirmCancelEntryRequest : HomeIntent
 
     // Primeiro acesso (sem grupo): os dois caminhos do hero e a folha de convite.
     data object CreateGroup : HomeIntent

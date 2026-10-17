@@ -6,6 +6,7 @@ import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.membership.GroupEntryRequestGateway
 import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
@@ -136,6 +137,8 @@ class HomeViewModel(
     private val trialAccess: GroupTrialAccessPort? = null,
     /** Depois da resposta de presença é a hora de explicar os avisos; sem a porta (teste, web) não há folha. */
     private val notificationPrompt: NotificationPromptOffer? = null,
+    /** Cancelar o próprio pedido de entrada; sem a porta (teste) o botão não faz nada. */
+    private val entryRequests: GroupEntryRequestGateway? = null,
 ) : MviViewModel<HomeState, HomeIntent, HomeEffect>(HomeState()) {
     private var loadGeneration = 0L
     private var responseGeneration = 0L
@@ -195,8 +198,40 @@ class HomeViewModel(
             is HomeIntent.OpenGameEditor -> emit(HomeEffect.OpenGameEditor(intent.groupId))
             is HomeIntent.OpenInvite -> emit(HomeEffect.OpenInvite(intent.groupId))
             is HomeIntent.CopyPix -> copyPix(intent.groupId)
+            is HomeIntent.RequestCancelEntryRequest -> update { current ->
+                current.copy(
+                    cancelEntryCandidate = current.member?.pendingRequests
+                        ?.firstOrNull { it.groupId == intent.groupId },
+                )
+            }
+            HomeIntent.DismissCancelEntryRequest -> update { it.copy(cancelEntryCandidate = null) }
+            HomeIntent.ConfirmCancelEntryRequest -> cancelEntryRequest()
             HomeIntent.CreateGroup -> emit(HomeEffect.OpenCreateGroup)
             is HomeInviteSheetIntent -> handleInviteSheet(intent)
+        }
+    }
+
+    /** Desiste do pedido de entrada: some da Início na hora; falha mantém o cartão e avisa. */
+    private fun cancelEntryRequest() {
+        val gateway = entryRequests ?: return
+        val candidate = state.value.cancelEntryCandidate ?: return
+        if (state.value.cancelingEntry) return
+        update { it.copy(cancelingEntry = true, cancelEntryCandidate = null) }
+        viewModelScope.launch {
+            when (gateway.cancelOwn(GroupId(candidate.groupId))) {
+                is SaqzResult.Success -> update { current ->
+                    current.copy(
+                        cancelingEntry = false,
+                        toast = HomeToast.EntryRequestCanceled,
+                        member = current.member?.let { member ->
+                            member.copy(pendingRequests = member.pendingRequests.filterNot { it.groupId == candidate.groupId })
+                        },
+                    )
+                }
+                is SaqzResult.Failure -> update {
+                    it.copy(cancelingEntry = false, toast = HomeToast.EntryRequestCancelFailed)
+                }
+            }
         }
     }
 
@@ -512,7 +547,7 @@ class HomeViewModel(
         nextGame = nextGame?.toUi(),
         groups = groups.map { it.toUi() },
         upcomingGames = upcomingGames.map { it.toUi() },
-        pendingRequestGroupNames = pendingEntryRequests.map { it.groupName },
+        pendingRequests = pendingEntryRequests.map { HomePendingRequestUi(it.groupId.value, it.groupName) },
     )
 
     private suspend fun HomeNextGame.toUi(): HomeNextGameUi {
