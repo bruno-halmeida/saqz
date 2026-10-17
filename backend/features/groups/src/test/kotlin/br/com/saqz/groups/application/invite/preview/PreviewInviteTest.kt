@@ -15,6 +15,7 @@ import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import org.junit.jupiter.api.Test
@@ -46,6 +47,28 @@ class PreviewInviteTest {
         assertEquals(PreviewInviteResult.Success(card), result)
         assertTrue(fixture.repository.invalidAttempts.isEmpty())
         assertEquals(null, fixture.anonymousLimiter.retryAfterSeconds(ipAddress, now))
+    }
+
+    @Test
+    fun `group requiring approval hides venue and court but keeps day and hour`() {
+        val approval = card.copy(entryRequiresApproval = true)
+        val fixture = fixture(target = PreviewableInvite(false, null, approval))
+
+        val result = assertIs<PreviewInviteResult.Success>(fixture.useCase.execute(actor, ipAddress, code.value))
+
+        val game = assertNotNull(result.card.nextGame)
+        assertEquals(approval.nextGame!!.startsAt, game.startsAt)
+        assertEquals("Local após a aprovação", game.venueName)
+        assertEquals(null, game.court)
+    }
+
+    @Test
+    fun `group requiring approval without next game stays without next game`() {
+        val fixture = fixture(target = PreviewableInvite(false, null, card.copy(entryRequiresApproval = true, nextGame = null)))
+
+        val result = assertIs<PreviewInviteResult.Success>(fixture.useCase.execute(null, ipAddress, code.value))
+
+        assertEquals(null, result.card.nextGame)
     }
 
     @Test

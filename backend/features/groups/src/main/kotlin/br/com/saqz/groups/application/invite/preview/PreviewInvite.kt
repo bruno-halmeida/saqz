@@ -35,9 +35,17 @@ class PreviewInvite(
 
                 invite.groupDeleted -> PreviewInviteResult.Invalid
                 invite.expiredAt != null -> PreviewInviteResult.Expired(invite.expiredAt)
-                else -> PreviewInviteResult.Success(invite.card)
+                else -> PreviewInviteResult.Success(invite.card.hidingVenueUntilApproved())
             }
         }
+
+    /**
+     * Em grupo que exige aprovação o local só aparece depois que a pessoa entra. O campo não some:
+     * os apps das lojas (1.0.4 a 1.0.6) descartam o próximo jogo quando `venueName` vem vazio, então
+     * vai um texto neutro no lugar do local e sem quadra.
+     */
+    private fun PreviewInviteCard.hidingVenueUntilApproved(): PreviewInviteCard =
+        if (!entryRequiresApproval) this else copy(nextGame = nextGame?.copy(venueName = HIDDEN_VENUE, court = null))
 
     private fun recordInvalidAttempt(
         actor: UUID?,
@@ -65,6 +73,7 @@ class PreviewInvite(
     }
 
     private companion object {
+        const val HIDDEN_VENUE = "Local após a aprovação"
         const val MAX_INVALID_ATTEMPTS = 10
         val WINDOW: Duration = Duration.ofMinutes(10)
     }

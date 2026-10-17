@@ -109,6 +109,19 @@ class InvitePreviewEndpointIntegrationTest {
     }
 
     @Test
+    fun `preview of a group requiring approval keeps the venue field with a neutral text and no court`() {
+        val invite = repository.target!!
+        repository.target = invite.copy(card = invite.card.copy(entryRequiresApproval = true))
+
+        val body = json(preview(PreviewTestConfiguration.RAW_CODE))
+
+        assertTrue(body["entryRequiresApproval"].booleanValue())
+        assertEquals("Local após a aprovação", body["nextGame"]["venueName"].stringValue())
+        assertTrue(body["nextGame"]["court"].isNull)
+        assertTrue(body["nextGame"].has("startsAt"))
+    }
+
+    @Test
     fun `malformed and unknown preview codes return the preview invalid problem`() {
         repository.target = null
 
