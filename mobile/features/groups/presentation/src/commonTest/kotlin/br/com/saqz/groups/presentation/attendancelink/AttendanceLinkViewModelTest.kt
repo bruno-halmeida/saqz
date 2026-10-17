@@ -341,7 +341,6 @@ class AttendanceLinkViewModelTest {
         override suspend fun override(groupId: GroupId, gameId: String, command: OverrideAttendanceCommand) = error("unused")
         override suspend fun capacity(groupId: GroupId, gameId: String, version: AttendanceVersionToken, command: AttendanceCapacityCommand) =
             error("unused")
-        override suspend fun updateAutoConfirmation(groupId: GroupId, command: AutoConfirmationCommand) = error("unused")
     }
     private companion object {
         val code = "A".repeat(43)

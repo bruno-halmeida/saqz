@@ -21,7 +21,6 @@ import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
-import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.communication.GroupWhatsAppGateway
 import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
@@ -146,7 +145,6 @@ class GroupDetailsViewModel(
 
     private var loadGeneration = 0
     private var responseGeneration = 0L
-    private var autoConfirmationGeneration = 0L
     private var rosterGeneration = 0L
     private var ownChargesGeneration = 0L
     private var pixCopiedGeneration = 0L
@@ -237,7 +235,6 @@ class GroupDetailsViewModel(
                 emit(GroupDetailsEffect.OpenThread(groupId, notices = false))
             }
             is GroupDetailsIntent.Respond -> respond(intent.intent)
-            is GroupDetailsIntent.ToggleAutoConfirmation -> toggleAutoConfirmation(intent.enabled)
             is GroupDetailsIntent.OpenAgendaGame -> emit(GroupDetailsEffect.OpenGame(groupId, intent.gameId))
             is GroupDetailsIntent.OpenSettlement -> emit(GroupDetailsEffect.OpenSettlement(groupId, intent.gameId))
         }
@@ -357,7 +354,7 @@ class GroupDetailsViewModel(
     private fun refresh() {
         if (isFirstAppearance()) return
         val current = state.value
-        val answering = current.responding || current.autoConfirmationUpdating || current.rosterRefreshing
+        val answering = current.responding || current.rosterRefreshing
         val busy = loadInFlight || answering || current.leaving || current.notifying
         if (busy) return
         load(softRefresh = true)
@@ -401,7 +398,6 @@ class GroupDetailsViewModel(
     /** Carga completa (`init` e `Retry`): invalida as escritas em voo e volta a tela ao esqueleto. */
     private fun resetForFullLoad() {
         responseGeneration++
-        autoConfirmationGeneration++
         rosterGeneration++
         ownChargesGeneration++
         pixCopiedGeneration++
@@ -710,7 +706,6 @@ class GroupDetailsViewModel(
                     attendance = null,
                     memberResponse = null,
                     membershipType = null,
-                    autoConfirmationVisible = false,
                     waitlist = null,
                 ).from(group)
             }
@@ -752,13 +747,6 @@ class GroupDetailsViewModel(
                         responsePlanPaused = false,
                         responseOffline = false,
                         membershipType = membershipType,
-                        // Dono e admin também são atletas do grupo: quem é mensalista tem
-                        // direito à auto-confirmação independente do papel administrativo.
-                        autoConfirmationVisible = membershipType == AthleteMembershipType.MENSALISTA &&
-                            group.gameConfig.autoConfirmEnabled,
-                        autoConfirmationEnabled = detail.autoConfirmEnabled,
-                        autoConfirmationUpdating = false,
-                        autoConfirmationFailed = false,
                         rosterStale = false,
                         rosterRefreshing = false,
                     ).from(group)
@@ -878,81 +866,6 @@ class GroupDetailsViewModel(
                     update { it.copy(rosterStale = true, rosterRefreshing = false) }
                 }
             }
-        }
-    }
-
-    private fun toggleAutoConfirmation(enabled: Boolean) {
-        val current = state.value
-        if (!current.autoConfirmationVisible || current.autoConfirmationUpdating) return
-        val gameId = current.nextGame?.gameId
-        val generation = ++autoConfirmationGeneration
-        val loadAtStart = loadGeneration
-        val previous = current.autoConfirmationEnabled
-        update {
-            it.copy(
-                autoConfirmationEnabled = enabled,
-                autoConfirmationUpdating = true,
-                autoConfirmationFailed = false,
-            )
-        }
-        viewModelScope.launch {
-            val result = attendanceGateway.updateAutoConfirmation(
-                GroupId(groupId),
-                AutoConfirmationCommand(enabled),
-            )
-            if (generation != autoConfirmationGeneration || loadAtStart != loadGeneration) return@launch
-            when (result) {
-                is SaqzResult.Success -> update {
-                    it.copy(
-                        autoConfirmationEnabled = result.value.enabled,
-                        autoConfirmationUpdating = false,
-                        autoConfirmationFailed = false,
-                    )
-                }
-                is SaqzResult.Failure -> reconcileAutoConfirmationFailure(
-                    error = result.error,
-                    gameId = gameId,
-                    generation = generation,
-                    loadAtStart = loadAtStart,
-                    previous = previous,
-                )
-            }
-        }
-    }
-
-    private suspend fun reconcileAutoConfirmationFailure(
-        error: AttendanceError,
-        gameId: String?,
-        generation: Long,
-        loadAtStart: Int,
-        previous: Boolean,
-    ) {
-        if (error !is AttendanceError.Data || gameId == null) {
-            rollbackAutoConfirmation(previous, generation, loadAtStart)
-            return
-        }
-        when (val detail = attendanceGateway.read(GroupId(groupId), gameId)) {
-            is SaqzResult.Success -> if (generation == autoConfirmationGeneration && loadAtStart == loadGeneration) {
-                update {
-                    it.copy(
-                        autoConfirmationEnabled = detail.value.autoConfirmEnabled,
-                        autoConfirmationUpdating = false,
-                        autoConfirmationFailed = false,
-                    )
-                }
-            }
-            is SaqzResult.Failure -> rollbackAutoConfirmation(previous, generation, loadAtStart)
-        }
-    }
-
-    private fun rollbackAutoConfirmation(previous: Boolean, generation: Long, loadAtStart: Int) {
-        if (generation != autoConfirmationGeneration || loadAtStart != loadGeneration) return
-        update {
-            it.copy(
-                autoConfirmationEnabled = previous,
-                autoConfirmationUpdating = false,
-                autoConfirmationFailed = true,
-            )
         }
     }
 

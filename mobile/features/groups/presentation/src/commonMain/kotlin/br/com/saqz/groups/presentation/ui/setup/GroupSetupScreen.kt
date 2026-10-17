@@ -101,7 +101,6 @@ internal object GroupSetupTags {
     const val MonthlyLateJoinPolicy = "group-monthly-late-join-policy"
     fun monthlyLateJoinPolicyOption(policy: br.com.saqz.groups.model.MonthlyLateJoinPolicy) =
         "group-monthly-late-join-policy-${policy.name}"
-    const val AutoConfirm = "group-game-config-auto-confirm"
     const val PixKey = "group-setup-pix-key"
     const val PixLabel = "group-setup-pix-label"
     const val VenueName = "group-setup-venue-name"
@@ -354,11 +353,9 @@ private fun GroupSetupAdvancedCards(
             mensalistaPriority = form.mensalistaPriority,
             promotionMode = form.promotionMode,
             confirmationLeadMinutes = form.defaultConfirmationLeadMinutes,
-            autoConfirmEnabled = form.autoConfirmEnabled,
             onMensalistaPriorityChange = { onIntent(GroupSetupIntent.ToggleMensalistaPriority(it)) },
             onPromotionModeSelect = { onIntent(GroupSetupIntent.SelectPromotionMode(it)) },
             onConfirmationLeadSelect = { onIntent(GroupSetupIntent.SelectConfirmationLead(it)) },
-            onAutoConfirmChange = { onIntent(GroupSetupIntent.ToggleAutoConfirm(it)) },
         )
         if (state.showsMonthlyLateJoinPolicy) {
             GroupMonthlyLateJoinPolicySection(

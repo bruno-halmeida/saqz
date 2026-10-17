@@ -17,7 +17,7 @@ class GroupProfileTest {
     @Test fun `promotion modes remain explicit`() = assertEquals(2, PromotionMode.entries.size)
     @Test fun `game config defaults preserve backend defaults`() = assertEquals(
         GroupGameConfig(),
-        GroupGameConfig(mensalistaPriority = true, promotionMode = PromotionMode.FIFO, autoConfirmEnabled = false),
+        GroupGameConfig(mensalistaPriority = true, promotionMode = PromotionMode.FIFO),
     )
     @Test fun `profile status remains explicit`() = assertEquals(listOf("COMPLETE", "INCOMPLETE"), GroupProfileStatus.entries.map { it.name })
     @Test fun `privacy remains private`() = assertEquals(listOf(GroupPrivacy.PRIVATE), GroupPrivacy.entries)

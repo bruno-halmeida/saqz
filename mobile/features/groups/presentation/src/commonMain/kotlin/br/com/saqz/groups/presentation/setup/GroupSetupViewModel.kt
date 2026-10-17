@@ -125,8 +125,6 @@ class GroupSetupViewModel(
                 onGameConfigChange { copy(mensalistaPriority = intent.value) }
             is GroupSetupIntent.SelectPromotionMode ->
                 onGameConfigChange { copy(promotionMode = intent.value) }
-            is GroupSetupIntent.ToggleAutoConfirm ->
-                onGameConfigChange { copy(autoConfirmEnabled = intent.value) }
             is GroupSetupIntent.SelectMonthlyLateJoinPolicy -> {
                 onFormChange { copy(monthlyLateJoinPolicy = intent.value) }
                 savedState[KeyMonthlyLateJoinPolicy] = intent.value.name
@@ -451,7 +449,6 @@ class GroupSetupViewModel(
         val form = state.value.form
         savedState[KeyMensalistaPriority] = form.mensalistaPriority
         savedState[KeyPromotionMode] = form.promotionMode.name
-        savedState[KeyAutoConfirm] = form.autoConfirmEnabled
     }
 }
 
@@ -495,7 +492,6 @@ private fun GroupSetupForm.withSavedText(handle: SavedStateHandle): GroupSetupFo
         mensalistaPriority = handle.get<Boolean>(KeyMensalistaPriority) ?: this.mensalistaPriority,
         promotionMode = promotionMode ?: this.promotionMode,
         monthlyLateJoinPolicy = lateJoinPolicy,
-        autoConfirmEnabled = handle.get<Boolean>(KeyAutoConfirm) ?: this.autoConfirmEnabled,
     )
 }
 
@@ -541,7 +537,6 @@ private fun GroupSetupForm.toDomain(
     },
     mensalistaPriority = mensalistaPriority,
     promotionMode = br.com.saqz.groups.domain.group.PromotionMode.valueOf(promotionMode.name),
-    autoConfirmEnabled = autoConfirmEnabled,
     pixKey = pixKey?.trim(),
     pixLabel = pixLabel?.trim(),
 ).cleaned()
@@ -569,7 +564,6 @@ private fun br.com.saqz.groups.domain.group.Group.toForm() = GroupSetupForm(
     monthlyLateJoinPolicy = financeDefaults?.monthlyLateJoinPolicy?.let { MonthlyLateJoinPolicy.valueOf(it.name) },
     mensalistaPriority = gameConfig.mensalistaPriority,
     promotionMode = PromotionMode.valueOf(gameConfig.promotionMode.name),
-    autoConfirmEnabled = gameConfig.autoConfirmEnabled,
 )
 
 /**
@@ -605,6 +599,5 @@ private const val KeyVenueName = "group-setup-venue-name"
 private const val KeyVenueAddress = "group-setup-venue-address"
 private const val KeyMensalistaPriority = "group-setup-mensalista-priority"
 private const val KeyPromotionMode = "group-setup-promotion-mode"
-private const val KeyAutoConfirm = "group-setup-auto-confirm"
 private const val KeyMonthlyLateJoinPolicy = "group-setup-monthly-late-join-policy"
 private const val KeyCreationCommand = "group-setup-create-command-key"

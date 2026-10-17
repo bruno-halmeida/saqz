@@ -90,7 +90,6 @@ internal data class GroupFinanceDefaultsDto(
 internal data class GroupGameConfigDto(
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionModeDto = PromotionModeDto.FIFO,
-    val autoConfirmEnabled: Boolean = false,
 )
 
 @Serializable
@@ -158,7 +157,6 @@ private data class CompleteGroupRequestDto(
     val timeZone: String? = null,
     val mensalistaPriority: Boolean? = null,
     val promotionMode: String? = null,
-    val autoConfirmEnabled: Boolean? = null,
     val pixKey: String? = null,
     val pixLabel: String? = null,
 )
@@ -284,7 +282,6 @@ private fun GroupDto.toDomain(): Group? {
         gameConfig = GroupGameConfig(
             mensalistaPriority = gameConfig.mensalistaPriority,
             promotionMode = PromotionMode.valueOf(gameConfig.promotionMode.name),
-            autoConfirmEnabled = gameConfig.autoConfirmEnabled,
         ),
         entryRequiresApproval = entryRequiresApproval,
     )
@@ -346,7 +343,6 @@ private fun GroupSetupForm.toRequest(requestId: String? = null, timeZone: String
         timeZone = timeZone,
         mensalistaPriority = form.mensalistaPriority,
         promotionMode = form.promotionMode.name,
-        autoConfirmEnabled = form.autoConfirmEnabled,
         pixKey = form.pixKey,
         pixLabel = form.pixLabel,
     )

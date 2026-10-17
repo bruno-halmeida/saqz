@@ -50,12 +50,6 @@ class GroupSetupViewModelTest {
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun `grupo novo nasce com a confirmacao automatica desligada`() = runTest(mainDispatcher) {
-        assertEquals(false, GroupSetupForm().autoConfirmEnabled)
-        assertEquals(false, viewModel(form = GroupSetupForm()).state.value.form.autoConfirmEnabled)
-    }
-
-    @Test
     fun `criar com campo faltando marca o erro e nao cria`() = runTest(mainDispatcher) {
         val viewModel = viewModel(form = completeForm.copy(name = ""))
         val effects = collectEffects(viewModel)
@@ -681,11 +675,9 @@ class GroupSetupViewModelTest {
         viewModel(mode = GroupSetupMode.Edit("grp-1"), savedState = handle).also {
             it.onIntent(GroupSetupIntent.ToggleMensalistaPriority(false))
             it.onIntent(GroupSetupIntent.SelectPromotionMode(PromotionMode.MANUAL))
-            it.onIntent(GroupSetupIntent.ToggleAutoConfirm(true))
         }
         assertEquals(false, handle.get<Boolean>("group-setup-mensalista-priority"))
         assertEquals("MANUAL", handle.get<String>("group-setup-promotion-mode"))
-        assertEquals(true, handle.get<Boolean>("group-setup-auto-confirm"))
 
         val serverGroup = br.com.saqz.groups.presentation.sampleGroup().copy(
             gameConfig = br.com.saqz.groups.domain.group.GroupGameConfig(),
@@ -703,7 +695,6 @@ class GroupSetupViewModelTest {
 
         assertEquals(false, restored.state.value.form.mensalistaPriority)
         assertEquals(PromotionMode.MANUAL, restored.state.value.form.promotionMode)
-        assertEquals(true, restored.state.value.form.autoConfirmEnabled)
     }
 
     @Test
@@ -744,7 +735,6 @@ class GroupSetupViewModelTest {
             gameConfig = br.com.saqz.groups.domain.group.GroupGameConfig(
                 mensalistaPriority = false,
                 promotionMode = br.com.saqz.groups.domain.group.PromotionMode.MANUAL,
-                autoConfirmEnabled = true,
             ),
         )
         val viewModel = viewModel(
@@ -760,7 +750,6 @@ class GroupSetupViewModelTest {
         val form = viewModel.state.value.form
         assertEquals(false, form.mensalistaPriority)
         assertEquals(PromotionMode.MANUAL, form.promotionMode)
-        assertEquals(true, form.autoConfirmEnabled)
     }
 
     @Test
@@ -794,7 +783,6 @@ class GroupSetupViewModelTest {
         )
         viewModel.onIntent(GroupSetupIntent.ToggleMensalistaPriority(false))
         viewModel.onIntent(GroupSetupIntent.SelectPromotionMode(PromotionMode.MANUAL))
-        viewModel.onIntent(GroupSetupIntent.ToggleAutoConfirm(true))
         runCurrent()
 
         viewModel.onIntent(GroupSetupIntent.Submit)
@@ -806,7 +794,6 @@ class GroupSetupViewModelTest {
             br.com.saqz.groups.domain.group.PromotionMode.MANUAL,
             form?.promotionMode,
         )
-        assertEquals(true, form?.autoConfirmEnabled)
     }
 
     private fun groupWithMonthly(

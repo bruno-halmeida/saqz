@@ -100,5 +100,4 @@ internal object GroupGameResponseTags {
     const val Change = "group-game-response-change"
     const val Cancel = "group-game-response-cancel"
     const val Error = "group-game-response-error"
-    const val AutoConfirmation = "group-game-response-auto-confirmation"
 }

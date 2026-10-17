@@ -4,8 +4,6 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.attendance.AddGuestCommand
 import br.com.saqz.groups.domain.attendance.AttendanceCapacityCommand
-import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
-import br.com.saqz.groups.domain.attendance.AutoConfirmationUpdate
 import br.com.saqz.groups.domain.attendance.AttendanceDetail
 import br.com.saqz.groups.domain.attendance.AttendanceEntry
 import br.com.saqz.groups.domain.attendance.AttendanceError
@@ -1579,8 +1577,6 @@ internal class FakeAttendanceGateway(
         SaqzResult.Success(sampleVersionedAttendanceMutation()),
     var capacityResult: SaqzResult<VersionedAttendanceCapacity, AttendanceError> =
         SaqzResult.Success(sampleVersionedAttendanceCapacity()),
-    var autoConfirmationResult: SaqzResult<AutoConfirmationUpdate, AttendanceError> =
-        SaqzResult.Success(AutoConfirmationUpdate(false)),
     var addGuestResult: SaqzResult<AttendanceRosterMember, AttendanceError> =
         SaqzResult.Success(AttendanceRosterMember("host-1", "Convidado", null, 1, null)),
     var removeGuestResult: SaqzResult<Unit, AttendanceError> = SaqzResult.Success(Unit),
@@ -1595,12 +1591,10 @@ internal class FakeAttendanceGateway(
     var overrideResult: SaqzResult<VersionedAttendanceMutation, AttendanceError> =
         SaqzResult.Success(sampleVersionedAttendanceMutation())
     var overrideDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>? = null
-    var autoConfirmationCalls = 0
     var addGuestCalls = 0
     var removeGuestCalls = 0
     var lastResponse: SelfAttendanceCommand? = null
     var lastPromotionCommand: AttendancePromotionCommand? = null
-    var lastAutoConfirmation: AutoConfirmationCommand? = null
     var lastAddGuestCommand: AddGuestCommand? = null
     var lastRemoveGuestHostId: String? = null
     var lastRemoveGuestSeq: Int? = null
@@ -1660,15 +1654,6 @@ internal class FakeAttendanceGateway(
         command: AttendanceCapacityCommand,
     ): SaqzResult<VersionedAttendanceCapacity, AttendanceError> =
         capacityDeferred?.await() ?: capacityResult
-
-    override suspend fun updateAutoConfirmation(
-        groupId: br.com.saqz.domain.GroupId,
-        command: AutoConfirmationCommand,
-    ): SaqzResult<AutoConfirmationUpdate, AttendanceError> {
-        autoConfirmationCalls++
-        lastAutoConfirmation = command
-        return autoConfirmationResult
-    }
 
     override suspend fun addGuest(
         groupId: br.com.saqz.domain.GroupId,

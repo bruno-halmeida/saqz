@@ -198,7 +198,6 @@ sealed interface GroupSetupIntent {
 
     data class SelectPromotionMode(val value: PromotionMode) : GroupSetupIntent
 
-    data class ToggleAutoConfirm(val value: Boolean) : GroupSetupIntent
 
     data class SelectMonthlyLateJoinPolicy(val value: MonthlyLateJoinPolicy) : GroupSetupIntent
 

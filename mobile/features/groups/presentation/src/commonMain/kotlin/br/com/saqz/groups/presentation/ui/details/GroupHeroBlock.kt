@@ -55,9 +55,7 @@ import br.com.saqz.groups.presentation.ui.home.HomeWaitlistPositionLine
 import br.com.saqz.groups.presentation.ui.home.HomeWaitlistQueueSection
 import br.com.saqz.groups.presentation.ui.home.HomeWaitlistUpsellCard
 import br.com.saqz.groups.resources.Res
-import br.com.saqz.groups.resources.game_response_auto_confirmation
 import br.com.saqz.groups.presentation.ui.components.lateNoticeText
-import br.com.saqz.groups.resources.game_response_auto_confirmation_failed
 import br.com.saqz.groups.resources.game_response_confirmed
 import br.com.saqz.groups.resources.game_detail_confirmed_over_capacity
 import br.com.saqz.groups.resources.game_response_confirmed_summary
@@ -111,9 +109,6 @@ internal fun GroupHeroBlock(
             GroupGameHero(state = state, game = game, onIntent = onIntent)
         } else {
             GroupNoGameHero(state = state, onIntent = onIntent, onboardingGroup = onboardingGroup)
-        }
-        if (game != null && state.autoConfirmationVisible) {
-            GroupAutoConfirmationCard(state = state, onIntent = onIntent)
         }
         if (state.athleteIntroVisible && !state.isAdmin && !state.responding) {
             AthleteOnboardingCard(state.athleteShareFailed, onIntent, state.appDownloadAvailable)
@@ -396,33 +391,6 @@ private fun HeroNoGameActions(
                 fullWidth = true,
                 contentColor = colors.onPrimary,
                 borderColor = colors.onPrimary.copy(alpha = HeroOutlineAlpha),
-            )
-        }
-    }
-}
-
-/**
- * Confirmação automática: é do GRUPO e só do mensalista. Fica fora do hero porque o
- * `SaqzSwitch` não tem variante sobre o azul.
- */
-@Composable
-private fun GroupAutoConfirmationCard(
-    state: GroupDetailsState,
-    onIntent: (GroupDetailsIntent) -> Unit,
-) {
-    SaqzCard(tone = SaqzCardTone.Soft) {
-        SaqzSwitch(
-            checked = state.autoConfirmationEnabled,
-            onCheckedChange = { onIntent(GroupDetailsIntent.ToggleAutoConfirmation(it)) },
-            modifier = Modifier.fillMaxWidth().testTag(GroupGameResponseTags.AutoConfirmation),
-            label = stringResource(Res.string.game_response_auto_confirmation),
-            enabled = !state.autoConfirmationUpdating,
-        )
-        if (state.autoConfirmationFailed) {
-            Text(
-                text = stringResource(Res.string.game_response_auto_confirmation_failed),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.errorForeground,
             )
         }
     }

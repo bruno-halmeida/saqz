@@ -59,7 +59,6 @@ data class GroupProfile(
 data class GroupGameConfig(
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionMode = PromotionMode.FIFO,
-    val autoConfirmEnabled: Boolean = false,
 )
 
 data class GroupFinanceDefaults(
@@ -114,7 +113,6 @@ data class GroupSetupForm(
     val monthlyDueDay: Int? = null,
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionMode = PromotionMode.FIFO,
-    val autoConfirmEnabled: Boolean = false,
     val pixKey: String? = null,
     val pixLabel: String? = null,
     /** Nulo = não enviar (o backend mantém o que já tem). */

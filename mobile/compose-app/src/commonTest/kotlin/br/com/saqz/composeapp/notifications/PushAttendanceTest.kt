@@ -13,7 +13,6 @@ import br.com.saqz.groups.domain.attendance.AttendanceMutation
 import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
-import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
 import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
@@ -129,7 +128,6 @@ class PushAttendanceTest {
         override suspend fun override(groupId: GroupId, gameId: String, command: OverrideAttendanceCommand) = unused()
         override suspend fun capacity(groupId: GroupId, gameId: String, version: AttendanceVersionToken, command: AttendanceCapacityCommand) =
             unused()
-        override suspend fun updateAutoConfirmation(groupId: GroupId, command: AutoConfirmationCommand) = unused()
         private fun unused(): Nothing = error("not part of the push path")
     }
 }

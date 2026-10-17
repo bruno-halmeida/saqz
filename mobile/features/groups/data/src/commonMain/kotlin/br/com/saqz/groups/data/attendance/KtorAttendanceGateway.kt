@@ -19,8 +19,6 @@ import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
-import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
-import br.com.saqz.groups.domain.attendance.AutoConfirmationUpdate
 import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity
@@ -77,7 +75,6 @@ internal data class AttendanceDetailTransport(
     val capacity: Int,
     val declinedCount: Int = 0,
     val pendingCount: Int = 0,
-    val autoConfirmEnabled: Boolean = false,
 )
 
 @Serializable
@@ -152,12 +149,6 @@ internal data class AttendanceCapacityRequest(
     val requestId: String,
     val capacity: Int,
 )
-
-@Serializable
-internal data class AutoConfirmationRequest(val enabled: Boolean)
-
-@Serializable
-internal data class AutoConfirmationUpdateTransport(val enabled: Boolean)
 
 class KtorAttendanceGateway(
     private val network: AuthenticatedNetworkClient,
@@ -288,25 +279,11 @@ class KtorAttendanceGateway(
             )
         }.capacityResult()
 
-    override suspend fun updateAutoConfirmation(
-        groupId: GroupId,
-        command: AutoConfirmationCommand,
-    ): SaqzResult<AutoConfirmationUpdate, AttendanceError> =
-        network.execute(
-            HttpMethod.Put,
-            autoConfirmationRoute(groupId),
-            AutoConfirmationUpdateTransport.serializer(),
-            NetworkRequest(json.encodeToString(AutoConfirmationRequest(command.enabled))),
-        ).autoConfirmationResult()
-
     private fun attendanceRoute(groupId: GroupId, gameId: String) =
         "api/groups/${groupId.value}/games/$gameId/attendance"
 
     private fun rosterRoute(groupId: GroupId, gameId: String) =
         "${attendanceRoute(groupId, gameId)}/roster"
-
-    private fun autoConfirmationRoute(groupId: GroupId) =
-        "api/groups/${groupId.value}/athletes/me/auto-confirmation"
 }
 
 private fun String.safety() =
@@ -360,11 +337,6 @@ private fun NetworkResult<AttendanceCapacityTransport>.capacityResult() = when (
         ?.let { VersionedAttendanceCapacity(value.toDomain(), it) }
         ?.let { SaqzResult.Success(it) }
         ?: invalidResponse()
-}
-
-private fun NetworkResult<AutoConfirmationUpdateTransport>.autoConfirmationResult() = when (this) {
-    is NetworkResult.Success -> SaqzResult.Success(AutoConfirmationUpdate(value.enabled))
-    is NetworkResult.Failure -> SaqzResult.Failure(error.toDomain())
 }
 
 private fun NetworkResult.Success<*>.versionToken() = metadata.header(HttpHeaders.ETag)
@@ -437,7 +409,6 @@ private fun AttendanceDetailTransport.toDomain() = AttendanceDetail(
     capacity = capacity,
     declinedCount = declinedCount,
     pendingCount = pendingCount,
-    autoConfirmEnabled = autoConfirmEnabled,
 )
 
 private fun AttendanceMutationTransport.toDomain() = AttendanceMutation(

@@ -44,7 +44,6 @@ data class AttendanceDetail(
     val capacity: Int,
     val declinedCount: Int = 0,
     val pendingCount: Int = 0,
-    val autoConfirmEnabled: Boolean = false,
 )
 
 data class AttendanceRosterMember(
@@ -108,10 +107,6 @@ data class AttendanceCapacityCommand(
     val capacity: Int,
 )
 
-data class AutoConfirmationCommand(val enabled: Boolean)
-
-data class AutoConfirmationUpdate(val enabled: Boolean)
-
 data class AttendancePromotionCommand(
     val requestId: String,
     val memberId: String,
@@ -169,11 +164,6 @@ interface AttendanceGateway {
         version: AttendanceVersionToken,
         command: AttendanceCapacityCommand,
     ): SaqzResult<VersionedAttendanceCapacity, AttendanceError>
-
-    suspend fun updateAutoConfirmation(
-        groupId: GroupId,
-        command: AutoConfirmationCommand,
-    ): SaqzResult<AutoConfirmationUpdate, AttendanceError>
 
     // ponytail: corpo padrão para os fakes de teste existentes não mudarem; o único adapter real
     // (KtorAttendanceGateway) sobrescreve. Tirar o padrão se surgir um segundo adapter.

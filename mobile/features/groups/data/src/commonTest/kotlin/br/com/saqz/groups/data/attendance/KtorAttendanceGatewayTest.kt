@@ -10,7 +10,6 @@ import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
-import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
 import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity
@@ -70,14 +69,13 @@ class KtorAttendanceGatewayTest {
     fun `read maps authoritative counts`() = runTest {
         val detail = successDetail()
 
-        assertEquals(listOf(3, 21, 2, 24, 5, 7, true), listOf(
+        assertEquals(listOf(3, 21, 2, 24, 5, 7), listOf(
             detail.confirmedCount,
             detail.availableSpots,
             detail.waitlistCount,
             detail.capacity,
             detail.declinedCount,
             detail.pendingCount,
-            detail.autoConfirmEnabled,
         ))
     }
 
@@ -176,26 +174,6 @@ class KtorAttendanceGatewayTest {
             assertEquals("DECLINE", request.bodyJson()["intent"]?.jsonPrimitive?.content)
             mutationResponse()
         }.respond(GROUP, GAME, SelfAttendanceCommand(KEY, AttendanceIntent.Decline))
-    }
-
-    @Test
-    fun `auto confirmation uses own member route and enabled body`() = runTest {
-        val result = gateway { request ->
-            assertEquals(HttpMethod.Put, request.method)
-            assertEquals(
-                "/api/groups/group-1/athletes/me/auto-confirmation",
-                request.url.encodedPath,
-            )
-            assertEquals(true, request.bodyJson()["enabled"]?.jsonPrimitive?.boolean)
-            autoConfirmationResponse()
-        }.updateAutoConfirmation(GROUP, AutoConfirmationCommand(enabled = true))
-
-        assertEquals(
-            true,
-            assertIs<SaqzResult.Success<*>>(result).value.let {
-                it as br.com.saqz.groups.domain.attendance.AutoConfirmationUpdate
-            }.enabled,
-        )
     }
 
     @Test
@@ -487,9 +465,6 @@ class KtorAttendanceGatewayTest {
 
     private fun MockRequestHandleScope.capacityResponse(etag: String = "\"8\"") =
         respond(CAPACITY_JSON, headers = versionedHeaders(etag))
-
-    private fun MockRequestHandleScope.autoConfirmationResponse(enabled: Boolean = true) =
-        respond("{\"enabled\":$enabled}", headers = jsonHeaders())
 
     private fun MockRequestHandleScope.problemResponse(status: Int, code: String) = respond(
         """{"status":$status,"code":"$code","correlationId":"safe"}""",

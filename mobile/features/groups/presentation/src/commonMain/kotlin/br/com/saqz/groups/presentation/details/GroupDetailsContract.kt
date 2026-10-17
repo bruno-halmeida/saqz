@@ -45,10 +45,6 @@ data class GroupDetailsState(
     val rosterStale: Boolean = false,
     val rosterRefreshing: Boolean = false,
     val membershipType: AthleteMembershipType? = null,
-    val autoConfirmationVisible: Boolean = false,
-    val autoConfirmationEnabled: Boolean = false,
-    val autoConfirmationUpdating: Boolean = false,
-    val autoConfirmationFailed: Boolean = false,
     val confirmingLeave: Boolean = false,
     val leaving: Boolean = false,
     val leaveFailed: Boolean = false,
@@ -395,7 +391,6 @@ sealed interface GroupDetailsIntent {
 
     data class Respond(val intent: AttendanceIntent) : GroupDetailsIntent
 
-    data class ToggleAutoConfirmation(val enabled: Boolean) : GroupDetailsIntent
 }
 
 /**

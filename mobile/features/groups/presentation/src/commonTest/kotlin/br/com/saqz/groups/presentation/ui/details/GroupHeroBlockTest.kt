@@ -292,7 +292,7 @@ class GroupHeroBlockTest {
         inHero(GroupDetailsTags.HeroInvite).assertCountEquals(0)
         onAllNodesWithTag(GroupDetailsTags.ViewGame).assertCountEquals(0)
         onAllNodesWithTag(GroupGameResponseTags.Going).assertCountEquals(0)
-        onAllNodesWithTag(GroupGameResponseTags.AutoConfirmation).assertCountEquals(0)
+        onAllNodesWithText("Confirmar presença automaticamente").assertCountEquals(0)
     }
 
     @Test
@@ -388,27 +388,13 @@ class GroupHeroBlockTest {
     }
 
     @Test
-    fun autoConfirmationSwitchAsksToToggle() = runComposeUiTest {
-        val intents = mutableListOf<GroupDetailsIntent>()
-        setDetailsScreen(GroupHeroPreviewData.confirmed) { intents += it }
-
-        onNodeWithTag(GroupGameResponseTags.AutoConfirmation).performScrollTo().performClick()
-
-        assertEquals(GroupDetailsIntent.ToggleAutoConfirmation(false), intents.single())
-    }
-
-    @Test
-    fun autoConfirmationFailureIsExplainedAndUpdatingLocksTheSwitch() = runComposeUiTest {
-        setDetailsScreen(GroupHeroPreviewData.autoConfirmationFailed.copy(autoConfirmationUpdating = true))
-
-        onNodeWithText("Não foi possível atualizar a confirmação automática. Tente novamente.").assertExists()
-        onNodeWithTag(GroupGameResponseTags.AutoConfirmation).assertIsNotEnabled()
-    }
-
-    @Test
-    fun dayMemberHasNoAutoConfirmation() = runComposeUiTest {
-        setDetailsScreen(GroupHeroPreviewData.dayMemberFee)
-        onAllNodesWithTag(GroupGameResponseTags.AutoConfirmation).assertCountEquals(0)
+    fun heroNeverOffersAutoConfirmation() = runComposeUiTest {
+        listOf(GroupHeroPreviewData.confirmed, GroupHeroPreviewData.pending, GroupHeroPreviewData.dayMemberFee, GroupHeroPreviewData.adminConfirmed)
+            .forEach { state ->
+                setDetailsScreen(state)
+                onAllNodesWithText("Confirmar presença automaticamente").assertCountEquals(0)
+                onAllNodesWithText("Não foi possível atualizar a confirmação automática. Tente novamente.").assertCountEquals(0)
+            }
     }
 
     @Test

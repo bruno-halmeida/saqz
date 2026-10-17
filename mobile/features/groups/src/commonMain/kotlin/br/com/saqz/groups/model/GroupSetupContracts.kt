@@ -49,7 +49,6 @@ data class GroupSetupForm(
     val monthlyDueDay: Int? = null,
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionMode = PromotionMode.FIFO,
-    val autoConfirmEnabled: Boolean = false,
     /** Nulo quando o backend não manda o campo: a tela esconde o seletor e o PUT não o envia. */
     val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
 ) {

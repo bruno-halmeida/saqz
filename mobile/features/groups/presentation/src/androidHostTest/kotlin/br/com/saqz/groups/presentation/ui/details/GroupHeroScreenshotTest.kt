@@ -81,10 +81,6 @@ class GroupHeroScreenshotTest {
 
     @Test fun noAddress() = capture("group-hero-no-address", GroupHeroPreviewData.noAddress)
 
-    @Test fun autoConfirmationFailed() = capture("group-hero-auto-failed", GroupHeroPreviewData.autoConfirmationFailed)
-
-    @Test fun autoConfirmationUpdating() = capture("group-hero-auto-updating", GroupHeroPreviewData.autoConfirmationUpdating)
-
     @Test
     @Config(qualifiers = "+h1400dp")
     fun athleteIntro() = capture("group-hero-athlete-intro", GroupHeroPreviewData.athleteIntro)

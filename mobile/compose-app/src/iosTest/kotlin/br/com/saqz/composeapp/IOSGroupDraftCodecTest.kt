@@ -32,7 +32,6 @@ class IOSGroupDraftCodecTest {
                 composition = GroupComposition.MIXED,
                 mensalistaPriority = false,
                 promotionMode = PromotionMode.MANUAL,
-                autoConfirmEnabled = true,
             ),
         )
 
@@ -51,18 +50,30 @@ class IOSGroupDraftCodecTest {
                 name = "Vôlei",
                 mensalistaPriority = false,
                 promotionMode = PromotionMode.MANUAL,
-                autoConfirmEnabled = true,
             ),
         )
         val oldPayload = codec.encodeSetup(draft)
             .replace(",\"mensalistaPriority\":false", "")
             .replace(",\"promotionMode\":\"MANUAL\"", "")
-            .replace(",\"autoConfirmEnabled\":true", "")
 
         val form = codec.decodeSetup(oldPayload).form
         assertTrue(form.mensalistaPriority)
         assertEquals(PromotionMode.FIFO, form.promotionMode)
-        assertTrue(form.autoConfirmEnabled)
+    }
+
+    @Test
+    fun `draft saved by an old app with the auto confirm switch still decodes and drops it`() {
+        val draft = GroupSetupDraft(
+            resource = GroupDraftResource.UPDATE_GROUP,
+            groupId = GROUP,
+            groupVersion = 7,
+            etag = "\"7\"",
+            commandKey = KEY,
+            form = GroupSetupForm(name = "Vôlei", promotionMode = PromotionMode.MANUAL),
+        )
+        val oldPayload = codec.encodeSetup(draft).replace(",\"promotionMode\":\"MANUAL\"", ",\"promotionMode\":\"MANUAL\",\"autoConfirmEnabled\":true")
+
+        assertEquals(draft, codec.decodeSetup(oldPayload))
     }
 
     @Test

@@ -265,7 +265,6 @@ class WebGroupDraftStoresTest {
             defaultCapacity = 24,
             monthlyFeeCents = 7000,
             monthlyDueDay = 10,
-            autoConfirmEnabled = false,
         ),
     )
 

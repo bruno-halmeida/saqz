@@ -61,8 +61,6 @@ import br.com.saqz.groups.presentation.ui.confirmationLeadLabel
 import br.com.saqz.groups.presentation.ui.durationLabel
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
-import br.com.saqz.groups.resources.group_game_config_auto_confirm_hint
-import br.com.saqz.groups.resources.group_game_config_auto_confirm_label
 import br.com.saqz.groups.resources.group_game_config_confirmation_lead_label
 import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint_fifo_off
 import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint_fifo_on
@@ -774,11 +772,9 @@ internal fun GroupGameConfigSection(
     mensalistaPriority: Boolean,
     promotionMode: PromotionMode,
     confirmationLeadMinutes: Int?,
-    autoConfirmEnabled: Boolean,
     onMensalistaPriorityChange: (Boolean) -> Unit,
     onPromotionModeSelect: (PromotionMode) -> Unit,
     onConfirmationLeadSelect: (Int) -> Unit,
-    onAutoConfirmChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
@@ -835,19 +831,6 @@ internal fun GroupGameConfigSection(
                 label = { confirmationLeadLabel(it) },
                 onSelect = onConfirmationLeadSelect,
                 modifier = Modifier.testTag(GroupSetupTags.GameConfigConfirmationLead),
-            )
-        }
-        SaqzCard {
-            SaqzSwitch(
-                checked = autoConfirmEnabled,
-                onCheckedChange = onAutoConfirmChange,
-                label = stringResource(Res.string.group_game_config_auto_confirm_label),
-                modifier = Modifier.testTag(GroupSetupTags.AutoConfirm),
-            )
-            Text(
-                text = stringResource(Res.string.group_game_config_auto_confirm_hint),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.textSecondary,
             )
         }
     }

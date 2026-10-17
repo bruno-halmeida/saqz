@@ -22,8 +22,6 @@ import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
-import br.com.saqz.groups.domain.attendance.AutoConfirmationCommand
-import br.com.saqz.groups.domain.attendance.AutoConfirmationUpdate
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity
 import br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation
@@ -329,8 +327,6 @@ class FakeAttendanceGateway(
         SaqzResult.Success(sampleVersionedAttendanceMutation()),
     var capacityResult: SaqzResult<VersionedAttendanceCapacity, AttendanceError> =
         SaqzResult.Success(sampleVersionedAttendanceCapacity()),
-    var autoConfirmationResult: SaqzResult<AutoConfirmationUpdate, AttendanceError> =
-        SaqzResult.Success(AutoConfirmationUpdate(false)),
 ) : AttendanceGateway {
     var readCalls = 0
     var rosterCalls = 0
@@ -394,11 +390,6 @@ class FakeAttendanceGateway(
         lastCapacityCommand = command
         return capacityDeferred?.await() ?: capacityResult
     }
-
-    override suspend fun updateAutoConfirmation(
-        groupId: GroupId,
-        command: AutoConfirmationCommand,
-    ): SaqzResult<AutoConfirmationUpdate, AttendanceError> = autoConfirmationResult
 }
 
 class FakeGroupMembershipGateway(

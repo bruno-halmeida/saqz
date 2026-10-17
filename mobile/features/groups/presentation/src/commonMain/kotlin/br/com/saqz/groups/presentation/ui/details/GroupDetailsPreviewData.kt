@@ -151,8 +151,6 @@ internal object GroupDetailsPreviewData {
         attendance = attendance,
         memberResponse = GroupDetailsResponseUi(GroupDetailsResponseStatus.Confirmed),
         membershipType = AthleteMembershipType.MENSALISTA,
-        autoConfirmationVisible = true,
-        autoConfirmationEnabled = true,
         venue = venue,
         latestNotice = NoticeUi(
             author = "Lucas",
@@ -173,7 +171,6 @@ internal object GroupDetailsPreviewData {
         nextGame = null,
         attendance = null,
         memberResponse = null,
-        autoConfirmationVisible = false,
     )
 
     val memberOwnChargesLoading = member.copy(ownCharges = OwnChargesUi(isLoading = true))

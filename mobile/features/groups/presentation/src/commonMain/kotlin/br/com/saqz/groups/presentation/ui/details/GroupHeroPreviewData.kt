@@ -36,9 +36,9 @@ internal object GroupHeroPreviewData {
 
     // Membro
     val confirmed = GroupDetailsPreviewData.member.copy(nextGame = game, memberResponse = confirmedResponse)
-    val pending = confirmed.copy(memberResponse = null, autoConfirmationEnabled = false)
+    val pending = confirmed.copy(memberResponse = null)
     val confirmedToast = confirmed.copy(toast = GroupDetailsToast.Confirmed)
-    val responding = confirmed.copy(responding = true, autoConfirmationEnabled = false)
+    val responding = confirmed.copy(responding = true)
     val declined = pending.copy(memberResponse = GroupDetailsResponseUi(GroupDetailsResponseStatus.Declined))
     val responseFailed = pending.copy(responseFailed = true)
     val closed = confirmed.copy(nextGame = closedGame)
@@ -50,16 +50,13 @@ internal object GroupHeroPreviewData {
     val noAddress = pending.copy(nextGame = game.copy(address = ""))
     val dayMemberFee = pending.copy(
         membershipType = AthleteMembershipType.AVULSO,
-        autoConfirmationVisible = false,
         nextGame = game.copy(hasGameFee = true),
     )
     val dayMemberNoFee = dayMemberFee.copy(nextGame = game)
     val rosterStale = confirmed.copy(rosterStale = true)
     val rosterRefreshing = rosterStale.copy(rosterRefreshing = true)
     val mapFailed = confirmed.copy(mapFailed = true)
-    val autoConfirmationFailed = confirmed.copy(autoConfirmationEnabled = false, autoConfirmationFailed = true)
-    val autoConfirmationUpdating = confirmed.copy(autoConfirmationUpdating = true)
-    val athleteIntro = confirmed.copy(athleteIntroVisible = true, autoConfirmationVisible = false)
+    val athleteIntro = confirmed.copy(athleteIntroVisible = true)
     val noGame = GroupDetailsPreviewData.memberNoGame
 
     val reserve = confirmed.copy(
@@ -69,7 +66,6 @@ internal object GroupHeroPreviewData {
             kind = HomeWaitlistKind.Reserva,
             rows = listOf(HomeWaitlistRowUi("Bruna Silva", 1, isSelf = true)),
         ),
-        autoConfirmationVisible = false,
     )
     val dayMemberList = reserve.copy(
         nextGame = game,
@@ -91,8 +87,6 @@ internal object GroupHeroPreviewData {
         memberResponse = confirmedResponse,
         attendance = AttendanceSummaryUi(confirmedCount = 10, capacity = 12, going = 10, notGoing = 1, pending = 1, availableSpots = 2),
         membershipType = AthleteMembershipType.MENSALISTA,
-        autoConfirmationVisible = true,
-        autoConfirmationEnabled = true,
     )
     val adminClosed = adminPending.copy(
         nextGame = closedGame,

@@ -203,6 +203,15 @@ class GroupSetupScreenTest {
     )
 
     @Test
+    fun gameConfigHasNoAutoConfirmationOption() = runComposeUiTest {
+        setContent { SaqzTheme { GroupSetupScreen(monthlyState(), {}, {}) } }
+
+        onNodeWithTag(GroupSetupTags.MonthlyLateJoinPolicy).performScrollTo().assertExists()
+        onNodeWithText("Confirmar mensalistas automaticamente").assertDoesNotExist()
+        onNodeWithText("Mensalistas podem ativar confirmação automática de presença.").assertDoesNotExist()
+    }
+
+    @Test
     fun monthlyPolicyShowsThreeOptionsAndReportsTheChosenOne() = runComposeUiTest {
         val intents = mutableListOf<GroupSetupIntent>()
         setContent { SaqzTheme { GroupSetupScreen(monthlyState(), { intents += it }, {}) } }

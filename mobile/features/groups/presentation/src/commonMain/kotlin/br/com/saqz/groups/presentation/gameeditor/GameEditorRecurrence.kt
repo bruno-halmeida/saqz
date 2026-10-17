@@ -69,7 +69,6 @@ fun recurrenceProfileForm(group: Group, venue: GameVenue?, slot: GroupRegularSlo
         monthlyDueDay = group.financeDefaults?.monthlyDueDay,
         mensalistaPriority = group.gameConfig.mensalistaPriority,
         promotionMode = group.gameConfig.promotionMode,
-        autoConfirmEnabled = group.gameConfig.autoConfirmEnabled,
         pixKey = profile.pixKey,
         pixLabel = profile.pixLabel,
     ).cleaned()

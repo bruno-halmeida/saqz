@@ -13,6 +13,4 @@
     <string name="group_game_config_promotion_fifo">Ordem de chegada</string>
     <string name="group_game_config_promotion_manual">Escolha manual</string>
     <string name="group_game_config_confirmation_lead_label">Prazo de confirmação padrão</string>
-    <string name="group_game_config_auto_confirm_label">Confirmar mensalistas automaticamente</string>
-    <string name="group_game_config_auto_confirm_hint">Mensalistas podem ativar confirmação automática de presença.</string>
 </resources>

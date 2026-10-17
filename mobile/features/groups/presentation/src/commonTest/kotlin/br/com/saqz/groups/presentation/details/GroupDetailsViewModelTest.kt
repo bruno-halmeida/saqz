@@ -35,7 +35,6 @@ import br.com.saqz.groups.presentation.FakeGroupOnboardingMemory
 import br.com.saqz.groups.presentation.FakeGroupWhatsAppGateway
 import br.com.saqz.groups.presentation.whatsappbinding.WhatsAppAvailability
 import kotlinx.coroutines.launch
-import br.com.saqz.groups.domain.group.GroupGameConfig
 import br.com.saqz.groups.domain.group.GroupTimeZone
 import br.com.saqz.groups.presentation.FakeAthleteFinanceGateway
 import br.com.saqz.groups.presentation.FakeAthleteGateway
@@ -829,10 +828,8 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
-    fun `next game loads response card and eligible auto confirmation`() = runTest {
-        val group = sampleGroup(role = GroupRole.ATHLETE).copy(
-            gameConfig = GroupGameConfig(autoConfirmEnabled = true),
-        )
+    fun `next game loads response card`() = runTest {
+        val group = sampleGroup(role = GroupRole.ATHLETE)
         val vm = viewModel(
             groupGateway = FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(group))),
             gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
@@ -840,7 +837,6 @@ class GroupDetailsViewModelTest {
                 detailResult = SaqzResult.Success(
                     sampleAttendanceDetail().copy(
                         ownAttendance = AttendanceEntry("me", AttendanceStatus.Confirmed, version = 1),
-                        autoConfirmEnabled = true,
                     ),
                 ),
             ),
@@ -849,8 +845,6 @@ class GroupDetailsViewModelTest {
 
         assertEquals("game-1", vm.state.value.nextGame?.gameId)
         assertEquals(GroupDetailsResponseStatus.Confirmed, vm.state.value.memberResponse?.status)
-        assertTrue(vm.state.value.autoConfirmationVisible, "switch should be visible")
-        assertTrue(vm.state.value.autoConfirmationEnabled, "persisted switch value should load")
         assertEquals(8, vm.state.value.attendance?.going)
         assertEquals(4, vm.state.value.nextGame?.availableSpots)
     }
@@ -1003,9 +997,7 @@ class GroupDetailsViewModelTest {
 
     @Test
     fun `owner responds attendance like any athlete`() = runTest {
-        val group = sampleGroup(role = GroupRole.OWNER).copy(
-            gameConfig = GroupGameConfig(autoConfirmEnabled = true),
-        )
+        val group = sampleGroup(role = GroupRole.OWNER)
         val attendance = FakeAttendanceGateway()
         val vm = viewModel(
             groupGateway = FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(group))),
@@ -1015,7 +1007,6 @@ class GroupDetailsViewModelTest {
         )
 
         assertTrue(vm.state.value.isAdmin, "owner still administers the group")
-        assertTrue(vm.state.value.autoConfirmationVisible, "mensalista owner keeps the auto confirmation switch")
 
         vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
 
@@ -1112,52 +1103,6 @@ class GroupDetailsViewModelTest {
         assertTrue(game.responseOpen)
         assertFalse(vm.state.value.responseFailed)
         assertEquals(1, attendance.respondCalls)
-    }
-
-    @Test
-    fun `auto confirmation failure rolls back optimistic switch`() = runTest {
-        val group = sampleGroup(role = GroupRole.ATHLETE).copy(
-            gameConfig = GroupGameConfig(autoConfirmEnabled = true),
-        )
-        val attendance = FakeAttendanceGateway(
-            autoConfirmationResult = SaqzResult.Failure(AttendanceError.Data(DataError.Connectivity)),
-        )
-        val vm = viewModel(
-            groupGateway = FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(group))),
-            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
-            attendanceGateway = attendance,
-            athleteGateway = monthlyAthleteGateway(),
-        )
-        attendance.detailResult = SaqzResult.Failure(AttendanceError.Data(DataError.Connectivity))
-
-        vm.onIntent(GroupDetailsIntent.ToggleAutoConfirmation(true))
-
-        assertFalse(vm.state.value.autoConfirmationEnabled)
-        assertTrue(vm.state.value.autoConfirmationFailed)
-    }
-
-    @Test
-    fun `auto confirmation transport failure reconciles a persisted toggle`() = runTest {
-        val group = sampleGroup(role = GroupRole.ATHLETE).copy(
-            gameConfig = GroupGameConfig(autoConfirmEnabled = true),
-        )
-        val attendance = FakeAttendanceGateway(
-            autoConfirmationResult = SaqzResult.Failure(AttendanceError.Data(DataError.Connectivity)),
-        )
-        val vm = viewModel(
-            groupGateway = FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(group))),
-            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
-            attendanceGateway = attendance,
-            athleteGateway = monthlyAthleteGateway(),
-        )
-        attendance.detailResult = SaqzResult.Success(sampleAttendanceDetail().copy(autoConfirmEnabled = true))
-
-        vm.onIntent(GroupDetailsIntent.ToggleAutoConfirmation(true))
-
-        assertTrue(vm.state.value.autoConfirmationEnabled)
-        assertFalse(vm.state.value.autoConfirmationFailed)
-        assertFalse(vm.state.value.autoConfirmationUpdating)
-        assertEquals(2, attendance.readCalls)
     }
 
     @Test

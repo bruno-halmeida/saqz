@@ -141,6 +141,7 @@ private data class IOSPersistedGroupSetupForm(
     val monthlyDueDay: Int? = null,
     val mensalistaPriority: Boolean = true,
     val promotionMode: IOSPersistedPromotionMode = IOSPersistedPromotionMode.FIFO,
+    // Rascunhos antigos ainda trazem o campo (o decoder rejeita chave desconhecida); é lido e descartado (DEB-040).
     val autoConfirmEnabled: Boolean = true,
 )
 
@@ -257,7 +258,6 @@ private fun GroupSetupForm.toIOSPersisted() = IOSPersistedGroupSetupForm(
     monthlyDueDay,
     mensalistaPriority,
     IOSPersistedPromotionMode.valueOf(promotionMode.name),
-    autoConfirmEnabled,
 )
 
 private fun IOSPersistedGroupSetupForm.toDomain() = GroupSetupForm(
@@ -286,7 +286,6 @@ private fun IOSPersistedGroupSetupForm.toDomain() = GroupSetupForm(
     monthlyDueDay,
     mensalistaPriority,
     PromotionMode.valueOf(promotionMode.name),
-    autoConfirmEnabled,
 )
 
 private fun MonthlyChargeDraft.toIOSPersisted() = IOSPersistedMonthlyChargeDraft(

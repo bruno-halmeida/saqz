@@ -164,14 +164,13 @@ class KtorGroupGatewayTest {
                 defaultConfirmationLeadMinutes = 720,
                 mensalistaPriority = false,
                 promotionMode = PromotionMode.MANUAL,
-                autoConfirmEnabled = true,
             )
             fixture { req ->
                 val body = req.bodyJson()
                 assertEquals(720, body["defaultConfirmationLeadMinutes"]?.jsonPrimitive?.int)
                 assertEquals(false, body["mensalistaPriority"]?.jsonPrimitive?.boolean)
                 assertEquals("MANUAL", body["promotionMode"]?.jsonPrimitive?.content)
-                assertEquals(true, body["autoConfirmEnabled"]?.jsonPrimitive?.boolean)
+                assertEquals(null, body["autoConfirmEnabled"])
                 group()
             }.gateway.updateProfile(UpdateGroupProfileCommand(GroupId(ID), GroupVersionToken("\"6\""), form))
         }
@@ -242,7 +241,6 @@ class KtorGroupGatewayTest {
                 .group
             assertEquals(true, g.gameConfig.mensalistaPriority)
             assertEquals(PromotionMode.FIFO, g.gameConfig.promotionMode)
-            assertEquals(false, g.gameConfig.autoConfirmEnabled)
         }
 
     @Test fun `read maps game config when present`() =
@@ -260,7 +258,6 @@ class KtorGroupGatewayTest {
                 .group
             assertEquals(false, g.gameConfig.mensalistaPriority)
             assertEquals(PromotionMode.MANUAL, g.gameConfig.promotionMode)
-            assertEquals(true, g.gameConfig.autoConfirmEnabled)
         }
 
     @Test fun `complete response maps nested values`() =

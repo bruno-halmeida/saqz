@@ -113,11 +113,9 @@ class GroupSetupScreenshotTest {
             mensalistaPriority = false,
             promotionMode = PromotionMode.MANUAL,
             confirmationLeadMinutes = 1_440,
-            autoConfirmEnabled = true,
             onMensalistaPriorityChange = {},
             onPromotionModeSelect = {},
             onConfirmationLeadSelect = {},
-            onAutoConfirmChange = {},
         )
     }
 
@@ -137,11 +135,9 @@ class GroupSetupScreenshotTest {
             mensalistaPriority = true,
             promotionMode = PromotionMode.FIFO,
             confirmationLeadMinutes = GroupSetupDefaults.ConfirmationLeadMinutes,
-            autoConfirmEnabled = false,
             onMensalistaPriorityChange = {},
             onPromotionModeSelect = {},
             onConfirmationLeadSelect = {},
-            onAutoConfirmChange = {},
         )
     }
 

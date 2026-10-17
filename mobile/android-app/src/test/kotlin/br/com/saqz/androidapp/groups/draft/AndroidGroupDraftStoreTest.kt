@@ -24,12 +24,21 @@ class AndroidGroupDraftStoreTest {
         f.preferences.values[key] = f.preferences.values.getValue(key)
             .replace(",\"mensalistaPriority\":false", "")
             .replace(",\"promotionMode\":\"MANUAL\"", "")
-            .replace(",\"autoConfirmEnabled\":true", "")
 
         val form = success(f.store.readSetup(GroupDraftKey(GroupDraftResource.UPDATE_GROUP, GROUP))).form
         assertTrue(form.mensalistaPriority)
         assertEquals(PromotionMode.FIFO, form.promotionMode)
-        assertTrue(form.autoConfirmEnabled)
+    }
+
+    @Test fun setupDraftSavedByAnOldAppWithTheAutoConfirmSwitchStillDecodesAndDropsIt() {
+        val f = fixture()
+        val draft = setup()
+        assertTrue(f.store.writeSetup(draft))
+        val key = f.preferences.values.keys.single()
+        f.preferences.values[key] = f.preferences.values.getValue(key)
+            .replace(",\"promotionMode\":\"MANUAL\"", ",\"promotionMode\":\"MANUAL\",\"autoConfirmEnabled\":true")
+
+        assertEquals(draft, success(f.store.readSetup(GroupDraftKey(GroupDraftResource.UPDATE_GROUP, GROUP))))
     }
 
     @Test fun gameDraftRoundTripsExactResourceEtagKeyAndAllowedValues() {
@@ -165,7 +174,6 @@ class AndroidGroupDraftStoreTest {
                     monthlyDueDay = 10,
                     mensalistaPriority = false,
                     promotionMode = PromotionMode.MANUAL,
-                    autoConfirmEnabled = true,
                 ),
         )
 

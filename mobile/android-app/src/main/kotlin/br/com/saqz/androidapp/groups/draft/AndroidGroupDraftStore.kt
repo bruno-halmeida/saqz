@@ -148,6 +148,7 @@ private data class PersistedGroupSetupForm(
     val monthlyDueDay: Int? = null,
     val mensalistaPriority: Boolean = true,
     val promotionMode: PersistedPromotionMode = PersistedPromotionMode.FIFO,
+    // Rascunhos antigos ainda trazem o campo (o decoder rejeita chave desconhecida); é lido e descartado (DEB-040).
     val autoConfirmEnabled: Boolean = true,
 )
 
@@ -444,7 +445,6 @@ private fun GroupSetupForm.toPersisted() = PersistedGroupSetupForm(
     monthlyDueDay,
     mensalistaPriority,
     PersistedPromotionMode.valueOf(promotionMode.name),
-    autoConfirmEnabled,
 )
 
 private fun PersistedGroupSetupForm.toDomain() = GroupSetupForm(
@@ -473,7 +473,6 @@ private fun PersistedGroupSetupForm.toDomain() = GroupSetupForm(
     monthlyDueDay,
     mensalistaPriority,
     PromotionMode.valueOf(promotionMode.name),
-    autoConfirmEnabled,
 )
 
 private fun MonthlyChargeDraft.toPersisted() = PersistedMonthlyChargeDraft(
