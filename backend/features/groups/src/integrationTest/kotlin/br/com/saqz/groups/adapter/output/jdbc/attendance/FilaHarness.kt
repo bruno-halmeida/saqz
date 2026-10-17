@@ -62,8 +62,8 @@ internal class FilaHarness(owner: Any, private val clock: () -> Instant = { Inst
 
     fun encerrarPrazo() = execute("UPDATE games SET confirmation_deadline = now() - interval '1 minute' WHERE id='$game'")
 
-    private fun repo() = JdbcAttendanceCommandRepository(dataSource, JdbcAttendanceChangeNotice(dataSource))
-    private fun cobrancas() = AttendanceChargeAdapter(ChargeTransactions(JdbcTransactionRunner(dataSource), JdbcChargeTransactionRepository(dataSource)) { clock() })
+    fun repo() = JdbcAttendanceCommandRepository(dataSource, JdbcAttendanceChangeNotice(dataSource))
+    fun cobrancas() = AttendanceChargeAdapter(ChargeTransactions(JdbcTransactionRunner(dataSource), JdbcChargeTransactionRepository(dataSource)) { clock() })
     fun respostas() = RespondAttendance(JdbcTransactionRunner(dataSource), repo(), cobrancas(), clock)
     fun convidados() = GameGuests(JdbcTransactionRunner(dataSource), repo(), respostas(), clock)
     fun liberar() = ReleaseMemberAttendance(repo(), cobrancas(), clock)

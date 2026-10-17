@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.attendance
 
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.application.game.GameCapacityAdjuster
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.AttendanceSource
@@ -29,7 +30,11 @@ class AdjustGameCapacity(
     private val charges: AttendanceChargePort,
     private val now: () -> Instant,
     private val ids: () -> UUID = UUID::randomUUID,
-) {
+) : GameCapacityAdjuster {
+    /** O editor do jogo usa o mesmo caminho do "Ajustar vagas" (DEB-047). */
+    override fun adjust(actor: UUID, groupId: UUID, gameId: UUID, expectedVersion: Long, capacity: Int): CapacityCommandResult =
+        execute(actor, groupId, gameId, expectedVersion, capacity)
+
     fun execute(
         actorId: UUID,
         groupId: UUID,

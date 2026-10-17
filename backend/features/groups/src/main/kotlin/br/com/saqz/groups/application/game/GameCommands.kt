@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.game
 
+import br.com.saqz.groups.application.attendance.CapacityCommandResult
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.game.CreateGameInput
@@ -10,6 +11,7 @@ import br.com.saqz.groups.domain.game.GameDraftValidation
 import br.com.saqz.groups.domain.game.GameDraftValidator
 import br.com.saqz.groups.domain.game.GameLifecyclePolicy
 import br.com.saqz.groups.domain.game.GameMutation
+import br.com.saqz.groups.domain.game.GameSnapshot
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameTimingValidator
 import br.com.saqz.groups.domain.game.GameValidationError
@@ -34,6 +36,16 @@ interface GameCommandRepository {
     fun find(actor: UUID, groupId: UUID, gameId: UUID): GameCommandContext?
     fun create(game: Game): GameWriteResult
     fun update(game: Game, expectedVersion: Long): GameWriteResult
+}
+
+/** Mudança de vagas dentro da edição do jogo: o mesmo caminho do "Ajustar vagas" (PROM-006), com fila e diária (DEB-047). */
+fun interface GameCapacityAdjuster {
+    fun adjust(actor: UUID, groupId: UUID, gameId: UUID, expectedVersion: Long, capacity: Int): CapacityCommandResult
+}
+
+/** Aviso de mudança de dia, hora ou local de jogo publicado (DEB-046); roda na transação do salvamento. */
+fun interface GameScheduleChangeNotice {
+    fun changed(actor: UUID, before: GameSnapshot, after: Game)
 }
 
 enum class GameSideEffect {
@@ -100,25 +112,42 @@ class EditGame(
     private val repository: GameCommandRepository,
     private val sideEffects: GameSideEffectPort,
     private val clock: java.time.Clock = java.time.Clock.systemUTC(),
+    private val capacityAdjuster: GameCapacityAdjuster? = null,
+    private val scheduleNotice: GameScheduleChangeNotice = GameScheduleChangeNotice { _, _, _ -> },
 ) {
+    /** Desfaz a transação inteira quando o ajuste de vagas recusa depois de o resto já ter sido gravado. */
+    private class Rollback(val result: GameCommandResult) : RuntimeException(null, null, false, false)
+
     fun execute(
         actor: UUID,
         groupId: UUID,
         gameId: UUID,
         expectedVersion: Long,
         input: GameDraftInput,
-    ): GameCommandResult = transactionRunner.inTransaction {
-        val context = repository.find(actor, groupId, gameId) ?: return@inTransaction GameCommandResult.GameNotFound
-        if (!context.role.isOrganizer()) return@inTransaction context.role.denied()
-        if (context.game.version != expectedVersion) return@inTransaction GameCommandResult.VersionConflict
+    ): GameCommandResult = try {
+        transactionRunner.inTransaction { edit(actor, groupId, gameId, expectedVersion, input) }
+    } catch (rollback: Rollback) {
+        rollback.result
+    }
+
+    private fun edit(
+        actor: UUID,
+        groupId: UUID,
+        gameId: UUID,
+        expectedVersion: Long,
+        input: GameDraftInput,
+    ): GameCommandResult {
+        val context = repository.find(actor, groupId, gameId) ?: return GameCommandResult.GameNotFound
+        if (!context.role.isOrganizer()) return context.role.denied()
+        if (context.game.version != expectedVersion) return GameCommandResult.VersionConflict
         // Jogo que já passou do horário de início não é mais alterado.
         if (!context.game.snapshot.startsAt.isAfter(clock.instant()) ||
             !GameLifecyclePolicy.canMutate(context.game.status, GameMutation.EDIT)
         ) {
-            return@inTransaction GameCommandResult.InvalidTransition(context.game.status, GameMutation.EDIT)
+            return GameCommandResult.InvalidTransition(context.game.status, GameMutation.EDIT)
         }
         val snapshot = when (val validation = GameDraftValidator.validate(input)) {
-            is GameDraftValidation.Invalid -> return@inTransaction GameCommandResult.Invalid(validation.errors)
+            is GameDraftValidation.Invalid -> return GameCommandResult.Invalid(validation.errors)
             is GameDraftValidation.Valid -> validation.snapshot
         }
         // Só o que mudou é checado contra o relógio: reenviar o prazo antigo ao editar outro campo segue valendo.
@@ -126,13 +155,30 @@ class EditGame(
         val now = clock.instant()
         val timing = (if (snapshot.startsAt != current.startsAt) GameTimingValidator.startsAtInFuture(snapshot.startsAt, now) else emptyList()) +
             (if (snapshot.confirmationDeadline != current.confirmationDeadline) GameTimingValidator.deadlineNotInPast(snapshot.confirmationDeadline, now) else emptyList())
-        if (timing.isNotEmpty()) return@inTransaction GameCommandResult.Invalid(timing)
+        if (timing.isNotEmpty()) return GameCommandResult.Invalid(timing)
         repository.recurringConflict(groupId, snapshot.startsAt, excludingGameId = gameId)
-            ?.let { return@inTransaction GameCommandResult.ScheduleConflict(it) }
-        when (val write = repository.update(context.game.copy(snapshot = snapshot), expectedVersion)) {
+            ?.let { return GameCommandResult.ScheduleConflict(it) }
+        // Num jogo publicado a capacidade só muda pelo ajuste de vagas (fila, diária, avisos); o resto é gravado antes.
+        val adjustCapacity = capacityAdjuster != null && context.game.status == GameStatus.PUBLISHED &&
+            snapshot.capacity != current.capacity
+        val toWrite = if (adjustCapacity) snapshot.copy(capacity = current.capacity) else snapshot
+        return when (val write = repository.update(context.game.copy(snapshot = toWrite), expectedVersion)) {
             is GameWriteResult.Saved -> {
-                sideEffects.apply(write.game, actor, setOf(GameSideEffect.SCHEDULE_CHANGED))
-                GameCommandResult.Success(write.game)
+                var saved = write.game
+                if (adjustCapacity) {
+                    when (capacityAdjuster!!.adjust(actor, groupId, gameId, saved.version, snapshot.capacity)) {
+                        is CapacityCommandResult.Success -> saved = repository.find(actor, groupId, gameId)?.game ?: saved
+                        CapacityCommandResult.Conflict -> throw Rollback(GameCommandResult.VersionConflict)
+                        CapacityCommandResult.Frozen -> throw Rollback(GameCommandResult.InvalidTransition(saved.status, GameMutation.EDIT))
+                        CapacityCommandResult.InvalidCapacity ->
+                            throw Rollback(GameCommandResult.Invalid(listOf(GameValidationError("capacity", "out of range"))))
+                        CapacityCommandResult.Forbidden -> throw Rollback(GameCommandResult.AccessForbidden)
+                        CapacityCommandResult.Hidden -> throw Rollback(GameCommandResult.GameNotFound)
+                    }
+                }
+                sideEffects.apply(saved, actor, setOf(GameSideEffect.SCHEDULE_CHANGED))
+                if (saved.status == GameStatus.PUBLISHED && current.scheduleDiffers(snapshot)) scheduleNotice.changed(actor, current, saved)
+                GameCommandResult.Success(saved)
             }
             is GameWriteResult.ScheduleConflict -> GameCommandResult.ScheduleConflict(write.gameId)
             GameWriteResult.VersionConflict -> GameCommandResult.VersionConflict
@@ -140,6 +186,11 @@ class EditGame(
         }
     }
 }
+
+/** Dia, hora ou local: o que quem já respondeu precisa saber. Vagas, valor e recado não entram. */
+private fun GameSnapshot.scheduleDiffers(other: GameSnapshot): Boolean =
+    startsAt != other.startsAt || localDate != other.localDate || localTime != other.localTime || zoneId != other.zoneId ||
+        venue.name != other.venue.name || venue.address != other.venue.address || venue.court != other.venue.court
 
 class ChangeGameLifecycle(
     private val transactionRunner: TransactionRunner,
