@@ -58,6 +58,42 @@ class ContentModerationIntegrationTest {
         assertEquals("Ofendeu a turma", alert.details)
     }
 
+    @Test fun `the same report sent twice in a row is one record and one alert`() {
+        assertEquals(ModerationResult.Success, moderation.report(member, request(ReportTarget.USER, owner)))
+        assertEquals(ModerationResult.Success, moderation.report(member, request(ReportTarget.USER, owner)))
+        assertEquals(1L, count("content_reports"))
+        assertEquals(1, moderation.dispatchAlerts { }.sent)
+        assertEquals(0, moderation.dispatchAlerts { }.sent)
+    }
+
+    @Test fun `the same report sent at the same time is one record`() {
+        val start = java.util.concurrent.CountDownLatch(1)
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(6)
+        try {
+            val calls = (1..6).map {
+                pool.submit<ModerationResult> {
+                    start.await()
+                    moderation.report(member, request(ReportTarget.USER, owner))
+                }
+            }
+            start.countDown()
+            calls.forEach { assertEquals(ModerationResult.Success, it.get()) }
+        } finally {
+            pool.shutdown()
+        }
+        assertEquals(1L, count("content_reports"))
+    }
+
+    @Test fun `another reason is a new report and a resolved report can be reported again`() {
+        moderation.report(member, request(ReportTarget.USER, owner))
+        moderation.report(member, request(ReportTarget.USER, owner, reason = ReportReason.SPAM))
+        assertEquals(2L, count("content_reports"))
+
+        moderation.reports(openOnly = true, limit = 10).forEach { assertTrue(moderation.resolve(it.id)) }
+        moderation.report(member, request(ReportTarget.USER, owner))
+        assertEquals(3L, count("content_reports"))
+    }
+
     @Test fun `a failed alert stays queued and goes out on the next run`() {
         moderation.report(member, request(ReportTarget.GROUP, group))
         assertEquals(1, moderation.dispatchAlerts { error("smtp down") }.failed)

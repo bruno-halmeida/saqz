@@ -78,7 +78,13 @@ interface ContentModerationRepository {
 
     /** null quando o alvo não existe naquele grupo. */
     fun reportedContent(groupId: UUID, target: ReportTarget, targetId: UUID): ReportedContent?
-    fun saveReport(report: NewContentReport)
+
+    /**
+     * Grava a denúncia. A mesma pessoa denunciando o mesmo alvo pelo mesmo motivo enquanto a anterior
+     * ainda está aberta é repetição (toque duplo, reenvio): não grava de novo e devolve false, para a
+     * equipe receber um alerta só. Bloqueio (BLOCKED) já é deduplicado pelo próprio bloqueio.
+     */
+    fun saveReport(report: NewContentReport): Boolean
 
     /** Idempotente. true só quando o bloqueio é novo. */
     fun block(blockerId: UUID, blockedId: UUID): Boolean

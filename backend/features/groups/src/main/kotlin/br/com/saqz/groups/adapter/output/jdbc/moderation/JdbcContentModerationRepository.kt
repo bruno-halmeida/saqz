@@ -43,7 +43,24 @@ class JdbcContentModerationRepository(dataSource: DataSource) : ContentModeratio
             .optional().orElse(null)
     }
 
-    override fun saveReport(report: NewContentReport) {
+    override fun saveReport(report: NewContentReport): Boolean {
+        if (report.reason != ReportReason.BLOCKED) {
+            // Duas chamadas concorrentes não enxergam a linha uma da outra: a trava serializa as duas.
+            jdbc.sql("SELECT pg_advisory_xact_lock(hashtextextended(:key,0))")
+                .param("key", "content-report:${report.reporterId}:${report.target}:${report.targetId}:${report.reason}")
+                .query { _, _ -> true }.single()
+            val open = jdbc.sql(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM content_reports
+                    WHERE reporter_id = :reporter AND target_type = :type AND target_id = :target
+                      AND reason = :reason AND resolved_at IS NULL)
+                """.trimIndent(),
+            ).param("reporter", report.reporterId).param("type", report.target.name)
+                .param("target", report.targetId).param("reason", report.reason.name)
+                .query(Boolean::class.java).single()
+            if (open) return false
+        }
         jdbc.sql(
             """
             INSERT INTO content_reports
@@ -55,6 +72,7 @@ class JdbcContentModerationRepository(dataSource: DataSource) : ContentModeratio
             .param("responsible", report.content.responsibleUserId)
             .param("excerpt", report.content.excerpt?.take(MAX_EXCERPT))
             .param("reason", report.reason.name).param("details", report.details).update()
+        return true
     }
 
     override fun block(blockerId: UUID, blockedId: UUID) = jdbc.sql(
