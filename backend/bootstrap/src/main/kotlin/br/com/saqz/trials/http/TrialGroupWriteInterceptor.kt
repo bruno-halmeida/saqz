@@ -26,6 +26,8 @@ class TrialGroupWriteInterceptor(
         if (request.method == "DELETE" && pattern == "/api/groups/{groupId}/memberships/me") return true
         // Quem ainda só pediu entrada não é membro: o cadastro de atleta do pedido não pode exigir vínculo.
         if (request.method == "PUT" && pattern == "/api/groups/{groupId}/entry-requests/me/athlete-profile") return true
+        // Desistir do pedido também não exige vínculo, e vale com o plano do organizador pausado (DEB-035).
+        if (request.method == "DELETE" && pattern == "/api/groups/{groupId}/entry-requests/me") return true
         val variables = request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE) as? Map<*, *>
         val rawGroup = variables?.get("groupId")?.toString() ?: return true
         val groupId = runCatching { UUID.fromString(rawGroup) }.getOrNull() ?: return true

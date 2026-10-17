@@ -84,6 +84,7 @@ import br.com.saqz.groups.application.membership.ChangeMemberRole
 import br.com.saqz.groups.application.membership.ListAccessMemberships
 import br.com.saqz.groups.application.entryrequest.ApproveEntryRequest
 import br.com.saqz.groups.application.entryrequest.ListEntryRequests
+import br.com.saqz.groups.application.entryrequest.CancelOwnEntryRequest
 import br.com.saqz.groups.application.entryrequest.RejectEntryRequest
 import br.com.saqz.groups.application.entryrequest.GetOwnEntryRequest
 import br.com.saqz.groups.application.entryrequest.SaveEntryRequestAthleteProfile
@@ -649,6 +650,12 @@ class AccessSessionConfiguration {
     ) = RejectEntryRequest(transaction, readRepository, repository, GroupAccessPolicy())
 
     @Bean
+    fun cancelOwnEntryRequest(
+        transaction: JdbcTransactionRunner,
+        repository: JdbcInviteRedemptionRepository,
+    ) = CancelOwnEntryRequest(transaction, repository)
+
+    @Bean
     fun saveEntryRequestAthleteProfile(
         transaction: JdbcTransactionRunner,
         readRepository: JdbcGroupReadRepository,
@@ -669,6 +676,7 @@ class AccessSessionConfiguration {
         rejectEntryRequest: RejectEntryRequest,
         saveEntryRequestAthleteProfile: SaveEntryRequestAthleteProfile,
         getOwnEntryRequest: GetOwnEntryRequest,
+        cancelOwnEntryRequest: CancelOwnEntryRequest,
     ) = AccessEntryRequestController(
         verifiedGroupActorResolver,
         listEntryRequests,
@@ -676,6 +684,7 @@ class AccessSessionConfiguration {
         rejectEntryRequest,
         saveEntryRequestAthleteProfile,
         getOwnEntryRequest,
+        cancelOwnEntryRequest,
     )
 
     @Bean

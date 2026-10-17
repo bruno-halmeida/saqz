@@ -9,6 +9,7 @@ import br.com.saqz.access.domain.AccessName as AccessUserName
 import br.com.saqz.groups.adapter.input.http.AccessEntryRequestController
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.entryrequest.ApproveEntryRequest
+import br.com.saqz.groups.application.entryrequest.CancelOwnEntryRequest
 import br.com.saqz.groups.application.entryrequest.EntryRequestRepository
 import br.com.saqz.groups.application.entryrequest.EntryRequestAthleteProfile
 import br.com.saqz.groups.application.entryrequest.GetOwnEntryRequest
@@ -260,7 +261,14 @@ class EntryRequestEndpointIntegrationTest {
             reject: RejectEntryRequest,
             saveProfile: SaveEntryRequestAthleteProfile,
             own: GetOwnEntryRequest,
-        ) = AccessEntryRequestController(verifiedGroupActorResolver(bootstrap), list, approve, reject, saveProfile, own)
+            cancelOwn: CancelOwnEntryRequest,
+        ) = AccessEntryRequestController(verifiedGroupActorResolver(bootstrap), list, approve, reject, saveProfile, own, cancelOwn)
+
+        @Bean
+        fun cancelOwnEntryRequest(
+            transaction: RecordingEntryRequestTransaction,
+            repository: RecordingEntryRequestRepository,
+        ) = CancelOwnEntryRequest(transaction, repository)
 
         companion object {
             val NOW: Instant = Instant.parse("2026-08-02T10:00:00Z")

@@ -147,6 +147,49 @@ class EntryRequestAthleteProfileEndpointIntegrationTest {
     }
 
     @Test
+    fun `cancelling the own request drops it with the stored registration, managers stop seeing it and a repeat is a no-op`() {
+        redeem("applicant")
+        put("applicant", "/api/groups/$group/entry-requests/me/athlete-profile", profile)
+        assertEquals(1, JsonList.size(json, send("owner", "GET", "/api/groups/$group/entry-requests").body()))
+
+        assertEquals(204, send("applicant", "DELETE", "/api/groups/$group/entry-requests/me").statusCode())
+
+        assertEquals(0, count("SELECT count(*) FROM group_entry_requests"))
+        assertEquals(0, JsonList.size(json, send("owner", "GET", "/api/groups/$group/entry-requests").body()))
+        assertEquals(404, send("applicant", "GET", "/api/groups/$group/entry-requests/me").statusCode())
+        assertEquals(204, send("applicant", "DELETE", "/api/groups/$group/entry-requests/me").statusCode())
+        assertEquals(0, count("SELECT count(*) FROM group_memberships WHERE user_id = '$applicant'"))
+        assertEquals(200, redeem("applicant").statusCode())
+        assertEquals(1, count("SELECT count(*) FROM group_entry_requests"))
+    }
+
+    @Test
+    fun `cancelling never touches the request of another person`() {
+        val other = sessionUser("other")
+        redeem("applicant")
+        redeem("other")
+        assertEquals(2, count("SELECT count(*) FROM group_entry_requests"))
+
+        assertEquals(204, send("other", "DELETE", "/api/groups/$group/entry-requests/me").statusCode())
+
+        assertEquals(1, count("SELECT count(*) FROM group_entry_requests WHERE user_id = '$applicant'"))
+        assertEquals(0, count("SELECT count(*) FROM group_entry_requests WHERE user_id = '$other'"))
+        assertEquals(204, send("applicant", "DELETE", "/api/groups/${UUID.randomUUID()}/entry-requests/me").statusCode())
+        assertEquals(1, count("SELECT count(*) FROM group_entry_requests WHERE user_id = '$applicant'"))
+        assertEquals(401, send(null, "DELETE", "/api/groups/$group/entry-requests/me").statusCode())
+    }
+
+    @Test
+    fun `cancelling the own request does not remove an existing member`() {
+        redeem("applicant")
+        assertEquals(200, send("owner", "POST", "/api/groups/$group/entry-requests/$applicant/approve").statusCode())
+
+        assertEquals(204, send("applicant", "DELETE", "/api/groups/$group/entry-requests/me").statusCode())
+
+        assertEquals(1, count("SELECT count(*) FROM group_memberships WHERE user_id = '$applicant'"))
+    }
+
+    @Test
     fun `invalid registration is rejected with the member endpoint's fields and stores nothing`() {
         redeem("applicant")
         val response = put(
@@ -170,6 +213,10 @@ class EntryRequestAthleteProfileEndpointIntegrationTest {
         assertEquals(404, put("owner", path, profile).statusCode())
         assertEquals(404, put("applicant", "/api/groups/${UUID.randomUUID()}/entry-requests/me/athlete-profile", profile).statusCode())
         assertEquals(401, put(null, path, profile).statusCode())
+    }
+
+    private object JsonList {
+        fun size(mapper: ObjectMapper, body: String): Int = mapper.readTree(body).size()
     }
 
     private fun sessionUser(name: String): UUID {

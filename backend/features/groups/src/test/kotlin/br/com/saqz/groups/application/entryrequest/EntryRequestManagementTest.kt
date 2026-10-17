@@ -212,6 +212,21 @@ class EntryRequestManagementTest {
     }
 
     @Test
+    fun `cancelling the own request deletes only the actor's row in a transaction and is idempotent`() {
+        val fixture = fixture(role = null)
+        val other = UUID.randomUUID()
+        fixture.entries.requests[other] = fixture.entries.request.copy(userId = other)
+
+        fixture.cancelOwn.execute(applicantId, groupId)
+        fixture.cancelOwn.execute(applicantId, groupId)
+
+        assertEquals(listOf(applicantId), fixture.entries.deleted)
+        assertTrue(applicantId !in fixture.entries.requests)
+        assertTrue(other in fixture.entries.requests)
+        assertEquals(2, fixture.transaction.calls)
+    }
+
+    @Test
     fun `applicant saves the athlete registration on the pending request`() {
         val fixture = fixture(role = null)
         val command = profile(nickname = "Bia", level = AthleteLevel.AVANCADO)
@@ -336,7 +351,10 @@ class EntryRequestManagementTest {
         val list = ListEntryRequests(read, entries, br.com.saqz.groups.domain.GroupAccessPolicy())
         val reject = RejectEntryRequest(transaction, read, entries, br.com.saqz.groups.domain.GroupAccessPolicy())
         val saveProfile = SaveEntryRequestAthleteProfile(transaction, read, entries)
-        return Fixture(list, approve, reject, saveProfile, GetOwnEntryRequest(read, entries), transaction, entries, membership, order)
+        return Fixture(
+            list, approve, reject, saveProfile, GetOwnEntryRequest(read, entries),
+            CancelOwnEntryRequest(transaction, entries), transaction, entries, membership, order,
+        )
     }
 
     private fun occupancy(openMembers: Set<UUID> = emptySet()) = GroupAthleteOccupancy(
@@ -350,6 +368,7 @@ class EntryRequestManagementTest {
         val reject: RejectEntryRequest,
         val saveProfile: SaveEntryRequestAthleteProfile,
         val own: GetOwnEntryRequest,
+        val cancelOwn: CancelOwnEntryRequest,
         val transaction: RecordingTransactionRunner,
         val entries: MemoryEntryRequestRepository,
         val membership: MemoryMembershipRepository,

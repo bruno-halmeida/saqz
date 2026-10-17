@@ -2,6 +2,7 @@ package br.com.saqz.groups.adapter.input.http
 
 import br.com.saqz.groups.application.entryrequest.ApproveEntryRequest
 import br.com.saqz.groups.application.entryrequest.ApproveEntryRequestResult
+import br.com.saqz.groups.application.entryrequest.CancelOwnEntryRequest
 import br.com.saqz.groups.application.entryrequest.EntryRequestAthleteProfile
 import br.com.saqz.groups.application.entryrequest.GetOwnEntryRequest
 import br.com.saqz.groups.application.entryrequest.GetOwnEntryRequestResult
@@ -81,6 +82,7 @@ class AccessEntryRequestController(
     private val rejectEntryRequest: RejectEntryRequest,
     private val saveEntryRequestAthleteProfile: SaveEntryRequestAthleteProfile,
     private val getOwnEntryRequest: GetOwnEntryRequest,
+    private val cancelOwnEntryRequest: CancelOwnEntryRequest,
 ) {
     @GetMapping("/api/groups/{groupId}/entry-requests")
     fun list(
@@ -151,6 +153,16 @@ class AccessEntryRequestController(
                 throw InvalidGroupRequestException(result.fieldErrors, status = 422)
             SaveEntryRequestAthleteProfileResult.Success -> Unit
         }
+    }
+
+    /** A pessoa desiste do próprio pedido; repetir devolve 204 de novo. Rota literal vence `{userId}`. */
+    @DeleteMapping("/api/groups/{groupId}/entry-requests/me")
+    fun cancelOwn(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @PathVariable groupId: String,
+    ): ResponseEntity<Void> {
+        cancelOwnEntryRequest.execute(actorResolver.resolve(identity), parseId(groupId))
+        return ResponseEntity.noContent().build()
     }
 
     @DeleteMapping("/api/groups/{groupId}/entry-requests/{userId}")
