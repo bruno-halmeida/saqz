@@ -195,7 +195,6 @@ data class GroupGameDefaults(
     val gameFeeCents: Long? = null,
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionMode = PromotionMode.FIFO,
-    val autoConfirmEnabled: Boolean = false,
 )
 
 sealed interface NullableGameFeeOverride {

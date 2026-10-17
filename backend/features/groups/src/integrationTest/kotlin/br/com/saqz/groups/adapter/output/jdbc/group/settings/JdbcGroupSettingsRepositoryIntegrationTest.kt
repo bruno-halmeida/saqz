@@ -224,7 +224,6 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
                     profile(
                         mensalistaPriority = true,
                         promotionMode = GroupPromotionMode.FIFO,
-                        autoConfirmEnabled = false,
                     ),
                 ),
             ),
@@ -243,7 +242,6 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         assertEquals(10, number("SELECT monthly_due_day FROM access_groups WHERE id = '$group'"))
         assertEquals(true, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '$group'"))
         assertEquals("FIFO", text("SELECT promotion_mode FROM access_groups WHERE id = '$group'"))
-        assertEquals(false, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '$group'"))
     }
 
     @Test
@@ -251,8 +249,7 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         val owner = insertUser("game-config-preserve-owner")
         val group = insertGroup(owner)
         execute(
-            "UPDATE access_groups SET mensalista_priority = false, promotion_mode = 'MANUAL', " +
-                "auto_confirm_enabled = true WHERE id = '$group'",
+            "UPDATE access_groups SET mensalista_priority = false, promotion_mode = 'MANUAL' WHERE id = '$group'",
         )
 
         assertIs<UpdateGroupSettingsResult.Success>(
@@ -261,7 +258,6 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
 
         assertEquals(false, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '$group'"))
         assertEquals("MANUAL", text("SELECT promotion_mode FROM access_groups WHERE id = '$group'"))
-        assertEquals(true, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '$group'"))
     }
 
     @Test
@@ -278,7 +274,6 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
                     profile(
                         mensalistaPriority = false,
                         promotionMode = GroupPromotionMode.MANUAL,
-                        autoConfirmEnabled = true,
                     ),
                 ),
             ),
@@ -286,7 +281,6 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
 
         assertEquals(false, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '$group'"))
         assertEquals("MANUAL", text("SELECT promotion_mode FROM access_groups WHERE id = '$group'"))
-        assertEquals(true, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '$group'"))
     }
 
     @Test
@@ -686,7 +680,6 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         regularSlots: List<RegularSlotInput> = emptyList(),
         mensalistaPriority: Boolean? = null,
         promotionMode: GroupPromotionMode? = null,
-        autoConfirmEnabled: Boolean? = null,
         pixKey: String? = null,
         pixLabel: String? = null,
     ) = GroupProfileDefaultsInput(
@@ -708,7 +701,6 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         monthlyDueDay = 10,
         mensalistaPriority = mensalistaPriority,
         promotionMode = promotionMode,
-        autoConfirmEnabled = autoConfirmEnabled,
         pixKey = pixKey,
         pixLabel = pixLabel,
     )

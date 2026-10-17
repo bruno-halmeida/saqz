@@ -83,6 +83,7 @@ data class GroupFinanceDefaultsReadResponse(
 data class GroupGameConfigReadResponse(
     val mensalistaPriority: Boolean,
     val promotionMode: PromotionMode,
+    // Sempre false (DEB-040): os apps 1.0.4–1.0.6 ainda leem o campo.
     val autoConfirmEnabled: Boolean,
 )
 
@@ -128,7 +129,7 @@ fun GroupView.toResponse() = GroupReadResponse(
     gameConfig = GroupGameConfigReadResponse(
         mensalistaPriority = gameConfig?.mensalistaPriority ?: true,
         promotionMode = gameConfig?.promotionMode ?: PromotionMode.FIFO,
-        autoConfirmEnabled = gameConfig?.autoConfirmEnabled ?: false,
+        autoConfirmEnabled = false,
     ),
     entryRequiresApproval = entryRequiresApproval,
 )

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.read
 
+import br.com.saqz.groups.adapter.input.http.toResponse
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.GroupRole
@@ -139,12 +140,21 @@ class GetGroupTest {
         val config = GroupGameConfigReadModel(
             mensalistaPriority = false,
             promotionMode = PromotionMode.MANUAL,
-            autoConfirmEnabled = true,
         )
 
         val result = fixture(snapshot(GroupRole.ATHLETE, gameConfig = config)).useCase.execute(actorId, groupId)
 
         assertEquals(config, (result as GetGroupResult.Success).group.gameConfig)
+    }
+
+    @Test
+    fun `a resposta da leitura do grupo devolve o interruptor de confirmacao automatica desligado`() {
+        val result = fixture(snapshot(GroupRole.ATHLETE, gameConfig = GroupGameConfigReadModel(true, PromotionMode.FIFO)))
+            .useCase.execute(actorId, groupId)
+
+        val response = (result as GetGroupResult.Success).group.toResponse()
+
+        assertEquals(false, response.gameConfig?.autoConfirmEnabled)
     }
 
     @Test

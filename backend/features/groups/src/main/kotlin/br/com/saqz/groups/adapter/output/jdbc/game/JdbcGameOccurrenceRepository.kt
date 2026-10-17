@@ -48,7 +48,6 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                     gameFeeCents = rs.getObject("default_game_fee_cents", java.lang.Long::class.java)?.toLong(),
                     mensalistaPriority = rs.getBoolean("mensalista_priority"),
                     promotionMode = PromotionMode.valueOf(rs.getString("promotion_mode")),
-                    autoConfirmEnabled = rs.getBoolean("auto_confirm_enabled"),
                 ),
             )
         }
@@ -199,7 +198,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
         const val CREATION_CONTEXT = """
             SELECT g.name, g.default_venue_id, g.default_capacity,
                    g.default_confirmation_lead_minutes, g.default_game_fee_cents,
-                   g.mensalista_priority, g.promotion_mode, g.auto_confirm_enabled,
+                   g.mensalista_priority, g.promotion_mode,
                    v.name AS venue_name, v.address AS venue_address, v.court AS venue_court,
                    COALESCE((SELECT s.duration_minutes FROM group_regular_slots s
                     WHERE s.group_id = g.id ORDER BY s.position, s.weekday, s.start_time LIMIT 1), g.default_duration_minutes) AS default_duration,

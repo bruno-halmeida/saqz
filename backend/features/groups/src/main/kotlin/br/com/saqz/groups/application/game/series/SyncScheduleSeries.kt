@@ -1,6 +1,5 @@
 package br.com.saqz.groups.application.game.series
 
-import br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort
 import br.com.saqz.groups.application.game.recurrence.GameIdFactory
 import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
 import br.com.saqz.groups.application.game.recurrence.creatableBetween
@@ -46,7 +45,6 @@ class SyncScheduleSeries(
     private val boundary: ApplySeriesBoundary,
     private val ids: GameIdFactory,
     private val clock: Clock,
-    private val autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { },
     private val horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
     private val release: SeriesOccurrenceRelease = SeriesOccurrenceRelease.None,
 ) : ScheduleSeriesSync {
@@ -152,7 +150,7 @@ class SyncScheduleSeries(
         val materialized = creatable.filterNot { it.startsAt in occupied }
             .map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, now) }
         val adopted = creatable.filter { it.startsAt in adoptable }
-        if (series.create(rule, materialized, adopted)) autoConfirmation.apply(materialized)
+        series.create(rule, materialized, adopted)
     }
 
     private fun lineageId(groupId: UUID, generation: Int) = derivedId(groupId, "series:$generation")

@@ -1,6 +1,5 @@
 package br.com.saqz.groups.application.game.series
 
-import br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort
 import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
 import br.com.saqz.groups.domain.game.GameSnapshot
 import br.com.saqz.groups.domain.game.GameStatus
@@ -64,7 +63,6 @@ class ApplySeriesBoundary(
     private val repository: SeriesBoundaryRepository,
     private val ids: () -> UUID,
     private val clock: Clock,
-    private val autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { },
     private val horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
 ) {
     fun onlyThis(command: OnlyThisBoundaryCommand): SeriesBoundaryResult {
@@ -104,12 +102,6 @@ class ApplySeriesBoundary(
             adopted = if (action == SeriesBoundaryAction.CANCEL) emptyList()
             else resolved.filter { it.startsAt > now && it.startsAt in adoptStartsAt },
         )
-        val result = repository.applyThisAndFuture(command)
-        if (command.action != SeriesBoundaryAction.CANCEL &&
-            (result == SeriesBoundaryResult.Applied || result == SeriesBoundaryResult.Replay)
-        ) {
-            autoConfirmation.apply(materialized)
-        }
-        return result
+        return repository.applyThisAndFuture(command)
     }
 }

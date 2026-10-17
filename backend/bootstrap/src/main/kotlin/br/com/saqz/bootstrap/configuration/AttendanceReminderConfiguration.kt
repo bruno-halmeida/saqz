@@ -1,6 +1,5 @@
 package br.com.saqz.bootstrap.configuration
 
-import br.com.saqz.groups.application.attendance.AutoConfirmAttendance
 import br.com.saqz.groups.application.communication.GroupCommunicationService
 import br.com.saqz.sharedkernel.job.JobLog
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -11,10 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(prefix = "saqz.notifications.reminder", name = ["enabled"], havingValue = "true")
 class AttendanceReminderConfiguration {
-    @Bean fun automaticAttendanceReminder(
-        autoConfirm: AutoConfirmAttendance,
-        reminders: GroupCommunicationService,
-    ) = AutomaticAttendanceReminder(autoConfirm, reminders)
+    @Bean fun automaticAttendanceReminder(reminders: GroupCommunicationService) = AutomaticAttendanceReminder(reminders)
 }
 
 /**
@@ -23,17 +19,12 @@ class AttendanceReminderConfiguration {
  * campos). A chave antiga `SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS` (fixedDelay de 7 h) deixou de valer: quem a
  * define em produção deve apagá-la e, para outro horário, definir `SAQZ_NOTIFICATIONS_REMINDER_CRON`.
  */
-class AutomaticAttendanceReminder(
-    private val autoConfirm: AutoConfirmAttendance,
-    private val reminders: GroupCommunicationService,
-) {
+class AutomaticAttendanceReminder(private val reminders: GroupCommunicationService) {
     @Scheduled(
         cron = "\${saqz.notifications.reminder.cron:0 0 8,11,14,17,20 * * *}",
         zone = "America/Sao_Paulo",
     )
     fun run() {
-        JobLog.cron("attendance_reminder", { autoConfirm.applyOpenGames() to reminders.remindAutomatically() }) {
-            mapOf("autoConfirmed" to it.first, "published" to it.second)
-        }
+        JobLog.cron("attendance_reminder", { reminders.remindAutomatically() }) { mapOf("published" to it) }
     }
 }

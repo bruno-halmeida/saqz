@@ -129,7 +129,6 @@ data class AttendanceDetail(
     val gameVersion: Long,
     val declinedCount: Int = 0,
     val pendingCount: Int = 0,
-    val autoConfirmEnabled: Boolean = false,
 )
 
 fun interface AttendanceDetailQuery {

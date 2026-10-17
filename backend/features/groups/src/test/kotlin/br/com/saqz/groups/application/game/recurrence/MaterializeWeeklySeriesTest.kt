@@ -47,18 +47,15 @@ class MaterializeWeeklySeriesTest {
         assertTrue(persisted.isEmpty())
     }
 
-    @Test fun `expired trial materializes no occurrences or automatic responses`() {
+    @Test fun `expired trial materializes no occurrences`() {
         val repository = IdentityRepository()
-        val responses = mutableListOf<MaterializedGameOccurrence>()
         val service = MaterializeWeeklySeries(
             RecordingTransaction(), repository, RecordingIds(),
             Clock.fixed(Instant.parse("2026-01-01T12:00:00Z"), ZoneOffset.UTC),
-            br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort { responses += it },
-            br.com.saqz.sharedkernel.subscription.GroupWriteAccess { false },
+            writeAccess = br.com.saqz.sharedkernel.subscription.GroupWriteAccess { false },
         )
         assertEquals(MaterializeWeeklySeriesResult.Success(0, 0), service.execute(rule(), DATE))
         assertTrue(repository.identities.isEmpty())
-        assertTrue(responses.isEmpty())
     }
 
     @Test fun `create materializes one bounded occurrence per identity`() {

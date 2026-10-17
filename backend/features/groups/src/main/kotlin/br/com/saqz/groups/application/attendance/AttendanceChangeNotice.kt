@@ -14,8 +14,8 @@ fun interface AttendanceChangeNotice {
 enum class AttendanceChangeKind { CONFIRMED, REMOVED }
 
 /**
- * Quando um evento merece aviso. Fora dele: a própria pessoa respondeu (SELF), a confirmação automática do
- * mensalista (SYSTEM sem estar na espera, que tem aviso próprio), a saída do grupo e a queda dos convidados
+ * Quando um evento merece aviso. Fora dele: a própria pessoa respondeu (SELF), a confirmação do sistema sem
+ * a pessoa estar na espera, a saída do grupo e a queda dos convidados
  * junto com o anfitrião (SYSTEM → DECLINED), a repetição sem mudança de estado e quem age sobre si mesmo ou sobre
  * o próprio convidado (ex.: "Vou" depois do prazo, que a fila confirma na hora).
  */

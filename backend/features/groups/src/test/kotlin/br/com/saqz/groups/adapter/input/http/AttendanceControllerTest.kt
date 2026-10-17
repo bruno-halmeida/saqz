@@ -16,6 +16,7 @@ import java.time.LocalDate
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -43,7 +44,6 @@ class AttendanceControllerTest {
     @Test fun `athlete read returns no response and authoritative counts`() {
         actor = member
         repository.record(second, AttendanceStatus.DECLINED)
-        repository.autoConfirmEnabled = true
 
         val response = controller.read(ID, "$group", "$game")
 
@@ -52,7 +52,7 @@ class AttendanceControllerTest {
         assertEquals(2, response.availableSpots)
         assertEquals(1, response.declinedCount)
         assertEquals(1, response.pendingCount)
-        assertTrue(response.autoConfirmEnabled)
+        assertFalse(response.autoConfirmEnabled)
     }
     @Test fun `athlete read returns only own confirmed response`() { actor = member; repository.record(member, AttendanceStatus.CONFIRMED); repository.record(second, AttendanceStatus.DECLINED); val own = controller.read(ID, "$group", "$game").ownAttendance!!; assertEquals(member, own.memberId); assertEquals("CONFIRMED", own.status) }
     @Test fun `athlete read returns own stable waitlist position`() { actor = member; repository.record(member, AttendanceStatus.WAITLISTED, 7); val response = controller.read(ID, "$group", "$game"); assertEquals(7, response.ownAttendance!!.waitlistPosition) }
@@ -275,7 +275,6 @@ class AttendanceControllerTest {
             return AttendanceResponseReplay(records.getValue(event.memberId), event)
         }
         override fun updateCapacity(gameId: UUID, expectedVersion: Long, capacity: Int): Boolean { if (version != expectedVersion) return false; this.capacity = capacity; version++; return true }
-        var autoConfirmEnabled = false
         override fun find(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceDetail? = if (groupId == group && gameId == game && role(actorId) != null) AttendanceDetail(
             records[actorId],
             confirmed(),
@@ -285,7 +284,6 @@ class AttendanceControllerTest {
             version,
             records.values.count { it.status == AttendanceStatus.DECLINED },
             members.count { it !in records },
-            actorId == member && autoConfirmEnabled,
         ) else null
         override fun roster(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceRoster? {
             if (groupId != group || gameId != game || role(actorId) == null) return null

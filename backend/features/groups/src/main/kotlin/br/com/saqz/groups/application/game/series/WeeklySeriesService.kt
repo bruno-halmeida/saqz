@@ -1,6 +1,5 @@
 package br.com.saqz.groups.application.game.series
 
-import br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort
 import br.com.saqz.groups.application.game.recurrence.GameIdFactory
 import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
 import br.com.saqz.groups.domain.GroupRole
@@ -53,7 +52,6 @@ class WeeklySeriesService(
     private val repository: WeeklySeriesRepository,
     private val ids: GameIdFactory,
     private val clock: Clock,
-    private val autoConfirmation: AutoConfirmationMaterializationPort = AutoConfirmationMaterializationPort { },
     private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
     private val horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
 ) {
@@ -75,7 +73,6 @@ class WeeklySeriesService(
         val materialized = resolved.creatableBetween(now, horizon.until(rule.groupId) ?: now)
             .map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, now) }
         val inserted = repository.create(rule, materialized)
-        autoConfirmation.apply(materialized)
         val stored = repository.find(rule.groupId, rule.seriesId) ?: error("created series not readable")
         return WeeklySeriesResult.Success(stored, replay = !inserted)
     }

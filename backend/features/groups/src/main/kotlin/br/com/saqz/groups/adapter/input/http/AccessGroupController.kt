@@ -49,6 +49,7 @@ data class CreateGroupRequest @JsonCreator constructor(
     @JsonProperty("monthlyDueDay") val monthlyDueDay: Int? = null,
     @JsonProperty("mensalistaPriority") val mensalistaPriority: Boolean? = null,
     @JsonProperty("promotionMode") val promotionMode: PromotionMode? = null,
+    // Aceito e ignorado: a confirmação automática foi removida (DEB-040); apps 1.0.4–1.0.6 ainda enviam.
     @JsonProperty("autoConfirmEnabled") val autoConfirmEnabled: Boolean? = null,
     @JsonProperty("pixKey") val pixKey: String? = null,
     @JsonProperty("pixLabel") val pixLabel: String? = null,
@@ -147,7 +148,6 @@ private fun CreateGroupRequest.profileInput() = GroupProfileDefaultsInput(
         monthlyDueDay = monthlyDueDay,
         mensalistaPriority = mensalistaPriority,
         promotionMode = promotionMode,
-        autoConfirmEnabled = autoConfirmEnabled,
         pixKey = pixKey,
         pixLabel = pixLabel,
     )

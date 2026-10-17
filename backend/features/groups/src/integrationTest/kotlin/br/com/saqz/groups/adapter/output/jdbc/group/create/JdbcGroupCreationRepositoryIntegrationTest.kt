@@ -234,7 +234,6 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         assertEquals(7, count("SELECT monthly_due_day FROM access_groups WHERE id = '${group.id}'"))
         assertEquals(true, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '${group.id}'"))
         assertEquals("FIFO", text("SELECT promotion_mode FROM access_groups WHERE id = '${group.id}'"))
-        assertEquals(false, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '${group.id}'"))
     }
 
     @Test
@@ -279,7 +278,6 @@ class JdbcGroupCreationRepositoryIntegrationTest {
                 validProfile(
                     mensalistaPriority = false,
                     promotionMode = GroupPromotionMode.MANUAL,
-                    autoConfirmEnabled = true,
                 ),
                 "UTC",
             ),
@@ -287,7 +285,6 @@ class JdbcGroupCreationRepositoryIntegrationTest {
 
         assertEquals(false, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '${group.id}'"))
         assertEquals("MANUAL", text("SELECT promotion_mode FROM access_groups WHERE id = '${group.id}'"))
-        assertEquals(true, boolean("SELECT auto_confirm_enabled FROM access_groups WHERE id = '${group.id}'"))
     }
 
     @Test
@@ -478,7 +475,6 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         monthlyDueDay: Int? = null,
         mensalistaPriority: Boolean? = null,
         promotionMode: GroupPromotionMode? = null,
-        autoConfirmEnabled: Boolean? = null,
         pixKey: String? = null,
         pixLabel: String? = null,
     ) = GroupProfileDefaultsInput(
@@ -500,7 +496,6 @@ class JdbcGroupCreationRepositoryIntegrationTest {
         monthlyDueDay = monthlyDueDay,
         mensalistaPriority = mensalistaPriority,
         promotionMode = promotionMode,
-        autoConfirmEnabled = autoConfirmEnabled,
         pixKey = pixKey,
         pixLabel = pixLabel,
     )

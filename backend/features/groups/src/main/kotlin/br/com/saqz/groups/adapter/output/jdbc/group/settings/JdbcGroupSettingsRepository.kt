@@ -79,7 +79,6 @@ class JdbcGroupSettingsRepository(
                 monthly_due_day = :monthlyDueDay,
                 mensalista_priority = COALESCE(CAST(:mensalistaPriority AS boolean), mensalista_priority),
                 promotion_mode = COALESCE(:promotionMode, promotion_mode),
-                auto_confirm_enabled = COALESCE(CAST(:autoConfirmEnabled AS boolean), auto_confirm_enabled),
                 pix_key = CASE
                     WHEN CAST(:pixKey AS varchar) IS NULL THEN pix_key
                     ELSE NULLIF(BTRIM(CAST(:pixKey AS varchar)), '')
@@ -114,7 +113,6 @@ class JdbcGroupSettingsRepository(
             .param("monthlyDueDay", profile.monthlyDueDay)
             .param("mensalistaPriority", profile.mensalistaPriority)
             .param("promotionMode", profile.promotionMode?.name, Types.OTHER)
-            .param("autoConfirmEnabled", profile.autoConfirmEnabled)
             .param("pixKey", profile.pixKey)
             .param("pixLabel", profile.pixLabel)
             .param("entryRequiresApproval", command.entryRequiresApproval)

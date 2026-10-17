@@ -87,7 +87,6 @@ data class GroupFinanceDefaultsReadModel(
 data class GroupGameConfigReadModel(
     val mensalistaPriority: Boolean,
     val promotionMode: PromotionMode,
-    val autoConfirmEnabled: Boolean,
 )
 
 sealed interface GetGroupResult {

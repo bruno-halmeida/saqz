@@ -58,6 +58,7 @@ data class AttendanceDetailResponse(
     val capacity: Int,
     val declinedCount: Int,
     val pendingCount: Int,
+    // Sempre false (DEB-040): os apps 1.0.4–1.0.6 ainda leem o campo.
     val autoConfirmEnabled: Boolean,
 )
 data class AttendanceRosterMemberResponse(
@@ -283,7 +284,7 @@ private fun AttendanceDetail.response() = AttendanceDetailResponse(
     capacity,
     declinedCount,
     pendingCount,
-    autoConfirmEnabled,
+    autoConfirmEnabled = false,
 )
 private fun AttendanceRosterMember.response() = AttendanceRosterMemberResponse(memberId, displayName, waitlistPosition, guestSeq, hostDisplayName)
 private fun AttendanceRoster.response() = AttendanceRosterResponse(confirmed.map { it.response() }, waitlisted.map { it.response() })

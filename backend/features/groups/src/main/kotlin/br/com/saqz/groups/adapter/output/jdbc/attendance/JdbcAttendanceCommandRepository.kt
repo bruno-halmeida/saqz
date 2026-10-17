@@ -343,7 +343,6 @@ class JdbcAttendanceCommandRepository(
                     rs.getInt("waitlist_count"), capacity, rs.getLong("game_version"),
                     rs.getInt("declined_count"),
                     rs.getInt("pending_count"),
-                    rs.getBoolean("auto_confirm_enabled"),
                 )
             }
             .optional()
@@ -602,15 +601,13 @@ class JdbcAttendanceCommandRepository(
                    (SELECT count(*) FROM game_attendance w WHERE w.game_id=g.id AND w.status='WAITLISTED') AS waitlist_count,
                    (SELECT count(*) FROM game_attendance d WHERE d.game_id=g.id AND d.status='DECLINED' AND d.guest_seq=0) AS declined_count,
                    -- Todo membro ativo joga, inclusive dono e admin: o papel administrativo
-                   -- não dispensa ninguém de responder. Mesmo critério do candidato a
-                   -- auto-confirmação em JdbcAutoConfirmationRepository.candidates.
+                   -- não dispensa ninguém de responder.
                    (SELECT count(*) FROM group_memberships pending
                     WHERE pending.group_id=g.group_id AND pending.active
                       AND NOT EXISTS (
                           SELECT 1 FROM game_attendance response
                           WHERE response.game_id=g.id AND response.member_user_id=pending.user_id
-                      )) AS pending_count,
-                   COALESCE(member.auto_confirm_enabled, false) AS auto_confirm_enabled
+                      )) AS pending_count
             FROM games g
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships member ON member.group_id=g.group_id AND member.user_id=:actor

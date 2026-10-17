@@ -48,7 +48,7 @@ class AttendanceChangeNoticeTest {
     @Test fun `vou depois do prazo confirmado na hora pela fila nao avisa`() =
         assertNull(event(SYSTEM, WAITLISTED, CONFIRMED, actor = member).changeKind())
 
-    @Test fun `confirmacao automatica do mensalista tem aviso proprio e nao avisa`() =
+    @Test fun `confirmacao do sistema sem estar na espera nao avisa`() =
         assertNull(event(SYSTEM, null, CONFIRMED).changeKind())
 
     @Test fun `saida do grupo e convidados que caem com o anfitriao nao avisam`() {

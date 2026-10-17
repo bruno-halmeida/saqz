@@ -4,13 +4,11 @@ import br.com.saqz.bootstrap.configuration.AutomaticAttendanceReminder
 import br.com.saqz.bootstrap.configuration.NotificationPushWorker
 import br.com.saqz.groups.adapter.input.scheduling.CompleteFinishedGamesJob
 import br.com.saqz.groups.adapter.input.scheduling.MonthlyChargeJob
-import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAutoConfirmationRepository
 import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcGroupCommunicationRepository
 import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcNotificationPush
 import br.com.saqz.groups.adapter.output.jdbc.game.JdbcFinishedGamesRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
-import br.com.saqz.groups.application.attendance.AutoConfirmAttendance
 import br.com.saqz.groups.application.communication.GroupCommunicationService
 import br.com.saqz.groups.application.communication.NotificationPushSender
 import br.com.saqz.groups.application.communication.PushDelivery
@@ -57,9 +55,7 @@ class JobExecutionLogTest {
     private val transaction = JdbcTransactionRunner(source)
     private val communication = GroupCommunicationService(transaction, JdbcGroupReadRepository(source), JdbcGroupCommunicationRepository(source))
     private val push = JdbcNotificationPush(source, transaction)
-    private val reminder = AutomaticAttendanceReminder(
-        AutoConfirmAttendance(transaction, JdbcAutoConfirmationRepository(source), Instant::now), communication,
-    )
+    private val reminder = AutomaticAttendanceReminder(communication)
 
     private val logger = LoggerFactory.getLogger("br.com.saqz.job") as Logger
     private val appender = ListAppender<ILoggingEvent>()
@@ -101,7 +97,7 @@ class JobExecutionLogTest {
         reminder.run()
 
         val line = lines().single()
-        assertTrue(Regex("^job_run job=attendance_reminder autoConfirmed=0 published=0 durationMs=\\d+$").matches(line), line)
+        assertTrue(Regex("^job_run job=attendance_reminder published=0 durationMs=\\d+$").matches(line), line)
     }
 
     @Test fun `reminder cron logs the run and one item with group game and message ids`() {
@@ -112,7 +108,7 @@ class JobExecutionLogTest {
         val message = jdbc.sql("SELECT id FROM group_messages WHERE channel = 'REMINDER'").query(UUID::class.java).single()
         val lines = lines()
         assertEquals("job_item job=attendance_reminder event=reminder_published groupId=$group gameId=$game messageId=$message", lines[0])
-        assertTrue(Regex("^job_run job=attendance_reminder autoConfirmed=0 published=1 durationMs=\\d+$").matches(lines[1]), lines[1])
+        assertTrue(Regex("^job_run job=attendance_reminder published=1 durationMs=\\d+$").matches(lines[1]), lines[1])
     }
 
     @Test fun `frequent push queue is silent when empty and logs summary and items when it delivers`() {

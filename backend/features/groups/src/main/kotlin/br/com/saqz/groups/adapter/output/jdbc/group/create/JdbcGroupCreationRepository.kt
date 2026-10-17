@@ -133,7 +133,7 @@ class JdbcGroupCreationRepository(
             city, level, custom_level, play_style, custom_play_style,
             default_capacity, default_confirmation_lead_minutes, default_game_fee_cents,
             monthly_fee_cents, monthly_due_day,
-            mensalista_priority, promotion_mode, auto_confirm_enabled,
+            mensalista_priority, promotion_mode,
             pix_key, pix_label,
             created_at, updated_at
         ) VALUES (
@@ -144,7 +144,6 @@ class JdbcGroupCreationRepository(
             :monthlyFeeCents, :monthlyDueDay,
             COALESCE(CAST(:mensalistaPriority AS boolean), true),
             COALESCE(:promotionMode, 'FIFO'::public.promotion_mode),
-            COALESCE(CAST(:autoConfirmEnabled AS boolean), false),
             :pixKey, :pixLabel,
             now(), now()
         )
@@ -196,7 +195,6 @@ class JdbcGroupCreationRepository(
             .param("monthlyDueDay", profile.monthlyDueDay)
             .param("mensalistaPriority", profile.mensalistaPriority)
             .param("promotionMode", profile.promotionMode?.name, Types.OTHER)
-            .param("autoConfirmEnabled", profile.autoConfirmEnabled)
             // Na criação não existe "manter valor atual": vazio e ausente significam o mesmo (sem Pix).
             .param("pixKey", profile.pixKey?.ifEmpty { null })
             .param("pixLabel", profile.pixLabel?.ifEmpty { null })

@@ -71,7 +71,6 @@ class JdbcGroupReadRepository(
             groups.monthly_late_join_policy,
             groups.mensalista_priority,
             groups.promotion_mode,
-            groups.auto_confirm_enabled,
             groups.pix_key,
             groups.pix_label,
             default_venue.id AS default_venue_id,
@@ -136,7 +135,6 @@ class JdbcGroupReadRepository(
             gameConfig = GroupGameConfigReadModel(
                 mensalistaPriority = first.mensalistaPriority,
                 promotionMode = first.promotionMode,
-                autoConfirmEnabled = first.autoConfirmEnabled,
             ),
         )
     }
@@ -184,7 +182,6 @@ class JdbcGroupReadRepository(
         ),
         mensalistaPriority = getBoolean("mensalista_priority"),
         promotionMode = PromotionMode.valueOf(getString("promotion_mode")),
-        autoConfirmEnabled = getBoolean("auto_confirm_enabled"),
         pixKey = getString("pix_key"),
         pixLabel = getString("pix_label"),
     )
@@ -223,7 +220,6 @@ class JdbcGroupReadRepository(
         val financeDefaults: GroupFinanceDefaultsReadModel,
         val mensalistaPriority: Boolean,
         val promotionMode: PromotionMode,
-        val autoConfirmEnabled: Boolean,
         val pixKey: String?,
         val pixLabel: String?,
     )

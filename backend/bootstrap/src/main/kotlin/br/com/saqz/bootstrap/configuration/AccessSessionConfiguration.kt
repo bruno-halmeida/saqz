@@ -118,11 +118,8 @@ import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcFinanceOverviewReposit
 import br.com.saqz.groups.adapter.output.jdbc.home.JdbcHomeRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcFinanceStatementRepository
 import br.com.saqz.groups.adapter.output.jdbc.attendance.AttendanceChargeAdapter
-import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAutoConfirmationRepository
 import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAttendanceCommandRepository
 import br.com.saqz.groups.application.attendance.AdjustGameCapacity
-import br.com.saqz.groups.application.attendance.AutoConfirmAttendance
-import br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort
 import br.com.saqz.groups.application.attendance.AttendanceDetailQuery
 import br.com.saqz.groups.application.attendance.AttendanceRosterQuery
 import br.com.saqz.groups.application.attendance.GameGuests
@@ -168,7 +165,6 @@ import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Primary
 import org.springframework.context.annotation.Configuration
 import org.flywaydb.core.Flyway
 import org.springframework.core.env.Environment
@@ -493,7 +489,6 @@ class AccessSessionConfiguration {
         series: JdbcWeeklySeriesRepository,
         boundary: ApplySeriesBoundary,
         ids: GameIdFactory,
-        autoConfirm: AutoConfirmAttendance,
         horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
         release: br.com.saqz.groups.application.game.series.ReleaseSeriesOccurrences,
     ) = br.com.saqz.groups.application.game.series.SyncScheduleSeries(
@@ -502,7 +497,6 @@ class AccessSessionConfiguration {
         boundary,
         ids,
         Clock.systemUTC(),
-        AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
         horizon,
         release,
     )
@@ -861,7 +855,6 @@ class AccessSessionConfiguration {
         transaction: JdbcTransactionRunner,
         repository: JdbcOccurrenceMaterializationRepository,
         ids: GameIdFactory,
-        autoConfirm: AutoConfirmAttendance,
         writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
         horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
     ) = MaterializeWeeklySeries(
@@ -869,7 +862,6 @@ class AccessSessionConfiguration {
         repository,
         ids,
         Clock.systemUTC(),
-        AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
         writeAccess,
         schedules,
         horizon,
@@ -878,14 +870,12 @@ class AccessSessionConfiguration {
     @Bean fun weeklySeriesService(
         repository: JdbcWeeklySeriesRepository,
         ids: GameIdFactory,
-        autoConfirm: AutoConfirmAttendance,
         writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
         horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
     ) = WeeklySeriesService(
         repository,
         ids,
         Clock.systemUTC(),
-        AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
         writeAccess,
         horizon,
     )
@@ -893,13 +883,11 @@ class AccessSessionConfiguration {
     @Bean fun applySeriesBoundary(
         repository: JdbcSeriesBoundaryRepository,
         ids: GameIdFactory,
-        autoConfirm: AutoConfirmAttendance,
         horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
     ) = ApplySeriesBoundary(
         repository,
         ids::create,
         Clock.systemUTC(),
-        AutoConfirmationMaterializationPort { occurrences -> autoConfirm.applyMaterialized(occurrences) },
         horizon,
     )
     @Bean fun seriesReleaseRepository(dataSource: DataSource) =
@@ -969,25 +957,13 @@ class AccessSessionConfiguration {
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
     @Bean fun chargeTransactionRepository(dataSource: DataSource, cancellation: br.com.saqz.sharedkernel.group.GroupChargePaymentCancellation) = JdbcChargeTransactionRepository(dataSource, cancellation)
     @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository, writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess) = ChargeTransactions(transaction, repository, Instant::now, writeAccess)
-    @Bean fun autoConfirmationRepository(dataSource: DataSource) = JdbcAutoConfirmationRepository(dataSource)
-    @Bean fun autoConfirmAttendance(
-        transaction: JdbcTransactionRunner,
-        repository: JdbcAutoConfirmationRepository,
-        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
-    ) = AutoConfirmAttendance(transaction, repository, Instant::now, writeAccess = writeAccess)
-    /**
-     * AutoConfirmAttendance também é GameSideEffectPort; sem @Primary o autowire por tipo
-     * de editGame/changeGameLifecycle fica ambíguo e o boot com datasource falha.
-     */
     @Bean
-    @Primary
     fun gameSideEffects(
         charges: ChargeTransactions,
-        autoConfirm: AutoConfirmAttendance,
         communication: GroupCommunicationService,
         @Value("\${saqz.notifications.reminder.enabled:false}") reminders: Boolean,
     ): GameSideEffectPort =
-        GameSideEffects(listOf(GameFinanceSideEffects(charges), autoConfirm, GameOpenOnPublish(communication, reminders), GameCancelledNotice(communication)))
+        GameSideEffects(listOf(GameFinanceSideEffects(charges), GameOpenOnPublish(communication, reminders), GameCancelledNotice(communication)))
     @Bean fun attendanceCharges(charges: ChargeTransactions) = AttendanceChargeAdapter(charges)
     @Bean fun respondAttendance(
         transaction: JdbcTransactionRunner,
@@ -1000,7 +976,7 @@ class AccessSessionConfiguration {
     @Bean fun gameGuests(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, responses: RespondAttendance) = GameGuests(transaction, repository, responses, Instant::now)
     @Bean fun adjustGameCapacity(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = AdjustGameCapacity(transaction, repository, charges, Instant::now)
     @Bean fun attendanceController(actor: VerifiedGroupActorResolver, responses: RespondAttendance, capacities: AdjustGameCapacity, details: AttendanceDetailQuery, rosters: AttendanceRosterQuery, guests: GameGuests) = AttendanceController(actor, responses, capacities, details, rosters, guests)
-    @Bean fun autoConfirmationController(actor: VerifiedGroupActorResolver, autoConfirm: AutoConfirmAttendance) = AutoConfirmationController(actor, autoConfirm)
+    @Bean fun autoConfirmationController() = AutoConfirmationController()
     @Bean fun chargeManagementRepository(dataSource: DataSource) = JdbcChargeManagementRepository(dataSource)
     @Bean fun chargeManagement(transaction: JdbcTransactionRunner, repository: JdbcChargeManagementRepository) = ChargeManagement(transaction, repository, Instant::now, java.util.UUID::randomUUID)
     @Bean fun chargeController(actor: VerifiedGroupActorResolver, management: ChargeManagement, generation: ChargeTransactions) = ChargeController(actor, management, generation)

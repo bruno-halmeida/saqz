@@ -61,7 +61,6 @@ data class ValidGroupProfileDefaults(
     val monthlyDueDay: Int?,
     val mensalistaPriority: Boolean?,
     val promotionMode: PromotionMode?,
-    val autoConfirmEnabled: Boolean?,
     val pixKey: String?,
     val pixLabel: String?,
 )
@@ -97,7 +96,6 @@ data class GroupProfileDefaultsInput(
     val monthlyDueDay: Int? = null,
     val mensalistaPriority: Boolean? = null,
     val promotionMode: PromotionMode? = null,
-    val autoConfirmEnabled: Boolean? = null,
     val pixKey: String? = null,
     val pixLabel: String? = null,
 )
@@ -172,7 +170,6 @@ object GroupProfileDefaultsValidator {
                     monthlyDueDay = input.monthlyDueDay,
                     mensalistaPriority = input.mensalistaPriority,
                     promotionMode = input.promotionMode,
-                    autoConfirmEnabled = input.autoConfirmEnabled,
                     pixKey = pixKey,
                     pixLabel = pixLabel,
                 ),
