@@ -1562,7 +1562,7 @@ class GameDetailViewModelTest {
     }
 }
 
-private class FakeAttendanceGateway(
+internal class FakeAttendanceGateway(
     var readResult: SaqzResult<AttendanceDetail, AttendanceError> = SaqzResult.Success(sampleAttendanceDetail()),
     var rosterResult: SaqzResult<AttendanceRoster, AttendanceError> = SaqzResult.Success(sampleAttendanceRoster()),
     var respondResult: SaqzResult<VersionedAttendanceMutation, AttendanceError> = SaqzResult.Success(
@@ -1590,6 +1590,11 @@ private class FakeAttendanceGateway(
     var respondCalls = 0
     var promoteCalls = 0
     var capacityCalls = 0
+    var overrideCalls = 0
+    var lastOverride: OverrideAttendanceCommand? = null
+    var overrideResult: SaqzResult<VersionedAttendanceMutation, AttendanceError> =
+        SaqzResult.Success(sampleVersionedAttendanceMutation())
+    var overrideDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>? = null
     var autoConfirmationCalls = 0
     var addGuestCalls = 0
     var removeGuestCalls = 0
@@ -1642,7 +1647,11 @@ private class FakeAttendanceGateway(
         groupId: br.com.saqz.domain.GroupId,
         gameId: String,
         command: OverrideAttendanceCommand,
-    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> = error("not used in this screen")
+    ): SaqzResult<VersionedAttendanceMutation, AttendanceError> {
+        overrideCalls++
+        lastOverride = command
+        return overrideDeferred?.await() ?: overrideResult
+    }
 
     override suspend fun capacity(
         groupId: br.com.saqz.domain.GroupId,
