@@ -27,25 +27,25 @@ class AdjustGameCapacityTest {
     )
 
     @Test fun `antes do início aceita e promove a fila`() {
-        val result = service.execute(owner, group, game, 1, 3)
+        val result = service.execute(owner, group, game, 1, 5)
 
-        assertEquals(3, assertIs<CapacityCommandResult.Success>(result).capacity)
-        assertEquals(3, repository.capacity)
+        assertEquals(5, assertIs<CapacityCommandResult.Success>(result).capacity)
+        assertEquals(5, repository.capacity)
         assertEquals(AttendanceStatus.CONFIRMED, repository.waiting.status)
     }
 
     @Test fun `no instante do início e depois recusa como encerrado sem tocar em nada`() {
         for (starts in listOf(NOW, NOW.minusSeconds(600))) {
             repository.startsAt = starts
-            assertIs<CapacityCommandResult.Frozen>(service.execute(owner, group, game, 1, 3))
+            assertIs<CapacityCommandResult.Frozen>(service.execute(owner, group, game, 1, 5))
         }
-        assertEquals(2, repository.capacity)
+        assertEquals(4, repository.capacity)
         assertEquals(AttendanceStatus.WAITLISTED, repository.waiting.status)
         assertTrue(repository.events.isEmpty())
     }
 
     private inner class FakeRepository : AttendanceCommandRepository {
-        var capacity = 2
+        var capacity = 4
         var startsAt: Instant = NOW.plusSeconds(3600)
         var waiting = AttendanceRecord(game, group, this@AdjustGameCapacityTest.waiting, AttendanceStatus.WAITLISTED, 1, NOW, NOW, 1)
         val events = mutableListOf<AttendanceEvent>()
@@ -53,7 +53,7 @@ class AdjustGameCapacityTest {
         override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID, guestSeq: Int): AttendanceAggregate? = null
         override fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID) = CapacityAggregate(
             group, game, actorId, GroupRole.OWNER, GameStatus.PUBLISHED, NOW.minusSeconds(60), capacity,
-            2, 1, 2500L, LocalDate.of(2026, 8, 11), startsAt = startsAt,
+            4, 1, 2500L, LocalDate.of(2026, 8, 11), startsAt = startsAt,
         )
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = 2L
         override fun earliestWaitlisted(groupId: UUID, gameId: UUID) = waiting.takeIf { it.status == AttendanceStatus.WAITLISTED }

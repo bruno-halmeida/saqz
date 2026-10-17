@@ -105,7 +105,7 @@ class DepoisDoInicioIntegrationTest {
 
     @Test fun `controle - aumento de vagas antes do inicio promove`() {
         val w = world()
-        val result = capacity().execute(w.owner, w.group, w.game, version(w), 3)
+        val result = capacity().execute(w.owner, w.group, w.game, version(w), 4)
         assertIs<CapacityCommandResult.Success>(result)
         assertEquals("CONFIRMED", status(w, w.waiting))
     }
@@ -114,8 +114,8 @@ class DepoisDoInicioIntegrationTest {
         val w = world()
         started(w)
         val before = version(w)
-        assertIs<CapacityCommandResult.Frozen>(capacity().execute(w.owner, w.group, w.game, before, 3))
         assertIs<CapacityCommandResult.Frozen>(capacity().execute(w.owner, w.group, w.game, before, 4))
+        assertIs<CapacityCommandResult.Frozen>(capacity().execute(w.owner, w.group, w.game, before, 5))
         assertEquals(2, int("SELECT capacity FROM games WHERE id='${w.game}'"))
         assertEquals(before, version(w))
         assertEquals("WAITLISTED", status(w, w.waiting))
