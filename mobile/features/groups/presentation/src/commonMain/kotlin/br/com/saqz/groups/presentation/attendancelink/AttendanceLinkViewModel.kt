@@ -9,9 +9,17 @@ import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.attendance.share.*
 import br.com.saqz.groups.domain.communication.AppDownloadPort
 import br.com.saqz.groups.domain.communication.NativeNotificationPort
+import br.com.saqz.groups.domain.game.Game
+import br.com.saqz.groups.domain.game.GameGateway
 import br.com.saqz.groups.domain.membership.*
+import br.com.saqz.groups.port.GroupSystemTimeZonePort
+import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.io.encoding.Base64
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 class AttendanceLinkViewModel(
@@ -23,11 +31,21 @@ class AttendanceLinkViewModel(
     private val notifications: NativeNotificationPort? = null,
     /** Só no web app: a loja do app oferecida depois da resposta. */
     private val appDownload: AppDownloadPort? = null,
+    /** O cartão do jogo de quem já é membro; sem o port, a tela segue sem cartão. */
+    private val games: GameGateway? = null,
+    /** Horário do cartão de quem aguarda aprovação (a prévia traz o instante); sem o port, UTC. */
+    private val timeZonePort: GroupSystemTimeZonePort? = null,
 ) : MviViewModel<AttendanceLinkState, AttendanceLinkIntent, AttendanceLinkEffect>(AttendanceLinkState()) {
     /** Há loja do app para oferecer depois da resposta (confirmada ou lista de espera). */
     val appDownloadAvailable: Boolean = appDownload?.appDownloadUrl() != null
     private var generation = 0
-    init { resolve() }
+    private var timeZone: TimeZone = TimeZone.UTC
+    init {
+        timeZonePort?.detect { result ->
+            if (result is GroupSystemTimeZoneResult.Available) runCatching { TimeZone.of(result.value.id) }.onSuccess { timeZone = it }
+        }
+        resolve()
+    }
 
     override fun handleIntent(intent: AttendanceLinkIntent) {
         when (intent) {
@@ -58,6 +76,7 @@ class AttendanceLinkViewModel(
                 }
                 is SaqzResult.Success -> {
                     val destination = result.value
+                    if (!destination.registrationRequired) loadGame(current, destination)
                     if (destination.registrationRequired) register(destination.groupId.value)
                     else if (decline) ask(current, destination)
                     else respond(destination, requestId, current, AttendanceIntent.Confirm)
@@ -69,7 +88,28 @@ class AttendanceLinkViewModel(
     /** O link do "não vou" não responde nada sozinho: abre o aviso e espera o toque. */
     private fun ask(current: Int, destination: AttendanceLinkDestination) {
         if (current != generation) return
-        update { AttendanceLinkState(AttendanceLinkPhase.DeclineSheet, destination) }
+        update { AttendanceLinkState(AttendanceLinkPhase.DeclineSheet, destination, it.game) }
+    }
+
+    /** O cartão chega quando chegar: uma falha na leitura do jogo não atrapalha a resposta. */
+    private fun loadGame(current: Int, destination: AttendanceLinkDestination) {
+        val gateway = games ?: return
+        viewModelScope.launch {
+            val result = gateway.read(destination.groupId, destination.gameId)
+            if (current != generation || result !is SaqzResult.Success) return@launch
+            val card = result.value.game.toCard()
+            update { if (it.destination == destination) it.copy(game = card) else it }
+        }
+    }
+
+    /** Quem aguarda aprovação ainda não lê o jogo: o cartão vem da prévia do convite, com o local já escondido. */
+    private fun loadPreviewGame(current: Int) {
+        viewModelScope.launch {
+            val preview = invites.preview(InviteCode(code))
+            if (current != generation || preview !is SaqzResult.Success) return@launch
+            val card = preview.value.nextGame?.toCard(timeZone) ?: return@launch
+            update { if (it.phase == AttendanceLinkPhase.Pending) it.copy(game = card) else it }
+        }
     }
 
     private fun decline() {
@@ -101,7 +141,10 @@ class AttendanceLinkViewModel(
                         )
                     }
                 }
-                InviteRedeemStatus.PENDING -> show(AttendanceLinkPhase.Pending)
+                InviteRedeemStatus.PENDING -> {
+                    show(AttendanceLinkPhase.Pending)
+                    loadPreviewGame(current)
+                }
             }
             is SaqzResult.Failure -> show(when (result.error) {
                 InviteError.InvalidOrExpired, is InviteError.Expired, InviteError.GroupDeleted -> AttendanceLinkPhase.Invalid
@@ -131,13 +174,14 @@ class AttendanceLinkViewModel(
         when (response) {
             is SaqzResult.Success -> update {
                 AttendanceLinkState(
-                    when (response.value.value.attendance.status) {
+                    phase = when (response.value.value.attendance.status) {
                         AttendanceStatus.Waitlisted -> AttendanceLinkPhase.Waitlisted
                         AttendanceStatus.Confirmed -> AttendanceLinkPhase.Confirmed
                         AttendanceStatus.Declined ->
                             if (intent == AttendanceIntent.Decline) AttendanceLinkPhase.Declined else AttendanceLinkPhase.Failed
                     },
-                    destination,
+                    destination = destination,
+                    game = it.game,
                 )
             }
             is SaqzResult.Failure -> show(
@@ -164,4 +208,37 @@ class AttendanceLinkViewModel(
         val (start, end) = if (decline) 16 to 32 else 0 to 16
         Uuid.fromByteArray(bytes.copyOfRange(start, end)).toString()
     }.getOrNull()
+}
+
+private fun Game.toCard(): AttendanceLinkGame {
+    val day = runCatching { LocalDate.parse(localDate) }.getOrNull()
+    return AttendanceLinkGame(
+        weekdayCode = day?.dayOfWeek?.name.orEmpty(),
+        date = day?.toDayMonth() ?: localDate,
+        time = localTime.toHourMinute(),
+        venueName = venue.name,
+        court = venue.court,
+    )
+}
+
+private fun InviteNextGame.toCard(timeZone: TimeZone): AttendanceLinkGame {
+    val local = runCatching { Instant.parse(startsAt).toLocalDateTime(timeZone) }.getOrNull()
+        ?: return AttendanceLinkGame("", startsAt, "", venueName, court, groupNext = true)
+    return AttendanceLinkGame(
+        weekdayCode = local.date.dayOfWeek.name,
+        date = local.date.toDayMonth(),
+        time = "${local.hour.toString().padStart(2, '0')}h${local.minute.toString().padStart(2, '0')}",
+        venueName = venueName,
+        court = court,
+        groupNext = true,
+    )
+}
+
+private fun LocalDate.toDayMonth(): String =
+    "${day.toString().padStart(2, '0')}/${(month.ordinal + 1).toString().padStart(2, '0')}"
+
+/** "19:30" ou "19:30:00" viram "19h30". */
+private fun String.toHourMinute(): String {
+    val parts = split(":")
+    return if (parts.size >= 2) "${parts[0]}h${parts[1]}" else this
 }

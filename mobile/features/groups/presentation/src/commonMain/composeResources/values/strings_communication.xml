@@ -38,14 +38,15 @@
     <string name="attendance_link_game_cancelled">Esse jogo foi cancelado.</string>
     <string name="attendance_link_game_unpublished">Esse jogo não está mais aberto.</string>
     <string name="attendance_link_invalid">Não foi possível confirmar. O prazo pode ter encerrado ou este jogo não está disponível para sua conta.</string>
+    <string name="attendance_link_game_eyebrow">Jogo</string>
     <string name="attendance_link_open_game">Ver jogo</string>
     <string name="attendance_link_registration">Complete seu cadastro de atleta neste grupo para confirmar a presença.</string>
     <string name="attendance_link_pending">Sua entrada no grupo aguarda aprovação. Depois da aprovação, atualize para concluir seu cadastro e confirmar a presença.</string>
-    <string name="attendance_link_declined">Avisamos o grupo que você não vai. Sua vaga ficou livre para a fila de espera.</string>
+    <string name="attendance_link_declined">Pronto: seu nome saiu da lista deste jogo.</string>
     <string name="attendance_link_decline_pending">Confirme abaixo se você não vai.</string>
-    <string name="attendance_link_decline_sheet_title">Não conseguirá ir?</string>
-    <string name="attendance_link_decline_sheet_description">Vamos avisar o grupo que você não vai.</string>
-    <string name="attendance_link_decline_sheet_body">Sua vaga libera na hora para quem está na fila de espera. Se mudar de ideia, toque no botão de confirmar do lembrete enquanto o prazo estiver aberto.</string>
+    <string name="attendance_link_decline_sheet_title">Não vai poder ir?</string>
+    <string name="attendance_link_decline_sheet_description">Vamos tirar seu nome da lista deste jogo.</string>
+    <string name="attendance_link_decline_sheet_body">Se mudar de ideia, toque em Vou no lembrete.</string>
     <string name="attendance_link_decline_sheet_back">Voltar</string>
     <string name="attendance_link_decline_sheet_confirm">Sim, não vou</string>
 </resources>

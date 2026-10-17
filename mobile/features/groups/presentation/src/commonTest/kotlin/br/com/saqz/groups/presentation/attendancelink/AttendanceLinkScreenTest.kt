@@ -53,6 +53,40 @@ class AttendanceLinkScreenTest {
         onNodeWithText(declinedText).assertExists()
     }
 
+    @Test fun declineSheetPromisesNeitherAGroupNoticeNorAFreeSpot() = runComposeUiTest {
+        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.DeclineSheet, destination), {}, {}, {}) } }
+        onNodeWithText("Não vai poder ir?").assertExists()
+        onNodeWithText("Vamos tirar seu nome da lista deste jogo.").assertExists()
+        onNodeWithText("Se mudar de ideia, toque em Vou no lembrete.").assertExists()
+        onNodeWithText("Vamos avisar o grupo que você não vai.").assertDoesNotExist()
+        onNodeWithText("Sua vaga libera na hora", substring = true).assertDoesNotExist()
+    }
+
+    @Test fun gameCardShowsDayTimeAndVenueAboveTheState() {
+        val game = AttendanceLinkGame("TUESDAY", "04/08", "19h30", "CERET", "Quadra 2")
+        for (phase in listOf(AttendanceLinkPhase.Confirmed, AttendanceLinkPhase.Waitlisted, AttendanceLinkPhase.DeclineSheet, AttendanceLinkPhase.Declined)) runComposeUiTest {
+            setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(phase, destination, game), {}, {}, {}) } }
+            onNodeWithTag(AttendanceLinkTags.GameCard).assertExists()
+            onNodeWithText("Ter, 04/08 · 19h30").assertExists()
+            onNodeWithText("CERET").assertExists()
+            onNodeWithText("Quadra 2").assertExists()
+            onNodeWithText("Jogo").assertExists()
+        }
+    }
+
+    @Test fun gameCardOfAPendingEntryShowsTheHiddenVenueAndTheNextGameLabel() = runComposeUiTest {
+        val game = AttendanceLinkGame("TUESDAY", "04/08", "19h30", "Local após a aprovação", null, groupNext = true)
+        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Pending, game = game), {}, {}, {}) } }
+        onNodeWithTag(AttendanceLinkTags.GameCard).assertExists()
+        onNodeWithText("Local após a aprovação").assertExists()
+        onNodeWithText("Próximo jogo").assertExists()
+    }
+
+    @Test fun noGameCardWhenTheGameIsUnknown() = runComposeUiTest {
+        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Confirmed, destination), {}, {}, {}) } }
+        onNodeWithTag(AttendanceLinkTags.GameCard).assertDoesNotExist()
+    }
+
     @Test fun notReceivingShowsTheNeutralTextWithoutRetry() = runComposeUiTest {
         setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.NotReceiving), {}, {}, {}) } }
         onNodeWithText("Este grupo não está recebendo novos atletas agora. Fale com o organizador.").assertExists()
@@ -79,5 +113,5 @@ class AttendanceLinkScreenTest {
         }
     }
 
-    private val declinedText = "Avisamos o grupo que você não vai. Sua vaga ficou livre para a fila de espera."
+    private val declinedText = "Pronto: seu nome saiu da lista deste jogo."
 }

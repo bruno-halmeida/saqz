@@ -18,6 +18,7 @@ import org.koin.core.parameter.parametersOf
 
 internal object AttendanceLinkTags {
     const val Download = "attendance-link-download"
+    const val GameCard = "attendance-link-game-card"
 }
 
 @Composable
@@ -50,6 +51,17 @@ internal fun AttendanceLinkScreen(
                 Modifier.padding(SaqzTheme.metrics.horizontalPadding),
                 verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
             ) {
+                state.game?.let { game ->
+                    SaqzGameSummaryCard(
+                        eyebrow = stringResource(
+                            if (game.groupNext) Res.string.invite_landing_next_game else Res.string.attendance_link_game_eyebrow,
+                        ),
+                        title = game.title(),
+                        venue = game.venueName,
+                        address = game.court,
+                        modifier = Modifier.testTag(AttendanceLinkTags.GameCard),
+                    )
+                }
                 if (state.phase == AttendanceLinkPhase.Loading) SaqzSpinner()
                 Text(stringResource(when (state.phase) {
                     AttendanceLinkPhase.Loading -> Res.string.attendance_link_loading
@@ -117,4 +129,20 @@ internal fun AttendanceLinkScreen(
             )
         }
     }
+}
+
+@Composable
+private fun AttendanceLinkGame.title(): String {
+    val dateTime = if (time.isBlank()) date else "$date · $time"
+    val weekday = when (weekdayCode) {
+        "SUNDAY" -> Res.string.invite_landing_weekday_short_sunday
+        "MONDAY" -> Res.string.invite_landing_weekday_short_monday
+        "TUESDAY" -> Res.string.invite_landing_weekday_short_tuesday
+        "WEDNESDAY" -> Res.string.invite_landing_weekday_short_wednesday
+        "THURSDAY" -> Res.string.invite_landing_weekday_short_thursday
+        "FRIDAY" -> Res.string.invite_landing_weekday_short_friday
+        "SATURDAY" -> Res.string.invite_landing_weekday_short_saturday
+        else -> null
+    }?.let { stringResource(it) }
+    return if (weekday == null) dateTime else "$weekday, $dateTime"
 }

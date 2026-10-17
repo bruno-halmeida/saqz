@@ -22,9 +22,23 @@ enum class AttendanceLinkPhase {
     Pending,
 }
 
+/**
+ * O jogo do link, já formatado para o cartão (dia, hora e local). Para quem é membro vem do jogo; para quem
+ * aguarda aprovação vem da prévia do convite, que é o próximo jogo do grupo e já traz o local escondido.
+ */
+data class AttendanceLinkGame(
+    val weekdayCode: String,
+    val date: String,
+    val time: String,
+    val venueName: String,
+    val court: String?,
+    val groupNext: Boolean = false,
+)
+
 data class AttendanceLinkState(
     val phase: AttendanceLinkPhase = AttendanceLinkPhase.Loading,
     val destination: AttendanceLinkDestination? = null,
+    val game: AttendanceLinkGame? = null,
     /** O "não vou" já foi enviado e a resposta não voltou: o botão da folha não aceita outro toque. */
     val declining: Boolean = false,
 )

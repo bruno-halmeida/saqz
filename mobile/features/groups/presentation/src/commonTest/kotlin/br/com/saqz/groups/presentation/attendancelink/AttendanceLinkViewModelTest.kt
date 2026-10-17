@@ -289,12 +289,71 @@ class AttendanceLinkViewModelTest {
         native.onIntent(AttendanceLinkIntent.OpenAppDownload)
     }
 
+    @Test fun memberSeesTheGameCardFromTheGameDataAndKeepsItThroughTheDeclineSheetAndTheAnswer() = runTest {
+        val games = br.com.saqz.groups.presentation.FakeGameGateway()
+        val card = AttendanceLinkGame("TUESDAY", "04/08", "19h30", "CERET", null)
+        val confirmed = AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake(), games = games)
+        assertEquals(AttendanceLinkPhase.Confirmed, confirmed.state.value.phase)
+        assertEquals(card, confirmed.state.value.game)
+
+        val declining = AttendanceLinkViewModel(declineCode, true, SharingFake(), AttendanceFake(), InviteFake(), games = games)
+        assertEquals(AttendanceLinkPhase.DeclineSheet, declining.state.value.phase)
+        assertEquals(card, declining.state.value.game)
+        assertFalse(card.groupNext)
+        val gateway = AttendanceFake().apply { status = AttendanceStatus.Declined }
+        val answered = AttendanceLinkViewModel(declineCode, true, SharingFake(), gateway, InviteFake(), games = games)
+        answered.onIntent(AttendanceLinkIntent.Decline)
+        assertEquals(AttendanceLinkPhase.Declined, answered.state.value.phase)
+        assertEquals(card, answered.state.value.game)
+    }
+
+    @Test fun failureReadingTheGameLeavesNoCardAndTheAnswerGoesOnAnyway() = runTest {
+        val games = br.com.saqz.groups.presentation.FakeGameGateway(
+            readResult = SaqzResult.Failure(br.com.saqz.groups.domain.game.GameError.Data(DataError.Connectivity)),
+        )
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake(), games = games)
+        assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)
+        assertNull(vm.state.value.game)
+    }
+
+    @Test fun withoutTheGamePortThereIsNoCard() = runTest {
+        assertNull(AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake()).state.value.game)
+    }
+
+    @Test fun pendingApprovalShowsTheCardFromThePreviewWithTheHiddenVenue() = runTest {
+        val preview = InvitePreview(
+            groupName = "Grupo", inviterName = "Ana", entryRequiresApproval = true,
+            nextGame = InviteNextGame("2026-08-04T22:30:00Z", "Local após a aprovação", null),
+        )
+        val vm = AttendanceLinkViewModel(
+            code, false, SharingFake(expired = true), AttendanceFake(),
+            InviteFake(InviteRedeemStatus.PENDING, preview = preview),
+            timeZonePort = br.com.saqz.groups.presentation.FakeGroupSystemTimeZonePort(),
+        )
+        assertEquals(AttendanceLinkPhase.Pending, vm.state.value.phase)
+        assertEquals(
+            AttendanceLinkGame("TUESDAY", "04/08", "19h30", "Local após a aprovação", null, groupNext = true),
+            vm.state.value.game,
+        )
+    }
+
+    @Test fun pendingApprovalWithoutAPreviewGameShowsNoCard() = runTest {
+        val vm = AttendanceLinkViewModel(
+            code, false, SharingFake(expired = true), AttendanceFake(),
+            InviteFake(InviteRedeemStatus.PENDING, preview = InvitePreview("Grupo", "Ana", true)),
+        )
+        assertEquals(AttendanceLinkPhase.Pending, vm.state.value.phase)
+        assertNull(vm.state.value.game)
+    }
+
     private class InviteFake(
         private val status: InviteRedeemStatus? = null,
         private val failure: InviteError = InviteError.InvalidOrExpired,
+        private val preview: InvitePreview? = null,
     ) : InviteGateway {
         val codes = mutableListOf<InviteCode>()
-        override suspend fun preview(code: InviteCode) = error("unused")
+        override suspend fun preview(code: InviteCode): SaqzResult<InvitePreview, InviteError> =
+            preview?.let { SaqzResult.Success(it) } ?: SaqzResult.Failure(InviteError.InvalidOrExpired)
         override suspend fun redeem(code: InviteCode): SaqzResult<InviteRedeem, InviteError> {
             codes += code
             return if (status == null) SaqzResult.Failure(failure)
