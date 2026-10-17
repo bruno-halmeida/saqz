@@ -103,7 +103,9 @@ private fun ApprovedMembershipTransport.toDomain(): GroupMembership? {
 
 private fun NetworkError.toDomainError(): EntryRequestError = EntryRequestError.DataFailure(
     when (this) {
-        is NetworkError.ApiProblemError -> problem.status.toDataError()
+        // Plano do organizador vencido ou pausado: a tela de Membros abre a folha da assinatura (PC-09).
+        is NetworkError.ApiProblemError ->
+            if (problem.code == "SUBSCRIPTION_REQUIRED") DataError.SubscriptionRequired else problem.status.toDataError()
         is NetworkError.HttpStatus -> status.toDataError()
         NetworkError.Timeout -> DataError.Timeout
         NetworkError.Connectivity -> DataError.Connectivity

@@ -639,6 +639,26 @@ class GroupMembersViewModelTest {
     }
 
     @Test
+    fun `approval with expired organizer plan opens the subscription sheet and keeps the request`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(
+            SaqzResult.Success(listOf(request("new", "Ana"))),
+            approveResult = SaqzResult.Failure(EntryRequestError.DataFailure(DataError.SubscriptionRequired)),
+        )
+        val viewModel = requestsViewModel(entry)
+
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+
+        assertTrue(viewModel.state.value.subscriptionRequired)
+        assertEquals(false, viewModel.state.value.actionFailed)
+        assertEquals(null, viewModel.state.value.notice)
+        assertEquals(listOf("new"), viewModel.state.value.joinRequests.map { it.id })
+        assertTrue(viewModel.state.value.busyRequestIds.isEmpty())
+
+        viewModel.onIntent(GroupMembersIntent.DismissSubscriptionRequired)
+        assertEquals(false, viewModel.state.value.subscriptionRequired)
+    }
+
+    @Test
     fun `a failed decline keeps the request and shows the error`() = runTest {
         val entry = FakeGroupEntryRequestGateway(
             SaqzResult.Success(listOf(request("new", "Ana"))),

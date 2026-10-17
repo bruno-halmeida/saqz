@@ -82,6 +82,19 @@ class KtorEntryRequestGatewayTest {
     }
 
     @Test
+    fun `approve with expired organizer plan maps the subscription error and a plain 403 stays forbidden`() = runTest {
+        val subscription = assertIs<SaqzResult.Failure<EntryRequestError>>(
+            fixture { problem(403, "SUBSCRIPTION_REQUIRED") }.gateway.approve(GroupId(GROUP_ID), USER_ID),
+        ).error
+        assertEquals(DataError.SubscriptionRequired, assertIs<EntryRequestError.DataFailure>(subscription).error)
+
+        val forbidden = assertIs<SaqzResult.Failure<EntryRequestError>>(
+            fixture { problem(403) }.gateway.approve(GroupId(GROUP_ID), USER_ID),
+        ).error
+        assertEquals(DataError.Forbidden, assertIs<EntryRequestError.DataFailure>(forbidden).error)
+    }
+
+    @Test
     fun `connectivity maps shared data error`() = runTest {
         val error = assertIs<SaqzResult.Failure<EntryRequestError>>(fixture(MockEngine { throw UnresolvedAddressException() })
             .gateway.list(GroupId(GROUP_ID))).error
@@ -114,8 +127,8 @@ class KtorEntryRequestGatewayTest {
         headers = jsonHeaders(),
     )
 
-    private fun MockRequestHandleScope.problem(status: Int) = respond(
-        """{"status":$status,"code":"ERROR","correlationId":"private"}""",
+    private fun MockRequestHandleScope.problem(status: Int, code: String = "ERROR") = respond(
+        """{"status":$status,"code":"$code","correlationId":"private"}""",
         HttpStatusCode.fromValue(status),
         jsonHeaders(),
     )
