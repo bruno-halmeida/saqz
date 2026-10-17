@@ -44,6 +44,8 @@
     <string name="member_editor_remove_title">Remover %1$s do grupo?</string>
     <string name="member_editor_remove_body">Perde o acesso e sai das próximas listas de presença. Os jogos que já aconteceram continuam no histórico.</string>
     <string name="member_editor_remove_monthly">É mensalista: a mensalidade deixa de valer.</string>
+    <string name="group_members_action_denied">Só o organizador remove um admin. Toque aqui para fechar o aviso.</string>
+    <string name="member_editor_remove_denied">Só o organizador remove um admin.</string>
     <string name="group_members_action_failed">Não foi possível concluir a ação. Toque aqui para fechar o aviso e tente de novo.</string>
     <string name="member_editor_remove_confirm">Remover do grupo</string>
     <string name="member_editor_position_libero">Líbero</string>

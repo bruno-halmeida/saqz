@@ -74,7 +74,7 @@ class GroupMembersViewModel(
             GroupMembersIntent.ConfirmRemove -> state.value.confirmRemove?.let { remove(it) }
             GroupMembersIntent.DismissRemove -> update { it.copy(confirmRemove = null) }
             GroupMembersIntent.DismissSubscriptionRequired -> update { it.copy(subscriptionRequired = false) }
-            GroupMembersIntent.DismissActionFailed -> update { it.copy(actionFailed = false) }
+            GroupMembersIntent.DismissActionFailed -> update { it.copy(actionFailed = false, actionDenied = false) }
             is GroupMembersIntent.AcceptRequest,
             is GroupMembersIntent.DeclineRequest,
             GroupMembersIntent.ConfirmDecline,
@@ -295,6 +295,8 @@ class GroupMembersViewModel(
         if (error == GroupUiError.SubscriptionRequired) {
             val trialEnded = trialAccess?.read(GroupId(groupId))?.trialEnded == true
             update { it.copy(subscriptionRequired = true, trialEnded = trialEnded) }
+        } else if (error == GroupUiError.AccessDenied) {
+            update { it.copy(actionDenied = true) }
         } else {
             update { it.copy(actionFailed = true) }
         }

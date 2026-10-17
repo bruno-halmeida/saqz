@@ -106,7 +106,7 @@ class MemberEditorViewModel(
     }
 
     private fun openRemove() {
-        if (!state.value.isOwner) update { it.copy(removeSheetOpen = true) }
+        if (state.value.canRemove) update { it.copy(removeSheetOpen = true) }
     }
 
     private fun load() {
@@ -332,7 +332,7 @@ class MemberEditorViewModel(
     }
 
     private fun remove() {
-        if (state.value.isOwner || state.value.operation != null) return
+        if (!state.value.canRemove || state.value.operation != null) return
         val requestGeneration = nextGeneration()
         update { it.copy(operation = MemberEditorOperation.Remove, error = null) }
         viewModelScope.launch {

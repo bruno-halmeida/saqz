@@ -41,6 +41,8 @@ class RemoveAthlete(
         val target = athleteRepository.find(groupId, userId)
             ?: return@inTransaction RemoveAthleteResult.Success
         if (target.role == GroupRole.OWNER) return@inTransaction RemoveAthleteResult.OwnerImmutable
+        // Só o dono remove um admin (SAI-003); admin continua removendo atleta.
+        if (target.role == GroupRole.ADMIN && group.role != GroupRole.OWNER) return@inTransaction RemoveAthleteResult.AccessForbidden
         attendanceRelease.release(groupId, userId, actor)
         athleteRepository.remove(groupId, userId)
         if (target.role == GroupRole.ADMIN) administrationRevocation.revoked(groupId, userId)

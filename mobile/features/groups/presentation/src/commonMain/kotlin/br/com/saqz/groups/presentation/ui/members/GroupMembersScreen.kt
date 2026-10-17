@@ -39,6 +39,7 @@ import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_invite_approved_toast
 import br.com.saqz.groups.resources.group_invite_rejected_toast
+import br.com.saqz.groups.resources.group_members_action_denied
 import br.com.saqz.groups.resources.group_members_action_failed
 import br.com.saqz.groups.resources.group_members_admins
 import br.com.saqz.groups.resources.group_members_invite
@@ -56,6 +57,7 @@ internal object GroupMembersTags {
     const val Cancel = "group-members-cancel"
     const val Loading = "group-members-loading"
     const val ActionFailed = "group-members-action-failed"
+    const val ActionDenied = "group-members-action-denied"
     const val ConfirmRemove = "group-members-confirm-remove"
     const val ConfirmRemoveCancel = "group-members-confirm-remove-cancel"
     const val ConfirmDecline = "group-members-confirm-decline"
@@ -126,6 +128,18 @@ fun GroupMembersScreen(
                             style = SaqzTheme.typography.support,
                             color = SaqzTheme.colors.errorForeground,
                             modifier = Modifier.testTag(GroupMembersTags.ActionFailed).clickable {
+                                onIntent(GroupMembersIntent.DismissActionFailed)
+                            },
+                        )
+                    }
+                }
+                if (state.actionDenied) {
+                    item(key = "action-denied") {
+                        Text(
+                            text = stringResource(Res.string.group_members_action_denied),
+                            style = SaqzTheme.typography.support,
+                            color = SaqzTheme.colors.errorForeground,
+                            modifier = Modifier.testTag(GroupMembersTags.ActionDenied).clickable {
                                 onIntent(GroupMembersIntent.DismissActionFailed)
                             },
                         )

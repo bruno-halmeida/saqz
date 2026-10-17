@@ -57,6 +57,8 @@ data class MemberEditorState(
     val effectiveMonthlyFeeCents: Long? get() = monthlyFeeOverrideCents ?: defaultMonthlyFeeCents
     val effectiveMonthlyDueDay: Int? get() = monthlyDueDayOverride ?: defaultMonthlyDueDay
     val isOwner: Boolean get() = role == GroupRole.OWNER
+    /** Dono nunca sai; admin só o dono remove (SAI-003). `canManageRoles` é o dono quem vê. */
+    val canRemove: Boolean get() = !isOwner && (role != GroupRole.ADMIN || canManageRoles)
     val isCourt: Boolean get() = modality == GroupModality.COURT_VOLLEYBALL
 }
 

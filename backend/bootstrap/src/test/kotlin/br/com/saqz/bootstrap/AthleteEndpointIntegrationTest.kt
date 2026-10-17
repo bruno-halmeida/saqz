@@ -429,6 +429,31 @@ class AthleteEndpointIntegrationTest {
     }
 
     @Test
+    fun `admin removing another admin gets the same forbidden code old apps already handle`() {
+        val otherAdminId = UUID.randomUUID()
+        read.role = GroupRole.ADMIN
+        athletes.reset(listOf(athlete(actorId, "Admin Person", GroupRole.ADMIN), athlete(otherAdminId, "Other Admin", GroupRole.ADMIN)))
+
+        assertProblem(delete("/api/groups/$groupId/athletes/$otherAdminId"), 403, "ACCESS_FORBIDDEN")
+
+        assertTrue(athletes.removals.isEmpty())
+        assertEquals(otherAdminId, athletes.find(groupId, otherAdminId)?.userId)
+    }
+
+    @Test
+    fun `owner removes an admin and admin still removes an athlete`() {
+        val otherAdminId = UUID.randomUUID()
+        athletes.reset(listOf(athlete(actorId, "Owner Person", GroupRole.OWNER), athlete(otherAdminId, "Other Admin", GroupRole.ADMIN)))
+        assertEquals(200, delete("/api/groups/$groupId/athletes/$otherAdminId").statusCode())
+        assertEquals(listOf(otherAdminId), athletes.removals)
+
+        read.role = GroupRole.ADMIN
+        athletes.reset(listOf(athlete(actorId, "Admin Person", GroupRole.ADMIN), athlete(memberId, "Other Person", GroupRole.ATHLETE)))
+        assertEquals(200, delete("/api/groups/$groupId/athletes/$memberId").statusCode())
+        assertEquals(listOf(memberId), athletes.removals)
+    }
+
+    @Test
     fun `removing absent athlete is idempotent success`() {
         val response = delete("/api/groups/$groupId/athletes/${UUID.randomUUID()}")
         assertEquals(200, response.statusCode())

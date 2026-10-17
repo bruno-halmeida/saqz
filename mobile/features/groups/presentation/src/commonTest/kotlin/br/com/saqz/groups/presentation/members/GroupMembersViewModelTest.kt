@@ -35,6 +35,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -96,7 +97,7 @@ class GroupMembersViewModelTest {
     }
 
     @Test
-    fun `dono e admin editam jogador de dono e de admin inclusive o proprio`() {
+    fun `dono e admin editam jogador de dono e de admin mas so o dono remove admin`() {
         val base = MemberUi("x", "X", "", isAdmin = true, isSelf = false, stats = "")
         val ownerSelf = base.copy(isOwner = true, isSelf = true)
         val ownerTarget = base.copy(isOwner = true, canManageRoles = false)
@@ -119,7 +120,6 @@ class GroupMembersViewModelTest {
             listOf(
                 GroupMemberAction.ViewProfile,
                 GroupMemberAction.EditMember,
-                GroupMemberAction.Remove,
                 GroupMemberAction.Report,
                 GroupMemberAction.Block,
             ),
@@ -319,6 +319,51 @@ class GroupMembersViewModelTest {
 
         assertEquals(null, membership.lastRoleCommand)
         assertEquals(null, athlete.lastRemovedUserId)
+    }
+
+    @Test
+    fun `admin nao remove outro admin e o dono remove`() = runTest {
+        val roster = listOf(sampleRosterEntry("admin-2", role = GroupRole.ADMIN))
+        val membership = FakeGroupMembershipGateway(
+            listResult = SaqzResult.Success(listOf(GroupMembership("admin-2", "Admin", GroupRole.ADMIN))),
+        )
+
+        val asAdmin = FakeAthleteGateway(rosterResult = SaqzResult.Success(roster))
+        val adminViewModel = membersViewModel("group-1", asAdmin, membership, groupAs(GroupRole.ADMIN))
+        val otherAdmin = adminViewModel.state.value.admins.single()
+        assertFalse(GroupMemberAction.Remove in otherAdmin.sheetActions())
+        adminViewModel.onIntent(GroupMembersIntent.OpenMember(otherAdmin.id))
+        adminViewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
+        assertNull(adminViewModel.state.value.confirmRemove)
+        assertEquals(null, asAdmin.lastRemovedUserId)
+
+        val asOwner = FakeAthleteGateway(rosterResult = SaqzResult.Success(roster))
+        val ownerViewModel = membersViewModel("group-1", asOwner, membership, groupAs(GroupRole.OWNER))
+        val admin = ownerViewModel.state.value.admins.single()
+        assertTrue(GroupMemberAction.Remove in admin.sheetActions())
+        ownerViewModel.onIntent(GroupMembersIntent.OpenMember(admin.id))
+        ownerViewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
+        ownerViewModel.onIntent(GroupMembersIntent.ConfirmRemove)
+        assertEquals("admin-2", asOwner.lastRemovedUserId)
+    }
+
+    @Test
+    fun `servidor que nega a remocao mostra o aviso curto e nao o generico`() = runTest {
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())),
+            removeResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Forbidden)),
+        )
+        val viewModel = membersViewModel("group-1", athlete, FakeGroupMembershipGateway(), groupAs(GroupRole.ADMIN))
+        val member = viewModel.state.value.members.single()
+
+        viewModel.onIntent(GroupMembersIntent.OpenMember(member.id))
+        viewModel.onIntent(GroupMembersIntent.PerformAction(GroupMemberAction.Remove))
+        viewModel.onIntent(GroupMembersIntent.ConfirmRemove)
+
+        assertTrue(viewModel.state.value.actionDenied)
+        assertFalse(viewModel.state.value.actionFailed)
+        viewModel.onIntent(GroupMembersIntent.DismissActionFailed)
+        assertFalse(viewModel.state.value.actionDenied)
     }
 
     @Test

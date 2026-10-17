@@ -85,6 +85,8 @@ data class GroupMembersState(
     val trialEnded: Boolean = false,
     /** A ação falhou por outro motivo: a lista fica na tela e um aviso explica. */
     val actionFailed: Boolean = false,
+    /** O servidor negou a ação (403): hoje só acontece ao remover um admin sem ser o dono. */
+    val actionDenied: Boolean = false,
 )
 
 /**
@@ -99,7 +101,7 @@ val GroupMembersState.memberCount: Int get() = totalCount - adminCount
  * para qualquer alvo, dono e admin inclusive, e para si mesmo. Para alvo admin, "Tornar admin"
  * vira "Remover admin"; remover do grupo fecha os dois sheets.
  * O dono do grupo é imutável: ninguém rebaixa nem remove. Admin promovido edita e
- * remove elenco, mas não promove — isso fica com o OWNER. Sobre si mesmo, só perfil e edição.
+ * remove atleta, mas não promove nem remove admin — isso fica com o OWNER. Sobre si mesmo, só perfil e edição.
  */
 fun MemberUi.sheetActions(): List<GroupMemberAction> = managementActions() + moderationActions()
 
@@ -113,7 +115,8 @@ private fun MemberUi.managementActions(): List<GroupMemberAction> = when {
         add(GroupMemberAction.ViewProfile)
         if (canManageAthletes) add(GroupMemberAction.EditMember)
         if (canManageRoles) add(GroupMemberAction.Demote)
-        if (canManageAthletes) add(GroupMemberAction.Remove)
+        // Só o dono remove um admin (SAI-003); canManageRoles é o dono.
+        if (canManageRoles) add(GroupMemberAction.Remove)
     }
     else -> buildList {
         add(GroupMemberAction.ViewProfile)

@@ -51,6 +51,7 @@ import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.athlete.AthletePreferredSide
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
 import br.com.saqz.groups.resources.Res
@@ -88,6 +89,7 @@ import br.com.saqz.groups.resources.member_editor_position
 import br.com.saqz.groups.resources.member_editor_remove
 import br.com.saqz.groups.resources.member_editor_remove_body
 import br.com.saqz.groups.resources.member_editor_remove_confirm
+import br.com.saqz.groups.resources.member_editor_remove_denied
 import br.com.saqz.groups.resources.member_editor_remove_monthly
 import br.com.saqz.groups.resources.member_editor_remove_title
 import br.com.saqz.groups.resources.member_editor_save
@@ -170,7 +172,7 @@ fun MemberEditorScreen(
                     verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
                 ) {
                     if (state.error != null) {
-                        MemberEditorOperationError()
+                        MemberEditorOperationError(denied = state.error == GroupUiError.AccessDenied && state.role == GroupRole.ADMIN)
                     }
                     MemberEditorHeader(state)
                     MemberEditorIdentity(state, onIntent)
@@ -178,7 +180,7 @@ fun MemberEditorScreen(
                     MemberEditorMembership(state, onIntent)
                     MemberEditorPermissions(state, onIntent)
                     MemberEditorStats(state)
-                    if (!state.isOwner) {
+                    if (state.canRemove) {
                         MemberEditorRemove(state, onIntent)
                     }
                     SaqzButton(
@@ -206,10 +208,10 @@ fun MemberEditorScreen(
 }
 
 @Composable
-private fun MemberEditorOperationError() {
+private fun MemberEditorOperationError(denied: Boolean = false) {
     SaqzCard(modifier = Modifier.testTag(MemberEditorTags.OperationError)) {
         Text(
-            text = stringResource(Res.string.member_editor_operation_failure),
+            text = stringResource(if (denied) Res.string.member_editor_remove_denied else Res.string.member_editor_operation_failure),
             style = SaqzTheme.typography.support,
             color = SaqzTheme.colors.errorForeground,
         )

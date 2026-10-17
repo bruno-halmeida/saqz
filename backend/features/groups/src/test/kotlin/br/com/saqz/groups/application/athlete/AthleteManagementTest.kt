@@ -299,6 +299,39 @@ class AthleteManagementTest {
     }
 
     @Test
+    fun `owner removes an admin`() {
+        val fixture = fixture(GroupRole.OWNER)
+
+        val result = fixture.remove.execute(actor, groupId, admin.userId)
+
+        assertSame(RemoveAthleteResult.Success, result)
+        assertEquals(listOf(admin.userId), fixture.athletes.removedUserIds)
+        assertNull(fixture.athletes.find(groupId, admin.userId))
+    }
+
+    @Test
+    fun `admin cannot remove another admin and nothing changes`() {
+        val otherAdmin = admin.copy(userId = UUID.randomUUID())
+        val fixture = fixture(GroupRole.ADMIN, listOf(owner, admin, otherAdmin, member))
+
+        val result = fixture.remove.execute(actor, groupId, otherAdmin.userId)
+
+        assertSame(RemoveAthleteResult.AccessForbidden, result)
+        assertTrue(fixture.athletes.removedUserIds.isEmpty())
+        assertEquals(otherAdmin, fixture.athletes.find(groupId, otherAdmin.userId))
+    }
+
+    @Test
+    fun `admin asking to remove an admin who already left still gets success`() {
+        val fixture = fixture(GroupRole.ADMIN)
+
+        val result = fixture.remove.execute(actor, groupId, UUID.randomUUID())
+
+        assertSame(RemoveAthleteResult.Success, result)
+        assertTrue(fixture.athletes.removedUserIds.isEmpty())
+    }
+
+    @Test
     fun `removing the group owner is rejected`() {
         val fixture = fixture(GroupRole.OWNER)
 

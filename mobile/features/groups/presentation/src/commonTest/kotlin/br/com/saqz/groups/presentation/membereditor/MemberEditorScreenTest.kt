@@ -1,6 +1,9 @@
 package br.com.saqz.groups.presentation.membereditor
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -67,6 +70,28 @@ class MemberEditorScreenTest {
         }
 
         onNodeWithTag(MemberEditorTags.Remove).assertDoesNotExist()
+    }
+
+    @Test
+    fun `admin editor hides remove for a viewer who is not the owner and shows it for the owner`() = runComposeUiTest {
+        var canManageRoles by mutableStateOf(false)
+        setContent {
+            SaqzTheme {
+                MemberEditorScreen(
+                    state = memberEditorPreviewState.copy(
+                        role = br.com.saqz.groups.domain.group.GroupRole.ADMIN,
+                        canManageRoles = canManageRoles,
+                    ),
+                    onIntent = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        onNodeWithTag(MemberEditorTags.Remove).assertDoesNotExist()
+        canManageRoles = true
+        waitForIdle()
+        onNodeWithTag(MemberEditorTags.Remove).assertExists()
     }
 
     // ---- Backend v.0.0.17: promover durante o teste responde 403 SUBSCRIPTION_REQUIRED ----

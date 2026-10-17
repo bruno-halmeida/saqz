@@ -266,6 +266,54 @@ class MemberEditorViewModelTest {
     }
 
     @Test
+    fun `admin cannot remove another admin from the editor but the owner can`() = runTest {
+        val adminMembership = FakeGroupMembershipGateway(
+            listResult = SaqzResult.Success(listOf(GroupMembership(USER_ID, "Admin", GroupRole.ADMIN))),
+        )
+        val asAdmin = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
+        val adminEditor = editor(asAdmin, adminMembership, viewerRole = GroupRole.ADMIN)
+        assertFalse(adminEditor.state.value.canRemove)
+        adminEditor.onIntent(MemberEditorIntent.OpenRemove)
+        adminEditor.onIntent(MemberEditorIntent.ConfirmRemove)
+        assertFalse(adminEditor.state.value.removeSheetOpen)
+        assertEquals(null, asAdmin.lastRemovedUserId)
+
+        val asOwner = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
+        val ownerEditor = editor(asOwner, adminMembership, viewerRole = GroupRole.OWNER)
+        assertTrue(ownerEditor.state.value.canRemove)
+        ownerEditor.onIntent(MemberEditorIntent.OpenRemove)
+        ownerEditor.onIntent(MemberEditorIntent.ConfirmRemove)
+        assertEquals(USER_ID, asOwner.lastRemovedUserId)
+    }
+
+    @Test
+    fun `admin still removes an athlete from the editor`() = runTest {
+        val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())))
+        val viewModel = editor(athlete, viewerRole = GroupRole.ADMIN)
+
+        assertTrue(viewModel.state.value.canRemove)
+        viewModel.onIntent(MemberEditorIntent.OpenRemove)
+        viewModel.onIntent(MemberEditorIntent.ConfirmRemove)
+
+        assertEquals(USER_ID, athlete.lastRemovedUserId)
+    }
+
+    @Test
+    fun `server refusal to remove exposes access denied`() = runTest {
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry())),
+            removeResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Forbidden)),
+        )
+        val viewModel = editor(athlete, viewerRole = GroupRole.OWNER)
+
+        viewModel.onIntent(MemberEditorIntent.OpenRemove)
+        viewModel.onIntent(MemberEditorIntent.ConfirmRemove)
+
+        assertEquals(GroupUiError.AccessDenied, viewModel.state.value.error)
+        assertNull(viewModel.state.value.operation)
+    }
+
+    @Test
     fun `role change sends assignable role and updates state`() = runTest {
         val membership = FakeGroupMembershipGateway(
             listResult = SaqzResult.Success(listOf(GroupMembership(USER_ID, "Member", GroupRole.ATHLETE))),
