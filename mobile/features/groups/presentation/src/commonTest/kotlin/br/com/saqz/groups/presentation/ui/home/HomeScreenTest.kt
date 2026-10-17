@@ -245,7 +245,7 @@ class HomeScreenTest {
         )
 
         onNodeWithText("Lista de espera").assertIsDisplayed()
-        onNodeWithText("Os mensalistas entram primeiro.").assertIsDisplayed()
+        onNodeWithText("Mensalista na espera sobe primeiro.").assertIsDisplayed()
         onNodeWithText("2º na lista · 9 confirmados").assertIsDisplayed()
         onNodeWithText("Quer entrar direto nos próximos?").assertIsDisplayed()
         onNodeWithTag(HomeWaitlistTags.QueueSection).assertIsDisplayed()
