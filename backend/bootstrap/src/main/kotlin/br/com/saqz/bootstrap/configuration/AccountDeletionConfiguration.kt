@@ -67,7 +67,24 @@ internal fun cancelDeletedAccountSubscription(jdbc: JdbcClient, userId: UUID, ca
     jdbc.sql("""UPDATE subscriptions SET asaas_credit_card_token = NULL,
         credit_card_last4 = NULL, credit_card_brand = NULL WHERE owner_user_id = :id""")
         .param("id", userId).update()
+    // A Apple e o Google cobram por conta própria: o servidor não cancela, e isso não pode travar a exclusão.
+    // A pessoa cancela na loja (aviso na confirmação); aqui só fica o registro de que a cobrança segue.
+    leftActiveStoreSubscriptions(jdbc, userId).forEach {
+        JobLog.item("account_deletion", "store_subscription_left_active", "userId" to userId, "provider" to it)
+    }
 }
+
+/** Assinaturas de loja ainda valendo (provedor, na ordem App Store, Google Play); as da Asaas não entram. */
+internal fun leftActiveStoreSubscriptions(jdbc: JdbcClient, userId: UUID): List<String> = jdbc.sql("""
+    SELECT provider FROM (
+        SELECT 'APP_STORE' AS provider, 1 AS position FROM app_store_subscriptions
+        WHERE owner_user_id = :id AND revoked_at IS NULL
+          AND (expires_at > now() OR grace_period_expires_at > now())
+        UNION ALL
+        SELECT 'GOOGLE_PLAY', 2 FROM google_play_subscriptions
+        WHERE owner_user_id = :id AND superseded_at IS NULL
+          AND state IN ('ACTIVE', 'CANCELED', 'IN_GRACE_PERIOD') AND expires_at > now()
+    ) live ORDER BY position""").param("id", userId).query(String::class.java).list().filterNotNull().distinct()
 
 class AccountDeletionWorker(private val useCase: CompleteAccountDeletion, private val clock: Clock) {
     @Scheduled(fixedDelayString = "\${saqz.account-deletion.delay-ms:15000}")

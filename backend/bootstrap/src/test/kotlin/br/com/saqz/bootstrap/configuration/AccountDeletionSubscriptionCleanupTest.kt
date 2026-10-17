@@ -1,6 +1,9 @@
 package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.access.adapter.output.jdbc.session.JdbcSessionRepository
+import br.com.saqz.access.adapter.output.jdbc.session.JdbcAccountDeletionJobs
+import br.com.saqz.access.application.session.AccountDeletionProviders
+import br.com.saqz.access.application.session.CompleteAccountDeletion
 import br.com.saqz.access.application.session.SessionUpsert
 import br.com.saqz.access.domain.AccessName
 import br.com.saqz.postgrestesting.TestPostgres
@@ -67,6 +70,61 @@ class AccountDeletionSubscriptionCleanupTest {
         cancelDeletedAccountSubscription(jdbc, user, cancellation)
         verifyNoMoreInteractions(gateway)
         assertPurged()
+    }
+
+    @Test fun `store only subscriber finishes deletion without touching asaas and the store rows stay live`() {
+        storeSubscriptions()
+        sessions.softDelete("provider-cleanup", user)
+        val gateway = mock(AsaasGateway::class.java)
+        val cancellation = CancelSubscription(JdbcSubscriptionRepository(db), gateway,
+            JdbcSubscriptionsTransactionRunner(db), Clock.fixed(Instant.parse("2026-09-27T12:00:00Z"), ZoneOffset.UTC))
+
+        cancelDeletedAccountSubscription(jdbc, user, cancellation)
+        cancelDeletedAccountSubscription(jdbc, user, null)
+
+        verifyNoInteractions(gateway)
+        assertEquals(1, count("SELECT count(*) FROM app_store_subscriptions WHERE owner_user_id = :id AND revoked_at IS NULL"))
+        assertEquals(1, count("SELECT count(*) FROM google_play_subscriptions WHERE owner_user_id = :id AND state = 'ACTIVE'"))
+        assertEquals(listOf("APP_STORE", "GOOGLE_PLAY"), leftActiveStoreSubscriptions(jdbc, user))
+    }
+
+    @Test fun `deletion job completes for a store only subscriber on the first attempt`() {
+        storeSubscriptions()
+        sessions.softDelete("provider-cleanup", user)
+        val gateway = mock(AsaasGateway::class.java)
+        val cancellation = CancelSubscription(JdbcSubscriptionRepository(db), gateway,
+            JdbcSubscriptionsTransactionRunner(db), Clock.systemUTC())
+        val providers = object : AccountDeletionProviders {
+            override fun cancelSubscription(userId: java.util.UUID) = cancelDeletedAccountSubscription(jdbc, userId, cancellation)
+            override fun deleteIdentity(subject: String) = Unit
+        }
+
+        val ran = CompleteAccountDeletion(JdbcAccountDeletionJobs(db), providers).runNext(Instant.now().plusSeconds(1))
+
+        assertTrue(ran)
+        verifyNoInteractions(gateway)
+        assertEquals(1, count("SELECT count(*) FROM account_deletion_requests WHERE user_id = :id AND completed_at IS NOT NULL"))
+        assertEquals(1, count("SELECT attempts FROM account_deletion_requests WHERE user_id = :id"))
+    }
+
+    @Test fun `expired or revoked store subscriptions are not reported as left active`() {
+        storeSubscriptions()
+        jdbc.sql("UPDATE app_store_subscriptions SET revoked_at = now() WHERE owner_user_id = :id").param("id", user).update()
+        jdbc.sql("UPDATE google_play_subscriptions SET expires_at = now() - interval '1 day' WHERE owner_user_id = :id").param("id", user).update()
+        assertEquals(emptyList(), leftActiveStoreSubscriptions(jdbc, user))
+    }
+
+    private fun count(sql: String) = jdbc.sql(sql).param("id", user).query(Int::class.java).single()
+
+    private fun storeSubscriptions() {
+        jdbc.sql("""INSERT INTO app_store_subscriptions(original_transaction_id, owner_user_id, environment, product_id,
+            plan, cycle, latest_transaction_id, latest_purchase_date, latest_signed_at, expires_at)
+            VALUES ('apple-original', :id, 'PRODUCTION', 'app.saqz.titular.mensal', 'TITULAR', 'MONTHLY', 'apple-latest',
+                now(), now(), now() + interval '20 days')""").param("id", user).update()
+        jdbc.sql("""INSERT INTO google_play_subscriptions(purchase_token, owner_user_id, product_id, base_plan_id,
+            plan, cycle, state, expires_at)
+            VALUES ('google-token', :id, 'app.saqz.titular', 'mensal', 'TITULAR', 'MONTHLY', 'ACTIVE',
+                now() + interval '20 days')""").param("id", user).update()
     }
 
     private fun subscription() {
