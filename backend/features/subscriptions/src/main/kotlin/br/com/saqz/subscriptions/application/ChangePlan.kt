@@ -195,7 +195,7 @@ class ChangePlan(
     private fun usageFitsTarget(ownerUserId: UUID, target: Plan): Boolean {
         val usage = usageLookup.usageFor(ownerUserId)
         val groupsOk = target.maxGroups == null || usage.ownedGroupCount <= target.maxGroups
-        val athletesOk = target.maxAthletes == null || usage.occupyingAthleteCount <= target.maxAthletes
+        val athletesOk = target.maxAthletes == null || usage.largestGroupAthleteCount <= target.maxAthletes
         return groupsOk && athletesOk
     }
 }

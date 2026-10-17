@@ -37,7 +37,7 @@ class ChangePlanTest {
     fun setUp() {
         subscriptions = FakeSubscriptionRepository()
         gateway = FakeAsaasGateway()
-        usage = MutableOwnerPlanUsageLookup(OwnerPlanUsage(ownedGroupCount = 1, occupyingAthleteCount = 5))
+        usage = MutableOwnerPlanUsageLookup(OwnerPlanUsage(ownedGroupCount = 1, largestGroupAthleteCount = 5))
         coupons = FakeCouponRepository()
         useCase = ChangePlan(
             subscriptions,
@@ -144,7 +144,7 @@ class ChangePlanTest {
                 couponCyclesRemaining = null,
             ),
         )
-        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, occupyingAthleteCount = 5)
+        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, largestGroupAthleteCount = 5)
 
         useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.TITULAR))
 
@@ -161,7 +161,7 @@ class ChangePlanTest {
                 pendingUpgradeChargeId = "pay_upg_1",
             ),
         )
-        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, occupyingAthleteCount = 5)
+        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, largestGroupAthleteCount = 5)
 
         val result = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.TITULAR))
 
@@ -212,7 +212,7 @@ class ChangePlanTest {
     @Test
     fun `downgrade blocked when owner exceeds target group limit`() {
         subscriptions.save(baseSubscription().copy(plan = Plan.ORGANIZADOR))
-        usage.usage = OwnerPlanUsage(ownedGroupCount = 3, occupyingAthleteCount = 5)
+        usage.usage = OwnerPlanUsage(ownedGroupCount = 3, largestGroupAthleteCount = 5)
 
         val result = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.TITULAR))
 
@@ -224,7 +224,7 @@ class ChangePlanTest {
     @Test
     fun `downgrade schedules pending plan without one-off charge`() {
         subscriptions.save(baseSubscription().copy(plan = Plan.ORGANIZADOR))
-        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, occupyingAthleteCount = 5)
+        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, largestGroupAthleteCount = 5)
 
         val result = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.TITULAR))
 
@@ -245,7 +245,7 @@ class ChangePlanTest {
                 couponCyclesRemaining = 1,
             ),
         )
-        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, occupyingAthleteCount = 5)
+        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, largestGroupAthleteCount = 5)
 
         useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.TITULAR))
 
@@ -255,7 +255,7 @@ class ChangePlanTest {
     @Test
     fun `downgrade blocked when athlete count exceeds target max athletes`() {
         subscriptions.save(baseSubscription().copy(plan = Plan.ORGANIZADOR))
-        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, occupyingAthleteCount = 30)
+        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, largestGroupAthleteCount = 30)
 
         assertEquals(
             ChangePlanResult.DowngradeBlockedByUsage,

@@ -134,13 +134,13 @@ class GroupSoftDeleteIntegrationTest {
         val repository = JdbcOwnerPlanUsageLookup(dataSource)
 
         assertEquals(1, repository.usageFor(fixture.owner).ownedGroupCount)
-        assertEquals(2, repository.usageFor(fixture.owner).occupyingAthleteCount)
+        assertEquals(2, repository.usageFor(fixture.owner).largestGroupAthleteCount)
 
         delete(fixture.group)
 
         val usage = repository.usageFor(fixture.owner)
         assertEquals(0, usage.ownedGroupCount)
-        assertEquals(0, usage.occupyingAthleteCount)
+        assertEquals(0, usage.largestGroupAthleteCount)
     }
 
     private fun fixture(): Fixture {

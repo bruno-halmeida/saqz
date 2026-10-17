@@ -165,7 +165,7 @@ class CreateSubscription(
     ): CommitOutcome {
         val usage = usageLookup.usageFor(command.ownerUserId)
         if ((command.plan.maxGroups != null && usage.ownedGroupCount > command.plan.maxGroups) ||
-            (command.plan.maxAthletes != null && usage.occupyingAthleteCount > command.plan.maxAthletes)
+            (command.plan.maxAthletes != null && usage.largestGroupAthleteCount > command.plan.maxAthletes)
         ) return CommitOutcome.Rejected(CreateSubscriptionResult.PlanDoesNotFitUsage)
         val couponOutcome = resolveCoupon(command.couponCode, command.ownerUserId, now)
         if (couponOutcome is CouponOutcome.Failure) return CommitOutcome.Rejected(couponOutcome.result)
