@@ -81,6 +81,15 @@ class MaterializeWeeklySeriesTest {
         assertEquals(12, fixture.repository.identities.size)
     }
 
+    @Test fun `a saved legacy slot with 2 spots keeps generating occurrences`() {
+        val legacy = rule(slots = listOf(slot(DayOfWeek.WEDNESDAY).copy(capacity = 2)))
+        val fixture = fixture(legacy)
+
+        val result = assertIs<MaterializeWeeklySeriesResult.Success>(fixture.useCase.execute(legacy, DATE))
+
+        assertTrue(result.generated > 0)
+    }
+
     @Test fun `invalid rule performs no transaction id allocation or write`() {
         val fixture = fixture()
         val invalid = fixture.rule.copy(slots = emptyList())

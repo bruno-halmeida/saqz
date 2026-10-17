@@ -4,6 +4,7 @@ import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.AttendanceSource
+import br.com.saqz.groups.domain.game.GameCapacity
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.group.PromotionMode
 import java.time.Instant
@@ -36,7 +37,7 @@ class AdjustGameCapacity(
         expectedVersion: Long,
         capacity: Int,
     ): CapacityCommandResult = transaction.inTransaction {
-        if (capacity !in 2..100) return@inTransaction CapacityCommandResult.InvalidCapacity
+        if (capacity !in GameCapacity.MIN..GameCapacity.MAX) return@inTransaction CapacityCommandResult.InvalidCapacity
         val aggregate = repository.lockCapacity(groupId, gameId, actorId)
             ?: return@inTransaction CapacityCommandResult.Hidden
         if (aggregate.actorRole == null) return@inTransaction CapacityCommandResult.Hidden

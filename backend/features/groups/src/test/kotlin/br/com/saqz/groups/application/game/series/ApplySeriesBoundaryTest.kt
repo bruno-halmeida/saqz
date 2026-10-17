@@ -52,6 +52,17 @@ class ApplySeriesBoundaryTest {
         assertEquals(0, fixture.repository.futureCalls)
     }
 
+    @Test fun `future boundary refuses a successor slot with 3 spots and accepts 4`() {
+        val fixture = fixture()
+        val legacy = fixture.rule.copy(slots = fixture.rule.slots.map { it.copy(capacity = 3) })
+        val refused = assertIs<SeriesBoundaryResult.Invalid>(fixture.future(legacy))
+        assertEquals(listOf("slots[0].capacity"), refused.errors.map { it.field })
+        assertEquals(0, fixture.repository.futureCalls)
+
+        fixture.future(fixture.rule.copy(slots = fixture.rule.slots.map { it.copy(capacity = 4) }))
+        assertEquals(1, fixture.repository.futureCalls)
+    }
+
     @Test fun `future boundary returns all recurrence validation errors before persistence`() {
         val fixture = fixture()
         val invalid = fixture.rule.copy(slots = emptyList(), zoneId = "bad zone")

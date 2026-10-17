@@ -59,6 +59,14 @@ class GameTest {
         assertEquals(setOf("durationMinutes", "capacity"), result.errors.map { it.field }.toSet())
     }
 
+    @Test fun `capacity below 4 is refused and 4 to 100 is accepted`() {
+        listOf(0, 1, 2, 3, 101).forEach { capacity ->
+            val result = assertIs<GameDraftValidation.Invalid>(GameDraftValidator.validate(validInput(capacity = capacity)))
+            assertEquals(listOf("capacity" to "must be between 4 and 100"), result.errors.map { it.field to it.message })
+        }
+        listOf(4, 5, 100).forEach { capacity -> assertEquals(capacity, valid(validInput(capacity = capacity)).capacity) }
+    }
+
     @Test fun `deadline may equal start but not follow it`() {
         val start = Instant.parse("2026-08-12T22:30:00Z")
         assertEquals(start, valid(validInput(startsAt = start, confirmationDeadline = start)).confirmationDeadline)

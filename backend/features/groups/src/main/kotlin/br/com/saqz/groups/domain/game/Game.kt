@@ -14,6 +14,17 @@ enum class GameMutation { EDIT, PUBLISH, CANCEL, COMPLETE }
 
 data class GameValidationError(val field: String, val message: String)
 
+/**
+ * Capacidade de um jogo. [MIN] vale ao criar ou salvar (futevôlei e vôlei de praia pedem 4);
+ * jogo ou horário antigo com 2 ou 3 vagas segue vivo, só não passa por um novo salvamento. O banco
+ * guarda [LEGACY_MIN] de propósito: um CHECK mais apertado barraria o UPDATE de qualquer linha antiga.
+ */
+object GameCapacity {
+    const val MIN = 4
+    const val MAX = 100
+    const val LEGACY_MIN = 2
+}
+
 data class GameVenueInput(
     val venueId: UUID? = null,
     val name: String?,
@@ -80,7 +91,7 @@ object GameDraftValidator {
             }
         }
         range(input.durationMinutes, "durationMinutes", 15, 480, errors)
-        range(input.capacity, "capacity", 2, 100, errors)
+        range(input.capacity, "capacity", GameCapacity.MIN, GameCapacity.MAX, errors)
         if (input.confirmationDeadline == null) errors += required("confirmationDeadline")
         if (input.startsAt != null && input.confirmationDeadline != null && input.confirmationDeadline > input.startsAt) {
             errors += GameValidationError("confirmationDeadline", "must be at or before startsAt")
@@ -217,7 +228,8 @@ object GameDefaultSnapshotFactory {
             zoneId = input.zoneId,
             startsAt = startsAt,
             durationMinutes = input.durationMinutes ?: defaults.durationMinutes,
-            capacity = input.capacity ?: defaults.capacity,
+            // O padrão do grupo pode ser antigo (2 ou 3): o jogo novo nasce com o mínimo de hoje.
+            capacity = input.capacity ?: defaults.capacity?.coerceAtLeast(GameCapacity.MIN),
             confirmationDeadline = input.confirmationDeadline ?: startsAt?.let { start ->
                 defaults.confirmationLeadMinutes?.let { start.minusSeconds(it.toLong() * 60) }
             },

@@ -2,6 +2,7 @@ package br.com.saqz.groups.application.game.recurrence
 
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.attendance.AutoConfirmationMaterializationPort
+import br.com.saqz.groups.domain.game.GameCapacity
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.recurrence.RecurrenceValidationError
 import br.com.saqz.groups.domain.game.recurrence.WeeklyRecurrenceResolver
@@ -50,7 +51,7 @@ class MaterializeWeeklySeries(
     private val horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
 ) {
     fun execute(rule: WeeklySeriesRule, from: LocalDate): MaterializeWeeklySeriesResult {
-        val resolved = when (val result = WeeklyRecurrenceResolver.resolve(rule, from)) {
+        val resolved = when (val result = WeeklyRecurrenceResolver.resolve(rule, from, GameCapacity.LEGACY_MIN)) {
             is WeeklyRecurrenceResult.Invalid -> return MaterializeWeeklySeriesResult.Invalid(result.errors)
             is WeeklyRecurrenceResult.Valid -> result.occurrences
         }

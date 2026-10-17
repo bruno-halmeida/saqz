@@ -99,7 +99,7 @@ class JdbcGameGuestIntegrationTest {
 
         // Convidado não é mensalista: com a prioridade ligada ele espera o prazo; este teste cobre a promoção em si.
         execute("UPDATE access_groups SET mensalista_priority = false WHERE id = '${f.group}'")
-        val result = assertIs<CapacityCommandResult.Success>(capacity(f).execute(f.owner, f.group, f.game, 1, 2))
+        val result = assertIs<CapacityCommandResult.Success>(capacity(f).execute(f.owner, f.group, f.game, 1, 4))
 
         assertEquals(1, result.promoted.size)
         assertEquals(AttendanceStatus.CONFIRMED, result.promoted.single().status)

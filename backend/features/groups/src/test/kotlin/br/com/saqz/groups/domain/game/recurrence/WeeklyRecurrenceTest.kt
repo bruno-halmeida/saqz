@@ -1,5 +1,6 @@
 package br.com.saqz.groups.domain.game.recurrence
 
+import br.com.saqz.groups.domain.game.GameCapacity
 import br.com.saqz.groups.domain.game.GameVenueSnapshot
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
@@ -138,6 +139,32 @@ class WeeklyRecurrenceTest {
                 "slots[0].gameFeeCents",
             ),
             errors.map { it.field }.toSet(),
+        )
+    }
+
+    @Test fun `saving a slot needs at least 4 spots and at most 100`() {
+        listOf(2, 3, 101).forEach { capacity ->
+            val errors = assertIs<WeeklyRecurrenceResult.Invalid>(
+                WeeklyRecurrenceResolver.resolve(rule(slots = listOf(slot(DayOfWeek.WEDNESDAY).copy(capacity = capacity))), DATE),
+            ).errors
+            assertEquals(listOf("slots[0].capacity" to "must be between 4 and 100"), errors.map { it.field to it.message })
+        }
+        listOf(4, 100).forEach { capacity ->
+            assertEquals(
+                false,
+                valid(rule(slots = listOf(slot(DayOfWeek.WEDNESDAY).copy(capacity = capacity))), DATE).isEmpty(),
+            )
+        }
+    }
+
+    @Test fun `generating from a saved legacy slot with 2 or 3 spots still resolves`() {
+        listOf(2, 3).forEach { capacity ->
+            val legacy = rule(slots = listOf(slot(DayOfWeek.WEDNESDAY).copy(capacity = capacity)))
+            val result = assertIs<WeeklyRecurrenceResult.Valid>(WeeklyRecurrenceResolver.resolve(legacy, DATE, GameCapacity.LEGACY_MIN))
+            assertEquals(setOf(capacity), result.occurrences.map { it.slot.capacity }.toSet())
+        }
+        assertIs<WeeklyRecurrenceResult.Invalid>(
+            WeeklyRecurrenceResolver.resolve(rule(slots = listOf(slot(DayOfWeek.WEDNESDAY).copy(capacity = 1))), DATE, GameCapacity.LEGACY_MIN),
         )
     }
 

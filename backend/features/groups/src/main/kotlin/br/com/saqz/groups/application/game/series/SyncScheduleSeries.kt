@@ -5,6 +5,7 @@ import br.com.saqz.groups.application.game.recurrence.GameIdFactory
 import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
 import br.com.saqz.groups.application.game.recurrence.creatableBetween
 import br.com.saqz.sharedkernel.subscription.GameCreationHorizon
+import br.com.saqz.groups.domain.game.GameCapacity
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVenueSnapshot
 import br.com.saqz.groups.domain.game.recurrence.WeeklyRecurrenceResolver
@@ -90,7 +91,8 @@ class SyncScheduleSeries(
                 localTime = slot.startTime,
                 durationMinutes = slot.durationMinutes,
                 venue = venue,
-                capacity = group.capacity,
+                // O padrão do grupo pode ser antigo (2 ou 3): o horário regular nasce com o mínimo de hoje.
+                capacity = group.capacity.coerceAtLeast(GameCapacity.MIN),
                 confirmationLeadMinutes = group.confirmationLeadMinutes,
                 gameFeeCents = group.gameFeeCents,
                 title = group.title,

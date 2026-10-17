@@ -50,6 +50,27 @@ class GameCommandsTest {
         assertEquals(24, fixture.repository.creation?.defaults?.capacity)
     }
 
+    @Test fun `create refuses 3 spots and accepts 4 and 100 without persisting the refused one`() {
+        val fixture = fixture(GroupRole.OWNER)
+        val refused = assertIs<GameCommandResult.Invalid>(fixture.create.execute(actor, groupId, gameId, createInput(capacity = 3)))
+        assertEquals(listOf("capacity"), refused.errors.map { it.field })
+        assertTrue(fixture.repository.creates.isEmpty())
+
+        listOf(4, 100).forEach { capacity ->
+            val saved = assertIs<GameCommandResult.Success>(fixture.create.execute(actor, groupId, UUID.randomUUID(), createInput(capacity = capacity)))
+            assertEquals(capacity, saved.game.snapshot.capacity)
+        }
+    }
+
+    @Test fun `create from an old group default with 3 spots uses the minimum of 4`() {
+        val fixture = fixture(GroupRole.OWNER)
+        fixture.repository.creation = fixture.repository.creation!!.copy(defaults = defaults().copy(capacity = 3))
+
+        val saved = assertIs<GameCommandResult.Success>(fixture.create.execute(actor, groupId, gameId, createInput()))
+
+        assertEquals(4, saved.game.snapshot.capacity)
+    }
+
     @Test fun `manual create reports the recurring occurrence at the same instant`() {
         val fixture = fixture(GroupRole.OWNER)
         val existing = UUID.randomUUID()
@@ -151,6 +172,19 @@ class GameCommandsTest {
     @Test fun `published game remains editable`() {
         val fixture = fixture(GroupRole.ADMIN, status = GameStatus.PUBLISHED)
         assertTrue(fixture.edit.execute(actor, groupId, gameId, 1, validDraft()) is GameCommandResult.Success)
+    }
+
+    @Test fun `saving an edit refuses 3 spots even on a legacy game and accepts 4`() {
+        val fixture = fixture(GroupRole.OWNER)
+        val refused = assertIs<GameCommandResult.Invalid>(
+            fixture.edit.execute(actor, groupId, gameId, 1, validDraft().copy(capacity = 3)),
+        )
+        assertEquals(listOf("capacity"), refused.errors.map { it.field })
+        assertTrue(fixture.repository.updates.isEmpty())
+        assertTrue(fixture.effects.calls.isEmpty())
+
+        val saved = assertIs<GameCommandResult.Success>(fixture.edit.execute(actor, groupId, gameId, 1, validDraft().copy(capacity = 4)))
+        assertEquals(4, saved.game.snapshot.capacity)
     }
 
     @Test fun `invalid edit reports all fields with no write or side effect`() {

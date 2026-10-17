@@ -47,7 +47,7 @@ class AttendanceChangeNoticeIntegrationTest {
 
     @Test fun `aumento de vagas promove e avisa`() {
         val w = world()
-        raise(w, 3)
+        raise(w, 4)
         assertEquals("CONFIRMED", status(w, w.waiting))
         assertEquals(1, notices(w.waiting))
         assertEquals(0, notices(w.going))

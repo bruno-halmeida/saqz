@@ -1,6 +1,7 @@
 package br.com.saqz.groups.domain.game.recurrence
 
 import br.com.saqz.groups.domain.IanaTimeZone
+import br.com.saqz.groups.domain.game.GameCapacity
 import br.com.saqz.groups.domain.game.GameVenueSnapshot
 import java.time.DayOfWeek
 import java.time.Instant
@@ -57,8 +58,12 @@ sealed interface WeeklyRecurrenceResult {
 object WeeklyRecurrenceResolver {
     const val HORIZON_WEEKS: Long = 12
 
-    fun resolve(rule: WeeklySeriesRule, from: LocalDate): WeeklyRecurrenceResult {
-        val errors = validate(rule)
+    /**
+     * [minCapacity]: salvar um horário (criar série, nova revisão) exige [GameCapacity.MIN]. A geração de
+     * jogos a partir de horário já salvo passa [GameCapacity.LEGACY_MIN]: série antiga com 2 ou 3 vagas segue gerando.
+     */
+    fun resolve(rule: WeeklySeriesRule, from: LocalDate, minCapacity: Int = GameCapacity.MIN): WeeklyRecurrenceResult {
+        val errors = validate(rule, minCapacity)
         if (errors.isNotEmpty()) return WeeklyRecurrenceResult.Invalid(errors)
         val zone = IanaTimeZone.from(rule.zoneId.trim())
         val zoneId = ZoneId.of(zone.value)
@@ -105,7 +110,7 @@ object WeeklyRecurrenceResolver {
         }
     }
 
-    private fun validate(rule: WeeklySeriesRule): List<RecurrenceValidationError> = buildList {
+    private fun validate(rule: WeeklySeriesRule, minCapacity: Int): List<RecurrenceValidationError> = buildList {
         if (runCatching { IanaTimeZone.from(rule.zoneId.trim()) }.isFailure) {
             add(RecurrenceValidationError("zoneId", "must be a valid IANA timezone"))
         }
@@ -125,7 +130,7 @@ object WeeklyRecurrenceResolver {
             if (slot.venue.address.isNotEmpty()) validateText(slot.venue.address, "slots[$index].venue.address", 5, 300)?.let(::add)
             slot.venue.court?.let { validateText(it, "slots[$index].venue.court", 1, 80)?.let(::add) }
             if (slot.durationMinutes !in 15..480) add(RecurrenceValidationError("slots[$index].durationMinutes", "must be between 15 and 480"))
-            if (slot.capacity !in 2..100) add(RecurrenceValidationError("slots[$index].capacity", "must be between 2 and 100"))
+            if (slot.capacity !in minCapacity..GameCapacity.MAX) add(RecurrenceValidationError("slots[$index].capacity", "must be between $minCapacity and ${GameCapacity.MAX}"))
             if (slot.confirmationLeadMinutes !in 0..10080) add(RecurrenceValidationError("slots[$index].confirmationLeadMinutes", "must be between 0 and 10080"))
             if (slot.gameFeeCents != null && slot.gameFeeCents !in 1..99_999_999) add(RecurrenceValidationError("slots[$index].gameFeeCents", "must be between 1 and 99999999"))
         }
