@@ -149,7 +149,7 @@ class SettleWaitlistAtDeadlineTest {
             )
         }
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = ++allocator
-        override fun earliestWaitlisted(groupId: UUID, gameId: UUID) =
+        override fun earliestWaitlisted(groupId: UUID, gameId: UUID, now: java.time.Instant) =
             records.values.filter { it.status == AttendanceStatus.WAITLISTED }.minByOrNull { it.waitlistSequence!! }
         override fun save(record: AttendanceRecord) { records[record.memberId to record.guestSeq] = record }
         override fun saveGuest(record: AttendanceRecord, guestName: String) = save(record)

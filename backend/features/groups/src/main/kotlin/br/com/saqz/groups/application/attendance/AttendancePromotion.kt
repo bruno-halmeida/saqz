@@ -92,9 +92,9 @@ internal fun AttendanceCommandRepository.nextToPromote(
     timestamp: Instant,
 ): AttendanceRecord? =
     if (promotionMode == PromotionMode.FIFO && mensalistaPriority && timestamp < confirmationDeadline) {
-        earliestWaitlistedMensalista(groupId, gameId) ?: earliestWaitlisted(groupId, gameId)
+        earliestWaitlistedMensalista(groupId, gameId, timestamp) ?: earliestWaitlisted(groupId, gameId, timestamp)
     } else {
-        earliestWaitlisted(groupId, gameId)
+        earliestWaitlisted(groupId, gameId, timestamp)
     }
 
 /** Promove até [freed] pessoas da fila; [aggregate].confirmedCount é a contagem ANTES das saídas. */

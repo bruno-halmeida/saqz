@@ -56,7 +56,7 @@ class AdjustGameCapacityTest {
             4, 1, 2500L, LocalDate.of(2026, 8, 11), startsAt = startsAt,
         )
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = 2L
-        override fun earliestWaitlisted(groupId: UUID, gameId: UUID) = waiting.takeIf { it.status == AttendanceStatus.WAITLISTED }
+        override fun earliestWaitlisted(groupId: UUID, gameId: UUID, now: java.time.Instant) = waiting.takeIf { it.status == AttendanceStatus.WAITLISTED }
         override fun save(record: AttendanceRecord) { waiting = record }
         override fun saveGuest(record: AttendanceRecord, guestName: String) = save(record)
         override fun append(event: AttendanceEvent) { events += event }

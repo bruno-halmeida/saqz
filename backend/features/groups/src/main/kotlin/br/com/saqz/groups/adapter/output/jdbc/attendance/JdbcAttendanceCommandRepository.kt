@@ -100,16 +100,17 @@ class JdbcAttendanceCommandRepository(
             .orElse(null)
     }
 
-    override fun earliestWaitlisted(groupId: UUID, gameId: UUID): AttendanceRecord? =
-        earliestWaitlisted(EARLIEST_WAITLISTED, groupId, gameId)
+    override fun earliestWaitlisted(groupId: UUID, gameId: UUID, now: Instant): AttendanceRecord? =
+        earliestWaitlisted(EARLIEST_WAITLISTED, groupId, gameId, now)
 
-    override fun earliestWaitlistedMensalista(groupId: UUID, gameId: UUID): AttendanceRecord? =
-        earliestWaitlisted(EARLIEST_WAITLISTED_MENSALISTA, groupId, gameId)
+    override fun earliestWaitlistedMensalista(groupId: UUID, gameId: UUID, now: Instant): AttendanceRecord? =
+        earliestWaitlisted(EARLIEST_WAITLISTED_MENSALISTA, groupId, gameId, now)
 
-    private fun earliestWaitlisted(sql: String, groupId: UUID, gameId: UUID): AttendanceRecord? =
+    private fun earliestWaitlisted(sql: String, groupId: UUID, gameId: UUID, now: Instant): AttendanceRecord? =
         jdbc.sql(sql)
             .param("group", groupId)
             .param("game", gameId)
+            .param("now", Timestamp.from(now))
             .query { rs, _ ->
                 AttendanceRecord(
                     rs.getObject("game_id", UUID::class.java),
@@ -591,7 +592,7 @@ class JdbcAttendanceCommandRepository(
                 ON membership.group_id = attendance.group_id AND membership.user_id = attendance.member_user_id
             WHERE attendance.group_id=:group AND attendance.game_id=:game AND attendance.status='WAITLISTED'
             ORDER BY CASE
-                       WHEN game.confirmation_deadline >= now() AND ag.mensalista_priority
+                       WHEN game.confirmation_deadline >= :now AND ag.mensalista_priority
                             AND membership.membership_type='MENSALISTA' AND attendance.guest_seq=0 THEN 0
                        ELSE 1
                      END,

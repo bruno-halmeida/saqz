@@ -90,7 +90,7 @@ class SettleWaitlistAtDeadline(
         var confirmedCount = aggregate.confirmedCount
         val promoted = mutableListOf<UUID>()
         repeat(spots) {
-            val waiting = repository.earliestWaitlisted(aggregate.groupId, aggregate.gameId) ?: return promoted
+            val waiting = repository.earliestWaitlisted(aggregate.groupId, aggregate.gameId, timestamp) ?: return promoted
             val result = promoteAttendance(
                 aggregate.forMember(waiting).copy(confirmedCount = confirmedCount),
                 AttendanceSource.SYSTEM,

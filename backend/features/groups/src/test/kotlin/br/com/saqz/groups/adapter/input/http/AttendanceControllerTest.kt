@@ -257,8 +257,8 @@ class AttendanceControllerTest {
                 )
             } else null
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = ++allocator
-        override fun earliestWaitlisted(groupId: UUID, gameId: UUID) = records.values.filter { it.status == AttendanceStatus.WAITLISTED }.minByOrNull { it.waitlistSequence!! }
-        override fun earliestWaitlistedMensalista(groupId: UUID, gameId: UUID) = records.values.filter { it.status == AttendanceStatus.WAITLISTED && (membership[it.memberId] ?: AthleteMembershipType.MENSALISTA) == AthleteMembershipType.MENSALISTA }.minByOrNull { it.waitlistSequence!! }
+        override fun earliestWaitlisted(groupId: UUID, gameId: UUID, now: java.time.Instant) = records.values.filter { it.status == AttendanceStatus.WAITLISTED }.minByOrNull { it.waitlistSequence!! }
+        override fun earliestWaitlistedMensalista(groupId: UUID, gameId: UUID, now: Instant) = records.values.filter { it.status == AttendanceStatus.WAITLISTED && (membership[it.memberId] ?: AthleteMembershipType.MENSALISTA) == AthleteMembershipType.MENSALISTA }.minByOrNull { it.waitlistSequence!! }
         override fun save(record: AttendanceRecord) { records[record.memberId] = record }
         override fun append(event: AttendanceEvent) { events += event }
         override fun findPromotionReplay(groupId: UUID, gameId: UUID, actorId: UUID, requestId: UUID): AttendancePromotionReplay? {
