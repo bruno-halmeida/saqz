@@ -43,12 +43,15 @@ class AdjustGameCapacity(
         if (aggregate.actorRole != GroupRole.OWNER && aggregate.actorRole != GroupRole.ADMIN) {
             return@inTransaction CapacityCommandResult.Forbidden
         }
-        if (aggregate.gameStatus != GameStatus.PUBLISHED) return@inTransaction CapacityCommandResult.Frozen
+        // Depois do início do jogo as vagas não mudam mais (DEB-020).
+        if (aggregate.gameStatus != GameStatus.PUBLISHED || aggregate.startedAt(now())) return@inTransaction CapacityCommandResult.Frozen
         if (aggregate.version != expectedVersion) return@inTransaction CapacityCommandResult.Conflict
         if (!repository.updateCapacity(gameId, expectedVersion, capacity)) return@inTransaction CapacityCommandResult.Conflict
         val promoted = promote(aggregate, (capacity - aggregate.confirmedCount).coerceAtLeast(0), capacity)
         CapacityCommandResult.Success(capacity, expectedVersion + 1, promoted)
     }
+
+    private fun CapacityAggregate.startedAt(timestamp: Instant) = startsAt != null && timestamp >= startsAt
 
     private fun promote(aggregate: CapacityAggregate, spots: Int, targetCapacity: Int): List<AttendanceRecord> {
         if (spots == 0 || aggregate.promotionMode != PromotionMode.FIFO) {
@@ -86,5 +89,6 @@ class AdjustGameCapacity(
         mensalistaPriority,
         promotionMode,
         guestSeq = record.guestSeq,
+        startsAt = startsAt,
     )
 }

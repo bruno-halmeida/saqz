@@ -89,6 +89,20 @@ class SettleWaitlistAtDeadlineTest {
         assertTrue(notices.isEmpty())
     }
 
+    @Test fun `depois do inicio do jogo a fila não sobe nem no prazo vencido`() {
+        repository.capacity = 3
+        repository.record(first, AttendanceStatus.WAITLISTED, 1)
+        repository.startsAt = NOW.minusSeconds(1)
+
+        assertEquals(0, service.run())
+        assertEquals(AttendanceStatus.WAITLISTED, repository.status(first))
+        assertTrue(repository.events.isEmpty())
+
+        repository.startsAt = NOW.plusSeconds(1)
+        assertEquals(1, service.run())
+        assertEquals(AttendanceStatus.CONFIRMED, repository.status(first))
+    }
+
     @Test fun `um jogo que falha não derruba os outros`() {
         repository.record(first, AttendanceStatus.WAITLISTED, 1)
         val broken = candidate().copy(gameId = UUID.randomUUID())
@@ -115,6 +129,7 @@ class SettleWaitlistAtDeadlineTest {
         var promotionMode = PromotionMode.FIFO
         var gameStatus = GameStatus.PUBLISHED
         var failOn: UUID? = null
+        var startsAt: Instant = NOW.plusSeconds(6 * 3600)
         private var allocator = 0L
 
         fun record(memberId: UUID, status: AttendanceStatus, sequence: Long? = null) {
@@ -130,7 +145,7 @@ class SettleWaitlistAtDeadlineTest {
             return CapacityAggregate(
                 group, game, actorId, GroupRole.OWNER, gameStatus, deadline, capacity,
                 records.values.count { it.status == AttendanceStatus.CONFIRMED }, 1, 2500L, LocalDate.of(2026, 8, 11),
-                mensalistaPriority = true, promotionMode = promotionMode,
+                mensalistaPriority = true, promotionMode = promotionMode, startsAt = startsAt,
             )
         }
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = ++allocator

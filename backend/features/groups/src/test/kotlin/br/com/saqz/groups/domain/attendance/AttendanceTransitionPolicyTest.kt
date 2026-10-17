@@ -34,6 +34,14 @@ class AttendanceTransitionPolicyTest {
         denied(context(now = STARTS), AttendanceIntent.CONFIRM, AttendanceDenial.FROZEN)
         denied(context(now = STARTS.plusSeconds(60), current = AttendanceStatus.CONFIRMED), AttendanceIntent.DECLINE, AttendanceDenial.FROZEN)
     }
+    @Test fun `promotion from the waitlist is denied once the game started for any source`() {
+        val waiting = AttendanceStatus.WAITLISTED
+        denied(context(now = STARTS, current = waiting), AttendanceIntent.PROMOTE, AttendanceDenial.FROZEN)
+        denied(context(now = STARTS.plusSeconds(60), current = waiting).copy(source = AttendanceSource.SYSTEM), AttendanceIntent.PROMOTE, AttendanceDenial.FROZEN)
+        denied(organizer(now = STARTS.plusSeconds(60), current = waiting), AttendanceIntent.PROMOTE, AttendanceDenial.FROZEN)
+    }
+    @Test fun `promotion from the waitlist still works one instant before the start`() =
+        transition(organizer(now = STARTS.minusNanos(1), current = AttendanceStatus.WAITLISTED), AttendanceIntent.PROMOTE, AttendanceStatus.CONFIRMED, changed = true, charge = true, reason = "Ajuste do organizador")
     @Test fun `organizer may still override once the game started`() = transition(organizer(now = STARTS.plusSeconds(1), reason = "Chegou no jogo"), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true, reason = "Chegou no jogo")
     @Test fun `organizer may override after deadline`() = transition(organizer(now = DEADLINE.plusSeconds(1), reason = "Presença confirmada"), AttendanceIntent.CONFIRM, AttendanceStatus.CONFIRMED, changed = true, charge = true, reason = "Presença confirmada")
     @Test fun `organizer override requires reason`() = denied(organizer(reason = null), AttendanceIntent.CONFIRM, AttendanceDenial.REASON_REQUIRED)

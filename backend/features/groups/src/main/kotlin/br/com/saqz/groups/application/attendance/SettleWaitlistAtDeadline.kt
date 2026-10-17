@@ -115,6 +115,7 @@ class SettleWaitlistAtDeadline(
         mensalistaPriority,
         promotionMode,
         guestSeq = record.guestSeq,
+        startsAt = startsAt,
     )
 }
 

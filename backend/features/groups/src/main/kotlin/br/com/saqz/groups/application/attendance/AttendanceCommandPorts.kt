@@ -118,6 +118,7 @@ data class CapacityAggregate(
     val gameDate: LocalDate,
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionMode = PromotionMode.FIFO,
+    val startsAt: Instant? = null,
 )
 
 data class AttendanceDetail(

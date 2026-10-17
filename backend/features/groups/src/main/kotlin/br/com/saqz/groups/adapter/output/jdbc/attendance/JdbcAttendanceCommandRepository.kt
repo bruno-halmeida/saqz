@@ -93,6 +93,7 @@ class JdbcAttendanceCommandRepository(
                     rs.getObject("local_date", java.time.LocalDate::class.java),
                     rs.getBoolean("mensalista_priority"),
                     PromotionMode.valueOf(rs.getString("promotion_mode")),
+                    rs.getTimestamp("starts_at").toInstant(),
                 )
             }
             .optional()
@@ -564,7 +565,7 @@ class JdbcAttendanceCommandRepository(
         """
         const val CAPACITY_AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.capacity,
-                   g.version,g.game_fee_cents,g.local_date,ag.mensalista_priority,ag.promotion_mode,
+                   g.version,g.game_fee_cents,g.local_date,g.starts_at,ag.mensalista_priority,ag.promotion_mode,
                    CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role::text END AS actor_role,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count
             FROM games g

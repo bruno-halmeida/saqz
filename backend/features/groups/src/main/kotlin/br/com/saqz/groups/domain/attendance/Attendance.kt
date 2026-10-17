@@ -22,7 +22,7 @@ data class AttendanceDecisionContext(
     val mensalistaPriority: Boolean = true,
     val guest: Boolean = false,
     val promotionMode: PromotionMode = PromotionMode.FIFO,
-    /** Início do jogo; depois dele a resposta do próprio atleta é negada. `null` = sem checagem. */
+    /** Início do jogo; depois dele a resposta do próprio atleta e qualquer promoção da espera são negadas. `null` = sem checagem. */
     val startsAt: Instant? = null,
 )
 
@@ -61,6 +61,10 @@ object AttendanceTransitionPolicy {
             GameStatus.CANCELLED, GameStatus.COMPLETED ->
                 return AttendanceDecision.Denied(AttendanceDenial.FROZEN)
             GameStatus.PUBLISHED -> Unit
+        }
+        // Depois do início do jogo ninguém sobe da espera, nem pelo sistema nem pelo organizador (DEB-018).
+        if (intent == AttendanceIntent.PROMOTE && context.startsAt != null && context.now >= context.startsAt) {
+            return AttendanceDecision.Denied(AttendanceDenial.FROZEN)
         }
         // Depois do início do jogo ninguém mais responde por conta própria; antes disso o prazo
         // só muda para onde vai o "Vou" (sempre para a espera), nunca nega a resposta.
