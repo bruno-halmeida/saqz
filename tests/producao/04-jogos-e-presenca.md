@@ -75,7 +75,7 @@ JG11 é criado logo no começo da rodada.
 
 **Conferir**
 - Com as 2 vagas ocupadas, ATL2 vê "As vagas acabaram. Você entrou na lista de espera.".
-- Quando ATL desiste, ATL2 passa a confirmado, sem aviso: é o PC-02.
+- Quando ATL desiste, ATL2 passa a confirmado e recebe o aviso "Sua vaga está confirmada…" (PRES-013, antes PC-02).
 - Com 3 vagas, os três ficam confirmados e o jogo nunca passa da capacidade.
 
 ## PROD-JG06 · Levar um convidado · P1

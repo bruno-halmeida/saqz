@@ -12,7 +12,6 @@ aceitar ou só documentar.
 | --- | --- | --- | --- |
 | [PC-01](#pc-01--em-grupo-novo-todo-vou-vai-para-a-lista-de-espera) | Em grupo novo, o "Vou" do avulso vai para a lista de espera até o prazo | Risco aceito por enquanto | 07/10/2026 |
 | PC-08 | "Recado para a galera" do jogo não aparece para ninguém | A triar | 07/10/2026 |
-| PC-11 | Quem teve o pedido de entrada aprovado não recebe aviso individual | Decisão do dono: nenhum texto promete aviso | 07/10/2026 |
 | PC-13 | Extrato do grupo sem seletor de mês | A triar | 07/10/2026 |
 | PC-14 | Recibos do Google Play aparecem com valor "—" | A triar | 07/10/2026 |
 
@@ -41,9 +40,6 @@ chegada (ou pela escolha do organizador, no modo manual). Dono e admin já podem
 ## PC-08 a PC-14 · Achados abertos
 - **PC-08 · "Recado para a galera".** O campo do editor de jogo é gravado, mas não aparece em nenhuma
   tela nem notificação.
-- **PC-11 · Aprovação de pedido.** Quem teve o pedido aprovado não recebe aviso individual, por decisão do
-  dono; o texto de "Pedido enviado" já não promete aviso. O cadastro de atleta agora abre ao pedir entrada.
-  O PRES-013 não cobriu este caso: segue valendo.
 - **PC-13 · Extrato.** Mostra só o mês atual; o seletor de período existe só na "Caixa geral".
 - **PC-14 · Recibos do Play.** A API do Google não devolve preço, e os recibos aparecem com "—".
 
@@ -58,6 +54,7 @@ Saíram da lista acima. Se um cenário ainda reproduzir o defeito, é regressão
 | PC-07 | O QR do convite diz "O convite vale até você trocar o código" | `a99f2389c` |
 | PC-09 | Admin liberado durante o teste grátis; plano vencido abre a folha da assinatura | `b6b86f7eb`, `414ee347b` |
 | PC-10 | Toda tela, inclusive Membros, recarrega ao voltar a aparecer | `6fe2d98ca` |
+| PC-11 (aviso) | CONV-007 (DEB-036): quem teve o pedido aprovado recebe aviso direto "Você entrou no <Grupo>" (central e push, canal de confirmação automática, apps 1.0.4+), uma vez por pedido e seguindo a preferência de avisos | `b1d669fcc` |
 | PC-11 (cadastro) | Pedir entrada abre o "Cadastro de atleta" antes da aprovação, aplicado na aprovação; hora do pedido no fuso do grupo | `8a48fdf3d`, `457b21784`, `414ee347b` |
 | PC-15 | "Remover do grupo" pede confirmação na lista de membros | `414ee347b` |
 | PC-04 | Logado, "Lembrou a senha? Entrar" na recuperação volta para onde a pessoa estava (Perfil) | `4c6868543` |
