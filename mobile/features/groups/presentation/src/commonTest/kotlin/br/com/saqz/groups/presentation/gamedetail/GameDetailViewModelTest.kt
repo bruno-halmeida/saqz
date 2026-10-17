@@ -511,7 +511,7 @@ class GameDetailViewModelTest {
             ),
         )
         val viewModel = GameDetailViewModel(
-            "group-1", "game-1", FakeGameGateway(), FakeGroupGateway(SaqzResult.Success(group)),
+            "group-1", "game-1", FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))), FakeGroupGateway(SaqzResult.Success(group)),
             attendance, FakeAthleteGateway(),
         )
 
@@ -522,6 +522,64 @@ class GameDetailViewModelTest {
 
         assertEquals(listOf("wait-1", "wait-2"), viewModel.state.value.waitlist.map { it.id })
         assertTrue(viewModel.state.value.promotionFailed)
+    }
+
+    @Test
+    fun `after the game started promote and the capacity sheet are ignored`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val viewModel = manualWaitlist(attendance, game = openGame().copy(startsAt = "2020-01-01T20:00:00-03:00"))
+        assertTrue(viewModel.state.value.header?.gameStarted == true)
+        assertEquals(2, viewModel.state.value.waitlist.size)
+
+        viewModel.onIntent(GameDetailIntent.Promote("wait-1", "Escolha do organizador"))
+        viewModel.onIntent(GameDetailIntent.OpenCapacitySheet)
+
+        assertEquals(0, attendance.promoteCalls)
+        assertFalse(viewModel.state.value.capacitySheetOpen)
+        assertEquals(2, viewModel.state.value.waitlist.size)
+    }
+
+    @Test
+    fun `before the game starts promote and the capacity sheet still work`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val viewModel = manualWaitlist(attendance, game = openGame())
+        assertFalse(viewModel.state.value.header?.gameStarted == true)
+
+        viewModel.onIntent(GameDetailIntent.OpenCapacitySheet)
+        assertTrue(viewModel.state.value.capacitySheetOpen)
+        viewModel.onIntent(GameDetailIntent.DismissCapacitySheet)
+        viewModel.onIntent(GameDetailIntent.Promote("wait-1", "Escolha do organizador"))
+
+        assertEquals(1, attendance.promoteCalls)
+    }
+
+    @Test
+    fun `a cancelled or draft game is not reported as started`() = runTest {
+        val draft = manualWaitlist(FakeAttendanceGateway(), game = openGame().copy(status = GameStatus.Draft, startsAt = "2020-01-01T20:00:00-03:00"))
+        assertFalse(draft.state.value.header?.gameStarted == true)
+    }
+
+    private fun manualWaitlist(
+        attendance: FakeAttendanceGateway,
+        game: br.com.saqz.groups.domain.game.Game,
+    ): GameDetailViewModel {
+        val group = sampleVersionedGroup().copy(
+            group = sampleVersionedGroup().group.copy(
+                gameConfig = GroupGameConfig(
+                    mensalistaPriority = true,
+                    promotionMode = br.com.saqz.groups.domain.group.PromotionMode.MANUAL,
+                ),
+            ),
+        )
+        val athletes = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(
+                listOf(
+                    br.com.saqz.groups.presentation.sampleRosterEntry("wait-1"),
+                    br.com.saqz.groups.presentation.sampleRosterEntry("wait-2").copy(membershipType = AthleteMembershipType.AVULSO),
+                ),
+            ),
+        )
+        return responder(attendance, game = game, athletes = athletes, groupGateway = FakeGroupGateway(SaqzResult.Success(group)))
     }
 
     @Test
@@ -573,7 +631,7 @@ class GameDetailViewModelTest {
         attendance.promoteDeferred = promotion
         attendance.capacityDeferred = capacity
         val viewModel = GameDetailViewModel(
-            "group-1", "game-1", FakeGameGateway(), manualGroupGateway(), attendance, FakeAthleteGateway(),
+            "group-1", "game-1", FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))), manualGroupGateway(), attendance, FakeAthleteGateway(),
         )
 
         viewModel.onIntent(GameDetailIntent.Promote("wait-1", "Escolha do organizador"))
@@ -599,7 +657,7 @@ class GameDetailViewModelTest {
         attendance.promoteDeferred = promotion
         attendance.capacityDeferred = capacity
         val viewModel = GameDetailViewModel(
-            "group-1", "game-1", FakeGameGateway(), manualGroupGateway(), attendance, FakeAthleteGateway(),
+            "group-1", "game-1", FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))), manualGroupGateway(), attendance, FakeAthleteGateway(),
         )
 
         viewModel.onIntent(GameDetailIntent.OpenCapacitySheet)
@@ -949,7 +1007,7 @@ class GameDetailViewModelTest {
         val promotion = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
         attendance.promoteDeferred = promotion
         val viewModel = GameDetailViewModel(
-            "group-1", "game-1", FakeGameGateway(), manualGroupGateway(), attendance, FakeAthleteGateway(),
+            "group-1", "game-1", FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))), manualGroupGateway(), attendance, FakeAthleteGateway(),
         )
 
         viewModel.onIntent(GameDetailIntent.Promote("host-1", "Escolha do organizador", 1))

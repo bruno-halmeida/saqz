@@ -54,6 +54,7 @@ import br.com.saqz.groups.resources.game_waitlist_reason_avulso
 import br.com.saqz.groups.resources.game_waitlist_reason_full
 import br.com.saqz.groups.resources.game_waitlist_reason_late
 import br.com.saqz.groups.resources.game_waitlist_reason_manual
+import br.com.saqz.groups.resources.game_waitlist_reason_started
 import br.com.saqz.groups.resources.game_waitlist_promotion_failed
 import br.com.saqz.groups.resources.game_waitlist_promote
 import br.com.saqz.groups.resources.game_waitlist_queue_position
@@ -191,6 +192,7 @@ private fun GameWaitlistRow(
         if (
             state.isAdmin &&
             state.header?.statusTone == GameDetailStatusTone.Published &&
+            state.header?.gameStarted != true &&
             state.promotionMode == PromotionMode.MANUAL
         ) {
             SaqzButton(
@@ -210,9 +212,11 @@ private fun GameWaitlistRow(
 /**
  * Por que esta pessoa espera, do ponto de vista de quem gerencia: o organizador escolhe quem
  * entra, a confirmação veio depois do prazo, o avulso aguarda a prioridade dos mensalistas
- * ou, simplesmente, as vagas estão cheias.
+ * ou, simplesmente, as vagas estão cheias. Depois do início do jogo a fila não anda mais, e o texto
+ * não pode prometer subida.
  */
 private fun waitReasonResource(state: GameDetailState, person: GameDetailWaitlistUi) = when {
+    state.header?.gameStarted == true -> Res.string.game_waitlist_reason_started
     state.promotionMode == PromotionMode.MANUAL -> Res.string.game_waitlist_reason_manual
     state.header?.confirmationOpen == false -> Res.string.game_waitlist_reason_late
     state.mensalistaPriority && !person.isMensalista && person.guest == null ->

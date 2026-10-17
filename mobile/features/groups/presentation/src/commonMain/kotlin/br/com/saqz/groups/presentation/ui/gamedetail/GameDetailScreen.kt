@@ -129,14 +129,14 @@ internal fun GameDetailScreen(
                     GameGuestAction(
                         state.guest,
                         onIntent,
-                        gameStarted = state.header?.let { !it.responseOpen && it.statusTone == GameDetailStatusTone.Published } == true,
+                        gameStarted = state.header?.gameStarted == true,
                     )
                     state.confirmedRoster.takeIf { it.isNotEmpty() }?.let {
                         GameDetailConfirmedList(it, state.guest.feeLabel, onIntent)
                     }
                     state.waitlist.takeIf { it.isNotEmpty() }?.let { GameWaitlistSection(state, onIntent) }
                     if (state.isAdmin) {
-                        if (state.header?.statusTone == GameDetailStatusTone.Published) {
+                        if (state.header?.statusTone == GameDetailStatusTone.Published && state.header?.gameStarted != true) {
                             GameWaitlistAdminActions(onIntent = onIntent)
                         }
                         GameDetailAdminActions(

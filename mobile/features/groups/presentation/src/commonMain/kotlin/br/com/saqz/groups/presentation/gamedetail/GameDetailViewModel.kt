@@ -285,11 +285,15 @@ class GameDetailViewModel(
         }
     }
 
+    /** Jogo publicado e ainda por começar: depois do início ninguém sobe da espera (DEB-018). */
+    private fun GameDetailState.canPromoteNow() =
+        header?.statusTone == GameDetailStatusTone.Published && header.gameStarted.not()
+
     private fun promote(memberId: String, reason: String, guestSeq: Int) {
         val current = state.value
         if (
             !current.isAdmin ||
-            current.header?.statusTone != GameDetailStatusTone.Published ||
+            !current.canPromoteNow() ||
             current.promotionMode != PromotionMode.MANUAL ||
             current.promotingMemberId != null
         ) return
@@ -346,6 +350,7 @@ class GameDetailViewModel(
 
     private fun openCapacitySheet() {
         if (!state.value.isAdmin || state.value.header?.statusTone != GameDetailStatusTone.Published) return
+        if (state.value.header?.gameStarted == true) return
         val capacity = state.value.attendance?.capacity ?: return
         update { it.copy(capacitySheetOpen = true, capacityDraft = capacity, capacityFailed = false) }
     }

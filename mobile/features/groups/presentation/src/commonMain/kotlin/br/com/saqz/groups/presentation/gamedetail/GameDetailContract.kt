@@ -59,6 +59,12 @@ data class GameDetailHeaderUi(
 ) {
     /** Os botões de resposta valem: o jogo não começou e o servidor não fechou as respostas pelo prazo. */
     val canRespond: Boolean get() = responseOpen && !closedByDeadline
+
+    /**
+     * O jogo publicado já começou (ou o servidor o fechou): ninguém sobe da espera e as vagas não mudam,
+     * então "Colocar no jogo" e o ajuste de vagas somem.
+     */
+    val gameStarted: Boolean get() = statusTone == GameDetailStatusTone.Published && !responseOpen
 }
 enum class GameDetailStatusTone { Draft, Published, Cancelled, Completed }
 

@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -168,6 +169,31 @@ class GameDetailScreenTest {
         onNodeWithText("Lista de espera").assertExists()
         onAllNodesWithText("Colocar no jogo").assertCountEquals(0)
         onNodeWithText("Ajustar vagas").assertExists()
+    }
+
+    @Test
+    fun `after the game started the promote and capacity actions disappear and the reason stops promising`() = runComposeUiTest {
+        setScreen(
+            state = GameDetailPreviewData.admin.copy(
+                header = GameDetailPreviewData.header.copy(responseOpen = false, confirmationOpen = false),
+                promotionMode = PromotionMode.MANUAL,
+            ),
+        )
+
+        onNodeWithText("Lista de espera").assertExists()
+        onAllNodesWithText("Colocar no jogo").assertCountEquals(0)
+        onAllNodesWithText("Ajustar vagas").assertCountEquals(0)
+        onNodeWithTag(GameWaitlistTags.reason("wait-1")).assertTextEquals("O jogo já começou. A fila não anda mais.")
+        onAllNodesWithText("O organizador escolhe quem entra.").assertCountEquals(0)
+    }
+
+    @Test
+    fun `before the game starts the manual reason and both actions stay`() = runComposeUiTest {
+        setScreen(state = GameDetailPreviewData.admin.copy(promotionMode = PromotionMode.MANUAL))
+
+        onAllNodesWithText("Colocar no jogo").assertCountEquals(2)
+        onNodeWithText("Ajustar vagas").assertExists()
+        onNodeWithTag(GameWaitlistTags.reason("wait-1")).assertTextEquals("O organizador escolhe quem entra.")
     }
 
     @Test
