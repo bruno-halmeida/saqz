@@ -78,6 +78,12 @@ decisão "aceito" para o comportamento não mudar sem querer.
 | 15/10 | `GET /groups/{id}/charges/me` de grupo excluído devolve `GAME_NOT_FOUND`; `/subscriptions/me` com `autoRenew: null` na web; push só descarta `UNREGISTERED`/`SENDER_ID_MISMATCH` |
 | Funil do WhatsApp | 11 combinações conferidas à mão; tela do link sem o jogo; presença de conta nova no Android que não registrou uma vez |
 
+## Mudanças de regra já implementadas
+
+| Regra | O que mudou | Commit |
+| --- | --- | --- |
+| PRES-006 (opção B) | Desistência de confirmado antes do prazo: sobe o mensalista da espera e, sem mensalista, o avulso mais antigo | `ef1e86040` |
+
 ## Fases
 
 1. **Mapa** (este arquivo): achado → camada → teste existente. Fecha com a tabela completa.
