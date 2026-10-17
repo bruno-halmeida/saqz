@@ -11,7 +11,6 @@ aceitar ou só documentar.
 | ID | Problema | Decisão | Desde |
 | --- | --- | --- | --- |
 | [PC-01](#pc-01--em-grupo-novo-todo-vou-vai-para-a-lista-de-espera) | Em grupo novo, o "Vou" do avulso vai para a lista de espera até o prazo | Risco aceito por enquanto | 07/10/2026 |
-| [PC-02](#pc-02--quem-sobe-da-lista-de-espera-não-recebe-aviso-individual) | Quem sobe da lista de espera não recebe aviso individual (cancelar jogo já avisa) | Decisão do dono: a lista vai ao grupo do WhatsApp a cada 3 h | 07/10/2026 |
 | PC-08 | "Recado para a galera" do jogo não aparece para ninguém | A triar | 07/10/2026 |
 | PC-11 | Quem teve o pedido de entrada aprovado não recebe aviso individual | Decisão do dono: nenhum texto promete aviso | 07/10/2026 |
 | PC-13 | Extrato do grupo sem seletor de mês | A triar | 07/10/2026 |
@@ -39,28 +38,12 @@ chegada (ou pela escolha do organizador, no modo manual). Dono e admin já podem
 
 **Nos testes de produção.** Antes de testar presença, aplicar um dos contornos e anotar qual.
 
-## PC-02 · Quem sobe da lista de espera não recebe aviso individual
-
-**O que o app não faz.** Quando a vaga abre, a pessoa da espera é promovida, mas não recebe push nem
-notificação no app. Decisão do dono (13/10): nenhum texto promete esse aviso, e a lista de convocados
-vai ao grupo do WhatsApp vinculado a cada 3 h, das 8h às 22h, até o início do jogo. O card da reserva diz
-"Se você subir, aparece aqui como confirmado. Confira antes do jogo."
-
-**Já corrigido.** Cancelar um jogo publicado avisa confirmados e espera, na central, no push e no grupo
-do WhatsApp vinculado (`b6b86f7eb`).
-
-**Impacto.** Quem foi promovido pode não saber que tem vaga até abrir o app ou ver a lista no WhatsApp.
-
-**Contorno.** O organizador avisa a galera por fora (Avisos do grupo ou WhatsApp).
-
-**Nos testes de produção.** Conferir só o estado no app (promovido aparece como confirmado). A ausência de
-aviso individual não reprova o cenário enquanto este item estiver aqui.
-
 ## PC-08 a PC-14 · Achados abertos
 - **PC-08 · "Recado para a galera".** O campo do editor de jogo é gravado, mas não aparece em nenhuma
   tela nem notificação.
 - **PC-11 · Aprovação de pedido.** Quem teve o pedido aprovado não recebe aviso individual, por decisão do
   dono; o texto de "Pedido enviado" já não promete aviso. O cadastro de atleta agora abre ao pedir entrada.
+  O PRES-013 não cobriu este caso: segue valendo.
 - **PC-13 · Extrato.** Mostra só o mês atual; o seletor de período existe só na "Caixa geral".
 - **PC-14 · Recibos do Play.** A API do Google não devolve preço, e os recibos aparecem com "—".
 
@@ -71,6 +54,7 @@ Saíram da lista acima. Se um cenário ainda reproduzir o defeito, é regressão
 | ID | Correção | Commit |
 | --- | --- | --- |
 | PC-02 (cancelamento) | Cancelar jogo publicado avisa confirmados e espera (central, push e WhatsApp vinculado) | `b6b86f7eb` |
+| PC-02 (promoção e organizador) | PRES-013: quem sobe da espera, ou é confirmado ou tirado pelo organizador, recebe aviso direto (canal de confirmação automática, apps 1.0.4+). A lista ao grupo do WhatsApp a cada 3 h segue como complemento | `bfe4055c3`, `96598a085`, `3a74949b5` |
 | PC-07 | O QR do convite diz "O convite vale até você trocar o código" | `a99f2389c` |
 | PC-09 | Admin liberado durante o teste grátis; plano vencido abre a folha da assinatura | `b6b86f7eb`, `414ee347b` |
 | PC-10 | Toda tela, inclusive Membros, recarrega ao voltar a aparecer | `6fe2d98ca` |
