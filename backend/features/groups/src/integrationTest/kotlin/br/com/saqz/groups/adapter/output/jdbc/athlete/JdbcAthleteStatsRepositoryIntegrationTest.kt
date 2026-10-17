@@ -28,19 +28,41 @@ class JdbcAthleteStatsRepositoryIntegrationTest {
     fun clearData() = execute("TRUNCATE game_attendance, games, group_memberships, access_groups, access_users CASCADE")
 
     @Test
-    fun `stats count registered attendance by group and classify absences`() {
+    fun `stats count only completed games the person confirmed and classify absences`() {
         val owner = insertUser("stats-owner", "Owner Person")
         val group = insertGroup(owner)
         val member = insertUser("stats-member", "Member Person")
         insertMembership(group, member)
-        val confirmed = insertGame(group, startOffsetMinutes = 0)
-        val declined = insertGame(group, startOffsetMinutes = 60)
-        val waitlisted = insertGame(group, startOffsetMinutes = 120)
+        val confirmed = insertGame(group, startOffsetMinutes = 0, status = "COMPLETED")
+        val declined = insertGame(group, startOffsetMinutes = 60, status = "COMPLETED")
+        val waitlisted = insertGame(group, startOffsetMinutes = 120, status = "COMPLETED")
         insertAttendance(confirmed, group, member, "CONFIRMED")
         insertAttendance(declined, group, member, "DECLINED")
         insertAttendance(waitlisted, group, member, "WAITLISTED", waitlistSequence = 1)
 
-        assertEquals(AthleteStatsAggregate(3, 2, 1), repository.find(group, member))
+        assertEquals(AthleteStatsAggregate(1, 2, 1), repository.find(group, member))
+    }
+
+    @Test
+    fun `games ignore cancelled, not yet completed and guest rows and survive leaving the group`() {
+        val owner = insertUser("stats-played-owner", "Owner Person")
+        val group = insertGroup(owner)
+        val member = insertUser("stats-played-member", "Member Person")
+        insertMembership(group, member)
+        val played = insertGame(group, startOffsetMinutes = 0, status = "COMPLETED")
+        val cancelled = insertGame(group, startOffsetMinutes = 60, status = "CANCELLED")
+        val upcoming = insertGame(group, startOffsetMinutes = 120, status = "PUBLISHED")
+        insertAttendance(played, group, member, "CONFIRMED")
+        insertAttendance(cancelled, group, member, "CONFIRMED")
+        insertAttendance(upcoming, group, member, "CONFIRMED")
+        execute(
+            "INSERT INTO game_attendance (game_id, group_id, member_user_id, guest_seq, status, responded_at, " +
+                "updated_at, version, member_display_name) VALUES ('$played', '$group', '$member', " +
+                "1, 'CONFIRMED', now(), now(), 1, 'Member Person')",
+        )
+        execute("UPDATE group_memberships SET active = false WHERE group_id = '$group' AND user_id = '$member'")
+
+        assertEquals(1, repository.find(group, member)?.games)
     }
 
     @Test
@@ -74,7 +96,7 @@ class JdbcAthleteStatsRepositoryIntegrationTest {
             "VALUES ('$group', '$user', 'ATHLETE', now(), now())",
     )
 
-    private fun insertGame(group: UUID, startOffsetMinutes: Int): UUID {
+    private fun insertGame(group: UUID, startOffsetMinutes: Int, status: String = "PUBLISHED"): UUID {
         val id = UUID.randomUUID()
         execute(
             "INSERT INTO games (id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes, " +
@@ -82,7 +104,7 @@ class JdbcAthleteStatsRepositoryIntegrationTest {
                 "('$id', '$group', 'Treino', DATE '2026-08-12', TIME '19:30', 'America/Sao_Paulo', " +
                 "TIMESTAMPTZ '2026-08-12 22:30Z' + INTERVAL '$startOffsetMinutes minutes', 90, " +
                 "TIMESTAMPTZ '2026-08-11 22:30Z', 'Arena', 'Rua Central 100', " +
-                "12, 'PUBLISHED', now(), now())",
+                "12, '$status', now(), now())",
         )
         return id
     }

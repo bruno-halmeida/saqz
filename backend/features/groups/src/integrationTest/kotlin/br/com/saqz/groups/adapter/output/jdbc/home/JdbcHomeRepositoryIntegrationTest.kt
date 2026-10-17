@@ -84,7 +84,9 @@ class JdbcHomeRepositoryIntegrationTest {
         assertEquals(listOf("Admin home", "Athlete only", "Member home", "Owner home"), home.member.groups.map { it.name })
         assertEquals(listOf("ADMIN", "ATHLETE", "ATHLETE", "OWNER"), home.member.groups.map { it.role.name })
         assertEquals(5, home.member.groups.single { it.name == "Owner home" }.memberCount)
-        assertEquals(1, home.member.groups.single { it.name == "Member home" }.gamesPlayed)
+        // O ator só disse "Não vou" no jogo encerrado do Member home; no Owner home estava confirmado.
+        assertEquals(0, home.member.groups.single { it.name == "Member home" }.gamesPlayed)
+        assertEquals(1, home.member.groups.single { it.name == "Owner home" }.gamesPlayed)
         assertEquals(next, home.member.nextGame?.gameId)
         assertEquals("Owner home", home.member.nextGame?.groupName)
         assertEquals("Home court", home.member.nextGame?.local)
@@ -177,6 +179,37 @@ class JdbcHomeRepositoryIntegrationTest {
         assertEquals("WAITLISTED", member.upcomingGames[1].ownStatus?.name)
         assertEquals(0, member.upcomingGames[2].confirmedCount)
         assertNull(member.upcomingGames[2].ownStatus)
+    }
+
+    @Test
+    fun gamesPlayedCountsOnlyCompletedGamesWhereConfirmedAndMatchesTheProfile() {
+        val actor = user("played-actor", "Played Actor")
+        val owner = user("played-owner", "Played Owner")
+        val group = group("Played group", owner)
+        membership(group, actor)
+        val now = Instant.parse("2026-08-01T12:00:00Z")
+        val counted = game(group, "2026-07-10T10:00:00Z", "COMPLETED", capacity = 4)
+        val counted2 = game(group, "2026-07-11T10:00:00Z", "COMPLETED", capacity = 4)
+        val waitlisted = game(group, "2026-07-12T10:00:00Z", "COMPLETED", capacity = 4)
+        val declined = game(group, "2026-07-13T10:00:00Z", "COMPLETED", capacity = 4)
+        val cancelled = game(group, "2026-07-14T10:00:00Z", "CANCELLED", capacity = 4)
+        val future = game(group, "2026-08-05T10:00:00Z", "PUBLISHED", capacity = 4)
+        attendance(counted, group, actor, "CONFIRMED", null)
+        attendance(counted2, group, actor, "CONFIRMED", null)
+        attendance(waitlisted, group, actor, "WAITLISTED", 1)
+        attendance(declined, group, actor, "DECLINED", null)
+        attendance(cancelled, group, actor, "CONFIRMED", null)
+        attendance(future, group, actor, "CONFIRMED", null)
+        execute("UPDATE group_memberships SET active=false WHERE group_id='$group' AND user_id='$actor'")
+
+        val card = repository().find(actorId = actor, now = now, today = LocalDate.of(2026, 8, 1))
+            .member.groups.single { it.name == "Played group" }.gamesPlayed
+        val profile = br.com.saqz.groups.application.profile.GetProfileStats(
+            br.com.saqz.groups.adapter.output.jdbc.profile.JdbcProfileStatsRepository(dataSource),
+        ) { now }.execute(actor).games
+
+        assertEquals(2, card)
+        assertEquals(card, profile)
     }
 
     @Test

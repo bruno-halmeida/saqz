@@ -9,12 +9,15 @@ import javax.sql.DataSource
 class JdbcAthleteStatsRepository(dataSource: DataSource) : AthleteStatsRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
-    // Every attendance row is a registered game; WAITLISTED rows are excluded from
-    // the rate denominator, and DECLINED rows are the absence count.
+    // `games` vem da view member_played_games (JOGO-006: encerrado e confirmado); WAITLISTED
+    // fica fora do denominador da taxa e DECLINED é a contagem de faltas.
     override fun find(groupId: UUID, userId: UUID): AthleteStatsAggregate? = jdbc.sql(
         """
         SELECT
-            COUNT(attendance.game_id) AS games,
+            (
+                SELECT COUNT(*) FROM member_played_games played
+                WHERE played.group_id = membership.group_id AND played.user_id = membership.user_id
+            ) AS games,
             COUNT(attendance.game_id) FILTER (WHERE attendance.status <> 'WAITLISTED') AS eligible_games,
             COUNT(attendance.game_id) FILTER (WHERE attendance.status = 'DECLINED') AS absences
         FROM group_memberships membership

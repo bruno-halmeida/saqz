@@ -60,10 +60,33 @@ class JdbcProfileStatsRepositoryIntegrationTest {
     @Test
     fun `does not count future games`() {
         val fixture = fixture()
-        val future = game(fixture.group, "2026-08-02 22:00:00Z")
+        val future = game(fixture.group, "2026-08-02 22:00:00Z", status = "PUBLISHED")
         attendance(fixture, future, "CONFIRMED")
 
         assertEquals(ProfileStats(0, null, 1), stats.execute(fixture.member))
+    }
+
+    @Test
+    fun `does not count a published game that has not been completed yet`() {
+        val fixture = fixture()
+        val started = game(fixture.group, "2026-07-31 22:00:00Z", status = "PUBLISHED")
+        attendance(fixture, started, "CONFIRMED")
+
+        assertEquals(0, stats.execute(fixture.member).games)
+    }
+
+    @Test
+    fun `keeps the history of a group the person left and ignores guests`() {
+        val fixture = fixture()
+        val played = game(fixture.group, "2026-07-20 22:00:00Z")
+        attendance(fixture, played, "CONFIRMED")
+        execute(
+            "INSERT INTO game_attendance (game_id,group_id,member_user_id,guest_seq,status,responded_at,updated_at,member_display_name) " +
+                "VALUES ('$played','${fixture.group}','${fixture.member}',1,'CONFIRMED',now(),now(),'Player')",
+        )
+        execute("UPDATE group_memberships SET active=false WHERE group_id='${fixture.group}' AND user_id='${fixture.member}'")
+
+        assertEquals(1, stats.execute(fixture.member).games)
     }
 
     @Test
@@ -149,7 +172,7 @@ class JdbcProfileStatsRepositoryIntegrationTest {
         )
     }
 
-    private fun game(group: UUID, startsAt: String, status: String = "PUBLISHED"): UUID {
+    private fun game(group: UUID, startsAt: String, status: String = "COMPLETED"): UUID {
         val id = UUID.randomUUID()
         execute(
             "INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes, " +

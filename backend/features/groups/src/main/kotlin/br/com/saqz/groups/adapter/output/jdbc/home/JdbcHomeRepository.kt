@@ -258,11 +258,12 @@ class JdbcHomeRepository(
                          AND members.active = true
                    ) AS member_count,
                    (
+                       -- Mesmo cálculo do perfil (view member_played_games): jogos encerrados deste
+                       -- grupo em que quem vê estava confirmado.
                        SELECT count(*)
-                       FROM games played
+                       FROM member_played_games played
                        WHERE played.group_id = groups.id
-                         AND played.status IN ('PUBLISHED', 'COMPLETED')
-                         AND played.starts_at < :now
+                         AND played.user_id = :actor
                    ) AS games_played
             FROM access_groups groups
             LEFT JOIN group_memberships memberships

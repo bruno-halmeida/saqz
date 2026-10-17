@@ -26,8 +26,10 @@ class JdbcProfileStatsRepository(dataSource: DataSource) : ProfileStatsRepositor
     private companion object {
         const val QUERY = """
             SELECT
-                COUNT(*) FILTER (
-                    WHERE games.id IS NOT NULL AND attendance.status = 'CONFIRMED'
+                (
+                    SELECT COUNT(*) FROM member_played_games played
+                    JOIN access_groups live ON live.id = played.group_id AND live.deleted_at IS NULL
+                    WHERE played.user_id = :userId
                 ) AS games,
                 COUNT(*) FILTER (
                     WHERE games.id IS NOT NULL AND attendance.status IS DISTINCT FROM 'WAITLISTED'
