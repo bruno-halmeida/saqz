@@ -2,6 +2,7 @@ package br.com.saqz.groups.adapter.output.jdbc.attendance.share
 
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.attendance.share.AttendanceLinkAttemptWindow
+import br.com.saqz.groups.application.attendance.share.AttendanceLinkClosedReason
 import br.com.saqz.groups.application.attendance.share.AttendanceLinkCode
 import br.com.saqz.groups.application.attendance.share.AttendanceLinkTokenDigest
 import br.com.saqz.groups.application.attendance.share.RecordInvalidAttendanceLinkAttempt
@@ -126,6 +127,56 @@ class JdbcAttendanceLinkResolutionIntegrationTest {
 
         assertEquals(ResolveAttendanceLinkResult.Success(fixture.group, fixture.game), result)
         assertEquals(10, storedWindow(fixture.member)?.invalidCount)
+    }
+
+    @Test
+    fun `member of a started game gets the started reason`() {
+        val fixture = fixture("closed-started")
+        insertMembership(fixture.group, fixture.member, "ATHLETE")
+        insertLink(fixture, code)
+        execute("UPDATE games SET starts_at = TIMESTAMPTZ '2026-07-21 17:00:00Z', confirmation_deadline = TIMESTAMPTZ '2026-07-21 16:00:00Z' WHERE id = '${fixture.game}'")
+
+        assertEquals(
+            ResolveAttendanceLinkResult.GameClosed(AttendanceLinkClosedReason.GAME_STARTED),
+            useCase().execute(fixture.member, code.value),
+        )
+    }
+
+    @Test
+    fun `member of a cancelled game gets the cancelled reason`() {
+        val fixture = fixture("closed-cancelled")
+        insertMembership(fixture.group, fixture.member, "ATHLETE")
+        insertLink(fixture, code)
+        execute("UPDATE games SET status = 'CANCELLED' WHERE id = '${fixture.game}'")
+
+        assertEquals(
+            ResolveAttendanceLinkResult.GameClosed(AttendanceLinkClosedReason.GAME_CANCELLED),
+            useCase().execute(fixture.member, code.value),
+        )
+    }
+
+    @Test
+    fun `member of an unpublished game gets the unpublished reason`() {
+        val fixture = fixture("closed-draft")
+        insertMembership(fixture.group, fixture.member, "ATHLETE")
+        insertLink(fixture, code)
+        execute("UPDATE games SET status = 'DRAFT' WHERE id = '${fixture.game}'")
+
+        assertEquals(
+            ResolveAttendanceLinkResult.GameClosed(AttendanceLinkClosedReason.GAME_UNPUBLISHED),
+            useCase().execute(fixture.member, code.value),
+        )
+    }
+
+    @Test
+    fun `outsider and unknown code get no reason even when the game is closed`() {
+        val fixture = fixture("closed-hidden")
+        insertLink(fixture, code)
+        execute("UPDATE games SET status = 'CANCELLED' WHERE id = '${fixture.game}'")
+        val outsider = insertUser("closed-outsider")
+
+        assertEquals(ResolveAttendanceLinkResult.InvalidOrExpired, useCase().execute(outsider, code.value))
+        assertEquals(ResolveAttendanceLinkResult.InvalidOrExpired, useCase().execute(fixture.owner, "x".repeat(43)))
     }
 
     @Test

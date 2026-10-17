@@ -127,21 +127,52 @@ class AttendanceShareEndpointIntegrationTest {
     }
 
     @Test
-    fun `missing malformed and frozen capabilities share equivalent public problems`() {
+    fun `missing and malformed capabilities share equivalent public problems without reason`() {
         resolveAttendanceRepository.resolvableTarget = null
         val missing = resolve(AttendanceShareTestConfiguration.CODE.value)
         val malformed = resolve("malformed")
+
+        listOf(missing, malformed).forEach {
+            assertProblem(it, 404, "ATTENDANCE_LINK_INVALID_OR_EXPIRED")
+            assertFalse(json(it).has("reason"))
+        }
+        assertEquals(normalizeCorrelation(missing.body()), normalizeCorrelation(malformed.body()))
+    }
+
+    @Test
+    fun `closed games keep the same status and code and add only the reason`() {
+        val expected = mapOf(
+            GameStatus.CANCELLED to "GAME_CANCELLED",
+            GameStatus.DRAFT to "GAME_UNPUBLISHED",
+            GameStatus.COMPLETED to "GAME_STARTED",
+        )
+        expected.forEach { (status, reason) ->
+            resolveAttendanceRepository.resolvableTarget = AttendanceLinkResolvableTarget(
+                AttendanceShareTestConfiguration.GROUP_ID,
+                AttendanceShareTestConfiguration.GAME_ID,
+                status,
+                AttendanceShareTestConfiguration.NOW.plusSeconds(60),
+            )
+            val response = resolve(AttendanceShareTestConfiguration.CODE.value)
+
+            assertProblem(response, 404, "ATTENDANCE_LINK_INVALID_OR_EXPIRED")
+            assertEquals(reason, json(response)["reason"].stringValue(), status.name)
+        }
+    }
+
+    @Test
+    fun `started published game returns the started reason`() {
         resolveAttendanceRepository.resolvableTarget = AttendanceLinkResolvableTarget(
             AttendanceShareTestConfiguration.GROUP_ID,
             AttendanceShareTestConfiguration.GAME_ID,
-            GameStatus.CANCELLED,
-            AttendanceShareTestConfiguration.NOW.plusSeconds(60),
+            GameStatus.PUBLISHED,
+            AttendanceShareTestConfiguration.NOW.minusSeconds(3600),
+            startsAt = AttendanceShareTestConfiguration.NOW,
         )
-        val frozen = resolve(AttendanceShareTestConfiguration.CODE.value)
+        val response = resolve(AttendanceShareTestConfiguration.CODE.value)
 
-        listOf(missing, malformed, frozen).forEach { assertProblem(it, 404, "ATTENDANCE_LINK_INVALID_OR_EXPIRED") }
-        assertEquals(normalizeCorrelation(missing.body()), normalizeCorrelation(malformed.body()))
-        assertEquals(normalizeCorrelation(malformed.body()), normalizeCorrelation(frozen.body()))
+        assertProblem(response, 404, "ATTENDANCE_LINK_INVALID_OR_EXPIRED")
+        assertEquals("GAME_STARTED", json(response)["reason"].stringValue())
     }
 
     @Test
