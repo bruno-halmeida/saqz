@@ -152,7 +152,7 @@ JG11 é criado logo no começo da rodada.
 **Conferir**
 - A tela do jogo mostra "Encerrado", e ORG vê o botão de acerto.
 - O jogo sai de "PRÓXIMO JOGO" e das listas.
-- No Perfil de ATL, "Jogos" aumentou em 1.
+- No Perfil de ATL, "Jogos" aumentou em 1 (só se ATL estava confirmado; espera e "Não vou" não contam). O cartão do grupo na Início mostra o mesmo número.
 
 ## PROD-JG12 · Acerto do jogo encerrado · P1
 
