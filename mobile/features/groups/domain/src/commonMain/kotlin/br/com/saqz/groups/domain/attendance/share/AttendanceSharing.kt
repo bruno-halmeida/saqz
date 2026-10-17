@@ -30,8 +30,13 @@ data class AttendanceShareSnapshot(
     val declined: List<AttendanceSharePerson>,
 )
 
+/** Por que um link de jogo conhecido não aceita mais resposta (o servidor manda como `reason`). */
+enum class AttendanceLinkClosedReason { GameStarted, GameCancelled, GameUnpublished }
+
 sealed interface AttendanceSharingError : SaqzError {
     data object InvalidOrExpired : AttendanceSharingError
+    /** O código existe, mas o jogo já começou, foi cancelado ou saiu de publicação. */
+    data class GameClosed(val reason: AttendanceLinkClosedReason) : AttendanceSharingError
     data class AttemptLimit(val retryAfterSeconds: Int?) : AttendanceSharingError
     data class DataFailure(val error: DataError) : AttendanceSharingError
 }

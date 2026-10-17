@@ -50,8 +50,12 @@ class AttendanceLinkViewModel(
             val result = sharing.resolveLink(AttendanceLinkCode(code))
             if (current != generation) return@launch
             when (result) {
-                is SaqzResult.Failure -> if (result.error is AttendanceSharingError.InvalidOrExpired) join(current)
-                    else show(AttendanceLinkPhase.Failed)
+                is SaqzResult.Failure -> when (val error = result.error) {
+                    // Código de jogo conhecido: não é convite, então não tenta entrar no grupo.
+                    is AttendanceSharingError.GameClosed -> show(error.reason.phase())
+                    AttendanceSharingError.InvalidOrExpired -> join(current)
+                    else -> show(AttendanceLinkPhase.Failed)
+                }
                 is SaqzResult.Success -> {
                     val destination = result.value
                     if (destination.registrationRequired) register(destination.groupId.value)
@@ -89,8 +93,11 @@ class AttendanceLinkViewModel(
                     when (resolved) {
                         is SaqzResult.Success -> register(resolved.value.groupId.value)
                         is SaqzResult.Failure -> show(
-                            if (resolved.error is AttendanceSharingError.InvalidOrExpired) AttendanceLinkPhase.Invalid
-                            else AttendanceLinkPhase.Failed,
+                            when (val error = resolved.error) {
+                                AttendanceSharingError.InvalidOrExpired -> AttendanceLinkPhase.Invalid
+                                is AttendanceSharingError.GameClosed -> error.reason.phase()
+                                else -> AttendanceLinkPhase.Failed
+                            },
                         )
                     }
                 }
@@ -138,6 +145,12 @@ class AttendanceLinkViewModel(
                     AttendanceLinkPhase.Invalid else AttendanceLinkPhase.Failed,
             )
         }
+    }
+
+    private fun AttendanceLinkClosedReason.phase() = when (this) {
+        AttendanceLinkClosedReason.GameStarted -> AttendanceLinkPhase.GameStarted
+        AttendanceLinkClosedReason.GameCancelled -> AttendanceLinkPhase.GameCancelled
+        AttendanceLinkClosedReason.GameUnpublished -> AttendanceLinkPhase.GameUnpublished
     }
 
     private fun show(phase: AttendanceLinkPhase) { update { AttendanceLinkState(phase) } }

@@ -12,6 +12,11 @@ enum class AttendanceLinkPhase {
     Invalid,
     /** Plano do organizador vencido ou pausado: o grupo não recebe atletas novos agora. */
     NotReceiving,
+    /** O código existe, mas o jogo já começou. */
+    GameStarted,
+    GameCancelled,
+    /** O organizador tirou o jogo de publicação. */
+    GameUnpublished,
     Failed,
     Registration,
     Pending,

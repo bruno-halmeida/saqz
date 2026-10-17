@@ -111,7 +111,13 @@ private fun AttendanceShareSnapshotDto.toDomain(): AttendanceShareSnapshot? {
 
 private fun NetworkError.toSharingError(): AttendanceSharingError = when (this) {
     is NetworkError.ApiProblemError -> when (problem.code) {
-        "ATTENDANCE_LINK_INVALID_OR_EXPIRED" -> AttendanceSharingError.InvalidOrExpired
+        // `reason` é aditivo: sem ele (ou com um valor que este app não conhece) vale a mensagem de sempre.
+        "ATTENDANCE_LINK_INVALID_OR_EXPIRED" -> when (problem.reason) {
+            "GAME_STARTED" -> AttendanceSharingError.GameClosed(AttendanceLinkClosedReason.GameStarted)
+            "GAME_CANCELLED" -> AttendanceSharingError.GameClosed(AttendanceLinkClosedReason.GameCancelled)
+            "GAME_UNPUBLISHED" -> AttendanceSharingError.GameClosed(AttendanceLinkClosedReason.GameUnpublished)
+            else -> AttendanceSharingError.InvalidOrExpired
+        }
         "ATTENDANCE_LINK_ATTEMPT_LIMIT" -> AttendanceSharingError.AttemptLimit(problem.retryAfterSeconds)
         else -> AttendanceSharingError.DataFailure(problem.status.toDataError())
     }

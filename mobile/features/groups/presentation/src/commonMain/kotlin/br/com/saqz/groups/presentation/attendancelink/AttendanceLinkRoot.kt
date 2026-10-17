@@ -60,6 +60,9 @@ internal fun AttendanceLinkScreen(
                     AttendanceLinkPhase.Declined -> Res.string.attendance_link_declined
                     AttendanceLinkPhase.Invalid -> Res.string.attendance_link_invalid
                     AttendanceLinkPhase.NotReceiving -> Res.string.attendance_link_not_receiving
+                    AttendanceLinkPhase.GameStarted -> Res.string.attendance_link_game_started
+                    AttendanceLinkPhase.GameCancelled -> Res.string.attendance_link_game_cancelled
+                    AttendanceLinkPhase.GameUnpublished -> Res.string.attendance_link_game_unpublished
                     AttendanceLinkPhase.Failed -> Res.string.communication_failure
                     AttendanceLinkPhase.Registration -> Res.string.attendance_link_registration
                     AttendanceLinkPhase.Pending -> Res.string.attendance_link_pending
