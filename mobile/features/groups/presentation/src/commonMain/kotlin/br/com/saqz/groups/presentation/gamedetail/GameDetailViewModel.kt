@@ -194,10 +194,21 @@ class GameDetailViewModel(
             }
             GameDetailIntent.OpenPlaceSheet -> openPlaceSheet()
             is GameDetailIntent.SelectPlaceCandidate -> selectPlaceCandidate(intent.memberId)
-            is GameDetailIntent.ConfirmPlaceMember -> confirmPlaceMember(intent.reason)
+            GameDetailIntent.TogglePlaceReason -> updateOrganizer { it.copy(placeReasonOpen = !it.placeReasonOpen) }
+            is GameDetailIntent.UpdatePlaceReason -> updateOrganizer {
+                it.copy(placeReason = intent.value.take(MAX_OVERRIDE_REASON), placeFailure = null)
+            }
+            is GameDetailIntent.ConfirmPlaceMember -> confirmPlaceMember(intent.defaultReason)
             GameDetailIntent.DismissPlaceSheet -> if (!state.value.organizer.placing) {
                 updateOrganizer {
-                    it.copy(placeOpen = false, candidates = emptyList(), selectedId = null, placeFailure = null)
+                    it.copy(
+                        placeOpen = false,
+                        candidates = emptyList(),
+                        selectedId = null,
+                        placeFailure = null,
+                        placeReasonOpen = false,
+                        placeReason = "",
+                    )
                 }
             }
             else -> return false
@@ -964,7 +975,14 @@ class GameDetailViewModel(
             .filter { it.active && it.userId != selfId && it.userId !in taken }
             .map { GameMemberCandidateUi(it.userId, it.displayName, it.position) }
         updateOrganizer {
-            it.copy(placeOpen = true, candidates = candidates, selectedId = null, placeFailure = null)
+            it.copy(
+                placeOpen = true,
+                candidates = candidates,
+                selectedId = null,
+                placeFailure = null,
+                placeReasonOpen = false,
+                placeReason = "",
+            )
         }
     }
 
@@ -974,13 +992,15 @@ class GameDetailViewModel(
         updateOrganizer { it.copy(selectedId = memberId, placeFailure = null) }
     }
 
-    private fun confirmPlaceMember(reason: String) {
+    private fun confirmPlaceMember(defaultReason: String) {
         val current = state.value
         val selected = current.organizer.selected ?: return
         if (!current.canManageAttendance || !current.organizer.placeOpen || current.organizer.placing) return
         if (current.placeBlocked) return
+        val organizer = current.organizer
+        val custom = organizer.placeReason.trim().takeIf { organizer.placeReasonOpen && it.length >= MIN_OVERRIDE_REASON }
         updateOrganizer { it.copy(placing = true, placeFailure = null) }
-        sendOverride(selected.id, AttendanceIntent.Confirm, reason) { failure ->
+        sendOverride(selected.id, AttendanceIntent.Confirm, custom ?: defaultReason) { failure ->
             updateOrganizer { it.copy(placing = false, placeFailure = failure) }
         }
     }

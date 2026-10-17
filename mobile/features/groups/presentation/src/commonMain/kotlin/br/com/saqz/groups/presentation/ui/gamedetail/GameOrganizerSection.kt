@@ -59,6 +59,8 @@ internal object GameOrganizerTags {
     const val PlaceEmpty = "game-place-empty"
     const val PlaceNote = "game-place-note"
     const val PlaceSubmit = "game-place-submit"
+    const val PlaceReasonToggle = "game-place-reason-toggle"
+    const val PlaceReason = "game-place-reason"
     const val PlaceFailed = "game-place-failed"
 
     fun remove(rowId: String) = "game-member-remove-$rowId"
@@ -219,6 +221,25 @@ internal fun GamePlaceSheet(state: GameDetailState, onIntent: (GameDetailIntent)
                     },
                 )
             }
+        }
+        if (organizer.placeReasonOpen) {
+            SaqzInput(
+                value = organizer.placeReason,
+                onValueChange = { onIntent(GameDetailIntent.UpdatePlaceReason(it)) },
+                label = stringResource(Res.string.game_member_reason_label),
+                placeholder = stringResource(Res.string.game_member_reason_placeholder),
+                enabled = !organizer.placing,
+                modifier = Modifier.testTag(GameOrganizerTags.PlaceReason),
+            )
+        } else {
+            SaqzButton(
+                label = stringResource(Res.string.game_member_reason_other),
+                onClick = { onIntent(GameDetailIntent.TogglePlaceReason) },
+                modifier = Modifier.testTag(GameOrganizerTags.PlaceReasonToggle),
+                variant = SaqzButtonVariant.Ghost,
+                size = SaqzButtonSize.Sm,
+                enabled = !organizer.placing,
+            )
         }
         organizer.placeFailure?.let {
             Text(

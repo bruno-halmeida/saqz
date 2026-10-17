@@ -443,6 +443,74 @@ class GameDetailOrganizerTest {
     }
 
     @Test
+    fun `colocar com outro motivo preenchido manda o texto`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val viewModel = viewModel(attendance)
+        viewModel.onIntent(GameDetailIntent.OpenPlaceSheet)
+        viewModel.onIntent(GameDetailIntent.SelectPlaceCandidate("edu"))
+        viewModel.onIntent(GameDetailIntent.TogglePlaceReason)
+        viewModel.onIntent(GameDetailIntent.UpdatePlaceReason("  Veio de última hora  "))
+
+        viewModel.onIntent(GameDetailIntent.ConfirmPlaceMember(DefaultReason))
+
+        assertEquals("Veio de última hora", assertNotNullCommand(attendance).reason)
+        assertEquals(AttendanceIntent.Confirm, assertNotNullCommand(attendance).intent)
+    }
+
+    @Test
+    fun `colocar com motivo vazio curto ou campo fechado cai no padrao`() = runTest {
+        suspend fun reasonSentFor(prepare: GameDetailViewModel.() -> Unit): String {
+            val attendance = FakeAttendanceGateway()
+            val viewModel = viewModel(attendance)
+            viewModel.onIntent(GameDetailIntent.OpenPlaceSheet)
+            viewModel.onIntent(GameDetailIntent.SelectPlaceCandidate("edu"))
+            viewModel.prepare()
+            viewModel.onIntent(GameDetailIntent.ConfirmPlaceMember(DefaultReason))
+            return assertNotNullCommand(attendance).reason
+        }
+
+        assertEquals(DefaultReason, reasonSentFor { })
+        assertEquals(DefaultReason, reasonSentFor { onIntent(GameDetailIntent.TogglePlaceReason) })
+        assertEquals(
+            DefaultReason,
+            reasonSentFor {
+                onIntent(GameDetailIntent.TogglePlaceReason)
+                onIntent(GameDetailIntent.UpdatePlaceReason("   "))
+            },
+        )
+        assertEquals(
+            DefaultReason,
+            reasonSentFor {
+                onIntent(GameDetailIntent.TogglePlaceReason)
+                onIntent(GameDetailIntent.UpdatePlaceReason(" a "))
+            },
+        )
+        assertEquals(
+            DefaultReason,
+            reasonSentFor {
+                onIntent(GameDetailIntent.TogglePlaceReason)
+                onIntent(GameDetailIntent.UpdatePlaceReason("texto digitado"))
+                onIntent(GameDetailIntent.TogglePlaceReason)
+            },
+        )
+    }
+
+    @Test
+    fun `o motivo de colocar e cortado em 500 e some ao fechar a folha`() = runTest {
+        val viewModel = viewModel()
+        viewModel.onIntent(GameDetailIntent.OpenPlaceSheet)
+        viewModel.onIntent(GameDetailIntent.TogglePlaceReason)
+        viewModel.onIntent(GameDetailIntent.UpdatePlaceReason("x".repeat(800)))
+        assertEquals(500, viewModel.state.value.organizer.placeReason.length)
+
+        viewModel.onIntent(GameDetailIntent.DismissPlaceSheet)
+        viewModel.onIntent(GameDetailIntent.OpenPlaceSheet)
+
+        assertFalse(viewModel.state.value.organizer.placeReasonOpen)
+        assertEquals("", viewModel.state.value.organizer.placeReason)
+    }
+
+    @Test
     fun `jogo ja comecado e cheio nao deixa colocar ninguem`() = runTest {
         val attendance = FakeAttendanceGateway()
         val viewModel = viewModel(attendance, game = startedGame(), full = true)

@@ -190,6 +190,28 @@ class GameOrganizerSectionTest {
     }
 
     @Test
+    fun campoDeMotivoDeColocarSoApareceComOutroMotivo() {
+        runComposeUiTest {
+            val intents = mutableListOf<GameDetailIntent>()
+            setScreen(placeState(selectedId = "edu"), intents::add)
+
+            onAllNodesWithTag(GameOrganizerTags.PlaceReason).assertCountEquals(0)
+            onNodeWithTag(GameOrganizerTags.PlaceReasonToggle).performClick()
+
+            assertEquals(GameDetailIntent.TogglePlaceReason, intents.single())
+        }
+        runComposeUiTest {
+            setScreen(
+                placeState(selectedId = "edu")
+                    .let { it.copy(organizer = it.organizer.copy(placeReasonOpen = true)) },
+            )
+
+            onNodeWithTag(GameOrganizerTags.PlaceReason).assertExists()
+            onAllNodesWithTag(GameOrganizerTags.PlaceReasonToggle).assertCountEquals(0)
+        }
+    }
+
+    @Test
     fun tocarNoNomeSelecionaEOBotaoColoca() = runComposeUiTest {
         val intents = mutableListOf<GameDetailIntent>()
         setScreen(placeState(selectedId = "edu"), intents::add)

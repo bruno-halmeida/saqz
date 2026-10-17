@@ -165,6 +165,9 @@ data class GameOrganizerUi(
     val selectedId: String? = null,
     val placing: Boolean = false,
     val placeFailure: GameOrganizerFailure? = null,
+    /** "Outro motivo" aberto na folha de colocar: o campo de texto aparece. Fechado, vai o motivo padrão. */
+    val placeReasonOpen: Boolean = false,
+    val placeReason: String = "",
 ) {
     val selected: GameMemberCandidateUi? get() = candidates.firstOrNull { it.id == selectedId }
 }
@@ -261,7 +264,11 @@ sealed interface GameDetailIntent {
     data object DismissRemoveMember : GameDetailIntent
     data object OpenPlaceSheet : GameDetailIntent
     data class SelectPlaceCandidate(val memberId: String) : GameDetailIntent
-    data class ConfirmPlaceMember(val reason: String) : GameDetailIntent
+    data object TogglePlaceReason : GameDetailIntent
+    data class UpdatePlaceReason(val value: String) : GameDetailIntent
+
+    /** [defaultReason] vai quando "Outro motivo" está fechado, vazio ou com menos de 2 caracteres. */
+    data class ConfirmPlaceMember(val defaultReason: String) : GameDetailIntent
     data object DismissPlaceSheet : GameDetailIntent
 }
 sealed interface GameDetailEffect {
