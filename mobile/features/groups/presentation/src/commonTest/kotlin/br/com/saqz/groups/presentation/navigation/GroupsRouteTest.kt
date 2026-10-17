@@ -24,6 +24,10 @@ class GroupsRouteTest {
                 "invite-plan-limit",
                 redeemError = InviteLandingRouteError.PlanLimit,
             ),
+            GroupsRoute.InviteLanding(
+                "invite-not-receiving",
+                redeemError = InviteLandingRouteError.NotReceiving,
+            ),
             GroupsRoute.AthleteRegistration("group-6"),
             GroupsRoute.MemberEditor("group-7", "user-8"),
             GroupsRoute.MemberProfile("group-7", "user-8"),

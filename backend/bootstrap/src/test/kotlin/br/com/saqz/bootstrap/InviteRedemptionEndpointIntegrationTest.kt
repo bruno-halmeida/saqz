@@ -57,10 +57,43 @@ import kotlin.test.assertTrue
 class InviteRedemptionEndpointIntegrationTest {
     @LocalServerPort private var port: Int = 0
     @Autowired private lateinit var repository: RecordingHttpRedemptionRepository
+    @Autowired private lateinit var writeAccess: ToggleableWriteAccess
     @Autowired private lateinit var objectMapper: ObjectMapper
 
     @BeforeEach
-    fun reset() = repository.reset()
+    fun reset() {
+        writeAccess.open = true
+        repository.reset()
+    }
+
+    @Test
+    fun `expired or paused organizer plan refuses entry with the subscription problem the store apps already handle`() {
+        writeAccess.open = false
+
+        assertProblem(redeem(RedemptionTestConfiguration.RAW_CODE), 403, "SUBSCRIPTION_REQUIRED")
+        assertTrue(repository.roles.isEmpty())
+        assertTrue(repository.entryRequests.isEmpty())
+
+        repository.target = RedeemableInvite(
+            RedemptionTestConfiguration.GROUP_ID,
+            RedemptionTestConfiguration.NOW.plusSeconds(60),
+            entryRequiresApproval = true,
+        )
+        assertProblem(redeem(RedemptionTestConfiguration.RAW_CODE), 403, "SUBSCRIPTION_REQUIRED")
+        assertTrue(repository.entryRequests.isEmpty())
+        assertEquals(0, repository.windows.getValue(RedemptionTestConfiguration.USER_ID).invalidCount)
+    }
+
+    @Test
+    fun `existing member still resolves the group while the organizer plan is expired`() {
+        repository.roles[RedemptionTestConfiguration.USER_ID] = GroupRole.ATHLETE
+        writeAccess.open = false
+
+        val response = redeem(RedemptionTestConfiguration.RAW_CODE)
+
+        assertEquals(200, response.statusCode())
+        assertEquals("JOINED", json(response)["status"].stringValue())
+    }
 
     @Test
     fun `valid invite creates athlete and returns joined status and role`() {
@@ -282,14 +315,17 @@ class InviteRedemptionEndpointIntegrationTest {
         @Bean fun redemptionTransaction() = object : TransactionRunner {
             override fun <T> inTransaction(block: () -> T): T = block()
         }
+        @Bean fun redemptionWriteAccess() = ToggleableWriteAccess()
         @Bean fun redeemInvite(
             transaction: TransactionRunner,
             repository: RecordingHttpRedemptionRepository,
+            writeAccess: ToggleableWriteAccess,
         ) = RedeemInvite(
             transaction,
             repository,
             UnlimitedSubscriptionLimits,
             Clock.fixed(NOW, ZoneOffset.UTC),
+            writeAccess,
         )
         @Bean fun accessInviteRedemptionController(
             bootstrap: BootstrapSession,
@@ -320,6 +356,12 @@ class InviteRedemptionEndpointIntegrationTest {
     object UnlimitedSubscriptionLimits : br.com.saqz.sharedkernel.subscription.SubscriptionLimits {
         override fun groupLimitFor(ownerId: UUID): Int? = null
         override fun athleteLimitFor(ownerId: UUID): Int? = null
+    }
+
+    /** Plano do organizador: aberto por padrão; o teste fecha para simular plano vencido ou pausado. */
+    class ToggleableWriteAccess : br.com.saqz.sharedkernel.subscription.GroupWriteAccess {
+        @Volatile var open = true
+        override fun canWrite(groupId: UUID) = open
     }
 
     class RecordingHttpRedemptionRepository : InviteRedemptionRepository {

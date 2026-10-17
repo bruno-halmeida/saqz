@@ -53,6 +53,12 @@ class AttendanceLinkScreenTest {
         onNodeWithText(declinedText).assertExists()
     }
 
+    @Test fun notReceivingShowsTheNeutralTextWithoutRetry() = runComposeUiTest {
+        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.NotReceiving), {}, {}, {}) } }
+        onNodeWithText("Este grupo não está recebendo novos atletas agora. Fale com o organizador.").assertExists()
+        onNodeWithText("Não foi possível concluir. Tente novamente.").assertDoesNotExist()
+    }
+
     @Test fun failedAfterDeclineTapDoesNotShowTheDeclinedText() = runComposeUiTest {
         setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Failed, destination), {}, {}, {}) } }
         onNodeWithText(declinedText).assertDoesNotExist()

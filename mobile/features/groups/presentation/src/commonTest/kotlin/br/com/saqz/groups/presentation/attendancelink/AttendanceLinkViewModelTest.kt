@@ -96,6 +96,17 @@ class AttendanceLinkViewModelTest {
         assertNull(closed.state.value.destination)
     }
 
+    @Test fun organizerPlanPausedShowsTheNeutralPhaseInsteadOfAFailureToRetry() = runTest {
+        val gateway = AttendanceFake()
+        val vm = AttendanceLinkViewModel(
+            code, false, SharingFake(expired = true), gateway, InviteFake(failure = InviteError.GroupNotReceiving),
+        )
+        assertEquals(AttendanceLinkPhase.NotReceiving, vm.state.value.phase)
+        assertTrue(gateway.commands.isEmpty())
+        vm.onIntent(AttendanceLinkIntent.Retry)
+        assertEquals(AttendanceLinkPhase.NotReceiving, vm.state.value.phase)
+    }
+
     @Test fun retryPreservesRequestIdentityAndSuccessfulStateDoesNotResubmit() = runTest {
         val gateway = AttendanceFake().apply { error = AttendanceError.Data(DataError.Connectivity) }
         val vm = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
@@ -238,12 +249,15 @@ class AttendanceLinkViewModelTest {
         native.onIntent(AttendanceLinkIntent.OpenAppDownload)
     }
 
-    private class InviteFake(private val status: InviteRedeemStatus? = null) : InviteGateway {
+    private class InviteFake(
+        private val status: InviteRedeemStatus? = null,
+        private val failure: InviteError = InviteError.InvalidOrExpired,
+    ) : InviteGateway {
         val codes = mutableListOf<InviteCode>()
         override suspend fun preview(code: InviteCode) = error("unused")
         override suspend fun redeem(code: InviteCode): SaqzResult<InviteRedeem, InviteError> {
             codes += code
-            return if (status == null) SaqzResult.Failure(InviteError.InvalidOrExpired)
+            return if (status == null) SaqzResult.Failure(failure)
             else SaqzResult.Success(InviteRedeem(status, GroupId("group"), "ATHLETE"))
         }
     }

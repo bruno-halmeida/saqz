@@ -59,6 +59,7 @@ internal fun AttendanceLinkScreen(
                     AttendanceLinkPhase.DeclineSheet -> Res.string.attendance_link_decline_pending
                     AttendanceLinkPhase.Declined -> Res.string.attendance_link_declined
                     AttendanceLinkPhase.Invalid -> Res.string.attendance_link_invalid
+                    AttendanceLinkPhase.NotReceiving -> Res.string.attendance_link_not_receiving
                     AttendanceLinkPhase.Failed -> Res.string.communication_failure
                     AttendanceLinkPhase.Registration -> Res.string.attendance_link_registration
                     AttendanceLinkPhase.Pending -> Res.string.attendance_link_pending

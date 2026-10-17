@@ -38,6 +38,7 @@ sealed interface InviteLandingError {
     data class Expired(val expiredAt: String) : InviteLandingError
     data class RateLimited(val retryAfterSeconds: Int?) : InviteLandingError
     data object PlanLimit : InviteLandingError
+    data object NotReceiving : InviteLandingError
     data object Network : InviteLandingError
 }
 

@@ -10,6 +10,8 @@ enum class AttendanceLinkPhase {
     DeclineSheet,
     Declined,
     Invalid,
+    /** Plano do organizador vencido ou pausado: o grupo não recebe atletas novos agora. */
+    NotReceiving,
     Failed,
     Registration,
     Pending,

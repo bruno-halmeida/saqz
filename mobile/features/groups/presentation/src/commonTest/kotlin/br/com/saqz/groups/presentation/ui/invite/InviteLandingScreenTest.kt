@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -73,6 +74,18 @@ class InviteLandingScreenTest {
 
         setScreen(InviteLandingSamples.network)
         onNodeWithText("Tentar novamente").assertExists()
+    }
+
+    @Test
+    fun `organizer plan paused shows the neutral text without talking about plan or connection`() = runComposeUiTest {
+        val intents = mutableListOf<InviteLandingIntent>()
+        setScreen(InviteLandingSamples.notReceiving) { intents += it }
+
+        onNodeWithText("Este grupo não está recebendo novos atletas agora. Fale com o organizador.").assertExists()
+        onAllNodesWithText("Tentar novamente").assertCountEquals(0)
+        onAllNodesWithTag(InviteLandingTags.RequestSent).assertCountEquals(0)
+        onNodeWithText("Entrar em outro grupo").performClick()
+        assertEquals(InviteLandingIntent.OpenAnotherGroup, intents.single())
     }
 
     @Test

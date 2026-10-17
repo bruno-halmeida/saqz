@@ -108,5 +108,8 @@ sealed interface InviteLandingRouteError {
     data object PlanLimit : InviteLandingRouteError
 
     @Serializable
+    data object NotReceiving : InviteLandingRouteError
+
+    @Serializable
     data object Network : InviteLandingRouteError
 }

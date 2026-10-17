@@ -164,6 +164,10 @@ class InviteLandingViewModelTest {
             viewModel(redeem = SaqzResult.Failure(InviteError.PlanLimit)).redeemError(),
         )
         assertEquals(
+            InviteLandingError.NotReceiving,
+            viewModel(redeem = SaqzResult.Failure(InviteError.GroupNotReceiving)).redeemError(),
+        )
+        assertEquals(
             InviteLandingError.Network,
             viewModel(redeem = SaqzResult.Failure(InviteError.DataFailure(DataError.Timeout))).redeemError(),
         )

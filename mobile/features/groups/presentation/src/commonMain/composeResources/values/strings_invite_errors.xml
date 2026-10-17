@@ -9,6 +9,8 @@
     <string name="invite_error_rate_unknown">alguns instantes</string>
     <string name="invite_error_plan_title">O grupo atingiu o limite de participantes</string>
     <string name="invite_error_plan_body">Este grupo atingiu o limite de atletas do plano. Não há fila de espera.</string>
+    <string name="invite_error_not_receiving_title">Não foi possível entrar</string>
+    <string name="invite_error_not_receiving_body">Este grupo não está recebendo novos atletas agora. Fale com o organizador.</string>
     <string name="invite_error_network_title">Não foi possível carregar o convite</string>
     <string name="invite_error_network_body">Confira sua conexão e tente novamente.</string>
     <string name="invite_error_retry">Tentar novamente</string>

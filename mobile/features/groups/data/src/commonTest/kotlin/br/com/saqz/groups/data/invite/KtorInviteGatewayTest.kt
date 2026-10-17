@@ -134,6 +134,10 @@ class KtorInviteGatewayTest {
             InviteError.PlanLimit,
             fixture { problem(422, "ATHLETE_LIMIT_EXCEEDED") }.gateway.redeem(InviteCode(INVITE_CODE)).failure(),
         )
+        assertEquals(
+            InviteError.GroupNotReceiving,
+            fixture { problem(403, "SUBSCRIPTION_REQUIRED") }.gateway.redeem(InviteCode(INVITE_CODE)).failure(),
+        )
     }
 
     @Test

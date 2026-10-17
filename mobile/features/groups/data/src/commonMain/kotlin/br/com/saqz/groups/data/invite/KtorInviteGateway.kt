@@ -153,7 +153,7 @@ private fun NetworkError.toInviteError(): InviteError = when (this) {
         "INVITE_GROUP_DELETED" -> InviteError.GroupDeleted
         "INVITE_ATTEMPT_LIMIT" -> InviteError.RateLimited(problem.retryAfterSeconds)
         "ATHLETE_LIMIT_EXCEEDED" -> InviteError.PlanLimit
-        "SUBSCRIPTION_REQUIRED" -> InviteError.DataFailure(DataError.SubscriptionRequired)
+        "SUBSCRIPTION_REQUIRED" -> InviteError.GroupNotReceiving
         else -> InviteError.DataFailure(problem.status.toDataError())
     }
     is NetworkError.HttpStatus -> InviteError.DataFailure(status.toDataError())

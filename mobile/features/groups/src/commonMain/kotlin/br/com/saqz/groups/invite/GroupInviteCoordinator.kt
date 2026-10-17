@@ -359,6 +359,7 @@ private fun InviteError.isTerminal(): Boolean = when (this) {
     is InviteError.Expired,
     InviteError.GroupDeleted,
     InviteError.PlanLimit,
+    InviteError.GroupNotReceiving,
     -> true
     is InviteError.RateLimited,
     is InviteError.DataFailure,

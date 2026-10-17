@@ -47,6 +47,8 @@ import br.com.saqz.groups.resources.invite_error_invalid_title
 import br.com.saqz.groups.resources.invite_error_new_invite
 import br.com.saqz.groups.resources.invite_error_network_body
 import br.com.saqz.groups.resources.invite_error_network_title
+import br.com.saqz.groups.resources.invite_error_not_receiving_body
+import br.com.saqz.groups.resources.invite_error_not_receiving_title
 import br.com.saqz.groups.resources.invite_error_other_group
 import br.com.saqz.groups.resources.invite_error_plan_body
 import br.com.saqz.groups.resources.invite_error_plan_title
@@ -414,6 +416,12 @@ private fun InviteErrorScreen(
             primaryLabel = stringResource(Res.string.invite_error_other_group)
             primaryAction = onOpenAnotherGroup
         }
+        InviteLandingError.NotReceiving -> {
+            title = stringResource(Res.string.invite_error_not_receiving_title)
+            body = stringResource(Res.string.invite_error_not_receiving_body)
+            primaryLabel = stringResource(Res.string.invite_error_other_group)
+            primaryAction = onOpenAnotherGroup
+        }
         InviteLandingError.Network -> {
             title = stringResource(Res.string.invite_error_network_title)
             body = stringResource(Res.string.invite_error_network_body)
@@ -472,6 +480,7 @@ internal object InviteLandingSamples {
     val expired = InviteLandingState(isLoading = false, error = InviteLandingError.Expired("31/08/2026"), preview = preview.preview)
     val rateLimited = InviteLandingState(isLoading = false, error = InviteLandingError.RateLimited(30), preview = preview.preview)
     val planLimit = InviteLandingState(isLoading = false, error = InviteLandingError.PlanLimit, preview = preview.preview)
+    val notReceiving = InviteLandingState(isLoading = false, error = InviteLandingError.NotReceiving, preview = preview.preview)
     val network = InviteLandingState(isLoading = false, error = InviteLandingError.Network)
 }
 

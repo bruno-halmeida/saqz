@@ -124,6 +124,7 @@ private fun InviteError.toUiError(timeZone: TimeZone): InviteLandingError = when
     is InviteError.Expired -> InviteLandingError.Expired(formatDate(expiredAt, timeZone))
     is InviteError.RateLimited -> InviteLandingError.RateLimited(retryAfterSeconds)
     InviteError.PlanLimit -> InviteLandingError.PlanLimit
+    InviteError.GroupNotReceiving -> InviteLandingError.NotReceiving
     is InviteError.DataFailure -> InviteLandingError.Network
     InviteError.GroupDeleted -> InviteLandingError.Invalid
 }
@@ -133,6 +134,7 @@ private fun InviteLandingRouteError.toUiError(timeZone: TimeZone): InviteLanding
     is InviteLandingRouteError.Expired -> InviteLandingError.Expired(formatDate(expiredAt, timeZone))
     is InviteLandingRouteError.RateLimited -> InviteLandingError.RateLimited(retryAfterSeconds)
     InviteLandingRouteError.PlanLimit -> InviteLandingError.PlanLimit
+    InviteLandingRouteError.NotReceiving -> InviteLandingError.NotReceiving
     InviteLandingRouteError.Network -> InviteLandingError.Network
 }
 

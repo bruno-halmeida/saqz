@@ -242,6 +242,22 @@ class GroupInviteCoordinatorTest {
     }
 
     @Test
+    fun `group not receiving athletes is terminal and clears the pending invite`() = runTest {
+        val fixture = fixture(
+            previewResult = SaqzResult.Failure(InviteError.GroupNotReceiving),
+        )
+        fixture.local.pending = "invite-paused"
+        val effect = async { fixture.coordinator.effects.first() }
+        fixture.coordinator.onAuthenticated()
+        runCurrent()
+
+        val result = assertIs<GroupInviteEffect.RedeemFailed>(effect.await())
+        assertEquals(InviteError.GroupNotReceiving, result.error)
+        assertTrue(!result.willRetry)
+        assertNull(fixture.local.pending)
+    }
+
+    @Test
     fun `network failure keeps pending invite for the next opportunity`() = runTest {
         val fixture = fixture(
             previewResult = SaqzResult.Failure(InviteError.DataFailure(DataError.Connectivity)),

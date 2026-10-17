@@ -36,6 +36,22 @@ class RedeemInviteTest {
     }
 
     @Test
+    fun `expired plan refuses direct entry and a marked return without creating anything`() {
+        val fixture = fixture()
+        fixture.repository.returnMarked += actor
+        val service = RedeemInvite(fixture.transaction, fixture.repository, FixedSubscriptionLimits(), fixture.clock,
+            br.com.saqz.sharedkernel.subscription.GroupWriteAccess { false })
+
+        kotlin.test.assertFailsWith<br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException> { service.execute(actor, code.value) }
+        fixture.repository.returnMarked.clear()
+        kotlin.test.assertFailsWith<br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException> { service.execute(actor, code.value) }
+
+        assertTrue(fixture.repository.entryRequests.isEmpty())
+        assertTrue(fixture.repository.redemptions.isEmpty())
+        assertTrue(fixture.repository.invalidAttempts.isEmpty())
+    }
+
+    @Test
     fun `expired trial lets an existing member resolve their group without a new membership`() {
         val fixture = fixture()
         fixture.repository.roles[actor] = GroupRole.ATHLETE

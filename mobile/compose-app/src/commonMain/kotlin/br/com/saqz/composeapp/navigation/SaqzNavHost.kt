@@ -1283,6 +1283,7 @@ private fun InviteError.toRouteError(): InviteLandingRouteError = when (this) {
     is InviteError.Expired -> InviteLandingRouteError.Expired(expiredAt)
     is InviteError.RateLimited -> InviteLandingRouteError.RateLimited(retryAfterSeconds)
     InviteError.PlanLimit -> InviteLandingRouteError.PlanLimit
+    InviteError.GroupNotReceiving -> InviteLandingRouteError.NotReceiving
     is InviteError.DataFailure -> InviteLandingRouteError.Network
 }
 

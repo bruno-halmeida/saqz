@@ -46,6 +46,9 @@ sealed interface InviteError : SaqzError {
     data object GroupDeleted : InviteError
     data class RateLimited(val retryAfterSeconds: Int?) : InviteError
     data object PlanLimit : InviteError
+
+    /** Plano do organizador vencido ou pausado: o grupo não recebe atletas novos agora (CONV-005). */
+    data object GroupNotReceiving : InviteError
     data class DataFailure(val error: DataError) : InviteError
 }
 
