@@ -208,6 +208,7 @@ private fun GameWaitlistRow(
             )
         }
         person.guest?.let { GameGuestRemoveAction(person.id, it, onIntent) }
+        if (person.canRemove) GameMemberRemoveAction(person.id, onIntent)
     }
 }
 

@@ -94,7 +94,7 @@ class GameGuestSectionTest {
         runComposeUiTest {
             setScreen(GameGuestPreviewData.sheetFilled)
 
-            onNodeWithText("Se ele entrar no jogo, a taxa de R$ 25,00 vem para você.").assertExists()
+            onNodeWithText("Se o convidado entrar no jogo, a taxa de R$ 25,00 vem para você.").assertExists()
         }
         runComposeUiTest {
             setScreen(GameGuestPreviewData.noFee)
@@ -142,13 +142,13 @@ class GameGuestSectionTest {
         runComposeUiTest {
             setScreen(GameGuestPreviewData.removeWaitlisted)
 
-            onNodeWithText("Ele sai da lista de espera. Nada é cobrado.").assertExists()
+            onNodeWithText("Sai da lista de espera. Nada é cobrado.").assertExists()
         }
         runComposeUiTest {
             setScreen(GameGuestPreviewData.removeConfirmed)
 
             onNodeWithText(
-                "Ele sai dos confirmados, a vaga vai para o próximo da lista e a cobrança de R$ 25,00 em seu nome é cancelada.",
+                "Sai dos confirmados, a vaga vai para o próximo da lista e a cobrança de R$ 25,00 em seu nome é cancelada.",
             ).assertExists()
         }
     }

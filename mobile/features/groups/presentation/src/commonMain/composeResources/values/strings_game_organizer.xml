@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="game_member_remove">Tirar</string>
+    <string name="game_member_remove_title">Tirar %1$s do jogo?</string>
+    <string name="game_member_remove_waitlisted">Sai da lista de espera. Nada é cobrado.</string>
+    <string name="game_member_remove_confirmed">Sai dos confirmados e a vaga vai para o próximo da lista.</string>
+    <string name="game_member_remove_confirmed_fee">Sai dos confirmados, a vaga vai para o próximo da lista e a cobrança de %1$s é cancelada.</string>
+    <string name="game_member_remove_notify">%1$s vai receber um aviso, ok?</string>
+    <string name="game_member_reason_other">Outro motivo</string>
+    <string name="game_member_reason_label">Motivo</string>
+    <string name="game_member_reason_placeholder">Opcional</string>
+    <string name="game_member_remove_keep">Manter</string>
+    <string name="game_member_remove_confirm">Tirar</string>
+    <string name="game_member_failed">Não foi possível. Tente de novo.</string>
+    <string name="game_member_failed_closed">O jogo não aceita mais mudanças.</string>
+    <string name="game_place_action">Colocar alguém no jogo</string>
+    <string name="game_place_title">Colocar alguém no jogo</string>
+    <string name="game_place_empty">Todo mundo já está no jogo ou na lista de espera.</string>
+    <string name="game_place_waitlist">Jogo cheio: entra na lista de espera.</string>
+    <string name="game_place_full">Jogo cheio</string>
+    <string name="game_place_pick">Escolha quem entra</string>
+    <string name="game_place_submit">Colocar %1$s no jogo</string>
+</resources>

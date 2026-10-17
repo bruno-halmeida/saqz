@@ -23,6 +23,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
+import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.communication.NativeNotificationPort
 import br.com.saqz.groups.presentation.communication.NotificationPromptAudience
@@ -72,8 +73,18 @@ class GameDetailViewModel(
     private var promotionGeneration = 0
     private var capacityGeneration = 0
     private var responseGeneration = 0
+    private var overrideGeneration = 0
     private var versionToken: GameVersionToken? = null
     private var selfId: String? = null
+
+    /** Membros ativos da última carga: é de onde sai a lista de "Colocar alguém no jogo". */
+    private var athletes: List<AthleteRosterEntry> = emptyList()
+
+    /**
+     * Pedido de `override` que falhou: tentar de novo com a mesma pessoa, ação e motivo reaproveita o `requestId`
+     * (o servidor deduplica); qualquer mudança gera um novo.
+     */
+    private var pendingOverride: Pair<String, String>? = null
 
     /** Do vínculo e do prazo carregados: o tipo da fila e a re-checagem do prazo no "Vou" dependem deles. */
     private var membershipType: AthleteMembershipType? = null
@@ -159,6 +170,36 @@ class GameDetailViewModel(
                 updateGuest { it.copy(removal = null, removeFailed = false) }
             }
             GameDetailIntent.DismissGuestNotice -> updateGuest { it.copy(noticeName = null) }
+            else -> return onOrganizerIntent(intent)
+        }
+        return true
+    }
+
+    /** "Tirar" e "Colocar alguém no jogo" do gestor (DEB-017). */
+    private fun onOrganizerIntent(intent: GameDetailIntent): Boolean {
+        when (intent) {
+            is GameDetailIntent.RequestRemoveMember -> requestRemoveMember(intent.rowId)
+            GameDetailIntent.ToggleRemoveReason -> updateOrganizer { organizer ->
+                organizer.copy(removal = organizer.removal?.let { it.copy(reasonOpen = !it.reasonOpen) })
+            }
+            is GameDetailIntent.UpdateRemoveReason -> updateOrganizer { organizer ->
+                organizer.copy(
+                    removal = organizer.removal?.copy(reason = intent.value.take(MAX_OVERRIDE_REASON)),
+                    removeFailure = null,
+                )
+            }
+            is GameDetailIntent.ConfirmRemoveMember -> confirmRemoveMember(intent.defaultReason)
+            GameDetailIntent.DismissRemoveMember -> if (!state.value.organizer.removing) {
+                updateOrganizer { it.copy(removal = null, removeFailure = null) }
+            }
+            GameDetailIntent.OpenPlaceSheet -> openPlaceSheet()
+            is GameDetailIntent.SelectPlaceCandidate -> selectPlaceCandidate(intent.memberId)
+            is GameDetailIntent.ConfirmPlaceMember -> confirmPlaceMember(intent.reason)
+            GameDetailIntent.DismissPlaceSheet -> if (!state.value.organizer.placing) {
+                updateOrganizer {
+                    it.copy(placeOpen = false, candidates = emptyList(), selectedId = null, placeFailure = null)
+                }
+            }
             else -> return false
         }
         return true
@@ -181,6 +222,7 @@ class GameDetailViewModel(
         if (!softRefresh) {
             promotionGeneration++
             capacityGeneration++
+            overrideGeneration++
             update { it.copy(isLoading = true, loadFailed = false, error = null) }
         }
         val job = viewModelScope.launch {
@@ -218,8 +260,9 @@ class GameDetailViewModel(
     private val GameDetailState.busy: Boolean
         get() {
             val writing = cancelling || publishing || savingCapacity || promotingMemberId != null || response.responding
-            val interacting = cancelDialogOpen || capacitySheetOpen || guest.sheetOpen || guest.removal != null
-            return writing || interacting || guest.adding || guest.removing
+            val interacting = cancelDialogOpen || capacitySheetOpen || guest.sheetOpen || guest.removal != null ||
+                organizer.removal != null || organizer.placeOpen
+            return writing || interacting || guest.adding || guest.removing || organizer.removing || organizer.placing
         }
 
     private suspend fun loadAttendance(
@@ -246,8 +289,10 @@ class GameDetailViewModel(
             else -> {
                 val detail = (detailResult as SaqzResult.Success).value
                 val roster = (rosterResult as SaqzResult.Success).value
-                val athletes = (athletesResult as SaqzResult.Success).value.associateBy(AthleteRosterEntry::userId)
-                selfId = detail.ownAttendance?.memberId
+                val byId = (athletesResult as SaqzResult.Success).value.associateBy(AthleteRosterEntry::userId)
+                // Quem ainda não respondeu não tem presença: o perfil diz quem é, e o gestor não se tira da lista.
+                selfId = detail.ownAttendance?.memberId ?: (profileResult as? SaqzResult.Success)?.value?.userId
+                athletes = (athletesResult as SaqzResult.Success).value
                 // Só diz o tipo da fila de espera: sem o vínculo a explicação cai na da reserva.
                 membershipType = (profileResult as? SaqzResult.Success)?.value?.memberships
                     ?.firstOrNull { it.groupId == GroupId(groupId) }?.membershipType
@@ -264,10 +309,10 @@ class GameDetailViewModel(
                         header = header.copy(availableSpots = detail.availableSpots),
                         attendance = detail.toAttendance(),
                         confirmedRoster = roster.confirmed.map { member ->
-                            member.toConfirmed(athletes[member.memberId], isAdmin, open, tone)
+                            member.toConfirmed(byId[member.memberId], isAdmin, open, tone)
                         },
                         waitlist = roster.waitlisted.map { member ->
-                            member.toWaitlist(athletes[member.memberId], isAdmin, open, tone)
+                            member.toWaitlist(byId[member.memberId], isAdmin, open, tone)
                         },
                         guest = guestUi(game, detail, open, it.guest),
                         response = responseUi(tone == GameDetailStatusTone.Published, detail.ownAttendance, roster, mensalistaPriority),
@@ -276,6 +321,7 @@ class GameDetailViewModel(
                         isAdmin = isAdmin,
                         promotingMemberId = null,
                         promotionFailed = false,
+                        organizer = GameOrganizerUi(),
                         capacitySheetOpen = false,
                         savingCapacity = false,
                         capacityFailed = false,
@@ -434,17 +480,18 @@ class GameDetailViewModel(
                 athletesResult is SaqzResult.Failure -> showFailure(loadAtStart, athletesResult.error.toUiError(), quiet)
                 else -> {
                     val roster = (rosterResult as SaqzResult.Success).value
-                    val athletes = (athletesResult as SaqzResult.Success).value.associateBy(AthleteRosterEntry::userId)
+                    athletes = (athletesResult as SaqzResult.Success).value
+                    val byId = athletes.associateBy(AthleteRosterEntry::userId)
                     val isAdmin = state.value.isAdmin
                     val open = state.value.header?.confirmationOpen == true
                     val tone = state.value.header?.statusTone
                     update {
                         it.copy(
                             confirmedRoster = roster.confirmed.map { member ->
-                                member.toConfirmed(athletes[member.memberId], isAdmin, open, tone)
+                                member.toConfirmed(byId[member.memberId], isAdmin, open, tone)
                             },
                             waitlist = roster.waitlisted.map { member ->
-                                member.toWaitlist(athletes[member.memberId], isAdmin, open, tone)
+                                member.toWaitlist(byId[member.memberId], isAdmin, open, tone)
                             },
                             response = it.response.reconcile(roster, it.mensalistaPriority),
                         )
@@ -459,9 +506,10 @@ class GameDetailViewModel(
             Operation.Promotion -> promotionGeneration
             Operation.Capacity -> capacityGeneration
             Operation.Response -> responseGeneration
+            Operation.Override -> overrideGeneration
         } && loadAtStart == loadGeneration
 
-    private enum class Operation { Promotion, Capacity, Response }
+    private enum class Operation { Promotion, Capacity, Response, Override }
 
     /**
      * "Vou"/"Não vou" de quem olha, com a mesma regra do hero da Início e do grupo: o status muda na
@@ -752,6 +800,7 @@ class GameDetailViewModel(
         isYou = !isGuest && memberId == selfId,
         position = if (isGuest) null else athlete?.position,
         guest = guestRow(isAdmin, open, tone),
+        canRemove = canRemoveMember(isAdmin, tone),
     )
 
     private fun AttendanceRosterMember.toWaitlist(
@@ -766,7 +815,12 @@ class GameDetailViewModel(
         athletePosition = if (isGuest) null else athlete?.position,
         isMensalista = !isGuest && athlete?.membershipType == AthleteMembershipType.MENSALISTA,
         guest = guestRow(isAdmin, open, tone),
+        canRemove = canRemoveMember(isAdmin, tone),
     )
+
+    /** Membro (não convidado, que tem a ação própria) que não é o gestor olhando, em jogo publicado. */
+    private fun AttendanceRosterMember.canRemoveMember(isAdmin: Boolean, tone: GameDetailStatusTone?) =
+        isAdmin && tone == GameDetailStatusTone.Published && !isGuest && memberId != selfId
 
     private fun AttendanceRosterMember.guestRow(
         isAdmin: Boolean,
@@ -876,6 +930,109 @@ class GameDetailViewModel(
         }
     }
 
+    private fun updateOrganizer(block: (GameOrganizerUi) -> GameOrganizerUi) =
+        update { it.copy(organizer = block(it.organizer)) }
+
+    private fun requestRemoveMember(rowId: String) {
+        val current = state.value
+        if (!current.canManageAttendance || current.organizer.removing) return
+        val confirmed = current.confirmedRoster.firstOrNull { it.id == rowId && it.canRemove }
+        val waiting = current.waitlist.firstOrNull { it.id == rowId && it.canRemove }
+        val name = confirmed?.name ?: waiting?.name ?: return
+        updateOrganizer {
+            it.copy(removal = GameMemberRemovalUi(rowId, name, confirmed = confirmed != null), removeFailure = null)
+        }
+    }
+
+    private fun confirmRemoveMember(defaultReason: String) {
+        val current = state.value
+        val removal = current.organizer.removal ?: return
+        if (!current.canManageAttendance || current.organizer.removing) return
+        // Motivo é opcional: campo fechado, vazio ou curto demais cai no padrão, nunca vira erro do backend.
+        val custom = removal.reason.trim().takeIf { removal.reasonOpen && it.length >= MIN_OVERRIDE_REASON }
+        updateOrganizer { it.copy(removing = true, removeFailure = null) }
+        sendOverride(removal.memberId, AttendanceIntent.Decline, custom ?: defaultReason) { failure ->
+            updateOrganizer { it.copy(removing = false, removeFailure = failure) }
+        }
+    }
+
+    private fun openPlaceSheet() {
+        val current = state.value
+        if (!current.canManageAttendance || current.organizer.placing) return
+        val taken = (current.confirmedRoster.map { it.id } + current.waitlist.map { it.id }).toSet()
+        val candidates = athletes
+            .filter { it.active && it.userId != selfId && it.userId !in taken }
+            .map { GameMemberCandidateUi(it.userId, it.displayName, it.position) }
+        updateOrganizer {
+            it.copy(placeOpen = true, candidates = candidates, selectedId = null, placeFailure = null)
+        }
+    }
+
+    private fun selectPlaceCandidate(memberId: String) {
+        val organizer = state.value.organizer
+        if (organizer.placing || organizer.candidates.none { it.id == memberId }) return
+        updateOrganizer { it.copy(selectedId = memberId, placeFailure = null) }
+    }
+
+    private fun confirmPlaceMember(reason: String) {
+        val current = state.value
+        val selected = current.organizer.selected ?: return
+        if (!current.canManageAttendance || !current.organizer.placeOpen || current.organizer.placing) return
+        if (current.placeBlocked) return
+        updateOrganizer { it.copy(placing = true, placeFailure = null) }
+        sendOverride(selected.id, AttendanceIntent.Confirm, reason) { failure ->
+            updateOrganizer { it.copy(placing = false, placeFailure = failure) }
+        }
+    }
+
+    /**
+     * `override` do gestor. Sucesso fecha a folha e recarrega as listas; conflito de versão recarrega a tela;
+     * jogo fechado mostra o motivo; o resto libera a folha para tentar de novo com o mesmo `requestId`.
+     */
+    private fun sendOverride(
+        memberId: String,
+        intent: AttendanceIntent,
+        reason: String,
+        onFailure: (GameOrganizerFailure) -> Unit,
+    ) {
+        val key = "$intent:$memberId:$reason"
+        val requestId = pendingOverride?.takeIf { it.first == key }?.second
+            ?: Uuid.random().toString().also { pendingOverride = key to it }
+        val loadAtStart = loadGeneration
+        val generation = ++overrideGeneration
+        viewModelScope.launch {
+            val result = attendanceGateway.override(
+                GroupId(groupId),
+                gameId,
+                OverrideAttendanceCommand(requestId, memberId, intent, reason),
+            )
+            if (!isCurrent(Operation.Override, generation, loadAtStart)) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    pendingOverride = null
+                    val detail = result.value.value.detail.toAttendance()
+                    update {
+                        it.copy(
+                            attendance = detail,
+                            header = it.header?.copy(availableSpots = detail.availableSpots),
+                            organizer = GameOrganizerUi(),
+                        )
+                    }
+                    refreshRoster(Operation.Override, generation, loadAtStart)
+                }
+                is SaqzResult.Failure -> when (result.error) {
+                    AttendanceError.Conflict -> {
+                        pendingOverride = null
+                        updateOrganizer { GameOrganizerUi() }
+                        load()
+                    }
+                    AttendanceError.Frozen, AttendanceError.HiddenResource -> onFailure(GameOrganizerFailure.Closed)
+                    else -> onFailure(GameOrganizerFailure.Generic)
+                }
+            }
+        }
+    }
+
     private fun Int.pad(): String = if (this < 10) "0$this" else toString()
 }
 
@@ -898,6 +1055,8 @@ private fun AthleteError.toUiError(): GroupUiError = when (this) {
 private const val MIN_CAPACITY = GameCapacityLimits.Min
 private const val MAX_CAPACITY = GameCapacityLimits.Max
 private const val MAX_GUEST_NAME = 80
+private const val MIN_OVERRIDE_REASON = 2
+private const val MAX_OVERRIDE_REASON = 500
 private fun GameStatus.toTone(): GameDetailStatusTone = when (this) {
     GameStatus.Draft -> GameDetailStatusTone.Draft
     GameStatus.Published -> GameDetailStatusTone.Published

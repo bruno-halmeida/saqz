@@ -37,7 +37,18 @@ data class GameDetailState(
     val capacityFailed: Boolean = false,
     val guest: GameGuestUi = GameGuestUi(),
     val response: GameDetailResponseUi = GameDetailResponseUi(),
-)
+    /** "Tirar" e "Colocar alguém no jogo" do gestor (DEB-017). */
+    val organizer: GameOrganizerUi = GameOrganizerUi(),
+) {
+    /** Dono e admins mexem na presença de outra pessoa enquanto o jogo está publicado, inclusive depois do início. */
+    val canManageAttendance: Boolean get() = isAdmin && header?.statusTone == GameDetailStatusTone.Published
+
+    /** O servidor põe quem entrar na espera: jogo cheio. */
+    val placeGoesToWaitlist: Boolean get() = attendance?.let { it.availableSpots <= 0 } == true
+
+    /** Depois do início a espera não anda mais, então com o jogo cheio não adianta colocar ninguém. */
+    val placeBlocked: Boolean get() = placeGoesToWaitlist && header?.gameStarted == true
+}
 @Immutable
 data class GameDetailHeaderUi(
     val statusTone: GameDetailStatusTone,
@@ -108,6 +119,8 @@ data class GameDetailConfirmedUi(
     val position: AthletePosition?,
     /** `null` = membro. Convidado: de quem é e o que quem olha pode fazer com ele. */
     val guest: GameGuestRowUi? = null,
+    /** O gestor pode tirar esta pessoa (membro que não é ele mesmo). */
+    val canRemove: Boolean = false,
 )
 @Immutable
 data class GameDetailWaitlistUi(
@@ -118,7 +131,43 @@ data class GameDetailWaitlistUi(
     val isMensalista: Boolean,
     /** `null` = membro. Convidado: de quem é e o que quem olha pode fazer com ele. */
     val guest: GameGuestRowUi? = null,
+    /** O gestor pode tirar esta pessoa (membro que não é ele mesmo). */
+    val canRemove: Boolean = false,
 )
+
+/** Por que "Tirar"/"Colocar" não deu certo: o jogo fechou para mudanças, ou uma falha qualquer (tentar de novo). */
+enum class GameOrganizerFailure { Generic, Closed }
+
+@Immutable
+data class GameMemberRemovalUi(
+    val memberId: String,
+    val name: String,
+    val confirmed: Boolean,
+    /** "Outro motivo" aberto: o campo de texto aparece. Fechado, vai o motivo padrão. */
+    val reasonOpen: Boolean = false,
+    val reason: String = "",
+)
+
+@Immutable
+data class GameMemberCandidateUi(
+    val id: String,
+    val name: String,
+    val position: AthletePosition?,
+)
+
+@Immutable
+data class GameOrganizerUi(
+    val removal: GameMemberRemovalUi? = null,
+    val removing: Boolean = false,
+    val removeFailure: GameOrganizerFailure? = null,
+    val placeOpen: Boolean = false,
+    val candidates: List<GameMemberCandidateUi> = emptyList(),
+    val selectedId: String? = null,
+    val placing: Boolean = false,
+    val placeFailure: GameOrganizerFailure? = null,
+) {
+    val selected: GameMemberCandidateUi? get() = candidates.firstOrNull { it.id == selectedId }
+}
 
 @Immutable
 data class GameGuestRowUi(
@@ -201,6 +250,19 @@ sealed interface GameDetailIntent {
     data object ConfirmRemoveGuest : GameDetailIntent
     data object DismissRemoveGuest : GameDetailIntent
     data object DismissGuestNotice : GameDetailIntent
+
+    /** `rowId` = id do membro (linha de confirmado ou de espera). */
+    data class RequestRemoveMember(val rowId: String) : GameDetailIntent
+    data object ToggleRemoveReason : GameDetailIntent
+    data class UpdateRemoveReason(val value: String) : GameDetailIntent
+
+    /** [defaultReason] vai quando "Outro motivo" está fechado, vazio ou com menos de 2 caracteres. */
+    data class ConfirmRemoveMember(val defaultReason: String) : GameDetailIntent
+    data object DismissRemoveMember : GameDetailIntent
+    data object OpenPlaceSheet : GameDetailIntent
+    data class SelectPlaceCandidate(val memberId: String) : GameDetailIntent
+    data class ConfirmPlaceMember(val reason: String) : GameDetailIntent
+    data object DismissPlaceSheet : GameDetailIntent
 }
 sealed interface GameDetailEffect {
     data object OpenEditor : GameDetailEffect
