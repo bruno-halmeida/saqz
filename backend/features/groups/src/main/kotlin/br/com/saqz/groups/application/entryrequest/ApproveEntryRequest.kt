@@ -12,6 +12,7 @@ import br.com.saqz.groups.domain.GroupAction
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.PersistedMembershipRole
 import br.com.saqz.groups.domain.plan.PlanLimitPolicy
+import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import java.time.Clock
 import java.util.UUID
@@ -25,6 +26,7 @@ class ApproveEntryRequest(
     private val accessPolicy: GroupAccessPolicy,
     private val clock: Clock,
     private val approvalNotice: EntryApprovalNotice = EntryApprovalNotice { _, _, _ -> },
+    private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
 ) {
     fun execute(actor: UUID, groupId: UUID, userId: UUID): ApproveEntryRequestResult = transactionRunner.inTransaction {
         val group = groupReadRepository.find(GroupReadKey(actor, groupId))
@@ -34,6 +36,8 @@ class ApproveEntryRequest(
             GroupAccessDecision.Forbidden -> return@inTransaction ApproveEntryRequestResult.AccessForbidden
             GroupAccessDecision.Allowed -> Unit
         }
+        // CONV-007: plano do organizador vencido ou pausado não aprova pedido (folha de assinatura, como nas outras ações).
+        writeAccess.requireWrite(groupId)
 
         val existingMembership = membershipRepository.find(groupId, userId)
         if (existingMembership != null) {

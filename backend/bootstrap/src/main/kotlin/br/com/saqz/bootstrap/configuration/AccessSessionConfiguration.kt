@@ -634,6 +634,7 @@ class AccessSessionConfiguration {
         membershipRepository: JdbcMembershipRepository,
         subscriptionLimits: SubscriptionLimits,
         dataSource: DataSource,
+        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
     ) = ApproveEntryRequest(
         transaction,
         readRepository,
@@ -643,6 +644,7 @@ class AccessSessionConfiguration {
         GroupAccessPolicy(),
         Clock.systemUTC(),
         br.com.saqz.groups.adapter.output.jdbc.communication.JdbcEntryApprovalNotice(dataSource),
+        writeAccess,
     )
 
     @Bean

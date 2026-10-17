@@ -14,12 +14,15 @@ import br.com.saqz.groups.domain.AthleteLevel
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.groups.domain.PersistedMembershipRole
+import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
+import br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import org.junit.jupiter.api.Test
@@ -118,6 +121,32 @@ class EntryRequestManagementTest {
         fixture(role = GroupRole.ATHLETE, approvalNotice = notice).approve.execute(athleteId, groupId, applicantId)
 
         assertTrue(notices.isEmpty())
+    }
+
+    @Test
+    fun `plano vencido ou pausado bloqueia a aprovacao sem mexer no pedido, no vinculo nem avisar`() {
+        val notices = mutableListOf<UUID>()
+        val fixture = fixture(
+            role = GroupRole.OWNER,
+            approvalNotice = EntryApprovalNotice { _, u, _ -> notices += u },
+            writeAccess = GroupWriteAccess { false },
+        )
+        fixture.entries.returnMarked += applicantId
+
+        assertFailsWith<SubscriptionRequiredException> { fixture.approve.execute(ownerId, groupId, applicantId) }
+
+        assertTrue(fixture.membership.changes.isEmpty())
+        assertTrue(fixture.entries.deleted.isEmpty())
+        assertTrue(applicantId in fixture.entries.requests)
+        assertTrue(applicantId in fixture.entries.returnMarked)
+        assertTrue(notices.isEmpty())
+    }
+
+    @Test
+    fun `plano vencido nao esconde a falta de permissao de quem nao pode aprovar`() {
+        val fixture = fixture(role = GroupRole.ATHLETE, writeAccess = GroupWriteAccess { false })
+
+        assertIs<ApproveEntryRequestResult.AccessForbidden>(fixture.approve.execute(athleteId, groupId, applicantId))
     }
 
     @Test
@@ -286,6 +315,7 @@ class EntryRequestManagementTest {
         role: GroupRole?,
         athleteLimit: Int? = null,
         approvalNotice: EntryApprovalNotice = EntryApprovalNotice { _, _, _ -> },
+        writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
     ): Fixture {
         val order = mutableListOf<String>()
         val entries = MemoryEntryRequestRepository(order)
@@ -301,6 +331,7 @@ class EntryRequestManagementTest {
             br.com.saqz.groups.domain.GroupAccessPolicy(),
             Clock.fixed(now, ZoneOffset.UTC),
             approvalNotice,
+            writeAccess,
         )
         val list = ListEntryRequests(read, entries, br.com.saqz.groups.domain.GroupAccessPolicy())
         val reject = RejectEntryRequest(transaction, read, entries, br.com.saqz.groups.domain.GroupAccessPolicy())

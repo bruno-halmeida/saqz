@@ -75,10 +75,12 @@ class EntryRequestEndpointIntegrationTest {
     @Autowired private lateinit var repository: RecordingEntryRequestRepository
     @Autowired private lateinit var read: RecordingEntryRequestGroupReadRepository
     @Autowired private lateinit var memberships: RecordingEntryMembershipRepository
+    @Autowired private lateinit var writeAccess: ToggleableWriteAccess
     @Autowired private lateinit var objectMapper: ObjectMapper
 
     @BeforeEach
     fun reset() {
+        writeAccess.open = true
         repository.reset()
         read.roles = mapOf(
             EntryRequestTestConfiguration.OWNER_ID to GroupRole.OWNER,
@@ -104,6 +106,19 @@ class EntryRequestEndpointIntegrationTest {
         assertEquals("ATHLETE", json(approved)["role"].stringValue())
         assertEquals(EntryRequestTestConfiguration.APPLICANT_ID, memberships.members.values.single().userId)
         assertTrue(repository.entryRequests.isEmpty())
+    }
+
+    @Test
+    fun `approval with expired or paused plan is refused with the subscription problem and keeps the request`() {
+        redeem("applicant-token")
+        writeAccess.open = false
+
+        assertProblem(approve("owner-token", EntryRequestTestConfiguration.APPLICANT_ID), 403, "SUBSCRIPTION_REQUIRED")
+        assertTrue(memberships.members.isEmpty())
+        assertEquals(1, repository.entryRequests.size)
+
+        writeAccess.open = true
+        assertEquals(200, approve("owner-token", EntryRequestTestConfiguration.APPLICANT_ID).statusCode())
     }
 
     @Test
@@ -175,6 +190,7 @@ class EntryRequestEndpointIntegrationTest {
         @Bean fun entryRequestGroupReadRepository() = RecordingEntryRequestGroupReadRepository()
         @Bean fun entryRequestMembershipRepository() = RecordingEntryMembershipRepository(APPLICANT_ID)
         @Bean fun entryRequestTransaction() = RecordingEntryRequestTransaction()
+        @Bean fun entryRequestWriteAccess() = ToggleableWriteAccess()
         @Bean @Primary fun entryRequestSubscriptionLimits() = UnlimitedEntryRequestSubscriptionLimits
 
         @Bean
@@ -204,6 +220,7 @@ class EntryRequestEndpointIntegrationTest {
             read: RecordingEntryRequestGroupReadRepository,
             repository: RecordingEntryRequestRepository,
             memberships: RecordingEntryMembershipRepository,
+            writeAccess: ToggleableWriteAccess,
         ) = ApproveEntryRequest(
             transaction,
             read,
@@ -212,6 +229,7 @@ class EntryRequestEndpointIntegrationTest {
             UnlimitedEntryRequestSubscriptionLimits,
             GroupAccessPolicy(),
             Clock.fixed(NOW, ZoneOffset.UTC),
+            writeAccess = writeAccess,
         )
 
         @Bean
@@ -286,6 +304,12 @@ class EntryRequestEndpointIntegrationTest {
     object UnlimitedEntryRequestSubscriptionLimits : SubscriptionLimits {
         override fun groupLimitFor(ownerId: UUID): Int? = null
         override fun athleteLimitFor(ownerId: UUID): Int? = null
+    }
+
+    /** Plano do organizador: aberto por padrão; o teste fecha para simular plano vencido ou pausado. */
+    class ToggleableWriteAccess : br.com.saqz.sharedkernel.subscription.GroupWriteAccess {
+        @Volatile var open = true
+        override fun canWrite(groupId: UUID) = open
     }
 
     class RecordingEntryRequestTransaction : TransactionRunner {
