@@ -210,7 +210,7 @@ class AttendanceControllerTest {
         val names = mutableMapOf<UUID, String>()
         val hostNames = mutableMapOf<UUID, String>()
         val membership = linkedMapOf<UUID, AthleteMembershipType>()
-        var status = GameStatus.PUBLISHED; var startsAt: Instant? = null; var deadline = NOW.plusSeconds(60); var capacity = 2; var version = 1L; var allocator = 0L
+        var status = GameStatus.PUBLISHED; var startsAt: Instant = NOW.plusSeconds(3600); var deadline = NOW.plusSeconds(60); var capacity = 2; var version = 1L; var allocator = 0L
         var mensalistaPriority = true
         var promotionMode = PromotionMode.FIFO
         var lastLockGuestSeq: Int? = null
@@ -253,6 +253,7 @@ class AttendanceControllerTest {
                     LocalDate.of(2026, 8, 12),
                     mensalistaPriority,
                     promotionMode,
+                    startsAt = startsAt,
                 )
             } else null
         override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = ++allocator

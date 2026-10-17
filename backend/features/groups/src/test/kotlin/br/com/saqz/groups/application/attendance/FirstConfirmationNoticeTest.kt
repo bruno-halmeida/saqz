@@ -121,6 +121,7 @@ class FirstConfirmationNoticeTest {
                 records.values.count { it.status == AttendanceStatus.CONFIRMED },
                 records[memberId to guestSeq], 2500L, LocalDate.of(2026, 8, 11),
                 AthleteMembershipType.MENSALISTA, true, PromotionMode.FIFO, guestSeq,
+                startsAt = NOW.plusSeconds(3600),
             )
         }
 
