@@ -190,6 +190,33 @@ class DeleteAccountIntegrationTest {
         assertEquals(1, count("SELECT count(*) FROM attendance_events WHERE game_id = '$future' AND member_user_id = '${leaving.user.id}' AND source = 'SYSTEM' AND new_status = 'DECLINED'"))
     }
 
+    @Test
+    fun `deleted account keeps its pending monthly and daily charges as Conta excluida`() {
+        val deleted = sessionRepository.upsertAndLoad(
+            SessionUpsert("pending-subject", "pending@example.test", true, AccessName.from("Pending Person")),
+        )
+        val groupOwner = sessionRepository.upsertAndLoad(
+            SessionUpsert("pending-owner", "pending-owner@example.test", true, AccessName.from("Group Owner")),
+        )
+        val group = insertGroup(groupOwner.user.id, "Pending Group")
+        insertMembership(group, deleted.user.id, "ATHLETE")
+        insertCharge(group, deleted.user.id, groupOwner.user.id, "Pending Person")
+        val game = insertGame(group)
+        execute(
+            "INSERT INTO group_charges (id, group_id, member_user_id, kind, game_id, guest_seq, amount_cents, due_date, " +
+                "created_by_user_id, changed_by_user_id, created_at, updated_at, member_display_name, status) VALUES " +
+                "('${UUID.randomUUID()}', '$group', '${deleted.user.id}', 'GAME', '$game', 0, 2500, DATE '2026-08-20', " +
+                "'${groupOwner.user.id}', '${groupOwner.user.id}', now(), now(), 'Pending Person', 'PENDING')",
+        )
+        execute("UPDATE group_charges SET status = 'PENDING' WHERE member_user_id = '${deleted.user.id}' AND kind = 'MONTHLY'")
+
+        deleteAccount.execute("pending-subject")
+
+        assertEquals(2, count("SELECT count(*) FROM group_charges WHERE member_user_id = '${deleted.user.id}' AND status = 'PENDING'"))
+        assertEquals(0, count("SELECT count(*) FROM group_charges WHERE member_display_name <> 'Conta excluída' AND member_user_id = '${deleted.user.id}'"))
+        assertEquals(1, count("SELECT count(*) FROM access_groups WHERE id = '$group' AND deleted_at IS NULL"))
+    }
+
     private fun insertFutureGame(group: UUID, capacity: Int): UUID {
         val id = UUID.randomUUID()
         execute(
