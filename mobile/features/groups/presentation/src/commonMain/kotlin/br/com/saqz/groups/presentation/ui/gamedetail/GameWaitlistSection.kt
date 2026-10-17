@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -117,6 +118,7 @@ internal fun GameWaitlistSection(
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun GameWaitlistRow(
     state: GameDetailState,
@@ -190,25 +192,33 @@ private fun GameWaitlistRow(
                     tone = SaqzChipTone.Brand,
                 )
             }
+            // As ações descem para baixo do nome e quebram de linha: lado a lado com avatar e fila, em 320 dp
+            // ou com fonte grande, "Tirar" era espremido até virar uma tira vertical.
+            val canPromote = state.isAdmin &&
+                state.header?.statusTone == GameDetailStatusTone.Published &&
+                state.header?.gameStarted != true &&
+                state.promotionMode == PromotionMode.MANUAL
+            if (canPromote || person.guest?.canRemove == true || person.canRemove) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
+                    verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
+                ) {
+                    if (canPromote) {
+                        SaqzButton(
+                            label = stringResource(Res.string.game_waitlist_promote),
+                            onClick = onPromote,
+                            modifier = Modifier.testTag(GameWaitlistTags.promote(person.id)),
+                            variant = SaqzButtonVariant.Secondary,
+                            size = SaqzButtonSize.Sm,
+                            loading = state.promotingMemberId == person.id,
+                            enabled = state.promotingMemberId == null,
+                        )
+                    }
+                    person.guest?.let { GameGuestRemoveAction(person.id, it, onIntent) }
+                    if (person.canRemove) GameMemberRemoveAction(person.id, onIntent)
+                }
+            }
         }
-        if (
-            state.isAdmin &&
-            state.header?.statusTone == GameDetailStatusTone.Published &&
-            state.header?.gameStarted != true &&
-            state.promotionMode == PromotionMode.MANUAL
-        ) {
-            SaqzButton(
-                label = stringResource(Res.string.game_waitlist_promote),
-                onClick = onPromote,
-                modifier = Modifier.testTag(GameWaitlistTags.promote(person.id)),
-                variant = SaqzButtonVariant.Secondary,
-                size = SaqzButtonSize.Sm,
-                loading = state.promotingMemberId == person.id,
-                enabled = state.promotingMemberId == null,
-            )
-        }
-        person.guest?.let { GameGuestRemoveAction(person.id, it, onIntent) }
-        if (person.canRemove) GameMemberRemoveAction(person.id, onIntent)
     }
 }
 
