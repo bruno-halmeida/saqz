@@ -9,7 +9,6 @@ const scenarios = {
   communication: ['CommunicationE2eTest', 1],
   finance: ['MonthlyGenerationE2eTest', 1],
   'notification-settings': ['NotificationsE2eTest', 1],
-  'message-pagination': ['MessagePaginationE2eTest', 1],
   reminders: ['ReminderE2eTest', 1],
   'sports-profile': ['SportsProfileE2eTest', 1],
   'member-privacy': ['MemberPrivacyE2eTest', 1],

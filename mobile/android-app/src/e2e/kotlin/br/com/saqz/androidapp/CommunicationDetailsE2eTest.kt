@@ -12,21 +12,22 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.UUID
 
-/** APP-N01/N03 subsets: persisted preferences, delivery, destinations and recipient isolation. */
+/** APP-N01/N03 subsets: persisted preferences, delivery, destinations and recipient isolation. Sem o chat, que saiu do lançamento. */
 @RunWith(AndroidJUnit4::class)
 internal class NotificationsE2eTest : InstalledE2e("notification-settings") {
     @Test
     fun preferencesSurviveReopeningAndOnlyMyNotificationReadNavigatesToItsDestination() {
         login("athlete") // PAR in APP-N01/N03; peer is the independent recipient and other is FORA.
         val original = inbox("athlete")
-        val peerBefore = inbox("peer").toString()
-        assertEquals(setOf(data.getString("oldChat"), data.getString("oldNotice"), data.getString("reminder")),
-            original.objects().map { it.getJSONObject("message").getString("id") }.toSet())
+        val peerBefore = inbox("peer")
+        // Avisos automáticos do sistema (jogo liberado, primeiro membro...) podem estar na caixa além dos semeados.
+        val originalIds = original.objects().map { it.getJSONObject("message").getString("id") }.toSet()
+        assertTrue(originalIds.containsAll(setOf(data.getString("oldNotice"), data.getString("reminder"))))
         assertTrue(original.objects().all { !it.getBoolean("read") })
         openSettings()
-        ui.onNodeWithTag("preferences-messages").assertIsOn()
-        click("preferences-messages", scroll = true)
-        ui.onNodeWithTag("preferences-messages").assertIsOff()
+        ui.onNodeWithTag("preferences-reminders").assertIsOn()
+        click("preferences-reminders", scroll = true)
+        ui.onNodeWithTag("preferences-reminders").assertIsOff()
         ui.onNodeWithText("Salvar preferências").performScrollTo().assertIsEnabled().performClick()
         waitText("Preferências salvas.")
         assertPreferences()
@@ -34,19 +35,14 @@ internal class NotificationsE2eTest : InstalledE2e("notification-settings") {
         // A fresh settings route forces a remote read after Activity recreation; no process-death claim.
         ui.activityRule.scenario.recreate()
         openSettings()
-        ui.onNodeWithTag("preferences-messages").assertIsOff()
+        ui.onNodeWithTag("preferences-reminders").assertIsOff()
         ui.onNodeWithTag("preferences-notices").assertIsOn()
-        ui.onNodeWithTag("preferences-reminders").assertIsOn()
         assertPreferences()
         back()
         logout()
 
         login("owner")
         openGroup()
-        click("group-details-shortcut-chat", scroll = true)
-        val chat = "Chat após desativar notificações QA"
-        send(chat)
-        back()
         click("group-details-shortcut-notices", scroll = true)
         val notice = "Aviso após salvar preferências QA"
         send(notice)
@@ -58,21 +54,12 @@ internal class NotificationsE2eTest : InstalledE2e("notification-settings") {
 
         login("athlete")
         val delivered = inbox("athlete")
-        assertEquals(4, delivered.length())
-        assertEquals(original.objects().map { it.getJSONObject("message").getString("id") }.toSet() + noticeId,
-            delivered.objects().map { it.getJSONObject("message").getString("id") }.toSet())
-        assertTrue(delivered.objects().none { it.getJSONObject("message").getString("body") == chat })
+        assertEquals(originalIds + noticeId, delivered.objects().map { it.getJSONObject("message").getString("id") }.toSet())
         val peerAfterPublications = inbox("peer")
-        assertEquals(5, peerAfterPublications.length())
+        assertEquals(peerBefore.length() + 1, peerAfterPublications.length())
         assertTrue(peerAfterPublications.objects().all { !it.getBoolean("read") })
-        // The original peer records remain unchanged when the new publications are excluded.
-        assertEquals(peerBefore, JSONArray(peerAfterPublications.objects().drop(2)).toString())
-        openGroup()
-        click("group-details-shortcut-chat", scroll = true)
-        waitText(chat)
-        ui.onNodeWithText(chat).assertIsDisplayed()
-        back()
-        back()
+        // The original peer records remain unchanged when the new publication is excluded.
+        assertEquals(peerBefore.toString(), JSONArray(peerAfterPublications.objects().drop(1)).toString())
         tab("Perfil")
         click("own-profile-notifications", scroll = true)
         waitTag("notification-center")
@@ -117,15 +104,14 @@ internal class NotificationsE2eTest : InstalledE2e("notification-settings") {
     private fun openSettings() {
         tab("Perfil")
         click("own-profile-settings")
-        waitTag("preferences-messages")
+        waitTag("preferences-reminders")
     }
 
     private fun assertPreferences() {
         val preferences = api("athlete", "/api/me/notification-preferences")
-        assertFalse(preferences.getBoolean("messages"))
+        assertFalse(preferences.getBoolean("reminders"))
         assertTrue(preferences.getBoolean("notices"))
-        assertTrue(preferences.getBoolean("reminders"))
-        assertTrue(api("peer", "/api/me/notification-preferences").getBoolean("messages"))
+        assertTrue(api("peer", "/api/me/notification-preferences").getBoolean("reminders"))
     }
 
     private fun send(body: String) {
@@ -161,96 +147,6 @@ internal class NotificationsE2eTest : InstalledE2e("notification-settings") {
     }
 }
 
-/** APP-C04: real 50+3 cursor pages, every rendered row, ordering and input validation. */
-@RunWith(AndroidJUnit4::class)
-internal class MessagePaginationE2eTest : InstalledE2e("message-pagination") {
-    @Test
-    fun fiftyThreeMessagesLoadInDescendingPagesWithoutDuplicatesAndInvalidInputCannotPersist() {
-        val expected = data.getJSONArray("messages").objects()
-        assertEquals(53, expected.size)
-        login("athlete")
-        openGroup()
-        click("group-details-shortcut-chat", scroll = true)
-        waitTag("message-send")
-        val first = api("athlete", messagePath())
-        assertPage(expected.take(50), first)
-        assertEquals(expected[49].getLong("sequence"), first.getLong("nextCursor"))
-        assertRenderedRows(expected.take(50))
-        ui.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Carregar anteriores"))
-        ui.onNodeWithText("Carregar anteriores").assertIsDisplayed().assertIsEnabled().performClick()
-        ui.waitUntil(20_000) { ui.onAllNodesWithText("Carregar anteriores").fetchSemanticsNodes().isEmpty() }
-        val remaining = api("athlete", "${messagePath()}&before=${first.getLong("nextCursor")}")
-        assertPage(expected.drop(50), remaining)
-        assertTrue(remaining.isNull("nextCursor"))
-        assertEquals(53, (first.getJSONArray("items").objects() + remaining.getJSONArray("items").objects())
-            .map { it.getString("id") }.toSet().size)
-        assertRenderedRows(expected)
-        ui.onNodeWithText("Carregar anteriores").assertDoesNotExist()
-        ui.onNodeWithTag("message-send").assertIsNotEnabled()
-        input("message-draft", "   ", scroll = false)
-        ui.onNodeWithTag("message-send").assertIsNotEnabled()
-        input("message-draft", "x".repeat(2001), scroll = false)
-        ui.onNode(hasSetTextAction() and (hasTestTag("message-draft") or hasAnyAncestor(hasTestTag("message-draft"))), useUnmergedTree = true)
-            .assertTextEquals("x".repeat(2000))
-        input("message-draft", "", scroll = false)
-        // Text replacement focuses the real editor and opens the IME; restore the viewport before refresh.
-        ui.activityRule.scenario.onActivity { activity ->
-            val keyboard = requireNotNull(activity.getSystemService(android.view.inputmethod.InputMethodManager::class.java))
-            keyboard.hideSoftInputFromWindow(activity.window.decorView.windowToken, 0)
-        }
-        ui.waitForIdle()
-        ui.onNodeWithTag("message-send").assertIsNotEnabled()
-        for (invalid in listOf("", "   ", "x".repeat(2001))) {
-            api("athlete", messagePath(), "POST", JSONObject().put("requestId", UUID.randomUUID().toString())
-                .put("body", invalid), status = 422)
-        }
-        ui.waitUntil(20_000) { ui.onNodeWithText("Atualizar").isDisplayed() }
-        ui.onNodeWithText("Atualizar").assertIsDisplayed().assertIsEnabled().performClick()
-        waitTag("message-send")
-        assertPage(expected.take(50), api("athlete", messagePath()))
-        assertPage(expected.drop(50), api("athlete", "${messagePath()}&before=${first.getLong("nextCursor")}"))
-        assertRenderedRows(expected.take(50))
-        ui.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Carregar anteriores"))
-        ui.onNodeWithText("Carregar anteriores").assertIsDisplayed()
-        assertEquals(0, api("athlete", "/api/groups/$secondGroup/messages?channel=CHAT").getJSONArray("items").length())
-    }
-
-    private fun messagePath() = "/api/groups/$group/messages?channel=CHAT"
-
-    private fun assertPage(expected: List<JSONObject>, actual: JSONObject) {
-        val items = actual.getJSONArray("items").objects()
-        assertEquals(expected.map { it.getString("id") }, items.map { it.getString("id") })
-        assertEquals(expected.map { it.getString("body") }, items.map { it.getString("body") })
-        assertEquals(expected.map { it.getLong("sequence") }, items.map { it.getLong("sequence") })
-        assertTrue(items.all { it.getString("groupId") == group && it.getString("channel") == "CHAT"
-            && it.getString("authorId") == actor("owner").getString("id") })
-        assertTrue(items.zipWithNext().all { (newer, older) -> newer.getLong("sequence") > older.getLong("sequence") })
-    }
-
-    private fun assertRenderedRows(expected: List<JSONObject>) {
-        val tags = expected.map { "message-${it.getString("id")}" }
-        val seen = mutableSetOf<String>()
-        val messageCard = SemanticsMatcher("message UUID card") {
-            it.config.getOrElse(SemanticsProperties.TestTag) { "" }.matches(Regex("message-[0-9a-f-]{36}"))
-        }
-        // Scroll by item index so every row is visited, including rows outside LazyColumn composition.
-        expected.forEachIndexed { index, message ->
-            ui.onNode(hasScrollToIndexAction()).performScrollToIndex(index)
-            ui.onNodeWithTag(tags[index]).assertIsDisplayed()
-            ui.onNode(hasText(message.getString("body")) and hasAnyAncestor(hasTestTag(tags[index])))
-                .assertIsDisplayed()
-            val visible = ui.onAllNodes(messageCard).fetchSemanticsNodes()
-                .filter { it.boundsInRoot.height > 0f }.sortedBy { it.boundsInRoot.top }
-                .map { it.config[SemanticsProperties.TestTag] }
-            assertEquals("No repeated card in viewport $index", visible.size, visible.toSet().size)
-            assertTrue("Only loaded page rows may be composed", visible.all { it in tags })
-            assertEquals("Descending visual order in viewport $index", visible.map(tags::indexOf).sorted(), visible.map(tags::indexOf))
-            seen += visible
-        }
-        assertEquals(tags.toSet(), seen)
-    }
-}
-
 /** APP-C05 subset: actual UI reminder, exact recipients, permissions, and unchanged attendance/finance. */
 @RunWith(AndroidJUnit4::class)
 internal class ReminderE2eTest : InstalledE2e("reminders") {
@@ -269,14 +165,17 @@ internal class ReminderE2eTest : InstalledE2e("reminders") {
         assertEquals("DECLINED", api("declined", attendancePath).getJSONObject("ownAttendance").getString("status"))
         assertTrue(api("peer", attendancePath).isNull("ownAttendance"))
         assertTrue(api("owner", attendancePath).isNull("ownAttendance"))
-        assertNoNotifications()
+        // Avisos automáticos do sistema (jogo liberado, primeiro membro...) já podem estar nas caixas: o que o
+        // lembrete garante é só o que muda por causa dele, então a conta parte de uma linha de base.
+        val inboxes = inboxIds()
         openGroup()
         click("group-details-notify-pending", scroll = true)
         waitText("Lembrete enviado no Saqz para 1 pessoa(s).")
         ui.onNodeWithText("Lembrete enviado no Saqz para 1 pessoa(s).").performScrollTo().assertIsDisplayed()
         val peerInbox = api("peer", "/api/me/notifications").getJSONArray("items")
-        assertEquals(1, peerInbox.length())
-        val notification = peerInbox.getJSONObject(0)
+        val peerNew = peerInbox.objects().filter { it.getJSONObject("message").getString("id") !in inboxes.getValue("peer") }
+        assertEquals(1, peerNew.size)
+        val notification = peerNew.single()
         assertFalse(notification.getBoolean("read"))
         val message = notification.getJSONObject("message")
         assertEquals(group, message.getString("groupId"))
@@ -291,14 +190,14 @@ internal class ReminderE2eTest : InstalledE2e("reminders") {
                 "❌ Fora:\nE2E reminders-declined",
             body.substringAfter("\n"),
         )
-        assertNoNotifications(exceptPeer = true)
+        assertOnlyPeerReceived(inboxes)
         assertEquals(before, snapshot(attendancePath))
         api("athlete", "/api/groups/$group/games/$game/notify-pending", "POST", requestId(), status = 403)
         for (field in listOf("completedGame", "expiredGame", "foreignGame")) {
             api("owner", "/api/groups/$group/games/${data.getString(field)}/notify-pending", "POST", requestId(), status = 422)
         }
         assertEquals(peerInbox.toString(), api("peer", "/api/me/notifications").getJSONArray("items").toString())
-        assertNoNotifications(exceptPeer = true)
+        assertOnlyPeerReceived(inboxes)
         assertEquals(before, snapshot(attendancePath))
         back()
         logout()
@@ -311,9 +210,19 @@ internal class ReminderE2eTest : InstalledE2e("reminders") {
 
     private fun requestId() = JSONObject().put("requestId", UUID.randomUUID().toString())
 
-    private fun assertNoNotifications(exceptPeer: Boolean = false) {
-        val roles = listOf("owner", "athlete", "admin", "declined", "inactive", "other") + if (exceptPeer) emptyList() else listOf("peer")
-        roles.forEach { role -> assertEquals("Inbox $role", 0, api(role, "/api/me/notifications").getJSONArray("items").length()) }
+    private val inboxRoles = listOf("owner", "athlete", "admin", "declined", "inactive", "other", "peer")
+
+    private fun inboxIds(): Map<String, Set<String>> = inboxRoles.associateWith { role ->
+        api(role, "/api/me/notifications").getJSONArray("items").objects()
+            .map { it.getJSONObject("message").getString("id") }.toSet()
+    }
+
+    /** Ninguém além do convocado recebe algo novo; o convocado já foi conferido à parte. */
+    private fun assertOnlyPeerReceived(before: Map<String, Set<String>>) {
+        val now = inboxIds()
+        inboxRoles.filter { it != "peer" }.forEach { role ->
+            assertEquals("Inbox $role", before.getValue(role), now.getValue(role))
+        }
     }
 
     private fun snapshot(attendancePath: String): Map<String, String> {

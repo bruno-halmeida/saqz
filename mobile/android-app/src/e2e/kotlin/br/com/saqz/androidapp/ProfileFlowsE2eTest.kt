@@ -289,8 +289,13 @@ internal abstract class ProfileFlowE2e(scenario: String) : InstalledE2e(scenario
         ui.waitUntil(20_000) {
             ui.onAllNodes(scrollable).fetchSemanticsNodes().size == 1
         }
-        ui.onNode(scrollable).performScrollToNode(hasTestTag(tag))
-        ui.onNodeWithTag(tag).assertIsDisplayed()
+        try {
+            ui.onNode(scrollable).performScrollToNode(hasTestTag(tag))
+            ui.onNodeWithTag(tag).assertIsDisplayed()
+        } catch (failure: AssertionError) {
+            ui.onRoot(useUnmergedTree = true).printToLog("E2eFailure[$screen/$tag]")
+            throw failure
+        }
     }
 
     protected fun fieldText(tag: String, expected: String) {

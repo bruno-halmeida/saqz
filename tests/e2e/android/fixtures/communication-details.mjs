@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto';
 
 // Only preconditions are seeded here. Tested preferences, publications, reads and reminders use UI.
 export async function seedExtra(ctx) {
-  if (ctx.name === 'message-pagination') return seedPagination(ctx);
   if (ctx.name === 'notification-settings') return seedNotifications(ctx);
   if (ctx.name === 'reminders') return seedReminders(ctx);
   return {};
@@ -27,33 +26,20 @@ function safe(person) {
   return identity;
 }
 
-async function seedPagination(ctx) {
-  const messages = [];
-  for (let index = 1; index <= 53; index++) {
-    const message = await publish(ctx, 'CHAT', `Mensagem QA ${String(index).padStart(2, '0')}`);
-    messages.unshift({ id: message.id, sequence: message.sequence, body: message.body });
-  }
-  const page = await ctx.request(`${ctx.api}/api/groups/${ctx.group}/messages?channel=CHAT`, 'GET', undefined, ctx.athlete.token);
-  assert.equal(page.items.length, 50);
-  assert.equal(page.nextCursor, messages[49].sequence);
-  return { messages };
-}
-
 async function seedNotifications(ctx) {
   const peer = await member(ctx, 'peer');
   const game = await ctx.publishedGame(ctx.group, ctx.owner.token);
   const gameVenue = 'Arena Notificações QA';
   await ctx.sql(`UPDATE games SET venue_name='${gameVenue}' WHERE id='${game.id}';`);
-  const oldChat = await publish(ctx, 'CHAT', 'Conversa anterior às preferências QA');
   const oldNotice = await publish(ctx, 'NOTICE', 'Aviso anterior às preferências QA');
   const reminder = await ctx.request(`${ctx.api}/api/groups/${ctx.group}/games/${game.id}/notify-pending`,
     'POST', { requestId: randomUUID() }, ctx.owner.token);
   assert.equal(reminder.recipientCount, 2);
   const inbox = await ctx.request(`${ctx.api}/api/me/notifications`, 'GET', undefined, ctx.athlete.token);
-  assert.equal(inbox.items.length, 3);
+  assert.ok(inbox.items.length >= 2);
   assert.ok(inbox.items.every(item => item.read === false));
   return { peer: safe(peer), game: game.id, gameTitle: game.title, gameVenue,
-    oldChat: oldChat.id, oldNotice: oldNotice.id, reminder: reminder.id };
+    oldNotice: oldNotice.id, reminder: reminder.id };
 }
 
 async function seedReminders(ctx) {

@@ -10,28 +10,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.UUID
 
-/** APP-C01/C02 subset: real persistence, author, permission and cross-group isolation. */
+/** APP-C02 subset: real persistence, author, permission and cross-group isolation. O chat saiu do lançamento. */
 @RunWith(AndroidJUnit4::class)
 internal class CommunicationE2eTest : InstalledE2e("communication") {
     @Test
-    fun chatAndNoticesPersistForOtherAccountsWithCorrectPublishingPermissions() {
-        val chat = "Estarei no treino QA"
+    fun noticesPersistForOtherAccountsWithCorrectPublishingPermissions() {
         val notice = "Jogo na quadra 2 — execução QA"
-        login("athlete")
-        openGroup()
-        click("group-details-shortcut-chat", scroll = true)
-        send(chat)
-        assertMessage("CHAT", chat, "athlete")
-        back()
-        back()
-        logout()
-
         login("owner")
         openGroup()
-        click("group-details-shortcut-chat", scroll = true)
-        waitText(chat)
-        ui.onNodeWithText(chat).assertIsDisplayed()
-        back()
         click("group-details-shortcut-notices", scroll = true)
         send(notice)
         assertMessage("NOTICE", notice, "owner")
@@ -52,10 +38,9 @@ internal class CommunicationE2eTest : InstalledE2e("communication") {
         back()
         back()
         openGroup(secondGroup)
-        click("group-details-shortcut-chat", scroll = true)
-        waitTag("message-send") // Composer appears only after the remote read finishes.
-        ui.onNodeWithText(chat).assertDoesNotExist()
-        assertEquals(0, api("athlete", "/api/groups/$secondGroup/messages?channel=CHAT").getJSONArray("items").length())
+        click("group-details-shortcut-notices", scroll = true)
+        waitText("Somente administradores publicam avisos.")
+        ui.onNodeWithText(notice).assertDoesNotExist()
         assertEquals(0, api("athlete", "/api/groups/$secondGroup/messages?channel=NOTICE").getJSONArray("items").length())
     }
 

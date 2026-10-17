@@ -7,11 +7,11 @@ test('ENV: explicit scenario selection has exact classes/counts and rejects unkn
   assert.deepEqual(selectScenarios('finance'), [{ name: 'finance', testClass: 'MonthlyGenerationE2eTest', count: 1 }]);
   const all = selectScenarios();
   assert.deepEqual(all.map(item => item.name), ['access', 'leave', 'attendance', 'attendance-order', 'attendance-guest', 'communication', 'finance',
-    'notification-settings', 'message-pagination', 'reminders', 'sports-profile', 'member-privacy', 'monthly-history',
+    'notification-settings', 'reminders', 'sports-profile', 'member-privacy', 'monthly-history',
     'payments', 'charge-lifecycle', 'settlement']);
-  assert.equal(all.reduce((sum, item) => sum + item.count, 0), 17);
+  assert.equal(all.reduce((sum, item) => sum + item.count, 0), 16);
   for (const [name, testClass] of [['notification-settings', 'NotificationsE2eTest'],
-    ['message-pagination', 'MessagePaginationE2eTest'], ['reminders', 'ReminderE2eTest'],
+    ['reminders', 'ReminderE2eTest'],
     ['sports-profile', 'SportsProfileE2eTest'], ['member-privacy', 'MemberPrivacyE2eTest'], ['monthly-history', 'MonthlyHistoryE2eTest'],
     ['payments', 'PaymentE2eTest'], ['charge-lifecycle', 'ChargeLifecycleE2eTest'], ['settlement', 'SettlementE2eTest']]) {
     assert.deepEqual(selectScenarios(name), [{ name, testClass, count: 1 }]);
