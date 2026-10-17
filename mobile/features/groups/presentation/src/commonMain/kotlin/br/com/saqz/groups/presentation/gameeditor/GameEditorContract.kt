@@ -48,6 +48,8 @@ data class GameEditorState(
     val versionToken: String? = null,
     /** Confirmados do jogo em edição; serve para avisar quando as vagas ficam abaixo deles. */
     val confirmedCount: Int = 0,
+    /** Vagas de um jogo antigo abaixo do mínimo de hoje; o formulário já abre no mínimo e a tela explica. */
+    val legacyCapacity: Int? = null,
     val isSaving: Boolean = false,
     val saveFailed: Boolean = false,
     val hasConflict: Boolean = false,

@@ -25,6 +25,7 @@ import br.com.saqz.groups.domain.place.PlacesGateway
 import br.com.saqz.groups.model.GameEditorDraft
 import br.com.saqz.groups.model.GameEditorForm
 import br.com.saqz.groups.model.GameEditorMode
+import br.com.saqz.groups.presentation.GameCapacityLimits
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.place.VenueSearch
 import br.com.saqz.groups.presentation.toUiError
@@ -178,7 +179,8 @@ class GameEditorViewModel(
                         durationMinutes = game.durationMinutes,
                         gameFeeCents = game.gameFeeCents,
                         venue = game.venue,
-                        capacity = game.capacity,
+                        // Jogo antigo com 2 ou 3 vagas abre no mínimo; salvar grava o mínimo e a tela avisa.
+                        capacity = game.capacity.coerceAtLeast(MIN_CAPACITY),
                         confirmationLeadMinutes = confirmationLeadMinutes(
                             game.startsAt,
                             game.confirmationDeadline,
@@ -195,6 +197,7 @@ class GameEditorViewModel(
                         groupHasVenue = profile?.defaultVenue != null,
                             versionToken = gameResult.value.version.value,
                             confirmedCount = game.confirmedCount,
+                            legacyCapacity = game.capacity.takeIf { capacity -> capacity < MIN_CAPACITY },
                         ).withTrial(trial)
                     }
                 }
@@ -207,7 +210,8 @@ class GameEditorViewModel(
         durationMinutes = profile?.regularSlots?.firstOrNull()?.durationMinutes
             ?: profile?.defaultDurationMinutes ?: DEFAULT_DURATION,
         venue = profile?.defaultVenue?.toGameVenue(),
-        capacity = profile?.defaultCapacity ?: DEFAULT_CAPACITY,
+        // O padrão do grupo pode ser antigo (2 ou 3): o jogo novo parte do mínimo de hoje.
+        capacity = (profile?.defaultCapacity ?: DEFAULT_CAPACITY).coerceAtLeast(MIN_CAPACITY),
         confirmationLeadMinutes = profile?.defaultConfirmationLeadMinutes ?: DEFAULT_LEAD,
     )
 
@@ -532,7 +536,7 @@ class GameEditorViewModel(
     }
 
     private companion object {
-        const val MIN_CAPACITY = 2
+        const val MIN_CAPACITY = GameCapacityLimits.Min
         const val VENUE_NAME_LIMIT = 120
         const val VENUE_ADDRESS_LIMIT = 300
         const val DEFAULT_CAPACITY = 12

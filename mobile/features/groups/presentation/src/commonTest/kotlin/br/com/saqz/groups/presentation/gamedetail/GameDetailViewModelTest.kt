@@ -583,6 +583,24 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun `capacity sheet never goes below the minimum of 4`() = runTest {
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))), FakeGroupGateway(),
+            FakeAttendanceGateway(), FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.OpenCapacitySheet)
+        listOf(0, 2, 3).forEach { value ->
+            viewModel.onIntent(GameDetailIntent.UpdateCapacity(value))
+            assertEquals(4, viewModel.state.value.capacityDraft)
+        }
+        viewModel.onIntent(GameDetailIntent.UpdateCapacity(100))
+        assertEquals(100, viewModel.state.value.capacityDraft)
+        viewModel.onIntent(GameDetailIntent.UpdateCapacity(101))
+        assertEquals(100, viewModel.state.value.capacityDraft)
+    }
+
+    @Test
     fun `capacity rollback restores optimistic value`() = runTest {
         val attendance = FakeAttendanceGateway()
         val deferred = CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.attendance.VersionedAttendanceCapacity, AttendanceError>>()

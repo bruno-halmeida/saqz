@@ -434,6 +434,26 @@ class GameDetailScreenTest {
         onNodeWithText("Salvar vagas").assertExists()
     }
 
+    @Test
+    fun `capacity sheet explains the new minimum for an old game`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GameDetailScreen(
+                    state = GameDetailPreviewData.admin.copy(
+                        attendance = GameDetailAttendanceUi(confirmed = 1, capacity = 2, availableSpots = 1),
+                        capacitySheetOpen = true,
+                        capacityDraft = 4,
+                    ),
+                    onBack = {},
+                    onIntent = {},
+                )
+            }
+        }
+
+        onNodeWithText("Este jogo tem 2 vagas. O mínimo agora é 4, e salvar grava 4.").assertExists()
+        onNodeWithText("4").assertExists()
+    }
+
     private fun ComposeUiTest.setScreen(
         status: GameDetailStatusTone = GameDetailStatusTone.Published,
         cancelDialogOpen: Boolean = false,

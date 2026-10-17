@@ -2,9 +2,11 @@ package br.com.saqz.groups.presentation.ui.gameeditor
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -184,6 +186,29 @@ class GameEditorScreenTest {
 
         onNodeWithText("Não foi possível salvar o jogo").assertExists()
         onNodeWithText("Não foi possível criar o jogo").assertDoesNotExist()
+    }
+
+    @Test
+    fun `an old game with 3 spots shows the minimum of 4 and says why`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GameEditorScreen(
+                    state = create().let { it.copy(form = it.form.copy(capacity = 4), versionToken = "etag-1", legacyCapacity = 3) },
+                    onBack = {},
+                    onIntent = {},
+                )
+            }
+        }
+
+        onNodeWithText("Este jogo tinha 3 vagas. O mínimo agora é 4, e salvar grava 4.").assertExists()
+    }
+
+    @Test
+    fun `a current game does not show the old capacity warning`() = runComposeUiTest {
+        setContent { SaqzTheme { GameEditorScreen(state = create(), onBack = {}, onIntent = {}) } }
+
+        onNodeWithText("Vagas neste jogo").assertExists()
+        onAllNodesWithText("O mínimo agora é 4", substring = true).assertCountEquals(0)
     }
 
     private fun create(recurring: Boolean = false) = GameEditorState(

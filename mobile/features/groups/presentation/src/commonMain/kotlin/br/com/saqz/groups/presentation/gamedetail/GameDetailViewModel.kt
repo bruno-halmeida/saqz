@@ -38,6 +38,7 @@ import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.presentation.attendance.AttendanceRule
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.presentation.GameCapacityLimits
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.presentation.isPlanPaused
@@ -352,7 +353,8 @@ class GameDetailViewModel(
         if (!state.value.isAdmin || state.value.header?.statusTone != GameDetailStatusTone.Published) return
         if (state.value.header?.gameStarted == true) return
         val capacity = state.value.attendance?.capacity ?: return
-        update { it.copy(capacitySheetOpen = true, capacityDraft = capacity, capacityFailed = false) }
+        // Jogo antigo com 2 ou 3 vagas abre a folha no mínimo de hoje; salvar grava o mínimo.
+        update { it.copy(capacitySheetOpen = true, capacityDraft = capacity.coerceAtLeast(MIN_CAPACITY), capacityFailed = false) }
     }
 
     private fun saveCapacity() {
@@ -893,8 +895,8 @@ private fun AthleteError.toUiError(): GroupUiError = when (this) {
     is AthleteError.DataFailure -> GroupUiError.Network
 }
 
-private const val MIN_CAPACITY = 2
-private const val MAX_CAPACITY = 100
+private const val MIN_CAPACITY = GameCapacityLimits.Min
+private const val MAX_CAPACITY = GameCapacityLimits.Max
 private const val MAX_GUEST_NAME = 80
 private fun GameStatus.toTone(): GameDetailStatusTone = when (this) {
     GameStatus.Draft -> GameDetailStatusTone.Draft

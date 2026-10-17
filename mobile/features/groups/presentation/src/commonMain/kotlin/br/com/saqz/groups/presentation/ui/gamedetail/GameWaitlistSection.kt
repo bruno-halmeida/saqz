@@ -38,6 +38,8 @@ import br.com.saqz.groups.resources.game_capacity_below_confirmed
 import br.com.saqz.groups.resources.game_waitlist_adjust_capacity
 import br.com.saqz.groups.resources.game_waitlist_capacity_cancel
 import br.com.saqz.groups.resources.game_waitlist_capacity_description
+import br.com.saqz.groups.presentation.GameCapacityLimits
+import br.com.saqz.groups.resources.game_waitlist_capacity_legacy
 import br.com.saqz.groups.resources.game_waitlist_capacity_failed
 import br.com.saqz.groups.resources.game_waitlist_capacity_label
 import br.com.saqz.groups.resources.game_waitlist_capacity_save
@@ -274,6 +276,11 @@ internal fun GameWaitlistCapacitySheet(
                 state.capacityDraft,
                 overflow,
             )
+            (state.attendance?.capacity ?: GameCapacityLimits.Min) < GameCapacityLimits.Min -> stringResource(
+                Res.string.game_waitlist_capacity_legacy,
+                state.attendance?.capacity ?: 0,
+                GameCapacityLimits.Min,
+            )
             else -> stringResource(Res.string.game_waitlist_capacity_description)
         }
     },
@@ -297,8 +304,8 @@ internal fun GameWaitlistCapacitySheet(
         SaqzStepper(
             value = state.capacityDraft,
             onValueChange = { onIntent(GameDetailIntent.UpdateCapacity(it)) },
-            min = 2,
-            max = 100,
+            min = GameCapacityLimits.Min,
+            max = GameCapacityLimits.Max,
             label = stringResource(Res.string.game_waitlist_capacity_label),
         )
     },

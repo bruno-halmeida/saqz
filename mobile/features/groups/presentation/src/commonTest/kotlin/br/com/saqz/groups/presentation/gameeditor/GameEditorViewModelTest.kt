@@ -911,10 +911,42 @@ class GameEditorViewModelTest {
     }
 
     @Test
-    fun `capacity cannot drop below minimum`() = runTest {
+    fun `capacity cannot drop below minimum of 4`() = runTest {
         val vm = viewModel()
-        vm.onIntent(GameEditorIntent.UpdateCapacity(0))
-        assertEquals(2, vm.state.value.form.capacity)
+        listOf(0, 2, 3).forEach { value ->
+            vm.onIntent(GameEditorIntent.UpdateCapacity(value))
+            assertEquals(4, vm.state.value.form.capacity)
+        }
+        vm.onIntent(GameEditorIntent.UpdateCapacity(100))
+        assertEquals(100, vm.state.value.form.capacity)
+    }
+
+    @Test
+    fun `new game starts at the minimum when the group default is an old 2 or 3`() = runTest {
+        listOf(2, 3).forEach { old ->
+            val group = br.com.saqz.groups.presentation.sampleGroup().let {
+                it.copy(profile = it.profile?.copy(defaultCapacity = old))
+            }
+            val gateway = FakeGroupGateway(readResult = SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedGroup(group)))
+            assertEquals(4, viewModel(groupGateway = gateway).state.value.form.capacity)
+        }
+    }
+
+    @Test
+    fun `old game with 3 spots opens at the minimum and explains it`() = runTest {
+        val old = sampleGame().copy(capacity = 3)
+        val vm = viewModel(gameId = "game-1", gameGateway = FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(old))))
+
+        assertEquals(4, vm.state.value.form.capacity)
+        assertEquals(3, vm.state.value.legacyCapacity)
+    }
+
+    @Test
+    fun `game already at 4 or more does not show the legacy warning`() = runTest {
+        val vm = viewModel(gameId = "game-1", gameGateway = FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(sampleGame().copy(capacity = 4)))))
+
+        assertEquals(4, vm.state.value.form.capacity)
+        assertNull(vm.state.value.legacyCapacity)
     }
 
     @Test

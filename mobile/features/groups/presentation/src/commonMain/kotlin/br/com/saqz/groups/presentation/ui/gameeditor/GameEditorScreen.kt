@@ -71,6 +71,8 @@ import br.com.saqz.groups.presentation.ui.durationLabel
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.game_capacity_below_confirmed
+import br.com.saqz.groups.presentation.GameCapacityLimits
+import br.com.saqz.groups.resources.game_editor_capacity_legacy
 import br.com.saqz.groups.resources.game_editor_capacity_helper
 import br.com.saqz.groups.resources.game_editor_capacity_label
 import br.com.saqz.groups.resources.game_editor_confirmation_lead_label
@@ -363,11 +365,14 @@ private fun FormScroll(
                 SaqzStepper(
                     value = state.form.capacity,
                     onValueChange = { onIntent(GameEditorIntent.UpdateCapacity(it)) },
-                    min = 2,
-                    max = 100,
+                    min = GameCapacityLimits.Min,
+                    max = GameCapacityLimits.Max,
                     label = stringResource(Res.string.game_editor_capacity_label),
                 )
                 HelperText(stringResource(Res.string.game_editor_capacity_helper))
+                state.legacyCapacity?.let { legacy ->
+                    HelperText(stringResource(Res.string.game_editor_capacity_legacy, legacy, GameCapacityLimits.Min))
+                }
                 if (state.confirmedCount > state.form.capacity) {
                     HelperText(
                         pluralStringResource(

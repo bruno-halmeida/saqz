@@ -6,6 +6,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.presentation.GameCapacityLimits
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 
@@ -31,7 +32,7 @@ data class GameDetailState(
     val promotingMemberId: String? = null,
     val promotionFailed: Boolean = false,
     val capacitySheetOpen: Boolean = false,
-    val capacityDraft: Int = 2,
+    val capacityDraft: Int = GameCapacityLimits.Min,
     val savingCapacity: Boolean = false,
     val capacityFailed: Boolean = false,
     val guest: GameGuestUi = GameGuestUi(),
