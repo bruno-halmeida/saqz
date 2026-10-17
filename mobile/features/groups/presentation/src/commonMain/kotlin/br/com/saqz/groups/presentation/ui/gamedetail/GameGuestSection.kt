@@ -52,6 +52,7 @@ import br.com.saqz.groups.resources.game_guest_remove_confirmed
 import br.com.saqz.groups.resources.game_guest_remove_confirmed_fee
 import br.com.saqz.groups.resources.game_guest_remove_failed
 import br.com.saqz.groups.resources.game_guest_remove_keep
+import br.com.saqz.groups.resources.game_guest_remove_notify
 import br.com.saqz.groups.resources.game_guest_remove_title
 import br.com.saqz.groups.resources.game_guest_remove_waitlisted
 import br.com.saqz.groups.resources.game_guest_removed
@@ -229,7 +230,7 @@ internal fun GameGuestRemoveSheet(guest: GameGuestUi, removal: GameGuestRemovalU
             !removal.confirmed -> stringResource(Res.string.game_guest_remove_waitlisted)
             guest.feeLabel != null -> stringResource(Res.string.game_guest_remove_confirmed_fee, guest.feeLabel)
             else -> stringResource(Res.string.game_guest_remove_confirmed)
-        },
+        } + (removal.notifiedHostName?.let { "\n" + stringResource(Res.string.game_guest_remove_notify, it) } ?: ""),
         splitFooter = {
             SaqzButton(
                 stringResource(Res.string.game_guest_remove_keep),

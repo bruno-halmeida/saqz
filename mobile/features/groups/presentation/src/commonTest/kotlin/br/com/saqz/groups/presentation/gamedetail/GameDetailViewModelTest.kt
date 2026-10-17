@@ -841,6 +841,48 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun organizerRemovingAGuestNamesTheHostWhoWillBeNotified() = runTest {
+        val roster = AttendanceRoster(
+            confirmed = listOf(AttendanceRosterMember("host-1", "Convidado A", guestSeq = 1, hostDisplayName = "Host Um")),
+            waitlisted = emptyList(),
+        )
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed, memberId = "someone-else")),
+            rosterResult = SaqzResult.Success(roster),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            FakeGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.RequestRemoveGuest(viewModel.state.value.confirmedRoster.first().id))
+
+        assertEquals("Host Um", viewModel.state.value.guest.removal?.notifiedHostName)
+    }
+
+    @Test
+    fun hostRemovingOwnGuestHasNoNoticeToTheHost() = runTest {
+        val roster = AttendanceRoster(
+            confirmed = listOf(AttendanceRosterMember("host-1", "Convidado A", guestSeq = 1, hostDisplayName = "Host Um")),
+            waitlisted = emptyList(),
+        )
+        val attendance = FakeAttendanceGateway(
+            readResult = SaqzResult.Success(goingDetail(AttendanceStatus.Confirmed, memberId = "host-1")),
+            rosterResult = SaqzResult.Success(roster),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))),
+            athleteGroupGateway(), attendance, FakeAthleteGateway(),
+        )
+
+        viewModel.onIntent(GameDetailIntent.RequestRemoveGuest(viewModel.state.value.confirmedRoster.first().id))
+
+        assertNull(viewModel.state.value.guest.removal?.notifiedHostName)
+    }
+
+    @Test
     fun confirmRemoveCallsTheGatewayWithHostAndSeq() = runTest {
         val roster = AttendanceRoster(
             confirmed = listOf(AttendanceRosterMember("host-1", "Convidado A", guestSeq = 1, hostDisplayName = "Host Um")),

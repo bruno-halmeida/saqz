@@ -133,6 +133,8 @@ data class GameGuestRemovalUi(
     val guestSeq: Int,
     val name: String,
     val confirmed: Boolean,
+    /** Nome do anfitrião quando quem tira é o gestor: ele recebe um aviso (PRES-013). Nulo se o anfitrião é quem tira. */
+    val notifiedHostName: String? = null,
 )
 
 @Immutable

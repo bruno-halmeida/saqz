@@ -21,6 +21,7 @@
     <string name="game_guest_remove_waitlisted">Ele sai da lista de espera. Nada é cobrado.</string>
     <string name="game_guest_remove_confirmed">Ele sai dos confirmados e a vaga vai para o próximo da lista.</string>
     <string name="game_guest_remove_confirmed_fee">Ele sai dos confirmados, a vaga vai para o próximo da lista e a cobrança de %1$s em seu nome é cancelada.</string>
+    <string name="game_guest_remove_notify">O anfitrião %1$s vai receber um aviso, ok?</string>
     <string name="game_guest_remove_keep">Manter</string>
     <string name="game_guest_remove_confirm">Tirar</string>
     <string name="game_guest_remove_failed">Não foi possível tirar. Tente de novo.</string>

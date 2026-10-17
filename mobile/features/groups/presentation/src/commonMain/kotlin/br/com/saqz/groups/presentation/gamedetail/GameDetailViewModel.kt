@@ -842,6 +842,7 @@ class GameDetailViewModel(
                     row.guestSeq,
                     confirmed?.name ?: waiting?.name.orEmpty(),
                     confirmed != null,
+                    notifiedHostName = row.hostName.takeUnless { row.isYours },
                 ),
                 removeFailed = false,
             )

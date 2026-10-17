@@ -172,6 +172,20 @@ class GameGuestSectionTest {
     }
 
     @Test
+    fun removeSheetNamesTheHostOnlyWhenTheOrganizerRemoves() = runComposeUiTest {
+        val removal = GameGuestRemovalUi("1#1", "1", 1, "Rafa Moreira", confirmed = false, notifiedHostName = "Ana")
+        setScreen(GameGuestPreviewData.inQueue.copy(guest = GameGuestPreviewData.guestUi.copy(removal = removal)))
+        onNodeWithText("O anfitrião Ana vai receber um aviso, ok?", substring = true).assertExists()
+    }
+
+    @Test
+    fun removeSheetHasNoHostNoticeWhenTheHostRemoves() = runComposeUiTest {
+        val removal = GameGuestRemovalUi("1#1", "1", 1, "Rafa Moreira", confirmed = false)
+        setScreen(GameGuestPreviewData.inQueue.copy(guest = GameGuestPreviewData.guestUi.copy(removal = removal)))
+        onAllNodesWithText("vai receber um aviso", substring = true).assertCountEquals(0)
+    }
+
+    @Test
     fun everyGuestTagIsUnique() = runComposeUiTest {
         val state = GameGuestPreviewData.inQueue.copy(
             guest = GameGuestPreviewData.guestUi.copy(
