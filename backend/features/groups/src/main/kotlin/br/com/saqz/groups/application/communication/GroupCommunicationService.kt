@@ -54,7 +54,7 @@ class GroupCommunicationService(
         }
 
     /**
-     * Lembrete automático (a cada 3 h, das 8h às 22h) com a lista do próximo jogo de cada grupo, do
+     * Lembrete automático (2 vezes por dia, às 9h e às 18h) com a lista do próximo jogo de cada grupo, do
      * jogo publicado até o início — inclusive depois do prazo, para a lista final chegar ao grupo.
      * Agenda recorrente deixa vários jogos abertos ao mesmo tempo e o grupo não quer um lembrete por
      * jogo. O autor é o dono do grupo, então ele fica fora dos destinatários da notificação;

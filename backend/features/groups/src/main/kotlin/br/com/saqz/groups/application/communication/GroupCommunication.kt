@@ -99,7 +99,7 @@ interface GroupCommunicationRepository {
     fun publishGameCancelled(groupId: UUID, actor: UUID, gameId: UUID, body: String): GroupMessage
     fun reminderGame(groupId: UUID, gameId: UUID): ReminderGame?
     fun reminderRoster(groupId: UUID, gameId: UUID): ReminderRoster
-    /** Próximo jogo publicado de cada grupo com início no futuro, mesmo com o prazo vencido: o lembrete de 3 h. */
+    /** Próximo jogo publicado de cada grupo com início no futuro, mesmo com o prazo vencido: o lembrete automático. */
     fun reminderCandidates(): List<ReminderCandidate>
 
     /** Próximo jogo publicado de cada grupo com prazo E início no futuro: o aviso de jogo liberado (GAME_OPEN). */
