@@ -29,6 +29,6 @@ class RemindStalledEntryRequestsTest {
     }
 
     @Test fun `texto do segundo aviso`() {
-        assertEquals("Rafa ainda espera resposta para entrar no QA Vôlei.", entryRequestReminderBody("Rafa", "QA Vôlei"))
+        assertEquals("Rafa ainda espera sua resposta para entrar no QA Vôlei. Abra o app para aprovar ou recusar.", entryRequestReminderBody("Rafa", "QA Vôlei"))
     }
 }

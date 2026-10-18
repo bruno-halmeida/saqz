@@ -82,7 +82,7 @@ fun entryApprovedBody(groupName: String): String = "Você entrou no $groupName."
 
 fun entryRequestBody(who: String, groupName: String): String = "$who pediu para entrar no $groupName."
 
-fun entryRequestReminderBody(who: String, groupName: String): String = "$who ainda espera resposta para entrar no $groupName."
+fun entryRequestReminderBody(who: String, groupName: String): String = "$who ainda espera sua resposta para entrar no $groupName. Abra o app para aprovar ou recusar."
 
 fun firstMemberBody(who: String, groupName: String): String =
     "$who entrou no $groupName. A galera começou a chegar."

@@ -14,6 +14,17 @@ fun gameSchedule(localDate: LocalDate, localTime: LocalTime): String =
     "${WEEKDAYS[localDate.dayOfWeek.value - 1]}, ${two(localDate.dayOfMonth)}/${two(localDate.monthValue)}" +
         " às ${two(localTime.hour)}:${two(localTime.minute)}"
 
+/** Dia do jogo no tom das mensagens de aviso: "quarta 14/10". */
+fun gameDay(localDate: LocalDate): String =
+    "${WEEKDAYS[localDate.dayOfWeek.value - 1]} ${two(localDate.dayOfMonth)}/${two(localDate.monthValue)}"
+
+/**
+ * Texto do push do lembrete automático (DEB-066, copy de 18/10). Só o push usa: o grupo do WhatsApp recebe o corpo
+ * completo do lembrete (jogo, local, prazo e listas), não este texto. Sem o jogo, cai na forma genérica.
+ */
+fun reminderPushBody(localDate: LocalDate?): String =
+    "${localDate?.let { "O jogo de ${gameDay(it)}" } ?: "O próximo jogo"} está fechando a lista. Confirme sua presença."
+
 /** Aviso de cancelamento: "O jogo de quarta 14/10 às 20h30 foi cancelado." */
 fun gameCancelledBody(localDate: LocalDate, localTime: LocalTime): String =
     "O jogo de ${WEEKDAYS[localDate.dayOfWeek.value - 1]} ${two(localDate.dayOfMonth)}/${two(localDate.monthValue)}" +

@@ -230,7 +230,7 @@ class NotificationChannelsIntegrationTest {
         val code = jdbc.sql("SELECT code FROM notification_attendance_links").query(String::class.java).single()
         val pushes = mutableListOf<NotificationPush>()
         push.drain(NotificationPushSender { token, message -> assertEquals("member-device", token); pushes += message; PushDelivery.SENT })
-        assertEquals("Confirme sua presença no próximo jogo. Abra o app para conferir.", pushes.single().body)
+        assertEquals(expectedPushBody(), pushes.single().body)
         val resolver = br.com.saqz.groups.application.attendance.share.ResolveAttendanceLink(transaction,
             br.com.saqz.groups.adapter.output.jdbc.attendance.share.JdbcAttendanceLinkRepository(source), java.time.Clock.systemUTC())
         assertEquals(br.com.saqz.groups.application.attendance.share.ResolveAttendanceLinkResult.Success(group, game, registrationRequired = true),
@@ -299,4 +299,9 @@ class NotificationChannelsIntegrationTest {
             .param("id", id).param("subject", id.toString()).param("name", name).update()
     }
     private fun <T> CommunicationResult<T>.success(): T = assertIs<CommunicationResult.Success<T>>(this).value
+    /** "O jogo de quarta 14/10 está fechando a lista…": o dia vem do jogo gravado, no formato dos outros avisos. */
+    private fun expectedPushBody(): String {
+        val date = jdbc.sql("SELECT local_date FROM games").query { rs, _ -> rs.getObject(1, java.time.LocalDate::class.java) }.list().single()
+        return reminderPushBody(date)
+    }
 }

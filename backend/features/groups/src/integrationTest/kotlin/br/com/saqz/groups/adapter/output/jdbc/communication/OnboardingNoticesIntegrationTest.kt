@@ -262,7 +262,7 @@ class OnboardingNoticesIntegrationTest {
 
         val reminder = jdbc.sql("SELECT id, body, author_id FROM group_messages WHERE channel = 'ENTRY_REQUEST' AND body LIKE '%ainda espera%'")
             .query { rs, _ -> listOf(rs.getObject("id", UUID::class.java), rs.getString("body"), rs.getObject("author_id")) }.single()
-        assertEquals("Rafa Moreira ainda espera resposta para entrar no QA Vôlei.", reminder[1])
+        assertEquals("Rafa Moreira ainda espera sua resposta para entrar no QA Vôlei. Abra o app para aprovar ou recusar.", reminder[1])
         assertEquals(rafa, reminder[2])
         assertEquals(setOf(owner, admin), recipients(reminder[0] as UUID))
         val pushed = jdbc.sql("SELECT recipient_id FROM notification_delivery_context WHERE channel = 'ENTRY_REQUEST' AND push_enabled AND body LIKE '%ainda espera%'")

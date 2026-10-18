@@ -95,7 +95,7 @@ class ReminderAfterDeadlineIntegrationTest {
         assertTrue(Regex("\nConfirmações até (seg|ter|qua|qui|sex|sáb|dom) \\d{2}h\\d{2}\nVagas: 0/12").containsMatchIn(body), body)
         val sent = mutableListOf<NotificationPush>()
         push.drain(NotificationPushSender { _, message -> sent += message; PushDelivery.SENT })
-        assertEquals(listOf("Confirme sua presença no próximo jogo. Abra o app para conferir."), sent.map { it.body })
+        assertEquals(listOf(expectedPushBody()), sent.map { it.body })
     }
 
     @Test fun `after the deadline the link resolves and Vou on a full game waits while Nao vou declines`() {
@@ -145,5 +145,10 @@ class ReminderAfterDeadlineIntegrationTest {
         jdbc.sql("""INSERT INTO access_users(id, firebase_subject, email_verified, display_name, phone, created_at, updated_at)
             VALUES (:id, :subject, true, :name, '+5511999999999', now(), now())""")
             .param("id", id).param("subject", id.toString()).param("name", name).update()
+    }
+    /** "O jogo de quarta 14/10 está fechando a lista…": o dia vem do jogo gravado, no formato dos outros avisos. */
+    private fun expectedPushBody(): String {
+        val date = jdbc.sql("SELECT local_date FROM games").query { rs, _ -> rs.getObject(1, java.time.LocalDate::class.java) }.list().single()
+        return reminderPushBody(date)
     }
 }
