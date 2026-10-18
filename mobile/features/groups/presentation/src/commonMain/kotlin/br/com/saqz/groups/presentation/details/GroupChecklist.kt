@@ -24,6 +24,9 @@ data class GroupChecklistUi(val rows: List<GroupChecklistRowUi>) {
  * dá para ler do grupo: "regras abertas uma vez" e o "deixar para depois", que vêm da memória
  * local do aparelho. Com todos feitos, ou durante o "deixar para depois", devolve `null`.
  *
+ * Com [pixKeyNotice] (cobrança pendente e sem chave) o item Pix não aparece: o aviso de chave
+ * Pix toma o lugar dele, para a tela não pedir a chave duas vezes.
+ *
  * Sem [whatsAppBinding] (WhatsApp desligado no servidor) o item do WhatsApp nem existe: não
  * aparece e não conta para a checklist ficar completa.
  */
@@ -34,6 +37,7 @@ internal fun groupChecklist(
     memory: GroupOnboardingMemory,
     nowEpochMillis: Long,
     whatsAppBinding: Boolean,
+    pixKeyNotice: Boolean = false,
 ): GroupChecklistUi? {
     val snoozed = memory.snoozedUntilEpochMillis?.let { it > nowEpochMillis } == true
     if (snoozed) return null
@@ -43,7 +47,7 @@ internal fun groupChecklist(
             GroupChecklistItem.Mensalistas,
             group.financeDefaults?.monthlyFeeCents != null || rosterHasMensalista,
         ),
-        GroupChecklistRowUi(GroupChecklistItem.Pix, !group.profile?.pixKey.isNullOrBlank()),
+        GroupChecklistRowUi(GroupChecklistItem.Pix, !group.profile?.pixKey.isNullOrBlank()).takeIf { !pixKeyNotice },
         GroupChecklistRowUi(GroupChecklistItem.Rules, memory.rulesOpened),
         GroupChecklistRowUi(GroupChecklistItem.Recurrence, group.profile?.regularSlots?.isNotEmpty() == true),
     )

@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import br.com.saqz.groups.presentation.ui.finance.sheets.FinanceSheetsTags
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -161,7 +162,8 @@ class GroupCashboxRootTest {
         runOnIdle { showingCashbox = true }
         waitForIdle()
 
-        onNodeWithText("Recebi").performClick()
+        // O aviso de chave Pix (grupo sem chave, com pendência) empurra a lista: rola até o botão.
+        onNodeWithText("Recebi").performScrollTo().performClick()
         waitForIdle()
         onAllNodesWithContentDescription("Fechar").assertCountEquals(2)
         onNodeWithTag(FinanceSheetsTags.ReceiptConfirm).performClick()

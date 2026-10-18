@@ -50,6 +50,30 @@ class GroupCashboxScreenTest {
     }
 
     @Test
+    fun `pending charges without a Pix key show the notice with a shortcut to the group settings`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(pix = null), intents::add)
+
+        onNodeWithTag(GroupCashboxTags.PixKeyNotice).assertExists()
+        onNodeWithText("Cadastre a chave Pix para seus atletas pagarem.").assertExists()
+        onNodeWithTag(br.com.saqz.groups.presentation.ui.finance.PixKeyNoticeTags.Action).performClick()
+
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.OpenPixSetup), intents)
+    }
+
+    @Test
+    fun `the notice is gone with a Pix key or without pending charges`() = runComposeUiTest {
+        setScreen(loadedState, {})
+        onNodeWithTag(GroupCashboxTags.PixKeyNotice).assertDoesNotExist()
+    }
+
+    @Test
+    fun `no pending charges hide the notice even without a key`() = runComposeUiTest {
+        setScreen(loadedState.copy(pix = null, debtors = emptyList()), {})
+        onNodeWithTag(GroupCashboxTags.PixKeyNotice).assertDoesNotExist()
+    }
+
+    @Test
     fun `notifications remain available without Pix`() = runComposeUiTest {
         val intents = mutableListOf<GroupCashboxIntent>()
         setScreen(loadedState.copy(pix = null), intents::add)

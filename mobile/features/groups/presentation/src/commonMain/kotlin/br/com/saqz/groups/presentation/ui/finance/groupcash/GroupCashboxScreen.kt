@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
+import br.com.saqz.groups.presentation.ui.finance.PixKeyNotice
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderState
 
 import androidx.compose.foundation.background
@@ -97,6 +98,7 @@ internal object GroupCashboxTags {
     const val GenerateMonthly = "group-cashbox-generate-monthly"
     const val Monthly = "group-cashbox-monthly"
     const val Overdue = "group-cashbox-overdue"
+    const val PixKeyNotice = "group-cashbox-pix-key-notice"
     const val OverdueCharge = "group-cashbox-overdue-charge"
     const val Debtors = "group-cashbox-debtors"
     const val Pix = "group-cashbox-pix"
@@ -247,6 +249,12 @@ private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxInten
         )
         if (state.cashboxEmpty) {
             EmptyCashbox(onIntent = onIntent)
+        }
+        if (state.pixKeyNotice) {
+            PixKeyNotice(
+                onOpenSetup = { onIntent(GroupCashboxIntent.OpenPixSetup) },
+                modifier = Modifier.testTag(GroupCashboxTags.PixKeyNotice),
+            )
         }
         state.overdueBanner?.let { OverdueBanner(it, canCharge, onIntent) }
         MonthlySection(state)

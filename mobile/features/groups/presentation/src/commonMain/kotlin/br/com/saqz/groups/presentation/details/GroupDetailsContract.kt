@@ -73,6 +73,8 @@ data class GroupDetailsState(
     val whatsApp: GroupWhatsAppStatus? = null,
     /** "Deixe o grupo redondo"; `null` = feita, adiada ou não se aplica. Só o primeiro grupo da conta a desenha. */
     val checklist: GroupChecklistUi? = null,
+    /** Cobrança pendente e grupo sem chave Pix (só gestor): o aviso toma o lugar do item Pix da checklist. */
+    val pixKeyNotice: Boolean = false,
 ) {
     /**
      * Quem olha (gestor) também joga e entra na contagem de "sem resposta" do servidor, mas o
@@ -367,6 +369,9 @@ sealed interface GroupDetailsIntent {
 
     /** "Deixar para depois": esconde a checklist por uma semana, no aparelho. */
     data object SnoozeChecklist : GroupDetailsIntent
+
+    /** Atalho do aviso de chave Pix: leva à configuração do grupo. */
+    data object OpenPixSetup : GroupDetailsIntent
 
     data object Leave : GroupDetailsIntent
 

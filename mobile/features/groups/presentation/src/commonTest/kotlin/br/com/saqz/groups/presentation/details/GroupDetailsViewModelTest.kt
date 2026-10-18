@@ -2174,6 +2174,102 @@ class GroupDetailsViewModelTest {
         assertEquals(GroupDetailsEffect.OpenSchedule(GROUP_ID), viewModel.effects.first())
     }
 
+    private fun adminGroupWithPix(pixKey: String?) = FakeGroupGateway(
+        readResult = SaqzResult.Success(
+            sampleVersionedGroup(
+                sampleGroup(role = GroupRole.OWNER).let { it.copy(profile = it.profile?.copy(pixKey = pixKey)) },
+            ),
+        ),
+    )
+
+    private fun pendingCharges(status: ChargeStatus = ChargeStatus.Pending) = FakeOrganizerFinanceGateway(
+        chargesResult = SaqzResult.Success(ChargeList(listOf(ownCharge("mensal", month = "2026-08", status = status)))),
+    )
+
+    @Test
+    fun `pix key notice shows for the admin with a pending charge and no key and takes the place of the checklist pix item`() =
+        runTest {
+            val viewModel = viewModel(
+                groupGateway = adminGroupWithPix(null),
+                organizerFinanceGateway = pendingCharges(),
+                whatsApp = FakeGroupWhatsAppGateway(),
+                onboardingMemory = FakeGroupOnboardingMemory(),
+            )
+
+            assertTrue(viewModel.state.value.pixKeyNotice)
+            val checklist = checkNotNull(viewModel.state.value.checklist)
+            assertTrue(checklist.rows.none { it.item == br.com.saqz.groups.presentation.details.GroupChecklistItem.Pix })
+        }
+
+    @Test
+    fun `pix key notice goes away once the group has a key and the checklist shows the pix item as done`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = adminGroupWithPix("ceret@volei.com.br"),
+            organizerFinanceGateway = pendingCharges(),
+            whatsApp = FakeGroupWhatsAppGateway(),
+            onboardingMemory = FakeGroupOnboardingMemory(),
+        )
+
+        assertFalse(viewModel.state.value.pixKeyNotice)
+        val pixRow = checkNotNull(viewModel.state.value.checklist).rows
+            .single { it.item == br.com.saqz.groups.presentation.details.GroupChecklistItem.Pix }
+        assertTrue(pixRow.done)
+    }
+
+    @Test
+    fun `a blank key still counts as missing`() = runTest {
+        val viewModel = viewModel(groupGateway = adminGroupWithPix("   "), organizerFinanceGateway = pendingCharges())
+
+        assertTrue(viewModel.state.value.pixKeyNotice)
+    }
+
+    @Test
+    fun `no pending charge means no pix key notice and the checklist asks for the key again`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = adminGroupWithPix(null),
+            organizerFinanceGateway = pendingCharges(ChargeStatus.Paid),
+            whatsApp = FakeGroupWhatsAppGateway(),
+            onboardingMemory = FakeGroupOnboardingMemory(),
+        )
+
+        assertFalse(viewModel.state.value.pixKeyNotice)
+        assertTrue(
+            checkNotNull(viewModel.state.value.checklist).rows
+                .any { it.item == br.com.saqz.groups.presentation.details.GroupChecklistItem.Pix },
+        )
+    }
+
+    @Test
+    fun `athlete never gets the pix key notice`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = athleteGroupGateway(),
+            organizerFinanceGateway = pendingCharges(),
+        )
+
+        assertFalse(viewModel.state.value.pixKeyNotice)
+    }
+
+    @Test
+    fun `pix key notice clears when the key is registered and the group reloads`() = runTest {
+        val group = adminGroupWithPix(null)
+        val viewModel = viewModel(groupGateway = group, organizerFinanceGateway = pendingCharges())
+        assertTrue(viewModel.state.value.pixKeyNotice)
+
+        group.readResult = adminGroupWithPix("ceret@volei.com.br").readResult
+        viewModel.onIntent(GroupDetailsIntent.Retry)
+
+        assertFalse(viewModel.state.value.pixKeyNotice)
+    }
+
+    @Test
+    fun `pix key notice shortcut opens the group settings`() = runTest {
+        val viewModel = viewModel(groupGateway = adminGroupWithPix(null), organizerFinanceGateway = pendingCharges())
+
+        viewModel.onIntent(GroupDetailsIntent.OpenPixSetup)
+
+        assertEquals(GroupDetailsEffect.OpenEdit(GROUP_ID), viewModel.effects.first())
+    }
+
     private fun viewModel(
         groupGateway: FakeGroupGateway = FakeGroupGateway(),
         gameGateway: FakeGameGateway = FakeGameGateway(),

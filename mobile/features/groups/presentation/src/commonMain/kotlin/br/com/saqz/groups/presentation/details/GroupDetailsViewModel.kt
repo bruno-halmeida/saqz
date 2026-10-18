@@ -172,6 +172,7 @@ class GroupDetailsViewModel(
     private var rosterHasMensalista = false
     private var whatsAppStatus: GroupWhatsAppStatus? = null
     private var whatsAppEnabled = false
+    private var pixKeyNotice = false
     private var memory = GroupOnboardingMemory()
 
     init {
@@ -216,6 +217,7 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.OpenWhatsApp -> if (whatsAppEnabled) emit(GroupDetailsEffect.OpenWhatsApp(groupId))
             is GroupDetailsIntent.ChecklistAction -> checklistAction(intent.item)
             GroupDetailsIntent.SnoozeChecklist -> snoozeChecklist()
+            GroupDetailsIntent.OpenPixSetup -> emit(GroupDetailsEffect.OpenEdit(groupId))
             GroupDetailsIntent.OpenVenueMap -> openMap()
             GroupDetailsIntent.MapOpenFailed -> update { it.copy(mapFailed = true) }
             GroupDetailsIntent.Leave -> confirmDeparture()
@@ -500,9 +502,10 @@ class GroupDetailsViewModel(
             groupChecklist(
                 group, rosterHasMensalista, whatsAppStatus, memory, now.now().toEpochMilliseconds(),
                 whatsAppBinding = whatsAppEnabled,
+                pixKeyNotice = pixKeyNotice,
             )
         }
-        update { it.copy(checklist = checklist, whatsApp = whatsAppStatus) }
+        update { it.copy(checklist = checklist, whatsApp = whatsAppStatus, pixKeyNotice = pixKeyNotice) }
     }
 
     private fun checklistAction(item: GroupChecklistItem) {
@@ -651,7 +654,8 @@ class GroupDetailsViewModel(
     private suspend fun loadAdminCashbox(generation: Int, group: Group, games: List<Game>, softRefresh: Boolean) {
         if (generation != loadGeneration) return
         if (group.role == GroupRole.ATHLETE) {
-            update { it.copy(cashbox = null, waiting = null) }
+            pixKeyNotice = false
+            update { it.copy(cashbox = null, waiting = null, pixKeyNotice = false) }
             return
         }
         val monthKey = currentDate(group.timeZone.id).monthKey()
@@ -681,7 +685,11 @@ class GroupDetailsViewModel(
         val waiting = groupWaiting(charges, games, requests, monthKey, reviewingGameId)
         // Formatar suspende (`getString`): a guarda é re-checada depois, não antes.
         if (generation != loadGeneration) return
+        // Sem leitura de cobranças (`charges` vazio) não há pendência a cobrar: o aviso fica de fora.
+        pixKeyNotice = charges.any { it.status == ChargeStatus.Pending } &&
+            group.profile?.pixKey.isNullOrBlank()
         update { it.copy(cashbox = cashbox, waiting = waiting) }
+        recomputeChecklist(generation)
     }
 
     /** Pedido só existe em grupo com aprovação. Falha vira lista vazia: nunca derruba a tela. */

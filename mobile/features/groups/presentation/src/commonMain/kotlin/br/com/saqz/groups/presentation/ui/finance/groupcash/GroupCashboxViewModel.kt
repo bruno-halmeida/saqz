@@ -69,6 +69,7 @@ class GroupCashboxViewModel(
                 it.copy(chargeSheetOpen = false, chargeSheetChargeId = null)
             }
             GroupCashboxIntent.DismissReceiptSheet -> update { it.copy(receiptSheetChargeId = null) }
+            GroupCashboxIntent.OpenPixSetup -> emit(GroupCashboxEffect.OpenGroupSettings(groupId))
             GroupCashboxIntent.CopyPix -> state.value.pix?.let {
                 emit(GroupCashboxEffect.CopyPix(it.key))
             }

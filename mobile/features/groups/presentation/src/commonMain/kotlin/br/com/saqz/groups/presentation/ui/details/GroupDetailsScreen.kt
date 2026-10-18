@@ -18,6 +18,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import br.com.saqz.groups.presentation.details.GroupDetailsState
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
+import br.com.saqz.groups.presentation.ui.finance.PixKeyNotice
 
 /**
  * A tela só empilha, e cada bloco mora no próprio arquivo, com um único dono:
@@ -57,6 +58,12 @@ internal fun GroupDetailsScreen(
                 ) {
                     GroupTopContent(photoFailed = photoFailed)
                     GroupHeroBlock(state = state, onIntent = onIntent, onboardingGroup = onboardingGroup)
+                    if (state.isAdmin && state.pixKeyNotice) {
+                        PixKeyNotice(
+                            onOpenSetup = { onIntent(GroupDetailsIntent.OpenPixSetup) },
+                            modifier = Modifier.testTag(GroupDetailsTags.PixKeyNotice),
+                        )
+                    }
                     // Depois dos três passos, no primeiro grupo da conta, entra a checklist.
                     if (onboardingGroup && state.isAdmin && groupOnboardingSteps(state) == null) {
                         state.checklist?.let { GroupChecklistBlock(checklist = it, onIntent = onIntent) }

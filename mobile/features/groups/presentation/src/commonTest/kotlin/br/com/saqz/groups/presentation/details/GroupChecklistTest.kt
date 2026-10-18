@@ -89,4 +89,37 @@ class GroupChecklistTest {
         assertNull(groupChecklist(sampleGroup(), false, null, memory, nowEpochMillis = now, whatsAppBinding = true))
         assertEquals(GroupChecklistItem.WhatsApp, groupChecklist(sampleGroup(), false, null, memory, nowEpochMillis = now + 1, whatsAppBinding = true)?.current)
     }
+
+    @Test
+    fun `pix key notice takes the pix item off the list and the rest stays in order`() {
+        val withNotice = groupChecklist(
+            sampleGroup(), rosterHasMensalista = false, whatsApp = null, memory = GroupOnboardingMemory(),
+            nowEpochMillis = now, whatsAppBinding = true, pixKeyNotice = true,
+        )
+
+        assertEquals(
+            listOf(
+                GroupChecklistItem.WhatsApp,
+                GroupChecklistItem.Mensalistas,
+                GroupChecklistItem.Rules,
+                GroupChecklistItem.Recurrence,
+            ),
+            withNotice?.rows?.map { it.item },
+        )
+    }
+
+    @Test
+    fun `with every other item done the notice alone does not keep the checklist alive`() {
+        val group = sampleGroup().let {
+            it.copy(financeDefaults = GroupFinanceDefaults(null, 8500, 10))
+        }
+
+        assertNull(
+            groupChecklist(
+                group, rosterHasMensalista = true, whatsApp = GroupWhatsAppStatus.ACTIVE,
+                memory = GroupOnboardingMemory(rulesOpened = true), nowEpochMillis = now,
+                whatsAppBinding = true, pixKeyNotice = true,
+            ),
+        )
+    }
 }

@@ -758,6 +758,7 @@ internal fun SaqzNavHost(
                         onOpenNewEntry = { groupId ->
                             backStack.add(FinanceRoute.NewEntry(groupId))
                         },
+                        onOpenGroupSettings = { groupId -> backStack.add(GroupsRoute.Edit(groupId)) },
                         onOpenStatement = { groupId ->
                             backStack.add(FinanceRoute.Statement(groupId))
                         },

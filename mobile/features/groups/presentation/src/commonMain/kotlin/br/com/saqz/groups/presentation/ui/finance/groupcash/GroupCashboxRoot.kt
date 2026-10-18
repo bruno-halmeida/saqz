@@ -22,6 +22,7 @@ fun GroupCashboxRoot(
     onOpenStatement: (String) -> Unit,
     onOpenMonthlyGeneration: (String) -> Unit,
     onOpenNewEntry: (String) -> Unit = {},
+    onOpenGroupSettings: (String) -> Unit = {},
     onMutationSuccess: () -> Unit = {},
     refreshVersion: Int = 0,
     onOpenReceivables: (() -> Unit)? = null,
@@ -48,6 +49,7 @@ fun GroupCashboxRoot(
         when (effect) {
             is GroupCashboxEffect.OpenStatement -> onOpenStatement(effect.groupId)
             is GroupCashboxEffect.OpenNewEntry -> onOpenNewEntry(effect.groupId)
+            is GroupCashboxEffect.OpenGroupSettings -> onOpenGroupSettings(effect.groupId)
             is GroupCashboxEffect.OpenMonthlyGeneration -> onOpenMonthlyGeneration(effect.groupId)
             is GroupCashboxEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
             GroupCashboxEffect.MutationSucceeded -> onMutationSuccess()

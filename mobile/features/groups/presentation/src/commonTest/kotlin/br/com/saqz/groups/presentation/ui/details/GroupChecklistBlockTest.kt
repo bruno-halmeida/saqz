@@ -60,4 +60,36 @@ class GroupChecklistBlockTest {
         setDetailsScreen(state, onboardingGroup = false)
         onAllNodesWithText("Deixe o grupo redondo").assertCountEquals(0)
     }
+
+    @Test
+    fun `pix key notice shows for the admin and opens the setup without repeating the pix item`() = runComposeUiTest {
+        val intents = mutableListOf<GroupDetailsIntent>()
+        val checklist = GroupChecklistPreview.copy(rows = GroupChecklistPreview.rows.filter { it.item != GroupChecklistItem.Pix })
+        val state = GroupHeroPreviewData.adminInviteGuide.copy(memberCount = 2, checklist = checklist, pixKeyNotice = true)
+
+        setDetailsScreen(state, onboardingGroup = true, onIntent = intents::add)
+
+        onNodeWithTag(GroupDetailsTags.PixKeyNotice).assertExists()
+        onNodeWithTag(GroupDetailsTags.checklistItem(GroupChecklistItem.Pix)).assertDoesNotExist()
+        onAllNodesWithText("Cadastre a chave Pix para seus atletas pagarem.").assertCountEquals(1)
+        onNodeWithTag(br.com.saqz.groups.presentation.ui.finance.PixKeyNoticeTags.Action).performClick()
+        assertEquals(listOf<GroupDetailsIntent>(GroupDetailsIntent.OpenPixSetup), intents)
+    }
+
+    @Test
+    fun `athlete never sees the pix key notice`() = runComposeUiTest {
+        setDetailsScreen(GroupDetailsPreviewData.member.copy(pixKeyNotice = true))
+
+        onNodeWithTag(GroupDetailsTags.PixKeyNotice).assertDoesNotExist()
+    }
+
+    @Test
+    fun `without the notice the checklist keeps asking for the pix key`() = runComposeUiTest {
+        val state = GroupHeroPreviewData.adminInviteGuide.copy(memberCount = 2, checklist = GroupChecklistPreview)
+
+        setDetailsScreen(state, onboardingGroup = true)
+
+        onNodeWithTag(GroupDetailsTags.PixKeyNotice).assertDoesNotExist()
+        onNodeWithTag(GroupDetailsTags.checklistItem(GroupChecklistItem.Pix)).assertExists()
+    }
 }

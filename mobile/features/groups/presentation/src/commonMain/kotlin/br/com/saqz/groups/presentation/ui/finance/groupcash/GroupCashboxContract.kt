@@ -41,7 +41,11 @@ data class GroupCashboxState(
     val settled: List<SettledUi> = emptyList(),
     val undoSheetChargeId: String? = null,
     val undoFailed: Boolean = false,
-)
+) {
+    /** Há cobrança pendente e o grupo não tem chave Pix: ninguém sabe como pagar (DEB-058). */
+    val pixKeyNotice: Boolean
+        get() = !isLoading && !loadFailed && debtors.isNotEmpty() && pix == null
+}
 
 @Immutable
 data class DebtorUi(
@@ -122,11 +126,13 @@ sealed interface GroupCashboxIntent {
     data object DismissChargeSheet : GroupCashboxIntent
     data object DismissReceiptSheet : GroupCashboxIntent
     data object CopyPix : GroupCashboxIntent
+    data object OpenPixSetup : GroupCashboxIntent
 }
 
 sealed interface GroupCashboxEffect {
     data class OpenStatement(val groupId: String) : GroupCashboxEffect
     data class OpenNewEntry(val groupId: String) : GroupCashboxEffect
+    data class OpenGroupSettings(val groupId: String) : GroupCashboxEffect
     data class OpenMonthlyGeneration(val groupId: String) : GroupCashboxEffect
     data class CopyPix(val key: String) : GroupCashboxEffect
     data object MutationSucceeded : GroupCashboxEffect

@@ -672,6 +672,40 @@ class GroupCashboxViewModelTest {
         assertEquals(1, organizer.updateCalls)
     }
 
+    private fun groupWithPix(pixKey: String?) = FakeGroupGateway(
+        readResult = SaqzResult.Success(
+            sampleVersionedGroup(sampleGroup(profile = sampleGroup().profile?.copy(pixKey = pixKey))),
+        ),
+    )
+
+    @Test
+    fun `pix key notice needs a pending charge and no key`() = runTest {
+        assertFalse(viewModel().state.value.pixKeyNotice)
+        assertTrue(viewModel(group = groupWithPix(null)).state.value.pixKeyNotice)
+        assertTrue(viewModel(group = groupWithPix("  ")).state.value.pixKeyNotice)
+        assertFalse(
+            viewModel(
+                group = groupWithPix(null),
+                organizer = FakeOrganizerFinanceGateway(chargesResult = SaqzResult.Success(chargeList(emptyList()))),
+            ).state.value.pixKeyNotice,
+        )
+    }
+
+    @Test
+    fun `pix key notice is not shown while loading or after a load failure`() {
+        assertFalse(GroupCashboxState(isLoading = true).pixKeyNotice)
+        assertFalse(GroupCashboxState(isLoading = false, loadFailed = true).pixKeyNotice)
+    }
+
+    @Test
+    fun `pix key notice shortcut opens the group settings`() = runTest {
+        val viewModel = viewModel(group = groupWithPix(null))
+
+        viewModel.onIntent(GroupCashboxIntent.OpenPixSetup)
+
+        assertEquals(GroupCashboxEffect.OpenGroupSettings("group-1"), viewModel.effects.first())
+    }
+
     private fun viewModel(
         group: FakeGroupGateway = FakeGroupGateway(
             readResult = SaqzResult.Success(
