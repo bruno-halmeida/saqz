@@ -904,6 +904,300 @@ class ProcessAsaasWebhookTest {
         assertEquals("pay_upgrade_od_after_cancel", sub.pendingUpgradeChargeId)
     }
 
+    // --- Idempotencia: o gate e o insert por asaasEventId (corrida entre duas entregas) ---
+
+    /** Duas entregas simultaneas: `exists` ainda diz que nao, mas o insert ja foi perdido para a outra. */
+    private fun racingEvents() = object : SubscriptionEventStore by events {
+        override fun exists(asaasEventId: String) = false
+
+        override fun tryInsert(
+            id: UUID,
+            asaasEventId: String,
+            type: String,
+            payload: String,
+            now: Instant,
+            ownerUserId: UUID?,
+        ) = false
+    }
+
+    private fun useCaseWith(
+        eventStore: SubscriptionEventStore = events,
+        coupons: CouponRepository? = null,
+        expectedToken: String = token,
+    ) = ProcessAsaasWebhook(
+        expectedToken = expectedToken,
+        events = eventStore,
+        subscriptions = subscriptions,
+        asaasGateway = gateway,
+        transaction = object : SubscriptionsTransactionRunner {
+            override fun <T> inTransaction(block: () -> T): T = block()
+        },
+        clock = clock,
+        coupons = coupons,
+        newEventId = { UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb") },
+    )
+
+    @Test
+    fun `domain event that lost the insert race to a concurrent delivery is not applied again`() {
+        val result = useCaseWith(eventStore = racingEvents()).execute(
+            token,
+            command(eventId = "evt_race_domain", type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        val sub = subscriptions.get("sub_123")
+        assertEquals(SubscriptionStatus.PAST_DUE, sub.status)
+        assertNull(sub.firstConfirmedAt)
+        assertTrue(gateway.updates.isEmpty())
+        assertTrue(events.rows.isEmpty())
+    }
+
+    @Test
+    fun `unknown event that lost the insert race is accepted without being marked processed`() {
+        val result = useCaseWith(eventStore = racingEvents()).execute(
+            token,
+            command(eventId = "evt_race_unknown", type = "PAYMENT_CREATED"),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        assertTrue(events.rows.isEmpty())
+    }
+
+    @Test
+    fun `unresolved domain event that lost the insert race is accepted without being marked processed`() {
+        val result = useCaseWith(eventStore = racingEvents()).execute(
+            token,
+            command(
+                eventId = "evt_race_orphan",
+                type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
+                subscriptionId = "sub_missing",
+            ),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Accepted, result)
+        assertTrue(events.rows.isEmpty())
+    }
+
+    @Test
+    fun `token with the right length but different content is rejected`() {
+        val sameLengthWrong = "x".repeat(token.length)
+        val result = useCaseWith().execute(
+            sameLengthWrong,
+            command(eventId = "evt_same_len", type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED),
+        )
+
+        assertEquals(ProcessAsaasWebhookResult.Unauthorized, result)
+        assertTrue(events.rows.isEmpty())
+        assertEquals(SubscriptionStatus.PAST_DUE, subscriptions.get("sub_123").status)
+    }
+
+    @Test
+    fun `blank event id or type is accepted without touching the store`() {
+        assertEquals(
+            ProcessAsaasWebhookResult.Accepted,
+            useCase.execute(token, command(eventId = " ", type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED)),
+        )
+        assertEquals(
+            ProcessAsaasWebhookResult.Accepted,
+            useCase.execute(token, command(eventId = "evt_blank_type", type = "")),
+        )
+        assertTrue(events.rows.isEmpty())
+        assertEquals(SubscriptionStatus.PAST_DUE, subscriptions.get("sub_123").status)
+    }
+
+    // --- Resolucao da assinatura ---
+
+    @Test
+    fun `RECEIVED sibling of an applied upgrade charge is audited against the owner`() {
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
+                plan = Plan.TITULAR,
+                pendingUpgradePlan = Plan.ORGANIZADOR,
+                pendingUpgradeChargeId = "pay_upgrade_pair",
+            ),
+        )
+
+        useCase.execute(token, upgradeCommand("evt_conf", ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED))
+        useCase.execute(token, upgradeCommand("evt_recv", ProcessAsaasWebhook.EVENT_PAYMENT_RECEIVED))
+
+        // Resolvido por lastConfirmedPaymentId: o evento irmao pertence ao dono, nao e orfao.
+        assertEquals(ownerId, events.rows.getValue("evt_recv").ownerUserId)
+        assertEquals(periodEnd, subscriptions.get("sub_123").currentPeriodEnd)
+    }
+
+    @Test
+    fun `blank asaas subscription id falls back to the payment id`() {
+        subscriptions.save(
+            baseSubscription().copy(
+                status = SubscriptionStatus.ACTIVE,
+                pastDueSince = null,
+                firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
+                plan = Plan.TITULAR,
+                pendingUpgradePlan = Plan.ORGANIZADOR,
+                pendingUpgradeChargeId = "pay_blank_sub",
+            ),
+        )
+
+        useCase.execute(
+            token,
+            command(
+                eventId = "evt_blank_sub",
+                type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
+                subscriptionId = "",
+                paymentId = "pay_blank_sub",
+            ),
+        )
+
+        assertEquals(Plan.ORGANIZADOR, subscriptions.get("sub_123").plan)
+        assertEquals(ownerId, events.rows.getValue("evt_blank_sub").ownerUserId)
+    }
+
+    @Test
+    fun `blank payment id does not resolve any subscription`() {
+        useCase.execute(
+            token,
+            command(
+                eventId = "evt_blank_pay",
+                type = ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED,
+                subscriptionId = "",
+                paymentId = "",
+            ),
+        )
+
+        assertNull(events.rows.getValue("evt_blank_pay").ownerUserId)
+        assertEquals(SubscriptionStatus.PAST_DUE, subscriptions.get("sub_123").status)
+    }
+
+    // --- Upgrade pago: preco recorrente empurrado ao Asaas com/sem cupom ---
+
+    private fun upgradeSubscription(
+        couponId: UUID? = null,
+        couponCyclesRemaining: Int? = null,
+        cycle: SubscriptionCycle = SubscriptionCycle.MONTHLY,
+    ) = baseSubscription().copy(
+        status = SubscriptionStatus.ACTIVE,
+        pastDueSince = null,
+        firstConfirmedAt = Instant.parse("2026-01-01T00:00:00Z"),
+        cycle = cycle,
+        plan = Plan.TITULAR,
+        pendingUpgradePlan = Plan.ORGANIZADOR,
+        pendingUpgradeChargeId = "pay_upgrade_pair",
+        couponId = couponId,
+        couponCyclesRemaining = couponCyclesRemaining,
+    )
+
+    private class CouponsById(vararg coupons: br.com.saqz.subscriptions.domain.Coupon) : CouponRepository {
+        private val byId = coupons.associateBy { it.id }
+        override fun findByCode(code: String) = byId.values.firstOrNull { it.code == code }
+        override fun findById(couponId: UUID) = byId[couponId]
+        override fun hasRedemption(couponId: UUID, userId: UUID) = false
+        override fun saveRedemption(redemption: br.com.saqz.subscriptions.domain.CouponRedemption) = Unit
+    }
+
+    private val couponId = UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc")
+    private val tenPercent = br.com.saqz.subscriptions.domain.Coupon(couponId, "DEZ", discountPercent = 10)
+
+    private fun payUpgrade(coupons: CouponRepository?) =
+        useCaseWith(coupons = coupons).execute(
+            token,
+            upgradeCommand("evt_upg_price", ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED),
+        )
+
+    @Test
+    fun `upgrade without coupon pushes the full price of the new plan`() {
+        subscriptions.save(upgradeSubscription())
+
+        payUpgrade(CouponsById(tenPercent))
+
+        assertEquals(listOf("sub_123" to 5_990L), gateway.updates)
+    }
+
+    @Test
+    fun `upgrade with a coupon that still has cycles pushes the discounted price`() {
+        subscriptions.save(upgradeSubscription(couponId = couponId, couponCyclesRemaining = 2))
+
+        payUpgrade(CouponsById(tenPercent))
+
+        // 5990 - 10% (599) = 5391
+        assertEquals(listOf("sub_123" to 5_391L), gateway.updates)
+    }
+
+    @Test
+    fun `upgrade with a permanent coupon pushes the discounted price`() {
+        subscriptions.save(upgradeSubscription(couponId = couponId, couponCyclesRemaining = null))
+
+        payUpgrade(CouponsById(tenPercent))
+
+        assertEquals(listOf("sub_123" to 5_391L), gateway.updates)
+    }
+
+    @Test
+    fun `upgrade with an exhausted coupon pushes the full price`() {
+        subscriptions.save(upgradeSubscription(couponId = couponId, couponCyclesRemaining = 0))
+
+        payUpgrade(CouponsById(tenPercent))
+
+        assertEquals(listOf("sub_123" to 5_990L), gateway.updates)
+    }
+
+    @Test
+    fun `upgrade with a coupon that no longer exists pushes the full price`() {
+        subscriptions.save(upgradeSubscription(couponId = couponId, couponCyclesRemaining = 2))
+
+        payUpgrade(CouponsById())
+
+        assertEquals(listOf("sub_123" to 5_990L), gateway.updates)
+    }
+
+    @Test
+    fun `upgrade with a coupon but without a coupon repository pushes the full price`() {
+        subscriptions.save(upgradeSubscription(couponId = couponId, couponCyclesRemaining = 2))
+
+        payUpgrade(null)
+
+        assertEquals(listOf("sub_123" to 5_990L), gateway.updates)
+    }
+
+    @Test
+    fun `annual upgrade with a coupon discounts the annual price of the new plan`() {
+        subscriptions.save(
+            upgradeSubscription(couponId = couponId, couponCyclesRemaining = 1, cycle = SubscriptionCycle.ANNUAL),
+        )
+
+        payUpgrade(CouponsById(tenPercent))
+
+        // 5990 * 9 = 53910; 10% = 5391 (inteiro); 53910 - 5391 = 48519
+        assertEquals(listOf("sub_123" to 48_519L), gateway.updates)
+    }
+
+    @Test
+    fun `paid upgrade records the charge as the last confirmed payment and clears the pending upgrade`() {
+        subscriptions.save(upgradeSubscription())
+
+        payUpgrade(null)
+
+        val sub = subscriptions.get("sub_123")
+        assertEquals("pay_upgrade_pair", sub.lastConfirmedPaymentId)
+        assertEquals(Plan.ORGANIZADOR, sub.plan)
+        assertNull(sub.pendingUpgradePlan)
+        assertNull(sub.pendingUpgradeChargeId)
+        assertNull(sub.pendingPlan)
+        assertNull(sub.pendingPlanEffectiveAt)
+    }
+
+    @Test
+    fun `upgrade charge without a target plan changes nothing and does not call Asaas`() {
+        subscriptions.save(upgradeSubscription().copy(pendingUpgradePlan = null))
+
+        payUpgrade(null)
+
+        assertTrue(gateway.updates.isEmpty())
+        assertEquals(Plan.TITULAR, subscriptions.get("sub_123").plan)
+    }
+
     private fun baseSubscription() = Subscription(
         ownerUserId = ownerId,
         plan = Plan.TITULAR,
