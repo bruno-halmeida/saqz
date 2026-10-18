@@ -212,4 +212,114 @@ export default [
       })
     },
   },
+{
+    id: 'ACE-003', feature: 'acesso', critico: false,
+    titulo: 'Esqueci minha senha',
+    async rodar(c) {
+      const { ATL1 } = await c.atores('ATL1')
+      const email = ATL1.email
+      const codigoPorEmail = async (desde) => {
+        const msg = await c.esperar('e-mail com o código de redefinição', async () => {
+          const r = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`).then((x) => x.json())
+          return r.messages.find((m) => Date.parse(m.Created) >= desde) ?? null
+        }, { teto: 20_000 })
+        const corpo = await fetch(`${MAILPIT}/api/v1/message/${msg.ID}`).then((x) => x.json())
+        const m = /\b(\d{4})\b/.exec(`${corpo.Text ?? ''} ${corpo.HTML ?? ''}`.replace(/#[0-9a-f]{3,8}/gi, ''))
+        c.afirmar(m, `o e-mail deveria trazer o código de 4 dígitos: ${corpo.Text}`)
+        return m[1]
+      }
+      await c.passo('zera as travas de rede (compartilhadas) e pede o código para uma conta que existe e para uma que não existe: a resposta é a mesma (202)', async () => {
+        await c.sql('delete from password_reset_rate_limits')
+        const comConta = await chamar('POST', '/api/password-reset/request', { corpo: { email } })
+        const semConta = await chamar('POST', '/api/password-reset/request', { corpo: { email: `ninguem+${c.tag}@saqz.local` } })
+        c.igual([comConta.status, semConta.status], [202, 202], 'respostas do pedido')
+        const enviados = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:ninguem+${c.tag}@saqz.local`)}`).then((x) => x.json())
+        c.igual(enviados.messages_count, 0, 'e-mails para quem não tem conta')
+      })
+      await c.passo('pedir de novo antes de 60 s: recusado com o tempo restante (429 + Retry-After)', async () => {
+        const r = await chamar('POST', '/api/password-reset/request', { corpo: { email } })
+        c.status(r, 429, 'PASSWORD_RESET_RATE_LIMIT')
+        c.afirmar(Number(r.headers.get('retry-after')) > 0, 'Retry-After', r)
+      })
+      let token
+      await c.passo('código errado: "restam tentativas"; código certo: libera a senha nova por 5 minutos', async () => {
+        const certo = await codigoPorEmail(Date.now() - 60_000)
+        const errado = certo === '0000' ? '1111' : '0000'
+        const ruim = await chamar('POST', '/api/password-reset/verify', { corpo: { email, code: errado } })
+        c.status(ruim, 400, 'PASSWORD_RESET_CODE_INVALID')
+        c.igual(ruim.corpo.remainingAttempts, 4, 'tentativas restantes')
+        const bom = c.status(await chamar('POST', '/api/password-reset/verify', { corpo: { email, code: certo } }), 200)
+        c.igual(bom.corpo.expiraEmSegundos, 300, 'o token vale 5 minutos')
+        token = bom.corpo.token
+      })
+      await c.passo('senha com 7 ou 129 caracteres é recusada; com 8 troca a senha e o login passa a valer só com a nova', async () => {
+        for (const ruim of ['1234567', 'x'.repeat(129)]) c.status(await chamar('POST', '/api/password-reset/confirm', { corpo: { token, novaSenha: ruim } }), 400)
+        c.status(await chamar('POST', '/api/password-reset/confirm', { corpo: { token, novaSenha: 'NovaSenha2026' } }), 204)
+        c.afirmar(await contaExiste({ email, senha: 'NovaSenha2026' }), 'a senha nova deve entrar')
+        c.afirmar(!(await contaExiste({ email })), 'a senha antiga não pode mais entrar')
+        c.status(await chamar('POST', '/api/password-reset/confirm', { corpo: { token, novaSenha: 'OutraSenha2026' } }), 410)
+      })
+      await c.passo('código errado 5 vezes: o código é descartado e é preciso pedir outro', async () => {
+        await c.sql('delete from password_reset_rate_limits')
+        c.status(await chamar('POST', '/api/password-reset/request', { corpo: { email } }), 202)
+        let ultimo
+        for (let i = 0; i < 6; i++) ultimo = await chamar('POST', '/api/password-reset/verify', { corpo: { email, code: '0000' } })
+        c.afirmar([410, 429].includes(ultimo.status) || ultimo.codigo === 'PASSWORD_RESET_ATTEMPT_LIMIT', `depois de 5 erros o código deve ser descartado (veio HTTP ${ultimo.status} ${ultimo.codigo})`, ultimo)
+      })
+    },
+  },
+  {
+    id: 'ACE-005', feature: 'acesso', critico: false,
+    titulo: 'Conta suspensa pela equipe',
+    async rodar(c) {
+      const { ORG, ATL1 } = await c.atores('ORG', 'ATL1')
+      const g = await c.passo('ORG cria o grupo; ATL1 entra', () => c.grupo(ORG, [ATL1]))
+      const suspender = (a) => c.sql(`update access_users set suspended_at = now() where id='${a.id}'`)
+      const reativar = (a) => c.sql(`update access_users set suspended_at = null where id='${a.id}'`)
+      await c.passo('a equipe suspende o dono: a sessão aberta, o pedido de perfil e os pedidos aos grupos são recusados (ACCOUNT_SUSPENDED)', async () => {
+        await suspender(ORG)
+        c.status(await ORG.sessao(), 403, 'ACCOUNT_SUSPENDED')
+        c.status(await ORG.chamar('PATCH', '/api/session/profile', { city: 'Campinas' }), 403, 'ACCOUNT_SUSPENDED')
+        const r = await ORG.grupo(g.id)
+        c.afirmar(r.status === 403, `pedido de grupo de conta suspensa deve ser recusado (veio ${r.status})`, r)
+      })
+      await c.passo('o grupo de quem foi suspenso não muda: ATL1 segue lendo e usando o grupo', async () => {
+        c.status(await ATL1.grupo(g.id), 200)
+        const j = await c.jogo(ATL1.constructor === Object ? ORG : ORG, g.id, { vagas: 4 }).catch(() => null)
+        c.status(await ATL1.jogos(g.id), 200)
+        c.igual(await c.valor(`select count(*) from access_groups where id='${g.id}' and deleted_at is null`), '1', 'o grupo segue existindo')
+      })
+      await c.passo('os dados ficam guardados: o dono continua dono no banco e a pessoa não perde os vínculos', async () => {
+        c.igual(await c.valor(`select count(*) from group_memberships where group_id='${g.id}' and user_id='${ORG.id}'`), '1', 'vínculo do dono')
+      })
+      await c.passo('a equipe reativa: a pessoa volta na hora, com grupos e histórico intactos', async () => {
+        await reativar(ORG)
+        const s = c.status(await ORG.sessao(), 200).corpo
+        c.igual(s.memberships.map((m) => m.groupId), [g.id], 'grupos depois de reativar')
+        c.status(await ORG.grupo(g.id), 200)
+      })
+      await c.passo('conta nova sem sessão antiga também é recusada enquanto suspensa (login recusado)', async () => {
+        await suspender(ATL1)
+        const novo = await entrar({ email: ATL1.email })
+        c.status(await chamar('PUT', '/api/session', { token: novo.token }), 403, 'ACCOUNT_SUSPENDED')
+        await reativar(ATL1)
+      })
+    },
+  },
+  {
+    id: 'ACE-006', feature: 'acesso', critico: false,
+    titulo: 'Excluir a conta (resumo; o detalhe está em SAI-009)',
+    async rodar(c) {
+      const { ATL1 } = await c.atores('ATL1')
+      await c.passo('ATL1 pede a exclusão: a conta fica sem acesso na hora', async () => {
+        await ATL1.renovarToken()
+        c.status(await ATL1.excluirConta(), 204)
+        c.status(await ATL1.sessao(), 401)
+      })
+      await c.passo('tentar entrar depois: o servidor apaga a identidade e o mesmo e-mail só entra como conta nova', async () => {
+        await c.esperar('identidade apagada', async () => !(await contaExiste({ email: ATL1.email })), { teto: 60_000, passo: 2_000 })
+        c.igual(await c.valor(`select count(*) from access_users where id='${ATL1.id}' and deleted_at is not null`), '1', 'conta marcada como excluída')
+      })
+    },
+  },
 ]
