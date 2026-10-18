@@ -222,6 +222,7 @@ final class SaqzPushDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         var opened: [String: String] = [:]
         opened["groupId"] = groupId
         opened["gameId"] = userInfo["gameId"] as? String
+        opened["channel"] = userInfo["channel"] as? String
         NotificationCenter.default.post(name: .saqzPushOpened, object: nil, userInfo: opened)
         completionHandler()
     }

@@ -323,17 +323,6 @@ internal fun SaqzNavHost(
             attendanceLinks.consume(link)
         }
     }
-    LaunchedEffect(notificationOpenPending, state.session) {
-        val opened = notificationOpenPending ?: return@LaunchedEffect
-        if (state.session is SessionAccessState.Ready) {
-            val groupId = opened.groupId
-            val gameId = opened.gameId
-            // Push de jogo abre o jogo (onde se confirma); os outros abrem a central.
-            if (groupId != null && gameId != null) backStack.add(GroupsRoute.GameDetail(groupId, gameId))
-            else if (backStack.none { it is GroupsRoute.Notifications }) backStack.add(GroupsRoute.Notifications())
-            notificationOpen.consume()
-        }
-    }
     LaunchedEffect(inviteCoordinator, state.session) {
         inviteCoordinator.effects.collect { effect ->
             when (effect) {
@@ -423,6 +412,18 @@ internal fun SaqzNavHost(
             onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
         }
         if (!openedWeb) backStack.add(SubscribeForAccess)
+    }
+    LaunchedEffect(notificationOpenPending, state.session) {
+        val opened = notificationOpenPending ?: return@LaunchedEffect
+        if (state.session is SessionAccessState.Ready) {
+            val groupId = opened.groupId
+            val gameId = opened.gameId
+            // Push de jogo abre o jogo (onde se confirma); o do teste e do atraso abre os planos; os outros, a central.
+            if (groupId != null && gameId != null) backStack.add(GroupsRoute.GameDetail(groupId, gameId))
+            else if (opened.channel == "TRIAL_ENDING") openSubscriptionPlans()
+            else if (backStack.none { it is GroupsRoute.Notifications }) backStack.add(GroupsRoute.Notifications())
+            notificationOpen.consume()
+        }
     }
     CompositionLocalProvider(
         LocalOpenSubscriptionPlans provides openSubscriptionPlans,

@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import br.com.saqz.core.common.formatting.formatBrl
+import br.com.saqz.core.common.formatting.formatInstantClockSaoPaulo
 import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
@@ -15,7 +16,9 @@ import br.com.saqz.subscriptions.domain.trial.TrialUsage
 import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.trial_countdown_description
 import br.com.saqz.subscriptions.resources.trial_countdown_last_day
+import br.com.saqz.subscriptions.resources.trial_countdown_last_day_at
 import br.com.saqz.subscriptions.resources.trial_countdown_not_now
+import br.com.saqz.subscriptions.resources.trial_countdown_subscribe_now
 import br.com.saqz.subscriptions.resources.trial_countdown_title
 import br.com.saqz.subscriptions.resources.trial_countdown_view_plans
 import br.com.saqz.subscriptions.resources.trial_usage_athletes
@@ -34,7 +37,8 @@ object TrialCountdownTags {
 
 /**
  * "Faltam N dias do seu teste" com o que o organizador já fez. "Ver planos" fecha a folha e abre a mesma tela de
- * planos do diálogo de assinatura ([onViewPlans] vem do host de navegação); "Agora não" só fecha.
+ * planos do diálogo de assinatura ([onViewPlans] vem do host de navegação); "Agora não" só fecha. No último dia o
+ * título traz a hora do fim (de [endsAt], no fuso de São Paulo) e o botão vira "Assinar agora".
  */
 @Composable
 fun TrialCountdownSheet(
@@ -43,13 +47,17 @@ fun TrialCountdownSheet(
     onDismiss: () -> Unit,
     onViewPlans: () -> Unit,
     modifier: Modifier = Modifier,
+    endsAt: String? = null,
 ) {
+    val lastDay = daysLeft <= 0
+    val clock = formatInstantClockSaoPaulo(endsAt)
     SaqzBottomSheet(
         open = true,
         onClose = onDismiss,
         modifier = modifier.testTag(TrialCountdownTags.Sheet),
-        title = if (daysLeft <= 0) {
-            stringResource(Res.string.trial_countdown_last_day)
+        title = if (lastDay) {
+            if (clock != null) stringResource(Res.string.trial_countdown_last_day_at, clock)
+            else stringResource(Res.string.trial_countdown_last_day)
         } else {
             pluralStringResource(Res.plurals.trial_countdown_title, daysLeft, daysLeft)
         },
@@ -62,7 +70,7 @@ fun TrialCountdownSheet(
                 SaqzButtonVariant.Secondary,
             )
             SaqzButton(
-                stringResource(Res.string.trial_countdown_view_plans),
+                stringResource(if (lastDay) Res.string.trial_countdown_subscribe_now else Res.string.trial_countdown_view_plans),
                 {
                     onDismiss()
                     onViewPlans()

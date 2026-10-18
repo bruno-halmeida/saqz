@@ -33,6 +33,7 @@ internal fun TrialCountdownHost(
         TrialCountdownSheet(
             daysLeft = state.daysLeft,
             usage = state.usage,
+            endsAt = state.endsAt,
             onDismiss = { viewModel.onIntent(TrialCountdownIntent.Dismiss) },
             onViewPlans = onViewPlans,
         )

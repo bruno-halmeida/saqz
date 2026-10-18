@@ -9,6 +9,7 @@ import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.subscription_required_body
+import br.com.saqz.groups.resources.subscription_required_body_trial_ended
 import br.com.saqz.groups.resources.subscription_required_not_now
 import br.com.saqz.groups.resources.subscription_required_title_inactive
 import br.com.saqz.groups.resources.subscription_required_title_trial_ended
@@ -50,7 +51,9 @@ fun SubscriptionRequiredDialog(
                 Res.string.subscription_required_title_inactive
             },
         ),
-        description = stringResource(Res.string.subscription_required_body),
+        description = stringResource(
+            if (trialEnded) Res.string.subscription_required_body_trial_ended else Res.string.subscription_required_body,
+        ),
         splitFooter = {
             SaqzButton(
                 stringResource(Res.string.subscription_required_not_now),

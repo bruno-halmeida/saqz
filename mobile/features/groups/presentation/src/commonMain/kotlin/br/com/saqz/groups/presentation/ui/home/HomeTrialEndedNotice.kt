@@ -12,7 +12,7 @@ import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.ui.LocalOpenSubscriptionPlans
 import br.com.saqz.groups.resources.Res
-import br.com.saqz.groups.resources.subscription_required_body
+import br.com.saqz.groups.resources.subscription_required_body_trial_ended
 import br.com.saqz.groups.resources.subscription_required_title_trial_ended
 import br.com.saqz.groups.resources.subscription_required_view_plans
 import org.jetbrains.compose.resources.stringResource
@@ -35,7 +35,7 @@ internal fun HomeTrialEndedNotice(modifier: Modifier = Modifier) {
                 color = SaqzTheme.colors.textPrimary,
             )
             Text(
-                text = stringResource(Res.string.subscription_required_body),
+                text = stringResource(Res.string.subscription_required_body_trial_ended),
                 style = SaqzTheme.typography.support,
                 color = SaqzTheme.colors.textSecondary,
             )

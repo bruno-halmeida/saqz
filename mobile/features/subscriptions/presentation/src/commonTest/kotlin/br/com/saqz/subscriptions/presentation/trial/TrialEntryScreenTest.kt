@@ -18,7 +18,7 @@ class TrialEntryScreenTest {
     )
 
     @Test
-    fun `expired trial says it ended with the date and offers the plans`() = runComposeUiTest {
+    fun `expired trial says it ended and that the groups are kept and offers the plans`() = runComposeUiTest {
         var plans = 0
         setContent {
             SaqzTheme {
@@ -26,8 +26,8 @@ class TrialEntryScreenTest {
                     {}, {}, { plans++ }, purchasesAvailable = true)
             }
         }
-        onNodeWithText("Seu teste do Organizador terminou").assertExists()
-        onNodeWithText("Seu teste terminou em 27/10/2026. Assine para criar e organizar seus grupos.").assertExists()
+        onNodeWithText("Seu teste terminou").assertExists()
+        onNodeWithText("Seus grupos e o histórico estão guardados. Assine para a galera voltar a confirmar presença.").assertExists()
         onNodeWithText("Seu próximo grupo começa aqui").assertDoesNotExist()
         onNodeWithText("Ver planos").performClick()
         assertEquals(1, plans)

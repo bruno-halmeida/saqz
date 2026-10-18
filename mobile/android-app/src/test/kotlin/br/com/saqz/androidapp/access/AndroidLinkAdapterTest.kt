@@ -231,11 +231,13 @@ class AndroidLinkAdapterTest {
             override fun onEvent(event: br.com.saqz.groups.port.GroupLinkEvent) { events += event }
         })
         fixture.adapter.onNotificationOpen(null, null)
+        fixture.adapter.onNotificationOpen("group-1", null, "TRIAL_ENDING")
 
         assertEquals(
             listOf(
                 br.com.saqz.groups.port.GroupLinkEvent.NotificationOpen("group-1", "game-1"),
                 br.com.saqz.groups.port.GroupLinkEvent.NotificationOpen(null, null),
+                br.com.saqz.groups.port.GroupLinkEvent.NotificationOpen("group-1", null, "TRIAL_ENDING"),
             ),
             events,
         )

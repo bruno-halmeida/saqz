@@ -17,7 +17,6 @@ import br.com.saqz.designsystem.*
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.subscriptions.domain.trial.TrialAccess
 import br.com.saqz.subscriptions.domain.trial.TrialStatus
-import br.com.saqz.subscriptions.presentation.myplan.isoDateToPtBr
 import br.com.saqz.subscriptions.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -58,7 +57,7 @@ fun TrialEntryScreen(state: TrialEntryState, onIntent: (TrialEntryIntent) -> Uni
         ) {
             if (state.access?.canCreateGroup != true && !state.loading && state.failure == null) {
                 if (state.access?.status == TrialStatus.Expired && state.access.endsAt != null) {
-                    TrialEnded(state.access.endsAt!!, purchasesAvailable)
+                    TrialEnded(purchasesAvailable)
                 } else {
                     TrialUnavailable()
                 }
@@ -106,15 +105,14 @@ private fun TrialUnavailable() {
 
 /** Teste do Organizador vencido e sem assinatura: diz que o teste terminou, em vez do aviso genérico. */
 @Composable
-private fun TrialEnded(endsAt: String, purchasesAvailable: Boolean) {
-    val date = isoDateToPtBr(endsAt)
+private fun TrialEnded(purchasesAvailable: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
         modifier = Modifier.testTag(TrialEntryTags.Ended)) {
         SaqzIcon(SaqzIcons.Users, tint = SaqzTheme.colors.primary, size = SaqzTheme.metrics.iconButtonSize)
         Text(stringResource(Res.string.trial_entry_ended_title), style = SaqzTheme.typography.title,
             color = SaqzTheme.colors.textPrimary)
         val help = if (purchasesAvailable) Res.string.trial_entry_ended_help else Res.string.trial_entry_ended_help_no_plans
-        Text(stringResource(help, date), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
+        Text(stringResource(help), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textSecondary)
     }
 }
 

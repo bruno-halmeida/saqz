@@ -42,11 +42,13 @@ internal fun reminderNotification(
     body: String,
     groupId: String?,
     gameId: String?,
+    channel: String? = null,
 ): NotificationCompat.Builder {
     val intent = Intent(context, MainActivity::class.java)
         .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         .putExtra(EXTRA_NOTIFICATION_GROUP_ID, groupId)
         .putExtra(EXTRA_GAME_ID, gameId)
+        .putExtra(EXTRA_NOTIFICATION_CHANNEL, channel)
     val content = PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     return NotificationCompat.Builder(context, REMINDER_CHANNEL)
         .setSmallIcon(R.drawable.ic_saqz_notification).setContentTitle(title)
@@ -54,6 +56,8 @@ internal fun reminderNotification(
 }
 internal const val REMINDER_CHANNEL = "saqz-reminders"
 internal const val EXTRA_NOTIFICATION_GROUP_ID = "saqz.notification.groupId"
+/** Canal da mensagem (TRIAL_ENDING abre os planos em vez da central). */
+internal const val EXTRA_NOTIFICATION_CHANNEL = "saqz.notification.channel"
 internal fun initializeNotificationFirebase(application: android.app.Application) {
     val manager = application.getSystemService(NotificationManager::class.java)
     if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(

@@ -39,13 +39,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        model.onStart(intent?.dataString, intent?.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID), intent?.getStringExtra(EXTRA_GAME_ID))
+        model.onStart(intent?.dataString, intent?.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID), intent?.getStringExtra(EXTRA_GAME_ID), intent?.getStringExtra(EXTRA_NOTIFICATION_CHANNEL))
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        model.onWarmIntent(intent.dataString, intent.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID), intent.getStringExtra(EXTRA_GAME_ID))
+        model.onWarmIntent(intent.dataString, intent.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID), intent.getStringExtra(EXTRA_GAME_ID), intent.getStringExtra(EXTRA_NOTIFICATION_CHANNEL))
     }
 }
 
@@ -66,18 +66,18 @@ internal class MainActivityModel(
         (value as? ComponentActivity)?.let { composition.photos?.attach(it); composition.documents?.attach(it) }
     }
 
-    fun onStart(url: String?, notificationGroupId: String?, notificationGameId: String?) {
+    fun onStart(url: String?, notificationGroupId: String?, notificationGameId: String?, notificationChannel: String? = null) {
         if (coldStarted) return
         coldStarted = true
         composition.links.onColdStart(url)
         // Convite de quem instalou pela página de links: chega depois, como um link tocado.
         composition.installReferrer?.readOnce(composition.links::onWarmIntent)
-        notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId) }
+        notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId, notificationChannel) }
     }
 
-    fun onWarmIntent(url: String?, notificationGroupId: String?, notificationGameId: String?) {
+    fun onWarmIntent(url: String?, notificationGroupId: String?, notificationGameId: String?, notificationChannel: String? = null) {
         composition.links.onWarmIntent(url)
-        notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId) }
+        notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId, notificationChannel) }
     }
 
 }

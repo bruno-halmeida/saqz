@@ -12,6 +12,15 @@ class TrialDateTimeTest {
     }
 
     @Test
+    fun clockIsAlwaysInSaoPauloWithMinutesOnlyWhenNeeded() {
+        assertEquals("12h", formatInstantClockSaoPaulo("2026-10-15T15:00:00Z"))
+        assertEquals("18h30", formatInstantClockSaoPaulo("2026-10-15T21:30:00Z"))
+        assertEquals("22h05", formatInstantClockSaoPaulo("2026-09-12T01:05:00Z"))
+        assertNull(formatInstantClockSaoPaulo(null))
+        assertNull(formatInstantClockSaoPaulo("invalid"))
+    }
+
+    @Test
     fun missingOrInvalidBoundariesDoNotInventDates() {
         assertNull(formatInstantDateTimePtBr(null, "UTC"))
         assertNull(formatInstantDateTimePtBr("invalid", "UTC"))

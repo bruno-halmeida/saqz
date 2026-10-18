@@ -9,6 +9,8 @@ data class TrialCountdownState(
     val visible: Boolean = false,
     val daysLeft: Int = 0,
     val usage: TrialUsage? = null,
+    /** Instante do fim do teste (ISO), para a hora do último dia. */
+    val endsAt: String? = null,
 )
 
 sealed interface TrialCountdownIntent {

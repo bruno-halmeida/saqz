@@ -36,6 +36,25 @@ class TrialCountdownSheetTest {
     }
 
     @Test
+    fun lastDayShowsTheEndTimeInSaoPauloAndTheSubscribeNowButton() = runComposeUiTest {
+        // 15h UTC = 12h em São Paulo, qualquer que seja o fuso do aparelho.
+        setContent { SaqzTheme { TrialCountdownSheet(0, usage, {}, {}, endsAt = "2026-10-15T15:00:00Z") } }
+
+        onNodeWithText("Seu teste termina hoje, às 12h").assertExists()
+        onNodeWithText("Assinar agora").assertExists()
+        onNodeWithText("Agora não").assertExists()
+        onNodeWithText("Ver planos").assertDoesNotExist()
+    }
+
+    @Test
+    fun otherDaysKeepViewPlans() = runComposeUiTest {
+        setContent { SaqzTheme { TrialCountdownSheet(2, usage, {}, {}, endsAt = "2026-10-15T15:00:00Z") } }
+
+        onNodeWithText("Ver planos").assertExists()
+        onNodeWithText("Assinar agora").assertDoesNotExist()
+    }
+
+    @Test
     fun withoutAnyUsageOnlyTheCountdownShows() = runComposeUiTest {
         setContent { SaqzTheme { TrialCountdownSheet(2, TrialUsage(0, 0, 0), {}, {}) } }
         onNodeWithTag(TrialCountdownTags.Usage).assertDoesNotExist()

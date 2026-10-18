@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="subscription_required_title_trial_ended">Seu teste do Organizador terminou</string>
+    <string name="subscription_required_title_trial_ended">Seu teste terminou</string>
+    <string name="subscription_required_body_trial_ended">Seus grupos e o histórico estão guardados. Assine para a galera voltar a confirmar presença.</string>
     <string name="subscription_required_title_inactive">Seu plano não está ativo</string>
     <string name="subscription_required_body">Seus grupos e o histórico continuam aqui. Para marcar jogos e mexer no grupo, assine um plano.</string>
     <string name="subscription_required_view_plans">Ver planos</string>

@@ -41,7 +41,7 @@ internal fun Context.attendanceNotification(
     body: String = push.body,
     buttons: Boolean = true,
 ): NotificationCompat.Builder {
-    val builder = reminderNotification(this, push.id, push.title, body, push.groupId, push.gameId)
+    val builder = reminderNotification(this, push.id, push.title, body, push.groupId, push.gameId, push.channel)
     if (push.isWindow) {
         // Live Update no Android 16+; abaixo disso o pedido é ignorado e a notificação sai comum.
         builder.setOngoing(true).setRequestPromotedOngoing(true)
@@ -61,8 +61,8 @@ internal fun Context.attendanceNotification(
  */
 internal fun Context.attendanceOutcome(push: AttendancePush, failed: Boolean, text: String): NotificationCompat.Builder = when {
     push.isWindow && failed -> attendanceNotification(push, body = text)
-    push.isWindow -> reminderNotification(this, push.id, push.title, text, push.groupId, push.gameId).setTimeoutAfter(FINAL_STATE_MS)
-    else -> reminderNotification(this, push.id, push.title, text, push.groupId, push.gameId)
+    push.isWindow -> reminderNotification(this, push.id, push.title, text, push.groupId, push.gameId, push.channel).setTimeoutAfter(FINAL_STATE_MS)
+    else -> reminderNotification(this, push.id, push.title, text, push.groupId, push.gameId, push.channel)
 }
 
 internal fun Intent.attendancePush() = AttendancePush(
@@ -73,13 +73,14 @@ internal fun Intent.attendancePush() = AttendancePush(
     body = getStringExtra(EXTRA_BODY).orEmpty(),
     recipient = getStringExtra(EXTRA_RECIPIENT),
     windowEndsAt = getLongExtra(EXTRA_WINDOW_ENDS_AT, 0L).takeIf { it > 0 },
+    channel = getStringExtra(EXTRA_NOTIFICATION_CHANNEL),
 )
 
 private fun Context.attendanceAction(action: String, push: AttendancePush): PendingIntent {
     val intent = Intent(this, AttendanceActionReceiver::class.java).setAction(action)
         .putExtra(EXTRA_NOTIFICATION_ID, push.id).putExtra(EXTRA_NOTIFICATION_GROUP_ID, push.groupId)
         .putExtra(EXTRA_GAME_ID, push.gameId).putExtra(EXTRA_TITLE, push.title).putExtra(EXTRA_BODY, push.body)
-        .putExtra(EXTRA_RECIPIENT, push.recipient)
+        .putExtra(EXTRA_RECIPIENT, push.recipient).putExtra(EXTRA_NOTIFICATION_CHANNEL, push.channel)
     push.windowEndsAt?.let { intent.putExtra(EXTRA_WINDOW_ENDS_AT, it) }
     // requestCode = id: extras não distinguem PendingIntents, e cada push precisa do seu.
     return PendingIntent.getBroadcast(this, push.id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)

@@ -28,7 +28,7 @@ sealed interface GroupLinkEvent {
         val intent: AttendanceIntent = AttendanceIntent.Confirm,
     ) : GroupLinkEvent
     /** Toque em push (ou no card da Live Activity): com [gameId] abre o jogo; sem, abre a central. */
-    data class NotificationOpen(val groupId: String?, val gameId: String? = null) : GroupLinkEvent
+    data class NotificationOpen(val groupId: String?, val gameId: String? = null, val channel: String? = null) : GroupLinkEvent
 }
 
 interface GroupLinkEventListener { fun onEvent(event: GroupLinkEvent) }

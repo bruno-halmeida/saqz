@@ -37,7 +37,7 @@ class TrialCountdownViewModel(private val gateway: TrialGateway) :
                     daysLeft in 0..TRIAL_COUNTDOWN_DAYS
                 if (!due || daysLeft == shownForDaysLeft || state.value.visible) return@launch
                 shownForDaysLeft = daysLeft
-                update { it.copy(visible = true, daysLeft = daysLeft, usage = access.usage) }
+                update { it.copy(visible = true, daysLeft = daysLeft, usage = access.usage, endsAt = access.endsAt) }
                 gateway.markCountdownSeen()
             } finally {
                 checking = false

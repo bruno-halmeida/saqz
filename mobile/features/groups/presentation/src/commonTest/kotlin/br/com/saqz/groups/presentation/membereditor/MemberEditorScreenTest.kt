@@ -172,7 +172,7 @@ class MemberEditorScreenTest {
             }
         }
 
-        onNodeWithText("Seu teste do Organizador terminou").assertExists()
+        onNodeWithText("Seu teste terminou").assertExists()
         onNodeWithTag(SubscriptionRequiredTags.NotNow).performClick()
         assertEquals(listOf<MemberEditorIntent>(MemberEditorIntent.DismissSubscriptionRequired), intents)
     }

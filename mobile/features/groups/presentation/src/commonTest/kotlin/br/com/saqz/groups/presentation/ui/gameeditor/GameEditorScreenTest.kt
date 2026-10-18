@@ -106,9 +106,9 @@ class GameEditorScreenTest {
             }
         }
 
-        onNodeWithText("Seu teste do Organizador terminou").assertExists()
+        onNodeWithText("Seu teste terminou").assertExists()
         onNodeWithText(
-            "Seus grupos e o histórico continuam aqui. Para marcar jogos e mexer no grupo, assine um plano.",
+            "Seus grupos e o histórico estão guardados. Assine para a galera voltar a confirmar presença.",
         ).assertExists()
         onNodeWithTag(SubscriptionRequiredTags.NotNow).performClick()
         assertEquals(listOf<GameEditorIntent>(GameEditorIntent.DismissSubscriptionRequired), intents)

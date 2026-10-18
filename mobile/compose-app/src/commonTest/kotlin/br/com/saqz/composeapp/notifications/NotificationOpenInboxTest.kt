@@ -20,6 +20,17 @@ class NotificationOpenInboxTest {
         assertNull(inbox.pending.value)
     }
 
+    @Test fun keepsTheChannelSoTheTrialPushCanOpenThePlans() {
+        val ports = Ports()
+        val inbox = NotificationOpenInbox(ports)
+        inbox.start()
+
+        ports.listener?.onEvent(GroupLinkEvent.NotificationOpen(groupId = "group", channel = "TRIAL_ENDING"))
+
+        assertEquals("TRIAL_ENDING", inbox.pending.value?.channel)
+        assertNull(inbox.pending.value?.gameId)
+    }
+
     @Test fun startIsIdempotentAndStopCancels() {
         val ports = Ports()
         val inbox = NotificationOpenInbox(ports)
