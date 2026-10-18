@@ -792,6 +792,417 @@ class HttpAsaasGatewayTest {
         assertTrue(Thread.interrupted(), "interrupt flag must be restored")
     }
 
+    // --- Consultas de cobranca ---
+
+    @Test
+    fun `findLatestPaymentIdForSubscription asks for the newest charge of the subscription`() {
+        server.enqueue(json(200, """{"object":"list","data":[{"id":"pay_LAST"}]}"""))
+
+        val id = gateway.findLatestPaymentIdForSubscription("sub 1")
+
+        assertEquals("pay_LAST", id)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/v3/payments?subscription=sub+1&limit=1&offset=0", request.path)
+    }
+
+    @Test
+    fun `findLatestPaymentIdForSubscription is null when there is no charge or no usable id`() {
+        server.enqueue(json(200, emptyList()))
+        server.enqueue(json(200, """{"data":[{"id":""}]}"""))
+        server.enqueue(json(200, """{"data":[{"status":"PENDING"}]}"""))
+        server.enqueue(json(200, """{"data":"nao-e-lista"}"""))
+        server.enqueue(json(200, """{}"""))
+
+        repeat(5) { assertNull(gateway.findLatestPaymentIdForSubscription("sub_1")) }
+    }
+
+    @Test
+    fun `findPaymentInvoiceUrl returns the invoice link and falls back to the bank slip`() {
+        server.enqueue(json(200, """{"id":"pay_1","invoiceUrl":"https://asaas.test/i/1","bankSlipUrl":"https://asaas.test/b/1"}"""))
+        server.enqueue(json(200, """{"id":"pay_1","bankSlipUrl":"https://asaas.test/b/1"}"""))
+        server.enqueue(json(200, """{"id":"pay_1","invoiceUrl":"","bankSlipUrl":"https://asaas.test/b/1"}"""))
+        server.enqueue(json(200, """{"id":"pay_1"}"""))
+        server.enqueue(json(200, """{"id":"pay_1","invoiceUrl":"","bankSlipUrl":""}"""))
+
+        assertEquals("https://asaas.test/i/1", gateway.findPaymentInvoiceUrl("pay_1"))
+        assertEquals("/v3/payments/pay_1", server.takeRequest().path)
+        assertEquals("https://asaas.test/b/1", gateway.findPaymentInvoiceUrl("pay_1"))
+        assertEquals("https://asaas.test/b/1", gateway.findPaymentInvoiceUrl("pay_1"))
+        assertNull(gateway.findPaymentInvoiceUrl("pay_1"))
+        assertNull(gateway.findPaymentInvoiceUrl("pay_1"))
+    }
+
+    @Test
+    fun `findPayment returns the id, status and invoice link of the charge`() {
+        server.enqueue(json(200, """{"id":"pay_1","status":"RECEIVED","invoiceUrl":"https://asaas.test/i/1"}"""))
+
+        val payment = gateway.findPayment("pay_1")
+
+        assertEquals("pay_1", payment?.id)
+        assertEquals("RECEIVED", payment?.status)
+        assertEquals("https://asaas.test/i/1", payment?.invoiceUrl)
+    }
+
+    @Test
+    fun `findPayment is null without an id and keeps a missing status null`() {
+        server.enqueue(json(200, """{"status":"RECEIVED"}"""))
+        server.enqueue(json(200, """{"id":""}"""))
+        server.enqueue(json(200, """{"id":"pay_2","status":""}"""))
+        server.enqueue(json(200, """{"id":"pay_3"}"""))
+
+        assertNull(gateway.findPayment("pay_x"))
+        assertNull(gateway.findPayment("pay_x"))
+        assertNull(gateway.findPayment("pay_2")?.status)
+        assertEquals("pay_3", gateway.findPayment("pay_3")?.id)
+    }
+
+    // --- Cabecalhos e erros ---
+
+    @Test
+    fun `every request carries the api key, the user agent and asks for json`() {
+        server.enqueue(json(200, """{"id":"pay_1"}"""))
+
+        gateway.findPayment("pay_1")
+
+        val request = server.takeRequest()
+        assertEquals(apiKey, request.getHeader("access_token"))
+        assertEquals(AsaasClientSettings.DEFAULT_USER_AGENT, request.getHeader("User-Agent"))
+        assertEquals("application/json", request.getHeader("Accept"))
+        assertNull(request.getHeader("Content-Type"))
+    }
+
+    @Test
+    fun `requests with a body are sent as json with the configured user agent`() {
+        val custom = HttpAsaasGateway(
+            settings = AsaasClientSettings(
+                baseUrl = server.url("/v3").toString().trimEnd('/'),
+                apiKey = apiKey,
+                userAgent = "saqz-teste/1.0",
+            ),
+            idempotencyStore = store,
+            clock = fixedClock,
+            idempotencyPollWait = { },
+        )
+        server.enqueue(json(200, """{"id":"sub_1"}"""))
+
+        custom.updateSubscriptionValue("sub_1", 5_990)
+
+        val request = server.takeRequest()
+        assertEquals("saqz-teste/1.0", request.getHeader("User-Agent"))
+        assertEquals("application/json", request.getHeader("Content-Type"))
+    }
+
+    @Test
+    fun `status 299 is success and 300 is an error`() {
+        server.enqueue(json(299, """{"id":"pay_1"}"""))
+        server.enqueue(json(300, """{"errors":[{"code":"redirect","description":"Movido"}]}"""))
+
+        assertEquals("pay_1", gateway.findPayment("pay_1")?.id)
+        val error = assertThrows<AsaasException> { gateway.findPayment("pay_1") }
+        assertEquals(300, error.statusCode)
+    }
+
+    @Test
+    fun `an empty success body is read as an empty object`() {
+        server.enqueue(json(200, ""))
+
+        assertNull(gateway.findPayment("pay_1"))
+    }
+
+    @Test
+    fun `error message lists every asaas error and the first one is kept on the exception`() {
+        server.enqueue(
+            json(
+                422,
+                """{"errors":[{"code":"invalid_a","description":"Primeiro"},{"code":"invalid_b","description":"Segundo"}]}""",
+            ),
+        )
+
+        val error = assertThrows<AsaasException> { gateway.findPayment("pay_1") }
+
+        assertEquals("Asaas GET /payments/pay_1 failed with HTTP 422: invalid_a: Primeiro; invalid_b: Segundo", error.message)
+        assertEquals("invalid_a", error.errorCode)
+        assertEquals("Primeiro", error.errorDescription)
+    }
+
+    @Test
+    fun `error message shows the raw body when it has no asaas errors and flags an empty one`() {
+        server.enqueue(json(502, "<html>bad gateway</html>"))
+        server.enqueue(json(503, ""))
+        server.enqueue(json(500, """{"errors":[]}"""))
+
+        val html = assertThrows<AsaasException> { gateway.findPayment("pay_1") }
+        assertEquals("Asaas GET /payments/pay_1 failed with HTTP 502: <html>bad gateway</html>", html.message)
+        assertNull(html.errorCode)
+
+        val empty = assertThrows<AsaasException> { gateway.findPayment("pay_1") }
+        assertEquals("Asaas GET /payments/pay_1 failed with HTTP 503: (empty body)", empty.message)
+
+        val noErrors = assertThrows<AsaasException> { gateway.findPayment("pay_1") }
+        assertEquals("""Asaas GET /payments/pay_1 failed with HTTP 500: {"errors":[]}""", noErrors.message)
+    }
+
+    @Test
+    fun `a long raw error body is cut at 500 characters`() {
+        server.enqueue(json(502, "x".repeat(800)))
+
+        val error = assertThrows<AsaasException> { gateway.findPayment("pay_1") }
+
+        assertEquals("Asaas GET /payments/pay_1 failed with HTTP 502: ${"x".repeat(500)}", error.message)
+    }
+
+    @Test
+    fun `an error without code or description falls back to unknown and an empty description`() {
+        server.enqueue(json(400, """{"errors":[{}]}"""))
+
+        val error = assertThrows<AsaasException> { gateway.findPayment("pay_1") }
+
+        assertEquals("unknown", error.errorCode)
+        assertEquals("", error.errorDescription)
+        assertEquals("Asaas GET /payments/pay_1 failed with HTTP 400: unknown", error.message)
+    }
+
+    // --- Fronteiras da recusa de cartao ---
+
+    private fun cardFailure(status: Int, code: String, description: String): Throwable {
+        server.enqueue(json(status, """{"errors":[{"code":"$code","description":"$description"}]}"""))
+        return assertThrows<Throwable> { createCardSubscription("sub-card-$status-$code-${description.length}") }
+    }
+
+    @Test
+    fun `card decline is recognized for 4xx up to 499 and by code variants`() {
+        assertTrue(cardFailure(499, "invalid_creditCard", "Recusado") is CardDeclinedException)
+        assertTrue(cardFailure(400, "invalid_creditCardHolderInfo", "Titular inválido") is CardDeclinedException)
+        assertTrue(cardFailure(400, "INVALID_CREDITCARD", "Recusado") is CardDeclinedException)
+    }
+
+    @Test
+    fun `a 5xx with a card decline code stays a generic asaas failure`() {
+        val failure = cardFailure(500, "invalid_creditCard", "Recusado")
+
+        assertFalse(failure is CardDeclinedException)
+        assertEquals(500, (failure as AsaasException).statusCode)
+    }
+
+    @Test
+    fun `the not-authorized text only counts for invalid_action with status 400 on the card path`() {
+        assertTrue(cardFailure(400, "invalid_action", "Transação não autorizada.") is CardDeclinedException)
+        assertFalse(cardFailure(400, "invalid_action", "Ação inválida.") is CardDeclinedException)
+        assertFalse(cardFailure(422, "invalid_action", "Transação não autorizada.") is CardDeclinedException)
+    }
+
+    @Test
+    fun `a card decline code on a pix subscription is a generic failure`() {
+        server.enqueue(json(400, """{"errors":[{"code":"invalid_creditCard","description":"Recusado"}]}"""))
+
+        val error = assertThrows<AsaasException> {
+            gateway.createSubscription(
+                "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-pix-decline",
+            )
+        }
+
+        assertEquals("invalid_creditCard", error.errorCode)
+    }
+
+    @Test
+    fun `billing type refusal is recognized regardless of case and only for 400`() {
+        server.enqueue(json(400, """{"errors":[{"code":"INVALID_BILLINGTYPE","description":"Forma não permitida"}]}"""))
+        server.enqueue(json(422, """{"errors":[{"code":"invalid_billingType","description":"Forma não permitida"}]}"""))
+
+        val unavailable = assertThrows<PaymentMethodUnavailableException> {
+            gateway.createSubscription(
+                "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-bt-1",
+            )
+        }
+        assertEquals(AsaasBillingType.PIX, unavailable.billingType)
+
+        val other = assertThrows<AsaasException> {
+            gateway.createSubscription(
+                "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-bt-2",
+            )
+        }
+        assertEquals(422, other.statusCode)
+    }
+
+    // --- Idempotencia: espera, reserva abandonada e falha definitiva ---
+
+    private fun gatewayWith(
+        maxPolls: Int = HttpAsaasGateway.DEFAULT_MAX_IDEMPOTENCY_POLLS,
+        wait: (Int) -> Unit = { },
+        abandonAfter: Duration = HttpAsaasGateway.DEFAULT_ABANDON_AFTER,
+    ) = HttpAsaasGateway(
+        settings = AsaasClientSettings(baseUrl = server.url("/v3").toString().trimEnd('/'), apiKey = apiKey),
+        idempotencyStore = store,
+        clock = fixedClock,
+        maxIdempotencyPolls = maxPolls,
+        idempotencyPollWait = wait,
+        abandonAfter = abandonAfter,
+    )
+
+    @Test
+    fun `a live reservation is polled maxIdempotencyPolls times and waits between polls only`() {
+        store.tryBegin("sub-wait", fixedInstant)
+        server.enqueue(json(200, emptyList()))
+        val waits = mutableListOf<Int>()
+
+        assertThrows<AsaasConcurrentOperationException> {
+            gatewayWith(maxPolls = 4, wait = { waits += it }).createSubscription(
+                "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-wait",
+            )
+        }
+
+        assertEquals(listOf(0, 1, 2), waits)
+    }
+
+    @Test
+    fun `the other worker finishing during the poll returns its resource without any request`() {
+        store.tryBegin("sub-late", fixedInstant)
+
+        val creation = gatewayWith(wait = { attempt -> if (attempt == 1) store.complete("sub-late", "sub_LATE") })
+            .createSubscription(
+                "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-late",
+            )
+
+        assertEquals("sub_LATE", creation.asaasSubscriptionId)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `no poll waits when there is a single attempt`() {
+        store.tryBegin("sub-single", fixedInstant)
+        server.enqueue(json(200, emptyList()))
+        val waits = mutableListOf<Int>()
+
+        assertThrows<AsaasConcurrentOperationException> {
+            gatewayWith(maxPolls = 1, wait = { waits += it }).createSubscription(
+                "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-single",
+            )
+        }
+
+        assertTrue(waits.isEmpty())
+    }
+
+    @Test
+    fun `a reservation exactly as old as the abandon limit is released and recreated`() {
+        store.tryBegin("sub-edge", fixedInstant.minus(Duration.ofSeconds(30)))
+        server.enqueue(json(200, emptyList()))
+        server.enqueue(json(200, """{"id":"sub_EDGE"}"""))
+
+        val creation = gateway.createSubscription(
+            "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-edge",
+        )
+
+        assertEquals("sub_EDGE", creation.asaasSubscriptionId)
+    }
+
+    @Test
+    fun `a reservation one second younger than the abandon limit is kept`() {
+        store.tryBegin("sub-young", fixedInstant.minus(Duration.ofSeconds(29)))
+        server.enqueue(json(200, emptyList()))
+
+        assertThrows<AsaasConcurrentOperationException> {
+            gateway.createSubscription(
+                "cus_1", Plan.TITULAR, SubscriptionCycle.MONTHLY, 100, AsaasBillingType.PIX, "sub-young",
+            )
+        }
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `a 4xx failure is definitive and does not look for a charge already created`() {
+        server.enqueue(json(499, """{"errors":[{"code":"x","description":"y"}]}"""))
+
+        assertThrows<AsaasException> { gateway.createOneOffCharge("cus_1", 100, "Teste", "charge-4xx") }
+
+        assertEquals(1, server.requestCount)
+        assertNull(store.find("charge-4xx"))
+    }
+
+    @Test
+    fun `a 5xx failure looks for a charge Asaas may have created before giving up`() {
+        server.enqueue(json(500, """{"errors":[{"code":"internal","description":"erro"}]}"""))
+        server.enqueue(json(200, emptyList()))
+
+        val error = assertThrows<AsaasException> { gateway.createOneOffCharge("cus_1", 100, "Teste", "charge-5xx") }
+
+        assertEquals(500, error.statusCode)
+        assertEquals(2, server.requestCount)
+        assertEquals("POST", server.takeRequest().method)
+        val lookup = server.takeRequest()
+        assertEquals("GET", lookup.method)
+        assertEquals("/v3/payments?externalReference=charge-5xx&limit=1", lookup.path)
+        assertNull(store.find("charge-5xx"))
+    }
+
+    @Test
+    fun `a 5xx failure followed by a lookup that also fails rethrows the original error`() {
+        server.enqueue(json(500, """{"errors":[{"code":"internal","description":"erro"}]}"""))
+        server.enqueue(json(503, """{"errors":[{"code":"down","description":"fora"}]}"""))
+
+        val error = assertThrows<AsaasException> { gateway.createOneOffCharge("cus_1", 100, "Teste", "charge-both") }
+
+        assertEquals(500, error.statusCode)
+    }
+
+    @Test
+    fun `the default poll wait sleeps 50 ms times the attempt number`() {
+        val startedAt = System.nanoTime()
+        HttpAsaasGateway.defaultIdempotencyPollWait(0)
+        val first = Duration.ofNanos(System.nanoTime() - startedAt)
+        assertTrue(first >= Duration.ofMillis(50), "attempt 0 waited only $first")
+
+        val secondStartedAt = System.nanoTime()
+        HttpAsaasGateway.defaultIdempotencyPollWait(2)
+        val third = Duration.ofNanos(System.nanoTime() - secondStartedAt)
+        assertTrue(third >= Duration.ofMillis(150), "attempt 2 waited only $third")
+    }
+
+    // --- Configuracao ---
+
+    @Test
+    fun `settings read the alternative property names, trim the base url and default the user agent`() {
+        val settings = AsaasClientSettings.fromProperties { key ->
+            when (key) {
+                "saqz.asaas.api-key" -> "prop-key"
+                "saqz.asaas.base-url" -> "https://asaas.test/v3/"
+                else -> null
+            }
+        }
+
+        assertEquals("prop-key", settings.apiKey)
+        assertEquals("https://asaas.test/v3", settings.baseUrl)
+        assertEquals("saqz-backend", settings.userAgent)
+    }
+
+    @Test
+    fun `settings default to the sandbox url and accept a custom user agent`() {
+        val settings = AsaasClientSettings.fromProperties { key ->
+            when (key) {
+                "SAQZ_ASAAS_API_KEY" -> "env-key"
+                "saqz.asaas.user-agent" -> "saqz-custom"
+                else -> null
+            }
+        }
+
+        assertEquals("https://api-sandbox.asaas.com/v3", settings.baseUrl)
+        assertEquals("saqz-custom", settings.userAgent)
+        val fromEnv = AsaasClientSettings.fromProperties { key ->
+            when (key) {
+                "SAQZ_ASAAS_API_KEY" -> "env-key"
+                "SAQZ_ASAAS_USER_AGENT" -> "saqz-env"
+                else -> null
+            }
+        }
+        assertEquals("saqz-env", fromEnv.userAgent)
+    }
+
+    @Test
+    fun `settings refuse a blank api key or base url`() {
+        assertThrows<IllegalArgumentException> { AsaasClientSettings(baseUrl = "https://asaas.test", apiKey = " ") }
+        assertThrows<IllegalArgumentException> { AsaasClientSettings(baseUrl = " ", apiKey = "k") }
+    }
+
     private fun newGateway(
         abandonAfter: Duration = HttpAsaasGateway.DEFAULT_ABANDON_AFTER,
     ): HttpAsaasGateway =
