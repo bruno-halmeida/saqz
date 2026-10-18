@@ -281,6 +281,17 @@ class KtorOrganizerFinanceGateway(
         ),
     ).toVersionedChargeResult()
 
+    override suspend fun resolveChargeReview(
+        groupId: GroupId,
+        chargeId: String,
+        version: FinanceVersionToken,
+    ) = network.execute(
+        HttpMethod.Post,
+        "api/groups/${groupId.value}/charges/$chargeId/review/resolve",
+        ChargeTransport.serializer(),
+        NetworkRequest(null, mapOf(HttpHeaders.IfMatch to version.value)),
+    ).toVersionedChargeResult()
+
     override suspend fun expenses(groupId: GroupId) = read(
         "api/groups/${groupId.value}/expenses",
         ExpenseListTransport.serializer(),

@@ -73,7 +73,12 @@ import br.com.saqz.groups.resources.monthly_generation_title
 import br.com.saqz.groups.presentation.ui.finance.PixCard
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
+import br.com.saqz.groups.presentation.ui.finance.sheets.ReviewSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.WaiveSheet
+import br.com.saqz.groups.resources.group_cashbox_review_action
+import br.com.saqz.groups.resources.group_cashbox_review_failure
+import br.com.saqz.groups.resources.group_cashbox_review_status
+import br.com.saqz.groups.resources.group_cashbox_review_title
 import br.com.saqz.groups.resources.group_cashbox_waive_action
 import br.com.saqz.groups.resources.group_cashbox_waive_failure
 import br.com.saqz.groups.resources.group_cashbox_withdrew_status
@@ -95,12 +100,16 @@ internal object GroupCashboxTags {
     const val Retry = "group-cashbox-retry"
     const val Statement = "group-cashbox-statement"
     const val WaiveFailure = "group-cashbox-waive-failure"
+    const val Reviews = "group-cashbox-reviews"
+    const val ReviewFailure = "group-cashbox-review-failure"
 
     fun chargePayment(chargeId: String) = "group-cashbox-payment-$chargeId"
     fun chargeIndividual(chargeId: String) = "group-cashbox-charge-$chargeId"
     fun chargeReminded(chargeId: String) = "group-cashbox-reminded-$chargeId"
     fun chargeWaive(chargeId: String) = "group-cashbox-waive-$chargeId"
     fun chargeWithdrew(chargeId: String) = "group-cashbox-withdrew-$chargeId"
+    fun review(chargeId: String) = "group-cashbox-review-$chargeId"
+    fun reviewAction(chargeId: String) = "group-cashbox-review-action-$chargeId"
 }
 
 @Composable
@@ -116,6 +125,7 @@ internal fun GroupCashboxScreen(
 ) {
     val receiptDebtor = state.debtors.firstOrNull { it.chargeId == state.receiptSheetChargeId }
     val waiveDebtor = state.debtors.firstOrNull { it.chargeId == state.waiveSheetChargeId }
+    val reviewCharge = state.reviews.firstOrNull { it.chargeId == state.reviewSheetChargeId }
     val chargeDebtors = state.debtors.filter {
         state.chargeSheetChargeId == null || it.chargeId == state.chargeSheetChargeId
     }
@@ -158,6 +168,15 @@ internal fun GroupCashboxScreen(
             debtor = waiveDebtor,
             onClose = { onIntent(GroupCashboxIntent.DismissWaiveSheet) },
             onConfirm = { waiveDebtor?.let { onIntent(GroupCashboxIntent.Waive(it.chargeId)) } },
+        )
+        ReviewSheet(
+            open = state.reviewSheetChargeId != null,
+            name = reviewCharge?.name,
+            referenceLabel = reviewCharge?.referenceLabel,
+            amountLabel = reviewCharge?.amountLabel,
+            busy = state.updatingChargeId != null,
+            onClose = { onIntent(GroupCashboxIntent.DismissReviewSheet) },
+            onConfirm = { reviewCharge?.let { onIntent(GroupCashboxIntent.ResolveReview(it.chargeId)) } },
         )
     }
 }
@@ -217,6 +236,7 @@ private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxInten
             variant = SaqzButtonVariant.Secondary, fullWidth = true,
             modifier = Modifier.testTag(GroupCashboxTags.GenerateMonthly),
         )
+        if (state.reviews.isNotEmpty()) ReviewsSection(state, onIntent)
         if (state.debtors.isNotEmpty()) {
             DebtorsSection(
                 state = state,
@@ -294,6 +314,14 @@ private fun CashboxHeader(
                 text = stringResource(Res.string.group_cashbox_operation_failure),
                 style = SaqzTheme.typography.support,
                 color = colors.errorForeground,
+            )
+        }
+        if (state.reviewFailed) {
+            Text(
+                text = stringResource(Res.string.group_cashbox_review_failure),
+                style = SaqzTheme.typography.support,
+                color = colors.errorForeground,
+                modifier = Modifier.testTag(GroupCashboxTags.ReviewFailure),
             )
         }
         if (state.waiveFailed) {
@@ -418,6 +446,60 @@ private fun DebtorsSection(
                 br.com.saqz.designsystem.SaqzDivider()
             }
         }
+    }
+}
+
+@Composable
+private fun ReviewsSection(
+    state: GroupCashboxState,
+    onIntent: (GroupCashboxIntent) -> Unit,
+) = Column(
+    modifier = Modifier.testTag(GroupCashboxTags.Reviews),
+    verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+) {
+    SaqzSectionHeader(title = stringResource(Res.string.group_cashbox_review_title))
+    SaqzCard(padded = false) {
+        state.reviews.forEachIndexed { index, review ->
+            ReviewRow(review, onIntent)
+            if (index < state.reviews.lastIndex) br.com.saqz.designsystem.SaqzDivider()
+        }
+    }
+}
+
+@Composable
+private fun ReviewRow(review: ReviewUi, onIntent: (GroupCashboxIntent) -> Unit) {
+    val metrics = SaqzTheme.metrics
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
+    ) {
+        SaqzAvatar(name = review.name)
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+            Text(
+                text = review.name,
+                style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
+                color = SaqzTheme.colors.textPrimary,
+            )
+            Text(
+                text = "${review.referenceLabel} · ${review.amountLabel}",
+                style = SaqzTheme.typography.caption,
+                color = SaqzTheme.colors.textSecondary,
+            )
+            SaqzStatusChip(
+                text = stringResource(Res.string.group_cashbox_review_status),
+                tone = SaqzChipTone.Warning,
+                modifier = Modifier.testTag(GroupCashboxTags.review(review.chargeId)),
+            )
+        }
+        SaqzButton(
+            label = stringResource(Res.string.group_cashbox_review_action),
+            onClick = { onIntent(GroupCashboxIntent.OpenReview(review.chargeId)) },
+            variant = SaqzButtonVariant.Secondary,
+            size = SaqzButtonSize.Sm,
+            enabled = !review.isUpdating,
+            modifier = Modifier.testTag(GroupCashboxTags.reviewAction(review.chargeId)),
+        )
     }
 }
 

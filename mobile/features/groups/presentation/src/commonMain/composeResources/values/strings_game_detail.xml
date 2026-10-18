@@ -20,6 +20,8 @@
     <string name="game_detail_publish_hint">Só você vê este jogo até publicar.</string>
     <string name="game_detail_publish_failed">Não foi possível publicar o jogo. Tente novamente.</string>
     <string name="game_detail_edit">Editar jogo</string>
+    <string name="game_detail_finance_review_body">Este jogo foi cancelado com cobranças já pagas ou dispensadas. Confira se precisa devolver algum valor.</string>
+    <string name="game_detail_finance_review_action">Ver cobranças</string>
     <string name="game_detail_cancel">Cancelar jogo</string>
     <string name="game_detail_cancel_title">Cancelar o jogo?</string>
     <string name="game_detail_cancel_body">Os confirmados recebem um aviso e o jogo some da agenda. Isso não pode ser desfeito.</string>

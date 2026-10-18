@@ -344,6 +344,25 @@ class KtorFinanceGatewaysTest {
     }
 
     @Test
+    fun `resolving a review posts to the review route with the quoted version and no body`() = runTest {
+        val result = organizer { request ->
+            assertEquals(HttpMethod.Post, request.method)
+            assertEquals("/api/groups/${GROUP.value}/charges/$CHARGE/review/resolve", request.url.encodedPath)
+            assertEquals("\"4\"", request.headers[HttpHeaders.IfMatch])
+            versioned(CHARGE_JSON, "\"5\"")
+        }.resolveChargeReview(GROUP, CHARGE, FinanceVersionToken("\"4\""))
+
+        assertEquals("\"5\"", success(result).version.value)
+    }
+
+    @Test
+    fun `resolving a review does not retry`() = runTest {
+        var calls = 0
+        organizer { calls++; unavailable() }.resolveChargeReview(GROUP, CHARGE, FinanceVersionToken("\"4\""))
+        assertEquals(1, calls)
+    }
+
+    @Test
     fun `status mutation does not retry`() = runTest {
         var calls = 0
         organizer { calls++; unavailable() }.updateChargeStatus(

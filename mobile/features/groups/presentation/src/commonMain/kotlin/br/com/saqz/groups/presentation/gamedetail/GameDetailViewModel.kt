@@ -117,12 +117,14 @@ class GameDetailViewModel(
     init {
         load()
     }
+    @Suppress("CyclomaticComplexMethod")
     override fun handleIntent(intent: GameDetailIntent) {
         when (intent) {
             GameDetailIntent.Retry, GameDetailIntent.Refresh -> reload(intent)
             GameDetailIntent.Edit -> emit(GameDetailEffect.OpenEditor)
             GameDetailIntent.OpenSettlement -> if (
-                state.value.isAdmin && state.value.header?.statusTone == GameDetailStatusTone.Completed
+                state.value.isAdmin && state.value.header?.statusTone == GameDetailStatusTone.Completed ||
+                state.value.canReviewFinance
             ) {
                 emit(GameDetailEffect.OpenSettlement)
             }
@@ -781,6 +783,7 @@ class GameDetailViewModel(
             (runCatching { Instant.parse(startsAt) > Clock.System.now() }.getOrDefault(true))
         return GameDetailHeaderUi(
             statusTone = status.toTone(),
+            financeReviewRequired = financeReviewRequired,
             confirmationDeadline = deadline,
             confirmationDeadlineWeekday = deadlineLocal?.date
                 ?.takeIf { deadlineDateDiffers }

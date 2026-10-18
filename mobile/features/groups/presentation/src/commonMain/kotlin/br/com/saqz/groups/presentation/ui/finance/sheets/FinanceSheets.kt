@@ -43,6 +43,12 @@ import br.com.saqz.groups.resources.sheet_waive_cancel
 import br.com.saqz.groups.resources.sheet_waive_confirm
 import br.com.saqz.groups.resources.sheet_waive_note
 import br.com.saqz.groups.resources.sheet_waive_title
+import br.com.saqz.groups.resources.sheet_review_amount
+import br.com.saqz.groups.resources.sheet_review_cancel
+import br.com.saqz.groups.resources.sheet_review_confirm
+import br.com.saqz.groups.resources.sheet_review_note
+import br.com.saqz.groups.resources.sheet_review_refund
+import br.com.saqz.groups.resources.sheet_review_title
 import br.com.saqz.groups.resources.sheet_receipt_amount
 import br.com.saqz.groups.resources.sheet_receipt_cancel
 import br.com.saqz.groups.resources.sheet_receipt_confirm
@@ -76,6 +82,10 @@ internal object FinanceSheetsTags {
     const val WaiveAmount = "finance-waive-amount"
     const val WaiveNote = "finance-waive-note"
     const val WaiveConfirm = "finance-waive-confirm"
+    const val Review = "finance-review-sheet"
+    const val ReviewAmount = "finance-review-amount"
+    const val ReviewNote = "finance-review-note"
+    const val ReviewConfirm = "finance-review-confirm"
 
     fun chargeRecipient(chargeId: String) = "$ChargeRecipient-$chargeId"
 }
@@ -335,6 +345,78 @@ internal fun WaiveSheet(
                 style = SaqzTheme.typography.support,
                 color = SaqzTheme.colors.textSecondary,
                 modifier = Modifier.testTag(FinanceSheetsTags.WaiveNote),
+            )
+        }
+    }
+}
+
+/**
+ * Confirmação de "Marcar como resolvida" (DEB-053): jogo cancelado com cobrança já paga ou dispensada.
+ * Não muda o status da cobrança; devolver o dinheiro, se for o caso, é fora do app ou na Saída do caixa.
+ */
+@Composable
+internal fun ReviewSheet(
+    open: Boolean,
+    name: String?,
+    referenceLabel: String?,
+    amountLabel: String?,
+    busy: Boolean,
+    onClose: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    SaqzBottomSheet(
+        open = open,
+        onClose = onClose,
+        modifier = Modifier.testTag(FinanceSheetsTags.Review),
+        title = stringResource(Res.string.sheet_review_title),
+        description = referenceLabel,
+        splitFooter = {
+            SaqzButton(
+                label = stringResource(Res.string.sheet_review_cancel),
+                onClick = onClose,
+                variant = SaqzButtonVariant.Secondary,
+                modifier = Modifier.weight(1f),
+            )
+            SaqzButton(
+                label = stringResource(Res.string.sheet_review_confirm),
+                onClick = onConfirm,
+                enabled = name != null && !busy,
+                loading = busy,
+                modifier = Modifier.weight(1f).testTag(FinanceSheetsTags.ReviewConfirm),
+            )
+        },
+    ) {
+        if (name != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+            ) {
+                SaqzAvatar(name = name)
+                Text(text = name, style = SaqzTheme.typography.subtitle, color = SaqzTheme.colors.textPrimary)
+            }
+            SaqzCard(modifier = Modifier.testTag(FinanceSheetsTags.ReviewAmount)) {
+                Text(
+                    text = stringResource(Res.string.sheet_review_amount),
+                    style = SaqzTheme.typography.support,
+                    color = SaqzTheme.colors.textSecondary,
+                )
+                Text(
+                    text = amountLabel.orEmpty(),
+                    style = SaqzTheme.typography.title,
+                    color = SaqzTheme.colors.textPrimary,
+                )
+            }
+            Text(
+                text = stringResource(Res.string.sheet_review_note),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+                modifier = Modifier.testTag(FinanceSheetsTags.ReviewNote),
+            )
+            Text(
+                text = stringResource(Res.string.sheet_review_refund),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
             )
         }
     }

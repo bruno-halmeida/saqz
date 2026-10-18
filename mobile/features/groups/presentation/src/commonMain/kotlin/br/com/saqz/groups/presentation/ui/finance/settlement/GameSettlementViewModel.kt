@@ -37,6 +37,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
+@Suppress("LargeClass")
 class GameSettlementViewModel(
     private val groupId: String,
     private val gameId: String,
@@ -56,6 +57,7 @@ class GameSettlementViewModel(
         load()
     }
 
+    @Suppress("CyclomaticComplexMethod")
     override fun handleIntent(intent: GameSettlementIntent) {
         when (intent) {
             GameSettlementIntent.Retry -> load()
@@ -67,6 +69,9 @@ class GameSettlementViewModel(
             is GameSettlementIntent.OpenWaive -> openWaiveSheet(intent.chargeId)
             is GameSettlementIntent.Waive -> waive(intent.chargeId)
             GameSettlementIntent.DismissWaiveSheet -> update { it.copy(waiveSheetChargeId = null) }
+            is GameSettlementIntent.OpenReview -> openReviewSheet(intent.chargeId)
+            is GameSettlementIntent.ResolveReview -> resolveReview(intent.chargeId)
+            GameSettlementIntent.DismissReviewSheet -> update { it.copy(reviewSheetChargeId = null) }
             GameSettlementIntent.DismissChargeSheet -> update {
                 it.copy(chargeSheetOpen = false, chargeSheetChargeId = null)
             }
@@ -136,6 +141,60 @@ class GameSettlementViewModel(
         }
     }
 
+    private fun openReviewSheet(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null) return
+        if (current.diarists.none { it.chargeId == chargeId && it.reviewRequired }) return
+        update {
+            it.copy(
+                reviewSheetChargeId = chargeId,
+                receiptSheetChargeId = null,
+                waiveSheetChargeId = null,
+                chargeSheetOpen = false,
+                chargeSheetChargeId = null,
+            )
+        }
+    }
+
+    /** Trava de toque duplo: com uma operação em curso (`updatingChargeId`) o segundo toque é ignorado. */
+    private fun resolveReview(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null) return
+        val diarist = current.diarists.firstOrNull { it.chargeId == chargeId && it.reviewRequired } ?: return
+        val generation = ++mutationGeneration
+        val loadAtStart = loadGeneration
+        val previous = current
+        update {
+            it.copy(
+                diarists = it.diarists.map { row ->
+                    if (row.chargeId == chargeId) row.copy(reviewRequired = false, isUpdating = true) else row
+                },
+                updatingChargeId = chargeId,
+                reviewSheetChargeId = null,
+                reviewFailed = false,
+            )
+        }
+        viewModelScope.launch {
+            val result = organizerFinanceGateway.resolveChargeReview(
+                groupId = GroupId(groupId),
+                chargeId = diarist.chargeId,
+                version = FinanceVersionToken("\"${diarist.chargeVersion}\""),
+            )
+            if (generation != mutationGeneration || loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    load()
+                    emit(GameSettlementEffect.MutationSucceeded)
+                }
+                is SaqzResult.Failure -> {
+                    update { previous.copy(reviewFailed = true, updatingChargeId = null, reviewSheetChargeId = null) }
+                    // Versão velha: recarrega por baixo para a próxima tentativa sair com a versão certa.
+                    if (result.error == FinanceError.Conflict) load(softRefresh = true)
+                }
+            }
+        }
+    }
+
     private suspend fun <T, E : SaqzError> requestOrFail(
         generation: Long,
         softRefresh: Boolean,
@@ -154,7 +213,8 @@ class GameSettlementViewModel(
     }
 
     private fun GameSettlementState.interacting() =
-        chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null || updatingChargeId != null
+        chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null ||
+            reviewSheetChargeId != null || updatingChargeId != null
 
     /**
      * Volta à tela: recarga por baixo, sem esqueleto e sem tela de erro. Com carga em voo, folha
@@ -220,7 +280,7 @@ class GameSettlementViewModel(
                             PixUi(key, profile.pixLabel)
                         }
                     },
-                )
+                ).copy(reviewFailed = softRefresh && it.reviewFailed) // a recarga por baixo não apaga o aviso da revisão
             }
         }
         job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
@@ -425,6 +485,7 @@ class GameSettlementViewModel(
             chargeVersion = version,
             status = status,
             withdrew = withdrew && status == ChargeStatus.Pending,
+            reviewRequired = reviewRequired,
             referenceLabel = if (guest != null) {
                 "Convidado $guest · jogo de ${formatDate(dueDate)}"
             } else {

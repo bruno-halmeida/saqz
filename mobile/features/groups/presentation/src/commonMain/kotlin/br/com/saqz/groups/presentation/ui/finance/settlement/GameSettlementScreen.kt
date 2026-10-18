@@ -38,6 +38,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
+import br.com.saqz.groups.presentation.ui.finance.sheets.ReviewSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.WaiveSheet
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.PaidMethod
@@ -60,6 +61,9 @@ import br.com.saqz.groups.resources.game_settlement_players
 import br.com.saqz.groups.resources.game_settlement_progress
 import br.com.saqz.groups.resources.game_settlement_receipt
 import br.com.saqz.groups.resources.game_settlement_receipt_failure
+import br.com.saqz.groups.resources.game_settlement_review_action
+import br.com.saqz.groups.resources.game_settlement_review_failure
+import br.com.saqz.groups.resources.game_settlement_review_status
 import br.com.saqz.groups.resources.game_settlement_received_status
 import br.com.saqz.groups.resources.game_settlement_result
 import br.com.saqz.groups.resources.game_settlement_summary
@@ -87,10 +91,13 @@ internal object GameSettlementTags {
     const val Cashbox = "game-settlement-cashbox"
     const val Failure = "game-settlement-failure"
     const val WaiveFailure = "game-settlement-waive-failure"
+    const val ReviewFailure = "game-settlement-review-failure"
 
     fun receipt(chargeId: String) = "game-settlement-receipt-$chargeId"
     fun waive(chargeId: String) = "game-settlement-waive-$chargeId"
     fun withdrew(chargeId: String) = "game-settlement-withdrew-$chargeId"
+    fun review(chargeId: String) = "game-settlement-review-$chargeId"
+    fun reviewAction(chargeId: String) = "game-settlement-review-action-$chargeId"
     fun charge(chargeId: String) = "game-settlement-charge-$chargeId"
 }
 
@@ -105,6 +112,7 @@ internal fun GameSettlementScreen(
 ) {
     val receiptDebtor = state.debtors.firstOrNull { it.chargeId == state.receiptSheetChargeId }
     val waiveDebtor = state.debtors.firstOrNull { it.chargeId == state.waiveSheetChargeId }
+    val reviewDiarist = state.diarists.firstOrNull { it.chargeId == state.reviewSheetChargeId }
     val chargeDebtors = state.debtors.filter {
         state.chargeSheetChargeId == null || it.chargeId == state.chargeSheetChargeId
     }
@@ -145,6 +153,15 @@ internal fun GameSettlementScreen(
             debtor = waiveDebtor,
             onClose = { onIntent(GameSettlementIntent.DismissWaiveSheet) },
             onConfirm = { waiveDebtor?.let { onIntent(GameSettlementIntent.Waive(it.chargeId)) } },
+        )
+        ReviewSheet(
+            open = state.reviewSheetChargeId != null,
+            name = reviewDiarist?.name,
+            referenceLabel = reviewDiarist?.referenceLabel,
+            amountLabel = reviewDiarist?.amountLabel,
+            busy = state.updatingChargeId != null,
+            onClose = { onIntent(GameSettlementIntent.DismissReviewSheet) },
+            onConfirm = { reviewDiarist?.let { onIntent(GameSettlementIntent.ResolveReview(it.chargeId)) } },
         )
     }
 }
@@ -190,6 +207,14 @@ private fun LoadedContent(state: GameSettlementState, onIntent: (GameSettlementI
                 style = SaqzTheme.typography.support,
                 color = SaqzTheme.colors.errorForeground,
                 modifier = Modifier.testTag(GameSettlementTags.WaiveFailure),
+            )
+        }
+        if (state.reviewFailed) {
+            Text(
+                text = stringResource(Res.string.game_settlement_review_failure),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.errorForeground,
+                modifier = Modifier.testTag(GameSettlementTags.ReviewFailure),
             )
         }
         SaqzButton(
@@ -404,6 +429,21 @@ private fun DiaristRow(
                     text = stringResource(Res.string.game_settlement_withdrew_status),
                     tone = SaqzChipTone.Warning,
                     modifier = Modifier.testTag(GameSettlementTags.withdrew(diarist.chargeId)),
+                )
+            }
+            if (diarist.reviewRequired) {
+                SaqzStatusChip(
+                    text = stringResource(Res.string.game_settlement_review_status),
+                    tone = SaqzChipTone.Warning,
+                    modifier = Modifier.testTag(GameSettlementTags.review(diarist.chargeId)),
+                )
+                SaqzButton(
+                    label = stringResource(Res.string.game_settlement_review_action),
+                    onClick = { onIntent(GameSettlementIntent.OpenReview(diarist.chargeId)) },
+                    variant = SaqzButtonVariant.Secondary,
+                    size = SaqzButtonSize.Sm,
+                    enabled = !diarist.isUpdating,
+                    modifier = Modifier.testTag(GameSettlementTags.reviewAction(diarist.chargeId)),
                 )
             }
         }

@@ -43,6 +43,10 @@ data class GameDetailState(
     /** Dono e admins mexem na presença de outra pessoa enquanto o jogo está publicado, inclusive depois do início. */
     val canManageAttendance: Boolean get() = isAdmin && header?.statusTone == GameDetailStatusTone.Published
 
+    /** Aviso do gestor no jogo cancelado, com caminho até as cobranças para conferir (DEB-053). */
+    val canReviewFinance: Boolean
+        get() = isAdmin && header?.statusTone == GameDetailStatusTone.Cancelled && header.financeReviewRequired
+
     /** O servidor põe quem entrar na espera: jogo cheio. */
     val placeGoesToWaitlist: Boolean get() = attendance?.let { it.availableSpots <= 0 } == true
 
@@ -68,6 +72,8 @@ data class GameDetailHeaderUi(
      */
     val closedByDeadline: Boolean = false,
     val confirmationDeadlineWeekday: GroupWeekday? = null,
+    /** Jogo cancelado com cobrança já paga ou dispensada: o gestor confere se devolve (DEB-053). */
+    val financeReviewRequired: Boolean = false,
 ) {
     /** Os botões de resposta valem: o jogo não começou e o servidor não fechou as respostas pelo prazo. */
     val canRespond: Boolean get() = responseOpen && !closedByDeadline

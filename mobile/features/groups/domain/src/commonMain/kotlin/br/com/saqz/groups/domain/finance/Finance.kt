@@ -285,6 +285,13 @@ interface OrganizerFinanceGateway {
         command: ChargeStatusCommand,
     ): SaqzResult<VersionedCharge, FinanceError>
 
+    /** Dá por conferida a revisão de uma cobrança de jogo cancelado. Não muda o status. */
+    suspend fun resolveChargeReview(
+        groupId: GroupId,
+        chargeId: String,
+        version: FinanceVersionToken,
+    ): SaqzResult<VersionedCharge, FinanceError>
+
     suspend fun expenses(groupId: GroupId): SaqzResult<ExpenseList, FinanceError>
 
     suspend fun createExpense(

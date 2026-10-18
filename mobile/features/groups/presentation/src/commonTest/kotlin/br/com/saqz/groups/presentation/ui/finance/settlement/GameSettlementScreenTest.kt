@@ -125,6 +125,48 @@ class GameSettlementScreenTest {
         onNodeWithText("Não foi possível registrar o recebimento. Tente novamente.").assertDoesNotExist()
     }
 
+    @Test
+    fun `a charge marked for review shows the tag and a review action`() = runComposeUiTest {
+        val intents = mutableListOf<GameSettlementIntent>()
+        setScreen(reviewState, intents::add)
+
+        onNodeWithTag(GameSettlementTags.review("paid-1")).performScrollTo().assertExists()
+        onNodeWithText("Revisar").assertExists()
+        onNodeWithTag(GameSettlementTags.review("paid-2")).assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.reviewAction("paid-2")).assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.reviewAction("paid-1")).performScrollTo().assertIsEnabled().performClick()
+
+        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.OpenReview("paid-1")), intents)
+    }
+
+    @Test
+    fun `review confirmation reminds about the refund and resolves on confirm`() = runComposeUiTest {
+        val intents = mutableListOf<GameSettlementIntent>()
+        setScreen(reviewState.copy(reviewSheetChargeId = "paid-1"), intents::add)
+
+        onNodeWithTag(FinanceSheetsTags.Review).assertExists()
+        onNodeWithText("Para registrar a devolução no caixa, lance uma Saída.").assertExists()
+        onNodeWithText("Marcar como resolvida").assertExists()
+        onNodeWithTag(FinanceSheetsTags.ReviewConfirm).performClick()
+
+        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.ResolveReview("paid-1")), intents)
+    }
+
+    @Test
+    fun `review confirmation is locked while the write is in flight`() = runComposeUiTest {
+        val intents = mutableListOf<GameSettlementIntent>()
+        setScreen(reviewState.copy(reviewSheetChargeId = "paid-1", updatingChargeId = "paid-1"), intents::add)
+
+        onNodeWithTag(FinanceSheetsTags.ReviewConfirm).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `review failure shows its own message`() = runComposeUiTest {
+        setScreen(reviewState.copy(reviewFailed = true), {})
+
+        onNodeWithText("Não foi possível marcar como resolvida. Tente novamente.").performScrollTo().assertExists()
+    }
+
     private fun ComposeUiTest.setScreen(
         state: GameSettlementState,
         onIntent: (GameSettlementIntent) -> Unit,
@@ -177,6 +219,13 @@ class GameSettlementScreenTest {
             resultCents = -2_000L,
             diarists = listOf(
                 diarist("paid-1", "Bia", ChargeStatus.Paid),
+                diarist("paid-2", "Caio", ChargeStatus.Paid),
+            ),
+        )
+
+        val reviewState = summaryState.copy(
+            diarists = listOf(
+                diarist("paid-1", "Bia", ChargeStatus.Paid).copy(reviewRequired = true),
                 diarist("paid-2", "Caio", ChargeStatus.Paid),
             ),
         )

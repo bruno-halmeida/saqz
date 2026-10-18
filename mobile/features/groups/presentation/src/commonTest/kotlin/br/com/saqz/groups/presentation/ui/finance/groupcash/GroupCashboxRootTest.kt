@@ -251,6 +251,9 @@ private class RootTestOrganizerFinanceGateway(
         command: ChargeStatusCommand,
     ) = SaqzResult.Success(VersionedCharge(charge, FinanceVersionToken("\"2\"")))
 
+    override suspend fun resolveChargeReview(groupId: GroupId, chargeId: String, version: FinanceVersionToken) =
+        SaqzResult.Success(VersionedCharge(charge.copy(reviewRequired = false), FinanceVersionToken("\"2\"")))
+
     override suspend fun expenses(groupId: GroupId) =
         error("not used in this screen") as SaqzResult<ExpenseList, FinanceError>
 

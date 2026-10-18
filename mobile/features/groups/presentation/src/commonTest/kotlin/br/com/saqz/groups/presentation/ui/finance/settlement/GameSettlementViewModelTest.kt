@@ -482,6 +482,111 @@ class GameSettlementViewModelTest {
         assertEquals(1, finance.updateCalls)
     }
 
+    @Test
+    fun `a charge marked for review shows the mark and the others do not`() = runTest {
+        val viewModel = viewModel(SettlementFinanceGateway(reviewCharges(), expenses()))
+
+        val diarists = viewModel.state.value.diarists.associateBy { it.chargeId }
+        assertTrue(diarists.getValue("game-paid").reviewRequired)
+        assertFalse(diarists.getValue("game-pending").reviewRequired)
+    }
+
+    @Test
+    fun `review opens a confirmation only for a charge marked for review`() = runTest {
+        val viewModel = viewModel(SettlementFinanceGateway(reviewCharges(), expenses()))
+
+        viewModel.onIntent(GameSettlementIntent.OpenReview("game-pending"))
+        assertEquals(null, viewModel.state.value.reviewSheetChargeId)
+
+        viewModel.onIntent(GameSettlementIntent.OpenReview("game-paid"))
+        assertEquals("game-paid", viewModel.state.value.reviewSheetChargeId)
+
+        viewModel.onIntent(GameSettlementIntent.DismissReviewSheet)
+        assertEquals(null, viewModel.state.value.reviewSheetChargeId)
+    }
+
+    @Test
+    fun `resolving sends the version keeps the status and clears the mark`() = runTest {
+        val finance = SettlementFinanceGateway(reviewCharges(), expenses())
+        val viewModel = viewModel(finance)
+        val effects = mutableListOf<GameSettlementEffect>()
+        backgroundScope.launch(dispatcher) { viewModel.effects.collect { effects += it } }
+        viewModel.onIntent(GameSettlementIntent.OpenReview("game-paid"))
+
+        viewModel.onIntent(GameSettlementIntent.ResolveReview("game-paid"))
+
+        assertEquals(FinanceVersionToken("\"1\""), finance.lastResolveVersion)
+        assertEquals(1, finance.resolveCalls)
+        assertEquals(0, finance.updateCalls)
+        val after = viewModel.state.value
+        val row = after.diarists.first { it.chargeId == "game-paid" }
+        assertFalse(row.reviewRequired)
+        assertEquals(ChargeStatus.Paid, row.status)
+        assertEquals(null, after.reviewSheetChargeId)
+        assertEquals(null, after.updatingChargeId)
+        assertFalse(after.reviewFailed)
+        assertEquals(listOf<GameSettlementEffect>(GameSettlementEffect.MutationSucceeded), effects)
+    }
+
+    @Test
+    fun `resolving failure brings the mark back and says so`() = runTest {
+        val finance = SettlementFinanceGateway(reviewCharges(), expenses())
+        finance.resolveResult = SaqzResult.Failure(FinanceError.Data(br.com.saqz.domain.DataError.Connectivity))
+        val viewModel = viewModel(finance)
+        viewModel.onIntent(GameSettlementIntent.OpenReview("game-paid"))
+
+        viewModel.onIntent(GameSettlementIntent.ResolveReview("game-paid"))
+
+        val failed = viewModel.state.value
+        assertTrue(failed.reviewFailed)
+        assertTrue(failed.diarists.first { it.chargeId == "game-paid" }.reviewRequired)
+        assertEquals(null, failed.updatingChargeId)
+        assertEquals(null, failed.reviewSheetChargeId)
+        assertEquals(1, finance.chargeReads)
+    }
+
+    @Test
+    fun `resolving with an old version reloads the charges for the next try`() = runTest {
+        val finance = SettlementFinanceGateway(reviewCharges(), expenses())
+        finance.resolveResult = SaqzResult.Failure(FinanceError.Conflict)
+        val viewModel = viewModel(finance)
+
+        viewModel.onIntent(GameSettlementIntent.ResolveReview("game-paid"))
+
+        assertTrue(viewModel.state.value.reviewFailed)
+        assertEquals(2, finance.chargeReads)
+    }
+
+    @Test
+    fun `double tap on resolve sends one write while the first is in flight`() = runTest {
+        val reply = CompletableDeferred<Unit>()
+        val finance = SettlementFinanceGateway(reviewCharges(), expenses())
+        finance.beforeResolve = { reply.await() }
+        val viewModel = viewModel(finance)
+
+        viewModel.onIntent(GameSettlementIntent.ResolveReview("game-paid"))
+        viewModel.onIntent(GameSettlementIntent.ResolveReview("game-paid"))
+        viewModel.onIntent(GameSettlementIntent.OpenReview("game-paid"))
+        assertEquals(null, viewModel.state.value.reviewSheetChargeId)
+        reply.complete(Unit)
+
+        assertEquals(1, finance.resolveCalls)
+    }
+
+    @Test
+    fun `resolving a charge that is not marked does nothing`() = runTest {
+        val finance = SettlementFinanceGateway(charges(), expenses())
+        val viewModel = viewModel(finance)
+        val before = viewModel.state.value
+
+        viewModel.onIntent(GameSettlementIntent.ResolveReview("game-paid"))
+
+        assertEquals(before, viewModel.state.value)
+        assertEquals(0, finance.resolveCalls)
+    }
+
+    private fun reviewCharges() = charges().map { if (it.id == "game-paid") it.copy(reviewRequired = true) else it }
+
     private fun viewModel(
         finance: SettlementFinanceGateway,
         group: br.com.saqz.groups.domain.group.Group = sampleGroup(
@@ -607,6 +712,23 @@ private class SettlementFinanceGateway(
     var updateCalls = 0
     var beforeUpdate: suspend () -> Unit = {}
     var readFailure: FinanceError? = null
+    var resolveCalls = 0
+    var lastResolveVersion: FinanceVersionToken? = null
+    var beforeResolve: suspend () -> Unit = {}
+    var resolveResult: SaqzResult<VersionedCharge, FinanceError>? = null
+
+    override suspend fun resolveChargeReview(
+        groupId: GroupId,
+        chargeId: String,
+        version: FinanceVersionToken,
+    ): SaqzResult<VersionedCharge, FinanceError> {
+        resolveCalls++
+        lastResolveVersion = version
+        beforeResolve()
+        resolveResult?.let { return it }
+        currentCharges = currentCharges.map { if (it.id == chargeId) it.copy(reviewRequired = false) else it }
+        return SaqzResult.Success(VersionedCharge(currentCharges.first { it.id == chargeId }, FinanceVersionToken("\"4\"")))
+    }
 
     override suspend fun charges(groupId: GroupId): SaqzResult<ChargeList, FinanceError> {
         chargeReads++

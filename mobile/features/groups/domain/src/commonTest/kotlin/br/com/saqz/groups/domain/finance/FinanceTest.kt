@@ -119,6 +119,7 @@ class FinanceTest {
         override suspend fun charges(groupId: GroupId) = SaqzResult.Success(ChargeList(listOf(charge()), chargeTotals()))
         override suspend fun generateMonthly(groupId: GroupId, command: MonthlyChargeCommand) = SaqzResult.Success(ChargeList(listOf(charge())))
         override suspend fun updateChargeStatus(groupId: GroupId, chargeId: String, version: FinanceVersionToken, command: ChargeStatusCommand) = SaqzResult.Success(VersionedCharge(charge(), FinanceVersionToken("v2")))
+        override suspend fun resolveChargeReview(groupId: GroupId, chargeId: String, version: FinanceVersionToken) = SaqzResult.Success(VersionedCharge(charge(), FinanceVersionToken("v3")))
         override suspend fun expenses(groupId: GroupId) = SaqzResult.Success(ExpenseList(listOf(expense()), 12_345L))
         override suspend fun createExpense(groupId: GroupId, command: ExpenseWriteCommand) = SaqzResult.Success(VersionedExpense(expense(), FinanceVersionToken("v1")))
         override suspend fun editExpense(groupId: GroupId, expenseId: String, version: FinanceVersionToken, command: ExpenseWriteCommand) = SaqzResult.Success(VersionedExpense(expense(), FinanceVersionToken("v2")))

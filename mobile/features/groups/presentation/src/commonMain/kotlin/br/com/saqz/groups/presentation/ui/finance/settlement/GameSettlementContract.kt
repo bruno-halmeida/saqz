@@ -36,6 +36,8 @@ data class GameSettlementState(
     val receiptSheetChargeId: String? = null,
     val waiveSheetChargeId: String? = null,
     val waiveFailed: Boolean = false,
+    val reviewSheetChargeId: String? = null,
+    val reviewFailed: Boolean = false,
 ) {
     val isSummary: Boolean
         get() = !isLoading && !loadFailed && updatingChargeId == null && pendingDiaristCount == 0
@@ -62,6 +64,8 @@ data class GameSettlementDiaristUi(
     val referenceLabel: String,
     val isUpdating: Boolean = false,
     val withdrew: Boolean = false,
+    /** Jogo cancelado com a cobrança já paga ou dispensada: o organizador confere se devolve (DEB-053). */
+    val reviewRequired: Boolean = false,
 )
 
 sealed interface GameSettlementIntent {
@@ -76,6 +80,9 @@ sealed interface GameSettlementIntent {
     data class OpenWaive(val chargeId: String) : GameSettlementIntent
     data class Waive(val chargeId: String) : GameSettlementIntent
     data object DismissWaiveSheet : GameSettlementIntent
+    data class OpenReview(val chargeId: String) : GameSettlementIntent
+    data class ResolveReview(val chargeId: String) : GameSettlementIntent
+    data object DismissReviewSheet : GameSettlementIntent
     data object DismissChargeSheet : GameSettlementIntent
     data object DismissReceiptSheet : GameSettlementIntent
     data object CopyPix : GameSettlementIntent

@@ -366,6 +366,102 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
+    fun `charges marked for review are listed apart from the debtors`() = runTest {
+        val viewModel = viewModel(organizer = FakeOrganizerFinanceGateway(chargesResult = reviewCharges()))
+
+        val state = viewModel.state.value
+        val review = state.reviews.single()
+        assertEquals("game-review", review.chargeId)
+        assertEquals("Camila", review.name)
+        assertEquals("Diarista · jogo de 08/08 · paga", review.referenceLabel)
+        assertEquals(5L, review.chargeVersion)
+        assertTrue(state.debtors.none { it.chargeId == "game-review" })
+    }
+
+    @Test
+    fun `no mark means no review list`() = runTest {
+        assertTrue(viewModel().state.value.reviews.isEmpty())
+    }
+
+    @Test
+    fun `review opens a confirmation only for a listed charge`() = runTest {
+        val viewModel = viewModel(organizer = FakeOrganizerFinanceGateway(chargesResult = reviewCharges()))
+
+        viewModel.onIntent(GroupCashboxIntent.OpenReview("monthly-pending"))
+        assertNull(viewModel.state.value.reviewSheetChargeId)
+
+        viewModel.onIntent(GroupCashboxIntent.OpenReview("game-review"))
+        assertEquals("game-review", viewModel.state.value.reviewSheetChargeId)
+
+        viewModel.onIntent(GroupCashboxIntent.DismissReviewSheet)
+        assertNull(viewModel.state.value.reviewSheetChargeId)
+    }
+
+    @Test
+    fun `resolving sends the quoted version drops the mark and leaves the money alone`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway(chargesResult = reviewCharges())
+        val viewModel = viewModel(organizer = organizer)
+        val before = viewModel.state.value
+        viewModel.onIntent(GroupCashboxIntent.OpenReview("game-review"))
+
+        viewModel.onIntent(GroupCashboxIntent.ResolveReview("game-review"))
+
+        assertEquals(FinanceVersionToken("\"5\""), organizer.lastResolveVersion)
+        assertEquals("game-review", organizer.lastResolvedChargeId)
+        assertEquals(0, organizer.updateCalls)
+        val after = viewModel.state.value
+        assertTrue(after.reviews.isEmpty())
+        assertNull(after.reviewSheetChargeId)
+        assertNull(after.updatingChargeId)
+        assertFalse(after.reviewFailed)
+        assertEquals(before.debtors, after.debtors)
+        assertEquals(before.balanceCents, after.balanceCents)
+        assertEquals(GroupCashboxEffect.MutationSucceeded, viewModel.effects.first())
+    }
+
+    @Test
+    fun `resolving failure brings the mark back and says it failed`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway(chargesResult = reviewCharges())
+        organizer.resolveResult = SaqzResult.Failure(FinanceError.Data(DataError.Connectivity))
+        val viewModel = viewModel(organizer = organizer)
+        viewModel.onIntent(GroupCashboxIntent.OpenReview("game-review"))
+
+        viewModel.onIntent(GroupCashboxIntent.ResolveReview("game-review"))
+
+        val failed = viewModel.state.value
+        assertTrue(failed.reviewFailed)
+        assertEquals(listOf("game-review"), failed.reviews.map { it.chargeId })
+        assertNull(failed.updatingChargeId)
+        assertNull(failed.reviewSheetChargeId)
+    }
+
+    @Test
+    fun `double tap on resolve sends one write while the first is in flight`() = runTest {
+        val reply = CompletableDeferred<Unit>()
+        val organizer = FakeOrganizerFinanceGateway(chargesResult = reviewCharges())
+        organizer.beforeResolve = { reply.await() }
+        val viewModel = viewModel(organizer = organizer)
+
+        viewModel.onIntent(GroupCashboxIntent.ResolveReview("game-review"))
+        viewModel.onIntent(GroupCashboxIntent.ResolveReview("game-review"))
+        reply.complete(Unit)
+
+        assertEquals(1, organizer.resolveCalls)
+    }
+
+    @Test
+    fun `resolving an unlisted charge does nothing`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        val viewModel = viewModel(organizer = organizer)
+        val before = viewModel.state.value
+
+        viewModel.onIntent(GroupCashboxIntent.ResolveReview("monthly-paid"))
+
+        assertEquals(before, viewModel.state.value)
+        assertEquals(0, organizer.resolveCalls)
+    }
+
+    @Test
     fun `waive opens a confirmation only for the charge of someone who withdrew`() = runTest {
         val viewModel = viewModel(organizer = FakeOrganizerFinanceGateway(chargesResult = withdrewCharges()))
 
@@ -515,8 +611,27 @@ class GroupCashboxViewModelTest {
         var lastCommand: ChargeStatusCommand? = null
         var updateCalls = 0
         var beforeUpdate: suspend () -> Unit = {}
+        var resolveCalls = 0
+        var lastResolveVersion: FinanceVersionToken? = null
+        var lastResolvedChargeId: String? = null
+        var beforeResolve: suspend () -> Unit = {}
+        var resolveResult: SaqzResult<VersionedCharge, FinanceError> = SaqzResult.Success(
+            VersionedCharge(defaultCharges.first(), FinanceVersionToken("\"4\"")),
+        )
 
         override suspend fun charges(groupId: GroupId) = chargesResult
+
+        override suspend fun resolveChargeReview(
+            groupId: GroupId,
+            chargeId: String,
+            version: FinanceVersionToken,
+        ): SaqzResult<VersionedCharge, FinanceError> {
+            resolveCalls++
+            lastResolveVersion = version
+            lastResolvedChargeId = chargeId
+            beforeResolve()
+            return resolveResult
+        }
 
         override suspend fun updateChargeStatus(
             groupId: GroupId,
@@ -550,6 +665,17 @@ class GroupCashboxViewModelTest {
 
     private companion object {
         /** A diária de Camila é de quem confirmou e depois desistiu; as mensalidades não. */
+        /** Jogo cancelado depois de a diária de Camila ser paga: a cobrança fica marcada para revisão. */
+        fun reviewCharges() = SaqzResult.Success(
+            chargeList(
+                defaultCharges + Charge(
+                    "game-review", GroupId("group-1"), "member-camila", ChargeKind.Game, amountCents = 3_000L,
+                    dueDate = "2026-08-08", status = ChargeStatus.Paid, version = 5, audit = emptyList(),
+                    reviewRequired = true,
+                ),
+            ),
+        )
+
         fun withdrewCharges() = SaqzResult.Success(
             chargeList(defaultCharges.map { if (it.id == "game-pending") it.copy(withdrew = true) else it }),
         )

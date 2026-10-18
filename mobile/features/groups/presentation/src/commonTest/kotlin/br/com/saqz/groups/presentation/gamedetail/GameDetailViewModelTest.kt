@@ -56,6 +56,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -122,6 +123,63 @@ class GameDetailViewModelTest {
         athlete.onIntent(GameDetailIntent.OpenSettlement)
 
         assertEquals(false, athlete.state.value.isAdmin)
+    }
+
+    @Test
+    fun `cancelled game with charges to review opens the settlement for the organizer`() = runTest {
+        val cancelled = sampleVersionedGame().copy(
+            game = sampleVersionedGame().game.copy(status = GameStatus.Cancelled, financeReviewRequired = true),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(cancelled)),
+            FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway(),
+        )
+
+        assertTrue(viewModel.state.value.header?.financeReviewRequired == true)
+        assertTrue(viewModel.state.value.canReviewFinance)
+        viewModel.onIntent(GameDetailIntent.OpenSettlement)
+
+        assertEquals(GameDetailEffect.OpenSettlement, viewModel.effects.first())
+    }
+
+    @Test
+    fun `cancelled game without the review mark has no warning and no settlement`() = runTest {
+        val cancelled = sampleVersionedGame().copy(
+            game = sampleVersionedGame().game.copy(status = GameStatus.Cancelled, financeReviewRequired = false),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(cancelled)),
+            FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway(),
+        )
+        val effects = mutableListOf<GameDetailEffect>()
+        backgroundScope.launch(dispatcher) { viewModel.effects.collect { effects += it } }
+
+        viewModel.onIntent(GameDetailIntent.OpenSettlement)
+
+        assertFalse(viewModel.state.value.canReviewFinance)
+        assertEquals(emptyList(), effects)
+    }
+
+    @Test
+    fun `athlete gets no finance review warning on a cancelled game`() = runTest {
+        val cancelled = sampleVersionedGame().copy(
+            game = sampleVersionedGame().game.copy(status = GameStatus.Cancelled, financeReviewRequired = true),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(cancelled)),
+            FakeGroupGateway(SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = GroupRole.ATHLETE)))),
+            FakeAttendanceGateway(), FakeAthleteGateway(),
+        )
+        val effects = mutableListOf<GameDetailEffect>()
+        backgroundScope.launch(dispatcher) { viewModel.effects.collect { effects += it } }
+
+        viewModel.onIntent(GameDetailIntent.OpenSettlement)
+
+        assertFalse(viewModel.state.value.canReviewFinance)
+        assertEquals(emptyList(), effects)
     }
 
     @Test

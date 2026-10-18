@@ -241,6 +241,9 @@ private class RootTestSettlementFinanceGateway(
         command: ChargeStatusCommand,
     ) = SaqzResult.Success(VersionedCharge(charge.copy(status = command.status), FinanceVersionToken("\"3\"")))
 
+    override suspend fun resolveChargeReview(groupId: GroupId, chargeId: String, version: FinanceVersionToken) =
+        SaqzResult.Success(VersionedCharge(charge.copy(reviewRequired = false), FinanceVersionToken("\"3\"")))
+
     override suspend fun expenses(groupId: GroupId) = SaqzResult.Success(ExpenseList(emptyList(), 0L))
 
     override suspend fun createExpense(groupId: GroupId, command: ExpenseWriteCommand) =

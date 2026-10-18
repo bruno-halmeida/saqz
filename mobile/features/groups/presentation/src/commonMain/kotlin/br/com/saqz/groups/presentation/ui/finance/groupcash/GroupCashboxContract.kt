@@ -35,6 +35,9 @@ data class GroupCashboxState(
     val receiptSheetChargeId: String? = null,
     val waiveSheetChargeId: String? = null,
     val waiveFailed: Boolean = false,
+    val reviews: List<ReviewUi> = emptyList(),
+    val reviewSheetChargeId: String? = null,
+    val reviewFailed: Boolean = false,
 )
 
 @Immutable
@@ -52,6 +55,17 @@ data class DebtorUi(
     val referenceLabel: String = "",
     /** Desistiu depois de confirmar e a diária segue pendente: o organizador cobra ou dispensa. */
     val withdrew: Boolean = false,
+)
+
+/** Cobrança de jogo cancelado que já estava paga ou dispensada: o organizador confere a devolução (DEB-053). */
+@Immutable
+data class ReviewUi(
+    val chargeId: String,
+    val name: String,
+    val referenceLabel: String,
+    val amountLabel: String,
+    val chargeVersion: Long,
+    val isUpdating: Boolean = false,
 )
 
 @Immutable
@@ -84,6 +98,9 @@ sealed interface GroupCashboxIntent {
     data class OpenWaive(val chargeId: String) : GroupCashboxIntent
     data class Waive(val chargeId: String) : GroupCashboxIntent
     data object DismissWaiveSheet : GroupCashboxIntent
+    data class OpenReview(val chargeId: String) : GroupCashboxIntent
+    data class ResolveReview(val chargeId: String) : GroupCashboxIntent
+    data object DismissReviewSheet : GroupCashboxIntent
     data object DismissChargeSheet : GroupCashboxIntent
     data object DismissReceiptSheet : GroupCashboxIntent
     data object CopyPix : GroupCashboxIntent

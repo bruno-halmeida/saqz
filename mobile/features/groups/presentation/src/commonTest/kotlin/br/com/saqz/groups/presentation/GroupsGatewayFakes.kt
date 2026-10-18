@@ -528,6 +528,9 @@ class FakeOrganizerFinanceGateway(
         command: ChargeStatusCommand,
     ) = error("not used in this screen") as SaqzResult<VersionedCharge, FinanceError>
 
+    override suspend fun resolveChargeReview(groupId: GroupId, chargeId: String, version: FinanceVersionToken) =
+        error("not used in this screen") as SaqzResult<VersionedCharge, FinanceError>
+
     override suspend fun expenses(groupId: GroupId) =
         error("not used in this screen") as SaqzResult<ExpenseList, FinanceError>
 

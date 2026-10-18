@@ -27,6 +27,7 @@ import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
+import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzMemberRow
@@ -82,10 +83,14 @@ import br.com.saqz.groups.resources.game_load_failure_title
 import br.com.saqz.groups.resources.game_load_not_found
 import br.com.saqz.groups.resources.game_detail_you
 import br.com.saqz.groups.resources.game_settlement_open
+import br.com.saqz.groups.resources.game_detail_finance_review_action
+import br.com.saqz.groups.resources.game_detail_finance_review_body
 import br.com.saqz.groups.resources.group_details_pending
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 internal object GameDetailTags {
+    const val FinanceReview = "game-detail-finance-review"
+    const val FinanceReviewAction = "game-detail-finance-review-action"
     const val Screen = "game-detail"
     const val CancelSheet = "game-detail-cancel-sheet"
     const val Publish = "game-detail-publish"
@@ -137,6 +142,7 @@ internal fun GameDetailScreen(
                     }
                     if (state.canManageAttendance) GamePlaceAction(onIntent)
                     state.waitlist.takeIf { it.isNotEmpty() }?.let { GameWaitlistSection(state, onIntent) }
+                    if (state.canReviewFinance) GameFinanceReviewNotice(onIntent)
                     if (state.isAdmin) {
                         if (state.header?.statusTone == GameDetailStatusTone.Published && state.header?.gameStarted != true) {
                             GameWaitlistAdminActions(onIntent = onIntent)
@@ -162,6 +168,24 @@ internal fun GameDetailScreen(
         if (state.organizer.placeOpen) GamePlaceSheet(state, onIntent)
         GameGuestNotice(state.guest, onIntent, Modifier.align(Alignment.BottomCenter))
     }
+}
+@Composable
+private fun GameFinanceReviewNotice(onIntent: (GameDetailIntent) -> Unit) = SaqzCard(
+    modifier = Modifier.testTag(GameDetailTags.FinanceReview),
+    tone = SaqzCardTone.Soft,
+) {
+    Text(
+        text = stringResource(Res.string.game_detail_finance_review_body),
+        style = SaqzTheme.typography.body,
+        color = SaqzTheme.colors.textPrimary,
+    )
+    SaqzButton(
+        stringResource(Res.string.game_detail_finance_review_action),
+        { onIntent(GameDetailIntent.OpenSettlement) },
+        variant = SaqzButtonVariant.Secondary,
+        fullWidth = true,
+        modifier = Modifier.testTag(GameDetailTags.FinanceReviewAction),
+    )
 }
 @Composable
 private fun GameDetailHeader(header: GameDetailHeaderUi) {

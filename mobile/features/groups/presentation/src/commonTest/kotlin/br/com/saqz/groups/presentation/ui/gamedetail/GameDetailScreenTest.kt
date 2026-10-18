@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.athlete.AthletePosition
@@ -51,6 +52,40 @@ class GameDetailScreenTest {
 
         onAllNodesWithText("Encerrar jogo e acertar").assertCountEquals(0)
     }
+
+    @Test
+    fun `cancelled game with charges to review warns the admin and opens the settlement`() = runComposeUiTest {
+        val intents = mutableListOf<GameDetailIntent>()
+        setScreen(state = cancelledReview(isAdmin = true, review = true), onIntent = intents::add)
+
+        onNodeWithTag(GameDetailTags.FinanceReview).assertExists()
+        onNodeWithText("Este jogo foi cancelado com cobranças já pagas ou dispensadas. Confira se precisa devolver algum valor.").assertExists()
+        onNodeWithTag(GameDetailTags.FinanceReviewAction).performScrollTo().performClick()
+
+        assertEquals(listOf<GameDetailIntent>(GameDetailIntent.OpenSettlement), intents)
+    }
+
+    @Test
+    fun `cancelled game without charges to review has no warning`() = runComposeUiTest {
+        setScreen(state = cancelledReview(isAdmin = true, review = false))
+
+        onAllNodesWithTag(GameDetailTags.FinanceReview).assertCountEquals(0)
+    }
+
+    @Test
+    fun `athlete never sees the finance review warning`() = runComposeUiTest {
+        setScreen(state = cancelledReview(isAdmin = false, review = true))
+
+        onAllNodesWithTag(GameDetailTags.FinanceReview).assertCountEquals(0)
+    }
+
+    private fun cancelledReview(isAdmin: Boolean, review: Boolean) = GameDetailPreviewData.admin.copy(
+        isAdmin = isAdmin,
+        header = GameDetailPreviewData.header.copy(
+            statusTone = GameDetailStatusTone.Cancelled,
+            financeReviewRequired = review,
+        ),
+    )
 
     @Test
     fun `settlement action is hidden from athletes`() = runComposeUiTest {

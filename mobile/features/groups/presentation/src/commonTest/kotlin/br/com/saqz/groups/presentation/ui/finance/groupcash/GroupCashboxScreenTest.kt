@@ -139,6 +139,54 @@ class GroupCashboxScreenTest {
         onNodeWithText("Não foi possível dispensar a cobrança. Tente novamente.").assertExists()
     }
 
+    @Test
+    fun `charges for review are listed with the tag and a review action`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(reviews = listOf(review)), intents::add)
+
+        onNodeWithTag(GroupCashboxTags.Reviews).performScrollTo().assertExists()
+        onNodeWithText("Cobranças para revisar").assertExists()
+        onNodeWithTag(GroupCashboxTags.review("review-1")).assertExists()
+        onNodeWithTag(GroupCashboxTags.reviewAction("review-1")).performScrollTo().assertIsEnabled().performClick()
+
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.OpenReview("review-1")), intents)
+    }
+
+    @Test
+    fun `no review section without marked charges`() = runComposeUiTest {
+        setScreen(loadedState, {})
+
+        onNodeWithTag(GroupCashboxTags.Reviews).assertDoesNotExist()
+    }
+
+    @Test
+    fun `review confirmation resolves on confirm and is locked while writing`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(reviews = listOf(review), reviewSheetChargeId = "review-1"), intents::add)
+
+        onNodeWithTag(FinanceSheetsTags.Review).assertExists()
+        onNodeWithText("Marcar como resolvida").assertExists()
+        onNodeWithTag(FinanceSheetsTags.ReviewConfirm).performClick()
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.ResolveReview("review-1")), intents)
+    }
+
+    @Test
+    fun `review confirmation cannot be confirmed again while writing`() = runComposeUiTest {
+        setScreen(
+            loadedState.copy(reviews = listOf(review), reviewSheetChargeId = "review-1", updatingChargeId = "review-1"),
+            {},
+        )
+
+        onNodeWithTag(FinanceSheetsTags.ReviewConfirm).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `review failure shows its own message`() = runComposeUiTest {
+        setScreen(loadedState.copy(reviewFailed = true), {})
+
+        onNodeWithText("Não foi possível marcar como resolvida. Tente novamente.").performScrollTo().assertExists()
+    }
+
     private fun androidx.compose.ui.test.ComposeUiTest.setScreen(
         state: GroupCashboxState,
         onIntent: (GroupCashboxIntent) -> Unit,
@@ -151,6 +199,13 @@ class GroupCashboxScreenTest {
     private companion object {
         val withdrewState get() = loadedState.copy(
             debtors = loadedState.debtors.map { it.copy(withdrew = true) },
+        )
+        val review = ReviewUi(
+            chargeId = "review-1",
+            name = "Camila",
+            referenceLabel = "Diarista · jogo de 08/08 · paga",
+            amountLabel = "R$\u00A030,00",
+            chargeVersion = 5L,
         )
         val loadedState = GroupCashboxState(
             isLoading = false,

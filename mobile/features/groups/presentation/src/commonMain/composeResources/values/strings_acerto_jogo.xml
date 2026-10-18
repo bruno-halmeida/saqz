@@ -41,4 +41,7 @@
         <item quantity="one">1 mensalista</item>
         <item quantity="other">%1$d mensalistas</item>
     </plurals>
+    <string name="game_settlement_review_status">Revisar</string>
+    <string name="game_settlement_review_action">Conferir</string>
+    <string name="game_settlement_review_failure">Não foi possível marcar como resolvida. Tente novamente.</string>
 </resources>

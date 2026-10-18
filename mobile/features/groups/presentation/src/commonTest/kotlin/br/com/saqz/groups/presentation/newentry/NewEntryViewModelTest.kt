@@ -191,6 +191,8 @@ private class FakeOrganizerGateway(
     override suspend fun generateMonthly(groupId: GroupId, command: MonthlyChargeCommand) = SaqzResult.Success(ChargeList(emptyList()))
     override suspend fun updateChargeStatus(groupId: GroupId, chargeId: String, version: FinanceVersionToken, command: ChargeStatusCommand) =
         SaqzResult.Success(VersionedCharge(sampleCharge(), version))
+    override suspend fun resolveChargeReview(groupId: GroupId, chargeId: String, version: FinanceVersionToken) =
+        SaqzResult.Success(VersionedCharge(sampleCharge(), version))
     override suspend fun expenses(groupId: GroupId) = SaqzResult.Success(ExpenseList(emptyList(), 0L))
     override suspend fun createExpense(groupId: GroupId, command: ExpenseWriteCommand): SaqzResult<VersionedExpense, FinanceError> {
         createCalls++

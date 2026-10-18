@@ -9,6 +9,7 @@ import br.com.saqz.groups.domain.finance.Charge
 import br.com.saqz.groups.domain.finance.ChargeKind
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.ChargeStatusCommand
+import br.com.saqz.groups.domain.finance.FinanceError
 import br.com.saqz.groups.domain.finance.FinanceStatementGateway
 import br.com.saqz.groups.domain.finance.FinanceStatementPage
 import br.com.saqz.groups.domain.finance.FinanceStatementQuery
@@ -24,6 +25,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
+@Suppress("LargeClass")
 class GroupCashboxViewModel(
     private val groupId: String,
     private val groupGateway: GroupGateway,
@@ -41,6 +43,7 @@ class GroupCashboxViewModel(
         load()
     }
 
+    @Suppress("CyclomaticComplexMethod")
     override fun handleIntent(intent: GroupCashboxIntent) {
         when (intent) {
             GroupCashboxIntent.Retry -> load()
@@ -56,6 +59,9 @@ class GroupCashboxViewModel(
             is GroupCashboxIntent.OpenWaive -> openWaiveSheet(intent.chargeId)
             is GroupCashboxIntent.Waive -> waive(intent.chargeId)
             GroupCashboxIntent.DismissWaiveSheet -> update { it.copy(waiveSheetChargeId = null) }
+            is GroupCashboxIntent.OpenReview -> openReviewSheet(intent.chargeId)
+            is GroupCashboxIntent.ResolveReview -> resolveReview(intent.chargeId)
+            GroupCashboxIntent.DismissReviewSheet -> update { it.copy(reviewSheetChargeId = null) }
             GroupCashboxIntent.DismissChargeSheet -> update {
                 it.copy(chargeSheetOpen = false, chargeSheetChargeId = null)
             }
@@ -116,8 +122,62 @@ class GroupCashboxViewModel(
         }
     }
 
+    private fun openReviewSheet(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null ||
+            current.reviews.none { it.chargeId == chargeId }
+        ) return
+        update {
+            it.copy(
+                reviewSheetChargeId = chargeId,
+                receiptSheetChargeId = null,
+                waiveSheetChargeId = null,
+                chargeSheetOpen = false,
+                chargeSheetChargeId = null,
+            )
+        }
+    }
+
+    /** Trava de toque duplo: com uma operação em curso (`updatingChargeId`) o segundo toque é ignorado. */
+    private fun resolveReview(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null) return
+        val review = current.reviews.firstOrNull { it.chargeId == chargeId } ?: return
+        val generation = ++receiptGeneration
+        val loadAtStart = loadGeneration
+        val previous = current
+        update {
+            it.copy(
+                reviews = it.reviews.filterNot { row -> row.chargeId == chargeId },
+                updatingChargeId = chargeId,
+                reviewSheetChargeId = null,
+                reviewFailed = false,
+            )
+        }
+        viewModelScope.launch {
+            val result = organizerFinanceGateway.resolveChargeReview(
+                groupId = GroupId(groupId),
+                chargeId = review.chargeId,
+                version = FinanceVersionToken("\"${review.chargeVersion}\""),
+            )
+            if (generation != receiptGeneration || loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    update { it.copy(updatingChargeId = null, reviewFailed = false) }
+                    emit(GroupCashboxEffect.MutationSucceeded)
+                }
+                is SaqzResult.Failure -> {
+                    update { previous.copy(reviewFailed = true, updatingChargeId = null, reviewSheetChargeId = null) }
+                    // Versão velha: recarrega por baixo para a próxima tentativa sair com a versão certa.
+                    if (result.error == FinanceError.Conflict) load(softRefresh = true)
+                }
+            }
+        }
+    }
+
     private fun GroupCashboxState.interacting() =
-        chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null || updatingChargeId != null
+        chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null ||
+            reviewSheetChargeId != null || updatingChargeId != null
 
     /**
      * Volta à tela: recarga por baixo, sem esqueleto e sem tela de erro. Com carga em voo, folha
@@ -180,7 +240,7 @@ class GroupCashboxViewModel(
                     statement = statement,
                     pixKey = group.profile?.pixKey,
                     pixLabel = group.profile?.pixLabel,
-                )
+                ).copy(reviewFailed = softRefresh && it.reviewFailed) // a recarga por baixo não apaga o aviso da revisão
             }
         }
         job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
@@ -315,6 +375,8 @@ class GroupCashboxViewModel(
             cashboxEmpty = cashboxEmpty,
             overdueBanner = buildOverdueBanner(debtors),
             debtors = debtors,
+            reviews = charges.filter { it.reviewRequired }
+                .map { it.toReview(memberNames[it.memberId] ?: "Membro") },
             pix = pixKey?.trim()?.takeIf(String::isNotEmpty)?.let { PixUi(it, pixLabel) },
         )
     }
@@ -334,6 +396,22 @@ class GroupCashboxViewModel(
             ChargeKind.Game -> "Diarista · jogo de ${formatDate(dueDate)}"
             ChargeKind.Monthly -> "Mensalista · ${month?.let(::monthNameOnlyFromKey) ?: "mês"}"
         },
+    )
+
+    private fun Charge.toReview(name: String) = ReviewUi(
+        chargeId = id,
+        name = guestDisplayName ?: name,
+        referenceLabel = (when (kind) {
+            ChargeKind.Game -> "Diarista · jogo de ${formatDate(dueDate)}"
+            ChargeKind.Monthly -> "Mensalista · ${month?.let(::monthNameOnlyFromKey) ?: "mês"}"
+        }) + " · " + when (status) {
+            ChargeStatus.Paid -> "paga"
+            ChargeStatus.Waived -> "dispensada"
+            ChargeStatus.Cancelled -> "cancelada"
+            ChargeStatus.Pending -> "em aberto"
+        },
+        amountLabel = formatBrl(amountCents),
+        chargeVersion = version,
     )
 
     private fun GroupCashboxState.optimisticallyReceive(debtor: DebtorUi): GroupCashboxState {
