@@ -3,8 +3,11 @@ package br.com.saqz.groups.presentation.ui.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -46,6 +49,7 @@ internal data class OwnChargeTicketTags(
  * - [details] entra entre o valor e o recebedor (o detalhe lista ali as cobranças em aberto) e
  *   [footnote] fecha o card em `caption`, depois do botão.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun OwnChargeTicket(
     eyebrow: String,
@@ -105,16 +109,21 @@ internal fun OwnChargeTicket(
                 DueChip(label = dueChipLabel, overdue = dueChipOverdue)
             }
         }
-        Row(
+        // O valor nunca quebra no meio do número: se ele e o chip do vencimento não cabem lado a lado
+        // (iPhone estreito, fonte grande), o chip desce para a linha de baixo.
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
-            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
+            itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = amountLabel,
                 style = SaqzTheme.typography.display,
                 color = colors.textPrimary,
-                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.padding(end = metrics.blockGap),
             )
             if (headerChip != null) {
                 DueChip(label = dueChipLabel, overdue = dueChipOverdue)
