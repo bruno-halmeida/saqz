@@ -901,6 +901,53 @@ class GroupSetupViewModelTest {
         }
     }
 
+    private fun ownerGroup() = groupWithMonthly().copy(role = br.com.saqz.groups.domain.group.GroupRole.OWNER)
+
+    private fun entry(id: String, role: br.com.saqz.groups.domain.group.GroupRole, active: Boolean = true) =
+        br.com.saqz.groups.presentation.sampleRosterEntry(id).copy(role = role, active = active)
+
+    @Test
+    fun `a exclusao conta os membros ativos fora o dono`() = runTest(mainDispatcher) {
+        val role = br.com.saqz.groups.domain.group.GroupRole.entries.associateBy { it.name }
+        val athletes = rosterGateway(
+            entry("dono", role.getValue("OWNER")),
+            entry("admin", role.getValue("ADMIN")),
+            entry("a", role.getValue("ATHLETE")),
+            entry("b", role.getValue("ATHLETE")),
+            entry("saiu", role.getValue("ATHLETE"), active = false),
+        )
+        val viewModel = editViewModel(ownerGroup(), athleteGateway = athletes)
+
+        assertEquals(3, viewModel.state.value.memberCount)
+    }
+
+    @Test
+    fun `grupo so com o dono conta zero`() = runTest(mainDispatcher) {
+        val athletes = rosterGateway(entry("dono", br.com.saqz.groups.domain.group.GroupRole.OWNER))
+        val viewModel = editViewModel(ownerGroup(), athleteGateway = athletes)
+
+        assertEquals(0, viewModel.state.value.memberCount)
+    }
+
+    @Test
+    fun `falha ao buscar os membros deixa a contagem desconhecida`() = runTest(mainDispatcher) {
+        val athletes = FakeAthleteGateway(
+            rosterResult = SaqzResult.Failure(br.com.saqz.groups.domain.athlete.AthleteError.DataFailure(DataError.Connectivity)),
+        )
+        val viewModel = editViewModel(ownerGroup(), athleteGateway = athletes)
+
+        assertNull(viewModel.state.value.memberCount)
+    }
+
+    @Test
+    fun `admin nao busca os membros so para a exclusao`() = runTest(mainDispatcher) {
+        val athletes = rosterGateway()
+        val viewModel = editViewModel(groupWithMonthly(fee = 5_000), athleteGateway = athletes)
+
+        assertNull(viewModel.state.value.memberCount)
+        assertNull(athletes.lastRosterFilter)
+    }
+
     @Test
     fun `falha ao buscar os membros esconde o seletor sem derrubar o formulario`() = runTest(mainDispatcher) {
         val athletes = FakeAthleteGateway(

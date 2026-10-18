@@ -175,6 +175,8 @@
 
     <!-- 2j · exclusão -->
     <string name="group_delete_title">Excluir o %1$s?</string>
+    <string name="group_delete_body_alone">Só você está no grupo. O histórico de jogos, avisos e caixa do grupo some. Isso não pode ser desfeito.</string>
+    <string name="group_delete_body_unknown">Os membros perdem o acesso e o histórico de jogos, avisos e caixa do grupo somem. Isso não pode ser desfeito.</string>
     <string name="group_delete_confirm">Excluir grupo</string>
     <string name="group_delete_cancel">Cancelar</string>
 

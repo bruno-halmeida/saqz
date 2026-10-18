@@ -159,7 +159,9 @@ class GroupSetupViewModel(
     private fun load() {
         val mode = state.value.mode as? GroupSetupMode.Edit ?: return
         val generation = ++loadGeneration
-        update { it.copy(isLoading = true, gatewayError = null, saveFailed = false, rosterHasMensalista = false) }
+        update {
+            it.copy(isLoading = true, gatewayError = null, saveFailed = false, rosterHasMensalista = false, memberCount = null)
+        }
         viewModelScope.launch {
             when (val result = profileGateway.readProfile(GroupId(mode.groupId))) {
                 is SaqzResult.Failure -> showFailure(generation, result.error.toUiError())
@@ -184,8 +186,10 @@ class GroupSetupViewModel(
                             pixLabel = group.profile?.pixLabel,
                         ).withSavedText(savedState)
                     }
-                    if (group.needsRosterToShowMonthlyPolicy()) {
-                        loadRosterHasMensalista(generation, GroupId(mode.groupId))
+                    val needsMonthlyPolicy = group.needsRosterToShowMonthlyPolicy()
+                    val isOwner = group.role == GroupRole.OWNER
+                    if (needsMonthlyPolicy || isOwner) {
+                        loadRoster(generation, GroupId(mode.groupId), needsMonthlyPolicy, isOwner)
                     }
                 }
             }
@@ -198,13 +202,21 @@ class GroupSetupViewModel(
      * "Mensalistas" da checklist da Início: o grupo cobra mensalidade se tem valor padrão **ou** algum
      * mensalista com valor próprio (`hasMensalista`). Roda depois de o formulário aparecer e só quando pode
      * mudar o resultado; falha cala, como na Início, e o seletor fica escondido.
+     *
+     * O dono lê o mesmo roster para a folha de exclusão: perdem o acesso os membros ativos fora ele, os mesmos
+     * que recebem o aviso de grupo excluído. Falha cala e a folha fala sem número.
      */
-    private suspend fun loadRosterHasMensalista(generation: Int, groupId: GroupId) {
+    private suspend fun loadRoster(generation: Int, groupId: GroupId, monthlyPolicy: Boolean, owner: Boolean) {
         val gateway = athleteGateway ?: return
         val result = gateway.roster(groupId, AthleteRosterFilter())
         if (generation != loadGeneration) return
         val roster = (result as? SaqzResult.Success)?.value ?: return
-        update { it.copy(rosterHasMensalista = roster.hasMensalista()) }
+        update {
+            it.copy(
+                rosterHasMensalista = if (monthlyPolicy) roster.hasMensalista() else it.rosterHasMensalista,
+                memberCount = if (owner) roster.count { entry -> entry.active && entry.role != GroupRole.OWNER } else it.memberCount,
+            )
+        }
     }
 
     private fun onSubmit() {

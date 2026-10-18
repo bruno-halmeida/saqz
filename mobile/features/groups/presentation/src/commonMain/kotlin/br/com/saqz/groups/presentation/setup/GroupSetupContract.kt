@@ -86,8 +86,8 @@ data class GroupSetupState(
     val pixLabel: String? = null,
     val photoUrl: String? = null,
     val photo: ImageBitmap? = null,
-    // Só o `2j` usa: "Os %d membros perdem o acesso…". Não sai do formulário.
-    val memberCount: Int = 0,
+    // Só o `2j` usa: membros ativos fora o dono, que perdem o acesso. `null` = ainda não chegou ou falhou.
+    val memberCount: Int? = null,
     /** Só o OWNER pode excluir; enquanto o snapshot não chega, a ação fica escondida. */
     val canDelete: Boolean = false,
     /** Configurações de jogo são visíveis apenas ao OWNER/ADMIN. */

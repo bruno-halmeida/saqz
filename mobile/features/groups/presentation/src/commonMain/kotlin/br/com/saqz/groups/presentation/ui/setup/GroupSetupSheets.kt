@@ -38,6 +38,8 @@ import br.com.saqz.groups.presentation.ui.components.SlotDraft
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_delete_body
+import br.com.saqz.groups.resources.group_delete_body_alone
+import br.com.saqz.groups.resources.group_delete_body_unknown
 import br.com.saqz.groups.resources.group_delete_cancel
 import br.com.saqz.groups.resources.group_delete_confirm
 import br.com.saqz.groups.resources.group_delete_title
@@ -134,7 +136,7 @@ internal fun GroupSetupSheets(
 private fun GroupDeleteSheet(
     open: Boolean,
     groupName: String,
-    memberCount: Int,
+    memberCount: Int?,
     onConfirm: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -178,7 +180,11 @@ private fun GroupDeleteSheet(
             color = colors.textPrimary,
         )
         Text(
-            text = pluralStringResource(Res.plurals.group_delete_body, memberCount, memberCount),
+            text = when (memberCount) {
+                null -> stringResource(Res.string.group_delete_body_unknown)
+                0 -> stringResource(Res.string.group_delete_body_alone)
+                else -> pluralStringResource(Res.plurals.group_delete_body, memberCount, memberCount)
+            },
             style = SaqzTheme.typography.body,
             color = colors.textSecondary,
         )

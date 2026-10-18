@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.setup
 
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -18,6 +19,7 @@ import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
+import br.com.saqz.groups.presentation.setup.GroupSetupSheet
 import br.com.saqz.groups.presentation.setup.GroupSetupState
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -56,6 +58,42 @@ class GroupSetupScreenTest {
             .performScrollTo().performTextInput("25,50")
 
         assertEquals(GroupSetupIntent.UpdateDefaultGameFee(2550), received.last { it is GroupSetupIntent.UpdateDefaultGameFee })
+    }
+
+    private fun ComposeUiTest.deleteSheetShows(memberCount: Int?, text: String) {
+        val state = GroupSetupState(mode = GroupSetupMode.Edit("grp-1"), canDelete = true, memberCount = memberCount)
+            .copy(sheet = GroupSetupSheet.ConfirmDelete)
+        setContent { SaqzTheme { GroupSetupSheets(state, {}) } }
+        onNodeWithText(text).assertIsDisplayed()
+    }
+
+    @Test
+    fun deleteSheetCountsTheMembersWhoLoseAccess() {
+        runComposeUiTest {
+            deleteSheetShows(
+                8,
+                "Os 8 membros perdem o acesso e o histórico de jogos, avisos e caixa do grupo somem. Isso não pode ser desfeito.",
+            )
+        }
+        runComposeUiTest {
+            deleteSheetShows(
+                1,
+                "O 1 membro perde o acesso e o histórico de jogos, avisos e caixa do grupo somem. Isso não pode ser desfeito.",
+            )
+        }
+    }
+
+    @Test
+    fun deleteSheetSaysSoWhenOnlyTheOwnerIsInTheGroup() = runComposeUiTest {
+        deleteSheetShows(0, "Só você está no grupo. O histórico de jogos, avisos e caixa do grupo some. Isso não pode ser desfeito.")
+    }
+
+    @Test
+    fun deleteSheetDoesNotInventANumberWhenTheCountIsUnknown() = runComposeUiTest {
+        deleteSheetShows(
+            null,
+            "Os membros perdem o acesso e o histórico de jogos, avisos e caixa do grupo somem. Isso não pode ser desfeito.",
+        )
     }
 
     @Test
