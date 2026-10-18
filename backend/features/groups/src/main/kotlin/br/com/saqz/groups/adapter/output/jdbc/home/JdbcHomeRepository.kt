@@ -3,6 +3,7 @@ package br.com.saqz.groups.adapter.output.jdbc.home
 import br.com.saqz.groups.adapter.output.jdbc.attendance.WaitlistPositionSql
 import br.com.saqz.groups.application.home.HomeAdminGroup
 import br.com.saqz.groups.application.home.HomeAdminReadModel
+import br.com.saqz.groups.application.home.HomeGameToReview
 import br.com.saqz.groups.application.home.HomeGameToSettle
 import br.com.saqz.groups.application.home.HomeLastCompletedGame
 import br.com.saqz.groups.application.home.HomeMemberGroup
@@ -193,6 +194,15 @@ class JdbcHomeRepository(
                 zoneId = result.getString("settlement_zone_id"),
                 pendingCount = result.getInt("settlement_pending_count"),
                 totalCents = result.getLong("settlement_pending_cents"),
+            )
+        },
+        gameToReview = result.getObject("review_game_id", UUID::class.java)?.let {
+            HomeGameToReview(
+                gameId = it,
+                startsAt = result.getTimestamp("review_starts_at").toInstant(),
+                zoneId = result.getString("review_zone_id"),
+                reviewCount = result.getInt("review_charge_count"),
+                gameCount = result.getInt("review_game_count"),
             )
         },
     )
@@ -488,6 +498,28 @@ class JdbcHomeRepository(
                     ON administered.group_id = games.group_id
                 WHERE games.status = 'COMPLETED'
                 GROUP BY games.group_id, games.id, games.starts_at, games.zone_id
+            ),
+            reviews AS (
+                SELECT games.group_id,
+                       games.id AS game_id,
+                       games.starts_at,
+                       games.zone_id,
+                       count(charges.id) AS charge_count,
+                       count(*) OVER (PARTITION BY games.group_id) AS game_count,
+                       row_number() OVER (
+                           PARTITION BY games.group_id
+                           ORDER BY games.starts_at, games.id
+                       ) AS position
+                FROM games
+                JOIN group_charges charges
+                    ON charges.group_id = games.group_id
+                   AND charges.game_id = games.id
+                   AND charges.kind = 'GAME'
+                   AND charges.review_required
+                JOIN administered_groups administered
+                    ON administered.group_id = games.group_id
+                WHERE games.status = 'CANCELLED'
+                GROUP BY games.group_id, games.id, games.starts_at, games.zone_id
             )
             SELECT administered.group_id,
                    administered.group_name,
@@ -498,7 +530,12 @@ class JdbcHomeRepository(
                    settlements.starts_at AS settlement_starts_at,
                    settlements.zone_id AS settlement_zone_id,
                    settlements.pending_count AS settlement_pending_count,
-                   settlements.pending_cents AS settlement_pending_cents
+                   settlements.pending_cents AS settlement_pending_cents,
+                   reviews.game_id AS review_game_id,
+                   reviews.starts_at AS review_starts_at,
+                   reviews.zone_id AS review_zone_id,
+                   reviews.charge_count AS review_charge_count,
+                   reviews.game_count AS review_game_count
             FROM administered_groups administered
             LEFT JOIN entry_requests
                 ON entry_requests.group_id = administered.group_id
@@ -507,6 +544,9 @@ class JdbcHomeRepository(
             LEFT JOIN settlements
                 ON settlements.group_id = administered.group_id
                AND settlements.position = 1
+            LEFT JOIN reviews
+                ON reviews.group_id = administered.group_id
+               AND reviews.position = 1
             ORDER BY administered.group_name, administered.group_id
         """
 

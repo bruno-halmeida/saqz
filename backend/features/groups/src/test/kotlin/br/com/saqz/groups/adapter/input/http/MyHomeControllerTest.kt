@@ -2,6 +2,7 @@ package br.com.saqz.groups.adapter.input.http
 
 import br.com.saqz.groups.application.home.HomeAdminGroup
 import br.com.saqz.groups.application.home.HomeAdminReadModel
+import br.com.saqz.groups.application.home.HomeGameToReview
 import br.com.saqz.groups.application.home.HomeGameToSettle
 import br.com.saqz.groups.application.home.HomeLastCompletedGame
 import br.com.saqz.groups.application.home.HomeMemberGroup
@@ -38,6 +39,7 @@ class MyHomeControllerTest {
     private val otherGroup = UUID.randomUUID()
     private val nextGame = UUID.randomUUID()
     private val completedGame = UUID.randomUUID()
+    private val cancelledGame = UUID.randomUUID()
     private val upcomingGame = UUID.randomUUID()
     private val otherUpcomingGame = UUID.randomUUID()
     private val identity = RequestIdentity("subject", emailVerified = true)
@@ -125,6 +127,7 @@ class MyHomeControllerTest {
                         entryRequestCount = 2,
                         monthlyCharges = HomeMonthlyChargesResponse(3, 450, "2026-08"),
                         gameToSettle = HomeGameToSettleResponse(completedGame, now.minusSeconds(86_400), "America/Sao_Paulo", 2, 500),
+                        gameToReview = HomeGameToReviewResponse(cancelledGame, now.minusSeconds(172_800), "America/Sao_Paulo", 3, 2),
                     ),
                 ),
             ),
@@ -198,6 +201,22 @@ class MyHomeControllerTest {
         assertEquals(group, pending.groupId)
         assertEquals("Grupo Praia", pending.groupName)
         assertEquals(now, pending.requestedAt)
+    }
+
+    @Test
+    fun leavesGameToReviewNullWhenTheGroupHasNothingToReview() {
+        val controller = controller(
+            fixed = HomeReadModel(
+                member = HomeMemberReadModel(null, null, emptyList()),
+                admin = HomeAdminReadModel(
+                    groups = listOf(
+                        HomeAdminGroup(group, "Grupo Praia", 0, HomeMonthlyCharges(0, 0, YearMonth.from(now.atZone(ZoneId.of("UTC")))), null),
+                    ),
+                ),
+            ),
+        )
+
+        assertNull(controller.home(identity).admin?.groups?.single()?.gameToReview)
     }
 
     @Test
@@ -292,6 +311,7 @@ class MyHomeControllerTest {
                                 entryRequestCount = 2,
                                 monthlyCharges = HomeMonthlyCharges(3, 450, YearMonth.from(today)),
                                 gameToSettle = HomeGameToSettle(completedGame, now.minusSeconds(86_400), "America/Sao_Paulo", 2, 500),
+                                gameToReview = HomeGameToReview(cancelledGame, now.minusSeconds(172_800), "America/Sao_Paulo", 3, 2),
                             ),
                         ),
                     ),

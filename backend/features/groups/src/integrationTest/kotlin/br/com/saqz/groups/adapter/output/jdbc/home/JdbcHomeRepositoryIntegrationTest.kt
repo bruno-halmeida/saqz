@@ -482,6 +482,84 @@ class JdbcHomeRepositoryIntegrationTest {
         )
     }
 
+    @Test
+    fun reportsTheOldestCancelledGameWithAChargeToReviewUntilItIsResolved() {
+        val actor = user("review-actor", "Review Actor")
+        val owner = user("review-owner", "Review Owner")
+        val payer = user("review-payer", "Review Payer")
+        val payer2 = user("review-payer2", "Review Payer Two")
+        val adminGroup = group("Review admin", owner)
+        val athleteGroup = group("Review athlete", owner)
+        val deletedGroup = group("Review deleted", actor)
+        membership(adminGroup, actor, role = "ADMIN")
+        membership(athleteGroup, actor)
+        membership(adminGroup, payer)
+        membership(adminGroup, payer2)
+        val oldest = game(adminGroup, "2026-07-10T10:00:00Z", "CANCELLED", capacity = 4)
+        val newer = game(adminGroup, "2026-07-20T10:00:00Z", "CANCELLED", capacity = 4)
+        val published = game(adminGroup, "2026-08-05T10:00:00Z", "PUBLISHED", capacity = 4)
+        val cleanCancelled = game(adminGroup, "2026-07-01T10:00:00Z", "CANCELLED", capacity = 4)
+        val athleteGame = game(athleteGroup, "2026-07-10T10:00:00Z", "CANCELLED", capacity = 4)
+        val deletedGame = game(deletedGroup, "2026-07-10T10:00:00Z", "CANCELLED", capacity = 4)
+        gameCharge(adminGroup, payer, oldest, 100, "PAID", actor)
+        gameCharge(adminGroup, payer2, oldest, 150, "WAIVED", actor)
+        gameCharge(adminGroup, payer, newer, 100, "PAID", actor)
+        gameCharge(adminGroup, payer, published, 100, "PAID", actor)
+        gameCharge(adminGroup, payer, cleanCancelled, 100, "PAID", actor)
+        gameCharge(athleteGroup, payer, athleteGame, 100, "PAID", owner)
+        gameCharge(deletedGroup, payer, deletedGame, 100, "PAID", actor)
+        execute(
+            "UPDATE group_charges SET review_required = true WHERE game_id IN " +
+                "('$oldest','$newer','$published','$athleteGame','$deletedGame')",
+        )
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$deletedGroup'")
+        val now = Instant.parse("2026-08-01T12:00:00Z")
+        val today = LocalDate.of(2026, 8, 1)
+
+        val home = repository().find(actorId = actor, now = now, today = today)
+
+        val admin = requireNotNull(home.admin)
+        assertEquals(listOf("Review admin"), admin.groups.map { it.name })
+        val toReview = requireNotNull(admin.groups.single().gameToReview)
+        assertEquals(oldest, toReview.gameId)
+        assertEquals("America/Sao_Paulo", toReview.zoneId)
+        assertEquals(Instant.parse("2026-07-10T10:00:00Z"), toReview.startsAt)
+        assertEquals(2, toReview.reviewCount)
+        assertEquals(2, toReview.gameCount)
+
+        execute("UPDATE group_charges SET review_required = false WHERE game_id = '$oldest'")
+        val afterOldest = requireNotNull(repository().find(actorId = actor, now = now, today = today).admin)
+            .groups.single().gameToReview
+        assertEquals(newer, afterOldest?.gameId)
+        assertEquals(1, afterOldest?.reviewCount)
+        assertEquals(1, afterOldest?.gameCount)
+
+        execute("UPDATE group_charges SET review_required = false WHERE game_id = '$newer'")
+        assertNull(
+            requireNotNull(repository().find(actorId = actor, now = now, today = today).admin)
+                .groups.single().gameToReview,
+        )
+    }
+
+    @Test
+    fun doesNotShowGameToReviewToAnAthlete() {
+        val owner = user("review-owner-2", "Review Owner")
+        val athlete = user("review-athlete", "Review Athlete")
+        val group = group("Review athlete only", owner)
+        membership(group, athlete)
+        val cancelled = game(group, "2026-07-10T10:00:00Z", "CANCELLED", capacity = 4)
+        gameCharge(group, athlete, cancelled, 100, "PAID", owner)
+        execute("UPDATE group_charges SET review_required = true WHERE game_id = '$cancelled'")
+
+        val home = repository().find(
+            actorId = athlete,
+            now = Instant.parse("2026-08-01T12:00:00Z"),
+            today = LocalDate.of(2026, 8, 1),
+        )
+
+        assertNull(home.admin)
+    }
+
     private fun game(
         group: UUID,
         startsAt: String,

@@ -1,6 +1,7 @@
 package br.com.saqz.groups.adapter.input.http
 
 import br.com.saqz.groups.application.home.HomeAdminGroup
+import br.com.saqz.groups.application.home.HomeGameToReview
 import br.com.saqz.groups.application.home.HomeGameToSettle
 import br.com.saqz.groups.application.home.HomeLastCompletedGame
 import br.com.saqz.groups.application.home.HomeMemberGroup
@@ -117,12 +118,21 @@ data class HomeGameToSettleResponse(
     val totalCents: Long,
 )
 
+data class HomeGameToReviewResponse(
+    val gameId: UUID,
+    val startsAt: Instant,
+    val zoneId: String,
+    val reviewCount: Int,
+    val gameCount: Int,
+)
+
 data class HomeAdminGroupResponse(
     val id: UUID,
     val name: String,
     val entryRequestCount: Int,
     val monthlyCharges: HomeMonthlyChargesResponse,
     val gameToSettle: HomeGameToSettleResponse?,
+    val gameToReview: HomeGameToReviewResponse? = null,
 )
 
 data class HomeAdminResponse(
@@ -279,6 +289,7 @@ private fun HomeAdminGroup.toResponse() = HomeAdminGroupResponse(
     entryRequestCount = entryRequestCount,
     monthlyCharges = monthlyCharges.toResponse(),
     gameToSettle = gameToSettle?.toResponse(),
+    gameToReview = gameToReview?.toResponse(),
 )
 
 private fun HomeMonthlyCharges.toResponse() = HomeMonthlyChargesResponse(count, totalCents, billingMonth.toString())
@@ -289,4 +300,12 @@ private fun HomeGameToSettle.toResponse() = HomeGameToSettleResponse(
     zoneId = zoneId,
     pendingCount = pendingCount,
     totalCents = totalCents,
+)
+
+private fun HomeGameToReview.toResponse() = HomeGameToReviewResponse(
+    gameId = gameId,
+    startsAt = startsAt,
+    zoneId = zoneId,
+    reviewCount = reviewCount,
+    gameCount = gameCount,
 )
