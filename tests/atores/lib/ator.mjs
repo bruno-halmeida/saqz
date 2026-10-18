@@ -67,6 +67,8 @@ export class Ator {
   mudarPapel(grupoId, usuarioId, role) { return this.chamar('PUT', `/api/groups/${grupoId}/memberships/${usuarioId}/role`, { role }) }
   pedidos(grupoId) { return this.chamar('GET', `/api/groups/${grupoId}/entry-requests`) }
   aprovarPedido(grupoId, usuarioId) { return this.chamar('POST', `/api/groups/${grupoId}/entry-requests/${usuarioId}/approve`) }
+  meuPerfil(grupoId, campos) { return this.chamar('PATCH', `/api/groups/${grupoId}/athletes/me`, { nickname: null, position: null, secondaryPosition: null, level: null, preferredSide: null, heightCm: null, ...campos }) }
+  atletasComConsulta(grupoId, consulta) { return this.chamar('GET', `/api/groups/${grupoId}/athletes${consulta}`) }
   atletas(grupoId) { return this.chamar('GET', `/api/groups/${grupoId}/athletes?includeInactive=true`) }
   ajustarAtleta(grupoId, usuarioId, campos) {
     return this.chamar('PATCH', `/api/groups/${grupoId}/athletes/${usuarioId}`, { nickname: null, position: null, secondaryPosition: null, level: null, preferredSide: null, heightCm: null, monthlyFeeCents: null, monthlyDueDay: null, active: true, ...campos })
@@ -120,6 +122,12 @@ export class Ator {
   baixa(grupoId, cobranca, status, { note, paidMethod } = {}) {
     return this.chamar('POST', `/api/groups/${grupoId}/charges/${cobranca.id}/status`, { status, note, paidMethod }, { 'If-Match': `"${cobranca.version}"` })
   }
+
+  cobrar(grupoId, ids, requestId = randomUUID()) { return this.chamar('POST', `/api/groups/${grupoId}/charges/notify`, { requestId, chargeIds: ids }) }
+  lancamento(grupoId, campos) { return this.chamar('POST', `/api/groups/${grupoId}/expenses`, { requestId: randomUUID(), ...campos }) }
+  lancamentos(grupoId) { return this.chamar('GET', `/api/groups/${grupoId}/expenses`) }
+  extrato(grupoId, consulta = '') { return this.chamar('GET', `/api/groups/${grupoId}/finance/statement${consulta}`) }
+  totais(grupoId) { return this.chamar('GET', `/api/groups/${grupoId}/finance/totals`) }
 
   // --- Avisos e conta ---
 

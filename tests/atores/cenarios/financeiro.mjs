@@ -221,4 +221,183 @@ export default [
       })
     },
   },
+{
+    id: 'FIN-005', feature: 'financeiro', critico: false,
+    titulo: '"Cobrar": o lembrete ao devedor',
+    async rodar(c) {
+      const { ORG, ADM, ATL1, ATL2 } = await c.atores('ORG', 'ADM', 'ATL1', 'ATL2')
+      const g = await c.passo('ORG cria o grupo, ADM vira admin; jogo com diária: ATL1 e ATL2 confirmam e ficam devendo', async () => {
+        const grupo = await c.grupo(ORG, [ADM, ATL1, ATL2])
+        c.status(await ORG.mudarPapel(grupo.id, ADM.id, 'ADMIN'), 200)
+        await c.configurar(ORG, grupo.id, { mensalistaPriority: false })
+        grupo.jogo = await c.jogo(ORG, grupo.id, { vagas: 4, valorCents: 2000 })
+        for (const a of [ATL1, ATL2]) c.status(await a.vou(grupo.id, grupo.jogo.id), 200)
+        return grupo
+      })
+      const cob = async (a) => (await ORG.cobrancas(g.id)).corpo.charges.find((x) => x.memberId === a.id)
+      const avisosCobranca = async (a) => (await a.avisosDoGrupo(g.id)).filter((n) => n.canal === 'CHARGE')
+      await c.passo('ORG toca em Cobrar na cobrança de ATL1: um aviso sai e ATL1 o recebe na central; ATL2 não', async () => {
+        const r = c.status(await ORG.cobrar(g.id, [(await cob(ATL1)).id]), 200)
+        c.igual([r.corpo.notificationCount, r.corpo.alreadyRemindedCount], [1, 0], 'recibo do Cobrar')
+        const x = await c.esperar('aviso de cobrança de ATL1', async () => { const v = await avisosCobranca(ATL1); return v.length ? v : null }, { teto: 20_000 })
+        c.igual(x.length, 1, 'avisos de cobrança de ATL1')
+        c.igual((await avisosCobranca(ATL2)).length, 0, 'ATL2 não recebe')
+      })
+      await c.passo('cobrar de novo na mesma hora: não repete o aviso e o recibo diz que já foi cobrada', async () => {
+        const r = c.status(await ORG.cobrar(g.id, [(await cob(ATL1)).id]), 200)
+        c.igual([r.corpo.notificationCount, r.corpo.alreadyRemindedCount], [0, 1], 'recibo do segundo Cobrar')
+        await c.dormir(1500)
+        c.igual((await avisosCobranca(ATL1)).length, 1, 'avisos de cobrança de ATL1')
+      })
+      await c.passo('13 horas depois (banco): cobrar de novo manda outro aviso', async () => {
+        await c.sql(`update group_messages set created_at = created_at - interval '13 hours' where charge_id = '${(await cob(ATL1)).id}'`)
+        const r = c.status(await ADM.cobrar(g.id, [(await cob(ATL1)).id]), 200)
+        c.igual(r.corpo.notificationCount, 1, 'avisos depois de 13 h')
+        await c.esperar('segundo aviso de cobrança', async () => (await avisosCobranca(ATL1)).length === 2, { teto: 20_000 })
+      })
+      await c.passo('cobrança já recebida não pode ser cobrada; o atleta não tem o botão (403)', async () => {
+        const paga = await cob(ATL2)
+        c.status(await ORG.baixa(g.id, paga, 'PAID', { paidMethod: 'PIX' }), 200)
+        c.status(await ORG.cobrar(g.id, [paga.id]), [409, 422])
+        c.status(await ATL1.cobrar(g.id, [(await cob(ATL1)).id]), 403)
+      })
+      await c.passo('mais de 200 cobranças de uma vez ou lista vazia: rejeitado', async () => {
+        c.status(await ORG.cobrar(g.id, []), 422)
+        c.status(await ORG.cobrar(g.id, Array.from({ length: 201 }, () => randomUUID())), 422)
+      })
+    },
+  },
+  {
+    id: 'FIN-006', feature: 'financeiro', critico: false,
+    titulo: 'Caixa e extrato',
+    async rodar(c) {
+      const { ORG, ADM, ATL1, ATL2, ATL3 } = await c.atores('ORG', 'ADM', 'ATL1', 'ATL2', 'ATL3')
+      const g = await c.passo('ORG cria o grupo, ADM vira admin; jogo de R$ 20: ATL1, ATL2 e ATL3 confirmam', async () => {
+        const grupo = await c.grupo(ORG, [ADM, ATL1, ATL2, ATL3])
+        c.status(await ORG.mudarPapel(grupo.id, ADM.id, 'ADMIN'), 200)
+        await c.configurar(ORG, grupo.id, { mensalistaPriority: false })
+        grupo.jogo = await c.jogo(ORG, grupo.id, { vagas: 4, valorCents: 2000 })
+        for (const a of [ATL1, ATL2, ATL3]) c.status(await a.vou(grupo.id, grupo.jogo.id), 200)
+        return grupo
+      })
+      const hoje = new Date().toISOString().slice(0, 10)
+      const saldo = async () => (await ORG.extrato(g.id)).corpo.summary
+      await c.passo('cobrança de R$ 20 recebida: entra no caixa (+ R$ 20); dispensada e cancelada não mudam o saldo', async () => {
+        const [a, b, d] = (await ORG.cobrancas(g.id)).corpo.charges
+        c.status(await ORG.baixa(g.id, a, 'PAID', { paidMethod: 'PIX' }), 200)
+        c.igual((await saldo()).accumulatedBalanceCents, 2000, 'saldo depois de 1 recebida')
+        c.status(await ORG.baixa(g.id, b, 'WAIVED', { note: 'Perdoado' }), 200)
+        c.status(await ORG.baixa(g.id, d, 'CANCELLED', { note: 'Anulada' }), 200)
+        c.igual((await saldo()).accumulatedBalanceCents, 2000, 'saldo depois de dispensar e cancelar')
+      })
+      const saida = await c.passo('ADM lança uma saída de R$ 100 (quadra): o saldo cai para - R$ 80', async () => {
+        const r = c.status(await ADM.lancamento(g.id, { description: 'Aluguel da quadra', amountCents: 10000, expenseDate: hoje, category: 'VENUE', direction: 'OUT' }), 201)
+        c.igual((await saldo()).accumulatedBalanceCents, -8000, 'saldo depois da saída')
+        return r.corpo
+      })
+      await c.passo('entrada manual de patrocínio de R$ 50 entra no caixa', async () => {
+        c.status(await ORG.lancamento(g.id, { description: 'Patrocínio da loja', amountCents: 5000, expenseDate: hoje, category: 'OTHER', customCategory: 'Patrocínio', direction: 'IN' }), 201)
+        c.igual((await saldo()).accumulatedBalanceCents, -3000, 'saldo depois da entrada manual')
+      })
+      await c.passo('corrigir o valor da saída: o saldo usa o valor novo e o histórico guarda a edição', async () => {
+        const r = c.status(await ADM.chamar('PUT', `/api/groups/${g.id}/expenses/${saida.id}`, { description: 'Aluguel da quadra', amountCents: 8000, expenseDate: hoje, category: 'VENUE', direction: 'OUT' }, { 'If-Match': `"${saida.version}"` }), 200)
+        c.igual((await saldo()).accumulatedBalanceCents, -1000, 'saldo com o valor corrigido')
+        c.afirmar(r.corpo.events.some((e) => e.action === 'EDITED'), 'o histórico guarda a edição', r)
+      })
+      await c.passo('anular a saída: sai da conta e continua visível no extrato como anulada', async () => {
+        const atual = (await ORG.lancamentos(g.id)).corpo.expenses.find((x) => x.id === saida.id)
+        c.status(await ORG.chamar('POST', `/api/groups/${g.id}/expenses/${saida.id}/void`, undefined, { 'If-Match': `"${atual.version}"` }), 200)
+        c.igual((await saldo()).accumulatedBalanceCents, 7000, 'saldo sem a saída anulada')
+        const anulado = (await ORG.lancamentos(g.id)).corpo.expenses.find((x) => x.id === saida.id)
+        c.igual(anulado.status, 'VOIDED', 'continua listada, como anulada')
+      })
+      await c.passo('o atleta não abre o caixa nem o extrato nem os lançamentos (403)', async () => {
+        c.status(await ATL1.extrato(g.id), 403)
+        c.status(await ATL1.lancamentos(g.id), 403)
+        c.status(await ATL1.totais(g.id), 403)
+        c.status(await ATL1.lancamento(g.id, { description: 'Tentativa', amountCents: 100, expenseDate: hoje, category: 'VENUE', direction: 'OUT' }), 403)
+      })
+    },
+  },
+  {
+    id: 'FIN-007', feature: 'financeiro', critico: false,
+    titulo: 'O acerto do jogo',
+    async rodar(c) {
+      const { ORG, ATL1, ATL2, ATL3 } = await c.atores('ORG', 'ATL1', 'ATL2', 'ATL3')
+      const g = await c.passo('ORG cria o grupo; dois jogos no mesmo dia; ATL1, ATL2 e ATL3 confirmam o primeiro (diária de R$ 20)', async () => {
+        const grupo = await c.grupo(ORG, [ATL1, ATL2, ATL3])
+        await c.configurar(ORG, grupo.id, { mensalistaPriority: false })
+        grupo.a = await c.jogo(ORG, grupo.id, { vagas: 4, valorCents: 2000 })
+        grupo.b = await c.jogo(ORG, grupo.id, { vagas: 4, valorCents: 2000 })
+        for (const a of [ATL1, ATL2, ATL3]) c.status(await a.vou(grupo.id, grupo.a.id), 200)
+        return grupo
+      })
+      const doJogo = async (j) => (await ORG.cobrancas(g.id)).corpo.charges.filter((x) => x.gameId === j.id)
+      await c.passo('2 das 3 diárias recebidas: recebido R$ 40, falta receber R$ 20', async () => {
+        const [a, b] = await doJogo(g.a)
+        c.status(await ORG.baixa(g.id, a, 'PAID', { paidMethod: 'PIX' }), 200); c.status(await ORG.baixa(g.id, b, 'PAID', { paidMethod: 'CASH' }), 200)
+        const linhas = await doJogo(g.a)
+        const soma = (st) => linhas.filter((x) => x.status === st).reduce((t, x) => t + x.amountCents, 0)
+        c.igual([soma('PAID'), soma('PENDING')], [4000, 2000], 'recebido e falta receber do jogo')
+      })
+      await c.passo('uma dispensada sai do "falta receber" e não entra no recebido', async () => {
+        const pendente = (await doJogo(g.a)).find((x) => x.status === 'PENDING')
+        c.status(await ORG.baixa(g.id, pendente, 'WAIVED', { note: 'Desistiu' }), 200)
+        const linhas = await doJogo(g.a)
+        const soma = (st) => linhas.filter((x) => x.status === st).reduce((t, x) => t + x.amountCents, 0)
+        c.igual([soma('PAID'), soma('PENDING'), soma('WAIVED')], [4000, 0, 2000], 'recebido, falta e dispensado')
+      })
+      await c.passo('saída de quadra lançada no dia: as cobranças dos dois jogos não carregam custo (a conta é do grupo)', async () => {
+        c.status(await ORG.lancamento(g.id, { description: 'Quadra do dia', amountCents: 15000, expenseDate: new Date().toISOString().slice(0, 10), category: 'VENUE', direction: 'OUT' }), 201)
+        c.afirmar((await doJogo(g.b)).length === 0, 'o segundo jogo, sem confirmados, segue sem cobranças')
+        c.afirmar((await doJogo(g.a)).every((x) => !('costCents' in x) && !('resultCents' in x)), 'cobrança não leva custo nem resultado')
+      })
+      await c.passo('o atleta não abre o acerto: a lista de cobranças do organizador devolve 403', async () => {
+        c.status(await ATL1.cobrancas(g.id), 403)
+      })
+    },
+  },
+  {
+    id: 'FIN-008', feature: 'financeiro', critico: false,
+    titulo: 'O que o atleta vê',
+    async rodar(c) {
+      const { ORG, ATL1, ATL2 } = await c.atores('ORG', 'ATL1', 'ATL2')
+      const g = await c.passo('ORG cria o grupo com chave Pix; jogos de R$ 20 e R$ 30; ATL1 confirma os dois; ATL2 confirma o primeiro', async () => {
+        const grupo = await c.grupo(ORG, [ATL1, ATL2], { extra: { pixKey: 'racha@saqz.test', pixLabel: 'Tesoureiro' } })
+        await c.configurar(ORG, grupo.id, { mensalistaPriority: false })
+        grupo.a = await c.jogo(ORG, grupo.id, { vagas: 4, valorCents: 2000 })
+        grupo.b = await c.jogo(ORG, grupo.id, { vagas: 4, valorCents: 3000 })
+        for (const j of [grupo.a, grupo.b]) c.status(await ATL1.vou(grupo.id, j.id), 200)
+        c.status(await ATL2.vou(grupo.id, grupo.a.id), 200)
+        return grupo
+      })
+      await c.passo('ATL1 vê só as 2 cobranças dele, sem totais e sem as de ATL2; a chave Pix do grupo está no cadastro', async () => {
+        const r = c.status(await ATL1.minhasCobrancas(g.id), 200).corpo
+        c.igual(r.charges.map((x) => [x.memberId, x.status]).sort(), [[ATL1.id, 'PENDING'], [ATL1.id, 'PENDING']], 'cobranças de ATL1')
+        c.afirmar(r.pendingTotalCents == null && r.paidTotalCents == null, 'atleta não recebe totais', null)
+        c.igual(c.status(await ATL1.grupo(g.id), 200).corpo.profile.pixKey, 'racha@saqz.test', 'chave Pix do grupo')
+      })
+      await c.passo('o atleta não abre o caixa do grupo (403)', async () => {
+        c.status(await ATL1.extrato(g.id), 403)
+        c.status(await ATL1.totais(g.id), 403)
+      })
+      await c.passo('quem desistiu e ainda deve continua vendo a cobrança pendente, até o organizador dar baixa', async () => {
+        c.status(await ATL2.naoVou(g.id, g.a.id), 200)
+        const [d] = c.status(await ATL2.minhasCobrancas(g.id), 200).corpo.charges
+        c.igual([d.status, d.withdrew], ['PENDING', true], 'cobrança do desistente')
+      })
+      await c.passo('convidado do ATL1: a cobrança aparece no nome do anfitrião, com o nome do convidado', async () => {
+        c.status(await ATL1.convidado(g.id, g.b.id, 'Amiga Do ATL1'), 201)
+        c.status(await ORG.porOutro(g.id, g.b.id, ATL2.id, 'CONFIRM', 'Chegou'), 200)
+        c.status(await ATL2.naoVou(g.id, g.b.id), 200)  // abre vaga e o convidado sobe
+        const mine = c.status(await ATL1.minhasCobrancas(g.id), 200).corpo.charges
+        c.afirmar(mine.some((x) => x.guestDisplayName === 'Amiga Do ATL1'), `deveria haver cobrança do convidado: ${JSON.stringify(mine.map((x) => x.guestDisplayName))}`, null)
+      })
+      await c.passo('tudo pago: as cobranças continuam na lista como histórico, sem pendentes', async () => {
+        for (const x of (await ORG.cobrancas(g.id)).corpo.charges.filter((x) => x.memberId === ATL1.id && x.status === 'PENDING')) c.status(await ORG.baixa(g.id, x, 'PAID', { paidMethod: 'PIX' }), 200)
+        const mine = c.status(await ATL1.minhasCobrancas(g.id), 200).corpo.charges
+        c.afirmar(mine.length >= 2 && mine.every((x) => x.status === 'PAID' || x.status === 'CANCELLED'), `sem pendentes: ${JSON.stringify(mine.map((x) => x.status))}`, null)
+      })
+    },
+  },
 ]
