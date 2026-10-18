@@ -36,6 +36,13 @@ test("terms set zero tolerance for objectionable content and a 24h report respon
   assert.match(page, /href="mailto:contato@egysis\.com"/);
 });
 
+test("terms carry the approved refund copy and the store refund rule", () => {
+  assert.match(page, /Em até 7 dias corridos da primeira cobrança/);
+  assert.match(page, /[Ee]screva para <a href="mailto:contato@egysis\.com">contato@egysis\.com<\/a> e devolvemos o valor/);
+  assert.match(page, /reembolsadas pela loja/);
+  assert.doesNotMatch(page, /saqz\.app\/assinar/);
+});
+
 test("terms keep the statutory consumer rights", () => {
   assert.match(page, /7 dias corridos/);
   assert.match(page, /Código de Defesa do Consumidor/);
