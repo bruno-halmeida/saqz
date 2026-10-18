@@ -129,6 +129,25 @@ class SaqzComponentsTest {
     }
 
     @Test
+    fun segmentedTagsEachOptionAndReportsItsIndex() = runComposeUiTest {
+        var selected = 0
+        setContent {
+            SaqzTheme {
+                SaqzSegmented(
+                    options = listOf("Outubro", "Setembro", "2026"),
+                    selected = selected,
+                    onSelect = { selected = it },
+                    optionTags = listOf("mes", "mes-anterior", "ano"),
+                )
+            }
+        }
+        onNodeWithTag("mes").assertIsSelected()
+        onNodeWithTag("ano").performClick()
+        waitForIdle()
+        assertEquals(2, selected)
+    }
+
+    @Test
     fun compactChoiceChipKeepsAnAccessibleInteractiveArea() = runComposeUiTest {
         setContent {
             SaqzTheme {

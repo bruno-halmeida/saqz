@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -255,6 +256,9 @@ fun SaqzStepper(
  * `background:#fff;border:1px solid #D8DDE8;border-radius:999px;padding:4px`. O trecho
  * `segBtn`/`segThumb` do bundle descreve só o botão e o polegar — quem pinta o trilho é
  * a `div` de fora.
+ *
+ * [optionTags] dá um `testTag` por opção, na ordem de [options], para telas cujos testes
+ * tocam cada uma.
  */
 @Composable
 fun SaqzSegmented(
@@ -262,6 +266,7 @@ fun SaqzSegmented(
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    optionTags: List<String> = emptyList(),
 ) {
     val colors = SaqzTheme.colors
     val motion = SaqzTheme.motion
@@ -316,7 +321,8 @@ fun SaqzSegmented(
                                 onSelect(index)
                             },
                         )
-                        .padding(vertical = 9.dp),
+                        .padding(vertical = 9.dp)
+                        .then(optionTags.getOrNull(index)?.let { Modifier.testTag(it) } ?: Modifier),
                     textAlign = TextAlign.Center,
                 )
             }

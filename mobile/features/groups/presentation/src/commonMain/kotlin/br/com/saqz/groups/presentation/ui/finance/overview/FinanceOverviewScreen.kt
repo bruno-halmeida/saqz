@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzCard
+import br.com.saqz.designsystem.SaqzSegmented
 import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzIcon
@@ -246,40 +247,13 @@ private fun FinanceOverviewPeriodSelector(
     state: FinanceOverviewState,
     onIntent: (FinanceOverviewIntent) -> Unit,
 ) {
-    val metrics = SaqzTheme.metrics
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(metrics.blockRadius))
-            .background(SaqzTheme.colors.surfaceSoft)
-            .padding(metrics.subGrid)
-            .testTag(FinanceOverviewTags.Periods),
-        horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
-    ) {
-        state.periods.forEach { option ->
-            val selected = option.selection == state.selectedPeriod
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(metrics.minimumTouchTarget)
-                    .clip(CircleShape)
-                    .background(if (selected) SaqzTheme.colors.primary else Color.Transparent)
-                    .clickable(
-                        onClickLabel = periodLabel(option),
-                        role = Role.Button,
-                    ) { onIntent(FinanceOverviewIntent.SelectPeriod(option.selection)) }
-                    .testTag(FinanceOverviewTags.period(option.selection)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = periodLabel(option),
-                    style = SaqzTheme.typography.caption,
-                    color = if (selected) SaqzTheme.colors.onPrimary else SaqzTheme.colors.textSecondary,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-    }
+    SaqzSegmented(
+        options = state.periods.map { periodLabel(it) },
+        selected = state.periods.indexOfFirst { it.selection == state.selectedPeriod },
+        onSelect = { onIntent(FinanceOverviewIntent.SelectPeriod(state.periods[it].selection)) },
+        modifier = Modifier.testTag(FinanceOverviewTags.Periods),
+        optionTags = state.periods.map { FinanceOverviewTags.period(it.selection) },
+    )
 }
 
 @Composable
