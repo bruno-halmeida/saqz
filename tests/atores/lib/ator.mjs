@@ -56,6 +56,13 @@ export class Ator {
   convite(grupoId) { return this.chamar('GET', `/api/groups/${grupoId}/invite`) }
   trocarConvite(grupoId) { return this.chamar('POST', `/api/groups/${grupoId}/invite`) }
   entrarPorConvite(codigo) { return this.chamar('POST', '/api/invites/redeem', { code: codigo }) }
+  /** Prévia do convite (vale sem login: passe `anonimo: true`). */
+  previa(codigo, { anonimo = false } = {}) { return chamar('POST', '/api/invites/preview', { token: anonimo ? undefined : this.token, corpo: { code: codigo } }) }
+  desativarConvite(grupoId) { return this.chamar('DELETE', `/api/groups/${grupoId}/invite`) }
+  recusarPedido(grupoId, usuarioId) { return this.chamar('DELETE', `/api/groups/${grupoId}/entry-requests/${usuarioId}`) }
+  meuPedido(grupoId) { return this.chamar('GET', `/api/groups/${grupoId}/entry-requests/me`) }
+  cancelarMeuPedido(grupoId) { return this.chamar('DELETE', `/api/groups/${grupoId}/entry-requests/me`) }
+  removerConvidado(grupoId, jogoId, anfitriaoId, seq) { return this.chamar('DELETE', `/api/groups/${grupoId}/games/${jogoId}/attendance/guests/${anfitriaoId}/${seq}`) }
   membros(grupoId) { return this.chamar('GET', `/api/groups/${grupoId}/memberships`) }
   mudarPapel(grupoId, usuarioId, role) { return this.chamar('PUT', `/api/groups/${grupoId}/memberships/${usuarioId}/role`, { role }) }
   pedidos(grupoId) { return this.chamar('GET', `/api/groups/${grupoId}/entry-requests`) }
