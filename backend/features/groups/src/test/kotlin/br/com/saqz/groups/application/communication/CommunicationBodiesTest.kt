@@ -101,6 +101,23 @@ class CommunicationBodiesTest {
         assertEquals("Um dos seus grupos foi excluído pelo organizador.", GROUP_DELETED_BODY)
     }
 
+    @Test fun `texto de exatamente 2000 caracteres passa inteiro e com um a mais é cortado no último nome completo`() {
+        val game = ReminderGame(wednesday, night, "Arena")
+        fun body(name: String) = reminderBody(game, ReminderRoster(listOf(name), emptyList(), emptyList()))
+        val padding = REMINDER_BODY_LIMIT - body("").length
+        val exact = body("a".repeat(padding))
+        assertEquals(REMINDER_BODY_LIMIT, exact.length)
+        assertEquals(false, exact.endsWith("…"))
+
+        val names = (1..300).map { "Atleta número %03d".format(it) }
+        val clipped = reminderBody(game, ReminderRoster(names, emptyList(), emptyList()))
+        assertEquals(true, clipped.length <= REMINDER_BODY_LIMIT)
+        assertEquals(true, clipped.endsWith("\n…"))
+        val kept = clipped.removeSuffix("\n…").lines().takeLastWhile { it.startsWith("Atleta número") }
+        assertEquals(names.take(kept.size), kept)
+        assertEquals(true, clipped.length > REMINDER_BODY_LIMIT - 40, "corta o mínimo necessário: ${clipped.length}")
+    }
+
     @Test fun `somar passos da fila conta itens, entregas e falhas`() {
         val run = QueueRun() + QueueStep(delivered = 2, failed = 1) + QueueStep(delivered = 0, failed = 3) + QueueStep()
         assertEquals(QueueRun(processed = 3, delivered = 2, failed = 4), run)
