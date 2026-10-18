@@ -73,6 +73,8 @@ export class Ator {
   ajustarAtleta(grupoId, usuarioId, campos) {
     return this.chamar('PATCH', `/api/groups/${grupoId}/athletes/${usuarioId}`, { nickname: null, position: null, secondaryPosition: null, level: null, preferredSide: null, heightCm: null, monthlyFeeCents: null, monthlyDueDay: null, active: true, ...campos })
   }
+  remover(grupoId, usuarioId) { return this.chamar('DELETE', `/api/groups/${grupoId}/athletes/${usuarioId}`) }
+  excluirGrupo(grupoId) { return this.chamar('DELETE', `/api/groups/${grupoId}`) }
   sairDoGrupo(grupoId) { return this.chamar('DELETE', `/api/groups/${grupoId}/memberships/me`) }
 
   // --- Jogos e presença ---
