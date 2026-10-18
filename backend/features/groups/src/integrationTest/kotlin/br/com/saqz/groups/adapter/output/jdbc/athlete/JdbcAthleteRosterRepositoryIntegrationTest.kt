@@ -56,6 +56,52 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
     }
 
     @Test
+    fun `list hides the fields the modality does not use and brings them back with it`() {
+        val owner = insertUser("hidden-roster-owner", "Owner Person")
+        val group = insertGroup(owner)
+        val member = insertUser("hidden-roster-member", "Member Person")
+        insertMembership(group, member, position = "LIBERO")
+        execute("UPDATE group_memberships SET height_cm = 181, preferred_side = 'DIREITA' WHERE group_id = '$group' AND user_id = '$member'")
+
+        val court = repository.list(owner, group, AthleteRosterFilter()).single { it.userId == member }
+        assertEquals(AthletePosition.LIBERO, court.position)
+        assertEquals(181, court.heightCm)
+        assertNull(court.preferredSide)
+
+        execute("UPDATE access_groups SET modality = 'FOOTVOLLEY' WHERE id = '$group'")
+        val beach = repository.list(owner, group, AthleteRosterFilter()).single { it.userId == member }
+        assertNull(beach.position)
+        assertNull(beach.heightCm)
+        assertEquals(AthletePreferredSide.DIREITA, beach.preferredSide)
+        assertTrue(repository.list(owner, group, AthleteRosterFilter(position = AthletePosition.LIBERO)).isEmpty())
+
+        execute("UPDATE access_groups SET modality = 'COURT_VOLLEYBALL' WHERE id = '$group'")
+        val back = repository.list(owner, group, AthleteRosterFilter()).single { it.userId == member }
+        assertEquals(AthletePosition.LIBERO, back.position)
+        assertEquals(181, back.heightCm)
+    }
+
+    @Test
+    fun `own profile hides the fields of a group whose modality does not use them`() {
+        val owner = insertUser("hidden-own-owner", "Owner Person")
+        val court = insertGroup(owner, "Quadra")
+        val beach = insertGroup(owner, "Praia", "BEACH_VOLLEYBALL")
+        val member = insertUser("hidden-own-member", "Member Person")
+        insertMembership(court, member, position = "PONTA")
+        insertMembership(beach, member, position = "PONTA")
+        execute("UPDATE group_memberships SET height_cm = 180, preferred_side = 'ESQUERDA'")
+
+        val memberships = repository.findOwnProfile(member)!!.memberships.associateBy { it.groupName.value }
+
+        assertEquals(AthletePosition.PONTA, memberships.getValue("Quadra").position)
+        assertEquals(180, memberships.getValue("Quadra").heightCm)
+        assertNull(memberships.getValue("Quadra").preferredSide)
+        assertNull(memberships.getValue("Praia").position)
+        assertNull(memberships.getValue("Praia").heightCm)
+        assertEquals(AthletePreferredSide.ESQUERDA, memberships.getValue("Praia").preferredSide)
+    }
+
+    @Test
     fun `list resolves owner admin and athlete roles`() {
         val owner = insertUser("roster-roles-owner", "Owner Person")
         val group = insertGroup(owner)
@@ -89,7 +135,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         assertEquals("Raio", entry.nickname)
         assertEquals(AthletePosition.CENTRAL, entry.secondaryPosition)
         assertEquals(AthleteLevel.AVANCADO, entry.level)
-        assertEquals(AthletePreferredSide.DIREITA, entry.preferredSide)
+        assertNull(entry.preferredSide) // quadra não usa o lado: guardado, escondido
         assertEquals(187, entry.heightCm)
         assertEquals(12500, entry.monthlyFeeCents)
         assertEquals(10, entry.monthlyDueDay)
@@ -338,7 +384,7 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         assertEquals("Raio", membership?.nickname)
         assertEquals(AthletePosition.PONTA, membership?.secondaryPosition)
         assertEquals(AthleteLevel.INICIANTE, membership?.level)
-        assertEquals(AthletePreferredSide.ESQUERDA, membership?.preferredSide)
+        assertNull(membership?.preferredSide) // quadra não usa o lado: guardado, escondido
         assertEquals(175, membership?.heightCm)
         assertEquals(9000, membership?.monthlyFeeCents)
         assertEquals(9, membership?.monthlyDueDay)
@@ -380,11 +426,11 @@ class JdbcAthleteRosterRepositoryIntegrationTest {
         return id
     }
 
-    private fun insertGroup(owner: UUID, name: String = "Training Group"): UUID {
+    private fun insertGroup(owner: UUID, name: String = "Training Group", modality: String = "COURT_VOLLEYBALL"): UUID {
         val id = UUID.randomUUID()
         execute(
-            "INSERT INTO access_groups (id, owner_user_id, creation_key, name, time_zone, created_at, updated_at) " +
-                "VALUES ('$id', '$owner', '${UUID.randomUUID()}', '$name', 'America/Sao_Paulo', now(), now())",
+            "INSERT INTO access_groups (id, owner_user_id, creation_key, name, time_zone, modality, composition, created_at, updated_at) " +
+                "VALUES ('$id', '$owner', '${UUID.randomUUID()}', '$name', 'America/Sao_Paulo', '$modality', 'MIXED', now(), now())",
         )
         return id
     }

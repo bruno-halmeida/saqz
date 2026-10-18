@@ -38,7 +38,7 @@ class JdbcAthleteRosterRepository(
             add("m.group_id = :groupId")
             if (!filter.includeInactive) add("m.active = true")
             if (filter.membershipType != null) add("m.membership_type = :membershipType")
-            if (filter.position != null) add("m.position = :position")
+            if (filter.position != null) add("m.position = :position AND groups.modality = 'COURT_VOLLEYBALL'")
             if (!filter.search.isNullOrBlank()) {
                 add("${fold("coalesce(u.nickname, u.display_name)")} LIKE '%' || ${fold(":search")} || '%'")
             }
@@ -70,8 +70,12 @@ class JdbcAthleteRosterRepository(
                        THEN u.phone
                        ELSE NULL
                    END AS phone,
-                   m.position, m.secondary_position, m.level, m.preferred_side,
-                   m.height_cm, m.nickname, m.monthly_fee_cents, m.monthly_due_day,
+                   CASE WHEN groups.modality = 'COURT_VOLLEYBALL' THEN m.position END AS position,
+                   CASE WHEN groups.modality = 'COURT_VOLLEYBALL' THEN m.secondary_position END AS secondary_position,
+                   m.level,
+                   CASE WHEN groups.modality IN ('BEACH_VOLLEYBALL', 'FOOTVOLLEY') THEN m.preferred_side END AS preferred_side,
+                   CASE WHEN groups.modality = 'COURT_VOLLEYBALL' THEN m.height_cm END AS height_cm,
+                   m.nickname, m.monthly_fee_cents, m.monthly_due_day,
                    m.membership_type, m.active, m.created_at
             FROM group_memberships m
             JOIN access_users u ON u.id = m.user_id
@@ -128,11 +132,11 @@ class JdbcAthleteRosterRepository(
                 m.group_id,
                 g.name AS group_name,
                 CASE WHEN g.owner_user_id = m.user_id THEN 'OWNER' ELSE m.role::text END AS role,
-                m.position,
-                m.secondary_position,
+                CASE WHEN g.modality = 'COURT_VOLLEYBALL' THEN m.position END AS position,
+                CASE WHEN g.modality = 'COURT_VOLLEYBALL' THEN m.secondary_position END AS secondary_position,
                 m.level,
-                m.preferred_side,
-                m.height_cm,
+                CASE WHEN g.modality IN ('BEACH_VOLLEYBALL', 'FOOTVOLLEY') THEN m.preferred_side END AS preferred_side,
+                CASE WHEN g.modality = 'COURT_VOLLEYBALL' THEN m.height_cm END AS height_cm,
                 m.nickname,
                 m.monthly_fee_cents,
                 m.monthly_due_day,

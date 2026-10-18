@@ -16,6 +16,13 @@ import java.sql.Types
 import java.util.UUID
 import javax.sql.DataSource
 
+// Campo que a modalidade atual do grupo não usa fica guardado, escondido (MEM-004): a resposta não o mostra e
+// salvar o perfil não o sobrescreve, para que voltar à modalidade original traga o valor de volta.
+private const val COURT_NOW =
+    "(SELECT modality FROM access_groups WHERE id = :groupId) = 'COURT_VOLLEYBALL'"
+private const val SIDE_NOW =
+    "(SELECT modality FROM access_groups WHERE id = :groupId) IN ('BEACH_VOLLEYBALL', 'FOOTVOLLEY')"
+
 class JdbcAthleteRepository(
     dataSource: DataSource,
 ) : AthleteRepository {
@@ -27,11 +34,11 @@ class JdbcAthleteRepository(
             m.user_id,
             u.display_name,
             CASE WHEN g.owner_user_id = m.user_id THEN 'OWNER' ELSE m.role::text END AS role,
-            m.position,
-            m.secondary_position,
+            CASE WHEN g.modality = 'COURT_VOLLEYBALL' THEN m.position END AS position,
+            CASE WHEN g.modality = 'COURT_VOLLEYBALL' THEN m.secondary_position END AS secondary_position,
             m.level,
-            m.preferred_side,
-            m.height_cm,
+            CASE WHEN g.modality IN ('BEACH_VOLLEYBALL', 'FOOTVOLLEY') THEN m.preferred_side END AS preferred_side,
+            CASE WHEN g.modality = 'COURT_VOLLEYBALL' THEN m.height_cm END AS height_cm,
             m.nickname,
             m.monthly_fee_cents,
             m.monthly_due_day,
@@ -54,11 +61,11 @@ class JdbcAthleteRepository(
         WITH updated AS (
             UPDATE group_memberships
             SET nickname = :nickname,
-                position = :position,
-                secondary_position = :secondaryPosition,
+                position = CASE WHEN $COURT_NOW THEN :position ELSE group_memberships.position END,
+                secondary_position = CASE WHEN $COURT_NOW THEN :secondaryPosition ELSE group_memberships.secondary_position END,
                 level = :level,
-                preferred_side = :preferredSide,
-                height_cm = :heightCm,
+                preferred_side = CASE WHEN $SIDE_NOW THEN :preferredSide ELSE group_memberships.preferred_side END,
+                height_cm = CASE WHEN $COURT_NOW THEN :heightCm ELSE group_memberships.height_cm END,
                 athlete_registration_completed = true,
                 updated_at = now()
             WHERE group_id = :groupId AND user_id = :userId
@@ -74,11 +81,11 @@ class JdbcAthleteRepository(
             updated.user_id,
             u.display_name,
             CASE WHEN g.owner_user_id = updated.user_id THEN 'OWNER' ELSE updated.role::text END AS role,
-            updated.position,
-            updated.secondary_position,
+            CASE WHEN g.modality = 'COURT_VOLLEYBALL' THEN updated.position END AS position,
+            CASE WHEN g.modality = 'COURT_VOLLEYBALL' THEN updated.secondary_position END AS secondary_position,
             updated.level,
-            updated.preferred_side,
-            updated.height_cm,
+            CASE WHEN g.modality IN ('BEACH_VOLLEYBALL', 'FOOTVOLLEY') THEN updated.preferred_side END AS preferred_side,
+            CASE WHEN g.modality = 'COURT_VOLLEYBALL' THEN updated.height_cm END AS height_cm,
             updated.nickname,
             updated.monthly_fee_cents,
             updated.monthly_due_day,
@@ -119,11 +126,11 @@ class JdbcAthleteRepository(
         WITH updated AS (
             UPDATE group_memberships
             SET nickname = :nickname,
-                position = :position,
-                secondary_position = :secondaryPosition,
+                position = CASE WHEN $COURT_NOW THEN :position ELSE group_memberships.position END,
+                secondary_position = CASE WHEN $COURT_NOW THEN :secondaryPosition ELSE group_memberships.secondary_position END,
                 level = :level,
-                preferred_side = :preferredSide,
-                height_cm = :heightCm,
+                preferred_side = CASE WHEN $SIDE_NOW THEN :preferredSide ELSE group_memberships.preferred_side END,
+                height_cm = CASE WHEN $COURT_NOW THEN :heightCm ELSE group_memberships.height_cm END,
                 monthly_fee_cents = :monthlyFeeCents,
                 monthly_due_day = :monthlyDueDay,
                 membership_type = :membershipType,
@@ -142,11 +149,11 @@ class JdbcAthleteRepository(
             updated.user_id,
             u.display_name,
             CASE WHEN g.owner_user_id = updated.user_id THEN 'OWNER' ELSE updated.role::text END AS role,
-            updated.position,
-            updated.secondary_position,
+            CASE WHEN g.modality = 'COURT_VOLLEYBALL' THEN updated.position END AS position,
+            CASE WHEN g.modality = 'COURT_VOLLEYBALL' THEN updated.secondary_position END AS secondary_position,
             updated.level,
-            updated.preferred_side,
-            updated.height_cm,
+            CASE WHEN g.modality IN ('BEACH_VOLLEYBALL', 'FOOTVOLLEY') THEN updated.preferred_side END AS preferred_side,
+            CASE WHEN g.modality = 'COURT_VOLLEYBALL' THEN updated.height_cm END AS height_cm,
             updated.nickname,
             updated.monthly_fee_cents,
             updated.monthly_due_day,

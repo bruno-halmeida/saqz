@@ -150,7 +150,7 @@ class JdbcAthleteRepositoryIntegrationTest {
                 nickname = "😀a",
                 secondaryPosition = AthletePosition.PONTA,
                 level = AthleteLevel.INTERMEDIARIO,
-                preferredSide = AthletePreferredSide.DIREITA,
+                preferredSide = null,
                 heightCm = 188,
                 monthlyFeeCents = 12500,
                 monthlyDueDay = 12,
@@ -160,7 +160,7 @@ class JdbcAthleteRepositoryIntegrationTest {
         assertEquals("😀a", updated.nickname)
         assertEquals(AthletePosition.PONTA, updated.secondaryPosition)
         assertEquals(AthleteLevel.INTERMEDIARIO, updated.level)
-        assertEquals(AthletePreferredSide.DIREITA, updated.preferredSide)
+        assertNull(updated.preferredSide)
         assertEquals(188, updated.heightCm)
         assertEquals(12500, updated.monthlyFeeCents)
         assertEquals(12, updated.monthlyDueDay)
@@ -185,7 +185,7 @@ class JdbcAthleteRepositoryIntegrationTest {
                 position = AthletePosition.CENTRAL,
                 secondaryPosition = AthletePosition.PONTA,
                 level = AthleteLevel.INICIANTE,
-                preferredSide = AthletePreferredSide.ESQUERDA,
+                preferredSide = null,
                 heightCm = 175,
             ),
         )
@@ -193,11 +193,80 @@ class JdbcAthleteRepositoryIntegrationTest {
         assertEquals("a\u0301", updated.nickname)
         assertEquals(AthletePosition.PONTA, updated.secondaryPosition)
         assertEquals(AthleteLevel.INICIANTE, updated.level)
-        assertEquals(AthletePreferredSide.ESQUERDA, updated.preferredSide)
+        assertNull(updated.preferredSide)
         assertEquals(175, updated.heightCm)
         assertEquals(9000, updated.monthlyFeeCents)
         assertEquals(9, updated.monthlyDueDay)
     }
+
+    @Test
+    fun `beach group roundtrips the preferred side and hides the court fields`() {
+        val owner = insertUser("beach-owner", "Owner Person")
+        val group = insertGroup(owner, "BEACH_VOLLEYBALL")
+        val member = insertUser("beach-member", "Member Person")
+        insertMembership(group, member)
+
+        val updated = repository.updateOwn(ownCommand(group, member, preferredSide = AthletePreferredSide.ESQUERDA))
+
+        assertEquals(AthletePreferredSide.ESQUERDA, updated.preferredSide)
+        assertNull(updated.position)
+        assertNull(updated.heightCm)
+    }
+
+    @Test
+    fun `fields the modality does not use stay stored and hidden and come back with the modality`() {
+        val owner = insertUser("hidden-owner", "Owner Person")
+        val group = insertGroup(owner)
+        val member = insertUser("hidden-member", "Member Person")
+        insertMembership(group, member)
+        repository.updateOwn(
+            ownCommand(group, member, position = AthletePosition.CENTRAL, secondary = AthletePosition.PONTA, heightCm = 190),
+        )
+        execute("UPDATE group_memberships SET preferred_side = 'ESQUERDA' WHERE group_id = '$group' AND user_id = '$member'")
+
+        execute("UPDATE access_groups SET modality = 'BEACH_VOLLEYBALL' WHERE id = '$group'")
+        val hidden = repository.find(group, member)!!
+        assertNull(hidden.position)
+        assertNull(hidden.secondaryPosition)
+        assertNull(hidden.heightCm)
+        assertEquals(AthletePreferredSide.ESQUERDA, hidden.preferredSide)
+
+        // Salvar só o apelido na praia não apaga o que está escondido.
+        val saved = repository.updateOwn(ownCommand(group, member, nickname = "Raio"))
+        assertEquals("Raio", saved.nickname)
+        assertNull(saved.position)
+        assertEquals("CENTRAL", text("SELECT position FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+        assertEquals(190, number("SELECT height_cm FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+
+        // O organizador também não apaga o escondido ao salvar o membro.
+        repository.update(
+            UpdateAthleteCommand(
+                groupId = group, userId = member, position = null,
+                membershipType = AthleteMembershipType.AVULSO, active = true, nickname = "Raio",
+            ),
+        )
+        assertEquals("PONTA", text("SELECT secondary_position FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
+
+        execute("UPDATE access_groups SET modality = 'COURT_VOLLEYBALL' WHERE id = '$group'")
+        val back = repository.find(group, member)!!
+        assertEquals(AthletePosition.CENTRAL, back.position)
+        assertEquals(AthletePosition.PONTA, back.secondaryPosition)
+        assertEquals(190, back.heightCm)
+        assertNull(back.preferredSide)
+    }
+
+    private fun ownCommand(
+        group: UUID,
+        user: UUID,
+        nickname: String? = null,
+        position: AthletePosition? = null,
+        secondary: AthletePosition? = null,
+        preferredSide: AthletePreferredSide? = null,
+        heightCm: Int? = null,
+    ) = UpdateOwnAthleteProfileCommand(
+        groupId = group, userId = user, nickname = nickname, position = position,
+        secondaryPosition = secondary, level = null, preferredSide = preferredSide, heightCm = heightCm,
+    )
 
     @Test
     fun `update on the owner's backfilled row still resolves role OWNER`() {
@@ -270,11 +339,11 @@ class JdbcAthleteRepositoryIntegrationTest {
         return id
     }
 
-    private fun insertGroup(owner: UUID): UUID {
+    private fun insertGroup(owner: UUID, modality: String = "COURT_VOLLEYBALL"): UUID {
         val id = UUID.randomUUID()
         execute(
-            "INSERT INTO access_groups (id, owner_user_id, creation_key, name, time_zone, created_at, updated_at) " +
-                "VALUES ('$id', '$owner', '${UUID.randomUUID()}', 'Training Group', 'America/Sao_Paulo', now(), now())",
+            "INSERT INTO access_groups (id, owner_user_id, creation_key, name, time_zone, modality, composition, created_at, updated_at) " +
+                "VALUES ('$id', '$owner', '${UUID.randomUUID()}', 'Training Group', 'America/Sao_Paulo', '$modality', 'MIXED', now(), now())",
         )
         return id
     }
