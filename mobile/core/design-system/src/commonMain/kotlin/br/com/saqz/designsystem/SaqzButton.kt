@@ -36,6 +36,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -206,6 +207,8 @@ fun SaqzButton(
                 text = label,
                 color = content,
                 style = labelStyle ?: variantStyle,
+                // Estreito (weight numa Row, fonte grande) o rótulo quebra; sem isto cada linha começa na esquerda.
+                textAlign = TextAlign.Center,
             )
             trailingContent?.invoke(content)
         }

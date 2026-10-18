@@ -236,6 +236,7 @@ fun SaqzStepper(
             style = SaqzTheme.typography.subtitle,
             color = colors.textPrimary,
             modifier = Modifier.width(32.dp),
+            textAlign = TextAlign.Center,
         )
         SaqzStepperButton(
             icon = SaqzIcons.Plus,
