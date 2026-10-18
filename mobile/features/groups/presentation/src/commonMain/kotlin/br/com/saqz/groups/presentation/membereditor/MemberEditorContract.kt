@@ -33,6 +33,10 @@ data class MemberEditorState(
     val heightCm: Int? = null,
     val heightText: String = "",
     val membershipType: AthleteMembershipType = AthleteMembershipType.AVULSO,
+    /** Como a pessoa está gravada no grupo: a escolha do formulário só vale depois do "Salvar". */
+    val persistedMembershipType: AthleteMembershipType = AthleteMembershipType.AVULSO,
+    /** Há mensalidade pendente desta pessoa no financeiro (DEB-062); sem leitura do financeiro, fica falso. */
+    val hasPendingMonthly: Boolean = false,
     val active: Boolean = true,
     val monthlyFeeOverrideCents: Long? = null,
     val monthlyDueDayOverride: Int? = null,
@@ -56,6 +60,10 @@ data class MemberEditorState(
 ) {
     val effectiveMonthlyFeeCents: Long? get() = monthlyFeeOverrideCents ?: defaultMonthlyFeeCents
     val effectiveMonthlyDueDay: Int? get() = monthlyDueDayOverride ?: defaultMonthlyDueDay
+    /** Mensalista virando avulso com mensalidade pendente: a cobrança continua, o organizador resolve no financeiro. */
+    val monthlyPendingNotice: Boolean
+        get() = hasPendingMonthly && membershipType == AthleteMembershipType.AVULSO &&
+            persistedMembershipType == AthleteMembershipType.MENSALISTA
     val isOwner: Boolean get() = role == GroupRole.OWNER
     /** Dono nunca sai; admin só o dono remove (SAI-003). `canManageRoles` é o dono quem vê. */
     val canRemove: Boolean get() = !isOwner && (role != GroupRole.ADMIN || canManageRoles)

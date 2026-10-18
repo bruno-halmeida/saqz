@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.membereditor
 
 import br.com.saqz.groups.domain.athlete.AthleteGateway
+import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
 import org.koin.core.module.Module
@@ -18,6 +19,7 @@ fun memberEditorPresentationModule(): Module = module {
             membershipGateway = get<GroupMembershipGateway>(),
             groupGateway = get<GroupGateway>(),
             trialAccess = getOrNull(),
+            organizerFinanceGateway = get<OrganizerFinanceGateway>(),
         )
     }
 }

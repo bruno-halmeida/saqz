@@ -82,6 +82,7 @@ import br.com.saqz.groups.resources.member_editor_membership
 import br.com.saqz.groups.resources.member_editor_monthly
 import br.com.saqz.groups.resources.member_editor_monthly_card
 import br.com.saqz.groups.resources.member_editor_monthly_explanation
+import br.com.saqz.groups.resources.member_editor_monthly_pending_notice
 import br.com.saqz.groups.resources.member_editor_none
 import br.com.saqz.groups.resources.member_editor_nickname
 import br.com.saqz.groups.resources.member_editor_nickname_hint
@@ -125,6 +126,7 @@ object MemberEditorTags {
     const val Nickname = "member-editor-nickname"
     const val Admin = "member-editor-admin"
     const val Billing = "member-editor-billing"
+    const val MonthlyPendingNotice = "member-editor-monthly-pending-notice"
     const val Remove = "member-editor-remove"
     const val Save = "member-editor-save"
     const val BillingAmount = "member-editor-billing-amount"
@@ -360,6 +362,14 @@ private fun MemberEditorMembership(state: MemberEditorState, onIntent: (MemberEd
             style = SaqzTheme.typography.support,
             color = SaqzTheme.colors.textSecondary,
         )
+        if (state.monthlyPendingNotice) {
+            Text(
+                text = stringResource(Res.string.member_editor_monthly_pending_notice),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.warningForeground,
+                modifier = Modifier.testTag(MemberEditorTags.MonthlyPendingNotice),
+            )
+        }
         if (state.membershipType == AthleteMembershipType.MENSALISTA) {
             SaqzCard(tone = br.com.saqz.designsystem.SaqzCardTone.Soft) {
                 Text(

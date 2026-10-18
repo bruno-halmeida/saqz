@@ -11,6 +11,9 @@ import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthleteRosterEntry
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.athlete.UpdateAthleteCommand
+import br.com.saqz.groups.domain.finance.ChargeKind
+import br.com.saqz.groups.domain.finance.ChargeStatus
+import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.membership.AssignableGroupRole
@@ -33,6 +36,7 @@ class MemberEditorViewModel(
     private val membershipGateway: GroupMembershipGateway,
     private val groupGateway: GroupGateway,
     private val trialAccess: GroupTrialAccessPort? = null,
+    private val organizerFinanceGateway: OrganizerFinanceGateway? = null,
 ) : MviViewModel<MemberEditorState, MemberEditorIntent, MemberEditorEffect>(
     MemberEditorState().restoreDraft(savedState),
 ) {
@@ -145,7 +149,12 @@ class MemberEditorViewModel(
             if (requestGeneration != generation) return@launch
             val role = listedRole ?: entry.role
 
-            applyLoadedMember(group, entry, stats, role)
+            // Só avisa a troca de tipo: se o financeiro não carregar, a tela abre sem o aviso.
+            val hasPendingMonthly = entry.membershipType == AthleteMembershipType.MENSALISTA &&
+                hasPendingMonthlyCharge()
+            if (requestGeneration != generation) return@launch
+
+            applyLoadedMember(group, entry, stats, role, hasPendingMonthly)
         }
     }
 
@@ -154,6 +163,7 @@ class MemberEditorViewModel(
         entry: AthleteRosterEntry,
         stats: br.com.saqz.groups.domain.athlete.AthleteStats,
         role: GroupRole,
+        hasPendingMonthly: Boolean,
     ) {
         member = entry
         val defaultFee = group.financeDefaults?.monthlyFeeCents
@@ -181,6 +191,8 @@ class MemberEditorViewModel(
                 heightCm = entry.heightCm,
                 heightText = entry.heightCm?.toString().orEmpty(),
                 membershipType = entry.membershipType,
+                persistedMembershipType = entry.membershipType,
+                hasPendingMonthly = hasPendingMonthly,
                 active = entry.active,
                 monthlyFeeOverrideCents = entry.monthlyFeeCents,
                 monthlyDueDayOverride = entry.monthlyDueDay,
@@ -191,6 +203,16 @@ class MemberEditorViewModel(
                 role = role,
                 canManageRoles = group.role == GroupRole.OWNER,
             ).restoreDraft(savedState)
+        }
+    }
+
+    private suspend fun hasPendingMonthlyCharge(): Boolean {
+        val gateway = organizerFinanceGateway ?: return false
+        return when (val result = gateway.charges(GroupId(groupId))) {
+            is SaqzResult.Failure -> false
+            is SaqzResult.Success -> result.value.charges.any {
+                it.memberId == userId && it.kind == ChargeKind.Monthly && it.status == ChargeStatus.Pending
+            }
         }
     }
 
@@ -281,6 +303,7 @@ class MemberEditorViewModel(
                     operation = null,
                     error = null,
                     membershipType = athlete.membershipType,
+                    persistedMembershipType = athlete.membershipType,
                     monthlyFeeOverrideCents = athlete.monthlyFeeCents,
                     monthlyDueDayOverride = athlete.monthlyDueDay,
                     billingSheetOpen = false,
@@ -298,6 +321,7 @@ class MemberEditorViewModel(
                     heightCm = athlete.heightCm,
                     heightText = athlete.heightCm?.toString().orEmpty(),
                     membershipType = athlete.membershipType,
+                    persistedMembershipType = athlete.membershipType,
                     active = athlete.active,
                     monthlyFeeOverrideCents = athlete.monthlyFeeCents,
                     monthlyDueDayOverride = athlete.monthlyDueDay,
