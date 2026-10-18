@@ -25,6 +25,8 @@
     <string name="game_settlement_court_expense_description_prefill">Aluguel da quadra</string>
     <string name="game_settlement_receipt_failure">Não foi possível registrar o recebimento. Tente novamente.</string>
     <string name="game_settlement_waive_failure">Não foi possível dispensar a cobrança. Tente novamente.</string>
+    <string name="game_settlement_cancel_action">Cancelar cobrança</string>
+    <string name="game_settlement_cancel_failure">Não foi possível cancelar a cobrança. Tente novamente.</string>
     <string name="game_settlement_summary_diarists_one">1 avulso × %1$s</string>
     <string name="game_settlement_summary_diarists_other">%1$d avulsos × %2$s</string>
     <plurals name="game_settlement_players">

@@ -59,6 +59,9 @@ class GroupCashboxViewModel(
             is GroupCashboxIntent.OpenWaive -> openWaiveSheet(intent.chargeId)
             is GroupCashboxIntent.Waive -> waive(intent.chargeId)
             GroupCashboxIntent.DismissWaiveSheet -> update { it.copy(waiveSheetChargeId = null) }
+            is GroupCashboxIntent.OpenCancel -> openCancelSheet(intent.chargeId)
+            is GroupCashboxIntent.Cancel -> cancel(intent.chargeId)
+            GroupCashboxIntent.DismissCancelSheet -> update { it.copy(cancelSheetChargeId = null) }
             is GroupCashboxIntent.OpenReview -> openReviewSheet(intent.chargeId)
             is GroupCashboxIntent.ResolveReview -> resolveReview(intent.chargeId)
             GroupCashboxIntent.DismissReviewSheet -> update { it.copy(reviewSheetChargeId = null) }
@@ -91,6 +94,7 @@ class GroupCashboxViewModel(
                 chargeSheetChargeId = chargeId,
                 receiptSheetChargeId = null,
                 waiveSheetChargeId = null,
+                cancelSheetChargeId = null,
             )
         }
     }
@@ -106,6 +110,7 @@ class GroupCashboxViewModel(
                 chargeSheetOpen = false,
                 chargeSheetChargeId = null,
                 waiveSheetChargeId = null,
+                cancelSheetChargeId = null,
             )
         }
     }
@@ -126,6 +131,68 @@ class GroupCashboxViewModel(
         }
     }
 
+    private fun openCancelSheet(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null ||
+            current.debtors.none { it.chargeId == chargeId }
+        ) return
+        update {
+            it.copy(
+                cancelSheetChargeId = chargeId,
+                receiptSheetChargeId = null,
+                waiveSheetChargeId = null,
+                reviewSheetChargeId = null,
+                undoSheetChargeId = null,
+                chargeSheetOpen = false,
+                chargeSheetChargeId = null,
+            )
+        }
+    }
+
+    /** Trava de toque duplo: com uma operação em curso (`updatingChargeId`) o segundo toque é ignorado. */
+    private fun cancel(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null) return
+        val debtor = current.debtors.firstOrNull { it.chargeId == chargeId } ?: return
+        val generation = ++receiptGeneration
+        val loadAtStart = loadGeneration
+        val previous = current
+        update { current.optimisticallyCancel(debtor) }
+        viewModelScope.launch {
+            val result = organizerFinanceGateway.updateChargeStatus(
+                groupId = GroupId(groupId),
+                chargeId = debtor.chargeId,
+                version = FinanceVersionToken("\"${debtor.chargeVersion}\""),
+                command = ChargeStatusCommand(ChargeStatus.Cancelled),
+            )
+            if (generation != receiptGeneration || loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    update { it.copy(updatingChargeId = null, operationFailed = false, cancelFailed = false) }
+                    emit(GroupCashboxEffect.MutationSucceeded)
+                }
+                is SaqzResult.Failure -> {
+                    update { previous.copy(cancelFailed = true, updatingChargeId = null, cancelSheetChargeId = null) }
+                    // Versão velha: recarrega por baixo para a próxima tentativa sair com a versão certa.
+                    if (result.error == FinanceError.Conflict) load(softRefresh = true)
+                }
+            }
+        }
+    }
+
+    /** Cancelar não entra no saldo nem no recebido: só tira a cobrança da lista de quem deve. */
+    private fun GroupCashboxState.optimisticallyCancel(debtor: DebtorUi): GroupCashboxState {
+        val remainingDebtors = debtors.filterNot { it.chargeId == debtor.chargeId }
+        return copy(
+            debtors = remainingDebtors,
+            overdueBanner = buildOverdueBanner(remainingDebtors),
+            updatingChargeId = debtor.chargeId,
+            operationFailed = false,
+            cancelFailed = false,
+            cancelSheetChargeId = null,
+        )
+    }
+
     private fun openReviewSheet(chargeId: String) {
         val current = state.value
         if (current.isLoading || current.updatingChargeId != null ||
@@ -136,6 +203,7 @@ class GroupCashboxViewModel(
                 reviewSheetChargeId = chargeId,
                 receiptSheetChargeId = null,
                 waiveSheetChargeId = null,
+                cancelSheetChargeId = null,
                 chargeSheetOpen = false,
                 chargeSheetChargeId = null,
             )
@@ -189,6 +257,7 @@ class GroupCashboxViewModel(
                 undoSheetChargeId = chargeId,
                 receiptSheetChargeId = null,
                 waiveSheetChargeId = null,
+                cancelSheetChargeId = null,
                 reviewSheetChargeId = null,
                 chargeSheetOpen = false,
                 chargeSheetChargeId = null,
@@ -237,7 +306,7 @@ class GroupCashboxViewModel(
     }
 
     private fun GroupCashboxState.interacting() =
-        chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null ||
+        chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null || cancelSheetChargeId != null ||
             reviewSheetChargeId != null || undoSheetChargeId != null || updatingChargeId != null
 
     /**
@@ -377,6 +446,7 @@ class GroupCashboxViewModel(
             operationFailed = false,
             waiveFailed = false,
             waiveSheetChargeId = null,
+            cancelSheetChargeId = null,
         )
     }
 

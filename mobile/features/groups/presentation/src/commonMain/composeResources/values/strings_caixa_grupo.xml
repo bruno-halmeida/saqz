@@ -25,6 +25,8 @@
     <string name="group_cashbox_withdrew_status">Desistiu</string>
     <string name="group_cashbox_waive_action">Dispensar</string>
     <string name="group_cashbox_waive_failure">Não foi possível dispensar a cobrança. Tente novamente.</string>
+    <string name="group_cashbox_cancel_action">Cancelar cobrança</string>
+    <string name="group_cashbox_cancel_failure">Não foi possível cancelar a cobrança. Tente novamente.</string>
     <string name="group_cashbox_review_title">Cobranças para revisar</string>
     <string name="group_cashbox_review_status">Revisar</string>
     <string name="group_cashbox_review_action">Conferir</string>

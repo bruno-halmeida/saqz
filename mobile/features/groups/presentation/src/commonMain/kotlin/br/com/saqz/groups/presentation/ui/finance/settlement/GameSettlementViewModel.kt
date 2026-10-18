@@ -67,6 +67,9 @@ class GameSettlementViewModel(
             is GameSettlementIntent.OpenWaive -> openWaiveSheet(intent.chargeId)
             is GameSettlementIntent.Waive -> waive(intent.chargeId)
             GameSettlementIntent.DismissWaiveSheet -> update { it.copy(waiveSheetChargeId = null) }
+            is GameSettlementIntent.OpenCancel -> openCancelSheet(intent.chargeId)
+            is GameSettlementIntent.Cancel -> cancel(intent.chargeId)
+            GameSettlementIntent.DismissCancelSheet -> update { it.copy(cancelSheetChargeId = null) }
             is GameSettlementIntent.OpenReview -> openReviewSheet(intent.chargeId)
             is GameSettlementIntent.ResolveReview -> resolveReview(intent.chargeId)
             GameSettlementIntent.DismissReviewSheet -> update { it.copy(reviewSheetChargeId = null) }
@@ -107,6 +110,7 @@ class GameSettlementViewModel(
                 chargeSheetChargeId = chargeId,
                 receiptSheetChargeId = null,
                 waiveSheetChargeId = null,
+                cancelSheetChargeId = null,
             )
         }
     }
@@ -123,6 +127,7 @@ class GameSettlementViewModel(
                 chargeSheetOpen = false,
                 chargeSheetChargeId = null,
                 waiveSheetChargeId = null,
+                cancelSheetChargeId = null,
             )
         }
     }
@@ -151,6 +156,7 @@ class GameSettlementViewModel(
                 reviewSheetChargeId = chargeId,
                 receiptSheetChargeId = null,
                 waiveSheetChargeId = null,
+                cancelSheetChargeId = null,
                 chargeSheetOpen = false,
                 chargeSheetChargeId = null,
             )
@@ -196,6 +202,78 @@ class GameSettlementViewModel(
         }
     }
 
+    private fun openCancelSheet(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null) return
+        if (current.diarists.none { it.chargeId == chargeId && it.status == ChargeStatus.Pending }) return
+        update {
+            it.copy(
+                cancelSheetChargeId = chargeId,
+                receiptSheetChargeId = null,
+                waiveSheetChargeId = null,
+                reviewSheetChargeId = null,
+                undoSheetChargeId = null,
+                chargeSheetOpen = false,
+                chargeSheetChargeId = null,
+            )
+        }
+    }
+
+    /** Trava de toque duplo: com uma operação em curso (`updatingChargeId`) o segundo toque é ignorado. */
+    private fun cancel(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null) return
+        val diarist = current.diarists.firstOrNull {
+            it.chargeId == chargeId && it.status == ChargeStatus.Pending
+        } ?: return
+        val debtor = current.debtors.firstOrNull { it.chargeId == chargeId } ?: return
+        val generation = ++mutationGeneration
+        val loadAtStart = loadGeneration
+        val previous = current
+        update { it.optimisticallyCancel(diarist) }
+        viewModelScope.launch {
+            val result = organizerFinanceGateway.updateChargeStatus(
+                groupId = GroupId(groupId),
+                chargeId = debtor.chargeId,
+                version = FinanceVersionToken("\"${debtor.chargeVersion}\""),
+                command = ChargeStatusCommand(ChargeStatus.Cancelled),
+            )
+            if (generation != mutationGeneration || loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    load()
+                    emit(GameSettlementEffect.MutationSucceeded)
+                }
+                is SaqzResult.Failure -> {
+                    update { previous.copy(cancelFailed = true, updatingChargeId = null, cancelSheetChargeId = null) }
+                    // Versão velha: recarrega por baixo para a próxima tentativa sair com a versão certa.
+                    if (result.error == FinanceError.Conflict) load(softRefresh = true)
+                }
+            }
+        }
+    }
+
+    /** Cancelada some do acerto: sai do total e do que falta, e não entra no recebido. */
+    private fun GameSettlementState.optimisticallyCancel(
+        diarist: GameSettlementDiaristUi,
+    ): GameSettlementState {
+        val pendingCount = (pendingDiaristCount - 1).coerceAtLeast(0)
+        val totalCount = (totalDiaristCount - 1).coerceAtLeast(0)
+        return copy(
+            diarists = diarists.filterNot { it.chargeId == diarist.chargeId },
+            debtors = debtors.filterNot { it.chargeId == diarist.chargeId },
+            totalDiaristCount = totalCount,
+            pendingDiaristCount = pendingCount,
+            progress = progressFor(paidDiaristCount, totalCount),
+            totalDiaristCents = (totalDiaristCents - diarist.amountCents).coerceAtLeast(0L),
+            pendingDiaristCents = (pendingDiaristCents - diarist.amountCents).coerceAtLeast(0L),
+            updatingChargeId = diarist.chargeId,
+            cancelSheetChargeId = null,
+            operationFailed = false,
+            cancelFailed = false,
+        )
+    }
+
     private fun openUndoSheet(chargeId: String) {
         val current = state.value
         if (current.isLoading || current.updatingChargeId != null) return
@@ -205,6 +283,7 @@ class GameSettlementViewModel(
                 undoSheetChargeId = chargeId,
                 receiptSheetChargeId = null,
                 waiveSheetChargeId = null,
+                cancelSheetChargeId = null,
                 reviewSheetChargeId = null,
                 chargeSheetOpen = false,
                 chargeSheetChargeId = null,
@@ -270,7 +349,7 @@ class GameSettlementViewModel(
     }
 
     private fun GameSettlementState.interacting() =
-        chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null ||
+        chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null || cancelSheetChargeId != null ||
             reviewSheetChargeId != null || undoSheetChargeId != null || updatingChargeId != null
 
     /**
@@ -423,6 +502,7 @@ class GameSettlementViewModel(
             pendingDiaristCents = (pendingDiaristCents - diarist.amountCents).coerceAtLeast(0L),
             updatingChargeId = diarist.chargeId,
             waiveSheetChargeId = null,
+            cancelSheetChargeId = null,
             operationFailed = false,
             waiveFailed = false,
         )

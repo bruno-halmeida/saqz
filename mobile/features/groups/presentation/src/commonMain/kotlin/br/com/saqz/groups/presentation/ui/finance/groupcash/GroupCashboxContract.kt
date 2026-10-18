@@ -35,6 +35,8 @@ data class GroupCashboxState(
     val receiptSheetChargeId: String? = null,
     val waiveSheetChargeId: String? = null,
     val waiveFailed: Boolean = false,
+    val cancelSheetChargeId: String? = null,
+    val cancelFailed: Boolean = false,
     val reviews: List<ReviewUi> = emptyList(),
     val reviewSheetChargeId: String? = null,
     val reviewFailed: Boolean = false,
@@ -117,6 +119,11 @@ sealed interface GroupCashboxIntent {
     data class OpenWaive(val chargeId: String) : GroupCashboxIntent
     data class Waive(val chargeId: String) : GroupCashboxIntent
     data object DismissWaiveSheet : GroupCashboxIntent
+
+    /** DEB-062: dono e admin cancelam qualquer cobrança pendente; cancelada não volta. */
+    data class OpenCancel(val chargeId: String) : GroupCashboxIntent
+    data class Cancel(val chargeId: String) : GroupCashboxIntent
+    data object DismissCancelSheet : GroupCashboxIntent
     data class OpenReview(val chargeId: String) : GroupCashboxIntent
     data class ResolveReview(val chargeId: String) : GroupCashboxIntent
     data object DismissReviewSheet : GroupCashboxIntent

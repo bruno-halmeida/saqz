@@ -34,6 +34,8 @@ data class GameSettlementState(
     val receiptSheetChargeId: String? = null,
     val waiveSheetChargeId: String? = null,
     val waiveFailed: Boolean = false,
+    val cancelSheetChargeId: String? = null,
+    val cancelFailed: Boolean = false,
     val reviewSheetChargeId: String? = null,
     val reviewFailed: Boolean = false,
     val undoSheetChargeId: String? = null,
@@ -82,6 +84,11 @@ sealed interface GameSettlementIntent {
     data class OpenWaive(val chargeId: String) : GameSettlementIntent
     data class Waive(val chargeId: String) : GameSettlementIntent
     data object DismissWaiveSheet : GameSettlementIntent
+
+    /** DEB-062: dono e admin cancelam qualquer cobrança pendente; cancelada não volta. */
+    data class OpenCancel(val chargeId: String) : GameSettlementIntent
+    data class Cancel(val chargeId: String) : GameSettlementIntent
+    data object DismissCancelSheet : GameSettlementIntent
     data class OpenReview(val chargeId: String) : GameSettlementIntent
     data class ResolveReview(val chargeId: String) : GameSettlementIntent
     data object DismissReviewSheet : GameSettlementIntent

@@ -40,6 +40,11 @@
     <string name="sheet_waive_note">Quem desistiu não paga esta diária. A pessoa não recebe aviso. Dá para desfazer depois.</string>
     <string name="sheet_waive_confirm">Dispensar</string>
     <string name="sheet_waive_cancel">Cancelar</string>
+    <string name="sheet_cancel_charge_title">Cancelar cobrança</string>
+    <string name="sheet_cancel_charge_amount">Valor que deixa de ser cobrado</string>
+    <string name="sheet_cancel_charge_note">A cobrança sai do que falta receber e não entra no caixa. A pessoa não recebe aviso. Não dá para desfazer.</string>
+    <string name="sheet_cancel_charge_confirm">Cancelar cobrança</string>
+    <string name="sheet_cancel_charge_back">Voltar</string>
     <string name="sheet_review_title">Conferir cobrança</string>
     <string name="sheet_review_amount">Valor da cobrança</string>
     <string name="sheet_review_note">O jogo foi cancelado e esta cobrança já estava paga ou dispensada. Veja se precisa devolver o dinheiro.</string>

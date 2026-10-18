@@ -39,6 +39,11 @@ import br.com.saqz.groups.resources.sheet_charge_cancel
 import br.com.saqz.groups.resources.sheet_charge_description
 import br.com.saqz.groups.resources.sheet_charge_send
 import br.com.saqz.groups.resources.sheet_charge_title
+import br.com.saqz.groups.resources.sheet_cancel_charge_amount
+import br.com.saqz.groups.resources.sheet_cancel_charge_back
+import br.com.saqz.groups.resources.sheet_cancel_charge_confirm
+import br.com.saqz.groups.resources.sheet_cancel_charge_note
+import br.com.saqz.groups.resources.sheet_cancel_charge_title
 import br.com.saqz.groups.resources.sheet_waive_amount
 import br.com.saqz.groups.resources.sheet_waive_cancel
 import br.com.saqz.groups.resources.sheet_waive_confirm
@@ -91,6 +96,10 @@ internal object FinanceSheetsTags {
     const val WaiveAmount = "finance-waive-amount"
     const val WaiveNote = "finance-waive-note"
     const val WaiveConfirm = "finance-waive-confirm"
+    const val CancelCharge = "finance-cancel-charge-sheet"
+    const val CancelChargeAmount = "finance-cancel-charge-amount"
+    const val CancelChargeNote = "finance-cancel-charge-note"
+    const val CancelChargeConfirm = "finance-cancel-charge-confirm"
     const val Review = "finance-review-sheet"
     const val ReviewAmount = "finance-review-amount"
     const val ReviewNote = "finance-review-note"
@@ -359,6 +368,82 @@ internal fun WaiveSheet(
                 style = SaqzTheme.typography.support,
                 color = SaqzTheme.colors.textSecondary,
                 modifier = Modifier.testTag(FinanceSheetsTags.WaiveNote),
+            )
+        }
+    }
+}
+
+/**
+ * Confirmação de "Cancelar cobrança" (DEB-062): qualquer cobrança pendente, inclusive de convidado.
+ * Diz o efeito no que falta receber e no caixa; cancelada não volta.
+ */
+@Composable
+internal fun CancelChargeSheet(
+    open: Boolean,
+    debtor: DebtorUi?,
+    busy: Boolean,
+    onClose: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    SaqzBottomSheet(
+        open = open,
+        onClose = onClose,
+        modifier = Modifier.testTag(FinanceSheetsTags.CancelCharge),
+        title = stringResource(Res.string.sheet_cancel_charge_title),
+        description = debtor?.referenceLabel,
+        splitFooter = {
+            SaqzButton(
+                label = stringResource(Res.string.sheet_cancel_charge_back),
+                onClick = onClose,
+                variant = SaqzButtonVariant.Secondary,
+                modifier = Modifier.weight(1f),
+            )
+            SaqzButton(
+                label = stringResource(Res.string.sheet_cancel_charge_confirm),
+                onClick = onConfirm,
+                enabled = debtor != null && !busy,
+                loading = busy,
+                modifier = Modifier.weight(1f).testTag(FinanceSheetsTags.CancelChargeConfirm),
+            )
+        },
+    ) {
+        debtor?.let { canceled ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+            ) {
+                SaqzAvatar(name = canceled.name)
+                Column {
+                    Text(
+                        text = canceled.name,
+                        style = SaqzTheme.typography.subtitle,
+                        color = SaqzTheme.colors.textPrimary,
+                    )
+                    Text(
+                        text = canceled.referenceLabel,
+                        style = SaqzTheme.typography.support,
+                        color = SaqzTheme.colors.textSecondary,
+                    )
+                }
+            }
+            SaqzCard(modifier = Modifier.testTag(FinanceSheetsTags.CancelChargeAmount)) {
+                Text(
+                    text = stringResource(Res.string.sheet_cancel_charge_amount),
+                    style = SaqzTheme.typography.support,
+                    color = SaqzTheme.colors.textSecondary,
+                )
+                Text(
+                    text = canceled.amountLabel,
+                    style = SaqzTheme.typography.title,
+                    color = SaqzTheme.colors.textPrimary,
+                )
+            }
+            Text(
+                text = stringResource(Res.string.sheet_cancel_charge_note),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+                modifier = Modifier.testTag(FinanceSheetsTags.CancelChargeNote),
             )
         }
     }

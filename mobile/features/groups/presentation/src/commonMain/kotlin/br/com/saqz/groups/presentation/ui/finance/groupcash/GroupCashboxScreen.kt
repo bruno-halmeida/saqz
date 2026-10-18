@@ -72,6 +72,7 @@ import br.com.saqz.groups.resources.group_cashbox_received_monthly_suffix
 import br.com.saqz.groups.resources.group_cashbox_title
 import br.com.saqz.groups.resources.monthly_generation_title
 import br.com.saqz.groups.presentation.ui.finance.PixCard
+import br.com.saqz.groups.presentation.ui.finance.sheets.CancelChargeSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReviewSheet
@@ -86,6 +87,8 @@ import br.com.saqz.groups.resources.group_cashbox_review_action
 import br.com.saqz.groups.resources.group_cashbox_review_failure
 import br.com.saqz.groups.resources.group_cashbox_review_status
 import br.com.saqz.groups.resources.group_cashbox_review_title
+import br.com.saqz.groups.resources.group_cashbox_cancel_action
+import br.com.saqz.groups.resources.group_cashbox_cancel_failure
 import br.com.saqz.groups.resources.group_cashbox_waive_action
 import br.com.saqz.groups.resources.group_cashbox_waive_failure
 import br.com.saqz.groups.resources.group_cashbox_withdrew_status
@@ -108,6 +111,7 @@ internal object GroupCashboxTags {
     const val Retry = "group-cashbox-retry"
     const val Statement = "group-cashbox-statement"
     const val WaiveFailure = "group-cashbox-waive-failure"
+    const val CancelFailure = "group-cashbox-cancel-failure"
     const val Reviews = "group-cashbox-reviews"
     const val ReviewFailure = "group-cashbox-review-failure"
     const val Settled = "group-cashbox-settled"
@@ -117,6 +121,7 @@ internal object GroupCashboxTags {
     fun chargeIndividual(chargeId: String) = "group-cashbox-charge-$chargeId"
     fun chargeReminded(chargeId: String) = "group-cashbox-reminded-$chargeId"
     fun chargeWaive(chargeId: String) = "group-cashbox-waive-$chargeId"
+    fun chargeCancel(chargeId: String) = "group-cashbox-cancel-$chargeId"
     fun chargeWithdrew(chargeId: String) = "group-cashbox-withdrew-$chargeId"
     fun review(chargeId: String) = "group-cashbox-review-$chargeId"
     fun reviewAction(chargeId: String) = "group-cashbox-review-action-$chargeId"
@@ -136,6 +141,7 @@ internal fun GroupCashboxScreen(
 ) {
     val receiptDebtor = state.debtors.firstOrNull { it.chargeId == state.receiptSheetChargeId }
     val waiveDebtor = state.debtors.firstOrNull { it.chargeId == state.waiveSheetChargeId }
+    val cancelDebtor = state.debtors.firstOrNull { it.chargeId == state.cancelSheetChargeId }
     val reviewCharge = state.reviews.firstOrNull { it.chargeId == state.reviewSheetChargeId }
     val undoCharge = state.settled.firstOrNull { it.chargeId == state.undoSheetChargeId }
     val chargeDebtors = state.debtors.filter {
@@ -180,6 +186,13 @@ internal fun GroupCashboxScreen(
             debtor = waiveDebtor,
             onClose = { onIntent(GroupCashboxIntent.DismissWaiveSheet) },
             onConfirm = { waiveDebtor?.let { onIntent(GroupCashboxIntent.Waive(it.chargeId)) } },
+        )
+        CancelChargeSheet(
+            open = state.cancelSheetChargeId != null,
+            debtor = cancelDebtor,
+            busy = state.updatingChargeId != null,
+            onClose = { onIntent(GroupCashboxIntent.DismissCancelSheet) },
+            onConfirm = { cancelDebtor?.let { onIntent(GroupCashboxIntent.Cancel(it.chargeId)) } },
         )
         ReviewSheet(
             open = state.reviewSheetChargeId != null,
@@ -359,6 +372,14 @@ private fun CashboxHeader(
                 style = SaqzTheme.typography.support,
                 color = colors.errorForeground,
                 modifier = Modifier.testTag(GroupCashboxTags.ReviewFailure),
+            )
+        }
+        if (state.cancelFailed) {
+            Text(
+                text = stringResource(Res.string.group_cashbox_cancel_failure),
+                style = SaqzTheme.typography.support,
+                color = colors.errorForeground,
+                modifier = Modifier.testTag(GroupCashboxTags.CancelFailure),
             )
         }
         if (state.waiveFailed) {
@@ -664,6 +685,14 @@ private fun DebtorRow(
                     modifier = Modifier.testTag(GroupCashboxTags.chargeWaive(debtor.chargeId)),
                 )
             }
+            SaqzButton(
+                label = stringResource(Res.string.group_cashbox_cancel_action),
+                onClick = { onIntent(GroupCashboxIntent.OpenCancel(debtor.chargeId)) },
+                variant = SaqzButtonVariant.Secondary,
+                size = SaqzButtonSize.Sm,
+                enabled = !debtor.isUpdating,
+                modifier = Modifier.testTag(GroupCashboxTags.chargeCancel(debtor.chargeId)),
+            )
         }
     }
     onOpenChargePayment?.let { open ->
