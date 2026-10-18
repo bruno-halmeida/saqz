@@ -6,14 +6,12 @@ import br.com.saqz.subscriptions.domain.subscription.Plan
 import br.com.saqz.subscriptions.domain.subscription.PlanCatalogItem
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.resources.Res
-import br.com.saqz.subscriptions.resources.changeplan_benefit_admins
 import br.com.saqz.subscriptions.resources.changeplan_benefit_athletes
 import br.com.saqz.subscriptions.resources.changeplan_benefit_athletes_unlimited
 import br.com.saqz.subscriptions.resources.changeplan_benefit_groups
 import br.com.saqz.subscriptions.resources.changeplan_benefit_groups_one
 import br.com.saqz.subscriptions.resources.changeplan_benefit_groups_unlimited
 import br.com.saqz.subscriptions.resources.changeplan_benefit_reports
-import br.com.saqz.subscriptions.resources.changeplan_benefit_whatsapp
 import br.com.saqz.subscriptions.resources.changeplan_pending_note
 import br.com.saqz.subscriptions.resources.changeplan_price_month
 import br.com.saqz.subscriptions.resources.changeplan_price_year
@@ -70,7 +68,5 @@ internal fun PlanCatalogItem.benefits(): List<UiText> = buildList {
             UiText.Res(Res.string.changeplan_benefit_athletes, listOf(athletes))
         },
     )
-    if (multiAdmin) add(UiText.Res(Res.string.changeplan_benefit_admins))
     if (reports) add(UiText.Res(Res.string.changeplan_benefit_reports))
-    if (whatsappSla) add(UiText.Res(Res.string.changeplan_benefit_whatsapp))
 }

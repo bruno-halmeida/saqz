@@ -10,9 +10,7 @@
     <string name="changeplan_benefit_groups_unlimited">Grupos ilimitados</string>
     <string name="changeplan_benefit_athletes">Até %1$d atletas por grupo</string>
     <string name="changeplan_benefit_athletes_unlimited">Atletas ilimitados</string>
-    <string name="changeplan_benefit_admins">Vários administradores</string>
     <string name="changeplan_benefit_reports">Relatórios</string>
-    <string name="changeplan_benefit_whatsapp">Suporte prioritário no WhatsApp</string>
     <string name="changeplan_price_month">%1$s/mês</string>
     <string name="changeplan_price_year">%1$s/ano</string>
     <string name="changeplan_pending_note">Troca para %1$s já agendada para %2$s.</string>

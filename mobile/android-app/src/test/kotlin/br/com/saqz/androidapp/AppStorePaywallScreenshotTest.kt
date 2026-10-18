@@ -12,14 +12,12 @@ import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallPlanUi
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallState
 import br.com.saqz.subscriptions.presentation.ui.appstore.AppStorePaywallScreen
 import br.com.saqz.subscriptions.resources.Res
-import br.com.saqz.subscriptions.resources.changeplan_benefit_admins
 import br.com.saqz.subscriptions.resources.changeplan_benefit_athletes
 import br.com.saqz.subscriptions.resources.changeplan_benefit_athletes_unlimited
 import br.com.saqz.subscriptions.resources.changeplan_benefit_groups
 import br.com.saqz.subscriptions.resources.changeplan_benefit_groups_one
 import br.com.saqz.subscriptions.resources.changeplan_benefit_groups_unlimited
 import br.com.saqz.subscriptions.resources.changeplan_benefit_reports
-import br.com.saqz.subscriptions.resources.changeplan_benefit_whatsapp
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
@@ -83,9 +81,7 @@ class AppStorePaywallScreenshotTest {
                 Plan.Ilimitado, "R$ 89,90", "R$ 809,90",
                 UiText.Res(Res.string.changeplan_benefit_groups_unlimited),
                 UiText.Res(Res.string.changeplan_benefit_athletes_unlimited),
-                UiText.Res(Res.string.changeplan_benefit_admins),
                 UiText.Res(Res.string.changeplan_benefit_reports),
-                UiText.Res(Res.string.changeplan_benefit_whatsapp),
             ),
         )
 

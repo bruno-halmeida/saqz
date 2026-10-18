@@ -8,8 +8,10 @@ import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionStatus
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionUsage
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.changeplan_benefit_athletes_unlimited
 import br.com.saqz.subscriptions.resources.changeplan_benefit_groups
 import br.com.saqz.subscriptions.resources.changeplan_benefit_groups_unlimited
+import br.com.saqz.subscriptions.resources.changeplan_benefit_reports
 import br.com.saqz.subscriptions.resources.changeplan_pending_note
 import br.com.saqz.subscriptions.resources.changeplan_price_month
 import br.com.saqz.subscriptions.resources.changeplan_price_year
@@ -39,6 +41,19 @@ class ChangePlanMappersTest {
         assertFalse(card.isCurrent)
         assertEquals(UiText.Res(Res.string.changeplan_price_year, listOf("R$ 809,10")), card.priceLabel)
         assertEquals(UiText.Res(Res.string.changeplan_benefit_groups_unlimited), card.benefits.first())
+    }
+
+    @Test
+    fun `unlimited benefits ignore multiAdmin and whatsappSla`() {
+        assertEquals(
+            listOf(
+                UiText.Res(Res.string.changeplan_benefit_groups_unlimited),
+                UiText.Res(Res.string.changeplan_benefit_athletes_unlimited),
+                UiText.Res(Res.string.changeplan_benefit_reports),
+            ),
+            ILIMITADO.benefits(),
+        )
+        assertEquals(2, ORGANIZADOR.benefits().size)
     }
 
     @Test

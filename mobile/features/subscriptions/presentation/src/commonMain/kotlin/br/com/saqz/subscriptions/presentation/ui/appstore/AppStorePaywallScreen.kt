@@ -374,7 +374,7 @@ internal object AppStorePaywallPreviewData {
         plans = listOf(
             plan(Plan.Titular, "R$ 39,90", "R$ 359,90", listOf("1 grupo", "Até 25 atletas por grupo"), maxGroups = 1),
             plan(Plan.Organizador, "R$ 59,90", "R$ 539,90", listOf("3 grupos", "Atletas ilimitados"), maxGroups = 3),
-            plan(Plan.Ilimitado, "R$ 89,90", "R$ 809,90", listOf("Grupos ilimitados", "Vários administradores", "Relatórios")),
+            plan(Plan.Ilimitado, "R$ 89,90", "R$ 809,90", listOf("Grupos ilimitados", "Atletas ilimitados", "Relatórios")),
         ),
     )
 }

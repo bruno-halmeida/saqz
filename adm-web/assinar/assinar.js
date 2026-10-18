@@ -304,9 +304,7 @@
       var beneficios = [];
       beneficios.push(plano.maxGroups == null ? "Grupos ilimitados" : plano.maxGroups + (plano.maxGroups === 1 ? " grupo" : " grupos"));
       beneficios.push(plano.maxAthletes == null ? "Atletas ilimitados" : "Até " + plano.maxAthletes + " atletas por grupo");
-      if (plano.multiAdmin) beneficios.push("Vários administradores");
       if (plano.reports) beneficios.push("Relatórios");
-      if (plano.whatsappSla) beneficios.push("Suporte prioritário no WhatsApp");
       var rotulo = atual
         ? "Plano atual"
         : (agendado

@@ -7,7 +7,7 @@ const render = source.slice(source.indexOf('  function renderizarPlanos()'), sou
 const plans = [
   { id: 'TITULAR', name: 'Titular', maxGroups: 1, maxAthletes: 25, monthlyPriceCents: 3990, annualPriceCents: 35910 },
   { id: 'ORGANIZADOR', name: 'Organizador', maxGroups: 3, maxAthletes: null, monthlyPriceCents: 5990, annualPriceCents: 53910 },
-  { id: 'ILIMITADO', name: 'Ilimitado', maxGroups: null, maxAthletes: null, monthlyPriceCents: 8990, annualPriceCents: 80910 },
+  { id: 'ILIMITADO', name: 'Ilimitado', maxGroups: null, maxAthletes: null, monthlyPriceCents: 8990, annualPriceCents: 80910, multiAdmin: true, reports: true, whatsappSla: true },
 ];
 function setup(cycle, subscription = null) {
   const cards = [];
@@ -51,4 +51,10 @@ test('paid current plan stays disabled and upgrade actions keep their meaning', 
   assert.match(cards[0].innerHTML, /Trocar para este plano/);
   cards[0].click();
   assert.deepEqual(selections, [['change', 'TITULAR']]);
+});
+
+test('Ilimitado card lists reports but no longer promises multiple admins or WhatsApp support', () => {
+  const { cards } = setup('MONTHLY');
+  assert.match(cards[2].innerHTML, /Relatórios/);
+  assert.doesNotMatch(cards[2].innerHTML, /Vários administradores|Suporte prioritário/);
 });

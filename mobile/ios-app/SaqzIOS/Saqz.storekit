@@ -40,7 +40,7 @@
           "introductoryOffer": null,
           "localizations": [
             {
-              "description": "Grupos ilimitados, vários administradores e relatórios.",
+              "description": "Grupos ilimitados, atletas ilimitados e relatórios.",
               "displayName": "Ilimitado mensal",
               "locale": "pt_BR"
             }
@@ -62,7 +62,7 @@
           "introductoryOffer": null,
           "localizations": [
             {
-              "description": "Grupos ilimitados, vários administradores e relatórios.",
+              "description": "Grupos ilimitados, atletas ilimitados e relatórios.",
               "displayName": "Ilimitado anual",
               "locale": "pt_BR"
             }
