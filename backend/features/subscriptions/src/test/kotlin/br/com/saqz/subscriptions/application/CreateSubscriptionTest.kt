@@ -637,6 +637,324 @@ class CreateSubscriptionTest {
         assertEquals("https://asaas.test/i/abc", success.invoiceUrl)
     }
 
+    // --- Reemissao do checkout nao confirmado (replaceUnconfirmed) ---
+
+    @Test
+    fun `replacing an unconfirmed checkout stores the new subscription and its card token for the owner`() {
+        subscriptions.insert(unconfirmed(plan = Plan.ORGANIZADOR))
+        gateway.missingPaymentsFor += "sub_old"
+        gateway.creditCardResult = AsaasCreditCardInfo(token = "card_tok_2", lastFourDigits = "4242", brand = "MASTERCARD")
+
+        assertIs<CreateSubscriptionResult.Success>(useCase.execute(baseCommand().copy(plan = Plan.ORGANIZADOR)))
+
+        val stored = subscriptions.findByOwnerUserId(ownerId)
+        assertEquals("sub_1", stored?.asaasSubscriptionId)
+        assertEquals("cus_old", stored?.asaasCustomerId)
+        assertEquals(
+            listOf(RecordingCreditCardTokenStore.Saved("sub_1", "card_tok_2", "4242", "MASTERCARD")),
+            creditCardTokens.saved,
+        )
+    }
+
+    @Test
+    fun `replacing an unconfirmed checkout locks the owner row again inside its own transaction`() {
+        subscriptions.insert(unconfirmed(plan = Plan.ORGANIZADOR))
+        gateway.missingPaymentsFor += "sub_old"
+
+        useCase.execute(baseCommand().copy(plan = Plan.ORGANIZADOR))
+
+        // Uma trava na transacao de criacao e outra na troca: duas requisicoes do mesmo dono nao se cruzam.
+        assertEquals(listOf(ownerId, ownerId), subscriptions.lockedOwners)
+    }
+
+    @Test
+    fun `replacing an unconfirmed checkout creates a customer only when the old one has no customer id`() {
+        subscriptions.insert(unconfirmed(plan = Plan.ORGANIZADOR).copy(asaasCustomerId = ""))
+        gateway.missingPaymentsFor += "sub_old"
+
+        assertIs<CreateSubscriptionResult.Success>(useCase.execute(baseCommand().copy(plan = Plan.ORGANIZADOR)))
+
+        assertEquals("cus_1", subscriptions.findByOwnerUserId(ownerId)?.asaasCustomerId)
+    }
+
+    @Test
+    fun `replacing an unconfirmed checkout keeps going when canceling the old charge fails at asaas`() {
+        subscriptions.insert(unconfirmed(plan = Plan.ORGANIZADOR))
+        gateway.missingPaymentsFor += "sub_old"
+        gateway.cancelThrows = true
+
+        val result = useCase.execute(baseCommand().copy(plan = Plan.ORGANIZADOR))
+
+        assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals("sub_1", subscriptions.findByOwnerUserId(ownerId)?.asaasSubscriptionId)
+    }
+
+    @Test
+    fun `replacing an unconfirmed checkout with a card declined by asaas reports the decline and keeps the old row`() {
+        subscriptions.insert(unconfirmed(plan = Plan.ORGANIZADOR).copy(billingType = AsaasBillingType.CREDIT_CARD))
+        gateway.missingPaymentsFor += "sub_old"
+        gateway.declineWith = CardDeclinedException(
+            asaasCode = "invalid_creditCard",
+            asaasDescription = "Cartao recusado",
+            cause = AsaasException(statusCode = 400, message = "recusado"),
+        )
+
+        val result = useCase.execute(cardCommand().copy(plan = Plan.ORGANIZADOR))
+
+        val declined = assertIs<CreateSubscriptionResult.CardDeclined>(result)
+        assertEquals("invalid_creditCard", declined.reason)
+        assertEquals("sub_old", subscriptions.findByOwnerUserId(ownerId)?.asaasSubscriptionId)
+    }
+
+    @Test
+    fun `replacing an unconfirmed checkout with a method asaas refuses reports it unavailable`() {
+        subscriptions.insert(unconfirmed(plan = Plan.ORGANIZADOR))
+        gateway.missingPaymentsFor += "sub_old"
+        gateway.unavailableWith = PaymentMethodUnavailableException(
+            billingType = AsaasBillingType.PIX,
+            asaasCode = "invalid_billingType",
+            cause = AsaasException(statusCode = 400, message = "not allowed"),
+        )
+
+        val result = useCase.execute(baseCommand().copy(plan = Plan.ORGANIZADOR))
+
+        assertEquals(AsaasBillingType.PIX, assertIs<CreateSubscriptionResult.PaymentMethodUnavailable>(result).billingType)
+        assertEquals("sub_old", subscriptions.findByOwnerUserId(ownerId)?.asaasSubscriptionId)
+    }
+
+    @Test
+    fun `replacing an unconfirmed checkout whose coupon the owner already redeemed does not record it twice`() {
+        coupons.byCode["PROMO20"] = Coupon(id = couponId, code = "PROMO20", discountPercent = 20)
+        coupons.redemptions += CouponRedemption(couponId, ownerId, fixedNow.minusSeconds(3600))
+        subscriptions.insert(unconfirmed(plan = Plan.ORGANIZADOR, couponId = couponId))
+        gateway.missingPaymentsFor += "sub_old"
+
+        useCase.execute(baseCommand().copy(plan = Plan.ORGANIZADOR))
+
+        assertEquals(1, coupons.redemptions.size)
+    }
+
+    @Test
+    fun `a brand new subscription whose first charge is not visible yet is not replaced`() {
+        gateway.missingPaymentsFor += "sub_1"
+
+        val result = useCase.execute(baseCommand())
+
+        val success = assertIs<CreateSubscriptionResult.Success>(result)
+        assertEquals("sub_1", success.subscription.asaasSubscriptionId)
+        assertTrue(gateway.canceledSubscriptions.isEmpty())
+        assertEquals(1, gateway.subscriptionIdempotencyKeys.size)
+    }
+
+    @Test
+    fun `reactivating with a coupon records the redemption for the owner`() {
+        coupons.byCode["PROMO20"] = Coupon(id = couponId, code = "PROMO20", discountPercent = 20, durationCycles = 2)
+        subscriptions.insert(
+            unconfirmed().copy(
+                status = SubscriptionStatus.CANCELED,
+                canceledAt = fixedNow.minusSeconds(86_400),
+                firstConfirmedAt = fixedNow.minusSeconds(864_000),
+            ),
+        )
+
+        val success = assertIs<CreateSubscriptionResult.Success>(
+            useCase.execute(baseCommand().copy(couponCode = "PROMO20")),
+        )
+
+        assertEquals(couponId, success.subscription.couponId)
+        assertEquals(2, success.subscription.couponCyclesRemaining)
+        assertEquals(listOf(CouponRedemption(couponId, ownerId, fixedNow)), coupons.redemptions)
+        assertEquals(3_192L, gateway.lastSubscriptionValueCents)
+    }
+
+    // --- Dados do cliente: fronteiras do e-mail ---
+
+    private fun emailAccepted(email: String): Boolean =
+        useCase.execute(baseCommand().copy(email = email)) !is CreateSubscriptionResult.InvalidCustomerDetails
+
+    @Test
+    fun `email accepts the shortest valid shape and rejects an at-sign at either edge`() {
+        assertTrue(emailAccepted("a@b"))
+        assertTrue(emailAccepted("a@bc"))
+        assertTrue(!emailAccepted("@ab"))
+        assertTrue(!emailAccepted("ab@"))
+        assertTrue(!emailAccepted("ab"))
+    }
+
+    @Test
+    fun `email accepts 254 characters and rejects 255`() {
+        assertTrue(emailAccepted("a".repeat(250) + "@b.c"))
+        assertTrue(!emailAccepted("a".repeat(251) + "@b.c"))
+    }
+
+    @Test
+    fun `email and cpf are trimmed and cpf keeps only digits`() {
+        val result = useCase.execute(baseCommand().copy(email = "  bruno@example.com  ", cpfCnpj = "529.982.247-25"))
+
+        assertIs<CreateSubscriptionResult.Success>(result)
+    }
+
+    @Test
+    fun `customer name that is only blanks is rejected`() {
+        assertEquals(
+            CreateSubscriptionResult.InvalidCustomerDetails,
+            useCase.execute(baseCommand().copy(name = "   ")),
+        )
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+    }
+
+    @Test
+    fun `cpf with 11 digits and cnpj with 14 are accepted while 10, 12 and 15 are rejected`() {
+        for (ok in listOf("12345678901", "12345678000195")) {
+            assertIs<CreateSubscriptionResult.Success>(useCase.execute(baseCommand().copy(cpfCnpj = ok)))
+            subscriptions.clear()
+        }
+        for (bad in listOf("1234567890", "123456789012", "123456789012345")) {
+            assertEquals(
+                CreateSubscriptionResult.InvalidCustomerDetails,
+                useCase.execute(baseCommand().copy(cpfCnpj = bad)),
+            )
+        }
+    }
+
+    // --- Cartao: formato validado na borda, campo a campo ---
+
+    private fun cardErrors(command: CreateSubscriptionCommand): Map<String, List<String>> =
+        (useCase.execute(command) as? CreateSubscriptionResult.InvalidCreditCardDetails)?.fieldErrors.orEmpty()
+
+    @Test
+    fun `a valid card passes the format validation`() {
+        assertTrue(cardErrors(cardCommand()).isEmpty())
+    }
+
+    @Test
+    fun `card number accepts 13 to 19 digits ignoring separators and rejects 12 and 20`() {
+        for (digits in listOf("4".repeat(13), "4".repeat(19), "4111 1111 1111 1111")) {
+            assertTrue(cardErrors(cardCommand().copy(creditCard = validCreditCard().copy(number = digits))).isEmpty())
+            subscriptions.clear()
+        }
+        for (digits in listOf("4".repeat(12), "4".repeat(20))) {
+            assertEquals(
+                mapOf("creditCard.number" to listOf("must have 13 to 19 digits")),
+                cardErrors(cardCommand().copy(creditCard = validCreditCard().copy(number = digits))),
+            )
+        }
+    }
+
+    @Test
+    fun `card holder name blank is reported on its field`() {
+        assertEquals(
+            mapOf("creditCard.holderName" to listOf("is required")),
+            cardErrors(cardCommand().copy(creditCard = validCreditCard().copy(holderName = " "))),
+        )
+    }
+
+    @Test
+    fun `card expiry year must have exactly 4 digits`() {
+        for (year in listOf("30", "203", "20300", "20a0")) {
+            assertEquals(
+                mapOf("creditCard.expiryYear" to listOf("must have 4 digits")),
+                cardErrors(cardCommand().copy(creditCard = validCreditCard().copy(expiryYear = year))),
+            )
+        }
+    }
+
+    @Test
+    fun `card expiry month accepts 01 to 12 only`() {
+        for (month in listOf("01", "09", "10", "12")) {
+            assertTrue(cardErrors(cardCommand().copy(creditCard = validCreditCard().copy(expiryMonth = month))).isEmpty())
+            subscriptions.clear()
+        }
+        for (month in listOf("00", "13", "1", "123")) {
+            assertEquals(
+                mapOf("creditCard.expiryMonth" to listOf("must be 2 digits between 01 and 12")),
+                cardErrors(cardCommand().copy(creditCard = validCreditCard().copy(expiryMonth = month))),
+            )
+        }
+    }
+
+    @Test
+    fun `card ccv accepts 3 or 4 digits and rejects 2 and 5`() {
+        for (ccv in listOf("123", "1234")) {
+            assertTrue(cardErrors(cardCommand().copy(creditCard = validCreditCard().copy(ccv = ccv))).isEmpty())
+            subscriptions.clear()
+        }
+        for (ccv in listOf("12", "12345", "12a")) {
+            assertEquals(
+                mapOf("creditCard.ccv" to listOf("must have 3 or 4 digits")),
+                cardErrors(cardCommand().copy(creditCard = validCreditCard().copy(ccv = ccv))),
+            )
+        }
+    }
+
+    @Test
+    fun `holder info is validated field by field`() {
+        val broken = validCreditCardHolderInfo().copy(
+            name = "",
+            email = "sem-arroba",
+            cpfCnpj = "123",
+            postalCode = "0131093",
+            addressNumber = " ",
+            phone = "119999999",
+        )
+
+        assertEquals(
+            mapOf(
+                "creditCardHolderInfo.name" to listOf("is required"),
+                "creditCardHolderInfo.email" to listOf("must be a valid email"),
+                "creditCardHolderInfo.cpfCnpj" to listOf("must have 11 (CPF) or 14 (CNPJ) digits"),
+                "creditCardHolderInfo.postalCode" to listOf("must have 8 digits"),
+                "creditCardHolderInfo.addressNumber" to listOf("is required"),
+                "creditCardHolderInfo.phone" to listOf("must be a valid phone number"),
+            ),
+            cardErrors(cardCommand().copy(creditCardHolderInfo = broken)),
+        )
+        assertTrue(gateway.subscriptionIdempotencyKeys.isEmpty())
+    }
+
+    @Test
+    fun `holder postal code needs exactly 8 digits and phone at least 10`() {
+        val postal9 = validCreditCardHolderInfo().copy(postalCode = "013109300")
+        assertEquals(
+            mapOf("creditCardHolderInfo.postalCode" to listOf("must have 8 digits")),
+            cardErrors(cardCommand().copy(creditCardHolderInfo = postal9)),
+        )
+        val formatted = validCreditCardHolderInfo().copy(postalCode = "01310-930", phone = "(11) 99999-9999")
+        assertTrue(cardErrors(cardCommand().copy(creditCardHolderInfo = formatted)).isEmpty())
+        subscriptions.clear()
+        val tenDigits = validCreditCardHolderInfo().copy(phone = "1133334444")
+        assertTrue(cardErrors(cardCommand().copy(creditCardHolderInfo = tenDigits)).isEmpty())
+    }
+
+    @Test
+    fun `remote ip is required for card billing`() {
+        for (ip in listOf(null, "", "  ")) {
+            assertEquals(
+                mapOf("remoteIp" to listOf("is required for CREDIT_CARD billing")),
+                cardErrors(cardCommand().copy(remoteIp = ip)),
+            )
+        }
+    }
+
+    @Test
+    fun `missing card blocks report exactly the three required fields`() {
+        assertEquals(
+            mapOf(
+                "creditCard" to listOf("is required for CREDIT_CARD billing"),
+                "creditCardHolderInfo" to listOf("is required for CREDIT_CARD billing"),
+                "remoteIp" to listOf("is required for CREDIT_CARD billing"),
+            ),
+            cardErrors(baseCommand().copy(billingType = AsaasBillingType.CREDIT_CARD)),
+        )
+    }
+
+    @Test
+    fun `pix checkout does not validate card fields`() {
+        val result = useCase.execute(baseCommand().copy(creditCard = null, creditCardHolderInfo = null, remoteIp = null))
+
+        assertIs<CreateSubscriptionResult.Success>(result)
+    }
+
     private fun unconfirmed(plan: Plan = Plan.TITULAR, couponId: UUID? = null) = Subscription(
         ownerUserId = ownerId,
         plan = plan,
@@ -690,6 +1008,10 @@ class CreateSubscriptionTest {
         override fun save(subscription: Subscription) {
             byOwner[subscription.ownerUserId] = subscription
         }
+
+        fun clear() {
+            byOwner.clear()
+        }
     }
 
     private class FakeCouponRepository : CouponRepository {
@@ -724,6 +1046,7 @@ class CreateSubscriptionTest {
         var lastRemoteIp: String? = null
         val subscriptionIdempotencyKeys = mutableListOf<String>()
         val canceledSubscriptions = mutableListOf<String>()
+        var cancelThrows: Boolean = false
         val missingPaymentsFor = mutableSetOf<String>()
 
         override fun createCustomer(ownerUserId: UUID, name: String, email: String, cpfCnpj: String) = "cus_1"
@@ -751,6 +1074,7 @@ class CreateSubscriptionTest {
 
         override fun updateSubscriptionValue(asaasSubscriptionId: String, valueCents: Long) = error("unused")
         override fun cancelSubscription(asaasSubscriptionId: String) {
+            if (cancelThrows) throw RuntimeException("cancel failed")
             canceledSubscriptions += asaasSubscriptionId
         }
         override fun createOneOffCharge(
