@@ -314,15 +314,53 @@ class OnboardingNoticesIntegrationTest {
         val rafa = user("Rafa")
         redeem.execute(rafa, code.value)
         ageRequest(rafa, "3 days")
-        // Aprovação desligada depois: a entrada é direta e a linha do pedido continua (causa fora do escopo do DEB-068).
         jdbc.sql("UPDATE access_groups SET entry_requires_approval = false WHERE id = :g").param("g", group).update()
         assertIs<RedeemInviteResult.Success>(redeem.execute(rafa, code.value))
-        assertEquals(1L, jdbc.sql("SELECT count(*) FROM group_entry_requests WHERE user_id = :u").param("u", rafa).query(Long::class.java).single())
+        // Desde o DEB-089 a entrada direta apaga o pedido; a linha é recolocada para simular o legado de antes da correção.
+        jdbc.sql("INSERT INTO group_entry_requests(group_id, user_id, requested_at) VALUES (:g, :u, now() - interval '3 days')")
+            .param("g", group).param("u", rafa).update()
 
         assertEquals(0, reminders.run())
 
         assertEquals(1, count("ENTRY_REQUEST"))
     }
+
+    @Test fun `entrada direta apaga o pedido pendente e a Inicio de todos conta certo`() {
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa")
+        assertIs<RedeemInviteResult.Pending>(redeem.execute(rafa, code.value))
+        assertEquals(1, adminHome().entryRequestCount)
+        assertEquals(listOf(group), memberHome(rafa).pendingEntryRequests.map { it.groupId })
+
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = false WHERE id = :g").param("g", group).update()
+        assertIs<RedeemInviteResult.Success>(redeem.execute(rafa, code.value))
+
+        assertEquals(0L, jdbc.sql("SELECT count(*) FROM group_entry_requests WHERE group_id = :g AND user_id = :u")
+            .param("g", group).param("u", rafa).query(Long::class.java).single())
+        assertEquals(0, adminHome().entryRequestCount)
+        assertEquals(emptyList(), memberHome(rafa).pendingEntryRequests)
+        assertEquals(0, reminders.run())
+    }
+
+    @Test fun `entrada direta nao apaga o pedido de outra pessoa nem de outro grupo`() {
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa")
+        val bia = user("Bia")
+        redeem.execute(rafa, code.value)
+        redeem.execute(bia, code.value)
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = false WHERE id = :g").param("g", group).update()
+
+        redeem.execute(rafa, code.value)
+
+        assertEquals(1, adminHome().entryRequestCount)
+        assertEquals(listOf(group), memberHome(bia).pendingEntryRequests.map { it.groupId })
+    }
+
+    private fun home(actor: UUID) = br.com.saqz.groups.adapter.output.jdbc.home.JdbcHomeRepository(source).find(
+        actorId = actor, now = Instant.now(), today = java.time.LocalDate.now(),
+    )
+    private fun adminHome() = checkNotNull(home(owner).admin).groups.single { it.id == group }
+    private fun memberHome(user: UUID) = home(user).member
 
     @Test fun `grupo congelado nao recebe segundo aviso`() {
         jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()

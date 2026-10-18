@@ -310,7 +310,17 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         )
     }
 
-    override fun redeemMembership(command: RedeemMembershipCommand): GroupRole = jdbc.sql(
+    /**
+     * Entrada direta (convite ou link de presença). Apaga o pedido pendente da pessoa no grupo, na mesma transação:
+     * com "Aprovar pedidos" desligado depois do pedido, a linha ficaria órfã em Convidar e nas Inícios (DEB-089).
+     */
+    override fun redeemMembership(command: RedeemMembershipCommand): GroupRole {
+        jdbc.sql("DELETE FROM group_entry_requests WHERE group_id = :groupId AND user_id = :userId")
+            .param("groupId", command.groupId).param("userId", command.userId).update()
+        return insertMembership(command)
+    }
+
+    private fun insertMembership(command: RedeemMembershipCommand): GroupRole = jdbc.sql(
         """
         WITH target_group AS (
             SELECT id, owner_user_id
