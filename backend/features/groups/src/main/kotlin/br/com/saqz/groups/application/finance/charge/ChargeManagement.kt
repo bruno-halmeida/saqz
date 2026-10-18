@@ -9,11 +9,13 @@ import java.util.UUID
 data class ChargeWithEvents(val charge:Charge,val events:List<ChargeEvent>)
 sealed interface ChargeListResult{data class Success(val charges:List<ChargeWithEvents>,val totals:ChargeTotals?):ChargeListResult;data object Hidden:ChargeListResult;data object Forbidden:ChargeListResult}
 sealed interface ChargeStatusResult{data class Success(val value:ChargeWithEvents):ChargeStatusResult;data object Hidden:ChargeStatusResult;data object Forbidden:ChargeStatusResult;data object Conflict:ChargeStatusResult;data object InvalidTransition:ChargeStatusResult;data object InvalidNote:ChargeStatusResult}
+sealed interface ChargeReviewResult{data class Success(val value:ChargeWithEvents):ChargeReviewResult;data object Hidden:ChargeReviewResult;data object Forbidden:ChargeReviewResult;data object Conflict:ChargeReviewResult}
 interface ChargeManagementRepository{
     fun role(actorId:UUID,groupId:UUID):GroupRole?
     fun list(groupId:UUID,memberId:UUID?=null):List<ChargeWithEvents>
     fun find(groupId:UUID,chargeId:UUID):ChargeWithEvents?
     fun update(change:ChargeChange,expectedVersion:Long):Boolean
+    fun resolveReview(chargeId:UUID,groupId:UUID,actorId:UUID,expectedVersion:Long,at:Instant,resolutionId:UUID):Boolean
 }
 class ChargeManagement(private val transaction:TransactionRunner,private val repository:ChargeManagementRepository,private val now:()->Instant,private val eventIds:()->UUID){
     fun listOrganizer(actor:UUID,group:UUID):ChargeListResult{val role=repository.role(actor,group)?:return ChargeListResult.Hidden;if(role !in setOf(GroupRole.OWNER,GroupRole.ADMIN))return ChargeListResult.Forbidden;val rows=repository.list(group);return ChargeListResult.Success(rows,ChargeVisibility.project(actor,role,rows.map{it.charge}).totals)}
@@ -24,5 +26,14 @@ class ChargeManagement(private val transaction:TransactionRunner,private val rep
         val change=try{ChargeTransitions.apply(current.charge,command,actor,now(),eventIds())}catch(_:InvalidChargeTransition){return@inTransaction ChargeStatusResult.InvalidTransition}catch(_:InvalidChargeNote){return@inTransaction ChargeStatusResult.InvalidNote}
         if(!repository.update(change,version))return@inTransaction ChargeStatusResult.Conflict
         ChargeStatusResult.Success(ChargeWithEvents(change.charge,current.events+change.event))
+    }
+    // Resolver não muda o status (não existe "devolvido"): só limpa a marca de revisão. Repetir é inofensivo: sem revisão pendente devolve a cobrança como está, sem exigir a versão.
+    fun resolveReview(actor:UUID,group:UUID,chargeId:UUID,version:Long):ChargeReviewResult=transaction.inTransaction{
+        val role=repository.role(actor,group)?:return@inTransaction ChargeReviewResult.Hidden;if(role !in setOf(GroupRole.OWNER,GroupRole.ADMIN))return@inTransaction ChargeReviewResult.Forbidden
+        val current=repository.find(group,chargeId)?:return@inTransaction ChargeReviewResult.Hidden
+        if(!current.charge.reviewRequired)return@inTransaction ChargeReviewResult.Success(current)
+        if(current.charge.version!=version)return@inTransaction ChargeReviewResult.Conflict
+        if(!repository.resolveReview(chargeId,group,actor,version,now(),eventIds()))return@inTransaction ChargeReviewResult.Conflict
+        ChargeReviewResult.Success(ChargeWithEvents(current.charge.copy(reviewRequired=false,version=version+1),current.events))
     }
 }
