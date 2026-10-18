@@ -603,7 +603,15 @@ class AccessSessionConfiguration {
         readRepository: JdbcGroupReadRepository,
         membershipRepository: JdbcMembershipRepository,
         administrationRevocation: GroupAdministrationRevocation,
-    ) = ChangeMemberRole(transaction, readRepository, membershipRepository, GroupAccessPolicy(), administrationRevocation)
+        dataSource: DataSource,
+    ) = ChangeMemberRole(
+        transaction,
+        readRepository,
+        membershipRepository,
+        GroupAccessPolicy(),
+        administrationRevocation,
+        br.com.saqz.groups.adapter.output.jdbc.communication.JdbcAdministratorPromotionNotice(dataSource),
+    )
 
     @Bean
     fun accessMembershipController(

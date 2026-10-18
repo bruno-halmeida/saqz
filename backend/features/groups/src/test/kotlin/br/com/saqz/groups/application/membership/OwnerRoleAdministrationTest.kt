@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.membership
 
+import br.com.saqz.groups.application.communication.AdministratorPromotionNotice
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
@@ -75,6 +76,29 @@ class OwnerRoleAdministrationTest {
         val result = fixture.change.execute(actor, groupId, admin.userId, PersistedMembershipRole.ATHLETE)
 
         assertEquals(ChangeMemberRoleResult.Success(admin.copy(role = GroupRole.ATHLETE)), result)
+    }
+
+    @Test
+    fun `promoting to admin notifies the promoted member once`() {
+        val fixture = fixture(GroupRole.OWNER)
+
+        fixture.change.execute(actor, groupId, athlete.userId, PersistedMembershipRole.ADMIN)
+        fixture.change.execute(actor, groupId, athlete.userId, PersistedMembershipRole.ADMIN)
+
+        assertEquals(listOf(groupId to athlete.userId), fixture.promotions)
+    }
+
+    @Test
+    fun `demoting an admin or a refused change notifies nobody`() {
+        val fixture = fixture(GroupRole.OWNER)
+
+        fixture.change.execute(actor, groupId, admin.userId, PersistedMembershipRole.ATHLETE)
+        fixture.change.execute(actor, groupId, owner.userId, PersistedMembershipRole.ADMIN)
+        val forbidden = fixture(GroupRole.ATHLETE)
+        forbidden.change.execute(actor, groupId, athlete.userId, PersistedMembershipRole.ADMIN)
+
+        assertTrue(fixture.promotions.isEmpty())
+        assertTrue(forbidden.promotions.isEmpty())
     }
 
     @Test
@@ -173,10 +197,15 @@ class OwnerRoleAdministrationTest {
         val read = FixedGroupReadRepository(role)
         val memberships = RecordingMembershipRepository(members)
         val policy = GroupAccessPolicy()
+        val promotions = mutableListOf<Pair<UUID, UUID>>()
         return Fixture(
             ListAccessMemberships(read, memberships, policy),
-            ChangeMemberRole(DirectTransactionRunner(), read, memberships, policy),
+            ChangeMemberRole(
+                DirectTransactionRunner(), read, memberships, policy,
+                promotionNotice = AdministratorPromotionNotice { group, user -> promotions += group to user },
+            ),
             memberships,
+            promotions,
         )
     }
 
@@ -187,6 +216,7 @@ class OwnerRoleAdministrationTest {
         val list: ListAccessMemberships,
         val change: ChangeMemberRole,
         val memberships: RecordingMembershipRepository,
+        val promotions: List<Pair<UUID, UUID>>,
     )
 
     private inner class FixedGroupReadRepository(private val role: GroupRole?) : GroupReadRepository {

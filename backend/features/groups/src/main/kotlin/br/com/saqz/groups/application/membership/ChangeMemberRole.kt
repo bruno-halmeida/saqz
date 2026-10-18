@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.membership
 
+import br.com.saqz.groups.application.communication.AdministratorPromotionNotice
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
@@ -17,6 +18,7 @@ class ChangeMemberRole(
     private val membershipRepository: MembershipRepository,
     private val accessPolicy: GroupAccessPolicy,
     private val administrationRevocation: GroupAdministrationRevocation = GroupAdministrationRevocation { _, _ -> },
+    private val promotionNotice: AdministratorPromotionNotice = AdministratorPromotionNotice { _, _ -> },
 ) {
     fun execute(
         actor: UUID,
@@ -38,6 +40,8 @@ class ChangeMemberRole(
         if (target.role == requestedRole) return@inTransaction ChangeMemberRoleResult.Success(target)
         val changed = membershipRepository.change(ChangeMemberRoleCommand(groupId, userId, role))
         if (target.role == GroupRole.ADMIN) administrationRevocation.revoked(groupId, userId)
+        // Só quem passa a administrador é avisado; repetir o papel atual já saiu acima, sem escrita nem aviso.
+        if (requestedRole == GroupRole.ADMIN) promotionNotice.promoted(groupId, userId)
         ChangeMemberRoleResult.Success(changed)
     }
 }

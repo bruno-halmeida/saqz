@@ -38,6 +38,16 @@ fun interface EntryApprovalNotice {
     fun approved(groupId: UUID, userId: UUID, requestedAt: Instant)
 }
 
+/**
+ * Aviso direto à pessoa promovida a administrador (MEM-001 / DEB-060), no canal AUTO_CONFIRMATION que os apps das
+ * lojas já conhecem. Chamado na mesma transação da troca de papel; quem é rebaixado não recebe aviso.
+ */
+fun interface AdministratorPromotionNotice {
+    fun promoted(groupId: UUID, userId: UUID)
+}
+
+fun administratorPromotedBody(groupName: String): String = "Você agora é administrador de $groupName."
+
 fun entryApprovedBody(groupName: String): String = "Você entrou no $groupName."
 
 fun entryRequestBody(who: String, groupName: String): String = "$who pediu para entrar no $groupName."
