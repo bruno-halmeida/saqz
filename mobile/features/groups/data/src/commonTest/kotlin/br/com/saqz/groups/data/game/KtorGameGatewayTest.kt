@@ -175,6 +175,23 @@ class KtorGameGatewayTest {
             assertEquals(listOf("is required"), error.error.details.fieldMessages["venue.address"])
         }
     }
+    @Test
+    fun `after plan end keeps the first instant that no longer fits and an unknown 422 stays generic`() = runTest {
+        val refused = gateway {
+            respond(
+                """{"status":422,"code":"GAME_AFTER_PLAN_END","correlationId":"safe","expiredAt":"2026-10-12T03:00:00Z","fieldErrors":{"startsAt":["must be before the plan end"]}}""",
+                HttpStatusCode.UnprocessableEntity,
+                jsonHeaders(),
+            )
+        }
+        assertEquals(GameError.AfterPlanEnd("2026-10-12T03:00:00Z"), assertIs<SaqzResult.Failure<*>>(refused.create(GROUP, gameCommand())).error)
+        assertEquals(
+            GameError.AfterPlanEnd("2026-10-12T03:00:00Z"),
+            assertIs<SaqzResult.Failure<*>>(refused.lifecycle(GROUP, GAME, GameVersionToken("\"7\""), GameLifecycleAction.Publish)).error,
+        )
+        val unknown = gateway { respond("""{"status":422,"code":"SOMETHING_NEW","correlationId":"safe"}""", HttpStatusCode.UnprocessableEntity, jsonHeaders()) }
+        assertIs<GameError.Data>(assertIs<SaqzResult.Failure<*>>(unknown.create(GROUP, gameCommand())).error)
+    }
     @Test fun `hidden game maps safely`() = errorCase(404, "GAME_NOT_FOUND", GameError.HiddenResource::class.simpleName)
     @Test fun `hidden group maps safely`() = errorCase(404, "GROUP_NOT_FOUND", GameError.HiddenResource::class.simpleName)
     @Test fun `version conflict maps safely`() = errorCase(409, "VERSION_CONFLICT", GameError.VersionConflict::class.simpleName)

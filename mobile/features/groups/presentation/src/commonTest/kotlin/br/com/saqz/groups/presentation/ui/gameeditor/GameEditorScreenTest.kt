@@ -4,6 +4,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.onAllNodesWithText
@@ -124,26 +127,48 @@ class GameEditorScreenTest {
         onNodeWithText("Seu plano não está ativo").assertExists()
     }
 
+    private fun blocked(owner: Boolean, trial: Boolean) = create().copy(
+        planBlocked = true,
+        planLastDay = "2026-10-12",
+        planLimitIsTrial = trial,
+        isOwner = owner,
+        form = create().form.copy(localDate = "2026-10-17", localTime = "19:00"),
+    )
+
     @Test
-    fun `trial warning prints the game date and time and not the trial instant`() = runComposeUiTest {
-        setContent {
-            SaqzTheme {
-                GameEditorScreen(
-                    state = create().copy(
-                        trialEndsAt = "2026-10-13T19:05:36.796387Z",
-                        trialWarningVisible = true,
-                        form = create().form.copy(localDate = "2026-10-17", localTime = "19:00"),
-                    ),
-                    onBack = {},
-                    onIntent = {},
-                )
-            }
-        }
+    fun `owner on a paid plan reads the plan text with the last day and no time`() = runComposeUiTest {
+        setContent { SaqzTheme { GameEditorScreen(state = blocked(owner = true, trial = false), onBack = {}, onIntent = {}) } }
 
         onNodeWithText(
-            "Este jogo começa sábado, 17/10 às 19h00, depois do fim do teste. " +
-                "O acesso ao grupo nessa data depende do plano ativo da conta.",
+            "Este jogo começa depois do fim do seu plano. Escolha uma data até 12/10/2026 ou assine para marcar mais jogos.",
         ).performScrollTo().assertExists()
+        onNodeWithTag(GameEditorTags.PlanBlockViewPlans).performScrollTo().assertExists()
+        onNodeWithTag(GameEditorTags.Submit).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `owner in the trial reads the trial text`() = runComposeUiTest {
+        setContent { SaqzTheme { GameEditorScreen(state = blocked(owner = true, trial = true), onBack = {}, onIntent = {}) } }
+
+        onNodeWithText(
+            "Este jogo começa depois do fim do seu teste. Escolha uma data até 12/10/2026 ou assine para marcar mais jogos.",
+        ).performScrollTo().assertExists()
+    }
+
+    @Test
+    fun `admin reads the group plan text without an offer to subscribe`() = runComposeUiTest {
+        setContent { SaqzTheme { GameEditorScreen(state = blocked(owner = false, trial = false), onBack = {}, onIntent = {}) } }
+
+        onNodeWithText("Este jogo começa depois do fim do plano do grupo.").performScrollTo().assertExists()
+        onAllNodesWithTag(GameEditorTags.PlanBlockViewPlans).assertCountEquals(0)
+    }
+
+    @Test
+    fun `without the block the submit button is enabled and no plan text shows`() = runComposeUiTest {
+        setContent { SaqzTheme { GameEditorScreen(state = create(), onBack = {}, onIntent = {}) } }
+
+        onAllNodesWithTag(GameEditorTags.PlanBlock).assertCountEquals(0)
+        onNodeWithTag(GameEditorTags.Submit).assertIsEnabled()
     }
 
     // ---- DEB-050: o endereço da quadra é sempre opcional ----

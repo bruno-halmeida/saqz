@@ -86,7 +86,8 @@
     <string name="game_editor_error_retry">Tentar</string>
     <string name="game_editor_error_recurrence_title">O jogo foi marcado, mas a repetição não foi salva</string>
     <string name="game_editor_error_recurrence_body">Tente de novo ou ligue a repetição na agenda do grupo.</string>
-    <string name="game_editor_trial_warning_when">%1$s, %2$s às %3$s</string>
-    <string name="game_editor_trial_warning">Este jogo começa %1$s, depois do fim do teste. O acesso ao grupo nessa data depende do plano ativo da conta.</string>
+    <string name="game_editor_plan_block_plan">Este jogo começa depois do fim do seu plano. Escolha uma data até %1$s ou assine para marcar mais jogos.</string>
+    <string name="game_editor_plan_block_trial">Este jogo começa depois do fim do seu teste. Escolha uma data até %1$s ou assine para marcar mais jogos.</string>
+    <string name="game_editor_plan_block_admin">Este jogo começa depois do fim do plano do grupo.</string>
 
 </resources>

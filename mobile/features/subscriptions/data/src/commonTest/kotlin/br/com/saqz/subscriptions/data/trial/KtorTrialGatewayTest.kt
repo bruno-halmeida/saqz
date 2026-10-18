@@ -195,6 +195,16 @@ class KtorTrialGatewayTest {
     }
 
     @Test
+    fun groupTrialMapsTheGamesLimitAndOlderServersLeaveItEmpty() = runTest {
+        val withLimit = success(gateway {
+            json(ACTIVE_OWNER.trim().dropLast(1) + ",\"gamesUntil\":\"2026-10-12T03:00:00Z\"}")
+        }.groupTrial(br.com.saqz.domain.GroupId("group-1")))
+
+        assertEquals("2026-10-12T03:00:00Z", withLimit.gamesUntil)
+        assertNull(success(gateway { json(ACTIVE_OWNER) }.groupTrial(br.com.saqz.domain.GroupId("group-1"))).gamesUntil)
+    }
+
+    @Test
     fun countdownSeenPostsWithoutBodyAndReportsConflictWithoutTrial() = runTest {
         val posted = gateway { request ->
             assertEquals(HttpMethod.Post, request.method)

@@ -29,6 +29,8 @@ data class GameDetailState(
     /** Rascunho (os da recorrência nascem assim) virando jogo publicado. */
     val publishing: Boolean = false,
     val publishFailed: Boolean = false,
+    /** O plano ou o teste acaba antes do início do rascunho: publicar só depois de mudar a data (DEB-075). */
+    val publishAfterPlanEnd: Boolean = false,
     val promotingMemberId: String? = null,
     val promotionFailed: Boolean = false,
     val capacitySheetOpen: Boolean = false,

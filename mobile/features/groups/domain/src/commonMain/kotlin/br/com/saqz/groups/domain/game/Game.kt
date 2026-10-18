@@ -135,6 +135,8 @@ sealed interface GameError : SaqzError {
     data object VersionConflict : GameError
     data object InvalidLifecycle : GameError
     data object Authentication : GameError
+    /** O jogo começaria no limite do plano ou do teste, ou depois; [startsBefore] é o primeiro instante que já não vale. */
+    data class AfterPlanEnd(val startsBefore: String?) : GameError
     data class Data(val error: DataError) : GameError
 }
 

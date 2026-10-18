@@ -47,6 +47,7 @@ internal data class TrialAccessTransport(
     val daysLeft: Int? = null,
     val usage: TrialUsageTransport? = null,
     val countdownSeenToday: Boolean = false,
+    val gamesUntil: String? = null,
 )
 
 @Serializable
@@ -103,6 +104,7 @@ private fun TrialAccessTransport.toDomain() = TrialAccess(
     daysLeft = daysLeft,
     usage = usage?.let { TrialUsage(it.games, it.confirmedAthletes, it.cashCents) },
     countdownSeenToday = countdownSeenToday,
+    gamesUntil = gamesUntil,
 )
 
 private fun TrialStatusTransport.toDomain() = when (this) {

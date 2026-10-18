@@ -399,6 +399,23 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun `publishing a draft beyond the plan end shows its own text and not the retry`() = runTest {
+        val draft = sampleVersionedGame().copy(game = sampleVersionedGame().game.copy(status = GameStatus.Draft))
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(draft),
+            lifecycleResult = SaqzResult.Failure(GameError.AfterPlanEnd("2026-08-02T03:00:00Z")),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+
+        viewModel.onIntent(GameDetailIntent.Publish)
+
+        assertTrue(viewModel.state.value.publishAfterPlanEnd)
+        assertFalse(viewModel.state.value.publishFailed)
+        assertFalse(viewModel.state.value.publishing)
+        assertEquals(GameDetailStatusTone.Draft, viewModel.state.value.header?.statusTone)
+    }
+
+    @Test
     fun `publish conflict reloads the game instead of failing`() = runTest {
         val draft = sampleVersionedGame().copy(game = sampleVersionedGame().game.copy(status = GameStatus.Draft))
         val gateway = FakeGameGateway(

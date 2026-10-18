@@ -734,7 +734,7 @@ class GameDetailViewModel(
         val current = state.value
         if (!current.isAdmin || current.header?.statusTone != GameDetailStatusTone.Draft || current.publishing) return
         val token = versionToken ?: return
-        update { it.copy(publishing = true, publishFailed = false) }
+        update { it.copy(publishing = true, publishFailed = false, publishAfterPlanEnd = false) }
         viewModelScope.launch {
             val result = gameGateway.lifecycle(GroupId(groupId), gameId, token, GameLifecycleAction.Publish)
             when (result) {
@@ -747,7 +747,8 @@ class GameDetailViewModel(
                     update { it.copy(publishing = false) }
                     load()
                 } else {
-                    update { it.copy(publishing = false, publishFailed = true) }
+                    val afterPlanEnd = result.error is GameError.AfterPlanEnd
+                    update { it.copy(publishing = false, publishFailed = !afterPlanEnd, publishAfterPlanEnd = afterPlanEnd) }
                 }
             }
         }

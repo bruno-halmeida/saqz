@@ -36,6 +36,8 @@ data class TrialAccess(
     val usage: TrialUsage? = null,
     /** A folha de contagem já abriu hoje em algum aparelho do dono. */
     val countdownSeenToday: Boolean = false,
+    /** Primeiro instante em que um jogo do grupo já não pode começar; só na rota do grupo, para dono e admins. */
+    val gamesUntil: String? = null,
 )
 
 data class TrialUsage(val games: Int, val confirmedAthletes: Int, val cashCents: Long) {

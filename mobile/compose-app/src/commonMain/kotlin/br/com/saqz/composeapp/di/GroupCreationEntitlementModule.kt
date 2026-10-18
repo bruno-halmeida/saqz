@@ -37,6 +37,7 @@ internal val groupCreationEntitlementModule = module {
                         activeTrialDays = result.value.trialDays.takeIf {
                             result.value.status == br.com.saqz.subscriptions.domain.trial.TrialStatus.Active
                         },
+                        gamesUntil = result.value.gamesUntil,
                     )
                 is br.com.saqz.domain.SaqzResult.Failure -> null
             }

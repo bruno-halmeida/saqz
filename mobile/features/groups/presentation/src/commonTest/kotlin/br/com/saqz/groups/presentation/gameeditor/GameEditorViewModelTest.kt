@@ -843,19 +843,97 @@ class GameEditorViewModelTest {
         assertFalse(vm.state.value.saveFailed)
     }
 
+    // DEB-075: o limite do plano ou do teste bloqueia, 0h do dia do fim no fuso do grupo (São Paulo nos testes).
+
     @Test
-    fun `trial warning shows only when the game is after the trial end and no plan is active`() = runTest {
-        var info = GroupTrialAccessInfo("2026-08-01T00:00:00Z", false, true)
+    fun `a game at the plan limit or later is blocked while the day before is free and no create goes out`() = runTest {
+        val gateway = FakeGameGateway()
+        // Plano pago até 02/08: o limite é 02/08 0h em São Paulo = 03h UTC.
+        val info = GroupTrialAccessInfo("2026-08-02T15:00:00Z", false, true, planActive = true, gamesUntil = "2026-08-02T03:00:00Z")
+        val vm = viewModel(gameGateway = gateway, trialAccess = GroupTrialAccessPort { info })
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-01", "23:59"))
+        assertFalse(vm.state.value.planBlocked)
+        assertEquals("2026-08-01", vm.state.value.planLastDay)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-02", "00:00"))
+        assertTrue(vm.state.value.planBlocked)
+        vm.onIntent(GameEditorIntent.Submit)
+        assertEquals(0, gateway.createCalls)
+        assertFalse(vm.state.value.planLimitIsTrial)
+        assertTrue(vm.state.value.isOwner)
+    }
+
+    @Test
+    fun `a trial from an older server blocks from the zero hour of the trial end day and names it a trial`() = runTest {
+        val info = GroupTrialAccessInfo("2026-08-04T15:00:00Z", false, true, activeTrialDays = 14)
         val vm = viewModel(trialAccess = GroupTrialAccessPort { info })
-        vm.onIntent(GameEditorIntent.SaveDateTime("2026-07-20", "19:30"))
-        assertFalse(vm.state.value.trialWarningVisible)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-03", "23:00"))
+        assertFalse(vm.state.value.planBlocked)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "00:00"))
+        assertTrue(vm.state.value.planBlocked)
+        assertTrue(vm.state.value.planLimitIsTrial)
+        assertEquals("2026-08-03", vm.state.value.planLastDay)
+    }
+
+    @Test
+    fun `refreshing the plan after subscribing releases the block without reloading the form`() = runTest {
+        var info = GroupTrialAccessInfo("2026-08-01T00:00:00Z", false, true, activeTrialDays = 14)
+        val vm = viewModel(trialAccess = GroupTrialAccessPort { info })
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
-        assertTrue(vm.state.value.trialWarningVisible)
-        // Assinou e voltou de "Ver planos": o aviso some sem recarregar o formulário.
-        info = info.copy(planActive = true)
+        assertTrue(vm.state.value.planBlocked)
+        info = info.copy(planActive = true, activeTrialDays = null, gamesUntil = "2026-09-04T03:00:00Z")
         vm.onIntent(GameEditorIntent.RefreshPlan)
-        assertFalse(vm.state.value.trialWarningVisible)
+        assertFalse(vm.state.value.planBlocked)
         assertEquals("2026-08-04", vm.state.value.form.localDate)
+    }
+
+    @Test
+    fun `an admin without the right to subscribe is blocked and told it is the group plan`() = runTest {
+        val info = GroupTrialAccessInfo("2026-08-02T15:00:00Z", false, false, planActive = true, gamesUntil = "2026-08-02T03:00:00Z")
+        val vm = viewModel(trialAccess = GroupTrialAccessPort { info })
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-03", "19:30"))
+        assertTrue(vm.state.value.planBlocked)
+        assertFalse(vm.state.value.isOwner)
+    }
+
+    @Test
+    fun `the server after plan end error leads to the block and not to the retry banner`() = runTest {
+        val gateway = FakeGameGateway(createResult = SaqzResult.Failure(GameError.AfterPlanEnd("2026-08-02T03:00:00Z")))
+        val vm = viewModel(gameGateway = gateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.Submit)
+        assertEquals(1, gateway.createCalls)
+        assertTrue(vm.state.value.planBlocked)
+        assertEquals("2026-08-01", vm.state.value.planLastDay)
+        assertFalse(vm.state.value.saveFailed)
+        assertFalse(vm.state.value.isSaving)
+        // O dia anterior ao fim libera.
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-01", "19:30"))
+        assertFalse(vm.state.value.planBlocked)
+    }
+
+    @Test
+    fun `an expired trial keeps going to the subscription dialog and not to the block`() = runTest {
+        val gateway = FakeGameGateway(createResult = SaqzResult.Failure(GameError.Data(DataError.SubscriptionRequired)))
+        val vm = viewModel(
+            gameGateway = gateway,
+            trialAccess = GroupTrialAccessPort { GroupTrialAccessInfo("2026-08-01T00:00:00Z", true, true, trialEnded = true) },
+        )
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        assertFalse(vm.state.value.planBlocked)
+        vm.onIntent(GameEditorIntent.Submit)
+        assertTrue(vm.state.value.subscriptionRequired)
+    }
+
+    @Test
+    fun `editing only blocks when the date or the time changed`() = runTest {
+        // Jogo antigo em 2026-08-12 19:30, além do limite de 02/08: salvar outro campo não bloqueia.
+        val info = GroupTrialAccessInfo("2026-08-02T15:00:00Z", false, true, planActive = true, gamesUntil = "2026-08-02T03:00:00Z")
+        val vm = viewModel(gameId = "game-1", trialAccess = GroupTrialAccessPort { info })
+        assertFalse(vm.state.value.planBlocked)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-13", "19:30"))
+        assertTrue(vm.state.value.planBlocked)
+        vm.onIntent(GameEditorIntent.SaveDateTime(vm.state.value.originalStart!!.substringBefore('T'), vm.state.value.originalStart!!.substringAfter('T')))
+        assertFalse(vm.state.value.planBlocked)
     }
 
     @Test

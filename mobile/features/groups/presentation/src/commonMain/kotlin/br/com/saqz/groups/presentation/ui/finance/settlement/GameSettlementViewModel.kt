@@ -674,6 +674,7 @@ private fun GameError.toSettlementUiError(): GroupUiError = when (this) {
     GameError.VersionConflict -> GroupUiError.Conflict
     GameError.InvalidLifecycle -> GroupUiError.Validation
     GameError.Authentication -> GroupUiError.AccessDenied
+    is GameError.AfterPlanEnd -> GroupUiError.Validation
     is GameError.Data -> GroupUiError.Network
 }
 

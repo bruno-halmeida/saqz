@@ -13,6 +13,11 @@ data class GroupTrialAccessInfo(
     val trialEnded: Boolean = false,
     /** Dias do teste em curso; `null` quando o grupo não está em teste (plano pago, vencido). */
     val activeTrialDays: Int? = null,
+    /**
+     * Primeiro instante em que um jogo do grupo já não pode começar (0h do dia do fim do plano ou do teste, no
+     * fuso do grupo). Só chega para dono e admins; nulo em servidor antigo, e aí vale o fim do teste.
+     */
+    val gamesUntil: String? = null,
 )
 
 fun interface GroupTrialAccessPort {

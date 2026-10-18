@@ -23,9 +23,19 @@ data class GameEditorState(
     val error: GroupUiError? = null,
     val groupName: String = "",
     val zoneId: String = "",
-    val trialEndsAt: String? = null,
-    val trialWarningVisible: Boolean = false,
-    /** Há plano pago ativo: o aviso do fim do teste não se aplica. */
+    /** Primeiro instante em que um jogo já não cabe no plano ou no teste (0h do dia do fim); nulo = sem limite conhecido. */
+    val planLimit: String? = null,
+    /** Último dia que dá para marcar (aaaa-mm-dd, no fuso do grupo); é o que o texto do bloqueio mostra. */
+    val planLastDay: String? = null,
+    /** O limite é o fim do teste, não o de um plano pago: muda a palavra do texto. */
+    val planLimitIsTrial: Boolean = false,
+    /** Só o dono assina: o admin recebe o texto sem "assine". */
+    val isOwner: Boolean = false,
+    /** O início escolhido cai no limite ou depois (DEB-075): não marca nem salva. Na edição só vale se data ou hora mudaram. */
+    val planBlocked: Boolean = false,
+    /** Data e hora do jogo carregado (`aaaa-mm-ddThh:mm`); na edição, só mudar isso aciona o bloqueio. */
+    val originalStart: String? = null,
+    /** Há plano pago ativo. */
     val planActive: Boolean = false,
     /** O backend recusou a gravação por falta de plano: a UI abre o diálogo com a oferta. */
     val subscriptionRequired: Boolean = false,

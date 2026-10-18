@@ -278,6 +278,7 @@ private fun NetworkError.toDomain(): GameError = when (this) {
         "GAME_SCHEDULE_CONFLICT" -> GameError.Conflict(problem.conflictGameId)
         "VERSION_CONFLICT" -> GameError.VersionConflict
         "INVALID_GAME_TRANSITION" -> GameError.InvalidLifecycle
+        "GAME_AFTER_PLAN_END" -> GameError.AfterPlanEnd(problem.expiredAt)
         "AUTHENTICATION_REQUIRED" -> GameError.Authentication
         "SUBSCRIPTION_REQUIRED" -> GameError.Data(DataError.SubscriptionRequired)
         else -> GameError.Data(problem.status.toDataError())

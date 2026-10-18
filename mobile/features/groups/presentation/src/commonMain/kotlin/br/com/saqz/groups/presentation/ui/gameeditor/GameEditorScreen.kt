@@ -64,8 +64,8 @@ import br.com.saqz.groups.presentation.gameeditor.GameEditorIntent
 import br.com.saqz.groups.presentation.gameeditor.GameEditorState
 import br.com.saqz.groups.presentation.gameeditor.hasSlotAt
 import br.com.saqz.groups.presentation.gameeditor.recurrenceSlotFor
-import br.com.saqz.groups.presentation.game.longWeekdayResource
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
+import br.com.saqz.groups.presentation.ui.LocalOpenSubscriptionPlans
 import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
 import br.com.saqz.groups.presentation.ui.confirmationLeadLabel
 import br.com.saqz.groups.presentation.ui.durationLabel
@@ -139,8 +139,10 @@ import br.com.saqz.groups.resources.game_editor_saving
 import br.com.saqz.groups.resources.game_editor_subtitle
 import br.com.saqz.groups.resources.game_editor_time_label
 import br.com.saqz.groups.resources.game_editor_time_placeholder
-import br.com.saqz.groups.resources.game_editor_trial_warning
-import br.com.saqz.groups.resources.game_editor_trial_warning_when
+import br.com.saqz.groups.resources.game_editor_plan_block_admin
+import br.com.saqz.groups.resources.game_editor_plan_block_plan
+import br.com.saqz.groups.resources.game_editor_plan_block_trial
+import br.com.saqz.groups.resources.subscription_required_view_plans
 import br.com.saqz.groups.resources.game_editor_venue_address_hint
 import br.com.saqz.groups.resources.game_editor_venue_address_label
 import br.com.saqz.groups.resources.game_editor_venue_helper
@@ -172,6 +174,8 @@ import org.jetbrains.compose.resources.stringResource
 internal object GameEditorTags {
     const val Screen = "game-editor"
     const val Submit = "game-editor-submit"
+    const val PlanBlock = "game-editor-plan-block"
+    const val PlanBlockViewPlans = "game-editor-plan-block-view-plans"
     const val Date = "game-editor-date"
     const val Time = "game-editor-time"
     const val DateTimePicker = "game-editor-date-time-picker"
@@ -231,7 +235,7 @@ internal fun GameEditorScreen(
                 SubmitButton(
                     isEditing = isEditing,
                     isSaving = state.isSaving,
-                    enabled = state.conflictGameId == null && !state.isSaving,
+                    enabled = state.conflictGameId == null && !state.isSaving && !state.planBlocked,
                     onSubmit = { onIntent(GameEditorIntent.Submit) },
                 )
             }
@@ -254,17 +258,35 @@ internal fun GameEditorScreen(
     }
 }
 
-/** "sábado, 17/10 às 19h00": a data e a hora do jogo, como o resto do app, nunca o instante em ISO. */
+/**
+ * O jogo começa depois do fim do plano ou do teste (DEB-075): não marca nem salva. Para o dono o texto diz até que dia
+ * dá para marcar e oferece os planos; o admin, que não assina, só lê que o plano do grupo acaba antes.
+ */
 @Composable
-private fun gameWhenLabel(form: GameEditorFields): String {
-    val date = runCatching { LocalDate.parse(form.localDate) }.getOrNull()
-        ?: return formatDisplayDate(form.localDate)
-    return stringResource(
-        Res.string.game_editor_trial_warning_when,
-        stringResource(date.dayOfWeek.longWeekdayResource()),
-        "${date.day.toString().padStart(2, '0')}/${date.monthNumber.toString().padStart(2, '0')}",
-        formatDisplayTime(form.localTime),
-    )
+private fun PlanBlockCard(state: GameEditorState) {
+    val openPlans = LocalOpenSubscriptionPlans.current
+    val lastDay = state.planLastDay?.let(::formatDisplayDate).orEmpty()
+    SaqzCard(modifier = Modifier.testTag(GameEditorTags.PlanBlock), tone = SaqzCardTone.Soft) {
+        Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap)) {
+            Text(
+                text = when {
+                    !state.isOwner -> stringResource(Res.string.game_editor_plan_block_admin)
+                    state.planLimitIsTrial -> stringResource(Res.string.game_editor_plan_block_trial, lastDay)
+                    else -> stringResource(Res.string.game_editor_plan_block_plan, lastDay)
+                },
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textPrimary,
+            )
+            if (state.isOwner) {
+                SaqzButton(
+                    stringResource(Res.string.subscription_required_view_plans),
+                    openPlans,
+                    Modifier.testTag(GameEditorTags.PlanBlockViewPlans),
+                    SaqzButtonVariant.Secondary,
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -334,15 +356,7 @@ private fun FormScroll(
                 onToggle = { onIntent(GameEditorIntent.ToggleRecurring(it)) },
             )
         }
-        if (state.trialWarningVisible) {
-            SaqzCard(modifier = Modifier.testTag("game-editor-trial-warning"), tone = SaqzCardTone.Soft) {
-                Text(
-                    text = stringResource(Res.string.game_editor_trial_warning, gameWhenLabel(state.form)),
-                    style = SaqzTheme.typography.support,
-                    color = SaqzTheme.colors.textPrimary,
-                )
-            }
-        }
+        if (state.planBlocked) PlanBlockCard(state)
         DurationChips(
             selected = state.form.durationMinutes,
             onSelect = { onIntent(GameEditorIntent.SelectDuration(it)) },

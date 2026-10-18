@@ -57,6 +57,7 @@ import br.com.saqz.groups.resources.game_detail_cancel_body
 import br.com.saqz.groups.resources.game_detail_cancel_failed
 import br.com.saqz.groups.resources.game_detail_cancel_title
 import br.com.saqz.groups.resources.game_detail_publish
+import br.com.saqz.groups.resources.game_detail_publish_after_plan_end
 import br.com.saqz.groups.resources.game_detail_publish_failed
 import br.com.saqz.groups.resources.game_detail_publish_hint
 import br.com.saqz.groups.resources.game_detail_confirmation_deadline
@@ -154,6 +155,7 @@ internal fun GameDetailScreen(
                             canPublish = state.header?.statusTone == GameDetailStatusTone.Draft,
                             publishing = state.publishing,
                             publishFailed = state.publishFailed,
+                            publishAfterPlanEnd = state.publishAfterPlanEnd,
                             onIntent = onIntent,
                         )
                     }
@@ -352,6 +354,7 @@ private fun GameDetailAdminActions(
     canPublish: Boolean,
     publishing: Boolean,
     publishFailed: Boolean,
+    publishAfterPlanEnd: Boolean,
     onIntent: (GameDetailIntent) -> Unit,
 ) = Column(
     Modifier.fillMaxWidth(),
@@ -366,10 +369,17 @@ private fun GameDetailAdminActions(
             enabled = !publishing,
             loading = publishing,
         )
+        val blocked = publishFailed || publishAfterPlanEnd
         Text(
-            stringResource(if (publishFailed) Res.string.game_detail_publish_failed else Res.string.game_detail_publish_hint),
+            stringResource(
+                when {
+                    publishAfterPlanEnd -> Res.string.game_detail_publish_after_plan_end
+                    publishFailed -> Res.string.game_detail_publish_failed
+                    else -> Res.string.game_detail_publish_hint
+                },
+            ),
             style = SaqzTheme.typography.support,
-            color = if (publishFailed) SaqzTheme.colors.errorForeground else SaqzTheme.colors.textSecondary,
+            color = if (blocked) SaqzTheme.colors.errorForeground else SaqzTheme.colors.textSecondary,
         )
     }
     SaqzButton(
