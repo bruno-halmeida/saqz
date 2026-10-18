@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import br.com.saqz.designsystem.SaqzLargeFontScale
 import br.com.saqz.designsystem.saqzColumnsFit
 import androidx.compose.foundation.layout.Column
@@ -284,8 +285,8 @@ private fun Counter(value: Int, label: String, color: Color, modifier: Modifier 
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
 ) {
-    Text("$value", color = color, style = SaqzTheme.typography.title)
-    Text(label, color = SaqzTheme.colors.textSecondary, style = SaqzTheme.typography.caption)
+    Text("$value", color = color, style = SaqzTheme.typography.title, textAlign = TextAlign.Center)
+    Text(label, color = SaqzTheme.colors.textSecondary, style = SaqzTheme.typography.caption, textAlign = TextAlign.Center)
 }
 @Composable
 private fun GameDetailConfirmedList(

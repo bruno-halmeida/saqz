@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.platform.testTag
 import br.com.saqz.designsystem.SaqzAvatar
@@ -445,8 +446,8 @@ private fun MemberEditorStatCell(value: String, label: String, modifier: Modifie
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
     ) {
-        Text(value, style = SaqzTheme.typography.subtitle, color = SaqzTheme.colors.textPrimary)
-        Text(label, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
+        Text(value, style = SaqzTheme.typography.subtitle, color = SaqzTheme.colors.textPrimary, textAlign = TextAlign.Center)
+        Text(label, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary, textAlign = TextAlign.Center)
     }
 }
 
@@ -628,6 +629,7 @@ private fun MemberEditorFailure(error: GroupUiError?, onRetry: () -> Unit) {
             },
             style = SaqzTheme.typography.body,
             color = SaqzTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
         )
         SaqzButton(
             label = stringResource(Res.string.member_editor_retry),

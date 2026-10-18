@@ -448,8 +448,8 @@ private fun OwnProfileStat(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
     ) {
-        Text(text = value, style = SaqzTheme.typography.title, color = valueColor)
-        Text(text = label, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
+        Text(text = value, style = SaqzTheme.typography.title, color = valueColor, textAlign = TextAlign.Center)
+        Text(text = label, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary, textAlign = TextAlign.Center)
     }
 }
 

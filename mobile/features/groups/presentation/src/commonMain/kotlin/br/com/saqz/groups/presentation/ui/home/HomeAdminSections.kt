@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
@@ -407,6 +408,7 @@ private fun HomeShortcutCard(
             text = label,
             style = SaqzTheme.typography.compactMeta.copy(fontWeight = FontWeight(600)),
             color = colors.textPrimary,
+            textAlign = TextAlign.Center,
         )
     }
 }

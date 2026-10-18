@@ -316,6 +316,7 @@ private fun ColumnScope.LoginLink(
     text = label,
     style = SaqzTheme.typography.support.copy(fontSize = size, fontWeight = weight),
     color = SaqzTheme.colors.primary,
+    textAlign = TextAlign.Center,
     modifier = modifier.align(Alignment.CenterHorizontally).clickable(onClick = onClick),
 )
 

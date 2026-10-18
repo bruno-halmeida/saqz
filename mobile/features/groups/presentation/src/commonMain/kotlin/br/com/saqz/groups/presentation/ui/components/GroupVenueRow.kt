@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzIcon
@@ -60,6 +61,7 @@ internal fun GroupVenueRow(
                 text = actionLabel,
                 style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.Bold),
                 color = SaqzTheme.colors.primary,
+                textAlign = TextAlign.Center,
             )
         }
     }

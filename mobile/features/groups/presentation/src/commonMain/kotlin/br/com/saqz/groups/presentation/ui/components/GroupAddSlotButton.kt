@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
@@ -68,7 +69,7 @@ internal fun GroupAddSlotButton(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SaqzIcon(SaqzIcons.Plus, tint = SaqzTheme.colors.primary)
-        Text(label, style = SaqzTheme.typography.label, color = SaqzTheme.colors.primary)
+        Text(label, style = SaqzTheme.typography.label, color = SaqzTheme.colors.primary, textAlign = TextAlign.Center)
     }
 }
 

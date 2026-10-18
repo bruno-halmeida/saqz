@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzCard
@@ -140,11 +141,13 @@ private fun FinanceOverviewFailure(
             text = stringResource(Res.string.finance_overview_load_error_title),
             style = SaqzTheme.typography.subtitle,
             color = SaqzTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
         )
         Text(
             text = stringResource(Res.string.finance_overview_load_error_body),
             style = SaqzTheme.typography.body,
             color = SaqzTheme.colors.textSecondary,
+            textAlign = TextAlign.Center,
         )
         SaqzButton(
             label = stringResource(Res.string.finance_overview_retry),
@@ -169,11 +172,13 @@ private fun FinanceOverviewEmpty(modifier: Modifier = Modifier) {
             text = stringResource(Res.string.finance_overview_empty_title),
             style = SaqzTheme.typography.subtitle,
             color = SaqzTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
         )
         Text(
             text = stringResource(Res.string.finance_overview_empty_body),
             style = SaqzTheme.typography.body,
             color = SaqzTheme.colors.textSecondary,
+            textAlign = TextAlign.Center,
         )
     }
 }
@@ -270,6 +275,7 @@ private fun FinanceOverviewPeriodSelector(
                     text = periodLabel(option),
                     style = SaqzTheme.typography.caption,
                     color = if (selected) SaqzTheme.colors.onPrimary else SaqzTheme.colors.textSecondary,
+                    textAlign = TextAlign.Center,
                 )
             }
         }
@@ -397,8 +403,9 @@ private fun RowScope.FinanceOverviewMetric(value: String, label: String) {
             style = SaqzTheme.typography.support.copy(fontWeight = SaqzTheme.typography.label.fontWeight),
             color = SaqzTheme.colors.textPrimary,
             maxLines = 1,
+            textAlign = TextAlign.Center,
         )
-        Text(label, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
+        Text(label, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary, textAlign = TextAlign.Center)
     }
 }
 

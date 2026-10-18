@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzTopAppBar
@@ -51,11 +52,12 @@ internal fun InviteQrScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
         ) {
-            Text(state.groupName, style = SaqzTheme.typography.title, color = SaqzTheme.colors.textPrimary)
+            Text(state.groupName, style = SaqzTheme.typography.title, color = SaqzTheme.colors.textPrimary, textAlign = TextAlign.Center)
             Text(
                 stringResource(Res.string.invite_qr_validity),
                 style = SaqzTheme.typography.support,
                 color = SaqzTheme.colors.textSecondary,
+                textAlign = TextAlign.Center,
             )
             state.pngBytes?.let {
                 InviteQrImage(
@@ -71,6 +73,7 @@ internal fun InviteQrScreen(
                         else Res.string.invite_qr_error_share,
                     ),
                     color = SaqzTheme.colors.errorForeground,
+                    textAlign = TextAlign.Center,
                 )
             }
             SaqzButton(
