@@ -705,6 +705,112 @@ class GameSettlementViewModelTest {
         assertEquals(1, finance.updateCalls)
     }
 
+    @Test
+    fun `cancel opens a confirmation only for a pending charge`() = runTest {
+        val viewModel = viewModel(SettlementFinanceGateway(charges(), expenses()))
+
+        viewModel.onIntent(GameSettlementIntent.OpenCancel("game-paid"))
+        assertEquals(null, viewModel.state.value.cancelSheetChargeId)
+
+        viewModel.onIntent(GameSettlementIntent.OpenCancel("game-pending"))
+        assertEquals("game-pending", viewModel.state.value.cancelSheetChargeId)
+        assertEquals(null, viewModel.state.value.receiptSheetChargeId)
+
+        viewModel.onIntent(GameSettlementIntent.DismissCancelSheet)
+        assertEquals(null, viewModel.state.value.cancelSheetChargeId)
+    }
+
+    @Test
+    fun `cancel sends the cancelled status with the version and takes the charge out of the settlement`() = runTest {
+        val finance = SettlementFinanceGateway(charges(), expenses())
+        val viewModel = viewModel(finance)
+        val effects = mutableListOf<GameSettlementEffect>()
+        backgroundScope.launch(dispatcher) { viewModel.effects.collect { effects += it } }
+        viewModel.onIntent(GameSettlementIntent.OpenCancel("game-pending"))
+
+        viewModel.onIntent(GameSettlementIntent.Cancel("game-pending"))
+
+        assertEquals(FinanceVersionToken("\"2\""), finance.lastVersion)
+        assertEquals(ChargeStatusCommand(ChargeStatus.Cancelled), finance.lastCommand)
+        val after = viewModel.state.value
+        assertTrue(after.isSummary)
+        assertEquals(0, after.pendingDiaristCount)
+        assertEquals(1, after.totalDiaristCount)
+        assertEquals(7_000L, after.totalDiaristCents)
+        assertEquals(7_000L, after.receivedDiaristCents)
+        assertEquals(listOf("game-paid"), after.diarists.map { it.chargeId })
+        assertEquals(null, after.cancelSheetChargeId)
+        assertFalse(after.cancelFailed)
+        assertEquals(listOf<GameSettlementEffect>(GameSettlementEffect.MutationSucceeded), effects)
+    }
+
+    @Test
+    fun `cancel with an old version brings the charge back says it failed and reloads`() = runTest {
+        val finance = SettlementFinanceGateway(
+            charges(), expenses(),
+            updateResult = SaqzResult.Failure(FinanceError.Conflict),
+        )
+        val viewModel = viewModel(finance)
+        viewModel.onIntent(GameSettlementIntent.OpenCancel("game-pending"))
+
+        viewModel.onIntent(GameSettlementIntent.Cancel("game-pending"))
+
+        val failed = viewModel.state.value
+        assertTrue(failed.cancelFailed)
+        assertFalse(failed.operationFailed)
+        assertFalse(failed.isSummary)
+        assertEquals(1, failed.pendingDiaristCount)
+        assertEquals(listOf("game-pending"), failed.debtors.map { it.chargeId })
+        assertEquals(null, failed.updatingChargeId)
+        assertEquals(null, failed.cancelSheetChargeId)
+        assertEquals(2, finance.chargeReads)
+    }
+
+    @Test
+    fun `cancel refused for lack of permission brings the charge back and does not reload`() = runTest {
+        val finance = SettlementFinanceGateway(
+            charges(), expenses(),
+            updateResult = SaqzResult.Failure(FinanceError.Forbidden),
+        )
+        val viewModel = viewModel(finance)
+
+        viewModel.onIntent(GameSettlementIntent.Cancel("game-pending"))
+
+        val failed = viewModel.state.value
+        assertTrue(failed.cancelFailed)
+        assertEquals(listOf("game-pending"), failed.debtors.map { it.chargeId })
+        assertEquals(null, failed.updatingChargeId)
+        assertEquals(1, finance.chargeReads)
+    }
+
+    @Test
+    fun `cancel of a charge that is not pending does nothing`() = runTest {
+        val finance = SettlementFinanceGateway(charges(), expenses())
+        val viewModel = viewModel(finance)
+        val before = viewModel.state.value
+
+        viewModel.onIntent(GameSettlementIntent.Cancel("game-paid"))
+
+        assertEquals(before, viewModel.state.value)
+        assertEquals(0, finance.updateCalls)
+    }
+
+    @Test
+    fun `double tap on cancel sends one write while the first is in flight`() = runTest {
+        val reply = CompletableDeferred<Unit>()
+        val finance = SettlementFinanceGateway(charges(), expenses())
+        finance.beforeUpdate = { reply.await() }
+        val viewModel = viewModel(finance)
+
+        viewModel.onIntent(GameSettlementIntent.Cancel("game-pending"))
+        viewModel.onIntent(GameSettlementIntent.Cancel("game-pending"))
+        viewModel.onIntent(GameSettlementIntent.OpenCancel("game-pending"))
+        assertEquals(null, viewModel.state.value.cancelSheetChargeId)
+        reply.complete(Unit)
+
+        assertEquals(1, finance.updateCalls)
+    }
+
     private fun reviewCharges() = charges().map { if (it.id == "game-paid") it.copy(reviewRequired = true) else it }
 
     private fun viewModel(

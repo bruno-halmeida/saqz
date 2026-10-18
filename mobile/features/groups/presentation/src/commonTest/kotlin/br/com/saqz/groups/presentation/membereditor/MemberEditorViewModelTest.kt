@@ -10,6 +10,11 @@ import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.athlete.AthletePreferredSide
 import br.com.saqz.groups.domain.athlete.AthleteStats
+import br.com.saqz.groups.domain.finance.Charge
+import br.com.saqz.groups.domain.finance.ChargeKind
+import br.com.saqz.groups.domain.finance.ChargeList
+import br.com.saqz.groups.domain.finance.ChargeStatus
+import br.com.saqz.groups.domain.finance.FinanceError
 import br.com.saqz.groups.domain.group.GroupFinanceDefaults
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupTrialAccessInfo
@@ -20,6 +25,7 @@ import br.com.saqz.groups.domain.membership.GroupMembershipError
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.FakeGroupMembershipGateway
+import br.com.saqz.groups.presentation.FakeOrganizerFinanceGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleRosterEntry
 import kotlinx.coroutines.Dispatchers
@@ -521,6 +527,93 @@ class MemberEditorViewModelTest {
         assertTrue(viewModel.state.value.removeSheetOpen)
     }
 
+    @Test
+    fun `monthly member with a pending monthly charge switching to single game gets the notice`() = runTest {
+        val viewModel = editor(
+            FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry()))),
+            finance = FakeOrganizerFinanceGateway(SaqzResult.Success(ChargeList(listOf(monthlyCharge(ChargeStatus.Pending))))),
+        )
+
+        assertTrue(viewModel.state.value.hasPendingMonthly)
+        assertFalse(viewModel.state.value.monthlyPendingNotice)
+
+        viewModel.onIntent(MemberEditorIntent.MembershipSelected(AthleteMembershipType.AVULSO))
+
+        assertTrue(viewModel.state.value.monthlyPendingNotice)
+
+        viewModel.onIntent(MemberEditorIntent.MembershipSelected(AthleteMembershipType.MENSALISTA))
+        assertFalse(viewModel.state.value.monthlyPendingNotice)
+    }
+
+    @Test
+    fun `no pending monthly charge for this member means no notice on the switch`() = runTest {
+        val viewModel = editor(
+            FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry()))),
+            finance = FakeOrganizerFinanceGateway(
+                SaqzResult.Success(
+                    ChargeList(
+                        listOf(
+                            monthlyCharge(ChargeStatus.Paid),
+                            monthlyCharge(ChargeStatus.Pending, memberId = "other-member"),
+                            monthlyCharge(ChargeStatus.Pending, kind = ChargeKind.Game),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        viewModel.onIntent(MemberEditorIntent.MembershipSelected(AthleteMembershipType.AVULSO))
+
+        assertFalse(viewModel.state.value.hasPendingMonthly)
+        assertFalse(viewModel.state.value.monthlyPendingNotice)
+    }
+
+    @Test
+    fun `finance that does not load opens the editor without the notice`() = runTest {
+        val viewModel = editor(
+            FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry()))),
+            finance = FakeOrganizerFinanceGateway(SaqzResult.Failure(FinanceError.Forbidden)),
+        )
+
+        viewModel.onIntent(MemberEditorIntent.MembershipSelected(AthleteMembershipType.AVULSO))
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertFalse(viewModel.state.value.loadFailed)
+        assertFalse(viewModel.state.value.monthlyPendingNotice)
+    }
+
+    @Test
+    fun `single game member is not charged a notice even with a pending monthly charge`() = runTest {
+        val viewModel = editor(
+            FakeAthleteGateway(
+                rosterResult = SaqzResult.Success(
+                    listOf(sampleRosterEntry().copy(membershipType = AthleteMembershipType.AVULSO)),
+                ),
+            ),
+            finance = FakeOrganizerFinanceGateway(SaqzResult.Success(ChargeList(listOf(monthlyCharge(ChargeStatus.Pending))))),
+        )
+
+        assertFalse(viewModel.state.value.hasPendingMonthly)
+        assertFalse(viewModel.state.value.monthlyPendingNotice)
+    }
+
+    private fun monthlyCharge(
+        status: ChargeStatus,
+        memberId: String = USER_ID,
+        kind: ChargeKind = ChargeKind.Monthly,
+    ) = Charge(
+        id = "charge-$memberId-${status.name}-${kind.name}",
+        groupId = GroupId(GROUP_ID),
+        memberId = memberId,
+        kind = kind,
+        month = "2026-08",
+        amountCents = 8_500L,
+        dueDate = "2026-08-10",
+        status = status,
+        version = 1L,
+        audit = emptyList(),
+    )
+
     private fun editor(
         athlete: FakeAthleteGateway,
         membership: FakeGroupMembershipGateway = FakeGroupMembershipGateway(
@@ -529,6 +622,7 @@ class MemberEditorViewModelTest {
         savedState: SavedStateHandle = SavedStateHandle(),
         viewerRole: GroupRole = GroupRole.OWNER,
         trialAccess: GroupTrialAccessPort? = null,
+        finance: FakeOrganizerFinanceGateway? = null,
     ) = MemberEditorViewModel(
         GROUP_ID,
         USER_ID,
@@ -545,6 +639,7 @@ class MemberEditorViewModelTest {
             ),
         ),
         trialAccess,
+        finance,
     )
 
     companion object {

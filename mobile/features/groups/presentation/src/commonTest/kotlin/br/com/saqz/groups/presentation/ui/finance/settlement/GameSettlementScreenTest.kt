@@ -136,6 +136,37 @@ class GameSettlementScreenTest {
     }
 
     @Test
+    fun `every pending diarist has a cancel action even without having withdrawn`() = runComposeUiTest {
+        val intents = mutableListOf<GameSettlementIntent>()
+        setScreen(progressState, intents::add)
+
+        onNodeWithTag(GameSettlementTags.withdrew("pending-1")).assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.cancel("pending-1")).performScrollTo().assertIsEnabled().performClick()
+
+        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.OpenCancel("pending-1")), intents)
+    }
+
+    @Test
+    fun `cancel confirmation says the effect and confirms the cancel`() = runComposeUiTest {
+        val intents = mutableListOf<GameSettlementIntent>()
+        setScreen(progressState.copy(cancelSheetChargeId = "pending-1"), intents::add)
+
+        onNodeWithTag(FinanceSheetsTags.CancelCharge).assertExists()
+        onNodeWithText("A cobrança sai do que falta receber e não entra no caixa. A pessoa não recebe aviso. Não dá para desfazer.").assertExists()
+        onNodeWithTag(FinanceSheetsTags.CancelChargeConfirm).performClick()
+
+        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.Cancel("pending-1")), intents)
+    }
+
+    @Test
+    fun `cancel failure shows its own message`() = runComposeUiTest {
+        setScreen(progressState.copy(cancelFailed = true), {})
+
+        onNodeWithTag(GameSettlementTags.CancelFailure).performScrollTo().assertExists()
+        onNodeWithText("Não foi possível cancelar a cobrança. Tente novamente.").assertExists()
+    }
+
+    @Test
     fun `a charge marked for review shows the tag and a review action`() = runComposeUiTest {
         val intents = mutableListOf<GameSettlementIntent>()
         setScreen(reviewState, intents::add)

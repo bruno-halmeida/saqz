@@ -166,6 +166,45 @@ class GroupCashboxScreenTest {
     }
 
     @Test
+    fun `every pending debtor has a cancel action even without having withdrawn`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState, intents::add)
+
+        onNodeWithTag(GroupCashboxTags.chargeWithdrew("charge-1")).assertDoesNotExist()
+        onNodeWithTag(GroupCashboxTags.chargeCancel("charge-1")).performScrollTo().assertIsEnabled().performClick()
+
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.OpenCancel("charge-1")), intents)
+    }
+
+    @Test
+    fun `cancel confirmation says the effect and confirms the cancel`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(cancelSheetChargeId = "charge-1"), intents::add)
+
+        onNodeWithTag(FinanceSheetsTags.CancelCharge).assertExists()
+        onNodeWithText("A cobrança sai do que falta receber e não entra no caixa. A pessoa não recebe aviso. Não dá para desfazer.").assertExists()
+        onNodeWithTag(FinanceSheetsTags.CancelChargeConfirm).performClick()
+
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.Cancel("charge-1")), intents)
+    }
+
+    @Test
+    fun `cancel confirmation does not confirm while a write is in flight`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(cancelSheetChargeId = "charge-1", updatingChargeId = "charge-1"), intents::add)
+
+        onNodeWithTag(FinanceSheetsTags.CancelChargeConfirm).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `cancel failure shows its own message`() = runComposeUiTest {
+        setScreen(loadedState.copy(cancelFailed = true), {})
+
+        onNodeWithTag(GroupCashboxTags.CancelFailure).assertExists()
+        onNodeWithText("Não foi possível cancelar a cobrança. Tente novamente.").assertExists()
+    }
+
+    @Test
     fun `charges for review are listed with the tag and a review action`() = runComposeUiTest {
         val intents = mutableListOf<GroupCashboxIntent>()
         setScreen(loadedState.copy(reviews = listOf(review)), intents::add)

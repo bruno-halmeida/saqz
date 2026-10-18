@@ -8,9 +8,11 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.athlete.AthleteLevel
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.athlete.AthletePreferredSide
 import br.com.saqz.groups.presentation.GroupUiError
@@ -53,6 +55,44 @@ class MemberEditorScreenTest {
         onNodeWithTag(MemberEditorTags.position(AthletePosition.PONTA)).assertDoesNotExist()
         onNodeWithTag(MemberEditorTags.side(AthletePreferredSide.DIREITA)).assertDoesNotExist()
         onNodeWithTag(MemberEditorTags.level(AthleteLevel.AVANCADO)).assertExists()
+    }
+
+    @Test
+    fun `switching a monthly member with a pending monthly charge to single game says the charge continues`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                MemberEditorScreen(
+                    state = memberEditorPreviewState.copy(
+                        persistedMembershipType = AthleteMembershipType.MENSALISTA,
+                        membershipType = AthleteMembershipType.AVULSO,
+                        hasPendingMonthly = true,
+                    ),
+                    onIntent = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        onNodeWithTag(MemberEditorTags.MonthlyPendingNotice).performScrollTo().assertExists()
+        onNodeWithText("A mensalidade pendente continua. Resolva no financeiro.").assertExists()
+    }
+
+    @Test
+    fun `no pending monthly charge or no switch means no notice`() = runComposeUiTest {
+        var state by mutableStateOf(
+            memberEditorPreviewState.copy(
+                persistedMembershipType = AthleteMembershipType.MENSALISTA,
+                membershipType = AthleteMembershipType.AVULSO,
+                hasPendingMonthly = false,
+            ),
+        )
+        setContent { SaqzTheme { MemberEditorScreen(state = state, onIntent = {}, onBack = {}) } }
+
+        onNodeWithTag(MemberEditorTags.MonthlyPendingNotice).assertDoesNotExist()
+
+        state = state.copy(hasPendingMonthly = true, membershipType = AthleteMembershipType.MENSALISTA)
+        waitForIdle()
+        onNodeWithTag(MemberEditorTags.MonthlyPendingNotice).assertDoesNotExist()
     }
 
     @Test

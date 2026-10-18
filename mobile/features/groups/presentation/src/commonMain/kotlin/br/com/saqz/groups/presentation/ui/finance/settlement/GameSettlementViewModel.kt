@@ -413,9 +413,10 @@ class GameSettlementViewModel(
                         }
                     },
                 ).copy(
-                    // a recarga por baixo não apaga os avisos da revisão e do desfazer
+                    // a recarga por baixo não apaga os avisos da revisão, do desfazer e do cancelamento
                     reviewFailed = softRefresh && it.reviewFailed,
                     undoFailed = softRefresh && it.undoFailed,
+                    cancelFailed = softRefresh && it.cancelFailed,
                 )
             }
         }

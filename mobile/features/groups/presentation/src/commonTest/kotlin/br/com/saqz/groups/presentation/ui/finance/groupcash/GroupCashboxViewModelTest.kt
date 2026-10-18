@@ -672,6 +672,113 @@ class GroupCashboxViewModelTest {
         assertEquals(1, organizer.updateCalls)
     }
 
+    @Test
+    fun `cancel opens a confirmation for any pending charge and not for an unknown one`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupCashboxIntent.OpenCancel("monthly-pending"))
+        assertEquals("monthly-pending", viewModel.state.value.cancelSheetChargeId)
+
+        viewModel.onIntent(GroupCashboxIntent.DismissCancelSheet)
+        assertNull(viewModel.state.value.cancelSheetChargeId)
+
+        viewModel.onIntent(GroupCashboxIntent.OpenCancel("monthly-paid"))
+        assertNull(viewModel.state.value.cancelSheetChargeId)
+    }
+
+    @Test
+    fun `cancel sends the cancelled status with the charge version and takes the charge off the debtors`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        val viewModel = viewModel(organizer = organizer)
+        val before = viewModel.state.value
+        viewModel.onIntent(GroupCashboxIntent.OpenCancel("monthly-pending"))
+
+        viewModel.onIntent(GroupCashboxIntent.Cancel("monthly-pending"))
+
+        assertEquals(FinanceVersionToken("\"2\""), organizer.lastVersion)
+        assertEquals(ChargeStatusCommand(ChargeStatus.Cancelled), organizer.lastCommand)
+        val after = viewModel.state.value
+        assertEquals(listOf("game-pending", "monthly-thiago"), after.debtors.map { it.chargeId })
+        assertNull(after.cancelSheetChargeId)
+        assertNull(after.updatingChargeId)
+        assertFalse(after.cancelFailed)
+        assertEquals(before.balanceCents, after.balanceCents)
+        assertEquals(before.receivedCents, after.receivedCents)
+    }
+
+    @Test
+    fun `cancel success announces the mutation`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupCashboxIntent.Cancel("monthly-pending"))
+
+        assertEquals(GroupCashboxEffect.MutationSucceeded, viewModel.effects.first())
+    }
+
+    @Test
+    fun `cancel with an old version brings the charge back says it failed and reloads the charges`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        organizer.updateResult = SaqzResult.Failure(FinanceError.Conflict)
+        val viewModel = viewModel(organizer = organizer)
+        val before = viewModel.state.value
+
+        viewModel.onIntent(GroupCashboxIntent.OpenCancel("monthly-pending"))
+        viewModel.onIntent(GroupCashboxIntent.Cancel("monthly-pending"))
+
+        val after = viewModel.state.value
+        assertEquals(before.debtors, after.debtors)
+        assertTrue(after.cancelFailed)
+        assertFalse(after.waiveFailed)
+        assertNull(after.cancelSheetChargeId)
+        assertNull(after.updatingChargeId)
+        assertEquals(2, organizer.chargeReads)
+    }
+
+    @Test
+    fun `cancel refused for lack of permission brings the charge back and does not reload`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        organizer.updateResult = SaqzResult.Failure(FinanceError.Forbidden)
+        val viewModel = viewModel(organizer = organizer)
+        val before = viewModel.state.value
+
+        viewModel.onIntent(GroupCashboxIntent.Cancel("game-pending"))
+
+        val after = viewModel.state.value
+        assertEquals(before.debtors, after.debtors)
+        assertTrue(after.cancelFailed)
+        assertNull(after.updatingChargeId)
+        assertEquals(1, organizer.chargeReads)
+    }
+
+    @Test
+    fun `cancel of a charge that is not a debtor does nothing`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        val viewModel = viewModel(organizer = organizer)
+        val before = viewModel.state.value
+
+        viewModel.onIntent(GroupCashboxIntent.Cancel("monthly-paid"))
+
+        assertEquals(before, viewModel.state.value)
+        assertEquals(0, organizer.updateCalls)
+    }
+
+    @Test
+    fun `double tap on cancel sends one write while the first is in flight`() = runTest {
+        val reply = CompletableDeferred<Unit>()
+        val organizer = FakeOrganizerFinanceGateway()
+        organizer.beforeUpdate = { reply.await() }
+        val viewModel = viewModel(organizer = organizer)
+
+        viewModel.onIntent(GroupCashboxIntent.Cancel("monthly-pending"))
+        viewModel.onIntent(GroupCashboxIntent.Cancel("monthly-pending"))
+        assertEquals("monthly-pending", viewModel.state.value.updatingChargeId)
+        viewModel.onIntent(GroupCashboxIntent.OpenCancel("monthly-thiago"))
+        assertNull(viewModel.state.value.cancelSheetChargeId)
+        reply.complete(Unit)
+
+        assertEquals(1, organizer.updateCalls)
+    }
+
     private fun groupWithPix(pixKey: String?) = FakeGroupGateway(
         readResult = SaqzResult.Success(
             sampleVersionedGroup(sampleGroup(profile = sampleGroup().profile?.copy(pixKey = pixKey))),
