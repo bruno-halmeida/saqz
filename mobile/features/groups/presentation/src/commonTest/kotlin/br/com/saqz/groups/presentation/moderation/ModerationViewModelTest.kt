@@ -71,17 +71,38 @@ class ModerationViewModelTest {
         assertEquals(listOf("message-1"), reported)
     }
 
-    @Test fun reportingAPersonOrAFailedReportAnnouncesNothing() = runTest {
-        val gateway = FakeModerationGateway()
+    @Test fun aFailedMessageReportHidesNothingAndMarksTheFailure() = runTest {
+        val gateway = FakeModerationGateway().apply {
+            reportBlock = { SaqzResult.Failure(ModerationError.DataFailure(DataError.Connectivity)) }
+        }
         val blocks = BlockedPeopleRepository(gateway)
         val reported = mutableListOf<String>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { blocks.reportedMessages.collect { reported += it } }
         val vm = ModerationViewModel(gateway, blocks)
-        vm.onIntent(ModerationIntent.StartReport(ReportTargetUi("group-1", ReportTargetType.USER, "user-1", "Bia")))
+        vm.onIntent(ModerationIntent.StartReport(target))
         vm.onIntent(ModerationIntent.SelectReason(ReportReason.SPAM))
         vm.onIntent(ModerationIntent.SubmitReport)
+        advanceUntilIdle()
 
         assertTrue(reported.isEmpty())
+        assertTrue(vm.state.value.report!!.failed)
+    }
+
+    @Test fun reportingAPersonOrAGroupAnnouncesNothing() = runTest {
+        listOf(ReportTargetType.USER, ReportTargetType.GROUP).forEach { type ->
+            val gateway = FakeModerationGateway()
+            val blocks = BlockedPeopleRepository(gateway)
+            val reported = mutableListOf<String>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { blocks.reportedMessages.collect { reported += it } }
+            val vm = ModerationViewModel(gateway, blocks)
+            vm.onIntent(ModerationIntent.StartReport(ReportTargetUi("group-1", type, "target-1", "Bia")))
+            vm.onIntent(ModerationIntent.SelectReason(ReportReason.SPAM))
+            vm.onIntent(ModerationIntent.SubmitReport)
+            advanceUntilIdle()
+
+            assertEquals(1, gateway.reports.size, "$type")
+            assertTrue(reported.isEmpty(), "$type")
+        }
     }
 
     @Test fun blankDetailsAreOmittedAndLongDetailsAreCapped() = runTest {
