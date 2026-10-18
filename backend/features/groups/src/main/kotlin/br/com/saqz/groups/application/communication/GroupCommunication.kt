@@ -41,7 +41,7 @@ data class ReminderRoster(val confirmed: List<String>, val waitlisted: List<Stri
 
 /**
  * [confirmationDeadline] e [capacity] vêm preenchidos no lembrete automático e no "Avisar" manual; sem eles o
- * corpo do lembrete omite as linhas de prazo e vagas (janela de 24 h).
+ * corpo do lembrete omite as linhas de prazo e vagas (aviso de jogo liberado).
  */
 data class ReminderGame(
     val localDate: LocalDate,

@@ -29,6 +29,8 @@ SAQZ_NOTIFICATIONS_WHATSAPP_TOKEN=<segredo da instância>
 SAQZ_NOTIFICATIONS_WHATSAPP_DELAYMS=15000
 ```
 
+Em produção (DEB-069), `SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED` e `SAQZ_NOTIFICATIONS_REMINDER_ENABLED` ficam só na ConfigMap (`deploy/k8s/overlays/prod/kustomization.yaml`); o Secret `backend-env` guarda só tokens e segredos, nunca essas chaves liga/desliga.
+
 A propriedade canônica é `saqz.notifications.whatsapp.base-url` (e `delay-ms`); use as formas acima ao configurar variáveis de ambiente. O token não é armazenado no repositório. A instância deve estar conectada. Desabilitado por padrão; não há conexão/pareamento ou envio real nos testes.
 O domínio `saqz.links.domain` precisa corresponder aos App Links/Universal Links já configurados no Android/iOS.
 
