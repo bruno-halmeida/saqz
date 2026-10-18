@@ -83,6 +83,8 @@ class ApplySeriesBoundary(
         action: SeriesBoundaryAction,
         /** Horários já ocupados por jogo de fora da série: a ocorrência não nasce, e o jogo fica. */
         skipStartsAt: Set<Instant> = emptySet(),
+        /** Jogos de fora da série por intervalo: ocorrência que se sobrepõe a eles também não nasce (DEB-048). */
+        skipRanges: List<OccupiedRange> = emptyList(),
         /** Parte de [skipStartsAt] com jogo avulso publicado: esse vira o jogo da série (só em EDIT). */
         adoptStartsAt: Set<Instant> = emptySet(),
     ): SeriesBoundaryResult {
@@ -94,7 +96,10 @@ class ApplySeriesBoundary(
             is WeeklyRecurrenceResult.Valid -> result.occurrences
         }
         val now = clock.instant()
-        val materialized = resolved.filter { it.startsAt > now && it.startsAt !in skipStartsAt }
+        val materialized = resolved.filter { occurrence ->
+            occurrence.startsAt > now && occurrence.startsAt !in skipStartsAt &&
+                skipRanges.none { it.overlaps(occurrence.startsAt, occurrence.slot.durationMinutes) }
+        }
             .map { MaterializedGameOccurrence(ids(), it, GameStatus.DRAFT, now) }
         val command = FutureBoundaryCommand(
             groupId, currentRevisionId, expectedVersion, successorRule, revisionNumber,

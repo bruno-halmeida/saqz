@@ -72,7 +72,7 @@ class JdbcSeriesBoundaryRepository(
 
     private fun regenerateFuture(connection: Connection, command: FutureBoundaryCommand) {
         connection.createStatement().use { statement ->
-            statement.execute("SET CONSTRAINTS games_schedule_start_unique DEFERRED")
+            statement.execute("SET CONSTRAINTS games_schedule_no_overlap DEFERRED")
         }
         val identities = command.occurrences.map { it.occurrence.localDate to it.occurrence.slot.slotKey }.toSet()
         cancelRemovedFuture(connection, command, identities)

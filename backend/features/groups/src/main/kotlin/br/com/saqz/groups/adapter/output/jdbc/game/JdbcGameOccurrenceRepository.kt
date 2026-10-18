@@ -62,10 +62,12 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
     override fun recurringConflict(
         groupId: UUID,
         startsAt: java.time.Instant,
+        durationMinutes: Int,
         excludingGameId: UUID?,
     ): UUID? = jdbc.sql(if (excludingGameId == null) RECURRING_CONFLICT else RECURRING_CONFLICT_EXCLUDING_GAME)
         .param("groupId", groupId)
         .param("startsAt", Timestamp.from(startsAt))
+        .param("durationMinutes", durationMinutes)
         .let { statement ->
             if (excludingGameId == null) statement else statement.param("excludingGameId", excludingGameId)
         }
@@ -87,14 +89,14 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             bind(jdbc.sql(INSERT_GAME), game).update()
         } catch (failure: DataIntegrityViolationException) {
             if (!failure.isGameScheduleConflict()) throw failure
-            return runCatching { recurringConflict(game.groupId, game.snapshot.startsAt, excludingGameId = null) }
+            return runCatching { recurringConflict(game.groupId, game.snapshot.startsAt, game.snapshot.durationMinutes, excludingGameId = null) }
                 .getOrNull()
                 ?.let(GameWriteResult::ScheduleConflict)
                 ?: throw GameScheduleConflictWriteException()
         }
         if (inserted == 1) return GameWriteResult.Saved(game)
         find(game.groupId, game.id)?.let { return GameWriteResult.Saved(it) }
-        return recurringConflict(game.groupId, game.snapshot.startsAt, excludingGameId = null)
+        return recurringConflict(game.groupId, game.snapshot.startsAt, game.snapshot.durationMinutes, excludingGameId = null)
             ?.let(GameWriteResult::ScheduleConflict)
             ?: GameWriteResult.NotFound
     }
@@ -231,7 +233,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             SELECT id
             FROM games
             WHERE group_id = :groupId
-              AND starts_at = :startsAt
+              AND game_time_range(starts_at, duration_minutes) && game_time_range(:startsAt, :durationMinutes)
               AND status IN ('DRAFT', 'PUBLISHED')
             ORDER BY id
             LIMIT 1
@@ -241,7 +243,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             SELECT id
             FROM games
             WHERE group_id = :groupId
-              AND starts_at = :startsAt
+              AND game_time_range(starts_at, duration_minutes) && game_time_range(:startsAt, :durationMinutes)
               AND id <> :excludingGameId
               AND status IN ('DRAFT', 'PUBLISHED')
             ORDER BY id

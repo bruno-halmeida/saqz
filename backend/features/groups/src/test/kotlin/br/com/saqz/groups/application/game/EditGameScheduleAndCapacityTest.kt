@@ -46,7 +46,7 @@ class EditGameScheduleAndCapacityTest {
     private class Repo(var game: Game, val role: GroupRole = GroupRole.OWNER) : GameCommandRepository {
         val updates = mutableListOf<Game>()
         override fun creationContext(actor: UUID, groupId: UUID): GameCreationContext? = null
-        override fun recurringConflict(groupId: UUID, startsAt: Instant, excludingGameId: UUID?): UUID? = null
+        override fun recurringConflict(groupId: UUID, startsAt: Instant, durationMinutes: Int, excludingGameId: UUID?): UUID? = null
         override fun find(actor: UUID, groupId: UUID, gameId: UUID) = GameCommandContext(role, game)
         override fun create(game: Game): GameWriteResult = GameWriteResult.Saved(game)
         override fun update(game: Game, expectedVersion: Long): GameWriteResult {

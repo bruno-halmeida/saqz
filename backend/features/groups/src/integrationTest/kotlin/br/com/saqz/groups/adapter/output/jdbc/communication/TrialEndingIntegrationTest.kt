@@ -109,14 +109,17 @@ class TrialEndingIntegrationTest {
         VALUES (:g, :u, CAST(:role AS group_role), 'MENSALISTA', true, now(), now())
     """).param("g", groupId).param("u", user).param("role", role).update()
 
+    // Jogos do mesmo grupo não se sobrepõem (DEB-048): cada um começa 3 h depois do anterior.
+    private var gamesCreated = 0
+
     private fun game(groupId: UUID, status: String, publishedAt: Instant?): UUID = UUID.randomUUID().also { id ->
         jdbc.sql("""
             INSERT INTO games(id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
                 confirmation_deadline, venue_name, venue_address, capacity, status, published_at, created_at, updated_at)
             VALUES (:id, :g, 'QA Vôlei', current_date + 1, '20:00', 'America/Sao_Paulo',
-                now() + interval '30 hours', 120, now() + interval '20 hours',
+                now() + interval '30 hours' + make_interval(hours => :shift), 120, now() + interval '20 hours',
                 'Quadra QA', 'Av. Paulista, 1578', 12, CAST(:status AS game_status), :published, now(), now())
-        """).param("id", id).param("g", groupId).param("status", status)
+        """).param("id", id).param("g", groupId).param("status", status).param("shift", 3 * gamesCreated++)
             .param("published", publishedAt?.let { java.sql.Timestamp.from(it) }, java.sql.Types.TIMESTAMP).update()
     }
 

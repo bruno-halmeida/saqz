@@ -80,6 +80,7 @@ class SyncScheduleSeries(
         // propósito) não vira conflito: a série não cria essa ocorrência. Se o avulso está publicado,
         // ele é adotado como o primeiro jogo do horário; rascunho avulso segue do gestor, só pulado.
         val occupied = series.occupiedStartsAt(groupId, lineageId(groupId, generation), now)
+        val ranges = series.occupiedRanges(groupId, lineageId(groupId, generation), now)
         val adoptable = series.adoptableStartsAt(groupId, lineageId(groupId, generation), now)
         val slots = (if (until == null) emptyList() else group.slots).map { slot ->
             WeeklySlotRule(
@@ -98,7 +99,7 @@ class SyncScheduleSeries(
         }
         when {
             current == null && slots.isEmpty() -> Unit
-            current == null -> create(groupId, generation, group.zoneId, start, slots, until ?: now, occupied, adoptable)
+            current == null -> create(groupId, generation, group.zoneId, start, slots, until ?: now, occupied, ranges, adoptable)
             current.rule.slots.toSet() == slots.toSet() -> Unit
             // Vale a partir de agora: a fronteira é hoje e o repositório não toca em jogo que já começou.
             else -> boundary.thisAndFuture(
@@ -115,6 +116,7 @@ class SyncScheduleSeries(
                 boundary = maxOf(today, current.rule.localStartDate),
                 action = if (slots.isEmpty()) SeriesBoundaryAction.CANCEL else SeriesBoundaryAction.EDIT,
                 skipStartsAt = occupied,
+                skipRanges = ranges,
                 adoptStartsAt = adoptable,
             )
         }
@@ -129,6 +131,7 @@ class SyncScheduleSeries(
         slots: List<WeeklySlotRule>,
         until: java.time.Instant,
         occupied: Set<java.time.Instant>,
+        ranges: List<OccupiedRange>,
         adoptable: Set<java.time.Instant>,
     ) {
         val rule = WeeklySeriesRule(
@@ -147,7 +150,7 @@ class SyncScheduleSeries(
         // O horário de hoje que já passou não vira jogo.
         // O resto nasce mês a mês, pela ExtendGameSeries.
         val creatable = resolved.creatableBetween(now, until)
-        val materialized = creatable.filterNot { it.startsAt in occupied }
+        val materialized = creatable.filterNot { occurrence -> occurrence.startsAt in occupied || ranges.any { it.overlaps(occurrence.startsAt, occurrence.slot.durationMinutes) } }
             .map { MaterializedGameOccurrence(ids.create(), it, GameStatus.DRAFT, now) }
         val adopted = creatable.filter { it.startsAt in adoptable }
         series.create(rule, materialized, adopted)

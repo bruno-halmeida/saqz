@@ -32,7 +32,8 @@ class GameScheduleConflictWriteException : RuntimeException()
 
 interface GameCommandRepository {
     fun creationContext(actor: UUID, groupId: UUID): GameCreationContext?
-    fun recurringConflict(groupId: UUID, startsAt: java.time.Instant, excludingGameId: UUID?): UUID?
+    /** Jogo ativo do grupo cujo intervalo se sobrepõe a [startsAt] + [durationMinutes] (encostado não conta). */
+    fun recurringConflict(groupId: UUID, startsAt: java.time.Instant, durationMinutes: Int, excludingGameId: UUID?): UUID?
     fun find(actor: UUID, groupId: UUID, gameId: UUID): GameCommandContext?
     fun create(game: Game): GameWriteResult
     fun update(game: Game, expectedVersion: Long): GameWriteResult
@@ -100,7 +101,7 @@ class CreateGame(
                 is GameDraftValidation.Invalid -> GameCommandResult.Invalid(validation.errors)
                 is GameDraftValidation.Valid -> GameTimingValidator.check(validation.snapshot, now).takeIf { it.isNotEmpty() }
                     ?.let(GameCommandResult::Invalid)
-                    ?: repository.recurringConflict(groupId, validation.snapshot.startsAt, excludingGameId = null)
+                    ?: repository.recurringConflict(groupId, validation.snapshot.startsAt, validation.snapshot.durationMinutes, excludingGameId = null)
                     ?.let(GameCommandResult::ScheduleConflict)
                     ?: repository.create(Game(gameId, groupId, validation.snapshot)).toResult()
             }
@@ -156,7 +157,7 @@ class EditGame(
         val timing = (if (snapshot.startsAt != current.startsAt) GameTimingValidator.startsAtInFuture(snapshot.startsAt, now) else emptyList()) +
             (if (snapshot.confirmationDeadline != current.confirmationDeadline) GameTimingValidator.deadlineNotInPast(snapshot.confirmationDeadline, now) else emptyList())
         if (timing.isNotEmpty()) return GameCommandResult.Invalid(timing)
-        repository.recurringConflict(groupId, snapshot.startsAt, excludingGameId = gameId)
+        repository.recurringConflict(groupId, snapshot.startsAt, snapshot.durationMinutes, excludingGameId = gameId)
             ?.let { return GameCommandResult.ScheduleConflict(it) }
         // Num jogo publicado a capacidade só muda pelo ajuste de vagas (fila, diária, avisos); o resto é gravado antes.
         val adjustCapacity = capacityAdjuster != null && context.game.status == GameStatus.PUBLISHED &&

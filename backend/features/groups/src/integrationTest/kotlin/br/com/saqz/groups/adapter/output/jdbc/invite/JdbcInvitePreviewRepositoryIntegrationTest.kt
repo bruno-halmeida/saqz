@@ -106,7 +106,7 @@ class JdbcInvitePreviewRepositoryIntegrationTest {
         val owner = insertUser("preview-no-game-owner", "No Game Owner")
         val group = insertCompleteGroup(owner)
         insertGame(group, now.minusSeconds(1), "PUBLISHED", "Past Arena", null)
-        insertGame(group, now.plusSeconds(1_000), "DRAFT", "Draft Arena", null)
+        insertGame(group, now.plusSeconds(6_000), "DRAFT", "Draft Arena", null)
         insertInvite(group, owner)
 
         val preview = requireNotNull(transaction.inTransaction { repository.findInvite(InviteTokenDigest.sha256(code), now) })

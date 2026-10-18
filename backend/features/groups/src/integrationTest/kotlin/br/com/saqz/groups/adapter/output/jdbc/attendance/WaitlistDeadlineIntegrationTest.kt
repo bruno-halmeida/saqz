@@ -128,15 +128,18 @@ class WaitlistDeadlineIntegrationTest {
         VALUES (:g, :u, CAST(:role AS group_role), 'AVULSO', true, now(), now())
     """).param("g", group).param("u", user).param("role", role).update()
 
+    // Jogos do mesmo grupo não se sobrepõem (DEB-048): cada um começa 3 h depois do anterior.
+    private var gamesCreated = 0
+
     private fun game(deadlineInMinutes: Int, capacity: Int): UUID {
         val id = UUID.randomUUID()
         jdbc.sql("""
             INSERT INTO games(id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
                 confirmation_deadline, venue_name, venue_address, capacity, status, published_at, created_at, updated_at)
             VALUES (:id, :g, 'QA Vôlei', current_date + 1, '20:00', 'America/Sao_Paulo',
-                now() + interval '6 hours', 120, now() + make_interval(mins => :deadlineIn),
+                now() + interval '6 hours' + make_interval(hours => :shift), 120, now() + make_interval(mins => :deadlineIn),
                 'Quadra QA', 'Av. Paulista, 1578', :capacity, 'PUBLISHED', now() - interval '2 days', now(), now())
-        """).param("id", id).param("g", group).param("deadlineIn", deadlineInMinutes).param("capacity", capacity).update()
+        """).param("id", id).param("g", group).param("deadlineIn", deadlineInMinutes).param("capacity", capacity).param("shift", 3 * gamesCreated++).update()
         return id
     }
 

@@ -737,7 +737,7 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     private fun <T> query(sql: String, read: (java.sql.ResultSet) -> T): T = connection().use { c -> c.createStatement().use { s -> s.executeQuery(sql).use { r -> check(r.next()); read(r) } } }
     private fun connection(): Connection = dataSource.connection
     // Jogo PUBLISHED a mais no grupo do fixture. `days` >= 3 e distinto por chamada: o fixture ocupa
-    // now() + 2 dias e games_schedule_start_unique proíbe dois jogos ativos no mesmo início.
+    // now() + 2 dias e games_schedule_no_overlap proíbe dois jogos ativos no mesmo início.
     private fun extraGame(f: Fixture, days: Int): UUID { val id = UUID.randomUUID(); execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$id','${f.group}','Treino $days',(CURRENT_DATE + $days),TIME '19:30','America/Sao_Paulo',now() + interval '$days days',90,now() + interval '${days - 1} days','Arena','Rua Central 100',2,2500,'PUBLISHED',now(),now())"); return id }
     // ponytail: cópia enxuta do CountingDataSource de JdbcGroupReadRepositoryIntegrationTest (lá ele é
     // private). Extrair para br.com.saqz.groups.testing quando um terceiro teste precisar contar statements.

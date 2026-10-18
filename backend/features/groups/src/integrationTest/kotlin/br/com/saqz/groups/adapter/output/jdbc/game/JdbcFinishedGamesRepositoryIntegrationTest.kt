@@ -18,13 +18,13 @@ class JdbcFinishedGamesRepositoryIntegrationTest {
     @BeforeEach fun resetDatabase() { dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations(), owner = this).dataSource }
 
     @Test fun `published game that already ended becomes completed and the others stay`() {
-        val group = group()
-        val ended = game(group, "PUBLISHED", startsAt = NOW.minus(Duration.ofHours(3)), minutes = 120)
-        val endsNow = game(group, "PUBLISHED", startsAt = NOW.minus(Duration.ofMinutes(90)), minutes = 90)
-        val playing = game(group, "PUBLISHED", startsAt = NOW.minus(Duration.ofHours(1)), minutes = 120)
-        val upcoming = game(group, "PUBLISHED", startsAt = NOW.plus(Duration.ofDays(1)), minutes = 120)
-        val draft = game(group, "DRAFT", startsAt = NOW.minus(Duration.ofHours(5)), minutes = 120)
-        val cancelled = game(group, "CANCELLED", startsAt = NOW.minus(Duration.ofHours(7)), minutes = 120)
+        // Jogos ativos do mesmo grupo não se sobrepõem (DEB-048): um grupo para cada.
+        val ended = game(group(), "PUBLISHED", startsAt = NOW.minus(Duration.ofHours(3)), minutes = 120)
+        val endsNow = game(group(), "PUBLISHED", startsAt = NOW.minus(Duration.ofMinutes(90)), minutes = 90)
+        val playing = game(group(), "PUBLISHED", startsAt = NOW.minus(Duration.ofHours(1)), minutes = 120)
+        val upcoming = game(group(), "PUBLISHED", startsAt = NOW.plus(Duration.ofDays(1)), minutes = 120)
+        val draft = game(group(), "DRAFT", startsAt = NOW.minus(Duration.ofHours(5)), minutes = 120)
+        val cancelled = game(group(), "CANCELLED", startsAt = NOW.minus(Duration.ofHours(7)), minutes = 120)
 
         assertEquals(2, JdbcFinishedGamesRepository(dataSource).completeFinished(NOW).size)
 

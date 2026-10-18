@@ -173,7 +173,7 @@ class GameMigrationIntegrationTest {
             1,
             int(
                 "SELECT count(*) FROM pg_constraint " +
-                    "WHERE conname = 'games_schedule_start_unique' AND contype = 'x' " +
+                    "WHERE conname = 'games_schedule_no_overlap' AND contype = 'x' " +
                     "AND condeferrable AND NOT condeferred",
             ),
         )

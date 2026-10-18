@@ -227,9 +227,9 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
 
     @Test fun `list ordering is resolved by start`() {
         val fixture = fixture()
-        val later = create(fixture, UUID.fromString("00000000-0000-0000-0000-000000000002"), START.plusSeconds(3600))
+        val later = create(fixture, UUID.fromString("00000000-0000-0000-0000-000000000002"), START.plusSeconds(4 * 3600))
         val first = create(fixture, UUID.fromString("00000000-0000-0000-0000-000000000003"), START)
-        val second = create(fixture, UUID.fromString("00000000-0000-0000-0000-000000000004"), START.plusSeconds(60))
+        val second = create(fixture, UUID.fromString("00000000-0000-0000-0000-000000000004"), START.plusSeconds(2 * 3600))
 
         assertEquals(listOf(first.id, second.id, later.id), fixture.repository.list(fixture.group).map(Game::id))
     }
@@ -265,6 +265,106 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         } finally {
             executor.shutdownNow()
         }
+    }
+
+    @Test fun `game overlapping an active one is refused with the conflicting game id`() {
+        val fixture = fixture()
+        val existing = create(fixture)
+
+        val overlapping = CreateGame(transaction(), fixture.repository, CLOCK).execute(
+            fixture.owner, fixture.group, UUID.randomUUID(), createInput(START.plusSeconds(60 * 60)),
+        )
+        val earlier = CreateGame(transaction(), fixture.repository, CLOCK).execute(
+            fixture.owner, fixture.group, UUID.randomUUID(), createInput(START.minusSeconds(30 * 60)),
+        )
+
+        assertEquals(GameCommandResult.ScheduleConflict(existing.id), overlapping)
+        assertEquals(GameCommandResult.ScheduleConflict(existing.id), earlier)
+        assertEquals(1, int("SELECT count(*) FROM games"))
+    }
+
+    @Test fun `game touching another one is accepted on both sides`() {
+        val fixture = fixture()
+        create(fixture)
+
+        val after = create(fixture, start = START.plusSeconds(90 * 60))
+        val before = create(fixture, start = START.minusSeconds(90 * 60))
+
+        assertEquals(GameStatus.DRAFT, after.status)
+        assertEquals(GameStatus.DRAFT, before.status)
+        assertEquals(3, int("SELECT count(*) FROM games"))
+    }
+
+    @Test fun `cancelled and completed games release their time`() {
+        val fixture = fixture()
+        val cancelled = create(fixture)
+        val completed = create(fixture, start = START.plusSeconds(3 * 3600))
+        execute("UPDATE games SET status = 'CANCELLED' WHERE id = '${cancelled.id}'")
+        execute("UPDATE games SET status = 'COMPLETED' WHERE id = '${completed.id}'")
+
+        val fresh = create(fixture, start = START.plusSeconds(30 * 60))
+        val freshOverCompleted = create(fixture, start = START.plusSeconds(3 * 3600 + 30 * 60))
+
+        assertEquals(GameStatus.DRAFT, fresh.status)
+        assertEquals(GameStatus.DRAFT, freshOverCompleted.status)
+    }
+
+    @Test fun `editing a game into an overlap is refused and keeps the old time`() {
+        val fixture = fixture()
+        val first = create(fixture)
+        val second = create(fixture, start = START.plusSeconds(3 * 3600))
+        val edit = EditGame(transaction(), fixture.repository, GameSideEffectPort { _, _, _ -> }, CLOCK)
+
+        val result = edit.execute(
+            fixture.owner, fixture.group, second.id, second.version,
+            GameDraftInput(
+                title = "Treino",
+                venue = br.com.saqz.groups.domain.game.GameVenueInput(name = "Arena Central", address = "Rua das Flores 100"),
+                localDate = START.plusSeconds(3600).atZone(java.time.ZoneId.of("America/Sao_Paulo")).toLocalDate(),
+                localTime = START.plusSeconds(3600).atZone(java.time.ZoneId.of("America/Sao_Paulo")).toLocalTime(),
+                zoneId = "America/Sao_Paulo",
+                startsAt = START.plusSeconds(3600),
+                durationMinutes = 90,
+                capacity = 24,
+                confirmationDeadline = START.minusSeconds(3600),
+            ),
+        )
+
+        assertEquals(GameCommandResult.ScheduleConflict(first.id), result)
+        assertEquals(START.plusSeconds(3 * 3600), fixture.repository.find(fixture.group, second.id)?.snapshot?.startsAt)
+    }
+
+    @Test fun `database constraint refuses overlapping insert even without the application check`() {
+        val fixture = fixture()
+        create(fixture)
+
+        val failure = runCatching { insertRawGame(fixture, START.plusSeconds(45 * 60), 90, "DRAFT") }.exceptionOrNull()
+
+        assertTrue(failure?.message?.contains("games_schedule_no_overlap") == true, failure?.message)
+        insertRawGame(fixture, START.plusSeconds(90 * 60), 90, "PUBLISHED")
+        insertRawGame(fixture, START.plusSeconds(45 * 60), 15, "CANCELLED")
+        assertEquals(3, int("SELECT count(*) FROM games"))
+    }
+
+    @Test fun `longer game overlaps a later start`() {
+        val fixture = fixture()
+        insertRawGame(fixture, START, 240, "PUBLISHED")
+
+        assertEquals(
+            true,
+            fixture.repository.recurringConflict(fixture.group, START.plusSeconds(3 * 3600), 60, excludingGameId = null) != null,
+        )
+        assertNull(fixture.repository.recurringConflict(fixture.group, START.plusSeconds(4 * 3600), 60, excludingGameId = null))
+    }
+
+    private fun insertRawGame(fixture: Fixture, start: Instant, minutes: Int, status: String) {
+        val local = start.atZone(java.time.ZoneId.of("America/Sao_Paulo"))
+        execute(
+            "INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline," +
+                "venue_name,venue_address,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('${UUID.randomUUID()}','${fixture.group}'," +
+                "'Treino','${local.toLocalDate()}',TIME '${local.toLocalTime()}','America/Sao_Paulo',TIMESTAMPTZ '$start',$minutes," +
+                "TIMESTAMPTZ '${start.minusSeconds(3600)}','Arena','Rua Central 100',12,2500,'$status',now(),now())",
+        )
     }
 
     private fun create(fixture: Fixture, id: UUID = UUID.randomUUID(), start: Instant = START): Game {

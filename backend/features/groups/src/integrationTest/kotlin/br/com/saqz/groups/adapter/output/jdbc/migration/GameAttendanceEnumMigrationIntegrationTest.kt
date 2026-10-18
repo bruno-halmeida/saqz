@@ -53,7 +53,7 @@ class GameAttendanceEnumMigrationIntegrationTest {
                 """.trimIndent(),
             ).isEmpty(),
         )
-        assertEquals(1, int("SELECT count(*) FROM pg_constraint WHERE conname = 'games_schedule_start_unique'"))
+        assertEquals(1, int("SELECT count(*) FROM pg_constraint WHERE conname = 'games_schedule_no_overlap'"))
         assertEquals(1, int("SELECT count(*) FROM pg_indexes WHERE indexname = 'uq_game_attendance_waitlist_sequence'"))
         assertEquals("DRAFT", defaultLabel("games", "status"))
     }

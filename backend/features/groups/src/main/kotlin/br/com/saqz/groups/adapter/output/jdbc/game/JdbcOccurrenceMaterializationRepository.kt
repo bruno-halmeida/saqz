@@ -20,11 +20,13 @@ class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource
                 // "Ausente" também vale para o horário: jogo avulso no mesmo `starts_at` (o "marcar
                 // jogo" com repetição) conta como a ocorrência, em vez de derrubar o lote inteiro.
                 val occupied = occupiedStartsAt(connection, occurrences)
+                // Sobreposição com início diferente (DEB-048): a ocorrência não nasce, e o jogo de fora fica.
+                val overlapped = overlappedStartsAt(connection, occurrences) - occupied
                 // Se o jogo avulso do horário está publicado, ele passa a ser o jogo da série.
                 occurrences.filter { it.occurrence.startsAt in occupied }
                     .forEach { connection.adoptStandaloneGame(it.occurrence) }
                 val inserted = connection.prepareStatement(INSERT).use { statement ->
-                    occurrences.filterNot { it.occurrence.startsAt in occupied }
+                    occurrences.filterNot { it.occurrence.startsAt in occupied || it.occurrence.startsAt in overlapped }
                         .forEach { occurrence -> statement.bind(occurrence).addBatch() }
                     statement.executeBatch().sumOf { count ->
                         when {
@@ -59,6 +61,26 @@ class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource
         }
     }
 
+    private fun overlappedStartsAt(connection: Connection, occurrences: List<MaterializedGameOccurrence>): Set<Instant> {
+        val ends = occurrences.map { it.occurrence.startsAt.plusSeconds(it.occurrence.slot.durationMinutes * 60L) }
+        return occurrences.map { it.occurrence.groupId }.distinct().flatMapTo(mutableSetOf()) { group ->
+            val existing = connection.prepareStatement(OCCUPIED_RANGES).use { statement ->
+                statement.setObject(1, group)
+                statement.setTimestamp(2, Timestamp.from(ends.max()))
+                statement.setTimestamp(3, Timestamp.from(occurrences.minOf { it.occurrence.startsAt }))
+                statement.executeQuery().use { result ->
+                    buildList { while (result.next()) add(result.getTimestamp(1).toInstant() to result.getTimestamp(2).toInstant()) }
+                }
+            }
+            occurrences.filter { it.occurrence.groupId == group }.map { it.occurrence }
+                .filter { occurrence ->
+                    val end = occurrence.startsAt.plusSeconds(occurrence.slot.durationMinutes * 60L)
+                    existing.any { (start, finish) -> occurrence.startsAt < finish && start < end }
+                }
+                .map { it.startsAt }
+        }
+    }
+
     private fun PreparedStatement.bind(value: MaterializedGameOccurrence): PreparedStatement = apply {
         val occurrence = value.occurrence
         val slot = occurrence.slot
@@ -89,6 +111,11 @@ class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource
         const val OCCUPIED = """
             SELECT starts_at FROM games
             WHERE group_id = ? AND starts_at BETWEEN ? AND ? AND status IN ('DRAFT', 'PUBLISHED')
+        """
+        const val OCCUPIED_RANGES = """
+            SELECT starts_at, starts_at + duration_minutes * interval '1 minute' FROM games
+            WHERE group_id = ? AND starts_at < ? AND starts_at + duration_minutes * interval '1 minute' > ?
+              AND status IN ('DRAFT', 'PUBLISHED')
         """
         const val INSERT = """
             INSERT INTO games (

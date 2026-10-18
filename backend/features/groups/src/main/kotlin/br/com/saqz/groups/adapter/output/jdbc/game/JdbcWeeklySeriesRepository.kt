@@ -2,6 +2,7 @@ package br.com.saqz.groups.adapter.output.jdbc.game
 
 import br.com.saqz.groups.application.game.recurrence.MaterializedGameOccurrence
 import br.com.saqz.groups.application.game.GameScheduleConflictWriteException
+import br.com.saqz.groups.application.game.series.OccupiedRange
 import br.com.saqz.groups.application.game.series.SeriesOccurrenceView
 import br.com.saqz.groups.application.game.series.WeeklySeriesRepository
 import br.com.saqz.groups.application.game.series.WeeklySeriesView
@@ -53,6 +54,10 @@ class JdbcWeeklySeriesRepository(private val dataSource: DataSource) : WeeklySer
         c.prepareStatement(OCCUPIED_STARTS).use { s -> s.setObject(1,groupId);s.setTimestamp(2,Timestamp.from(after));s.setObject(3,lineageId);s.executeQuery().use { r -> buildSet { while (r.next()) add(r.getTimestamp(1).toInstant()) } } }
     }
 
+    override fun occupiedRanges(groupId: UUID, lineageId: UUID, after: Instant): List<OccupiedRange> = dataSource.connection.use { c ->
+        c.prepareStatement(OCCUPIED_RANGES).use { s -> s.setObject(1,groupId);s.setTimestamp(2,Timestamp.from(after));s.setObject(3,lineageId);s.executeQuery().use { r -> buildList { while (r.next()) add(OccupiedRange(r.getTimestamp(1).toInstant(), r.getTimestamp(2).toInstant())) } } }
+    }
+
     override fun adoptableStartsAt(groupId: UUID, lineageId: UUID, after: Instant): Set<Instant> = dataSource.connection.use { c ->
         c.prepareStatement(ADOPTABLE_STARTS).use { s -> s.setObject(1,groupId);s.setTimestamp(2,Timestamp.from(after));s.executeQuery().use { r -> buildSet { while (r.next()) add(r.getTimestamp(1).toInstant()) } } }
     }
@@ -70,6 +75,7 @@ class JdbcWeeklySeriesRepository(private val dataSource: DataSource) : WeeklySer
         const val FIND_SERIES="SELECT game_series.* FROM game_series JOIN access_groups g ON g.id=game_series.group_id AND g.deleted_at IS NULL WHERE game_series.group_id=? AND game_series.lineage_id=? ORDER BY game_series.revision_number DESC LIMIT 1"
         const val OPEN_SERIES="SELECT s.group_id,s.lineage_id FROM game_series s JOIN access_groups g ON g.id=s.group_id AND g.deleted_at IS NULL WHERE s.active_through_date IS NULL AND (s.local_end_date IS NULL OR s.local_end_date>=CURRENT_DATE) AND NOT EXISTS (SELECT 1 FROM game_series n WHERE n.group_id=s.group_id AND n.lineage_id=s.lineage_id AND n.revision_number>s.revision_number)"
         const val OCCUPIED_STARTS="SELECT starts_at FROM games WHERE group_id=? AND starts_at>? AND status IN ('DRAFT','PUBLISHED') AND (series_id IS NULL OR series_id<>?)"
+        const val OCCUPIED_RANGES="SELECT starts_at,starts_at+duration_minutes*interval '1 minute' FROM games WHERE group_id=? AND starts_at+duration_minutes*interval '1 minute'>? AND status IN ('DRAFT','PUBLISHED') AND (series_id IS NULL OR series_id<>?)"
         const val ADOPTABLE_STARTS="SELECT starts_at FROM games WHERE group_id=? AND starts_at>? AND status='PUBLISHED' AND series_id IS NULL AND NOT detached_from_series"
         const val FIND_SLOTS="SELECT * FROM game_series_slots WHERE series_revision_id=? ORDER BY weekday,local_time,slot_key"
         const val FIND_GAMES="SELECT games.id,games.local_date,games.local_time,games.starts_at,games.status,games.version FROM games JOIN access_groups g ON g.id=games.group_id AND g.deleted_at IS NULL WHERE games.group_id=? AND games.series_id=? ORDER BY games.local_date,games.local_time,games.id LIMIT 256"

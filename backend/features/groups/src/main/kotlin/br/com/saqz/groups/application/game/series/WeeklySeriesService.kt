@@ -25,6 +25,12 @@ sealed interface WeeklySeriesResult {
     data object Conflict : WeeklySeriesResult
 }
 
+/** Intervalo de um jogo ativo de fora da série. Jogo encostado (termina quando o outro começa) não se sobrepõe. */
+data class OccupiedRange(val start: Instant, val end: Instant) {
+    fun overlaps(startsAt: Instant, durationMinutes: Int): Boolean =
+        startsAt < end && start < startsAt.plusSeconds(durationMinutes * 60L)
+}
+
 interface WeeklySeriesRepository {
     fun role(actor: UUID, groupId: UUID): GroupRole?
     /** [adopted]: ocorrências cujo horário já tem jogo avulso publicado; ele vira o jogo da série, sem criar outro. */
@@ -41,6 +47,11 @@ interface WeeklySeriesRepository {
      * [after]. Jogo avulso marcado num horário regular vale pela ocorrência: a série nasce sem ela.
      */
     fun occupiedStartsAt(groupId: UUID, lineageId: UUID, after: Instant): Set<Instant> = emptySet()
+    /**
+     * Intervalos dos mesmos jogos de [occupiedStartsAt] (DEB-048): ocorrência que se sobrepõe a eles, mesmo
+     * começando em outra hora, não nasce, porque o banco recusaria o grupo inteiro.
+     */
+    fun occupiedRanges(groupId: UUID, lineageId: UUID, after: Instant): List<OccupiedRange> = emptyList()
     /**
      * Subconjunto de [occupiedStartsAt] que a série adota: jogo avulso (sem série, não desvinculado) já
      * PUBLICADO. Rascunho avulso é do gestor e segue só pulado; jogo de outra série também.

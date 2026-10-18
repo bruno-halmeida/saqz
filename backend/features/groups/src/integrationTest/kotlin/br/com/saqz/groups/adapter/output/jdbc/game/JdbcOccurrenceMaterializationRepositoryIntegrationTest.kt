@@ -112,6 +112,39 @@ class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
         assertEquals(0, int("SELECT count(*) FROM games WHERE id = '$oneOff' AND series_id IS NOT NULL"))
     }
 
+    @Test fun `one-off game overlapping an occurrence at another start skips that occurrence without failing the batch`() {
+        val fixture = fixture()
+        val oneOff = insertOneOffGame(fixture.rule.groupId)
+        execute("UPDATE games SET starts_at = starts_at + interval '30 minutes', local_time = TIME '20:00' WHERE id = '$oneOff'")
+
+        val result = assertIs<MaterializeWeeklySeriesResult.Success>(fixture.materializer.execute(fixture.rule, DATE))
+
+        assertEquals(12, result.generated)
+        assertEquals(11, result.inserted)
+        assertEquals(1, int("SELECT count(*) FROM games WHERE local_date = DATE '$DATE'"))
+        assertEquals(0, int("SELECT count(*) FROM games WHERE id = '$oneOff' AND series_id IS NOT NULL"))
+    }
+
+    @Test fun `one-off game touching an occurrence does not block it`() {
+        val fixture = fixture()
+        val oneOff = insertOneOffGame(fixture.rule.groupId)
+        execute("UPDATE games SET starts_at = starts_at + interval '90 minutes', local_time = TIME '21:00' WHERE id = '$oneOff'")
+
+        val result = assertIs<MaterializeWeeklySeriesResult.Success>(fixture.materializer.execute(fixture.rule, DATE))
+
+        assertEquals(12, result.inserted)
+        assertEquals(13, int("SELECT count(*) FROM games"))
+    }
+
+    @Test fun `series without a venue address materializes games with empty address`() {
+        val fixture = fixture(address = "")
+
+        val result = assertIs<MaterializeWeeklySeriesResult.Success>(fixture.materializer.execute(fixture.rule, DATE))
+
+        assertEquals(12, result.inserted)
+        assertEquals(12, int("SELECT count(*) FROM games WHERE venue_address = ''"))
+    }
+
     @Test fun `start taken between the occupancy read and the insert is mapped to a game schedule conflict`() {
         val fixture = fixture()
         val racing = materializer(writingBeforeBatchInsert { insertOneOffGame(fixture.rule.groupId) })
@@ -124,6 +157,7 @@ class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
         slots: List<SlotSeed> = listOf(SlotSeed(UUID.randomUUID(), DayOfWeek.WEDNESDAY, LocalTime.of(19, 30))),
         zone: String = "America/Sao_Paulo",
         start: LocalDate = DATE,
+        address: String = "Rua das Flores 100",
     ): Fixture {
         val owner = UUID.randomUUID()
         val group = UUID.randomUUID()
@@ -140,7 +174,7 @@ class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
         )
         execute(
             "INSERT INTO group_venues (id, group_id, name, address, court, created_at, updated_at) " +
-                "VALUES ('$venue', '$group', 'Arena Central', 'Rua das Flores 100', 'Quadra 2', now(), now())",
+                "VALUES ('$venue', '$group', 'Arena Central', '$address', 'Quadra 2', now(), now())",
         )
         execute(
             "INSERT INTO game_series (id, lineage_id, group_id, revision_number, zone_id, local_start_date, created_at, updated_at) " +
@@ -151,7 +185,7 @@ class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
                 "INSERT INTO game_series_slots (series_revision_id, group_id, slot_key, title, weekday, local_time, duration_minutes, " +
                     "venue_id, venue_name, venue_address, venue_court, capacity, confirmation_lead_minutes, game_fee_cents, created_at) VALUES " +
                     "('$revision', '$group', '${slot.key}', 'Treino semanal', ${slot.day.value}, TIME '${slot.time}', 90, '$venue', " +
-                    "'Arena Central', 'Rua das Flores 100', 'Quadra 2', 24, 180, 2500, now())",
+                    "'Arena Central', '$address', 'Quadra 2', 24, 180, 2500, now())",
             )
         }
         val rules = slots.map { slot ->
@@ -160,7 +194,7 @@ class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
                 slot.day,
                 slot.time,
                 90,
-                GameVenueSnapshot(venue, "Arena Central", "Rua das Flores 100", "Quadra 2"),
+                GameVenueSnapshot(venue, "Arena Central", address, "Quadra 2"),
                 24,
                 180,
                 2500,
@@ -193,7 +227,7 @@ class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
 
     /**
      * Outro escritor grava um jogo entre a leitura dos horários ocupados e o INSERT em lote: a única
-     * janela em que games_schedule_start_unique ainda dispara e precisa virar GameScheduleConflictWriteException.
+     * janela em que games_schedule_no_overlap ainda dispara e precisa virar GameScheduleConflictWriteException.
      */
     private fun writingBeforeBatchInsert(write: () -> Unit): DataSource = object : DelegatingDataSource(dataSource) {
         override fun getConnection(): Connection {

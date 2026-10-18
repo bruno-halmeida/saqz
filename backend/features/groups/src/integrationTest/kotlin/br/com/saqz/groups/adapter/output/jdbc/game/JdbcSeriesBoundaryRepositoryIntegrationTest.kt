@@ -100,34 +100,34 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
 
     @Test fun `future edit cancels removed slot before retained slot moves into its time`() {
         val fixture = fixture()
-        val removedSlot = slot(fixture, LocalTime.of(20, 0))
+        val removedSlot = slot(fixture, LocalTime.of(22, 0))
         val retained = game(fixture, DATE, localTime = LocalTime.of(19, 30), slotKey = fixture.slotKey)
-        val removed = game(fixture, DATE, localTime = LocalTime.of(20, 0), slotKey = removedSlot)
-        val successor = successor(fixture, "Retained moved", LocalTime.of(20, 0))
+        val removed = game(fixture, DATE, localTime = LocalTime.of(22, 0), slotKey = removedSlot)
+        val successor = successor(fixture, "Retained moved", LocalTime.of(22, 0))
 
         assertEquals(SeriesBoundaryResult.Applied, apply(repository(), fixture, successor))
         assertEquals("PUBLISHED", string("SELECT status FROM games WHERE id='$retained'"))
-        assertEquals("20:00:00", string("SELECT local_time::text FROM games WHERE id='$retained'"))
+        assertEquals("22:00:00", string("SELECT local_time::text FROM games WHERE id='$retained'"))
         assertEquals(successor.revisionId, uuid("SELECT series_revision_id FROM games WHERE id='$retained'"))
         assertEquals("CANCELLED", string("SELECT status FROM games WHERE id='$removed'"))
     }
 
     @Test fun `future edit defers uniqueness while retained slots swap times`() {
         val fixture = fixture()
-        val swappedSlot = slot(fixture, LocalTime.of(20, 0))
+        val swappedSlot = slot(fixture, LocalTime.of(22, 0))
         val first = game(fixture, DATE, localTime = LocalTime.of(19, 30), slotKey = fixture.slotKey)
-        val second = game(fixture, DATE, localTime = LocalTime.of(20, 0), slotKey = swappedSlot)
+        val second = game(fixture, DATE, localTime = LocalTime.of(22, 0), slotKey = swappedSlot)
         val successor = successor(
             fixture,
             "Horários trocados",
             listOf(
-                successorSlot(fixture, fixture.slotKey, LocalTime.of(20, 0), "Primeiro trocado"),
+                successorSlot(fixture, fixture.slotKey, LocalTime.of(22, 0), "Primeiro trocado"),
                 successorSlot(fixture, swappedSlot, LocalTime.of(19, 30), "Segundo trocado"),
             ),
         )
 
         assertEquals(SeriesBoundaryResult.Applied, apply(repository(), fixture, successor))
-        assertEquals("20:00:00", string("SELECT local_time::text FROM games WHERE id='$first'"))
+        assertEquals("22:00:00", string("SELECT local_time::text FROM games WHERE id='$first'"))
         assertEquals("19:30:00", string("SELECT local_time::text FROM games WHERE id='$second'"))
         assertEquals(successor.revisionId, uuid("SELECT series_revision_id FROM games WHERE id='$first'"))
         assertEquals(successor.revisionId, uuid("SELECT series_revision_id FROM games WHERE id='$second'"))
@@ -224,8 +224,8 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
     }
 
     private fun occupiedGame(fixture: Fixture): UUID {
-        val id = UUID.randomUUID(); val starts = DATE.atTime(20, 0).toInstant(ZoneOffset.ofHours(-3)); val deadline = starts.minusSeconds(10800)
-        execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_id,venue_name,venue_address,venue_court,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$id','${fixture.group}','Avulso ocupado',DATE '$DATE',TIME '20:00','America/Sao_Paulo',TIMESTAMPTZ '$starts',90,TIMESTAMPTZ '$deadline','${fixture.venue}','Arena Central','Rua das Flores 100','Quadra 2',24,2500,'PUBLISHED',now(),now())")
+        val id = UUID.randomUUID(); val starts = DATE.atTime(21, 30).toInstant(ZoneOffset.ofHours(-3)); val deadline = starts.minusSeconds(10800)
+        execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_id,venue_name,venue_address,venue_court,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$id','${fixture.group}','Avulso ocupado',DATE '$DATE',TIME '21:30','America/Sao_Paulo',TIMESTAMPTZ '$starts',90,TIMESTAMPTZ '$deadline','${fixture.venue}','Arena Central','Rua das Flores 100','Quadra 2',24,2500,'PUBLISHED',now(),now())")
         return id
     }
 

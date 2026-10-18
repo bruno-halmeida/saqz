@@ -392,7 +392,7 @@ class GameCommandsTest {
         var recurringConflict: UUID? = null
 
         override fun creationContext(actor: UUID, groupId: UUID) = creation
-        override fun recurringConflict(groupId: UUID, startsAt: Instant, excludingGameId: UUID?) =
+        override fun recurringConflict(groupId: UUID, startsAt: Instant, durationMinutes: Int, excludingGameId: UUID?) =
             recurringConflict?.takeUnless { it == excludingGameId }
         override fun find(actor: UUID, groupId: UUID, gameId: UUID) = current
         override fun create(game: Game): GameWriteResult {

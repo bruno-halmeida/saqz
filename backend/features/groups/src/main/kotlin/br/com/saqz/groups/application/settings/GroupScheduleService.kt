@@ -60,6 +60,13 @@ class GroupScheduleService(
 }
 private fun GroupSchedule.valid(): Boolean =
     durationMinutes in 1..1440 && confirmationLeadMinutes in 0..10080 &&
-        slots.size <= 14 && slots.distinct().size == slots.size &&
+        slots.size <= 14 && slots.distinct().size == slots.size && !slots.overlapEachOther(durationMinutes) &&
         slots.all { it.startTime.second == 0 && it.startTime.nano == 0 } &&
         (if (recurring) slots.isNotEmpty() else slots.isEmpty() && !paused)
+
+/** Todos os horários têm a mesma duração; a semana é circular, então domingo à noite pode invadir a segunda. */
+private fun List<ScheduleSlot>.overlapEachOther(durationMinutes: Int): Boolean {
+    val week = 7 * 24 * 60
+    val starts = map { (it.weekday.value - 1) * 24 * 60 + it.startTime.hour * 60 + it.startTime.minute }
+    return starts.any { a -> starts.any { b -> a != b && (b - a).mod(week) < durationMinutes } }
+}

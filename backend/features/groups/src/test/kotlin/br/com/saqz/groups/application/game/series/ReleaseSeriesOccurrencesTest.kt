@@ -163,7 +163,7 @@ class ReleaseSeriesOccurrencesTest {
         ).also { stored[it.id] = it }
         fun status(game: Game) = stored.getValue(game.id).status
         override fun creationContext(actor: UUID, groupId: UUID): GameCreationContext? = error("unused")
-        override fun recurringConflict(groupId: UUID, startsAt: Instant, excludingGameId: UUID?): UUID? = error("unused")
+        override fun recurringConflict(groupId: UUID, startsAt: Instant, durationMinutes: Int, excludingGameId: UUID?): UUID? = error("unused")
         override fun find(actor: UUID, groupId: UUID, gameId: UUID): GameCommandContext? {
             check(gameId != failing) { "database down" }
             val game = stored[gameId]?.takeIf { it.groupId == groupId } ?: return null
