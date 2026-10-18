@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { chamar } from './http.mjs'
-import { criarConta, entrar, confirmarEmail } from './auth.mjs'
+import { criarConta, entrar, confirmarEmail, marcarEmailConfirmado } from './auth.mjs'
 import { SENHA } from './config.mjs'
 
 /**
@@ -13,19 +13,20 @@ export class Ator {
     this.id = null  // id do usuário no Saqz (vem da sessão)
   }
 
-  static async criar({ papel, tag, indice, confirmado = false }) {
+  /** `confirmado: true` (padrão) deixa o e-mail confirmado, como quem já abriu o link; ACE-002 usa `false`. */
+  static async criar({ papel, tag, confirmado = true }) {
     const slug = papel.toLowerCase()
     const email = `qa-${slug}+${tag}@saqz.local`
     const nome = `QA ${papel} ${tag}`
     const telefone = `119${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`
-    const conta = await criarConta({ email, nome })
+    let conta = await criarConta({ email, nome })
+    if (confirmado) { await marcarEmailConfirmado(conta.uid); conta = await entrar({ email }) }
     const ator = new Ator({ papel, email, nome, telefone, uid: conta.uid, token: conta.token })
     const sessao = await ator.sessao()
     if (!sessao.ok) throw new Error(`sessão de ${papel}: ${sessao.resumo()}`)
     ator.id = sessao.corpo.user.id
     const perfil = await ator.chamar('PATCH', '/api/session/profile', { phone: telefone })
     if (!perfil.ok) throw new Error(`telefone de ${papel}: ${perfil.resumo()}`)
-    if (confirmado) await ator.confirmarEmail()
     return ator
   }
 

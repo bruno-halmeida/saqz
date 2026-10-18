@@ -24,6 +24,7 @@ export class Contexto {
     this.regra = regra
     this.tag = `${Date.now().toString(36)}${randomUUID().slice(0, 4)}`
     this.passos = []
+    this.divergencias = []  // conferências "moles": o cenário segue e falha no fim, listando tudo
     this.njogos = 0  // cada jogo do grupo começa 4 h depois do anterior (o banco proíbe jogos sobrepostos)
     this.atual = null
     this.sql = sql
@@ -50,6 +51,8 @@ export class Contexto {
   bloqueado(motivo) { throw new Bloqueio(motivo) }
 
   // --- conferências ---
+  /** Registra uma divergência sem parar o cenário (para passos seguintes ainda rodarem); o cenário falha no fim. */
+  divergir(cond, mensagem) { if (!cond) this.divergencias.push(`${this.atual}: ${mensagem}`) }
   afirmar(cond, mensagem, resposta) { if (!cond) throw new Falha(mensagem, ehResposta(resposta) ? resposta : undefined) }
   igual(real, esperado, mensagem, resposta) {
     this.afirmar(JSON.stringify(real) === JSON.stringify(esperado), `${mensagem}: esperado ${JSON.stringify(esperado)}, veio ${JSON.stringify(real)}`, resposta)
@@ -67,6 +70,8 @@ export class Contexto {
     const lista = await Promise.all(papeis.map((papel) => Ator.criar({ papel, tag: this.tag })))
     return Object.fromEntries(lista.map((a) => [a.papel, a]))
   }
+  /** Um ator com opções (ex.: `{ confirmado: false }` para conta que ainda não confirmou o e-mail). */
+  ator(papel, opcoes = {}) { return Ator.criar({ papel, tag: this.tag, ...opcoes }) }
 
   /** Grupo do dono + entrada dos atletas pelo convite (como os apps fazem). Devolve { id, codigo }. */
   async grupo(dono, atletas = [], { nome, extra } = {}) {
