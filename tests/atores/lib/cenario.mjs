@@ -118,7 +118,8 @@ export class Contexto {
 
   /** Muda o prazo de confirmação como o roteiro 01 faz (banco). */
   async prazoPara(jogoId, instante) { await this.sql(`update games set confirmation_deadline='${instante.toISOString()}', version=version+1 where id='${jogoId}'`) }
-  async inicioPara(jogoId, instante) { await this.sql(`update games set starts_at='${instante.toISOString()}', version=version+1 where id='${jogoId}'`) }
+  /** Muda o início (o banco exige prazo <= início, então o prazo desce junto se for preciso). */
+  async inicioPara(jogoId, instante) { await this.sql(`update games set starts_at='${instante.toISOString()}', confirmation_deadline=least(confirmation_deadline,'${instante.toISOString()}'), version=version+1 where id='${jogoId}'`) }
 
   /** Situação de presença de cada pessoa no jogo, direto do banco: { <nome>: 'CONFIRMED|1' }. */
   async presencas(jogoId) {

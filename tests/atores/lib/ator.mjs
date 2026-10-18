@@ -87,6 +87,14 @@ export class Ator {
   }
   presenca(grupoId, jogoId) { return this.chamar('GET', `/api/groups/${grupoId}/games/${jogoId}/attendance`) }
   lista(grupoId, jogoId) { return this.chamar('GET', `/api/groups/${grupoId}/games/${jogoId}/attendance/roster`) }
+  avisarPendentes(grupoId, jogoId) { return this.chamar('POST', `/api/groups/${grupoId}/games/${jogoId}/notify-pending`, { requestId: randomUUID() }) }
+  editarJogo(grupoId, jogo, etag, campos) {
+    return this.chamar('PUT', `/api/groups/${grupoId}/games/${jogo.id}`, {
+      title: jogo.title, venue: { name: jogo.venue.name, address: jogo.venue.address }, localDate: jogo.localDate, localTime: jogo.localTime, zoneId: jogo.zoneId,
+      startsAt: jogo.startsAt, durationMinutes: jogo.durationMinutes, capacity: jogo.capacity, confirmationDeadline: jogo.confirmationDeadline,
+      useDefaultGameFee: false, gameFeeCents: jogo.gameFeeCents, ...campos,
+    }, { 'If-Match': etag })
+  }
   porOutro(grupoId, jogoId, membroId, intent, reason = 'Ajuste do organizador') {
     return this.chamar('POST', `/api/groups/${grupoId}/games/${jogoId}/attendance/override`, { requestId: randomUUID(), memberId: membroId, intent, reason })
   }
@@ -108,6 +116,18 @@ export class Ator {
   // --- Avisos e conta ---
 
   avisos() { return this.chamar('GET', '/api/me/notifications') }
+  /** Central de avisos filtrada pelo jogo: [{ canal, corpo, lido }]. */
+  async avisosDoJogo(jogoId) {
+    const r = await this.avisos()
+    if (!r.ok) throw new Error(`central de avisos de ${this.papel}: ${r.resumo()}`)
+    return r.corpo.items.filter((i) => i.message.gameId === jogoId).map((i) => ({ canal: i.message.channel, corpo: i.message.body, lido: !!i.read }))
+  }
+  /** Central de avisos filtrada pelo grupo (avisos sem jogo vinculado, como a mudança de horário). */
+  async avisosDoGrupo(grupoId) {
+    const r = await this.avisos()
+    if (!r.ok) throw new Error(`central de avisos de ${this.papel}: ${r.resumo()}`)
+    return r.corpo.items.filter((i) => i.message.groupId === grupoId).map((i) => ({ canal: i.message.channel, corpo: i.message.body, jogo: i.message.gameId }))
+  }
   mensagens(grupoId, canal) { return this.chamar('GET', `/api/groups/${grupoId}/messages?channel=${canal}`) }
   excluirConta() { return this.chamar('DELETE', '/api/session', undefined, { 'X-Expected-User-Id': this.id }) }
 }
