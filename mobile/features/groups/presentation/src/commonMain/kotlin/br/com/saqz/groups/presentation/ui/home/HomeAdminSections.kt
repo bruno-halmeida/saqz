@@ -22,6 +22,7 @@ import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.home.HomeAdminGroupUi
 import br.com.saqz.groups.presentation.home.HomeAdminReadModelUi
+import br.com.saqz.groups.presentation.home.HomeGameToReviewUi
 import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeNextGameUi
 import br.com.saqz.groups.presentation.ui.components.AttendanceScoreBoard
@@ -33,6 +34,7 @@ import br.com.saqz.groups.resources.home_admin_cd_shortcut_create_game
 import br.com.saqz.groups.resources.home_admin_cd_shortcut_invite
 import br.com.saqz.groups.resources.home_admin_cd_waiting_entry_requests
 import br.com.saqz.groups.resources.home_admin_cd_waiting_monthly
+import br.com.saqz.groups.resources.home_admin_cd_waiting_review
 import br.com.saqz.groups.resources.home_admin_cd_waiting_settle
 import br.com.saqz.groups.resources.home_admin_no_game_description
 import br.com.saqz.groups.resources.home_admin_shortcuts_create_game
@@ -42,6 +44,9 @@ import br.com.saqz.groups.resources.home_admin_waiting_entry_requests
 import br.com.saqz.groups.resources.home_admin_waiting_entry_requests_meta
 import br.com.saqz.groups.resources.home_admin_waiting_monthly
 import br.com.saqz.groups.resources.home_admin_waiting_monthly_meta
+import br.com.saqz.groups.resources.home_admin_waiting_review
+import br.com.saqz.groups.resources.home_admin_waiting_review_meta
+import br.com.saqz.groups.resources.home_admin_waiting_review_more
 import br.com.saqz.groups.resources.home_admin_waiting_settle
 import br.com.saqz.groups.resources.home_admin_waiting_settle_meta
 import br.com.saqz.groups.resources.home_admin_waiting_title
@@ -66,6 +71,7 @@ internal object HomeAdminTags {
     fun entryRequests(groupId: String) = "home-admin-entry-requests-$groupId"
     fun monthly(groupId: String) = "home-admin-monthly-$groupId"
     fun settle(groupId: String) = "home-admin-settle-$groupId"
+    fun review(groupId: String) = "home-admin-review-$groupId"
 }
 
 /**
@@ -271,6 +277,28 @@ private fun buildWaitingItems(group: HomeAdminGroupUi): List<HomeWaitingItem> = 
             ),
         )
     }
+    group.gameToReview?.let { game ->
+        add(
+            HomeWaitingItem(
+                groupId = group.id,
+                groupName = group.name,
+                icon = SaqzIcons.Calendar,
+                title = stringResource(
+                    Res.string.home_admin_waiting_review,
+                    game.formattedDate,
+                ),
+                meta = reviewMeta(game),
+                a11y = stringResource(
+                    Res.string.home_admin_cd_waiting_review,
+                    game.formattedDate,
+                    group.name,
+                ),
+                trailing = WaitingTrailing.Chevron,
+                tag = HomeAdminTags.review(group.id),
+                action = HomeIntent.OpenGameSettlement(group.id, game.gameId),
+            ),
+        )
+    }
     group.gameToSettle?.let { game ->
         add(
             HomeWaitingItem(
@@ -298,6 +326,13 @@ private fun buildWaitingItems(group: HomeAdminGroupUi): List<HomeWaitingItem> = 
             ),
         )
     }
+}
+
+@Composable
+private fun reviewMeta(game: HomeGameToReviewUi): String {
+    val base = pluralStringResource(Res.plurals.home_admin_waiting_review_meta, game.reviewCount, game.reviewCount)
+    if (game.otherGameCount == 0) return base
+    return pluralStringResource(Res.plurals.home_admin_waiting_review_more, game.otherGameCount, base, game.otherGameCount)
 }
 
 @Composable

@@ -14,6 +14,7 @@ import br.com.saqz.groups.domain.communication.NativeNotificationPort
 import br.com.saqz.groups.domain.home.HomeError
 import br.com.saqz.groups.domain.home.HomeAdminGroup
 import br.com.saqz.groups.domain.home.HomeAdminReadModel
+import br.com.saqz.groups.domain.home.HomeGameToReview
 import br.com.saqz.groups.domain.home.HomeGameToSettle
 import br.com.saqz.groups.domain.home.HomeMonthlyCharges
 import br.com.saqz.groups.domain.home.HomeGateway
@@ -226,6 +227,67 @@ class HomeViewModelTest {
         assertEquals(1, viewModel.state.value.member?.nextGame?.declinedCount)
         assertEquals(2, viewModel.state.value.member?.nextGame?.pendingCount)
         assertTrue(viewModel.state.value.member?.groups?.single()?.isAdmin == true)
+    }
+
+    @Test
+    fun `game to review maps the date in the game timezone and counts the other games`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        nextGame = sampleNextGame(),
+                        role = GroupRole.OWNER,
+                        admin = HomeAdminReadModel(
+                            groups = listOf(
+                                HomeAdminGroup(
+                                    id = GroupId("group-1"),
+                                    name = "Vôlei do CERET",
+                                    entryRequestCount = 0,
+                                    monthlyCharges = HomeMonthlyCharges(0, 0, "2026-07"),
+                                    gameToSettle = null,
+                                    gameToReview = HomeGameToReview("game-7", "2026-08-13T00:30:00Z", "America/Sao_Paulo", 3, 2),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val review = viewModel.state.value.member?.admin?.groups?.single()?.gameToReview
+        assertEquals("game-7", review?.gameId)
+        assertEquals("12/08", review?.formattedDate)
+        assertEquals(3, review?.reviewCount)
+        assertEquals(1, review?.otherGameCount)
+        assertEquals("1 grupo · 1 coisa esperando você", viewModel.state.value.member?.adminSubtitle)
+    }
+
+    @Test
+    fun `group without game to review has none and an empty count does not show it`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(
+                    sampleHome(
+                        nextGame = sampleNextGame(),
+                        role = GroupRole.OWNER,
+                        admin = HomeAdminReadModel(
+                            groups = listOf(
+                                HomeAdminGroup(
+                                    id = GroupId("group-1"),
+                                    name = "Vôlei do CERET",
+                                    entryRequestCount = 1,
+                                    monthlyCharges = HomeMonthlyCharges(0, 0, "2026-07"),
+                                    gameToSettle = null,
+                                    gameToReview = HomeGameToReview("game-7", "2026-08-13T00:30:00Z", "America/Sao_Paulo", 0, 1),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertNull(viewModel.state.value.member?.admin?.groups?.single()?.gameToReview)
     }
 
     @Test

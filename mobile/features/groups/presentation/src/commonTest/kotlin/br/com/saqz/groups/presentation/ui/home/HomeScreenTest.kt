@@ -31,6 +31,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.home.HomeGroupUi
 import br.com.saqz.groups.presentation.home.HomeAdminGroupUi
 import br.com.saqz.groups.presentation.home.HomeAdminReadModelUi
+import br.com.saqz.groups.presentation.home.HomeGameToReviewUi
 import br.com.saqz.groups.presentation.home.HomeGameToSettleUi
 import br.com.saqz.groups.presentation.home.HomeMonthlyChargesUi
 import br.com.saqz.groups.presentation.home.HomeIntent
@@ -455,6 +456,25 @@ class HomeScreenTest {
     }
 
     @Test
+    fun `admin waiting row for a cancelled game to review opens its settlement`() = runComposeUiTest {
+        val intents = mutableListOf<HomeIntent>()
+        setScreen(adminState(withReview = true), intents::add)
+
+        onNodeWithText("Revisar cobranças do jogo cancelado de 10/08").assertIsDisplayed()
+        onNodeWithText("3 cobranças para conferir · mais 1 jogo").assertIsDisplayed()
+        onNodeWithTag(HomeAdminTags.review("ceret")).performClick()
+
+        assertEquals(listOf<HomeIntent>(HomeIntent.OpenGameSettlement("ceret", "game-9")), intents)
+    }
+
+    @Test
+    fun `admin without a game to review shows no review row`() = runComposeUiTest {
+        setScreen(adminState())
+
+        onNodeWithTag(HomeAdminTags.review("ceret")).assertDoesNotExist()
+    }
+
+    @Test
     fun `admin without pending items hides the waiting section`() = runComposeUiTest {
         setScreen(adminState(withPendingItems = false))
 
@@ -699,7 +719,7 @@ private fun nextGame(status: AttendanceStatus? = null) = HomeNextGameUi(
     meta = "28 de julho · CERET — Quadra 2 · Tatuapé",
 )
 
-private fun adminState(withPendingItems: Boolean = true) = nextGameState().copy(
+private fun adminState(withPendingItems: Boolean = true, withReview: Boolean = false) = nextGameState().copy(
     member = checkNotNull(nextGameState().member).copy(
         adminSubtitle = if (withPendingItems) "1 grupos · 3 coisas esperando você" else null,
         admin = HomeAdminReadModelUi(
@@ -718,6 +738,7 @@ private fun adminState(withPendingItems: Boolean = true) = nextGameState().copy(
                     } else {
                         null
                     },
+                    gameToReview = if (withReview) HomeGameToReviewUi("game-9", "10/08", 3, 1) else null,
                 ),
             ),
         ),

@@ -9,6 +9,7 @@ import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.home.HomeAdminGroup
 import br.com.saqz.groups.domain.home.HomeAdminReadModel
 import br.com.saqz.groups.domain.home.HomeError
+import br.com.saqz.groups.domain.home.HomeGameToReview
 import br.com.saqz.groups.domain.home.HomeGameToSettle
 import br.com.saqz.groups.domain.home.HomeGateway
 import br.com.saqz.groups.domain.home.HomeLastCompletedGame
@@ -138,12 +139,23 @@ internal data class HomeGameToSettleTransport(
 )
 
 @Serializable
+internal data class HomeGameToReviewTransport(
+    val gameId: String,
+    val startsAt: String,
+    val zoneId: String,
+    val reviewCount: Int,
+    val gameCount: Int,
+)
+
+@Serializable
 internal data class HomeAdminGroupTransport(
     val id: String,
     val name: String,
     val entryRequestCount: Int,
     val monthlyCharges: HomeMonthlyChargesTransport,
     val gameToSettle: HomeGameToSettleTransport?,
+    // Campo novo (DEB-059): o backend antigo não manda, então ausente = nada a revisar.
+    val gameToReview: HomeGameToReviewTransport? = null,
 )
 
 @Serializable
@@ -386,6 +398,15 @@ private fun HomeAdminGroupTransport.toDomain() = HomeAdminGroup(
             zoneId = it.zoneId,
             pendingCount = it.pendingCount,
             totalCents = it.totalCents,
+        )
+    },
+    gameToReview = gameToReview?.let {
+        HomeGameToReview(
+            gameId = it.gameId,
+            startsAt = it.startsAt,
+            zoneId = it.zoneId,
+            reviewCount = it.reviewCount,
+            gameCount = it.gameCount,
         )
     },
 )

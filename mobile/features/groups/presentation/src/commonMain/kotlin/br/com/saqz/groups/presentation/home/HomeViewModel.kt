@@ -24,6 +24,7 @@ import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupTrialAccessPort
 import br.com.saqz.groups.domain.home.HomeAdminGroup
 import br.com.saqz.groups.domain.home.HomeAdminReadModel
+import br.com.saqz.groups.domain.home.HomeGameToReview
 import br.com.saqz.groups.domain.home.HomeGameToSettle
 import br.com.saqz.groups.domain.home.HomeGateway
 import br.com.saqz.groups.domain.home.HomeMemberGroup
@@ -688,6 +689,7 @@ class HomeViewModel(
         entryRequestCount = entryRequestCount,
         monthlyCharges = monthlyCharges.takeIf { it.count > 0 }?.toUi(),
         gameToSettle = gameToSettle?.takeIf { it.pendingCount > 0 }?.toUi(),
+        gameToReview = gameToReview?.takeIf { it.reviewCount > 0 }?.toUi(),
     )
 
     // O mês das mensalidades vem da API (o backend bucketiza pelo
@@ -765,6 +767,17 @@ class HomeViewModel(
             formattedDate = formattedDate,
             diaristCount = pendingCount,
             formattedTotal = formatBrl(totalCents),
+        )
+    }
+
+    private suspend fun HomeGameToReview.toUi(): HomeGameToReviewUi {
+        val zone = gameTimeZone(zoneId)
+        val local = runCatching { Instant.parse(startsAt).toLocalDateTime(zone) }.getOrNull()
+        return HomeGameToReviewUi(
+            gameId = gameId,
+            formattedDate = local?.date?.gameDateLabel() ?: startsAt,
+            reviewCount = reviewCount,
+            otherGameCount = (gameCount - 1).coerceAtLeast(0),
         )
     }
 

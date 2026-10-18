@@ -220,12 +220,22 @@ data class HomeGameToSettleUi(
 )
 
 @Immutable
+data class HomeGameToReviewUi(
+    val gameId: String,
+    val formattedDate: String,
+    val reviewCount: Int,
+    /** Outros jogos cancelados do grupo que também esperam revisão. */
+    val otherGameCount: Int,
+)
+
+@Immutable
 data class HomeAdminGroupUi(
     val id: String,
     val name: String,
     val entryRequestCount: Int,
     val monthlyCharges: HomeMonthlyChargesUi?,
     val gameToSettle: HomeGameToSettleUi?,
+    val gameToReview: HomeGameToReviewUi? = null,
 )
 
 @Immutable
@@ -236,7 +246,8 @@ data class HomeAdminReadModelUi(
         get() = groups.sumOf { group ->
             (if (group.entryRequestCount > 0) 1 else 0) +
                 (if (group.monthlyCharges != null) 1 else 0) +
-                (if (group.gameToSettle != null) 1 else 0)
+                (if (group.gameToSettle != null) 1 else 0) +
+                (if (group.gameToReview != null) 1 else 0)
         }
 }
 

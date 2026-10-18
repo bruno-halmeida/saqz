@@ -55,6 +55,23 @@ class KtorHomeGatewayTest {
         assertEquals("2026-08", home.admin?.groups?.single()?.monthlyCharges?.billingMonth)
         assertEquals("game-2", home.admin?.groups?.single()?.gameToSettle?.gameId)
         assertEquals("America/Sao_Paulo", home.admin?.groups?.single()?.gameToSettle?.zoneId)
+        val toReview = home.admin?.groups?.single()?.gameToReview
+        assertEquals("game-5", toReview?.gameId)
+        assertEquals("2026-08-10T22:30:00Z", toReview?.startsAt)
+        assertEquals("America/Sao_Paulo", toReview?.zoneId)
+        assertEquals(3, toReview?.reviewCount)
+        assertEquals(2, toReview?.gameCount)
+    }
+
+    @Test
+    fun `home from a backend without game to review reads as nothing to review`() = runTest {
+        val result = gateway {
+            respond(HOME_JSON.replace("\"gameToReview\"", "\"ignoredGameToReview\""), headers = jsonHeaders())
+        }.read()
+
+        val home = assertIs<SaqzResult.Success<HomeReadModel>>(result).value
+        assertNull(home.admin?.groups?.single()?.gameToReview)
+        assertEquals("game-2", home.admin?.groups?.single()?.gameToSettle?.gameId)
     }
 
     @Test
@@ -252,6 +269,13 @@ class KtorHomeGatewayTest {
                     "zoneId": "America/Sao_Paulo",
                     "pendingCount": 2,
                     "totalCents": 1800
+                  },
+                  "gameToReview": {
+                    "gameId": "game-5",
+                    "startsAt": "2026-08-10T22:30:00Z",
+                    "zoneId": "America/Sao_Paulo",
+                    "reviewCount": 3,
+                    "gameCount": 2
                   }
                 }]
               },

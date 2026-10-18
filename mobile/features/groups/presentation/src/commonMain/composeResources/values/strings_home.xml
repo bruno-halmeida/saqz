@@ -93,6 +93,7 @@
     <string name="home_admin_waiting_entry_requests_meta">%1$s</string>
     <string name="home_admin_waiting_monthly_meta">%1$s · %2$s</string>
     <string name="home_admin_waiting_settle">Acertar o jogo de %1$s</string>
+    <string name="home_admin_waiting_review">Revisar cobranças do jogo cancelado de %1$s</string>
     <string name="home_admin_waiting_entry_chip">%1$d</string>
     <string name="home_admin_shortcuts_create_game">Marcar jogo</string>
     <string name="home_admin_shortcuts_invite">Convidar</string>
@@ -100,6 +101,7 @@
     <string name="home_admin_cd_score_waiting">%1$d na lista de espera</string>
     <string name="home_admin_cd_scoreboard_open">Abrir a lista de presença do jogo</string>
     <string name="home_admin_cd_waiting_settle">Acertar o jogo de %1$s em %2$s</string>
+    <string name="home_admin_cd_waiting_review">Revisar cobranças do jogo cancelado de %1$s em %2$s</string>
     <string name="home_admin_cd_shortcut_create_game">Marcar jogo</string>
     <string name="home_admin_cd_shortcut_invite">Convidar</string>
     <string name="home_own_charges_caption">O que você deve aos seus grupos</string>

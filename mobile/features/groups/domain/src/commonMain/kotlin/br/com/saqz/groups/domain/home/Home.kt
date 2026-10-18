@@ -104,12 +104,22 @@ data class HomeGameToSettle(
     val totalCents: Long,
 )
 
+/** O jogo cancelado mais antigo com cobrança a revisar e quantos jogos assim o grupo tem (DEB-059). */
+data class HomeGameToReview(
+    val gameId: String,
+    val startsAt: String,
+    val zoneId: String,
+    val reviewCount: Int,
+    val gameCount: Int,
+)
+
 data class HomeAdminGroup(
     val id: GroupId,
     val name: String,
     val entryRequestCount: Int,
     val monthlyCharges: HomeMonthlyCharges,
     val gameToSettle: HomeGameToSettle?,
+    val gameToReview: HomeGameToReview? = null,
 )
 
 data class HomeAdminReadModel(
