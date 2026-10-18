@@ -39,4 +39,6 @@ Contas descartáveis desta rodada e senha ficam no roteiro; e-mails caem no Mail
 | --- | --- | --- |
 | [01-dono-e-atletas.md](01-dono-e-atletas.md) | Conta, grupo, convites, jogo, lista de espera, prazo (20 passos) | 4 |
 | [02-recorrencia.md](02-recorrencia.md) | Horário fixo pelo editor e por "Jogos e horários": próximo jogo publicado e vinculado à série (8 passos) | 2 Android |
+| [05-convites-e-saida.md](05-convites-e-saida.md) | CONV-001, 002, 003, 005, 006, 007, 008 e SAI-001 a SAI-009 (17 regras, 4 críticas: CONV-001, CONV-002, CONV-007, SAI-009); convite, pedido de entrada, saída, remoção, limite do plano, exclusão de grupo e de conta; rodada com papéis invertidos entre iOS e Android | 4 a 5 (ATL3, ATL4 e ATL5 dividem um aparelho) |
+| [06-membros-e-link.md](06-membros-e-link.md) | MEM-001, 002, 005 e LINK-001 a LINK-005 (8 regras, 0 críticas); papéis, lista de membros, visibilidade do telefone e link de presença do WhatsApp; rodada com papéis invertidos entre iOS e Android | 4 a 5 (ATL3, ATL4 e ATL5 dividem um aparelho) |
 
