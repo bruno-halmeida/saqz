@@ -50,8 +50,8 @@ export async function seed(sql, scenarioNames) {
     await sql(`BEGIN;
       INSERT INTO access_groups (id,owner_user_id,creation_key,name,time_zone,profile_status,modality,composition,
         default_capacity,default_game_fee_cents,mensalista_priority,auto_confirm_enabled,created_at,updated_at) VALUES
-        ('${group}','${owner.id}','${randomUUID()}','Volei ${name}','America/Sao_Paulo','COMPLETE','COURT_VOLLEYBALL','MIXED',2,2000,false,false,now(),now()),
-        ('${secondGroup}','${owner.id}','${randomUUID()}','Praia ${name}','America/Sao_Paulo','COMPLETE','BEACH_VOLLEYBALL','MIXED',2,2000,false,false,now(),now());
+        ('${group}','${owner.id}','${randomUUID()}','Volei ${name}','America/Sao_Paulo','COMPLETE','COURT_VOLLEYBALL','MIXED',4,2000,false,false,now(),now()),
+        ('${secondGroup}','${owner.id}','${randomUUID()}','Praia ${name}','America/Sao_Paulo','COMPLETE','BEACH_VOLLEYBALL','MIXED',4,2000,false,false,now(),now());
       INSERT INTO group_memberships (group_id,user_id,role,membership_type,created_at,updated_at) VALUES
         ('${group}','${owner.id}','ADMIN','AVULSO',now(),now()),
         ('${group}','${athlete.id}','ATHLETE','MENSALISTA',now(),now()),
@@ -71,10 +71,19 @@ export async function seed(sql, scenarioNames) {
       if (name.startsWith('attendance')) {
         await sql(`INSERT INTO group_memberships (group_id,user_id,role,membership_type,created_at,updated_at)
           VALUES ('${group}','${other.id}','ATHLETE','AVULSO',now(),now());`);
-        for (const person of [owner, other]) {
+        // DEB-019: o jogo tem no mínimo 4 vagas; dois avulsos a mais (DEB-021) completam a lotação.
+        const fillers = [];
+        for (const label of ['fill1', 'fill2']) {
+          const filler = await user(`${name}-${label}`, runId);
+          fillers.push(filler);
+          await sql(`INSERT INTO group_memberships (group_id,user_id,role,membership_type,created_at,updated_at)
+            VALUES ('${group}','${filler.id}','ATHLETE','AVULSO',now(),now());`);
+        }
+        result.scenarios[name].fillers = fillers.map(({ token, ...safe }) => safe);
+        for (const person of [owner, other, ...fillers]) {
           const confirmed = await request(`${api}/api/groups/${group}/games/${game.id}/attendance`, 'PUT',
             { requestId: randomUUID(), intent: 'CONFIRM' }, person.token);
-          assert.equal(confirmed.attendance.status, 'CONFIRMED', 'Fixture must fill both real slots before UI confirmation');
+          assert.equal(confirmed.attendance.status, 'CONFIRMED', 'Fixture must fill all four real slots before UI confirmation');
         }
         if (name === 'attendance-order') {
           const reserve = await user(`${name}-reserve`, runId);
@@ -112,7 +121,7 @@ async function publishedGame(group, token) {
   const created = await request(`${api}/api/groups/${group}/games`, 'POST', {
     requestId: randomUUID(), title: 'Treino E2E', venue: { name: 'Arena QA', address: 'Rua Teste 100' },
     localDate: starts.toISOString().slice(0, 10), localTime: '20:00', zoneId: 'America/Sao_Paulo',
-    startsAt: starts.toISOString(), durationMinutes: 90, capacity: 2,
+    startsAt: starts.toISOString(), durationMinutes: 90, capacity: 4,
     confirmationDeadline: new Date(starts.getTime() - 7200000).toISOString(), useDefaultGameFee: true,
   }, token);
   const published = await request(`${api}/api/groups/${group}/games/${created.id}/publish`, 'POST',

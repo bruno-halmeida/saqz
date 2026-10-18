@@ -28,6 +28,8 @@ async function seedSettlement(ctx) {
   // This leaves a normal UI route to the completed game, including after its pending card disappears.
   await sql(`BEGIN;
     UPDATE access_groups SET default_game_fee_cents=7000 WHERE id='${group}';
+    -- DEB-021: mensalista não paga diária; quem gera a cobrança do jogo é um avulso.
+    UPDATE group_memberships SET membership_type='AVULSO' WHERE group_id='${group}' AND user_id='${athlete.id}';
     INSERT INTO group_memberships (group_id,user_id,role,membership_type,created_at,updated_at)
       VALUES ('${group}','${other.id}','ADMIN','AVULSO',now(),now());
     COMMIT;`);
