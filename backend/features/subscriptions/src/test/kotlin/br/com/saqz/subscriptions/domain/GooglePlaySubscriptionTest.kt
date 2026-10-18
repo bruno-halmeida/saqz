@@ -99,6 +99,18 @@ class GooglePlaySubscriptionTest {
     }
 
     @Test
+    fun `starting from a plain purchase keeps the test flag off and no pending plan`() {
+        val started = GooglePlaySubscription.startedBy(purchase(), GooglePlayProduct.ORGANIZADOR_MENSAL, owner)
+
+        assertFalse(started.testPurchase)
+        assertFalse(started.acknowledged)
+        assertNull(started.pendingPlan)
+        assertNull(started.supersededAt)
+        assertEquals(true, started.autoRenew)
+        assertEquals("GPA.0", started.latestOrderId)
+    }
+
+    @Test
     fun `starting from a purchase without expiry time is refused`() {
         assertFailsWith<IllegalArgumentException> {
             GooglePlaySubscription.startedBy(purchase(expiresAt = null), GooglePlayProduct.TITULAR_MENSAL, owner)
