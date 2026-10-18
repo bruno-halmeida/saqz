@@ -13,6 +13,9 @@ export class Falha extends Error {
 /** Cenário que não dá para provar por API (ex.: depende de push): sai como BLOQUEADO, com o motivo. */
 export class Bloqueio extends Error {}
 
+/** JSON com chaves em ordem fixa: comparar objetos não depende da ordem em que o servidor os serializa. */
+const canonico = (x) => JSON.stringify(x, (_, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v))
+
 const ehResposta = (x) => x && typeof x === 'object' && 'status' in x && 'pedido' in x
 
 /**
@@ -55,7 +58,7 @@ export class Contexto {
   divergir(cond, mensagem) { if (!cond) this.divergencias.push(`${this.atual}: ${mensagem}`) }
   afirmar(cond, mensagem, resposta) { if (!cond) throw new Falha(mensagem, ehResposta(resposta) ? resposta : undefined) }
   igual(real, esperado, mensagem, resposta) {
-    this.afirmar(JSON.stringify(real) === JSON.stringify(esperado), `${mensagem}: esperado ${JSON.stringify(esperado)}, veio ${JSON.stringify(real)}`, resposta)
+    this.afirmar(canonico(real) === canonico(esperado), `${mensagem}: esperado ${canonico(esperado)}, veio ${canonico(real)}`, resposta)
   }
   /** Confere o status HTTP (e opcionalmente o `code` do erro). */
   status(resposta, esperado, codigo) {

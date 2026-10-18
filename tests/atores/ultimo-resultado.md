@@ -1,9 +1,9 @@
 # Resultado dos atores por API
 
-Gerado por `node tests/atores/run.mjs --regra PROM-005` em 2026-10-18T22:26:37.582Z (114.6 s).
+Gerado por `node tests/atores/run.mjs --regra CONV-004` em 2026-10-18T22:29:40.897Z (0.3 s).
 
 **1 passaram · 0 falharam · 0 bloqueados** de 1.
 
 | Regra | Crítica | Resultado | Tempo | Passo que falhou | Resposta do servidor |
 | --- | :---: | --- | ---: | --- | --- |
-| PROM-005 · O job do prazo |  | passou | 114.6 s |  |  |
+| CONV-004 · A prévia do convite |  | passou | 0.3 s |  |  |
