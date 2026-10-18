@@ -48,6 +48,19 @@ class SeriesBoundaryRulesTest {
         assertEquals(2, command.revisionNumber)
     }
 
+    @Test fun `editar só esta ocorrência para o limite do plano ou depois é recusado sem tocar no banco`() {
+        val limit = Instant.parse("2026-02-01T03:00:00Z")
+        val replacement = seriesReplacement(limit)
+        val result = ApplySeriesBoundary(repository, UUID::randomUUID, SERIES_CLOCK, { limit })
+            .onlyThis(OnlyThisBoundaryCommand(group, UUID.randomUUID(), 1, SERIES_TODAY, SeriesBoundaryAction.EDIT, replacement))
+        assertEquals(SeriesBoundaryResult.AfterPlanEnd(limit), result)
+        assertTrue(repository.only.isEmpty())
+
+        val ok = ApplySeriesBoundary(repository, UUID::randomUUID, SERIES_CLOCK, { limit })
+            .onlyThis(OnlyThisBoundaryCommand(group, UUID.randomUUID(), 1, SERIES_TODAY, SeriesBoundaryAction.EDIT, seriesReplacement(limit.minusSeconds(60))))
+        assertEquals(SeriesBoundaryResult.Applied, ok)
+    }
+
     @Test fun `sem plano o limite de criação é o próprio agora`() {
         assertEquals(SERIES_NOW, apply(horizon = { null }).insertUntil)
     }

@@ -16,6 +16,9 @@ import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameTimingValidator
 import br.com.saqz.groups.domain.game.GameValidationError
 import br.com.saqz.groups.domain.game.GroupGameDefaults
+import br.com.saqz.sharedkernel.subscription.GameCreationHorizon
+import br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException
+import java.time.Instant
 import java.util.UUID
 
 data class GameCreationContext(val role: GroupRole?, val defaults: GroupGameDefaults)
@@ -77,12 +80,24 @@ sealed interface GameCommandResult {
     data object AccessForbidden : GameCommandResult
     data object VersionConflict : GameCommandResult
     data class ScheduleConflict(val gameId: UUID) : GameCommandResult
+    /** O jogo começaria em [startsBefore] ou depois: o plano ou o teste acaba antes (DEB-075). */
+    data class AfterPlanEnd(val startsBefore: Instant) : GameCommandResult
+}
+
+/**
+ * Nenhum jogo começa depois do fim do plano ou do teste. Sem plano (`null`) o grupo está em modo leitura:
+ * a escrita nem chega aqui pelo HTTP, e fora dele é o mesmo 403 de assinatura.
+ */
+private fun GameCreationHorizon.limitFor(groupId: UUID, startsAt: Instant): GameCommandResult.AfterPlanEnd? {
+    val limit = startsBefore(groupId) ?: throw SubscriptionRequiredException()
+    return if (startsAt >= limit) GameCommandResult.AfterPlanEnd(limit) else null
 }
 
 class CreateGame(
     private val transactionRunner: TransactionRunner,
     private val repository: GameCommandRepository,
     private val clock: java.time.Clock = java.time.Clock.systemUTC(),
+    private val horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
 ) {
     fun execute(actor: UUID, groupId: UUID, gameId: UUID, input: CreateGameInput): GameCommandResult =
         transactionRunner.inTransaction {
@@ -101,6 +116,7 @@ class CreateGame(
                 is GameDraftValidation.Invalid -> GameCommandResult.Invalid(validation.errors)
                 is GameDraftValidation.Valid -> GameTimingValidator.check(validation.snapshot, now).takeIf { it.isNotEmpty() }
                     ?.let(GameCommandResult::Invalid)
+                    ?: horizon.limitFor(groupId, validation.snapshot.startsAt)
                     ?: repository.recurringConflict(groupId, validation.snapshot.startsAt, validation.snapshot.durationMinutes, excludingGameId = null)
                     ?.let(GameCommandResult::ScheduleConflict)
                     ?: repository.create(Game(gameId, groupId, validation.snapshot)).toResult()
@@ -115,6 +131,7 @@ class EditGame(
     private val clock: java.time.Clock = java.time.Clock.systemUTC(),
     private val capacityAdjuster: GameCapacityAdjuster? = null,
     private val scheduleNotice: GameScheduleChangeNotice = GameScheduleChangeNotice { _, _, _ -> },
+    private val horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
 ) {
     /** Desfaz a transação inteira quando o ajuste de vagas recusa depois de o resto já ter sido gravado. */
     private class Rollback(val result: GameCommandResult) : RuntimeException(null, null, false, false)
@@ -158,6 +175,9 @@ class EditGame(
         val timing = (if (snapshot.startsAt != current.startsAt) GameTimingValidator.startsAtInFuture(snapshot.startsAt, now) else emptyList()) +
             (if (snapshot.confirmationDeadline != current.confirmationDeadline) GameTimingValidator.deadlineNotInPast(snapshot.confirmationDeadline, now) else emptyList())
         if (timing.isNotEmpty()) return GameCommandResult.Invalid(timing)
+        // Só quando o início muda: um jogo antigo além do fim segue editável nos outros campos. Antes de gravar,
+        // para a recusa não deixar rastro nem gerar o aviso de mudança.
+        if (snapshot.startsAt != current.startsAt) horizon.limitFor(groupId, snapshot.startsAt)?.let { return it }
         repository.recurringConflict(groupId, snapshot.startsAt, snapshot.durationMinutes, excludingGameId = gameId)
             ?.let { return GameCommandResult.ScheduleConflict(it) }
         // Num jogo publicado a capacidade só muda pelo ajuste de vagas (fila, diária, avisos); o resto é gravado antes.
@@ -199,6 +219,7 @@ class ChangeGameLifecycle(
     private val repository: GameCommandRepository,
     private val sideEffects: GameSideEffectPort,
     private val clock: java.time.Clock = java.time.Clock.systemUTC(),
+    private val horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
 ) {
     fun execute(
         actor: UUID,
@@ -220,6 +241,10 @@ class ChangeGameLifecycle(
             if (mutation == GameMutation.PUBLISH && enforceTiming) {
                 val timing = GameTimingValidator.check(context.game.snapshot, clock.instant())
                 if (timing.isNotEmpty()) return@inTransaction GameCommandResult.Invalid(timing)
+            }
+            // Publicar também move o jogo para dentro do plano: vale no manual e na rotina da série.
+            if (mutation == GameMutation.PUBLISH) {
+                horizon.limitFor(groupId, context.game.snapshot.startsAt)?.let { return@inTransaction it }
             }
             val changed = context.game.copy(status = requireNotNull(GameLifecyclePolicy.target(mutation)))
             when (val write = repository.update(changed, expectedVersion)) {

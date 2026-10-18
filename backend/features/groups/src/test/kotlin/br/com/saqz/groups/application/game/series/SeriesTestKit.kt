@@ -60,7 +60,11 @@ class MemorySeriesRepository : WeeklySeriesRepository {
 
 class RecordingBoundary : SeriesBoundaryRepository {
     val future = mutableListOf<FutureBoundaryCommand>()
-    override fun applyOnlyThis(command: OnlyThisBoundaryCommand) = SeriesBoundaryResult.Applied
+    val only = mutableListOf<OnlyThisBoundaryCommand>()
+    override fun applyOnlyThis(command: OnlyThisBoundaryCommand): SeriesBoundaryResult {
+        only += command
+        return SeriesBoundaryResult.Applied
+    }
     override fun applyThisAndFuture(command: FutureBoundaryCommand): SeriesBoundaryResult {
         future += command
         return SeriesBoundaryResult.Applied
@@ -70,3 +74,17 @@ class RecordingBoundary : SeriesBoundaryRepository {
 val DirectTransaction = object : br.com.saqz.groups.application.create.TransactionRunner {
     override fun <T> inTransaction(block: () -> T): T = block()
 }
+
+fun seriesReplacement(startsAt: java.time.Instant) = br.com.saqz.groups.domain.game.GameSnapshot(
+    "Vôlei de quarta",
+    br.com.saqz.groups.domain.game.GameVenueSnapshot(UUID.randomUUID(), "Arena", "Rua Central 100", null),
+    java.time.LocalDate.of(2026, 1, 20),
+    java.time.LocalTime.of(19, 30),
+    br.com.saqz.groups.domain.IanaTimeZone.from("America/Sao_Paulo"),
+    startsAt,
+    120,
+    12,
+    startsAt.minusSeconds(3600),
+    null,
+    null,
+)

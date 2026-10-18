@@ -22,7 +22,13 @@ interface SeriesOccurrenceRelease {
 }
 
 /** Ocorrência da série ainda em rascunho e o dono do grupo, que responde pela publicação automática. */
-data class ReleasableOccurrence(val groupId: UUID, val gameId: UUID, val version: Long, val ownerId: UUID)
+data class ReleasableOccurrence(
+    val groupId: UUID,
+    val gameId: UUID,
+    val version: Long,
+    val ownerId: UUID,
+    val startsAt: Instant = Instant.EPOCH,
+)
 
 interface ReleasableOccurrenceRepository {
     /**
@@ -38,7 +44,7 @@ interface ReleasableOccurrenceRepository {
  * publica o próximo jogo de cada horário [lead] antes de começar; já o horário recém-criado ou editado
  * ([release] de um grupo) sai com o próximo jogo publicado na hora, qualquer que seja a distância.
  * Vale o mesmo caminho do "Publicar" manual (presença aberta, mensalistas confirmados, aviso aos
- * membros). É por estado: repetir não publica duas vezes e um rascunho publicado à mão não é tocado.
+ * membros), e nunca depois do fim do plano ou do teste. É por estado: repetir não publica duas vezes e um rascunho publicado à mão não é tocado.
  */
 class ReleaseSeriesOccurrences(
     private val repository: ReleasableOccurrenceRepository,
@@ -58,8 +64,8 @@ class ReleaseSeriesOccurrences(
         repository.nextOccurrences(now, if (withLead) now.plus(lead) else null, groupId)
             .groupBy { it.groupId }
             // Trial expirado sem assinatura: a rotina cancela o futuro da série; nada a liberar.
-            .filterKeys { horizon.until(it) != null }
-            .values
+            // Jogo no limite do plano ou depois fica em rascunho e sai sozinho quando o plano renova (DEB-075).
+            .mapNotNull { (group, occurrences) -> horizon.startsBefore(group)?.let { limit -> occurrences.filter { it.startsAt < limit } } }
             .flatten()
             .forEach { occurrence ->
                 // Um jogo com problema não segura os outros; o resultado que não é sucesso

@@ -45,9 +45,11 @@ class OrganizerTrialConfiguration {
         groups: br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup,
         trials: br.com.saqz.sharedkernel.subscription.OrganizerTrialAccessLookup,
         subscriptions: br.com.saqz.subscriptions.application.SubscriptionRepository,
+        appStore: br.com.saqz.subscriptions.application.AppStoreSubscriptionRepository,
+        googlePlay: br.com.saqz.subscriptions.application.GooglePlaySubscriptionRepository,
         clock: Clock,
     ): br.com.saqz.sharedkernel.subscription.GameCreationHorizon =
-        br.com.saqz.subscriptions.application.MonthlyGameCreationHorizon(groups, trials, subscriptions, clock)
+        br.com.saqz.subscriptions.application.MonthlyGameCreationHorizon(groups, trials, subscriptions, clock, appStore, googlePlay)
 
     @Bean
     fun groupPlanOwnerLookup(dataSource: DataSource): br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup =
@@ -74,6 +76,7 @@ class OrganizerTrialConfiguration {
         usage: br.com.saqz.sharedkernel.subscription.TrialUsageLookup,
         prompts: br.com.saqz.subscriptions.application.TrialPromptStore,
         clock: Clock,
+        horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
         @org.springframework.beans.factory.annotation.Value("\${saqz.links.domain}") linksDomain: String,
     ): br.com.saqz.trials.http.OrganizerTrialController {
         val domain = java.net.URI(linksDomain)
@@ -81,7 +84,7 @@ class OrganizerTrialConfiguration {
         require(domain.path.isNullOrEmpty() || domain.path == "/")
         require(domain.query == null && domain.fragment == null)
         return br.com.saqz.trials.http.OrganizerTrialController(
-            actors, trials, groups, domain.toString().trimEnd('/') + "/", campaigns, eligibility, usage, prompts, clock,
+            actors, trials, groups, domain.toString().trimEnd('/') + "/", campaigns, eligibility, usage, prompts, clock, horizon,
         )
     }
 

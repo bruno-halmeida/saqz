@@ -46,6 +46,7 @@ import br.com.saqz.access.adapter.input.http.InvalidUserPhotoException
 import br.com.saqz.access.adapter.input.http.UserPhotoNotFoundException
 import br.com.saqz.access.adapter.input.http.UserPhotoTooLargeException
 import br.com.saqz.groups.adapter.input.http.GameNotFoundException
+import br.com.saqz.groups.adapter.input.http.GameAfterPlanEndException
 import br.com.saqz.groups.adapter.input.http.GameScheduleConflictException
 import br.com.saqz.groups.adapter.input.http.InvalidGameTransitionException
 import br.com.saqz.groups.adapter.input.http.AttendanceDeadlinePassedException
@@ -347,6 +348,23 @@ class SafeExceptionHandler(
             409,
             ErrorCode.GAME_SCHEDULE_CONFLICT,
             conflictGameId = failure.gameId.toString(),
+        )
+    }
+
+    @ExceptionHandler(GameAfterPlanEndException::class)
+    fun gameAfterPlanEnd(
+        failure: GameAfterPlanEndException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        // `expiredAt` carrega o primeiro instante que já não vale; o app tira dele o último dia possível.
+        problemWriter.write(
+            request,
+            response,
+            422,
+            ErrorCode.GAME_AFTER_PLAN_END,
+            fieldErrors = mapOf("startsAt" to listOf("must be before the plan end")),
+            expiredAt = failure.startsBefore,
         )
     }
 

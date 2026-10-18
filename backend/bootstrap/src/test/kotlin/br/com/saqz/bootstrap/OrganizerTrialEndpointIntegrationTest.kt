@@ -429,22 +429,29 @@ class OrganizerTrialEndpointIntegrationTest {
             .param("subject", token).query(Int::class.java).single())
     }
 
+    /** Jogo de [date] (UTC, 12h) criado e publicado pela API dentro do teste e movido por SQL para depois dele, como um jogo legado. */
+    private fun publishedGameBeyondTrial(group: UUID, game: UUID, date: LocalDate) {
+        val inside = createGameBody(game, "2026-09-20", "12:00:00")
+        assertEquals(201, request("POST", "/api/groups/$group/games", inside).statusCode())
+        assertEquals(200, request("POST", "/api/groups/$group/games/$game/publish", ifMatch = "\"1\"").statusCode())
+        jdbc().sql("UPDATE games SET local_date=:date, starts_at=:start, confirmation_deadline=:deadline WHERE id=:game")
+            .param("date", date).param("start", java.sql.Timestamp.from(Instant.parse("${date}T12:00:00Z")))
+            .param("deadline", java.sql.Timestamp.from(Instant.parse("${date}T11:00:00Z"))).param("game", game).update()
+    }
+
+    private fun createGameBody(game: UUID, date: String, time: String, zone: String = "UTC", startsAt: String = "${date}T${time}Z") = """{
+        "requestId":"$game","title":"Jogo","venue":{"name":"Arena Central","address":"Rua Central 100"},
+        "localDate":"$date","localTime":"$time","zoneId":"$zone","startsAt":"$startsAt",
+        "durationMinutes":90,"capacity":25,"confirmationDeadline":"$startsAt"}"""
+
     @Test
-    fun `future game works during trial freezes attendance at expiry and resumes only after paid confirmation`() {
+    fun `legacy game beyond the trial freezes attendance at expiry and resumes only after paid confirmation`() {
         val group = createGroup()
         val game = UUID.randomUUID()
         // Attendance uses the system clock, while trial expiration uses the fixture clock.
         val gameDate = maxOf(LocalDate.now(ZoneOffset.UTC), now.atZone(ZoneOffset.UTC).toLocalDate()).plusDays(15)
-        val gamePayload = """{
-            "requestId":"$game","title":"Jogo depois do teste","venue":{"name":"Arena Central","address":"Rua Central 100"},
-            "localDate":"$gameDate","localTime":"12:00:00","zoneId":"UTC","startsAt":"${gameDate}T12:00:00Z",
-            "durationMinutes":90,"capacity":25,"confirmationDeadline":"${gameDate}T11:00:00Z"}"""
-        val created = request("POST", "/api/groups/$group/games", gamePayload)
-        assertEquals(201, created.statusCode(), created.body())
-        assertEquals("${gameDate}T12:00:00Z", mapper.readTree(created.body())["startsAt"].stringValue())
+        publishedGameBeyondTrial(group, game, gameDate)
         assertEquals("2026-09-26T12:00:00Z", mapper.readTree(request("GET", "/api/groups/$group/trial").body())["endsAt"].stringValue())
-        val published = request("POST", "/api/groups/$group/games/$game/publish", ifMatch = "\"1\"")
-        assertEquals(200, published.statusCode(), published.body())
         jdbc().sql("UPDATE group_memberships SET membership_type='MENSALISTA' WHERE group_id=:group").param("group", group).update()
         val confirmed = request("PUT", "/api/groups/$group/games/$game/attendance", """{"requestId":"${UUID.randomUUID()}","intent":"CONFIRM"}""")
         assertEquals(200, confirmed.statusCode(), confirmed.body())
@@ -475,6 +482,87 @@ class OrganizerTrialEndpointIntegrationTest {
         assertEquals(200, paidResponse.statusCode(), paidResponse.body())
         assertEquals("CONFIRMED", jdbc().sql("SELECT status::text FROM game_attendance WHERE game_id=:game").param("game", game).query(String::class.java).single())
         assertEquals(3, jdbc().sql("SELECT count(*)::int FROM attendance_events WHERE game_id=:game").param("game", game).query(Int::class.java).single())
+    }
+
+    @Test
+    fun `trial limits a single game to the day before the end in the group time zone`() {
+        val group = createGroup()
+        // Teste de 14 dias começa em 12/09 12h UTC e acaba em 26/09 12h UTC; no fuso de São Paulo o limite é 26/09 0h = 03h UTC.
+        val lastOk = request("POST", "/api/groups/$group/games", createGameBody(UUID.randomUUID(), "2026-09-26", "02:59:00"))
+        assertEquals(201, lastOk.statusCode(), lastOk.body())
+        val refused = request("POST", "/api/groups/$group/games", createGameBody(UUID.randomUUID(), "2026-09-26", "03:00:00"))
+        assertEquals(422, refused.statusCode(), refused.body())
+        val problem = mapper.readTree(refused.body())
+        assertEquals("GAME_AFTER_PLAN_END", problem["code"].stringValue())
+        assertEquals("2026-09-26T03:00:00Z", problem["expiredAt"].stringValue())
+        assertEquals("must be before the plan end", problem["fieldErrors"]["startsAt"][0].stringValue())
+        assertEquals(1, jdbc().sql("SELECT count(*)::int FROM games WHERE group_id=:group").param("group", group).query(Int::class.java).single())
+    }
+
+    @Test
+    fun `editing a single game beyond the trial is refused but other fields of a legacy game still save`() {
+        val group = createGroup()
+        val game = UUID.randomUUID()
+        assertEquals(201, request("POST", "/api/groups/$group/games", createGameBody(game, "2026-09-20", "12:00:00")).statusCode())
+        val moved = request("PUT", "/api/groups/$group/games/$game", createGameBody(game, "2026-09-27", "12:00:00"), ifMatch = "\"1\"")
+        assertEquals(422, moved.statusCode(), moved.body())
+        assertEquals("GAME_AFTER_PLAN_END", mapper.readTree(moved.body())["code"].stringValue())
+        assertEquals("2026-09-20T12:00:00Z", mapper.readTree(request("GET", "/api/groups/$group/games/$game").body())["startsAt"].stringValue())
+        // Jogo legado além do fim: mudar só o título não toca no início e passa.
+        jdbc().sql("UPDATE games SET local_date='2026-09-28', starts_at=:start, confirmation_deadline=:start WHERE id=:game")
+            .param("start", java.sql.Timestamp.from(Instant.parse("2026-09-28T12:00:00Z"))).param("game", game).update()
+        val renamed = request("PUT", "/api/groups/$group/games/$game", createGameBody(game, "2026-09-28", "12:00:00").replace("\"Jogo\"", "\"Outro nome\""), ifMatch = "\"1\"")
+        assertEquals(200, renamed.statusCode(), renamed.body())
+    }
+
+    @Test
+    fun `publishing a draft beyond the trial is refused`() {
+        val group = createGroup()
+        val game = UUID.randomUUID()
+        assertEquals(201, request("POST", "/api/groups/$group/games", createGameBody(game, "2026-09-20", "12:00:00")).statusCode())
+        jdbc().sql("UPDATE games SET local_date='2026-09-28', starts_at=:start, confirmation_deadline=:start WHERE id=:game")
+            .param("start", java.sql.Timestamp.from(Instant.parse("2026-09-28T12:00:00Z"))).param("game", game).update()
+        val refused = request("POST", "/api/groups/$group/games/$game/publish", ifMatch = "\"1\"")
+        assertEquals(422, refused.statusCode(), refused.body())
+        assertEquals("GAME_AFTER_PLAN_END", mapper.readTree(refused.body())["code"].stringValue())
+        assertEquals("DRAFT", jdbc().sql("SELECT status::text FROM games WHERE id=:game").param("game", game).query(String::class.java).single())
+    }
+
+    @Test
+    fun `paid plan limits games to the paid period and grace does not extend it`() {
+        val group = createGroup()
+        assertEquals(200, request("GET", "/subscriptions/trial").statusCode())
+        // O plano lê o relógio do banco; o horizonte, o do fixture: os dois ficam no agora real.
+        clock.now = Instant.now()
+        val endDay = LocalDate.now(ZoneOffset.UTC).plusDays(10)
+        jdbc().sql("""INSERT INTO subscriptions (owner_user_id,plan,cycle,status,asaas_customer_id,asaas_subscription_id,current_period_end,first_confirmed_at,created_at,updated_at)
+            SELECT id,'TITULAR','MONTHLY','ACTIVE','customer',:sub,:end,now(),now(),now() FROM access_users WHERE firebase_subject=:subject""")
+            .param("sub", UUID.randomUUID().toString()).param("subject", token)
+            .param("end", java.sql.Timestamp.from(Instant.parse("${endDay}T12:00:00Z"))).update()
+        // Fim do período pago às 12h UTC do dia D; em São Paulo o limite é D 0h = 03h UTC.
+        assertEquals(201, request("POST", "/api/groups/$group/games", createGameBody(UUID.randomUUID(), "$endDay", "02:59:00")).statusCode())
+        val refused = request("POST", "/api/groups/$group/games", createGameBody(UUID.randomUUID(), "$endDay", "03:00:00"))
+        assertEquals(422, refused.statusCode(), refused.body())
+        assertEquals("${endDay}T03:00:00Z", mapper.readTree(refused.body())["expiredAt"].stringValue())
+        // Carência: PAST_DUE no vencimento mantém o acesso por 7 dias, mas não estende o limite.
+        jdbc().sql("UPDATE subscriptions SET status='PAST_DUE', past_due_since=now() - interval '2 days', current_period_end=now() - interval '2 days'").update()
+        assertEquals("SUBSCRIBED", mapper.readTree(request("GET", "/api/groups/$group/trial").body())["status"].stringValue())
+        val grace = request("POST", "/api/groups/$group/games", createGameBody(UUID.randomUUID(), "${endDay.plusDays(5)}", "12:00:00"))
+        assertEquals(422, grace.statusCode(), grace.body())
+    }
+
+    @Test
+    fun `games until is shown to the owner and admins only`() {
+        val group = createGroup()
+        val athlete = UUID.randomUUID().toString()
+        request("GET", "/subscriptions/trial", actor = athlete)
+        jdbc().sql("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at) SELECT :group,id,'ATHLETE',now(),now() FROM access_users WHERE firebase_subject=:subject")
+            .param("group", group).param("subject", athlete).update()
+        assertEquals("2026-09-26T03:00:00Z", mapper.readTree(request("GET", "/api/groups/$group/trial").body())["gamesUntil"].stringValue())
+        assertTrue(mapper.readTree(request("GET", "/api/groups/$group/trial", actor = athlete).body()).path("gamesUntil").let { it.isMissingNode || it.isNull })
+        jdbc().sql("UPDATE group_memberships SET role='ADMIN' WHERE group_id=:group AND user_id=(SELECT id FROM access_users WHERE firebase_subject=:subject)")
+            .param("group", group).param("subject", athlete).update()
+        assertEquals("2026-09-26T03:00:00Z", mapper.readTree(request("GET", "/api/groups/$group/trial", actor = athlete).body())["gamesUntil"].stringValue())
     }
 
     @Test

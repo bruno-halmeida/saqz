@@ -51,6 +51,8 @@ sealed interface SeriesBoundaryResult {
     data object NotFound : SeriesBoundaryResult
     data object VersionConflict : SeriesBoundaryResult
     data object InvalidBoundary : SeriesBoundaryResult
+    /** A substituição começaria em [startsBefore] ou depois, além do fim do plano (DEB-075). */
+    data class AfterPlanEnd(val startsBefore: Instant) : SeriesBoundaryResult
     data class Invalid(val errors: List<RecurrenceValidationError>) : SeriesBoundaryResult
 }
 
@@ -68,6 +70,10 @@ class ApplySeriesBoundary(
     fun onlyThis(command: OnlyThisBoundaryCommand): SeriesBoundaryResult {
         if (command.action == SeriesBoundaryAction.EDIT && command.replacement == null) {
             return SeriesBoundaryResult.InvalidBoundary
+        }
+        command.replacement?.let { replacement ->
+            val limit = horizon.startsBefore(command.groupId)
+            if (limit != null && replacement.startsAt >= limit) return SeriesBoundaryResult.AfterPlanEnd(limit)
         }
         return repository.applyOnlyThis(command.copy(now = clock.instant()))
     }

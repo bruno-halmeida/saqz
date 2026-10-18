@@ -817,15 +817,23 @@ class AccessSessionConfiguration {
     @Bean fun gameRepository(dataSource: DataSource) = JdbcGameOccurrenceRepository(dataSource)
     @Bean fun attendanceRepository(dataSource: DataSource) =
         JdbcAttendanceCommandRepository(dataSource, br.com.saqz.groups.adapter.output.jdbc.communication.JdbcAttendanceChangeNotice(dataSource))
-    @Bean fun createGame(transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository, clock: Clock) = CreateGame(transaction, repository, clock)
+    @Bean fun createGame(
+        transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository, clock: Clock,
+        horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
+    ) = CreateGame(transaction, repository, clock, horizon)
     @Bean fun editGame(
         transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository, effects: GameSideEffectPort, clock: Clock,
         capacity: AdjustGameCapacity, dataSource: DataSource,
+        horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
     ) = EditGame(
         transaction, repository, effects, clock, capacity,
         br.com.saqz.groups.adapter.output.jdbc.communication.JdbcGameScheduleChangeNotice(dataSource),
+        horizon,
     )
-    @Bean fun changeGameLifecycle(transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository, effects: GameSideEffectPort, clock: Clock) = ChangeGameLifecycle(transaction, repository, effects, clock)
+    @Bean fun changeGameLifecycle(
+        transaction: JdbcTransactionRunner, repository: JdbcGameOccurrenceRepository, effects: GameSideEffectPort, clock: Clock,
+        horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
+    ) = ChangeGameLifecycle(transaction, repository, effects, clock, horizon)
     @Bean fun listGames(repository: JdbcGameOccurrenceRepository, counts: GameAttendanceCountSource) = ListGames(repository, counts)
     @Bean fun getGame(repository: JdbcGameOccurrenceRepository, counts: GameAttendanceCountSource) = GetGame(repository, counts)
     @Bean fun gameController(

@@ -22,6 +22,7 @@ class JdbcSeriesReleaseRepository(dataSource: DataSource) : ReleasableOccurrence
                     gameId = rs.getObject("id", UUID::class.java),
                     version = rs.getLong("version"),
                     ownerId = rs.getObject("owner_user_id", UUID::class.java),
+                    startsAt = rs.getTimestamp("starts_at").toInstant(),
                 )
             }
             .list()
@@ -33,7 +34,7 @@ class JdbcSeriesReleaseRepository(dataSource: DataSource) : ReleasableOccurrence
         // (ex.: o avulso adotado pela série), o seguinte espera. A janela :until só limita o que é
         // liberado e não muda quem é o próximo: próximo além da janela não libera nada.
         const val NEXT_OCCURRENCES = """
-            SELECT next.group_id, next.id, next.version, next.owner_user_id
+            SELECT next.group_id, next.id, next.version, next.owner_user_id, next.starts_at
             FROM (
                 SELECT DISTINCT ON (g.group_id, g.series_id, g.slot_key)
                        g.group_id, g.id, g.version, g.status, g.starts_at, groups.owner_user_id

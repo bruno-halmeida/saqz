@@ -75,7 +75,7 @@ class WeeklySeriesController(private val actors:VerifiedGroupActorResolver,priva
                 boundaries.thisAndFuture(group,current,expected,rule,expected.toInt()+1,boundary,action)
             }
         }
-        when(result){SeriesBoundaryResult.Applied,SeriesBoundaryResult.Replay->Unit;SeriesBoundaryResult.NotFound->throw GameNotFoundException();SeriesBoundaryResult.VersionConflict->throw VersionConflictException();SeriesBoundaryResult.InvalidBoundary->invalid("boundary","is invalid for the selected occurrence");is SeriesBoundaryResult.Invalid->throw InvalidGroupRequestException(result.errors.groupBy({it.field},{it.message}))}
+        when(result){SeriesBoundaryResult.Applied,SeriesBoundaryResult.Replay->Unit;SeriesBoundaryResult.NotFound->throw GameNotFoundException();SeriesBoundaryResult.VersionConflict->throw VersionConflictException();SeriesBoundaryResult.InvalidBoundary->invalid("boundary","is invalid for the selected occurrence");is SeriesBoundaryResult.AfterPlanEnd->throw GameAfterPlanEndException(result.startsBefore);is SeriesBoundaryResult.Invalid->throw InvalidGroupRequestException(result.errors.groupBy({it.field},{it.message}))}
         return when(val loaded=series.read(actor,group,lineage)){is WeeklySeriesResult.Success->ResponseEntity.ok().eTag(loaded.series.version.toString()).body(loaded.series.response());else->throwResult(loaded)}
     }
     private fun version(value:String?):Long=QuotedResourceVersion.parseRequired(value)

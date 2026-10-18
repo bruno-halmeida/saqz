@@ -87,6 +87,25 @@ class ReleaseSeriesOccurrencesTest {
         assertEquals(emptyList(), effects)
     }
 
+    @Test fun `occurrences at the plan limit or later stay in draft and go out once the plan grows`() {
+        val inside = games.draft(groupId)
+        val atLimit = games.draft(groupId)
+        repository.offer(inside to now.plusSeconds(3600), atLimit to now.plusSeconds(7200))
+        horizonUntil = now.plusSeconds(7200)
+
+        release().releaseAll()
+        release().release(groupId)
+
+        assertEquals(GameStatus.PUBLISHED, games.status(inside))
+        assertEquals(GameStatus.DRAFT, games.status(atLimit))
+
+        // Assinatura renovada: o limite cresce e a rotina libera o rascunho que ficou.
+        horizonUntil = now.plusSeconds(86_400)
+        release().releaseAll()
+        assertEquals(GameStatus.PUBLISHED, games.status(atLimit))
+        assertEquals(emptyList(), failures)
+    }
+
     @Test fun `a failing occurrence is reported and does not stop the others`() {
         val broken = games.draft(groupId)
         val healthy = games.draft(groupId)
@@ -130,6 +149,9 @@ class ReleaseSeriesOccurrencesTest {
     private class FakeReleasable(private val owner: UUID) : ReleasableOccurrenceRepository {
         val calls = mutableListOf<Triple<Instant, Instant?, UUID?>>()
         private val offered = mutableListOf<ReleasableOccurrence>()
+        fun offer(vararg games: Pair<Game, Instant>) {
+            games.forEach { (game, startsAt) -> offered += ReleasableOccurrence(game.groupId, game.id, game.version, owner, startsAt) }
+        }
         fun offer(vararg games: Game, version: Long? = null) {
             games.forEach { offered += ReleasableOccurrence(it.groupId, it.id, version ?: it.version, owner) }
         }

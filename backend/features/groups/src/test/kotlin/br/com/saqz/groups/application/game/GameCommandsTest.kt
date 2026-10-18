@@ -13,11 +13,14 @@ import br.com.saqz.groups.domain.game.GameVenueInput
 import br.com.saqz.groups.domain.game.GameVenueSnapshot
 import br.com.saqz.groups.domain.game.GroupGameDefaults
 import org.junit.jupiter.api.Test
+import br.com.saqz.sharedkernel.subscription.GameCreationHorizon
+import br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -285,6 +288,81 @@ class GameCommandsTest {
         assertEquals(GameStatus.PUBLISHED, assertIs<GameCommandResult.Success>(released).game.status)
     }
 
+    // DEB-075: nenhum jogo começa no limite do plano (0h do dia do fim) ou depois.
+
+    private fun limitAt(limit: Instant?) = object : GameCreationHorizon {
+        override fun until(groupId: UUID): Instant? = limit
+    }
+
+    @Test fun `create refuses a game starting at the plan limit or later and accepts one a minute before`() {
+        val refused = fixture(GroupRole.OWNER, horizon = limitAt(START))
+        assertEquals(GameCommandResult.AfterPlanEnd(START), refused.create.execute(actor, groupId, gameId, createInput()))
+        assertTrue(refused.repository.creates.isEmpty())
+
+        val later = fixture(GroupRole.OWNER, horizon = limitAt(START.minusSeconds(3600)))
+        assertEquals(GameCommandResult.AfterPlanEnd(START.minusSeconds(3600)), later.create.execute(actor, groupId, gameId, createInput()))
+
+        val accepted = fixture(GroupRole.OWNER, horizon = limitAt(START.plusSeconds(60)))
+        assertIs<GameCommandResult.Success>(accepted.create.execute(actor, groupId, gameId, createInput()))
+    }
+
+    @Test fun `create without a plan is a subscription requirement and writes nothing`() {
+        val fixture = fixture(GroupRole.OWNER, horizon = limitAt(null))
+        assertFailsWith<SubscriptionRequiredException> { fixture.create.execute(actor, groupId, gameId, createInput()) }
+        assertTrue(fixture.repository.creates.isEmpty())
+    }
+
+    @Test fun `validation and the clock come before the plan limit and the schedule conflict after it`() {
+        val invalid = fixture(GroupRole.OWNER, horizon = limitAt(START.minusSeconds(60)))
+        assertIs<GameCommandResult.Invalid>(invalid.create.execute(actor, groupId, gameId, createInput(capacity = 3)))
+        val past = fixture(GroupRole.OWNER, clock = java.time.Clock.fixed(START.plusSeconds(60), java.time.ZoneOffset.UTC), horizon = limitAt(START.minusSeconds(60)))
+        assertIs<GameCommandResult.Invalid>(past.create.execute(actor, groupId, gameId, createInput(deadline = START.minusSeconds(7200))))
+
+        val conflicting = fixture(GroupRole.OWNER, horizon = limitAt(START))
+        conflicting.repository.recurringConflict = UUID.randomUUID()
+        assertEquals(GameCommandResult.AfterPlanEnd(START), conflicting.create.execute(actor, groupId, gameId, createInput()))
+    }
+
+    @Test fun `edit that moves the start to the limit or later is refused with no write notice or effect`() {
+        val notices = mutableListOf<Instant>()
+        val transaction = ImmediateTransaction()
+        val repository = FakeRepository(null, GameCommandContext(GroupRole.OWNER, Game(gameId, groupId, validSnapshot(), GameStatus.PUBLISHED, 1)))
+        val effects = FakeEffects()
+        val clock = java.time.Clock.fixed(Instant.parse("2026-08-01T12:00:00Z"), java.time.ZoneOffset.UTC)
+        val edit = EditGame(transaction, repository, effects, clock, scheduleNotice = { _, _, saved -> notices += saved.snapshot.startsAt }, horizon = limitAt(START.plusSeconds(3600)))
+
+        val moved = edit.execute(actor, groupId, gameId, 1, validDraft().copy(startsAt = START.plusSeconds(3600), localTime = LocalTime.of(20, 30), confirmationDeadline = START))
+
+        assertEquals(GameCommandResult.AfterPlanEnd(START.plusSeconds(3600)), moved)
+        assertTrue(repository.updates.isEmpty())
+        assertTrue(effects.calls.isEmpty())
+        assertTrue(notices.isEmpty())
+        // Um minuto antes do limite passa.
+        assertIs<GameCommandResult.Success>(edit.execute(actor, groupId, gameId, 1, validDraft().copy(startsAt = START.plusSeconds(3540), localTime = LocalTime.of(20, 29), confirmationDeadline = START)))
+    }
+
+    @Test fun `edit of a legacy game beyond the limit still saves when the start does not change`() {
+        val fixture = fixture(GroupRole.OWNER, horizon = limitAt(START.minusSeconds(86_400)))
+        assertIs<GameCommandResult.Success>(fixture.edit.execute(actor, groupId, gameId, 1, validDraft("Novo título")))
+        assertEquals(1, fixture.repository.updates.size)
+    }
+
+    @Test fun `publish is refused beyond the limit with or without the timing check and cancel ignores the limit`() {
+        val beyond = limitAt(START)
+        val manual = fixture(GroupRole.OWNER, horizon = beyond)
+        assertEquals(GameCommandResult.AfterPlanEnd(START), manual.lifecycle.execute(actor, groupId, gameId, 1, GameMutation.PUBLISH))
+        val release = fixture(GroupRole.OWNER, horizon = beyond)
+        assertEquals(GameCommandResult.AfterPlanEnd(START), release.lifecycle.execute(actor, groupId, gameId, 1, GameMutation.PUBLISH, enforceTiming = false))
+        assertTrue(manual.repository.updates.isEmpty() && release.repository.updates.isEmpty())
+        assertTrue(manual.effects.calls.isEmpty())
+
+        val inside = fixture(GroupRole.OWNER, horizon = limitAt(START.plusSeconds(60)))
+        assertIs<GameCommandResult.Success>(inside.lifecycle.execute(actor, groupId, gameId, 1, GameMutation.PUBLISH))
+
+        val cancel = fixture(GroupRole.OWNER, status = GameStatus.PUBLISHED, horizon = limitAt(null))
+        assertIs<GameCommandResult.Success>(cancel.lifecycle.execute(actor, groupId, gameId, 1, GameMutation.CANCEL))
+    }
+
     @Test fun `edit checks the clock only for the fields it changes`() {
         val clock = java.time.Clock.fixed(START.minusSeconds(1800), java.time.ZoneOffset.UTC)
         val fixture = fixture(GroupRole.OWNER, clock = clock)
@@ -362,6 +440,7 @@ class GameCommandsTest {
         version: Long = 1,
         defaults: GroupGameDefaults = defaults(),
         clock: java.time.Clock = java.time.Clock.fixed(java.time.Instant.parse("2026-08-01T12:00:00Z"), java.time.ZoneOffset.UTC),
+        horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
     ): Fixture {
         val transaction = ImmediateTransaction()
         val repository = FakeRepository(
@@ -370,9 +449,9 @@ class GameCommandsTest {
         )
         val effects = FakeEffects()
         return Fixture(
-            CreateGame(transaction, repository, clock),
-            EditGame(transaction, repository, effects, clock),
-            ChangeGameLifecycle(transaction, repository, effects, clock),
+            CreateGame(transaction, repository, clock, horizon),
+            EditGame(transaction, repository, effects, clock, horizon = horizon),
+            ChangeGameLifecycle(transaction, repository, effects, clock, horizon),
             repository,
             effects,
         )

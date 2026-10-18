@@ -48,6 +48,11 @@ data class TrialAccessResponse(
     val usage: TrialUsageResponse? = null,
     /** A folha de contagem do app já abriu hoje (dia de São Paulo) em algum aparelho do dono. */
     val countdownSeenToday: Boolean = false,
+    /**
+     * Primeiro instante em que um jogo do grupo já não pode começar (0h do dia do fim do plano ou do teste, no
+     * fuso do grupo). Só na rota do grupo e só para dono e admins; o app tira dele o último dia que dá para marcar.
+     */
+    val gamesUntil: Instant? = null,
 )
 
 data class TrialUsageResponse(val games: Int, val confirmedAthletes: Int, val cashCents: Long)
@@ -65,6 +70,7 @@ class OrganizerTrialController(
     private val usageLookup: TrialUsageLookup? = null,
     private val prompts: TrialPromptStore? = null,
     private val clock: java.time.Clock = java.time.Clock.systemUTC(),
+    private val horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon? = null,
 ) {
     @GetMapping("/subscriptions/trial")
     fun mine(@AuthenticationPrincipal identity: RequestIdentity): TrialAccessResponse =
@@ -125,7 +131,9 @@ class OrganizerTrialController(
     fun group(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: UUID): TrialAccessResponse {
         val actorId = actors.resolve(identity).userId
         val owner = groups.ownerForMember(groupId, actorId) ?: throw GroupNotFoundException()
-        return trials.forOwner(owner).response(owner == actorId)
+        val response = trials.forOwner(owner).response(owner == actorId)
+        val gamesUntil = if (groups.isOrganizer(groupId, actorId)) horizon?.startsBefore(groupId) else null
+        return response.copy(gamesUntil = gamesUntil?.takeIf { it != Instant.MAX })
     }
 
     private fun OrganizerTrialAccess.response(isOwner: Boolean) =

@@ -30,6 +30,16 @@ class GameControllerTest {
 
     @Test fun `create returns 201 quoted ETag and server state`() { val response = controller.create(ID, "$group", request()); assertEquals(201, response.statusCode.value()); assertEquals("\"1\"", response.headers.eTag); assertEquals("DRAFT", response.body!!.status); assertEquals(0, response.body!!.confirmedCount) }
     @Test fun `persisted schedule conflict is exposed as the schedule conflict exception`() { val existing = UUID.randomUUID(); repository.writeResult = GameWriteResult.ScheduleConflict(existing); val failure = assertFailsWith<GameScheduleConflictException> { controller.create(ID, "$group", request()) }; assertEquals(existing, failure.gameId) }
+    @Test fun `a game after the plan end becomes the after plan end exception with the first instant that no longer fits`() {
+        val tx = object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() }
+        val limit = START
+        val horizon = object : br.com.saqz.sharedkernel.subscription.GameCreationHorizon { override fun until(groupId: UUID): Instant? = limit }
+        val clock = java.time.Clock.fixed(Instant.parse("2026-08-01T12:00:00Z"), java.time.ZoneOffset.UTC)
+        val limited = GameController(VerifiedGroupActorResolver { actor }, CreateGame(tx, repository, clock, horizon), EditGame(tx, repository, effects, clock, horizon = horizon), ChangeGameLifecycle(tx, repository, effects, clock, horizon), ListGames(repository, GameAttendanceCountSource { ids -> ids.associateWith { GameAttendanceCounts(0, 0) } }), GetGame(repository, GameAttendanceCountSource { ids -> ids.associateWith { GameAttendanceCounts(0, 0) } }))
+        val failure = assertFailsWith<GameAfterPlanEndException> { limited.create(ID, "$group", request()) }
+        assertEquals(limit, failure.startsBefore)
+    }
+
     @Test fun `create retry with same request id returns the authoritative original`() { val id=UUID.randomUUID(); controller.create(ID,"$group",request(id)); val replay=controller.create(ID,"$group",request(id).copy(title="Different")); assertEquals(1,repository.games.size); assertEquals("Treino semanal",replay.body!!.title) }
     @Test fun `create requires request id`() { assertFailsWith<InvalidGroupRequestException> { controller.create(ID,"$group",request().copy(requestId=null)) } }
     @Test fun `create reports all invalid fields`() { val failure=assertFailsWith<InvalidGroupRequestException>{ controller.create(ID,"$group",request().copy(title="x",durationMinutes=2,capacity=1)) }; assertTrue(failure.fieldErrors.keys.containsAll(listOf("title","durationMinutes","capacity"))) }

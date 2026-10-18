@@ -66,6 +66,9 @@ class GameNotFoundException : RuntimeException()
 class InvalidGameTransitionException : RuntimeException()
 class GameScheduleConflictException(val gameId: UUID) : RuntimeException()
 
+/** O jogo começaria depois do fim do plano ou do teste; [startsBefore] é o primeiro instante que já não vale (DEB-075). */
+class GameAfterPlanEndException(val startsBefore: java.time.Instant) : RuntimeException()
+
 @RestController
 class GameController(
     private val actors: VerifiedGroupActorResolver,
@@ -130,6 +133,7 @@ class GameController(
         is GameCommandResult.InvalidTransition -> throw InvalidGameTransitionException()
         GameCommandResult.VersionConflict -> throw VersionConflictException()
         is GameCommandResult.ScheduleConflict -> throw GameScheduleConflictException(result.gameId)
+        is GameCommandResult.AfterPlanEnd -> throw GameAfterPlanEndException(result.startsBefore)
         GameCommandResult.GroupNotFound, GameCommandResult.GameNotFound -> throw GameNotFoundException()
         GameCommandResult.AccessForbidden -> throw AccessForbiddenException()
     }

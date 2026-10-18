@@ -103,6 +103,24 @@ class ReleaseSeriesOccurrencesIntegrationTest {
         assertEquals(1, int("SELECT count(*) FROM games WHERE group_id='$other' AND status='PUBLISHED'"))
     }
 
+    @Test fun `a draft at or after the plan limit stays hidden and goes out once the plan grows`() {
+        sync(CLOCK)
+        assertEquals(listOf("2026-09-17 20:00", "2026-09-19 10:00"), published())
+
+        // Fim do plano em 24/09 0h (São Paulo): quinta 24/09 20h já não cabe, nem pela sincronização nem pela rotina.
+        until = Instant.parse("2026-09-24T03:00:00Z")
+        val sunday = Clock.fixed(Instant.parse("2026-09-20T15:00:00Z"), ZoneOffset.UTC)
+        release(sunday).release(group)
+        release(sunday).releaseAll()
+        assertEquals(listOf("2026-09-17 20:00", "2026-09-19 10:00"), published())
+        assertEquals("DRAFT", string("SELECT status::text FROM games WHERE group_id='$group' AND local_date='2026-09-24'"))
+
+        // O plano renova: o rascunho que ficou sai sozinho na rotina seguinte.
+        until = Instant.parse("2026-10-17T15:00:00Z")
+        release(sunday).releaseAll()
+        assertEquals(listOf("2026-09-17 20:00", "2026-09-19 10:00", "2026-09-24 20:00"), published())
+    }
+
     @Test fun `a new slot is born with its next game published even beyond the five day window`() {
         // Só quarta 20h: com o relógio na quinta 17/09, a próxima quarta (23/09) fica a 6 dias.
         execute("DELETE FROM group_regular_slots WHERE group_id='$group'")
