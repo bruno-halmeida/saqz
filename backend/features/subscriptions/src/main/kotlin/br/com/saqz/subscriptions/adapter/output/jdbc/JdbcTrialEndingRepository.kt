@@ -12,12 +12,12 @@ import javax.sql.DataSource
 class JdbcTrialEndingRepository(dataSource: DataSource) : TrialEndingRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun endingSoon(now: Instant, within: Duration): List<OrganizerTrial> = jdbc.sql(
+    override fun around(now: Instant, ahead: Duration, behind: Duration): List<OrganizerTrial> = jdbc.sql(
         """
         SELECT owner_user_id, started_at, ends_at FROM organizer_trials
-        WHERE ends_at > :now AND ends_at <= :limit ORDER BY ends_at, owner_user_id
+        WHERE ends_at > :from AND ends_at <= :to ORDER BY ends_at, owner_user_id
         """.trimIndent(),
-    ).param("now", Timestamp.from(now)).param("limit", Timestamp.from(now.plus(within))).query { rs, _ ->
+    ).param("from", Timestamp.from(now.minus(behind))).param("to", Timestamp.from(now.plus(ahead))).query { rs, _ ->
         OrganizerTrial(
             rs.getObject("owner_user_id", UUID::class.java),
             rs.getTimestamp("started_at").toInstant(),

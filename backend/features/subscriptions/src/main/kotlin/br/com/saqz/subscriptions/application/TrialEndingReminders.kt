@@ -13,12 +13,18 @@ import java.time.ZoneId
 import java.util.Locale
 import java.util.UUID
 
-/** Marcos do aviso, em dias de calendário até o fim do teste: faltam 3, falta 1 e o dia do fim. */
-internal val TRIAL_ENDING_MILESTONES = listOf(3, 1, 0)
+/**
+ * Marcos do aviso, em dias de calendário que faltam para o fim do teste: faltam 3, falta 1, o dia do fim e, depois
+ * dele, -3 e -14 (3 e 14 dias depois, DEB-078). O mais apertado de uma rodada é sempre o menor.
+ */
+internal val TRIAL_ENDING_MILESTONES = listOf(3, 1, 0, -3, -14)
+
+/** Quantos dias depois do fim o teste ainda pode receber o último aviso (o marco -14 e um dia de folga). */
+internal const val TRIAL_ENDED_WINDOW_DAYS = 15L
 
 interface TrialEndingRepository {
-    /** Testes que ainda não acabaram e terminam em até [within]. */
-    fun endingSoon(now: java.time.Instant, within: Duration): List<OrganizerTrial>
+    /** Testes que terminam em até [ahead] e os que terminaram há até [behind] (teste que já acabou também recebe aviso). */
+    fun around(now: java.time.Instant, ahead: Duration, behind: Duration): List<OrganizerTrial>
 
     /**
      * Reserva todos os marcos de [due] que ainda não existem. Devolve true quando o mais apertado (o menor)
@@ -42,7 +48,7 @@ const val SUBSCRIBE_URL = "https://saqz.app/assinar"
 data class TrialEndingMessage(val body: String, val push: String)
 
 /**
- * Job diário: a 3 dias, a 1 dia e no dia do fim do teste, quem ainda não assinou recebe, uma vez
+ * Job diário: a 3 dias, a 1 dia, no dia do fim do teste e 3 e 14 dias depois, quem ainda não assinou recebe, uma vez
  * por marco, o aviso na central, no push e no WhatsApp. Número e horário calculados aqui, no backend.
  */
 class TrialEndingReminders(
@@ -58,9 +64,11 @@ class TrialEndingReminders(
     fun run(): Int {
         val now = clock.instant()
         var sent = 0
-        trials.endingSoon(now, Duration.ofDays(TRIAL_ENDING_MILESTONES.max() + 1L)).forEach { trial ->
+        trials.around(now, Duration.ofDays(TRIAL_ENDING_MILESTONES.max() + 1L), Duration.ofDays(TRIAL_ENDED_WINDOW_DAYS + 1)).forEach { trial ->
             val daysLeft = trialDaysLeft(now, trial.endsAt, zone)
-            val due = TRIAL_ENDING_MILESTONES.filter { daysLeft <= it }
+            if (daysLeft < -TRIAL_ENDED_WINDOW_DAYS) return@forEach
+            // Depois do fim só valem os marcos de depois do fim: "termina hoje" não sai com o teste já acabado.
+            val due = TRIAL_ENDING_MILESTONES.filter { daysLeft <= it && (it < 0 || trial.endsAt > now) }
             if (due.isEmpty() || paid.findEntitlingPlan(trial.ownerUserId) != null) return@forEach
             if (!trials.claim(trial.ownerUserId, due)) return@forEach
             val milestone = due.min()
@@ -100,13 +108,18 @@ fun trialEndingMessage(milestone: Int, daysLeft: Int, endsAt: Instant, usage: Tr
                 "Seus grupos e o histórico ficam guardados, e voltam na hora quando você assina. Assinar agora: $SUBSCRIBE_URL",
             "Seu teste termina amanhã. Assine para a galera não ficar sem lista.",
         )
-        else -> TrialEndingMessage(
+        milestone == 0 -> TrialEndingMessage(
             "Seu teste termina hoje, às $hour. Assine agora para a galera continuar confirmando presença sem parar. " +
                 "Tudo o que você montou fica guardado. Assinar agora: $SUBSCRIBE_URL",
             "Seu teste termina hoje às $hour. Toque para assinar.",
         )
+        milestone == -3 -> afterTheEnd("Sua galera está esperando: seus grupos estão congelados. Assine para voltar de onde parou.")
+        else -> afterTheEnd("Seus grupos e o histórico seguem guardados. Quando quiser voltar, é só assinar.")
     }
 }
+
+/** DEB-078: o push é o próprio texto, sem o link (o toque abre a tela de planos). */
+private fun afterTheEnd(text: String) = TrialEndingMessage("$text Assinar agora: $SUBSCRIBE_URL", text)
 
 /** "3 jogos organizados, 12 atletas confirmados e R$ 450,00 no caixa". */
 fun trialUsageSummary(usage: TrialUsage): String {

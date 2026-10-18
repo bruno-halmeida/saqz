@@ -89,8 +89,49 @@ class TrialEndingRemindersTest {
 
     @Test
     fun `nenhum texto traz o nome Organizador`() {
-        val all = listOf(3, 1, 0).map { trialEndingMessage(it, it, ends, usage) }
+        val all = listOf(3, 1, 0, -3, -14).map { trialEndingMessage(it, it, ends, usage) }
         assertTrue(all.none { "Organizador" in it.body || "Organizador" in it.push })
+    }
+
+    @Test
+    fun `tres dias depois do fim avisa que os grupos estao congelados e catorze dias depois e o ultimo`() {
+        assertEquals(0, runAt("2026-10-17T13:00:00Z")) // 2 dias depois
+        assertEquals(1, runAt("2026-10-18T13:00:00Z")) // 3 dias depois
+        assertEquals(0, runAt("2026-10-18T14:00:00Z"))
+        assertEquals(0, runAt("2026-10-25T13:00:00Z"))
+        assertEquals(1, runAt("2026-10-29T13:00:00Z")) // 14 dias depois
+        assertEquals(0, runAt("2026-10-29T14:00:00Z"))
+        assertEquals(0, runAt("2026-10-30T13:00:00Z"))
+        assertEquals(0, runAt("2026-11-20T13:00:00Z")) // mais nenhuma
+        assertEquals(
+            listOf(
+                "Sua galera está esperando: seus grupos estão congelados. Assine para voltar de onde parou. Assinar agora: https://saqz.app/assinar",
+                "Seus grupos e o histórico seguem guardados. Quando quiser voltar, é só assinar. Assinar agora: https://saqz.app/assinar",
+            ),
+            published,
+        )
+        assertEquals(published, whatsApp)
+        assertTrue(published.none { "pausad" in it })
+    }
+
+    @Test
+    fun `depois do fim quem assinou nao recebe aviso`() {
+        paid = true
+        assertEquals(0, runAt("2026-10-18T13:00:00Z"))
+        assertTrue(published.isEmpty() && whatsApp.isEmpty())
+    }
+
+    @Test
+    fun `teste que acabou ha mais de duas semanas nao recebe o aviso de uma vez ao ligar o job`() {
+        assertEquals(0, runAt("2026-11-05T13:00:00Z"))
+        assertTrue(published.isEmpty())
+    }
+
+    @Test
+    fun `rodada perdida depois do fim avisa so o marco mais apertado`() {
+        assertEquals(1, runAt("2026-10-20T13:00:00Z")) // 5 dias depois
+        assertEquals(0, runAt("2026-10-20T14:00:00Z"))
+        assertTrue(published.single().startsWith("Sua galera está esperando"))
     }
 
     @Test
@@ -107,7 +148,7 @@ class TrialEndingRemindersTest {
     }
 
     @Test
-    fun `teste que ja terminou nao recebe o aviso de fim`() {
+    fun `no dia do fim, depois da hora do fim, so vale o aviso de depois do fim`() {
         assertEquals(0, runAt("2026-10-15T16:00:00Z"))
         assertTrue(published.isEmpty())
     }
@@ -161,8 +202,8 @@ class TrialEndingRemindersTest {
     private class FakeStore(private val trial: OrganizerTrial) : TrialEndingRepository {
         private val claimed = mutableSetOf<Int>()
 
-        override fun endingSoon(now: Instant, within: Duration) =
-            listOf(trial).filter { it.endsAt > now && it.endsAt <= now.plus(within) }
+        override fun around(now: Instant, ahead: Duration, behind: Duration) =
+            listOf(trial).filter { it.endsAt > now.minus(behind) && it.endsAt <= now.plus(ahead) }
 
         override fun claim(ownerUserId: UUID, due: List<Int>): Boolean {
             val fresh = due.filter { claimed.add(it) }

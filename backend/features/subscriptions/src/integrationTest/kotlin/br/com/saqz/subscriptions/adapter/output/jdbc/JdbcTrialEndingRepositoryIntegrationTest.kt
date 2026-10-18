@@ -20,14 +20,27 @@ class JdbcTrialEndingRepositoryIntegrationTest {
     private val now = Instant.parse("2026-10-12T13:00:00Z")
 
     @Test
-    fun `lista so testes que ainda nao acabaram e terminam dentro da janela`() {
+    fun `lista os testes que terminam na janela e os que acabaram ha pouco`() {
         val soon = trial(now.minus(Duration.ofDays(11))) // termina em 3 dias
-        val ended = trial(now.minus(Duration.ofDays(15)))
+        val ended = trial(now.minus(Duration.ofDays(15))) // acabou ontem
+        val longAgo = trial(now.minus(Duration.ofDays(40)))
         val far = trial(now)
-        val ids = repository.endingSoon(now, Duration.ofDays(4)).map { it.ownerUserId }
-        assertEquals(listOf(soon.ownerUserId), ids)
-        assertFalse(ended.ownerUserId in ids)
+        val ids = repository.around(now, Duration.ofDays(4), Duration.ofDays(16)).map { it.ownerUserId }
+        assertEquals(listOf(ended.ownerUserId, soon.ownerUserId), ids)
+        assertFalse(longAgo.ownerUserId in ids)
         assertFalse(far.ownerUserId in ids)
+    }
+
+    @Test
+    fun `os marcos de depois do fim (-3 e -14) tem reserva propria`() {
+        val owner = trial(now.minus(Duration.ofDays(20))).ownerUserId
+
+        assertTrue(repository.claim(owner, listOf(3, 1, 0, -3)))
+        assertFalse(repository.claim(owner, listOf(3, 1, 0, -3)))
+        assertTrue(repository.claim(owner, listOf(3, 1, 0, -3, -14)))
+        assertEquals(setOf<Short>(3, 1, 0, -3, -14), milestones(owner))
+        repository.release(owner, -14)
+        assertEquals(setOf<Short>(3, 1, 0, -3), milestones(owner))
     }
 
     @Test
