@@ -73,6 +73,9 @@ class ContentModerationEndpointIntegrationTest {
         assertEquals(401, request("POST", "/api/reports", report, actor = null).statusCode())
         assertEquals(404, request("POST", "/api/reports", report, stranger).statusCode())
         assertEquals(204, request("POST", "/api/reports", report, member).statusCode())
+        // DEB-070: o aviso denunciado some na hora para quem denunciou; o autor e os outros seguem vendo.
+        assertEquals(0, json.readTree(request("GET", notices, actor = member).body())["items"].size())
+        assertEquals(1, json.readTree(request("GET", notices, actor = owner).body())["items"].size())
         assertEquals(422, request("POST", "/api/reports", report.replace("OFFENSIVE", "BLOCKED"), member).statusCode())
         assertEquals(422, request("POST", "/api/reports", report.replace("MESSAGE", "POST"), member).statusCode())
 
@@ -88,7 +91,8 @@ class ContentModerationEndpointIntegrationTest {
 
         assertEquals(204, request("DELETE", "/api/me/blocks/$owner", actor = member).statusCode())
         assertEquals(204, request("DELETE", "/api/me/blocks/$owner", actor = member).statusCode())
-        assertEquals(1, json.readTree(request("GET", notices, actor = member).body())["items"].size())
+        // Desbloquear não devolve o aviso que a própria pessoa denunciou.
+        assertEquals(0, json.readTree(request("GET", notices, actor = member).body())["items"].size())
         assertEquals(2, JdbcClient.create(dataSource).sql("SELECT count(*) FROM content_reports").query(Int::class.java).single())
     }
 
