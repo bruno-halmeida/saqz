@@ -22,12 +22,12 @@ internal class AttendanceE2eTest : InstalledE2e("attendance") {
         waitEnabled("home-reserva-leave")
         ui.onNodeWithText("Lista de espera · 1º").performScrollTo().assertIsDisplayed()
         val waiting = api("athlete", attendancePath)
-        assertEquals(2, waiting.getInt("confirmedCount"))
+        assertEquals(4, waiting.getInt("confirmedCount"))
         assertEquals(0, waiting.getInt("availableSpots"))
         assertEquals(1, waiting.getInt("waitlistCount"))
         assertEquals("WAITLISTED", waiting.getJSONObject("ownAttendance").getString("status"))
         assertEquals(1L, waiting.getJSONObject("ownAttendance").getLong("waitlistPosition"))
-        back()
+        backToShell()
         logout()
 
         login("owner")
@@ -41,16 +41,16 @@ internal class AttendanceE2eTest : InstalledE2e("attendance") {
         assertEquals("DECLINED", api("owner", attendancePath).getJSONObject("ownAttendance").getString("status"))
         val promoted = api("athlete", attendancePath)
         assertEquals("CONFIRMED", promoted.getJSONObject("ownAttendance").getString("status"))
-        assertEquals(2, promoted.getInt("confirmedCount"))
+        assertEquals(4, promoted.getInt("confirmedCount"))
         assertEquals(0, promoted.getInt("waitlistCount"))
         assertEquals(0, promoted.getInt("availableSpots"))
         val roster = api("owner", "$attendancePath/roster")
         val confirmed = roster.getJSONArray("confirmed")
         assertEquals(
-            setOf(actor("athlete").getString("id"), actor("other").getString("id")),
+            setOf(actor("athlete").getString("id"), actor("other").getString("id")) + fillerIds(),
             (0 until confirmed.length()).map { confirmed.getJSONObject(it).getString("memberId") }.toSet(),
         )
-        assertEquals(2, confirmed.length())
+        assertEquals(4, confirmed.length())
         assertEquals(0, roster.getJSONArray("waitlisted").length())
         back()
         logout()

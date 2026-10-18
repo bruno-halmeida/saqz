@@ -32,9 +32,9 @@ internal class AttendanceOrderE2eTest : InstalledE2e("attendance-order") {
         assertEquals("WAITLISTED", api("reserve", path).getJSONObject("ownAttendance").getString("status"))
         val after = api("owner", "$path/roster")
         val confirmed = after.getJSONArray("confirmed")
-        assertEquals(2, confirmed.length())
+        assertEquals(4, confirmed.length())
         assertEquals(
-            setOf(actor("athlete").getString("id"), actor("other").getString("id")),
+            setOf(actor("athlete").getString("id"), actor("other").getString("id")) + fillerIds(),
             (0 until confirmed.length()).map { confirmed.getJSONObject(it).getString("memberId") }.toSet(),
         )
         assertEquals(1, after.getJSONArray("waitlisted").length())

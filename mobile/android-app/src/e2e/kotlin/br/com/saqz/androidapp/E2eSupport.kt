@@ -38,6 +38,10 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
     protected val group: String get() = data.getString("group")
     protected val secondGroup: String get() = data.getString("secondGroup")
     protected fun actor(role: String) = data.getJSONObject(role)
+    /** Avulsos que completam as 4 vagas mínimas (DEB-019) nos cenários de presença. */
+    protected fun fillerIds(): Set<String> = data.getJSONArray("fillers").let { list ->
+        (0 until list.length()).map { list.getJSONObject(it).getString("id") }.toSet()
+    }
     protected val auth get() = AndroidFirebaseBootstrap.initialize(InstrumentationRegistry.getInstrumentation().targetContext)
 
     protected fun waitTag(tag: String) {
@@ -112,6 +116,14 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
     protected fun back() {
         ui.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         ui.waitForIdle()
+    }
+
+    /** Volta até a base do shell; depois de responder presença, o primeiro "voltar" não sai da tela do grupo. */
+    protected fun backToShell() {
+        repeat(3) {
+            if (ui.onAllNodesWithTag("saqz-shell-content").fetchSemanticsNodes().isNotEmpty()) return
+            back()
+        }
     }
 
     protected fun logout() {

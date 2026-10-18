@@ -88,28 +88,28 @@ internal class GameGuestE2eTest : InstalledE2e("attendance-guest") {
         waitText("Você não vai jogar.")
         roster = awaitApi("owner", "$attendancePath/roster") { it.getJSONArray("waitlisted").length() == 1 }
         val confirmed = roster.getJSONArray("confirmed")
-        assertEquals(2, confirmed.length())
+        assertEquals(4, confirmed.length())
         // Ordem do array não é contrato (mesmo padrão de AttendanceE2eTest/AttendanceOrderE2eTest): compara por conjunto.
         assertEquals(
-            setOf(host, actor("other").getString("id")),
+            setOf(host, actor("other").getString("id")) + fillerIds(),
             (0 until confirmed.length()).map { confirmed.getJSONObject(it).getString("memberId") }.toSet(),
         )
         val promotedHost = (0 until confirmed.length()).map { confirmed.getJSONObject(it) }.single { it.getString("memberId") == host }
         assertEquals(0, promotedHost.getInt("guestSeq"))
         assertEquals(1, roster.getJSONArray("waitlisted").length())
-        // 5) gestor aumenta a capacidade para 3 → convidado promovido; cobrança nasce em nome do anfitrião
+        // 5) gestor aumenta a capacidade para 5 → convidado promovido; cobrança nasce em nome do anfitrião
         val gamePath = "/api/groups/$group/games/${data.getString("game")}"
         val version = api("owner", gamePath).getLong("version")
-        api("owner", "$gamePath/capacity", "PUT", JSONObject().put("requestId", UUID.randomUUID().toString()).put("capacity", 3), headers = mapOf("If-Match" to "\"$version\""))
+        api("owner", "$gamePath/capacity", "PUT", JSONObject().put("requestId", UUID.randomUUID().toString()).put("capacity", 5), headers = mapOf("If-Match" to "\"$version\""))
         roster = api("owner", "$attendancePath/roster")
-        assertEquals(3, roster.getJSONArray("confirmed").length())
+        assertEquals(5, roster.getJSONArray("confirmed").length())
         val charges = api("owner", "/api/groups/$group/charges").getJSONArray("charges")
         val guestCharge = (0 until charges.length()).map { charges.getJSONObject(it) }
             .single { it.optString("guestDisplayName", "") == "Rafa Moreira" }
         assertEquals(host, guestCharge.getString("memberId"))
         assertEquals("PENDING", guestCharge.getString("status"))
         assertEquals(2000L, guestCharge.getLong("amountCents"))
-        back()
+        backToShell()
         logout()
 
         // 6) anfitrião desiste → convidado confirmado cai junto e a cobrança dele é cancelada (regras B e F)
@@ -118,8 +118,8 @@ internal class GameGuestE2eTest : InstalledE2e("attendance-guest") {
         click("group-game-response-change", scroll = true)
         click("group-game-response-not-going", scroll = true)
         waitText("Você não vai jogar.")
-        roster = awaitApi("athlete", "$attendancePath/roster") { it.getJSONArray("confirmed").length() == 1 }
-        assertEquals(1, roster.getJSONArray("confirmed").length())
+        roster = awaitApi("athlete", "$attendancePath/roster") { it.getJSONArray("confirmed").length() == 3 }
+        assertEquals(3, roster.getJSONArray("confirmed").length())
         val after = api("owner", "/api/groups/$group/charges").getJSONArray("charges")
         val cancelled = (0 until after.length()).map { after.getJSONObject(it) }
             .single { it.optString("guestDisplayName", "") == "Rafa Moreira" }
