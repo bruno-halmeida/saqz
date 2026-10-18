@@ -99,7 +99,7 @@ class EntryApprovalNoticeIntegrationTest {
         assertEquals(2, count())
     }
 
-    @Test fun `preferencia de avisos da pessoa vale para push e lista`() {
+    @Test fun `preferencia de avisos da pessoa vale so para o push, a aprovacao aparece na central`() {
         val rafa = user("Rafa")
         jdbc.sql("INSERT INTO group_notification_preferences (user_id, notices, push_notices) VALUES (:u, false, false)")
             .param("u", rafa).update()
@@ -108,7 +108,7 @@ class EntryApprovalNoticeIntegrationTest {
         approve.execute(owner, group, rafa)
 
         assertEquals(1, count())
-        assertEquals(emptySet(), recipients())
+        assertEquals(setOf(rafa), recipients())
         assertEquals(false, pushEnabled(rafa))
     }
 

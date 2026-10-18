@@ -70,10 +70,38 @@ class CommunicationScreenTest {
         setContent { SaqzTheme {
             NotificationCenterScreen(NotificationCenterState(loading = false), true, {}, { intents += it })
         } }
-        onNodeWithTag("preferences-notices").performClick()
-        assertEquals(NotificationCenterIntent.Preferences(NotificationPreferences(false, true, true)), intents.single())
+        onNodeWithTag("preferences-push-notices").performClick()
+        assertEquals(
+            NotificationCenterIntent.Preferences(NotificationPreferences(push = PushPreferences(notices = false))),
+            intents.single(),
+        )
         onNodeWithText("Salvar preferências").performClick()
         assertEquals(NotificationCenterIntent.Save, intents.last())
+    }
+    @Test fun theCentralHasNoAppTabBecauseItAlwaysShowsEverything() = runComposeUiTest {
+        setContent { SaqzTheme {
+            NotificationCenterScreen(NotificationCenterState(loading = false), true, {}, {}, whatsAppChannel = true)
+        } }
+        onNodeWithText("No app").assertDoesNotExist()
+        onNodeWithTag("preferences-notices").assertDoesNotExist()
+        onNodeWithTag("preferences-messages").assertDoesNotExist()
+        onNodeWithTag("preferences-reminders").assertDoesNotExist()
+        onNodeWithText("Push").assertExists()
+        onNodeWithText("WhatsApp").assertExists()
+        onNodeWithTag("preferences-push-notices").assertExists()
+    }
+    @Test fun saveKeepsTheServerValuesOfTheCentralFieldsUntouched() = runComposeUiTest {
+        val intents = mutableListOf<NotificationCenterIntent>()
+        val stored = NotificationPreferences(notices = false, messages = false, reminders = false, push = PushPreferences())
+        setContent { SaqzTheme {
+            NotificationCenterScreen(NotificationCenterState(loading = false, preferences = stored), true, {}, { intents += it })
+        } }
+        onNodeWithTag("preferences-push-reminders").performClick()
+        val sent = (intents.single() as NotificationCenterIntent.Preferences).value
+        assertEquals(false, sent.notices)
+        assertEquals(false, sent.messages)
+        assertEquals(false, sent.reminders)
+        assertEquals(false, sent.pushSettings.reminders)
     }
     @Test fun whatsappPreferencesKeepOnlyTheChargeSwitchAndPreserveServerValues() = runComposeUiTest {
         val intents = mutableListOf<NotificationCenterIntent>()

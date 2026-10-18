@@ -134,15 +134,16 @@ class GroupCommunicationIntegrationTest {
         assertEquals(CommunicationResult.Failure(CommunicationError.NOT_FOUND), service.messages(member, group, MessageChannel.NOTICE, null))
         assertEquals(listOf(message), service.messages(owner, group, MessageChannel.NOTICE, null).success().items)
     }
-    @Test fun `preferences persist and mute only future matching notifications`() {
+    @Test fun `preferences persist but never hide anything from the central`() {
         assertEquals(NotificationPreferences(), service.preferences(member))
         service.publish(owner, group, MessageChannel.NOTICE, UUID.randomUUID(), "Primeiro aviso").success()
         val preferences = NotificationPreferences(notices = false, messages = true, reminders = false)
         assertEquals(preferences, service.savePreferences(member, preferences))
         assertEquals(preferences, service.preferences(member))
-        assertEquals(0, service.publish(owner, group, MessageChannel.NOTICE, UUID.randomUUID(), "Aviso silenciado").success().recipientCount)
+        // DEB-064: as chaves antigas da central não escondem nada.
+        assertEquals(1, service.publish(owner, group, MessageChannel.NOTICE, UUID.randomUUID(), "Aviso com a chave desligada").success().recipientCount)
         assertEquals(1, service.publish(owner, group, MessageChannel.CHAT, UUID.randomUUID(), "Mensagem liberada").success().recipientCount)
-        assertEquals(2, service.inbox(member, null).success().items.size)
+        assertEquals(3, service.inbox(member, null).success().items.size)
     }
     @Test fun `reminders list confirmed waitlist and out and retries preserve recipients`() {
         val confirmed = user("Confirmed Person").also { membership(it) }

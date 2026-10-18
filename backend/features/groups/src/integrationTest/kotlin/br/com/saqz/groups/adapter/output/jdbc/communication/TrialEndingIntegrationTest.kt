@@ -47,14 +47,14 @@ class TrialEndingIntegrationTest {
         assertTrue(pushEnabled(owner))
     }
 
-    @Test fun `preferencia de avisos desligada vale para push e central`() {
+    @Test fun `preferencia de avisos desligada vale so para o push, a central mostra`() {
         jdbc.sql("INSERT INTO group_notification_preferences (user_id, notices, push_notices) VALUES (:u, false, false)")
             .param("u", owner).update()
 
         notice.publish(owner, "Falta 1 dia do seu teste do Organizador.")
 
         assertFalse(pushEnabled(owner))
-        assertEquals(0, jdbc.sql("SELECT count(*) FROM group_notifications WHERE in_app").query(Int::class.java).single())
+        assertEquals(1, jdbc.sql("SELECT count(*) FROM group_notifications WHERE in_app").query(Int::class.java).single())
     }
 
     @Test fun `dono sem grupo ativo nao tem onde guardar o aviso`() {

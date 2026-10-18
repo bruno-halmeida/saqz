@@ -75,7 +75,7 @@ class AdministratorPromotionNoticeIntegrationTest {
         assertEquals(0, queuedPushes(rafa))
     }
 
-    @Test fun `preferencia de avisos da pessoa vale para push e lista`() {
+    @Test fun `preferencia de avisos da pessoa vale so para o push, a promocao aparece na central`() {
         val rafa = member("Rafa")
         jdbc.sql("INSERT INTO group_notification_preferences (user_id, notices, push_notices) VALUES (:u, false, false)")
             .param("u", rafa).update()
@@ -83,7 +83,7 @@ class AdministratorPromotionNoticeIntegrationTest {
         change.execute(owner, group, rafa, PersistedMembershipRole.ADMIN)
 
         assertEquals(1, count())
-        assertEquals(emptySet(), recipients())
+        assertEquals(setOf(rafa), recipients())
         assertEquals(false, pushEnabled(rafa))
     }
 

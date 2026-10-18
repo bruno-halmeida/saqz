@@ -253,7 +253,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         FROM group_notifications n JOIN group_messages m ON m.id = n.message_id
         JOIN access_groups g ON g.id = m.group_id AND g.deleted_at IS NULL
         JOIN group_memberships membership ON membership.group_id = m.group_id AND membership.user_id = n.recipient_id
-        WHERE n.recipient_id = :actor AND n.in_app AND (:before IS NULL OR n.sequence < :before)
+        WHERE n.recipient_id = :actor AND (:before IS NULL OR n.sequence < :before)
           AND $NOT_FROM_BLOCKED
         ORDER BY n.sequence DESC LIMIT 51
         """.trimIndent(),

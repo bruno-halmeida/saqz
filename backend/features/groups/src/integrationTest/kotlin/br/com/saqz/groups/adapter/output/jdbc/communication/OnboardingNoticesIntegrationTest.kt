@@ -107,14 +107,14 @@ class OnboardingNoticesIntegrationTest {
         assertEquals(0, count("FIRST_MEMBER"))
     }
 
-    @Test fun `preferencias de avisos do destinatario valem para push e lista`() {
+    @Test fun `preferencias de avisos do destinatario valem so para o push, a central mostra`() {
         jdbc.sql("INSERT INTO group_notification_preferences (user_id, notices, push_notices) VALUES (:u, false, false)")
             .param("u", owner).update()
 
         redeem.execute(user("Rafa"), code.value)
 
         val message = jdbc.sql("SELECT id FROM group_messages WHERE channel = 'FIRST_MEMBER'").query(UUID::class.java).single()
-        assertEquals(emptySet(), recipients(message))
+        assertEquals(setOf(owner), recipients(message))
         assertEquals(false, pushEnabled(owner, "FIRST_MEMBER"))
     }
 
@@ -149,7 +149,7 @@ class OnboardingNoticesIntegrationTest {
         assertEquals(2, count("ENTRY_REQUEST"))
     }
 
-    @Test fun `pedido de entrada segue a preferencia de avisos do gestor`() {
+    @Test fun `pedido de entrada segue a preferencia de push do gestor e aparece na central`() {
         jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
         jdbc.sql("INSERT INTO group_notification_preferences (user_id, notices, push_notices) VALUES (:u, false, false)")
             .param("u", owner).update()
@@ -157,7 +157,7 @@ class OnboardingNoticesIntegrationTest {
         redeem.execute(user("Rafa"), code.value)
 
         val message = jdbc.sql("SELECT id FROM group_messages WHERE channel = 'ENTRY_REQUEST'").query(UUID::class.java).single()
-        assertEquals(emptySet(), recipients(message))
+        assertEquals(setOf(owner), recipients(message))
         assertEquals(false, pushEnabled(owner, "ENTRY_REQUEST"))
     }
 

@@ -114,11 +114,11 @@ class EdicaoDeJogoIntegrationTest {
         assertEquals(1, avisosDeMudanca(vou), "salvar igual não repete o aviso")
     }
 
-    @Test fun `o aviso respeita a preferencia de avisos do membro na central`() {
+    @Test fun `o aviso aparece na central mesmo com os avisos do membro desligados`() {
         val (vou) = elenco()
-        h.execute("INSERT INTO group_notification_preferences (user_id, notices) VALUES ('$vou', false)")
+        h.execute("INSERT INTO group_notification_preferences (user_id, notices, push_notices) VALUES ('$vou', false, false)")
         assertIs<GameCommandResult.Success>(salvar(input(shift = Duration.ofHours(3))))
-        assertEquals(0, h.int("SELECT count(*) FROM group_notifications n JOIN group_messages m ON m.id=n.message_id WHERE n.recipient_id='$vou' AND n.in_app AND m.body LIKE '%mudou:%'"))
+        assertEquals(1, h.int("SELECT count(*) FROM group_notifications n JOIN group_messages m ON m.id=n.message_id WHERE n.recipient_id='$vou' AND n.in_app AND m.body LIKE '%mudou:%'"))
     }
 
     @Test fun `aumentar as vagas pelo editor promove a fila em ordem de chegada, com diaria e aviso, e o jogo salva junto`() {

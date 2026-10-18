@@ -51,7 +51,6 @@ import br.com.saqz.groups.resources.connected_load_failure_title
 import br.com.saqz.groups.resources.communication_notifications
 import br.com.saqz.groups.resources.communication_settings
 import br.com.saqz.groups.resources.communication_settings_note
-import br.com.saqz.groups.resources.communication_channel_app
 import br.com.saqz.groups.resources.communication_channel_push
 import br.com.saqz.groups.resources.communication_channel_whatsapp
 import br.com.saqz.groups.resources.communication_push_note
@@ -79,9 +78,6 @@ import androidx.compose.ui.tooling.preview.Preview
 
 object NotificationCenterTags {
     const val Screen = "notification-center"
-    const val Notices = "preferences-notices"
-    const val Messages = "preferences-messages"
-    const val Reminders = "preferences-reminders"
     const val NotificationsOff = "notifications-off"
     const val NotificationsOffAction = "notifications-off-action"
     fun notification(sequence: Long) = "notification-$sequence"
@@ -147,7 +143,6 @@ internal fun NotificationCenterScreen(
                         SaqzSegmented(
                             channels.map { channel ->
                                 stringResource(when (channel) {
-                                    NotificationSettingsChannel.APP -> Res.string.communication_channel_app
                                     NotificationSettingsChannel.PUSH -> Res.string.communication_channel_push
                                     NotificationSettingsChannel.WHATSAPP -> Res.string.communication_channel_whatsapp
                                 })
@@ -155,20 +150,7 @@ internal fun NotificationCenterScreen(
                             channels.indexOf(state.settingsChannel).coerceAtLeast(0),
                             { onIntent(NotificationCenterIntent.SelectChannel(channels[it])) },
                         )
-                        if (state.settingsChannel == NotificationSettingsChannel.APP) {
-                        SaqzSwitch(
-                            state.preferences.notices,
-                            { onIntent(NotificationCenterIntent.Preferences(state.preferences.copy(notices = it))) },
-                            label = stringResource(Res.string.communication_pref_notices), enabled = !state.busy,
-                            modifier = Modifier.testTag(NotificationCenterTags.Notices),
-                        )
-                        SaqzSwitch(
-                            state.preferences.reminders,
-                            { onIntent(NotificationCenterIntent.Preferences(state.preferences.copy(reminders = it))) },
-                            label = stringResource(Res.string.communication_pref_reminders), enabled = !state.busy,
-                            modifier = Modifier.testTag(NotificationCenterTags.Reminders),
-                        )
-                        } else DeliveryChannelSettings(state, onIntent)
+                        DeliveryChannelSettings(state, onIntent)
                         SaqzButton(
                             stringResource(Res.string.communication_save),
                             { onIntent(NotificationCenterIntent.Save) }, loading = state.busy,

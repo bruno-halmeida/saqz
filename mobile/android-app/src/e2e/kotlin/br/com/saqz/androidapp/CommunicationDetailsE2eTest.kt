@@ -25,9 +25,9 @@ internal class NotificationsE2eTest : InstalledE2e("notification-settings") {
         assertTrue(originalIds.containsAll(setOf(data.getString("oldNotice"), data.getString("reminder"))))
         assertTrue(original.objects().all { !it.getBoolean("read") })
         openSettings()
-        ui.onNodeWithTag("preferences-reminders").assertIsOn()
-        click("preferences-reminders", scroll = true)
-        ui.onNodeWithTag("preferences-reminders").assertIsOff()
+        ui.onNodeWithTag("preferences-push-reminders").assertIsOn()
+        click("preferences-push-reminders", scroll = true)
+        ui.onNodeWithTag("preferences-push-reminders").assertIsOff()
         ui.onNodeWithText("Salvar preferências").performScrollTo().assertIsEnabled().performClick()
         waitText("Preferências salvas.")
         assertPreferences()
@@ -35,8 +35,8 @@ internal class NotificationsE2eTest : InstalledE2e("notification-settings") {
         // A fresh settings route forces a remote read after Activity recreation; no process-death claim.
         ui.activityRule.scenario.recreate()
         openSettings()
-        ui.onNodeWithTag("preferences-reminders").assertIsOff()
-        ui.onNodeWithTag("preferences-notices").assertIsOn()
+        ui.onNodeWithTag("preferences-push-reminders").assertIsOff()
+        ui.onNodeWithTag("preferences-push-notices").assertIsOn()
         assertPreferences()
         back()
         logout()
@@ -104,14 +104,16 @@ internal class NotificationsE2eTest : InstalledE2e("notification-settings") {
     private fun openSettings() {
         tab("Perfil")
         click("own-profile-settings")
-        waitTag("preferences-reminders")
+        waitTag("preferences-push-reminders")
     }
 
     private fun assertPreferences() {
+        // A central do app mostra tudo: só o push muda (DEB-064); os campos antigos da central ficam como estavam.
         val preferences = api("athlete", "/api/me/notification-preferences")
-        assertFalse(preferences.getBoolean("reminders"))
-        assertTrue(preferences.getBoolean("notices"))
-        assertTrue(api("peer", "/api/me/notification-preferences").getBoolean("reminders"))
+        assertFalse(preferences.getJSONObject("push").getBoolean("reminders"))
+        assertTrue(preferences.getJSONObject("push").getBoolean("notices"))
+        assertTrue(preferences.getBoolean("reminders"))
+        assertTrue(api("peer", "/api/me/notification-preferences").getJSONObject("push").getBoolean("reminders"))
     }
 
     private fun send(body: String) {
