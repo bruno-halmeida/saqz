@@ -207,6 +207,14 @@ A segunda regra é a original e continua valendo na íntegra: extrair no primeir
 que produziu o design system que o reset apagou. O que mudou foi só a origem — antes o módulo
 compartilhado era invenção nossa, agora ele é o desenho que recebemos.
 
+**Controle clicável novo só pelo design system.** Botão, link, chip, atalho, seletor: use o
+componente de `:core:design-system`. Se faltar a peça, crie-a lá primeiro e use-a na tela — não
+desenhe um `clickable` + `Text` dentro da feature. Foi assim que nasceram `HomeShortcutCard`,
+`GroupAddSlotButton`, `LoginLink` e o seletor do Caixa, que depois ficaram de fora de toda correção
+feita no design system (hoje `SaqzShortcutCard`, `SaqzDashedAddButton`, `SaqzTextLink` e
+`SaqzSegmented`). Isto é a exceção documentada à regra do segundo uso acima: para controle de toque
+a peça sobe no primeiro uso.
+
 Regras que continuam:
 
 - **`testTag` via `object <Tela>Tags`** com constantes — testes de UI e journeys dependem disso.
