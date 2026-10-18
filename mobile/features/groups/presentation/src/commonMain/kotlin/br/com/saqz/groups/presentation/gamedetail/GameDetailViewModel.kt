@@ -697,6 +697,9 @@ class GameDetailViewModel(
             else -> this
         }
     }
+    /** Agenda mudou (409 de conflito) ou outra pessoa mexeu antes (versão velha): o certo é recarregar, não repetir. */
+    private fun GameError.isStaleGame() = this is GameError.Conflict || this == GameError.VersionConflict
+
     private fun cancel() {
         if (state.value.cancelling) return
         val token = versionToken ?: return
@@ -711,7 +714,7 @@ class GameDetailViewModel(
                     }
                     emit(GameDetailEffect.Cancelled)
                 }
-                is SaqzResult.Failure -> if (result.error is GameError.Conflict) {
+                is SaqzResult.Failure -> if (result.error.isStaleGame()) {
                     update { it.copy(cancelling = false, cancelDialogOpen = false, cancelFailed = false) }
                     load()
                 } else {
@@ -738,7 +741,7 @@ class GameDetailViewModel(
                     update { it.copy(publishing = false, header = result.value.game.toHeader()) }
                     load()
                 }
-                is SaqzResult.Failure -> if (result.error is GameError.Conflict) {
+                is SaqzResult.Failure -> if (result.error.isStaleGame()) {
                     update { it.copy(publishing = false) }
                     load()
                 } else {

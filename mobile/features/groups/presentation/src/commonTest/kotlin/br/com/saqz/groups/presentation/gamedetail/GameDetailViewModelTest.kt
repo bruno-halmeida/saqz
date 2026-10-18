@@ -451,6 +451,56 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun `version conflict on cancel reloads the game and does not show the error`() = runTest {
+        val gateway = FakeGameGateway(
+            readResults = ArrayDeque(
+                listOf(
+                    SaqzResult.Success(sampleVersionedGame()),
+                    SaqzResult.Success(sampleVersionedGame().copy(version = GameVersionToken("etag-3"))),
+                ),
+            ),
+            lifecycleResults = ArrayDeque(
+                listOf(
+                    SaqzResult.Failure(GameError.VersionConflict),
+                    SaqzResult.Success(VersionedGame(sampleCancelledGame(), GameVersionToken("etag-4"))),
+                ),
+            ),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+
+        viewModel.onIntent(GameDetailIntent.RequestCancel)
+        viewModel.onIntent(GameDetailIntent.ConfirmCancel)
+
+        assertEquals(2, gateway.readCalls)
+        assertFalse(viewModel.state.value.cancelFailed)
+        assertFalse(viewModel.state.value.cancelling)
+        assertFalse(viewModel.state.value.cancelDialogOpen)
+
+        // A segunda tentativa já vai com a versão recarregada, não com a velha.
+        viewModel.onIntent(GameDetailIntent.RequestCancel)
+        viewModel.onIntent(GameDetailIntent.ConfirmCancel)
+
+        assertEquals(GameVersionToken("etag-3"), gateway.lifecycleVersions[1])
+        assertEquals(GameDetailStatusTone.Cancelled, viewModel.state.value.header?.statusTone)
+    }
+
+    @Test
+    fun `version conflict on publish reloads the game and does not show the error`() = runTest {
+        val draft = sampleVersionedGame().copy(game = sampleVersionedGame().game.copy(status = GameStatus.Draft))
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(draft),
+            lifecycleResult = SaqzResult.Failure(GameError.VersionConflict),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+
+        viewModel.onIntent(GameDetailIntent.Publish)
+
+        assertEquals(2, gateway.readCalls)
+        assertFalse(viewModel.state.value.publishFailed)
+        assertFalse(viewModel.state.value.publishing)
+    }
+
+    @Test
     fun `loads waitlist in backend order and exposes manual priority config`() = runTest {
         val group = sampleVersionedGroup().copy(
             group = sampleVersionedGroup().group.copy(
