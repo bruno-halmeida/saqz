@@ -9,6 +9,7 @@ plugins {
 kotlin {
     android {
         namespace = "br.com.saqz.core.network"
+        withHostTest {}
     }
 
     sourceSets {
@@ -24,13 +25,17 @@ kotlin {
             implementation(libs.okio)
         }
         androidMain.dependencies {
-            implementation(libs.ktor.client.android)
+            implementation(libs.ktor.client.okhttp)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
         wasmJsMain.dependencies {
             implementation(libs.ktor.client.js)
+        }
+        getByName("androidHostTest").dependencies {
+            implementation(libs.junit)
+            implementation(libs.robolectric)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
