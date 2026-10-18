@@ -98,7 +98,6 @@ import br.com.saqz.groups.resources.game_editor_error_venue_address
 import br.com.saqz.groups.resources.game_editor_error_venue_address_too_long
 import br.com.saqz.groups.resources.game_editor_error_venue_name
 import br.com.saqz.groups.resources.game_editor_error_venue_name_too_long
-import br.com.saqz.groups.resources.game_editor_error_notes_length
 import br.com.saqz.groups.resources.game_editor_error_recurrence_body
 import br.com.saqz.groups.resources.game_editor_error_recurrence_title
 import br.com.saqz.groups.resources.game_editor_recurrence_already
@@ -112,8 +111,6 @@ import br.com.saqz.groups.resources.game_editor_recurrence_slot_new
 import br.com.saqz.groups.resources.game_editor_recurrence_venue_group
 import br.com.saqz.groups.resources.game_editor_recurrence_venue_new
 import br.com.saqz.groups.resources.game_editor_group_name
-import br.com.saqz.groups.resources.game_editor_notes_hint
-import br.com.saqz.groups.resources.game_editor_notes_label
 import br.com.saqz.groups.resources.game_picker_save
 import br.com.saqz.groups.resources.game_picker_summary
 import br.com.saqz.groups.resources.game_picker_title
@@ -149,7 +146,6 @@ import br.com.saqz.groups.resources.game_editor_venue_helper
 import br.com.saqz.groups.resources.game_editor_venue_helper_new
 import br.com.saqz.groups.resources.game_editor_missing_and
 import br.com.saqz.groups.resources.game_editor_missing_item_date
-import br.com.saqz.groups.resources.game_editor_missing_item_notes
 import br.com.saqz.groups.resources.game_editor_missing_item_time
 import br.com.saqz.groups.resources.game_editor_missing_item_venue_address
 import br.com.saqz.groups.resources.game_editor_missing_item_venue_name
@@ -389,21 +385,6 @@ private fun FormScroll(
             selected = state.form.confirmationLeadMinutes,
             onSelect = { onIntent(GameEditorIntent.SelectConfirmationLead(it)) },
         )
-        SaqzCard(modifier = Modifier.bringIntoViewRequester(targets.notes)) {
-            SaqzSectionHeader(title = stringResource(Res.string.game_editor_notes_label))
-            SaqzInput(
-                value = state.form.notes,
-                onValueChange = { onIntent(GameEditorIntent.UpdateNotes(it)) },
-                label = stringResource(Res.string.game_editor_notes_label),
-                showLabel = false,
-                placeholder = stringResource(Res.string.game_editor_notes_hint),
-                singleLine = false,
-                minLines = 3,
-                errorText = if (GameEditorFieldError.NotesInvalid in errors) {
-                    stringResource(Res.string.game_editor_error_notes_length)
-                } else null,
-            )
-        }
     }
 }
 
@@ -812,14 +793,12 @@ private class EditorScrollTargets {
     val dateTime = BringIntoViewRequester()
     val venueName = BringIntoViewRequester()
     val venueAddress = BringIntoViewRequester()
-    val notes = BringIntoViewRequester()
 
     fun firstFor(errors: Set<GameEditorFieldError>): BringIntoViewRequester? = when {
         GameEditorFieldError.DateMissing in errors || GameEditorFieldError.TimeMissing in errors -> dateTime
         GameEditorFieldError.VenueNameMissing in errors || GameEditorFieldError.VenueNameTooLong in errors -> venueName
         GameEditorFieldError.VenueAddressTooShort in errors ||
             GameEditorFieldError.VenueAddressTooLong in errors -> venueAddress
-        GameEditorFieldError.NotesInvalid in errors -> notes
         else -> null
     }
 }
@@ -839,7 +818,6 @@ private fun missingItems(errors: Set<GameEditorFieldError>): String {
         ) {
             add(stringResource(Res.string.game_editor_missing_item_venue_address))
         }
-        if (GameEditorFieldError.NotesInvalid in errors) add(stringResource(Res.string.game_editor_missing_item_notes))
     }
     val and = stringResource(Res.string.game_editor_missing_and)
     return when (items.size) {
@@ -1066,7 +1044,6 @@ private fun GameEditorEditPreview() = SaqzTheme {
                 venue = GameVenue(name = "CERET", address = "R. Canuto Abreu"),
                 capacity = 12,
                 confirmationLeadMinutes = 360,
-                notes = "Cheguem 15 min antes.",
             ),
             versionToken = "etag-1",
         ),

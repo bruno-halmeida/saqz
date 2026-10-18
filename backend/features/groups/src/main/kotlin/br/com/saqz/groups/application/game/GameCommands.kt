@@ -147,7 +147,8 @@ class EditGame(
         ) {
             return GameCommandResult.InvalidTransition(context.game.status, GameMutation.EDIT)
         }
-        val snapshot = when (val validation = GameDraftValidator.validate(input)) {
+        // O recado saiu do produto (DEB-051): a coluna fica como está, sem passar pelo que o app enviar.
+        val snapshot = when (val validation = GameDraftValidator.validate(input.copy(notes = context.game.snapshot.notes))) {
             is GameDraftValidation.Invalid -> return GameCommandResult.Invalid(validation.errors)
             is GameDraftValidation.Valid -> validation.snapshot
         }

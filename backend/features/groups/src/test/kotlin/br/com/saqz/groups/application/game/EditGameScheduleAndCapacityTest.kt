@@ -139,7 +139,7 @@ class EditGameScheduleAndCapacityTest {
         val result = r.edit.execute(actor, groupId, gameId, 1, draft(capacity = 30, notes = "Novo recado"))
         assertIs<GameCommandResult.Success>(result)
         assertEquals(24, r.repo.updates.single().snapshot.capacity, "o resto é gravado sem mexer nas vagas")
-        assertEquals("Novo recado", r.repo.updates.single().snapshot.notes)
+        assertEquals("Levar bola", r.repo.updates.single().snapshot.notes) // DEB-051: o recado enviado é ignorado e o gravado fica como está
         assertEquals(listOf(Triple(2L, 30, Unit)), r.adjuster.calls, "ajuste com a versão nova e a capacidade pedida")
     }
 

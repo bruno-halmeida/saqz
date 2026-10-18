@@ -23,9 +23,6 @@ fun validateGameEditor(form: GameEditorFields): Set<GameEditorFieldError> {
     if (venueAddressLength > VENUE_ADDRESS_MAX) {
         errors += GameEditorFieldError.VenueAddressTooLong
     }
-    if (form.notes.trim().let { it.isNotEmpty() && it.length !in 2..500 }) {
-        errors += GameEditorFieldError.NotesInvalid
-    }
     return errors
 }
 

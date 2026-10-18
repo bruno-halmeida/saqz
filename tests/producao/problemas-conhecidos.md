@@ -11,7 +11,6 @@ aceitar ou só documentar.
 | ID | Problema | Decisão | Desde |
 | --- | --- | --- | --- |
 | [PC-01](#pc-01--em-grupo-novo-todo-vou-vai-para-a-lista-de-espera) | Em grupo novo, o "Vou" do avulso vai para a lista de espera até o prazo | Risco aceito por enquanto | 07/10/2026 |
-| PC-08 | "Recado para a galera" do jogo não aparece para ninguém | A triar | 07/10/2026 |
 | PC-13 | Extrato do grupo sem seletor de mês | A triar | 07/10/2026 |
 | PC-14 | Recibos do Google Play aparecem com valor "—" | A triar | 07/10/2026 |
 
@@ -37,9 +36,7 @@ chegada (ou pela escolha do organizador, no modo manual). Dono e admin já podem
 
 **Nos testes de produção.** Antes de testar presença, aplicar um dos contornos e anotar qual.
 
-## PC-08 a PC-14 · Achados abertos
-- **PC-08 · "Recado para a galera".** O campo do editor de jogo é gravado, mas não aparece em nenhuma
-  tela nem notificação.
+## PC-13 e PC-14 · Achados abertos
 - **PC-13 · Extrato.** Mostra só o mês atual; o seletor de período existe só na "Caixa geral".
 - **PC-14 · Recibos do Play.** A API do Google não devolve preço, e os recibos aparecem com "—".
 
@@ -63,3 +60,4 @@ Saíram da lista acima. Se um cenário ainda reproduzir o defeito, é regressão
 | PC-16 | "Termos de recebimentos" leem a API de produção | `67fefed91` |
 | PC-12 | Folha do app explica os avisos antes do pedido do sistema (depois da 1ª resposta do atleta ou do 1º jogo do organizador) e a central mostra "Avisos desligados · Ligar nos ajustes" para quem recusou. Diálogo do sistema conferido só no build da loja | `7d89b1bd5` |
 | PC-06 | Aba Grupos mostra a presença do próximo jogo ("Você vai", "Na espera", "Não vai", "Confirme") e conta os jogos abertos sem resposta | `18dece790` |
+| PC-08 | Campo "Recado para a galera" removido do editor de jogo (DEB-051); o backend aceita e ignora `notes` | DEB-051 |

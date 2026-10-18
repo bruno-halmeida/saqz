@@ -72,7 +72,8 @@ decisão "aceito" para o comportamento não mudar sem querer.
 | Origem | Achados |
 | --- | --- |
 | Decididos "para depois" (15/10) | P2-1b, P2-2b, P2-2c, P2-7a, P2-7b, P2-6a, P2-13a, P2-13c, P2-13f, WA-4a, WA-4b, WA-5a, WA-5b, BE-4a, BE-4c, BE-7, BE-9, N-14, N-15, P3-2b, P3-2h, P2-11b, P3-4e, P3-5a, P3-5c |
-| Deixados de lado pelo dono | P2-5/PC-08 (recado do jogo), WA-4c ("Avisar" sem trava), BE-4b (cobrar cobrança paga: `VERSION_CONFLICT`) |
+| Deixados de lado pelo dono | WA-4c ("Avisar" sem trava), BE-4b (cobrar cobrança paga: `VERSION_CONFLICT`) |
+| Fechados em 17/10 | P2-5/PC-08 (recado do jogo): o campo saiu do editor e o backend ignora `notes` (DEB-051) |
 | Abertos em `problemas-conhecidos.md` | PC-01 (aceito), PC-13 (extrato sem seletor de mês), PC-14 (recibo Play com "—") |
 | Backend 13/10 (estado a conferir) | jogo em 2020 e prazo no passado aceitos; `startsAt` ≠ data/hora local aceito; corpo vazio em `POST /api/groups` → 500; rascunho não cancela (409); mensalidade já vencida; `autoConfirmEnabled`; dono contado como pendente; jobs sem log de execução |
 | 15/10 | `GET /groups/{id}/charges/me` de grupo excluído devolve `GAME_NOT_FOUND`; `/subscriptions/me` com `autoRenew: null` na web; push só descarta `UNREGISTERED`/`SENDER_ID_MISMATCH` |

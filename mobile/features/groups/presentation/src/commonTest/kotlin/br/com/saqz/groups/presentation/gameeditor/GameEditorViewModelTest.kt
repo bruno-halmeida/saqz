@@ -448,7 +448,7 @@ class GameEditorViewModelTest {
         vm.onIntent(GameEditorIntent.Submit)
         assertTrue(vm.state.value.saveFailed)
 
-        vm.onIntent(GameEditorIntent.UpdateNotes("Nota corrigida"))
+        vm.onIntent(GameEditorIntent.UpdateVenueName("Quadra corrigida"))
         vm.onIntent(GameEditorIntent.Submit)
 
         assertEquals(1, gateway.createCalls)
@@ -483,7 +483,7 @@ class GameEditorViewModelTest {
 
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
         vm.onIntent(GameEditorIntent.Submit)
-        vm.onIntent(GameEditorIntent.UpdateNotes("Nota depois do timeout"))
+        vm.onIntent(GameEditorIntent.UpdateVenueName("Quadra corrigida"))
         vm.onIntent(GameEditorIntent.Submit)
 
         assertEquals(1, gateway.createCalls)
@@ -491,7 +491,7 @@ class GameEditorViewModelTest {
         assertEquals(1, gateway.editCalls)
         assertEquals("game-1", gateway.lastEditGameId)
         assertEquals(listOf(GameVersionToken("etag-published")), gateway.editVersions)
-        assertEquals("Nota depois do timeout", gateway.lastEditCommand?.notes)
+        assertEquals("Quadra corrigida", gateway.lastEditCommand?.venue?.name)
         assertEquals(listOf(GameVersionToken("etag-draft")), gateway.lifecycleVersions)
         assertFalse(vm.state.value.saveFailed)
     }
@@ -568,7 +568,7 @@ class GameEditorViewModelTest {
 
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
         vm.onIntent(GameEditorIntent.Submit)
-        vm.onIntent(GameEditorIntent.UpdateNotes("Nota depois do timeout"))
+        vm.onIntent(GameEditorIntent.UpdateVenueName("Quadra corrigida"))
         vm.onIntent(GameEditorIntent.Submit)
 
         assertEquals(1, gateway.createCalls)
@@ -609,7 +609,7 @@ class GameEditorViewModelTest {
             ),
         )
         val recreated = viewModel(savedState = savedState, gameGateway = secondGateway)
-        recreated.onIntent(GameEditorIntent.UpdateNotes("Nota restaurada"))
+        recreated.onIntent(GameEditorIntent.UpdateVenueName("Quadra corrigida"))
         recreated.onIntent(GameEditorIntent.Submit)
 
         assertEquals(0, secondGateway.createCalls)
@@ -645,7 +645,7 @@ class GameEditorViewModelTest {
         val firstKey = gateway.lastCreateCommand?.requestId
 
         gateway.createResult = SaqzResult.Success(sampleVersionedGame())
-        vm.onIntent(GameEditorIntent.UpdateNotes("Nota atualizada"))
+        vm.onIntent(GameEditorIntent.UpdateVenueName("Quadra corrigida"))
         vm.onIntent(GameEditorIntent.Submit)
 
         assertNotEquals(firstKey, gateway.lastCreateCommand?.requestId)
@@ -886,28 +886,35 @@ class GameEditorViewModelTest {
         val savedState = SavedStateHandle()
         val first = viewModel(gameId = "game-1", savedState = savedState)
         first.onIntent(GameEditorIntent.SaveDateTime("2026-08-10", "20:15"))
-        first.onIntent(GameEditorIntent.UpdateNotes("Nota preservada"))
+        first.onIntent(GameEditorIntent.UpdateVenueName("Quadra preservada"))
 
         val recreated = viewModel(gameId = "game-1", savedState = savedState)
         assertEquals("2026-08-10", recreated.state.value.form.localDate)
         assertEquals("20:15", recreated.state.value.form.localTime)
-        assertEquals("Nota preservada", recreated.state.value.form.notes)
+        assertEquals("Quadra preservada", recreated.state.value.form.venue?.name)
     }
 
+    // DEB-051: o "Recado para a galera" saiu do editor; o app não envia mais `notes`.
     @Test
-    fun `notes are trimmed to null when blank in the command`() = runTest {
+    fun `the create command never carries a note`() = runTest {
         val gateway = FakeGameGateway()
         val vm = viewModel(gameGateway = gateway)
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
-        vm.onIntent(GameEditorIntent.UpdateNotes("   "))
+
         vm.onIntent(GameEditorIntent.Submit)
+
         assertNull(gateway.lastCreateCommand?.notes)
-        vm.onIntent(GameEditorIntent.UpdateNotes("x"))
+    }
+
+    @Test
+    fun `editing a game that already has a note does not send it back`() = runTest {
+        val gateway = FakeGameGateway()
+        val vm = viewModel(gameId = "game-1", gameGateway = gateway)
+
         vm.onIntent(GameEditorIntent.Submit)
-        assertTrue(GameEditorFieldError.NotesInvalid in vm.state.value.validationErrors)
-        vm.onIntent(GameEditorIntent.UpdateNotes("x".repeat(501)))
-        vm.onIntent(GameEditorIntent.Submit)
-        assertTrue(GameEditorFieldError.NotesInvalid in vm.state.value.validationErrors)
+
+        assertEquals(1, gateway.editCalls)
+        assertNull(gateway.lastEditCommand?.notes)
     }
 
     @Test

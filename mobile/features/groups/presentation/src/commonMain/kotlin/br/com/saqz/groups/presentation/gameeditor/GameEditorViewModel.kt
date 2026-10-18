@@ -86,7 +86,6 @@ class GameEditorViewModel(
             is GameEditorIntent.SelectConfirmationLead -> updateForm {
                 copy(confirmationLeadMinutes = intent.minutes)
             }
-            is GameEditorIntent.UpdateNotes -> updateForm { copy(notes = intent.notes) }
             is GameEditorIntent.ToggleRecurring -> if (state.value.recurrenceOffered) {
                 updateForm { copy(recurring = intent.value) }
             }
@@ -185,7 +184,6 @@ class GameEditorViewModel(
                             game.startsAt,
                             game.confirmationDeadline,
                         ) ?: defaultForm.confirmationLeadMinutes,
-                        notes = game.notes.orEmpty(),
                     )
                     update {
                         it.copy(
@@ -435,7 +433,6 @@ class GameEditorViewModel(
                 durationMinutes = state.form.durationMinutes.toString(),
                 capacity = state.form.capacity.toString(),
                 confirmationDeadline = deadline.orEmpty(),
-                notes = state.form.notes,
                 gameFeeCents = state.form.gameFeeCents,
             ),
         )
@@ -469,7 +466,6 @@ class GameEditorViewModel(
         savedState[KeyDuration] = form.durationMinutes
         savedState[KeyCapacity] = form.capacity
         savedState[KeyLead] = form.confirmationLeadMinutes
-        savedState[KeyNotes] = form.notes
         savedState[KeyRecurring] = form.recurring
         form.venue?.let {
             savedState[KeyVenueName] = it.name
@@ -484,7 +480,6 @@ class GameEditorViewModel(
         durationMinutes = savedState.get<Int>(KeyDuration) ?: form.durationMinutes,
         capacity = savedState.get<Int>(KeyCapacity) ?: form.capacity,
         confirmationLeadMinutes = savedState.get<Int>(KeyLead) ?: form.confirmationLeadMinutes,
-        notes = savedState.get<String>(KeyNotes) ?: form.notes,
         recurring = savedState.get<Boolean>(KeyRecurring) ?: form.recurring,
         venue = savedState.get<String>(KeyVenueName)?.let { name ->
             (form.venue ?: emptyVenue()).copy(
@@ -526,7 +521,6 @@ class GameEditorViewModel(
         const val KeyDuration = "game-editor-duration"
         const val KeyCapacity = "game-editor-capacity"
         const val KeyLead = "game-editor-confirmation-lead"
-        const val KeyNotes = "game-editor-notes"
         const val KeyRecurring = "game-editor-recurring"
         const val KeyVenueName = "game-editor-venue-name"
         const val KeyVenueAddress = "game-editor-venue-address"
@@ -550,7 +544,6 @@ private fun buildCommand(draft: GameEditorDraft): GameWriteCommand =
         confirmationDeadline = draft.form.confirmationDeadline,
         gameFeeCents = draft.form.gameFeeCents,
         useDefaultGameFee = draft.form.gameFeeCents == null,
-        notes = draft.form.notes.takeIf(String::isNotBlank),
     )
 
 /** Fatos do plano lidos do servidor; o aviso do fim do teste depende do jogo e do plano. */
@@ -594,7 +587,6 @@ private fun commandFingerprint(command: GameWriteCommand, resolvedDefaultGameFee
     command.capacity,
     command.confirmationDeadline,
     if (command.useDefaultGameFee) resolvedDefaultGameFeeCents else command.gameFeeCents,
-    command.notes,
 ).fingerprint()
 
 private fun gameFingerprint(game: Game): String = listOf(
@@ -611,7 +603,6 @@ private fun gameFingerprint(game: Game): String = listOf(
     game.capacity,
     game.confirmationDeadline,
     game.gameFeeCents,
-    game.notes,
 ).fingerprint()
 
 private fun GameWriteCommand.withResolvedGameFee(resolvedGameFeeCents: Long?): GameWriteCommand =

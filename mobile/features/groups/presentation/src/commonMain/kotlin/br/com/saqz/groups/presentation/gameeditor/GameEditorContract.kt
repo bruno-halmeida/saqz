@@ -68,7 +68,6 @@ data class GameEditorFields(
     val venueEditable: Boolean = false,
     val capacity: Int = 0,
     val confirmationLeadMinutes: Int = 0,
-    val notes: String = "",
     /** "Repetir toda semana": só vale na criação ([GameEditorState.recurrenceOffered]). */
     val recurring: Boolean = false,
 ) {
@@ -83,7 +82,6 @@ enum class GameEditorFieldError {
     VenueAddressTooShort,
     VenueNameTooLong,
     VenueAddressTooLong,
-    NotesInvalid,
 }
 
 sealed interface GameEditorIntent {
@@ -98,7 +96,6 @@ sealed interface GameEditorIntent {
     data class UpdateVenueAddress(val address: String) : GameEditorIntent
     data class UpdateCapacity(val capacity: Int) : GameEditorIntent
     data class SelectConfirmationLead(val minutes: Int) : GameEditorIntent
-    data class UpdateNotes(val notes: String) : GameEditorIntent
     data class ToggleRecurring(val value: Boolean) : GameEditorIntent
     data object DismissConflict : GameEditorIntent
     data object DismissSubscriptionRequired : GameEditorIntent

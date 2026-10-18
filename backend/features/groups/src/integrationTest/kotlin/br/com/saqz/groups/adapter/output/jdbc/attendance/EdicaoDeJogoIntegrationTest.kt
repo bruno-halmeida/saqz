@@ -19,6 +19,7 @@ import java.time.ZoneId
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -126,7 +127,7 @@ class EdicaoDeJogoIntegrationTest {
 
         val result = salvar(input(capacity = 6, notes = "Mais duas vagas"))
         assertEquals(6, assertIs<GameCommandResult.Success>(result).game.snapshot.capacity)
-        assertEquals(6, atual().snapshot.capacity); assertEquals("Mais duas vagas", atual().snapshot.notes)
+        assertEquals(6, atual().snapshot.capacity); assertNull(atual().snapshot.notes) // DEB-051: o recado enviado é ignorado
         assertEquals("CONFIRMED", h.status(primeiro)); assertEquals("CONFIRMED", h.status(segundo))
         assertEquals("WAITLISTED", h.status(terceiro))
         assertEquals(1, h.diarias(primeiro)); assertEquals(1, h.diarias(segundo)); assertEquals(0, h.diarias(terceiro))

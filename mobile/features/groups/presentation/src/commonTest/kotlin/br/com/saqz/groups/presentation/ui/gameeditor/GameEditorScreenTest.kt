@@ -158,6 +158,17 @@ class GameEditorScreenTest {
         onNodeWithText("Quadra do Parque").assertExists()
     }
 
+    // ---- DEB-051: sem "Recado para a galera" ----
+
+    @Test
+    fun `the editor has no note field and no promise about the invite`() = runComposeUiTest {
+        setContent { SaqzTheme { GameEditorScreen(state = create(), onBack = {}, onIntent = {}) } }
+        waitForIdle()
+
+        onNodeWithText("Recado para a galera").assertDoesNotExist()
+        onNodeWithText("Opcional. Aparece no convite do jogo.").assertDoesNotExist()
+    }
+
     @Test
     fun `the generic save failure says create when creating`() = runComposeUiTest {
         setContent {

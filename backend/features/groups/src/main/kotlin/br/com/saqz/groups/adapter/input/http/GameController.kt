@@ -139,9 +139,10 @@ class GameController(
     private fun invalid(field: String, message: String): Nothing = throw InvalidGroupRequestException(mapOf(field to listOf(message)))
 }
 
-private fun GameWriteRequest.toCreate() = CreateGameInput(title, venue?.toInput(), localDate, localTime, zoneId, startsAt, durationMinutes, capacity, confirmationDeadline, if (useDefaultGameFee != false) NullableGameFeeOverride.UseDefault else NullableGameFeeOverride.Value(gameFeeCents), notes)
-private fun GameWriteRequest.toDraft() = GameDraftInput(title, venue?.toInput(), localDate, localTime, zoneId, startsAt, durationMinutes, capacity, confirmationDeadline, gameFeeCents, notes)
+// DEB-051: os apps das lojas ainda enviam `notes`; o recado não existe mais, então é aceito e ignorado (nem gravado nem devolvido).
+private fun GameWriteRequest.toCreate() = CreateGameInput(title, venue?.toInput(), localDate, localTime, zoneId, startsAt, durationMinutes, capacity, confirmationDeadline, if (useDefaultGameFee != false) NullableGameFeeOverride.UseDefault else NullableGameFeeOverride.Value(gameFeeCents), null)
+private fun GameWriteRequest.toDraft() = GameDraftInput(title, venue?.toInput(), localDate, localTime, zoneId, startsAt, durationMinutes, capacity, confirmationDeadline, gameFeeCents, null)
 private fun GameVenueRequest.toInput() = GameVenueInput(venueId, name, address, court)
 private fun br.com.saqz.groups.domain.game.Game.toView() = GameView(this, 0, snapshot.capacity, 0)
-private fun GameView.toResponse(): GameResponse { val s = game.snapshot; return GameResponse(game.id, game.groupId, s.title, GameVenueResponse(s.venue.venueId,s.venue.name,s.venue.address,s.venue.court),s.localDate,s.localTime,s.zoneId.value,s.startsAt,s.durationMinutes,s.capacity,s.confirmationDeadline,s.gameFeeCents,s.notes,game.status.name,game.version,confirmedCount,availableSpots,waitlistCount,game.financeReviewRequired) }
+private fun GameView.toResponse(): GameResponse { val s = game.snapshot; return GameResponse(game.id, game.groupId, s.title, GameVenueResponse(s.venue.venueId,s.venue.name,s.venue.address,s.venue.court),s.localDate,s.localTime,s.zoneId.value,s.startsAt,s.durationMinutes,s.capacity,s.confirmationDeadline,s.gameFeeCents,null,game.status.name,game.version,confirmedCount,availableSpots,waitlistCount,game.financeReviewRequired) }
 private fun AttendanceRecord.toEntryResponse() = AttendanceEntryResponse(memberId, status.name, waitlistPosition ?: waitlistSequence, version)
