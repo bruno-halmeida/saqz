@@ -22,16 +22,18 @@ class TrialEndingRemindersTest {
 
     private val store = FakeStore(OrganizerTrial(owner, started, ends))
     private val published = mutableListOf<String>()
+    private val pushed = mutableListOf<String>()
     private val whatsApp = mutableListOf<String>()
     private var paid = false
     private var hasGroup = true
     private var clockNow = Instant.parse("2026-10-12T13:00:00Z") // 10h em São Paulo, 3 dias antes
+    private var currentUsage = usage
 
     private fun job() = TrialEndingReminders(
         store,
         { if (paid) EntitlingSubscription(Plan.ORGANIZADOR) else null },
-        TrialUsageLookup { _, since, until -> assertEquals(started, since); assertEquals(clockNow, until); usage },
-        TrialEndingNotice { _, body -> hasGroup.also { if (it) published += body } },
+        TrialUsageLookup { _, since, until -> assertEquals(started, since); assertEquals(clockNow, until); currentUsage },
+        TrialEndingNotice { _, body, push -> hasGroup.also { if (it) { published += body; pushed += push } } },
         { _, body -> whatsApp += body },
         Clock.fixed(clockNow, ZoneOffset.UTC),
     )
@@ -42,7 +44,7 @@ class TrialEndingRemindersTest {
     }
 
     @Test
-    fun `avisa a 3 dias, a 1 dia e no dia do fim, uma vez por marco`() {
+    fun `avisa a 3 dias, a 1 dia e no dia do fim, uma vez por marco, com a copy aprovada`() {
         assertEquals(1, runAt("2026-10-12T13:00:00Z"))
         assertEquals(0, runAt("2026-10-12T13:00:00Z"))
         assertEquals(0, runAt("2026-10-13T13:00:00Z"))
@@ -51,13 +53,44 @@ class TrialEndingRemindersTest {
         assertEquals(1, runAt("2026-10-15T13:00:00Z"))
         assertEquals(
             listOf(
-                "Faltam 3 dias do seu teste do Organizador. Até aqui: 3 jogos, 12 atletas confirmados, R\$ 450,00 no caixa. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Assine para continuar.",
-                "Falta 1 dia do seu teste do Organizador. Até aqui: 3 jogos, 12 atletas confirmados, R\$ 450,00 no caixa. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Assine para continuar.",
-                "Hoje é o último dia do seu teste do Organizador. Até aqui: 3 jogos, 12 atletas confirmados, R\$ 450,00 no caixa. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Assine para continuar.",
+                "Faltam 3 dias do seu teste do Saqz. Até aqui, 3 jogos organizados, 12 atletas confirmados e R\$ 450,00 no caixa. Para a galera continuar confirmando presença, assine até 15/10, a partir de R\$ 39,90 por mês. Assinar agora: https://saqz.app/assinar",
+                "Seu teste termina amanhã, às 12h. Depois disso você não marca jogos e a galera não confirma presença. Seus grupos e o histórico ficam guardados, e voltam na hora quando você assina. Assinar agora: https://saqz.app/assinar",
+                "Seu teste termina hoje, às 12h. Assine agora para a galera continuar confirmando presença sem parar. Tudo o que você montou fica guardado. Assinar agora: https://saqz.app/assinar",
             ),
             published,
         )
+        assertEquals(
+            listOf(
+                "Faltam 3 dias do seu teste. Veja como seguir com a galera.",
+                "Seu teste termina amanhã. Assine para a galera não ficar sem lista.",
+                "Seu teste termina hoje às 12h. Toque para assinar.",
+            ),
+            pushed,
+        )
         assertEquals(published, whatsApp)
+    }
+
+    @Test
+    fun `sem jogo marcado o primeiro aviso troca o resumo pelo convite para criar o primeiro`() {
+        currentUsage = TrialUsage(0, 0, 0)
+        runAt("2026-10-12T13:00:00Z")
+        assertEquals(
+            "Faltam 3 dias do seu teste do Saqz. Você ainda não marcou nenhum jogo. Crie o primeiro em 1 minuto e veja a lista da galera se fechando. Para a galera continuar confirmando presença, assine até 15/10, a partir de R\$ 39,90 por mês. Assinar agora: https://saqz.app/assinar",
+            published.single(),
+        )
+    }
+
+    @Test
+    fun `o horario vem do fim do teste no fuso de Sao Paulo, com minutos quando houver`() {
+        val message = trialEndingMessage(0, 0, Instant.parse("2026-10-15T21:30:00Z"), usage)
+        assertEquals("Seu teste termina hoje, às 18h30. Assine agora para a galera continuar confirmando presença sem parar. Tudo o que você montou fica guardado. Assinar agora: https://saqz.app/assinar", message.body)
+        assertEquals("Seu teste termina hoje às 18h30. Toque para assinar.", message.push)
+    }
+
+    @Test
+    fun `nenhum texto traz o nome Organizador`() {
+        val all = listOf(3, 1, 0).map { trialEndingMessage(it, it, ends, usage) }
+        assertTrue(all.none { "Organizador" in it.body || "Organizador" in it.push })
     }
 
     @Test
@@ -74,7 +107,7 @@ class TrialEndingRemindersTest {
     }
 
     @Test
-    fun `teste que ja terminou nao recebe aviso`() {
+    fun `teste que ja terminou nao recebe o aviso de fim`() {
         assertEquals(0, runAt("2026-10-15T16:00:00Z"))
         assertTrue(published.isEmpty())
     }
@@ -84,7 +117,7 @@ class TrialEndingRemindersTest {
         assertEquals(1, runAt("2026-10-14T13:00:00Z"))
         assertEquals(0, runAt("2026-10-14T14:00:00Z"))
         assertEquals(1, published.size)
-        assertTrue(published.single().startsWith("Falta 1 dia"))
+        assertTrue(published.single().startsWith("Seu teste termina amanhã"))
     }
 
     @Test
@@ -99,7 +132,7 @@ class TrialEndingRemindersTest {
     @Test
     fun `falha do WhatsApp nao desfaz o aviso da central`() {
         val failing = TrialEndingReminders(
-            store, { null }, { _, _, _ -> usage }, { _, body -> published += body; true },
+            store, { null }, { _, _, _ -> usage }, { _, body, _ -> published += body; true },
             { _, _ -> error("uazapi fora do ar") }, Clock.fixed(clockNow, ZoneOffset.UTC),
         )
         assertEquals(1, failing.run())
@@ -107,16 +140,15 @@ class TrialEndingRemindersTest {
     }
 
     @Test
-    fun `sem uso o aviso so traz a contagem`() {
-        assertEquals(
-            "Faltam 2 dias do seu teste do Organizador. Quando o teste acabar, você não marca jogos e a galera não confirma presença. Assine para continuar.",
-            trialEndingBody(2, TrialUsage(0, 0, 0)),
-        )
+    fun `singular e valores em reais`() {
+        assertEquals("1 jogo organizado, 1 atleta confirmado e R\$ 1.250,50 no caixa", trialUsageSummary(TrialUsage(1, 1, 125_050)))
     }
 
     @Test
-    fun `singular e valores em reais`() {
-        assertEquals("1 jogo, 1 atleta confirmado, R\$ 1.250,50 no caixa", trialUsageSummary(TrialUsage(1, 1, 125_050)))
+    fun `rodada perdida do primeiro aviso diz quantos dias faltam de verdade`() {
+        assertEquals(1, runAt("2026-10-13T13:00:00Z"))
+        assertTrue(published.single().startsWith("Faltam 2 dias do seu teste do Saqz."))
+        assertEquals("Faltam 2 dias do seu teste. Veja como seguir com a galera.", pushed.single())
     }
 
     @Test

@@ -1,6 +1,9 @@
 package br.com.saqz.groups.adapter.output.jdbc.communication
 
 import br.com.saqz.groups.adapter.output.jdbc.plan.JdbcTrialUsage
+import br.com.saqz.groups.application.communication.NotificationPushSender
+import br.com.saqz.groups.application.communication.PushDelivery
+import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
 import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.sharedkernel.subscription.TrialUsage
@@ -32,7 +35,7 @@ class TrialEndingIntegrationTest {
     }
 
     @Test fun `aviso fica na central e no push so do dono`() {
-        assertTrue(notice.publish(owner, "Faltam 3 dias do seu teste do Organizador."))
+        assertTrue(notice.publish(owner, "Faltam 3 dias do seu teste do Organizador.", "Push curto."))
 
         val message = jdbc.sql("SELECT id, group_id, author_id, recipient_count FROM group_messages WHERE channel = 'TRIAL_ENDING'")
             .query { rs, _ -> listOf(rs.getObject("id", UUID::class.java), rs.getObject("group_id"), rs.getObject("author_id"), rs.getInt("recipient_count")) }.single()
@@ -47,18 +50,39 @@ class TrialEndingIntegrationTest {
         assertTrue(pushEnabled(owner))
     }
 
+    @Test fun `o push leva o texto curto e a central o corpo inteiro`() {
+        notice.publish(owner, "Corpo inteiro. Assinar agora: https://saqz.app/assinar", "Toque para assinar.")
+
+        val row = jdbc.sql("SELECT body, push_body FROM notification_delivery_context WHERE recipient_id = :r AND channel = 'TRIAL_ENDING'")
+            .param("r", owner).query { rs, _ -> rs.getString("body") to rs.getString("push_body") }.single()
+        assertEquals("Corpo inteiro. Assinar agora: https://saqz.app/assinar" to "Toque para assinar.", row)
+    }
+
+    @Test fun `o push enviado ao aparelho do dono e o curto, e sem texto curto cai no corpo`() {
+        val push = JdbcNotificationPush(source, JdbcTransactionRunner(source))
+        push.register(owner, UUID.randomUUID(), "owner-token", "ANDROID")
+        notice.publish(owner, "Corpo inteiro. Assinar agora: https://saqz.app/assinar", "Toque para assinar.")
+        jdbc.sql("UPDATE group_messages SET push_body = NULL WHERE channel = 'TRIAL_ENDING'").update()
+        notice.publish(owner, "Segundo corpo.", "Segundo push.")
+
+        val sent = mutableListOf<String>()
+        push.drain(NotificationPushSender { _, message -> sent += message.body; PushDelivery.SENT })
+
+        assertEquals(listOf("Corpo inteiro. Assinar agora: https://saqz.app/assinar", "Segundo push."), sent)
+    }
+
     @Test fun `preferencia de avisos desligada vale so para o push, a central mostra`() {
         jdbc.sql("INSERT INTO group_notification_preferences (user_id, notices, push_notices) VALUES (:u, false, false)")
             .param("u", owner).update()
 
-        notice.publish(owner, "Falta 1 dia do seu teste do Organizador.")
+        notice.publish(owner, "Falta 1 dia do seu teste do Organizador.", "Push curto.")
 
         assertFalse(pushEnabled(owner))
         assertEquals(1, jdbc.sql("SELECT count(*) FROM group_notifications WHERE in_app").query(Int::class.java).single())
     }
 
     @Test fun `dono sem grupo ativo nao tem onde guardar o aviso`() {
-        assertFalse(notice.publish(outsider, "Hoje é o último dia do seu teste do Organizador."))
+        assertFalse(notice.publish(outsider, "Hoje é o último dia do seu teste do Organizador.", "Push curto."))
         assertEquals(0, jdbc.sql("SELECT count(*) FROM group_messages WHERE channel = 'TRIAL_ENDING'").query(Int::class.java).single())
     }
 
@@ -67,7 +91,7 @@ class TrialEndingIntegrationTest {
         membership(newer, owner, "ADMIN")
         jdbc.sql("UPDATE access_groups SET created_at = now() - interval '2 days' WHERE id = :g").param("g", group).update()
 
-        notice.publish(owner, "Faltam 3 dias do seu teste do Organizador.")
+        notice.publish(owner, "Faltam 3 dias do seu teste do Organizador.", "Push curto.")
 
         assertEquals(group, jdbc.sql("SELECT group_id FROM group_messages WHERE channel = 'TRIAL_ENDING'").query(UUID::class.java).single())
     }

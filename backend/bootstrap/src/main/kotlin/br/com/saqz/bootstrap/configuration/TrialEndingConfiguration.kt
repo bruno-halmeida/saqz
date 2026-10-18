@@ -66,7 +66,7 @@ class PrivateTrialEndingWhatsApp(
         val whatsApp = sender() ?: return
         val phone = jdbc.sql("SELECT phone FROM access_users WHERE id = :id").param("id", ownerUserId)
             .query(String::class.java).optional().orElse(null)?.takeIf { it.isNotBlank() } ?: return
-        val delivery = whatsApp.send(WhatsAppNotification(notificationId = 0, phone = phone, body = "Saqz: $body"))
+        val delivery = whatsApp.send(WhatsAppNotification(notificationId = 0, phone = phone, body = if ("Saqz" in body) body else "Saqz: $body"))
         if (delivery != br.com.saqz.groups.application.communication.WhatsAppDelivery.Accepted) {
             LoggerFactory.getLogger(PrivateTrialEndingWhatsApp::class.java).warn("trial_ending_whatsapp_failed delivery={}", delivery)
         }

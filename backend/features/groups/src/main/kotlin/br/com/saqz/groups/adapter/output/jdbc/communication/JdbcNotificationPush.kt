@@ -45,7 +45,7 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
         """).query(Long::class.java).optional().orElse(null) ?: return@inTransaction null
         var recipientId: UUID? = null
         val message = jdbc.sql("""
-            SELECT c.group_id, c.recipient_id, c.channel, c.body, c.game_id, u.firebase_subject,
+            SELECT c.group_id, c.recipient_id, c.channel, c.body, c.push_body, c.game_id, u.firebase_subject,
                    (SELECT g.local_date FROM games g WHERE g.id = c.game_id) AS game_local_date,
                    coalesce((SELECT g.confirmation_deadline <= now() FROM games g WHERE g.id = c.game_id), false) AS deadline_passed
             FROM notification_delivery_context c
@@ -64,7 +64,8 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
                     else reminderPushBody(rs.getObject("game_local_date", java.time.LocalDate::class.java))
                 "GAME_OPEN" -> "O jogo está liberado. Abra o app para confirmar sua presença."
                 "ATTENDANCE_WINDOW" -> rs.getString("body")
-                "WAITLIST_DEADLINE", "FIRST_MEMBER", "FIRST_CONFIRMATION", "ENTRY_REQUEST", "TRIAL_ENDING", "AUTO_CONFIRMATION" -> rs.getString("body")
+                "TRIAL_ENDING" -> rs.getString("push_body") ?: rs.getString("body")
+                "WAITLIST_DEADLINE", "FIRST_MEMBER", "FIRST_CONFIRMATION", "ENTRY_REQUEST", "AUTO_CONFIRMATION" -> rs.getString("body")
                 else -> "Você recebeu um lembrete de cobrança. Abra o app para conferir."
             }
             NotificationPush(

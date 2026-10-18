@@ -12,7 +12,7 @@ import javax.sql.DataSource
 class JdbcTrialEndingNotice(dataSource: DataSource) : TrialEndingNotice {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun publish(ownerId: UUID, body: String): Boolean {
+    override fun publish(ownerId: UUID, body: String, pushBody: String): Boolean {
         val group = jdbc.sql(
             """
             SELECT g.id FROM access_groups g
@@ -24,12 +24,12 @@ class JdbcTrialEndingNotice(dataSource: DataSource) : TrialEndingNotice {
         val id = UUID.randomUUID()
         val inserted = jdbc.sql(
             """
-            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body)
-            SELECT :id, :group, :owner, display_name, CAST('TRIAL_ENDING' AS group_message_channel), :request, :body
+            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, push_body)
+            SELECT :id, :group, :owner, display_name, CAST('TRIAL_ENDING' AS group_message_channel), :request, :body, :pushBody
             FROM access_users WHERE id = :owner
             """.trimIndent(),
         ).param("id", id).param("group", group).param("owner", ownerId).param("request", UUID.randomUUID())
-            .param("body", body).update()
+            .param("body", body).param("pushBody", pushBody).update()
         if (inserted == 0) return false
         jdbc.sql("INSERT INTO group_notifications (recipient_id, message_id) VALUES (:owner, :id)")
             .param("owner", ownerId).param("id", id).update()

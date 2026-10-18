@@ -8,6 +8,7 @@ import br.com.saqz.subscriptions.domain.OrganizerTrial
 import java.text.NumberFormat
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
 import java.util.UUID
@@ -34,9 +35,15 @@ fun interface TrialEndingWhatsApp {
     fun send(ownerUserId: UUID, body: String)
 }
 
+/** Link para assinar que vai no corpo da central e do WhatsApp; o push curto abre o app na tela de planos. */
+const val SUBSCRIBE_URL = "https://saqz.app/assinar"
+
+/** Texto da central e do WhatsApp ([body]) e o push curto ([push]) de um marco. */
+data class TrialEndingMessage(val body: String, val push: String)
+
 /**
- * Job diário: a 3 dias, a 1 dia e no dia do fim do teste do Organizador, quem ainda não assinou recebe, uma vez
- * por marco, a contagem e o uso real do teste na central, no push e no WhatsApp. Número calculado aqui, no backend.
+ * Job diário: a 3 dias, a 1 dia e no dia do fim do teste, quem ainda não assinou recebe, uma vez
+ * por marco, o aviso na central, no push e no WhatsApp. Número e horário calculados aqui, no backend.
  */
 class TrialEndingReminders(
     private val trials: TrialEndingRepository,
@@ -56,37 +63,66 @@ class TrialEndingReminders(
             val due = TRIAL_ENDING_MILESTONES.filter { daysLeft <= it }
             if (due.isEmpty() || paid.findEntitlingPlan(trial.ownerUserId) != null) return@forEach
             if (!trials.claim(trial.ownerUserId, due)) return@forEach
-            val body = trialEndingBody(daysLeft, usage.usageOf(trial.ownerUserId, trial.startedAt, now))
-            val published = runCatching { notice.publish(trial.ownerUserId, body) }.getOrDefault(false)
+            val milestone = due.min()
+            val message = trialEndingMessage(milestone, daysLeft, trial.endsAt, usage.usageOf(trial.ownerUserId, trial.startedAt, now), zone)
+            val published = runCatching { notice.publish(trial.ownerUserId, message.body, message.push) }.getOrDefault(false)
             if (!published) {
-                trials.release(trial.ownerUserId, due.min())
-                JobLog.itemFailed("trial_ending", "reminder_not_published", "NOT_PUBLISHED", "userId" to trial.ownerUserId, "milestone" to daysLeft)
+                trials.release(trial.ownerUserId, milestone)
+                JobLog.itemFailed("trial_ending", "reminder_not_published", "NOT_PUBLISHED", "userId" to trial.ownerUserId, "milestone" to milestone)
                 return@forEach
             }
-            runCatching { whatsApp.send(trial.ownerUserId, body) }
-            JobLog.item("trial_ending", "reminder_sent", "userId" to trial.ownerUserId, "milestone" to daysLeft)
+            runCatching { whatsApp.send(trial.ownerUserId, message.body) }
+            JobLog.item("trial_ending", "reminder_sent", "userId" to trial.ownerUserId, "milestone" to milestone)
             sent++
         }
         return sent
     }
 }
 
-fun trialEndingBody(daysLeft: Int, usage: TrialUsage): String {
-    val countdown = when (daysLeft) {
-        0 -> "Hoje é o último dia do seu teste do Organizador."
-        1 -> "Falta 1 dia do seu teste do Organizador."
-        else -> "Faltam $daysLeft dias do seu teste do Organizador."
+/**
+ * Aviso do [milestone] (o menor marco devido). [daysLeft] só entra no "faltam N dias" do primeiro, para a rodada perdida
+ * não dizer 3 quando faltam 2. Sem jogo marcado, o resumo do primeiro aviso vira o convite para criar o primeiro.
+ */
+fun trialEndingMessage(milestone: Int, daysLeft: Int, endsAt: Instant, usage: TrialUsage, zone: ZoneId = TRIAL_ZONE): TrialEndingMessage {
+    val hour = formatClock(endsAt, zone)
+    return when {
+        milestone >= 3 -> {
+            val summary = if (usage.games == 0) "Você ainda não marcou nenhum jogo. Crie o primeiro em 1 minuto e veja a lista da galera se fechando."
+            else "Até aqui, ${trialUsageSummary(usage)}."
+            TrialEndingMessage(
+                "Faltam $daysLeft dias do seu teste do Saqz. $summary Para a galera continuar confirmando presença, " +
+                    "assine até ${formatDay(endsAt, zone)}, a partir de R\$ 39,90 por mês. Assinar agora: $SUBSCRIBE_URL",
+                "Faltam $daysLeft dias do seu teste. Veja como seguir com a galera.",
+            )
+        }
+        milestone == 1 -> TrialEndingMessage(
+            "Seu teste termina amanhã, às $hour. Depois disso você não marca jogos e a galera não confirma presença. " +
+                "Seus grupos e o histórico ficam guardados, e voltam na hora quando você assina. Assinar agora: $SUBSCRIBE_URL",
+            "Seu teste termina amanhã. Assine para a galera não ficar sem lista.",
+        )
+        else -> TrialEndingMessage(
+            "Seu teste termina hoje, às $hour. Assine agora para a galera continuar confirmando presença sem parar. " +
+                "Tudo o que você montou fica guardado. Assinar agora: $SUBSCRIBE_URL",
+            "Seu teste termina hoje às $hour. Toque para assinar.",
+        )
     }
-    val summary = if (usage.isEmpty) "" else " Até aqui: ${trialUsageSummary(usage)}."
-    return "$countdown$summary Quando o teste acabar, você não marca jogos e a galera não confirma presença. Assine para continuar."
 }
 
-/** "3 jogos, 12 atletas confirmados, R$ 450,00 no caixa". */
+/** "3 jogos organizados, 12 atletas confirmados e R$ 450,00 no caixa". */
 fun trialUsageSummary(usage: TrialUsage): String {
-    val games = if (usage.games == 1) "1 jogo" else "${usage.games} jogos"
+    val games = if (usage.games == 1) "1 jogo organizado" else "${usage.games} jogos organizados"
     val athletes = if (usage.confirmedAthletes == 1) "1 atleta confirmado" else "${usage.confirmedAthletes} atletas confirmados"
-    return "$games, $athletes, ${formatBrl(usage.cashCents)} no caixa"
+    return "$games, $athletes e ${formatBrl(usage.cashCents)} no caixa"
 }
+
+/** "12h" ou "12h30", no fuso de São Paulo. */
+internal fun formatClock(at: Instant, zone: ZoneId): String {
+    val time = at.atZone(zone)
+    return if (time.minute == 0) "${time.hour}h" else "%dh%02d".format(time.hour, time.minute)
+}
+
+/** "15/10". */
+internal fun formatDay(at: Instant, zone: ZoneId): String = at.atZone(zone).let { "%02d/%02d".format(it.dayOfMonth, it.monthValue) }
 
 internal fun formatBrl(cents: Long): String =
-    NumberFormat.getCurrencyInstance(Locale.of("pt", "BR")).format(cents / 100.0).replace(' ', ' ')
+    NumberFormat.getCurrencyInstance(Locale.of("pt", "BR")).format(cents / 100.0).replace('\u00a0', ' ')

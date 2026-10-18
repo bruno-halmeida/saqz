@@ -14,9 +14,10 @@ fun interface TrialUsageLookup {
 }
 
 /**
- * Publica o aviso de fim de teste na central e no push do dono (canal TRIAL_ENDING). Devolve false quando o
- * dono não tem grupo ativo em que o aviso possa morar.
+ * Publica o aviso de fim de teste (e os de depois dele, e do atraso de pagamento) na central e no push do dono (canal
+ * TRIAL_ENDING). [body] é o texto da central; [pushBody], o push curto. Devolve false quando o dono não tem grupo
+ * ativo em que o aviso possa morar.
  */
 fun interface TrialEndingNotice {
-    fun publish(ownerId: UUID, body: String): Boolean
+    fun publish(ownerId: UUID, body: String, pushBody: String): Boolean
 }
