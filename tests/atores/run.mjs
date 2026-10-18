@@ -47,7 +47,7 @@ async function rodar(cenario) {
   rastro.ultima = null
   try {
     await Promise.race([cenario.rodar(c), estouro])
-    if (c.divergencias.length) { c.atual = 'divergências registradas durante o cenário'; throw new Falha(`divergências: ${c.divergencias.join(' | ')}`) }
+    if (c.divergencias.length) { c.atual = 'divergências registradas durante o cenário'; const f = new Falha(`divergências: ${c.divergencias.join(' | ')}`); f.resposta = null; throw f }
     return { estado: 'passou', ms: Date.now() - inicio }
   } catch (e) {
     const base = { ms: Date.now() - inicio, passo: c.atual ?? '(antes do primeiro passo)', motivo: e.message }
