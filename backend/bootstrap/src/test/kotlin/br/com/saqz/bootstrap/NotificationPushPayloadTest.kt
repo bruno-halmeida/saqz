@@ -26,6 +26,17 @@ class NotificationPushPayloadTest {
         assertFalse(push.copy(channel = "FIRST_MEMBER", gameId = null).offersAttendanceActions())
     }
 
+    @Test fun `cancelled game notice leaves without attendance actions and without the game`() {
+        val cancelled = push.copy(channel = "NOTICE")
+        assertFalse(cancelled.offersAttendanceActions())
+        assertFalse("gameId" in cancelled.data())
+        assertEquals(setOf("notificationId", "groupId", "channel", "recipient", "title", "body"), cancelled.data().keys)
+    }
+
+    @Test fun `other pushes with a game keep the game in the data`() {
+        assertEquals(push.gameId.toString(), push.data()["gameId"])
+        assertEquals(push.gameId.toString(), push.copy(channel = "FIRST_CONFIRMATION").data()["gameId"])
+    }
 }
 
 class NotificationPushClassificationTest {

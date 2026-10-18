@@ -68,7 +68,13 @@ fun classify(code: MessagingErrorCode?): PushDelivery =
     else PushDelivery.RETRY
 
 /** O aviso ao organizador de primeira confirmação traz o jogo só para abrir o detalhe: sem "Confirmar" / "Não vou". */
-fun NotificationPush.offersAttendanceActions() = gameId != null && channel != "FIRST_CONFIRMATION"
+fun NotificationPush.offersAttendanceActions() = carriesGame() && channel != "FIRST_CONFIRMATION"
+
+/**
+ * Aviso (NOTICE) com jogo é o cancelamento: sem presença para responder. Os apps 1.0.4 a 1.0.7 decidem os botões
+ * (Android) e a categoria (iOS) pelo `gameId` dos dados, então ele não vai; o toque abre a central, onde o aviso tem "Abrir".
+ */
+fun NotificationPush.carriesGame() = gameId != null && channel != "NOTICE"
 
 /** Categoria APNs registrada no app iOS com as ações "Confirmar" / "Não vou". */
 const val ATTENDANCE_CATEGORY = "SAQZ_ATTENDANCE"
@@ -81,5 +87,5 @@ fun NotificationPush.data(): Map<String, String> = buildMap {
     put("recipient", recipient)
     put("title", title)
     put("body", body)
-    gameId?.let { put("gameId", it.toString()) }
+    if (carriesGame()) put("gameId", gameId.toString())
 }
