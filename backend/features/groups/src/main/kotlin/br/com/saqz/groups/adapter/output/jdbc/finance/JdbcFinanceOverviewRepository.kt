@@ -176,6 +176,9 @@ class JdbcFinanceOverviewRepository(
                         JOIN group_charge_events events
                           ON events.charge_id = charges.id
                          AND events.new_status = 'PAID'
+                         AND events.id = (SELECT last_paid.id FROM group_charge_events last_paid
+                                          WHERE last_paid.charge_id = charges.id AND last_paid.new_status = 'PAID'
+                                          ORDER BY last_paid.occurred_at DESC, last_paid.id DESC LIMIT 1)
                         WHERE charges.group_id = groups.id
                           AND charges.status = 'PAID'
                           AND events.occurred_at >= :startAt
@@ -243,6 +246,9 @@ class JdbcFinanceOverviewRepository(
             WHERE charges.kind = 'MONTHLY'
               AND charges.status = 'PAID'
               AND events.new_status = 'PAID'
+              AND events.id = (SELECT last_paid.id FROM group_charge_events last_paid
+                                  WHERE last_paid.charge_id = charges.id AND last_paid.new_status = 'PAID'
+                                  ORDER BY last_paid.occurred_at DESC, last_paid.id DESC LIMIT 1)
               AND events.occurred_at >= :startAt
               AND events.occurred_at < :endAt
         """

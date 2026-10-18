@@ -9,7 +9,7 @@ import java.util.UUID
 enum class ChargeStatus { PENDING, PAID, WAIVED, CANCELLED }
 enum class PaidMethod { PIX, CASH, OTHER }
 sealed interface ChargeIdentity { data class Game(val gameId:UUID):ChargeIdentity;data class Monthly(val month:YearMonth):ChargeIdentity }
-data class Charge(val id:UUID,val groupId:UUID,val memberId:UUID,val identity:ChargeIdentity,val amountCents:Long,val dueDate:LocalDate,val status:ChargeStatus=ChargeStatus.PENDING,val version:Long=1,val reviewRequired:Boolean=false,val paidMethod:PaidMethod?=null,val guestDisplayName:String?=null,val withdrew:Boolean=false){init{require(amountCents in 1..99_999_999);require(version>=1)}}
+data class Charge(val id:UUID,val groupId:UUID,val memberId:UUID,val identity:ChargeIdentity,val amountCents:Long,val dueDate:LocalDate,val status:ChargeStatus=ChargeStatus.PENDING,val version:Long=1,val reviewRequired:Boolean=false,val paidMethod:PaidMethod?=null,val guestDisplayName:String?=null,val withdrew:Boolean=false,val electronicOrder:Boolean=false){init{require(amountCents in 1..99_999_999);require(version>=1)}}
 data class ChargeStatusCommand(val target:ChargeStatus,val note:String?=null,val paidMethod:PaidMethod?=null)
 data class ChargeEvent(val id:UUID,val chargeId:UUID,val actorId:UUID,val oldStatus:ChargeStatus,val newStatus:ChargeStatus,val note:String?,val occurredAt:Instant)
 data class ChargeChange(val charge:Charge,val event:ChargeEvent)
@@ -18,7 +18,10 @@ class InvalidChargeNote:RuntimeException()
 
 object ChargeTransitions {
     fun apply(current:Charge,command:ChargeStatusCommand,actorId:UUID,now:Instant,eventId:UUID):ChargeChange{
-        if(current.status!=ChargeStatus.PENDING||command.target==ChargeStatus.PENDING)throw InvalidChargeTransition()
+        // Desfazer baixa: recebida ou dispensada volta a pendente, salvo se passou por ordem eletrônica. Cancelada não volta.
+        val undo=command.target==ChargeStatus.PENDING
+        if(undo){if(current.status !in setOf(ChargeStatus.PAID,ChargeStatus.WAIVED)||current.electronicOrder)throw InvalidChargeTransition()}
+        else if(current.status!=ChargeStatus.PENDING)throw InvalidChargeTransition()
         val note=command.note?.trim()?.also{if(it.length !in 2..500||it.any(Char::isISOControl))throw InvalidChargeNote()}
         // Só o recebimento tem "como recebeu"; PIX é o default de quem não manda o campo.
         val method=if(command.target==ChargeStatus.PAID)command.paidMethod?:PaidMethod.PIX else null
