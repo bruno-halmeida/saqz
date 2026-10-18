@@ -18,6 +18,7 @@ const USO = `Uso: node tests/atores/run.mjs [--criticos | --todos | --regra ID[,
   --criticos   só as regras críticas do cofre
   --todos      todas as regras com cenário
   --regra ID   uma ou mais regras (ex.: --regra PRES-005,PRES-009)
+  --sem-lentos não roda os cenários marcados como lentos (esperam um job de minutos)
   --lista      lista os cenários e sai
   --subir      sobe o stack (stack.sh up) se não estiver de pé
   --derrubar   com --subir: derruba no fim o stack que este comando subiu (nunca derruba stack alheio)
@@ -43,7 +44,8 @@ async function rodar(cenario) {
   const c = new Contexto(cenario)
   const inicio = Date.now()
   let timer
-  const estouro = new Promise((_, rej) => { timer = setTimeout(() => rej(new Falha(`estourou o teto de ${TETO_CENARIO_MS / 1000} s`)), TETO_CENARIO_MS) })
+  const teto = cenario.teto ?? TETO_CENARIO_MS
+  const estouro = new Promise((_, rej) => { timer = setTimeout(() => rej(new Falha(`estourou o teto de ${teto / 1000} s`)), teto) })
   rastro.ultima = null
   try {
     await Promise.race([cenario.rodar(c), estouro])
@@ -63,7 +65,7 @@ async function main() {
 
   const todos = await carregar()
   if (args.includes('--lista')) {
-    for (const c of todos) console.log(`${c.id.padEnd(9)} ${c.critico ? 'CRÍTICO' : '       '}  ${c.feature.padEnd(12)} ${c.titulo}`)
+    for (const c of todos) console.log(`${c.id.padEnd(9)} ${c.critico ? 'CRÍTICO' : '       '}  ${c.lento ? 'lento' : '     '}  ${c.feature.padEnd(12)} ${c.titulo}`)
     console.log(`\n${todos.length} cenários, ${todos.filter((c) => c.critico).length} críticos`)
     return 0
   }
@@ -92,6 +94,7 @@ async function main() {
 
   const inicio = new Date()
   const resultados = []
+  if (args.includes('--sem-lentos')) escolhidos = escolhidos.filter((c) => !c.lento)
   console.log(`${escolhidos.length} cenário(s) · ${modo} · ${API}\n`)
   for (const cenario of escolhidos) {
     const r = { id: cenario.id, titulo: cenario.titulo, critico: !!cenario.critico, achado: cenario.achado, ...(await rodar(cenario)) }

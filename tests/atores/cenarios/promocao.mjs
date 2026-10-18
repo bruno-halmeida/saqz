@@ -231,7 +231,7 @@ export default [
     },
   },
   {
-    id: 'PROM-005', feature: 'promocao', critico: false,
+    id: 'PROM-005', feature: 'promocao', critico: false, lento: true, teto: 300_000,
     titulo: 'O job do prazo',
     async rodar(c) {
       const { ORG, ADM, ATL1, ATL2, ATL3, ATL4, ATL5 } = await c.atores('ORG', 'ADM', 'ATL1', 'ATL2', 'ATL3', 'ATL4', 'ATL5')
