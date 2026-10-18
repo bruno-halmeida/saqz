@@ -73,7 +73,7 @@ class EdicaoDeJogoIntegrationTest {
 
     private fun avisosDeMudanca(user: UUID) = h.int(
         "SELECT count(*) FROM group_notifications n JOIN group_messages m ON m.id=n.message_id " +
-            "WHERE n.recipient_id='$user' AND m.channel='AUTO_CONFIRMATION' AND m.body LIKE '%mudou:%'",
+            "WHERE n.recipient_id='$user' AND m.channel='AUTO_CONFIRMATION' AND m.body LIKE '%O jogo mudou!%'",
     )
 
     private fun elenco(): Triple<UUID, UUID, UUID> {
@@ -89,8 +89,8 @@ class EdicaoDeJogoIntegrationTest {
         assertIs<GameCommandResult.Success>(result)
         listOf(vou, espera, semResposta).forEach { assertEquals(1, avisosDeMudanca(it)) }
         assertEquals(0, avisosDeMudanca(naoVou)); assertEquals(0, avisosDeMudanca(h.dono))
-        val corpo = h.string("SELECT body FROM group_messages WHERE channel='AUTO_CONFIRMATION' AND body LIKE '%mudou:%'")
-        assertTrue(corpo.startsWith("O jogo de ") && "mudou:" in corpo && "Arena" in corpo && " às " in corpo, corpo)
+        val corpo = h.string("SELECT body FROM group_messages WHERE channel='AUTO_CONFIRMATION' AND body LIKE '%O jogo mudou!%'")
+        assertTrue(corpo.startsWith("O jogo mudou! Era ") && ", agora é " in corpo && corpo.endsWith("Quem não puder, avise no app.") && "Arena" in corpo && " às " in corpo, corpo)
     }
 
     @Test fun `mudar so a hora ou so o local tambem avisa`() {
@@ -118,7 +118,7 @@ class EdicaoDeJogoIntegrationTest {
         val (vou) = elenco()
         h.execute("INSERT INTO group_notification_preferences (user_id, notices, push_notices) VALUES ('$vou', false, false)")
         assertIs<GameCommandResult.Success>(salvar(input(shift = Duration.ofHours(3))))
-        assertEquals(1, h.int("SELECT count(*) FROM group_notifications n JOIN group_messages m ON m.id=n.message_id WHERE n.recipient_id='$vou' AND n.in_app AND m.body LIKE '%mudou:%'"))
+        assertEquals(1, h.int("SELECT count(*) FROM group_notifications n JOIN group_messages m ON m.id=n.message_id WHERE n.recipient_id='$vou' AND n.in_app AND m.body LIKE '%O jogo mudou!%'"))
     }
 
     @Test fun `aumentar as vagas pelo editor promove a fila em ordem de chegada, com diaria e aviso, e o jogo salva junto`() {

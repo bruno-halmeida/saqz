@@ -19,11 +19,11 @@ class CommunicationBodiesTest {
     @Test fun `aviso de jogo que mudou mostra o dia antigo, o novo, o local e a quadra quando há`() {
         val thursday = LocalDate.of(2026, 10, 15)
         assertEquals(
-            "O jogo de quarta 14/10 mudou: quinta 15/10 às 20h30, Arena Central.",
+            "O jogo mudou! Era quarta 14/10, agora é quinta 15/10 às 20h30, Arena Central. Quem não puder, avise no app.",
             gameScheduleChangedBody(wednesday, thursday, night, "Arena Central", null),
         )
         assertEquals(
-            "O jogo de quarta 14/10 mudou: quinta 15/10 às 20h30, Arena Central, Quadra 2.",
+            "O jogo mudou! Era quarta 14/10, agora é quinta 15/10 às 20h30, Arena Central, Quadra 2. Quem não puder, avise no app.",
             gameScheduleChangedBody(wednesday, thursday, night, "Arena Central", "Quadra 2"),
         )
     }

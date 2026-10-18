@@ -98,7 +98,7 @@ class EventosSempreNoPushIntegrationTest {
         notify("AUTO_CONFIRMATION", "Sua entrada no grupo foi aprovada.")
         assertEquals(0, groupQueue())
 
-        notify("AUTO_CONFIRMATION", "O jogo de quarta 14/10 mudou: quinta 15/10 às 20h30, Arena.", eventKind = "GAME_SCHEDULE_CHANGED")
+        notify("AUTO_CONFIRMATION", "O jogo mudou! Era quarta 14/10, agora é quinta 15/10 às 20h30, Arena. Quem não puder, avise no app.", eventKind = "GAME_SCHEDULE_CHANGED")
         assertEquals(1, groupQueue())
     }
 

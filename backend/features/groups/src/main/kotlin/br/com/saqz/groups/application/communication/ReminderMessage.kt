@@ -19,11 +19,14 @@ fun gameCancelledBody(localDate: LocalDate, localTime: LocalTime): String =
     "O jogo de ${WEEKDAYS[localDate.dayOfWeek.value - 1]} ${two(localDate.dayOfMonth)}/${two(localDate.monthValue)}" +
         " às ${two(localTime.hour)}h${two(localTime.minute)} foi cancelado."
 
-/** Aviso de mudança (DEB-046): "O jogo de quarta 14/10 mudou: quinta 15/10 às 20h30, Arena Central." */
+/**
+ * Aviso de mudança (DEB-046, copy do DEB-071): "O jogo mudou! Era quarta 14/10, agora é quinta 15/10 às 20h30, Arena
+ * Central. Quem não puder, avise no app." É a mesma mensagem na central, no push e no grupo do WhatsApp.
+ */
 fun gameScheduleChangedBody(previousDate: LocalDate, localDate: LocalDate, localTime: LocalTime, venue: String, court: String?): String =
-    "O jogo de ${WEEKDAYS[previousDate.dayOfWeek.value - 1]} ${two(previousDate.dayOfMonth)}/${two(previousDate.monthValue)} mudou: " +
+    "O jogo mudou! Era ${WEEKDAYS[previousDate.dayOfWeek.value - 1]} ${two(previousDate.dayOfMonth)}/${two(previousDate.monthValue)}, agora é " +
         "${WEEKDAYS[localDate.dayOfWeek.value - 1]} ${two(localDate.dayOfMonth)}/${two(localDate.monthValue)}" +
-        " às ${two(localTime.hour)}h${two(localTime.minute)}, $venue" + (court?.let { ", $it" } ?: "") + "."
+        " às ${two(localTime.hour)}h${two(localTime.minute)}, $venue" + (court?.let { ", $it" } ?: "") + ". Quem não puder, avise no app."
 
 /**
  * Corpo do aviso de jogo liberado: o toque diário por push para quem ainda não respondeu.
