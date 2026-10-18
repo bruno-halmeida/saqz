@@ -10,10 +10,11 @@ import javax.sql.DataSource
 
 /**
  * Aviso de mudança de dia, hora ou local do jogo publicado (DEB-046), na central e no push, no canal AUTO_CONFIRMATION
- * (os apps das lojas já o conhecem, o push leva o corpo, segue a preferência de avisos e não entra na fila do grupo de
- * WhatsApp); sem jogo vinculado, então o texto leva o dia anterior, o novo dia, a hora e o local. Chega a todo membro
- * ativo, menos a quem editou e a quem respondeu "Não vou". Um aviso por versão salva: o `request_id` sai do jogo e da
- * versão, e o UNIQUE derruba a repetição. Roda num SAVEPOINT na transação do salvamento: se falhar, o jogo salva igual.
+ * (os apps das lojas já o conhecem e o push leva o corpo). Leva a marca `GAME_SCHEDULE_CHANGED` (DEB-065/071): chega por
+ * push mesmo com "Avisos dos grupos" desligado e entra na fila do grupo de WhatsApp. Sem jogo vinculado, então o texto
+ * leva o dia anterior, o novo dia, a hora e o local. Chega a todo membro ativo, menos a quem editou e a quem respondeu
+ * "Não vou". Um aviso por versão salva: o `request_id` sai do jogo e da versão, e o UNIQUE derruba a repetição. Roda
+ * num SAVEPOINT na transação do salvamento: se falhar, o jogo salva igual.
  */
 class JdbcGameScheduleChangeNotice(dataSource: DataSource) : GameScheduleChangeNotice {
     private val jdbc = JdbcClient.create(dataSource)
@@ -37,8 +38,9 @@ class JdbcGameScheduleChangeNotice(dataSource: DataSource) : GameScheduleChangeN
         val message = UUID.randomUUID()
         val inserted = jdbc.sql(
             """
-            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body)
-            SELECT :id, :group, :actor, display_name, CAST('AUTO_CONFIRMATION' AS group_message_channel), :request, :body
+            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, event_kind)
+            SELECT :id, :group, :actor, display_name, CAST('AUTO_CONFIRMATION' AS group_message_channel), :request, :body,
+                   'GAME_SCHEDULE_CHANGED'
             FROM access_users WHERE id = :actor
             ON CONFLICT DO NOTHING
             """.trimIndent(),

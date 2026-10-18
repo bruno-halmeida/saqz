@@ -81,8 +81,8 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         val requestId = UUID.randomUUID()
         jdbc.sql(
             """
-            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, game_id)
-            SELECT :id, :group, :actor, display_name, 'NOTICE', :request, :body, :game FROM access_users WHERE id = :actor
+            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, game_id, event_kind)
+            SELECT :id, :group, :actor, display_name, 'NOTICE', :request, :body, :game, 'GAME_CANCELLED' FROM access_users WHERE id = :actor
             """.trimIndent(),
         ).param("id", id).param("group", groupId).param("actor", actor)
             .param("request", requestId).param("body", body).param("game", gameId, Types.OTHER).update()

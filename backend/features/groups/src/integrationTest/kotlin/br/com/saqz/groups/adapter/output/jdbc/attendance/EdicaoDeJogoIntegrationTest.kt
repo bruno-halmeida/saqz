@@ -100,6 +100,7 @@ class EdicaoDeJogoIntegrationTest {
         assertIs<GameCommandResult.Success>(salvar(input(venue = "Ginásio Novo")))
         assertEquals(2, avisosDeMudanca(vou))
         assertTrue(h.string("SELECT body FROM group_messages WHERE body LIKE '%Ginásio Novo%'").isNotBlank())
+        assertEquals("GAME_SCHEDULE_CHANGED", h.string("SELECT event_kind FROM group_messages WHERE body LIKE '%Ginásio Novo%'"))
     }
 
     @Test fun `mudar so vagas, valor ou recado nao avisa, e salvar de novo igual nao duplica`() {
