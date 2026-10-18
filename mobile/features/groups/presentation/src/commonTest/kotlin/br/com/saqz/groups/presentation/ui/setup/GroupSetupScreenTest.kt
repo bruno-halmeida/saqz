@@ -86,38 +86,29 @@ class GroupSetupScreenTest {
         onNodeWithTag(GroupSetupTags.VenueAddress).assertExists()
     }
 
-    // ---- Backend v.0.0.17: quadra sem endereço volta como 400 `defaultVenue.address` ----
+    // ---- JOGO-007: o endereço da quadra é sempre opcional ----
 
-    private fun refusedAddress(mode: GroupSetupMode) = GroupSetupState(
+    private fun withoutAddress(mode: GroupSetupMode) = GroupSetupState(
         mode = mode,
         form = PreviewCourtForm.copy(defaultVenue = GroupVenueForm(name = "Quadra do Parque", address = "")),
-        errors = setOf(GroupSetupError.VenueAddressRequired),
     )
 
-    // O dispatcher v2 enfileira os efeitos como na produção: o pedido de rolagem espera o layout do quadro.
     @Test
-    fun aRefusedVenueAddressOpensTheAdvancedCardsAndMarksTheAddressWhenCreating() =
-        androidx.compose.ui.test.v2.runComposeUiTest {
-            setContent { SaqzTheme { GroupSetupScreen(refusedAddress(GroupSetupMode.Create), {}, {}) } }
-            waitForIdle()
+    fun aVenueWithoutAddressShowsNoErrorWhenEditing() = runComposeUiTest {
+        setContent { SaqzTheme { GroupSetupScreen(withoutAddress(GroupSetupMode.Edit("grp-1")), {}, {}) } }
 
-            onNodeWithTag(GroupSetupTags.Advanced).assertDoesNotExist()
-            onNodeWithText("Informe o endereço da quadra.").assertIsDisplayed()
-            onNodeWithText("Falta 1 informação para criar o grupo. Ela está marcada abaixo.").assertExists()
-            onNodeWithTag(GroupSetupTags.SaveFailure).assertDoesNotExist()
-        }
+        onNodeWithTag(GroupSetupTags.VenueAddress).performScrollTo().assertExists()
+        onNodeWithText("Informe o endereço da quadra.").assertDoesNotExist()
+        onNodeWithTag(GroupSetupTags.SaveFailure).assertDoesNotExist()
+    }
 
     @Test
-    fun aRefusedVenueAddressMarksTheAddressAndTalksAboutSavingWhenEditing() =
-        androidx.compose.ui.test.v2.runComposeUiTest {
-            setContent { SaqzTheme { GroupSetupScreen(refusedAddress(GroupSetupMode.Edit("grp-1")), {}, {}) } }
-            waitForIdle()
+    fun aShortAddressStillShowsTheMinimumError() = runComposeUiTest {
+        val state = withoutAddress(GroupSetupMode.Edit("grp-1")).copy(errors = setOf(GroupSetupError.VenueAddressNotFound))
+        setContent { SaqzTheme { GroupSetupScreen(state, {}, {}) } }
 
-            onNodeWithText("Informe o endereço da quadra.").assertIsDisplayed()
-            onNodeWithText("Falta 1 informação para salvar o grupo. Ela está marcada abaixo.").assertExists()
-            onNodeWithText("Falta 1 informação para criar o grupo. Ela está marcada abaixo.").assertDoesNotExist()
-            onNodeWithTag(GroupSetupTags.SaveFailure).assertDoesNotExist()
-        }
+        onNodeWithText("Não encontramos esse endereço. Confira a rua e o bairro.").performScrollTo().assertIsDisplayed()
+    }
 
     @Test
     fun editingWithoutErrorsKeepsAdvancedFieldsExpanded() = runComposeUiTest {

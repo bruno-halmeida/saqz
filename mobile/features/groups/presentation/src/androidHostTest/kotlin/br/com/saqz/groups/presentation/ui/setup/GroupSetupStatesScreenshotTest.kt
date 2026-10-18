@@ -112,20 +112,6 @@ class GroupSetupStatesScreenshotTest {
         )
     }
 
-    // Backend v.0.0.17: a quadra sem endereço volta como 400 e o erro cai no campo, com o formulário como estava.
-    @Test
-    fun addressRefusedByTheServer() = capture("compat-setup-address-required") {
-        GroupSetupScreen(
-            state = GroupSetupState(
-                mode = GroupSetupMode.Create,
-                form = PreviewCourtForm.copy(defaultVenue = GroupVenueForm(name = "Quadra do Parque", address = "")),
-                errors = setOf(GroupSetupError.VenueAddressRequired),
-            ),
-            onIntent = {},
-            onBack = {},
-        )
-    }
-
     @Composable
     private fun LowerCards(hasCapacityError: Boolean, hasSlotsError: Boolean, withAddressError: Boolean) {
         val venue = PreviewCourtForm.defaultVenue

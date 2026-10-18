@@ -143,7 +143,6 @@
     <string name="group_setup_error_slot">Adicione ao menos um dia e horário.</string>
     <string name="group_setup_error_venue_name">Informe o nome da quadra.</string>
     <string name="group_setup_error_venue_address">Não encontramos esse endereço. Confira a rua e o bairro.</string>
-    <string name="group_setup_error_venue_address_required">Informe o endereço da quadra.</string>
 
     <!-- 2h · estados de sistema -->
     <string name="group_system_title">Estados de sistema</string>

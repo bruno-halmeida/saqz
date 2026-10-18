@@ -12,9 +12,6 @@ import br.com.saqz.groups.model.GroupVenueForm
  * confirmar um comando que estoura na camada de dados. `VenueNameRequired` veio da mesma
  * conferência, um nível abaixo — `GroupProfileDefaultsValidator.validateVenue` exige nome
  * sempre que a quadra vem preenchida. O endereço é opcional (só vale o mínimo se informado).
- *
- * `VenueAddressRequired` só nasce da resposta do servidor ([toSetupFieldErrors]): o backend que
- * ainda exige o endereço da quadra (v.0.0.17) recusa a gravação com `defaultVenue.address`.
  */
 enum class GroupSetupError {
     NameRequired,
@@ -29,19 +26,7 @@ enum class GroupSetupError {
     SlotsRequired,
     VenueNameRequired,
     VenueAddressNotFound,
-    VenueAddressRequired,
 }
-
-/**
- * O que o servidor recusou, traduzido para os campos do formulário: `defaultVenue.address` vira o
- * erro do endereço da quadra. Com o backend atual o endereço é opcional e isto devolve vazio; vazio
- * quer dizer "sem campo para apontar", e quem chama cai no aviso genérico.
- */
-internal fun GroupProfileError.Validation.toSetupFieldErrors(): Set<GroupSetupError> = buildSet {
-    if (VENUE_ADDRESS_FIELD in details.fieldMessages) add(GroupSetupError.VenueAddressRequired)
-}
-
-private const val VENUE_ADDRESS_FIELD = "defaultVenue.address"
 
 /**
  * Comprimentos de texto espelhados de `GroupProfileDefaultsValidator`

@@ -216,13 +216,8 @@ class GroupSetupValidatorTest {
             ),
         )
 
-        // O endereço é opcional: em branco não acusa `VenueAddressNotFound`. `VenueAddressRequired`
-        // só nasce da resposta do servidor (backend v.0.0.17), nunca do formulário.
-        assertEquals(
-            GroupSetupError.entries.toSet() -
-                setOf(GroupSetupError.VenueAddressNotFound, GroupSetupError.VenueAddressRequired),
-            errors,
-        )
+        // O endereço é opcional: em branco não acusa `VenueAddressNotFound`.
+        assertEquals(GroupSetupError.entries.toSet() - GroupSetupError.VenueAddressNotFound, errors)
     }
 
     @Test

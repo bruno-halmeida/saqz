@@ -70,7 +70,6 @@ import br.com.saqz.groups.resources.group_setup_error_description
 import br.com.saqz.groups.resources.group_setup_error_modality
 import br.com.saqz.groups.resources.group_setup_error_name
 import br.com.saqz.groups.resources.group_setup_error_venue_address
-import br.com.saqz.groups.resources.group_setup_error_venue_address_required
 import br.com.saqz.groups.resources.group_setup_error_venue_name
 import br.com.saqz.groups.resources.group_setup_save_action
 import br.com.saqz.groups.resources.group_system_creating
@@ -268,15 +267,6 @@ private fun GroupSetupAdvancedCards(
     onOpenWhatsApp: (() -> Unit)?,
 ) {
     val form = state.form
-    // O servidor recusou a quadra sem endereço: a tela rola até o campo, que pode estar longe do topo.
-    val venueRequester = remember { BringIntoViewRequester() }
-    val addressRequired = GroupSetupError.VenueAddressRequired in state.errors
-    LaunchedEffect(addressRequired) {
-        if (!addressRequired) return@LaunchedEffect
-        // Na criação os cartões avançados acabam de abrir: o pedido espera o layout do quadro seguinte.
-        withFrameNanos { }
-        venueRequester.bringIntoView()
-    }
     GroupLevelSection(
         levelLabel = form.level?.label(),
         customLevel = form.customLevel,
@@ -333,13 +323,9 @@ private fun GroupSetupAdvancedCards(
             Res.string.group_setup_error_venue_name,
         ),
         addressError = state.errorText(
-            GroupSetupError.VenueAddressRequired,
-            Res.string.group_setup_error_venue_address_required,
-        ) ?: state.errorText(
             GroupSetupError.VenueAddressNotFound,
             Res.string.group_setup_error_venue_address,
         ),
-        modifier = Modifier.bringIntoViewRequester(venueRequester),
         onNameChange = { onIntent(GroupSetupIntent.UpdateVenueName(it)) },
         onAddressChange = { onIntent(GroupSetupIntent.UpdateVenueAddress(it)) },
         suggestions = state.venueSearch.suggestions,

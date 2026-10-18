@@ -38,6 +38,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -324,75 +325,50 @@ class GroupSetupViewModelTest {
     private val venueWithoutAddress = GroupVenueForm(name = "Quadra do Parque", address = "")
 
     @Test
-    fun `criar com quadra sem endereco recusada pelo backend antigo marca o campo e nao mostra o cartao generico`() =
-        runTest(mainDispatcher) {
-            val viewModel = viewModel(
-                form = completeForm.copy(defaultVenue = venueWithoutAddress),
-                profileGateway = FakeGroupProfileGateway(
-                    createResult = SaqzResult.Failure(refusedBy("defaultVenue.address")),
-                ),
-            )
-            val effects = collectEffects(viewModel)
-            val formBefore = viewModel.state.value.form
-
-            viewModel.onIntent(GroupSetupIntent.Submit)
-            runCurrent()
-
-            val state = viewModel.state.value
-            assertEquals(setOf(GroupSetupError.VenueAddressRequired), state.errors)
-            assertTrue(!state.saveFailed, "o erro cai no campo, não no cartão genérico")
-            assertNull(state.gatewayError)
-            assertTrue(!state.isSaving)
-            assertEquals(formBefore, state.form, "o formulário fica como estava")
-            assertTrue(effects.isEmpty())
-        }
-
-    @Test
-    fun `editar com quadra sem endereco recusada pelo backend antigo marca o campo e nao mostra o cartao generico`() =
-        runTest(mainDispatcher) {
-            val viewModel = viewModel(
-                mode = GroupSetupMode.Edit(groupId = "grp-1"),
-                profileGateway = FakeGroupProfileGateway(
-                    updateResult = SaqzResult.Failure(refusedBy("defaultVenue.address")),
-                ),
-            )
-            val effects = collectEffects(viewModel)
-            runCurrent()
-            val formBefore = viewModel.state.value.form
-
-            viewModel.onIntent(GroupSetupIntent.Submit)
-            runCurrent()
-
-            val state = viewModel.state.value
-            assertEquals(setOf(GroupSetupError.VenueAddressRequired), state.errors)
-            assertTrue(!state.saveFailed)
-            assertNull(state.gatewayError)
-            assertTrue(!state.isSaving)
-            assertEquals(formBefore, state.form)
-            assertTrue(effects.isEmpty())
-        }
-
-    @Test
-    fun `preencher o endereco depois da recusa limpa o erro e o proximo envio cria`() = runTest(mainDispatcher) {
-        val profileGateway = FakeGroupProfileGateway(createResult = SaqzResult.Failure(refusedBy("defaultVenue.address")))
+    fun `criar com quadra sem endereco envia endereco vazio e nao acusa erro`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
         val viewModel = viewModel(
             form = completeForm.copy(defaultVenue = venueWithoutAddress),
             profileGateway = profileGateway,
         )
         val effects = collectEffects(viewModel)
+
         viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
-        val refusedKey = profileGateway.lastCreateCommand?.commandKey
 
-        profileGateway.createResult = SaqzResult.Success(sampleGroup())
-        viewModel.onIntent(GroupSetupIntent.UpdateVenueAddress("R. Canuto Abreu, s/n"))
         assertTrue(viewModel.state.value.errors.isEmpty())
+        assertEquals("", profileGateway.lastCreateCommand?.form?.defaultVenue?.address)
+        assertEquals(listOf(GroupSetupEffect.Created(groupId = "group-1")), effects)
+    }
+
+    @Test
+    fun `editar com quadra sem endereco salva`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"), profileGateway = profileGateway)
+        runCurrent()
+        viewModel.onIntent(GroupSetupIntent.UpdateVenueName("Quadra do Parque"))
+        viewModel.onIntent(GroupSetupIntent.UpdateVenueAddress(""))
+
         viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
-        assertEquals("R. Canuto Abreu, s/n", profileGateway.lastCreateCommand?.form?.defaultVenue?.address)
-        assertTrue(refusedKey != profileGateway.lastCreateCommand?.commandKey)
-        assertEquals(listOf(GroupSetupEffect.Created(groupId = "group-1")), effects)
+        assertTrue(viewModel.state.value.errors.isEmpty())
+        assertNotNull(profileGateway.lastUpdateCommand)
+    }
+
+    @Test
+    fun `endereco preenchido com menos de 5 caracteres e recusado`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val viewModel = viewModel(
+            form = completeForm.copy(defaultVenue = GroupVenueForm(name = "Quadra do Parque", address = "Rua")),
+            profileGateway = profileGateway,
+        )
+
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertTrue(GroupSetupError.VenueAddressNotFound in viewModel.state.value.errors)
+        assertTrue(profileGateway.createCommands.isEmpty())
     }
 
     @Test

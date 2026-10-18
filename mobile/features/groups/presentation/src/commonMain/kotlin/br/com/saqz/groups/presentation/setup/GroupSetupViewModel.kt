@@ -308,21 +308,8 @@ class GroupSetupViewModel(
         }
     }
 
-    /**
-     * Falha ao gravar o grupo. Um campo que o servidor recusou e o formulário não barrou (o endereço da
-     * quadra no backend v.0.0.17) vira erro do próprio campo, com o formulário como estava; o resto cai
-     * no aviso genérico, ou na folha do plano.
-     */
-    private fun showSaveFailure(error: GroupProfileError) {
-        val fieldErrors = (error as? GroupProfileError.Validation)?.toSetupFieldErrors().orEmpty()
-        if (fieldErrors.isEmpty()) {
-            showOperationFailure(error.toUiError())
-            return
-        }
-        update {
-            it.copy(isLoading = false, isSaving = false, saveFailed = false, gatewayError = null, errors = fieldErrors)
-        }
-    }
+    /** Falha ao gravar o grupo: aviso genérico, ou a folha do plano. */
+    private fun showSaveFailure(error: GroupProfileError) = showOperationFailure(error.toUiError())
 
     private fun showOperationFailure(error: GroupUiError) {
         if (error == GroupUiError.SubscriptionRequired) {
