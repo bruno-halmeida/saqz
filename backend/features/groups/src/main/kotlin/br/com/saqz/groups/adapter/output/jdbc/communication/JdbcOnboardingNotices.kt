@@ -100,7 +100,10 @@ class JdbcOnboardingNotices(
         Unit
     }
 
-    /** Pedidos ainda pendentes (a linha some na aprovação, recusa ou saída) feitos há 2 dias ou mais, em grupo ativo. */
+    /**
+     * Pedidos ainda pendentes (a linha some na aprovação ou recusa) feitos há 2 dias ou mais, em grupo ativo. Quem já tem
+     * vínculo ativo fica de fora: com "Aprovar pedidos" desligado a entrada é direta e a linha do pedido não é apagada.
+     */
     override fun stalled(): List<StalledEntryRequest> = jdbc.sql(
         """
         SELECT r.group_id, r.user_id, g.name AS group_name, coalesce(u.nickname, u.display_name) AS who, r.requested_at
@@ -108,6 +111,8 @@ class JdbcOnboardingNotices(
         JOIN access_groups g ON g.id = r.group_id AND g.deleted_at IS NULL
         JOIN access_users u ON u.id = r.user_id
         WHERE r.requested_at <= now() - make_interval(days => :days)
+          AND NOT EXISTS (SELECT 1 FROM group_memberships m
+                          WHERE m.group_id = r.group_id AND m.user_id = r.user_id AND m.active)
         ORDER BY r.requested_at
         """.trimIndent(),
     ).param("days", STALLED_AFTER_DAYS.toInt()).query { rs, _ ->

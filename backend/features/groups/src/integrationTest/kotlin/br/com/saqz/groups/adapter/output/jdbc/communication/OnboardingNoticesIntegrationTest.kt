@@ -309,6 +309,21 @@ class OnboardingNoticesIntegrationTest {
         assertEquals(4, count("ENTRY_REQUEST"))
     }
 
+    @Test fun `quem entrou direto depois do pedido nao ganha segundo aviso`() {
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa")
+        redeem.execute(rafa, code.value)
+        ageRequest(rafa, "3 days")
+        // Aprovação desligada depois: a entrada é direta e a linha do pedido continua (causa fora do escopo do DEB-068).
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = false WHERE id = :g").param("g", group).update()
+        assertIs<RedeemInviteResult.Success>(redeem.execute(rafa, code.value))
+        assertEquals(1L, jdbc.sql("SELECT count(*) FROM group_entry_requests WHERE user_id = :u").param("u", rafa).query(Long::class.java).single())
+
+        assertEquals(0, reminders.run())
+
+        assertEquals(1, count("ENTRY_REQUEST"))
+    }
+
     @Test fun `grupo excluido nao recebe segundo aviso`() {
         jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
         val rafa = user("Rafa")
