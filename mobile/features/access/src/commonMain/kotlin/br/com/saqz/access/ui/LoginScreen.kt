@@ -2,9 +2,7 @@ package br.com.saqz.access.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,22 +20,20 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.access.presentation.login.LoginIntent
 import br.com.saqz.access.presentation.login.LoginState
 import br.com.saqz.access.presentation.register.RegisterInviteContext
-import br.com.saqz.access.resources.login_terms
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.apple_logo
 import br.com.saqz.access.resources.google_g
+import br.com.saqz.access.resources.login_apple_short
 import br.com.saqz.access.resources.login_continue_with
 import br.com.saqz.access.resources.login_email
 import br.com.saqz.access.resources.login_email_placeholder
 import br.com.saqz.access.resources.login_error_attempts
 import br.com.saqz.access.resources.login_forgot_password
-import br.com.saqz.access.resources.login_apple_short
 import br.com.saqz.access.resources.login_google
 import br.com.saqz.access.resources.login_google_short
 import br.com.saqz.access.resources.login_headline_emphasis
@@ -47,6 +43,7 @@ import br.com.saqz.access.resources.login_password
 import br.com.saqz.access.resources.login_signup_link
 import br.com.saqz.access.resources.login_signup_prompt
 import br.com.saqz.access.resources.login_submit
+import br.com.saqz.access.resources.login_terms
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzDivider
@@ -54,9 +51,10 @@ import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
-import br.com.saqz.designsystem.rememberSaqzFormScope
+import br.com.saqz.designsystem.SaqzTextLink
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.designsystem.asString
+import br.com.saqz.designsystem.rememberSaqzFormScope
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -192,12 +190,11 @@ fun LoginScreen(
             modifier = Modifier.testTag(LoginTags.Password),
         )
         Spacer(Modifier.height(LoginMetrics.wideGap))
-        LoginLink(
+        SaqzTextLink(
             label = stringResource(Res.string.login_forgot_password),
-            size = LoginMetrics.forgotSize,
-            weight = FontWeight(600),
+            style = SaqzTheme.typography.support.copy(fontSize = LoginMetrics.forgotSize, fontWeight = FontWeight(600)),
             onClick = onForgotPassword,
-            modifier = Modifier.testTag(LoginTags.ForgotPassword),
+            modifier = Modifier.align(Alignment.CenterHorizontally).testTag(LoginTags.ForgotPassword),
         )
         Spacer(Modifier.height(LoginMetrics.wideGap))
         SaqzButton(
@@ -270,12 +267,11 @@ fun LoginScreen(
             color = colors.textSecondary,
         )
         Spacer(Modifier.height(LoginMetrics.signupLinkGap))
-        LoginLink(
+        SaqzTextLink(
             label = stringResource(Res.string.login_signup_link),
-            size = LoginMetrics.signupLinkSize,
-            weight = FontWeight(700),
+            style = SaqzTheme.typography.support.copy(fontSize = LoginMetrics.signupLinkSize, fontWeight = FontWeight(700)),
             onClick = onCreateAccount,
-            modifier = Modifier.testTag(LoginTags.CreateAccount),
+            modifier = Modifier.align(Alignment.CenterHorizontally).testTag(LoginTags.CreateAccount),
         )
         Spacer(Modifier.height(LoginMetrics.fieldGap))
         Text(
@@ -303,22 +299,6 @@ fun LoginScreen(
  */
 internal fun alertEmphasis(text: String): String? =
     text.indexOf(". ").takeIf { it >= 0 }?.let { text.substring(0, it + 1) }
-
-// Os dois links de saída da 1a: azul, centralizados, e diferentes só no tamanho e no peso.
-@Composable
-private fun ColumnScope.LoginLink(
-    label: String,
-    size: TextUnit,
-    weight: FontWeight,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) = Text(
-    text = label,
-    style = SaqzTheme.typography.support.copy(fontSize = size, fontWeight = weight),
-    color = SaqzTheme.colors.primary,
-    textAlign = TextAlign.Center,
-    modifier = modifier.align(Alignment.CenterHorizontally).clickable(onClick = onClick),
-)
 
 // Duas linhas de 1px com o rótulo no meio.
 @Composable

@@ -74,6 +74,24 @@ class SaqzLabelAlignmentTest {
         assertEquals(TextAlign.Center, layoutOf("12").layoutInput.style.textAlign)
     }
 
+    @Test
+    fun dashedAddButtonLabelThatWrapsIsCentered() = runComposeUiTest {
+        setContent { SaqzTheme { SaqzDashedAddButton(long, {}, Modifier.width(150.dp)) } }
+        assertWrappedAndCentered(long)
+    }
+
+    @Test
+    fun textLinkWithTouchTargetThatWrapsIsCentered() = runComposeUiTest {
+        setContent { SaqzTheme { SaqzTextLink("Trocar a quadra do grupo", {}, Modifier.width(110.dp), touchTarget = true) } }
+        assertWrappedAndCentered("Trocar a quadra do grupo")
+    }
+
+    @Test
+    fun shortcutCardLabelThatWrapsIsCentered() = runComposeUiTest {
+        setContent { SaqzTheme { SaqzShortcutCard(SaqzIcons.Plus, long, "Atalho", {}, Modifier.width(100.dp)) } }
+        assertWrappedAndCentered(long)
+    }
+
     private fun ComposeUiTest.layoutOf(text: String): TextLayoutResult {
         val results = mutableListOf<TextLayoutResult>()
         onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().config

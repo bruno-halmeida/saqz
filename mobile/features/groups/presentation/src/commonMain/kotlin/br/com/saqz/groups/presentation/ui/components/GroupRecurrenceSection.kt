@@ -10,11 +10,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import br.com.saqz.designsystem.SaqzDashedAddButton
 import br.com.saqz.designsystem.SaqzSwitch
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.group_setup_add_slot
 import br.com.saqz.groups.resources.group_setup_recurrence_hint
 import br.com.saqz.groups.resources.group_setup_recurrence_label
 import br.com.saqz.groups.resources.group_setup_recurring_off
@@ -57,7 +59,7 @@ internal fun GroupRecurrenceSection(
             slots.forEach { slot ->
                 GroupSlotPill(slot = slot, onRemove = { onRemoveSlot(slot) })
             }
-            GroupAddSlotButton(onClick = onAddSlot)
+            SaqzDashedAddButton(label = stringResource(Res.string.group_setup_add_slot), onClick = onAddSlot)
         } else {
             Text(
                 stringResource(Res.string.group_setup_recurring_off),

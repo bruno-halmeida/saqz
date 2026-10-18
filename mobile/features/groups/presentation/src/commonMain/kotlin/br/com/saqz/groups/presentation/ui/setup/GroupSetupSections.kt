@@ -687,7 +687,7 @@ private fun GroupNoteBlock(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * ponytail: o `GroupAddSlotButton` do VUL-66 só existe em azul, e o `2g` troca o botão
+ * ponytail: o `SaqzDashedAddButton` (ex-GroupAddSlotButton do VUL-66) só existe em azul, e o `2g` troca o botão
  * por uma faixa tracejada vermelha. Sem tocar em `ui/components/`, a faixa entra
  * **abaixo** do botão; um tom de erro no componente resolveria — está comentado no ticket.
  */

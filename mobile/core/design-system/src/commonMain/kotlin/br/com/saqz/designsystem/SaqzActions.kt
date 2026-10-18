@@ -1,0 +1,160 @@
+package br.com.saqz.designsystem
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import br.com.saqz.designsystem.theme.SaqzTheme
+
+/**
+ * Atalho em cartão: ícone em cima, rótulo curto embaixo. O toque anuncia
+ * [contentDescription] (mais longo que o rótulo) como nome e como ação.
+ */
+@Composable
+fun SaqzShortcutCard(
+    icon: ImageVector,
+    label: String,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(metrics.cardRadius))
+            .background(colors.surface, RoundedCornerShape(metrics.cardRadius))
+            .clickable(onClickLabel = contentDescription, role = Role.Button, onClick = onClick)
+            .semantics { this.contentDescription = contentDescription }
+            .padding(metrics.blockGap),
+        verticalArrangement = Arrangement.spacedBy(metrics.subGrid),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        SaqzIcon(icon = icon, tint = colors.primary, size = metrics.grid * 3)
+        Text(
+            text = label,
+            style = SaqzTheme.typography.compactMeta.copy(fontWeight = FontWeight(600)),
+            color = colors.textPrimary,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/** Botão tracejado de adicionar ("+ Adicionar dia e horário"): largura toda, azul sobre fundo suave. */
+@Composable
+fun SaqzDashedAddButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val metrics = SaqzTheme.metrics
+    val borderColor = SaqzTheme.colors.primary
+    val dash = metrics.grid
+    val shape = RoundedCornerShape(metrics.cardRadius)
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = metrics.buttonHeight)
+            .clip(shape)
+            .background(SaqzTheme.colors.surfaceSoft, shape)
+            .drawBehind {
+                drawRoundRect(
+                    color = borderColor,
+                    cornerRadius = CornerRadius(metrics.cardRadius.toPx()),
+                    style = Stroke(
+                        width = metrics.subGrid.toPx() / DASHED_BORDER_DIVISOR,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash.toPx(), dash.toPx())),
+                    ),
+                )
+            }
+            .clickable(
+                onClickLabel = label,
+                role = Role.Button,
+                onClick = {
+                    dismissKeyboard()
+                    onClick()
+                },
+            )
+            .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+        horizontalArrangement = Arrangement.spacedBy(metrics.grid, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SaqzIcon(SaqzIcons.Plus, tint = SaqzTheme.colors.primary)
+        Text(label, style = SaqzTheme.typography.label, color = SaqzTheme.colors.primary, textAlign = TextAlign.Center)
+    }
+}
+
+private const val DASHED_BORDER_DIVISOR = 4
+
+/**
+ * Ação de texto em azul, no meio de uma frase ou ao lado de uma linha. O rótulo que quebra sai
+ * centralizado. [touchTarget] reserva o alvo de toque mínimo (linha de lista); sem ele o link
+ * ocupa só o texto, como o de fim de formulário.
+ */
+@Composable
+fun SaqzTextLink(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    style: TextStyle = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.Bold),
+    touchTarget: Boolean = false,
+) {
+    val text = @Composable { modifier: Modifier ->
+        Text(
+            text = label,
+            style = style,
+            color = SaqzTheme.colors.primary,
+            textAlign = TextAlign.Center,
+            modifier = modifier,
+        )
+    }
+    if (touchTarget) {
+        Box(
+            modifier = modifier
+                .clickable(onClickLabel = label, role = Role.Button, onClick = onClick)
+                .heightIn(min = SaqzTheme.metrics.minimumTouchTarget)
+                .padding(horizontal = SaqzTheme.metrics.subGrid),
+            contentAlignment = Alignment.Center,
+        ) { text(Modifier) }
+    } else {
+        text(modifier.clickable(onClickLabel = label, role = Role.Button, onClick = onClick))
+    }
+}
+
+@Preview
+@Composable
+private fun SaqzActionsPreview() = SaqzTheme {
+    SaqzPreviewGrid {
+        Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
+            SaqzShortcutCard(SaqzIcons.Plus, "Marcar jogo", "Marcar um jogo", {}, Modifier.weight(1f))
+            SaqzShortcutCard(SaqzIcons.Mail, "Convidar", "Convidar atletas", {}, Modifier.weight(1f))
+        }
+        SaqzDashedAddButton("Adicionar dia e horário", {})
+        SaqzTextLink("Criar conta ›", {})
+        SaqzTextLink("Trocar a quadra do grupo", {}, touchTarget = true)
+    }
+}

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.components
 
+import br.com.saqz.designsystem.SaqzDashedAddButton
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -29,7 +30,7 @@ import kotlin.test.assertTrue
 class ControlLabelAlignmentTest {
     @Test
     fun addSlotButtonLabelIsCentered() = runComposeUiTest {
-        setContent { Phone(width = 150) { GroupAddSlotButton(onClick = {}) } }
+        setContent { Phone(width = 150) { SaqzDashedAddButton("Adicionar dia e horário", {}) } }
         assertCentered(onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.Text), useUnmergedTree = true)[0].layout())
     }
 

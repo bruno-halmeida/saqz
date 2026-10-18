@@ -2,6 +2,7 @@ package br.com.saqz.designsystem
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -145,6 +146,26 @@ class SaqzComponentsTest {
         onNodeWithTag("ano").performClick()
         waitForIdle()
         assertEquals(2, selected)
+    }
+
+    @Test
+    fun actionsReportTheirClicksAndKeepAccessibleNames() = runComposeUiTest {
+        val clicks = mutableListOf<String>()
+        setContent {
+            SaqzTheme {
+                Column {
+                    SaqzShortcutCard(SaqzIcons.Plus, "Marcar jogo", "Marcar um jogo", { clicks += "atalho" })
+                    SaqzDashedAddButton("Adicionar dia e horário", { clicks += "tracejado" })
+                    SaqzTextLink("Criar conta", { clicks += "link" })
+                    SaqzTextLink("Trocar a quadra", { clicks += "linha" }, touchTarget = true)
+                }
+            }
+        }
+        onNodeWithContentDescription("Marcar um jogo").performClick()
+        onNodeWithText("Adicionar dia e horário").performClick()
+        onNodeWithText("Criar conta").performClick()
+        onNodeWithText("Trocar a quadra").assertHeightIsAtLeast(48.dp).performClick()
+        assertEquals(listOf("atalho", "tracejado", "link", "linha"), clicks)
     }
 
     @Test

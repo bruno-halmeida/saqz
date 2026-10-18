@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.rotulos
 
+import br.com.saqz.designsystem.SaqzDashedAddButton
 import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +33,6 @@ import br.com.saqz.groups.presentation.gameeditor.GameEditorFields
 import br.com.saqz.groups.presentation.gameeditor.GameEditorState
 import br.com.saqz.groups.presentation.ui.components.AttendanceScoreBoard
 import br.com.saqz.groups.presentation.ui.components.AttendanceScoreBoardTags
-import br.com.saqz.groups.presentation.ui.components.GroupAddSlotButton
 import br.com.saqz.groups.presentation.ui.components.GroupVenueRow
 import br.com.saqz.groups.presentation.ui.components.OwnChargeTicket
 import br.com.saqz.groups.presentation.ui.components.OwnChargeTicketTags
@@ -142,7 +142,7 @@ class RotulosScreenshotTest {
                     tags = AttendanceScoreBoardTags("going", "out", "waiting", "pending"),
                 )
             }
-            GroupAddSlotButton(onClick = {})
+            SaqzDashedAddButton("Adicionar dia e horário", {})
             GroupVenueRow("CERET", "R. Canuto Abreu", "Trocar a quadra do grupo", {})
         }
     }

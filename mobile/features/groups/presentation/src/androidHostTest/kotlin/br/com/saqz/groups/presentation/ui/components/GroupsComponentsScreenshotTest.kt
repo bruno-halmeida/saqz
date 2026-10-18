@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.components
 
+import br.com.saqz.designsystem.SaqzDashedAddButton
 import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -62,7 +63,7 @@ class GroupsComponentsScreenshotTest {
 
     @Test
     fun addSlotButton() = capture("group-add-slot-button") {
-        GroupAddSlotButton(onClick = {})
+        SaqzDashedAddButton("Adicionar dia e horário", {})
     }
 
     @Test
