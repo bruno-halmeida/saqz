@@ -110,7 +110,7 @@ do grupo cadastrado em PROD-GR03.
 **Quem:** ATL, com mensalidades no grupo QA (PROD-FI01 ou PROD-FI03).
 
 1. Perfil → "Minhas mensalidades".
-2. Tocar "Ver grupo e dados para pagamento".
+2. Tocar "Ver como pagar".
 
 **Conferir**
 - A lista mostra as mensalidades do grupo QA com valor, vencimento e situação ("Em aberto", "Paga").

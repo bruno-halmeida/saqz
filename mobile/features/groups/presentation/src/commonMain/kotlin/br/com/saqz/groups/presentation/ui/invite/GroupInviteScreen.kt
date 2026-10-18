@@ -51,6 +51,7 @@ import br.com.saqz.groups.resources.group_invite_copied_toast
 import br.com.saqz.groups.resources.group_invite_copy_code
 import br.com.saqz.groups.resources.group_invite_link_title
 import br.com.saqz.groups.resources.group_invite_deactivate
+import br.com.saqz.groups.resources.group_invite_deactivate_confirm
 import br.com.saqz.groups.resources.group_invite_deactivate_body
 import br.com.saqz.groups.resources.group_invite_deactivate_title
 import br.com.saqz.groups.resources.group_invite_deactivated_toast
@@ -238,7 +239,7 @@ internal fun GroupInviteScreen(
                     modifier = Modifier.weight(1f),
                 )
                 SaqzButton(
-                    label = stringResource(Res.string.group_invite_deactivate),
+                    label = stringResource(Res.string.group_invite_deactivate_confirm),
                     onClick = { onIntent(GroupInviteIntent.ConfirmDeactivate) },
                     variant = SaqzButtonVariant.Danger,
                     loading = state.isDeactivating,

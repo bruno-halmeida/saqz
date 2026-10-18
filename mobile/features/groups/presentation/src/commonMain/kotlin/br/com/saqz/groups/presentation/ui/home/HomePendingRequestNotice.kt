@@ -26,6 +26,7 @@ import br.com.saqz.groups.resources.home_pending_cancel_body
 import br.com.saqz.groups.resources.home_pending_cancel_title
 import br.com.saqz.groups.resources.home_pending_create_title
 import br.com.saqz.groups.resources.home_pending_request_cancel
+import br.com.saqz.groups.resources.home_pending_request_cancel_confirm
 import br.com.saqz.groups.resources.home_pending_request_status
 import org.jetbrains.compose.resources.stringResource
 
@@ -93,7 +94,7 @@ internal fun HomeCancelEntryRequestSheet(state: HomeState, onIntent: (HomeIntent
                 modifier = Modifier.weight(1f),
             )
             SaqzButton(
-                label = stringResource(Res.string.home_pending_request_cancel),
+                label = stringResource(Res.string.home_pending_request_cancel_confirm),
                 onClick = { onIntent(HomeIntent.ConfirmCancelEntryRequest) },
                 variant = SaqzButtonVariant.Danger,
                 modifier = Modifier.weight(1f).testTag(HomePendingCancelConfirmTag),

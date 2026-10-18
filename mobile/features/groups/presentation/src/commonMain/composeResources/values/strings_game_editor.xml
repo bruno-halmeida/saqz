@@ -73,8 +73,8 @@
     <string name="game_editor_error_venue_name_too_long">O nome da quadra deve ter no máximo 120 caracteres.</string>
     <string name="game_editor_error_venue_address_too_long">O endereço da quadra deve ter no máximo 300 caracteres.</string>
     <string name="game_editor_error_conflict_title">Já existe um jogo nesse horário</string>
-    <string name="game_editor_error_conflict_pick_other">Escolher outro horário</string>
-    <string name="game_editor_error_conflict_open_existing">Abrir o jogo que já existe</string>
+    <string name="game_editor_error_conflict_pick_other">Outro horário</string>
+    <string name="game_editor_error_conflict_open_existing">Ver jogo</string>
     <string name="game_editor_error_save_title">Não foi possível criar o jogo</string>
     <string name="game_editor_error_save_title_edit">Não foi possível salvar o jogo</string>
     <string name="game_editor_error_save_body">Tente novamente.</string>

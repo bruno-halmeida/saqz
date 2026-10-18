@@ -1,7 +1,9 @@
 package br.com.saqz.groups.presentation.ui.invite
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -109,6 +111,22 @@ class GroupInviteScreenTest {
         onNodeWithTag(GroupInviteTags.Deactivate).performScrollTo().performClick()
 
         assertEquals(listOf<GroupInviteIntent>(GroupInviteIntent.RequestDeactivate), intents)
+    }
+
+    @Test
+    fun `the screen button keeps Desativar convite`() = runComposeUiTest {
+        setContent { SaqzTheme { GroupInviteScreen(state = active, onBack = {}, onIntent = {}) } }
+        onNodeWithTag(GroupInviteTags.Deactivate).performScrollTo().assert(hasText("Desativar convite"))
+    }
+
+    @Test
+    fun `the sheet button says Desativar`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GroupInviteScreen(state = active.copy(isDeactivateConfirmVisible = true), onBack = {}, onIntent = {})
+            }
+        }
+        onNodeWithTag(GroupInviteTags.DeactivateConfirmAction).assert(hasText("Desativar"))
     }
 
     @Test

@@ -44,7 +44,7 @@ só registro: nada aqui move dinheiro. O caixa fica em Gestão → "Caixa do gru
 
 1. No caixa, em "Quem ainda não pagou", tocar "Recebi" na cobrança de ATL.
 2. Em "Confirmar recebimento", conferir o valor, escolher Pix em "Como recebeu" e tocar
-   "Confirmar recebimento".
+   "Recebi".
 
 **Conferir**
 - A cobrança sai de "Quem ainda não pagou", e o "SALDO DO GRUPO" sobe R$ 10,00.

@@ -11,7 +11,9 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.assertCountEquals
@@ -516,6 +518,25 @@ class HomeScreenTest {
         onNodeWithTag(HomePendingCancelTag).performClick()
 
         assertEquals(listOf<HomeIntent>(HomeIntent.RequestCancelEntryRequest("g-b")), intents)
+    }
+
+    @Test
+    fun `pending request card keeps Cancelar pedido`() = runComposeUiTest {
+        val base = firstAccessState()
+        val request = HomePendingRequestUi("g-b", "RV Aprova B")
+        setScreen(base.copy(member = base.member!!.copy(pendingRequests = listOf(request))), {})
+        onNodeWithTag(HomePendingCancelTag).assert(hasText("Cancelar pedido"))
+    }
+
+    @Test
+    fun `cancel confirmation button says Sim e cancelar`() = runComposeUiTest {
+        val base = firstAccessState()
+        val request = HomePendingRequestUi("g-b", "RV Aprova B")
+        setScreen(
+            base.copy(member = base.member!!.copy(pendingRequests = listOf(request)), cancelEntryCandidate = request),
+            {},
+        )
+        onNodeWithTag(HomePendingCancelConfirmTag).assert(hasText("Sim, cancelar"))
     }
 
     @Test

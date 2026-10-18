@@ -167,6 +167,7 @@
     <string name="home_invite_sheet_invalid">Não achei um convite aí. Confira o link ou o código e tente de novo.</string>
     <string name="home_pending_request_status">Pedido enviado · aguardando o organizador</string>
     <string name="home_pending_request_cancel">Cancelar pedido</string>
+    <string name="home_pending_request_cancel_confirm">Sim, cancelar</string>
     <string name="home_pending_cancel_title">Cancelar o pedido para entrar em %1$s?</string>
     <string name="home_pending_cancel_body">Você sai da fila de aprovação. Para entrar depois, peça de novo pelo convite.</string>
     <string name="home_pending_cancel_back">Voltar</string>

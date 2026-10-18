@@ -35,7 +35,7 @@
     <string name="myplan_cancel_button">Cancelar assinatura</string>
     <string name="myplan_cancel_helper">Se cancelar, seus grupos continuam visíveis por 30 dias e depois entram em modo leitura.</string>
     <string name="myplan_cancel_sheet_title">Cancelar assinatura?</string>
-    <string name="myplan_cancel_confirm">Cancelar assinatura</string>
+    <string name="myplan_cancel_confirm">Cancelar plano</string>
     <string name="myplan_cancel_keep">Manter plano</string>
     <string name="myplan_receipts_sheet_title">Recibos</string>
     <string name="myplan_receipts_load_more">Carregar mais</string>

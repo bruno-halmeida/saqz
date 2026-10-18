@@ -224,7 +224,7 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 1. Membros e permissões → ATL → "Editar jogador".
 2. Tocar "Tornar mensalista", preencher "Valor por mês" com R$ 10,00 e escolher em "Dia do vencimento"
    um dia que já passou no mês (5, 10, 15 ou 20).
-3. Tocar "Confirmar mensalidade".
+3. Tocar "Salvar".
 
 **Conferir**
 - O cartão mostra "R$ 10,00 / mês · vence dia N", e o valor continua lá ao reabrir o editor.
@@ -259,5 +259,5 @@ liberados; só plano vencido ou pausado abre a folha de assinatura.
 1. Membros e permissões → ATL2 → "Remover do grupo".
 
 **Conferir**
-- Antes de remover, o app pergunta "Remover … do grupo?" e só remove ao confirmar "Remover do grupo".
+- Antes de remover, o app pergunta "Remover … do grupo?" e só remove ao confirmar "Remover".
 - ATL2 some da lista e, depois de atualizar, perde o acesso ao grupo.
