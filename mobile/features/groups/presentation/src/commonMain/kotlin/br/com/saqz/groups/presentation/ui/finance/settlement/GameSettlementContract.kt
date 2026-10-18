@@ -24,8 +24,6 @@ data class GameSettlementState(
     val unitDiaristCents: Long = 0L,
     val receivedDiaristCents: Long = 0L,
     val pendingDiaristCents: Long = 0L,
-    val costCents: Long = 0L,
-    val resultCents: Long = 0L,
     val diarists: List<GameSettlementDiaristUi> = emptyList(),
     val debtors: List<DebtorUi> = emptyList(),
     val pix: PixUi? = null,

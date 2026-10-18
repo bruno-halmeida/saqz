@@ -18,8 +18,6 @@ import br.com.saqz.groups.domain.finance.Charge
 import br.com.saqz.groups.domain.finance.ChargeKind
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.ChargeStatusCommand
-import br.com.saqz.groups.domain.finance.ExpenseCategory
-import br.com.saqz.groups.domain.finance.ExpenseStatus
 import br.com.saqz.groups.domain.finance.FinanceError
 import br.com.saqz.groups.domain.finance.FinanceVersionToken
 import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
@@ -320,9 +318,6 @@ class GameSettlementViewModel(
             val charges = requestOrFail(generation, softRefresh, { organizerFinanceGateway.charges(GroupId(groupId)) }) {
                 it.toSettlementUiError()
             }?.charges ?: return@launch
-            val expenses = requestOrFail(generation, softRefresh, { organizerFinanceGateway.expenses(GroupId(groupId)) }) {
-                it.toSettlementUiError()
-            }?.expenses ?: return@launch
             // Por baixo, uma folha aberta depois do pedido não pode ser fechada pela troca do estado.
             if (softRefresh && state.value.interacting()) return@launch
             updateIfCurrent(generation) {
@@ -333,7 +328,6 @@ class GameSettlementViewModel(
                     roster = roster,
                     athletes = athletes,
                     charges = charges,
-                    expenses = expenses,
                     pix = group.profile?.let { profile ->
                         profile.pixKey?.trim()?.takeIf(String::isNotEmpty)?.let { key ->
                             PixUi(key, profile.pixLabel)
@@ -411,7 +405,7 @@ class GameSettlementViewModel(
         }
     }
 
-    /** Dispensada sai do que falta, mas não entra no recebido nem no resultado. */
+    /** Dispensada sai do que falta, mas não entra no recebido. */
     private fun GameSettlementState.optimisticallyWaive(
         diarist: GameSettlementDiaristUi,
     ): GameSettlementState {
@@ -455,7 +449,6 @@ class GameSettlementViewModel(
             progress = progressFor(paidCount, totalDiaristCount),
             receivedDiaristCents = received,
             pendingDiaristCents = pending,
-            resultCents = received - costCents,
             updatingChargeId = diarist.chargeId,
             receiptSheetChargeId = null,
             operationFailed = false,
@@ -471,7 +464,6 @@ class GameSettlementViewModel(
         roster: AttendanceRoster,
         athletes: List<AthleteRosterEntry>,
         charges: List<Charge>,
-        expenses: List<br.com.saqz.groups.domain.finance.Expense>,
         pix: PixUi?,
     ): GameSettlementState {
         val athleteById = athletes.associateBy(AthleteRosterEntry::userId)
@@ -484,13 +476,6 @@ class GameSettlementViewModel(
             }
         val paid = gameCharges.filter { it.status == ChargeStatus.Paid }
         val pending = gameCharges.filter { it.status == ChargeStatus.Pending }
-        val costCents = expenses
-            .filter {
-                it.status == ExpenseStatus.Active &&
-                    it.direction == br.com.saqz.groups.domain.finance.FinanceDirection.Out &&
-                    it.category == ExpenseCategory.Venue && it.expenseDate == game.localDate
-            }
-            .sumOf { it.amountCents }
         val localDateTime = runCatching {
             Instant.parse(game.startsAt).toLocalDateTime(TimeZone.of(game.zoneId))
         }.getOrNull()
@@ -526,8 +511,6 @@ class GameSettlementViewModel(
             unitDiaristCents = gameCharges.firstOrNull()?.amountCents ?: 0L,
             receivedDiaristCents = receivedCents,
             pendingDiaristCents = pendingCents,
-            costCents = costCents,
-            resultCents = receivedCents - costCents,
             diarists = gameCharges,
             debtors = pending.map { it.toDebtor() },
             pix = pix,

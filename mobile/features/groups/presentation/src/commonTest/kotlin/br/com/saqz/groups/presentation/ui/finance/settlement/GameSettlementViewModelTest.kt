@@ -159,7 +159,7 @@ class GameSettlementViewModelTest {
     }
 
     @Test
-    fun `loads only this game charges and derives progress monthly members local time and cost`() = runTest {
+    fun `loads only this game charges and derives progress monthly members and local time without reading expenses`() = runTest {
         val finance = SettlementFinanceGateway(charges = charges(), expenses = expenses())
         val viewModel = viewModel(finance)
         val state = viewModel.state.value
@@ -171,7 +171,7 @@ class GameSettlementViewModelTest {
         assertEquals(0.5f, state.progress)
         assertEquals("04/08/2026 · 19h30", state.header?.dateTime)
         assertEquals(3, state.header?.playersCount)
-        assertEquals(8_000L, state.costCents)
+        assertEquals(0, finance.expensesCalls)
         assertEquals(listOf("member-avulso-paid", "member-avulso-pending"), state.diarists.map { it.memberId })
         assertFalse(state.isSummary)
     }
@@ -278,7 +278,7 @@ class GameSettlementViewModelTest {
     }
 
     @Test
-    fun `opens court expense with the local date of a past game and includes its cost`() = runTest {
+    fun `opens court expense with the local date of a past game`() = runTest {
         val pastDate = "2026-08-03"
         val pastGame = sampleVersionedGame().game.copy(
             localDate = pastDate,
@@ -292,7 +292,7 @@ class GameSettlementViewModelTest {
         viewModel.onIntent(GameSettlementIntent.OpenCourtExpense)
 
         assertEquals(GameSettlementEffect.OpenNewEntry("group-1", pastDate), viewModel.effects.first())
-        assertEquals(8_000L, viewModel.state.value.costCents)
+        assertEquals(0, finance.expensesCalls)
     }
 
     @Test
@@ -311,7 +311,7 @@ class GameSettlementViewModelTest {
 
         assertTrue(viewModel.state.value.isSummary)
         assertEquals(14_000L, viewModel.state.value.receivedDiaristCents)
-        assertEquals(6_000L, viewModel.state.value.resultCents)
+        assertEquals(0L, viewModel.state.value.pendingDiaristCents)
     }
 
     @Test
@@ -874,9 +874,12 @@ private class SettlementFinanceGateway(
         return SaqzResult.Success(VersionedCharge(charge, FinanceVersionToken("\"3\"")))
     }
 
-    override suspend fun expenses(groupId: GroupId) = SaqzResult.Success(
-        ExpenseList(currentExpenses, currentExpenses.sumOf { it.amountCents }),
-    )
+    var expensesCalls = 0
+
+    override suspend fun expenses(groupId: GroupId): SaqzResult<ExpenseList, FinanceError> {
+        expensesCalls++
+        return SaqzResult.Success(ExpenseList(currentExpenses, currentExpenses.sumOf { it.amountCents }))
+    }
 
     override suspend fun generateMonthly(groupId: GroupId, command: MonthlyChargeCommand) =
         error("not used in this screen")

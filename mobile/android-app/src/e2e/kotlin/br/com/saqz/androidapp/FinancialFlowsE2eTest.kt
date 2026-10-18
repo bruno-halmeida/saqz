@@ -280,7 +280,7 @@ internal class SettlementE2eTest : InstalledE2e("settlement") {
         ui.onNodeWithText("ENCERRADO").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("Recebido").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("1 avulso × R$\u00A070,00").performScrollTo().assertIsDisplayed()
-        assertSettlementResult()
+        assertSettlementReceived()
         assertEquals(paid.toString(), api("owner", chargesPath).toString())
         assertEquals(statement.toString(), api("owner", "/api/groups/$group/finance/statement").toString())
         assertEquals(game.toString(), api("owner", gamePath).toString())
@@ -291,17 +291,19 @@ internal class SettlementE2eTest : InstalledE2e("settlement") {
         assertLedger(api("owner", "/api/groups/$secondGroup/finance/statement"), 0, 0, 0)
     }
 
-    private fun assertSettlementResult() {
+    private fun assertSettlementReceived() {
         val inSummary = hasAnyAncestor(hasTestTag("game-settlement-summary"))
-        val label = ui.onNode(hasText("Resultado") and inSummary, true)
+        val label = ui.onNode(hasText("1 avulso × R$\u00A070,00") and inSummary, true)
             .performScrollTo().assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         // SummaryLine rows have no semantics node, so all summary values share a parent.
-        val besideResult = SemanticsMatcher("value to the right of Resultado on the same visible row") {
+        val besideReceived = SemanticsMatcher("value to the right of the diarist line on the same visible row") {
             val value = it.boundsInRoot
             value.left >= label.right && value.top < label.bottom && value.bottom > label.top
         }
-        ui.onNode(hasText("R$\u00A070,00") and inSummary and hasAnySibling(hasText("Resultado")) and besideResult, true)
+        ui.onNode(hasText("R$\u00A070,00") and inSummary and hasAnySibling(hasText("1 avulso × R$\u00A070,00")) and besideReceived, true)
             .assertIsDisplayed()
+        ui.onNode(hasText("Falta receber") and inSummary, true).performScrollTo().assertIsDisplayed()
+        ui.onNode(hasText("Resultado") and inSummary, true).assertDoesNotExist()
     }
 
     private fun openCompletedGame() {

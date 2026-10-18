@@ -45,7 +45,6 @@ import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.PaidMethod
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.game_settlement_charge_missing
-import br.com.saqz.groups.resources.game_settlement_court_expense
 import br.com.saqz.groups.resources.game_settlement_court_expense_description
 import br.com.saqz.groups.resources.game_settlement_debt_note
 import br.com.saqz.groups.resources.game_settlement_diarist_meta
@@ -58,7 +57,6 @@ import br.com.saqz.groups.resources.game_settlement_ended
 import br.com.saqz.groups.resources.game_settlement_header
 import br.com.saqz.groups.resources.game_settlement_monthly_members
 import br.com.saqz.groups.resources.game_settlement_monthly_members_body
-import br.com.saqz.groups.resources.game_settlement_negative_result
 import br.com.saqz.groups.resources.game_settlement_note
 import br.com.saqz.groups.resources.game_settlement_players
 import br.com.saqz.groups.resources.game_settlement_progress
@@ -68,7 +66,7 @@ import br.com.saqz.groups.resources.game_settlement_review_action
 import br.com.saqz.groups.resources.game_settlement_review_failure
 import br.com.saqz.groups.resources.game_settlement_review_status
 import br.com.saqz.groups.resources.game_settlement_received_status
-import br.com.saqz.groups.resources.game_settlement_result
+import br.com.saqz.groups.resources.game_settlement_summary_pending
 import br.com.saqz.groups.resources.game_settlement_summary
 import br.com.saqz.groups.resources.game_settlement_summary_diarists_one
 import br.com.saqz.groups.resources.game_settlement_summary_diarists_other
@@ -196,7 +194,7 @@ private fun LoadedContent(state: GameSettlementState, onIntent: (GameSettlementI
         SettlementHeader(state)
         if (!state.isSummary) ProgressSection(state)
         MonthlySection(state)
-        if (state.isSummary) SummarySection(state) else CourtExpenseSection(state, onIntent)
+        if (state.isSummary) SummarySection(state) else CourtExpenseSection(onIntent)
         DiaristsSection(state, onIntent)
         Text(
             text = stringResource(Res.string.game_settlement_note),
@@ -352,21 +350,9 @@ private fun SummarySection(state: GameSettlementState) = SaqzCard(
         value = formatBrl(state.receivedDiaristCents),
     )
     SummaryLine(
-        label = stringResource(Res.string.game_settlement_court_expense),
-        value = formatBrl(state.costCents),
+        label = stringResource(Res.string.game_settlement_summary_pending),
+        value = formatBrl(state.pendingDiaristCents),
     )
-    SummaryLine(
-        label = stringResource(Res.string.game_settlement_result),
-        value = formatBrl(state.resultCents),
-        valueColor = if (state.resultCents < 0) SaqzTheme.colors.errorForeground else SaqzTheme.colors.success,
-    )
-    if (state.resultCents < 0) {
-        Text(
-            text = stringResource(Res.string.game_settlement_negative_result),
-            style = SaqzTheme.typography.support,
-            color = SaqzTheme.colors.errorForeground,
-        )
-    }
 }
 
 @Composable
@@ -382,15 +368,8 @@ private fun SummaryLine(label: String, value: String, valueColor: Color = SaqzTh
 
 @Composable
 private fun CourtExpenseSection(
-    state: GameSettlementState,
     onIntent: (GameSettlementIntent) -> Unit,
 ) = SaqzCard(modifier = Modifier.testTag(GameSettlementTags.CourtExpense)) {
-    SaqzSectionHeader(title = stringResource(Res.string.game_settlement_court_expense))
-    Text(
-        text = formatBrl(state.costCents),
-        style = SaqzTheme.typography.title,
-        color = SaqzTheme.colors.textPrimary,
-    )
     SaqzButton(
         label = stringResource(Res.string.game_settlement_court_expense_description),
         onClick = { onIntent(GameSettlementIntent.OpenCourtExpense) },

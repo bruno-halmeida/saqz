@@ -103,8 +103,6 @@ class GameSettlementScreenshotTest {
             progress = 1f,
             unitDiaristCents = 7_000L,
             receivedDiaristCents = 14_000L,
-            costCents = 16_000L,
-            resultCents = -2_000L,
             diarists = listOf(
                 diarist("paid-1", "Bia", ChargeStatus.Paid),
                 diarist("paid-2", "Caio", ChargeStatus.Paid),

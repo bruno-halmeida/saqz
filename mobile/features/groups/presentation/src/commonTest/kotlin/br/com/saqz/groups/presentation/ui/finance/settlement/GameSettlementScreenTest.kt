@@ -61,6 +61,11 @@ class GameSettlementScreenTest {
         onNodeWithText("Toque em 'Recebi' quando o Pix ou o dinheiro chegar. Nada é cobrado automaticamente.").assertExists()
         onNodeWithTag(GameSettlementTags.ChargeMissing).assertIsEnabled()
         onNodeWithTag(GameSettlementTags.End).assertIsNotEnabled()
+        onNodeWithText("Custo do jogo").assertDoesNotExist()
+        onNodeWithText("Registrar aluguel da quadra").performScrollTo().performClick()
+        waitForIdle()
+        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.OpenCourtExpense), intents)
+        intents.clear()
 
         onNodeWithTag(GameSettlementTags.ChargeMissing).performScrollTo().performClick()
         waitForIdle()
@@ -68,7 +73,7 @@ class GameSettlementScreenTest {
     }
 
     @Test
-    fun `5i shows derived summary negative result and group cashbox action`() = runComposeUiTest {
+    fun `5i shows derived summary with received and pending only and group cashbox action`() = runComposeUiTest {
         val intents = mutableListOf<GameSettlementIntent>()
         setScreen(summaryState, intents::add)
 
@@ -76,8 +81,11 @@ class GameSettlementScreenTest {
         onNodeWithTag(GameSettlementTags.Summary).assertExists()
         onNodeWithText("2 avulsos", substring = true).assertExists()
         onAllNodesWithText("R$\u00A07.000,00", substring = true).assertCountEquals(2)
-        onNodeWithText("-R$\u00A020,00").assertExists()
-        onNodeWithText("A diferença saiu do saldo. Considere ajustar o valor do avulso.").assertExists()
+        onNodeWithText("Falta receber").assertExists()
+        onNodeWithText("R$\u00A00,00").assertExists()
+        onNodeWithText("Custo do jogo").assertDoesNotExist()
+        onNodeWithText("Resultado").assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.CourtExpense).assertDoesNotExist()
         onAllNodesWithText("Recebido").assertCountEquals(2)
         onNodeWithTag(GameSettlementTags.Cashbox).performScrollTo().performClick()
 
@@ -277,8 +285,6 @@ class GameSettlementScreenTest {
             totalDiaristCents = 14_000L,
             unitDiaristCents = 7_000L,
             receivedDiaristCents = 14_000L,
-            costCents = 16_000L,
-            resultCents = -2_000L,
             diarists = listOf(
                 diarist("paid-1", "Bia", ChargeStatus.Paid),
                 diarist("paid-2", "Caio", ChargeStatus.Paid),
