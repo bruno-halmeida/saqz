@@ -39,4 +39,6 @@ Contas descartáveis desta rodada e senha ficam no roteiro; e-mails caem no Mail
 | --- | --- | --- |
 | [01-dono-e-atletas.md](01-dono-e-atletas.md) | Conta, grupo, convites, jogo, lista de espera, prazo (20 passos) | 4 |
 | [02-recorrencia.md](02-recorrencia.md) | Horário fixo pelo editor e por "Jogos e horários": próximo jogo publicado e vinculado à série (8 passos) | 2 Android |
+| [03-presenca.md](03-presenca.md) | PRES-002 a PRES-013: prazo e início, permissões, "Não vou", "Vou" antes e depois do prazo, convidados, repetição e `requestId`, fim da fila, organizador responde por alguém, avisos (4 críticos: PRES-002, 005, 006, 009) | 4, rodadas iOS/Android com papéis invertidos |
+| [04-promocao.md](04-promocao.md) | PROM-001 a PROM-005, 007 a 009: o que libera vaga, quem sobe primeiro, promoção automática, "Colocar no jogo", job do prazo, posição na fila, cobrança de quem sobe, avisos (3 críticos: PROM-001, 002, 004) | 4, rodadas iOS/Android com papéis invertidos |
 

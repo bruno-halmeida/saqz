@@ -124,7 +124,7 @@ Pré: RESET(2, FIFO, false) com a prioridade desligada para o "Vou" confirmar di
 | 8 | banco + ATL | RESET(2, FIFO, false); ATL e ATL3 "Vou"; ATL2 "Vou" (espera). ATL2 "Alterar" → "Não vou" (sai da fila) | `Tudo bem, na próxima. Sua vaga já foi liberada.` | ATL2 `DECLINED`; ATL e ATL3 seguem `CONFIRMED` (quem estava na espera não libera vaga) | ☐ | ☐ |
 | 9 | ATL3 | "Alterar" → "Não vou" com a fila vazia | `Sua vaga foi liberada.` | ATL3 `DECLINED`; nenhum evento `SYSTEM` novo | ☐ | ☐ |
 | 10 | banco + ATL | RESET(2, FIFO, false); `update games set game_fee_cents=2000 where id='<J>'`; ATL (avulso) "Vou" e depois "Alterar" → "Não vou" | `Sua vaga foi liberada.` | `select status from group_charges where game_id='<J>'` = `PENDING` (a cobrança do desistente continua pendente; o organizador decide) | ☐ | ☐ |
-| 11 | ORG | Grupo → Financeiro (cobranças do jogo) | Linha de ATL com etiqueta `Desistiu` e ação `Dispensar` ao lado de `Recebi` (decidido em 17/10; se a etiqueta não existir, registrar como divergência) | — | ☐ | ☐ |
+| 11 | ORG | Grupo → "Caixa do grupo" (cobranças do jogo) | Linha de ATL com etiqueta `Desistiu` e ação `Dispensar` ao lado de `Recebi` (decidido em 17/10; se a etiqueta não existir, registrar como divergência) | — | ☐ | ☐ |
 
 Convidados que saem com o anfitrião: ver PRES-008.
 
@@ -265,7 +265,7 @@ Pré: RESET(2, FIFO, false).
 | 8 | ATL | Reabrir "Ver o jogo" | `Você não vai jogar.` | — | ☐ | ☐ |
 | 9 | banco + API (ORG) | `update games set starts_at=now()-interval '1 minute' where id='<J>'`; `override` `DECLINE` para ATL3 (confirmado) com `reason` `"Não apareceu"` | `2xx`: o organizador age depois do início | ATL3 `DECLINED`; EVENTOS: `ORGANIZER|CONFIRMED|DECLINED` | ☐ | ☐ |
 | 9b | banco + API (ORG) | `update games set status='CANCELLED' where id='<J>'`; `override` `CONFIRM` para ATL3 | `409` (`ATTENDANCE_FROZEN`, mesmo erro do rascunho e do concluído) | ESTADO inalterado | ☐ | ☐ |
-| 10 | API (ATL2) | `PUT $B` do próprio atleta (jogo ainda publicado: antes do passo 9b, `update games set status='PUBLISHED', starts_at=now()+interval '1 day'`) com `"reason":"xxxxx"` extra | `2xx`; o motivo é ignorado | `select count(*) from attendance_events where reason is not null and source='SELF'` = 0 | ☐ | ☐ |
+| 10 | API (ATL2) | `PUT $B` do próprio atleta (republicar antes: `update games set status='PUBLISHED', starts_at=now()+interval '1 day' where id='<J>'`) com `"reason":"xxxxx"` extra | `2xx`; o motivo é ignorado | `select count(*) from attendance_events where reason is not null and source='SELF'` = 0 | ☐ | ☐ |
 
 ## PRES-013 · Aviso direto quando a pessoa é confirmada ou tirada por outra parte [MULTI] [push: só produção]
 
