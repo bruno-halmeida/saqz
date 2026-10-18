@@ -4,6 +4,10 @@ import br.com.saqz.groups.application.communication.EntryRequestNotice
 import br.com.saqz.groups.application.communication.FirstConfirmationNotice
 import br.com.saqz.groups.application.communication.FirstMemberNotice
 import br.com.saqz.groups.application.communication.MessageChannel
+import br.com.saqz.groups.application.communication.STALLED_AFTER_DAYS
+import br.com.saqz.groups.application.communication.StalledEntryRequest
+import br.com.saqz.groups.application.communication.StalledEntryRequestReminders
+import br.com.saqz.groups.application.communication.entryRequestReminderBody
 import br.com.saqz.groups.application.communication.entryRequestBody
 import br.com.saqz.groups.application.communication.firstConfirmationBody
 import br.com.saqz.groups.application.communication.firstMemberBody
@@ -21,7 +25,7 @@ import javax.sql.DataSource
 class JdbcOnboardingNotices(
     dataSource: DataSource,
     private val communication: JdbcGroupCommunicationRepository,
-) : FirstMemberNotice, FirstConfirmationNotice, EntryRequestNotice {
+) : FirstMemberNotice, FirstConfirmationNotice, EntryRequestNotice, StalledEntryRequestReminders {
     private val jdbc = JdbcClient.create(dataSource)
 
     /**
@@ -94,6 +98,34 @@ class JdbcOnboardingNotices(
         val request = UUID.nameUUIDFromBytes("entry-request:$groupId:$userId:${row.third}".toByteArray())
         communication.publishOnce(groupId, userId, MessageChannel.ENTRY_REQUEST, entryRequestBody(row.first, row.second), null, request)
         Unit
+    }
+
+    /** Pedidos ainda pendentes (a linha some na aprovação, recusa ou saída) feitos há 2 dias ou mais, em grupo ativo. */
+    override fun stalled(): List<StalledEntryRequest> = jdbc.sql(
+        """
+        SELECT r.group_id, r.user_id, g.name AS group_name, coalesce(u.nickname, u.display_name) AS who, r.requested_at
+        FROM group_entry_requests r
+        JOIN access_groups g ON g.id = r.group_id AND g.deleted_at IS NULL
+        JOIN access_users u ON u.id = r.user_id
+        WHERE r.requested_at <= now() - make_interval(days => :days)
+        ORDER BY r.requested_at
+        """.trimIndent(),
+    ).param("days", STALLED_AFTER_DAYS.toInt()).query { rs, _ ->
+        StalledEntryRequest(
+            rs.getObject("group_id", UUID::class.java), rs.getObject("user_id", UUID::class.java),
+            rs.getString("who"), rs.getString("group_name"), rs.getTimestamp("requested_at").toInstant(),
+        )
+    }.list()
+
+    /**
+     * Segundo aviso: `request_id` próprio (pedido + "lembrete"), então o UNIQUE de group_messages impede o terceiro.
+     * Mesmo canal, autor e destinatários do primeiro aviso (dono e admins, sem quem pediu).
+     */
+    override fun remind(request: StalledEntryRequest): Boolean {
+        val id = UUID.nameUUIDFromBytes("entry-request-reminder:${request.groupId}:${request.userId}:${request.requestedAt}".toByteArray())
+        return communication.publishOnce(
+            request.groupId, request.userId, MessageChannel.ENTRY_REQUEST, entryRequestReminderBody(request.who, request.groupName), null, id,
+        )
     }
 
     /**

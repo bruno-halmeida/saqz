@@ -7,6 +7,7 @@ import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteRedemptionReposit
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.attendance.AttendanceCommandResult
 import br.com.saqz.groups.application.attendance.RespondAttendance
+import br.com.saqz.groups.application.communication.RemindStalledEntryRequests
 import br.com.saqz.groups.application.finance.charge.ChargeTransactions
 import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
@@ -47,6 +48,8 @@ class OnboardingNoticesIntegrationTest {
         Instant::now,
         firstConfirmation = notices,
     )
+
+    private val reminders = RemindStalledEntryRequests(transaction, notices)
 
     private val owner = user("Dona")
     private val admin = user("Admin")
@@ -246,6 +249,79 @@ class OnboardingNoticesIntegrationTest {
 
         assertEquals(1, count("FIRST_CONFIRMATION"))
     }
+
+    @Test fun `pedido parado ha 2 dias ganha um segundo aviso a dono e admins, uma vez so`() {
+        membership(admin, "ADMIN")
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa Moreira")
+        redeem.execute(rafa, code.value)
+        ageRequest(rafa, "2 days 1 minute")
+
+        assertEquals(1, reminders.run())
+        assertEquals(0, reminders.run())
+
+        val reminder = jdbc.sql("SELECT id, body, author_id FROM group_messages WHERE channel = 'ENTRY_REQUEST' AND body LIKE '%ainda espera%'")
+            .query { rs, _ -> listOf(rs.getObject("id", UUID::class.java), rs.getString("body"), rs.getObject("author_id")) }.single()
+        assertEquals("Rafa Moreira ainda espera resposta para entrar no QA Vôlei.", reminder[1])
+        assertEquals(rafa, reminder[2])
+        assertEquals(setOf(owner, admin), recipients(reminder[0] as UUID))
+        val pushed = jdbc.sql("SELECT recipient_id FROM notification_delivery_context WHERE channel = 'ENTRY_REQUEST' AND push_enabled AND body LIKE '%ainda espera%'")
+            .query(UUID::class.java).set()
+        assertEquals(setOf(owner, admin), pushed)
+        assertEquals(2, count("ENTRY_REQUEST"))
+    }
+
+    @Test fun `pedido com menos de 2 dias nao ganha segundo aviso`() {
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa")
+        redeem.execute(rafa, code.value)
+        ageRequest(rafa, "47 hours")
+
+        assertEquals(0, reminders.run())
+
+        assertEquals(1, count("ENTRY_REQUEST"))
+    }
+
+    @Test fun `pedido ja respondido nao ganha segundo aviso`() {
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa")
+        redeem.execute(rafa, code.value)
+        ageRequest(rafa, "3 days")
+        jdbc.sql("DELETE FROM group_entry_requests WHERE user_id = :u").param("u", rafa).update()
+
+        assertEquals(0, reminders.run())
+
+        assertEquals(1, count("ENTRY_REQUEST"))
+    }
+
+    @Test fun `pedido novo depois de uma resposta tem o proprio segundo aviso`() {
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa")
+        redeem.execute(rafa, code.value)
+        ageRequest(rafa, "3 days")
+        assertEquals(1, reminders.run())
+        jdbc.sql("DELETE FROM group_entry_requests WHERE user_id = :u").param("u", rafa).update()
+        redeem.execute(rafa, code.value)
+        ageRequest(rafa, "2 days 1 minute")
+
+        assertEquals(1, reminders.run())
+
+        assertEquals(4, count("ENTRY_REQUEST"))
+    }
+
+    @Test fun `grupo excluido nao recebe segundo aviso`() {
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa")
+        redeem.execute(rafa, code.value)
+        ageRequest(rafa, "3 days")
+        jdbc.sql("UPDATE access_groups SET deleted_at = now() WHERE id = :g").param("g", group).update()
+
+        assertEquals(0, reminders.run())
+    }
+
+    private fun ageRequest(user: UUID, age: String) =
+        jdbc.sql("UPDATE group_entry_requests SET requested_at = now() - CAST(:age AS interval) WHERE user_id = :u")
+            .param("age", age).param("u", user).update()
 
     private fun confirm(game: UUID, member: UUID) =
         assertIs<AttendanceCommandResult.Success>(respond.execute(member, group, game, intent = AttendanceIntent.CONFIRM))

@@ -29,6 +29,36 @@ fun interface EntryRequestNotice {
     fun requested(groupId: UUID, userId: UUID)
 }
 
+/** Pedido de entrada ainda pendente há [STALLED_AFTER_DAYS] dias ou mais (DEB-068). */
+data class StalledEntryRequest(val groupId: UUID, val userId: UUID, val who: String, val groupName: String, val requestedAt: Instant)
+
+const val STALLED_AFTER_DAYS = 2L
+
+/**
+ * Segundo aviso do pedido de entrada parado (DEB-068, NOT-004), no mesmo canal ENTRY_REQUEST. [remind] vale uma
+ * vez por pedido: devolve false se o lembrete daquele pedido já foi gravado. O pedido não expira (CONV-006).
+ */
+interface StalledEntryRequestReminders {
+    fun stalled(): List<StalledEntryRequest>
+    fun remind(request: StalledEntryRequest): Boolean
+}
+
+/** Job diário: cada lembrete na própria transação, então uma falha não leva os outros. Devolve quantos avisos novos saíram. */
+class RemindStalledEntryRequests(
+    private val transaction: br.com.saqz.groups.application.create.TransactionRunner,
+    private val reminders: StalledEntryRequestReminders,
+    private val onFailure: (StalledEntryRequest, Exception) -> Unit = { _, _ -> },
+) {
+    fun run(): Int = reminders.stalled().count { request ->
+        try {
+            transaction.inTransaction { reminders.remind(request) }
+        } catch (@Suppress("TooGenericExceptionCaught") failure: Exception) {
+            onFailure(request, failure)
+            false
+        }
+    }
+}
+
 /**
  * Aviso direto à pessoa cujo pedido de entrada foi aprovado (CONV-007), no canal AUTO_CONFIRMATION que os apps das
  * lojas já conhecem. Chamado na mesma transação da aprovação; [requestedAt] identifica o pedido, então aprovar de
@@ -51,6 +81,8 @@ fun administratorPromotedBody(groupName: String): String = "Você agora é admin
 fun entryApprovedBody(groupName: String): String = "Você entrou no $groupName."
 
 fun entryRequestBody(who: String, groupName: String): String = "$who pediu para entrar no $groupName."
+
+fun entryRequestReminderBody(who: String, groupName: String): String = "$who ainda espera resposta para entrar no $groupName."
 
 fun firstMemberBody(who: String, groupName: String): String =
     "$who entrou no $groupName. A galera começou a chegar."

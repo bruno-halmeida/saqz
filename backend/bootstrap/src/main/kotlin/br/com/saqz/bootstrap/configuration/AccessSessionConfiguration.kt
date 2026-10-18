@@ -941,6 +941,15 @@ class AccessSessionConfiguration {
         org.slf4j.LoggerFactory.getLogger(br.com.saqz.groups.application.attendance.SettleWaitlistAtDeadline::class.java)
             .warn("waitlist deadline settlement failed for {}", what, failure)
     }
+    @Bean fun remindStalledEntryRequests(
+        transaction: JdbcTransactionRunner,
+        onboardingNotices: br.com.saqz.groups.adapter.output.jdbc.communication.JdbcOnboardingNotices,
+    ) = br.com.saqz.groups.application.communication.RemindStalledEntryRequests(transaction, onboardingNotices) { request, failure ->
+        org.slf4j.LoggerFactory.getLogger(br.com.saqz.groups.application.communication.RemindStalledEntryRequests::class.java)
+            .warn("entry request reminder failed for group {} user {}", request.groupId, request.userId, failure)
+    }
+    @Bean fun remindStalledEntryRequestsJob(remind: br.com.saqz.groups.application.communication.RemindStalledEntryRequests) =
+        br.com.saqz.groups.adapter.input.scheduling.RemindStalledEntryRequestsJob(remind)
     @Bean fun settleWaitlistAtDeadlineJob(settle: br.com.saqz.groups.application.attendance.SettleWaitlistAtDeadline) =
         br.com.saqz.groups.adapter.input.scheduling.SettleWaitlistAtDeadlineJob(settle)
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
