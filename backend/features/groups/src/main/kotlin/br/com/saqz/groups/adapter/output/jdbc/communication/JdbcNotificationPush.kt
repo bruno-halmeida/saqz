@@ -9,6 +9,7 @@ import javax.sql.DataSource
 
 class JdbcNotificationPush(dataSource: DataSource, private val transaction: TransactionRunner) {
     private val jdbc = JdbcClient.create(dataSource)
+    // O token de push-to-start segue gravado (apps 1.0.4+ ainda o enviam), mas nada mais o usa desde o DEB-067.
     fun register(actor: UUID, installation: UUID, token: String, platform: String, liveActivityStartToken: String? = null) =
         transaction.inTransaction {
             // Serializa rotação/transferência do mesmo token sem guardar dois destinatários.
@@ -44,14 +45,10 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
         """).query(Long::class.java).optional().orElse(null) ?: return@inTransaction null
         var recipientId: UUID? = null
         val message = jdbc.sql("""
-            SELECT c.group_id, c.recipient_id, c.channel, c.body, c.game_id, c.window_ends_at, u.firebase_subject,
-                   game.venue_name, game.starts_at, game.capacity,
-                   coalesce((SELECT g.confirmation_deadline <= now() FROM games g WHERE g.id = c.game_id), false) AS deadline_passed,
-                   (SELECT count(*) FROM game_attendance a WHERE a.game_id = game.id AND a.status = 'CONFIRMED') AS confirmed,
-                   (SELECT count(*) FROM game_attendance a WHERE a.game_id = game.id AND a.status = 'WAITLISTED') AS waitlisted
+            SELECT c.group_id, c.recipient_id, c.channel, c.body, c.game_id, u.firebase_subject,
+                   coalesce((SELECT g.confirmation_deadline <= now() FROM games g WHERE g.id = c.game_id), false) AS deadline_passed
             FROM notification_delivery_context c
             JOIN access_users u ON u.id = c.recipient_id
-            LEFT JOIN games game ON game.id = c.game_id AND c.channel = 'ATTENDANCE_WINDOW'
             WHERE c.sequence = :id AND c.push_enabled
         """).param("id", id).query { rs, _ ->
             val channel = rs.getString("channel")
@@ -72,14 +69,6 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
             NotificationPush(
                 id, rs.getObject("group_id", UUID::class.java), "Saqz", body, channel,
                 recipient = rs.getString("firebase_subject"), gameId = rs.getObject("game_id", UUID::class.java),
-                windowEndsAt = rs.getTimestamp("window_ends_at")?.toInstant(),
-                // Só a janela junta o jogo: nos outros canais `venue_name` vem nulo e não há card.
-                liveActivity = rs.getString("venue_name")?.let { venue ->
-                    LiveActivityGame(
-                        venue = venue, startsAt = rs.getTimestamp("starts_at").toInstant(),
-                        confirmed = rs.getInt("confirmed"), capacity = rs.getInt("capacity"), waitlisted = rs.getInt("waitlisted"),
-                    )
-                },
             )
         }.optional().orElse(null)
         var retry = false
@@ -87,23 +76,16 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
         var failed = 0
         if (message != null) {
             val devices = jdbc.sql("""
-                SELECT d.installation_id, d.token, d.live_activity_start_token FROM notification_devices d
+                SELECT d.installation_id, d.token FROM notification_devices d
                 JOIN group_notifications n ON n.recipient_id = d.user_id
                 WHERE n.sequence = :id AND NOT EXISTS (
                     SELECT 1 FROM notification_push_deliveries r WHERE r.notification_id = :id AND r.installation_id = d.installation_id)
                 ORDER BY d.installation_id FOR UPDATE OF d
             """).param("id", id).query { rs, _ ->
-                Triple(rs.getObject("installation_id", UUID::class.java), rs.getString("token"), rs.getString("live_activity_start_token"))
+                rs.getObject("installation_id", UUID::class.java) to rs.getString("token")
             }.list()
-            devices.forEach { (installation, token, startToken) ->
-                val live = message.liveActivity != null && startToken != null
-                var delivery = sender.send(token, if (live) message.copy(liveActivityStartToken = startToken) else message)
-                if (delivery == PushDelivery.INVALID_START_TOKEN) {
-                    // Token de start recusado: limpa só ele e entrega o push comum no mesmo aparelho.
-                    jdbc.sql("UPDATE notification_devices SET live_activity_start_token = NULL WHERE installation_id = :id")
-                        .param("id", installation).update()
-                    delivery = sender.send(token, message)
-                }
+            devices.forEach { (installation, token) ->
+                val delivery = sender.send(token, message)
                 when (delivery) {
                     PushDelivery.SENT -> {
                         jdbc.sql("INSERT INTO notification_push_deliveries VALUES (:n, :d) ON CONFLICT DO NOTHING")
@@ -117,7 +99,7 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
                         failed++
                         JobLog.itemFailed("notification_push", "push_failed", delivery.name, *itemIds(id, message, recipientId, installation))
                     }
-                    PushDelivery.RETRY, PushDelivery.INVALID_START_TOKEN -> {
+                    PushDelivery.RETRY -> {
                         retry = true
                         failed++
                         JobLog.itemFailed("notification_push", "push_failed", delivery.name, *itemIds(id, message, recipientId, installation))

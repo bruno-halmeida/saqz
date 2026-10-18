@@ -102,21 +102,6 @@ class GroupCommunicationService(
         true
     }
 
-    /**
-     * Janela de presença das 24 h: uma mensagem por jogo publicado antes do T-24h que entrou na
-     * janela, para quem ainda não respondeu (dono incluído). A view revalida a entrega até o fim
-     * da janela — T-22h ou o prazo, o que vier antes.
-     */
-    fun openAttendanceWindows(): Int = logPublished("attendance_window", "window_opened", transaction.inTransaction {
-        repository.attendanceWindowCandidates().map { candidate ->
-            repository.publish(
-                candidate.groupId, candidate.ownerId, MessageChannel.ATTENDANCE_WINDOW, UUID.randomUUID(),
-                attendanceWindowBody(candidate.game, candidate.confirmed, candidate.capacity, candidate.waitlisted),
-                candidate.gameId,
-            )
-        }
-    })
-
     /** Cancelamento de jogo publicado: avisa confirmados e lista de espera (e o grupo do WhatsApp, se vinculado). */
     fun announceGameCancelled(groupId: UUID, actor: UUID, gameId: UUID, localDate: LocalDate, localTime: LocalTime): GroupMessage =
         transaction.inTransaction {

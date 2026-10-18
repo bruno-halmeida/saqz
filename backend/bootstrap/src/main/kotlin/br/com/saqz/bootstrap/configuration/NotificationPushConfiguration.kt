@@ -12,8 +12,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.Scheduled
-import java.time.Duration
-import java.time.Instant
 import javax.sql.DataSource
 
 @Configuration(proxyBeanMethods = false)
@@ -36,15 +34,13 @@ class FirebaseNotificationPushSender(private val app: FirebaseApp) : Notificatio
     override fun send(token: String, message: NotificationPush): PushDelivery {
         // O Auth Emulator não oferece FCM: preservar a fila para diagnóstico, nunca fingir entrega.
         if (app.options.projectId == "saqz-local") return PushDelivery.RETRY
-        val startToken = message.liveActivityStartToken?.takeIf { message.liveActivity != null }
         return try {
-            val built = if (startToken != null) liveActivityMessage(token, startToken, message) else regularMessage(token, message)
-            FirebaseMessaging.getInstance(app).send(built)
+            FirebaseMessaging.getInstance(app).send(regularMessage(token, message))
             PushDelivery.SENT
         } catch (error: FirebaseMessagingException) {
             // Só o código do FCM (nunca token nem mensagem): sem ele o log mostrava RETRY sem dizer o porquê.
-            log.warn("push_fcm_error code={} startToken={}", error.messagingErrorCode, startToken != null)
-            classify(error.messagingErrorCode, startToken != null)
+            log.warn("push_fcm_error code={}", error.messagingErrorCode)
+            classify(error.messagingErrorCode)
         }
     }
 
@@ -55,38 +51,21 @@ class FirebaseNotificationPushSender(private val app: FirebaseApp) : Notificatio
             .setAlert(ApsAlert.builder().setTitle(message.title).setBody(message.body).build())
         if (message.offersAttendanceActions()) aps.setCategory(ATTENDANCE_CATEGORY)
         val android = AndroidConfig.builder().setPriority(AndroidConfig.Priority.HIGH)
-        val apns = ApnsConfig.builder()
-        message.windowEndsAt?.let { end ->
-            // Fora da janela o push não vale mais: FCM e APNs descartam em vez de entregar atrasado.
-            android.setTtl(Duration.between(Instant.now(), end).toMillis().coerceAtLeast(0))
-            apns.putHeader("apns-expiration", end.epochSecond.toString())
-        }
         return Message.builder().setToken(token)
             .putAllData(message.data())
             .setAndroidConfig(android.build())
-            .setApnsConfig(apns.setAps(aps.build()).build())
+            .setApnsConfig(ApnsConfig.builder().setAps(aps.build()).build())
             .build()
-    }
-
-    /** Push-to-start da Live Activity (iOS 17.2+), no formato do guia do FCM: cabeçalho `apns-priority: 10`. */
-    private fun liveActivityMessage(token: String, startToken: String, message: NotificationPush): Message {
-        val apns = ApnsConfig.builder().setLiveActivityToken(startToken).putHeader("apns-priority", "10")
-            .setAps(Aps.builder().putAllCustomData(message.liveActivityAps(Instant.now())).build())
-        message.windowEndsAt?.let { apns.putHeader("apns-expiration", it.epochSecond.toString()) }
-        return Message.builder().setToken(token).setApnsConfig(apns.build()).build()
     }
 }
 
 /**
  * Token que o FCM nunca vai aceitar (app desinstalado ou token de outro projeto) é descartado; o resto
  * (cota, indisponibilidade, chave APNs, argumento) é temporário e a fila tenta de novo.
- * O FCM não diz qual token recusou: com start token, começa por ele; se era o FCM, o reenvio comum descobre.
  */
-fun classify(code: MessagingErrorCode?, hasStartToken: Boolean): PushDelivery = when {
-    code != MessagingErrorCode.UNREGISTERED && code != MessagingErrorCode.SENDER_ID_MISMATCH -> PushDelivery.RETRY
-    hasStartToken -> PushDelivery.INVALID_START_TOKEN
-    else -> PushDelivery.INVALID_TOKEN
-}
+fun classify(code: MessagingErrorCode?): PushDelivery =
+    if (code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.SENDER_ID_MISMATCH) PushDelivery.INVALID_TOKEN
+    else PushDelivery.RETRY
 
 /** O aviso ao organizador de primeira confirmação traz o jogo só para abrir o detalhe: sem "Confirmar" / "Não vou". */
 fun NotificationPush.offersAttendanceActions() = gameId != null && channel != "FIRST_CONFIRMATION"
@@ -94,7 +73,7 @@ fun NotificationPush.offersAttendanceActions() = gameId != null && channel != "F
 /** Categoria APNs registrada no app iOS com as ações "Confirmar" / "Não vou". */
 const val ATTENDANCE_CATEGORY = "SAQZ_ATTENDANCE"
 
-/** Chaves lidas pelos apps: título/corpo (Android monta a notificação), o jogo quando o push pede presença e o fim da janela das 24 h. */
+/** Chaves lidas pelos apps: título/corpo (Android monta a notificação), e o jogo quando o push pede presença. */
 fun NotificationPush.data(): Map<String, String> = buildMap {
     put("notificationId", notificationId.toString())
     put("groupId", groupId.toString())
@@ -103,36 +82,4 @@ fun NotificationPush.data(): Map<String, String> = buildMap {
     put("title", title)
     put("body", body)
     gameId?.let { put("gameId", it.toString()) }
-    windowEndsAt?.let { put("windowEndsAt", it.toEpochMilli().toString()) }
-}
-
-/** Nome do `ActivityAttributes` no app iOS (VUL-268): o sistema só abre a Live Activity se bater. */
-const val LIVE_ACTIVITY_ATTRIBUTES = "SaqzGameAttributes"
-
-/**
- * `aps` do push-to-start da janela das 24 h. Contrato com `SaqzGameAttributes` (VUL-268): datas em
- * segundos Unix (o app converte; o `Date` padrão do Swift conta a partir de 2001) e `status` começa PENDING.
- */
-fun NotificationPush.liveActivityAps(now: Instant): Map<String, Any> {
-    val game = requireNotNull(liveActivity) { "push sem jogo da janela" }
-    return mapOf(
-        "timestamp" to now.epochSecond,
-        "event" to "start",
-        "attributes-type" to LIVE_ACTIVITY_ATTRIBUTES,
-        "attributes" to mapOf(
-            "groupId" to groupId.toString(),
-            "gameId" to requireNotNull(gameId) { "push sem jogo" }.toString(),
-            "recipient" to recipient,
-            "venue" to game.venue,
-            "startsAt" to game.startsAt.epochSecond,
-        ),
-        "content-state" to mapOf(
-            "confirmed" to game.confirmed,
-            "capacity" to game.capacity,
-            "waitlisted" to game.waitlisted,
-            "status" to "PENDING",
-        ),
-        "stale-date" to requireNotNull(windowEndsAt) { "push sem fim de janela" }.epochSecond,
-        "alert" to mapOf("title" to title, "body" to body, "sound" to "default"),
-    )
 }

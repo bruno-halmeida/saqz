@@ -229,18 +229,6 @@ class GroupCommunicationServiceTest {
         assertTrue(repository.published.isEmpty())
     }
 
-    @Test fun `a janela das 24 h publica um aviso por jogo com a contagem do momento`() {
-        val window = AttendanceWindowCandidate(game, group, owner, reminderGame(), confirmed = 9, capacity = 12, waitlisted = 2)
-        repository.windows = listOf(window)
-        assertEquals(1, service.openAttendanceWindows())
-        val sent = repository.published.single()
-        assertEquals(MessageChannel.ATTENDANCE_WINDOW, sent.channel)
-        assertEquals(owner, sent.actor)
-        assertEquals(game, sent.gameId)
-        assertEquals(attendanceWindowBody(reminderGame(), 9, 12, 2), sent.body)
-        assertTrue("9/12 confirmados · 2 na espera" in sent.body)
-    }
-
     @Test fun `cancelar jogo publicado avisa com a data e a hora do jogo`() {
         val sent = service.announceGameCancelled(group, actor, game, LocalDate.of(2026, 10, 14), LocalTime.of(20, 30))
         assertEquals(listOf<Any>(group, actor, game, "O jogo de quarta 14/10 às 20h30 foi cancelado."), repository.cancelled.single())
