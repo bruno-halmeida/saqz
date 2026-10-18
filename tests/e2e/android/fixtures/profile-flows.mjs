@@ -44,8 +44,14 @@ async function memberPrivacy(ctx) {
   }, other.token);
   assert.equal(attendance.attendance.status, 'DECLINED');
   const charge = await monthly(ctx, other, '2025-01', 98765);
+  // DEB-049: frequência e faltas só olham jogos encerrados; o jogo da precondição precisa estar encerrado.
+  const current = await request(`${api}/api/groups/${group}/games/${game.id}`, 'GET', undefined, owner.token);
+  const completed = await request(`${api}/api/groups/${group}/games/${game.id}/complete`, 'POST',
+    undefined, owner.token, { 'If-Match': `"${current.version}"` });
+  assert.equal(completed.status, 'COMPLETED');
   const stats = await request(`${api}/api/groups/${group}/athletes/${other.id}/stats`, 'GET', undefined, owner.token);
-  assert.deepEqual(stats, { games: 1, attendanceRate: 0, absences: 1 });
+  // Jogos realizados contam só quem estava confirmada (DEB-049): quem disse "Não vou" tem 0 jogos e 1 falta.
+  assert.deepEqual(stats, { games: 0, attendanceRate: 0, absences: 1 });
   return { privatePhone, privateCharge: charge.id };
 }
 

@@ -114,7 +114,8 @@ internal class MemberPrivacyE2eTest : ProfileFlowE2e("member-privacy") {
 
         login("owner")
         val authorized = api("owner", statsPath)
-        assertEquals(1, authorized.getInt("games"))
+        // DEB-049: jogos realizados só contam quem estava confirmada; "Não vou" num jogo encerrado é 1 falta e 0 jogos.
+        assertEquals(0, authorized.getInt("games"))
         assertEquals(0, authorized.getInt("attendanceRate"))
         assertEquals(1, authorized.getInt("absences"))
         val self = api("owner", "/api/groups/$group/athletes/${actor("athlete").getString("id")}/stats")
