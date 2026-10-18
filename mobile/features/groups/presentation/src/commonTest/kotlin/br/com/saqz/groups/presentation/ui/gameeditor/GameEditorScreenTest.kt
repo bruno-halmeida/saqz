@@ -142,23 +142,19 @@ class GameEditorScreenTest {
         ).performScrollTo().assertExists()
     }
 
-    // ---- Backend v.0.0.17: quadra sem endereço volta como 400 `venue.address`, e o erro cai no campo ----
-
-    private fun refusedAddress(state: GameEditorState = create()) = state.copy(
-        form = state.form.copy(venue = GameVenue(name = "Quadra do Parque", address = "")),
-        groupHasVenue = false,
-        validationErrors = setOf(GameEditorFieldError.VenueAddressRequired),
-        submitAttempts = 1,
-    )
+    // ---- DEB-050: o endereço da quadra é sempre opcional ----
 
     @Test
-    fun `a refused venue address is marked on the address field and the form stays as it was`() = runComposeUiTest {
-        setContent { SaqzTheme { GameEditorScreen(state = refusedAddress(), onBack = {}, onIntent = {}) } }
+    fun `a venue without address shows no address error and no missing item`() = runComposeUiTest {
+        val state = create().copy(
+            form = create().form.copy(venue = GameVenue(name = "Quadra do Parque", address = "")),
+            groupHasVenue = false,
+        )
+        setContent { SaqzTheme { GameEditorScreen(state = state, onBack = {}, onIntent = {}) } }
         waitForIdle()
 
-        onNodeWithText("Informe o endereço da quadra.").assertIsDisplayed()
-        onNodeWithText("Corrija o endereço da quadra para continuar.").assertExists()
-        onNodeWithTag(GameEditorTags.SaveFailure).assertDoesNotExist()
+        onNodeWithTag(GameEditorTags.VenueAddress).performScrollTo().assertExists()
+        onNodeWithText("Informe o endereço da quadra.").assertDoesNotExist()
         onNodeWithText("Quadra do Parque").assertExists()
     }
 

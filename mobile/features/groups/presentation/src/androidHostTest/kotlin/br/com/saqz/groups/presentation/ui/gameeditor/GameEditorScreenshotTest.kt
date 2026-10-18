@@ -71,21 +71,6 @@ class GameEditorScreenshotTest {
         )
     }
 
-    // Backend v.0.0.17: a quadra sem endereço volta como 400 e o erro cai no campo, sem cartão genérico.
-    @Test
-    fun venueAddressRefusedByTheServer() = capture("compat-editor-venue-address-required") {
-        GameEditorScreen(
-            state = previewState().copy(
-                form = previewState().form.copy(venue = GameVenue(name = "Quadra do Parque", address = "")),
-                groupHasVenue = false,
-                validationErrors = setOf(GameEditorFieldError.VenueAddressRequired),
-                submitAttempts = 1,
-            ),
-            onBack = {},
-            onIntent = {},
-        )
-    }
-
     // Numa edição o jogo já existe: o cartão genérico diz "salvar", não "criar".
     @Test
     fun saveFailureWhenEditing() = capture("compat-editor-save-failure-edit") {

@@ -264,19 +264,26 @@ internal fun GroupHomeCourtBlock(
     ) {
         SaqzSectionHeader(title = stringResource(Res.string.group_details_home_court_title))
         SaqzCard(padded = false) {
+            // "Ver no mapa" só existe com endereço: o endereço da quadra é opcional (DEB-050).
             WaitingRow(
                 icon = SaqzIcons.Pin,
                 title = venue.name,
                 meta = address,
-                contentDescription = listOfNotNull(mapLabel, venue.name, address).joinToString(". "),
-                onClick = { onIntent(GroupDetailsIntent.OpenVenueMap) },
+                contentDescription = if (address != null) {
+                    listOfNotNull(mapLabel, venue.name, address).joinToString(". ")
+                } else {
+                    venue.name
+                },
+                onClick = if (address != null) ({ onIntent(GroupDetailsIntent.OpenVenueMap) }) else null,
                 tag = GroupDetailsTags.HomeCourtMap,
             ) {
-                Text(
-                    text = mapLabel,
-                    style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-                    color = colors.primary,
-                )
+                if (address != null) {
+                    Text(
+                        text = mapLabel,
+                        style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+                        color = colors.primary,
+                    )
+                }
             }
         }
         if (state.mapFailed) {

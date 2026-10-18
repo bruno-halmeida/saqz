@@ -95,7 +95,6 @@ import br.com.saqz.groups.resources.game_editor_error_save_title
 import br.com.saqz.groups.resources.game_editor_error_save_title_edit
 import br.com.saqz.groups.resources.game_editor_error_time
 import br.com.saqz.groups.resources.game_editor_error_venue_address
-import br.com.saqz.groups.resources.game_editor_error_venue_address_required
 import br.com.saqz.groups.resources.game_editor_error_venue_address_too_long
 import br.com.saqz.groups.resources.game_editor_error_venue_name
 import br.com.saqz.groups.resources.game_editor_error_venue_name_too_long
@@ -762,7 +761,6 @@ private fun VenueFields(
         else -> null
     }
     val addressError = when {
-        GameEditorFieldError.VenueAddressRequired in errors -> stringResource(Res.string.game_editor_error_venue_address_required)
         GameEditorFieldError.VenueAddressTooShort in errors -> stringResource(Res.string.game_editor_error_venue_address)
         GameEditorFieldError.VenueAddressTooLong in errors -> stringResource(Res.string.game_editor_error_venue_address_too_long)
         else -> null
@@ -819,8 +817,7 @@ private class EditorScrollTargets {
     fun firstFor(errors: Set<GameEditorFieldError>): BringIntoViewRequester? = when {
         GameEditorFieldError.DateMissing in errors || GameEditorFieldError.TimeMissing in errors -> dateTime
         GameEditorFieldError.VenueNameMissing in errors || GameEditorFieldError.VenueNameTooLong in errors -> venueName
-        GameEditorFieldError.VenueAddressRequired in errors ||
-            GameEditorFieldError.VenueAddressTooShort in errors ||
+        GameEditorFieldError.VenueAddressTooShort in errors ||
             GameEditorFieldError.VenueAddressTooLong in errors -> venueAddress
         GameEditorFieldError.NotesInvalid in errors -> notes
         else -> null
@@ -837,7 +834,6 @@ private fun missingItems(errors: Set<GameEditorFieldError>): String {
             add(stringResource(Res.string.game_editor_missing_item_venue_name))
         }
         if (
-            GameEditorFieldError.VenueAddressRequired in errors ||
             GameEditorFieldError.VenueAddressTooShort in errors ||
             GameEditorFieldError.VenueAddressTooLong in errors
         ) {

@@ -1006,7 +1006,7 @@ class GameEditorViewModelTest {
         )
     }
 
-    // ---- Backend v.0.0.17: quadra sem endereço volta como 400 VALIDATION_FAILED `venue.address` ----
+    // ---- DEB-050: quadra sem endereço é sempre aceita ----
 
     /** Grupo sem quadra padrão: o formulário pede nome e endereço, e a pessoa só digita o nome. */
     private fun groupWithoutVenue() = groupGateway { it.copy(profile = it.profile?.copy(defaultVenue = null)) }
@@ -1016,58 +1016,59 @@ class GameEditorViewModelTest {
     )
 
     @Test
-    fun `a venue without address refused by the old backend lands on the address field when creating`() = runTest {
-        val gateway = FakeGameGateway(createResult = refusedBy("venue.address"))
+    fun `a venue without address is accepted and goes to the server with an empty address`() = runTest {
+        val gateway = FakeGameGateway(createResult = SaqzResult.Success(sampleVersionedGame()))
         val vm = viewModel(gameGateway = gateway, groupGateway = groupWithoutVenue())
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
         vm.onIntent(GameEditorIntent.UpdateVenueName("Quadra do Parque"))
-        val formBefore = vm.state.value.form
 
         vm.onIntent(GameEditorIntent.Submit)
 
         val state = vm.state.value
-        assertEquals(setOf(GameEditorFieldError.VenueAddressRequired), state.validationErrors)
-        assertFalse(state.saveFailed, "o erro cai no campo, não no cartão genérico")
-        assertNull(state.error)
-        assertFalse(state.isSaving)
-        assertEquals(1, state.submitAttempts, "a tela rola até o campo")
-        assertEquals(formBefore, state.form, "o formulário fica como estava")
+        assertTrue(state.validationErrors.isEmpty(), "o endereço é sempre opcional (DEB-050)")
         assertEquals(1, gateway.createCalls)
+        assertEquals("", gateway.lastCreateCommand?.venue?.address.orEmpty())
+        assertTrue(vm.effects.first() is GameEditorEffect.Saved)
     }
 
     @Test
-    fun `a venue without address refused by the old backend lands on the address field when editing`() = runTest {
-        val gateway = FakeGameGateway(editResult = refusedBy("venue.address"))
+    fun `a venue without address is accepted when editing too`() = runTest {
+        val gateway = FakeGameGateway()
+        val vm = viewModel(gameId = "game-1", gameGateway = gateway)
+        vm.onIntent(GameEditorIntent.UpdateVenueAddress(""))
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertTrue(vm.state.value.validationErrors.isEmpty())
+        assertEquals(1, gateway.editCalls)
+    }
+
+    @Test
+    fun `a conflict with another game shows the busy time and offers the existing game`() = runTest {
+        val gateway = FakeGameGateway(createResult = SaqzResult.Failure(GameError.Conflict("existing-game")))
+        val vm = viewModel(gameGateway = gateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        val state = vm.state.value
+        assertTrue(state.hasConflict)
+        assertEquals("existing-game", state.conflictGameId)
+        assertFalse(state.saveFailed)
+        assertFalse(state.isSaving)
+    }
+
+    @Test
+    fun `a conflict when editing keeps the form and shows the busy time`() = runTest {
+        val gateway = FakeGameGateway(editResult = SaqzResult.Failure(GameError.Conflict("other-game")))
         val vm = viewModel(gameId = "game-1", gameGateway = gateway)
         val formBefore = vm.state.value.form
 
         vm.onIntent(GameEditorIntent.Submit)
 
-        val state = vm.state.value
-        assertEquals(1, gateway.editCalls)
-        assertEquals(setOf(GameEditorFieldError.VenueAddressRequired), state.validationErrors)
-        assertFalse(state.saveFailed)
-        assertFalse(state.isSaving)
-        assertEquals(formBefore, state.form)
-    }
-
-    @Test
-    fun `filling the address after the refusal clears the error and the next submit goes through`() = runTest {
-        val gateway = FakeGameGateway(createResult = refusedBy("venue.address"))
-        val vm = viewModel(gameGateway = gateway, groupGateway = groupWithoutVenue())
-        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
-        vm.onIntent(GameEditorIntent.UpdateVenueName("Quadra do Parque"))
-        vm.onIntent(GameEditorIntent.Submit)
-        val refusedKey = gateway.lastCreateCommand?.requestId
-
-        gateway.createResult = SaqzResult.Success(sampleVersionedGame())
-        vm.onIntent(GameEditorIntent.UpdateVenueAddress("R. Canuto Abreu, s/n"))
-        assertTrue(vm.state.value.validationErrors.isEmpty())
-        vm.onIntent(GameEditorIntent.Submit)
-
-        assertEquals("R. Canuto Abreu, s/n", gateway.lastCreateCommand?.venue?.address)
-        assertNotEquals(refusedKey, gateway.lastCreateCommand?.requestId)
-        assertTrue(vm.effects.first() is GameEditorEffect.Saved)
+        assertTrue(vm.state.value.hasConflict)
+        assertEquals("other-game", vm.state.value.conflictGameId)
+        assertEquals(formBefore, vm.state.value.form)
     }
 
     @Test
