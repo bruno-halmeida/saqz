@@ -151,7 +151,7 @@ class MemberEditorViewModel(
 
             // Só avisa a troca de tipo: se o financeiro não carregar, a tela abre sem o aviso.
             val hasPendingMonthly = entry.membershipType == AthleteMembershipType.MENSALISTA &&
-                hasPendingMonthlyCharge()
+                organizerFinanceGateway.hasPendingMonthlyCharge(groupId, userId)
             if (requestGeneration != generation) return@launch
 
             applyLoadedMember(group, entry, stats, role, hasPendingMonthly)
@@ -203,16 +203,6 @@ class MemberEditorViewModel(
                 role = role,
                 canManageRoles = group.role == GroupRole.OWNER,
             ).restoreDraft(savedState)
-        }
-    }
-
-    private suspend fun hasPendingMonthlyCharge(): Boolean {
-        val gateway = organizerFinanceGateway ?: return false
-        return when (val result = gateway.charges(GroupId(groupId))) {
-            is SaqzResult.Failure -> false
-            is SaqzResult.Success -> result.value.charges.any {
-                it.memberId == userId && it.kind == ChargeKind.Monthly && it.status == ChargeStatus.Pending
-            }
         }
     }
 
@@ -439,35 +429,6 @@ class MemberEditorViewModel(
         monthlyDueDay = monthlyDueDay,
     )
 
-    private fun joinedAtMonth(joinedAt: String): String {
-        val month = runCatching {
-            Instant.parse(joinedAt).toLocalDateTime(TimeZone.UTC).month.ordinal + 1
-        }.getOrNull() ?: return ""
-        return MONTH_NAMES[month - 1]
-    }
-
-    private fun formatCents(cents: Long?): String {
-        if (cents == null) return ""
-        val reais = cents / 100
-        val centavos = (cents % 100).toString().padStart(2, '0')
-        return "$reais,$centavos"
-    }
-
-    private fun parseCents(value: String): Long? {
-        val normalized = value.trim().removePrefix("R$").replace(" ", "")
-        if (normalized.isEmpty()) return null
-        val parts = normalized.replace('.', ',').split(',')
-        if (parts.size > 2 || parts.any { it.isEmpty() }) return null
-        val reais = parts[0].toLongOrNull() ?: return null
-        val fraction = parts.getOrNull(1)
-        val centavos = when {
-            fraction == null -> 0L
-            fraction.length > 2 -> null
-            else -> fraction.padEnd(2, '0').toLongOrNull()
-        }
-        return centavos?.let { reais * 100 + it }
-    }
-
     private fun clearDraft() {
         listOf(
             KEY_NICKNAME,
@@ -483,10 +444,6 @@ class MemberEditorViewModel(
     }
 
     private companion object {
-        val MONTH_NAMES = listOf(
-            "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-            "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-        )
         const val DEFAULT_DUE_DAY = 10
     }
 }
@@ -516,6 +473,11 @@ private inline fun <reified T : Enum<T>> SavedStateHandle.restoreNullableEnum(
 private inline fun <reified T : Enum<T>> String?.toEnumOrNull(): T? =
     this?.let { runCatching { enumValueOf<T>(it) }.getOrNull() }
 
+private val MONTH_NAMES = listOf(
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+)
+
 private const val KEY_NICKNAME = "member-editor-nickname"
 private const val KEY_POSITION = "member-editor-position"
 private const val KEY_SECONDARY_POSITION = "member-editor-secondary-position"
@@ -525,3 +487,43 @@ private const val KEY_HEIGHT = "member-editor-height"
 private const val KEY_MEMBERSHIP = "member-editor-membership"
 private const val KEY_BILLING_AMOUNT = "member-editor-billing-amount"
 private const val KEY_BILLING_DUE_DAY = "member-editor-billing-due-day"
+
+/** Sem a leitura do financeiro (ou sem o port) não há como saber: segue como se não houvesse pendência. */
+private suspend fun OrganizerFinanceGateway?.hasPendingMonthlyCharge(groupId: String, userId: String): Boolean {
+    val gateway = this ?: return false
+    return when (val result = gateway.charges(GroupId(groupId))) {
+        is SaqzResult.Failure -> false
+        is SaqzResult.Success -> result.value.charges.any {
+            it.memberId == userId && it.kind == ChargeKind.Monthly && it.status == ChargeStatus.Pending
+        }
+    }
+}
+
+private fun joinedAtMonth(joinedAt: String): String {
+    val month = runCatching {
+        Instant.parse(joinedAt).toLocalDateTime(TimeZone.UTC).month.ordinal + 1
+    }.getOrNull() ?: return ""
+    return MONTH_NAMES[month - 1]
+}
+
+private fun formatCents(cents: Long?): String {
+    if (cents == null) return ""
+    val reais = cents / 100
+    val centavos = (cents % 100).toString().padStart(2, '0')
+    return "$reais,$centavos"
+}
+
+private fun parseCents(value: String): Long? {
+    val normalized = value.trim().removePrefix("R$").replace(" ", "")
+    if (normalized.isEmpty()) return null
+    val parts = normalized.replace('.', ',').split(',')
+    if (parts.size > 2 || parts.any { it.isEmpty() }) return null
+    val reais = parts[0].toLongOrNull() ?: return null
+    val fraction = parts.getOrNull(1)
+    val centavos = when {
+        fraction == null -> 0L
+        fraction.length > 2 -> null
+        else -> fraction.padEnd(2, '0').toLongOrNull()
+    }
+    return centavos?.let { reais * 100 + it }
+}

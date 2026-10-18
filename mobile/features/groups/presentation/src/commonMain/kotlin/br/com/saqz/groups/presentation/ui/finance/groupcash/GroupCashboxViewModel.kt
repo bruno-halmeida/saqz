@@ -305,6 +305,18 @@ class GroupCashboxViewModel(
         }
     }
 
+    /** A recarga por baixo não apaga os avisos da revisão, do desfazer e do cancelamento. */
+    private fun GroupCashboxState.keepingNoticesFrom(previous: GroupCashboxState, softRefresh: Boolean) =
+        if (softRefresh) {
+            copy(
+                reviewFailed = previous.reviewFailed,
+                undoFailed = previous.undoFailed,
+                cancelFailed = previous.cancelFailed,
+            )
+        } else {
+            this
+        }
+
     private fun GroupCashboxState.interacting() =
         chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null || cancelSheetChargeId != null ||
             reviewSheetChargeId != null || undoSheetChargeId != null || updatingChargeId != null
@@ -370,12 +382,7 @@ class GroupCashboxViewModel(
                     statement = statement,
                     pixKey = group.profile?.pixKey,
                     pixLabel = group.profile?.pixLabel,
-                ).copy(
-                    // a recarga por baixo não apaga os avisos da revisão, do desfazer e do cancelamento
-                    reviewFailed = softRefresh && it.reviewFailed,
-                    undoFailed = softRefresh && it.undoFailed,
-                    cancelFailed = softRefresh && it.cancelFailed,
-                )
+                ).keepingNoticesFrom(it, softRefresh)
             }
         }
         job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
