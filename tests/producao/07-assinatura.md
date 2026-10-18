@@ -22,9 +22,9 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
   criação do grupo), "Até 3 grupos" e "Atletas ilimitados", com "Continuar com o Organizador".
 - Antes de criar o grupo, "Meu plano" nem aparecia no Perfil (PROD-PF07).
 
-**Variação: teste já vencido** (conta de rodada anterior, sem plano). "Criar meu grupo" abre "Seu teste do
-Organizador terminou" com "Seu teste terminou em <data>. Assine para criar e organizar seus grupos." e "Ver
-planos"; "Meu plano" mostra "TESTE ENCERRADO" e "Seu teste do Organizador terminou em <data>". Não aparece
+**Variação: teste já vencido** (conta de rodada anterior, sem plano). "Criar meu grupo" abre "Seu teste
+terminou" com "Seus grupos e o histórico estão guardados. Assine para a galera voltar a confirmar presença." e
+"Ver planos"; "Meu plano" mostra "TESTE ENCERRADO" e "Seu teste do Organizador terminou em <data>". Não aparece
 mais "Seu próximo grupo começa aqui" nem "Conhecer planos" para quem teve o teste.
 
 ## PROD-AS02 · Assinar pelo Google Play · P0
