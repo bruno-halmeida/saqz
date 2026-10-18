@@ -210,6 +210,7 @@ class GroupSetupValidatorTest {
                     // a `null` o que o usuário esvazia. O validador tem de ser total.
                     defaultVenue = GroupVenueForm(name = "", address = ""),
                     defaultCapacity = 1,
+                    defaultGameFeeCents = 0,
                 ),
                 recurring = true,
             ),
@@ -222,6 +223,15 @@ class GroupSetupValidatorTest {
                 setOf(GroupSetupError.VenueAddressNotFound, GroupSetupError.VenueAddressRequired),
             errors,
         )
+    }
+
+    @Test
+    fun `valor por jogo vazio e valido e zero e recusado`() {
+        assertEquals(emptySet(), validate(state { copy(defaultGameFeeCents = null) }).filter { it == GroupSetupError.GameFeeInvalid }.toSet())
+        assertEquals(setOf(GroupSetupError.GameFeeInvalid), validate(state { copy(defaultGameFeeCents = 0) }).filter { it == GroupSetupError.GameFeeInvalid }.toSet())
+        assertEquals(emptySet(), validate(state { copy(defaultGameFeeCents = 1) }).filter { it == GroupSetupError.GameFeeInvalid }.toSet())
+        assertEquals(emptySet(), validate(state { copy(defaultGameFeeCents = 99_999_999) }).filter { it == GroupSetupError.GameFeeInvalid }.toSet())
+        assertEquals(setOf(GroupSetupError.GameFeeInvalid), validate(state { copy(defaultGameFeeCents = 100_000_000) }).filter { it == GroupSetupError.GameFeeInvalid }.toSet())
     }
 
     private fun state(

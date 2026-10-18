@@ -25,6 +25,7 @@ enum class GroupSetupError {
     PixKeyTooShort,
     PixLabelTooShort,
     CapacityOutOfRange,
+    GameFeeInvalid,
     SlotsRequired,
     VenueNameRequired,
     VenueAddressNotFound,
@@ -142,6 +143,10 @@ fun validate(state: GroupSetupState): Set<GroupSetupError> {
             if (it !in GroupSetupDefaults.MinCapacity..GroupSetupDefaults.MaxCapacity) {
                 add(GroupSetupError.CapacityOutOfRange)
             }
+        }
+        // Vazio = sem cobrança; preenchido vale de 0,01 a 999.999,99 (R$ 0,00 é recusado, como no servidor).
+        form.defaultGameFeeCents?.let {
+            if (it !in 1L..GroupSetupDefaults.MaxGameFeeCents) add(GroupSetupError.GameFeeInvalid)
         }
         if (state.recurring && form.regularSlots.isEmpty()) add(GroupSetupError.SlotsRequired)
         addAll(validateVenue(state.recurring, venue))

@@ -119,6 +119,7 @@ class GroupSetupViewModel(
             is GroupSetupIntent.UpdateCapacity -> onFormChange {
                 copy(defaultCapacity = intent.value.coerceAtLeast(GroupSetupDefaults.MinCapacity))
             }
+            is GroupSetupIntent.UpdateDefaultGameFee -> onFormChange { copy(defaultGameFeeCents = intent.cents) }
             is GroupSetupIntent.SelectConfirmationLead ->
                 onFormChange { copy(defaultConfirmationLeadMinutes = intent.minutes) }
             is GroupSetupIntent.ToggleMensalistaPriority ->

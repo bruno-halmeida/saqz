@@ -11,6 +11,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.game.GameVenue
@@ -159,6 +163,47 @@ class GameEditorScreenTest {
     }
 
     // ---- DEB-051: sem "Recado para a galera" ----
+
+    // ---- Valor por jogo ----
+
+    @Test
+    fun `the fee field shows the inherited value and the avulso help`() = runComposeUiTest {
+        val base = create()
+        val state = base.copy(form = base.form.copy(gameFeeCents = 2500, gameFeeText = "25,00"))
+        setContent { SaqzTheme { GameEditorScreen(state = state, onBack = {}, onIntent = {}) } }
+        waitForIdle()
+
+        onNodeWithTag(GameEditorTags.GameFee).performScrollTo().assertExists()
+        onNodeWithText("25,00").performScrollTo().assertExists()
+        onNodeWithText("Cobrado de quem joga avulso.").performScrollTo().assertExists()
+    }
+
+    @Test
+    fun `typing in the fee field sends the typed text`() = runComposeUiTest {
+        val received = mutableListOf<GameEditorIntent>()
+        setContent { SaqzTheme { GameEditorScreen(state = create(), onBack = {}, onIntent = { received += it }) } }
+        waitForIdle()
+
+        onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(GameEditorTags.GameFee)), useUnmergedTree = true)
+            .performScrollTo().performTextInput("30")
+
+        assertEquals(GameEditorIntent.UpdateGameFee("30"), received.last { it is GameEditorIntent.UpdateGameFee })
+    }
+
+    @Test
+    fun `a zero fee marks the field and the missing item`() = runComposeUiTest {
+        val base = create()
+        val state = base.copy(
+            form = base.form.copy(gameFeeCents = 0, gameFeeText = "0,00"),
+            validationErrors = setOf(GameEditorFieldError.GameFeeInvalid),
+            submitAttempts = 1,
+        )
+        setContent { SaqzTheme { GameEditorScreen(state = state, onBack = {}, onIntent = {}) } }
+        waitForIdle()
+
+        onNodeWithText("Informe um valor maior que R$ 0,00.").performScrollTo().assertIsDisplayed()
+        onNodeWithText("Corrija o valor por jogo para continuar.").assertExists()
+    }
 
     @Test
     fun `the editor has no note field and no promise about the invite`() = runComposeUiTest {

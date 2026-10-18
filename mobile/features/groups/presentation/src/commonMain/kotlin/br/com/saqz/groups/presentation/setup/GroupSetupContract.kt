@@ -52,6 +52,7 @@ object GroupSetupDefaults {
     const val MinCapacity = GameCapacityLimits.Min
     const val MaxCapacity = 100
     const val Capacity = 12
+    const val MaxGameFeeCents = 99_999_999L
     const val DurationMinutes = 120
     const val ConfirmationLeadMinutes = 360
 
@@ -189,6 +190,8 @@ sealed interface GroupSetupIntent {
     data class SelectPlayStyle(val value: GroupPlayStyle) : GroupSetupIntent
 
     data class UpdateCapacity(val value: Int) : GroupSetupIntent
+    /** Valor por jogo em centavos; `null` = sem cobrança. */
+    data class UpdateDefaultGameFee(val cents: Long?) : GroupSetupIntent
 
     data class SelectDuration(val minutes: Int) : GroupSetupIntent
 

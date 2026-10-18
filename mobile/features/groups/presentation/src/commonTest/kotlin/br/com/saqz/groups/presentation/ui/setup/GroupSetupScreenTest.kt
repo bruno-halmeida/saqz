@@ -3,10 +3,14 @@ package br.com.saqz.groups.presentation.ui.setup
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupVenueForm
@@ -16,6 +20,7 @@ import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
@@ -31,6 +36,36 @@ class GroupSetupScreenTest {
         onNodeWithTag(GroupSetupTags.Advanced).performScrollTo().performClick()
         onNodeWithTag(GroupSetupTags.Level).assertExists()
         onNodeWithTag(GroupSetupTags.Capacity).assertExists()
+    }
+
+    @Test
+    fun theGameFeeFieldAppearsWhenCreatingAndEditingWithTheHelpText() = runComposeUiTest {
+        setContent { SaqzTheme { GroupSetupScreen(GroupSetupState(mode = GroupSetupMode.Create), {}, {}) } }
+        onNodeWithTag(GroupSetupTags.Advanced).performScrollTo().performClick()
+        onNodeWithTag(GroupSetupTags.GameFee).performScrollTo().assertExists()
+        onNodeWithText("Valor por jogo (opcional)").performScrollTo().assertExists()
+        onNodeWithText("Cobrado de quem joga avulso. Cada jogo pode ter outro valor.").assertExists()
+    }
+
+    @Test
+    fun typingTheGameFeeSendsTheCents() = runComposeUiTest {
+        val received = mutableListOf<GroupSetupIntent>()
+        setContent { SaqzTheme { GroupSetupScreen(PreviewErrorState, { received += it }, {}) } }
+
+        onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(GroupSetupTags.GameFee)), useUnmergedTree = true)
+            .performScrollTo().performTextInput("25,50")
+
+        assertEquals(GroupSetupIntent.UpdateDefaultGameFee(2550), received.last { it is GroupSetupIntent.UpdateDefaultGameFee })
+    }
+
+    @Test
+    fun aZeroGameFeeShowsTheError() = runComposeUiTest {
+        val state = GroupSetupState(mode = GroupSetupMode.Edit("grp-1")).let {
+            it.copy(form = it.form.copy(defaultGameFeeCents = 0), errors = setOf(GroupSetupError.GameFeeInvalid))
+        }
+        setContent { SaqzTheme { GroupSetupScreen(state, {}, {}) } }
+
+        onNodeWithText("Informe um valor maior que R$ 0,00.").performScrollTo().assertIsDisplayed()
     }
 
     @Test

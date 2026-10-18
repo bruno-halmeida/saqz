@@ -18,6 +18,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.KeyboardType
+import br.com.saqz.core.common.formatting.formatBrlPlain
+import br.com.saqz.core.common.formatting.parseBrlToCents
+import br.com.saqz.core.common.formatting.sanitizeBrlInput
+import br.com.saqz.groups.resources.group_setup_error_game_fee
+import br.com.saqz.groups.resources.group_setup_game_fee_hint
+import br.com.saqz.groups.resources.group_setup_game_fee_label
+import br.com.saqz.groups.resources.group_setup_game_fee_placeholder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -435,6 +448,40 @@ internal fun GroupCapacitySection(
             },
             style = SaqzTheme.typography.support,
             color = if (hasError) SaqzTheme.colors.errorForeground else SaqzTheme.colors.textSecondary,
+        )
+    }
+}
+
+/**
+ * "Valor por jogo": o padrão do grupo, em reais. O texto digitado fica aqui (a vírgula no meio da
+ * digitação não cabe em centavos); o formulário recebe os centavos, e vazio é "sem cobrança".
+ */
+@Composable
+internal fun GroupGameFeeSection(
+    cents: Long?,
+    hasError: Boolean,
+    onChange: (Long?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var text by remember { mutableStateOf(cents?.let(::formatBrlPlain).orEmpty()) }
+    // Valor vindo de fora (carregamento, restauração) substitui o texto; a digitação em curso não.
+    LaunchedEffect(cents) {
+        if (parseBrlToCents(text) != cents) text = cents?.let(::formatBrlPlain).orEmpty()
+    }
+    val label = stringResource(Res.string.group_setup_game_fee_label)
+    GroupFormCard(title = label, hint = stringResource(Res.string.group_setup_game_fee_hint), modifier = modifier) {
+        SaqzInput(
+            value = text,
+            onValueChange = { raw ->
+                text = sanitizeBrlInput(raw)
+                onChange(parseBrlToCents(text))
+            },
+            label = label,
+            showLabel = false,
+            placeholder = stringResource(Res.string.group_setup_game_fee_placeholder),
+            errorText = if (hasError) stringResource(Res.string.group_setup_error_game_fee) else null,
+            keyboardType = KeyboardType.Decimal,
+            modifier = Modifier.testTag(GroupSetupTags.GameFee),
         )
     }
 }

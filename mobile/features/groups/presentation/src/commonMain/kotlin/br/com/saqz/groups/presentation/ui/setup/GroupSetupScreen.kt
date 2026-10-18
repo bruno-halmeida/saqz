@@ -93,6 +93,7 @@ internal object GroupSetupTags {
     const val PlayStyle = "group-setup-play-style"
     const val Description = "group-setup-description"
     const val Capacity = "group-setup-capacity"
+    const val GameFee = "group-setup-game-fee"
     const val Duration = "group-setup-duration"
     const val ConfirmationLead = "group-setup-confirmation-lead"
     const val GameConfigConfirmationLead = "group-game-config-confirmation-lead"
@@ -306,6 +307,11 @@ private fun GroupSetupAdvancedCards(
         isBeach = form.modality == GroupModality.BEACH_VOLLEYBALL,
         hasError = GroupSetupError.CapacityOutOfRange in state.errors,
         onChange = { onIntent(GroupSetupIntent.UpdateCapacity(it)) },
+    )
+    GroupGameFeeSection(
+        cents = form.defaultGameFeeCents,
+        hasError = GroupSetupError.GameFeeInvalid in state.errors,
+        onChange = { onIntent(GroupSetupIntent.UpdateDefaultGameFee(it)) },
     )
     GroupDurationSection(
         minutes = state.durationMinutes,

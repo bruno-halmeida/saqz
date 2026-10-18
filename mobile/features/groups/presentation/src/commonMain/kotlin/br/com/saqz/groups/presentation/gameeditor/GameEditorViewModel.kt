@@ -2,6 +2,9 @@ package br.com.saqz.groups.presentation.gameeditor
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.formatting.formatBrlPlain
+import br.com.saqz.core.common.formatting.parseBrlToCents
+import br.com.saqz.core.common.formatting.sanitizeBrlInput
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
@@ -83,6 +86,10 @@ class GameEditorViewModel(
             is GameEditorIntent.UpdateCapacity -> updateForm {
                 copy(capacity = intent.capacity.coerceAtLeast(MIN_CAPACITY))
             }
+            is GameEditorIntent.UpdateGameFee -> updateForm {
+                val text = sanitizeBrlInput(intent.text)
+                copy(gameFeeText = text, gameFeeCents = parseBrlToCents(text))
+            }
             is GameEditorIntent.SelectConfirmationLead -> updateForm {
                 copy(confirmationLeadMinutes = intent.minutes)
             }
@@ -150,6 +157,7 @@ class GameEditorViewModel(
             val trial = trialAccess?.read(GroupId(groupId))
             val profile = group.profile
             val defaultForm = defaultForm(profile, group.name)
+                .withGameFee(group.financeDefaults?.defaultGameFeeCents)
             if (gameId == null) {
                 update {
                     it.copy(
@@ -177,6 +185,7 @@ class GameEditorViewModel(
                         localTime = game.localTime,
                         durationMinutes = game.durationMinutes,
                         gameFeeCents = game.gameFeeCents,
+                        gameFeeText = game.gameFeeCents?.let(::formatBrlPlain).orEmpty(),
                         venue = game.venue,
                         // Jogo antigo com 2 ou 3 vagas abre no mínimo; salvar grava o mínimo e a tela avisa.
                         capacity = game.capacity.coerceAtLeast(MIN_CAPACITY),
@@ -467,6 +476,7 @@ class GameEditorViewModel(
         savedState[KeyCapacity] = form.capacity
         savedState[KeyLead] = form.confirmationLeadMinutes
         savedState[KeyRecurring] = form.recurring
+        savedState[KeyGameFee] = form.gameFeeText
         form.venue?.let {
             savedState[KeyVenueName] = it.name
             savedState[KeyVenueAddress] = it.address
@@ -481,6 +491,12 @@ class GameEditorViewModel(
         capacity = savedState.get<Int>(KeyCapacity) ?: form.capacity,
         confirmationLeadMinutes = savedState.get<Int>(KeyLead) ?: form.confirmationLeadMinutes,
         recurring = savedState.get<Boolean>(KeyRecurring) ?: form.recurring,
+        gameFeeText = savedState.get<String>(KeyGameFee) ?: form.gameFeeText,
+        gameFeeCents = if (savedState.get<String>(KeyGameFee) != null) {
+            parseBrlToCents(savedState.get<String>(KeyGameFee).orEmpty())
+        } else {
+            form.gameFeeCents
+        },
         venue = savedState.get<String>(KeyVenueName)?.let { name ->
             (form.venue ?: emptyVenue()).copy(
                 name = name,
@@ -522,6 +538,7 @@ class GameEditorViewModel(
         const val KeyCapacity = "game-editor-capacity"
         const val KeyLead = "game-editor-confirmation-lead"
         const val KeyRecurring = "game-editor-recurring"
+        const val KeyGameFee = "game-editor-game-fee"
         const val KeyVenueName = "game-editor-venue-name"
         const val KeyVenueAddress = "game-editor-venue-address"
         const val KeyPendingGameId = "game-editor-pending-game-id"
@@ -542,8 +559,9 @@ private fun buildCommand(draft: GameEditorDraft): GameWriteCommand =
         durationMinutes = draft.form.durationMinutes.toIntOrNull(),
         capacity = draft.form.capacity.toIntOrNull(),
         confirmationDeadline = draft.form.confirmationDeadline,
+        // O campo já vem com o padrão do grupo: o que está nele vale, e vazio é jogo sem cobrança.
         gameFeeCents = draft.form.gameFeeCents,
-        useDefaultGameFee = draft.form.gameFeeCents == null,
+        useDefaultGameFee = false,
     )
 
 /** Fatos do plano lidos do servidor; o aviso do fim do teste depende do jogo e do plano. */
@@ -618,6 +636,9 @@ private const val FINGERPRINT_SEPARATOR = "\u001F"
 private fun confirmationLeadMinutes(startsAt: String, deadline: String): Int? = runCatching {
     (Instant.parse(startsAt) - Instant.parse(deadline)).inWholeMinutes.toInt()
 }.getOrNull()
+
+private fun GameEditorFields.withGameFee(cents: Long?) =
+    copy(gameFeeCents = cents, gameFeeText = cents?.let(::formatBrlPlain).orEmpty())
 
 private fun emptyVenue() = GameVenue(name = "", address = "")
 

@@ -533,8 +533,9 @@ class GameEditorViewModelTest {
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
         vm.onIntent(GameEditorIntent.Submit)
         assertTrue(vm.state.value.saveFailed)
-        assertEquals(null, gateway.lastCreateCommand?.gameFeeCents)
-        assertTrue(gateway.lastCreateCommand?.useDefaultGameFee == true)
+        // O campo já vem com o padrão do grupo e o que está nele é enviado, sem "usar o padrão".
+        assertEquals(2500, gateway.lastCreateCommand?.gameFeeCents)
+        assertTrue(gateway.lastCreateCommand?.useDefaultGameFee == false)
 
         vm.onIntent(GameEditorIntent.Submit)
 
@@ -1076,6 +1077,127 @@ class GameEditorViewModelTest {
         assertTrue(vm.state.value.hasConflict)
         assertEquals("other-game", vm.state.value.conflictGameId)
         assertEquals(formBefore, vm.state.value.form)
+    }
+
+    // ---- Valor por jogo: vem do padrão do grupo e pode ser trocado só neste jogo ----
+
+    private fun groupWithGameFee(cents: Long?) = groupGateway { it.copy(financeDefaults = GroupFinanceDefaults(cents, null, null)) }
+
+    @Test
+    fun `the fee field starts with the group default`() = runTest {
+        val vm = viewModel(groupGateway = groupWithGameFee(2500))
+
+        assertEquals(2500L, vm.state.value.form.gameFeeCents)
+        assertEquals("25,00", vm.state.value.form.gameFeeText)
+    }
+
+    @Test
+    fun `a group without default fee starts the field empty`() = runTest {
+        val vm = viewModel(groupGateway = groupWithGameFee(null))
+
+        assertEquals("", vm.state.value.form.gameFeeText)
+        assertNull(vm.state.value.form.gameFeeCents)
+    }
+
+    @Test
+    fun `the inherited fee is sent as is`() = runTest {
+        val gateway = FakeGameGateway()
+        val vm = viewModel(gameGateway = gateway, groupGateway = groupWithGameFee(2500))
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(2500L, gateway.lastCreateCommand?.gameFeeCents)
+        assertFalse(gateway.lastCreateCommand?.useDefaultGameFee == true)
+    }
+
+    @Test
+    fun `changing the fee applies only to this game`() = runTest {
+        val gateway = FakeGameGateway()
+        val profileGateway = FakeGroupProfileGateway()
+        val vm = viewModel(gameGateway = gateway, groupGateway = groupWithGameFee(2500), profileGateway = profileGateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+
+        vm.onIntent(GameEditorIntent.UpdateGameFee("30"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(3000L, gateway.lastCreateCommand?.gameFeeCents)
+        assertNull(profileGateway.lastUpdateCommand, "o padrão do grupo não muda")
+    }
+
+    @Test
+    fun `typing a decimal fee keeps the cents`() = runTest {
+        val vm = viewModel(groupGateway = groupWithGameFee(null))
+
+        vm.onIntent(GameEditorIntent.UpdateGameFee("12,5"))
+
+        assertEquals("12,5", vm.state.value.form.gameFeeText)
+        assertEquals(1250L, vm.state.value.form.gameFeeCents)
+    }
+
+    @Test
+    fun `erasing the fee sends a game without charge`() = runTest {
+        val gateway = FakeGameGateway()
+        val vm = viewModel(gameGateway = gateway, groupGateway = groupWithGameFee(2500))
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+
+        vm.onIntent(GameEditorIntent.UpdateGameFee(""))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(1, gateway.createCalls)
+        assertNull(gateway.lastCreateCommand?.gameFeeCents)
+        assertFalse(gateway.lastCreateCommand?.useDefaultGameFee == true, "vazio quer dizer sem cobrança, não o padrão")
+    }
+
+    @Test
+    fun `a zero fee is refused and nothing is sent`() = runTest {
+        val gateway = FakeGameGateway()
+        val vm = viewModel(gameGateway = gateway, groupGateway = groupWithGameFee(2500))
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+
+        vm.onIntent(GameEditorIntent.UpdateGameFee("0,00"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(setOf(GameEditorFieldError.GameFeeInvalid), vm.state.value.validationErrors)
+        assertEquals(0, gateway.createCalls)
+    }
+
+    @Test
+    fun `editing a game shows its own fee and keeps it when untouched`() = runTest {
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(sampleVersionedGame(sampleGame().copy(gameFeeCents = 1800))),
+        )
+        val vm = viewModel(gameId = "game-1", gameGateway = gateway, groupGateway = groupWithGameFee(2500))
+
+        assertEquals("18,00", vm.state.value.form.gameFeeText)
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(1800L, gateway.lastEditCommand?.gameFeeCents)
+    }
+
+    @Test
+    fun `editing a game without charge keeps it without charge even if the group has a default`() = runTest {
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(sampleVersionedGame(sampleGame().copy(gameFeeCents = null))),
+        )
+        val vm = viewModel(gameId = "game-1", gameGateway = gateway, groupGateway = groupWithGameFee(2500))
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertNull(gateway.lastEditCommand?.gameFeeCents)
+        assertFalse(gateway.lastEditCommand?.useDefaultGameFee == true)
+    }
+
+    @Test
+    fun `the typed fee survives recreation`() = runTest {
+        val savedState = SavedStateHandle()
+        val first = viewModel(savedState = savedState, groupGateway = groupWithGameFee(2500))
+        first.onIntent(GameEditorIntent.UpdateGameFee("40"))
+
+        val recreated = viewModel(savedState = savedState, groupGateway = groupWithGameFee(2500))
+
+        assertEquals("40", recreated.state.value.form.gameFeeText)
+        assertEquals(4000L, recreated.state.value.form.gameFeeCents)
     }
 
     @Test

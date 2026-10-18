@@ -78,6 +78,11 @@
     <string name="game_editor_error_save_title">Não foi possível criar o jogo</string>
     <string name="game_editor_error_save_title_edit">Não foi possível salvar o jogo</string>
     <string name="game_editor_error_save_body">Tente novamente.</string>
+    <string name="game_editor_fee_label">Valor por jogo (opcional)</string>
+    <string name="game_editor_fee_hint">Cobrado de quem joga avulso.</string>
+    <string name="game_editor_fee_placeholder">0,00</string>
+    <string name="game_editor_error_fee">Informe um valor maior que R$ 0,00.</string>
+    <string name="game_editor_missing_item_fee">o valor por jogo</string>
     <string name="game_editor_error_retry">Tentar</string>
     <string name="game_editor_error_recurrence_title">O jogo foi marcado, mas a repetição não foi salva</string>
     <string name="game_editor_error_recurrence_body">Tente de novo ou ligue a repetição na agenda do grupo.</string>

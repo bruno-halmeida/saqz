@@ -64,6 +64,8 @@ data class GameEditorFields(
     val localTime: String = "",
     val durationMinutes: Int = 0,
     val gameFeeCents: Long? = null,
+    /** O que a pessoa digitou em "Valor por jogo"; [gameFeeCents] é o valor lido dele (vazio = sem cobrança). */
+    val gameFeeText: String = "",
     val venue: GameVenue? = null,
     val venueEditable: Boolean = false,
     val capacity: Int = 0,
@@ -82,6 +84,7 @@ enum class GameEditorFieldError {
     VenueAddressTooShort,
     VenueNameTooLong,
     VenueAddressTooLong,
+    GameFeeInvalid,
 }
 
 sealed interface GameEditorIntent {
@@ -96,6 +99,7 @@ sealed interface GameEditorIntent {
     data class UpdateVenueAddress(val address: String) : GameEditorIntent
     data class UpdateCapacity(val capacity: Int) : GameEditorIntent
     data class SelectConfirmationLead(val minutes: Int) : GameEditorIntent
+    data class UpdateGameFee(val text: String) : GameEditorIntent
     data class ToggleRecurring(val value: Boolean) : GameEditorIntent
     data object DismissConflict : GameEditorIntent
     data object DismissSubscriptionRequired : GameEditorIntent

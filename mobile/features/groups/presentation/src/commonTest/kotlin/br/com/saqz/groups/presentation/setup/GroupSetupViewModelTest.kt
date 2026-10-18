@@ -197,6 +197,60 @@ class GroupSetupViewModelTest {
     }
 
     @Test
+    fun `criar grupo envia o valor por jogo digitado`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val viewModel = viewModel(profileGateway = profileGateway)
+        viewModel.onIntent(GroupSetupIntent.UpdateDefaultGameFee(2500))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(2500L, profileGateway.createCommands.last().form.defaultGameFeeCents)
+    }
+
+    @Test
+    fun `apagar o valor por jogo envia sem cobranca`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val viewModel = viewModel(profileGateway = profileGateway)
+        viewModel.onIntent(GroupSetupIntent.UpdateDefaultGameFee(2500))
+        viewModel.onIntent(GroupSetupIntent.UpdateDefaultGameFee(null))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertNull(profileGateway.createCommands.last().form.defaultGameFeeCents)
+    }
+
+    @Test
+    fun `valor por jogo zerado e recusado e nada e enviado`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val viewModel = viewModel(profileGateway = profileGateway)
+        viewModel.onIntent(GroupSetupIntent.UpdateDefaultGameFee(0))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertTrue(GroupSetupError.GameFeeInvalid in viewModel.state.value.errors)
+        assertTrue(profileGateway.createCommands.isEmpty())
+    }
+
+    @Test
+    fun `os ajustes abrem com o valor por jogo do grupo e salvam a troca`() = runTest(mainDispatcher) {
+        val group = br.com.saqz.groups.presentation.sampleGroup().copy(
+            financeDefaults = br.com.saqz.groups.domain.group.GroupFinanceDefaults(2500, null, null),
+        )
+        val profileGateway = FakeGroupProfileGateway(
+            readResult = SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedGroup(group)),
+        )
+        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"), profileGateway = profileGateway)
+        runCurrent()
+        assertEquals(2500L, viewModel.state.value.form.defaultGameFeeCents)
+
+        viewModel.onIntent(GroupSetupIntent.UpdateDefaultGameFee(3000))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(3000L, profileGateway.lastUpdateCommand?.form?.defaultGameFeeCents)
+    }
+
+    @Test
     fun `grupo antigo com padrao de 2 ou 3 vagas abre nos ajustes com 4`() = runTest(mainDispatcher) {
         listOf(2, 3).forEach { old ->
             val group = br.com.saqz.groups.presentation.sampleGroup().let {

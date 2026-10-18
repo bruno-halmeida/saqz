@@ -23,9 +23,14 @@ fun validateGameEditor(form: GameEditorFields): Set<GameEditorFieldError> {
     if (venueAddressLength > VENUE_ADDRESS_MAX) {
         errors += GameEditorFieldError.VenueAddressTooLong
     }
+    // Vazio = sem cobrança; preenchido precisa ser um valor de 0,01 a 999.999,99 (R$ 0,00 é recusado).
+    if (form.gameFeeText.isNotBlank() && form.gameFeeCents.let { it == null || it !in 1L..GAME_FEE_MAX_CENTS }) {
+        errors += GameEditorFieldError.GameFeeInvalid
+    }
     return errors
 }
 
+private const val GAME_FEE_MAX_CENTS = 99_999_999L
 private const val VENUE_NAME_MIN = 2
 private const val VENUE_NAME_MAX = 120
 private const val VENUE_ADDRESS_MIN = 5
