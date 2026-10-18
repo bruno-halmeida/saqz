@@ -133,6 +133,13 @@ export class Ator {
 
   resolverLink(codigo) { return this.chamar('POST', '/api/attendance-links/resolve', { code: codigo }) }
 
+  publicar(grupoId, canal, corpo, requestId = randomUUID()) { return this.chamar('POST', `/api/groups/${grupoId}/messages?channel=${canal}`, { requestId, body: corpo }) }
+  preferencias() { return this.chamar('GET', '/api/me/notification-preferences') }
+  salvarPreferencias(campos) { return this.chamar('PUT', '/api/me/notification-preferences', campos) }
+  denunciar(grupoId, tipo, alvoId, motivo = 'SPAM') { return this.chamar('POST', '/api/reports', { groupId: grupoId, targetType: tipo, targetId: alvoId, reason: motivo }) }
+  bloquear(grupoId, usuarioId) { return this.chamar('PUT', `/api/me/blocks/${usuarioId}`, { groupId: grupoId }) }
+  desbloquear(usuarioId) { return this.chamar('DELETE', `/api/me/blocks/${usuarioId}`) }
+
   // --- Avisos e conta ---
 
   avisos() { return this.chamar('GET', '/api/me/notifications') }
