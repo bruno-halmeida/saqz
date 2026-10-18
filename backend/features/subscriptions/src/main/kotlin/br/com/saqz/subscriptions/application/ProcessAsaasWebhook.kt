@@ -184,7 +184,7 @@ class ProcessAsaasWebhook(
         // before the already-confirmed period end is stale (superseded by a later
         // PAYMENT_CONFIRMED) and must not regress the subscription back to PAST_DUE.
         if (isStaleOverdue(command, current)) return
-        subscriptions.save(markPastDue(current, now))
+        subscriptions.save(markPastDue(current, now, paymentDueDate(command.rawPayload)))
     }
 
     /**
@@ -251,11 +251,17 @@ class ProcessAsaasWebhook(
         return fullPriceCents - (fullPriceCents * coupon.discountPercent / 100)
     }
 
-    private fun markPastDue(current: Subscription, now: Instant): Subscription =
-        current.copy(
+    /**
+     * A carência conta do vencimento, não da hora em que o webhook chegou: `pastDueSince` é o início do dia do vencimento
+     * em São Paulo (o aviso de atraso e o congelamento contam dias a partir dele). Sem data no payload, vale `now`.
+     */
+    private fun markPastDue(current: Subscription, now: Instant, dueDate: LocalDate?): Subscription {
+        val dueStart = dueDate?.atStartOfDay(Subscription.PAST_DUE_ZONE)?.toInstant()?.takeIf { !it.isAfter(now) }
+        return current.copy(
             status = SubscriptionStatus.PAST_DUE,
-            pastDueSince = current.pastDueSince ?: now,
+            pastDueSince = current.pastDueSince ?: dueStart ?: now,
         )
+    }
 
     private fun revoke(current: Subscription, now: Instant): Subscription =
         current.copy(

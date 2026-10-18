@@ -34,7 +34,7 @@ class CentralReceivablesEligibility(
             val cutoffs = listOfNotNull(
                 subscription.pendingPlanEffectiveAt.takeIf { subscription.pendingPlan == Plan.TITULAR },
                 subscription.currentPeriodEnd.takeIf { subscription.status == SubscriptionStatus.CANCELED },
-                subscription.pastDueSince?.plus(Subscription.PAST_DUE_GRACE)
+                subscription.pastDueSince?.let(Subscription::pastDueFreezeAt)
                     .takeIf { subscription.status == SubscriptionStatus.PAST_DUE },
             )
             val cutoff = cutoffs.minOrNull()

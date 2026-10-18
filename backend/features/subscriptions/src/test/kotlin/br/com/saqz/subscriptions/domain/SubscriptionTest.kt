@@ -31,6 +31,27 @@ class SubscriptionTest {
     }
 
     @Test
+    fun `access ends at the close of the 7th day counted from the due date in Sao Paulo`() {
+        // Vencimento em 30/07 (SP). O 7º dia é 06/08; o acesso vai até 23h59 e a meia-noite seguinte (07/08 00:00 SP = 03:00Z) corta.
+        val since = Instant.parse("2026-07-30T03:00:00Z")
+        val sub = pastDue(pastDueSince = since, firstConfirmedAt = Instant.parse("2026-06-01T00:00:00Z"))
+
+        assertEquals(Instant.parse("2026-08-07T03:00:00Z"), Subscription.pastDueFreezeAt(since))
+        assertTrue(sub.isEntitlingAt(Instant.parse("2026-08-07T02:59:59Z")))
+        assertFalse(sub.isEntitlingAt(Instant.parse("2026-08-07T03:00:00Z")))
+    }
+
+    @Test
+    fun `the due day is the Sao Paulo day whatever the hour the overdue was recorded`() {
+        // 02h UTC de 31/07 ainda é 23h de 30/07 em São Paulo: o dia 0 é 30/07 e o congelamento não anda para 31/07.
+        val lateEvening = Instant.parse("2026-07-31T02:00:00Z")
+        val morning = Instant.parse("2026-07-30T10:00:00Z")
+
+        assertEquals(Subscription.pastDueFreezeAt(morning), Subscription.pastDueFreezeAt(lateEvening))
+        assertEquals(java.time.LocalDate.parse("2026-07-30"), Subscription.pastDueDay(lateEvening))
+    }
+
+    @Test
     fun `past due without a first payment never entitles, grace or not`() {
         val since = Instant.parse("2026-07-30T12:00:00Z")
         val sub = pastDue(pastDueSince = since, firstConfirmedAt = null)

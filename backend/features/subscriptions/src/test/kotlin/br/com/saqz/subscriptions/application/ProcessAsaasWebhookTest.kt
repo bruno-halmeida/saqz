@@ -406,7 +406,40 @@ class ProcessAsaasWebhookTest {
         assertEquals(ProcessAsaasWebhookResult.Accepted, result)
         val sub = subscriptions.get("sub_123")
         assertEquals(SubscriptionStatus.PAST_DUE, sub.status)
-        assertEquals(fixedNow, sub.pastDueSince)
+        // A carência conta do vencimento: o início do dia 30/07 em São Paulo, não a hora em que o webhook foi processado.
+        assertEquals(Instant.parse("2026-07-30T03:00:00Z"), sub.pastDueSince)
+    }
+
+    @Test
+    fun `PAYMENT_OVERDUE without a usable due date falls back to the processing time`() {
+        for ((index, payload) in listOf(
+            """{"event":"PAYMENT_OVERDUE","payment":{}}""",
+            """{"event":"PAYMENT_OVERDUE","payment":{"dueDate":"2026-07-31"}}""",
+        ).withIndex()) {
+            subscriptions.save(baseSubscription().copy(status = SubscriptionStatus.ACTIVE, pastDueSince = null))
+
+            useCase.execute(
+                token,
+                AsaasWebhookCommand("evt_od_fallback_$index", ProcessAsaasWebhook.EVENT_PAYMENT_OVERDUE, "sub_123", null, payload),
+            )
+
+            assertEquals(fixedNow, subscriptions.get("sub_123").pastDueSince, payload)
+        }
+    }
+
+    @Test
+    fun `a second PAYMENT_OVERDUE keeps the first due date`() {
+        subscriptions.save(baseSubscription().copy(status = SubscriptionStatus.ACTIVE, pastDueSince = null))
+        fun overdue(event: String, dueDate: String) = useCase.execute(
+            token,
+            AsaasWebhookCommand(event, ProcessAsaasWebhook.EVENT_PAYMENT_OVERDUE, "sub_123", null,
+                """{"event":"PAYMENT_OVERDUE","payment":{"dueDate":"$dueDate"}}"""),
+        )
+
+        overdue("evt_od_first", "2026-07-30")
+        overdue("evt_od_second", "2026-07-30")
+
+        assertEquals(Instant.parse("2026-07-30T03:00:00Z"), subscriptions.get("sub_123").pastDueSince)
     }
 
     @Test

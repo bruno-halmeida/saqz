@@ -54,7 +54,7 @@ class GetMySubscriptionStoresTest {
 
     @Test
     fun `grace windows are 7 and 30 days`() {
-        assertEquals(Duration.ofDays(7), GetMySubscription.PAST_DUE_GRACE)
+        assertEquals(Duration.ofDays(7), GetMySubscription.STORE_PAST_DUE_GRACE)
         assertEquals(Duration.ofDays(30), GetMySubscription.CANCELED_GRACE)
     }
 

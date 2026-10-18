@@ -87,11 +87,11 @@ class GetMySubscriptionTest {
     }
 
     @Test
-    fun `past due for more than 7 days becomes read only at read time`() {
+    fun `past due after the 7th day from the due date becomes read only at read time`() {
         val subscriptions = MemorySubscriptions(
             baseSubscription().copy(
                 status = SubscriptionStatus.PAST_DUE,
-                pastDueSince = Instant.parse("2026-07-23T11:59:59Z"),
+                pastDueSince = Instant.parse("2026-07-21T15:00:00Z"),
             ),
         )
         val useCase = GetMySubscription(subscriptions, FixedOwnedGroups(1), clock)
@@ -155,13 +155,14 @@ class GetMySubscriptionTest {
 
     @Test
     fun `isReadOnly is computed from now not from event time`() {
-        val pastDueSince = Instant.parse("2026-07-20T00:00:00Z")
+        // Vencimento em 20/07 (São Paulo): o último dia com acesso é 27/07, e o corte é a meia-noite que o fecha (28/07 00:00 em SP).
+        val pastDueSince = Instant.parse("2026-07-20T03:00:00Z")
         val subscription = baseSubscription().copy(
             status = SubscriptionStatus.PAST_DUE,
             pastDueSince = pastDueSince,
         )
-        assertFalse(GetMySubscription.isReadOnly(subscription, Instant.parse("2026-07-27T00:00:00Z")))
-        assertTrue(GetMySubscription.isReadOnly(subscription, Instant.parse("2026-07-27T00:00:01Z")))
+        assertFalse(GetMySubscription.isReadOnly(subscription, Instant.parse("2026-07-28T02:59:59Z")))
+        assertTrue(GetMySubscription.isReadOnly(subscription, Instant.parse("2026-07-28T03:00:00Z")))
     }
 
     /**

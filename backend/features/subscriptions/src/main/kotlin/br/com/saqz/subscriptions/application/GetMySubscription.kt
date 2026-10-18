@@ -173,12 +173,16 @@ class GetMySubscription(
     }
 
     companion object {
-        /** Mesma carencia do entitlement — fonte unica em [Subscription.PAST_DUE_GRACE]. */
-        val PAST_DUE_GRACE: java.time.Duration = Subscription.PAST_DUE_GRACE
+        /** Carência das lojas, contada do instante do vencimento; a do site é [Subscription.pastDueFreezeAt]. */
+        val STORE_PAST_DUE_GRACE: java.time.Duration = java.time.Duration.ofDays(Subscription.PAST_DUE_GRACE_DAYS)
         val CANCELED_GRACE: java.time.Duration = java.time.Duration.ofDays(30)
 
         fun isReadOnly(subscription: Subscription, now: Instant): Boolean =
-            isReadOnly(subscription.status, subscription.pastDueSince, subscription.canceledAt, now)
+            if (subscription.status == SubscriptionStatus.PAST_DUE) {
+                subscription.pastDueSince?.let { !now.isBefore(Subscription.pastDueFreezeAt(it)) } ?: false
+            } else {
+                isReadOnly(subscription.status, subscription.pastDueSince, subscription.canceledAt, now)
+            }
 
         fun isReadOnly(
             status: SubscriptionStatus,
@@ -189,7 +193,7 @@ class GetMySubscription(
             SubscriptionStatus.ACTIVE -> false
             SubscriptionStatus.PAST_DUE -> {
                 val since = pastDueSince ?: return false
-                now.isAfter(since.plus(PAST_DUE_GRACE.toDays(), ChronoUnit.DAYS))
+                now.isAfter(since.plus(STORE_PAST_DUE_GRACE.toDays(), ChronoUnit.DAYS))
             }
             SubscriptionStatus.CANCELED -> {
                 val canceled = canceledAt ?: return false

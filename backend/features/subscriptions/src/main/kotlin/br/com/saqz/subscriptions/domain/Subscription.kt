@@ -1,8 +1,9 @@
 package br.com.saqz.subscriptions.domain
 
 import br.com.saqz.subscriptions.application.AsaasBillingType
-import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 
 enum class SubscriptionCycle { MONTHLY, ANNUAL }
@@ -48,7 +49,8 @@ data class Subscription(
     }
 
     /**
-     * Inadimplente mantém o acesso por [PAST_DUE_GRACE] contados do vencimento, e depois perde.
+     * Inadimplente mantém o acesso até o fim do 7º dia contado do vencimento (23h59 de São Paulo, [pastDueFreezeAt]),
+     * e depois perde.
      * Antes disto a cláusula era só `firstConfirmedAt != null`: quem pagasse uma única vez ficava
      * com o plano para sempre, sem nunca mais pagar.
      *
@@ -58,11 +60,24 @@ data class Subscription(
      */
     private fun withinPastDueGrace(now: Instant): Boolean {
         val since = pastDueSince ?: return true
-        return now.isBefore(since.plus(PAST_DUE_GRACE))
+        return now.isBefore(pastDueFreezeAt(since))
     }
 
     companion object {
-        /** Carência de inadimplência. Espelhada no intervalo do `JdbcSubscriptionPlanLookup`. */
-        val PAST_DUE_GRACE: Duration = Duration.ofDays(7)
+        /** Carência de inadimplência, em dias de calendário de São Paulo contados do dia do vencimento. */
+        const val PAST_DUE_GRACE_DAYS = 7L
+
+        val PAST_DUE_ZONE: ZoneId = ZoneId.of("America/Sao_Paulo")
+
+        /** Dia do vencimento (fuso de São Paulo): o dia 0 da carência e do aviso de atraso. */
+        fun pastDueDay(pastDueSince: Instant): LocalDate = pastDueSince.atZone(PAST_DUE_ZONE).toLocalDate()
+
+        /**
+         * Primeiro instante sem acesso: a meia-noite que fecha o 7º dia depois do vencimento (o acesso vai até as 23h59 desse
+         * dia). Espelhada na SQL de `JdbcSubscriptionPlanLookup`; é a única conta, usada também no corte do recebimento e no
+         * `readOnly` do `/subscriptions/me`.
+         */
+        fun pastDueFreezeAt(pastDueSince: Instant): Instant =
+            pastDueDay(pastDueSince).plusDays(PAST_DUE_GRACE_DAYS + 1).atStartOfDay(PAST_DUE_ZONE).toInstant()
     }
 }

@@ -100,6 +100,29 @@ class JdbcSubscriptionPlanLookupIntegrationTest {
     }
 
     @Test
+    fun `a past due subscription keeps the plan through the 7th day from the due date and loses it at midnight`() {
+        // Mesma conta de Subscription.pastDueFreezeAt: o dia do vencimento (São Paulo) + 7 vai até as 23h59.
+        subscriptions.insert(subscription(status = SubscriptionStatus.PAST_DUE, firstConfirmedAt = Instant.now())
+            .copy(pastDueSince = Instant.now().minus(java.time.Duration.ofDays(7))))
+        assertEquals(Plan.TITULAR, lookup.findEntitlingPlan(ownerId)?.plan)
+
+        jdbc.sql("UPDATE subscriptions SET past_due_since = now() - interval '8 days' WHERE owner_user_id = :owner")
+            .param("owner", ownerId).update()
+        assertNull(lookup.findEntitlingPlan(ownerId))
+    }
+
+    @Test
+    fun `the SQL boundary equals the Kotlin freeze instant`() {
+        val since = Instant.parse("2026-07-30T03:00:00Z")
+        subscriptions.insert(subscription(status = SubscriptionStatus.PAST_DUE, firstConfirmedAt = Instant.now()).copy(pastDueSince = since))
+
+        val sql = jdbc.sql("SELECT (date_trunc('day', past_due_since AT TIME ZONE 'America/Sao_Paulo') + interval '8 days') AT TIME ZONE 'America/Sao_Paulo' FROM subscriptions WHERE owner_user_id = :owner")
+            .param("owner", ownerId).query(java.sql.Timestamp::class.java).single().toInstant()
+
+        assertEquals(br.com.saqz.subscriptions.domain.Subscription.pastDueFreezeAt(since), sql)
+    }
+
+    @Test
     fun `a past due subscription that was never paid is not entitling`() {
         subscriptions.insert(subscription(status = SubscriptionStatus.PAST_DUE, firstConfirmedAt = null))
 

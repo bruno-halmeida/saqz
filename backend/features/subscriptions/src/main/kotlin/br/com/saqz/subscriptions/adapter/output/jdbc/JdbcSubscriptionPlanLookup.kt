@@ -27,12 +27,12 @@ class JdbcSubscriptionPlanLookup(dataSource: DataSource) : SubscriptionPlanLooku
             WHERE owner_user_id = :ownerId
               AND (
                 status = 'ACTIVE'
-                -- Espelho de Subscription.isEntitlingAt/PAST_DUE_GRACE (7 dias): inadimplente
-                -- perde o acesso apos a carencia. past_due_since nulo = linha legada, preservada.
+                -- Espelho de Subscription.isEntitlingAt/pastDueFreezeAt: inadimplente perde o acesso na meia-noite
+                -- que fecha o 7o dia depois do vencimento (23h59 de Sao Paulo). past_due_since nulo = linha legada, preservada.
                 OR (
                   status = 'PAST_DUE'
                   AND first_confirmed_at IS NOT NULL
-                  AND (past_due_since IS NULL OR past_due_since > now() - interval '7 days')
+                  AND (past_due_since IS NULL OR now() < (date_trunc('day', past_due_since AT TIME ZONE 'America/Sao_Paulo') + interval '8 days') AT TIME ZONE 'America/Sao_Paulo')
                 )
                 OR (status = 'CANCELED' AND first_confirmed_at IS NOT NULL AND current_period_end > now())
               )

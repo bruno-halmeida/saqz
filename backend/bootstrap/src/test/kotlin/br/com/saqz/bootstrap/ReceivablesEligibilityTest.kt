@@ -62,8 +62,11 @@ class ReceivablesEligibilityTest {
         assertFalse(eligibility.forOwner(owner, end).eligible)
         subscription = paid(Plan.ORGANIZADOR).copy(status = SubscriptionStatus.PAST_DUE,
             firstConfirmedAt = now.minusSeconds(60), pastDueSince = now)
-        assertEquals(ReceivablesEntitlement(true, now.plus(Subscription.PAST_DUE_GRACE)), eligibility.forOwner(owner, now))
-        assertFalse(eligibility.forOwner(owner, now.plus(Subscription.PAST_DUE_GRACE)).eligible)
+        // Corte no fim do 7º dia contado do vencimento (23h59 de São Paulo), não 7 dias corridos da hora.
+        val freeze = Subscription.pastDueFreezeAt(now)
+        assertEquals(ReceivablesEntitlement(true, freeze), eligibility.forOwner(owner, now))
+        assertEquals(ReceivablesEntitlement(true, freeze), eligibility.forOwner(owner, freeze.minusSeconds(1)))
+        assertFalse(eligibility.forOwner(owner, freeze).eligible)
     }
 
     private fun paid(plan: Plan) = Subscription(owner, plan, SubscriptionCycle.MONTHLY, "customer", "subscription", null, end)
