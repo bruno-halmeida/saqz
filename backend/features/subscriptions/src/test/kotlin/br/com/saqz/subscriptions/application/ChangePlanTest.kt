@@ -263,6 +263,193 @@ class ChangePlanTest {
         )
     }
 
+    private fun useCaseAt(now: Instant) = ChangePlan(
+        subscriptions,
+        gateway,
+        usage,
+        coupons,
+        transaction = object : SubscriptionsTransactionRunner {
+            override fun <T> inTransaction(block: () -> T): T = block()
+        },
+        Clock.fixed(now, ZoneOffset.UTC),
+    )
+
+    @Test
+    fun `owner without a subscription gets NotFound`() {
+        val other = UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd")
+
+        assertEquals(ChangePlanResult.NotFound, useCase.execute(ChangePlanCommand(other, requestId, Plan.ORGANIZADOR)))
+    }
+
+    @Test
+    fun `canceled subscription cannot change plan`() {
+        subscriptions.save(baseSubscription().copy(status = SubscriptionStatus.CANCELED))
+
+        assertEquals(
+            ChangePlanResult.NotActive,
+            useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR)),
+        )
+        assertTrue(gateway.oneOffIdempotencyKeys.isEmpty())
+    }
+
+    @Test
+    fun `choosing the current plan is SamePlan and changes nothing`() {
+        assertEquals(ChangePlanResult.SamePlan, useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.TITULAR)))
+
+        assertTrue(gateway.oneOffIdempotencyKeys.isEmpty())
+        assertTrue(gateway.valueUpdates.isEmpty())
+        assertNull(subscriptions.findByOwnerUserId(ownerId)?.pendingPlan)
+    }
+
+    @Test
+    fun `upgrade charges the exact prorata of the remaining half cycle`() {
+        val result = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+
+        // delta 5990 - 3990 = 2000; 15 dias restantes de 30 → 1000
+        assertEquals(1_000L, assertIs<ChangePlanResult.UpgradePendingPayment>(result).chargedCents)
+        assertEquals("pay_upgrade_1", subscriptions.findByOwnerUserId(ownerId)?.pendingUpgradeChargeId)
+        assertEquals(Plan.ORGANIZADOR, subscriptions.findByOwnerUserId(ownerId)?.pendingUpgradePlan)
+    }
+
+    @Test
+    fun `upgrade with an exhausted coupon is charged on full prices`() {
+        coupons.byId[couponId] = Coupon(id = couponId, code = "GALERA10", discountPercent = 10, durationCycles = 3)
+        subscriptions.save(baseSubscription().copy(couponId = couponId, couponCyclesRemaining = 0))
+
+        val result = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+
+        assertEquals(1_000L, assertIs<ChangePlanResult.UpgradePendingPayment>(result).chargedCents)
+    }
+
+    @Test
+    fun `upgrade whose coupon no longer exists is charged on full prices`() {
+        subscriptions.save(baseSubscription().copy(couponId = couponId, couponCyclesRemaining = 2))
+
+        val result = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+
+        assertEquals(1_000L, assertIs<ChangePlanResult.UpgradePendingPayment>(result).chargedCents)
+    }
+
+    @Test
+    fun `upgrade in the last second of the cycle has a zero prorata and applies the plan at once`() {
+        val almostEnd = periodEnd.minusSeconds(1)
+
+        val result = useCaseAt(almostEnd).execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+
+        val upgraded = assertIs<ChangePlanResult.Upgraded>(result)
+        assertEquals(0L, upgraded.chargedCents)
+        assertEquals(Plan.ORGANIZADOR, upgraded.subscription.plan)
+        assertEquals(Plan.ORGANIZADOR, subscriptions.findByOwnerUserId(ownerId)?.plan)
+        assertEquals(listOf("sub_1" to 5_990L), gateway.valueUpdates)
+        assertTrue(gateway.oneOffIdempotencyKeys.isEmpty())
+    }
+
+    @Test
+    fun `immediate upgrade clears any scheduled downgrade and pending upgrade`() {
+        subscriptions.save(
+            baseSubscription().copy(
+                pendingPlan = Plan.TITULAR,
+                pendingPlanEffectiveAt = periodEnd,
+                pendingUpgradePlan = Plan.ILIMITADO,
+                pendingUpgradeChargeId = "pay_old",
+            ),
+        )
+
+        useCaseAt(periodEnd.minusSeconds(1)).execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+
+        val stored = subscriptions.findByOwnerUserId(ownerId)!!
+        assertEquals(Plan.ORGANIZADOR, stored.plan)
+        assertNull(stored.pendingPlan)
+        assertNull(stored.pendingPlanEffectiveAt)
+        assertNull(stored.pendingUpgradePlan)
+        assertNull(stored.pendingUpgradeChargeId)
+    }
+
+    @Test
+    fun `immediate upgrade with a coupon pushes the discounted target price`() {
+        coupons.byId[couponId] = Coupon(id = couponId, code = "FOREVER20", discountPercent = 20)
+        subscriptions.save(baseSubscription().copy(couponId = couponId, couponCyclesRemaining = null))
+
+        useCaseAt(periodEnd.minusSeconds(1)).execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+
+        // 5990 - 20% (1198) = 4792
+        assertEquals(listOf("sub_1" to 4_792L), gateway.valueUpdates)
+    }
+
+    @Test
+    fun `upgrade after the period end charges the whole price difference`() {
+        val result = useCaseAt(periodEnd.plusSeconds(60)).execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+
+        assertEquals(2_000L, assertIs<ChangePlanResult.UpgradePendingPayment>(result).chargedCents)
+    }
+
+    @Test
+    fun `upgrade describes the charge with the plan names`() {
+        useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ILIMITADO))
+
+        assertEquals(listOf("Upgrade Saqz TITULAR → ILIMITADO"), gateway.oneOffDescriptions)
+        // delta 8990 - 3990 = 5000; metade do ciclo → 2500
+        assertEquals(2_500L, gateway.oneOffValues.single())
+    }
+
+    @Test
+    fun `downgrade is stored for the end of the paid period and lowers the recurring price`() {
+        subscriptions.save(baseSubscription().copy(plan = Plan.ORGANIZADOR))
+
+        val result = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.TITULAR))
+
+        val scheduled = assertIs<ChangePlanResult.DowngradeScheduled>(result)
+        assertEquals(Plan.TITULAR, scheduled.subscription.pendingPlan)
+        assertEquals(periodEnd, scheduled.subscription.pendingPlanEffectiveAt)
+        val stored = subscriptions.findByOwnerUserId(ownerId)!!
+        assertEquals(Plan.ORGANIZADOR, stored.plan)
+        assertEquals(Plan.TITULAR, stored.pendingPlan)
+        assertEquals(periodEnd, stored.pendingPlanEffectiveAt)
+        assertEquals(listOf("sub_1" to 3_990L), gateway.valueUpdates)
+    }
+
+    @Test
+    fun `downgrade is allowed when usage is exactly at the target limits`() {
+        subscriptions.save(baseSubscription().copy(plan = Plan.ORGANIZADOR))
+        usage.usage = OwnerPlanUsage(ownedGroupCount = 1, largestGroupAthleteCount = 25)
+
+        assertIs<ChangePlanResult.DowngradeScheduled>(
+            useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.TITULAR)),
+        )
+
+        subscriptions.save(baseSubscription().copy(plan = Plan.ILIMITADO))
+        usage.usage = OwnerPlanUsage(ownedGroupCount = 3, largestGroupAthleteCount = 500)
+
+        assertIs<ChangePlanResult.DowngradeScheduled>(
+            useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR)),
+        )
+    }
+
+    @Test
+    fun `downgrade is blocked one above the target limits`() {
+        subscriptions.save(baseSubscription().copy(plan = Plan.ILIMITADO))
+        usage.usage = OwnerPlanUsage(ownedGroupCount = 4, largestGroupAthleteCount = 10)
+
+        assertEquals(
+            ChangePlanResult.DowngradeBlockedByUsage,
+            useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR)),
+        )
+        assertTrue(gateway.valueUpdates.isEmpty())
+        assertNull(subscriptions.findByOwnerUserId(ownerId)?.pendingPlan)
+    }
+
+    @Test
+    fun `changing to a plan with the same discounted price is not an upgrade`() {
+        coupons.byId[couponId] = Coupon(id = couponId, code = "TUDO", discountPercent = 100)
+        subscriptions.save(baseSubscription().copy(couponId = couponId, couponCyclesRemaining = null))
+
+        val result = useCase.execute(ChangePlanCommand(ownerId, requestId, Plan.ORGANIZADOR))
+
+        // Preços iguais (zero) não geram cobrança avulsa: segue o caminho de troca agendada.
+        assertIs<ChangePlanResult.DowngradeScheduled>(result)
+        assertTrue(gateway.oneOffIdempotencyKeys.isEmpty())
+    }
+
     private fun baseSubscription() = Subscription(
         ownerUserId = ownerId,
         plan = Plan.TITULAR,
@@ -309,6 +496,8 @@ class ChangePlanTest {
 
     private class FakeAsaasGateway : AsaasGateway {
         val oneOffIdempotencyKeys = mutableListOf<String>()
+        val oneOffDescriptions = mutableListOf<String>()
+        val oneOffValues = mutableListOf<Long>()
         val valueUpdates = mutableListOf<Pair<String, Long>>()
         private var chargeCounter = 0
 
@@ -338,6 +527,8 @@ class ChangePlanTest {
             idempotencyKey: String,
         ): String {
             oneOffIdempotencyKeys += idempotencyKey
+            oneOffDescriptions += description
+            oneOffValues += valueCents
             return "pay_upgrade_${++chargeCounter}"
         }
 

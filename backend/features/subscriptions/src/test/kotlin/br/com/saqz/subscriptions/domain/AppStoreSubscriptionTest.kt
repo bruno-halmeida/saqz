@@ -98,6 +98,142 @@ class AppStoreSubscriptionTest {
         assertSame(canceled, canceled.applying(renewal(autoRenew = true, signedAt = off.minusSeconds(1))))
     }
 
+    @Test
+    fun `renewal info stores every field it carries`() {
+        val grace = purchased.plus(Duration.ofDays(33))
+        val signed = purchased.plusSeconds(60)
+
+        val updated = started().applying(
+            renewal(
+                autoRenewProductId = AppStoreProduct.ILIMITADO_ANUAL.productId,
+                inBillingRetry = true,
+                gracePeriodExpiresAt = grace,
+                signedAt = signed,
+            ),
+        )
+
+        assertEquals(true, updated.autoRenew)
+        assertEquals(AppStoreProduct.ILIMITADO_ANUAL.productId, updated.autoRenewProductId)
+        assertEquals(AppStoreProduct.ILIMITADO_ANUAL, updated.autoRenewProduct)
+        assertTrue(updated.inBillingRetry)
+        assertEquals(grace, updated.gracePeriodExpiresAt)
+        assertEquals(signed, updated.renewalSignedAt)
+    }
+
+    @Test
+    fun `auto renew change time only moves when auto renew flips`() {
+        val first = purchased.plusSeconds(60)
+        val second = purchased.plusSeconds(120)
+        val third = purchased.plusSeconds(180)
+        val onceOff = started().applying(renewal(autoRenew = false, signedAt = first))
+
+        val stillOff = onceOff.applying(renewal(autoRenew = false, signedAt = second))
+        assertEquals(first, stillOff.autoRenewChangedAt)
+
+        val backOn = stillOff.applying(renewal(autoRenew = true, signedAt = third))
+        assertEquals(third, backOn.autoRenewChangedAt)
+    }
+
+    @Test
+    fun `renewal info with the same signature time as the stored one is applied`() {
+        val signed = purchased.plusSeconds(60)
+        val stored = started().applying(renewal(autoRenew = true, signedAt = signed))
+
+        val updated = stored.applying(renewal(autoRenew = false, signedAt = signed))
+
+        assertEquals(false, updated.autoRenew)
+    }
+
+    @Test
+    fun `pending plan needs a different plan and auto renew not turned off`() {
+        val sameProduct = started().applying(renewal(autoRenewProductId = AppStoreProduct.ORGANIZADOR_ANUAL.productId))
+        assertNull(sameProduct.pendingPlan)
+        assertNull(started().pendingPlan)
+        assertNull(started().applying(renewal(autoRenewProductId = "app.outro")).pendingPlan)
+        assertEquals(Plan.ILIMITADO, started().applying(renewal(autoRenewProductId = AppStoreProduct.ILIMITADO_MENSAL.productId)).pendingPlan)
+    }
+
+    @Test
+    fun `a transaction without expiry changes nothing`() {
+        val subscription = started()
+
+        val result = subscription.applying(
+            transaction(transactionId = "t9", purchaseDate = purchased.plus(month)).copy(expiresDate = null),
+            AppStoreProduct.ORGANIZADOR_MENSAL,
+        )
+
+        assertSame(subscription, result)
+    }
+
+    @Test
+    fun `a transaction bought earlier than the latest only becomes a receipt`() {
+        val subscription = started()
+
+        val result = subscription.applying(
+            transaction(transactionId = "t0", purchaseDate = purchased.minusSeconds(10)),
+            AppStoreProduct.TITULAR_MENSAL,
+        )
+
+        assertSame(subscription, result)
+    }
+
+    @Test
+    fun `a newer purchase replaces the latest transaction fields`() {
+        val renewalDate = purchased.plus(month)
+
+        val renewed = started().applying(
+            transaction(transactionId = "t2", purchaseDate = renewalDate, expiresDate = renewalDate.plus(month)),
+            AppStoreProduct.ORGANIZADOR_MENSAL,
+        )
+
+        assertEquals("t2", renewed.latestTransactionId)
+        assertEquals(renewalDate, renewed.latestPurchaseDate)
+        assertEquals(renewalDate, renewed.latestSignedAt)
+        assertEquals(renewalDate.plus(month), renewed.expiresAt)
+        assertEquals("t1", renewed.originalTransactionId)
+    }
+
+    @Test
+    fun `transferring to another account drops the renewal state of the old one`() {
+        val newOwner = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+        val withRenewal = started().applying(
+            renewal(autoRenew = false, inBillingRetry = true, gracePeriodExpiresAt = purchased.plus(month)),
+        )
+
+        val moved = withRenewal.transferredTo(newOwner)
+
+        assertEquals(newOwner, moved.ownerUserId)
+        assertNull(moved.autoRenew)
+        assertNull(moved.autoRenewProductId)
+        assertNull(moved.autoRenewChangedAt)
+        assertFalse(moved.inBillingRetry)
+        assertNull(moved.gracePeriodExpiresAt)
+        assertNull(moved.renewalSignedAt)
+        assertEquals(withRenewal.latestTransactionId, moved.latestTransactionId)
+        assertEquals(withRenewal.expiresAt, moved.expiresAt)
+    }
+
+    @Test
+    fun `starting a subscription without an expiry date is refused`() {
+        kotlin.test.assertFailsWith<IllegalArgumentException> {
+            AppStoreSubscription.startedBy(
+                transaction().copy(expiresDate = null),
+                AppStoreProduct.ORGANIZADOR_MENSAL,
+                owner,
+            )
+        }
+    }
+
+    @Test
+    fun `grace period keeps access until it ends and a refund still cuts it`() {
+        val grace = purchased.plus(month).plus(Duration.ofDays(16))
+        val inGrace = started().applying(renewal(inBillingRetry = true, gracePeriodExpiresAt = grace))
+
+        assertTrue(inGrace.isEntitlingAt(grace.minusSeconds(1)))
+        assertFalse(inGrace.isEntitlingAt(grace))
+        assertFalse(inGrace.copy(revokedAt = purchased).isEntitlingAt(purchased.plusSeconds(1)))
+    }
+
     private fun started() = AppStoreSubscription.startedBy(transaction(), AppStoreProduct.ORGANIZADOR_MENSAL, owner)
 
     private fun transaction(

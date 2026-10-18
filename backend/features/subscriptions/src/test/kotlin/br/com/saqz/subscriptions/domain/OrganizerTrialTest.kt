@@ -19,4 +19,18 @@ class OrganizerTrialTest {
         assertFalse(trial.isActiveAt(trial.endsAt))
         assertFalse(trial.isActiveAt(trial.endsAt.plusSeconds(1)))
     }
+
+    @Test
+    fun `trial length accepts 1 to 365 days and refuses 0 and 366`() {
+        val start = Instant.parse("2026-09-12T12:00:00Z")
+        assertEquals(start.plus(Duration.ofDays(1)), OrganizerTrial.start(UUID.randomUUID(), start, days = 1).endsAt)
+        assertEquals(start.plus(Duration.ofDays(365)), OrganizerTrial.start(UUID.randomUUID(), start, days = 365).endsAt)
+        kotlin.test.assertFailsWith<IllegalArgumentException> { OrganizerTrial.start(UUID.randomUUID(), start, days = 0) }
+        kotlin.test.assertFailsWith<IllegalArgumentException> { OrganizerTrial.start(UUID.randomUUID(), start, days = 366) }
+    }
+
+    @Test
+    fun `trial is always for the organizador plan`() {
+        assertEquals(Plan.ORGANIZADOR, OrganizerTrial.plan)
+    }
 }
