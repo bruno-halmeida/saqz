@@ -109,7 +109,8 @@ internal class GameGuestE2eTest : InstalledE2e("attendance-guest") {
         assertEquals(host, guestCharge.getString("memberId"))
         assertEquals("PENDING", guestCharge.getString("status"))
         assertEquals(2000L, guestCharge.getLong("amountCents"))
-        backToShell()
+        dismissNotificationPrompt()
+        back()
         logout()
 
         // 6) anfitrião desiste → convidado confirmado cai junto e a cobrança dele é cancelada (regras B e F)

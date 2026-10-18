@@ -17,6 +17,7 @@ internal class AttendanceE2eTest : InstalledE2e("attendance") {
         login("athlete")
         openGroup()
         click("group-game-response-going", scroll = true)
+        dismissNotificationPrompt()
         // Em espera os dois botões somem: ficam o chip com a posição e "Sair da lista de espera".
         waitText("Lista de espera · 1º")
         waitEnabled("home-reserva-leave")
@@ -27,7 +28,7 @@ internal class AttendanceE2eTest : InstalledE2e("attendance") {
         assertEquals(1, waiting.getInt("waitlistCount"))
         assertEquals("WAITLISTED", waiting.getJSONObject("ownAttendance").getString("status"))
         assertEquals(1L, waiting.getJSONObject("ownAttendance").getLong("waitlistPosition"))
-        backToShell()
+        back()
         logout()
 
         login("owner")

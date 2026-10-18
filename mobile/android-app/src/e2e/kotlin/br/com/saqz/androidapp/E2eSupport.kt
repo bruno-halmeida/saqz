@@ -118,12 +118,22 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
         ui.waitForIdle()
     }
 
-    /** Volta até a base do shell; depois de responder presença, o primeiro "voltar" não sai da tela do grupo. */
-    protected fun backToShell() {
-        repeat(3) {
-            if (ui.onAllNodesWithTag("saqz-shell-content").fetchSemanticsNodes().isNotEmpty()) return
-            back()
+    /**
+     * Depois da resposta de presença a folha "Quer saber quando tem jogo?" pode subir sobre a tela do
+     * grupo; é ela que fica na frente do "Voltar": o primeiro toque a fecha, o segundo sai da tela.
+     * Ela só aparece com o pedido de aviso ainda não feito e fora dos 3 dias depois de um "Agora não",
+     * e essa memória é do aparelho (sobrevive entre cenários), então fecha só se subiu.
+     */
+    protected fun dismissNotificationPrompt() {
+        val shown = try {
+            ui.waitUntil(5_000) { ui.onAllNodesWithTag("notification-prompt-not-now").fetchSemanticsNodes().isNotEmpty() }
+            true
+        } catch (_: ComposeTimeoutException) {
+            false
         }
+        if (!shown) return
+        click("notification-prompt-not-now")
+        ui.waitUntil(20_000) { ui.onAllNodesWithTag("notification-prompt").fetchSemanticsNodes().isEmpty() }
     }
 
     protected fun logout() {
