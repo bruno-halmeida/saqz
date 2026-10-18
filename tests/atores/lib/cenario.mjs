@@ -108,6 +108,14 @@ export class Contexto {
     return this.status(await dono.ajustarAtleta(grupoId, atleta.id, { membershipType, ...extra }), 200)
   }
 
+  /** Fim do teste grátis do dono (mesma atualização de banco que o roteiro usa): os grupos dele congelam. */
+  async encerrarTeste(dono) {
+    await this.sql(`update organizer_trials set started_at = now() - interval '15 days', ends_at = now() - interval '1 minute' where owner_user_id='${dono.id}'`)
+  }
+  async reabrirTeste(dono, dias = 14) {
+    await this.sql(`update organizer_trials set started_at = now() - interval '1 day', ends_at = now() + interval '${dias} days' where owner_user_id='${dono.id}'`)
+  }
+
   /** Muda o prazo de confirmação como o roteiro 01 faz (banco). */
   async prazoPara(jogoId, instante) { await this.sql(`update games set confirmation_deadline='${instante.toISOString()}', version=version+1 where id='${jogoId}'`) }
   async inicioPara(jogoId, instante) { await this.sql(`update games set starts_at='${instante.toISOString()}', version=version+1 where id='${jogoId}'`) }
