@@ -5,7 +5,13 @@ import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.AttendanceSource
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.group.PromotionMode
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -25,6 +31,9 @@ class SettleWaitlistAtDeadlineRulesTest {
     }
     private val charges = RecordingCharges()
     private val notices = mutableListOf<Pair<DeadlineWaitlistCandidate, String>>()
+    private val failures = mutableListOf<String>()
+    private val logger = LoggerFactory.getLogger("br.com.saqz.job") as Logger
+    private val appender = ListAppender<ILoggingEvent>()
     private var candidates = listOf(candidate())
     private val job = SettleWaitlistAtDeadline(
         DIRECT_TRANSACTION,
@@ -33,7 +42,16 @@ class SettleWaitlistAtDeadlineRulesTest {
         charges,
         { candidate, body -> notices += candidate to body },
         { NOW },
+        onFailure = { what, _ -> failures += what },
     )
+
+    @BeforeEach fun attach() { appender.start(); logger.addAppender(appender) }
+
+    /** Nenhum caminho previsto (jogo fora do grupo, prazo aberto, lotado) pode estourar erro e cair no `catch` do job. */
+    @AfterEach fun detach() {
+        logger.detachAppender(appender)
+        assertEquals(emptyList(), failures)
+    }
 
     @Test
     fun `sobe exatamente as vagas que sobraram, na ordem da fila, cobrando cada um assinado pelo dono`() {
@@ -125,6 +143,49 @@ class SettleWaitlistAtDeadlineRulesTest {
         assertTrue("1 na lista de espera · 1 vaga aberta\n" in body, body)
         assertEquals(AttendanceStatus.WAITLISTED, repository.status(waiting[0]))
         assertTrue(repository.events.isEmpty())
+    }
+
+    @Test
+    fun `em escolha manual com o jogo lotado nao avisa ninguem`() {
+        repository.promotionMode = PromotionMode.MANUAL
+        repository.capacity = 2
+        repeat(2) { repository.record(UUID.randomUUID(), AttendanceStatus.CONFIRMED) }
+        repository.record(waiting[0], AttendanceStatus.WAITLISTED, sequence = 1)
+
+        assertEquals(0, job.run())
+
+        assertTrue(notices.isEmpty())
+    }
+
+    @Test
+    fun `cada promovido e cada aviso ganham uma linha no log do job, so com ids`() {
+        repository.capacity = 3
+        repository.record(waiting[0], AttendanceStatus.WAITLISTED, sequence = 1)
+        repository.record(waiting[1], AttendanceStatus.WAITLISTED, sequence = 2)
+
+        job.run()
+
+        assertEquals(
+            listOf(
+                "job_item job=waitlist_deadline event=waitlist_promoted groupId=$group gameId=$game memberId=${waiting[0]}",
+                "job_item job=waitlist_deadline event=waitlist_promoted groupId=$group gameId=$game memberId=${waiting[1]}",
+            ),
+            appender.list.map { it.formattedMessage },
+        )
+    }
+
+    @Test
+    fun `aviso de escolha manual ganha a linha manual_choice_notified`() {
+        repository.promotionMode = PromotionMode.MANUAL
+        repository.capacity = 3
+        repository.record(waiting[0], AttendanceStatus.WAITLISTED, sequence = 1)
+
+        job.run()
+
+        assertEquals(
+            listOf("job_item job=waitlist_deadline event=manual_choice_notified groupId=$group gameId=$game"),
+            appender.list.map { it.formattedMessage },
+        )
     }
 
     @Test

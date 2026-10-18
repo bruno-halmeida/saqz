@@ -51,6 +51,10 @@ internal class InMemoryAttendance(
     var promotionMode = PromotionMode.FIFO
     var mensalistaPriority = false
     var gameVersion = 1L
+    val responseReplays = mutableMapOf<UUID, AttendanceResponseReplay>()
+    var responseReplayLookups = 0
+    /** Roda dentro de `lock`, como uma transação concorrente que confirma enquanto esta espera a linha. */
+    var whileLocking: (() -> Unit)? = null
     var updatedCapacity: Int? = null
     var rejectCapacityUpdate = false
     private var allocator = 0L
@@ -65,6 +69,7 @@ internal class InMemoryAttendance(
 
     override fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID, guestSeq: Int): AttendanceAggregate? {
         if (groupId != group || gameId != game) return null
+        whileLocking?.invoke()
         return AttendanceAggregate(
             group, game, memberId, actorId, roles[actorId], gameStatus, deadline, capacity, confirmedCount(),
             records[memberId to guestSeq], 2500L, LocalDate.of(2026, 8, 11),
@@ -79,6 +84,11 @@ internal class InMemoryAttendance(
             group, game, actorId, roles[actorId], gameStatus, deadline, capacity, confirmedCount(), gameVersion,
             2500L, LocalDate.of(2026, 8, 11), mensalistaPriority, promotionMode, startsAt,
         )
+    }
+
+    override fun findResponseReplay(groupId: UUID, gameId: UUID, actorId: UUID, requestId: UUID): AttendanceResponseReplay? {
+        responseReplayLookups++
+        return responseReplays[requestId]
     }
 
     override fun nextWaitlistSequence(groupId: UUID, gameId: UUID) = ++allocator

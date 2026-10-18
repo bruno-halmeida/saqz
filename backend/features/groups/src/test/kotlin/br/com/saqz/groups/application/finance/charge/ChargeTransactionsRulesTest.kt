@@ -136,12 +136,19 @@ class ChargeTransactionsRulesTest {
     }
 
     @Test
-    fun `sem informacao de vinculo a diaria e cobrada`() {
-        val plain = object : ChargeTransactionRepository by repository {}
-        val transactions = ChargeTransactions(object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() }, plain, { NOW })
+    fun `repositorio que nao informa o vinculo cobra a diaria e ignora o cancelamento de convidado`() {
+        val plain = object : ChargeTransactionRepository {
+            override fun createGameCharge(input: GameChargeInput, actorId: UUID, now: Instant) =
+                Charge(UUID.randomUUID(), input.groupId, input.memberId, ChargeIdentity.Game(input.gameId), 2500, input.dueDate)
+            override fun reconcileGameCancellation(groupId: UUID, gameId: UUID, actorId: UUID, now: Instant) = Unit
+            override fun members(groupId: UUID): GroupMembers? = null
+            override fun createMonthlyCharge(command: MonthlyGenerationCommand, memberId: UUID, now: Instant): Charge = error("unused")
+        }
+        val withoutWriteAccess = ChargeTransactions(object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() }, plain) { NOW }
 
         assertTrue(plain.billsGameCharge(group, member, 0))
-        assertTrue(transactions.attendance(gameInput(AttendanceBillingOutcome.CONFIRMED), actor) != null)
+        assertTrue(withoutWriteAccess.attendance(gameInput(AttendanceBillingOutcome.CONFIRMED), actor) != null)
+        withoutWriteAccess.cancelGuest(group, gameId, member, 1, actor)
     }
 
     @Test
