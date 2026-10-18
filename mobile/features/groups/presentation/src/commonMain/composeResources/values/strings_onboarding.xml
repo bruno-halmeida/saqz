@@ -28,7 +28,7 @@
     <string name="checklist_mensalistas_title">Mensalistas e mensalidade</string>
     <string name="checklist_mensalistas_body">Quem paga por mês entra primeiro na lista.</string>
     <string name="pix_key_notice_message">Cadastre a chave Pix para seus atletas pagarem.</string>
-    <string name="pix_key_notice_action">Cadastrar chave Pix</string>
+    <string name="pix_key_notice_action">Cadastrar chave</string>
     <string name="checklist_pix_title">Pix do grupo</string>
     <string name="checklist_pix_body">Aparece na cobrança. A galera copia e paga.</string>
     <string name="checklist_rules_title">Regras da lista de espera</string>
