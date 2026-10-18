@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.statement
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.finance.ExpenseStatus
 import br.com.saqz.groups.domain.finance.FinanceDirection
 import br.com.saqz.groups.domain.finance.FinanceError
 import br.com.saqz.groups.domain.finance.FinanceStatementGateway
@@ -10,10 +11,12 @@ import br.com.saqz.groups.domain.finance.FinanceStatementItem
 import br.com.saqz.groups.domain.finance.FinanceStatementPage
 import br.com.saqz.groups.domain.finance.FinanceStatementQuery
 import br.com.saqz.groups.domain.finance.FinanceStatementSummary
+import br.com.saqz.groups.domain.finance.FinanceVersionToken
 import br.com.saqz.groups.presentation.GroupUiError
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -42,7 +45,7 @@ class StatementViewModelTest {
         val gateway = FakeStatementGateway(
             pages = ArrayDeque(listOf(statementPage(items = listOf(incomeItem), balance = 64_000L))),
         )
-        val viewModel = StatementViewModel("group-1", gateway)
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
         viewModel.onIntent(StatementIntent.Retry)
 
         assertFalse(viewModel.state.value.isLoading)
@@ -66,7 +69,7 @@ class StatementViewModelTest {
                 ),
             ),
         )
-        val viewModel = StatementViewModel("group-1", gateway)
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
         viewModel.onIntent(StatementIntent.Retry)
 
         assertEquals(
@@ -98,7 +101,7 @@ class StatementViewModelTest {
                 ),
             ),
         )
-        val viewModel = StatementViewModel("group-1", gateway)
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
         viewModel.onIntent(StatementIntent.Retry)
 
         viewModel.onIntent(StatementIntent.SelectFilter(StatementFilter.Out))
@@ -118,7 +121,7 @@ class StatementViewModelTest {
                 ),
             ),
         )
-        val viewModel = StatementViewModel("group-1", gateway)
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
         viewModel.onIntent(StatementIntent.Retry)
 
         viewModel.onIntent(StatementIntent.LoadMore)
@@ -140,7 +143,7 @@ class StatementViewModelTest {
                 ),
             ),
         )
-        val viewModel = StatementViewModel("group-1", gateway)
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
         viewModel.onIntent(StatementIntent.Retry)
 
         viewModel.onIntent(StatementIntent.LoadMore)
@@ -160,7 +163,7 @@ class StatementViewModelTest {
         val old = CompletableDeferred<SaqzResult<FinanceStatementPage, FinanceError>>()
         val fresh = CompletableDeferred<SaqzResult<FinanceStatementPage, FinanceError>>()
         val gateway = FakeStatementGateway(deferreds = ArrayDeque(listOf(old, fresh)))
-        val viewModel = StatementViewModel("group-1", gateway)
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
 
         viewModel.onIntent(StatementIntent.Retry)
         viewModel.onIntent(StatementIntent.SelectFilter(StatementFilter.Out))
@@ -171,6 +174,167 @@ class StatementViewModelTest {
         assertEquals(StatementFilter.Out, viewModel.state.value.filter)
         assertTrue(gateway.queries.last().direction == FinanceDirection.Out)
     }
+
+    @Test
+    fun `only manual entries are marked for correction and void`() = runTest(dispatcher) {
+        val viewModel = loaded(statementPage(items = listOf(incomeItem, expenseItem)))
+
+        assertEquals(listOf(false, true), viewModel.state.value.items.map { it.manual })
+    }
+
+    @Test
+    fun `edit opens the correction of a manual entry and ignores charges`() = runTest(dispatcher) {
+        val viewModel = loaded(statementPage(items = listOf(incomeItem, expenseItem)))
+
+        viewModel.onIntent(StatementIntent.Edit("income-1"))
+        viewModel.onIntent(StatementIntent.Edit("expense-1"))
+
+        assertEquals(StatementEffect.OpenEditEntry("group-1", "expense-1"), viewModel.effects.first())
+    }
+
+    @Test
+    fun `void asks first then voids with the version read from the expense list and refreshes`() =
+        runTest(dispatcher) {
+            val finance = FakeExpenseFinance(stored = listOf(storedExpense(version = 3)))
+            val gateway = FakeStatementGateway(
+                pages = ArrayDeque(
+                    listOf(
+                        statementPage(items = listOf(expenseItem)),
+                        statementPage(items = emptyList()),
+                    ),
+                ),
+            )
+            val viewModel = StatementViewModel("group-1", gateway, finance)
+            viewModel.onIntent(StatementIntent.Retry)
+
+            viewModel.onIntent(StatementIntent.AskVoid("expense-1"))
+            assertEquals("expense-1", viewModel.state.value.voidTargetId)
+            assertTrue(finance.voids.isEmpty())
+
+            viewModel.onIntent(StatementIntent.ConfirmVoid)
+
+            assertEquals(listOf(FakeExpenseFinance.VoidCall("expense-1", FinanceVersionToken("\"3\""))), finance.voids)
+            assertEquals(StatementEffect.Voided, viewModel.effects.first())
+            assertNull(viewModel.state.value.voidTargetId)
+            assertFalse(viewModel.state.value.isVoiding)
+            assertTrue(viewModel.state.value.items.isEmpty())
+            assertEquals(2, gateway.queries.size)
+        }
+
+    @Test
+    fun `double tap on confirm voids only once`() = runTest(dispatcher) {
+        val gate = CompletableDeferred<Unit>()
+        val finance = FakeExpenseFinance(stored = listOf(storedExpense()), voidGate = gate)
+        val viewModel = loaded(statementPage(items = listOf(expenseItem)), finance)
+        viewModel.onIntent(StatementIntent.AskVoid("expense-1"))
+
+        viewModel.onIntent(StatementIntent.ConfirmVoid)
+        viewModel.onIntent(StatementIntent.ConfirmVoid)
+        assertTrue(viewModel.state.value.isVoiding)
+        viewModel.onIntent(StatementIntent.DismissVoid)
+        assertEquals("expense-1", viewModel.state.value.voidTargetId)
+        viewModel.onIntent(StatementIntent.AskVoid("expense-1"))
+        gate.complete(Unit)
+
+        assertEquals(1, finance.voids.size)
+    }
+
+    @Test
+    fun `version conflict reloads the statement and tells the entry changed`() = runTest(dispatcher) {
+        val finance = FakeExpenseFinance(
+            stored = listOf(storedExpense()),
+            voidResult = SaqzResult.Failure(FinanceError.Conflict),
+        )
+        val gateway = FakeStatementGateway(
+            pages = ArrayDeque(
+                listOf(statementPage(items = listOf(expenseItem)), statementPage(items = listOf(expenseItem))),
+            ),
+        )
+        val viewModel = StatementViewModel("group-1", gateway, finance)
+        viewModel.onIntent(StatementIntent.Retry)
+        viewModel.onIntent(StatementIntent.AskVoid("expense-1"))
+
+        viewModel.onIntent(StatementIntent.ConfirmVoid)
+
+        assertEquals(StatementActionError.Conflict, viewModel.state.value.actionError)
+        assertNull(viewModel.state.value.voidTargetId)
+        assertFalse(viewModel.state.value.isVoiding)
+        assertEquals(2, gateway.queries.size)
+    }
+
+    @Test
+    fun `entry already voided elsewhere counts as a conflict without calling void`() = runTest(dispatcher) {
+        val finance = FakeExpenseFinance(stored = listOf(storedExpense(status = ExpenseStatus.Voided)))
+        val viewModel = loaded(statementPage(items = listOf(expenseItem)), finance)
+        viewModel.onIntent(StatementIntent.AskVoid("expense-1"))
+
+        viewModel.onIntent(StatementIntent.ConfirmVoid)
+
+        assertTrue(finance.voids.isEmpty())
+        assertEquals(StatementActionError.Conflict, viewModel.state.value.actionError)
+    }
+
+    @Test
+    fun `forbidden void tells only admins can change entries and keeps the list`() = runTest(dispatcher) {
+        val finance = FakeExpenseFinance(
+            stored = listOf(storedExpense()),
+            voidResult = SaqzResult.Failure(FinanceError.Forbidden),
+        )
+        val viewModel = loaded(statementPage(items = listOf(expenseItem)), finance)
+        viewModel.onIntent(StatementIntent.AskVoid("expense-1"))
+
+        viewModel.onIntent(StatementIntent.ConfirmVoid)
+
+        assertEquals(StatementActionError.Forbidden, viewModel.state.value.actionError)
+        assertEquals(listOf("expense-1"), viewModel.state.value.items.map { it.id })
+    }
+
+    @Test
+    fun `read failure before voiding reports a generic failure and never voids`() = runTest(dispatcher) {
+        val finance = FakeExpenseFinance(stored = listOf(storedExpense()), readFailure = FinanceError.Data(DataError.Unknown))
+        val viewModel = loaded(statementPage(items = listOf(expenseItem)), finance)
+        viewModel.onIntent(StatementIntent.AskVoid("expense-1"))
+
+        viewModel.onIntent(StatementIntent.ConfirmVoid)
+
+        assertEquals(StatementActionError.Failed, viewModel.state.value.actionError)
+        assertTrue(finance.voids.isEmpty())
+    }
+
+    @Test
+    fun `charge entries and unknown ids cannot be voided`() = runTest(dispatcher) {
+        val finance = FakeExpenseFinance(stored = listOf(storedExpense()))
+        val viewModel = loaded(statementPage(items = listOf(incomeItem)), finance)
+
+        viewModel.onIntent(StatementIntent.AskVoid("income-1"))
+        viewModel.onIntent(StatementIntent.AskVoid("missing"))
+        viewModel.onIntent(StatementIntent.ConfirmVoid)
+
+        assertNull(viewModel.state.value.voidTargetId)
+        assertTrue(finance.voids.isEmpty())
+    }
+
+    @Test
+    fun `a statement the role cannot read exposes no entries to act on`() = runTest(dispatcher) {
+        val gateway = FakeStatementGateway(results = ArrayDeque(listOf(SaqzResult.Failure(FinanceError.Forbidden))))
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
+        viewModel.onIntent(StatementIntent.Retry)
+
+        assertTrue(viewModel.state.value.loadFailed)
+        assertEquals(GroupUiError.AccessDenied, viewModel.state.value.error)
+        viewModel.onIntent(StatementIntent.Edit("expense-1"))
+        viewModel.onIntent(StatementIntent.AskVoid("expense-1"))
+        assertNull(viewModel.state.value.voidTargetId)
+    }
+
+    private fun loaded(
+        page: FinanceStatementPage,
+        finance: FakeExpenseFinance = FakeExpenseFinance(),
+    ) = StatementViewModel(
+        "group-1",
+        FakeStatementGateway(pages = ArrayDeque(listOf(page, page))),
+        finance,
+    ).also { it.onIntent(StatementIntent.Retry) }
 
     private companion object {
         val incomeItem = FinanceStatementItem(
@@ -185,6 +349,7 @@ class StatementViewModelTest {
         )
         val expenseItem = incomeItem.copy(
             id = "expense-1",
+            type = "EXPENSE",
             direction = FinanceDirection.Out,
             title = "Aluguel da quadra",
             category = "QUADRA",

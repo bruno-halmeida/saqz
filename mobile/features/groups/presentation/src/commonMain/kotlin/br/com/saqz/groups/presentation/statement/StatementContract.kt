@@ -17,6 +17,8 @@ data class StatementItemUi(
     val title: String,
     val meta: String,
     val amountLabel: String,
+    /** Lançamento feito à mão (Entrada ou Saída): é o que se corrige e se anula. Cobrança não. */
+    val manual: Boolean = false,
 )
 
 @Immutable
@@ -39,7 +41,16 @@ data class StatementState(
     val summary: StatementSummaryUi = StatementSummaryUi(),
     val hasMore: Boolean = false,
     val nextOffset: Int = 0,
+    val voidTargetId: String? = null,
+    val isVoiding: Boolean = false,
+    val actionError: StatementActionError? = null,
 )
+
+enum class StatementActionError {
+    Conflict,
+    Forbidden,
+    Failed,
+}
 
 sealed interface StatementIntent {
     data object Retry : StatementIntent
@@ -49,8 +60,16 @@ sealed interface StatementIntent {
     data class SelectFilter(val filter: StatementFilter) : StatementIntent
     data object LoadMore : StatementIntent
     data object NewEntry : StatementIntent
+    data class Edit(val itemId: String) : StatementIntent
+    data class AskVoid(val itemId: String) : StatementIntent
+    data object DismissVoid : StatementIntent
+    data object ConfirmVoid : StatementIntent
 }
 
 sealed interface StatementEffect {
     data class OpenNewEntry(val groupId: String) : StatementEffect
+    data class OpenEditEntry(val groupId: String, val expenseId: String) : StatementEffect
+
+    /** Lançamento anulado: o caixa e o resumo dos outros ecrãs mudaram. */
+    data object Voided : StatementEffect
 }

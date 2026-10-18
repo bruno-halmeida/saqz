@@ -170,19 +170,158 @@ class NewEntryViewModelTest {
         assertNotEquals(firstRequestId, gateway.commands[2].requestId)
     }
 
+    @Test
+    fun `correction loads value and description and sends the rest as it is with the expense version`() =
+        runTest(dispatcher) {
+            val gateway = FakeOrganizerGateway(stored = listOf(storedExpense()))
+            val viewModel = viewModel(gateway = gateway)
+
+            viewModel.onIntent(NewEntryIntent.LoadEdit("expense-9"))
+
+            assertTrue(viewModel.state.value.editing)
+            assertFalse(viewModel.state.value.isLoadingEntry)
+            assertEquals("80,00", viewModel.state.value.amountText)
+            assertEquals("Aluguel da quadra", viewModel.state.value.description)
+
+            viewModel.onIntent(NewEntryIntent.AmountChanged("95,50"))
+            viewModel.onIntent(NewEntryIntent.DescriptionChanged("  Quadra e bolas "))
+            viewModel.onIntent(NewEntryIntent.Save)
+
+            assertEquals(NewEntryEffect.Saved, viewModel.effects.first())
+            val edit = gateway.edits.single()
+            assertEquals("expense-9", edit.expenseId)
+            assertEquals(FinanceVersionToken("\"4\""), edit.version)
+            assertEquals(
+                ExpenseWriteCommand(
+                    description = "Quadra e bolas",
+                    amountCents = 9_550L,
+                    expenseDate = "2026-08-01",
+                    category = ExpenseCategory.Venue,
+                    customCategory = null,
+                    notes = "Pago em dinheiro",
+                    direction = br.com.saqz.groups.domain.finance.FinanceDirection.Out,
+                ),
+                edit.command,
+            )
+            assertEquals(0, gateway.createCalls)
+        }
+
+    @Test
+    fun `correction with invalid value or blank description does not call the gateway`() = runTest(dispatcher) {
+        val gateway = FakeOrganizerGateway(stored = listOf(storedExpense()))
+        val viewModel = viewModel(gateway = gateway)
+        viewModel.onIntent(NewEntryIntent.LoadEdit("expense-9"))
+
+        viewModel.onIntent(NewEntryIntent.AmountChanged("0"))
+        viewModel.onIntent(NewEntryIntent.Save)
+        assertEquals(br.com.saqz.groups.presentation.GroupUiError.Validation, viewModel.state.value.error)
+
+        viewModel.onIntent(NewEntryIntent.AmountChanged("10"))
+        viewModel.onIntent(NewEntryIntent.DescriptionChanged("  "))
+        viewModel.onIntent(NewEntryIntent.Save)
+
+        assertEquals(br.com.saqz.groups.presentation.GroupUiError.Validation, viewModel.state.value.error)
+        assertTrue(gateway.edits.isEmpty())
+    }
+
+    @Test
+    fun `correction conflict exposes the conflict and keeps what was typed`() = runTest(dispatcher) {
+        val gateway = FakeOrganizerGateway(
+            stored = listOf(storedExpense()),
+            editResults = ArrayDeque(listOf(SaqzResult.Failure(FinanceError.Conflict))),
+        )
+        val viewModel = viewModel(gateway = gateway)
+        viewModel.onIntent(NewEntryIntent.LoadEdit("expense-9"))
+        viewModel.onIntent(NewEntryIntent.AmountChanged("90"))
+
+        viewModel.onIntent(NewEntryIntent.Save)
+
+        assertEquals(br.com.saqz.groups.presentation.GroupUiError.Conflict, viewModel.state.value.error)
+        assertEquals("90", viewModel.state.value.amountText)
+        assertFalse(viewModel.state.value.isSaving)
+    }
+
+    @Test
+    fun `correction cannot be saved twice while the first save is in flight`() = runTest(dispatcher) {
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val gateway = FakeOrganizerGateway(stored = listOf(storedExpense()), editGate = release)
+        val viewModel = viewModel(gateway = gateway)
+        viewModel.onIntent(NewEntryIntent.LoadEdit("expense-9"))
+
+        viewModel.onIntent(NewEntryIntent.Save)
+        viewModel.onIntent(NewEntryIntent.Save)
+        release.complete(Unit)
+
+        assertEquals(1, gateway.edits.size)
+    }
+
+    @Test
+    fun `correction of a missing or already voided expense fails the load and offers retry`() = runTest(dispatcher) {
+        val gateway = FakeOrganizerGateway(stored = listOf(storedExpense().copy(status = ExpenseStatus.Voided)))
+        val viewModel = viewModel(gateway = gateway)
+
+        viewModel.onIntent(NewEntryIntent.LoadEdit("expense-9"))
+
+        assertTrue(viewModel.state.value.entryLoadFailed)
+        assertEquals(br.com.saqz.groups.presentation.GroupUiError.NotFound, viewModel.state.value.error)
+        viewModel.onIntent(NewEntryIntent.Save)
+        assertTrue(gateway.edits.isEmpty())
+
+        gateway.stored = listOf(storedExpense())
+        viewModel.onIntent(NewEntryIntent.RetryLoadEdit)
+
+        assertFalse(viewModel.state.value.entryLoadFailed)
+        assertEquals("80,00", viewModel.state.value.amountText)
+    }
+
+    @Test
+    fun `correction keeps what was typed when the form is restored after process death`() = runTest(dispatcher) {
+        val saved = SavedStateHandle()
+        val gateway = FakeOrganizerGateway(stored = listOf(storedExpense()))
+        val first = viewModel(gateway = gateway, savedState = saved)
+        first.onIntent(NewEntryIntent.LoadEdit("expense-9"))
+        first.onIntent(NewEntryIntent.AmountChanged("99"))
+
+        val restored = viewModel(gateway = gateway, savedState = saved)
+        restored.onIntent(NewEntryIntent.LoadEdit("expense-9"))
+
+        assertEquals("99", restored.state.value.amountText)
+        restored.onIntent(NewEntryIntent.Save)
+        assertEquals(9_900L, gateway.edits.single().command.amountCents)
+    }
+
+    private fun storedExpense() = Expense(
+        id = "expense-9", groupId = GroupId("group-1"), description = "Aluguel da quadra", amountCents = 8_000L,
+        expenseDate = "2026-08-01", category = ExpenseCategory.Venue, notes = "Pago em dinheiro",
+        status = ExpenseStatus.Active, version = 4,
+        audit = listOf(ExpenseAudit("actor", ExpenseAction.Created, "2026-08-01")),
+        direction = br.com.saqz.groups.domain.finance.FinanceDirection.Out,
+    )
+
     private fun viewModel(
         gateway: FakeOrganizerGateway = FakeOrganizerGateway(),
+        savedState: SavedStateHandle = SavedStateHandle(),
     ) = NewEntryViewModel(
         groupId = "group-1",
-        savedState = SavedStateHandle(),
+        savedState = savedState,
         gateway = gateway,
         now = GroupNowPort { Instant.parse("2026-08-04T12:00:00Z") },
     )
 }
 
+private data class RecordedEdit(
+    val expenseId: String,
+    val version: FinanceVersionToken,
+    val command: ExpenseWriteCommand,
+)
+
 private class FakeOrganizerGateway(
     private val createResults: ArrayDeque<SaqzResult<VersionedExpense, FinanceError>> = ArrayDeque(),
+    var stored: List<Expense> = emptyList(),
+    private val editResults: ArrayDeque<SaqzResult<VersionedExpense, FinanceError>> = ArrayDeque(),
+    private val editGate: kotlinx.coroutines.CompletableDeferred<Unit>? = null,
 ) : OrganizerFinanceGateway {
+    val edits = mutableListOf<RecordedEdit>()
     var createCalls = 0
     var lastCommand: ExpenseWriteCommand? = null
     val commands = mutableListOf<ExpenseWriteCommand>()
@@ -193,7 +332,7 @@ private class FakeOrganizerGateway(
         SaqzResult.Success(VersionedCharge(sampleCharge(), version))
     override suspend fun resolveChargeReview(groupId: GroupId, chargeId: String, version: FinanceVersionToken) =
         SaqzResult.Success(VersionedCharge(sampleCharge(), version))
-    override suspend fun expenses(groupId: GroupId) = SaqzResult.Success(ExpenseList(emptyList(), 0L))
+    override suspend fun expenses(groupId: GroupId) = SaqzResult.Success(ExpenseList(stored, stored.sumOf { it.amountCents }))
     override suspend fun createExpense(groupId: GroupId, command: ExpenseWriteCommand): SaqzResult<VersionedExpense, FinanceError> {
         createCalls++
         lastCommand = command
@@ -201,8 +340,16 @@ private class FakeOrganizerGateway(
         return createResults.removeFirstOrNull()
             ?: SaqzResult.Success(VersionedExpense(sampleExpense(), FinanceVersionToken("etag")))
     }
-    override suspend fun editExpense(groupId: GroupId, expenseId: String, version: FinanceVersionToken, command: ExpenseWriteCommand) =
-        SaqzResult.Success(VersionedExpense(sampleExpense(), version))
+    override suspend fun editExpense(
+        groupId: GroupId,
+        expenseId: String,
+        version: FinanceVersionToken,
+        command: ExpenseWriteCommand,
+    ): SaqzResult<VersionedExpense, FinanceError> {
+        edits += RecordedEdit(expenseId, version, command)
+        editGate?.await()
+        return editResults.removeFirstOrNull() ?: SaqzResult.Success(VersionedExpense(sampleExpense(), version))
+    }
     override suspend fun voidExpense(groupId: GroupId, expenseId: String, version: FinanceVersionToken) =
         SaqzResult.Success(VersionedExpense(sampleExpense(), version))
     override suspend fun totals(groupId: GroupId) = SaqzResult.Success(FinanceTotals(0, 0, 0, 0, 0))

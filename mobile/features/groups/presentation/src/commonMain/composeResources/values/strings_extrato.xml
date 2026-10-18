@@ -10,10 +10,24 @@
     <string name="statement_pagination_error">Não foi possível carregar mais lançamentos.</string>
     <string name="statement_pagination_retry">Tentar novamente</string>
     <string name="statement_new_entry">Novo lançamento</string>
+    <string name="statement_entry_edit">Corrigir</string>
+    <string name="statement_entry_void">Anular</string>
+    <string name="statement_entry_edit_accessibility">Corrigir %1$s</string>
+    <string name="statement_entry_void_accessibility">Anular %1$s</string>
+    <string name="statement_void_title">Anular lançamento</string>
+    <string name="statement_void_note">O valor sai do saldo e do extrato. Não dá para desfazer.</string>
+    <string name="statement_void_confirm">Anular</string>
+    <string name="statement_void_cancel">Agora não</string>
+    <string name="statement_action_conflict">Este lançamento mudou. Atualizamos o extrato.</string>
+    <string name="statement_action_forbidden">Só quem administra o grupo mexe em lançamentos.</string>
+    <string name="statement_action_failure">Não foi possível anular o lançamento. Tente novamente.</string>
     <string name="statement_in_accessibility">Entrada: %1$s, %2$s, %3$s</string>
     <string name="statement_out_accessibility">Saída: %1$s, %2$s, %3$s</string>
 
     <string name="new_entry_title">Novo lançamento</string>
+    <string name="new_entry_title_edit">Corrigir lançamento</string>
+    <string name="new_entry_save_edit">Salvar correção</string>
+    <string name="new_entry_edit_conflict">Este lançamento mudou. Volte ao extrato e abra de novo.</string>
     <string name="new_entry_direction">Tipo</string>
     <string name="new_entry_in">Entrada</string>
     <string name="new_entry_out">Saída</string>

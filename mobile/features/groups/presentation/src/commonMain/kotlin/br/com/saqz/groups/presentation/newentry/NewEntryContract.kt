@@ -33,6 +33,10 @@ data class NewEntryState(
     val date: String,
     val isSaving: Boolean = false,
     val error: GroupUiError? = null,
+    /** Modo correção: só valor e descrição mudam; o resto do lançamento vai como está. */
+    val editing: Boolean = false,
+    val isLoadingEntry: Boolean = false,
+    val entryLoadFailed: Boolean = false,
 )
 
 sealed interface NewEntryIntent {
@@ -44,6 +48,9 @@ sealed interface NewEntryIntent {
     data class CustomCategoryChanged(val value: String) : NewEntryIntent
     data class DateChanged(val value: String) : NewEntryIntent
     data class ApplyPrefill(val prefill: NewEntryPrefill, val description: String) : NewEntryIntent
+    /** Abre o lançamento [expenseId] para correção; chamado de novo, só refaz a leitura da versão. */
+    data class LoadEdit(val expenseId: String) : NewEntryIntent
+    data object RetryLoadEdit : NewEntryIntent
     data object Save : NewEntryIntent
 }
 

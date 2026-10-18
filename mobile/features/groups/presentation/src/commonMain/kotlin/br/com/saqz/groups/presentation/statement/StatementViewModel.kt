@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.finance.ExpenseStatus
 import br.com.saqz.groups.domain.finance.FinanceDirection
 import br.com.saqz.groups.domain.finance.FinanceError
 import br.com.saqz.groups.domain.finance.FinanceStatementItem
@@ -11,6 +12,8 @@ import br.com.saqz.groups.domain.finance.FinanceStatementPage
 import br.com.saqz.groups.domain.finance.FinanceStatementQuery
 import br.com.saqz.groups.domain.finance.FinanceStatementSummary
 import br.com.saqz.groups.domain.finance.FinanceStatementGateway
+import br.com.saqz.groups.domain.finance.FinanceVersionToken
+import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
@@ -21,6 +24,7 @@ import kotlin.time.Instant
 class StatementViewModel(
     private val groupId: String,
     private val gateway: FinanceStatementGateway,
+    private val finance: OrganizerFinanceGateway,
 ) : MviViewModel<StatementState, StatementIntent, StatementEffect>(StatementState()) {
     private var loadGeneration = 0L
     private var loadInFlight = false
@@ -31,14 +35,79 @@ class StatementViewModel(
             StatementIntent.Retry -> load(reset = true)
             StatementIntent.Refresh -> refresh()
             is StatementIntent.SelectFilter -> if (intent.filter != state.value.filter) {
-                update { it.copy(filter = intent.filter) }
+                update { it.copy(filter = intent.filter, actionError = null) }
                 load(reset = true)
             }
             StatementIntent.LoadMore -> if (!state.value.isLoadingMore && state.value.hasMore) {
                 load(reset = false)
             }
             StatementIntent.NewEntry -> emit(StatementEffect.OpenNewEntry(groupId))
+            is StatementIntent.Edit -> if (state.value.canAct(intent.itemId)) {
+                update { it.copy(actionError = null) }
+                emit(StatementEffect.OpenEditEntry(groupId, intent.itemId))
+            }
+            is StatementIntent.AskVoid -> if (state.value.canAct(intent.itemId)) {
+                update { it.copy(voidTargetId = intent.itemId, actionError = null) }
+            }
+            StatementIntent.DismissVoid -> if (!state.value.isVoiding) {
+                update { it.copy(voidTargetId = null) }
+            }
+            StatementIntent.ConfirmVoid -> confirmVoid()
         }
+    }
+
+    private fun StatementState.canAct(itemId: String) =
+        !isLoading && !isVoiding && items.any { it.id == itemId && it.manual }
+
+    /**
+     * A versão vem da leitura dos lançamentos, não do extrato (que não a carrega). Lançamento que
+     * sumiu ou já foi anulado em outro aparelho é conflito: recarrega e avisa. Toque duplo não
+     * dispara duas anulações: `isVoiding` trava até a resposta.
+     */
+    private fun confirmVoid() {
+        val current = state.value
+        val target = current.voidTargetId ?: return
+        if (current.isVoiding) return
+        update { it.copy(isVoiding = true, actionError = null) }
+        viewModelScope.launch {
+            val expense = when (val read = finance.expenses(GroupId(groupId))) {
+                is SaqzResult.Failure -> return@launch failVoid(read.error)
+                is SaqzResult.Success -> read.value.expenses.firstOrNull { it.id == target }
+            }
+            if (expense == null || expense.status != ExpenseStatus.Active) {
+                return@launch failVoid(FinanceError.Conflict)
+            }
+            when (
+                val result = finance.voidExpense(
+                    GroupId(groupId),
+                    target,
+                    FinanceVersionToken("\"${expense.version}\""),
+                )
+            ) {
+                is SaqzResult.Failure -> failVoid(result.error)
+                is SaqzResult.Success -> {
+                    update { it.copy(voidTargetId = null, isVoiding = false) }
+                    load(reset = true, softRefresh = true)
+                    emit(StatementEffect.Voided)
+                }
+            }
+        }
+    }
+
+    private fun failVoid(error: FinanceError) {
+        update {
+            it.copy(
+                voidTargetId = null,
+                isVoiding = false,
+                actionError = when (error) {
+                    FinanceError.Conflict -> StatementActionError.Conflict
+                    FinanceError.Forbidden -> StatementActionError.Forbidden
+                    else -> StatementActionError.Failed
+                },
+            )
+        }
+        // Versão velha: recarrega por baixo para a próxima tentativa sair com a versão certa.
+        if (error == FinanceError.Conflict) load(reset = true, softRefresh = true)
     }
 
     /**
@@ -151,6 +220,7 @@ private fun FinanceStatementItem.toUi() = StatementItemUi(
         occurredAt.toStatementDateLabel(),
     ).joinToString(" · "),
     amountLabel = formatStatementAmount(amountCents, direction),
+    manual = type.equals("EXPENSE", ignoreCase = true),
 )
 
 private fun FinanceStatementSummary.toUi() = StatementSummaryUi(

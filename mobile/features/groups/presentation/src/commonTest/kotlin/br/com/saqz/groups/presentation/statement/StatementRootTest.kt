@@ -23,7 +23,7 @@ class StatementRootTest {
     @Test
     fun `refresh version reloads statement after returning from new entry`() = runComposeUiTest {
         val gateway = CountingStatementGateway()
-        val viewModel = StatementViewModel("group-1", gateway)
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
         var refreshVersion by mutableIntStateOf(0)
 
         setContent {
@@ -49,7 +49,7 @@ class StatementRootTest {
     @Test
     fun `positive refresh version still loads only once on first composition`() = runComposeUiTest {
         val gateway = CountingStatementGateway()
-        val viewModel = StatementViewModel("group-1", gateway)
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
 
         setContent {
             SaqzTheme {

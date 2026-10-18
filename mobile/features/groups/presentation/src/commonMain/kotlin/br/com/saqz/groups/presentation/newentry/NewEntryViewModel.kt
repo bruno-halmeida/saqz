@@ -5,9 +5,12 @@ import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.finance.Expense
 import br.com.saqz.groups.domain.finance.ExpenseCategory
+import br.com.saqz.groups.domain.finance.ExpenseStatus
 import br.com.saqz.groups.domain.finance.ExpenseWriteCommand
 import br.com.saqz.groups.domain.finance.FinanceError
+import br.com.saqz.groups.domain.finance.FinanceVersionToken
 import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.port.GroupNowPort
@@ -27,6 +30,11 @@ class NewEntryViewModel(
     NewEntryState(date = now.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()).restore(savedState),
 ) {
     private var saveGeneration = 0L
+    private var loadGeneration = 0L
+
+    /** Lançamento em correção, como veio do servidor: dele saem a versão e o que a tela não edita. */
+    private var editBase: Expense? = null
+    private var editExpenseId: String? = savedState.get<String>(KEY_EDIT_ID)
     private var requestId = savedState.get<String>(KEY_REQUEST_ID)
         ?: Uuid.random().toString().also { savedState[KEY_REQUEST_ID] = it }
 
@@ -56,7 +64,78 @@ class NewEntryViewModel(
             }
             is NewEntryIntent.DateChanged -> updateDate(intent.value)
             is NewEntryIntent.ApplyPrefill -> applyPrefill(intent)
+            is NewEntryIntent.LoadEdit -> loadEdit(intent.expenseId)
+            NewEntryIntent.RetryLoadEdit -> editExpenseId?.let(::loadEdit)
             NewEntryIntent.Save -> save()
+        }
+    }
+
+    private fun loadEdit(expenseId: String) {
+        editExpenseId = expenseId
+        savedState[KEY_EDIT_ID] = expenseId
+        val generation = ++loadGeneration
+        update { it.copy(editing = true, isLoadingEntry = true, entryLoadFailed = false, error = null) }
+        viewModelScope.launch {
+            val result = gateway.expenses(GroupId(groupId))
+            if (generation != loadGeneration) return@launch
+            val expense = (result as? SaqzResult.Success)?.value?.expenses?.firstOrNull { it.id == expenseId }
+            if (expense == null || expense.status != ExpenseStatus.Active) {
+                val error = (result as? SaqzResult.Failure)?.error?.toUiError() ?: GroupUiError.NotFound
+                update { it.copy(isLoadingEntry = false, entryLoadFailed = true, error = error) }
+                return@launch
+            }
+            editBase = expense
+            // Voltando de process death, o que a pessoa já digitou vale mais que o servidor.
+            val typed = savedState.get<Boolean>(KEY_EDIT_APPLIED) == true
+            if (!typed) {
+                val amount = formatEntryCents(expense.amountCents)
+                savedState[KEY_EDIT_APPLIED] = true
+                savedState[KEY_AMOUNT] = amount
+                savedState[KEY_DESCRIPTION] = expense.description
+            }
+            update {
+                it.copy(
+                    isLoadingEntry = false,
+                    entryLoadFailed = false,
+                    amountText = if (typed) it.amountText else formatEntryCents(expense.amountCents),
+                    description = if (typed) it.description else expense.description,
+                )
+            }
+        }
+    }
+
+    private fun saveEdit(base: Expense) {
+        val current = state.value
+        val amountCents = parseEntryCents(current.amountText)
+        if (amountCents == null || amountCents <= 0L || current.description.isBlank()) {
+            update { it.copy(error = GroupUiError.Validation) }
+            return
+        }
+        val requestGeneration = ++saveGeneration
+        update { it.copy(isSaving = true, error = null) }
+        viewModelScope.launch {
+            val result = gateway.editExpense(
+                GroupId(groupId),
+                base.id,
+                FinanceVersionToken("\"${base.version}\""),
+                ExpenseWriteCommand(
+                    description = current.description.trim(),
+                    amountCents = amountCents,
+                    expenseDate = base.expenseDate,
+                    category = base.category,
+                    customCategory = base.customCategory,
+                    notes = base.notes,
+                    direction = base.direction,
+                ),
+            )
+            if (requestGeneration != saveGeneration) return@launch
+            when (result) {
+                is SaqzResult.Failure -> update { it.copy(isSaving = false, error = result.error.toUiError()) }
+                is SaqzResult.Success -> {
+                    update { it.copy(isSaving = false, error = null) }
+                    emit(NewEntryEffect.Saved)
+                }
+            }
         }
     }
 
@@ -97,6 +176,11 @@ class NewEntryViewModel(
     private fun save() {
         val current = state.value
         if (current.isSaving) return
+        if (current.editing) {
+            // Sem a leitura do lançamento não há versão para mandar: nada a salvar.
+            editBase?.let(::saveEdit)
+            return
+        }
         val amountCents = parseEntryCents(current.amountText)
         val customCategory = current.customCategory.trim()
         val amountInvalid = amountCents == null || amountCents <= 0L
@@ -223,3 +307,5 @@ private const val KEY_CUSTOM_CATEGORY = "new-entry-custom-category"
 private const val KEY_DATE = "new-entry-date"
 private const val KEY_REQUEST_ID = "new-entry-request-id"
 private const val KEY_PREFILL_APPLIED = "new-entry-prefill-applied"
+private const val KEY_EDIT_ID = "new-entry-edit-id"
+private const val KEY_EDIT_APPLIED = "new-entry-edit-applied"

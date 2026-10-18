@@ -772,6 +772,14 @@ internal fun SaqzNavHost(
                                 is StatementEffect.OpenNewEntry -> backStack.add(
                                     FinanceRoute.NewEntry(effect.groupId),
                                 )
+                                is StatementEffect.OpenEditEntry -> backStack.add(
+                                    FinanceRoute.NewEntry(effect.groupId, expenseId = effect.expenseId),
+                                )
+                                StatementEffect.Voided -> {
+                                    groupCashboxRefreshVersion++
+                                    settlementRefreshVersion++
+                                    groupDetailsRefreshVersion++
+                                }
                             }
                         },
                         refreshVersion = statementRefreshVersion,
@@ -785,6 +793,7 @@ internal fun SaqzNavHost(
                         groupId = route.groupId,
                         onBack = pop,
                         prefill = route.prefill,
+                        expenseId = route.expenseId,
                         onEffect = { effect ->
                             when (effect) {
                                 NewEntryEffect.Saved -> {

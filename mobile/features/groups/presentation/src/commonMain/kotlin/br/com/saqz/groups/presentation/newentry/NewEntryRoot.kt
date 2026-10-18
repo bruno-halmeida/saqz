@@ -17,8 +17,9 @@ fun NewEntryRoot(
     onBack: () -> Unit,
     onEffect: (NewEntryEffect) -> Unit,
     prefill: NewEntryPrefill? = null,
+    expenseId: String? = null,
     viewModel: NewEntryViewModel = koinViewModel(
-        key = "new-entry/$groupId",
+        key = "new-entry/$groupId/${expenseId.orEmpty()}",
         parameters = { parametersOf(groupId) },
     ),
 ) {
@@ -32,6 +33,9 @@ fun NewEntryRoot(
         if (prefill != null && prefillDescription != null) {
             viewModel.onIntent(NewEntryIntent.ApplyPrefill(prefill, prefillDescription))
         }
+    }
+    LaunchedEffect(viewModel, expenseId) {
+        if (expenseId != null) viewModel.onIntent(NewEntryIntent.LoadEdit(expenseId))
     }
     ObserveAsEvents(viewModel.effects, onEvent = onEffect)
     NewEntryScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)

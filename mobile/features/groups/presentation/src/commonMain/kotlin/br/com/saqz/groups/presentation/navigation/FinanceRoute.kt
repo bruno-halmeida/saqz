@@ -23,7 +23,12 @@ sealed interface FinanceRoute : NavKey {
     data class MonthlyGeneration(val groupId: String) : FinanceRoute
 
     @Serializable
-    data class NewEntry(val groupId: String, val prefill: NewEntryPrefill? = null) : FinanceRoute
+    data class NewEntry(
+        val groupId: String,
+        val prefill: NewEntryPrefill? = null,
+        /** Presente: a tela abre em modo correção desse lançamento. */
+        val expenseId: String? = null,
+    ) : FinanceRoute
 
     @Serializable
     data class GameSettlement(val groupId: String, val gameId: String) : FinanceRoute

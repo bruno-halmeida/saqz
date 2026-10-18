@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.newentry
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -23,9 +25,14 @@ import br.com.saqz.designsystem.SaqzChoiceChip
 import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzInputKind
 import br.com.saqz.designsystem.SaqzSegmented
+import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.new_entry_edit_conflict
+import br.com.saqz.groups.resources.new_entry_save_edit
+import br.com.saqz.groups.resources.new_entry_title_edit
 import br.com.saqz.groups.resources.new_entry_amount
 import br.com.saqz.groups.resources.new_entry_amount_hint
 import br.com.saqz.groups.resources.new_entry_category
@@ -77,7 +84,24 @@ internal fun NewEntryScreen(
             .imePadding()
             .testTag(NewEntryTags.Screen),
     ) {
-        SaqzTopAppBar(title = stringResource(Res.string.new_entry_title), onBack = onBack)
+        SaqzTopAppBar(
+            title = stringResource(
+                if (state.editing) Res.string.new_entry_title_edit else Res.string.new_entry_title,
+            ),
+            onBack = onBack,
+        )
+        if (state.isLoadingEntry) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { SaqzSpinner() }
+            return@Column
+        }
+        if (state.entryLoadFailed) {
+            GroupLoadFailure(
+                error = state.error,
+                onRetry = { onIntent(NewEntryIntent.RetryLoadEdit) },
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            )
+            return@Column
+        }
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -86,22 +110,24 @@ internal fun NewEntryScreen(
                 .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
             verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
         ) {
-            Text(
-                text = stringResource(Res.string.new_entry_direction),
-                style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-                color = SaqzTheme.colors.textPrimary,
-            )
-            SaqzSegmented(
-                options = listOf(
-                    stringResource(Res.string.new_entry_in),
-                    stringResource(Res.string.new_entry_out),
-                ),
-                selected = state.direction.ordinal,
-                onSelect = { selected ->
-                    onIntent(NewEntryIntent.SelectDirection(NewEntryDirection.entries[selected]))
-                },
-                modifier = Modifier.testTag(NewEntryTags.Direction),
-            )
+            if (!state.editing) {
+                Text(
+                    text = stringResource(Res.string.new_entry_direction),
+                    style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+                    color = SaqzTheme.colors.textPrimary,
+                )
+                SaqzSegmented(
+                    options = listOf(
+                        stringResource(Res.string.new_entry_in),
+                        stringResource(Res.string.new_entry_out),
+                    ),
+                    selected = state.direction.ordinal,
+                    onSelect = { selected ->
+                        onIntent(NewEntryIntent.SelectDirection(NewEntryDirection.entries[selected]))
+                    },
+                    modifier = Modifier.testTag(NewEntryTags.Direction),
+                )
+            }
             SaqzInput(
                 value = state.amountText,
                 onValueChange = { onIntent(NewEntryIntent.AmountChanged(it)) },
@@ -112,18 +138,20 @@ internal fun NewEntryScreen(
                 leadingContent = { Text("R$", color = SaqzTheme.colors.textSecondary) },
                 modifier = Modifier.testTag(NewEntryTags.Amount),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
-                listOf(
-                    8_000L to Res.string.new_entry_shortcut_80,
-                    12_000L to Res.string.new_entry_shortcut_120,
-                    16_000L to Res.string.new_entry_shortcut_160,
-                ).forEach { (cents, label) ->
-                    SaqzChoiceChip(
-                        label = stringResource(label),
-                        selected = state.amountText == formatEntryCents(cents),
-                        onClick = { onIntent(NewEntryIntent.SelectAmountShortcut(cents)) },
-                        modifier = Modifier.weight(1f),
-                    )
+            if (!state.editing) {
+                Row(horizontalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+                    listOf(
+                        8_000L to Res.string.new_entry_shortcut_80,
+                        12_000L to Res.string.new_entry_shortcut_120,
+                        16_000L to Res.string.new_entry_shortcut_160,
+                    ).forEach { (cents, label) ->
+                        SaqzChoiceChip(
+                            label = stringResource(label),
+                            selected = state.amountText == formatEntryCents(cents),
+                            onClick = { onIntent(NewEntryIntent.SelectAmountShortcut(cents)) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
             SaqzInput(
@@ -135,53 +163,57 @@ internal fun NewEntryScreen(
                 minLines = 3,
                 modifier = Modifier.testTag(NewEntryTags.Description),
             )
-            Text(
-                text = stringResource(Res.string.new_entry_category),
-                style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-                color = SaqzTheme.colors.textPrimary,
-            )
-            NewEntryCategory.entries.chunked(2).forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
-                ) {
-                    row.forEach { category ->
-                        SaqzChoiceChip(
-                            label = category.label(),
-                            selected = category == state.category,
-                            onClick = { onIntent(NewEntryIntent.SelectCategory(category)) },
-                            modifier = Modifier.weight(1f),
-                        )
+            if (!state.editing) {
+                Text(
+                    text = stringResource(Res.string.new_entry_category),
+                    style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+                    color = SaqzTheme.colors.textPrimary,
+                )
+                NewEntryCategory.entries.chunked(2).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(metrics.subGrid),
+                    ) {
+                        row.forEach { category ->
+                            SaqzChoiceChip(
+                                label = category.label(),
+                                selected = category == state.category,
+                                onClick = { onIntent(NewEntryIntent.SelectCategory(category)) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
                     }
-                    if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
-            }
-            if (state.category == NewEntryCategory.Other) {
-                val customCategoryInvalid = state.error == br.com.saqz.groups.presentation.GroupUiError.Validation &&
-                    !isValidCustomCategory(state.customCategory)
+                if (state.category == NewEntryCategory.Other) {
+                    val customCategoryInvalid = state.error == br.com.saqz.groups.presentation.GroupUiError.Validation &&
+                        !isValidCustomCategory(state.customCategory)
+                    SaqzInput(
+                        value = state.customCategory,
+                        onValueChange = { onIntent(NewEntryIntent.CustomCategoryChanged(it)) },
+                        label = stringResource(Res.string.new_entry_custom_category),
+                        errorText = if (customCategoryInvalid) {
+                            stringResource(Res.string.new_entry_custom_category_error)
+                        } else {
+                            null
+                        },
+                        modifier = Modifier.testTag(NewEntryTags.CustomCategory),
+                    )
+                }
                 SaqzInput(
-                    value = state.customCategory,
-                    onValueChange = { onIntent(NewEntryIntent.CustomCategoryChanged(it)) },
-                    label = stringResource(Res.string.new_entry_custom_category),
-                    errorText = if (customCategoryInvalid) {
-                        stringResource(Res.string.new_entry_custom_category_error)
-                    } else {
-                        null
-                    },
-                    modifier = Modifier.testTag(NewEntryTags.CustomCategory),
+                    value = formatEntryDate(state.date),
+                    onValueChange = { onIntent(NewEntryIntent.DateChanged(it)) },
+                    label = stringResource(Res.string.new_entry_date),
+                    keyboardType = KeyboardType.Number,
+                    modifier = Modifier.testTag(NewEntryTags.Date),
                 )
             }
-            SaqzInput(
-                value = formatEntryDate(state.date),
-                onValueChange = { onIntent(NewEntryIntent.DateChanged(it)) },
-                label = stringResource(Res.string.new_entry_date),
-                keyboardType = KeyboardType.Number,
-                modifier = Modifier.testTag(NewEntryTags.Date),
-            )
             state.error?.let { error ->
                 Text(
                     text = if (error == br.com.saqz.groups.presentation.GroupUiError.Validation) {
                         stringResource(Res.string.new_entry_validation)
+                    } else if (state.editing && error == br.com.saqz.groups.presentation.GroupUiError.Conflict) {
+                        stringResource(Res.string.new_entry_edit_conflict)
                     } else {
                         stringResource(Res.string.new_entry_save_error)
                     },
@@ -193,6 +225,8 @@ internal fun NewEntryScreen(
         SaqzButton(
             label = if (state.isSaving) {
                 stringResource(Res.string.new_entry_saving)
+            } else if (state.editing) {
+                stringResource(Res.string.new_entry_save_edit)
             } else {
                 stringResource(Res.string.new_entry_save)
             },
