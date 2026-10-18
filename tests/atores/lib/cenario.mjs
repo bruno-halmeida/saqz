@@ -116,6 +116,19 @@ export class Contexto {
     return this.status(await dono.ajustarAtleta(grupoId, atleta.id, { membershipType, ...extra }), 200)
   }
 
+  /**
+   * Simula uma assinatura do dono no banco (não há Asaas nem loja no stack local). `fimEmDias` negativo = período já acabou;
+   * `atrasadaHaDias` coloca em PAST_DUE desde N dias; `canceladaHaDias` marca cancelada; `pagou: false` = nunca confirmou pagamento.
+   */
+  async assinar(dono, { plano = 'ORGANIZADOR', ciclo = 'MONTHLY', status = 'ACTIVE', fimEmDias = 30, atrasadaHaDias = null, canceladaHaDias = null, pagou = true, planoPendente = null } = {}) {
+    const id = `${this.tag}-${dono.papel}`.slice(0, 40)
+    await this.sql(`delete from subscriptions where owner_user_id='${dono.id}'`)
+    await this.sql(`insert into subscriptions (owner_user_id, plan, cycle, status, asaas_customer_id, asaas_subscription_id, current_period_end, canceled_at, pending_plan, pending_plan_effective_at, past_due_since, created_at, updated_at, first_confirmed_at, billing_type)
+      values ('${dono.id}', '${plano}', '${ciclo}', '${status}', 'qa-cus-${id}', 'qa-sub-${id}', now() + interval '${fimEmDias} days',
+        ${canceladaHaDias == null ? 'null' : `now() - interval '${canceladaHaDias} days'`}, ${planoPendente ? `'${planoPendente}'` : 'null'}, ${planoPendente ? "now() + interval '10 days'" : 'null'},
+        ${atrasadaHaDias == null ? 'null' : `now() - interval '${atrasadaHaDias} days'`}, now() - interval '40 days', now(), ${pagou ? "now() - interval '35 days'" : 'null'}, 'PIX')`)
+  }
+
   /** Fim do teste grátis do dono (mesma atualização de banco que o roteiro usa): os grupos dele congelam. */
   async encerrarTeste(dono) {
     await this.sql(`update organizer_trials set started_at = now() - interval '15 days', ends_at = now() - interval '1 minute' where owner_user_id='${dono.id}'`)

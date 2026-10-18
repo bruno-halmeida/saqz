@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto'
 import { criarConta, entrar, tentarCriarConta, tokenAntigo, contaExiste, confirmarEmail } from '../lib/auth.mjs'
 import { MAILPIT } from '../lib/config.mjs'
 import { Ator } from '../lib/ator.mjs'
-import { chamar } from '../lib/http.mjs'
+import { chamar, enviarArquivo, lerBytes } from '../lib/http.mjs'
+import { png, dimensoesJpeg } from '../lib/imagem.mjs'
 
 const MIN = 60_000
 
@@ -38,8 +39,8 @@ export default [
         const ok = c.status(await chamar('PATCH', '/api/session/profile', { token: conta.token, corpo: { phone: '11988887777' } }), 200)
         c.igual([ok.corpo.user.phone, ok.corpo.user.phoneRequired], ['+5511988887777', false], 'telefone gravado com +55')
       })
-      await c.passo('nome vazio, de 1 letra ou com caractere de controle é recusado', async () => {
-        for (const ruim of ['', 'A', 'Nome\u0007Ruim']) {
+      await c.passo('nome vazio, de 1 letra, com caractere de controle ou com palavra proibida é recusado', async () => {
+        for (const ruim of ['', 'A', 'Nome\u0007Ruim', 'Fulano vsf']) {
           const r = await chamar('PATCH', '/api/session/profile', { token: conta.token, corpo: { displayName: ruim } })
           c.afirmar(r.status === 400 && r.corpo.fieldErrors?.displayName, `nome ${JSON.stringify(ruim)} deve ser recusado (veio ${r.status})`, r)
         }
@@ -319,6 +320,53 @@ export default [
       await c.passo('tentar entrar depois: o servidor apaga a identidade e o mesmo e-mail só entra como conta nova', async () => {
         await c.esperar('identidade apagada', async () => !(await contaExiste({ email: ATL1.email })), { teto: 60_000, passo: 2_000 })
         c.igual(await c.valor(`select count(*) from access_users where id='${ATL1.id}' and deleted_at is not null`), '1', 'conta marcada como excluída')
+      })
+    },
+  },
+{
+    id: 'ACE-004', feature: 'acesso', critico: false,
+    titulo: 'O perfil da pessoa',
+    async rodar(c) {
+      const { ORG, ATL1 } = await c.atores('ORG', 'ATL1')
+      const g = await c.passo('ORG cria o grupo; ATL1 entra', () => c.grupo(ORG, [ATL1]))
+      const perfil = (campos) => ATL1.chamar('PATCH', '/api/session/profile', campos)
+      await c.passo('nome com palavra proibida é recusado; apelido de 1 caractere ou com espaço na ponta é recusado; cidade com 81 caracteres é recusada; telefone com 10 dígitos é recusado', async () => {
+        c.status(await perfil({ displayName: 'Beltrano vsf' }), 400)
+        for (const ruim of ['B', ' Bia', 'Bia ']) c.status(await perfil({ nickname: ruim }), 400)
+        c.status(await perfil({ city: 'c'.repeat(81) }), 400)
+        c.status(await perfil({ phone: '1190000000' }), 400)
+      })
+      await c.passo('apelido de 2 a 40 caracteres, cidade até 80 e a visibilidade do telefone são aceitos', async () => {
+        const r = c.status(await perfil({ nickname: 'Bia', city: 'c'.repeat(80), phoneVisibility: 'EVERYONE' }), 200).corpo.user
+        c.igual([r.nickname, r.city.length, r.phoneVisibility], ['Bia', 80, 'EVERYONE'], 'perfil gravado')
+      })
+      await c.passo('mudar o nome vale na hora em todos os grupos (lista de membros do dono)', async () => {
+        c.status(await perfil({ displayName: 'Bia Silva Nova' }), 200)
+        const g2 = await c.grupo(ATL1, [ORG], { nome: `QA Outro grupo ${c.tag}` })
+        c.igual(c.status(await ORG.membros(g.id), 200).corpo.find((m) => m.userId === ATL1.id).displayName, 'Bia Silva Nova', 'nome no primeiro grupo')
+        c.igual(c.status(await ATL1.membros(g2.id), 200).corpo.find((m) => m.userId === ATL1.id).displayName, 'Bia Silva Nova', 'nome no segundo grupo')
+      })
+      await c.passo('o e-mail vem do login e não muda pelo perfil (o pedido é ignorado)', async () => {
+        const r = c.status(await perfil({ email: 'outro@saqz.local' }), [200, 400]).corpo
+        c.igual((await ATL1.sessao()).corpo.user.email, ATL1.email, 'e-mail da conta')
+      })
+      await c.passo('foto 3000 x 2000 vira JPEG de até 512 pixels no maior lado', async () => {
+        c.status(await enviarArquivo('PUT', '/api/session/photo', { token: ATL1.token, bytes: png(3000, 2000) }), 204)
+        const lida = await lerBytes('/api/session/photo', { token: ATL1.token })
+        c.igual([lida.status, lida.tipo], [200, 'image/jpeg'], 'foto devolvida')
+        const d = dimensoesJpeg(lida.bytes)
+        c.afirmar(d && Math.max(d.largura, d.altura) <= 512, `maior lado deve ser até 512 px (veio ${JSON.stringify(d)})`)
+        c.afirmar((await ATL1.sessao()).corpo.user.photoUrl?.startsWith('/api/session/photo?v='), 'a sessão aponta a foto com o resumo na URL')
+      })
+      await c.passo('arquivo vazio e arquivo que não é imagem são recusados e a foto anterior fica', async () => {
+        c.status(await enviarArquivo('PUT', '/api/session/photo', { token: ATL1.token, bytes: new Uint8Array(0) }), [400, 415])
+        c.status(await enviarArquivo('PUT', '/api/session/photo', { token: ATL1.token, bytes: Buffer.from('isto não é uma imagem'), tipo: 'text/plain', nome: 'x.txt' }), [400, 415])
+        c.igual((await lerBytes('/api/session/photo', { token: ATL1.token })).status, 200, 'foto anterior segue')
+      })
+      await c.passo('remover a foto: volta ao avatar padrão (sem foto na sessão e 404 na leitura)', async () => {
+        c.status(await ATL1.chamar('DELETE', '/api/session/photo'), 204)
+        c.igual((await lerBytes('/api/session/photo', { token: ATL1.token })).status, 404, 'leitura depois de remover')
+        c.igual((await ATL1.sessao()).corpo.user.photoUrl, null, 'photoUrl depois de remover')
       })
     },
   },

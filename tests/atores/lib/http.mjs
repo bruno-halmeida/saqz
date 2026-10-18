@@ -29,3 +29,18 @@ export async function chamar(metodo, caminho, { token, corpo, headers = {} } = {
   rastro.ultima = resposta
   return resposta
 }
+
+/** Envio de arquivo (multipart/form-data, campo `file`) e leitura de bytes: fotos de perfil e de grupo. */
+export async function enviarArquivo(metodo, caminho, { token, bytes, tipo = 'image/png', nome = 'foto.png', campo = 'file' }) {
+  const form = new FormData()
+  form.append(campo, new Blob([bytes], { type: tipo }), nome)
+  const r = await fetch(`${API}${caminho}`, { method: metodo, headers: token ? { authorization: `Bearer ${token}` } : {}, body: form })
+  const resposta = new Resposta(r.status, r.headers, await r.text(), `${metodo} ${caminho}`)
+  rastro.ultima = resposta
+  return resposta
+}
+
+export async function lerBytes(caminho, { token }) {
+  const r = await fetch(`${API}${caminho}`, { headers: token ? { authorization: `Bearer ${token}` } : {} })
+  return { status: r.status, tipo: r.headers.get('content-type'), bytes: Buffer.from(await r.arrayBuffer()) }
+}

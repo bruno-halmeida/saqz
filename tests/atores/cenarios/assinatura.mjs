@@ -130,4 +130,132 @@ export default [
       })
     },
   },
+{
+    id: 'ASS-001', feature: 'assinatura', critico: false,
+    titulo: 'Planos e limites',
+    async rodar(c) {
+      const { TIT, ORG3, ILI } = await c.atores('TIT', 'ORG3', 'ILI')
+      const titular = await c.passo('dono TIT assina o plano Titular (1 grupo, até 25 atletas por grupo) e cria o primeiro grupo', async () => {
+        const g = await c.grupo(TIT, [])
+        await c.assinar(TIT, { plano: 'TITULAR' })
+        return g
+      })
+      await c.passo('Titular com 1 grupo cria outro: recusado (GROUP_LIMIT_EXCEEDED)', async () => {
+        c.status(await TIT.criarGrupo(`QA Segundo grupo ${c.tag}`), 403, 'GROUP_LIMIT_EXCEEDED')
+      })
+      await c.passo('Titular com 25 atletas no grupo: o 26º entra recusado (ATHLETE_LIMIT_EXCEEDED) e quem já é membro segue normal', async () => {
+        const lote = await Promise.all(Array.from({ length: 25 }, (_, i) => c.ator(`M${i + 1}`)))
+        for (let i = 0; i < lote.length; i += 5) await Promise.all(lote.slice(i, i + 5).map((a) => a.entrarPorConvite(titular.codigo).then((r) => c.status(r, 200))))
+        const extra = await c.ator('EXTRA')
+        const r = await extra.entrarPorConvite(titular.codigo)
+        c.afirmar(r.status >= 400 && r.codigo === 'ATHLETE_LIMIT_EXCEEDED', `o 26º atleta deve ser recusado com ATHLETE_LIMIT_EXCEEDED (veio HTTP ${r.status} ${r.codigo})`, r)
+        c.status(await lote[0].entrarPorConvite(titular.codigo), 200)  // quem já é membro nunca é bloqueado
+        c.status(await lote[0].grupo(titular.id), 200)
+        c.status(await lote[24].sairDoGrupo(titular.id), 204)
+        c.status(await extra.entrarPorConvite(titular.codigo), 200)    // a vaga volta na hora
+      })
+      await c.passo('relatórios fechados para o Titular', async () => {
+        c.igual(c.status(await TIT.chamar('GET', `/api/groups/${titular.id}/reports/availability`), 200).corpo.enabled, false, 'relatórios no Titular')
+        c.status(await TIT.chamar('GET', `/api/groups/${titular.id}/reports`), 403, 'SUBSCRIPTION_REQUIRED')
+      })
+      await c.passo('Organizador: até 3 grupos, atletas ilimitados, relatórios fechados', async () => {
+        const g1 = await c.grupo(ORG3, [], { nome: `QA Org 1 ${c.tag}` })
+        await c.assinar(ORG3, { plano: 'ORGANIZADOR' })
+        await c.grupo(ORG3, [], { nome: `QA Org 2 ${c.tag}` }); await c.grupo(ORG3, [], { nome: `QA Org 3 ${c.tag}` })
+        c.status(await ORG3.criarGrupo(`QA Org 4 ${c.tag}`), 403, 'GROUP_LIMIT_EXCEEDED')
+        c.igual(c.status(await ORG3.chamar('GET', `/api/groups/${g1.id}/reports/availability`), 200).corpo.enabled, false, 'relatórios no Organizador')
+      })
+      await c.passo('troca agendada para plano menor: já vale o limite do plano menor (Organizador com troca para Titular não cria outro grupo)', async () => {
+        const { OR4 } = await c.atores('OR4')
+        await c.grupo(OR4, [])
+        await c.assinar(OR4, { plano: 'ORGANIZADOR', planoPendente: 'TITULAR' })
+        c.status(await OR4.criarGrupo(`QA Segundo ${c.tag}`), 403, 'GROUP_LIMIT_EXCEEDED')
+      })
+      await c.passo('Ilimitado: grupos ilimitados e relatórios abertos', async () => {
+        const gi = await c.grupo(ILI, [], { nome: `QA Ili 1 ${c.tag}` })
+        await c.assinar(ILI, { plano: 'ILIMITADO' })
+        for (let i = 2; i <= 5; i++) c.status(await ILI.criarGrupo(`QA Ili ${i} ${c.tag}`), 201)
+        c.igual(c.status(await ILI.chamar('GET', `/api/groups/${gi.id}/reports/availability`), 200).corpo.enabled, true, 'relatórios no Ilimitado')
+        c.status(await ILI.chamar('GET', `/api/groups/${gi.id}/reports`), 200)
+      })
+    },
+  },
+  {
+    id: 'ASS-005', feature: 'assinatura', critico: false,
+    titulo: 'Trocar de plano, cancelar e reativar (só o que o stack local prova)',
+    async rodar(c) {
+      const { ORG, ATL1 } = await c.atores('ORG', 'ATL1')
+      const g = await c.passo('ORG cria o grupo, assina o Organizador e ATL1 entra', async () => {
+        const grupo = await c.grupo(ORG, [ATL1])
+        await c.assinar(ORG, { plano: 'ORGANIZADOR' })
+        await c.encerrarTeste(ORG)  // sem o teste de pé: só a assinatura sustenta o plano
+        return grupo
+      })
+      await c.passo('assinatura ativa: o grupo funciona normalmente (sem o teste, quem sustenta é a assinatura)', async () => {
+        const j = await c.jogo(ORG, g.id, { vagas: 4 })
+        c.status(await ATL1.vou(g.id, j.id), 200)
+      })
+      await c.passo('cancelar: o acesso continua até o fim do período pago', async () => {
+        await c.assinar(ORG, { plano: 'ORGANIZADOR', status: 'CANCELED', canceladaHaDias: 1, fimEmDias: 15 })
+        c.igual(c.status(await ORG.chamar('GET', '/subscriptions/trial'), 200).corpo.status, 'SUBSCRIBED', 'plano ainda vale')
+        const j = await c.jogo(ORG, g.id, { vagas: 4 })
+        c.status(await ATL1.vou(g.id, j.id), 200)
+      })
+      await c.passo('o período pago acaba: o grupo congela (somente leitura); o atleta não confirma presença e o dono não cria jogo', async () => {
+        await c.assinar(ORG, { plano: 'ORGANIZADOR', status: 'CANCELED', canceladaHaDias: 20, fimEmDias: -1 })
+        const t = c.status(await ATL1.chamar('GET', `/api/groups/${g.id}/trial`), 200).corpo
+        c.igual(t.readOnly, true, 'grupo congelado')
+        const aberto = (await ORG.jogos(g.id)).corpo.find((x) => x.status === 'PUBLISHED')
+        c.status(await ATL1.vou(g.id, aberto.id), 403, 'SUBSCRIPTION_REQUIRED')
+      })
+      await c.passo('descer de plano agenda a troca: o limite do plano menor já vale (Organizador com 2 grupos, troca para Titular)', async () => {
+        const { OR5 } = await c.atores('OR5')
+        await c.grupo(OR5, [], { nome: `QA G1 ${c.tag}` }); await c.grupo(OR5, [], { nome: `QA G2 ${c.tag}` })
+        await c.assinar(OR5, { plano: 'ORGANIZADOR', planoPendente: 'TITULAR' })
+        c.status(await OR5.criarGrupo(`QA G3 ${c.tag}`), 403, 'GROUP_LIMIT_EXCEEDED')
+      })
+    },
+  },
+  {
+    id: 'ASS-006', feature: 'assinatura', critico: false,
+    titulo: 'Pagamento atrasado e a carência',
+    async rodar(c) {
+      const { ORG, ATL1 } = await c.atores('ORG', 'ATL1')
+      const g = await c.passo('ORG cria o grupo, assina o Organizador (teste já encerrado) e ATL1 entra', async () => {
+        const grupo = await c.grupo(ORG, [ATL1])
+        await c.assinar(ORG, { plano: 'ORGANIZADOR' })
+        await c.encerrarTeste(ORG)
+        await c.configurar(ORG, grupo.id, { mensalistaPriority: false })
+        grupo.jogo = await c.jogo(ORG, grupo.id, { vagas: 4 })
+        return grupo
+      })
+      const congelado = async () => c.status(await ATL1.chamar('GET', `/api/groups/${g.id}/trial`), 200).corpo.readOnly
+      await c.passo('venceu ontem e não pagou ("Pagamento pendente"): o acesso segue normal na carência', async () => {
+        await c.assinar(ORG, { plano: 'ORGANIZADOR', status: 'PAST_DUE', atrasadaHaDias: 1 })
+        c.igual(await congelado(), false, 'grupo congelado no 1º dia')
+        c.status(await ATL1.vou(g.id, g.jogo.id), 200)
+      })
+      await c.passo('no 5º dia ainda vale; pagou no 5º dia: volta a Ativo', async () => {
+        await c.assinar(ORG, { plano: 'ORGANIZADOR', status: 'PAST_DUE', atrasadaHaDias: 5 })
+        c.igual(await congelado(), false, 'grupo congelado no 5º dia')
+        await c.assinar(ORG, { plano: 'ORGANIZADOR', status: 'ACTIVE' })
+        c.igual(await congelado(), false, 'grupo congelado depois de pagar')
+      })
+      await c.passo('passou 7 dias de carência: os grupos congelam', async () => {
+        await c.assinar(ORG, { plano: 'ORGANIZADOR', status: 'PAST_DUE', atrasadaHaDias: 8 })
+        c.igual(await congelado(), true, 'grupo congelado depois da carência')
+        c.status(await ORG.trocarConvite(g.id), 403, 'SUBSCRIPTION_REQUIRED')
+        c.status(await ORG.criarGrupo(`QA Congelado ${c.tag}`), 403)
+
+      })
+      await c.passo('pagou no dia 10: volta na hora', async () => {
+        await c.assinar(ORG, { plano: 'ORGANIZADOR', status: 'ACTIVE' })
+        c.igual(await congelado(), false, 'grupo congelado depois do pagamento tardio')
+      })
+      await c.passo('quem nunca pagou (abriu o Pix e não pagou) não tem carência: sem plano até o primeiro pagamento', async () => {
+        await c.assinar(ORG, { plano: 'ORGANIZADOR', status: 'PAST_DUE', atrasadaHaDias: 1, pagou: false })
+        c.igual(await congelado(), true, 'nunca pagou: congelado já no primeiro dia')
+      })
+    },
+  },
 ]
