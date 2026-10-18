@@ -6,6 +6,7 @@ import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.moderation.ContentReport
 import br.com.saqz.groups.domain.moderation.ModerationGateway
+import br.com.saqz.groups.domain.moderation.ReportTargetType
 import kotlinx.coroutines.launch
 
 /**
@@ -59,7 +60,11 @@ class ModerationViewModel(
                 details = draft.details.trim().takeIf(String::isNotEmpty),
             )
             when (gateway.fileContentReport(report)) {
-                is SaqzResult.Success -> update { it.copy(report = null, feedback = ModerationFeedback.ReportSent) }
+                is SaqzResult.Success -> {
+                    // Denunciado, o item some para quem denunciou; a equipe e os outros membros seguem como estavam.
+                    if (draft.target.type == ReportTargetType.MESSAGE) blocks.messageReported(draft.target.targetId)
+                    update { it.copy(report = null, feedback = ModerationFeedback.ReportSent) }
+                }
                 is SaqzResult.Failure -> update { state ->
                     state.copy(report = state.report?.copy(sending = false, failed = true))
                 }

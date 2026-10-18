@@ -58,6 +58,32 @@ class ModerationViewModelTest {
         assertNull(vm.state.value.feedback)
     }
 
+    @Test fun reportingAMessageAnnouncesItsIdSoTheListsDropItAtOnce() = runTest {
+        val gateway = FakeModerationGateway()
+        val blocks = BlockedPeopleRepository(gateway)
+        val reported = mutableListOf<String>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { blocks.reportedMessages.collect { reported += it } }
+        val vm = ModerationViewModel(gateway, blocks)
+        vm.onIntent(ModerationIntent.StartReport(target))
+        vm.onIntent(ModerationIntent.SelectReason(ReportReason.SPAM))
+        vm.onIntent(ModerationIntent.SubmitReport)
+
+        assertEquals(listOf("message-1"), reported)
+    }
+
+    @Test fun reportingAPersonOrAFailedReportAnnouncesNothing() = runTest {
+        val gateway = FakeModerationGateway()
+        val blocks = BlockedPeopleRepository(gateway)
+        val reported = mutableListOf<String>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { blocks.reportedMessages.collect { reported += it } }
+        val vm = ModerationViewModel(gateway, blocks)
+        vm.onIntent(ModerationIntent.StartReport(ReportTargetUi("group-1", ReportTargetType.USER, "user-1", "Bia")))
+        vm.onIntent(ModerationIntent.SelectReason(ReportReason.SPAM))
+        vm.onIntent(ModerationIntent.SubmitReport)
+
+        assertTrue(reported.isEmpty())
+    }
+
     @Test fun blankDetailsAreOmittedAndLongDetailsAreCapped() = runTest {
         val gateway = FakeModerationGateway()
         val vm = ModerationViewModel(gateway, BlockedPeopleRepository(gateway))

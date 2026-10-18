@@ -18,7 +18,9 @@ import kotlinx.coroutines.flow.update
  * Quem o usuário bloqueou, compartilhado pelas telas que mostram gente do grupo (membros,
  * perfil de membro, avisos, notificações). [blocked] decide entre "Bloquear" e "Desbloquear";
  * [changes] avisa quem mostra conteúdo de terceiros para recarregar — o servidor já some com o
- * que o bloqueado escreveu, então recarregar basta para a tela ficar limpa na hora.
+ * que o bloqueado escreveu, então recarregar basta para a tela ficar limpa na hora. [reportedMessages]
+ * leva o id da mensagem ou do aviso que a pessoa acabou de denunciar: o servidor passa a escondê-lo
+ * só para ela, e as listas o tiram na hora, sem esperar a recarga.
  *
  * ponytail: cache só em memória e sem dono de sessão. Toda tela que lê [blocked] chama
  * [refresh] ao carregar, o que troca o conjunto inteiro — inclusive depois de trocar de conta.
@@ -32,6 +34,15 @@ class BlockedPeopleRepository(private val gateway: ModerationGateway) {
 
     /** Dispara depois de bloquear ou desbloquear por este app; não dispara no [refresh]. */
     val changes: SharedFlow<Unit> = mutableChanges.asSharedFlow()
+
+    private val mutableReportedMessages = MutableSharedFlow<String>(extraBufferCapacity = 8)
+
+    /** Dispara depois de a denúncia de uma mensagem ou aviso ser enviada por este app. */
+    val reportedMessages: SharedFlow<String> = mutableReportedMessages.asSharedFlow()
+
+    fun messageReported(messageId: String) {
+        mutableReportedMessages.tryEmit(messageId)
+    }
 
     /** Falha cala: o conjunto anterior continua valendo e o servidor segue filtrando o conteúdo. */
     suspend fun refresh() {

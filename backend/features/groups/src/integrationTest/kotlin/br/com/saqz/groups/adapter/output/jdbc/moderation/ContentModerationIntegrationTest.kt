@@ -176,6 +176,53 @@ class ContentModerationIntegrationTest {
         assertEquals(1, moderation.reports(openOnly = false, limit = 10).size)
     }
 
+    @Test fun `reporting a notice hides it at once for the reporter only, and the team is still alerted`() {
+        val other = user("Outra Atleta").also { membership(group, it) }
+        val notice = notice("Conteúdo impróprio")
+        assertEquals(listOf(notice.id), visibleNotices(member))
+        assertEquals(1, inbox(member).size)
+
+        assertEquals(ModerationResult.Success, moderation.report(member, request(ReportTarget.MESSAGE, notice.id)))
+
+        assertTrue(visibleNotices(member).isEmpty())
+        assertTrue(inbox(member).isEmpty())
+        assertEquals(listOf(notice.id), visibleNotices(other))
+        assertEquals(1, inbox(other).size)
+        assertEquals(listOf(notice.id), visibleNotices(owner))
+        assertEquals(1, moderation.dispatchAlerts { }.sent)
+    }
+
+    @Test fun `the notice stays hidden for the reporter after the team resolves the report`() {
+        val notice = notice("Conteúdo impróprio")
+        moderation.report(member, request(ReportTarget.MESSAGE, notice.id))
+        assertTrue(moderation.resolve(moderation.reports(openOnly = true, limit = 10).single().id))
+
+        assertTrue(visibleNotices(member).isEmpty())
+        assertTrue(inbox(member).isEmpty())
+    }
+
+    @Test fun `reporting a notice takes it off the reporter's push and WhatsApp context but not the others'`() {
+        val other = user("Outra Atleta").also { membership(group, it) }
+        val notice = notice("Conteúdo impróprio")
+        fun deliverable(user: UUID) = jdbc.sql("SELECT count(*) FROM notification_delivery_context WHERE recipient_id = :u AND body = :b")
+            .param("u", user).param("b", notice.body).query(Int::class.java).single()
+        assertEquals(1, deliverable(member))
+
+        moderation.report(member, request(ReportTarget.MESSAGE, notice.id))
+
+        assertEquals(0, deliverable(member))
+        assertEquals(1, deliverable(other))
+    }
+
+    @Test fun `reporting a person hides no notice`() {
+        val notice = notice("Aviso comum")
+
+        moderation.report(member, request(ReportTarget.USER, owner))
+
+        assertEquals(listOf(notice.id), visibleNotices(member))
+        assertEquals(1, inbox(member).size)
+    }
+
     private fun request(
         target: ReportTarget,
         id: UUID,

@@ -116,6 +116,41 @@ class ThreadModerationTest {
         assertEquals(listOf<Long?>(null, null), gateway.cursors)
     }
 
+    @Test fun reportingAMessageDropsItFromTheThreadAtOnceAndKeepsTheOthers() = runTest {
+        val gateway = FakeCommunicationGateway().apply {
+            messagesResult = SaqzResult.Success(
+                CommunicationPage(
+                    listOf(
+                        sampleCommunicationMessage().copy(id = "hers", authorId = "bia"),
+                        sampleCommunicationMessage().copy(id = "his", authorId = "caio"),
+                    ),
+                    null,
+                ),
+            )
+        }
+        val blocks = fakeBlocks()
+        val vm = thread(gateway, notices = true, blocks = blocks)
+
+        blocks.messageReported("hers")
+
+        assertEquals(listOf("his"), vm.state.value.messages.map { it.id })
+        assertEquals(listOf<Long?>(null), gateway.cursors)
+    }
+
+    @Test fun reportingANoticeDropsItFromTheNotificationCenterAtOnce() = runTest {
+        val message = sampleCommunicationMessage().copy(channel = CommunicationChannel.NOTICE, authorId = "bia")
+        val other = sampleCommunicationMessage().copy(id = "message-2", channel = CommunicationChannel.NOTICE, authorId = "caio")
+        val gateway = FakeCommunicationGateway().apply {
+            inboxResult = SaqzResult.Success(CommunicationPage(listOf(InAppNotification(7, message, false), InAppNotification(8, other, false)), null))
+        }
+        val blocks = fakeBlocks()
+        val vm = NotificationCenterViewModel(false, gateway, blocks)
+
+        blocks.messageReported("message-1")
+
+        assertEquals(listOf(8L), vm.state.value.items.map { it.sequence })
+    }
+
     @Test fun notificationCenterReloadsAfterABlock() = runTest {
         val message = sampleCommunicationMessage().copy(channel = CommunicationChannel.NOTICE, authorId = "bia")
         val gateway = FakeCommunicationGateway().apply {

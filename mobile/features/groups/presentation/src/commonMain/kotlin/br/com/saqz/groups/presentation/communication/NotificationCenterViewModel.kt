@@ -20,6 +20,10 @@ class NotificationCenterViewModel(
         load()
         // O servidor deixa de entregar o que a pessoa bloqueada escreveu: a central recarrega e some com ela.
         if (!settings) viewModelScope.launch { blocks.changes.collect { if (!state.value.busy) load() } }
+        // O aviso denunciado some da central de quem denunciou na hora; o servidor o esconde só para essa pessoa.
+        if (!settings) viewModelScope.launch {
+            blocks.reportedMessages.collect { id -> update { it.copy(items = it.items.filter { item -> item.content.id != id }) } }
+        }
     }
     override fun handleIntent(intent: NotificationCenterIntent) {
         if (state.value.busy) return

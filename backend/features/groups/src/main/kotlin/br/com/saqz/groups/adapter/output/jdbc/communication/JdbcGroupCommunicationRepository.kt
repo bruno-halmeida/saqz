@@ -26,10 +26,10 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         "SELECT id FROM access_groups WHERE id = :group AND deleted_at IS NULL FOR UPDATE",
     ).param("group", groupId).query(UUID::class.java).optional().isPresent
 
-    /** Avisos e mensagens de quem o leitor bloqueou não aparecem para ele. */
+    /** Avisos e mensagens de quem o leitor bloqueou, e os que ele denunciou, não aparecem para ele. */
     override fun messages(viewer: UUID, groupId: UUID, channel: MessageChannel, before: Long?) = jdbc.sql(
         "SELECT m.* FROM group_messages m WHERE group_id = :group AND channel = :channel " +
-            "AND (:before IS NULL OR sequence < :before) AND $NOT_FROM_BLOCKED ORDER BY sequence DESC LIMIT 51",
+            "AND (:before IS NULL OR sequence < :before) AND $NOT_FROM_BLOCKED AND $NOT_REPORTED ORDER BY sequence DESC LIMIT 51",
     ).param("group", groupId).param("channel", channel.name, Types.OTHER).param("viewer", viewer)
         .param("before", before, Types.BIGINT).query { rs, _ -> message(rs) }.list()
 
@@ -254,7 +254,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         JOIN access_groups g ON g.id = m.group_id AND g.deleted_at IS NULL
         JOIN group_memberships membership ON membership.group_id = m.group_id AND membership.user_id = n.recipient_id
         WHERE n.recipient_id = :actor AND (:before IS NULL OR n.sequence < :before)
-          AND $NOT_FROM_BLOCKED
+          AND $NOT_FROM_BLOCKED AND $NOT_REPORTED
         ORDER BY n.sequence DESC LIMIT 51
         """.trimIndent(),
     ).param("actor", actor).param("viewer", actor).param("before", before, Types.BIGINT)
@@ -312,5 +312,8 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         val PERSONAL_CHANNELS = setOf(MessageChannel.NOTICE, MessageChannel.CHAT)
         const val NOT_FROM_BLOCKED = "(m.channel NOT IN ('NOTICE', 'CHAT') OR NOT EXISTS (" +
             "SELECT 1 FROM user_blocks b WHERE b.blocker_id = :viewer AND b.blocked_id = m.author_id))"
+        /** Mensagem ou aviso que o leitor denunciou: some para ele, mesmo depois de a equipe resolver a denúncia. */
+        const val NOT_REPORTED = "NOT EXISTS (SELECT 1 FROM content_reports r " +
+            "WHERE r.reporter_id = :viewer AND r.target_type = 'MESSAGE' AND r.target_id = m.id)"
     }
 }

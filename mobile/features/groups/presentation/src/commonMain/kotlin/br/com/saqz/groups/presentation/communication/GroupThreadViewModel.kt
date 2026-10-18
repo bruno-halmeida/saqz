@@ -45,6 +45,10 @@ class GroupThreadViewModel(
         // Bloqueou alguém (aqui, no perfil, na lista de membros): o servidor já esconde o que
         // essa pessoa escreveu, então recarregar limpa a thread na hora.
         viewModelScope.launch { blocks.changes.collect { if (!state.value.sending) load() } }
+        // Denunciou um aviso ou mensagem daqui: o servidor o esconde só para quem denunciou, e ele sai da lista na hora.
+        viewModelScope.launch {
+            blocks.reportedMessages.collect { id -> update { it.copy(messages = it.messages.filter { message -> message.id != id }) } }
+        }
     }
 
     override fun handleIntent(intent: GroupThreadIntent) {
