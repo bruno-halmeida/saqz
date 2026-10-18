@@ -4,7 +4,7 @@ import android.os.Looper
 import android.os.StrictMode
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
@@ -13,6 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.net.ServerSocket
+import java.util.concurrent.Executors
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -61,12 +62,13 @@ class OkHttpCancelOnMainThreadTest {
             }
         }
 
+        val requestExecutor = Executors.newSingleThreadExecutor()
         val client = createPlatformNetworkClient(
             NetworkConfig(NetworkEnvironment.Test, "http://127.0.0.1:${server.localPort}", requestTimeoutMillis = 30_000),
         )
         try {
             runBlocking {
-                val request = async(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
+                val request = async(requestExecutor.asCoroutineDispatcher(), start = CoroutineStart.UNDISPATCHED) {
                     client.execute(HttpMethod.Get, "/lento", String.serializer())
                 }
                 assertTrue(firstBytesSent.await(5, TimeUnit.SECONDS), "servidor não chegou a mandar o corpo")
@@ -80,6 +82,7 @@ class OkHttpCancelOnMainThreadTest {
             }
         } finally {
             server.close()
+            requestExecutor.shutdownNow()
             serverThread.interrupt()
             StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.LAX)
         }
