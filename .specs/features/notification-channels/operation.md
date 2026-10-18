@@ -3,7 +3,8 @@
 ## Modelo
 
 - Uma notificação por mensagem e destinatário, com leitura persistida no app.
-- Categorias de app independentes de push e WhatsApp. Cobrança sempre permanece na central.
+- A central sempre mostra tudo (DEB-064); as categorias só controlam push e WhatsApp. Cobrança sempre permanece na central.
+- Cancelamento de jogo e mudança de dia, hora ou local (`event_kind`) vão sempre por push (DEB-065); o push de cancelamento não leva o jogo nos dados, então não oferece "Confirmar" nem "Não vou". A mudança também vai ao grupo do WhatsApp (DEB-071). O que o usuário denunciou some só para ele (DEB-070).
 - Push: avisos, conversa, presença e cobrança. Credenciais FCM/APNs e permissão do sistema continuam necessárias.
 - WhatsApp: avisos, presença e cobrança individuais, somente após ativação explícita no perfil. Conversa não é encaminhada.
 - Usa o telefone do perfil no formato internacional. Ausência de telefone impede criar o envio; troca do telefone cancela o envio pendente.
