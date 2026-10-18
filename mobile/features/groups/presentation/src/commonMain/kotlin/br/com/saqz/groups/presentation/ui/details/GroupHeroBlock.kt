@@ -189,7 +189,7 @@ private fun GroupGameHero(
             ),
             tags = GroupHeroAttendanceTags,
         )
-        if (state.membershipType == AthleteMembershipType.AVULSO && game.hasGameFee) HeroFeeNote()
+        if (state.membershipType == AthleteMembershipType.AVULSO && game.hasGameFee && game.canRespond) HeroFeeNote()
         if (state.rosterStale) {
             HeroRosterStale(
                 refreshing = state.rosterRefreshing,
@@ -288,7 +288,7 @@ private fun HeroAddress(
     }
 }
 
-/** Avulso em jogo com taxa: confirmar gera cobrança, e ele precisa saber ANTES de tocar. */
+/** Avulso em jogo com taxa e respostas abertas: confirmar gera cobrança, e ele precisa saber ANTES de tocar. */
 @Composable
 private fun HeroFeeNote() {
     val color = SaqzTheme.colors.onPrimary.copy(alpha = HeroAddressAlpha)

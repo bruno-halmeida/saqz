@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.details
 
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -162,6 +163,20 @@ class GroupHeroBlockTest {
     @Test
     fun feeNoteIsHiddenWithoutFeeAndForMonthlyMembers() = runComposeUiTest {
         setDetailsScreen(GroupHeroPreviewData.dayMemberNoFee)
+        onAllNodesWithTag(GroupDetailsTags.HeroFeeNote).assertCountEquals(0)
+    }
+
+    @Test
+    fun feeNoteIsHiddenOnceTheGameStartedOrResponsesClosed() = runComposeUiTest {
+        setDetailsScreen(GroupHeroPreviewData.dayMemberFee.copy(nextGame = GroupHeroPreviewData.game.copy(hasGameFee = true, confirmationOpen = false, responseOpen = false)))
+        onAllNodesWithTag(GroupDetailsTags.HeroFeeNote).assertCountEquals(0)
+    }
+
+    @Test
+    fun explicitMonthlyMemberNeverSeesTheFeeNote() = runComposeUiTest {
+        setDetailsScreen(
+            GroupHeroPreviewData.dayMemberFee.copy(membershipType = AthleteMembershipType.MENSALISTA),
+        )
         onAllNodesWithTag(GroupDetailsTags.HeroFeeNote).assertCountEquals(0)
     }
 
