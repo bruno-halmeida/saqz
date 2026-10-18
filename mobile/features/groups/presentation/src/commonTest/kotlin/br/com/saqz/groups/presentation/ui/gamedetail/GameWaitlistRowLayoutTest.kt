@@ -6,6 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
@@ -14,11 +16,15 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
+import kotlin.math.abs
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
@@ -35,6 +41,23 @@ class GameWaitlistRowLayoutTest {
 
     @Test
     fun linhaDaEsperaEmTelaEstreitaComFonte2() = checkRow(fontScale = 2f)
+
+    // "1º na fila" quebra na coluna de 44 dp; cada linha sai centralizada, não colada na esquerda.
+    @Test
+    fun posicaoNaFilaSaiCentralizada() = runComposeUiTest {
+        setContent { SaqzTheme { Box(Modifier.width(320.dp)) { GameWaitlistSection(GameDetailPreviewData.admin, {}) } } }
+        val results = mutableListOf<TextLayoutResult>()
+        onAllNodes(hasText("na fila", substring = true), useUnmergedTree = true)[0].fetchSemanticsNode().config
+            .getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(results)
+        val layout = results.single()
+        assertTrue(layout.lineCount > 1, "a posição precisa quebrar para o teste valer: ${layout.lineCount} linha(s)")
+        assertEquals(TextAlign.Center, layout.layoutInput.style.textAlign)
+        for (line in 0 until layout.lineCount) {
+            val left = layout.getLineLeft(line)
+            val right = layout.multiParagraph.width - layout.getLineRight(line)
+            assertTrue(abs(left - right) <= 1f, "linha $line fora do centro: esquerda $left, direita $right")
+        }
+    }
 
     private fun checkRow(fontScale: Float) = runComposeUiTest {
         val screen = 320.dp

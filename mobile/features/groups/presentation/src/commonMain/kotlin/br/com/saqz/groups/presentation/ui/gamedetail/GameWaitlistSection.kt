@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import br.com.saqz.designsystem.SaqzAvatar
 import br.com.saqz.designsystem.SaqzBottomSheet
@@ -151,6 +152,7 @@ private fun GameWaitlistRow(
                 text = queueLabel,
                 color = SaqzTheme.colors.primary,
                 style = SaqzTheme.typography.caption,
+                textAlign = TextAlign.Center,
                 modifier = Modifier.width(metrics.iconButtonSize),
             )
         }
