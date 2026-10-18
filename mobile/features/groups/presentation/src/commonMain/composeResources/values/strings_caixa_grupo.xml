@@ -29,4 +29,9 @@
     <string name="group_cashbox_review_status">Revisar</string>
     <string name="group_cashbox_review_action">Conferir</string>
     <string name="group_cashbox_review_failure">Não foi possível marcar como resolvida. Tente novamente.</string>
+    <string name="group_cashbox_settled_title">Mensalidades baixadas</string>
+    <string name="group_cashbox_settled_received">Recebida</string>
+    <string name="group_cashbox_settled_waived">Dispensada</string>
+    <string name="group_cashbox_undo_action">Desfazer</string>
+    <string name="group_cashbox_undo_failure">Não foi possível desfazer. Tente novamente.</string>
 </resources>

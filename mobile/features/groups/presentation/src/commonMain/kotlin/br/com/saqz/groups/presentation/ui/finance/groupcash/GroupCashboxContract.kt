@@ -38,6 +38,9 @@ data class GroupCashboxState(
     val reviews: List<ReviewUi> = emptyList(),
     val reviewSheetChargeId: String? = null,
     val reviewFailed: Boolean = false,
+    val settled: List<SettledUi> = emptyList(),
+    val undoSheetChargeId: String? = null,
+    val undoFailed: Boolean = false,
 )
 
 @Immutable
@@ -65,6 +68,18 @@ data class ReviewUi(
     val referenceLabel: String,
     val amountLabel: String,
     val chargeVersion: Long,
+    val isUpdating: Boolean = false,
+)
+
+/** Mensalidade do mês já recebida ou dispensada, sem ordem eletrônica: o organizador pode desfazer a baixa (DEB-052). */
+@Immutable
+data class SettledUi(
+    val chargeId: String,
+    val name: String,
+    val referenceLabel: String,
+    val amountLabel: String,
+    val chargeVersion: Long,
+    val received: Boolean,
     val isUpdating: Boolean = false,
 )
 
@@ -101,6 +116,9 @@ sealed interface GroupCashboxIntent {
     data class OpenReview(val chargeId: String) : GroupCashboxIntent
     data class ResolveReview(val chargeId: String) : GroupCashboxIntent
     data object DismissReviewSheet : GroupCashboxIntent
+    data class OpenUndo(val chargeId: String) : GroupCashboxIntent
+    data class Undo(val chargeId: String, val note: String = "") : GroupCashboxIntent
+    data object DismissUndoSheet : GroupCashboxIntent
     data object DismissChargeSheet : GroupCashboxIntent
     data object DismissReceiptSheet : GroupCashboxIntent
     data object CopyPix : GroupCashboxIntent

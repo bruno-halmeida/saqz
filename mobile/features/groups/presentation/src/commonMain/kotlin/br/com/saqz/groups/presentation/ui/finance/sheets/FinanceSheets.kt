@@ -20,6 +20,7 @@ import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChoiceChip
+import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzSegmented
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.finance.PaidMethod
@@ -49,6 +50,14 @@ import br.com.saqz.groups.resources.sheet_review_confirm
 import br.com.saqz.groups.resources.sheet_review_note
 import br.com.saqz.groups.resources.sheet_review_refund
 import br.com.saqz.groups.resources.sheet_review_title
+import br.com.saqz.groups.resources.sheet_undo_amount
+import br.com.saqz.groups.resources.sheet_undo_cancel
+import br.com.saqz.groups.resources.sheet_undo_confirm
+import br.com.saqz.groups.resources.sheet_undo_note_received
+import br.com.saqz.groups.resources.sheet_undo_note_waived
+import br.com.saqz.groups.resources.sheet_undo_reason
+import br.com.saqz.groups.resources.sheet_undo_reason_short
+import br.com.saqz.groups.resources.sheet_undo_title
 import br.com.saqz.groups.resources.sheet_receipt_amount
 import br.com.saqz.groups.resources.sheet_receipt_cancel
 import br.com.saqz.groups.resources.sheet_receipt_confirm
@@ -86,6 +95,11 @@ internal object FinanceSheetsTags {
     const val ReviewAmount = "finance-review-amount"
     const val ReviewNote = "finance-review-note"
     const val ReviewConfirm = "finance-review-confirm"
+    const val Undo = "finance-undo-sheet"
+    const val UndoAmount = "finance-undo-amount"
+    const val UndoNote = "finance-undo-note"
+    const val UndoReason = "finance-undo-reason"
+    const val UndoConfirm = "finance-undo-confirm"
 
     fun chargeRecipient(chargeId: String) = "$ChargeRecipient-$chargeId"
 }
@@ -421,6 +435,90 @@ internal fun ReviewSheet(
         }
     }
 }
+
+/**
+ * Desfazer a baixa (DEB-052): recebida ou dispensada volta a pendente. A confirmação diz o efeito;
+ * o motivo é opcional e vai para o histórico da cobrança.
+ */
+@Composable
+internal fun UndoSheet(
+    open: Boolean,
+    name: String?,
+    referenceLabel: String?,
+    amountLabel: String?,
+    received: Boolean,
+    busy: Boolean,
+    onClose: () -> Unit,
+    onConfirm: (note: String) -> Unit,
+) {
+    var reason by remember(open, name) { mutableStateOf("") }
+    // O servidor aceita nota de 2 a 500 caracteres; vazia vale como sem nota.
+    val tooShort = reason.trim().length == 1
+    SaqzBottomSheet(
+        open = open,
+        onClose = onClose,
+        modifier = Modifier.testTag(FinanceSheetsTags.Undo),
+        title = stringResource(Res.string.sheet_undo_title),
+        description = referenceLabel,
+        splitFooter = {
+            SaqzButton(
+                label = stringResource(Res.string.sheet_undo_cancel),
+                onClick = onClose,
+                variant = SaqzButtonVariant.Secondary,
+                modifier = Modifier.weight(1f),
+            )
+            SaqzButton(
+                label = stringResource(Res.string.sheet_undo_confirm),
+                onClick = { onConfirm(reason.trim()) },
+                enabled = name != null && !busy && !tooShort,
+                loading = busy,
+                modifier = Modifier.weight(1f).testTag(FinanceSheetsTags.UndoConfirm),
+            )
+        },
+    ) {
+        if (name != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+            ) {
+                SaqzAvatar(name = name)
+                Text(text = name, style = SaqzTheme.typography.subtitle, color = SaqzTheme.colors.textPrimary)
+            }
+            SaqzCard(modifier = Modifier.testTag(FinanceSheetsTags.UndoAmount)) {
+                Text(
+                    text = stringResource(Res.string.sheet_undo_amount),
+                    style = SaqzTheme.typography.support,
+                    color = SaqzTheme.colors.textSecondary,
+                )
+                Text(
+                    text = amountLabel.orEmpty(),
+                    style = SaqzTheme.typography.title,
+                    color = SaqzTheme.colors.textPrimary,
+                )
+            }
+            Text(
+                text = stringResource(
+                    if (received) Res.string.sheet_undo_note_received else Res.string.sheet_undo_note_waived,
+                ),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+                modifier = Modifier.testTag(FinanceSheetsTags.UndoNote),
+            )
+            SaqzInput(
+                value = reason,
+                onValueChange = { reason = it.take(MAX_UNDO_REASON) },
+                label = stringResource(Res.string.sheet_undo_reason),
+                invalid = tooShort,
+                errorText = if (tooShort) stringResource(Res.string.sheet_undo_reason_short) else null,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().testTag(FinanceSheetsTags.UndoReason),
+            )
+        }
+    }
+}
+
+private const val MAX_UNDO_REASON = 500
 
 internal fun whatsappChargeUrl(message: String): String =
     "https://wa.me/?text=${message.percentEncode()}"

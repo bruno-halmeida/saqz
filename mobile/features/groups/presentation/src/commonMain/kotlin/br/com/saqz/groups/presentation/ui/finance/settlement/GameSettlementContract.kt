@@ -38,6 +38,8 @@ data class GameSettlementState(
     val waiveFailed: Boolean = false,
     val reviewSheetChargeId: String? = null,
     val reviewFailed: Boolean = false,
+    val undoSheetChargeId: String? = null,
+    val undoFailed: Boolean = false,
 ) {
     val isSummary: Boolean
         get() = !isLoading && !loadFailed && updatingChargeId == null && pendingDiaristCount == 0
@@ -66,6 +68,8 @@ data class GameSettlementDiaristUi(
     val withdrew: Boolean = false,
     /** Jogo cancelado com a cobrança já paga ou dispensada: o organizador confere se devolve (DEB-053). */
     val reviewRequired: Boolean = false,
+    /** Recebida ou dispensada sem ordem eletrônica: o organizador pode desfazer a baixa (DEB-052). */
+    val canUndo: Boolean = false,
 )
 
 sealed interface GameSettlementIntent {
@@ -83,6 +87,9 @@ sealed interface GameSettlementIntent {
     data class OpenReview(val chargeId: String) : GameSettlementIntent
     data class ResolveReview(val chargeId: String) : GameSettlementIntent
     data object DismissReviewSheet : GameSettlementIntent
+    data class OpenUndo(val chargeId: String) : GameSettlementIntent
+    data class Undo(val chargeId: String, val note: String = "") : GameSettlementIntent
+    data object DismissUndoSheet : GameSettlementIntent
     data object DismissChargeSheet : GameSettlementIntent
     data object DismissReceiptSheet : GameSettlementIntent
     data object CopyPix : GameSettlementIntent

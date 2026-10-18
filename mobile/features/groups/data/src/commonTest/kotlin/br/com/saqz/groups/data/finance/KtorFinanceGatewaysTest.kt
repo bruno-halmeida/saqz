@@ -47,6 +47,33 @@ class KtorFinanceGatewaysTest {
     }
 
     @Test
+    fun `electronic order mark is read when present and defaults to false when the server omits it`() = runTest {
+        val marked = CHARGES.replaceFirst("\"reviewRequired\":true", "\"electronicOrder\":true,\"reviewRequired\":true")
+        val withMark = success(organizer { json(marked) }.charges(GROUP)).charges
+        val withoutMark = success(organizer { json(CHARGES) }.charges(GROUP)).charges
+
+        assertTrue(withMark.first().electronicOrder)
+        assertFalse(withMark.last().electronicOrder)
+        assertTrue(withoutMark.none { it.electronicOrder })
+    }
+
+    @Test
+    fun `charge status undo sends pending with the quoted version and the note`() = runTest {
+        organizer { request ->
+            assertEquals("/api/groups/${GROUP.value}/charges/$CHARGE/status", request.url.encodedPath)
+            assertEquals("\"4\"", request.headers[HttpHeaders.IfMatch])
+            assertEquals("PENDING", request.json().getValue("status").jsonPrimitive.content)
+            assertEquals("Lancei errado", request.json().getValue("note").jsonPrimitive.content)
+            versioned(CHARGE_JSON, "\"5\"")
+        }.updateChargeStatus(
+            GROUP,
+            CHARGE,
+            FinanceVersionToken("\"4\""),
+            ChargeStatusCommand(ChargeStatus.Pending, "Lancei errado"),
+        )
+    }
+
+    @Test
     fun `monthly charge maps month member and cancelled status`() = runTest {
         val value = success(organizer { json(CHARGES) }.charges(GROUP)).charges.last()
 

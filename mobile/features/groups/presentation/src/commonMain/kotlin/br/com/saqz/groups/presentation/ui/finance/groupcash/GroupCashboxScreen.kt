@@ -74,7 +74,13 @@ import br.com.saqz.groups.presentation.ui.finance.PixCard
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReviewSheet
+import br.com.saqz.groups.presentation.ui.finance.sheets.UndoSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.WaiveSheet
+import br.com.saqz.groups.resources.group_cashbox_settled_received
+import br.com.saqz.groups.resources.group_cashbox_settled_title
+import br.com.saqz.groups.resources.group_cashbox_settled_waived
+import br.com.saqz.groups.resources.group_cashbox_undo_action
+import br.com.saqz.groups.resources.group_cashbox_undo_failure
 import br.com.saqz.groups.resources.group_cashbox_review_action
 import br.com.saqz.groups.resources.group_cashbox_review_failure
 import br.com.saqz.groups.resources.group_cashbox_review_status
@@ -102,6 +108,8 @@ internal object GroupCashboxTags {
     const val WaiveFailure = "group-cashbox-waive-failure"
     const val Reviews = "group-cashbox-reviews"
     const val ReviewFailure = "group-cashbox-review-failure"
+    const val Settled = "group-cashbox-settled"
+    const val UndoFailure = "group-cashbox-undo-failure"
 
     fun chargePayment(chargeId: String) = "group-cashbox-payment-$chargeId"
     fun chargeIndividual(chargeId: String) = "group-cashbox-charge-$chargeId"
@@ -110,6 +118,7 @@ internal object GroupCashboxTags {
     fun chargeWithdrew(chargeId: String) = "group-cashbox-withdrew-$chargeId"
     fun review(chargeId: String) = "group-cashbox-review-$chargeId"
     fun reviewAction(chargeId: String) = "group-cashbox-review-action-$chargeId"
+    fun undo(chargeId: String) = "group-cashbox-undo-$chargeId"
 }
 
 @Composable
@@ -126,6 +135,7 @@ internal fun GroupCashboxScreen(
     val receiptDebtor = state.debtors.firstOrNull { it.chargeId == state.receiptSheetChargeId }
     val waiveDebtor = state.debtors.firstOrNull { it.chargeId == state.waiveSheetChargeId }
     val reviewCharge = state.reviews.firstOrNull { it.chargeId == state.reviewSheetChargeId }
+    val undoCharge = state.settled.firstOrNull { it.chargeId == state.undoSheetChargeId }
     val chargeDebtors = state.debtors.filter {
         state.chargeSheetChargeId == null || it.chargeId == state.chargeSheetChargeId
     }
@@ -177,6 +187,16 @@ internal fun GroupCashboxScreen(
             busy = state.updatingChargeId != null,
             onClose = { onIntent(GroupCashboxIntent.DismissReviewSheet) },
             onConfirm = { reviewCharge?.let { onIntent(GroupCashboxIntent.ResolveReview(it.chargeId)) } },
+        )
+        UndoSheet(
+            open = state.undoSheetChargeId != null,
+            name = undoCharge?.name,
+            referenceLabel = undoCharge?.referenceLabel,
+            amountLabel = undoCharge?.amountLabel,
+            received = undoCharge?.received == true,
+            busy = state.updatingChargeId != null,
+            onClose = { onIntent(GroupCashboxIntent.DismissUndoSheet) },
+            onConfirm = { note -> undoCharge?.let { onIntent(GroupCashboxIntent.Undo(it.chargeId, note)) } },
         )
     }
 }
@@ -237,6 +257,7 @@ private fun LoadedContent(state: GroupCashboxState, onIntent: (GroupCashboxInten
             modifier = Modifier.testTag(GroupCashboxTags.GenerateMonthly),
         )
         if (state.reviews.isNotEmpty()) ReviewsSection(state, onIntent)
+        if (state.settled.isNotEmpty()) SettledSection(state, onIntent)
         if (state.debtors.isNotEmpty()) {
             DebtorsSection(
                 state = state,
@@ -314,6 +335,14 @@ private fun CashboxHeader(
                 text = stringResource(Res.string.group_cashbox_operation_failure),
                 style = SaqzTheme.typography.support,
                 color = colors.errorForeground,
+            )
+        }
+        if (state.undoFailed) {
+            Text(
+                text = stringResource(Res.string.group_cashbox_undo_failure),
+                style = SaqzTheme.typography.support,
+                color = colors.errorForeground,
+                modifier = Modifier.testTag(GroupCashboxTags.UndoFailure),
             )
         }
         if (state.reviewFailed) {
@@ -463,6 +492,62 @@ private fun ReviewsSection(
             ReviewRow(review, onIntent)
             if (index < state.reviews.lastIndex) br.com.saqz.designsystem.SaqzDivider()
         }
+    }
+}
+
+@Composable
+private fun SettledSection(
+    state: GroupCashboxState,
+    onIntent: (GroupCashboxIntent) -> Unit,
+) = Column(
+    modifier = Modifier.testTag(GroupCashboxTags.Settled),
+    verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+) {
+    SaqzSectionHeader(title = stringResource(Res.string.group_cashbox_settled_title))
+    SaqzCard(padded = false) {
+        state.settled.forEachIndexed { index, settled ->
+            SettledRow(settled, onIntent)
+            if (index < state.settled.lastIndex) br.com.saqz.designsystem.SaqzDivider()
+        }
+    }
+}
+
+@Composable
+private fun SettledRow(settled: SettledUi, onIntent: (GroupCashboxIntent) -> Unit) {
+    val metrics = SaqzTheme.metrics
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
+    ) {
+        SaqzAvatar(name = settled.name)
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+            Text(
+                text = settled.name,
+                style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
+                color = SaqzTheme.colors.textPrimary,
+            )
+            Text(
+                text = "${settled.referenceLabel} · ${settled.amountLabel}",
+                style = SaqzTheme.typography.caption,
+                color = SaqzTheme.colors.textSecondary,
+            )
+            SaqzStatusChip(
+                text = stringResource(
+                    if (settled.received) Res.string.group_cashbox_settled_received else Res.string.group_cashbox_settled_waived,
+                ),
+                tone = if (settled.received) SaqzChipTone.Success else SaqzChipTone.Neutral,
+            )
+        }
+        SaqzButton(
+            label = stringResource(Res.string.group_cashbox_undo_action),
+            onClick = { onIntent(GroupCashboxIntent.OpenUndo(settled.chargeId)) },
+            variant = SaqzButtonVariant.Secondary,
+            size = SaqzButtonSize.Sm,
+            loading = settled.isUpdating,
+            enabled = !settled.isUpdating,
+            modifier = Modifier.testTag(GroupCashboxTags.undo(settled.chargeId)),
+        )
     }
 }
 

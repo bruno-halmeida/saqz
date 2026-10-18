@@ -450,6 +450,125 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
+    fun `settled lists received and waived monthlies of the month without an electronic order`() = runTest {
+        val charges = defaultCharges + listOf(
+            defaultCharges.first().copy(id = "monthly-waived", memberId = "member-pedro", status = ChargeStatus.Waived),
+            defaultCharges.first().copy(id = "monthly-electronic", memberId = "member-thiago", electronicOrder = true),
+            defaultCharges.first().copy(id = "monthly-july", month = "2026-07"),
+            defaultCharges.first().copy(id = "monthly-cancelled", status = ChargeStatus.Cancelled),
+        )
+        val viewModel = viewModel(organizer = FakeOrganizerFinanceGateway(chargesResult = SaqzResult.Success(chargeList(charges))))
+
+        val settled = viewModel.state.value.settled
+        assertEquals(listOf("monthly-paid", "monthly-waived"), settled.map { it.chargeId })
+        assertTrue(settled.first().received)
+        assertFalse(settled.last().received)
+        viewModel.onIntent(GroupCashboxIntent.OpenUndo("monthly-electronic"))
+        assertNull(viewModel.state.value.undoSheetChargeId)
+        viewModel.onIntent(GroupCashboxIntent.OpenUndo("monthly-pending"))
+        assertNull(viewModel.state.value.undoSheetChargeId)
+        viewModel.onIntent(GroupCashboxIntent.OpenUndo("monthly-paid"))
+        assertEquals("monthly-paid", viewModel.state.value.undoSheetChargeId)
+        viewModel.onIntent(GroupCashboxIntent.DismissUndoSheet)
+        assertNull(viewModel.state.value.undoSheetChargeId)
+    }
+
+    @Test
+    fun `undo sends pending with the quoted version and the trimmed note then reloads the cashbox`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        val viewModel = viewModel(organizer = organizer)
+        val paidBefore = viewModel.state.value.paidMonthlyCount
+        organizer.beforeUpdate = {
+            organizer.chargesResult = SaqzResult.Success(
+                chargeList(defaultCharges.map { if (it.id == "monthly-paid") it.copy(status = ChargeStatus.Pending, version = 2) else it }),
+            )
+        }
+        viewModel.onIntent(GroupCashboxIntent.OpenUndo("monthly-paid"))
+
+        viewModel.onIntent(GroupCashboxIntent.Undo("monthly-paid", "  Lancei errado  "))
+
+        assertEquals(FinanceVersionToken("\"1\""), organizer.lastVersion)
+        assertEquals(ChargeStatusCommand(ChargeStatus.Pending, note = "Lancei errado"), organizer.lastCommand)
+        assertEquals(2, organizer.chargeReads)
+        val after = viewModel.state.value
+        assertEquals(paidBefore - 1, after.paidMonthlyCount)
+        assertTrue(after.settled.isEmpty())
+        assertTrue(after.debtors.any { it.chargeId == "monthly-paid" })
+        assertNull(after.undoSheetChargeId)
+        assertNull(after.updatingChargeId)
+        assertFalse(after.undoFailed)
+        assertEquals(GroupCashboxEffect.MutationSucceeded, viewModel.effects.first())
+    }
+
+    @Test
+    fun `undo without a note sends no note`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        val viewModel = viewModel(organizer = organizer)
+
+        viewModel.onIntent(GroupCashboxIntent.Undo("monthly-paid", "  "))
+
+        assertEquals(ChargeStatusCommand(ChargeStatus.Pending, note = null), organizer.lastCommand)
+    }
+
+    @Test
+    fun `undo failure keeps the charge settled and says it failed`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        organizer.updateResult = SaqzResult.Failure(FinanceError.Data(DataError.Connectivity))
+        val viewModel = viewModel(organizer = organizer)
+        val before = viewModel.state.value
+        viewModel.onIntent(GroupCashboxIntent.OpenUndo("monthly-paid"))
+
+        viewModel.onIntent(GroupCashboxIntent.Undo("monthly-paid"))
+
+        val failed = viewModel.state.value
+        assertTrue(failed.undoFailed)
+        assertEquals(before.settled, failed.settled)
+        assertNull(failed.updatingChargeId)
+        assertNull(failed.undoSheetChargeId)
+        assertEquals(1, organizer.chargeReads)
+    }
+
+    @Test
+    fun `undo with an old version reloads the charges for the next try`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        organizer.updateResult = SaqzResult.Failure(FinanceError.Conflict)
+        val viewModel = viewModel(organizer = organizer)
+
+        viewModel.onIntent(GroupCashboxIntent.Undo("monthly-paid"))
+
+        assertTrue(viewModel.state.value.undoFailed)
+        assertEquals(2, organizer.chargeReads)
+    }
+
+    @Test
+    fun `double tap on undo sends one write while the first is in flight`() = runTest {
+        val reply = CompletableDeferred<Unit>()
+        val organizer = FakeOrganizerFinanceGateway()
+        organizer.beforeUpdate = { reply.await() }
+        val viewModel = viewModel(organizer = organizer)
+
+        viewModel.onIntent(GroupCashboxIntent.Undo("monthly-paid"))
+        viewModel.onIntent(GroupCashboxIntent.Undo("monthly-paid"))
+        viewModel.onIntent(GroupCashboxIntent.OpenUndo("monthly-paid"))
+        assertNull(viewModel.state.value.undoSheetChargeId)
+        reply.complete(Unit)
+
+        assertEquals(1, organizer.updateCalls)
+    }
+
+    @Test
+    fun `undo of a charge that is not settled does nothing`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        val viewModel = viewModel(organizer = organizer)
+        val before = viewModel.state.value
+
+        viewModel.onIntent(GroupCashboxIntent.Undo("monthly-pending"))
+
+        assertEquals(before, viewModel.state.value)
+        assertEquals(0, organizer.updateCalls)
+    }
+
+    @Test
     fun `resolving an unlisted charge does nothing`() = runTest {
         val organizer = FakeOrganizerFinanceGateway()
         val viewModel = viewModel(organizer = organizer)
@@ -619,7 +738,12 @@ class GroupCashboxViewModelTest {
             VersionedCharge(defaultCharges.first(), FinanceVersionToken("\"4\"")),
         )
 
-        override suspend fun charges(groupId: GroupId) = chargesResult
+        var chargeReads = 0
+
+        override suspend fun charges(groupId: GroupId): SaqzResult<ChargeList, FinanceError> {
+            chargeReads++
+            return chargesResult
+        }
 
         override suspend fun resolveChargeReview(
             groupId: GroupId,

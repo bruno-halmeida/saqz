@@ -37,7 +37,7 @@
 
     <string name="sheet_waive_title">Dispensar cobrança</string>
     <string name="sheet_waive_amount">Valor que deixa de ser cobrado</string>
-    <string name="sheet_waive_note">Quem desistiu não paga esta diária. A pessoa não recebe aviso e não dá para desfazer.</string>
+    <string name="sheet_waive_note">Quem desistiu não paga esta diária. A pessoa não recebe aviso. Dá para desfazer depois.</string>
     <string name="sheet_waive_confirm">Dispensar</string>
     <string name="sheet_waive_cancel">Cancelar</string>
     <string name="sheet_review_title">Conferir cobrança</string>
@@ -46,4 +46,12 @@
     <string name="sheet_review_refund">Para registrar a devolução no caixa, lance uma Saída.</string>
     <string name="sheet_review_confirm">Marcar como resolvida</string>
     <string name="sheet_review_cancel">Agora não</string>
+    <string name="sheet_undo_title">Desfazer baixa</string>
+    <string name="sheet_undo_amount">Valor da cobrança</string>
+    <string name="sheet_undo_note_received">A cobrança volta a pendente e o valor sai do caixa. A pessoa não recebe aviso.</string>
+    <string name="sheet_undo_note_waived">A cobrança volta a pendente. A pessoa não recebe aviso.</string>
+    <string name="sheet_undo_reason">Motivo (opcional)</string>
+    <string name="sheet_undo_reason_short">Use pelo menos 2 letras.</string>
+    <string name="sheet_undo_confirm">Desfazer</string>
+    <string name="sheet_undo_cancel">Agora não</string>
 </resources>

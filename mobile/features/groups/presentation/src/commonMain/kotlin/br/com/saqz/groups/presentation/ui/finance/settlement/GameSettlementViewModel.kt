@@ -72,6 +72,9 @@ class GameSettlementViewModel(
             is GameSettlementIntent.OpenReview -> openReviewSheet(intent.chargeId)
             is GameSettlementIntent.ResolveReview -> resolveReview(intent.chargeId)
             GameSettlementIntent.DismissReviewSheet -> update { it.copy(reviewSheetChargeId = null) }
+            is GameSettlementIntent.OpenUndo -> openUndoSheet(intent.chargeId)
+            is GameSettlementIntent.Undo -> undo(intent.chargeId, intent.note)
+            GameSettlementIntent.DismissUndoSheet -> update { it.copy(undoSheetChargeId = null) }
             GameSettlementIntent.DismissChargeSheet -> update {
                 it.copy(chargeSheetOpen = false, chargeSheetChargeId = null)
             }
@@ -195,6 +198,62 @@ class GameSettlementViewModel(
         }
     }
 
+    private fun openUndoSheet(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null) return
+        if (current.diarists.none { it.chargeId == chargeId && it.canUndo }) return
+        update {
+            it.copy(
+                undoSheetChargeId = chargeId,
+                receiptSheetChargeId = null,
+                waiveSheetChargeId = null,
+                reviewSheetChargeId = null,
+                chargeSheetOpen = false,
+                chargeSheetChargeId = null,
+            )
+        }
+    }
+
+    /** Trava de toque duplo: com uma operação em curso (`updatingChargeId`) o segundo toque é ignorado. */
+    private fun undo(chargeId: String, note: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null) return
+        val diarist = current.diarists.firstOrNull { it.chargeId == chargeId && it.canUndo } ?: return
+        val generation = ++mutationGeneration
+        val loadAtStart = loadGeneration
+        val previous = current
+        update {
+            it.copy(
+                diarists = it.diarists.map { row ->
+                    if (row.chargeId == chargeId) row.copy(isUpdating = true) else row
+                },
+                updatingChargeId = chargeId,
+                undoSheetChargeId = null,
+                undoFailed = false,
+            )
+        }
+        viewModelScope.launch {
+            val result = organizerFinanceGateway.updateChargeStatus(
+                groupId = GroupId(groupId),
+                chargeId = diarist.chargeId,
+                version = FinanceVersionToken("\"${diarist.chargeVersion}\""),
+                command = ChargeStatusCommand(ChargeStatus.Pending, note = note.trim().ifEmpty { null }),
+            )
+            if (generation != mutationGeneration || loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    load()
+                    emit(GameSettlementEffect.MutationSucceeded)
+                }
+                is SaqzResult.Failure -> {
+                    update { previous.copy(undoFailed = true, updatingChargeId = null, undoSheetChargeId = null) }
+                    // Versão velha: recarrega por baixo para a próxima tentativa sair com a versão certa.
+                    if (result.error == FinanceError.Conflict) load(softRefresh = true)
+                }
+            }
+        }
+    }
+
     private suspend fun <T, E : SaqzError> requestOrFail(
         generation: Long,
         softRefresh: Boolean,
@@ -214,7 +273,7 @@ class GameSettlementViewModel(
 
     private fun GameSettlementState.interacting() =
         chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null ||
-            reviewSheetChargeId != null || updatingChargeId != null
+            reviewSheetChargeId != null || undoSheetChargeId != null || updatingChargeId != null
 
     /**
      * Volta à tela: recarga por baixo, sem esqueleto e sem tela de erro. Com carga em voo, folha
@@ -280,7 +339,11 @@ class GameSettlementViewModel(
                             PixUi(key, profile.pixLabel)
                         }
                     },
-                ).copy(reviewFailed = softRefresh && it.reviewFailed) // a recarga por baixo não apaga o aviso da revisão
+                ).copy(
+                    // a recarga por baixo não apaga os avisos da revisão e do desfazer
+                    reviewFailed = softRefresh && it.reviewFailed,
+                    undoFailed = softRefresh && it.undoFailed,
+                )
             }
         }
         job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
@@ -486,6 +549,7 @@ class GameSettlementViewModel(
             status = status,
             withdrew = withdrew && status == ChargeStatus.Pending,
             reviewRequired = reviewRequired,
+            canUndo = (status == ChargeStatus.Paid || status == ChargeStatus.Waived) && !electronicOrder,
             referenceLabel = if (guest != null) {
                 "Convidado $guest · jogo de ${formatDate(dueDate)}"
             } else {

@@ -39,6 +39,7 @@ import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReviewSheet
+import br.com.saqz.groups.presentation.ui.finance.sheets.UndoSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.WaiveSheet
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.PaidMethod
@@ -50,6 +51,8 @@ import br.com.saqz.groups.resources.game_settlement_debt_note
 import br.com.saqz.groups.resources.game_settlement_diarist_meta
 import br.com.saqz.groups.resources.game_settlement_diarists_empty
 import br.com.saqz.groups.resources.game_settlement_end
+import br.com.saqz.groups.resources.game_settlement_undo_action
+import br.com.saqz.groups.resources.game_settlement_undo_failure
 import br.com.saqz.groups.resources.game_settlement_end_helper
 import br.com.saqz.groups.resources.game_settlement_ended
 import br.com.saqz.groups.resources.game_settlement_header
@@ -92,12 +95,14 @@ internal object GameSettlementTags {
     const val Failure = "game-settlement-failure"
     const val WaiveFailure = "game-settlement-waive-failure"
     const val ReviewFailure = "game-settlement-review-failure"
+    const val UndoFailure = "game-settlement-undo-failure"
 
     fun receipt(chargeId: String) = "game-settlement-receipt-$chargeId"
     fun waive(chargeId: String) = "game-settlement-waive-$chargeId"
     fun withdrew(chargeId: String) = "game-settlement-withdrew-$chargeId"
     fun review(chargeId: String) = "game-settlement-review-$chargeId"
     fun reviewAction(chargeId: String) = "game-settlement-review-action-$chargeId"
+    fun undo(chargeId: String) = "game-settlement-undo-$chargeId"
     fun charge(chargeId: String) = "game-settlement-charge-$chargeId"
 }
 
@@ -113,6 +118,7 @@ internal fun GameSettlementScreen(
     val receiptDebtor = state.debtors.firstOrNull { it.chargeId == state.receiptSheetChargeId }
     val waiveDebtor = state.debtors.firstOrNull { it.chargeId == state.waiveSheetChargeId }
     val reviewDiarist = state.diarists.firstOrNull { it.chargeId == state.reviewSheetChargeId }
+    val undoDiarist = state.diarists.firstOrNull { it.chargeId == state.undoSheetChargeId }
     val chargeDebtors = state.debtors.filter {
         state.chargeSheetChargeId == null || it.chargeId == state.chargeSheetChargeId
     }
@@ -162,6 +168,16 @@ internal fun GameSettlementScreen(
             busy = state.updatingChargeId != null,
             onClose = { onIntent(GameSettlementIntent.DismissReviewSheet) },
             onConfirm = { reviewDiarist?.let { onIntent(GameSettlementIntent.ResolveReview(it.chargeId)) } },
+        )
+        UndoSheet(
+            open = state.undoSheetChargeId != null,
+            name = undoDiarist?.name,
+            referenceLabel = undoDiarist?.referenceLabel,
+            amountLabel = undoDiarist?.amountLabel,
+            received = undoDiarist?.status == ChargeStatus.Paid,
+            busy = state.updatingChargeId != null,
+            onClose = { onIntent(GameSettlementIntent.DismissUndoSheet) },
+            onConfirm = { note -> undoDiarist?.let { onIntent(GameSettlementIntent.Undo(it.chargeId, note)) } },
         )
     }
 }
@@ -215,6 +231,14 @@ private fun LoadedContent(state: GameSettlementState, onIntent: (GameSettlementI
                 style = SaqzTheme.typography.support,
                 color = SaqzTheme.colors.errorForeground,
                 modifier = Modifier.testTag(GameSettlementTags.ReviewFailure),
+            )
+        }
+        if (state.undoFailed) {
+            Text(
+                text = stringResource(Res.string.game_settlement_undo_failure),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.errorForeground,
+                modifier = Modifier.testTag(GameSettlementTags.UndoFailure),
             )
         }
         SaqzButton(
@@ -468,14 +492,33 @@ private fun DiaristRow(
                     )
                 }
             }
-            ChargeStatus.Paid -> SaqzStatusChip(
-                text = stringResource(Res.string.game_settlement_received_status),
-                tone = SaqzChipTone.Success,
-            )
-            ChargeStatus.Waived -> SaqzStatusChip(
-                text = stringResource(Res.string.game_settlement_waived_status),
-                tone = SaqzChipTone.Neutral,
-            )
+            ChargeStatus.Paid, ChargeStatus.Waived -> Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
+            ) {
+                if (diarist.status == ChargeStatus.Paid) {
+                    SaqzStatusChip(
+                        text = stringResource(Res.string.game_settlement_received_status),
+                        tone = SaqzChipTone.Success,
+                    )
+                } else {
+                    SaqzStatusChip(
+                        text = stringResource(Res.string.game_settlement_waived_status),
+                        tone = SaqzChipTone.Neutral,
+                    )
+                }
+                if (diarist.canUndo) {
+                    SaqzButton(
+                        label = stringResource(Res.string.game_settlement_undo_action),
+                        onClick = { onIntent(GameSettlementIntent.OpenUndo(diarist.chargeId)) },
+                        variant = SaqzButtonVariant.Secondary,
+                        size = SaqzButtonSize.Sm,
+                        loading = diarist.isUpdating,
+                        enabled = !diarist.isUpdating,
+                        modifier = Modifier.testTag(GameSettlementTags.undo(diarist.chargeId)),
+                    )
+                }
+            }
             ChargeStatus.Cancelled -> Unit
         }
     }

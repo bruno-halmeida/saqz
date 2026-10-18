@@ -585,6 +585,126 @@ class GameSettlementViewModelTest {
         assertEquals(0, finance.resolveCalls)
     }
 
+    @Test
+    fun `undo is offered only for received or waived charges without an electronic order`() = runTest {
+        val all = charges().map {
+            when (it.id) {
+                "game-paid" -> it.copy(electronicOrder = false)
+                "game-pending" -> it.copy(status = ChargeStatus.Waived)
+                else -> it
+            }
+        } + charges().first { it.id == "game-paid" }.copy(id = "game-electronic", electronicOrder = true)
+        val viewModel = viewModel(SettlementFinanceGateway(all, expenses()))
+
+        val rows = viewModel.state.value.diarists.associateBy { it.chargeId }
+        assertTrue(rows.getValue("game-paid").canUndo)
+        assertTrue(rows.getValue("game-pending").canUndo)
+        assertFalse(rows.getValue("game-electronic").canUndo)
+        viewModel.onIntent(GameSettlementIntent.OpenUndo("game-electronic"))
+        assertEquals(null, viewModel.state.value.undoSheetChargeId)
+        viewModel.onIntent(GameSettlementIntent.OpenUndo("game-paid"))
+        assertEquals("game-paid", viewModel.state.value.undoSheetChargeId)
+        viewModel.onIntent(GameSettlementIntent.DismissUndoSheet)
+        assertEquals(null, viewModel.state.value.undoSheetChargeId)
+    }
+
+    @Test
+    fun `undo of a pending charge does nothing`() = runTest {
+        val finance = SettlementFinanceGateway(charges(), expenses())
+        val viewModel = viewModel(finance)
+        val before = viewModel.state.value
+
+        viewModel.onIntent(GameSettlementIntent.OpenUndo("other-game"))
+        viewModel.onIntent(GameSettlementIntent.Undo("game-pending"))
+
+        assertEquals(before, viewModel.state.value)
+        assertEquals(0, finance.updateCalls)
+    }
+
+    @Test
+    fun `undo sends pending with the version and the trimmed note then reloads`() = runTest {
+        val finance = SettlementFinanceGateway(charges(), expenses())
+        val viewModel = viewModel(finance)
+        val effects = mutableListOf<GameSettlementEffect>()
+        backgroundScope.launch(dispatcher) { viewModel.effects.collect { effects += it } }
+        viewModel.onIntent(GameSettlementIntent.OpenUndo("game-paid"))
+
+        viewModel.onIntent(GameSettlementIntent.Undo("game-paid", "  Lancei errado  "))
+
+        assertEquals(FinanceVersionToken("\"1\""), finance.lastVersion)
+        assertEquals(ChargeStatusCommand(ChargeStatus.Pending, note = "Lancei errado"), finance.lastCommand)
+        assertEquals(2, finance.chargeReads)
+        val after = viewModel.state.value
+        val row = after.diarists.first { it.chargeId == "game-paid" }
+        assertEquals(ChargeStatus.Pending, row.status)
+        assertFalse(row.canUndo)
+        assertEquals(null, after.undoSheetChargeId)
+        assertEquals(null, after.updatingChargeId)
+        assertFalse(after.undoFailed)
+        assertEquals(listOf<GameSettlementEffect>(GameSettlementEffect.MutationSucceeded), effects)
+    }
+
+    @Test
+    fun `undo without a note sends no note`() = runTest {
+        val finance = SettlementFinanceGateway(charges(), expenses())
+        val viewModel = viewModel(finance)
+
+        viewModel.onIntent(GameSettlementIntent.Undo("game-paid", "   "))
+
+        assertEquals(ChargeStatusCommand(ChargeStatus.Pending, note = null), finance.lastCommand)
+    }
+
+    @Test
+    fun `undo failure keeps the charge and says so`() = runTest {
+        val finance = SettlementFinanceGateway(
+            charges = charges(),
+            expenses = expenses(),
+            updateResult = SaqzResult.Failure(FinanceError.Data(br.com.saqz.domain.DataError.Connectivity)),
+        )
+        val viewModel = viewModel(finance)
+        viewModel.onIntent(GameSettlementIntent.OpenUndo("game-paid"))
+
+        viewModel.onIntent(GameSettlementIntent.Undo("game-paid"))
+
+        val failed = viewModel.state.value
+        assertTrue(failed.undoFailed)
+        assertEquals(ChargeStatus.Paid, failed.diarists.first { it.chargeId == "game-paid" }.status)
+        assertEquals(null, failed.updatingChargeId)
+        assertEquals(null, failed.undoSheetChargeId)
+        assertEquals(1, finance.chargeReads)
+    }
+
+    @Test
+    fun `undo with an old version reloads the charges for the next try`() = runTest {
+        val finance = SettlementFinanceGateway(
+            charges = charges(),
+            expenses = expenses(),
+            updateResult = SaqzResult.Failure(FinanceError.Conflict),
+        )
+        val viewModel = viewModel(finance)
+
+        viewModel.onIntent(GameSettlementIntent.Undo("game-paid"))
+
+        assertTrue(viewModel.state.value.undoFailed)
+        assertEquals(2, finance.chargeReads)
+    }
+
+    @Test
+    fun `double tap on undo sends one write while the first is in flight`() = runTest {
+        val reply = CompletableDeferred<Unit>()
+        val finance = SettlementFinanceGateway(charges(), expenses())
+        finance.beforeUpdate = { reply.await() }
+        val viewModel = viewModel(finance)
+
+        viewModel.onIntent(GameSettlementIntent.Undo("game-paid"))
+        viewModel.onIntent(GameSettlementIntent.Undo("game-paid"))
+        viewModel.onIntent(GameSettlementIntent.OpenUndo("game-paid"))
+        assertEquals(null, viewModel.state.value.undoSheetChargeId)
+        reply.complete(Unit)
+
+        assertEquals(1, finance.updateCalls)
+    }
+
     private fun reviewCharges() = charges().map { if (it.id == "game-paid") it.copy(reviewRequired = true) else it }
 
     private fun viewModel(

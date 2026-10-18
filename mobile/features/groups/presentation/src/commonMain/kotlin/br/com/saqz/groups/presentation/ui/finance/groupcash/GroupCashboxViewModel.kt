@@ -62,6 +62,9 @@ class GroupCashboxViewModel(
             is GroupCashboxIntent.OpenReview -> openReviewSheet(intent.chargeId)
             is GroupCashboxIntent.ResolveReview -> resolveReview(intent.chargeId)
             GroupCashboxIntent.DismissReviewSheet -> update { it.copy(reviewSheetChargeId = null) }
+            is GroupCashboxIntent.OpenUndo -> openUndoSheet(intent.chargeId)
+            is GroupCashboxIntent.Undo -> undo(intent.chargeId, intent.note)
+            GroupCashboxIntent.DismissUndoSheet -> update { it.copy(undoSheetChargeId = null) }
             GroupCashboxIntent.DismissChargeSheet -> update {
                 it.copy(chargeSheetOpen = false, chargeSheetChargeId = null)
             }
@@ -175,9 +178,66 @@ class GroupCashboxViewModel(
         }
     }
 
+    private fun openUndoSheet(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null ||
+            current.settled.none { it.chargeId == chargeId }
+        ) return
+        update {
+            it.copy(
+                undoSheetChargeId = chargeId,
+                receiptSheetChargeId = null,
+                waiveSheetChargeId = null,
+                reviewSheetChargeId = null,
+                chargeSheetOpen = false,
+                chargeSheetChargeId = null,
+            )
+        }
+    }
+
+    /** Trava de toque duplo: com uma operação em curso (`updatingChargeId`) o segundo toque é ignorado. */
+    private fun undo(chargeId: String, note: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null) return
+        val settled = current.settled.firstOrNull { it.chargeId == chargeId } ?: return
+        val generation = ++receiptGeneration
+        val loadAtStart = loadGeneration
+        val previous = current
+        update {
+            it.copy(
+                settled = it.settled.map { row -> if (row.chargeId == chargeId) row.copy(isUpdating = true) else row },
+                updatingChargeId = chargeId,
+                undoSheetChargeId = null,
+                undoFailed = false,
+            )
+        }
+        viewModelScope.launch {
+            val result = organizerFinanceGateway.updateChargeStatus(
+                groupId = GroupId(groupId),
+                chargeId = settled.chargeId,
+                version = FinanceVersionToken("\"${settled.chargeVersion}\""),
+                command = ChargeStatusCommand(ChargeStatus.Pending, note = note.trim().ifEmpty { null }),
+            )
+            if (generation != receiptGeneration || loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    // O valor sai do caixa e a cobrança volta à lista de quem deve: recarrega por baixo.
+                    update { it.copy(updatingChargeId = null, undoFailed = false) }
+                    emit(GroupCashboxEffect.MutationSucceeded)
+                    load(softRefresh = true)
+                }
+                is SaqzResult.Failure -> {
+                    update { previous.copy(undoFailed = true, updatingChargeId = null, undoSheetChargeId = null) }
+                    // Versão velha: recarrega por baixo para a próxima tentativa sair com a versão certa.
+                    if (result.error == FinanceError.Conflict) load(softRefresh = true)
+                }
+            }
+        }
+    }
+
     private fun GroupCashboxState.interacting() =
         chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null ||
-            reviewSheetChargeId != null || updatingChargeId != null
+            reviewSheetChargeId != null || undoSheetChargeId != null || updatingChargeId != null
 
     /**
      * Volta à tela: recarga por baixo, sem esqueleto e sem tela de erro. Com carga em voo, folha
@@ -240,7 +300,11 @@ class GroupCashboxViewModel(
                     statement = statement,
                     pixKey = group.profile?.pixKey,
                     pixLabel = group.profile?.pixLabel,
-                ).copy(reviewFailed = softRefresh && it.reviewFailed) // a recarga por baixo não apaga o aviso da revisão
+                ).copy(
+                    // a recarga por baixo não apaga os avisos da revisão e do desfazer
+                    reviewFailed = softRefresh && it.reviewFailed,
+                    undoFailed = softRefresh && it.undoFailed,
+                )
             }
         }
         job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
@@ -377,6 +441,9 @@ class GroupCashboxViewModel(
             debtors = debtors,
             reviews = charges.filter { it.reviewRequired }
                 .map { it.toReview(memberNames[it.memberId] ?: "Membro") },
+            settled = monthly
+                .filter { (it.status == ChargeStatus.Paid || it.status == ChargeStatus.Waived) && !it.electronicOrder }
+                .map { it.toSettled(memberNames[it.memberId] ?: "Membro") },
             pix = pixKey?.trim()?.takeIf(String::isNotEmpty)?.let { PixUi(it, pixLabel) },
         )
     }
@@ -396,6 +463,15 @@ class GroupCashboxViewModel(
             ChargeKind.Game -> "Diarista · jogo de ${formatDate(dueDate)}"
             ChargeKind.Monthly -> "Mensalista · ${month?.let(::monthNameOnlyFromKey) ?: "mês"}"
         },
+    )
+
+    private fun Charge.toSettled(name: String) = SettledUi(
+        chargeId = id,
+        name = name,
+        referenceLabel = "Mensalista · ${month?.let(::monthNameOnlyFromKey) ?: "mês"}",
+        amountLabel = formatBrl(amountCents),
+        chargeVersion = version,
+        received = status == ChargeStatus.Paid,
     )
 
     private fun Charge.toReview(name: String) = ReviewUi(

@@ -7,6 +7,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.ui.finance.sheets.FinanceSheetsTags
@@ -125,7 +127,7 @@ class GroupCashboxScreenTest {
         setScreen(withdrewState.copy(waiveSheetChargeId = "charge-1"), intents::add)
 
         onNodeWithTag(FinanceSheetsTags.Waive).assertExists()
-        onNodeWithText("Quem desistiu não paga esta diária. A pessoa não recebe aviso e não dá para desfazer.").assertExists()
+        onNodeWithText("Quem desistiu não paga esta diária. A pessoa não recebe aviso. Dá para desfazer depois.").assertExists()
         onNodeWithTag(FinanceSheetsTags.WaiveConfirm).performClick()
 
         assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.Waive("charge-1")), intents)
@@ -181,6 +183,64 @@ class GroupCashboxScreenTest {
     }
 
     @Test
+    fun `settled monthlies are listed with an undo action`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(settled = listOf(settled, settled.copy(chargeId = "settled-2", received = false))), intents::add)
+
+        onNodeWithTag(GroupCashboxTags.Settled).performScrollTo().assertExists()
+        onNodeWithText("Mensalidades baixadas").assertExists()
+        onNodeWithText("Recebida").assertExists()
+        onNodeWithText("Dispensada").assertExists()
+        onNodeWithTag(GroupCashboxTags.undo("settled-1")).performScrollTo().assertIsEnabled().performClick()
+
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.OpenUndo("settled-1")), intents)
+    }
+
+    @Test
+    fun `no settled section without settled monthlies`() = runComposeUiTest {
+        setScreen(loadedState, {})
+
+        onNodeWithTag(GroupCashboxTags.Settled).assertDoesNotExist()
+    }
+
+    @Test
+    fun `undo confirmation says the money leaves the cashbox and sends the note`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(settled = listOf(settled), undoSheetChargeId = "settled-1"), intents::add)
+
+        onNodeWithTag(FinanceSheetsTags.Undo).assertExists()
+        onNodeWithText("A cobrança volta a pendente e o valor sai do caixa. A pessoa não recebe aviso.").assertExists()
+        onNode(hasSetTextAction(), useUnmergedTree = true).performTextInput("Lancei errado")
+        onNodeWithTag(FinanceSheetsTags.UndoConfirm).performClick()
+
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.Undo("settled-1", "Lancei errado")), intents)
+    }
+
+    @Test
+    fun `undo confirmation of a waived monthly does not talk about the cashbox`() = runComposeUiTest {
+        setScreen(loadedState.copy(settled = listOf(settled.copy(received = false)), undoSheetChargeId = "settled-1"), {})
+
+        onNodeWithText("A cobrança volta a pendente. A pessoa não recebe aviso.").assertExists()
+    }
+
+    @Test
+    fun `undo confirmation cannot be confirmed again while writing`() = runComposeUiTest {
+        setScreen(
+            loadedState.copy(settled = listOf(settled), undoSheetChargeId = "settled-1", updatingChargeId = "settled-1"),
+            {},
+        )
+
+        onNodeWithTag(FinanceSheetsTags.UndoConfirm).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `undo failure shows its own message`() = runComposeUiTest {
+        setScreen(loadedState.copy(undoFailed = true), {})
+
+        onNodeWithText("Não foi possível desfazer. Tente novamente.").performScrollTo().assertExists()
+    }
+
+    @Test
     fun `review failure shows its own message`() = runComposeUiTest {
         setScreen(loadedState.copy(reviewFailed = true), {})
 
@@ -199,6 +259,14 @@ class GroupCashboxScreenTest {
     private companion object {
         val withdrewState get() = loadedState.copy(
             debtors = loadedState.debtors.map { it.copy(withdrew = true) },
+        )
+        val settled = SettledUi(
+            chargeId = "settled-1",
+            name = "Bia",
+            referenceLabel = "Mensalista · agosto",
+            amountLabel = "R$\u00A070,00",
+            chargeVersion = 3L,
+            received = true,
         )
         val review = ReviewUi(
             chargeId = "review-1",

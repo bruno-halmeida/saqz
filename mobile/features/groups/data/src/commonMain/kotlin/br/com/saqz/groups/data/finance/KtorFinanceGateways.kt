@@ -50,6 +50,7 @@ internal data class ChargeTransport(
     val paidMethod: String? = null,
     val guestDisplayName: String? = null,
     val withdrew: Boolean = false,
+    val electronicOrder: Boolean = false,
 )
 
 @Serializable
@@ -443,6 +444,7 @@ private fun ChargeTransport.toDomain() = Charge(
     paidMethod.toPaidMethod(),
     guestDisplayName = guestDisplayName,
     withdrew = withdrew,
+    electronicOrder = electronicOrder,
 )
 
 private fun ChargeAuditTransport.toDomain() =

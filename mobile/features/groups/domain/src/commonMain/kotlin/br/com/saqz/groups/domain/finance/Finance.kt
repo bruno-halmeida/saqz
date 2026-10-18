@@ -77,6 +77,8 @@ data class Charge(
     val guestDisplayName: String? = null,
     /** A pessoa desistiu depois de confirmada e a cobrança segue pendente; o organizador decide. */
     val withdrew: Boolean = false,
+    /** Cobrança com ordem de pagamento eletrônica: a baixa veio do pagamento e não se desfaz à mão. */
+    val electronicOrder: Boolean = false,
 )
 
 data class ChargeTotals(

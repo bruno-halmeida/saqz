@@ -10,6 +10,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.finance.ChargeStatus
@@ -111,7 +113,7 @@ class GameSettlementScreenTest {
         setScreen(withdrewState.copy(waiveSheetChargeId = "pending-1"), intents::add)
 
         onNodeWithTag(FinanceSheetsTags.Waive).assertExists()
-        onNodeWithText("Quem desistiu não paga esta diária. A pessoa não recebe aviso e não dá para desfazer.").assertExists()
+        onNodeWithText("Quem desistiu não paga esta diária. A pessoa não recebe aviso. Dá para desfazer depois.").assertExists()
         onNodeWithTag(FinanceSheetsTags.WaiveConfirm).performClick()
 
         assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.Waive("pending-1")), intents)
@@ -158,6 +160,66 @@ class GameSettlementScreenTest {
         setScreen(reviewState.copy(reviewSheetChargeId = "paid-1", updatingChargeId = "paid-1"), intents::add)
 
         onNodeWithTag(FinanceSheetsTags.ReviewConfirm).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `received and waived charges offer undo and pending or locked ones do not`() = runComposeUiTest {
+        val intents = mutableListOf<GameSettlementIntent>()
+        setScreen(undoState, intents::add)
+
+        onNodeWithTag(GameSettlementTags.undo("paid-1")).performScrollTo().assertIsEnabled().performClick()
+        onNodeWithTag(GameSettlementTags.undo("waived-1")).assertExists()
+        onNodeWithTag(GameSettlementTags.undo("paid-electronic")).assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.undo("pending-1")).assertDoesNotExist()
+
+        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.OpenUndo("paid-1")), intents)
+    }
+
+    @Test
+    fun `undo confirmation of a received charge says the money leaves the cashbox and sends the note`() = runComposeUiTest {
+        val intents = mutableListOf<GameSettlementIntent>()
+        setScreen(undoState.copy(undoSheetChargeId = "paid-1"), intents::add)
+
+        onNodeWithTag(FinanceSheetsTags.Undo).assertExists()
+        onNodeWithText("A cobrança volta a pendente e o valor sai do caixa. A pessoa não recebe aviso.").assertExists()
+        onNode(hasSetTextAction(), useUnmergedTree = true).performTextInput("Lancei errado")
+        onNodeWithTag(FinanceSheetsTags.UndoConfirm).performClick()
+
+        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.Undo("paid-1", "Lancei errado")), intents)
+    }
+
+    @Test
+    fun `undo confirmation of a waived charge does not talk about the cashbox`() = runComposeUiTest {
+        val intents = mutableListOf<GameSettlementIntent>()
+        setScreen(undoState.copy(undoSheetChargeId = "waived-1"), intents::add)
+
+        onNodeWithText("A cobrança volta a pendente. A pessoa não recebe aviso.").assertExists()
+        onNodeWithTag(FinanceSheetsTags.UndoConfirm).performClick()
+
+        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.Undo("waived-1", "")), intents)
+    }
+
+    @Test
+    fun `undo confirmation is locked while writing and with a one letter reason`() = runComposeUiTest {
+        setScreen(undoState.copy(undoSheetChargeId = "paid-1", updatingChargeId = "paid-1"), {})
+        onNodeWithTag(FinanceSheetsTags.UndoConfirm).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `undo confirmation refuses a one letter reason`() = runComposeUiTest {
+        setScreen(undoState.copy(undoSheetChargeId = "paid-1"), {})
+
+        onNode(hasSetTextAction(), useUnmergedTree = true).performTextInput("x")
+
+        onNodeWithText("Use pelo menos 2 letras.").assertExists()
+        onNodeWithTag(FinanceSheetsTags.UndoConfirm).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `undo failure shows its own message`() = runComposeUiTest {
+        setScreen(undoState.copy(undoFailed = true), {})
+
+        onNodeWithText("Não foi possível desfazer. Tente novamente.").performScrollTo().assertExists()
     }
 
     @Test
@@ -220,6 +282,15 @@ class GameSettlementScreenTest {
             diarists = listOf(
                 diarist("paid-1", "Bia", ChargeStatus.Paid),
                 diarist("paid-2", "Caio", ChargeStatus.Paid),
+            ),
+        )
+
+        val undoState = summaryState.copy(
+            diarists = listOf(
+                diarist("paid-1", "Bia", ChargeStatus.Paid).copy(canUndo = true),
+                diarist("waived-1", "Caio", ChargeStatus.Waived).copy(canUndo = true),
+                diarist("paid-electronic", "Dani", ChargeStatus.Paid),
+                diarist("pending-1", "Edu", ChargeStatus.Pending),
             ),
         )
 
