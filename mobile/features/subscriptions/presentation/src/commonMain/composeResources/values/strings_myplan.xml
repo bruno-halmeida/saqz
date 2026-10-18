@@ -33,7 +33,7 @@
     <string name="myplan_manage_receipts_count">%1$d pagamentos</string>
     <string name="myplan_manage_receipts_count_one">%1$d pagamento</string>
     <string name="myplan_cancel_button">Cancelar assinatura</string>
-    <string name="myplan_cancel_helper">Se cancelar, seus grupos continuam visíveis por 30 dias e depois entram em modo leitura.</string>
+    <string name="myplan_cancel_helper">Se cancelar, no fim do período pago seus grupos ficam congelados: tudo continua visível, mas ninguém confirma presença nem marca jogo até o plano voltar.</string>
     <string name="myplan_cancel_sheet_title">Cancelar assinatura?</string>
     <string name="myplan_cancel_confirm">Cancelar plano</string>
     <string name="myplan_cancel_keep">Manter plano</string>
