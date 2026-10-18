@@ -45,6 +45,8 @@ class OrganizerTrialEndpointIntegrationTest {
     @Autowired private lateinit var mapper: ObjectMapper
     @Autowired private lateinit var clock: TrialClock
     @Autowired private lateinit var communication: br.com.saqz.groups.application.communication.GroupCommunicationService
+    @Autowired private lateinit var stalledRequests: br.com.saqz.groups.application.communication.RemindStalledEntryRequests
+    @Autowired private lateinit var settleWaitlist: br.com.saqz.groups.application.attendance.SettleWaitlistAtDeadline
     @Autowired private lateinit var monthlySchedule: br.com.saqz.groups.application.finance.charge.MonthlyChargeSchedule
     private val now = Instant.parse("2026-09-12T12:00:00Z")
     private lateinit var token: String
@@ -326,6 +328,43 @@ class OrganizerTrialEndpointIntegrationTest {
         communication.remindAutomatically()
         communication.announceOpenGames()
         assertEquals(listOf("GAME_OPEN", "REMINDER"), jdbc().sql("SELECT channel::text FROM group_messages WHERE group_id=:g AND channel IN ('REMINDER','GAME_OPEN') ORDER BY 1")
+            .param("g", group).query(String::class.java).list())
+    }
+
+    @Test
+    fun `expired trial group gets no stalled entry request reminder and no manual choice deadline notice`() {
+        val group = createGroup()
+        val guest = UUID.randomUUID()
+        jdbc().sql("""INSERT INTO access_users(id, firebase_subject, email_verified, display_name, phone, created_at, updated_at)
+            VALUES (:id, :id::text, true, 'Rafa', '+5511999999999', now(), now())""").param("id", guest).update()
+        jdbc().sql("INSERT INTO group_entry_requests(group_id, user_id, requested_at) VALUES (:g, :u, now() - interval '3 days')")
+            .param("g", group).param("u", guest).update()
+        jdbc().sql("UPDATE access_groups SET promotion_mode = 'MANUAL' WHERE id = :g").param("g", group).update()
+        val game = UUID.randomUUID()
+        jdbc().sql("""
+            INSERT INTO games(id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
+                confirmation_deadline, venue_name, venue_address, capacity, status, published_at, created_at, updated_at)
+            VALUES (:id, :g, 'Vôlei', current_date + 1, '19:00', 'America/Sao_Paulo',
+                now() + interval '1 day', 90, now() - interval '1 hour', 'Arena', 'Rua 100', 12, 'PUBLISHED', now() - interval '2 days', now(), now())
+        """).param("id", game).param("g", group).update()
+        jdbc().sql("""INSERT INTO game_attendance(game_id, group_id, member_user_id, status, waitlist_sequence, responded_at, updated_at, version, member_display_name)
+            VALUES (:game, :g, :u, CAST('WAITLISTED' AS attendance_status), 1, now(), now(), 1, 'Rafa')""").param("game", game).param("g", group).param("u", guest).update()
+        clock.now = now.plus(Duration.ofDays(14))
+        assertTrue(mapper.readTree(request("GET", "/api/groups/$group/trial").body())["readOnly"].booleanValue())
+
+        // O banco é compartilhado com os outros testes da classe: confere só as mensagens deste grupo.
+        stalledRequests.run()
+        settleWaitlist.run()
+        assertEquals(0, jdbc().sql("SELECT count(*)::int FROM group_messages WHERE group_id=:g AND channel IN ('ENTRY_REQUEST','WAITLIST_DEADLINE')")
+            .param("g", group).query(Int::class.java).single())
+
+        jdbc().sql("""INSERT INTO subscriptions (owner_user_id,plan,cycle,status,asaas_customer_id,asaas_subscription_id,current_period_end,first_confirmed_at,created_at,updated_at)
+            SELECT id,'ORGANIZADOR','MONTHLY','ACTIVE','customer',:sub,now()+interval '30 days',now(),now(),now() FROM access_users WHERE firebase_subject=:subject""")
+            .param("sub", UUID.randomUUID().toString()).param("subject", token).update()
+
+        stalledRequests.run()
+        settleWaitlist.run()
+        assertEquals(listOf("ENTRY_REQUEST", "WAITLIST_DEADLINE"), jdbc().sql("SELECT channel::text FROM group_messages WHERE group_id=:g AND channel IN ('ENTRY_REQUEST','WAITLIST_DEADLINE') ORDER BY 1")
             .param("g", group).query(String::class.java).list())
     }
 

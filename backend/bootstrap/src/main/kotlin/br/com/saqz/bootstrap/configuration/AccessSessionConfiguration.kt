@@ -925,6 +925,7 @@ class AccessSessionConfiguration {
         repository: JdbcAttendanceCommandRepository,
         charges: AttendanceChargeAdapter,
         communication: br.com.saqz.groups.adapter.output.jdbc.communication.JdbcGroupCommunicationRepository,
+        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
     ) = br.com.saqz.groups.application.attendance.SettleWaitlistAtDeadline(
         transaction,
         br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcDeadlineWaitlistRepository(dataSource),
@@ -937,6 +938,7 @@ class AccessSessionConfiguration {
             )
         },
         Instant::now,
+        writeAccess,
     ) { what, failure ->
         org.slf4j.LoggerFactory.getLogger(br.com.saqz.groups.application.attendance.SettleWaitlistAtDeadline::class.java)
             .warn("waitlist deadline settlement failed for {}", what, failure)
@@ -944,7 +946,8 @@ class AccessSessionConfiguration {
     @Bean fun remindStalledEntryRequests(
         transaction: JdbcTransactionRunner,
         onboardingNotices: br.com.saqz.groups.adapter.output.jdbc.communication.JdbcOnboardingNotices,
-    ) = br.com.saqz.groups.application.communication.RemindStalledEntryRequests(transaction, onboardingNotices) { request, failure ->
+        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
+    ) = br.com.saqz.groups.application.communication.RemindStalledEntryRequests(transaction, onboardingNotices, writeAccess) { request, failure ->
         org.slf4j.LoggerFactory.getLogger(br.com.saqz.groups.application.communication.RemindStalledEntryRequests::class.java)
             .warn("entry request reminder failed for group {} user {}", request.groupId, request.userId, failure)
     }

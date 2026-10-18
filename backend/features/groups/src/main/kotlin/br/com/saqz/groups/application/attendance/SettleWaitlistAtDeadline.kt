@@ -8,6 +8,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceSource
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.sharedkernel.job.JobLog
+import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 import java.time.Instant
 import java.util.UUID
 
@@ -35,7 +36,8 @@ fun interface WaitlistDeadlineNotice {
 /**
  * Prazo de confirmação vencido: a prioridade de mensalista acaba e a fila entra nas vagas que sobraram.
  * Em ORDEM DE CHEGADA o sistema promove (origem SYSTEM, o dono assina) enquanto houver vaga; em ESCOLHA
- * MANUAL só avisa dono e admins uma vez e deixa a escolha com eles. Idempotente pelo estado: sem fila
+ * MANUAL só avisa dono e admins uma vez e deixa a escolha com eles — menos em grupo congelado (DEB-074), onde
+ * o aviso pede uma ação que o grupo recusa; a ordem de chegada segue promovendo. Idempotente pelo estado: sem fila
  * ou sem vaga não há candidato, e o aviso manual é único por jogo (índice em group_messages).
  * Decisão de 09/10/2026 (tests/multi-aparelhos/rodada-2026-10-09.md, achado 1).
  */
@@ -46,6 +48,7 @@ class SettleWaitlistAtDeadline(
     private val charges: AttendanceChargePort,
     private val notice: WaitlistDeadlineNotice,
     private val now: () -> Instant,
+    private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
     private val ids: () -> UUID = UUID::randomUUID,
     private val onFailure: (String, Throwable) -> Unit = { _, _ -> },
 ) {
@@ -80,6 +83,7 @@ class SettleWaitlistAtDeadline(
         when (aggregate.promotionMode) {
             PromotionMode.FIFO -> Settled(promotedMemberIds = promote(aggregate, spots, timestamp))
             PromotionMode.MANUAL -> {
+                if (!writeAccess.canWrite(candidate.groupId)) return@inTransaction Settled()
                 notice.publish(candidate, waitlistDeadlineBody(candidate.game, candidate.waitlisted, spots))
                 Settled(noticed = true)
             }

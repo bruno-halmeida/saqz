@@ -54,6 +54,39 @@ class SettleWaitlistAtDeadlineTest {
         assertTrue(notices.isEmpty())
     }
 
+    private fun frozenService() = SettleWaitlistAtDeadline(
+        object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() },
+        { candidates },
+        repository,
+        { _, _ -> },
+        { candidate, body -> notices += candidate to body },
+        { NOW },
+        writeAccess = { false },
+    )
+
+    @Test fun `grupo congelado em escolha manual não recebe o aviso de prazo vencido`() {
+        repository.promotionMode = PromotionMode.MANUAL
+        repository.capacity = 4
+        repository.record(UUID.randomUUID(), AttendanceStatus.CONFIRMED)
+        repository.record(first, AttendanceStatus.WAITLISTED, 1)
+        candidates = listOf(candidate(waitlisted = 1, confirmed = 1))
+
+        assertEquals(0, frozenService().run())
+
+        assertTrue(notices.isEmpty())
+        assertTrue(repository.events.isEmpty())
+    }
+
+    @Test fun `grupo congelado em ordem de chegada segue promovendo`() {
+        repository.capacity = 3
+        repository.record(UUID.randomUUID(), AttendanceStatus.CONFIRMED)
+        repository.record(first, AttendanceStatus.WAITLISTED, 1)
+
+        assertEquals(1, frozenService().run())
+
+        assertEquals(AttendanceStatus.CONFIRMED, repository.status(first))
+    }
+
     @Test fun `escolha manual avisa o gestor com fila e vagas e não promove ninguém`() {
         repository.promotionMode = PromotionMode.MANUAL
         repository.capacity = 4

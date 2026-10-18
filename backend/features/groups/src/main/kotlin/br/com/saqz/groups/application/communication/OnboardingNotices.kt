@@ -47,9 +47,11 @@ interface StalledEntryRequestReminders {
 class RemindStalledEntryRequests(
     private val transaction: br.com.saqz.groups.application.create.TransactionRunner,
     private val reminders: StalledEntryRequestReminders,
+    /** Grupo congelado não recebe (DEB-074): aprovar ou recusar o pedido é barrado nele. */
+    private val writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess = br.com.saqz.sharedkernel.subscription.GroupWriteAccess.Unrestricted,
     private val onFailure: (StalledEntryRequest, Exception) -> Unit = { _, _ -> },
 ) {
-    fun run(): Int = reminders.stalled().count { request ->
+    fun run(): Int = reminders.stalled().filter { writeAccess.canWrite(it.groupId) }.count { request ->
         try {
             transaction.inTransaction { reminders.remind(request) }
         } catch (@Suppress("TooGenericExceptionCaught") failure: Exception) {

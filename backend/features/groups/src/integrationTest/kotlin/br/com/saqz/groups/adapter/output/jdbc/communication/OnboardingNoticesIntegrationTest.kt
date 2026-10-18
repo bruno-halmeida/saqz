@@ -324,6 +324,19 @@ class OnboardingNoticesIntegrationTest {
         assertEquals(1, count("ENTRY_REQUEST"))
     }
 
+    @Test fun `grupo congelado nao recebe segundo aviso`() {
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa")
+        redeem.execute(rafa, code.value)
+        ageRequest(rafa, "3 days")
+
+        assertEquals(0, RemindStalledEntryRequests(transaction, notices, { it != group }).run())
+        assertEquals(1, count("ENTRY_REQUEST"))
+
+        assertEquals(1, reminders.run())
+        assertEquals(2, count("ENTRY_REQUEST"))
+    }
+
     @Test fun `grupo excluido nao recebe segundo aviso`() {
         jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
         val rafa = user("Rafa")

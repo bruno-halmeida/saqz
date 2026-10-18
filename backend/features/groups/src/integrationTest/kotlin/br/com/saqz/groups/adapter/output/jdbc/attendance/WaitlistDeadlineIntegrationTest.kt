@@ -75,6 +75,30 @@ class WaitlistDeadlineIntegrationTest {
         assertEquals(0, notices(confirmed))
     }
 
+    @Test fun `grupo congelado em escolha manual não recebe o aviso de prazo vencido`() {
+        jdbc.sql("UPDATE access_groups SET promotion_mode = 'MANUAL' WHERE id = :g").param("g", group).update()
+        val game = game(deadlineInMinutes = -5, capacity = 2)
+        answer(game, first, "WAITLISTED", 1)
+        val frozen = SettleWaitlistAtDeadline(
+            transaction, JdbcDeadlineWaitlistRepository(source),
+            JdbcAttendanceCommandRepository(source, br.com.saqz.groups.adapter.output.jdbc.communication.JdbcAttendanceChangeNotice(source)),
+            AttendanceChargeAdapter(ChargeTransactions(transaction, JdbcChargeTransactionRepository(source)) { Instant.now() }),
+            { candidate, body ->
+                communication.publish(candidate.groupId, candidate.ownerId, MessageChannel.WAITLIST_DEADLINE, UUID.randomUUID(), body, candidate.gameId)
+            },
+            Instant::now,
+            writeAccess = { false },
+        )
+
+        assertEquals(0, frozen.run())
+
+        assertEquals(0, jdbc.sql("SELECT count(*) FROM group_messages WHERE game_id = :g AND channel = 'WAITLIST_DEADLINE'")
+            .param("g", game).query(Int::class.java).single())
+        assertEquals("WAITLISTED", status(game, first))
+        // Com plano de novo, o mesmo jogo ainda recebe o aviso (nada ficou gravado como já avisado).
+        assertEquals(1, service.run())
+    }
+
     @Test fun `escolha manual avisa só dono e admins, uma vez por jogo`() {
         jdbc.sql("UPDATE access_groups SET promotion_mode = 'MANUAL' WHERE id = :g").param("g", group).update()
         val game = game(deadlineInMinutes = -5, capacity = 2)

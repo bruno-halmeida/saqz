@@ -28,6 +28,20 @@ class RemindStalledEntryRequestsTest {
         assertEquals(listOf(broken), failed)
     }
 
+    @Test fun `grupo congelado não recebe o segundo aviso, os outros seguem`() {
+        val frozen = request("Rafa")
+        val paid = request("Bia")
+        val reminded = mutableListOf<StalledEntryRequest>()
+        val reminders = object : StalledEntryRequestReminders {
+            override fun stalled() = listOf(frozen, paid)
+            override fun remind(request: StalledEntryRequest) = true.also { reminded += request }
+        }
+
+        assertEquals(1, RemindStalledEntryRequests(passThrough, reminders, { it != frozen.groupId }).run())
+
+        assertEquals(listOf(paid), reminded)
+    }
+
     @Test fun `texto do segundo aviso`() {
         assertEquals("Rafa ainda espera sua resposta para entrar no QA Vôlei. Abra o app para aprovar ou recusar.", entryRequestReminderBody("Rafa", "QA Vôlei"))
     }
