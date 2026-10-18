@@ -47,6 +47,19 @@ class JdbcProfileStatsRepositoryIntegrationTest {
     }
 
     @Test
+    fun `rate ignores declined games that are future, published, draft or cancelled`() {
+        val fixture = fixture()
+        attendance(fixture, game(fixture.group, "2026-07-10 22:00:00Z"), "CONFIRMED")
+        attendance(fixture, game(fixture.group, "2026-07-11 22:00:00Z"), "DECLINED")
+        attendance(fixture, game(fixture.group, "2026-07-12 22:00:00Z", status = "PUBLISHED"), "DECLINED")
+        attendance(fixture, game(fixture.group, "2026-07-13 22:00:00Z", status = "DRAFT"), "DECLINED")
+        attendance(fixture, game(fixture.group, "2026-07-14 22:00:00Z", status = "CANCELLED"), "DECLINED")
+        attendance(fixture, game(fixture.group, "2026-08-05 22:00:00Z", status = "PUBLISHED"), "DECLINED")
+
+        assertEquals(ProfileStats(1, 50, 1), stats.execute(fixture.member))
+    }
+
+    @Test
     fun `does not count games before membership creation`() {
         val fixture = fixture(joinedAt = "2026-07-15 00:00:00Z")
         val beforeJoining = game(fixture.group, "2026-07-14 22:00:00Z")

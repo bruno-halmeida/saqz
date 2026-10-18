@@ -66,6 +66,25 @@ class JdbcAthleteStatsRepositoryIntegrationTest {
     }
 
     @Test
+    fun `rate and absences look only at completed games, not future, published, draft or cancelled`() {
+        val owner = insertUser("stats-rate-owner", "Owner Person")
+        val group = insertGroup(owner)
+        val member = insertUser("stats-rate-member", "Member Person")
+        insertMembership(group, member)
+        val completedConfirmed = insertGame(group, startOffsetMinutes = 0, status = "COMPLETED")
+        val completedDeclined = insertGame(group, startOffsetMinutes = 60, status = "COMPLETED")
+        val future = insertGame(group, startOffsetMinutes = 60 * 24 * 30, status = "PUBLISHED")
+        val published = insertGame(group, startOffsetMinutes = 120, status = "PUBLISHED")
+        val draft = insertGame(group, startOffsetMinutes = 180, status = "DRAFT")
+        val cancelled = insertGame(group, startOffsetMinutes = 240, status = "CANCELLED")
+        insertAttendance(completedConfirmed, group, member, "CONFIRMED")
+        insertAttendance(completedDeclined, group, member, "DECLINED")
+        listOf(future, published, draft, cancelled).forEach { insertAttendance(it, group, member, "DECLINED") }
+
+        assertEquals(AthleteStatsAggregate(1, 2, 1), repository.find(group, member))
+    }
+
+    @Test
     fun `stats return null for a user without a membership in the group`() {
         val owner = insertUser("stats-missing-owner", "Owner Person")
         val group = insertGroup(owner)

@@ -9,8 +9,8 @@ import javax.sql.DataSource
 class JdbcAthleteStatsRepository(dataSource: DataSource) : AthleteStatsRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
-    // `games` vem da view member_played_games (JOGO-006: encerrado e confirmado); WAITLISTED
-    // fica fora do denominador da taxa e DECLINED é a contagem de faltas.
+    // Só jogo encerrado (COMPLETED) entra. `games` vem da view member_played_games (JOGO-006);
+    // WAITLISTED fica fora do denominador da taxa e DECLINED ("Não vou") é a contagem de faltas.
     override fun find(groupId: UUID, userId: UUID): AthleteStatsAggregate? = jdbc.sql(
         """
         SELECT
@@ -25,6 +25,12 @@ class JdbcAthleteStatsRepository(dataSource: DataSource) : AthleteStatsRepositor
             ON attendance.group_id = membership.group_id
             AND attendance.member_user_id = membership.user_id
             AND attendance.guest_seq = 0
+            AND EXISTS (
+                SELECT 1 FROM games
+                WHERE games.id = attendance.game_id
+                  AND games.group_id = attendance.group_id
+                  AND games.status = 'COMPLETED'
+            )
         WHERE membership.group_id = :groupId
           AND membership.user_id = :userId
         GROUP BY membership.group_id, membership.user_id
