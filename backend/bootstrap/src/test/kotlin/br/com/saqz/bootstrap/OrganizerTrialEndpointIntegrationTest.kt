@@ -44,6 +44,7 @@ class OrganizerTrialEndpointIntegrationTest {
     @Autowired private lateinit var ds: DataSource
     @Autowired private lateinit var mapper: ObjectMapper
     @Autowired private lateinit var clock: TrialClock
+    @Autowired private lateinit var communication: br.com.saqz.groups.application.communication.GroupCommunicationService
     @Autowired private lateinit var monthlySchedule: br.com.saqz.groups.application.finance.charge.MonthlyChargeSchedule
     private val now = Instant.parse("2026-09-12T12:00:00Z")
     private lateinit var token: String
@@ -296,6 +297,36 @@ class OrganizerTrialEndpointIntegrationTest {
         }
         assertEquals(1L, jdbc().sql("SELECT version FROM access_groups WHERE id=:group").param("group", group).query(Long::class.java).single())
         assertEquals(0, jdbc().sql("SELECT count(*)::int FROM games WHERE group_id=:group").param("group", group).query(Int::class.java).single())
+    }
+
+    @Test
+    fun `expired trial group gets no automatic reminder or open game notice while a subscribed owner does`() {
+        val group = createGroup()
+        val game = UUID.randomUUID()
+        jdbc().sql("""
+            INSERT INTO games(id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
+                confirmation_deadline, venue_name, venue_address, capacity, status, published_at, created_at, updated_at)
+            VALUES (:id, :g, 'Vôlei', current_date + 2, '19:00', 'America/Sao_Paulo',
+                now() + interval '2 days', 90, now() + interval '1 day', 'Arena', 'Rua 100', 12, 'PUBLISHED', now(), now(), now())
+        """).param("id", game).param("g", group).update()
+        clock.now = now.plus(Duration.ofDays(14))
+        assertTrue(mapper.readTree(request("GET", "/api/groups/$group/trial").body())["readOnly"].booleanValue())
+
+        // O banco é compartilhado com os outros testes da classe: confere só as mensagens deste grupo.
+        communication.remindAutomatically()
+        communication.announceOpenGames()
+        assertFalse(communication.announceOpenGame(group, game))
+        assertEquals(0, jdbc().sql("SELECT count(*)::int FROM group_messages WHERE group_id=:g AND channel IN ('REMINDER','GAME_OPEN')")
+            .param("g", group).query(Int::class.java).single())
+
+        jdbc().sql("""INSERT INTO subscriptions (owner_user_id,plan,cycle,status,asaas_customer_id,asaas_subscription_id,current_period_end,first_confirmed_at,created_at,updated_at)
+            SELECT id,'ORGANIZADOR','MONTHLY','ACTIVE','customer',:sub,now()+interval '30 days',now(),now(),now() FROM access_users WHERE firebase_subject=:subject""")
+            .param("sub", UUID.randomUUID().toString()).param("subject", token).update()
+
+        communication.remindAutomatically()
+        communication.announceOpenGames()
+        assertEquals(listOf("GAME_OPEN", "REMINDER"), jdbc().sql("SELECT channel::text FROM group_messages WHERE group_id=:g AND channel IN ('REMINDER','GAME_OPEN') ORDER BY 1")
+            .param("g", group).query(String::class.java).list())
     }
 
     @Test

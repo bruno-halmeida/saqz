@@ -216,6 +216,36 @@ class GroupCommunicationServiceTest {
         assertEquals(0, GroupCommunicationService(transaction, groups, MemoryCommunicationRepository()).announceOpenGames())
     }
 
+    @Test fun `grupo congelado não recebe lembrete automático, e os outros grupos seguem`() {
+        val frozen = candidate(groupId = group, ownerId = owner)
+        val paid = candidate(groupId = UUID.randomUUID(), ownerId = UUID.randomUUID())
+        repository.reminders = listOf(frozen, paid)
+
+        assertEquals(1, GroupCommunicationService(transaction, groups, repository) { it != group }.remindAutomatically())
+
+        assertEquals(listOf(paid.groupId), repository.published.map { it.groupId })
+        assertEquals(listOf(MessageChannel.REMINDER), repository.published.map { it.channel })
+    }
+
+    @Test fun `grupo congelado não recebe o jogo liberado das 14h`() {
+        val frozen = candidate(groupId = group, ownerId = owner)
+        val paid = candidate(groupId = UUID.randomUUID(), ownerId = UUID.randomUUID())
+        repository.openGames = listOf(frozen, paid)
+
+        assertEquals(1, GroupCommunicationService(transaction, groups, repository) { it != group }.announceOpenGames())
+
+        assertEquals(listOf(paid.groupId), repository.published.map { it.groupId })
+    }
+
+    @Test fun `grupo congelado não recebe o jogo liberado na publicação`() {
+        val next = candidate(groupId = group, ownerId = owner)
+        repository.single = next
+
+        assertFalse(GroupCommunicationService(transaction, groups, repository) { false }.announceOpenGame(group, next.gameId))
+        assertTrue(repository.published.isEmpty())
+        assertTrue(GroupCommunicationService(transaction, groups, repository) { true }.announceOpenGame(group, next.gameId))
+    }
+
     @Test fun `publicar o próximo jogo avisa na hora, outro jogo não`() {
         val next = candidate(groupId = group, ownerId = owner)
         repository.single = next

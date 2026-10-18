@@ -21,8 +21,9 @@ class GroupCommunicationConfiguration {
     @Bean fun chargeReminderController(actors: VerifiedGroupActorResolver, service: br.com.saqz.groups.application.communication.ChargeReminderService) =
         br.com.saqz.groups.adapter.input.http.ChargeReminderController(actors, service)
     @Bean fun groupCommunicationRepository(dataSource: DataSource) = JdbcGroupCommunicationRepository(dataSource)
-    @Bean fun groupCommunicationService(transaction: JdbcTransactionRunner, groups: JdbcGroupReadRepository, repository: JdbcGroupCommunicationRepository) =
-        GroupCommunicationService(transaction, groups, repository)
+    @Bean fun groupCommunicationService(transaction: JdbcTransactionRunner, groups: JdbcGroupReadRepository, repository: JdbcGroupCommunicationRepository,
+        writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess) =
+        GroupCommunicationService(transaction, groups, repository, writeAccess)
     @Bean fun groupCommunicationController(actors: VerifiedGroupActorResolver, service: GroupCommunicationService) =
         GroupCommunicationController(actors, service)
 }

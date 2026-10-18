@@ -6,6 +6,7 @@ import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.sharedkernel.job.JobLog
 import br.com.saqz.sharedkernel.moderation.ObjectionableText
+import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -15,6 +16,8 @@ class GroupCommunicationService(
     private val transaction: TransactionRunner,
     private val groups: GroupReadRepository,
     private val repository: GroupCommunicationRepository,
+    /** Mesmo critério das escritas: grupo congelado (dono sem plano ativo) não recebe comunicação automática (DEB-074). */
+    private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
 ) {
     fun messages(actor: UUID, groupId: UUID, channel: MessageChannel, before: Long?): CommunicationResult<CommunicationPage<GroupMessage>> =
         inGroup(actor, groupId) {
@@ -58,10 +61,11 @@ class GroupCommunicationService(
      * jogo publicado até o início — inclusive depois do prazo, para a lista final chegar ao grupo.
      * Agenda recorrente deixa vários jogos abertos ao mesmo tempo e o grupo não quer um lembrete por
      * jogo. O autor é o dono do grupo, então ele fica fora dos destinatários da notificação;
-     * cada execução cria mensagem nova.
+     * cada execução cria mensagem nova. Grupo congelado não recebe (DEB-074): o atleta não consegue confirmar, e o
+     * lembrete, que também vai ao grupo do WhatsApp com o botão "Vou", manda confirmar.
      */
     fun remindAutomatically(): Int = logPublished("attendance_reminder", "reminder_published", transaction.inTransaction {
-        repository.reminderCandidates().map { candidate ->
+        repository.reminderCandidates().filter { writeAccess.canWrite(it.groupId) }.map { candidate ->
             repository.publish(
                 candidate.groupId, candidate.ownerId, MessageChannel.REMINDER, UUID.randomUUID(),
                 reminderBody(candidate.game, repository.reminderRoster(candidate.groupId, candidate.gameId), Instant.now()),
@@ -75,10 +79,10 @@ class GroupCommunicationService(
      * publicado de cada grupo, com prazo e início no futuro. O dono assina o aviso, mas como ele
      * é do sistema também o recebe. O primeiro aviso de cada jogo vai para o grupo inteiro —
      * inclusive o mensalista que já nasce confirmado; os seguintes tocam só quem não respondeu.
-     * GAME_OPEN nunca vira WhatsApp: é push e central.
+     * GAME_OPEN nunca vira WhatsApp: é push e central. Grupo congelado não recebe (DEB-074).
      */
     fun announceOpenGames(): Int = logPublished("game_open", "game_open_published", transaction.inTransaction {
-        repository.openGameCandidates().map { candidate ->
+        repository.openGameCandidates().filter { writeAccess.canWrite(it.groupId) }.map { candidate ->
             repository.publish(
                 candidate.groupId, candidate.ownerId, MessageChannel.GAME_OPEN, UUID.randomUUID(),
                 openGameBody(candidate.game), candidate.gameId,
@@ -90,10 +94,10 @@ class GroupCommunicationService(
      * Aviso de jogo liberado na hora da publicação, sem esperar o cron das 14h — só quando o jogo
      * publicado é o próximo aberto do grupo (a regra do [announceOpenGames]). Roda dentro da
      * transação da publicação, depois do auto-confirm; como é o primeiro aviso do jogo, alcança o
-     * grupo inteiro.
+     * grupo inteiro. Grupo congelado não recebe (DEB-074); publicar nele já é barrado, então aqui é só defesa.
      */
     fun announceOpenGame(groupId: UUID, gameId: UUID): Boolean = transaction.inTransaction {
-        val candidate = repository.reminderCandidate(groupId)?.takeIf { it.gameId == gameId }
+        val candidate = repository.reminderCandidate(groupId)?.takeIf { it.gameId == gameId && writeAccess.canWrite(groupId) }
             ?: return@inTransaction false
         repository.publish(
             candidate.groupId, candidate.ownerId, MessageChannel.GAME_OPEN, UUID.randomUUID(),
