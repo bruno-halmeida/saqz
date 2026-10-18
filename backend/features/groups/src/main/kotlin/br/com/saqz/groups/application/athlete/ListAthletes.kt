@@ -30,7 +30,12 @@ class ListAthletes(
         return when (accessPolicy.authorize(role, GroupAction.READ_GROUP)) {
             GroupAccessDecision.GroupNotFound -> ListAthletesResult.GroupNotFound
             GroupAccessDecision.Forbidden -> ListAthletesResult.AccessForbidden
-            GroupAccessDecision.Allowed -> ListAthletesSuccess(rosterRepository.list(actor, groupId, filter), role)
+            GroupAccessDecision.Allowed -> {
+                // Quem já saiu só aparece para dono e admin (MEM-002). Para atleta o filtro é ignorado, e não
+                // recusado: o app das lojas o manda nas telas de perfil e de edição de membro.
+                val effective = if (role == GroupRole.ATHLETE) filter.copy(includeInactive = false) else filter
+                ListAthletesSuccess(rosterRepository.list(actor, groupId, effective), role)
+            }
         }
     }
 }

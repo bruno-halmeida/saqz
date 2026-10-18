@@ -38,6 +38,29 @@ class ListAthletesTest {
     }
 
     @Test
+    fun `athlete asking for inactive members is served the active ones only`() {
+        val roster = RecordingRosterRepository(listOf(entry))
+
+        val result = useCase(GroupRole.ATHLETE, roster)
+            .execute(actor, groupId, AthleteRosterFilter(search = "member", includeInactive = true))
+
+        assertEquals(ListAthletesSuccess(listOf(entry), GroupRole.ATHLETE), result)
+        assertEquals(AthleteRosterFilter(search = "member", includeInactive = false), roster.lastFilter)
+    }
+
+    @Test
+    fun `owner and admin keep the inactive filter`() {
+        listOf(GroupRole.OWNER, GroupRole.ADMIN).forEach { role ->
+            val filter = AthleteRosterFilter(includeInactive = true)
+            val roster = RecordingRosterRepository(listOf(entry))
+
+            useCase(role, roster).execute(actor, groupId, filter)
+
+            assertEquals(filter, roster.lastFilter)
+        }
+    }
+
+    @Test
     fun `nonmember is hidden as not found when the group exists`() {
         val roster = RecordingRosterRepository(listOf(entry))
 

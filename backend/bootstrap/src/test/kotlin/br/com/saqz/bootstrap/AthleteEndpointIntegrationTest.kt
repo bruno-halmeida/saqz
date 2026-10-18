@@ -176,6 +176,28 @@ class AthleteEndpointIntegrationTest {
     }
 
     @Test
+    fun `athlete asking for inactive members gets the roster without them and no refusal`() {
+        read.role = GroupRole.ATHLETE
+
+        val response = send(get("/api/groups/$groupId/athletes?includeInactive=true"))
+
+        assertEquals(200, response.statusCode())
+        assertFalse(roster.lastFilter!!.includeInactive)
+    }
+
+    @Test
+    fun `owner and admin asking for inactive members reach the roster with the filter on`() {
+        listOf(GroupRole.OWNER, GroupRole.ADMIN).forEach { role ->
+            read.role = role
+
+            val response = send(get("/api/groups/$groupId/athletes?includeInactive=true"))
+
+            assertEquals(200, response.statusCode())
+            assertTrue(roster.lastFilter!!.includeInactive)
+        }
+    }
+
+    @Test
     fun `nonmember roster is hidden as not found`() {
         read.role = null
         assertProblem(getRoster(groupId), 404, "GROUP_NOT_FOUND")
@@ -673,9 +695,11 @@ class AthleteEndpointIntegrationTest {
         var entries: List<AthleteRosterEntry> = emptyList()
         var profile: OwnAthleteProfile? = null
         var calls = 0
+        var lastFilter: AthleteRosterFilter? = null
 
         override fun list(actorId: UUID, groupId: UUID, filter: AthleteRosterFilter): List<AthleteRosterEntry> {
             calls++
+            lastFilter = filter
             return entries
         }
 
