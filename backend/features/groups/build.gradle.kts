@@ -1,5 +1,6 @@
 plugins {
     id("saqz.jvm-backend")
+    id("info.solidsoft.pitest") version "1.19.0"
 }
 
 group = "br.com.saqz"
@@ -52,4 +53,28 @@ val integrationTest by tasks.registering(Test::class) {
 
 tasks.check {
     dependsOn(integrationTest)
+}
+
+// Teste de mutação (DEB-016): só medição, fora do check/test/CI. Roda sobre src/test (unidade);
+// os de integração sobem Postgres por teste e inviabilizariam a rodada.
+// Uso: ./gradlew :features:groups:pitest [-Ppitest.alvo='br.com.saqz.groups.application.attendance.*']
+pitest {
+    pitestVersion.set("1.30.0")
+    junit5PluginVersion.set("1.2.3")
+    targetClasses.set(
+        listOf((findProperty("pitest.alvo") as String?) ?: "br.com.saqz.groups.*"),
+    )
+    threads.set(4)
+    outputFormats.set(listOf("HTML", "XML"))
+    timestampedReports.set(false)
+    // Ruído do Kotlin: checagens de null, logging e métodos gerados de data class.
+    avoidCallsTo.set(
+        setOf(
+            "kotlin.jvm.internal.Intrinsics",
+            "kotlin.collections.CollectionsKt",
+            "org.slf4j",
+        ),
+    )
+    excludedMethods.set(setOf("equals", "hashCode", "toString", "copy", "component*"))
+    excludedClasses.set(setOf("*Test*", "*\$\$*"))
 }
