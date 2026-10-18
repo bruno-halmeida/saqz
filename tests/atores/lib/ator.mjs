@@ -131,6 +131,8 @@ export class Ator {
   extrato(grupoId, consulta = '') { return this.chamar('GET', `/api/groups/${grupoId}/finance/statement${consulta}`) }
   totais(grupoId) { return this.chamar('GET', `/api/groups/${grupoId}/finance/totals`) }
 
+  resolverLink(codigo) { return this.chamar('POST', '/api/attendance-links/resolve', { code: codigo }) }
+
   // --- Avisos e conta ---
 
   avisos() { return this.chamar('GET', '/api/me/notifications') }
