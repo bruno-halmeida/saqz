@@ -10,6 +10,9 @@ import java.util.UUID
 import kotlin.test.assertEquals
 
 /**
+ * DEB-071: só a mudança de dia, hora ou local entra na fila do grupo de WhatsApp; as outras mensagens do canal
+ * AUTO_CONFIRMATION não.
+ *
  * DEB-065: jogo cancelado e mudança de dia, hora ou local chegam por push mesmo com "Avisos dos grupos" desligado;
  * os outros avisos, inclusive os do mesmo canal, seguem a chave.
  */
@@ -35,6 +38,8 @@ class EventosSempreNoPushIntegrationTest {
     @BeforeEach fun reset() {
         jdbc.sql("TRUNCATE group_messages CASCADE").update()
         jdbc.sql("DELETE FROM group_notification_preferences").update()
+        jdbc.sql("DELETE FROM notification_whatsapp_group_queue").update()
+        jdbc.sql("DELETE FROM group_whatsapp_bindings").update()
     }
 
     private fun avisosDesligados() {
@@ -84,6 +89,45 @@ class EventosSempreNoPushIntegrationTest {
         notify("AUTO_CONFIRMATION", "O jogo mudou.", eventKind = "GAME_SCHEDULE_CHANGED")
 
         assertEquals(2, queuedPushes(rafa))
+    }
+
+    @Test fun `so a mudanca de jogo entra na fila do grupo de WhatsApp`() {
+        binding()
+
+        notify("AUTO_CONFIRMATION", "Você agora é administrador de Vôlei de Quinta.")
+        notify("AUTO_CONFIRMATION", "Sua entrada no grupo foi aprovada.")
+        assertEquals(0, groupQueue())
+
+        notify("AUTO_CONFIRMATION", "O jogo de quarta 14/10 mudou: quinta 15/10 às 20h30, Arena.", eventKind = "GAME_SCHEDULE_CHANGED")
+        assertEquals(1, groupQueue())
+    }
+
+    @Test fun `sem vinculo ativo a mudanca nao entra na fila do grupo`() {
+        notify("AUTO_CONFIRMATION", "O jogo mudou.", eventKind = "GAME_SCHEDULE_CHANGED")
+        assertEquals(0, groupQueue())
+
+        binding(enabled = false)
+        notify("AUTO_CONFIRMATION", "O jogo mudou de novo.", eventKind = "GAME_SCHEDULE_CHANGED")
+        assertEquals(0, groupQueue())
+    }
+
+    @Test fun `o cancelamento segue na fila do grupo como antes`() {
+        binding()
+        val game = game()
+        attend(game, rafa)
+
+        repository.publishGameCancelled(group, owner, game, "O jogo foi cancelado.")
+
+        assertEquals(1, groupQueue())
+    }
+
+    private fun groupQueue() = jdbc.sql("SELECT count(*) FROM notification_whatsapp_group_queue").query(Int::class.java).single()
+
+    private fun binding(enabled: Boolean = true) {
+        jdbc.sql("""INSERT INTO group_whatsapp_bindings (group_id, whatsapp_jid, invite_code, group_name, instance_jid, enabled, created_by)
+            VALUES (:g, '1203@g.us', 'invite', 'Vôlei', '5511@s.whatsapp.net', :enabled, :owner)
+            ON CONFLICT (group_id) DO UPDATE SET enabled = :enabled""")
+            .param("g", group).param("owner", owner).param("enabled", enabled).update()
     }
 
     private fun notify(channel: String, body: String, eventKind: String? = null) {

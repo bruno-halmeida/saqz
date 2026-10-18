@@ -93,6 +93,19 @@ class NotificationWhatsAppGroupIntegrationTest {
         assertTrue(directory.infoChecks >= 1)
     }
 
+    @Test fun `worker sends the schedule change to the group and never the other automatic notices`() {
+        binding()
+        val change = "O jogo de quarta 14/10 mudou: quinta 15/10 às 20h30, Arena Central."
+        for ((body, kind) in listOf("Você agora é administrador de Futebol." to null, change to "GAME_SCHEDULE_CHANGED")) jdbc.sql(
+            """INSERT INTO group_messages (id, group_id, author_id, author_name, channel, body, request_id, event_kind)
+            VALUES (:id, :g, :owner, 'Owner', 'AUTO_CONFIRMATION', :body, :request, :kind)""",
+        ).param("id", UUID.randomUUID()).param("g", group).param("owner", owner).param("body", body)
+            .param("request", UUID.randomUUID()).param("kind", kind, java.sql.Types.VARCHAR).update()
+        val sent = mutableListOf<String>()
+        drain { _, _, text, buttons -> sent += text; assertEquals(emptyList(), buttons); WhatsAppDelivery.Accepted }
+        assertEquals(listOf("Saqz · Vôlei do CERET\n$change"), sent)
+    }
+
     @Test fun `worker sends a reminder with the attendance link and no private data`() {
         binding()
         val game = publishedGame()
