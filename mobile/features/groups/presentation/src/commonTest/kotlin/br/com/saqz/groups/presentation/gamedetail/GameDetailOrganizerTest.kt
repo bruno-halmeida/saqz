@@ -22,6 +22,8 @@ import br.com.saqz.groups.presentation.sampleGroup
 import br.com.saqz.groups.presentation.sampleRosterEntry
 import br.com.saqz.groups.presentation.sampleVersionedGame
 import br.com.saqz.groups.presentation.sampleVersionedGroup
+import br.com.saqz.groups.domain.group.GroupGameConfig
+import br.com.saqz.groups.domain.group.PromotionMode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -62,13 +64,16 @@ class GameDetailOrganizerTest {
         answered: Boolean = true,
         guestOnWaitlist: Boolean = false,
         full: Boolean = false,
+        mensalistas: Set<String> = emptySet(),
+        promotion: PromotionMode = PromotionMode.FIFO,
+        nobodyWaiting: Boolean = false,
     ): GameDetailViewModel {
         val roster = AttendanceRoster(
             confirmed = buildList {
                 if (answered) add(AttendanceRosterMember("me", "Bruno"))
                 add(AttendanceRosterMember("ana", "Ana"))
             },
-            waitlisted = buildList {
+            waitlisted = if (nobodyWaiting) emptyList() else buildList {
                 add(AttendanceRosterMember("caio", "Caio", 1))
                 add(AttendanceRosterMember("duda", "Duda", 2))
                 if (guestOnWaitlist) add(AttendanceRosterMember("ana", "Convidado da Ana", 3, 1, "Ana"))
@@ -84,21 +89,30 @@ class GameDetailOrganizerTest {
         )
         val athletes = FakeAthleteGateway(
             rosterResult = SaqzResult.Success(
-                listOf("me", "ana", "caio", "duda", "edu", "fabi").map { id -> entry(id) },
+                listOf("me", "ana", "caio", "duda", "edu", "fabi").map { id -> entry(id, mensalistas) },
             ),
         )
         return GameDetailViewModel(
             "group-1",
             "game-1",
             FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(game))),
-            FakeGroupGateway(SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = role)))),
+            FakeGroupGateway(
+                SaqzResult.Success(
+                    sampleVersionedGroup(
+                        sampleGroup(role = role).copy(gameConfig = GroupGameConfig(promotionMode = promotion)),
+                    ),
+                ),
+            ),
             attendance,
             athletes,
         )
     }
 
-    private fun entry(id: String): AthleteRosterEntry =
-        sampleRosterEntry(id).copy(displayName = id.replaceFirstChar { it.uppercase() }, membershipType = AthleteMembershipType.AVULSO)
+    private fun entry(id: String, mensalistas: Set<String> = emptySet()): AthleteRosterEntry =
+        sampleRosterEntry(id).copy(
+            displayName = id.replaceFirstChar { it.uppercase() },
+            membershipType = if (id in mensalistas) AthleteMembershipType.MENSALISTA else AthleteMembershipType.AVULSO,
+        )
 
     private fun GameDetailViewModel.removeAndConfirm(rowId: String) {
         onIntent(GameDetailIntent.RequestRemoveMember(rowId))
@@ -144,6 +158,51 @@ class GameDetailOrganizerTest {
 
         viewModel.onIntent(GameDetailIntent.RequestRemoveMember("caio"))
         assertEquals(false, viewModel.state.value.organizer.removal?.confirmed)
+    }
+
+    private fun removalOf(game: Game = openGame(), mensalistas: Set<String> = emptySet(), promotion: PromotionMode = PromotionMode.FIFO) =
+        viewModel(game = game.copy(gameFeeCents = 2_000), mensalistas = mensalistas, promotion = promotion).also {
+            it.onIntent(GameDetailIntent.RequestRemoveMember("ana"))
+        }.state.value.organizer.removal!!
+
+    @Test
+    fun `tirar avulso confirmado antes do inicio cancela a diaria e a fila anda`() = runTest {
+        val removal = removalOf()
+        assertTrue(removal.feeCancelled)
+        assertTrue(removal.queueMoves)
+    }
+
+    @Test
+    fun `tirar mensalista nao fala de cobranca mas a fila anda`() = runTest {
+        val removal = removalOf(mensalistas = setOf("ana"))
+        assertFalse(removal.feeCancelled)
+        assertTrue(removal.queueMoves)
+    }
+
+    @Test
+    fun `jogo sem valor nao fala de cobranca`() = runTest {
+        val viewModel = viewModel()
+        viewModel.onIntent(GameDetailIntent.RequestRemoveMember("ana"))
+        assertFalse(viewModel.state.value.organizer.removal!!.feeCancelled)
+    }
+
+    @Test
+    fun `depois do inicio a fila nao anda mas a diaria do avulso e cancelada`() = runTest {
+        val removal = removalOf(game = startedGame())
+        assertTrue(removal.feeCancelled)
+        assertFalse(removal.queueMoves)
+    }
+
+    @Test
+    fun `na escolha manual a fila nao anda`() = runTest {
+        assertFalse(removalOf(promotion = PromotionMode.MANUAL).queueMoves)
+    }
+
+    @Test
+    fun `sem ninguem na espera a fila nao anda`() = runTest {
+        val viewModel = viewModel(nobodyWaiting = true)
+        viewModel.onIntent(GameDetailIntent.RequestRemoveMember("ana"))
+        assertFalse(viewModel.state.value.organizer.removal!!.queueMoves)
     }
 
     @Test

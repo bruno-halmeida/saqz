@@ -814,6 +814,7 @@ class GameDetailViewModel(
         position = if (isGuest) null else athlete?.position,
         guest = guestRow(isAdmin, open, tone),
         canRemove = canRemoveMember(isAdmin, tone),
+        isMensalista = !isGuest && athlete?.membershipType == AthleteMembershipType.MENSALISTA,
     )
 
     private fun AttendanceRosterMember.toWaitlist(
@@ -952,8 +953,21 @@ class GameDetailViewModel(
         val confirmed = current.confirmedRoster.firstOrNull { it.id == rowId && it.canRemove }
         val waiting = current.waitlist.firstOrNull { it.id == rowId && it.canRemove }
         val name = confirmed?.name ?: waiting?.name ?: return
+        val feeCancelled = confirmed != null && !confirmed.isMensalista && current.guest.feeLabel != null
+        // Depois do início ninguém sobe (DEB-018); na escolha manual o gestor é quem coloca.
+        val queueMoves = confirmed != null && startIsAhead() &&
+            groupPromotionMode != PromotionMode.MANUAL && current.waitlist.isNotEmpty()
         updateOrganizer {
-            it.copy(removal = GameMemberRemovalUi(rowId, name, confirmed = confirmed != null), removeFailure = null)
+            it.copy(
+                removal = GameMemberRemovalUi(
+                    rowId,
+                    name,
+                    confirmed = confirmed != null,
+                    feeCancelled = feeCancelled,
+                    queueMoves = queueMoves,
+                ),
+                removeFailure = null,
+            )
         }
     }
 

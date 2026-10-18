@@ -3,8 +3,10 @@
     <string name="game_member_remove">Tirar</string>
     <string name="game_member_remove_title">Tirar %1$s do jogo?</string>
     <string name="game_member_remove_waitlisted">Sai da lista de espera. Nada é cobrado.</string>
-    <string name="game_member_remove_confirmed">Sai dos confirmados e a vaga vai para o próximo da lista.</string>
-    <string name="game_member_remove_confirmed_fee">Sai dos confirmados, a vaga vai para o próximo da lista e a cobrança de %1$s é cancelada.</string>
+    <string name="game_member_remove_confirmed">Sai dos confirmados.</string>
+    <string name="game_member_remove_confirmed_queue">Sai dos confirmados e a vaga vai para o próximo da lista.</string>
+    <string name="game_member_remove_confirmed_fee">Sai dos confirmados e a cobrança de %1$s é cancelada.</string>
+    <string name="game_member_remove_confirmed_queue_fee">Sai dos confirmados, a vaga vai para o próximo da lista e a cobrança de %1$s é cancelada.</string>
     <string name="game_member_remove_notify">%1$s vai receber um aviso, ok?</string>
     <string name="game_member_reason_other">Outro motivo</string>
     <string name="game_member_reason_label">Motivo</string>

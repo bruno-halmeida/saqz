@@ -80,7 +80,7 @@ class GameOrganizerSectionTest {
 
     @Test
     fun folhaDeTirarTemONomeEALinhaDeAviso() = runComposeUiTest {
-        setScreen(removeState(confirmed = true))
+        setScreen(removeState(confirmed = true, queueMoves = true))
 
         onNodeWithText("Tirar Bia Souza do jogo?").assertExists()
         onNodeWithText("Bia Souza vai receber um aviso, ok?").assertExists()
@@ -94,9 +94,27 @@ class GameOrganizerSectionTest {
             onNodeWithText("Sai da lista de espera. Nada é cobrado.").assertExists()
         }
         runComposeUiTest {
-            setScreen(removeState(confirmed = true).copy(guest = GameGuestUi(feeLabel = "R$ 25,00")))
+            setScreen(
+                removeState(confirmed = true, feeCancelled = true, queueMoves = true)
+                    .copy(guest = GameGuestUi(feeLabel = "R$ 25,00")),
+            )
             onNodeWithText("Sai dos confirmados, a vaga vai para o próximo da lista e a cobrança de R$ 25,00 é cancelada.")
                 .assertExists()
+        }
+        runComposeUiTest {
+            setScreen(
+                removeState(confirmed = true, feeCancelled = true).copy(guest = GameGuestUi(feeLabel = "R$ 25,00")),
+            )
+            onNodeWithText("Sai dos confirmados e a cobrança de R$ 25,00 é cancelada.").assertExists()
+        }
+        runComposeUiTest {
+            // Mensalista: o valor do jogo existe, mas não há diária para cancelar.
+            setScreen(removeState(confirmed = true, queueMoves = true).copy(guest = GameGuestUi(feeLabel = "R$ 25,00")))
+            onNodeWithText("Sai dos confirmados e a vaga vai para o próximo da lista.").assertExists()
+        }
+        runComposeUiTest {
+            setScreen(removeState(confirmed = true))
+            onNodeWithText("Sai dos confirmados.").assertExists()
         }
     }
 
@@ -286,11 +304,18 @@ class GameOrganizerSectionTest {
         ).forEach { onAllNodesWithTag(it).assertCountEquals(1) }
     }
 
-    private fun removeState(confirmed: Boolean, reasonOpen: Boolean = false): GameDetailState {
+    private fun removeState(
+        confirmed: Boolean,
+        reasonOpen: Boolean = false,
+        feeCancelled: Boolean = false,
+        queueMoves: Boolean = false,
+    ): GameDetailState {
         val removal = GameMemberRemovalUi(
             memberId = if (confirmed) "2" else "wait-1",
             name = if (confirmed) "Bia Souza" else "Caio Lima",
             confirmed = confirmed,
+            feeCancelled = feeCancelled,
+            queueMoves = queueMoves,
             reasonOpen = reasonOpen,
         )
         return admin.copy(organizer = GameOrganizerUi(removal = removal))

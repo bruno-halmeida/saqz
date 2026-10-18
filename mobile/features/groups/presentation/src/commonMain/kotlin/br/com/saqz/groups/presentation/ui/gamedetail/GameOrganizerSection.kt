@@ -32,6 +32,8 @@ import br.com.saqz.groups.resources.game_member_remove
 import br.com.saqz.groups.resources.game_member_remove_confirm
 import br.com.saqz.groups.resources.game_member_remove_confirmed
 import br.com.saqz.groups.resources.game_member_remove_confirmed_fee
+import br.com.saqz.groups.resources.game_member_remove_confirmed_queue
+import br.com.saqz.groups.resources.game_member_remove_confirmed_queue_fee
 import br.com.saqz.groups.resources.game_member_remove_keep
 import br.com.saqz.groups.resources.game_member_remove_notify
 import br.com.saqz.groups.resources.game_member_remove_title
@@ -111,7 +113,10 @@ internal fun GameMemberRemoveSheet(
         title = stringResource(Res.string.game_member_remove_title, removal.name),
         description = when {
             !removal.confirmed -> stringResource(Res.string.game_member_remove_waitlisted)
-            feeLabel != null -> stringResource(Res.string.game_member_remove_confirmed_fee, feeLabel)
+            removal.feeCancelled && feeLabel != null && removal.queueMoves ->
+                stringResource(Res.string.game_member_remove_confirmed_queue_fee, feeLabel)
+            removal.feeCancelled && feeLabel != null -> stringResource(Res.string.game_member_remove_confirmed_fee, feeLabel)
+            removal.queueMoves -> stringResource(Res.string.game_member_remove_confirmed_queue)
             else -> stringResource(Res.string.game_member_remove_confirmed)
         },
         splitFooter = {

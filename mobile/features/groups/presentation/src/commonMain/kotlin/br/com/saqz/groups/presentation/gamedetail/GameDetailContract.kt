@@ -121,6 +121,8 @@ data class GameDetailConfirmedUi(
     val guest: GameGuestRowUi? = null,
     /** O gestor pode tirar esta pessoa (membro que não é ele mesmo). */
     val canRemove: Boolean = false,
+    /** Mensalista não tem diária por jogo. */
+    val isMensalista: Boolean = false,
 )
 @Immutable
 data class GameDetailWaitlistUi(
@@ -143,6 +145,10 @@ data class GameMemberRemovalUi(
     val memberId: String,
     val name: String,
     val confirmed: Boolean,
+    /** A pessoa tem diária neste jogo (avulso confirmado, jogo com valor): tirar cancela a cobrança. */
+    val feeCancelled: Boolean = false,
+    /** A fila anda de verdade: antes do início, ordem de chegada e alguém na espera. */
+    val queueMoves: Boolean = false,
     /** "Outro motivo" aberto: o campo de texto aparece. Fechado, vai o motivo padrão. */
     val reasonOpen: Boolean = false,
     val reason: String = "",
