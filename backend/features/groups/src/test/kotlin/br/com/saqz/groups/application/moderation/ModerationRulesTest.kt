@@ -123,12 +123,14 @@ class ModerationRulesTest {
         service.unblock(actor, target)
         assertEquals(listOf(actor to target), repository.unblocked)
         assertEquals(listOf(BlockedUser(UUID(0, 7), "Fulana", Instant.EPOCH)), service.blocks(actor))
-        assertEquals(emptyList(), service.reports(openOnly = true, limit = 30))
+        assertEquals(listOf(summary), service.reports(openOnly = true, limit = 30))
         assertEquals(listOf(true to 30), repository.reportQueries)
         assertEquals(true, service.resolve(UUID(0, 9)))
-        assertEquals(listOf(UUID(0, 9)), repository.resolved)
+        assertEquals(false, service.resolve(UUID(0, 10)))
+        assertEquals(listOf(UUID(0, 9), UUID(0, 10)), repository.resolved)
         assertEquals(true, service.deleteMessage(group, UUID(0, 5)))
-        assertEquals(listOf(group to UUID(0, 5)), repository.deleted)
+        assertEquals(false, service.deleteMessage(group, UUID(0, 6)))
+        assertEquals(listOf(group to UUID(0, 5), group to UUID(0, 6)), repository.deleted)
     }
 
     @Test fun `o alerta pendente sai por e-mail, é marcado enviado e a falha de um não segura os outros`() {
@@ -147,11 +149,15 @@ class ModerationRulesTest {
         assertEquals(AlertDispatch(0, 0), service.dispatchAlerts { error("não deveria enviar") })
     }
 
+    private val summary = ContentReportSummary(
+        UUID(0, 1), Instant.EPOCH, ReportReason.SPAM, ReportTarget.USER, target, group, "Grupo", actor, null, null, null, null, null,
+    )
+
     private fun alert(id: UUID) = ContentReportAlert(
         id, Instant.EPOCH, ReportReason.SPAM, ReportTarget.USER, target, group, "Grupo", actor, "Ana", null, null, null, null,
     )
 
-    private class FakeRepository : ContentModerationRepository {
+    private inner class FakeRepository : ContentModerationRepository {
         var member = true
         var content: ReportedContent? = ReportedContent(UUID.randomUUID(), "Fulana")
         val saved = mutableListOf<NewContentReport>()
@@ -178,8 +184,8 @@ class ModerationRulesTest {
         override fun pendingAlerts(limit: Int): List<ContentReportAlert> { pendingLimit = limit; return pending }
         override fun markAlerted(reportId: UUID) { alerted += reportId }
         override fun markAlertFailed(reportId: UUID) { alertFailed += reportId }
-        override fun reports(openOnly: Boolean, limit: Int): List<ContentReportSummary> { reportQueries += openOnly to limit; return emptyList() }
-        override fun resolve(reportId: UUID): Boolean { resolved += reportId; return true }
-        override fun deleteMessage(groupId: UUID, messageId: UUID): Boolean { deleted += groupId to messageId; return true }
+        override fun reports(openOnly: Boolean, limit: Int): List<ContentReportSummary> { reportQueries += openOnly to limit; return listOf(summary) }
+        override fun resolve(reportId: UUID): Boolean { resolved += reportId; return reportId == UUID(0, 9) }
+        override fun deleteMessage(groupId: UUID, messageId: UUID): Boolean { deleted += groupId to messageId; return messageId == UUID(0, 5) }
     }
 }

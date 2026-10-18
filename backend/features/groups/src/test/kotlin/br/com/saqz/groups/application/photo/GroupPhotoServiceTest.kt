@@ -128,6 +128,25 @@ class GroupPhotoServiceTest {
         assertFailsWith<IllegalStateException> { service.remove(actor, group, 1) }
     }
 
+    @Test fun `os tipos aceitos são JPEG, PNG e WebP e o tamanho da foto é o dos bytes`() {
+        assertEquals(listOf("image/jpeg", "image/png", "image/webp"), GroupPhotoMediaType.entries.map { it.value })
+        assertEquals(3L, validPhoto.byteSize)
+    }
+
+    @Test fun `a foto lida traz tipo, tamanho, dimensões e quem a trocou`() {
+        repository.photo = stored(version = 4)
+        val read = (service.read(actor, group) as ReadGroupPhotoResult.Success).photo
+        assertEquals(group, read.groupId)
+        assertEquals(GroupPhotoMediaType.PNG, read.mediaType)
+        assertEquals(3L, read.byteSize)
+        assertEquals(400, read.width)
+        assertEquals(300, read.height)
+        assertEquals(4L, read.version)
+        assertEquals(actor, read.updatedBy)
+        assertEquals(listOf<Byte>(1, 2, 3), read.bytes.toList())
+        assertEquals(listOf<Byte>(9), read.sha256Digest.toList())
+    }
+
     private fun stored(version: Long) = StoredGroupPhoto(group, byteArrayOf(1, 2, 3), GroupPhotoMediaType.PNG, 3, 400, 300, byteArrayOf(9), version, actor)
 
     private class FakeRepository : GroupPhotoRepository {
