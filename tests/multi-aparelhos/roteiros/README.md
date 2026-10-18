@@ -39,4 +39,6 @@ Contas descartáveis desta rodada e senha ficam no roteiro; e-mails caem no Mail
 | --- | --- | --- |
 | [01-dono-e-atletas.md](01-dono-e-atletas.md) | Conta, grupo, convites, jogo, lista de espera, prazo (20 passos) | 4 |
 | [02-recorrencia.md](02-recorrencia.md) | Horário fixo pelo editor e por "Jogos e horários": próximo jogo publicado e vinculado à série (8 passos) | 2 Android |
-
+| [07-jogos-e-dinheiro.md](07-jogos-e-dinheiro.md) | JOGO-003, 004, 005, 007, 008, 009 e FIN-001, 002, 004, 005, 008: editar, publicar, cancelar, quadra, valor, horários e cobranças, com duas rodadas (5 críticos: JOGO-004, JOGO-005, FIN-001, FIN-002, FIN-004) | 4 |
+| [08-avisos.md](08-avisos.md) | NOT-001 a NOT-007: central, preferências, avisos do jogo, de pessoas e de dinheiro, mural e conversa, grupo do WhatsApp, com duas rodadas (1 crítico: NOT-003) | 4 |
+| [09-assinatura-e-conta.md](09-assinatura-e-conta.md) | ASS-003 (grupo congelado), ACE-002 (confirmar e-mail e telefone), ACE-005 (conta suspensa), com duas rodadas (2 críticos: ASS-003, ACE-002) | 4 |
