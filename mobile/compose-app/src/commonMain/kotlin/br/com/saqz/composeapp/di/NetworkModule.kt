@@ -31,6 +31,10 @@ internal class DelegatingSessionInvalidator : AccessSessionInvalidator, NetworkS
     override fun invalidate() {
         delegate?.invalidate()
     }
+
+    override fun accountSuspended() {
+        delegate?.accountSuspended()
+    }
 }
 
 internal class NativeTokenProvider(private val auth: NativeAuthPort) : IdTokenProvider {

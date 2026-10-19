@@ -1337,6 +1337,79 @@ class SessionAccessStateMachineTest {
         assertIs<SessionAccessState.SignedOut>(fixture.machine.state.value)
     }
 
+    // DEB-085: o 403 ACCOUNT_SUSPENDED de qualquer chamada autenticada leva à tela de conta suspensa.
+    @Test
+    fun `account suspension leaves Ready for Suspended and revokes the session key without signing out`() = runTest {
+        val fixture = fixture(this)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        assertTrue(fixture.machine.activeSessionKey.value != null)
+
+        fixture.machine.accountSuspended()
+
+        assertEquals(SessionAccessState.Suspended, fixture.machine.state.value)
+        assertNull(fixture.machine.activeSessionKey.value)
+        assertEquals(0, fixture.auth.signOutCalls)
+    }
+
+    @Test
+    fun `a repeated Accept of the suspended account does not reopen the bootstrap`() = runTest {
+        val fixture = fixture(this)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        fixture.machine.accountSuspended()
+        val bootstraps = fixture.session.calls
+
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        assertEquals(SessionAccessState.Suspended, fixture.machine.state.value)
+        assertEquals(bootstraps, fixture.session.calls)
+    }
+
+    @Test
+    fun `logout from Suspended signs out and clears local state`() = runTest {
+        val fixture = fixture(this)
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        fixture.machine.accountSuspended()
+
+        fixture.machine.onIntent(SessionIntent.Logout)
+
+        assertEquals(1, fixture.auth.signOutCalls)
+        assertEquals(listOf<String?>(null), fixture.local.selectedWrites)
+        assertEquals(SessionAccessState.SignedOut, fixture.machine.state.value)
+    }
+
+    @Test
+    fun `suspension during the bootstrap wins over the answer that comes back`() = runTest {
+        val fixture = fixture(this, SaqzResult.Failure(AccessError.Forbidden))
+        val gate = CompletableDeferred<Unit>()
+        fixture.session.bootstrapGate = gate
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+
+        fixture.machine.accountSuspended()
+        gate.complete(Unit)
+        runCurrent()
+
+        assertEquals(SessionAccessState.Suspended, fixture.machine.state.value)
+    }
+
+    @Test
+    fun `suspension is ignored when signed out or while logging out`() = runTest {
+        val fixture = fixture(this)
+        fixture.machine.accountSuspended()
+        assertEquals(SessionAccessState.SignedOut, fixture.machine.state.value)
+
+        fixture.machine.onIntent(SessionIntent.Accept(AuthTransition.Authenticated(verified)))
+        runCurrent()
+        fixture.machine.onIntent(SessionIntent.Logout)
+        fixture.machine.accountSuspended()
+
+        assertEquals(SessionAccessState.SignedOut, fixture.machine.state.value)
+    }
+
     private fun fixture(
         scope: kotlinx.coroutines.CoroutineScope,
         result: SaqzResult<AccessSession, AccessError> = SaqzResult.Success(session),

@@ -113,6 +113,11 @@
     <string name="password_changed_headline_emphasis">alterada!</string>
     <string name="password_changed_supporting_text">Use sua nova senha para entrar.</string>
     <string name="password_changed_submit">Entrar agora</string>
+    <string name="account_suspended_headline">Sua conta foi</string>
+    <string name="account_suspended_headline_emphasis">suspensa.</string>
+    <string name="account_suspended_supporting_text">Para entender o motivo ou pedir revisão, escreva para contato@egysis.com.</string>
+    <string name="account_suspended_contact">Escrever para o suporte</string>
+    <string name="account_suspended_logout">Sair</string>
 
     <!-- Repetidos entre telas, uma chave só: o 1d e o 1e trazem o mesmo link de volta ao
          login, e o 1b e o 1g o mesmo mínimo de caracteres. -->

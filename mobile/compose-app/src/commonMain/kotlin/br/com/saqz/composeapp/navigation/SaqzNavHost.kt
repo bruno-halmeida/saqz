@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,6 +44,8 @@ import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.accountVerified
 import br.com.saqz.access.presentation.register.RegisterInviteContext
+import br.com.saqz.access.ui.AccountSuspendedMailto
+import br.com.saqz.access.ui.AccountSuspendedScreen
 import br.com.saqz.access.ui.BootstrapAccessScreen
 import br.com.saqz.access.ui.AppOnboardingRoot
 import br.com.saqz.access.ui.ForgotPasswordRoot
@@ -550,6 +553,13 @@ internal fun SaqzNavHost(
                     BootstrapAccessScreen(
                         state = state.session,
                         onIntent = { onIntent(AccessIntent.Session(it)) },
+                    )
+                }
+                entry<AccessRoute.Suspended>(metadata = OwnsNavigationInset) {
+                    val uriHandler = LocalUriHandler.current
+                    AccountSuspendedScreen(
+                        onContact = { uriHandler.openUri(AccountSuspendedMailto) },
+                        onLogout = { onIntent(AccessIntent.Session(SessionIntent.Logout)) },
                     )
                 }
                 entry<AccessRoute.AppOnboarding>(metadata = OwnsNavigationInset) {
@@ -1503,6 +1513,7 @@ private fun SessionAccessState.toDestination(): NavKey = when (this) {
     SessionAccessState.SignedOut -> AccessRoute.Login
     is SessionAccessState.CompletingIdentity -> AccessRoute.IdentityCompletion
     SessionAccessState.Bootstrapping, SessionAccessState.BootstrapError -> AccessRoute.Bootstrap
+    SessionAccessState.Suspended -> AccessRoute.Suspended
     is SessionAccessState.Ready -> SaqzShellDestination.Home
 }
 

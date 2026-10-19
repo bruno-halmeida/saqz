@@ -49,5 +49,6 @@ private fun SessionAccessState.passwordChangedDestination(): NavKey = when (this
     is SessionAccessState.CompletingIdentity,
     SessionAccessState.Bootstrapping,
     SessionAccessState.BootstrapError,
+    SessionAccessState.Suspended,
     -> AccessRoute.Login
 }

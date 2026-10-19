@@ -64,4 +64,7 @@ interface SessionGateway {
 
 interface SessionInvalidator {
     fun invalidate()
+
+    /** Conta suspensa pelo backend (403 `ACCOUNT_SUSPENDED`): a sessão fica, a tela é outra. */
+    fun accountSuspended() {}
 }

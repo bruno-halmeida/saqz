@@ -33,6 +33,16 @@ class AppOnboardingNavigationTest {
     }
 
     @Test
+    fun `suspended account replaces the shell and any intro with the suspension screen`() {
+        val stack = mutableListOf<NavKey>(SaqzShellDestination.Home, AccessRoute.AppOnboarding)
+
+        reconcileAccessStack(stack, SessionAccessState.Suspended)
+        reconcileAppOnboardingStack(stack, SessionAccessState.Suspended, AppOnboardingAuthState.Completed(false))
+
+        assertEquals(listOf<NavKey>(AccessRoute.Suspended), stack)
+    }
+
+    @Test
     fun `native mutation cannot be dismissed as if it had been cancelled`() {
         assertTrue(AppOnboardingAuthState.SigningIn.isNativeHandoffBusy())
         assertTrue(AppOnboardingAuthState.Redeeming.isNativeHandoffBusy())

@@ -200,6 +200,43 @@ class AuthenticatedNetworkClientTest {
 
         assertEquals(listOf(false), fixture.tokens.forceRefreshCalls)
         assertEquals(0, fixture.invalidator.calls)
+        assertEquals(0, fixture.invalidator.suspendedCalls)
+    }
+
+    @Test
+    fun `403 ACCOUNT_SUSPENDED reports the suspension once and keeps the session and the failure`() = runTest {
+        val fixture = fixture { suspended() }
+
+        val error = assertIs<NetworkResult.Failure>(fixture.execute()).error
+
+        assertEquals("ACCOUNT_SUSPENDED", assertIs<NetworkError.ApiProblemError>(error).problem.code)
+        assertEquals(1, fixture.invalidator.suspendedCalls)
+        assertEquals(0, fixture.invalidator.calls)
+        assertEquals(listOf(false), fixture.tokens.forceRefreshCalls)
+    }
+
+    @Test
+    fun `403 ACCOUNT_SUSPENDED after the 401 refresh reports the suspension`() = runTest {
+        val fixture = fixture { request ->
+            if (request.headers[HttpHeaders.Authorization] == "Bearer old-token") unauthorized() else suspended()
+        }
+
+        fixture.execute()
+
+        assertEquals(1, fixture.invalidator.suspendedCalls)
+        assertEquals(0, fixture.invalidator.calls)
+    }
+
+    @Test
+    fun `success and other errors never report a suspension`() = runTest {
+        val ok = fixture { resourceResponse() }
+        val failing = fixture { serverError() }
+
+        ok.execute()
+        failing.execute()
+
+        assertEquals(0, ok.invalidator.suspendedCalls)
+        assertEquals(0, failing.invalidator.suspendedCalls)
     }
 
     private fun refreshingFixture(
@@ -243,6 +280,12 @@ class AuthenticatedNetworkClientTest {
         jsonHeaders(),
     )
 
+    private fun MockRequestHandleScope.suspended() = respond(
+        """{"status":403,"code":"ACCOUNT_SUSPENDED","correlationId":"corr-403s"}""",
+        HttpStatusCode.Forbidden,
+        jsonHeaders(),
+    )
+
     private fun MockRequestHandleScope.serverError() = respond(
         """{"status":500,"correlationId":"corr-500"}""",
         HttpStatusCode.InternalServerError,
@@ -267,9 +310,14 @@ class AuthenticatedNetworkClientTest {
 
     private class RecordingInvalidator : SessionInvalidator {
         var calls = 0
+        var suspendedCalls = 0
 
         override fun invalidate() {
             calls += 1
+        }
+
+        override fun accountSuspended() {
+            suspendedCalls += 1
         }
     }
 

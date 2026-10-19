@@ -58,6 +58,10 @@ sealed interface AccessRoute : NavKey {
     @Serializable
     data object Bootstrap : AccessRoute
 
+    /** DEB-085: conta suspensa; tela neutra com o contato da equipe e "Sair". */
+    @Serializable
+    data object Suspended : AccessRoute
+
     /** TR-10 short, skippable first-access presentation; its secret never enters the route. */
     @Serializable
     data object AppOnboarding : AccessRoute

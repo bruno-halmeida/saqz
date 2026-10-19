@@ -53,6 +53,7 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(AccessRoute.NewPassword::class, AccessRoute.NewPassword.serializer())
             subclass(AccessRoute.PasswordChanged::class, AccessRoute.PasswordChanged.serializer())
             subclass(AccessRoute.Bootstrap::class, AccessRoute.Bootstrap.serializer())
+            subclass(AccessRoute.Suspended::class, AccessRoute.Suspended.serializer())
             subclass(AccessRoute.AppOnboarding::class, AccessRoute.AppOnboarding.serializer())
             subclass(SaqzShellDestination::class, SaqzShellDestination.serializer())
             subclass(SubscriptionRequired::class, SubscriptionRequired.serializer())

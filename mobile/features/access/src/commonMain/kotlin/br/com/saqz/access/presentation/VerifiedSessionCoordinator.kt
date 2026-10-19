@@ -70,6 +70,12 @@ sealed interface SessionAccessState {
 
     data object BootstrapError : SessionAccessState
 
+    /**
+     * DEB-085: o backend respondeu `ACCOUNT_SUSPENDED` (403) em qualquer chamada autenticada. A sessão do provedor
+     * continua aberta (a tela oferece "Sair"), mas nada do app autenticado vale mais. Neutro: não carrega motivo.
+     */
+    data object Suspended : SessionAccessState
+
     data class Ready(val session: AccessSession) : SessionAccessState
 }
 
@@ -663,6 +669,22 @@ class SessionAccessStateMachine(
     }
 
     override fun invalidate() = onIntent(SessionIntent.Logout)
+
+    /**
+     * Qualquer resposta `ACCOUNT_SUSPENDED` de chamada autenticada leva à tela de conta suspensa, de onde se sai.
+     * A geração sobe, então o que estava em voo (bootstrap, perfil, atualização) cai; o usuário atual fica, para o
+     * `Accept` repetido do provedor não reabrir o bootstrap da mesma conta.
+     */
+    override fun accountSuspended() {
+        begin { context ->
+            if (context.loggingOut || context.state is SessionAccessState.SignedOut ||
+                context.state is SessionAccessState.Suspended
+            ) {
+                return@begin null
+            }
+            context.copy(generation = context.generation + 1, pendingIdentity = null, state = SessionAccessState.Suspended)
+        }
+    }
 
     /**
      * Autenticou. A trava de e-mail que ficava aqui saiu do backend no VUL-76 e sai do app

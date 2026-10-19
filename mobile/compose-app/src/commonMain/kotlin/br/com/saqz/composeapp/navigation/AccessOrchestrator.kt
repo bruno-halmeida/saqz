@@ -52,7 +52,9 @@ internal class AccessOrchestrator(
                     }
                     is SessionAccessState.CompletingIdentity ->
                         appOnboarding.onSessionResolution(state.session, resolving = state.session == null)
-                    SessionAccessState.SignedOut -> appOnboarding.onSessionResolution(null, resolving = false)
+                    SessionAccessState.SignedOut,
+                    SessionAccessState.Suspended,
+                    -> appOnboarding.onSessionResolution(null, resolving = false)
                     SessionAccessState.Bootstrapping,
                     SessionAccessState.BootstrapError,
                     -> appOnboarding.onSessionResolution(null, resolving = true)

@@ -19,6 +19,12 @@ interface IdTokenProvider {
 
 interface SessionInvalidator {
     fun invalidate()
+
+    /**
+     * O backend recusou a chamada autenticada com `ACCOUNT_SUSPENDED` (403). A sessão do provedor segue válida; o app
+     * troca para a tela de conta suspensa em vez de tratar como erro de cada tela. Padrão vazio para quem só invalida.
+     */
+    fun accountSuspended() {}
 }
 
 class AuthenticatedNetworkClient(
@@ -79,7 +85,7 @@ class AuthenticatedNetworkClient(
         }
         if (bearer !is TokenResult.Available) return NetworkResult.Failure(NetworkError.Unavailable)
         val first = execute(bearer.value)
-        if (!first.isUnauthorized()) return first
+        if (!first.isUnauthorized()) return first.also(::reportSuspension)
 
         val refreshed = refresh(bearer.value)
         if (refreshed !is TokenResult.Available) {
@@ -88,7 +94,11 @@ class AuthenticatedNetworkClient(
         }
         val second = execute(refreshed.value)
         if (second.isUnauthorized()) sessionInvalidator.invalidate()
-        return second
+        return second.also(::reportSuspension)
+    }
+
+    private fun reportSuspension(result: NetworkResult<*>) {
+        if (result.isAccountSuspended()) sessionInvalidator.accountSuspended()
     }
 
     private suspend fun refresh(failedToken: String): TokenResult = refreshMutex.withLock {
@@ -117,3 +127,10 @@ private fun NetworkResult<*>.isUnauthorized(): Boolean {
         else -> false
     }
 }
+
+private fun NetworkResult<*>.isAccountSuspended(): Boolean {
+    val error = (this as? NetworkResult.Failure)?.error as? NetworkError.ApiProblemError ?: return false
+    return error.problem.status == 403 && error.problem.code == ACCOUNT_SUSPENDED_CODE
+}
+
+private const val ACCOUNT_SUSPENDED_CODE = "ACCOUNT_SUSPENDED"

@@ -49,6 +49,7 @@ class AccessRouteTest {
                 AccessRoute.PasswordChanged -> "PasswordChanged"
                 AccessRoute.Bootstrap -> "Bootstrap"
                 AccessRoute.AppOnboarding -> "AppOnboarding"
+                AccessRoute.Suspended -> "Suspended"
             }
             assertTrue(label.isNotBlank())
         }
