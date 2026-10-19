@@ -12,9 +12,12 @@ import br.com.saqz.subscriptions.adapter.input.http.CouponController
 import br.com.saqz.subscriptions.adapter.input.http.PlanController
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionQueryController
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcCouponRepository
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionPastDueRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionsTransactionRunner
 import br.com.saqz.subscriptions.application.AppStoreSubscriptionRepository
+import br.com.saqz.subscriptions.application.AsaasGateway
+import br.com.saqz.subscriptions.application.OverdueInvoiceResolver
 import br.com.saqz.subscriptions.application.GooglePlaySubscriptionRepository
 import br.com.saqz.subscriptions.application.CouponRepository
 import br.com.saqz.subscriptions.application.GetMySubscription
@@ -59,6 +62,8 @@ class SubscriptionsReadConfiguration {
         recoverUnconfirmed: ObjectProvider<RecoverUnconfirmedPayment>,
         appStoreSubscriptions: AppStoreSubscriptionRepository,
         googlePlaySubscriptions: GooglePlaySubscriptionRepository,
+        dataSource: DataSource,
+        gateway: ObjectProvider<AsaasGateway>,
     ) = GetMySubscription(
         subscriptions,
         ownedGroups,
@@ -66,6 +71,8 @@ class SubscriptionsReadConfiguration {
         recoverUnconfirmed.getIfAvailable(),
         appStoreSubscriptions,
         googlePlaySubscriptions,
+        // A mesma fatura do aviso de atraso; sem o Asaas configurado vale o link do webhook guardado.
+        OverdueInvoiceResolver(JdbcSubscriptionPastDueRepository(dataSource)) { gateway.ifAvailable },
     )
 
     @Bean

@@ -62,10 +62,12 @@ class SubscriptionPastDueReminders(
     private val repository: SubscriptionPastDueRepository,
     private val notice: TrialEndingNotice,
     private val whatsApp: TrialEndingWhatsApp,
-    private val gateway: () -> AsaasGateway?,
+    gateway: () -> AsaasGateway?,
     private val clock: Clock,
     private val zone: ZoneId = TRIAL_ZONE,
 ) {
+    private val invoices = OverdueInvoiceResolver(repository, gateway)
+
     /** Devolve quantos avisos saíram nesta rodada. */
     fun run(): Int {
         val now = clock.instant()
@@ -76,7 +78,7 @@ class SubscriptionPastDueReminders(
             if (due.isEmpty() || !repository.claim(subscription, due)) return@forEach
             val milestone = due.max()
             val link = if (subscription.provider == PastDueProvider.ASAAS) {
-                when (val invoice = payableInvoice(subscription)) {
+                when (val invoice = invoices.resolve(subscription)) {
                     InvoiceLookup.Paid -> {
                         repository.release(subscription, milestone)
                         JobLog.item("subscription_past_due", "reminder_skipped_paid", "userId" to subscription.ownerUserId, "milestone" to milestone)
@@ -99,30 +101,6 @@ class SubscriptionPastDueReminders(
             sent++
         }
         return sent
-    }
-
-    private sealed interface InvoiceLookup {
-        data object Paid : InvoiceLookup
-        data class Link(val url: String?) : InvoiceLookup
-    }
-
-    /**
-     * Link da fatura vencida da mensalidade. Com o Asaas à mão, a cobrança é conferida: já paga (o webhook só atrasou) não avisa;
-     * a que não está vencida não dá link; a vencida dá o link atual. Sem o Asaas (ou se ele falhar), vale o link do webhook.
-     */
-    private fun payableInvoice(subscription: PastDueSubscription): InvoiceLookup {
-        val invoice = repository.overdueInvoice(subscription) ?: return InvoiceLookup.Link(null)
-        val snapshot = runCatching { gateway()?.findPayment(invoice.paymentId) }.getOrNull()
-            ?: return InvoiceLookup.Link(invoice.invoiceUrl)
-        return when (snapshot.status) {
-            in PAID_STATUSES -> InvoiceLookup.Paid
-            "OVERDUE" -> InvoiceLookup.Link(snapshot.invoiceUrl ?: invoice.invoiceUrl)
-            else -> InvoiceLookup.Link(null)
-        }
-    }
-
-    private companion object {
-        val PAID_STATUSES = setOf("RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH")
     }
 }
 
@@ -179,5 +157,39 @@ fun pastDueMessage(milestone: Int, provider: PastDueProvider, link: String?): Pa
             },
             "Seus grupos congelam hoje. Toque para regularizar.",
         )
+    }
+}
+
+/** Resultado da conferência da fatura vencida da mensalidade. */
+sealed interface InvoiceLookup {
+    /** A cobrança já está paga (o webhook só atrasou): não há o que cobrar. */
+    data object Paid : InvoiceLookup
+
+    /** [url] é a fatura a pagar; nulo quando não há fatura vencida para mostrar. */
+    data class Link(val url: String?) : InvoiceLookup
+}
+
+/**
+ * Link da fatura vencida da mensalidade. Com o Asaas à mão, a cobrança é conferida: já paga (o webhook só atrasou) não cobra;
+ * a que não está vencida não dá link; a vencida dá o link atual. Sem o Asaas (ou se ele falhar), vale o link do webhook.
+ * Usado pelo aviso de atraso e pelo "Pagar agora" do `/subscriptions/me`, que mostram sempre a mesma fatura.
+ */
+class OverdueInvoiceResolver(
+    private val repository: SubscriptionPastDueRepository,
+    private val gateway: () -> AsaasGateway?,
+) {
+    fun resolve(subscription: PastDueSubscription): InvoiceLookup {
+        val invoice = repository.overdueInvoice(subscription) ?: return InvoiceLookup.Link(null)
+        val snapshot = runCatching { gateway()?.findPayment(invoice.paymentId) }.getOrNull()
+            ?: return InvoiceLookup.Link(invoice.invoiceUrl)
+        return when (snapshot.status) {
+            in PAID_STATUSES -> InvoiceLookup.Paid
+            "OVERDUE" -> InvoiceLookup.Link(snapshot.invoiceUrl ?: invoice.invoiceUrl)
+            else -> InvoiceLookup.Link(null)
+        }
+    }
+
+    private companion object {
+        val PAID_STATUSES = setOf("RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH")
     }
 }

@@ -36,6 +36,13 @@ data class MySubscriptionView(
     val provider: SubscriptionProvider = SubscriptionProvider.ASAAS,
     /** Renovação automática da loja (App Store ou Google Play); nulo para o Asaas. */
     val autoRenew: Boolean? = null,
+    /**
+     * Já houve pagamento confirmado. Falso só no checkout do site que nunca foi pago (a linha nasce PAST_DUE): o app trata como
+     * quem nunca assinou. Verdadeiro nas lojas, onde a assinatura só existe depois da compra.
+     */
+    val paymentConfirmed: Boolean = true,
+    /** "Pagar agora": a fatura vencida da mensalidade do site em atraso; nulo sem fatura ou fora do atraso. */
+    val payUrl: String? = null,
 )
 
 sealed class GetMySubscriptionResult {
@@ -50,6 +57,7 @@ class GetMySubscription(
     private val recoverUnconfirmed: RecoverUnconfirmedPayment? = null,
     private val appStoreSubscriptions: AppStoreSubscriptionRepository? = null,
     private val googlePlaySubscriptions: GooglePlaySubscriptionRepository? = null,
+    private val overdueInvoices: OverdueInvoiceResolver? = null,
 ) {
     private class Candidate(val entitled: Boolean, val periodEnd: Instant, val view: () -> MySubscriptionView)
 
@@ -87,7 +95,29 @@ class GetMySubscription(
         readOnly = isReadOnly(subscription, now),
         pastDueSince = subscription.pastDueSince,
         canceledAt = subscription.canceledAt,
+        paymentConfirmed = subscription.firstConfirmedAt != null,
+        payUrl = payUrl(subscription),
     )
+
+    /**
+     * Fatura que o aviso de atraso (DEB-076) usa, para o "Pagar agora" de Meu plano. Só para quem já pagou alguma vez e está em
+     * atraso (na carência ou congelado); quem nunca pagou segue pelo checkout, e cobrança já paga ou sem fatura vencida não tem link.
+     */
+    private fun payUrl(subscription: Subscription): String? {
+        val since = subscription.pastDueSince
+        if (overdueInvoices == null || subscription.status != SubscriptionStatus.PAST_DUE ||
+            subscription.firstConfirmedAt == null || subscription.canceledAt != null || since == null
+        ) {
+            return null
+        }
+        val dueDay = Subscription.pastDueDay(since)
+        val pastDue = PastDueSubscription(
+            subscription.ownerUserId, PastDueProvider.ASAAS, since, dueDay,
+            dueDay.plusDays(Subscription.PAST_DUE_GRACE_DAYS), subscription.asaasSubscriptionId,
+        )
+        val lookup = runCatching { overdueInvoices?.resolve(pastDue) }.getOrNull()
+        return (lookup as? InvoiceLookup.Link)?.url
+    }
 
     /** Tabela de estados em docs/subscriptions/app-store.md. */
     private fun appStoreView(ownerUserId: UUID, subscription: AppStoreSubscription, now: Instant): MySubscriptionView {

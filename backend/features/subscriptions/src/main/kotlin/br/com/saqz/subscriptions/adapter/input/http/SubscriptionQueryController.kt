@@ -36,6 +36,9 @@ data class MySubscriptionResponse(
     val canceledAt: Instant?,
     val provider: SubscriptionProvider,
     val autoRenew: Boolean?,
+    /** Campos novos e opcionais (apps 1.0.4 a 1.0.7 ignoram): ver [MySubscriptionView]. */
+    val paymentConfirmed: Boolean,
+    val payUrl: String?,
 )
 
 class SubscriptionNotFoundException : RuntimeException()
@@ -70,6 +73,8 @@ internal fun MySubscriptionView.toResponse() = MySubscriptionResponse(
     canceledAt = canceledAt,
     provider = provider,
     autoRenew = autoRenew,
+    paymentConfirmed = paymentConfirmed,
+    payUrl = payUrl,
 )
 
 private fun SubscriptionUsage.toResponse() = SubscriptionUsageResponse(
