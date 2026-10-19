@@ -23,7 +23,12 @@ class PasswordResetTest {
     private val notifier = RecordingNotifier()
     private val secrets = FixedSecrets()
     private val hasher = ResetSecretHasher("segredo-de-teste-com-trinta-e-dois")
-    private val useCase = PasswordReset(repository, accounts, notifier, secrets, hasher, clock)
+    private val changed = mutableListOf<String>()
+    private var changedFailure: RuntimeException? = null
+    private val useCase = PasswordReset(
+        repository, accounts, notifier, secrets, hasher, clock,
+        PasswordChangedNotifier { recipient -> changedFailure?.let { throw it }; changed += recipient },
+    )
 
     @Test
     fun `envia o codigo para quem tem conta`() {
@@ -261,6 +266,39 @@ class PasswordResetTest {
         assertEquals("senha-nova-forte", accounts.passwords.getValue("atleta@saqz.test"))
         assertTrue(repository.codes.isEmpty())
         assertEquals(ConfirmResetResult.InvalidToken, useCase.confirm(token, "outra-senha-forte"))
+    }
+
+    @Test
+    fun `avisa a pessoa depois de gravar a senha nova, uma vez`() {
+        useCase.request("atleta@saqz.test", "10.0.0.1")
+        val token = (verify("1234") as VerifyCodeResult.Success).token
+
+        assertEquals(ConfirmResetResult.Success, useCase.confirm(token, "senha-nova-forte"))
+        assertEquals(ConfirmResetResult.InvalidToken, useCase.confirm(token, "outra-senha-forte"))
+
+        assertEquals(listOf("atleta@saqz.test"), changed)
+    }
+
+    @Test
+    fun `falha no aviso de senha trocada nao falha a troca`() {
+        useCase.request("atleta@saqz.test", "10.0.0.1")
+        val token = (verify("1234") as VerifyCodeResult.Success).token
+        changedFailure = IllegalStateException("SMTP fora do ar")
+
+        assertEquals(ConfirmResetResult.Success, useCase.confirm(token, "senha-nova-forte"))
+        assertEquals("senha-nova-forte", accounts.passwords.getValue("atleta@saqz.test"))
+    }
+
+    @Test
+    fun `token invalido, senha fraca e provedor fora do ar nao avisam`() {
+        useCase.confirm("token-inventado", "senha-nova-forte")
+        useCase.request("atleta@saqz.test", "10.0.0.1")
+        val token = (verify("1234") as VerifyCodeResult.Success).token
+        useCase.confirm(token, "1234567")
+        accounts.unavailable = true
+        runCatching { useCase.confirm(token, "senha-nova-forte") }
+
+        assertTrue(changed.isEmpty())
     }
 
     @Test

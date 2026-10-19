@@ -132,6 +132,11 @@ fun interface ResetCodeNotifier {
     fun send(recipient: String, code: String, validity: Duration)
 }
 
+/** Aviso de senha trocada (DEB-083), depois de a senha nova ser gravada. */
+fun interface PasswordChangedNotifier {
+    fun send(recipient: String)
+}
+
 interface ResetSecrets {
     fun code(): String
 

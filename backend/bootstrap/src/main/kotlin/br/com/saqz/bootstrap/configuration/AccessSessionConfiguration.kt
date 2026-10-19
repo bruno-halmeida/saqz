@@ -27,6 +27,7 @@ import br.com.saqz.access.application.emailverification.VerificationLinkGenerato
 import br.com.saqz.access.application.emailverification.VerificationLinkMailer
 import br.com.saqz.access.application.emailverification.VerificationSendLog
 import br.com.saqz.access.application.passwordreset.PasswordAccounts
+import br.com.saqz.access.application.passwordreset.PasswordChangedNotifier
 import br.com.saqz.access.application.passwordreset.PasswordReset
 import br.com.saqz.access.application.passwordreset.ResetCodeNotifier
 import br.com.saqz.access.application.passwordreset.ResetSecretHasher
@@ -377,6 +378,18 @@ class AccessSessionConfiguration {
         }
     }
 
+    /** DEB-083: a troca já foi gravada, então a falha só é registrada (rótulo próprio) e o caso de uso a engole. */
+    @Bean
+    fun passwordChangedNotifier(mailer: VerificationCodeMailer) = PasswordChangedNotifier { recipient ->
+        try {
+            mailer.sendPasswordChanged(recipient)
+        } catch (failure: Exception) {
+            LoggerFactory.getLogger(AccessSessionConfiguration::class.java)
+                .error("password_changed_mail_failed", failure)
+            throw failure
+        }
+    }
+
     /** Bean para o teste de validade poder mover o relógio sem trocar a fiação inteira. */
     @Bean
     fun passwordResetClock(): Clock = Clock.systemUTC()
@@ -396,7 +409,8 @@ class AccessSessionConfiguration {
         notifier: ResetCodeNotifier,
         hasher: ResetSecretHasher,
         clock: Clock,
-    ) = PasswordReset(repository, accounts, notifier, SecureResetSecrets(), hasher, clock)
+        passwordChanged: PasswordChangedNotifier,
+    ) = PasswordReset(repository, accounts, notifier, SecureResetSecrets(), hasher, clock, passwordChanged)
 
     @Bean
     fun passwordResetController(passwordReset: PasswordReset) = PasswordResetController(passwordReset)

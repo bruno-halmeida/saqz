@@ -46,6 +46,7 @@ class PasswordReset(
     private val secrets: ResetSecrets,
     private val hasher: ResetSecretHasher,
     private val clock: Clock,
+    private val passwordChanged: PasswordChangedNotifier = PasswordChangedNotifier { },
 ) {
     fun request(rawEmail: String, ip: String): RequestCodeResult {
         val now = clock.instant()
@@ -118,10 +119,17 @@ class PasswordReset(
         val email = repository.consumeToken(hasher.ofToken(rawToken), clock.instant())
             ?: return ConfirmResetResult.InvalidToken
 
-        return if (accounts.updatePassword(email, newPassword)) {
-            ConfirmResetResult.Success
-        } else {
-            ConfirmResetResult.InvalidToken
+        if (!accounts.updatePassword(email, newPassword)) return ConfirmResetResult.InvalidToken
+        notifyPasswordChanged(email)
+        return ConfirmResetResult.Success
+    }
+
+    /** A senha já foi trocada: falha no aviso não pode desfazer nem falhar a troca (quem registra é o adapter). */
+    private fun notifyPasswordChanged(email: String) {
+        try {
+            passwordChanged.send(email)
+        } catch (_: Exception) {
+            // ponytail: silêncio deliberado; o log com rótulo próprio sai do adapter.
         }
     }
 

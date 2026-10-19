@@ -53,6 +53,27 @@ class VerificationCodeMailerIntegrationTest {
         assertTrue(html.contains("cid:saqz-mark"), html)
         assertTrue(message.hasPart("image/png"), message.contentType)
     }
+
+    @Test
+    fun `avisa que a senha foi alterada, com reply-to para o contato da equipe`() {
+        smtp.purgeEmailFromAllMailboxes()
+
+        mailer.sendPasswordChanged("atleta@saqz.test")
+
+        assertTrue(smtp.waitForIncomingEmail(5_000, 1))
+        val message = smtp.receivedMessages.single()
+        assertEquals("atleta@saqz.test", message.allRecipients.single().toString())
+        assertEquals("nao-responda@saqz.local", message.from.single().toString())
+        assertEquals("contato@egysis.com", message.replyTo.single().toString())
+        assertEquals("Sua senha do Saqz foi alterada", message.subject)
+        val plain = message.plainText()
+        val html = message.htmlText()
+        assertTrue(plain.contains("Sua senha do Saqz foi alterada."), plain)
+        assertTrue(plain.contains("Se não foi você, responda este e-mail."), plain)
+        assertTrue(html.contains("Sua senha do Saqz foi alterada."), html)
+        assertTrue(html.contains("Se não foi você, responda este e-mail."), html)
+        assertTrue(html.contains("cid:saqz-mark"), html)
+    }
 }
 
 private fun MimeMessage.plainText(): String = firstPart("text/plain")

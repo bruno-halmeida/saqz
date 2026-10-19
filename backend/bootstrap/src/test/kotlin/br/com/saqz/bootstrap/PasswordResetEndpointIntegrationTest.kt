@@ -4,6 +4,7 @@ import br.com.saqz.access.adapter.output.mail.VerificationCodeMailer
 import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.access.application.passwordreset.PasswordAccounts
 import br.com.saqz.access.application.passwordreset.PasswordAccountsUnavailable
+import br.com.saqz.access.application.passwordreset.PasswordChangedNotifier
 import br.com.saqz.access.application.passwordreset.ResetCodeNotifier
 import com.icegreen.greenmail.util.GreenMail
 import com.icegreen.greenmail.util.ServerSetup
@@ -80,6 +81,33 @@ class PasswordResetEndpointIntegrationTest {
         assertEquals(300, json(verified)["expiraEmSegundos"].asInt())
         assertEquals(204, confirm(token, "senha-nova-forte").statusCode())
         assertEquals("senha-nova-forte", accounts.passwords.getValue("atleta@saqz.test"))
+    }
+
+    @Test
+    fun `trocar a senha envia o aviso de senha alterada com reply-to do contato`() {
+        request("atleta@saqz.test")
+        val token = json(verify("atleta@saqz.test", deliveredCode()))["token"].stringValue()
+
+        assertEquals(204, confirm(token, "senha-nova-forte").statusCode())
+
+        assertTrue(smtp.waitForIncomingEmail(5_000, 2), "aviso de senha alterada não chegou")
+        val notice = smtp.receivedMessages.last()
+        assertEquals("Sua senha do Saqz foi alterada", notice.subject)
+        assertEquals("atleta@saqz.test", notice.allRecipients.single().toString())
+        assertEquals("contato@egysis.com", notice.replyTo.single().toString())
+        assertTrue(notice.plainTextBody()!!.contains("Se não foi você, responda este e-mail."))
+    }
+
+    @Test
+    fun `falha no aviso de senha alterada nao falha a troca`() {
+        request("atleta@saqz.test")
+        val token = json(verify("atleta@saqz.test", deliveredCode()))["token"].stringValue()
+        notifier.failing = true
+
+        assertEquals(204, confirm(token, "senha-nova-forte").statusCode())
+
+        assertEquals("senha-nova-forte", accounts.passwords.getValue("atleta@saqz.test"))
+        assertFalse(smtp.waitForIncomingEmail(1_000, 2))
     }
 
     @Test
@@ -310,6 +338,8 @@ class PasswordResetEndpointIntegrationTest {
         @Bean @Primary fun fakePasswordAccounts() = FakePasswordAccounts()
         @Bean @Primary fun movableClock() = MovableClock()
         @Bean @Primary fun failableNotifier(mailer: VerificationCodeMailer) = FailableNotifier(mailer)
+        @Bean @Primary fun failablePasswordChangedNotifier(mailer: VerificationCodeMailer, switch: FailableNotifier) =
+            FailablePasswordChangedNotifier(mailer, switch)
     }
 
     /** Entrega de verdade pelo GreenMail, com um interruptor para simular SMTP fora do ar. */
@@ -319,6 +349,17 @@ class PasswordResetEndpointIntegrationTest {
         override fun send(recipient: String, code: String, validity: Duration) {
             if (failing) throw IllegalStateException("SMTP fora do ar")
             mailer.send(recipient, code, validity)
+        }
+    }
+
+    /** Aviso de senha trocada pelo GreenMail, com o mesmo interruptor de SMTP fora do ar. */
+    class FailablePasswordChangedNotifier(
+        private val mailer: VerificationCodeMailer,
+        private val switch: FailableNotifier,
+    ) : PasswordChangedNotifier {
+        override fun send(recipient: String) {
+            if (switch.failing) throw IllegalStateException("SMTP fora do ar")
+            mailer.sendPasswordChanged(recipient)
         }
     }
 
