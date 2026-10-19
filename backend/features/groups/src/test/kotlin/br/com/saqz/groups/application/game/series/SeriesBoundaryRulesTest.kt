@@ -48,17 +48,18 @@ class SeriesBoundaryRulesTest {
         assertEquals(2, command.revisionNumber)
     }
 
-    @Test fun `editar só esta ocorrência para o limite do plano ou depois é recusado sem tocar no banco`() {
+    @Test fun `editar só esta ocorrência leva o limite do plano ao repositório, que confere com o início atual`() {
         val limit = Instant.parse("2026-02-01T03:00:00Z")
-        val replacement = seriesReplacement(limit)
-        val result = ApplySeriesBoundary(repository, UUID::randomUUID, SERIES_CLOCK, { limit })
-            .onlyThis(OnlyThisBoundaryCommand(group, UUID.randomUUID(), 1, SERIES_TODAY, SeriesBoundaryAction.EDIT, replacement))
-        assertEquals(SeriesBoundaryResult.AfterPlanEnd(limit), result)
-        assertTrue(repository.only.isEmpty())
+        val edit = ApplySeriesBoundary(repository, UUID::randomUUID, SERIES_CLOCK, { limit })
+            .onlyThis(OnlyThisBoundaryCommand(group, UUID.randomUUID(), 1, SERIES_TODAY, SeriesBoundaryAction.EDIT, seriesReplacement(limit)))
+        assertEquals(SeriesBoundaryResult.Applied, edit)
+        assertEquals(limit, repository.only.last().startsBefore)
+        assertEquals(SERIES_NOW, repository.only.last().now)
 
-        val ok = ApplySeriesBoundary(repository, UUID::randomUUID, SERIES_CLOCK, { limit })
-            .onlyThis(OnlyThisBoundaryCommand(group, UUID.randomUUID(), 1, SERIES_TODAY, SeriesBoundaryAction.EDIT, seriesReplacement(limit.minusSeconds(60))))
-        assertEquals(SeriesBoundaryResult.Applied, ok)
+        // Cancelar não grava início novo: nada a conferir.
+        ApplySeriesBoundary(repository, UUID::randomUUID, SERIES_CLOCK, { limit })
+            .onlyThis(OnlyThisBoundaryCommand(group, UUID.randomUUID(), 1, SERIES_TODAY, SeriesBoundaryAction.CANCEL))
+        assertEquals(null, repository.only.last().startsBefore)
     }
 
     @Test fun `sem plano o limite de criação é o próprio agora`() {

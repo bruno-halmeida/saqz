@@ -33,6 +33,9 @@ class JdbcSeriesBoundaryRepository(
         if (row.detached && row.version == command.expectedVersion) return@transaction SeriesBoundaryResult.Replay
         if (row.version != command.expectedVersion) return@transaction SeriesBoundaryResult.VersionConflict
         if (row.date < command.today || !row.startsAt.isAfter(command.now) || row.status == "COMPLETED") return@transaction SeriesBoundaryResult.InvalidBoundary
+        val limit = command.startsBefore
+        val moved = command.replacement?.takeIf { it.startsAt != row.startsAt }
+        if (limit != null && moved != null && moved.startsAt >= limit) return@transaction SeriesBoundaryResult.AfterPlanEnd(limit)
         val updated = connection.prepareStatement(if (command.action == SeriesBoundaryAction.CANCEL) CANCEL_ONE else EDIT_ONE).use { statement ->
             if (command.action == SeriesBoundaryAction.EDIT) statement.bindSnapshot(requireNotNull(command.replacement), 1)
             val offset = if (command.action == SeriesBoundaryAction.EDIT) 16 else 1

@@ -26,6 +26,12 @@ data class OnlyThisBoundaryCommand(
     val replacement: GameSnapshot? = null,
     /** Preenchido pelo [ApplySeriesBoundary]: jogo que já começou não é mais alterado. */
     val now: Instant = Instant.EPOCH,
+    /**
+     * Preenchido pelo [ApplySeriesBoundary]: primeiro instante além do fim do plano (DEB-075). O repositório confere na
+     * transação, com o início atual da ocorrência na mão: só uma substituição que muda o início para esse instante ou
+     * depois é recusada, como no `EditGame`; um jogo antigo além do fim segue editável nos outros campos.
+     */
+    val startsBefore: Instant? = null,
 )
 
 data class FutureBoundaryCommand(
@@ -71,11 +77,8 @@ class ApplySeriesBoundary(
         if (command.action == SeriesBoundaryAction.EDIT && command.replacement == null) {
             return SeriesBoundaryResult.InvalidBoundary
         }
-        command.replacement?.let { replacement ->
-            val limit = horizon.startsBefore(command.groupId)
-            if (limit != null && replacement.startsAt >= limit) return SeriesBoundaryResult.AfterPlanEnd(limit)
-        }
-        return repository.applyOnlyThis(command.copy(now = clock.instant()))
+        val limit = command.replacement?.let { horizon.startsBefore(command.groupId) }
+        return repository.applyOnlyThis(command.copy(now = clock.instant(), startsBefore = limit))
     }
 
     @Suppress("LongParameterList")

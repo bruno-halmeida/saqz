@@ -48,6 +48,32 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
         assertEquals(2, int("SELECT count(*) FROM games WHERE series_id='${fixture.lineage}'"))
     }
 
+    @Test fun `only this edit beyond the plan end is refused only when the start changes`() {
+        val fixture = fixture(); val selected = game(fixture, DATE)
+        val limit = DATE.atStartOfDay().toInstant(ZoneOffset.ofHours(-3))
+        // Início igual ao da ocorrência (já além do fim): só mudou o título, passa.
+        assertEquals(
+            SeriesBoundaryResult.Applied,
+            repository().applyOnlyThis(OnlyThisBoundaryCommand(fixture.group, selected, 1, DATE.minusDays(1), SeriesBoundaryAction.EDIT, sameStart(snapshot(DATE, "Só o título"), DATE), startsBefore = limit)),
+        )
+        assertEquals("Só o título", string("SELECT title FROM games WHERE id='$selected'"))
+
+        // Início novo além do fim: recusa e nada muda.
+        val other = game(fixture, DATE.plusWeeks(1))
+        assertEquals(
+            SeriesBoundaryResult.AfterPlanEnd(limit),
+            repository().applyOnlyThis(OnlyThisBoundaryCommand(fixture.group, other, 1, DATE.minusDays(1), SeriesBoundaryAction.EDIT, snapshot(DATE.plusWeeks(2), "Mudou o dia"), startsBefore = limit)),
+        )
+        assertEquals("Treino semanal", string("SELECT title FROM games WHERE id='$other'"))
+        assertEquals(false, bool("SELECT detached_from_series FROM games WHERE id='$other'"))
+
+        // Início novo antes do fim: passa.
+        assertEquals(
+            SeriesBoundaryResult.Applied,
+            repository().applyOnlyThis(OnlyThisBoundaryCommand(fixture.group, other, 1, DATE.minusDays(1), SeriesBoundaryAction.EDIT, snapshot(DATE.minusDays(1), "Antes do fim"), startsBefore = limit)),
+        )
+    }
+
     @Test fun `only this edit maps an occupied start to a schedule conflict`() {
         val fixture = fixture(); val selected = game(fixture, DATE); occupiedGame(fixture)
 
@@ -228,6 +254,10 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
         execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_id,venue_name,venue_address,venue_court,capacity,game_fee_cents,status,created_at,updated_at) VALUES ('$id','${fixture.group}','Avulso ocupado',DATE '$DATE',TIME '21:30','America/Sao_Paulo',TIMESTAMPTZ '$starts',90,TIMESTAMPTZ '$deadline','${fixture.venue}','Arena Central','Rua das Flores 100','Quadra 2',24,2500,'PUBLISHED',now(),now())")
         return id
     }
+
+    /** O jogo de [game] começa às 19h30; o snapshot padrão, às 20h. */
+    private fun sameStart(snapshot: GameSnapshot, date: LocalDate) =
+        snapshot.copy(localTime = LocalTime.of(19, 30), startsAt = date.atTime(19, 30).toInstant(ZoneOffset.ofHours(-3)))
 
     private fun snapshot(date: LocalDate, title: String): GameSnapshot { val starts = date.atTime(20,0).toInstant(ZoneOffset.ofHours(-3)); return GameSnapshot(title, GameVenueSnapshot(null,"Arena Nova","Avenida Central 500",null), date, LocalTime.of(20,0), IanaTimeZone.from("America/Sao_Paulo"), starts, 100, 20, starts.minusSeconds(7200), 3000, "Alterado") }
     private fun execute(sql: String) { dataSource.connection.use { it.createStatement().use { statement -> statement.execute(sql) } } }
