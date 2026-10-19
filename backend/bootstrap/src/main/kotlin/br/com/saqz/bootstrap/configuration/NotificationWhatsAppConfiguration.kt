@@ -9,6 +9,8 @@ import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.adapter.output.jdbc.whatsapp.JdbcGroupWhatsAppBindingRepository
 import br.com.saqz.groups.adapter.output.whatsapp.UazapiGroupDirectory
 import br.com.saqz.groups.adapter.output.whatsapp.UazapiGroupNotificationSender
+import br.com.saqz.groups.adapter.output.whatsapp.UazapiNumberCheck
+import br.com.saqz.groups.application.communication.WhatsAppNumberCheck
 import br.com.saqz.groups.adapter.output.whatsapp.UazapiNotificationSender
 import br.com.saqz.groups.application.communication.NotificationWhatsAppGroupSender
 import br.com.saqz.groups.application.communication.NotificationWhatsAppSender
@@ -42,6 +44,7 @@ class NotificationWhatsAppConfiguration {
             .connectTimeout(Duration.ofSeconds(10)).readTimeout(Duration.ofSeconds(30)).build()
     }
     @Bean fun notificationWhatsAppSender(client: UazapiClient): NotificationWhatsAppSender = UazapiNotificationSender(client)
+    @Bean fun whatsAppNumberCheck(client: UazapiClient): WhatsAppNumberCheck = UazapiNumberCheck(client)
     @Bean fun notificationWhatsAppQueue(dataSource: DataSource, transaction: JdbcTransactionRunner,
         links: br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory) =
         JdbcNotificationWhatsApp(dataSource, transaction, links)
