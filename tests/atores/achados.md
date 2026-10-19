@@ -54,6 +54,7 @@ rotula a falha no relatório.
 - **Veio:** `HTTP 422 {"code":"VALIDATION_FAILED","fieldErrors":{"message":["is invalid"]}}`. A consulta
   `reminderGame` (`JdbcGroupCommunicationRepository`) exige `confirmation_deadline > now()`; o ramo "Prazo encerrado" do
   corpo só é alcançável pelo lembrete automático. Mensagem de erro genérica também não ajuda o app a explicar o motivo.
+- **Resolvido (DEB-093, 18/10):** `reminderGame` passou a exigir só jogo publicado com início futuro; o cenário `PROM-009` passa.
 
 ## Divergências que **não** são bugs do backend (registradas para não virarem falso alarme)
 
