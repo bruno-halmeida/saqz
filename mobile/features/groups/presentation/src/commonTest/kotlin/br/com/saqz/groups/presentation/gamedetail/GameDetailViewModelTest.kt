@@ -416,6 +416,31 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun `the beyond plan end text stays while the start is the same and goes away once the date is corrected`() = runTest {
+        val game = sampleVersionedGame().game
+        val draft = sampleVersionedGame().copy(game = game.copy(status = GameStatus.Draft))
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(draft),
+            lifecycleResult = SaqzResult.Failure(GameError.AfterPlanEnd("2026-08-02T03:00:00Z")),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+        viewModel.onIntent(GameDetailIntent.Publish)
+        assertTrue(viewModel.state.value.publishAfterPlanEnd)
+
+        // Volta do editor sem mudar o início: segue valendo.
+        viewModel.onIntent(GameDetailIntent.Retry)
+        assertTrue(viewModel.state.value.publishAfterPlanEnd)
+
+        // O organizador corrigiu a data: o texto some sem precisar tocar em Publicar.
+        gateway.readResult = SaqzResult.Success(
+            draft.copy(game = game.copy(status = GameStatus.Draft, localDate = "2026-07-30", startsAt = "2026-07-30T19:30:00-03:00")),
+        )
+        viewModel.onIntent(GameDetailIntent.Retry)
+        assertFalse(viewModel.state.value.publishAfterPlanEnd)
+        assertFalse(viewModel.state.value.publishFailed)
+    }
+
+    @Test
     fun `publish conflict reloads the game instead of failing`() = runTest {
         val draft = sampleVersionedGame().copy(game = sampleVersionedGame().game.copy(status = GameStatus.Draft))
         val gateway = FakeGameGateway(

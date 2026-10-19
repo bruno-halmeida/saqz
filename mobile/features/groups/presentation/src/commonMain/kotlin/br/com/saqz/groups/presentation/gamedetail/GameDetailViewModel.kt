@@ -90,6 +90,8 @@ class GameDetailViewModel(
     private var membershipType: AthleteMembershipType? = null
     private var confirmationDeadline: Instant? = null
     private var startsAt: Instant? = null
+    /** Início do rascunho que o servidor recusou publicar por cair além do fim do plano; outro início na recarga limpa o aviso. */
+    private var publishRefusedStart: Instant? = null
     private var groupPromotionMode: PromotionMode = PromotionMode.FIFO
 
     /**
@@ -336,6 +338,7 @@ class GameDetailViewModel(
                         isAdmin = isAdmin,
                         promotingMemberId = null,
                         promotionFailed = false,
+                        publishAfterPlanEnd = it.publishAfterPlanEnd && startsAt == publishRefusedStart,
                         organizer = GameOrganizerUi(),
                         capacitySheetOpen = false,
                         savingCapacity = false,
@@ -748,6 +751,7 @@ class GameDetailViewModel(
                     load()
                 } else {
                     val afterPlanEnd = result.error is GameError.AfterPlanEnd
+                    publishRefusedStart = startsAt.takeIf { afterPlanEnd }
                     update { it.copy(publishing = false, publishFailed = !afterPlanEnd, publishAfterPlanEnd = afterPlanEnd) }
                 }
             }
