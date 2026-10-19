@@ -10,7 +10,7 @@
   <script src="../assets/firebase-config.js?v=authdomain"></script>
   <script src="../assets/analytics-config.js"></script>
   <script src="../assets/analytics.js" defer></script>
-  <script src="comecar.js?v=mascara-celular" defer></script>
+  <script src="comecar.js?v=so-lojas" defer></script>
   <style>
     @font-face { font-family: Inter; src: url("../assets/inter-var.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
     :root { --blue:#0638DF; --pressed:#052BB3; --lime:#C7F300; --navy:#0E1738; --paper:#F5F5F7; --white:#FFF; --line:#D8DDE8; --muted:#667085; --error:#E5484D; --success:#17B26A; --google:#1F1F1F; --google-line:#747775; }
@@ -75,7 +75,6 @@
       background: var(--navy);
       color: var(--white);
     }
-    .download-title { margin: 0; font-size: 20px; line-height: 1.2; letter-spacing: -.03em; }
     .store-row {
       display: flex;
       flex-wrap: wrap;
@@ -180,11 +179,9 @@
     </section>
 
     <section class="card" id="ready-card" hidden>
-      <h2 id="ready-title">Sua conta está pronta.</h2>
+      <h2 id="ready-title">Baixe o app</h2>
       <p class="sub" id="ready-copy">Baixe o app e entre com esta mesma conta. O teste começa quando você criar o primeiro grupo no celular.</p>
-      <a class="btn" id="web-app-cta" href="/app/" hidden>Continuar no Saqz</a>
       <div class="download-panel" id="download-panel" hidden>
-        <h3 class="download-title" id="download-title">Baixe o app</h3>
         <div class="store-row">
           <a class="store-official" id="ios-store" data-label="Baixar na App Store" hidden>
             <img src="badges/app-store-pt-br.svg" alt="Baixar na App Store" width="132" height="44">

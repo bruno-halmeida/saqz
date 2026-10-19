@@ -1,5 +1,6 @@
-// Computador: depois do cadastro e da assinatura, o organizador segue para o web app em saqz.app/app/.
-// iPhone (App Store) e Android (Google Play) continuam nas lojas.
+// Cadastro (/comecar/): a tela final só manda baixar o app, em qualquer aparelho (selos da App Store e do Google Play;
+// o Android só vê o do Google Play), e o web app não é oferecido. Assinatura (/assinar/): segue oferecendo o web app
+// no computador.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
@@ -47,24 +48,28 @@ function comecar(userAgent, available = true, storeConfig) {
   return { ready: ctx.window.handoffTest.ready, el: (id) => elements.get(id), fetched };
 }
 
-test('iPhone: depois do cadastro, o selo da App Store é a ação principal e o web app nem é consultado', async () => {
+const READY_COPY = 'Baixe o app e entre com esta mesma conta. O teste começa quando você criar o primeiro grupo no celular.';
+
+test('iPhone: depois do cadastro, os selos das lojas são a ação principal e o web app nem é consultado', async () => {
   const page = comecar(IPHONE);
   page.ready(); await flush(); await flush();
-  assert.equal(page.el('web-app-cta').hidden, true);
   assert.ok(!page.fetched.includes('/app/disponivel.json'));
+  assert.equal(page.el('ready-title').textContent, 'Baixe o app');
+  assert.equal(page.el('ready-copy').textContent, READY_COPY);
   assert.equal(page.el('download-panel').hidden, false);
   assert.equal(page.el('ios-store').hidden, false);
   assert.equal(page.el('ios-store').href, APP_STORE);
   assert.equal(page.el('android-store').hidden, false, 'iPhone também vê o selo do Google Play');
   assert.equal(page.el('android-store').href, PLAY);
   assert.equal(page.el('download-open').hidden, false, 'secundária: já tem o app? abrir neste celular');
-  assert.match(page.el('ready-copy').textContent, /Baixe o app/);
 });
 
-test('computador: oferece o web app e mantém o painel para quem vai instalar no celular', async () => {
+test('computador: só os selos das lojas, sem web app', async () => {
   const page = comecar(DESKTOP);
   page.ready(); await flush(); await flush();
-  assert.equal(page.el('web-app-cta').hidden, false);
+  assert.ok(!page.fetched.includes('/app/disponivel.json'));
+  assert.equal(page.el('ready-title').textContent, 'Baixe o app');
+  assert.equal(page.el('ready-copy').textContent, READY_COPY);
   assert.equal(page.el('download-panel').hidden, false);
   assert.equal(page.el('download-open').hidden, true, '"Abrir o app neste celular" só aparece no celular');
 });
@@ -72,20 +77,21 @@ test('computador: oferece o web app e mantém o painel para quem vai instalar no
 test('Android: segue nas lojas, sem consultar o web app', async () => {
   const page = comecar(ANDROID);
   page.ready(); await flush(); await flush();
-  assert.equal(page.el('web-app-cta').hidden, true);
   assert.ok(!page.fetched.includes('/app/disponivel.json'));
-  assert.match(page.el('ready-copy').textContent, /Baixe o app/);
+  assert.equal(page.el('ready-copy').textContent, READY_COPY);
   assert.equal(page.el('download-panel').hidden, false, 'principal: o selo da Google Play');
   assert.equal(page.el('android-store').hidden, false);
   assert.equal(page.el('download-open').hidden, false, 'secundária: já tem o app? abrir neste celular');
 });
 
-test('web app fora do ar: a página fica como era', async () => {
-  const page = comecar(DESKTOP, false);
-  page.ready(); await flush(); await flush();
-  assert.equal(page.el('web-app-cta').hidden, true);
-  assert.match(page.el('ready-copy').textContent, /Baixe o app/);
-  assert.equal(page.el('download-panel').hidden, false);
+test('cadastro: o botão "Continuar no Saqz" e a consulta ao web app não existem mais; "Abrir neste celular" fica', () => {
+  const html = fs.readFileSync(require.resolve('../comecar/index.html'), 'utf8');
+  const source = fs.readFileSync(require.resolve('../comecar/comecar.js'), 'utf8');
+  assert.doesNotMatch(html, /web-app-cta|Continuar no Saqz|href="\/app\/"/);
+  assert.doesNotMatch(source, /web-app-cta|disponivel\.json|offerWebApp/);
+  assert.match(html, /<h2 id="ready-title">Baixe o app<\/h2>/);
+  assert.match(html, /id="request-app-link" type="button">Já tem o app\? Abrir neste celular<\/button>/);
+  assert.match(html, /id="app-link"/);
 });
 
 test('assinatura: sucesso e "já é assinante" oferecem o web app (só computador)', () => {
@@ -112,7 +118,7 @@ test('a dica de Tela de Início do iPhone não existe mais', () => {
   assert.doesNotMatch(html, /web-app-ios-tip|Adicionar à Tela de Início/);
 });
 
-test('computador: os dois selos oficiais aparecem como secundária', async () => {
+test('computador: os dois selos oficiais aparecem', async () => {
   const page = comecar(DESKTOP);
   page.ready();
   await flush(); await flush();

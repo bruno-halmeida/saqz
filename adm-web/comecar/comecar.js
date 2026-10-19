@@ -22,27 +22,10 @@
   // Funil de medição (deploy/medicao-web.md): sem o carregador da landing, vira no-op.
   function track(name, params) { try { if (window.saqzTrack) window.saqzTrack(name, params || {}); } catch (ignored) {} }
 
-  // Computador: o web app em saqz.app/app/ é onde o organizador cria o grupo, logado com a mesma conta
-  // (mesmo domínio e mesmo Firebase). iPhone e Android seguem nas lojas (App Store e Google Play). Só
-  // oferece se o navegador roda o web app (WasmGC) e ele responde: fora do ar, a página fica como era.
+  // A tela final só manda baixar o app (App Store e Google Play), em qualquer aparelho; o web app não é oferecido aqui.
   function isIPhone() {
     return typeof navigator !== "undefined" && (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
-  }
-  var webAppOffer = null;
-  function offerWebApp() {
-    if (webAppOffer) return webAppOffer;
-    webAppOffer = new Promise(function (resolve) {
-      if (typeof navigator === "undefined" || typeof fetch !== "function") return resolve(false);
-      if (/Android/i.test(navigator.userAgent) || isIPhone()) return resolve(false);
-      try {
-        if (!(typeof WebAssembly === "object" && WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 127, 0])))) return resolve(false);
-      } catch (e) { return resolve(false); }
-      fetch("/app/disponivel.json", { cache: "no-store" })
-        .then(function (response) { resolve(response.ok); })
-        .catch(function () { resolve(false); });
-    });
-    return webAppOffer;
   }
   function identify(accountId, firebaseUid) { try { if (accountId && window.saqzIdentify) window.saqzIdentify(accountId, firebaseUid); } catch (ignored) {} }
   function show(id) { $(id).hidden = false; }
@@ -148,7 +131,6 @@
     $("trial-coupon").value = "";
     setMessage("trial-status", "");
     $("more-options").open = false;
-    hide("web-app-cta");
     hide("download-panel");
     hide("download-open");
     session = null;
@@ -191,36 +173,23 @@
     }
     show("ready-card");
     hide("profile-card");
-    setMessage("ready-title", "Sua conta está pronta.");
+    setMessage("ready-title", "Baixe o app");
     setMessage("ready-copy", "Baixe o app e entre com esta mesma conta. O teste começa quando você criar o primeiro grupo no celular.");
     bindStoreBadges();
     loadTrial(currentUser, generation);
-    offerWebAppOnReady();
-  }
-  // Os dois caminhos que mostram o cartão final (sessão já completa e perfil recém-salvo) passam por aqui.
-  function offerWebAppOnReady() {
-    offerWebApp().then(function (available) {
-      if ($("ready-card").hidden) return;
-      layoutReady(available);
-    });
+    layoutReady();
   }
   function isAndroid() {
     return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
   }
-  // Uma ação principal por aparelho; o resto fica atrás de "Mais opções".
-  //  - computador (web app no ar): "Continuar no Saqz", com as lojas como secundária.
-  //  - iPhone (App Store e Google Play), Android (Google Play) ou web app fora do ar: os selos; secundária
-  //    "Já tem o app? Abrir neste celular".
-  function layoutReady(webAvailable) {
-    var iphone = isIPhone();
-    var mobile = iphone || isAndroid();
+  // Os dois caminhos que mostram o cartão final (sessão já completa e perfil recém-salvo) passam por aqui. Em
+  // qualquer aparelho a ação principal são os selos das lojas; no celular, a secundária "Já tem o app? Abrir neste
+  // celular". O resto fica atrás de "Mais opções".
+  function layoutReady() {
+    var mobile = isIPhone() || isAndroid();
     // iPhone e computador veem os dois selos (App Store primeiro); o Android só vê o do Google Play.
     if (isAndroid()) hide("ios-store");
-    var storeLive = !$("android-store").hidden || !$("ios-store").hidden;
-    $("web-app-cta").hidden = !webAvailable;
-    if (webAvailable) setMessage("ready-copy", "Continue no Saqz e crie seu primeiro grupo agora, com esta mesma conta. O teste começa no primeiro grupo.");
-    $("download-title").textContent = webAvailable ? "Prefere usar no celular?" : "Baixe o app";
-    $("download-panel").hidden = !storeLive;
+    $("download-panel").hidden = $("android-store").hidden && $("ios-store").hidden;
     $("download-open").hidden = !mobile;
   }
   function bootstrap(user, requestedName, expectedGeneration) {
@@ -467,7 +436,7 @@
           hide("profile-card");
           show("ready-card");
           loadTrial(currentUser, expectedGeneration);
-          offerWebAppOnReady();
+          layoutReady();
         }
       })
       .catch(function (error) {
@@ -655,7 +624,6 @@
     $("phone").addEventListener("input", function (event) { maskPhone($("phone"), event); });
     $("request-app-link").addEventListener("click", requestAppLink);
     $("app-link").addEventListener("click", function () { track("app_open", { via: "link" }); });
-    $("web-app-cta").addEventListener("click", function () { track("app_open", { via: "web" }); });
     ["ios-store", "android-store"].forEach(function (id) {
       $(id).addEventListener("click", function () {
         if (!$(id).classList.contains("is-soon")) track("store_click", { store: id === "ios-store" ? "ios" : "android" });
