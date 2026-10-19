@@ -29,6 +29,8 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.time.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Duration.Companion.hours
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -553,10 +555,14 @@ class GroupMembersViewModelTest {
 
     @Test
     fun `loads the join requests and the pending filter shows the real number`() = runTest {
+        // O dia conta no fuso do grupo: entre 0h e 3h dele, 3 h atrás já é ontem.
+        val zone = TimeZone.of("America/Sao_Paulo")
+        val threeHoursAgo = Clock.System.now() - 3.hours
+        val sameDay = threeHoursAgo.toLocalDateTime(zone).date == Clock.System.now().toLocalDateTime(zone).date
         val entry = FakeGroupEntryRequestGateway(
             SaqzResult.Success(
                 listOf(
-                    request("a", "Ana", (Clock.System.now() - 3.hours).toString()),
+                    request("a", "Ana", threeHoursAgo.toString()),
                     request("b", "Beto"),
                 ),
             ),
@@ -566,7 +572,7 @@ class GroupMembersViewModelTest {
         assertTrue(viewModel.state.value.canReviewRequests)
         assertEquals(2, viewModel.state.value.pendingCount)
         assertEquals(listOf("Ana", "Beto"), viewModel.state.value.joinRequests.map { it.name })
-        assertEquals("Pediu há 3 h", viewModel.state.value.joinRequests.first().meta)
+        assertEquals(if (sameDay) "Pediu há 3 h" else "Pediu ontem", viewModel.state.value.joinRequests.first().meta)
         assertEquals("Pediu agora", viewModel.state.value.joinRequests.last().meta)
 
         viewModel.onIntent(GroupMembersIntent.SelectFilter(GroupMembersFilter.Pending))
