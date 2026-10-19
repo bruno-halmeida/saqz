@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzEmptyState
@@ -32,6 +33,7 @@ import br.com.saqz.subscriptions.presentation.myplan.MyPlanUsageUi
 import br.com.saqz.subscriptions.presentation.myplan.MyPlanTrialUi
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.myplan_pay_now
 import br.com.saqz.subscriptions.resources.myplan_reactivate
 import br.com.saqz.subscriptions.resources.myplan_resubscribe
 import br.com.saqz.subscriptions.resources.myplan_retry
@@ -53,6 +55,7 @@ internal object MyPlanTags {
     const val TrialCountdown = "myplan-trial-countdown"
     const val Subscribe = "myplan-trial-subscribe"
     const val Resubscribe = "myplan-resubscribe"
+    const val PayNow = "myplan-pay-now"
     const val Reactivate = "myplan-reactivate"
     const val ReactivateError = "myplan-reactivate-error"
 }
@@ -101,6 +104,16 @@ fun MyPlanScreen(
                 verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
             ) {
                 state.plan?.let { MyPlanCurrentCard(it) }
+                // Site em atraso (na carência ou congelado): a mesma fatura vencida do aviso. Sem fatura, sem botão.
+                state.payUrl?.let { url ->
+                    val uriHandler = LocalUriHandler.current
+                    SaqzButton(
+                        stringResource(Res.string.myplan_pay_now),
+                        onClick = { runCatching { uriHandler.openUri(url) } },
+                        fullWidth = true,
+                        modifier = Modifier.testTag(MyPlanTags.PayNow),
+                    )
+                }
                 // Assinatura encerrada: a loja do aparelho (App Store, Google Play) ou, no web app, o
                 // checkout do site. Sem nenhum dos dois o botão some, como o do teste.
                 if (state.canResubscribe && purchasesAvailable) {

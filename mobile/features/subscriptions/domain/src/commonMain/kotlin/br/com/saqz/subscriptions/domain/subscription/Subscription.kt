@@ -29,6 +29,13 @@ data class MySubscription(
     val provider: SubscriptionProvider = SubscriptionProvider.Asaas,
     /** Renovação automática da loja (App Store ou Google Play); nulo numa assinatura da web. */
     val autoRenew: Boolean? = null,
+    /**
+     * Já houve pagamento confirmado. Falso só no checkout do site que nunca foi pago: o app trata como quem nunca assinou.
+     * Backend anterior ao campo não manda: vale verdadeiro, como era.
+     */
+    val paymentConfirmed: Boolean = true,
+    /** "Pagar agora": a fatura vencida do site em atraso (a mesma do aviso); nulo sem fatura. */
+    val payUrl: String? = null,
 )
 
 /** Os dois produtos da App Store de um plano. O mapeamento é do backend (`GET /plans`). */

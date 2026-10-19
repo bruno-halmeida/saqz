@@ -52,6 +52,8 @@ internal data class MySubscriptionTransport(
     // Backend anterior à App Store não manda o campo: toda assinatura dele é da web.
     val provider: SubscriptionProviderTransport = SubscriptionProviderTransport.ASAAS,
     val autoRenew: Boolean? = null,
+    val paymentConfirmed: Boolean = true,
+    val payUrl: String? = null,
 )
 
 @Serializable
@@ -187,6 +189,8 @@ internal fun MySubscriptionTransport.toDomain() = MySubscription(
         SubscriptionProviderTransport.GOOGLE_PLAY -> SubscriptionProvider.GooglePlay
     },
     autoRenew = autoRenew,
+    paymentConfirmed = paymentConfirmed,
+    payUrl = payUrl,
 )
 
 private fun PlanCatalogItemTransport.toDomain() = PlanCatalogItem(

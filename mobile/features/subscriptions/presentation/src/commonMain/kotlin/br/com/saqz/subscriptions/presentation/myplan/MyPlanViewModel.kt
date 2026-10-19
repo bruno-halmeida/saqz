@@ -92,23 +92,22 @@ class MyPlanViewModel(
             val subscriptionResult = gateway.mySubscription()
             if (generation != loadGeneration) return@launch
 
-            val trialResult = if (subscriptionResult is SaqzResult.Failure &&
-                subscriptionResult.error == SubscriptionError.NotFound
-            ) trialGateway?.ownerTrial() else null
+            // Checkout do site que nunca foi pago segue como quem nunca assinou: teste ou "Assinar", não um plano em atraso.
+            val neverPaid = subscriptionResult is SaqzResult.Success && subscriptionResult.value.neverPaid()
+            val neverSubscribed = neverPaid ||
+                subscriptionResult is SaqzResult.Failure && subscriptionResult.error == SubscriptionError.NotFound
+            val trialResult = if (neverSubscribed) trialGateway?.ownerTrial() else null
             if (generation != loadGeneration) return@launch
 
-            if (subscriptionResult is SaqzResult.Failure) {
-                if (trialResult !is SaqzResult.Success || trialResult.value.status == TrialStatus.Subscribed) {
-                    update { it.copy(isLoading = false, loadError = subscriptionResult.error.toUiText()) }
-                    return@launch
-                }
+            val trialAccess = (trialResult as? SaqzResult.Success)?.value?.takeIf { it.status != TrialStatus.Subscribed }
+            if (neverSubscribed && trialAccess != null) {
                 update {
                     it.copy(
                         isLoading = false,
                         loadError = null,
                         plan = null,
                         usage = null,
-                        trial = trialResult.value.toUi(),
+                        trial = trialAccess.toUi(),
                         receipts = emptyList(),
                         hasMoreReceipts = false,
                         managingStore = null,
@@ -116,8 +115,13 @@ class MyPlanViewModel(
                         canReactivate = false,
                         isReactivating = false,
                         reactivateError = null,
+                        payUrl = null,
                     )
                 }
+                return@launch
+            }
+            if (subscriptionResult is SaqzResult.Failure) {
+                update { it.copy(isLoading = false, loadError = subscriptionResult.error.toUiText()) }
                 return@launch
             }
 
@@ -137,6 +141,7 @@ class MyPlanViewModel(
                     canReactivate = loadedSubscription.canReactivate(),
                     isReactivating = false,
                     reactivateError = null,
+                    payUrl = loadedSubscription.payUrl,
                     // Falha aqui não pode virar "nenhum recibo ainda" (achado do Codex no
                     // PR #93): mantém a última lista boa e guarda o erro à parte.
                     receipts = (receiptsResult as? SaqzResult.Success)?.value?.map { r -> r.toUi() } ?: it.receipts,
@@ -275,3 +280,6 @@ internal fun MySubscription.canResubscribe(): Boolean =
 
 /** Cancelada que ainda dá acesso até o fim do período pago: é o que o "Reativar" desfaz. */
 internal fun MySubscription.canReactivate(): Boolean = entitled && canceledAt != null
+
+/** Checkout do site que nunca foi pago: a linha existe em atraso, mas ninguém assinou. As lojas só criam a assinatura na compra. */
+internal fun MySubscription.neverPaid(): Boolean = provider == SubscriptionProvider.Asaas && !paymentConfirmed

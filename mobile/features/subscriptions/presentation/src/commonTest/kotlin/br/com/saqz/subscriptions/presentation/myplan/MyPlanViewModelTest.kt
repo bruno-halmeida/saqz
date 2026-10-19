@@ -343,6 +343,75 @@ class MyPlanViewModelTest {
     }
 
     @Test
+    fun `a past due web plan carries the overdue invoice and any other plan has none`() = runTest {
+        val link = "https://www.asaas.com/i/atrasada"
+        fun payUrlOf(subscription: MySubscription) =
+            MyPlanViewModel(FakeSubscriptionGateway(subscriptionResult = SaqzResult.Success(subscription))).state.value.payUrl
+
+        assertEquals(link, payUrlOf(ACTIVE_SUBSCRIPTION.copy(status = SubscriptionStatus.PastDue, entitled = true, payUrl = link)))
+        assertEquals(link, payUrlOf(ACTIVE_SUBSCRIPTION.copy(status = SubscriptionStatus.PastDue, entitled = false, payUrl = link)))
+        assertNull(payUrlOf(ACTIVE_SUBSCRIPTION.copy(status = SubscriptionStatus.PastDue, entitled = true)))
+        assertNull(payUrlOf(ACTIVE_SUBSCRIPTION))
+    }
+
+    @Test
+    fun `a web checkout that was never paid is shown as the trial not as a past due plan`() = runTest {
+        val neverPaid = ACTIVE_SUBSCRIPTION.copy(status = SubscriptionStatus.PastDue, entitled = false, paymentConfirmed = false)
+        val viewModel = MyPlanViewModel(
+            gateway = FakeSubscriptionGateway(subscriptionResult = SaqzResult.Success(neverPaid)),
+            trialGateway = ownerTrial(TrialStatus.Expired),
+        )
+
+        assertNull(viewModel.state.value.plan)
+        assertEquals(true, viewModel.state.value.trial?.canSubscribe)
+        assertNull(viewModel.state.value.payUrl)
+        assertEquals(false, viewModel.state.value.canResubscribe)
+    }
+
+    @Test
+    fun `a never paid checkout without a usable trial read keeps the plan it has`() = runTest {
+        val neverPaid = ACTIVE_SUBSCRIPTION.copy(status = SubscriptionStatus.PastDue, entitled = false, paymentConfirmed = false)
+        val viewModel = MyPlanViewModel(
+            gateway = FakeSubscriptionGateway(subscriptionResult = SaqzResult.Success(neverPaid)),
+            trialGateway = ownerTrial(TrialStatus.Subscribed),
+        )
+
+        assertNotNull(viewModel.state.value.plan)
+        assertNull(viewModel.state.value.trial)
+    }
+
+    @Test
+    fun `a store subscription is never treated as a checkout that was not paid`() = runTest {
+        for (provider in listOf(SubscriptionProvider.AppStore, SubscriptionProvider.GooglePlay)) {
+            val viewModel = MyPlanViewModel(
+                gateway = FakeSubscriptionGateway(
+                    subscriptionResult = SaqzResult.Success(ACTIVE_SUBSCRIPTION.copy(provider = provider, paymentConfirmed = false)),
+                ),
+                trialGateway = ownerTrial(TrialStatus.Expired),
+            )
+            assertNotNull(viewModel.state.value.plan)
+        }
+    }
+
+    private fun ownerTrial(status: TrialStatus) = object : TrialGateway {
+        override suspend fun ownerTrial() = SaqzResult.Success(
+            TrialAccess(
+                status = status,
+                startedAt = "2026-08-01T10:00:00Z",
+                endsAt = "2026-08-15T10:00:00Z",
+                serverTime = "2026-08-20T10:00:00Z",
+                readOnly = false,
+                canCreateGroup = false,
+                maxGroups = 1,
+                maxAthletes = 25,
+                isOwner = true,
+                appUrl = null,
+            ),
+        )
+        override suspend fun groupTrial(groupId: br.com.saqz.domain.GroupId) = SaqzResult.Failure(TrialError.NotFound)
+    }
+
+    @Test
     fun `receipts failure surfaces an error instead of an empty list and retry recovers`() = runTest {
         val gateway = FakeSubscriptionGateway(receiptsResult = SaqzResult.Failure(SubscriptionError.Conflict))
         val viewModel = MyPlanViewModel(gateway)

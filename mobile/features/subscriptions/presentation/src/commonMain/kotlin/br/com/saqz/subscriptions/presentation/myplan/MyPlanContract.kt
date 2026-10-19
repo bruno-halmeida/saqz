@@ -44,6 +44,8 @@ data class MyPlanState(
     val canReactivate: Boolean = false,
     val isReactivating: Boolean = false,
     val reactivateError: UiText? = null,
+    /** Fatura vencida do site em atraso: com ela a tela mostra "Pagar agora". */
+    val payUrl: String? = null,
 ) {
     val managedByStore: Boolean get() = managingStore != null
 }

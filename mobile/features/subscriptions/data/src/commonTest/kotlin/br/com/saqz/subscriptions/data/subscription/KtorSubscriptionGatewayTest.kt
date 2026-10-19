@@ -46,6 +46,28 @@ class KtorSubscriptionGatewayTest {
     }
 
     @Test
+    fun `my subscription without the new fields keeps the old behavior`() = runTest {
+        val value = success(gateway { json(MY_SUBSCRIPTION) }.mySubscription())
+
+        assertTrue(value.paymentConfirmed)
+        assertNull(value.payUrl)
+    }
+
+    @Test
+    fun `my subscription maps the overdue invoice and the unconfirmed payment`() = runTest {
+        val overdue = MY_SUBSCRIPTION.replace(""""canceledAt":null}""", """"canceledAt":null,"paymentConfirmed":true,"payUrl":"https://www.asaas.com/i/1"}""")
+        val unpaid = MY_SUBSCRIPTION.replace(""""canceledAt":null}""", """"canceledAt":null,"paymentConfirmed":false,"payUrl":null}""")
+
+        val withInvoice = success(gateway { json(overdue) }.mySubscription())
+        val neverPaid = success(gateway { json(unpaid) }.mySubscription())
+
+        assertEquals("https://www.asaas.com/i/1", withInvoice.payUrl)
+        assertTrue(withInvoice.paymentConfirmed)
+        assertEquals(false, neverPaid.paymentConfirmed)
+        assertNull(neverPaid.payUrl)
+    }
+
+    @Test
     fun `my subscription maps app store provider and auto renew`() = runTest {
         val value = success(gateway { json(APP_STORE_SUBSCRIPTION) }.mySubscription())
 
