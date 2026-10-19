@@ -392,10 +392,55 @@
     }
     return Promise.reject({ stale: true });
   }
+  // Celular: (11) 99999-9999 (ou (11) 9999-9999 com 10 dígitos) enquanto digita, cola ou o navegador preenche. O campo
+  // guarda só DDD + número, até 11 dígitos, sem +55: o +55 só entra no envio (regra do dono). Para a API vão só os dígitos.
+  function phoneDigits(value) {
+    var digits = String(value || "").replace(/\D/g, "");
+    if (digits.length > 11 && digits.indexOf("55") === 0) digits = digits.slice(2);
+    return digits.slice(0, 11);
+  }
+  function formatPhone(digits) {
+    if (!digits) return "";
+    if (digits.length <= 2) return "(" + digits;
+    var rest = digits.slice(2);
+    var split = digits.length === 11 ? 5 : 4;
+    var head = "(" + digits.slice(0, 2) + ") ";
+    return rest.length <= split ? head + rest : head + rest.slice(0, split) + "-" + rest.slice(split);
+  }
+  /** Posição logo depois do n-ésimo dígito no texto formatado: o cursor não pula ao reformatar. */
+  function caretAfterDigits(formatted, count) {
+    if (count <= 0) return formatted ? 1 : 0;
+    var seen = 0;
+    for (var i = 0; i < formatted.length; i++) {
+      if (/\d/.test(formatted.charAt(i)) && ++seen === count) return i + 1;
+    }
+    return formatted.length;
+  }
+  function maskPhone(input, event) {
+    var raw = input.value;
+    var caret = typeof input.selectionStart === "number" ? input.selectionStart : raw.length;
+    var allDigits = raw.replace(/\D/g, "");
+    var before = raw.slice(0, caret).replace(/\D/g, "").length;
+    if (allDigits.length > 11 && allDigits.indexOf("55") === 0) before = Math.max(0, before - 2);
+    var digits = phoneDigits(raw);
+    // Apagar só o traço, o parêntese ou o espaço apaga também o dígito antes dele; sem isso o Backspace não sai do lugar.
+    if (event && event.inputType === "deleteContentBackward" && digits === input.dataset.phoneDigits && before > 0) {
+      digits = digits.slice(0, before - 1) + digits.slice(before);
+      before -= 1;
+    }
+    var formatted = formatPhone(digits);
+    input.dataset.phoneDigits = digits;
+    if (formatted === raw) return;
+    input.value = formatted;
+    if (document.activeElement === input && input.setSelectionRange) {
+      var position = caretAfterDigits(formatted, Math.min(before, digits.length));
+      input.setSelectionRange(position, position);
+    }
+  }
   function saveProfile(event) {
     event.preventDefault();
     if (busy || !currentUser || !session) return;
-    var phone = $("phone").value.trim();
+    var phone = phoneDigits($("phone").value);
     var name = $("profile-name").value.trim();
     if (!phone || (($("profile-name-field").hidden === false) && !validName(name))) {
       setMessage("profile-error", "Informe um nome e um celular válido.", "error");
@@ -607,6 +652,7 @@
     $("auth-form").addEventListener("submit", authenticateWithCredentials);
     $("google-auth").addEventListener("click", authenticateWithGoogle);
     $("profile-form").addEventListener("submit", saveProfile);
+    $("phone").addEventListener("input", function (event) { maskPhone($("phone"), event); });
     $("request-app-link").addEventListener("click", requestAppLink);
     $("app-link").addEventListener("click", function () { track("app_open", { via: "link" }); });
     $("web-app-cta").addEventListener("click", function () { track("app_open", { via: "web" }); });
