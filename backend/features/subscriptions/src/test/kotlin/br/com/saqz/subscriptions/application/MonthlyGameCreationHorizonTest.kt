@@ -175,6 +175,40 @@ class MonthlyGameCreationHorizonTest {
     }
 
     @Test
+    fun `sandbox purchase from the Apple and test purchase from the Play use the rolling month instead of their short expiry`() {
+        access = OrganizerTrialAccess(TrialStatus.SUBSCRIBED, null, null, now, true)
+        appStore.save(
+            AppStoreSubscription(
+                "otx", owner, AppStoreEnvironment.SANDBOX, AppStoreProduct.TITULAR_MENSAL, "otx", now, now,
+                expiresAt = now.plusSeconds(300), revokedAt = null,
+            ),
+        )
+        assertEquals(startOfDay("2026-10-17"), horizon().startsBefore(group))
+        assertEquals(startOfDay("2026-10-17"), horizon().until(group))
+
+        appStore.save(
+            AppStoreSubscription(
+                "otx", owner, AppStoreEnvironment.XCODE, AppStoreProduct.TITULAR_MENSAL, "otx", now, now,
+                expiresAt = now.plusSeconds(300), revokedAt = null,
+            ),
+        )
+        assertEquals(startOfDay("2026-10-17"), horizon().startsBefore(group))
+    }
+
+    @Test
+    fun `test purchase from the Play uses the rolling month and a real one keeps its own end`() {
+        access = OrganizerTrialAccess(TrialStatus.SUBSCRIBED, null, null, now, true)
+        fun play(test: Boolean) = GooglePlaySubscription(
+            "token", owner, GooglePlayProduct.TITULAR_MENSAL, GooglePlayState.ACTIVE, now.plusSeconds(300),
+            true, null, "GPA.1", null, acknowledged = true, testPurchase = test,
+        )
+        googlePlay.save(play(test = true))
+        assertEquals(startOfDay("2026-10-17"), horizon().startsBefore(group))
+        googlePlay.save(play(test = false))
+        assertEquals(startOfDay("2026-09-17"), horizon().startsBefore(group))
+    }
+
+    @Test
     fun `subscribing in the middle of a long trial keeps the later trial end`() {
         trial("2026-09-10T09:00:00Z", "2026-11-09T09:00:00Z")
         asaas("2026-09-30T09:00:00Z")

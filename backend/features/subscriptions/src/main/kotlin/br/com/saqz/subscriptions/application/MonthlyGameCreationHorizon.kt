@@ -5,6 +5,7 @@ import br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup
 import br.com.saqz.sharedkernel.subscription.OrganizerTrialAccess
 import br.com.saqz.sharedkernel.subscription.OrganizerTrialAccessLookup
 import br.com.saqz.sharedkernel.subscription.TrialStatus
+import br.com.saqz.subscriptions.domain.AppStoreEnvironment
 import br.com.saqz.subscriptions.domain.SubscriptionStatus
 import java.time.Clock
 import java.time.Instant
@@ -63,7 +64,8 @@ class MonthlyGameCreationHorizon(
      * A carência de atraso (Asaas em PAST_DUE, graça da Apple) não estende: o fim fica no passado e nenhum
      * jogo novo passa até pagar. Linhas que dão acesso "para sempre" sem data (ACTIVE com período vencido,
      * PAST_DUE legado sem `past_due_since`) e fim desconhecido caem no mês corrido, para não travar quem
-     * o app trata como assinante em dia.
+     * o app trata como assinante em dia. Compra de teste da loja (sandbox da Apple, testador do Play) renova em
+     * minutos: o `expiresAt` dela não diz nada sobre o plano, então vale o mês corrido.
      */
     private fun paidEnd(owner: UUID, now: Instant): Instant {
         val ends = mutableListOf<Instant>()
@@ -72,8 +74,12 @@ class MonthlyGameCreationHorizon(
                 (it.status == SubscriptionStatus.ACTIVE || (it.status == SubscriptionStatus.PAST_DUE && it.pastDueSince == null))
             ends += if (legacy) monthlyMarkAfter(now, now) else it.currentPeriodEnd
         }
-        appStore?.findByOwner(owner).orEmpty().filter { it.isEntitlingAt(now) }.forEach { ends += it.expiresAt }
-        googlePlay?.findByOwner(owner).orEmpty().filter { it.isEntitlingAt(now) }.forEach { ends += it.expiresAt }
+        appStore?.findByOwner(owner).orEmpty().filter { it.isEntitlingAt(now) }.forEach {
+            ends += if (it.environment == AppStoreEnvironment.PRODUCTION) it.expiresAt else monthlyMarkAfter(now, now)
+        }
+        googlePlay?.findByOwner(owner).orEmpty().filter { it.isEntitlingAt(now) }.forEach {
+            ends += if (it.testPurchase) monthlyMarkAfter(now, now) else it.expiresAt
+        }
         return ends.maxOrNull() ?: monthlyMarkAfter(now, now)
     }
 
