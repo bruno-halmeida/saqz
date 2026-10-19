@@ -58,9 +58,10 @@ class JdbcSubscriptionPastDueRepository(
         """.trimIndent(),
     ).param("now", Timestamp.from(now)).query { rs, _ ->
         val since = rs.getTimestamp("expires_at").toInstant()
+        val graceEnds = rs.getTimestamp("grace_period_expires_at").toInstant()
         PastDueSubscription(
             rs.getObject("owner_user_id", UUID::class.java), PastDueProvider.APP_STORE, since,
-            Subscription.pastDueDay(since), Subscription.pastDueDay(rs.getTimestamp("grace_period_expires_at").toInstant()),
+            Subscription.pastDueDay(since), Subscription.pastDueDay(graceEnds), accessEndsAt = graceEnds,
         )
     }.list()
 
@@ -83,7 +84,7 @@ class JdbcSubscriptionPastDueRepository(
         val expires = rs.getTimestamp("expires_at").toInstant()
         PastDueSubscription(
             rs.getObject("owner_user_id", UUID::class.java), PastDueProvider.GOOGLE_PLAY, expires,
-            null, Subscription.pastDueDay(expires),
+            null, Subscription.pastDueDay(expires), accessEndsAt = expires,
         )
     }.list()
 

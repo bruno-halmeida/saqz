@@ -181,6 +181,45 @@ class SubscriptionPastDueRemindersTest {
     }
 
     @Test
+    fun `loja cujo acesso acaba antes das 10h de SP recebe o ultimo aviso na rodada da vespera, uma vez so`() {
+        // Fim às 08h de SP de 17/10 (11h UTC): a rodada de 17/10 às 10h já não o encontraria.
+        val ends = Instant.parse("2026-10-17T11:00:00Z")
+        subscriptions[0] = PastDueSubscription(owner, PastDueProvider.APP_STORE, since, LocalDate.parse("2026-10-10"), LocalDate.parse("2026-10-17"), accessEndsAt = ends)
+
+        assertEquals(1, runAt("2026-10-13T13:00:00Z"))
+        assertEquals(1, runAt("2026-10-16T13:00:00Z"))
+        assertEquals(
+            listOf(
+                "Seu pagamento do Saqz continua pendente. Seus grupos serão congelados em breve se não houver pagamento. Atualize a forma de pagamento na App Store.",
+                "Seus grupos congelam hoje. Atualize a forma de pagamento na App Store.",
+            ),
+            published.map { it.first },
+        )
+        assertEquals(0, runAt("2026-10-17T13:00:00Z"))
+        assertEquals(2, published.size)
+    }
+
+    @Test
+    fun `Google Play com fim de madrugada recebe o unico aviso na vespera`() {
+        val ends = Instant.parse("2026-10-17T06:00:00Z") // 03h de SP
+        subscriptions[0] = PastDueSubscription(owner, PastDueProvider.GOOGLE_PLAY, ends.minusSeconds(3 * 86400), null, LocalDate.parse("2026-10-17"), accessEndsAt = ends)
+
+        assertEquals(0, runAt("2026-10-15T13:00:00Z"))
+        assertEquals(1, runAt("2026-10-16T13:00:00Z"))
+        assertEquals("Seus grupos congelam hoje. Atualize a forma de pagamento no Google Play.", published.single().first)
+        assertEquals(0, runAt("2026-10-17T13:00:00Z"))
+    }
+
+    @Test
+    fun `fim do acesso depois da proxima rodada nao antecipa o ultimo aviso`() {
+        val ends = Instant.parse("2026-10-17T15:00:00Z") // 12h de SP: a rodada de 17/10 às 10h pega
+        subscriptions[0] = PastDueSubscription(owner, PastDueProvider.GOOGLE_PLAY, since, null, LocalDate.parse("2026-10-17"), accessEndsAt = ends)
+
+        assertEquals(0, runAt("2026-10-16T13:00:00Z"))
+        assertEquals(1, runAt("2026-10-17T13:00:00Z"))
+    }
+
+    @Test
     fun `carencia curta da loja, o ultimo dia cai antes dos 7 dias e vence o marco de 3`() {
         subscriptions[0] = PastDueSubscription(owner, PastDueProvider.APP_STORE, since, LocalDate.parse("2026-10-10"), LocalDate.parse("2026-10-13"))
 
@@ -218,7 +257,7 @@ class SubscriptionPastDueRemindersTest {
 
     @Test
     fun `marcos devidos`() {
-        val today = { date: String -> dueMilestones(asaas, LocalDate.parse(date)) }
+        val today = { date: String -> dueMilestones(asaas, LocalDate.parse(date), Instant.parse("${date}T13:00:00Z")) }
         assertEquals(emptyList(), today("2026-10-09"))
         assertEquals(listOf(0), today("2026-10-10"))
         assertEquals(listOf(0, 3), today("2026-10-13"))

@@ -3,6 +3,7 @@ package br.com.saqz.subscriptions.application
 import br.com.saqz.sharedkernel.job.JobLog
 import br.com.saqz.sharedkernel.subscription.TrialEndingNotice
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -18,7 +19,8 @@ internal const val PAST_DUE_LAST_DAY = 7
 
 /**
  * Assinatura em atraso que ainda dá acesso. [since] é a âncora do atraso (chave da trava). [dueDay] é o dia do vencimento, ou nulo
- * quando a origem não informa (Google Play); [lastDay] é o último dia com acesso, o "congelam hoje".
+ * quando a origem não informa (Google Play); [lastDay] é o último dia com acesso, o "congelam hoje". [accessEndsAt] é o instante em
+ * que o acesso acaba quando ele não cai na virada do dia (lojas: o horário acompanha a compra); nulo no site, onde é a meia-noite.
  */
 data class PastDueSubscription(
     val ownerUserId: UUID,
@@ -27,6 +29,7 @@ data class PastDueSubscription(
     val dueDay: LocalDate?,
     val lastDay: LocalDate,
     val asaasSubscriptionId: String? = null,
+    val accessEndsAt: Instant? = null,
 )
 
 /** Cobrança vencida da mensalidade, lida do webhook PAYMENT_OVERDUE guardado: o id e o link da fatura do Asaas. */
@@ -69,7 +72,7 @@ class SubscriptionPastDueReminders(
         val today = now.atZone(zone).toLocalDate()
         var sent = 0
         repository.pastDue(now).forEach { subscription ->
-            val due = dueMilestones(subscription, today)
+            val due = dueMilestones(subscription, today, now)
             if (due.isEmpty() || !repository.claim(subscription, due)) return@forEach
             val milestone = due.max()
             val link = if (subscription.provider == PastDueProvider.ASAAS) {
@@ -124,16 +127,23 @@ class SubscriptionPastDueReminders(
 }
 
 /**
- * Marcos devidos hoje. Fora da carência (depois do último dia) não sai nada: os grupos já congelaram. Rodada perdida reserva todos
- * os marcos já passados e avisa só o mais apertado.
+ * Quanto antes do fim do acesso a última rodada pode mandar o último aviso: a rodada é diária, então um fim que cai antes da próxima
+ * (com 30 minutos de folga para ela atrasar) é avisado nesta. Sem isso, o acesso de loja que acaba antes das 10h de São Paulo acaba sem aviso.
  */
-internal fun dueMilestones(subscription: PastDueSubscription, today: LocalDate): List<Int> {
+internal val LAST_NOTICE_LEAD: Duration = Duration.ofMinutes(24 * 60 + 30)
+
+/**
+ * Marcos devidos hoje. Fora da carência (depois do último dia) não sai nada: os grupos já congelaram. Rodada perdida reserva todos
+ * os marcos já passados e avisa só o mais apertado. O último dia sai também na véspera quando o acesso acaba antes da próxima rodada.
+ */
+internal fun dueMilestones(subscription: PastDueSubscription, today: LocalDate, now: Instant): List<Int> {
     if (today.isAfter(subscription.lastDay)) return emptyList()
     val dueDay = subscription.dueDay
     return buildList {
         if (dueDay != null && !today.isBefore(dueDay)) add(PAST_DUE_DAY_ZERO)
         if (dueDay != null && !today.isBefore(dueDay.plusDays(PAST_DUE_DAY_THREE.toLong()))) add(PAST_DUE_DAY_THREE)
-        if (!today.isBefore(subscription.lastDay)) add(PAST_DUE_LAST_DAY)
+        val endsBeforeNextRound = subscription.accessEndsAt?.let { !it.isAfter(now.plus(LAST_NOTICE_LEAD)) } == true
+        if (!today.isBefore(subscription.lastDay) || endsBeforeNextRound) add(PAST_DUE_LAST_DAY)
     }
 }
 

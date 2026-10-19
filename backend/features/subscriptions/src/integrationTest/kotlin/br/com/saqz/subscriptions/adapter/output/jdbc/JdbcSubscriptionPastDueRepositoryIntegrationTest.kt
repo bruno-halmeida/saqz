@@ -5,6 +5,7 @@ import br.com.saqz.subscriptions.application.AsaasBillingType
 import br.com.saqz.subscriptions.application.OverdueInvoice
 import br.com.saqz.subscriptions.application.PastDueProvider
 import br.com.saqz.subscriptions.application.PastDueSubscription
+import br.com.saqz.subscriptions.application.SubscriptionPastDueReminders
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.domain.Subscription
 import br.com.saqz.subscriptions.domain.SubscriptionCycle
@@ -13,6 +14,8 @@ import br.com.saqz.subscriptions.testing.allSubscriptionsFeatureMigrationLocatio
 import org.junit.jupiter.api.Test
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.Timestamp
+import java.time.Clock
+import java.time.ZoneOffset
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -85,6 +88,32 @@ class JdbcSubscriptionPastDueRepositoryIntegrationTest {
         assertEquals(PastDueProvider.GOOGLE_PLAY, found.single().provider)
         assertNull(found.single().dueDay)
         assertEquals(Subscription.pastDueDay(now.plus(Duration.ofDays(3))), found.single().lastDay)
+    }
+
+    @Test
+    fun `lojas levam o instante do fim do acesso e o ultimo aviso sai na vespera de um fim de madrugada`() {
+        val storeOwner = user()
+        val playOwner = user()
+        val appStoreEnds = Instant.parse("2026-10-17T11:00:00Z") // 08h de SP
+        val playEnds = Instant.parse("2026-10-17T07:00:00Z")     // 04h de SP
+        val roundBefore = Instant.parse("2026-10-16T13:00:00Z")  // 10h de SP da véspera
+        appStore(storeOwner, expiresAt = roundBefore.minus(Duration.ofDays(2)), billingRetry = true, grace = appStoreEnds)
+        play(playOwner, "IN_GRACE_PERIOD", playEnds)
+
+        val found = repository.pastDue(roundBefore).associateBy { it.ownerUserId }
+
+        assertEquals(appStoreEnds, found.getValue(storeOwner).accessEndsAt)
+        assertEquals(playEnds, found.getValue(playOwner).accessEndsAt)
+        val published = mutableListOf<String>()
+        val round = SubscriptionPastDueReminders(
+            repository, { _, body, _ -> published += body; true }, { _, _ -> }, { null },
+            Clock.fixed(roundBefore, ZoneOffset.UTC),
+        )
+        assertEquals(2, round.run())
+        assertTrue(published.all { it.startsWith("Seus grupos congelam hoje.") })
+        assertEquals(0, round.run())
+        // Na manhã do fim, as duas já saíram da lista: o aviso da véspera foi o único.
+        assertTrue(repository.pastDue(Instant.parse("2026-10-17T13:00:00Z")).none { it.ownerUserId in setOf(storeOwner, playOwner) })
     }
 
     @Test
