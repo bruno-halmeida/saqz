@@ -25,7 +25,38 @@ class JdbcSubscriptionPastDueRepository(
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun pastDue(now: Instant): List<PastDueSubscription> =
-        asaas(now) + appStore(now) + googlePlay(now)
+        (asaas(now) + appStore(now) + googlePlay(now)).filterNot { outlastedByOtherAccess(it, now) }
+
+    /**
+     * Outra fonte de acesso do mesmo dono que dura além do fim desta: o teste ainda ativo ou outra origem também na carência (as em
+     * dia já saem nas consultas de cada origem). Avisar "congelam hoje" aí seria falso. Mesmas regras do `JdbcSubscriptionPlanLookup`.
+     */
+    private fun outlastedByOtherAccess(subscription: PastDueSubscription, now: Instant): Boolean {
+        val ends = subscription.accessEndsAt ?: return false
+        val otherEnd = jdbc.sql(
+            """
+            SELECT max(access_end) FROM (
+                SELECT t.ends_at AS access_end FROM organizer_trials t WHERE t.owner_user_id = :owner AND t.ends_at > :now
+                UNION ALL
+                SELECT coalesce((date_trunc('day', s.past_due_since AT TIME ZONE 'America/Sao_Paulo') + interval '8 days') AT TIME ZONE 'America/Sao_Paulo',
+                                timestamptz '9999-12-31')
+                FROM subscriptions s
+                WHERE :provider <> 'ASAAS' AND s.owner_user_id = :owner AND s.status = 'PAST_DUE' AND s.first_confirmed_at IS NOT NULL
+                  AND (s.past_due_since IS NULL OR (date_trunc('day', s.past_due_since AT TIME ZONE 'America/Sao_Paulo') + interval '8 days') AT TIME ZONE 'America/Sao_Paulo' > :now)
+                UNION ALL
+                SELECT greatest(a.expires_at, coalesce(a.grace_period_expires_at, a.expires_at)) FROM app_store_subscriptions a
+                WHERE :provider <> 'APP_STORE' AND a.owner_user_id = :owner AND a.revoked_at IS NULL
+                  AND (a.expires_at > :now OR a.grace_period_expires_at > :now)
+                UNION ALL
+                SELECT g.expires_at FROM google_play_subscriptions g
+                WHERE :provider <> 'GOOGLE_PLAY' AND g.owner_user_id = :owner AND g.superseded_at IS NULL
+                  AND g.state IN ('ACTIVE', 'CANCELED', 'IN_GRACE_PERIOD') AND g.expires_at > :now
+            ) others
+            """.trimIndent(),
+        ).param("owner", subscription.ownerUserId).param("provider", subscription.provider.name)
+            .param("now", Timestamp.from(now)).query { rs, _ -> rs.getTimestamp(1)?.toInstant() }.list().single()
+        return otherEnd != null && otherEnd.isAfter(ends)
+    }
 
     private fun asaas(now: Instant): List<PastDueSubscription> = jdbc.sql(
         """
@@ -41,6 +72,7 @@ class JdbcSubscriptionPastDueRepository(
         PastDueSubscription(
             rs.getObject("owner_user_id", UUID::class.java), PastDueProvider.ASAAS, since,
             dueDay, dueDay.plusDays(Subscription.PAST_DUE_GRACE_DAYS), rs.getString("asaas_subscription_id"),
+            Subscription.pastDueFreezeAt(since),
         )
     }.list()
 

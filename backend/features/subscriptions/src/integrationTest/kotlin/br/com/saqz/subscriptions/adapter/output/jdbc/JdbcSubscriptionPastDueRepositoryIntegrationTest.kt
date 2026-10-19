@@ -117,6 +117,30 @@ class JdbcSubscriptionPastDueRepositoryIntegrationTest {
     }
 
     @Test
+    fun `teste ainda ativo alem do fim do acesso silencia o aviso, e o que acaba antes nao`() {
+        val covered = site(since = now.minus(Duration.ofDays(3)))
+        val notCovered = site(since = now.minus(Duration.ofDays(3)))
+        val playCovered = user().also { play(it, "IN_GRACE_PERIOD", now.plus(Duration.ofDays(2))) }
+        trial(covered, endsAt = now.plus(Duration.ofDays(30)))
+        trial(playCovered, endsAt = now.plus(Duration.ofDays(30)))
+        trial(notCovered, endsAt = now.plus(Duration.ofHours(1)))
+
+        assertEquals(listOf(notCovered), repository.pastDue(now).map { it.ownerUserId })
+    }
+
+    @Test
+    fun `duas origens na carencia, so a que acaba por ultimo avisa`() {
+        val owner = site(since = now.minus(Duration.ofDays(3)))               // congela daqui a ~4 dias
+        appStore(owner, expiresAt = now.minus(Duration.ofDays(1)), billingRetry = true, grace = now.plus(Duration.ofDays(6)))
+        val sameEnd = site(since = now.minus(Duration.ofDays(3)))
+        play(sameEnd, "IN_GRACE_PERIOD", now.plus(Duration.ofDays(1)))         // acaba antes do site
+
+        val found = repository.pastDue(now).associate { (it.ownerUserId to it.provider) to it }
+
+        assertEquals(setOf(owner to PastDueProvider.APP_STORE, sameEnd to PastDueProvider.ASAAS), found.keys)
+    }
+
+    @Test
     fun `reserva e idempotente por dono, origem, atraso e marco, e o mais apertado e o maior`() {
         val s = candidate(user(), now.minus(Duration.ofDays(3)))
 
@@ -239,6 +263,12 @@ class JdbcSubscriptionPastDueRepositoryIntegrationTest {
             """.trimIndent(),
         ).param("id", "otx-${UUID.randomUUID()}").param("owner", owner).param("expires", Timestamp.from(expiresAt))
             .param("autoRenew", autoRenew).param("retry", billingRetry).param("grace", grace?.let(Timestamp::from)).update()
+    }
+
+    private fun trial(owner: UUID, endsAt: Instant) {
+        val startedAt = endsAt.minus(Duration.ofHours(336))
+        jdbc.sql("INSERT INTO organizer_trials (owner_user_id, started_at, ends_at) VALUES (:owner, :started, :ends)")
+            .param("owner", owner).param("started", Timestamp.from(startedAt)).param("ends", Timestamp.from(endsAt)).update()
     }
 
     private fun play(owner: UUID, state: String, expiresAt: Instant) {
