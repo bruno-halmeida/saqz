@@ -25,8 +25,9 @@ configMapGenerator:
       # Apple ID numerico do app (App Store Connect > Informacoes do app). Vazio = a API recusa
       # compras de producao da App Store; sandbox (revisao e TestFlight) segue aceito.
       - SAQZ_APP_STORE_APP_APPLE_ID=6812743525
-      # Cadastro e contratação na web (saqz.app/comecar/ e /assinar/) chamam a API pelo navegador.
-      - SAQZ_ADMINWEB_ORIGINS=https://saqz.app
+      # Cadastro e contratação na web (saqz.app/comecar/ e /assinar/) e o painel adm-web de produção
+      # (adm.saqz.app) chamam a API pelo navegador. Lista separada por vírgula: tirar saqz.app quebra o site.
+      - SAQZ_ADMINWEB_ORIGINS=https://saqz.app,https://adm.saqz.app
       - SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED=true
       # Imagem no topo do lembrete do grupo. A Uazapi/WhatsApp guarda a imagem pelo endereço: ao trocar
       # a imagem, publique com nome novo em links-page/assets e aponte aqui (design/whatsapp/render.sh).
