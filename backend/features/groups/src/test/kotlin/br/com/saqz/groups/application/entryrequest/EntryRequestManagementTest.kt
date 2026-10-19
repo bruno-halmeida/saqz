@@ -124,6 +124,31 @@ class EntryRequestManagementTest {
     }
 
     @Test
+    fun `aprovar chama o aviso de primeiro atleta depois do vinculo, e so quando a aprovacao acontece`() {
+        val joined = mutableListOf<Pair<UUID, UUID>>()
+        val notice = br.com.saqz.groups.application.communication.FirstMemberNotice { g, u -> joined += g to u }
+
+        assertIs<ApproveEntryRequestResult.Success>(fixture(role = GroupRole.OWNER, firstMember = notice).approve.execute(ownerId, groupId, applicantId))
+        assertEquals(listOf(groupId to applicantId), joined)
+
+        joined.clear()
+        val member = fixture(role = GroupRole.OWNER, firstMember = notice)
+        member.membership.memberships[applicantId] = AccessMembership(applicantId, AccessName.from("Applicant"), GroupRole.ATHLETE)
+        member.approve.execute(ownerId, groupId, applicantId)
+        val missing = fixture(role = GroupRole.OWNER, firstMember = notice)
+        missing.entries.requests.clear()
+        missing.approve.execute(ownerId, groupId, applicantId)
+        val full = fixture(role = GroupRole.OWNER, athleteLimit = 1, firstMember = notice)
+        full.entries.occupancy = occupancy(openMembers = setOf(UUID.randomUUID()))
+        full.approve.execute(ownerId, groupId, applicantId)
+        fixture(role = GroupRole.ATHLETE, firstMember = notice).approve.execute(athleteId, groupId, applicantId)
+        fixture(role = GroupRole.OWNER, writeAccess = GroupWriteAccess { false }, firstMember = notice)
+            .runCatching { approve.execute(ownerId, groupId, applicantId) }
+
+        assertTrue(joined.isEmpty())
+    }
+
+    @Test
     fun `plano vencido ou pausado bloqueia a aprovacao sem mexer no pedido, no vinculo nem avisar`() {
         val notices = mutableListOf<UUID>()
         val fixture = fixture(
@@ -331,6 +356,7 @@ class EntryRequestManagementTest {
         athleteLimit: Int? = null,
         approvalNotice: EntryApprovalNotice = EntryApprovalNotice { _, _, _ -> },
         writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
+        firstMember: br.com.saqz.groups.application.communication.FirstMemberNotice = br.com.saqz.groups.application.communication.FirstMemberNotice { _, _ -> },
     ): Fixture {
         val order = mutableListOf<String>()
         val entries = MemoryEntryRequestRepository(order)
@@ -347,6 +373,7 @@ class EntryRequestManagementTest {
             Clock.fixed(now, ZoneOffset.UTC),
             approvalNotice,
             writeAccess,
+            firstMember,
         )
         val list = ListEntryRequests(read, entries, br.com.saqz.groups.domain.GroupAccessPolicy())
         val reject = RejectEntryRequest(transaction, read, entries, br.com.saqz.groups.domain.GroupAccessPolicy())

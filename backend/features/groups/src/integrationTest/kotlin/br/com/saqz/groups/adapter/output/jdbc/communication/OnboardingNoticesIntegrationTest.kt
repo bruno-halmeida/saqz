@@ -3,16 +3,21 @@ package br.com.saqz.groups.adapter.output.jdbc.communication
 import br.com.saqz.groups.adapter.output.jdbc.attendance.AttendanceChargeAdapter
 import br.com.saqz.groups.adapter.output.jdbc.attendance.JdbcAttendanceCommandRepository
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcChargeTransactionRepository
+import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteRedemptionRepository
+import br.com.saqz.groups.adapter.output.jdbc.membership.JdbcMembershipRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.attendance.AttendanceCommandResult
 import br.com.saqz.groups.application.attendance.RespondAttendance
 import br.com.saqz.groups.application.communication.RemindStalledEntryRequests
+import br.com.saqz.groups.application.entryrequest.ApproveEntryRequest
+import br.com.saqz.groups.application.entryrequest.ApproveEntryRequestResult
 import br.com.saqz.groups.application.finance.charge.ChargeTransactions
 import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInviteResult
+import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceSource
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
@@ -40,6 +45,10 @@ class OnboardingNoticesIntegrationTest {
     private val redeem = RedeemInvite(
         transaction, JdbcInviteRedemptionRepository(source), Unlimited, Clock.systemUTC(), firstMember = notices,
         entryRequest = notices,
+    )
+    private val approve = ApproveEntryRequest(
+        transaction, JdbcGroupReadRepository(source), JdbcInviteRedemptionRepository(source), JdbcMembershipRepository(source),
+        Unlimited, GroupAccessPolicy(), Clock.systemUTC(), JdbcEntryApprovalNotice(source), firstMember = notices,
     )
     private val respond = RespondAttendance(
         transaction,
@@ -105,6 +114,50 @@ class OnboardingNoticesIntegrationTest {
         assertIs<RedeemInviteResult.Pending>(redeem.execute(user("Rafa"), code.value))
 
         assertEquals(0, count("FIRST_MEMBER"))
+    }
+
+    @Test fun `aprovar o primeiro atleta avisa o dono, sem ele, e aprovar o segundo nao avisa (DEB-092)`() {
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa Moreira")
+        val bia = user("Bia")
+        redeem.execute(rafa, code.value)
+        redeem.execute(bia, code.value)
+        assertEquals(0, count("FIRST_MEMBER"))
+
+        assertIs<ApproveEntryRequestResult.Success>(approve.execute(owner, group, rafa))
+        assertIs<ApproveEntryRequestResult.Success>(approve.execute(owner, group, bia))
+        assertIs<ApproveEntryRequestResult.Success>(approve.execute(owner, group, rafa))
+
+        val message = jdbc.sql("SELECT id, body, author_id FROM group_messages WHERE group_id = :g AND channel = 'FIRST_MEMBER'")
+            .param("g", group).query { rs, _ -> Triple(rs.getObject("id", UUID::class.java), rs.getString("body"), rs.getObject("author_id")) }.single()
+        assertEquals("Rafa Moreira entrou no QA Vôlei. A galera começou a chegar.", message.second)
+        assertEquals(rafa, message.third)
+        assertEquals(setOf(owner), recipients(message.first))
+        assertTrue(pushEnabled(owner, "FIRST_MEMBER"))
+    }
+
+    @Test fun `aprovar em grupo que ja teve outro membro, mesmo removido, nao avisa (DEB-092)`() {
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        jdbc.sql("INSERT INTO group_membership_removals (group_id, user_id, removed_at) VALUES (:g, :u, now())")
+            .param("g", group).param("u", user("Saiu")).update()
+        val rafa = user("Rafa")
+        redeem.execute(rafa, code.value)
+
+        assertIs<ApproveEntryRequestResult.Success>(approve.execute(owner, group, rafa))
+
+        assertEquals(0, count("FIRST_MEMBER"))
+    }
+
+    @Test fun `entrada direta do primeiro atleta e aprovacao do segundo nao duplicam o aviso (DEB-092)`() {
+        val rafa = user("Rafa")
+        redeem.execute(rafa, code.value)
+        jdbc.sql("UPDATE access_groups SET entry_requires_approval = true WHERE id = :g").param("g", group).update()
+        val bia = user("Bia")
+        redeem.execute(bia, code.value)
+
+        assertIs<ApproveEntryRequestResult.Success>(approve.execute(owner, group, bia))
+
+        assertEquals(1, count("FIRST_MEMBER"))
     }
 
     @Test fun `preferencias de avisos do destinatario valem so para o push, a central mostra`() {

@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.entryrequest
 
 import br.com.saqz.groups.application.communication.EntryApprovalNotice
+import br.com.saqz.groups.application.communication.FirstMemberNotice
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.membership.ChangeMemberRoleCommand
 import br.com.saqz.groups.application.membership.MembershipRepository
@@ -27,6 +28,7 @@ class ApproveEntryRequest(
     private val clock: Clock,
     private val approvalNotice: EntryApprovalNotice = EntryApprovalNotice { _, _, _ -> },
     private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
+    private val firstMember: FirstMemberNotice = FirstMemberNotice { _, _ -> },
 ) {
     fun execute(actor: UUID, groupId: UUID, userId: UUID): ApproveEntryRequestResult = transactionRunner.inTransaction {
         val group = groupReadRepository.find(GroupReadKey(actor, groupId))
@@ -69,6 +71,8 @@ class ApproveEntryRequest(
         entryRequestRepository.clearReturnMark(groupId, userId)
         // Aviso à pessoa aprovada, na mesma transação; não repete o aviso quando o pedido já virou vínculo (retorno acima).
         approvalNotice.approved(groupId, userId, request.requestedAt)
+        // DEB-092: o primeiro atleta aprovado também avisa dono e admins; a trava de "primeiro" e o aviso único ficam no adaptador.
+        firstMember.joined(groupId, userId)
         ApproveEntryRequestResult.Success(membership)
     }
 }
