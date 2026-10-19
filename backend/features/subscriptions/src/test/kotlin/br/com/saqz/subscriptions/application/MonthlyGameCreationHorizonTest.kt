@@ -209,6 +209,27 @@ class MonthlyGameCreationHorizonTest {
     }
 
     @Test
+    fun `Play grace period does not extend the limit and a real subscription next to it still counts`() {
+        access = OrganizerTrialAccess(TrialStatus.SUBSCRIBED, null, null, now, true)
+        googlePlay.save(
+            GooglePlaySubscription(
+                "token", owner, GooglePlayProduct.TITULAR_MENSAL, GooglePlayState.IN_GRACE_PERIOD, now.plusSeconds(5 * 86_400),
+                true, null, "GPA.1", null, acknowledged = true, testPurchase = false,
+            ),
+        )
+        assertEquals(startOfDay("2026-09-17"), horizon().startsBefore(group))
+        assertEquals(startOfDay("2026-09-17"), horizon().until(group))
+
+        appStore.save(
+            AppStoreSubscription(
+                "otx", owner, AppStoreEnvironment.PRODUCTION, AppStoreProduct.TITULAR_MENSAL, "otx", now, now,
+                expiresAt = Instant.parse("2026-10-20T12:00:00Z"), revokedAt = null,
+            ),
+        )
+        assertEquals(startOfDay("2026-10-20"), horizon().startsBefore(group))
+    }
+
+    @Test
     fun `subscribing in the middle of a long trial keeps the later trial end`() {
         trial("2026-09-10T09:00:00Z", "2026-11-09T09:00:00Z")
         asaas("2026-09-30T09:00:00Z")

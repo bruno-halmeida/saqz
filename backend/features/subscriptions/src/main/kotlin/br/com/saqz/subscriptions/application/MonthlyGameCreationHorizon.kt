@@ -6,6 +6,7 @@ import br.com.saqz.sharedkernel.subscription.OrganizerTrialAccess
 import br.com.saqz.sharedkernel.subscription.OrganizerTrialAccessLookup
 import br.com.saqz.sharedkernel.subscription.TrialStatus
 import br.com.saqz.subscriptions.domain.AppStoreEnvironment
+import br.com.saqz.subscriptions.domain.GooglePlayState
 import br.com.saqz.subscriptions.domain.SubscriptionStatus
 import java.time.Clock
 import java.time.Instant
@@ -61,7 +62,7 @@ class MonthlyGameCreationHorizon(
 
     /**
      * Fim do período já pago pela assinatura que dá acesso (Asaas, App Store ou Google Play; vale o maior).
-     * A carência de atraso (Asaas em PAST_DUE, graça da Apple) não estende: o fim fica no passado e nenhum
+     * A carência de atraso (Asaas em PAST_DUE, graça da Apple e do Play) não estende: o fim fica no passado (ou em `now`) e nenhum
      * jogo novo passa até pagar. Renovação do Asaas ainda não confirmada (ACTIVE com período vencido, o estado normal
      * entre o vencimento e a confirmação ou o PAYMENT_OVERDUE) também usa o `currentPeriodEnd`. Só a linha legada de
      * fato (PAST_DUE sem `past_due_since`, que nunca teve data de corte) e o fim desconhecido caem no mês corrido, para não travar quem
@@ -78,7 +79,12 @@ class MonthlyGameCreationHorizon(
             ends += if (it.environment == AppStoreEnvironment.PRODUCTION) it.expiresAt else monthlyMarkAfter(now, now)
         }
         googlePlay?.findByOwner(owner).orEmpty().filter { it.isEntitlingAt(now) }.forEach {
-            ends += if (it.testPurchase) monthlyMarkAfter(now, now) else it.expiresAt
+            ends += when {
+                it.testPurchase -> monthlyMarkAfter(now, now)
+                // O `expiresAt` da carência é o fim dela, não o do período pago: a carência não estende.
+                it.state == GooglePlayState.IN_GRACE_PERIOD -> now
+                else -> it.expiresAt
+            }
         }
         return ends.maxOrNull() ?: monthlyMarkAfter(now, now)
     }
