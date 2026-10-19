@@ -34,6 +34,14 @@ dependencies {
     testImplementation(libs.greenmail)
 }
 
+// RANDOM_PORT sobe o Tomcat em `::` (dual-stack) e o kernel nao confere a tabela IPv4 ao
+// sortear a porta: se outro processo da maquina escuta a mesma porta em 0.0.0.0, o
+// 127.0.0.1:porta cai nele e o cliente leva "header parser received no bytes". Preso a
+// 127.0.0.1, o bind passa pela tabela IPv4 e o sorteio desvia dessas portas.
+tasks.withType<Test>().configureEach {
+    systemProperty("server.address", "127.0.0.1")
+}
+
 tasks.test {
     useJUnitPlatform { excludeTags("emulator") }
 }

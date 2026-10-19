@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
  */
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = ["management.server.port=0"],
+    properties = ["management.server.port=0", "management.server.address=127.0.0.1"],
 )
 @ActiveProfiles("test")
 @TestPropertySource(properties = ["saqz.firebase.emulator.enabled=true"])

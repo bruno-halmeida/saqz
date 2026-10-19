@@ -5,7 +5,7 @@ import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.RequestIdentity
 import br.com.saqz.subscriptions.application.CheckoutIdentitySessions
 import com.icegreen.greenmail.util.GreenMail
-import com.icegreen.greenmail.util.ServerSetupTest
+import com.icegreen.greenmail.util.ServerSetup
 import jakarta.mail.Multipart
 import jakarta.mail.internet.MimeMessage
 import org.junit.jupiter.api.AfterAll
@@ -239,7 +239,7 @@ class PurchaseInformationEndpointIntegrationTest {
 
     companion object {
         private val database = TestPostgres.empty()
-        private val smtp = GreenMail(ServerSetupTest.SMTP).apply { start() }
+        private val smtp = GreenMail(ServerSetup(0, "127.0.0.1", ServerSetup.PROTOCOL_SMTP)).apply { start() }
 
         @JvmStatic
         @AfterAll
