@@ -31,7 +31,7 @@ test('data de fim: vazia = sem fim; inválida ou passada é recusada', () => {
   assert.equal(app.cortFim('31/02/2099'), false);
   assert.equal(app.cortFim('01/01/2020'), false);
   assert.equal(app.cortFim('2099-01-01'), false);
-  assert.match(app.cortFim(futuro()), /T23:59:59-03:00$/);
+  assert.match(app.cortFim(futuro()), /^\d{4}-\d{2}-\d{2}T02:59:59\.000Z$/);
 });
 
 test('corpo da cortesia: motivo é obrigatório e sem fim não manda endsAt', () => {
@@ -43,14 +43,15 @@ test('corpo da cortesia: motivo é obrigatório e sem fim não manda endsAt', ()
 
 test('detalhe: mostra a ativa com plano, fim e motivo', async () => {
   const { app } = setup({
-    'GET /admin/users/u1/courtesy': json({ active: { plan: 'ORGANIZADOR', endsAt: null, reason: 'testador', grantedBy: 'Bruno', createdAt: '2026-10-19T12:00:00Z' }, history: [] }),
+    'GET /admin/users/u1/courtesy': json({ active: { plan: 'ORGANIZADOR', endsAt: null, reason: 'testador', grantedBy: 'uuid-do-admin', createdAt: '2026-10-19T12:00:00Z' }, history: [] }),
     'GET /admin/users/u1': json({ userId: 'u1', displayName: 'Ana', groups: [] }),
   });
   app.setState({ selU: 'u1' }); app.carregarUsuario('u1'); await flush();
   const v = app.cortVals({ userId: 'u1', displayName: 'Ana' });
   assert.equal(v.cortOk, true); assert.equal(v.cortTemAtiva, true);
   assert.equal(v.cortAtivaTitulo, 'Organizador · sem fim');
-  assert.match(v.cortAtivaSub, /testador · por Bruno em /);
+  assert.match(v.cortAtivaSub, /^testador · dada em /);
+  assert.equal(v.cortAtivaSub.includes('uuid-do-admin'), false);
   assert.equal(v.cortSalvarLabel, 'Alterar cortesia');
 });
 
@@ -80,7 +81,7 @@ test('revogar: pede confirmação e só então chama a rota', async () => {
   const { app, requests } = setup({
     'GET /admin/users/u1/courtesy': json({ active: { plan: 'TITULAR', reason: 'x', createdAt: '2026-10-19T12:00:00Z' }, history: [] }),
     'GET /admin/users/u1': json({ userId: 'u1', groups: [] }),
-    'POST /admin/users/u1/courtesy/revoke': json({}),
+    'POST /admin/users/u1/courtesy/revoke': { ok: true, status: 204 },
   });
   app.setState({ selU: 'u1' }); app.carregarCortesia('u1'); await flush();
   app.cortVals({ userId: 'u1', displayName: 'Ana' }).onCortRevogar();
@@ -93,8 +94,8 @@ test('revogar: pede confirmação e só então chama a rota', async () => {
 test('lote: Ver lista usa dryRun e Confirmar manda exatamente os ids mostrados', async () => {
   const { app, requests } = setup({
     'POST /admin/courtesies/batch': (b) => b.dryRun
-      ? json({ owners: [{ ownerId: 'a', displayName: 'Ana', email: 'a@x', groups: ['Racha'], effectivePlan: 'FREE', hasCourtesy: false }, { ownerId: 'b', displayName: 'Beto', email: 'b@x', groups: ['Vôlei'], effectivePlan: 'TITULAR', hasCourtesy: true }] })
-      : json({ results: [{ ownerId: 'a', status: 'OK' }, { ownerId: 'b', ok: false, error: 'falhou' }] }),
+      ? json({ dryRun: true, results: null, candidates: [{ ownerUserId: 'a', displayName: 'Ana', email: 'a@x', groups: ['Racha'], effectivePlan: null, hasCourtesy: false }, { ownerUserId: 'b', displayName: 'Beto', email: 'b@x', groups: ['Vôlei'], effectivePlan: 'TITULAR', hasCourtesy: true }] })
+      : json({ dryRun: false, candidates: null, results: [{ ownerUserId: 'a', granted: true, error: null }, { ownerUserId: 'b', granted: false, error: 'NOT_ELIGIBLE' }] }),
     'GET /admin/users': json({ items: [], total: 0 }),
   });
   app.setState({ lote: { ...app.loteVazio(), motivo: 'fase de testes' } });
@@ -109,7 +110,7 @@ test('lote: Ver lista usa dryRun e Confirmar manda exatamente os ids mostrados',
 });
 
 test('lote: mexer no formulário invalida a lista conferida', async () => {
-  const { app } = setup({ 'POST /admin/courtesies/batch': json({ owners: [{ ownerId: 'a', displayName: 'Ana' }] }) });
+  const { app } = setup({ 'POST /admin/courtesies/batch': json({ dryRun: true, results: null, candidates: [{ ownerUserId: 'a', displayName: 'Ana', groups: [] }] }) });
   app.setState({ lote: { ...app.loteVazio(), motivo: 'x' } });
   app.loteVer(); await flush();
   assert.ok(app.state.lote.lista);
@@ -123,4 +124,24 @@ test('lote sem backend novo: mostra "ainda não disponível" e não confirma nad
   app.loteVer(); await flush();
   assert.equal(app.state.lote.erro, 'Cortesia ainda não disponível neste ambiente.');
   assert.equal(app.cortVals(null).loteConfirmaVisivel, false);
+});
+
+test('revogar com 409: avisa que não havia cortesia ativa e recarrega', async () => {
+  const { app, requests } = setup({
+    'GET /admin/users/u1/courtesy': json({ active: null, history: [] }),
+    'GET /admin/users/u1': json({ userId: 'u1', groups: [] }),
+    'POST /admin/users/u1/courtesy/revoke': json({}, 409),
+  });
+  app.setState({ selU: 'u1' });
+  app.revogarCortesia('u1'); await flush();
+  assert.equal(app.state.toast, 'Não havia cortesia ativa.');
+  assert.equal(requests.some((r) => r.method === 'GET' && r.path === '/admin/users/u1'), true);
+});
+
+test('histórico: mostra data e motivo da revogação, sem uuid do admin', async () => {
+  const { app } = setup({ 'GET /admin/users/u1/courtesy': json({ active: null, history: [{ id: 'c1', plan: 'TITULAR', endsAt: null, reason: 'teste', grantedBy: 'uuid-admin', createdAt: '2026-10-01T12:00:00Z', revokedAt: '2026-10-10T12:00:00Z', revokedBy: 'uuid-admin', revokedReason: 'Substituída por outra cortesia' }] }) });
+  app.setState({ selU: 'u1' }); app.carregarCortesia('u1'); await flush();
+  const h = app.cortVals({ userId: 'u1' }).cortHist[0];
+  assert.match(h.sub, /revogada em .* \(Substituída por outra cortesia\)/);
+  assert.equal(h.sub.includes('uuid-admin'), false);
 });

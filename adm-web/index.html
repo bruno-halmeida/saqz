@@ -1241,7 +1241,7 @@ class Component extends DCLogic {
   // ---- Cortesia de plano (DEB-097) ----
   CORT_PLANOS = { TITULAR: "Titular", ORGANIZADOR: "Organizador", ILIMITADO: "Ilimitado" };
 
-  // dd/mm/aaaa -> fim do dia em Brasília. Vazio = sem fim (null); inválido ou no passado = false.
+  // dd/mm/aaaa -> fim do dia em Brasília, em UTC (ISO). Vazio = sem fim (null); inválido ou no passado = false.
   cortFim(txt) {
     const t = (txt || "").trim();
     if (t === "") return null;
@@ -1249,8 +1249,8 @@ class Component extends DCLogic {
     if (!m) return false;
     const d = new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]));
     if (d.getUTCFullYear() !== +m[3] || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[1]) return false;
-    const iso = `${m[3]}-${m[2]}-${m[1]}T23:59:59-03:00`;
-    return new Date(iso).getTime() > Date.now() ? iso : false;
+    const fim = new Date(`${m[3]}-${m[2]}-${m[1]}T23:59:59-03:00`);
+    return fim.getTime() > Date.now() ? fim.toISOString() : false;
   }
 
   // Valida plano, fim e motivo; devolve { body } ou { erro }.
@@ -1300,6 +1300,7 @@ class Component extends DCLogic {
     this.mutacao(`/admin/users/${id}/courtesy/revoke`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).then((r) => {
       this.setState({ modal: null });
       if (r.ok) { this.aviso("Cortesia revogada."); this.carregarUsuario(id); }
+      else if (r.status === 409) { this.aviso("Não havia cortesia ativa."); this.carregarUsuario(id); }
       else { this.aviso("Não deu para revogar agora."); }
     }).catch(() => { this.setState({ modal: null }); this.aviso("Não deu para revogar agora."); });
   }
@@ -1313,18 +1314,14 @@ class Component extends DCLogic {
   }
 
   loteLista(d) {
-    const arr = Array.isArray(d) ? d : (d && (d.owners || d.items || d.users)) || [];
-    return arr.map((o) => {
-      const g = o.groups;
-      return {
-        id: o.ownerId || o.userId || o.id,
-        nome: o.displayName || o.name || "—",
-        email: o.email || "—",
-        grupos: Array.isArray(g) ? g.map((x) => (typeof x === "string" ? x : x.name)).join(", ") : String(g == null ? "—" : g),
-        plano: this.CORT_PLANOS[o.effectivePlan] || (o.effectivePlan === "FREE" || !o.effectivePlan ? "Grátis" : o.effectivePlan),
-        jaTem: !!(o.hasCourtesy || o.alreadyHasCourtesy || o.courtesy)
-      };
-    });
+    return ((d && d.candidates) || []).map((o) => ({
+      id: o.ownerUserId,
+      nome: o.displayName || "—",
+      email: o.email || "—",
+      grupos: (o.groups || []).join(", "),
+      plano: this.CORT_PLANOS[o.effectivePlan] || "Grátis",
+      jaTem: !!o.hasCourtesy
+    }));
   }
 
   loteVer() {
@@ -1353,13 +1350,11 @@ class Component extends DCLogic {
         return;
       }
       return r.json().then((d) => {
-        const arr = Array.isArray(d) ? d : (d && (d.results || d.items || d.owners)) || [];
         const nome = (id) => (l.lista.donos.find((o) => o.id === id) || {}).nome || id;
-        const linhas = arr.map((x) => {
-          const id = x.ownerId || x.userId || x.id;
-          const bem = x.ok === true || x.success === true || /^(OK|GRANTED|APPLIED|CREATED|UPDATED)$/i.test(x.status || x.result || "");
-          return { nome: nome(id), ok: bem, texto: bem ? "Cortesia dada" : (x.error || x.message || x.status || x.result || "Não deu") };
-        });
+        const linhas = ((d && d.results) || []).map((x) => ({
+          nome: nome(x.ownerUserId), ok: !!x.granted,
+          texto: x.granted ? "Cortesia dada" : x.error === "NOT_ELIGIBLE" ? "Não é mais dono de grupo ativo" : "Não deu para gravar"
+        }));
         this.setState((s) => ({ lote: { ...s.lote, busy: false, resultado: { linhas, ok: linhas.filter((x) => x.ok).length } } }));
         if (this.state.page === "usuarios") this.carregarUsuarios();
       });
@@ -1370,10 +1365,10 @@ class Component extends DCLogic {
     const st = this.state, c = st.cort, f = st.cf, l = st.lote;
     const a = c && c.ok ? c.active : null;
     const pl = (p) => this.CORT_PLANOS[p] || p || "—";
-    const quem = (x) => `${x.grantedBy ? `por ${x.grantedBy} ` : ""}em ${this.dataBr(x.createdAt)}`;
+    const quem = (x) => `dada em ${this.dataBr(x.createdAt)}`;
     const hist = c && c.ok ? c.history.map((h) => ({
       titulo: `${pl(h.plan)} · ${this.cortAte(h.endsAt)}`,
-      sub: `${h.reason || "sem motivo"} · ${quem(h)}${h.revokedAt ? ` · revogada em ${this.dataBr(h.revokedAt)}` : ""}`
+      sub: `${h.reason || "sem motivo"} · ${quem(h)}${h.revokedAt ? ` · revogada em ${this.dataBr(h.revokedAt)}${h.revokedReason ? ` (${h.revokedReason})` : ""}` : ""}`
     })) : [];
     const lista = l && l.lista;
     return {
