@@ -408,7 +408,7 @@ internal fun SaqzNavHost(
     // (SubscriptionPlansNavigation.kt). Ao voltar, o plano e o acesso se atualizam.
     val subscriptionGateway = koinInject<br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway>()
     var openingPlans by remember { mutableStateOf(false) }
-    val openSubscriptionPlans: () -> Unit = {
+    val openPlans: (PlansEntry) -> Unit = { entry ->
         // Toques repetidos (push, folha, central) enquanto a consulta roda abrem uma tela só.
         if (!openingPlans) {
             openingPlans = true
@@ -418,7 +418,7 @@ internal fun SaqzNavHost(
                 } finally {
                     openingPlans = false
                 }
-                backStack.openSubscriptionPlans(subscription) {
+                backStack.openSubscriptionPlans(subscription, entry) {
                     storeCheckout.openWebCheckout {
                         myPlanRefreshVersion++
                         planAnalytics.refresh()
@@ -428,6 +428,7 @@ internal fun SaqzNavHost(
             }
         }
     }
+    val openSubscriptionPlans: () -> Unit = { openPlans(PlansEntry.Default) }
     LaunchedEffect(notificationOpenPending, state.session) {
         val opened = notificationOpenPending ?: return@LaunchedEffect
         if (state.session is SessionAccessState.Ready) {
@@ -689,8 +690,8 @@ internal fun SaqzNavHost(
                                                 SubscriptionLimitReached(limit.groupsUsed, limit.groupsLimit, limit.planName),
                                             )
                                         } else {
-                                            // Mesma decisão dos avisos: quem já assina vai a Meu plano, só quem nunca assinou vê os planos.
-                                            openSubscriptionPlans()
+                                            // Quem já assina vai a Meu plano; quem nunca assinou compra e segue para a criação do grupo.
+                                            openPlans(PlansEntry.GroupCreation)
                                         }
                                     }
                                 },
@@ -943,7 +944,7 @@ internal fun SaqzNavHost(
                                         SubscriptionLimitReached(limit.groupsUsed, limit.groupsLimit, limit.planName),
                                     )
                                 } else {
-                                    openSubscriptionPlans()
+                                    openPlans(PlansEntry.GroupCreation)
                                 }
                             }
                         },

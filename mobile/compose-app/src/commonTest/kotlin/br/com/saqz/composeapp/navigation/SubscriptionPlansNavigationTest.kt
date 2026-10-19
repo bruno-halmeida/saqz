@@ -39,9 +39,10 @@ class SubscriptionPlansNavigationTest {
         stack: MutableList<NavKey>,
         result: SaqzResult<MySubscription, SubscriptionError>,
         webOpens: Boolean = false,
+        entry: PlansEntry = PlansEntry.Default,
     ): Int {
         var webCalls = 0
-        stack.openSubscriptionPlans(result) {
+        stack.openSubscriptionPlans(result, entry) {
             webCalls++
             webOpens
         }
@@ -131,5 +132,43 @@ class SubscriptionPlansNavigationTest {
         val trial = mutableListOf<NavKey>(GroupsRoute.Notifications())
         repeat(3) { open(trial, SaqzResult.Failure(SubscriptionError.NotFound)) }
         assertEquals(listOf<NavKey>(GroupsRoute.Notifications(), SubscribeForAccess), trial)
+    }
+
+    @Test
+    fun `whoever never subscribed buys from group creation and goes straight on to it`() {
+        for (neverSubscribed in listOf(SaqzResult.Failure(SubscriptionError.NotFound), subscription(SubscriptionStatus.PastDue, false, paymentConfirmed = false))) {
+            val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
+            open(stack, neverSubscribed, entry = PlansEntry.GroupCreation)
+            assertEquals(SubscriptionRequired, stack.last())
+            assertEquals(2, stack.size)
+        }
+    }
+
+    @Test
+    fun `group creation opens the web checkout as before where there is one`() {
+        val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
+        val webCalls = open(stack, SaqzResult.Failure(SubscriptionError.NotFound), webOpens = true, entry = PlansEntry.GroupCreation)
+        assertEquals(1, webCalls)
+        assertEquals(1, stack.size)
+    }
+
+    @Test
+    fun `whoever already subscribes goes to my plan from group creation too`() {
+        for (status in SubscriptionStatus.entries) {
+            val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
+            val webCalls = open(stack, subscription(status, entitled = status == SubscriptionStatus.Active), entry = PlansEntry.GroupCreation)
+            assertEquals(SubscriptionsRoute.MyPlan, stack.last())
+            assertEquals(0, webCalls)
+        }
+        val failed = mutableListOf<NavKey>(GroupsRoute.Notifications())
+        open(failed, SaqzResult.Failure(SubscriptionError.Data(DataError.Connectivity)), entry = PlansEntry.GroupCreation)
+        assertEquals(SubscriptionsRoute.MyPlan, failed.last())
+    }
+
+    @Test
+    fun `repeated taps from group creation never stack the paywall twice`() {
+        val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
+        repeat(3) { open(stack, SaqzResult.Failure(SubscriptionError.NotFound), entry = PlansEntry.GroupCreation) }
+        assertEquals(listOf<NavKey>(GroupsRoute.Notifications(), SubscriptionRequired), stack)
     }
 }
