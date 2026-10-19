@@ -56,7 +56,7 @@ class DailyTrialEndingReminders(private val reminders: TrialEndingReminders) {
 
 /**
  * WhatsApp particular do dono, direto pela Uazapi das notificações (como a confirmação de conta): sem fila, e só
- * se o WhatsApp estiver ligado no servidor e a pessoa tiver telefone. Falha de envio só entra no log, com o rótulo [job]
+ * se o WhatsApp estiver ligado no servidor e a pessoa tiver telefone confirmado (DEB-081). Falha de envio só entra no log, com o rótulo [job]
  * do aviso que a mandou (`<job>_whatsapp_failed`).
  */
 class PrivateTrialEndingWhatsApp internal constructor(
@@ -66,7 +66,7 @@ class PrivateTrialEndingWhatsApp internal constructor(
 ) : TrialEndingWhatsApp {
     constructor(jdbc: JdbcClient, sender: () -> NotificationWhatsAppSender?, job: String = "trial_ending") : this(
         { ownerUserId ->
-            jdbc.sql("SELECT phone FROM access_users WHERE id = :id").param("id", ownerUserId)
+            jdbc.sql("SELECT phone FROM access_users WHERE id = :id AND phone = verified_phone").param("id", ownerUserId)
                 .query(String::class.java).optional().orElse(null)
         },
         sender,

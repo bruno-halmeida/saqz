@@ -136,8 +136,8 @@ class CentralSempreMostraTudoIntegrationTest {
 
     private fun user(name: String): UUID = UUID.randomUUID().also { id ->
         jdbc.sql(
-            """INSERT INTO access_users(id, firebase_subject, email_verified, display_name, phone, created_at, updated_at)
-            VALUES (:id, :subject, true, :name, '+5511999999999', now(), now())""",
+            """INSERT INTO access_users(id, firebase_subject, email_verified, display_name, phone, verified_phone, created_at, updated_at)
+            VALUES (:id, :subject, true, :name, '+5511999999999', '+5511999999999', now(), now())""",
         ).param("id", id).param("subject", id.toString()).param("name", name).update()
     }
 }

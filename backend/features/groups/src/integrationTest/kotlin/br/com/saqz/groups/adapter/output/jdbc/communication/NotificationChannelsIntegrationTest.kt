@@ -146,11 +146,26 @@ class NotificationChannelsIntegrationTest {
         assertEquals(2, jdbc.sql("SELECT attempts FROM notification_whatsapp_queue").query(Int::class.java).single())
     }
 
+    @Test fun `charge WhatsApp only reaches a confirmed number and a pending one is cancelled when the number stops being confirmed`() {
+        service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(charges = true)))
+        jdbc.sql("UPDATE access_users SET verified_phone = null WHERE id = :u").param("u", member).update()
+        remindCharges(charge())
+        assertEquals(0L, count("notification_whatsapp_queue"))
+        assertEquals(1, inbox().size)
+
+        jdbc.sql("UPDATE access_users SET verified_phone = phone WHERE id = :u").param("u", member).update()
+        remindCharges(charge())
+        assertEquals(1L, count("notification_whatsapp_queue"))
+        jdbc.sql("UPDATE access_users SET verified_phone = null WHERE id = :u").param("u", member).update()
+        drain { error("unconfirmed number must not receive WhatsApp") }
+        assertEquals("CANCELLED", status())
+    }
+
     @Test fun `pending charge delivery is cancelled after opt out departure or phone change`() {
         for (change in listOf("mute", "departure", "phone")) {
             jdbc.sql("TRUNCATE group_messages CASCADE").update()
             jdbc.sql("UPDATE group_memberships SET active = true").update()
-            jdbc.sql("UPDATE access_users SET phone = '+5511999999999' WHERE id = :u").param("u", member).update()
+            jdbc.sql("UPDATE access_users SET phone = '+5511999999999', verified_phone = '+5511999999999' WHERE id = :u").param("u", member).update()
             service.savePreferences(member, NotificationPreferences(whatsapp = WhatsAppPreferences(charges = true)))
             remindCharges(charge())
             when (change) {
@@ -168,7 +183,7 @@ class NotificationChannelsIntegrationTest {
         jdbc.sql("UPDATE access_users SET phone = null WHERE id = :u").param("u", member).update()
         remindCharges(charge())
         assertEquals(0L, count("notification_whatsapp_queue"))
-        jdbc.sql("UPDATE access_users SET phone = '+5511999999999' WHERE id = :u").param("u", member).update()
+        jdbc.sql("UPDATE access_users SET phone = '+5511999999999', verified_phone = '+5511999999999' WHERE id = :u").param("u", member).update()
         remindCharges(charge())
         drain { WhatsAppDelivery.Failed }
         assertEquals("FAILED", status())
@@ -294,8 +309,8 @@ class NotificationChannelsIntegrationTest {
     private fun status() = jdbc.sql("SELECT status FROM notification_whatsapp_queue").query(String::class.java).single()
     private fun count(table: String) = jdbc.sql("SELECT count(*) FROM $table").query(Long::class.java).single()
     private fun user(name: String): UUID = UUID.randomUUID().also { id ->
-        jdbc.sql("""INSERT INTO access_users(id, firebase_subject, email_verified, display_name, phone, created_at, updated_at)
-            VALUES (:id, :subject, true, :name, '+5511999999999', now(), now())""")
+        jdbc.sql("""INSERT INTO access_users(id, firebase_subject, email_verified, display_name, phone, verified_phone, created_at, updated_at)
+            VALUES (:id, :subject, true, :name, '+5511999999999', '+5511999999999', now(), now())""")
             .param("id", id).param("subject", id.toString()).param("name", name).update()
     }
     private fun <T> CommunicationResult<T>.success(): T = assertIs<CommunicationResult.Success<T>>(this).value
