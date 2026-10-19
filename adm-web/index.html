@@ -401,6 +401,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
       <sc-raw-select value="{{ uStatus }}" sc-camel-on-change="{{ onUStatus }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
         <option value="todos">Status: todos</option><option value="active">Ativo</option><option value="suspended">Suspenso</option>
       </sc-raw-select>
+      <span sc-camel-on-click="{{ onLoteAbrir }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13px;font-weight:700;border-radius:999px;padding:9px 16px;border:1px solid var(--saqz-border);color:var(--saqz-blue);background:var(--saqz-white)" style-hover="background:var(--saqz-ice)">Dar cortesia a todos os donos de grupo</span>
       <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">{{ uCount }}</span>
     </div>
     <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px">
@@ -469,6 +470,39 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
           <span style="font-size:13.5px;color:var(--saqz-muted)">{{ ud.planoSub }}</span>
           <sc-if value="{{ udTemAssin }}" hint-placeholder-val="{{ false }}">
             <span sc-camel-on-click="{{ onVerAssin }}" style="display:inline-block;justify-self:start;white-space:nowrap;cursor:pointer;font-size:13px;font-weight:700;color:var(--saqz-blue);background:var(--saqz-white);border-radius:999px;padding:9px 16px" style-hover="background:#fff;box-shadow:0 0 0 3px rgba(6,56,223,.11)">Ver assinatura e cobranças</span>
+          </sc-if>
+        </div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 20px;display:grid;gap:12px">
+          <strong style="font-size:15px;font-weight:700">Cortesia</strong>
+          <sc-if value="{{ cortCarregando }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;color:var(--saqz-muted)">Carregando…</span></sc-if>
+          <sc-if value="{{ cortIndisp }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;color:var(--saqz-muted)">Cortesia ainda não disponível neste ambiente.</span></sc-if>
+          <sc-if value="{{ cortErro }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;color:var(--saqz-error)">Não deu para carregar a cortesia.</span></sc-if>
+          <sc-if value="{{ cortOk }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;gap:12px">
+              <sc-if value="{{ cortTemAtiva }}" hint-placeholder-val="{{ false }}">
+                <div style="background:var(--saqz-ice);border-radius:12px;padding:12px 14px;display:grid;gap:4px">
+                  <strong style="font-size:14px;font-weight:700">{{ cortAtivaTitulo }}</strong>
+                  <span style="font-size:12.5px;color:var(--saqz-muted)">{{ cortAtivaSub }}</span>
+                  <span sc-camel-on-click="{{ onCortRevogar }}" style="justify-self:start;margin-top:6px;cursor:pointer;font-size:13px;font-weight:700;color:var(--saqz-error)">Revogar</span>
+                </div>
+              </sc-if>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Plano
+                  <sc-raw-select value="{{ cortPlano }}" sc-camel-on-change="{{ onCortPlano }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"><option value="TITULAR">Titular</option><option value="ORGANIZADOR">Organizador</option><option value="ILIMITADO">Ilimitado</option></sc-raw-select>
+                </label>
+                <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Até (opcional)<input value="{{ cortFimTxt }}" sc-camel-on-change="{{ onCortFim }}" placeholder="dd/mm/aaaa" style="border:1px solid var(--saqz-border);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
+              </div>
+              <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Motivo<input value="{{ cortMotivo }}" sc-camel-on-change="{{ onCortMotivo }}" placeholder="Ex.: testador da fase de testes" style="border:1px solid var(--saqz-border);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
+              <span sc-camel-on-click="{{ onCortSalvar }}" style="justify-self:start;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 18px;background:var(--saqz-blue);color:#fff" style-hover="background:#052BB3">{{ cortSalvarLabel }}</span>
+              <sc-if value="{{ cortTemHist }}" hint-placeholder-val="{{ false }}">
+                <div style="border-top:1px solid var(--saqz-border);padding-top:10px;display:grid;gap:8px">
+                  <span style="font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--saqz-muted)">HISTÓRICO</span>
+                  <sc-for list="{{ cortHist }}" as="h" hint-placeholder-count="2">
+                    <span style="display:block"><strong style="display:block;font-size:13.5px;font-weight:600">{{ h.titulo }}</strong><span style="display:block;font-size:12px;color:var(--saqz-muted)">{{ h.sub }}</span></span>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
           </sc-if>
         </div>
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
@@ -768,6 +802,48 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
     </div>
   </sc-if>
 
+  <sc-if value="{{ loteOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(14,23,56,.46);display:grid;place-items:center;z-index:50" sc-camel-on-click="{{ onLoteFechar }}">
+      <div style="width:620px;max-width:94vw;max-height:88vh;overflow-y:auto;background:var(--saqz-white);border-radius:20px;padding:24px;box-sizing:border-box;box-shadow:0 24px 70px rgba(14,23,56,.14)" sc-camel-on-click="{{ pare }}">
+        <strong style="display:block;font-size:18px;font-weight:800;letter-spacing:-0.01em">Cortesia para todos os donos de grupo</strong>
+        <div style="display:grid;gap:12px;margin-top:16px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Plano
+              <sc-raw-select value="{{ lotePlano }}" sc-camel-on-change="{{ onLotePlano }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"><option value="TITULAR">Titular</option><option value="ORGANIZADOR">Organizador</option><option value="ILIMITADO">Ilimitado</option></sc-raw-select>
+            </label>
+            <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Até (opcional)<input value="{{ loteFimTxt }}" sc-camel-on-change="{{ onLoteFim }}" placeholder="dd/mm/aaaa" style="border:1px solid var(--saqz-border);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
+          </div>
+          <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Motivo<input value="{{ loteMotivo }}" sc-camel-on-change="{{ onLoteMotivo }}" placeholder="Ex.: fase de testes" style="border:1px solid var(--saqz-border);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
+          <sc-if value="{{ loteTemErro }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:var(--saqz-error)">{{ loteErro }}</span></sc-if>
+          <sc-if value="{{ loteTemLista }}" hint-placeholder-val="{{ false }}">
+            <div style="border:1px solid var(--saqz-border);border-radius:12px;overflow:hidden">
+              <div style="padding:10px 14px;border-bottom:1px solid var(--saqz-border);font-size:13px;font-weight:700">{{ loteResumo }}</div>
+              <div style="max-height:260px;overflow-y:auto">
+                <sc-for list="{{ loteRows }}" as="o" hint-placeholder-count="3">
+                  <span style="display:grid;grid-template-columns:1.5fr 1.3fr 90px;gap:10px;padding:9px 14px;border-bottom:1px solid var(--saqz-border);font-size:13px"><span style="min-width:0"><strong style="display:block;font-weight:600">{{ o.nome }}</strong><span style="display:block;font-size:12px;color:var(--saqz-muted)">{{ o.email }}</span></span><span style="color:var(--saqz-muted)">{{ o.grupos }}</span><span style="font-size:12px"><span style="display:block;font-weight:600">{{ o.plano }}</span><span style="display:block;color:var(--saqz-muted)">{{ o.jaTem }}</span></span></span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ loteSemDonos }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:var(--saqz-muted)">Nenhum dono de grupo encontrado.</span></sc-if>
+          <sc-if value="{{ loteTemResultado }}" hint-placeholder-val="{{ false }}">
+            <div style="border:1px solid var(--saqz-border);border-radius:12px;padding:10px 14px;display:grid;gap:4px">
+              <strong style="font-size:13.5px">{{ loteResultadoResumo }}</strong>
+              <sc-for list="{{ loteResultadoRows }}" as="x" hint-placeholder-count="3">
+                <span style="font-size:12.5px;color:{{ x.cor }}">{{ x.nome }} · {{ x.texto }}</span>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+          <span sc-camel-on-click="{{ onLoteFechar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 18px;color:var(--saqz-navy)" style-hover="background:var(--saqz-ice)">Fechar</span>
+          <span sc-camel-on-click="{{ onLoteVer }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 18px;border:1px solid var(--saqz-border);color:var(--saqz-blue)" style-hover="background:var(--saqz-ice)">{{ loteVerLabel }}</span>
+          <sc-if value="{{ loteConfirmaVisivel }}" hint-placeholder-val="{{ false }}"><span sc-camel-on-click="{{ onLoteConfirmar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 20px;background:var(--saqz-blue);color:#fff" style-hover="background:#052BB3">{{ loteConfirmarLabel }}</span></sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ cupomOpen }}" hint-placeholder-val="{{ false }}">
     <div style="position:fixed;inset:0;background:rgba(14,23,56,.46);display:grid;place-items:center;z-index:50" sc-camel-on-click="{{ onCupomFechar }}">
       <div style="width:460px;background:var(--saqz-white);border-radius:20px;padding:24px;box-sizing:border-box;box-shadow:0 24px 70px rgba(14,23,56,.14)" sc-camel-on-click="{{ pare }}">
@@ -815,6 +891,7 @@ class Component extends DCLogic {
     // Suporte segue mockado até o VUL-171
     resolvidas: {},
     cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "" },
+    cort: null, cf: { plan: "TITULAR", fim: "", motivo: "" }, lote: null,
     modal: null, toast: null
   };
 
@@ -853,6 +930,7 @@ class Component extends DCLogic {
             // rascunho, filtros digitados e navegação também não pertencem
             // ao próximo admin.
             modal: null, toast: null, cupomOpen: false,
+            cort: null, cf: { plan: "TITULAR", fim: "", motivo: "" }, lote: null,
             nc: { cod: "", desc: "10", meses: "3", val: "" },
             page: this.props.paginaInicial ?? "visao", selU: null, selG: null, selA: null, selD: null,
             periodo: "30d", rTab: "ass",
@@ -1144,6 +1222,7 @@ class Component extends DCLogic {
   carregarUsuario(id) {
     this.setState({ userDetail: null, userReceipts: null });
     const atual = () => this.state.selU === id;
+    this.carregarCortesia(id);
     this.api(`/admin/users/${id}`)
       .then((userDetail) => {
         if (!atual()) return; // resposta atrasada de outra seleção
@@ -1157,6 +1236,178 @@ class Component extends DCLogic {
         }
       })
       .catch(() => { if (atual()) this.setState({ userDetail: { erro: true } }); });
+  }
+
+  // ---- Cortesia de plano (DEB-097) ----
+  CORT_PLANOS = { TITULAR: "Titular", ORGANIZADOR: "Organizador", ILIMITADO: "Ilimitado" };
+
+  // dd/mm/aaaa -> fim do dia em Brasília. Vazio = sem fim (null); inválido ou no passado = false.
+  cortFim(txt) {
+    const t = (txt || "").trim();
+    if (t === "") return null;
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t);
+    if (!m) return false;
+    const d = new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]));
+    if (d.getUTCFullYear() !== +m[3] || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[1]) return false;
+    const iso = `${m[3]}-${m[2]}-${m[1]}T23:59:59-03:00`;
+    return new Date(iso).getTime() > Date.now() ? iso : false;
+  }
+
+  // Valida plano, fim e motivo; devolve { body } ou { erro }.
+  cortCorpo(f) {
+    if (!this.CORT_PLANOS[f.plan]) return { erro: "Escolha o plano da cortesia." };
+    const fim = this.cortFim(f.fim);
+    if (fim === false) return { erro: "O fim precisa ser uma data futura, dd/mm/aaaa (ou vazio para sem fim)." };
+    const motivo = (f.motivo || "").trim();
+    if (!motivo) return { erro: "Conte o motivo da cortesia." };
+    const body = { plan: f.plan, reason: motivo };
+    if (fim) body.endsAt = fim;
+    return { body };
+  }
+
+  cortAte(endsAt) { return endsAt ? `até ${this.dataBr(endsAt)}` : "sem fim"; }
+
+  carregarCortesia(id) {
+    this.setState({ cort: null });
+    const atual = () => this.state.selU === id;
+    this.api(`/admin/users/${id}/courtesy`)
+      .then((d) => {
+        if (!atual()) return;
+        const active = d && d.active ? d.active : null;
+        this.setState({
+          cort: { ok: true, active, history: (d && d.history) || [] },
+          cf: { plan: active ? active.plan : "TITULAR", fim: active && active.endsAt ? this.dataBr(active.endsAt) : "", motivo: "" }
+        });
+      })
+      .catch((e) => { if (atual()) this.setState({ cort: e && e.message === "HTTP 404" ? { indisponivel: true } : { erro: true } }); });
+  }
+
+  salvarCortesia(id) {
+    if (this.state.cort && this.state.cort.busy) return;
+    const c = this.cortCorpo(this.state.cf);
+    if (c.erro) { this.aviso(c.erro); return; }
+    this.setState((s) => ({ cort: { ...s.cort, busy: true } }));
+    this.mutacao(`/admin/users/${id}/courtesy`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c.body) }).then((r) => {
+      if (r.ok) { this.aviso("Cortesia salva."); this.carregarUsuario(id); }
+      else {
+        this.setState((s) => ({ cort: { ...s.cort, busy: false } }));
+        this.aviso(r.status === 404 ? "Cortesia ainda não disponível neste ambiente." : r.status === 400 ? "Não deu para salvar — confira os campos." : "Não deu para salvar a cortesia agora.");
+      }
+    }).catch(() => { this.setState((s) => ({ cort: { ...s.cort, busy: false } })); this.aviso("Não deu para salvar a cortesia agora."); });
+  }
+
+  revogarCortesia(id) {
+    this.mutacao(`/admin/users/${id}/courtesy/revoke`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).then((r) => {
+      this.setState({ modal: null });
+      if (r.ok) { this.aviso("Cortesia revogada."); this.carregarUsuario(id); }
+      else { this.aviso("Não deu para revogar agora."); }
+    }).catch(() => { this.setState({ modal: null }); this.aviso("Não deu para revogar agora."); });
+  }
+
+  // ---- Lote: todos os donos de grupo ----
+  loteVazio() { return { plan: "TITULAR", fim: "", motivo: "", busy: false, lista: null, resultado: null, erro: "" }; }
+
+  loteEdit(k, v) {
+    // Mexer no formulário invalida a lista: o que se confirma é sempre o que foi conferido.
+    this.setState((s) => ({ lote: { ...s.lote, [k]: v, lista: null, resultado: null, erro: "" } }));
+  }
+
+  loteLista(d) {
+    const arr = Array.isArray(d) ? d : (d && (d.owners || d.items || d.users)) || [];
+    return arr.map((o) => {
+      const g = o.groups;
+      return {
+        id: o.ownerId || o.userId || o.id,
+        nome: o.displayName || o.name || "—",
+        email: o.email || "—",
+        grupos: Array.isArray(g) ? g.map((x) => (typeof x === "string" ? x : x.name)).join(", ") : String(g == null ? "—" : g),
+        plano: this.CORT_PLANOS[o.effectivePlan] || (o.effectivePlan === "FREE" || !o.effectivePlan ? "Grátis" : o.effectivePlan),
+        jaTem: !!(o.hasCourtesy || o.alreadyHasCourtesy || o.courtesy)
+      };
+    });
+  }
+
+  loteVer() {
+    const l = this.state.lote;
+    if (!l || l.busy) return;
+    const c = this.cortCorpo(l);
+    if (c.erro) { this.setState((s) => ({ lote: { ...s.lote, erro: c.erro } })); return; }
+    this.setState((s) => ({ lote: { ...s.lote, busy: true, erro: "", lista: null, resultado: null } }));
+    this.mutacao("/admin/courtesies/batch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...c.body, dryRun: true }) }).then((r) => {
+      if (!r.ok) {
+        this.setState((s) => ({ lote: { ...s.lote, busy: false, erro: r.status === 404 ? "Cortesia ainda não disponível neste ambiente." : "Não deu para montar a lista agora." } }));
+        return;
+      }
+      return r.json().then((d) => this.setState((s) => ({ lote: { ...s.lote, busy: false, lista: { body: c.body, donos: this.loteLista(d) } } })));
+    }).catch(() => this.setState((s) => ({ lote: { ...s.lote, busy: false, erro: "Não deu para montar a lista agora." } })));
+  }
+
+  loteConfirmar() {
+    const l = this.state.lote;
+    if (!l || l.busy || !l.lista || !l.lista.donos.length) return;
+    const ownerIds = l.lista.donos.map((o) => o.id);
+    this.setState((s) => ({ lote: { ...s.lote, busy: true, erro: "" } }));
+    this.mutacao("/admin/courtesies/batch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...l.lista.body, dryRun: false, ownerIds }) }).then((r) => {
+      if (!r.ok) {
+        this.setState((s) => ({ lote: { ...s.lote, busy: false, erro: "Não deu para gravar agora. Nada foi confirmado." } }));
+        return;
+      }
+      return r.json().then((d) => {
+        const arr = Array.isArray(d) ? d : (d && (d.results || d.items || d.owners)) || [];
+        const nome = (id) => (l.lista.donos.find((o) => o.id === id) || {}).nome || id;
+        const linhas = arr.map((x) => {
+          const id = x.ownerId || x.userId || x.id;
+          const bem = x.ok === true || x.success === true || /^(OK|GRANTED|APPLIED|CREATED|UPDATED)$/i.test(x.status || x.result || "");
+          return { nome: nome(id), ok: bem, texto: bem ? "Cortesia dada" : (x.error || x.message || x.status || x.result || "Não deu") };
+        });
+        this.setState((s) => ({ lote: { ...s.lote, busy: false, resultado: { linhas, ok: linhas.filter((x) => x.ok).length } } }));
+        if (this.state.page === "usuarios") this.carregarUsuarios();
+      });
+    }).catch(() => this.setState((s) => ({ lote: { ...s.lote, busy: false, erro: "Não deu para gravar agora. Confira a lista de cortesias antes de repetir." } })));
+  }
+
+  cortVals(det) {
+    const st = this.state, c = st.cort, f = st.cf, l = st.lote;
+    const a = c && c.ok ? c.active : null;
+    const pl = (p) => this.CORT_PLANOS[p] || p || "—";
+    const quem = (x) => `${x.grantedBy ? `por ${x.grantedBy} ` : ""}em ${this.dataBr(x.createdAt)}`;
+    const hist = c && c.ok ? c.history.map((h) => ({
+      titulo: `${pl(h.plan)} · ${this.cortAte(h.endsAt)}`,
+      sub: `${h.reason || "sem motivo"} · ${quem(h)}${h.revokedAt ? ` · revogada em ${this.dataBr(h.revokedAt)}` : ""}`
+    })) : [];
+    const lista = l && l.lista;
+    return {
+      cortCarregando: !c, cortIndisp: !!(c && c.indisponivel), cortErro: !!(c && c.erro), cortOk: !!(c && c.ok),
+      cortTemAtiva: !!a,
+      cortAtivaTitulo: a ? `${pl(a.plan)} · ${this.cortAte(a.endsAt)}` : "",
+      cortAtivaSub: a ? `${a.reason || "sem motivo"} · ${quem(a)}` : "",
+      cortPlano: f.plan, cortFimTxt: f.fim, cortMotivo: f.motivo,
+      onCortPlano: (e) => this.setState((s) => ({ cf: { ...s.cf, plan: e.target.value } })),
+      onCortFim: (e) => this.setState((s) => ({ cf: { ...s.cf, fim: e.target.value } })),
+      onCortMotivo: (e) => this.setState((s) => ({ cf: { ...s.cf, motivo: e.target.value } })),
+      cortSalvarLabel: c && c.busy ? "Salvando…" : a ? "Alterar cortesia" : "Dar cortesia",
+      onCortSalvar: () => det && this.salvarCortesia(det.userId),
+      onCortRevogar: () => det && a && this.setState({ modal: { titulo: `Revogar a cortesia de ${det.displayName || "a pessoa"}?`, texto: "O plano volta a ser o da assinatura, se houver. Dá pra dar outra cortesia depois.", confirm: "Revogar cortesia", danger: true, acao: () => this.revogarCortesia(det.userId) } }),
+      cortHist: hist, cortTemHist: hist.length > 0,
+      // lote
+      onLoteAbrir: () => this.setState({ lote: this.loteVazio() }),
+      onLoteFechar: () => this.setState({ lote: null }),
+      loteOpen: !!l,
+      lotePlano: l ? l.plan : "", loteFimTxt: l ? l.fim : "", loteMotivo: l ? l.motivo : "",
+      onLotePlano: (e) => this.loteEdit("plan", e.target.value), onLoteFim: (e) => this.loteEdit("fim", e.target.value), onLoteMotivo: (e) => this.loteEdit("motivo", e.target.value),
+      loteErro: l ? l.erro : "", loteTemErro: !!(l && l.erro),
+      loteVerLabel: l && l.busy && !l.lista ? "Buscando…" : "Ver lista",
+      onLoteVer: () => this.loteVer(),
+      loteTemLista: !!lista, loteSemDonos: !!(lista && !lista.donos.length),
+      loteResumo: lista ? `${lista.donos.length} dono${lista.donos.length === 1 ? "" : "s"} de grupo` : "",
+      loteRows: lista ? lista.donos.map((o) => ({ nome: o.nome, email: o.email, grupos: o.grupos, plano: o.plano, jaTem: o.jaTem ? "Já tem cortesia" : "" })) : [],
+      loteConfirmaVisivel: !!(lista && lista.donos.length && !l.resultado),
+      loteConfirmarLabel: l && l.busy && l.lista ? "Gravando…" : `Confirmar para ${lista ? lista.donos.length : 0} donos`,
+      onLoteConfirmar: () => this.loteConfirmar(),
+      loteTemResultado: !!(l && l.resultado),
+      loteResultadoResumo: l && l.resultado ? `${l.resultado.ok} de ${l.resultado.linhas.length} com cortesia.` : "",
+      loteResultadoRows: l && l.resultado ? l.resultado.linhas.map((x) => ({ nome: x.nome, texto: x.texto, cor: x.ok ? "var(--saqz-muted)" : "var(--saqz-error)" })) : []
+    };
   }
 
   carregarGrupos(page = this.state.groupsPageNumber) {
@@ -1608,6 +1859,7 @@ class Component extends DCLogic {
       kpis, cohort, planoBars, pendAtraso,
       uBusca: st.uBusca, onUBusca: this.filtroUsuarios("uBusca"), uPlano: st.uPlano, onUPlano: this.filtroUsuarios("uPlano"), uStatus: st.uStatus, onUStatus: this.filtroUsuarios("uStatus"),
       usuariosRows, uCount, uPager: this.paginacao("users"),
+      ...this.cortVals(det),
       ud, udStatusTxt: udStatus.txt, udStatusStyle: udStatus.style, udGrupos, udPagtos, udTemAssin: !!sub,
       udBtnLabel: suspenso ? "Reativar usuário" : "Suspender usuário",
       onSuspender: !det ? () => {} : suspenso
