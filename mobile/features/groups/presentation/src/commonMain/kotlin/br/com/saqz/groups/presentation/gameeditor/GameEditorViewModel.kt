@@ -600,7 +600,9 @@ private fun GameEditorState.withPlanBlock(now: Instant): GameEditorState {
         LocalDate.parse(lastDay) < now.toLocalDateTime(TimeZone.of(zoneId)).date
     }.getOrDefault(false)
     val starts = if (form.hasDateTime && zoneId.isNotBlank()) localStart(form.localDate, form.localTime, zoneId) else null
-    val changed = originalStart == null || originalStart != "${form.localDate}T${form.localTime}"
+    // Compara pelo instante, como o servidor: "19:30:00" do jogo carregado e "19:30" do seletor são o mesmo início.
+    val original = originalStart?.let { runCatching { LocalDateTime.parse(it).toInstant(TimeZone.of(zoneId)).toString() }.getOrNull() }
+    val changed = original == null || original != starts
     val blocked = limit != null && starts != null && changed &&
         runCatching { Instant.parse(starts) >= Instant.parse(limit) }.getOrDefault(false)
     return copy(planLastDay = lastDay, planLastDayPassed = lastDayPassed, planBlocked = blocked)

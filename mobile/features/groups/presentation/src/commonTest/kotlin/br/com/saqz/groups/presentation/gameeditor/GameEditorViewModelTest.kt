@@ -957,6 +957,22 @@ class GameEditorViewModelTest {
     }
 
     @Test
+    fun `reconfirming the same start in the picker does not block an old game even when the server sends seconds`() = runTest {
+        val old = sampleGame().copy(localDate = "2026-08-12", localTime = "19:30:00", startsAt = "2026-08-12T19:30:00-03:00")
+        val info = GroupTrialAccessInfo("2026-08-02T15:00:00Z", false, true, planActive = true, gamesUntil = "2026-08-02T03:00:00Z")
+        val vm = viewModel(
+            gameId = "game-1",
+            gameGateway = FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(old))),
+            trialAccess = GroupTrialAccessPort { info },
+        )
+        assertFalse(vm.state.value.planBlocked)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-12", "19:30"))
+        assertFalse(vm.state.value.planBlocked)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-12", "19:45"))
+        assertTrue(vm.state.value.planBlocked)
+    }
+
+    @Test
     fun `save failure can be retried successfully`() = runTest {
         val gateway = FakeGameGateway(createResult = SaqzResult.Failure(GameError.Data(DataError.Server)))
         val vm = viewModel(gameGateway = gateway)
