@@ -179,6 +179,19 @@ class GameEditorScreenTest {
     }
 
     @Test
+    fun `the last day in the block text keeps the two digit day like the rest of the app`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GameEditorScreen(state = blocked(owner = true, trial = false).copy(planLastDay = "2026-11-01"), onBack = {}, onIntent = {})
+            }
+        }
+
+        onNodeWithText(
+            "Este jogo começa depois do fim do seu plano. Escolha uma data até 01/11/2026 ou assine para marcar mais jogos.",
+        ).performScrollTo().assertExists()
+    }
+
+    @Test
     fun `admin reads the group plan text without an offer to subscribe`() = runComposeUiTest {
         setContent { SaqzTheme { GameEditorScreen(state = blocked(owner = false, trial = false), onBack = {}, onIntent = {}) } }
 

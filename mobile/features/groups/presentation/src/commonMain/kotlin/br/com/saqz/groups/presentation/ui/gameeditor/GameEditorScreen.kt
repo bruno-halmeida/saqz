@@ -990,7 +990,7 @@ private fun DateTimePickerSheet(
 
 internal fun formatDisplayDate(iso: String): String {
     val date = runCatching { LocalDate.parse(iso) }.getOrNull() ?: return iso
-    return "${date.day}/${date.monthNumber.toString().padStart(2, '0')}/${date.year}"
+    return "${date.day.toString().padStart(2, '0')}/${date.monthNumber.toString().padStart(2, '0')}/${date.year}"
 }
 
 internal fun formatDisplayTime(time: String): String {
