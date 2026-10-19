@@ -27,6 +27,8 @@ data class GameEditorState(
     val planLimit: String? = null,
     /** Último dia que dá para marcar (aaaa-mm-dd, no fuso do grupo); é o que o texto do bloqueio mostra. */
     val planLastDay: String? = null,
+    /** O último dia que dá para marcar já passou (ex.: último dia do teste): o texto não manda escolher uma data, só assinar. */
+    val planLastDayPassed: Boolean = false,
     /** O limite é o fim do teste, não o de um plano pago: muda a palavra do texto. */
     val planLimitIsTrial: Boolean = false,
     /** Só o dono assina: o admin recebe o texto sem "assine". */

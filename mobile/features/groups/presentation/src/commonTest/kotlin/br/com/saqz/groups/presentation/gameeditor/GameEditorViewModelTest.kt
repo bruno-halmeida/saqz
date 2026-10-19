@@ -63,9 +63,11 @@ class GameEditorViewModelTest {
         profileGateway: FakeGroupProfileGateway = FakeGroupProfileGateway(),
         trialAccess: GroupTrialAccessPort? = null,
         notificationPrompt: br.com.saqz.groups.presentation.communication.NotificationPromptOffer? = null,
+        now: Instant = Instant.parse("2026-08-01T12:00:00Z"),
     ) = GameEditorViewModel(
         "group-1", gameId, savedState, gameGateway, groupGateway, profileGateway, trialAccess,
         notificationPrompt = notificationPrompt,
+        now = { now },
     )
 
     private fun groupGateway(
@@ -922,6 +924,24 @@ class GameEditorViewModelTest {
         assertFalse(vm.state.value.planBlocked)
         vm.onIntent(GameEditorIntent.Submit)
         assertTrue(vm.state.value.subscriptionRequired)
+    }
+
+    @Test
+    fun `when the last day to book has already passed the state says so and while it is today or later it does not`() = runTest {
+        // Teste que acaba hoje (01/08, 12h UTC = 09h em São Paulo): o limite é 0h de hoje e o último dia foi ontem.
+        val info = GroupTrialAccessInfo("2026-08-01T15:00:00Z", false, true, activeTrialDays = 14, gamesUntil = "2026-08-01T03:00:00Z")
+        val vm = viewModel(trialAccess = GroupTrialAccessPort { info })
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-05", "19:30"))
+        assertTrue(vm.state.value.planBlocked)
+        assertEquals("2026-07-31", vm.state.value.planLastDay)
+        assertTrue(vm.state.value.planLastDayPassed)
+
+        // Termina amanhã: ainda dá para marcar hoje, o texto segue com a data.
+        val tomorrow = info.copy(gamesUntil = "2026-08-02T03:00:00Z")
+        val later = viewModel(trialAccess = GroupTrialAccessPort { tomorrow })
+        later.onIntent(GameEditorIntent.SaveDateTime("2026-08-05", "19:30"))
+        assertEquals("2026-08-01", later.state.value.planLastDay)
+        assertFalse(later.state.value.planLastDayPassed)
     }
 
     @Test

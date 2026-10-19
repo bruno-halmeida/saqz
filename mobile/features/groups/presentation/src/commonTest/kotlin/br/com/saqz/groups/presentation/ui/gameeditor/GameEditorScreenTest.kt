@@ -1,6 +1,9 @@
 package br.com.saqz.groups.presentation.ui.gameeditor
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -153,6 +156,26 @@ class GameEditorScreenTest {
         onNodeWithText(
             "Este jogo começa depois do fim do seu teste. Escolha uma data até 12/10/2026 ou assine para marcar mais jogos.",
         ).performScrollTo().assertExists()
+    }
+
+    @Test
+    fun `owner whose last day already passed reads the text without a date for plan and for trial`() = runComposeUiTest {
+        var trial by mutableStateOf(false)
+        setContent {
+            SaqzTheme {
+                GameEditorScreen(
+                    state = blocked(owner = true, trial = trial).copy(planLastDayPassed = true),
+                    onBack = {},
+                    onIntent = {},
+                )
+            }
+        }
+
+        onNodeWithText("Este jogo começa depois do fim do seu plano. Assine para marcar mais jogos.").performScrollTo().assertExists()
+        trial = true
+        waitForIdle()
+        onNodeWithText("Este jogo começa depois do fim do seu teste. Assine para marcar mais jogos.").performScrollTo().assertExists()
+        onNodeWithTag(GameEditorTags.PlanBlockViewPlans).performScrollTo().assertExists()
     }
 
     @Test

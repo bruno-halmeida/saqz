@@ -141,7 +141,9 @@ import br.com.saqz.groups.resources.game_editor_time_label
 import br.com.saqz.groups.resources.game_editor_time_placeholder
 import br.com.saqz.groups.resources.game_editor_plan_block_admin
 import br.com.saqz.groups.resources.game_editor_plan_block_plan
+import br.com.saqz.groups.resources.game_editor_plan_block_plan_passed
 import br.com.saqz.groups.resources.game_editor_plan_block_trial
+import br.com.saqz.groups.resources.game_editor_plan_block_trial_passed
 import br.com.saqz.groups.resources.subscription_required_view_plans
 import br.com.saqz.groups.resources.game_editor_venue_address_hint
 import br.com.saqz.groups.resources.game_editor_venue_address_label
@@ -271,6 +273,8 @@ private fun PlanBlockCard(state: GameEditorState) {
             Text(
                 text = when {
                     !state.isOwner -> stringResource(Res.string.game_editor_plan_block_admin)
+                    state.planLimitIsTrial && state.planLastDayPassed -> stringResource(Res.string.game_editor_plan_block_trial_passed)
+                    state.planLastDayPassed -> stringResource(Res.string.game_editor_plan_block_plan_passed)
                     state.planLimitIsTrial -> stringResource(Res.string.game_editor_plan_block_trial, lastDay)
                     else -> stringResource(Res.string.game_editor_plan_block_plan, lastDay)
                 },

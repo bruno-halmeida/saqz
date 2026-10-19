@@ -33,6 +33,7 @@ import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.place.VenueSearch
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -42,6 +43,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import br.com.saqz.groups.presentation.communication.NotificationPromptAudience
 import br.com.saqz.groups.presentation.communication.NotificationPromptOffer
+import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
@@ -57,6 +59,7 @@ class GameEditorViewModel(
     placesGateway: PlacesGateway? = null,
     /** Jogo criado é a hora de explicar os avisos ao organizador (pedidos de entrada, confirmações, prazo). */
     private val notificationPrompt: NotificationPromptOffer? = null,
+    private val now: () -> Instant = { Clock.System.now() },
 ) : MviViewModel<GameEditorState, GameEditorIntent, GameEditorEffect>(
     initialState = GameEditorState(isLoading = true),
 ) {
@@ -172,7 +175,7 @@ class GameEditorViewModel(
                         recurrenceOffered = profile?.modality != null && profile.composition != null,
                         regularSlots = profile?.regularSlots.orEmpty(),
                         groupHasVenue = profile?.defaultVenue != null,
-                    ).withTrial(trial)
+                    ).withTrial(trial, now())
                 }
                 return@launch
             }
@@ -209,7 +212,7 @@ class GameEditorViewModel(
                             confirmedCount = game.confirmedCount,
                             legacyCapacity = game.capacity.takeIf { capacity -> capacity < MIN_CAPACITY },
                             originalStart = "${game.localDate}T${game.localTime}",
-                        ).withTrial(trial)
+                        ).withTrial(trial, now())
                     }
                 }
             }
@@ -287,7 +290,7 @@ class GameEditorViewModel(
             }
             is GameError.AfterPlanEnd -> update {
                 // O servidor é a autoridade: o limite dele passa a valer e a tela bloqueia como se tivesse sabido antes.
-                val known = it.copy(planLimit = error.startsBefore ?: it.planLimit, isSaving = false).withPlanBlock()
+                val known = it.copy(planLimit = error.startsBefore ?: it.planLimit, isSaving = false).withPlanBlock(now())
                 if (known.planBlocked) known else known.copy(saveFailed = true, error = error.toUiError())
             }
             GameError.VersionConflict -> if (gameId == null) {
@@ -309,7 +312,7 @@ class GameEditorViewModel(
         if (current.isLoading || current.zoneId.isBlank()) return
         viewModelScope.launch {
             val trial = trialAccess?.read(GroupId(groupId)) ?: return@launch
-            update { it.withTrial(trial) }
+            update { it.withTrial(trial, now()) }
         }
     }
 
@@ -472,7 +475,7 @@ class GameEditorViewModel(
                 form = form,
                 validationErrors = emptySet(),
                 recurrenceFailed = false,
-            ).withPlanBlock()
+            ).withPlanBlock(now())
         }
     }
 
@@ -573,7 +576,7 @@ private fun buildCommand(draft: GameEditorDraft): GameWriteCommand =
     )
 
 /** Fatos do plano lidos do servidor; o bloqueio do fim do plano depende do jogo e do limite. */
-private fun GameEditorState.withTrial(trial: GroupTrialAccessInfo?): GameEditorState {
+private fun GameEditorState.withTrial(trial: GroupTrialAccessInfo?, now: Instant): GameEditorState {
     val active = trial?.planActive == true
     // Servidor antigo não manda `gamesUntil`: vale o fim do teste, arredondado para 0h do dia como o servidor faz.
     // Teste vencido não bloqueia: o servidor responde SUBSCRIPTION_REQUIRED e o diálogo oferece a assinatura.
@@ -586,17 +589,21 @@ private fun GameEditorState.withTrial(trial: GroupTrialAccessInfo?): GameEditorS
         isOwner = trial?.isOwner == true,
         planActive = active,
         trialEnded = trial?.trialEnded == true,
-    ).withPlanBlock()
+    ).withPlanBlock(now)
 }
 
-private fun GameEditorState.withPlanBlock(): GameEditorState {
+private fun GameEditorState.withPlanBlock(now: Instant): GameEditorState {
     val limit = planLimit
     val lastDay = limit?.let { lastDayBefore(it, zoneId) }
+    // Último dia do teste, dia do vencimento, carência: o dia que dá para marcar já passou e o texto não pode mandar voltar a ele.
+    val lastDayPassed = lastDay != null && runCatching {
+        LocalDate.parse(lastDay) < now.toLocalDateTime(TimeZone.of(zoneId)).date
+    }.getOrDefault(false)
     val starts = if (form.hasDateTime && zoneId.isNotBlank()) localStart(form.localDate, form.localTime, zoneId) else null
     val changed = originalStart == null || originalStart != "${form.localDate}T${form.localTime}"
     val blocked = limit != null && starts != null && changed &&
         runCatching { Instant.parse(starts) >= Instant.parse(limit) }.getOrDefault(false)
-    return copy(planLastDay = lastDay, planBlocked = blocked)
+    return copy(planLastDay = lastDay, planLastDayPassed = lastDayPassed, planBlocked = blocked)
 }
 
 private fun localStart(date: String, time: String, zoneId: String): String? = runCatching {

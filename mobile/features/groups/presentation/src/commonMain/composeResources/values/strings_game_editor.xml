@@ -88,6 +88,8 @@
     <string name="game_editor_error_recurrence_body">Tente de novo ou ligue a repetição na agenda do grupo.</string>
     <string name="game_editor_plan_block_plan">Este jogo começa depois do fim do seu plano. Escolha uma data até %1$s ou assine para marcar mais jogos.</string>
     <string name="game_editor_plan_block_trial">Este jogo começa depois do fim do seu teste. Escolha uma data até %1$s ou assine para marcar mais jogos.</string>
+    <string name="game_editor_plan_block_plan_passed">Este jogo começa depois do fim do seu plano. Assine para marcar mais jogos.</string>
+    <string name="game_editor_plan_block_trial_passed">Este jogo começa depois do fim do seu teste. Assine para marcar mais jogos.</string>
     <string name="game_editor_plan_block_admin">Este jogo começa depois do fim do plano do grupo.</string>
 
 </resources>
