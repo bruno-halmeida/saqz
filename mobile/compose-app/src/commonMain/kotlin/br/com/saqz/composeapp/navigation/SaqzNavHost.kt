@@ -689,11 +689,8 @@ internal fun SaqzNavHost(
                                                 SubscriptionLimitReached(limit.groupsUsed, limit.groupsLimit, limit.planName),
                                             )
                                         } else {
-                                            val openedWeb = storeCheckout.openWebCheckout {
-                                                planAnalytics.refresh()
-                                                onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
-                                            }
-                                            if (!openedWeb) backStack.add(SubscriptionRequired)
+                                            // Mesma decisão dos avisos: quem já assina vai a Meu plano, só quem nunca assinou vê os planos.
+                                            openSubscriptionPlans()
                                         }
                                     }
                                 },
@@ -946,11 +943,7 @@ internal fun SaqzNavHost(
                                         SubscriptionLimitReached(limit.groupsUsed, limit.groupsLimit, limit.planName),
                                     )
                                 } else {
-                                    val openedWeb = storeCheckout.openWebCheckout {
-                                        planAnalytics.refresh()
-                                        onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
-                                    }
-                                    if (!openedWeb) backStack.add(SubscriptionRequired)
+                                    openSubscriptionPlans()
                                 }
                             }
                         },
