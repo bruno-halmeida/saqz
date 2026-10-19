@@ -51,6 +51,7 @@ internal fun MutableList<NavKey>.returnFromAccessSubscription() {
 internal fun SubscriptionRequiredDestination(
     onBack: () -> Unit,
     onAuthorizationSuccess: () -> Unit,
+    onAccessAlreadyActive: () -> Unit = onAuthorizationSuccess,
     viewModel: SubscriptionGateViewModel = koinViewModel(),
     store: StoreCheckout = koinInject(),
     groupLimit: PaywallGroupLimit? = null,
@@ -76,6 +77,7 @@ internal fun SubscriptionRequiredDestination(
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             SubscriptionGateEffect.AuthorizationGranted -> onAuthorizationSuccess()
+            SubscriptionGateEffect.AccessAlreadyActive -> onAccessAlreadyActive()
         }
     }
 

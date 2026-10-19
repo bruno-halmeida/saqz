@@ -402,23 +402,39 @@ internal fun SaqzNavHost(
             backStack.removeLastOrNull()
         }
     }
-    // "Ver planos" dos diálogos de assinatura em Marcar jogo/Editar grupo: a mesma tela de
-    // Perfil → Meu plano → "Continuar com o Organizador" (checkout do site no web app, a loja
-    // do aparelho nos demais). Ao voltar, o plano e o acesso se atualizam.
+    // "Ver planos" dos diálogos de assinatura em Marcar jogo/Editar grupo e o toque nos avisos do teste e do
+    // atraso: quem nunca assinou vai à mesma tela de Perfil → Meu plano → "Continuar com o Organizador"
+    // (checkout do site no web app, a loja do aparelho nos demais); quem já assina vai a Meu plano
+    // (SubscriptionPlansNavigation.kt). Ao voltar, o plano e o acesso se atualizam.
+    val subscriptionGateway = koinInject<br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway>()
+    var openingPlans by remember { mutableStateOf(false) }
     val openSubscriptionPlans: () -> Unit = {
-        val openedWeb = storeCheckout.openWebCheckout {
-            myPlanRefreshVersion++
-            planAnalytics.refresh()
-            onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+        // Toques repetidos (push, folha, central) enquanto a consulta roda abrem uma tela só.
+        if (!openingPlans) {
+            openingPlans = true
+            scope.launch {
+                val subscription = try {
+                    subscriptionGateway.mySubscription()
+                } finally {
+                    openingPlans = false
+                }
+                backStack.openSubscriptionPlans(subscription) {
+                    storeCheckout.openWebCheckout {
+                        myPlanRefreshVersion++
+                        planAnalytics.refresh()
+                        onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                    }
+                }
+            }
         }
-        if (!openedWeb) backStack.add(SubscribeForAccess)
     }
     LaunchedEffect(notificationOpenPending, state.session) {
         val opened = notificationOpenPending ?: return@LaunchedEffect
         if (state.session is SessionAccessState.Ready) {
             val groupId = opened.groupId
             val gameId = opened.gameId
-            // Push de jogo abre o jogo (onde se confirma); o do teste e do atraso abre os planos; os outros, a central.
+            // Push de jogo abre o jogo (onde se confirma); o do teste e do atraso abre os planos (ou Meu plano, para
+            // quem já assina); os outros, a central.
             if (groupId != null && gameId != null) backStack.add(GroupsRoute.GameDetail(groupId, gameId))
             else if (opened.channel == "TRIAL_ENDING") openSubscriptionPlans()
             else if (backStack.none { it is GroupsRoute.Notifications }) backStack.add(GroupsRoute.Notifications())
@@ -871,6 +887,7 @@ internal fun SaqzNavHost(
                             planAnalytics.purchased()
                             backStack.replaceSubscriptionRequiredWithGroupCreation()
                         },
+                        onAccessAlreadyActive = { backStack.replaceSubscriptionRequiredWithGroupCreation() },
                     )
                 }
                 entry<SubscriptionLimitReached> { route ->
@@ -892,6 +909,7 @@ internal fun SaqzNavHost(
                                 planAnalytics.purchased()
                                 backStack.replaceSubscriptionRequiredWithGroupCreation()
                             },
+                            onAccessAlreadyActive = { backStack.replaceSubscriptionRequiredWithGroupCreation() },
                             groupLimit = route.toLimit(),
                         )
                     }
@@ -904,6 +922,11 @@ internal fun SaqzNavHost(
                             myPlanRefreshVersion++
                             groupDetailsRefreshVersion++
                             onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
+                            backStack.returnFromAccessSubscription()
+                        },
+                        // Já tinha acesso ao abrir: nada foi comprado, então não há "purchase" a registrar.
+                        onAccessAlreadyActive = {
+                            myPlanRefreshVersion++
                             backStack.returnFromAccessSubscription()
                         },
                         viewModel = org.koin.compose.viewmodel.koinViewModel(

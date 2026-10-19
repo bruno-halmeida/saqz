@@ -71,13 +71,27 @@ class SubscriptionGateViewModelTest {
     }
 
     @Test
-    fun `authorization emits only after the shared entitlement says creation is allowed`() = runTest {
+    fun `access already active on the first check is not reported as a purchase`() = runTest {
         val entitlement = FakeEntitlement(true)
         withViewModel(entitlement = entitlement) { viewModel ->
             viewModel.onIntent(SubscriptionGateIntent.Opened)
             runCurrent()
 
             assertEquals(SubscriptionGateStatus.Authorized, viewModel.state.value.status)
+            assertEquals(SubscriptionGateEffect.AccessAlreadyActive, viewModel.effects.firstValue())
+        }
+    }
+
+    @Test
+    fun `access that appears after a denied check is reported as granted`() = runTest {
+        val entitlement = FakeEntitlement(false)
+        withViewModel(entitlement = entitlement) { viewModel ->
+            viewModel.onIntent(SubscriptionGateIntent.Opened)
+            runCurrent()
+            entitlement.allowed = true
+            viewModel.onIntent(SubscriptionGateIntent.RefreshAuthorization)
+            runCurrent()
+
             assertEquals(SubscriptionGateEffect.AuthorizationGranted, viewModel.effects.firstValue())
         }
     }

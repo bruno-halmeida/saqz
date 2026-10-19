@@ -30,6 +30,7 @@ class SubscriptionGateViewModel(
     private var visible = false
     private var foreground = true
     private var authorized = false
+    private var deniedSinceOpened = false
     private var operationActive = false
     private var recheckRequested = false
     private var lifecycleGeneration = 0L
@@ -60,6 +61,7 @@ class SubscriptionGateViewModel(
         if (visible) return
         visible = true
         authorized = false
+        deniedSinceOpened = false
         lifecycleGeneration++
         update { it.copy(status = SubscriptionGateStatus.Initial, failure = null, maskedEmail = null) }
         startPolling()
@@ -110,10 +112,16 @@ class SubscriptionGateViewModel(
                     update {
                         it.copy(status = SubscriptionGateStatus.Authorized, failure = null)
                     }
-                    emit(SubscriptionGateEffect.AuthorizationGranted)
-                } else if (showsProgress) {
-                    update {
-                        it.copy(status = SubscriptionGateStatus.NotAuthorized, failure = null)
+                    emit(
+                        if (deniedSinceOpened) SubscriptionGateEffect.AuthorizationGranted
+                        else SubscriptionGateEffect.AccessAlreadyActive,
+                    )
+                } else {
+                    deniedSinceOpened = true
+                    if (showsProgress) {
+                        update {
+                            it.copy(status = SubscriptionGateStatus.NotAuthorized, failure = null)
+                        }
                     }
                 }
             } catch (cancellation: CancellationException) {

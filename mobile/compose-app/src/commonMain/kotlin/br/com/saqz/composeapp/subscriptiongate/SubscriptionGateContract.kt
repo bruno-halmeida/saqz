@@ -42,4 +42,7 @@ sealed interface SubscriptionGateIntent {
 
 sealed interface SubscriptionGateEffect {
     data object AuthorizationGranted : SubscriptionGateEffect
+
+    /** A primeira consulta já achou acesso: a pessoa não comprou nada nesta abertura. */
+    data object AccessAlreadyActive : SubscriptionGateEffect
 }
