@@ -140,12 +140,12 @@ class MonthlyGameCreationHorizonTest {
     }
 
     @Test
-    fun `active subscription with an overdue period and legacy past due without a date fall back to the rolling month`() {
-        val rolling = startOfDay("2026-10-17")
+    fun `renewal not yet confirmed keeps the period end and only the legacy past due without a date falls back to the rolling month`() {
         asaas("2026-09-10T12:00:00Z")
-        assertEquals(rolling, horizon().startsBefore(group))
+        assertEquals(startOfDay("2026-09-10"), horizon().startsBefore(group))
+        assertEquals(startOfDay("2026-09-10"), horizon().until(group))
         asaas("2026-09-10T12:00:00Z", SubscriptionStatus.PAST_DUE, pastDueSince = null)
-        assertEquals(rolling, horizon().startsBefore(group))
+        assertEquals(startOfDay("2026-10-17"), horizon().startsBefore(group))
     }
 
     @Test

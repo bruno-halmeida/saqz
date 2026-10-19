@@ -62,16 +62,16 @@ class MonthlyGameCreationHorizon(
     /**
      * Fim do período já pago pela assinatura que dá acesso (Asaas, App Store ou Google Play; vale o maior).
      * A carência de atraso (Asaas em PAST_DUE, graça da Apple) não estende: o fim fica no passado e nenhum
-     * jogo novo passa até pagar. Linhas que dão acesso "para sempre" sem data (ACTIVE com período vencido,
-     * PAST_DUE legado sem `past_due_since`) e fim desconhecido caem no mês corrido, para não travar quem
+     * jogo novo passa até pagar. Renovação do Asaas ainda não confirmada (ACTIVE com período vencido, o estado normal
+     * entre o vencimento e a confirmação ou o PAYMENT_OVERDUE) também usa o `currentPeriodEnd`. Só a linha legada de
+     * fato (PAST_DUE sem `past_due_since`, que nunca teve data de corte) e o fim desconhecido caem no mês corrido, para não travar quem
      * o app trata como assinante em dia. Compra de teste da loja (sandbox da Apple, testador do Play) renova em
      * minutos: o `expiresAt` dela não diz nada sobre o plano, então vale o mês corrido.
      */
     private fun paidEnd(owner: UUID, now: Instant): Instant {
         val ends = mutableListOf<Instant>()
         subscriptions.findByOwnerUserId(owner)?.takeIf { it.isEntitlingAt(now) }?.let {
-            val legacy = it.currentPeriodEnd <= now &&
-                (it.status == SubscriptionStatus.ACTIVE || (it.status == SubscriptionStatus.PAST_DUE && it.pastDueSince == null))
+            val legacy = it.status == SubscriptionStatus.PAST_DUE && it.pastDueSince == null
             ends += if (legacy) monthlyMarkAfter(now, now) else it.currentPeriodEnd
         }
         appStore?.findByOwner(owner).orEmpty().filter { it.isEntitlingAt(now) }.forEach {
