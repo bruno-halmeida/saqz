@@ -10,6 +10,7 @@ import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAppStoreSubscriptionRep
 import br.com.saqz.subscriptions.application.AppStoreNotificationStore
 import br.com.saqz.subscriptions.application.AppStoreSignedDataVerifier
 import br.com.saqz.subscriptions.application.AppStoreSubscriptionRepository
+import br.com.saqz.subscriptions.application.CancelUnpaidWebCheckout
 import br.com.saqz.subscriptions.application.GetMySubscription
 import br.com.saqz.subscriptions.application.ProcessAppStoreNotification
 import br.com.saqz.subscriptions.application.SubmitAppStoreTransaction
@@ -54,7 +55,9 @@ class AppStoreSubscriptionsConfiguration {
         verifier: AppStoreSignedDataVerifier,
         subscriptions: AppStoreSubscriptionRepository,
         transaction: SubscriptionsTransactionRunner,
-    ) = SubmitAppStoreTransaction(verifier, subscriptions, transaction)
+        unpaidCheckout: CancelUnpaidWebCheckout,
+        clock: java.time.Clock,
+    ) = SubmitAppStoreTransaction(verifier, subscriptions, transaction, unpaidCheckout, clock)
 
     @Bean
     fun processAppStoreNotification(
@@ -62,7 +65,9 @@ class AppStoreSubscriptionsConfiguration {
         subscriptions: AppStoreSubscriptionRepository,
         notifications: AppStoreNotificationStore,
         transaction: SubscriptionsTransactionRunner,
-    ) = ProcessAppStoreNotification(verifier, subscriptions, notifications, transaction)
+        unpaidCheckout: CancelUnpaidWebCheckout,
+        clock: java.time.Clock,
+    ) = ProcessAppStoreNotification(verifier, subscriptions, notifications, transaction, unpaidCheckout, clock)
 
     @Bean
     fun appStoreSubscriptionController(

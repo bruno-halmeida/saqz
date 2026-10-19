@@ -25,6 +25,47 @@ class GooglePlayPurchasesTest {
     private val submit = SubmitGooglePlayPurchase(api, store, InlineTransactions, clock)
     private val notifications = ProcessGooglePlayNotification("segredo", "app.saqz", api, store, store, InlineTransactions, clock)
 
+    private val world = UnpaidCheckoutWorld(owner, now)
+    private val submitWithCancellation = SubmitGooglePlayPurchase(api, store, InlineTransactions, clock, world.cancel)
+    private val notificationsWithCancellation =
+        ProcessGooglePlayNotification("segredo", "app.saqz", api, store, store, InlineTransactions, clock, world.cancel)
+
+    @Test
+    fun `a Play purchase that gives access cancels the never paid web checkout once`() {
+        world.siteCheckout()
+        api.purchases["tok1"] = purchase("tok1", accountId = owner.toString())
+
+        assertEquals(SubmitGooglePlayPurchaseResult.Accepted, submitWithCancellation.execute(owner, "app.saqz.organizador", "tok1"))
+        submitWithCancellation.execute(owner, "app.saqz.organizador", "tok1")
+
+        assertEquals(listOf("sub_1"), world.canceledSubscriptions)
+        assertEquals(listOf("pay_1"), world.canceledPayments)
+    }
+
+    @Test
+    fun `a Play purchase leaves a paid web subscription alone and survives an Asaas failure`() {
+        world.siteCheckout(firstConfirmedAt = now.minusSeconds(86_400))
+        api.purchases["tok1"] = purchase("tok1", accountId = owner.toString())
+        submitWithCancellation.execute(owner, "app.saqz.organizador", "tok1")
+        assertTrue(world.canceledSubscriptions.isEmpty())
+
+        world.siteCheckout()
+        world.failCancelSubscription = true
+        assertEquals(SubmitGooglePlayPurchaseResult.Accepted, submitWithCancellation.execute(owner, "app.saqz.organizador", "tok1"))
+        assertTrue(store.rows.containsKey("tok1"))
+        assertTrue(world.canceledSubscriptions.isEmpty())
+    }
+
+    @Test
+    fun `a Play notification that gives access cancels the never paid web checkout`() {
+        world.siteCheckout()
+        api.purchases["tok1"] = purchase("tok1", accountId = owner.toString())
+
+        notificationsWithCancellation.execute("segredo", command("m1", "tok1"))
+
+        assertEquals(listOf("sub_1"), world.canceledSubscriptions)
+    }
+
     @Test
     fun `a verified purchase becomes the owner's subscription, an order and gets acknowledged`() {
         api.purchases["tok1"] = purchase("tok1", accountId = owner.toString())

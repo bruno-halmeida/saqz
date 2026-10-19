@@ -29,23 +29,28 @@ class ProcessAppStoreNotification(
     private val subscriptions: AppStoreSubscriptionRepository,
     private val notifications: AppStoreNotificationStore,
     private val transaction: SubscriptionsTransactionRunner,
+    private val unpaidCheckout: CancelUnpaidWebCheckout? = null,
+    private val clock: java.time.Clock = java.time.Clock.systemUTC(),
 ) {
     fun execute(signedPayload: String): ProcessAppStoreNotificationResult {
         val notification = verifier.verifyNotification(signedPayload)
             ?: return ProcessAppStoreNotificationResult.Invalid
-        transaction.inTransaction {
-            if (notifications.recordIfNew(notification)) apply(notification)
+        val accessOwner = transaction.inTransaction {
+            if (notifications.recordIfNew(notification)) apply(notification) else null
         }
+        // Depois de gravar: a assinatura da loja que dá acesso encerra o checkout do site nunca pago (cobrança dupla).
+        if (accessOwner != null) unpaidCheckout?.execute(accessOwner)
         return ProcessAppStoreNotificationResult.Accepted
     }
 
-    private fun apply(notification: AppStoreNotification) {
-        val verified = notification.transaction ?: return
-        val product = AppStoreProduct.fromProductId(verified.productId) ?: return
-        if (verified.expiresDate == null) return
+    /** Devolve o dono quando a assinatura gravada dá acesso agora; nulo quando nada foi gravado ou ela não dá. */
+    private fun apply(notification: AppStoreNotification): java.util.UUID? {
+        val verified = notification.transaction ?: return null
+        val product = AppStoreProduct.fromProductId(verified.productId) ?: return null
+        if (verified.expiresDate == null) return null
         val existing = subscriptions.findForUpdate(verified.originalTransactionId)?.let { claimed(it, verified) }
         val current = existing ?: run {
-            val owner = verified.appAccountToken?.takeIf(subscriptions::ownerExists) ?: return
+            val owner = verified.appAccountToken?.takeIf(subscriptions::ownerExists) ?: return null
             subscriptions.insertIfAbsent(AppStoreSubscription.startedBy(verified, product, owner))
             checkNotNull(subscriptions.findForUpdate(verified.originalTransactionId))
         }
@@ -53,6 +58,7 @@ class ProcessAppStoreNotification(
         val updated = current.applying(verified, product).let { if (renewal != null) it.applying(renewal) else it }
         subscriptions.save(updated)
         subscriptions.recordTransaction(verified, current.ownerUserId)
+        return current.ownerUserId.takeIf { updated.isEntitlingAt(clock.instant()) }
     }
 
     private fun claimed(existing: AppStoreSubscription, verified: AppStoreTransaction): AppStoreSubscription {

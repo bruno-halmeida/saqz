@@ -607,6 +607,21 @@ class HttpAsaasGatewayTest {
     }
 
     @Test
+    fun `cancelPayment deletes the pending charge and accepts one that is already gone`() {
+        server.enqueue(json(200, """{"deleted":true,"id":"pay_1"}"""))
+        gateway.cancelPayment("pay_1")
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/v3/payments/pay_1", request.path)
+
+        server.enqueue(json(404, """{"errors":[{"code":"not_found","description":"Not found"}]}"""))
+        gateway.cancelPayment("pay_gone")
+
+        server.enqueue(json(400, """{"errors":[{"code":"invalid_action","description":"Cobrança já paga"}]}"""))
+        assertThrows<AsaasException> { gateway.cancelPayment("pay_paid") }
+    }
+
+    @Test
     fun `updateSubscriptionValue throws on asaas 4xx`() {
         server.enqueue(
             json(404, """{"errors":[{"code":"not_found","description":"Assinatura não encontrada"}]}"""),

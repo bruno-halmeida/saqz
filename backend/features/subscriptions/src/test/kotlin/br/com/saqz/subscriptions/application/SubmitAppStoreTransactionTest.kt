@@ -1,6 +1,7 @@
 package br.com.saqz.subscriptions.application
 
 import br.com.saqz.subscriptions.domain.AppStoreProduct
+import br.com.saqz.subscriptions.domain.SubscriptionStatus
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.util.UUID
@@ -24,6 +25,59 @@ class SubmitAppStoreTransactionTest {
         assertEquals(owner, row.ownerUserId)
         assertEquals(AppStoreProduct.ORGANIZADOR_MENSAL, row.product)
         assertTrue("2000000001" in store.transactions)
+    }
+
+    private val world = UnpaidCheckoutWorld(owner, Instant.parse("2026-10-05T12:00:00Z"))
+    private val withCancellation = SubmitAppStoreTransaction(verifier, store, InlineTransactions, world.cancel, world.clock)
+
+    @Test
+    fun `a store purchase that gives access cancels the never paid web checkout`() {
+        world.siteCheckout()
+        verifier.transactions["jws"] = appStoreTransaction(owner)
+
+        assertEquals(SubmitAppStoreTransactionResult.Accepted, withCancellation.execute(owner, "jws"))
+
+        assertEquals(listOf("sub_1"), world.canceledSubscriptions)
+        assertEquals(SubscriptionStatus.CANCELED, world.row()?.status)
+    }
+
+    @Test
+    fun `a store purchase leaves a web subscription that was already paid alone`() {
+        world.siteCheckout(firstConfirmedAt = Instant.parse("2026-09-01T12:00:00Z"))
+        verifier.transactions["jws"] = appStoreTransaction(owner)
+
+        withCancellation.execute(owner, "jws")
+
+        assertTrue(world.canceledSubscriptions.isEmpty())
+        assertEquals(SubscriptionStatus.PAST_DUE, world.row()?.status)
+    }
+
+    @Test
+    fun `an Asaas failure never breaks the store purchase and resubmitting retries and cancels once`() {
+        world.siteCheckout()
+        world.failCancelSubscription = true
+        verifier.transactions["jws"] = appStoreTransaction(owner)
+
+        assertEquals(SubmitAppStoreTransactionResult.Accepted, withCancellation.execute(owner, "jws"))
+        assertTrue("2000000001" in store.rows)
+        assertTrue(world.canceledSubscriptions.isEmpty())
+
+        world.failCancelSubscription = false
+        withCancellation.execute(owner, "jws")
+        withCancellation.execute(owner, "jws")
+        assertEquals(listOf("sub_1"), world.canceledSubscriptions)
+    }
+
+    @Test
+    fun `a store purchase that no longer gives access does not cancel the web checkout`() {
+        world.siteCheckout()
+        verifier.transactions["old"] = appStoreTransaction(
+            owner, purchaseDate = Instant.parse("2026-08-01T12:00:00Z"), expiresDate = Instant.parse("2026-09-01T12:00:00Z"),
+        )
+
+        withCancellation.execute(owner, "old")
+
+        assertTrue(world.canceledSubscriptions.isEmpty())
     }
 
     @Test

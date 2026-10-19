@@ -28,6 +28,7 @@ class SubmitGooglePlayPurchase(
     private val subscriptions: GooglePlaySubscriptionRepository,
     private val transaction: SubscriptionsTransactionRunner,
     private val clock: Clock = Clock.systemUTC(),
+    private val unpaidCheckout: CancelUnpaidWebCheckout? = null,
 ) {
     private val sync = GooglePlayPurchaseSync(api, subscriptions, clock)
 
@@ -46,6 +47,8 @@ class SubmitGooglePlayPurchase(
         val owned = transaction.inTransaction { sync.record(purchase, product, ownerUserId) }
         if (owned.ownerUserId != ownerUserId) return SubmitGooglePlayPurchaseResult.OwnedByAnotherAccount
         sync.acknowledgeIfNeeded(purchase)
+        // Depois de gravar: a compra que dá acesso encerra o checkout do site nunca pago (cobrança dupla).
+        if (owned.isEntitlingAt(clock.instant())) unpaidCheckout?.execute(ownerUserId)
         return SubmitGooglePlayPurchaseResult.Accepted
     }
 }
@@ -76,6 +79,7 @@ class ProcessGooglePlayNotification(
     private val notifications: GooglePlayNotificationStore,
     private val transaction: SubscriptionsTransactionRunner,
     private val clock: Clock = Clock.systemUTC(),
+    private val unpaidCheckout: CancelUnpaidWebCheckout? = null,
 ) {
     private val sync = GooglePlayPurchaseSync(api, subscriptions, clock)
 
@@ -99,6 +103,7 @@ class ProcessGooglePlayNotification(
             sync.record(purchase, product, owner)
         }
         if (recorded != null && purchase != null) sync.acknowledgeIfNeeded(purchase)
+        if (recorded != null && recorded.isEntitlingAt(clock.instant())) unpaidCheckout?.execute(recorded.ownerUserId)
         return ProcessGooglePlayNotificationResult.Accepted
     }
 

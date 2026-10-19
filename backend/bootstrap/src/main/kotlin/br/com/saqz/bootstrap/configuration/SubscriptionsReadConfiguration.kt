@@ -17,6 +17,7 @@ import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionsTransactionRunner
 import br.com.saqz.subscriptions.application.AppStoreSubscriptionRepository
 import br.com.saqz.subscriptions.application.AsaasGateway
+import br.com.saqz.subscriptions.application.CancelUnpaidWebCheckout
 import br.com.saqz.subscriptions.application.OverdueInvoiceResolver
 import br.com.saqz.subscriptions.application.GooglePlaySubscriptionRepository
 import br.com.saqz.subscriptions.application.CouponRepository
@@ -74,6 +75,15 @@ class SubscriptionsReadConfiguration {
         // A mesma fatura do aviso de atraso; sem o Asaas configurado vale o link do webhook guardado.
         OverdueInvoiceResolver(JdbcSubscriptionPastDueRepository(dataSource)) { gateway.ifAvailable },
     )
+
+    /** Sem o Asaas configurado (pilha local) não há o que cancelar: o caso é registrado em log e a compra segue. */
+    @Bean
+    fun cancelUnpaidWebCheckout(
+        subscriptions: SubscriptionRepository,
+        transaction: SubscriptionsTransactionRunner,
+        clock: Clock,
+        gateway: ObjectProvider<AsaasGateway>,
+    ) = CancelUnpaidWebCheckout(subscriptions, { gateway.ifAvailable }, transaction, clock)
 
     @Bean
     fun authenticatedActorResolver(bootstrapSession: BootstrapSession): AuthenticatedActorResolver =

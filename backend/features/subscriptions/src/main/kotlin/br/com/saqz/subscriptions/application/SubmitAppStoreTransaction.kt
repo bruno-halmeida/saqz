@@ -29,6 +29,8 @@ class SubmitAppStoreTransaction(
     private val verifier: AppStoreSignedDataVerifier,
     private val subscriptions: AppStoreSubscriptionRepository,
     private val transaction: SubscriptionsTransactionRunner,
+    private val unpaidCheckout: CancelUnpaidWebCheckout? = null,
+    private val clock: java.time.Clock = java.time.Clock.systemUTC(),
 ) {
     fun execute(ownerUserId: UUID, signedTransaction: String): SubmitAppStoreTransactionResult {
         val verified = verifier.verifyTransaction(signedTransaction)
@@ -39,7 +41,8 @@ class SubmitAppStoreTransaction(
         val token = verified.appAccountToken
         if (token != null && token != ownerUserId) return SubmitAppStoreTransactionResult.OwnedByAnotherAccount
 
-        return transaction.inTransaction {
+        var giveAccess = false
+        val result = transaction.inTransaction {
             subscriptions.insertIfAbsent(AppStoreSubscription.startedBy(verified, product, ownerUserId))
             val current = checkNotNull(subscriptions.findForUpdate(verified.originalTransactionId))
             val owned = when {
@@ -47,9 +50,14 @@ class SubmitAppStoreTransaction(
                 token == ownerUserId && !current.isEntitlingAt(verified.purchaseDate) -> current.transferredTo(ownerUserId)
                 else -> return@inTransaction SubmitAppStoreTransactionResult.OwnedByAnotherAccount
             }
-            subscriptions.save(owned.applying(verified, product))
+            val saved = owned.applying(verified, product)
+            subscriptions.save(saved)
             subscriptions.recordTransaction(verified, ownerUserId)
+            giveAccess = saved.isEntitlingAt(clock.instant())
             SubmitAppStoreTransactionResult.Accepted
         }
+        // Depois de gravar: a compra que dá acesso encerra o checkout do site nunca pago (cobrança dupla).
+        if (giveAccess) unpaidCheckout?.execute(ownerUserId)
+        return result
     }
 }

@@ -7,6 +7,7 @@ import br.com.saqz.subscriptions.adapter.output.googleplay.HttpGooglePlayPurchas
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcGooglePlayNotificationStore
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcGooglePlaySubscriptionRepository
 import br.com.saqz.subscriptions.application.GetMySubscription
+import br.com.saqz.subscriptions.application.CancelUnpaidWebCheckout
 import br.com.saqz.subscriptions.application.GooglePlayNotificationStore
 import br.com.saqz.subscriptions.application.GooglePlayPurchasesApi
 import br.com.saqz.subscriptions.application.GooglePlaySubscriptionRepository
@@ -43,7 +44,8 @@ class GooglePlaySubscriptionsConfiguration {
         subscriptions: GooglePlaySubscriptionRepository,
         transaction: SubscriptionsTransactionRunner,
         clock: Clock,
-    ) = SubmitGooglePlayPurchase(api, subscriptions, transaction, clock)
+        unpaidCheckout: CancelUnpaidWebCheckout,
+    ) = SubmitGooglePlayPurchase(api, subscriptions, transaction, clock, unpaidCheckout)
 
     @Bean
     fun processGooglePlayNotification(
@@ -54,7 +56,8 @@ class GooglePlaySubscriptionsConfiguration {
         notifications: GooglePlayNotificationStore,
         transaction: SubscriptionsTransactionRunner,
         clock: Clock,
-    ) = ProcessGooglePlayNotification(webhookToken, packageName, api, subscriptions, notifications, transaction, clock)
+        unpaidCheckout: CancelUnpaidWebCheckout,
+    ) = ProcessGooglePlayNotification(webhookToken, packageName, api, subscriptions, notifications, transaction, clock, unpaidCheckout)
 
     @Bean
     fun googlePlaySubscriptionController(

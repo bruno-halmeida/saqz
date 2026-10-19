@@ -58,6 +58,12 @@ interface AsaasGateway {
     /** Newest payment id for a subscription, if Asaas already generated one. */
     fun findLatestPaymentIdForSubscription(asaasSubscriptionId: String): String?
 
+    /**
+     * Cancela uma cobrança ainda não paga (pendente ou vencida). Cobrança que já não existe não é erro. O padrão não faz nada
+     * para as implementações que não cancelam cobrança.
+     */
+    fun cancelPayment(asaasPaymentId: String) = Unit
+
     /** Hosted invoice / checkout URL for a payment (credit card path). */
     fun findPaymentInvoiceUrl(asaasPaymentId: String): String?
 

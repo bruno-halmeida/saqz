@@ -217,6 +217,14 @@ class HttpAsaasGateway(
         }
     }
 
+    override fun cancelPayment(asaasPaymentId: String) {
+        try {
+            delete("/payments/$asaasPaymentId")
+        } catch (failure: AsaasException) {
+            if (failure.statusCode != 404) throw failure
+        }
+    }
+
     override fun createOneOffCharge(
         asaasCustomerId: String,
         valueCents: Long,

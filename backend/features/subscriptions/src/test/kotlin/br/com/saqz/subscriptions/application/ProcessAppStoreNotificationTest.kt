@@ -18,6 +18,36 @@ class ProcessAppStoreNotificationTest {
     private val store = InMemoryAppStoreSubscriptions(owners = setOf(owner, otherOwner))
     private val useCase = ProcessAppStoreNotification(verifier, store, store, InlineTransactions)
 
+    private val world = UnpaidCheckoutWorld(owner, Instant.parse("2026-10-05T12:00:00Z"))
+    private val withCancellation = ProcessAppStoreNotification(verifier, store, store, InlineTransactions, world.cancel, world.clock)
+
+    @Test
+    fun `a notification that gives access cancels the never paid web checkout once`() {
+        world.siteCheckout()
+        verifier.notifications["n1"] = notification(appStoreTransaction(owner), type = "SUBSCRIBED")
+        verifier.notifications["n2"] = notification(appStoreTransaction(owner), type = "DID_RENEW")
+
+        withCancellation.execute("n1")
+        withCancellation.execute("n2")
+        withCancellation.execute("n1")
+
+        assertEquals(listOf("sub_1"), world.canceledSubscriptions)
+    }
+
+    @Test
+    fun `a notification leaves a paid web subscription alone and survives an Asaas failure`() {
+        world.siteCheckout(firstConfirmedAt = Instant.parse("2026-09-01T12:00:00Z"))
+        verifier.notifications["n1"] = notification(appStoreTransaction(owner))
+        withCancellation.execute("n1")
+        assertTrue(world.canceledSubscriptions.isEmpty())
+
+        world.siteCheckout()
+        world.failCancelSubscription = true
+        verifier.notifications["n2"] = notification(appStoreTransaction(owner), type = "DID_RENEW")
+        assertEquals(ProcessAppStoreNotificationResult.Accepted, withCancellation.execute("n2"))
+        assertTrue(store.rows.containsKey("2000000001"))
+    }
+
     @Test
     fun `a notification for a purchase the app has not sent yet creates the subscription`() {
         verifier.notifications["n1"] = notification(appStoreTransaction(owner), type = "SUBSCRIBED")

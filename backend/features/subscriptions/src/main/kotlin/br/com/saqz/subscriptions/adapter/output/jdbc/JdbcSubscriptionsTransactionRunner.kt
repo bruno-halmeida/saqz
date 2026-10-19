@@ -13,5 +13,7 @@ class JdbcSubscriptionsTransactionRunner(
         isolationLevel = TransactionDefinition.ISOLATION_READ_COMMITTED
     }
 
-    override fun <T> inTransaction(block: () -> T): T = transaction.execute { block() }!!
+    // O bloco pode devolver nulo (notificação de loja sem dono, nada a cancelar): o `!!` virava NPE e 500 no webhook.
+    @Suppress("UNCHECKED_CAST")
+    override fun <T> inTransaction(block: () -> T): T = transaction.execute { block() } as T
 }
