@@ -495,8 +495,8 @@ private class LifecycleLinkPort : AndroidIntentLinkPort, NativeGroupLinkPort {
         warmUrls += url
     }
 
-    override fun onNotificationOpen(groupId: String?, gameId: String?) {
-        if (groupListeners.isNotEmpty()) groupListeners.forEach { it.onEvent(GroupLinkEvent.NotificationOpen(groupId, gameId)) }
+    override fun onNotificationOpen(groupId: String?, gameId: String?, channel: String?) {
+        if (groupListeners.isNotEmpty()) groupListeners.forEach { it.onEvent(GroupLinkEvent.NotificationOpen(groupId, gameId, channel)) }
     }
 
     fun emit(code: String) {
