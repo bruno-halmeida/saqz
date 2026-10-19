@@ -32,6 +32,7 @@ class ReminderAfterDeadlineIntegrationTest {
 
     private val owner = user("Owner")
     private val silent = user("Silent")
+    private val admin = user("Admin")
     private val group = UUID.randomUUID()
 
     init {
@@ -42,6 +43,10 @@ class ReminderAfterDeadlineIntegrationTest {
             INSERT INTO group_memberships(group_id, user_id, role, membership_type, active, created_at, updated_at)
             VALUES (:g, :u, 'ATHLETE', 'AVULSO', true, now(), now())
         """).param("g", group).param("u", member).update()
+        jdbc.sql("""
+            INSERT INTO group_memberships(group_id, user_id, role, membership_type, active, created_at, updated_at)
+            VALUES (:g, :u, 'ADMIN', 'AVULSO', true, now(), now())
+        """).param("g", group).param("u", admin).update()
         push.register(silent, UUID.randomUUID(), "silent-device", "ANDROID")
         jdbc.sql("""
             INSERT INTO group_whatsapp_bindings(group_id, whatsapp_jid, invite_code, group_name, instance_jid, enabled, created_by)
@@ -124,6 +129,38 @@ class ReminderAfterDeadlineIntegrationTest {
         assertEquals("WAITLISTED", attendanceOf(game, silent))
         respond.execute(silent, resolved.groupId, resolved.gameId, intent = AttendanceIntent.DECLINE)
         assertEquals("DECLINED", attendanceOf(game, silent))
+    }
+
+    @Test fun `manual notice before the deadline asks for confirmation`() {
+        val game = game(deadline = "now() + interval '2 hours'", starts = "now() + interval '5 hours'")
+
+        val sent = assertIs<CommunicationResult.Success<GroupMessage>>(service.remind(admin, group, game, UUID.randomUUID())).value
+
+        assertTrue(Regex("\nConfirmações até (seg|ter|qua|qui|sex|sáb|dom) \\d{2}h\\d{2}\n").containsMatchIn(sent.body), sent.body)
+    }
+
+    @Test fun `manual notice after the deadline and before the start says Prazo encerrado`() {
+        val game = game(deadline = "now() - interval '1 hour'", starts = "now() + interval '5 hours'")
+
+        val sent = assertIs<CommunicationResult.Success<GroupMessage>>(service.remind(admin, group, game, UUID.randomUUID())).value
+
+        assertTrue("\nPrazo encerrado\n" in sent.body, sent.body)
+        assertEquals(game, sent.gameId)
+    }
+
+    @Test fun `manual notice after the start is refused`() {
+        val game = game(deadline = "now() - interval '3 hours'", starts = "now() - interval '1 hour'")
+
+        assertEquals(CommunicationResult.Failure(CommunicationError.INVALID), service.remind(admin, group, game, UUID.randomUUID()))
+        assertEquals(0L, jdbc.sql("SELECT count(*) FROM group_messages WHERE channel = 'REMINDER'").query(Long::class.java).single())
+    }
+
+    @Test fun `manual notice for a draft game is refused`() {
+        val game = game(deadline = "now() + interval '2 hours'", starts = "now() + interval '5 hours'")
+        jdbc.sql("UPDATE games SET status = 'DRAFT' WHERE id = :id").param("id", game).update()
+
+        assertEquals(CommunicationResult.Failure(CommunicationError.INVALID), service.remind(admin, group, game, UUID.randomUUID()))
+        assertEquals(0L, jdbc.sql("SELECT count(*) FROM group_messages WHERE channel = 'REMINDER'").query(Long::class.java).single())
     }
 
     private fun attendanceOf(game: UUID, member: UUID): String = jdbc.sql(

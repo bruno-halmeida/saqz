@@ -140,6 +140,20 @@ class GroupCommunicationEndpointIntegrationTest {
         assertEquals(422, request("POST", path, payload).statusCode())
         assertEquals(0, json.readTree(request("GET", "/api/me/notifications", actor = member).body())["items"].size())
     }
+    @Test fun `reminder endpoint accepts a published game past its deadline and refuses one that started`() {
+        val jdbc = JdbcClient.create(dataSource)
+        fun game(deadline: String, starts: String) = UUID.randomUUID().also { id ->
+            jdbc.sql("""INSERT INTO games(id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
+                confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at)
+                VALUES (:id, :g, 'Treino', current_date, '19:00', 'UTC', $starts, 90, $deadline, 'Arena', 'Rua 1', 12, 'PUBLISHED', now(), now())""")
+                .param("id", id).param("g", group).update()
+        }
+        val open = game("now() - interval '1 hour'", "now() + interval '5 hours'")
+        val started = game("now() - interval '3 hours'", "now() - interval '1 hour'")
+        fun payload() = """{"requestId":"${UUID.randomUUID()}"}"""
+        assertEquals(200, request("POST", "/api/groups/$group/games/$open/notify-pending", payload()).statusCode())
+        assertEquals(422, request("POST", "/api/groups/$group/games/$started/notify-pending", payload()).statusCode())
+    }
     @Test fun `HTTP departure revokes roster profile and communication access using persisted membership`() {
         val path = "/api/groups/$group/memberships/me"
         assertEquals(200, request("GET", "/api/groups/$group/athletes", actor = member).statusCode())

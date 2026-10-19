@@ -161,10 +161,11 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         """.trimIndent(),
     ).param("game", gameId).param("id", messageId).query(Boolean::class.java).single()
 
+    /** "Avisar" manual vale do jogo publicado até o início, inclusive com o prazo vencido (PROM-009 / NOT-003). */
     override fun reminderGame(groupId: UUID, gameId: UUID): ReminderGame? = jdbc.sql(
         "SELECT local_date, local_time, venue_name, confirmation_deadline, capacity FROM games " +
             "WHERE group_id = :group AND id = :game " +
-            "AND status = 'PUBLISHED' AND starts_at > now() AND confirmation_deadline > now()",
+            "AND status = 'PUBLISHED' AND starts_at > now()",
     ).param("group", groupId).param("game", gameId).query { rs, _ -> ReminderGame(
         localDate = rs.getObject("local_date", LocalDate::class.java),
         localTime = rs.getObject("local_time", LocalTime::class.java),
