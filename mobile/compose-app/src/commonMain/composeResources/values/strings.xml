@@ -11,6 +11,10 @@
     <string name="shell_email_resent">E-mail reenviado. Confira sua caixa de entrada.</string>
     <string name="shell_email_resend_failed">Não foi possível reenviar agora. Tente de novo em instantes.</string>
     <string name="shell_email_dismiss">Fechar</string>
+    <!-- DEB-095 · A APROVAR: faixa/atalho para quem digitou o WhatsApp e ainda não confirmou. Sem tela que use ainda. -->
+    <string name="shell_whatsapp_confirm_title">Confirme seu WhatsApp</string>
+    <string name="shell_whatsapp_confirm_body">Sem isso, você não recebe cobrança nem aviso no WhatsApp.</string>
+    <string name="shell_whatsapp_confirm_action">Confirmar</string>
     <string name="catalog_title">Catálogo do design system</string>
     <string name="catalog_section_foundations">Fundamentos</string>
     <string name="catalog_section_actions">Ações</string>
