@@ -20,6 +20,7 @@ class SubscriptionPlansNavigationTest {
         status: SubscriptionStatus,
         entitled: Boolean,
         provider: SubscriptionProvider = SubscriptionProvider.Asaas,
+        paymentConfirmed: Boolean = true,
     ) = SaqzResult.Success(
         MySubscription(
             status = status,
@@ -30,6 +31,7 @@ class SubscriptionPlansNavigationTest {
             usage = SubscriptionUsage(groupsUsed = 1, groupsLimit = 3),
             canceledAt = null,
             provider = provider,
+            paymentConfirmed = paymentConfirmed,
         ),
     )
 
@@ -86,6 +88,31 @@ class SubscriptionPlansNavigationTest {
         val webCalls = open(stack, SaqzResult.Failure(SubscriptionError.NotFound), webOpens = true)
         assertEquals(1, webCalls)
         assertEquals(1, stack.size)
+    }
+
+    @Test
+    fun `a web checkout that was never paid is treated as never subscribed`() {
+        val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
+        val webCalls = open(stack, subscription(SubscriptionStatus.PastDue, entitled = false, paymentConfirmed = false))
+        assertEquals(SubscribeForAccess, stack.last())
+        assertEquals(1, webCalls)
+    }
+
+    @Test
+    fun `a never paid web checkout opens the web checkout where there is one`() {
+        val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
+        val webCalls = open(stack, subscription(SubscriptionStatus.PastDue, entitled = false, paymentConfirmed = false), webOpens = true)
+        assertEquals(1, webCalls)
+        assertEquals(1, stack.size)
+    }
+
+    @Test
+    fun `an unconfirmed store subscription still goes to my plan`() {
+        for (provider in listOf(SubscriptionProvider.AppStore, SubscriptionProvider.GooglePlay)) {
+            val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
+            open(stack, subscription(SubscriptionStatus.Active, entitled = true, provider = provider, paymentConfirmed = false))
+            assertEquals(SubscriptionsRoute.MyPlan, stack.last())
+        }
     }
 
     @Test
