@@ -51,6 +51,8 @@ data class GroupDetailsState(
     val mapFailed: Boolean = false,
     val notifying: Boolean = false,
     val notificationFailed: Boolean = false,
+    /** O servidor recusou o "Avisar" (422): o jogo começou ou deixou de estar publicado. */
+    val notificationRefused: Boolean = false,
     val notifiedCount: String? = null,
     val onboarding: GroupOnboarding? = null,
     /** Dias do teste grátis em curso (só dono); alimenta o "Grupo criado!" do primeiro grupo. */

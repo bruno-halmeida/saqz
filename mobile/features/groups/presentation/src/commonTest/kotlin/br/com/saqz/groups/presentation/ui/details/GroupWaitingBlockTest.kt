@@ -112,14 +112,30 @@ class GroupWaitingBlockTest {
         onNodeWithTag(GroupDetailsTags.NotifyPending).assertIsEnabled()
     }
 
-    // O defeito de hoje: botão ativo com as confirmações encerradas, e o toque não fazia nada.
+    // DEB-093: o prazo vencido não tira o "Avisar"; só o início do jogo tira.
     @Test
-    fun closedConfirmationsHideTheQuorumRow() = runComposeUiTest {
+    fun closedConfirmationsKeepTheQuorumRowWithDeadlineClosed() = runComposeUiTest {
         setDetailsScreen(GroupWaitingPreviewData.closed)
+
+        onNodeWithTag(GroupDetailsTags.WaitingQuorum).assertTextContains("Prazo encerrado")
+        onNodeWithTag(GroupDetailsTags.NotifyPending).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
+    fun startedGameHidesTheQuorumRow() = runComposeUiTest {
+        setDetailsScreen(GroupWaitingPreviewData.started)
 
         onNodeWithTag(GroupDetailsTags.Waiting).assertExists()
         onAllNodesWithTag(GroupDetailsTags.WaitingQuorum).assertCountEquals(0)
         onAllNodesWithTag(GroupDetailsTags.NotifyPending).assertCountEquals(0)
+    }
+
+    @Test
+    fun refusedReminderExplainsWhyAndKeepsTheButton() = runComposeUiTest {
+        setDetailsScreen(GroupWaitingPreviewData.refused)
+
+        onNodeWithTag(GroupDetailsTags.WaitingQuorum).assertTextContains("Não dá para avisar agora. O jogo pode já ter começado.")
+        onNodeWithTag(GroupDetailsTags.NotifyPending).assertIsEnabled()
     }
 
     @Test

@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.core.common.mvi.MviViewModel
+import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.onSuccess
@@ -299,11 +300,11 @@ class GroupDetailsViewModel(
     private fun notifyPending() {
         val current = state.value
         val game = current.nextGame ?: return
-        if (!current.isAdmin || current.notifying || !game.confirmationOpen) return
+        if (!current.isAdmin || current.notifying || !game.responseOpen) return
         val request = reminderRequest?.takeIf { it.first == game.gameId }
             ?: (game.gameId to Uuid.random().toString()).also { reminderRequest = it }
         val generation = loadGeneration
-        update { it.copy(notifying = true, notificationFailed = false, notifiedCount = null) }
+        update { it.copy(notifying = true, notificationFailed = false, notificationRefused = false, notifiedCount = null) }
         viewModelScope.launch {
             val result = communications.remind(GroupId(groupId), game.gameId, request.second)
             if (generation != loadGeneration || state.value.nextGame?.gameId != game.gameId) return@launch
@@ -312,7 +313,10 @@ class GroupDetailsViewModel(
                     reminderRequest = null
                     update { it.copy(notifying = false, notifiedCount = result.value.recipientCount.toString()) }
                 }
-                is SaqzResult.Failure -> update { it.copy(notifying = false, notificationFailed = true) }
+                is SaqzResult.Failure -> {
+                    val refused = result.error.cause is DataError.Validation
+                    update { it.copy(notifying = false, notificationFailed = !refused, notificationRefused = refused) }
+                }
             }
         }
     }
@@ -411,7 +415,7 @@ class GroupDetailsViewModel(
             isLoading = true, loadFailed = false, error = null,
             onboarding = null, checklist = null, whatsApp = null, reportsEnabled = null,
             athleteIntroVisible = false, athleteShareFailed = false,
-            notifying = false, notificationFailed = false, notifiedCount = null,
+            notifying = false, notificationFailed = false, notificationRefused = false, notifiedCount = null,
             pixCopied = false,
         ) }
     }

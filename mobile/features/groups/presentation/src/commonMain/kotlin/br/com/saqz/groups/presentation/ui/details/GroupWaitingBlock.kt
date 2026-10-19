@@ -28,6 +28,8 @@ import br.com.saqz.groups.presentation.details.GroupDetailsState
 import br.com.saqz.groups.presentation.ui.components.WaitingRow
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.communication_failure
+import br.com.saqz.groups.resources.communication_remind_refused
+import br.com.saqz.groups.resources.game_detail_status_deadline_closed
 import br.com.saqz.groups.resources.communication_reminded
 import br.com.saqz.groups.resources.group_details_waiting_notify
 import br.com.saqz.groups.resources.group_details_waiting_quorum
@@ -124,12 +126,12 @@ internal fun GroupWaitingBlock(
 }
 
 /**
- * A linha existe enquanto dá para avisar: confirmações abertas e alguém sem resposta que não seja
- * quem olha (a resposta dele já é pedida no card do jogo). Continua depois de um aviso enviado,
- * mesmo que o pendente zere: o retorno é contrato do e2e.
+ * A linha existe enquanto dá para avisar: jogo publicado que ainda não começou (o prazo vencido não
+ * tira o "Avisar", PROM-009) e alguém sem resposta que não seja quem olha (a resposta dele já é
+ * pedida no card do jogo). Continua depois de um aviso enviado, mesmo que o pendente zere: o retorno é contrato do e2e.
  */
 private fun GroupDetailsState.showsQuorum(): Boolean =
-    notifiedCount != null || (nextGame?.confirmationOpen == true && reminderRecipients > 0)
+    notifiedCount != null || (nextGame?.responseOpen == true && reminderRecipients > 0)
 
 @Composable
 private fun QuorumRow(
@@ -148,7 +150,9 @@ private fun QuorumRow(
     val meta = when {
         notified != null -> notified.toIntOrNull()?.let { pluralStringResource(Res.plurals.communication_reminded, it, it) }
             ?: stringResource(Res.string.communication_failure)
+        state.notificationRefused -> stringResource(Res.string.communication_remind_refused)
         state.notificationFailed -> stringResource(Res.string.communication_failure)
+        state.nextGame?.confirmationOpen == false -> stringResource(Res.string.game_detail_status_deadline_closed)
         else -> state.nextGame?.deadlineShort?.ifEmpty { null }
     }
     val sentBadge: (@Composable () -> Unit)? = if (notified != null) { { QuorumSentBadge() } } else null

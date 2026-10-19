@@ -472,6 +472,36 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `Avisar vale até o início do jogo mesmo com o prazo vencido`() = runTest {
+        val gateway = br.com.saqz.groups.presentation.FakeCommunicationGateway()
+        val vm = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            communications = gateway,
+        )
+        vm.onIntent(GroupDetailsIntent.NotifyPending)
+        assertEquals(1, gateway.reminders.size)
+        assertTrue(vm.state.value.nextGame?.responseOpen == true)
+    }
+
+    @Test
+    fun `recusa 422 do Avisar ganha mensagem própria e o toque seguinte tenta de novo`() = runTest {
+        val gateway = br.com.saqz.groups.presentation.FakeCommunicationGateway().apply {
+            reminderResult = SaqzResult.Failure(br.com.saqz.groups.domain.communication.CommunicationError(
+                DataError.Validation(br.com.saqz.domain.ValidationDetails(emptyList(), mapOf("message" to listOf("is invalid")))),
+            ))
+        }
+        val vm = viewModel(
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+            communications = gateway,
+        )
+        vm.onIntent(GroupDetailsIntent.NotifyPending)
+        assertTrue(vm.state.value.notificationRefused)
+        assertFalse(vm.state.value.notificationFailed)
+        vm.onIntent(GroupDetailsIntent.NotifyPending)
+        assertEquals(2, gateway.reminders.size)
+    }
+
+    @Test
     fun `pending reminders retry same request and never claim delivery on failure`() = runTest {
         val gateway = br.com.saqz.groups.presentation.FakeCommunicationGateway().apply {
             reminderResult = SaqzResult.Failure(br.com.saqz.groups.domain.communication.CommunicationError(DataError.Timeout))

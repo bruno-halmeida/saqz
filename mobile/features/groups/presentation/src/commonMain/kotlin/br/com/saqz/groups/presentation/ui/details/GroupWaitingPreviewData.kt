@@ -56,8 +56,13 @@ internal object GroupWaitingPreviewData {
 
     val failed = idle.copy(notificationFailed = true)
 
-    /** Confirmações encerradas com gente sem resposta: a linha de quórum some. */
+    /** Prazo vencido com o jogo por começar: o "Avisar" continua, com "Prazo encerrado" no lugar do prazo. */
     val closed = idle.copy(nextGame = nextGame.copy(confirmationOpen = false))
+
+    /** Jogo já começou: a linha de quórum some. */
+    val started = idle.copy(nextGame = nextGame.copy(confirmationOpen = false, responseOpen = false))
+
+    val refused = idle.copy(notificationRefused = true)
 
     /** Nenhuma pendência do V2: o card fica só com o quórum. */
     val quorumOnly = idle.copy(waiting = null)
