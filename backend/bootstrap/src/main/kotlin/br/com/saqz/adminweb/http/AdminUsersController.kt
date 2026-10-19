@@ -1,10 +1,12 @@
 package br.com.saqz.adminweb.http
 
-import br.com.saqz.access.application.admin.AdminUserDetail
 import br.com.saqz.access.application.admin.AdminUserDirectory
 import br.com.saqz.access.application.admin.AdminUserPage
 import br.com.saqz.access.application.admin.PlatformAdminLookup
+import br.com.saqz.access.application.admin.AdminUserCourtesy
+import br.com.saqz.access.application.admin.AdminUserDetail
 import br.com.saqz.sharedkernel.RequestIdentity
+import br.com.saqz.subscriptions.application.PlanCourtesies
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -20,6 +22,7 @@ import java.util.UUID
 class AdminUsersController(
     private val directory: AdminUserDirectory,
     private val adminLookup: PlatformAdminLookup,
+    private val courtesies: PlanCourtesies? = null,
 ) {
     @GetMapping("/admin/users")
     fun list(
@@ -37,7 +40,13 @@ class AdminUsersController(
 
     @GetMapping("/admin/users/{id}")
     fun detail(@PathVariable id: UUID): ResponseEntity<AdminUserDetail> =
-        directory.find(id)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
+        directory.find(id)
+            ?.let { user ->
+                // Cortesia de plano ativa (DEB-097), para o painel; ausente quando não há.
+                val courtesy = courtesies?.active(id)?.let { AdminUserCourtesy(it.plan.name, it.endsAt, it.reason, it.createdAt) }
+                ResponseEntity.ok(user.copy(courtesy = courtesy))
+            }
+            ?: ResponseEntity.notFound().build()
 
     @PostMapping("/admin/users/{id}/suspend")
     fun suspend(

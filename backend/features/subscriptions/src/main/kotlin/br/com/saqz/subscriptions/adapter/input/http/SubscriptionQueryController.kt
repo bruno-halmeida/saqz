@@ -39,7 +39,11 @@ data class MySubscriptionResponse(
     /** Campos novos e opcionais (apps 1.0.4 a 1.0.7 ignoram): ver [MySubscriptionView]. */
     val paymentConfirmed: Boolean,
     val payUrl: String?,
+    /** Cortesia de plano ativa (DEB-097); ausente/nulo para quem não tem. */
+    val courtesy: CourtesyResponse? = null,
 )
+
+data class CourtesyResponse(val plan: Plan, val endsAt: Instant?)
 
 class SubscriptionNotFoundException : RuntimeException()
 
@@ -55,6 +59,13 @@ class SubscriptionQueryController(
             GetMySubscriptionResult.NotFound -> throw SubscriptionNotFoundException()
             is GetMySubscriptionResult.Found -> result.subscription.toResponse()
         }
+    }
+
+    /** Para o app novo: cortesia de quem só tem cortesia também aparece (o `/me` segue 404 para esse dono). */
+    @GetMapping("/subscriptions/me/courtesy")
+    fun myCourtesy(@AuthenticationPrincipal identity: RequestIdentity): CourtesyResponse {
+        val view = getMySubscription.courtesy(actors.resolve(identity).userId) ?: throw SubscriptionNotFoundException()
+        return CourtesyResponse(view.plan, view.endsAt)
     }
 }
 
@@ -75,6 +86,7 @@ internal fun MySubscriptionView.toResponse() = MySubscriptionResponse(
     autoRenew = autoRenew,
     paymentConfirmed = paymentConfirmed,
     payUrl = payUrl,
+    courtesy = courtesy?.let { CourtesyResponse(it.plan, it.endsAt) },
 )
 
 private fun SubscriptionUsage.toResponse() = SubscriptionUsageResponse(

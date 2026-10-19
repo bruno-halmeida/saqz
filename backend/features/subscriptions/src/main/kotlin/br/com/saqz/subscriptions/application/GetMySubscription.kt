@@ -43,7 +43,11 @@ data class MySubscriptionView(
     val paymentConfirmed: Boolean = true,
     /** "Pagar agora": a fatura vencida da mensalidade do site em atraso; nulo sem fatura ou fora do atraso. */
     val payUrl: String? = null,
+    /** Cortesia de plano ativa (DEB-097), só para quem também tem assinatura; quem só tem cortesia segue em [GetMySubscriptionResult.NotFound]. */
+    val courtesy: CourtesyView? = null,
 )
+
+data class CourtesyView(val plan: Plan, val endsAt: Instant?)
 
 sealed class GetMySubscriptionResult {
     data class Found(val subscription: MySubscriptionView) : GetMySubscriptionResult()
@@ -58,6 +62,7 @@ class GetMySubscription(
     private val appStoreSubscriptions: AppStoreSubscriptionRepository? = null,
     private val googlePlaySubscriptions: GooglePlaySubscriptionRepository? = null,
     private val overdueInvoices: OverdueInvoiceResolver? = null,
+    private val courtesies: PlanCourtesyRepository? = null,
 ) {
     private class Candidate(val entitled: Boolean, val periodEnd: Instant, val view: () -> MySubscriptionView)
 
@@ -73,14 +78,21 @@ class GetMySubscription(
             Candidate(it.isEntitlingAt(now), it.expiresAt) { googlePlayView(ownerUserId, it, now) }
         }
         stores.filter { it.entitled }.maxByOrNull { it.periodEnd }?.let {
-            return GetMySubscriptionResult.Found(it.view())
+            return GetMySubscriptionResult.Found(it.view().withCourtesy(ownerUserId, now))
         }
         val asaas = subscriptions.findByOwnerUserId(ownerUserId)?.let(::recoverIfNeeded)?.let {
             Candidate(it.isEntitlingAt(now), it.currentPeriodEnd) { asaasView(ownerUserId, it, now) }
         }
         val chosen = asaas?.takeIf { it.entitled } ?: (listOfNotNull(asaas) + stores).maxByOrNull { it.periodEnd }
-        return chosen?.let { GetMySubscriptionResult.Found(it.view()) } ?: GetMySubscriptionResult.NotFound
+        return chosen?.let { GetMySubscriptionResult.Found(it.view().withCourtesy(ownerUserId, now)) } ?: GetMySubscriptionResult.NotFound
     }
+
+    /** Cortesia ativa agora (DEB-097), para a rota `/subscriptions/me/courtesy`; nula sem cortesia. */
+    fun courtesy(ownerUserId: UUID): CourtesyView? =
+        courtesies?.findActive(ownerUserId, clock.instant())?.let { CourtesyView(it.plan, it.endsAt) }
+
+    private fun MySubscriptionView.withCourtesy(ownerUserId: UUID, now: Instant): MySubscriptionView =
+        courtesies?.findActive(ownerUserId, now)?.let { copy(courtesy = CourtesyView(it.plan, it.endsAt)) } ?: this
 
     private fun asaasView(ownerUserId: UUID, subscription: Subscription, now: Instant) = MySubscriptionView(
         status = subscription.status,

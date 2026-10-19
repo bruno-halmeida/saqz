@@ -28,7 +28,7 @@ class JdbcSubscriptionPastDueRepository(
         (asaas(now) + appStore(now) + googlePlay(now)).filterNot { outlastedByOtherAccess(it, now) }
 
     /**
-     * Outra fonte de acesso do mesmo dono que dura além do fim desta: o teste ainda ativo ou outra origem também na carência (as em
+     * Outra fonte de acesso do mesmo dono que dura além do fim desta: o teste ainda ativo, a cortesia da administração ou outra origem também na carência (as em
      * dia já saem nas consultas de cada origem). Avisar "congelam hoje" aí seria falso. Mesmas regras do `JdbcSubscriptionPlanLookup`.
      */
     private fun outlastedByOtherAccess(subscription: PastDueSubscription, now: Instant): Boolean {
@@ -51,6 +51,10 @@ class JdbcSubscriptionPastDueRepository(
                 SELECT g.expires_at FROM google_play_subscriptions g
                 WHERE :provider <> 'GOOGLE_PLAY' AND g.owner_user_id = :owner AND g.superseded_at IS NULL
                   AND g.state IN ('ACTIVE', 'CANCELED', 'IN_GRACE_PERIOD') AND g.expires_at > :now
+                UNION ALL
+                -- Cortesia ativa (DEB-097): sem fim, vale para sempre.
+                SELECT coalesce(c.ends_at, timestamptz '9999-12-31') FROM plan_courtesies c
+                WHERE c.owner_user_id = :owner AND c.revoked_at IS NULL AND (c.ends_at IS NULL OR c.ends_at > :now)
             ) others
             """.trimIndent(),
         ).param("owner", subscription.ownerUserId).param("provider", subscription.provider.name)

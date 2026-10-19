@@ -8,6 +8,7 @@ import br.com.saqz.access.application.admin.AdminAccessStats
 import br.com.saqz.access.application.admin.AdminUserDirectory
 import br.com.saqz.access.application.admin.PlatformAdminLookup
 import br.com.saqz.adminweb.http.AdminCouponAnalyticsController
+import br.com.saqz.adminweb.http.AdminCourtesiesController
 import br.com.saqz.adminweb.http.AdminCouponsController
 import br.com.saqz.adminweb.http.AdminGroupsController
 import br.com.saqz.adminweb.http.AdminModerationController
@@ -28,6 +29,9 @@ import br.com.saqz.subscriptions.application.AdminRevenueStats
 import br.com.saqz.subscriptions.application.AdminSubscriptionCanceler
 import br.com.saqz.subscriptions.application.AdminSubscriptionDirectory
 import br.com.saqz.subscriptions.application.CancelSubscription
+import br.com.saqz.subscriptions.application.PlanCourtesies
+import br.com.saqz.subscriptions.application.PlanCourtesyRepository
+import br.com.saqz.subscriptions.application.SubscriptionPlanLookup
 import java.time.Clock
 import javax.sql.DataSource
 import org.springframework.beans.factory.ObjectProvider
@@ -62,8 +66,16 @@ class PlatformAdminConfiguration {
         JdbcAdminUserDirectoryRepository(dataSource)
 
     @Bean
-    fun adminUsersController(directory: AdminUserDirectory, lookup: PlatformAdminLookup) =
-        AdminUsersController(directory, lookup)
+    fun planCourtesies(repository: PlanCourtesyRepository, plans: SubscriptionPlanLookup, clock: Clock) =
+        PlanCourtesies(repository, plans, clock)
+
+    @Bean
+    fun adminUsersController(directory: AdminUserDirectory, lookup: PlatformAdminLookup, courtesies: PlanCourtesies) =
+        AdminUsersController(directory, lookup, courtesies)
+
+    @Bean
+    fun adminCourtesiesController(courtesies: PlanCourtesies, lookup: PlatformAdminLookup) =
+        AdminCourtesiesController(courtesies, lookup)
 
     @Bean
     fun adminGroupDirectory(dataSource: DataSource): AdminGroupDirectory =

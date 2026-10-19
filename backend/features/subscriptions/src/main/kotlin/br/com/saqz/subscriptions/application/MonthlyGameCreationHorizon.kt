@@ -25,14 +25,18 @@ class MonthlyGameCreationHorizon(
     private val clock: Clock,
     private val appStore: AppStoreSubscriptionRepository? = null,
     private val googlePlay: GooglePlaySubscriptionRepository? = null,
+    private val courtesies: PlanCourtesyRepository? = null,
 ) : GameCreationHorizon {
     private class Window(val until: Instant, val end: Instant)
 
     override fun until(groupId: UUID): Instant? = window(groupId)?.let { (window, zone) ->
-        minOf(window.until, limit(window.end, zone))
+        minOf(window.until, limitOf(window.end, zone))
     }
 
-    override fun startsBefore(groupId: UUID): Instant? = window(groupId)?.let { (window, zone) -> limit(window.end, zone) }
+    override fun startsBefore(groupId: UUID): Instant? = window(groupId)?.let { (window, zone) -> limitOf(window.end, zone) }
+
+    /** Cortesia sem fim ([Instant.MAX]) não tem 0h de dia nenhum: sem limite. */
+    private fun limitOf(end: Instant, zone: ZoneId): Instant = if (end == Instant.MAX) end else limit(end, zone)
 
     private fun window(groupId: UUID): Pair<Window, ZoneId>? {
         val owner = groups.ownerOf(groupId) ?: return null
@@ -42,11 +46,16 @@ class MonthlyGameCreationHorizon(
             TrialStatus.EXPIRED -> return null
             TrialStatus.ACTIVE -> trialWindow(access, now)
             TrialStatus.SUBSCRIBED -> {
-                val paidEnd = paidEnd(owner, now)
-                val paid = Window(monthlyMarkBefore(paidEnd, now), paidEnd)
+                // Cortesia (DEB-097): sem fim = sem limite; com fim, o jogo vai até o fim dela, sem andar mês a mês.
+                val courtesy = courtesies?.findActive(owner, now)?.let { (it.endsAt ?: Instant.MAX).let { end -> Window(end, end) } }
+                val paidEnd = paidEnd(owner, now) ?: if (courtesy == null) monthlyMarkAfter(now, now) else null
+                val paid = paidEnd?.let { Window(monthlyMarkBefore(it, now), it) }
                 // Quem assina no meio de um teste longo (cupom) não perde o que o teste ainda dá.
                 val trial = access.endsAt?.takeIf { it.isAfter(now) }?.let { trialWindow(access, now) }
-                if (trial != null && trial.end.isAfter(paid.end)) Window(maxOf(paid.until, trial.until), trial.end) else paid
+                // Vale a fonte que dura mais; o mais longo entre os horizontes (série) acompanha.
+                listOfNotNull(paid, courtesy, trial).reduce { current, other ->
+                    if (other.end.isAfter(current.end)) Window(maxOf(current.until, other.until), other.end) else current
+                }
             }
             // Dono sem teste nem assinatura que ainda escreve (legado): um mês corrido. A lacuna maior é o DEB-086.
             TrialStatus.AVAILABLE, TrialStatus.INELIGIBLE -> monthlyMarkAfter(now, now).let { Window(it, it) }
@@ -69,7 +78,7 @@ class MonthlyGameCreationHorizon(
      * o app trata como assinante em dia. Compra de teste da loja (sandbox da Apple, testador do Play) renova em
      * minutos: o `expiresAt` dela não diz nada sobre o plano, então vale o mês corrido.
      */
-    private fun paidEnd(owner: UUID, now: Instant): Instant {
+    private fun paidEnd(owner: UUID, now: Instant): Instant? {
         val ends = mutableListOf<Instant>()
         subscriptions.findByOwnerUserId(owner)?.takeIf { it.isEntitlingAt(now) }?.let {
             val legacy = it.status == SubscriptionStatus.PAST_DUE && it.pastDueSince == null
@@ -86,7 +95,7 @@ class MonthlyGameCreationHorizon(
                 else -> it.expiresAt
             }
         }
-        return ends.maxOrNull() ?: monthlyMarkAfter(now, now)
+        return ends.maxOrNull()
     }
 
     companion object {

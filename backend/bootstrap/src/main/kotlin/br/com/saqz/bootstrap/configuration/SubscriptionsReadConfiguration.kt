@@ -12,6 +12,7 @@ import br.com.saqz.subscriptions.adapter.input.http.CouponController
 import br.com.saqz.subscriptions.adapter.input.http.PlanController
 import br.com.saqz.subscriptions.adapter.input.http.SubscriptionQueryController
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcCouponRepository
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcPlanCourtesyRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionPastDueRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcSubscriptionsTransactionRunner
@@ -23,6 +24,7 @@ import br.com.saqz.subscriptions.application.GooglePlaySubscriptionRepository
 import br.com.saqz.subscriptions.application.CouponRepository
 import br.com.saqz.subscriptions.application.GetMySubscription
 import br.com.saqz.subscriptions.application.ListPlans
+import br.com.saqz.subscriptions.application.PlanCourtesyRepository
 import br.com.saqz.subscriptions.application.RecoverUnconfirmedPayment
 import br.com.saqz.subscriptions.application.SubscriptionRepository
 import br.com.saqz.subscriptions.application.SubscriptionsTransactionRunner
@@ -50,6 +52,10 @@ class SubscriptionsReadConfiguration {
         JdbcCouponRepository(dataSource)
 
     @Bean
+    fun planCourtesyRepository(dataSource: DataSource): PlanCourtesyRepository =
+        JdbcPlanCourtesyRepository(dataSource)
+
+    @Bean
     fun listPlans() = ListPlans()
 
     @Bean
@@ -65,6 +71,7 @@ class SubscriptionsReadConfiguration {
         googlePlaySubscriptions: GooglePlaySubscriptionRepository,
         dataSource: DataSource,
         gateway: ObjectProvider<AsaasGateway>,
+        courtesies: PlanCourtesyRepository,
     ) = GetMySubscription(
         subscriptions,
         ownedGroups,
@@ -74,6 +81,7 @@ class SubscriptionsReadConfiguration {
         googlePlaySubscriptions,
         // A mesma fatura do aviso de atraso; sem o Asaas configurado vale o link do webhook guardado.
         OverdueInvoiceResolver(JdbcSubscriptionPastDueRepository(dataSource)) { gateway.ifAvailable },
+        courtesies,
     )
 
     /** Sem o Asaas configurado (pilha local) não há o que cancelar: o caso é registrado em log e a compra segue. */

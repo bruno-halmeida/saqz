@@ -47,9 +47,10 @@ class OrganizerTrialConfiguration {
         subscriptions: br.com.saqz.subscriptions.application.SubscriptionRepository,
         appStore: br.com.saqz.subscriptions.application.AppStoreSubscriptionRepository,
         googlePlay: br.com.saqz.subscriptions.application.GooglePlaySubscriptionRepository,
+        courtesies: br.com.saqz.subscriptions.application.PlanCourtesyRepository,
         clock: Clock,
     ): br.com.saqz.sharedkernel.subscription.GameCreationHorizon =
-        br.com.saqz.subscriptions.application.MonthlyGameCreationHorizon(groups, trials, subscriptions, clock, appStore, googlePlay)
+        br.com.saqz.subscriptions.application.MonthlyGameCreationHorizon(groups, trials, subscriptions, clock, appStore, googlePlay, courtesies)
 
     @Bean
     fun groupPlanOwnerLookup(dataSource: DataSource): br.com.saqz.sharedkernel.subscription.GroupPlanOwnerLookup =

@@ -37,6 +37,14 @@ data class AdminUserSubscription(
     val since: Instant,
 )
 
+/** Cortesia de plano ativa (DEB-097); preenchida pelo controller, que fala com o módulo de assinaturas. */
+data class AdminUserCourtesy(
+    val plan: String,
+    val endsAt: Instant?,
+    val reason: String,
+    val createdAt: Instant,
+)
+
 data class AdminUserDetail(
     val userId: UUID,
     val displayName: String?,
@@ -49,6 +57,7 @@ data class AdminUserDetail(
     val lastSeenAt: Instant,
     val groups: List<AdminUserGroup>,
     val subscription: AdminUserSubscription?,
+    val courtesy: AdminUserCourtesy? = null,
 )
 
 /**
