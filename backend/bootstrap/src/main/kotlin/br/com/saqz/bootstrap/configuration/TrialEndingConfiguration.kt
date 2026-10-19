@@ -34,7 +34,7 @@ class TrialEndingConfiguration {
     @Bean fun trialEndingNotice(dataSource: DataSource): TrialEndingNotice = JdbcTrialEndingNotice(dataSource)
 
     @Bean fun trialEndingWhatsApp(dataSource: DataSource, sender: ObjectProvider<NotificationWhatsAppSender>): TrialEndingWhatsApp =
-        PrivateTrialEndingWhatsApp(JdbcClient.create(dataSource)) { sender.ifAvailable }
+        PrivateTrialEndingWhatsApp(JdbcClient.create(dataSource), { sender.ifAvailable })
 
     @Bean fun dailyTrialEndingReminders(
         trials: TrialEndingRepository,
@@ -56,19 +56,29 @@ class DailyTrialEndingReminders(private val reminders: TrialEndingReminders) {
 
 /**
  * WhatsApp particular do dono, direto pela Uazapi das notificações (como a confirmação de conta): sem fila, e só
- * se o WhatsApp estiver ligado no servidor e a pessoa tiver telefone. Falha de envio só entra no log.
+ * se o WhatsApp estiver ligado no servidor e a pessoa tiver telefone. Falha de envio só entra no log, com o rótulo [job]
+ * do aviso que a mandou (`<job>_whatsapp_failed`).
  */
-class PrivateTrialEndingWhatsApp(
-    private val jdbc: JdbcClient,
+class PrivateTrialEndingWhatsApp internal constructor(
+    private val phoneOf: (UUID) -> String?,
     private val sender: () -> NotificationWhatsAppSender?,
+    private val job: String,
 ) : TrialEndingWhatsApp {
+    constructor(jdbc: JdbcClient, sender: () -> NotificationWhatsAppSender?, job: String = "trial_ending") : this(
+        { ownerUserId ->
+            jdbc.sql("SELECT phone FROM access_users WHERE id = :id").param("id", ownerUserId)
+                .query(String::class.java).optional().orElse(null)
+        },
+        sender,
+        job,
+    )
+
     override fun send(ownerUserId: UUID, body: String) {
         val whatsApp = sender() ?: return
-        val phone = jdbc.sql("SELECT phone FROM access_users WHERE id = :id").param("id", ownerUserId)
-            .query(String::class.java).optional().orElse(null)?.takeIf { it.isNotBlank() } ?: return
+        val phone = phoneOf(ownerUserId)?.takeIf { it.isNotBlank() } ?: return
         val delivery = whatsApp.send(WhatsAppNotification(notificationId = 0, phone = phone, body = if ("Saqz" in body) body else "Saqz: $body"))
         if (delivery != br.com.saqz.groups.application.communication.WhatsAppDelivery.Accepted) {
-            LoggerFactory.getLogger(PrivateTrialEndingWhatsApp::class.java).warn("trial_ending_whatsapp_failed delivery={}", delivery)
+            LoggerFactory.getLogger(PrivateTrialEndingWhatsApp::class.java).warn("{}_whatsapp_failed delivery={}", job, delivery)
         }
     }
 }
