@@ -44,18 +44,23 @@ data class AdminActiveCourtesy(
     val createdAt: Instant,
 )
 
-data class AdminGrantCourtesyRequest(val plan: String?, val endsAt: Instant?, val reason: String?)
+/** Corpos de entrada são classes mutáveis: o Jackson do projeto não instancia data class (mesmo padrão dos outros controllers). */
+class AdminGrantCourtesyRequest {
+    var plan: String? = null
+    var endsAt: Instant? = null
+    var reason: String? = null
+}
 
-data class AdminRevokeCourtesyRequest(val reason: String?)
+class AdminRevokeCourtesyRequest { var reason: String? = null }
 
 /** `dryRun` ausente vale `true`: gravar em lote exige pedir. Com `dryRun: false`, `ownerIds` é a lista conferida. */
-data class AdminCourtesyBatchRequest(
-    val plan: String?,
-    val endsAt: Instant?,
-    val reason: String?,
-    val dryRun: Boolean? = true,
-    val ownerIds: List<UUID>? = null,
-)
+class AdminCourtesyBatchRequest {
+    var plan: String? = null
+    var endsAt: Instant? = null
+    var reason: String? = null
+    var dryRun: Boolean? = true
+    var ownerIds: List<UUID>? = null
+}
 
 data class AdminCourtesyCandidate(
     val ownerUserId: UUID,
