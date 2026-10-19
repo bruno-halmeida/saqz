@@ -39,10 +39,18 @@ class IdentityCompletionScreenTest {
     @Test fun `the screen offers exactly the two fields of the export`() = runComposeUiTest {
         content()
         onNodeWithText("Quase", substring = true).assertExists()
-        onNodeWithText("Confirme seu nome e adicione um telefone para a galera te encontrar.").assertExists()
-        onNodeWithText("Seu telefone fica visível só para os grupos que você participa.").assertExists()
+        onNodeWithText("Confirme seu nome e adicione seu WhatsApp. O Saqz usa o número para confirmar sua conta e avisar sobre cobranças.").assertExists()
+        onNodeWithText("Seu WhatsApp fica visível só para o dono e os administradores dos seus grupos. Você pode mudar isso no perfil.").assertExists()
         onNodeWithText("Concluir cadastro").assertExists()
         assertEquals(2, onAllNodes(hasSetTextAction(), useUnmergedTree = true).fetchSemanticsNodes().size)
+    }
+
+    // DEB-095: o aviso troca o texto de privacidade e não trava nada.
+    @Test fun `a number without WhatsApp swaps the helper for a warning and keeps the button`() = runComposeUiTest {
+        content(IdentityCompletionState(phone = "11987654321", noWhatsApp = true))
+        onNodeWithText("Esse número não tem WhatsApp. Confira se digitou certo.").assertExists()
+        onNodeWithText("Seu WhatsApp fica visível só para o dono e os administradores dos seus grupos. Você pode mudar isso no perfil.").assertDoesNotExist()
+        onNodeWithText("Concluir cadastro").assertExists()
     }
 
     @Test fun `the name field emits a controlled value`() = runComposeUiTest {
@@ -94,7 +102,7 @@ class IdentityCompletionScreenTest {
         waitForIdle()
 
         assertEquals("+5511999990000", sent)
-        onNodeWithText("Telefone incompleto. Use DDD + 9 dígitos.").assertDoesNotExist()
+        onNodeWithText("WhatsApp incompleto. Use DDD + 9 dígitos.").assertDoesNotExist()
     }
 
     @Test fun `the primary action completes the registration`() = runComposeUiTest {
@@ -130,13 +138,13 @@ class IdentityCompletionScreenTest {
     @Test fun `each refused field carries its own message`() = runComposeUiTest {
         content(IdentityCompletionState(invalidName = true, invalidPhone = true))
         onNodeWithText("Informe seu nome.").assertExists()
-        onNodeWithText("Telefone incompleto. Use DDD + 9 dígitos.").assertExists()
+        onNodeWithText("WhatsApp incompleto. Use DDD + 9 dígitos.").assertExists()
     }
 
     @Test fun `a refused name leaves the phone message alone`() = runComposeUiTest {
         content(IdentityCompletionState(invalidName = true))
         onNodeWithText("Informe seu nome.").assertExists()
-        onNodeWithText("Telefone incompleto. Use DDD + 9 dígitos.").assertDoesNotExist()
+        onNodeWithText("WhatsApp incompleto. Use DDD + 9 dígitos.").assertDoesNotExist()
     }
 
     // A foto é opcional: o aviso de envio recusado é aviso, e não trava o botão.

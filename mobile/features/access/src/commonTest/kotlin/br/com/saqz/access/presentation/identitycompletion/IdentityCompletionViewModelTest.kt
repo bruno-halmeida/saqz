@@ -17,6 +17,7 @@ import br.com.saqz.access.domain.session.AccessError
 import br.com.saqz.access.domain.session.AccessSession
 import br.com.saqz.access.domain.session.AccessUser
 import br.com.saqz.access.domain.session.SessionGateway
+import br.com.saqz.access.domain.whatsapp.WhatsAppNumberCheckGateway
 import br.com.saqz.access.presentation.AuthTransition
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
@@ -152,6 +153,52 @@ class IdentityCompletionViewModelTest {
         assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
     }
 
+    // DEB-095: só avisa. O botão de concluir e o estado da sessão não mudam com a resposta.
+    @Test fun `a complete number without WhatsApp shows the warning and keeps the registration open`() = runTest(mainDispatcher) {
+        val fixture = fixture()
+
+        fixture.viewModel.onIntent(IdentityCompletionIntent.UpdatePhone("11987654321"))
+        runCurrent()
+
+        assertEquals(listOf("+5511987654321"), fixture.whatsApp.asked)
+        assertTrue(fixture.viewModel.state.value.noWhatsApp)
+        assertFalse(fixture.viewModel.state.value.invalidPhone)
+        assertIs<SessionAccessState.CompletingIdentity>(fixture.machine.state.value)
+    }
+
+    @Test fun `a number with WhatsApp or without an answer shows no warning`() = runTest(mainDispatcher) {
+        val fixture = fixture()
+
+        fixture.whatsApp.answer = true
+        fixture.viewModel.onIntent(IdentityCompletionIntent.UpdatePhone("11987654321"))
+        runCurrent()
+        assertFalse(fixture.viewModel.state.value.noWhatsApp)
+
+        fixture.whatsApp.answer = null
+        fixture.viewModel.onIntent(IdentityCompletionIntent.UpdatePhone("11988887777"))
+        runCurrent()
+        assertFalse(fixture.viewModel.state.value.noWhatsApp)
+    }
+
+    @Test fun `the warning goes away when the number changes and an unfinished number is never asked`() = runTest(mainDispatcher) {
+        val fixture = fixture()
+
+        fixture.viewModel.onIntent(IdentityCompletionIntent.UpdatePhone("1198765"))
+        runCurrent()
+        assertTrue(fixture.whatsApp.asked.isEmpty())
+
+        fixture.viewModel.onIntent(IdentityCompletionIntent.UpdatePhone("11987654321"))
+        runCurrent()
+        assertTrue(fixture.viewModel.state.value.noWhatsApp)
+
+        fixture.viewModel.onIntent(IdentityCompletionIntent.UpdatePhone("1198765432"))
+        runCurrent()
+        assertFalse(fixture.viewModel.state.value.noWhatsApp)
+        fixture.viewModel.onIntent(IdentityCompletionIntent.UpdatePhone("11987654321"))
+        runCurrent()
+        assertEquals(2, fixture.whatsApp.asked.size)
+    }
+
     @Test fun `the back control signs the incomplete identity out`() = runTest(mainDispatcher) {
         val fixture = fixture()
 
@@ -168,7 +215,18 @@ class IdentityCompletionViewModelTest {
         runCurrent()
         assertIs<SessionAccessState.CompletingIdentity>(machine.state.value)
         val photos = FakePhotoPort()
-        return Fixture(IdentityCompletionViewModel(machine, photos), machine, photos, gateway)
+        val whatsApp = FakeNumberCheck()
+        return Fixture(IdentityCompletionViewModel(machine, photos, whatsApp), machine, photos, gateway, whatsApp)
+    }
+
+    private class FakeNumberCheck : WhatsAppNumberCheckGateway {
+        var answer: Boolean? = false
+        val asked = mutableListOf<String>()
+
+        override suspend fun hasWhatsApp(phone: String): Boolean? {
+            asked += phone
+            return answer
+        }
     }
 
     private class Fixture(
@@ -176,6 +234,7 @@ class IdentityCompletionViewModelTest {
         val machine: SessionAccessStateMachine,
         val photos: FakePhotoPort,
         val gateway: FakeSessionGateway,
+        val whatsApp: FakeNumberCheck,
     )
 
     private class FakePhotoPort : NativeProfilePhotoPort {

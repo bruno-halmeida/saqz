@@ -24,6 +24,8 @@ data class IdentityCompletionState(
     val invalidName: Boolean = false,
     val invalidPhone: Boolean = false,
     val photoFailed: Boolean = false,
+    /** A Uazapi disse que o número não tem WhatsApp: só um aviso, o cadastro segue. */
+    val noWhatsApp: Boolean = false,
 )
 
 sealed interface IdentityCompletionIntent {

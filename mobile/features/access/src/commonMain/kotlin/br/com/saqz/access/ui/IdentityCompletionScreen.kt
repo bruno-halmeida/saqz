@@ -33,6 +33,7 @@ import br.com.saqz.access.resources.action_back
 import br.com.saqz.access.resources.identity_add_photo
 import br.com.saqz.access.resources.identity_headline
 import br.com.saqz.access.resources.identity_headline_emphasis
+import br.com.saqz.access.resources.identity_phone_no_whatsapp
 import br.com.saqz.access.resources.identity_phone_privacy
 import br.com.saqz.access.resources.identity_photo_failed
 import br.com.saqz.access.resources.identity_submit
@@ -166,7 +167,7 @@ fun IdentityCompletionScreen(
         visualTransformation = PhoneVisualTransformation(),
         enabled = !state.isLoading,
         inlineLabel = true,
-        helperText = stringResource(Res.string.identity_phone_privacy),
+        helperText = stringResource(if (state.noWhatsApp) Res.string.identity_phone_no_whatsapp else Res.string.identity_phone_privacy),
         errorText = stringResource(Res.string.register_error_phone).takeIf { state.invalidPhone },
         leadingContent = { SaqzIcon(SaqzIcons.Phone, tint = SaqzTheme.colors.primary) },
         ime = form.imeDone(),

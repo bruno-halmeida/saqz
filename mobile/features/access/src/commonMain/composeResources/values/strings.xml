@@ -49,7 +49,7 @@
     <string name="register_supporting_text">Crie sua conta para participar dos grupos e organizar jogos.</string>
     <string name="register_name_placeholder">Seu nome</string>
     <string name="register_email_placeholder">ana@exemplo.com</string>
-    <string name="register_phone_placeholder">(11) 99999-0000</string>
+    <string name="register_phone_placeholder">WhatsApp (11) 99999-0000</string>
     <string name="register_password_placeholder">Crie uma senha</string>
     <string name="register_submit">Criar conta</string>
     <string name="register_signin_link">Já tem uma conta? Entrar ›</string>
@@ -62,7 +62,7 @@
     </plurals>
     <string name="register_error_name">Informe seu nome.</string>
     <string name="register_error_email_taken">Esse e-mail já tem conta no Saqz. Entrar?</string>
-    <string name="register_error_phone">Telefone incompleto. Use DDD + 9 dígitos.</string>
+    <string name="register_error_phone">WhatsApp incompleto. Use DDD + 9 dígitos.</string>
     <string name="register_error_password">Use no mínimo 8 caracteres.</string>
 
     <!-- 1c · concluir cadastro -->
@@ -72,8 +72,9 @@
     <string name="identity_photo_gallery">Escolher da galeria</string>
     <string name="identity_headline">Quase</string>
     <string name="identity_headline_emphasis">lá!</string>
-    <string name="identity_supporting_text">Confirme seu nome e adicione um telefone para a galera te encontrar.</string>
-    <string name="identity_phone_privacy">Seu telefone fica visível só para os grupos que você participa.</string>
+    <string name="identity_supporting_text">Confirme seu nome e adicione seu WhatsApp. O Saqz usa o número para confirmar sua conta e avisar sobre cobranças.</string>
+    <string name="identity_phone_privacy">Seu WhatsApp fica visível só para o dono e os administradores dos seus grupos. Você pode mudar isso no perfil.</string>
+    <string name="identity_phone_no_whatsapp">Esse número não tem WhatsApp. Confira se digitou certo.</string>
     <string name="identity_submit">Concluir cadastro</string>
     <!-- VUL-87: o export não desenha a falha só da foto, mas ela existe — o cadastro grava
          e o JPEG não sobe. Sem esta frase o aviso não teria texto. -->

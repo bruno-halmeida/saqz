@@ -6,10 +6,12 @@ import br.com.saqz.access.domain.port.Cancelable
 import br.com.saqz.access.domain.port.NativeProfilePhotoPort
 import br.com.saqz.access.domain.port.ProfilePhotoCallback
 import br.com.saqz.access.domain.port.ProfilePhotoResult
+import br.com.saqz.access.domain.whatsapp.WhatsAppNumberCheckGateway
 import br.com.saqz.access.presentation.SessionAccessState
 import br.com.saqz.access.presentation.SessionAccessStateMachine
 import br.com.saqz.access.presentation.SessionIntent
 import br.com.saqz.access.presentation.message
+import br.com.saqz.access.presentation.normalizedBrMobilePhone
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.designsystem.phoneFieldDigits
 import kotlinx.coroutines.Job
@@ -28,6 +30,7 @@ import kotlinx.coroutines.launch
 class IdentityCompletionViewModel(
     private val session: SessionAccessStateMachine,
     private val photos: NativeProfilePhotoPort,
+    private val numberCheck: WhatsAppNumberCheckGateway,
 ) : MviViewModel<IdentityCompletionState, IdentityCompletionIntent, Nothing>(
     // O primeiro quadro sai do estado que já existe, e não de um vazio: a máquina é
     // singleton e a 1c só é composta porque ela **já** está em `CompletingIdentity` — abrir
@@ -50,6 +53,12 @@ class IdentityCompletionViewModel(
     private var decoded: ImageBitmap? = null
     private var decoding: Job? = null
 
+    // DEB-095: o aviso "Esse número não tem WhatsApp" só informa. A consulta roda uma vez por número completo, fora da
+    // coleta do estado, e qualquer falha ou demora deixa o campo como está.
+    private var checkedPhone: String? = null
+    private var noWhatsApp = false
+    private var checking: Job? = null
+
     init {
         session.state
             .onEach { current ->
@@ -58,7 +67,8 @@ class IdentityCompletionViewModel(
                     // continua acompanhando cada tecla enquanto a imagem é preparada à
                     // parte, e chega quando ficar pronta.
                     decode(current.photo)
-                    update { current.project(decoded, pickFailed) }
+                    checkWhatsApp(normalizedBrMobilePhone(current.phone))
+                    update { current.project(decoded, pickFailed, noWhatsApp) }
                 }
             }
             .launchIn(viewModelScope)
@@ -104,6 +114,21 @@ class IdentityCompletionViewModel(
         })
     }
 
+    private fun checkWhatsApp(phone: String?) {
+        if (phone == checkedPhone) return
+        checkedPhone = phone
+        checking?.cancel()
+        noWhatsApp = false
+        if (phone == null) return
+        checking = viewModelScope.launch {
+            val answer = numberCheck.hasWhatsApp(phone)
+            // Outro número foi digitado enquanto este era consultado: a resposta velha não vale.
+            if (phone != checkedPhone) return@launch
+            noWhatsApp = answer == false
+            update { it.copy(noWhatsApp = noWhatsApp) }
+        }
+    }
+
     /**
      * Prepara a imagem da escolha atual, uma vez por escolha (comparada por referência: a
      * máquina copia o estado, não a foto).
@@ -132,7 +157,7 @@ class IdentityCompletionViewModel(
 }
 
 private fun initialStateOf(state: SessionAccessState): IdentityCompletionState =
-    (state as? SessionAccessState.CompletingIdentity)?.project(photo = null, pickFailed = false)
+    (state as? SessionAccessState.CompletingIdentity)?.project(photo = null, pickFailed = false, noWhatsApp = false)
         ?: IdentityCompletionState()
 
 // O telefone da máquina pode vir com +55 (o que subiu, devolvido numa recusa); o campo
@@ -140,6 +165,7 @@ private fun initialStateOf(state: SessionAccessState): IdentityCompletionState =
 private fun SessionAccessState.CompletingIdentity.project(
     photo: ImageBitmap?,
     pickFailed: Boolean,
+    noWhatsApp: Boolean,
 ) = IdentityCompletionState(
     name = name,
     phone = phoneFieldDigits(phone),
@@ -149,4 +175,5 @@ private fun SessionAccessState.CompletingIdentity.project(
     invalidName = invalidName,
     invalidPhone = invalidPhone,
     photoFailed = photoFailed || pickFailed,
+    noWhatsApp = noWhatsApp,
 )

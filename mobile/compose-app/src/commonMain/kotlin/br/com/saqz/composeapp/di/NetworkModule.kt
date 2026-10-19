@@ -7,6 +7,8 @@ import br.com.saqz.access.data.passwordreset.KtorPasswordResetGateway
 import br.com.saqz.access.data.appaccess.KtorAppAccessGateway
 import br.com.saqz.access.data.appaccess.KtorOnboardingGateway
 import br.com.saqz.access.data.session.KtorSessionGateway
+import br.com.saqz.access.data.whatsapp.KtorWhatsAppNumberCheckGateway
+import br.com.saqz.access.domain.whatsapp.WhatsAppNumberCheckGateway
 import br.com.saqz.access.data.verification.KtorEmailVerificationGateway
 import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
 import br.com.saqz.access.domain.appaccess.AppAccessGateway
@@ -60,6 +62,7 @@ internal val coreNetworkModule = module {
 internal val accessDataModule = module {
     singleOf(::NativeTokenProvider) { bind<IdTokenProvider>() }
     single<SessionGateway> { KtorSessionGateway(get()) }
+    single<WhatsAppNumberCheckGateway> { KtorWhatsAppNumberCheckGateway(get()) }
     single<EmailVerificationGateway> { KtorEmailVerificationGateway(get()) }
     // Anônimo de propósito: quem esqueceu a senha não tem sessão, então resolve o
     // NetworkClient cru em vez do autenticado.
