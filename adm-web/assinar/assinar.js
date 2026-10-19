@@ -720,6 +720,9 @@
     mostrarErro("login-erro", "");
     auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function (error) {
       if (error && error.code === "auth/popup-closed-by-user") return;
+      var code = (error && error.code) || "unknown";
+      if (window.console) console.warn("Login com Google falhou:", code, error && error.message);
+      track("auth_error", { method: "google", code: code });
       mostrarErro("login-erro", "Não deu para entrar com o Google agora.");
     });
   });

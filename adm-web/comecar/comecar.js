@@ -361,6 +361,10 @@
       .catch(function (error) {
         if (error && error.stale) return;
         if (generation !== intentGeneration) return;
+        // A mensagem fica genérica; o código do Firebase vai para o console e para a medição, para saber o que falhou.
+        var code = (error && error.code) || "unknown";
+        if (window.console) console.warn("Login com Google falhou:", code, error && error.message);
+        track("auth_error", { method: "google", code: code });
         setMessage("auth-error", "Não foi possível entrar com Google. Tente novamente ou use e-mail e senha.", "error");
         setBusy(false);
       })
