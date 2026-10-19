@@ -60,18 +60,19 @@ async function seedReminders(ctx) {
     && charge.kind === 'GAME' && charge.amountCents === 2000 && charge.status === 'PENDING'));
   const foreignGame = await ctx.publishedGame(ctx.secondGroup, ctx.owner.token);
   const completedGame = randomUUID();
-  const expiredGame = randomUUID();
+  const startedGame = randomUUID();
   // Distinct future slots avoid the schedule uniqueness constraint; lifecycle/deadline are preconditions.
-  for (const [id, days, status, deadline] of [
-    [completedGame, 2, 'COMPLETED', "confirmation_deadline + interval '2 days'"],
-    [expiredGame, 3, 'PUBLISHED', "now() - interval '1 hour'"],
+  // DEB-093: prazo vencido não recusa o aviso (o jogo ainda não começou); só o jogo já iniciado recusa.
+  for (const [id, days, status, deadline, startsAt] of [
+    [completedGame, 2, 'COMPLETED', "confirmation_deadline + interval '2 days'", `starts_at + interval '2 days'`],
+    [startedGame, 3, 'PUBLISHED', "now() - interval '1 day'", "now() - interval '2 hours'"],
   ]) {
     await ctx.sql(`INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,
       duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,game_fee_cents,status,created_at,updated_at)
       SELECT '${id}',group_id,'Jogo inelegível QA',local_date + ${days},local_time,zone_id,
-      starts_at + interval '${days} days',duration_minutes,${deadline},venue_name,venue_address,
+      ${startsAt},duration_minutes,${deadline},venue_name,venue_address,
       capacity,game_fee_cents,'${status}',now(),now() FROM games WHERE id='${game.id}';`);
   }
   return { peer: safe(peer), admin: safe(admin), declined: safe(declined), inactive: safe(inactive),
-    game: game.id, gameTitle: game.title, foreignGame: foreignGame.id, completedGame, expiredGame };
+    game: game.id, gameTitle: game.title, foreignGame: foreignGame.id, completedGame, startedGame };
 }

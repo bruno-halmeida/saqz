@@ -197,7 +197,7 @@ internal class ReminderE2eTest : InstalledE2e("reminders") {
         assertOnlyPeerReceived(inboxes)
         assertEquals(before, snapshot(attendancePath))
         api("athlete", "/api/groups/$group/games/$game/notify-pending", "POST", requestId(), status = 403)
-        for (field in listOf("completedGame", "expiredGame", "foreignGame")) {
+        for (field in listOf("completedGame", "startedGame", "foreignGame")) {
             api("owner", "/api/groups/$group/games/${data.getString(field)}/notify-pending", "POST", requestId(), status = 422)
         }
         assertEquals(peerInbox.toString(), api("peer", "/api/me/notifications").getJSONArray("items").toString())
