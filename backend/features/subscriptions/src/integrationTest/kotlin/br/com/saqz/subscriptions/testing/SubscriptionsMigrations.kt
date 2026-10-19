@@ -5,6 +5,9 @@ import java.nio.file.Path
 
 fun accessMigrationLocation(): String = "filesystem:" + migrationDirectory("access")
 fun subscriptionsMigrationLocation(): String = "filesystem:" + migrationDirectory("subscriptions")
+/** Com o módulo de grupos: para quem precisa de `access_groups.deleted_at` (cortesia em lote, DEB-097). */
+fun subscriptionsWithGroupsMigrationLocations(): Array<String> =
+    allSubscriptionsFeatureMigrationLocations() + ("filesystem:" + migrationDirectory("groups"))
 fun allSubscriptionsFeatureMigrationLocations(): Array<String> =
     arrayOf(accessMigrationLocation(), subscriptionsMigrationLocation())
 
