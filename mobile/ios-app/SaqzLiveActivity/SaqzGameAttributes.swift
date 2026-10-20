@@ -29,8 +29,30 @@ struct SaqzGameAttributes: ActivityAttributes {
     var recipient: String
     var venue: String
     var startsAt: Int
+    /// Jogo com vagas por posição (5-1, DEB-107). Opcional: um payload sem a chave (backend ou app antigo) decodifica
+    /// como `nil`, que é jogo sem posições.
+    var positions: Bool? = nil
 
     var startDate: Date { Date(timeIntervalSince1970: TimeInterval(startsAt)) }
+
+    /// O que o "Confirmar" do card faz: responde por baixo (jogo sem posições) ou abre o app na tela de escolher
+    /// posição, sem confirmar nada (jogo com posições). "Não vou" responde sempre.
+    enum ConfirmAction: Equatable { case respond, openPositionPicker }
+
+    var confirmAction: ConfirmAction { positions == true ? .openPositionPicker : .respond }
+
+    /// `saqz://game?group=<id>&game=<id>&pickPosition=1`: o mesmo caminho do toque com `pickPosition` no push.
+    var pickPositionURL: URL? {
+        var components = URLComponents()
+        components.scheme = "saqz"
+        components.host = "game"
+        components.queryItems = [
+            URLQueryItem(name: "group", value: groupId),
+            URLQueryItem(name: "game", value: gameId),
+            URLQueryItem(name: "pickPosition", value: "1"),
+        ]
+        return components.url
+    }
 }
 
 /// "Confirmar" / "Não vou" do card. Como `LiveActivityIntent`, roda no processo do app, que instala

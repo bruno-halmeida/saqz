@@ -96,13 +96,15 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
     @discardableResult
     func onOpenURL(_ url: URL) -> Bool { onColdStart(url: url) }
 
-    /// Card da Live Activity (VUL-268): `saqz://game?group=<id>&game=<id>` abre o jogo, como o toque no push.
+    /// Card da Live Activity (VUL-268): `saqz://game?group=<id>&game=<id>` abre o jogo, como o toque no push; com
+    /// `pickPosition=1` (jogo com posições, DEB-107) abre a tela de escolher posição.
     private static func gameEvent(_ url: URL?) -> GroupLinkEvent? {
         guard let url, url.scheme == "saqz", url.host == "game",
               let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
               let group = items.first(where: { $0.name == "group" })?.value,
               let game = items.first(where: { $0.name == "game" })?.value else { return nil }
-        return GroupLinkEventNotificationOpen(groupId: group, gameId: game, channel: nil, pickPosition: false)
+        let pickPosition = items.first(where: { $0.name == "pickPosition" })?.value == "1"
+        return GroupLinkEventNotificationOpen(groupId: group, gameId: game, channel: nil, pickPosition: pickPosition)
     }
 
     @discardableResult

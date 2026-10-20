@@ -90,6 +90,24 @@ final class SaqzIOSTests: XCTestCase {
         XCTAssertEqual(SaqzGameAttributes.Status(.noresponse), .noResponse)
         XCTAssertEqual(SaqzGameAttributes.Status(.failed), .failed)
     }
+
+    /// DEB-107: o atributo `positions` é opcional; sem a chave (payload antigo) o card responde como sempre.
+    func testLiveActivityAttributesDecodeWithAndWithoutPositions() throws {
+        guard #available(iOS 16.1, *) else { return }
+        let old = #"{"groupId":"g1","gameId":"game1","recipient":"sub","venue":"Arena","startsAt":1790000000}"#
+        let plain = try JSONDecoder().decode(SaqzGameAttributes.self, from: Data(old.utf8))
+        XCTAssertNil(plain.positions)
+        XCTAssertEqual(plain.confirmAction, .respond)
+        let fiveOne = try JSONDecoder().decode(
+            SaqzGameAttributes.self,
+            from: Data(#"{"groupId":"g1","gameId":"game1","recipient":"sub","venue":"Arena","startsAt":1790000000,"positions":true}"#.utf8))
+        XCTAssertEqual(fiveOne.confirmAction, .openPositionPicker)
+        XCTAssertEqual(fiveOne.pickPositionURL?.absoluteString, "saqz://game?group=g1&game=game1&pickPosition=1")
+        let explicitFalse = try JSONDecoder().decode(
+            SaqzGameAttributes.self,
+            from: Data(#"{"groupId":"g1","gameId":"game1","recipient":"sub","venue":"Arena","startsAt":1790000000,"positions":false}"#.utf8))
+        XCTAssertEqual(explicitFalse.confirmAction, .respond)
+    }
 }
 
 private final class RecordingMapCallback: GroupMapCallback {

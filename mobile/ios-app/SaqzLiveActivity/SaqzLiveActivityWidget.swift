@@ -81,11 +81,20 @@ private struct WindowActions: View {
                     .font(.footnote)
                     .foregroundStyle(.white)
                 HStack(spacing: 8) {
-                    Button(intent: AttendanceWindowIntent(gameId: context.attributes.gameId, confirm: true)) {
-                        Text("Confirmar").frame(maxWidth: .infinity)
+                    // Jogo com posições: o "Confirmar" abre o app na tela de escolher posição (DEB-107).
+                    if context.attributes.confirmAction == .openPositionPicker, let url = context.attributes.pickPositionURL {
+                        Link(destination: url) {
+                            Text("Confirmar").frame(maxWidth: .infinity)
+                        }
+                        .tint(Palette.accent)
+                        .foregroundStyle(Palette.navy)
+                    } else {
+                        Button(intent: AttendanceWindowIntent(gameId: context.attributes.gameId, confirm: true)) {
+                            Text("Confirmar").frame(maxWidth: .infinity)
+                        }
+                        .tint(Palette.accent)
+                        .foregroundStyle(Palette.navy)
                     }
-                    .tint(Palette.accent)
-                    .foregroundStyle(Palette.navy)
                     Button(intent: AttendanceWindowIntent(gameId: context.attributes.gameId, confirm: false)) {
                         Text("Não vou").frame(maxWidth: .infinity)
                     }

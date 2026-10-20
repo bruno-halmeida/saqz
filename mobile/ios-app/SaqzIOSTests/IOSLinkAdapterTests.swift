@@ -206,6 +206,15 @@ final class IOSLinkAdapterTests: XCTestCase {
         XCTAssertFalse(positions.actions[1].options.contains(.foreground))
     }
 
+    /// DEB-107: o "Confirmar" do card em jogo com posições abre a tela de posição pelo mesmo evento do push.
+    func testLiveActivityPickPositionURLAsksForThePositionScreen() {
+        let fixture = Fixture(); fixture.start()
+        XCTAssertTrue(fixture.adapter.onOpenURL(URL(string: "saqz://game?group=g1&game=game1&pickPosition=1")!))
+        XCTAssertTrue(fixture.adapter.onOpenURL(URL(string: "saqz://game?group=g1&game=game1")!))
+        XCTAssertEqual(fixture.notificationGames, ["game1", "game1"])
+        XCTAssertEqual(fixture.notificationPicks, [true, false])
+    }
+
     func testLiveActivityGameURLOpensTheGame() {
         let fixture = Fixture(); fixture.start()
         XCTAssertTrue(fixture.adapter.onOpenURL(URL(string: "saqz://game?group=g1&game=game1")!))
