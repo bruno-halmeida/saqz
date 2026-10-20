@@ -160,6 +160,16 @@ class AttendanceLinkScreenshotTest : ConnectedFlowsScreenshotScene() {
     @Test fun loading() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Loading)
     @Test fun confirmed() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Confirmed)
     @Test fun waitlisted() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Waitlisted)
+    /** O aviso do link: "Confirmamos sua presença em …" com o Desfazer (DEB-104). */
+    @Test fun confirmedWithGameAndUndo() = capture("attendance-link-confirmed-undo") {
+        br.com.saqz.groups.presentation.attendancelink.AttendanceLinkScreen(
+            br.com.saqz.groups.presentation.attendancelink.AttendanceLinkState(
+                br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Confirmed,
+                br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination(br.com.saqz.domain.GroupId("group"), "game"),
+                br.com.saqz.groups.presentation.attendancelink.AttendanceLinkGame("TUESDAY", "04/08", "19h30", "CERET", "Quadra 2"),
+            ), {}, {}, {},
+        )
+    }
     @Test fun invalid() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Invalid)
     @Test fun pending() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Pending)
     @Test fun registration() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Registration)
