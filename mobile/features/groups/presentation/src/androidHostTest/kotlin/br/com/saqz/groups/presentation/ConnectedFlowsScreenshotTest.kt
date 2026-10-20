@@ -9,6 +9,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.domain.GroupId
+import br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination
+import br.com.saqz.groups.presentation.attendancelink.AttendanceLinkGame
+import br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase
+import br.com.saqz.groups.presentation.attendancelink.AttendanceLinkScreen
+import br.com.saqz.groups.presentation.attendancelink.AttendanceLinkState
 import br.com.saqz.groups.domain.communication.CommunicationChannel
 import br.com.saqz.groups.domain.communication.NotificationPreferences
 import br.com.saqz.groups.presentation.communication.GroupThreadScreen
@@ -156,34 +162,65 @@ class NotificationChannelSettingsScreenshotTest : ConnectedFlowsScreenshotScene(
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = RobolectricDeviceQualifiers.Pixel7, application = Application::class)
-class AttendanceLinkScreenshotTest : ConnectedFlowsScreenshotScene() {
-    @Test fun loading() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Loading)
-    @Test fun confirmed() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Confirmed)
-    @Test fun waitlisted() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Waitlisted)
-    /** O aviso do link: "Confirmamos sua presença em …" com o Desfazer (DEB-104). */
-    @Test fun confirmedWithGameAndUndo() = capture("attendance-link-confirmed-undo") {
-        br.com.saqz.groups.presentation.attendancelink.AttendanceLinkScreen(
-            br.com.saqz.groups.presentation.attendancelink.AttendanceLinkState(
-                br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Confirmed,
-                br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination(br.com.saqz.domain.GroupId("group"), "game"),
-                br.com.saqz.groups.presentation.attendancelink.AttendanceLinkGame("TUESDAY", "04/08", "19h30", "CERET", "Quadra 2"),
-            ), {}, {}, {},
-        )
+class AttendanceLinkPendingScreenshotTest : ConnectedFlowsScreenshotScene() {
+    private val nextGame = AttendanceLinkGame("THURSDAY", "22/10", "21h00", "Local após a aprovação", null, groupNext = true)
+
+    @Test fun pending() = scene(
+        AttendanceLinkState(
+            AttendanceLinkPhase.Pending, game = nextGame, pendingGroupId = "group",
+            pendingGroupName = "Vôlei da Quinta", pendingInviterName = "Ana Lima",
+        ),
+        "pending",
+    )
+    @Test fun pendingRegistrationSaved() = scene(
+        AttendanceLinkState(
+            AttendanceLinkPhase.Pending, game = nextGame, pendingGroupId = "group", pendingGroupName = "Vôlei da Quinta",
+            pendingInviterName = "Ana Lima", pendingRegistrationSaved = true,
+        ),
+        "pending-registration-saved",
+    )
+    @Test fun pendingWithoutNames() = scene(
+        AttendanceLinkState(AttendanceLinkPhase.Pending, game = nextGame, pendingGroupId = "group"),
+        "pending-no-names",
+    )
+    @Test fun pendingWithoutGame() = scene(AttendanceLinkState(AttendanceLinkPhase.Pending, pendingGroupId = "group"), "pending-no-game")
+    @Test fun pendingRefreshing() = scene(
+        AttendanceLinkState(
+            AttendanceLinkPhase.Pending, game = nextGame, pendingGroupId = "group", pendingGroupName = "Vôlei da Quinta",
+            pendingInviterName = "Ana Lima", refreshing = true,
+        ),
+        "pending-refreshing",
+    )
+    private fun scene(state: AttendanceLinkState, name: String) = capture("attendance-link-$name") {
+        AttendanceLinkScreen(state, {}, {}, {})
     }
-    @Test fun invalid() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Invalid)
-    @Test fun pending() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Pending)
-    @Test fun registration() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Registration)
-    @Test fun failed() = scene(br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Failed)
-    private fun scene(phase: br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase) {
-        val destination = if (phase in listOf(
-            br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Confirmed,
-            br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase.Waitlisted,
-        )) br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination(br.com.saqz.domain.GroupId("group"), "game")
-        else null
-        capture("attendance-link-${phase.name.lowercase()}") {
-            br.com.saqz.groups.presentation.attendancelink.AttendanceLinkScreen(
-                br.com.saqz.groups.presentation.attendancelink.AttendanceLinkState(phase, destination), {}, {}, {},
-            )
-        }
+}
+
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = RobolectricDeviceQualifiers.Pixel7, application = Application::class)
+class AttendanceLinkScreenshotTest : ConnectedFlowsScreenshotScene() {
+    private val destination = AttendanceLinkDestination(GroupId("group"), "game")
+    private val game = AttendanceLinkGame("THURSDAY", "22/10", "21h00", "Arena Beira-Mar", "Quadra 2", capacity = 14, confirmedCount = 12)
+    @Test fun loading() = scene(AttendanceLinkState(AttendanceLinkPhase.Loading), "loading")
+    @Test fun confirmed() = scene(AttendanceLinkState(AttendanceLinkPhase.Confirmed, destination, game), "confirmed")
+    @Test fun confirmedWithoutCounts() = scene(
+        AttendanceLinkState(AttendanceLinkPhase.Confirmed, destination, game.copy(capacity = null, confirmedCount = null)),
+        "confirmed-no-counts",
+    )
+    @Test fun waitlistedFirst() = scene(
+        AttendanceLinkState(AttendanceLinkPhase.Waitlisted, destination, game, waitlistPosition = 1), "waitlisted-1",
+    )
+    @Test fun waitlistedThird() = scene(
+        AttendanceLinkState(AttendanceLinkPhase.Waitlisted, destination, game, waitlistPosition = 3), "waitlisted-3",
+    )
+    @Test fun declineSheet() = scene(AttendanceLinkState(AttendanceLinkPhase.DeclineSheet, destination, game), "decline-sheet")
+    @Test fun declined() = scene(AttendanceLinkState(AttendanceLinkPhase.Declined, destination, game), "declined")
+    @Test fun invalid() = scene(AttendanceLinkState(AttendanceLinkPhase.Invalid), "invalid")
+    @Test fun registration() = scene(AttendanceLinkState(AttendanceLinkPhase.Registration), "registration")
+    @Test fun failed() = scene(AttendanceLinkState(AttendanceLinkPhase.Failed), "failed")
+
+    private fun scene(state: AttendanceLinkState, name: String) = capture("attendance-link-$name") {
+        AttendanceLinkScreen(state, {}, {}, {})
     }
 }
