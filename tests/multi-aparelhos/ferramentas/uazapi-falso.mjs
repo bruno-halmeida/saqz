@@ -12,6 +12,10 @@
 //   JAVA_TOOL_OPTIONS="-Djavax.net.ssl.trustStore=$HOME/.saqz-multidev/uazapi/truststore.jks -Djavax.net.ssl.trustStorePassword=changeit"
 // O código de convite do WhatsApp precisa ter 10 a 50 caracteres (o backend recusa antes de chamar o Uazapi).
 // Grupo conhecido: código de convite "QAGRUPO0001" → 120363000000000001@g.us ("Vôlei QA WhatsApp").
+// Convite de mensalistas (CONV-012), para testar sem WhatsApp de verdade:
+//   - `/chat/check` responde `[{"query":"<n>","isInWhatsapp":<bool>}]`, com `false` para números terminados em 90
+//     ("Sem WhatsApp") e `true` para o resto;
+//   - `/send/text` responde 500 para números terminados em 91 a 99 (3 tentativas → "Falhou"; três seguidas pausam a fila).
 import https from "node:https";
 import fs from "node:fs";
 import os from "node:os";
@@ -47,6 +51,12 @@ https.createServer({ key: fs.readFileSync(`${os.homedir()}/.saqz-multidev/uazapi
     if (path === "/group/join") return byCode ? send(res, 200, { group: {} }) : send(res, 500, { error: "that group does not exist" });
     if (path === "/group/info") return byJid ? send(res, 200, { ...byJid, Participants: participants() })
       : send(res, 500, { error: "that group does not exist" });
+    if (path === "/chat/check") {
+      const numbers = (body && (body.numbers || body.number || body.phones)) || [];
+      return send(res, 200, [].concat(numbers).map((n) => ({ query: String(n), isInWhatsapp: !String(n).endsWith("90") })));
+    }
+    const target = String((body && body.number) || "");
+    if (path === "/send/text" && /9[1-9]$/.test(target)) return send(res, 500, { error: `mock: falha simulada para ${target}` });
     if (path === "/send/text" || path === "/send/menu") return send(res, 200, { id: `mock-${++seq}`, messageid: `mock-${seq}`, status: "sent" });
     return send(res, 404, { error: `mock sem rota ${path}` });
   });
