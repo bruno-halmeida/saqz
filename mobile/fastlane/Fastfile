@@ -151,7 +151,7 @@ platform :ios do
           targets: [target],
           build_configurations: ["Release"],
           team_id: TEAM_ID,
-          code_signing_identity: SIGNING_IDENTITY,
+          code_sign_identity: SIGNING_IDENTITY,
           profile_name: profiles.fetch(bundle_id),
           bundle_identifier: bundle_id,
         )

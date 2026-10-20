@@ -1,29 +1,13 @@
 # Resultado dos atores por API
 
-Gerado por `node tests/atores/run.mjs --criticos` em 2026-10-18T22:47:51.249Z (45.5 s).
+Gerado por `node tests/atores/run.mjs --regra DEB-102-A,DEB-102-B,DEB-102-C,DEB-102-D,DEB-102-E` em 2026-10-20T12:56:29.537Z (4.7 s).
 
-**20 passaram · 1 falharam · 0 bloqueados** de 21.
+**5 passaram · 0 falharam · 0 bloqueados** de 5.
 
 | Regra | Crítica | Resultado | Tempo | Passo que falhou | Resposta do servidor |
 | --- | :---: | --- | ---: | --- | --- |
-| ACE-001 · Entrar e criar conta | sim | passou | 0.8 s |  |  |
-| ACE-002 · Confirmar e-mail e telefone | sim | **falhou** | 1.7 s | [achado DEB-082] divergências registradas durante o cenário: divergências: ATL1, conta por e-mail sem confirmar, toca em "Vou": o servidor barra e a presença não vale (DEB-082): o "Vou" de conta não confirmada deveria dar 403 (veio HTTP 200: {"attendance":{"memberId":"11dabbee-af24-42d2-a5c9-427f155547be","status":"CONFIRMED","version":1,"waitlistPosition":nul) \| ATL1, conta por e-mail sem confirmar, toca em "Vou": o servidor barra e a presença não vale (DEB-082): o "Vou" de conta não confirmada não pode gravar presença (ficou CONFIRMED) |  |
-| ASS-002 · O teste grátis | sim | passou | 1.0 s |  |  |
-| ASS-003 · Sem plano ativo: o grupo fica congelado | sim | passou | 1.0 s |  |  |
-| CONV-001 · O convite do grupo | sim | passou | 0.2 s |  |  |
-| CONV-002 · Trocar o código | sim | passou | 0.3 s |  |  |
-| CONV-007 · Aprovar o pedido de entrada | sim | passou | 0.7 s |  |  |
-| FIN-001 · As cobranças: tipos, estados e quem vê | sim | passou | 0.8 s |  |  |
-| FIN-002 · Dar baixa: Recebi, Dispensar e Cancelar | sim | passou | 0.5 s |  |  |
-| FIN-004 · A diária do jogo | sim | passou | 1.1 s |  |  |
-| JOGO-004 · Publicar | sim | passou | 3.1 s |  |  |
-| JOGO-005 · Cancelar | sim | passou | 2.9 s |  |  |
-| NOT-003 · Avisos do jogo | sim | passou | 4.7 s |  |  |
-| PRES-002 · Início do jogo trava o atleta; o prazo nunca nega | sim | passou | 0.7 s |  |  |
-| PRES-005 · "Vou" depois do prazo vai sempre para a espera | sim | passou | 4.0 s |  |  |
-| PRES-006 · "Vou" antes do prazo, em ordem de chegada (prioridade do mensalista) | sim | passou | 1.0 s |  |  |
-| PRES-009 · Repetir a mesma resposta não muda nada (toque duplo) | sim | passou | 1.1 s |  |  |
-| PROM-001 · O que libera uma vaga | sim | passou | 2.1 s |  |  |
-| PROM-002 · Quem sobe primeiro | sim | passou | 1.7 s |  |  |
-| PROM-004 · Escolha manual: "Colocar no jogo" | sim | passou | 1.1 s |  |  |
-| SAI-009 · Excluir a conta | sim | passou | 15.0 s |  |  |
+| DEB-102-A · Configuração por posição: sugestão pelo total, 5-1 exige posições com a soma certa, só dono/admin grava, o total do jogo é a soma e jogo antigo não muda | sim | passou | 1.5 s |  |  |
+| DEB-102-B · Posição cheia = espera mesmo com vaga no jogo; a vaga que abre sobe só quem espera na mesma posição | sim | passou | 1.1 s |  |  |
+| DEB-102-C · App antigo (sem position) em grupo com posições: principal do perfil, depois a mais livre; sem posições nada muda | sim | passou | 1.0 s |  |  |
+| DEB-102-D · Organizador força a entrada em posição cheia (fica acima das vagas, sinalizado) e quem convida escolhe a posição do convidado |  | passou | 0.6 s |  |  |
+| DEB-102-E · Disputa pela última vaga de uma posição: em paralelo, só um confirma e os outros esperam |  | passou | 0.5 s |  |  |
