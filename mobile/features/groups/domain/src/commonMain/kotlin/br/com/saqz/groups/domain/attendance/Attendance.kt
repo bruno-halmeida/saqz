@@ -4,6 +4,7 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzError
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.athlete.AthletePosition
 import kotlin.jvm.JvmInline
 
 enum class AttendanceStatus {
@@ -23,9 +24,25 @@ value class AttendanceVersionToken(val value: String)
 data class AttendanceEntry(
     val memberId: String,
     val status: AttendanceStatus,
+    /** Com posições, a vez na fila da própria posição; sem posições, a fila única (DEB-102). */
     val waitlistPosition: Long? = null,
     val version: Long,
+    /** Posição da vaga; nula em jogo sem posições ou resposta de backend antigo. */
+    val position: AthletePosition? = null,
+    /** O organizador colocou a pessoa acima das vagas da posição. */
+    val forced: Boolean = false,
 )
+
+/** Vagas de uma posição num jogo (DEB-102); o total do jogo é a soma das posições. */
+data class PositionSummary(
+    val position: AthletePosition,
+    val slots: Int,
+    val confirmed: Int,
+    val missing: Int,
+    val waitlisted: Int,
+) {
+    val isFull: Boolean get() = missing == 0
+}
 
 data class AttendanceAudit(
     val actorId: String,
@@ -44,7 +61,11 @@ data class AttendanceDetail(
     val capacity: Int,
     val declinedCount: Int = 0,
     val pendingCount: Int = 0,
-)
+    /** Resumo por posição; vazio em jogo sem posições (total e uma espera só, como antes). */
+    val positions: List<PositionSummary> = emptyList(),
+) {
+    val hasPositions: Boolean get() = positions.isNotEmpty()
+}
 
 data class AttendanceRosterMember(
     val memberId: String,
@@ -54,6 +75,8 @@ data class AttendanceRosterMember(
     val guestSeq: Int = 0,
     /** Nome do anfitrião; só vem quando [guestSeq] > 0. */
     val hostDisplayName: String? = null,
+    val position: AthletePosition? = null,
+    val forced: Boolean = false,
 ) {
     val isGuest: Boolean get() = guestSeq > 0
 
@@ -64,6 +87,7 @@ data class AttendanceRosterMember(
 data class AttendanceRoster(
     val confirmed: List<AttendanceRosterMember>,
     val waitlisted: List<AttendanceRosterMember>,
+    val positions: List<PositionSummary> = emptyList(),
 )
 
 data class AttendanceMutation(
@@ -93,6 +117,8 @@ data class VersionedAttendanceCapacity(
 data class SelfAttendanceCommand(
     val requestId: String,
     val intent: AttendanceIntent,
+    /** Só no "Vou" de jogo com posições; sem ela o backend escolhe pelo perfil (apps 1.0.6 a 1.0.9). */
+    val position: AthletePosition? = null,
 )
 
 data class OverrideAttendanceCommand(
@@ -100,6 +126,9 @@ data class OverrideAttendanceCommand(
     val memberId: String,
     val intent: AttendanceIntent,
     val reason: String,
+    val position: AthletePosition? = null,
+    /** Entrar em posição cheia (só organizador). */
+    val force: Boolean = false,
 )
 
 data class AttendanceCapacityCommand(
@@ -117,6 +146,7 @@ data class AttendancePromotionCommand(
 data class AddGuestCommand(
     val requestId: String,
     val displayName: String,
+    val position: AthletePosition? = null,
 )
 
 sealed interface AttendanceError : SaqzError {

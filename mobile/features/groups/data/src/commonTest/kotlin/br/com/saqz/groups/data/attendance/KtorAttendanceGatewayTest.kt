@@ -414,6 +414,86 @@ class KtorAttendanceGatewayTest {
         }.respond(GROUP, GAME, SelfAttendanceCommand(KEY, AttendanceIntent.Confirm))
     }
 
+    // --- DEB-102: vaga por posição ---
+
+    @Test
+    fun `old backend response without position fields maps to a game without positions`() = runTest {
+        val detail = successDetail()
+        assertEquals(emptyList(), detail.positions)
+        assertEquals(false, detail.hasPositions)
+        assertNull(detail.ownAttendance?.position)
+        assertEquals(false, detail.ownAttendance?.forced)
+    }
+
+    @Test
+    fun `read maps the per position summary and the own position`() = runTest {
+        val body = DETAIL_JSON.replace(
+            """"pendingCount":7""",
+            """"pendingCount":7,"positions":[{"position":"PONTA","slots":2,"confirmed":2,"missing":0,"waitlisted":1},{"position":"CENTRAL","slots":2,"confirmed":1,"missing":1,"waitlisted":0},{"position":"FUTEBOL","slots":1,"confirmed":0,"missing":1,"waitlisted":0}]""",
+        ).replace(""""status":"WAITLISTED"""", """"status":"WAITLISTED","position":"PONTA","forced":true""")
+        val detail = assertIs<SaqzResult.Success<*>>(gateway { detailResponse(body) }.read(GROUP, GAME)).value
+            as br.com.saqz.groups.domain.attendance.AttendanceDetail
+
+        // A posição desconhecida (backend mais novo que o app) é ignorada, não derruba a leitura.
+        assertEquals(2, detail.positions.size)
+        assertEquals(true, detail.positions.first().isFull)
+        assertEquals(1, detail.positions.last().missing)
+        assertEquals(br.com.saqz.groups.domain.athlete.AthletePosition.PONTA, detail.ownAttendance?.position)
+        assertEquals(true, detail.ownAttendance?.forced)
+    }
+
+    @Test
+    fun `respond without position sends exactly the old body`() = runTest {
+        gateway { request ->
+            assertEquals(setOf("requestId", "intent"), request.bodyJson().keys)
+            mutationResponse()
+        }.respond(GROUP, GAME, SelfAttendanceCommand(KEY, AttendanceIntent.Confirm))
+    }
+
+    @Test
+    fun `respond with position sends it`() = runTest {
+        gateway { request ->
+            assertEquals("PONTA", request.bodyJson().getValue("position").jsonPrimitive.content)
+            mutationResponse()
+        }.respond(GROUP, GAME, SelfAttendanceCommand(KEY, AttendanceIntent.Confirm, br.com.saqz.groups.domain.athlete.AthletePosition.PONTA))
+    }
+
+    @Test
+    fun `override sends position and force only when asked`() = runTest {
+        gateway { request ->
+            val body = request.bodyJson()
+            assertEquals("CENTRAL", body.getValue("position").jsonPrimitive.content)
+            assertEquals(true, body.getValue("force").jsonPrimitive.boolean)
+            mutationResponse()
+        }.override(GROUP, GAME, OverrideAttendanceCommand(KEY, "member-1", AttendanceIntent.Confirm, "Chegou agora",
+            br.com.saqz.groups.domain.athlete.AthletePosition.CENTRAL, force = true))
+        gateway { request ->
+            assertEquals(setOf("requestId", "memberId", "intent", "reason"), request.bodyJson().keys)
+            mutationResponse()
+        }.override(GROUP, GAME, OverrideAttendanceCommand(KEY, "member-1", AttendanceIntent.Confirm, "Chegou agora"))
+    }
+
+    @Test
+    fun `guest is added with the chosen position and returns it`() = runTest {
+        val result = gateway { request ->
+            assertEquals("LEVANTADOR", request.bodyJson().getValue("position").jsonPrimitive.content)
+            respond("""{"memberId":"host-1","guestSeq":1,"displayName":"Rafa","status":"WAITLISTED","waitlistPosition":1,"position":"LEVANTADOR"}""", headers = jsonHeaders())
+        }.addGuest(GROUP, GAME, AddGuestCommand(KEY, "Rafa", br.com.saqz.groups.domain.athlete.AthletePosition.LEVANTADOR))
+        assertEquals(br.com.saqz.groups.domain.athlete.AthletePosition.LEVANTADOR,
+            assertIs<SaqzResult.Success<br.com.saqz.groups.domain.attendance.AttendanceRosterMember>>(result).value.position)
+    }
+
+    @Test
+    fun `roster maps position summary and per person position`() = runTest {
+        val roster = assertIs<SaqzResult.Success<br.com.saqz.groups.domain.attendance.AttendanceRoster>>(
+            gateway {
+                respond("""{"confirmed":[{"memberId":"m1","displayName":"Ana","position":"PONTA"}],"waitlisted":[{"memberId":"m2","displayName":"Caio","waitlistPosition":1,"position":"PONTA","forced":false}],"positions":[{"position":"PONTA","slots":1,"confirmed":1,"missing":0,"waitlisted":1}]}""", headers = jsonHeaders())
+            }.roster(GROUP, GAME),
+        ).value
+        assertEquals(br.com.saqz.groups.domain.athlete.AthletePosition.PONTA, roster.confirmed.single().position)
+        assertEquals(1, roster.positions.single().waitlisted)
+    }
+
     private fun statusCase(raw: String, expected: AttendanceStatus) = runTest {
         val result = gateway { detailResponse(DETAIL_JSON.replace("WAITLISTED", raw)) }.read(GROUP, GAME)
         val detail = assertIs<SaqzResult.Success<*>>(result).value as br.com.saqz.groups.domain.attendance.AttendanceDetail

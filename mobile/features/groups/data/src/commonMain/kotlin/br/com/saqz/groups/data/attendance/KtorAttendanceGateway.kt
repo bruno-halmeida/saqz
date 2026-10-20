@@ -18,6 +18,8 @@ import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
+import br.com.saqz.groups.domain.athlete.AthletePosition
+import br.com.saqz.groups.domain.attendance.PositionSummary
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
 import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
@@ -54,6 +56,17 @@ internal data class AttendanceEntryTransport(
     val status: AttendanceStatusTransport,
     val waitlistPosition: Long? = null,
     val version: Long,
+    val position: String? = null,
+    val forced: Boolean = false,
+)
+
+@Serializable
+internal data class PositionSummaryTransport(
+    val position: String,
+    val slots: Int,
+    val confirmed: Int,
+    val missing: Int,
+    val waitlisted: Int,
 )
 
 @Serializable
@@ -75,6 +88,7 @@ internal data class AttendanceDetailTransport(
     val capacity: Int,
     val declinedCount: Int = 0,
     val pendingCount: Int = 0,
+    val positions: List<PositionSummaryTransport>? = null,
 )
 
 @Serializable
@@ -84,12 +98,15 @@ internal data class AttendanceRosterMemberTransport(
     val waitlistPosition: Long? = null,
     val guestSeq: Int = 0,
     val hostDisplayName: String? = null,
+    val position: String? = null,
+    val forced: Boolean = false,
 )
 
 @Serializable
 internal data class AttendanceRosterTransport(
     val confirmed: List<AttendanceRosterMemberTransport> = emptyList(),
     val waitlisted: List<AttendanceRosterMemberTransport> = emptyList(),
+    val positions: List<PositionSummaryTransport>? = null,
 )
 
 @Serializable
@@ -112,6 +129,7 @@ internal data class AttendanceCapacityTransport(
 internal data class SelfAttendanceRequest(
     val requestId: String,
     val intent: AttendanceIntentTransport,
+    val position: String? = null,
 )
 
 @Serializable
@@ -120,6 +138,8 @@ internal data class OverrideAttendanceRequest(
     val memberId: String,
     val intent: AttendanceIntentTransport,
     val reason: String,
+    val position: String? = null,
+    val force: Boolean? = null,
 )
 
 @Serializable
@@ -134,6 +154,7 @@ internal data class AttendancePromotionRequest(
 internal data class AddGuestRequest(
     val requestId: String,
     val displayName: String,
+    val position: String? = null,
 )
 
 @Serializable
@@ -142,6 +163,7 @@ internal data class GuestTransport(
     val guestSeq: Int,
     val displayName: String,
     val waitlistPosition: Long? = null,
+    val position: String? = null,
 )
 
 @Serializable
@@ -232,7 +254,7 @@ class KtorAttendanceGateway(
                 HttpMethod.Post,
                 "${attendanceRoute(groupId, gameId)}/guests",
                 GuestTransport.serializer(),
-                NetworkRequest(json.encodeToString(AddGuestRequest(command.requestId, command.displayName))),
+                NetworkRequest(json.encodeToString(AddGuestRequest(command.requestId, command.displayName, command.position?.name))),
             )
         }.let { result ->
             when (result) {
@@ -242,6 +264,7 @@ class KtorAttendanceGateway(
                         displayName = result.value.displayName,
                         waitlistPosition = result.value.waitlistPosition,
                         guestSeq = result.value.guestSeq,
+                        position = result.value.position.toPosition(),
                     ),
                 )
                 is NetworkResult.Failure -> SaqzResult.Failure(result.error.toDomain())
@@ -292,6 +315,7 @@ private fun String.safety() =
 private fun SelfAttendanceCommand.toRequest() = SelfAttendanceRequest(
     requestId = requestId,
     intent = AttendanceIntentTransport.entries[intent.ordinal],
+    position = position?.name,
 )
 
 private fun OverrideAttendanceCommand.toRequest() = OverrideAttendanceRequest(
@@ -299,6 +323,8 @@ private fun OverrideAttendanceCommand.toRequest() = OverrideAttendanceRequest(
     memberId = memberId,
     intent = AttendanceIntentTransport.entries[intent.ordinal],
     reason = reason,
+    position = position?.name,
+    force = force.takeIf { it },
 )
 
 private fun AttendancePromotionCommand.toRequest() = AttendancePromotionRequest(
@@ -390,7 +416,17 @@ private fun AttendanceEntryTransport.toDomain() = AttendanceEntry(
     status = AttendanceStatus.entries[status.ordinal],
     waitlistPosition = waitlistPosition,
     version = version,
+    position = position.toPosition(),
+    forced = forced,
 )
+
+private fun String?.toPosition(): AthletePosition? = this?.let { name -> AthletePosition.entries.firstOrNull { it.name == name } }
+
+private fun PositionSummaryTransport.toDomain(): PositionSummary? = position.toPosition()?.let {
+    PositionSummary(it, slots, confirmed, missing, waitlisted)
+}
+
+private fun List<PositionSummaryTransport>?.toDomain(): List<PositionSummary> = orEmpty().mapNotNull { it.toDomain() }
 
 private fun AttendanceAuditTransport.toDomain() = AttendanceAudit(
     actorId = actorId,
@@ -409,6 +445,7 @@ private fun AttendanceDetailTransport.toDomain() = AttendanceDetail(
     capacity = capacity,
     declinedCount = declinedCount,
     pendingCount = pendingCount,
+    positions = positions.toDomain(),
 )
 
 private fun AttendanceMutationTransport.toDomain() = AttendanceMutation(
@@ -428,6 +465,7 @@ private fun AttendanceCapacityTransport.toDomain() = AttendanceCapacity(
 private fun AttendanceRosterTransport.toDomain() = AttendanceRoster(
     confirmed = confirmed.map(AttendanceRosterMemberTransport::toDomain),
     waitlisted = waitlisted.map(AttendanceRosterMemberTransport::toDomain),
+    positions = positions.toDomain(),
 )
 
 private fun AttendanceRosterMemberTransport.toDomain() = AttendanceRosterMember(
@@ -436,4 +474,6 @@ private fun AttendanceRosterMemberTransport.toDomain() = AttendanceRosterMember(
     waitlistPosition = waitlistPosition,
     guestSeq = guestSeq,
     hostDisplayName = hostDisplayName,
+    position = position.toPosition(),
+    forced = forced,
 )
