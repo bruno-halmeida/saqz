@@ -122,11 +122,11 @@ export class Ator {
   }
   // --- Vaga por posição (DEB-102) ---
   posicoesDoGrupo(grupoId) { return this.chamar('GET', `/api/groups/${grupoId}/position-slots`) }
-  sugestaoDePosicoes(sistema, times = '') { return this.chamar('GET', `/api/position-slots/suggestion?system=${sistema}${times ? `&teams=${times}` : ''}`) }
-  async configurarPosicoes(grupoId, positionSlots, gameSystem = 'FIVE_ONE') {
+  sugestaoDePosicoes(sistema, total = '') { return this.chamar('GET', `/api/position-slots/suggestion?system=${sistema}${total ? `&total=${total}` : ''}`) }
+  async configurarPosicoes(grupoId, positionSlots, gameSystem = 'FIVE_ONE', total = undefined) {
     const atual = await this.posicoesDoGrupo(grupoId)
     if (!atual.ok) return atual
-    return this.chamar('PUT', `/api/groups/${grupoId}/position-slots`, { gameSystem, positionSlots }, { 'If-Match': atual.etag })
+    return this.chamar('PUT', `/api/groups/${grupoId}/position-slots`, { gameSystem, positionSlots, ...(total === undefined ? {} : { total }) }, { 'If-Match': atual.etag })
   }
 
   // --- Dinheiro ---

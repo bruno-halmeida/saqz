@@ -61,22 +61,35 @@ class GroupPositionSlotsControllerTest {
         assertEquals(listOf(AthletePosition.PONTA, AthletePosition.CENTRAL, AthletePosition.LEVANTADOR), controller.read(ID, "$group").body!!.positionSlots.map { it.position })
     }
 
-    @Test fun `empty list turns positions off`() {
+    @Test fun `empty list with 6-0 turns positions off`() {
         controller.write(ID, "$group", "\"3\"", body(AthletePosition.PONTA to 6))
         controller.write(ID, "$group", "\"4\"", PositionSlotsRequest(GameSystem.SIX_ZERO, emptyList()))
         assertEquals(emptyList(), controller.read(ID, "$group").body!!.positionSlots)
     }
 
-    @Test fun `invalid configurations are 400 on positionSlots`() {
+    @Test fun `invalid configurations are 422 on positionSlots`() {
         listOf(
             body(AthletePosition.PONTA to -1, AthletePosition.CENTRAL to 6),
             body(AthletePosition.PONTA to 2, AthletePosition.PONTA to 2),
             body(AthletePosition.PONTA to 0),
             body(AthletePosition.PONTA to 2),
+            // 5-1 sem posições e 6-0 com posições também são recusados.
+            PositionSlotsRequest(GameSystem.FIVE_ONE, emptyList()),
+            body(AthletePosition.PONTA to 6, system = GameSystem.SIX_ZERO),
+            body(AthletePosition.PONTA to 6, system = null),
         ).forEach {
             val failure = assertFailsWith<InvalidGroupRequestException> { controller.write(ID, "$group", "\"3\"", it) }
             assertEquals(setOf("positionSlots"), failure.fieldErrors.keys)
+            assertEquals(422, failure.status)
         }
+    }
+
+    @Test fun `a total that differs from the sum is 422 on total, and one that matches is accepted`() {
+        val rows = listOf(PositionSlotRequest(AthletePosition.PONTA, 6), PositionSlotRequest(AthletePosition.CENTRAL, 6), PositionSlotRequest(AthletePosition.OPOSTO, 3), PositionSlotRequest(AthletePosition.LEVANTADOR, 3))
+        val failure = assertFailsWith<InvalidGroupRequestException> { controller.write(ID, "$group", "\"3\"", PositionSlotsRequest(GameSystem.FIVE_ONE, rows, total = 16)) }
+        assertEquals(setOf("total"), failure.fieldErrors.keys)
+        assertEquals(422, failure.status)
+        assertEquals(18, controller.write(ID, "$group", "\"3\"", PositionSlotsRequest(GameSystem.FIVE_ONE, rows, total = 18)).body!!.total)
     }
 
     @Test fun `athlete cannot write, stale version conflicts, missing If-Match is required`() {
@@ -92,12 +105,14 @@ class GroupPositionSlotsControllerTest {
         assertFailsWith<GroupNotFoundException> { controller.read(ID, "$group") }
     }
 
-    @Test fun `suggestion returns the 5-1 table, an empty 6-0 and refuses bad input`() {
-        val five = controller.suggestion(ID, "FIVE_ONE", null)
-        assertEquals(2, five.teams); assertEquals(12, five.total)
-        assertEquals(0, controller.suggestion(ID, "SIX_ZERO", 3).total)
-        assertFailsWith<InvalidGroupRequestException> { controller.suggestion(ID, "SEVEN_ONE", null) }
-        assertFailsWith<InvalidGroupRequestException> { controller.suggestion(ID, "FIVE_ONE", 9) }
+    @Test fun `suggestion by total returns the 5-1 table, an empty 6-0 and refuses bad input`() {
+        val five = controller.suggestion(ID, "FIVE_ONE", 18)
+        assertEquals(18, five.total)
+        assertEquals(listOf(0, 6, 6, 3, 3), five.positionSlots.map { it.slots })
+        assertEquals(0, controller.suggestion(ID, "SIX_ZERO", 18).positionSlots.size)
+        assertFailsWith<InvalidGroupRequestException> { controller.suggestion(ID, "SEVEN_ONE", 18) }
+        assertFailsWith<InvalidGroupRequestException> { controller.suggestion(ID, "FIVE_ONE", 3) }
+        assertFailsWith<InvalidGroupRequestException> { controller.suggestion(ID, "FIVE_ONE", null) }
     }
 
     private companion object { val ID = RequestIdentity(subject = "s", emailVerified = true, displayName = "P") }

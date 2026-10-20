@@ -16,20 +16,28 @@ class PositionSlotsTest {
         load(AthletePosition.PONTA, 2), load(AthletePosition.CENTRAL, 2), load(AthletePosition.LEVANTADOR, 1), load(AthletePosition.LIBERO, 0),
     )
 
-    @Test fun `5-1 suggestion is 1 setter, 1 opposite, 2 outsides, 2 middles, optional libero zero, times the teams`() {
-        val two = PositionSlotSuggestion.of(GameSystem.FIVE_ONE)!!
-        assertEquals(mapOf(
-            AthletePosition.LEVANTADOR to 2, AthletePosition.OPOSTO to 2, AthletePosition.PONTA to 4,
-            AthletePosition.CENTRAL to 4, AthletePosition.LIBERO to 0,
-        ), two)
-        assertEquals(6, PositionSlotSuggestion.of(GameSystem.FIVE_ONE, teams = 1)!!.values.sum())
-        assertEquals(36, PositionSlotSuggestion.of(GameSystem.FIVE_ONE, teams = 6)!!.values.sum())
+    @Test fun `5-1 suggestion by total - team of 6 is 1 setter and 1 opposite and 2 outsides and 2 middles and libero zero`() {
+        assertEquals(
+            mapOf(AthletePosition.LIBERO to 0, AthletePosition.PONTA to 6, AthletePosition.CENTRAL to 6, AthletePosition.OPOSTO to 3, AthletePosition.LEVANTADOR to 3),
+            PositionSlotSuggestion.of(GameSystem.FIVE_ONE, 18),
+        )
+        assertEquals(12, PositionSlotSuggestion.of(GameSystem.FIVE_ONE, 12)!!.values.sum())
     }
 
-    @Test fun `6-0 has no positions and teams out of range has no suggestion`() {
-        assertEquals(emptyMap(), PositionSlotSuggestion.of(GameSystem.SIX_ZERO))
-        assertNull(PositionSlotSuggestion.of(GameSystem.FIVE_ONE, teams = 0))
-        assertNull(PositionSlotSuggestion.of(GameSystem.FIVE_ONE, teams = 7))
+    @Test fun `5-1 suggestion sends what is left of the division to the outsides and always sums to the total`() {
+        // 20 = 3 times de 6 + 2: as 2 que sobram vão para ponta.
+        val twenty = PositionSlotSuggestion.of(GameSystem.FIVE_ONE, 20)!!
+        assertEquals(8, twenty.getValue(AthletePosition.PONTA))
+        assertEquals(6, twenty.getValue(AthletePosition.CENTRAL))
+        assertEquals(3, twenty.getValue(AthletePosition.OPOSTO))
+        assertEquals(3, twenty.getValue(AthletePosition.LEVANTADOR))
+        (4..100).forEach { assertEquals(it, PositionSlotSuggestion.of(GameSystem.FIVE_ONE, it)!!.values.sum()) }
+    }
+
+    @Test fun `6-0 has no positions and a total out of range has no suggestion`() {
+        assertEquals(emptyMap(), PositionSlotSuggestion.of(GameSystem.SIX_ZERO, 18))
+        assertNull(PositionSlotSuggestion.of(GameSystem.FIVE_ONE, 3))
+        assertNull(PositionSlotSuggestion.of(GameSystem.FIVE_ONE, 101))
     }
 
     @Test fun `validation - empty turns positions off, negative, repeated, all zero and total out of range are refused`() {
@@ -40,6 +48,23 @@ class PositionSlotsTest {
         assertEquals(PositionSlotsError.NO_SLOTS, PositionSlotsValidator.validate(listOf(AthletePosition.PONTA to 0)))
         assertEquals(PositionSlotsError.TOTAL_OUT_OF_RANGE, PositionSlotsValidator.validate(listOf(AthletePosition.PONTA to 3)))
         assertEquals(PositionSlotsError.TOTAL_OUT_OF_RANGE, PositionSlotsValidator.validate(listOf(AthletePosition.PONTA to 101)))
+    }
+
+    private val eighteen = listOf(AthletePosition.PONTA to 6, AthletePosition.CENTRAL to 6, AthletePosition.OPOSTO to 3, AthletePosition.LEVANTADOR to 3)
+
+    @Test fun `contract - 5-1 requires the positions and the optional total must match their sum`() {
+        assertNull(PositionSlotsValidator.validate(GameSystem.FIVE_ONE, eighteen, total = 18))
+        assertNull(PositionSlotsValidator.validate(GameSystem.FIVE_ONE, eighteen, total = null))
+        assertEquals(PositionSlotsError.POSITIONS_REQUIRED, PositionSlotsValidator.validate(GameSystem.FIVE_ONE, emptyList(), total = 18))
+        assertEquals(PositionSlotsError.NO_SLOTS, PositionSlotsValidator.validate(GameSystem.FIVE_ONE, listOf(AthletePosition.PONTA to 0), total = null))
+        assertEquals(PositionSlotsError.TOTAL_MISMATCH, PositionSlotsValidator.validate(GameSystem.FIVE_ONE, eighteen, total = 16))
+    }
+
+    @Test fun `contract - 6-0 or no system requires an empty list`() {
+        assertNull(PositionSlotsValidator.validate(GameSystem.SIX_ZERO, emptyList(), total = null))
+        assertNull(PositionSlotsValidator.validate(null, emptyList(), total = 12))
+        assertEquals(PositionSlotsError.POSITIONS_NOT_ALLOWED, PositionSlotsValidator.validate(GameSystem.SIX_ZERO, eighteen, total = 18))
+        assertEquals(PositionSlotsError.POSITIONS_NOT_ALLOWED, PositionSlotsValidator.validate(null, eighteen, total = null))
     }
 
     @Test fun `requested position wins when the game has slots in it, otherwise it is refused`() {

@@ -60,6 +60,7 @@ class GroupPositionSlotsService(
         expectedVersion: Long,
         system: GameSystem?,
         slots: List<Pair<AthletePosition, Int>>,
+        total: Int? = null,
     ): PositionSlotsWriteResult = transaction.inTransaction {
         val group = readRepository.find(GroupReadKey(actor, groupId)) ?: return@inTransaction PositionSlotsWriteResult.GroupNotFound
         when (accessPolicy.authorize(group.role, GroupAction.UPDATE_SETTINGS)) {
@@ -67,7 +68,7 @@ class GroupPositionSlotsService(
             GroupAccessDecision.Forbidden -> return@inTransaction PositionSlotsWriteResult.AccessForbidden
             GroupAccessDecision.Allowed -> Unit
         }
-        PositionSlotsValidator.validate(slots)?.let { return@inTransaction PositionSlotsWriteResult.Invalid(it) }
+        PositionSlotsValidator.validate(system, slots, total)?.let { return@inTransaction PositionSlotsWriteResult.Invalid(it) }
         if (group.version != expectedVersion || !repository.replace(groupId, expectedVersion, system, slots)) {
             return@inTransaction PositionSlotsWriteResult.VersionConflict
         }

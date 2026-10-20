@@ -18,34 +18,59 @@ data class PositionLoad(
 }
 
 /**
- * Sugestão do sistema de jogo para a configuração do grupo. Tabela simples para trocar fácil (o gestor confirma os
- * números com o dono): vagas de UM time, multiplicadas pelo número de times.
+ * Sugestão do sistema de jogo para a configuração do grupo, pelo TOTAL de vagas (decisão do dono, 20/10): um time de 6
+ * no 5-1 = 1 levantador, 1 oposto, 2 pontas e 2 centrais; times = total ÷ 6 (inteiro), líbero 0 (configurável pelo dono) e o
+ * que sobrar da divisão vai para ponta. Tabela simples para trocar fácil.
  */
 object PositionSlotSuggestion {
-    const val DEFAULT_TEAMS = 2
-    val TEAMS_RANGE = 1..6
+    const val TEAM_SIZE = 6
 
-    private val FIVE_ONE_PER_TEAM: Map<AthletePosition, Int> = mapOf(
-        AthletePosition.LEVANTADOR to 1,
-        AthletePosition.OPOSTO to 1,
-        AthletePosition.PONTA to 2,
-        AthletePosition.CENTRAL to 2,
-        AthletePosition.LIBERO to 0,
-    )
-
-    /** 6-0 devolve vazio: sem posições, o grupo segue com o total. Times fora de [TEAMS_RANGE] devolve null. */
-    fun of(system: GameSystem, teams: Int = DEFAULT_TEAMS): Map<AthletePosition, Int>? {
-        if (teams !in TEAMS_RANGE) return null
+    /** 6-0 devolve vazio (sem posições, o grupo segue com o total). Total fora do limite de um jogo devolve null. */
+    fun of(system: GameSystem, total: Int): Map<AthletePosition, Int>? {
+        if (total !in GameCapacity.MIN..GameCapacity.MAX) return null
         return when (system) {
             GameSystem.SIX_ZERO -> emptyMap()
-            GameSystem.FIVE_ONE -> AthletePosition.entries.associateWith { (FIVE_ONE_PER_TEAM[it] ?: 0) * teams }
+            GameSystem.FIVE_ONE -> {
+                val teams = total / TEAM_SIZE
+                val leftover = total - TEAM_SIZE * teams
+                mapOf(
+                    AthletePosition.LIBERO to 0,
+                    AthletePosition.PONTA to 2 * teams + leftover,
+                    AthletePosition.CENTRAL to 2 * teams,
+                    AthletePosition.OPOSTO to teams,
+                    AthletePosition.LEVANTADOR to teams,
+                )
+            }
         }
     }
 }
 
-enum class PositionSlotsError { NEGATIVE_SLOTS, DUPLICATED_POSITION, NO_SLOTS, TOTAL_OUT_OF_RANGE }
+enum class PositionSlotsError {
+    NEGATIVE_SLOTS, DUPLICATED_POSITION, NO_SLOTS, TOTAL_OUT_OF_RANGE,
+
+    /** 5-1 sem posições: configurar as vagas por posição é obrigatório. */
+    POSITIONS_REQUIRED,
+
+    /** 6-0 (ou sem sistema) com posições: esses sistemas não usam posições. */
+    POSITIONS_NOT_ALLOWED,
+
+    /** O `total` enviado não bate com a soma das posições. */
+    TOTAL_MISMATCH,
+}
 
 object PositionSlotsValidator {
+    /**
+     * Regra do contrato (decisão do dono): 5-1 EXIGE posições e, se o `total` vier, a soma tem de bater com ele;
+     * 6-0 ou sem sistema exige lista vazia (desliga as posições).
+     */
+    fun validate(system: GameSystem?, slots: List<Pair<AthletePosition, Int>>, total: Int?): PositionSlotsError? {
+        if (system != GameSystem.FIVE_ONE) return if (slots.isEmpty()) null else PositionSlotsError.POSITIONS_NOT_ALLOWED
+        if (slots.isEmpty()) return PositionSlotsError.POSITIONS_REQUIRED
+        validate(slots)?.let { return it }
+        if (total != null && total != slots.sumOf { it.second }) return PositionSlotsError.TOTAL_MISMATCH
+        return null
+    }
+
     /** Lista vazia desliga as posições. Com posições: vagas ≥ 0, sem repetir posição, ao menos uma com vaga e soma no limite do jogo. */
     fun validate(slots: List<Pair<AthletePosition, Int>>): PositionSlotsError? {
         if (slots.isEmpty()) return null

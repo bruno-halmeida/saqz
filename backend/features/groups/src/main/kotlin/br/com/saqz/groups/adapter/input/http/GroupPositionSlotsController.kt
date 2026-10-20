@@ -24,6 +24,8 @@ data class PositionSlotRequest @JsonCreator constructor(
 data class PositionSlotsRequest @JsonCreator constructor(
     @JsonProperty("gameSystem") val gameSystem: GameSystem? = null,
     @JsonProperty("positionSlots") val positionSlots: List<PositionSlotRequest>?,
+    /** Opcional: se vier, tem de ser igual à soma das posições. */
+    @JsonProperty("total") val total: Int? = null,
 )
 
 data class PositionSlotResponse(val position: AthletePosition, val slots: Int)
@@ -37,9 +39,8 @@ data class PositionSlotsResponse(
 
 data class PositionSlotSuggestionResponse(
     val gameSystem: GameSystem,
-    val teams: Int,
-    val positionSlots: List<PositionSlotResponse>,
     val total: Int,
+    val positionSlots: List<PositionSlotResponse>,
 )
 
 @RestController
@@ -72,32 +73,35 @@ class GroupPositionSlotsController(
             (it.position ?: throw InvalidGroupRequestException(mapOf("positionSlots" to listOf("position required")))) to
                 (it.slots ?: throw InvalidGroupRequestException(mapOf("positionSlots" to listOf("slots required"))))
         }
-        return when (val result = service.write(actor, group(groupId), version, request.gameSystem, slots)) {
+        return when (val result = service.write(actor, group(groupId), version, request.gameSystem, slots, request.total)) {
             PositionSlotsWriteResult.GroupNotFound -> throw GroupNotFoundException()
             PositionSlotsWriteResult.AccessForbidden -> throw AccessForbiddenException()
             PositionSlotsWriteResult.VersionConflict -> throw VersionConflictException()
             is PositionSlotsWriteResult.Invalid ->
-                throw InvalidGroupRequestException(mapOf("positionSlots" to listOf(result.error.message())))
+                throw InvalidGroupRequestException(
+                    mapOf((if (result.error == PositionSlotsError.TOTAL_MISMATCH) "total" else "positionSlots") to listOf(result.error.message())),
+                    status = 422,
+                )
             is PositionSlotsWriteResult.Success ->
                 ResponseEntity.ok().eTag(result.config.version.toString()).body(result.config.toResponse())
         }
     }
 
-    /** Sugestão do sistema de jogo (tabela em [PositionSlotSuggestion]); 6-0 devolve lista vazia (sem posições). */
+    /** Sugestão pelo total de vagas (tabela em [PositionSlotSuggestion]); 6-0 devolve lista vazia (sem posições). */
     @GetMapping("/api/position-slots/suggestion")
     fun suggestion(
         @AuthenticationPrincipal identity: RequestIdentity,
         @RequestParam("system") system: String?,
-        @RequestParam("teams", required = false) teams: Int?,
+        @RequestParam("total", required = false) total: Int?,
     ): PositionSlotSuggestionResponse {
         actors.resolve(identity)
         val parsed = system?.let { runCatching { GameSystem.valueOf(it) }.getOrNull() }
             ?: throw InvalidGroupRequestException(mapOf("system" to listOf("must be FIVE_ONE or SIX_ZERO")))
-        val count = teams ?: PositionSlotSuggestion.DEFAULT_TEAMS
+        val count = total ?: throw InvalidGroupRequestException(mapOf("total" to listOf("is required")))
         val slots = PositionSlotSuggestion.of(parsed, count)
-            ?: throw InvalidGroupRequestException(mapOf("teams" to listOf("must be between 1 and 6")))
+            ?: throw InvalidGroupRequestException(mapOf("total" to listOf("must be between 4 and 100")))
         val rows = slots.entries.sortedBy { it.key.ordinal }.map { PositionSlotResponse(it.key, it.value) }
-        return PositionSlotSuggestionResponse(parsed, count, rows, rows.sumOf { it.slots })
+        return PositionSlotSuggestionResponse(parsed, count, rows)
     }
 
     private fun group(raw: String): UUID = runCatching { UUID.fromString(raw) }.getOrNull() ?: throw GroupNotFoundException()
@@ -112,4 +116,7 @@ private fun PositionSlotsError.message() = when (this) {
     PositionSlotsError.DUPLICATED_POSITION -> "position repeated"
     PositionSlotsError.NO_SLOTS -> "at least one position needs slots"
     PositionSlotsError.TOTAL_OUT_OF_RANGE -> "total must be between 4 and 100"
+    PositionSlotsError.POSITIONS_REQUIRED -> "FIVE_ONE requires the slots per position"
+    PositionSlotsError.POSITIONS_NOT_ALLOWED -> "only FIVE_ONE uses positions; send an empty list"
+    PositionSlotsError.TOTAL_MISMATCH -> "total must equal the sum of the positions"
 }

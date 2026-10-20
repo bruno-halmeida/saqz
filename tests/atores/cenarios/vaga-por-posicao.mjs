@@ -11,33 +11,38 @@ async function posicaoDe(c, jogoId, ator, convidado = 0) {
 export default [
   {
     id: 'DEB-102-A', feature: 'presenca', critico: true,
-    titulo: 'Configuração por posição: sugestão 5-1/6-0, só dono/admin grava, o total do jogo é a soma e jogo antigo não muda',
+    titulo: 'Configuração por posição: sugestão pelo total, 5-1 exige posições com a soma certa, só dono/admin grava, o total do jogo é a soma e jogo antigo não muda',
     async rodar(c) {
       const { ORG, ATL1 } = await c.atores('ORG', 'ATL1')
       const g = await c.passo('ORG cria o grupo; ATL1 entra', () => c.grupo(ORG, [ATL1]))
       const antigo = await c.passo('ORG publica um jogo ANTES de configurar posições', () => c.jogo(ORG, g.id, { vagas: 6 }))
-      await c.passo('sugestão 5-1 para 2 times = 12 vagas (2 levantadores, 2 opostos, 4 pontas, 4 centrais, líbero 0); 6-0 não sugere posições', async () => {
-        const s = c.status(await ORG.sugestaoDePosicoes('FIVE_ONE'), 200).corpo
-        c.igual(s.total, 12, 'total 5-1 x 2 times')
-        c.igual(s.positionSlots.find((p) => p.position === 'PONTA').slots, 4, 'pontas')
-        c.igual(c.status(await ORG.sugestaoDePosicoes('SIX_ZERO'), 200).corpo.positionSlots.length, 0, '6-0 sem posições')
-        c.status(await ORG.sugestaoDePosicoes('FIVE_ONE', 9), 400)
+      await c.passo('sugestão 5-1 pelo total de 18 = 3 levantadores, 3 opostos, 6 pontas, 6 centrais, líbero 0; 6-0 não sugere posições', async () => {
+        const s = c.status(await ORG.sugestaoDePosicoes('FIVE_ONE', 18), 200).corpo
+        c.igual(s.positionSlots.reduce((t, p) => t + p.slots, 0), 18, 'soma da sugestão')
+        c.igual(s.positionSlots.find((p) => p.position === 'PONTA').slots, 6, 'pontas')
+        c.igual(s.positionSlots.find((p) => p.position === 'LIBERO').slots, 0, 'líbero')
+        c.igual(c.status(await ORG.sugestaoDePosicoes('SIX_ZERO', 18), 200).corpo.positionSlots.length, 0, '6-0 sem posições')
+        c.status(await ORG.sugestaoDePosicoes('FIVE_ONE', 3), 400)
+        c.status(await ORG.sugestaoDePosicoes('FIVE_ONE'), 400)
       })
-      await c.passo('ATL1 (atleta) não grava a configuração; configuração inválida (todas zero) é recusada', async () => {
+      await c.passo('ATL1 (atleta) não grava a configuração; 5-1 sem posições, 6-0 com posições e total que não bate são recusados', async () => {
         c.status(await ATL1.configurarPosicoes(g.id, PONTA2_CENTRAL2), 403)
-        c.status(await ORG.configurarPosicoes(g.id, [{ position: 'PONTA', slots: 0 }]), 400)
-        c.status(await ORG.configurarPosicoes(g.id, [{ position: 'PONTA', slots: 2 }, { position: 'PONTA', slots: 2 }]), 400)
+        c.status(await ORG.configurarPosicoes(g.id, [{ position: 'PONTA', slots: 0 }]), 422)
+        c.status(await ORG.configurarPosicoes(g.id, [{ position: 'PONTA', slots: 2 }, { position: 'PONTA', slots: 2 }]), 422)
+        c.status(await ORG.configurarPosicoes(g.id, []), 422)
+        c.status(await ORG.configurarPosicoes(g.id, PONTA2_CENTRAL2, 'SIX_ZERO'), 422)
+        c.status(await ORG.configurarPosicoes(g.id, PONTA2_CENTRAL2, 'FIVE_ONE', 5), 422)
       })
-      await c.passo('ORG grava a sugestão; a leitura devolve as posições e o total', async () => {
-        const s = c.status(await ORG.sugestaoDePosicoes('FIVE_ONE'), 200).corpo
-        c.status(await ORG.configurarPosicoes(g.id, s.positionSlots.filter((p) => p.slots > 0)), 200)
+      await c.passo('ORG grava a sugestão de 18 (total conferido); a leitura devolve as posições e o total', async () => {
+        const s = c.status(await ORG.sugestaoDePosicoes('FIVE_ONE', 18), 200).corpo
+        c.status(await ORG.configurarPosicoes(g.id, s.positionSlots.filter((p) => p.slots > 0), 'FIVE_ONE', 18), 200)
         const lido = c.status(await ATL1.posicoesDoGrupo(g.id), 200).corpo
-        c.igual(lido.total, 12, 'total lido pelo atleta')
+        c.igual(lido.total, 18, 'total lido pelo atleta')
       })
-      await c.passo('jogo novo nasce com 12 vagas e o resumo por posição; o jogo antigo segue sem posições', async () => {
+      await c.passo('jogo novo nasce com 18 vagas e o resumo por posição; o jogo antigo segue sem posições', async () => {
         const novo = await c.jogo(ORG, g.id, { vagas: 4 })
         const det = c.status(await ATL1.presenca(g.id, novo.id), 200).corpo
-        c.igual(det.capacity, 12, 'capacidade = soma')
+        c.igual(det.capacity, 18, 'capacidade = soma')
         c.igual(det.positions.length, 4, 'posições com vaga')
         const velho = c.status(await ATL1.presenca(g.id, antigo.id), 200).corpo
         c.afirmar(!velho.positions, 'jogo antigo sem positions')
