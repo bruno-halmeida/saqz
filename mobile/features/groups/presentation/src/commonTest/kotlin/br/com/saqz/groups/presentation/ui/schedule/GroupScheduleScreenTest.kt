@@ -60,6 +60,28 @@ class GroupScheduleScreenTest {
         assertEquals(GroupScheduleIntent.SelectDuration(240), intents.last())
     }
 
+    @Test
+    fun `the priority is a row of four equal options with the support text`() = runComposeUiTest {
+        val intents = mutableListOf<GroupScheduleIntent>()
+        setContent { SaqzTheme { GroupScheduleScreen(loaded().copy(confirmationLeadMinutes = 360), { intents += it }, {}) } }
+
+        onNodeWithText("Prioridade dos mensalistas").performScrollTo().assertExists()
+        onNodeWithText("Horas antes do jogo. Depois, a vaga é de todos.").performScrollTo().assertExists()
+        listOf("3h", "6h", "12h", "24h").forEach { onNodeWithText(it).performScrollTo().assertExists() }
+        onNodeWithTag("${GroupScheduleTags.ConfirmationLead}-360").performScrollTo().assertIsSelected()
+        onNodeWithTag("${GroupScheduleTags.ConfirmationLead}-1440").performScrollTo().performClick()
+        assertEquals(GroupScheduleIntent.SelectConfirmationLead(1_440), intents.last())
+    }
+
+    @Test
+    fun `a saved priority off the four options marks none`() = runComposeUiTest {
+        setContent { SaqzTheme { GroupScheduleScreen(loaded().copy(confirmationLeadMinutes = 90), {}, {}) } }
+
+        listOf(180, 360, 720, 1_440).forEach {
+            onNodeWithTag("${GroupScheduleTags.ConfirmationLead}-$it").performScrollTo().assertIsNotSelected()
+        }
+    }
+
     private fun withSheet(draft: GroupSlotDraft, index: Int = GroupScheduleState.NEW_SLOT) = loaded().copy(
         slots = listOf(GroupRegularSlotForm(weekday = GroupWeekday.TUESDAY, startTime = "19:30", durationMinutes = 120)),
         slotSheet = index,

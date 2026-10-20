@@ -45,6 +45,8 @@ import org.jetbrains.compose.resources.stringResource
 internal object GroupScheduleTags {
     const val Save = "schedule-save"
     const val Pause = "schedule-pause"
+    const val Duration = "schedule-duration"
+    const val ConfirmationLead = "schedule-confirmation-lead"
     const val SlotSheetSave = "schedule-slot-save"
 
     /** Prefixo — a tag da linha é `"$UpcomingGame:$gameId"`. */

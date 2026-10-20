@@ -23,14 +23,14 @@ import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzDivider
 import br.com.saqz.designsystem.SaqzEmptyState
+import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSkeleton
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.schedule.UpcomingGameStatus
 import br.com.saqz.groups.presentation.schedule.UpcomingGameUi
-import br.com.saqz.groups.presentation.ui.components.GroupChoiceChipRow
-import br.com.saqz.groups.presentation.ui.confirmationLeadLabel
+import br.com.saqz.groups.presentation.ui.setup.GroupConfirmationLeadField
 import br.com.saqz.groups.presentation.schedule.GroupScheduleIntent
 import br.com.saqz.groups.presentation.ui.components.DurationStepper
 import br.com.saqz.groups.resources.Res
@@ -55,8 +55,6 @@ import org.jetbrains.compose.resources.stringResource
 internal val GroupScheduleRowPadding: Dp
     @Composable get() = SaqzTheme.metrics.blockGap + SaqzTheme.metrics.subGrid / 2
 
-internal val CONFIRMATION_LEAD_OPTIONS = listOf(180, 360, 720, 1_440)
-
 /** `letter-spacing:.06em` do mês, entre o `eyebrow` (.08) e o zero das demais escalas. */
 private val MonthTracking = 0.06.em
 
@@ -69,36 +67,24 @@ internal fun GroupScheduleTimingCard(
     onSelectConfirmationLead: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Um card só com dois blocos titulados: é o que o export desenha, e card dentro de
-    // card não existe no design system — por isso não é um GroupFormCard por bloco.
+    // Um card só com dois blocos, como em criar/editar grupo: card dentro de card não existe no design system.
     SaqzCard(modifier = modifier) {
-        Text(
-            text = stringResource(Res.string.group_setup_duration_label),
-            style = SaqzTheme.typography.label,
-            color = SaqzTheme.colors.textPrimary,
-        )
         DurationStepper(
             minutes = durationMinutes,
             onChange = { onDurationIntent(GroupScheduleIntent.SelectDuration(it)) },
+            label = stringResource(Res.string.group_setup_duration_label),
+            icon = SaqzIcons.Clock,
+            labelStyle = SaqzTheme.typography.label,
             hasError = durationError,
+            modifier = Modifier.testTag(GroupScheduleTags.Duration),
         )
-        Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
-            Text(
-                text = stringResource(Res.string.group_setup_confirmation_lead_label),
-                style = SaqzTheme.typography.label,
-                color = SaqzTheme.colors.textPrimary,
-            )
-            Text(
-                text = stringResource(Res.string.group_setup_confirmation_lead_hint),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.textSecondary,
-            )
-        }
-        GroupChoiceChipRow(
-            values = (CONFIRMATION_LEAD_OPTIONS + confirmationLeadMinutes).distinct().sorted(),
-            selectedValue = confirmationLeadMinutes,
-            label = { confirmationLeadLabel(it) },
+        GroupConfirmationLeadField(
+            minutes = confirmationLeadMinutes,
             onSelect = onSelectConfirmationLead,
+            title = stringResource(Res.string.group_setup_confirmation_lead_label),
+            hint = stringResource(Res.string.group_setup_confirmation_lead_hint),
+            tag = GroupScheduleTags.ConfirmationLead,
+            icon = SaqzIcons.Star,
         )
     }
 }
