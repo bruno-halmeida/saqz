@@ -16,6 +16,7 @@ import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.domain.place.PlaceSuggestion
 import br.com.saqz.groups.presentation.GameCapacityLimits
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.pix.PixKeyType
 import br.com.saqz.groups.presentation.place.VenueSearchState
 
 /** `2a` cria e `2i` edita: mesma tela, mesmos doze cards, modos diferentes. */
@@ -82,7 +83,6 @@ object GroupSetupDefaults {
 internal object GroupPixTextLimits {
     const val Min = 2
     const val KeyMax = 140
-    const val LabelMax = 80
 }
 
 @Immutable
@@ -90,7 +90,11 @@ data class GroupSetupState(
     val mode: GroupSetupMode,
     val form: GroupSetupForm = GroupSetupDefaults.Form,
     val pixKey: String? = null,
+    /** Legado: o `pixLabel` como veio do servidor (texto livre de grupo antigo). Ao mexer no Pix vale [pixType]. */
     val pixLabel: String? = null,
+    val pixType: PixKeyType? = null,
+    /** A pessoa mexeu no Pix (chave ou tipo): só então o tipo é obrigatório e os valores antigos deixam de valer. */
+    val pixTouched: Boolean = false,
     val photoUrl: String? = null,
     val photo: ImageBitmap? = null,
     // Só o `2j` usa: membros ativos fora o dono, que perdem o acesso. `null` = ainda não chegou ou falhou.
@@ -201,7 +205,7 @@ sealed interface GroupSetupIntent {
 
     data class UpdatePixKey(val value: String) : GroupSetupIntent
 
-    data class UpdatePixLabel(val value: String) : GroupSetupIntent
+    data class SelectPixType(val value: PixKeyType) : GroupSetupIntent
 
     data class UpdateCustomLevel(val value: String) : GroupSetupIntent
 

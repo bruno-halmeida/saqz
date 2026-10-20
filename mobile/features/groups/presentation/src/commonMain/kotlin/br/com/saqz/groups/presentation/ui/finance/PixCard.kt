@@ -13,6 +13,7 @@ import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_cashbox_pix_copy
 import br.com.saqz.groups.resources.group_cashbox_pix_title
+import br.com.saqz.groups.resources.pix_receiver_typed
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -29,8 +30,10 @@ internal fun PixCard(
     modifier: Modifier = Modifier,
 ) = SaqzCard(modifier = modifier.testTag(cardTag)) {
     SaqzSectionHeader(title = stringResource(Res.string.group_cashbox_pix_title))
-    Text(text = pix.key, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
-    pix.label?.takeIf(String::isNotBlank)?.let {
+    Text(text = pix.displayKey, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
+    val receiver = pix.type?.let { stringResource(Res.string.pix_receiver_typed, it.label) }
+        ?: pix.label?.takeIf(String::isNotBlank)
+    receiver?.let {
         Text(text = it, style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
     }
     SaqzButton(

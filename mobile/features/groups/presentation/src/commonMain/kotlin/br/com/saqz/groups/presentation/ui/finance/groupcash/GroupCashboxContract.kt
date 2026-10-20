@@ -1,6 +1,8 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
 import androidx.compose.runtime.Immutable
+import br.com.saqz.groups.presentation.pix.PixKeyType
+import br.com.saqz.groups.presentation.pix.PixKeys
 import br.com.saqz.groups.domain.finance.PaidMethod
 
 @Immutable
@@ -99,7 +101,13 @@ data class OverdueBannerUi(
 data class PixUi(
     val key: String,
     val label: String?,
-)
+) {
+    /** O tipo da chave quando o `pixLabel` guardado é um dos quatro; texto livre de grupo antigo dá `null`. */
+    val type: PixKeyType? get() = PixKeyType.fromLabel(label)
+
+    /** A chave como se mostra (CPF e telefone com máscara). O que se copia é sempre [key], como guardada. */
+    val displayKey: String get() = type?.let { PixKeys.format(it, key) } ?: key
+}
 
 sealed interface GroupCashboxIntent {
     data object Retry : GroupCashboxIntent

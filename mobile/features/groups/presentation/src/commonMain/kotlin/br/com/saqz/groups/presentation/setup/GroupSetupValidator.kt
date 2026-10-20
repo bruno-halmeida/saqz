@@ -4,6 +4,7 @@ import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.presentation.duration.CustomDuration
+import br.com.saqz.groups.presentation.pix.PixKeys
 
 /**
  * Os sete campos que o `2g` marca em vermelho, mais três que só o backend exige.
@@ -20,8 +21,8 @@ enum class GroupSetupError {
     CompositionRequired,
     CustomLevelRequired,
     DescriptionTooShort,
-    PixKeyTooShort,
-    PixLabelTooShort,
+    PixKeyInvalid,
+    PixTypeRequired,
     CapacityOutOfRange,
     PositionSlotsSumMismatch,
     GameFeeInvalid,
@@ -40,8 +41,8 @@ enum class GroupSetupError {
  * | -- | -- | -- | -- |
  * | `name` | 109 | `requiredText(2, 80)` | mínimo valida, máximo corta |
  * | `description` | 110 | `optionalText(2, 500)` | mínimo valida, máximo corta |
- * | `pixKey` | 114 | `optionalPixText(2, 140)` | mínimo valida, máximo corta |
- * | `pixLabel` | 115 | `optionalPixText(2, 80)` | mínimo valida, máximo corta |
+ * | `pixKey` | 114 | `optionalPixText(2, 140)` | formato do tipo valida, máximo corta |
+ * | `pixLabel` | 115 | `optionalPixText(2, 80)` | guarda o tipo ("CPF"...), sempre dentro da faixa |
  * | `customLevel` | 112 | `optionalText(2, 40)` | mínimo valida, máximo corta |
  * | `defaultVenue.name` | 171 | `requiredText(2, 120)` | mínimo valida, máximo corta |
  * | `defaultVenue.address` | 172 | `optionalText(5, 300)` | mínimo valida (se informado), máximo corta |
@@ -145,13 +146,14 @@ fun validate(state: GroupSetupState): Set<GroupSetupError> {
 }
 
 private fun validatePix(state: GroupSetupState): Set<GroupSetupError> = buildSet {
+    // Pix que a pessoa não mexeu fica como veio (inclusive chave antiga em texto livre): nada a validar.
+    if (!state.pixTouched) return@buildSet
     val pixKey = state.pixKey?.trim()
-    if (!pixKey.isNullOrEmpty() && pixKey.codePointLength() < GroupPixTextLimits.Min) {
-        add(GroupSetupError.PixKeyTooShort)
-    }
-    val pixLabel = state.pixLabel?.trim()
-    if (!pixLabel.isNullOrEmpty() && pixLabel.codePointLength() < GroupPixTextLimits.Min) {
-        add(GroupSetupError.PixLabelTooShort)
+    if (pixKey.isNullOrEmpty()) return@buildSet
+    val type = state.pixType
+    when {
+        type == null -> add(GroupSetupError.PixTypeRequired)
+        !PixKeys.isValid(type, pixKey) -> add(GroupSetupError.PixKeyInvalid)
     }
 }
 

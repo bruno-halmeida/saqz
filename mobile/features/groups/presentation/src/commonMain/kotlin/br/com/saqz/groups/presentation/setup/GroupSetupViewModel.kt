@@ -36,6 +36,8 @@ import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.details.hasMensalista
+import br.com.saqz.groups.presentation.pix.PixKeyType
+import br.com.saqz.groups.presentation.pix.PixKeys
 import br.com.saqz.groups.presentation.place.VenueSearch
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
@@ -62,6 +64,9 @@ class GroupSetupViewModel(
     private var versionToken: GroupVersionToken? = null
     private var timeZone: DomainGroupTimeZone? = null
     private var retryDelete = false
+
+    /** Pix como veio do servidor: salvar sem mexer nele manda estes dois valores intactos. */
+    private var originalPix: Pair<String?, String?> = null to null
     private val positions = GroupPositionSlotsEditor(positionSlotsGateway, viewModelScope, { state.value }, ::update)
     private val venueSearch = VenueSearch(viewModelScope, placesGateway)
 
@@ -90,12 +95,8 @@ class GroupSetupViewModel(
                 onTextChange(KeyDescription, intent.value, GroupTextLimits.DescriptionMax) {
                     copy(description = it)
                 }
-            is GroupSetupIntent.UpdatePixKey ->
-                onPixTextChange(KeyPixKey, intent.value, GroupPixTextLimits.KeyMax) { copy(pixKey = it) }
-            is GroupSetupIntent.UpdatePixLabel ->
-                onPixTextChange(KeyPixLabel, intent.value, GroupPixTextLimits.LabelMax) {
-                    copy(pixLabel = it)
-                }
+            is GroupSetupIntent.UpdatePixKey -> onPixKeyChange(intent.value)
+            is GroupSetupIntent.SelectPixType -> onPixTypeChange(intent.value)
             is GroupSetupIntent.UpdateCustomLevel ->
                 onTextChange(KeyCustomLevel, intent.value, GroupTextLimits.CustomLevelMax) {
                     copy(customLevel = it)
@@ -187,6 +188,8 @@ class GroupSetupViewModel(
                     if (generation != loadGeneration) return@launch
                     val group = result.value.group
                     versionToken = result.value.versionToken
+                    originalPix = group.profile?.pixKey to group.profile?.pixLabel
+                    val loadedPix = LoadedPix.of(group.profile?.pixKey, group.profile?.pixLabel)
                     update {
                         it.copy(
                             isLoading = false,
@@ -200,8 +203,9 @@ class GroupSetupViewModel(
                             // Sem isso, salvar a edição de um grupo com horários os apagaria:
                             // desligado, `slotsForCommand` manda a lista vazia.
                             recurring = group.profile?.regularSlots.orEmpty().isNotEmpty(),
-                            pixKey = group.profile?.pixKey,
+                            pixKey = loadedPix.key,
                             pixLabel = group.profile?.pixLabel,
+                            pixType = loadedPix.type,
                         ).withSavedText(savedState)
                     }
                     positions.loadInto(GroupId(mode.groupId), group.role != GroupRole.ATHLETE) { generation == loadGeneration }
@@ -264,7 +268,7 @@ class GroupSetupViewModel(
             return
         }
         viewModelScope.launch {
-            val commandForm = state.value.toDomainForm()
+            val commandForm = state.value.toDomainForm(originalPix)
             // ponytail: seam de update; o formulário completo usa o endpoint de perfil e
             // converte seus erros tipados em estado visível antes de emitir Saved.
             when (val result = profileGateway.updateProfile(
@@ -463,16 +467,24 @@ class GroupSetupViewModel(
         onFormChange { edit(capped) }
     }
 
-    private fun onPixTextChange(
-        key: String,
-        value: String,
-        maxLength: Int,
-        edit: GroupSetupState.(String) -> GroupSetupState,
-    ) {
-        val capped = value.withoutControlChars().takeCodePoints(maxLength)
-        savedState[key] = capped
+    /** Chave Pix digitada ou colada: normaliza pelo tipo escolhido (sem tipo, só limpa e corta). */
+    private fun onPixKeyChange(value: String) {
+        val type = state.value.pixType
+        val cleaned = value.withoutControlChars().takeCodePoints(GroupPixTextLimits.KeyMax)
+        val key = if (type == null) cleaned else PixKeys.normalize(type, cleaned)
+        savedState[KeyPixKey] = key
         discardCreationKey()
-        update { current -> edit.invoke(current, capped).copy(creationCommandKey = null).revalidated() }
+        update { it.copy(pixKey = key, pixTouched = true, creationCommandKey = null).revalidated() }
+    }
+
+    private fun onPixTypeChange(type: PixKeyType) {
+        savedState[KeyPixType] = type.name
+        discardCreationKey()
+        update { current ->
+            val key = current.pixKey?.let { PixKeys.normalize(type, it) }
+            if (key != null) savedState[KeyPixKey] = key
+            current.copy(pixType = type, pixKey = key, pixTouched = true, creationCommandKey = null).revalidated()
+        }
     }
 
     private fun onFormChange(
@@ -502,7 +514,9 @@ internal fun GroupSetupState.revalidated() = if (errors.isEmpty()) this else cop
 private fun GroupSetupState.withSavedText(handle: SavedStateHandle): GroupSetupState = copy(
     form = form.withSavedText(handle),
     pixKey = handle.get<String>(KeyPixKey) ?: pixKey,
-    pixLabel = handle.get<String>(KeyPixLabel) ?: pixLabel,
+    pixType = handle.get<String>(KeyPixType)?.let { saved -> PixKeyType.entries.firstOrNull { it.name == saved } } ?: pixType,
+    // Chave ou tipo restaurados do SavedStateHandle só existem se a pessoa mexeu no Pix antes.
+    pixTouched = pixTouched || handle.get<String>(KeyPixKey) != null || handle.get<String>(KeyPixType) != null,
     creationCommandKey = handle.get<String>(KeyCreationCommand),
 )
 
@@ -547,11 +561,33 @@ private fun GroupPlayStyle?.toPositionSystem(): PositionGameSystem? = when (this
     else -> null
 }
 
-private fun GroupSetupState.toDomainForm() = form.toDomain(
-    slots = slotsForCommand,
-    pixKey = pixKey?.trim()?.takeIf { it.isNotEmpty() || mode is GroupSetupMode.Edit },
-    pixLabel = pixLabel?.trim()?.takeIf { it.isNotEmpty() || mode is GroupSetupMode.Edit },
-)
+private fun GroupSetupState.toDomainForm(original: Pair<String?, String?> = null to null): br.com.saqz.groups.domain.group.GroupSetupForm {
+    val edit = mode is GroupSetupMode.Edit
+    // Sem mexer no Pix, os dois valores antigos seguem intactos (chave antiga em texto livre inclusive).
+    val key = if (pixTouched || !edit) pixKey?.trim() else original.first
+    val label = when {
+        !edit -> null
+        !pixTouched -> original.second
+        key.isNullOrEmpty() -> ""
+        else -> pixType?.label.orEmpty()
+    }
+    return form.toDomain(
+        slots = slotsForCommand,
+        pixKey = key?.takeIf { it.isNotEmpty() || edit },
+        pixLabel = label?.trim()?.takeIf { it.isNotEmpty() || edit },
+    )
+}
+
+/** Pix aberto para edição: o tipo vem do `pixLabel` se for um dos quatro, senão se deduz do formato da chave. */
+private class LoadedPix(val key: String?, val type: PixKeyType?) {
+    companion object {
+        fun of(key: String?, label: String?): LoadedPix {
+            val type = PixKeyType.fromLabel(label) ?: PixKeys.deduce(key)
+            // Com tipo, o campo mostra a chave já normalizada; os valores antigos seguem em `originalPix`.
+            return LoadedPix(if (type != null && key != null) PixKeys.normalize(type, key) else key, type)
+        }
+    }
+}
 
 private fun GroupSetupForm.toDomain(
     slots: List<GroupRegularSlotForm> = regularSlots,
@@ -653,7 +689,7 @@ private fun newCommandKey(): String = Uuid.random().toString()
 private const val KeyName = "group-setup-name"
 private const val KeyDescription = "group-setup-description"
 private const val KeyPixKey = "group-setup-pix-key"
-private const val KeyPixLabel = "group-setup-pix-label"
+private const val KeyPixType = "group-setup-pix-type"
 private const val KeyCustomLevel = "group-setup-custom-level"
 private const val KeyVenueName = "group-setup-venue-name"
 private const val KeyVenueAddress = "group-setup-venue-address"

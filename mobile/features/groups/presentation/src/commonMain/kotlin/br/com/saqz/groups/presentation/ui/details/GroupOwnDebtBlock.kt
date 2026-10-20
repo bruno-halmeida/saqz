@@ -188,7 +188,7 @@ private fun OwnDebtContent(
     ) {
         OwnDebtPendingLines(pending = ownCharges.pending)
         if (pix != null) {
-            OwnDebtPix(key = pix.key, receiverLabel = debt.receiverLabel)
+            OwnDebtPix(key = pix.displayKey, receiverLabel = debt.receiverLabel)
         }
     }
     OwnDebtHistory(history = ownCharges.history)

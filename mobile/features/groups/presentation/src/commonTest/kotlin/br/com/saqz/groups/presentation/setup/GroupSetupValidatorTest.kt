@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.setup
 
+import br.com.saqz.groups.presentation.pix.PixKeyType
+
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
@@ -94,13 +96,23 @@ class GroupSetupValidatorTest {
     }
 
     @Test
-    fun `pix abaixo de dois code points acusa erro no campo e vazio limpa sem erro`() {
+    fun `pix que a pessoa nao mexeu nao e validado nem acusa erro`() {
+        assertTrue(validate(state().copy(pixKey = "chave antiga em texto livre", pixLabel = "Lucas", pixTouched = false)).isEmpty())
+    }
+
+    @Test
+    fun `pix mexido sem tipo acusa o tipo e com tipo acusa o formato da chave`() {
         assertEquals(
-            setOf(GroupSetupError.PixKeyTooShort, GroupSetupError.PixLabelTooShort),
-            validate(state().copy(pixKey = "🏐", pixLabel = "A")),
+            setOf(GroupSetupError.PixTypeRequired),
+            validate(state().copy(pixKey = "abc", pixTouched = true)),
         )
-        assertTrue(validate(state().copy(pixKey = "", pixLabel = "  ")).isEmpty())
-        assertTrue(validate(state().copy(pixKey = "🏐🏐", pixLabel = "Ab")).isEmpty())
+        assertEquals(
+            setOf(GroupSetupError.PixKeyInvalid),
+            validate(state().copy(pixKey = "abc", pixType = PixKeyType.EMAIL, pixTouched = true)),
+        )
+        assertTrue(validate(state().copy(pixKey = "a@b.com", pixType = PixKeyType.EMAIL, pixTouched = true)).isEmpty())
+        // Chave vazia limpa o Pix: sem tipo e sem erro.
+        assertTrue(validate(state().copy(pixKey = "", pixTouched = true)).isEmpty())
     }
 
     @Test
@@ -212,7 +224,8 @@ class GroupSetupValidatorTest {
             GroupSetupState(
                 mode = GroupSetupMode.Create,
                 pixKey = "A",
-                pixLabel = "A",
+                pixType = PixKeyType.EMAIL,
+                pixTouched = true,
                 form = GroupSetupForm(
                     description = "A",
                     level = GroupLevel.CUSTOM,
@@ -231,7 +244,9 @@ class GroupSetupValidatorTest {
         // O endereço é opcional: em branco não acusa `VenueAddressNotFound`. A soma das posições (DEB-102) só
         // vale com a edição do 5-1 e tem teste próprio em `GroupSetupPositionSlotsTest`.
         assertEquals(
-            GroupSetupError.entries.toSet() - GroupSetupError.VenueAddressNotFound - GroupSetupError.PositionSlotsSumMismatch,
+            // Tipo obrigatório e chave inválida são excludentes: aqui há tipo, então só a chave é acusada.
+            GroupSetupError.entries.toSet() - GroupSetupError.VenueAddressNotFound -
+                GroupSetupError.PositionSlotsSumMismatch - GroupSetupError.PixTypeRequired,
             errors,
         )
     }

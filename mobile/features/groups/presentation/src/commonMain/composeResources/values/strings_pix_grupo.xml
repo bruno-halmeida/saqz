@@ -3,9 +3,25 @@
     <!-- VUL-182 · Pix do grupo no editar grupo -->
     <string name="group_pix_title">Pix do grupo</string>
     <string name="group_pix_key_label">Chave Pix</string>
-    <string name="group_pix_key_hint">Cole a chave Pix ou outro texto identificador.</string>
-    <string name="group_pix_error_key">Informe pelo menos 2 caracteres.</string>
-    <string name="group_pix_label_label">O que é</string>
-    <string name="group_pix_label_hint">Ex.: Lucas Prado · Nubank</string>
-    <string name="group_pix_error_label">Informe pelo menos 2 caracteres.</string>
+    <string name="group_pix_type_label">Tipo de chave</string>
+    <string name="group_pix_type_email">E-mail</string>
+    <string name="group_pix_type_random">Aleatória</string>
+    <string name="group_pix_type_cpf">CPF</string>
+    <string name="group_pix_type_phone">Telefone</string>
+    <string name="group_pix_key_placeholder_none">Escolha o tipo da chave</string>
+    <string name="group_pix_key_placeholder_email">nome@exemplo.com</string>
+    <string name="group_pix_key_placeholder_random">Cole a chave aleatória</string>
+    <string name="group_pix_key_placeholder_cpf">000.000.000-00</string>
+    <string name="group_pix_key_placeholder_phone">(11) 99999-9999</string>
+    <string name="group_pix_key_hint_none">Escolha o tipo antes de digitar a chave.</string>
+    <string name="group_pix_key_hint_email">Sem espaços; vai em minúsculas.</string>
+    <string name="group_pix_key_hint_random">Pode colar com ou sem hífens.</string>
+    <string name="group_pix_key_hint_cpf">Só números, 11 dígitos.</string>
+    <string name="group_pix_key_hint_phone">Só números, com DDD.</string>
+    <string name="group_pix_error_type">Escolha o tipo da chave.</string>
+    <string name="group_pix_error_email">Informe um e-mail válido.</string>
+    <string name="group_pix_error_random">A chave aleatória tem 36 caracteres.</string>
+    <string name="group_pix_error_cpf">Esse CPF não confere.</string>
+    <string name="group_pix_error_phone">Informe o celular com DDD.</string>
+    <string name="pix_receiver_typed">Chave Pix · %1$s</string>
 </resources>

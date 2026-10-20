@@ -56,8 +56,7 @@ import br.com.saqz.groups.presentation.setup.validate
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.presentation.ui.components.GroupFormCard
 import br.com.saqz.groups.resources.Res
-import br.com.saqz.groups.resources.group_pix_error_key
-import br.com.saqz.groups.resources.group_pix_error_label
+import br.com.saqz.groups.resources.group_pix_error_type
 import br.com.saqz.groups.resources.group_setup_create_action
 import br.com.saqz.groups.resources.group_setup_create_title
 import br.com.saqz.groups.resources.group_setup_trial_offer
@@ -104,7 +103,8 @@ internal object GroupSetupTags {
     fun monthlyLateJoinPolicyOption(policy: br.com.saqz.groups.model.MonthlyLateJoinPolicy) =
         "group-monthly-late-join-policy-${policy.name}"
     const val PixKey = "group-setup-pix-key"
-    const val PixLabel = "group-setup-pix-label"
+    const val PixType = "group-setup-pix-type"
+    fun pixTypeOption(type: br.com.saqz.groups.presentation.pix.PixKeyType) = "group-setup-pix-type-${type.name}"
     const val VenueName = "group-setup-venue-name"
     const val VenueAddress = "group-setup-venue-address"
     const val Recurrence = "group-setup-recurrence"
@@ -263,11 +263,11 @@ private fun GroupSetupDetails(
         }
         GroupPixSection(
             pixKey = state.pixKey,
-            pixLabel = state.pixLabel,
-            pixKeyError = state.errorText(GroupSetupError.PixKeyTooShort, Res.string.group_pix_error_key),
-            pixLabelError = state.errorText(GroupSetupError.PixLabelTooShort, Res.string.group_pix_error_label),
+            pixType = state.pixType,
+            onPixTypeSelect = { onIntent(GroupSetupIntent.SelectPixType(it)) },
             onPixKeyChange = { onIntent(GroupSetupIntent.UpdatePixKey(it)) },
-            onPixLabelChange = { onIntent(GroupSetupIntent.UpdatePixLabel(it)) },
+            pixKeyError = state.errorText(GroupSetupError.PixKeyInvalid, state.pixType.errorRes()),
+            pixTypeError = state.errorText(GroupSetupError.PixTypeRequired, Res.string.group_pix_error_type),
         )
     }
     if (state.isEditing && onOpenWhatsApp != null) {

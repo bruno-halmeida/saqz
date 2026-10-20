@@ -96,11 +96,6 @@ import br.com.saqz.groups.resources.group_monthly_policy_hint
 import br.com.saqz.groups.resources.group_monthly_policy_join_date
 import br.com.saqz.groups.resources.group_monthly_policy_next_month
 import br.com.saqz.groups.resources.group_monthly_policy_title
-import br.com.saqz.groups.resources.group_pix_key_hint
-import br.com.saqz.groups.resources.group_pix_key_label
-import br.com.saqz.groups.resources.group_pix_label_hint
-import br.com.saqz.groups.resources.group_pix_label_label
-import br.com.saqz.groups.resources.group_pix_title
 import br.com.saqz.groups.resources.group_setup_add_slot
 import br.com.saqz.groups.resources.group_setup_capacity_beach_hint
 import br.com.saqz.groups.resources.group_setup_capacity_hint
@@ -134,6 +129,33 @@ import br.com.saqz.groups.resources.group_setup_venue_address_hint
 import br.com.saqz.groups.resources.group_setup_venue_address_label
 import br.com.saqz.groups.resources.group_setup_venue_name_hint
 import br.com.saqz.groups.resources.group_setup_venue_name_label
+import br.com.saqz.designsystem.CpfVisualTransformation
+import br.com.saqz.designsystem.PhoneVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import br.com.saqz.groups.presentation.pix.PixKeyType
+import br.com.saqz.groups.resources.group_pix_error_cpf
+import br.com.saqz.groups.resources.group_pix_error_email
+import br.com.saqz.groups.resources.group_pix_error_phone
+import br.com.saqz.groups.resources.group_pix_error_random
+import br.com.saqz.groups.resources.group_pix_error_type
+import br.com.saqz.groups.resources.group_pix_key_hint_cpf
+import br.com.saqz.groups.resources.group_pix_key_hint_email
+import br.com.saqz.groups.resources.group_pix_key_hint_none
+import br.com.saqz.groups.resources.group_pix_key_hint_phone
+import br.com.saqz.groups.resources.group_pix_key_hint_random
+import br.com.saqz.groups.resources.group_pix_key_label
+import br.com.saqz.groups.resources.group_pix_key_placeholder_cpf
+import br.com.saqz.groups.resources.group_pix_key_placeholder_email
+import br.com.saqz.groups.resources.group_pix_key_placeholder_none
+import br.com.saqz.groups.resources.group_pix_key_placeholder_phone
+import br.com.saqz.groups.resources.group_pix_key_placeholder_random
+import br.com.saqz.groups.resources.group_pix_title
+import br.com.saqz.groups.resources.group_pix_type_cpf
+import br.com.saqz.groups.resources.group_pix_type_email
+import br.com.saqz.groups.resources.group_pix_type_label
+import br.com.saqz.groups.resources.group_pix_type_phone
+import br.com.saqz.groups.resources.group_pix_type_random
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 // Público na ordem do export (Masculino, Feminino, Misto), que não é a do enum.
@@ -314,49 +336,89 @@ private val PromotionModeOptions = listOf(PromotionMode.FIFO, PromotionMode.MANU
 @Composable
 internal fun GroupPixSection(
     pixKey: String?,
-    pixLabel: String?,
+    pixType: PixKeyType?,
+    onPixTypeSelect: (PixKeyType) -> Unit,
     onPixKeyChange: (String) -> Unit,
-    onPixLabelChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     pixKeyError: String? = null,
-    pixLabelError: String? = null,
+    pixTypeError: String? = null,
 ) {
     val keyLabel = stringResource(Res.string.group_pix_key_label)
-    val labelLabel = stringResource(Res.string.group_pix_label_label)
+    val typeLabel = stringResource(Res.string.group_pix_type_label)
+    val typeNames = PixKeyType.entries.map { it.displayName() }
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
     ) {
         SaqzSectionHeader(title = stringResource(Res.string.group_pix_title))
-        GroupFormCard(
-            title = keyLabel,
-            hint = stringResource(Res.string.group_pix_key_hint),
-        ) {
+        SaqzCard {
+            GroupFieldLabel(typeLabel)
+            SaqzSegmented(
+                options = typeNames,
+                selected = PixKeyType.entries.indexOfOrNone(pixType),
+                onSelect = { onPixTypeSelect(PixKeyType.entries[it]) },
+                optionTags = PixKeyType.entries.map(GroupSetupTags::pixTypeOption),
+                modifier = Modifier.testTag(GroupSetupTags.PixType),
+            )
+            GroupFieldError(pixTypeError)
+            GroupFieldLabel(keyLabel)
             SaqzInput(
                 value = pixKey.orEmpty(),
                 onValueChange = onPixKeyChange,
                 label = keyLabel,
                 showLabel = false,
-                placeholder = stringResource(Res.string.group_pix_key_hint),
+                placeholder = stringResource(pixType.placeholderRes()),
                 errorText = pixKeyError,
+                keyboardType = when (pixType) {
+                    PixKeyType.EMAIL -> KeyboardType.Email
+                    PixKeyType.CPF, PixKeyType.PHONE -> KeyboardType.Number
+                    else -> KeyboardType.Text
+                },
+                visualTransformation = when (pixType) {
+                    PixKeyType.CPF -> CpfVisualTransformation()
+                    PixKeyType.PHONE -> PhoneVisualTransformation()
+                    else -> VisualTransformation.None
+                },
                 modifier = Modifier.testTag(GroupSetupTags.PixKey),
             )
-            Text(
-                text = labelLabel,
-                style = SaqzTheme.typography.label,
-                color = SaqzTheme.colors.textPrimary,
-            )
-            SaqzInput(
-                value = pixLabel.orEmpty(),
-                onValueChange = onPixLabelChange,
-                label = labelLabel,
-                showLabel = false,
-                placeholder = stringResource(Res.string.group_pix_label_hint),
-                errorText = pixLabelError,
-                modifier = Modifier.testTag(GroupSetupTags.PixLabel),
-            )
+            GroupFieldHint(stringResource(pixType.hintRes()))
         }
     }
+}
+
+@Composable
+internal fun PixKeyType.displayName(): String = stringResource(
+    when (this) {
+        PixKeyType.EMAIL -> Res.string.group_pix_type_email
+        PixKeyType.RANDOM -> Res.string.group_pix_type_random
+        PixKeyType.CPF -> Res.string.group_pix_type_cpf
+        PixKeyType.PHONE -> Res.string.group_pix_type_phone
+    },
+)
+
+private fun PixKeyType?.placeholderRes(): StringResource = when (this) {
+    null -> Res.string.group_pix_key_placeholder_none
+    PixKeyType.EMAIL -> Res.string.group_pix_key_placeholder_email
+    PixKeyType.RANDOM -> Res.string.group_pix_key_placeholder_random
+    PixKeyType.CPF -> Res.string.group_pix_key_placeholder_cpf
+    PixKeyType.PHONE -> Res.string.group_pix_key_placeholder_phone
+}
+
+private fun PixKeyType?.hintRes(): StringResource = when (this) {
+    null -> Res.string.group_pix_key_hint_none
+    PixKeyType.EMAIL -> Res.string.group_pix_key_hint_email
+    PixKeyType.RANDOM -> Res.string.group_pix_key_hint_random
+    PixKeyType.CPF -> Res.string.group_pix_key_hint_cpf
+    PixKeyType.PHONE -> Res.string.group_pix_key_hint_phone
+}
+
+/** A mensagem de formato do tipo da chave. */
+internal fun PixKeyType?.errorRes(): StringResource = when (this) {
+    null -> Res.string.group_pix_error_type
+    PixKeyType.EMAIL -> Res.string.group_pix_error_email
+    PixKeyType.RANDOM -> Res.string.group_pix_error_random
+    PixKeyType.CPF -> Res.string.group_pix_error_cpf
+    PixKeyType.PHONE -> Res.string.group_pix_error_phone
 }
 
 /**

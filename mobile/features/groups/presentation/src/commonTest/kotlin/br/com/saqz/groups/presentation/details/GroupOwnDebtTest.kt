@@ -42,6 +42,19 @@ class GroupOwnDebtTest {
     }
 
     @Test
+    fun `receiver shows the key type when the label is one of the four types`() = runTest {
+        val debt = groupOwnDebt(
+            pending = listOf(charge("mensal", 7_000L, "2026-08-10")),
+            pendingUi = listOf(ui("mensal", "Mensalidade · Agosto", "Vence em 10/08")),
+            today = today,
+            pixLabel = "CPF",
+            hasPixKey = true,
+        )
+
+        assertEquals("Chave Pix · CPF", debt?.receiverLabel)
+    }
+
+    @Test
     fun `single pending charge not yet due has no count and is not overdue`() = runTest {
         val debt = groupOwnDebt(
             pending = listOf(charge("avulso", 2_500L, "2026-08-28")),

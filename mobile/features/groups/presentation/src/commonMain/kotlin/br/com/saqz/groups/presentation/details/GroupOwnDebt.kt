@@ -2,9 +2,11 @@ package br.com.saqz.groups.presentation.details
 
 import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.groups.domain.finance.Charge
+import br.com.saqz.groups.presentation.pix.PixKeyType
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.home_own_charge_pix_receiver
 import br.com.saqz.groups.resources.home_own_charges_count
+import br.com.saqz.groups.resources.pix_receiver_typed
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.getString
 
@@ -31,7 +33,9 @@ internal suspend fun groupOwnDebt(
         dueLabel = oldestUi.dueLabel,
         overdue = oldest.dueDate < today.toString(),
         countLabel = pending.size.takeIf { it > 1 }?.let { getString(Res.string.home_own_charges_count, it) },
-        receiverLabel = pixLabel?.trim()?.takeIf { it.isNotEmpty() && hasPixKey }
-            ?.let { getString(Res.string.home_own_charge_pix_receiver, it) },
+        receiverLabel = pixLabel?.trim()?.takeIf { it.isNotEmpty() && hasPixKey }?.let { label ->
+            PixKeyType.fromLabel(label)?.let { getString(Res.string.pix_receiver_typed, it.label) }
+                ?: getString(Res.string.home_own_charge_pix_receiver, label)
+        },
     )
 }

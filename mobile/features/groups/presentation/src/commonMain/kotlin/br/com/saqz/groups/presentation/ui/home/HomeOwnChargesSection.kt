@@ -31,6 +31,7 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_cashbox_pix_copy
 import br.com.saqz.groups.resources.home_own_charge_copied
 import br.com.saqz.groups.resources.home_own_charge_pix_receiver
+import br.com.saqz.groups.resources.pix_receiver_typed
 import br.com.saqz.groups.resources.own_charges_title
 import org.jetbrains.compose.resources.stringResource
 
@@ -78,7 +79,10 @@ private fun HomeOwnChargeTicket(
         dueChipOverdue = group.overdue,
         headerChip = group.groupName,
         countLabel = group.countLabel,
-        receiverLabel = group.pix?.let { stringResource(Res.string.home_own_charge_pix_receiver, it.label ?: it.key) },
+        receiverLabel = group.pix?.let { pix ->
+            pix.type?.let { stringResource(Res.string.pix_receiver_typed, it.label) }
+                ?: stringResource(Res.string.home_own_charge_pix_receiver, pix.label ?: pix.key)
+        },
         copied = copied,
         copyLabel = stringResource(Res.string.group_cashbox_pix_copy),
         copiedLabel = stringResource(Res.string.home_own_charge_copied),

@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.setup
 
 import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.groups.model.GroupComposition
+import br.com.saqz.groups.presentation.pix.PixKeyType
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupPlayStyle
@@ -1101,20 +1102,122 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `editar envia Pix com trim sem validar o formato da chave`() = runTest(mainDispatcher) {
+    fun `salvar com tipo novo envia o tipo no pixLabel e a chave normalizada`() = runTest(mainDispatcher) {
         val profileGateway = FakeGroupProfileGateway()
-        val viewModel = viewModel(
-            mode = GroupSetupMode.Edit(groupId = "grp-1"),
-            profileGateway = profileGateway,
-        )
-        viewModel.onIntent(GroupSetupIntent.UpdatePixKey("  texto livre sem formato  "))
-        viewModel.onIntent(GroupSetupIntent.UpdatePixLabel("  Lucas Prado · Nubank  "))
+        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"), profileGateway = profileGateway)
+        viewModel.onIntent(GroupSetupIntent.SelectPixType(PixKeyType.CPF))
+        viewModel.onIntent(GroupSetupIntent.UpdatePixKey("529.982.247-25"))
         viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
         val form = profileGateway.lastUpdateCommand?.form
-        assertEquals("texto livre sem formato", form?.pixKey)
-        assertEquals("Lucas Prado · Nubank", form?.pixLabel)
+        assertEquals("52998224725", form?.pixKey)
+        assertEquals("CPF", form?.pixLabel)
+    }
+
+    @Test
+    fun `e-mail vai em minusculas e sem espacos`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"), profileGateway = profileGateway)
+        viewModel.onIntent(GroupSetupIntent.SelectPixType(PixKeyType.EMAIL))
+        viewModel.onIntent(GroupSetupIntent.UpdatePixKey("  Racha@Saqz.Test "))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals("racha@saqz.test", profileGateway.lastUpdateCommand?.form?.pixKey)
+        assertEquals("E-mail", profileGateway.lastUpdateCommand?.form?.pixLabel)
+    }
+
+    @Test
+    fun `telefone colado com mais 55 guarda so os 11 digitos`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
+        viewModel.onIntent(GroupSetupIntent.SelectPixType(PixKeyType.PHONE))
+        viewModel.onIntent(GroupSetupIntent.UpdatePixKey("+55 (11) 98765-4321"))
+
+        assertEquals("11987654321", viewModel.state.value.pixKey)
+    }
+
+    @Test
+    fun `chave invalida para o tipo e recusada e nada e enviado`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway()
+        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"), profileGateway = profileGateway)
+        viewModel.onIntent(GroupSetupIntent.SelectPixType(PixKeyType.CPF))
+        viewModel.onIntent(GroupSetupIntent.UpdatePixKey("11111111111"))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertTrue(GroupSetupError.PixKeyInvalid in viewModel.state.value.errors)
+        assertNull(profileGateway.lastUpdateCommand)
+    }
+
+    @Test
+    fun `chave sem tipo depois de mexer no Pix pede o tipo`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"))
+        viewModel.onIntent(GroupSetupIntent.UpdatePixKey("algo"))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertTrue(GroupSetupError.PixTypeRequired in viewModel.state.value.errors)
+    }
+
+    private fun openWithPix(key: String?, label: String?, gateway: FakeGroupProfileGateway = FakeGroupProfileGateway()): GroupSetupViewModel {
+        val group = br.com.saqz.groups.presentation.sampleGroup().copy(
+            profile = br.com.saqz.groups.presentation.sampleGroup().profile?.copy(pixKey = key, pixLabel = label),
+        )
+        gateway.readResult = SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedGroup(group))
+        return viewModel(mode = GroupSetupMode.Edit(groupId = "grp-1"), profileGateway = gateway)
+    }
+
+    @Test
+    fun `ao abrir o tipo vem do pixLabel quando e um dos quatro`() = runTest(mainDispatcher) {
+        val viewModel = openWithPix("52998224725", "CPF")
+        runCurrent()
+        assertEquals(PixKeyType.CPF, viewModel.state.value.pixType)
+        assertEquals("52998224725", viewModel.state.value.pixKey)
+    }
+
+    @Test
+    fun `ao abrir o tipo e deduzido do formato da chave antiga`() = runTest(mainDispatcher) {
+        listOf(
+            "racha@saqz.test" to PixKeyType.EMAIL,
+            "123e4567-e89b-12d3-a456-426614174000" to PixKeyType.RANDOM,
+            "123e4567e89b12d3a456426614174000" to PixKeyType.RANDOM,
+            "529.982.247-25" to PixKeyType.CPF,
+            "11987654321" to PixKeyType.PHONE,
+            "+55 11 98765-4321" to PixKeyType.PHONE,
+        ).forEach { (key, expected) ->
+            val viewModel = openWithPix(key, "Lucas Prado · Nubank")
+            runCurrent()
+            assertEquals(expected, viewModel.state.value.pixType, key)
+        }
+    }
+
+    @Test
+    fun `chave antiga em texto livre abre sem tipo e salvar sem mexer mantem os dois valores`() = runTest(mainDispatcher) {
+        val gateway = FakeGroupProfileGateway()
+        val viewModel = openWithPix("chave antiga", "Lucas Prado · Nubank", gateway)
+        runCurrent()
+        assertNull(viewModel.state.value.pixType)
+        assertEquals("chave antiga", viewModel.state.value.pixKey)
+
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals("chave antiga", gateway.lastUpdateCommand?.form?.pixKey)
+        assertEquals("Lucas Prado · Nubank", gateway.lastUpdateCommand?.form?.pixLabel)
+    }
+
+    @Test
+    fun `chave deduzida salva sem mexer tambem mantem os valores antigos`() = runTest(mainDispatcher) {
+        val gateway = FakeGroupProfileGateway()
+        val viewModel = openWithPix("529.982.247-25", "Lucas Prado", gateway)
+        runCurrent()
+
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals("529.982.247-25", gateway.lastUpdateCommand?.form?.pixKey)
+        assertEquals("Lucas Prado", gateway.lastUpdateCommand?.form?.pixLabel)
     }
 
     @Test
@@ -1124,8 +1227,8 @@ class GroupSetupViewModelTest {
             mode = GroupSetupMode.Edit(groupId = "grp-1"),
             profileGateway = profileGateway,
         )
+        viewModel.onIntent(GroupSetupIntent.SelectPixType(PixKeyType.CPF))
         viewModel.onIntent(GroupSetupIntent.UpdatePixKey(""))
-        viewModel.onIntent(GroupSetupIntent.UpdatePixLabel(""))
         viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
@@ -1139,7 +1242,6 @@ class GroupSetupViewModelTest {
         val profileGateway = FakeGroupProfileGateway()
         val viewModel = viewModel(profileGateway = profileGateway)
         viewModel.onIntent(GroupSetupIntent.UpdatePixKey(""))
-        viewModel.onIntent(GroupSetupIntent.UpdatePixLabel(""))
         viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
@@ -1176,9 +1278,6 @@ class GroupSetupViewModelTest {
         viewModel.onIntent(
             GroupSetupIntent.UpdatePixKey("P".repeat(GroupPixTextLimits.KeyMax + 1)),
         )
-        viewModel.onIntent(
-            GroupSetupIntent.UpdatePixLabel("L".repeat(GroupPixTextLimits.LabelMax + 1)),
-        )
         runCurrent()
 
         val form = viewModel.state.value.form
@@ -1188,11 +1287,9 @@ class GroupSetupViewModelTest {
         assertEquals(GroupTextLimits.VenueNameMax, form.defaultVenue?.name?.length)
         assertEquals(GroupTextLimits.VenueAddressMax, form.defaultVenue?.address?.length)
         assertEquals(GroupPixTextLimits.KeyMax, viewModel.state.value.pixKey?.length)
-        assertEquals(GroupPixTextLimits.LabelMax, viewModel.state.value.pixLabel?.length)
         // O que foi cortado também não vaza para o process death.
         assertEquals(GroupTextLimits.NameMax, handle.get<String>("group-setup-name")?.length)
         assertEquals(GroupPixTextLimits.KeyMax, handle.get<String>("group-setup-pix-key")?.length)
-        assertEquals(GroupPixTextLimits.LabelMax, handle.get<String>("group-setup-pix-label")?.length)
     }
 
     /** Quadra vazia não é quadra: o backend recusa `defaultVenue` com campos em branco. */
