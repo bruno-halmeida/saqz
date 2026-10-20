@@ -223,6 +223,20 @@ class AndroidLinkAdapterTest {
     }
 
     @Test
+    fun vouOfAPushWithPositionsAsksForThePositionScreen() {
+        val fixture = Fixture()
+        val events = mutableListOf<br.com.saqz.groups.port.GroupLinkEvent>()
+        fixture.adapter.start(object : br.com.saqz.groups.port.GroupLinkEventListener {
+            override fun onEvent(event: br.com.saqz.groups.port.GroupLinkEvent) { events += event }
+        })
+        fixture.adapter.onNotificationOpen("group-1", "game-1", "GAME_OPEN", pickPosition = true)
+        assertEquals(
+            listOf(br.com.saqz.groups.port.GroupLinkEvent.NotificationOpen("group-1", "game-1", "GAME_OPEN", pickPosition = true)),
+            events,
+        )
+    }
+
+    @Test
     fun notificationTapIsBufferedUntilListenerAndDeliveredOnEveryTap() {
         val fixture = Fixture()
         fixture.adapter.onNotificationOpen("group-1", "game-1")

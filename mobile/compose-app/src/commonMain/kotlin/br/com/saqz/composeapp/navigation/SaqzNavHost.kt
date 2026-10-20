@@ -70,6 +70,7 @@ import br.com.saqz.groups.presentation.details.GroupDetailsEffect
 import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
 import br.com.saqz.groups.presentation.navigation.FinanceRoute
 import br.com.saqz.groups.presentation.navigation.GroupsRoute
+import br.com.saqz.groups.presentation.positionpicker.PositionPickerOrigin
 import br.com.saqz.groups.presentation.membereditor.MemberEditorRoot
 import br.com.saqz.groups.presentation.newentry.NewEntryPrefill
 import br.com.saqz.groups.presentation.newentry.NewEntryEffect
@@ -444,7 +445,10 @@ internal fun SaqzNavHost(
             val gameId = opened.gameId
             // Push de jogo abre o jogo (onde se confirma); o do teste e do atraso abre os planos (ou Meu plano, para
             // quem já assina); os outros, a central.
-            if (groupId != null && gameId != null) backStack.add(GroupsRoute.GameDetail(groupId, gameId))
+            // "Vou" do push de jogo com posições: a tela de posição, que abre o jogo depois de confirmar (DEB-107).
+            if (groupId != null && gameId != null && opened.pickPosition) {
+                backStack.add(GroupsRoute.PositionPicker(groupId, gameId, PositionPickerOrigin.Push.routeValue))
+            } else if (groupId != null && gameId != null) backStack.add(GroupsRoute.GameDetail(groupId, gameId))
             else if (opened.channel == "TRIAL_ENDING") openSubscriptionPlans()
             else if (backStack.none { it is GroupsRoute.Notifications }) backStack.add(GroupsRoute.Notifications())
             notificationOpen.consume()
@@ -604,6 +608,9 @@ internal fun SaqzNavHost(
                                 onOpenGroups = onOpenGroups,
                                 onOpenGame = { groupId, gameId ->
                                     backStack.add(GroupsRoute.GameDetail(groupId, gameId))
+                                },
+                                onPickPosition = { groupId, gameId ->
+                                    backStack.add(GroupsRoute.PositionPicker(groupId, gameId, PositionPickerOrigin.Home.routeValue))
                                 },
                                 onOpenMembers = { backStack.add(GroupsRoute.Members(it)) },
                                 onOpenCashbox = { backStack.add(FinanceRoute.GroupCashbox(it)) },
@@ -1147,6 +1154,11 @@ internal fun SaqzNavHost(
                         onAdvanceRegistration = { groupId ->
                             backStack.add(GroupsRoute.AthleteRegistration(groupId, pendingRequest = true))
                         },
+                        // Por cima do link: confirmar volta a ele, que mostra o resultado com a posição.
+                        onPickPosition = { destination ->
+                            val origin = PositionPickerOrigin.Link.routeValue
+                            backStack.add(GroupsRoute.PositionPicker(destination.groupId.value, destination.gameId, origin))
+                        },
                     ) { destination ->
                         pop()
                         backStack.add(GroupsRoute.GameDetail(destination.groupId.value, destination.gameId))
@@ -1253,6 +1265,9 @@ internal fun SaqzNavHost(
                             scheduleRefreshVersion++
                             groupDetailsRefreshVersion++
                             pop()
+                        },
+                        onPickPosition = {
+                            backStack.add(GroupsRoute.PositionPicker(route.groupId, route.gameId, PositionPickerOrigin.Game.routeValue))
                         },
                     )
                 }
@@ -1469,6 +1484,9 @@ internal fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop
         is GroupDetailsEffect.OpenCreateGame -> add(GroupsRoute.GameEditor(effect.groupId))
         // 4c · O card do próximo jogo e a agenda abrem o mesmo detalhe.
         is GroupDetailsEffect.OpenGame -> add(GroupsRoute.GameDetail(effect.groupId, effect.gameId))
+        // "Vou" em jogo com posições (DEB-107).
+        is GroupDetailsEffect.PickPosition ->
+            add(GroupsRoute.PositionPicker(effect.groupId, effect.gameId, PositionPickerOrigin.Group.routeValue))
         is GroupDetailsEffect.OpenCashbox -> add(FinanceRoute.GroupCashbox(effect.groupId))
         is GroupDetailsEffect.OpenReports -> add(FinanceRoute.Reports(effect.groupId))
         is GroupDetailsEffect.OpenSettlement -> add(FinanceRoute.GameSettlement(effect.groupId, effect.gameId))

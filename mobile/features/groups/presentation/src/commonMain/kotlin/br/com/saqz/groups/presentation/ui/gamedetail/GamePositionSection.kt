@@ -29,7 +29,6 @@ import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.presentation.gamedetail.GameDetailIntent
-import br.com.saqz.groups.presentation.gamedetail.GameDetailState
 import br.com.saqz.groups.presentation.gamedetail.GamePositionPickerUi
 import br.com.saqz.groups.presentation.gamedetail.GamePositionPurpose
 import br.com.saqz.groups.presentation.gamedetail.GamePositionUi
@@ -46,9 +45,6 @@ import br.com.saqz.groups.resources.position_meta_full
 import br.com.saqz.groups.resources.position_meta_open
 import br.com.saqz.groups.resources.position_meta_waiting
 import br.com.saqz.groups.resources.position_missing
-import br.com.saqz.groups.resources.position_picker_hint
-import br.com.saqz.groups.resources.position_picker_pick
-import br.com.saqz.groups.resources.position_picker_submit
 import br.com.saqz.groups.resources.position_picker_suggested
 import br.com.saqz.groups.resources.position_picker_title
 import org.jetbrains.compose.resources.pluralStringResource
@@ -118,38 +114,10 @@ internal fun GamePositionChoices(
 private fun SuggestedChip() =
     SaqzStatusChip(stringResource(Res.string.position_picker_suggested), tone = SaqzChipTone.Brand)
 
-/** Folha aberta pelo "Vou" (escolhe a posição) ou pelo "Forçar entrada" do gestor (confirma). */
+/** Folha do "Forçar entrada" do gestor (confirma); o "Vou" de quem olha abre a tela de posição (DEB-107). */
 @Composable
-internal fun GamePositionPickerSheet(state: GameDetailState, picker: GamePositionPickerUi, onIntent: (GameDetailIntent) -> Unit) {
+internal fun GamePositionPickerSheet(picker: GamePositionPickerUi, onIntent: (GameDetailIntent) -> Unit) {
     when (val purpose = picker.purpose) {
-        GamePositionPurpose.Self -> SaqzBottomSheet(
-            open = true,
-            onClose = { onIntent(GameDetailIntent.DismissPositionPicker) },
-            modifier = Modifier.testTag(GamePositionTags.Sheet),
-            title = stringResource(Res.string.position_picker_title),
-            description = stringResource(Res.string.position_picker_hint),
-            footer = {
-                SaqzButton(
-                    label = stringResource(
-                        if (picker.selected == null) Res.string.position_picker_pick else Res.string.position_picker_submit,
-                    ),
-                    onClick = { onIntent(GameDetailIntent.ConfirmPosition) },
-                    modifier = Modifier.testTag(GamePositionTags.Submit),
-                    fullWidth = true,
-                    enabled = picker.selected != null,
-                )
-            },
-        ) {
-            GamePositionChoices(
-                positions = state.positions,
-                selected = picker.selected,
-                suggested = picker.suggested,
-                enabled = true,
-                tagPrefix = "game-position",
-                onSelect = { onIntent(GameDetailIntent.SelectPosition(it)) },
-            )
-        }
-
         is GamePositionPurpose.Force -> {
             val reason = stringResource(Res.string.position_force_reason)
             SaqzBottomSheet(

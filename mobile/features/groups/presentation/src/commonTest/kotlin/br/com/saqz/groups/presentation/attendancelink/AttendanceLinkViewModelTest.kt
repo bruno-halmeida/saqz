@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.attendancelink
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.*
 import br.com.saqz.groups.domain.athlete.AthleteError
+import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.athlete.EntryRequestAthleteProfile
 import br.com.saqz.groups.domain.athlete.OwnEntryRequest
 import br.com.saqz.groups.domain.attendance.*
@@ -32,6 +33,46 @@ class AttendanceLinkViewModelTest {
         assertEquals(AttendanceLinkPhase.Waitlisted, waitlisted.state.value.phase)
         assertEquals(gateway.commands.first().requestId, gateway.commands.last().requestId)
         assertEquals("00000000-0000-0000-0000-000000000000", gateway.commands.first().requestId)
+    }
+
+    @Test fun vouOnAGameWithPositionsOpensThePositionScreenAndRegistersNothing() = runTest {
+        val gateway = AttendanceFake().apply { positions = slots }
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
+        assertEquals(AttendanceLinkPhase.ChoosingPosition, vm.state.value.phase)
+        assertEquals(AttendanceLinkEffect.PickPosition(destination), vm.effects.first())
+        assertTrue(gateway.commands.isEmpty())
+        // Voltou sem confirmar: segue sem resposta, e o "Vou" reabre a tela.
+        vm.onIntent(AttendanceLinkIntent.Refresh)
+        assertEquals(AttendanceLinkPhase.ChoosingPosition, vm.state.value.phase)
+        vm.onIntent(AttendanceLinkIntent.PickPosition)
+        assertEquals(AttendanceLinkEffect.PickPosition(destination), vm.effects.first())
+        // Confirmou na tela de posição: ao voltar, o cartão mostra o resultado com a posição.
+        gateway.own = AttendanceEntry("logged-user", AttendanceStatus.Confirmed, version = 2, position = AthletePosition.CENTRAL)
+        vm.onIntent(AttendanceLinkIntent.Refresh)
+        assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)
+        assertEquals(AttendanceLinkPosition(AthletePosition.CENTRAL, 4, 4), vm.state.value.position)
+        assertTrue(gateway.commands.isEmpty())
+    }
+
+    @Test fun linkOpenedAgainAfterAnsweringWithPositionShowsTheWaitlistResult() = runTest {
+        val gateway = AttendanceFake().apply {
+            positions = slots
+            own = AttendanceEntry("logged-user", AttendanceStatus.Waitlisted, waitlistPosition = 2, version = 2, position = AthletePosition.PONTA)
+        }
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
+        assertEquals(AttendanceLinkPhase.Waitlisted, vm.state.value.phase)
+        assertEquals(2L, vm.state.value.waitlistPosition)
+        assertEquals(AthletePosition.PONTA, vm.state.value.position?.position)
+        assertTrue(gateway.commands.isEmpty())
+    }
+
+    @Test fun gameWithoutPositionsStillAnswersOnOpen() = runTest {
+        val gateway = AttendanceFake()
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
+        assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)
+        assertEquals(1, gateway.reads)
+        assertEquals(1, gateway.commands.size)
+        assertNull(vm.state.value.position)
     }
 
     @Test fun confirmThenDeclineThenConfirmAgainByLinkShowsTheWaitlistTheServerReturnedNotAConfirmation() = runTest {
@@ -584,7 +625,16 @@ class AttendanceLinkViewModelTest {
                     detail = AttendanceDetail(confirmedCount = 1, availableSpots = 0, waitlistCount = 0, capacity = 1)),
                 AttendanceVersionToken("1")))
         }
-        override suspend fun read(groupId: GroupId, gameId: String) = error("unused")
+        /** Jogo com posições (DEB-107) e a presença de quem abre o link; vazio = jogo sem posições. */
+        var positions: List<PositionSummary> = emptyList()
+        var own: AttendanceEntry? = null
+        var reads = 0
+        override suspend fun read(groupId: GroupId, gameId: String): SaqzResult<AttendanceDetail, AttendanceError> {
+            reads++
+            return SaqzResult.Success(
+                AttendanceDetail(own, confirmedCount = 1, availableSpots = 0, waitlistCount = 0, capacity = 1, positions = positions),
+            )
+        }
         override suspend fun roster(groupId: GroupId, gameId: String) = error("unused")
         override suspend fun promote(groupId: GroupId, gameId: String, command: AttendancePromotionCommand) = error("unused")
         override suspend fun override(groupId: GroupId, gameId: String, command: OverrideAttendanceCommand) = error("unused")
@@ -596,5 +646,9 @@ class AttendanceLinkViewModelTest {
         /** 32 bytes distintos; confirmar usa a metade inicial e declinar a final. */
         val declineCode = "AwoRGB8mLTQ7QklQV15lbHN6gYiPlp2kq7K5wMfO1dw"
         val destination = AttendanceLinkDestination(GroupId("group"), "game")
+        val slots = listOf(
+            PositionSummary(AthletePosition.PONTA, 4, 4, 0, 1),
+            PositionSummary(AthletePosition.CENTRAL, 4, 4, 0, 0),
+        )
     }
 }

@@ -60,6 +60,9 @@ class AttendanceLinkViewModel(
             AttendanceLinkIntent.Decline -> decline()
             AttendanceLinkIntent.Undo -> undo()
             AttendanceLinkIntent.OpenAppDownload -> appDownload?.appDownloadUrl()?.let(appDownload::openAppDownload)
+            AttendanceLinkIntent.PickPosition -> state.value.destination
+                ?.takeIf { state.value.phase == AttendanceLinkPhase.ChoosingPosition }
+                ?.let { emit(AttendanceLinkEffect.PickPosition(it)) }
         }
     }
 
@@ -93,12 +96,62 @@ class AttendanceLinkViewModel(
         if (destination.registrationRequired) return register(destination.groupId.value)
         loadGame(current, destination)
         if (decline) ask(current, destination)
-        else respond(destination, requestId, current, AttendanceIntent.Confirm)
+        else if (!choosePosition(current, destination)) respond(destination, requestId, current, AttendanceIntent.Confirm)
+    }
+
+    /**
+     * Jogo com posições (DEB-107, LINK-002): o "Vou" do link não registra sozinho; abre a tela de escolher posição. Quem
+     * já está na lista ou na espera vê o resultado. Devolve `false` em jogo sem posições, que segue respondendo direto.
+     */
+    private suspend fun choosePosition(current: Int, destination: AttendanceLinkDestination): Boolean {
+        val read = attendance.read(destination.groupId, destination.gameId)
+        if (current != generation) return true
+        // Sem a leitura não dá para saber se o jogo pede posição: nada é registrado, e "Tentar de novo" refaz o link.
+        val detail = (read as? SaqzResult.Success)?.value ?: return true.also { show(AttendanceLinkPhase.Failed) }
+        if (!detail.hasPositions) return false
+        if (!showPositionResult(destination, detail)) {
+            update { AttendanceLinkState(AttendanceLinkPhase.ChoosingPosition, destination, it.game) }
+            emit(AttendanceLinkEffect.PickPosition(destination))
+        }
+        return true
+    }
+
+    /** Já respondeu "Vou" neste jogo com posições: o cartão do resultado com a posição. */
+    private fun showPositionResult(destination: AttendanceLinkDestination, detail: AttendanceDetail): Boolean {
+        val own = detail.ownAttendance ?: return false
+        val phase = when (own.status) {
+            AttendanceStatus.Confirmed -> AttendanceLinkPhase.Confirmed
+            AttendanceStatus.Waitlisted -> AttendanceLinkPhase.Waitlisted
+            AttendanceStatus.Declined -> return false
+        }
+        val summary = detail.positions.firstOrNull { it.position == own.position }
+        update {
+            AttendanceLinkState(
+                phase = phase,
+                destination = destination,
+                game = it.game,
+                waitlistPosition = own.waitlistPosition,
+                position = summary?.let { position -> AttendanceLinkPosition(position.position, position.slots, position.confirmed) },
+            )
+        }
+        return true
+    }
+
+    /** Volta da tela de posição: confirmou (mostra o resultado) ou saiu sem confirmar (fica, com o "Vou" para reabrir). */
+    private fun refreshChoice() {
+        val destination = state.value.destination ?: return
+        val current = generation
+        viewModelScope.launch {
+            val read = attendance.read(destination.groupId, destination.gameId)
+            if (current != generation || state.value.phase != AttendanceLinkPhase.ChoosingPosition) return@launch
+            if (read is SaqzResult.Success && showPositionResult(destination, read.value)) loadGame(current, destination)
+        }
     }
 
     /** Atualização silenciosa da fase `Pending`: nada volta para `Loading`, o cartão e os textos ficam. */
     private fun refresh() {
         val before = state.value
+        if (before.phase == AttendanceLinkPhase.ChoosingPosition) return refreshChoice()
         if (before.phase != AttendanceLinkPhase.Pending || before.refreshing) return
         val current = generation
         update { it.copy(refreshing = true) }

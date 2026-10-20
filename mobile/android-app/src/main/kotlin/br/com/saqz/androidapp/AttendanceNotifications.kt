@@ -15,6 +15,8 @@ internal data class AttendancePush(
     val recipient: String?,
     val windowEndsAt: Long?,
     val channel: String? = null,
+    /** Jogo com vagas por posição (DEB-107): o "Vou" abre o app na tela de escolher posição. */
+    val positions: Boolean = false,
 ) {
     /** Janela de presença das 24 h: expira sozinha e, no Android 16+, vira Live Update. */
     val isWindow get() = windowEndsAt != null && gameId != null
@@ -27,7 +29,10 @@ internal data class AttendancePush(
             val windowEndsAt = data["windowEndsAt"]?.toLongOrNull()
             val id = if (windowEndsAt != null && gameId != null) attendanceWindowId(gameId)
                 else (data["notificationId"] ?: fallbackId).hashCode()
-            return AttendancePush(id, data["groupId"], gameId, title, body, data["recipient"], windowEndsAt, data["channel"])
+            return AttendancePush(
+                id, data["groupId"], gameId, title, body, data["recipient"], windowEndsAt, data["channel"],
+                positions = data["positions"] == "true",
+            )
         }
     }
 }
@@ -49,7 +54,9 @@ internal fun Context.attendanceNotification(
             .setTimeoutAfter((push.remaining() ?: 0).coerceAtLeast(1))
     }
     if (buttons && push.gameId != null && push.channel != FIRST_CONFIRMATION_CHANNEL) {
-        builder.addAction(0, getString(R.string.notification_action_confirm), attendanceAction(ACTION_CONFIRM, push))
+        // Jogo com posições: o "Vou" não confirma por baixo, abre o app na tela de escolher posição (DEB-107).
+        val confirm = if (push.positions) pickPositionAction(push) else attendanceAction(ACTION_CONFIRM, push)
+        builder.addAction(0, getString(R.string.notification_action_confirm), confirm)
             .addAction(0, getString(R.string.notification_action_decline), attendanceAction(ACTION_DECLINE, push))
     }
     return builder
@@ -74,6 +81,7 @@ internal fun Intent.attendancePush() = AttendancePush(
     recipient = getStringExtra(EXTRA_RECIPIENT),
     windowEndsAt = getLongExtra(EXTRA_WINDOW_ENDS_AT, 0L).takeIf { it > 0 },
     channel = getStringExtra(EXTRA_NOTIFICATION_CHANNEL),
+    positions = getBooleanExtra(EXTRA_POSITIONS, false),
 )
 
 private fun Context.attendanceAction(action: String, push: AttendancePush): PendingIntent {
@@ -81,10 +89,29 @@ private fun Context.attendanceAction(action: String, push: AttendancePush): Pend
         .putExtra(EXTRA_NOTIFICATION_ID, push.id).putExtra(EXTRA_NOTIFICATION_GROUP_ID, push.groupId)
         .putExtra(EXTRA_GAME_ID, push.gameId).putExtra(EXTRA_TITLE, push.title).putExtra(EXTRA_BODY, push.body)
         .putExtra(EXTRA_RECIPIENT, push.recipient).putExtra(EXTRA_NOTIFICATION_CHANNEL, push.channel)
+        .putExtra(EXTRA_POSITIONS, push.positions)
     push.windowEndsAt?.let { intent.putExtra(EXTRA_WINDOW_ENDS_AT, it) }
     // requestCode = id: extras não distinguem PendingIntents, e cada push precisa do seu.
     return PendingIntent.getBroadcast(this, push.id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 }
+
+/** O "Vou" de jogo com posições: uma atividade (abre o app), não o receiver que responde em segundo plano. */
+private fun Context.pickPositionAction(push: AttendancePush): PendingIntent {
+    val intent = Intent(this, MainActivity::class.java)
+        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        .setAction(ACTION_PICK_POSITION)
+        .putExtra(EXTRA_NOTIFICATION_GROUP_ID, push.groupId)
+        .putExtra(EXTRA_GAME_ID, push.gameId)
+        .putExtra(EXTRA_NOTIFICATION_CHANNEL, push.channel)
+        .putExtra(EXTRA_PICK_POSITION, true)
+    // requestCode distinto do toque na notificação (que usa o id): os dois PendingIntents de atividade não se sobrepõem.
+    return PendingIntent.getActivity(this, push.id xor PICK_POSITION_REQUEST, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+}
+
+internal const val ACTION_PICK_POSITION = "br.com.saqz.PICK_POSITION"
+internal const val EXTRA_PICK_POSITION = "saqz.notification.pickPosition"
+internal const val EXTRA_POSITIONS = "saqz.notification.positions"
+private const val PICK_POSITION_REQUEST = 0x5051
 
 /** Quanto o resultado do toque fica na tela antes de sumir (decisão de produto: 2 min). */
 internal const val FINAL_STATE_MS = 120_000L

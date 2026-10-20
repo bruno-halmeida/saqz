@@ -19,6 +19,8 @@ fun GameDetailRoot(
     onOpenEditor: () -> Unit,
     onOpenSettlement: () -> Unit = {},
     onCancel: () -> Unit = onBack,
+    /** "Vou" em jogo com posições: a tela de escolher posição (DEB-107). */
+    onPickPosition: () -> Unit = {},
     viewModel: GameDetailViewModel = koinViewModel(
         key = "game-detail/$groupId/$gameId",
         parameters = { parametersOf(groupId, gameId) },
@@ -32,6 +34,7 @@ fun GameDetailRoot(
             GameDetailEffect.OpenEditor -> onOpenEditor()
             GameDetailEffect.OpenSettlement -> onOpenSettlement()
             GameDetailEffect.Cancelled -> onCancel()
+            GameDetailEffect.PickPosition -> onPickPosition()
         }
     }
     GameDetailScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)

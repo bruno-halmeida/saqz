@@ -769,8 +769,8 @@ class GroupDetailsViewModel(
     }
 
     /**
-     * Jogo com vagas por posição (DEB-102) pede a escolha da posição, e o seletor mora no detalhe do jogo: lê a presença
-     * antes e, havendo posições, abre o jogo em vez de responder. Sem posições, ou com a leitura falhando, responde direto.
+     * Jogo com vagas por posição pede a escolha da posição na tela própria (DEB-107): lê a presença antes e, havendo
+     * posições, abre a tela de posição em vez de responder. Sem posições, ou com a leitura falhando, responde direto.
      */
     private fun respondOrPickPosition(intent: AttendanceIntent) {
         val current = state.value
@@ -782,7 +782,7 @@ class GroupDetailsViewModel(
         }
         viewModelScope.launch {
             val positions = (attendanceGateway.read(GroupId(groupId), game.gameId) as? SaqzResult.Success)?.value?.hasPositions == true
-            if (positions) emit(GroupDetailsEffect.OpenGame(groupId, game.gameId)) else respond(intent)
+            if (positions) emit(GroupDetailsEffect.PickPosition(groupId, game.gameId)) else respond(intent)
         }
     }
 

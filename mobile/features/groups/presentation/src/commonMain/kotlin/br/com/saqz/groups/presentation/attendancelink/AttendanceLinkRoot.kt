@@ -32,6 +32,7 @@ internal object AttendanceLinkTags {
     const val OpenGame = "attendance-link-open-game"
     const val Footer = "attendance-link-footer"
     const val RequestAgain = "attendance-link-request-again"
+    const val PickPosition = "attendance-link-pick-position"
 }
 
 @Composable
@@ -41,6 +42,8 @@ fun AttendanceLinkRoot(
     onBack: () -> Unit,
     onRegister: (String) -> Unit,
     onAdvanceRegistration: (groupId: String) -> Unit,
+    /** Jogo com posições (DEB-107): o "Vou" abre a tela de escolher posição. */
+    onPickPosition: (AttendanceLinkDestination) -> Unit = {},
     onOpenGame: (AttendanceLinkDestination) -> Unit,
 ) {
     val vm: AttendanceLinkViewModel = koinViewModel(
@@ -48,7 +51,12 @@ fun AttendanceLinkRoot(
         parameters = { parametersOf(code, decline) },
     )
     val state by vm.state.collectAsStateWithLifecycle()
-    ObserveAsEvents(vm.effects) { effect -> when (effect) { is AttendanceLinkEffect.Register -> onRegister(effect.groupId) } }
+    ObserveAsEvents(vm.effects) { effect ->
+        when (effect) {
+            is AttendanceLinkEffect.Register -> onRegister(effect.groupId)
+            is AttendanceLinkEffect.PickPosition -> onPickPosition(effect.destination)
+        }
+    }
     // Volta do formulário de cadastro (ou do app em segundo plano): o pedido pode ter sido aprovado nesse meio tempo.
     RefreshWhenVisible { vm.onIntent(AttendanceLinkIntent.Refresh) }
     AttendanceLinkScreen(state, onBack, vm::onIntent, onOpenGame, onAdvanceRegistration, vm.appDownloadAvailable)
@@ -169,7 +177,8 @@ private fun AttendanceLinkFooter(
     // O aviso do "não vou" só deixa o cartão do jogo atrás da folha: sem "Ver jogo".
     val openGame = destination != null && state.phase != AttendanceLinkPhase.DeclineSheet
     val hasAction = when (state.phase) {
-        AttendanceLinkPhase.Pending, AttendanceLinkPhase.Failed, AttendanceLinkPhase.RequestClosed -> true
+        AttendanceLinkPhase.Pending, AttendanceLinkPhase.Failed, AttendanceLinkPhase.RequestClosed,
+        AttendanceLinkPhase.ChoosingPosition -> true
         else -> openGame
     }
     if (!hasAction) return
@@ -207,6 +216,16 @@ private fun AttendanceLinkFooter(
                 fullWidth = true,
                 modifier = Modifier.testTag(AttendanceLinkTags.RequestAgain),
             )
+            // Voltou da tela de posição sem confirmar: o "Vou" reabre a escolha; nada foi respondido.
+            AttendanceLinkPhase.ChoosingPosition -> {
+                SaqzButton(
+                    stringResource(Res.string.game_response_yes),
+                    { onIntent(AttendanceLinkIntent.PickPosition) },
+                    fullWidth = true,
+                    modifier = Modifier.testTag(AttendanceLinkTags.PickPosition),
+                )
+                if (destination != null) OpenGameButton(destination, onOpenGame, SaqzButtonVariant.Ghost)
+            }
             AttendanceLinkPhase.Failed -> {
                 SaqzButton(
                     stringResource(Res.string.communication_refresh), { onIntent(AttendanceLinkIntent.Retry) }, fullWidth = true,
@@ -238,10 +257,15 @@ private fun AttendanceLinkFooter(
 }
 
 @Composable
-private fun OpenGameButton(destination: AttendanceLinkDestination, onOpenGame: (AttendanceLinkDestination) -> Unit) {
+private fun OpenGameButton(
+    destination: AttendanceLinkDestination,
+    onOpenGame: (AttendanceLinkDestination) -> Unit,
+    variant: SaqzButtonVariant = SaqzButtonVariant.Primary,
+) {
     SaqzButton(
         stringResource(Res.string.attendance_link_open_game),
         { onOpenGame(destination) },
+        variant = variant,
         fullWidth = true,
         modifier = Modifier.testTag(AttendanceLinkTags.OpenGame),
     )

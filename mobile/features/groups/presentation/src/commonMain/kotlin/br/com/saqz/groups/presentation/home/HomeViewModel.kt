@@ -381,9 +381,9 @@ class HomeViewModel(
     }
 
     /**
-     * "Vou" no cartão do próximo jogo. Jogo com vagas por posição (DEB-102) pede a escolha da posição, e o seletor mora no
-     * detalhe do jogo: lê a presença antes e, havendo posições, abre o jogo em vez de responder. Sem posições, ou quando a
-     * leitura falha, responde direto como sempre (o servidor escolhe pelo perfil).
+     * "Vou" no cartão do próximo jogo. Jogo com vagas por posição pede a escolha da posição na tela própria (DEB-107): lê a
+     * presença antes e, havendo posições, abre a tela de posição em vez de responder. Sem posições, ou quando a leitura
+     * falha, responde direto como sempre (o servidor escolhe pelo perfil).
      */
     private fun respond(intent: AttendanceIntent) {
         val current = state.value
@@ -396,7 +396,7 @@ class HomeViewModel(
         viewModelScope.launch {
             val positions = (attendanceGateway.read(GroupId(context.game.groupId.value), context.game.gameId) as? SaqzResult.Success)
                 ?.value?.hasPositions == true
-            if (positions) emit(HomeEffect.OpenGame(context.game.groupId.value, context.game.gameId)) else sendResponse(intent)
+            if (positions) emit(HomeEffect.PickPosition(context.game.groupId.value, context.game.gameId)) else sendResponse(intent)
         }
     }
 

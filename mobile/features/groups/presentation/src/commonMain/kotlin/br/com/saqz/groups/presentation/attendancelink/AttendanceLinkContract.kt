@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.attendancelink
 
+import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination
 
 enum class AttendanceLinkPhase {
@@ -22,7 +23,12 @@ enum class AttendanceLinkPhase {
     Pending,
     /** O pedido de entrada não existe mais (recusado ou cancelado): só um toque da pessoa pede de novo. */
     RequestClosed,
+    /** Jogo com posições (DEB-107): o "Vou" abriu a tela de escolher posição; nada foi respondido ainda. */
+    ChoosingPosition,
 }
+
+/** A posição de quem respondeu pelo link em jogo com posições, para o cartão do resultado (bolinhas e "4 de 4 vagas"). */
+data class AttendanceLinkPosition(val position: AthletePosition, val slots: Int, val confirmed: Int)
 
 /**
  * O jogo do link, já formatado para o cartão (dia, hora e local). Para quem é membro vem do jogo; para quem
@@ -55,10 +61,18 @@ data class AttendanceLinkState(
     val pendingRegistrationSaved: Boolean = false,
     /** A atualização silenciosa da fase `Pending` está em voo; o cartão e os textos continuam na tela. */
     val refreshing: Boolean = false,
+    /** Jogo com posições: a posição da vaga ou da espera de quem respondeu. */
+    val position: AttendanceLinkPosition? = null,
 )
 
 /** `Undo`: desfaz a resposta que o link acabou de gravar (registra o "não vou" do mesmo jeito que o link de recusa). */
 /** `Refresh`: refaz o pedido de entrada sem sair da fase `Pending` (a tela se atualiza ao reaparecer). */
-enum class AttendanceLinkIntent { Retry, Refresh, Decline, Undo, OpenAppDownload }
+/** `PickPosition`: reabre a tela de escolher posição (voltou dela sem confirmar). */
+enum class AttendanceLinkIntent { Retry, Refresh, Decline, Undo, OpenAppDownload, PickPosition }
 
-sealed interface AttendanceLinkEffect { data class Register(val groupId: String) : AttendanceLinkEffect }
+sealed interface AttendanceLinkEffect {
+    data class Register(val groupId: String) : AttendanceLinkEffect
+
+    /** Jogo com posições (DEB-107): o "Vou" do link abre a tela de escolher posição. */
+    data class PickPosition(val destination: AttendanceLinkDestination) : AttendanceLinkEffect
+}

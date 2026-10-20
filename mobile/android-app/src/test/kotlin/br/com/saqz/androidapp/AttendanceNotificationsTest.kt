@@ -46,6 +46,28 @@ class AttendanceNotificationsTest {
     }
 
     @Test
+    fun gameWithPositionsOpensTheAppOnVouAndKeepsTheReceiverOnNaoVou() {
+        val fiveOne = AttendancePush.from(
+            mapOf("gameId" to "game1", "groupId" to "g1", "positions" to "true", "notificationId" to "9"), "Saqz", "Corpo", "m",
+        )
+        assertTrue(fiveOne.positions)
+        val actions = context.attendanceNotification(fiveOne).build().actions
+        val shadowVou = org.robolectric.Shadows.shadowOf(actions[0].actionIntent)
+        assertTrue(shadowVou.isActivityIntent)
+        assertEquals(MainActivity::class.java.name, shadowVou.savedIntent.component?.className)
+        assertTrue(shadowVou.savedIntent.getBooleanExtra(EXTRA_PICK_POSITION, false))
+        assertEquals("game1", shadowVou.savedIntent.getStringExtra(EXTRA_GAME_ID))
+        val shadowNaoVou = org.robolectric.Shadows.shadowOf(actions[1].actionIntent)
+        assertTrue(shadowNaoVou.isBroadcastIntent)
+        assertEquals(ACTION_DECLINE, shadowNaoVou.savedIntent.action)
+        // Sem posições, o "Vou" segue pelo receiver (confirma em segundo plano).
+        val plain = context.attendanceNotification(regular).build().actions
+        assertTrue(org.robolectric.Shadows.shadowOf(plain[0].actionIntent).isBroadcastIntent)
+        assertEquals(ACTION_CONFIRM, org.robolectric.Shadows.shadowOf(plain[0].actionIntent).savedIntent.action)
+        assertTrue(!AttendancePush.from(mapOf("gameId" to "game1"), "Saqz", "Corpo", "m").positions)
+    }
+
+    @Test
     fun regularPushResultKeepsTheOldBehavior() {
         val result = context.attendanceOutcome(regular, failed = true, text = "Não deu para registrar.").build()
 

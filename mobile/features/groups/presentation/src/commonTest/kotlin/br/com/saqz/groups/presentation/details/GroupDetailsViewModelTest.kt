@@ -112,7 +112,7 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
-    fun `DEB-102 Vou on a game with positions opens the game instead of answering`() = runTest {
+    fun `DEB-107 Vou on a game with positions opens the position screen instead of answering`() = runTest {
         val attendance = FakeAttendanceGateway(
             detailResult = SaqzResult.Success(
                 sampleAttendanceDetail().copy(
@@ -127,7 +127,7 @@ class GroupDetailsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(0, attendance.respondCalls)
-        assertEquals(GroupDetailsEffect.OpenGame("group-1", "game-1"), vm.effects.first())
+        assertEquals(GroupDetailsEffect.PickPosition("group-1", "game-1"), vm.effects.first())
         assertFalse(vm.state.value.responding)
     }
 

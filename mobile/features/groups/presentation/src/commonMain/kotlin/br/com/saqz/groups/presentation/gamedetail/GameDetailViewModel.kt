@@ -552,11 +552,6 @@ class GameDetailViewModel(
     /** DEB-102: intents do seletor de posição, do convidado e da entrada forçada. Devolve `true` quando tratou. */
     private fun onPositionIntent(intent: GameDetailIntent): Boolean {
         when (intent) {
-            is GameDetailIntent.SelectPosition -> update { current ->
-                val picker = current.positionPicker?.takeIf { !it.sending && it.purpose is GamePositionPurpose.Self }
-                current.copy(positionPicker = picker?.copy(selected = intent.position, failed = false) ?: current.positionPicker)
-            }
-            GameDetailIntent.ConfirmPosition -> confirmPosition()
             GameDetailIntent.DismissPositionPicker -> if (state.value.positionPicker?.sending != true) {
                 update { it.copy(positionPicker = null) }
             }
@@ -579,25 +574,8 @@ class GameDetailViewModel(
             return
         }
         if (!current.canRespond(intent) || current.positionPicker != null) return
-        val own = athletes.firstOrNull { it.userId == selfId }?.position
-        val suggested = PositionSuggestion.suggested(own, current.positions.filter { it.slots > 0 }.map { it.position })
-        update {
-            it.copy(positionPicker = GamePositionPickerUi(GamePositionPurpose.Self, suggested, suggested ?: it.mostFreePosition))
-        }
-    }
-
-    private fun confirmPosition() {
-        val picker = state.value.positionPicker ?: return
-        val selected = picker.selected ?: return
-        if (picker.sending) return
-        when (val purpose = picker.purpose) {
-            GamePositionPurpose.Self -> {
-                update { it.copy(positionPicker = null) }
-                respond(AttendanceIntent.Confirm, selected)
-            }
-            // A entrada forçada confirma por `ConfirmForceEntry`, que leva o motivo padrão da tela.
-            is GamePositionPurpose.Force -> Unit
-        }
+        // Jogo com posições: a escolha é a tela própria (DEB-107); nada é confirmado aqui.
+        emit(GameDetailEffect.PickPosition)
     }
 
     private fun requestForceEntry(rowId: String) {

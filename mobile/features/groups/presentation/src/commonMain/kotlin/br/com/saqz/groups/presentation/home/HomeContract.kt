@@ -296,6 +296,9 @@ sealed interface HomeEffect {
     data object OpenNotifications : HomeEffect
     data class OpenGroup(val groupId: String) : HomeEffect
     data class OpenGame(val groupId: String, val gameId: String) : HomeEffect
+
+    /** "Vou" em jogo com posições: abre a tela de escolher posição (DEB-107); nada é confirmado antes. */
+    data class PickPosition(val groupId: String, val gameId: String) : HomeEffect
     data class OpenMembers(val groupId: String) : HomeEffect
     data class OpenCashbox(val groupId: String) : HomeEffect
     data class OpenGameSettlement(val groupId: String, val gameId: String) : HomeEffect

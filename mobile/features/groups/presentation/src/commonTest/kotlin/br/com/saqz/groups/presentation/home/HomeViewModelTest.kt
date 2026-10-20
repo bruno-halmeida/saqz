@@ -570,7 +570,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `DEB-102 Vou on a game with positions opens the game instead of answering`() = runTest {
+    fun `DEB-107 Vou on a game with positions opens the position screen instead of answering`() = runTest {
         val attendance = FakeAttendanceGateway(
             detailResult = SaqzResult.Success(
                 br.com.saqz.groups.presentation.sampleAttendanceDetail().copy(
@@ -589,7 +589,7 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals(0, attendance.respondCalls)
-        assertTrue(effects.single() is HomeEffect.OpenGame)
+        assertTrue(effects.single() is HomeEffect.PickPosition)
         assertFalse(viewModel.state.value.responding)
     }
 

@@ -27,6 +27,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.flow.first
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -122,70 +123,13 @@ class GameDetailPositionsTest {
     }
 
     @Test
-    fun `going in a game with positions opens the picker with the profile position suggested and sends nothing`() = runTest {
-        val attendance = gateway()
-        val athletes = FakeAthleteGateway(
-            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("me").copy(position = AthletePosition.CENTRAL))),
-        )
-        val viewModel = viewModel(attendance, athletes = athletes)
-
-        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
-
-        val picker = assertNotNull(viewModel.state.value.positionPicker)
-        assertEquals(GamePositionPurpose.Self, picker.purpose)
-        assertEquals(AthletePosition.CENTRAL, picker.suggested)
-        assertEquals(AthletePosition.CENTRAL, picker.selected)
-        assertEquals(0, attendance.respondCalls)
-    }
-
-    @Test
-    fun `a profile position without slots in the game is not suggested`() = runTest {
-        val athletes = FakeAthleteGateway(
-            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("me").copy(position = AthletePosition.LIBERO))),
-        )
-        val viewModel = viewModel(gateway(), athletes = athletes)
-        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
-        val picker = assertNotNull(viewModel.state.value.positionPicker)
-        assertNull(picker.suggested)
-        assertEquals(AthletePosition.CENTRAL, picker.selected)
-    }
-
-    @Test
-    fun `choosing a position sends it and closes the picker`() = runTest {
+    fun `going in a game with positions opens the position screen and sends nothing`() = runTest {
         val attendance = gateway()
         val viewModel = viewModel(attendance)
-        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
-        viewModel.onIntent(GameDetailIntent.SelectPosition(AthletePosition.LEVANTADOR))
-        viewModel.onIntent(GameDetailIntent.ConfirmPosition)
 
-        assertNull(viewModel.state.value.positionPicker)
-        assertEquals(1, attendance.respondCalls)
-        assertEquals(AthletePosition.LEVANTADOR, attendance.lastResponse?.position)
-        assertEquals(AttendanceIntent.Confirm, attendance.lastResponse?.intent)
-        assertEquals(AttendanceStatus.Confirmed, viewModel.state.value.response.status)
-    }
-
-    @Test
-    fun `choosing a full position predicts the waitlist of that position`() = runTest {
-        val attendance = FakeAttendanceGateway(
-            readResult = SaqzResult.Success(detail()),
-            rosterResult = SaqzResult.Success(roster()),
-            respondResult = mutation(AttendanceStatus.Waitlisted, AthletePosition.PONTA),
-        )
-        val viewModel = viewModel(attendance)
         viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
-        viewModel.onIntent(GameDetailIntent.SelectPosition(AthletePosition.PONTA))
-        viewModel.onIntent(GameDetailIntent.ConfirmPosition)
-        assertEquals(AthletePosition.PONTA, attendance.lastResponse?.position)
-        assertEquals(AttendanceStatus.Waitlisted, viewModel.state.value.response.status)
-    }
 
-    @Test
-    fun `dismissing the picker sends nothing`() = runTest {
-        val attendance = gateway()
-        val viewModel = viewModel(attendance)
-        viewModel.onIntent(GameDetailIntent.Respond(AttendanceIntent.Confirm))
-        viewModel.onIntent(GameDetailIntent.DismissPositionPicker)
+        assertEquals(GameDetailEffect.PickPosition, viewModel.effects.first())
         assertNull(viewModel.state.value.positionPicker)
         assertEquals(0, attendance.respondCalls)
     }

@@ -179,15 +179,36 @@ final class SaqzPushDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
     /// Entregue pelo `SaqzIOSApp.init`: a ação do push pode rodar sem tela, e o Koin sobe com isto.
     static var dependencies: SaqzPlatformDependencies?
     static let attendanceCategory = "SAQZ_ATTENDANCE"
+    /// Push de jogo com posições (DEB-107): o "Confirmar" abre o app na tela de escolher posição, sem responder por baixo.
+    static let attendancePositionsCategory = "SAQZ_ATTENDANCE_POSITIONS"
+    nonisolated static let pickPositionAction = "PICK_POSITION"
+
+    /// As duas categorias de presença; o servidor escolhe uma pelo tipo de jogo (com ou sem vagas por posição).
+    static func notificationCategories() -> Set<UNNotificationCategory> {
+        let confirm = UNNotificationAction(identifier: "CONFIRM", title: "Confirmar", options: [])
+        let decline = UNNotificationAction(identifier: "DECLINE", title: "Não vou", options: [.destructive])
+        let pick = UNNotificationAction(identifier: pickPositionAction, title: "Confirmar", options: [.foreground])
+        return [
+            UNNotificationCategory(identifier: attendanceCategory, actions: [confirm, decline], intentIdentifiers: []),
+            UNNotificationCategory(identifier: attendancePositionsCategory, actions: [pick, decline], intentIdentifiers: []),
+        ]
+    }
+
+    /// O que o toque (ou a ação que abre o app) entrega à navegação: o jogo e, no "Confirmar" de jogo com posições,
+    /// o pedido da tela de posição.
+    nonisolated static func openedInfo(actionIdentifier: String, userInfo: [AnyHashable: Any]) -> [String: String] {
+        var opened: [String: String] = [:]
+        opened["groupId"] = userInfo["groupId"] as? String
+        opened["gameId"] = userInfo["gameId"] as? String
+        opened["channel"] = userInfo["channel"] as? String
+        if actionIdentifier == pickPositionAction { opened["pickPosition"] = "true" }
+        return opened
+    }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         let center = UNUserNotificationCenter.current()
         center.delegate = self
-        let confirm = UNNotificationAction(identifier: "CONFIRM", title: "Confirmar", options: [])
-        let decline = UNNotificationAction(identifier: "DECLINE", title: "Não vou", options: [.destructive])
-        center.setNotificationCategories([
-            UNNotificationCategory(identifier: Self.attendanceCategory, actions: [confirm, decline], intentIdentifiers: []),
-        ])
+        center.setNotificationCategories(Self.notificationCategories())
         if #available(iOS 17.0, *) { AttendanceWindowIntent.handler = LiveActivityAttendance.respond }
         return true
     }
@@ -219,10 +240,7 @@ final class SaqzPushDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
             return
         }
         NSLog("[SaqzPush] toque no push: groupId=\(groupId ?? "-")")
-        var opened: [String: String] = [:]
-        opened["groupId"] = groupId
-        opened["gameId"] = userInfo["gameId"] as? String
-        opened["channel"] = userInfo["channel"] as? String
+        let opened = Self.openedInfo(actionIdentifier: response.actionIdentifier, userInfo: userInfo)
         NotificationCenter.default.post(name: .saqzPushOpened, object: nil, userInfo: opened)
         completionHandler()
     }

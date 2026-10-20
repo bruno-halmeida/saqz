@@ -49,12 +49,6 @@ class PositionSlotsScreenshotTest {
     @Test fun configFaltam() = capture("config-faltam") { setup(SETUP_FALTAM) }
     @Test fun configSobram() = capture("config-sobram") { setup(SETUP_SOBRAM) }
     @Test fun listaAgrupada() = capture("lista-agrupada") { game(GameDetailPreviewData.positionsGame) }
-    @Test fun seletorSugerida() = capture("seletor-sugerida") {
-        game(GameDetailPreviewData.positionsGame.copy(positionPicker = PICKER_SUGERIDA))
-    }
-    @Test fun seletorSemEscolha() = capture("seletor-sem-escolha") {
-        game(GameDetailPreviewData.positionsGame.copy(positionPicker = PICKER_VAZIO))
-    }
     @Test fun convidadoComPosicao() = capture("convidado-com-posicao") {
         game(GameDetailPreviewData.positionsGame.copy(guest = GUEST_SHEET))
     }
@@ -112,9 +106,6 @@ class PositionSlotsSmallPhoneScreenshotTest {
         compose.onRoot().captureRoboImage("screenshots/deb-102/pequeno-criacao-faltam.png")
     }
     @Test fun listaAgrupada() = capture("pequeno-lista-agrupada") { game(GameDetailPreviewData.positionsGame) }
-    @Test fun seletor() = capture("pequeno-seletor") {
-        game(GameDetailPreviewData.positionsGame.copy(positionPicker = PICKER_SUGERIDA))
-    }
     @Test fun forcarEntrada() = capture("pequeno-forcar-entrada") {
         game(
             GameDetailPreviewData.positionsGame.copy(
@@ -147,8 +138,6 @@ private val CREATE_FALTAM =
     CREATE_OK.copy(positionSlots = CREATE_OK.positionSlots + (AthletePosition.PONTA to 4))
 private val SETUP_FALTAM = SETUP_OK.copy(positionSlots = SETUP_OK.positionSlots + (AthletePosition.PONTA to 4))
 private val SETUP_SOBRAM = SETUP_OK.copy(positionSlots = SETUP_OK.positionSlots + (AthletePosition.LIBERO to 1))
-private val PICKER_SUGERIDA = GamePositionPickerUi(GamePositionPurpose.Self, AthletePosition.CENTRAL, AthletePosition.CENTRAL)
-private val PICKER_VAZIO = GamePositionPickerUi(GamePositionPurpose.Self, null, null)
 private val GUEST_SHEET = GameGuestUi(visible = true, enabled = true, sheetOpen = true, name = "Rafa", position = AthletePosition.CENTRAL)
 private val FORCE_PURPOSE = GamePositionPurpose.Force("wait-2", "Duda Alves", AthletePosition.PONTA)
 private val FORCE = GamePositionPickerUi(FORCE_PURPOSE, null, AthletePosition.PONTA)

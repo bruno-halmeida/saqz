@@ -19,6 +19,8 @@ fun HomeRoot(
     onOpenGroup: (String) -> Unit = {},
     onOpenGroups: () -> Unit = {},
     onOpenGame: (String, String) -> Unit = { _, _ -> },
+    /** "Vou" em jogo com posições: a tela de escolher posição (DEB-107). */
+    onPickPosition: (String, String) -> Unit = { _, _ -> },
     onOpenMembers: (String) -> Unit = {},
     onOpenCashbox: (String) -> Unit = {},
     onOpenGameSettlement: (String, String) -> Unit = { _, _ -> },
@@ -41,6 +43,7 @@ fun HomeRoot(
             HomeEffect.OpenNotifications -> onOpenNotifications()
             is HomeEffect.OpenGroup -> onOpenGroup(effect.groupId)
             is HomeEffect.OpenGame -> onOpenGame(effect.groupId, effect.gameId)
+            is HomeEffect.PickPosition -> onPickPosition(effect.groupId, effect.gameId)
             is HomeEffect.OpenMembers -> onOpenMembers(effect.groupId)
             is HomeEffect.OpenCashbox -> onOpenCashbox(effect.groupId)
             is HomeEffect.OpenGameSettlement -> onOpenGameSettlement(effect.groupId, effect.gameId)

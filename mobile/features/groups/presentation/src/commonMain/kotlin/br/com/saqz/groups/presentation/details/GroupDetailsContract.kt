@@ -420,6 +420,9 @@ sealed interface GroupDetailsEffect {
 
     data class OpenGame(val groupId: String, val gameId: String) : GroupDetailsEffect
 
+    /** "Vou" em jogo com posições: abre a tela de escolher posição (DEB-107); nada é confirmado antes. */
+    data class PickPosition(val groupId: String, val gameId: String) : GroupDetailsEffect
+
     data class OpenCashbox(val groupId: String) : GroupDetailsEffect
 
     data class OpenReports(val groupId: String) : GroupDetailsEffect

@@ -72,6 +72,29 @@ class GameOpenNotificationIntegrationTest {
         assertEquals(0L, count("notification_whatsapp_group_queue"))
     }
 
+    /** DEB-107: o push de jogo com vagas por posição sai marcado, para o "Vou" abrir a tela de posição; sem posições, não. */
+    @Test fun `the push of a game with positions is flagged and the one without positions is not`() {
+        val game = publishedGame()
+        assertEquals(1, service.announceOpenGames())
+        val plain = mutableListOf<NotificationPush>()
+        push.drain(NotificationPushSender { _, message -> plain += message; PushDelivery.SENT })
+        assertTrue(plain.isNotEmpty())
+        assertTrue(plain.none { it.positions })
+
+        jdbc.sql("TRUNCATE games CASCADE").update()
+        jdbc.sql("TRUNCATE group_messages CASCADE").update()
+        val fiveOne = publishedGame()
+        jdbc.sql("""
+            INSERT INTO game_position_slots(game_id, position, slots)
+            VALUES (:game, 'LIBERO', 0), (:game, 'PONTA', 6), (:game, 'CENTRAL', 6)
+        """).param("game", fiveOne).update()
+        assertEquals(1, service.announceOpenGames())
+        val flagged = mutableListOf<NotificationPush>()
+        push.drain(NotificationPushSender { _, message -> flagged += message; PushDelivery.SENT })
+        assertTrue(flagged.isNotEmpty())
+        assertTrue(flagged.all { it.positions && it.gameId == fiveOne }, "$flagged ($game)")
+    }
+
     /** Do segundo aviso em diante o canal volta a ser o toque em quem ficou de responder. */
     @Test fun `later announcements only reach the athletes who have not answered`() {
         val game = publishedGame()

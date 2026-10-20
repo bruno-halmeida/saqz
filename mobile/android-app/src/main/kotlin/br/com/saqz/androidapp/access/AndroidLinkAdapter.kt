@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets
 internal interface AndroidIntentLinkPort : NativeLinkPort {
     fun onColdStart(url: String?)
     fun onWarmIntent(url: String?)
-    fun onNotificationOpen(groupId: String?, gameId: String?, channel: String? = null)
+    fun onNotificationOpen(groupId: String?, gameId: String?, channel: String? = null, pickPosition: Boolean = false)
 }
 
 internal class AndroidLinkAdapter(
@@ -73,8 +73,8 @@ internal class AndroidLinkAdapter(
     override fun onWarmIntent(url: String?) = onColdStart(url)
 
     /** Push tap: game pushes open the game, the rest the notification center; no dedup across taps. */
-    override fun onNotificationOpen(groupId: String?, gameId: String?, channel: String?) {
-        val event = GroupLinkEvent.NotificationOpen(groupId, gameId, channel)
+    override fun onNotificationOpen(groupId: String?, gameId: String?, channel: String?, pickPosition: Boolean) {
+        val event = GroupLinkEvent.NotificationOpen(groupId, gameId, channel, pickPosition)
         if (groupListeners.isEmpty()) {
             pendingGroupEvent = event
         } else {

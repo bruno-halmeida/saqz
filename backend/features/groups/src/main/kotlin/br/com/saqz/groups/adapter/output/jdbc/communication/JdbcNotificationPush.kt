@@ -47,7 +47,8 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
         val message = jdbc.sql("""
             SELECT c.group_id, c.recipient_id, c.channel, c.body, c.push_body, c.game_id, u.firebase_subject,
                    (SELECT g.local_date FROM games g WHERE g.id = c.game_id) AS game_local_date,
-                   coalesce((SELECT g.confirmation_deadline <= now() FROM games g WHERE g.id = c.game_id), false) AS deadline_passed
+                   coalesce((SELECT g.confirmation_deadline <= now() FROM games g WHERE g.id = c.game_id), false) AS deadline_passed,
+                   EXISTS (SELECT 1 FROM game_position_slots s WHERE s.game_id = c.game_id AND s.slots > 0) AS positions
             FROM notification_delivery_context c
             JOIN access_users u ON u.id = c.recipient_id
             WHERE c.sequence = :id AND c.push_enabled
@@ -71,6 +72,7 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
             NotificationPush(
                 id, rs.getObject("group_id", UUID::class.java), "Saqz", body, channel,
                 recipient = rs.getString("firebase_subject"), gameId = rs.getObject("game_id", UUID::class.java),
+                positions = rs.getBoolean("positions"),
             )
         }.optional().orElse(null)
         var retry = false

@@ -81,9 +81,6 @@ data class GamePositionUi(
 
 /** Para quê o seletor de posição está aberto. */
 sealed interface GamePositionPurpose {
-    /** "Vou" de quem olha. */
-    data object Self : GamePositionPurpose
-
     /** O gestor confirma [memberId] em [position] mesmo com ela cheia. */
     data class Force(val memberId: String, val name: String, val position: AthletePosition) : GamePositionPurpose
 }
@@ -302,8 +299,6 @@ sealed interface GameDetailIntent {
     data class Respond(val intent: AttendanceIntent) : GameDetailIntent
 
     /** DEB-102: posição escolhida no seletor do "Vou" (ou da entrada forçada). */
-    data class SelectPosition(val position: AthletePosition) : GameDetailIntent
-    data object ConfirmPosition : GameDetailIntent
     data object DismissPositionPicker : GameDetailIntent
     data class UpdateGuestPosition(val position: AthletePosition) : GameDetailIntent
     data class SelectPlacePosition(val position: AthletePosition) : GameDetailIntent
@@ -352,4 +347,7 @@ sealed interface GameDetailEffect {
     data object OpenEditor : GameDetailEffect
     data object OpenSettlement : GameDetailEffect
     data object Cancelled : GameDetailEffect
+
+    /** "Vou" em jogo com posições: abre a tela de escolher posição (DEB-107). */
+    data object PickPosition : GameDetailEffect
 }

@@ -39,13 +39,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        model.onStart(intent?.dataString, intent?.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID), intent?.getStringExtra(EXTRA_GAME_ID), intent?.getStringExtra(EXTRA_NOTIFICATION_CHANNEL))
+        model.onStart(
+            intent?.dataString, intent?.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID), intent?.getStringExtra(EXTRA_GAME_ID),
+            intent?.getStringExtra(EXTRA_NOTIFICATION_CHANNEL), intent?.getBooleanExtra(EXTRA_PICK_POSITION, false) == true,
+        )
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        model.onWarmIntent(intent.dataString, intent.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID), intent.getStringExtra(EXTRA_GAME_ID), intent.getStringExtra(EXTRA_NOTIFICATION_CHANNEL))
+        model.onWarmIntent(
+            intent.dataString, intent.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID), intent.getStringExtra(EXTRA_GAME_ID),
+            intent.getStringExtra(EXTRA_NOTIFICATION_CHANNEL), intent.getBooleanExtra(EXTRA_PICK_POSITION, false),
+        )
     }
 }
 
@@ -66,18 +72,30 @@ internal class MainActivityModel(
         (value as? ComponentActivity)?.let { composition.photos?.attach(it); composition.documents?.attach(it) }
     }
 
-    fun onStart(url: String?, notificationGroupId: String?, notificationGameId: String?, notificationChannel: String? = null) {
+    fun onStart(
+        url: String?,
+        notificationGroupId: String?,
+        notificationGameId: String?,
+        notificationChannel: String? = null,
+        pickPosition: Boolean = false,
+    ) {
         if (coldStarted) return
         coldStarted = true
         composition.links.onColdStart(url)
         // Convite de quem instalou pela página de links: chega depois, como um link tocado.
         composition.installReferrer?.readOnce(composition.links::onWarmIntent)
-        notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId, notificationChannel) }
+        notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId, notificationChannel, pickPosition) }
     }
 
-    fun onWarmIntent(url: String?, notificationGroupId: String?, notificationGameId: String?, notificationChannel: String? = null) {
+    fun onWarmIntent(
+        url: String?,
+        notificationGroupId: String?,
+        notificationGameId: String?,
+        notificationChannel: String? = null,
+        pickPosition: Boolean = false,
+    ) {
         composition.links.onWarmIntent(url)
-        notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId, notificationChannel) }
+        notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId, notificationChannel, pickPosition) }
     }
 
 }

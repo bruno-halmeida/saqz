@@ -1,6 +1,7 @@
 import Foundation
 import SaqzMobile
 import XCTest
+import UserNotifications
 @testable import SaqzIOS
 
 @MainActor
@@ -179,6 +180,32 @@ final class IOSLinkAdapterTests: XCTestCase {
         XCTAssertEqual(fixture.notificationGames, ["game-9"])
     }
 
+    /// DEB-107: o "Confirmar" do push de jogo com posições abre o app na tela de posição; o toque comum, o jogo.
+    func testPositionsConfirmActionAsksForThePositionScreen() {
+        let fixture = Fixture(); fixture.start()
+        let picked = SaqzPushDelegate.openedInfo(
+            actionIdentifier: SaqzPushDelegate.pickPositionAction, userInfo: ["groupId": "group-9", "gameId": "game-9"])
+        NotificationCenter.default.post(name: .saqzPushOpened, object: nil, userInfo: picked)
+        let tapped = SaqzPushDelegate.openedInfo(
+            actionIdentifier: UNNotificationDefaultActionIdentifier, userInfo: ["groupId": "group-9", "gameId": "game-9"])
+        NotificationCenter.default.post(name: .saqzPushOpened, object: nil, userInfo: tapped)
+        XCTAssertEqual(fixture.notificationGames, ["game-9", "game-9"])
+        XCTAssertEqual(fixture.notificationPicks, [true, false])
+    }
+
+    /// As duas categorias de presença: a de jogo sem posições responde em segundo plano; a de jogo com posições abre o app.
+    func testAttendanceCategoriesByGameKind() throws {
+        let categories = SaqzPushDelegate.notificationCategories()
+        let plain = try XCTUnwrap(categories.first { $0.identifier == "SAQZ_ATTENDANCE" })
+        XCTAssertEqual(plain.actions.map(\.identifier), ["CONFIRM", "DECLINE"])
+        XCTAssertFalse(plain.actions[0].options.contains(.foreground))
+        let positions = try XCTUnwrap(categories.first { $0.identifier == "SAQZ_ATTENDANCE_POSITIONS" })
+        XCTAssertEqual(positions.actions.map(\.identifier), ["PICK_POSITION", "DECLINE"])
+        XCTAssertEqual(positions.actions.map(\.title), ["Confirmar", "Não vou"])
+        XCTAssertTrue(positions.actions[0].options.contains(.foreground))
+        XCTAssertFalse(positions.actions[1].options.contains(.foreground))
+    }
+
     func testLiveActivityGameURLOpensTheGame() {
         let fixture = Fixture(); fixture.start()
         XCTAssertTrue(fixture.adapter.onOpenURL(URL(string: "saqz://game?group=g1&game=game1")!))
@@ -195,6 +222,7 @@ final class IOSLinkAdapterTests: XCTestCase {
         var onboardingReceived: [String] = []
         var notificationReceived: [String?] = []
         var notificationGames: [String?] = []
+        var notificationPicks: [Bool] = []
         func startOnboarding() {
             _ = adapter.startAppOnboarding(listener: RecordingOnboardingListener { self.onboardingReceived.append($0) })
         }
@@ -205,6 +233,7 @@ final class IOSLinkAdapterTests: XCTestCase {
                 attendanceIntent: { self.attendanceIntents.append($0) },
                 notification: { self.notificationReceived.append($0) },
                 notificationGame: { self.notificationGames.append($0) },
+                notificationPick: { self.notificationPicks.append($0) },
             ))
         }
     }
@@ -227,18 +256,21 @@ final class RecordingLinkEventListener: @preconcurrency GroupLinkEventListener {
     private let attendanceIntent: (AttendanceIntent) -> Void
     private let notification: (String?) -> Void
     private let notificationGame: (String?) -> Void
+    private let notificationPick: (Bool) -> Void
     init(
         invite: @escaping (String) -> Void,
         attendance: @escaping (String) -> Void,
         attendanceIntent: @escaping (AttendanceIntent) -> Void = { _ in },
         notification: @escaping (String?) -> Void = { _ in },
-        notificationGame: @escaping (String?) -> Void = { _ in }
+        notificationGame: @escaping (String?) -> Void = { _ in },
+        notificationPick: @escaping (Bool) -> Void = { _ in }
     ) {
         self.invite = invite
         self.attendance = attendance
         self.attendanceIntent = attendanceIntent
         self.notification = notification
         self.notificationGame = notificationGame
+        self.notificationPick = notificationPick
     }
     func onEvent(event: GroupLinkEvent) {
         if let inviteEvent = event as? GroupLinkEventInvite {
@@ -249,6 +281,7 @@ final class RecordingLinkEventListener: @preconcurrency GroupLinkEventListener {
         } else if let notificationEvent = event as? GroupLinkEventNotificationOpen {
             notification(notificationEvent.groupId)
             notificationGame(notificationEvent.gameId)
+            notificationPick(notificationEvent.pickPosition)
         }
     }
 }

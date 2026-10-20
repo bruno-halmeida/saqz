@@ -170,7 +170,7 @@ internal fun GameDetailScreen(
         if (state.cancelDialogOpen) GameDetailCancelSheet(state, onIntent)
         if (state.capacitySheetOpen) GameWaitlistCapacitySheet(state, onIntent)
         if (state.guest.sheetOpen) GameGuestAddSheet(state.guest, onIntent, positions = state.positions)
-        state.positionPicker?.let { GamePositionPickerSheet(state, it, onIntent) }
+        state.positionPicker?.let { GamePositionPickerSheet(it, onIntent) }
         state.guest.removal?.let { GameGuestRemoveSheet(state.guest, it, onIntent) }
         state.organizer.removal?.let { GameMemberRemoveSheet(state.organizer, it, state.guest.feeLabel, onIntent) }
         if (state.organizer.placeOpen) GamePlaceSheet(state, onIntent)

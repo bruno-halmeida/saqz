@@ -23,7 +23,10 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
             let groupId = note.userInfo?["groupId"] as? String
             let gameId = note.userInfo?["gameId"] as? String
             let channel = note.userInfo?["channel"] as? String
-            MainActor.assumeIsolated { self?.onNotificationOpen(groupId: groupId, gameId: gameId, channel: channel) }
+            let pickPosition = note.userInfo?["pickPosition"] as? String == "true"
+            MainActor.assumeIsolated {
+                self?.onNotificationOpen(groupId: groupId, gameId: gameId, channel: channel, pickPosition: pickPosition)
+            }
         }
     }
 
@@ -32,8 +35,8 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
     }
 
     /** Push tap: game pushes open the game, the rest the notification center; no dedup across taps. */
-    func onNotificationOpen(groupId: String?, gameId: String?, channel: String? = nil) {
-        let event = GroupLinkEventNotificationOpen(groupId: groupId, gameId: gameId, channel: channel)
+    func onNotificationOpen(groupId: String?, gameId: String?, channel: String? = nil, pickPosition: Bool = false) {
+        let event = GroupLinkEventNotificationOpen(groupId: groupId, gameId: gameId, channel: channel, pickPosition: pickPosition)
         if listeners.isEmpty {
             pendingEvent = event
         } else {
@@ -99,7 +102,7 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
               let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
               let group = items.first(where: { $0.name == "group" })?.value,
               let game = items.first(where: { $0.name == "game" })?.value else { return nil }
-        return GroupLinkEventNotificationOpen(groupId: group, gameId: game, channel: nil)
+        return GroupLinkEventNotificationOpen(groupId: group, gameId: game, channel: nil, pickPosition: false)
     }
 
     @discardableResult

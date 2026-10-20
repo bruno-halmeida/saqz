@@ -49,7 +49,7 @@ class FirebaseNotificationPushSender(private val app: FirebaseApp) : Notificatio
         // com os botões de presença mesmo em segundo plano; no iOS o alerta vai explícito no `aps`.
         val aps = Aps.builder().setSound("default")
             .setAlert(ApsAlert.builder().setTitle(message.title).setBody(message.body).build())
-        if (message.offersAttendanceActions()) aps.setCategory(ATTENDANCE_CATEGORY)
+        if (message.offersAttendanceActions()) aps.setCategory(message.attendanceCategory())
         val android = AndroidConfig.builder().setPriority(AndroidConfig.Priority.HIGH)
         return Message.builder().setToken(token)
             .putAllData(message.data())
@@ -79,6 +79,15 @@ fun NotificationPush.carriesGame() = gameId != null && channel != "NOTICE"
 /** Categoria APNs registrada no app iOS com as ações "Confirmar" / "Não vou". */
 const val ATTENDANCE_CATEGORY = "SAQZ_ATTENDANCE"
 
+/**
+ * Jogo com posições (DEB-107): o "Vou" abre o app na tela de escolher posição (ação em primeiro plano, iOS 1.0.10+).
+ * Decisão do dono em 20/10: os apps iOS 1.0.6 a 1.0.9 não conhecem a categoria e mostram esse push sem botões (o toque
+ * continua abrindo o jogo), para nenhum "Confirmar" responder por baixo sem a escolha da posição.
+ */
+const val ATTENDANCE_POSITIONS_CATEGORY = "SAQZ_ATTENDANCE_POSITIONS"
+
+fun NotificationPush.attendanceCategory() = if (positions) ATTENDANCE_POSITIONS_CATEGORY else ATTENDANCE_CATEGORY
+
 /** Chaves lidas pelos apps: título/corpo (Android monta a notificação), e o jogo quando o push pede presença. */
 fun NotificationPush.data(): Map<String, String> = buildMap {
     put("notificationId", notificationId.toString())
@@ -88,4 +97,6 @@ fun NotificationPush.data(): Map<String, String> = buildMap {
     put("title", title)
     put("body", body)
     if (carriesGame()) put("gameId", gameId.toString())
+    // Campo novo e opcional: os apps antigos ignoram; o Android 1.0.10+ troca o "Vou" por abrir a tela de posição.
+    if (positions && offersAttendanceActions()) put("positions", "true")
 }

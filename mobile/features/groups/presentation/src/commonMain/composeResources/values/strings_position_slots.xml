@@ -30,7 +30,6 @@
 
     <!-- Seletor de posição do "Vou" -->
     <string name="position_picker_title">Em qual posição você vai jogar?</string>
-    <string name="position_picker_hint">Posição cheia entra na lista de espera dela, mesmo que haja vaga em outra.</string>
     <string name="position_picker_suggested">Do seu perfil</string>
     <string name="position_picker_submit">Confirmar presença</string>
     <string name="position_picker_pick">Escolha uma posição</string>

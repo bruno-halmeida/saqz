@@ -46,33 +46,8 @@ class GamePositionSectionTest {
     }
 
     @Test
-    fun seletorMostraAsPosicoesComSugestaoEOBotaoSoComEscolha() = runComposeUiTest {
-        val intents = mutableListOf<GameDetailIntent>()
-        setScreen(
-            game.copy(positionPicker = GamePositionPickerUi(GamePositionPurpose.Self, suggested = AthletePosition.CENTRAL, selected = AthletePosition.CENTRAL)),
-            intents::add,
-        )
-
-        onNodeWithTag(GamePositionTags.choice("game-position", AthletePosition.CENTRAL)).assertIsSelected()
-        onNodeWithText("Do seu perfil").assertDoesNotExist()
-        onNodeWithTag(GamePositionTags.choice("game-position", AthletePosition.PONTA)).performClick()
-        onNodeWithTag(GamePositionTags.Submit).performClick()
-
-        assertEquals<List<GameDetailIntent>>(
-            listOf(GameDetailIntent.SelectPosition(AthletePosition.PONTA), GameDetailIntent.ConfirmPosition),
-            intents,
-        )
-    }
-
-    @Test
-    fun seletorSemEscolhaNaoConfirma() = runComposeUiTest {
-        setScreen(game.copy(positionPicker = GamePositionPickerUi(GamePositionPurpose.Self, suggested = null, selected = null)))
-        onNodeWithTag(GamePositionTags.Submit).assertIsNotEnabled()
-    }
-
-    @Test
     fun posicaoCheiaMostraAEsperaNaLinhaDoSeletor() = runComposeUiTest {
-        setScreen(game.copy(positionPicker = GamePositionPickerUi(GamePositionPurpose.Self, null, null)))
+        setScreen(game.copy(guest = GameGuestUi(visible = true, enabled = true, sheetOpen = true, name = "Rafa", position = AthletePosition.CENTRAL)))
         onNodeWithText("2/2 · cheia · 1 na espera").assertExists()
         onNodeWithText("1/2 · falta 1").assertExists()
     }
