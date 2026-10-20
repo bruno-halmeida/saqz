@@ -136,11 +136,12 @@ data class GroupSetupState(
     val isEditing: Boolean = mode is GroupSetupMode.Edit
 
     /**
-     * Vagas por posição só na edição, para quem gere o grupo, em quadra no 5-1 (6-0 não usa posições: segue o total).
-     * No 5-1 elas são obrigatórias e a soma precisa bater com o total de jogadores do grupo (decisão do dono, 20/10).
+     * Vagas por posição na criação (quem cria é o dono) e na edição (para quem gere o grupo), em quadra no 5-1 (6-0 não
+     * usa posições: segue o total). No 5-1 elas são obrigatórias e a soma precisa bater com o total de jogadores do
+     * grupo (decisão do dono, 20/10).
      */
     val showsPositionSlots: Boolean =
-        isEditing && canManageGameConfig && positionSlotsReady && form.modality == GroupModality.COURT_VOLLEYBALL &&
+        (!isEditing || canManageGameConfig) && positionSlotsReady && form.modality == GroupModality.COURT_VOLLEYBALL &&
             form.playStyle == GroupPlayStyle.FIVE_ONE
     val positionsTotal: Int = positionSlots.values.sum()
 

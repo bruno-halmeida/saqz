@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.model.GroupComposition
@@ -21,6 +24,7 @@ import br.com.saqz.groups.presentation.setup.GroupSetupState
 import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailPreviewData
 import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailScreen
 import br.com.saqz.groups.presentation.ui.setup.GroupSetupScreen
+import br.com.saqz.groups.presentation.ui.setup.GroupSetupTags
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
@@ -75,6 +79,24 @@ class PositionSlotsScreenshotTest {
     }
 }
 
+/** Criação do grupo 5-1 (DEB-102): card aberto nas opções avançadas, faltando e fechando, em tela comum. */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "w411dp-h2400dp-xxhdpi", application = Application::class)
+class PositionSlotsCreationScreenshotTest {
+    @get:Rule
+    val compose = createComposeRule()
+
+    @Test fun criacaoFaltam() = capture("criacao-faltam", CREATE_FALTAM)
+    @Test fun criacaoFecha() = capture("criacao-fecha", CREATE_OK)
+
+    private fun capture(name: String, state: GroupSetupState) {
+        compose.setContent { SaqzTheme { setup(state) } }
+        compose.onNodeWithTag(GroupSetupTags.Advanced).performScrollTo().performClick()
+        compose.onRoot().captureRoboImage("screenshots/deb-102/$name.png")
+    }
+}
+
 /** Mesmas cenas no celular pequeno (320 dp) com fonte grande, onde as frases quebram. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -84,6 +106,11 @@ class PositionSlotsSmallPhoneScreenshotTest {
     val compose = createComposeRule()
 
     @Test fun configFaltam() = capture("pequeno-config-faltam") { setup(SETUP_FALTAM) }
+    @Test fun criacaoFaltam() {
+        compose.setContent { SaqzTheme { setup(CREATE_FALTAM) } }
+        compose.onNodeWithTag(GroupSetupTags.Advanced).performScrollTo().performClick()
+        compose.onRoot().captureRoboImage("screenshots/deb-102/pequeno-criacao-faltam.png")
+    }
     @Test fun listaAgrupada() = capture("pequeno-lista-agrupada") { game(GameDetailPreviewData.positionsGame) }
     @Test fun seletor() = capture("pequeno-seletor") {
         game(GameDetailPreviewData.positionsGame.copy(positionPicker = PICKER_SUGERIDA))
@@ -115,6 +142,9 @@ private val SETUP_OK = GroupSetupState(
     ),
 )
 
+private val CREATE_OK = SETUP_OK.copy(mode = GroupSetupMode.Create, canManageGameConfig = false)
+private val CREATE_FALTAM =
+    CREATE_OK.copy(positionSlots = CREATE_OK.positionSlots + (AthletePosition.PONTA to 4))
 private val SETUP_FALTAM = SETUP_OK.copy(positionSlots = SETUP_OK.positionSlots + (AthletePosition.PONTA to 4))
 private val SETUP_SOBRAM = SETUP_OK.copy(positionSlots = SETUP_OK.positionSlots + (AthletePosition.LIBERO to 1))
 private val PICKER_SUGERIDA = GamePositionPickerUi(GamePositionPurpose.Self, AthletePosition.CENTRAL, AthletePosition.CENTRAL)

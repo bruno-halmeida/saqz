@@ -76,7 +76,8 @@ class GroupSetupViewModel(
         if (state.value.mode is GroupSetupMode.Edit) {
             load()
         } else {
-            update { it.copy(isLoading = false) }
+            // Criação (DEB-102): o 5-1 já pede as vagas por posição; sem o gateway a tela segue só com o total.
+            update { it.copy(isLoading = false, positionSlotsReady = positions.hasGateway) }
         }
     }
 
@@ -118,13 +119,12 @@ class GroupSetupViewModel(
                 onTextChange(KeyVenueAddress, intent.value, GroupTextLimits.VenueAddressMax) { value ->
                     withVenue { copy(address = value) }
                 }
-            is GroupSetupIntent.SelectModality -> onFormChange(closeSheet = true) { copy(modality = intent.value) }
+            is GroupSetupIntent.SelectModality ->
+                onFormChange(closeSheet = true) { copy(modality = intent.value) }.also { positions.suggestWhenMissing() }
             is GroupSetupIntent.SelectComposition -> onFormChange { copy(composition = intent.value) }
             is GroupSetupIntent.SelectLevel -> onFormChange(closeSheet = true) { copy(level = intent.value) }
-            is GroupSetupIntent.SelectPlayStyle -> {
-                onFormChange { copy(playStyle = intent.value) }
-                positions.suggestWhenMissing()
-            }
+            is GroupSetupIntent.SelectPlayStyle ->
+                onFormChange { copy(playStyle = intent.value) }.also { positions.suggestWhenMissing() }
             is GroupSetupIntent.UpdateCapacity -> onFormChange {
                 copy(defaultCapacity = intent.value.coerceAtLeast(GroupSetupDefaults.MinCapacity))
             }
@@ -317,6 +317,13 @@ class GroupSetupViewModel(
                 CreateGroupProfileCommand(commandKey, zone, commandForm),
             )) {
                 is SaqzResult.Success -> {
+                    // O grupo já existe: se as posições falharem, a chave fica e "tentar de novo" reaproveita o mesmo grupo.
+                    val desired = if (current.showsPositionSlots) current.positionSlots else emptyMap()
+                    val saved = positions.saveForNewGroup(result.value.id, desired)
+                    if (saved is SaqzResult.Failure) {
+                        showSaveFailure(saved.error)
+                        return@launch
+                    }
                     discardCreationKey()
                     update {
                         it.copy(

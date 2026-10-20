@@ -27,6 +27,29 @@ internal class GroupPositionSlotsEditor(
 
     val isLoaded: Boolean get() = loaded != null
 
+    val hasGateway: Boolean get() = gateway != null
+
+    /**
+     * Grupo recém-criado: grava as posições com a versão que o servidor devolve na leitura (o grupo acabou de nascer sem
+     * posições). `null` = nada a gravar.
+     */
+    suspend fun saveForNewGroup(
+        groupId: GroupId,
+        desired: Map<AthletePosition, Int>,
+    ): SaqzResult<Unit, GroupProfileError>? {
+        val api = gateway
+        if (api == null || desired.isEmpty()) return null
+        val token = when (val read = api.read(groupId)) {
+            is SaqzResult.Failure -> return SaqzResult.Failure(read.error)
+            is SaqzResult.Success -> read.value.versionToken
+        }
+        val slots = AthletePosition.entries.mapNotNull { position -> desired[position]?.let { PositionSlot(position, it) } }
+        return when (val result = api.write(groupId, token, GroupPositionSlots(PositionGameSystem.FIVE_ONE, slots))) {
+            is SaqzResult.Success -> SaqzResult.Success(Unit)
+            is SaqzResult.Failure -> SaqzResult.Failure(result.error)
+        }
+    }
+
     suspend fun load(groupId: GroupId): Map<AthletePosition, Int>? {
         val config = (gateway?.read(groupId) as? SaqzResult.Success)?.value?.value ?: return null
         return config.slots.toMap().also { loaded = it }

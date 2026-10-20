@@ -44,6 +44,34 @@ class GroupPositionSlotsScreenTest {
         AthletePosition.LEVANTADOR to 3, AthletePosition.OPOSTO to 3, AthletePosition.PONTA to 6, AthletePosition.CENTRAL to 6,
     )
 
+    private fun creating(slots: Map<AthletePosition, Int>, capacity: Int = 18) =
+        state(slots, capacity).copy(mode = GroupSetupMode.Create, canManageGameConfig = false)
+
+    @Test
+    fun criacaoCincoUmMostraOCardNasOpcoesAvancadasEBloqueiaOCriarAteFechar() = runComposeUiTest {
+        show(creating(eighteen - AthletePosition.PONTA + (AthletePosition.PONTA to 4)))
+        onNodeWithTag(GroupSetupTags.Advanced).performScrollTo().performClick()
+        onNodeWithTag(GroupPositionSlotsTags.Section).performScrollTo().assertExists()
+        onNodeWithText("Faltam 2 vagas para fechar o total de jogadores.").performScrollTo().assertExists()
+        onNodeWithTag(GroupSetupTags.Submit).assertIsNotEnabled()
+    }
+
+    @Test
+    fun criacaoCincoUmComASomaCertaLiberaOCriar() = runComposeUiTest {
+        show(creating(eighteen))
+        onNodeWithTag(GroupSetupTags.Advanced).performScrollTo().performClick()
+        onNodeWithText("As posições fecham os 18 jogadores.").performScrollTo().assertExists()
+        onNodeWithTag(GroupSetupTags.Submit).assertIsEnabled()
+    }
+
+    @Test
+    fun criacaoSeisZeroNaoTemCardNemBloqueio() = runComposeUiTest {
+        show(creating(emptyMap()).copy(form = creating(emptyMap()).form.copy(playStyle = GroupPlayStyle.SIX_ZERO)))
+        onNodeWithTag(GroupSetupTags.Advanced).performScrollTo().performClick()
+        onNodeWithTag(GroupPositionSlotsTags.Section).assertDoesNotExist()
+        onNodeWithTag(GroupSetupTags.Submit).assertIsEnabled()
+    }
+
     private fun ComposeUiTest.show(state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit = {}) =
         setContent { SaqzTheme { GroupSetupScreen(state, onIntent, {}) } }
 

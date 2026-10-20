@@ -270,6 +270,128 @@ class GroupSetupPositionSlotsTest {
         assertTrue(effects.isEmpty())
     }
 
+    // --- Criação do grupo (DEB-102): o 5-1 já nasce com as vagas por posição ---
+
+    private fun creating(
+        slots: FakePositionSlotsGateway? = FakePositionSlotsGateway(),
+        profile: FakeGroupProfileGateway = FakeGroupProfileGateway(),
+        playStyle: br.com.saqz.groups.model.GroupPlayStyle = br.com.saqz.groups.model.GroupPlayStyle.SIX_ZERO,
+    ) = GroupSetupViewModel(
+        initialState = GroupSetupState(
+            mode = GroupSetupMode.Create,
+            form = br.com.saqz.groups.model.GroupSetupForm(
+                name = "Vôlei do CERET",
+                modality = br.com.saqz.groups.model.GroupModality.COURT_VOLLEYBALL,
+                composition = br.com.saqz.groups.model.GroupComposition.MIXED,
+                playStyle = playStyle,
+                defaultCapacity = 12,
+            ),
+        ),
+        savedState = SavedStateHandle(),
+        groupGateway = FakeGroupGateway(),
+        profileGateway = profile,
+        timeZonePort = FakeGroupSystemTimeZonePort(),
+        positionSlotsGateway = slots,
+    )
+
+    @Test
+    fun `creating a 5-1 group shows the card with the suggestion for the total already filled`() = runTest(mainDispatcher) {
+        val gateway = FakePositionSlotsGateway()
+        val viewModel = creating(slots = gateway)
+        runCurrent()
+        assertFalse(viewModel.state.value.showsPositionSlots)
+
+        viewModel.onIntent(GroupSetupIntent.SelectPlayStyle(br.com.saqz.groups.model.GroupPlayStyle.FIVE_ONE))
+        runCurrent()
+
+        assertTrue(viewModel.state.value.showsPositionSlots)
+        assertEquals(12, gateway.lastSuggestionTotal)
+        assertEquals(12, viewModel.state.value.positionsTotal)
+        assertFalse(viewModel.state.value.positionsBlockSave)
+    }
+
+    @Test
+    fun `creating with 6-0 or without the gateway never shows the card nor blocks`() = runTest(mainDispatcher) {
+        val sixZero = creating()
+        runCurrent()
+        assertFalse(sixZero.state.value.showsPositionSlots)
+        val noGateway = creating(slots = null, playStyle = br.com.saqz.groups.model.GroupPlayStyle.FIVE_ONE)
+        runCurrent()
+        assertFalse(noGateway.state.value.showsPositionSlots)
+        assertFalse(noGateway.state.value.positionsBlockSave)
+    }
+
+    @Test
+    fun `creating is refused while the sum differs from the total and nothing is created`() = runTest(mainDispatcher) {
+        val profile = FakeGroupProfileGateway()
+        val viewModel = creating(profile = profile, playStyle = br.com.saqz.groups.model.GroupPlayStyle.FIVE_ONE)
+        runCurrent()
+        viewModel.onIntent(GroupSetupIntent.SelectPlayStyle(br.com.saqz.groups.model.GroupPlayStyle.FIVE_ONE))
+        runCurrent()
+        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.PONTA, 1))
+        assertTrue(viewModel.state.value.positionsBlockSave)
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+        assertTrue(GroupSetupError.PositionSlotsSumMismatch in viewModel.state.value.errors)
+        assertTrue(profile.createCommands.isEmpty())
+    }
+
+    @Test
+    fun `after creating the group the positions are written with the total and the version the server returns`() = runTest(mainDispatcher) {
+        val gateway = FakePositionSlotsGateway()
+        val profile = FakeGroupProfileGateway()
+        val viewModel = creating(slots = gateway, profile = profile)
+        val effects = collect(viewModel)
+        runCurrent()
+        viewModel.onIntent(GroupSetupIntent.SelectPlayStyle(br.com.saqz.groups.model.GroupPlayStyle.FIVE_ONE))
+        runCurrent()
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(1, profile.createCommands.size)
+        val (token, config) = gateway.writes.single()
+        assertEquals(GroupVersionToken("etag-2"), token)
+        assertEquals(PositionGameSystem.FIVE_ONE, config.gameSystem)
+        assertEquals(12, config.total)
+        assertEquals(listOf<GroupSetupEffect>(GroupSetupEffect.Created("group-1")), effects)
+    }
+
+    @Test
+    fun `creating with 6-0 writes no positions`() = runTest(mainDispatcher) {
+        val gateway = FakePositionSlotsGateway()
+        val viewModel = creating(slots = gateway)
+        val effects = collect(viewModel)
+        runCurrent()
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+        assertEquals(0, gateway.writes.size)
+        assertEquals(listOf<GroupSetupEffect>(GroupSetupEffect.Created("group-1")), effects)
+    }
+
+    @Test
+    fun `a failed positions write after creating keeps the screen and the retry reuses the same group`() = runTest(mainDispatcher) {
+        val gateway = FakePositionSlotsGateway(failWrite = true)
+        val profile = FakeGroupProfileGateway()
+        val viewModel = creating(slots = gateway, profile = profile)
+        val effects = collect(viewModel)
+        runCurrent()
+        viewModel.onIntent(GroupSetupIntent.SelectPlayStyle(br.com.saqz.groups.model.GroupPlayStyle.FIVE_ONE))
+        runCurrent()
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+        assertTrue(viewModel.state.value.saveFailed)
+        assertTrue(effects.isEmpty())
+
+        gateway.failWrite = false
+        viewModel.onIntent(GroupSetupIntent.Retry)
+        runCurrent()
+
+        // O mesmo pedido de criação (idempotente pela chave) e agora as posições gravam.
+        assertEquals(2, profile.createCommands.size)
+        assertEquals(profile.createCommands[0].commandKey, profile.createCommands[1].commandKey)
+        assertEquals(listOf<GroupSetupEffect>(GroupSetupEffect.Created("group-1")), effects)
+    }
+
     private companion object {
         val FIVE_ONE_TWO_TEAMS = GroupPositionSlots(
             PositionGameSystem.FIVE_ONE,
