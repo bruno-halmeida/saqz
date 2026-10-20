@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -65,6 +67,27 @@ class MemberEditorScreenshotTest {
     @Test
     fun lowerHalf() = capture("3g-baixo", scrollToBottom = true) {
         MemberEditorScreen(memberEditorPreviewState, {}, {})
+    }
+
+    /** DEB-103: linha da altura e a folha do seletor (altura salva 1,78 m), normal e em celular pequeno. */
+    @Test
+    fun heightSheet() = captureHeightSheet("3g-altura-seletor")
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w320dp-h568dp-normal-notlong-port-xhdpi", application = Application::class)
+    fun heightSheetSmallPhone() = captureHeightSheet("3g-altura-seletor-small-phone")
+
+    private fun captureHeightSheet(name: String) {
+        compose.setContent {
+            SaqzTheme {
+                Box(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
+                    MemberEditorScreen(memberEditorPreviewState, {}, {})
+                }
+            }
+        }
+        compose.onNodeWithTag(MemberEditorTags.Height).performScrollTo().performClick()
+        compose.mainClock.advanceTimeBy(600)
+        compose.onRoot().captureRoboImage("screenshots/deb-103/$name.png")
     }
 
     private fun capture(name: String, scrollToBottom: Boolean = false, content: @Composable () -> Unit) {

@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.Text
@@ -104,7 +105,7 @@ internal fun HeightPickerSheet(
         },
     ) {
         Text(HeightPicker.format(selected), style = SaqzTheme.typography.subtitle, color = SaqzTheme.colors.textPrimary)
-        Text(stringResource(Res.string.height_picker_meters), style = SaqzTheme.typography.eyebrow, color = SaqzTheme.colors.textSecondary)
+        HeightCaption(stringResource(Res.string.height_picker_meters))
         HeightGrid(HeightPicker.tenths(), TENTHS_PER_ROW) { tenth ->
             val label = "${tenth / 10},${tenth % 10}"
             val spoken = stringResource(Res.string.height_picker_meters_spoken, label)
@@ -119,7 +120,7 @@ internal fun HeightPickerSheet(
                     .semantics { contentDescription = spoken },
             )
         }
-        Text(stringResource(Res.string.height_picker_centimeters), style = SaqzTheme.typography.eyebrow, color = SaqzTheme.colors.textSecondary)
+        HeightCaption(stringResource(Res.string.height_picker_centimeters))
         HeightGrid(HeightPicker.centimeters(selected / 10), CENTIMETERS_PER_ROW) { centimeter ->
             val spoken = if (centimeter == 1) {
                 stringResource(Res.string.height_picker_centimeter_spoken_one)
@@ -140,12 +141,23 @@ internal fun HeightPickerSheet(
     }
 }
 
+@Composable
+private fun HeightCaption(text: String) =
+    Text(text, style = SaqzTheme.typography.eyebrow, color = SaqzTheme.colors.textSecondary)
+
 /** Grade de [perRow] colunas; as células que faltam na última linha ficam vazias para os chips manterem a largura. */
 @Composable
-private fun HeightGrid(items: List<Int>, perRow: Int, cell: @Composable androidx.compose.foundation.layout.RowScope.(Int) -> Unit) {
+private fun HeightGrid(
+    items: List<Int>,
+    perRow: Int,
+    cell: @Composable RowScope.(Int) -> Unit,
+) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
         items.chunked(perRow).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(SaqzChoiceChipDefaults.CompactSpacing)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(SaqzChoiceChipDefaults.CompactSpacing),
+            ) {
                 row.forEach { item -> cell(item) }
                 repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
             }
