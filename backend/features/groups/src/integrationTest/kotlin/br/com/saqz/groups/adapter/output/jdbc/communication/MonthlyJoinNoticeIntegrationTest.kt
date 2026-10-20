@@ -105,6 +105,26 @@ class MonthlyJoinNoticeIntegrationTest {
     }
 
     @Test
+    fun `os tres avisos usam o nome da conta, mesmo para quem tem apelido no grupo`() {
+        val cris = user("Cris Conta", phone = null, verified = false)
+        membership(cris, "ATHLETE", "AVULSO")
+        jdbc.sql("UPDATE group_memberships SET nickname = 'Crizinha' WHERE user_id = :u").param("u", cris).update()
+        redeem.execute(cris, monthlyCode.value)
+        redeem.execute(user("Bia Conta", phone = null, verified = false), monthlyCode.value)
+        jdbc.sql("UPDATE access_groups SET monthly_fee_cents = NULL, monthly_due_day = NULL WHERE id = :g").param("g", group).update()
+        redeem.execute(user("Caio Conta", phone = null, verified = false), monthlyCode.value)
+
+        assertEquals(
+            listOf(
+                "Cris Conta virou mensalista no Vôlei de Quinta.",
+                "Bia Conta entrou no Vôlei de Quinta como mensalista.",
+                "Caio Conta entrou no Vôlei de Quinta como avulso, porque o grupo está sem mensalidade padrão.",
+            ),
+            messages(),
+        )
+    }
+
+    @Test
     fun `admin avulso que vira mensalista avisa os outros organizadores e nao a si mesmo`() {
         membership(admin, "ADMIN", "AVULSO")
 

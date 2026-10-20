@@ -15,7 +15,8 @@ import javax.sql.DataSource
  * Aviso a dono e admins (menos quem entrou) quando alguém entra ou vira mensalista pelo link de mensalistas (NOT-004):
  * canal ENTRY_REQUEST com a marca `MEMBER_JOINED_BY_LINK`, que libera o WhatsApp para o telefone cadastrado (V180).
  * Roda na transação do resgate, num SAVEPOINT: falhar aqui nunca desfaz a entrada. O `request_id` sai do grupo, da
- * pessoa, do que mudou e do início do vínculo, então repetir o resgate não duplica o aviso.
+ * pessoa, do que mudou e do início do vínculo, então repetir o resgate não duplica o aviso. O nome é sempre o da conta
+ * (nunca o apelido do grupo, que só existe para quem já era membro), para os três avisos falarem da pessoa do mesmo jeito.
  */
 class JdbcMonthlyJoinNotices(
     dataSource: DataSource,
@@ -37,7 +38,7 @@ class JdbcMonthlyJoinNotices(
     private fun publish(groupId: UUID, userId: UUID, outcome: MonthlyJoinOutcome) {
         val row = jdbc.sql(
             """
-            SELECT g.name AS group_name, coalesce(gm.nickname, u.nickname, u.display_name) AS who, gm.created_at
+            SELECT g.name AS group_name, coalesce(u.nickname, u.display_name) AS who, gm.created_at
             FROM access_groups g
             JOIN group_memberships gm ON gm.group_id = g.id AND gm.user_id = :user
             JOIN access_users u ON u.id = :user
