@@ -35,6 +35,11 @@ data class GameEditorState(
     val isOwner: Boolean = false,
     /** O início escolhido cai no limite ou depois (DEB-075): não marca nem salva. Na edição só vale se data ou hora mudaram. */
     val planBlocked: Boolean = false,
+    /**
+     * Início (instante) que o servidor recusou por cair depois do fim do plano (422). Vale como bloqueio enquanto o
+     * formulário continuar nele, mesmo sem o app saber o limite: mostra o texto aprovado em vez do erro genérico.
+     */
+    val planRefusedStart: String? = null,
     /** Data e hora do jogo carregado (`aaaa-mm-ddThh:mm`); na edição, só mudar isso aciona o bloqueio. */
     val originalStart: String? = null,
     /** Há plano pago ativo. */

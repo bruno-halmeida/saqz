@@ -914,6 +914,50 @@ class GameEditorViewModelTest {
         assertFalse(vm.state.value.planBlocked)
     }
 
+    // DEB-075: 422 sem data e sem limite conhecido no app vira o texto aprovado "_passed" do papel, nunca o erro genérico.
+    private fun refusedWithoutLimit(info: GroupTrialAccessInfo?): GameEditorViewModel {
+        val gateway = FakeGameGateway(createResult = SaqzResult.Failure(GameError.AfterPlanEnd(null)))
+        val vm = viewModel(gameGateway = gateway, trialAccess = info?.let { GroupTrialAccessPort { _ -> it } })
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        assertFalse(vm.state.value.planBlocked)
+        vm.onIntent(GameEditorIntent.Submit)
+        assertEquals(1, gateway.createCalls)
+        assertFalse(vm.state.value.saveFailed)
+        assertNull(vm.state.value.error)
+        assertTrue(vm.state.value.planBlocked)
+        assertTrue(vm.state.value.planLastDayPassed)
+        assertNull(vm.state.value.planLastDay)
+        return vm
+    }
+
+    @Test
+    fun `a 422 without a date for an owner in the trial blocks with the trial passed text`() = runTest {
+        val vm = refusedWithoutLimit(GroupTrialAccessInfo(null, false, true, activeTrialDays = 14))
+        assertTrue(vm.state.value.isOwner)
+        assertTrue(vm.state.value.planLimitIsTrial)
+    }
+
+    @Test
+    fun `a 422 without a date for an owner with a plan blocks with the plan passed text`() = runTest {
+        val vm = refusedWithoutLimit(GroupTrialAccessInfo(null, false, true, planActive = true))
+        assertTrue(vm.state.value.isOwner)
+        assertFalse(vm.state.value.planLimitIsTrial)
+    }
+
+    @Test
+    fun `a 422 without a date for an admin blocks with the group plan text`() = runTest {
+        val vm = refusedWithoutLimit(GroupTrialAccessInfo(null, false, false, planActive = true))
+        assertFalse(vm.state.value.isOwner)
+    }
+
+    @Test
+    fun `a 422 without a date releases the block once another start is chosen`() = runTest {
+        val vm = refusedWithoutLimit(null)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-03", "19:30"))
+        assertFalse(vm.state.value.planBlocked)
+        assertFalse(vm.state.value.planLastDayPassed)
+    }
+
     private fun planEndEvents(block: () -> Unit): List<Map<String, String>> {
         val recorded = mutableListOf<Pair<String, Map<String, String>>>()
         SaqzAnalytics.track = { name, params -> recorded += name to params }

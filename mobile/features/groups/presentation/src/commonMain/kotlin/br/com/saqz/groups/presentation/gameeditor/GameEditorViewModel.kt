@@ -292,7 +292,17 @@ class GameEditorViewModel(
             }
             is GameError.AfterPlanEnd -> update {
                 // O servidor é a autoridade: o limite dele passa a valer e a tela bloqueia como se tivesse sabido antes.
-                val known = it.copy(planLimit = error.startsBefore ?: it.planLimit, isSaving = false).withPlanBlock(now())
+                // Sem limite no 422 (e sem outro conhecido) o bloqueio vale para este início e usa o texto "_passed".
+                val refused = if (it.form.hasDateTime && it.zoneId.isNotBlank()) {
+                    localStart(it.form.localDate, it.form.localTime, it.zoneId)
+                } else {
+                    null
+                }
+                val known = it.copy(
+                    planLimit = error.startsBefore ?: it.planLimit,
+                    planRefusedStart = refused,
+                    isSaving = false,
+                ).withPlanBlock(now())
                 if (known.planBlocked) known else known.copy(saveFailed = true, error = error.toUiError())
             }
             GameError.VersionConflict -> if (gameId == null) {
@@ -612,9 +622,15 @@ private fun GameEditorState.withPlanBlock(now: Instant): GameEditorState {
     // Compara pelo instante, como o servidor: "19:30:00" do jogo carregado e "19:30" do seletor são o mesmo início.
     val original = originalStart?.let { runCatching { LocalDateTime.parse(it).toInstant(TimeZone.of(zoneId)).toString() }.getOrNull() }
     val changed = original == null || original != starts
-    val blocked = limit != null && starts != null && changed &&
+    val beyondLimit = limit != null && starts != null && changed &&
         runCatching { Instant.parse(starts) >= Instant.parse(limit) }.getOrDefault(false)
-    return copy(planLastDay = lastDay, planLastDayPassed = lastDayPassed, planBlocked = blocked)
+    val refusedByServer = starts != null && starts == planRefusedStart
+    // Sem limite conhecido o dia que "dá para marcar" não existe: o texto é o de "fim já passou" (só assinar).
+    return copy(
+        planLastDay = lastDay,
+        planLastDayPassed = lastDayPassed || (refusedByServer && lastDay == null),
+        planBlocked = beyondLimit || refusedByServer,
+    )
 }
 
 private fun localStart(date: String, time: String, zoneId: String): String? = runCatching {
