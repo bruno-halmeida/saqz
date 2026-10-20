@@ -5,6 +5,7 @@ import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.onFailure
 import br.com.saqz.domain.onSuccess
+import br.com.saqz.subscriptions.domain.subscription.Courtesy
 import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionError
@@ -102,26 +103,7 @@ class MyPlanViewModel(
             if (generation != loadGeneration) return@launch
             val onlyCourtesy = (courtesyResult as? SaqzResult.Success)?.value
             if (onlyCourtesy != null) {
-                update {
-                    it.copy(
-                        isLoading = false,
-                        loadError = null,
-                        plan = onlyCourtesy.toCardUi(),
-                        usage = null,
-                        trial = null,
-                        receipts = emptyList(),
-                        receiptsError = null,
-                        loadMoreReceiptsError = null,
-                        hasMoreReceipts = false,
-                        managingStore = null,
-                        canResubscribe = false,
-                        canReactivate = false,
-                        isReactivating = false,
-                        reactivateError = null,
-                        payUrl = null,
-                        courtesyOnly = true,
-                    )
-                }
+                update { it.showingOnly(onlyCourtesy) }
                 return@launch
             }
             val trialResult = if (neverSubscribed) trialGateway?.ownerTrial() else null
@@ -129,24 +111,7 @@ class MyPlanViewModel(
 
             val trialAccess = (trialResult as? SaqzResult.Success)?.value?.takeIf { it.status != TrialStatus.Subscribed }
             if (neverSubscribed && trialAccess != null) {
-                update {
-                    it.copy(
-                        isLoading = false,
-                        loadError = null,
-                        plan = null,
-                        usage = null,
-                        trial = trialAccess.toUi(),
-                        receipts = emptyList(),
-                        hasMoreReceipts = false,
-                        managingStore = null,
-                        canResubscribe = false,
-                        canReactivate = false,
-                        isReactivating = false,
-                        reactivateError = null,
-                        payUrl = null,
-                        courtesyOnly = false,
-                    )
-                }
+                update { it.showingTrial(trialAccess.toUi()) }
                 return@launch
             }
             if (subscriptionResult is SaqzResult.Failure) {
@@ -291,6 +256,44 @@ class MyPlanViewModel(
     /** Troca e cancelamento pelo backend só existem na assinatura da web. */
     private fun canManageWebPlan(): Boolean = canManagePaidPlan() && !state.value.managedByStore
 }
+
+/** Quem nunca assinou: o teste (ou o convite a assinar) no lugar do plano. */
+private fun MyPlanState.showingTrial(trial: MyPlanTrialUi) = copy(
+    isLoading = false,
+    loadError = null,
+    plan = null,
+    usage = null,
+    trial = trial,
+    receipts = emptyList(),
+    hasMoreReceipts = false,
+    managingStore = null,
+    canResubscribe = false,
+    canReactivate = false,
+    isReactivating = false,
+    reactivateError = null,
+    payUrl = null,
+    courtesyOnly = false,
+)
+
+/** Quem só tem cortesia: o cartão do plano, sem cobrança, recibos nem gestão de plano pago. */
+private fun MyPlanState.showingOnly(courtesy: Courtesy) = copy(
+    isLoading = false,
+    loadError = null,
+    plan = courtesy.toCardUi(),
+    usage = null,
+    trial = null,
+    receipts = emptyList(),
+    receiptsError = null,
+    loadMoreReceiptsError = null,
+    hasMoreReceipts = false,
+    managingStore = null,
+    canResubscribe = false,
+    canReactivate = false,
+    isReactivating = false,
+    reactivateError = null,
+    payUrl = null,
+    courtesyOnly = true,
+)
 
 private fun br.com.saqz.subscriptions.domain.trial.TrialAccess.toUi() = MyPlanTrialUi(
     status = status,
