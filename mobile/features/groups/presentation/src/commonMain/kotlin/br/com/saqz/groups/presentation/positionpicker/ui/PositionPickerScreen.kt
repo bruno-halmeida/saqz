@@ -38,7 +38,9 @@ import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.athlete.AthletePosition
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.positionpicker.PositionOptionUi
+import br.com.saqz.groups.presentation.positionpicker.PositionPickerAnswerUi
 import br.com.saqz.groups.presentation.positionpicker.PositionPickerGameUi
 import br.com.saqz.groups.presentation.positionpicker.PositionPickerIntent
 import br.com.saqz.groups.presentation.positionpicker.PositionPickerState
@@ -47,7 +49,12 @@ import br.com.saqz.groups.presentation.ui.components.DateTile
 import br.com.saqz.groups.presentation.ui.durationLabel
 import br.com.saqz.groups.presentation.ui.singularLabel
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.attendance_link_open_game
+import br.com.saqz.groups.resources.attendance_link_waitlisted_title
 import br.com.saqz.groups.resources.game_detail_duration
+import br.com.saqz.groups.resources.game_response_confirmed
+import br.com.saqz.groups.resources.position_picker_already_going
+import br.com.saqz.groups.resources.position_picker_already_waiting
 import br.com.saqz.groups.resources.game_response_request_failed
 import br.com.saqz.groups.resources.group_system_retry
 import br.com.saqz.groups.resources.position_picker_all_full_body
@@ -82,6 +89,8 @@ object PositionPickerTags {
     const val Notice = "position-picker-notice"
     const val Submit = "position-picker-submit"
     const val LoadFailure = "position-picker-load-failure"
+    const val Answered = "position-picker-answered"
+    const val ViewGame = "position-picker-view-game"
 
     fun option(position: AthletePosition) = "position-picker-option-${position.name}"
 }
@@ -118,10 +127,11 @@ fun PositionPickerScreen(
                     verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
                 ) {
                     state.game?.let { GameCard(it) }
+                    state.answered?.let { AnsweredCard(it) }
                     // Sem posição com vaga na leitura, a tela confirma como jogo comum: não há o que escolher.
-                    if (!state.withoutPositions) PositionQuestion(state, onIntent)
+                    if (!state.withoutPositions && state.answered == null) PositionQuestion(state, onIntent)
                 }
-                PositionPickerBar(state, onIntent)
+                if (state.answered != null) AnsweredBar(onIntent) else PositionPickerBar(state, onIntent)
             }
         }
     }
@@ -288,6 +298,38 @@ private fun SlotDots(option: PositionOptionUi, selected: Boolean) {
                     .then(if (filled) Modifier.background(taken, CircleShape) else Modifier.border(DotStroke, empty, CircleShape)),
             )
         }
+    }
+}
+
+/** Quem já respondeu: "Você já vai como Central" ou "Você está na lista de espera de Central, em 2º". */
+@Composable
+private fun AnsweredCard(answered: PositionPickerAnswerUi) {
+    val position = answered.position?.singularLabel()
+    val turn = answered.waitlistPosition?.toInt()
+    val text = when {
+        answered.status == AttendanceStatus.Waitlisted && position != null && turn != null ->
+            stringResource(Res.string.position_picker_already_waiting, position, turn)
+        answered.status == AttendanceStatus.Waitlisted -> stringResource(Res.string.attendance_link_waitlisted_title)
+        position != null -> stringResource(Res.string.position_picker_already_going, position)
+        else -> stringResource(Res.string.game_response_confirmed)
+    }
+    SaqzCard(modifier = Modifier.testTag(PositionPickerTags.Answered)) {
+        Text(text, style = SaqzTheme.typography.subtitle, color = SaqzTheme.colors.textPrimary)
+    }
+}
+
+@Composable
+private fun AnsweredBar(onIntent: (PositionPickerIntent) -> Unit) {
+    Column(Modifier.fillMaxWidth().background(SaqzTheme.colors.chrome)) {
+        SaqzDivider()
+        SaqzButton(
+            label = stringResource(Res.string.attendance_link_open_game),
+            onClick = { onIntent(PositionPickerIntent.ViewGame) },
+            fullWidth = true,
+            modifier = Modifier
+                .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = SaqzTheme.metrics.blockGap)
+                .testTag(PositionPickerTags.ViewGame),
+        )
     }
 }
 

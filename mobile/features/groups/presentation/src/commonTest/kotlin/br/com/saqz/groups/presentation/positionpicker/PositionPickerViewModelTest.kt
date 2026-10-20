@@ -183,6 +183,27 @@ class PositionPickerViewModelTest {
         assertEquals(PositionPickerEffect.Close, vm.effects.first())
     }
 
+    @Test fun whoAlreadyAnsweredSeesTheCurrentSituationInsteadOfAnotherConfirmation() = runTest {
+        val own = AttendanceEntry("me", AttendanceStatus.Waitlisted, waitlistPosition = 2, version = 1, position = AthletePosition.PONTA)
+        val attendance = FakeAttendanceGateway(detailResult = SaqzResult.Success(detail().copy(ownAttendance = own)))
+        val vm = picker(attendance = attendance, profile = AthletePosition.CENTRAL, origin = PositionPickerOrigin.Push)
+        assertEquals(PositionPickerAnswerUi(AttendanceStatus.Waitlisted, AthletePosition.PONTA, 2), vm.state.value.answered)
+        assertFalse(vm.state.value.canSubmit)
+        vm.onIntent(PositionPickerIntent.Submit)
+        assertEquals(0, attendance.respondCalls)
+        vm.onIntent(PositionPickerIntent.ViewGame)
+        assertEquals(PositionPickerEffect.OpenGame("group-1", "game-1"), vm.effects.first())
+        // Quem disse "Não vou" escolhe de novo normalmente.
+        val declined = FakeAttendanceGateway(
+            detailResult = SaqzResult.Success(detail().copy(ownAttendance = own.copy(status = AttendanceStatus.Declined))),
+        )
+        assertNull(picker(attendance = declined, profile = AthletePosition.CENTRAL).state.value.answered)
+        // Da tela do jogo, "Ver jogo" só volta.
+        val fromGame = picker(attendance = attendance, profile = AthletePosition.CENTRAL, origin = PositionPickerOrigin.Game)
+        fromGame.onIntent(PositionPickerIntent.ViewGame)
+        assertEquals(PositionPickerEffect.Close, fromGame.effects.first())
+    }
+
     @Test fun survivesRecreationWithThePickedPosition() = runTest {
         val saved = SavedStateHandle()
         val first = picker(profile = AthletePosition.CENTRAL, savedState = saved)

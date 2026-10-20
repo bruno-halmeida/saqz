@@ -95,6 +95,23 @@ class PositionPickerScreenTest {
     }
 
     @Test
+    fun answeredShowsTheSituationAndViewGame() = runComposeUiTest {
+        val going = PositionPickerAnswerUi(br.com.saqz.groups.domain.attendance.AttendanceStatus.Confirmed, AthletePosition.CENTRAL, null)
+        val intents = setScreen(main.copy(answered = going))
+        onNodeWithText("Você já vai como Central").assertExists()
+        onNodeWithTag(PositionPickerTags.Options).assertDoesNotExist()
+        onNodeWithTag(PositionPickerTags.ViewGame).performClick()
+        assertEquals(PositionPickerIntent.ViewGame, intents.last())
+    }
+
+    @Test
+    fun answeredOnTheWaitlistShowsThePositionAndTurn() = runComposeUiTest {
+        val waiting = PositionPickerAnswerUi(br.com.saqz.groups.domain.attendance.AttendanceStatus.Waitlisted, AthletePosition.PONTA, 2)
+        setScreen(main.copy(answered = waiting))
+        onNodeWithText("Você está na lista de espera de Ponteiro(a), em 2º").assertExists()
+    }
+
+    @Test
     fun withoutPositionsTheButtonConfirmsDirectly() = runComposeUiTest {
         val intents = setScreen(main.copy(options = emptyList(), selected = null))
         onNodeWithTag(PositionPickerTags.Options).assertDoesNotExist()

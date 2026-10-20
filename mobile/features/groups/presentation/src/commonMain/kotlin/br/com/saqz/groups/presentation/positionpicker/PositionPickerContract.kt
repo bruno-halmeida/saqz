@@ -48,6 +48,14 @@ data class PositionOptionUi(
     val queue: Int get() = waitlisted + 1
 }
 
+/** A resposta que a pessoa já deu neste jogo (confirmada ou na espera): a tela mostra a situação, sem nova escolha. */
+@Immutable
+data class PositionPickerAnswerUi(
+    val status: AttendanceStatus,
+    val position: AthletePosition?,
+    val waitlistPosition: Long?,
+)
+
 data class PositionPickerState(
     val loading: Boolean = true,
     val loadError: GroupUiError? = null,
@@ -59,19 +67,24 @@ data class PositionPickerState(
     val raced: AthletePosition? = null,
     /** Falha de rede ou do servidor no envio; o botão tenta de novo. */
     val submitFailed: Boolean = false,
+    /** Já respondeu "Vou" (confirmado ou espera): só a situação atual e "Ver jogo". */
+    val answered: PositionPickerAnswerUi? = null,
 ) {
     val selectedOption: PositionOptionUi? get() = options.firstOrNull { it.position == selected }
     val allFull: Boolean get() = options.isNotEmpty() && options.all { it.full }
     val openPositions: List<AthletePosition> get() = options.filterNot { it.full }.map { it.position }
     /** A leitura veio sem posição com vaga (o jogo deixou de ter posições, push antigo): confirma como jogo comum. */
     val withoutPositions: Boolean get() = !loading && loadError == null && options.isEmpty()
-    val canSubmit: Boolean get() = (selectedOption != null || withoutPositions) && !sending && !loading
+    val canSubmit: Boolean get() = (selectedOption != null || withoutPositions) && !sending && !loading && answered == null
 }
 
 sealed interface PositionPickerIntent {
     data class Select(val position: AthletePosition) : PositionPickerIntent
     data object Submit : PositionPickerIntent
     data object Retry : PositionPickerIntent
+
+    /** "Ver jogo" de quem já respondeu. */
+    data object ViewGame : PositionPickerIntent
 }
 
 sealed interface PositionPickerEffect {

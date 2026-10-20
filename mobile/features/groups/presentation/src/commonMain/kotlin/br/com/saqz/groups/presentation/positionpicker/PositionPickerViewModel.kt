@@ -11,6 +11,7 @@ import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.PositionSummary
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.communication.NativeNotificationPort
@@ -56,6 +57,7 @@ class PositionPickerViewModel(
             is PositionPickerIntent.Select -> select(intent.position)
             PositionPickerIntent.Submit -> submit()
             PositionPickerIntent.Retry -> if (state.value.loadError != null) load()
+            PositionPickerIntent.ViewGame -> viewGame()
         }
     }
 
@@ -75,7 +77,8 @@ class PositionPickerViewModel(
                 attendance is SaqzResult.Failure -> fail(attendance.error.toPickerError())
                 game is SaqzResult.Failure -> fail(game.error.toUiError())
                 else -> {
-                    val positions = (attendance as SaqzResult.Success).value.positions
+                    val detail = (attendance as SaqzResult.Success).value
+                    val positions = detail.positions
                     val profile = membership?.position
                     val options = positions.toOptions(profile)
                     // Recriação (processo morto, rotação): a escolha feita volta; senão, a sugestão com vaga.
@@ -90,6 +93,9 @@ class PositionPickerViewModel(
                             game = header,
                             options = options,
                             selected = restored ?: PositionSuggestion.initial(profile, positions),
+                            answered = detail.ownAttendance
+                                ?.takeIf { own -> own.status != AttendanceStatus.Declined }
+                                ?.let { own -> PositionPickerAnswerUi(own.status, own.position, own.waitlistPosition) },
                         )
                     }
                 }
@@ -131,6 +137,19 @@ class PositionPickerViewModel(
             update { it.copy(options = options) }
             respond(generation, chosen.position)
         }
+    }
+
+    /** Quem já respondeu: do jogo volta para ele; do link, ao cartão do resultado; dos outros, abre o jogo. */
+    private fun viewGame() {
+        val answered = state.value.answered ?: return
+        emit(
+            when (origin) {
+                PositionPickerOrigin.Game -> PositionPickerEffect.Close
+                PositionPickerOrigin.Link -> PositionPickerEffect.LinkResult(answered.status)
+                PositionPickerOrigin.Home, PositionPickerOrigin.Group, PositionPickerOrigin.Push ->
+                    PositionPickerEffect.OpenGame(groupId, gameId)
+            },
+        )
     }
 
     /** Jogo sem posições na leitura: o mesmo "Vou" de sempre, sem posição (o servidor decide). */

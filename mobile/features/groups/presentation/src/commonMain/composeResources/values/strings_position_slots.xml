@@ -62,6 +62,9 @@
     <string name="position_picker_raced_body">Entre na lista de espera dela, em %1$dº, ou escolha outra posição.</string>
     <string name="position_picker_open_one">%1$s ainda tem vaga.</string>
     <string name="position_picker_open_many">%1$s e %2$s ainda têm vaga.</string>
+    <!-- Quem já respondeu abre a tela pela notificação ou de novo (revisão do gestor, 20/10) -->
+    <string name="position_picker_already_going">Você já vai como %1$s</string>
+    <string name="position_picker_already_waiting">Você está na lista de espera de %1$s, em %2$dº</string>
 
     <!-- Cartão do próximo jogo para quem administra (DEB-109, quadros Grupo e GrupoCompleto) -->
     <string name="group_court_title">POSIÇÕES NA QUADRA</string>
