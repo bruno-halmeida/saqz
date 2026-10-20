@@ -10,6 +10,7 @@ import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInviteResult
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
@@ -99,6 +100,58 @@ class ReturnToGroupIntegrationTest {
 
         assertTrue(marked(rafa))
         assertIs<RedeemInviteResult.Pending>(redeem.execute(rafa, code.value))
+    }
+
+    @Test fun `quem voltou aceito como mensalista nasce mensalista com a mensalidade do grupo e mensalista_since hoje`() {
+        setMonthlyFee(8000, 10)
+        val rafa = member("Rafa")
+        leave(rafa)
+        redeem.execute(rafa, code.value)
+
+        assertIs<ApproveEntryRequestResult.Success>(approve.execute(owner, group, rafa, AthleteMembershipType.MENSALISTA))
+
+        val row = jdbc.sql(
+            "SELECT membership_type::text AS t, monthly_fee_cents IS NULL AS own_fee_null, " +
+                "mensalista_since = (now() AT TIME ZONE 'America/Sao_Paulo')::date AS today " +
+                "FROM group_memberships WHERE group_id = :g AND user_id = :u",
+        ).param("g", group).param("u", rafa).query { rs, _ -> Triple(rs.getString("t"), rs.getBoolean("own_fee_null"), rs.getBoolean("today")) }
+            .single()
+        assertEquals(Triple("MENSALISTA", true, true), row)
+        assertFalse(marked(rafa))
+        assertEquals(0, count("SELECT count(*) FROM group_entry_requests WHERE group_id = '$group' AND user_id = '$rafa'"))
+    }
+
+    @Test fun `aceitar como mensalista sem mensalidade padrao recusa e deixa o pedido e a marca`() {
+        setMonthlyFee(null, null)
+        val rafa = member("Rafa")
+        leave(rafa)
+        redeem.execute(rafa, code.value)
+
+        assertIs<ApproveEntryRequestResult.MonthlyFeeRequired>(approve.execute(owner, group, rafa, AthleteMembershipType.MENSALISTA))
+
+        assertEquals(1, count("SELECT count(*) FROM group_entry_requests WHERE group_id = '$group' AND user_id = '$rafa'"))
+        assertEquals(0, count("SELECT count(*) FROM group_memberships WHERE group_id = '$group' AND user_id = '$rafa'"))
+        assertTrue(marked(rafa))
+    }
+
+    @Test fun `aceitar sem tipo segue avulso mesmo com mensalidade padrao`() {
+        setMonthlyFee(8000, 10)
+        val rafa = member("Rafa")
+        leave(rafa)
+        redeem.execute(rafa, code.value)
+
+        assertIs<ApproveEntryRequestResult.Success>(approve.execute(owner, group, rafa))
+
+        assertEquals(
+            "AVULSO",
+            jdbc.sql("SELECT membership_type::text FROM group_memberships WHERE group_id = :g AND user_id = :u")
+                .param("g", group).param("u", rafa).query(String::class.java).single(),
+        )
+    }
+
+    private fun setMonthlyFee(cents: Int?, dueDay: Int?) {
+        jdbc.sql("UPDATE access_groups SET monthly_fee_cents = :c, monthly_due_day = :d WHERE id = :g")
+            .param("c", cents).param("d", dueDay).param("g", group).update()
     }
 
     private fun leave(userId: UUID) = transaction.inTransaction { JdbcAthleteRepository(source).remove(group, userId) }

@@ -77,11 +77,13 @@ class EntryRequestEndpointIntegrationTest {
     @Autowired private lateinit var read: RecordingEntryRequestGroupReadRepository
     @Autowired private lateinit var memberships: RecordingEntryMembershipRepository
     @Autowired private lateinit var writeAccess: ToggleableWriteAccess
+    @Autowired private lateinit var approvalLimits: ToggleableEntryRequestLimits
     @Autowired private lateinit var objectMapper: ObjectMapper
 
     @BeforeEach
     fun reset() {
         writeAccess.open = true
+        approvalLimits.athleteLimit = null
         repository.reset()
         read.roles = mapOf(
             EntryRequestTestConfiguration.OWNER_ID to GroupRole.OWNER,
@@ -120,6 +122,78 @@ class EntryRequestEndpointIntegrationTest {
 
         writeAccess.open = true
         assertEquals(200, approve("owner-token", EntryRequestTestConfiguration.APPLICANT_ID).statusCode())
+    }
+
+    @Test
+    fun `aceitar com corpo vazio ou sem o campo ou como AVULSO entra como avulso`() {
+        for (body in listOf("", "{}", "{\"membershipType\":\"AVULSO\"}")) {
+            reset()
+            redeem("applicant-token")
+
+            val approved = approve("owner-token", EntryRequestTestConfiguration.APPLICANT_ID, body)
+
+            assertEquals(200, approved.statusCode(), "corpo '$body'")
+            assertEquals("ATHLETE", json(approved)["role"].stringValue())
+            assertTrue(repository.promoted.isEmpty())
+            assertTrue(repository.entryRequests.isEmpty())
+        }
+    }
+
+    @Test
+    fun `aceitar como MENSALISTA com mensalidade padrao promove e repetir e sucesso sem efeito`() {
+        repository.monthlyFeeDefault = true
+        redeem("applicant-token")
+
+        val approved = approve("owner-token", EntryRequestTestConfiguration.APPLICANT_ID, MENSALISTA_BODY)
+
+        assertEquals(200, approved.statusCode())
+        assertEquals("ATHLETE", json(approved)["role"].stringValue())
+        assertEquals(listOf(EntryRequestTestConfiguration.APPLICANT_ID), repository.promoted)
+        assertTrue(repository.entryRequests.isEmpty())
+
+        assertEquals(200, approve("owner-token", EntryRequestTestConfiguration.APPLICANT_ID, MENSALISTA_BODY).statusCode())
+        assertEquals(1, repository.promoted.size)
+    }
+
+    @Test
+    fun `aceitar como MENSALISTA sem mensalidade padrao devolve 422 MONTHLY_FEE_REQUIRED e o pedido fica`() {
+        redeem("applicant-token")
+
+        assertProblem(
+            approve("owner-token", EntryRequestTestConfiguration.APPLICANT_ID, MENSALISTA_BODY),
+            422,
+            "MONTHLY_FEE_REQUIRED",
+        )
+        assertTrue(memberships.members.isEmpty())
+        assertEquals(1, repository.entryRequests.size)
+        assertTrue(repository.promoted.isEmpty())
+    }
+
+    @Test
+    fun `atleta ou limite cheio ou plano vencido barram o aceitar como MENSALISTA`() {
+        repository.monthlyFeeDefault = true
+        redeem("applicant-token")
+
+        assertProblem(approve("athlete-token", EntryRequestTestConfiguration.APPLICANT_ID, MENSALISTA_BODY), 403, "ACCESS_FORBIDDEN")
+
+        approvalLimits.athleteLimit = 0
+        assertProblem(approve("owner-token", EntryRequestTestConfiguration.APPLICANT_ID, MENSALISTA_BODY), 422, "ATHLETE_LIMIT_EXCEEDED")
+        approvalLimits.athleteLimit = null
+
+        writeAccess.open = false
+        assertProblem(approve("owner-token", EntryRequestTestConfiguration.APPLICANT_ID, MENSALISTA_BODY), 403, "SUBSCRIPTION_REQUIRED")
+
+        assertTrue(memberships.members.isEmpty())
+        assertTrue(repository.promoted.isEmpty())
+        assertEquals(1, repository.entryRequests.size)
+    }
+
+    @Test
+    fun `tipo desconhecido no aceitar e invalido e nada muda`() {
+        redeem("applicant-token")
+
+        assertProblem(approve("owner-token", EntryRequestTestConfiguration.APPLICANT_ID, "{\"membershipType\":\"VIP\"}"), 400, "VALIDATION_FAILED")
+        assertEquals(1, repository.entryRequests.size)
     }
 
     @Test
@@ -167,6 +241,14 @@ class EntryRequestEndpointIntegrationTest {
             .build(),
     )
 
+    private fun approve(token: String, userId: UUID, body: String): HttpResponse<String> = send(
+        HttpRequest.newBuilder(uri("/api/groups/${EntryRequestTestConfiguration.GROUP_ID}/entry-requests/$userId/approve"))
+            .header("Authorization", "Bearer $token")
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .build(),
+    )
+
     private fun reject(token: String, userId: UUID): HttpResponse<String> = send(
         HttpRequest.newBuilder(uri("/api/groups/${EntryRequestTestConfiguration.GROUP_ID}/entry-requests/$userId"))
             .header("Authorization", "Bearer $token")
@@ -192,6 +274,7 @@ class EntryRequestEndpointIntegrationTest {
         @Bean fun entryRequestMembershipRepository() = RecordingEntryMembershipRepository(APPLICANT_ID)
         @Bean fun entryRequestTransaction() = RecordingEntryRequestTransaction()
         @Bean fun entryRequestWriteAccess() = ToggleableWriteAccess()
+        @Bean fun entryRequestApprovalLimits() = ToggleableEntryRequestLimits()
         @Bean @Primary fun entryRequestSubscriptionLimits() = UnlimitedEntryRequestSubscriptionLimits
 
         @Bean
@@ -222,12 +305,13 @@ class EntryRequestEndpointIntegrationTest {
             repository: RecordingEntryRequestRepository,
             memberships: RecordingEntryMembershipRepository,
             writeAccess: ToggleableWriteAccess,
+            limits: ToggleableEntryRequestLimits,
         ) = ApproveEntryRequest(
             transaction,
             read,
             repository,
             memberships,
-            UnlimitedEntryRequestSubscriptionLimits,
+            limits,
             GroupAccessPolicy(),
             Clock.fixed(NOW, ZoneOffset.UTC),
             writeAccess = writeAccess,
@@ -314,6 +398,13 @@ class EntryRequestEndpointIntegrationTest {
         override fun athleteLimitFor(ownerId: UUID): Int? = null
     }
 
+    /** Limite de atletas só da aprovação: sem limite por padrão; o teste enche o plano. */
+    class ToggleableEntryRequestLimits : SubscriptionLimits {
+        @Volatile var athleteLimit: Int? = null
+        override fun groupLimitFor(ownerId: UUID): Int? = null
+        override fun athleteLimitFor(ownerId: UUID): Int? = athleteLimit
+    }
+
     /** Plano do organizador: aberto por padrão; o teste fecha para simular plano vencido ou pausado. */
     class ToggleableWriteAccess : br.com.saqz.sharedkernel.subscription.GroupWriteAccess {
         @Volatile var open = true
@@ -348,8 +439,12 @@ class EntryRequestEndpointIntegrationTest {
         val entryRequests = linkedMapOf<UUID, CreateEntryRequestCommand>()
         val roles = mutableMapOf(ownerId to GroupRole.OWNER)
         val windows = mutableMapOf<UUID, InviteAttemptWindow>()
+        @Volatile var monthlyFeeDefault = false
+        val promoted = mutableListOf<UUID>()
 
         fun reset() {
+            monthlyFeeDefault = false
+            promoted.clear()
             target = RedeemableInvite(groupId, EntryRequestTestConfiguration.NOW.plusSeconds(60), entryRequiresApproval = true)
             entryRequests.clear()
             roles.clear()
@@ -380,8 +475,10 @@ class EntryRequestEndpointIntegrationTest {
         override fun mustRequestReturn(groupId: UUID, userId: UUID): Boolean = false
 
         override fun findMembershipType(groupId: UUID, userId: UUID): br.com.saqz.groups.domain.AthleteMembershipType? = null
-        override fun hasMonthlyFeeDefault(groupId: UUID): Boolean = false
-        override fun promoteToMensalista(groupId: UUID, userId: UUID) = Unit
+        override fun hasMonthlyFeeDefault(groupId: UUID): Boolean = monthlyFeeDefault
+        override fun promoteToMensalista(groupId: UUID, userId: UUID) {
+            promoted += userId
+        }
         override fun deleteMatchingInvitee(groupId: UUID, userId: UUID) = Unit
         override fun redeemMembership(command: RedeemMembershipCommand): GroupRole {
             roles[command.userId] = GroupRole.ATHLETE
@@ -437,5 +534,9 @@ class EntryRequestEndpointIntegrationTest {
             members[applicantId] = membership
             return membership
         }
+    }
+
+    private companion object {
+        const val MENSALISTA_BODY = "{\"membershipType\":\"MENSALISTA\"}"
     }
 }

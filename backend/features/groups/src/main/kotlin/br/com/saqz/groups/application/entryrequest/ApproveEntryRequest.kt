@@ -7,6 +7,7 @@ import br.com.saqz.groups.application.membership.ChangeMemberRoleCommand
 import br.com.saqz.groups.application.membership.MembershipRepository
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupAccessDecision
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.domain.GroupAction
@@ -30,7 +31,13 @@ class ApproveEntryRequest(
     private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
     private val firstMember: FirstMemberNotice = FirstMemberNotice { _, _ -> },
 ) {
-    fun execute(actor: UUID, groupId: UUID, userId: UUID): ApproveEntryRequestResult = transactionRunner.inTransaction {
+    /** [membershipType] ausente (apps até 1.0.9) aceita como avulso, como sempre (DEB-112). */
+    fun execute(
+        actor: UUID,
+        groupId: UUID,
+        userId: UUID,
+        membershipType: AthleteMembershipType = AthleteMembershipType.AVULSO,
+    ): ApproveEntryRequestResult = transactionRunner.inTransaction {
         val group = groupReadRepository.find(GroupReadKey(actor, groupId))
             ?: return@inTransaction ApproveEntryRequestResult.GroupNotFound
         when (accessPolicy.authorize(group.role, GroupAction.MANAGE_ATHLETES)) {
@@ -55,6 +62,12 @@ class ApproveEntryRequest(
             return@inTransaction ApproveEntryRequestResult.RequestNotFound
         }
 
+        // DEB-112: sem mensalidade padrão, aceitar como mensalista é recusado (o link de mensalistas cai para avulso; aqui não).
+        val asMensalista = membershipType == AthleteMembershipType.MENSALISTA
+        if (asMensalista && !entryRequestRepository.hasMonthlyFeeDefault(groupId)) {
+            return@inTransaction ApproveEntryRequestResult.MonthlyFeeRequired
+        }
+
         val occupancy = entryRequestRepository.loadAthleteOccupancy(groupId)
             ?: return@inTransaction ApproveEntryRequestResult.GroupNotFound
         val athleteLimit = subscriptionLimits.athleteLimitFor(occupancy.ownerUserId)
@@ -67,6 +80,7 @@ class ApproveEntryRequest(
         )
         check(membership.role == GroupRole.ATHLETE) { "Entry approval must create an athlete membership" }
         entryRequestRepository.applyAthleteProfileToMembership(groupId, userId)
+        if (asMensalista) entryRequestRepository.promoteToMensalista(groupId, userId)
         entryRequestRepository.delete(groupId, userId)
         entryRequestRepository.clearReturnMark(groupId, userId)
         // Aviso à pessoa aprovada, na mesma transação; não repete o aviso quando o pedido já virou vínculo (retorno acima).

@@ -17,6 +17,7 @@ import br.com.saqz.groups.application.entryrequest.SaveEntryRequestAthleteProfil
 import br.com.saqz.groups.application.entryrequest.SaveEntryRequestAthleteProfileResult
 import br.com.saqz.groups.application.membership.AccessMembership
 import br.com.saqz.groups.domain.AthleteLevel
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.AthletePreferredSide
 import br.com.saqz.sharedkernel.RequestIdentity
@@ -70,6 +71,11 @@ data class EntryRequestAthleteProfileResponse(
     val heightCm: Int?,
 )
 
+/** Corpo opcional do aceitar (DEB-112); sem corpo ou sem o campo, avulso. */
+data class ApproveEntryRequestRequest @JsonCreator constructor(
+    @JsonProperty("membershipType") val membershipType: String?,
+)
+
 class EntryRequestNotFoundException : RuntimeException()
 
 class EntryRequestAthleteLimitExceededException : RuntimeException()
@@ -101,17 +107,21 @@ class AccessEntryRequestController(
         @AuthenticationPrincipal identity: RequestIdentity,
         @PathVariable groupId: String,
         @PathVariable userId: String,
+        @RequestBody(required = false) request: ApproveEntryRequestRequest?,
     ): AccessMembershipResponse = when (
         val result = approveEntryRequest.execute(
             actorResolver.resolve(identity),
             parseId(groupId),
             parseUserId(userId),
+            request?.membershipType?.let { parseEnum<AthleteMembershipType>(it, "membershipType") }
+                ?: AthleteMembershipType.AVULSO,
         )
     ) {
         ApproveEntryRequestResult.GroupNotFound -> throw GroupNotFoundException()
         ApproveEntryRequestResult.AccessForbidden -> throw AccessForbiddenException()
         ApproveEntryRequestResult.RequestNotFound -> throw EntryRequestNotFoundException()
         ApproveEntryRequestResult.AthleteLimitExceeded -> throw EntryRequestAthleteLimitExceededException()
+        ApproveEntryRequestResult.MonthlyFeeRequired -> throw MonthlyFeeRequiredException()
         is ApproveEntryRequestResult.Success -> result.membership.toEntryMembershipResponse()
     }
 

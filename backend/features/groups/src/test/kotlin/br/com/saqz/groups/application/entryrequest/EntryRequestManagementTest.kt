@@ -11,6 +11,7 @@ import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.application.read.GroupReadSnapshot
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.AthleteLevel
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.groups.domain.PersistedMembershipRole
@@ -172,6 +173,107 @@ class EntryRequestManagementTest {
         val fixture = fixture(role = GroupRole.ATHLETE, writeAccess = GroupWriteAccess { false })
 
         assertIs<ApproveEntryRequestResult.AccessForbidden>(fixture.approve.execute(athleteId, groupId, applicantId))
+    }
+
+    @Test
+    fun `aceitar sem tipo e como avulso nao promove nem consulta a mensalidade padrao`() {
+        val fixture = fixture(role = GroupRole.OWNER)
+
+        assertIs<ApproveEntryRequestResult.Success>(fixture.approve.execute(ownerId, groupId, applicantId))
+
+        val avulso = fixture(role = GroupRole.OWNER)
+        assertIs<ApproveEntryRequestResult.Success>(
+            avulso.approve.execute(ownerId, groupId, applicantId, AthleteMembershipType.AVULSO),
+        )
+        assertTrue(fixture.entries.promoted.isEmpty())
+        assertTrue(avulso.entries.promoted.isEmpty())
+    }
+
+    @Test
+    fun `dono ou admin aceita como mensalista com mensalidade padrao, depois do vinculo e do cadastro`() {
+        for ((role, actor) in listOf(GroupRole.OWNER to ownerId, GroupRole.ADMIN to adminId)) {
+            val fixture = fixture(role = role)
+            fixture.entries.monthlyFeeDefault = true
+
+            val result = fixture.approve.execute(actor, groupId, applicantId, AthleteMembershipType.MENSALISTA)
+
+            assertIs<ApproveEntryRequestResult.Success>(result)
+            assertEquals(listOf(applicantId), fixture.entries.promoted)
+            assertEquals(listOf("change", "apply", "promote", "delete", "clear"), fixture.order)
+        }
+    }
+
+    @Test
+    fun `aceitar como mensalista sem mensalidade padrao e recusado e o pedido fica`() {
+        val notices = mutableListOf<UUID>()
+        val fixture = fixture(role = GroupRole.OWNER, approvalNotice = EntryApprovalNotice { _, u, _ -> notices += u })
+        fixture.entries.returnMarked += applicantId
+
+        val result = fixture.approve.execute(ownerId, groupId, applicantId, AthleteMembershipType.MENSALISTA)
+
+        assertIs<ApproveEntryRequestResult.MonthlyFeeRequired>(result)
+        assertTrue(fixture.membership.changes.isEmpty())
+        assertTrue(fixture.entries.deleted.isEmpty())
+        assertTrue(fixture.entries.promoted.isEmpty())
+        assertTrue(applicantId in fixture.entries.returnMarked)
+        assertTrue(notices.isEmpty())
+    }
+
+    @Test
+    fun `atleta nao aceita como mensalista`() {
+        val fixture = fixture(role = GroupRole.ATHLETE)
+        fixture.entries.monthlyFeeDefault = true
+
+        val result = fixture.approve.execute(athleteId, groupId, applicantId, AthleteMembershipType.MENSALISTA)
+
+        assertIs<ApproveEntryRequestResult.AccessForbidden>(result)
+        assertTrue(fixture.entries.promoted.isEmpty())
+    }
+
+    @Test
+    fun `aceitar como mensalista com o limite cheio ou o plano vencido e bloqueado como o avulso`() {
+        val full = fixture(role = GroupRole.OWNER, athleteLimit = 1)
+        full.entries.monthlyFeeDefault = true
+        full.entries.occupancy = occupancy(openMembers = setOf(UUID.randomUUID()))
+        assertIs<ApproveEntryRequestResult.AthleteLimitExceeded>(
+            full.approve.execute(ownerId, groupId, applicantId, AthleteMembershipType.MENSALISTA),
+        )
+        assertTrue(full.membership.changes.isEmpty())
+        assertTrue(full.entries.promoted.isEmpty())
+
+        val expired = fixture(role = GroupRole.OWNER, writeAccess = GroupWriteAccess { false })
+        expired.entries.monthlyFeeDefault = true
+        assertFailsWith<SubscriptionRequiredException> {
+            expired.approve.execute(ownerId, groupId, applicantId, AthleteMembershipType.MENSALISTA)
+        }
+        assertTrue(expired.entries.promoted.isEmpty())
+    }
+
+    @Test
+    fun `quem voltou aceito como mensalista vira mensalista e a marca de saida sai`() {
+        val fixture = fixture(role = GroupRole.OWNER)
+        fixture.entries.monthlyFeeDefault = true
+        fixture.entries.returnMarked += applicantId
+
+        assertIs<ApproveEntryRequestResult.Success>(
+            fixture.approve.execute(ownerId, groupId, applicantId, AthleteMembershipType.MENSALISTA),
+        )
+        assertEquals(listOf(applicantId), fixture.entries.promoted)
+        assertTrue(applicantId !in fixture.entries.returnMarked)
+    }
+
+    @Test
+    fun `aceitar como mensalista quem ja e membro e sucesso sem efeito`() {
+        val fixture = fixture(role = GroupRole.OWNER)
+        fixture.entries.monthlyFeeDefault = true
+        val existing = AccessMembership(applicantId, AccessName.from("Applicant"), GroupRole.ATHLETE)
+        fixture.membership.memberships[applicantId] = existing
+
+        val result = fixture.approve.execute(ownerId, groupId, applicantId, AthleteMembershipType.MENSALISTA)
+
+        assertEquals(ApproveEntryRequestResult.Success(existing), result)
+        assertTrue(fixture.entries.promoted.isEmpty())
+        assertTrue(fixture.membership.changes.isEmpty())
     }
 
     @Test
@@ -449,6 +551,8 @@ class EntryRequestManagementTest {
             memberIds = emptySet(),
         )
         var occupancyWasLoaded = false
+        var monthlyFeeDefault = false
+        val promoted = mutableListOf<UUID>()
 
         override fun list(groupId: UUID): List<GroupEntryRequest> = requests.values.toList()
 
@@ -486,6 +590,13 @@ class EntryRequestManagementTest {
         override fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy? {
             occupancyWasLoaded = true
             return occupancy
+        }
+
+        override fun hasMonthlyFeeDefault(groupId: UUID): Boolean = monthlyFeeDefault
+
+        override fun promoteToMensalista(groupId: UUID, userId: UUID) {
+            order += "promote"
+            promoted += userId
         }
     }
 

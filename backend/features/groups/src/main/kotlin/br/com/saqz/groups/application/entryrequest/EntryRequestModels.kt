@@ -69,6 +69,12 @@ interface EntryRequestRepository {
     fun clearReturnMark(groupId: UUID, userId: UUID)
 
     fun loadAthleteOccupancy(groupId: UUID): GroupAthleteOccupancy?
+
+    /** True se o grupo tem valor e dia de vencimento padrão da mensalidade (MEM-003). */
+    fun hasMonthlyFeeDefault(groupId: UUID): Boolean
+
+    /** Avulso vira mensalista com a mensalidade do grupo; o gatilho grava `mensalista_since` (FIN-003). */
+    fun promoteToMensalista(groupId: UUID, userId: UUID)
 }
 
 sealed interface ListEntryRequestsResult {
@@ -89,6 +95,9 @@ sealed interface ApproveEntryRequestResult {
     data object RequestNotFound : ApproveEntryRequestResult
 
     data object AthleteLimitExceeded : ApproveEntryRequestResult
+
+    /** Aceitar como mensalista sem valor e dia padrão no grupo (DEB-112): o pedido fica. */
+    data object MonthlyFeeRequired : ApproveEntryRequestResult
 }
 
 sealed interface RejectEntryRequestResult {
