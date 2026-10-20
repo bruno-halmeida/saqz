@@ -2,7 +2,7 @@
 
 Regras do cofre cobertas: CONV-010, CONV-011 e CONV-012 (decididas em 20/10), os efeitos em NOT-004, MEM-003, SAI-005, SAI-007 e FIN-003 e, no bloco V10, o "aceitar o pedido como mensalista ou avulso" de CONV-007 (DEB-112, que entra **depois** do DEB-106: V10 só roda quando ele for entregue). Se o texto do app e a nota divergirem, vale a nota; anote a divergência no relato.
 
-**Escrito antes da entrega (DEB-106).** Os rótulos vêm do protótipo (`design/convite-mensalistas/telas.html`). A coluna Banco usa `<convidados>` e `<links-mensalistas>` para a tabela de convidados e a do segundo código, e `<expira-em>` para a coluna de validade, que ainda não existem: ao rodar pela primeira vez, troque pelos nomes reais e registre-os no relato. O mesmo vale para as rotas de API marcadas "a fechar". Passos **[mock+]** dependem das duas extensões do Uazapi falso descritas em "Antes de começar"; sem elas ficam BLOQUEADO.
+**Backend e app do DEB-106 já estão na `main`** (migração V178: tabelas `group_monthly_invitees` e `group_monthly_invite_links`, coluna de validade `expires_at`; telefone guardado como `+55DDD9XXXXXXXX`). Os rótulos vêm do protótipo (`design/convite-mensalistas/telas.html`) e das telas implementadas; as rotas de API estão em `MonthlyInviteController` (`/api/groups/{groupId}/monthly-invites`). Passos **[mock+]** dependem das duas extensões do Uazapi falso descritas em "Antes de começar"; sem elas ficam BLOQUEADO.
 
 Papéis: **ORG** (dono), **ADM** (administrador), **ATL** (avulso que já está no grupo) e **CV1**, **CV2**, **CV3**, **CV4** (pessoas de fora que recebem o link; dividem um aparelho: para trocar de papel, Perfil → "Sair da conta" e entrar com a conta do outro). As contas são as do roteiro 05: ADM é a ATL2; CV1, CV2 e CV3 são ATL3, ATL4 e ATL5; CV4 é nova.
 
@@ -58,7 +58,7 @@ print(c)' "$1" "$MOCK"; }
 - **R-ENTREGAR**: como no roteiro 05, com o código desejado. Android: `adb -s <id> shell am start -a android.intent.action.VIEW -d 'https://links.saqz.app/?saqz_invite=<código>' app.saqz`. iOS: `xcrun simctl openurl <udid> 'saqz://links.saqz.app/?saqz_invite=<código>'`.
 - **R-PRÉVIA** `<papel> <código>`: `api <papel> POST /api/invites/preview -d '{"code":"<código>"}'` devolve o cartão (200) ou o erro do link.
 - **R-SEM-TELEFONE** `<papel>`: `PSQL "update access_users set phone=null where email='qa-<papel>+$TAG@saqz.local'"` (se a conta aceitar telefone nulo; senão BLOQUEADO). O aviso de entrada vai ao telefone cadastrado, confirmado ou não (exceção à DEB-081).
-- **R-ENVELHECER** `<dias>`: faz o link vigente ter vencido há `<dias>` dias: `PSQL "update <links-mensalistas> set <expira-em>=now()-interval '<dias> days' where group_id='$GID'"`. **R-ENVELHECER-INVALIDADO** `<dias>` faz o mesmo com a data da invalidação (nomes a fechar na entrega).
+- **R-ENVELHECER** `<dias>`: faz o link vigente ter vencido há `<dias>` dias: `PSQL "update group_monthly_invite_links set expires_at=now()-interval '<dias> days' where group_id='$GID'"`. **R-ENVELHECER-INVALIDADO** `<dias>` faz o mesmo com a data da invalidação .
 - **R-SEM-MENSALIDADE**: `PSQL "update access_groups set monthly_fee_cents=null, monthly_due_day=null where id='$GID'"`. **R-COM-MENSALIDADE**: `PSQL "update access_groups set monthly_fee_cents=8000, monthly_due_day=10 where id='$GID'"`.
 - **R-LIMITE-LIGAR** e **R-LIMITE-DESLIGAR**: as do roteiro 05 (plano com limite de 25 atletas, grupo preenchido com membros falsos). **R-VAGAS** `<n>`: `PSQL "delete from group_memberships where ctid in (select ctid from group_memberships where group_id='$GID' and user_id in (select id from access_users where firebase_subject like 'fake-%') limit <n>)"` abre `<n>` vagas.
 
@@ -79,7 +79,7 @@ print(c)' "$1" "$MOCK"; }
 | # | Aparelho | Faça | Espere | Banco | iOS | Android |
 | --- | --- | --- | --- | --- | --- | --- |
 | V1.1 | ORG | Grupo → "Membros e permissões" (ninguém convidado ainda) | Cartão `Mensalistas pelo WhatsApp` com `Cadastre quem paga mensalidade e mande o convite de uma vez. Quem aceitar já entra como mensalista.` e o botão `Convidar mensalista`; os chips não têm `Convidados` | — | ☐ | ☐ |
-| V1.2 | ATL | Abrir "Membros e permissões" (se o app o mostra a atletas) e procurar `Convidar mensalista`. Pela API: `api atl GET /api/groups/$GID/<convidados>` | Sem o botão, sem seção `Convidados` e sem chip; a API devolve `403` (rota a fechar) | — | ☐ | ☐ |
+| V1.2 | ATL | Abrir "Membros e permissões" (se o app o mostra a atletas) e procurar `Convidar mensalista`. Pela API: `api atl GET /api/groups/$GID/monthly-invites` | Sem o botão, sem seção `Convidados` e sem chip; a API devolve `403`  | — | ☐ | ☐ |
 | V1.3 | ORG | Tocar "Convidar mensalista" (grupo sem mensalidade padrão) | Tela bloqueada: `Defina o valor e o dia da mensalidade do grupo` e `Quem entra como mensalista paga esse valor. Configure uma vez e volte para convidar.`, botão `Configurar mensalidade`; não existe `Adicionar pessoa` | — | ☐ | ☐ |
 | V1.4 | ORG | `Configurar mensalidade` → em Editar grupo, cartão `Mensalidade` (`Vale para quem entra como mensalista. Dá pra ajustar por pessoa depois.`): `Valor por mês` `80,00`, `Dia do vencimento` 10 → "Salvar" | Salva e volta | `select monthly_fee_cents, monthly_due_day from access_groups where id='$GID'` = `8000\|10` | ☐ | ☐ |
 | V1.5 | ORG | Editar grupo → `Dia do vencimento`: levar até 28 e tocar `+` de novo; depois levar até 1 e tocar `−` de novo; sair **sem salvar** | O contador para em 28 e em 1; o banco segue em 10 | `monthly_due_day` = `10` | ☐ | ☐ |
@@ -94,7 +94,7 @@ print(c)' "$1" "$MOCK"; }
 | V1.14 | ORG | `Adicionar outra pessoa` com `Pessoa C2` e o mesmo número de Pessoa C (`(11) 90000-0010`) | `Esse número já está na lista (Pessoa C).` e nada é adicionado | — | ☐ | ☐ |
 | V1.15 | ORG | Remover `Pessoa D` pelo botão da linha; depois tocar `Desfazer` no toast | Toast `... saiu da lista.` com `Desfazer`; ao desfazer, `Pessoa D` volta na mesma posição; botão segue `Enviar 4 convites` | — | ☐ | ☐ |
 | V1.16 | ORG | `Ver a mensagem que vai sair` | O texto traz `E aí,` + o nome, `🏐`, `O QA Org <data> te colocou na lista de mensalistas do QA Vôlei <data> aqui no Saqz.`, `Entra por aqui e confirma presença nos jogos direto pelo app:` e o link, e termina com `Se não era pra você, é só ignorar.` | — | ☐ | ☐ |
-| V1.17 | ORG | R-ZERAR. Tocar `Enviar 4 convites` **duas vezes seguidas** (toque duplo) | Uma remessa só; a tela volta para Membros | `select count(*) from <convidados> where group_id='$GID'` = `4`; `envios` nunca passa de 4 mensagens para os 4 números | ☐ | ☐ |
+| V1.17 | ORG | R-ZERAR. Tocar `Enviar 4 convites` **duas vezes seguidas** (toque duplo) | Uma remessa só; a tela volta para Membros | `select count(*) from group_monthly_invitees where group_id='$GID'` = `4`; `envios` nunca passa de 4 mensagens para os 4 números | ☐ | ☐ |
 
 ## V2 · CONV-012 · A fila de envio [MULTI] [WhatsApp: só produção]
 
@@ -114,10 +114,10 @@ Anotar `COD_MS` com R-CÓDIGO-MS (`codigo 11900000004`).
 | --- | --- | --- | --- | --- | --- | --- |
 | V3.1 | CV1 | Entregar o link com `COD_MS` (R-ENTREGAR) | Cartão de `QA Vôlei <data>` dizendo que entra **como mensalista**, sem `precisa de aprovação`, e o botão `Entrar no grupo` | R-PRÉVIA mostra o campo do tipo do convite (nome a fechar) | ☐ | ☐ |
 | V3.2 | CV1 | `Entrar no grupo` → cadastro de atleta com apelido `Atl3` → "Salvar meu perfil" | `Você entrou no QA Vôlei <data>` e depois o grupo | `select role, membership_type, active, mensalista_since::date = current_date from group_memberships where user_id='$(uid atl3)' and group_id='$GID'` = `ATHLETE\|MENSALISTA\|t\|t` | ☐ | ☐ |
-| V3.3 | ORG | Reabrir Membros | `QA Atl3 <data>` em `Todos` como mensalista; a linha dele sumiu de Convidados; chip `Convidados · 3` | `select count(*) from <convidados> where group_id='$GID' and phone like '%900000004'` = `0` (a linha foi apagada, não só escondida) | ☐ | ☐ |
+| V3.3 | ORG | Reabrir Membros | `QA Atl3 <data>` em `Todos` como mensalista; a linha dele sumiu de Convidados; chip `Convidados · 3` | `select count(*) from group_monthly_invitees where group_id='$GID' and phone like '%900000004'` = `0` (a linha foi apagada, não só escondida) | ☐ | ☐ |
 | V3.4 | CV2 | Entregar o link (mesmo `COD_MS`) à conta de CV2, cujo celular é `11900000005` | Entra como mensalista, como CV1 | `membership_type` de CV2 = `MENSALISTA` | ☐ | ☐ |
-| V3.5 | ORG | Reabrir Membros | `Pessoa B` segue `Aguardando` (o telefone da lista é outro); `Convidados · 3` | `<convidados>` mantém a linha de `%900000020` | ☐ | ☐ |
-| V3.6 | ORG | Tocar `Pessoa B` → `Remover da lista` | A linha some; `Convidados · 2`; o link segue valendo | `<convidados>` sem `%900000020`; R-PRÉVIA do `COD_MS` = `200` | ☐ | ☐ |
+| V3.5 | ORG | Reabrir Membros | `Pessoa B` segue `Aguardando` (o telefone da lista é outro); `Convidados · 3` | `group_monthly_invitees` mantém a linha de `%900000020` | ☐ | ☐ |
+| V3.6 | ORG | Tocar `Pessoa B` → `Remover da lista` | A linha some; `Convidados · 2`; o link segue valendo | `group_monthly_invitees` sem `%900000020`; R-PRÉVIA do `COD_MS` = `200` | ☐ | ☐ |
 | V3.7 | ATL | Entregar o link (ATL é avulso do grupo) | Abre o grupo; sem cadastro novo | `select role, membership_type, mensalista_since::date = current_date from group_memberships where user_id='$(uid atl)' and group_id='$GID'` = `ATHLETE\|MENSALISTA\|t` | ☐ | ☐ |
 | V3.8 | CV1 | Entregar o link outra vez (já é mensalista) | Abre o grupo, sem tela de erro e sem novo cadastro | linha de CV1 inalterada; `mensalista_since` igual ao de V3.2 | ☐ | ☐ |
 | V3.9 | ORG, CV3 | ORG liga "Aprovar pedidos para entrar" (Convidar por link). CV3 (sem grupo e que **ninguém convidou**) abre o link | Entra **direto como mensalista**, sem pedido, mesmo com a aprovação ligada | `membership_type='MENSALISTA'`; `api org GET /api/groups/$GID/entry-requests` sem pedido de CV3 | ☐ | ☐ |
@@ -160,7 +160,7 @@ Anotar `COD_MS` com R-CÓDIGO-MS (`codigo 11900000004`).
 | V6.2 | ORG | Membros → Convidados | Aviso `O link venceu` com `Ninguém mais entra com ele. Reenvie para gerar um link novo e mandar de novo.` e o botão `Reenviar para todos`; as 4 linhas de quem não entrou (`11900000010`, `11900000011`, `11900000014`, `11900000015`) aparecem como `Venceu` | — | ☐ | ☐ |
 | V6.3 | ORG | R-ZERAR. Tocar `Reenviar para todos` | As 4 linhas voltam a `Na fila` e depois `Aguardando`; saem 4 mensagens, com um **código novo** | `codigo 11900000010` = `COD_MS2`, diferente de `COD_MS`; R-PRÉVIA do `COD_MS` = erro (o velho morreu) | ☐ | ☐ |
 | V6.4 | CV3 | Entregar o link novo (`COD_MS2`) | Entra como mensalista | `membership_type='MENSALISTA'` | ☐ | ☐ |
-| V6.5 | ORG | Convidar `Pessoa G` `(11) 90000-0018`, com o link ainda vivo | A mensagem leva o **mesmo** código `COD_MS2`; a validade volta a 7 dias | `<expira-em>` aproximadamente agora + 7 dias; `codigo 11900000018` = `COD_MS2` | ☐ | ☐ |
+| V6.5 | ORG | Convidar `Pessoa G` `(11) 90000-0018`, com o link ainda vivo | A mensagem leva o **mesmo** código `COD_MS2`; a validade volta a 7 dias | `expires_at` aproximadamente agora + 7 dias; `codigo 11900000018` = `COD_MS2` | ☐ | ☐ |
 | V6.6 | ORG | Tocar `Invalidar link` → na folha `Invalidar o link?` (`Quem ainda não entrou precisará receber o link de novo. Quem já entrou continua no grupo.`) tocar `Cancelar` | Nada muda | R-PRÉVIA do `COD_MS2` = `200` | ☐ | ☐ |
 | V6.7 | ORG | `Invalidar link` → confirmar | Link velho morto na hora; quem ainda não entrou fica `Aguardando`; quem já entrou segue no grupo; o convite público segue valendo | R-PRÉVIA do `COD_MS2` = `Este link foi substituído`; R-PRÉVIA do `COD_PUB3` = `200` | ☐ | ☐ |
 | V6.8 | CV4 | "Sair do grupo" e entregar o link `COD_MS2` | `Este link foi substituído` e `Peça um novo ao organizador.`; não entra | CV4 sem membership ativa | ☐ | ☐ |
@@ -203,10 +203,10 @@ Anotar `COD_MS` com R-CÓDIGO-MS (`codigo 11900000004`).
 
 | # | Aparelho | Faça | Espere | Banco | iOS | Android |
 | --- | --- | --- | --- | --- | --- | --- |
-| V8.1 | banco + ORG | R-ENVELHECER 29 (link vencido há 29 dias) e rodar o job de retenção (a fechar: esperar o ciclo ou chamar a rotina) | As linhas de quem não entrou **seguem** (menos de 30 dias): ORG as vê como `Venceu` | `select count(*) from <convidados> where group_id='$GID'` > 0 | ☐ | ☐ |
-| V8.2 | banco + ORG | R-ENVELHECER 31 e rodar o job de retenção | As linhas de quem não entrou são apagadas; ORG vê o cartão `Mensalistas pelo WhatsApp` no lugar da seção | `select count(*) from <convidados> where group_id='$GID'` = `0` | ☐ | ☐ |
-| V8.3 | ORG, banco | Convidar 2 pessoas (`11900000049` e `11900000050`); `Invalidar link`; R-ENVELHECER-INVALIDADO 31 e rodar o job | Linhas apagadas, como em V8.2 | `<convidados>` = `0` | ☐ | ☐ |
-| V8.4 | ORG | Excluir o `QA Vôlei B <data>` (que ainda tem os convidados de V7.1): Editar grupo → lixeira → "Excluir grupo" | O grupo some | `<convidados>` sem linhas do grupo B; R-PRÉVIA do código vivo dele = `Grupo excluído` ou `Convite inválido` | ☐ | ☐ |
+| V8.1 | banco + ORG | R-ENVELHECER 29 (link vencido há 29 dias) e rodar o job de retenção (o job diário; se não der para esperar, chamar a rotina de retenção ou registrar BLOQUEADO) | As linhas de quem não entrou **seguem** (menos de 30 dias): ORG as vê como `Venceu` | `select count(*) from group_monthly_invitees where group_id='$GID'` > 0 | ☐ | ☐ |
+| V8.2 | banco + ORG | R-ENVELHECER 31 e rodar o job de retenção | As linhas de quem não entrou são apagadas; ORG vê o cartão `Mensalistas pelo WhatsApp` no lugar da seção | `select count(*) from group_monthly_invitees where group_id='$GID'` = `0` | ☐ | ☐ |
+| V8.3 | ORG, banco | Convidar 2 pessoas (`11900000049` e `11900000050`); `Invalidar link`; R-ENVELHECER-INVALIDADO 31 e rodar o job | Linhas apagadas, como em V8.2 | `group_monthly_invitees` = `0` | ☐ | ☐ |
+| V8.4 | ORG | Excluir o `QA Vôlei B <data>` (que ainda tem os convidados de V7.1): Editar grupo → lixeira → "Excluir grupo" | O grupo some | `group_monthly_invitees` sem linhas do grupo B; R-PRÉVIA do código vivo dele = `Grupo excluído` ou `Convite inválido` | ☐ | ☐ |
 
 ## V9 · CONV-010 · WhatsApp indisponível [WhatsApp: só produção]
 
@@ -229,4 +229,4 @@ Rodar o roteiro inteiro duas vezes, cada uma com `stack.sh reset` e apps limpos.
 
 Link para cada plataforma: iPhone com `xcrun simctl openurl <udid> 'saqz://links.saqz.app/?saqz_invite=<código>'`; Android com `adb -s <id> shell am start -a android.intent.action.VIEW -d 'https://links.saqz.app/?saqz_invite=<código>' app.saqz`.
 
-Relate também o tempo total, os nomes reais de tabelas, colunas e rotas que substituíram os `<...>`, a divergência entre o protótipo e o app e qualquer passo em que precisou usar adb/simctl no lugar do mobile-mcp.
+Relate também o tempo total, a divergência entre o protótipo e o app e qualquer passo em que precisou usar adb/simctl no lugar do mobile-mcp.
