@@ -8,6 +8,7 @@ import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupLevel
 import br.com.saqz.sharedkernel.RequestIdentity
 import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -33,8 +34,9 @@ data class PreviewInviteResponse(
     val entryRequiresApproval: Boolean,
     val expiresAt: Instant?,
     val nextGame: PreviewNextGameResponse?,
-    /** Campo aditivo (CONV-011): `MONTHLY` no link de mensalistas; apps antigos ignoram. */
-    val inviteKind: InviteKind = InviteKind.PUBLIC,
+    /** Campo aditivo (CONV-011): `MONTHLY` no link de mensalistas; ausente no convite público, como antes. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL)
+    val inviteKind: InviteKind? = null,
 ) {
     companion object {
         fun from(card: PreviewInviteCard) = PreviewInviteResponse(
@@ -52,7 +54,7 @@ data class PreviewInviteResponse(
             nextGame = card.nextGame?.let {
                 PreviewNextGameResponse(it.startsAt, it.venueName, it.court)
             },
-            inviteKind = card.inviteKind,
+            inviteKind = card.inviteKind.takeIf { it == InviteKind.MONTHLY },
         )
 
         private val OUTPUT_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")

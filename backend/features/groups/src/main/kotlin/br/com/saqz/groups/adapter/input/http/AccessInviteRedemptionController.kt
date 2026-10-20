@@ -6,6 +6,7 @@ import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.sharedkernel.RequestIdentity
 import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.PostMapping
@@ -21,7 +22,8 @@ data class RedeemedInviteResponse(
     val status: RedeemedInviteStatus,
     val groupId: UUID,
     val role: GroupRole?,
-    /** Campo aditivo: só no link de mensalistas (`MENSALISTA` ou `AVULSO`). */
+    /** Campo aditivo: só no link de mensalistas (`MENSALISTA` ou `AVULSO`); ausente no convite público. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL)
     val membershipType: AthleteMembershipType? = null,
 )
 

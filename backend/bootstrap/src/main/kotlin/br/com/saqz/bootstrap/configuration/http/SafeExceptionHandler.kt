@@ -247,6 +247,52 @@ class SafeExceptionHandler(
         )
     }
 
+    @ExceptionHandler(br.com.saqz.groups.adapter.input.http.MonthlyFeeRequiredException::class)
+    fun monthlyFeeRequired(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 422, ErrorCode.MONTHLY_FEE_REQUIRED)
+    }
+
+    @ExceptionHandler(br.com.saqz.groups.adapter.input.http.WhatsAppUnavailableException::class)
+    fun whatsAppUnavailable(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.WHATSAPP_UNAVAILABLE)
+    }
+
+    @ExceptionHandler(br.com.saqz.groups.adapter.input.http.MonthlyInviteeNotFoundException::class)
+    fun monthlyInviteeNotFound(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 404, ErrorCode.MONTHLY_INVITEE_NOT_FOUND)
+    }
+
+    @ExceptionHandler(br.com.saqz.groups.adapter.input.http.InvalidMonthlyInvitePeopleException::class)
+    fun invalidMonthlyInvitePeople(
+        failure: br.com.saqz.groups.adapter.input.http.InvalidMonthlyInvitePeopleException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(
+            request,
+            response,
+            422,
+            ErrorCode.INVALID_PEOPLE,
+            people = failure.errors.map { ApiProblemPerson(it.index, it.reason.name) },
+        )
+    }
+
+    @ExceptionHandler(br.com.saqz.groups.adapter.input.http.MonthlyInvitePlanLimitException::class)
+    fun monthlyInvitePlanLimit(
+        failure: br.com.saqz.groups.adapter.input.http.MonthlyInvitePlanLimitException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        val limit = failure.limit
+        problemWriter.write(
+            request,
+            response,
+            409,
+            ErrorCode.PLAN_LIMIT,
+            planLimit = listOf(limit.limit, limit.current, limit.requested, limit.free),
+        )
+    }
+
     @ExceptionHandler(GroupNotFoundException::class)
     fun groupNotFound(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 404, ErrorCode.GROUP_NOT_FOUND)

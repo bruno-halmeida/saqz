@@ -17,4 +17,13 @@ data class ApiProblem(
     val conflictGameId: String? = null,
     /** Motivo aditivo de um erro de código conhecido (link de presença: jogo começou, cancelado, despublicado). */
     val reason: String? = null,
+    /** Convite de mensalistas: as pessoas recusadas do lote (`INVALID_PEOPLE`), pela posição no pedido. */
+    val people: List<ApiProblemPerson>? = null,
+    /** Convite de mensalistas (`PLAN_LIMIT`): limite do plano, atletas de agora, pedidos no lote e vagas livres. */
+    val limit: Int? = null,
+    val current: Int? = null,
+    val requested: Int? = null,
+    val free: Int? = null,
 )
+
+data class ApiProblemPerson(val index: Int, val reason: String)

@@ -413,6 +413,11 @@ class InviteRedemptionEndpointIntegrationTest {
 
         override fun mustRequestReturn(groupId: UUID, userId: UUID): Boolean = false
 
+        override fun findMembershipType(groupId: UUID, userId: UUID): br.com.saqz.groups.domain.AthleteMembershipType? = null
+        override fun hasMonthlyFeeDefault(groupId: UUID): Boolean = false
+        override fun promoteToMensalista(groupId: UUID, userId: UUID) = Unit
+        override fun deleteMatchingInvitee(groupId: UUID, userId: UUID) = Unit
+        override fun clearReturnMark(groupId: UUID, userId: UUID) = Unit
         override fun redeemMembership(command: RedeemMembershipCommand): GroupRole =
             roles.getOrPut(command.userId) { GroupRole.ATHLETE }
     }

@@ -21,6 +21,8 @@ class ApiProblemWriter(
         expiredAt: Instant? = null,
         conflictGameId: String? = null,
         reason: String? = null,
+        people: List<ApiProblemPerson>? = null,
+        planLimit: List<Int>? = null,
     ) {
         if (request.requestURI == "/api/receivables/availability" ||
             request.requestURI == "/admin/receivables/rollout" || request.requestURI.startsWith("/admin/receivables/rollout/")) {
@@ -47,7 +49,10 @@ class ApiProblemWriter(
         if (retryAfterSeconds != null) response.setHeader("Retry-After", retryAfterSeconds.toString())
         objectMapper.writeValue(
             response.outputStream,
-            ApiProblem(status, code, correlationId, fieldErrors, retryAfterSeconds, remainingAttempts, expiredAt, conflictGameId, reason),
+            ApiProblem(
+                status, code, correlationId, fieldErrors, retryAfterSeconds, remainingAttempts, expiredAt, conflictGameId, reason,
+                people, planLimit?.get(0), planLimit?.get(1), planLimit?.get(2), planLimit?.get(3),
+            ),
         )
     }
 
