@@ -155,6 +155,47 @@ A posição mostrada é sempre calculada pela ordem da lista (PROM-007).
 
 Para cada linha da tabela de Produto: gerar o evento e conferir push e item na central. Para cada linha de "não avisa": conferir que nada chega. Repetir a mesma ação (toque duplo) e conferir que não chega um segundo push. Compatibilidade: abrir a central de avisos nos apps 1.0.4 a 1.0.6 depois de um aviso novo.
 
+## PRES-014 · Vaga por posição (5-1 e 6-0) [CRÍTICO] [MULTI] [push: só produção]
+
+Precisa de um grupo 5-1 com vagas por posição (ex. 4 ponteiros(as), 4 centrais, 2 opostos(as), 2 levantadores(as), líbero 0 ou 2) e de atletas com posição no perfil. Telas de referência: capturas `deb-107` e `deb-109` do módulo de grupos.
+
+| Situação | Resultado | iOS | Android |
+| --- | --- | --- | --- |
+| 5-1 com soma diferente do total | Recusado (422); o app não deixa salvar | ☐ | ☐ |
+| 6-0 ou sem sistema com posições | Recusado (lista tem de ser vazia) | ☐ | ☐ |
+| "Vou" em posição cheia, com vaga em outra | Lista de espera | ☐ | ☐ |
+| Sai alguém de uma posição | Sobe o primeiro da espera **dessa** posição | ☐ | ☐ |
+| Organizador força entrada em posição cheia | Entra | ☐ | ☐ |
+| App 1.0.8 confirma sem posição | Entra na posição mais livre | ☐ | ☐ |
+| "Vou" na Início, no cartão do grupo ou na tela do jogo, jogo 5-1 | Abre a tela de escolher posição (tela inteira, barra "Presença"); nada é confirmado antes | ☐ | ☐ |
+| "Vou" em jogo 6-0 ou sem posições | Confirma direto, como hoje | ☐ | ☐ |
+| Posição do perfil com vaga | Vem marcada (pílula azul cheia, sem rádio), com o selo "Do seu perfil" | ☐ | ☐ |
+| Sem posição no perfil, ou a do perfil cheia | Nada marcado; botão desligado "Escolha uma posição" | ☐ | ☐ |
+| Escolhe posição cheia | Botão "Entrar na lista de espera"; aviso "Sem vaga de <posição>" / "Você entra na lista de espera dessa posição, em <Nº>."; abaixo, as posições com vaga | ☐ | ☐ |
+| Todas as posições cheias | Aviso no topo: "Todas as posições estão cheias" / "Escolha em qual lista de espera entrar." / "Na de <posição>, você fica em <Nº>." | ☐ | ☐ |
+| Posição lota com a tela aberta (outro aparelho confirma a última vaga) | "<posição> acabou de lotar" / "Entre na lista de espera dela, em <Nº>, ou escolha outra posição."; nada é enviado | ☐ | ☐ |
+| Servidor devolve espera mesmo assim | O resultado é a espera, sem erro | ☐ | ☐ |
+| Sem rede ao confirmar | "Não foi possível salvar sua resposta. Tente novamente." e o botão "Tentar novamente" | ☐ | ☐ |
+| Enviando | Botão só com o spinner (leitor de tela: "Confirmando presença"); posições desligadas | ☐ | ☐ |
+| Confirma vindo da Início, do grupo ou do jogo | Volta ao ponto de partida, cartão atualizado, sem aviso | ☐ | ☐ |
+| Confirma pelo link do WhatsApp | Cartão de resultado com a posição, em verde (LINK-002) | ☐ | ☐ |
+| "Vou" pela notificação, app 1.0.10 | Abre o app na tela; nada é confirmado por baixo; depois de confirmar, abre o jogo | ☐ | ☐ |
+| "Não vou" pela notificação | Como hoje (responde em segundo plano) | ☐ | ☐ |
+| Push de jogo 5-1 no iPhone com app 1.0.6 a 1.0.9 | Sem os botões "Confirmar"/"Não vou" (decisão do dono, 20/10); o toque abre o jogo | ☐ | — |
+| App 1.0.6 a 1.0.9 abre o link ou confirma | Nada muda; o servidor escolhe pelo perfil | ☐ | ☐ |
+| Fonte grande (130%) e celular pequeno (320 × 568) | Selos descem para baixo do nome; a lista rola e a barra não cobre a última linha | ☐ | ☐ |
+| Administrador abre o grupo, jogo 5-1 | Placar "N Vão · N Não vão · N Na espera" e bloco "Posições na quadra" | ☐ | ☐ |
+| Atleta (que não administra) abre o grupo | Cartão de sempre, sem placar compacto nem quadra | ☐ | ☐ |
+| Posição completa e posição com vaga | Bolinha cheia com ✓ e bolinha tracejada; "Falta N" só onde falta, e a contagem só na primeira vez da posição | ☐ | ☐ |
+| Grupo com líbero | Líbero no lugar do central do fundo | ☐ | ☐ |
+| Grupo com 0 líbero | Central no fundo | ☐ | ☐ |
+| Todas as posições completas | "✓ Todas completas" | ☐ | ☐ |
+| Posição com gente na espera | "Na espera: N <posição>" | ☐ | ☐ |
+| Próximos jogos (administrador), faltam posições | "Faltam: <posições>" | ☐ | ☐ |
+| Próximos jogos (administrador), nenhuma posição fechada | "Faltam: todas as posições" | ☐ | ☐ |
+| Rótulos de posição | Ponteiro(a), Central, Oposto(a), Levantador(a), Líbero; plurais ponteiros(as), opostos(as), levantadores(as); cadastro, membros e espera seguem Ponteiro/Ponteira | ☐ | ☐ |
+| Selo "Você vai" | Texto verde escuro (`successForeground`, AA ≥ 4,5:1) | ☐ | ☐ |
+
 ## PROM-001 · O que libera uma vaga [CRÍTICO] [MULTI]
 
 | Evento | Libera? | A fila anda | iOS | Android |

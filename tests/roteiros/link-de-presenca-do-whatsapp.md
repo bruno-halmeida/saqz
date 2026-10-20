@@ -17,7 +17,11 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 
 | Situação | Resultado | iOS | Android |
 | --- | --- | --- | --- |
-| Membro logado abre o link "Vou", jogo futuro | Resposta registrada ao abrir | ☐ | ☐ |
+| Membro logado abre o link "Vou", jogo futuro sem posições | Resposta registrada ao abrir | ☐ | ☐ |
+| Membro logado abre o link "Vou", jogo 5-1 | Abre a tela de escolher posição; só registra ao confirmar | ☐ | ☐ |
+| Confirma a posição pelo link | Cartão de resultado com a posição, em verde | ☐ | ☐ |
+| Volta da tela de posição sem confirmar | Nada registrado; a tela do link mostra o jogo e o botão "Vou", que reabre a escolha | ☐ | ☐ |
+| Abre de novo o link "Vou" já confirmado no jogo 5-1 | Mostra o resultado com a posição, sem abrir a escolha de novo | ☐ | ☐ |
 | Membro abre o link "Não vou" | Aviso; só grava após "Sim, não vou" | ☐ | ☐ |
 | Jogo já começou | "O jogo já começou" | ☐ | ☐ |
 | Jogo cancelado | "Esse jogo foi cancelado" | ☐ | ☐ |
@@ -45,6 +49,7 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | --- | --- | --- | --- |
 | Membro novo, cadastro incompleto | Cadastro, depois a presença | ☐ | ☐ |
 | Membro com cadastro completo | Resposta direta | ☐ | ☐ |
+| Membro novo, cadastro incompleto, jogo 5-1 | Cadastro, depois a tela de escolher posição | ☐ | ☐ |
 | Grupo com aprovação, pedido pendente | Sem resposta agora; dá para adiantar o cadastro, que fica no pedido | ☐ | ☐ |
 | Pedido aprovado, cadastro adiantado | Presença registrada ao voltar à tela, sem cadastro de novo | ☐ | ☐ |
 | Pedido aprovado, sem cadastro | O app abre o cadastro, depois a presença | ☐ | ☐ |
@@ -56,6 +61,8 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | "Vou", confirmado | "Sua vaga está confirmada" / "Seu nome já está na lista.", vagas preenchidas e "Não vou mais" | ☐ | ☐ |
 | "Vou", espera com jogo lotado | "Você está na lista de espera" / "As vagas acabaram. Se abrir uma, você recebe um aviso." e a vez na fila | ☐ | ☐ |
 | "Vou", espera com vaga sobrando | "Se você ganhar uma vaga, recebe um aviso." (nunca "as vagas acabaram") | ☐ | ☐ |
+| "Vou" confirmado em jogo 5-1 | Faixa verde "Sua vaga está confirmada" / "Seu nome já está na lista do jogo."; cartão "Sua posição" com "✓ Confirmado", a posição, as bolinhas e "N de M vagas"; "Ver jogo" e "Não vou mais" | ☐ | ☐ |
+| "Vou" na espera de uma posição | "Você está na lista de espera de <posição>" / "A posição está cheia. Se abrir uma vaga nela, você recebe um aviso." e "Sua vez na fila" | ☐ | ☐ |
 | Folha de "Não vou", antes do toque | "Não vai poder ir?" / "Seu nome sai da lista do jogo de …" (sem prometer aviso ao grupo) | ☐ | ☐ |
 | "Não vou", depois do toque | "Você não vai neste jogo" / "Seu nome saiu da lista. Valeu por avisar." | ☐ | ☐ |
 | Todos os casos | Resultado em cima, cartão do jogo embaixo | ☐ | ☐ |
