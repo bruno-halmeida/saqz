@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.setup
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.ImageBitmap
+import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
@@ -45,6 +46,12 @@ data class GroupSlotDraft(
     val hour: Int = 19,
     val minute: Int = 30,
 )
+
+object GroupPositionDefaults {
+    const val Teams = 2
+    const val MaxTeams = 6
+    const val MaxPerPosition = 50
+}
 
 object GroupSetupDefaults {
     // O backend recusa fora de `2..100`, mas grava 4 quando um app antigo manda 2 ou 3
@@ -121,8 +128,24 @@ data class GroupSetupState(
      * Chega depois do formulário, em uma busca à parte, e só na edição.
      */
     val rosterHasMensalista: Boolean = false,
+    /** DEB-102: vagas por posição (só as que têm vaga); vazio = o grupo segue com o total de jogadores. */
+    val positionSlots: Map<AthletePosition, Int> = emptyMap(),
+    /** Times para a sugestão do 5-1 (1..6). */
+    val positionTeams: Int = GroupPositionDefaults.Teams,
+    val isSuggestingPositions: Boolean = false,
+    val positionSuggestionFailed: Boolean = false,
 ) {
     val isEditing: Boolean = mode is GroupSetupMode.Edit
+
+    /**
+     * Vagas por posição só na edição, para quem gere o grupo, em quadra no 5-1 (6-0 não usa posições: segue o total).
+     * Com alguma posição preenchida o total de jogadores deixa de ser um campo: é a soma delas.
+     */
+    val showsPositionSlots: Boolean =
+        isEditing && canManageGameConfig && form.modality == GroupModality.COURT_VOLLEYBALL &&
+            form.playStyle == GroupPlayStyle.FIVE_ONE
+    val positionsTotal: Int = positionSlots.values.sum()
+    val usesPositionSlots: Boolean = showsPositionSlots && positionsTotal > 0
     val showsPlayStyle: Boolean = form.modality == GroupModality.COURT_VOLLEYBALL
     val showsCustomLevel: Boolean = form.level == GroupLevel.CUSTOM
 
@@ -190,6 +213,14 @@ sealed interface GroupSetupIntent {
     data class SelectPlayStyle(val value: GroupPlayStyle) : GroupSetupIntent
 
     data class UpdateCapacity(val value: Int) : GroupSetupIntent
+
+    /** DEB-102: vagas de uma posição; 0 tira a posição. */
+    data class UpdatePositionSlots(val position: AthletePosition, val value: Int) : GroupSetupIntent
+
+    data class UpdatePositionTeams(val value: Int) : GroupSetupIntent
+
+    /** Preenche as posições com a sugestão do sistema (5-1 por time, vezes o número de times). */
+    data object SuggestPositionSlots : GroupSetupIntent
     /** Valor por jogo em centavos; `null` = sem cobrança. */
     data class UpdateDefaultGameFee(val cents: Long?) : GroupSetupIntent
 

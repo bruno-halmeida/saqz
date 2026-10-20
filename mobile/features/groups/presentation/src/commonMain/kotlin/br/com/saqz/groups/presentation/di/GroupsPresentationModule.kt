@@ -69,6 +69,7 @@ fun groupsPresentationModule(): Module = module {
             trialAccess = getOrNull(),
             placesGateway = getOrNull(),
             athleteGateway = get(),
+            positionSlotsGateway = getOrNull(),
         )
     }
     viewModel { params -> StatementViewModel(params.get(), get(), get()) }

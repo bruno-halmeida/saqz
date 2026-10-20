@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Vagas por posição (DEB-102): configuração do grupo, seletor do Vou, lista de presença. -->
+    <string name="position_slots_title">Vagas por posição</string>
+    <string name="position_slots_hint">Posição cheia vai para a lista de espera daquela posição, mesmo que haja vaga em outra.</string>
+    <string name="position_slots_teams_label">Times</string>
+    <string name="position_slots_suggest">Usar a sugestão do 5-1</string>
+    <string name="position_slots_suggest_failed">Não foi possível buscar a sugestão. Tente de novo.</string>
+    <string name="position_slots_total">Total: %1$d jogadores por jogo</string>
+    <string name="position_slots_total_empty">Sem vagas por posição, vale o limite de jogadores abaixo.</string>
+    <string name="position_slots_error_total">O total precisa ficar entre 4 e 100 jogadores.</string>
+
+    <string name="position_label_libero">Líbero</string>
+    <string name="position_label_ponta">Ponta</string>
+    <string name="position_label_central">Central</string>
+    <string name="position_label_oposto">Oposto</string>
+    <string name="position_label_levantador">Levantador</string>
+
+    <string name="position_plural_libero">líberos</string>
+    <string name="position_plural_ponta">pontas</string>
+    <string name="position_plural_central">centrais</string>
+    <string name="position_plural_oposto">opostos</string>
+    <string name="position_plural_levantador">levantadores</string>
+</resources>

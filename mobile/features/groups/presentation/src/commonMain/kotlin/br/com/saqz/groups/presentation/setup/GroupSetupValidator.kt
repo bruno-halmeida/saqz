@@ -22,6 +22,7 @@ enum class GroupSetupError {
     PixKeyTooShort,
     PixLabelTooShort,
     CapacityOutOfRange,
+    PositionSlotsTotalOutOfRange,
     GameFeeInvalid,
     SlotsRequired,
     VenueNameRequired,
@@ -128,6 +129,10 @@ fun validate(state: GroupSetupState): Set<GroupSetupError> {
             if (it !in GroupSetupDefaults.MinCapacity..GroupSetupDefaults.MaxCapacity) {
                 add(GroupSetupError.CapacityOutOfRange)
             }
+        }
+        // DEB-102: com posições o total é a soma delas e precisa caber no limite de um jogo.
+        if (state.usesPositionSlots && state.positionsTotal !in GroupSetupDefaults.MinCapacity..GroupSetupDefaults.MaxCapacity) {
+            add(GroupSetupError.PositionSlotsTotalOutOfRange)
         }
         // Vazio = sem cobrança; preenchido vale de 0,01 a 999.999,99 (R$ 0,00 é recusado, como no servidor).
         form.defaultGameFeeCents?.let {

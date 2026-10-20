@@ -292,12 +292,18 @@ private fun GroupSetupAdvancedCards(
         ),
         onChange = { onIntent(GroupSetupIntent.UpdateDescription(it)) },
     )
-    GroupCapacitySection(
-        capacity = form.defaultCapacity ?: GroupSetupDefaults.Capacity,
-        isBeach = form.modality == GroupModality.BEACH_VOLLEYBALL,
-        hasError = GroupSetupError.CapacityOutOfRange in state.errors,
-        onChange = { onIntent(GroupSetupIntent.UpdateCapacity(it)) },
-    )
+    // DEB-102: no 5-1 as vagas são por posição e, com alguma preenchida, o total é a soma delas (sem campo próprio).
+    if (state.showsPositionSlots) {
+        GroupPositionSlotsSection(state = state, onIntent = onIntent)
+    }
+    if (!state.usesPositionSlots) {
+        GroupCapacitySection(
+            capacity = form.defaultCapacity ?: GroupSetupDefaults.Capacity,
+            isBeach = form.modality == GroupModality.BEACH_VOLLEYBALL,
+            hasError = GroupSetupError.CapacityOutOfRange in state.errors,
+            onChange = { onIntent(GroupSetupIntent.UpdateCapacity(it)) },
+        )
+    }
     GroupGameFeeSection(
         cents = form.defaultGameFeeCents,
         hasError = GroupSetupError.GameFeeInvalid in state.errors,

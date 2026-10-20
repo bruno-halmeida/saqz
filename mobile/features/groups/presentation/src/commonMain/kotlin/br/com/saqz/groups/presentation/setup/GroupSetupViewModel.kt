@@ -7,7 +7,12 @@ import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteGateway
+import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
+import br.com.saqz.groups.domain.group.GroupPositionSlots
+import br.com.saqz.groups.domain.group.GroupPositionSlotsGateway
+import br.com.saqz.groups.domain.group.PositionGameSystem
+import br.com.saqz.groups.domain.group.PositionSlot
 import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileError
@@ -49,6 +54,8 @@ class GroupSetupViewModel(
     placesGateway: PlacesGateway? = null,
     // Só para saber se o grupo cobra mensalidade por membro (ver `loadRosterHasMensalista`).
     private val athleteGateway: AthleteGateway? = null,
+    // DEB-102: vagas por posição; sem o gateway a tela fica como antes (só o total de jogadores).
+    private val positionSlotsGateway: GroupPositionSlotsGateway? = null,
 ) : MviViewModel<GroupSetupState, GroupSetupIntent, GroupSetupEffect>(
     initialState.withSavedText(savedState),
 ) {
@@ -57,6 +64,8 @@ class GroupSetupViewModel(
     private var versionToken: GroupVersionToken? = null
     private var timeZone: DomainGroupTimeZone? = null
     private var retryDelete = false
+    /** O que o backend tem hoje; a gravação só acontece quando as posições da tela mudam. */
+    private var loadedPositionSlots: Map<AthletePosition, Int>? = null
     private val venueSearch = VenueSearch(viewModelScope, placesGateway)
 
     init {
@@ -119,6 +128,11 @@ class GroupSetupViewModel(
             is GroupSetupIntent.UpdateCapacity -> onFormChange {
                 copy(defaultCapacity = intent.value.coerceAtLeast(GroupSetupDefaults.MinCapacity))
             }
+            is GroupSetupIntent.UpdatePositionSlots -> onPositionSlotsChange(intent)
+            is GroupSetupIntent.UpdatePositionTeams -> update {
+                it.copy(positionTeams = intent.value.coerceIn(1, GroupPositionDefaults.MaxTeams))
+            }
+            GroupSetupIntent.SuggestPositionSlots -> onSuggestPositions()
             is GroupSetupIntent.UpdateDefaultGameFee -> onFormChange { copy(defaultGameFeeCents = intent.cents) }
             is GroupSetupIntent.SelectConfirmationLead ->
                 onFormChange { copy(defaultConfirmationLeadMinutes = intent.minutes) }
@@ -186,6 +200,7 @@ class GroupSetupViewModel(
                             pixLabel = group.profile?.pixLabel,
                         ).withSavedText(savedState)
                     }
+                    loadPositionSlots(generation, GroupId(mode.groupId), group.role != GroupRole.ATHLETE)
                     val needsMonthlyPolicy = group.needsRosterToShowMonthlyPolicy()
                     val isOwner = group.role == GroupRole.OWNER
                     if (needsMonthlyPolicy || isOwner) {
@@ -206,6 +221,44 @@ class GroupSetupViewModel(
      * O dono lê o mesmo roster para a folha de exclusão: perdem o acesso os membros ativos fora ele, os mesmos
      * que recebem o aviso de grupo excluído. Falha cala e a folha fala sem número.
      */
+    /** Só quem gere o grupo lê as vagas por posição; falha cala e a tela segue só com o total. */
+    private suspend fun loadPositionSlots(generation: Int, groupId: GroupId, manages: Boolean) {
+        val gateway = positionSlotsGateway ?: return
+        if (!manages) return
+        val config = (gateway.read(groupId) as? SaqzResult.Success)?.value?.value ?: return
+        if (generation != loadGeneration) return
+        val slots = config.slots.filter { it.slots > 0 }.associate { it.position to it.slots }
+        loadedPositionSlots = slots
+        update { it.copy(positionSlots = slots) }
+    }
+
+    private fun onPositionSlotsChange(intent: GroupSetupIntent.UpdatePositionSlots) {
+        discardCreationKey()
+        update { current ->
+            val value = intent.value.coerceIn(0, GroupPositionDefaults.MaxPerPosition)
+            val slots = (if (value == 0) current.positionSlots - intent.position else current.positionSlots + (intent.position to value))
+            current.copy(positionSlots = slots, positionSuggestionFailed = false, creationCommandKey = null).revalidated()
+        }
+    }
+
+    private fun onSuggestPositions() {
+        val gateway = positionSlotsGateway ?: return
+        if (state.value.isSuggestingPositions) return
+        val teams = state.value.positionTeams
+        update { it.copy(isSuggestingPositions = true, positionSuggestionFailed = false) }
+        viewModelScope.launch {
+            when (val result = gateway.suggestion(PositionGameSystem.FIVE_ONE, teams)) {
+                is SaqzResult.Failure -> update { it.copy(isSuggestingPositions = false, positionSuggestionFailed = true) }
+                is SaqzResult.Success -> update {
+                    it.copy(
+                        isSuggestingPositions = false,
+                        positionSlots = result.value.slots.filter { slot -> slot.slots > 0 }.associate { slot -> slot.position to slot.slots },
+                    ).revalidated()
+                }
+            }
+        }
+    }
+
     private suspend fun loadRoster(generation: Int, groupId: GroupId, monthlyPolicy: Boolean, owner: Boolean) {
         val gateway = athleteGateway ?: return
         val result = gateway.roster(groupId, AthleteRosterFilter())
@@ -253,10 +306,40 @@ class GroupSetupViewModel(
             )) {
                 is SaqzResult.Success -> {
                     versionToken = result.value.versionToken
-                    update { it.copy(isSaving = false, saveFailed = false, gatewayError = null) }
-                    emit(GroupSetupEffect.Saved)
+                    if (savePositionSlots(GroupId(mode.groupId), result.value.versionToken)) {
+                        update { it.copy(isSaving = false, saveFailed = false, gatewayError = null) }
+                        emit(GroupSetupEffect.Saved)
+                    }
                 }
                 is SaqzResult.Failure -> showSaveFailure(result.error)
+            }
+        }
+    }
+
+    /**
+     * DEB-102: depois do perfil, grava as posições com a versão nova do grupo, só se mudaram. Devolve `false` quando
+     * falhou (a tela já mostra o erro e o "tentar de novo" refaz o salvamento inteiro com a versão em mãos).
+     */
+    private suspend fun savePositionSlots(groupId: GroupId, token: GroupVersionToken): Boolean {
+        val gateway = positionSlotsGateway ?: return true
+        val current = state.value
+        val loaded = loadedPositionSlots ?: return true
+        if (!current.canManageGameConfig) return true
+        val desired = if (current.showsPositionSlots) current.positionSlots else emptyMap()
+        if (desired == loaded) return true
+        val config = GroupPositionSlots(
+            gameSystem = if (desired.isEmpty()) current.form.playStyle.toPositionSystem() else PositionGameSystem.FIVE_ONE,
+            slots = AthletePosition.entries.mapNotNull { position -> desired[position]?.let { PositionSlot(position, it) } },
+        )
+        return when (val result = gateway.write(groupId, token, config)) {
+            is SaqzResult.Success -> {
+                versionToken = result.value.versionToken
+                loadedPositionSlots = desired
+                true
+            }
+            is SaqzResult.Failure -> {
+                showSaveFailure(result.error)
+                false
             }
         }
     }
@@ -498,7 +581,16 @@ private fun GroupSetupForm.withSavedText(handle: SavedStateHandle): GroupSetupFo
 private fun GroupSetupForm.withVenue(transform: GroupVenueForm.() -> GroupVenueForm) =
     copy(defaultVenue = (defaultVenue ?: EmptyVenue).transform().orNullWhenCleared())
 
-private fun GroupSetupState.toDomainForm() = form.toDomain(
+private fun GroupPlayStyle?.toPositionSystem(): PositionGameSystem? = when (this) {
+    GroupPlayStyle.SIX_ZERO -> PositionGameSystem.SIX_ZERO
+    GroupPlayStyle.FIVE_ONE -> PositionGameSystem.FIVE_ONE
+    else -> null
+}
+
+private fun GroupSetupState.toDomainForm() = form.copy(
+    // DEB-102: com posições o total do grupo é a soma delas (o backend também mantém esse valor).
+    defaultCapacity = if (usesPositionSlots) positionsTotal else form.defaultCapacity,
+).toDomain(
     slots = slotsForCommand,
     pixKey = pixKey?.trim()?.takeIf { it.isNotEmpty() || mode is GroupSetupMode.Edit },
     pixLabel = pixLabel?.trim()?.takeIf { it.isNotEmpty() || mode is GroupSetupMode.Edit },
