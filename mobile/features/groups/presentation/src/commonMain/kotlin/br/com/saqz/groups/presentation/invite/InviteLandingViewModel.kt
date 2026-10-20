@@ -6,6 +6,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.membership.InviteCode
 import br.com.saqz.groups.domain.membership.InviteError
 import br.com.saqz.groups.domain.membership.InviteGateway
+import br.com.saqz.groups.domain.membership.InviteKind
 import br.com.saqz.groups.domain.membership.InvitePreview
 import br.com.saqz.groups.domain.membership.InviteRedeemStatus
 import br.com.saqz.groups.invite.InviteStep
@@ -120,7 +121,9 @@ private fun InvitePreview.toUi(timeZone: TimeZone) = InvitePreviewUi(
     regularWeekdays = regularSlots.map { it.weekday }.distinct(),
     inviterName = inviterName,
     nextGame = nextGame?.let { formatDateTime(it.startsAt, timeZone, it.venueName, it.court) },
-    entryRequiresApproval = entryRequiresApproval,
+    // O link de mensalistas nunca pede aprovação, mesmo que o grupo exija para o convite público.
+    entryRequiresApproval = entryRequiresApproval && inviteKind != InviteKind.MONTHLY,
+    monthly = inviteKind == InviteKind.MONTHLY,
 )
 
 private fun InviteError.toUiError(timeZone: TimeZone): InviteLandingError = when (this) {

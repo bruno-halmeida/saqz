@@ -7,6 +7,8 @@
     <string name="invite_landing_next_game">Próximo jogo</string>
     <string name="invite_landing_approval_banner">O admin precisa aprovar sua entrada. Quando o organizador aceitar, o grupo aparece na sua Início.</string>
     <string name="invite_landing_open_banner">ENTRADA LIBERADA · Quem tem o link ou o QR entra na hora. Ninguém precisa aprovar.</string>
+    <string name="invite_landing_monthly_banner">CONVITE DE MENSALISTA · Você entra no grupo como mensalista. Ninguém precisa aprovar.</string>
+    <string name="invite_landing_monthly_action">Entrar como mensalista</string>
     <string name="invite_landing_request_action">Pedir pra entrar</string>
     <string name="invite_landing_join_action">Entrar no grupo</string>
     <string name="invite_landing_other_groups">Ver outros grupos</string>

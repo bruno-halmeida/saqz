@@ -59,6 +59,8 @@ import br.com.saqz.groups.resources.invite_error_rate_title
 import br.com.saqz.groups.resources.invite_error_rate_unknown
 import br.com.saqz.groups.resources.invite_error_retry
 import br.com.saqz.groups.resources.invite_landing_approval_banner
+import br.com.saqz.groups.resources.invite_landing_monthly_action
+import br.com.saqz.groups.resources.invite_landing_monthly_banner
 import br.com.saqz.groups.resources.invite_landing_composition_men
 import br.com.saqz.groups.resources.invite_landing_composition_mixed
 import br.com.saqz.groups.resources.invite_landing_composition_women
@@ -191,7 +193,9 @@ private fun InvitePreviewScreen(
         }
         SaqzCard(tone = SaqzCardTone.Soft) {
             Text(
-                text = if (preview.entryRequiresApproval) {
+                text = if (preview.monthly) {
+                    stringResource(Res.string.invite_landing_monthly_banner)
+                } else if (preview.entryRequiresApproval) {
                     stringResource(Res.string.invite_landing_approval_banner)
                 } else {
                     stringResource(Res.string.invite_landing_open_banner)
@@ -202,8 +206,11 @@ private fun InvitePreviewScreen(
         }
         SaqzButton(
             label = stringResource(
-                if (preview.entryRequiresApproval) Res.string.invite_landing_request_action
-                else Res.string.invite_landing_join_action,
+                when {
+                    preview.monthly -> Res.string.invite_landing_monthly_action
+                    preview.entryRequiresApproval -> Res.string.invite_landing_request_action
+                    else -> Res.string.invite_landing_join_action
+                },
             ),
             onClick = onPrimary,
             fullWidth = true,

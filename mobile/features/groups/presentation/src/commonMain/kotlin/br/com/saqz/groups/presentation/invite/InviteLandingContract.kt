@@ -22,6 +22,8 @@ data class InvitePreviewUi(
     val inviterName: String,
     val nextGame: InviteNextGameUi?,
     val entryRequiresApproval: Boolean,
+    /** Link de mensalistas (CONV-011): entra como mensalista, sem aprovação. */
+    val monthly: Boolean = false,
 )
 
 @Immutable

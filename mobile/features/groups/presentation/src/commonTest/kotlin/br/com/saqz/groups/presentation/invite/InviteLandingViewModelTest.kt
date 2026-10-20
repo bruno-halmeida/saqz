@@ -55,6 +55,30 @@ class InviteLandingViewModelTest {
     }
 
     @Test
+    fun `monthly link shows as mensalista and never asks for approval`() = runTest {
+        val viewModel = viewModel(
+            preview = SaqzResult.Success(
+                preview(approval = true).copy(inviteKind = br.com.saqz.groups.domain.membership.InviteKind.MONTHLY),
+            ),
+        )
+
+        assertTrue(viewModel.state.value.preview?.monthly == true)
+        assertFalse(viewModel.state.value.preview?.entryRequiresApproval == true)
+    }
+
+    @Test
+    fun `joining as avulso because the group has no default fee is a normal join`() = runTest {
+        val viewModel = viewModel(
+            redeem = SaqzResult.Success(InviteRedeem(InviteRedeemStatus.JOINED, GroupId("group-1"), "ATHLETE", "AVULSO")),
+        )
+
+        viewModel.onIntent(InviteLandingIntent.PrimaryAction)
+
+        assertEquals(InviteLandingEffect.Joined("group-1"), viewModel.effects.first())
+        assertEquals(null, viewModel.state.value.error)
+    }
+
+    @Test
     fun `preview expired preserves a date for the error screen`() = runTest {
         val viewModel = viewModel(preview = SaqzResult.Failure(InviteError.Expired(EXPIRED_AT)))
 

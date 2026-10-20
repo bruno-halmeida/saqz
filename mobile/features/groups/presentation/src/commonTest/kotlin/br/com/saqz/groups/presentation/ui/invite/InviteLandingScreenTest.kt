@@ -103,6 +103,16 @@ class InviteLandingScreenTest {
         assertEquals(InviteLandingIntent.BrowseOtherGroups, intents.single())
     }
 
+    @Test
+    fun `monthly invite says mensalista and has no approval`() = runComposeUiTest {
+        val monthly = InviteLandingSamples.openPreview.let { it.copy(preview = it.preview!!.copy(monthly = true)) }
+        setScreen(monthly)
+
+        onNodeWithText("CONVITE DE MENSALISTA · Você entra no grupo como mensalista. Ninguém precisa aprovar.").assertExists()
+        onNodeWithText("Entrar como mensalista").assertExists()
+        onNodeWithText("Pedir pra entrar").assertDoesNotExist()
+    }
+
     private fun ComposeUiTest.setScreen(
         state: InviteLandingState,
         onIntent: (InviteLandingIntent) -> Unit = {},
