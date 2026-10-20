@@ -124,14 +124,14 @@ class GroupSetupViewModel(
             is GroupSetupIntent.SelectModality -> onFormChange(closeSheet = true) { copy(modality = intent.value) }
             is GroupSetupIntent.SelectComposition -> onFormChange { copy(composition = intent.value) }
             is GroupSetupIntent.SelectLevel -> onFormChange(closeSheet = true) { copy(level = intent.value) }
-            is GroupSetupIntent.SelectPlayStyle -> onFormChange { copy(playStyle = intent.value) }
+            is GroupSetupIntent.SelectPlayStyle -> {
+                onFormChange { copy(playStyle = intent.value) }
+                suggestWhenMissing()
+            }
             is GroupSetupIntent.UpdateCapacity -> onFormChange {
                 copy(defaultCapacity = intent.value.coerceAtLeast(GroupSetupDefaults.MinCapacity))
             }
             is GroupSetupIntent.UpdatePositionSlots -> onPositionSlotsChange(intent)
-            is GroupSetupIntent.UpdatePositionTeams -> update {
-                it.copy(positionTeams = intent.value.coerceIn(1, GroupPositionDefaults.MaxTeams))
-            }
             GroupSetupIntent.SuggestPositionSlots -> onSuggestPositions()
             is GroupSetupIntent.UpdateDefaultGameFee -> onFormChange { copy(defaultGameFeeCents = intent.cents) }
             is GroupSetupIntent.SelectConfirmationLead ->
@@ -229,7 +229,14 @@ class GroupSetupViewModel(
         if (generation != loadGeneration) return
         val slots = config.slots.filter { it.slots > 0 }.associate { it.position to it.slots }
         loadedPositionSlots = slots
-        update { it.copy(positionSlots = slots) }
+        update { it.copy(positionSlots = slots, positionSlotsReady = true) }
+        suggestWhenMissing()
+    }
+
+    /** 5-1 sem posições (grupo antigo ou recém-passado para 5-1): já mostra a sugestão do total, que é obrigatória. */
+    private fun suggestWhenMissing() {
+        val current = state.value
+        if (current.showsPositionSlots && current.positionSlots.isEmpty() && loadedPositionSlots != null) onSuggestPositions()
     }
 
     private fun onPositionSlotsChange(intent: GroupSetupIntent.UpdatePositionSlots) {
@@ -244,10 +251,10 @@ class GroupSetupViewModel(
     private fun onSuggestPositions() {
         val gateway = positionSlotsGateway ?: return
         if (state.value.isSuggestingPositions) return
-        val teams = state.value.positionTeams
+        val total = state.value.positionsTarget
         update { it.copy(isSuggestingPositions = true, positionSuggestionFailed = false) }
         viewModelScope.launch {
-            when (val result = gateway.suggestion(PositionGameSystem.FIVE_ONE, teams)) {
+            when (val result = gateway.suggestion(PositionGameSystem.FIVE_ONE, total)) {
                 is SaqzResult.Failure -> update { it.copy(isSuggestingPositions = false, positionSuggestionFailed = true) }
                 is SaqzResult.Success -> update {
                     it.copy(
@@ -587,10 +594,7 @@ private fun GroupPlayStyle?.toPositionSystem(): PositionGameSystem? = when (this
     else -> null
 }
 
-private fun GroupSetupState.toDomainForm() = form.copy(
-    // DEB-102: com posições o total do grupo é a soma delas (o backend também mantém esse valor).
-    defaultCapacity = if (usesPositionSlots) positionsTotal else form.defaultCapacity,
-).toDomain(
+private fun GroupSetupState.toDomainForm() = form.toDomain(
     slots = slotsForCommand,
     pixKey = pixKey?.trim()?.takeIf { it.isNotEmpty() || mode is GroupSetupMode.Edit },
     pixLabel = pixLabel?.trim()?.takeIf { it.isNotEmpty() || mode is GroupSetupMode.Edit },

@@ -29,6 +29,8 @@ internal data class PositionSlotTransport(val position: String, val slots: Int)
 internal data class PositionSlotsTransport(
     val gameSystem: String? = null,
     val positionSlots: List<PositionSlotTransport> = emptyList(),
+    /** Só na gravação: o servidor confere que bate com a soma das posições. */
+    val total: Int? = null,
 )
 
 class KtorGroupPositionSlotsGateway(
@@ -50,7 +52,7 @@ class KtorGroupPositionSlotsGateway(
         PositionSlotsTransport.serializer(),
         NetworkRequest(
             json.encodeToString(
-                PositionSlotsTransport(config.gameSystem?.name, config.slots.map { PositionSlotTransport(it.position.name, it.slots) }),
+                PositionSlotsTransport(config.gameSystem?.name, config.slots.map { PositionSlotTransport(it.position.name, it.slots) }, config.total.takeIf { config.slots.isNotEmpty() }),
             ),
             mapOf(HttpHeaders.IfMatch to versionToken.value),
         ),
@@ -58,14 +60,14 @@ class KtorGroupPositionSlotsGateway(
 
     override suspend fun suggestion(
         system: PositionGameSystem,
-        teams: Int,
+        total: Int,
     ): SaqzResult<GroupPositionSlots, GroupProfileError> =
         retryTransport(RetrySafety.Read) {
             network.execute(
                 HttpMethod.Get,
                 "api/position-slots/suggestion",
                 PositionSlotsTransport.serializer(),
-                NetworkRequest(query = mapOf("system" to system.name, "teams" to teams.toString())),
+                NetworkRequest(query = mapOf("system" to system.name, "total" to total.toString())),
             )
         }.let { result ->
             when (result) {

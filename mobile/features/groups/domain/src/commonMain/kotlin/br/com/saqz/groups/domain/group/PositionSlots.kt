@@ -30,9 +30,9 @@ interface GroupPositionSlotsGateway {
         config: GroupPositionSlots,
     ): SaqzResult<VersionedGroupPositionSlots, GroupProfileError>
 
-    /** Sugestão do backend (a tabela mora lá, num lugar só); 6-0 volta sem posições. */
+    /** Sugestão do backend pelo total de vagas (a tabela mora lá, num lugar só); 6-0 volta sem posições. */
     suspend fun suggestion(
         system: PositionGameSystem,
-        teams: Int,
+        total: Int,
     ): SaqzResult<GroupPositionSlots, GroupProfileError>
 }

@@ -54,6 +54,7 @@ class GroupSetupPositionSlotsTest {
         var failSuggestion: Boolean = false,
     ) : GroupPositionSlotsGateway {
         var reads = 0
+        var lastSuggestionTotal: Int? = null
         val writes = mutableListOf<Pair<GroupVersionToken, GroupPositionSlots>>()
 
         override suspend fun read(groupId: GroupId): SaqzResult<VersionedGroupPositionSlots, GroupProfileError> {
@@ -72,8 +73,8 @@ class GroupSetupPositionSlotsTest {
             return SaqzResult.Success(VersionedGroupPositionSlots(config, GroupVersionToken("etag-after-slots")))
         }
 
-        override suspend fun suggestion(system: PositionGameSystem, teams: Int): SaqzResult<GroupPositionSlots, GroupProfileError> =
-            if (failSuggestion) SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Server)) else SaqzResult.Success(suggestion)
+        override suspend fun suggestion(system: PositionGameSystem, total: Int): SaqzResult<GroupPositionSlots, GroupProfileError> =
+            if (failSuggestion.also { lastSuggestionTotal = total }) SaqzResult.Failure(GroupProfileError.DataFailure(DataError.Server)) else SaqzResult.Success(suggestion)
     }
 
     private fun group(playStyle: GroupPlayStyle, role: GroupRole = GroupRole.OWNER) = sampleVersionedGroup(
@@ -107,13 +108,36 @@ class GroupSetupPositionSlotsTest {
     }
 
     @Test
-    fun `5-1 group shows the position card and total stays while no position is filled`() = runTest(mainDispatcher) {
-        val viewModel = viewModel()
+    fun `5-1 group with positions shows the card and keeps the total field and the sum matches`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(slots = FakePositionSlotsGateway(stored = FIVE_ONE_TWO_TEAMS))
         runCurrent()
         val state = viewModel.state.value
         assertTrue(state.showsPositionSlots)
-        assertFalse(state.usesPositionSlots)
-        assertEquals(emptyMap(), state.positionSlots)
+        assertEquals(12, state.positionsTotal)
+        assertEquals(12, state.positionsTarget)
+        assertEquals(0, state.positionsDifference)
+        assertFalse(state.positionsBlockSave)
+        // Posição com 0 vagas não entra no mapa.
+        assertNull(state.positionSlots[AthletePosition.LIBERO])
+    }
+
+    @Test
+    fun `5-1 group without positions asks the backend for the suggestion by the total`() = runTest(mainDispatcher) {
+        val gateway = FakePositionSlotsGateway()
+        val viewModel = viewModel(slots = gateway)
+        runCurrent()
+        assertEquals(12, gateway.lastSuggestionTotal)
+        assertEquals(12, viewModel.state.value.positionsTotal)
+        assertFalse(viewModel.state.value.positionsBlockSave)
+    }
+
+    @Test
+    fun `suggestion failure leaves the positions empty and the save blocked`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(slots = FakePositionSlotsGateway(failSuggestion = true))
+        runCurrent()
+        assertTrue(viewModel.state.value.positionSuggestionFailed)
+        assertEquals(emptyMap(), viewModel.state.value.positionSlots)
+        assertTrue(viewModel.state.value.positionsBlockSave)
     }
 
     @Test
@@ -121,6 +145,7 @@ class GroupSetupPositionSlotsTest {
         val sixZero = viewModel(playStyle = GroupPlayStyle.SIX_ZERO)
         runCurrent()
         assertFalse(sixZero.state.value.showsPositionSlots)
+        assertFalse(sixZero.state.value.positionsBlockSave)
         val gateway = FakePositionSlotsGateway()
         val athlete = viewModel(role = GroupRole.ATHLETE, slots = gateway)
         runCurrent()
@@ -129,67 +154,80 @@ class GroupSetupPositionSlotsTest {
     }
 
     @Test
-    fun `loaded positions replace the total field`() = runTest(mainDispatcher) {
+    fun `without the gateway the screen behaves as before and never blocks`() = runTest(mainDispatcher) {
+        val viewModel = GroupSetupViewModel(
+            initialState = GroupSetupState(mode = GroupSetupMode.Edit("group-1"), isLoading = true),
+            savedState = SavedStateHandle(),
+            groupGateway = FakeGroupGateway(),
+            profileGateway = FakeGroupProfileGateway(readResult = SaqzResult.Success(group(GroupPlayStyle.FIVE_ONE, GroupRole.OWNER))),
+            timeZonePort = FakeGroupSystemTimeZonePort(),
+            athleteGateway = FakeAthleteGateway(),
+        )
+        runCurrent()
+        assertFalse(viewModel.state.value.showsPositionSlots)
+        assertFalse(viewModel.state.value.positionsBlockSave)
+    }
+
+    @Test
+    fun `editing a position shows what is missing or left over`() = runTest(mainDispatcher) {
         val viewModel = viewModel(slots = FakePositionSlotsGateway(stored = FIVE_ONE_TWO_TEAMS))
         runCurrent()
-        val state = viewModel.state.value
-        assertTrue(state.usesPositionSlots)
-        assertEquals(12, state.positionsTotal)
-        // Posição com 0 vagas não entra no mapa.
-        assertNull(state.positionSlots[AthletePosition.LIBERO])
+        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.PONTA, 2))
+        assertEquals(-2, viewModel.state.value.positionsDifference)
+        assertTrue(viewModel.state.value.positionsBlockSave)
+        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.LIBERO, 4))
+        assertEquals(2, viewModel.state.value.positionsDifference)
+        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.LIBERO, 2))
+        assertEquals(0, viewModel.state.value.positionsDifference)
+        assertFalse(viewModel.state.value.positionsBlockSave)
     }
 
     @Test
-    fun `suggestion fills the positions from the backend table`() = runTest(mainDispatcher) {
-        val viewModel = viewModel()
+    fun `changing the total moves the target and the suggestion follows it`() = runTest(mainDispatcher) {
+        val gateway = FakePositionSlotsGateway(stored = FIVE_ONE_TWO_TEAMS)
+        val viewModel = viewModel(slots = gateway)
         runCurrent()
+        viewModel.onIntent(GroupSetupIntent.UpdateCapacity(18))
+        assertEquals(-6, viewModel.state.value.positionsDifference)
         viewModel.onIntent(GroupSetupIntent.SuggestPositionSlots)
         runCurrent()
-        assertEquals(12, viewModel.state.value.positionsTotal)
-        assertFalse(viewModel.state.value.isSuggestingPositions)
+        assertEquals(18, gateway.lastSuggestionTotal)
     }
 
     @Test
-    fun `suggestion failure keeps the positions and says so`() = runTest(mainDispatcher) {
-        val viewModel = viewModel(slots = FakePositionSlotsGateway(failSuggestion = true))
+    fun `save with a sum that differs from the total is refused and nothing is written`() = runTest(mainDispatcher) {
+        val gateway = FakePositionSlotsGateway(stored = FIVE_ONE_TWO_TEAMS)
+        val profile = FakeGroupProfileGateway(readResult = SaqzResult.Success(group(GroupPlayStyle.FIVE_ONE, GroupRole.OWNER)))
+        val viewModel = viewModel(slots = gateway, profile = profile)
         runCurrent()
-        viewModel.onIntent(GroupSetupIntent.SuggestPositionSlots)
+        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.PONTA, 2))
+        viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
-        assertTrue(viewModel.state.value.positionSuggestionFailed)
-        assertEquals(emptyMap(), viewModel.state.value.positionSlots)
+        assertTrue(GroupSetupError.PositionSlotsSumMismatch in viewModel.state.value.errors)
+        assertEquals(0, gateway.writes.size)
+        assertNull(profile.lastUpdateCommand)
     }
 
     @Test
-    fun `stepper edits a position and zero removes it`() = runTest(mainDispatcher) {
-        val viewModel = viewModel()
-        runCurrent()
-        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.PONTA, 4))
-        assertEquals(mapOf(AthletePosition.PONTA to 4), viewModel.state.value.positionSlots)
-        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.PONTA, 0))
-        assertEquals(emptyMap(), viewModel.state.value.positionSlots)
-    }
-
-    @Test
-    fun `save writes the positions with the version the profile save returned`() = runTest(mainDispatcher) {
-        val gateway = FakePositionSlotsGateway()
+    fun `save writes the edited positions after the profile with the version it returned`() = runTest(mainDispatcher) {
+        val gateway = FakePositionSlotsGateway(stored = FIVE_ONE_TWO_TEAMS)
         val profile = FakeGroupProfileGateway(
-            readResult = SaqzResult.Success(group(GroupPlayStyle.FIVE_ONE)),
-            updateResult = SaqzResult.Success(group(GroupPlayStyle.FIVE_ONE).copy(versionToken = GroupVersionToken("etag-3"))),
+            readResult = SaqzResult.Success(group(GroupPlayStyle.FIVE_ONE, GroupRole.OWNER)),
+            updateResult = SaqzResult.Success(group(GroupPlayStyle.FIVE_ONE, GroupRole.OWNER).copy(versionToken = GroupVersionToken("etag-3"))),
         )
         val viewModel = viewModel(slots = gateway, profile = profile)
         val effects = collect(viewModel)
         runCurrent()
-        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.PONTA, 4))
-        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.CENTRAL, 4))
+        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.PONTA, 2))
+        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.LIBERO, 2))
         viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
         val (token, config) = gateway.writes.single()
         assertEquals(GroupVersionToken("etag-3"), token)
         assertEquals(PositionGameSystem.FIVE_ONE, config.gameSystem)
-        assertEquals(listOf(AthletePosition.CENTRAL to 4, AthletePosition.PONTA to 4).sortedBy { it.first.ordinal }, config.slots.map { it.position to it.slots })
-        // O perfil leva o total como soma das posições.
-        assertEquals(8, profile.lastUpdateCommand?.form?.defaultCapacity)
+        assertEquals(12, config.total)
+        assertEquals(12, profile.lastUpdateCommand?.form?.defaultCapacity)
         assertEquals(listOf<GroupSetupEffect>(GroupSetupEffect.Saved), effects)
     }
 
@@ -220,28 +258,16 @@ class GroupSetupPositionSlotsTest {
 
     @Test
     fun `a failed positions write keeps the screen open with the error and no Saved effect`() = runTest(mainDispatcher) {
-        val gateway = FakePositionSlotsGateway(failWrite = true)
+        val gateway = FakePositionSlotsGateway(stored = FIVE_ONE_TWO_TEAMS, failWrite = true)
         val viewModel = viewModel(slots = gateway)
         val effects = collect(viewModel)
         runCurrent()
-        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.PONTA, 4))
-        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.CENTRAL, 4))
+        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.PONTA, 2))
+        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.LIBERO, 2))
         viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
         assertTrue(viewModel.state.value.saveFailed)
         assertTrue(effects.isEmpty())
-    }
-
-    @Test
-    fun `a total under four is refused before saving`() = runTest(mainDispatcher) {
-        val gateway = FakePositionSlotsGateway()
-        val viewModel = viewModel(slots = gateway)
-        runCurrent()
-        viewModel.onIntent(GroupSetupIntent.UpdatePositionSlots(AthletePosition.PONTA, 2))
-        viewModel.onIntent(GroupSetupIntent.Submit)
-        runCurrent()
-        assertTrue(GroupSetupError.PositionSlotsTotalOutOfRange in viewModel.state.value.errors)
-        assertEquals(0, gateway.writes.size)
     }
 
     private companion object {

@@ -27,6 +27,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -50,7 +51,8 @@ class KtorGroupPositionSlotsGatewayTest {
             assertEquals(HttpMethod.Put, request.method)
             assertEquals("\"4\"", request.headers[HttpHeaders.IfMatch])
             val body = Json.parseToJsonElement((request.body as TextContent).text).jsonObject
-            assertEquals(setOf("gameSystem", "positionSlots"), body.keys)
+            assertEquals(setOf("gameSystem", "positionSlots", "total"), body.keys)
+            assertEquals(10, body.getValue("total").jsonPrimitive.int)
             assertEquals(2, body.getValue("positionSlots").jsonArray.size)
             assertEquals("FIVE_ONE", body.getValue("gameSystem").jsonPrimitive.content)
             respond(RESPONSE, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType to listOf("application/json"), HttpHeaders.ETag to listOf("\"5\"")))
@@ -61,14 +63,23 @@ class KtorGroupPositionSlotsGatewayTest {
         assertEquals(GroupVersionToken("\"5\""), result.versionToken)
     }
 
+    @Test fun `turning positions off sends no total`() = runTest {
+        val gateway = gateway(MockEngine { request ->
+            val body = Json.parseToJsonElement((request.body as TextContent).text).jsonObject
+            assertEquals(setOf("gameSystem", "positionSlots"), body.keys)
+            respond(RESPONSE, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType to listOf("application/json"), HttpHeaders.ETag to listOf("\"5\"")))
+        })
+        gateway.write(GroupId("group-1"), GroupVersionToken("\"4\""), GroupPositionSlots(PositionGameSystem.SIX_ZERO, emptyList()))
+    }
+
     @Test fun `empty list turns positions off and 6-0 comes back without slots`() = runTest {
         val gateway = gateway(MockEngine { request ->
             assertEquals("/api/position-slots/suggestion", request.url.encodedPath)
             assertEquals("SIX_ZERO", request.url.parameters["system"])
-            assertEquals("3", request.url.parameters["teams"])
-            respond("""{"gameSystem":"SIX_ZERO","teams":3,"positionSlots":[],"total":0}""", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+            assertEquals("18", request.url.parameters["total"])
+            respond("""{"gameSystem":"SIX_ZERO","total":18,"positionSlots":[]}""", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
         })
-        val suggestion = assertIs<SaqzResult.Success<GroupPositionSlots>>(gateway.suggestion(PositionGameSystem.SIX_ZERO, 3)).value
+        val suggestion = assertIs<SaqzResult.Success<GroupPositionSlots>>(gateway.suggestion(PositionGameSystem.SIX_ZERO, 18)).value
         assertEquals(false, suggestion.isEnabled)
         assertEquals(PositionGameSystem.SIX_ZERO, suggestion.gameSystem)
     }

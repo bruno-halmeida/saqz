@@ -48,9 +48,7 @@ data class GroupSlotDraft(
 )
 
 object GroupPositionDefaults {
-    const val Teams = 2
-    const val MaxTeams = 6
-    const val MaxPerPosition = 50
+    const val MaxPerPosition = 100
 }
 
 object GroupSetupDefaults {
@@ -130,22 +128,30 @@ data class GroupSetupState(
     val rosterHasMensalista: Boolean = false,
     /** DEB-102: vagas por posição (só as que têm vaga); vazio = o grupo segue com o total de jogadores. */
     val positionSlots: Map<AthletePosition, Int> = emptyMap(),
-    /** Times para a sugestão do 5-1 (1..6). */
-    val positionTeams: Int = GroupPositionDefaults.Teams,
     val isSuggestingPositions: Boolean = false,
+    /** As vagas por posição do grupo já chegaram do servidor; sem isso o 5-1 não bloqueia o Salvar nem mostra o card. */
+    val positionSlotsReady: Boolean = false,
     val positionSuggestionFailed: Boolean = false,
 ) {
     val isEditing: Boolean = mode is GroupSetupMode.Edit
 
     /**
      * Vagas por posição só na edição, para quem gere o grupo, em quadra no 5-1 (6-0 não usa posições: segue o total).
-     * Com alguma posição preenchida o total de jogadores deixa de ser um campo: é a soma delas.
+     * No 5-1 elas são obrigatórias e a soma precisa bater com o total de jogadores do grupo (decisão do dono, 20/10).
      */
     val showsPositionSlots: Boolean =
-        isEditing && canManageGameConfig && form.modality == GroupModality.COURT_VOLLEYBALL &&
+        isEditing && canManageGameConfig && positionSlotsReady && form.modality == GroupModality.COURT_VOLLEYBALL &&
             form.playStyle == GroupPlayStyle.FIVE_ONE
     val positionsTotal: Int = positionSlots.values.sum()
-    val usesPositionSlots: Boolean = showsPositionSlots && positionsTotal > 0
+
+    /** O total de jogadores do grupo, que a soma das posições tem de igualar. */
+    val positionsTarget: Int = form.defaultCapacity ?: GroupSetupDefaults.Capacity
+
+    /** Positivo = sobram vagas distribuídas; negativo = faltam. Zero = fecha. */
+    val positionsDifference: Int = positionsTotal - positionsTarget
+
+    /** Salvar fica bloqueado enquanto a soma das posições não bate com o total. */
+    val positionsBlockSave: Boolean = showsPositionSlots && positionsDifference != 0
     val showsPlayStyle: Boolean = form.modality == GroupModality.COURT_VOLLEYBALL
     val showsCustomLevel: Boolean = form.level == GroupLevel.CUSTOM
 
@@ -217,9 +223,7 @@ sealed interface GroupSetupIntent {
     /** DEB-102: vagas de uma posição; 0 tira a posição. */
     data class UpdatePositionSlots(val position: AthletePosition, val value: Int) : GroupSetupIntent
 
-    data class UpdatePositionTeams(val value: Int) : GroupSetupIntent
-
-    /** Preenche as posições com a sugestão do sistema (5-1 por time, vezes o número de times). */
+    /** Preenche as posições com a sugestão do servidor para o total de jogadores do grupo (editável depois). */
     data object SuggestPositionSlots : GroupSetupIntent
     /** Valor por jogo em centavos; `null` = sem cobrança. */
     data class UpdateDefaultGameFee(val cents: Long?) : GroupSetupIntent

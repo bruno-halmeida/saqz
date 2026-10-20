@@ -216,10 +216,10 @@ class GroupSetupValidatorTest {
             ),
         )
 
-        // O endereço é opcional: em branco não acusa `VenueAddressNotFound`. O total das posições (DEB-102) só
+        // O endereço é opcional: em branco não acusa `VenueAddressNotFound`. A soma das posições (DEB-102) só
         // vale com a edição do 5-1 e tem teste próprio em `GroupSetupPositionSlotsTest`.
         assertEquals(
-            GroupSetupError.entries.toSet() - GroupSetupError.VenueAddressNotFound - GroupSetupError.PositionSlotsTotalOutOfRange,
+            GroupSetupError.entries.toSet() - GroupSetupError.VenueAddressNotFound - GroupSetupError.PositionSlotsSumMismatch,
             errors,
         )
     }
