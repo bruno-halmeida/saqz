@@ -43,6 +43,18 @@ class CommunicationBodiesTest {
         assertEquals("O próximo jogo está fechando a lista. Confirme sua presença.", reminderPushBody(null))
     }
 
+    @Test fun `janela das 24 horas mostra a contagem e só cita a espera quando existe`() {
+        val game = ReminderGame(wednesday, night, "Arena")
+        assertEquals(
+            "Jogo: quarta, 14/10 às 20:30\nLocal: Arena\n9/12 confirmados\n\nConfirme sua presença.",
+            attendanceWindowBody(game, 9, 12, 0),
+        )
+        assertEquals(
+            "Jogo: quarta, 14/10 às 20:30\nLocal: Arena\n12/12 confirmados · 3 na espera\n\nConfirme sua presença.",
+            attendanceWindowBody(game, 12, 12, 3),
+        )
+    }
+
     @Test fun `prazo aparece em horário de São Paulo antes de vencer e como encerrado a partir do instante dele`() {
         val deadline = Instant.parse("2026-10-14T17:00:00Z")
         assertEquals("Confirmações até qua 14h00", deadlineLine(deadline, Instant.parse("2026-10-14T16:59:59Z")))

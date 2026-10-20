@@ -47,6 +47,12 @@ fun openGameBody(game: ReminderGame): String =
     "Jogo: ${gameSchedule(game.localDate, game.localTime)}\nLocal: ${game.venue}\n" +
         "\nO jogo está liberado. Confirme sua presença."
 
+/** Corpo da janela de presença das 24 h: horário, local e a contagem no momento em que ela abre. */
+fun attendanceWindowBody(game: ReminderGame, confirmed: Int, capacity: Int, waitlisted: Int): String =
+    "Jogo: ${gameSchedule(game.localDate, game.localTime)}\nLocal: ${game.venue}\n" +
+        "$confirmed/$capacity confirmados" + (if (waitlisted > 0) " · $waitlisted na espera" else "") +
+        "\n\nConfirme sua presença."
+
 private val SAO_PAULO = ZoneId.of("America/Sao_Paulo")
 private val WEEKDAYS_SHORT = listOf("seg", "ter", "qua", "qui", "sex", "sáb", "dom")
 

@@ -67,6 +67,26 @@ class AttendanceNotificationsTest {
         assertTrue(!AttendancePush.from(mapOf("gameId" to "game1"), "Saqz", "Corpo", "m").positions)
     }
 
+    /** DEB-113: a janela das 24 h de jogo 5-1 é Live Update e o "Vou" dela abre o app na tela de posição. */
+    @Test
+    fun windowOfAGameWithPositionsOpensThePositionScreenOnVou() {
+        val end = System.currentTimeMillis() + 3_600_000
+        val push = AttendancePush.from(
+            mapOf("gameId" to "game1", "groupId" to "g1", "positions" to "true", "windowEndsAt" to end.toString()),
+            "Saqz", "Corpo", "m",
+        )
+        assertTrue(push.isWindow)
+        val built = context.attendanceNotification(push).build()
+        assertTrue(built.flags and Notification.FLAG_ONGOING_EVENT != 0)
+        val vou = org.robolectric.Shadows.shadowOf(built.actions[0].actionIntent)
+        assertTrue(vou.isActivityIntent)
+        assertTrue(vou.savedIntent.getBooleanExtra(EXTRA_PICK_POSITION, false))
+        assertEquals(ACTION_DECLINE, org.robolectric.Shadows.shadowOf(built.actions[1].actionIntent).savedIntent.action)
+        // A falha de um toque devolve os mesmos botões, inclusive o que abre a tela.
+        val retry = context.attendanceOutcome(push, failed = true, text = "Não deu para registrar.").build()
+        assertTrue(org.robolectric.Shadows.shadowOf(retry.actions[0].actionIntent).isActivityIntent)
+    }
+
     @Test
     fun regularPushResultKeepsTheOldBehavior() {
         val result = context.attendanceOutcome(regular, failed = true, text = "Não deu para registrar.").build()

@@ -33,6 +33,8 @@ services:
       SAQZ_PLACES_GOOGLE_API_KEY: ${SAQZ_PLACES_GOOGLE_API_KEY:-}
       SAQZ_NOTIFICATIONS_REMINDER_ENABLED: ${SAQZ_NOTIFICATIONS_REMINDER_ENABLED:-true}
       SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS: ${SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS:-25200000}
+      # Janela de presença das 24 h com o cartão ao vivo (DEB-113): ligada só em dev para o teste em aparelho; produção desligada.
+      SAQZ_NOTIFICATIONS_ATTENDANCEWINDOW_ENABLED: ${SAQZ_NOTIFICATIONS_ATTENDANCEWINDOW_ENABLED:-true}
     depends_on: !reset {}
     networks:
       - default

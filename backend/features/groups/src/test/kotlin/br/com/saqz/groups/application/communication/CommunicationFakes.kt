@@ -42,6 +42,7 @@ class MemoryCommunicationRepository : GroupCommunicationRepository {
     var reminders = emptyList<ReminderCandidate>()
     var openGames = emptyList<ReminderCandidate>()
     var single: ReminderCandidate? = null
+    var windows = emptyList<AttendanceWindowCandidate>()
     val read = mutableListOf<Pair<UUID, Long>>()
     var preferences = NotificationPreferences()
     val savedPreferences = mutableListOf<Pair<UUID, NotificationPreferences>>()
@@ -67,6 +68,7 @@ class MemoryCommunicationRepository : GroupCommunicationRepository {
     override fun reminderCandidates() = reminders
     override fun openGameCandidates() = openGames
     override fun reminderCandidate(groupId: UUID) = single
+    override fun attendanceWindowCandidates() = windows
     override fun inbox(actor: UUID, before: Long?): List<GroupNotification> {
         lastBefore = before
         return pageOfInbox
