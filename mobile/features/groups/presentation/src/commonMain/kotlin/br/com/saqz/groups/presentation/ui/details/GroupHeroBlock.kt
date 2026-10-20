@@ -148,7 +148,7 @@ private fun GroupGameHero(
         val court = attendance?.court
         // Jogo com posições: placar compacto e a meia quadra (DEB-109); sem posições, o placar de sempre.
         if (state.isAdmin && attendance != null && court != null) {
-            GroupPositionsPanel(attendance, court)
+            GroupPositionsPanel(attendance, court, onClick = { onIntent(GroupDetailsIntent.ViewGame) })
         } else if (state.isAdmin && attendance != null) {
             AttendanceScoreBoard(
                 going = attendance.going,

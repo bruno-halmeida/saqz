@@ -31,6 +31,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.theme.SaqzTheme
 
 /**
+ * Um bloco inteiro como um botão (ex. o painel de presença do cartão do jogo, que abre o jogo): toque com o rótulo de
+ * ação [onClickLabel], papel de botão e os textos de dentro fundidos num nó só para o leitor de tela.
+ */
+fun Modifier.saqzTapTarget(onClickLabel: String, onClick: () -> Unit): Modifier =
+    clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
+        .semantics(mergeDescendants = true) {}
+
+/**
  * Atalho em cartão: ícone em cima, rótulo curto embaixo. O toque anuncia
  * [contentDescription] (mais longo que o rótulo) como nome e como ação.
  */

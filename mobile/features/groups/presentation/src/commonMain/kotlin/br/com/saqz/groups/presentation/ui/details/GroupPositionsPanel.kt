@@ -36,6 +36,7 @@ import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzStatusChip
+import br.com.saqz.designsystem.saqzTapTarget
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.details.AttendanceSummaryUi
 import br.com.saqz.groups.presentation.details.CourtSpotUi
@@ -52,6 +53,7 @@ import br.com.saqz.groups.resources.group_court_missing
 import br.com.saqz.groups.resources.group_court_title
 import br.com.saqz.groups.resources.group_court_waiting
 import br.com.saqz.groups.resources.group_court_waiting_item
+import br.com.saqz.groups.resources.home_admin_cd_scoreboard_open
 import br.com.saqz.groups.resources.home_admin_score_going
 import br.com.saqz.groups.resources.home_admin_score_out
 import br.com.saqz.groups.resources.home_admin_score_waiting
@@ -73,7 +75,12 @@ internal object GroupPositionsPanelTags {
  * 5-1 com o que falta em cada posição.
  */
 @Composable
-internal fun GroupPositionsPanel(attendance: AttendanceSummaryUi, court: GroupCourtUi, modifier: Modifier = Modifier) {
+internal fun GroupPositionsPanel(
+    attendance: AttendanceSummaryUi,
+    court: GroupCourtUi,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     val muted = colors.onPrimary.copy(alpha = MutedAlpha)
@@ -81,6 +88,8 @@ internal fun GroupPositionsPanel(attendance: AttendanceSummaryUi, court: GroupCo
         modifier.fillMaxWidth()
             .clip(RoundedCornerShape(metrics.cardRadius))
             .background(colors.onPrimary.copy(alpha = PanelAlpha))
+            // Como o placar de 4 colunas: o painel inteiro abre a lista de presença do jogo.
+            .saqzTapTarget(stringResource(Res.string.home_admin_cd_scoreboard_open), onClick)
             .padding(metrics.blockGap)
             .testTag(GroupPositionsPanelTags.Panel),
         verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
