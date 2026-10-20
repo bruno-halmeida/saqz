@@ -2,11 +2,11 @@
 
 Gerado das seções **QA** das regras do cofre (`Obsidian Vault/Saqz/Regras`). A regra manda: se o roteiro e o cofre divergirem, vale o cofre.
 
-Etiquetas: **[CRÍTICO]** entra na rodada segura; **[MULTI]** depende de duas ou mais pessoas e tem roteiro em `tests/multi-aparelhos/roteiros/`; **[push: só produção]** o ambiente local não tem push.
+Etiquetas: **[CRÍTICO]** entra na rodada segura; **[MULTI]** depende de duas ou mais pessoas e tem roteiro em `tests/multi-aparelhos/roteiros/`; **[push: só produção]** o ambiente local não tem push; **[WhatsApp: só produção]** o ambiente local não manda WhatsApp (só o link para copiar, ou o Uazapi falso do roteiro multi-aparelho); a mensagem chegar ao aparelho se confere em produção, com números de teste.
 
 Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `✔` (passou) ou `✘` (falhou, com anotação). Onde a regra depende de pessoas diferentes, vale o roteiro multi-aparelho, com os papéis invertidos entre as plataformas (organizador no iPhone e depois no Android).
 
-## NOT-001 · Como um aviso chega: central, push e WhatsApp [MULTI] [push: só produção]
+## NOT-001 · Como um aviso chega: central, push e WhatsApp [MULTI] [push: só produção] [WhatsApp: só produção]
 
 | Situação | Resultado | iOS | Android |
 | --- | --- | --- | --- |
@@ -17,8 +17,11 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Toque duplo | Um aviso só | ☐ | ☐ |
 | Token recusado | Aparelho removido | ☐ | ☐ |
 | Preferência desligada (alvo) | Aviso continua na central | ☐ | ☐ |
+| Preferência desligada | Aviso continua na central | ☐ | ☐ |
+| Alguém entra pelo link de mensalistas | Dono e admins recebem na central, no push e no WhatsApp; quem entrou, não | ☐ | ☐ |
+| Falha do WhatsApp nesse aviso | Nova tentativa; a entrada da pessoa segue valendo | ☐ | ☐ |
 
-## NOT-002 · As preferências de cada pessoa [MULTI] [push: só produção]
+## NOT-002 · As preferências de cada pessoa [MULTI] [push: só produção] [WhatsApp: só produção]
 
 | Situação | Resultado | iOS | Android |
 | --- | --- | --- | --- |
@@ -27,6 +30,10 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Desliga "Mensagens" | Sem push de conversa | ☐ | ☐ |
 | Desliga "Lembretes de cobrança" | Sem push de cobrança; WhatsApp segue a chave dele | ☐ | ☐ |
 | Desliga o WhatsApp de cobrança | Sem WhatsApp; push segue a chave de push | ☐ | ☐ |
+| Dono com "Avisos dos grupos" desligado; alguém entra pelo link de mensalistas | Sem push e sem WhatsApp desse aviso; ele fica na central | ☐ | ☐ |
+| Dono com número confirmado; alguém entra pelo link de mensalistas | Central, push e WhatsApp | ☐ | ☐ |
+| Dono sem número confirmado; alguém entra pelo link de mensalistas | Central e push; sem WhatsApp | ☐ | ☐ |
+| Mural, lembrete ou pedido de entrada comum | Continuam sem WhatsApp particular | ☐ | ☐ |
 
 ## NOT-003 · Avisos do jogo [CRÍTICO] [MULTI] [push: só produção]
 
@@ -40,7 +47,7 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Jogo já começou | Nenhum lembrete | ☐ | ☐ |
 | Lembretes por dia | No máximo 2 | ☐ | ☐ |
 
-## NOT-004 · Avisos de pessoas [MULTI] [push: só produção]
+## NOT-004 · Avisos de pessoas [MULTI] [push: só produção] [WhatsApp: só produção]
 
 | Situação | Resultado | iOS | Android |
 | --- | --- | --- | --- |
@@ -52,6 +59,14 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Primeiro atleta entra | Dono e admins, uma vez só | ☐ | ☐ |
 | Organizador tira alguém do jogo | A pessoa (ou anfitrião) recebe | ☐ | ☐ |
 | Dono apaga o grupo | Todos os membros recebem | ☐ | ☐ |
+| Alguém entra pelo link de mensalistas | Dono e admins recebem na central, no push e no WhatsApp; quem entrou, não | ☐ | ☐ |
+| Entra pelo link, grupo sem mensalidade padrão | Aviso "…como avulso, porque o grupo está sem mensalidade padrão." | ☐ | ☐ |
+| Avulso do grupo abre o link | Aviso "virou mensalista" | ☐ | ☐ |
+| Mensalista abre o link de novo | Ninguém recebe | ☐ | ☐ |
+| Avulso abre o link com o grupo sem mensalidade padrão | Ninguém recebe | ☐ | ☐ |
+| Primeiro atleta do grupo entra pelo link | Um aviso só (o de entrada pelo link); "Primeiro atleta" não repete | ☐ | ☐ |
+| Dono sem número confirmado | Recebe central e push; sem WhatsApp | ☐ | ☐ |
+| 3 convidados entram em sequência | 3 avisos separados a cada organizador | ☐ | ☐ |
 
 ## NOT-005 · Avisos de dinheiro [MULTI] [push: só produção]
 

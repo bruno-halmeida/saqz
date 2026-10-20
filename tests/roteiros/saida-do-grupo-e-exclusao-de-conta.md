@@ -56,6 +56,11 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Um membro sai | A vaga volta na hora | ☐ | ☐ |
 | Mesmo atleta em dois grupos do dono | Conta em cada grupo | ☐ | ☐ |
 | Plano ilimitado | Sem checagem | ☐ | ☐ |
+| Cadastro de mensalistas com lote maior que as vagas livres | Nada enviado; aviso de limite com "Ver planos" | ☐ | ☐ |
+| Grupo cheio; convidado abre o link de mensalistas | Bloqueado, texto do limite; nada é gravado para o dono | ☐ | ☐ |
+| Convidados aguardando | Não ocupam vaga; a vaga é consumida quando a pessoa entra | ☐ | ☐ |
+| Mais convidados do que vagas, todos abrem o link | Entram até o limite; quem chega com o grupo cheio é bloqueado | ☐ | ☐ |
+| Mensalista entra pelo link com vaga livre | Conta no limite como qualquer atleta | ☐ | ☐ |
 
 ## SAI-006 · Pendências financeiras de quem sai [MULTI]
 
@@ -80,6 +85,9 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Ex-admin volta | Entra como atleta | ☐ | ☐ |
 | Grupo excluído | "Grupo excluído" | ☐ | ☐ |
 | Limite do plano cheio | Bloqueado na entrada | ☐ | ☐ |
+| Quem saiu abre o link de mensalistas | Entra direto como mensalista, sem pedido | ☐ | ☐ |
+| Removido pelo organizador abre o link de mensalistas | Entra direto como mensalista, sem pedido | ☐ | ☐ |
+| Quem saiu abre o link de mensalistas, grupo cheio | Bloqueado, texto do limite | ☐ | ☐ |
 
 ## SAI-008 · Excluir o grupo [MULTI] [push: só produção]
 
@@ -91,6 +99,8 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Membro, depois | Não vê o grupo | ☐ | ☐ |
 | Convite do grupo excluído | "Grupo excluído" | ☐ | ☐ |
 | Dono com 3 grupos exclui 1 | Pode criar outro | ☐ | ☐ |
+| Dono exclui o grupo com convidados de mensalista | Nome e telefone dos convidados apagados | ☐ | ☐ |
+| Alguém abre o link de mensalistas do grupo excluído | "Grupo excluído" | ☐ | ☐ |
 
 ## SAI-009 · Excluir a conta [CRÍTICO] [MULTI]
 

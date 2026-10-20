@@ -33,7 +33,7 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Desfazer recebida | Volta a pendente e sai do caixa | ☐ | ☐ |
 | Desfazer cancelada | Recusado | ☐ | ☐ |
 
-## FIN-003 · A mensalidade automática
+## FIN-003 · A mensalidade automática [MULTI]
 
 | Situação | Resultado | iOS | Android |
 | --- | --- | --- | --- |
@@ -42,6 +42,11 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Entra no dia 20, regra "mês seguinte" | Nenhuma cobrança neste mês | ☐ | ☐ |
 | Avulso | Não ganha mensalidade | ☐ | ☐ |
 | Mensalista em atraso | Mantém a prioridade | ☐ | ☐ |
+| Entra pelo link de mensalistas no dia 20, regra "mês seguinte" | Nenhuma cobrança neste mês | ☐ | ☐ |
+| Entra pelo link de mensalistas, regra "data de entrada" | Paga já, a partir do dia em que entrou | ☐ | ☐ |
+| Entra pelo link de mensalistas, regra "vencimento do grupo" | Mensalidade inteira, no vencimento | ☐ | ☐ |
+| Entra pelo link de mensalistas, grupo sem mensalidade padrão | Entra como avulso; nenhuma mensalidade | ☐ | ☐ |
+| Avulso vira mensalista pelo link | O dia vira o início de mensalista; segue a regra de entrada tardia | ☐ | ☐ |
 
 ## FIN-004 · A diária do jogo [CRÍTICO] [MULTI]
 

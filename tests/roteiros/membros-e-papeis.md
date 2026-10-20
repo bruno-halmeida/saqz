@@ -34,7 +34,7 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Quem saiu | Não aparece | ☐ | ☐ |
 | Não membro | 404 | ☐ | ☐ |
 
-## MEM-003 · Mensalista ou avulso
+## MEM-003 · Mensalista ou avulso [MULTI]
 
 | Situação | Resultado | iOS | Android |
 | --- | --- | --- | --- |
@@ -44,6 +44,12 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Mensalista vira avulso | Perde valor e dia; passa a pagar diária | ☐ | ☐ |
 | Mensalista vira avulso, mensalidade pendente | Cobrança continua pendente | ☐ | ☐ |
 | Atleta muda o próprio tipo | 403 | ☐ | ☐ |
+| Entra pelo link de mensalistas, grupo com mensalidade padrão | Já nasce mensalista, com o valor e o dia do grupo | ☐ | ☐ |
+| Entra pelo link de mensalistas, grupo sem mensalidade padrão | Entra como avulso; dono e admins avisados com o motivo | ☐ | ☐ |
+| Avulso do grupo abre o link de mensalistas, grupo com padrão | Vira mensalista; o papel não muda | ☐ | ☐ |
+| Mensalista abre o link de mensalistas | Nada muda | ☐ | ☐ |
+| Promover avulso pela lista de membros | Vira mensalista; nenhuma mensagem de WhatsApp | ☐ | ☐ |
+| Promover pelo botão "Promover a mensalista" no cadastro de convites | Vira mensalista; nenhuma mensagem de WhatsApp | ☐ | ☐ |
 
 ## MEM-004 · O perfil de atleta
 
