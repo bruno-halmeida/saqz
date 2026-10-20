@@ -219,6 +219,7 @@ class GroupInviteCoordinator(
         val code = (pending as? PendingRead.Value)?.code ?: return null
         if (!isCurrent(token)) return null
         val result = inviteGateway.preview(InviteCode(code))
+        if (isCurrent(token) && result is SaqzResult.Failure) trackInviteFailure(result.error, InviteStep.Preview)
         if (isCurrent(token) && result is SaqzResult.Failure && result.error.isTerminal()) {
             if (!clearPending(token)) {
                 emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code))
@@ -242,7 +243,7 @@ class GroupInviteCoordinator(
 
     private suspend fun redeem(token: Long, code: InviteCode) {
         when (val preview = inviteGateway.preview(code)) {
-            is SaqzResult.Failure -> finishFailure(token, code, preview.error)
+            is SaqzResult.Failure -> finishFailure(token, code, preview.error, InviteStep.Preview)
             // Resposta velha: saiu da conta (ou chegou outro link) enquanto o preview andava.
             is SaqzResult.Success -> if (isCurrent(token)) redeemAfterPreview(token, code)
         }
@@ -250,7 +251,7 @@ class GroupInviteCoordinator(
 
     private suspend fun redeemAfterPreview(token: Long, code: InviteCode) {
         when (val result = inviteGateway.redeem(code)) {
-            is SaqzResult.Failure -> finishFailure(token, code, result.error)
+            is SaqzResult.Failure -> finishFailure(token, code, result.error, InviteStep.Redeem)
             is SaqzResult.Success -> {
                 if (!clearPending(token)) {
                     emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code.value))
@@ -268,8 +269,9 @@ class GroupInviteCoordinator(
         }
     }
 
-    private suspend fun finishFailure(token: Long, code: InviteCode, error: InviteError) {
+    private suspend fun finishFailure(token: Long, code: InviteCode, error: InviteError, step: InviteStep) {
         if (!isCurrent(token)) return
+        trackInviteFailure(error, step)
         val terminal = error.isTerminal()
         if (terminal && !clearPending(token)) {
             emitIfCurrent(token, GroupInviteEffect.PendingInviteStorageFailed(code.value))

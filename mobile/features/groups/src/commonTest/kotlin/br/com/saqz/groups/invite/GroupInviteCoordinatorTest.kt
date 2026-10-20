@@ -1,5 +1,6 @@
 package br.com.saqz.groups.invite
 
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
@@ -285,6 +286,36 @@ class GroupInviteCoordinatorTest {
         assertEquals(InviteError.RateLimited(30), effect.error)
         assertTrue(effect.willRetry)
         assertEquals("invite-rate-limit", fixture.local.pending)
+    }
+
+    @Test
+    fun `preview and redeem rule failures report invite_invalid with their step`() = runTest {
+        val recorded = mutableListOf<Pair<String, Map<String, String>>>()
+        SaqzAnalytics.track = { name, params -> recorded += name to params }
+        try {
+            val onPreview = fixture(previewResult = SaqzResult.Failure(InviteError.InvalidOrExpired("INVITE_INVALID")))
+            onPreview.local.pending = "invite-a"
+            onPreview.coordinator.onAuthenticated()
+            runCurrent()
+            val onRedeem = fixture(redeemResult = SaqzResult.Failure(InviteError.RateLimited(30)))
+            onRedeem.local.pending = "invite-b"
+            onRedeem.coordinator.onAuthenticated()
+            runCurrent()
+            val network = fixture(previewResult = SaqzResult.Failure(InviteError.DataFailure(DataError.Connectivity)))
+            network.local.pending = "invite-c"
+            network.coordinator.onAuthenticated()
+            runCurrent()
+        } finally {
+            SaqzAnalytics.reset()
+        }
+
+        assertEquals(
+            listOf(
+                "invite_invalid" to mapOf("reason" to "invalid", "error_code" to "INVITE_INVALID", "step" to "preview"),
+                "invite_invalid" to mapOf("reason" to "attempt_limit", "error_code" to "INVITE_ATTEMPT_LIMIT", "step" to "redeem"),
+            ),
+            recorded,
+        )
     }
 
     @Test

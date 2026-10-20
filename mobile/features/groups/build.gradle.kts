@@ -14,6 +14,7 @@ kotlin {
         commonMain.dependencies {
             api(project(":features:groups:domain"))
             implementation(project(":core:domain"))
+            implementation(project(":core:common"))
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.core)

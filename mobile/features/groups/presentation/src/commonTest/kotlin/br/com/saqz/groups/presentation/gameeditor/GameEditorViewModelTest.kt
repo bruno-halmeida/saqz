@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.gameeditor
 
 import androidx.lifecycle.SavedStateHandle
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.ValidationDetails
@@ -911,6 +912,68 @@ class GameEditorViewModelTest {
         // O dia anterior ao fim libera.
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-01", "19:30"))
         assertFalse(vm.state.value.planBlocked)
+    }
+
+    private fun planEndEvents(block: () -> Unit): List<Map<String, String>> {
+        val recorded = mutableListOf<Pair<String, Map<String, String>>>()
+        SaqzAnalytics.track = { name, params -> recorded += name to params }
+        try {
+            block()
+        } finally {
+            SaqzAnalytics.reset()
+        }
+        return recorded.filter { it.first == "game_after_plan_end" }.map { it.second }
+    }
+
+    @Test
+    fun `the server after plan end on create reports the attempted date the limit and the action`() = runTest {
+        val events = planEndEvents {
+            val gateway = FakeGameGateway(createResult = SaqzResult.Failure(GameError.AfterPlanEnd("2026-08-02T03:00:00Z")))
+            val vm = viewModel(gameGateway = gateway)
+            vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+            vm.onIntent(GameEditorIntent.Submit)
+        }
+
+        assertEquals(
+            listOf(
+                mapOf(
+                    "attempted_date" to "2026-08-04",
+                    "limit_date" to "2026-08-02",
+                    "error_code" to "GAME_AFTER_PLAN_END",
+                    "action" to "create",
+                ),
+            ),
+            events,
+        )
+    }
+
+    @Test
+    fun `the server after plan end on edit and on publish report their own action and omit an unknown limit`() = runTest {
+        val onEdit = planEndEvents {
+            val gateway = FakeGameGateway(editResult = SaqzResult.Failure(GameError.AfterPlanEnd(null)))
+            val vm = viewModel(gameId = "game-1", gameGateway = gateway)
+            vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-05", "19:30"))
+            vm.onIntent(GameEditorIntent.Submit)
+        }
+        assertEquals(
+            listOf(mapOf("attempted_date" to "2026-08-05", "error_code" to "GAME_AFTER_PLAN_END", "action" to "edit")),
+            onEdit,
+        )
+
+        val onPublish = planEndEvents {
+            val draft = sampleVersionedGame().copy(game = sampleGame().copy(status = GameStatus.Draft))
+            val gateway = FakeGameGateway(
+                createResult = SaqzResult.Success(draft),
+                lifecycleResult = SaqzResult.Failure(GameError.AfterPlanEnd(null)),
+            )
+            val vm = viewModel(gameGateway = gateway)
+            vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "19:30"))
+            vm.onIntent(GameEditorIntent.Submit)
+        }
+        assertEquals(
+            listOf(mapOf("attempted_date" to "2026-08-06", "error_code" to "GAME_AFTER_PLAN_END", "action" to "publish")),
+            onPublish,
+        )
     }
 
     @Test

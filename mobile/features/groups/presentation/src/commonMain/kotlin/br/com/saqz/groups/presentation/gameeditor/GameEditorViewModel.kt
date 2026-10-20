@@ -29,7 +29,9 @@ import br.com.saqz.groups.model.GameEditorDraft
 import br.com.saqz.groups.model.GameEditorForm
 import br.com.saqz.groups.model.GameEditorMode
 import br.com.saqz.groups.presentation.GameCapacityLimits
+import br.com.saqz.groups.presentation.GamePlanEndAction
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.trackGameAfterPlanEnd
 import br.com.saqz.groups.presentation.place.VenueSearch
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
@@ -339,10 +341,10 @@ class GameEditorViewModel(
     ): SaqzResult<VersionedGame, GameError> = when (
         val created = gameGateway.create(GroupId(groupId), command)
     ) {
-        is SaqzResult.Failure -> created
+        is SaqzResult.Failure -> created.also { it.trackPlanEnd(command, GamePlanEndAction.Create) }
         is SaqzResult.Success -> {
             savePendingDraft(created.value)
-            publishIfDraft(created.value)
+            publishIfDraft(created.value, command)
         }
     }
 
@@ -386,12 +388,13 @@ class GameEditorViewModel(
         val edited = gameGateway.edit(
             GroupId(groupId), attempt.gameId, GameVersionToken(attempt.versionToken), command,
         )
+        edited.trackPlanEnd(command, GamePlanEndAction.Edit)
         if (!attempt.publishAfterEdit) return edited
         return when (edited) {
             is SaqzResult.Failure -> edited
             is SaqzResult.Success -> {
                 savePendingDraft(edited.value)
-                publishIfDraft(edited.value)
+                publishIfDraft(edited.value, command)
             }
         }
     }
@@ -421,6 +424,7 @@ class GameEditorViewModel(
 
     private suspend fun publishIfDraft(
         versioned: VersionedGame,
+        command: GameWriteCommand,
     ): SaqzResult<VersionedGame, GameError> = if (versioned.game.status == GameStatus.Published) {
         SaqzResult.Success(versioned)
     } else {
@@ -429,7 +433,12 @@ class GameEditorViewModel(
             versioned.game.id,
             versioned.version,
             GameLifecycleAction.Publish,
-        )
+        ).also { it.trackPlanEnd(command, GamePlanEndAction.Publish) }
+    }
+
+    private fun SaqzResult<VersionedGame, GameError>.trackPlanEnd(command: GameWriteCommand, action: GamePlanEndAction) {
+        val date = command.localDate ?: return
+        if (this is SaqzResult.Failure) trackGameAfterPlanEnd(error, date, command.zoneId, action)
     }
 
     private fun buildDraft(state: GameEditorState, commandKey: String): GameEditorDraft {

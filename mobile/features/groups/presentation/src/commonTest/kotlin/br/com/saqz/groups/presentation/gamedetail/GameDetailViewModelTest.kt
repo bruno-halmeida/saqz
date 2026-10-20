@@ -416,6 +416,35 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun `publishing beyond the plan end reports game_after_plan_end with the publish action`() = runTest {
+        val draft = sampleVersionedGame().copy(game = sampleVersionedGame().game.copy(status = GameStatus.Draft))
+        val gateway = FakeGameGateway(
+            readResult = SaqzResult.Success(draft),
+            lifecycleResult = SaqzResult.Failure(GameError.AfterPlanEnd("2026-08-02T03:00:00Z")),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+        val recorded = mutableListOf<Pair<String, Map<String, String>>>()
+        SaqzAnalytics.track = { name, params -> recorded += name to params }
+        try {
+            viewModel.onIntent(GameDetailIntent.Publish)
+        } finally {
+            SaqzAnalytics.reset()
+        }
+
+        assertEquals(
+            listOf(
+                mapOf(
+                    "attempted_date" to "2026-08-04",
+                    "limit_date" to "2026-08-02",
+                    "error_code" to "GAME_AFTER_PLAN_END",
+                    "action" to "publish",
+                ),
+            ),
+            recorded.filter { it.first == "game_after_plan_end" }.map { it.second },
+        )
+    }
+
+    @Test
     fun `the beyond plan end text stays while the start is the same and goes away once the date is corrected`() = runTest {
         val game = sampleVersionedGame().game
         val draft = sampleVersionedGame().copy(game = game.copy(status = GameStatus.Draft))

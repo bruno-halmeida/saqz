@@ -8,6 +8,8 @@ import br.com.saqz.groups.domain.membership.InviteError
 import br.com.saqz.groups.domain.membership.InviteGateway
 import br.com.saqz.groups.domain.membership.InvitePreview
 import br.com.saqz.groups.domain.membership.InviteRedeemStatus
+import br.com.saqz.groups.invite.InviteStep
+import br.com.saqz.groups.invite.trackInviteFailure
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
 import br.com.saqz.groups.port.GroupSystemTimeZoneResult
 import br.com.saqz.groups.presentation.navigation.InviteLandingRouteError
@@ -75,6 +77,7 @@ class InviteLandingViewModel(
                     update { it.copy(isLoading = false, preview = result.value.toUi(timeZone), error = null) }
                 }
                 is SaqzResult.Failure -> if (isCurrent(requestGeneration)) {
+                    trackInviteFailure(result.error, InviteStep.Preview)
                     update { it.copy(isLoading = false, error = result.error.toUiError(timeZone)) }
                 }
             }
@@ -98,6 +101,7 @@ class InviteLandingViewModel(
                     }
                 }
                 is SaqzResult.Failure -> if (isCurrent(requestGeneration)) {
+                    trackInviteFailure(result.error, InviteStep.Redeem)
                     update { it.copy(isRedeeming = false, error = result.error.toUiError(timeZone)) }
                 }
             }

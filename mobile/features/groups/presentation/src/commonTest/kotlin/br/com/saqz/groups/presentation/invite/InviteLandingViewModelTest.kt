@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.invite
 
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.membership.InviteCode
 import br.com.saqz.groups.domain.membership.InviteError
@@ -195,6 +196,58 @@ class InviteLandingViewModelTest {
         oldPreview.complete(SaqzResult.Success(preview(approval = true)))
 
         assertFalse(viewModel.state.value.preview!!.entryRequiresApproval)
+    }
+
+    @Test
+    fun `rule failures report invite_invalid with reason code and step and never the invite code`() = runTest {
+        val recorded = mutableListOf<Pair<String, Map<String, String>>>()
+        SaqzAnalytics.track = { name, params -> recorded += name to params }
+        try {
+            viewModel(preview = SaqzResult.Failure(InviteError.InvalidOrExpired("INVITE_INVALID")))
+            viewModel(preview = SaqzResult.Failure(InviteError.Expired(EXPIRED_AT)))
+            viewModel(redeem = SaqzResult.Failure(InviteError.InvalidOrExpired("INVITE_INVALID_OR_EXPIRED"))).redeemError()
+            viewModel(redeem = SaqzResult.Failure(InviteError.GroupDeleted)).redeemError()
+            viewModel(redeem = SaqzResult.Failure(InviteError.RateLimited(23))).redeemError()
+            viewModel(redeem = SaqzResult.Failure(InviteError.PlanLimit)).redeemError()
+            viewModel(redeem = SaqzResult.Failure(InviteError.GroupNotReceiving)).redeemError()
+            // Rede não é regra do convite: não entra.
+            viewModel(preview = SaqzResult.Failure(InviteError.DataFailure(DataError.Connectivity)))
+            viewModel(redeem = SaqzResult.Failure(InviteError.DataFailure(DataError.Timeout))).redeemError()
+        } finally {
+            SaqzAnalytics.reset()
+        }
+
+        fun event(reason: String, code: String, step: String) =
+            "invite_invalid" to mapOf("reason" to reason, "error_code" to code, "step" to step)
+        assertEquals(
+            listOf(
+                event("invalid", "INVITE_INVALID", "preview"),
+                event("expired", "INVITE_EXPIRED", "preview"),
+                event("invalid", "INVITE_INVALID_OR_EXPIRED", "redeem"),
+                event("group_deleted", "INVITE_GROUP_DELETED", "redeem"),
+                event("attempt_limit", "INVITE_ATTEMPT_LIMIT", "redeem"),
+                event("athlete_limit", "ATHLETE_LIMIT_EXCEEDED", "redeem"),
+                event("not_receiving", "SUBSCRIPTION_REQUIRED", "redeem"),
+            ),
+            recorded.filter { it.first == "invite_invalid" },
+        )
+    }
+
+    @Test
+    fun `a redeem error carried by the route is not reported again`() = runTest {
+        val recorded = mutableListOf<String>()
+        SaqzAnalytics.track = { name, _ -> recorded += name }
+        try {
+            InviteLandingViewModel(
+                INVITE_CODE,
+                FakeInviteGateway(previewResult = SaqzResult.Success(preview())),
+                FIXED_TIME_ZONE_PORT,
+                initialRedeemError = InviteLandingRouteError.Invalid,
+            )
+        } finally {
+            SaqzAnalytics.reset()
+        }
+        assertEquals(emptyList(), recorded)
     }
 
     private fun viewModel(

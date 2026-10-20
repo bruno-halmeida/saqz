@@ -40,7 +40,9 @@ import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.presentation.attendance.AttendanceRule
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.GameCapacityLimits
+import br.com.saqz.groups.presentation.GamePlanEndAction
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.trackGameAfterPlanEnd
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.presentation.isPlanPaused
 import br.com.saqz.groups.presentation.AutoRetry
@@ -90,6 +92,7 @@ class GameDetailViewModel(
     private var membershipType: AthleteMembershipType? = null
     private var confirmationDeadline: Instant? = null
     private var startsAt: Instant? = null
+    private var gameZoneId: String? = null
     /** Início do rascunho que o servidor recusou publicar por cair além do fim do plano; outro início na recarga limpa o aviso. */
     private var publishRefusedStart: Instant? = null
     private var groupPromotionMode: PromotionMode = PromotionMode.FIFO
@@ -315,6 +318,7 @@ class GameDetailViewModel(
                     ?.firstOrNull { it.groupId == GroupId(groupId) }?.membershipType
                 confirmationDeadline = runCatching { Instant.parse(game.confirmationDeadline) }.getOrNull()
                 startsAt = runCatching { Instant.parse(game.startsAt) }.getOrNull()
+                gameZoneId = game.zoneId
                 val header = game.toHeader()
                 val open = header.confirmationOpen
                 val tone = header.statusTone
@@ -702,6 +706,12 @@ class GameDetailViewModel(
             else -> this
         }
     }
+    /** Dia do jogo que o publicar tentou, no fuso do grupo (aaaa-mm-dd). */
+    private fun publishAttemptDate(): String? {
+        val zone = gameZoneId?.let { runCatching { TimeZone.of(it) }.getOrNull() } ?: TimeZone.UTC
+        return startsAt?.toLocalDateTime(zone)?.date?.toString()
+    }
+
     /** Agenda mudou (409 de conflito) ou outra pessoa mexeu antes (versão velha): o certo é recarregar, não repetir. */
     private fun GameError.isStaleGame() = this is GameError.Conflict || this == GameError.VersionConflict
 
@@ -751,6 +761,7 @@ class GameDetailViewModel(
                     load()
                 } else {
                     val afterPlanEnd = result.error is GameError.AfterPlanEnd
+                    publishAttemptDate()?.let { trackGameAfterPlanEnd(result.error, it, gameZoneId, GamePlanEndAction.Publish) }
                     publishRefusedStart = startsAt.takeIf { afterPlanEnd }
                     update { it.copy(publishing = false, publishFailed = !afterPlanEnd, publishAfterPlanEnd = afterPlanEnd) }
                 }
