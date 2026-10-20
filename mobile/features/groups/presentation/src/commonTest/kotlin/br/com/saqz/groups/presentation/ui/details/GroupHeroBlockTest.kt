@@ -39,7 +39,7 @@ class GroupHeroBlockTest {
         setDetailsScreen(GroupHeroPreviewData.pending) { intents += it }
 
         onNodeWithTag(GroupGameResponseTags.NotGoing).assertExists()
-        onNodeWithText("As confirmações encerram hoje às 18h00.").assertExists()
+        onNodeWithText("Prioridade dos mensalistas até hoje às 18h00.").assertExists()
         onNodeWithTag(GroupGameResponseTags.Going).performScrollTo().performClick()
 
         assertEquals(GroupDetailsIntent.Respond(AttendanceIntent.Confirm), intents.single())
@@ -83,7 +83,7 @@ class GroupHeroBlockTest {
 
         onNodeWithText("O prazo acabou: quem confirmar agora entra na lista de espera e sobe pela ordem se houver vaga.").assertExists()
         onAllNodesWithText("Em andamento. Não dá mais para responder.").assertCountEquals(0)
-        onAllNodesWithText("As confirmações encerram hoje às 18h00.").assertCountEquals(0)
+        onAllNodesWithText("Prioridade dos mensalistas até hoje às 18h00.").assertCountEquals(0)
         onNodeWithTag(GroupGameResponseTags.Going).assertIsEnabled()
         onNodeWithTag(GroupGameResponseTags.NotGoing).assertIsEnabled()
     }

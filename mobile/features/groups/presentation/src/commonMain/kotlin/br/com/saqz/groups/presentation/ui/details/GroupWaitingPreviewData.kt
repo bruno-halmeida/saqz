@@ -11,7 +11,7 @@ import br.com.saqz.groups.presentation.details.GroupWaitingUi
  * [GroupDetailsPreviewData.admin]; só entra aqui o que o `GroupDetailsViewModel` produz.
  */
 internal object GroupWaitingPreviewData {
-    private val nextGame = GroupDetailsPreviewData.nextGame.copy(deadlineShort = "Encerra 28/07 · 18h00")
+    private val nextGame = GroupDetailsPreviewData.nextGame.copy(deadlineShort = "Prioridade até 28/07 · 18h00")
 
     val entryRequests = GroupWaitingRowUi(
         title = "3 pedidos para entrar",

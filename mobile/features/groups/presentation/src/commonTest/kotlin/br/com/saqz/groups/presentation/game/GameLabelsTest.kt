@@ -23,15 +23,15 @@ class GameLabelsTest {
     }
 
     @Test
-    fun `deadline sentence is relative to today in the game zone`() = runTest {
-        assertEquals("As confirmações encerram hoje às 12h00.", deadline.gameDeadlineSentence(LocalDate(2026, 8, 4)))
-        assertEquals("As confirmações encerram amanhã às 12h00.", deadline.gameDeadlineSentence(LocalDate(2026, 8, 3)))
-        assertEquals("As confirmações encerram em 04/08 às 12h00.", deadline.gameDeadlineSentence(LocalDate(2026, 8, 1)))
+    fun `priority sentence is relative to today in the game zone`() = runTest {
+        assertEquals("Prioridade dos mensalistas até hoje às 12h00.", deadline.gamePrioritySentence(LocalDate(2026, 8, 4)))
+        assertEquals("Prioridade dos mensalistas até amanhã às 12h00.", deadline.gamePrioritySentence(LocalDate(2026, 8, 3)))
+        assertEquals("Prioridade dos mensalistas até 04/08 às 12h00.", deadline.gamePrioritySentence(LocalDate(2026, 8, 1)))
     }
 
     @Test
-    fun `short deadline and bell reuse the home keys`() = runTest {
-        assertEquals("Encerra 04/08 · 12h00", deadline.gameDeadlineShort())
+    fun `short priority and bell reuse the home keys`() = runTest {
+        assertEquals("Prioridade até 04/08 · 12h00", deadline.gamePriorityShort())
         assertEquals("Se você subir, sua presença aparece aqui. Confira antes do jogo.", waitlistBellLabel())
     }
 

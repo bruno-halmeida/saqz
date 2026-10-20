@@ -1,11 +1,7 @@
 package br.com.saqz.groups.presentation.game
 
 import br.com.saqz.groups.resources.Res
-import br.com.saqz.groups.resources.home_admin_hero_deadline
 import br.com.saqz.groups.resources.home_date
-import br.com.saqz.groups.resources.home_deadline_date
-import br.com.saqz.groups.resources.home_deadline_today
-import br.com.saqz.groups.resources.home_deadline_tomorrow
 import br.com.saqz.groups.resources.home_game_display
 import br.com.saqz.groups.resources.home_game_meta
 import br.com.saqz.groups.resources.home_month_april
@@ -45,7 +41,7 @@ import org.jetbrains.compose.resources.getString
 
 /**
  * Os rótulos de data e prazo de um jogo, no vocabulário da Início (VUL-218): "Terça, 19h30",
- * "4 de agosto · CERET", "As confirmações encerram hoje às 12h00.". Nasceram privados no
+ * "4 de agosto · CERET", "Prioridade dos mensalistas até hoje às 12h00.". Nasceram privados no
  * `HomeViewModel`; o detalhe do grupo é o segundo uso, então moram aqui para as duas telas
  * dizerem a mesma coisa com as mesmas chaves `home_*`.
  *
@@ -82,17 +78,6 @@ internal suspend fun LocalDateTime.gameHeroDisplay(): String =
 /** "4 de agosto · CERET — Quadra 2" */
 internal suspend fun LocalDateTime.gameHeroMeta(place: String): String =
     getString(Res.string.home_game_meta, day.toString(), gameLongMonthLabel(month.ordinal + 1), place)
-
-/** A frase do prazo ABERTO, relativa a [today] (hoje no fuso do jogo). */
-internal suspend fun LocalDateTime.gameDeadlineSentence(today: LocalDate): String = when (date) {
-    today -> getString(Res.string.home_deadline_today, gameTimeLabel())
-    today.plus(DatePeriod(days = 1)) -> getString(Res.string.home_deadline_tomorrow, gameTimeLabel())
-    else -> getString(Res.string.home_deadline_date, date.gameDateLabel(), gameTimeLabel())
-}
-
-/** "Encerra 04/08 · 12h00" */
-internal suspend fun LocalDateTime.gameDeadlineShort(): String =
-    getString(Res.string.home_admin_hero_deadline, date.gameDateLabel(), gameTimeLabel())
 
 /**
  * Card da reserva. Não promete aviso: ninguém é avisado sozinho ao subir da fila (a lista vai ao grupo do

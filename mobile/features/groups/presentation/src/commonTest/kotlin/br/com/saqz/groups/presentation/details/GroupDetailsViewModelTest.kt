@@ -1532,8 +1532,8 @@ class GroupDetailsViewModelTest {
         assertEquals("Terça, 19h30", game.display)
         assertEquals("4 de agosto · CERET", game.meta)
         assertEquals("Rua Canuto Abreu", game.address)
-        assertEquals("As confirmações encerram em 04/08 às 12h00.", game.deadlineLine)
-        assertEquals("Encerra 04/08 · 12h00", game.deadlineShort)
+        assertEquals("Prioridade dos mensalistas até 04/08 às 12h00.", game.deadlineLine)
+        assertEquals("Prioridade até 04/08 · 12h00", game.deadlineShort)
         assertEquals("Se você subir, sua presença aparece aqui. Confira antes do jogo.", game.bellLabel)
     }
 
@@ -1544,7 +1544,31 @@ class GroupDetailsViewModelTest {
             now = GroupNowPort { kotlin.time.Instant.parse("2026-08-04T13:00:00Z") },
         )
 
-        assertEquals("As confirmações encerram hoje às 12h00.", viewModel.state.value.nextGame?.deadlineLine)
+        assertEquals("Prioridade dos mensalistas até hoje às 12h00.", viewModel.state.value.nextGame?.deadlineLine)
+    }
+
+    @Test
+    fun `deadline lines disappear when the group has no mensalista priority`() = runTest {
+        val group = sampleGroup()
+        val noPriority = group.copy(gameConfig = group.gameConfig.copy(mensalistaPriority = false))
+        val viewModel = viewModel(
+            groupGateway = FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup(noPriority))),
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))),
+        )
+
+        val game = assertNotNull(viewModel.state.value.nextGame)
+        assertEquals("", game.deadlineLine)
+        assertEquals("", game.deadlineShort)
+    }
+
+    @Test
+    fun `deadline lines disappear when the deadline is the start of the game`() = runTest {
+        val atStart = sampleGame().copy(confirmationDeadline = "2026-08-04T19:30:00-03:00")
+        val viewModel = viewModel(gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(atStart))))
+
+        val game = assertNotNull(viewModel.state.value.nextGame)
+        assertEquals("", game.deadlineLine)
+        assertEquals("", game.deadlineShort)
     }
 
     @Test

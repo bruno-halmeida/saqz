@@ -41,7 +41,7 @@ class GroupWaitingBlockTest {
 
         onNodeWithTag(GroupDetailsTags.WaitingQuorum)
             .assertTextContains("2 pessoas sem resposta")
-            .assertTextContains("Encerra 28/07 · 18h00")
+            .assertTextContains("Prioridade até 28/07 · 18h00")
     }
 
     @Test

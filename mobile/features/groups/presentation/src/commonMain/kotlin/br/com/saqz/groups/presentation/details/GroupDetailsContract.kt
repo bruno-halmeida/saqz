@@ -136,7 +136,7 @@ data class NextGameUi(
     val address: String = "",
     /** A frase do prazo ABERTO. Encerrado, a tela usa `game_response_deadline_closed`. */
     val deadlineLine: String = "",
-    /** "Encerra 04/08 · 12h00" — a meta da linha de quórum do gestor. */
+    /** "Prioridade até 04/08 · 12h00" — a meta da linha de quórum do gestor. */
     val deadlineShort: String = "",
     /** "Se você subir, sua presença aparece aqui. Confira antes do jogo." — o card do sino da reserva. */
     val bellLabel: String = "",

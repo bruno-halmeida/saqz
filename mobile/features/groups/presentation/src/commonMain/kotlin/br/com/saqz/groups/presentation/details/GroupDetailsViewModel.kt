@@ -53,8 +53,8 @@ import br.com.saqz.groups.port.GroupOnboardingMemory
 import br.com.saqz.groups.port.GroupOnboardingMemoryPort
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.game.waitlistBellLabel
-import br.com.saqz.groups.presentation.game.gameDeadlineSentence
-import br.com.saqz.groups.presentation.game.gameDeadlineShort
+import br.com.saqz.groups.presentation.game.gamePrioritySentence
+import br.com.saqz.groups.presentation.game.gamePriorityShort
 import br.com.saqz.groups.presentation.game.gameHeroDisplay
 import br.com.saqz.groups.presentation.game.gameHeroMeta
 import br.com.saqz.groups.presentation.game.gameTimeZone
@@ -927,6 +927,12 @@ class GroupDetailsViewModel(
         val place = listOfNotNull(venue.name, venue.court).joinToString(" — ")
         val lateRefused = id in lateRefusedGames
         val responseOpen = status == GameStatus.Published && startIsAhead()
+        // O prazo só importa ao atleta como fim da prioridade de mensalista: sem janela, a linha some.
+        val priority = AttendanceRule.priorityWindow(
+            loadedGroup?.gameConfig?.mensalistaPriority == true,
+            confirmationDeadline,
+            startsAt,
+        )
         return NextGameUi(
             gameId = id,
             date = displayDate(),
@@ -946,8 +952,9 @@ class GroupDetailsViewModel(
             display = startsAtLocal?.gameHeroDisplay() ?: displayDate(),
             meta = startsAtLocal?.gameHeroMeta(place) ?: place,
             address = venue.address,
-            deadlineLine = deadlineLocal?.gameDeadlineSentence(now.now().toLocalDateTime(zone).date).orEmpty(),
-            deadlineShort = deadlineLocal?.gameDeadlineShort().orEmpty(),
+            deadlineLine = deadlineLocal?.takeIf { priority }
+                ?.gamePrioritySentence(now.now().toLocalDateTime(zone).date).orEmpty(),
+            deadlineShort = deadlineLocal?.takeIf { priority }?.gamePriorityShort().orEmpty(),
             bellLabel = deadlineLocal?.let { waitlistBellLabel() }.orEmpty(),
             promotionMode = promotionMode(),
         )

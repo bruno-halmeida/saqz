@@ -8,9 +8,6 @@
     <string name="home_game_next">PRÓXIMO JOGO</string>
     <string name="home_date">%1$s/%2$s</string>
     <string name="home_time">%1$sh%2$s</string>
-    <string name="home_deadline_today">As confirmações encerram hoje às %1$s.</string>
-    <string name="home_deadline_tomorrow">As confirmações encerram amanhã às %1$s.</string>
-    <string name="home_deadline_date">As confirmações encerram em %1$s às %2$s.</string>
     <string name="home_priority_today">Prioridade dos mensalistas até hoje às %1$s.</string>
     <string name="home_priority_tomorrow">Prioridade dos mensalistas até amanhã às %1$s.</string>
     <string name="home_priority_date">Prioridade dos mensalistas até %1$s às %2$s.</string>
@@ -90,7 +87,6 @@
     <string name="home_admin_score_out">Não vão</string>
     <string name="home_admin_score_pending">Sem resposta</string>
     <string name="home_admin_score_waiting">Na espera</string>
-    <string name="home_admin_hero_deadline">Encerra %1$s · %2$s</string>
     <string name="home_admin_hero_priority">Prioridade até %1$s · %2$s</string>
     <string name="home_admin_score_value">%1$d</string>
     <string name="home_admin_waiting_title">Esperando você</string>

@@ -21,8 +21,8 @@ internal object GroupHeroPreviewData {
         display = "Terça, 19h30",
         meta = "28 de julho · CERET — Quadra 2",
         address = "R. Canuto Abreu, s/n · Tatuapé",
-        deadlineLine = "As confirmações encerram hoje às 18h00.",
-        deadlineShort = "Encerra 28/07 · 18h00",
+        deadlineLine = "Prioridade dos mensalistas até hoje às 18h00.",
+        deadlineShort = "Prioridade até 28/07 · 18h00",
         bellLabel = "Se você subir, sua presença aparece aqui. Confira antes do jogo.",
     )
     // Prazo vencido, jogo por começar: o "Vou" ainda vale e entra pela espera.
