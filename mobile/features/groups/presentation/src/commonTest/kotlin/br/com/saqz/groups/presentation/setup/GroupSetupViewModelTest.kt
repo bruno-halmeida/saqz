@@ -537,6 +537,66 @@ class GroupSetupViewModelTest {
     }
 
     @Test
+    fun `marcar dois dias cria um horario por dia com a duracao do grupo`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(form = completeForm.copy(regularSlots = emptyList()))
+
+        viewModel.onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = null)))
+        viewModel.onIntent(GroupSetupIntent.ToggleSlotWeekday(GroupWeekday.THURSDAY))
+        viewModel.onIntent(GroupSetupIntent.PickSlotTime(hour = 19, minute = 30))
+        viewModel.onIntent(GroupSetupIntent.ConfirmSlot)
+        runCurrent()
+
+        assertEquals(
+            listOf(GroupWeekday.TUESDAY, GroupWeekday.THURSDAY),
+            viewModel.state.value.form.regularSlots.map { it.weekday },
+        )
+        assertEquals(setOf("19:30"), viewModel.state.value.form.regularSlots.map { it.startTime }.toSet())
+        assertEquals(setOf(120), viewModel.state.value.form.regularSlots.map { it.durationMinutes }.toSet())
+    }
+
+    @Test
+    fun `salvar nao duplica dia e hora que ja existem`() = runTest(mainDispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = null)))
+        viewModel.onIntent(GroupSetupIntent.ToggleSlotWeekday(GroupWeekday.THURSDAY))
+        viewModel.onIntent(GroupSetupIntent.ConfirmSlot)
+        runCurrent()
+
+        assertEquals(
+            listOf(GroupWeekday.TUESDAY, GroupWeekday.THURSDAY),
+            viewModel.state.value.form.regularSlots.map { it.weekday },
+        )
+    }
+
+    @Test
+    fun `sem nenhum dia marcado salvar nao faz nada`() = runTest(mainDispatcher) {
+        val viewModel = viewModel(form = completeForm.copy(regularSlots = emptyList()))
+
+        viewModel.onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = null)))
+        viewModel.onIntent(GroupSetupIntent.ToggleSlotWeekday(GroupWeekday.TUESDAY))
+        viewModel.onIntent(GroupSetupIntent.ConfirmSlot)
+        runCurrent()
+
+        assertEquals(emptyList(), viewModel.state.value.form.regularSlots)
+        assertTrue(viewModel.state.value.sheet is GroupSetupSheet.Slot)
+    }
+
+    @Test
+    fun `horario salvo com outro minuto mantem o minuto ate a pessoa trocar`() = runTest(mainDispatcher) {
+        val odd = GroupRegularSlotForm(weekday = GroupWeekday.FRIDAY, startTime = "20:20", durationMinutes = 120)
+        val viewModel = viewModel(form = completeForm.copy(regularSlots = listOf(odd)))
+
+        viewModel.onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = 0)))
+        assertEquals(20, viewModel.state.value.slotDraft.minute)
+        viewModel.onIntent(GroupSetupIntent.PickSlotTime(hour = 21, minute = 20))
+        viewModel.onIntent(GroupSetupIntent.ConfirmSlot)
+        runCurrent()
+
+        assertEquals("21:20", viewModel.state.value.form.regularSlots.single().startTime)
+    }
+
+    @Test
     fun `escolher modalidade ou categoria aplica e fecha a folha`() = runTest(mainDispatcher) {
         val viewModel = viewModel()
 

@@ -33,8 +33,6 @@ import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupSheet
 import br.com.saqz.groups.presentation.setup.GroupSetupState
-import br.com.saqz.groups.presentation.ui.components.GroupSlotPicker
-import br.com.saqz.groups.presentation.ui.components.SlotDraft
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_delete_body
@@ -48,7 +46,8 @@ import br.com.saqz.groups.resources.group_setup_level_label
 import br.com.saqz.groups.resources.group_setup_modality_hint
 import br.com.saqz.groups.resources.group_setup_modality_label
 import br.com.saqz.groups.resources.group_slot_save
-import br.com.saqz.groups.resources.group_slot_title
+import br.com.saqz.groups.resources.group_slot_save_many
+import br.com.saqz.groups.resources.group_slot_sheet_title
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -97,26 +96,32 @@ internal fun GroupSetupSheets(
             )
         }
 
+        val slotSheet = sheet as? GroupSetupSheet.Slot
+        val adding = slotSheet == null || slotSheet.index == null || slotSheet.index !in state.form.regularSlots.indices
+        val daysToSave = state.slotDraft.weekdays.size
         SaqzBottomSheet(
-            open = sheet is GroupSetupSheet.Slot,
+            open = slotSheet != null,
             onClose = close,
-            title = stringResource(Res.string.group_slot_title),
+            title = stringResource(Res.string.group_slot_sheet_title),
             footer = {
                 SaqzButton(
-                    label = stringResource(Res.string.group_slot_save),
+                    label = if (adding && daysToSave > 1) {
+                        stringResource(Res.string.group_slot_save_many, daysToSave)
+                    } else {
+                        stringResource(Res.string.group_slot_save)
+                    },
                     onClick = { onIntent(GroupSetupIntent.ConfirmSlot) },
+                    enabled = daysToSave > 0,
                     fullWidth = true,
                     modifier = Modifier.testTag(GroupSetupTags.SlotSave),
                 )
             },
         ) {
-            GroupSlotPicker(
-                draft = SlotDraft(
-                    weekday = state.slotDraft.weekday,
-                    hour = state.slotDraft.hour,
-                    minute = state.slotDraft.minute,
-                ),
-                onDayPick = { onIntent(GroupSetupIntent.PickSlotWeekday(it)) },
+            GroupSlotSheetContent(
+                draft = state.slotDraft,
+                multiple = adding,
+                onToggleDay = { onIntent(GroupSetupIntent.ToggleSlotWeekday(it)) },
+                onPickDay = { onIntent(GroupSetupIntent.PickSlotWeekday(it)) },
                 onTimePick = { hour, minute -> onIntent(GroupSetupIntent.PickSlotTime(hour, minute)) },
             )
         }

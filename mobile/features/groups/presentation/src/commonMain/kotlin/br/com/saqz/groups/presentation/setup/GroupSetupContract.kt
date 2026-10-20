@@ -42,10 +42,13 @@ sealed interface GroupSetupSheet {
  * Koin. A conversão é uma linha, no ponto onde o `GroupSlotPicker` é chamado.
  */
 data class GroupSlotDraft(
-    val weekday: GroupWeekday = GroupWeekday.TUESDAY,
+    /** Ao adicionar, vários dias de uma vez; ao editar um horário que já existe, um só. */
+    val weekdays: Set<GroupWeekday> = setOf(GroupWeekday.TUESDAY),
     val hour: Int = 19,
     val minute: Int = 30,
-)
+) {
+    constructor(weekday: GroupWeekday, hour: Int, minute: Int) : this(setOf(weekday), hour, minute)
+}
 
 object GroupPositionDefaults {
     const val MaxPerPosition = 100
@@ -245,7 +248,11 @@ sealed interface GroupSetupIntent {
 
     data object CloseSheet : GroupSetupIntent
 
+    /** Troca o dia do horário em edição (um só dia). */
     data class PickSlotWeekday(val weekday: GroupWeekday) : GroupSetupIntent
+
+    /** Liga ou desliga um dia ao adicionar horários (seleção múltipla). */
+    data class ToggleSlotWeekday(val weekday: GroupWeekday) : GroupSetupIntent
 
     data class PickSlotTime(val hour: Int, val minute: Int) : GroupSetupIntent
 

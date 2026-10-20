@@ -171,8 +171,22 @@
     <!-- 2c · picker -->
     <string name="group_slot_title">Dia e horário</string>
     <string name="group_slot_weekday">Dia da semana</string>
+    <string name="group_slot_sheet_title">Dias e horário</string>
+    <string name="group_slot_sheet_weekday">Dias da semana</string>
+    <string name="group_slot_weekday_hint">Pode marcar mais de um.</string>
     <string name="group_slot_time">Horário</string>
     <string name="group_slot_save">Salvar</string>
+    <string name="group_slot_save_many">Salvar %1$d horários</string>
+    <string name="group_slot_hour">Hora</string>
+    <string name="group_slot_hour_value">%1$dh</string>
+    <string name="group_slot_hour_before">Uma hora antes</string>
+    <string name="group_slot_hour_after">Uma hora depois</string>
+    <string name="group_slot_minutes">Minutos</string>
+    <string name="group_slot_time_with_minutes">%1$dh%2$s</string>
+    <string name="group_slot_summary">%1$s, às %2$s.</string>
+    <string name="group_slot_summary_and">e</string>
+    <string name="group_slot_summary_every_f">Toda</string>
+    <string name="group_slot_summary_every_m">Todo</string>
 
 
     <!-- 2j · exclusão -->
