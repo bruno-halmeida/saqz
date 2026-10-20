@@ -772,7 +772,8 @@ class GroupDetailsViewModel(
 
     /**
      * Jogo com vagas por posição pede a escolha da posição na tela própria (DEB-107): lê a presença antes e, havendo
-     * posições, abre a tela de posição em vez de responder. Sem posições, ou com a leitura falhando, responde direto.
+     * posições, abre a tela de posição em vez de responder. Sem posições, responde direto; com a leitura falhando, não envia
+     * nada e mostra o erro de resposta.
      */
     private fun respondOrPickPosition(intent: AttendanceIntent) {
         val current = state.value
@@ -783,8 +784,14 @@ class GroupDetailsViewModel(
             return
         }
         viewModelScope.launch {
-            val positions = (attendanceGateway.read(GroupId(groupId), game.gameId) as? SaqzResult.Success)?.value?.hasPositions == true
-            if (positions) emit(GroupDetailsEffect.PickPosition(groupId, game.gameId)) else respond(intent)
+            when (val read = attendanceGateway.read(GroupId(groupId), game.gameId)) {
+                is SaqzResult.Success ->
+                    if (read.value.hasPositions) emit(GroupDetailsEffect.PickPosition(groupId, game.gameId)) else respond(intent)
+                // Sem a leitura não dá para saber se o jogo pede posição: nada é enviado (DEB-107).
+                is SaqzResult.Failure -> update {
+                    it.copy(responding = false, responseFailed = true, responseOffline = read.error.isOffline())
+                }
+            }
         }
     }
 

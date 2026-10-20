@@ -132,6 +132,24 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `DEB-107 Vou whose attendance read fails sends nothing and shows the response error`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val vm = viewModel(groupGateway = athleteGroupGateway(), attendanceGateway = attendance,
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))))
+        advanceUntilIdle()
+        // A carga já leu; a leitura do "Vou" falha.
+        attendance.detailResult = SaqzResult.Failure(AttendanceError.Data(br.com.saqz.domain.DataError.Connectivity))
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        assertEquals(0, attendance.respondCalls)
+        assertTrue(vm.state.value.responseFailed)
+        assertTrue(vm.state.value.responseOffline)
+        assertFalse(vm.state.value.responding)
+    }
+
+    @Test
     fun `second Vou or Nao vou while the first is in flight is ignored and answers again once it ends`() = runTest {
         val attendance = FakeAttendanceGateway().apply { respondDeferred = CompletableDeferred() }
         val vm = viewModel(groupGateway = athleteGroupGateway(), attendanceGateway = attendance,

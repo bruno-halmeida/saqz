@@ -612,6 +612,28 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `DEB-107 Vou whose attendance read fails sends nothing and shows the response error`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            detailResult = SaqzResult.Failure(AttendanceError.Data(br.com.saqz.domain.DataError.Connectivity)),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = sampleNextGame()))),
+            attendanceGateway = attendance,
+        )
+        val effects = mutableListOf<HomeEffect>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.effects.toList(effects) }
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        assertEquals(0, attendance.respondCalls)
+        assertTrue(effects.none { it is HomeEffect.PickPosition })
+        assertTrue(viewModel.state.value.responseFailed)
+        assertTrue(viewModel.state.value.responseOffline)
+        assertFalse(viewModel.state.value.responding)
+    }
+
+    @Test
     fun `response is optimistic and successful confirmation refreshes home with a toast`() = runTest {
         val response = CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>()
         val attendance = FakeAttendanceGateway()

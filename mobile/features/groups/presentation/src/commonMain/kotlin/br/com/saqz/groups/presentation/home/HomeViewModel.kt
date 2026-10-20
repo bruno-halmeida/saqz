@@ -382,8 +382,8 @@ class HomeViewModel(
 
     /**
      * "Vou" no cartão do próximo jogo. Jogo com vagas por posição pede a escolha da posição na tela própria (DEB-107): lê a
-     * presença antes e, havendo posições, abre a tela de posição em vez de responder. Sem posições, ou quando a leitura
-     * falha, responde direto como sempre (o servidor escolhe pelo perfil).
+     * presença antes e, havendo posições, abre a tela de posição em vez de responder. Sem posições, responde direto como
+     * sempre; com a leitura falhando, não envia nada e mostra o erro de resposta.
      */
     private fun respond(intent: AttendanceIntent) {
         val current = state.value
@@ -394,9 +394,16 @@ class HomeViewModel(
             return
         }
         viewModelScope.launch {
-            val positions = (attendanceGateway.read(GroupId(context.game.groupId.value), context.game.gameId) as? SaqzResult.Success)
-                ?.value?.hasPositions == true
-            if (positions) emit(HomeEffect.PickPosition(context.game.groupId.value, context.game.gameId)) else sendResponse(intent)
+            when (val read = attendanceGateway.read(GroupId(context.game.groupId.value), context.game.gameId)) {
+                is SaqzResult.Success ->
+                    if (read.value.hasPositions) emit(HomeEffect.PickPosition(context.game.groupId.value, context.game.gameId))
+                    else sendResponse(intent)
+                // Sem a leitura não dá para saber se o jogo pede posição: nada é enviado, e o erro de resposta convida a
+                // tentar de novo (em jogo 5-1 o servidor escolheria a posição por baixo).
+                is SaqzResult.Failure -> update {
+                    it.copy(responding = false, responseFailed = true, responseOffline = read.error.isOffline())
+                }
+            }
         }
     }
 
