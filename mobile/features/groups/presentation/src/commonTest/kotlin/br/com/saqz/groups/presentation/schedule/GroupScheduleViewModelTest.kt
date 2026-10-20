@@ -14,6 +14,7 @@ import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleGame
 import br.com.saqz.groups.model.GroupRegularSlotForm
+import br.com.saqz.groups.presentation.setup.GroupSlotDraft
 import br.com.saqz.groups.model.GroupWeekday
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -344,14 +345,79 @@ class GroupScheduleViewModelTest {
     }
 
     @Test
-    fun `duplicate slots cannot be saved`() = runTest {
+    fun `two days at once become one slot per day with the group duration`() = runTest {
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeScheduleGateway())
+        vm.onIntent(GroupScheduleIntent.SelectDuration(90))
+        vm.onIntent(GroupScheduleIntent.AddSlot)
+        vm.onIntent(GroupScheduleIntent.ToggleDraftDay(GroupWeekday.THURSDAY))
+        vm.onIntent(GroupScheduleIntent.ToggleDraftDay(GroupWeekday.TUESDAY))
+        vm.onIntent(GroupScheduleIntent.PickDraftTime(hour = 20, minute = 15))
+        vm.onIntent(GroupScheduleIntent.ConfirmSlot)
+        val slots = vm.state.value.slots
+        assertEquals(
+            listOf(GroupWeekday.TUESDAY to "19:30", GroupWeekday.THURSDAY to "20:15"),
+            listOf(slots[0].weekday to slots[0].startTime, slots[1].weekday to slots[1].startTime),
+        )
+        assertEquals(listOf(90, 90), slots.map { it.durationMinutes })
+        assertEquals(null, vm.state.value.slotSheet)
+    }
+
+    @Test
+    fun `a day and time the group already has is not added twice`() = runTest {
         val gateway = FakeScheduleGateway()
         val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
         vm.onIntent(GroupScheduleIntent.AddSlot)
-        vm.onIntent(GroupScheduleIntent.PickDraftDay(GroupWeekday.TUESDAY))
+        vm.onIntent(GroupScheduleIntent.ToggleDraftDay(GroupWeekday.THURSDAY))
         vm.onIntent(GroupScheduleIntent.PickDraftTime(hour = 19, minute = 30))
         vm.onIntent(GroupScheduleIntent.ConfirmSlot)
-        assertEquals(2, vm.state.value.slots.size)
+        assertEquals(listOf(GroupWeekday.TUESDAY, GroupWeekday.THURSDAY), vm.state.value.slots.map { it.weekday })
+        vm.onIntent(GroupScheduleIntent.Save)
+        assertEquals(1, gateway.writes)
+    }
+
+    @Test
+    fun `confirming with no day marked keeps the sheet open`() = runTest {
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeScheduleGateway())
+        vm.onIntent(GroupScheduleIntent.AddSlot)
+        vm.onIntent(GroupScheduleIntent.ToggleDraftDay(GroupWeekday.TUESDAY))
+        vm.onIntent(GroupScheduleIntent.ConfirmSlot)
+        assertEquals(GroupScheduleState.NEW_SLOT, vm.state.value.slotSheet)
+        assertEquals(1, vm.state.value.slots.size)
+    }
+
+    @Test
+    fun `editing a slot opens it with its day and time and replaces it`() = runTest {
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeScheduleGateway())
+        vm.onIntent(GroupScheduleIntent.EditSlot(0))
+        assertEquals(0, vm.state.value.slotSheet)
+        assertEquals(GroupSlotDraft(GroupWeekday.TUESDAY, 19, 30), vm.state.value.slotDraft)
+        vm.onIntent(GroupScheduleIntent.PickDraftDay(GroupWeekday.FRIDAY))
+        vm.onIntent(GroupScheduleIntent.ConfirmSlot)
+        assertEquals(listOf(GroupWeekday.FRIDAY to "19:30"), vm.state.value.slots.map { it.weekday to it.startTime })
+    }
+
+    @Test
+    fun `a saved minute off the grid is kept until another one is picked`() = runTest {
+        val gateway = FakeScheduleGateway(
+            defaultSchedule.copy(slots = listOf(GroupScheduleSlot(DomainGroupWeekday.TUESDAY, "19:20"))),
+        )
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+        vm.onIntent(GroupScheduleIntent.EditSlot(0))
+        assertEquals(20, vm.state.value.slotDraft.minute)
+        vm.onIntent(GroupScheduleIntent.PickDraftDay(GroupWeekday.WEDNESDAY))
+        vm.onIntent(GroupScheduleIntent.ConfirmSlot)
+        assertEquals("19:20", vm.state.value.slots.single().startTime)
+        vm.onIntent(GroupScheduleIntent.EditSlot(0))
+        vm.onIntent(GroupScheduleIntent.PickDraftTime(hour = 19, minute = 45))
+        vm.onIntent(GroupScheduleIntent.ConfirmSlot)
+        assertEquals("19:45", vm.state.value.slots.single().startTime)
+    }
+
+    @Test
+    fun `duplicate slots in the form cannot be saved`() = runTest {
+        val twice = GroupScheduleSlot(DomainGroupWeekday.TUESDAY, "19:30")
+        val gateway = FakeScheduleGateway(defaultSchedule.copy(slots = listOf(twice, twice)))
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
         vm.onIntent(GroupScheduleIntent.Save)
         assertEquals(GroupUiError.Validation, vm.state.value.error)
         assertEquals(0, gateway.writes)

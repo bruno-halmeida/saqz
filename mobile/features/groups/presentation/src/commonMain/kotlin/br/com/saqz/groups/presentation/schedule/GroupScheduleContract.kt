@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.GroupUiError
-import br.com.saqz.groups.presentation.ui.components.SlotDraft
+import br.com.saqz.groups.presentation.setup.GroupSlotDraft
 
 /**
  * 2m — agenda e recorrência.
@@ -14,12 +14,10 @@ import br.com.saqz.groups.presentation.ui.components.SlotDraft
  * remoto só expõe os horários recorrentes, então ele serve para hidratar o valor inicial.
  *
  * Convenção do `slotSheet`: `null` é sheet fechado; [NEW_SLOT] (-1) é o slot que ainda
- * não existe na lista. Índice >= 0 fica reservado para editar uma pílula existente —
- * o 2m não oferece esse toque (a pílula só tem o botão de remover), então nada produz
- * esse valor hoje.
+ * não existe na lista. Índice >= 0 edita o horário que está nessa posição da lista
+ * ([GroupScheduleIntent.EditSlot]); a pílula ainda não oferece esse toque, então a tela não produz esse valor hoje.
  *
- * O contrato inteiro é `internal` porque [SlotDraft] é `internal` ao módulo; só o Root
- * atravessa a fronteira pública.
+ * O contrato inteiro é `internal`; só o Root atravessa a fronteira pública.
  */
 @Immutable
 internal data class GroupScheduleState(
@@ -35,13 +33,13 @@ internal data class GroupScheduleState(
     val upcoming: List<UpcomingGameUi> = emptyList(),
     val isPaused: Boolean = false,
     val slotSheet: Int? = null,
-    val slotDraft: SlotDraft = NEW_SLOT_DRAFT,
+    val slotDraft: GroupSlotDraft = NEW_SLOT_DRAFT,
     val isSaving: Boolean = false,
 ) {
     companion object {
         const val NEW_SLOT = -1
 
-        val NEW_SLOT_DRAFT = SlotDraft(weekday = GroupWeekday.TUESDAY, hour = 19, minute = 0)
+        val NEW_SLOT_DRAFT = GroupSlotDraft()
     }
 }
 
@@ -72,7 +70,13 @@ internal sealed interface GroupScheduleIntent {
 
     data class RemoveSlot(val slot: GroupRegularSlotForm) : GroupScheduleIntent
 
+    data class EditSlot(val index: Int) : GroupScheduleIntent
+
+    /** Ao editar um horário que existe, um dia só. */
     data class PickDraftDay(val weekday: GroupWeekday) : GroupScheduleIntent
+
+    /** Ao adicionar, vários dias de uma vez. */
+    data class ToggleDraftDay(val weekday: GroupWeekday) : GroupScheduleIntent
 
     data class PickDraftTime(val hour: Int, val minute: Int) : GroupScheduleIntent
 

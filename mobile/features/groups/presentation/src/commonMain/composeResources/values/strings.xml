@@ -173,12 +173,9 @@
     <string name="group_load_not_found">Grupo não encontrado</string>
 
     <!-- 2c · picker -->
-    <string name="group_slot_title">Dia e horário</string>
-    <string name="group_slot_weekday">Dia da semana</string>
     <string name="group_slot_sheet_title">Dias e horário</string>
     <string name="group_slot_sheet_weekday">Dias da semana</string>
     <string name="group_slot_weekday_hint">Pode marcar mais de um.</string>
-    <string name="group_slot_time">Horário</string>
     <string name="group_slot_save">Salvar</string>
     <string name="group_slot_save_many">Salvar %1$d horários</string>
     <string name="group_slot_hour">Hora</string>

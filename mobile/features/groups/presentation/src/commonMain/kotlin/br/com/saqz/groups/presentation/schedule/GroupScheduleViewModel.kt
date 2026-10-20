@@ -12,7 +12,9 @@ import br.com.saqz.groups.domain.group.*
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.model.GroupRegularSlotForm
-import br.com.saqz.groups.presentation.ui.components.SlotDraft
+import br.com.saqz.groups.presentation.setup.toDraft
+import br.com.saqz.groups.presentation.setup.withSlotConfirmed
+import br.com.saqz.groups.presentation.setup.withWeekdayToggled
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
@@ -49,8 +51,14 @@ internal class GroupScheduleViewModel(
                 it.copy(slotSheet = GroupScheduleState.NEW_SLOT, slotDraft = GroupScheduleState.NEW_SLOT_DRAFT)
             }
             is GroupScheduleIntent.RemoveSlot -> update { it.copy(slots = it.slots - intent.slot) }
+            is GroupScheduleIntent.EditSlot -> state.value.slots.getOrNull(intent.index)?.let { slot ->
+                update { it.copy(slotSheet = intent.index, slotDraft = slot.toDraft()) }
+            }
             is GroupScheduleIntent.PickDraftDay -> update {
-                it.copy(slotDraft = it.slotDraft.copy(weekday = intent.weekday))
+                it.copy(slotDraft = it.slotDraft.copy(weekdays = setOf(intent.weekday)))
+            }
+            is GroupScheduleIntent.ToggleDraftDay -> update {
+                it.copy(slotDraft = it.slotDraft.withWeekdayToggled(intent.weekday))
             }
             is GroupScheduleIntent.PickDraftTime -> update {
                 it.copy(slotDraft = it.slotDraft.copy(hour = intent.hour, minute = intent.minute))
@@ -154,13 +162,11 @@ internal class GroupScheduleViewModel(
     }
 
     private fun confirmSlot() {
-        if (state.value.slotSheet == null) return
-        update {
-            it.copy(
-                slots = it.slots + it.slotDraft.toForm(it.durationMinutes),
-                slotSheet = null,
-            )
-        }
+        val current = state.value
+        val sheet = current.slotSheet ?: return
+        val slots = current.slots.withSlotConfirmed(current.slotDraft, current.durationMinutes, sheet.takeIf { it >= 0 })
+            ?: return
+        update { it.copy(slots = slots, slotSheet = null) }
     }
 
     private fun save() {
@@ -231,14 +237,6 @@ private fun String.toDateBadge(): Pair<String, String> {
         this to ""
     }
 }
-
-private fun SlotDraft.toForm(durationMinutes: Int) = GroupRegularSlotForm(
-    weekday = weekday,
-    startTime = "${hour.padded()}:${minute.padded()}",
-    durationMinutes = durationMinutes,
-)
-
-private fun Int.padded() = toString().padStart(2, '0')
 
 /** `localTime` chega da API como `HH:mm` ou `HH:mm:ss`; a lista mostra `HHhmm`, como o resto do app. */
 private fun String.toHourLabel(): String {

@@ -37,15 +37,6 @@ class GroupsComponentsScreenshotTest {
     val compose = createComposeRule()
 
     @Test
-    fun slotPicker() = capture("group-slot-picker") {
-        GroupSlotPicker(
-            draft = SlotDraft(GroupWeekday.TUESDAY, hour = 19, minute = 30),
-            onDayPick = {},
-            onTimePick = { _, _ -> },
-        )
-    }
-
-    @Test
     fun recurrenceSection() = capture("group-recurrence-section") {
         GroupRecurrenceSection(
             recurring = true,

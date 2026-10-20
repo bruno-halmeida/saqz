@@ -638,11 +638,6 @@ private fun br.com.saqz.groups.domain.group.Group.needsRosterToShowMonthlyPolicy
 
 private fun GroupTimeZone.toDomain() = DomainGroupTimeZone(id)
 
-private fun GroupRegularSlotForm.toDraft(): GroupSlotDraft {
-    val parts = startTime.split(':')
-    return GroupSlotDraft(weekday, parts.getOrNull(0)?.toIntOrNull() ?: 0, parts.getOrNull(1)?.toIntOrNull() ?: 0)
-}
-
 
 private val EmptyVenue = GroupVenueForm(name = "", address = "")
 

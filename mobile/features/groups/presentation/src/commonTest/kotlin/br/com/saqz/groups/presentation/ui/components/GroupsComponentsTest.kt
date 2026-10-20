@@ -19,27 +19,6 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class GroupsComponentsTest {
     @Test
-    fun slotPickerForwardsDayAndTimePicks() = runComposeUiTest {
-        var pickedDay: GroupWeekday? = null
-        var pickedTime: Pair<Int, Int>? = null
-        setContent {
-            SaqzTheme {
-                GroupSlotPicker(
-                    draft = SlotDraft(GroupWeekday.TUESDAY, hour = 19, minute = 30),
-                    onDayPick = { pickedDay = it },
-                    onTimePick = { hour, minute -> pickedTime = hour to minute },
-                )
-            }
-        }
-
-        onNodeWithText("Qui").performClick()
-        onNodeWithText("20h00").performClick()
-
-        assertEquals(GroupWeekday.THURSDAY, pickedDay)
-        assertEquals(20 to 0, pickedTime)
-    }
-
-    @Test
     fun recurrenceOnlyOffersSlotsWhenEnabled() = runComposeUiTest {
         setContent {
             SaqzTheme {

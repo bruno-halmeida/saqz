@@ -1,7 +1,10 @@
 package br.com.saqz.groups.presentation.ui.schedule
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
@@ -13,7 +16,11 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.model.GroupRegularSlotForm
+import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.schedule.GroupScheduleIntent
+import br.com.saqz.groups.presentation.setup.GroupSlotDraft
+import br.com.saqz.groups.presentation.ui.setup.GroupSlotSheetTags
 import br.com.saqz.groups.presentation.schedule.GroupScheduleState
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -51,5 +58,70 @@ class GroupScheduleScreenTest {
         onNodeWithText("3h15").performScrollTo().assertExists()
         onNodeWithContentDescription("Aumentar a duração").performScrollTo().performClick()
         assertEquals(GroupScheduleIntent.SelectDuration(240), intents.last())
+    }
+
+    private fun withSheet(draft: GroupSlotDraft, index: Int = GroupScheduleState.NEW_SLOT) = loaded().copy(
+        slots = listOf(GroupRegularSlotForm(weekday = GroupWeekday.TUESDAY, startTime = "19:30", durationMinutes = 120)),
+        slotSheet = index,
+        slotDraft = draft,
+    )
+
+    @Test
+    fun `the new slot sheet takes several days and offers to save them all`() = runComposeUiTest {
+        val intents = mutableListOf<GroupScheduleIntent>()
+        val draft = GroupSlotDraft(setOf(GroupWeekday.TUESDAY, GroupWeekday.THURSDAY), 19, 30)
+        setContent { SaqzTheme { GroupScheduleScreen(withSheet(draft), { intents += it }, {}) } }
+
+        onNodeWithText("Dias e horário").assertExists()
+        onNodeWithText("Pode marcar mais de um.").assertExists()
+        onNodeWithText("Toda terça e quinta, às 19h30.").assertExists()
+        onNodeWithTag(GroupSlotSheetTags.weekday(GroupWeekday.FRIDAY)).performClick()
+        onNodeWithTag(GroupSlotSheetTags.minute(45)).performClick()
+        onNodeWithTag(GroupScheduleTags.SlotSheetSave).assertTextEquals("Salvar 2 horários")
+        onNodeWithTag(GroupScheduleTags.SlotSheetSave).performClick()
+        assertEquals(
+            listOf(
+                GroupScheduleIntent.ToggleDraftDay(GroupWeekday.FRIDAY),
+                GroupScheduleIntent.PickDraftTime(19, 45),
+                GroupScheduleIntent.ConfirmSlot,
+            ),
+            intents,
+        )
+    }
+
+    @Test
+    fun `editing a slot is a single day and saves one`() = runComposeUiTest {
+        val intents = mutableListOf<GroupScheduleIntent>()
+        setContent {
+            SaqzTheme {
+                GroupScheduleScreen(withSheet(GroupSlotDraft(GroupWeekday.TUESDAY, 19, 30), index = 0), { intents += it }, {})
+            }
+        }
+
+        onNodeWithText("Pode marcar mais de um.").assertDoesNotExist()
+        onNodeWithTag(GroupScheduleTags.SlotSheetSave).assertTextEquals("Salvar")
+        onNodeWithTag(GroupSlotSheetTags.weekday(GroupWeekday.FRIDAY)).performClick()
+        assertEquals(GroupScheduleIntent.PickDraftDay(GroupWeekday.FRIDAY), intents.last())
+    }
+
+    @Test
+    fun `a saved minute off the grid shows in the summary and marks none`() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GroupScheduleScreen(withSheet(GroupSlotDraft(GroupWeekday.TUESDAY, 19, 20), index = 0), {}, {})
+            }
+        }
+
+        onNodeWithText("Toda terça, às 19h20.").assertExists()
+        listOf(0, 15, 30, 45).forEach { onNodeWithTag(GroupSlotSheetTags.minute(it)).assertIsNotSelected() }
+    }
+
+    @Test
+    fun `save is disabled with no day marked`() = runComposeUiTest {
+        setContent {
+            SaqzTheme { GroupScheduleScreen(withSheet(GroupSlotDraft(emptySet(), 19, 30)), {}, {}) }
+        }
+
+        onNodeWithTag(GroupScheduleTags.SlotSheetSave).assertIsNotEnabled()
     }
 }
