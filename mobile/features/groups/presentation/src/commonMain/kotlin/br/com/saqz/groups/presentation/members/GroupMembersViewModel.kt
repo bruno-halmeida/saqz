@@ -383,9 +383,13 @@ class GroupMembersViewModel(
         val pending = requests.filter { it.name.containsQuery(query) }
         val admins = people.filter { it.isAdmin }
         val members = people.filterNot { it.isAdmin }
-        val showsPeople = state.filter != GroupMembersFilter.Pending
+        val showsPeople = state.filter != GroupMembersFilter.Pending && state.filter != GroupMembersFilter.Invited
         state.copy(
-            joinRequests = if (state.filter == GroupMembersFilter.Admins) emptyList() else pending,
+            joinRequests = if (state.filter == GroupMembersFilter.Admins || state.filter == GroupMembersFilter.Invited) {
+                emptyList()
+            } else {
+                pending
+            },
             admins = if (showsPeople) admins else emptyList(),
             members = if (state.filter == GroupMembersFilter.All) members else emptyList(),
             shownCount = if (state.filter == GroupMembersFilter.All) members.size else 0,

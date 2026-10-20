@@ -26,6 +26,8 @@ import br.com.saqz.designsystem.SaqzToast
 import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.presentation.members.GroupInviteesIntent
+import br.com.saqz.groups.presentation.members.GroupInviteesState
 import br.com.saqz.groups.presentation.members.GroupMemberAction
 import br.com.saqz.groups.presentation.members.GroupMembersFilter
 import br.com.saqz.groups.presentation.members.GroupMembersIntent
@@ -65,6 +67,7 @@ internal object GroupMembersTags {
     const val RequestsFailed = "group-members-requests-failed"
     const val RosterFailed = "group-members-roster-failed"
     const val Notice = "group-members-notice"
+    const val InviteesNotice = "group-members-invitees-notice"
 
     fun filter(filter: GroupMembersFilter) = "group-members-filter-${filter.name}"
 
@@ -89,6 +92,8 @@ fun GroupMembersScreen(
     onIntent: (GroupMembersIntent) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    invitees: GroupInviteesState = GroupInviteesState(),
+    onInviteesIntent: (GroupInviteesIntent) -> Unit = {},
 ) {
     val metrics = SaqzTheme.metrics
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
@@ -118,6 +123,8 @@ fun GroupMembersScreen(
                         adminCount = state.adminCount,
                         pendingCount = state.pendingCount,
                         showPending = state.canReviewRequests,
+                        // O chip só aparece com convidados, e só para quem vê a seção (dono e admin).
+                        invitedCount = invitees.invitees.size.takeIf { invitees.visible && it > 0 },
                         onSelect = { onIntent(GroupMembersIntent.SelectFilter(it)) },
                     )
                 }
@@ -155,6 +162,9 @@ fun GroupMembersScreen(
                         )
                     }
                 } else {
+                    if (state.filter == GroupMembersFilter.All || state.filter == GroupMembersFilter.Invited) {
+                        inviteesContent(invitees, onInviteesIntent)
+                    }
                     membersContent(state, onIntent)
                 }
             }
@@ -163,6 +173,16 @@ fun GroupMembersScreen(
         GroupMemberActionsSheet(selected = state.selected, onIntent = onIntent)
         GroupMemberRemoveConfirmation(member = state.confirmRemove, onIntent = onIntent)
         GroupJoinRequestDeclineConfirmation(request = state.declineCandidate, onIntent = onIntent)
+        GroupInviteeActionsSheet(selected = invitees.selected, onIntent = onInviteesIntent)
+        GroupInviteesInvalidateConfirmation(open = invitees.confirmInvalidate, onIntent = onInviteesIntent)
+        SaqzToast(
+            visible = invitees.notice != null,
+            onDismiss = { onInviteesIntent(GroupInviteesIntent.ClearNotice) },
+            modifier = Modifier.align(Alignment.BottomCenter).padding(SaqzTheme.metrics.horizontalPadding)
+                .testTag(GroupMembersTags.InviteesNotice),
+        ) {
+            SaqzToastText(invitees.notice?.let { inviteesNoticeText(it) }.orEmpty())
+        }
         SaqzToast(
             visible = state.notice != null,
             onDismiss = { onIntent(GroupMembersIntent.ClearNotice) },

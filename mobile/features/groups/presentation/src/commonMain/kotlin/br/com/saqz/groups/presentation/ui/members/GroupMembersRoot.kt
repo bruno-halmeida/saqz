@@ -9,6 +9,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.groups.domain.moderation.ReportTargetType
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import br.com.saqz.groups.presentation.members.GroupInviteesEffect
+import br.com.saqz.groups.presentation.members.GroupInviteesIntent
+import br.com.saqz.groups.presentation.members.GroupInviteesViewModel
 import br.com.saqz.groups.presentation.members.GroupMembersEffect
 import br.com.saqz.groups.presentation.members.GroupMembersIntent
 import br.com.saqz.groups.presentation.members.GroupMembersViewModel
@@ -39,15 +44,29 @@ fun GroupMembersRoot(
     onOpenMemberEditor: (String) -> Unit,
     onOpenInvite: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenMonthlyInvite: (String) -> Unit = {},
     viewModel: GroupMembersViewModel = koinViewModel(
         key = "members/$groupId",
         parameters = { parametersOf(groupId) },
     ),
     moderation: ModerationViewModel = koinViewModel(key = "moderation/members/$groupId"),
+    invitees: GroupInviteesViewModel = koinViewModel(key = "invitees/$groupId", parameters = { parametersOf(groupId) }),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val inviteesState by invitees.state.collectAsStateWithLifecycle()
+    @Suppress("DEPRECATION")
+    val clipboard = LocalClipboardManager.current
+    ObserveAsEvents(invitees.effects) { effect ->
+        when (effect) {
+            is GroupInviteesEffect.OpenMonthlyInvite -> onOpenMonthlyInvite(effect.groupId)
+            is GroupInviteesEffect.Copy -> clipboard.setText(AnnotatedString(effect.text))
+        }
+    }
     val moderationState by moderation.state.collectAsStateWithLifecycle()
-    RefreshWhenVisible { viewModel.onIntent(GroupMembersIntent.Refresh) }
+    RefreshWhenVisible {
+        viewModel.onIntent(GroupMembersIntent.Refresh)
+        invitees.onIntent(GroupInviteesIntent.Refresh)
+    }
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             is GroupMembersEffect.OpenMemberProfile -> onOpenProfile(effect.memberId)
@@ -65,7 +84,13 @@ fun GroupMembersRoot(
         }
     }
     Box(modifier = modifier.fillMaxSize()) {
-        GroupMembersScreen(state = state, onIntent = viewModel::onIntent, onBack = onBack)
+        GroupMembersScreen(
+            state = state,
+            onIntent = viewModel::onIntent,
+            onBack = onBack,
+            invitees = inviteesState,
+            onInviteesIntent = invitees::onIntent,
+        )
         ModerationOverlay(state = moderationState, onIntent = moderation::onIntent)
     }
 }

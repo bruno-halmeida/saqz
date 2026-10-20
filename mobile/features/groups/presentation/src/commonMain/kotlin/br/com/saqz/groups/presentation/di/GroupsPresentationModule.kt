@@ -96,6 +96,7 @@ fun groupsPresentationModule(): Module = module {
     singleOf(::BlockedPeopleRepository)
     viewModelOf(::ModerationViewModel)
     viewModel { params -> GroupMembersViewModel(params.get(), get(), get(), get(), get(), get(), getOrNull()) }
+    viewModel { params -> br.com.saqz.groups.presentation.members.GroupInviteesViewModel(params.get(), get()) }
     viewModel { params ->
         br.com.saqz.groups.presentation.monthlyinvite.MonthlyInviteViewModel(params.get(), get(), get(), get(), get(), get())
     }

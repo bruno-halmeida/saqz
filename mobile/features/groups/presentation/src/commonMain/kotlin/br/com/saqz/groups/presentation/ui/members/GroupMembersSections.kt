@@ -42,6 +42,7 @@ import br.com.saqz.groups.presentation.members.JoinRequestUi
 import br.com.saqz.groups.presentation.members.MemberUi
 import br.com.saqz.groups.presentation.members.sheetActions
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.group_invitees_filter
 import br.com.saqz.groups.resources.group_member_cancel
 import br.com.saqz.groups.resources.group_member_edit
 import br.com.saqz.groups.resources.group_member_edit_hint
@@ -111,12 +112,14 @@ internal fun GroupMembersFilters(
     showPending: Boolean,
     onSelect: (GroupMembersFilter) -> Unit,
     modifier: Modifier = Modifier,
+    invitedCount: Int? = null,
 ) {
     val labels = listOfNotNull(
         GroupMembersFilter.All to stringResource(Res.string.group_members_filter_all, totalCount),
         GroupMembersFilter.Admins to stringResource(Res.string.group_members_filter_admins, adminCount),
         (GroupMembersFilter.Pending to stringResource(Res.string.group_members_filter_pending, pendingCount))
             .takeIf { showPending },
+        invitedCount?.let { GroupMembersFilter.Invited to stringResource(Res.string.group_invitees_filter, it) },
     )
     FlowRow(
         modifier = modifier.fillMaxWidth(),

@@ -3,8 +3,8 @@ package br.com.saqz.groups.presentation.members
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.presentation.GroupUiError
 
-/** Pílulas do 2k, na ordem do export: "Todos · 26", "Admins · 2", "Pendentes · 2". */
-enum class GroupMembersFilter { All, Admins, Pending }
+/** Pílulas do 2k, na ordem do export: "Todos · 26", "Admins · 2", "Pendentes · 2"; "Convidados · N" do CONV-010. */
+enum class GroupMembersFilter { All, Admins, Pending, Invited }
 
 /**
  * Linhas possíveis do sheet. Quais aparecem sai de [sheetActions], não de dois sheets:

@@ -1198,6 +1198,7 @@ internal fun SaqzNavHost(
                         onOpenInvite = { groupId ->
                             backStack.add(GroupsRoute.Invite(groupId))
                         },
+                        onOpenMonthlyInvite = { groupId -> backStack.add(GroupsRoute.MonthlyInvite(groupId)) },
                     )
                 }
                 entry<GroupsRoute.MonthlyInvite> { route ->
