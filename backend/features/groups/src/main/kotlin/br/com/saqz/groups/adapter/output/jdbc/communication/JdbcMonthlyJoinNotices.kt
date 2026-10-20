@@ -13,7 +13,7 @@ import javax.sql.DataSource
 
 /**
  * Aviso a dono e admins (menos quem entrou) quando alguém entra ou vira mensalista pelo link de mensalistas (NOT-004):
- * canal ENTRY_REQUEST com a marca `MEMBER_JOINED_BY_LINK`, que libera o WhatsApp para o telefone cadastrado (V179).
+ * canal ENTRY_REQUEST com a marca `MEMBER_JOINED_BY_LINK`, que libera o WhatsApp para o telefone cadastrado (V180).
  * Roda na transação do resgate, num SAVEPOINT: falhar aqui nunca desfaz a entrada. O `request_id` sai do grupo, da
  * pessoa, do que mudou e do início do vínculo, então repetir o resgate não duplica o aviso.
  */

@@ -2,7 +2,7 @@
 
 Regras do cofre cobertas: CONV-010, CONV-011 e CONV-012 (decididas em 20/10), os efeitos em NOT-004, MEM-003, SAI-005, SAI-007 e FIN-003 e, no bloco V10, o "aceitar o pedido como mensalista ou avulso" de CONV-007 (DEB-112, que entra **depois** do DEB-106: V10 só roda quando ele for entregue). Se o texto do app e a nota divergirem, vale a nota; anote a divergência no relato.
 
-**Backend e app do DEB-106 já estão na `main`** (migração V178: tabelas `group_monthly_invitees` e `group_monthly_invite_links`, coluna de validade `expires_at`; telefone guardado como `+55DDD9XXXXXXXX`). Os rótulos vêm do protótipo (`design/convite-mensalistas/telas.html`) e das telas implementadas; as rotas de API estão em `MonthlyInviteController` (`/api/groups/{groupId}/monthly-invites`). Passos **[mock+]** dependem das duas extensões do Uazapi falso descritas em "Antes de começar"; sem elas ficam BLOQUEADO.
+**Backend e app do DEB-106 já estão na `main`** (migração V179: tabelas `group_monthly_invitees` e `group_monthly_invite_links`, coluna de validade `expires_at`; telefone guardado como `+55DDD9XXXXXXXX`). Os rótulos vêm do protótipo (`design/convite-mensalistas/telas.html`) e das telas implementadas; as rotas de API estão em `MonthlyInviteController` (`/api/groups/{groupId}/monthly-invites`). Passos **[mock+]** dependem das duas extensões do Uazapi falso descritas em "Antes de começar"; sem elas ficam BLOQUEADO.
 
 Papéis: **ORG** (dono), **ADM** (administrador), **ATL** (avulso que já está no grupo) e **CV1**, **CV2**, **CV3**, **CV4** (pessoas de fora que recebem o link; dividem um aparelho: para trocar de papel, Perfil → "Sair da conta" e entrar com a conta do outro). As contas são as do roteiro 05: ADM é a ATL2; CV1, CV2 e CV3 são ATL3, ATL4 e ATL5; CV4 é nova.
 
