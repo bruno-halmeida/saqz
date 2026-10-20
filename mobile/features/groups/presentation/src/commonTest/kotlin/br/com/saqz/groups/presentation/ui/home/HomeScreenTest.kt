@@ -707,7 +707,7 @@ private fun nextGame(status: AttendanceStatus? = null) = HomeNextGameUi(
     groupName = "Vôlei do CERET",
     dateTime = "Ter, 28/07 · 19h30",
     local = "CERET — Quadra 2 · Tatuapé",
-    deadline = "As confirmações encerram hoje às 18h.",
+    deadline = "Prioridade dos mensalistas até hoje às 18h.",
     confirmedSummary = "9 de 12 confirmados",
     confirmedCount = 9,
     capacity = 12,

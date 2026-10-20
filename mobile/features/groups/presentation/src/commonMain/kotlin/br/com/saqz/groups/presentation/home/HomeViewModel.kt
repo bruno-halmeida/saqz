@@ -39,8 +39,8 @@ import br.com.saqz.groups.domain.home.HomeReadModel
 import br.com.saqz.groups.domain.home.HomeUpcomingGame
 import br.com.saqz.groups.presentation.game.waitlistBellLabel
 import br.com.saqz.groups.presentation.game.gameDateLabel
-import br.com.saqz.groups.presentation.game.gameDeadlineSentence
-import br.com.saqz.groups.presentation.game.gameDeadlineShort
+import br.com.saqz.groups.presentation.game.gamePrioritySentence
+import br.com.saqz.groups.presentation.game.gamePriorityShort
 import br.com.saqz.groups.presentation.game.gameHeroDisplay
 import br.com.saqz.groups.presentation.game.gameHeroMeta
 import br.com.saqz.groups.presentation.game.gameShortMonthLabel
@@ -55,7 +55,7 @@ import br.com.saqz.groups.presentation.toUiError
 import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.resources.Res
-import br.com.saqz.groups.resources.home_admin_hero_deadline_closed
+import br.com.saqz.groups.resources.home_admin_hero_priority_closed
 import br.com.saqz.groups.resources.home_admin_score_pending
 import br.com.saqz.groups.resources.home_admin_groups
 import br.com.saqz.groups.resources.home_admin_subtitle
@@ -615,14 +615,15 @@ class HomeViewModel(
         } else {
             previewWaitlistedRows
         }
-        val adminHeroDeadline = deadline?.let { adminHeroDeadlineLabel(it, confirmationOpen) } ?: ""
+        val priority = priorityWindow()
+        val adminHeroDeadline = deadline?.takeIf { priority }?.let { adminHeroDeadlineLabel(it, confirmationOpen) } ?: ""
         return HomeNextGameUi(
             groupId = groupId.value,
             gameId = gameId,
             groupName = groupName,
             dateTime = dateTime,
             local = local,
-            deadline = deadlineText(confirmationOpen, responseOpen, deadline, zone),
+            deadline = deadlineText(confirmationOpen, responseOpen, priority, deadline, zone),
             confirmedSummary = if (confirmedCount > capacity) {
                 br.com.saqz.groups.presentation.details.overCapacityLabel(confirmedCount, capacity)
             } else {
@@ -698,7 +699,7 @@ class HomeViewModel(
     }
 
     private suspend fun deadlineLabel(deadline: kotlinx.datetime.LocalDateTime?, zone: TimeZone): String =
-        deadline?.gameDeadlineSentence(now.now().toLocalDateTime(zone).date) ?: ""
+        deadline?.gamePrioritySentence(now.now().toLocalDateTime(zone).date) ?: ""
 
     private suspend fun HomeAdminReadModel.toUi(): HomeAdminReadModelUi =
         HomeAdminReadModelUi(groups = groups.map { it.toUi() })
@@ -816,9 +817,9 @@ class HomeViewModel(
 
     private suspend fun adminHeroDeadlineLabel(deadline: kotlinx.datetime.LocalDateTime, open: Boolean): String =
         if (open) {
-            deadline.gameDeadlineShort()
+            deadline.gamePriorityShort()
         } else {
-            getString(Res.string.home_admin_hero_deadline_closed, deadline.date.gameDateLabel(), deadline.gameTimeLabel())
+            getString(Res.string.home_admin_hero_priority_closed, deadline.date.gameDateLabel(), deadline.gameTimeLabel())
         }
 
     private suspend fun deriveAdminSubtitle(admin: HomeAdminReadModelUi, groupCount: Int): String? {
@@ -848,14 +849,18 @@ class HomeViewModel(
     private fun HomeNextGame.startsAtIsAhead(): Boolean =
         runCatching { Instant.parse(startsAt) }.getOrNull()?.let { now.now() < it } ?: true
 
-    /** Depois do prazo e antes do jogo, o aviso do seletor explica; a linha só fecha com o jogo. */
+    /**
+     * O prazo só importa ao atleta como fim da prioridade de mensalista: sem janela de prioridade a linha
+     * some. Depois do prazo e antes do jogo, o aviso do seletor explica; a linha só fecha com o jogo.
+     */
     private suspend fun deadlineText(
         confirmationOpen: Boolean,
         responseOpen: Boolean,
+        priorityWindow: Boolean,
         deadline: kotlinx.datetime.LocalDateTime?,
         zone: TimeZone,
     ): String = when {
-        confirmationOpen -> deadlineLabel(deadline, zone)
+        confirmationOpen -> if (priorityWindow) deadlineLabel(deadline, zone) else ""
         responseOpen -> ""
         else -> getString(Res.string.game_response_deadline_closed)
     }

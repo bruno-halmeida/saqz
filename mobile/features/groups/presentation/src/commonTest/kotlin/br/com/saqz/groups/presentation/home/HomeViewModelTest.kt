@@ -70,7 +70,7 @@ class HomeViewModelTest {
 
     @Test
     fun `success keeps the home aggregate first name and formatted member copy`() = runTest {
-        val home = sampleHome(nextGame = sampleNextGame())
+        val home = sampleHome(nextGame = sampleNextGame(mensalistaPriority = true))
         val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(home)))
 
         assertFalse(viewModel.state.value.isLoading)
@@ -397,7 +397,7 @@ class HomeViewModelTest {
         val viewModel = viewModel(
             homeGateway = SequenceHomeGateway(
                 SaqzResult.Success(
-                    sampleHome(nextGame = sampleNextGame(confirmationDeadline = "2026-07-27T18:00:00-03:00")),
+                    sampleHome(nextGame = sampleNextGame(confirmationDeadline = "2026-07-27T18:00:00-03:00", mensalistaPriority = true)),
                 ),
             ),
         )
@@ -407,17 +407,67 @@ class HomeViewModelTest {
         // Prazo vencido com o jogo por começar: o "Vou" segue aberto e o cartão explica a espera.
         assertEquals(true, game?.responseOpen)
         assertEquals("", game?.deadline)
-        assertEquals("Encerrou 27/07 · 18h00", game?.adminHeroDeadlineLabel)
+        assertEquals("Prioridade encerrada 27/07 · 18h00", game?.adminHeroDeadlineLabel)
+    }
+
+    private fun nextGameWith(
+        confirmationDeadline: String = "2026-07-28T18:00:00-03:00",
+        startsAt: String = "2026-07-28T19:30:00-03:00",
+        mensalistaPriority: Boolean = true,
+    ) = viewModel(
+        homeGateway = SequenceHomeGateway(
+            SaqzResult.Success(
+                sampleHome(
+                    nextGame = sampleNextGame(
+                        startsAt = startsAt,
+                        confirmationDeadline = confirmationDeadline,
+                        mensalistaPriority = mensalistaPriority,
+                    ),
+                ),
+            ),
+        ),
+    ).state.value.member?.nextGame
+
+    @Test
+    fun `priority window today says the mensalista priority ends today`() = runTest {
+        val game = nextGameWith()
+
+        assertEquals(true, game?.confirmationOpen)
+        assertEquals("Prioridade dos mensalistas até hoje às 18h00.", game?.deadline)
+        assertEquals("Prioridade até 28/07 · 18h00", game?.adminHeroDeadlineLabel)
     }
 
     @Test
-    fun `open confirmation deadline keeps the open labels`() = runTest {
-        val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = sampleNextGame()))))
+    fun `priority window tomorrow says the mensalista priority ends tomorrow`() = runTest {
+        val game = nextGameWith(confirmationDeadline = "2026-07-29T10:00:00-03:00", startsAt = "2026-07-29T19:30:00-03:00")
 
-        val game = viewModel.state.value.member?.nextGame
+        assertEquals("Prioridade dos mensalistas até amanhã às 10h00.", game?.deadline)
+        assertEquals("Prioridade até 29/07 · 10h00", game?.adminHeroDeadlineLabel)
+    }
+
+    @Test
+    fun `priority window on a later day says the date`() = runTest {
+        val game = nextGameWith(confirmationDeadline = "2026-07-31T10:00:00-03:00", startsAt = "2026-08-01T19:30:00-03:00")
+
+        assertEquals("Prioridade dos mensalistas até 31/07 às 10h00.", game?.deadline)
+        assertEquals("Prioridade até 31/07 · 10h00", game?.adminHeroDeadlineLabel)
+    }
+
+    @Test
+    fun `without the priority the deadline line disappears for athlete and admin`() = runTest {
+        val game = nextGameWith(mensalistaPriority = false)
+
         assertEquals(true, game?.confirmationOpen)
-        assertEquals("As confirmações encerram hoje às 18h00.", game?.deadline)
-        assertEquals("Encerra 28/07 · 18h00", game?.adminHeroDeadlineLabel)
+        assertEquals("", game?.deadline)
+        assertEquals("", game?.adminHeroDeadlineLabel)
+    }
+
+    @Test
+    fun `a deadline at the start of the game has no priority window and no line`() = runTest {
+        val game = nextGameWith(confirmationDeadline = "2026-07-28T19:30:00-03:00")
+
+        assertEquals("", game?.deadline)
+        assertEquals("", game?.adminHeroDeadlineLabel)
     }
 
     @Test
@@ -1642,6 +1692,7 @@ private fun sampleNextGame(
     startsAt: String = "2026-07-28T19:30:00-03:00",
     confirmationDeadline: String = "2026-07-28T18:00:00-03:00",
     zoneId: String = "America/Sao_Paulo",
+    mensalistaPriority: Boolean = false,
 ) = HomeNextGame(
     groupId = GroupId("group-1"),
     groupName = "Vôlei do CERET",
@@ -1657,6 +1708,6 @@ private fun sampleNextGame(
     waitlistCount = 0,
     ownAttendance = attendance,
     membershipType = br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA,
-    mensalistaPriority = false,
+    mensalistaPriority = mensalistaPriority,
     rosterPreview = HomeRosterPreview(confirmed = listOf(), waitlisted = listOf()),
 )

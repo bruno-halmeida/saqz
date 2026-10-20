@@ -123,7 +123,7 @@ class HomeJourneyScreenshotTest {
         groupName = "Vôlei do CERET",
         dateTime = "Ter, 28/07 · 19h30",
         local = "CERET — Quadra 2 · Tatuapé",
-        deadline = "As confirmações encerram hoje às 18h.",
+        deadline = "Prioridade dos mensalistas até hoje às 18h.",
         confirmedSummary = "9 de 12 confirmados",
         confirmedCount = 9,
         capacity = 12,
@@ -155,7 +155,7 @@ class HomeJourneyScreenshotTest {
                 nextGame = member.nextGame?.copy(
                     declinedCount = 1,
                     pendingCount = 2,
-                    adminHeroDeadlineLabel = "Encerra 28/07 · 18h",
+                    adminHeroDeadlineLabel = "Prioridade até 28/07 · 18h",
                 ),
                 groups = member.groups.map { if (it.id == "ceret") it.copy(isAdmin = true) else it },
                 adminSubtitle = "2 grupos · 3 coisas esperando você",

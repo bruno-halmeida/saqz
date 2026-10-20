@@ -11,6 +11,9 @@
     <string name="home_deadline_today">As confirmações encerram hoje às %1$s.</string>
     <string name="home_deadline_tomorrow">As confirmações encerram amanhã às %1$s.</string>
     <string name="home_deadline_date">As confirmações encerram em %1$s às %2$s.</string>
+    <string name="home_priority_today">Prioridade dos mensalistas até hoje às %1$s.</string>
+    <string name="home_priority_tomorrow">Prioridade dos mensalistas até amanhã às %1$s.</string>
+    <string name="home_priority_date">Prioridade dos mensalistas até %1$s às %2$s.</string>
     <plurals name="home_confirmed_summary">
         <item quantity="one">%1$d de %2$d confirmado</item>
         <item quantity="other">%1$d de %2$d confirmados</item>
@@ -88,6 +91,7 @@
     <string name="home_admin_score_pending">Sem resposta</string>
     <string name="home_admin_score_waiting">Na espera</string>
     <string name="home_admin_hero_deadline">Encerra %1$s · %2$s</string>
+    <string name="home_admin_hero_priority">Prioridade até %1$s · %2$s</string>
     <string name="home_admin_score_value">%1$d</string>
     <string name="home_admin_waiting_title">Esperando você</string>
     <string name="home_admin_waiting_entry_requests_meta">%1$s</string>
@@ -114,6 +118,7 @@
     <string name="home_game_meta">%1$s de %2$s · %3$s</string>
     <string name="home_no_game_hero_title">Sem jogo marcado</string>
     <string name="home_admin_hero_deadline_closed">Encerrou %1$s · %2$s</string>
+    <string name="home_admin_hero_priority_closed">Prioridade encerrada %1$s · %2$s</string>
     <!-- Home nova · cabeçalho -->
     <string name="home_notifications_cd">Notificações</string>
     <!-- Home nova · meses por extenso (minúsculos; a UI não capitaliza) -->
