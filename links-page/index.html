@@ -46,11 +46,10 @@
   <p id="lead">Entre no grupo ou confirme sua presença no Saqz.</p>
   <a id="primary" class="primary" href="https://saqz.app">Acessar site do Saqz</a>
   <a id="secondary" class="secondary" hidden></a>
-  <a id="tertiary" class="secondary" hidden></a>
 </main>
 <script>
   (function () {
-    // O celular vai direto para a loja do sistema dele (iPhone: App Store; Android: Google Play).
+    // O celular vai para a loja do sistema dele (iPhone: App Store; Android: Google Play).
     var appStore = "https://apps.apple.com/br/app/id6812743525";
     var googlePlay = "https://play.google.com/store/apps/details?id=app.saqz";
     var site = "https://saqz.app";
@@ -87,34 +86,25 @@
     var lead = document.getElementById("lead");
     var primary = document.getElementById("primary");
     var secondary = document.getElementById("secondary");
-    var tertiary = document.getElementById("tertiary");
 
     if (kind === "invite") heading.textContent = "Entre no grupo no Saqz";
     if (kind === "onboarding") heading.textContent = "Continue no app Saqz";
     if (kind === "attendance") heading.textContent = "Responda no Saqz";
 
     // O computador segue para o web app (saqz.app/app/), com o mesmo código na query. Só se ele
-    // responder: fora do ar, vale o pedido para abrir o link no celular. O iPhone vai à App Store.
+    // responder: fora do ar, vale o pedido para abrir o link no celular. O celular (Android e iPhone)
+    // não usa o web app: o atleta instala o app pela loja e o app retoma o link.
     var webApp = "https://saqz.app/app/";
     var webQuery = kind === "attendance" ? "?saqz_attendance=" + path[1] + (decline ? "&saqz_intent=decline" : "")
       : kind ? route : "";
-    // No Android, o atleta (convite ou presença) também responde pelo navegador: o intent segue
-    // tentando abrir o app de quem o tem, mas o fallback passa a ser o web app, não o Play.
-    // O onboarding (organizador) e o link sem parâmetro continuam indo ao Play.
-    var androidWeb = isAndroid && (kind === "invite" || kind === "attendance");
-    var wantsWebApp = ((!isIOS && !isAndroid) || androidWeb) && supportsWasmGc();
+    var wantsWebApp = !isIOS && !isAndroid && supportsWasmGc();
     if (wantsWebApp && typeof fetch === "function") {
       var waiting = lead.textContent;
       lead.textContent = "Abrindo o Saqz…";
       fetch(webApp + "disponivel.json", { cache: "no-store" })
         .then(function (response) {
           if (!response.ok) throw new Error("web app fora do ar");
-          if (androidWeb) {
-            lead.textContent = waiting;
-            appFlow(webApp + webQuery);
-          } else {
-            location.replace(webApp + webQuery);
-          }
+          location.replace(webApp + webQuery);
         })
         .catch(function () {
           lead.textContent = waiting;
@@ -124,7 +114,7 @@
       appFlow();
     }
 
-    function appFlow(webUrl) {
+    function appFlow() {
       if (!isIOS && !isAndroid) {
         if (kind) lead.textContent = "Abra este link no celular para continuar no app.";
         return;
@@ -136,47 +126,65 @@
       var referrer = kind === "attendance" ? "saqz_attendance=" + path[1] + (decline ? "&saqz_intent=decline" : "")
         : kind ? route.slice(1) : null;
       var store = isIOS ? appStore : googlePlay + (referrer ? "&referrer=" + encodeURIComponent(referrer) : "");
-      var storeLabel = isIOS ? "Baixar na App Store" : "Baixar no Google Play";
-      // Se o intent não abrir o app, o Chrome segue para o fallback: o web app, quando ele está no ar.
-      var fallbackUrl = webUrl || store;
       var open = !kind ? null : isAndroid
         ? "intent://links.saqz.app/" + route + "#Intent;scheme=https;package=app.saqz;S.browser_fallback_url=" +
-          encodeURIComponent(fallbackUrl) + ";end"
+          encodeURIComponent(store) + ";end"
         : "saqz:///" + route;
 
-      // Android com o web app no ar: o navegador é o caminho principal; a loja fica de apoio.
-      if (webUrl) {
-        lead.textContent = "Responda pelo navegador, sem instalar nada. Se preferir, baixe o app e entre com a mesma conta.";
-        link(primary, webUrl, "Continuar no navegador");
-        link(secondary, store, "Baixar o app");
-        link(tertiary, open, "Já instalei, abrir o app");
-      } else {
-        if (kind) lead.textContent = "Baixe o app e, depois de instalar, toque de novo no link que você recebeu.";
-        link(primary, store, storeLabel);
-        // iPhone: os dois selos, App Store primeiro (o redirecionamento automático segue indo à App Store).
-        if (isIOS) {
-          link(secondary, googlePlay + (referrer ? "&referrer=" + encodeURIComponent(referrer) : ""), "Baixar no Google Play");
-          if (open) link(tertiary, open, "Já instalei, abrir o app");
-        } else if (open) {
-          link(secondary, open, "Já instalei, abrir o app");
-        }
-      }
+      if (kind) lead.textContent = "Instale o Saqz e entre com sua conta: o app abre " +
+        (kind === "invite" ? "o convite" : kind === "attendance" ? "o jogo" : "o próximo passo") + " sozinho.";
 
-      // Sem clique. No Android, o intent abre o app com o link ou, sem o app, o Chrome segue
-      // para o fallback (o web app para convite e presença, quando ele responde; senão o Play);
-      // se o navegador recusar o intent sem toque, o fallback entra no lugar.
-      // No iPhone nenhum link tenta o esquema sozinho: quem chega à página costuma não ter o app
-      // (com o app, o link universal já abriu direto), e o Safari responderia com o alerta de
-      // endereço inválido. Então vai direto à loja; "Já instalei, abrir o app" fica no botão.
       if (isAndroid) {
+        link(primary, store, "Baixar no Google Play");
+        if (open) link(secondary, open, "Já instalei, abrir o app");
+        // Sem clique. O intent abre o app com o link ou, sem o app, o Chrome segue para o Play com
+        // o `referrer`; se o navegador recusar o intent sem toque, o fallback entra no lugar.
         if (!open) return location.replace(store);
         location.href = open;
-        var fallback = setTimeout(function () { if (!document.hidden) location.replace(fallbackUrl); }, 1500);
+        var fallback = setTimeout(function () { if (!document.hidden) location.replace(store); }, 1500);
         ["visibilitychange", "pagehide"].forEach(function (event) {
           addEventListener(event, function () { clearTimeout(fallback); });
         });
+        return;
+      }
+
+      // iPhone: a loja não leva o link adiante, então não há redirecionamento automático. O toque
+      // copia o link desta página e só então abre a App Store; o app lê a área de transferência no
+      // primeiro login. Nenhum link tenta o esquema sozinho: o Safari responderia com o alerta de
+      // endereço inválido (quem tem o app já abriu pelo link universal).
+      link(primary, store, kind ? "Baixar o app e continuar" : "Baixar na App Store");
+      if (open) link(secondary, open, "Já instalei, abrir o app");
+      if (kind) {
+        primary.addEventListener("click", function (event) {
+          event.preventDefault();
+          copyLink("https://links.saqz.app" + location.pathname + location.search, function () {
+            location.href = store;
+          });
+        });
+      }
+    }
+
+    // Copia dentro do gesto do toque; a loja abre mesmo se a cópia falhar.
+    function copyLink(text, done) {
+      function legacy() {
+        try {
+          var field = document.createElement("textarea");
+          field.value = text;
+          field.setAttribute("readonly", "");
+          field.style.position = "fixed";
+          field.style.opacity = "0";
+          document.body.appendChild(field);
+          field.select();
+          field.setSelectionRange(0, text.length);
+          document.execCommand("copy");
+          document.body.removeChild(field);
+        } catch (e) { /* segue para a loja */ }
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { legacy(); done(); });
       } else {
-        location.replace(store);
+        legacy();
+        done();
       }
     }
 
