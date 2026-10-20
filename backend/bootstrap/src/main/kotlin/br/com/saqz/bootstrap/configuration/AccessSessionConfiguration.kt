@@ -795,7 +795,10 @@ class AccessSessionConfiguration {
         clock: Clock,
         writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess,
         onboardingNotices: br.com.saqz.groups.adapter.output.jdbc.communication.JdbcOnboardingNotices,
-    ) = RedeemInvite(transaction, repository, subscriptionLimits, clock, writeAccess, onboardingNotices, onboardingNotices)
+        monthlyJoinNotices: br.com.saqz.groups.adapter.output.jdbc.communication.JdbcMonthlyJoinNotices,
+    ) = RedeemInvite(
+        transaction, repository, subscriptionLimits, clock, writeAccess, onboardingNotices, onboardingNotices, monthlyJoinNotices,
+    )
 
     @Bean
     fun onboardingNotices(

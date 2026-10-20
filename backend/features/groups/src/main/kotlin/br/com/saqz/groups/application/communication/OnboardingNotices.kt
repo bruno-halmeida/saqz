@@ -86,6 +86,14 @@ fun entryRequestBody(who: String, groupName: String): String = "$who pediu para 
 
 fun entryRequestReminderBody(who: String, groupName: String): String = "$who ainda espera sua resposta para entrar no $groupName. Abra o app para aprovar ou recusar."
 
+/** Entrou pelo link de mensalistas (NOT-004). */
+fun monthlyJoinedBody(who: String, groupName: String): String = "$who entrou no $groupName como mensalista."
+
+fun monthlyJoinedAsAvulsoBody(who: String, groupName: String): String =
+    "$who entrou no $groupName como avulso, porque o grupo está sem mensalidade padrão."
+
+fun becameMensalistaBody(who: String, groupName: String): String = "$who virou mensalista no $groupName."
+
 fun firstMemberBody(who: String, groupName: String): String =
     "$who entrou no $groupName. A galera começou a chegar."
 

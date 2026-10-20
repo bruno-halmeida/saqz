@@ -3,6 +3,8 @@ package br.com.saqz.bootstrap.configuration
 import br.com.saqz.groups.adapter.input.http.MonthlyInviteController
 import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import br.com.saqz.groups.adapter.output.crypto.JcaSecureTokenGenerator
+import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcGroupCommunicationRepository
+import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcMonthlyJoinNotices
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.monthlyinvite.JdbcMonthlyInviteLinkRepository
 import br.com.saqz.groups.adapter.output.jdbc.monthlyinvite.JdbcMonthlyInviteRepository
@@ -31,6 +33,10 @@ import javax.sql.DataSource
 class MonthlyInviteConfiguration {
     @Bean
     fun monthlyInviteLinkRepository(dataSource: DataSource) = JdbcMonthlyInviteLinkRepository(dataSource)
+
+    @Bean
+    fun monthlyJoinNotices(dataSource: DataSource, communication: JdbcGroupCommunicationRepository) =
+        JdbcMonthlyJoinNotices(dataSource, communication)
 
     @Bean
     fun monthlyInviteRepository(dataSource: DataSource) = JdbcMonthlyInviteRepository(dataSource)

@@ -62,16 +62,18 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
     fun publishOnce(
         groupId: UUID, actor: UUID, channel: MessageChannel, body: String, gameId: UUID?,
         requestId: UUID = UUID.randomUUID(),
+        eventKind: String? = null,
     ): Boolean {
         val id = UUID.randomUUID()
         val inserted = jdbc.sql(
             """
-            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, game_id)
-            SELECT :id, :group, :actor, display_name, :channel, :request, :body, :game FROM access_users WHERE id = :actor
+            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, game_id, event_kind)
+            SELECT :id, :group, :actor, display_name, :channel, :request, :body, :game, :eventKind FROM access_users WHERE id = :actor
             ON CONFLICT DO NOTHING
             """.trimIndent(),
         ).param("id", id).param("group", groupId).param("actor", actor).param("channel", channel.name, Types.OTHER)
-            .param("request", requestId).param("body", body).param("game", gameId, Types.OTHER).update()
+            .param("request", requestId).param("body", body).param("game", gameId, Types.OTHER)
+            .param("eventKind", eventKind, Types.VARCHAR).update()
         if (inserted == 0) return false
         deliver(id, groupId, actor, channel, gameId)
         return true
