@@ -232,4 +232,28 @@ class AttendanceLinkScreenTest {
         onNodeWithTag(AttendanceLinkTags.RequestAgain).performClick()
         assertEquals(listOf(AttendanceLinkIntent.Retry), intents)
     }
+
+    @Test fun waitlistedSaysTheSpotsAreGoneOnlyWhenTheGameIsFull() {
+        mapOf(
+            game.copy(confirmedCount = 14) to "As vagas acabaram. Se abrir uma, você recebe um aviso.",
+            game.copy(confirmedCount = 15) to "As vagas acabaram. Se abrir uma, você recebe um aviso.",
+            // Com vaga sobrando (prioridade de mensalista, organização escolhendo) ou sem as contagens: o genérico.
+            game to "Se você ganhar uma vaga, recebe um aviso.",
+            game.copy(capacity = null, confirmedCount = null) to "Se você ganhar uma vaga, recebe um aviso.",
+        ).forEach { (card, text) ->
+            runComposeUiTest {
+                setContent {
+                    SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Waitlisted, destination, card), {}, {}, {}) }
+                }
+                onNodeWithText(text).assertExists()
+                onNodeWithText("As vagas acabaram", substring = true).let {
+                    if (card.isFull()) it.assertExists() else it.assertDoesNotExist()
+                }
+            }
+        }
+        runComposeUiTest {
+            setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Waitlisted, destination), {}, {}, {}) } }
+            onNodeWithText("Se você ganhar uma vaga, recebe um aviso.").assertExists()
+        }
+    }
 }

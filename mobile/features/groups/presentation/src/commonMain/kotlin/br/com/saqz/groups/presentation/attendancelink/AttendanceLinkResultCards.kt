@@ -65,7 +65,11 @@ internal fun AttendanceResultCard(state: AttendanceLinkState, modifier: Modifier
     val body = when (state.phase) {
         AttendanceLinkPhase.Confirmed -> stringResource(Res.string.attendance_link_confirmed_body)
         AttendanceLinkPhase.RequestClosed -> stringResource(Res.string.attendance_link_closed_body)
-        AttendanceLinkPhase.Waitlisted -> stringResource(Res.string.attendance_link_waitlisted_body)
+        // Espera nem sempre é jogo cheio: com a prioridade de mensalista, o avulso espera mesmo com vaga
+        // sobrando. Sem a regra do grupo nesta tela, só o jogo lotado ganha o texto de "as vagas acabaram".
+        AttendanceLinkPhase.Waitlisted -> stringResource(
+            if (game.isFull()) Res.string.attendance_link_waitlisted_full else Res.string.attendance_link_waitlisted_body,
+        )
         else -> stringResource(Res.string.attendance_link_declined_body)
     }
     SaqzCard(modifier = modifier.testTag(AttendanceLinkTags.ResultCard)) {
@@ -239,6 +243,13 @@ private fun RoundBadge(icon: ImageVector, tint: Color, background: Color, size: 
     Box(Modifier.size(size).clip(CircleShape).background(background), contentAlignment = Alignment.Center) {
         SaqzIcon(icon, tint = tint, size = StepBadgeIcon)
     }
+}
+
+/** O jogo está lotado; sem as contagens não dá para afirmar. */
+internal fun AttendanceLinkGame?.isFull(): Boolean {
+    val capacity = this?.capacity ?: return false
+    val confirmed = confirmedCount ?: return false
+    return confirmed >= capacity
 }
 
 /** "quinta, 21h00"; só o dia da semana quando a hora não veio, só a data quando nem o dia veio. */

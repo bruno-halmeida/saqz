@@ -214,7 +214,8 @@ class AttendanceLinkScreenshotTest : ConnectedFlowsScreenshotScene() {
         AttendanceLinkState(AttendanceLinkPhase.Waitlisted, destination, game, waitlistPosition = 1), "waitlisted-1",
     )
     @Test fun waitlistedThird() = scene(
-        AttendanceLinkState(AttendanceLinkPhase.Waitlisted, destination, game, waitlistPosition = 3), "waitlisted-3",
+        AttendanceLinkState(AttendanceLinkPhase.Waitlisted, destination, game.copy(confirmedCount = 14), waitlistPosition = 3),
+        "waitlisted-3-full",
     )
     @Test fun declineSheet() = scene(AttendanceLinkState(AttendanceLinkPhase.DeclineSheet, destination, game), "decline-sheet")
     @Test fun declined() = scene(AttendanceLinkState(AttendanceLinkPhase.Declined, destination, game), "declined")

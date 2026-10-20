@@ -37,7 +37,8 @@
     <string name="attendance_link_spots_value">%1$d de %2$d</string>
     <string name="attendance_link_undo_confirmed">Não vou mais</string>
     <string name="attendance_link_waitlisted_title">Você está na lista de espera</string>
-    <string name="attendance_link_waitlisted_body">As vagas acabaram. Se você ganhar uma vaga, recebe um aviso.</string>
+    <string name="attendance_link_waitlisted_full">As vagas acabaram. Se abrir uma, você recebe um aviso.</string>
+    <string name="attendance_link_waitlisted_body">Se você ganhar uma vaga, recebe um aviso.</string>
     <string name="attendance_link_waitlist_turn">Sua vez na fila</string>
     <string name="attendance_link_waitlist_position">%1$dº</string>
     <string name="attendance_link_waitlist_nobody_ahead">Ninguém na sua frente</string>
