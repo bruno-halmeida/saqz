@@ -63,7 +63,9 @@ data class PositionPickerState(
     val selectedOption: PositionOptionUi? get() = options.firstOrNull { it.position == selected }
     val allFull: Boolean get() = options.isNotEmpty() && options.all { it.full }
     val openPositions: List<AthletePosition> get() = options.filterNot { it.full }.map { it.position }
-    val canSubmit: Boolean get() = selectedOption != null && !sending && !loading
+    /** A leitura veio sem posição com vaga (o jogo deixou de ter posições, push antigo): confirma como jogo comum. */
+    val withoutPositions: Boolean get() = !loading && loadError == null && options.isEmpty()
+    val canSubmit: Boolean get() = (selectedOption != null || withoutPositions) && !sending && !loading
 }
 
 sealed interface PositionPickerIntent {

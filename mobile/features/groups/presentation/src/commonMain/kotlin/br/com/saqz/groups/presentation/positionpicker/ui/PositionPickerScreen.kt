@@ -118,7 +118,8 @@ fun PositionPickerScreen(
                     verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
                 ) {
                     state.game?.let { GameCard(it) }
-                    PositionQuestion(state, onIntent)
+                    // Sem posição com vaga na leitura, a tela confirma como jogo comum: não há o que escolher.
+                    if (!state.withoutPositions) PositionQuestion(state, onIntent)
                 }
                 PositionPickerBar(state, onIntent)
             }
@@ -304,8 +305,9 @@ private fun PositionPickerBar(state: PositionPickerState, onIntent: (PositionPic
             BarNotice(state, chosen)
             val label = when {
                 state.sending -> ""
-                chosen == null -> stringResource(Res.string.position_picker_pick)
                 state.submitFailed -> stringResource(Res.string.group_system_retry)
+                state.withoutPositions -> stringResource(Res.string.position_picker_submit)
+                chosen == null -> stringResource(Res.string.position_picker_pick)
                 chosen.full -> stringResource(Res.string.position_picker_join_waitlist)
                 else -> stringResource(Res.string.position_picker_submit)
             }
@@ -314,7 +316,7 @@ private fun PositionPickerBar(state: PositionPickerState, onIntent: (PositionPic
                 label = label,
                 onClick = { onIntent(PositionPickerIntent.Submit) },
                 fullWidth = true,
-                enabled = chosen != null,
+                enabled = chosen != null || state.withoutPositions,
                 loading = state.sending,
                 modifier = Modifier.testTag(PositionPickerTags.Submit)
                     .then(if (state.sending) Modifier.semantics { contentDescription = sendingLabel } else Modifier),

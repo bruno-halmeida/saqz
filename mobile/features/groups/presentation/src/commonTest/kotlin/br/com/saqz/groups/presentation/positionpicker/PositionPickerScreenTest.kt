@@ -95,6 +95,15 @@ class PositionPickerScreenTest {
     }
 
     @Test
+    fun withoutPositionsTheButtonConfirmsDirectly() = runComposeUiTest {
+        val intents = setScreen(main.copy(options = emptyList(), selected = null))
+        onNodeWithTag(PositionPickerTags.Options).assertDoesNotExist()
+        onNodeWithText("Confirmar presença").assertExists()
+        onNodeWithTag(PositionPickerTags.Submit).assertIsEnabled().performClick()
+        assertEquals(PositionPickerIntent.Submit, intents.last())
+    }
+
+    @Test
     fun failureShowsTheErrorAndRetry() = runComposeUiTest {
         val intents = setScreen(main.copy(submitFailed = true))
         onNodeWithText("Não foi possível salvar sua resposta. Tente novamente.").assertExists()

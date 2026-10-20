@@ -172,6 +172,17 @@ class PositionPickerViewModelTest {
         assertEquals(PositionPickerOrigin.Push, PositionPickerOrigin.from("push"))
     }
 
+    @Test fun readWithoutPositionsConfirmsLikeAGameWithoutPositions() = runTest {
+        val attendance = FakeAttendanceGateway(detailResult = SaqzResult.Success(sampleAttendanceDetail()))
+        val vm = picker(attendance = attendance, profile = AthletePosition.CENTRAL)
+        assertTrue(vm.state.value.withoutPositions)
+        assertTrue(vm.state.value.canSubmit)
+        vm.onIntent(PositionPickerIntent.Submit)
+        assertEquals(1, attendance.respondCalls)
+        assertNull(attendance.lastAttendanceCommand?.position)
+        assertEquals(PositionPickerEffect.Close, vm.effects.first())
+    }
+
     @Test fun survivesRecreationWithThePickedPosition() = runTest {
         val saved = SavedStateHandle()
         val first = picker(profile = AthletePosition.CENTRAL, savedState = saved)

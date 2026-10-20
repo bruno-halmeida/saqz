@@ -112,6 +112,7 @@ class PositionPickerViewModel(
     private fun submit() {
         val current = state.value
         if (!current.canSubmit) return
+        if (current.withoutPositions) return send(null)
         val chosen = current.selectedOption ?: return
         val generation = ++submitGeneration
         update { it.copy(sending = true, raced = null, submitFailed = false) }
@@ -128,27 +129,38 @@ class PositionPickerViewModel(
                 return@launch
             }
             update { it.copy(options = options) }
-            val result = attendanceGateway.respond(
-                GroupId(groupId),
-                gameId,
-                SelfAttendanceCommand(requestId(), AttendanceIntent.Confirm, chosen.position),
-            )
-            if (generation != submitGeneration) return@launch
-            when (result) {
-                is SaqzResult.Success -> {
-                    SaqzAnalytics.attendanceAnswered(origin.routeValue, true)
-                    notifications?.dismissAttendance(gameId)
-                    // Fica "enviando" até a tela sair: um segundo toque não manda outra resposta.
-                    emit(
-                        when (origin) {
-                            PositionPickerOrigin.Link -> PositionPickerEffect.LinkResult(result.value.value.attendance.status)
-                            PositionPickerOrigin.Push -> PositionPickerEffect.OpenGame(groupId, gameId)
-                            PositionPickerOrigin.Home, PositionPickerOrigin.Group, PositionPickerOrigin.Game -> PositionPickerEffect.Close
-                        },
-                    )
-                }
-                is SaqzResult.Failure -> update { it.copy(sending = false, submitFailed = true) }
+            respond(generation, chosen.position)
+        }
+    }
+
+    /** Jogo sem posições na leitura: o mesmo "Vou" de sempre, sem posição (o servidor decide). */
+    private fun send(position: AthletePosition?) {
+        val generation = ++submitGeneration
+        update { it.copy(sending = true, raced = null, submitFailed = false) }
+        viewModelScope.launch { respond(generation, position) }
+    }
+
+    private suspend fun respond(generation: Int, position: AthletePosition?) {
+        val result = attendanceGateway.respond(
+            GroupId(groupId),
+            gameId,
+            SelfAttendanceCommand(requestId(), AttendanceIntent.Confirm, position),
+        )
+        if (generation != submitGeneration) return
+        when (result) {
+            is SaqzResult.Success -> {
+                SaqzAnalytics.attendanceAnswered(origin.routeValue, true)
+                notifications?.dismissAttendance(gameId)
+                // Fica "enviando" até a tela sair: um segundo toque não manda outra resposta.
+                emit(
+                    when (origin) {
+                        PositionPickerOrigin.Link -> PositionPickerEffect.LinkResult(result.value.value.attendance.status)
+                        PositionPickerOrigin.Push -> PositionPickerEffect.OpenGame(groupId, gameId)
+                        PositionPickerOrigin.Home, PositionPickerOrigin.Group, PositionPickerOrigin.Game -> PositionPickerEffect.Close
+                    },
+                )
             }
+            is SaqzResult.Failure -> update { it.copy(sending = false, submitFailed = true) }
         }
     }
 
