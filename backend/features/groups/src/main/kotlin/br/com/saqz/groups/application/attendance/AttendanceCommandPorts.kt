@@ -160,6 +160,10 @@ fun interface AttendanceDetailQuery {
     // ponytail: corpo padrão vazio para os fakes de teste não mudarem; o único adapter real
     // (JdbcAttendanceCommandRepository) sobrescreve. Tirar o padrão se surgir um segundo adapter.
     fun ownByGame(actorId: UUID, groupId: UUID): Map<UUID, AttendanceRecord> = emptyMap()
+
+    // Vagas por posição de cada jogo do grupo (DEB-109, linha "Faltam" da agenda); jogo sem posições fica fora do mapa.
+    // ponytail: corpo padrão vazio pelo mesmo motivo de [ownByGame].
+    fun positionsByGame(groupId: UUID): Map<UUID, List<br.com.saqz.groups.domain.attendance.PositionLoad>> = emptyMap()
 }
 
 // Names reuse the AttendanceShareSnapshotPerson convention, read from the

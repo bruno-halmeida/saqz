@@ -145,7 +145,11 @@ private fun GroupGameHero(
             )
         }
         val attendance = state.attendance
-        if (state.isAdmin && attendance != null) {
+        val court = attendance?.court
+        // Jogo com posições: placar compacto e a meia quadra (DEB-109); sem posições, o placar de sempre.
+        if (state.isAdmin && attendance != null && court != null) {
+            GroupPositionsPanel(attendance, court)
+        } else if (state.isAdmin && attendance != null) {
             AttendanceScoreBoard(
                 going = attendance.going,
                 out = attendance.notGoing,

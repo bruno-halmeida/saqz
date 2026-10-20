@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.details
 
+import br.com.saqz.groups.domain.athlete.AthletePosition
+import br.com.saqz.groups.domain.attendance.PositionSummary
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameStatus
@@ -45,13 +47,40 @@ internal suspend fun groupAgenda(
     heroGameId: String?,
     now: Instant,
     defaultVenueName: String?,
+    /** Só quem administra vê o que falta em cada jogo com posições (DEB-109). */
+    isAdmin: Boolean = false,
 ): List<GroupAgendaRowUi> = games
     .filter { it.id != heroGameId && (it.status == GameStatus.Published || it.status == GameStatus.Draft) }
     .mapNotNull { game -> runCatching { Instant.parse(game.startsAt) }.getOrNull()?.let { it to game } }
     .filter { it.first >= now }
     .sortedBy { it.first }
     .take(GROUP_AGENDA_LIMIT)
-    .map { (startsAt, game) -> game.toAgendaRow(startsAt, defaultVenueName) }
+    .map { (startsAt, game) ->
+        game.toAgendaRow(startsAt, defaultVenueName).copy(
+            missing = if (isAdmin && game.status == GameStatus.Published) agendaMissing(game.positions) else null,
+        )
+    }
+
+/** O que falta num jogo com posições: algumas posições, ou todas; nulo sem posições ou com tudo completo. */
+sealed interface AgendaMissing {
+    data object All : AgendaMissing
+    data class Some(val positions: List<AthletePosition>) : AgendaMissing
+}
+
+/** Ordem fixa da linha "Faltam: Central, Oposto(a)" (a mesma da tela de posição), com o líbero no fim. */
+private val AgendaPositionOrder = listOf(
+    AthletePosition.PONTA, AthletePosition.CENTRAL, AthletePosition.OPOSTO, AthletePosition.LEVANTADOR, AthletePosition.LIBERO,
+)
+
+internal fun agendaMissing(positions: List<PositionSummary>): AgendaMissing? {
+    val offered = positions.filter { it.slots > 0 }
+    val open = offered.filter { it.missing > 0 }
+    return when {
+        open.isEmpty() -> null
+        open.size == offered.size -> AgendaMissing.All
+        else -> AgendaMissing.Some(open.map { it.position }.sortedBy(AgendaPositionOrder::indexOf))
+    }
+}
 
 /**
  * "Terça e Quinta · 19h30": os dias distintos na ordem da semana e, só quando TODOS os

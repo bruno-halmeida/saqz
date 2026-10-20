@@ -245,6 +245,20 @@ class VagaPorPosicaoIntegrationTest {
         assertEquals(3, roster.positions.size)
     }
 
+    @Test fun `DEB-109 - a agenda le as vagas por posicao de cada jogo do grupo numa consulta`() {
+        jogoComPosicoes()
+        val ponta = List(2) { h.atleta() }; ponta.forEach { vou(it, AthletePosition.PONTA) }
+        vou(h.atleta(), AthletePosition.PONTA)
+        vou(h.atleta(), AthletePosition.CENTRAL)
+        val loads = requireNotNull(h.repo().positionsByGame(h.group)[h.game])
+        assertEquals(
+            listOf(AthletePosition.PONTA to listOf(2, 2, 1), AthletePosition.CENTRAL to listOf(2, 1, 0), AthletePosition.LEVANTADOR to listOf(1, 0, 0))
+                .sortedBy { it.first.ordinal },
+            loads.map { it.position to listOf(it.slots, it.confirmed, it.waitlisted) },
+        )
+        assertEquals(1, loads.first { it.position == AthletePosition.CENTRAL }.missing)
+    }
+
     @Test fun `ajustar o total de um jogo com posicoes e negado, repetir o mesmo total nao`() {
         jogoComPosicoes()
         val version = h.int("SELECT version FROM games WHERE id='${h.game}'").toLong()

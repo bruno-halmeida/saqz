@@ -60,6 +60,8 @@ data class GameResponse(
     val confirmedCount: Int, val availableSpots: Int, val waitlistCount: Int,
     val financeReviewRequired: Boolean = false,
     val ownAttendance: AttendanceEntryResponse? = null,
+    /** Campo novo e opcional (DEB-109): vagas por posição do jogo, só na listagem; nulo em jogo sem posições. */
+    val positions: List<PositionSummaryResponse>? = null,
 )
 
 class GameNotFoundException : RuntimeException()
@@ -91,7 +93,15 @@ class GameController(
         return when (val result = listGames.execute(actor, group)) {
             is GameListResult.Success -> {
                 val own = attendance?.ownByGame(actor, group).orEmpty()
-                result.games.map { it.toResponse().copy(ownAttendance = own[it.game.id]?.toEntryResponse()) }
+                val positions = attendance?.positionsByGame(group).orEmpty()
+                result.games.map {
+                    it.toResponse().copy(
+                        ownAttendance = own[it.game.id]?.toEntryResponse(),
+                        positions = positions[it.game.id]?.takeIf { loads -> loads.isNotEmpty() }?.map { load ->
+                            PositionSummaryResponse(load.position.name, load.slots, load.confirmed, load.missing, load.waitlisted)
+                        },
+                    )
+                }
             }
             GameListResult.GroupNotFound -> throw GameNotFoundException()
         }

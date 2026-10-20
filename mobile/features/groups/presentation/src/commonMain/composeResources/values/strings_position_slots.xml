@@ -63,6 +63,23 @@
     <string name="position_picker_open_one">%1$s ainda tem vaga.</string>
     <string name="position_picker_open_many">%1$s e %2$s ainda têm vaga.</string>
 
+    <!-- Cartão do próximo jogo para quem administra (DEB-109, quadros Grupo e GrupoCompleto) -->
+    <string name="group_court_title">POSIÇÕES NA QUADRA</string>
+    <string name="group_court_all_complete">Todas completas</string>
+    <string name="group_court_count">%1$d/%2$d</string>
+    <plurals name="group_court_missing">
+        <item quantity="one">Falta %1$d</item>
+        <item quantity="other">Faltam %1$d</item>
+    </plurals>
+    <string name="group_court_empty">—</string>
+    <string name="group_court_legend_complete">Completa</string>
+    <string name="group_court_legend_open">Tem vaga</string>
+    <string name="group_court_waiting">Na espera: %1$s</string>
+    <string name="group_court_waiting_item">%1$d %2$s</string>
+    <!-- Linha da agenda "Próximos jogos" (DEB-109) -->
+    <string name="group_agenda_missing_positions">Faltam: %1$s</string>
+    <string name="group_agenda_missing_all">Faltam: todas as posições</string>
+
     <!-- Lista de presença agrupada -->
     <string name="position_group_header">%1$d/%2$d %3$s</string>
     <string name="position_group_full">completo</string>

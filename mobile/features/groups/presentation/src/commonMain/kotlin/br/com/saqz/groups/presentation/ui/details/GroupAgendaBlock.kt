@@ -1,5 +1,9 @@
 package br.com.saqz.groups.presentation.ui.details
 
+import br.com.saqz.groups.presentation.details.AgendaMissing
+import br.com.saqz.groups.presentation.ui.singularLabel
+import br.com.saqz.groups.resources.group_agenda_missing_all
+import br.com.saqz.groups.resources.group_agenda_missing_positions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
@@ -70,6 +74,7 @@ internal fun GroupAgendaBlock(
                     contentDescription = row.contentDescription,
                     onClick = { onIntent(GroupDetailsIntent.OpenAgendaGame(row.gameId)) },
                     tag = GroupDetailsTags.agendaGame(row.gameId),
+                    alert = row.missing?.label(),
                 ) {
                     SaqzStatusChip(
                         text = row.statusLabel,
@@ -103,4 +108,14 @@ internal fun GroupAgendaBlock(
             }
         }
     }
+}
+
+/** "Faltam: Central, Oposto(a)" ou "Faltam: todas as posições" (DEB-109). */
+@Composable
+private fun AgendaMissing.label(): String = when (this) {
+    AgendaMissing.All -> stringResource(Res.string.group_agenda_missing_all)
+    is AgendaMissing.Some -> stringResource(
+        Res.string.group_agenda_missing_positions,
+        positions.map { it.singularLabel() }.joinToString(", "),
+    )
 }

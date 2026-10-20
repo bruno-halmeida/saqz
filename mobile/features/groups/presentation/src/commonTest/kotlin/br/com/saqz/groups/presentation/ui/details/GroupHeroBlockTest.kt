@@ -200,6 +200,45 @@ class GroupHeroBlockTest {
         assertEquals(GroupDetailsIntent.ViewGame, intents.single())
     }
 
+    /** DEB-109, quadro `Grupo`: quem administra um jogo com posições vê o placar compacto e a meia quadra. */
+    @Test
+    fun adminOfAGameWithPositionsSeesTheCompactScoreAndTheCourt() = runComposeUiTest {
+        val court = br.com.saqz.groups.presentation.details.GroupPositionCourt.from(GroupDetailsPreviewData.courtPositions())
+        val state = GroupHeroPreviewData.adminPending.let { it.copy(attendance = it.attendance?.copy(court = court, waiting = 1)) }
+        setDetailsScreen(state)
+
+        onNodeWithTag(GroupPositionsPanelTags.Panel).performScrollTo()
+        onNodeWithText("POSIÇÕES NA QUADRA").assertExists()
+        onNodeWithText("9 Vão").assertExists()
+        onNodeWithText("1 Não vão").assertExists()
+        onNodeWithText("1 Na espera").assertExists()
+        // Sai o placar de 4 colunas, com o "Sem resposta".
+        onAllNodesWithTag(HomeAdminTags.ScorePending, useUnmergedTree = true).assertCountEquals(0)
+        onNodeWithText("Líbero").assertExists()
+        onNodeWithText("3/4").assertExists()
+        onAllNodesWithText("Falta 1").assertCountEquals(2)
+        onAllNodesWithText("Ponteiro(a)").assertCountEquals(2)
+        onAllNodesWithText("4/4").assertCountEquals(1)
+        onNodeWithText("Na espera: 1 Ponteiro(a)").assertExists()
+        onAllNodesWithTag(GroupPositionsPanelTags.AllComplete).assertCountEquals(0)
+    }
+
+    @Test
+    fun allPositionsCompleteShowTheCheck() = runComposeUiTest {
+        val court = br.com.saqz.groups.presentation.details.GroupPositionCourt.from(GroupDetailsPreviewData.courtPositions(complete = true))
+        setDetailsScreen(GroupHeroPreviewData.adminPending.let { it.copy(attendance = it.attendance?.copy(court = court)) })
+        onNodeWithTag(GroupPositionsPanelTags.AllComplete).performScrollTo()
+        onNodeWithText("Todas completas").assertExists()
+    }
+
+    @Test
+    fun athleteOfAGameWithPositionsKeepsTheUsualCard() = runComposeUiTest {
+        val court = br.com.saqz.groups.presentation.details.GroupPositionCourt.from(GroupDetailsPreviewData.courtPositions())
+        setDetailsScreen(GroupHeroPreviewData.pending.let { it.copy(attendance = it.attendance?.copy(court = court)) })
+        onAllNodesWithTag(GroupPositionsPanelTags.Panel).assertCountEquals(0)
+        onNodeWithText("9 de 12 confirmados").assertExists()
+    }
+
     @Test
     fun memberSeesTheRosterRowWithScarcityAndNoScoreBoard() = runComposeUiTest {
         setDetailsScreen(GroupHeroPreviewData.pending)

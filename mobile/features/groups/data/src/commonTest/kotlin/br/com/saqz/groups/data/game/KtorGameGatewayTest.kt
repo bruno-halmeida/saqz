@@ -61,6 +61,22 @@ class KtorGameGatewayTest {
         assertNull(successList().single().venue.venueId)
     }
 
+    @Test
+    fun `DEB-109 list maps the slots per position and an old backend without the field means none`() = runTest {
+        val withPositions = GAME_JSON.dropLast(1) +
+            ""","positions":[{"position":"CENTRAL","slots":4,"confirmed":3,"missing":1,"waitlisted":0},""" +
+            """{"position":"FUTURA","slots":1,"confirmed":0,"missing":1,"waitlisted":0}]}"""
+        val listed = assertIs<SaqzResult.Success<List<br.com.saqz.groups.domain.game.Game>>>(
+            gateway { respond("[$withPositions]", headers = jsonHeaders()) }.list(GROUP),
+        ).value.single()
+        // Posição desconhecida (de um backend mais novo) é ignorada sem quebrar a lista.
+        assertEquals(
+            listOf(br.com.saqz.groups.domain.attendance.PositionSummary(br.com.saqz.groups.domain.athlete.AthletePosition.CENTRAL, 4, 3, 1, 0)),
+            listed.positions,
+        )
+        assertEquals(emptyList(), successList().single().positions)
+    }
+
     @Test fun `list maps confirmed own attendance`() = ownAttendanceCase(ownAttendanceJson("CONFIRMED"), AttendanceStatus.Confirmed)
     @Test fun `list maps declined own attendance`() = ownAttendanceCase(ownAttendanceJson("DECLINED"), AttendanceStatus.Declined)
     @Test fun `list maps waitlisted own attendance`() =

@@ -64,6 +64,20 @@ class GameControllerTest {
     @Test fun `athlete list never exposes own attendance of a hidden draft`() { val draft=seed(); val published=seed(GameStatus.PUBLISHED); attendance.own=mapOf(draft.id to answer(draft,AttendanceStatus.CONFIRMED,null,1)); repository.role=GroupRole.ATHLETE; val listed=controller.list(ID,"$group"); assertEquals(listOf(published.id),listed.map { it.id }); assertNull(listed.single().ownAttendance) }
     @Test fun `nonmember list never reads own attendance`() { repository.role=null; assertFailsWith<GameNotFoundException>{controller.list(ID,"$group")}; assertEquals(0,attendance.ownCalls) }
     @Test fun `list reads own attendance once no matter how many games it returns`() { repeat(5){ seed(GameStatus.PUBLISHED) }; assertEquals(5,controller.list(ID,"$group").size); assertEquals(1,attendance.ownCalls) }
+    @Test fun `DEB-109 list carries the slots per position only for games with positions`() {
+        val fiveOne = seed(GameStatus.PUBLISHED); val plain = seed(GameStatus.PUBLISHED)
+        attendance.positions = mapOf(fiveOne.id to listOf(
+            br.com.saqz.groups.domain.attendance.PositionLoad(br.com.saqz.groups.domain.AthletePosition.CENTRAL, 4, 3, 0),
+            br.com.saqz.groups.domain.attendance.PositionLoad(br.com.saqz.groups.domain.AthletePosition.PONTA, 4, 4, 1),
+        ))
+        val listed = controller.list(ID, "$group").associateBy { it.id }
+        assertEquals(
+            listOf(PositionSummaryResponse("CENTRAL", 4, 3, 1, 0), PositionSummaryResponse("PONTA", 4, 4, 0, 1)),
+            listed.getValue(fiveOne.id).positions,
+        )
+        // Jogo sem posições: o campo não vai (nulo), e o cliente antigo nem o conhece.
+        assertNull(listed.getValue(plain.id).positions)
+    }
     @Test fun `athlete draft read is hidden`() { val game=seed(); repository.role=GroupRole.ATHLETE; assertFailsWith<GameNotFoundException>{controller.read(ID,"$group","${game.id}")} }
     @Test fun `malformed resource identifiers are hidden`() { assertFailsWith<GameNotFoundException>{controller.read(ID,"bad","also-bad")} }
     @Test fun `edit returns incremented ETag and immutable response fields`() { val game=seed(); val response=controller.edit(ID,"$group","${game.id}","\"1\"",request().copy(requestId=null,title="Treino novo")); assertEquals("\"2\"",response.headers.eTag); assertEquals("Treino novo",response.body!!.title) }
@@ -101,6 +115,9 @@ class GameControllerTest {
         var own: Map<UUID, AttendanceRecord> = emptyMap(); var ownCalls = 0; var lastOwnKey: Pair<UUID, UUID>? = null
         override fun find(actorId: UUID, groupId: UUID, gameId: UUID) = AttendanceDetail(AttendanceRecord(gameId, group, actor, AttendanceStatus.WAITLISTED, 4, START, START, 2), 3, 21, 2, 24, 1)
         override fun ownByGame(actorId: UUID, groupId: UUID): Map<UUID, AttendanceRecord> { ownCalls++; lastOwnKey = actorId to groupId; return own }
+        var positions: Map<UUID, List<br.com.saqz.groups.domain.attendance.PositionLoad>> = emptyMap()
+        override fun positionsByGame(groupId: UUID) = positions
     }
     private companion object { val ID=RequestIdentity("subject",emailVerified=true,displayName="Player"); val DATE=LocalDate.of(2026,8,12); val START=Instant.parse("2026-08-12T22:30:00Z") }
 }
+

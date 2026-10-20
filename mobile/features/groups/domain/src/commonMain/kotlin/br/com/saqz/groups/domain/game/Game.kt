@@ -50,6 +50,8 @@ data class Game(
     val financeReviewRequired: Boolean = false,
     /** A resposta de QUEM OLHA neste jogo, vinda da listagem; `null` = ainda não respondeu. */
     val ownAttendance: AttendanceStatus? = null,
+    /** Vagas por posição do jogo, só na listagem (DEB-109); vazio em jogo sem posições ou backend antigo. */
+    val positions: List<br.com.saqz.groups.domain.attendance.PositionSummary> = emptyList(),
 )
 
 data class VersionedGame(val game: Game, val version: GameVersionToken)

@@ -40,6 +40,21 @@ class GroupAgendaTest {
     }
 
     @Test
+    fun `DEB-109 only the admin sees what positions are missing and only in published games`() = runTest {
+        val positions = br.com.saqz.groups.presentation.ui.details.GroupDetailsPreviewData.courtPositions()
+        val published = game("g", "2026-08-06T19:30:00-03:00").copy(positions = positions)
+        val draft = game("d", "2026-08-07T19:30:00-03:00").copy(status = GameStatus.Draft, positions = positions)
+        val rows = groupAgenda(listOf(published, draft), null, now, "CERET", isAdmin = true).associateBy { it.gameId }
+        assertEquals(
+            AgendaMissing.Some(listOf(br.com.saqz.groups.domain.athlete.AthletePosition.CENTRAL, br.com.saqz.groups.domain.athlete.AthletePosition.OPOSTO)),
+            rows.getValue("g").missing,
+        )
+        assertNull(rows.getValue("d").missing)
+        assertNull(groupAgenda(listOf(published), null, now, "CERET", isAdmin = false).single().missing)
+        assertNull(groupAgenda(listOf(game("s", "2026-08-06T19:30:00-03:00")), null, now, "CERET", isAdmin = true).single().missing)
+    }
+
+    @Test
     fun `row is written in the game time zone with the home keys`() = runTest {
         // 01h30 UTC de sexta ainda é quinta, 22h30, em São Paulo.
         val game = game("game-2", "2026-08-07T01:30:00Z").copy(ownAttendance = AttendanceStatus.Confirmed)

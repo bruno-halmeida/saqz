@@ -158,6 +158,8 @@ data class AttendanceSummaryUi(
     val availableSpots: Int = 0,
     /** Quem está na reserva não é "Vão" nem "Sem resposta"; sem este número o gestor não vê a fila no resumo. */
     val waiting: Int = 0,
+    /** Jogo com vagas por posição (5-1): a meia quadra do cartão de quem administra (DEB-109); nulo sem posições. */
+    val court: GroupCourtUi? = null,
 )
 
 @Immutable
@@ -275,6 +277,8 @@ data class GroupAgendaRowUi(
     val status: GroupAgendaStatus,
     val statusLabel: String,
     val contentDescription: String,
+    /** "Faltam: Central, Oposto(a)" de quem administra, em jogo com posições (DEB-109). */
+    val missing: AgendaMissing? = null,
 )
 
 /** Uma linha de "Esperando você" que só abre um destino do grupo. [count] alimenta o chip. */

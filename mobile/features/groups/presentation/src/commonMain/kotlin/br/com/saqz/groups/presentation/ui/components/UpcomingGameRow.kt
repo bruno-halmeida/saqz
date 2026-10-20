@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzLargeFontScale
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -60,6 +61,8 @@ internal fun UpcomingGameRow(
     onClick: () -> Unit,
     tag: String,
     modifier: Modifier = Modifier,
+    /** Terceira linha em âmbar ("Faltam: Central, Oposto(a)", DEB-109); nula, nada. */
+    alert: String? = null,
     trailing: @Composable () -> Unit,
 ) {
     val colors = SaqzTheme.colors
@@ -86,6 +89,13 @@ internal fun UpcomingGameRow(
             Column {
                 Text(text = title, style = SaqzTheme.typography.compactTitle, color = colors.textPrimary)
                 Text(text = meta, style = SaqzTheme.typography.compactMeta, color = colors.textSecondary)
+                if (alert != null) {
+                    Text(
+                        text = alert,
+                        style = SaqzTheme.typography.compactMeta.copy(fontWeight = FontWeight(600)),
+                        color = colors.warningForeground,
+                    )
+                }
             }
             if (stackTrailing) trailingSlot()
         }

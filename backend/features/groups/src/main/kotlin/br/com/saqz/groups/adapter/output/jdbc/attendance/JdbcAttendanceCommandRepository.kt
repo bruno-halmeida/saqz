@@ -399,6 +399,14 @@ class JdbcAttendanceCommandRepository(
             .list()
             .associateBy(AttendanceRecord::gameId)
 
+    override fun positionsByGame(groupId: UUID): Map<UUID, List<PositionLoad>> =
+        jdbc.sql(POSITION_LOADS_BY_GAME).param("group", groupId).query { rs, _ ->
+            rs.getObject("game_id", UUID::class.java) to PositionLoad(
+                AthletePosition.valueOf(rs.getString("position")), rs.getInt("slots"),
+                rs.getInt("confirmed"), rs.getInt("waitlisted"),
+            )
+        }.list().groupBy({ it.first }, { it.second }).mapValues { (_, loads) -> loads.sortedBy { it.position.ordinal } }
+
     override fun roster(actorId: UUID, groupId: UUID, gameId: UUID): AttendanceRoster? {
         val rows = jdbc.sql(ROSTER)
             .param("actor", actorId)
@@ -660,6 +668,17 @@ class JdbcAttendanceCommandRepository(
             LEFT JOIN game_attendance a ON a.game_id=s.game_id AND a.position=s.position
             WHERE s.game_id=:game
             GROUP BY s.position,s.slots
+        """
+        // As mesmas cargas de POSITION_LOADS, de todos os jogos do grupo numa consulta (a agenda não pagina).
+        const val POSITION_LOADS_BY_GAME = """
+            SELECT s.game_id,s.position,s.slots,
+                   count(a.member_user_id) FILTER (WHERE a.status='CONFIRMED') AS confirmed,
+                   count(a.member_user_id) FILTER (WHERE a.status='WAITLISTED') AS waitlisted
+            FROM game_position_slots s
+            JOIN games g ON g.id=s.game_id
+            LEFT JOIN game_attendance a ON a.game_id=s.game_id AND a.position=s.position
+            WHERE g.group_id=:group
+            GROUP BY s.game_id,s.position,s.slots
         """
         val DETAIL = """
             SELECT g.capacity,g.version AS game_version,a.status AS own_status,a.waitlist_sequence,

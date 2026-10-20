@@ -426,7 +426,9 @@ class GroupDetailsViewModel(
      */
     private suspend fun loadAgenda(generation: Int, group: Group, games: List<Game>) {
         if (generation != loadGeneration) return
-        val agenda = groupAgenda(games, state.value.nextGame?.gameId, now.now(), group.profile?.defaultVenue?.name)
+        val agenda = groupAgenda(
+            games, state.value.nextGame?.gameId, now.now(), group.profile?.defaultVenue?.name, isAdmin = group.role != GroupRole.ATHLETE,
+        )
         // Formatar suspende (`getString`): a guarda é re-checada depois, não antes.
         if (generation != loadGeneration) return
         update { it.copy(agenda = agenda) }
@@ -918,6 +920,7 @@ class GroupDetailsViewModel(
         pending = pendingCount,
         availableSpots = availableSpots,
         waiting = waitlistCount,
+        court = GroupPositionCourt.from(positions),
     )
 
     private suspend fun Game.toNextGame(detail: AttendanceDetail, roster: AttendanceRoster): NextGameUi {

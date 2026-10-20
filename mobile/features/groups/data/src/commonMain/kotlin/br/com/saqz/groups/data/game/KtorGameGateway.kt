@@ -1,5 +1,7 @@
 package br.com.saqz.groups.data.game
 
+import br.com.saqz.groups.domain.attendance.PositionSummary
+import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
@@ -79,6 +81,17 @@ internal data class GameTransport(
     val waitlistCount: Int,
     val financeReviewRequired: Boolean = false,
     val ownAttendance: AttendanceEntryTransport? = null,
+    /** Campo novo e opcional da listagem (DEB-109); backend antigo não manda. */
+    val positions: List<GamePositionTransport>? = null,
+)
+
+@Serializable
+internal data class GamePositionTransport(
+    val position: String,
+    val slots: Int,
+    val confirmed: Int,
+    val missing: Int,
+    val waitlisted: Int,
 )
 
 @Serializable
@@ -306,7 +319,11 @@ private fun GameTransport.toDomain() = Game(
     durationMinutes, capacity, confirmationDeadline, gameFeeCents, notes, status.toDomain(),
     version, confirmedCount, availableSpots, waitlistCount, financeReviewRequired,
     ownAttendance?.status?.let { AttendanceStatus.entries[it.ordinal] },
+    positions.orEmpty().mapNotNull { it.toDomain() },
 )
+
+private fun GamePositionTransport.toDomain() = AthletePosition.entries.firstOrNull { it.name == position }
+    ?.let { PositionSummary(it, slots, confirmed, missing, waitlisted) }
 
 private fun GameVenueTransport.toDomain() = GameVenue(venueId, name, address, court)
 private fun GameStatusTransport.toDomain() = GameStatus.entries[ordinal]

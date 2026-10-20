@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.ui.details
 
+import br.com.saqz.groups.domain.athlete.AthletePosition
+import br.com.saqz.groups.domain.attendance.PositionSummary
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.presentation.details.AttendanceSummaryUi
 import br.com.saqz.groups.presentation.details.CashboxUi
@@ -127,6 +129,15 @@ internal object GroupDetailsPreviewData {
     )
 
     /** Dono COM jogo marcado e ainda sem resposta: o que o gestor real vê. */
+    /** Quadro `Grupo` (DEB-109): ponteiro(a) 4/4 com 1 na espera, central 3/4, oposto(a) 1/2, levantador(a) 2/2, líbero 2/2. */
+    fun courtPositions(complete: Boolean = false, libero: Int = 2) = listOf(
+        PositionSummary(AthletePosition.PONTA, 4, 4, 0, 1),
+        PositionSummary(AthletePosition.CENTRAL, 4, if (complete) 4 else 3, if (complete) 0 else 1, 0),
+        PositionSummary(AthletePosition.OPOSTO, 2, if (complete) 2 else 1, if (complete) 0 else 1, 0),
+        PositionSummary(AthletePosition.LEVANTADOR, 2, 2, 0, 0),
+        PositionSummary(AthletePosition.LIBERO, libero, libero, 0, 0),
+    )
+
     val admin = GroupDetailsState(
         isLoading = false,
         isAdmin = true,
