@@ -62,7 +62,9 @@ internal fun AttendanceLinkScreen(
     appDownloadAvailable: Boolean = false,
 ) {
     val phase = state.phase
-    val answered = phase in listOf(AttendanceLinkPhase.Confirmed, AttendanceLinkPhase.Waitlisted, AttendanceLinkPhase.Declined, AttendanceLinkPhase.RequestClosed)
+    val answered = phase in listOf(
+        AttendanceLinkPhase.Confirmed, AttendanceLinkPhase.Waitlisted, AttendanceLinkPhase.Declined, AttendanceLinkPhase.RequestClosed,
+    )
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
             SaqzTopAppBar(

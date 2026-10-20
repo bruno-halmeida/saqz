@@ -191,6 +191,8 @@ class AttendanceLinkPendingScreenshotTest : ConnectedFlowsScreenshotScene() {
         ),
         "pending-refreshing",
     )
+    /** O pedido recusado ou cancelado: a volta à tela não cria pedido novo, só oferece pedir de novo. */
+    @Test fun requestClosed() = scene(AttendanceLinkState(AttendanceLinkPhase.RequestClosed), "request-closed")
     private fun scene(state: AttendanceLinkState, name: String) = capture("attendance-link-$name") {
         AttendanceLinkScreen(state, {}, {}, {})
     }
@@ -216,7 +218,6 @@ class AttendanceLinkScreenshotTest : ConnectedFlowsScreenshotScene() {
     )
     @Test fun declineSheet() = scene(AttendanceLinkState(AttendanceLinkPhase.DeclineSheet, destination, game), "decline-sheet")
     @Test fun declined() = scene(AttendanceLinkState(AttendanceLinkPhase.Declined, destination, game), "declined")
-    @Test fun requestClosed() = scene(AttendanceLinkState(AttendanceLinkPhase.RequestClosed), "request-closed")
     @Test fun invalid() = scene(AttendanceLinkState(AttendanceLinkPhase.Invalid), "invalid")
     @Test fun registration() = scene(AttendanceLinkState(AttendanceLinkPhase.Registration), "registration")
     @Test fun failed() = scene(AttendanceLinkState(AttendanceLinkPhase.Failed), "failed")

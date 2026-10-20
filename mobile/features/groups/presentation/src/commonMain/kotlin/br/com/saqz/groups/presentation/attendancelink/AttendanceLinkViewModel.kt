@@ -64,7 +64,8 @@ class AttendanceLinkViewModel(
     }
 
     fun retry() {
-        if (state.value.phase in listOf(AttendanceLinkPhase.Failed, AttendanceLinkPhase.Pending, AttendanceLinkPhase.RequestClosed)) resolve()
+        val phase = state.value.phase
+        if (phase in listOf(AttendanceLinkPhase.Failed, AttendanceLinkPhase.Pending, AttendanceLinkPhase.RequestClosed)) resolve()
     }
 
     private fun resolve() {
@@ -124,7 +125,8 @@ class AttendanceLinkViewModel(
         when {
             request is SaqzResult.Success -> {
                 readPendingPreview(current)
-                if (current == generation) update { it.copy(pendingRegistrationSaved = request.value.athleteProfile != null, refreshing = false) }
+                val saved = request.value.athleteProfile != null
+                if (current == generation) update { it.copy(pendingRegistrationSaved = saved, refreshing = false) }
             }
             request is SaqzResult.Failure && request.error.let { it is AthleteError.DataFailure && it.error == DataError.NotFound } ->
                 show(AttendanceLinkPhase.RequestClosed)
