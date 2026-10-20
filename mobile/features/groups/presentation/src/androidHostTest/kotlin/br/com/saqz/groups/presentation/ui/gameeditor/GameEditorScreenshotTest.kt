@@ -148,6 +148,29 @@ class GameEditorScreenshotTest {
         compose.onRoot().captureRoboImage("screenshots/vul-153/4b-editor-date-time-picker.png")
     }
 
+    /** DEB-101: a folha por toque num celular pequeno (320x568dp), sem chip nem texto cortado. */
+    @Test
+    @Config(sdk = [35], qualifiers = SMALL_PHONE, application = Application::class)
+    fun dateTimePickerSmallPhone() {
+        compose.setContent { Themed { GameEditorScreen(state = previewState(), onBack = {}, onIntent = {}) } }
+        compose.onNodeWithTag(GameEditorTags.Date).performClick()
+        compose.mainClock.advanceTimeBy(SHEET_SETTLE_MILLIS)
+        compose.onRoot().captureRoboImage("screenshots/deb-101/4b-editor-date-time-picker-small-phone.png")
+    }
+
+    @Test
+    fun dateTimePickerTouch() {
+        compose.setContent { Themed { GameEditorScreen(state = previewState(), onBack = {}, onIntent = {}) } }
+        compose.onNodeWithTag(GameEditorTags.Date).performClick()
+        compose.mainClock.advanceTimeBy(SHEET_SETTLE_MILLIS)
+        compose.onRoot().captureRoboImage("screenshots/deb-101/4b-editor-date-time-picker.png")
+    }
+
+    private companion object {
+        const val SMALL_PHONE = "w320dp-h568dp-normal-notlong-port-xhdpi"
+        const val SHEET_SETTLE_MILLIS = 600L
+    }
+
     private fun capture(name: String, content: @Composable () -> Unit) {
         compose.setContent { Themed(content) }
         compose.onRoot().captureRoboImage("screenshots/vul-153/$name.png")
