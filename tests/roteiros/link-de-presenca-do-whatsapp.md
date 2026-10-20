@@ -31,7 +31,10 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | --- | --- | --- | --- |
 | Não membro, grupo sem aprovação, qualquer momento | Entra, faz o cadastro; presença registrada se o jogo não começou | ☐ | ☐ |
 | Mesmo caso, jogo cheio | Entra e fica na lista de espera | ☐ | ☐ |
-| Não membro, grupo com aprovação | Vira pedido; presença não registrada | ☐ | ☐ |
+| Não membro, grupo com aprovação | Vira pedido; presença não registrada; tela "Pedido enviado" | ☐ | ☐ |
+| Pedido aprovado, cadastro adiantado, volta à tela | Presença registrada sem outro passo | ☐ | ☐ |
+| Pedido aprovado, sem cadastro, volta à tela | Abre o cadastro, depois a presença | ☐ | ☐ |
+| Pedido recusado ou cancelado, volta à tela | "Seu pedido não está mais ativo"; nenhum pedido novo até tocar em "Pedir de novo" | ☐ | ☐ |
 | Organizador trocou o código depois do lembrete | Lembrete antigo não vale como convite | ☐ | ☐ |
 | Organizador desativou o convite | Lembretes anteriores não valem; os novos valem | ☐ | ☐ |
 | Removido antes | Pedido de entrada | ☐ | ☐ |
@@ -42,17 +45,20 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | --- | --- | --- | --- |
 | Membro novo, cadastro incompleto | Cadastro, depois a presença | ☐ | ☐ |
 | Membro com cadastro completo | Resposta direta | ☐ | ☐ |
-| Grupo com aprovação, pedido pendente | Sem resposta agora; depois de aprovada, o app abre o cadastro | ☐ | ☐ |
+| Grupo com aprovação, pedido pendente | Sem resposta agora; dá para adiantar o cadastro, que fica no pedido | ☐ | ☐ |
+| Pedido aprovado, cadastro adiantado | Presença registrada ao voltar à tela, sem cadastro de novo | ☐ | ☐ |
+| Pedido aprovado, sem cadastro | O app abre o cadastro, depois a presença | ☐ | ☐ |
 
 ## LINK-005 · O que a tela do link diz [MULTI]
 
 | Situação | Texto | iOS | Android |
 | --- | --- | --- | --- |
-| "Vou", confirmado | "Presença confirmada para sua conta." | ☐ | ☐ |
-| "Vou", vai para a espera | "Você entrou na lista de espera. Confira sua posição no jogo." | ☐ | ☐ |
-| Folha de "Não vou", antes do toque | "Não vai poder ir?…" (sem prometer aviso ao grupo) | ☐ | ☐ |
-| "Não vou", depois do toque | "Pronto: seu nome saiu da lista deste jogo." | ☐ | ☐ |
-| Todos os casos | O cartão do jogo aparece em cima | ☐ | ☐ |
+| "Vou", confirmado | "Sua vaga está confirmada" / "Seu nome já está na lista.", vagas preenchidas e "Não vou mais" | ☐ | ☐ |
+| "Vou", espera com jogo lotado | "Você está na lista de espera" / "As vagas acabaram. Se abrir uma, você recebe um aviso." e a vez na fila | ☐ | ☐ |
+| "Vou", espera com vaga sobrando | "Se você ganhar uma vaga, recebe um aviso." (nunca "as vagas acabaram") | ☐ | ☐ |
+| Folha de "Não vou", antes do toque | "Não vai poder ir?" / "Seu nome sai da lista do jogo de …" (sem prometer aviso ao grupo) | ☐ | ☐ |
+| "Não vou", depois do toque | "Você não vai neste jogo" / "Seu nome saiu da lista. Valeu por avisar." | ☐ | ☐ |
+| Todos os casos | Resultado em cima, cartão do jogo embaixo | ☐ | ☐ |
 
 ## LINK-006 · Link de compartilhar a lista (removido)
 

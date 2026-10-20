@@ -233,7 +233,7 @@ Estado: J4 com valor `20,00`, ATL e ATL2 confirmados (duas pendentes), ATL3 com 
 | 7 | ATL (caixa) | Procurar a "Caixa do grupo" | Não existe para o atleta (backend 403) | — | ☐ | ☐ |
 | 8 | ATL3 | Início → "Minhas cobranças" | `Convidado: Convidado QA` no nome do anfitrião | — | ☐ | ☐ |
 | 9 | ORG | Com cobrança pendente e o grupo sem Pix, abrir o caixa/`Cobrar` | `Cadastre o Pix do grupo em Editar grupo` | — | ☐ | ☐ |
-| 10 | ORG | Cadastrar o Pix do grupo (Editar grupo → chave Pix) | O aviso some | — | ☐ | ☐ |
+| 10 | ORG | Cadastrar o Pix do grupo (Editar grupo → "Pix do grupo": "Tipo de chave" `E-mail`, chave `pix@qa.test`) | O aviso some | `select pix_key, pix_label from access_groups where id='$GID'` = `pix@qa.test\|E-mail` | ☐ | ☐ |
 | 11 | ATL | Reabrir "Minhas cobranças" | `Pagamento é manual: copie a chave Pix e pague fora do app — a baixa acontece no caixa do grupo.` e botão de copiar | — | ☐ | ☐ |
 
 ---
