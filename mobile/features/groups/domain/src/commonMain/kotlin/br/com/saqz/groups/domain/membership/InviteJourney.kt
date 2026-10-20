@@ -16,7 +16,12 @@ data class InvitePreview(
     val regularSlots: List<InviteRegularSlot> = emptyList(),
     val expiresAt: String? = null,
     val nextGame: InviteNextGame? = null,
+    /** Link de mensalistas (CONV-011): entra como mensalista e sem aprovação. */
+    val inviteKind: InviteKind = InviteKind.PUBLIC,
 )
+
+/** `inviteKind` da prévia; ausente no convite público. */
+enum class InviteKind { PUBLIC, MONTHLY }
 
 data class InviteRegularSlot(
     val weekday: String,
@@ -38,6 +43,8 @@ data class InviteRedeem(
     val status: InviteRedeemStatus,
     val groupId: GroupId,
     val role: String?,
+    /** Só no link de mensalistas: `MENSALISTA` ou `AVULSO` (grupo sem mensalidade padrão). */
+    val membershipType: String? = null,
 )
 
 sealed interface InviteError : SaqzError {

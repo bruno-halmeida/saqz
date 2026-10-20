@@ -67,7 +67,17 @@ data class ApiProblem(
     val error: String? = null,
     val reason: String? = null,
     val message: String? = null,
+    // Convite de mensalistas (DEB-106): pessoas recusadas do lote (`INVALID_PEOPLE`) e os números do limite do plano
+    // (`PLAN_LIMIT`). Aditivos: ausentes em todo o resto.
+    val people: List<ApiProblemPerson>? = null,
+    val limit: Int? = null,
+    val current: Int? = null,
+    val requested: Int? = null,
+    val free: Int? = null,
 )
+
+@Serializable
+data class ApiProblemPerson(val index: Int, val reason: String)
 
 sealed interface NetworkError {
     data class ApiProblemError(val problem: ApiProblem) : NetworkError

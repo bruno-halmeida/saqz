@@ -6,6 +6,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.membership.InviteCode
 import br.com.saqz.groups.domain.membership.InviteError
 import br.com.saqz.groups.domain.membership.InviteGateway
+import br.com.saqz.groups.domain.membership.InviteKind
 import br.com.saqz.groups.domain.membership.InviteNextGame
 import br.com.saqz.groups.domain.membership.InvitePreview
 import br.com.saqz.groups.domain.membership.InviteRedeem
@@ -51,6 +52,7 @@ private data class InvitePreviewTransport(
     val entryRequiresApproval: Boolean = false,
     val expiresAt: String? = null,
     val nextGame: InviteNextGameTransport? = null,
+    val inviteKind: String? = null,
 )
 
 @Serializable
@@ -64,6 +66,7 @@ private data class InviteRedeemTransport(
     val status: InviteRedeemStatusTransport? = null,
     val groupId: String = "",
     val role: String? = null,
+    val membershipType: String? = null,
 )
 
 class KtorInviteGateway(
@@ -123,6 +126,7 @@ private fun InvitePreviewTransport.toDomain(): InvitePreview? {
             regularSlots = regularSlots.map { InviteRegularSlot(it.weekday, it.startTime) },
             expiresAt = expiresAt,
             nextGame = game,
+            inviteKind = if (inviteKind == "MONTHLY") InviteKind.MONTHLY else InviteKind.PUBLIC,
         )
     } else {
         null
@@ -137,7 +141,7 @@ private fun InviteRedeemTransport.toDomain(): InviteRedeem? {
         groupId.isNotBlank() &&
         (domainStatus == InviteRedeemStatus.JOINED) == (normalizedRole != null)
     ) {
-        InviteRedeem(domainStatus, GroupId(groupId), normalizedRole)
+        InviteRedeem(domainStatus, GroupId(groupId), normalizedRole, membershipType?.takeIf(String::isNotBlank))
     } else {
         null
     }

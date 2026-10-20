@@ -4,6 +4,7 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.membership.InviteCode
 import br.com.saqz.groups.domain.membership.InviteError
+import br.com.saqz.groups.domain.membership.InviteKind
 import br.com.saqz.groups.domain.membership.InviteRedeemStatus
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
@@ -113,6 +114,25 @@ class KtorInviteGatewayTest {
         assertEquals(InviteRedeemStatus.PENDING, pending.status)
         assertEquals(GROUP_ID, pending.groupId.value)
         assertEquals(null, pending.role)
+    }
+
+    @Test
+    fun `monthly link brings inviteKind in preview and membershipType in redeem public brings neither`() = runTest {
+        val public = fixture { preview() }.gateway.preview(InviteCode(INVITE_CODE)).success()
+        assertEquals(InviteKind.PUBLIC, public.inviteKind)
+        val monthly = fixture {
+            respond(
+                """{"groupName":"Vôlei","inviterName":"Ana","entryRequiresApproval":false,"memberCount":3,"inviteKind":"MONTHLY"}""",
+                headers = jsonHeaders(),
+            )
+        }.gateway.preview(InviteCode(INVITE_CODE)).success()
+        assertEquals(InviteKind.MONTHLY, monthly.inviteKind)
+
+        val joined = fixture {
+            respond("""{"status":"JOINED","groupId":"$GROUP_ID","role":"ATHLETE","membershipType":"AVULSO"}""", headers = jsonHeaders())
+        }.gateway.redeem(InviteCode(INVITE_CODE)).success()
+        assertEquals("AVULSO", joined.membershipType)
+        assertEquals(null, fixture { redeem("ATHLETE") }.gateway.redeem(InviteCode(INVITE_CODE)).success().membershipType)
     }
 
     @Test
