@@ -1,0 +1,958 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Convite de mensalistas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Telas do convite de mensalistas no visual do app, para aprovar antes de codar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Hallmark · scope: telas de app (sistema existente preservado) · genre: modern-minimal · theme: Saqz (export oficial do design system)
+ * pre-emit critique: P5 H4 E5 S5 R4 V3
+ * Layout: quadro de telas de 390px alinhadas à esquerda, uma seção por fluxo; as telas imitam o app (tema claro), o quadro em volta segue o tema do visualizador.
+ * Tokens do app: cópia de mobile/core/design-system/design-tokens/{colors,radius,spacing,typography}.css. Nenhuma cor ou fonte fora deste bloco.
+ */
+:root {
+  /* ---- colors.css ---- */
+  --saqz-blue: #0638DF;
+  --saqz-blue-pressed: #052BB3;
+  --saqz-blue-tint: #F4F8FB;
+  --saqz-lime: #C7F300;
+  --saqz-navy: #0E1738;
+  --saqz-white: #FFFFFF;
+  --saqz-canvas: #F5F5F7;
+  --saqz-ice: #F4F8FB;
+  --saqz-border: #D8DDE8;
+  --saqz-muted: #667085;
+  --saqz-placeholder: #98A2B3;
+  --saqz-disabled-bg: #C9CED8;
+  --saqz-disabled-fg: #7A8291;
+  --saqz-success: #17B26A;
+  --saqz-warning: #F5A623;
+  --saqz-error: #C9363B;
+  --color-brand: var(--saqz-blue);
+  --color-accent: var(--saqz-lime);
+  --text-strong: var(--saqz-navy);
+  --text-body: var(--saqz-navy);
+  --text-muted: var(--saqz-muted);
+  --text-on-brand: var(--saqz-white);
+  --surface-page: var(--saqz-canvas);
+  --surface-card: var(--saqz-white);
+  --surface-soft: var(--saqz-ice);
+  --border-default: var(--saqz-border);
+  --brand-fill-08: rgba(6, 56, 223, 0.08);
+  --brand-fill-11: rgba(6, 56, 223, 0.11);
+  --lime-fill-32: rgba(199, 243, 0, 0.32);
+  --error-fill-10: rgba(201, 54, 59, 0.10);
+  --scrim: rgba(14, 23, 56, 0.46);
+  /* extras do app (SaqzColorTokens e chip Warning), nomeados aqui para nada ficar solto nas regras */
+  --saqz-warning-fg: #8F5600;
+  --warning-fill-14: rgba(245, 166, 35, 0.14);
+  --saqz-error-pressed: #A92B30;
+
+  /* ---- radius.css ---- */
+  --radius-input: 10px;
+  --radius-card: 12px;
+  --radius-large: 20px;
+  --radius-sheet: 28px;
+  --radius-pill: 999px;
+  --shadow-sheet: 0 -12px 40px rgba(14, 23, 56, 0.12);
+  --shadow-toast: 0 12px 40px rgba(14, 23, 56, 0.20);
+
+  /* ---- spacing.css (grade de 4) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --page-margin: 16px;
+  --section-gap: 24px;
+  --block-gap: 12px;
+  --touch-min: 44px;
+
+  /* ---- typography.css ---- */
+  --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --text-h2-size: 28px;  --text-h2-line: 34px;  --text-h2-weight: 700;  --text-h2-track: -0.02em;
+  --m-title-size: 22px;     --m-title-line: 28px;     --m-title-weight: 700;  --m-title-track: -0.02em;
+  --m-subtitle-size: 18px;  --m-subtitle-line: 24px;  --m-subtitle-weight: 600;
+  --m-body-size: 16px;      --m-body-line: 24px;      --m-body-weight: 400;
+  --m-support-size: 14px;   --m-support-line: 20px;   --m-support-weight: 400;
+  --m-label-size: 15px;     --m-label-line: 20px;     --m-label-weight: 600;
+
+  /* ---- movimento (SaqzMotionPolicy) ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-sheet: 320ms;
+  --dur-press: 100ms;
+
+  /* ---- quadro em volta das telas: segue o tema do visualizador ---- */
+  --board-bg: #FFFFFF;
+  --board-fg: var(--saqz-navy);
+  --board-muted: var(--saqz-muted);
+  --board-soft: var(--saqz-ice);
+  --board-border: var(--saqz-border);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --board-bg: #0C1226;
+    --board-fg: #E8ECF8;
+    --board-muted: #A3ADC7;
+    --board-soft: #151C36;
+    --board-border: #29345A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --board-bg: #0C1226;
+  --board-fg: #E8ECF8;
+  --board-muted: #A3ADC7;
+  --board-soft: #151C36;
+  --board-border: #29345A;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; overflow-x: clip; }
+body {
+  font-family: var(--font-ui);
+  font-size: var(--m-body-size);
+  line-height: var(--m-body-line);
+  color: var(--board-fg);
+  background: var(--board-bg);
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--saqz-blue); outline-offset: 2px; }
+p, h1, h2, h3, ul { margin: 0; }
+ul { padding: 0; list-style: none; }
+.nb { white-space: nowrap; }
+
+/* trilhas de grid nunca crescem pelo conteúdo: sem lista estourando o cartão, sem chip cortado */
+.board__head, .decide, .group, .group__head, .frame, .frame figcaption, .content, .card, .card__head, .people, .sect, .stack, .field, .field__label,
+.notice, .notice__text, .summary__text, .actions, .sheet, .sheet__fields, .sheet__foot, .bottombar, .state { grid-template-columns: minmax(0, 1fr); }
+
+/* texto corrido sem palavra sozinha na última linha; títulos curtos equilibrados */
+p, .board__lead, .decide li, .msgbox { text-wrap: pretty; }
+.support, .frame__note, .group__lead, .field__msg, .strip p, .bottombar__help { text-wrap: balance; }
+.board__title, .group__title, .frame__name, .card__title, .empty__title, .sheet__title, .sect__title, .decide__title { text-wrap: balance; }
+
+/* ---------- ícones (um conjunto só: Lucide) ---------- */
+.ic { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ic--sm { width: 16px; height: 16px; }
+
+/* ---------- quadro (fora das telas) ---------- */
+.board {
+  max-width: 1320px;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: var(--space-6) 96px;
+}
+.board__head { display: grid; gap: var(--space-4); max-width: 70ch; }
+.board__title { font-size: var(--text-h2-size); line-height: var(--text-h2-line); font-weight: var(--text-h2-weight); letter-spacing: var(--text-h2-track); color: var(--board-fg); overflow-wrap: anywhere; min-width: 0; }
+.board__lead { max-width: 65ch; color: var(--board-muted); }
+.decide { display: grid; gap: var(--space-2); padding: var(--space-4); background: var(--board-soft); border-radius: var(--radius-card); color: var(--board-fg); }
+.decide__title { font-size: var(--m-label-size); line-height: var(--m-label-line); font-weight: 600; }
+.decide ol { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-2); font-size: var(--m-support-size); line-height: var(--m-support-line); }
+.group { display: grid; gap: var(--space-6); margin-top: 64px; }
+.group__head { display: grid; gap: var(--space-1); max-width: 65ch; }
+.group__title { font-size: var(--m-title-size); line-height: var(--m-title-line); font-weight: 700; letter-spacing: var(--m-title-track); color: var(--board-fg); }
+.group__lead { color: var(--board-muted); font-size: var(--m-support-size); line-height: var(--m-support-line); }
+.frames { display: grid; gap: 48px var(--space-8); grid-template-columns: repeat(auto-fill, minmax(min(100%, 390px), 390px)); justify-content: start; align-items: start; }
+.frame { margin: 0; display: grid; gap: var(--space-3); min-width: 0; }
+.frame figcaption { display: grid; gap: var(--space-1); width: 100%; max-width: 390px; }
+.frame__name { font-size: var(--m-label-size); line-height: var(--m-label-line); font-weight: 600; color: var(--board-fg); }
+.frame__note { font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--board-muted); }
+
+/* ---------- tela do app (sempre clara: o app só tem tema claro) ---------- */
+.screen { position: relative; isolation: isolate; container-type: inline-size; display: flex; flex-direction: column; width: 100%; max-width: 390px; min-height: 720px; overflow: hidden; color-scheme: light; color: var(--text-body); background: var(--surface-page); border: 1px solid var(--board-border); border-radius: var(--radius-card); }
+.screen--sheet { min-height: 640px; }
+.appbar { display: flex; align-items: center; gap: var(--space-1); min-height: 56px; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-1); }
+.appbar__title { min-width: 0; text-wrap: balance; font-size: var(--m-title-size); line-height: var(--m-title-line); font-weight: var(--m-title-weight); letter-spacing: var(--m-title-track); color: var(--text-strong); }
+.content { flex: 1; display: grid; align-content: start; gap: var(--section-gap); padding: var(--space-3) var(--page-margin) var(--space-6); min-width: 0; }
+.bottombar { display: grid; gap: var(--space-2); padding: var(--space-3) var(--page-margin) var(--space-4); background: var(--surface-page); border-top: 1px solid var(--border-default); }
+.bottombar__help { text-align: center; font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--text-muted); }
+.stack { display: grid; gap: var(--space-2); }
+
+.iconbtn { position: relative; flex: none; display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--saqz-blue); }
+.iconbtn .ic { width: 24px; height: 24px; }
+.iconbtn--muted { color: var(--text-muted); }
+.iconbtn:active { background: var(--brand-fill-11); }
+@media (hover: hover) { .iconbtn:hover { background: var(--brand-fill-08); } }
+
+.card { display: grid; gap: var(--block-gap); padding: var(--space-4); background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-card); min-width: 0; }
+.card--flush { padding: 0; gap: 0; overflow: hidden; }
+.card__head { display: grid; gap: var(--space-1); padding-bottom: var(--space-1); }
+.card__title { font-size: var(--m-label-size); line-height: var(--m-label-line); font-weight: 600; color: var(--text-strong); }
+.support { font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--text-muted); }
+
+/* ---------- pessoas ---------- */
+.people { display: grid; }
+.person { display: flex; align-items: center; gap: var(--space-3); min-width: 0; min-height: 60px; padding: var(--space-2) 0; }
+.person + .person { border-top: 1px solid var(--border-default); }
+.card--flush .person { padding: var(--space-3) var(--space-4); }
+.avatar { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--surface-soft); border: 1px solid var(--border-default); color: var(--saqz-blue); font-size: var(--m-support-size); font-weight: 600; }
+.person__text { flex: 1; min-width: 0; }
+.person__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--m-subtitle-size); line-height: var(--m-subtitle-line); font-weight: var(--m-subtitle-weight); color: var(--text-strong); }
+.person__meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* telas mais estreitas que 390: o chip desce para baixo do nome em vez de espremê-lo; abaixo de 360 o avatar encolhe */
+@container (max-width: 385px) {
+  .person--status { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-3); row-gap: var(--space-1); align-items: center; }
+  .person--status .avatar { grid-row: 1 / span 2; }
+  .person--status .person__text, .person--status .chip { grid-column: 2; }
+  .person--status .chip { justify-self: start; }
+}
+@container (max-width: 359px) {
+  .person, .person--status { column-gap: var(--space-2); }
+  .avatar { width: 36px; height: 36px; }
+}
+
+.chip { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); font-size: 13px; line-height: 20px; font-weight: 600; white-space: nowrap; }
+.chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.chip--plain::before { display: none; }
+.chip--neutral { color: var(--text-muted); background: var(--surface-soft); }
+.chip--brand { color: var(--saqz-blue); background: var(--brand-fill-08); }
+.chip--warning { color: var(--saqz-warning-fg); background: var(--warning-fill-14); }
+.chip--error { color: var(--saqz-error); background: var(--error-fill-10); }
+
+/* ---------- botões ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 52px; padding: 0 var(--space-5); border: 1px solid transparent; border-radius: var(--radius-pill); font-size: var(--m-label-size); line-height: var(--m-label-line); font-weight: 600; white-space: nowrap; text-decoration: none; transition: background-color 120ms var(--ease-out), transform var(--dur-press) var(--ease-out); }
+.btn--full { width: 100%; }
+.btn--sm { min-height: 44px; padding: 0 var(--space-4); font-size: var(--m-support-size); line-height: var(--m-support-line); }
+.btn--primary { background: var(--saqz-blue); color: var(--text-on-brand); }
+.btn--secondary { background: var(--saqz-white); color: var(--saqz-blue); border-color: var(--saqz-blue); }
+.btn--danger { background: var(--saqz-error); color: var(--text-on-brand); }
+.btn--ghost { background: transparent; color: var(--saqz-blue); }
+.btn--ghost-danger { background: transparent; color: var(--saqz-error); }
+@media (hover: hover) {
+  .btn--primary:hover:not(:disabled) { background: var(--saqz-blue-pressed); }
+  .btn--secondary:hover:not(:disabled), .btn--ghost:hover { background: var(--brand-fill-08); }
+  .btn--danger:hover:not(:disabled) { background: var(--saqz-error-pressed); }
+  .btn--ghost-danger:hover { background: var(--error-fill-10); }
+}
+.btn--primary.is-hover { background: var(--saqz-blue-pressed); }
+.btn:active:not(:disabled), .btn.is-active { transform: translateY(1px) scale(0.98); }
+.btn--primary:active:not(:disabled), .btn--primary.is-active { background: var(--saqz-blue-pressed); }
+.btn.is-focus { outline: 2px solid var(--saqz-blue); outline-offset: 2px; }
+.btn:disabled { background: var(--saqz-disabled-bg); color: var(--saqz-disabled-fg); border-color: transparent; cursor: not-allowed; transform: none; }
+.btn--secondary:disabled { background: var(--saqz-white); border-color: var(--border-default); }
+.btn.is-loading { opacity: 0.85; cursor: progress; }
+.spinner { width: 20px; height: 20px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.textlink { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 44px; padding: 0 var(--space-1); border: 0; background: transparent; color: var(--saqz-blue); font-size: var(--m-label-size); line-height: var(--m-label-line); font-weight: 600; white-space: nowrap; }
+.textlink:active { opacity: 0.7; }
+@media (hover: hover) { .textlink:hover { text-decoration: underline; } }
+
+.dashed { position: relative; display: flex; align-items: center; justify-content: center; gap: var(--space-2); width: 100%; min-height: 52px; padding: var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-card); background: var(--surface-soft); color: var(--saqz-blue); font-size: var(--m-label-size); line-height: var(--m-label-line); font-weight: 600; white-space: nowrap; }
+.dashed__frame { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.dashed__frame rect { fill: none; stroke: var(--saqz-blue); stroke-width: 1; stroke-dasharray: 8 8; x: 0.5px; y: 0.5px; width: calc(100% - 1px); height: calc(100% - 1px); rx: 12px; }
+.dashed:active { background: var(--brand-fill-11); }
+@media (hover: hover) { .dashed:hover { background: var(--brand-fill-08); } }
+.row-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* ---------- campos ---------- */
+.field { display: grid; gap: var(--space-1); }
+.field__label { display: grid; gap: var(--space-2); font-size: var(--m-label-size); line-height: var(--m-label-line); font-weight: 600; color: var(--text-strong); }
+.input { display: flex; align-items: center; gap: var(--space-2); min-height: 52px; padding: 0 var(--space-4); background: var(--saqz-white); border: 1px solid var(--border-default); border-radius: var(--radius-input); outline: 3px solid transparent; font-weight: 400; }
+.input input { flex: 1; min-width: 0; height: 50px; padding: 0; border: 0; outline: 0; background: transparent; font-size: var(--m-body-size); color: var(--text-body); font-variant-numeric: tabular-nums; }
+.input input::placeholder { color: var(--saqz-placeholder); }
+.input .ic { color: var(--text-muted); }
+.input__prefix { color: var(--text-muted); font-weight: 600; }
+.input:focus-within { border-color: var(--saqz-blue); outline-color: var(--brand-fill-11); }
+.input.is-error { border-color: var(--saqz-error); outline-color: var(--error-fill-10); }
+@media (hover: hover) { .input:hover:not(:focus-within):not(.is-error) { background: var(--surface-soft); } }
+.field__msg { display: flex; align-items: flex-start; gap: var(--space-2); min-height: 20px; font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--text-muted); }
+.field__msg.is-error { color: var(--saqz-error); }
+.field__msg .ic { margin-top: 2px; }
+
+.stepper { display: flex; align-items: center; gap: var(--space-1); min-height: 52px; }
+.stepper__label { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-2); font-size: var(--m-body-size); }
+.stepper__label .ic { color: var(--text-muted); }
+.stepper__btn { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; color: var(--text-strong); }
+.stepper__btn:disabled { color: var(--saqz-disabled-fg); cursor: not-allowed; }
+.stepper__dot { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--saqz-white); border: 1px solid var(--border-default); }
+.stepper__btn:active:not(:disabled) .stepper__dot { background: var(--brand-fill-11); }
+@media (hover: hover) { .stepper__btn:hover:not(:disabled) .stepper__dot { background: var(--brand-fill-08); } }
+.stepper__value { width: 32px; text-align: center; font-size: var(--m-subtitle-size); line-height: var(--m-subtitle-line); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---------- avisos, vazio, mensagem ---------- */
+.notice { display: grid; gap: var(--space-3); }
+.notice__top { display: flex; align-items: flex-start; gap: var(--space-3); }
+.notice__icon { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--surface-soft); color: var(--saqz-blue); }
+.notice__icon--warning { background: var(--warning-fill-14); color: var(--saqz-warning-fg); }
+.notice__text { display: grid; gap: var(--space-1); min-width: 0; }
+.summary { display: flex; align-items: center; gap: var(--space-3); }
+.summary__text { flex: 1; min-width: 0; display: grid; gap: var(--space-1); }
+.empty { display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-1); text-align: center; }
+.empty__badge { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--surface-soft); color: var(--saqz-blue); }
+.empty__badge--warning { background: var(--warning-fill-14); color: var(--saqz-warning-fg); }
+.empty__badge .ic { width: 28px; height: 28px; }
+.empty__title { font-size: var(--m-subtitle-size); line-height: var(--m-subtitle-line); font-weight: 600; color: var(--text-strong); }
+.strip { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-card); background: var(--surface-soft); font-size: var(--m-support-size); line-height: var(--m-support-line); }
+.strip .ic { margin-top: 2px; color: var(--saqz-blue); }
+.msg summary { list-style: none; }
+.msg summary::-webkit-details-marker { display: none; }
+.msg[open] summary .ic { transform: rotate(180deg); }
+.msgbox { margin-top: var(--space-2); padding: var(--space-3) var(--space-4); border-radius: var(--radius-card); background: var(--surface-soft); font-size: var(--m-label-size); line-height: 24px; white-space: pre-wrap; overflow-wrap: break-word; }
+.msgbox--card { margin-top: 0; background: var(--saqz-white); border: 1px solid var(--border-default); }
+.msg__link { color: var(--saqz-blue); font-weight: 600; }
+
+/* ---------- membros ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.choice { position: relative; min-height: 36px; padding: 0 var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-pill); background: var(--saqz-white); color: var(--text-strong); font-size: var(--m-label-size); font-weight: 600; white-space: nowrap; }
+.choice::before { content: ""; position: absolute; inset: -4px 0; }
+.choice.is-selected { background: var(--saqz-blue); border-color: var(--saqz-blue); color: var(--text-on-brand); }
+.choice:active:not(.is-selected) { background: var(--brand-fill-11); }
+@media (hover: hover) { .choice:hover:not(.is-selected) { background: var(--brand-fill-08); } }
+.sect { display: grid; gap: var(--space-3); }
+.sect__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: var(--space-3); min-height: 44px; }
+.sect__title { font-size: var(--m-title-size); line-height: var(--m-title-line); font-weight: 700; letter-spacing: var(--m-title-track); color: var(--text-strong); }
+.sect__count { margin-left: var(--space-2); color: var(--text-muted); font-weight: 600; font-size: var(--m-subtitle-size); }
+
+/* ---------- folha e toast ---------- */
+.overlay { position: absolute; inset: 0; z-index: 3; display: flex; align-items: flex-end; background: var(--scrim); }
+.sheet { width: 100%; display: grid; gap: var(--space-4); padding: var(--space-4) var(--page-margin) var(--space-6); background: var(--saqz-white); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; box-shadow: var(--shadow-sheet); }
+.sheet__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.sheet__title { min-width: 0; font-size: var(--m-title-size); line-height: var(--m-title-line); font-weight: 700; letter-spacing: var(--m-title-track); color: var(--text-strong); overflow-wrap: anywhere; }
+.sheet__fields { display: grid; gap: var(--space-1); }
+.sheet__foot { display: grid; gap: var(--space-2); }
+.actions { display: grid; }
+.action { display: flex; align-items: center; gap: var(--space-3); min-height: 56px; padding: 0 var(--space-1); border: 0; border-top: 1px solid var(--border-default); background: transparent; text-align: left; font-size: var(--m-body-size); font-weight: 600; color: var(--text-strong); white-space: nowrap; }
+.action:first-child { border-top: 0; }
+.action .ic { color: var(--saqz-blue); }
+.action--danger, .action--danger .ic { color: var(--saqz-error); }
+.action:active { background: var(--brand-fill-08); }
+@media (hover: hover) { .action:hover { background: var(--brand-fill-08); } }
+.overlay[data-open] { transition: background-color var(--dur-sheet) var(--ease-out), visibility 0s linear 0s; }
+.overlay[data-open] .sheet { transition: transform var(--dur-sheet) var(--ease-out); }
+.overlay[data-open="false"] { background: transparent; visibility: hidden; pointer-events: none; transition: background-color var(--dur-sheet) var(--ease-out), visibility 0s linear var(--dur-sheet); }
+.overlay[data-open="false"] .sheet { transform: translateY(100%); }
+.toast { position: absolute; z-index: 4; left: var(--page-margin); right: var(--page-margin); bottom: 96px; display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: var(--space-2) var(--space-4); background: var(--text-strong); color: var(--saqz-white); border-radius: var(--radius-card); box-shadow: var(--shadow-toast); font-size: var(--m-support-size); line-height: var(--m-support-line); }
+.toast[hidden] { display: none; }
+.toast__action { margin-left: auto; min-height: 44px; padding: 0 var(--space-1); border: 0; background: transparent; color: var(--saqz-white); font-weight: 600; text-decoration: underline; white-space: nowrap; }
+
+/* ---------- estados do botão ---------- */
+.states { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); max-width: 760px; }
+.state { display: grid; gap: var(--space-2); }
+.state__label { font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--board-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; border-right-color: currentColor; opacity: 0.6; }
+  .overlay[data-open], .overlay[data-open] .sheet, .btn { transition: none; }
+  .btn:active:not(:disabled), .btn.is-active { transform: none; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="i-message" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
+  <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="M19 16v6M22 19h-6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
+</svg>
+
+<noscript><p style="padding:16px">Estas telas são desenhadas por JavaScript. Ative-o para ver o quadro.</p></noscript>
+
+<main class="board">
+  <header class="board__head">
+    <h1 class="board__title">Convite de mensalistas</h1>
+    <p class="board__lead">Telas para aprovar antes de codar, no visual do app: tokens do design system, cartão sem sombra, botão pílula e botão tracejado de adicionar. O app só tem tema claro, por isso as telas ficam claras mesmo com o quadro escuro. Nomes, telefones e valores são exemplos. Regras nas notas CONV-010, CONV-011 e CONV-012 do cofre.</p>
+    <div class="decide">
+      <p class="decide__title">Para decidir olhando estas telas</p>
+      <ol>
+        <li>Adicionar pessoa por folha de baixo, como o “Adicionar dia e horário”, em vez de campos soltos na tela.</li>
+        <li>Entrada em Membros: a ação “Convidar mensalista” fica no cabeçalho de Convidados. Sem convidados, entra um cartão no lugar.</li>
+        <li>Grupo sem mensalidade padrão: a tela fica bloqueada até configurar, com um cartão novo em Editar&nbsp;grupo.</li>
+      </ol>
+    </div>
+  </header>
+
+  <section class="group" aria-labelledby="g-convidar">
+    <div class="group__head">
+      <h2 class="group__title" id="g-convidar">Convidar mensalista</h2>
+      <p class="group__lead">Tela nova, aberta pela ação “Convidar mensalista” em Membros.</p>
+    </div>
+    <div class="frames">
+      <figure class="frame">
+        <div class="screen" id="live">
+          <header class="appbar"><button type="button" class="iconbtn" aria-label="Voltar"><svg class="ic" aria-hidden="true"><use href="#i-chevron-left"/></svg></button><p class="appbar__title">Convidar mensalista</p></header>
+          <div class="content" id="live-body"></div>
+          <div class="bottombar" id="live-bottom"></div>
+          <div class="overlay" id="live-overlay" data-open="false">
+            <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="lv-title">
+              <div class="sheet__head">
+                <h3 class="sheet__title" id="lv-title">Nova pessoa</h3>
+                <button type="button" class="iconbtn iconbtn--muted" data-action="close-sheet" aria-label="Fechar"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+              </div>
+              <div class="sheet__fields">
+                <div class="field">
+                  <label class="field__label" for="lv-name">Nome</label>
+                  <span class="input" id="lv-name-wrap"><input id="lv-name" autocomplete="off" placeholder="Nome e sobrenome" aria-describedby="lv-name-msg"></span>
+                  <p class="field__msg" id="lv-name-msg"></p>
+                </div>
+                <div class="field">
+                  <label class="field__label" for="lv-phone">WhatsApp</label>
+                  <span class="input" id="lv-phone-wrap"><input id="lv-phone" type="tel" inputmode="numeric" autocomplete="off" placeholder="(11) 99999-9999" aria-describedby="lv-phone-msg"></span>
+                  <p class="field__msg" id="lv-phone-msg"></p>
+                </div>
+              </div>
+              <div id="lv-strip"></div>
+              <div class="sheet__foot">
+                <button type="button" class="btn btn--primary btn--full" id="lv-add" data-action="add">Adicionar</button>
+                <button type="button" class="btn btn--secondary btn--full" id="lv-more" data-action="add-more">Adicionar e cadastrar outra</button>
+              </div>
+            </div>
+          </div>
+          <div class="toast" id="live-toast" role="status" hidden></div>
+        </div>
+        <figcaption>
+          <span class="frame__name">Ao vivo</span>
+          <span class="frame__note">Toque nos botões. Teste <span class="nb">(11) 98888-0001</span> (já é mensalista) e <span class="nb">(11) 98888-0002</span> (avulso), e adicione mais de 5&nbsp;pessoas para ver o limite do plano.</span>
+        </figcaption>
+      </figure>
+      <figure class="frame"><div data-frame="vazio"></div><figcaption><span class="frame__name">Primeira vez, lista vazia</span><span class="frame__note">Enviar fica desligado e a tela diz o porquê.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="limite"></div><figcaption><span class="frame__name">Plano no limite</span><span class="frame__note">Sem vaga nenhuma. O aviso vem no cadastro, com “Ver planos” levando à escolha de plano.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="faltam"></div><figcaption><span class="frame__name">Lote maior que as vagas</span><span class="frame__note">Ainda há vagas, mas o lote passa. Nada é enviado até ajustar.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="semfee"></div><figcaption><span class="frame__name">Grupo sem mensalidade</span><span class="frame__note">Regra do MEM-003: mensalista precisa de valor e dia. O botão leva direto a configurar.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="offline"></div><figcaption><span class="frame__name">WhatsApp do Saqz indisponível</span><span class="frame__note">Sem fila: o dono copia a mensagem e manda sozinho. É também o que acontece em dev.</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section class="group" aria-labelledby="g-folha">
+    <div class="group__head">
+      <h2 class="group__title" id="g-folha">Folha “Nova pessoa”</h2>
+      <p class="group__lead">Abre pelo botão tracejado, como o “Adicionar dia e horário”. A folha confere o número na hora.</p>
+    </div>
+    <div class="frames">
+      <figure class="frame"><div data-frame="s-ok"></div><figcaption><span class="frame__name">Preenchida</span><span class="frame__note">“Adicionar e cadastrar outra” mantém a folha aberta para quem cadastra vários.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="s-incompleto"></div><figcaption><span class="frame__name">Número incompleto</span><span class="frame__note">Erro no próprio campo: o que houve e como corrigir.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="s-repetido"></div><figcaption><span class="frame__name">Já está na lista</span><span class="frame__note">Telefone repetido é recusado.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="s-mensalista"></div><figcaption><span class="frame__name">Já é mensalista</span><span class="frame__note">Não entra na fila.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="s-avulso"></div><figcaption><span class="frame__name">Já está no grupo como avulso</span><span class="frame__note">Promover é explícito e nunca manda mensagem.</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section class="group" aria-labelledby="g-membros">
+    <div class="group__head">
+      <h2 class="group__title" id="g-membros">Membros e permissões</h2>
+      <p class="group__lead">Tela que já existe. Entram a seção Convidados e o filtro “Convidados · N”, só para dono e admin. A busca e a barra de baixo não mudam.</p>
+    </div>
+    <div class="frames">
+      <figure class="frame"><div data-frame="m-andamento"></div><figcaption><span class="frame__name">Convites em andamento</span><span class="frame__note">“Aguardando” é quem recebeu o link e ainda não entrou. O link vale 7&nbsp;dias a partir do último envio.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="m-pausado"></div><figcaption><span class="frame__name">Envio pausado</span><span class="frame__note">Três falhas seguidas pausam a fila. O dono pode copiar o link. Aqui o filtro “Convidados” está ligado.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="m-venceu"></div><figcaption><span class="frame__name">Link venceu</span><span class="frame__note">Reenviar cria um link novo e coloca todo mundo de volta na fila.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="m-vazio"></div><figcaption><span class="frame__name">Sem convidados ainda</span><span class="frame__note">Cartão de entrada, só para dono e admin.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="m-acoes"></div><figcaption><span class="frame__name">Ações da pessoa</span><span class="frame__note">Toque numa linha de Convidados. Remover só tira da lista.</span></figcaption></figure>
+      <figure class="frame"><div data-frame="m-invalidar"></div><figcaption><span class="frame__name">Invalidar link</span><span class="frame__note">Mesma confirmação do “Trocar o código” do convite público.</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section class="group" aria-labelledby="g-grupo">
+    <div class="group__head">
+      <h2 class="group__title" id="g-grupo">Editar grupo</h2>
+      <p class="group__lead">Configuração que o convite exige antes de funcionar.</p>
+    </div>
+    <div class="frames">
+      <figure class="frame"><div data-frame="g-fee"></div><figcaption><span class="frame__name">Cartão “Mensalidade”</span><span class="frame__note">Cartão novo dentro de Editar grupo. Valor em reais e dia de vencimento de 1&nbsp;a&nbsp;28, por contador, como o resto do app.</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section class="group" aria-labelledby="g-estados">
+    <div class="group__head">
+      <h2 class="group__title" id="g-estados">Botão principal</h2>
+      <p class="group__lead">“Enviar convites” em cada estado.</p>
+    </div>
+    <div class="states">
+      <div class="state"><button type="button" class="btn btn--primary btn--full">Enviar 3 convites</button><span class="state__label">Padrão</span></div>
+      <div class="state"><button type="button" class="btn btn--primary btn--full is-hover">Enviar 3 convites</button><span class="state__label">Com o ponteiro em cima</span></div>
+      <div class="state"><button type="button" class="btn btn--primary btn--full is-active">Enviar 3 convites</button><span class="state__label">Pressionado</span></div>
+      <div class="state"><button type="button" class="btn btn--primary btn--full is-focus">Enviar 3 convites</button><span class="state__label">Foco do teclado</span></div>
+      <div class="state"><button type="button" class="btn btn--primary btn--full" disabled>Enviar convites</button><span class="state__label">Desligado, com o motivo na tela</span></div>
+      <div class="state"><button type="button" class="btn btn--primary btn--full is-loading" aria-busy="true"><span class="spinner" aria-hidden="true"></span><span>Enviando…</span></button><span class="state__label">Enviando</span></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- helpers ---------- */
+  var NB = ' ';
+  var uid = 0;
+  var icon = function (id, cls) { return '<svg class="ic ' + (cls || '') + '" aria-hidden="true" focusable="false"><use href="#i-' + id + '"/></svg>'; };
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var initials = function (n) { return n.trim().split(/\s+/).slice(0, 2).map(function (p) { return p[0].toUpperCase(); }).join(''); };
+  var fmt = function (d) { return d.length === 11 ? '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7) : d; };
+  var chip = function (tone, label, plain) { return '<span class="chip chip--' + tone + (plain ? ' chip--plain' : '') + '">' + label + '</span>'; };
+  var plural = function (n, one, many) { return n === 1 ? one : many; };
+  var count = function (n, one, many) { return n + NB + plural(n, one, many); };
+
+  var LINK = '<span class="msg__link">links.saqz.app/<wbr><span class="nb">?saqz_invite=7KQ2-M9XD</span></span>';
+  var msgText = function (nome) {
+    return 'E aí' + (nome ? ', ' + esc(nome) : '') + '! 🏐 O Lucas te colocou na lista de mensalistas do Vôlei da Quinta aqui no Saqz. Entra por aqui e confirma presença nos jogos direto pelo app: ' + LINK + '\n\nSe não era pra você, é só ignorar.';
+  };
+
+  var SAMPLE = [
+    { name: 'Renata Souza', phone: '11991234567' },
+    { name: 'Diego Farias', phone: '11982345678' },
+    { name: 'Larissa Prado', phone: '11973456789' },
+    { name: 'Marcos Vieira', phone: '11964567890' }
+  ];
+
+  /* ---------- peças ---------- */
+  var appbar = function (title) {
+    return '<header class="appbar"><button type="button" class="iconbtn" aria-label="Voltar">' + icon('chevron-left') + '</button><p class="appbar__title">' + esc(title) + '</p></header>';
+  };
+  var removeBtn = function (name, i) {
+    return '<button type="button" class="iconbtn iconbtn--muted" aria-label="Remover ' + esc(name) + '"' + (i == null ? '' : ' data-action="remove" data-i="' + i + '"') + '>' + icon('x') + '</button>';
+  };
+  var person = function (p, trailing, meta, status) {
+    return '<li class="person' + (status ? ' person--status' : '') + '"><span class="avatar" aria-hidden="true">' + esc(initials(p.name)) + '</span>' +
+      '<div class="person__text"><p class="person__name">' + esc(p.name) + '</p><p class="person__meta">' + (meta || fmt(p.phone)) + '</p></div>' + (trailing || '') + '</li>';
+  };
+  var dashed = function (label, attrs) {
+    return '<button type="button" class="dashed"' + (attrs || '') + '><svg class="dashed__frame" aria-hidden="true"><rect x="0.5" y="0.5" width="100%" height="100%" rx="12"/></svg>' + icon('plus') + '<span>' + label + '</span></button>';
+  };
+  var recipients = function (people, live) {
+    return '<section class="card" aria-label="Quem vai receber"><div class="card__head"><h3 class="card__title">Quem vai receber</h3>' +
+      '<p class="support">Cada pessoa recebe o link no WhatsApp e já entra como mensalista.</p></div>' +
+      '<ul class="people">' + people.map(function (p, i) { return person(p, removeBtn(p.name, live ? i : null)); }).join('') + '</ul>' +
+      dashed('Adicionar outra pessoa', live ? ' data-action="open-sheet"' : '') + '</section>';
+  };
+  var emptyRecipients = function (live) {
+    return '<section class="card" aria-label="Quem vai receber"><div class="card__head"><h3 class="card__title">Quem vai receber</h3></div>' +
+      '<div class="empty"><span class="empty__badge">' + icon('user-plus') + '</span><p class="empty__title">Ninguém na lista ainda</p>' +
+      '<p class="support">Adicione o nome e o WhatsApp de cada mensalista. Dá pra colocar várias pessoas antes de enviar.</p></div>' +
+      dashed('Adicionar pessoa', live ? ' data-action="open-sheet"' : '') + '</section>';
+  };
+  var feeCard = function () {
+    return '<section class="card" aria-label="Mensalidade do grupo"><div class="summary"><span class="notice__icon">' + icon('calendar') + '</span>' +
+      '<div class="summary__text"><p class="card__title">R$' + NB + '80,00 por mês</p><p class="support">Vence todo dia' + NB + '10, para todos que entrarem.</p></div>' +
+      '<button type="button" class="textlink">Alterar</button></div></section>';
+  };
+  var paceNote = function (n) {
+    var s = n * 10;
+    var t = s < 60 ? 'menos de 1' + NB + 'min' : 'cerca de ' + Math.round(s / 60) + NB + 'min';
+    return '<p class="support">Os convites saem um por vez, com uns segundos entre eles. ' + count(n, 'pessoa leva', 'pessoas levam') + ' ' + t + '.</p>';
+  };
+  var msgDetails = function (nome, open) {
+    return '<details class="msg"' + (open ? ' open' : '') + '><summary class="textlink">' + icon('chevron-down', 'ic--sm') + '<span>Ver a mensagem que vai sair</span></summary><div class="msgbox">' + msgText(nome) + '</div></details>';
+  };
+  var notice = function (o) {
+    return '<section class="card notice" aria-label="' + esc(o.title) + '"><div class="notice__top"><span class="notice__icon' + (o.warn ? ' notice__icon--warning' : '') + '">' + icon(o.icon || 'alert') + '</span>' +
+      '<div class="notice__text"><p class="card__title">' + o.title + '</p><p class="support">' + o.text + '</p></div></div>' + (o.action || '') + '</section>';
+  };
+  var plansBtn = '<button type="button" class="btn btn--primary btn--full">Ver planos</button>';
+  var sendBtn = function (n, disabled) {
+    return '<button type="button" class="btn btn--primary btn--full"' + (disabled ? ' disabled' : '') + ' data-action="send">' + icon('send') + '<span>Enviar ' + (n ? n + ' ' + plural(n, 'convite', 'convites') : 'convites') + '</span></button>';
+  };
+  var bottom = function (btn, help) { return '<div class="bottombar">' + (help ? '<p class="bottombar__help">' + help + '</p>' : '') + btn + '</div>'; };
+  var screen = function (o) {
+    return '<div class="screen ' + (o.cls || '') + '">' + appbar(o.title) + '<div class="content">' + o.body + '</div>' + (o.bottom || '') + (o.overlay || '') + (o.toast || '') + '</div>';
+  };
+
+  var field = function (o) {
+    var id = 'f' + (++uid);
+    var err = o.error ? '<p class="field__msg is-error">' + icon('alert', 'ic--sm') + '<span>' + o.error + '</span></p>' : '<p class="field__msg">' + (o.hint ? esc(o.hint) : '') + '</p>';
+    return '<div class="field"><label class="field__label" for="' + id + '">' + esc(o.label) + '</label><span class="input' + (o.error ? ' is-error' : '') + '">' + (o.prefix ? '<span class="input__prefix">' + o.prefix + '</span>' : '') +
+      '<input id="' + id + '" value="' + esc(o.value || '') + '" placeholder="' + esc(o.placeholder || '') + '" inputmode="' + (o.inputmode || 'text') + '"' + (o.error ? ' aria-invalid="true"' : '') + '></span>' + err + '</div>';
+  };
+  var strip = function (iconId, text) { return '<div class="strip" role="status">' + icon(iconId) + '<p>' + text + '</p></div>'; };
+  var sheet = function (title, body, foot, sub) {
+    return '<div class="overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="sheet__head"><h3 class="sheet__title">' + esc(title) + '</h3>' +
+      '<button type="button" class="iconbtn iconbtn--muted" aria-label="Fechar">' + icon('x') + '</button></div>' + (sub ? '<p class="support">' + sub + '</p>' : '') + body + '<div class="sheet__foot">' + foot + '</div></div></div>';
+  };
+  var addFoot = function (primary, more) {
+    return primary + (more === false ? '' : '<button type="button" class="btn btn--secondary btn--full">Adicionar e cadastrar outra</button>');
+  };
+  var addBtn = function (disabled) { return '<button type="button" class="btn btn--primary btn--full"' + (disabled ? ' disabled' : '') + '>Adicionar</button>'; };
+  var personBody = function (v) {
+    return '<div class="sheet__fields">' + field({ label: 'Nome', value: v.name, placeholder: 'Nome e sobrenome' }) +
+      field({ label: 'WhatsApp', value: v.phone, placeholder: '(11) 99999-9999', inputmode: 'tel', error: v.error }) + '</div>' + (v.strip || '');
+  };
+  var behind = function () { return recipients(SAMPLE.slice(0, 3)) + feeCard(); };
+
+  /* ---------- Membros ---------- */
+  var search = function () { return '<div class="input" role="search">' + icon('search') + '<input id="m' + (++uid) + '" placeholder="Buscar membro" aria-label="Buscar membro"></div>'; };
+  var chips = function (convidados, filtro) {
+    return '<div class="chips"><button type="button" class="choice' + (filtro === 'convidados' ? '' : ' is-selected') + '">Todos · 26</button><button type="button" class="choice">Administradores · 2</button><button type="button" class="choice">Pendentes · 2</button>' +
+      (convidados ? '<button type="button" class="choice' + (filtro === 'convidados' ? ' is-selected' : '') + '">Convidados · ' + convidados + '</button>' : '') + '</div>';
+  };
+  var inviteBar = '<div class="bottombar"><button type="button" class="btn btn--secondary btn--full">' + icon('plus') + '<span>Convidar mais gente</span></button></div>';
+  var sectHead = function (n) {
+    return '<div class="sect__head"><h3 class="sect__title">Convidados<span class="sect__count">' + n + '</span></h3><button type="button" class="textlink">Convidar mensalista</button></div>';
+  };
+  var invitee = function (name, phone, tone, label) { return person({ name: name, phone: phone }, chip(tone, label), fmt(phone), true); };
+  var inviteList = function (rows) { return '<div class="card card--flush"><ul class="people">' + rows.join('') + '</ul></div>'; };
+  var membersScreen = function (o) {
+    return screen({ title: 'Membros e permissões', body: search() + chips(o.convidados, o.filtro) + o.body, bottom: inviteBar, overlay: o.overlay, toast: o.toast, cls: o.cls });
+  };
+  var adminTail = '<section class="sect"><div class="sect__head"><h3 class="sect__title">Administradores<span class="sect__count">2</span></h3></div>' +
+    '<div class="card card--flush"><ul class="people">' +
+    person({ name: 'Lucas Prado', phone: '' }, chip('brand', 'Administrador', true), 'Você · criou o grupo', true) +
+    person({ name: 'Bia Souza', phone: '' }, chip('brand', 'Administrador', true), 'Desde março', true) +
+    '</ul></div></section>';
+
+  /* ---------- quadros estáticos ---------- */
+  var FRAMES = {
+    vazio: function () {
+      return screen({ title: 'Convidar mensalista', body: emptyRecipients() + feeCard(), bottom: bottom(sendBtn(0, true), 'Adicione pelo menos uma pessoa para enviar.') });
+    },
+    limite: function () {
+      return screen({
+        title: 'Convidar mensalista',
+        body: notice({ title: 'Seu grupo chegou ao limite de pessoas', text: 'O plano atual comporta 10' + NB + 'atletas e você já tem 10. Para colocar mais gente, faça o upgrade do plano.', action: plansBtn }) +
+          recipients(SAMPLE.slice(0, 2)) + feeCard(),
+        bottom: bottom(sendBtn(2, true), 'Faça o upgrade ou libere vagas para enviar.')
+      });
+    },
+    faltam: function () {
+      return screen({
+        title: 'Convidar mensalista',
+        body: notice({ title: 'Faltam vagas para esse lote', text: 'O plano atual comporta mais 2' + NB + 'atletas e você está convidando 4. Para colocar mais gente, faça o upgrade do plano.', action: plansBtn }) +
+          recipients(SAMPLE) + feeCard(),
+        bottom: bottom(sendBtn(4, true), 'Tire 2' + NB + 'pessoas da lista ou faça o upgrade para enviar.')
+      });
+    },
+    semfee: function () {
+      return screen({
+        title: 'Convidar mensalista',
+        body: '<section class="card" aria-label="Mensalidade do grupo"><div class="empty"><span class="empty__badge empty__badge--warning">' + icon('calendar') + '</span>' +
+          '<p class="empty__title">Defina o valor e o dia da mensalidade do grupo</p>' +
+          '<p class="support">Quem entra como mensalista paga esse valor. Configure uma vez e volte para convidar.</p></div>' +
+          '<button type="button" class="btn btn--primary btn--full">Configurar mensalidade</button></section>'
+      });
+    },
+    offline: function () {
+      return screen({
+        title: 'Convidar mensalista',
+        body: notice({ warn: true, title: 'Não dá para enviar pelo Saqz agora', text: 'O WhatsApp do Saqz está indisponível. Copie a mensagem e mande você mesmo, no privado de cada pessoa.' }) +
+          '<section class="card" aria-label="Mensagem"><div class="card__head"><h3 class="card__title">Mensagem</h3></div><div class="msgbox msgbox--card">' + msgText('') + '</div>' +
+          '<button type="button" class="btn btn--secondary btn--sm">' + icon('link', 'ic--sm') + '<span>Copiar só o link</span></button></section>' +
+          '<section class="card" aria-label="Quem precisa receber"><div class="card__head"><h3 class="card__title">Quem precisa receber</h3></div><ul class="people">' +
+          SAMPLE.slice(0, 3).map(function (p) { return person(p); }).join('') + '</ul></section>',
+        bottom: bottom('<button type="button" class="btn btn--primary btn--full">' + icon('copy') + '<span>Copiar mensagem</span></button>')
+      });
+    },
+    'g-fee': function () {
+      return screen({
+        title: 'Editar grupo',
+        body: '<section class="card" aria-label="Mensalidade"><div class="card__head"><h3 class="card__title">Mensalidade</h3><p class="support">Vale para quem entra como mensalista. Dá pra ajustar por pessoa depois.</p></div>' +
+          field({ label: 'Valor por mês', value: '80,00', prefix: 'R$', inputmode: 'decimal' }) +
+          '<div class="stepper"><span class="stepper__label">' + icon('calendar') + '<span>Dia do vencimento</span></span>' +
+          '<button type="button" class="stepper__btn" aria-label="Um dia antes"><span class="stepper__dot">' + icon('minus') + '</span></button><span class="stepper__value">10</span>' +
+          '<button type="button" class="stepper__btn" aria-label="Um dia depois"><span class="stepper__dot">' + icon('plus') + '</span></button></div></section>',
+        bottom: bottom('<button type="button" class="btn btn--primary btn--full">Salvar</button>')
+      });
+    },
+    's-ok': function () {
+      return screen({ cls: 'screen--sheet', title: 'Convidar mensalista', body: behind(),
+        overlay: sheet('Nova pessoa', personBody({ name: 'Marcos Vieira', phone: '(11) 96456-7890' }), addFoot(addBtn(false))) });
+    },
+    's-incompleto': function () {
+      return screen({ cls: 'screen--sheet', title: 'Convidar mensalista', body: behind(),
+        overlay: sheet('Nova pessoa', personBody({ name: 'Marcos Vieira', phone: '(11) 96456-78', error: 'Faltam dígitos. Use o DDD e os 9' + NB + 'dígitos, por exemplo (11)' + NB + '98765-4321.' }), addFoot(addBtn(false))) });
+    },
+    's-repetido': function () {
+      return screen({ cls: 'screen--sheet', title: 'Convidar mensalista', body: behind(),
+        overlay: sheet('Nova pessoa', personBody({ name: 'Renata S.', phone: '(11) 99123-4567', error: 'Esse número já está na lista (Renata Souza).' }), addFoot(addBtn(true))) });
+    },
+    's-mensalista': function () {
+      return screen({ cls: 'screen--sheet', title: 'Convidar mensalista', body: behind(),
+        overlay: sheet('Nova pessoa', personBody({ name: 'Thiago', phone: '(11) 98888-0001', strip: strip('circle-check', 'Thiago Melo já é mensalista do grupo. Não precisa de convite.') }), addFoot(addBtn(true), false)) });
+    },
+    's-avulso': function () {
+      return screen({ cls: 'screen--sheet', title: 'Convidar mensalista', body: behind(),
+        overlay: sheet('Nova pessoa', personBody({ name: 'Camila', phone: '(11) 98888-0002', strip: strip('info', 'Camila Alves já está no grupo como avulso. Se promover, vira mensalista agora e não recebe mensagem.') }),
+          '<button type="button" class="btn btn--primary btn--full">Promover a mensalista</button>') });
+    },
+    'm-andamento': function () {
+      return membersScreen({
+        convidados: 6,
+        body: '<section class="sect">' + sectHead(6) + '<p class="support">O link de mensalistas vale até 27' + NB + 'de' + NB + 'out. Cada envio renova o prazo.</p>' +
+          inviteList([
+            invitee('Larissa Prado', '11911122233', 'brand', 'Aguardando'),
+            invitee('Diego Farias', '11982223344', 'brand', 'Aguardando'),
+            invitee('Marcos Vieira', '11973334455', 'neutral', 'Na fila'),
+            invitee('Bianca Torres', '11964445566', 'neutral', 'Na fila'),
+            invitee('Felipe Andrade', '11955556677', 'error', 'Falhou'),
+            invitee('Renata Souza', '11946667788', 'warning', 'Sem WhatsApp')
+          ]) +
+          '<div class="row-actions"><button type="button" class="btn btn--secondary btn--sm">' + icon('refresh', 'ic--sm') + '<span>Reenviar para todos</span></button><button type="button" class="btn btn--ghost-danger btn--sm">Invalidar link</button></div></section>'
+      });
+    },
+    'm-pausado': function () {
+      return membersScreen({
+        convidados: 4,
+        filtro: 'convidados',
+        body: '<section class="sect">' + sectHead(4) +
+          notice({ warn: true, icon: 'pause', title: 'Envio pausado', text: 'O WhatsApp do Saqz falhou 3' + NB + 'vezes seguidas. Tentamos de novo às 14h32. Se preferir, copie o link e mande você mesmo.',
+            action: '<button type="button" class="btn btn--secondary btn--sm">' + icon('link', 'ic--sm') + '<span>Copiar link</span></button>' }) +
+          inviteList([
+            invitee('Larissa Prado', '11911122233', 'brand', 'Aguardando'),
+            invitee('Marcos Vieira', '11973334455', 'warning', 'Pausado'),
+            invitee('Bianca Torres', '11964445566', 'warning', 'Pausado'),
+            invitee('Felipe Andrade', '11955556677', 'warning', 'Pausado')
+          ]) + '</section>'
+      });
+    },
+    'm-venceu': function () {
+      return membersScreen({
+        convidados: 4,
+        body: '<section class="sect">' + sectHead(4) +
+          notice({ icon: 'clock', title: 'O link venceu', text: 'Ninguém mais entra com ele. Reenvie para gerar um link novo e mandar de novo.',
+            action: '<button type="button" class="btn btn--primary btn--full">' + icon('refresh') + '<span>Reenviar para todos</span></button>' }) +
+          inviteList([
+            invitee('Marcos Vieira', '11973334455', 'neutral', 'Venceu'),
+            invitee('Bianca Torres', '11964445566', 'neutral', 'Venceu'),
+            invitee('Felipe Andrade', '11955556677', 'neutral', 'Venceu'),
+            invitee('Renata Souza', '11946667788', 'neutral', 'Venceu')
+          ]) + '</section>'
+      });
+    },
+    'm-vazio': function () {
+      return membersScreen({
+        body: notice({ icon: 'message', title: 'Mensalistas pelo WhatsApp', text: 'Cadastre quem paga mensalidade e mande o convite de uma vez. Quem aceitar já entra como mensalista.',
+          action: '<button type="button" class="btn btn--primary btn--full">Convidar mensalista</button>' }) + adminTail
+      });
+    },
+    'm-acoes': function () {
+      return membersScreen({
+        convidados: 6,
+        cls: 'screen--sheet',
+        body: '<section class="sect">' + sectHead(6) + inviteList([
+          invitee('Larissa Prado', '11911122233', 'brand', 'Aguardando'),
+          invitee('Felipe Andrade', '11955556677', 'error', 'Falhou')
+        ]) + '</section>',
+        overlay: sheet('Felipe Andrade',
+          '<div class="actions">' +
+          '<button type="button" class="action">' + icon('refresh') + '<span>Reenviar convite</span></button>' +
+          '<button type="button" class="action">' + icon('link') + '<span>Copiar link</span></button>' +
+          '<button type="button" class="action action--danger">' + icon('x') + '<span>Remover da lista</span></button></div>',
+          '', '<span class="nb">(11) 95555-6677</span> · não saiu depois de 3' + NB + 'tentativas.')
+      });
+    },
+    'm-invalidar': function () {
+      return membersScreen({
+        convidados: 6,
+        cls: 'screen--sheet',
+        body: '<section class="sect">' + sectHead(6) + inviteList([invitee('Larissa Prado', '11911122233', 'brand', 'Aguardando')]) + '</section>',
+        overlay: sheet('Invalidar o link?', '<p class="support">Quem ainda não entrou precisará receber o link de novo. Quem já entrou continua no grupo.</p>',
+          '<button type="button" class="btn btn--danger btn--full">Invalidar link</button><button type="button" class="btn btn--secondary btn--full">Cancelar</button>')
+      });
+    }
+  };
+  document.querySelectorAll('[data-frame]').forEach(function (el) {
+    var f = FRAMES[el.getAttribute('data-frame')];
+    if (f) el.outerHTML = f();
+  });
+
+  /* ---------- protótipo ao vivo ---------- */
+  var root = document.getElementById('live');
+  var body = document.getElementById('live-body');
+  var bar = document.getElementById('live-bottom');
+  var overlay = document.getElementById('live-overlay');
+  var toast = document.getElementById('live-toast');
+  var nameIn = document.getElementById('lv-name');
+  var phoneIn = document.getElementById('lv-phone');
+  var S = { people: SAMPLE.slice(0, 3).map(function (p) { return { name: p.name, phone: p.phone }; }), free: 5, sending: false, msgOpen: false };
+  var KNOWN = { '11988880001': { name: 'Thiago Melo', kind: 'mensalista' }, '11988880002': { name: 'Camila Alves', kind: 'avulso' } };
+  var touched = { name: false, phone: false };
+  var undo = null, toastTimer = null;
+
+  var renderBody = function () {
+    var n = S.people.length, over = n - S.free, html = '';
+    if (over > 0) {
+      html += notice({ title: 'Faltam vagas para esse lote', text: 'O plano atual comporta mais ' + S.free + NB + 'atletas e você está convidando ' + n + '. Para colocar mais gente, faça o upgrade do plano.', action: plansBtn });
+    }
+    html += n ? recipients(S.people, true) : emptyRecipients(true);
+    html += feeCard();
+    if (n) html += '<div class="stack">' + paceNote(n) + msgDetails(S.people[0].name.split(' ')[0], S.msgOpen) + '</div>';
+    body.innerHTML = html;
+    var d = body.querySelector('details.msg');
+    if (d) d.addEventListener('toggle', function () { S.msgOpen = d.open; });
+  };
+  var renderBottom = function () {
+    var n = S.people.length, over = n - S.free, help = '', btn;
+    if (S.sending) {
+      btn = '<button type="button" class="btn btn--primary btn--full is-loading" aria-busy="true"><span class="spinner" aria-hidden="true"></span><span>Enviando…</span></button>';
+    } else if (n === 0) {
+      help = 'Adicione pelo menos uma pessoa para enviar.';
+      btn = sendBtn(0, true);
+    } else if (over > 0) {
+      help = 'Tire ' + count(over, 'pessoa', 'pessoas') + ' da lista ou faça o upgrade para enviar.';
+      btn = sendBtn(n, true);
+    } else {
+      btn = sendBtn(n, false);
+    }
+    bar.innerHTML = (help ? '<p class="bottombar__help">' + help + '</p>' : '') + btn;
+  };
+  var render = function () { renderBody(); renderBottom(); };
+
+  var showToast = function (text, action) {
+    clearTimeout(toastTimer);
+    toast.innerHTML = icon('check') + '<span>' + esc(text) + '</span>' + (action ? '<button type="button" class="toast__action" data-action="' + action.a + '">' + action.label + '</button>' : '');
+    toast.hidden = false;
+    toastTimer = setTimeout(function () { toast.hidden = true; undo = null; }, 5000);
+  };
+
+  var mask = function (d) {
+    d = d.slice(0, 11);
+    var o = '';
+    if (d.length) o = '(' + d.slice(0, 2);
+    if (d.length > 2) o += ') ' + d.slice(2, 7);
+    if (d.length > 7) o += '-' + d.slice(7);
+    return o;
+  };
+  var evaluate = function () {
+    var name = nameIn.value.trim();
+    var digits = phoneIn.value.replace(/\D/g, '');
+    var r = { name: name, digits: digits, nameErr: '', phoneErr: '', kind: 'ok' };
+    if (touched.name && name.length < 2) r.nameErr = 'Digite o nome da pessoa.';
+    if (touched.phone || digits.length === 11) {
+      if (digits.length === 0) r.phoneErr = 'Digite o WhatsApp da pessoa.';
+      else if (digits.length < 11) r.phoneErr = 'Faltam dígitos. Use o DDD e os 9' + NB + 'dígitos, por exemplo (11)' + NB + '98765-4321.';
+      else if (+digits.slice(0, 2) < 11 || digits.charAt(2) !== '9') r.phoneErr = 'Esse número não parece um celular do Brasil. Confira o DDD e o 9 do começo.';
+    }
+    if (digits.length === 11 && !r.phoneErr) {
+      var dup = S.people.filter(function (p) { return p.phone === digits; })[0];
+      if (dup) { r.kind = 'dup'; r.phoneErr = 'Esse número já está na lista (' + esc(dup.name) + ').'; }
+      else if (KNOWN[digits]) r.kind = KNOWN[digits].kind;
+    }
+    return r;
+  };
+  var setMsg = function (wrapId, msgId, text) {
+    var wrap = document.getElementById(wrapId), msg = document.getElementById(msgId);
+    wrap.classList.toggle('is-error', !!text);
+    msg.classList.toggle('is-error', !!text);
+    msg.innerHTML = text ? icon('alert', 'ic--sm') + '<span>' + text + '</span>' : '';
+    var input = wrap.querySelector('input');
+    if (text) input.setAttribute('aria-invalid', 'true'); else input.removeAttribute('aria-invalid');
+  };
+  var paint = function () {
+    var r = evaluate();
+    setMsg('lv-name-wrap', 'lv-name-msg', r.nameErr);
+    setMsg('lv-phone-wrap', 'lv-phone-msg', r.phoneErr);
+    var add = document.getElementById('lv-add'), more = document.getElementById('lv-more'), st = document.getElementById('lv-strip');
+    st.innerHTML = '';
+    add.disabled = false; add.textContent = 'Adicionar'; add.setAttribute('data-action', 'add'); more.hidden = false;
+    if (r.kind === 'dup') { add.disabled = true; }
+    if (r.kind === 'mensalista') {
+      st.innerHTML = strip('circle-check', esc(KNOWN[r.digits].name) + ' já é mensalista do grupo. Não precisa de convite.');
+      add.disabled = true; more.hidden = true;
+    }
+    if (r.kind === 'avulso') {
+      st.innerHTML = strip('info', esc(KNOWN[r.digits].name) + ' já está no grupo como avulso. Se promover, vira mensalista agora e não recebe mensagem.');
+      add.textContent = 'Promover a mensalista'; add.setAttribute('data-action', 'promote'); more.hidden = true;
+    }
+    return r;
+  };
+
+  var setInert = function (on) {
+    Array.prototype.forEach.call(root.children, function (el) { if (el !== overlay && el !== toast) el.inert = on; });
+  };
+  var openSheet = function () {
+    nameIn.value = ''; phoneIn.value = ''; touched = { name: false, phone: false };
+    paint();
+    overlay.setAttribute('data-open', 'true');
+    setInert(true);
+    setTimeout(function () { nameIn.focus(); }, 30);
+  };
+  var closeSheet = function () {
+    overlay.setAttribute('data-open', 'false');
+    setInert(false);
+    var t = body.querySelector('[data-action="open-sheet"]');
+    if (t) t.focus();
+  };
+  var firstName = function (n) { return n.split(' ')[0]; };
+
+  var addPerson = function (keepOpen) {
+    touched = { name: true, phone: true };
+    var r = paint();
+    if (r.nameErr || r.phoneErr || r.name.length < 2 || r.digits.length !== 11 || r.kind !== 'ok') {
+      (r.nameErr || r.name.length < 2 ? nameIn : phoneIn).focus();
+      return;
+    }
+    S.people.push({ name: r.name, phone: r.digits });
+    render();
+    if (keepOpen) {
+      nameIn.value = ''; phoneIn.value = ''; touched = { name: false, phone: false };
+      paint(); nameIn.focus();
+    } else {
+      closeSheet();
+    }
+  };
+
+  root.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-action]');
+    if (!el || !root.contains(el)) return;
+    var a = el.getAttribute('data-action');
+    if (a === 'open-sheet') openSheet();
+    else if (a === 'close-sheet') closeSheet();
+    else if (a === 'add') addPerson(false);
+    else if (a === 'add-more') addPerson(true);
+    else if (a === 'promote') {
+      var r = evaluate();
+      var who = KNOWN[r.digits] ? firstName(KNOWN[r.digits].name) : 'A pessoa';
+      closeSheet();
+      showToast(who + ' agora é mensalista. Nenhuma mensagem foi enviada.');
+    } else if (a === 'remove') {
+      var i = +el.getAttribute('data-i');
+      var gone = S.people.splice(i, 1)[0];
+      undo = { person: gone, index: i };
+      render();
+      showToast(firstName(gone.name) + ' saiu da lista.', { a: 'undo', label: 'Desfazer' });
+    } else if (a === 'undo' && undo) {
+      S.people.splice(undo.index, 0, undo.person);
+      undo = null; toast.hidden = true; render();
+    } else if (a === 'send') {
+      if (S.sending || !S.people.length || S.people.length > S.free) return;
+      var n = S.people.length;
+      S.sending = true; renderBottom();
+      setTimeout(function () {
+        S.sending = false; S.people = [];
+        render();
+        showToast(n + ' ' + plural(n, 'convite na fila', 'convites na fila') + '. Acompanhe em Membros.');
+      }, 1100);
+    }
+  });
+  nameIn.addEventListener('input', function () { paint(); });
+  nameIn.addEventListener('blur', function () { touched.name = true; paint(); });
+  phoneIn.addEventListener('input', function () { phoneIn.value = mask(phoneIn.value.replace(/\D/g, '')); paint(); });
+  phoneIn.addEventListener('blur', function () { touched.phone = true; paint(); });
+  [nameIn, phoneIn].forEach(function (inp) {
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); var a = document.getElementById('lv-add'); if (!a.disabled) a.click(); }
+    });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && overlay.getAttribute('data-open') === 'true') closeSheet();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
