@@ -23,6 +23,10 @@ sealed interface GroupsRoute : NavKey {
     @Serializable
     data class Schedule(val groupId: String) : GroupsRoute
 
+    /** Convidar mensalista pelo WhatsApp (CONV-010). */
+    @Serializable
+    data class MonthlyInvite(val groupId: String) : GroupsRoute
+
     /** 3a, with 3b/3c stacked as child destinations. */
     @Serializable
     data class Invite(

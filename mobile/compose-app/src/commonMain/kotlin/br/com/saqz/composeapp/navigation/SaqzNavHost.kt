@@ -106,6 +106,7 @@ import br.com.saqz.profile.presentation.exit.ProfileExitRoot
 import br.com.saqz.profile.presentation.navigation.ProfileRoute
 import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
+import br.com.saqz.groups.presentation.ui.monthlyinvite.MonthlyInviteRoot
 import br.com.saqz.subscriptions.presentation.ui.changeplan.ChangePlanRoot
 import br.com.saqz.subscriptions.presentation.ui.limit.PaywallGroupLimitWebScreen
 import kotlinx.coroutines.launch
@@ -1197,6 +1198,14 @@ internal fun SaqzNavHost(
                         onOpenInvite = { groupId ->
                             backStack.add(GroupsRoute.Invite(groupId))
                         },
+                    )
+                }
+                entry<GroupsRoute.MonthlyInvite> { route ->
+                    MonthlyInviteRoot(
+                        groupId = route.groupId,
+                        onBack = pop,
+                        onConfigureFee = { groupId -> backStack.add(GroupsRoute.Edit(groupId)) },
+                        onOpenPlans = { backStack.add(SubscriptionsRoute.ChangePlan) },
                     )
                 }
                 entry<GroupsRoute.Schedule> { route ->

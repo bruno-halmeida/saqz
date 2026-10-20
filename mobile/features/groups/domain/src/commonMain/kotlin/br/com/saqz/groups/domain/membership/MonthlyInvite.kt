@@ -75,7 +75,11 @@ interface MonthlyInviteGateway {
 
     suspend fun check(groupId: GroupId, phone: String): SaqzResult<MonthlyInvitePhoneCheckResult, MonthlyInviteError>
 
-    suspend fun send(groupId: GroupId, requestId: String, people: List<MonthlyInvitePerson>): SaqzResult<MonthlyInviteSent, MonthlyInviteError>
+    suspend fun send(
+        groupId: GroupId,
+        requestId: String,
+        people: List<MonthlyInvitePerson>,
+    ): SaqzResult<MonthlyInviteSent, MonthlyInviteError>
 
     suspend fun copyLink(groupId: GroupId): SaqzResult<MonthlyInviteCopiedLink, MonthlyInviteError>
 

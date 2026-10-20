@@ -19,6 +19,7 @@ import br.com.saqz.groups.domain.membership.MonthlyInviteSent
 import br.com.saqz.groups.domain.membership.MonthlyInvitee
 import br.com.saqz.groups.domain.membership.MonthlyInviteeStatus
 import br.com.saqz.groups.domain.membership.MonthlyInvites
+import br.com.saqz.network.ApiProblem
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkError
 import br.com.saqz.network.NetworkRequest
@@ -141,26 +142,7 @@ private fun MonthlyInvitesTransport.toDomain() = MonthlyInvites(
 )
 
 private fun NetworkError.toMonthlyInviteError(): MonthlyInviteError = when (this) {
-    is NetworkError.ApiProblemError -> when (problem.code) {
-        "ACCESS_FORBIDDEN" -> MonthlyInviteError.Forbidden
-        "GROUP_NOT_FOUND" -> MonthlyInviteError.HiddenResource
-        "MONTHLY_INVITEE_NOT_FOUND" -> MonthlyInviteError.InviteeNotFound
-        "MONTHLY_FEE_REQUIRED" -> MonthlyInviteError.MonthlyFeeRequired
-        "WHATSAPP_UNAVAILABLE" -> MonthlyInviteError.WhatsAppUnavailable
-        "SUBSCRIPTION_REQUIRED" -> MonthlyInviteError.SubscriptionRequired
-        "INVALID_PEOPLE" -> MonthlyInviteError.InvalidPeople(
-            problem.people.orEmpty().map { MonthlyInvitePersonError(it.index, enumOr(it.reason, MonthlyInviteRejection.UNKNOWN)) },
-        )
-        "PLAN_LIMIT" -> MonthlyInviteError.PlanLimit(
-            MonthlyInvitePlanLimit(problem.limit ?: 0, problem.current ?: 0, problem.requested ?: 0, problem.free ?: 0),
-        )
-        "VALIDATION_FAILED" -> if (problem.fieldErrors?.containsKey("phone") == true) {
-            MonthlyInviteError.InvalidPhone
-        } else {
-            MonthlyInviteError.DataFailure(DataError.Unknown)
-        }
-        else -> MonthlyInviteError.DataFailure(problem.status.toDataError())
-    }
+    is NetworkError.ApiProblemError -> problem.toMonthlyInviteError()
     is NetworkError.HttpStatus -> MonthlyInviteError.DataFailure(status.toDataError())
     NetworkError.Timeout -> MonthlyInviteError.DataFailure(DataError.Timeout)
     NetworkError.Connectivity -> MonthlyInviteError.DataFailure(DataError.Connectivity)
@@ -169,6 +151,25 @@ private fun NetworkError.toMonthlyInviteError(): MonthlyInviteError = when (this
     NetworkError.Unavailable,
     NetworkError.Unknown,
     -> MonthlyInviteError.DataFailure(DataError.Unknown)
+}
+
+private fun ApiProblem.toMonthlyInviteError(): MonthlyInviteError = when (code) {
+    "ACCESS_FORBIDDEN" -> MonthlyInviteError.Forbidden
+    "GROUP_NOT_FOUND" -> MonthlyInviteError.HiddenResource
+    "MONTHLY_INVITEE_NOT_FOUND" -> MonthlyInviteError.InviteeNotFound
+    "MONTHLY_FEE_REQUIRED" -> MonthlyInviteError.MonthlyFeeRequired
+    "WHATSAPP_UNAVAILABLE" -> MonthlyInviteError.WhatsAppUnavailable
+    "SUBSCRIPTION_REQUIRED" -> MonthlyInviteError.SubscriptionRequired
+    "INVALID_PEOPLE" -> MonthlyInviteError.InvalidPeople(
+        people.orEmpty().map { MonthlyInvitePersonError(it.index, enumOr(it.reason, MonthlyInviteRejection.UNKNOWN)) },
+    )
+    "PLAN_LIMIT" -> MonthlyInviteError.PlanLimit(MonthlyInvitePlanLimit(limit ?: 0, current ?: 0, requested ?: 0, free ?: 0))
+    "VALIDATION_FAILED" -> if (fieldErrors?.containsKey("phone") == true) {
+        MonthlyInviteError.InvalidPhone
+    } else {
+        MonthlyInviteError.DataFailure(DataError.Unknown)
+    }
+    else -> MonthlyInviteError.DataFailure(status.toDataError())
 }
 
 private fun Int.toDataError() = when (this) {
