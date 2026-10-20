@@ -1,6 +1,8 @@
 package br.com.saqz.groups.application.invite.redeem
 
+import br.com.saqz.groups.application.invite.InviteKind
 import br.com.saqz.groups.application.invite.InviteTokenDigest
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import java.time.Instant
 import java.util.UUID
@@ -19,6 +21,7 @@ data class RedeemableInvite(
     val expiresAt: Instant?,
     val groupDeleted: Boolean = false,
     val entryRequiresApproval: Boolean = false,
+    val kind: InviteKind = InviteKind.PUBLIC,
 )
 
 data class RecordInvalidInviteAttempt(
@@ -30,6 +33,7 @@ data class RecordInvalidInviteAttempt(
 data class RedeemMembershipCommand(
     val groupId: UUID,
     val userId: UUID,
+    val membershipType: AthleteMembershipType = AthleteMembershipType.AVULSO,
 )
 
 data class CreateEntryRequestCommand(
@@ -44,7 +48,12 @@ data class GroupAthleteOccupancy(
 )
 
 sealed interface RedeemInviteResult {
-    data class Success(val groupId: UUID, val role: GroupRole) : RedeemInviteResult
+    /** [membershipType] só vem no link de mensalistas (campo aditivo da resposta). */
+    data class Success(
+        val groupId: UUID,
+        val role: GroupRole,
+        val membershipType: AthleteMembershipType? = null,
+    ) : RedeemInviteResult
 
     data class Pending(val groupId: UUID) : RedeemInviteResult
 
@@ -74,4 +83,19 @@ interface InviteRedemptionRepository {
     fun mustRequestReturn(groupId: UUID, userId: UUID): Boolean
 
     fun redeemMembership(command: RedeemMembershipCommand): GroupRole
+
+    /** Tipo do membro no grupo; nulo para o dono sem linha de membro ou para quem não é membro. */
+    fun findMembershipType(groupId: UUID, userId: UUID): AthleteMembershipType?
+
+    /** True se o grupo tem valor e dia de vencimento padrão da mensalidade (MEM-003). */
+    fun hasMonthlyFeeDefault(groupId: UUID): Boolean
+
+    /** Avulso vira mensalista com a mensalidade do grupo; o gatilho grava `mensalista_since`. */
+    fun promoteToMensalista(groupId: UUID, userId: UUID)
+
+    /** SAI-007: o convite do dono vale como consentimento; a marca de "volta só com pedido" sai. */
+    fun clearReturnMark(groupId: UUID, userId: UUID)
+
+    /** Apaga a linha de convidado cujo telefone casa com o da conta de quem é membro (CONV-010). */
+    fun deleteMatchingInvitee(groupId: UUID, userId: UUID)
 }

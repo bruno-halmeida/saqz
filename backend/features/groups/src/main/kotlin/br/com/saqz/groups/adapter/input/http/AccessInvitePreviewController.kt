@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.input.http
 
+import br.com.saqz.groups.application.invite.InviteKind
 import br.com.saqz.groups.application.invite.preview.PreviewInvite
 import br.com.saqz.groups.application.invite.preview.PreviewInviteCard
 import br.com.saqz.groups.application.invite.preview.PreviewInviteResult
@@ -32,6 +33,8 @@ data class PreviewInviteResponse(
     val entryRequiresApproval: Boolean,
     val expiresAt: Instant?,
     val nextGame: PreviewNextGameResponse?,
+    /** Campo aditivo (CONV-011): `MONTHLY` no link de mensalistas; apps antigos ignoram. */
+    val inviteKind: InviteKind = InviteKind.PUBLIC,
 ) {
     companion object {
         fun from(card: PreviewInviteCard) = PreviewInviteResponse(
@@ -49,6 +52,7 @@ data class PreviewInviteResponse(
             nextGame = card.nextGame?.let {
                 PreviewNextGameResponse(it.startsAt, it.venueName, it.court)
             },
+            inviteKind = card.inviteKind,
         )
 
         private val OUTPUT_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")

@@ -4,7 +4,9 @@ import br.com.saqz.groups.application.communication.EntryRequestNotice
 import br.com.saqz.groups.application.communication.FirstMemberNotice
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
+import br.com.saqz.groups.application.invite.InviteKind
 import br.com.saqz.groups.application.invite.InviteTokenDigest
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.sharedkernel.subscription.SubscriptionLimits
 import org.junit.jupiter.api.Test
@@ -473,6 +475,133 @@ class RedeemInviteTest {
         assertTrue(joined.isEmpty())
     }
 
+    private fun monthly(
+        approval: Boolean = false,
+        athleteLimit: Int? = null,
+        writeAllowed: Boolean = true,
+    ): Pair<Fixture, MutableList<Triple<UUID, UUID, MonthlyJoinOutcome>>> {
+        val notices = mutableListOf<Triple<UUID, UUID, MonthlyJoinOutcome>>()
+        val first = mutableListOf<UUID>()
+        val target = RedeemableInvite(groupId, now.plusSeconds(60), entryRequiresApproval = approval, kind = InviteKind.MONTHLY)
+        val base = fixture(target = target, athleteLimit = athleteLimit)
+        val useCase = RedeemInvite(
+            base.transaction,
+            base.repository,
+            FixedSubscriptionLimits(athleteLimit = athleteLimit),
+            base.clock,
+            br.com.saqz.sharedkernel.subscription.GroupWriteAccess { writeAllowed },
+            firstMember = FirstMemberNotice { _, user -> first += user },
+            monthlyJoin = MonthlyJoinNotice { group, user, outcome -> notices += Triple(group, user, outcome) },
+        )
+        firstMemberCalls = first
+        return base.copy(useCase = useCase) to notices
+    }
+
+    private var firstMemberCalls: List<UUID> = emptyList()
+
+    @Test
+    fun `link de mensalistas entra como mensalista, sem pedido mesmo com aprovacao, e avisa so pelo link`() {
+        val (fixture, notices) = monthly(approval = true)
+
+        val result = fixture.useCase.execute(actor, code.value)
+
+        assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ATHLETE, AthleteMembershipType.MENSALISTA), result)
+        assertEquals(AthleteMembershipType.MENSALISTA, fixture.repository.redemptions.single().membershipType)
+        assertTrue(fixture.repository.entryRequests.isEmpty())
+        assertEquals(listOf(Triple(groupId, actor, MonthlyJoinOutcome.JOINED_MENSALISTA)), notices)
+        assertTrue(firstMemberCalls.isEmpty())
+        assertEquals(listOf(actor), fixture.repository.inviteeDeletions)
+    }
+
+    @Test
+    fun `link de mensalistas sem mensalidade padrao entra como avulso e avisa o motivo`() {
+        val (fixture, notices) = monthly()
+        fixture.repository.monthlyFeeDefault = false
+
+        val result = fixture.useCase.execute(actor, code.value)
+
+        assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ATHLETE, AthleteMembershipType.AVULSO), result)
+        assertEquals(listOf(Triple(groupId, actor, MonthlyJoinOutcome.JOINED_AVULSO_NO_DEFAULT_FEE)), notices)
+    }
+
+    @Test
+    fun `quem saiu antes entra pelo link de mensalistas sem pedido e perde a marca de volta`() {
+        val (fixture, _) = monthly()
+        fixture.repository.returnMarked += actor
+
+        val result = fixture.useCase.execute(actor, code.value)
+
+        assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ATHLETE, AthleteMembershipType.MENSALISTA), result)
+        assertTrue(fixture.repository.entryRequests.isEmpty())
+        assertEquals(listOf(actor), fixture.repository.clearedMarks)
+    }
+
+    @Test
+    fun `avulso do grupo vira mensalista pelo link mantendo o papel`() {
+        val (fixture, notices) = monthly()
+        fixture.repository.roles[actor] = GroupRole.ADMIN
+        fixture.repository.types[actor] = AthleteMembershipType.AVULSO
+
+        val result = fixture.useCase.execute(actor, code.value)
+
+        assertEquals(RedeemInviteResult.Success(groupId, GroupRole.ADMIN, AthleteMembershipType.MENSALISTA), result)
+        assertEquals(listOf(actor), fixture.repository.promotions)
+        assertEquals(listOf(Triple(groupId, actor, MonthlyJoinOutcome.BECAME_MENSALISTA)), notices)
+        assertTrue(fixture.repository.redemptions.isEmpty())
+    }
+
+    @Test
+    fun `mensalista que reabre e avulso sem mensalidade padrao nao mudam nem avisam`() {
+        val (mensalista, mensalistaNotices) = monthly()
+        mensalista.repository.roles[actor] = GroupRole.ATHLETE
+        mensalista.repository.types[actor] = AthleteMembershipType.MENSALISTA
+        assertEquals(
+            RedeemInviteResult.Success(groupId, GroupRole.ATHLETE, AthleteMembershipType.MENSALISTA),
+            mensalista.useCase.execute(actor, code.value),
+        )
+
+        val (avulso, avulsoNotices) = monthly()
+        avulso.repository.monthlyFeeDefault = false
+        avulso.repository.roles[actor] = GroupRole.ATHLETE
+        avulso.repository.types[actor] = AthleteMembershipType.AVULSO
+        assertEquals(
+            RedeemInviteResult.Success(groupId, GroupRole.ATHLETE, AthleteMembershipType.AVULSO),
+            avulso.useCase.execute(actor, code.value),
+        )
+
+        assertTrue(mensalistaNotices.isEmpty() && avulsoNotices.isEmpty())
+        assertTrue(mensalista.repository.promotions.isEmpty() && avulso.repository.promotions.isEmpty())
+    }
+
+    @Test
+    fun `link de mensalistas respeita o limite do plano e o plano vencido`() {
+        val (full, fullNotices) = monthly(athleteLimit = 1)
+        full.repository.openMembers += UUID.randomUUID()
+        assertSame(RedeemInviteResult.AthleteLimitExceeded, full.useCase.execute(actor, code.value))
+        assertTrue(full.repository.redemptions.isEmpty() && fullNotices.isEmpty())
+
+        val (expired, _) = monthly(writeAllowed = false)
+        kotlin.test.assertFailsWith<br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException> {
+            expired.useCase.execute(actor, code.value)
+        }
+        assertTrue(expired.repository.redemptions.isEmpty())
+    }
+
+    @Test
+    fun `link de mensalistas vencido conta como tentativa invalida`() {
+        val notices = mutableListOf<MonthlyJoinOutcome>()
+        val target = RedeemableInvite(groupId, now.minusSeconds(1), kind = InviteKind.MONTHLY)
+        val base = fixture(target = target)
+        val useCase = RedeemInvite(
+            base.transaction, base.repository, FixedSubscriptionLimits(), base.clock,
+            monthlyJoin = MonthlyJoinNotice { _, _, outcome -> notices += outcome },
+        )
+
+        assertSame(RedeemInviteResult.InvalidOrExpired, useCase.execute(actor, code.value))
+        assertEquals(1, base.repository.invalidAttempts.size)
+        assertTrue(notices.isEmpty())
+    }
+
     private fun fixture(
         clockNow: Instant = now,
         target: RedeemableInvite? = RedeemableInvite(groupId, clockNow.plusSeconds(60), groupDeleted = false),
@@ -575,7 +704,32 @@ class RedeemInviteTest {
 
         override fun redeemMembership(command: RedeemMembershipCommand): GroupRole {
             redemptions += command
+            types.putIfAbsent(command.userId, command.membershipType)
             return roles.getOrPut(command.userId) { GroupRole.ATHLETE }
+        }
+
+        val types = mutableMapOf<UUID, AthleteMembershipType>()
+        var monthlyFeeDefault = true
+        val promotions = mutableListOf<UUID>()
+        val clearedMarks = mutableListOf<UUID>()
+        val inviteeDeletions = mutableListOf<UUID>()
+
+        override fun findMembershipType(groupId: UUID, userId: UUID): AthleteMembershipType? = types[userId]
+
+        override fun hasMonthlyFeeDefault(groupId: UUID): Boolean = monthlyFeeDefault
+
+        override fun promoteToMensalista(groupId: UUID, userId: UUID) {
+            promotions += userId
+            types[userId] = AthleteMembershipType.MENSALISTA
+        }
+
+        override fun clearReturnMark(groupId: UUID, userId: UUID) {
+            clearedMarks += userId
+            returnMarked -= userId
+        }
+
+        override fun deleteMatchingInvitee(groupId: UUID, userId: UUID) {
+            inviteeDeletions += userId
         }
     }
 }

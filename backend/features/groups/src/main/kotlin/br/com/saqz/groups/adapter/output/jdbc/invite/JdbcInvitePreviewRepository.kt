@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.invite
 
+import br.com.saqz.groups.application.invite.InviteKind
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.application.invite.preview.PreviewInviteAttemptWindow
 import br.com.saqz.groups.application.invite.preview.PreviewInviteRepository
@@ -76,12 +77,21 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
     override fun findInvite(digest: InviteTokenDigest, now: Instant): PreviewableInvite? = jdbc.sql(
         """
         WITH target AS (
-            SELECT invites.group_id, creator.display_name AS inviter_name, NULL::timestamptz AS attendance_deadline
+            SELECT invites.group_id, creator.display_name AS inviter_name, NULL::timestamptz AS attendance_deadline,
+                   'PUBLIC' AS kind
             FROM group_invites invites
             JOIN access_users creator ON creator.id = invites.created_by_user_id
             WHERE invites.token_digest = :tokenDigest OR invites.short_code_digest = :tokenDigest
             UNION ALL
-            SELECT m.group_id, m.author_name AS inviter_name, NULL::timestamptz AS attendance_deadline
+            -- Link de mensalistas: vence 7 dias depois do último envio; o código morto já não está na tabela.
+            SELECT links.group_id, creator.display_name AS inviter_name, links.expires_at AS attendance_deadline,
+                   'MONTHLY' AS kind
+            FROM group_monthly_invite_links links
+            JOIN access_users creator ON creator.id = links.created_by_user_id
+            WHERE links.short_code_digest = :tokenDigest
+            UNION ALL
+            SELECT m.group_id, m.author_name AS inviter_name, NULL::timestamptz AS attendance_deadline,
+                   'PUBLIC' AS kind
             FROM notification_attendance_links link
             JOIN group_messages m ON m.id = link.message_id
             WHERE sha256(convert_to(link.code, 'UTF8')) = :tokenDigest
@@ -100,6 +110,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
             groups.level,
             target.inviter_name,
             target.attendance_deadline,
+            target.kind,
             (SELECT COUNT(*) FROM group_memberships memberships WHERE memberships.group_id = groups.id) AS member_count,
             slots.weekday AS slot_weekday,
             slots.start_time AS slot_start_time,
@@ -143,6 +154,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
                     entryRequiresApproval = first.entryRequiresApproval,
                     expiresAt = first.attendanceDeadline,
                     nextGame = first.nextGame,
+                    inviteKind = first.kind,
                 ),
             )
         }
@@ -156,6 +168,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
         level = getString("level")?.let(GroupLevel::valueOf),
         inviterName = getString("inviter_name"),
         attendanceDeadline = getTimestamp("attendance_deadline")?.toInstant(),
+        kind = InviteKind.valueOf(getString("kind")),
         memberCount = getInt("member_count"),
         slot = getObject("slot_weekday", Integer::class.java)?.let {
             PreviewRegularSlot(
@@ -181,6 +194,7 @@ class JdbcInvitePreviewRepository(dataSource: DataSource) : PreviewInviteReposit
         val level: GroupLevel?,
         val inviterName: String?,
         val attendanceDeadline: Instant?,
+        val kind: InviteKind,
         val memberCount: Int,
         val slot: PreviewRegularSlot?,
         val nextGame: PreviewNextGame?,

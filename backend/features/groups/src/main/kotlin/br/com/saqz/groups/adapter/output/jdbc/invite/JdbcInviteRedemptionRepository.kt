@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.invite
 
+import br.com.saqz.groups.application.invite.InviteKind
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.application.invite.redeem.CreateEntryRequestCommand
 import br.com.saqz.groups.application.invite.redeem.GroupAthleteOccupancy
@@ -14,6 +15,7 @@ import br.com.saqz.groups.application.entryrequest.GroupEntryRequest
 import br.com.saqz.groups.application.entryrequest.SaveEntryRequestAthleteProfileCommand
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.AthleteLevel
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.AthletePreferredSide
 import br.com.saqz.groups.domain.GroupRole
@@ -60,13 +62,21 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
         SELECT invites.group_id,
                groups.deleted_at IS NOT NULL AS group_deleted,
                groups.entry_requires_approval,
-               invites.expires_at
+               invites.expires_at,
+               'PUBLIC' AS kind
         FROM group_invites invites
         JOIN access_groups groups ON groups.id = invites.group_id
         WHERE invites.token_digest = :tokenDigest OR invites.short_code_digest = :tokenDigest
         UNION ALL
+        -- Link de mensalistas (CONV-011): o código morto (trocado ou invalidado) já não está na tabela.
+        SELECT links.group_id, groups.deleted_at IS NOT NULL AS group_deleted,
+               groups.entry_requires_approval, links.expires_at, 'MONTHLY' AS kind
+        FROM group_monthly_invite_links links
+        JOIN access_groups groups ON groups.id = links.group_id
+        WHERE links.short_code_digest = :tokenDigest
+        UNION ALL
         SELECT m.group_id, groups.deleted_at IS NOT NULL AS group_deleted,
-               groups.entry_requires_approval, NULL::timestamptz AS expires_at
+               groups.entry_requires_approval, NULL::timestamptz AS expires_at, 'PUBLIC' AS kind
         FROM notification_attendance_links link
         JOIN group_messages m ON m.id = link.message_id
         JOIN access_groups groups ON groups.id = m.group_id
@@ -84,6 +94,7 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
                 expiresAt = result.getTimestamp("expires_at")?.toInstant(),
                 groupDeleted = result.getBoolean("group_deleted"),
                 entryRequiresApproval = result.getBoolean("entry_requires_approval"),
+                kind = InviteKind.valueOf(result.getString("kind")),
             )
         }
         .optional()
@@ -327,8 +338,8 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
             FROM access_groups
             WHERE id = :groupId AND deleted_at IS NULL
         ), persisted_membership AS (
-            INSERT INTO group_memberships (group_id, user_id, role, created_at, updated_at)
-            SELECT id, :userId, 'ATHLETE', now(), now()
+            INSERT INTO group_memberships (group_id, user_id, role, membership_type, created_at, updated_at)
+            SELECT id, :userId, 'ATHLETE', :membershipType, now(), now()
             FROM target_group
             WHERE owner_user_id <> :userId
             ON CONFLICT (group_id, user_id) DO UPDATE SET
@@ -346,9 +357,59 @@ class JdbcInviteRedemptionRepository(dataSource: DataSource) : InviteRedemptionR
     )
         .param("groupId", command.groupId)
         .param("userId", command.userId)
+        .param("membershipType", command.membershipType.name, Types.OTHER)
         .query(String::class.java)
         .single()
         .let(GroupRole::valueOf)
+
+    override fun findMembershipType(groupId: UUID, userId: UUID): AthleteMembershipType? = jdbc.sql(
+        "SELECT membership_type::text FROM group_memberships WHERE group_id = :groupId AND user_id = :userId",
+    )
+        .param("groupId", groupId)
+        .param("userId", userId)
+        .query(String::class.java)
+        .optional()
+        .orElse(null)
+        ?.let(AthleteMembershipType::valueOf)
+
+    override fun hasMonthlyFeeDefault(groupId: UUID): Boolean = jdbc.sql(
+        """
+        SELECT EXISTS (
+            SELECT 1 FROM access_groups
+            WHERE id = :groupId AND monthly_fee_cents IS NOT NULL AND monthly_due_day IS NOT NULL
+        )
+        """.trimIndent(),
+    )
+        .param("groupId", groupId)
+        .query(Boolean::class.java)
+        .single()
+
+    /** Mesmo efeito do PATCH de atleta com MENSALISTA sem valor próprio: valor e dia vêm do grupo (MEM-003). */
+    override fun promoteToMensalista(groupId: UUID, userId: UUID) {
+        jdbc.sql(
+            """
+            UPDATE group_memberships
+            SET membership_type = 'MENSALISTA', monthly_fee_cents = NULL, monthly_due_day = NULL, updated_at = now()
+            WHERE group_id = :groupId AND user_id = :userId AND membership_type = 'AVULSO'
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .param("userId", userId)
+            .update()
+    }
+
+    override fun deleteMatchingInvitee(groupId: UUID, userId: UUID) {
+        jdbc.sql(
+            """
+            DELETE FROM group_monthly_invitees invitees
+            USING access_users users
+            WHERE invitees.group_id = :groupId AND users.id = :userId AND invitees.phone = users.phone
+            """.trimIndent(),
+        )
+            .param("groupId", groupId)
+            .param("userId", userId)
+            .update()
+    }
 
     private fun mapEntryRequest(result: java.sql.ResultSet, rowNumber: Int) = GroupEntryRequest(
         userId = result.getObject("user_id", UUID::class.java),

@@ -2,6 +2,7 @@ package br.com.saqz.groups.adapter.input.http
 
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInviteResult
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.sharedkernel.RequestIdentity
 import com.fasterxml.jackson.annotation.JsonCreator
@@ -20,6 +21,8 @@ data class RedeemedInviteResponse(
     val status: RedeemedInviteStatus,
     val groupId: UUID,
     val role: GroupRole?,
+    /** Campo aditivo: só no link de mensalistas (`MENSALISTA` ou `AVULSO`). */
+    val membershipType: AthleteMembershipType? = null,
 )
 
 enum class RedeemedInviteStatus {
@@ -55,6 +58,7 @@ class AccessInviteRedemptionController(
             RedeemedInviteStatus.JOINED,
             result.groupId,
             result.role,
+            result.membershipType,
         )
         is RedeemInviteResult.Pending -> RedeemedInviteResponse(
             RedeemedInviteStatus.PENDING,

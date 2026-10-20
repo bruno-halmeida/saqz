@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.invite.preview
 
+import br.com.saqz.groups.application.invite.InviteKind
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.domain.group.GroupComposition
 import br.com.saqz.groups.domain.group.GroupLevel
@@ -19,6 +20,7 @@ data class PreviewInviteCard(
     val entryRequiresApproval: Boolean,
     val expiresAt: Instant?,
     val nextGame: PreviewNextGame?,
+    val inviteKind: InviteKind = InviteKind.PUBLIC,
 )
 
 data class PreviewRegularSlot(

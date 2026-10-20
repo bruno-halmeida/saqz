@@ -2,6 +2,7 @@ package br.com.saqz.groups.application.invite.preview
 
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.invite.InviteCode
+import br.com.saqz.groups.application.invite.InviteKind
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import java.time.Clock
 import java.time.Duration
@@ -35,7 +36,7 @@ class PreviewInvite(
 
                 invite.groupDeleted -> PreviewInviteResult.Invalid
                 invite.expiredAt != null -> PreviewInviteResult.Expired(invite.expiredAt)
-                else -> PreviewInviteResult.Success(invite.card.hidingVenueUntilApproved())
+                else -> PreviewInviteResult.Success(invite.card.hidingVenueUntilApproved().withoutApprovalForMonthly())
             }
         }
 
@@ -46,6 +47,10 @@ class PreviewInvite(
      */
     private fun PreviewInviteCard.hidingVenueUntilApproved(): PreviewInviteCard =
         if (!entryRequiresApproval) this else copy(nextGame = nextGame?.copy(venueName = HIDDEN_VENUE, court = null))
+
+    /** O link de mensalistas entra sem aprovação (CONV-011); o local segue escondido se o grupo exige aprovação. */
+    private fun PreviewInviteCard.withoutApprovalForMonthly(): PreviewInviteCard =
+        if (inviteKind == InviteKind.MONTHLY) copy(entryRequiresApproval = false) else this
 
     private fun recordInvalidAttempt(
         actor: UUID?,
