@@ -126,7 +126,7 @@ internal fun AttendanceLinkScreen(
             open = phase == AttendanceLinkPhase.DeclineSheet,
             onClose = onBack,
             title = stringResource(Res.string.attendance_link_decline_sheet_title),
-            description = state.game?.let { stringResource(Res.string.attendance_link_decline_sheet_description_game, it.title()) }
+            description = state.game?.let { stringResource(Res.string.attendance_link_decline_sheet_description_game, it.weekdayAndTime()) }
                 ?: stringResource(Res.string.attendance_link_decline_sheet_description),
             splitFooter = {
                 SaqzButton(

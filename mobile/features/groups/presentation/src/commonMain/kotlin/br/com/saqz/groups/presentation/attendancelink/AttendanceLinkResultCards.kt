@@ -63,9 +63,7 @@ internal fun AttendanceResultCard(state: AttendanceLinkState, modifier: Modifier
         },
     )
     val body = when (state.phase) {
-        AttendanceLinkPhase.Confirmed ->
-            if (game == null) stringResource(Res.string.attendance_link_confirmed_no_game)
-            else stringResource(Res.string.attendance_link_confirmed_game, game.title())
+        AttendanceLinkPhase.Confirmed -> stringResource(Res.string.attendance_link_confirmed_body)
         AttendanceLinkPhase.RequestClosed -> stringResource(Res.string.attendance_link_closed_body)
         AttendanceLinkPhase.Waitlisted -> stringResource(Res.string.attendance_link_waitlisted_body)
         else -> stringResource(Res.string.attendance_link_declined_body)
@@ -241,6 +239,13 @@ private fun RoundBadge(icon: ImageVector, tint: Color, background: Color, size: 
     Box(Modifier.size(size).clip(CircleShape).background(background), contentAlignment = Alignment.Center) {
         SaqzIcon(icon, tint = tint, size = StepBadgeIcon)
     }
+}
+
+/** "quinta, 21h00"; só o dia da semana quando a hora não veio, só a data quando nem o dia veio. */
+@Composable
+internal fun AttendanceLinkGame.weekdayAndTime(): String {
+    val day = weekdayName() ?: date
+    return if (time.isBlank()) day else "$day, $time"
 }
 
 /** "quinta", "sábado"…; vazio quando o cartão não traz o dia da semana. */

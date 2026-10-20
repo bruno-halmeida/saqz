@@ -32,8 +32,7 @@
     <string name="attendance_link_title">Presença</string>
     <string name="attendance_link_loading">Confirmando sua presença…</string>
     <string name="attendance_link_confirmed_title">Sua vaga está confirmada</string>
-    <string name="attendance_link_confirmed_game">Seu nome está na lista do jogo de %1$s.</string>
-    <string name="attendance_link_confirmed_no_game">Seu nome está na lista deste jogo.</string>
+    <string name="attendance_link_confirmed_body">Seu nome já está na lista.</string>
     <string name="attendance_link_spots_label">Vagas preenchidas</string>
     <string name="attendance_link_spots_value">%1$d de %2$d</string>
     <string name="attendance_link_undo_confirmed">Não vou mais</string>
@@ -44,10 +43,10 @@
     <string name="attendance_link_waitlist_nobody_ahead">Ninguém na sua frente</string>
     <string name="attendance_link_undo_waitlisted">Sair da lista de espera</string>
     <string name="attendance_link_declined_title">Você não vai neste jogo</string>
-    <string name="attendance_link_declined_body">Seu nome saiu da lista. Valeu por avisar a turma.</string>
+    <string name="attendance_link_declined_body">Seu nome saiu da lista. Valeu por avisar.</string>
     <string name="attendance_link_decline_sheet_description_game">Seu nome sai da lista do jogo de %1$s.</string>
     <string name="attendance_link_closed_title">Seu pedido não está mais ativo</string>
-    <string name="attendance_link_closed_body">Para entrar no grupo, peça de novo pelo convite.</string>
+    <string name="attendance_link_closed_body">Para entrar, peça de novo pelo convite.</string>
     <string name="attendance_link_closed_action">Pedir de novo</string>
     <string name="attendance_link_pending_title">Pedido enviado</string>
     <string name="attendance_link_pending_venue">Local liberado na aprovação</string>
@@ -63,7 +62,7 @@
     <string name="attendance_link_step_registration_todo">Dá para adiantar agora</string>
     <string name="attendance_link_step_presence">Presença no jogo</string>
     <string name="attendance_link_step_presence_day">Presença no jogo de %1$s</string>
-    <string name="attendance_link_step_presence_hint">Confirmada quando você voltar aqui depois da aprovação</string>
+    <string name="attendance_link_step_presence_hint">Confirmada quando você voltar aqui</string>
     <string name="attendance_link_advance_registration">Adiantar meu cadastro</string>
     <string name="attendance_link_review_registration">Revisar meu cadastro</string>
     <string name="attendance_link_not_receiving">Este grupo não está recebendo novos atletas agora. Fale com o organizador.</string>

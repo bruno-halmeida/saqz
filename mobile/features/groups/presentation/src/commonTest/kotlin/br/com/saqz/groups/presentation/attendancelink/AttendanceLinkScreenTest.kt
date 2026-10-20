@@ -69,7 +69,7 @@ class AttendanceLinkScreenTest {
         val game = AttendanceLinkGame("TUESDAY", "04/08", "19h30", "CERET", "Quadra 2")
         setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Confirmed, destination, game), {}, intents::add, {}) } }
         onNodeWithText("Sua vaga está confirmada").assertExists()
-        onNodeWithText("Seu nome está na lista do jogo de Ter, 04/08 · 19h30.").assertExists()
+        onNodeWithText("Seu nome já está na lista.").assertExists()
         onNodeWithText("Não vou mais").assertExists()
         onNodeWithTag(AttendanceLinkTags.Undo).performClick()
         assertEquals(listOf(AttendanceLinkIntent.Undo), intents)
@@ -133,7 +133,7 @@ class AttendanceLinkScreenTest {
         }
     }
 
-    private val declinedText = "Seu nome saiu da lista. Valeu por avisar a turma."
+    private val declinedText = "Seu nome saiu da lista. Valeu por avisar."
 
     private val game = AttendanceLinkGame("THURSDAY", "22/10", "21h00", "Arena", "Quadra 2", capacity = 14, confirmedCount = 12)
 
@@ -153,7 +153,7 @@ class AttendanceLinkScreenTest {
         onNodeWithText("Ana Lima recebeu seu pedido").assertExists()
         onNodeWithText("Dá para adiantar agora").assertExists()
         onNodeWithText("Presença no jogo de quinta").assertExists()
-        onNodeWithText("Confirmada quando você voltar aqui depois da aprovação").assertExists()
+        onNodeWithText("Confirmada quando você voltar aqui").assertExists()
         onNodeWithText("Adiantar meu cadastro").performClick()
         assertEquals("g1", advanced)
         onNodeWithTag(AttendanceLinkTags.Refresh).performClick()
@@ -188,7 +188,7 @@ class AttendanceLinkScreenTest {
     @Test fun confirmedWithoutCountsOrGameHasNoMeterAndKeepsTheGenericText() = runComposeUiTest {
         setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Confirmed, destination), {}, {}, {}) } }
         onNodeWithTag(AttendanceLinkTags.Spots).assertDoesNotExist()
-        onNodeWithText("Seu nome está na lista deste jogo.").assertExists()
+        onNodeWithText("Seu nome já está na lista.").assertExists()
     }
 
     @Test fun waitlistedShowsThePositionAndHowManyAreAhead() {
@@ -221,14 +221,14 @@ class AttendanceLinkScreenTest {
 
     @Test fun declineSheetNamesTheGameWhenThereIsOne() = runComposeUiTest {
         setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.DeclineSheet, destination, game), {}, {}, {}) } }
-        onNodeWithText("Seu nome sai da lista do jogo de Qui, 22/10 · 21h00.").assertExists()
+        onNodeWithText("Seu nome sai da lista do jogo de quinta, 21h00.").assertExists()
     }
 
     @Test fun requestClosedOffersToAskAgain() = runComposeUiTest {
         val intents = mutableListOf<AttendanceLinkIntent>()
         setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.RequestClosed), {}, intents::add, {}) } }
         onNodeWithText("Seu pedido não está mais ativo").assertExists()
-        onNodeWithText("Para entrar no grupo, peça de novo pelo convite.").assertExists()
+        onNodeWithText("Para entrar, peça de novo pelo convite.").assertExists()
         onNodeWithTag(AttendanceLinkTags.RequestAgain).performClick()
         assertEquals(listOf(AttendanceLinkIntent.Retry), intents)
     }
