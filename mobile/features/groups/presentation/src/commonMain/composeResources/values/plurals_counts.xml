@@ -105,4 +105,8 @@
         <item quantity="one">No grupo desde %1$s · %2$d jogo</item>
         <item quantity="other">No grupo desde %1$s · %2$d jogos</item>
     </plurals>
+    <plurals name="attendance_link_waitlist_ahead">
+        <item quantity="one">%1$d pessoa na sua frente</item>
+        <item quantity="other">%1$d pessoas na sua frente</item>
+    </plurals>
 </resources>

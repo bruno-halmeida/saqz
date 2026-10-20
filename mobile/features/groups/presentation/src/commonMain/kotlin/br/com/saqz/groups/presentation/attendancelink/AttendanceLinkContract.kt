@@ -33,6 +33,9 @@ data class AttendanceLinkGame(
     val venueName: String,
     val court: String?,
     val groupNext: Boolean = false,
+    /** Vagas e confirmados do jogo; nulos na prévia do convite, que não traz a contagem. */
+    val capacity: Int? = null,
+    val confirmedCount: Int? = null,
 )
 
 data class AttendanceLinkState(
@@ -41,9 +44,19 @@ data class AttendanceLinkState(
     val game: AttendanceLinkGame? = null,
     /** O "não vou" já foi enviado e a resposta não voltou: o botão da folha não aceita outro toque. */
     val declining: Boolean = false,
+    /** Vez na fila de quem ficou na lista de espera. */
+    val waitlistPosition: Long? = null,
+    /** Quem aguarda aprovação: o grupo do pedido, o nome dele, quem recebeu o pedido e se o cadastro já está guardado. */
+    val pendingGroupId: String? = null,
+    val pendingGroupName: String? = null,
+    val pendingInviterName: String? = null,
+    val pendingRegistrationSaved: Boolean = false,
+    /** A atualização silenciosa da fase `Pending` está em voo; o cartão e os textos continuam na tela. */
+    val refreshing: Boolean = false,
 )
 
 /** `Undo`: desfaz a resposta que o link acabou de gravar (registra o "não vou" do mesmo jeito que o link de recusa). */
-enum class AttendanceLinkIntent { Retry, Decline, Undo, OpenAppDownload }
+/** `Refresh`: refaz o pedido de entrada sem sair da fase `Pending` (a tela se atualiza ao reaparecer). */
+enum class AttendanceLinkIntent { Retry, Refresh, Decline, Undo, OpenAppDownload }
 
 sealed interface AttendanceLinkEffect { data class Register(val groupId: String) : AttendanceLinkEffect }

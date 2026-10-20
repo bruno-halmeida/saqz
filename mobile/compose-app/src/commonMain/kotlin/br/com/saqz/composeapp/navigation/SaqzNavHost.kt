@@ -1143,6 +1143,10 @@ internal fun SaqzNavHost(
                                 ),
                             )
                         },
+                        // Empilha por cima do link (sem pop): o voltar traz a pessoa de novo à tela pendente.
+                        onAdvanceRegistration = { groupId ->
+                            backStack.add(GroupsRoute.AthleteRegistration(groupId, pendingRequest = true))
+                        },
                     ) { destination ->
                         pop()
                         backStack.add(GroupsRoute.GameDetail(destination.groupId.value, destination.gameId))

@@ -2,12 +2,15 @@ package br.com.saqz.groups.presentation.attendancelink
 
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.*
+import br.com.saqz.groups.domain.athlete.EntryRequestAthleteProfile
+import br.com.saqz.groups.domain.athlete.OwnEntryRequest
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.attendance.share.*
 import br.com.saqz.groups.domain.membership.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import kotlin.test.*
 
@@ -195,16 +198,31 @@ class AttendanceLinkViewModelTest {
         assertEquals(2, gateway.commands.size)
     }
 
-    @Test fun newcomerJoinsGroupAndRegistersBeforeAnyAttendanceWrite() = runTest {
+    @Test fun newcomerWithoutPendingRegistrationJoinsAndIsConfirmedStraightAway() = runTest {
         val gateway = AttendanceFake()
         val invite = InviteFake(InviteRedeemStatus.JOINED)
         val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true, firstOnly = true), gateway, invite)
         assertEquals(listOf(InviteCode(code)), invite.codes)
+        assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)
+        assertEquals(AttendanceIntent.Confirm, gateway.commands.single().intent)
+    }
+
+    @Test fun newcomerWhoStillNeedsTheRegistrationGoesThereBeforeAnyAttendanceWrite() = runTest {
+        val gateway = AttendanceFake()
+        val invite = InviteFake(InviteRedeemStatus.JOINED)
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true, firstOnly = true, registration = true), gateway, invite)
         assertEquals(AttendanceLinkPhase.Registration, vm.state.value.phase)
         assertEquals(AttendanceLinkEffect.Register("group"), vm.effects.first())
         assertTrue(gateway.commands.isEmpty())
         val incomplete = AttendanceLinkViewModel(code, false, SharingFake(registration = true), gateway, InviteFake())
         assertEquals(AttendanceLinkEffect.Register("group"), incomplete.effects.first())
+        assertTrue(gateway.commands.isEmpty())
+    }
+
+    @Test fun newcomerOfADeclineLinkSeesTheWarningInsteadOfBeingConfirmed() = runTest {
+        val gateway = AttendanceFake()
+        val vm = AttendanceLinkViewModel(declineCode, true, SharingFake(expired = true, firstOnly = true), gateway, InviteFake(InviteRedeemStatus.JOINED))
+        assertEquals(AttendanceLinkPhase.DeclineSheet, vm.state.value.phase)
         assertTrue(gateway.commands.isEmpty())
     }
 
@@ -327,7 +345,7 @@ class AttendanceLinkViewModelTest {
 
     @Test fun memberSeesTheGameCardFromTheGameDataAndKeepsItThroughTheDeclineSheetAndTheAnswer() = runTest {
         val games = br.com.saqz.groups.presentation.FakeGameGateway()
-        val card = AttendanceLinkGame("TUESDAY", "04/08", "19h30", "CERET", null)
+        val card = AttendanceLinkGame("TUESDAY", "04/08", "19h30", "CERET", null, capacity = 12, confirmedCount = 8)
         val confirmed = AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake(), games = games)
         assertEquals(AttendanceLinkPhase.Confirmed, confirmed.state.value.phase)
         assertEquals(card, confirmed.state.value.game)
@@ -382,16 +400,123 @@ class AttendanceLinkViewModelTest {
         assertNull(vm.state.value.game)
     }
 
+    @Test fun pendingKeepsGroupInviterAndWhetherTheRegistrationIsAlreadySaved() = runTest {
+        val preview = InvitePreview("Vôlei da Quinta", "Ana Lima", true)
+        val withoutProfile = AttendanceLinkViewModel(
+            code, false, SharingFake(expired = true), AttendanceFake(),
+            InviteFake(InviteRedeemStatus.PENDING, preview = preview), athletes = athletes(null),
+        )
+        assertEquals("group", withoutProfile.state.value.pendingGroupId)
+        assertEquals("Vôlei da Quinta", withoutProfile.state.value.pendingGroupName)
+        assertEquals("Ana Lima", withoutProfile.state.value.pendingInviterName)
+        assertFalse(withoutProfile.state.value.pendingRegistrationSaved)
+        val saved = AttendanceLinkViewModel(
+            code, false, SharingFake(expired = true), AttendanceFake(),
+            InviteFake(InviteRedeemStatus.PENDING, preview = preview), athletes = athletes(EntryRequestAthleteProfile(nickname = "Ana")),
+        )
+        assertTrue(saved.state.value.pendingRegistrationSaved)
+        // Falha na leitura do pedido: a fase segue e o cadastro conta como não guardado.
+        val failing = AttendanceLinkViewModel(
+            code, false, SharingFake(expired = true), AttendanceFake(),
+            InviteFake(InviteRedeemStatus.PENDING, preview = preview),
+            athletes = br.com.saqz.groups.presentation.FakeAthleteGateway(),
+        )
+        assertEquals(AttendanceLinkPhase.Pending, failing.state.value.phase)
+        assertFalse(failing.state.value.pendingRegistrationSaved)
+    }
+
+    @Test fun refreshOnPendingNeverGoesBackToLoadingAndUpdatesTheSavedRegistration() = runTest {
+        val preview = InvitePreview("Vôlei da Quinta", "Ana Lima", true)
+        val gate = CompletableDeferred<Unit>()
+        val invites = InviteFake(InviteRedeemStatus.PENDING, preview = preview)
+        val gateway = br.com.saqz.groups.presentation.FakeAthleteGateway(ownEntryRequestResult = entryRequest(null))
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true), AttendanceFake(), invites, athletes = gateway)
+        val phases = mutableListOf<AttendanceLinkPhase>()
+        val watcher = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect { phases += it.phase } }
+        gateway.ownEntryRequestResult = entryRequest(EntryRequestAthleteProfile(nickname = "Ana"))
+        invites.hold = gate
+        vm.onIntent(AttendanceLinkIntent.Refresh)
+        assertTrue(vm.state.value.refreshing)
+        assertEquals("Vôlei da Quinta", vm.state.value.pendingGroupName)
+        // Outro toque com o primeiro em voo não refaz o pedido.
+        vm.onIntent(AttendanceLinkIntent.Refresh)
+        assertEquals(2, invites.codes.size)
+        gate.complete(Unit)
+        assertFalse(vm.state.value.refreshing)
+        assertTrue(vm.state.value.pendingRegistrationSaved)
+        assertEquals(AttendanceLinkPhase.Pending, vm.state.value.phase)
+        assertFalse(AttendanceLinkPhase.Loading in phases)
+        watcher.cancel()
+    }
+
+    @Test fun refreshOnceApprovedFollowsTheNormalFlowAndConfirms() = runTest {
+        val gateway = AttendanceFake()
+        val invites = InviteFake(InviteRedeemStatus.PENDING, preview = InvitePreview("Grupo", "Ana", true))
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true, firstOnly = true), gateway, invites)
+        assertEquals(AttendanceLinkPhase.Pending, vm.state.value.phase)
+        invites.status = InviteRedeemStatus.JOINED
+        vm.onIntent(AttendanceLinkIntent.Refresh)
+        assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)
+        assertEquals(AttendanceIntent.Confirm, gateway.commands.single().intent)
+        assertFalse(vm.state.value.refreshing)
+    }
+
+    @Test fun refreshFailureKeepsThePendingScreenAndReleasesTheButton() = runTest {
+        val invites = InviteFake(InviteRedeemStatus.PENDING, preview = InvitePreview("Grupo", "Ana", true))
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true), AttendanceFake(), invites)
+        invites.status = null
+        vm.onIntent(AttendanceLinkIntent.Refresh)
+        assertEquals(AttendanceLinkPhase.Pending, vm.state.value.phase)
+        assertFalse(vm.state.value.refreshing)
+    }
+
+    @Test fun refreshOutsideThePendingPhaseDoesNothing() = runTest {
+        val gateway = AttendanceFake()
+        val invites = InviteFake()
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(), gateway, invites)
+        assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)
+        vm.onIntent(AttendanceLinkIntent.Refresh)
+        assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)
+        assertEquals(1, gateway.commands.size)
+        assertTrue(invites.codes.isEmpty())
+    }
+
+    @Test fun waitlistPositionAndTheCardCountsReachTheState() = runTest {
+        val gateway = AttendanceFake().apply { status = AttendanceStatus.Waitlisted; waitlistPosition = 3 }
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake(), games = br.com.saqz.groups.presentation.FakeGameGateway())
+        assertEquals(AttendanceLinkPhase.Waitlisted, vm.state.value.phase)
+        assertEquals(3L, vm.state.value.waitlistPosition)
+        assertEquals(12, vm.state.value.game?.capacity)
+        assertEquals(8, vm.state.value.game?.confirmedCount)
+    }
+
+    @Test fun theCardIsReloadedAfterTheAnswerSoTheCountIncludesThePerson() = runTest {
+        val games = br.com.saqz.groups.presentation.FakeGameGateway()
+        AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake(), games = games)
+        // Uma leitura antes da resposta (cartão) e outra depois dela (contagem).
+        assertEquals(2, games.readCalls)
+    }
+
+    private fun entryRequest(profile: EntryRequestAthleteProfile?) = SaqzResult.Success(
+        OwnEntryRequest(GroupId("group"), "Vôlei da Quinta", null, null, null, profile),
+    )
+
+    private fun athletes(profile: EntryRequestAthleteProfile?) =
+        br.com.saqz.groups.presentation.FakeAthleteGateway(ownEntryRequestResult = entryRequest(profile))
+
     private class InviteFake(
-        private val status: InviteRedeemStatus? = null,
+        var status: InviteRedeemStatus? = null,
         private val failure: InviteError = InviteError.InvalidOrExpired("INVITE_INVALID"),
         private val preview: InvitePreview? = null,
     ) : InviteGateway {
         val codes = mutableListOf<InviteCode>()
+        var hold: CompletableDeferred<Unit>? = null
         override suspend fun preview(code: InviteCode): SaqzResult<InvitePreview, InviteError> =
             preview?.let { SaqzResult.Success(it) } ?: SaqzResult.Failure(InviteError.InvalidOrExpired("INVITE_INVALID"))
         override suspend fun redeem(code: InviteCode): SaqzResult<InviteRedeem, InviteError> {
             codes += code
+            hold?.await()
+            val status = status
             return if (status == null) SaqzResult.Failure(failure)
             else SaqzResult.Success(InviteRedeem(status, GroupId("group"), "ATHLETE"))
         }
@@ -414,6 +539,7 @@ class AttendanceLinkViewModelTest {
         val commands = mutableListOf<SelfAttendanceCommand>()
         val targets = mutableListOf<AttendanceLinkDestination>()
         var status = AttendanceStatus.Confirmed
+        var waitlistPosition: Long? = null
         var error: AttendanceError? = null
         /** Segura a resposta até o teste liberar: é o que mantém a primeira chamada em voo. */
         var hold: CompletableDeferred<Unit>? = null
@@ -424,7 +550,7 @@ class AttendanceLinkViewModelTest {
             hold?.await()
             error?.let { return SaqzResult.Failure(it) }
             return SaqzResult.Success(VersionedAttendanceMutation(
-                AttendanceMutation(AttendanceEntry("logged-user", status, version = 1), promotedCount = 0,
+                AttendanceMutation(AttendanceEntry("logged-user", status, waitlistPosition = waitlistPosition, version = 1), promotedCount = 0,
                     detail = AttendanceDetail(confirmedCount = 1, availableSpots = 0, waitlistCount = 0, capacity = 1)),
                 AttendanceVersionToken("1")))
         }

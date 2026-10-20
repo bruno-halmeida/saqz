@@ -3,9 +3,11 @@ package br.com.saqz.groups.presentation.attendancelink
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.mvi.MviViewModel
+import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.attendance.*
+import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.attendance.share.*
 import br.com.saqz.groups.domain.communication.AppDownloadPort
 import br.com.saqz.groups.domain.communication.NativeNotificationPort
@@ -35,6 +37,8 @@ class AttendanceLinkViewModel(
     private val games: GameGateway? = null,
     /** Horário do cartão de quem aguarda aprovação (a prévia traz o instante); sem o port, UTC. */
     private val timeZonePort: GroupSystemTimeZonePort? = null,
+    /** Lê o cadastro guardado no pedido pendente; sem o port, a fase `Pending` segue sem esse passo. */
+    private val athletes: AthleteGateway? = null,
 ) : MviViewModel<AttendanceLinkState, AttendanceLinkIntent, AttendanceLinkEffect>(AttendanceLinkState()) {
     /** Há loja do app para oferecer depois da resposta (confirmada ou lista de espera). */
     val appDownloadAvailable: Boolean = appDownload?.appDownloadUrl() != null
@@ -50,6 +54,7 @@ class AttendanceLinkViewModel(
     override fun handleIntent(intent: AttendanceLinkIntent) {
         when (intent) {
             AttendanceLinkIntent.Retry -> retry()
+            AttendanceLinkIntent.Refresh -> refresh()
             AttendanceLinkIntent.Decline -> decline()
             AttendanceLinkIntent.Undo -> undo()
             AttendanceLinkIntent.OpenAppDownload -> appDownload?.appDownloadUrl()?.let(appDownload::openAppDownload)
@@ -75,13 +80,35 @@ class AttendanceLinkViewModel(
                     AttendanceSharingError.InvalidOrExpired -> join(current)
                     else -> show(AttendanceLinkPhase.Failed)
                 }
-                is SaqzResult.Success -> {
-                    val destination = result.value
-                    if (!destination.registrationRequired) loadGame(current, destination)
-                    if (destination.registrationRequired) register(destination.groupId.value)
-                    else if (decline) ask(current, destination)
-                    else respond(destination, requestId, current, AttendanceIntent.Confirm)
+                is SaqzResult.Success -> proceed(current, result.value, requestId)
+            }
+        }
+    }
+
+    /** Quem já é membro: cadastro pendente leva ao formulário; senão o link responde (ou abre o aviso do "não vou"). */
+    private suspend fun proceed(current: Int, destination: AttendanceLinkDestination, requestId: String) {
+        if (destination.registrationRequired) return register(destination.groupId.value)
+        loadGame(current, destination)
+        if (decline) ask(current, destination)
+        else respond(destination, requestId, current, AttendanceIntent.Confirm)
+    }
+
+    /** Atualização silenciosa da fase `Pending`: nada volta para `Loading`, o cartão e os textos ficam. */
+    private fun refresh() {
+        val before = state.value
+        if (before.phase != AttendanceLinkPhase.Pending || before.refreshing) return
+        val current = generation
+        update { it.copy(refreshing = true) }
+        viewModelScope.launch {
+            val result = invites.redeem(InviteCode(code))
+            if (current != generation) return@launch
+            when {
+                result is SaqzResult.Success && result.value.status == InviteRedeemStatus.JOINED -> afterJoined(current)
+                result is SaqzResult.Success -> {
+                    readPending(current, result.value.groupId.value)
+                    if (current == generation) update { it.copy(refreshing = false) }
                 }
+                else -> update { it.copy(refreshing = false) }
             }
         }
     }
@@ -103,13 +130,27 @@ class AttendanceLinkViewModel(
         }
     }
 
-    /** Quem aguarda aprovação ainda não lê o jogo: o cartão vem da prévia do convite, com o local já escondido. */
-    private fun loadPreviewGame(current: Int) {
-        viewModelScope.launch {
-            val preview = invites.preview(InviteCode(code))
-            if (current != generation || preview !is SaqzResult.Success) return@launch
-            val card = preview.value.nextGame?.toCard(timeZone) ?: return@launch
-            update { if (it.phase == AttendanceLinkPhase.Pending) it.copy(game = card) else it }
+    /**
+     * Quem aguarda aprovação ainda não lê o jogo: o cartão e os nomes vêm da prévia do convite (o local já
+     * escondido) e o cadastro guardado vem do próprio pedido. Falha numa leitura não apaga o que já está na tela.
+     */
+    private suspend fun readPending(current: Int, groupId: String) {
+        val preview = invites.preview(InviteCode(code))
+        if (current != generation) return
+        if (preview is SaqzResult.Success) {
+            val card = preview.value.nextGame?.toCard(timeZone)
+            update {
+                if (it.phase != AttendanceLinkPhase.Pending) it else it.copy(
+                    game = card ?: it.game,
+                    pendingGroupName = preview.value.groupName,
+                    pendingInviterName = preview.value.inviterName,
+                )
+            }
+        }
+        val request = athletes?.ownEntryRequest(GroupId(groupId))
+        if (current != generation || request !is SaqzResult.Success) return
+        update {
+            if (it.phase == AttendanceLinkPhase.Pending) it.copy(pendingRegistrationSaved = request.value.athleteProfile != null) else it
         }
     }
 
@@ -149,23 +190,11 @@ class AttendanceLinkViewModel(
         if (current != generation) return
         when (result) {
             is SaqzResult.Success -> when (result.value.status) {
-                InviteRedeemStatus.JOINED -> {
-                    val resolved = sharing.resolveLink(AttendanceLinkCode(code))
-                    if (current != generation) return
-                    when (resolved) {
-                        is SaqzResult.Success -> register(resolved.value.groupId.value)
-                        is SaqzResult.Failure -> show(
-                            when (val error = resolved.error) {
-                                AttendanceSharingError.InvalidOrExpired -> AttendanceLinkPhase.Invalid
-                                is AttendanceSharingError.GameClosed -> error.reason.phase()
-                                else -> AttendanceLinkPhase.Failed
-                            },
-                        )
-                    }
-                }
+                InviteRedeemStatus.JOINED -> afterJoined(current)
                 InviteRedeemStatus.PENDING -> {
-                    show(AttendanceLinkPhase.Pending)
-                    loadPreviewGame(current)
+                    val groupId = result.value.groupId.value
+                    update { AttendanceLinkState(AttendanceLinkPhase.Pending, pendingGroupId = groupId) }
+                    viewModelScope.launch { readPending(current, groupId) }
                 }
             }
             is SaqzResult.Failure -> show(when (result.error) {
@@ -173,6 +202,23 @@ class AttendanceLinkViewModel(
                 InviteError.GroupNotReceiving -> AttendanceLinkPhase.NotReceiving
                 else -> AttendanceLinkPhase.Failed
             })
+        }
+    }
+
+    /** A pessoa entrou no grupo: resolve o link de novo, já como membro, e segue o fluxo normal. */
+    private suspend fun afterJoined(current: Int) {
+        val requestId = requestId(code) ?: return show(AttendanceLinkPhase.Invalid)
+        val resolved = sharing.resolveLink(AttendanceLinkCode(code))
+        if (current != generation) return
+        when (resolved) {
+            is SaqzResult.Success -> proceed(current, resolved.value, requestId)
+            is SaqzResult.Failure -> show(
+                when (val error = resolved.error) {
+                    AttendanceSharingError.InvalidOrExpired -> AttendanceLinkPhase.Invalid
+                    is AttendanceSharingError.GameClosed -> error.reason.phase()
+                    else -> AttendanceLinkPhase.Failed
+                },
+            )
         }
     }
 
@@ -194,17 +240,22 @@ class AttendanceLinkViewModel(
             }
         if (current != generation) return
         when (response) {
-            is SaqzResult.Success -> update {
-                AttendanceLinkState(
-                    phase = when (response.value.value.attendance.status) {
-                        AttendanceStatus.Waitlisted -> AttendanceLinkPhase.Waitlisted
-                        AttendanceStatus.Confirmed -> AttendanceLinkPhase.Confirmed
-                        AttendanceStatus.Declined ->
-                            if (intent == AttendanceIntent.Decline) AttendanceLinkPhase.Declined else AttendanceLinkPhase.Failed
-                    },
-                    destination = destination,
-                    game = it.game,
-                )
+            is SaqzResult.Success -> {
+                update {
+                    AttendanceLinkState(
+                        phase = when (response.value.value.attendance.status) {
+                            AttendanceStatus.Waitlisted -> AttendanceLinkPhase.Waitlisted
+                            AttendanceStatus.Confirmed -> AttendanceLinkPhase.Confirmed
+                            AttendanceStatus.Declined ->
+                                if (intent == AttendanceIntent.Decline) AttendanceLinkPhase.Declined else AttendanceLinkPhase.Failed
+                        },
+                        destination = destination,
+                        game = it.game,
+                        waitlistPosition = response.value.value.attendance.waitlistPosition,
+                    )
+                }
+                // A contagem do cartão já tem de incluir a resposta que acabou de ser gravada.
+                loadGame(current, destination)
             }
             is SaqzResult.Failure -> show(
                 if (response.error in listOf(AttendanceError.HiddenResource, AttendanceError.DeadlinePassed, AttendanceError.Frozen))
@@ -240,6 +291,8 @@ private fun Game.toCard(): AttendanceLinkGame {
         time = localTime.toHourMinute(),
         venueName = venue.name,
         court = venue.court,
+        capacity = capacity,
+        confirmedCount = confirmedCount,
     )
 }
 
