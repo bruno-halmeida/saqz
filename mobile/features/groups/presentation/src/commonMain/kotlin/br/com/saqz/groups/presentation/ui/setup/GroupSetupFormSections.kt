@@ -365,20 +365,21 @@ internal fun GroupVenueFields(
 internal fun GroupMoreDetailsRow(expanded: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
     val metrics = SaqzTheme.metrics
     val title = stringResource(Res.string.group_setup_more_details)
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = metrics.minimumTouchTarget)
-            .clickable(onClickLabel = title, role = Role.Button, onClick = onToggle)
-            .padding(vertical = metrics.grid),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = SaqzTheme.typography.label, color = SaqzTheme.colors.textPrimary)
-            if (!expanded) GroupFieldHint(stringResource(Res.string.group_setup_more_details_hint))
+    SaqzCard(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = metrics.minimumTouchTarget)
+                .clickable(onClickLabel = title, role = Role.Button, onClick = onToggle),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = SaqzTheme.typography.label, color = SaqzTheme.colors.textPrimary)
+                if (!expanded) GroupFieldHint(stringResource(Res.string.group_setup_more_details_hint))
+            }
+            SaqzIcon(if (expanded) SaqzIcons.ChevronUp else SaqzIcons.ChevronDown, tint = SaqzTheme.colors.textSecondary)
         }
-        SaqzIcon(if (expanded) SaqzIcons.ChevronUp else SaqzIcons.ChevronDown, tint = SaqzTheme.colors.textSecondary)
     }
 }
 
@@ -465,6 +466,7 @@ internal fun GroupRulesSection(state: GroupSetupState, onIntent: (GroupSetupInte
                     max = GroupSetupDefaults.MaxCapacity,
                     label = stringResource(Res.string.group_setup_capacity_label),
                     icon = SaqzIcons.Users,
+                    labelStyle = SaqzTheme.typography.label,
                     modifier = Modifier.testTag(GroupSetupTags.Capacity),
                 )
                 Text(
@@ -488,6 +490,7 @@ internal fun GroupRulesSection(state: GroupSetupState, onIntent: (GroupSetupInte
                 onChange = { onIntent(GroupSetupIntent.SelectDuration(it)) },
                 label = stringResource(Res.string.group_setup_duration_label),
                 icon = SaqzIcons.Clock,
+                labelStyle = SaqzTheme.typography.label,
                 hasError = GroupSetupError.DurationOutOfRange in state.errors,
                 modifier = Modifier.testTag(GroupSetupTags.Duration),
             )

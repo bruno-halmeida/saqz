@@ -6,6 +6,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzStepper
 import br.com.saqz.designsystem.theme.SaqzTheme
@@ -30,6 +31,7 @@ internal fun DurationStepper(
     label: String? = null,
     icon: ImageVector? = null,
     hasError: Boolean = false,
+    labelStyle: TextStyle = SaqzTheme.typography.body,
 ) {
     val text = durationLabel(minutes)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
@@ -46,6 +48,7 @@ internal fun DurationStepper(
             decreaseDescription = stringResource(Res.string.duration_stepper_decrease),
             increaseDescription = stringResource(Res.string.duration_stepper_increase),
             valueWidth = 56.dp,
+            labelStyle = labelStyle,
         )
         Text(
             text = stringResource(Res.string.duration_stepper_hint),

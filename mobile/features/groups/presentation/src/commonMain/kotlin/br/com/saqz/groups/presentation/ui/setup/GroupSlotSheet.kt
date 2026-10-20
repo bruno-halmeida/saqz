@@ -112,6 +112,7 @@ internal fun GroupSlotSheetContent(
             min = 0,
             max = MaxHour,
             label = stringResource(Res.string.group_slot_hour),
+            labelStyle = SaqzTheme.typography.label,
             format = { "${it}h" },
             decreaseDescription = stringResource(Res.string.group_slot_hour_before),
             increaseDescription = stringResource(Res.string.group_slot_hour_after),

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.material.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
@@ -35,6 +36,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -207,7 +209,7 @@ private fun SaqzStepperButton(
  *
  * [format] escreve o valor ("2h", "19h"); [previous]/[next] dizem para onde o – e o + levam quando o passo
  * não é de 1 (grade de durações). [icon] é o ícone cinza à esquerda do [label]; as descrições dos botões
- * podem ser específicas ("Menos uma vaga") para o leitor de tela.
+ * podem ser específicas ("Menos uma vaga") para o leitor de tela. [labelStyle] deixa o rótulo em semibold onde o campo é de formulário.
  */
 @Composable
 fun SaqzStepper(
@@ -224,6 +226,7 @@ fun SaqzStepper(
     decreaseDescription: String? = null,
     increaseDescription: String? = null,
     valueWidth: Dp = 32.dp,
+    labelStyle: TextStyle = SaqzTheme.typography.body,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -241,7 +244,7 @@ fun SaqzStepper(
                 if (icon != null) SaqzIcon(icon, tint = colors.textSecondary)
                 Text(
                     text = label,
-                    style = SaqzTheme.typography.body,
+                    style = labelStyle,
                     color = colors.textPrimary,
                 )
             }
@@ -449,7 +452,17 @@ private fun SaqzVerticalSegmented(
     val colors = SaqzTheme.colors
     val motion = SaqzTheme.motion
     val dismissKeyboard = rememberSaqzDismissKeyboard()
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
+    // Um contorno só em volta de todas as opções, como no horizontal; as opções ficam sem borda e a escolhida em azul cheio.
+    val shape = RoundedCornerShape(VerticalSegmentedRadius)
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(colors.surface, shape)
+            .border(1.dp, colors.border, shape)
+            .padding(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         options.forEachIndexed { index, option ->
             val on = isSelected(index)
             val fill by animateColorAsState(
@@ -466,9 +479,8 @@ private fun SaqzVerticalSegmented(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(44.dp)
-                    .clip(CircleShape)
-                    .background(fill, CircleShape)
-                    .then(if (on) Modifier else Modifier.border(1.dp, colors.border, CircleShape))
+                    .clip(RoundedCornerShape(VerticalSegmentedRadius - 4.dp))
+                    .background(fill)
                     .selectable(
                         selected = on,
                         role = role,
@@ -493,6 +505,8 @@ private fun SaqzVerticalSegmented(
         }
     }
 }
+
+private val VerticalSegmentedRadius = 24.dp
 
 /**
  * 10h — chip de escolha (dias, filtros). Mesma linguagem do segmented: selecionado é
