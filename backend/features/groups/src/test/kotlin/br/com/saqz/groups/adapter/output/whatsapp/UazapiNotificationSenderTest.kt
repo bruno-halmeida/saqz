@@ -34,6 +34,19 @@ class UazapiNotificationSenderTest {
         assertFalse(payload["async"].asBoolean())
     }
 
+    @Test fun `convite de mensalistas leva o proprio track id`() = server { server ->
+        var body = ""
+        server.createContext("/") { exchange ->
+            body = exchange.requestBody.bufferedReader().readText()
+            exchange.sendResponseHeaders(200, 2)
+            exchange.responseBody.use { it.write("{}".toByteArray()) }
+        }
+        client(server).use { client ->
+            UazapiNotificationSender(client).send(message.copy(trackId = "monthly-invite-abc"))
+        }
+        assertEquals("monthly-invite-abc", ObjectMapper().readTree(body)["track_id"].asText())
+    }
+
     @Test fun `rate limit preserves provider minimum delay`() = server { server ->
         server.createContext("/") { exchange ->
             exchange.responseHeaders.add("Retry-After", "7200")

@@ -12,7 +12,7 @@ class UazapiNotificationSender(private val client: UazapiClient) : NotificationW
         if (!Regex("\\+?[1-9][0-9]{7,14}").matches(message.phone)) return WhatsAppDelivery.Failed
         return try {
             client.messages().sendText(TextMessage.builder(message.phone.removePrefix("+"), message.body)
-                .trackSource("saqz").trackId("notification-${message.notificationId}")
+                .trackSource("saqz").trackId(message.trackId ?: "notification-${message.notificationId}")
                 .linkPreview(false).asyncSend(false).build())
             WhatsAppDelivery.Accepted
         } catch (error: RateLimitException) {
