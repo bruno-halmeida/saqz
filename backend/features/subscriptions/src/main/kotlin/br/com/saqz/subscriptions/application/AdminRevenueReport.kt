@@ -17,6 +17,17 @@ data class AdminRevenueRow(
 data class AdminRevenueReport(
     val real: List<AdminRevenueRow>,
     val test: List<AdminRevenueRow>,
+    val courtesy: List<AdminRevenueCourtesyRow> = emptyList(),
+)
+
+/**
+ * Cortesia no mês (America/Sao_Paulo, `AAAA-MM`): cobrado é sempre zero; `cededCents` é o valor de tabela (preço mensal do plano,
+ * mês cheio) das cortesias ativas em algum momento do mês. Nunca entra em `real`, no bruto, no líquido nem no total do panorama.
+ */
+data class AdminRevenueCourtesyRow(
+    val month: String,
+    val active: Long,
+    val cededCents: Long,
 )
 
 /** Receita real x teste por mês e origem, a partir dos pagamentos confirmados (view `subscription_payments`). */

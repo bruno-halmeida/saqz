@@ -2,6 +2,7 @@ package br.com.saqz.subscriptions.adapter.output.jdbc
 
 import br.com.saqz.subscriptions.application.AdminReceipt
 import br.com.saqz.subscriptions.application.AdminSubscriptionDetail
+import br.com.saqz.subscriptions.application.AdminSubscriptionCourtesy
 import br.com.saqz.subscriptions.application.AdminSubscriptionDirectory
 import br.com.saqz.subscriptions.application.AdminSubscriptionPage
 import br.com.saqz.subscriptions.application.AdminSubscriptionSummary
@@ -69,10 +70,13 @@ class JdbcAdminSubscriptionDirectoryRepository(
                    c.code AS coupon_code, c.discount_percent, c.duration_cycles,
                    'SITE' AS source,
                    CASE WHEN EXISTS (SELECT 1 FROM subscription_payments p WHERE p.source = 'SITE' AND p.owner_user_id = s.owner_user_id)
-                        THEN 'REAL' ELSE 'TEST' END AS billing
+                        THEN 'REAL' ELSE 'TEST' END AS billing,
+                   cc.plan::text AS courtesy_plan, cc.ends_at AS courtesy_ends_at
             FROM subscriptions s
             JOIN access_users u ON u.id = s.owner_user_id
             LEFT JOIN coupons c ON c.id = s.coupon_id
+            LEFT JOIN plan_courtesies cc ON cc.owner_user_id = s.owner_user_id
+                 AND cc.revoked_at IS NULL AND (cc.ends_at IS NULL OR cc.ends_at > now())
             WHERE s.owner_user_id = :id
             """.trimIndent(),
         )
@@ -141,6 +145,7 @@ class JdbcAdminSubscriptionDirectoryRepository(
             createdAt = instant("created_at"),
             source = source,
             billing = getString("billing"),
+            courtesy = getString("courtesy_plan")?.let { AdminSubscriptionCourtesy(it, instantOrNull("courtesy_ends_at")) },
         )
     }
 
@@ -213,8 +218,11 @@ class JdbcAdminSubscriptionDirectoryRepository(
                 WHERE t.ends_at > now()
             ),
             all_subscriptions AS (
-                SELECT x.*, u.display_name AS owner_name, u.email AS owner_email
+                SELECT x.*, u.display_name AS owner_name, u.email AS owner_email,
+                       cc.plan::text AS courtesy_plan, cc.ends_at AS courtesy_ends_at
                 FROM raw_subscriptions x JOIN access_users u ON u.id = x.owner_user_id
+                LEFT JOIN plan_courtesies cc ON cc.owner_user_id = x.owner_user_id
+                     AND cc.revoked_at IS NULL AND (cc.ends_at IS NULL OR cc.ends_at > now())
             )"""
     }
 }

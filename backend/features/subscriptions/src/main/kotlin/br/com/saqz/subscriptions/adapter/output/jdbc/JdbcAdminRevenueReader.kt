@@ -1,8 +1,10 @@
 package br.com.saqz.subscriptions.adapter.output.jdbc
 
 import br.com.saqz.subscriptions.application.AdminRevenueReader
+import br.com.saqz.subscriptions.application.AdminRevenueCourtesyRow
 import br.com.saqz.subscriptions.application.AdminRevenueReport
 import br.com.saqz.subscriptions.application.AdminRevenueRow
+import br.com.saqz.subscriptions.domain.Plan
 import org.springframework.jdbc.core.simple.JdbcClient
 import javax.sql.DataSource
 
@@ -39,6 +41,48 @@ class JdbcAdminRevenueReader(dataSource: DataSource) : AdminRevenueReader {
         return AdminRevenueReport(
             real = rows.filter { !it.first }.map { it.second },
             test = rows.filter { it.first }.map { it.second },
+            courtesy = courtesy(months),
         )
+    }
+
+    /**
+     * Cortesia ativa no mês: criada antes do fim do mês, não revogada antes do início e sem fim antes do início. Preço mensal de
+     * tabela do plano (o do site), mês cheio. Meses sem cortesia não aparecem.
+     */
+    private fun courtesy(months: Int): List<AdminRevenueCourtesyRow> {
+        data class Row(val month: String, val plan: Plan, val count: Long)
+
+        val rows = jdbc.sql(
+            """
+            WITH meses AS (
+                SELECT ms AS inicio_local,
+                       ms AT TIME ZONE 'America/Sao_Paulo' AS inicio,
+                       (ms + interval '1 month') AT TIME ZONE 'America/Sao_Paulo' AS fim
+                FROM generate_series(
+                    date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') - make_interval(months => :back),
+                    date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo'),
+                    interval '1 month') AS ms
+            )
+            SELECT to_char(m.inicio_local, 'YYYY-MM') AS month, c.plan::text AS plan, count(*) AS active
+            FROM meses m
+            JOIN plan_courtesies c
+              ON c.created_at < m.fim
+             AND (c.revoked_at IS NULL OR c.revoked_at >= m.inicio)
+             AND (c.ends_at IS NULL OR c.ends_at > m.inicio)
+            GROUP BY 1, 2
+            """.trimIndent(),
+        )
+            .param("back", months - 1)
+            .query { rs, _ -> Row(rs.getString("month"), Plan.valueOf(rs.getString("plan")), rs.getLong("active")) }
+            .list()
+        return rows.groupBy { it.month }
+            .map { (month, byPlan) ->
+                AdminRevenueCourtesyRow(
+                    month = month,
+                    active = byPlan.sumOf { it.count },
+                    cededCents = byPlan.sumOf { it.plan.monthlyPriceCents * it.count },
+                )
+            }
+            .sortedByDescending { it.month }
     }
 }

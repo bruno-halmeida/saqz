@@ -1,7 +1,9 @@
 package br.com.saqz.subscriptions.adapter.output.jdbc
 
 import br.com.saqz.postgrestesting.TestPostgres
+import br.com.saqz.subscriptions.application.AdminRevenueCourtesyRow
 import br.com.saqz.subscriptions.application.AdminRevenueRow
+import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.testing.allSubscriptionsFeatureMigrationLocations
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -152,6 +154,37 @@ class SubscriptionPaymentsViewIntegrationTest {
         assertEquals(AdminRevenueRow("2026-11", "SITE", "BRL", 2, 6_000, null), meses["2026-11"])
     }
 
+    @Test
+    fun `cortesia entra por mes como linha propria com valor cedido e nao mexe na receita real`() {
+        val dono = user()
+        event(dono, "PAYMENT_CONFIRMED", "pay_1", value = "50.00", net = "48.00")
+        val antes = reader.monthly(4).real
+        val admin = user()
+        // A atravessa meses (m-2 a m0); B revogada no meio de m-1; C venceu antes da janela; D sem fim desde m-1.
+        courtesy(user(), admin, "ORGANIZADOR", created = mid(2), endsAt = mid(0))
+        courtesy(user(), admin, "ILIMITADO", created = mid(2), revokedAt = mid(1))
+        courtesy(user(), admin, "TITULAR", created = mid(6), endsAt = mid(4))
+        courtesy(user(), admin, "TITULAR", created = mid(1), endsAt = null)
+
+        val relatorio = reader.monthly(4)
+
+        val org = Plan.ORGANIZADOR.monthlyPriceCents
+        val ilim = Plan.ILIMITADO.monthlyPriceCents
+        val tit = Plan.TITULAR.monthlyPriceCents
+        assertEquals(
+            listOf(
+                AdminRevenueCourtesyRow(monthLabel(0), 2, org + tit),
+                AdminRevenueCourtesyRow(monthLabel(1), 3, org + ilim + tit),
+                AdminRevenueCourtesyRow(monthLabel(2), 2, org + ilim),
+            ),
+            relatorio.courtesy,
+        )
+        // Cortesia nunca entra em bruto, liquido nem na lista real.
+        assertEquals(antes, relatorio.real)
+        assertEquals(5_000, stats.revenueCents(null, Instant.now().plusSeconds(60)))
+        assertEquals(emptyList(), reader.monthly(1).courtesy.filter { it.month != monthLabel(0) })
+    }
+
     private fun currentMonth(): String =
         jdbc.sql("SELECT to_char(now() AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM')").query(String::class.java).single()
 
@@ -169,6 +202,21 @@ class SubscriptionPaymentsViewIntegrationTest {
                 )
             }
             .list()
+
+    /** Dia 5 do mês de São Paulo `n` meses atrás, como expressão de timestamptz. */
+    private fun mid(n: Int): String =
+        "((date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') - interval '$n month' + interval '5 days') AT TIME ZONE 'America/Sao_Paulo')"
+
+    private fun monthLabel(n: Int): String =
+        jdbc.sql("SELECT to_char(date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') - interval '$n month', 'YYYY-MM')")
+            .query(String::class.java).single()
+
+    private fun courtesy(dono: UUID, admin: UUID, plan: String, created: String, endsAt: String? = null, revokedAt: String? = null) {
+        jdbc.sql(
+            "INSERT INTO plan_courtesies (id, owner_user_id, plan, ends_at, reason, granted_by, created_at, revoked_at, revoked_by) " +
+                "VALUES (:id, :o, '$plan', ${endsAt ?: "NULL"}, 'teste', :a, $created, ${revokedAt ?: "NULL"}, ${if (revokedAt != null) ":a" else "NULL"})",
+        ).param("id", UUID.randomUUID()).param("o", dono).param("a", admin).update()
+    }
 
     private fun user(): UUID {
         val id = UUID.randomUUID()

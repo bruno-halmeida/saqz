@@ -158,6 +158,47 @@ class JdbcAdminSubscriptionDirectoryRepositoryIntegrationTest {
         assertEquals(1, repository.list(null, "ILIMITADO", null, page = 1, size = 50, source = "COURTESY").total)
     }
 
+    @Test
+    fun `cortesia ativa marca toda linha do dono, inclusive site e loja, e o detalhe`() {
+        val comTudo = insertUser(name = "Com Tudo", email = "ct@saqz.test")
+        val semCortesia = insertUser(name = "Sem Cortesia", email = "sc@saqz.test")
+        val vencida = insertUser(name = "Vencida", email = "v@saqz.test")
+        insertSubscription(comTudo, plan = "ORGANIZADOR", createdAt = now)
+        appStore(comTudo, "PRODUCTION")
+        insertSubscription(semCortesia, plan = "TITULAR", createdAt = now)
+        insertSubscription(vencida, plan = "TITULAR", createdAt = now)
+        val fim = "now() + interval '30 days'"
+        execute("INSERT INTO plan_courtesies (id, owner_user_id, plan, ends_at, reason, granted_by) VALUES ('${UUID.randomUUID()}', '$comTudo', 'ILIMITADO', $fim, 'x', '$semCortesia')")
+        execute("INSERT INTO plan_courtesies (id, owner_user_id, plan, ends_at, reason, granted_by) VALUES ('${UUID.randomUUID()}', '$vencida', 'ILIMITADO', now() - interval '1 day', 'x', '$semCortesia')")
+
+        val linhas = repository.list(null, null, null, page = 1, size = 50).items
+        val doDono = linhas.filter { it.ownerName == "Com Tudo" }
+
+        assertEquals(setOf("SITE", "APP_STORE", "COURTESY"), doDono.map { it.source }.toSet())
+        doDono.forEach {
+            assertEquals("ILIMITADO", it.courtesy?.plan)
+            assertNotNull(it.courtesy?.endsAt)
+        }
+        assertNull(linhas.single { it.ownerName == "Sem Cortesia" }.courtesy)
+        assertNull(linhas.single { it.ownerName == "Vencida" }.courtesy)
+
+        assertEquals("ILIMITADO", repository.find(comTudo)?.summary?.courtesy?.plan)
+        assertNull(repository.find(semCortesia)?.summary?.courtesy)
+        assertNull(repository.find(vencida)?.summary?.courtesy)
+    }
+
+    @Test
+    fun `cortesia sem prazo tem endsAt nulo mas continua marcada`() {
+        val dono = insertUser(name = "Sem Prazo", email = "sp2@saqz.test")
+        insertSubscription(dono, plan = "TITULAR", createdAt = now)
+        execute("INSERT INTO plan_courtesies (id, owner_user_id, plan, ends_at, reason, granted_by) VALUES ('${UUID.randomUUID()}', '$dono', 'ORGANIZADOR', NULL, 'x', '$dono')")
+
+        val courtesy = repository.find(dono)?.summary?.courtesy
+
+        assertEquals("ORGANIZADOR", courtesy?.plan)
+        assertNull(courtesy?.endsAt)
+    }
+
     private fun insertUser(name: String, email: String): UUID {
         val id = UUID.randomUUID()
         execute(

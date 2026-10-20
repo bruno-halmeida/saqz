@@ -4,7 +4,9 @@ import br.com.saqz.access.application.admin.PlatformAdminLookup
 import br.com.saqz.access.application.admin.PlatformAdminView
 import br.com.saqz.adminweb.http.AdminRevenueController
 import br.com.saqz.adminweb.http.AdminSubscriptionsController
+import br.com.saqz.subscriptions.application.AdminRevenueCourtesyRow
 import br.com.saqz.subscriptions.application.AdminRevenueReport
+import br.com.saqz.subscriptions.application.AdminSubscriptionCourtesy
 import br.com.saqz.subscriptions.application.AdminRevenueRow
 import br.com.saqz.subscriptions.application.AdminReceipt
 import br.com.saqz.subscriptions.application.AdminSubscriptionCanceler
@@ -59,6 +61,8 @@ class AdminSubscriptionsEndpointIntegrationTest {
         assertEquals("GALERA10", body["items"][0]["couponCode"].stringValue())
         assertEquals("SITE", body["items"][0]["source"].stringValue())
         assertEquals("REAL", body["items"][0]["billing"].stringValue())
+        assertEquals("ILIMITADO", body["items"][0]["courtesy"]["plan"].stringValue())
+        assertEquals(true, body["items"][0]["courtesy"]["endsAt"].isNull)
     }
 
     @Test
@@ -85,6 +89,9 @@ class AdminSubscriptionsEndpointIntegrationTest {
         assertEquals(5_990, body["real"][0]["grossCents"].intValue())
         assertEquals(true, body["real"][0]["netCents"].isNull)
         assertEquals(46, body["test"][0]["payments"].intValue())
+        assertEquals("2026-10", body["courtesy"][0]["month"].stringValue())
+        assertEquals(2, body["courtesy"][0]["active"].intValue())
+        assertEquals(15_980, body["courtesy"][0]["cededCents"].intValue())
         assertEquals(400, exchange("GET", "/admin/revenue?months=0").statusCode())
         assertEquals(400, exchange("GET", "/admin/revenue?months=61").statusCode())
         assertEquals(403, exchange("GET", "/admin/revenue", token = "user-token").statusCode())
@@ -96,6 +103,7 @@ class AdminSubscriptionsEndpointIntegrationTest {
         val body = objectMapper.readTree(ok.body())
 
         assertEquals(200, ok.statusCode())
+        assertEquals("ILIMITADO", body["summary"]["courtesy"]["plan"].stringValue())
         assertEquals(1, body["receipts"].size())
         assertEquals(5_391, body["receipts"][0]["valueCents"].intValue())
         assertEquals(404, exchange("GET", "/admin/subscriptions/${UUID.randomUUID()}").statusCode())
@@ -136,6 +144,7 @@ class AdminSubscriptionsEndpointIntegrationTest {
             canceledAt = null,
             pastDueSince = null,
             createdAt = Instant.parse("2026-02-20T00:00:00Z"),
+            courtesy = AdminSubscriptionCourtesy("ILIMITADO", null),
         )
 
         private val courtesy = summary.copy(
@@ -177,6 +186,7 @@ class AdminSubscriptionsEndpointIntegrationTest {
             AdminRevenueReport(
                 real = listOf(AdminRevenueRow("2026-10", "APP_STORE", "BRL", 1, 5_990, null)),
                 test = listOf(AdminRevenueRow("2026-10", "APP_STORE", "BRL", 46, 276_000, null)),
+                courtesy = listOf(AdminRevenueCourtesyRow("2026-10", 2, 15_980)),
             )
         }
 

@@ -3,6 +3,12 @@ package br.com.saqz.subscriptions.application
 import java.time.Instant
 import java.util.UUID
 
+/** Cortesia ativa agora (DEB-100); `endsAt` nulo = sem prazo. */
+data class AdminSubscriptionCourtesy(
+    val plan: String,
+    val endsAt: Instant?,
+)
+
 data class AdminSubscriptionSummary(
     val ownerUserId: UUID,
     val ownerName: String?,
@@ -23,6 +29,8 @@ data class AdminSubscriptionSummary(
     val source: String = SOURCE_SITE,
     /** `REAL` (houve cobrança de verdade), `TEST` (sandbox, compra de teste ou site sem pagamento) ou `NO_CHARGE` (cortesia e teste gratuito). */
     val billing: String = BILLING_REAL,
+    /** Preenchido em toda linha cujo dono tem cortesia ativa agora (inclusive linhas de site e de loja); senão nulo. */
+    val courtesy: AdminSubscriptionCourtesy? = null,
 ) {
     companion object {
         const val SOURCE_SITE = "SITE"
