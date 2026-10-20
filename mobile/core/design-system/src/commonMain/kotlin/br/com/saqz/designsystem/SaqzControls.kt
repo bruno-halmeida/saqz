@@ -1,17 +1,22 @@
 package br.com.saqz.designsystem
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -21,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,9 +34,13 @@ import androidx.compose.material.Text
 import androidx.compose.material.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -449,11 +459,96 @@ private fun SaqzVerticalSegmented(
     optionTags: List<String>,
     modifier: Modifier = Modifier,
 ) {
+    SaqzSegmentedStack(
+        count = options.size,
+        isSelected = isSelected,
+        onClick = onClick,
+        role = role,
+        optionTags = optionTags,
+        enabled = true,
+        containerRadius = VerticalSegmentedRadius,
+        optionRadius = VerticalSegmentedRadius - 4.dp,
+        optionMinHeight = 44.dp,
+        optionPadding = 0.dp,
+        optionAlignment = Alignment.Center,
+        header = null,
+        modifier = modifier,
+    ) { index, _, label ->
+        Text(
+            text = options[index],
+            style = SaqzTheme.typography.support.copy(
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight(700),
+            ),
+            color = label,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/**
+ * Escolha única em coluna com **conteúdo livre por opção**: o [SaqzSegmented] vertical para opções de mais de uma
+ * linha (a posição com a contagem de vagas). Mesmo contêiner branco com um contorno só, a escolhida azul cheia, as
+ * demais brancas e a mesma animação de cor; a altura acompanha o conteúdo. O raio segue o card (12) e a opção o
+ * campo (10), porque a pílula de 24 do vertical de texto vira um estádio em opção de duas linhas.
+ *
+ * [content] recebe o índice e se a opção está escolhida, para trocar as cores do que desenha (texto branco sobre o
+ * azul). [header] fica dentro do contorno, acima das opções (o título da pergunta). [enabled] falso apaga as opções a
+ * 55% e ignora o toque. [selected] fora do intervalo é "nada escolhido". Semântica de rádio: o leitor de tela anuncia
+ * "selecionado" na escolhida e o grupo inteiro como escolha única.
+ */
+@Composable
+fun SaqzSegmentedColumn(
+    count: Int,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    optionTags: List<String> = emptyList(),
+    header: (@Composable ColumnScope.() -> Unit)? = null,
+    content: @Composable (index: Int, selected: Boolean) -> Unit,
+) {
+    SaqzSegmentedStack(
+        count = count,
+        isSelected = { it == selected },
+        onClick = onSelect,
+        role = Role.RadioButton,
+        optionTags = optionTags,
+        enabled = enabled,
+        containerRadius = SaqzTheme.metrics.cardRadius,
+        optionRadius = SaqzTheme.metrics.inputRadius,
+        optionMinHeight = SaqzTheme.metrics.minimumTouchTarget,
+        optionPadding = 12.dp,
+        optionAlignment = Alignment.TopStart,
+        header = header,
+        modifier = modifier,
+    ) { index, on, _ -> content(index, on) }
+}
+
+// Um contorno só em volta de todas as opções, como no horizontal; as opções ficam sem borda e a escolhida em azul
+// cheio. Pressionada, a opção branca escurece para o ice e encolhe na escala de toque do design system.
+@Composable
+private fun SaqzSegmentedStack(
+    count: Int,
+    isSelected: (Int) -> Boolean,
+    onClick: (Int) -> Unit,
+    role: Role,
+    optionTags: List<String>,
+    enabled: Boolean,
+    containerRadius: Dp,
+    optionRadius: Dp,
+    optionMinHeight: Dp,
+    optionPadding: Dp,
+    optionAlignment: Alignment,
+    header: (@Composable ColumnScope.() -> Unit)?,
+    modifier: Modifier = Modifier,
+    option: @Composable (index: Int, selected: Boolean, label: Color) -> Unit,
+) {
     val colors = SaqzTheme.colors
     val motion = SaqzTheme.motion
     val dismissKeyboard = rememberSaqzDismissKeyboard()
-    // Um contorno só em volta de todas as opções, como no horizontal; as opções ficam sem borda e a escolhida em azul cheio.
-    val shape = RoundedCornerShape(VerticalSegmentedRadius)
+    val shape = RoundedCornerShape(containerRadius)
+    val optionShape = RoundedCornerShape(optionRadius)
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -463,50 +558,69 @@ private fun SaqzVerticalSegmented(
             .padding(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        options.forEachIndexed { index, option ->
-            val on = isSelected(index)
-            val fill by animateColorAsState(
-                targetValue = if (on) colors.primary else colors.surface,
-                animationSpec = tween(motion.thumbDurationMillis, easing = motion.emphasized),
-                label = "verticalSegmentedFill",
-            )
-            val label by animateColorAsState(
-                targetValue = if (on) colors.surface else colors.textPrimary,
-                animationSpec = tween(motion.thumbDurationMillis, easing = motion.emphasized),
-                label = "verticalSegmentedLabel",
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(44.dp)
-                    .clip(RoundedCornerShape(VerticalSegmentedRadius - 4.dp))
-                    .background(fill)
-                    .selectable(
-                        selected = on,
-                        role = role,
-                        onClick = {
-                            dismissKeyboard()
-                            onClick(index)
-                        },
-                    )
-                    .then(optionTags.getOrNull(index)?.let { Modifier.testTag(it) } ?: Modifier),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = option,
-                    style = SaqzTheme.typography.support.copy(
-                        fontSize = 13.5.sp,
-                        fontWeight = FontWeight(700),
-                    ),
-                    color = label,
-                    textAlign = TextAlign.Center,
+        header?.invoke(this)
+        Column(
+            modifier = Modifier.fillMaxWidth().selectableGroup(),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            repeat(count) { index ->
+                val on = isSelected(index)
+                val interactionSource = remember { MutableInteractionSource() }
+                val pressed by interactionSource.collectIsPressedAsState()
+                val fill by animateColorAsState(
+                    targetValue = when {
+                        on -> colors.primary
+                        pressed && enabled -> colors.surfaceSoft
+                        else -> colors.surface
+                    },
+                    animationSpec = tween(motion.thumbDurationMillis, easing = motion.emphasized),
+                    label = "verticalSegmentedFill",
                 )
+                val label by animateColorAsState(
+                    targetValue = if (on) colors.surface else colors.textPrimary,
+                    animationSpec = tween(motion.thumbDurationMillis, easing = motion.emphasized),
+                    label = "verticalSegmentedLabel",
+                )
+                val scale by animateFloatAsState(
+                    targetValue = saqzPressScale(pressed && enabled, motion),
+                    animationSpec = tween(motion.pressDurationMillis),
+                    label = "verticalSegmentedPress",
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
+                        .alpha(if (enabled) 1f else DisabledOptionAlpha)
+                        .clip(optionShape)
+                        .background(fill)
+                        .selectable(
+                            selected = on,
+                            enabled = enabled,
+                            role = role,
+                            interactionSource = interactionSource,
+                            indication = LocalIndication.current,
+                            onClick = {
+                                dismissKeyboard()
+                                onClick(index)
+                            },
+                        )
+                        .then(optionTags.getOrNull(index)?.let { Modifier.testTag(it) } ?: Modifier)
+                        .heightIn(min = optionMinHeight)
+                        .padding(optionPadding),
+                    contentAlignment = optionAlignment,
+                ) {
+                    option(index, on, label)
+                }
             }
         }
     }
 }
 
 private val VerticalSegmentedRadius = 24.dp
+private const val DisabledOptionAlpha = 0.55f
 
 /**
  * 10h — chip de escolha (dias, filtros). Mesma linguagem do segmented: selecionado é

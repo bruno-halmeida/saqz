@@ -33,6 +33,7 @@ class SaqzColorTokensTest {
         "warning" to tokens.warning,
         "warningForeground" to tokens.warningForeground,
         "errorForeground" to tokens.errorForeground,
+        "successForeground" to tokens.successForeground,
         "disabledSurface" to tokens.disabledSurface,
         "disabledForeground" to tokens.disabledForeground,
     )
@@ -98,6 +99,20 @@ class SaqzColorTokensTest {
             assertAtLeast(3.0, contrast(tokens.warningForeground, fill))
             assertBelow(3.0, contrast(tokens.warning, fill))
         }
+    }
+
+    @Test
+    fun successTextIsAAOnWhiteAndOnTheChip() {
+        // O verde da paleta não serve de texto; o successForeground (decisão de 20/10) passa AA no branco, no ice e
+        // sobre o próprio fundo do chip Success (verde a 12%).
+        assertAtLeast(4.5, contrast(tokens.successForeground, tokens.surface))
+        for (surface in listOf(tokens.surface, tokens.surfaceSoft)) {
+            val fill = composite(tokens.success, alpha = 0.12f, over = surface)
+            assertAtLeast(4.5, contrast(tokens.successForeground, fill))
+            assertBelow(3.0, contrast(tokens.success, fill))
+        }
+        // O ✓ branco no círculo do resultado confirmado.
+        assertAtLeast(4.5, contrast(tokens.onPrimary, tokens.successForeground))
     }
 
     @Test

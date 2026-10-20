@@ -149,7 +149,7 @@ fun SaqzStatusChip(
         SaqzChipTone.Neutral -> colors.textSecondary to colors.surfaceSoft
         SaqzChipTone.Accent -> colors.textPrimary to colors.accent.copy(alpha = 0.32f)
         SaqzChipTone.Brand -> colors.primary to colors.primary.copy(alpha = 0.08f)
-        SaqzChipTone.Success -> colors.success to colors.success.copy(alpha = 0.12f)
+        SaqzChipTone.Success -> colors.successForeground to colors.success.copy(alpha = 0.12f)
         SaqzChipTone.Warning -> colors.warningForeground to colors.warning.copy(alpha = 0.14f)
         SaqzChipTone.Error -> colors.errorForeground to colors.errorForeground.copy(alpha = 0.10f)
         SaqzChipTone.Inverse -> colors.onPrimary to colors.onPrimary.copy(alpha = 0.14f)

@@ -36,6 +36,7 @@ data class SaqzColorTokens(
     val warning: Color,
     val warningForeground: Color,
     val errorForeground: Color,
+    val successForeground: Color,
     val disabledSurface: Color,
     val disabledForeground: Color,
     val scrim: Color,
@@ -61,6 +62,10 @@ data class SaqzColorTokens(
             // do botão Danger não passavam de 4,5:1 com os valores do export.
             warningForeground = Color(0xFF8F5600),
             errorForeground = Color(0xFFC9363B),
+            // SPEC_DEVIATION: successForeground #0E7A4B não existe no export.
+            // Reason: contraste AA (decisão do dono em 20/10/2026) — o verde da paleta (#17B26A) fica abaixo de
+            // 3:1 no branco; este é o texto do chip Success e do resultado confirmado, com 5,4:1.
+            successForeground = Color(0xFF0E7A4B),
             disabledSurface = Color(0xFFC9CED8),
             disabledForeground = Color(0xFF7A8291),
             scrim = Color(0xFF0E1738).copy(alpha = 0.46f),

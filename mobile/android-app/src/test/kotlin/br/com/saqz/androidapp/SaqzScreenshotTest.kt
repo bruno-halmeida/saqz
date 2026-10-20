@@ -33,7 +33,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -74,6 +76,7 @@ import br.com.saqz.designsystem.SaqzOfflineBanner
 import br.com.saqz.designsystem.SaqzProgressBar
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSegmented
+import br.com.saqz.designsystem.SaqzSegmentedColumn
 import br.com.saqz.designsystem.SaqzSkeleton
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzStatusChip
@@ -561,6 +564,65 @@ class SaqzScreenshotTest {
                     onClick = {},
                     compact = true,
                     modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+
+    // DEB-111: escolha única em coluna com conteúdo de duas linhas (a tela de posição). Nada escolhido, escolhida
+    // (azul cheia) e desligada (enviando) na mesma prancha; pressionada e fonte a 130% em cenas próprias.
+    @Test
+    fun segmentedColumn() = gallery("ds-escolha-em-coluna") {
+        SegmentedColumnSpecimen(selected = -1)
+        SegmentedColumnSpecimen(selected = 1)
+        SegmentedColumnSpecimen(selected = 1, enabled = false)
+    }
+
+    @Test
+    fun segmentedColumnPressed() {
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            SaqzTheme {
+                Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background).padding(16.dp)) {
+                    SegmentedColumnSpecimen(selected = 1)
+                }
+            }
+        }
+        compose.onNodeWithTag("opcao-0").performTouchInput { down(center) }
+        compose.mainClock.advanceTimeBy(SHUTTER_MILLIS)
+        compose.onRoot().captureRoboImage("screenshots/ds-escolha-em-coluna-pressionada.png")
+    }
+
+    @Test
+    fun segmentedColumnLargeFont() = capture("ds-escolha-em-coluna-fonte-130") {
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 1.3f)) {
+            Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background).padding(16.dp)) {
+                SegmentedColumnSpecimen(selected = 1)
+            }
+        }
+    }
+
+    @Composable
+    private fun SegmentedColumnSpecimen(selected: Int, enabled: Boolean = true) {
+        val options = listOf("Ponteiro(a)" to "4 de 4", "Central" to "3 de 4", "Oposto(a)" to "1 de 2")
+        SaqzSegmentedColumn(
+            count = options.size,
+            selected = selected,
+            onSelect = {},
+            enabled = enabled,
+            optionTags = options.indices.map { "opcao-$it" },
+        ) { index, on ->
+            Column {
+                Text(
+                    options[index].first,
+                    style = SaqzTheme.typography.body.copy(fontWeight = FontWeight(600)),
+                    color = if (on) SaqzTheme.colors.onPrimary else SaqzTheme.colors.textPrimary,
+                )
+                Text(
+                    options[index].second,
+                    style = SaqzTheme.typography.support,
+                    color = if (on) SaqzTheme.colors.onPrimary.copy(alpha = 0.88f) else SaqzTheme.colors.textSecondary,
                 )
             }
         }

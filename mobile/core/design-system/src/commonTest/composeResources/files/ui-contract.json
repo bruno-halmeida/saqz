@@ -47,6 +47,11 @@
       "nosso": "#8F5600",
       "motivo": "Escurecido de #B26B00 para #8F5600 (contraste AA, decisão do dono em 20/10/2026). Listado aqui porque a fonte é o bundle e não colors.css: uma reconciliação que só releia colors.css não vai achar esta chave e não deve apagá-la. Existe porque --saqz-warning sobre o próprio âmbar a 14% dá 1,9:1; o export escurece o texto e mantém o fundo."
     },
+    "colors.successForeground": {
+      "export": "não existe — o export pinta o texto do `.saqz-chip--success` com o próprio --saqz-success (#17B26A)",
+      "nosso": "#0E7A4B",
+      "motivo": "SPEC_DEVIATION: contraste AA, decisão do dono em 20/10/2026. #17B26A fica abaixo de 3:1 no branco e no próprio verde a 12%; #0E7A4B dá 5,4:1 no branco. É o texto do chip Success (\"Você vai\") e do resultado confirmado do link; o fundo do chip continua --saqz-success a 12%."
+    },
     "motion.pressScale": {
       "export": "duas respostas — .98 no seletor de presença (l.617) e .995 no botão (l.25)",
       "nosso": "0.98",
@@ -84,6 +89,7 @@
     "warning": "#F5A623",
     "warningForeground": "#8F5600",
     "errorForeground": "#C9363B",
+    "successForeground": "#0E7A4B",
     "disabledSurface": "#C9CED8",
     "disabledForeground": "#7A8291"
   },
