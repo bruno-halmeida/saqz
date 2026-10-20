@@ -37,10 +37,14 @@ class RotateInvite(
 }
 
 /** Sorteia um código curto que nenhum convite ativo usa (colisão: sorteia de novo). */
-internal fun newUniqueCode(generator: SecureTokenGenerator, repository: InviteManagementRepository): InviteCode {
+internal fun newUniqueCode(generator: SecureTokenGenerator, repository: InviteManagementRepository): InviteCode =
+    newUniqueCode(generator, repository::isShortCodeTaken)
+
+/** Sorteia um código curto livre segundo [isTaken], que olha o convite público e o link de mensalistas. */
+fun newUniqueCode(generator: SecureTokenGenerator, isTaken: (String) -> Boolean): InviteCode {
     repeat(MAX_DRAWS) {
         val code = generator.generate().code
-        if (!repository.isShortCodeTaken(code.value)) return code
+        if (!isTaken(code.value)) return code
     }
     error("Não foi possível sortear um código de convite livre")
 }

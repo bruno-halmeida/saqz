@@ -59,7 +59,10 @@ class JdbcInviteManagementRepository(dataSource: DataSource) : InviteManagementR
     }
 
     override fun isShortCodeTaken(shortCode: String): Boolean = jdbc.sql(
-        "SELECT EXISTS (SELECT 1 FROM group_invites WHERE short_code = :shortCode)",
+        """
+        SELECT EXISTS (SELECT 1 FROM group_invites WHERE short_code = :shortCode)
+            OR EXISTS (SELECT 1 FROM group_monthly_invite_links WHERE short_code = :shortCode)
+        """.trimIndent(),
     )
         .param("shortCode", shortCode)
         .query(Boolean::class.java)

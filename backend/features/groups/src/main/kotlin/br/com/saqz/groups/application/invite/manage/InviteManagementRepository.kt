@@ -12,6 +12,7 @@ interface InviteManagementRepository {
      */
     fun ensureShortCode(groupId: UUID, shortCode: String, createdByUserId: UUID)
 
+    /** True se o código existe no convite público ou no link de mensalistas: um código nunca vale nos dois. */
     fun isShortCodeTaken(shortCode: String): Boolean
 
     fun findMetadata(groupId: UUID): InviteMetadata?
