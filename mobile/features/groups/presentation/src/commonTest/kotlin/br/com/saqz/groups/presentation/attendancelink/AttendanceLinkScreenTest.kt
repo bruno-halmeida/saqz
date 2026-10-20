@@ -30,6 +30,43 @@ class AttendanceLinkScreenTest {
         }
     }
 
+    /** DEB-107, quadro `Confirmado`: o resultado com a posição, em verde, com "Ver o jogo" e "Não vou mais". */
+    @Test fun confirmedWithAPositionShowsThePositionCard() = runComposeUiTest {
+        val state = AttendanceLinkState(
+            AttendanceLinkPhase.Confirmed, destination,
+            position = AttendanceLinkPosition(br.com.saqz.groups.domain.athlete.AthletePosition.CENTRAL, 4, 4),
+        )
+        setContent { SaqzTheme { AttendanceLinkScreen(state, {}, {}, {}) } }
+        onNodeWithText("Sua vaga está confirmada").assertExists()
+        onNodeWithText("Seu nome já está na lista do jogo.").assertExists()
+        onNodeWithText("Sua posição").assertExists()
+        onNodeWithText("Confirmado").assertExists()
+        onNodeWithText("Central").assertExists()
+        onNodeWithText("4 de 4 vagas").assertExists()
+        onNodeWithTag(AttendanceLinkTags.OpenGame).assertExists()
+        onNodeWithText("Não vou mais").assertExists()
+    }
+
+    @Test fun waitlistedOnAPositionNamesThePositionAndTheTurn() = runComposeUiTest {
+        val state = AttendanceLinkState(
+            AttendanceLinkPhase.Waitlisted, destination, waitlistPosition = 2,
+            position = AttendanceLinkPosition(br.com.saqz.groups.domain.athlete.AthletePosition.PONTA, 4, 4),
+        )
+        setContent { SaqzTheme { AttendanceLinkScreen(state, {}, {}, {}) } }
+        onNodeWithText("Você está na lista de espera de Ponteiro(a)").assertExists()
+        onNodeWithText("A posição está cheia. Se abrir uma vaga nela, você recebe um aviso.").assertExists()
+        onNodeWithText("Sua vez na fila").assertExists()
+        onNodeWithText("2º").assertExists()
+    }
+
+    @Test fun choosingAPositionOffersTheVouAgain() = runComposeUiTest {
+        val intents = mutableListOf<AttendanceLinkIntent>()
+        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.ChoosingPosition, destination), {}, intents::add, {}) } }
+        onNodeWithTag(AttendanceLinkTags.PickPosition).performClick()
+        assertEquals(listOf(AttendanceLinkIntent.PickPosition), intents)
+        onNodeWithTag(AttendanceLinkTags.ResultCard).assertDoesNotExist()
+    }
+
     @Test fun noOfferWithoutAStoreOrBeforeTheAnswer() = runComposeUiTest {
         setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Confirmed, destination), {}, {}, {}) } }
         onNodeWithTag(AttendanceLinkTags.Download).assertDoesNotExist()

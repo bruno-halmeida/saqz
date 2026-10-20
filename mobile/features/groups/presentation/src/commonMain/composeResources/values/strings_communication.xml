@@ -43,6 +43,13 @@
     <string name="attendance_link_waitlist_position">%1$dº</string>
     <string name="attendance_link_waitlist_nobody_ahead">Ninguém na sua frente</string>
     <string name="attendance_link_undo_waitlisted">Sair da lista de espera</string>
+    <!-- Resultado com posição (jogo 5-1, DEB-107, quadro Confirmado) -->
+    <string name="attendance_link_confirmed_position_body">Seu nome já está na lista do jogo.</string>
+    <string name="attendance_link_your_position">Sua posição</string>
+    <string name="attendance_link_position_confirmed">Confirmado</string>
+    <string name="attendance_link_position_spots">%1$d de %2$d vagas</string>
+    <string name="attendance_link_waitlisted_position_title">Você está na lista de espera de %1$s</string>
+    <string name="attendance_link_waitlisted_position_body">A posição está cheia. Se abrir uma vaga nela, você recebe um aviso.</string>
     <string name="attendance_link_declined_title">Você não vai neste jogo</string>
     <string name="attendance_link_declined_body">Seu nome saiu da lista. Valeu por avisar.</string>
     <string name="attendance_link_decline_sheet_description_game">Seu nome sai da lista do jogo de %1$s.</string>

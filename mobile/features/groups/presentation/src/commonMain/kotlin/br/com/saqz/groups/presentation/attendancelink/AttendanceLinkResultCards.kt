@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzCard
@@ -29,6 +30,7 @@ import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzProgressBar
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.presentation.ui.singularLabel
 import br.com.saqz.groups.resources.*
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -46,6 +48,8 @@ private val StepBadgeIcon = 16.dp
  */
 @Composable
 internal fun AttendanceResultCard(state: AttendanceLinkState, modifier: Modifier = Modifier) {
+    val position = state.position
+    if (state.phase == AttendanceLinkPhase.Confirmed && position != null) return PositionConfirmedResult(position, modifier)
     val colors = SaqzTheme.colors
     val game = state.game
     val (icon, tint, background) = when (state.phase) {
@@ -54,7 +58,11 @@ internal fun AttendanceResultCard(state: AttendanceLinkState, modifier: Modifier
             Triple(SaqzIcons.Clock, colors.warningForeground, colors.warning.copy(alpha = ResultIconTintAlpha))
         else -> Triple(SaqzIcons.Close, colors.textSecondary, colors.border.copy(alpha = NeutralIconAlpha))
     }
-    val title = stringResource(
+    // Espera numa posição (jogo 5-1): a fila é a da posição, que está cheia mesmo que o jogo tenha vaga.
+    val waitingPosition = position?.takeIf { state.phase == AttendanceLinkPhase.Waitlisted }
+    val title = if (waitingPosition != null) {
+        stringResource(Res.string.attendance_link_waitlisted_position_title, waitingPosition.position.singularLabel())
+    } else stringResource(
         when (state.phase) {
             AttendanceLinkPhase.Confirmed -> Res.string.attendance_link_confirmed_title
             AttendanceLinkPhase.Waitlisted -> Res.string.attendance_link_waitlisted_title
@@ -62,7 +70,7 @@ internal fun AttendanceResultCard(state: AttendanceLinkState, modifier: Modifier
             else -> Res.string.attendance_link_declined_title
         },
     )
-    val body = when (state.phase) {
+    val body = if (waitingPosition != null) stringResource(Res.string.attendance_link_waitlisted_position_body) else when (state.phase) {
         AttendanceLinkPhase.Confirmed -> stringResource(Res.string.attendance_link_confirmed_body)
         AttendanceLinkPhase.RequestClosed -> stringResource(Res.string.attendance_link_closed_body)
         // Espera nem sempre é jogo cheio: com a prioridade de mensalista, o avulso espera mesmo com vaga
@@ -87,11 +95,94 @@ internal fun AttendanceResultCard(state: AttendanceLinkState, modifier: Modifier
             if (state.phase == AttendanceLinkPhase.Confirmed && capacity != null && confirmed != null && capacity > 0) {
                 SpotsMeter(confirmed, capacity)
             }
-            val position = state.waitlistPosition
-            if (state.phase == AttendanceLinkPhase.Waitlisted && position != null) WaitlistTurn(position)
+            val turn = state.waitlistPosition
+            if (state.phase == AttendanceLinkPhase.Waitlisted && turn != null) WaitlistTurn(turn)
         }
     }
 }
+
+/**
+ * Quadro `Confirmado` (DEB-107/DEB-110): a confirmação em verde (`successForeground`, AA) e, abaixo, o cartão da
+ * posição com o selo "✓ Confirmado", as bolinhas e "4 de 4 vagas".
+ */
+@Composable
+private fun PositionConfirmedResult(position: AttendanceLinkPosition, modifier: Modifier = Modifier) {
+    val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
+    Column(modifier.testTag(AttendanceLinkTags.ResultCard), verticalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
+        Column(
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(metrics.cardRadius))
+                .background(colors.success.copy(alpha = SuccessSoftAlpha))
+                .padding(horizontal = metrics.horizontalPadding, vertical = metrics.horizontalPadding + metrics.grid),
+            verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
+        ) {
+            Box(
+                Modifier.size(SuccessBadgeSize).clip(CircleShape).background(colors.successForeground),
+                contentAlignment = Alignment.Center,
+            ) { SaqzIcon(SaqzIcons.Check, tint = colors.onPrimary, size = SuccessBadgeIcon) }
+            Text(
+                stringResource(Res.string.attendance_link_confirmed_title),
+                style = SaqzTheme.typography.title,
+                color = colors.successForeground,
+            )
+            Text(
+                stringResource(Res.string.attendance_link_confirmed_position_body),
+                style = SaqzTheme.typography.body,
+                color = colors.textPrimary,
+            )
+        }
+        SaqzCard(modifier = Modifier.testTag(AttendanceLinkTags.PositionCard)) {
+            Column(verticalArrangement = Arrangement.spacedBy(metrics.grid)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(Res.string.attendance_link_your_position),
+                        style = SaqzTheme.typography.support,
+                        color = colors.textSecondary,
+                    )
+                    SaqzStatusChip(
+                        stringResource(Res.string.attendance_link_position_confirmed),
+                        tone = SaqzChipTone.Success,
+                        icon = SaqzIcons.Check,
+                    )
+                }
+                Text(
+                    position.position.singularLabel(),
+                    style = SaqzTheme.typography.subtitle.copy(fontWeight = FontWeight(700)),
+                    color = colors.textPrimary,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(metrics.grid)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(DotGap)) {
+                        repeat(position.slots) { index ->
+                            Box(
+                                Modifier.size(DotSize).then(
+                                    if (index < position.confirmed) Modifier.background(colors.primary, CircleShape)
+                                    else Modifier.border(DotStroke, colors.textSecondary, CircleShape),
+                                ),
+                            )
+                        }
+                    }
+                    Text(
+                        stringResource(Res.string.attendance_link_position_spots, position.confirmed, position.slots),
+                        style = SaqzTheme.typography.support,
+                        color = colors.textSecondary,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private const val SuccessSoftAlpha = 0.12f
+private val SuccessBadgeSize = 56.dp
+private val SuccessBadgeIcon = 30.dp
+private val DotSize = 10.dp
+private val DotGap = 4.dp
+private val DotStroke = 1.5.dp
 
 @Composable
 private fun SpotsMeter(confirmed: Int, capacity: Int) {

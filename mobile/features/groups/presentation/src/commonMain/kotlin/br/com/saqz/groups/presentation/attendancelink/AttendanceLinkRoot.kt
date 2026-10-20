@@ -33,6 +33,7 @@ internal object AttendanceLinkTags {
     const val Footer = "attendance-link-footer"
     const val RequestAgain = "attendance-link-request-again"
     const val PickPosition = "attendance-link-pick-position"
+    const val PositionCard = "attendance-link-position-card"
 }
 
 @Composable

@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -145,6 +146,8 @@ fun SaqzStatusChip(
     modifier: Modifier = Modifier,
     tone: SaqzChipTone = SaqzChipTone.Neutral,
     dot: Boolean = false,
+    /** Glifo à frente do texto, na cor do texto ("✓ Confirmado" no resultado do link, DEB-107). */
+    icon: ImageVector? = null,
 ) {
     val colors = SaqzTheme.colors
     val (foreground, container) = when (tone) {
@@ -180,6 +183,7 @@ fun SaqzStatusChip(
                         .background(foreground, CircleShape),
                 )
             }
+            if (icon != null) SaqzIcon(icon, tint = foreground, size = 14.dp)
             Text(
                 text = text,
                 style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.SemiBold),

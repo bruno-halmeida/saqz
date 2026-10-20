@@ -4,6 +4,13 @@ import android.app.Application
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.domain.GroupId
+import br.com.saqz.groups.domain.attendance.share.AttendanceLinkDestination
+import br.com.saqz.groups.presentation.attendancelink.AttendanceLinkGame
+import br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPhase
+import br.com.saqz.groups.presentation.attendancelink.AttendanceLinkPosition
+import br.com.saqz.groups.presentation.attendancelink.AttendanceLinkScreen
+import br.com.saqz.groups.presentation.attendancelink.AttendanceLinkState
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.positionpicker.ui.PositionPickerPreviewData
@@ -75,5 +82,40 @@ class PositionPickerLargeFontScreenshotTest {
     @Test fun fonteGrande() {
         compose.setContent { SaqzTheme { PositionPickerScreen(Main.copy(selected = AthletePosition.PONTA), onBack = {}, onIntent = {}) } }
         compose.onRoot().captureRoboImage("screenshots/deb-107/posicao-fonte-130.png")
+    }
+}
+
+/** Quadro `Confirmado` (DEB-107/110): o resultado do link com a posição, confirmado em verde e na espera da posição. */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "w390dp-h844dp-xxhdpi", application = Application::class)
+class AttendanceLinkPositionScreenshotTest {
+    @get:Rule
+    val compose = createComposeRule()
+
+    private val destination = AttendanceLinkDestination(GroupId("group"), "game")
+    private val game = AttendanceLinkGame("TUESDAY", "28/07", "19h30", "CERET", "Quadra 2", capacity = 12, confirmedCount = 12)
+
+    @Test fun confirmado() = capture(
+        "link-confirmado",
+        AttendanceLinkState(
+            AttendanceLinkPhase.Confirmed, destination, game,
+            position = AttendanceLinkPosition(AthletePosition.CENTRAL, 4, 4),
+        ),
+    )
+
+    @Test fun espera() = capture(
+        "link-espera",
+        AttendanceLinkState(
+            AttendanceLinkPhase.Waitlisted, destination, game, waitlistPosition = 2,
+            position = AttendanceLinkPosition(AthletePosition.PONTA, 4, 4),
+        ),
+    )
+
+    @Test fun escolhendo() = capture("link-escolhendo", AttendanceLinkState(AttendanceLinkPhase.ChoosingPosition, destination, game))
+
+    private fun capture(name: String, state: AttendanceLinkState) {
+        compose.setContent { SaqzTheme { AttendanceLinkScreen(state, {}, {}, {}) } }
+        compose.onRoot().captureRoboImage("screenshots/deb-107/$name.png")
     }
 }
