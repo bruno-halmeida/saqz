@@ -234,6 +234,7 @@ class GroupSetupValidatorTest {
                     defaultVenue = GroupVenueForm(name = "", address = ""),
                     defaultCapacity = 1,
                     defaultGameFeeCents = 0,
+                    monthlyFeeCents = 0,
                 ),
                 recurring = true,
                 // Duração salva fora dos chips e da faixa (ex.: 45 min de um grupo antigo).

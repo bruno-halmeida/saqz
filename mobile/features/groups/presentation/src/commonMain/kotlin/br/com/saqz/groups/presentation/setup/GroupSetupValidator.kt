@@ -26,6 +26,7 @@ enum class GroupSetupError {
     CapacityOutOfRange,
     PositionSlotsSumMismatch,
     GameFeeInvalid,
+    MonthlyFeeInvalid,
     SlotsRequired,
     VenueNameRequired,
     VenueAddressNotFound,
@@ -135,10 +136,7 @@ fun validate(state: GroupSetupState): Set<GroupSetupError> {
         }
         // DEB-102: no 5-1 a soma das posições é obrigatória e igual ao total de jogadores.
         if (state.positionsBlockSave) add(GroupSetupError.PositionSlotsSumMismatch)
-        // Vazio = sem cobrança; preenchido vale de 0,01 a 999.999,99 (R$ 0,00 é recusado, como no servidor).
-        form.defaultGameFeeCents?.let {
-            if (it !in 1L..GroupSetupDefaults.MaxGameFeeCents) add(GroupSetupError.GameFeeInvalid)
-        }
+        addAll(validateFees(form))
         if (CustomDuration.isInvalid(state.durationMinutes)) add(GroupSetupError.DurationOutOfRange)
         if (state.recurring && form.regularSlots.isEmpty()) add(GroupSetupError.SlotsRequired)
         addAll(validateVenue(state.recurring, venue))
@@ -174,4 +172,10 @@ private fun validateVenue(recurring: Boolean, venue: GroupVenueForm?): Set<Group
     ) {
         add(GroupSetupError.VenueAddressNotFound)
     }
+}
+
+/** Vazio = sem cobrança; preenchido vale de 0,01 a 999.999,99 (R$ 0,00 é recusado, como no servidor). */
+private fun validateFees(form: br.com.saqz.groups.model.GroupSetupForm): List<GroupSetupError> = buildList {
+    form.defaultGameFeeCents?.let { if (it !in 1L..GroupSetupDefaults.MaxGameFeeCents) add(GroupSetupError.GameFeeInvalid) }
+    form.monthlyFeeCents?.let { if (it !in 1L..GroupSetupDefaults.MaxGameFeeCents) add(GroupSetupError.MonthlyFeeInvalid) }
 }

@@ -100,6 +100,9 @@ internal object GroupSetupTags {
     const val MensalistaPriority = "group-game-config-mensalista-priority"
     const val PromotionMode = "group-game-config-promotion-mode"
     const val MonthlyLateJoinPolicy = "group-monthly-late-join-policy"
+    const val MonthlyFee = "group-monthly-fee"
+    const val MonthlyFeeAmount = "group-monthly-fee-amount"
+    const val MonthlyDueDay = "group-monthly-due-day"
     fun monthlyLateJoinPolicyOption(policy: br.com.saqz.groups.model.MonthlyLateJoinPolicy) =
         "group-monthly-late-join-policy-${policy.name}"
     const val PixKey = "group-setup-pix-key"
@@ -229,6 +232,7 @@ private fun GroupSetupState.hasErrorInsideDetails(): Boolean = errors.any {
         GroupSetupError.CapacityOutOfRange,
         GroupSetupError.PositionSlotsSumMismatch,
         GroupSetupError.GameFeeInvalid,
+        GroupSetupError.MonthlyFeeInvalid,
         GroupSetupError.DurationOutOfRange,
         -> true
         // Sem dia fixo a quadra vai para "Regras dos jogos".
@@ -255,6 +259,15 @@ private fun GroupSetupDetails(
             onPromotionModeSelect = { onIntent(GroupSetupIntent.SelectPromotionMode(it)) },
             onConfirmationLeadSelect = { onIntent(GroupSetupIntent.SelectConfirmationLead(it)) },
         )
+        if (state.showsMonthlyFee) {
+            GroupMonthlyFeeSection(
+                cents = form.monthlyFeeCents,
+                dueDay = form.monthlyDueDay,
+                hasError = GroupSetupError.MonthlyFeeInvalid in state.errors,
+                onFeeChange = { onIntent(GroupSetupIntent.UpdateMonthlyFee(it)) },
+                onDueDayChange = { onIntent(GroupSetupIntent.UpdateMonthlyDueDay(it)) },
+            )
+        }
         if (state.showsMonthlyLateJoinPolicy) {
             GroupMonthlyLateJoinPolicySection(
                 policy = requireNotNull(form.monthlyLateJoinPolicy),

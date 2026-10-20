@@ -304,6 +304,22 @@ class GroupSetupScreenTest {
         onNodeWithText("Não foi possível criar o grupo").assertDoesNotExist()
     }
 
+    @Test
+    fun monthlyFeeCardShowsAmountAndDueDayStepper() = runComposeUiTest {
+        val intents = mutableListOf<GroupSetupIntent>()
+        val state = monthlyState(fee = 8_000).let { it.copy(form = it.form.copy(monthlyDueDay = 10)) }
+        setContent { SaqzTheme { GroupSetupScreen(state, { intents += it }, {}) } }
+
+        onNodeWithTag(GroupSetupTags.MonthlyFee).performScrollTo().assertExists()
+        onNodeWithText("Mensalidade").assertExists()
+        onNodeWithText("Vale para quem entra como mensalista. Dá pra ajustar por pessoa depois.").assertExists()
+        onNodeWithText("Dia do vencimento").assertExists()
+        onNodeWithContentDescription("Dia seguinte").performScrollTo().performClick()
+        waitForIdle()
+
+        assertTrue(GroupSetupIntent.UpdateMonthlyDueDay(11) in intents)
+    }
+
     private fun monthlyState(
         policy: MonthlyLateJoinPolicy? = MonthlyLateJoinPolicy.GROUP_DUE_DATE,
         fee: Long? = 5_000,

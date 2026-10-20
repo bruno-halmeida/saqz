@@ -1489,4 +1489,36 @@ class GroupSetupViewModelTest {
             defaultConfirmationLeadMinutes = 360,
         )
     }
+
+    @Test
+    fun `cartao mensalidade aparece na edicao para quem gere e grava valor e dia no update`() = runTest(mainDispatcher) {
+        val profileGateway = FakeGroupProfileGateway(
+            readResult = SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedGroup(groupWithMonthly(fee = null))),
+        )
+        val viewModel = editViewModel(groupWithMonthly(fee = null), profileGateway)
+        assertEquals(true, viewModel.state.value.showsMonthlyFee)
+
+        viewModel.onIntent(GroupSetupIntent.UpdateMonthlyFee(null))
+        viewModel.onIntent(GroupSetupIntent.UpdateMonthlyDueDay(5))
+        assertEquals(null, viewModel.state.value.form.monthlyDueDay)
+        viewModel.onIntent(GroupSetupIntent.UpdateMonthlyFee(8_000))
+        assertEquals(10, viewModel.state.value.form.monthlyDueDay)
+        viewModel.onIntent(GroupSetupIntent.UpdateMonthlyDueDay(40))
+        assertEquals(28, viewModel.state.value.form.monthlyDueDay)
+        viewModel.onIntent(GroupSetupIntent.UpdateMonthlyDueDay(12))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(8_000, profileGateway.lastUpdateCommand?.form?.monthlyFeeCents)
+        assertEquals(12, profileGateway.lastUpdateCommand?.form?.monthlyDueDay)
+    }
+
+    @Test
+    fun `apagar o valor tira valor e dia e o cartao some na criacao`() = runTest(mainDispatcher) {
+        val viewModel = editViewModel(groupWithMonthly())
+        viewModel.onIntent(GroupSetupIntent.UpdateMonthlyFee(null))
+        assertEquals(null, viewModel.state.value.form.monthlyFeeCents)
+        assertEquals(null, viewModel.state.value.form.monthlyDueDay)
+        assertEquals(false, viewModel(mode = GroupSetupMode.Create).state.value.showsMonthlyFee)
+    }
 }

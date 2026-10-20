@@ -62,6 +62,8 @@ object GroupSetupDefaults {
     const val MaxCapacity = 100
     const val Capacity = 12
     const val MaxGameFeeCents = 99_999_999L
+    const val DefaultMonthlyDueDay = 10
+    const val MaxMonthlyDueDay = 28
     const val DurationMinutes = 120
     const val ConfirmationLeadMinutes = 360
 
@@ -167,6 +169,9 @@ data class GroupSetupState(
      * grupo, se o backend mandou o campo e o grupo cobra mensalidade: tem mensalidade padrão **ou** algum
      * mensalista com valor próprio, como o item "Mensalistas" da checklist da Início.
      */
+    /** Cartão "Mensalidade": valor e dia padrão, na edição, para quem gere o grupo (o convite de mensalistas exige). */
+    val showsMonthlyFee: Boolean = isEditing && canManageGameConfig
+
     val showsMonthlyLateJoinPolicy: Boolean =
         isEditing && canManageGameConfig && form.monthlyLateJoinPolicy != null &&
             (form.monthlyFeeCents != null || rosterHasMensalista)
@@ -234,6 +239,11 @@ sealed interface GroupSetupIntent {
     data object SuggestPositionSlots : GroupSetupIntent
     /** Valor por jogo em centavos; `null` = sem cobrança. */
     data class UpdateDefaultGameFee(val cents: Long?) : GroupSetupIntent
+
+    /** Cartão "Mensalidade" (CONV-010): vazio tira a mensalidade padrão do grupo. */
+    data class UpdateMonthlyFee(val cents: Long?) : GroupSetupIntent
+
+    data class UpdateMonthlyDueDay(val day: Int) : GroupSetupIntent
 
     data class SelectDuration(val minutes: Int) : GroupSetupIntent
 

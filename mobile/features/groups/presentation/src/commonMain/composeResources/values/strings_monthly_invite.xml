@@ -105,4 +105,12 @@
     <string name="group_invitees_notice_copied">Link copiado.</string>
     <string name="group_invitees_notice_unavailable">O WhatsApp do Saqz está indisponível. Copie o link e mande você mesmo.</string>
     <string name="group_invitees_notice_failed">Não deu certo agora. Tente de novo.</string>
+    <!-- Cartão Mensalidade em Editar grupo -->
+    <string name="group_monthly_fee_title">Mensalidade</string>
+    <string name="group_monthly_fee_support">Vale para quem entra como mensalista. Dá pra ajustar por pessoa depois.</string>
+    <string name="group_monthly_fee_amount">Valor por mês</string>
+    <string name="group_monthly_fee_due_day">Dia do vencimento</string>
+    <string name="group_monthly_fee_due_day_before">Dia anterior</string>
+    <string name="group_monthly_fee_due_day_after">Dia seguinte</string>
+    <string name="group_monthly_fee_error">Digite um valor maior que zero.</string>
 </resources>

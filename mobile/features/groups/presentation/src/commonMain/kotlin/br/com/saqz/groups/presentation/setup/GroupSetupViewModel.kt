@@ -86,6 +86,20 @@ class GroupSetupViewModel(
         }
     }
 
+    /** Valor e dia andam juntos: sem valor não há dia; com valor, o dia começa no 10 e fica entre 1 e 28. */
+    private fun onMonthlyFeeIntent(intent: GroupSetupIntent) = when (intent) {
+        is GroupSetupIntent.UpdateMonthlyFee -> onFormChange {
+            copy(
+                monthlyFeeCents = intent.cents,
+                monthlyDueDay = if (intent.cents == null) null else monthlyDueDay ?: GroupSetupDefaults.DefaultMonthlyDueDay,
+            )
+        }
+        is GroupSetupIntent.UpdateMonthlyDueDay -> onFormChange {
+            if (monthlyFeeCents == null) this else copy(monthlyDueDay = intent.day.coerceIn(1, GroupSetupDefaults.MaxMonthlyDueDay))
+        }
+        else -> Unit
+    }
+
     @Suppress("CyclomaticComplexMethod")
     override fun handleIntent(intent: GroupSetupIntent) {
         when (intent) {
@@ -135,6 +149,7 @@ class GroupSetupViewModel(
             }
             GroupSetupIntent.SuggestPositionSlots -> positions.suggest()
             is GroupSetupIntent.UpdateDefaultGameFee -> onFormChange { copy(defaultGameFeeCents = intent.cents) }
+            is GroupSetupIntent.UpdateMonthlyFee, is GroupSetupIntent.UpdateMonthlyDueDay -> onMonthlyFeeIntent(intent)
             is GroupSetupIntent.SelectConfirmationLead ->
                 onFormChange { copy(defaultConfirmationLeadMinutes = intent.minutes) }
             is GroupSetupIntent.ToggleMensalistaPriority ->
