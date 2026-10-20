@@ -103,6 +103,17 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
         assertEquals("COMPLETED", string("SELECT status FROM games WHERE id='$completed'"))
     }
 
+    @Test fun `DEB-102 successor occurrences copy the group positions and take capacity from their sum`() {
+        val fixture = fixture(); game(fixture, DATE); game(fixture, DATE.plusWeeks(1))
+        execute("INSERT INTO group_position_slots (group_id,position,slots) VALUES ('${fixture.group}','PONTA',2),('${fixture.group}','CENTRAL',2),('${fixture.group}','LEVANTADOR',1)")
+        val successor = successor(fixture, "Treino novo")
+        assertEquals(SeriesBoundaryResult.Applied, apply(repository(), fixture, successor))
+        // Os 2 jogos que já existiam são regenerados por UPDATE e seguem sem posições (jogo existente não muda); os 10 novos nascem com elas.
+        assertEquals(10, int("SELECT count(*) FROM games WHERE series_revision_id='${successor.revisionId}' AND capacity = 5"))
+        assertEquals(30, int("SELECT count(*) FROM game_position_slots"))
+        assertEquals(0, int("SELECT count(*) FROM game_position_slots WHERE game_id IN (SELECT id FROM games WHERE capacity <> 5)"))
+    }
+
     @Test fun `future edit closes old revision and creates one successor`() {
         val fixture = fixture(); game(fixture, DATE); game(fixture, DATE.plusWeeks(1))
         val successor = successor(fixture, "Treino novo")

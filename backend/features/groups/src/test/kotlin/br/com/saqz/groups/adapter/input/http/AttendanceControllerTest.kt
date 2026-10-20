@@ -131,7 +131,7 @@ class AttendanceControllerTest {
             controller.promote(ID, "$group", "$game", promotion(second).copy(reason = null))
         }
     }
-    @Test fun `self request exposes no client authored capacity queue charge actor or timestamp`() { assertEquals(setOf("requestId", "intent"), AttendanceSelfRequest::class.java.declaredFields.filterNot { it.isSynthetic }.map { it.name }.toSet()) }
+    @Test fun `self request exposes no client authored capacity queue charge actor or timestamp`() { assertEquals(setOf("requestId", "intent", "position"), AttendanceSelfRequest::class.java.declaredFields.filterNot { it.isSynthetic }.map { it.name }.toSet()) }
     @Test fun `self response requires request id`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(requestId = null)) } }
     @Test fun `self response rejects unknown intent`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(intent = "WAITLISTED")) } }
     @Test fun `self response rejects promotion intent`() { actor = member; assertFailsWith<InvalidGroupRequestException> { controller.respond(ID, "$group", "$game", self().copy(intent = "PROMOTE")) } }

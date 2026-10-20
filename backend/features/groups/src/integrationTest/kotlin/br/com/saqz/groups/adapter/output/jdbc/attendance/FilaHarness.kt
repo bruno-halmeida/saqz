@@ -31,28 +31,43 @@ internal class FilaHarness(owner: Any, private val clock: () -> Instant = { Inst
     lateinit var game: UUID
 
     /** Grupo (o dono é ADMIN) e um jogo publicado daqui a 2 dias, com diária de R$ 25. */
-    fun cenario(capacity: Int, priority: Boolean = false, deadline: String = "now() + interval '1 day'") {
+    fun cenario(capacity: Int, priority: Boolean = false, deadline: String = "now() + interval '1 day'", posicoes: Map<String, Int> = emptyMap()) {
         group = UUID.randomUUID()
         execute("INSERT INTO access_groups (id,owner_user_id,creation_key,name,time_zone,profile_status,modality,composition,mensalista_priority,created_at,updated_at) VALUES ('$group','$dono','${UUID.randomUUID()}','Grupo','America/Sao_Paulo','COMPLETE','COURT_VOLLEYBALL','MIXED',$priority,now(),now())")
         execute("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at,membership_type) VALUES ('$group','$dono','ADMIN',now(),now(),'AVULSO')")
+        // DEB-102: as vagas por posição existem antes do jogo, que as copia ao nascer (gatilho de games).
+        posicoes.forEach { (posicao, vagas) -> execute("INSERT INTO group_position_slots (group_id,position,slots) VALUES ('$group','$posicao',$vagas)") }
         game = UUID.randomUUID()
         execute("INSERT INTO games (id,group_id,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_name,venue_address,capacity,game_fee_cents,status,published_at,created_at,updated_at) VALUES ('$game','$group','Treino',(CURRENT_DATE + 2),TIME '19:30','America/Sao_Paulo',now() + interval '2 days',90,$deadline,'Arena','Rua Central 100',$capacity,2500,'PUBLISHED',now(),now(),now())")
     }
 
-    fun atleta(vinculo: String = "AVULSO"): UUID {
+    fun atleta(vinculo: String = "AVULSO", principal: String? = null, secundaria: String? = null): UUID {
         val id = user()
-        execute("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at,membership_type) VALUES ('$group','$id','ATHLETE',now(),now(),'$vinculo')")
+        execute("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at,membership_type,position,secondary_position) VALUES ('$group','$id','ATHLETE',now(),now(),'$vinculo',${principal?.let { "'$it'" } ?: "NULL"},${secundaria?.let { "'$it'" } ?: "NULL"})")
         return id
     }
 
     /** Linha de presença inserida direto (sem diária); a sequência da espera é a do alocador do jogo. */
-    fun presenca(member: UUID, status: String, sequence: Long? = null) =
-        execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,member_display_name,guest_seq) VALUES ('$game','$group','$member','$status',${sequence ?: "NULL"},now(),now(),'User',0)")
+    fun presenca(member: UUID, status: String, sequence: Long? = null, posicao: String? = null) =
+        execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,member_display_name,guest_seq,position) VALUES ('$game','$group','$member','$status',${sequence ?: "NULL"},now(),now(),'User',0,${posicao?.let { "'$it'" } ?: "NULL"})")
+
+    fun posicaoDe(member: UUID, guest: Int = 0): String? = dataSource.connection.use { c -> c.createStatement().use { s -> s.executeQuery("SELECT position::text FROM game_attendance WHERE game_id='$game' AND member_user_id='$member' AND guest_seq=$guest").use { r -> check(r.next()); r.getString(1) } } }
 
     /** Convidado entra sempre pela espera; o organizador o coloca no jogo (escolha manual) e o grupo volta à ordem de chegada. */
     fun convidadoConfirmado(anfitriao: UUID, nome: String): Int {
         val seq = int("SELECT coalesce(max(guest_seq),0) + 1 FROM game_attendance WHERE game_id='$game' AND member_user_id='$anfitriao'")
         convidados().add(anfitriao, group, game, nome, UUID.randomUUID())
+        execute("UPDATE access_groups SET promotion_mode='MANUAL' WHERE id='$group'")
+        respostas().promote(dono, group, game, anfitriao, UUID.randomUUID(), "Colocado no jogo", guestSeq = seq)
+        execute("UPDATE access_groups SET promotion_mode='FIFO' WHERE id='$group'")
+        check(status(anfitriao, seq) == "CONFIRMED")
+        return seq
+    }
+
+    /** Como [convidadoConfirmado], mas com a posição do convidado (DEB-102). */
+    fun convidadoConfirmadoEm(anfitriao: UUID, nome: String, posicao: br.com.saqz.groups.domain.AthletePosition): Int {
+        val seq = int("SELECT coalesce(max(guest_seq),0) + 1 FROM game_attendance WHERE game_id='$game' AND member_user_id='$anfitriao'")
+        convidados().add(anfitriao, group, game, nome, UUID.randomUUID(), posicao)
         execute("UPDATE access_groups SET promotion_mode='MANUAL' WHERE id='$group'")
         respostas().promote(dono, group, game, anfitriao, UUID.randomUUID(), "Colocado no jogo", guestSeq = seq)
         execute("UPDATE access_groups SET promotion_mode='FIFO' WHERE id='$group'")

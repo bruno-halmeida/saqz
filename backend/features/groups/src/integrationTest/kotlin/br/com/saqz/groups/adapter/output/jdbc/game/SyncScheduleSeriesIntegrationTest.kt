@@ -35,6 +35,21 @@ class SyncScheduleSeriesIntegrationTest {
         execute("UPDATE access_groups SET default_venue_id='$venue' WHERE id='$group'")
     }
 
+    @Test fun `DEB-102 series games copy the group positions and take capacity from their sum`() {
+        execute("INSERT INTO group_position_slots (group_id,position,slots) VALUES ('$group','PONTA',2),('$group','CENTRAL',2),('$group','LEVANTADOR',1)")
+        slots(4 to "20:00")
+        sync(); sync()
+        assertEquals(activeGames(), int("SELECT count(*) FROM games WHERE group_id='$group' AND capacity = 5"))
+        assertEquals(activeGames() * 3, int("SELECT count(*) FROM game_position_slots WHERE game_id IN (SELECT id FROM games WHERE group_id='$group')"))
+    }
+
+    @Test fun `DEB-102 series games in a group without positions keep capacity and have no slots`() {
+        slots(4 to "20:00")
+        sync(); sync()
+        assertEquals(0, int("SELECT count(*) FROM game_position_slots"))
+        assertEquals(0, int("SELECT count(*) FROM games WHERE group_id='$group' AND capacity = 5"))
+    }
+
     @Test fun `schedule slots become a series and follow later schedule changes`() {
         // Quinta 2026-09-17, 12:00 em São Paulo: 9h já passou, 20h ainda não.
         slots(4 to "09:00", 4 to "20:00")

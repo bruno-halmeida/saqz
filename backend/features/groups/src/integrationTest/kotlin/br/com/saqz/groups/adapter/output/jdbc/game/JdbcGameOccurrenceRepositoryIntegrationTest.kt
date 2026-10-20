@@ -98,6 +98,26 @@ class JdbcGameOccurrenceRepositoryIntegrationTest {
         assertNull(nullableUuid("SELECT series_id FROM games"))
     }
 
+    @Test fun `DEB-102 creation in a group with positions copies the slots and forces capacity to their sum`() {
+        val fixture = fixture()
+        execute("INSERT INTO group_position_slots (group_id,position,slots) VALUES ('${fixture.group}','PONTA',2),('${fixture.group}','CENTRAL',2),('${fixture.group}','LEVANTADOR',1)")
+        val result = CreateGame(transaction(), fixture.repository, CLOCK).execute(fixture.owner, fixture.group, UUID.randomUUID(), createInput())
+
+        assertTrue(result is GameCommandResult.Success)
+        assertEquals(5, int("SELECT capacity FROM games"))
+        assertEquals(3, int("SELECT count(*) FROM game_position_slots"))
+        assertEquals(2, int("SELECT slots FROM game_position_slots WHERE position='PONTA'"))
+    }
+
+    @Test fun `DEB-102 creation in a group without positions changes nothing`() {
+        val fixture = fixture()
+        val result = CreateGame(transaction(), fixture.repository, CLOCK).execute(fixture.owner, fixture.group, UUID.randomUUID(), createInput())
+
+        assertTrue(result is GameCommandResult.Success)
+        assertEquals(24, int("SELECT capacity FROM games"))
+        assertEquals(0, int("SELECT count(*) FROM game_position_slots"))
+    }
+
     @Test fun `game created from a default venue without address stores and reads back empty address`() {
         val fixture = fixture()
         execute("UPDATE group_venues SET address = ''")

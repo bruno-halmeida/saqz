@@ -44,6 +44,8 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
     @BeforeAll
     fun startDatabase() {
         dataSource = TestPostgres.migrated(accessMigrationLocation()).dataSource
+        // A tabela do DEB-102 mora nas migrations de groups; o UPDATE do perfil a consulta, então esta versão mínima basta aqui.
+        execute("CREATE TABLE group_position_slots (group_id uuid NOT NULL, position varchar(16) NOT NULL, slots integer NOT NULL)")
         execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
         execute("ALTER TABLE access_groups ADD COLUMN entry_requires_approval boolean NOT NULL DEFAULT false")
         execute("ALTER TABLE access_groups ADD COLUMN monthly_late_join_policy varchar(32) NOT NULL DEFAULT 'GROUP_DUE_DATE'")
@@ -258,6 +260,20 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
 
         assertEquals(false, boolean("SELECT mensalista_priority FROM access_groups WHERE id = '$group'"))
         assertEquals("MANUAL", text("SELECT promotion_mode FROM access_groups WHERE id = '$group'"))
+    }
+
+    @Test
+    fun `DEB-102 profile update in a group with positions keeps default capacity as the sum`() {
+        val owner = insertUser("positions-settings-owner")
+        val group = insertGroup(owner)
+        execute("INSERT INTO group_position_slots (group_id, position, slots) VALUES ('$group', 'PONTA', 3), ('$group', 'CENTRAL', 3)")
+        execute("UPDATE access_groups SET default_capacity = 6 WHERE id = '$group'")
+
+        assertIs<UpdateGroupSettingsResult.Success>(
+            useCase.execute(owner, group, 1, UpdateGroupProfileInput(profile())),
+        )
+
+        assertEquals(6, text("SELECT default_capacity::text FROM access_groups WHERE id = '$group'").toInt())
     }
 
     @Test

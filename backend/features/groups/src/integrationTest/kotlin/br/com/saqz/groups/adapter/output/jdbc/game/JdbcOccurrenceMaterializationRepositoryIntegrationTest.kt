@@ -47,6 +47,23 @@ class JdbcOccurrenceMaterializationRepositoryIntegrationTest {
         assertEquals(12, int("SELECT count(*) FROM games WHERE status = 'DRAFT'"))
     }
 
+    @Test fun `DEB-102 materialized occurrences copy the group positions and take capacity from their sum`() {
+        val fixture = fixture()
+        execute("INSERT INTO group_position_slots (group_id,position,slots) VALUES ('${fixture.rule.groupId}','PONTA',2),('${fixture.rule.groupId}','CENTRAL',2),('${fixture.rule.groupId}','LEVANTADOR',1)")
+        fixture.materializer.execute(fixture.rule, DATE)
+
+        assertEquals(12, int("SELECT count(*) FROM games WHERE capacity = 5"))
+        assertEquals(36, int("SELECT count(*) FROM game_position_slots"))
+    }
+
+    @Test fun `DEB-102 materialized occurrences in a group without positions keep the series capacity`() {
+        val fixture = fixture()
+        fixture.materializer.execute(fixture.rule, DATE)
+
+        assertEquals(12, int("SELECT count(*) FROM games WHERE capacity <> 5"))
+        assertEquals(0, int("SELECT count(*) FROM game_position_slots"))
+    }
+
     @Test fun `retry inserts no duplicate occurrence identities`() {
         val fixture = fixture()
         fixture.materializer.execute(fixture.rule, DATE)
