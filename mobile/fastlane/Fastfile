@@ -8,6 +8,11 @@
 #   SAQZ_IPA_PATH                           IPA gerado pela lane ios archive (só a lane ios upload lê)
 #   PLAY_SERVICE_ACCOUNT_JSON               conteúdo do JSON da conta de serviço do Play
 #   ASC_ISSUER_ID / ASC_KEY_ID / ASC_KEY_P8 chave da App Store Connect API (o .p8 inteiro em ASC_KEY_P8)
+#   IOS_DIST_CERT_P12 / IOS_DIST_CERT_PASSWORD   certificado Apple Distribution fixo (.p12 em base64) e a senha dele
+#   IOS_PROFILE_APP / IOS_PROFILE_LIVEACTIVITY   perfis App Store de app.saqz e app.saqz.LiveActivity (base64)
+
+require "base64"
+require "securerandom"
 
 opt_out_usage
 skip_docs
@@ -17,6 +22,8 @@ IOS_PROJECT = File.join(MOBILE_ROOT, "ios-app", "SaqzIOS.xcodeproj")
 IOS_SCHEME = "SaqzProd"
 TEAM_ID = "8JG4JP8VMT"
 APP_ID = "app.saqz"
+LIVE_ACTIVITY_ID = "app.saqz.LiveActivity"
+SIGNING_IDENTITY = "iPhone Distribution"
 LOCALE = "pt-BR"
 PLAY_CHANGELOG_LIMIT = 500 # limite do Play para o texto de uma release
 
@@ -38,16 +45,59 @@ def release_notes
   required_env("SAQZ_RELEASE_NOTES")
 end
 
-# Grava o .p8 num arquivo temporário (o xcodebuild só aceita caminho), registra a chave no contexto da
-# lane, de onde pilot e deliver a pegam sozinhos, e devolve os flags de assinatura na nuvem do xcodebuild.
+# Registra a chave da App Store Connect para o pilot (upload ao TestFlight). Não assina nada: a assinatura é manual,
+# com o certificado e os perfis fixos do Environment (ver with_signing).
 def connect_to_app_store
   key_id = required_env("ASC_KEY_ID")
   issuer_id = required_env("ASC_ISSUER_ID")
   key_path = File.join(Dir.tmpdir, "AuthKey_#{key_id}.p8")
   File.write(key_path, required_env("ASC_KEY_P8"), perm: 0o600)
   app_store_connect_api_key(key_id: key_id, issuer_id: issuer_id, key_filepath: key_path, in_house: false)
-  "-allowProvisioningUpdates -authenticationKeyPath #{key_path} " \
-    "-authenticationKeyID #{key_id} -authenticationKeyIssuerID #{issuer_id}"
+end
+
+def decode_to_file(env_name, path)
+  File.binwrite(path, Base64.decode64(required_env(env_name)))
+  path
+end
+
+# Instala o perfil .mobileprovision no lugar onde o xcodebuild o procura e devolve o nome dele.
+def install_profile(env_name, dir)
+  file = decode_to_file(env_name, File.join(dir, "#{env_name}.mobileprovision"))
+  plist = `security cms -D -i "#{file}"`
+  UI.user_error!("Perfil #{env_name} inválido") unless $?.success?
+  uuid = plist[%r{<key>UUID</key>\s*<string>([^<]+)</string>}, 1]
+  name = plist[%r{<key>Name</key>\s*<string>([^<]+)</string>}, 1]
+  UI.user_error!("Perfil #{env_name} sem UUID ou nome") if uuid.nil? || name.nil?
+  target_dir = File.expand_path("~/Library/MobileDevice/Provisioning Profiles")
+  FileUtils.mkdir_p(target_dir)
+  FileUtils.cp(file, File.join(target_dir, "#{uuid}.mobileprovision"))
+  name
+end
+
+# Chaveiro temporário com o certificado Apple Distribution fixo e os dois perfis App Store; apagado no fim.
+# Substitui a assinatura automática na nuvem, que a cada execução criava um certificado de desenvolvimento novo
+# no runner e estourou o limite da conta (RC 1.0.10, 20/10/2026). Devolve ao bloco os nomes dos perfis.
+def with_signing
+  dir = Dir.mktmpdir("ios-signing")
+  keychain = "saqz-ci-#{Process.pid}.keychain"
+  password = SecureRandom.hex(24)
+  profiles = {
+    APP_ID => install_profile("IOS_PROFILE_APP", dir),
+    LIVE_ACTIVITY_ID => install_profile("IOS_PROFILE_LIVEACTIVITY", dir),
+  }
+  create_keychain(name: keychain, password: password, default_keychain: false, unlock: true, timeout: 7200,
+                  lock_when_sleeps: false)
+  import_certificate(
+    certificate_path: decode_to_file("IOS_DIST_CERT_P12", File.join(dir, "dist.p12")),
+    certificate_password: required_env("IOS_DIST_CERT_PASSWORD"),
+    keychain_name: keychain,
+    keychain_password: password,
+    log_output: false,
+  )
+  yield profiles
+ensure
+  delete_keychain(name: keychain) if keychain && File.exist?(File.expand_path("~/Library/Keychains/#{keychain}-db"))
+  FileUtils.rm_rf(dir) if dir
 end
 
 def play_options
@@ -87,27 +137,46 @@ platform :android do
 end
 
 platform :ios do
-  desc "Arquiva o scheme SaqzProd com assinatura na nuvem e gera o IPA em build/ios (sem enviar)"
+  desc "Arquiva o scheme SaqzProd com assinatura manual (certificado e perfis fixos) e gera o IPA em build/ios (sem enviar)"
   lane :archive do
     version, build = release_version
-    auth = connect_to_app_store
     output_dir = File.join(MOBILE_ROOT, "build", "ios")
 
-    gym(
-      project: IOS_PROJECT,
-      scheme: IOS_SCHEME,
-      configuration: "Release",
-      export_method: "app-store",
-      export_options: { signingStyle: "automatic", teamID: TEAM_ID, uploadSymbols: true },
-      # A versão já está no pbxproj (ci/version.sh), mas o override garante o mesmo número em qualquer checkout.
-      # O gym repassa o xcargs também ao -exportArchive: um export_xcargs com a mesma chave duplica
-      # -authenticationKeyPath e o xcodebuild recusa (RC 1.0.3, 14/10/2026).
-      xcargs: "#{auth} MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build}",
-      output_directory: output_dir,
-      output_name: "Saqz.ipa",
-      buildlog_path: File.join(output_dir, "logs"),
-      disable_package_automatic_updates: true,
-    )
+    with_signing do |profiles|
+      # Assinatura manual por target: o projeto está em Automatic para o desenvolvimento local, e só o runner muda.
+      { "SaqzIOS" => APP_ID, "SaqzLiveActivity" => LIVE_ACTIVITY_ID }.each do |target, bundle_id|
+        update_code_signing_settings(
+          use_automatic_signing: false,
+          path: IOS_PROJECT,
+          targets: [target],
+          build_configurations: ["Release"],
+          team_id: TEAM_ID,
+          code_signing_identity: SIGNING_IDENTITY,
+          profile_name: profiles.fetch(bundle_id),
+          bundle_identifier: bundle_id,
+        )
+      end
+
+      gym(
+        project: IOS_PROJECT,
+        scheme: IOS_SCHEME,
+        configuration: "Release",
+        export_method: "app-store",
+        export_options: {
+          signingStyle: "manual",
+          teamID: TEAM_ID,
+          signingCertificate: SIGNING_IDENTITY,
+          provisioningProfiles: profiles,
+          uploadSymbols: true,
+        },
+        # A versão já está no pbxproj (ci/version.sh), mas o override garante o mesmo número em qualquer checkout.
+        xcargs: "MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build}",
+        output_directory: output_dir,
+        output_name: "Saqz.ipa",
+        buildlog_path: File.join(output_dir, "logs"),
+        disable_package_automatic_updates: true,
+      )
+    end
   end
 
   desc "Envia o IPA (SAQZ_IPA_PATH, ou o da lane archive) ao TestFlight para os testadores internos"
