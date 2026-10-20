@@ -58,7 +58,7 @@ data class ReminderCandidate(
     val game: ReminderGame,
 )
 
-/** Jogo que entrou na janela das 24 h, com a contagem do momento em que ela abre. */
+/** Jogo que entrou na janela de presença, com a contagem do momento em que ela abre. */
 data class AttendanceWindowCandidate(
     val gameId: UUID,
     val groupId: UUID,

@@ -109,7 +109,7 @@ const val ATTENDANCE_POSITIONS_CATEGORY = "SAQZ_ATTENDANCE_POSITIONS"
 
 fun NotificationPush.attendanceCategory() = if (positions) ATTENDANCE_POSITIONS_CATEGORY else ATTENDANCE_CATEGORY
 
-/** Chaves lidas pelos apps: título/corpo (Android monta a notificação), o jogo quando o push pede presença e o fim da janela das 24 h. */
+/** Chaves lidas pelos apps: título/corpo (Android monta a notificação), o jogo quando o push pede presença e o fim da janela de presença. */
 fun NotificationPush.data(): Map<String, String> = buildMap {
     put("notificationId", notificationId.toString())
     put("groupId", groupId.toString())
@@ -127,7 +127,7 @@ fun NotificationPush.data(): Map<String, String> = buildMap {
 const val LIVE_ACTIVITY_ATTRIBUTES = "SaqzGameAttributes"
 
 /**
- * `aps` do push-to-start da janela das 24 h. Contrato com `SaqzGameAttributes` (VUL-268): datas em
+ * `aps` do push-to-start da janela de presença. Contrato com `SaqzGameAttributes` (VUL-268): datas em
  * segundos Unix (o app converte; o `Date` padrão do Swift conta a partir de 2001) e `status` começa PENDING.
  * Em jogo com posições vai o atributo opcional `positions` (DEB-113): o "Confirmar" do cartão abre a tela de posição;
  * sem posições a chave nem vai, e o app antigo, que não a conhece, decodifica como sempre.

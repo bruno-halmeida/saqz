@@ -237,9 +237,9 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
     ).param("group", groupId).query { rs, _ -> candidate(rs) }.optional().orElse(null)
 
     /**
-     * Jogos que entraram na janela das 24 h: publicados antes do T-24h, com a janela ainda aberta
-     * (até T-22h ou o prazo, o que vier antes) e sem janela anterior. É por jogo, não só o próximo
-     * do grupo. A contagem inclui convidados, como o `confirmedCount` do jogo.
+     * Jogos que entraram na janela de presença (DEB-113): de 8 h antes do prazo de confirmação até o prazo (o início do
+     * jogo, se faltar prazo), sem janela anterior. Jogo publicado já dentro da janela abre na primeira passada. É por
+     * jogo, não só o próximo do grupo. A contagem inclui convidados, como o `confirmedCount` do jogo.
      */
     override fun attendanceWindowCandidates(): List<AttendanceWindowCandidate> = jdbc.sql(
         """
@@ -251,9 +251,8 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
         LEFT JOIN game_attendance a ON a.game_id = games.id
         WHERE games.status = 'PUBLISHED'
-          AND games.published_at <= games.starts_at - interval '24 hours'
-          AND now() >= games.starts_at - interval '24 hours'
-          AND now() < least(games.starts_at - interval '22 hours', games.confirmation_deadline)
+          AND now() >= coalesce(games.confirmation_deadline, games.starts_at) - interval '8 hours'
+          AND now() < coalesce(games.confirmation_deadline, games.starts_at)
           AND NOT EXISTS (
               SELECT 1 FROM group_messages w WHERE w.game_id = games.id AND w.channel = 'ATTENDANCE_WINDOW')
         GROUP BY games.id, groups.owner_user_id

@@ -91,6 +91,22 @@ final class SaqzIOSTests: XCTestCase {
         XCTAssertEqual(SaqzGameAttributes.Status(.failed), .failed)
     }
 
+    /// DEB-113: o título do cartão diz "Hoje", "Amanhã" ou o dia da semana, pela data do jogo.
+    func testLiveActivityDayLabelFollowsTheGameDate() {
+        guard #available(iOS 16.1, *) else { return }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Sao_Paulo")!
+        // Terça, 20/10/2026 10:00 em São Paulo.
+        let now = Date(timeIntervalSince1970: 1_792_501_200)
+        func attributes(hoursFromNow: Double) -> SaqzGameAttributes {
+            SaqzGameAttributes(groupId: "g", gameId: "j", recipient: "r", venue: "Arena",
+                startsAt: Int(now.timeIntervalSince1970 + hoursFromNow * 3600))
+        }
+        XCTAssertEqual(attributes(hoursFromNow: 9).dayLabel(now: now, calendar: calendar), "Hoje")
+        XCTAssertEqual(attributes(hoursFromNow: 24).dayLabel(now: now, calendar: calendar), "Amanhã")
+        XCTAssertEqual(attributes(hoursFromNow: 48).dayLabel(now: now, calendar: calendar), "Quinta")
+    }
+
     /// DEB-107: o atributo `positions` é opcional; sem a chave (payload antigo) o card responde como sempre.
     func testLiveActivityAttributesDecodeWithAndWithoutPositions() throws {
         guard #available(iOS 16.1, *) else { return }

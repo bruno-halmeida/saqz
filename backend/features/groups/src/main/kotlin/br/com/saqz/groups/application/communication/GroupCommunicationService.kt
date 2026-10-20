@@ -107,9 +107,8 @@ class GroupCommunicationService(
     }
 
     /**
-     * Janela de presença das 24 h: uma mensagem por jogo publicado antes do T-24h que entrou na
-     * janela, para quem ainda não respondeu (dono incluído). A view revalida a entrega até o fim
-     * da janela — T-22h ou o prazo, o que vier antes.
+     * Janela de presença (DEB-113): uma mensagem por jogo que entrou na janela (8 h antes do prazo de confirmação), para
+     * quem ainda não respondeu (dono incluído). A view revalida a entrega até o fim da janela, que é o prazo.
      */
     fun openAttendanceWindows(): Int = logPublished("attendance_window", "window_opened", transaction.inTransaction {
         repository.attendanceWindowCandidates().map { candidate ->

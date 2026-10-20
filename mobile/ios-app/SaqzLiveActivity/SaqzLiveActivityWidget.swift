@@ -55,7 +55,7 @@ private struct WindowCard: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.8))
             }
-            Text("Amanhã às \(context.attributes.startDate.saqzTime)")
+            Text("\(context.attributes.dayLabel()) às \(context.attributes.startDate.saqzTime)")
                 .font(.headline)
                 .foregroundStyle(.white)
             Text(context.attributes.venue)

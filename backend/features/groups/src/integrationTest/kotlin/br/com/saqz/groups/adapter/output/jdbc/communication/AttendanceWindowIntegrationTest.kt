@@ -127,16 +127,37 @@ class AttendanceWindowIntegrationTest {
         assertTrue(drain().none { it.second.positions })
     }
 
-    @Test fun `a game published inside the last 24 hours gets no window`() {
-        game(publishedInMinutes = -30)
+    @Test fun `DEB-113 the window opens 8 hours before the deadline and not a minute earlier`() {
+        game(deadlineInMinutes = 8 * 60 + 5, startsInMinutes = 10 * 60)
+        assertEquals(0, service.openAttendanceWindows())
+        jdbc.sql("TRUNCATE games CASCADE").update()
+        game(deadlineInMinutes = 8 * 60 - 5, startsInMinutes = 10 * 60)
+        assertEquals(1, service.openAttendanceWindows())
+    }
+
+    @Test fun `DEB-113 a game published inside the window opens on the next run`() {
+        game(publishedInMinutes = -1)
+
+        assertEquals(1, service.openAttendanceWindows())
+    }
+
+    @Test fun `DEB-113 no window after the deadline`() {
+        game(deadlineInMinutes = -1, startsInMinutes = 60)
 
         assertEquals(0, service.openAttendanceWindows())
     }
 
-    @Test fun `a deadline before the 24 hour mark means no window`() {
-        game(deadlineInMinutes = -120)
+    @Test fun `DEB-113 the window ends at the deadline in the push and in the card`() {
+        push.register(owner, UUID.randomUUID(), "owner-device", "IOS", liveActivityStartToken = "owner-start")
+        val game = game()
+        service.openAttendanceWindows()
 
-        assertEquals(0, service.openAttendanceWindows())
+        val sent = drain()
+        val deadline = deadline(game)
+        assertTrue(sent.isNotEmpty())
+        assertTrue(sent.all { it.second.windowEndsAt == deadline }, "$sent")
+        val card = sent.single { it.first == "owner-device" }.second
+        assertEquals(deadline, card.windowEndsAt)
     }
 
     @Test fun `the window mutes the reminder push while it lasts and releases it afterwards`() {
@@ -148,7 +169,8 @@ class AttendanceWindowIntegrationTest {
         service.remindAutomatically()
         assertEquals(emptyList(), drain().map { it.first })
 
-        jdbc.sql("UPDATE games SET starts_at = now() + interval '21 hours', confirmation_deadline = now() + interval '20 hours' WHERE id = :id")
+        // O prazo passou: a janela fechou e o lembrete volta (ele segue até o início do jogo).
+        jdbc.sql("UPDATE games SET confirmation_deadline = now() - interval '1 minute' WHERE id = :id")
             .param("id", game).update()
         service.remindAutomatically()
         // O REMINDER é assinado pelo dono e pula quem respondeu: sobra o silent, agora liberado.
@@ -159,7 +181,7 @@ class AttendanceWindowIntegrationTest {
         val game = game()
         service.openAttendanceWindows()
 
-        jdbc.sql("UPDATE games SET starts_at = now() + interval '21 hours', confirmation_deadline = now() + interval '20 hours' WHERE id = :id")
+        jdbc.sql("UPDATE games SET confirmation_deadline = now() - interval '1 minute' WHERE id = :id")
             .param("id", game).update()
 
         push.drain(NotificationPushSender { _, _ -> error("closed window must not be pushed") })
@@ -207,8 +229,8 @@ class AttendanceWindowIntegrationTest {
         assertEquals(0L, count("notification_push_queue WHERE completed_at IS NULL"))
     }
 
-    /** Padrão: começa daqui a 23 h (janela aberta há 1 h), prazo daqui a 20 h, publicado há 2 dias. */
-    private fun game(startsInMinutes: Int = 23 * 60, deadlineInMinutes: Int = 20 * 60, publishedInMinutes: Int = -2 * 24 * 60): UUID {
+    /** Padrão: prazo daqui a 4 h (janela aberta há 4 h), começa daqui a 6 h, publicado há 2 dias. */
+    private fun game(startsInMinutes: Int = 6 * 60, deadlineInMinutes: Int = 4 * 60, publishedInMinutes: Int = -2 * 24 * 60): UUID {
         val id = UUID.randomUUID()
         jdbc.sql("""
             INSERT INTO games(id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
@@ -240,9 +262,10 @@ class AttendanceWindowIntegrationTest {
         WHERE m.channel = CAST(:channel AS group_message_channel) ORDER BY n.recipient_id
     """).param("channel", channel).query { rs, _ -> rs.getObject("recipient_id", UUID::class.java) }.list()
 
-    private fun windowEnd(game: UUID): Instant = jdbc.sql(
-        "SELECT least(starts_at - interval '22 hours', confirmation_deadline) FROM games WHERE id = :id",
-    ).param("id", game).query { rs, _ -> rs.getTimestamp(1).toInstant() }.single()
+    private fun windowEnd(game: UUID): Instant = deadline(game)
+
+    private fun deadline(game: UUID): Instant = jdbc.sql("SELECT confirmation_deadline FROM games WHERE id = :id")
+        .param("id", game).query { rs, _ -> rs.getTimestamp(1).toInstant() }.single()
 
     private fun startsAt(game: UUID): Instant = jdbc.sql("SELECT starts_at FROM games WHERE id = :id")
         .param("id", game).query { rs, _ -> rs.getTimestamp(1).toInstant() }.single()

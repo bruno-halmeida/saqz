@@ -35,6 +35,17 @@ struct SaqzGameAttributes: ActivityAttributes {
 
     var startDate: Date { Date(timeIntervalSince1970: TimeInterval(startsAt)) }
 
+    /// Dia do jogo no título do cartão (DEB-113: a janela abre 8 h antes do prazo, então o jogo pode ser hoje):
+    /// "Hoje", "Amanhã" ou o dia da semana ("Quarta"), no calendário do aparelho.
+    func dayLabel(now: Date = Date(), calendar: Calendar = .current) -> String {
+        if calendar.isDate(startDate, inSameDayAs: now) { return "Hoje" }
+        if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(startDate, inSameDayAs: tomorrow) {
+            return "Amanhã"
+        }
+        let weekdays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
+        return weekdays[calendar.component(.weekday, from: startDate) - 1]
+    }
+
     /// O que o "Confirmar" do card faz: responde por baixo (jogo sem posições) ou abre o app na tela de escolher
     /// posição, sem confirmar nada (jogo com posições). "Não vou" responde sempre.
     enum ConfirmAction: Equatable { case respond, openPositionPicker }
