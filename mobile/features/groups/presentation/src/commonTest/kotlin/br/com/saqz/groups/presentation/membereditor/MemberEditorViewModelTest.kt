@@ -139,7 +139,7 @@ class MemberEditorViewModelTest {
         val viewModel = editor(athlete)
 
         viewModel.onIntent(MemberEditorIntent.NicknameChanged("Rascunho"))
-        viewModel.onIntent(MemberEditorIntent.HeightChanged(""))
+        viewModel.onIntent(MemberEditorIntent.HeightSelected(null))
         viewModel.onIntent(MemberEditorIntent.MembershipSelected(AthleteMembershipType.MENSALISTA))
         viewModel.onIntent(MemberEditorIntent.BillingAmountChanged("120,00"))
         viewModel.onIntent(MemberEditorIntent.BillingDueDaySelected(15))
@@ -151,9 +151,24 @@ class MemberEditorViewModelTest {
         assertEquals(12000, athlete.lastUpdateCommand?.monthlyFeeCents)
         assertEquals(15, athlete.lastUpdateCommand?.monthlyDueDay)
         assertEquals("Rascunho", viewModel.state.value.nickname)
-        assertEquals("", viewModel.state.value.heightText)
         assertNull(viewModel.state.value.heightCm)
         assertFalse(viewModel.state.value.billingSheetOpen)
+    }
+
+    @Test
+    fun `picking a height saves it in cm and a stored one outside the range errors on the field`() = runTest {
+        val athlete = FakeAthleteGateway(rosterResult = SaqzResult.Success(listOf(sampleRosterEntry().copy(heightCm = 80))))
+        val viewModel = editor(athlete)
+
+        viewModel.onIntent(MemberEditorIntent.Save)
+        assertTrue(viewModel.state.value.heightError)
+        assertNull(viewModel.state.value.error)
+        assertNull(athlete.lastUpdateCommand)
+
+        viewModel.onIntent(MemberEditorIntent.HeightSelected(175))
+        assertFalse(viewModel.state.value.heightError)
+        viewModel.onIntent(MemberEditorIntent.Save)
+        assertEquals(175, athlete.lastUpdateCommand?.heightCm)
     }
 
     @Test
@@ -187,7 +202,7 @@ class MemberEditorViewModelTest {
         viewModel.onIntent(MemberEditorIntent.SecondaryPositionSelected(AthletePosition.CENTRAL))
         viewModel.onIntent(MemberEditorIntent.LevelSelected(AthleteLevel.AVANCADO))
         viewModel.onIntent(MemberEditorIntent.PreferredSideSelected(AthletePreferredSide.ESQUERDA))
-        viewModel.onIntent(MemberEditorIntent.HeightChanged("188"))
+        viewModel.onIntent(MemberEditorIntent.HeightSelected(188))
         viewModel.onIntent(MemberEditorIntent.MembershipSelected(AthleteMembershipType.MENSALISTA))
         viewModel.onIntent(MemberEditorIntent.BillingAmountChanged("120,00"))
         viewModel.onIntent(MemberEditorIntent.BillingDueDaySelected(15))
@@ -199,7 +214,7 @@ class MemberEditorViewModelTest {
         assertEquals(AthletePosition.CENTRAL, restored.secondaryPosition)
         assertEquals(AthleteLevel.AVANCADO, restored.level)
         assertEquals(AthletePreferredSide.ESQUERDA, restored.preferredSide)
-        assertEquals("188", restored.heightText)
+        assertEquals(188, restored.heightCm)
         assertEquals(AthleteMembershipType.MENSALISTA, restored.membershipType)
         assertEquals("120,00", restored.billingAmountText)
         assertEquals(15, restored.billingDueDay)

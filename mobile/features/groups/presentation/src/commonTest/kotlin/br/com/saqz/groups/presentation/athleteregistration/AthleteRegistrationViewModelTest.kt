@@ -65,7 +65,7 @@ class AthleteRegistrationViewModelTest {
         assertEquals(AthletePosition.LEVANTADOR, viewModel.state.value.position)
         assertEquals(AthletePosition.PONTA, viewModel.state.value.secondaryPosition)
         assertEquals(AthleteLevel.INTERMEDIARIO, viewModel.state.value.level)
-        assertEquals("184", viewModel.state.value.heightText)
+        assertEquals(184, viewModel.state.value.heightCm)
     }
 
     @Test
@@ -133,7 +133,7 @@ class AthleteRegistrationViewModelTest {
         viewModel.onIntent(AthleteRegistrationIntent.PositionSelected(AthletePosition.LEVANTADOR))
         viewModel.onIntent(AthleteRegistrationIntent.SecondaryPositionSelected(AthletePosition.PONTA))
         viewModel.onIntent(AthleteRegistrationIntent.LevelSelected(AthleteLevel.AVANCADO))
-        viewModel.onIntent(AthleteRegistrationIntent.HeightChanged("190"))
+        viewModel.onIntent(AthleteRegistrationIntent.HeightSelected(190))
         viewModel.onIntent(AthleteRegistrationIntent.Save)
 
         assertFalse(viewModel.state.value.isSaving)
@@ -164,6 +164,36 @@ class AthleteRegistrationViewModelTest {
 
         assertFalse(viewModel.state.value.isSaving)
         assertEquals(GroupUiError.Network, viewModel.state.value.error)
+    }
+
+    @Test
+    fun `picking 1 75 m saves 175 cm and clearing saves no height`() = runTest(dispatcher) {
+        val athleteGateway = FakeAthleteGateway(ownProfileResult = ownProfile(membership(heightCm = 182)))
+        val viewModel = viewModel(athleteGateway = athleteGateway)
+        assertEquals(182, viewModel.state.value.heightCm)
+
+        viewModel.onIntent(AthleteRegistrationIntent.HeightSelected(175))
+        viewModel.onIntent(AthleteRegistrationIntent.Save)
+        assertEquals(175, athleteGateway.lastUpdateOwnProfileCommand?.heightCm)
+
+        viewModel.onIntent(AthleteRegistrationIntent.HeightSelected(null))
+        assertNull(viewModel.state.value.heightCm)
+        viewModel.onIntent(AthleteRegistrationIntent.Save)
+        assertNull(athleteGateway.lastUpdateOwnProfileCommand?.heightCm)
+    }
+
+    @Test
+    fun `a stored height outside the range shows the error on the field and not the generic card`() = runTest(dispatcher) {
+        val athleteGateway = FakeAthleteGateway(ownProfileResult = ownProfile(membership(heightCm = 75)))
+        val viewModel = viewModel(athleteGateway = athleteGateway)
+
+        viewModel.onIntent(AthleteRegistrationIntent.Save)
+
+        assertTrue(viewModel.state.value.heightError)
+        assertNull(viewModel.state.value.error)
+        assertNull(athleteGateway.lastUpdateOwnProfileCommand)
+        viewModel.onIntent(AthleteRegistrationIntent.HeightSelected(170))
+        assertFalse(viewModel.state.value.heightError)
     }
 
     @Test
@@ -222,7 +252,7 @@ class AthleteRegistrationViewModelTest {
         assertTrue(state.isEditing)
         assertEquals("Bia", state.nickname)
         assertEquals(AthletePosition.LEVANTADOR, state.position)
-        assertEquals("178", state.heightText)
+        assertEquals(178, state.heightCm)
     }
 
     @Test
@@ -234,7 +264,7 @@ class AthleteRegistrationViewModelTest {
         viewModel.onIntent(AthleteRegistrationIntent.NicknameChanged("  Bia  "))
         viewModel.onIntent(AthleteRegistrationIntent.PositionSelected(AthletePosition.LEVANTADOR))
         viewModel.onIntent(AthleteRegistrationIntent.LevelSelected(AthleteLevel.AVANCADO))
-        viewModel.onIntent(AthleteRegistrationIntent.HeightChanged("178"))
+        viewModel.onIntent(AthleteRegistrationIntent.HeightSelected(178))
         viewModel.onIntent(AthleteRegistrationIntent.Save)
 
         assertEquals(AthleteRegistrationEffect.Saved, effects.first())

@@ -18,6 +18,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,7 +76,11 @@ import br.com.saqz.groups.resources.member_editor_billing_title
 import br.com.saqz.groups.resources.member_editor_cancel
 import br.com.saqz.groups.resources.member_editor_change_billing
 import br.com.saqz.groups.resources.member_editor_height
-import br.com.saqz.groups.resources.member_editor_height_hint
+import br.com.saqz.groups.resources.height_picker_error
+import br.com.saqz.groups.resources.height_picker_none
+import br.com.saqz.groups.presentation.ui.components.HeightPicker
+import br.com.saqz.groups.presentation.ui.components.HeightPickerSheet
+import br.com.saqz.groups.presentation.ui.gameeditor.PickerRow
 import br.com.saqz.groups.resources.member_editor_intermediate
 import br.com.saqz.groups.resources.member_editor_joined
 import br.com.saqz.groups.resources.member_editor_level
@@ -124,6 +132,7 @@ import org.jetbrains.compose.resources.stringResource
 object MemberEditorTags {
     const val Screen = "member-editor-screen"
     const val Nickname = "member-editor-nickname"
+    const val Height = "member-editor-height"
     const val Admin = "member-editor-admin"
     const val Billing = "member-editor-billing"
     const val MonthlyPendingNotice = "member-editor-monthly-pending-notice"
@@ -153,6 +162,7 @@ fun MemberEditorScreen(
     val metrics = SaqzTheme.metrics
     val screenTitle = stringResource(Res.string.member_editor_title)
     val saveLabel = stringResource(Res.string.member_editor_save)
+    var heightPickerOpen by remember { mutableStateOf(false) }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -179,7 +189,7 @@ fun MemberEditorScreen(
                     }
                     MemberEditorHeader(state)
                     MemberEditorIdentity(state, onIntent)
-                    MemberEditorAttributes(state, onIntent)
+                    MemberEditorAttributes(state, onIntent, onOpenHeightPicker = { heightPickerOpen = true })
                     MemberEditorMembership(state, onIntent)
                     MemberEditorPermissions(state, onIntent)
                     MemberEditorStats(state)
@@ -201,6 +211,15 @@ fun MemberEditorScreen(
         }
         MemberEditorBillingSheet(state, onIntent)
         MemberEditorRemoveSheet(state, onIntent)
+        HeightPickerSheet(
+            open = heightPickerOpen && !state.isLoading && !state.loadFailed,
+            heightCm = state.heightCm,
+            onClose = { heightPickerOpen = false },
+            onSave = {
+                onIntent(MemberEditorIntent.HeightSelected(it))
+                heightPickerOpen = false
+            },
+        )
         if (state.subscriptionRequired) {
             SubscriptionRequiredDialog(
                 trialEnded = state.trialEnded,
@@ -267,7 +286,11 @@ private fun MemberEditorIdentity(state: MemberEditorState, onIntent: (MemberEdit
 }
 
 @Composable
-private fun MemberEditorAttributes(state: MemberEditorState, onIntent: (MemberEditorIntent) -> Unit) {
+private fun MemberEditorAttributes(
+    state: MemberEditorState,
+    onIntent: (MemberEditorIntent) -> Unit,
+    onOpenHeightPicker: () -> Unit,
+) {
     val metrics = SaqzTheme.metrics
     MemberEditorSection(state.modality?.let { stringResource(Res.string.member_editor_position) }) {
         when (state.modality) {
@@ -291,13 +314,13 @@ private fun MemberEditorAttributes(state: MemberEditorState, onIntent: (MemberEd
                     onSelect = { onIntent(MemberEditorIntent.SecondaryPositionSelected(it)) },
                     tag = MemberEditorTags::secondary,
                 )
-                SaqzInput(
-                    value = state.heightText,
-                    onValueChange = { onIntent(MemberEditorIntent.HeightChanged(it.filter(Char::isDigit))) },
+                PickerRow(
                     label = stringResource(Res.string.member_editor_height),
-                    placeholder = stringResource(Res.string.member_editor_height_hint),
-                    keyboardType = KeyboardType.Number,
-                    enabled = state.operation == null,
+                    value = state.heightCm?.let(HeightPicker::format).orEmpty(),
+                    placeholder = stringResource(Res.string.height_picker_none),
+                    errorText = if (state.heightError) stringResource(Res.string.height_picker_error) else null,
+                    tag = MemberEditorTags.Height,
+                    onClick = { if (state.operation == null) onOpenHeightPicker() },
                 )
             }
             GroupModality.BEACH_VOLLEYBALL, GroupModality.FOOTVOLLEY -> {
@@ -725,7 +748,6 @@ internal val memberEditorPreviewState = MemberEditorState(
     secondaryPosition = AthletePosition.LEVANTADOR,
     level = AthleteLevel.AVANCADO,
     heightCm = 178,
-    heightText = "178",
     membershipType = AthleteMembershipType.MENSALISTA,
     monthlyFeeOverrideCents = null,
     defaultMonthlyFeeCents = 8500,

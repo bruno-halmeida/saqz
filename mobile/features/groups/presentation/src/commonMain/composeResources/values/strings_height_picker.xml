@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="height_picker_title">Altura</string>
+    <string name="height_picker_none">Sem altura</string>
+    <string name="height_picker_meters">Metros</string>
+    <string name="height_picker_centimeters">Centímetros</string>
+    <string name="height_picker_save">Salvar altura</string>
+    <string name="height_picker_clear">Deixar sem altura</string>
+    <string name="height_picker_meters_spoken">%1$s metros</string>
+    <string name="height_picker_centimeter_spoken_one">1 centímetro</string>
+    <string name="height_picker_centimeter_spoken">%1$d centímetros</string>
+    <string name="height_picker_error">Escolha uma altura entre 1,00 m e 2,50 m.</string>
+</resources>

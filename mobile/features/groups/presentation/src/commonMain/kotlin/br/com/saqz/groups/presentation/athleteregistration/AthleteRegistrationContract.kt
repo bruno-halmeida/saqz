@@ -23,7 +23,10 @@ data class AthleteRegistrationState(
     val secondaryPosition: AthletePosition? = null,
     val level: AthleteLevel? = null,
     val preferredSide: AthletePreferredSide? = null,
-    val heightText: String = "",
+    /** Altura em cm escolhida no seletor; nulo = sem altura (opcional). */
+    val heightCm: Int? = null,
+    /** A altura carregada está fora de 1,00 m a 2,50 m: o aviso aparece no campo, não no cartão genérico. */
+    val heightError: Boolean = false,
     val isSaving: Boolean = false,
     /** O cadastro já tinha nível, posição ou lado: é edição, não a primeira entrada no grupo. */
     val isEditing: Boolean = false,
@@ -40,7 +43,8 @@ sealed interface AthleteRegistrationIntent {
     data class SecondaryPositionSelected(val value: AthletePosition) : AthleteRegistrationIntent
     data class LevelSelected(val value: AthleteLevel) : AthleteRegistrationIntent
     data class PreferredSideSelected(val value: AthletePreferredSide) : AthleteRegistrationIntent
-    data class HeightChanged(val value: String) : AthleteRegistrationIntent
+    /** Altura em cm vinda do seletor; `null` limpa. */
+    data class HeightSelected(val value: Int?) : AthleteRegistrationIntent
     data object Save : AthleteRegistrationIntent
 }
 

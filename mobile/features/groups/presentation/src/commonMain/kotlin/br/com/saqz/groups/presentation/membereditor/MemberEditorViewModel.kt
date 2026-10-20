@@ -67,9 +67,9 @@ class MemberEditorViewModel(
                 savedState[KEY_PREFERRED_SIDE] = intent.value?.name
                 update { it.copy(preferredSide = intent.value, error = null) }
             }
-            is MemberEditorIntent.HeightChanged -> {
+            is MemberEditorIntent.HeightSelected -> {
                 savedState[KEY_HEIGHT] = intent.value
-                update { it.copy(heightText = intent.value, heightCm = intent.value.toIntOrNull(), error = null) }
+                update { it.copy(heightCm = intent.value, heightError = false, error = null) }
             }
             is MemberEditorIntent.MembershipSelected -> selectMembership(intent.value)
             MemberEditorIntent.OpenBilling -> openBilling()
@@ -189,7 +189,6 @@ class MemberEditorViewModel(
                 level = entry.level,
                 preferredSide = entry.preferredSide,
                 heightCm = entry.heightCm,
-                heightText = entry.heightCm?.toString().orEmpty(),
                 membershipType = entry.membershipType,
                 persistedMembershipType = entry.membershipType,
                 hasPendingMonthly = hasPendingMonthly,
@@ -249,8 +248,9 @@ class MemberEditorViewModel(
 
     private fun save() {
         val current = state.value
-        if (current.heightText.isNotBlank() && current.heightCm == null) {
-            update { it.copy(error = GroupUiError.Validation) }
+        // O seletor só entrega 1,00 m a 2,50 m; sobra a altura antiga carregada do servidor fora da faixa.
+        if (current.heightCm != null && current.heightCm !in MIN_HEIGHT_CM..MAX_HEIGHT_CM) {
+            update { it.copy(heightError = true) }
             return
         }
         patch(MemberEditorOperation.Save, current.toUpdateCommand())
@@ -309,7 +309,6 @@ class MemberEditorViewModel(
                     level = athlete.level,
                     preferredSide = athlete.preferredSide,
                     heightCm = athlete.heightCm,
-                    heightText = athlete.heightCm?.toString().orEmpty(),
                     membershipType = athlete.membershipType,
                     persistedMembershipType = athlete.membershipType,
                     active = athlete.active,
@@ -405,7 +404,7 @@ class MemberEditorViewModel(
         secondaryPosition = secondaryPosition.takeUnless { it == position },
         level = level,
         preferredSide = preferredSide,
-        heightCm = heightText.toIntOrNull(),
+        heightCm = heightCm,
         monthlyFeeCents = monthlyFeeCents,
         monthlyDueDay = monthlyDueDay,
     )
@@ -449,7 +448,6 @@ class MemberEditorViewModel(
 }
 
 private fun MemberEditorState.restoreDraft(savedState: SavedStateHandle): MemberEditorState {
-    val restoredHeight = savedState.get<String>(KEY_HEIGHT)
     val restoredMembership = savedState.get<String>(KEY_MEMBERSHIP).toEnumOrNull<AthleteMembershipType>()
     return copy(
         nickname = savedState.get<String>(KEY_NICKNAME) ?: nickname,
@@ -457,8 +455,7 @@ private fun MemberEditorState.restoreDraft(savedState: SavedStateHandle): Member
         secondaryPosition = savedState.restoreNullableEnum(KEY_SECONDARY_POSITION, secondaryPosition),
         level = savedState.restoreNullableEnum(KEY_LEVEL, level),
         preferredSide = savedState.restoreNullableEnum(KEY_PREFERRED_SIDE, preferredSide),
-        heightText = restoredHeight ?: heightText,
-        heightCm = restoredHeight?.toIntOrNull() ?: if (savedState.contains(KEY_HEIGHT)) null else heightCm,
+        heightCm = if (savedState.contains(KEY_HEIGHT)) savedState.get<Int>(KEY_HEIGHT) else heightCm,
         membershipType = if (savedState.contains(KEY_MEMBERSHIP)) restoredMembership ?: membershipType else membershipType,
         billingAmountText = savedState.get<String>(KEY_BILLING_AMOUNT) ?: billingAmountText,
         billingDueDay = savedState.get<Int>(KEY_BILLING_DUE_DAY) ?: billingDueDay,
@@ -484,6 +481,8 @@ private const val KEY_SECONDARY_POSITION = "member-editor-secondary-position"
 private const val KEY_LEVEL = "member-editor-level"
 private const val KEY_PREFERRED_SIDE = "member-editor-preferred-side"
 private const val KEY_HEIGHT = "member-editor-height"
+private const val MIN_HEIGHT_CM = 100
+private const val MAX_HEIGHT_CM = 250
 private const val KEY_MEMBERSHIP = "member-editor-membership"
 private const val KEY_BILLING_AMOUNT = "member-editor-billing-amount"
 private const val KEY_BILLING_DUE_DAY = "member-editor-billing-due-day"

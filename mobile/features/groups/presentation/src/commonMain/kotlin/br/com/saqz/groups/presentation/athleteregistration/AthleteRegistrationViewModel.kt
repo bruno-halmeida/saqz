@@ -48,14 +48,9 @@ class AthleteRegistrationViewModel(
                 savedState[KEY_SIDE] = intent.value.name
                 update { it.copy(preferredSide = intent.value, error = null) }
             }
-            is AthleteRegistrationIntent.HeightChanged -> {
+            is AthleteRegistrationIntent.HeightSelected -> {
                 savedState[KEY_HEIGHT] = intent.value
-                update {
-                    it.copy(
-                        heightText = intent.value,
-                        error = null,
-                    )
-                }
+                update { it.copy(heightCm = intent.value, heightError = false, error = null) }
             }
             AthleteRegistrationIntent.Save -> save()
         }
@@ -99,7 +94,7 @@ class AthleteRegistrationViewModel(
                     secondaryPosition = membership.secondaryPosition,
                     level = membership.level,
                     preferredSide = membership.preferredSide,
-                    heightText = membership.heightCm?.toString().orEmpty(),
+                    heightCm = membership.heightCm,
                     isEditing = membership.level != null || membership.position != null ||
                         membership.preferredSide != null,
                 ).restoreDraft(savedState)
@@ -137,7 +132,7 @@ class AthleteRegistrationViewModel(
                     secondaryPosition = saved?.secondaryPosition,
                     level = saved?.level,
                     preferredSide = saved?.preferredSide,
-                    heightText = saved?.heightCm?.toString().orEmpty(),
+                    heightCm = saved?.heightCm,
                     isEditing = saved != null,
                 ).restoreDraft(savedState)
             }
@@ -163,10 +158,10 @@ class AthleteRegistrationViewModel(
     private fun save() {
         val current = state.value
         if (current.isLoading || current.loadFailed || current.isSaving) return
-        val height = current.heightText.trim()
-        val heightCm = height.toIntOrNull()
-        if (current.isCourt && height.isNotEmpty() && heightCm !in 100..250) {
-            update { it.copy(error = GroupUiError.Validation) }
+        val heightCm = current.heightCm
+        // O seletor só entrega 1,00 m a 2,50 m; sobra a altura antiga carregada do servidor fora da faixa.
+        if (current.isCourt && heightCm != null && heightCm !in MIN_HEIGHT_CM..MAX_HEIGHT_CM) {
+            update { it.copy(heightError = true) }
             return
         }
 
@@ -229,7 +224,7 @@ private fun AthleteRegistrationState.restoreDraft(savedState: SavedStateHandle):
     },
     level = savedState.get<String>(KEY_LEVEL)?.toEnumOrNull() ?: level,
     preferredSide = savedState.get<String>(KEY_SIDE)?.toEnumOrNull() ?: preferredSide,
-    heightText = savedState.get<String>(KEY_HEIGHT) ?: heightText,
+    heightCm = if (savedState.contains(KEY_HEIGHT)) savedState.get<Int>(KEY_HEIGHT) else heightCm,
 )
 
 private inline fun <reified T : Enum<T>> String.toEnumOrNull(): T? =
@@ -241,6 +236,8 @@ private const val KEY_SECONDARY_POSITION = "athlete-registration-secondary-posit
 private const val KEY_LEVEL = "athlete-registration-level"
 private const val KEY_SIDE = "athlete-registration-side"
 private const val KEY_HEIGHT = "athlete-registration-height"
+private const val MIN_HEIGHT_CM = 100
+private const val MAX_HEIGHT_CM = 250
 
 private val DraftKeys = listOf(
     KEY_NICKNAME,

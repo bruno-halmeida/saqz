@@ -18,7 +18,6 @@
     <string name="athlete_registration_secondary_hint">Só aparece em grupos de vôlei de quadra.</string>
     <string name="athlete_registration_level">Nível</string>
     <string name="athlete_registration_height">Altura (opcional)</string>
-    <string name="athlete_registration_height_hint">Em centímetros</string>
     <string name="athlete_registration_summary">Vai aparecer como %1$s · %2$s</string>
     <string name="athlete_registration_summary_secondary">Vai aparecer como %1$s · também joga de %2$s · %3$s</string>
     <string name="athlete_registration_undefined_position">posição não definida</string>

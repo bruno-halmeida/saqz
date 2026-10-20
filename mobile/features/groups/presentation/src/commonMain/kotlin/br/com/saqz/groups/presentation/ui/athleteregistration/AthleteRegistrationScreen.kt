@@ -16,6 +16,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -45,7 +49,12 @@ import br.com.saqz.groups.resources.athlete_registration_beach_lead
 import br.com.saqz.groups.resources.athlete_registration_city_unknown
 import br.com.saqz.groups.resources.athlete_registration_court_position
 import br.com.saqz.groups.resources.athlete_registration_height
-import br.com.saqz.groups.resources.athlete_registration_height_hint
+import br.com.saqz.groups.resources.height_picker_error
+import br.com.saqz.groups.resources.height_picker_none
+import br.com.saqz.groups.resources.height_picker_title
+import br.com.saqz.groups.presentation.ui.components.HeightPicker
+import br.com.saqz.groups.presentation.ui.components.HeightPickerSheet
+import br.com.saqz.groups.presentation.ui.gameeditor.PickerRow
 import br.com.saqz.groups.resources.athlete_registration_identity_title
 import br.com.saqz.groups.resources.athlete_registration_joined_subtitle
 import br.com.saqz.groups.resources.athlete_registration_edit_title
@@ -116,8 +125,11 @@ fun AthleteRegistrationScreen(
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
+    // A folha da altura fica fora da coluna rolável: dentro dela o overlay não tem altura para cobrir a tela.
+    var heightPickerOpen by remember { mutableStateOf(false) }
+    Box(modifier.fillMaxSize()) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(SaqzTheme.colors.background)
             .imePadding(),
@@ -146,7 +158,7 @@ fun AthleteRegistrationScreen(
                 }
                 AthleteIdentitySection(state, onIntent)
                 if (state.isCourt) {
-                    AthleteCourtSections(state, onIntent)
+                    AthleteCourtSections(state, onIntent, onOpenHeightPicker = { heightPickerOpen = true })
                 } else {
                     AthleteBeachSection(state, onIntent)
                 }
@@ -164,6 +176,16 @@ fun AthleteRegistrationScreen(
                 Spacer(Modifier.size(metrics.blockGap))
             }
         }
+    }
+    HeightPickerSheet(
+        open = heightPickerOpen && state.isCourt,
+        heightCm = state.heightCm,
+        onClose = { heightPickerOpen = false },
+        onSave = {
+            onIntent(AthleteRegistrationIntent.HeightSelected(it))
+            heightPickerOpen = false
+        },
+    )
     }
 }
 
@@ -225,6 +247,7 @@ private fun AthleteIdentitySection(
 private fun AthleteCourtSections(
     state: AthleteRegistrationState,
     onIntent: (AthleteRegistrationIntent) -> Unit,
+    onOpenHeightPicker: () -> Unit,
 ) {
     GroupFormCard(title = stringResource(Res.string.athlete_registration_court_position)) {
         PositionChips(
@@ -253,16 +276,14 @@ private fun AthleteCourtSections(
     }
     GroupFormCard(
         title = stringResource(Res.string.athlete_registration_height),
-        hint = stringResource(Res.string.athlete_registration_height_hint),
     ) {
-        SaqzInput(
-            value = state.heightText,
-            onValueChange = { onIntent(AthleteRegistrationIntent.HeightChanged(it)) },
-            label = stringResource(Res.string.athlete_registration_height),
-            showLabel = false,
-            kind = SaqzInputKind.Text,
-            keyboardType = KeyboardType.Number,
-            modifier = Modifier.testTag(AthleteRegistrationTags.Height),
+        PickerRow(
+            label = stringResource(Res.string.height_picker_title),
+            value = state.heightCm?.let(HeightPicker::format).orEmpty(),
+            placeholder = stringResource(Res.string.height_picker_none),
+            errorText = if (state.heightError) stringResource(Res.string.height_picker_error) else null,
+            tag = AthleteRegistrationTags.Height,
+            onClick = onOpenHeightPicker,
         )
     }
 }
@@ -472,7 +493,7 @@ internal object AthleteRegistrationSamples {
         position = AthletePosition.LEVANTADOR,
         secondaryPosition = AthletePosition.PONTA,
         level = AthleteLevel.INTERMEDIARIO,
-        heightText = "184",
+        heightCm = 184,
     )
 
     val menCourt = womenCourt.copy(

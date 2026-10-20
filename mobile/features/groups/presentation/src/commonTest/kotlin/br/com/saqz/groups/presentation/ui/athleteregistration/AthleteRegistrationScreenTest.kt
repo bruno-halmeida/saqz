@@ -6,10 +6,15 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
+import br.com.saqz.groups.presentation.athleteregistration.AthleteRegistrationIntent
+import br.com.saqz.groups.presentation.ui.components.HeightPickerTags
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import kotlin.test.Test
+import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class AthleteRegistrationScreenTest {
@@ -25,6 +30,38 @@ class AthleteRegistrationScreenTest {
         onNodeWithTag(AthleteRegistrationTags.Side).assertDoesNotExist()
         onNodeWithText("Na areia não tem posição fixa — a gente pergunta só o lado que você prefere.")
             .assertDoesNotExist()
+    }
+
+    @Test
+    fun `tapping the height row then 1 7 and 5 sends the height 175`() = runComposeUiTest {
+        val intents = mutableListOf<AthleteRegistrationIntent>()
+        setContent {
+            SaqzTheme {
+                AthleteRegistrationScreen(
+                    state = AthleteRegistrationSamples.womenCourt.copy(heightCm = null),
+                    onIntent = { intents += it },
+                    onBack = {},
+                )
+            }
+        }
+
+        onNodeWithTag(AthleteRegistrationTags.Height).performScrollTo().performClick()
+        waitForIdle()
+        onNodeWithTag(HeightPickerTags.tenth(17)).performScrollTo().performClick()
+        onNodeWithTag(HeightPickerTags.centimeter(5)).performScrollTo().performClick()
+        onNodeWithTag(HeightPickerTags.Save).performClick()
+        waitForIdle()
+
+        assertEquals(listOf<AthleteRegistrationIntent>(AthleteRegistrationIntent.HeightSelected(175)), intents)
+    }
+
+    @Test
+    fun `the height row shows the chosen height or no height and the field error`() = runComposeUiTest {
+        setScreen(AthleteRegistrationSamples.womenCourt.copy(heightCm = 175))
+        onNodeWithText("1,75 m").assertExists()
+        setScreen(AthleteRegistrationSamples.womenCourt.copy(heightCm = null, heightError = true))
+        onNodeWithText("Sem altura").assertExists()
+        onNodeWithText("Escolha uma altura entre 1,00 m e 2,50 m.").assertExists()
     }
 
     @Test

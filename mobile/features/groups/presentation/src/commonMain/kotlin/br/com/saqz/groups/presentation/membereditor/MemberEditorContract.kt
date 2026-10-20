@@ -31,7 +31,8 @@ data class MemberEditorState(
     val level: AthleteLevel? = null,
     val preferredSide: AthletePreferredSide? = null,
     val heightCm: Int? = null,
-    val heightText: String = "",
+    /** A altura carregada está fora de 1,00 m a 2,50 m: o aviso aparece no campo. */
+    val heightError: Boolean = false,
     val membershipType: AthleteMembershipType = AthleteMembershipType.AVULSO,
     /** Como a pessoa está gravada no grupo: a escolha do formulário só vale depois do "Salvar". */
     val persistedMembershipType: AthleteMembershipType = AthleteMembershipType.AVULSO,
@@ -77,7 +78,8 @@ sealed interface MemberEditorIntent {
     data class SecondaryPositionSelected(val value: AthletePosition?) : MemberEditorIntent
     data class LevelSelected(val value: AthleteLevel?) : MemberEditorIntent
     data class PreferredSideSelected(val value: AthletePreferredSide?) : MemberEditorIntent
-    data class HeightChanged(val value: String) : MemberEditorIntent
+    /** Altura em cm vinda do seletor; `null` limpa. */
+    data class HeightSelected(val value: Int?) : MemberEditorIntent
     data class MembershipSelected(val value: AthleteMembershipType) : MemberEditorIntent
     data object OpenBilling : MemberEditorIntent
     data object DismissBilling : MemberEditorIntent

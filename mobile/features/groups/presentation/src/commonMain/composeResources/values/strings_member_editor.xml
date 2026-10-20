@@ -8,8 +8,7 @@
     <string name="member_editor_secondary_position">Também joga de</string>
     <string name="member_editor_none">Nenhuma</string>
     <string name="member_editor_level">Nível</string>
-    <string name="member_editor_height">Altura (cm)</string>
-    <string name="member_editor_height_hint">Opcional</string>
+    <string name="member_editor_height">Altura (opcional)</string>
     <string name="member_editor_side">Lado que joga</string>
     <string name="member_editor_side_right">Direita</string>
     <string name="member_editor_side_left">Esquerda</string>
