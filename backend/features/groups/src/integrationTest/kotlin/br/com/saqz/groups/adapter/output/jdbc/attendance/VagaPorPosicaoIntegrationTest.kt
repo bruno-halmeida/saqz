@@ -250,13 +250,17 @@ class VagaPorPosicaoIntegrationTest {
         val ponta = List(2) { h.atleta() }; ponta.forEach { vou(it, AthletePosition.PONTA) }
         vou(h.atleta(), AthletePosition.PONTA)
         vou(h.atleta(), AthletePosition.CENTRAL)
-        val loads = requireNotNull(h.repo().positionsByGame(h.group)[h.game])
+        val loads = requireNotNull(h.repo().positionsByGame(h.group, setOf(h.game))[h.game])
         assertEquals(
             listOf(AthletePosition.PONTA to listOf(2, 2, 1), AthletePosition.CENTRAL to listOf(2, 1, 0), AthletePosition.LEVANTADOR to listOf(1, 0, 0))
                 .sortedBy { it.first.ordinal },
             loads.map { it.position to listOf(it.slots, it.confirmed, it.waitlisted) },
         )
         assertEquals(1, loads.first { it.position == AthletePosition.CENTRAL }.missing)
+        // Só os jogos pedidos: um id fora da listagem (ou de outro grupo) não entra, e lista vazia nem consulta.
+        assertTrue(h.repo().positionsByGame(h.group, setOf(UUID.randomUUID())).isEmpty())
+        assertTrue(h.repo().positionsByGame(UUID.randomUUID(), setOf(h.game)).isEmpty())
+        assertTrue(h.repo().positionsByGame(h.group, emptySet()).isEmpty())
     }
 
     @Test fun `ajustar o total de um jogo com posicoes e negado, repetir o mesmo total nao`() {

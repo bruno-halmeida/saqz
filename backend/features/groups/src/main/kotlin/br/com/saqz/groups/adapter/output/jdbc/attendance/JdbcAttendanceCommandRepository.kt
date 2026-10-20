@@ -399,8 +399,9 @@ class JdbcAttendanceCommandRepository(
             .list()
             .associateBy(AttendanceRecord::gameId)
 
-    override fun positionsByGame(groupId: UUID): Map<UUID, List<PositionLoad>> =
-        jdbc.sql(POSITION_LOADS_BY_GAME).param("group", groupId).query { rs, _ ->
+    override fun positionsByGame(groupId: UUID, gameIds: Set<UUID>): Map<UUID, List<PositionLoad>> =
+        if (gameIds.isEmpty()) emptyMap()
+        else jdbc.sql(POSITION_LOADS_BY_GAME).param("group", groupId).param("games", gameIds.toList()).query { rs, _ ->
             rs.getObject("game_id", UUID::class.java) to PositionLoad(
                 AthletePosition.valueOf(rs.getString("position")), rs.getInt("slots"),
                 rs.getInt("confirmed"), rs.getInt("waitlisted"),
@@ -669,15 +670,16 @@ class JdbcAttendanceCommandRepository(
             WHERE s.game_id=:game
             GROUP BY s.position,s.slots
         """
-        // As mesmas cargas de POSITION_LOADS, de todos os jogos do grupo numa consulta (a agenda não pagina).
+        // As mesmas cargas de POSITION_LOADS, só dos jogos que a listagem devolve, numa consulta. Parte das vagas por
+        // posição (índice da chave primária): jogo sem posições não tem linha e nunca soma presença.
         const val POSITION_LOADS_BY_GAME = """
             SELECT s.game_id,s.position,s.slots,
                    count(a.member_user_id) FILTER (WHERE a.status='CONFIRMED') AS confirmed,
                    count(a.member_user_id) FILTER (WHERE a.status='WAITLISTED') AS waitlisted
             FROM game_position_slots s
-            JOIN games g ON g.id=s.game_id
+            JOIN games g ON g.id=s.game_id AND g.group_id=:group
             LEFT JOIN game_attendance a ON a.game_id=s.game_id AND a.position=s.position
-            WHERE g.group_id=:group
+            WHERE s.game_id IN (:games)
             GROUP BY s.game_id,s.position,s.slots
         """
         val DETAIL = """

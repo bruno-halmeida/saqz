@@ -77,6 +77,8 @@ class GameControllerTest {
         )
         // Jogo sem posições: o campo não vai (nulo), e o cliente antigo nem o conhece.
         assertNull(listed.getValue(plain.id).positions)
+        // A consulta pede só os jogos que a listagem devolve.
+        assertEquals(setOf(fiveOne.id, plain.id), attendance.positionGameIds)
     }
     @Test fun `athlete draft read is hidden`() { val game=seed(); repository.role=GroupRole.ATHLETE; assertFailsWith<GameNotFoundException>{controller.read(ID,"$group","${game.id}")} }
     @Test fun `malformed resource identifiers are hidden`() { assertFailsWith<GameNotFoundException>{controller.read(ID,"bad","also-bad")} }
@@ -116,7 +118,8 @@ class GameControllerTest {
         override fun find(actorId: UUID, groupId: UUID, gameId: UUID) = AttendanceDetail(AttendanceRecord(gameId, group, actor, AttendanceStatus.WAITLISTED, 4, START, START, 2), 3, 21, 2, 24, 1)
         override fun ownByGame(actorId: UUID, groupId: UUID): Map<UUID, AttendanceRecord> { ownCalls++; lastOwnKey = actorId to groupId; return own }
         var positions: Map<UUID, List<br.com.saqz.groups.domain.attendance.PositionLoad>> = emptyMap()
-        override fun positionsByGame(groupId: UUID) = positions
+        var positionGameIds: Set<UUID>? = null
+        override fun positionsByGame(groupId: UUID, gameIds: Set<UUID>) = positions.also { positionGameIds = gameIds }
     }
     private companion object { val ID=RequestIdentity("subject",emailVerified=true,displayName="Player"); val DATE=LocalDate.of(2026,8,12); val START=Instant.parse("2026-08-12T22:30:00Z") }
 }

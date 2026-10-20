@@ -93,7 +93,7 @@ class GameController(
         return when (val result = listGames.execute(actor, group)) {
             is GameListResult.Success -> {
                 val own = attendance?.ownByGame(actor, group).orEmpty()
-                val positions = attendance?.positionsByGame(group).orEmpty()
+                val positions = attendance?.positionsByGame(group, result.games.map { it.game.id }.toSet()).orEmpty()
                 result.games.map {
                     it.toResponse().copy(
                         ownAttendance = own[it.game.id]?.toEntryResponse(),
