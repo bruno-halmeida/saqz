@@ -123,3 +123,48 @@ Das 9 falhas, **2 são defeitos do app/backend** e as outras 7 são expectativa 
 
 Ficaram **NÃO EXECUTADOS**: V3.9 a V3.13, V4.7 a V4.9, V5, V6.9 a V6.13, V7, V8, V9 e V10 (DEB-112, ainda sem código nos aparelhos naquele momento). Pontos de ambiente: o Uazapi falso de uma sessão anterior ocupava a porta 18443; o Keychain do simulador iOS precisou de `simctl keychain reset`.
 
+
+## Segunda passada
+
+Executor: mesma sessão, brief `BRIEF-roteiro-10-segunda-passada.md`. Commit testado `899954e54` (main com DEB-112 e as correções do toast e do nome do aviso). Mesmos aparelhos e papéis; app devDebug/Debug de `builds.sh` neste commit; backend com bootJar construído às 19:14 deste commit (ver ambiente).
+
+### Ambiente
+
+- `stack.sh reset` / `up` com o mock: a porta 18443 tinha o Uazapi falso da primeira rodada; parei o `node` antes do `up`.
+- **Jar velho:** `stack.sh up` só constrói o bootJar "se faltar", e o jar no worktree era o da primeira rodada (17:58, antes do `reset --hard`). Com ele rodei S1 a S6 e o S6 deu `Atl virou mensalista no QA Vôlei 20/10.` (log em `mock-passada2-jar-velho.jsonl`). Correção de ambiente: apaguei o jar, `reset` + `up` (bootJar novo às 19:14), apps limpos de novo (`pm clear`, `simctl keychain reset` + reinstalar) e **refiz tudo desde o S1**. A tabela abaixo é só da execução com o jar novo.
+- Códigos desta execução: `COD_PUB` = `SGVZ42J5`, `COD_MS` = `D34JZDC3`; grupo `95a67060-8293-48da-83c4-8f24ab1ed3af`.
+
+| # | Resultado | O que apareceu | Evidência |
+| --- | --- | --- | --- |
+| S1 | PASSOU | 7 contas pelo app; `Grupo criado!`; mensalidade nula no começo; ATL e ADM entraram pelo público como `AVULSO`, ADM `ADMIN`; `{"enabled":true}`; `verified_phone` = `0`; V1.4: `8000\|10`. Obs.: logo depois de `Salvar alterações` a tela de Convidar mensalista mostrou por um instante o bloqueio `Defina o valor e o dia da mensalidade do grupo` e em seguida a tela liberada | — |
+| S2 | PASSOU | remover Pessoa C: toast `Pessoa saiu da lista.` com `Desfazer` em 16,668–748 e `Enviar 2 convites` inteiro abaixo (16,776–828), sem sobreposição; `Desfazer` → Pessoa C volta em 3.º lugar, `Enviar 3 convites`; `envios` vazio | 2026-10-20-convite2-S2.png |
+| S3 | PASSOU | remover C, esperar 10 s, tocar onde estava o `Desfazer`: nada acontece, lista com 2, `Enviar 2 convites` inteiro; `envios` vazio | 2026-10-20-convite2-S3.png |
+| S4 | PASSOU | um toque: 2 mensagens (`5511900000004`, `5511900000020`), intervalo 12,9 s; `group_monthly_invitees` = 2 | — |
+| S5 | PASSOU | CV1 entrou (`ATHLETE\|MENSALISTA\|t\|t`); ORG e ADM: `QA Atl3 20/10 entrou no QA Vôlei 20/10 como mensalista.` | — |
+| S6 | PASSOU | ATL `ATHLETE\|MENSALISTA\|t`; central de ORG e ADM: `QA Atl 20/10 virou mensalista no QA Vôlei 20/10.`; `envios` com a mesma frase para `5511900000001` e `5511900000003` | 2026-10-20-convite2-S6.png, -S6-atl.png |
+| S7 | REGISTRADO | CV1 (já membro) abre o convite público `SGVZ42J5`: tela `Cadastro de atleta` / `Você entrou no QA Vôlei 20/10` com o apelido `Atl3` preenchido — igual ao que acontece pelo link de mensalistas | 2026-10-20-convite2-S7.png |
+| V10.1 | PASSOU | `monthly_fee_cents` = `8000`; "Aprovar pedidos para entrar" ligado; CV1 saiu (`Sair do grupo?` → `Sair do grupo`). Obs.: a saída **apagou** a linha de `group_memberships` de CV1 (não ficou `active=f`); CV2–CV4 nunca estiveram no grupo nesta passada | — |
+| V10.2 | PASSOU | CV1–CV4 com o público: `Pedido enviado para o QA Vôlei 20/10` (o pedido sai ao abrir o link, sem botão "Pedir pra entrar"); `group_entry_requests` = `4` | — |
+| V10.3 | FALHOU | o botão do pedido é `Entrar` (`group-members-accept-…`), não `Aceitar`; ao tocar, abre a folha `Aceitar como` com `Avulso, Paga por jogo` marcado e `Mensalista, R$ 80,00 por mês, vence dia 10`, botão `Aceitar` | 2026-10-20-convite2-S8-V10.3.png |
+| V10.4 | PASSOU | folha fechada, 4 pedidos; API como ATL: `403 ACCESS_FORBIDDEN`; contagem `4` | — |
+| V10.5 | PASSOU | Mensalista → `Aceitar`: toast `QA Atl3 20/10 entrou no grupo.`, `Pendentes · 3`; banco `ATHLETE\|MENSALISTA\|t\|t` | — |
+| V10.6 | PASSOU | última notificação de CV1: `Você entrou no QA Vôlei 20/10 como mensalista.` | — |
+| V10.7 | PASSOU | Avulso marcado → `Aceitar`: `QA Atl4 20/10 entrou no grupo.`; `AVULSO` | — |
+| V10.8 | PASSOU | última notificação de CV2: `Você entrou no QA Vôlei 20/10.` | — |
+| V10.9 | PASSOU | folha aberta em CV4, R-SEM-MENSALIDADE, `Mensalista` → `Aceitar`: texto `Defina o valor e o dia da mensalidade do grupo` (`accept-as-fee-required`) na folha; pedido de CV4 = 1; sem membership ativa | 2026-10-20-convite2-S8-V10.9.png |
+| V10.10 | PASSOU | depois de reabrir Membros, `Entrar` em CV4 aceita direto, sem folha: `QA Atl6 20/10 entrou no grupo.`; `AVULSO` | — |
+| V10.11 | PASSOU | R-COM-MENSALIDADE; `POST …/approve` sem corpo como ORG: `200`; CV3 `AVULSO` | — |
+
+**Contagem da segunda passada:** 15 PASSOU, 1 FALHOU (V10.3, só o rótulo `Entrar`), S7 só registrado.
+
+### Achados da segunda passada
+
+- **Botão do pedido de entrada chama-se `Entrar`** — V10.3. Esperado `Aceitar`; a folha que abre está certa.
+- **Quem já é membro cai no cadastro também pelo convite público** — S7. Mesmo comportamento do link de mensalistas (achado 2 da primeira rodada): não é exclusivo do convite de mensalistas.
+- Corrigidos em relação à primeira rodada, com o jar novo: toast acima do botão de enviar (S2/S3) e nome da conta no aviso de "virou mensalista" (S6).
+
+### De ambiente
+
+- `stack.sh up` reaproveita o bootJar existente: depois de `git reset --hard`, o jar antigo continuou servindo até eu apagá-lo. Sem isso o S6 falha com o texto antigo.
+
+Tempo da segunda passada: 19:03 às 19:24 (cerca de 21 minutos, contando o recomeço).
