@@ -106,3 +106,20 @@ Passos em que usei adb/simctl no lugar do mobile-mcp: entrega de links (`am star
 ## Tempo
 
 Das 17:58 (reset do stack) às 18:40: cerca de 42 minutos de execução, mais o tempo de builds rodando em segundo plano.
+
+## Análise da sessão principal (20/10)
+
+Das 9 falhas, **2 são defeitos do app/backend** e as outras 7 são expectativa do roteiro que não bate com o comportamento (já corrigidas no roteiro 10) ou comportamento que já existe no convite público.
+
+| Passo | Classificação | Decisão |
+| --- | --- | --- |
+| V1.15 | **Defeito, grave.** O toast "Desfazer" fica por cima do botão "Enviar N convites"; quando o toast some, o toque cai no botão de baixo e envia o lote pelo WhatsApp | Corrigir antes da 1.0.10 (C1 do brief de correções); retestar na segunda passada |
+| V4.1 | **Defeito menor.** O aviso "virou mensalista" usa o apelido do grupo ("Atl") e os outros dois usam o nome da conta | Corrigir (C2) |
+| V1.12 | Roteiro: o protótipo mantém "Adicionar" desligado | Roteiro ajustado |
+| V1.17 | Roteiro: a tela fica em "Convidar mensalista" com "N convites na fila. Acompanhe em Membros." | Roteiro ajustado; comportamento aceito |
+| V3.1 | Roteiro: conta logada vai direto ao cadastro, também no convite público; a prévia vem pela API (`inviteKind: MONTHLY`, conferido) | Roteiro ajustado |
+| V3.7, V3.8, V4.5 | Quem já é membro e abre o link cai em "Cadastro de atleta". O resgate devolve só JOINED ou PENDING, então o convite público faz o mesmo | Roteiro ajustado; confirmar com C5.3 na segunda passada; melhoria possível, fora desta entrega |
+| V6.7 | Roteiro: a API responde `INVITE_INVALID` (404); o texto "Este link foi substituído" é do app e foi visto em V6.8 | Roteiro ajustado |
+
+Ficaram **NÃO EXECUTADOS**: V3.9 a V3.13, V4.7 a V4.9, V5, V6.9 a V6.13, V7, V8, V9 e V10 (DEB-112, ainda sem código nos aparelhos naquele momento). Pontos de ambiente: o Uazapi falso de uma sessão anterior ocupava a porta 18443; o Keychain do simulador iOS precisou de `simctl keychain reset`.
+
