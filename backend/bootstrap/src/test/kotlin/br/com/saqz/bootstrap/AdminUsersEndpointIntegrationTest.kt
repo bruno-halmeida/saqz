@@ -37,6 +37,7 @@ import java.net.http.HttpResponse
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(AdminUsersEndpointIntegrationTest.AdminUsersTestConfiguration::class)
@@ -61,6 +62,8 @@ class AdminUsersEndpointIntegrationTest {
         assertEquals(USER_ID.toString(), body["items"][0]["userId"].stringValue())
         assertEquals("Bianca Souza", body["items"][0]["displayName"].stringValue())
         assertEquals("ORGANIZADOR", body["items"][0]["plan"].stringValue())
+        assertEquals("TRIAL", body["items"][0]["planSource"].stringValue())
+        assertNotNull(body["items"][0]["planEndsAt"])
     }
 
     @Test
@@ -136,6 +139,8 @@ class AdminUsersEndpointIntegrationTest {
                     email = "bianca@saqz.test",
                     city = "São Paulo",
                     plan = "ORGANIZADOR",
+                    planSource = "TRIAL",
+                    planEndsAt = Instant.parse("2026-11-30T15:00:00Z"),
                     suspended = false,
                     memberships = 1,
                     ownedGroups = 1,

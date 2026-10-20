@@ -32,7 +32,8 @@ class JdbcAdminUserDirectoryRepositoryIntegrationTest {
 
     @BeforeEach
     fun clearData() {
-        execute("TRUNCATE subscriptions, group_memberships, access_groups, access_users CASCADE")
+        courtesyAdmin = null
+        execute("TRUNCATE subscriptions, plan_courtesies, app_store_subscriptions, google_play_subscriptions, organizer_trials, group_memberships, access_groups, access_users CASCADE")
     }
 
     @Test
@@ -91,15 +92,50 @@ class JdbcAdminUserDirectoryRepositoryIntegrationTest {
     }
 
     @Test
-    fun `cancelamento local sem webhook tambem vira FREE e detalhe mostra CANCELED`() {
+    fun `cancelamento local sem webhook ainda da acesso pelo site e detalhe mostra CANCELED`() {
         val cancelado = insertUser("cancel-local", name = "Cancelou Local", email = "cl@saqz.test")
         insertSubscription(cancelado, plan = "TITULAR")
         execute("UPDATE subscriptions SET canceled_at = now() WHERE owner_user_id = '$cancelado'")
 
-        val amadores = repository.list(null, plan = "FREE", status = null, page = 1, size = 10)
-
-        assertEquals(listOf("Cancelou Local"), amadores.items.map { it.displayName })
+        // Segue findEntitlingPlan: status ACTIVE da acesso mesmo com canceled_at.
+        assertEquals("TITULAR", repository.list(null, null, null, 1, 10).items.single().plan)
         assertEquals("CANCELED", repository.find(cancelado)?.subscription?.status)
+    }
+
+    @Test
+    fun `assinatura do site cancelada no periodo pago aparece e atraso congelado vira FREE`() {
+        val noPeriodo = insertUser("no-periodo", name = "No Periodo", email = "np1@saqz.test")
+        val congelado = insertUser("congelado", name = "Congelado", email = "cg@saqz.test")
+        insertSubscription(noPeriodo, plan = "ORGANIZADOR", status = "CANCELED")
+        insertSubscription(congelado, plan = "ORGANIZADOR", status = "PAST_DUE")
+        execute("UPDATE subscriptions SET past_due_since = now() - interval '30 days' WHERE owner_user_id = '$congelado'")
+        execute("UPDATE subscriptions SET current_period_end = now() + interval '5 days' WHERE owner_user_id = '$noPeriodo'")
+
+        assertEquals(listOf("No Periodo"), repository.list(null, "ORGANIZADOR", null, 1, 10).items.map { it.displayName })
+        assertEquals(listOf("Congelado"), repository.list(null, "FREE", null, 1, 10).items.map { it.displayName })
+    }
+
+    @Test
+    fun `plano efetivo com cortesia filtra por plano, nao entra em FREE e a contagem bate`() {
+        val cortesia = insertUser("cortesia", name = "So Cortesia", email = "c@saqz.test")
+        val teste = insertUser("teste", name = "So Teste", email = "t@saqz.test")
+        insertUser("gratis", name = "Gratis", email = "g@saqz.test")
+        val fim = Instant.parse("2099-11-30T15:00:00Z")
+        insertCourtesy(cortesia, plan = "ILIMITADO", endsAt = "'$fim'")
+        execute("INSERT INTO organizer_trials (owner_user_id, started_at, ends_at) VALUES ('$teste', '2099-11-16T15:00:00Z', '$fim')")
+
+        val ilimitado = repository.list(null, "ILIMITADO", null, 1, 10)
+        val free = repository.list(null, "FREE", null, 1, 10)
+        val organizador = repository.list(null, "ORGANIZADOR", null, 1, 10)
+
+        assertEquals(listOf("So Cortesia"), ilimitado.items.map { it.displayName })
+        assertEquals(1, ilimitado.total)
+        assertEquals(Triple("ILIMITADO", "COURTESY", fim), ilimitado.items.single().let { Triple(it.plan, it.planSource, it.planEndsAt) })
+        assertEquals(listOf("Gratis"), free.items.map { it.displayName })
+        assertEquals(1, free.total)
+        assertEquals(Triple("ORGANIZADOR", "TRIAL", fim), organizador.items.single().let { Triple(it.plan, it.planSource, it.planEndsAt) })
+        assertEquals(3, repository.list(null, null, null, 1, 10).total)
+        assertNull(repository.list("Gratis", null, null, 1, 10).items.single().planSource)
     }
 
     @Test
@@ -242,6 +278,16 @@ class JdbcAdminUserDirectoryRepositoryIntegrationTest {
                 "asaas_subscription_id, current_period_end, first_confirmed_at, created_at, updated_at) " +
                 "VALUES ('$ownerId', '$plan', 'MONTHLY', '$status', 'cus-$ownerId', 'sub-$ownerId', " +
                 "'${now.plusSeconds(2_592_000)}', '$now', '$now', '$now')",
+        )
+    }
+
+    private var courtesyAdmin: UUID? = null
+
+    private fun insertCourtesy(ownerId: UUID, plan: String, endsAt: String) {
+        val admin = courtesyAdmin ?: insertUser("admin", name = "Admin", email = "admin@saqz.test", deleted = true).also { courtesyAdmin = it }
+        execute(
+            "INSERT INTO plan_courtesies (id, owner_user_id, plan, ends_at, reason, granted_by) " +
+                "VALUES ('${UUID.randomUUID()}', '$ownerId', '$plan', $endsAt, 'teste', '$admin')",
         )
     }
 

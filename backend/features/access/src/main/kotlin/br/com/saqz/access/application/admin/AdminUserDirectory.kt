@@ -9,6 +9,8 @@ data class AdminUserSummary(
     val email: String?,
     val city: String?,
     val plan: String?,
+    val planSource: String? = null,
+    val planEndsAt: Instant? = null,
     val suspended: Boolean,
     val memberships: Long,
     val ownedGroups: Long,

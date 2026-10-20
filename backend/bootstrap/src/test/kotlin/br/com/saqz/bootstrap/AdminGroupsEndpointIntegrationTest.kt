@@ -29,6 +29,7 @@ import java.net.http.HttpResponse
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(AdminGroupsEndpointIntegrationTest.AdminGroupsTestConfiguration::class)
@@ -52,6 +53,8 @@ class AdminGroupsEndpointIntegrationTest {
         assertEquals(1, body["total"].intValue())
         assertEquals("Volei do CERET", body["items"][0]["name"].stringValue())
         assertEquals("ORGANIZADOR", body["items"][0]["ownerPlan"].stringValue())
+        assertEquals("COURTESY", body["items"][0]["ownerPlanSource"].stringValue())
+        assertNotNull(body["items"][0]["ownerPlanEndsAt"])
         assertEquals(38, body["items"][0]["members"].intValue())
     }
 
@@ -61,6 +64,8 @@ class AdminGroupsEndpointIntegrationTest {
         val body = objectMapper.readTree(ok.body())
 
         assertEquals(200, ok.statusCode())
+        assertEquals("COURTESY", body["ownerPlanSource"].stringValue())
+        assertNotNull(body["ownerPlanEndsAt"])
         assertEquals(1, body["lastGames"].size())
         assertEquals(12, body["lastGames"][0]["confirmed"].intValue())
         assertEquals(404, get("/admin/groups/${UUID.randomUUID()}", token = "admin-token").statusCode())
@@ -88,6 +93,8 @@ class AdminGroupsEndpointIntegrationTest {
                     ownerUserId = OWNER_ID,
                     ownerName = "Camila Rocha",
                     ownerPlan = "ORGANIZADOR",
+                    ownerPlanSource = "COURTESY",
+                    ownerPlanEndsAt = Instant.parse("2026-11-30T15:00:00Z"),
                     members = 38,
                     gamesPlayed = 9,
                     deleted = false,
@@ -108,6 +115,8 @@ class AdminGroupsEndpointIntegrationTest {
                 ownerUserId = OWNER_ID,
                 ownerName = "Camila Rocha",
                 ownerPlan = "ORGANIZADOR",
+                ownerPlanSource = "COURTESY",
+                ownerPlanEndsAt = Instant.parse("2026-11-30T15:00:00Z"),
                 members = 38,
                 gamesPlayed = 9,
                 deletedAt = null,

@@ -24,7 +24,7 @@ class JdbcAdminUserDirectoryRepository(
         val rows = jdbc.sql(
             """
             SELECT u.id, u.display_name, u.email, u.city, u.created_at, u.updated_at, u.suspended_at,
-                   s.plan,
+                   p.plan, p.source AS plan_source, p.ends_at AS plan_ends_at,
                    (SELECT count(*) FROM group_memberships m
                      JOIN access_groups mg ON mg.id = m.group_id AND mg.deleted_at IS NULL
                      WHERE m.user_id = u.id) AS memberships,
@@ -32,14 +32,14 @@ class JdbcAdminUserDirectoryRepository(
                      WHERE g.owner_user_id = u.id AND g.deleted_at IS NULL) AS owned_groups,
                    count(*) OVER () AS total
             FROM access_users u
-            LEFT JOIN subscriptions s ON s.owner_user_id = u.id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL AND (s.status = 'ACTIVE' OR s.first_confirmed_at IS NOT NULL)
+            LEFT JOIN owner_effective_plans p ON p.owner_user_id = u.id
             WHERE u.deleted_at IS NULL
               AND (:query::text IS NULL
                    OR u.display_name ILIKE '%' || :query || '%'
                    OR u.email ILIKE '%' || :query || '%')
               AND (:plan::text IS NULL
-                   OR (:plan = 'FREE' AND s.plan IS NULL)
-                   OR s.plan::text = :plan)
+                   OR (:plan = 'FREE' AND p.plan IS NULL)
+                   OR p.plan::text = :plan)
               AND (:status::text IS NULL
                    OR (:status = 'suspended' AND u.suspended_at IS NOT NULL)
                    OR (:status = 'active' AND u.suspended_at IS NULL))
@@ -60,6 +60,8 @@ class JdbcAdminUserDirectoryRepository(
                         email = rs.getString("email"),
                         city = rs.getString("city"),
                         plan = rs.getString("plan"),
+                        planSource = rs.getString("plan_source"),
+                        planEndsAt = rs.instantOrNull("plan_ends_at"),
                         suspended = rs.getObject("suspended_at") != null,
                         memberships = rs.getLong("memberships"),
                         ownedGroups = rs.getLong("owned_groups"),
@@ -75,14 +77,14 @@ class JdbcAdminUserDirectoryRepository(
             """
             SELECT count(*)
             FROM access_users u
-            LEFT JOIN subscriptions s ON s.owner_user_id = u.id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL AND (s.status = 'ACTIVE' OR s.first_confirmed_at IS NOT NULL)
+            LEFT JOIN owner_effective_plans p ON p.owner_user_id = u.id
             WHERE u.deleted_at IS NULL
               AND (:query::text IS NULL
                    OR u.display_name ILIKE '%' || :query || '%'
                    OR u.email ILIKE '%' || :query || '%')
               AND (:plan::text IS NULL
-                   OR (:plan = 'FREE' AND s.plan IS NULL)
-                   OR s.plan::text = :plan)
+                   OR (:plan = 'FREE' AND p.plan IS NULL)
+                   OR p.plan::text = :plan)
               AND (:status::text IS NULL
                    OR (:status = 'suspended' AND u.suspended_at IS NOT NULL)
                    OR (:status = 'active' AND u.suspended_at IS NULL))

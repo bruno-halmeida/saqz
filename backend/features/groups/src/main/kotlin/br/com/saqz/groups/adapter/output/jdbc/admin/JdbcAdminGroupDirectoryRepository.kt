@@ -23,7 +23,7 @@ class JdbcAdminGroupDirectoryRepository(
         val rows = jdbc.sql(
             """
             SELECT g.id, g.name, g.created_at, g.deleted_at, g.owner_user_id,
-                   u.display_name AS owner_name, s.plan AS owner_plan,
+                   u.display_name AS owner_name, p.plan AS owner_plan, p.source AS owner_plan_source, p.ends_at AS owner_plan_ends_at,
                    (SELECT count(*) FROM group_memberships m WHERE m.group_id = g.id) AS members,
                    (SELECT count(*) FROM games x
                      WHERE x.group_id = g.id AND x.status IN ('PUBLISHED', 'COMPLETED')
@@ -31,7 +31,7 @@ class JdbcAdminGroupDirectoryRepository(
                    count(*) OVER () AS total
             FROM access_groups g
             JOIN access_users u ON u.id = g.owner_user_id
-            LEFT JOIN subscriptions s ON s.owner_user_id = g.owner_user_id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL AND (s.status = 'ACTIVE' OR s.first_confirmed_at IS NOT NULL)
+            LEFT JOIN owner_effective_plans p ON p.owner_user_id = g.owner_user_id
             WHERE (:query::text IS NULL
                    OR g.name ILIKE '%' || :query || '%'
                    OR u.display_name ILIKE '%' || :query || '%')
@@ -56,6 +56,8 @@ class JdbcAdminGroupDirectoryRepository(
                         ownerUserId = rs.getObject("owner_user_id", UUID::class.java),
                         ownerName = rs.getString("owner_name"),
                         ownerPlan = rs.getString("owner_plan"),
+                        ownerPlanSource = rs.getString("owner_plan_source"),
+                        ownerPlanEndsAt = rs.instantOrNull("owner_plan_ends_at"),
                         members = rs.getLong("members"),
                         gamesPlayed = rs.getLong("games_played"),
                         deleted = rs.getObject("deleted_at") != null,
@@ -93,14 +95,14 @@ class JdbcAdminGroupDirectoryRepository(
         val group = jdbc.sql(
             """
             SELECT g.id, g.name, g.time_zone, g.created_at, g.deleted_at, g.owner_user_id,
-                   u.display_name AS owner_name, s.plan AS owner_plan,
+                   u.display_name AS owner_name, p.plan AS owner_plan, p.source AS owner_plan_source, p.ends_at AS owner_plan_ends_at,
                    (SELECT count(*) FROM group_memberships m WHERE m.group_id = g.id) AS members,
                    (SELECT count(*) FROM games x
                      WHERE x.group_id = g.id AND x.status IN ('PUBLISHED', 'COMPLETED')
                        AND x.starts_at < now()) AS games_played
             FROM access_groups g
             JOIN access_users u ON u.id = g.owner_user_id
-            LEFT JOIN subscriptions s ON s.owner_user_id = g.owner_user_id AND s.status <> 'CANCELED' AND s.canceled_at IS NULL AND (s.status = 'ACTIVE' OR s.first_confirmed_at IS NOT NULL)
+            LEFT JOIN owner_effective_plans p ON p.owner_user_id = g.owner_user_id
             WHERE g.id = :id
             """.trimIndent(),
         )
@@ -113,6 +115,8 @@ class JdbcAdminGroupDirectoryRepository(
                     ownerUserId = rs.getObject("owner_user_id", UUID::class.java),
                     ownerName = rs.getString("owner_name"),
                     ownerPlan = rs.getString("owner_plan"),
+                        ownerPlanSource = rs.getString("owner_plan_source"),
+                        ownerPlanEndsAt = rs.instantOrNull("owner_plan_ends_at"),
                     members = rs.getLong("members"),
                     gamesPlayed = rs.getLong("games_played"),
                     deletedAt = rs.instantOrNull("deleted_at"),

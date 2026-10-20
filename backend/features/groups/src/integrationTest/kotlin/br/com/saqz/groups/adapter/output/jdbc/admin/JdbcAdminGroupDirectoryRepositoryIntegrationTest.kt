@@ -33,7 +33,7 @@ class JdbcAdminGroupDirectoryRepositoryIntegrationTest {
 
     @BeforeEach
     fun clearData() {
-        execute("TRUNCATE game_attendance, games, subscriptions, group_memberships, access_groups, access_users CASCADE")
+        execute("TRUNCATE game_attendance, games, subscriptions, plan_courtesies, app_store_subscriptions, google_play_subscriptions, organizer_trials, group_memberships, access_groups, access_users CASCADE")
     }
 
     @Test
@@ -78,14 +78,79 @@ class JdbcAdminGroupDirectoryRepositoryIntegrationTest {
     }
 
     @Test
-    fun `dono com assinatura cancelada localmente tambem fica sem plano`() {
-        val dono = insertUser("cancel-local", name = "Cancelou Local")
-        insertGroup(dono, name = "Grupo Cancelado Local", createdAt = now)
+    fun `assinatura do site cancelada ainda no periodo pago aparece`() {
+        val dono = insertUser("cancelada-no-periodo", name = "Cancelou no Periodo")
+        val grupo = insertGroup(dono, name = "Grupo Periodo", createdAt = now)
         insertSubscription(dono, plan = "ORGANIZADOR")
-        execute("UPDATE subscriptions SET canceled_at = now() WHERE owner_user_id = '$dono'")
+        execute("UPDATE subscriptions SET status = 'CANCELED', current_period_end = now() + interval '5 days' WHERE owner_user_id = '$dono'")
+
+        assertEquals("ORGANIZADOR", repository.list(null, null, 1, 10).items.single().ownerPlan)
+        assertEquals("SITE", repository.find(grupo)?.ownerPlanSource)
+    }
+
+    @Test
+    fun `assinatura do site em atraso ja congelado fica sem plano`() {
+        val dono = insertUser("congelada", name = "Atraso Congelado")
+        insertGroup(dono, name = "Grupo Congelado", createdAt = now)
+        insertSubscription(dono, plan = "ORGANIZADOR")
+        execute("UPDATE subscriptions SET status = 'PAST_DUE', past_due_since = now() - interval '30 days' WHERE owner_user_id = '$dono'")
 
         assertNull(repository.list(null, null, 1, 10).items.single().ownerPlan)
-        assertNull(repository.find(repository.list(null, null, 1, 10).items.single().groupId)?.ownerPlan)
+    }
+
+    @Test
+    fun `plano efetivo traz a origem e o fim da cortesia e do teste`() {
+        val comCortesia = insertUser("cortesia", name = "Com Cortesia")
+        val semPrazo = insertUser("sem-prazo", name = "Cortesia Sem Prazo")
+        val emTeste = insertUser("teste", name = "Em Teste")
+        val grupoA = insertGroup(comCortesia, name = "Grupo A", createdAt = now)
+        val grupoB = insertGroup(semPrazo, name = "Grupo B", createdAt = now)
+        val grupoC = insertGroup(emTeste, name = "Grupo C", createdAt = now)
+        val fim = Instant.parse("2099-11-30T15:00:00Z")
+        insertCourtesy(comCortesia, plan = "ORGANIZADOR", endsAt = "'$fim'")
+        insertCourtesy(semPrazo, plan = "ILIMITADO", endsAt = "NULL")
+        execute(
+            "INSERT INTO organizer_trials (owner_user_id, started_at, ends_at) VALUES " +
+                "('$emTeste', '2099-11-16T15:00:00Z', '2099-11-30T15:00:00Z')",
+        )
+
+        val a = repository.find(grupoA)!!
+        val b = repository.find(grupoB)!!
+        val c = repository.list(null, null, 1, 10).items.single { it.groupId == grupoC }
+
+        assertEquals(Triple("ORGANIZADOR", "COURTESY", fim), Triple(a.ownerPlan, a.ownerPlanSource, a.ownerPlanEndsAt))
+        assertEquals(Triple("ILIMITADO", "COURTESY", null), Triple(b.ownerPlan, b.ownerPlanSource, b.ownerPlanEndsAt))
+        assertEquals(Triple("ORGANIZADOR", "TRIAL", fim), Triple(c.ownerPlan, c.ownerPlanSource, c.ownerPlanEndsAt))
+    }
+
+    @Test
+    fun `site TITULAR com cortesia ILIMITADO vale a cortesia e empate fica com o site`() {
+        val maior = insertUser("maior", name = "Cortesia Maior")
+        val empate = insertUser("empate", name = "Empate")
+        val grupoMaior = insertGroup(maior, name = "Grupo Maior", createdAt = now)
+        val grupoEmpate = insertGroup(empate, name = "Grupo Empate", createdAt = now)
+        insertSubscription(maior, plan = "TITULAR")
+        insertCourtesy(maior, plan = "ILIMITADO", endsAt = "NULL")
+        insertSubscription(empate, plan = "ORGANIZADOR")
+        insertCourtesy(empate, plan = "ORGANIZADOR", endsAt = "NULL")
+
+        assertEquals("ILIMITADO" to "COURTESY", repository.find(grupoMaior)!!.let { it.ownerPlan to it.ownerPlanSource })
+        assertEquals("ORGANIZADOR" to "SITE", repository.find(grupoEmpate)!!.let { it.ownerPlan to it.ownerPlanSource })
+    }
+
+    @Test
+    fun `cortesia revogada ou vencida e dono sem nada ficam sem plano`() {
+        val revogada = insertUser("revogada", name = "Revogada")
+        val vencida = insertUser("vencida", name = "Vencida")
+        insertGroup(revogada, name = "Grupo Revogada", createdAt = now)
+        insertGroup(vencida, name = "Grupo Vencida", createdAt = now)
+        insertCourtesy(revogada, plan = "ILIMITADO", endsAt = "NULL", revoked = true)
+        insertCourtesy(vencida, plan = "ILIMITADO", endsAt = "now() - interval '1 day'")
+
+        repository.list(null, null, 1, 10).items.forEach {
+            assertNull(it.ownerPlan)
+            assertNull(it.ownerPlanSource)
+        }
     }
 
     @Test
@@ -168,6 +233,15 @@ class JdbcAdminGroupDirectoryRepositoryIntegrationTest {
                 "asaas_subscription_id, current_period_end, first_confirmed_at, created_at, updated_at) " +
                 "VALUES ('$ownerId', '$plan', 'MONTHLY', 'ACTIVE', 'cus-$ownerId', 'sub-$ownerId', " +
                 "'${now.plusSeconds(2_592_000)}', now(), now(), now())",
+        )
+    }
+
+    private fun insertCourtesy(ownerId: UUID, plan: String, endsAt: String, revoked: Boolean = false) {
+        val admin = insertUser("admin-${UUID.randomUUID()}", name = "Admin")
+        execute(
+            "INSERT INTO plan_courtesies (id, owner_user_id, plan, ends_at, reason, granted_by, revoked_at, revoked_by) " +
+                "VALUES ('${UUID.randomUUID()}', '$ownerId', '$plan', $endsAt, 'teste', '$admin', " +
+                "${if (revoked) "now()" else "NULL"}, ${if (revoked) "'$admin'" else "NULL"})",
         )
     }
 
