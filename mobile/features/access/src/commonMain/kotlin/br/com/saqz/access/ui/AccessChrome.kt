@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -177,6 +178,11 @@ internal object AccessMetrics {
     const val SUBTITLE_LINE_HEIGHT_RATIO = 1.5f
 }
 
+/** Se há ponteiro apertado agora; quem arrasta de verdade tem, a rolagem automática do foco não. */
+private class PointerState {
+    var pressed = false
+}
+
 /**
  * A coluna que as 11 telas compartilham: fundo branco (não o canvas cinza), a onda atrás,
  * padding lateral de 26, rolagem vertical e `imePadding`. Tocar no vazio ou arrastar fecha o teclado.
@@ -209,10 +215,14 @@ fun AccessScaffold(
     LaunchedEffect(keyboardOpen) {
         if (keyboardOpen) snapshotFlow { scroll.maxValue }.collectLatest { scroll.animateScrollTo(it) }
     }
+    // Só arrasto com o dedo na tela fecha o teclado. Ao focar um campo que o teclado cobriria (telefone do
+    // "Quase lá!"), o Compose rola a coluna para revelá-lo e entrega essa rolagem como `UserInput`, sem
+    // ponteiro nenhum: tratada como arrasto, fechava o teclado e tirava o foco logo depois de abrir (DEB-104).
+    val pointer = remember { PointerState() }
     val dragToDismiss = remember(dismissKeyboard) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput && available.y != 0f) dismissKeyboard()
+                if (source == NestedScrollSource.UserInput && available.y != 0f && pointer.pressed) dismissKeyboard()
                 return Offset.Zero
             }
         }
@@ -221,6 +231,11 @@ fun AccessScaffold(
         modifier = modifier
             .fillMaxSize()
             .background(SaqzTheme.colors.surface)
+            .pointerInput(pointer) {
+                awaitPointerEventScope {
+                    while (true) pointer.pressed = awaitPointerEvent(PointerEventPass.Initial).changes.any { it.pressed }
+                }
+            }
             .nestedScroll(dragToDismiss)
             .pointerInput(dismissKeyboard) { detectTapGestures { dismissKeyboard() } },
     ) {
