@@ -5,12 +5,14 @@ import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteGateway
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupTimeZone
 import br.com.saqz.groups.domain.group.GroupVersionToken
 import br.com.saqz.groups.domain.group.UpdateGroupSettingsCommand
+import br.com.saqz.groups.domain.membership.EntryRequestError
 import br.com.saqz.groups.domain.membership.GroupEntryRequest
 import br.com.saqz.groups.domain.membership.GroupEntryRequestGateway
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
@@ -19,6 +21,9 @@ import br.com.saqz.groups.port.InviteShareImage
 import br.com.saqz.groups.port.NativeInviteClipboardPort
 import br.com.saqz.groups.port.NativeInviteSharePort
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.presentation.entryrequest.MonthlyFeeDefaultUi
+import br.com.saqz.groups.presentation.entryrequest.monthlyFeeDefault
+import br.com.saqz.groups.presentation.entryrequest.sheetFor
 import br.com.saqz.groups.presentation.home.InviteLinkParser
 import br.com.saqz.groups.presentation.setup.takeCodePoints
 import br.com.saqz.groups.resources.invite_share_code_hint
@@ -64,6 +69,7 @@ class GroupInviteViewModel(
     private var groupName = ""
     private var timeZone = GroupTimeZone("")
     private var loadInFlight = false
+    private var feeDefault: MonthlyFeeDefaultUi? = null
 
     init { load() }
 
@@ -74,7 +80,14 @@ class GroupInviteViewModel(
             GroupInviteIntent.ConfirmRotate -> rotate()
             is GroupInviteDeactivateIntent -> handleDeactivate(intent)
             is GroupInviteIntent.ToggleApproval -> toggleApproval(intent.enabled)
-            is GroupInviteIntent.ApproveRequest -> approve(intent.userId)
+            is GroupInviteIntent.ApproveRequest -> accept(intent.userId)
+            is GroupInviteIntent.SelectAcceptAs -> update { current ->
+                current.copy(acceptAs = current.acceptAs?.copy(selected = intent.type, feeRequired = false))
+            }
+            GroupInviteIntent.ConfirmAcceptAs -> state.value.acceptAs?.let { approve(it.requestId, it.selected) }
+            GroupInviteIntent.DismissAcceptAs -> if (state.value.acceptAs?.requestId !in state.value.pendingActionIds) {
+                update { it.copy(acceptAs = null) }
+            }
             is GroupInviteIntent.RequestReject -> update { current ->
                 current.copy(rejectCandidate = current.pendingRequests.firstOrNull { it.userId == intent.userId })
             }
@@ -128,6 +141,7 @@ class GroupInviteViewModel(
             if (!isCurrent(operation, requestGeneration)) return@launch
             groupName = group.group.name
             timeZone = group.group.timeZone
+            feeDefault = group.group.financeDefaults.monthlyFeeDefault()
             versionToken = group.versionToken
             // O código e o link vêm da API, iguais em qualquer aparelho e para qualquer admin: sem cache local.
             val active = metadata.active
@@ -256,23 +270,42 @@ class GroupInviteViewModel(
         }
     }
 
-    private fun approve(userId: String) {
+    /** Sem mensalidade padrão, aceita em um toque como avulso; com ela, abre "Aceitar como" (DEB-112). */
+    private fun accept(userId: String) {
+        if (userId in state.value.pendingActionIds) return
+        val default = feeDefault
+        val request = state.value.pendingRequests.firstOrNull { it.userId == userId }
+        if (default != null && request != null) {
+            update { it.copy(acceptAs = default.sheetFor(userId, request.displayName)) }
+        } else {
+            approve(userId, AthleteMembershipType.AVULSO)
+        }
+    }
+
+    private fun approve(userId: String, type: AthleteMembershipType) {
         if (userId in state.value.pendingActionIds) return
         val operation = GenerationKey(GenerationOperation.Approve, userId)
         val requestGeneration = nextGeneration(operation)
         val name = state.value.pendingRequests.firstOrNull { it.userId == userId }?.displayName.orEmpty()
         update { it.copy(pendingActionIds = it.pendingActionIds + userId, error = null) }
         viewModelScope.launch {
-            when (entryRequestGateway.approve(GroupId(groupId), userId)) {
+            when (val result = entryRequestGateway.approve(GroupId(groupId), userId, type)) {
+                // O padrão sumiu depois de abrir a folha: a folha fica com o aviso e o pedido continua na lista.
                 is SaqzResult.Failure -> if (isCurrent(operation, requestGeneration)) update {
+                    val feeRequired = result.error == EntryRequestError.MonthlyFeeRequired
                     it.copy(
                         pendingActionIds = it.pendingActionIds - userId,
-                        error = GroupInviteError.Operation,
+                        error = if (feeRequired) null else GroupInviteError.Operation,
+                        acceptAs = if (feeRequired) it.acceptAs?.copy(feeRequired = true) else null,
                     )
                 }
                 is SaqzResult.Success -> if (isCurrent(operation, requestGeneration)) {
                     update {
-                        it.copy(pendingActionIds = it.pendingActionIds - userId, toast = GroupInviteToast.RequestApproved(name))
+                        it.copy(
+                            pendingActionIds = it.pendingActionIds - userId,
+                            acceptAs = null,
+                            toast = GroupInviteToast.RequestApproved(name),
+                        )
                     }
                     // Quem entrou aparece em "Quem entrou" na hora, sem recarregar a tela.
                     refreshPeople()

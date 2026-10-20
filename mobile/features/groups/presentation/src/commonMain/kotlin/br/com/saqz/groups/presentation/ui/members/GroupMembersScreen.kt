@@ -27,6 +27,7 @@ import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.members.GroupInviteesIntent
+import br.com.saqz.groups.presentation.ui.entryrequest.AcceptAsSheet
 import br.com.saqz.groups.presentation.members.GroupInviteesState
 import br.com.saqz.groups.presentation.members.GroupMemberAction
 import br.com.saqz.groups.presentation.members.GroupMembersFilter
@@ -173,6 +174,13 @@ fun GroupMembersScreen(
         GroupMemberActionsSheet(selected = state.selected, onIntent = onIntent)
         GroupMemberRemoveConfirmation(member = state.confirmRemove, onIntent = onIntent)
         GroupJoinRequestDeclineConfirmation(request = state.declineCandidate, onIntent = onIntent)
+        AcceptAsSheet(
+            sheet = state.acceptAs,
+            busy = state.acceptAs?.requestId in state.busyRequestIds,
+            onSelect = { onIntent(GroupMembersIntent.SelectAcceptAs(it)) },
+            onConfirm = { onIntent(GroupMembersIntent.ConfirmAcceptAs) },
+            onClose = { onIntent(GroupMembersIntent.DismissAcceptAs) },
+        )
         GroupInviteeActionsSheet(selected = invitees.selected, onIntent = onInviteesIntent)
         GroupInviteesInvalidateConfirmation(open = invitees.confirmInvalidate, onIntent = onInviteesIntent)
         SaqzToast(

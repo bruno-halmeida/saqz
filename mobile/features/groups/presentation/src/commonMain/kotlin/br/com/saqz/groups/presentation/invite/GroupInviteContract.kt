@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.invite
 
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.presentation.entryrequest.AcceptAsUi
 import androidx.compose.runtime.Immutable
 
 @Immutable
@@ -23,6 +25,8 @@ data class GroupInviteState(
     /** Pedido que o gestor está prestes a recusar; != null abre o diálogo de confirmação. */
     val rejectCandidate: PendingEntryRequestUi? = null,
     val pendingActionIds: Set<String> = emptySet(),
+    /** != null abre a folha "Aceitar como" (grupo com mensalidade padrão, DEB-112). */
+    val acceptAs: AcceptAsUi? = null,
     val pendingRequests: List<PendingEntryRequestUi> = emptyList(),
     val recentMembers: List<RecentMemberUi> = emptyList(),
     val isShareSheetVisible: Boolean = false,
@@ -78,6 +82,10 @@ sealed interface GroupInviteIntent {
     data object ConfirmDeactivate : GroupInviteDeactivateIntent
     data class ToggleApproval(val enabled: Boolean) : GroupInviteIntent
     data class ApproveRequest(val userId: String) : GroupInviteIntent
+    /** Folha "Aceitar como": escolher o tipo, confirmar ou fechar sem mudar nada (DEB-112). */
+    data class SelectAcceptAs(val type: AthleteMembershipType) : GroupInviteIntent
+    data object ConfirmAcceptAs : GroupInviteIntent
+    data object DismissAcceptAs : GroupInviteIntent
     /** Abre a confirmação; recusar só age em [RejectRequest], depois do "Recusar" do diálogo. */
     data class RequestReject(val userId: String) : GroupInviteIntent
     data object DismissReject : GroupInviteIntent

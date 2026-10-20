@@ -1,0 +1,9 @@
+<resources>
+    <string name="accept_as_title">Aceitar como</string>
+    <string name="accept_as_avulso">Avulso</string>
+    <string name="accept_as_avulso_hint">Paga por jogo</string>
+    <string name="accept_as_mensalista">Mensalista</string>
+    <string name="accept_as_mensalista_hint">%1$s por mês, vence dia %2$d</string>
+    <string name="accept_as_confirm">Aceitar</string>
+    <string name="accept_as_fee_required">Defina o valor e o dia da mensalidade do grupo</string>
+</resources>

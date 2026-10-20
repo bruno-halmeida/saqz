@@ -1,7 +1,9 @@
 package br.com.saqz.groups.presentation.members
 
 import androidx.compose.runtime.Immutable
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.entryrequest.AcceptAsUi
 
 /** Pílulas do 2k, na ordem do export: "Todos · 26", "Admins · 2", "Pendentes · 2"; "Convidados · N" do CONV-010. */
 enum class GroupMembersFilter { All, Admins, Pending, Invited }
@@ -71,6 +73,8 @@ data class GroupMembersState(
     /** != null abre a confirmação de "Recusar": recusar nunca age no primeiro toque. */
     val declineCandidate: JoinRequestUi? = null,
     val notice: GroupMembersNotice? = null,
+    /** != null abre a folha "Aceitar como" (grupo com mensalidade padrão, DEB-112). */
+    val acceptAs: AcceptAsUi? = null,
     val joinRequests: List<JoinRequestUi> = emptyList(),
     val admins: List<MemberUi> = emptyList(),
     val members: List<MemberUi> = emptyList(),
@@ -161,6 +165,13 @@ sealed interface GroupMembersIntent {
     data class AcceptRequest(val requestId: String) : GroupMembersIntent
 
     data class DeclineRequest(val requestId: String) : GroupMembersIntent
+
+    /** Folha "Aceitar como": escolher o tipo, confirmar ou fechar sem mudar nada (DEB-112). */
+    data class SelectAcceptAs(val type: AthleteMembershipType) : GroupMembersIntent
+
+    data object ConfirmAcceptAs : GroupMembersIntent
+
+    data object DismissAcceptAs : GroupMembersIntent
 
     data object ConfirmDecline : GroupMembersIntent
 

@@ -37,6 +37,7 @@ import br.com.saqz.groups.presentation.invite.JoinedAtUnit
 import br.com.saqz.groups.presentation.invite.InviteStatus
 import br.com.saqz.groups.presentation.invite.PendingEntryRequestUi
 import br.com.saqz.groups.presentation.invite.RecentMemberUi
+import br.com.saqz.groups.presentation.ui.entryrequest.AcceptAsSheet
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_invite_approval_hint
 import br.com.saqz.groups.resources.group_invite_never_expires
@@ -268,6 +269,13 @@ internal fun GroupInviteScreen(
                 )
             },
         ) {}
+        AcceptAsSheet(
+            sheet = state.acceptAs,
+            busy = state.acceptAs?.requestId in state.pendingActionIds,
+            onSelect = { onIntent(GroupInviteIntent.SelectAcceptAs(it)) },
+            onConfirm = { onIntent(GroupInviteIntent.ConfirmAcceptAs) },
+            onClose = { onIntent(GroupInviteIntent.DismissAcceptAs) },
+        )
         SaqzToast(
             visible = state.toast != null,
             onDismiss = { onIntent(GroupInviteIntent.ClearToast) },

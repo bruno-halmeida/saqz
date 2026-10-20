@@ -17,7 +17,12 @@ import br.com.saqz.groups.domain.membership.isExpectedRosterAccessFailure
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.group.GroupTrialAccessPort
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
+import br.com.saqz.groups.domain.membership.EntryRequestError
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.entryrequest.MonthlyFeeDefaultUi
+import br.com.saqz.groups.presentation.entryrequest.monthlyFeeDefault
+import br.com.saqz.groups.presentation.entryrequest.sheetFor
 import br.com.saqz.groups.presentation.moderation.BlockedPeopleRepository
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
@@ -42,6 +47,7 @@ class GroupMembersViewModel(
     private var requests: List<JoinRequestUi> = emptyList()
     private var viewerCanManageAthletes = false
     private var viewerCanManageRoles = false
+    private var feeDefault: MonthlyFeeDefaultUi? = null
     private var actionInFlight = false
     private var loadInFlight = false
 
@@ -76,6 +82,9 @@ class GroupMembersViewModel(
             GroupMembersIntent.DismissSubscriptionRequired -> update { it.copy(subscriptionRequired = false) }
             GroupMembersIntent.DismissActionFailed -> update { it.copy(actionFailed = false, actionDenied = false) }
             is GroupMembersIntent.AcceptRequest,
+            is GroupMembersIntent.SelectAcceptAs,
+            GroupMembersIntent.ConfirmAcceptAs,
+            GroupMembersIntent.DismissAcceptAs,
             is GroupMembersIntent.DeclineRequest,
             GroupMembersIntent.ConfirmDecline,
             GroupMembersIntent.DismissDecline,
@@ -88,6 +97,15 @@ class GroupMembersViewModel(
     private fun handleRequestIntent(intent: GroupMembersIntent) {
         when (intent) {
             is GroupMembersIntent.AcceptRequest -> accept(intent.requestId)
+            is GroupMembersIntent.SelectAcceptAs -> update { current ->
+                current.copy(acceptAs = current.acceptAs?.copy(selected = intent.type, feeRequired = false))
+            }
+            GroupMembersIntent.ConfirmAcceptAs -> state.value.acceptAs?.let { sheet ->
+                requests.firstOrNull { it.id == sheet.requestId }?.let { approve(it, sheet.selected) }
+            }
+            GroupMembersIntent.DismissAcceptAs -> if (state.value.acceptAs?.requestId !in state.value.busyRequestIds) {
+                update { it.copy(acceptAs = null) }
+            }
             is GroupMembersIntent.DeclineRequest -> update { current ->
                 current.copy(declineCandidate = requests.firstOrNull { it.id == intent.requestId })
             }
@@ -122,6 +140,7 @@ class GroupMembersViewModel(
                 is SaqzResult.Success -> result.value.group
             }
             val viewerRole = group.role
+            feeDefault = group.financeDefaults.monthlyFeeDefault()
             val ownProfile = when (val result = athleteGateway.ownProfile()) {
                 is SaqzResult.Failure -> {
                     showFailure(generation, result.error.toUiError(), softRefresh)
@@ -315,13 +334,36 @@ class GroupMembersViewModel(
         }
     }
 
+    /** Sem mensalidade padrão, aceita em um toque como avulso; com ela, abre "Aceitar como" (DEB-112). */
     private fun accept(requestId: String) {
         val request = requests.firstOrNull { it.id == requestId } ?: return
+        if (request.id in state.value.busyRequestIds) return
+        val default = feeDefault
+        if (default != null) {
+            update { it.copy(acceptAs = default.sheetFor(request.id, request.name)) }
+        } else {
+            approve(request, AthleteMembershipType.AVULSO)
+        }
+    }
+
+    private fun approve(request: JoinRequestUi, type: AthleteMembershipType) {
         if (!beginRequestAction(request.id)) return
         viewModelScope.launch {
-            when (val result = entryRequestGateway.approve(GroupId(groupId), request.id)) {
-                is SaqzResult.Failure -> endRequestAction(request.id, failure = result.error.toUiError())
+            when (val result = entryRequestGateway.approve(GroupId(groupId), request.id, type)) {
+                // O padrão sumiu depois de abrir a folha: a folha fica com o aviso e o pedido continua na lista.
+                is SaqzResult.Failure -> if (result.error == EntryRequestError.MonthlyFeeRequired) {
+                    update {
+                        it.copy(
+                            busyRequestIds = it.busyRequestIds - request.id,
+                            acceptAs = it.acceptAs?.copy(feeRequired = true),
+                        )
+                    }
+                } else {
+                    update { it.copy(acceptAs = null) }
+                    endRequestAction(request.id, failure = result.error.toUiError())
+                }
                 is SaqzResult.Success -> {
+                    update { it.copy(acceptAs = null) }
                     // A pessoa entra no elenco na hora; a recarga logo abaixo traz o dado do servidor.
                     roster = roster.filterNot { it.id == request.id } + MemberUi(
                         id = request.id,
