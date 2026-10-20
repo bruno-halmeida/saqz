@@ -51,18 +51,10 @@ internal class GroupScheduleViewModel(
                 it.copy(slotSheet = GroupScheduleState.NEW_SLOT, slotDraft = GroupScheduleState.NEW_SLOT_DRAFT)
             }
             is GroupScheduleIntent.RemoveSlot -> update { it.copy(slots = it.slots - intent.slot) }
-            is GroupScheduleIntent.EditSlot -> state.value.slots.getOrNull(intent.index)?.let { slot ->
-                update { it.copy(slotSheet = intent.index, slotDraft = slot.toDraft()) }
-            }
-            is GroupScheduleIntent.PickDraftDay -> update {
-                it.copy(slotDraft = it.slotDraft.copy(weekdays = setOf(intent.weekday)))
-            }
-            is GroupScheduleIntent.ToggleDraftDay -> update {
-                it.copy(slotDraft = it.slotDraft.withWeekdayToggled(intent.weekday))
-            }
-            is GroupScheduleIntent.PickDraftTime -> update {
-                it.copy(slotDraft = it.slotDraft.copy(hour = intent.hour, minute = intent.minute))
-            }
+            is GroupScheduleIntent.EditSlot,
+            is GroupScheduleIntent.PickDraftDay,
+            is GroupScheduleIntent.ToggleDraftDay,
+            is GroupScheduleIntent.PickDraftTime -> handleDraftIntent(intent)
             GroupScheduleIntent.ConfirmSlot -> confirmSlot()
             GroupScheduleIntent.DismissSlotSheet -> update { it.copy(slotSheet = null) }
             is GroupScheduleIntent.SelectDuration -> changeDuration(intent.minutes)
@@ -72,6 +64,21 @@ internal class GroupScheduleViewModel(
             GroupScheduleIntent.TogglePause -> if (state.value.recurring) update { it.copy(isPaused = !it.isPaused) }
             is GroupScheduleIntent.OpenGame -> emit(GroupScheduleEffect.OpenGame(intent.gameId))
             GroupScheduleIntent.Save -> save()
+        }
+    }
+
+    private fun handleDraftIntent(intent: GroupScheduleIntent) = update { current ->
+        when (intent) {
+            is GroupScheduleIntent.EditSlot -> current.slots.getOrNull(intent.index)?.let {
+                current.copy(slotSheet = intent.index, slotDraft = it.toDraft())
+            } ?: current
+            is GroupScheduleIntent.PickDraftDay ->
+                current.copy(slotDraft = current.slotDraft.copy(weekdays = setOf(intent.weekday)))
+            is GroupScheduleIntent.ToggleDraftDay ->
+                current.copy(slotDraft = current.slotDraft.withWeekdayToggled(intent.weekday))
+            is GroupScheduleIntent.PickDraftTime ->
+                current.copy(slotDraft = current.slotDraft.copy(hour = intent.hour, minute = intent.minute))
+            else -> current
         }
     }
 

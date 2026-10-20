@@ -8,6 +8,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.schedule.GroupScheduleState
+import br.com.saqz.groups.presentation.setup.GroupSlotDraft
 import br.com.saqz.groups.presentation.schedule.UpcomingGameStatus
 import br.com.saqz.groups.presentation.schedule.UpcomingGameUi
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -59,6 +60,30 @@ class GroupScheduleErrorScreenshotTest {
         GroupScheduleScreen(
             state = GroupScheduleState(isLoading = false, loadFailed = true),
             onIntent = {}, onBack = {},
+        )
+    }
+
+    @Test
+    fun slotSheetTwoDays() = capture("group-schedule-sheet-dois-dias") {
+        GroupScheduleScreen(
+            state = previewScheduleState.copy(
+                slotSheet = GroupScheduleState.NEW_SLOT,
+                slotDraft = GroupSlotDraft(setOf(GroupWeekday.TUESDAY, GroupWeekday.THURSDAY), 19, 30),
+            ),
+            onIntent = {},
+            onBack = {},
+        )
+    }
+
+    @Test
+    fun slotSheetEditingOffGridMinute() = capture("group-schedule-sheet-editar-minuto") {
+        GroupScheduleScreen(
+            state = previewScheduleState.copy(
+                slotSheet = 0,
+                slotDraft = GroupSlotDraft(GroupWeekday.TUESDAY, 19, 20),
+            ),
+            onIntent = {},
+            onBack = {},
         )
     }
 
