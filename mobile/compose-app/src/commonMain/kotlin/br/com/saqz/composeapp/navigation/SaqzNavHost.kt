@@ -1315,9 +1315,8 @@ private fun NavBackStack<NavKey>.resetTo(route: NavKey) {
 }
 
 private fun InviteError.toRouteError(): InviteLandingRouteError = when (this) {
-    InviteError.InvalidOrExpired,
-    InviteError.GroupDeleted,
-    -> InviteLandingRouteError.Invalid
+    is InviteError.InvalidOrExpired -> InviteLandingRouteError.Invalid
+    InviteError.GroupDeleted -> InviteLandingRouteError.GroupDeleted
     is InviteError.Expired -> InviteLandingRouteError.Expired(expiredAt)
     is InviteError.RateLimited -> InviteLandingRouteError.RateLimited(retryAfterSeconds)
     InviteError.PlanLimit -> InviteLandingRouteError.PlanLimit

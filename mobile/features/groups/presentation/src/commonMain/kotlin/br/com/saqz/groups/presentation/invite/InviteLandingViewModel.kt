@@ -120,17 +120,18 @@ private fun InvitePreview.toUi(timeZone: TimeZone) = InvitePreviewUi(
 )
 
 private fun InviteError.toUiError(timeZone: TimeZone): InviteLandingError = when (this) {
-    InviteError.InvalidOrExpired -> InviteLandingError.Invalid
+    is InviteError.InvalidOrExpired -> InviteLandingError.Invalid
     is InviteError.Expired -> InviteLandingError.Expired(formatDate(expiredAt, timeZone))
     is InviteError.RateLimited -> InviteLandingError.RateLimited(retryAfterSeconds)
     InviteError.PlanLimit -> InviteLandingError.PlanLimit
     InviteError.GroupNotReceiving -> InviteLandingError.NotReceiving
     is InviteError.DataFailure -> InviteLandingError.Network
-    InviteError.GroupDeleted -> InviteLandingError.Invalid
+    InviteError.GroupDeleted -> InviteLandingError.GroupDeleted
 }
 
 private fun InviteLandingRouteError.toUiError(timeZone: TimeZone): InviteLandingError = when (this) {
     InviteLandingRouteError.Invalid -> InviteLandingError.Invalid
+    InviteLandingRouteError.GroupDeleted -> InviteLandingError.GroupDeleted
     is InviteLandingRouteError.Expired -> InviteLandingError.Expired(formatDate(expiredAt, timeZone))
     is InviteLandingRouteError.RateLimited -> InviteLandingError.RateLimited(retryAfterSeconds)
     InviteLandingRouteError.PlanLimit -> InviteLandingError.PlanLimit

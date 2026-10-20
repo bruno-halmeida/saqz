@@ -147,7 +147,7 @@ class AttendanceLinkViewModel(
                 }
             }
             is SaqzResult.Failure -> show(when (result.error) {
-                InviteError.InvalidOrExpired, is InviteError.Expired, InviteError.GroupDeleted -> AttendanceLinkPhase.Invalid
+                is InviteError.InvalidOrExpired, is InviteError.Expired, InviteError.GroupDeleted -> AttendanceLinkPhase.Invalid
                 InviteError.GroupNotReceiving -> AttendanceLinkPhase.NotReceiving
                 else -> AttendanceLinkPhase.Failed
             })

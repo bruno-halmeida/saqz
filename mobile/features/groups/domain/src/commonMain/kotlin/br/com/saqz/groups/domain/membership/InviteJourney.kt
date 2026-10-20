@@ -41,7 +41,8 @@ data class InviteRedeem(
 )
 
 sealed interface InviteError : SaqzError {
-    data object InvalidOrExpired : InviteError
+    /** [code] é o `code` do backend (`INVITE_INVALID` ou `INVITE_INVALID_OR_EXPIRED`); a tela é a mesma, a medição distingue. */
+    data class InvalidOrExpired(val code: String) : InviteError
     data class Expired(val expiredAt: String) : InviteError
     data object GroupDeleted : InviteError
     data class RateLimited(val retryAfterSeconds: Int?) : InviteError

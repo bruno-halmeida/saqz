@@ -66,7 +66,7 @@ Anotar o código atual como `COD1`.
 | --- | --- | --- | --- | --- | --- | --- |
 | C2.1 | ORG | Convidar → "Trocar código" → na folha, "Cancelar" | Folha `Trocar o código?` com `Quem tem o código ou o link antigo não vai conseguir entrar.`; depois de cancelar, o código continua `COD1` | `short_code` = `COD1`, `rotated_at` nulo | ☐ | ☐ |
 | C2.2 | ORG | "Trocar código" → confirmar | Código novo `COD2` diferente de `COD1` e link novo | `select short_code, rotated_at is not null from group_invites where group_id='$GID'` = `COD2\|t` | ☐ | ☐ |
-| C2.3 | ATL4 | Entregar o link com `COD1` (R-ENTREGAR) | `Convite inválido` e `Peça um novo convite pra quem te convidou.` | `select count(*) from group_memberships where user_id='$(uid atl4)'` = 0 | ☐ | ☐ |
+| C2.3 | ATL4 | Entregar o link com `COD1` (R-ENTREGAR) | `Este link foi substituído` e `Peça um novo ao organizador.` | `select count(*) from group_memberships where user_id='$(uid atl4)'` = 0 | ☐ | ☐ |
 | C2.4 | ATL2 (admin) | Fechar a tela Convidar e abrir de novo | Código `COD2` (o novo) | — | ☐ | ☐ |
 | C2.5 | ATL | Pedir a troca pela API: `api atl POST /api/groups/$GID/invite -d '{}'` | `403`; o código no banco segue `COD2` | `short_code` = `COD2` | ☐ | ☐ |
 
@@ -84,7 +84,7 @@ Convite direto (grupo sem aprovação) para ATL3. A aprovação fica desligada a
 | C5.6 | banco | R-LIMITE-DESLIGAR | — | `select count(*) from subscriptions` = 0 | ☐ | ☐ |
 | C5.7 | banco + ATL4 | R-VENCIDO-LIGAR. ATL4 usa o link com `COD2` | `Não foi possível entrar` e `Este grupo não está recebendo novos atletas agora. Fale com o organizador.` (se aparecer o texto do limite, registrar o literal: a nota pede a mensagem neutra) | `select count(*) from group_memberships where user_id='$(uid atl4)'` = 0 | ☐ | ☐ |
 | C5.8 | banco | R-VENCIDO-DESLIGAR | — | `select ends_at > now() from organizer_trials` = `t` | ☐ | ☐ |
-| C5.9 | ATL4 | Rate limit: em "Tenho um convite", tentar 11 códigos inexistentes e diferentes (`22222222`, `33333333`, `44444444`, `55555555`, `66666666`, `77777777`, `88888888`, `99999999`, `AAAAAAAA`, `BBBBBBBB`, `CCCCCCCC`) | Nos 10 primeiros: `Convite inválido`; no 11º: `Muitas tentativas` e `Aguarde … antes de tentar de novo.` | `select invalid_count from invite_redemption_limits where user_id='$(uid atl4)'` = 10 | ☐ | ☐ |
+| C5.9 | ATL4 | Rate limit: em "Tenho um convite", tentar 11 códigos inexistentes e diferentes (`22222222`, `33333333`, `44444444`, `55555555`, `66666666`, `77777777`, `88888888`, `99999999`, `AAAAAAAA`, `BBBBBBBB`, `CCCCCCCC`) | Nos 10 primeiros: `Este link foi substituído`; no 11º: `Muitas tentativas` e `Aguarde … antes de tentar de novo.` | `select invalid_count from invite_redemption_limits where user_id='$(uid atl4)'` = 10 | ☐ | ☐ |
 | C5.10 | ATL4 | Com o bloqueio ativo, entregar o link **válido** (`COD2`) | Continua `Muitas tentativas` (a espera vale também para o código certo) | ATL4 sem membership | ☐ | ☐ |
 | C5.11 | banco | Liberar: `delete from invite_redemption_limits` | — | contagem 0 | ☐ | ☐ |
 | C5.12 | — | Grupo excluído: coberto em SAI-008 (passo S8.5) | — | — | ☐ | ☐ |
@@ -115,7 +115,7 @@ O pedido de ATL4 (C6.12) segue pendente. A nota diz que o app ainda não tem a a
 | # | Aparelho | Faça | Espere | Banco | iOS | Android |
 | --- | --- | --- | --- | --- | --- | --- |
 | C3.1 | ORG | Convidar → "Desativar convite" → folha `Desativar o convite?` com `Quem tem o código ou o link não vai conseguir entrar.` → "Desativar" (dois toques seguidos) | Um único toast `Convite desativado.`; a tela passa a `Crie um código para convidar a galera` com `O convite não expira. Você pode trocar o código quando quiser.` | `select count(*) from group_invites where group_id='$GID'` = 0; `select count(*) from group_invite_deactivations where group_id='$GID'` = 1 | ☐ | ☐ |
-| C3.2 | ATL4 | Entregar o link com `COD2` (o código que vigorava antes de desativar) | `Convite inválido` e `Peça um novo convite pra quem te convidou.` | ATL4 segue sem membership | ☐ | ☐ |
+| C3.2 | ATL4 | Entregar o link com `COD2` (o código que vigorava antes de desativar) | `Este link foi substituído` e `Peça um novo ao organizador.` | ATL4 segue sem membership | ☐ | ☐ |
 | C3.3 | ORG | Fechar a tela e abrir "Convidar por link" outra vez | Continua `Crie um código para convidar a galera` (reabrir não recria o convite) | `select count(*) from group_invites where group_id='$GID'` = 0 | ☐ | ☐ |
 | C3.4 | ATL2 (admin) | Abrir Convidar | A mesma tela sem convite | — | ☐ | ☐ |
 | C3.5 | ORG | Convidar → "Pedidos para entrar" | O pedido de ATL4 continua na lista | `select count(*) from group_entry_requests` = 1 | ☐ | ☐ |

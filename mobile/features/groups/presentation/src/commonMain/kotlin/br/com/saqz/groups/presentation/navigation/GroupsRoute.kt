@@ -99,6 +99,9 @@ sealed interface InviteLandingRouteError {
     data object Invalid : InviteLandingRouteError
 
     @Serializable
+    data object GroupDeleted : InviteLandingRouteError
+
+    @Serializable
     data class Expired(val expiredAt: String) : InviteLandingRouteError
 
     @Serializable

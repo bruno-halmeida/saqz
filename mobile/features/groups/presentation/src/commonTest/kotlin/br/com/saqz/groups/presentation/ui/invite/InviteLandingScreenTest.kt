@@ -58,7 +58,13 @@ class InviteLandingScreenTest {
     @Test
     fun `all error states have the correct action and plan limit has no queue card`() = runComposeUiTest {
         setScreen(InviteLandingSamples.invalid)
+        onNodeWithText("Este link foi substituído").assertExists()
+        onNodeWithText("Peça um novo ao organizador.").assertExists()
+        onNodeWithText("Pedir novo convite").assertExists()
+
+        setScreen(InviteLandingSamples.groupDeleted)
         onNodeWithText("Convite inválido").assertExists()
+        onNodeWithText("Peça um novo convite pra quem te convidou.").assertExists()
         onNodeWithText("Pedir novo convite").assertExists()
 
         setScreen(InviteLandingSamples.expired)

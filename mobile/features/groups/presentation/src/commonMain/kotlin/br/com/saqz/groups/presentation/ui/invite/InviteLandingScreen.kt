@@ -42,6 +42,8 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.onboarding_athlete_entry
 import br.com.saqz.groups.resources.invite_error_expired_body
 import br.com.saqz.groups.resources.invite_error_expired_title
+import br.com.saqz.groups.resources.invite_error_group_deleted_body
+import br.com.saqz.groups.resources.invite_error_group_deleted_title
 import br.com.saqz.groups.resources.invite_error_invalid_body
 import br.com.saqz.groups.resources.invite_error_invalid_title
 import br.com.saqz.groups.resources.invite_error_new_invite
@@ -395,6 +397,12 @@ private fun InviteErrorScreen(
             primaryLabel = stringResource(Res.string.invite_error_new_invite)
             primaryAction = onRequestNewInvite
         }
+        InviteLandingError.GroupDeleted -> {
+            title = stringResource(Res.string.invite_error_group_deleted_title)
+            body = stringResource(Res.string.invite_error_group_deleted_body)
+            primaryLabel = stringResource(Res.string.invite_error_new_invite)
+            primaryAction = onRequestNewInvite
+        }
         is InviteLandingError.Expired -> {
             title = stringResource(Res.string.invite_error_expired_title)
             body = stringResource(Res.string.invite_error_expired_body, groupName ?: "grupo", error.expiredAt)
@@ -477,6 +485,7 @@ internal object InviteLandingSamples {
     val openPreview = preview.copy(preview = preview.preview!!.copy(entryRequiresApproval = false))
     val requestSent = InviteLandingState(isLoading = false, requestSent = true, preview = preview.preview)
     val invalid = InviteLandingState(isLoading = false, error = InviteLandingError.Invalid)
+    val groupDeleted = InviteLandingState(isLoading = false, error = InviteLandingError.GroupDeleted)
     val expired = InviteLandingState(isLoading = false, error = InviteLandingError.Expired("31/08/2026"), preview = preview.preview)
     val rateLimited = InviteLandingState(isLoading = false, error = InviteLandingError.RateLimited(30), preview = preview.preview)
     val planLimit = InviteLandingState(isLoading = false, error = InviteLandingError.PlanLimit, preview = preview.preview)

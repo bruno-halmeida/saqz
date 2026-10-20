@@ -348,12 +348,12 @@ class AttendanceLinkViewModelTest {
 
     private class InviteFake(
         private val status: InviteRedeemStatus? = null,
-        private val failure: InviteError = InviteError.InvalidOrExpired,
+        private val failure: InviteError = InviteError.InvalidOrExpired("INVITE_INVALID"),
         private val preview: InvitePreview? = null,
     ) : InviteGateway {
         val codes = mutableListOf<InviteCode>()
         override suspend fun preview(code: InviteCode): SaqzResult<InvitePreview, InviteError> =
-            preview?.let { SaqzResult.Success(it) } ?: SaqzResult.Failure(InviteError.InvalidOrExpired)
+            preview?.let { SaqzResult.Success(it) } ?: SaqzResult.Failure(InviteError.InvalidOrExpired("INVITE_INVALID"))
         override suspend fun redeem(code: InviteCode): SaqzResult<InviteRedeem, InviteError> {
             codes += code
             return if (status == null) SaqzResult.Failure(failure)

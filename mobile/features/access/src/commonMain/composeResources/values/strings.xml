@@ -190,7 +190,6 @@
     <string name="invite_expire_title">Expirar convite?</string>
     <string name="invite_expire_body">Novas entradas deixarao de usar este convite.</string>
     <string name="invite_expire_confirm">Confirmar expiracao</string>
-    <string name="invite_invalid">Convite invalido ou expirado</string>
     <string name="invite_rate_limit">Tente novamente em %1$d segundos</string>
     <string name="invite_unavailable">Nao foi possivel atualizar o convite</string>
     <string name="login_terms">Ao continuar, você concorda com os Termos de uso e a Política de privacidade.</string>

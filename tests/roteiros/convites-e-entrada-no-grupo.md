@@ -21,7 +21,7 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Passo | Resultado | iOS | Android |
 | --- | --- | --- | --- |
 | Admin troca o código | Novo código e link; o antigo é inválido | ☐ | ☐ |
-| Quem abre o link antigo | "Convite inválido" | ☐ | ☐ |
+| Quem abre o link antigo | "Este link foi substituído" | ☐ | ☐ |
 | Outro admin em outro aparelho, depois | Vê o código novo | ☐ | ☐ |
 | Atleta | 403 | ☐ | ☐ |
 
@@ -30,7 +30,7 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Passo | Resultado | iOS | Android |
 | --- | --- | --- | --- |
 | Admin desativa | Convite apagado; tela mostra "sem convite ativo" | ☐ | ☐ |
-| Alguém abre o link depois | "Convite inválido" | ☐ | ☐ |
+| Alguém abre o link depois | "Este link foi substituído" | ☐ | ☐ |
 | Admin reabre a tela | Continua desativado | ☐ | ☐ |
 | Admin toca "Gerar código" | Novo código e link ativos | ☐ | ☐ |
 | Pedido de entrada pendente | Continua na lista | ☐ | ☐ |

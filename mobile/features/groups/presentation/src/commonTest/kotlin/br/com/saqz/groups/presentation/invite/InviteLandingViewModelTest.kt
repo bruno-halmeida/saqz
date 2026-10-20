@@ -86,7 +86,7 @@ class InviteLandingViewModelTest {
 
     @Test
     fun `preview invalid never says code invalid and network is retryable`() = runTest {
-        val invalid = viewModel(preview = SaqzResult.Failure(InviteError.InvalidOrExpired))
+        val invalid = viewModel(preview = SaqzResult.Failure(InviteError.InvalidOrExpired("INVITE_INVALID")))
         assertEquals(InviteLandingError.Invalid, invalid.state.value.error)
 
         val network = viewModel(preview = SaqzResult.Failure(InviteError.DataFailure(DataError.Connectivity)))
@@ -149,7 +149,11 @@ class InviteLandingViewModelTest {
     fun `redeem maps each typed error to a distinguishable state`() = runTest {
         assertEquals(
             InviteLandingError.Invalid,
-            viewModel(redeem = SaqzResult.Failure(InviteError.InvalidOrExpired)).redeemError(),
+            viewModel(redeem = SaqzResult.Failure(InviteError.InvalidOrExpired("INVITE_INVALID_OR_EXPIRED"))).redeemError(),
+        )
+        assertEquals(
+            InviteLandingError.GroupDeleted,
+            viewModel(redeem = SaqzResult.Failure(InviteError.GroupDeleted)).redeemError(),
         )
         assertEquals(
             InviteLandingError.Expired("31/08/2026"),

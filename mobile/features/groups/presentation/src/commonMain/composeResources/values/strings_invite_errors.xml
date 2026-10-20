@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="invite_error_invalid_title">Convite inválido</string>
-    <string name="invite_error_invalid_body">Peça um novo convite pra quem te convidou.</string>
+    <string name="invite_error_invalid_title">Este link foi substituído</string>
+    <string name="invite_error_invalid_body">Peça um novo ao organizador.</string>
+    <string name="invite_error_group_deleted_title">Convite inválido</string>
+    <string name="invite_error_group_deleted_body">Peça um novo convite pra quem te convidou.</string>
     <string name="invite_error_expired_title">Este convite venceu</string>
     <string name="invite_error_expired_body">O link do %1$s valeu até %2$s. Peça um novo pra quem te convidou.</string>
     <string name="invite_error_rate_title">Muitas tentativas</string>

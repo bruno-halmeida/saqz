@@ -227,7 +227,7 @@ class GroupInviteCoordinatorTest {
     @Test
     fun `terminal error clears pending invite`() = runTest {
         val fixture = fixture(
-            previewResult = SaqzResult.Failure(InviteError.InvalidOrExpired),
+            previewResult = SaqzResult.Failure(InviteError.InvalidOrExpired("INVITE_INVALID")),
         )
         fixture.local.pending = "invite-terminal"
         val effect = async { fixture.coordinator.effects.first() }
@@ -236,7 +236,7 @@ class GroupInviteCoordinatorTest {
 
         val result = assertIs<GroupInviteEffect.RedeemFailed>(effect.await())
         assertEquals("invite-terminal", result.code)
-        assertEquals(InviteError.InvalidOrExpired, result.error)
+        assertEquals(InviteError.InvalidOrExpired("INVITE_INVALID"), result.error)
         assertTrue(!result.willRetry)
         assertNull(fixture.local.pending)
     }

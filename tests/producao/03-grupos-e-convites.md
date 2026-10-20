@@ -91,7 +91,7 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 
 **Conferir**
 - O grupo some para ORG. Depois de atualizar, some também para ATL e ATL2.
-- O link de convite do grupo passa a dar "Convite inválido".
+- O link de convite do grupo passa a dar "Este link foi substituído" (“Peça um novo ao organizador.”).
 
 ## Convites e entrada
 
@@ -199,7 +199,7 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 
 **Conferir**
 - A tela mostra um código novo e um link novo; o código e o link antigos deixam de funcionar.
-- O link antigo dá "Convite inválido", e quem já é membro continua no grupo.
+- O link antigo dá "Este link foi substituído" (“Peça um novo ao organizador.”), e quem já é membro continua no grupo.
 - Não existe "Desativar link": o convite fica sempre ativo, e a troca do código é o jeito de derrubar o
   que já foi enviado.
 

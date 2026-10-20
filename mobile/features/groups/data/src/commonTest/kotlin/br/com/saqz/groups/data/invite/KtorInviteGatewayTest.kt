@@ -78,7 +78,7 @@ class KtorInviteGatewayTest {
         val error = fixture { problem(404, "INVITE_INVALID") }.gateway
             .preview(InviteCode(INVITE_CODE)).failure()
 
-        assertEquals(InviteError.InvalidOrExpired, error)
+        assertEquals(InviteError.InvalidOrExpired("INVITE_INVALID"), error)
     }
 
     @Test
@@ -118,7 +118,7 @@ class KtorInviteGatewayTest {
     @Test
     fun `redeem maps every typed api error`() = runTest {
         assertEquals(
-            InviteError.InvalidOrExpired,
+            InviteError.InvalidOrExpired("INVITE_INVALID_OR_EXPIRED"),
             fixture { problem(404, "INVITE_INVALID_OR_EXPIRED") }.gateway.redeem(InviteCode(INVITE_CODE)).failure(),
         )
         assertEquals(

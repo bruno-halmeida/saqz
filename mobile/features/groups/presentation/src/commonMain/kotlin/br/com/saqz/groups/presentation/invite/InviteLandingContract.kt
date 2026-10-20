@@ -34,7 +34,9 @@ data class InviteNextGameUi(
 )
 
 sealed interface InviteLandingError {
+    /** Link que não existe mais (substituído por outro, desativado ou nunca existiu). */
     data object Invalid : InviteLandingError
+    data object GroupDeleted : InviteLandingError
     data class Expired(val expiredAt: String) : InviteLandingError
     data class RateLimited(val retryAfterSeconds: Int?) : InviteLandingError
     data object PlanLimit : InviteLandingError

@@ -144,10 +144,10 @@ private fun InviteRedeemTransport.toDomain(): InviteRedeem? {
 }
 
 private fun NetworkError.toInviteError(): InviteError = when (this) {
-    is NetworkError.ApiProblemError -> when (problem.code) {
+    is NetworkError.ApiProblemError -> when (val code = problem.code) {
         "INVITE_INVALID",
         "INVITE_INVALID_OR_EXPIRED",
-        -> InviteError.InvalidOrExpired
+        -> InviteError.InvalidOrExpired(code)
         "INVITE_EXPIRED" -> problem.expiredAt?.let(InviteError::Expired)
             ?: InviteError.DataFailure(DataError.InvalidResponse)
         "INVITE_GROUP_DELETED" -> InviteError.GroupDeleted

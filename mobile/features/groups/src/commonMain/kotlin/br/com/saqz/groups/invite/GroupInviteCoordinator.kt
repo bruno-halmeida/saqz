@@ -355,7 +355,7 @@ class GroupInviteCoordinator(
 }
 
 private fun InviteError.isTerminal(): Boolean = when (this) {
-    InviteError.InvalidOrExpired,
+    is InviteError.InvalidOrExpired,
     is InviteError.Expired,
     InviteError.GroupDeleted,
     InviteError.PlanLimit,
