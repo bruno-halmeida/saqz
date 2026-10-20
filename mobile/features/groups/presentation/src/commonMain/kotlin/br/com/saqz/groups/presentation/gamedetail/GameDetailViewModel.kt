@@ -17,7 +17,9 @@ import br.com.saqz.groups.domain.attendance.AttendanceDetail
 import br.com.saqz.groups.domain.attendance.AttendanceEntry
 import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
+import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
+import br.com.saqz.groups.domain.attendance.PositionSummary
 import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
@@ -160,9 +162,21 @@ class GameDetailViewModel(
      */
     private fun onAttendanceIntent(intent: GameDetailIntent): Boolean {
         when (intent) {
-            is GameDetailIntent.Respond -> respond(intent.intent)
+            is GameDetailIntent.Respond -> onRespond(intent.intent)
+            is GameDetailIntent.SelectPosition -> update {
+                it.copy(positionPicker = it.positionPicker?.takeIf { picker -> !picker.sending && picker.purpose is GamePositionPurpose.Self }
+                    ?.copy(selected = intent.position, failed = false) ?: it.positionPicker)
+            }
+            GameDetailIntent.ConfirmPosition -> confirmPosition()
+            GameDetailIntent.DismissPositionPicker -> if (state.value.positionPicker?.sending != true) {
+                update { it.copy(positionPicker = null) }
+            }
+            is GameDetailIntent.UpdateGuestPosition -> updateGuest { it.copy(position = intent.position) }
+            is GameDetailIntent.SelectPlacePosition -> updateOrganizer { it.copy(placePosition = intent.position, placeFailure = null) }
+            is GameDetailIntent.RequestForceEntry -> requestForceEntry(intent.rowId)
+            is GameDetailIntent.ConfirmForceEntry -> confirmForceEntry(intent.defaultReason)
             GameDetailIntent.OpenGuestSheet -> if (state.value.guest.enabled) {
-                updateGuest { it.copy(sheetOpen = true, name = "", addFailed = false) }
+                updateGuest { it.copy(sheetOpen = true, name = "", addFailed = false, position = state.value.mostFreePosition) }
             }
             is GameDetailIntent.UpdateGuestName -> updateGuest {
                 it.copy(name = intent.value.take(MAX_GUEST_NAME), addFailed = false)
@@ -279,7 +293,7 @@ class GameDetailViewModel(
         get() {
             val writing = cancelling || publishing || savingCapacity || promotingMemberId != null || response.responding
             val interacting = cancelDialogOpen || capacitySheetOpen || guest.sheetOpen || guest.removal != null ||
-                organizer.removal != null || organizer.placeOpen
+                organizer.removal != null || organizer.placeOpen || positionPicker != null
             return writing || interacting || guest.adding || guest.removing || organizer.removing || organizer.placing
         }
 
@@ -329,6 +343,8 @@ class GameDetailViewModel(
                         error = null,
                         header = header.copy(availableSpots = detail.availableSpots),
                         attendance = detail.toAttendance(),
+                        positions = detail.positions.map(PositionSummary::toUi),
+                        positionPicker = null,
                         confirmedRoster = roster.confirmed.map { member ->
                             member.toConfirmed(byId[member.memberId], isAdmin, open, tone)
                         },
@@ -509,6 +525,8 @@ class GameDetailViewModel(
                     val tone = state.value.header?.statusTone
                     update {
                         it.copy(
+                            positions = roster.positions.takeIf { positions -> positions.isNotEmpty() }
+                                ?.map(PositionSummary::toUi) ?: it.positions,
                             confirmedRoster = roster.confirmed.map { member ->
                                 member.toConfirmed(byId[member.memberId], isAdmin, open, tone)
                             },
@@ -537,7 +555,69 @@ class GameDetailViewModel(
      * "Vou"/"Não vou" de quem olha, com a mesma regra do hero da Início e do grupo: o status muda na
      * hora (previsão) e o servidor tem a palavra final. Quem já está na fila só pode sair dela.
      */
-    private fun respond(intent: AttendanceIntent) {
+    /**
+     * "Vou" em jogo com posições abre o seletor (a do perfil vem sugerida); "Não vou", "Sair da lista" e jogo sem
+     * posições respondem direto, como sempre. Quem já está confirmado ou na fila não escolhe de novo (PRES-009).
+     */
+    private fun onRespond(intent: AttendanceIntent) {
+        val current = state.value
+        val entering = intent == AttendanceIntent.Confirm && current.response.status != AttendanceStatus.Confirmed &&
+            current.response.status != AttendanceStatus.Waitlisted
+        if (!entering || !current.hasPositions) {
+            respond(intent)
+            return
+        }
+        if (!current.canRespond(intent) || current.positionPicker != null) return
+        val own = athletes.firstOrNull { it.userId == selfId }?.position
+        val suggested = own?.takeIf { position -> current.positions.any { it.position == position && it.slots > 0 } }
+        update {
+            it.copy(positionPicker = GamePositionPickerUi(GamePositionPurpose.Self, suggested, suggested ?: it.mostFreePosition))
+        }
+    }
+
+    private fun confirmPosition() {
+        val picker = state.value.positionPicker ?: return
+        val selected = picker.selected ?: return
+        if (picker.sending) return
+        when (val purpose = picker.purpose) {
+            GamePositionPurpose.Self -> {
+                update { it.copy(positionPicker = null) }
+                respond(AttendanceIntent.Confirm, selected)
+            }
+            // A entrada forçada confirma por `ConfirmForceEntry`, que leva o motivo padrão da tela.
+            is GamePositionPurpose.Force -> Unit
+        }
+    }
+
+    private fun requestForceEntry(rowId: String) {
+        val current = state.value
+        if (!current.canManageAttendance || current.positionPicker != null || current.organizer.removing) return
+        val person = current.waitlist.firstOrNull { it.id == rowId && it.guest == null } ?: return
+        val position = person.athletePosition ?: return
+        if (current.positions.none { it.position == position && it.full }) return
+        update {
+            it.copy(
+                positionPicker = GamePositionPickerUi(
+                    GamePositionPurpose.Force(person.id, person.name, position),
+                    suggested = null,
+                    selected = position,
+                ),
+            )
+        }
+    }
+
+    private fun confirmForceEntry(defaultReason: String) {
+        val current = state.value
+        val picker = current.positionPicker ?: return
+        val force = picker.purpose as? GamePositionPurpose.Force ?: return
+        if (picker.sending || !current.canManageAttendance) return
+        update { it.copy(positionPicker = picker.copy(sending = true, failed = false)) }
+        sendOverride(force.memberId, AttendanceIntent.Confirm, defaultReason, force.position, force = true) {
+            update { state -> state.copy(positionPicker = state.positionPicker?.copy(sending = false, failed = true)) }
+        }
+    }
+
+    private fun respond(intent: AttendanceIntent, position: AthletePosition? = null) {
         val current = state.value
         val response = current.response
         if (!current.canRespond(intent)) return
@@ -548,7 +628,7 @@ class GameDetailViewModel(
         val loadAtStart = loadGeneration
         val generation = ++responseGeneration
         responseRetry.reset()
-        val optimistic = current.optimisticStatus(intent)
+        val optimistic = current.optimisticStatus(intent, position)
         update {
             it.copy(
                 response = it.response.copy(
@@ -566,7 +646,7 @@ class GameDetailViewModel(
             val result = attendanceGateway.respond(
                 GroupId(groupId),
                 gameId,
-                SelfAttendanceCommand(Uuid.random().toString(), intent),
+                SelfAttendanceCommand(Uuid.random().toString(), intent, position),
             ).onSuccess {
                 SaqzAnalytics.attendanceAnswered("app", intent == AttendanceIntent.Confirm)
                 notifications?.dismissAttendance(gameId)
@@ -615,6 +695,7 @@ class GameDetailViewModel(
         val open = it.header?.confirmationOpen == true
         it.copy(
             attendance = detail.toAttendance(),
+            positions = detail.positions.map(PositionSummary::toUi),
             header = it.header?.copy(availableSpots = detail.availableSpots),
             response = responseUi(it.response.visible, entry, null, it.mensalistaPriority),
             guest = it.guest.withAccess(open, going = entry.status != AttendanceStatus.Declined),
@@ -653,12 +734,15 @@ class GameDetailViewModel(
 
     // Recusar é sempre recusa; quem já está confirmado continua; avulso sob prioridade de mensalista
     // e jogo lotado caem na fila. O servidor confirma (mesma previsão do hero da Início).
-    private fun GameDetailState.optimisticStatus(intent: AttendanceIntent): AttendanceStatus = when {
+    private fun GameDetailState.optimisticStatus(intent: AttendanceIntent, position: AthletePosition? = null): AttendanceStatus = when {
         intent == AttendanceIntent.Decline -> AttendanceStatus.Declined
         response.status == AttendanceStatus.Confirmed -> AttendanceStatus.Confirmed
         !AttendanceRule.entersDirectly(membershipType, mensalistaPriority, promotionMode, !deadlineIsOpen()) ->
             AttendanceStatus.Waitlisted
-        attendance?.let { it.confirmed >= it.capacity } == true -> AttendanceStatus.Waitlisted
+        // Posição cheia = espera daquela posição, mesmo com vaga no jogo (DEB-102).
+        position != null && positions.any { it.position == position && it.full } -> AttendanceStatus.Waitlisted
+        position == null && attendance?.let { it.confirmed >= it.capacity } == true -> AttendanceStatus.Waitlisted
+        position != null && attendance?.let { it.confirmed >= it.capacity } == true && !hasPositions -> AttendanceStatus.Waitlisted
         else -> AttendanceStatus.Confirmed
     }
 
@@ -681,11 +765,14 @@ class GameDetailViewModel(
         )
     }
 
-    private fun AttendanceEntry.queuePosition(roster: AttendanceRoster?): Long? = roster?.waitlisted
-        ?.indexOfFirst { !it.isGuest && it.memberId == memberId }
-        ?.takeIf { it >= 0 }
-        ?.let { it + 1L }
-        ?: waitlistPosition
+    private fun AttendanceEntry.queuePosition(roster: AttendanceRoster?): Long? {
+        val waiting = roster?.waitlisted.orEmpty()
+        val index = waiting.indexOfFirst { !it.isGuest && it.memberId == memberId }
+        // Com posições a vez é a da fila da própria posição, que o servidor já conta (DEB-102).
+        return waiting.getOrNull(index)?.waitlistPosition?.takeIf { positionsOn(roster) } ?: index.takeIf { it >= 0 }?.let { it + 1L } ?: waitlistPosition
+    }
+
+    private fun positionsOn(roster: AttendanceRoster?) = roster?.positions?.isNotEmpty() == true
 
     /**
      * A fila é do servidor: depois de uma lista nova, quem olha fica confirmado ou com a posição dele.
@@ -694,7 +781,12 @@ class GameDetailViewModel(
     private fun GameDetailResponseUi.reconcile(roster: AttendanceRoster, mensalistaPriority: Boolean): GameDetailResponseUi {
         val id = selfId
         if (id == null || status == null || responding) return this
-        val position = roster.waitlisted.indexOfFirst { !it.isGuest && it.memberId == id }
+        val index = roster.waitlisted.indexOfFirst { !it.isGuest && it.memberId == id }
+        val position = if (index >= 0 && roster.positions.isNotEmpty()) {
+            (roster.waitlisted[index].waitlistPosition?.toInt() ?: (index + 1)) - 1
+        } else {
+            index
+        }
         return when {
             roster.confirmed.any { !it.isGuest && it.memberId == id } ->
                 copy(status = AttendanceStatus.Confirmed, waitlistKind = null, waitlistPosition = null)
@@ -833,10 +925,12 @@ class GameDetailViewModel(
         id = rowKey,
         name = displayName,
         isYou = !isGuest && memberId == selfId,
-        position = if (isGuest) null else athlete?.position,
+        // Com posições vale a posição da vaga no jogo; sem elas, a do perfil, como antes.
+        position = position ?: if (isGuest) null else athlete?.position,
         guest = guestRow(isAdmin, open, tone),
         canRemove = canRemoveMember(isAdmin, tone),
         isMensalista = !isGuest && athlete?.membershipType == AthleteMembershipType.MENSALISTA,
+        forced = forced,
     )
 
     private fun AttendanceRosterMember.toWaitlist(
@@ -848,7 +942,7 @@ class GameDetailViewModel(
         id = rowKey,
         name = displayName,
         queuePosition = waitlistPosition,
-        athletePosition = if (isGuest) null else athlete?.position,
+        athletePosition = position ?: if (isGuest) null else athlete?.position,
         isMensalista = !isGuest && athlete?.membershipType == AthleteMembershipType.MENSALISTA,
         guest = guestRow(isAdmin, open, tone),
         canRemove = canRemoveMember(isAdmin, tone),
@@ -903,7 +997,7 @@ class GameDetailViewModel(
 
     private fun submitGuest() {
         val guest = state.value.guest
-        if (!guest.enabled || !guest.canSubmit) return
+        if (!guest.enabled || !guest.canSubmitWith(state.value.hasPositions)) return
         val name = guest.name.trim()
         val loadAtStart = loadGeneration
         updateGuest { it.copy(adding = true, addFailed = false) }
@@ -911,7 +1005,7 @@ class GameDetailViewModel(
             val result = attendanceGateway.addGuest(
                 GroupId(groupId),
                 gameId,
-                AddGuestCommand(Uuid.random().toString(), name),
+                AddGuestCommand(Uuid.random().toString(), name, guest.position.takeIf { state.value.hasPositions }),
             )
             if (loadAtStart != loadGeneration) return@launch
             when (result) {
@@ -1027,7 +1121,11 @@ class GameDetailViewModel(
     private fun selectPlaceCandidate(memberId: String) {
         val organizer = state.value.organizer
         if (organizer.placing || organizer.candidates.none { it.id == memberId }) return
-        updateOrganizer { it.copy(selectedId = memberId, placeFailure = null) }
+        val candidate = organizer.candidates.first { it.id == memberId }
+        val own = candidate.position?.takeIf { position -> state.value.positions.any { it.position == position && it.slots > 0 } }
+        updateOrganizer {
+            it.copy(selectedId = memberId, placeFailure = null, placePosition = own ?: state.value.mostFreePosition)
+        }
     }
 
     private fun confirmPlaceMember(defaultReason: String) {
@@ -1036,9 +1134,13 @@ class GameDetailViewModel(
         if (!current.canManageAttendance || !current.organizer.placeOpen || current.organizer.placing) return
         if (current.placeBlocked) return
         val organizer = current.organizer
+        if (current.hasPositions && organizer.placePosition == null) return
         val custom = organizer.placeReason.trim().takeIf { organizer.placeReasonOpen && it.length >= MIN_OVERRIDE_REASON }
         updateOrganizer { it.copy(placing = true, placeFailure = null) }
-        sendOverride(selected.id, AttendanceIntent.Confirm, custom ?: defaultReason) { failure ->
+        // Posição cheia: o gestor entra acima das vagas dela (DEB-102); a folha avisa antes de confirmar.
+        val position = organizer.placePosition.takeIf { current.hasPositions }
+        val force = position != null && current.positions.any { it.position == position && it.full }
+        sendOverride(selected.id, AttendanceIntent.Confirm, custom ?: defaultReason, position, force) { failure ->
             updateOrganizer { it.copy(placing = false, placeFailure = failure) }
         }
     }
@@ -1051,9 +1153,11 @@ class GameDetailViewModel(
         memberId: String,
         intent: AttendanceIntent,
         reason: String,
+        position: AthletePosition? = null,
+        force: Boolean = false,
         onFailure: (GameOrganizerFailure) -> Unit,
     ) {
-        val key = "$intent:$memberId:$reason"
+        val key = "$intent:$memberId:$reason:$position:$force"
         val requestId = pendingOverride?.takeIf { it.first == key }?.second
             ?: Uuid.random().toString().also { pendingOverride = key to it }
         val loadAtStart = loadGeneration
@@ -1062,7 +1166,7 @@ class GameDetailViewModel(
             val result = attendanceGateway.override(
                 GroupId(groupId),
                 gameId,
-                OverrideAttendanceCommand(requestId, memberId, intent, reason),
+                OverrideAttendanceCommand(requestId, memberId, intent, reason, position, force),
             )
             if (!isCurrent(Operation.Override, generation, loadAtStart)) return@launch
             when (result) {
@@ -1073,7 +1177,9 @@ class GameDetailViewModel(
                         it.copy(
                             attendance = detail,
                             header = it.header?.copy(availableSpots = detail.availableSpots),
+                            positions = result.value.value.detail.positions.map(PositionSummary::toUi),
                             organizer = GameOrganizerUi(),
+                            positionPicker = null,
                         )
                     }
                     refreshRoster(Operation.Override, generation, loadAtStart)
@@ -1093,6 +1199,8 @@ class GameDetailViewModel(
 
     private fun Int.pad(): String = if (this < 10) "0$this" else toString()
 }
+
+private fun PositionSummary.toUi() = GamePositionUi(position, slots, confirmed, missing, waitlisted)
 
 private fun AttendanceError.toUiError(): GroupUiError = when (this) {
     AttendanceError.HiddenResource -> GroupUiError.NotFound

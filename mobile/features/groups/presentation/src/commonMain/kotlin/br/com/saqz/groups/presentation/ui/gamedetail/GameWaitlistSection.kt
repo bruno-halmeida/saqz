@@ -64,6 +64,7 @@ import br.com.saqz.groups.resources.game_waitlist_promote
 import br.com.saqz.groups.resources.game_waitlist_queue_position
 import br.com.saqz.groups.resources.game_waitlist_queue_unknown
 import br.com.saqz.groups.resources.game_waitlist_section
+import br.com.saqz.groups.resources.position_force_action
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -200,7 +201,10 @@ private fun GameWaitlistRow(
                 state.header?.statusTone == GameDetailStatusTone.Published &&
                 state.header?.gameStarted != true &&
                 state.promotionMode == PromotionMode.MANUAL
-            if (canPromote || person.guest?.canRemove == true || person.canRemove) {
+            // DEB-102: posição cheia + gestor = pode forçar a entrada (fica acima das vagas dela).
+            val canForce = state.canManageAttendance && state.header?.gameStarted != true && person.guest == null &&
+                state.positions.any { it.position == person.athletePosition && it.full }
+            if (canPromote || canForce || person.guest?.canRemove == true || person.canRemove) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
                     verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
@@ -214,6 +218,15 @@ private fun GameWaitlistRow(
                             size = SaqzButtonSize.Sm,
                             loading = state.promotingMemberId == person.id,
                             enabled = state.promotingMemberId == null,
+                        )
+                    }
+                    if (canForce) {
+                        SaqzButton(
+                            label = stringResource(Res.string.position_force_action),
+                            onClick = { onIntent(GameDetailIntent.RequestForceEntry(person.id)) },
+                            modifier = Modifier.testTag(GamePositionTags.force(person.id)),
+                            variant = SaqzButtonVariant.Secondary,
+                            size = SaqzButtonSize.Sm,
                         )
                     }
                     person.guest?.let { GameGuestRemoveAction(person.id, it, onIntent) }

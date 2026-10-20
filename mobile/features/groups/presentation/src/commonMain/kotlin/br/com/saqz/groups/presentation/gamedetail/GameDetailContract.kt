@@ -41,7 +41,19 @@ data class GameDetailState(
     val response: GameDetailResponseUi = GameDetailResponseUi(),
     /** "Tirar" e "Colocar alguém no jogo" do gestor (DEB-017). */
     val organizer: GameOrganizerUi = GameOrganizerUi(),
+    /** DEB-102: vagas por posição do jogo; vazio = jogo sem posições (total e uma espera só, como antes). */
+    val positions: List<GamePositionUi> = emptyList(),
+    /** Seletor de posição aberto ("Vou" ou "Forçar entrada"). */
+    val positionPicker: GamePositionPickerUi? = null,
 ) {
+    val hasPositions: Boolean get() = positions.isNotEmpty()
+
+    /** A posição com mais vagas livres (empate pela ordem do enum): a mesma regra que o servidor usa sem escolha. */
+    val mostFreePosition: AthletePosition?
+        get() = positions.filter { it.slots > 0 }
+            .sortedWith(compareByDescending<GamePositionUi> { it.slots - it.confirmed }.thenBy { it.position.ordinal })
+            .firstOrNull()?.position
+
     /** Dono e admins mexem na presença de outra pessoa enquanto o jogo está publicado, inclusive depois do início. */
     val canManageAttendance: Boolean get() = isAdmin && header?.statusTone == GameDetailStatusTone.Published
 
@@ -55,6 +67,37 @@ data class GameDetailState(
     /** Depois do início a espera não anda mais, então com o jogo cheio não adianta colocar ninguém. */
     val placeBlocked: Boolean get() = placeGoesToWaitlist && header?.gameStarted == true
 }
+/** Uma posição do jogo (DEB-102): "2/2 pontas". */
+@Immutable
+data class GamePositionUi(
+    val position: AthletePosition,
+    val slots: Int,
+    val confirmed: Int,
+    val missing: Int,
+    val waitlisted: Int,
+) {
+    val full: Boolean get() = missing <= 0
+}
+
+/** Para quê o seletor de posição está aberto. */
+sealed interface GamePositionPurpose {
+    /** "Vou" de quem olha. */
+    data object Self : GamePositionPurpose
+
+    /** O gestor confirma [memberId] em [position] mesmo com ela cheia. */
+    data class Force(val memberId: String, val name: String, val position: AthletePosition) : GamePositionPurpose
+}
+
+@Immutable
+data class GamePositionPickerUi(
+    val purpose: GamePositionPurpose,
+    /** A do perfil de quem responde, se o jogo tem vaga nela; só uma sugestão. */
+    val suggested: AthletePosition?,
+    val selected: AthletePosition?,
+    val sending: Boolean = false,
+    val failed: Boolean = false,
+)
+
 @Immutable
 data class GameDetailHeaderUi(
     val statusTone: GameDetailStatusTone,
@@ -131,6 +174,8 @@ data class GameDetailConfirmedUi(
     val canRemove: Boolean = false,
     /** Mensalista não tem diária por jogo. */
     val isMensalista: Boolean = false,
+    /** O gestor colocou a pessoa acima das vagas da posição (DEB-102). */
+    val forced: Boolean = false,
 )
 @Immutable
 data class GameDetailWaitlistUi(
@@ -182,6 +227,8 @@ data class GameOrganizerUi(
     /** "Outro motivo" aberto na folha de colocar: o campo de texto aparece. Fechado, vai o motivo padrão. */
     val placeReasonOpen: Boolean = false,
     val placeReason: String = "",
+    /** Posição do candidato em jogo com posições (DEB-102). */
+    val placePosition: AthletePosition? = null,
 ) {
     val selected: GameMemberCandidateUi? get() = candidates.firstOrNull { it.id == selectedId }
 }
@@ -225,11 +272,16 @@ data class GameGuestUi(
     val removal: GameGuestRemovalUi? = null,
     val removing: Boolean = false,
     val removeFailed: Boolean = false,
+    /** Posição escolhida para o convidado em jogo com posições (DEB-102); nula em jogo sem posições. */
+    val position: AthletePosition? = null,
     /** Nome de quem acabou de entrar (`joined = true`) ou sair; a UI mostra o toast e manda `DismissGuestNotice`. */
     val noticeName: String? = null,
     val noticeJoined: Boolean = true,
 ) {
     val canSubmit: Boolean get() = name.trim().length in MIN_NAME..MAX_NAME && !adding
+
+    /** Em jogo com posições o convidado também precisa de uma posição escolhida (DEB-102). */
+    fun canSubmitWith(needsPosition: Boolean): Boolean = canSubmit && (!needsPosition || position != null)
 
     private companion object {
         const val MIN_NAME = 2
@@ -248,6 +300,17 @@ sealed interface GameDetailIntent {
     data object Refresh : GameDetailIntent
     /** "Vou" / "Não vou" (e "Sair da lista", que é um "Não vou"): a resposta de quem olha. */
     data class Respond(val intent: AttendanceIntent) : GameDetailIntent
+
+    /** DEB-102: posição escolhida no seletor do "Vou" (ou da entrada forçada). */
+    data class SelectPosition(val position: AthletePosition) : GameDetailIntent
+    data object ConfirmPosition : GameDetailIntent
+    data object DismissPositionPicker : GameDetailIntent
+    data class UpdateGuestPosition(val position: AthletePosition) : GameDetailIntent
+    data class SelectPlacePosition(val position: AthletePosition) : GameDetailIntent
+
+    /** O gestor confirma uma pessoa da espera numa posição cheia (fica acima das vagas dela). */
+    data class RequestForceEntry(val rowId: String) : GameDetailIntent
+    data class ConfirmForceEntry(val defaultReason: String) : GameDetailIntent
     data object Edit : GameDetailIntent
     data object OpenSettlement : GameDetailIntent
     data object RequestCancel : GameDetailIntent

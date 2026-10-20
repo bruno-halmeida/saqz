@@ -47,6 +47,8 @@ import br.com.saqz.groups.resources.game_place_title
 import br.com.saqz.groups.resources.game_place_waitlist
 import br.com.saqz.groups.resources.game_waitlist_promotion_reason
 import org.jetbrains.compose.resources.stringResource
+import br.com.saqz.groups.resources.position_place_full_note
+import br.com.saqz.groups.resources.position_place_title
 
 internal object GameOrganizerTags {
     const val RemoveSheet = "game-member-remove-sheet"
@@ -189,7 +191,8 @@ internal fun GamePlaceSheet(state: GameDetailState, onIntent: (GameDetailIntent)
                 onClick = { onIntent(GameDetailIntent.ConfirmPlaceMember(reason)) },
                 modifier = Modifier.testTag(GameOrganizerTags.PlaceSubmit),
                 fullWidth = true,
-                enabled = selected != null && !organizer.placing && !state.placeBlocked,
+                enabled = selected != null && !organizer.placing && !state.placeBlocked &&
+                    (!state.hasPositions || organizer.placePosition != null),
                 loading = organizer.placing,
             )
         },
@@ -225,6 +228,25 @@ internal fun GamePlaceSheet(state: GameDetailState, onIntent: (GameDetailIntent)
                         null
                     },
                 )
+            }
+        }
+        // DEB-102: em jogo com posições o gestor escolhe a posição de quem entra; posição cheia entra acima das vagas.
+        if (state.hasPositions && selected != null) {
+            Text(
+                text = stringResource(Res.string.position_place_title),
+                color = SaqzTheme.colors.textPrimary,
+                style = SaqzTheme.typography.label,
+            )
+            GamePositionChoices(
+                positions = state.positions,
+                selected = organizer.placePosition,
+                suggested = selected.position,
+                enabled = !organizer.placing,
+                tagPrefix = "game-place-position",
+                onSelect = { onIntent(GameDetailIntent.SelectPlacePosition(it)) },
+            )
+            if (state.positions.any { it.position == organizer.placePosition && it.full }) {
+                PlaceNote(stringResource(Res.string.position_place_full_note))
             }
         }
         if (organizer.placeReasonOpen) {

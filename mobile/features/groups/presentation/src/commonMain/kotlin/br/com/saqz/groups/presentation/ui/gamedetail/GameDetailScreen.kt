@@ -87,6 +87,8 @@ import br.com.saqz.groups.resources.game_settlement_open
 import br.com.saqz.groups.resources.game_detail_finance_review_action
 import br.com.saqz.groups.resources.game_detail_finance_review_body
 import br.com.saqz.groups.resources.group_details_pending
+import br.com.saqz.groups.presentation.gamedetail.GamePositionUi
+import br.com.saqz.groups.resources.position_forced_tag
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 internal object GameDetailTags {
@@ -138,14 +140,17 @@ internal fun GameDetailScreen(
                         onIntent,
                         gameStarted = state.header?.gameStarted == true,
                     )
-                    state.confirmedRoster.takeIf { it.isNotEmpty() }?.let {
-                        GameDetailConfirmedList(it, state.guest.feeLabel, onIntent)
+                    state.confirmedRoster.takeIf { it.isNotEmpty() || state.hasPositions }?.let {
+                        GameDetailConfirmedList(it, state.positions, state.guest.feeLabel, onIntent)
                     }
                     if (state.canManageAttendance) GamePlaceAction(onIntent)
                     state.waitlist.takeIf { it.isNotEmpty() }?.let { GameWaitlistSection(state, onIntent) }
                     if (state.canReviewFinance) GameFinanceReviewNotice(onIntent)
                     if (state.isAdmin) {
-                        if (state.header?.statusTone == GameDetailStatusTone.Published && state.header?.gameStarted != true) {
+                        // Com posições o total é a soma delas e não se ajusta por aqui (DEB-102).
+                        if (state.header?.statusTone == GameDetailStatusTone.Published && state.header?.gameStarted != true &&
+                            !state.hasPositions
+                        ) {
                             GameWaitlistAdminActions(onIntent = onIntent)
                         }
                         GameDetailAdminActions(
@@ -164,7 +169,8 @@ internal fun GameDetailScreen(
         }
         if (state.cancelDialogOpen) GameDetailCancelSheet(state, onIntent)
         if (state.capacitySheetOpen) GameWaitlistCapacitySheet(state, onIntent)
-        if (state.guest.sheetOpen) GameGuestAddSheet(state.guest, onIntent)
+        if (state.guest.sheetOpen) GameGuestAddSheet(state.guest, onIntent, positions = state.positions)
+        state.positionPicker?.let { GamePositionPickerSheet(state, it, onIntent) }
         state.guest.removal?.let { GameGuestRemoveSheet(state.guest, it, onIntent) }
         state.organizer.removal?.let { GameMemberRemoveSheet(state.organizer, it, state.guest.feeLabel, onIntent) }
         if (state.organizer.placeOpen) GamePlaceSheet(state, onIntent)
@@ -317,6 +323,7 @@ private fun Counter(value: Int, label: String, color: Color, modifier: Modifier 
 @Composable
 private fun GameDetailConfirmedList(
     confirmed: List<GameDetailConfirmedUi>,
+    positions: List<GamePositionUi>,
     feeLabel: String?,
     onIntent: (GameDetailIntent) -> Unit,
 ) {
@@ -325,26 +332,36 @@ private fun GameDetailConfirmedList(
             SaqzSectionHeader(stringResource(Res.string.game_detail_confirmed_section))
         }
         SaqzDivider()
-        confirmed.forEachIndexed { index, person ->
-            if (index > 0) SaqzDivider()
-            SaqzMemberRow(
-                name = if (person.isYou) {
-                    "${person.name} ${stringResource(Res.string.game_detail_you)}"
-                } else {
-                    person.name
-                },
-                avatarName = person.name,
-                modifier = person.guest?.let { Modifier.testTag(GameGuestTags.row(person.id)) } ?: Modifier,
-                meta = person.guest?.metaLabel(feeLabel, confirmed = true) ?: stringResource(person.position.positionResource()),
-                photo = person.guest?.let { { GameGuestAvatar() } },
-                trailing = when {
-                    person.guest != null -> { { GameGuestRemoveAction(person.id, person.guest, onIntent) } }
-                    person.canRemove -> { { GameMemberRemoveAction(person.id, onIntent) } }
-                    else -> null
-                },
-            )
+        if (positions.isEmpty()) {
+            confirmed.forEachIndexed { index, person ->
+                if (index > 0) SaqzDivider()
+                GameConfirmedRow(person, feeLabel, onIntent)
+            }
+        } else {
+            GameConfirmedByPosition(confirmed, positions, feeLabel, onIntent)
         }
     }
+}
+
+@Composable
+internal fun GameConfirmedRow(person: GameDetailConfirmedUi, feeLabel: String?, onIntent: (GameDetailIntent) -> Unit) {
+    val meta = person.guest?.metaLabel(feeLabel, confirmed = true) ?: stringResource(person.position.positionResource())
+    SaqzMemberRow(
+        name = if (person.isYou) {
+            "${person.name} ${stringResource(Res.string.game_detail_you)}"
+        } else {
+            person.name
+        },
+        avatarName = person.name,
+        modifier = person.guest?.let { Modifier.testTag(GameGuestTags.row(person.id)) } ?: Modifier,
+        meta = if (person.forced) "$meta · ${stringResource(Res.string.position_forced_tag)}" else meta,
+        photo = person.guest?.let { { GameGuestAvatar() } },
+        trailing = when {
+            person.guest != null -> { { GameGuestRemoveAction(person.id, person.guest, onIntent) } }
+            person.canRemove -> { { GameMemberRemoveAction(person.id, onIntent) } }
+            else -> null
+        },
+    )
 }
 @Composable
 private fun GameDetailAdminActions(
@@ -485,6 +502,23 @@ internal object GameDetailPreviewData {
         mensalistaPriority = true,
         promotionMode = PromotionMode.MANUAL,
         isAdmin = true,
+    )
+
+    /** DEB-102: jogo de 5 vagas por posição (ponta 2, central 2, levantador 1) com a ponta cheia e uma pessoa esperando nela. */
+    val positionsGame = admin.copy(
+        attendance = GameDetailAttendanceUi(4, 5, 1, 1, 2),
+        positions = listOf(
+            GamePositionUi(AthletePosition.PONTA, 2, 2, 0, 1),
+            GamePositionUi(AthletePosition.CENTRAL, 2, 1, 1, 0),
+            GamePositionUi(AthletePosition.LEVANTADOR, 1, 1, 0, 0),
+        ),
+        confirmedRoster = listOf(
+            GameDetailConfirmedUi("1", "Lucas Prado", true, AthletePosition.LEVANTADOR),
+            GameDetailConfirmedUi("2", "Bia Souza", false, AthletePosition.PONTA, canRemove = true),
+            GameDetailConfirmedUi("4", "Rafa Dias", false, AthletePosition.PONTA, canRemove = true, forced = true),
+            GameDetailConfirmedUi("3", "Thiago Melo", false, AthletePosition.CENTRAL, canRemove = true),
+        ),
+        waitlist = listOf(GameDetailWaitlistUi("wait-2", "Duda Alves", 1, AthletePosition.PONTA, false, canRemove = true)),
     )
 }
 @Preview

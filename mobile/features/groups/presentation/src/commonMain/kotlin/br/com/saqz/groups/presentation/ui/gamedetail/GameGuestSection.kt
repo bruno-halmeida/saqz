@@ -61,6 +61,8 @@ import br.com.saqz.groups.resources.game_guest_submit
 import br.com.saqz.groups.resources.game_guest_submitting
 import br.com.saqz.groups.resources.game_guest_yours
 import br.com.saqz.groups.resources.game_guest_yours_fee
+import br.com.saqz.groups.presentation.gamedetail.GamePositionUi
+import br.com.saqz.groups.resources.position_guest_title
 import org.jetbrains.compose.resources.stringResource
 
 internal object GameGuestTags {
@@ -74,6 +76,7 @@ internal object GameGuestTags {
     const val RemoveConfirm = "game-guest-remove-confirm"
     const val RemoveFailed = "game-guest-remove-failed"
     const val Notice = "game-guest-notice"
+    const val PositionPrefix = "game-guest-position"
 
     fun remove(rowId: String) = "game-guest-remove-$rowId"
     fun row(rowId: String) = "game-guest-row-$rowId"
@@ -165,7 +168,11 @@ internal fun GameGuestRemoveAction(rowId: String, guest: GameGuestRowUi, onInten
 }
 
 @Composable
-internal fun GameGuestAddSheet(guest: GameGuestUi, onIntent: (GameDetailIntent) -> Unit) = SaqzBottomSheet(
+internal fun GameGuestAddSheet(
+    guest: GameGuestUi,
+    onIntent: (GameDetailIntent) -> Unit,
+    positions: List<GamePositionUi> = emptyList(),
+) = SaqzBottomSheet(
     open = true,
     onClose = { onIntent(GameDetailIntent.DismissGuestSheet) },
     modifier = Modifier.testTag(GameGuestTags.Sheet),
@@ -178,7 +185,7 @@ internal fun GameGuestAddSheet(guest: GameGuestUi, onIntent: (GameDetailIntent) 
             onClick = { onIntent(GameDetailIntent.SubmitGuest) },
             modifier = Modifier.testTag(GameGuestTags.Submit),
             fullWidth = true,
-            enabled = guest.canSubmit,
+            enabled = guest.canSubmitWith(positions.isNotEmpty()),
             loading = guest.adding,
         )
     },
@@ -191,6 +198,22 @@ internal fun GameGuestAddSheet(guest: GameGuestUi, onIntent: (GameDetailIntent) 
         enabled = !guest.adding,
         modifier = Modifier.testTag(GameGuestTags.Name),
     )
+    // DEB-102: quem convida escolhe a posição do convidado; entra na espera dela.
+    if (positions.isNotEmpty()) {
+        Text(
+            text = stringResource(Res.string.position_guest_title),
+            color = SaqzTheme.colors.textPrimary,
+            style = SaqzTheme.typography.label,
+        )
+        GamePositionChoices(
+            positions = positions,
+            selected = guest.position,
+            suggested = null,
+            enabled = !guest.adding,
+            tagPrefix = GameGuestTags.PositionPrefix,
+            onSelect = { onIntent(GameDetailIntent.UpdateGuestPosition(it)) },
+        )
+    }
     GuestInfoLine(SaqzIcons.Clock, stringResource(Res.string.game_guest_info_queue))
     guest.feeLabel?.let { GuestInfoLine(SaqzIcons.CreditCard, stringResource(Res.string.game_guest_info_fee, it)) }
     GuestInfoLine(SaqzIcons.Users, stringResource(Res.string.game_guest_info_scope))

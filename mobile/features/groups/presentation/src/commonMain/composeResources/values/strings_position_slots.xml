@@ -21,4 +21,38 @@
     <string name="position_plural_central">centrais</string>
     <string name="position_plural_oposto">opostos</string>
     <string name="position_plural_levantador">levantadores</string>
+
+    <!-- Seletor de posição do "Vou" -->
+    <string name="position_picker_title">Em qual posição você vai jogar?</string>
+    <string name="position_picker_hint">Posição cheia entra na lista de espera dela, mesmo que haja vaga em outra.</string>
+    <string name="position_picker_suggested">Do seu perfil</string>
+    <string name="position_picker_submit">Confirmar presença</string>
+    <string name="position_picker_pick">Escolha uma posição</string>
+    <string name="position_meta_full">%1$d/%2$d · cheia</string>
+    <string name="position_meta_open">%1$d/%2$d · %3$s</string>
+    <string name="position_meta_waiting">%1$s · %2$d na espera</string>
+    <plurals name="position_missing">
+        <item quantity="one">falta %1$d</item>
+        <item quantity="other">faltam %1$d</item>
+    </plurals>
+
+    <!-- Lista de presença agrupada -->
+    <string name="position_group_header">%1$d/%2$d %3$s</string>
+    <string name="position_group_full">completo</string>
+    <string name="position_without_group">Sem posição</string>
+    <string name="position_forced_tag">entrada forçada</string>
+
+    <!-- Convidado e "Colocar alguém no jogo" -->
+    <string name="position_guest_title">Posição do convidado</string>
+    <string name="position_place_title">Posição</string>
+    <string name="position_place_full_note">Essa posição está cheia: a pessoa entra acima das vagas dela.</string>
+
+    <!-- Forçar entrada do gestor -->
+    <string name="position_force_action">Forçar entrada</string>
+    <string name="position_force_title">Forçar a entrada de %1$s?</string>
+    <string name="position_force_body">A posição de %1$s está cheia. A pessoa entra acima das vagas dela e ninguém sobe dessa posição até voltar ao limite.</string>
+    <string name="position_force_confirm">Forçar entrada</string>
+    <string name="position_force_keep">Voltar</string>
+    <string name="position_force_reason">Entrada forçada pelo gestor</string>
+    <string name="position_force_failed">Não foi possível forçar a entrada. Tente de novo.</string>
 </resources>
