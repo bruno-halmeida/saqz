@@ -43,13 +43,14 @@ class GroupsComponentsScreenshotTest {
             slots = listOf(sampleSlot),
             onRecurringChange = {},
             onAddSlot = {},
+            onEditSlot = {},
             onRemoveSlot = {},
         )
     }
 
     @Test
     fun slotPill() = capture("group-slot-pill") {
-        GroupSlotPill(slot = sampleSlot, onRemove = {})
+        GroupSlotPill(slot = sampleSlot, onEdit = {}, onRemove = {})
     }
 
     @Test

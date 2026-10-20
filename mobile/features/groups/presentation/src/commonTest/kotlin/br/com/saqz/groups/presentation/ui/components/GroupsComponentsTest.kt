@@ -27,6 +27,7 @@ class GroupsComponentsTest {
                     slots = emptyList(),
                     onRecurringChange = {},
                     onAddSlot = {},
+                    onEditSlot = {},
                     onRemoveSlot = {},
                 )
             }
@@ -48,6 +49,7 @@ class GroupsComponentsTest {
                         startTime = "19:30",
                         durationMinutes = 120,
                     ),
+                    onEdit = {},
                     onRemove = { removals += 1 },
                 )
             }

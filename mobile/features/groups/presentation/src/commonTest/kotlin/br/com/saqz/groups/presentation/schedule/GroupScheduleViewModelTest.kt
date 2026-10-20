@@ -424,6 +424,64 @@ class GroupScheduleViewModelTest {
     }
 
     @Test
+    fun `editing a slot to a day and time another slot already has leaves only one`() = runTest {
+        val gateway = FakeScheduleGateway(
+            defaultSchedule.copy(
+                slots = listOf(
+                    GroupScheduleSlot(DomainGroupWeekday.TUESDAY, "19:30"),
+                    GroupScheduleSlot(DomainGroupWeekday.FRIDAY, "19:30"),
+                ),
+            ),
+        )
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+        vm.onIntent(GroupScheduleIntent.EditSlot(1))
+        assertEquals(GroupSlotDraft(GroupWeekday.FRIDAY, 19, 30), vm.state.value.slotDraft)
+        vm.onIntent(GroupScheduleIntent.PickDraftDay(GroupWeekday.TUESDAY))
+        vm.onIntent(GroupScheduleIntent.ConfirmSlot)
+        assertEquals(listOf(GroupWeekday.TUESDAY to "19:30"), vm.state.value.slots.map { it.weekday to it.startTime })
+        assertEquals(null, vm.state.value.slotSheet)
+    }
+
+    @Test
+    fun `editing only the second slot keeps the first one in place`() = runTest {
+        val gateway = FakeScheduleGateway(
+            defaultSchedule.copy(
+                slots = listOf(
+                    GroupScheduleSlot(DomainGroupWeekday.TUESDAY, "19:30"),
+                    GroupScheduleSlot(DomainGroupWeekday.FRIDAY, "19:30"),
+                ),
+            ),
+        )
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+        vm.onIntent(GroupScheduleIntent.EditSlot(1))
+        vm.onIntent(GroupScheduleIntent.PickDraftTime(hour = 21, minute = 0))
+        vm.onIntent(GroupScheduleIntent.ConfirmSlot)
+        assertEquals(
+            listOf(GroupWeekday.TUESDAY to "19:30", GroupWeekday.FRIDAY to "21:00"),
+            vm.state.value.slots.map { it.weekday to it.startTime },
+        )
+    }
+
+    @Test
+    fun `closing the sheet of an edited slot changes nothing`() = runTest {
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeScheduleGateway())
+        val before = vm.state.value.slots
+        vm.onIntent(GroupScheduleIntent.EditSlot(0))
+        vm.onIntent(GroupScheduleIntent.PickDraftDay(GroupWeekday.FRIDAY))
+        vm.onIntent(GroupScheduleIntent.DismissSlotSheet)
+        assertEquals(null, vm.state.value.slotSheet)
+        assertEquals(before, vm.state.value.slots)
+    }
+
+    @Test
+    fun `removing a slot does not open the sheet`() = runTest {
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeScheduleGateway())
+        vm.onIntent(GroupScheduleIntent.RemoveSlot(vm.state.value.slots.single()))
+        assertEquals(null, vm.state.value.slotSheet)
+        assertEquals(emptyList(), vm.state.value.slots)
+    }
+
+    @Test
     fun `dismissing the slot sheet leaves the slots untouched`() = runTest {
         val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeScheduleGateway())
         vm.onIntent(GroupScheduleIntent.AddSlot)

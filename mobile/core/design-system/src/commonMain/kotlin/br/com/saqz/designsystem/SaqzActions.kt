@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -109,6 +110,64 @@ fun SaqzDashedAddButton(
 }
 
 private const val DASHED_BORDER_DIVISOR = 4
+
+/**
+ * Pílula de um valor já escolhido (ex.: "Terça · 19h30"), com ícone à esquerda. Tocar no corpo chama [onClick]
+ * (anunciado como [clickDescription]); o X à direita chama [onRemove] sem acionar o corpo. Os dois alvos têm o piso de toque.
+ */
+@Composable
+fun SaqzEditablePill(
+    icon: ImageVector,
+    label: String,
+    clickDescription: String,
+    onClick: () -> Unit,
+    removeDescription: String,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val metrics = SaqzTheme.metrics
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
+    Row(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(SaqzTheme.colors.surfaceSoft, CircleShape),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = metrics.minimumTouchTarget)
+                .clickable(
+                    onClickLabel = clickDescription,
+                    role = Role.Button,
+                    onClick = {
+                        dismissKeyboard()
+                        onClick()
+                    },
+                )
+                .semantics { contentDescription = clickDescription }
+                .padding(start = metrics.blockGap),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(metrics.grid),
+        ) {
+            SaqzIcon(icon, tint = SaqzTheme.colors.primary)
+            Text(
+                text = label,
+                style = SaqzTheme.typography.label,
+                color = SaqzTheme.colors.textPrimary,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        SaqzIconButton(
+            onClick = onRemove,
+            contentDescription = removeDescription,
+            modifier = Modifier.padding(end = metrics.subGrid),
+            size = metrics.sectionGap,
+        ) {
+            SaqzIcon(SaqzIcons.Close, tint = SaqzTheme.colors.textSecondary, size = metrics.sectionGap)
+        }
+    }
+}
 
 /**
  * Ação de texto em azul, no meio de uma frase ou ao lado de uma linha. O rótulo que quebra sai

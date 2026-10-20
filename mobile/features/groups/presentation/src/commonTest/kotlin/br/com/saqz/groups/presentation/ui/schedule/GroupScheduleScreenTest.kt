@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.ui.schedule
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyAncestor
@@ -15,11 +16,15 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.presentation.schedule.GroupScheduleIntent
 import br.com.saqz.groups.presentation.setup.GroupSlotDraft
+import br.com.saqz.groups.presentation.setup.toDraft
 import br.com.saqz.groups.presentation.ui.setup.GroupSlotSheetTags
 import br.com.saqz.groups.presentation.schedule.GroupScheduleState
 import kotlin.test.Test
@@ -145,5 +150,41 @@ class GroupScheduleScreenTest {
         }
 
         onNodeWithTag(GroupScheduleTags.SlotSheetSave).assertIsNotEnabled()
+    }
+
+    private val slotsOfTheGroup = listOf(
+        GroupRegularSlotForm(weekday = GroupWeekday.TUESDAY, startTime = "19:30", durationMinutes = 120),
+        GroupRegularSlotForm(weekday = GroupWeekday.THURSDAY, startTime = "20:00", durationMinutes = 120),
+    )
+
+    @Test
+    fun `tapping a slot pill opens the sheet with its day and time and the remove X does not`() = runComposeUiTest {
+        var state by mutableStateOf(loaded().copy(recurring = true, slots = slotsOfTheGroup))
+        val intents = mutableListOf<GroupScheduleIntent>()
+        setContent {
+            SaqzTheme {
+                GroupScheduleScreen(
+                    state,
+                    {
+                        intents += it
+                        if (it is GroupScheduleIntent.EditSlot) {
+                            state = state.copy(slotSheet = it.index, slotDraft = state.slots[it.index].toDraft())
+                        }
+                    },
+                    {},
+                )
+            }
+        }
+
+        onAllNodesWithContentDescription("Remover dia e horário")[0].performScrollTo().performClick()
+        assertEquals(GroupScheduleIntent.RemoveSlot(slotsOfTheGroup[0]), intents.last())
+        onNodeWithTag(GroupScheduleTags.SlotSheetSave).assertDoesNotExist()
+
+        onNodeWithContentDescription("Editar quinta às 20h00").performScrollTo().performClick()
+        assertEquals(GroupScheduleIntent.EditSlot(1), intents.last())
+        onNodeWithTag(GroupScheduleTags.SlotSheetSave).assertExists()
+        onNodeWithText("Salvar").assertExists()
+        onNodeWithTag(GroupSlotSheetTags.weekday(GroupWeekday.THURSDAY)).assertIsSelected()
+        onNodeWithTag(GroupSlotSheetTags.weekday(GroupWeekday.TUESDAY)).assertIsNotSelected()
     }
 }

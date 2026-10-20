@@ -114,6 +114,7 @@
     <string name="group_setup_recurring_off">Você marca cada jogo quando quiser.</string>
     <string name="group_setup_games_no_hint">Você marca cada jogo depois de criar o grupo.</string>
     <string name="group_setup_add_slot">Adicionar dia e horário</string>
+    <string name="group_slot_edit">Editar %1$s às %2$s</string>
     <string name="group_setup_remove_slot">Remover dia e horário</string>
     <string name="group_setup_delete_action">Excluir grupo</string>
     <string name="group_setup_cancel_action">Cancelar</string>

@@ -301,8 +301,12 @@ internal fun GroupGamesCard(state: GroupSetupState, onIntent: (GroupSetupIntent)
                 verticalArrangement = Arrangement.spacedBy(metrics.grid),
             ) {
                 GroupFieldLabel(stringResource(Res.string.group_setup_slots_label), icon = SaqzIcons.Calendar)
-                state.form.regularSlots.forEach { slot ->
-                    GroupSlotPill(slot = slot, onRemove = { onIntent(GroupSetupIntent.RemoveSlot(slot)) })
+                state.form.regularSlots.forEachIndexed { index, slot ->
+                    GroupSlotPill(
+                        slot = slot,
+                        onEdit = { onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = index))) },
+                        onRemove = { onIntent(GroupSetupIntent.RemoveSlot(slot)) },
+                    )
                 }
                 SaqzDashedAddButton(
                     label = stringResource(

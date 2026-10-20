@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -356,5 +357,18 @@ class GroupSetupScreenTest {
             SaqzTheme { GroupSetupScreen(monthlyState(policy = null, rosterHasMensalista = true), {}, {}) }
         }
         onNodeWithTag(GroupSetupTags.MonthlyLateJoinPolicy).assertDoesNotExist()
+    }
+
+    @Test
+    fun tappingASlotPillSendsTheEditAndTheRemoveXSendsOnlyTheRemoval() = runComposeUiTest {
+        val received = mutableListOf<GroupSetupIntent>()
+        val state = GroupSetupState(mode = GroupSetupMode.Create, form = PreviewCourtForm, recurring = true)
+        setContent { SaqzTheme { GroupSetupScreen(state, { received += it }, {}) } }
+
+        onAllNodesWithContentDescription("Remover dia e horário")[0].performScrollTo().performClick()
+        assertEquals(listOf<GroupSetupIntent>(GroupSetupIntent.RemoveSlot(PreviewCourtForm.regularSlots[0])), received)
+
+        onNodeWithContentDescription("Editar terça às 19h30").performScrollTo().performClick()
+        assertEquals(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = 0)), received.last())
     }
 }

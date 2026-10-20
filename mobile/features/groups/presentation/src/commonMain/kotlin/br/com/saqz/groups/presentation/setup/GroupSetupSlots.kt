@@ -22,8 +22,9 @@ internal fun GroupSetupState.withSlotWeekdayToggled(weekday: GroupWeekday): Grou
 
 /**
  * Confirma a folha de dias e horário sobre a lista de horários: horário novo vira um por dia marcado, sem repetir dia e
- * hora que o grupo já tem; horário em edição ([index] válido) troca o que estava no índice. `null` quando nenhum dia
- * está marcado. Compartilhado entre criar/editar grupo e Jogos e horários.
+ * hora que o grupo já tem; horário em edição ([index] válido) troca o que estava no índice, ou só some se o novo dia e
+ * hora já existem em outro horário. `null` quando nenhum dia está marcado. Compartilhado entre criar/editar grupo e
+ * Jogos e horários.
  */
 internal fun List<GroupRegularSlotForm>.withSlotConfirmed(
     draft: GroupSlotDraft,
@@ -38,7 +39,11 @@ internal fun List<GroupRegularSlotForm>.withSlotConfirmed(
     return if (index == null || index !in indices) {
         this + days.map(::slotOf).filter { new -> none { it.weekday == new.weekday && it.startTime == new.startTime } }
     } else {
-        toMutableList().also { it[index] = slotOf(days.first()) }
+        val edited = slotOf(days.first())
+        val duplicate = withIndex().any { (i, other) ->
+            i != index && other.weekday == edited.weekday && other.startTime == edited.startTime
+        }
+        if (duplicate) filterIndexed { i, _ -> i != index } else toMutableList().also { it[index] = edited }
     }
 }
 

@@ -598,6 +598,53 @@ class GroupSetupViewModelTest {
     }
 
     @Test
+    fun `editar um horario troca so aquele e nao cria outro`() = runTest(mainDispatcher) {
+        val tuesday = GroupRegularSlotForm(weekday = GroupWeekday.TUESDAY, startTime = "19:30", durationMinutes = 120)
+        val friday = GroupRegularSlotForm(weekday = GroupWeekday.FRIDAY, startTime = "20:00", durationMinutes = 120)
+        val viewModel = viewModel(form = completeForm.copy(regularSlots = listOf(tuesday, friday)))
+
+        viewModel.onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = 1)))
+        assertEquals(GroupSlotDraft(GroupWeekday.FRIDAY, 20, 0), viewModel.state.value.slotDraft)
+        viewModel.onIntent(GroupSetupIntent.PickSlotWeekday(GroupWeekday.SATURDAY))
+        viewModel.onIntent(GroupSetupIntent.ConfirmSlot)
+        runCurrent()
+
+        assertEquals(
+            listOf(GroupWeekday.TUESDAY to "19:30", GroupWeekday.SATURDAY to "20:00"),
+            viewModel.state.value.form.regularSlots.map { it.weekday to it.startTime },
+        )
+        assertNull(viewModel.state.value.sheet)
+    }
+
+    @Test
+    fun `editar para um dia e hora que ja existem deixa um so`() = runTest(mainDispatcher) {
+        val tuesday = GroupRegularSlotForm(weekday = GroupWeekday.TUESDAY, startTime = "19:30", durationMinutes = 120)
+        val friday = GroupRegularSlotForm(weekday = GroupWeekday.FRIDAY, startTime = "19:30", durationMinutes = 120)
+        val viewModel = viewModel(form = completeForm.copy(regularSlots = listOf(tuesday, friday)))
+
+        viewModel.onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = 1)))
+        viewModel.onIntent(GroupSetupIntent.PickSlotWeekday(GroupWeekday.TUESDAY))
+        viewModel.onIntent(GroupSetupIntent.ConfirmSlot)
+        runCurrent()
+
+        assertEquals(listOf(tuesday), viewModel.state.value.form.regularSlots)
+    }
+
+    @Test
+    fun `fechar a folha de um horario sem salvar nao muda nada`() = runTest(mainDispatcher) {
+        val viewModel = viewModel()
+        val before = viewModel.state.value.form.regularSlots
+
+        viewModel.onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = 0)))
+        viewModel.onIntent(GroupSetupIntent.PickSlotWeekday(GroupWeekday.SATURDAY))
+        viewModel.onIntent(GroupSetupIntent.CloseSheet)
+        runCurrent()
+
+        assertNull(viewModel.state.value.sheet)
+        assertEquals(before, viewModel.state.value.form.regularSlots)
+    }
+
+    @Test
     fun `escolher modalidade ou categoria aplica e fecha a folha`() = runTest(mainDispatcher) {
         val viewModel = viewModel()
 

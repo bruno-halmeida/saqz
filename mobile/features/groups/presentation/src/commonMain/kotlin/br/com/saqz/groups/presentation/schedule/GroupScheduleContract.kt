@@ -15,7 +15,7 @@ import br.com.saqz.groups.presentation.setup.GroupSlotDraft
  *
  * Convenção do `slotSheet`: `null` é sheet fechado; [NEW_SLOT] (-1) é o slot que ainda
  * não existe na lista. Índice >= 0 edita o horário que está nessa posição da lista
- * ([GroupScheduleIntent.EditSlot]); a pílula ainda não oferece esse toque, então a tela não produz esse valor hoje.
+ * ([GroupScheduleIntent.EditSlot]); o toque na pílula produz esse valor.
  *
  * O contrato inteiro é `internal`; só o Root atravessa a fronteira pública.
  */

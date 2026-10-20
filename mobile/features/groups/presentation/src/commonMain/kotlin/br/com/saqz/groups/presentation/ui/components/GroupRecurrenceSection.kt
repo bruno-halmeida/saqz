@@ -28,6 +28,7 @@ internal fun GroupRecurrenceSection(
     slots: List<GroupRegularSlotForm>,
     onRecurringChange: (Boolean) -> Unit,
     onAddSlot: () -> Unit,
+    onEditSlot: (Int) -> Unit,
     onRemoveSlot: (GroupRegularSlotForm) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -56,8 +57,8 @@ internal fun GroupRecurrenceSection(
             )
         }
         if (recurring) {
-            slots.forEach { slot ->
-                GroupSlotPill(slot = slot, onRemove = { onRemoveSlot(slot) })
+            slots.forEachIndexed { index, slot ->
+                GroupSlotPill(slot = slot, onEdit = { onEditSlot(index) }, onRemove = { onRemoveSlot(slot) })
             }
             SaqzDashedAddButton(label = stringResource(Res.string.group_setup_add_slot), onClick = onAddSlot)
         } else {
@@ -84,6 +85,7 @@ private fun GroupRecurrenceSectionPreview() = SaqzTheme {
         ),
         onRecurringChange = {},
         onAddSlot = {},
+        onEditSlot = {},
         onRemoveSlot = {},
         modifier = Modifier.padding(SaqzTheme.metrics.horizontalPadding),
     )

@@ -103,6 +103,7 @@ internal fun GroupScheduleScreen(
                             slots = state.slots,
                             onRecurringChange = { onIntent(GroupScheduleIntent.ToggleRecurring(it)) },
                             onAddSlot = { onIntent(GroupScheduleIntent.AddSlot) },
+                            onEditSlot = { onIntent(GroupScheduleIntent.EditSlot(it)) },
                             onRemoveSlot = { onIntent(GroupScheduleIntent.RemoveSlot(it)) },
                         )
                     }
