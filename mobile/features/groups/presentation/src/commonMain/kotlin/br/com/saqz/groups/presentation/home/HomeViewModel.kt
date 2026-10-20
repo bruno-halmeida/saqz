@@ -380,7 +380,27 @@ class HomeViewModel(
         emit(HomeEffect.AcceptInviteCode(code))
     }
 
+    /**
+     * "Vou" no cartão do próximo jogo. Jogo com vagas por posição (DEB-102) pede a escolha da posição, e o seletor mora no
+     * detalhe do jogo: lê a presença antes e, havendo posições, abre o jogo em vez de responder. Sem posições, ou quando a
+     * leitura falha, responde direto como sempre (o servidor escolhe pelo perfil).
+     */
     private fun respond(intent: AttendanceIntent) {
+        val current = state.value
+        val context = responseContext(current, intent) ?: return
+        val entering = intent == AttendanceIntent.Confirm && context.game.ownAttendance?.status != AttendanceStatus.Confirmed
+        if (!entering) {
+            sendResponse(intent)
+            return
+        }
+        viewModelScope.launch {
+            val positions = (attendanceGateway.read(GroupId(context.game.groupId.value), context.game.gameId) as? SaqzResult.Success)
+                ?.value?.hasPositions == true
+            if (positions) emit(HomeEffect.OpenGame(context.game.groupId.value, context.game.gameId)) else sendResponse(intent)
+        }
+    }
+
+    private fun sendResponse(intent: AttendanceIntent) {
         val current = state.value
         val context = responseContext(current, intent) ?: return
         val game = context.game

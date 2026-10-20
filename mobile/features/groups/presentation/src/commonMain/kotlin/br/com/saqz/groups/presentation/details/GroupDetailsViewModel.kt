@@ -237,7 +237,7 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.OpenChat -> if (br.com.saqz.domain.StoreLaunchPolicy.chat) {
                 emit(GroupDetailsEffect.OpenThread(groupId, notices = false))
             }
-            is GroupDetailsIntent.Respond -> respond(intent.intent)
+            is GroupDetailsIntent.Respond -> respondOrPickPosition(intent.intent)
             is GroupDetailsIntent.OpenAgendaGame -> emit(GroupDetailsEffect.OpenGame(groupId, intent.gameId))
             is GroupDetailsIntent.OpenSettlement -> emit(GroupDetailsEffect.OpenSettlement(groupId, intent.gameId))
         }
@@ -765,6 +765,24 @@ class GroupDetailsViewModel(
                 }
                 responseRetry.reset()
             }
+        }
+    }
+
+    /**
+     * Jogo com vagas por posição (DEB-102) pede a escolha da posição, e o seletor mora no detalhe do jogo: lê a presença
+     * antes e, havendo posições, abre o jogo em vez de responder. Sem posições, ou com a leitura falhando, responde direto.
+     */
+    private fun respondOrPickPosition(intent: AttendanceIntent) {
+        val current = state.value
+        val game = current.nextGame ?: return
+        val entering = intent == AttendanceIntent.Confirm && current.memberResponse?.status != GroupDetailsResponseStatus.Confirmed
+        if (!entering || !game.canRespond || current.responding) {
+            respond(intent)
+            return
+        }
+        viewModelScope.launch {
+            val positions = (attendanceGateway.read(GroupId(groupId), game.gameId) as? SaqzResult.Success)?.value?.hasPositions == true
+            if (positions) emit(GroupDetailsEffect.OpenGame(groupId, game.gameId)) else respond(intent)
         }
     }
 

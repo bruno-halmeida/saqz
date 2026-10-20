@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.home
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.toList
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
@@ -515,6 +517,48 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals("newer", candidate.state.value.home?.member?.groups?.single()?.id?.value)
+    }
+
+    @Test
+    fun `DEB-102 Vou on a game with positions opens the game instead of answering`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            detailResult = SaqzResult.Success(
+                br.com.saqz.groups.presentation.sampleAttendanceDetail().copy(
+                    positions = listOf(br.com.saqz.groups.domain.attendance.PositionSummary(br.com.saqz.groups.domain.athlete.AthletePosition.PONTA, 2, 1, 1, 0)),
+                ),
+            ),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = sampleNextGame()))),
+            attendanceGateway = attendance,
+        )
+        val effects = mutableListOf<HomeEffect>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.effects.toList(effects) }
+
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        assertEquals(0, attendance.respondCalls)
+        assertTrue(effects.single() is HomeEffect.OpenGame)
+        assertFalse(viewModel.state.value.responding)
+    }
+
+    @Test
+    fun `DEB-102 Nao vou on a game with positions answers straight away`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            detailResult = SaqzResult.Success(
+                br.com.saqz.groups.presentation.sampleAttendanceDetail().copy(
+                    positions = listOf(br.com.saqz.groups.domain.attendance.PositionSummary(br.com.saqz.groups.domain.athlete.AthletePosition.PONTA, 2, 1, 1, 0)),
+                ),
+            ),
+        )
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(nextGame = sampleNextGame())), SaqzResult.Success(sampleHome(nextGame = sampleNextGame()))),
+            attendanceGateway = attendance,
+        )
+        viewModel.onIntent(HomeIntent.Respond(AttendanceIntent.Decline))
+        advanceUntilIdle()
+        assertEquals(1, attendance.respondCalls)
     }
 
     @Test

@@ -112,6 +112,26 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `DEB-102 Vou on a game with positions opens the game instead of answering`() = runTest {
+        val attendance = FakeAttendanceGateway(
+            detailResult = SaqzResult.Success(
+                sampleAttendanceDetail().copy(
+                    positions = listOf(br.com.saqz.groups.domain.attendance.PositionSummary(br.com.saqz.groups.domain.athlete.AthletePosition.PONTA, 2, 1, 1, 0)),
+                ),
+            ),
+        )
+        val vm = viewModel(groupGateway = athleteGroupGateway(), attendanceGateway = attendance,
+            gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))))
+
+        vm.onIntent(GroupDetailsIntent.Respond(AttendanceIntent.Confirm))
+        advanceUntilIdle()
+
+        assertEquals(0, attendance.respondCalls)
+        assertEquals(GroupDetailsEffect.OpenGame("group-1", "game-1"), vm.effects.first())
+        assertFalse(vm.state.value.responding)
+    }
+
+    @Test
     fun `second Vou or Nao vou while the first is in flight is ignored and answers again once it ends`() = runTest {
         val attendance = FakeAttendanceGateway().apply { respondDeferred = CompletableDeferred() }
         val vm = viewModel(groupGateway = athleteGroupGateway(), attendanceGateway = attendance,
