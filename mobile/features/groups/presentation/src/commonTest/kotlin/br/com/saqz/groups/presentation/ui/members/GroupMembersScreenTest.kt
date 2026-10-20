@@ -235,6 +235,36 @@ class GroupMembersScreenTest {
 
     private val ana = JoinRequestUi("ana", "Ana Lima", "Pediu há 5 min")
 
+    @Test fun `a folha Aceitar como mostra avulso e mensalista com o valor e o dia do grupo`() = runComposeUiTest {
+        val intents = mutableListOf<GroupMembersIntent>()
+        content(state = state.copy(acceptAs = acceptAs), onIntent = { intents += it })
+
+        onNodeWithText("Aceitar como").assertExists()
+        onNodeWithText("Paga por jogo").assertExists()
+        onNodeWithText("R$\u00A080,00 por mês, vence dia 10").assertExists()
+        onNodeWithTag(br.com.saqz.groups.presentation.ui.entryrequest.AcceptAsTags.Mensalista).performClick()
+        onNodeWithTag(br.com.saqz.groups.presentation.ui.entryrequest.AcceptAsTags.Confirm).performClick()
+
+        assertEquals(
+            listOf(GroupMembersIntent.SelectAcceptAs(br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA), GroupMembersIntent.ConfirmAcceptAs),
+            intents,
+        )
+    }
+
+    @Test fun `a folha Aceitar como avisa quando falta a mensalidade padrao`() = runComposeUiTest {
+        content(state = state.copy(acceptAs = acceptAs.copy(selected = br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA, feeRequired = true)))
+
+        onNodeWithText("Defina o valor e o dia da mensalidade do grupo").assertExists()
+    }
+
+    @Test fun `sem a folha nao aparece Aceitar como`() = runComposeUiTest {
+        content()
+
+        onNodeWithText("Aceitar como").assertDoesNotExist()
+    }
+
+    private val acceptAs = br.com.saqz.groups.presentation.entryrequest.AcceptAsUi("new", "Ana", 8000, 10)
+
     private fun ComposeUiTest.content(
         state: GroupMembersState = this@GroupMembersScreenTest.state,
         onIntent: (GroupMembersIntent) -> Unit = {},

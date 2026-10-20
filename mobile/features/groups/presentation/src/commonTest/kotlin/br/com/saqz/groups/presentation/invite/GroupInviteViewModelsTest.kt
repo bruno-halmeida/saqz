@@ -330,6 +330,61 @@ class GroupInviteViewModelsTest {
     }
 
     @Test
+    fun `sem mensalidade padrao aprovar e um toque como avulso`() = runTest {
+        val entryGateway = FakeEntryGateway(requests = mutableListOf(request("pending")))
+        val viewModel = groupViewModel(entryGateway = entryGateway)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.ApproveRequest("pending"))
+        advanceUntilIdle()
+
+        assertEquals(null, viewModel.state.value.acceptAs)
+        assertEquals(br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO, entryGateway.approvedType)
+    }
+
+    @Test
+    fun `com mensalidade padrao aprovar abre a folha e mensalista envia o tipo e fechar nao muda nada`() = runTest {
+        val entryGateway = FakeEntryGateway(requests = mutableListOf(request("pending")))
+        val viewModel = groupViewModel(groupGateway = FakeInviteGroupGateway(financeDefaults = br.com.saqz.groups.domain.group.GroupFinanceDefaults(defaultGameFeeCents = null, monthlyFeeCents = 8000, monthlyDueDay = 10)), entryGateway = entryGateway)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.ApproveRequest("pending"))
+        assertEquals(br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO, viewModel.state.value.acceptAs?.selected)
+        viewModel.onIntent(GroupInviteIntent.DismissAcceptAs)
+        advanceUntilIdle()
+        assertEquals(null, viewModel.state.value.acceptAs)
+        assertEquals(null, entryGateway.approvedUserId)
+
+        viewModel.onIntent(GroupInviteIntent.ApproveRequest("pending"))
+        viewModel.onIntent(GroupInviteIntent.SelectAcceptAs(br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA))
+        viewModel.onIntent(GroupInviteIntent.ConfirmAcceptAs)
+        advanceUntilIdle()
+
+        assertEquals(br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA, entryGateway.approvedType)
+        assertEquals(null, viewModel.state.value.acceptAs)
+        assertTrue(viewModel.state.value.pendingRequests.isEmpty())
+    }
+
+    @Test
+    fun `padrao removido no meio-tempo mantem o pedido e avisa na folha`() = runTest {
+        val entryGateway = FakeEntryGateway(
+            requests = mutableListOf(request("pending")),
+            approveResult = SaqzResult.Failure(EntryRequestError.MonthlyFeeRequired),
+        )
+        val viewModel = groupViewModel(groupGateway = FakeInviteGroupGateway(financeDefaults = br.com.saqz.groups.domain.group.GroupFinanceDefaults(defaultGameFeeCents = null, monthlyFeeCents = 8000, monthlyDueDay = 10)), entryGateway = entryGateway)
+        advanceUntilIdle()
+
+        viewModel.onIntent(GroupInviteIntent.ApproveRequest("pending"))
+        viewModel.onIntent(GroupInviteIntent.SelectAcceptAs(br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA))
+        viewModel.onIntent(GroupInviteIntent.ConfirmAcceptAs)
+        advanceUntilIdle()
+
+        assertEquals(true, viewModel.state.value.acceptAs?.feeRequired)
+        assertEquals(null, viewModel.state.value.error)
+        assertEquals(listOf("pending"), viewModel.state.value.pendingRequests.map { it.userId })
+    }
+
+    @Test
     fun `approve success reloads without pending request`() = runTest {
         val entryGateway = FakeEntryGateway(requests = mutableListOf(request("pending")))
         val viewModel = groupViewModel(entryGateway = entryGateway)
@@ -777,10 +832,12 @@ class GroupInviteViewModelsTest {
 
     private class FakeInviteGroupGateway(
         var updateResult: SaqzResult<VersionedGroup, GroupProfileError> = SaqzResult.Success(sampleVersionedGroup()),
+        private val financeDefaults: br.com.saqz.groups.domain.group.GroupFinanceDefaults? = null,
     ) : GroupGateway {
         var lastUpdate: UpdateGroupSettingsCommand? = null
         override suspend fun create(command: CreateGroupCommand) = SaqzResult.Success(sampleGroup())
-        override suspend fun read(groupId: GroupId) = SaqzResult.Success(sampleVersionedGroup())
+        override suspend fun read(groupId: GroupId) =
+            SaqzResult.Success(sampleVersionedGroup().let { it.copy(group = it.group.copy(financeDefaults = financeDefaults)) })
         override suspend fun update(command: UpdateGroupSettingsCommand): SaqzResult<VersionedGroup, GroupProfileError> {
             lastUpdate = command
             return when (val result = updateResult) {

@@ -83,9 +83,9 @@ sealed interface GroupInviteIntent {
     data class ToggleApproval(val enabled: Boolean) : GroupInviteIntent
     data class ApproveRequest(val userId: String) : GroupInviteIntent
     /** Folha "Aceitar como": escolher o tipo, confirmar ou fechar sem mudar nada (DEB-112). */
-    data class SelectAcceptAs(val type: AthleteMembershipType) : GroupInviteIntent
-    data object ConfirmAcceptAs : GroupInviteIntent
-    data object DismissAcceptAs : GroupInviteIntent
+    data class SelectAcceptAs(val type: AthleteMembershipType) : GroupInviteAcceptAsIntent
+    data object ConfirmAcceptAs : GroupInviteAcceptAsIntent
+    data object DismissAcceptAs : GroupInviteAcceptAsIntent
     /** Abre a confirmação; recusar só age em [RejectRequest], depois do "Recusar" do diálogo. */
     data class RequestReject(val userId: String) : GroupInviteIntent
     data object DismissReject : GroupInviteIntent
@@ -102,6 +102,9 @@ sealed interface GroupInviteIntent {
 
 /** Abrir e fechar a folha de compartilhar e a confirmação de trocar o código. */
 sealed interface GroupInviteSheetIntent : GroupInviteIntent
+
+/** Os intents da folha "Aceitar como", agrupados para a ViewModel tratá-los num bloco só. */
+sealed interface GroupInviteAcceptAsIntent : GroupInviteIntent
 
 /** Os intents de "Desativar convite", agrupados para a ViewModel tratá-los num bloco só. */
 sealed interface GroupInviteDeactivateIntent : GroupInviteIntent

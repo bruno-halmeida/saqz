@@ -38,6 +38,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -792,18 +793,121 @@ class GroupMembersViewModelTest {
     private fun request(userId: String, name: String = "Ana", requestedAt: String = Clock.System.now().toString()) =
         GroupEntryRequest(userId, name, requestedAt)
 
+    @Test
+    fun `sem mensalidade padrao aceitar e um toque so e como avulso`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(SaqzResult.Success(listOf(request("new", "Ana"))))
+        val viewModel = requestsViewModel(entry)
+
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+
+        assertEquals(null, viewModel.state.value.acceptAs)
+        assertEquals(listOf(br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO), entry.approvedTypes)
+    }
+
+    @Test
+    fun `com mensalidade padrao aceitar abre a folha com avulso marcado e nao chama a api`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(SaqzResult.Success(listOf(request("new", "Ana"))))
+        val viewModel = requestsViewModel(entry, monthlyFee = true)
+
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+
+        val sheet = assertNotNull(viewModel.state.value.acceptAs)
+        assertEquals(br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO, sheet.selected)
+        assertEquals(8000L, sheet.feeCents)
+        assertEquals(10, sheet.dueDay)
+        assertTrue(entry.approvedUserIds.isEmpty())
+    }
+
+    @Test
+    fun `escolher mensalista e confirmar envia o tipo e fecha a folha`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(SaqzResult.Success(listOf(request("new", "Ana"))))
+        val viewModel = requestsViewModel(entry, monthlyFee = true)
+
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+        viewModel.onIntent(GroupMembersIntent.SelectAcceptAs(br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA))
+        viewModel.onIntent(GroupMembersIntent.ConfirmAcceptAs)
+
+        assertEquals(listOf(br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA), entry.approvedTypes)
+        assertEquals(null, viewModel.state.value.acceptAs)
+        assertEquals(GroupMembersNotice.RequestApproved("Ana"), viewModel.state.value.notice)
+        assertTrue(viewModel.state.value.joinRequests.isEmpty())
+    }
+
+    @Test
+    fun `confirmar com avulso marcado aceita como avulso`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(SaqzResult.Success(listOf(request("new", "Ana"))))
+        val viewModel = requestsViewModel(entry, monthlyFee = true)
+
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+        viewModel.onIntent(GroupMembersIntent.ConfirmAcceptAs)
+
+        assertEquals(listOf(br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO), entry.approvedTypes)
+    }
+
+    @Test
+    fun `fechar a folha sem confirmar nao muda nada`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(SaqzResult.Success(listOf(request("new", "Ana"))))
+        val viewModel = requestsViewModel(entry, monthlyFee = true)
+
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+        viewModel.onIntent(GroupMembersIntent.SelectAcceptAs(br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA))
+        viewModel.onIntent(GroupMembersIntent.DismissAcceptAs)
+
+        assertEquals(null, viewModel.state.value.acceptAs)
+        assertTrue(entry.approvedUserIds.isEmpty())
+        assertEquals(listOf("new"), viewModel.state.value.joinRequests.map { it.id })
+    }
+
+    @Test
+    fun `padrao removido no meio-tempo mantem o pedido e mostra o aviso na folha`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(
+            SaqzResult.Success(listOf(request("new", "Ana"))),
+            approveResult = SaqzResult.Failure(EntryRequestError.MonthlyFeeRequired),
+        )
+        val viewModel = requestsViewModel(entry, monthlyFee = true)
+
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+        viewModel.onIntent(GroupMembersIntent.SelectAcceptAs(br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA))
+        viewModel.onIntent(GroupMembersIntent.ConfirmAcceptAs)
+
+        assertTrue(assertNotNull(viewModel.state.value.acceptAs).feeRequired)
+        assertEquals(false, viewModel.state.value.actionFailed)
+        assertEquals(null, viewModel.state.value.notice)
+        assertEquals(listOf("new"), viewModel.state.value.joinRequests.map { it.id })
+        assertTrue(viewModel.state.value.busyRequestIds.isEmpty())
+    }
+
+    @Test
+    fun `toque duplo em confirmar a folha chama a api uma vez`() = runTest {
+        val entry = FakeGroupEntryRequestGateway(SaqzResult.Success(listOf(request("new", "Ana"))))
+        entry.decisionDeferred = CompletableDeferred()
+        val viewModel = requestsViewModel(entry, monthlyFee = true)
+
+        viewModel.onIntent(GroupMembersIntent.AcceptRequest("new"))
+        viewModel.onIntent(GroupMembersIntent.ConfirmAcceptAs)
+        viewModel.onIntent(GroupMembersIntent.ConfirmAcceptAs)
+        viewModel.onIntent(GroupMembersIntent.DismissAcceptAs)
+
+        assertEquals(listOf("new"), entry.approvedUserIds)
+        assertNotNull(viewModel.state.value.acceptAs)
+        entry.decisionDeferred?.complete(Unit)
+    }
+
     private fun requestsViewModel(
         entryRequests: FakeGroupEntryRequestGateway,
         role: GroupRole = GroupRole.ADMIN,
         athlete: FakeAthleteGateway = FakeAthleteGateway(
             rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("member-1"))),
         ),
-    ) = membersViewModel("group-1", athlete, FakeGroupMembershipGateway(), groupAs(role), entryRequests = entryRequests)
+        monthlyFee: Boolean = false,
+    ) = membersViewModel("group-1", athlete, FakeGroupMembershipGateway(), groupAs(role, monthlyFee), entryRequests = entryRequests)
 
-    private fun groupAs(role: GroupRole) = FakeGroupGateway(
+    private fun groupAs(role: GroupRole, monthlyFee: Boolean = false) = FakeGroupGateway(
         readResult = SaqzResult.Success(
             br.com.saqz.groups.presentation.sampleVersionedGroup(
-                br.com.saqz.groups.presentation.sampleGroup(role = role),
+                br.com.saqz.groups.presentation.sampleGroup(role = role).copy(
+                    financeDefaults = if (monthlyFee) br.com.saqz.groups.domain.group.GroupFinanceDefaults(defaultGameFeeCents = null, monthlyFeeCents = 8000, monthlyDueDay = 10) else null,
+                ),
             ),
         ),
     )

@@ -81,13 +81,7 @@ class GroupInviteViewModel(
             is GroupInviteDeactivateIntent -> handleDeactivate(intent)
             is GroupInviteIntent.ToggleApproval -> toggleApproval(intent.enabled)
             is GroupInviteIntent.ApproveRequest -> accept(intent.userId)
-            is GroupInviteIntent.SelectAcceptAs -> update { current ->
-                current.copy(acceptAs = current.acceptAs?.copy(selected = intent.type, feeRequired = false))
-            }
-            GroupInviteIntent.ConfirmAcceptAs -> state.value.acceptAs?.let { approve(it.requestId, it.selected) }
-            GroupInviteIntent.DismissAcceptAs -> if (state.value.acceptAs?.requestId !in state.value.pendingActionIds) {
-                update { it.copy(acceptAs = null) }
-            }
+            is GroupInviteAcceptAsIntent -> handleAcceptAs(intent)
             is GroupInviteIntent.RequestReject -> update { current ->
                 current.copy(rejectCandidate = current.pendingRequests.firstOrNull { it.userId == intent.userId })
             }
@@ -266,6 +260,18 @@ class GroupInviteViewModel(
                         )
                     }
                 }
+            }
+        }
+    }
+
+    private fun handleAcceptAs(intent: GroupInviteAcceptAsIntent) {
+        when (intent) {
+            is GroupInviteIntent.SelectAcceptAs -> update { current ->
+                current.copy(acceptAs = current.acceptAs?.copy(selected = intent.type, feeRequired = false))
+            }
+            GroupInviteIntent.ConfirmAcceptAs -> state.value.acceptAs?.let { approve(it.requestId, it.selected) }
+            GroupInviteIntent.DismissAcceptAs -> if (state.value.acceptAs?.requestId !in state.value.pendingActionIds) {
+                update { it.copy(acceptAs = null) }
             }
         }
     }
