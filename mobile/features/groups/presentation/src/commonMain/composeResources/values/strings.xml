@@ -81,7 +81,7 @@
     <string name="group_photo_target_unavailable">A foto estará disponível depois que o grupo for criado.</string>
     <string name="group_setup_name_label">Nome do grupo</string>
     <string name="group_setup_name_hint">Ex.: Vôlei do CERET</string>
-    <string name="group_setup_modality_label">Esporte</string>
+    <string name="group_setup_modality_label">Modalidade</string>
     <string name="group_setup_modality_hint">Escolha o esporte do grupo.</string>
     <string name="group_setup_composition_label">Público</string>
     <string name="group_setup_composition_hint">Como os times se formam.</string>
