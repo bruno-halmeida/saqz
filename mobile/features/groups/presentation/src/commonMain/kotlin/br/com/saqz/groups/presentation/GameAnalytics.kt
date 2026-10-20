@@ -15,13 +15,13 @@ internal enum class GamePlanEndAction(val value: String) { Create("create"), Edi
  */
 internal fun trackGameAfterPlanEnd(error: GameError, attemptedDate: String, zoneId: String?, action: GamePlanEndAction) {
     if (error !is GameError.AfterPlanEnd) return
-    val params = buildList {
-        add("attempted_date" to attemptedDate)
-        error.startsBefore?.let { add("limit_date" to localDate(it, zoneId)) }
-        add("error_code" to "GAME_AFTER_PLAN_END")
-        add("action" to action.value)
+    val params = buildMap {
+        put("attempted_date", attemptedDate)
+        error.startsBefore?.let { put("limit_date", localDate(it, zoneId)) }
+        put("error_code", "GAME_AFTER_PLAN_END")
+        put("action", action.value)
     }
-    SaqzAnalytics.event("game_after_plan_end", *params.toTypedArray())
+    SaqzAnalytics.track("game_after_plan_end", params)
 }
 
 private fun localDate(instant: String, zoneId: String?): String {
