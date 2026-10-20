@@ -45,7 +45,7 @@ export default [
         const novo = semSegundos(daqui(60 * 60 * 3))
         const r = await ORG.editarJogo(g.id, lido.corpo, lido.etag, { ...local(novo), startsAt: novo.toISOString(), confirmationDeadline: daqui(60 * 24).toISOString() })
         c.status(r, 200)
-        const mudou = async (a) => (await a.avisosDoGrupo(g.id)).filter((n) => / mudou: /.test(n.corpo))
+        const mudou = async (a) => (await a.avisosDoGrupo(g.id)).filter((n) => / mudou[!:] /.test(n.corpo))
         for (const a of [ATL1, ATL2]) {
           const x = await c.esperar(`aviso de mudança de ${a.papel}`, async () => { const v = await mudou(a); return v.length ? v : null }, { teto: 20_000 })
           c.afirmar(x[0].corpo.includes('às'), `o aviso traz a nova hora: ${x[0].corpo}`)
@@ -54,7 +54,7 @@ export default [
         c.igual((await mudou(ORG)).length, 0, 'quem editou não recebe')
       })
       await c.passo('mudar só as vagas (não é dia, hora nem local) não gera aviso de mudança', async () => {
-        const mudancas = async () => (await ATL2.avisosDoGrupo(g.id)).filter((n) => / mudou: /.test(n.corpo)).length
+        const mudancas = async () => (await ATL2.avisosDoGrupo(g.id)).filter((n) => / mudou[!:] /.test(n.corpo)).length
         const antes = await mudancas()
         c.status(await ORG.ajustarVagas(g.id, j.id, 6), 200)
         await c.dormir(2000)

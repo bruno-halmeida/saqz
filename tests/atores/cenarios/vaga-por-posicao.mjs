@@ -4,7 +4,8 @@
 const PONTA2_CENTRAL2 = [{ position: 'PONTA', slots: 2 }, { position: 'CENTRAL', slots: 2 }]
 
 async function posicaoDe(c, jogoId, ator, convidado = 0) {
-  return c.valor(`select coalesce(position::text,'') from game_attendance where game_id='${jogoId}' and member_user_id='${ator.id}' and guest_seq=${convidado}`)
+  // Sem posição volta "-": o leitor do banco descarta linha vazia, e '' viraria null (como "linha não existe").
+  return c.valor(`select coalesce(position::text,'-') from game_attendance where game_id='${jogoId}' and member_user_id='${ator.id}' and guest_seq=${convidado}`)
 }
 
 export default [
@@ -123,7 +124,7 @@ export default [
         const j2 = await c.jogo(ORG, g2.id, { vagas: 4 })
         c.status(await A3.vouEm(g2.id, j2.id, 'PONTA'), 200)
         c.igual(await c.statusDe(j2.id, A3), 'CONFIRMED', 'A3')
-        c.igual(await posicaoDe(c, j2.id, A3), '', 'sem posição gravada')
+        c.igual(await posicaoDe(c, j2.id, A3), '-', 'sem posição gravada')
         c.afirmar(!(await A3.presenca(g2.id, j2.id)).corpo.positions, 'sem resumo por posição')
       })
     },
