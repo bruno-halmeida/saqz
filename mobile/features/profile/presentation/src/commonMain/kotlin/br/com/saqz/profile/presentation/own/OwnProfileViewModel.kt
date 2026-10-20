@@ -17,6 +17,10 @@ class OwnProfileViewModel(
     private var loadGeneration = 0
     private var loadInFlight = false
 
+    // "A aba reapareceu" que chegou com uma carga em voo: o dado dessa carga pode ser anterior ao que motivou o
+    // pedido (edição salva), então a recarga roda quando ela termina em vez de ser descartada.
+    private var refreshPending = false
+
     init {
         load()
     }
@@ -47,12 +51,16 @@ class OwnProfileViewModel(
     /**
      * A aba reaparece (troca de aba, volta de filha, primeiro plano, edição salva): recarga por
      * baixo, sem o indicador do puxar-para-atualizar e sem tela de erro — falha mantém o perfil
-     * que está na tela. Com carga em voo é ignorado; sem conteúdo (erro) carrega por inteiro.
+     * que está na tela. Com carga em voo fica pendente e roda quando ela termina; sem conteúdo (erro)
+     * carrega por inteiro.
      */
     private fun appeared() {
         if (isFirstAppearance()) return
         val current = state.value
-        if (loadInFlight || current.isLoading) return
+        if (loadInFlight || current.isLoading) {
+            refreshPending = true
+            return
+        }
         load(softRefresh = !current.loadError)
     }
 
@@ -60,36 +68,52 @@ class OwnProfileViewModel(
         val generation = ++loadGeneration
         loadInFlight = true
         if (!softRefresh) update { it.copy(isLoading = true, loadError = false) }
-        val job = viewModelScope.launch {
-            val profileResult = gateway.bootstrap()
-            val statsResult = gateway.stats()
-            val athleteResult = gateway.athleteProfile()
-            if (generation != loadGeneration) return@launch
-
-            if (profileResult is SaqzResult.Failure ||
-                statsResult is SaqzResult.Failure ||
-                athleteResult is SaqzResult.Failure
-            ) {
-                if (!softRefresh) update { it.copy(isLoading = false, loadError = true) }
-                return@launch
-            }
-
-            val profile = (profileResult as SaqzResult.Success).value
-            val stats = (statsResult as SaqzResult.Success).value
-            val athleteProfile = (athleteResult as SaqzResult.Success).value
-            update {
-                it.copy(
-                    isLoading = false,
-                    loadError = false,
-                    user = profile.user.toOwnProfileUserUi(),
-                    stats = stats.toOwnProfileStatsUi(),
-                    groups = athleteProfile.memberships
-                        .filter(AthleteMembership::active)
-                        .map(AthleteMembership::toOwnProfileGroupUi),
-                )
+        viewModelScope.launch {
+            try {
+                fetchAndShow(generation, softRefresh)
+            } finally {
+                // Dentro da própria carga (e não num completion handler): o estado novo e o fim da carga são
+                // observados juntos, sem janela em que o perfil já aparece mas o pedido de recarga ainda é descartado.
+                if (generation == loadGeneration) finishLoad()
             }
         }
-        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
+    }
+
+    private fun finishLoad() {
+        loadInFlight = false
+        if (!refreshPending) return
+        refreshPending = false
+        load(softRefresh = !state.value.loadError)
+    }
+
+    private suspend fun fetchAndShow(generation: Int, softRefresh: Boolean) {
+        val profileResult = gateway.bootstrap()
+        val statsResult = gateway.stats()
+        val athleteResult = gateway.athleteProfile()
+        if (generation != loadGeneration) return
+
+        if (profileResult is SaqzResult.Failure ||
+            statsResult is SaqzResult.Failure ||
+            athleteResult is SaqzResult.Failure
+        ) {
+            if (!softRefresh) update { it.copy(isLoading = false, loadError = true) }
+            return
+        }
+
+        val profile = (profileResult as SaqzResult.Success).value
+        val stats = (statsResult as SaqzResult.Success).value
+        val athleteProfile = (athleteResult as SaqzResult.Success).value
+        update {
+            it.copy(
+                isLoading = false,
+                loadError = false,
+                user = profile.user.toOwnProfileUserUi(),
+                stats = stats.toOwnProfileStatsUi(),
+                groups = athleteProfile.memberships
+                    .filter(AthleteMembership::active)
+                    .map(AthleteMembership::toOwnProfileGroupUi),
+            )
+        }
     }
 }
 

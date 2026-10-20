@@ -1,8 +1,12 @@
 package br.com.saqz.profile.presentation.own
 
 import br.com.saqz.domain.DataError
+import br.com.saqz.domain.SaqzResult
+import br.com.saqz.profile.domain.Profile
 import br.com.saqz.profile.domain.ProfileError
+import br.com.saqz.profile.domain.ProfileGateway
 import br.com.saqz.profile.fake.FakeProfileGateway
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -121,6 +125,60 @@ class OwnProfileViewModelTest {
         assertEquals("Novo nome", viewModel.state.value.user?.displayName)
         assertEquals("Novo apelido · Rio de Janeiro", viewModel.state.value.user?.subtitle)
         assertEquals("/api/session/photo?v=novo", viewModel.state.value.user?.photoUrl)
+    }
+
+    @Test
+    fun `a refresh requested during a load runs when it finishes and shows the newer data`() = runTest(dispatcher) {
+        val fake = FakeProfileGateway()
+        val firstLoad = CompletableDeferred<Unit>()
+        var bootstrapCalls = 0
+        val gateway = object : ProfileGateway by fake {
+            override suspend fun bootstrap(): SaqzResult<Profile, ProfileError> {
+                // Só a primeira carga espera o teste mandar; ela devolve o que a ViewModel leu ANTES da edição.
+                if (++bootstrapCalls == 1) {
+                    val stale = fake.profile
+                    firstLoad.await()
+                    return SaqzResult.Success(stale)
+                }
+                return fake.bootstrap()
+            }
+        }
+        val viewModel = OwnProfileViewModel(gateway)
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.isLoading)
+
+        // Primeiro "apareceu" é o do Root logo após o `init` (descartado); o segundo é a volta do editor salvo.
+        viewModel.onIntent(OwnProfileIntent.Appeared)
+        fake.profile = fake.profile.copy(user = fake.profile.user.copy(displayName = "Novo nome"))
+        viewModel.onIntent(OwnProfileIntent.Appeared)
+        advanceUntilIdle()
+        assertEquals(1, bootstrapCalls)
+
+        firstLoad.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(2, bootstrapCalls)
+        assertEquals("Novo nome", viewModel.state.value.user?.displayName)
+        assertFalse(viewModel.state.value.isLoading)
+    }
+
+    @Test
+    fun `appearing again with nothing in flight reloads once and does not loop`() = runTest(dispatcher) {
+        var bootstrapCalls = 0
+        val fake = FakeProfileGateway()
+        val gateway = object : ProfileGateway by fake {
+            override suspend fun bootstrap(): SaqzResult<Profile, ProfileError> {
+                bootstrapCalls++
+                return fake.bootstrap()
+            }
+        }
+        val viewModel = OwnProfileViewModel(gateway)
+        advanceUntilIdle()
+        viewModel.onIntent(OwnProfileIntent.Appeared)
+        viewModel.onIntent(OwnProfileIntent.Appeared)
+        advanceUntilIdle()
+
+        assertEquals(2, bootstrapCalls)
     }
 
     @Test

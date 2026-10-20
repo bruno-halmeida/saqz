@@ -46,7 +46,7 @@ fun OwnProfileRoot(
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     val state by viewModel.state.collectAsStateWithLifecycle()
     // Toda vez que a aba aparece (e quando o contador do host muda, VUL-205: edição salva), recarrega
-    // por baixo. A ViewModel ignora o pedido que chega com a carga do `init` ainda em voo.
+    // por baixo. A ViewModel guarda o pedido que chega com uma carga em voo e recarrega quando ela termina.
     RefreshWhenVisible(refreshVersion) { viewModel.onIntent(OwnProfileIntent.Appeared) }
     ObserveAsEvents(viewModel.effects, key = onOpenReceipts != null) { effect ->
         when (effect) {
