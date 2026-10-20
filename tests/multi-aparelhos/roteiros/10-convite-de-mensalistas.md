@@ -57,7 +57,7 @@ print(c)' "$1" "$MOCK"; }
 - **R-CÓDIGO-MS**: `codigo 11900000004` devolve o código do link de mensalistas que foi no WhatsApp para esse número (lê o log do mock). Chame de `COD_MS`; depois de um código novo, `COD_MS2`.
 - **R-ENTREGAR**: como no roteiro 05, com o código desejado. Android: `adb -s <id> shell am start -a android.intent.action.VIEW -d 'https://links.saqz.app/?saqz_invite=<código>' app.saqz`. iOS: `xcrun simctl openurl <udid> 'saqz://links.saqz.app/?saqz_invite=<código>'`.
 - **R-PRÉVIA** `<papel> <código>`: `api <papel> POST /api/invites/preview -d '{"code":"<código>"}'` devolve o cartão (200) ou o erro do link.
-- **R-CONFIRMAR-ORG**: `PSQL "update access_users set verified_phone=phone where email='qa-org+$TAG@saqz.local'"`. Só o número de ORG fica confirmado; o de ADM não (DEB-081).
+- **R-SEM-TELEFONE** `<papel>`: `PSQL "update access_users set phone=null where email='qa-<papel>+$TAG@saqz.local'"` (se a conta aceitar telefone nulo; senão BLOQUEADO). O aviso de entrada vai ao telefone cadastrado, confirmado ou não (exceção à DEB-081).
 - **R-ENVELHECER** `<dias>`: faz o link vigente ter vencido há `<dias>` dias: `PSQL "update <links-mensalistas> set <expira-em>=now()-interval '<dias> days' where group_id='$GID'"`. **R-ENVELHECER-INVALIDADO** `<dias>` faz o mesmo com a data da invalidação (nomes a fechar na entrega).
 - **R-SEM-MENSALIDADE**: `PSQL "update access_groups set monthly_fee_cents=null, monthly_due_day=null where id='$GID'"`. **R-COM-MENSALIDADE**: `PSQL "update access_groups set monthly_fee_cents=8000, monthly_due_day=10 where id='$GID'"`.
 - **R-LIMITE-LIGAR** e **R-LIMITE-DESLIGAR**: as do roteiro 05 (plano com limite de 25 atletas, grupo preenchido com membros falsos). **R-VAGAS** `<n>`: `PSQL "delete from group_memberships where ctid in (select ctid from group_memberships where group_id='$GID' and user_id in (select id from access_users where firebase_subject like 'fake-%') limit <n>)"` abre `<n>` vagas.
@@ -72,7 +72,7 @@ print(c)' "$1" "$MOCK"; }
 | P2 | ORG | Criar conta (`QA Org <data>`, celular `11900000001`) e o grupo `QA Vôlei <data>` como no roteiro 05 (P2). **Não** preencher mensalidade | `Grupo criado!` | `select monthly_fee_cents, monthly_due_day from access_groups where id='$GID'` = `\|` (os dois nulos) | ☐ | ☐ |
 | P3 | ATL, ADM, CV1, CV2, CV3, CV4 | Criar as contas sem convite, com os celulares da lista (como em P3 do roteiro 05); CV1 a CV4 no mesmo aparelho, uma conta por vez | Início sem grupos, com `Tenho um convite` | `select count(*) from access_users where email like 'qa-%+<tag>@saqz.local'` = 7 | ☐ | ☐ |
 | P4 | ATL, ADM, ORG | ATL e ADM entram pelo convite público (como P4 e P5 do roteiro 05); ORG torna ADM administrador (P6) | `Você entrou no QA Vôlei <data>`; ADM com `Administrador` | ATL e ADM com `membership_type='AVULSO'`; ADM com `role='ADMIN'` | ☐ | ☐ |
-| P5 | terminal | R-CONFIRMAR-ORG; R-CÓDIGO-PÚBLICO (anotar `COD_PUB`); `api org GET /api/whatsapp/availability`; R-ZERAR | `COD_PUB` com 8 caracteres; `enabled` verdadeiro; log vazio | `select verified_phone = phone from access_users where email='qa-org+<tag>@saqz.local'` = `t` | ☐ | ☐ |
+| P5 | terminal | R-CÓDIGO-PÚBLICO (anotar `COD_PUB`); `api org GET /api/whatsapp/availability`; R-ZERAR | `COD_PUB` com 8 caracteres; `enabled` verdadeiro; log vazio | `select count(*) from access_users where email like 'qa-%+<tag>@saqz.local' and verified_phone is not null` = `0` (ninguém confirmou o número) | ☐ | ☐ |
 
 ## V1 · CONV-010 · Bloqueio, mensalidade e cadastro [CRÍTICO] [MULTI] [WhatsApp: só produção]
 
@@ -132,12 +132,13 @@ Anotar `COD_MS` com R-CÓDIGO-MS (`codigo 11900000004`).
 | --- | --- | --- | --- | --- | --- | --- |
 | V4.1 | ORG, ADM | Abrir a central de avisos | Avisos de entrada, um por pessoa: `QA Atl3 <data> entrou no QA Vôlei <data> como mensalista.` (V3.2), o de CV2 (V3.4), o de CV3 (V3.9 e de novo em V3.10), e `QA Atl <data> virou mensalista no QA Vôlei <data>.` (V3.7). Nenhum para V3.8 (CV1 já era mensalista) | — | ☐ | ☐ |
 | V4.2 | CV1, CV2, CV3 | Abrir a central de avisos de cada um | Sem aviso da própria entrada | — | ☐ | ☐ |
-| V4.3 | terminal | `envios \| grep 5511900000001` e `envios \| grep 5511900000003` | Para ORG (número confirmado): uma mensagem por entrada ou promoção, com o mesmo texto do aviso. Para ADM (não confirmado): **nenhuma**. A entrada de V3.8 não gera mensagem | contagem de linhas para ORG = número de avisos de V4.1 | ☐ | ☐ |
+| V4.3 | terminal | `envios \| grep 5511900000001` e `envios \| grep 5511900000003` | Para ORG **e** para ADM (números cadastrados, nenhum confirmado): uma mensagem por entrada ou promoção, com o mesmo texto do aviso. A entrada de V3.8 não gera mensagem | contagem de linhas para ORG = para ADM = número de avisos de V4.1 | ☐ | ☐ |
 | V4.4 | ORG, CV4 | R-SEM-MENSALIDADE (com o link vivo). CV4 (conta sem grupo) abre o link | CV4 **entra como avulso**, sem recusa; ORG e ADM recebem `QA Atl6 <data> entrou no QA Vôlei <data> como avulso, porque o grupo está sem mensalidade padrão.`; `envios` mostra o mesmo texto para ORG | `membership_type='AVULSO'` para CV4 | ☐ | ☐ |
 | V4.5 | CV4 | Abrir o link de novo (já é avulso, grupo ainda sem mensalidade padrão) | Abre o grupo; continua avulso | `membership_type='AVULSO'`; central de ORG sem aviso novo | ☐ | ☐ |
 | V4.6 | terminal | R-COM-MENSALIDADE | — | `monthly_fee_cents` = `8000` | ☐ | ☐ |
 | V4.7 | ORG, CV3 | ORG: nas preferências de notificação do Perfil, desligar "Avisos dos grupos". CV3: "Sair do grupo" e abrir o link de mensalistas de novo | CV3 entra como mensalista; na central de ORG o aviso aparece; `envios` **sem** mensagem nova para ORG (a chave vale também para o WhatsApp deste aviso) | — | ☐ | ☐ |
 | V4.8 | ORG | Religar "Avisos dos grupos" | — | — | ☐ | ☐ |
+| V4.9 | banco, CV3 | R-ZERAR. R-SEM-TELEFONE `atl2` (ADM sem telefone cadastrado). CV3: "Sair do grupo" e abrir o link de mensalistas de novo | CV3 entra como mensalista; ORG e ADM recebem o aviso na central; `envios` mostra a mensagem para ORG (`5511900000001`) e **nenhuma** para ADM | `envios \| grep 5511900000003` vazio | ☐ | ☐ |
 
 ## V5 · SAI-005 · Limite do plano [MULTI]
 

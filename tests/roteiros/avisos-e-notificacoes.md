@@ -32,7 +32,9 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Desliga o WhatsApp de cobrança | Sem WhatsApp; push segue a chave de push | ☐ | ☐ |
 | Dono com "Avisos dos grupos" desligado; alguém entra pelo link de mensalistas | Sem push e sem WhatsApp desse aviso; ele fica na central | ☐ | ☐ |
 | Dono com número confirmado; alguém entra pelo link de mensalistas | Central, push e WhatsApp | ☐ | ☐ |
-| Dono sem número confirmado; alguém entra pelo link de mensalistas | Central e push; sem WhatsApp | ☐ | ☐ |
+| Dono com número só cadastrado (não confirmado); alguém entra pelo link de mensalistas | Central, push e WhatsApp (exceção à confirmação do número) | ☐ | ☐ |
+| Dono sem telefone cadastrado; alguém entra pelo link de mensalistas | Central e push; sem WhatsApp | ☐ | ☐ |
+| Cobrança para quem não confirmou o número | Segue sem WhatsApp (a regra de confirmação não mudou) | ☐ | ☐ |
 | Mural, lembrete ou pedido de entrada comum | Continuam sem WhatsApp particular | ☐ | ☐ |
 
 ## NOT-003 · Avisos do jogo [CRÍTICO] [MULTI] [push: só produção]
@@ -65,7 +67,8 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Mensalista abre o link de novo | Ninguém recebe | ☐ | ☐ |
 | Avulso abre o link com o grupo sem mensalidade padrão | Ninguém recebe | ☐ | ☐ |
 | Primeiro atleta do grupo entra pelo link | Um aviso só (o de entrada pelo link); "Primeiro atleta" não repete | ☐ | ☐ |
-| Dono sem número confirmado | Recebe central e push; sem WhatsApp | ☐ | ☐ |
+| Dono ou admin com telefone cadastrado e não confirmado | Recebe central, push e WhatsApp (exceção) | ☐ | ☐ |
+| Dono ou admin sem telefone cadastrado | Recebe central e push; sem WhatsApp | ☐ | ☐ |
 | 3 convidados entram em sequência | 3 avisos separados a cada organizador | ☐ | ☐ |
 
 ## NOT-005 · Avisos de dinheiro [MULTI] [push: só produção]

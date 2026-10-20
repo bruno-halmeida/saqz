@@ -257,7 +257,7 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 **Conferir**
 - MENS termina dentro do grupo QA, e não na Início genérica.
 - ORG vê MENS em Membros como mensalista, com R$ 80,00 e vencimento no dia 10; a linha sumiu de "Convidados" e o chip "Convidados" também (era a única).
-- ORG recebe o aviso "… entrou no QA Vôlei … como mensalista." na central e por push; MENS não recebe aviso. Se o número de ORG estiver confirmado (DEB-081), o aviso chega também por WhatsApp, no aparelho A.
+- ORG recebe o aviso "… entrou no QA Vôlei … como mensalista." na central e por push; MENS não recebe aviso. O aviso chega também por WhatsApp, no número cadastrado de ORG (exceção à confirmação do número, DEB-081), no aparelho A.
 - O link vale para mais gente: a mesma mensagem, repassada, entraria outra conta como mensalista (proteção do desenho: circula só no privado, vale 7 dias e se invalida). **Não** testar com conta de terceiro.
 
 **Fora da produção.** Validade de 7 dias, retenção de 30 dias, falhas de envio, pausa e retomada da fila, fila entre grupos, reinício do backend e limite do plano precisam de relógio, banco ou número que falha, o que a regra 5 deste roteiro não permite. Estão no roteiro multi-aparelho `tests/multi-aparelhos/roteiros/10-convite-de-mensalistas.md`. Os grupos QA apagados em PROD-GR06 levam os convidados junto.

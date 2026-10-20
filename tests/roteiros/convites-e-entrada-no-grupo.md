@@ -177,7 +177,8 @@ _Regra decidida em 20/10 e ainda não implementada (DEB-106); rodar só depois d
 | Pessoa nova entra pelo link | Dono e admins recebem aviso na central, no push e no WhatsApp; quem entrou, não | ☐ | ☐ |
 | Avulso do grupo abre o link, grupo com mensalidade padrão | Vira mensalista; aviso "virou mensalista" | ☐ | ☐ |
 | Quem entra é um admin que era avulso | Os outros organizadores recebem; ele, não | ☐ | ☐ |
-| Dono sem número confirmado, alguém entra pelo link | Aviso na central e no push; sem WhatsApp | ☐ | ☐ |
+| Dono com telefone só cadastrado (não confirmado), alguém entra pelo link | Aviso na central, no push e no WhatsApp | ☐ | ☐ |
+| Dono sem telefone cadastrado, alguém entra pelo link | Aviso na central e no push; sem WhatsApp | ☐ | ☐ |
 | Dono com "Avisos dos grupos" desligado, alguém entra pelo link | Sem push e sem WhatsApp; o aviso fica na central | ☐ | ☐ |
 | Entra pelo link com o telefone cadastrado | Entra; a linha de Convidados some e os dados são apagados | ☐ | ☐ |
 | Entra pelo link com outro telefone | Entra; a linha segue "Aguardando" até o dono remover | ☐ | ☐ |
