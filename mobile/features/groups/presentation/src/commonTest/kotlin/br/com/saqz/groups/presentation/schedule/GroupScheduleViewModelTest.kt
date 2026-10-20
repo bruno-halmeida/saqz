@@ -334,6 +334,38 @@ class GroupScheduleViewModelTest {
         assertEquals(0, gateway.writes)
     }
 
+    @Test
+    fun `remove slot drops it from the form until save`() = runTest {
+        val gateway = FakeScheduleGateway()
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+        vm.onIntent(GroupScheduleIntent.RemoveSlot(vm.state.value.slots.single()))
+        assertTrue(vm.state.value.slots.isEmpty())
+        assertEquals(1, gateway.schedule.slots.size)
+    }
+
+    @Test
+    fun `duplicate slots cannot be saved`() = runTest {
+        val gateway = FakeScheduleGateway()
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+        vm.onIntent(GroupScheduleIntent.AddSlot)
+        vm.onIntent(GroupScheduleIntent.PickDraftDay(GroupWeekday.TUESDAY))
+        vm.onIntent(GroupScheduleIntent.PickDraftTime(hour = 19, minute = 30))
+        vm.onIntent(GroupScheduleIntent.ConfirmSlot)
+        assertEquals(2, vm.state.value.slots.size)
+        vm.onIntent(GroupScheduleIntent.Save)
+        assertEquals(GroupUiError.Validation, vm.state.value.error)
+        assertEquals(0, gateway.writes)
+    }
+
+    @Test
+    fun `dismissing the slot sheet leaves the slots untouched`() = runTest {
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeScheduleGateway())
+        vm.onIntent(GroupScheduleIntent.AddSlot)
+        vm.onIntent(GroupScheduleIntent.DismissSlotSheet)
+        assertEquals(null, vm.state.value.slotSheet)
+        assertEquals(1, vm.state.value.slots.size)
+    }
+
     private val slot = GroupRegularSlotForm(
         weekday = GroupWeekday.TUESDAY,
         startTime = "19:30",
