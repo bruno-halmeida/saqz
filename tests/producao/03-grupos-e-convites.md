@@ -203,6 +203,65 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 - Não existe "Desativar link": o convite fica sempre ativo, e a troca do código é o jeito de derrubar o
   que já foi enviado.
 
+### PROD-CV08 · Cadastrar mensalista e enviar o convite pelo WhatsApp · P0
+
+**Quem:** ORG, no grupo QA, e o aparelho B com um WhatsApp de teste (o número fica no mapa privado, fora do git). **Só depois da entrega do DEB-106 em produção.** **Deixa pronto:** a mensagem com o link de mensalistas no WhatsApp do aparelho B.
+
+1. No grupo, tocar "Editar", ir ao cartão "Mensalidade", preencher "Valor por mês" com `80,00` e "Dia do vencimento" 10, e tocar "Salvar".
+2. Abrir "Membros e permissões". Sem convidados, aparece o cartão "Mensalistas pelo WhatsApp"; tocar "Convidar mensalista".
+3. Tocar "Adicionar pessoa" e preencher "Nome" com `QA Mensalista` e "WhatsApp" com o número de teste do aparelho B; tocar "Adicionar".
+4. Tocar "Ver a mensagem que vai sair" e depois "Enviar 1 convite".
+
+**Conferir**
+- Em Membros, o chip "Convidados · 1" aparece ao lado de "Pendentes", e a seção "Convidados" mostra a linha em "Na fila" e logo depois "Aguardando". O número de "Todos" não muda.
+- No WhatsApp do aparelho B, em até 1 minuto, chega a mensagem do número do Saqz: "E aí, QA Mensalista! 🏐 O … te colocou na lista de mensalistas do QA Vôlei … aqui no Saqz.", o link `https://links.saqz.app/?saqz_invite=…` e "Se não era pra você, é só ignorar.".
+- Cada execução manda uma mensagem de verdade pelo número do Saqz, o mesmo das cobranças: rodar uma vez por rodada e só para o número de teste.
+
+### PROD-CV09 · Erros do cadastro e promover sem mensagem · P1
+
+**Quem:** ORG, no grupo QA, com ATL como avulso (PROD-CV02). **Só depois da entrega do DEB-106 em produção.**
+
+1. "Convidar mensalista" → "Adicionar pessoa". Testar, um de cada vez: nome vazio; "WhatsApp" `(11) 9000`; "WhatsApp" `(11) 88888-7777`; o celular de ATL.
+2. No caso de ATL, tocar "Promover a mensalista". Voltar a "Adicionar pessoa" e digitar o celular de ATL de novo.
+3. Adicionar `(11) 90000-0090` (fictício) com o nome `QA Sem Zap` e tocar "Enviar 1 convite".
+
+**Conferir**
+- Mensagens da folha "Nova pessoa": "Digite o nome da pessoa.", "Faltam dígitos. Use o DDD e os 9 dígitos, por exemplo (11) 98765-4321.", "Esse número não parece um celular do Brasil. Confira o DDD e o 9 do começo." e, para ATL, "… já está no grupo como avulso. Se promover, vira mensalista agora e não recebe mensagem.".
+- Promover mostra "… agora é mensalista. Nenhuma mensagem foi enviada." e ATL passa a mensalista em Membros. Digitar o celular de ATL de novo mostra "… já é mensalista do grupo. Não precisa de convite.".
+- O número fictício fica "Sem WhatsApp"; tocar na linha oferece "Copiar link" e "Remover da lista", e nada sai. Remover a linha ao final.
+
+### PROD-CV10 · Invalidar o link e reenviar para todos · P1
+
+**Quem:** ORG e o aparelho B, depois de PROD-CV08 (a pessoa de teste ainda não entrou). **Só depois da entrega do DEB-106 em produção.** **Deixa pronto:** uma segunda mensagem, com link novo, no WhatsApp do aparelho B.
+
+1. ORG: em Membros → "Convidados", tocar "Invalidar link". Na folha "Invalidar o link?", tocar "Invalidar link".
+2. Aparelho B: tocar no link da primeira mensagem (a de PROD-CV08).
+3. ORG: tocar "Reenviar para todos".
+4. Aparelho B: esperar a segunda mensagem e comparar o link com o da primeira.
+5. ORG: abrir "Convidar por link" e conferir o código público.
+
+**Conferir**
+- O link velho dá "Este link foi substituído" ("Peça um novo ao organizador.").
+- A linha de `QA Mensalista` volta a "Aguardando", e a segunda mensagem chega em até 1 minuto, com um código diferente do da primeira.
+- O convite público de PROD-CV01 e PROD-CV07 segue o mesmo: invalidar o link de mensalistas não mexe nele.
+
+### PROD-CV11 · Entrar pelo link de mensalistas e o aviso ao organizador · P0
+
+**Quem:** MENS (conta nova, aparelho B, app instalado e deslogado) e ORG (aparelho A), depois de PROD-CV10. **Só depois da entrega do DEB-106 em produção.** **Deixa pronto:** MENS como mensalista no grupo QA.
+
+1. Aparelho B: no WhatsApp, tocar no link da **segunda** mensagem (a de PROD-CV10).
+2. Conferir a prévia ("como mensalista", sem "precisa de aprovação") e tocar em "Criar conta ›"; criar a conta com o e-mail QA de MENS e o **mesmo celular** usado em PROD-CV08.
+3. Em "Cadastro de atleta", tocar "Salvar meu perfil".
+4. ORG: abrir a central de avisos e "Membros e permissões".
+
+**Conferir**
+- MENS termina dentro do grupo QA, e não na Início genérica.
+- ORG vê MENS em Membros como mensalista, com R$ 80,00 e vencimento no dia 10; a linha sumiu de "Convidados" e o chip "Convidados" também (era a única).
+- ORG recebe o aviso "… entrou no QA Vôlei … como mensalista." na central e por push; MENS não recebe aviso. Se o número de ORG estiver confirmado (DEB-081), o aviso chega também por WhatsApp, no aparelho A.
+- O link vale para mais gente: a mesma mensagem, repassada, entraria outra conta como mensalista (proteção do desenho: circula só no privado, vale 7 dias e se invalida). **Não** testar com conta de terceiro.
+
+**Fora da produção.** Validade de 7 dias, retenção de 30 dias, falhas de envio, pausa e retomada da fila, fila entre grupos, reinício do backend e limite do plano precisam de relógio, banco ou número que falha, o que a regra 5 deste roteiro não permite. Estão no roteiro multi-aparelho `tests/multi-aparelhos/roteiros/10-convite-de-mensalistas.md`. Os grupos QA apagados em PROD-GR06 levam os convidados junto.
+
 ## Membros
 
 ### PROD-MB01 · Lista de membros: busca e filtros · P1

@@ -121,6 +121,7 @@ estados globais que alguns cenários mexem (travas de reenvio de e-mail/senha, m
 - **Limites por IP** (30 prévias de convite anônimas por 10 minutos, 20 e-mails por IP) não são exercitados até o teto para
   não travar outras sessões no mesmo `127.0.0.1`; o teto **por conta** é.
 - `SAI-004` (delegação financeira) depende da conta de recebimentos (Asaas) e não tem cenário.
+- `CONV-010` a `CONV-012` (convite de mensalistas, DEB-106) foram decididas em 20/10 e ainda não têm rota: os cenários de API entram junto da entrega (cadastro por dono, admin e atleta, resgate como mensalista ou avulso, vagas do plano, aviso a dono e admins, 403 e 422). A fila de envio, as falhas e a pausa dependem do Uazapi falso (`tests/multi-aparelhos/ferramentas/uazapi-falso.mjs`), que o stack destes cenários não sobe; ficam no roteiro multi-aparelho `tests/multi-aparelhos/roteiros/10-convite-de-mensalistas.md`.
 
 ## Operação
 

@@ -12,7 +12,7 @@ Mailpit, sandbox) e não serve para produção como está.
 | --- | --- |
 | [01-acesso.md](01-acesso.md) | PROD-AC01–AC08: cadastro, e-mail, login, Google/Apple, senha, sessão, troca de conta |
 | [02-inicio-e-perfil.md](02-inicio-e-perfil.md) | PROD-IN01–IN04 e PROD-PF01–PF08: Início, perfil, privacidade, exclusão de conta |
-| [03-grupos-e-convites.md](03-grupos-e-convites.md) | PROD-GR01–GR06, PROD-CV01–CV07 e PROD-MB01–MB05 |
+| [03-grupos-e-convites.md](03-grupos-e-convites.md) | PROD-GR01–GR06, PROD-CV01–CV11 (CV08–CV11: convite de mensalistas pelo WhatsApp, só depois da entrega do DEB-106) e PROD-MB01–MB05 |
 | [04-jogos-e-presenca.md](04-jogos-e-presenca.md) | PROD-JG01–JG13: marcar, responder, espera, convidado, encerramento, acerto e link de presença |
 | [05-avisos-e-notificacoes.md](05-avisos-e-notificacoes.md) | PROD-NT01–NT07: push, avisos, central, preferências, denúncia e bloqueio |
 | [06-financeiro.md](06-financeiro.md) | PROD-FI01–FI08: mensalidade, baixa, lançamentos, extrato, cobrança |
@@ -49,6 +49,7 @@ frequente que tem contorno.
 | --- | --- | --- |
 | ORG | Organizador. Conta nova a cada rodada, criada em PROD-AC01; dono do grupo QA | Aparelho A |
 | ATL | Atleta. Conta nova criada pelo convite em PROD-CV02 | Aparelho B |
+| MENS | Mensalista de teste. Conta nova criada pelo link de mensalistas (PROD-CV11), com o celular de teste do aparelho B | Aparelho B |
 | ATL2 | Segundo atleta. Conta Google nova (PROD-AC04), entra por "Tenho um convite" | Aparelho B, trocando de conta |
 | WEB | Conta criada pelo site em PROD-WEB02 | Navegador + aparelho B |
 
@@ -60,7 +61,7 @@ frequente que tem contorno.
 
 ## Ordem de execução (uma rodada)
 
-Os blocos dependem dos anteriores. São 80 jornadas: uma rodada completa leva umas 4 horas no primeiro
+Os blocos dependem dos anteriores. São 84 jornadas: uma rodada completa leva umas 4 horas no primeiro
 dia, mais as checagens e a limpeza do dia seguinte.
 
 | Bloco | Jornadas | Observação |
@@ -73,6 +74,7 @@ dia, mais as checagens e a limpeza do dia seguinte.
 | 5. Grupo redondo e recorrência | GR04, JG08, IN03, GR05, JG09, JG10, MB05, CV05 | MB05 remove ATL2, e CV05 o traz de volta |
 | 6. Comunicação | NT05, NT06, NT07 | NT06 e NT07 conferem o e-mail da equipe |
 | 7. Financeiro | MB02, FI02, FI03, FI04, FI05, FI06, FI07, FI08 | FI01 só no dia seguinte |
+| 7b. Mensalistas pelo WhatsApp | CV08, CV09, CV10, CV11 | Só depois da entrega do DEB-106 em produção; usa o WhatsApp de teste do aparelho B (duas mensagens de verdade pelo número do Saqz na rodada, em CV08 e CV10, só para o número de teste) |
 | 8. Jogo que termina | JG11, JG12 | Até 5 min depois do fim do jogo |
 | 9. Assinatura | AS02 (ou AS03), MB03, AS04, AS06, AS07, AS05 | AS04 só com o app 0.0.4 (6) no Android; cancelar (AS05) por último |
 | 10. Perfil e conta | PF01–PF07, AC03, AC06, AC07, AC08, AC05 | AC05 só no iPhone |
