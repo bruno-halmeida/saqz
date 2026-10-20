@@ -412,7 +412,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
             <span style="display:flex;align-items:center;gap:10px;min-width:0"><span style="flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--saqz-ice);font-size:11px;font-weight:700;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--saqz-border)">{{ u.ini }}</span><span style="min-width:0"><strong style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.nome }}</strong><span style="display:block;font-size:12px;color:var(--saqz-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.email }}</span></span></span>
             <span style="color:var(--saqz-muted)">{{ u.cidade }}</span>
             <span style="color:var(--saqz-muted)">{{ u.grupos }}</span>
-            <span><span style="{{ u.planoStyle }}">{{ u.plano }}</span></span>
+            <span><span style="{{ u.planoStyle }}">{{ u.plano }}</span><span style="display:block;margin-top:2px;font-size:11.5px;color:var(--saqz-muted)">{{ u.planoOrigem }}</span></span>
             <span><span style="{{ u.statusStyle }}">{{ u.statusTxt }}</span></span>
             <span style="color:var(--saqz-muted)">{{ u.acesso }}</span>
             <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
@@ -533,7 +533,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
           <button type="button" sc-camel-on-click="{{ g.onOpen }}" style="display:grid;grid-template-columns:2fr 1.4fr 1.2fr 0.7fr 0.7fr 1fr 24px;gap:10px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:11px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box" style-hover="background:var(--saqz-ice)">
             <span style="min-width:0"><strong style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.nome }}</strong><span style="display:block;font-size:12px;color:var(--saqz-muted)">{{ g.sub }}</span></span>
             <span style="color:var(--saqz-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.organizador }}</span>
-            <span><span style="{{ g.planoOrgStyle }}">{{ g.planoOrg }}</span></span>
+            <span><span style="{{ g.planoOrgStyle }}">{{ g.planoOrg }}</span><span style="display:block;margin-top:2px;font-size:11.5px;color:var(--saqz-muted)">{{ g.planoOrigem }}</span></span>
             <span style="color:var(--saqz-muted)">{{ g.membros }}</span>
             <span style="color:var(--saqz-muted)">{{ g.jogos }}</span>
             <span><span style="{{ g.statusStyle }}">{{ g.statusTxt }}</span></span>
@@ -1649,6 +1649,19 @@ class Component extends DCLogic {
   }
 
   chip(bg, c) { return `display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;background:${bg};color:${c};white-space:nowrap`; }
+  // Plano efetivo do dono (DEB-099): nome do plano + origem (backend novo manda planSource/planEndsAt; sem eles, só o plano).
+  planoNome(p) { return this.CORT_PLANOS[p] || p || ""; }
+  planoOrigem(source, endsAt) {
+    const fim = endsAt ? this.dataBr(endsAt) : "";
+    switch (source) {
+      case "SITE": return "Site";
+      case "APP_STORE": return "App Store";
+      case "GOOGLE_PLAY": return "Google Play";
+      case "COURTESY": return fim ? `Cortesia até ${fim}` : "Cortesia sem prazo";
+      case "TRIAL": return fim ? `Teste até ${fim}` : "Teste";
+      default: return "";
+    }
+  }
   chipPlano(p) {
     if (!p || p === "FREE") return this.chip("#F5F5F7", "#667085");
     return p === "ILIMITADO" ? this.chip("#F4F8FB", "#0E1738") : this.chip("#F4F8FB", "#0638DF");
@@ -1762,7 +1775,7 @@ class Component extends DCLogic {
     const up = st.usersPage;
     const usuariosRows = up && !up.erro ? up.items.map(u => {
       const cs = this.chipStatus(u.suspended ? "suspenso" : "ativo");
-      return { ini: ini(u.displayName), nome: u.displayName || "—", email: u.email || "—", cidade: u.city || "—", grupos: String(u.memberships), plano: u.plan || "Grátis", planoStyle: this.chipPlano(u.plan), statusTxt: cs.txt, statusStyle: cs.style, acesso: this.dataBr(u.lastSeenAt), onOpen: () => this.go("usuario", { selU: u.userId }) };
+      return { ini: ini(u.displayName), nome: u.displayName || "—", email: u.email || "—", cidade: u.city || "—", grupos: String(u.memberships), plano: this.planoNome(u.plan) || "Grátis", planoOrigem: this.planoOrigem(u.planSource, u.planEndsAt), planoStyle: this.chipPlano(u.plan), statusTxt: cs.txt, statusStyle: cs.style, acesso: this.dataBr(u.lastSeenAt), onOpen: () => this.go("usuario", { selU: u.userId }) };
     }) : [];
     const uCount = up ? (up.erro ? "erro ao carregar" : `${up.total} usuário${up.total === 1 ? "" : "s"}`) : "carregando…";
 
@@ -1785,14 +1798,14 @@ class Component extends DCLogic {
     const gp = st.groupsPage;
     const gruposRows = gp && !gp.erro ? gp.items.map(g => {
       const cs = this.chipStatus(g.deleted ? "apagado" : "ativo");
-      return { nome: g.name, sub: `desde ${this.dataBr(g.createdAt)}`, organizador: g.ownerName || "—", planoOrg: g.ownerPlan || "Sem plano", planoOrgStyle: this.chipPlano(g.ownerPlan), membros: String(g.members), jogos: String(g.gamesPlayed), statusTxt: cs.txt, statusStyle: cs.style, onOpen: () => this.go("grupo", { selG: g.groupId }) };
+      return { nome: g.name, sub: `desde ${this.dataBr(g.createdAt)}`, organizador: g.ownerName || "—", planoOrg: this.planoNome(g.ownerPlan) || "Sem plano", planoOrigem: this.planoOrigem(g.ownerPlanSource, g.ownerPlanEndsAt), planoOrgStyle: this.chipPlano(g.ownerPlan), membros: String(g.members), jogos: String(g.gamesPlayed), statusTxt: cs.txt, statusStyle: cs.style, onOpen: () => this.go("grupo", { selG: g.groupId }) };
     }) : [];
     const gCount = gp ? (gp.erro ? "erro ao carregar" : `${gp.total} grupo${gp.total === 1 ? "" : "s"}`) : "carregando…";
 
     const gdet = st.groupDetail && !st.groupDetail.erro ? st.groupDetail : null;
     const gdStatus = this.chipStatus(gdet && gdet.deletedAt ? "apagado" : "ativo");
     const gd = gdet ? {
-      nome: gdet.name, organizador: gdet.ownerName || "—", planoOrg: gdet.ownerPlan || "Sem plano",
+      nome: gdet.name, organizador: gdet.ownerName || "—", planoOrg: [this.planoNome(gdet.ownerPlan) || "Sem plano", this.planoOrigem(gdet.ownerPlanSource, gdet.ownerPlanEndsAt)].filter(Boolean).join(" · "),
       membros: String(gdet.members), jogos: String(gdet.gamesPlayed), criado: this.dataBr(gdet.createdAt), fuso: gdet.timeZone
     } : { nome: st.groupDetail && st.groupDetail.erro ? "Não deu para carregar" : "Carregando…", organizador: "—", planoOrg: "", membros: "—", jogos: "—", criado: "—", fuso: "—" };
     const gdJogos = gdet ? gdet.lastGames.map(j => ({ data: this.dataCurta(j.startsAt), desc: j.title + (j.status === "CANCELLED" ? " · cancelado" : ""), presenca: `${j.confirmed} confirmado${j.confirmed === 1 ? "" : "s"}` })) : [];
