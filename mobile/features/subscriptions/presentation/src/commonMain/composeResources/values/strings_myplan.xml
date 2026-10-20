@@ -11,6 +11,11 @@
     <string name="myplan_next_charge">Próxima cobrança em %1$s</string>
     <string name="myplan_access_until">Acesso garantido até %1$s</string>
     <string name="myplan_access_ended">Seu acesso terminou em %1$s.</string>
+    <!-- DEB-097: cortesia de plano dada pelo suporte. -->
+    <string name="myplan_courtesy_title">Plano %1$s ativo</string>
+    <string name="myplan_courtesy_until">Cortesia até %1$s</string>
+    <string name="myplan_courtesy_no_end">Cortesia sem prazo</string>
+    <string name="myplan_courtesy_subscription_note">Sua assinatura é a do plano %1$s.</string>
     <string name="myplan_usage_title">Uso do plano</string>
     <plurals name="myplan_usage_ratio">
         <item quantity="one">%1$d de %2$d grupo</item>

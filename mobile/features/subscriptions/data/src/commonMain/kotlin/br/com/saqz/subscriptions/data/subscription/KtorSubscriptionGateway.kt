@@ -39,6 +39,9 @@ internal data class SubscriptionUsageTransport(
 )
 
 @Serializable
+internal data class CourtesyTransport(val plan: PlanTransport, val endsAt: String? = null)
+
+@Serializable
 internal data class MySubscriptionTransport(
     val status: SubscriptionStatusTransport,
     val entitled: Boolean,
@@ -54,6 +57,7 @@ internal data class MySubscriptionTransport(
     val autoRenew: Boolean? = null,
     val paymentConfirmed: Boolean = true,
     val payUrl: String? = null,
+    val courtesy: CourtesyTransport? = null,
 )
 
 @Serializable
@@ -121,6 +125,10 @@ class KtorSubscriptionGateway(
 ) : SubscriptionGateway {
     override suspend fun mySubscription() = retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
         network.execute(HttpMethod.Get, "subscriptions/me", MySubscriptionTransport.serializer())
+    }.mapSubscription { it.toDomain() }
+
+    override suspend fun myCourtesy() = retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
+        network.execute(HttpMethod.Get, "subscriptions/me/courtesy", CourtesyTransport.serializer())
     }.mapSubscription { it.toDomain() }
 
     override suspend fun listPlans() = retryTransport(RetrySafety.Read, delayMillis = retryDelay) {
@@ -191,7 +199,10 @@ internal fun MySubscriptionTransport.toDomain() = MySubscription(
     autoRenew = autoRenew,
     paymentConfirmed = paymentConfirmed,
     payUrl = payUrl,
+    courtesy = courtesy?.toDomain(),
 )
+
+private fun CourtesyTransport.toDomain() = Courtesy(plan.toDomain(), endsAt)
 
 private fun PlanCatalogItemTransport.toDomain() = PlanCatalogItem(
     id = id.toDomain(),

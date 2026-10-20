@@ -78,7 +78,27 @@ internal fun MyPlanCurrentCard(plan: MyPlanCardUi, modifier: Modifier = Modifier
                 SaqzStatusChip(text = plan.statusLabel.asString(), tone = plan.statusTone.toChipTone(), dot = true)
             }
         }
-        Text(text = plan.name, style = SaqzTheme.typography.headline, color = colors.onPrimary)
+        Text(
+            text = plan.titleOverride?.asString() ?: plan.name,
+            style = SaqzTheme.typography.headline,
+            color = colors.onPrimary,
+        )
+        plan.courtesyNote?.let { note ->
+            Text(
+                text = note.asString(),
+                style = SaqzTheme.typography.support,
+                color = colors.onPrimary,
+                modifier = Modifier.testTag(MyPlanTags.CourtesyNote),
+            )
+        }
+        plan.subscriptionNote?.let { note ->
+            Text(
+                text = note.asString(),
+                style = SaqzTheme.typography.support,
+                color = colors.onPrimary,
+                modifier = Modifier.testTag(MyPlanTags.SubscriptionNote),
+            )
+        }
         plan.pendingNote?.let { note ->
             Text(
                 text = note.asString(),

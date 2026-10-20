@@ -96,6 +96,34 @@ class MyPlanViewModel(
             val neverPaid = subscriptionResult is SaqzResult.Success && subscriptionResult.value.neverPaid()
             val neverSubscribed = neverPaid ||
                 subscriptionResult is SaqzResult.Failure && subscriptionResult.error == SubscriptionError.NotFound
+            // Quem só tem cortesia: o `/me` dá 404 (ou o checkout nunca foi pago) e o `/trial` diz SUBSCRIBED.
+            // Falha da consulta, qualquer que seja, cai no fluxo de sempre.
+            val courtesyResult = if (neverSubscribed) gateway.myCourtesy() else null
+            if (generation != loadGeneration) return@launch
+            val onlyCourtesy = (courtesyResult as? SaqzResult.Success)?.value
+            if (onlyCourtesy != null) {
+                update {
+                    it.copy(
+                        isLoading = false,
+                        loadError = null,
+                        plan = onlyCourtesy.toCardUi(),
+                        usage = null,
+                        trial = null,
+                        receipts = emptyList(),
+                        receiptsError = null,
+                        loadMoreReceiptsError = null,
+                        hasMoreReceipts = false,
+                        managingStore = null,
+                        canResubscribe = false,
+                        canReactivate = false,
+                        isReactivating = false,
+                        reactivateError = null,
+                        payUrl = null,
+                        courtesyOnly = true,
+                    )
+                }
+                return@launch
+            }
             val trialResult = if (neverSubscribed) trialGateway?.ownerTrial() else null
             if (generation != loadGeneration) return@launch
 
@@ -116,6 +144,7 @@ class MyPlanViewModel(
                         isReactivating = false,
                         reactivateError = null,
                         payUrl = null,
+                        courtesyOnly = false,
                     )
                 }
                 return@launch
@@ -134,7 +163,8 @@ class MyPlanViewModel(
                     isLoading = false,
                     loadError = null,
                     plan = loadedSubscription.toCardUi(),
-                    usage = loadedSubscription.toUsageUi(),
+                    // O limite de grupos do `/me` é o do plano pago: com a cortesia mandando ficaria errado.
+                    usage = if (loadedSubscription.courtesyIsEffective()) null else loadedSubscription.toUsageUi(),
                     trial = null,
                     managingStore = loadedSubscription.provider.takeIf { it != SubscriptionProvider.Asaas },
                     canResubscribe = loadedSubscription.canResubscribe(),
@@ -142,6 +172,7 @@ class MyPlanViewModel(
                     isReactivating = false,
                     reactivateError = null,
                     payUrl = loadedSubscription.payUrl,
+                    courtesyOnly = false,
                     // Falha aqui não pode virar "nenhum recibo ainda" (achado do Codex no
                     // PR #93): mantém a última lista boa e guarda o erro à parte.
                     receipts = (receiptsResult as? SaqzResult.Success)?.value?.map { r -> r.toUi() } ?: it.receipts,
@@ -254,7 +285,8 @@ class MyPlanViewModel(
     }
 
     private fun canManagePaidPlan(): Boolean =
-        !state.value.isLoading && state.value.loadError == null && state.value.plan != null && state.value.trial == null
+        !state.value.isLoading && state.value.loadError == null && state.value.plan != null && state.value.trial == null &&
+            !state.value.courtesyOnly
 
     /** Troca e cancelamento pelo backend só existem na assinatura da web. */
     private fun canManageWebPlan(): Boolean = canManagePaidPlan() && !state.value.managedByStore

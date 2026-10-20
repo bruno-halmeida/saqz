@@ -58,6 +58,8 @@ internal object MyPlanTags {
     const val PayNow = "myplan-pay-now"
     const val Reactivate = "myplan-reactivate"
     const val ReactivateError = "myplan-reactivate-error"
+    const val CourtesyNote = "myplan-courtesy-note"
+    const val SubscriptionNote = "myplan-subscription-note"
 }
 
 /** 8e — plano atual, uso, recibos e o menu Gerenciar. A tela só empilha; cada bloco é uma
@@ -152,7 +154,7 @@ fun MyPlanScreen(
                     )
                 }
                 state.usage?.let { MyPlanUsageCard(it) }
-                if (state.plan != null) {
+                if (state.plan != null && !state.courtesyOnly) {
                     MyPlanManageSection(
                         state = state,
                         onIntent = onIntent,
@@ -162,7 +164,9 @@ fun MyPlanScreen(
                 // Assinatura já efetivamente cancelada (achado do Codex no PR #93) não tem
                 // o que cancelar de novo — o backend já rejeita com AlreadyCanceled. A da
                 // loja (App Store ou Google Play) só se cancela na conta da loja.
-                if (state.plan != null && state.plan.statusTone != MyPlanStatusTone.Canceled && !state.managedByStore) {
+                if (state.plan != null && !state.courtesyOnly &&
+                    state.plan.statusTone != MyPlanStatusTone.Canceled && !state.managedByStore
+                ) {
                     MyPlanCancelSection(onIntent = onIntent)
                 }
             }
@@ -195,6 +199,31 @@ internal object MyPlanPreviewData {
         ),
     )
 
+    val courtesyOnly = MyPlanState(
+        isLoading = false,
+        plan = MyPlanCardUi(
+            name = "Ilimitado",
+            statusLabel = UiText.Raw("Ativo"),
+            statusTone = MyPlanStatusTone.Active,
+            nextChargeDate = null,
+            titleOverride = UiText.Raw("Plano Ilimitado ativo"),
+            courtesyNote = UiText.Raw("Cortesia até 31/12/2026"),
+        ),
+        courtesyOnly = true,
+    )
+
+    val courtesyOverPaid = active.copy(
+        plan = MyPlanCardUi(
+            name = "Ilimitado",
+            statusLabel = UiText.Raw("Ativo"),
+            statusTone = MyPlanStatusTone.Active,
+            nextChargeDate = "24/08/2026",
+            courtesyNote = UiText.Raw("Cortesia sem prazo"),
+            subscriptionNote = UiText.Raw("Sua assinatura é a do plano Organizador."),
+        ),
+        usage = null,
+    )
+
     val loading = MyPlanState(isLoading = true)
 
     val error = MyPlanState(isLoading = false, loadError = UiText.Raw("Não foi possível carregar seu plano agora."))
@@ -204,6 +233,18 @@ internal object MyPlanPreviewData {
 @Composable
 private fun MyPlanScreenActivePreview() = SaqzTheme {
     MyPlanScreen(state = MyPlanPreviewData.active, onBack = {}, onIntent = {})
+}
+
+@Preview(name = "Só cortesia")
+@Composable
+private fun MyPlanScreenCourtesyOnlyPreview() = SaqzTheme {
+    MyPlanScreen(state = MyPlanPreviewData.courtesyOnly, onBack = {}, onIntent = {})
+}
+
+@Preview(name = "Cortesia maior que o pago")
+@Composable
+private fun MyPlanScreenCourtesyOverPaidPreview() = SaqzTheme {
+    MyPlanScreen(state = MyPlanPreviewData.courtesyOverPaid, onBack = {}, onIntent = {})
 }
 
 @Preview

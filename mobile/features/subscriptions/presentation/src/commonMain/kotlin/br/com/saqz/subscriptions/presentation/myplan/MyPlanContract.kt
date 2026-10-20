@@ -46,6 +46,8 @@ data class MyPlanState(
     val reactivateError: UiText? = null,
     /** Fatura vencida do site em atraso: com ela a tela mostra "Pagar agora". */
     val payUrl: String? = null,
+    /** Só cortesia, sem assinatura: o cartão aparece, mas não há cobrança, recibos nem gestão de plano pago. */
+    val courtesyOnly: Boolean = false,
 ) {
     val managedByStore: Boolean get() = managingStore != null
 }
@@ -79,6 +81,11 @@ data class MyPlanCardUi(
     // `accessUntilDate` já passou: a tela diz que o acesso terminou, em vez de garanti-lo.
     val accessEnded: Boolean = false,
     val pendingNote: UiText? = null,
+    // Cortesia (DEB-097): título próprio quando é só cortesia, linha do prazo e, se o plano da
+    // cortesia manda no cartão, a nota de que a cobrança segue sendo a da assinatura paga.
+    val titleOverride: UiText? = null,
+    val courtesyNote: UiText? = null,
+    val subscriptionNote: UiText? = null,
 )
 
 /** [progress] nulo é o plano sem limite de grupos (Quadra Cheia): a barra não desenha. */

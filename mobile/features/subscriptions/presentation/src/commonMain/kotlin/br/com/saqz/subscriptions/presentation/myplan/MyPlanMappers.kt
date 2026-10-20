@@ -1,10 +1,15 @@
 package br.com.saqz.subscriptions.presentation.myplan
 
 import br.com.saqz.designsystem.UiText
+import br.com.saqz.subscriptions.domain.subscription.Courtesy
 import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.Receipt
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionStatus
 import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.myplan_courtesy_no_end
+import br.com.saqz.subscriptions.resources.myplan_courtesy_subscription_note
+import br.com.saqz.subscriptions.resources.myplan_courtesy_title
+import br.com.saqz.subscriptions.resources.myplan_courtesy_until
 import br.com.saqz.subscriptions.resources.myplan_pending_note
 import br.com.saqz.subscriptions.resources.myplan_status_active
 import br.com.saqz.subscriptions.resources.myplan_status_canceled
@@ -33,6 +38,30 @@ internal fun SubscriptionStatus.toUiText(): UiText = when (this) {
     SubscriptionStatus.Canceled -> UiText.Res(Res.string.myplan_status_canceled)
 }
 
+/**
+ * A cortesia manda no cartão quando o plano pago não dá mais acesso ou quando ela é maior
+ * (Titular < Organizador < Ilimitado). Pago maior ou igual: o cartão fica como sempre foi.
+ */
+internal fun MySubscription.courtesyIsEffective(): Boolean {
+    val granted = courtesy ?: return false
+    return !entitled || granted.plan > plan
+}
+
+private fun Courtesy.toNote(): UiText {
+    val end = endsAt ?: return UiText.Res(Res.string.myplan_courtesy_no_end)
+    return UiText.Res(Res.string.myplan_courtesy_until, listOf(isoDateToPtBr(end)))
+}
+
+/** Cartão de quem só tem cortesia: plano ativo, sem cobrança. */
+internal fun Courtesy.toCardUi(): MyPlanCardUi = MyPlanCardUi(
+    name = plan.name,
+    statusLabel = SubscriptionStatus.Active.toUiText(),
+    statusTone = MyPlanStatusTone.Active,
+    nextChargeDate = null,
+    titleOverride = UiText.Res(Res.string.myplan_courtesy_title, listOf(plan.name)),
+    courtesyNote = toNote(),
+)
+
 internal fun MySubscription.toCardUi(now: Instant = Clock.System.now()): MyPlanCardUi {
     // O backend marca `canceledAt` sem tocar em `status` — o acesso segue até
     // `currentPeriodEnd`, e é o webhook quem migra o status pra CANCELED depois (achado
@@ -44,8 +73,9 @@ internal fun MySubscription.toCardUi(now: Instant = Clock.System.now()): MyPlanC
     val effectiveStatus = if (canceled) SubscriptionStatus.Canceled else status
     val pending = pendingPlan
     val pendingAt = pendingPlanEffectiveAt
+    val effectiveCourtesy = courtesy?.takeIf { courtesyIsEffective() }
     return MyPlanCardUi(
-        name = plan.name,
+        name = (effectiveCourtesy?.plan ?: plan).name,
         statusLabel = effectiveStatus.toUiText(),
         statusTone = effectiveStatus.toTone(),
         // `currentPeriodEnd` cancelada não é cobrança futura — cancelar já parou a cobrança
@@ -58,6 +88,10 @@ internal fun MySubscription.toCardUi(now: Instant = Clock.System.now()): MyPlanC
             UiText.Res(Res.string.myplan_pending_note, listOf(pending.name, isoDateToPtBr(pendingAt)))
         } else {
             null
+        },
+        courtesyNote = effectiveCourtesy?.toNote(),
+        subscriptionNote = effectiveCourtesy?.let {
+            UiText.Res(Res.string.myplan_courtesy_subscription_note, listOf(plan.name))
         },
     )
 }

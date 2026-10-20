@@ -2,7 +2,14 @@ package br.com.saqz.subscriptions.presentation.myplan
 
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.designsystem.UiText
 import br.com.saqz.subscriptions.domain.subscription.CanceledSubscription
+import br.com.saqz.subscriptions.domain.subscription.Courtesy
+import br.com.saqz.subscriptions.resources.Res
+import br.com.saqz.subscriptions.resources.myplan_courtesy_no_end
+import br.com.saqz.subscriptions.resources.myplan_courtesy_subscription_note
+import br.com.saqz.subscriptions.resources.myplan_courtesy_title
+import br.com.saqz.subscriptions.resources.myplan_courtesy_until
 import br.com.saqz.subscriptions.domain.subscription.ChangedPlan
 import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.Plan
@@ -594,6 +601,113 @@ class MyPlanViewModelTest {
         assertEquals(listOf(ReceiptRequest(20, 0)), gateway.receiptRequests)
     }
 
+    // DEB-097: cortesia de plano.
+    @Test
+    fun `courtesy only with an end shows the plan card without billing and no receipts or management`() = runTest {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResult = SaqzResult.Failure(SubscriptionError.NotFound),
+            courtesyResult = SaqzResult.Success(Courtesy(Plan.Ilimitado, "2026-12-31T00:00:00Z")),
+        )
+        val viewModel = MyPlanViewModel(gateway, trialGateway = trialGateway(TrialStatus.Subscribed))
+
+        val state = viewModel.state.value
+        assertNull(state.loadError)
+        assertEquals(true, state.courtesyOnly)
+        assertEquals(UiText.Res(Res.string.myplan_courtesy_title, listOf("Ilimitado")), state.plan?.titleOverride)
+        assertEquals(UiText.Res(Res.string.myplan_courtesy_until, listOf("31/12/2026")), state.plan?.courtesyNote)
+        assertNull(state.plan?.nextChargeDate)
+        assertNull(state.usage)
+        assertEquals(false, state.canResubscribe)
+        assertEquals(emptyList(), gateway.receiptRequests)
+        viewModel.onIntent(MyPlanIntent.OpenReceipts)
+        viewModel.onIntent(MyPlanIntent.OpenCancel)
+        assertEquals(false, viewModel.state.value.isReceiptsSheetOpen)
+        assertEquals(false, viewModel.state.value.isCancelSheetOpen)
+    }
+
+    @Test
+    fun `courtesy only without an end says it has no deadline`() = runTest {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResult = SaqzResult.Failure(SubscriptionError.NotFound),
+            courtesyResult = SaqzResult.Success(Courtesy(Plan.Titular, null)),
+        )
+        val viewModel = MyPlanViewModel(gateway, trialGateway = trialGateway(TrialStatus.Subscribed))
+
+        assertEquals(UiText.Res(Res.string.myplan_courtesy_no_end), viewModel.state.value.plan?.courtesyNote)
+        assertEquals(true, viewModel.state.value.courtesyOnly)
+    }
+
+    @Test
+    fun `courtesy lookup failure keeps today's flow`() = runTest {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResult = SaqzResult.Failure(SubscriptionError.NotFound),
+            courtesyResult = SaqzResult.Failure(SubscriptionError.Data(DataError.Server)),
+        )
+        val withTrial = MyPlanViewModel(gateway, trialGateway = trialGateway(TrialStatus.Expired))
+        assertEquals(TrialStatus.Expired, withTrial.state.value.trial?.status)
+        assertEquals(false, withTrial.state.value.courtesyOnly)
+
+        val subscribedOnly = MyPlanViewModel(gateway, trialGateway = trialGateway(TrialStatus.Subscribed))
+        assertNotNull(subscribedOnly.state.value.loadError)
+        assertNull(subscribedOnly.state.value.plan)
+    }
+
+    @Test
+    fun `smaller paid plan with a bigger courtesy shows the courtesy plan and keeps the paid billing`() = runTest {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResult = SaqzResult.Success(
+                ACTIVE_SUBSCRIPTION.copy(courtesy = Courtesy(Plan.Ilimitado, null)),
+            ),
+        )
+        val state = MyPlanViewModel(gateway).state.value
+
+        assertEquals("Ilimitado", state.plan?.name)
+        assertEquals(UiText.Res(Res.string.myplan_courtesy_no_end), state.plan?.courtesyNote)
+        assertEquals(
+            UiText.Res(Res.string.myplan_courtesy_subscription_note, listOf("Organizador")),
+            state.plan?.subscriptionNote,
+        )
+        assertEquals("30/08/2026", state.plan?.nextChargeDate)
+        assertNull(state.usage)
+        assertEquals(false, state.courtesyOnly)
+        assertEquals(listOf(ReceiptRequest(20, 0)), gateway.receiptRequests)
+    }
+
+    @Test
+    fun `bigger paid plan with a smaller courtesy leaves the card as before`() = runTest {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResult = SaqzResult.Success(
+                ACTIVE_SUBSCRIPTION.copy(courtesy = Courtesy(Plan.Titular, "2026-12-31T00:00:00Z")),
+            ),
+        )
+        val state = MyPlanViewModel(gateway).state.value
+
+        assertEquals("Organizador", state.plan?.name)
+        assertNull(state.plan?.courtesyNote)
+        assertNull(state.plan?.subscriptionNote)
+        assertNotNull(state.usage)
+    }
+
+    @Test
+    fun `paid plan without access and a courtesy shows the courtesy plan`() = runTest {
+        val gateway = FakeSubscriptionGateway(
+            subscriptionResult = SaqzResult.Success(
+                ACTIVE_SUBSCRIPTION.copy(
+                    status = SubscriptionStatus.Canceled,
+                    entitled = false,
+                    canceledAt = "2026-08-01T00:00:00Z",
+                    courtesy = Courtesy(Plan.Titular, "2026-12-31T00:00:00Z"),
+                ),
+            ),
+        )
+        val state = MyPlanViewModel(gateway).state.value
+
+        assertEquals("Titular", state.plan?.name)
+        assertEquals(UiText.Res(Res.string.myplan_courtesy_until, listOf("31/12/2026")), state.plan?.courtesyNote)
+        assertNull(state.usage)
+        assertEquals(MyPlanStatusTone.Canceled, state.plan?.statusTone)
+    }
+
     private fun trialGateway(status: TrialStatus) = object : TrialGateway {
         override suspend fun ownerTrial() = SaqzResult.Success(TrialAccess(
             status, "2026-09-01T12:00:00Z", "2026-09-15T12:00:00Z", "2026-09-16T12:00:00Z",
@@ -637,6 +751,7 @@ private class FakeSubscriptionGateway(
     var reactivateResult: SaqzResult<ReactivatedSubscription, SubscriptionError> =
         SaqzResult.Success(ReactivatedSubscription(SubscriptionStatus.Active, "2026-08-30T00:00:00Z")),
     var subscriptionAfterReactivate: MySubscription? = null,
+    var courtesyResult: SaqzResult<Courtesy, SubscriptionError> = SaqzResult.Failure(SubscriptionError.NotFound),
 ) : SubscriptionGateway {
     var reactivateCalls = 0
 
@@ -645,6 +760,8 @@ private class FakeSubscriptionGateway(
     private var receiptPageIndex = 0
 
     override suspend fun mySubscription(): SaqzResult<MySubscription, SubscriptionError> = subscriptionResult
+
+    override suspend fun myCourtesy(): SaqzResult<Courtesy, SubscriptionError> = courtesyResult
 
     override suspend fun listPlans(): SaqzResult<List<PlanCatalogItem>, SubscriptionError> =
         SaqzResult.Success(emptyList())

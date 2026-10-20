@@ -78,6 +78,33 @@ class KtorSubscriptionGatewayTest {
     }
 
     @Test
+    fun `my subscription maps the courtesy when present and leaves it null otherwise`() = runTest {
+        val withCourtesy = success(
+            gateway {
+                json(MY_SUBSCRIPTION.replace("\"canceledAt\":null}", "\"canceledAt\":null,\"courtesy\":{\"plan\":\"ILIMITADO\",\"endsAt\":\"2026-12-31T00:00:00Z\"}}"))
+            }.mySubscription(),
+        )
+        assertEquals(Courtesy(Plan.Ilimitado, "2026-12-31T00:00:00Z"), withCourtesy.courtesy)
+        assertNull(success(gateway { json(MY_SUBSCRIPTION) }.mySubscription()).courtesy)
+    }
+
+    @Test
+    fun `my courtesy reads the endpoint and maps a courtesy without end`() = runTest {
+        val value = success(gateway { request ->
+            assertEquals(HttpMethod.Get, request.method)
+            assertEquals("/subscriptions/me/courtesy", request.url.encodedPath)
+            json("""{"plan":"TITULAR","endsAt":null}""")
+        }.myCourtesy())
+        assertEquals(Courtesy(Plan.Titular, null), value)
+    }
+
+    @Test
+    fun `my courtesy not found maps distinctly`() = runTest {
+        val result = gateway { problemResponse(404, "SUBSCRIPTION_NOT_FOUND") }.myCourtesy()
+        assertEquals(SubscriptionError.NotFound, assertIs<SaqzResult.Failure<SubscriptionError>>(result).error)
+    }
+
+    @Test
     fun `list plans maps app store product ids`() = runTest {
         val value = success(gateway { json(PLANS_WITH_APP_STORE) }.listPlans())
 

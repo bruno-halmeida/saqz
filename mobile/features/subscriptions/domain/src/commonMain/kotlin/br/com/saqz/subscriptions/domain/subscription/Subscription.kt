@@ -13,6 +13,9 @@ enum class SubscriptionStatus { Active, PastDue, Canceled }
 /** Quem cobra: a web (Asaas), a App Store ou o Google Play. Troca de plano e cancelamento dependem disso. */
 enum class SubscriptionProvider { Asaas, AppStore, GooglePlay }
 
+/** Cortesia de plano dada pelo suporte: [endsAt] nulo é sem prazo. */
+data class Courtesy(val plan: Plan, val endsAt: String?)
+
 data class SubscriptionUsage(val groupsUsed: Int, val groupsLimit: Int?)
 
 data class MySubscription(
@@ -36,6 +39,8 @@ data class MySubscription(
     val paymentConfirmed: Boolean = true,
     /** "Pagar agora": a fatura vencida do site em atraso (a mesma do aviso); nulo sem fatura. */
     val payUrl: String? = null,
+    /** Cortesia ativa de quem também tem assinatura; o `/me` só manda o campo nesse caso. */
+    val courtesy: Courtesy? = null,
 )
 
 /** Os dois produtos da App Store de um plano. O mapeamento é do backend (`GET /plans`). */
@@ -99,6 +104,10 @@ sealed interface SubscriptionError : SaqzError {
 
 interface SubscriptionGateway {
     suspend fun mySubscription(): SaqzResult<MySubscription, SubscriptionError>
+
+    /** Cortesia ativa, inclusive de quem não tem assinatura; `NotFound` sem cortesia. */
+    suspend fun myCourtesy(): SaqzResult<Courtesy, SubscriptionError> =
+        SaqzResult.Failure(SubscriptionError.NotFound)
 
     suspend fun listPlans(): SaqzResult<List<PlanCatalogItem>, SubscriptionError>
 
