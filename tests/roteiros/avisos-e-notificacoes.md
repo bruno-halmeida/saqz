@@ -54,7 +54,11 @@ _As linhas da janela de presença (a partir de "Janela ligada") foram decididas 
 | Jogo publicado já dentro das 8 h antes do prazo | O cartão abre na primeira passada do job | ☐ | ☐ |
 | Já respondeu ("Vou", confirmado ou na espera, ou "Não vou") antes da janela | Não recebe o cartão nem o push da janela | ☐ | ☐ |
 | Responde depois de o cartão abrir | O cartão encerra | ☐ | ☐ |
-| Chega o prazo de confirmação | O cartão some, nos dois aparelhos | ☐ | ☐ |
+| Chega o prazo de confirmação, Android | O cartão some | ☐ | ☐ |
+| Chega o prazo de confirmação, iPhone | O cartão troca para "Janela encerrada. Confirme pelo app."; sai da Dynamic Island em 8 h e fica na tela bloqueada por até 4 h, ou até arrastar | ☐ | ☐ |
+| Jogo hoje, amanhã ou em outro dia (iPhone 1.0.10) | Título "Hoje às 19:30", "Amanhã às 19:30" ou "<dia da semana> às 19:30" | ☐ | ☐ |
+| Vagas mudam depois de o cartão abrir | A contagem do cartão continua a da abertura | ☐ | ☐ |
+| iPhone com o app até a 1.0.9 | Mostra "Amanhã às" mesmo quando o jogo é hoje | ☐ | ☐ |
 | Jogo 5-1, toca "Confirmar" no cartão | Abre o app na tela de escolher posição; nada é confirmado por baixo | ☐ | ☐ |
 | Jogo cancelado ou já iniciado | O cartão não abre (ou encerra) | ☐ | ☐ |
 | Flag da janela desligada (produção até o OK do dono) | Nenhum cartão e nenhum push da janela | ☐ | ☐ |
