@@ -410,7 +410,7 @@ private fun HomeHero(
                 names = game.rosterNames,
                 summary = game.confirmedSummary,
                 // Jogo já começado não tem "vaga restante": ninguém mais entra pela confirmação.
-                spotsChip = if (game.canRespond && spotsLeft in 1..SpotsLeftMax) {
+                spotsLeft = if (game.canRespond && spotsLeft in 1..SpotsLeftMax) {
                     pluralStringResource(Res.plurals.home_spots_left, spotsLeft, spotsLeft)
                 } else {
                     null

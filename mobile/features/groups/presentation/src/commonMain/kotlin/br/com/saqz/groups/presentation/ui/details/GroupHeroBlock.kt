@@ -218,7 +218,7 @@ private fun GroupGameHero(
                         game.capacity,
                     )
                 },
-                spotsChip = if (scarce) {
+                spotsLeft = if (scarce) {
                     pluralStringResource(Res.plurals.home_spots_left, game.availableSpots, game.availableSpots)
                 } else {
                     null

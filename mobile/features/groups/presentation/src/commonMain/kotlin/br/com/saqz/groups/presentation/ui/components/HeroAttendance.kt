@@ -15,6 +15,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -27,10 +28,8 @@ import br.com.saqz.designsystem.SaqzAvatarStack
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
-import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
-import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
@@ -156,17 +155,20 @@ internal fun HeroAlertLine(
 }
 
 /**
- * Quem vai, sobre o azul: pilha de avatares com anel azul e "+N" lima, o resumo e, quando a
- * tela manda, o chip de escassez ("Restam N vagas"). [spotsChip] nulo esconde o chip.
+ * Quem vai, sobre o azul: pilha de avatares com anel azul e "+N" lima e, ao lado, uma coluna com o
+ * resumo (uma linha só) e, quando a tela manda, a escassez ("Restam N vagas") em lima com um ponto.
+ * [spotsLeft] nulo deixa só o resumo, centralizado na altura dos avatares. Se o resumo não couber,
+ * a pilha perde um avatar antes de o texto quebrar.
  */
 @Composable
 internal fun HeroRosterRow(
     names: List<String>,
     summary: String,
-    spotsChip: String?,
+    spotsLeft: String?,
     modifier: Modifier = Modifier,
 ) {
     val colors = SaqzTheme.colors
+    var visibleAvatars by remember(names, summary) { mutableIntStateOf(HeroAvatarsMax) }
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -174,21 +176,42 @@ internal fun HeroRosterRow(
     ) {
         SaqzAvatarStack(
             names = names,
+            max = visibleAvatars,
             ring = colors.primary,
             overflowContainer = colors.accent,
             overflowContent = colors.textPrimary,
         )
-        Text(
-            text = summary,
-            style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-            color = colors.onPrimary.copy(alpha = HeroSummaryAlpha),
-            modifier = Modifier.weight(1f),
-        )
-        if (spotsChip != null) {
-            SaqzStatusChip(text = spotsChip, tone = SaqzChipTone.Inverse, dot = true)
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(HeroRosterLineGap)) {
+            Text(
+                text = summary,
+                style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.onPrimary.copy(alpha = HeroSummaryAlpha),
+                maxLines = 1,
+                softWrap = false,
+                onTextLayout = { if (it.hasVisualOverflow && visibleAvatars > 1) visibleAvatars-- },
+            )
+            if (spotsLeft != null) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(HeroIconGap),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(HeroRosterDotSize).background(colors.accent, CircleShape))
+                    Text(
+                        text = spotsLeft,
+                        style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+                        color = colors.accent,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
         }
     }
 }
+
+private const val HeroAvatarsMax = 3
+private val HeroRosterLineGap = 2.dp
+private val HeroRosterDotSize = 6.dp
 
 /**
  * Seletor de presença sobre o hero azul. [confirmationOpen] diz se dá para responder (jogo por
