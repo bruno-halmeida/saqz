@@ -151,10 +151,7 @@ class GroupSetupViewModel(
             GroupSetupIntent.CloseSheet -> update { it.copy(sheet = null) }
             is GroupSetupIntent.PickSlotWeekday ->
                 update { it.copy(slotDraft = it.slotDraft.copy(weekdays = setOf(intent.weekday))) }
-            is GroupSetupIntent.ToggleSlotWeekday -> update {
-                val days = it.slotDraft.weekdays
-                it.copy(slotDraft = it.slotDraft.copy(weekdays = if (intent.weekday in days) days - intent.weekday else days + intent.weekday))
-            }
+            is GroupSetupIntent.ToggleSlotWeekday -> update { it.withSlotWeekdayToggled(intent.weekday) }
             is GroupSetupIntent.PickSlotTime ->
                 update { it.copy(slotDraft = it.slotDraft.copy(hour = intent.hour, minute = intent.minute)) }
             GroupSetupIntent.ConfirmSlot -> onConfirmSlot()
@@ -420,30 +417,9 @@ class GroupSetupViewModel(
     }
 
     private fun onConfirmSlot() {
-        val current = state.value
-        val sheet = current.sheet as? GroupSetupSheet.Slot ?: return
-        val draft = current.slotDraft
-        val days = SlotWeekOrder.filter { it in draft.weekdays }
-        if (days.isEmpty()) return
-        val startTime = formatTime(draft.hour, draft.minute)
-        fun slotOf(day: GroupWeekday) = GroupRegularSlotForm(
-            weekday = day,
-            startTime = startTime,
-            durationMinutes = current.durationMinutes,
-        )
-        val slots = current.form.regularSlots
-        val updated = when {
-            // Horário novo: um por dia marcado, sem repetir dia e hora que o grupo já tem.
-            sheet.index == null || sheet.index !in slots.indices ->
-                slots + days.map(::slotOf).filter { new -> slots.none { it.weekday == new.weekday && it.startTime == new.startTime } }
-            else -> slots.toMutableList().also { it[sheet.index] = slotOf(days.first()) }
-        }
+        val confirmed = state.value.withSlotConfirmed() ?: return
         discardCreationKey()
-        update {
-            it.copy(sheet = null, creationCommandKey = null)
-                .withForm { copy(regularSlots = updated) }
-                .revalidated()
-        }
+        update { confirmed }
     }
 
     private fun handleDurationIntent(intent: GroupSetupIntent) {
@@ -667,19 +643,6 @@ private fun GroupRegularSlotForm.toDraft(): GroupSlotDraft {
     return GroupSlotDraft(weekday, parts.getOrNull(0)?.toIntOrNull() ?: 0, parts.getOrNull(1)?.toIntOrNull() ?: 0)
 }
 
-/** Ordem em que os dias marcados viram horários: a da folha, de domingo a sábado. */
-private val SlotWeekOrder = listOf(
-    GroupWeekday.SUNDAY,
-    GroupWeekday.MONDAY,
-    GroupWeekday.TUESDAY,
-    GroupWeekday.WEDNESDAY,
-    GroupWeekday.THURSDAY,
-    GroupWeekday.FRIDAY,
-    GroupWeekday.SATURDAY,
-)
-
-private fun formatTime(hour: Int, minute: Int) = "${hour.pad()}:${minute.pad()}"
-private fun Int.pad() = toString().padStart(2, '0')
 
 private val EmptyVenue = GroupVenueForm(name = "", address = "")
 

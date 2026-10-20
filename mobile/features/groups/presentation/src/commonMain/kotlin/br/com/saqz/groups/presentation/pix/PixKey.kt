@@ -51,16 +51,19 @@ object PixKeys {
     /** O tipo de uma chave antiga sem tipo, pelo formato; `null` se não der para deduzir. */
     fun deduce(key: String?): PixKeyType? {
         val text = key?.trim().orEmpty()
-        if (text.isEmpty()) return null
-        if (text.contains('@')) return PixKeyType.EMAIL.takeIf { isValid(it, normalize(it, text)) }
-        if (text.all { it.isLetterOrDigit() || it == '-' } && isUuid(normalizeRandom(text))) return PixKeyType.RANDOM
-        if (!PhoneLikePattern.matches(text)) return null
-        val digits = text.filter(::isAsciiDigit)
         return when {
-            isValidCpf(digits) -> PixKeyType.CPF
-            isMobilePhone(phoneFieldDigits(digits)) -> PixKeyType.PHONE
+            text.isEmpty() -> null
+            text.contains('@') -> PixKeyType.EMAIL.takeIf { isValid(it, normalize(it, text)) }
+            text.all { it.isLetterOrDigit() || it == '-' } && isUuid(normalizeRandom(text)) -> PixKeyType.RANDOM
+            PhoneLikePattern.matches(text) -> deduceFromDigits(text.filter(::isAsciiDigit))
             else -> null
         }
+    }
+
+    private fun deduceFromDigits(digits: String): PixKeyType? = when {
+        isValidCpf(digits) -> PixKeyType.CPF
+        isMobilePhone(phoneFieldDigits(digits)) -> PixKeyType.PHONE
+        else -> null
     }
 
     /** A chave como se mostra: CPF `000.000.000-00` e telefone `(11) 99999-9999`; os demais como guardados. */

@@ -443,8 +443,8 @@ private fun SaqzVerticalSegmented(
     isSelected: (Int) -> Boolean,
     onClick: (Int) -> Unit,
     role: Role,
-    modifier: Modifier,
     optionTags: List<String>,
+    modifier: Modifier = Modifier,
 ) {
     val colors = SaqzTheme.colors
     val motion = SaqzTheme.motion

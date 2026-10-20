@@ -158,17 +158,6 @@ import br.com.saqz.groups.resources.group_pix_type_random
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-// Público na ordem do export (Masculino, Feminino, Misto), que não é a do enum.
-private val CompositionOptions = listOf(
-    GroupComposition.MEN,
-    GroupComposition.WOMEN,
-    GroupComposition.MIXED,
-)
-
-// ponytail: o export desenha só 6-0 e 5-1 no segmented; 4-2 e personalizado existem no
-// modelo e entram aqui quando o desenho os mostrar.
-private val PlayStyleOptions = listOf(GroupPlayStyle.SIX_ZERO, GroupPlayStyle.FIVE_ONE)
-
 /**
  * `SaqzSegmented` não conhece "sem seleção": posiciona o polegar por índice. Com `-1` a
  * tampa arredondada do polegar ainda assoma na borda esquerda do trilho; `-2` o tira
@@ -180,7 +169,6 @@ private const val NoSegmentedSelection = -2
 private const val HairlineDivisor = 4
 private const val ErrorRingAlpha = 0.1f
 private const val ErrorSurfaceAlpha = 0.06f
-private const val PhotoSizeFactor = 3
 
 /**
  * Linha de seleção que abre um sheet — modalidade e categoria. Não é componente do
@@ -327,8 +315,6 @@ internal fun Modifier.errorOutline(color: Color, radius: Dp, ringWidth: Dp) = dr
         style = Stroke(width = ring),
     )
 }
-
-private const val DescriptionMinLines = 3
 
 // Ordem do export: FIFO à esquerda, Manual à direita.
 private val PromotionModeOptions = listOf(PromotionMode.FIFO, PromotionMode.MANUAL)

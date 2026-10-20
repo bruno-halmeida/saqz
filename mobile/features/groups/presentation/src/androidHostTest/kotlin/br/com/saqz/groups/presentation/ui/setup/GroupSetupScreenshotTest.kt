@@ -7,9 +7,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.model.GroupComposition
+import br.com.saqz.groups.domain.athlete.AthletePosition
+import br.com.saqz.groups.model.GroupPlayStyle
+import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.presentation.pix.PixKeyType
+import br.com.saqz.groups.presentation.setup.GroupSlotDraft
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupSetupForm
@@ -40,75 +46,138 @@ class GroupSetupScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
 
+    // ---- Criar ----
+
     @Test
-    fun createForm() = capture("2a-criar-formulario") {
-        GroupSetupScreen(state = createState(), onIntent = {}, onBack = {})
+    @Config(qualifiers = TALL)
+    fun createEmpty() = capture("criar-vazio") {
+        GroupSetupScreen(state = GroupSetupState(mode = GroupSetupMode.Create), onIntent = {}, onBack = {}, showTrialOffer = true)
     }
 
     @Test
-    fun beachScenario() = capture("2b-areia-avulso") {
+    @Config(qualifiers = TALL)
+    fun createWithErrors() = capture("criar-com-erro") {
+        val state = GroupSetupState(mode = GroupSetupMode.Create)
+        GroupSetupScreen(state = state.copy(errors = validate(state)), onIntent = {}, onBack = {}, showTrialOffer = true)
+    }
+
+    @Test
+    @Config(qualifiers = TALL)
+    fun createRecurringFilled() = capture("criar-sim-toda-semana") {
         GroupSetupScreen(
-            state = GroupSetupState(
-                mode = GroupSetupMode.Create,
-                form = GroupSetupForm(
-                    name = "Beach da Vila",
-                    modality = GroupModality.BEACH_VOLLEYBALL,
-                    composition = GroupComposition.WOMEN,
-                    level = GroupLevel.ADVANCED,
-                    defaultCapacity = 4,
-                    defaultConfirmationLeadMinutes = 360,
-                ),
-                photoUrl = PhotoUrl,
-                recurring = false,
-            ),
+            state = createState(sheet = null).copy(recurring = true),
+            onIntent = {},
+            onBack = {},
+            showTrialOffer = true,
+        )
+    }
+
+    @Test
+    @Config(qualifiers = TALL)
+    fun createDetailsOpen() = capture("criar-mais-detalhes-aberto", open = true) {
+        GroupSetupScreen(state = createState(), onIntent = {}, onBack = {}, showTrialOffer = true)
+    }
+
+    @Test
+    @Config(qualifiers = TALL)
+    fun createFiveOneWrongSum() = capture("criar-5-1-soma-errada", open = true) {
+        GroupSetupScreen(state = fiveOne(wrong = true), onIntent = {}, onBack = {}, showTrialOffer = true)
+    }
+
+    @Test
+    @Config(qualifiers = TALL)
+    fun createFiveOneRightSum() = capture("criar-5-1-soma-certa", open = true) {
+        GroupSetupScreen(state = fiveOne(wrong = false), onIntent = {}, onBack = {}, showTrialOffer = true)
+    }
+
+    @Test
+    @Config(qualifiers = TALL)
+    fun createFiveOneRefused() = capture("criar-5-1-recusado") {
+        val wrong = fiveOne(wrong = true)
+        GroupSetupScreen(
+            state = wrong.copy(errors = validate(wrong)),
+            onIntent = {},
+            onBack = {},
+            showTrialOffer = true,
+        )
+    }
+
+    // ---- Folha de dias e horário ----
+
+    @Test
+    fun slotSheetTwoDays() = capture("folha-dois-dias") {
+        GroupSetupScreen(
+            state = createState(sheet = GroupSetupSheet.Slot(index = null))
+                .copy(recurring = true, slotDraft = GroupSlotDraft(setOf(GroupWeekday.TUESDAY, GroupWeekday.THURSDAY), 19, 30)),
             onIntent = {},
             onBack = {},
         )
     }
 
     @Test
-    fun slotPickerSheet() = capture("2c-picker-dia-horario") {
+    fun slotSheetEditingOneDay() = capture("folha-editar-um-dia") {
         GroupSetupScreen(
-            state = createState(sheet = GroupSetupSheet.Slot(index = null)),
+            state = createState(sheet = GroupSetupSheet.Slot(index = 0)).copy(recurring = true),
+            onIntent = {},
+            onBack = {},
+        )
+    }
+
+    // ---- Editar ----
+
+    @Test
+    @Config(qualifiers = HUGE)
+    fun editWithGameConfig() = capture("editar-com-configuracao-de-jogo") {
+        GroupSetupScreen(
+            state = createState(mode = GroupSetupMode.Edit(groupId = "grp-1"), photoUrl = PhotoUrl),
+            onIntent = {},
+            onBack = {},
+            onOpenWhatsApp = {},
+        )
+    }
+
+    @Test
+    @Config(qualifiers = HUGE)
+    fun editWithoutGameConfig() = capture("editar-sem-configuracao-de-jogo") {
+        GroupSetupScreen(
+            state = createState(mode = GroupSetupMode.Edit(groupId = "grp-1"), photoUrl = PhotoUrl)
+                .copy(canManageGameConfig = false, canDelete = false),
             onIntent = {},
             onBack = {},
         )
     }
 
     @Test
-    fun missingFields() = capture("2g-campos-obrigatorios") {
-        GroupSetupScreen(state = PreviewErrorState, onIntent = {}, onBack = {})
-    }
-
-    /** Modalidade e público em falta: os dois campos que o gateway exige. */
-    @Test
-    fun missingGatewayRequiredFields() = capture("2g-modalidade-e-publico") {
-        val state = GroupSetupState(
-            mode = GroupSetupMode.Create,
-            form = PreviewCourtForm.copy(modality = null, composition = null),
-        )
-        GroupSetupScreen(state = state.copy(errors = validate(state)), onIntent = {}, onBack = {})
-    }
-
-    @Test
-    @Config(qualifiers = "+h1400dp")
-    fun editForm() = capture("2i-editar-grupo") {
+    fun deleteSheet() = capture("excluir-grupo") {
         GroupSetupScreen(
             state = createState(
                 mode = GroupSetupMode.Edit(groupId = "grp-1"),
                 photoUrl = PhotoUrl,
-                form = PreviewCourtForm.copy(
-                    regularSlots = PreviewCourtForm.regularSlots.map { it.copy(durationMinutes = 90) },
-                ),
-                durationMinutes = 90,
+                sheet = GroupSetupSheet.ConfirmDelete,
             ),
             onIntent = {},
             onBack = {},
         )
     }
 
+    // ---- Seções soltas ----
+
     @Test
-    fun gameConfigOverrides() = capture("config-jogo-alterado", directory = "vul-157") {
+    fun gameConfigPriorityOnAndOff() {
+        capture("config-jogo-prioridade-ligada") {
+            GroupGameConfigSection(
+                mensalistaPriority = true,
+                promotionMode = PromotionMode.FIFO,
+                confirmationLeadMinutes = GroupSetupDefaults.ConfirmationLeadMinutes,
+                onMensalistaPriorityChange = {},
+                onPromotionModeSelect = {},
+                onConfirmationLeadSelect = {},
+            )
+        }
+    }
+
+    @Test
+    fun gameConfigManualWithoutPriority() = capture("config-jogo-aviso-manual") {
         GroupGameConfigSection(
             mensalistaPriority = false,
             promotionMode = PromotionMode.MANUAL,
@@ -120,21 +189,11 @@ class GroupSetupScreenshotTest {
     }
 
     @Test
-    fun pixFields() = capture("pix-do-grupo", directory = "vul-182") {
-        GroupPixSection(
-            pixKey = "racha@saqz.test",
-            pixLabel = "Lucas Prado · Nubank",
-            onPixKeyChange = {},
-            onPixLabelChange = {},
-        )
-    }
-
-    @Test
-    fun gameConfigDefaults() = capture("config-jogo-padrao", directory = "vul-157") {
+    fun gameConfigFifoWithoutPriorityHidesTheLead() = capture("config-jogo-ordem-de-chegada-sem-prioridade") {
         GroupGameConfigSection(
-            mensalistaPriority = true,
+            mensalistaPriority = false,
             promotionMode = PromotionMode.FIFO,
-            confirmationLeadMinutes = GroupSetupDefaults.ConfirmationLeadMinutes,
+            confirmationLeadMinutes = 360,
             onMensalistaPriorityChange = {},
             onPromotionModeSelect = {},
             onConfirmationLeadSelect = {},
@@ -142,17 +201,42 @@ class GroupSetupScreenshotTest {
     }
 
     @Test
-    fun deleteSheet() = capture("2j-excluir-grupo") {
-        GroupSetupScreen(
-            state = createState(
-                mode = GroupSetupMode.Edit(groupId = "grp-1"),
-                photoUrl = PhotoUrl,
-                sheet = GroupSetupSheet.ConfirmDelete,
-            ),
-            onIntent = {},
-            onBack = {},
+    fun pixCpf() = capture("pix-cpf") {
+        GroupPixSection(
+            pixKey = "52998224725",
+            pixType = PixKeyType.CPF,
+            onPixTypeSelect = {},
+            onPixKeyChange = {},
         )
     }
+
+    @Test
+    fun pixLegacyWithoutType() = capture("pix-chave-antiga-sem-tipo") {
+        GroupPixSection(pixKey = "chave antiga", pixType = null, onPixTypeSelect = {}, onPixKeyChange = {})
+    }
+
+    @Test
+    fun pixPhoneInvalid() = capture("pix-telefone-invalido") {
+        GroupPixSection(
+            pixKey = "1198",
+            pixType = PixKeyType.PHONE,
+            onPixTypeSelect = {},
+            onPixKeyChange = {},
+            pixKeyError = "Informe o celular com DDD.",
+        )
+    }
+
+    private fun fiveOne(wrong: Boolean) = createState().copy(
+        form = PreviewCourtForm.copy(playStyle = GroupPlayStyle.FIVE_ONE, defaultCapacity = 14),
+        positionSlotsReady = true,
+        positionSlots = mapOf(
+            AthletePosition.LEVANTADOR to 2,
+            AthletePosition.PONTA to 4,
+            AthletePosition.CENTRAL to 2,
+            AthletePosition.OPOSTO to 2,
+            AthletePosition.LIBERO to if (wrong) 2 else 4,
+        ),
+    )
 
     private fun createState(
         mode: GroupSetupMode = GroupSetupMode.Create,
@@ -170,10 +254,10 @@ class GroupSetupScreenshotTest {
         durationMinutes = durationMinutes,
         sheet = sheet,
         pixKey = if (mode is GroupSetupMode.Edit) "racha@saqz.test" else null,
-        pixLabel = if (mode is GroupSetupMode.Edit) "Lucas Prado · Nubank" else null,
+        pixType = if (mode is GroupSetupMode.Edit) PixKeyType.EMAIL else null,
     )
 
-    private fun capture(name: String, directory: String = "vul-68", content: @Composable () -> Unit) {
+    private fun capture(name: String, directory: String = "criar-grupo", open: Boolean = false, content: @Composable () -> Unit) {
         compose.setContent {
             SaqzTheme {
                 Box(modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
@@ -181,10 +265,13 @@ class GroupSetupScreenshotTest {
                 }
             }
         }
+        if (open) compose.onNodeWithTag(GroupSetupTags.Advanced).performClick()
         compose.onRoot().captureRoboImage("screenshots/$directory/$name.png")
     }
 
     private companion object {
         const val PhotoUrl = "https://saqz.example/ceret.png"
+        const val TALL = "+h2000dp"
+        const val HUGE = "+h2800dp"
     }
 }
