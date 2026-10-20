@@ -21,7 +21,8 @@
   /* ---- Feedback ---- */
   --saqz-success: #17B26A;
   --saqz-warning: #F5A623;
-  --saqz-error: #E5484D;
+  /* SPEC_DEVIATION: export #E5484D. Reason: contraste AA (decisão do dono em 20/10/2026) */
+  --saqz-error: #C9363B;
 
   /* ---- Semantic aliases ---- */
   --color-brand: var(--saqz-blue);
@@ -39,6 +40,6 @@
   --brand-fill-08: rgba(6, 56, 223, 0.08);
   --brand-fill-11: rgba(6, 56, 223, 0.11);
   --lime-fill-32: rgba(199, 243, 0, 0.32);
-  --error-fill-10: rgba(229, 72, 77, 0.10);
+  --error-fill-10: rgba(201, 54, 59, 0.10);
   --scrim: rgba(14, 23, 56, 0.46);
 }

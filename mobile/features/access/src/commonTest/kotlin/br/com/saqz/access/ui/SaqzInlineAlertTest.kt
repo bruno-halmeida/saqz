@@ -173,7 +173,8 @@ class SaqzInlineAlertTest {
             val fill = composite(token, alpha, over = tokens.surface)
             val (foreground, _) = saqzInlineAlertColors(tone, tokens)
             assertAtLeast(4.5, contrast(foreground, fill))
-            assertBelow(4.5, contrast(token, fill))
+            // O erro foi escurecido para AA em 20/10/2026 (#C9363B): só success e warning seguem abaixo.
+            if (tone != SaqzInlineAlertTone.Error) assertBelow(4.5, contrast(token, fill))
         }
     }
 

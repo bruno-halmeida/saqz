@@ -36,15 +36,15 @@ import br.com.saqz.designsystem.resources.Res
 import br.com.saqz.designsystem.resources.game_stat_going
 import br.com.saqz.designsystem.resources.game_stat_maybe
 import br.com.saqz.designsystem.resources.game_stat_out
-import br.com.saqz.designsystem.resources.material_sports_volleyball
+import br.com.saqz.designsystem.resources.saqz_volleyball
 import br.com.saqz.designsystem.theme.SaqzTheme
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * 10l — o bloco de destaque do próximo jogo: eyebrow, título, local, contagem de
- * presenças e o que quer que a tela queira encaixar embaixo. A bola entra como
- * marca d'água a 5,5% no canto superior direito.
+ * presenças e o que quer que a tela queira encaixar embaixo. A bola do `SaqzSpinner` entra como
+ * marca d'água a 7% no canto superior direito.
  */
 @Composable
 fun SaqzGameSummaryCard(
@@ -55,6 +55,8 @@ fun SaqzGameSummaryCard(
     tone: SaqzCardTone = SaqzCardTone.Default,
     cornerRadius: Dp? = null,
     venue: String? = null,
+    /** Local ainda escondido (ex.: quem aguarda aprovação): o pin vira cadeado e o texto fica em `textSecondary`. */
+    venueLocked: Boolean = false,
     address: String? = null,
     going: Int? = null,
     maybe: Int? = null,
@@ -87,7 +89,7 @@ fun SaqzGameSummaryCard(
             }
             Text(text = title, style = SaqzTheme.typography.title, color = colors.textPrimary)
             if (venue != null) {
-                GameLocation(venue = venue, address = address)
+                GameLocation(venue = venue, address = address, locked = venueLocked)
             }
             if (going != null || maybe != null || out != null) {
                 // O export zera o que vier nulo desde que uma das três contagens exista;
@@ -97,14 +99,14 @@ fun SaqzGameSummaryCard(
             content?.invoke(this)
         }
         Image(
-            painter = painterResource(Res.drawable.material_sports_volleyball),
+            painter = painterResource(Res.drawable.saqz_volleyball),
             contentDescription = null,
             colorFilter = ColorFilter.tint(colors.primary),
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .offset(x = 28.dp, y = (-28).dp)
                 .size(140.dp)
-                .alpha(0.055f)
+                .alpha(0.07f)
                 .clearAndSetSemantics {},
         )
     }
@@ -116,13 +118,17 @@ fun SaqzGameSummaryCard(
  * `venue` não há linha nenhuma.
  */
 @Composable
-private fun GameLocation(venue: String, address: String?) = Row(
+private fun GameLocation(venue: String, address: String?, locked: Boolean) = Row(
     modifier = Modifier.fillMaxWidth(),
     horizontalArrangement = Arrangement.spacedBy(10.dp),
 ) {
-    LocationPin()
+    if (locked) SaqzIcon(SaqzIcons.Lock, tint = SaqzTheme.colors.textSecondary, size = 22.dp) else LocationPin()
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(text = venue, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
+        Text(
+            text = venue,
+            style = SaqzTheme.typography.body,
+            color = if (locked) SaqzTheme.colors.textSecondary else SaqzTheme.colors.textPrimary,
+        )
         if (address != null) {
             Text(
                 text = address,
@@ -218,6 +224,13 @@ private fun SaqzGameSummaryCardPreview() = SaqzTheme {
             eyebrow = "PRÓXIMO JOGO",
             title = "Ter, 28/07 · 19h30",
             venue = "CERET — Quadra 2",
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        SaqzGameSummaryCard(
+            eyebrow = "PRÓXIMO JOGO",
+            title = "Ter, 28/07 · 19h30",
+            venue = "Local liberado na aprovação",
+            venueLocked = true,
             modifier = Modifier.padding(top = 8.dp),
         )
         SaqzGameSummaryCard(

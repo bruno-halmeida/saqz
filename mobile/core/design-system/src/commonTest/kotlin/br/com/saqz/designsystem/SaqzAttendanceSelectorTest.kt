@@ -69,7 +69,7 @@ class SaqzAttendanceSelectorTest {
     }
 
     // ponytail: piso de 3:1 (WCAG AA para texto grande e para componentes de UI), não
-    // 4.5:1 — branco sobre o #E5484D do export dá 3.91:1 no estado habilitado, e a
+    // 4.5:1 — branco sobre o #E5484D do export dava 3.91:1 (hoje #C9363B, AA) no estado habilitado, e a
     // paleta é do VUL-44. O teto está anotado no PR; subir o piso pede outra cor de
     // erro, não uma mudança aqui.
     private fun contrast(a: Color, b: Color): Double {

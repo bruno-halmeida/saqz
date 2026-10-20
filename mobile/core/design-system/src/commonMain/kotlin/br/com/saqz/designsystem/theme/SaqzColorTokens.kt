@@ -56,8 +56,11 @@ data class SaqzColorTokens(
             border = Color(0xFFD8DDE8),
             success = Color(0xFF17B26A),
             warning = Color(0xFFF5A623),
-            warningForeground = Color(0xFFB26B00),
-            errorForeground = Color(0xFFE5484D),
+            // SPEC_DEVIATION: warningForeground #B26B00 -> #8F5600 e errorForeground #E5484D -> #C9363B.
+            // Reason: contraste AA (decisão do dono em 20/10/2026) — o texto do chip Warning e o texto branco
+            // do botão Danger não passavam de 4,5:1 com os valores do export.
+            warningForeground = Color(0xFF8F5600),
+            errorForeground = Color(0xFFC9363B),
             disabledSurface = Color(0xFFC9CED8),
             disabledForeground = Color(0xFF7A8291),
             scrim = Color(0xFF0E1738).copy(alpha = 0.46f),
