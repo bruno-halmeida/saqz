@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -98,12 +99,15 @@ fun SaqzGameSummaryCard(
             }
             content?.invoke(this)
         }
+        // `matchParentSize` tira a bola do cálculo de tamanho do Box: com 140 de altura ela esticava
+        // todo cartão mais baixo que isso e abria um vão embaixo dele.
         Image(
             painter = painterResource(Res.drawable.saqz_volleyball),
             contentDescription = null,
             colorFilter = ColorFilter.tint(colors.primary),
             modifier = Modifier
-                .align(Alignment.TopEnd)
+                .matchParentSize()
+                .wrapContentSize(Alignment.TopEnd, unbounded = true)
                 .offset(x = 28.dp, y = (-28).dp)
                 .size(140.dp)
                 .alpha(0.07f)
