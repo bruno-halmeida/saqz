@@ -3,7 +3,6 @@ package br.com.saqz.subscriptions.adapter.output.jdbc
 import br.com.saqz.subscriptions.application.AdminRevenueStats
 import br.com.saqz.subscriptions.application.ChurnStats
 import br.com.saqz.subscriptions.application.PlanSplitEntry
-import br.com.saqz.subscriptions.application.ProcessAsaasWebhook
 import br.com.saqz.subscriptions.application.SubscribedCohortWeek
 import br.com.saqz.subscriptions.application.SubscriptionPricing
 import br.com.saqz.subscriptions.domain.Plan
@@ -20,24 +19,18 @@ class JdbcAdminRevenueStatsRepository(
     private val jdbc = JdbcClient.create(dataSource)
 
     /**
-     * Mesma leitura de payload que ListReceipts.paymentValueToCents faz em Kotlin
-     * (payment.value em reais), agregada no banco para não streamar payloads.
+     * Receita bruta real em BRL no período, da view `subscription_payments` (DEB-100): Asaas CONFIRMED/RECEIVED sem duplicar,
+     * App Store em produção, menos estornos; teste e outras moedas ficam de fora.
      */
     override fun revenueCents(from: Instant?, to: Instant): Long = jdbc.sql(
         """
-        SELECT COALESCE(SUM(round(((payload::jsonb)#>>'{payment,value}')::numeric * 100)), 0)::bigint
-        FROM subscription_events
-        WHERE type = :type
-          AND processed_at IS NOT NULL
-          AND (
-              jsonb_typeof((payload::jsonb)#>'{payment,value}') = 'number'
-              OR (payload::jsonb)#>>'{payment,value}' ~ '^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$'
-          )
-          AND processed_at < :to
-          AND (:from::timestamptz IS NULL OR processed_at >= :from)
+        SELECT COALESCE(SUM(gross_cents), 0)::bigint
+        FROM subscription_payments
+        WHERE NOT test AND NOT refunded AND currency = 'BRL'
+          AND paid_at < :to
+          AND (:from::timestamptz IS NULL OR paid_at >= :from)
         """.trimIndent(),
     )
-        .param("type", ProcessAsaasWebhook.EVENT_PAYMENT_CONFIRMED)
         .param("from", from?.atOffset(ZoneOffset.UTC))
         .param("to", to.atOffset(ZoneOffset.UTC))
         .query(Long::class.java)

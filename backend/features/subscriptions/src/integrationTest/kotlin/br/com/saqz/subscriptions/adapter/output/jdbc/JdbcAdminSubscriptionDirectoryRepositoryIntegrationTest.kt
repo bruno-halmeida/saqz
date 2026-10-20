@@ -27,7 +27,7 @@ class JdbcAdminSubscriptionDirectoryRepositoryIntegrationTest {
 
     @BeforeEach
     fun clearData() {
-        execute("TRUNCATE subscription_events, coupon_redemptions, subscriptions, coupons, access_users CASCADE")
+        execute("TRUNCATE app_store_transactions, app_store_subscriptions, google_play_orders, google_play_subscriptions, plan_courtesies, organizer_trials, subscription_events, coupon_redemptions, subscriptions, coupons, access_users CASCADE")
     }
 
     @Test
@@ -117,6 +117,47 @@ class JdbcAdminSubscriptionDirectoryRepositoryIntegrationTest {
         assertNull(repository.find(UUID.randomUUID()))
     }
 
+    @Test
+    fun `lista traz todas as origens com cobranca real, teste ou sem cobranca e filtra por origem`() {
+        val site = insertUser(name = "Site Pago", email = "sp@saqz.test")
+        val semPagamento = insertUser(name = "Site Sem Pagamento", email = "ssp@saqz.test")
+        val sandbox = insertUser(name = "Apple Sandbox", email = "as@saqz.test")
+        val producao = insertUser(name = "Apple Producao", email = "ap@saqz.test")
+        val google = insertUser(name = "Google Real", email = "gr@saqz.test")
+        val googleTeste = insertUser(name = "Google Teste", email = "gt@saqz.test")
+        val cortesia = insertUser(name = "Com Cortesia", email = "cc@saqz.test")
+        val teste = insertUser(name = "Em Teste", email = "et@saqz.test")
+        val vencida = insertUser(name = "Cortesia Vencida", email = "cv@saqz.test")
+        insertSubscription(site, plan = "ORGANIZADOR", createdAt = now)
+        insertEvent(site, "59.90", now)
+        insertSubscription(semPagamento, plan = "ORGANIZADOR", createdAt = now)
+        appStore(sandbox, "SANDBOX")
+        appStore(producao, "PRODUCTION")
+        googlePlay(google, test = false)
+        googlePlay(googleTeste, test = true)
+        execute("INSERT INTO plan_courtesies (id, owner_user_id, plan, ends_at, reason, granted_by) VALUES ('${UUID.randomUUID()}', '$cortesia', 'ILIMITADO', NULL, 'x', '$site')")
+        execute("INSERT INTO plan_courtesies (id, owner_user_id, plan, ends_at, reason, granted_by) VALUES ('${UUID.randomUUID()}', '$vencida', 'ILIMITADO', now() - interval '1 day', 'x', '$site')")
+        execute("INSERT INTO organizer_trials (owner_user_id, started_at, ends_at) VALUES ('$teste', now() - interval '1 day', now() + interval '13 days')")
+
+        val todos = repository.list(null, null, null, page = 1, size = 50).items.associateBy { it.ownerName }
+
+        assertEquals(8, todos.size)
+        assertEquals("SITE" to "REAL", todos["Site Pago"]!!.let { it.source to it.billing })
+        assertEquals("SITE" to "TEST", todos["Site Sem Pagamento"]!!.let { it.source to it.billing })
+        assertEquals("APP_STORE" to "TEST", todos["Apple Sandbox"]!!.let { it.source to it.billing })
+        assertEquals("APP_STORE" to "REAL", todos["Apple Producao"]!!.let { it.source to it.billing })
+        assertEquals("GOOGLE_PLAY" to "REAL", todos["Google Real"]!!.let { it.source to it.billing })
+        assertEquals("GOOGLE_PLAY" to "TEST", todos["Google Teste"]!!.let { it.source to it.billing })
+        assertEquals(Triple("COURTESY", "NO_CHARGE", null), todos["Com Cortesia"]!!.let { Triple(it.source, it.billing, it.cycle) })
+        assertEquals(Triple("TRIAL", "NO_CHARGE", "ORGANIZADOR"), todos["Em Teste"]!!.let { Triple(it.source, it.billing, it.plan) })
+        assertEquals("ACTIVE", todos["Apple Producao"]!!.status)
+
+        val soLojas = repository.list(null, null, null, page = 1, size = 50, source = "APP_STORE")
+        assertEquals(2, soLojas.total)
+        assertEquals(setOf("Apple Sandbox", "Apple Producao"), soLojas.items.map { it.ownerName }.toSet())
+        assertEquals(1, repository.list(null, "ILIMITADO", null, page = 1, size = 50, source = "COURTESY").total)
+    }
+
     private fun insertUser(name: String, email: String): UUID {
         val id = UUID.randomUUID()
         execute(
@@ -167,6 +208,21 @@ class JdbcAdminSubscriptionDirectoryRepositoryIntegrationTest {
             "INSERT INTO subscription_events (id, asaas_event_id, type, payload, processed_at, created_at, owner_user_id) " +
                 "VALUES ('${UUID.randomUUID()}', 'evt-${UUID.randomUUID()}', 'PAYMENT_CONFIRMED', " +
                 "'{\"payment\": {\"value\": $valueReais}}', ${processedAt?.let { "'$it'" } ?: "NULL"}, '$now', '$ownerId')",
+        )
+    }
+
+    private fun appStore(ownerId: UUID, environment: String) {
+        execute(
+            "INSERT INTO app_store_subscriptions (original_transaction_id, owner_user_id, environment, product_id, plan, cycle, " +
+                "latest_transaction_id, latest_purchase_date, latest_signed_at, expires_at) " +
+                "VALUES ('otx-$ownerId', '$ownerId', '$environment', 'p', 'ORGANIZADOR', 'MONTHLY', 'otx-$ownerId', now(), now(), now() + interval '10 days')",
+        )
+    }
+
+    private fun googlePlay(ownerId: UUID, test: Boolean) {
+        execute(
+            "INSERT INTO google_play_subscriptions (purchase_token, owner_user_id, product_id, base_plan_id, plan, cycle, state, expires_at, test_purchase) " +
+                "VALUES ('tok-$ownerId', '$ownerId', 'p', 'b', 'TITULAR', 'MONTHLY', 'ACTIVE', now() + interval '10 days', $test)",
         )
     }
 

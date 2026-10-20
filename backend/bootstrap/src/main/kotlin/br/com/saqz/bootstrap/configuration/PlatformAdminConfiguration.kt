@@ -13,6 +13,7 @@ import br.com.saqz.adminweb.http.AdminCouponsController
 import br.com.saqz.adminweb.http.AdminGroupsController
 import br.com.saqz.adminweb.http.AdminModerationController
 import br.com.saqz.adminweb.http.AdminOverviewController
+import br.com.saqz.adminweb.http.AdminRevenueController
 import br.com.saqz.adminweb.http.AdminSubscriptionsController
 import br.com.saqz.adminweb.http.AdminUsersController
 import br.com.saqz.groups.adapter.output.jdbc.admin.JdbcAdminGroupDirectoryRepository
@@ -22,9 +23,11 @@ import br.com.saqz.groups.application.admin.AdminGroupStats
 import br.com.saqz.groups.application.moderation.ContentModerationService
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminCouponAnalytics
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminCouponDirectoryRepository
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueReader
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueStatsRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminSubscriptionDirectoryRepository
 import br.com.saqz.subscriptions.application.AdminCouponDirectory
+import br.com.saqz.subscriptions.application.AdminRevenueReader
 import br.com.saqz.subscriptions.application.AdminRevenueStats
 import br.com.saqz.subscriptions.application.AdminSubscriptionCanceler
 import br.com.saqz.subscriptions.application.AdminSubscriptionDirectory
@@ -60,6 +63,12 @@ class PlatformAdminConfiguration {
     @Bean
     fun adminRevenueStats(dataSource: DataSource): AdminRevenueStats =
         JdbcAdminRevenueStatsRepository(dataSource)
+
+    @Bean
+    fun adminRevenueReader(dataSource: DataSource): AdminRevenueReader = JdbcAdminRevenueReader(dataSource)
+
+    @Bean
+    fun adminRevenueController(reader: AdminRevenueReader) = AdminRevenueController(reader)
 
     @Bean
     fun adminUserDirectory(dataSource: DataSource): AdminUserDirectory =

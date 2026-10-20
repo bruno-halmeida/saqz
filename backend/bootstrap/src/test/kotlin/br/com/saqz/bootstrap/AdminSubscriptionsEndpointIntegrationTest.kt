@@ -2,7 +2,10 @@ package br.com.saqz.bootstrap
 
 import br.com.saqz.access.application.admin.PlatformAdminLookup
 import br.com.saqz.access.application.admin.PlatformAdminView
+import br.com.saqz.adminweb.http.AdminRevenueController
 import br.com.saqz.adminweb.http.AdminSubscriptionsController
+import br.com.saqz.subscriptions.application.AdminRevenueReport
+import br.com.saqz.subscriptions.application.AdminRevenueRow
 import br.com.saqz.subscriptions.application.AdminReceipt
 import br.com.saqz.subscriptions.application.AdminSubscriptionCanceler
 import br.com.saqz.subscriptions.application.AdminSubscriptionDetail
@@ -54,6 +57,37 @@ class AdminSubscriptionsEndpointIntegrationTest {
         assertEquals("Camila Rocha", body["items"][0]["ownerName"].stringValue())
         assertEquals(5_391, body["items"][0]["priceCents"].intValue())
         assertEquals("GALERA10", body["items"][0]["couponCode"].stringValue())
+        assertEquals("SITE", body["items"][0]["source"].stringValue())
+        assertEquals("REAL", body["items"][0]["billing"].stringValue())
+    }
+
+    @Test
+    fun `filtro por origem chega ao diretorio e a cortesia vem sem ciclo nem preco`() {
+        val response = exchange("GET", "/admin/subscriptions?source=COURTESY")
+        val item = objectMapper.readTree(response.body())["items"][0]
+
+        assertEquals(200, response.statusCode())
+        assertEquals("COURTESY", item["source"].stringValue())
+        assertEquals("NO_CHARGE", item["billing"].stringValue())
+        assertEquals(true, item["cycle"].isNull)
+        assertEquals(true, item["priceCents"].isNull)
+        assertEquals(400, exchange("GET", "/admin/subscriptions?source=PIX").statusCode())
+    }
+
+    @Test
+    fun `receita traz real e teste separados e recusa meses fora do limite`() {
+        val response = exchange("GET", "/admin/revenue?months=3")
+        val body = objectMapper.readTree(response.body())
+
+        assertEquals(200, response.statusCode())
+        assertEquals("2026-10", body["real"][0]["month"].stringValue())
+        assertEquals("APP_STORE", body["real"][0]["source"].stringValue())
+        assertEquals(5_990, body["real"][0]["grossCents"].intValue())
+        assertEquals(true, body["real"][0]["netCents"].isNull)
+        assertEquals(46, body["test"][0]["payments"].intValue())
+        assertEquals(400, exchange("GET", "/admin/revenue?months=0").statusCode())
+        assertEquals(400, exchange("GET", "/admin/revenue?months=61").statusCode())
+        assertEquals(403, exchange("GET", "/admin/revenue", token = "user-token").statusCode())
     }
 
     @Test
@@ -104,8 +138,13 @@ class AdminSubscriptionsEndpointIntegrationTest {
             createdAt = Instant.parse("2026-02-20T00:00:00Z"),
         )
 
-        override fun list(query: String?, plan: String?, status: String?, page: Int, size: Int) =
-            AdminSubscriptionPage(listOf(summary), 1, page, size)
+        private val courtesy = summary.copy(
+            plan = "ILIMITADO", cycle = null, couponCode = null, priceCents = null, currentPeriodEnd = null,
+            source = "COURTESY", billing = "NO_CHARGE",
+        )
+
+        override fun list(query: String?, plan: String?, status: String?, page: Int, size: Int, source: String?) =
+            AdminSubscriptionPage(listOf(if (source == "COURTESY") courtesy else summary), 1, page, size)
 
         override fun find(ownerUserId: UUID): AdminSubscriptionDetail? {
             if (ownerUserId != OWNER_ID) return null
@@ -131,6 +170,14 @@ class AdminSubscriptionsEndpointIntegrationTest {
         @Bean
         fun adminSubscriptionsLookup(): PlatformAdminLookup = PlatformAdminLookup { subject ->
             if (subject == "admin-subject") PlatformAdminView(UUID.randomUUID(), "admin@saqz.test", "Ana Admin") else null
+        }
+
+        @Bean
+        fun adminRevenueController() = AdminRevenueController {
+            AdminRevenueReport(
+                real = listOf(AdminRevenueRow("2026-10", "APP_STORE", "BRL", 1, 5_990, null)),
+                test = listOf(AdminRevenueRow("2026-10", "APP_STORE", "BRL", 46, 276_000, null)),
+            )
         }
 
         @Bean

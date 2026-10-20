@@ -25,7 +25,7 @@ data class SubscribedCohortWeek(
  * from null significa "desde o início".
  */
 interface AdminRevenueStats {
-    /** Soma dos pagamentos confirmados no Asaas (eventos processados) no período. */
+    /** Receita bruta real em BRL (pagamentos confirmados, sem teste nem estorno) no período; ver view `subscription_payments`. */
     fun revenueCents(from: Instant?, to: Instant): Long
 
     /** canceled no período; activeAtStart = assinaturas vivas no início da janela. */
