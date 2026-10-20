@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Stack local do roteiro multi-aparelho (ver README.md desta pasta):
 # Postgres e Mailpit em Docker, Firebase Auth Emulator (projeto saqz-local) e o backend em 127.0.0.1:18080.
-# Nada sai da máquina: e-mail cai no Mailpit, push não existe e WhatsApp fica desligado.
+# Nada sai da máquina: e-mail cai no Mailpit, push não existe e WhatsApp fica desligado (a menos que SAQZ_MULTIDEV_WHATSAPP_MOCK=1).
 #
 #   tests/multi-aparelhos/stack.sh up      # sobe tudo; constrói o bootJar do backend se faltar
 #   tests/multi-aparelhos/stack.sh status
 #   tests/multi-aparelhos/stack.sh down    # derruba os serviços; banco e contas do Auth Emulator ficam
 #   tests/multi-aparelhos/stack.sh reset   # down + apaga banco e contas: próxima subida começa do zero
+#   SAQZ_MULTIDEV_WHATSAPP_MOCK=1 tests/multi-aparelhos/stack.sh up   # liga o WhatsApp contra o Uazapi falso (ferramentas/uazapi-falso.mjs;
+#                                          certificado e truststore em ~/.saqz-multidev/uazapi, ver o cabeçalho do mock); envios em ~/.saqz-multidev/logs/uazapi-mock.jsonl
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -67,9 +69,16 @@ up() {
   fi
   wait_for "http://127.0.0.1:$AUTH_PORT/emulator/v1/projects/saqz-local/config" "Firebase Auth Emulator"
 
+  local wa=()
+  if [ "${SAQZ_MULTIDEV_WHATSAPP_MOCK:-}" = 1 ]; then
+    uazapi_mock
+    wa=(SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED=true SAQZ_NOTIFICATIONS_WHATSAPP_BASE_URL=https://localhost:18443
+      SAQZ_NOTIFICATIONS_WHATSAPP_TOKEN=falso SAQZ_PUBLIC_API_URL="http://127.0.0.1:$API_PORT"
+      "JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStore=$HOME_DIR/uazapi/truststore.jks -Djavax.net.ssl.trustStorePassword=changeit")
+  fi
   if ! running backend; then
     local jar; jar=$(bootjar)
-    (nohup env SPRING_PROFILES_ACTIVE=local SERVER_PORT="$API_PORT" SERVER_ADDRESS=127.0.0.1 \
+    (nohup env ${wa[@]+"${wa[@]}"} SPRING_PROFILES_ACTIVE=local SERVER_PORT="$API_PORT" SERVER_ADDRESS=127.0.0.1 \
       FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$AUTH_PORT" \
       SAQZ_LINKS_DOMAIN=https://links.saqz.app \
       SPRING_DATASOURCE_URL="jdbc:postgresql://127.0.0.1:$DB_PORT/saqz" \
@@ -85,8 +94,18 @@ up() {
   status
 }
 
+# Uazapi falso (só com SAQZ_MULTIDEV_WHATSAPP_MOCK=1): responde como instância conectada e grava os envios; nada sai da máquina.
+uazapi_mock() {
+  [ -f "$HOME_DIR/uazapi/key.pem" ] && [ -f "$HOME_DIR/uazapi/truststore.jks" ] || {
+    echo "faltam o certificado e o truststore do Uazapi falso em $HOME_DIR/uazapi (ver o cabeçalho de ferramentas/uazapi-falso.mjs)" >&2; return 1; }
+  running uazapi && return 0
+  (cd "$RUN" && exec nohup node "$ROOT/tests/multi-aparelhos/ferramentas/uazapi-falso.mjs" > "$LOGS/uazapi-falso.log" 2>&1 < /dev/null) &
+  echo $! > "$RUN/uazapi.pid"
+  sleep 1
+}
+
 down() {
-  for svc in backend firebase; do
+  for svc in backend firebase uazapi; do
     if running "$svc"; then kill "$(cat "$RUN/$svc.pid")" 2>/dev/null || true; fi
     rm -f "$RUN/$svc.pid"
   done
@@ -118,7 +137,7 @@ status() {
   printf '%-22s %s\n' "Mailpit"                "http://127.0.0.1:$MAIL_UI_PORT  (API: /api/v1/messages)"
   printf '%-22s %s\n' "Postgres"               "psql -h 127.0.0.1 -p $DB_PORT -U saqz saqz"
   printf '%-22s %s\n' "Logs"                   "$LOGS"
-  for svc in backend firebase; do running "$svc" && echo "$svc: rodando (pid $(cat "$RUN/$svc.pid"))" || echo "$svc: parado"; done
+  for svc in backend firebase uazapi; do running "$svc" && echo "$svc: rodando (pid $(cat "$RUN/$svc.pid"))" || echo "$svc: parado"; done
   docker ps --filter label=saqz.multidev=1 --format '{{.Names}}: {{.Status}}'
 }
 
