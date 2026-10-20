@@ -58,6 +58,7 @@ internal fun AttendanceResultCard(state: AttendanceLinkState, modifier: Modifier
         when (state.phase) {
             AttendanceLinkPhase.Confirmed -> Res.string.attendance_link_confirmed_title
             AttendanceLinkPhase.Waitlisted -> Res.string.attendance_link_waitlisted_title
+            AttendanceLinkPhase.RequestClosed -> Res.string.attendance_link_closed_title
             else -> Res.string.attendance_link_declined_title
         },
     )
@@ -65,6 +66,7 @@ internal fun AttendanceResultCard(state: AttendanceLinkState, modifier: Modifier
         AttendanceLinkPhase.Confirmed ->
             if (game == null) stringResource(Res.string.attendance_link_confirmed_no_game)
             else stringResource(Res.string.attendance_link_confirmed_game, game.title())
+        AttendanceLinkPhase.RequestClosed -> stringResource(Res.string.attendance_link_closed_body)
         AttendanceLinkPhase.Waitlisted -> stringResource(Res.string.attendance_link_waitlisted_body)
         else -> stringResource(Res.string.attendance_link_declined_body)
     }

@@ -216,6 +216,7 @@ class AttendanceLinkScreenshotTest : ConnectedFlowsScreenshotScene() {
     )
     @Test fun declineSheet() = scene(AttendanceLinkState(AttendanceLinkPhase.DeclineSheet, destination, game), "decline-sheet")
     @Test fun declined() = scene(AttendanceLinkState(AttendanceLinkPhase.Declined, destination, game), "declined")
+    @Test fun requestClosed() = scene(AttendanceLinkState(AttendanceLinkPhase.RequestClosed), "request-closed")
     @Test fun invalid() = scene(AttendanceLinkState(AttendanceLinkPhase.Invalid), "invalid")
     @Test fun registration() = scene(AttendanceLinkState(AttendanceLinkPhase.Registration), "registration")
     @Test fun failed() = scene(AttendanceLinkState(AttendanceLinkPhase.Failed), "failed")

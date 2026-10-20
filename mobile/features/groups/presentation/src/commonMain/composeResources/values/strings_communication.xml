@@ -46,6 +46,9 @@
     <string name="attendance_link_declined_title">Você não vai neste jogo</string>
     <string name="attendance_link_declined_body">Seu nome saiu da lista. Valeu por avisar a turma.</string>
     <string name="attendance_link_decline_sheet_description_game">Seu nome sai da lista do jogo de %1$s.</string>
+    <string name="attendance_link_closed_title">Seu pedido não está mais ativo</string>
+    <string name="attendance_link_closed_body">Para entrar no grupo, peça de novo pelo convite.</string>
+    <string name="attendance_link_closed_action">Pedir de novo</string>
     <string name="attendance_link_pending_title">Pedido enviado</string>
     <string name="attendance_link_pending_venue">Local liberado na aprovação</string>
     <string name="attendance_link_pending_heading">Falta a aprovação da organização</string>

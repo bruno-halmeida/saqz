@@ -223,4 +223,13 @@ class AttendanceLinkScreenTest {
         setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.DeclineSheet, destination, game), {}, {}, {}) } }
         onNodeWithText("Seu nome sai da lista do jogo de Qui, 22/10 · 21h00.").assertExists()
     }
+
+    @Test fun requestClosedOffersToAskAgain() = runComposeUiTest {
+        val intents = mutableListOf<AttendanceLinkIntent>()
+        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.RequestClosed), {}, intents::add, {}) } }
+        onNodeWithText("Seu pedido não está mais ativo").assertExists()
+        onNodeWithText("Para entrar no grupo, peça de novo pelo convite.").assertExists()
+        onNodeWithTag(AttendanceLinkTags.RequestAgain).performClick()
+        assertEquals(listOf(AttendanceLinkIntent.Retry), intents)
+    }
 }

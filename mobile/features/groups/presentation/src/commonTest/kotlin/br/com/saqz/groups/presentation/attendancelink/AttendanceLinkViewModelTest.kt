@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.attendancelink
 
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.*
+import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.EntryRequestAthleteProfile
 import br.com.saqz.groups.domain.athlete.OwnEntryRequest
 import br.com.saqz.groups.domain.attendance.*
@@ -425,49 +426,78 @@ class AttendanceLinkViewModelTest {
         assertFalse(failing.state.value.pendingRegistrationSaved)
     }
 
-    @Test fun refreshOnPendingNeverGoesBackToLoadingAndUpdatesTheSavedRegistration() = runTest {
+    @Test fun refreshOnPendingOnlyReadsAndNeverGoesBackToLoadingNorRedeems() = runTest {
         val preview = InvitePreview("Vôlei da Quinta", "Ana Lima", true)
-        val gate = CompletableDeferred<Unit>()
         val invites = InviteFake(InviteRedeemStatus.PENDING, preview = preview)
         val gateway = br.com.saqz.groups.presentation.FakeAthleteGateway(ownEntryRequestResult = entryRequest(null))
         val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true), AttendanceFake(), invites, athletes = gateway)
         val phases = mutableListOf<AttendanceLinkPhase>()
         val watcher = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect { phases += it.phase } }
         gateway.ownEntryRequestResult = entryRequest(EntryRequestAthleteProfile(nickname = "Ana"))
-        invites.hold = gate
         vm.onIntent(AttendanceLinkIntent.Refresh)
-        assertTrue(vm.state.value.refreshing)
-        assertEquals("Vôlei da Quinta", vm.state.value.pendingGroupName)
-        // Outro toque com o primeiro em voo não refaz o pedido.
-        vm.onIntent(AttendanceLinkIntent.Refresh)
-        assertEquals(2, invites.codes.size)
-        gate.complete(Unit)
         assertFalse(vm.state.value.refreshing)
         assertTrue(vm.state.value.pendingRegistrationSaved)
         assertEquals(AttendanceLinkPhase.Pending, vm.state.value.phase)
+        assertEquals("Vôlei da Quinta", vm.state.value.pendingGroupName)
         assertFalse(AttendanceLinkPhase.Loading in phases)
+        // Só a abertura do link redime; voltar à tela não cria pedido novo.
+        assertEquals(1, invites.codes.size)
         watcher.cancel()
     }
 
-    @Test fun refreshOnceApprovedFollowsTheNormalFlowAndConfirms() = runTest {
+    @Test fun refreshOnceAMemberFollowsTheNormalFlowAndConfirmsWithoutRedeeming() = runTest {
         val gateway = AttendanceFake()
         val invites = InviteFake(InviteRedeemStatus.PENDING, preview = InvitePreview("Grupo", "Ana", true))
         val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true, firstOnly = true), gateway, invites)
         assertEquals(AttendanceLinkPhase.Pending, vm.state.value.phase)
-        invites.status = InviteRedeemStatus.JOINED
         vm.onIntent(AttendanceLinkIntent.Refresh)
         assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)
         assertEquals(AttendanceIntent.Confirm, gateway.commands.single().intent)
-        assertFalse(vm.state.value.refreshing)
+        assertEquals(1, invites.codes.size)
     }
 
-    @Test fun refreshFailureKeepsThePendingScreenAndReleasesTheButton() = runTest {
-        val invites = InviteFake(InviteRedeemStatus.PENDING, preview = InvitePreview("Grupo", "Ana", true))
-        val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true), AttendanceFake(), invites)
-        invites.status = null
-        vm.onIntent(AttendanceLinkIntent.Refresh)
+    @Test fun refreshWhenTheGameClosedShowsItsPhase() = runTest {
+        val sharing = ClosingSharing()
+        val vm = AttendanceLinkViewModel(code, false, sharing, AttendanceFake(), InviteFake(InviteRedeemStatus.PENDING, preview = InvitePreview("G", "A", true)))
         assertEquals(AttendanceLinkPhase.Pending, vm.state.value.phase)
-        assertFalse(vm.state.value.refreshing)
+        sharing.closed = true
+        vm.onIntent(AttendanceLinkIntent.Refresh)
+        assertEquals(AttendanceLinkPhase.GameCancelled, vm.state.value.phase)
+    }
+
+    @Test fun refreshWithTheRequestGoneGoesToRequestClosedAndRetryRedeemsAgain() = runTest {
+        val invites = InviteFake(InviteRedeemStatus.PENDING, preview = InvitePreview("Grupo", "Ana", true))
+        val gateway = br.com.saqz.groups.presentation.FakeAthleteGateway(ownEntryRequestResult = entryRequest(null))
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(expired = true), AttendanceFake(), invites, athletes = gateway)
+        gateway.ownEntryRequestResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.NotFound))
+        vm.onIntent(AttendanceLinkIntent.Refresh)
+        assertEquals(AttendanceLinkPhase.RequestClosed, vm.state.value.phase)
+        assertEquals(1, invites.codes.size)
+        // Pedir de novo é um toque da pessoa: aí sim refaz o fluxo com redeem.
+        vm.onIntent(AttendanceLinkIntent.Retry)
+        assertEquals(2, invites.codes.size)
+        assertEquals(AttendanceLinkPhase.Pending, vm.state.value.phase)
+    }
+
+    @Test fun refreshWithoutTheAthletePortOrWithAnotherFailureKeepsThePendingScreen() = runTest {
+        val invites = InviteFake(InviteRedeemStatus.PENDING, preview = InvitePreview("Grupo", "Ana", true))
+        val without = AttendanceLinkViewModel(code, false, SharingFake(expired = true), AttendanceFake(), invites)
+        without.onIntent(AttendanceLinkIntent.Refresh)
+        assertEquals(AttendanceLinkPhase.Pending, without.state.value.phase)
+        assertFalse(without.state.value.refreshing)
+        val gateway = br.com.saqz.groups.presentation.FakeAthleteGateway(ownEntryRequestResult = entryRequest(null))
+        val failing = AttendanceLinkViewModel(code, false, SharingFake(expired = true), AttendanceFake(), invites, athletes = gateway)
+        gateway.ownEntryRequestResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Connectivity))
+        failing.onIntent(AttendanceLinkIntent.Refresh)
+        assertEquals(AttendanceLinkPhase.Pending, failing.state.value.phase)
+        assertFalse(failing.state.value.refreshing)
+    }
+
+    private class ClosingSharing : AttendanceSharingGateway {
+        var closed = false
+        override suspend fun resolveLink(code: AttendanceLinkCode): SaqzResult<AttendanceLinkDestination, AttendanceSharingError> =
+            if (closed) SaqzResult.Failure(AttendanceSharingError.GameClosed(AttendanceLinkClosedReason.GameCancelled))
+            else SaqzResult.Failure(AttendanceSharingError.InvalidOrExpired)
     }
 
     @Test fun refreshOutsideThePendingPhaseDoesNothing() = runTest {

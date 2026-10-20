@@ -3,10 +3,12 @@ package br.com.saqz.groups.presentation.attendancelink
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.mvi.MviViewModel
+import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.attendance.*
+import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.attendance.share.*
 import br.com.saqz.groups.domain.communication.AppDownloadPort
@@ -62,7 +64,7 @@ class AttendanceLinkViewModel(
     }
 
     fun retry() {
-        if (state.value.phase in listOf(AttendanceLinkPhase.Failed, AttendanceLinkPhase.Pending)) resolve()
+        if (state.value.phase in listOf(AttendanceLinkPhase.Failed, AttendanceLinkPhase.Pending, AttendanceLinkPhase.RequestClosed)) resolve()
     }
 
     private fun resolve() {
@@ -100,16 +102,33 @@ class AttendanceLinkViewModel(
         val current = generation
         update { it.copy(refreshing = true) }
         viewModelScope.launch {
-            val result = invites.redeem(InviteCode(code))
+            // Só leituras: refazer o `redeem` a cada volta à tela criaria um pedido novo depois de recusado ou cancelado.
+            val requestId = requestId(code) ?: return@launch show(AttendanceLinkPhase.Invalid)
+            val resolved = sharing.resolveLink(AttendanceLinkCode(code))
             if (current != generation) return@launch
-            when {
-                result is SaqzResult.Success && result.value.status == InviteRedeemStatus.JOINED -> afterJoined(current)
-                result is SaqzResult.Success -> {
-                    readPending(current, result.value.groupId.value)
-                    if (current == generation) update { it.copy(refreshing = false) }
+            when (resolved) {
+                is SaqzResult.Success -> proceed(current, resolved.value, requestId)
+                is SaqzResult.Failure -> when (val error = resolved.error) {
+                    is AttendanceSharingError.GameClosed -> show(error.reason.phase())
+                    AttendanceSharingError.InvalidOrExpired -> refreshRequest(current, before.pendingGroupId)
+                    else -> update { it.copy(refreshing = false) }
                 }
-                else -> update { it.copy(refreshing = false) }
             }
+        }
+    }
+
+    /** Ainda não é membro: o pedido segue pendente, ou sumiu (recusado/cancelado). */
+    private suspend fun refreshRequest(current: Int, groupId: String?) {
+        val request = if (groupId == null) null else athletes?.ownEntryRequest(GroupId(groupId))
+        if (current != generation) return
+        when {
+            request is SaqzResult.Success -> {
+                readPendingPreview(current)
+                if (current == generation) update { it.copy(pendingRegistrationSaved = request.value.athleteProfile != null, refreshing = false) }
+            }
+            request is SaqzResult.Failure && request.error.let { it is AthleteError.DataFailure && it.error == DataError.NotFound } ->
+                show(AttendanceLinkPhase.RequestClosed)
+            else -> update { it.copy(refreshing = false) }
         }
     }
 
@@ -135,22 +154,24 @@ class AttendanceLinkViewModel(
      * escondido) e o cadastro guardado vem do próprio pedido. Falha numa leitura não apaga o que já está na tela.
      */
     private suspend fun readPending(current: Int, groupId: String) {
-        val preview = invites.preview(InviteCode(code))
-        if (current != generation) return
-        if (preview is SaqzResult.Success) {
-            val card = preview.value.nextGame?.toCard(timeZone)
-            update {
-                if (it.phase != AttendanceLinkPhase.Pending) it else it.copy(
-                    game = card ?: it.game,
-                    pendingGroupName = preview.value.groupName,
-                    pendingInviterName = preview.value.inviterName,
-                )
-            }
-        }
+        readPendingPreview(current)
         val request = athletes?.ownEntryRequest(GroupId(groupId))
         if (current != generation || request !is SaqzResult.Success) return
         update {
             if (it.phase == AttendanceLinkPhase.Pending) it.copy(pendingRegistrationSaved = request.value.athleteProfile != null) else it
+        }
+    }
+
+    private suspend fun readPendingPreview(current: Int) {
+        val preview = invites.preview(InviteCode(code))
+        if (current != generation || preview !is SaqzResult.Success) return
+        val card = preview.value.nextGame?.toCard(timeZone)
+        update {
+            if (it.phase != AttendanceLinkPhase.Pending) it else it.copy(
+                game = card ?: it.game,
+                pendingGroupName = preview.value.groupName,
+                pendingInviterName = preview.value.inviterName,
+            )
         }
     }
 

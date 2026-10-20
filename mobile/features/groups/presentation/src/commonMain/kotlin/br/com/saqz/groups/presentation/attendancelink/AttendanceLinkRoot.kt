@@ -31,6 +31,7 @@ internal object AttendanceLinkTags {
     const val Refresh = "attendance-link-refresh"
     const val OpenGame = "attendance-link-open-game"
     const val Footer = "attendance-link-footer"
+    const val RequestAgain = "attendance-link-request-again"
 }
 
 @Composable
@@ -61,7 +62,7 @@ internal fun AttendanceLinkScreen(
     appDownloadAvailable: Boolean = false,
 ) {
     val phase = state.phase
-    val answered = phase in listOf(AttendanceLinkPhase.Confirmed, AttendanceLinkPhase.Waitlisted, AttendanceLinkPhase.Declined)
+    val answered = phase in listOf(AttendanceLinkPhase.Confirmed, AttendanceLinkPhase.Waitlisted, AttendanceLinkPhase.Declined, AttendanceLinkPhase.RequestClosed)
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
             SaqzTopAppBar(
@@ -165,7 +166,7 @@ private fun AttendanceLinkFooter(
     // O aviso do "não vou" só deixa o cartão do jogo atrás da folha: sem "Ver jogo".
     val openGame = destination != null && state.phase != AttendanceLinkPhase.DeclineSheet
     val hasAction = when (state.phase) {
-        AttendanceLinkPhase.Pending, AttendanceLinkPhase.Failed -> true
+        AttendanceLinkPhase.Pending, AttendanceLinkPhase.Failed, AttendanceLinkPhase.RequestClosed -> true
         else -> openGame
     }
     if (!hasAction) return
@@ -197,6 +198,12 @@ private fun AttendanceLinkFooter(
                     modifier = Modifier.testTag(AttendanceLinkTags.Refresh),
                 )
             }
+            AttendanceLinkPhase.RequestClosed -> SaqzButton(
+                stringResource(Res.string.attendance_link_closed_action),
+                { onIntent(AttendanceLinkIntent.Retry) },
+                fullWidth = true,
+                modifier = Modifier.testTag(AttendanceLinkTags.RequestAgain),
+            )
             AttendanceLinkPhase.Failed -> {
                 SaqzButton(
                     stringResource(Res.string.communication_refresh), { onIntent(AttendanceLinkIntent.Retry) }, fullWidth = true,

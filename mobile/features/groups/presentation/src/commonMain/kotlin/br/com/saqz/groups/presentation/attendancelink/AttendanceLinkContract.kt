@@ -20,6 +20,8 @@ enum class AttendanceLinkPhase {
     Failed,
     Registration,
     Pending,
+    /** O pedido de entrada não existe mais (recusado ou cancelado): só um toque da pessoa pede de novo. */
+    RequestClosed,
 }
 
 /**
