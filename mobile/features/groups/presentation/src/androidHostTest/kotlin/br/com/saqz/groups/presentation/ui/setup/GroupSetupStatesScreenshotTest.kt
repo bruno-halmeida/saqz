@@ -17,6 +17,7 @@ import br.com.saqz.designsystem.SaqzOfflineBanner
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupVenueForm
+import br.com.saqz.groups.presentation.duration.DurationDraft
 import br.com.saqz.groups.presentation.setup.GroupSetupDefaults
 import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
@@ -127,7 +128,11 @@ class GroupSetupStatesScreenshotTest {
                 hasError = hasCapacityError,
                 onChange = {},
             )
-            GroupDurationSection(minutes = GroupSetupDefaults.DurationMinutes, onSelect = {})
+            GroupDurationSection(
+                draft = DurationDraft(GroupSetupDefaults.DurationMinutes),
+                onIntent = {},
+                hasError = false,
+            )
             GroupConfirmationLeadSection(
                 minutes = GroupSetupDefaults.ConfirmationLeadMinutes,
                 onSelect = {},

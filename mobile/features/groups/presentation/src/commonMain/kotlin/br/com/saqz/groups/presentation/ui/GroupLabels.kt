@@ -10,6 +10,8 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_composition_men
 import br.com.saqz.groups.resources.group_composition_mixed
 import br.com.saqz.groups.resources.group_composition_women
+import br.com.saqz.groups.resources.group_duration_hours
+import br.com.saqz.groups.resources.group_duration_hours_minutes
 import br.com.saqz.groups.resources.group_duration_minutes
 import br.com.saqz.groups.resources.group_duration_one_hour
 import br.com.saqz.groups.resources.group_duration_one_hour_thirty
@@ -119,7 +121,12 @@ fun durationLabel(minutes: Int): String = when (minutes) {
     90 -> stringResource(Res.string.group_duration_one_hour_thirty)
     120 -> stringResource(Res.string.group_duration_two_hours)
     150 -> stringResource(Res.string.group_duration_two_hours_thirty)
-    else -> stringResource(Res.string.group_duration_minutes, minutes)
+    // Fora dos chips: 180 vira "3h" e 195 vira "3h15"; abaixo de uma hora segue em minutos.
+    else -> when {
+        minutes < 60 -> stringResource(Res.string.group_duration_minutes, minutes)
+        minutes % 60 == 0 -> stringResource(Res.string.group_duration_hours, minutes / 60)
+        else -> stringResource(Res.string.group_duration_hours_minutes, minutes / 60, (minutes % 60).toString().padStart(2, '0'))
+    }
 }
 
 @Composable

@@ -639,6 +639,31 @@ class GroupSetupViewModelTest {
     }
 
     @Test
+    fun `outros em horas cheias vale para o grupo e se espelha nos horarios`() = runTest(mainDispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupSetupIntent.SelectOtherDuration)
+        viewModel.onIntent(GroupSetupIntent.UpdateDurationText("4"))
+        runCurrent()
+
+        assertEquals(240, viewModel.state.value.durationMinutes)
+        assertEquals(listOf(240), viewModel.state.value.form.regularSlots.map { it.durationMinutes })
+    }
+
+    @Test
+    fun `outros vazio ou fora de 3 a 8 acusa erro no campo e nao salva`() = runTest(mainDispatcher) {
+        listOf("", "1", "9", "3,5", "3.5").forEach { text ->
+            val viewModel = viewModel()
+            viewModel.onIntent(GroupSetupIntent.SelectOtherDuration)
+            viewModel.onIntent(GroupSetupIntent.UpdateDurationText(text))
+            viewModel.onIntent(GroupSetupIntent.Submit)
+            runCurrent()
+
+            assertTrue(GroupSetupError.DurationOutOfRange in viewModel.state.value.errors, "\"$text\"")
+        }
+    }
+
+    @Test
     fun `so o texto digitado vai para o SavedStateHandle`() = runTest(mainDispatcher) {
         val handle = SavedStateHandle()
         val viewModel = viewModel(savedState = handle)

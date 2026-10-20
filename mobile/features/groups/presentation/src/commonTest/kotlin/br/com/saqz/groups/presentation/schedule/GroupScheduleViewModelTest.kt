@@ -262,6 +262,41 @@ class GroupScheduleViewModelTest {
     }
 
     @Test
+    fun `outros em horas cheias grava os minutos em todos os horarios`() = runTest {
+        val gateway = FakeScheduleGateway()
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+        vm.onIntent(GroupScheduleIntent.SelectOtherDuration)
+        vm.onIntent(GroupScheduleIntent.UpdateDurationText("5"))
+        vm.onIntent(GroupScheduleIntent.Save)
+        assertEquals(300, gateway.schedule.durationMinutes)
+        assertEquals(listOf(300), vm.state.value.slots.map { it.durationMinutes })
+    }
+
+    @Test
+    fun `outros vazio ou fora de 3 a 8 acusa erro no campo e nao salva`() = runTest {
+        listOf("", "2", "9", "3,5", "3.5").forEach { text ->
+            val gateway = FakeScheduleGateway()
+            val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)
+            vm.onIntent(GroupScheduleIntent.SelectOtherDuration)
+            vm.onIntent(GroupScheduleIntent.UpdateDurationText(text))
+            vm.onIntent(GroupScheduleIntent.Save)
+            assertTrue(vm.state.value.durationError, "\"$text\"")
+            assertEquals(0, gateway.writes, "\"$text\"")
+            assertEquals(null, vm.state.value.error)
+        }
+    }
+
+    @Test
+    fun `editing the hours clears the duration error`() = runTest {
+        val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), FakeScheduleGateway())
+        vm.onIntent(GroupScheduleIntent.SelectOtherDuration)
+        vm.onIntent(GroupScheduleIntent.Save)
+        assertTrue(vm.state.value.durationError)
+        vm.onIntent(GroupScheduleIntent.UpdateDurationText("3"))
+        assertFalse(vm.state.value.durationError)
+    }
+
+    @Test
     fun `failure preserves edits and emits no success`() = runTest {
         val gateway = FakeScheduleGateway().apply { failure = GroupProfileError.Conflict() }
         val vm = GroupScheduleViewModel("group-1", FakeGameGateway(), gateway)

@@ -46,6 +46,7 @@ import br.com.saqz.groups.model.GroupWeekday
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.presentation.setup.GroupSetupDefaults
 import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
+import br.com.saqz.groups.presentation.duration.DurationDraft
 import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
@@ -308,8 +309,9 @@ private fun GroupSetupAdvancedCards(
         onChange = { onIntent(GroupSetupIntent.UpdateDefaultGameFee(it)) },
     )
     GroupDurationSection(
-        minutes = state.durationMinutes,
-        onSelect = { onIntent(GroupSetupIntent.SelectDuration(it)) },
+        draft = DurationDraft(state.durationMinutes, state.durationText),
+        onIntent = onIntent,
+        hasError = GroupSetupError.DurationOutOfRange in state.errors,
     )
     // VUL-157: no editar o prazo de confirmação vive dentro da seção de configurações
     // de jogo; no criar ele continua como card solto, onde sempre esteve.

@@ -49,6 +49,8 @@ import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.place.PlaceSuggestion
+import br.com.saqz.groups.presentation.duration.DurationDraft
+import br.com.saqz.groups.presentation.ui.components.DurationChoice
 import br.com.saqz.groups.presentation.ui.components.GroupChoiceChipRow
 import br.com.saqz.groups.presentation.ui.components.VenueSearchField
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -194,7 +196,6 @@ internal object GameEditorTags {
     const val ConfirmationLead = "game-editor-confirmation-lead"
 }
 
-private val DurationOptions = listOf(60, 90, 120, 150)
 private val LeadOptions = listOf(180, 360, 720, 1440)
 private const val SoftTintAlpha = 0.10f
 
@@ -230,7 +231,7 @@ internal fun GameEditorScreen(
                     state = state,
                     onIntent = onIntent,
                     onOpenPicker = { pickerOpen = true },
-                    modifier = Modifier.weight(1f),
+                                        modifier = Modifier.weight(1f),
                 )
             }
             if (!state.isLoading && !state.loadFailed && !suggestionsOverKeyboard) {
@@ -251,6 +252,7 @@ internal fun GameEditorScreen(
                 pickerOpen = false
             },
         )
+        // Na raiz, fora da coluna rolável: a folha cobre a tela inteira e recebe os toques.
         if (state.subscriptionRequired) {
             SubscriptionRequiredDialog(
                 trialEnded = state.trialEnded,
@@ -325,10 +327,12 @@ private fun FormScroll(
             groupName = state.groupName,
             subtitle = stringResource(Res.string.game_editor_subtitle),
         )
-        if (errors.isNotEmpty()) {
+        // O erro da duração aparece no próprio campo, nunca no cartão genérico do topo.
+        val bannerErrors = errors - GameEditorFieldError.DurationInvalid
+        if (bannerErrors.isNotEmpty()) {
             MissingInfoBanner(
                 title = stringResource(Res.string.game_editor_error_missing_title),
-                body = stringResource(Res.string.game_editor_error_missing_body, missingItems(errors)),
+                body = stringResource(Res.string.game_editor_error_missing_body, missingItems(bannerErrors)),
             )
         }
         if (state.hasConflict) {
@@ -362,8 +366,10 @@ private fun FormScroll(
         }
         if (state.planBlocked) PlanBlockCard(state)
         DurationChips(
-            selected = state.form.durationMinutes,
-            onSelect = { onIntent(GameEditorIntent.SelectDuration(it)) },
+            draft = state.form.duration,
+            onIntent = onIntent,
+            hasError = GameEditorFieldError.DurationInvalid in errors,
+            modifier = Modifier.bringIntoViewRequester(targets.duration),
         )
         VenueFields(
             venue = state.form.venue,
@@ -749,16 +755,21 @@ internal fun PickerRow(
  * fileira que o grupo usa para as mesmas opções.
  */
 @Composable
-private fun DurationChips(selected: Int, onSelect: (Int) -> Unit) {
-    val metrics = SaqzTheme.metrics
-    Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+private fun DurationChips(
+    draft: DurationDraft,
+    onIntent: (GameEditorIntent) -> Unit,
+    hasError: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
         SaqzSectionHeader(title = stringResource(Res.string.game_editor_duration_label))
-        GroupChoiceChipRow(
-            values = DurationOptions,
-            selectedValue = selected,
-            label = { durationLabel(it) },
-            onSelect = onSelect,
-            modifier = Modifier.fillMaxWidth().testTag(GameEditorTags.Duration),
+        DurationChoice(
+            draft = draft,
+            onSelectPreset = { onIntent(GameEditorIntent.SelectDuration(it)) },
+            onSelectOther = { onIntent(GameEditorIntent.SelectOtherDuration) },
+            onTextChange = { onIntent(GameEditorIntent.UpdateDurationText(it)) },
+            hasError = hasError,
+            modifier = Modifier.testTag(GameEditorTags.Duration),
         )
     }
 }
@@ -835,6 +846,7 @@ private class EditorScrollTargets {
     val venueName = BringIntoViewRequester()
     val venueAddress = BringIntoViewRequester()
     val gameFee = BringIntoViewRequester()
+    val duration = BringIntoViewRequester()
 
     fun firstFor(errors: Set<GameEditorFieldError>): BringIntoViewRequester? = when {
         GameEditorFieldError.DateMissing in errors || GameEditorFieldError.TimeMissing in errors -> dateTime
@@ -842,6 +854,7 @@ private class EditorScrollTargets {
         GameEditorFieldError.VenueAddressTooShort in errors ||
             GameEditorFieldError.VenueAddressTooLong in errors -> venueAddress
         GameEditorFieldError.GameFeeInvalid in errors -> gameFee
+        GameEditorFieldError.DurationInvalid in errors -> duration
         else -> null
     }
 }

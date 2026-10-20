@@ -147,7 +147,7 @@ private fun HeightCaption(text: String) =
 
 /** Grade de [perRow] colunas; as células que faltam na última linha ficam vazias para os chips manterem a largura. */
 @Composable
-private fun HeightGrid(
+internal fun HeightGrid(
     items: List<Int>,
     perRow: Int,
     cell: @Composable RowScope.(Int) -> Unit,

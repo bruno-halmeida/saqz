@@ -31,7 +31,9 @@ import br.com.saqz.groups.presentation.schedule.UpcomingGameStatus
 import br.com.saqz.groups.presentation.schedule.UpcomingGameUi
 import br.com.saqz.groups.presentation.ui.components.GroupChoiceChipRow
 import br.com.saqz.groups.presentation.ui.confirmationLeadLabel
-import br.com.saqz.groups.presentation.ui.durationLabel
+import br.com.saqz.groups.presentation.duration.DurationDraft
+import br.com.saqz.groups.presentation.schedule.GroupScheduleIntent
+import br.com.saqz.groups.presentation.ui.components.DurationChoice
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_schedule_pause_help
 import br.com.saqz.groups.resources.group_schedule_resume_help
@@ -54,7 +56,6 @@ import org.jetbrains.compose.resources.stringResource
 internal val GroupScheduleRowPadding: Dp
     @Composable get() = SaqzTheme.metrics.blockGap + SaqzTheme.metrics.subGrid / 2
 
-internal val DURATION_OPTIONS = listOf(60, 90, 120, 150)
 internal val CONFIRMATION_LEAD_OPTIONS = listOf(180, 360, 720, 1_440)
 
 /** `letter-spacing:.06em` do mês, entre o `eyebrow` (.08) e o zero das demais escalas. */
@@ -62,9 +63,10 @@ private val MonthTracking = 0.06.em
 
 @Composable
 internal fun GroupScheduleTimingCard(
-    durationMinutes: Int,
+    duration: DurationDraft,
+    durationError: Boolean,
     confirmationLeadMinutes: Int,
-    onSelectDuration: (Int) -> Unit,
+    onDurationIntent: (GroupScheduleIntent) -> Unit,
     onSelectConfirmationLead: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -76,11 +78,12 @@ internal fun GroupScheduleTimingCard(
             style = SaqzTheme.typography.label,
             color = SaqzTheme.colors.textPrimary,
         )
-        GroupChoiceChipRow(
-            values = (DURATION_OPTIONS + durationMinutes).distinct().sorted(),
-            selectedValue = durationMinutes,
-            label = { durationLabel(it) },
-            onSelect = onSelectDuration,
+        DurationChoice(
+            draft = duration,
+            onSelectPreset = { onDurationIntent(GroupScheduleIntent.SelectDuration(it)) },
+            onSelectOther = { onDurationIntent(GroupScheduleIntent.SelectOtherDuration) },
+            onTextChange = { onDurationIntent(GroupScheduleIntent.UpdateDurationText(it)) },
+            hasError = durationError,
         )
         Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
             Text(

@@ -2,6 +2,8 @@ package br.com.saqz.groups.presentation.setup
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.ImageBitmap
+import br.com.saqz.groups.presentation.duration.CustomDuration
+import br.com.saqz.groups.presentation.duration.DurationDraft
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupLevel
@@ -61,7 +63,7 @@ object GroupSetupDefaults {
     const val DurationMinutes = 120
     const val ConfirmationLeadMinutes = 360
 
-    val DurationOptions = listOf(60, 90, 120, 150)
+    val DurationOptions = CustomDuration.Presets
     val ConfirmationLeadOptions = listOf(180, 360, 720, 1_440)
 
     /**
@@ -104,6 +106,8 @@ data class GroupSetupState(
     val recurring: Boolean = false,
     // Duração é do grupo no desenho e por slot no modelo; ver GroupSetupViewModel.
     val durationMinutes: Int = GroupSetupDefaults.DurationMinutes,
+    /** Horas digitadas em "Outros" (`null` fora dele); ver [CustomDuration]. */
+    val durationText: String? = null,
     val errors: Set<GroupSetupError> = emptySet(),
     val sheet: GroupSetupSheet? = null,
     val slotDraft: GroupSlotDraft = GroupSlotDraft(),
@@ -230,6 +234,10 @@ sealed interface GroupSetupIntent {
     data class UpdateDefaultGameFee(val cents: Long?) : GroupSetupIntent
 
     data class SelectDuration(val minutes: Int) : GroupSetupIntent
+
+    data object SelectOtherDuration : GroupSetupIntent
+
+    data class UpdateDurationText(val text: String) : GroupSetupIntent
 
     data class SelectConfirmationLead(val minutes: Int) : GroupSetupIntent
 

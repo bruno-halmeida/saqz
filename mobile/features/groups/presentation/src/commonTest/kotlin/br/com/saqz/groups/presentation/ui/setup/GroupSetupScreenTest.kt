@@ -3,20 +3,24 @@ package br.com.saqz.groups.presentation.ui.setup
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.presentation.setup.GroupSetupError
+import br.com.saqz.groups.presentation.ui.components.DurationChoiceTags
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupSheet
@@ -58,6 +62,52 @@ class GroupSetupScreenTest {
             .performScrollTo().performTextInput("25,50")
 
         assertEquals(GroupSetupIntent.UpdateDefaultGameFee(2550), received.last { it is GroupSetupIntent.UpdateDefaultGameFee })
+    }
+
+    @Test
+    fun otherDurationShowsTheNumericFieldAndTheEquivalent() = runComposeUiTest {
+        val received = mutableListOf<GroupSetupIntent>()
+        setContent {
+            SaqzTheme {
+                GroupSetupScreen(
+                    GroupSetupState(mode = GroupSetupMode.Create).copy(durationMinutes = 180, durationText = "3"),
+                    { received += it },
+                    {},
+                )
+            }
+        }
+        openAdvancedIfCollapsed()
+
+        onNodeWithTag(DurationChoiceTags.Other).performScrollTo().assertIsSelected()
+        onNodeWithText("3 h = 180 min").performScrollTo().assertExists()
+        onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(DurationChoiceTags.Field)), useUnmergedTree = true)
+            .performScrollTo().performTextReplacement("4")
+        assertEquals(GroupSetupIntent.UpdateDurationText("4"), received.last { it is GroupSetupIntent.UpdateDurationText })
+    }
+
+    @Test
+    fun otherDurationErrorShowsInTheField() = runComposeUiTest {
+        setContent {
+            SaqzTheme {
+                GroupSetupScreen(
+                    GroupSetupState(mode = GroupSetupMode.Create).copy(
+                        durationMinutes = 0,
+                        durationText = "9",
+                        errors = setOf(GroupSetupError.DurationOutOfRange),
+                    ),
+                    {},
+                    {},
+                )
+            }
+        }
+        openAdvancedIfCollapsed()
+        onNodeWithText("Digite um número inteiro de horas, de 3 a 8.").performScrollTo().assertExists()
+    }
+
+    private fun ComposeUiTest.openAdvancedIfCollapsed() {
+        if (onAllNodesWithTag(GroupSetupTags.Advanced).fetchSemanticsNodes().isNotEmpty()) {
+            onNodeWithTag(GroupSetupTags.Advanced).performScrollTo().performClick()
+        }
     }
 
     private fun ComposeUiTest.deleteSheetShows(memberCount: Int?, text: String) {

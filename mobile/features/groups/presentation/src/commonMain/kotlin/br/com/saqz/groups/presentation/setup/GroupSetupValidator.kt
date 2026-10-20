@@ -3,6 +3,8 @@ package br.com.saqz.groups.presentation.setup
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.model.GroupLevel
 import br.com.saqz.groups.model.GroupVenueForm
+import br.com.saqz.groups.presentation.duration.CustomDuration
+import br.com.saqz.groups.presentation.duration.DurationDraft
 
 /**
  * Os sete campos que o `2g` marca em vermelho, mais três que só o backend exige.
@@ -27,6 +29,7 @@ enum class GroupSetupError {
     SlotsRequired,
     VenueNameRequired,
     VenueAddressNotFound,
+    DurationOutOfRange,
 }
 
 /**
@@ -136,6 +139,7 @@ fun validate(state: GroupSetupState): Set<GroupSetupError> {
         form.defaultGameFeeCents?.let {
             if (it !in 1L..GroupSetupDefaults.MaxGameFeeCents) add(GroupSetupError.GameFeeInvalid)
         }
+        if (CustomDuration.isInvalid(DurationDraft(state.durationMinutes, state.durationText))) add(GroupSetupError.DurationOutOfRange)
         if (state.recurring && form.regularSlots.isEmpty()) add(GroupSetupError.SlotsRequired)
         addAll(validateVenue(state.recurring, venue))
     }

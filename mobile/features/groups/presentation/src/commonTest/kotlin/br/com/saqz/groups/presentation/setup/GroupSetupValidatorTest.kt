@@ -143,6 +143,15 @@ class GroupSetupValidatorTest {
         assertTrue(GroupSetupDefaults.DurationOptions.all { it in 15..480 })
     }
 
+    @Test
+    fun `outros acusa erro fora de 3 a 8 horas e aceita 180 a 480 minutos`() {
+        assertTrue(GroupSetupError.DurationOutOfRange in validate(state().copy(durationMinutes = 0, durationText = "")))
+        assertTrue(GroupSetupError.DurationOutOfRange in validate(state().copy(durationMinutes = 0, durationText = "9")))
+        assertTrue(GroupSetupError.DurationOutOfRange !in validate(state().copy(durationMinutes = 480, durationText = "8")))
+        assertTrue(GroupSetupError.DurationOutOfRange !in validate(state().copy(durationMinutes = 195)))
+        assertTrue(GroupSetupError.DurationOutOfRange in validate(state().copy(durationMinutes = 540)))
+    }
+
     /** O DTO aceita capacidade nula; quem não escolheu não errou, sai o padrão da tela. */
     @Test
     fun `capacidade ausente nao acusa erro`() {
@@ -213,6 +222,8 @@ class GroupSetupValidatorTest {
                     defaultGameFeeCents = 0,
                 ),
                 recurring = true,
+                // Duração salva fora dos chips e da faixa (ex.: 45 min de um grupo antigo).
+                durationMinutes = 45,
             ),
         )
 

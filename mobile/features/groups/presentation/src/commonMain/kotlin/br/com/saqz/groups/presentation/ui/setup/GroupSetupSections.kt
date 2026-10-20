@@ -68,6 +68,9 @@ import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.presentation.photo.GroupRemotePhotoRoot
 import br.com.saqz.groups.presentation.setup.GroupSetupDefaults
 import br.com.saqz.groups.presentation.ui.components.GroupChoiceChipRow
+import br.com.saqz.groups.presentation.duration.DurationDraft
+import br.com.saqz.groups.presentation.setup.GroupSetupIntent
+import br.com.saqz.groups.presentation.ui.components.DurationChoice
 import br.com.saqz.groups.presentation.ui.components.GroupFormCard
 import br.com.saqz.groups.presentation.ui.components.GroupRecurrenceSection
 import br.com.saqz.groups.presentation.ui.confirmationLeadLabel
@@ -488,16 +491,18 @@ internal fun GroupGameFeeSection(
 
 @Composable
 internal fun GroupDurationSection(
-    minutes: Int,
-    onSelect: (Int) -> Unit,
+    draft: DurationDraft,
+    onIntent: (GroupSetupIntent) -> Unit,
+    hasError: Boolean,
     modifier: Modifier = Modifier,
 ) {
     GroupFormCard(title = stringResource(Res.string.group_setup_duration_label), modifier = modifier) {
-        GroupChoiceChipRow(
-            values = GroupSetupDefaults.DurationOptions,
-            selectedValue = minutes,
-            label = { durationLabel(it) },
-            onSelect = onSelect,
+        DurationChoice(
+            draft = draft,
+            onSelectPreset = { onIntent(GroupSetupIntent.SelectDuration(it)) },
+            onSelectOther = { onIntent(GroupSetupIntent.SelectOtherDuration) },
+            onTextChange = { onIntent(GroupSetupIntent.UpdateDurationText(it)) },
+            hasError = hasError,
             modifier = Modifier.testTag(GroupSetupTags.Duration),
         )
     }

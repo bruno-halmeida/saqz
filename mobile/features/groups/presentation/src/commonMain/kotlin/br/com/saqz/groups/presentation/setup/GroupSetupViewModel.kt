@@ -144,7 +144,8 @@ class GroupSetupViewModel(
                 onFormChange { copy(monthlyLateJoinPolicy = intent.value) }
                 savedState[KeyMonthlyLateJoinPolicy] = intent.value.name
             }
-            is GroupSetupIntent.SelectDuration -> onDurationChange(intent.minutes)
+            is GroupSetupIntent.SelectDuration, GroupSetupIntent.SelectOtherDuration,
+            is GroupSetupIntent.UpdateDurationText -> handleDurationIntent(intent)
             is GroupSetupIntent.ToggleRecurring -> onRecurringChange(intent.value)
             is GroupSetupIntent.OpenSheet -> onOpenSheet(intent.sheet)
             GroupSetupIntent.CloseSheet -> update { it.copy(sheet = null) }
@@ -433,13 +434,9 @@ class GroupSetupViewModel(
         }
     }
 
-    private fun onDurationChange(minutes: Int) {
+    private fun handleDurationIntent(intent: GroupSetupIntent) {
         discardCreationKey()
-        update { current ->
-            current.copy(durationMinutes = minutes, creationCommandKey = null)
-                .withForm { copy(regularSlots = regularSlots.map { it.copy(durationMinutes = minutes) }) }
-                .revalidated()
-        }
+        update { it.withDurationIntent(intent) }
     }
 
     private fun onRecurringChange(recurring: Boolean) {

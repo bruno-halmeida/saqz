@@ -267,6 +267,81 @@ class GameEditorViewModelTest {
         assertEquals("19:30", vm.state.value.form.localTime)
     }
 
+    private fun typeOther(vm: GameEditorViewModel, text: String) {
+        vm.onIntent(GameEditorIntent.SelectOtherDuration)
+        vm.onIntent(GameEditorIntent.UpdateDurationText(text))
+    }
+
+    @Test
+    fun `other duration typed in whole hours saves the minutes`() = runTest {
+        val gateway = FakeGameGateway()
+        val vm = viewModel(gameGateway = gateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
+        typeOther(vm, "3")
+        vm.onIntent(GameEditorIntent.Submit)
+        assertEquals(180, gateway.lastCreateCommand?.durationMinutes)
+    }
+
+    @Test
+    fun `other duration of 8 hours saves 480`() = runTest {
+        val gateway = FakeGameGateway()
+        val vm = viewModel(gameGateway = gateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
+        typeOther(vm, "8")
+        vm.onIntent(GameEditorIntent.Submit)
+        assertEquals(480, gateway.lastCreateCommand?.durationMinutes)
+    }
+
+    @Test
+    fun `other duration empty out of range comma or dot gives a field error and does not save`() = runTest {
+        listOf("", "1", "2", "9", "3,5", "3.5").forEach { text ->
+            val gateway = FakeGameGateway()
+            val vm = viewModel(gameGateway = gateway)
+            vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
+            typeOther(vm, text)
+            vm.onIntent(GameEditorIntent.Submit)
+            assertEquals(0, gateway.createCalls, "\"$text\" não deveria salvar")
+            assertEquals(setOf(GameEditorFieldError.DurationInvalid), vm.state.value.validationErrors)
+        }
+    }
+
+    @Test
+    fun `other duration does not accept letters`() = runTest {
+        val vm = viewModel()
+        typeOther(vm, "3h")
+        assertEquals("3", vm.state.value.form.durationText)
+        assertEquals(180, vm.state.value.form.durationMinutes)
+    }
+
+    @Test
+    fun `choosing a chip after other clears the typed hours`() = runTest {
+        val vm = viewModel()
+        typeOther(vm, "5")
+        vm.onIntent(GameEditorIntent.SelectDuration(90))
+        assertEquals(90, vm.state.value.form.durationMinutes)
+        assertEquals(null, vm.state.value.form.durationText)
+    }
+
+    @Test
+    fun `game saved with a duration outside the chips opens as other with that value`() = runTest {
+        val game = br.com.saqz.groups.presentation.sampleGame().copy(durationMinutes = 195)
+        val gateway = FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(game)))
+        val vm = viewModel(gameId = "game-1", gameGateway = gateway)
+        assertEquals(195, vm.state.value.form.durationMinutes)
+        assertEquals(null, vm.state.value.form.durationText)
+        vm.onIntent(GameEditorIntent.Submit)
+        assertEquals(195, gateway.lastEditCommand?.durationMinutes)
+    }
+
+    @Test
+    fun `typed hours survive view model recreation`() = runTest {
+        val handle = SavedStateHandle()
+        typeOther(viewModel(savedState = handle), "6")
+        val restored = viewModel(savedState = handle)
+        assertEquals("6", restored.state.value.form.durationText)
+        assertEquals(360, restored.state.value.form.durationMinutes)
+    }
+
     @Test
     fun `saving a new game reports created and saving an edit does not`() = runTest {
         val creating = viewModel()

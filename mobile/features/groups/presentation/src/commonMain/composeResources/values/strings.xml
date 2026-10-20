@@ -119,6 +119,8 @@
     <string name="group_duration_two_hours">2h</string>
     <string name="group_duration_two_hours_thirty">2h30</string>
     <string name="group_duration_minutes">%1$d min</string>
+    <string name="group_duration_hours">%1$dh</string>
+    <string name="group_duration_hours_minutes">%1$dh%2$s</string>
     <string name="group_lead_three_hours">3h antes</string>
     <string name="group_lead_six_hours">6h antes</string>
     <string name="group_lead_twelve_hours">12h antes</string>

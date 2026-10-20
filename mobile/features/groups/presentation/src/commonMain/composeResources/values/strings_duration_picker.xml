@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="duration_picker_other">Outros</string>
+    <string name="duration_picker_summary">Duração: %1$s</string>
+    <string name="duration_field_label">Horas (de 3 a 8)</string>
+    <string name="duration_field_placeholder">Ex.: 3</string>
+    <string name="duration_field_equivalent">%1$d h = %2$d min</string>
+    <string name="duration_choice_error">Digite um número inteiro de horas, de 3 a 8.</string>
+</resources>
