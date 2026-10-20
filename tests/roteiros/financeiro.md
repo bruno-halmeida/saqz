@@ -47,6 +47,7 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Entra pelo link de mensalistas, regra "vencimento do grupo" | Mensalidade inteira, no vencimento | ☐ | ☐ |
 | Entra pelo link de mensalistas, grupo sem mensalidade padrão | Entra como avulso; nenhuma mensalidade | ☐ | ☐ |
 | Avulso vira mensalista pelo link | O dia vira o início de mensalista; segue a regra de entrada tardia | ☐ | ☐ |
+| Pedido aceito como mensalista no dia 20, regra "mês seguinte" | Nenhuma cobrança neste mês | ☐ | ☐ |
 
 ## FIN-004 · A diária do jogo [CRÍTICO] [MULTI]
 

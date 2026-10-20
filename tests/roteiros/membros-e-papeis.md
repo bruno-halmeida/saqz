@@ -50,6 +50,8 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Mensalista abre o link de mensalistas | Nada muda | ☐ | ☐ |
 | Promover avulso pela lista de membros | Vira mensalista; nenhuma mensagem de WhatsApp | ☐ | ☐ |
 | Promover pelo botão "Promover a mensalista" no cadastro de convites | Vira mensalista; nenhuma mensagem de WhatsApp | ☐ | ☐ |
+| Aceita pedido de entrada como mensalista, grupo com padrão | Entra mensalista, com o valor e o dia do grupo | ☐ | ☐ |
+| Aceita pedido de entrada, grupo sem padrão | Entra como avulso; a opção de mensalista nem aparece | ☐ | ☐ |
 
 ## MEM-004 · O perfil de atleta
 

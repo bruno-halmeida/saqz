@@ -70,6 +70,7 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Dono ou admin com telefone cadastrado e não confirmado | Recebe central, push e WhatsApp (exceção) | ☐ | ☐ |
 | Dono ou admin sem telefone cadastrado | Recebe central e push; sem WhatsApp | ☐ | ☐ |
 | 3 convidados entram em sequência | 3 avisos separados a cada organizador | ☐ | ☐ |
+| Admin aceita como mensalista | A pessoa recebe "Você entrou no <Grupo> como mensalista."; o admin, não | ☐ | ☐ |
 
 ## NOT-005 · Avisos de dinheiro [MULTI] [push: só produção]
 

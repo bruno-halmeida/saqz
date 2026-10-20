@@ -1,6 +1,6 @@
 # Roteiro 10 · Convite de mensalistas pelo WhatsApp
 
-Regras do cofre cobertas: CONV-010, CONV-011 e CONV-012 (decididas em 20/10) e os efeitos em NOT-004, MEM-003, SAI-005, SAI-007 e FIN-003. Se o texto do app e a nota divergirem, vale a nota; anote a divergência no relato.
+Regras do cofre cobertas: CONV-010, CONV-011 e CONV-012 (decididas em 20/10), os efeitos em NOT-004, MEM-003, SAI-005, SAI-007 e FIN-003 e, no bloco V10, o "aceitar o pedido como mensalista ou avulso" de CONV-007 (DEB-112, que entra **depois** do DEB-106: V10 só roda quando ele for entregue). Se o texto do app e a nota divergirem, vale a nota; anote a divergência no relato.
 
 **Escrito antes da entrega (DEB-106).** Os rótulos vêm do protótipo (`design/convite-mensalistas/telas.html`). A coluna Banco usa `<convidados>` e `<links-mensalistas>` para a tabela de convidados e a do segundo código, e `<expira-em>` para a coluna de validade, que ainda não existem: ao rodar pela primeira vez, troque pelos nomes reais e registre-os no relato. O mesmo vale para as rotas de API marcadas "a fechar". Passos **[mock+]** dependem das duas extensões do Uazapi falso descritas em "Antes de começar"; sem elas ficam BLOQUEADO.
 
@@ -12,7 +12,7 @@ Pessoas sem conta, só na lista de convidados (cada número entra uma vez só po
 
 As conferências de banco pressupõem banco limpo no começo de **cada rodada**: `stack.sh reset` + `stack.sh up` (e apagar os dados do app nos aparelhos, como no roteiro 01).
 
-**Ordem de execução** (o estado de um bloco alimenta o seguinte): Preparação → V1 → V2 → V3 → V4 → V5 → V6 → V7 → V8 → V9. V8 e V9 mexem em relógio e em configuração e vão por último.
+**Ordem de execução** (o estado de um bloco alimenta o seguinte): Preparação → V1 → V2 → V3 → V4 → V5 → V6 → V7 → V10 → V8 → V9. V8 e V9 mexem em relógio e em configuração e vão por último.
 
 Etiquetas: **[CRÍTICO]** entra na rodada segura. **[push: só produção]**: o stack local não tem FCM/APNs; o passo confere a central e o log do Uazapi falso, e o push fica para `tests/producao`. **[WhatsApp: só produção]**: aqui o envio é o do Uazapi falso, que só grava; a mensagem chegar ao aparelho se confere em `tests/producao`. **[mock+]**: precisa das extensões do Uazapi falso.
 
@@ -182,6 +182,22 @@ Anotar `COD_MS` com R-CÓDIGO-MS (`codigo 11900000004`).
 | V7.6 | terminal | **[mock+]** Esperar 10 minutos desde a pausa | A fila tenta de novo com **um** envio; como o pendente (`...95`) falha, pausa por mais 10 minutos; `Pessoa I` e `Pessoa L` seguem `Pausado`. Registrar o estado da linha `...95` | `envios` mostra a tentativa de teste | ☐ | ☐ |
 | V7.7 | terminal | **[mock+]** Esperar mais 10 minutos | Nova tentativa; o próximo pendente passa (`Pessoa I`), a fila volta ao normal e `Pessoa L` sai depois | `envios` com `5511900000041` e `5511900000044` | ☐ | ☐ |
 | V7.8 | ORG | R-ZERAR. Lote de 4 pessoas novas (`11900000045` a `11900000048`). Assim que a primeira sair, reiniciar só o backend (`stack.sh`, sem tocar no banco) | Ao subir, os `Na fila` voltam sozinhos à fila e saem; a que já estava `Aguardando` continua assim, **sem** segunda mensagem | `envios` com 1 mensagem por número (4 no total) | ☐ | ☐ |
+
+## V10 · CONV-007 · Aceitar o pedido como mensalista ou avulso (DEB-112, só depois da entrega) [CRÍTICO] [MULTI] [push: só produção]
+
+| # | Aparelho | Faça | Espere | Banco | iOS | Android |
+| --- | --- | --- | --- | --- | --- | --- |
+| V10.1 | terminal, ORG, CV1, CV2, CV3 | R-COM-MENSALIDADE. ORG liga "Aprovar pedidos para entrar" (Convidar por link). CV1, CV2 e CV3: "Sair do grupo" (CV4 já está fora desde V6.8) | Início sem grupo nos quatro | `monthly_fee_cents` = `8000`; `active` = `f` para CV1, CV2 e CV3 | ☐ | ☐ |
+| V10.2 | CV1, CV2, CV3, CV4 | Entregar o convite público (`COD_PUB3`) a cada um e "Pedir pra entrar" (cadastro de atleta se pedir) | Pedido pendente nos quatro | `select count(*) from group_entry_requests where group_id='$GID'` = `4` | ☐ | ☐ |
+| V10.3 | ORG | Membros → chip `Pendentes · 4` → `Aceitar` no pedido de CV1 | Abre a folha `Aceitar como` com `Avulso` marcado e `Mensalista` | — | ☐ | ☐ |
+| V10.4 | ORG, terminal | Fechar a folha sem confirmar. Em seguida: `api atl POST /api/groups/$GID/entry-requests/$(uid atl5)/approve -d '{"membershipType":"MENSALISTA"}'` | Nada muda na lista (4 pedidos); a API devolve `403` | `select count(*) from group_entry_requests where group_id='$GID'` = `4` | ☐ | ☐ |
+| V10.5 | ORG | `Aceitar` em CV1 → `Mensalista` → confirmar | O pedido sai de Pendentes; CV1 aparece em Membros como mensalista | `select role, membership_type, active, mensalista_since::date = current_date from group_memberships where user_id='$(uid atl3)' and group_id='$GID'` = `ATHLETE\|MENSALISTA\|t\|t` | ☐ | ☐ |
+| V10.6 | CV1 | Central de avisos | [push: só produção] aviso `Você entrou no QA Vôlei <data> como mensalista.` | `select m.body from group_notifications n join group_messages m on m.id=n.message_id where n.recipient_id='$(uid atl3)' order by n.sequence desc limit 1` = o texto acima | ☐ | ☐ |
+| V10.7 | ORG | `Aceitar` em CV2 → deixar `Avulso` marcado → confirmar | CV2 entra como avulso | `membership_type='AVULSO'` para CV2 | ☐ | ☐ |
+| V10.8 | CV2 | Central de avisos | [push: só produção] aviso `Você entrou no QA Vôlei <data>.` (sem "como mensalista") | `body` da última notificação de CV2 sem "como mensalista" | ☐ | ☐ |
+| V10.9 | ORG, banco | Abrir a folha `Aceitar como` em CV4 e, sem fechá-la, R-SEM-MENSALIDADE; escolher `Mensalista` e confirmar | Recusado com `Defina o valor e o dia da mensalidade do grupo`; o pedido continua na lista | pedido de CV4 = 1 linha; CV4 sem membership ativa | ☐ | ☐ |
+| V10.10 | ORG | Com o grupo ainda sem mensalidade padrão, `Aceitar` em CV4 | Aceita direto, sem folha, como avulso | `membership_type='AVULSO'` para CV4 | ☐ | ☐ |
+| V10.11 | terminal | R-COM-MENSALIDADE. `api org POST /api/groups/$GID/entry-requests/$(uid atl5)/approve` **sem corpo** (como os apps 1.0.8 e 1.0.9) | Sucesso; CV3 entra como avulso | `membership_type='AVULSO'` para CV3 | ☐ | ☐ |
 
 ## V8 · CONV-010 · Dados dos convidados [MULTI]
 

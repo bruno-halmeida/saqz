@@ -91,6 +91,8 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 
 ## CONV-007 · Aprovar o pedido [CRÍTICO] [MULTI] [push: só produção]
 
+_As linhas de "aceitar como mensalista ou avulso" (a partir de "Grupo sem mensalidade padrão, organizador toca Aceitar") foram decididas em 20/10 e valem só depois da entrega do DEB-112._
+
 | Situação | Resultado | iOS | Android |
 | --- | --- | --- | --- |
 | Dono ou admin aprova | Vira atleta avulso; cadastro aplicado; sai da lista; pessoa recebe push | ☐ | ☐ |
@@ -99,6 +101,18 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Aprovar pedido que sumiu | "Pedido não encontrado" | ☐ | ☐ |
 | Limite do plano cheio | Bloqueado | ☐ | ☐ |
 | Plano do organizador vencido | Bloqueado | ☐ | ☐ |
+| Grupo sem mensalidade padrão, organizador toca "Aceitar" | Aceita direto, como avulso; sem folha | ☐ | ☐ |
+| Grupo com mensalidade padrão, organizador toca "Aceitar" | Abre "Aceitar como", com Avulso marcado e Mensalista | ☐ | ☐ |
+| Escolhe Mensalista e confirma | Entra como mensalista, com o valor e o dia do grupo; sai da lista; push "…como mensalista." | ☐ | ☐ |
+| Escolhe Avulso e confirma | Entra como avulso; push "Você entrou no <Grupo>." | ☐ | ☐ |
+| Fecha a folha sem confirmar | Nada muda; o pedido continua na lista | ☐ | ☐ |
+| Padrão removido depois de abrir a folha; escolhe Mensalista | Recusado com "Defina o valor e o dia da mensalidade do grupo"; o pedido continua | ☐ | ☐ |
+| Admin aceita como mensalista | Igual ao dono | ☐ | ☐ |
+| Atleta tenta aceitar como mensalista | 403 | ☐ | ☐ |
+| Aceitar como mensalista com o limite do plano cheio | Bloqueado, como o avulso | ☐ | ☐ |
+| App antigo (1.0.8 ou 1.0.9) aceita | Entra como avulso | ☐ | ☐ |
+| Quem saiu antes e pediu de volta, aceito como mensalista | Entra como mensalista; marca de saída limpa | ☐ | ☐ |
+| Grupo sem aprovação, convite público | Entra na hora como avulso, sem escolha | ☐ | ☐ |
 
 ## CONV-008 · Recusar o pedido [MULTI]
 
