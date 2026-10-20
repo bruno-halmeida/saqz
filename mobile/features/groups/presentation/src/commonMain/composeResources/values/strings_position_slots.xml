@@ -42,6 +42,28 @@
         <item quantity="other">faltam %1$d</item>
     </plurals>
 
+    <!-- Tela de escolher posição em todo "Vou" (DEB-107, quadro Main) -->
+    <string name="position_picker_screen_title">Presença</string>
+    <string name="position_picker_screen_hint">Se a posição estiver cheia, você entra na lista de espera dela, mesmo que outra tenha vaga.</string>
+    <string name="position_picker_join_waitlist">Entrar na lista de espera</string>
+    <string name="position_picker_sending">Confirmando presença</string>
+    <string name="position_picker_count">%1$d de %2$d</string>
+    <plurals name="position_picker_open">
+        <item quantity="one">%1$d vaga</item>
+        <item quantity="other">%1$d vagas</item>
+    </plurals>
+    <string name="position_picker_full">Cheia</string>
+    <string name="position_picker_waiting">%1$d na espera</string>
+    <string name="position_picker_all_full_title">Todas as posições estão cheias</string>
+    <string name="position_picker_all_full_body">Escolha em qual lista de espera entrar.</string>
+    <string name="position_picker_all_full_queue">Na de %1$s, você fica em %2$dº.</string>
+    <string name="position_picker_full_title">Sem vaga de %1$s</string>
+    <string name="position_picker_full_body">Você entra na lista de espera dessa posição, em %1$dº.</string>
+    <string name="position_picker_raced_title">%1$s acabou de lotar</string>
+    <string name="position_picker_raced_body">Entre na lista de espera dela, em %1$dº, ou escolha outra posição.</string>
+    <string name="position_picker_open_one">%1$s ainda tem vaga.</string>
+    <string name="position_picker_open_many">%1$s e %2$s ainda têm vaga.</string>
+
     <!-- Lista de presença agrupada -->
     <string name="position_group_header">%1$d/%2$d %3$s</string>
     <string name="position_group_full">completo</string>

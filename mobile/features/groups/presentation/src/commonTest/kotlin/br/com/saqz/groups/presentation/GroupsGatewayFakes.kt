@@ -336,6 +336,8 @@ class FakeAttendanceGateway(
     var lastPromotionCommand: AttendancePromotionCommand? = null
     var lastAttendanceCommand: SelfAttendanceCommand? = null
     var rosterResults: MutableList<SaqzResult<AttendanceRoster, AttendanceError>> = mutableListOf()
+    /** Leituras em sequência (a primeira para a carga, a seguinte para a releitura antes de enviar); vazio usa [detailResult]. */
+    var detailResults: MutableList<SaqzResult<AttendanceDetail, AttendanceError>> = mutableListOf()
     var respondDeferred: CompletableDeferred<SaqzResult<VersionedAttendanceMutation, AttendanceError>>? = null
     var lastCapacityCommand: AttendanceCapacityCommand? = null
     var lastCapacityVersion: AttendanceVersionToken? = null
@@ -344,7 +346,7 @@ class FakeAttendanceGateway(
 
     override suspend fun read(groupId: GroupId, gameId: String): SaqzResult<AttendanceDetail, AttendanceError> {
         readCalls++
-        return detailResult
+        return if (detailResults.isNotEmpty()) detailResults.removeAt(0) else detailResult
     }
 
     override suspend fun roster(groupId: GroupId, gameId: String): SaqzResult<AttendanceRoster, AttendanceError> {

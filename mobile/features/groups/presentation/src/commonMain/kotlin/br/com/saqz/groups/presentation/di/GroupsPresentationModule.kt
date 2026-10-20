@@ -16,6 +16,7 @@ import br.com.saqz.groups.port.GroupNowPort
 import br.com.saqz.groups.presentation.details.GroupDetailsViewModel
 import br.com.saqz.groups.presentation.finance.overview.FinanceOverviewViewModel
 import br.com.saqz.groups.presentation.gamedetail.GameDetailViewModel
+import br.com.saqz.groups.presentation.positionpicker.PositionPickerViewModel
 import br.com.saqz.groups.presentation.gameeditor.GameEditorViewModel
 import br.com.saqz.groups.presentation.home.HomeViewModel
 import br.com.saqz.groups.presentation.list.GroupListViewModel
@@ -112,6 +113,7 @@ fun groupsPresentationModule(): Module = module {
         GameEditorViewModel(groupId, gameId, params.get(), get(), get(), get(), getOrNull(), getOrNull(), getOrNull())
     }
     viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get(), get(), get(), getOrNull(), getOrNull()) }
+    viewModel { params -> PositionPickerViewModel(params[0], params[1], params[2], params.get(), get(), get(), get(), getOrNull()) }
     viewModel {
         GroupPhotoViewModel(
             profileGateway = get(),

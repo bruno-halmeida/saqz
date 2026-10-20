@@ -20,6 +20,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.PositionSummary
+import br.com.saqz.groups.presentation.attendance.PositionSuggestion
 import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
@@ -579,7 +580,7 @@ class GameDetailViewModel(
         }
         if (!current.canRespond(intent) || current.positionPicker != null) return
         val own = athletes.firstOrNull { it.userId == selfId }?.position
-        val suggested = own?.takeIf { position -> current.positions.any { it.position == position && it.slots > 0 } }
+        val suggested = PositionSuggestion.suggested(own, current.positions.filter { it.slots > 0 }.map { it.position })
         update {
             it.copy(positionPicker = GamePositionPickerUi(GamePositionPurpose.Self, suggested, suggested ?: it.mostFreePosition))
         }
@@ -1133,7 +1134,7 @@ class GameDetailViewModel(
         val organizer = state.value.organizer
         if (organizer.placing || organizer.candidates.none { it.id == memberId }) return
         val candidate = organizer.candidates.first { it.id == memberId }
-        val own = candidate.position?.takeIf { position -> state.value.positions.any { it.position == position && it.slots > 0 } }
+        val own = PositionSuggestion.suggested(candidate.position, state.value.positions.filter { it.slots > 0 }.map { it.position })
         updateOrganizer {
             it.copy(selectedId = memberId, placeFailure = null, placePosition = own ?: state.value.mostFreePosition)
         }

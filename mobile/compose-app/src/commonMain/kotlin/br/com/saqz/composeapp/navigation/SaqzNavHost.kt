@@ -1224,6 +1224,21 @@ internal fun SaqzNavHost(
                         },
                     )
                 }
+                entry<GroupsRoute.PositionPicker> { route ->
+                    br.com.saqz.groups.presentation.positionpicker.ui.PositionPickerRoot(
+                        groupId = route.groupId,
+                        gameId = route.gameId,
+                        origin = route.origin,
+                        onBack = pop,
+                        onDone = { effect ->
+                            // A tela de baixo (Início, grupo, jogo, link) se atualiza sozinha ao reaparecer (RefreshWhenVisible).
+                            pop()
+                            if (effect is br.com.saqz.groups.presentation.positionpicker.PositionPickerEffect.OpenGame) {
+                                backStack.add(GroupsRoute.GameDetail(effect.groupId, effect.gameId))
+                            }
+                        },
+                    )
+                }
                 entry<GroupsRoute.GameDetail> { route ->
                     GameDetailRoot(
                         groupId = route.groupId,

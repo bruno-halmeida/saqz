@@ -88,6 +88,13 @@ sealed interface GroupsRoute : NavKey {
     @Serializable
     data class GameDetail(val groupId: String, val gameId: String) : GroupsRoute
 
+    /**
+     * Tela de escolher posição no "Vou" de jogo com posições (DEB-107). [origin] é `home`, `group`, `game`, `link` ou
+     * `push` (`PositionPickerOrigin`) e decide a saída depois de confirmar.
+     */
+    @Serializable
+    data class PositionPicker(val groupId: String, val gameId: String, val origin: String) : GroupsRoute
+
     /** Avisos e lembretes no grupo do WhatsApp: configurações avançadas do gestor. */
     @Serializable
     data class WhatsApp(val groupId: String) : GroupsRoute

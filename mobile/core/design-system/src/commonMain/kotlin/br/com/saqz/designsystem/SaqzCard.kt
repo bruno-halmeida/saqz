@@ -35,7 +35,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 
 enum class SaqzCardTone { Default, Soft }
 
-enum class SaqzChipTone { Neutral, Accent, Brand, Success, Warning, Error, Inverse }
+enum class SaqzChipTone { Neutral, Accent, Brand, Success, Warning, Error, Inverse, WarningInverse }
 
 /**
  * 10i — branco, borda de 1px, raio 12, sem sombra. `tone = Soft` é o bloco de
@@ -136,6 +136,8 @@ fun SaqzSectionHeader(
  * diferente da que tinge o fundo — além de arredondar os alfas de `brand` e `error`.
  *
  * Inverse é o chip sobre o hero azul da Home nova (VUL-217): branco a 14% com texto branco.
+ * WarningInverse é o alerta sobre o azul ("Cheia" na posição escolhida, "Falta N" na quadra do grupo, DEB-107/109):
+ * selo branco com o texto do warning, porque o âmbar a 14% some no azul.
  */
 @Composable
 fun SaqzStatusChip(
@@ -153,6 +155,7 @@ fun SaqzStatusChip(
         SaqzChipTone.Warning -> colors.warningForeground to colors.warning.copy(alpha = 0.14f)
         SaqzChipTone.Error -> colors.errorForeground to colors.errorForeground.copy(alpha = 0.10f)
         SaqzChipTone.Inverse -> colors.onPrimary to colors.onPrimary.copy(alpha = 0.14f)
+        SaqzChipTone.WarningInverse -> colors.warningForeground to colors.surface
     }
     // O chip é rótulo curto de apoio: com a fonte do sistema no máximo ("Administrador" a 3x) ele não cabe nem
     // quebrando por palavra e a palavra única se parte. O texto cresce até [CHIP_MAX_FONT_SCALE] e para aí.

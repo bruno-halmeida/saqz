@@ -203,13 +203,17 @@ fun SaqzButton(
             } else {
                 leadingContent?.invoke(content)
             }
-            Text(
-                text = label,
-                color = content,
-                style = labelStyle ?: variantStyle,
-                // Estreito (weight numa Row, fonte grande) o rótulo quebra; sem isto cada linha começa na esquerda.
-                textAlign = TextAlign.Center,
-            )
+            // Rótulo vazio é o botão só com o spinner (o "Confirmando presença" da tela de posição diz o nome pela
+            // semântica de quem chama); sem o texto não sobra o vão de 8 ao lado do spinner.
+            if (label.isNotEmpty()) {
+                Text(
+                    text = label,
+                    color = content,
+                    style = labelStyle ?: variantStyle,
+                    // Estreito (weight numa Row, fonte grande) o rótulo quebra; sem isto cada linha começa na esquerda.
+                    textAlign = TextAlign.Center,
+                )
+            }
             trailingContent?.invoke(content)
         }
     }
