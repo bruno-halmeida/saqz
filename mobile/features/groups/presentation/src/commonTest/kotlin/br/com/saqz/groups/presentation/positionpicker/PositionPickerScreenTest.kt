@@ -112,6 +112,21 @@ class PositionPickerScreenTest {
     }
 
     @Test
+    fun noticesAreAnnouncedWhenTheyAppear() = runComposeUiTest {
+        val polite = SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, androidx.compose.ui.semantics.LiveRegionMode.Polite)
+        setScreen(main.copy(selected = AthletePosition.PONTA))
+        onNodeWithTag(PositionPickerTags.Notice).assert(polite)
+    }
+
+    @Test
+    fun allFullAndFailureNoticesAreAnnounced() = runComposeUiTest {
+        val polite = SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, androidx.compose.ui.semantics.LiveRegionMode.Polite)
+        setScreen(main.copy(options = PositionPickerPreviewData.options(allFull = true), submitFailed = true))
+        onNodeWithTag(PositionPickerTags.TopNotice).assert(polite)
+        onNodeWithTag(PositionPickerTags.Notice).assert(polite)
+    }
+
+    @Test
     fun withoutPositionsTheButtonConfirmsDirectly() = runComposeUiTest {
         val intents = setScreen(main.copy(options = emptyList(), selected = null))
         onNodeWithTag(PositionPickerTags.Options).assertDoesNotExist()

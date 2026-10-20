@@ -21,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -411,7 +413,11 @@ private fun BarNotice(state: PositionPickerState, chosen: PositionOptionUi?) {
 private fun Notice(title: String, body: String?, extra: String?, color: Color, modifier: Modifier = Modifier) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
+    // Aviso que aparece depois de um toque (lotou, posição cheia, falha, todas cheias): o leitor de tela anuncia.
+    Row(
+        modifier.fillMaxWidth().semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
+    ) {
         SaqzIcon(SaqzIcons.CircleAlert, tint = color, size = NoticeIconSize)
         Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
             Text(title, style = SaqzTheme.typography.support.copy(fontWeight = FontWeight(600)), color = color)

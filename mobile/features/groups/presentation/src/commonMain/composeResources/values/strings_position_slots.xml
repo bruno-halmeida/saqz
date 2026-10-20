@@ -79,6 +79,12 @@
     <string name="group_court_legend_open">Tem vaga</string>
     <string name="group_court_waiting">Na espera: %1$s</string>
     <string name="group_court_waiting_item">%1$d %2$s</string>
+    <!-- Leitor de tela: um lugar da quadra -->
+    <plurals name="group_court_cd_open">
+        <item quantity="one">%1$s: %2$d de %3$d, falta %4$d</item>
+        <item quantity="other">%1$s: %2$d de %3$d, faltam %4$d</item>
+    </plurals>
+    <string name="group_court_cd_complete">%1$s: completo</string>
     <!-- Linha da agenda "Próximos jogos" (DEB-109) -->
     <string name="group_agenda_missing_positions">Faltam: %1$s</string>
     <string name="group_agenda_missing_all">Faltam: todas as posições</string>

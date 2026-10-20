@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +47,8 @@ import br.com.saqz.groups.presentation.ui.pluralLabel
 import br.com.saqz.groups.presentation.ui.singularLabel
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_court_all_complete
+import br.com.saqz.groups.resources.group_court_cd_complete
+import br.com.saqz.groups.resources.group_court_cd_open
 import br.com.saqz.groups.resources.group_court_count
 import br.com.saqz.groups.resources.group_court_empty
 import br.com.saqz.groups.resources.group_court_legend_complete
@@ -183,14 +187,22 @@ private fun HalfCourt(court: GroupCourtUi) {
 private fun CourtSpot(spot: CourtSpotUi, modifier: Modifier = Modifier) {
     val colors = SaqzTheme.colors
     val muted = colors.onPrimary.copy(alpha = MutedAlpha)
+    val label = spot.position.singularLabel()
+    // Uma frase por lugar ("Central: 3 de 4, falta 1"), no lugar de ler "3/4" e "Falta 1" soltos.
+    val description = when {
+        !spot.offered -> null
+        spot.complete -> stringResource(Res.string.group_court_cd_complete, label)
+        else -> pluralStringResource(Res.plurals.group_court_cd_open, spot.missing, label, spot.confirmed, spot.slots, spot.missing)
+    }
     Column(
-        modifier.alpha(if (spot.offered) 1f else EmptyAlpha),
+        modifier.alpha(if (spot.offered) 1f else EmptyAlpha)
+            .then(if (description != null) Modifier.clearAndSetSemantics { contentDescription = description } else Modifier),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
     ) {
         if (spot.offered) SpotMark(spot.complete, Modifier.size(MarkSize))
         Text(
-            spot.position.singularLabel(),
+            label,
             style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight(600)),
             color = colors.onPrimary,
             textAlign = TextAlign.Center,

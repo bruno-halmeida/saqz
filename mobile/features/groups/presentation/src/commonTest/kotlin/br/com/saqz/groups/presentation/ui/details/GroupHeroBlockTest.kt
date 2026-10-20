@@ -6,6 +6,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsEnabled
@@ -215,11 +218,15 @@ class GroupHeroBlockTest {
         onNodeWithText("1 Na espera", useUnmergedTree = true).assertExists()
         // Sai o placar de 4 colunas, com o "Sem resposta".
         onAllNodesWithTag(HomeAdminTags.ScorePending, useUnmergedTree = true).assertCountEquals(0)
-        onNodeWithText("Líbero", useUnmergedTree = true).assertExists()
-        onNodeWithText("3/4", useUnmergedTree = true).assertExists()
-        onAllNodesWithText("Falta 1", useUnmergedTree = true).assertCountEquals(2)
-        onAllNodesWithText("Ponteiro(a)", useUnmergedTree = true).assertCountEquals(2)
-        onAllNodesWithText("4/4", useUnmergedTree = true).assertCountEquals(1)
+        // Cada lugar com uma frase só para o leitor de tela (frente: 0..2, fundo: 3..5).
+        val spots = listOf(
+            "Ponteiro(a): completo", "Central: 3 de 4, falta 1", "Oposto(a): 1 de 2, falta 1",
+            "Ponteiro(a): completo", "Líbero: completo", "Levantador(a): completo",
+        )
+        spots.forEachIndexed { index, description ->
+            onNodeWithTag(GroupPositionsPanelTags.spot(index), useUnmergedTree = true)
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf(description)))
+        }
         onNodeWithText("Na espera: 1 Ponteiro(a)", useUnmergedTree = true).assertExists()
         onAllNodesWithTag(GroupPositionsPanelTags.AllComplete, useUnmergedTree = true).assertCountEquals(0)
     }
