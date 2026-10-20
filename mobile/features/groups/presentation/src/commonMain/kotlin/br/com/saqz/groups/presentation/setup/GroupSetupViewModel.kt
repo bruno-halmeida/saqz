@@ -144,8 +144,7 @@ class GroupSetupViewModel(
                 onFormChange { copy(monthlyLateJoinPolicy = intent.value) }
                 savedState[KeyMonthlyLateJoinPolicy] = intent.value.name
             }
-            is GroupSetupIntent.SelectDuration, GroupSetupIntent.SelectOtherDuration,
-            is GroupSetupIntent.UpdateDurationText -> handleDurationIntent(intent)
+            is GroupSetupIntent.SelectDuration -> handleDurationIntent(intent)
             is GroupSetupIntent.ToggleRecurring -> onRecurringChange(intent.value)
             is GroupSetupIntent.OpenSheet -> onOpenSheet(intent.sheet)
             GroupSetupIntent.CloseSheet -> update { it.copy(sheet = null) }

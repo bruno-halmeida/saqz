@@ -5,8 +5,6 @@ import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.group.GroupRegularSlot
 import br.com.saqz.groups.domain.place.PlaceSuggestion
 import br.com.saqz.groups.presentation.GroupUiError
-import br.com.saqz.groups.presentation.duration.CustomDuration
-import br.com.saqz.groups.presentation.duration.DurationDraft
 import br.com.saqz.groups.presentation.place.VenueSearchState
 
 /**
@@ -82,8 +80,6 @@ data class GameEditorFields(
     val localDate: String = "",
     val localTime: String = "",
     val durationMinutes: Int = 0,
-    /** Horas digitadas em "Outros" (`null` fora dele); ver [CustomDuration]. */
-    val durationText: String? = null,
     val gameFeeCents: Long? = null,
     /** O que a pessoa digitou em "Valor por jogo"; [gameFeeCents] é o valor lido dele (vazio = sem cobrança). */
     val gameFeeText: String = "",
@@ -96,9 +92,6 @@ data class GameEditorFields(
 ) {
     val hasDateTime: Boolean get() = localDate.isNotBlank() && localTime.isNotBlank()
 
-    val duration: DurationDraft get() = DurationDraft(durationMinutes, durationText)
-
-    fun withDuration(draft: DurationDraft) = copy(durationMinutes = draft.minutes, durationText = draft.text)
 }
 
 enum class GameEditorFieldError {
@@ -119,8 +112,6 @@ sealed interface GameEditorIntent {
     data object OpenDateTimePicker : GameEditorIntent
     data class SaveDateTime(val date: String, val time: String) : GameEditorIntent
     data class SelectDuration(val minutes: Int) : GameEditorIntent
-    data object SelectOtherDuration : GameEditorIntent
-    data class UpdateDurationText(val text: String) : GameEditorIntent
     data class UpdateVenueName(val name: String) : GameEditorIntent
     data class SelectPlaceSuggestion(val suggestion: PlaceSuggestion) : GameEditorIntent
     data object DismissPlaceSuggestions : GameEditorIntent

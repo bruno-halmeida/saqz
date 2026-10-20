@@ -9,6 +9,7 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -20,7 +21,6 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.presentation.setup.GroupSetupError
-import br.com.saqz.groups.presentation.ui.components.DurationChoiceTags
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupSheet
@@ -65,12 +65,12 @@ class GroupSetupScreenTest {
     }
 
     @Test
-    fun otherDurationShowsTheNumericFieldAndTheEquivalent() = runComposeUiTest {
+    fun durationCounterSendsTheNeighbourOnTheGrid() = runComposeUiTest {
         val received = mutableListOf<GroupSetupIntent>()
         setContent {
             SaqzTheme {
                 GroupSetupScreen(
-                    GroupSetupState(mode = GroupSetupMode.Create).copy(durationMinutes = 180, durationText = "3"),
+                    GroupSetupState(mode = GroupSetupMode.Create).copy(durationMinutes = 180),
                     { received += it },
                     {},
                 )
@@ -78,21 +78,19 @@ class GroupSetupScreenTest {
         }
         openAdvancedIfCollapsed()
 
-        onNodeWithTag(DurationChoiceTags.Other).performScrollTo().assertIsSelected()
-        onNodeWithText("3 h = 180 min").performScrollTo().assertExists()
-        onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(DurationChoiceTags.Field)), useUnmergedTree = true)
-            .performScrollTo().performTextReplacement("4")
-        assertEquals(GroupSetupIntent.UpdateDurationText("4"), received.last { it is GroupSetupIntent.UpdateDurationText })
+        onNodeWithTag(GroupSetupTags.Duration).performScrollTo().assertExists()
+        onNodeWithText("3h").performScrollTo().assertExists()
+        onNodeWithContentDescription("Aumentar a duração").performScrollTo().performClick()
+        assertEquals(GroupSetupIntent.SelectDuration(240), received.last { it is GroupSetupIntent.SelectDuration })
     }
 
     @Test
-    fun otherDurationErrorShowsInTheField() = runComposeUiTest {
+    fun durationOutsideTheGridShowsTheValueAndAnError() = runComposeUiTest {
         setContent {
             SaqzTheme {
                 GroupSetupScreen(
                     GroupSetupState(mode = GroupSetupMode.Create).copy(
-                        durationMinutes = 0,
-                        durationText = "9",
+                        durationMinutes = 45,
                         errors = setOf(GroupSetupError.DurationOutOfRange),
                     ),
                     {},
@@ -101,7 +99,7 @@ class GroupSetupScreenTest {
             }
         }
         openAdvancedIfCollapsed()
-        onNodeWithText("Digite um número inteiro de horas, de 3 a 8.").performScrollTo().assertExists()
+        onNodeWithText("De 1h a 8h. Até 3h, de 30 em 30 minutos.").performScrollTo().assertExists()
     }
 
     private fun ComposeUiTest.openAdvancedIfCollapsed() {

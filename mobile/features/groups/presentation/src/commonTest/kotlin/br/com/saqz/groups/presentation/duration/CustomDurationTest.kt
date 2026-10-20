@@ -3,70 +3,41 @@ package br.com.saqz.groups.presentation.duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CustomDurationTest {
     @Test
-    fun `whole hours from 3 to 8 become 180 to 480 minutes`() {
-        (3..8).forEach { hours ->
-            val draft = CustomDuration.type(hours.toString())
-            assertEquals(hours * 60, draft.minutes)
-            assertFalse(CustomDuration.isInvalid(draft))
-        }
-        assertEquals(480, CustomDuration.type("8").minutes)
+    fun `a grade anda de 30 em 30 ate 3h e de hora em hora depois ate 8h`() {
+        assertEquals(listOf(60, 90, 120, 150, 180, 240, 300, 360, 420, 480), CustomDuration.Grid)
     }
 
     @Test
-    fun `empty out of range comma and dot are invalid`() {
-        listOf("", "1", "2", "9", "10", "24", "3,5", "3.5", ",", ".").forEach { text ->
-            assertTrue(CustomDuration.isInvalid(CustomDuration.type(text)), "\"$text\" deveria dar erro")
-        }
+    fun `mais e menos andam para o vizinho da grade`() {
+        assertEquals(90, CustomDuration.next(60))
+        assertEquals(180, CustomDuration.next(150))
+        assertEquals(240, CustomDuration.next(180))
+        assertEquals(150, CustomDuration.previous(180))
+        assertEquals(180, CustomDuration.previous(240))
+        assertEquals(60, CustomDuration.previous(90))
     }
 
     @Test
-    fun `letters are dropped and the text is limited`() {
-        assertEquals("3", CustomDuration.type("3h").text)
-        assertEquals("12", CustomDuration.type("1a2").text)
-        assertEquals(4, CustomDuration.type("123456").text?.length)
+    fun `nos limites o valor nao sai da grade`() {
+        assertEquals(60, CustomDuration.previous(60))
+        assertEquals(480, CustomDuration.next(480))
     }
 
     @Test
-    fun `typing 1 or 2 does not select a chip`() {
-        assertTrue(CustomDuration.isOther(CustomDuration.type("1")))
-        assertTrue(CustomDuration.isOther(CustomDuration.type("2")))
-        assertEquals(0, CustomDuration.type("2").minutes)
+    fun `valor salvo fora da grade vai para o vizinho nos dois sentidos`() {
+        assertEquals(240, CustomDuration.next(195))
+        assertEquals(180, CustomDuration.previous(195))
+        assertEquals(60, CustomDuration.next(45))
+        assertEquals(480, CustomDuration.previous(540))
     }
 
     @Test
-    fun `chips are valid and are not other`() {
-        CustomDuration.Presets.forEach {
-            val draft = CustomDuration.selectPreset(it)
-            assertFalse(CustomDuration.isOther(draft))
-            assertFalse(CustomDuration.isInvalid(draft))
-        }
-    }
-
-    @Test
-    fun `saved value off the hour opens as other with the field empty`() {
-        val draft = DurationDraft(195)
-        assertTrue(CustomDuration.isOther(draft))
-        assertFalse(CustomDuration.isInvalid(draft))
-        assertEquals("", CustomDuration.fieldText(draft))
-        assertEquals("3", CustomDuration.fieldText(DurationDraft(180)))
-    }
-
-    @Test
-    fun `saved custom value outside 150 to 480 is invalid`() {
-        assertTrue(CustomDuration.isInvalid(DurationDraft(45)))
-        assertTrue(CustomDuration.isInvalid(DurationDraft(540)))
-        assertFalse(CustomDuration.isInvalid(DurationDraft(480)))
-    }
-
-    @Test
-    fun `tapping other from a chip starts empty and from a custom value keeps it`() {
-        assertEquals(DurationDraft(0, ""), CustomDuration.startOther(DurationDraft(90)))
-        assertEquals(DurationDraft(195), CustomDuration.startOther(DurationDraft(195)))
-        assertNull(CustomDuration.selectPreset(60).text)
+    fun `de 1h a 8h vale inclusive fora da grade e o resto nao`() {
+        listOf(60, 195, 480).forEach { assertFalse(CustomDuration.isInvalid(it), "$it") }
+        listOf(0, 45, 481, 540).forEach { assertTrue(CustomDuration.isInvalid(it), "$it") }
     }
 }

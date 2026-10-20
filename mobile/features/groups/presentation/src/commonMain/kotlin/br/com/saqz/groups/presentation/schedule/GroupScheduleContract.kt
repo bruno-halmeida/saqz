@@ -29,9 +29,7 @@ internal data class GroupScheduleState(
     val recurring: Boolean = true,
     val slots: List<GroupRegularSlotForm> = emptyList(),
     val durationMinutes: Int = 120,
-    /** Horas digitadas em "Outros" (`null` fora dele); ver [CustomDuration]. */
-    val durationText: String? = null,
-    /** Salvar com "Outros" fora de 3 a 8 horas: o erro aparece no campo. */
+    /** Salvar com duração fora de 1h a 8h: o erro aparece no contador. */
     val durationError: Boolean = false,
     val confirmationLeadMinutes: Int = 360,
     val upcoming: List<UpcomingGameUi> = emptyList(),
@@ -83,10 +81,6 @@ internal sealed interface GroupScheduleIntent {
     data object DismissSlotSheet : GroupScheduleIntent
 
     data class SelectDuration(val minutes: Int) : GroupScheduleIntent
-
-    data object SelectOtherDuration : GroupScheduleIntent
-
-    data class UpdateDurationText(val text: String) : GroupScheduleIntent
 
     data class SelectConfirmationLead(val minutes: Int) : GroupScheduleIntent
 

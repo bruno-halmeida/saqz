@@ -4,7 +4,6 @@ import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.groups.presentation.duration.CustomDuration
-import br.com.saqz.groups.presentation.duration.DurationDraft
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameGateway
@@ -58,10 +57,7 @@ internal class GroupScheduleViewModel(
             }
             GroupScheduleIntent.ConfirmSlot -> confirmSlot()
             GroupScheduleIntent.DismissSlotSheet -> update { it.copy(slotSheet = null) }
-            is GroupScheduleIntent.SelectDuration,
-            GroupScheduleIntent.SelectOtherDuration,
-            is GroupScheduleIntent.UpdateDurationText,
-            -> handleDurationIntent(intent)
+            is GroupScheduleIntent.SelectDuration -> changeDuration(intent.minutes)
             is GroupScheduleIntent.SelectConfirmationLead -> update {
                 it.copy(confirmationLeadMinutes = intent.minutes)
             }
@@ -74,22 +70,11 @@ internal class GroupScheduleViewModel(
     private fun GroupScheduleState.form(): List<Any> =
         listOf(recurring, isPaused, slots, durationMinutes, confirmationLeadMinutes)
 
-    private fun handleDurationIntent(intent: GroupScheduleIntent) {
-        val current = DurationDraft(state.value.durationMinutes, state.value.durationText)
-        when (intent) {
-            is GroupScheduleIntent.SelectDuration -> changeDuration(CustomDuration.selectPreset(intent.minutes))
-            GroupScheduleIntent.SelectOtherDuration -> changeDuration(CustomDuration.startOther(current))
-            is GroupScheduleIntent.UpdateDurationText -> changeDuration(CustomDuration.type(intent.text))
-            else -> Unit
-        }
-    }
-
-    private fun changeDuration(draft: DurationDraft) = update {
+    private fun changeDuration(minutes: Int) = update {
         it.copy(
-            durationMinutes = draft.minutes,
-            durationText = draft.text,
+            durationMinutes = minutes,
             durationError = false,
-            slots = it.slots.map { slot -> slot.copy(durationMinutes = draft.minutes) },
+            slots = it.slots.map { slot -> slot.copy(durationMinutes = minutes) },
         )
     }
     /**
@@ -182,7 +167,7 @@ internal class GroupScheduleViewModel(
         val current = state.value
         val version = versionToken ?: return
         if (current.isLoading || current.loadFailed || current.isSaving) return
-        if (CustomDuration.isInvalid(DurationDraft(current.durationMinutes, current.durationText))) {
+        if (CustomDuration.isInvalid(current.durationMinutes)) {
             update { it.copy(durationError = true) }
             return
         }

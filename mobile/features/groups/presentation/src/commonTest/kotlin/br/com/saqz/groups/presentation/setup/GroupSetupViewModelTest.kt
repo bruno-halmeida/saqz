@@ -639,11 +639,10 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `outros em horas cheias vale para o grupo e se espelha nos horarios`() = runTest(mainDispatcher) {
+    fun `a duracao de 4h do contador vale para o grupo e se espelha nos horarios`() = runTest(mainDispatcher) {
         val viewModel = viewModel()
 
-        viewModel.onIntent(GroupSetupIntent.SelectOtherDuration)
-        viewModel.onIntent(GroupSetupIntent.UpdateDurationText("4"))
+        viewModel.onIntent(GroupSetupIntent.SelectDuration(240))
         runCurrent()
 
         assertEquals(240, viewModel.state.value.durationMinutes)
@@ -651,15 +650,14 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `outros vazio ou fora de 3 a 8 acusa erro no campo e nao salva`() = runTest(mainDispatcher) {
-        listOf("", "1", "9", "3,5", "3.5").forEach { text ->
+    fun `duracao fora de 1h a 8h acusa erro no contador e nao salva`() = runTest(mainDispatcher) {
+        listOf(0, 45, 540).forEach { minutes ->
             val viewModel = viewModel()
-            viewModel.onIntent(GroupSetupIntent.SelectOtherDuration)
-            viewModel.onIntent(GroupSetupIntent.UpdateDurationText(text))
+            viewModel.onIntent(GroupSetupIntent.SelectDuration(minutes))
             viewModel.onIntent(GroupSetupIntent.Submit)
             runCurrent()
 
-            assertTrue(GroupSetupError.DurationOutOfRange in viewModel.state.value.errors, "\"$text\"")
+            assertTrue(GroupSetupError.DurationOutOfRange in viewModel.state.value.errors, "$minutes")
         }
     }
 

@@ -31,9 +31,8 @@ import br.com.saqz.groups.presentation.schedule.UpcomingGameStatus
 import br.com.saqz.groups.presentation.schedule.UpcomingGameUi
 import br.com.saqz.groups.presentation.ui.components.GroupChoiceChipRow
 import br.com.saqz.groups.presentation.ui.confirmationLeadLabel
-import br.com.saqz.groups.presentation.duration.DurationDraft
 import br.com.saqz.groups.presentation.schedule.GroupScheduleIntent
-import br.com.saqz.groups.presentation.ui.components.DurationChoice
+import br.com.saqz.groups.presentation.ui.components.DurationStepper
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_schedule_pause_help
 import br.com.saqz.groups.resources.group_schedule_resume_help
@@ -63,7 +62,7 @@ private val MonthTracking = 0.06.em
 
 @Composable
 internal fun GroupScheduleTimingCard(
-    duration: DurationDraft,
+    durationMinutes: Int,
     durationError: Boolean,
     confirmationLeadMinutes: Int,
     onDurationIntent: (GroupScheduleIntent) -> Unit,
@@ -78,11 +77,9 @@ internal fun GroupScheduleTimingCard(
             style = SaqzTheme.typography.label,
             color = SaqzTheme.colors.textPrimary,
         )
-        DurationChoice(
-            draft = duration,
-            onSelectPreset = { onDurationIntent(GroupScheduleIntent.SelectDuration(it)) },
-            onSelectOther = { onDurationIntent(GroupScheduleIntent.SelectOtherDuration) },
-            onTextChange = { onDurationIntent(GroupScheduleIntent.UpdateDurationText(it)) },
+        DurationStepper(
+            minutes = durationMinutes,
+            onChange = { onDurationIntent(GroupScheduleIntent.SelectDuration(it)) },
             hasError = durationError,
         )
         Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {

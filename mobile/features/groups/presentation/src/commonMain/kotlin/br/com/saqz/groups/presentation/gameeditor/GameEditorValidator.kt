@@ -33,9 +33,8 @@ fun validateGameEditor(form: GameEditorFields): Set<GameEditorFieldError> {
     return errors
 }
 
-/** Formulário ainda sem duração (0, antes da carga) não passa pelo "Outros". */
-private fun GameEditorFields.durationInvalid() =
-    (durationMinutes != 0 || durationText != null) && CustomDuration.isInvalid(duration)
+/** Formulário ainda sem duração (0, antes da carga) não acusa erro. */
+private fun GameEditorFields.durationInvalid() = durationMinutes != 0 && CustomDuration.isInvalid(durationMinutes)
 
 private const val GAME_FEE_MAX_CENTS = 99_999_999L
 private const val VENUE_NAME_MIN = 2

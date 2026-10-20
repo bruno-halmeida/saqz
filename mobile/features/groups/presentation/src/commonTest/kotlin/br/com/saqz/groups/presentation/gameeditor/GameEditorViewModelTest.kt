@@ -267,78 +267,54 @@ class GameEditorViewModelTest {
         assertEquals("19:30", vm.state.value.form.localTime)
     }
 
-    private fun typeOther(vm: GameEditorViewModel, text: String) {
-        vm.onIntent(GameEditorIntent.SelectOtherDuration)
-        vm.onIntent(GameEditorIntent.UpdateDurationText(text))
-    }
-
     @Test
-    fun `other duration typed in whole hours saves the minutes`() = runTest {
+    fun `duration chosen on the counter saves the minutes`() = runTest {
         val gateway = FakeGameGateway()
         val vm = viewModel(gameGateway = gateway)
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
-        typeOther(vm, "3")
+        vm.onIntent(GameEditorIntent.SelectDuration(180))
         vm.onIntent(GameEditorIntent.Submit)
         assertEquals(180, gateway.lastCreateCommand?.durationMinutes)
     }
 
     @Test
-    fun `other duration of 8 hours saves 480`() = runTest {
+    fun `duration of 8 hours saves 480`() = runTest {
         val gateway = FakeGameGateway()
         val vm = viewModel(gameGateway = gateway)
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
-        typeOther(vm, "8")
+        vm.onIntent(GameEditorIntent.SelectDuration(480))
         vm.onIntent(GameEditorIntent.Submit)
         assertEquals(480, gateway.lastCreateCommand?.durationMinutes)
     }
 
     @Test
-    fun `other duration empty out of range comma or dot gives a field error and does not save`() = runTest {
-        listOf("", "1", "2", "9", "3,5", "3.5").forEach { text ->
+    fun `duration outside 1h to 8h gives a field error and does not save`() = runTest {
+        listOf(45, 540).forEach { minutes ->
             val gateway = FakeGameGateway()
             val vm = viewModel(gameGateway = gateway)
             vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-06", "20:00"))
-            typeOther(vm, text)
+            vm.onIntent(GameEditorIntent.SelectDuration(minutes))
             vm.onIntent(GameEditorIntent.Submit)
-            assertEquals(0, gateway.createCalls, "\"$text\" não deveria salvar")
+            assertEquals(0, gateway.createCalls, "$minutes não deveria salvar")
             assertEquals(setOf(GameEditorFieldError.DurationInvalid), vm.state.value.validationErrors)
         }
     }
 
     @Test
-    fun `other duration does not accept letters`() = runTest {
-        val vm = viewModel()
-        typeOther(vm, "3h")
-        assertEquals("3", vm.state.value.form.durationText)
-        assertEquals(180, vm.state.value.form.durationMinutes)
-    }
-
-    @Test
-    fun `choosing a chip after other clears the typed hours`() = runTest {
-        val vm = viewModel()
-        typeOther(vm, "5")
-        vm.onIntent(GameEditorIntent.SelectDuration(90))
-        assertEquals(90, vm.state.value.form.durationMinutes)
-        assertEquals(null, vm.state.value.form.durationText)
-    }
-
-    @Test
-    fun `game saved with a duration outside the chips opens as other with that value`() = runTest {
+    fun `game saved with a duration outside the grid keeps that value`() = runTest {
         val game = br.com.saqz.groups.presentation.sampleGame().copy(durationMinutes = 195)
         val gateway = FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(game)))
         val vm = viewModel(gameId = "game-1", gameGateway = gateway)
         assertEquals(195, vm.state.value.form.durationMinutes)
-        assertEquals(null, vm.state.value.form.durationText)
         vm.onIntent(GameEditorIntent.Submit)
         assertEquals(195, gateway.lastEditCommand?.durationMinutes)
     }
 
     @Test
-    fun `typed hours survive view model recreation`() = runTest {
+    fun `chosen duration survives view model recreation`() = runTest {
         val handle = SavedStateHandle()
-        typeOther(viewModel(savedState = handle), "6")
+        viewModel(savedState = handle).onIntent(GameEditorIntent.SelectDuration(360))
         val restored = viewModel(savedState = handle)
-        assertEquals("6", restored.state.value.form.durationText)
         assertEquals(360, restored.state.value.form.durationMinutes)
     }
 

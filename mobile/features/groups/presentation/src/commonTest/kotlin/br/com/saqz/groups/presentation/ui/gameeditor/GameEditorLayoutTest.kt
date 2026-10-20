@@ -68,9 +68,7 @@ class GameEditorLayoutTest {
     private fun assertWholeChips(fontScale: Float, width: Int) = runComposeUiTest {
         setContent { Phone(fontScale, width) { GameEditorScreen(create(), {}, {}) } }
 
-        listOf("1h", "1h30", "2h", "2h30").forEach { label ->
-            assertWhole(chip(GameEditorTags.Duration, label), label, fontScale, width)
-        }
+        // A duração virou contador (sem chips); só os chips de antecedência seguem na fileira.
         listOf("3h antes", "6h antes", "12h antes", "24h antes").forEach { label ->
             assertWhole(chip(GameEditorTags.ConfirmationLead, label), label, fontScale, width)
         }

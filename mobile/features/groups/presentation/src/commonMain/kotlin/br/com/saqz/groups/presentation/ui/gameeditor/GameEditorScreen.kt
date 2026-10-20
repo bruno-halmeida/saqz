@@ -49,8 +49,7 @@ import br.com.saqz.designsystem.rememberSaqzDismissKeyboard
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.place.PlaceSuggestion
-import br.com.saqz.groups.presentation.duration.DurationDraft
-import br.com.saqz.groups.presentation.ui.components.DurationChoice
+import br.com.saqz.groups.presentation.ui.components.DurationStepper
 import br.com.saqz.groups.presentation.ui.components.GroupChoiceChipRow
 import br.com.saqz.groups.presentation.ui.components.VenueSearchField
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -366,7 +365,7 @@ private fun FormScroll(
         }
         if (state.planBlocked) PlanBlockCard(state)
         DurationChips(
-            draft = state.form.duration,
+            minutes = state.form.durationMinutes,
             onIntent = onIntent,
             hasError = GameEditorFieldError.DurationInvalid in errors,
             modifier = Modifier.bringIntoViewRequester(targets.duration),
@@ -749,25 +748,19 @@ internal fun PickerRow(
     }
 }
 
-/**
- * Os chips quebram de linha em vez de dividir a largura em partes iguais: o texto do chip não quebra nem
- * cede, e uma fatia igual de uma tela estreita (ou com fonte grande) o cortava ("24h ante"). É a mesma
- * fileira que o grupo usa para as mesmas opções.
- */
+/** O mesmo contador de duração que o grupo e os horários usam. */
 @Composable
 private fun DurationChips(
-    draft: DurationDraft,
+    minutes: Int,
     onIntent: (GameEditorIntent) -> Unit,
     hasError: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
         SaqzSectionHeader(title = stringResource(Res.string.game_editor_duration_label))
-        DurationChoice(
-            draft = draft,
-            onSelectPreset = { onIntent(GameEditorIntent.SelectDuration(it)) },
-            onSelectOther = { onIntent(GameEditorIntent.SelectOtherDuration) },
-            onTextChange = { onIntent(GameEditorIntent.UpdateDurationText(it)) },
+        DurationStepper(
+            minutes = minutes,
+            onChange = { onIntent(GameEditorIntent.SelectDuration(it)) },
             hasError = hasError,
             modifier = Modifier.testTag(GameEditorTags.Duration),
         )

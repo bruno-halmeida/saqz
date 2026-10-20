@@ -140,14 +140,15 @@ class GroupSetupValidatorTest {
     @Test
     fun `as opcoes de antecedencia e duracao cabem nas faixas do backend`() {
         assertTrue(GroupSetupDefaults.ConfirmationLeadOptions.all { it in 0..10_080 })
-        assertTrue(GroupSetupDefaults.DurationOptions.all { it in 15..480 })
+        assertTrue(br.com.saqz.groups.presentation.duration.CustomDuration.Grid.all { it in 15..480 })
     }
 
     @Test
-    fun `outros acusa erro fora de 3 a 8 horas e aceita 180 a 480 minutos`() {
-        assertTrue(GroupSetupError.DurationOutOfRange in validate(state().copy(durationMinutes = 0, durationText = "")))
-        assertTrue(GroupSetupError.DurationOutOfRange in validate(state().copy(durationMinutes = 0, durationText = "9")))
-        assertTrue(GroupSetupError.DurationOutOfRange !in validate(state().copy(durationMinutes = 480, durationText = "8")))
+    fun `duracao acusa erro fora de 1h a 8h e aceita o que esta entre os dois mesmo fora da grade`() {
+        assertTrue(GroupSetupError.DurationOutOfRange in validate(state().copy(durationMinutes = 0)))
+        assertTrue(GroupSetupError.DurationOutOfRange in validate(state().copy(durationMinutes = 45)))
+        assertTrue(GroupSetupError.DurationOutOfRange !in validate(state().copy(durationMinutes = 60)))
+        assertTrue(GroupSetupError.DurationOutOfRange !in validate(state().copy(durationMinutes = 480)))
         assertTrue(GroupSetupError.DurationOutOfRange !in validate(state().copy(durationMinutes = 195)))
         assertTrue(GroupSetupError.DurationOutOfRange in validate(state().copy(durationMinutes = 540)))
     }

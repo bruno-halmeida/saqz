@@ -31,7 +31,6 @@ import br.com.saqz.groups.model.GameEditorMode
 import br.com.saqz.groups.presentation.GameCapacityLimits
 import br.com.saqz.groups.presentation.GamePlanEndAction
 import br.com.saqz.groups.presentation.GroupUiError
-import br.com.saqz.groups.presentation.duration.CustomDuration
 import br.com.saqz.groups.presentation.trackGameAfterPlanEnd
 import br.com.saqz.groups.presentation.place.VenueSearch
 import br.com.saqz.groups.presentation.toUiError
@@ -86,9 +85,7 @@ class GameEditorViewModel(
             is GameEditorIntent.SaveDateTime -> updateForm {
                 copy(localDate = intent.date, localTime = intent.time)
             }
-            is GameEditorIntent.SelectDuration -> updateForm { withDuration(CustomDuration.selectPreset(intent.minutes)) }
-            GameEditorIntent.SelectOtherDuration -> updateForm { withDuration(CustomDuration.startOther(duration)) }
-            is GameEditorIntent.UpdateDurationText -> updateForm { withDuration(CustomDuration.type(intent.text)) }
+            is GameEditorIntent.SelectDuration -> updateForm { copy(durationMinutes = intent.minutes) }
             is GameEditorIntent.UpdateVenueName,
             is GameEditorIntent.SelectPlaceSuggestion,
             GameEditorIntent.DismissPlaceSuggestions,
@@ -506,7 +503,6 @@ class GameEditorViewModel(
         savedState[KeyTitle] = form.title
         savedState[KeyTime] = form.localTime
         savedState[KeyDuration] = form.durationMinutes
-        form.durationText?.let { savedState[KeyDurationText] = it } ?: savedState.remove<String>(KeyDurationText)
         savedState[KeyCapacity] = form.capacity
         savedState[KeyLead] = form.confirmationLeadMinutes
         savedState[KeyRecurring] = form.recurring
@@ -522,7 +518,6 @@ class GameEditorViewModel(
         localDate = savedState.get<String>(KeyDate) ?: form.localDate,
         localTime = savedState.get<String>(KeyTime) ?: form.localTime,
         durationMinutes = savedState.get<Int>(KeyDuration) ?: form.durationMinutes,
-        durationText = savedState.get<String>(KeyDurationText) ?: form.durationText,
         capacity = savedState.get<Int>(KeyCapacity) ?: form.capacity,
         confirmationLeadMinutes = savedState.get<Int>(KeyLead) ?: form.confirmationLeadMinutes,
         recurring = savedState.get<Boolean>(KeyRecurring) ?: form.recurring,
@@ -570,7 +565,6 @@ class GameEditorViewModel(
         const val KeyTitle = "game-editor-title"
         const val KeyTime = "game-editor-time"
         const val KeyDuration = "game-editor-duration"
-        const val KeyDurationText = "game-editor-duration-text"
         const val KeyCapacity = "game-editor-capacity"
         const val KeyLead = "game-editor-confirmation-lead"
         const val KeyRecurring = "game-editor-recurring"

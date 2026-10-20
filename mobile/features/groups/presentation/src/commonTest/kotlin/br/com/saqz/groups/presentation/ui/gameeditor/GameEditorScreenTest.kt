@@ -34,7 +34,6 @@ import br.com.saqz.groups.presentation.gameeditor.GameEditorFields
 import br.com.saqz.groups.presentation.gameeditor.GameEditorIntent
 import br.com.saqz.groups.presentation.gameeditor.GameEditorState
 import br.com.saqz.groups.presentation.ui.LocalOpenSubscriptionPlans
-import br.com.saqz.groups.presentation.ui.components.DurationChoiceTags
 import br.com.saqz.groups.presentation.ui.SubscriptionRequiredTags
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -73,51 +72,41 @@ class GameEditorScreenTest {
     }
 
     @Test
-    fun `tapping other sends the intent that opens the field`() = runComposeUiTest {
+    fun `the counter sends the neighbour on the grid`() = runComposeUiTest {
         val intents = mutableListOf<GameEditorIntent>()
-        setContent { SaqzTheme { GameEditorScreen(state = create(), onBack = {}, onIntent = { intents += it }) } }
-
-        onNodeWithTag(DurationChoiceTags.Other).performScrollTo().assertIsNotSelected().performClick()
-        onNodeWithTag(DurationChoiceTags.Field).assertDoesNotExist()
-        assertEquals(listOf<GameEditorIntent>(GameEditorIntent.SelectOtherDuration), intents)
-    }
-
-    @Test
-    fun `typing the hours shows the equivalent in minutes`() = runComposeUiTest {
-        val intents = mutableListOf<GameEditorIntent>()
-        var state by mutableStateOf(create().let { it.copy(form = it.form.copy(durationMinutes = 0, durationText = "")) })
+        val state = create().let { it.copy(form = it.form.copy(durationMinutes = 120)) }
         setContent { SaqzTheme { GameEditorScreen(state = state, onBack = {}, onIntent = { intents += it }) } }
 
-        onNodeWithTag(DurationChoiceTags.Other).performScrollTo().assertIsSelected()
-        onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(DurationChoiceTags.Field)), useUnmergedTree = true)
-            .performScrollTo().performTextInput("3")
-        assertEquals(GameEditorIntent.UpdateDurationText("3"), intents.last())
-
-        state = state.copy(form = state.form.copy(durationMinutes = 180, durationText = "3"))
-        onNodeWithText("3 h = 180 min").assertExists()
+        onNodeWithText("2h").performScrollTo().assertExists()
+        onNodeWithContentDescription("Aumentar a duração").performScrollTo().performClick()
+        assertEquals(GameEditorIntent.SelectDuration(150), intents.last())
+        onNodeWithContentDescription("Diminuir a duração").performScrollTo().performClick()
+        assertEquals(GameEditorIntent.SelectDuration(90), intents.last())
     }
 
     @Test
-    fun `invalid other duration shows the error in the field and not in the top card`() = runComposeUiTest {
+    fun `invalid duration shows the error in the counter and not in the top card`() = runComposeUiTest {
         val state = create().let {
             it.copy(
-                form = it.form.copy(durationMinutes = 0, durationText = "9"),
+                form = it.form.copy(durationMinutes = 45),
                 validationErrors = setOf(GameEditorFieldError.DurationInvalid),
             )
         }
         setContent { SaqzTheme { GameEditorScreen(state = state, onBack = {}, onIntent = {}) } }
 
-        onNodeWithText("Digite um número inteiro de horas, de 3 a 8.").performScrollTo().assertExists()
+        onNodeWithText("De 1h a 8h. Até 3h, de 30 em 30 minutos.").performScrollTo().assertExists()
         onAllNodesWithText("Confira as informações").assertCountEquals(0)
     }
 
     @Test
-    fun `duration outside the chips marks other and shows the value`() = runComposeUiTest {
+    fun `duration outside the grid shows the value and moves to the neighbour`() = runComposeUiTest {
+        val intents = mutableListOf<GameEditorIntent>()
         val state = create().let { it.copy(form = it.form.copy(durationMinutes = 195)) }
-        setContent { SaqzTheme { GameEditorScreen(state = state, onBack = {}, onIntent = {}) } }
+        setContent { SaqzTheme { GameEditorScreen(state = state, onBack = {}, onIntent = { intents += it }) } }
 
-        onNodeWithTag(DurationChoiceTags.Other).performScrollTo().assertIsSelected()
-        onNodeWithText("Duração: 3h15").performScrollTo().assertExists()
+        onNodeWithText("3h15").performScrollTo().assertExists()
+        onNodeWithContentDescription("Diminuir a duração").performScrollTo().performClick()
+        assertEquals(GameEditorIntent.SelectDuration(180), intents.last())
     }
 
     @Test
