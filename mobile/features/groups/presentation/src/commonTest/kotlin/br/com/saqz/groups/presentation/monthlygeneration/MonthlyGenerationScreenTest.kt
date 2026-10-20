@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -21,6 +22,7 @@ import br.com.saqz.groups.presentation.FakeFinanceStatementGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.FakeGroupMembershipGateway
 import br.com.saqz.groups.presentation.GroupUiError
+import br.com.saqz.groups.presentation.ui.gameeditor.GameDateTimePickerTags
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxRoot
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxTags
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxViewModel
@@ -133,6 +135,21 @@ class MonthlyGenerationScreenTest {
         onNodeWithTag(MonthlyGenerationTags.DueSave).performClick()
         waitForIdle()
         assertEquals(listOf<MonthlyGenerationIntent>(MonthlyGenerationIntent.DueDateChanged("12/08/2026")), intents)
+    }
+
+    @Test fun `due picker saves the tapped day as dd mm yyyy`() = runComposeUiTest {
+        val intents = mutableListOf<MonthlyGenerationIntent>()
+        setContent { SaqzTheme { MonthlyGenerationScreen(MonthlyGenerationState(isLoading = false, form = validForm), {}, { intents += it }) } }
+        onNodeWithTag(MonthlyGenerationTags.Due).performScrollTo().performClick()
+        waitForIdle()
+        onNodeWithTag(GameDateTimePickerTags.day("2026-08-12")).assertIsSelected()
+        onNodeWithTag(GameDateTimePickerTags.day("2026-08-20")).performClick()
+        waitForIdle()
+        onNodeWithTag(GameDateTimePickerTags.day("2026-08-20")).assertIsSelected()
+        onNodeWithTag(MonthlyGenerationTags.DueSave).performClick()
+        waitForIdle()
+        assertEquals(listOf<MonthlyGenerationIntent>(MonthlyGenerationIntent.DueDateChanged("20/08/2026")), intents)
+        onNodeWithTag(GameDateTimePickerTags.hour(19)).assertDoesNotExist()
     }
 
     @Test fun `cashbox button opens monthly generation for selected group without writes`() = runComposeUiTest {

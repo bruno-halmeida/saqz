@@ -23,13 +23,12 @@ import br.com.saqz.groups.presentation.FakeGroupProfileGateway
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.sampleVersionedGame
 import br.com.saqz.groups.presentation.sampleGame
-import br.com.saqz.groups.presentation.ui.gameeditor.GameDateTimeWheel
-import br.com.saqz.groups.presentation.ui.gameeditor.WheelItem
-import br.com.saqz.groups.presentation.ui.gameeditor.buildWheelDays
+import br.com.saqz.groups.presentation.ui.gameeditor.GameDateTimePicker
+import br.com.saqz.groups.presentation.ui.gameeditor.PickerDay
+import br.com.saqz.groups.presentation.ui.gameeditor.buildPickerDays
 import br.com.saqz.groups.presentation.ui.gameeditor.pickerRangeStart
 import br.com.saqz.groups.presentation.ui.gameeditor.pickerTodayAt
 import br.com.saqz.groups.presentation.ui.gameeditor.pickerTimeParts
-import br.com.saqz.groups.presentation.ui.gameeditor.wheelIndexForTap
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -1191,7 +1190,7 @@ class GameEditorViewModelTest {
         val today = LocalDate.parse("2026-08-04")
         val selected = "2026-10-01"
         val start = pickerRangeStart(today, selected)
-        val days = buildWheelDays(start, 30, List(7) { "weekday" }, List(12) { "month" })
+        val days = buildPickerDays(start, 30, List(7) { "weekday" }, List(12) { "month" })
         assertTrue(days.any { it.isoDate == selected })
         assertTrue(days.indexOfFirst { it.isoDate == selected } < days.lastIndex)
     }
@@ -1210,8 +1209,8 @@ class GameEditorViewModelTest {
 
     @Test
     fun `picker preserves a minute outside the fifteen minute grid`() {
-        val state = GameDateTimeWheel.state(
-            days = listOf(WheelItem("2026-08-04", "terça, 4 de agosto")),
+        val state = GameDateTimePicker.state(
+            days = listOf(PickerDay("2026-08-04", "terça, 4 de agosto")),
             selectedDate = "2026-08-04",
             selectedHour = 19,
             selectedMinute = 37,
@@ -1222,17 +1221,36 @@ class GameEditorViewModelTest {
     }
 
     @Test
-    fun `wheel tap index accounts for scroll and center padding`() {
-        assertEquals(
-            12,
-            wheelIndexForTap(
-                scrollOffsetPx = 480,
-                tapOffsetPx = 100f,
-                centerPaddingPx = 80f,
-                itemHeightPx = 40f,
-                itemCount = 24,
-            ),
-        )
+    fun `picker calendar aligns the weeks and names the month where the range turns`() {
+        // 2026-10-28 é uma quarta: 5 dias de outubro (28 a 31) e 3 de novembro (1 a 3, de domingo a terça).
+        val days = buildPickerDays(LocalDate.parse("2026-10-28"), 7, List(7) { "dia" }, List(12) { "m" })
+        val months = GameDateTimePicker.months(days, List(12) { "mês${it + 1}" })
+
+        assertEquals(listOf("mês10", "mês11"), months.map { it.title })
+        // Outubro: quarta é a 3ª coluna, então duas células vazias antes do dia 28.
+        assertEquals(listOf(null, null, 0, 1, 2, 3, null), months[0].weeks.single().map { it?.index })
+        assertEquals(listOf(28, 29, 30, 31), months[0].weeks.single().filterNotNull().map { it.dayOfMonth })
+        // Novembro: dia 1 cai num domingo (última coluna).
+        assertEquals(listOf(null, null, null, null, null, null, 4), months[1].weeks.first().map { it?.index })
+        assertEquals(listOf(5, 6), months[1].weeks.last().filterNotNull().map { it.index })
+    }
+
+    @Test
+    fun `picker selects the day by date and falls back to the first day`() {
+        val days = buildPickerDays(LocalDate.parse("2026-08-03"), 30, List(7) { "dia" }, List(12) { "m" })
+        assertEquals(2, GameDateTimePicker.state(days, "2026-08-05", 19, 0).selectedDayIndex)
+        assertEquals("2026-08-05", GameDateTimePicker.selectedDate(GameDateTimePicker.state(days, "2026-08-05", 19, 0)))
+        assertEquals(0, GameDateTimePicker.state(days, "2030-01-01", 19, 0).selectedDayIndex)
+    }
+
+    @Test
+    fun `picker calendar of a single month has no extra months`() {
+        val days = buildPickerDays(LocalDate.parse("2026-08-01"), 31, List(7) { "dia" }, List(12) { "m" })
+        val months = GameDateTimePicker.months(days, List(12) { "mês${it + 1}" })
+        assertEquals(1, months.size)
+        // 1º de agosto de 2026 é sábado: 5 células vazias; 31 dias fecham em 6 semanas.
+        assertEquals(5, months.single().weeks.first().count { it == null })
+        assertEquals(6, months.single().weeks.size)
     }
 
     // ---- DEB-050: quadra sem endereço é sempre aceita ----

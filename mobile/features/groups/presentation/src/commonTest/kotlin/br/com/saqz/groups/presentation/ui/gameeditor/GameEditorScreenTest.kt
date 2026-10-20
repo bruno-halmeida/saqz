@@ -12,6 +12,9 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -37,6 +40,37 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class GameEditorScreenTest {
+    @Test
+    fun `touch picker saves the tapped day hour and minute`() = runComposeUiTest {
+        val intents = mutableListOf<GameEditorIntent>()
+        setContent { SaqzTheme { GameEditorScreen(state = create(), onBack = {}, onIntent = { intents += it }) } }
+
+        onNodeWithTag(GameEditorTags.Date).performScrollTo().performClick()
+        // A data do formulário é a primeira do intervalo (já passou): 2026-08-06 é quinta.
+        onNodeWithTag(GameDateTimePickerTags.day("2026-08-06")).assertIsSelected()
+        onNodeWithTag(GameDateTimePickerTags.hour(20)).assertIsSelected()
+        onNodeWithTag(GameDateTimePickerTags.day("2026-08-10")).performScrollTo().performClick()
+        onNodeWithTag(GameDateTimePickerTags.hour(19)).performScrollTo().performClick()
+        onNodeWithTag(GameDateTimePickerTags.minute(45)).performScrollTo().performClick()
+        onNodeWithText("Segunda, 10 de agosto · 19h45").assertExists()
+        onNodeWithText("Salvar data e horário").performClick()
+
+        assertEquals(listOf<GameEditorIntent>(GameEditorIntent.SaveDateTime("2026-08-10", "19:45")), intents)
+    }
+
+    @Test
+    fun `touch picker chips speak their full label and carry the selected state`() = runComposeUiTest {
+        setContent { SaqzTheme { GameEditorScreen(state = create(), onBack = {}, onIntent = {}) } }
+
+        onNodeWithTag(GameEditorTags.Date).performScrollTo().performClick()
+
+        onNodeWithContentDescription("segunda, 10 de agosto").assertExists().assertIsNotSelected()
+        onNodeWithContentDescription("quinta, 6 de agosto").assertIsSelected()
+        onNodeWithContentDescription("19 horas").assertExists().assertIsNotSelected()
+        onNodeWithContentDescription("20 horas").assertIsSelected()
+        onNodeWithContentDescription("1 hora").assertExists()
+    }
+
     @Test
     fun `recurrence toggle emits the intent`() = runComposeUiTest {
         val intents = mutableListOf<GameEditorIntent>()

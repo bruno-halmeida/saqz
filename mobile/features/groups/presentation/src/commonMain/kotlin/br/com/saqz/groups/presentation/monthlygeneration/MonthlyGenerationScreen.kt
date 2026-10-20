@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.monthlygeneration
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,9 +26,9 @@ import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzInput
-import br.com.saqz.groups.presentation.ui.gameeditor.GameDateTimeWheel
+import br.com.saqz.groups.presentation.ui.gameeditor.GameDateTimePicker
 import br.com.saqz.groups.presentation.ui.gameeditor.PickerRow
-import br.com.saqz.groups.presentation.ui.gameeditor.buildWheelDays
+import br.com.saqz.groups.presentation.ui.gameeditor.buildPickerDays
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
@@ -102,7 +103,10 @@ internal fun MonthlyGenerationScreen(
     onIntent: (MonthlyGenerationIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxSize().background(SaqzTheme.colors.background).imePadding().testTag(MonthlyGenerationTags.Screen)) {
+    // A folha do vencimento fica fora da coluna rolável: dentro dela o overlay não tem altura para cobrir a tela.
+    var duePickerOpen by remember { mutableStateOf(false) }
+    Box(modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().background(SaqzTheme.colors.background).imePadding().testTag(MonthlyGenerationTags.Screen)) {
         SaqzTopAppBar(title = stringResource(Res.string.monthly_generation_title), onBack = onBack)
         Column(
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
@@ -124,7 +128,11 @@ internal fun MonthlyGenerationScreen(
                         stringResource(Res.string.monthly_generation_note),
                         style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary,
                     )
-                    if (state.reviewing) MonthlyReview(state, onIntent) else MonthlyFormFields(state, onIntent)
+                    if (state.reviewing) {
+                        MonthlyReview(state, onIntent)
+                    } else {
+                        MonthlyFormFields(state, onIntent, onOpenDuePicker = { duePickerOpen = true })
+                    }
                 }
             }
             state.error?.let { error ->
@@ -139,25 +147,29 @@ internal fun MonthlyGenerationScreen(
             }
         }
     }
+    DueDatePickerSheet(
+        open = duePickerOpen && !state.reviewing, month = state.form.month, dueDate = state.form.dueDate,
+        onClose = { duePickerOpen = false },
+        onSave = { onIntent(MonthlyGenerationIntent.DueDateChanged(it)); duePickerOpen = false },
+    )
+    }
 }
 
 @Composable
-private fun MonthlyFormFields(state: MonthlyGenerationState, onIntent: (MonthlyGenerationIntent) -> Unit) {
+private fun MonthlyFormFields(
+    state: MonthlyGenerationState,
+    onIntent: (MonthlyGenerationIntent) -> Unit,
+    onOpenDuePicker: () -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap)) {
         MonthSelector(state, onIntent)
-        var pickerOpen by remember { mutableStateOf(false) }
         PickerRow(
             label = stringResource(Res.string.monthly_generation_due),
             value = state.form.dueDate,
             placeholder = "",
             errorText = null,
             tag = MonthlyGenerationTags.Due,
-            onClick = { pickerOpen = true },
-        )
-        DueDatePickerSheet(
-            open = pickerOpen, month = state.form.month, dueDate = state.form.dueDate,
-            onClose = { pickerOpen = false },
-            onSave = { onIntent(MonthlyGenerationIntent.DueDateChanged(it)); pickerOpen = false },
+            onClick = onOpenDuePicker,
         )
         SaqzInput(
             value = state.form.amount, onValueChange = { onIntent(MonthlyGenerationIntent.AmountChanged(it)) },
@@ -207,7 +219,7 @@ private fun MonthSelector(state: MonthlyGenerationState, onIntent: (MonthlyGener
     }
 }
 
-/** Seletor do vencimento: só os dias do mês escolhido, com a roda de datas do editor de jogo. */
+/** Seletor do vencimento: só os dias do mês escolhido, com o seletor de datas por toque do editor de jogo. */
 @Composable
 private fun DueDatePickerSheet(open: Boolean, month: String, dueDate: String, onClose: () -> Unit, onSave: (String) -> Unit) {
     val weekdays = listOf(
@@ -220,12 +232,12 @@ private fun DueDatePickerSheet(open: Boolean, month: String, dueDate: String, on
     val days = remember(first, weekdays, monthNames) {
         first?.let {
             val daysInMonth = it.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1)).day
-            buildWheelDays(it, daysInMonth, weekdays, monthNames)
+            buildPickerDays(it, daysInMonth, weekdays, monthNames)
         }.orEmpty()
     }
     val selectedIso = dueDate.split('/').reversed().joinToString("-")
-    val wheel = remember(days, selectedIso) { GameDateTimeWheel.state(days, selectedIso, 0, 0) }
-    var dayIndex by remember(open, wheel) { mutableStateOf(wheel.selectedDayIndex) }
+    val wheel = remember(days, selectedIso) { GameDateTimePicker.state(days, selectedIso, 0, 0) }
+    var dayIndex by remember(open, selectedIso) { mutableStateOf(wheel.selectedDayIndex) }
     SaqzBottomSheet(
         open = open && days.isNotEmpty(),
         onClose = onClose,
@@ -243,8 +255,8 @@ private fun DueDatePickerSheet(open: Boolean, month: String, dueDate: String, on
         },
     ) {
         Text(days.getOrNull(dayIndex)?.label.orEmpty(), style = SaqzTheme.typography.subtitle, color = SaqzTheme.colors.textPrimary)
-        GameDateTimeWheel(
-            state = wheel.copy(selectedDayIndex = dayIndex), onDayChange = { dayIndex = it },
+        GameDateTimePicker(
+            state = wheel.copy(selectedDayIndex = dayIndex), monthLabels = monthNames, onDayChange = { dayIndex = it },
             onHourChange = {}, onMinuteChange = {}, showTime = false,
         )
     }

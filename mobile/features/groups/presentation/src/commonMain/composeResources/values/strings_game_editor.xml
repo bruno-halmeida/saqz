@@ -43,6 +43,11 @@
 
     <!-- 4b · Picker de data e horário -->
     <string name="game_picker_title">Data e horário</string>
+    <string name="game_picker_day">Dia</string>
+    <string name="game_picker_hour">Hora</string>
+    <string name="game_picker_minute">Minutos</string>
+    <string name="game_picker_hour_spoken">%1$d horas</string>
+    <string name="game_picker_hour_spoken_one">1 hora</string>
     <string name="game_picker_save">Salvar data e horário</string>
     <string name="game_picker_summary">%1$s · %2$s</string>
     <string name="game_picker_month_january">janeiro</string>

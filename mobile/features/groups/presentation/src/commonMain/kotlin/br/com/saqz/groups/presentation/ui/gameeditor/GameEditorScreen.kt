@@ -949,15 +949,15 @@ private fun DateTimePickerSheet(
         pickerRangeStart(today, state.form.localDate)
     }
     val days = remember(rangeStart, weekdayLabels, monthLabels) {
-        buildWheelDays(rangeStart, 30, weekdayLabels, monthLabels)
+        buildPickerDays(rangeStart, 30, weekdayLabels, monthLabels)
     }
     val (initialHour, initialMinute) = pickerTimeParts(state.form.localTime)
-    val wheelState = remember(open, state.form.localDate, initialHour, initialMinute) {
-        GameDateTimeWheel.state(days, state.form.localDate, initialHour, initialMinute)
+    val pickerState = remember(open, state.form.localDate, initialHour, initialMinute) {
+        GameDateTimePicker.state(days, state.form.localDate, initialHour, initialMinute)
     }
-    var dayIndex by remember(open) { mutableStateOf(wheelState.selectedDayIndex) }
-    var hour by remember(open) { mutableStateOf(wheelState.selectedHour) }
-    var minute by remember(open) { mutableStateOf(wheelState.selectedMinute) }
+    var dayIndex by remember(open) { mutableStateOf(pickerState.selectedDayIndex) }
+    var hour by remember(open) { mutableStateOf(pickerState.selectedHour) }
+    var minute by remember(open) { mutableStateOf(pickerState.selectedMinute) }
     val dayLabel = days.getOrNull(dayIndex)?.label.orEmpty()
     val timeLabel = "${hour.toString().padStart(2, '0')}h${minute.toString().padStart(2, '0')}"
     val summary = stringResource(Res.string.game_picker_summary, dayLabel, timeLabel)
@@ -979,8 +979,9 @@ private fun DateTimePickerSheet(
         },
     ) {
         Text(summary, style = SaqzTheme.typography.subtitle, color = SaqzTheme.colors.textPrimary)
-        GameDateTimeWheel(
-            state = wheelState.copy(selectedDayIndex = dayIndex, selectedHour = hour, selectedMinute = minute),
+        GameDateTimePicker(
+            state = pickerState.copy(selectedDayIndex = dayIndex, selectedHour = hour, selectedMinute = minute),
+            monthLabels = monthLabels,
             onDayChange = { dayIndex = it },
             onHourChange = { hour = it },
             onMinuteChange = { minute = it },
