@@ -92,11 +92,13 @@ export class Ator {
   ajustarVagas(grupoId, jogoId, capacity) {
     return this.jogo(grupoId, jogoId).then((j) => this.chamar('PUT', `/api/groups/${grupoId}/games/${jogoId}/capacity`, { requestId: randomUUID(), capacity }, { 'If-Match': j.etag }))
   }
-  vou(grupoId, jogoId, requestId = randomUUID()) { return this.responder(grupoId, jogoId, 'CONFIRM', requestId) }
+  vou(grupoId, jogoId, requestId = randomUUID(), posicao = undefined) { return this.responder(grupoId, jogoId, 'CONFIRM', requestId, posicao) }
   naoVou(grupoId, jogoId, requestId = randomUUID()) { return this.responder(grupoId, jogoId, 'DECLINE', requestId) }
-  responder(grupoId, jogoId, intent, requestId = randomUUID()) {
-    return this.chamar('PUT', `/api/groups/${grupoId}/games/${jogoId}/attendance`, { requestId, intent })
+  responder(grupoId, jogoId, intent, requestId = randomUUID(), posicao = undefined) {
+    return this.chamar('PUT', `/api/groups/${grupoId}/games/${jogoId}/attendance`, { requestId, intent, ...(posicao ? { position: posicao } : {}) })
   }
+  /** DEB-102: "Vou" escolhendo a posição (o app antigo não manda `position`: use `vou` sem posição). */
+  vouEm(grupoId, jogoId, posicao) { return this.vou(grupoId, jogoId, randomUUID(), posicao) }
   presenca(grupoId, jogoId) { return this.chamar('GET', `/api/groups/${grupoId}/games/${jogoId}/attendance`) }
   lista(grupoId, jogoId) { return this.chamar('GET', `/api/groups/${grupoId}/games/${jogoId}/attendance/roster`) }
   avisarPendentes(grupoId, jogoId) { return this.chamar('POST', `/api/groups/${grupoId}/games/${jogoId}/notify-pending`, { requestId: randomUUID() }) }
@@ -107,14 +109,24 @@ export class Ator {
       useDefaultGameFee: false, gameFeeCents: jogo.gameFeeCents, ...campos,
     }, { 'If-Match': etag })
   }
-  porOutro(grupoId, jogoId, membroId, intent, reason = 'Ajuste do organizador') {
-    return this.chamar('POST', `/api/groups/${grupoId}/games/${jogoId}/attendance/override`, { requestId: randomUUID(), memberId: membroId, intent, reason })
+  porOutro(grupoId, jogoId, membroId, intent, reason = 'Ajuste do organizador', { posicao, forcar } = {}) {
+    return this.chamar('POST', `/api/groups/${grupoId}/games/${jogoId}/attendance/override`, {
+      requestId: randomUUID(), memberId: membroId, intent, reason, ...(posicao ? { position: posicao } : {}), ...(forcar ? { force: true } : {}),
+    })
   }
   colocarNoJogo(grupoId, jogoId, membroId, requestId = randomUUID()) {
     return this.chamar('POST', `/api/groups/${grupoId}/games/${jogoId}/attendance/promote`, { requestId, memberId: membroId, reason: 'Escolha do organizador' })
   }
-  convidado(grupoId, jogoId, nome) {
-    return this.chamar('POST', `/api/groups/${grupoId}/games/${jogoId}/attendance/guests`, { requestId: randomUUID(), displayName: nome })
+  convidado(grupoId, jogoId, nome, posicao = undefined) {
+    return this.chamar('POST', `/api/groups/${grupoId}/games/${jogoId}/attendance/guests`, { requestId: randomUUID(), displayName: nome, ...(posicao ? { position: posicao } : {}) })
+  }
+  // --- Vaga por posição (DEB-102) ---
+  posicoesDoGrupo(grupoId) { return this.chamar('GET', `/api/groups/${grupoId}/position-slots`) }
+  sugestaoDePosicoes(sistema, times = '') { return this.chamar('GET', `/api/position-slots/suggestion?system=${sistema}${times ? `&teams=${times}` : ''}`) }
+  async configurarPosicoes(grupoId, positionSlots, gameSystem = 'FIVE_ONE') {
+    const atual = await this.posicoesDoGrupo(grupoId)
+    if (!atual.ok) return atual
+    return this.chamar('PUT', `/api/groups/${grupoId}/position-slots`, { gameSystem, positionSlots }, { 'If-Match': atual.etag })
   }
 
   // --- Dinheiro ---
