@@ -29,7 +29,8 @@ function setup(realApi = false) {
   });
   const Component = vm.runInContext(`${source}\nComponent`, context);
   const app = new Component();
-  if (!realApi) app.api = (path) => new Promise((resolve, reject) => requests.push({ path, resolve, reject }));
+  // A receita (DEB-100) carrega à parte na mesma tela; aqui só contam as páginas.
+  if (!realApi) app.api = (path) => new Promise((resolve, reject) => { if (!path.startsWith('/admin/revenue')) requests.push({ path, resolve, reject }); });
   return { app, requests, timers, logout() { context.window.saqzAdmin.me = null; session(null); } };
 }
 const flush = () => new Promise(setImmediate);
