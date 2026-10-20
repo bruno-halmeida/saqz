@@ -39,7 +39,7 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 
 ## NOT-003 · Avisos do jogo [CRÍTICO] [MULTI] [push: só produção]
 
-_As linhas da janela de 24 h (a partir de "Janela de 24 h ligada") foram decididas em 20/10 e valem só depois da entrega do DEB-113; com a flag desligada, nenhum cartão abre._
+_As linhas da janela de presença (a partir de "Janela ligada") foram decididas em 20/10 e valem só depois da entrega do DEB-113; com a flag desligada, nenhum cartão abre._
 
 | Situação | Resultado | iOS | Android |
 | --- | --- | --- | --- |
@@ -50,10 +50,11 @@ _As linhas da janela de 24 h (a partir de "Janela de 24 h ligada") foram decidid
 | Rascunho | Nenhum aviso | ☐ | ☐ |
 | Jogo já começou | Nenhum lembrete | ☐ | ☐ |
 | Lembretes por dia | No máximo 2 | ☐ | ☐ |
-| Janela de 24 h ligada, jogo publicado, sem resposta | 24 h antes do jogo abre o cartão ao vivo com a contagem de vagas, "Confirmar" e "Não vou" | ☐ | ☐ |
+| Janela ligada, jogo publicado, sem resposta | 8 h antes do prazo de confirmação abre o cartão ao vivo com a contagem de vagas, "Confirmar" e "Não vou" | ☐ | ☐ |
+| Jogo publicado já dentro das 8 h antes do prazo | O cartão abre na primeira passada do job | ☐ | ☐ |
 | Já respondeu ("Vou", confirmado ou na espera, ou "Não vou") antes da janela | Não recebe o cartão nem o push da janela | ☐ | ☐ |
 | Responde depois de o cartão abrir | O cartão encerra | ☐ | ☐ |
-| Chega o prazo de confirmação | O cartão some | ☐ | ☐ |
+| Chega o prazo de confirmação | O cartão some, nos dois aparelhos | ☐ | ☐ |
 | Jogo 5-1, toca "Confirmar" no cartão | Abre o app na tela de escolher posição; nada é confirmado por baixo | ☐ | ☐ |
 | Jogo cancelado ou já iniciado | O cartão não abre (ou encerra) | ☐ | ☐ |
 | Flag da janela desligada (produção até o OK do dono) | Nenhum cartão e nenhum push da janela | ☐ | ☐ |
