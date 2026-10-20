@@ -151,7 +151,7 @@
     <string name="home_first_access_invite">Tenho um convite</string>
     <string name="home_steps_title">Como funciona</string>
     <string name="home_step_group_title">Crie o grupo</string>
-    <string name="home_step_group_body">Nome, esporte e público. Só isso.</string>
+    <string name="home_step_group_body">Nome, modalidade e público. Só isso.</string>
     <string name="home_step_game_title">Marque o primeiro jogo</string>
     <string name="home_step_game_body">Data, quadra e vagas. Pode repetir toda semana.</string>
     <string name="home_step_invite_title">Chame a galera</string>

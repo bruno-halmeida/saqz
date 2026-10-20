@@ -82,7 +82,7 @@
     <string name="group_setup_name_label">Nome do grupo</string>
     <string name="group_setup_name_hint">Ex.: Vôlei do CERET</string>
     <string name="group_setup_modality_label">Modalidade</string>
-    <string name="group_setup_modality_hint">Escolha o esporte do grupo.</string>
+    <string name="group_setup_modality_hint">Escolha a modalidade do grupo.</string>
     <string name="group_setup_composition_label">Público</string>
     <string name="group_setup_composition_hint">Como os times se formam.</string>
     <string name="group_setup_level_label">Nível</string>
@@ -137,7 +137,7 @@
     <string name="group_setup_error_banner_edit">Faltam %1$d informações para salvar o grupo. Elas estão marcadas abaixo.</string>
     <string name="group_setup_error_banner_one_edit">Falta %1$d informação para salvar o grupo. Ela está marcada abaixo.</string>
     <string name="group_setup_error_name">O grupo precisa de um nome.</string>
-    <string name="group_setup_error_modality">Escolha o esporte do grupo.</string>
+    <string name="group_setup_error_modality">Escolha a modalidade do grupo.</string>
     <string name="group_setup_error_composition">Escolha o público do grupo.</string>
     <string name="group_setup_error_level">Escolha o nível do grupo.</string>
     <string name="group_setup_error_custom_level">Dê um nome para o nível personalizado.</string>
