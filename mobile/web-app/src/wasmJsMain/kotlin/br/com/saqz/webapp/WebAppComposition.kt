@@ -61,6 +61,7 @@ internal class WebAppComposition(
                     share = WebShareAdapter(scope),
                     profilePhoto = profilePhoto,
                     profilePhotoSelection = profilePhoto,
+                    clipboardLink = br.com.saqz.access.domain.port.ClipboardLinkPort.None,
                 ),
                 groups = GroupsRuntimeDependencies(
                     map = WebMapAdapter(),

@@ -236,6 +236,11 @@ internal fun SaqzNavHost(
     var inviteHeld by remember { mutableStateOf(false) }
     var inviteHoldExpired by remember { mutableStateOf(false) }
     val signedOutNow = state.session is SessionAccessState.SignedOut
+    // iPhone: o link que a página copiou antes de abrir a loja. O adapter lê uma vez por instalação.
+    val clipboardLink = koinInject<br.com.saqz.access.domain.port.ClipboardLinkPort>()
+    LaunchedEffect(signedOutNow) {
+        if (shouldReadClipboardLink(signedOutNow, pendingInviteCode != null, attendanceLink != null)) clipboardLink.readOnce()
+    }
     LaunchedEffect(inviteHandoffActive, sessionReady, signedOutNow, backStack.lastOrNull()) {
         inviteHeld = nextInviteHold(
             held = inviteHeld,

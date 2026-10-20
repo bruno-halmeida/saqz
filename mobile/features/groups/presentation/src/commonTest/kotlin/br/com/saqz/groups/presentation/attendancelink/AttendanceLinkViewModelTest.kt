@@ -47,6 +47,42 @@ class AttendanceLinkViewModelTest {
         assertEquals(AttendanceLinkPhase.Confirmed, AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake()).state.value.phase)
     }
 
+    @Test fun undoAfterTheLinkConfirmedRecordsTheDeclineWithItsOwnRequestId() = runTest {
+        val gateway = AttendanceFake()
+        val vm = AttendanceLinkViewModel(declineCode, false, SharingFake(), gateway, InviteFake())
+        assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)
+        gateway.status = AttendanceStatus.Declined
+        vm.onIntent(AttendanceLinkIntent.Undo)
+        assertEquals(AttendanceLinkPhase.Declined, vm.state.value.phase)
+        assertEquals(destination, vm.state.value.destination)
+        assertEquals(AttendanceIntent.Decline, gateway.commands.last().intent)
+        assertNotEquals(gateway.commands.first().requestId, gateway.commands.last().requestId)
+        // Depois de desfeito, outro toque não grava nada.
+        vm.onIntent(AttendanceLinkIntent.Undo)
+        assertEquals(2, gateway.commands.size)
+    }
+
+    @Test fun undoFailureKeepsTheConfirmationAndAllowsAnotherTry() = runTest {
+        val gateway = AttendanceFake()
+        val vm = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())
+        gateway.error = AttendanceError.Data(DataError.Connectivity)
+        vm.onIntent(AttendanceLinkIntent.Undo)
+        assertEquals(AttendanceLinkPhase.Confirmed, vm.state.value.phase)
+        assertEquals(false, vm.state.value.declining)
+        gateway.error = null
+        gateway.status = AttendanceStatus.Declined
+        vm.onIntent(AttendanceLinkIntent.Undo)
+        assertEquals(AttendanceLinkPhase.Declined, vm.state.value.phase)
+    }
+
+    @Test fun undoOnlyExistsAfterAnAnswer() = runTest {
+        val gateway = AttendanceFake()
+        val vm = AttendanceLinkViewModel(code, true, SharingFake(), gateway, InviteFake())
+        assertEquals(AttendanceLinkPhase.DeclineSheet, vm.state.value.phase)
+        vm.onIntent(AttendanceLinkIntent.Undo)
+        assertEquals(emptyList(), gateway.commands)
+    }
+
     @Test fun repeatedConfirmRequestShowsWhateverTheServerReturnsAndNeverAssumesConfirmed() = runTest {
         val gateway = AttendanceFake().apply { status = AttendanceStatus.Waitlisted }
         val first = AttendanceLinkViewModel(code, false, SharingFake(), gateway, InviteFake())

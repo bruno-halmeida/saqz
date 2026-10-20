@@ -32,6 +32,8 @@
     <string name="attendance_link_title">Confirmar presença</string>
     <string name="attendance_link_loading">Confirmando sua presença…</string>
     <string name="attendance_link_confirmed">Presença confirmada para sua conta.</string>
+    <string name="attendance_link_confirmed_game">Confirmamos sua presença em %1$s.</string>
+    <string name="attendance_link_undo">Desfazer</string>
     <string name="attendance_link_waitlisted">Você entrou na lista de espera. Confira sua posição no jogo.</string>
     <string name="attendance_link_not_receiving">Este grupo não está recebendo novos atletas agora. Fale com o organizador.</string>
     <string name="attendance_link_game_started">O jogo já começou.</string>

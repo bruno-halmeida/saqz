@@ -221,7 +221,7 @@ private final class RecordingOnboardingListener: @preconcurrency AppOnboardingCo
 }
 
 @MainActor
-private final class RecordingLinkEventListener: @preconcurrency GroupLinkEventListener {
+final class RecordingLinkEventListener: @preconcurrency GroupLinkEventListener {
     private let invite: (String) -> Void
     private let attendance: (String) -> Void
     private let attendanceIntent: (AttendanceIntent) -> Void

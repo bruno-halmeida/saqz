@@ -19,6 +19,7 @@ import org.koin.core.parameter.parametersOf
 internal object AttendanceLinkTags {
     const val Download = "attendance-link-download"
     const val GameCard = "attendance-link-game-card"
+    const val Undo = "attendance-link-undo"
 }
 
 @Composable
@@ -63,7 +64,10 @@ internal fun AttendanceLinkScreen(
                     )
                 }
                 if (state.phase == AttendanceLinkPhase.Loading) SaqzSpinner()
-                Text(stringResource(when (state.phase) {
+                val confirmedGame = state.game?.takeIf { state.phase == AttendanceLinkPhase.Confirmed }
+                if (confirmedGame != null) {
+                    Text(stringResource(Res.string.attendance_link_confirmed_game, confirmedGame.title()))
+                } else Text(stringResource(when (state.phase) {
                     AttendanceLinkPhase.Loading -> Res.string.attendance_link_loading
                     AttendanceLinkPhase.Confirmed -> Res.string.attendance_link_confirmed
                     AttendanceLinkPhase.Waitlisted -> Res.string.attendance_link_waitlisted
@@ -79,6 +83,17 @@ internal fun AttendanceLinkScreen(
                     AttendanceLinkPhase.Registration -> Res.string.attendance_link_registration
                     AttendanceLinkPhase.Pending -> Res.string.attendance_link_pending
                 }))
+                // Quem chegou por um link pode ter tocado sem querer: a resposta se desfaz num toque.
+                if (state.destination != null && state.phase in listOf(AttendanceLinkPhase.Confirmed, AttendanceLinkPhase.Waitlisted)) {
+                    SaqzButton(
+                        stringResource(Res.string.attendance_link_undo),
+                        { onIntent(AttendanceLinkIntent.Undo) },
+                        variant = SaqzButtonVariant.Secondary,
+                        enabled = !state.declining,
+                        loading = state.declining,
+                        modifier = Modifier.testTag(AttendanceLinkTags.Undo),
+                    )
+                }
                 if (state.phase in listOf(AttendanceLinkPhase.Failed, AttendanceLinkPhase.Pending)) {
                     SaqzButton(stringResource(Res.string.communication_refresh), { onIntent(AttendanceLinkIntent.Retry) })
                 }

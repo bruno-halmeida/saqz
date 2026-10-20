@@ -124,6 +124,21 @@ interface NativeLinkPort {
     }
 }
 
+/**
+ * iOS: a página de links copia o link do convite ou da presença antes de abrir a App Store, e a loja
+ * não leva o link adiante. No primeiro acesso depois da instalação o adapter procura um link do Saqz
+ * na área de transferência (só lê quando o sistema enxerga uma URL provável, para o aviso de colar do
+ * iOS não aparecer à toa) e o entrega ao mesmo caminho do link universal. Sem retorno: o efeito chega
+ * pelo [NativeLinkPort]. Android (o `referrer` do Play já resolve) e web não fazem nada.
+ */
+fun interface ClipboardLinkPort {
+    fun readOnce()
+
+    companion object {
+        val None = ClipboardLinkPort { }
+    }
+}
+
 interface LocalAccessStatePort {
     fun readSelectedGroupId(done: ValueCallback)
     fun writeSelectedGroupId(value: String?, done: ResultCallback)

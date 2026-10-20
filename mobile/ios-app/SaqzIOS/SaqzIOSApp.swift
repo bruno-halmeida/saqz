@@ -61,6 +61,7 @@ struct IOSAppComposition {
         appStore: IOSAppStorePurchases
     ) -> IOSAppComposition {
         let profilePhoto = IOSProfilePhotoAdapter(selection: photos.selection, encoder: photos.encoder)
+        let clipboardLink = IOSClipboardLinkReader(links: links)
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? ""
         let build = info?["CFBundleVersion"] as? String ?? ""
@@ -76,7 +77,8 @@ struct IOSAppComposition {
                 localState: localState,
                 share: share,
                 profilePhoto: profilePhoto,
-                profilePhotoSelection: profilePhoto
+                profilePhotoSelection: profilePhoto,
+                clipboardLink: clipboardLink
             ),
             groups: GroupsRuntimeDependencies(
                 map: IOSMapAdapter(),

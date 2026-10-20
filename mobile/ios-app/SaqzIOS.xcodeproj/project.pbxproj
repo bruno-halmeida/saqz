@@ -22,6 +22,8 @@
 		A20000000000000000000002 /* IOSAuthAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* IOSAuthAdapterTests.swift */; };
 		A20000000000000000000003 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000131 /* GoogleSignIn */; };
 		A30000000000000000000001 /* IOSLinkAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000011 /* IOSLinkAdapter.swift */; };
+		DB00000000000000000000A1 /* IOSClipboardLinkReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB00000000000000000000B1 /* IOSClipboardLinkReader.swift */; };
+		DB00000000000000000000A2 /* IOSClipboardLinkReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB00000000000000000000B2 /* IOSClipboardLinkReaderTests.swift */; };
 		A30000000000000000000002 /* IOSLinkAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000012 /* IOSLinkAdapterTests.swift */; };
 		A40000000000000000000001 /* IOSLocalAccessAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000011 /* IOSLocalAccessAdapters.swift */; };
 		A40000000000000000000002 /* IOSLocalAccessAdaptersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */; };
@@ -106,6 +108,8 @@
 		A20000000000000000000011 /* IOSAuthAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAuthAdapter.swift; sourceTree = "<group>"; };
 		A20000000000000000000012 /* IOSAuthAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAuthAdapterTests.swift; sourceTree = "<group>"; };
 		A30000000000000000000011 /* IOSLinkAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLinkAdapter.swift; sourceTree = "<group>"; };
+		DB00000000000000000000B1 /* IOSClipboardLinkReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSClipboardLinkReader.swift; sourceTree = "<group>"; };
+		DB00000000000000000000B2 /* IOSClipboardLinkReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSClipboardLinkReaderTests.swift; sourceTree = "<group>"; };
 		A30000000000000000000012 /* IOSLinkAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLinkAdapterTests.swift; sourceTree = "<group>"; };
 		A30000000000000000000013 /* SaqzIOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SaqzIOS.entitlements; sourceTree = "<group>"; };
 		A40000000000000000000011 /* IOSLocalAccessAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLocalAccessAdapters.swift; sourceTree = "<group>"; };
@@ -190,6 +194,7 @@
 				A10000000000000000000011 /* SaqzIOSApp.swift */,
 				A20000000000000000000011 /* IOSAuthAdapter.swift */,
 				A30000000000000000000011 /* IOSLinkAdapter.swift */,
+				DB00000000000000000000B1 /* IOSClipboardLinkReader.swift */,
 				A40000000000000000000011 /* IOSLocalAccessAdapters.swift */,
 				A1000000000000000000001A /* AccessibilityPreferencesObserver.swift */,
 				B60000000000000000000011 /* GroupsPhoto/IOSGroupPhotoAdapters.swift */,
@@ -244,6 +249,7 @@
 				A10000000000000000000016 /* SaqzIOSTests.swift */,
 				A20000000000000000000012 /* IOSAuthAdapterTests.swift */,
 				A30000000000000000000012 /* IOSLinkAdapterTests.swift */,
+				DB00000000000000000000B2 /* IOSClipboardLinkReaderTests.swift */,
 				A40000000000000000000012 /* IOSLocalAccessAdaptersTests.swift */,
 				A50000000000000000000011 /* IOSAppCompositionTests.swift */,
 				A10000000000000000000019 /* LaunchContractTests.swift */,
@@ -508,6 +514,7 @@
 				A10000000000000000000001 /* SaqzIOSApp.swift in Sources */,
 				A20000000000000000000001 /* IOSAuthAdapter.swift in Sources */,
 				A30000000000000000000001 /* IOSLinkAdapter.swift in Sources */,
+				DB00000000000000000000A1 /* IOSClipboardLinkReader.swift in Sources */,
 				A40000000000000000000001 /* IOSLocalAccessAdapters.swift in Sources */,
 				A10000000000000000000008 /* AccessibilityPreferencesObserver.swift in Sources */,
 				B60000000000000000000001 /* GroupsPhoto/IOSGroupPhotoAdapters.swift in Sources */,
@@ -540,6 +547,7 @@
 				A10000000000000000000005 /* SaqzIOSTests.swift in Sources */,
 				A20000000000000000000002 /* IOSAuthAdapterTests.swift in Sources */,
 				A30000000000000000000002 /* IOSLinkAdapterTests.swift in Sources */,
+				DB00000000000000000000A2 /* IOSClipboardLinkReaderTests.swift in Sources */,
 				A40000000000000000000002 /* IOSLocalAccessAdaptersTests.swift in Sources */,
 				A50000000000000000000001 /* IOSAppCompositionTests.swift in Sources */,
 				A10000000000000000000007 /* LaunchContractTests.swift in Sources */,

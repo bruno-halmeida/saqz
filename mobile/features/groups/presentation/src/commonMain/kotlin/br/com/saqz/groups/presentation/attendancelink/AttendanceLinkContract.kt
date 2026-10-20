@@ -43,6 +43,7 @@ data class AttendanceLinkState(
     val declining: Boolean = false,
 )
 
-enum class AttendanceLinkIntent { Retry, Decline, OpenAppDownload }
+/** `Undo`: desfaz a resposta que o link acabou de gravar (registra o "não vou" do mesmo jeito que o link de recusa). */
+enum class AttendanceLinkIntent { Retry, Decline, Undo, OpenAppDownload }
 
 sealed interface AttendanceLinkEffect { data class Register(val groupId: String) : AttendanceLinkEffect }

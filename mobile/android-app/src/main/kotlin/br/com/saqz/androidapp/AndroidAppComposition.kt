@@ -93,6 +93,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
                     share = share,
                     profilePhoto = profilePhoto,
                     profilePhotoSelection = profilePhoto,
+                    clipboardLink = br.com.saqz.access.domain.port.ClipboardLinkPort.None,
                 ),
                 groups = GroupsRuntimeDependencies(
                     map = br.com.saqz.androidapp.groups.AndroidMapAdapter(context.applicationContext),

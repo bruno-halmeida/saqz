@@ -329,6 +329,7 @@ private class LifecycleCompositionFactory(
                 share = fixture.share,
                 profilePhoto = LifecycleProfilePhotoPort,
                 profilePhotoSelection = LifecycleProfilePhotoPort,
+                clipboardLink = br.com.saqz.access.domain.port.ClipboardLinkPort.None,
             ),
             groups = GroupsRuntimeDependencies(
                 map = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },

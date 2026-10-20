@@ -224,6 +224,7 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
     single<NativeLinkPort> { get<SaqzNativePorts>().access.links }
     single<LocalAccessStatePort> { get<SaqzNativePorts>().access.localState }
     single<NativeSharePort> { get<SaqzNativePorts>().access.share }
+    single<br.com.saqz.access.domain.port.ClipboardLinkPort> { get<SaqzNativePorts>().access.clipboardLink }
     single<NativeProfilePhotoPort> { get<SaqzNativePorts>().access.profilePhoto }
     single<NativeAttendanceSharePort> { get<SaqzNativePorts>().groups.attendanceShare }
     single<GroupPhotoSelectionPort> { get<SaqzNativePorts>().groups.photos.selection }

@@ -51,6 +51,7 @@ class AttendanceLinkViewModel(
         when (intent) {
             AttendanceLinkIntent.Retry -> retry()
             AttendanceLinkIntent.Decline -> decline()
+            AttendanceLinkIntent.Undo -> undo()
             AttendanceLinkIntent.OpenAppDownload -> appDownload?.appDownloadUrl()?.let(appDownload::openAppDownload)
         }
     }
@@ -120,6 +121,27 @@ class AttendanceLinkViewModel(
         // Toda resposta troca o estado inteiro, então a marca some sozinha quando ela volta.
         update { it.copy(declining = true) }
         viewModelScope.launch { respond(destination, requestId, current, AttendanceIntent.Decline) }
+    }
+
+    /** Desfazer a resposta recém-gravada: o "não vou" com o requestId próprio; se falhar, a confirmação continua valendo. */
+    private fun undo() {
+        val before = state.value
+        val destination = before.destination ?: return
+        if (before.phase !in listOf(AttendanceLinkPhase.Confirmed, AttendanceLinkPhase.Waitlisted) || before.declining) return
+        val current = generation
+        val requestId = requestId(code, forDecline = true) ?: return
+        update { it.copy(declining = true) }
+        viewModelScope.launch {
+            val command = SelfAttendanceCommand(requestId, AttendanceIntent.Decline)
+            val response = attendance.respond(destination.groupId, destination.gameId, command)
+            if (current != generation) return@launch
+            if (response is SaqzResult.Success && response.value.value.attendance.status == AttendanceStatus.Declined) {
+                SaqzAnalytics.attendanceAnswered("link", false)
+                update { AttendanceLinkState(AttendanceLinkPhase.Declined, destination, it.game) }
+            } else {
+                update { it.copy(declining = false) }
+            }
+        }
     }
 
     private suspend fun join(current: Int) {
@@ -200,12 +222,12 @@ class AttendanceLinkViewModel(
     private fun show(phase: AttendanceLinkPhase) { update { AttendanceLinkState(phase) } }
 
     @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class, kotlin.uuid.ExperimentalUuidApi::class)
-    private fun requestId(value: String): String? = runCatching {
+    private fun requestId(value: String, forDecline: Boolean = decline): String? = runCatching {
         require(Regex("[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]").matches(value))
         val bytes = Base64.UrlSafe.decode("$value=")
         // Metade distinta por intenção: o mesmo código tem um requestId para confirmar e
         // outro para declinar — o backend deduplica por requestId, e são comandos diferentes.
-        val (start, end) = if (decline) 16 to 32 else 0 to 16
+        val (start, end) = if (forDecline) 16 to 32 else 0 to 16
         Uuid.fromByteArray(bytes.copyOfRange(start, end)).toString()
     }.getOrNull()
 }

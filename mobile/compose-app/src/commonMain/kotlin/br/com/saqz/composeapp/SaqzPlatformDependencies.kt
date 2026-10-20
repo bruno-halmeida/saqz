@@ -1,5 +1,6 @@
 package br.com.saqz.composeapp
 
+import br.com.saqz.access.domain.port.ClipboardLinkPort
 import br.com.saqz.access.domain.port.LocalAccessStatePort
 import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.NativeLinkPort
@@ -32,6 +33,7 @@ class AccessRuntimeDependencies(
     val share: NativeSharePort,
     val profilePhoto: NativeProfilePhotoPort,
     val profilePhotoSelection: ProfilePhotoSelectionPort,
+    val clipboardLink: ClipboardLinkPort,
 )
 
 // Host-owned adapters are explicit constructor requirements, never silent no-op defaults.

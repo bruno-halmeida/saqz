@@ -62,6 +62,20 @@ class AttendanceLinkScreenTest {
         onNodeWithText("Sua vaga libera na hora", substring = true).assertDoesNotExist()
     }
 
+    @Test fun confirmedByLinkNamesTheGameAndOffersUndo() = runComposeUiTest {
+        val intents = mutableListOf<AttendanceLinkIntent>()
+        val game = AttendanceLinkGame("TUESDAY", "04/08", "19h30", "CERET", "Quadra 2")
+        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Confirmed, destination, game), {}, intents::add, {}) } }
+        onNodeWithText("Confirmamos sua presença em Ter, 04/08 · 19h30.").assertExists()
+        onNodeWithTag(AttendanceLinkTags.Undo).performClick()
+        assertEquals(listOf(AttendanceLinkIntent.Undo), intents)
+    }
+
+    @Test fun noUndoAfterDeclinedOrWithoutTheAnswer() = runComposeUiTest {
+        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Declined, destination), {}, {}, {}) } }
+        onNodeWithTag(AttendanceLinkTags.Undo).assertDoesNotExist()
+    }
+
     @Test fun gameCardShowsDayTimeAndVenueAboveTheState() {
         val game = AttendanceLinkGame("TUESDAY", "04/08", "19h30", "CERET", "Quadra 2")
         for (phase in listOf(AttendanceLinkPhase.Confirmed, AttendanceLinkPhase.Waitlisted, AttendanceLinkPhase.DeclineSheet, AttendanceLinkPhase.Declined)) runComposeUiTest {

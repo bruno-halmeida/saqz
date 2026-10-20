@@ -173,6 +173,7 @@ class SaqzKoinModulesTest {
                     share = FakeSharePort,
                     profilePhoto = FakeProfilePhotoPort,
                     profilePhotoSelection = FakeProfilePhotoPort,
+                    clipboardLink = br.com.saqz.access.domain.port.ClipboardLinkPort.None,
                 ),
                 groups = GroupsRuntimeDependencies(
                     attendanceShare = FakeAttendanceSharePort,
